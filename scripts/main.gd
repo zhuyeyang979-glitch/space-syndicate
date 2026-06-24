@@ -7,6 +7,12 @@ const BET_UNIT := 200
 const WITHDRAW_UNIT := 100
 const CHARGE_UNIT := 100
 const DISTRICT_LIMIT := 2
+const ACTION_COOLDOWN := 1.2
+const CHARGE_COOLDOWN := 1.6
+const MARKET_COOLDOWN := 1.8
+const CONTROL_COOLDOWN := 1.4
+const COMMAND_COOLDOWN := 1.0
+const DEFAULT_SKILL_COOLDOWN := 3.0
 
 const SPEEDS := [
 	{"label": "暂停", "value": 0.0},
@@ -98,7 +104,7 @@ func _process(delta: float) -> void:
 
 	var scaled_delta := delta * time_scale
 	game_time += scaled_delta
-	_decay_player_control(scaled_delta)
+	_update_realtime_cooldowns(scaled_delta)
 
 	event_timer -= scaled_delta
 	guardian_timer -= scaled_delta
@@ -122,6 +128,42 @@ func _process(delta: float) -> void:
 	if ui_timer <= 0.0:
 		_refresh_ui()
 		ui_timer = 0.25
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo:
+		return
+
+	match key_event.keycode:
+		KEY_SPACE:
+			_toggle_pause()
+		KEY_1:
+			_select_player(0)
+		KEY_2:
+			_select_player(1)
+		KEY_3:
+			_select_player(2)
+		KEY_4:
+			_select_player(3)
+		KEY_Q:
+			_cycle_district(-1)
+		KEY_E:
+			_cycle_district(1)
+		KEY_B:
+			_place_bet()
+		KEY_W:
+			_withdraw_bet()
+		KEY_C:
+			_charge_skills()
+		KEY_X:
+			_buy_selected_skill()
+		KEY_V:
+			_seize_control()
+		KEY_G:
+			_direct_monster()
 
 
 func _build_layout() -> void:
@@ -284,6 +326,7 @@ func _new_game() -> void:
 			"name": "玩家%d" % (i + 1),
 			"cash": STARTING_CASH,
 			"control": 0.0,
+			"action_cooldown": 0.0,
 			"slots": [_make_skill("移动1"), _make_skill("普攻1"), null],
 		})
 
@@ -325,11 +368,18 @@ func _make_skill(skill_name: String) -> Dictionary:
 	var skill := base.duplicate(true)
 	skill["name"] = skill_name
 	skill["charge"] = 0
+	skill["cooldown"] = DEFAULT_SKILL_COOLDOWN + float(skill.get("cost", 2)) * 0.35
+	skill["cooldown_left"] = 0.0
 	return skill
 
 
 func _set_speed(value: float) -> void:
 	time_scale = value
+	_refresh_ui()
+
+
+func _toggle_pause() -> void:
+	time_scale = 1.0 if time_scale <= 0.0 else 0.0
 	_refresh_ui()
 
 
@@ -413,11 +463,13 @@ func _refresh_player_panel() -> void:
 		selector.add_child(button)
 
 	var player: Dictionary = players[selected_player]
-	player_box.add_child(_plain_label("%s  筹码:%d  控制权:%.1f" % [
+	player_box.add_child(_plain_label("%s  筹码:%d  控制权:%.1f  操作冷却:%.1fs" % [
 		player["name"],
 		player["cash"],
 		player["control"],
+		max(0.0, player["action_cooldown"]),
 	], 16, Color("#e2e8f0")))
+	player_box.add_child(_plain_label("快捷键：1-4选玩家  Q/E选区域  B下注  W撤注  C充能  X买技能  V夺控  G移动  Space暂停", 12, Color("#94a3b8")))
 
 	var prediction_row := HBoxContainer.new()
 	prediction_row.add_theme_constant_override("separation", 6)
@@ -455,13 +507,16 @@ func _refresh_player_panel() -> void:
 		if skill == null:
 			row.add_child(_plain_label("槽%d：空" % (i + 1), 13, Color("#94a3b8")))
 			continue
-		var text := "%s  %d/%d  %s" % [skill["name"], skill["charge"], skill["cost"], skill["text"]]
+		var cooldown_text := ""
+		if skill["cooldown_left"] > 0.0:
+			cooldown_text = "  冷却%.1fs" % skill["cooldown_left"]
+		var text := "%s  %d/%d%s  %s" % [skill["name"], skill["charge"], skill["cost"], cooldown_text, skill["text"]]
 		var label := _plain_label(text, 13, Color("#e5e7eb"))
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(label)
 		var use_button := Button.new()
 		use_button.text = "释放"
-		use_button.disabled = game_over or skill["charge"] < skill["cost"]
+		use_button.disabled = game_over or player["action_cooldown"] > 0.0 or skill["charge"] < skill["cost"] or skill["cooldown_left"] > 0.0
 		use_button.pressed.connect(Callable(self, "_use_skill").bind(i))
 		row.add_child(use_button)
 
@@ -469,7 +524,7 @@ func _refresh_player_panel() -> void:
 func _add_action_button(parent: Container, text: String, method: String) -> void:
 	var button := Button.new()
 	button.text = text
-	button.disabled = game_over
+	button.disabled = game_over or players[selected_player]["action_cooldown"] > 0.0
 	button.pressed.connect(Callable(self, method))
 	parent.add_child(button)
 
@@ -561,6 +616,11 @@ func _select_district(index: int) -> void:
 	_refresh_ui()
 
 
+func _cycle_district(step: int) -> void:
+	selected_district = wrapi(selected_district + step, 0, districts.size())
+	_refresh_ui()
+
+
 func _set_prediction(mode: String) -> void:
 	prediction_mode = mode
 	_refresh_ui()
@@ -571,7 +631,23 @@ func _select_market_skill(skill_name: String) -> void:
 	_refresh_ui()
 
 
-func _place_bet() -> void:
+func _can_selected_player_act() -> bool:
+	if game_over:
+		return false
+	var player: Dictionary = players[selected_player]
+	if player["action_cooldown"] > 0.0:
+		_log("%s操作冷却中，还需%.1fs。" % [player["name"], player["action_cooldown"]])
+		return false
+	return true
+
+
+func _start_player_cooldown(seconds: float) -> void:
+	players[selected_player]["action_cooldown"] = max(players[selected_player]["action_cooldown"], seconds)
+
+
+func _place_bet(ignore_cooldown := false) -> void:
+	if not ignore_cooldown and not _can_selected_player_act():
+		return
 	var player: Dictionary = players[selected_player]
 	var district: Dictionary = districts[selected_district]
 	if district["destroyed"]:
@@ -592,10 +668,14 @@ func _place_bet() -> void:
 	district["bets"][pid]["prediction"] = prediction_mode
 	district["panic"] = min(100, district["panic"] + 4)
 	_log("%s实时押注%s %d，判断为%s。" % [player["name"], district["name"], placed, prediction_mode])
+	if not ignore_cooldown:
+		_start_player_cooldown(ACTION_COOLDOWN)
 	_refresh_ui()
 
 
 func _withdraw_bet() -> void:
+	if not _can_selected_player_act():
+		return
 	var player: Dictionary = players[selected_player]
 	var district: Dictionary = districts[selected_district]
 	var pid: int = player["id"]
@@ -608,10 +688,13 @@ func _withdraw_bet() -> void:
 	if district["bets"][pid]["amount"] <= 0:
 		district["bets"].erase(pid)
 	_log("%s从%s撤回%d筹码。" % [player["name"], district["name"], amount])
+	_start_player_cooldown(ACTION_COOLDOWN)
 	_refresh_ui()
 
 
 func _charge_skills() -> void:
+	if not _can_selected_player_act():
+		return
 	var player: Dictionary = players[selected_player]
 	var spent := 0
 	var limit := 300 + max(0, player["slots"].size() - 3) * 200
@@ -626,10 +709,13 @@ func _charge_skills() -> void:
 		_log("%s没有可充能技能或筹码不足。" % player["name"])
 	else:
 		_log("%s实时充能花费%d。" % [player["name"], spent])
+		_start_player_cooldown(CHARGE_COOLDOWN)
 	_refresh_ui()
 
 
 func _buy_selected_skill() -> void:
+	if not _can_selected_player_act():
+		return
 	var player: Dictionary = players[selected_player]
 	if selected_market_skill == "" or not skill_market.has(selected_market_skill):
 		_log("没有可购买的选中技能。")
@@ -654,10 +740,13 @@ func _buy_selected_skill() -> void:
 	skill_market.erase(selected_market_skill)
 	_log("%s购入技能：%s。" % [player["name"], selected_market_skill])
 	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
+	_start_player_cooldown(MARKET_COOLDOWN)
 	_refresh_ui()
 
 
 func _seize_control() -> void:
+	if not _can_selected_player_act():
+		return
 	var player: Dictionary = players[selected_player]
 	var cost := min(200, player["cash"])
 	if cost <= 0:
@@ -666,10 +755,13 @@ func _seize_control() -> void:
 	player["cash"] -= cost
 	player["control"] += 4.0 + float(cost) / 100.0
 	_log("%s投入%d筹码夺取怪兽控制权。" % [player["name"], cost])
+	_start_player_cooldown(CONTROL_COOLDOWN)
 	_refresh_ui()
 
 
 func _direct_monster() -> void:
+	if not _can_selected_player_act():
+		return
 	var player: Dictionary = players[selected_player]
 	if player["control"] < 1.0:
 		_log("%s控制权不足，无法指挥怪兽。" % player["name"])
@@ -684,18 +776,21 @@ func _direct_monster() -> void:
 		monster["position"] = _next_step_toward(monster["position"], selected_district)
 	_log("%s实时指挥怪兽移动至%s。" % [player["name"], districts[monster["position"]]["name"]])
 	_damage_district(monster["position"], 1, "怪兽移动")
+	_start_player_cooldown(COMMAND_COOLDOWN)
 	_refresh_ui()
 
 
 func _use_skill(slot_index: int) -> void:
+	if not _can_selected_player_act():
+		return
 	var player: Dictionary = players[selected_player]
 	var skill = player["slots"][slot_index]
-	if skill == null or skill["charge"] < skill["cost"]:
+	if skill == null or skill["charge"] < skill["cost"] or skill["cooldown_left"] > 0.0:
 		return
 	_log("%s释放%s。" % [player["name"], skill["name"]])
 	match skill["kind"]:
 		"bet_boost":
-			_place_bet()
+			_place_bet(true)
 		"market_boost":
 			_add_market_bonus(selected_district, 200)
 			districts[selected_district]["panic"] = min(100, districts[selected_district]["panic"] + 12)
@@ -725,6 +820,8 @@ func _use_skill(slot_index: int) -> void:
 			districts[selected_district]["miasma"] = true
 			_log("%s留下瘴气token。" % districts[selected_district]["name"])
 	skill["charge"] = 0
+	skill["cooldown_left"] = skill["cooldown"]
+	_start_player_cooldown(COMMAND_COOLDOWN)
 	_refresh_ui()
 
 
@@ -800,9 +897,14 @@ func _market_tick() -> void:
 	_log("博彩公司抬高%s奖金，区域奖金+100。" % d["name"])
 
 
-func _decay_player_control(delta: float) -> void:
+func _update_realtime_cooldowns(delta: float) -> void:
 	for p in players:
 		p["control"] = max(0.0, p["control"] - delta * 0.25)
+		p["action_cooldown"] = max(0.0, p["action_cooldown"] - delta)
+		for skill in p["slots"]:
+			if skill == null:
+				continue
+			skill["cooldown_left"] = max(0.0, skill["cooldown_left"] - delta)
 
 
 func _move_guardian_until_in_range(required_range: int) -> void:
@@ -946,7 +1048,9 @@ func _best_monster_target() -> int:
 		var d: Dictionary = districts[i]
 		if d["destroyed"]:
 			continue
-		var score: int = int(d["panic"]) + int(d["bonus"] / 20) + int(_total_bets(d) / 20)
+		var score := int(d["panic"])
+		score += int(d["bonus"] / 20)
+		score += int(_total_bets(d) / 20)
 		if score > best_score:
 			best_score = score
 			best_index = i

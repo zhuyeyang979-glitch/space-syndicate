@@ -7,6 +7,8 @@ This Godot build converts the board-game draft into a playable real-time digital
 - Players start with 2000 chips and can act continuously instead of waiting for turns.
 - A global clock advances news events, market bonuses, monster pressure, and guardian checks.
 - Players can switch active operator at any time, then bet, withdraw chips, charge skills, buy skills, seize monster control, or direct monster movement.
+- Player actions use short cooldowns; charged skills also have cooldowns after release.
+- Keyboard shortcuts cover the common real-time loop: player selection, district selection, betting, charging, buying, monster control, and pause/resume.
 - Districts can receive collapse/survive predictions, bets, market bonuses, and damage.
 - Destroyed districts settle immediately: collapse predictions pay out, survival predictions lose, and the top bettor receives the district bonus.
 - Unresolved districts settle as survival when a monster or guardian is defeated.
@@ -27,6 +29,7 @@ This Godot build converts the board-game draft into a playable real-time digital
 
 - Add a setup screen for player count, monster, and guardian selection.
 - Replace generic skill effects with exact card-by-card data tables.
-- Add input shortcuts and clearer cooldown/readiness indicators for fast real-time play.
+- Add a small visual minimap/animation layer for monster and guardian movement.
+- Add difficulty/balance presets for event frequency, guardian aggression, and monster rampage pressure.
 - Split `scripts/main.gd` into model, rules, and UI scripts after the prototype rules settle.
 - Add authored sprites and card frames once the art direction is fixed.
