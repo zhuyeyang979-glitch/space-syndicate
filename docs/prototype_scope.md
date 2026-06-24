@@ -4,7 +4,8 @@ This Godot build converts the board-game draft into a playable real-time digital
 
 ## Implemented as interactive systems
 
-- A lightweight main/pause menu now wraps the prototype, while the setup panel configures 2-5 players, the monster roster entry, the guardian roster entry, and the active balance preset before restarting the run.
+- A lightweight main/pause/help menu now wraps the prototype, while the setup panel configures 2-5 players, the monster roster entry, the guardian roster entry, and the active balance preset before restarting the run.
+- The setup choices are persisted in a local `user://` config, so player count, monster, guardian, and balance preset survive relaunches.
 - Guardian roster choices now load separate probability action models for 机械杰克, 机械艾斯, and 纳伊斯, including abstracted repair/support effects for 纳伊斯.
 - Each run now builds a run-specific card pool from common cards, the selected monster's dedicated cards, and response cards tied to the selected guardian/Ultraman.
 - Monster roster choices load differentiated dedicated card pools: 尸套龙 gains expanded miasma bloom/reclaim tools, while 土砂龙 gains charge upgrades, roar delay, burrow upgrades, and roll attacks.
@@ -28,7 +29,7 @@ This Godot build converts the board-game draft into a playable real-time digital
 - Uncontrolled monster movement now uses a weighted target model instead of a deterministic best-target pick, favoring panic, bonuses, bets, proximity, and miasma pressure.
 - Probability explanations now surface in the UI: guardian action percentages, top monster target candidates, and the selected district's monster-target factors.
 - Monster cards now support several build routes: betting economy, market manipulation, control tempo, charge acceleration, district destruction, long-range pressure, mobility burst, miasma pressure, and armor sustain.
-- The common card pool has been expanded with additional economy, heat-steering, control, chain-charge, long-range destruction, and armor-upgrade cards.
+- The common card pool has been expanded with additional economy, heat-steering, control, chain-charge, market-bait, long-range destruction, and armor-upgrade cards, including several rank-2 upgrade routes.
 
 ## Deliberate simplifications
 

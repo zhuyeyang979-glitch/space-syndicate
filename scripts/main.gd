@@ -25,6 +25,7 @@ const MARKET_COOLDOWN := 1.8
 const CONTROL_COOLDOWN := 1.4
 const COMMAND_COOLDOWN := 1.0
 const DEFAULT_SKILL_COOLDOWN := 3.0
+const SETTINGS_PATH := "user://space_syndicate_settings.cfg"
 
 const GUARDIAN_EARLY_ACTION_WEIGHTS := [2, 2, 2, 0, 0, 0]
 const GUARDIAN_ESCALATED_ACTION_WEIGHTS := [1, 1, 1, 1, 1, 1]
@@ -145,12 +146,17 @@ const SKILL_CATALOG := {
 	"黑幕2": {"cost": 4, "kind": "market_boost", "market_amount": 300, "panic": 18, "damage": 0, "move": 0, "range": 0, "tags": ["市场", "升级"], "text": "选中区域奖金+300，热度+18，作为黑幕升级牌。"},
 	"黑幕3": {"cost": 6, "kind": "market_boost", "market_amount": 500, "panic": 28, "damage": 0, "move": 0, "range": 0, "tags": ["市场", "终端"], "text": "选中区域奖金+500，热度+28，把区域推向高奖池。"},
 	"空投筹码1": {"cost": 3, "kind": "cash_gain", "cash": 300, "damage": 0, "move": 0, "range": 0, "tags": ["经济", "续航"], "text": "立即获得300筹码，用来续航或补下一轮充能。"},
+	"空投筹码2": {"cost": 5, "kind": "cash_gain", "cash": 700, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "立即获得700筹码，支撑高费构筑连续启动。"},
 	"舆论操控1": {"cost": 3, "kind": "panic_shift", "panic": 30, "damage": 0, "move": 0, "range": 0, "tags": ["热度", "引导"], "text": "选中区域热度+30，立刻提高怪兽和新闻事件对该区的关注。"},
+	"舆论操控2": {"cost": 6, "kind": "panic_shift", "panic": 65, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["热度", "升级"], "text": "选中区域热度+65，强行把概率目标推向该区域。"},
 	"控制电波1": {"cost": 3, "kind": "control_gain", "control": 3.0, "damage": 0, "move": 0, "range": 0, "tags": ["控制", "节奏"], "text": "立即获得3点怪兽控制权，更容易接管下一次实时移动。"},
+	"控制电波2": {"cost": 5, "kind": "control_gain", "control": 5.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["控制", "升级"], "text": "立即获得5.5点怪兽控制权，适合连续指挥怪兽改线。"},
 	"过载充能1": {"cost": 4, "kind": "charge_other", "charge_amount": 1, "damage": 0, "move": 0, "range": 0, "tags": ["构筑", "充能"], "text": "除自身外，所有已装备卡牌立即+1充能。"},
+	"过载充能2": {"cost": 6, "kind": "charge_other", "charge_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["构筑", "升级"], "text": "除自身外，所有已装备卡牌立即+2充能，是充能连锁的升级核心。"},
 	"地下融资1": {"cost": 3, "kind": "cash_gain", "cash": 450, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "续航"], "text": "立即获得450筹码，适合高费卡组提前转动。"},
 	"热搜推送1": {"cost": 4, "kind": "panic_shift", "panic": 45, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["热度", "引导"], "text": "选中区域热度+45，把怪兽概率目标和新闻事件都往这里拽。"},
 	"资本诱饵1": {"cost": 4, "kind": "market_boost", "market_amount": 350, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["市场", "经济"], "text": "选中区域奖金+350、热度+8，用高奖池制造路线诱饵。"},
+	"资本诱饵2": {"cost": 7, "kind": "market_boost", "market_amount": 650, "panic": 14, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["市场", "升级"], "text": "选中区域奖金+650、热度+14，把区域变成高额诱饵。"},
 	"远程挑衅1": {"cost": 2, "kind": "control_gain", "control": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["控制", "低费"], "text": "立即获得2点怪兽控制权，是低费控制构筑的润滑牌。"},
 	"连锁过载1": {"cost": 6, "kind": "charge_other", "charge_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["构筑", "爆发"], "text": "除自身外，所有已装备卡牌立即+2充能，用于一轮内连锁打出。"},
 	"移动1": {"cost": 2, "kind": "move", "damage": 0, "move": 180.0, "range": 0.0, "text": "指挥怪兽移动约180米，进入区域造成1点区域伤害。"},
@@ -162,6 +168,7 @@ const SKILL_CATALOG := {
 	"区域破坏2": {"cost": 5, "kind": "area_damage", "damage": 2, "move": 0.0, "range": 180.0, "tags": ["破坏", "升级"], "text": "对180米内区域造成2点伤害，作为区域破坏升级牌。"},
 	"区域破坏3": {"cost": 8, "kind": "area_damage", "damage": 3, "move": 0.0, "range": 300.0, "tags": ["破坏", "终端"], "text": "对300米内区域造成3点伤害，适合终结高价值区域。"},
 	"破碎地脉1": {"cost": 4, "kind": "area_damage", "damage": 1, "move": 0.0, "range": 260.0, "tags": ["破坏", "AOE"], "text": "对260米内区域造成1点伤害，兼顾范围与费用。"},
+	"破碎地脉2": {"cost": 7, "kind": "area_damage", "damage": 2, "move": 0.0, "range": 280.0, "tags": ["破坏", "升级"], "text": "对280米内区域造成2点伤害，形成中距离破坏升级路线。"},
 	"远距破坏1": {"cost": 5, "kind": "area_damage", "damage": 1, "move": 0.0, "range": 420.0, "tags": ["破坏", "远程"], "text": "对420米内区域造成1点伤害，适合不想贴近目标的路线。"},
 	"飞行1": {"cost": 3, "kind": "fly", "damage": 0, "move": 650.0, "range": 0.0, "text": "飞行突进最多650米。"},
 	"飞行2": {"cost": 6, "kind": "fly", "damage": 0, "move": 760.0, "range": 0.0, "text": "飞行突进最多760米，冷却更长但更适合后期牌池。"},
@@ -201,9 +208,15 @@ const SKILL_CATALOG := {
 const UPGRADEABLE_SKILL_FAMILIES := [
 	"赌怪",
 	"黑幕",
+	"空投筹码",
+	"舆论操控",
+	"控制电波",
+	"过载充能",
+	"资本诱饵",
 	"移动",
 	"普攻",
 	"区域破坏",
+	"破碎地脉",
 	"飞行",
 	"龙车",
 	"甩尾",
@@ -224,14 +237,19 @@ const COMMON_CARD_POOL := [
 	"黑幕2",
 	"黑幕3",
 	"空投筹码1",
+	"空投筹码2",
 	"地下融资1",
 	"舆论操控1",
+	"舆论操控2",
 	"热搜推送1",
 	"控制电波1",
+	"控制电波2",
 	"远程挑衅1",
 	"过载充能1",
+	"过载充能2",
 	"连锁过载1",
 	"资本诱饵1",
+	"资本诱饵2",
 	"移动2",
 	"普攻2",
 	"普攻3",
@@ -239,6 +257,7 @@ const COMMON_CARD_POOL := [
 	"区域破坏2",
 	"区域破坏3",
 	"破碎地脉1",
+	"破碎地脉2",
 	"远距破坏1",
 	"飞行1",
 	"装甲再生1",
@@ -249,20 +268,26 @@ const MARKET_SKILLS := [
 	"赌怪1",
 	"黑幕1",
 	"空投筹码1",
+	"空投筹码2",
 	"地下融资1",
 	"舆论操控1",
+	"舆论操控2",
 	"热搜推送1",
 	"控制电波1",
+	"控制电波2",
 	"远程挑衅1",
 	"过载充能1",
+	"过载充能2",
 	"连锁过载1",
 	"资本诱饵1",
+	"资本诱饵2",
 	"移动2",
 	"普攻2",
 	"普攻3",
 	"区域破坏1",
 	"区域破坏2",
 	"破碎地脉1",
+	"破碎地脉2",
 	"远距破坏1",
 	"飞行1",
 	"龙车1",
@@ -388,6 +413,7 @@ var speed_before_menu := 1.0
 
 func _ready() -> void:
 	rng.randomize()
+	_load_settings()
 	_build_layout()
 	_new_game()
 	_open_main_menu()
@@ -639,6 +665,16 @@ func _build_menu_overlay() -> void:
 	new_run_button.pressed.connect(Callable(self, "_start_new_run_from_menu"))
 	box.add_child(new_run_button)
 
+	var help_button := Button.new()
+	help_button.text = "玩法帮助"
+	help_button.pressed.connect(Callable(self, "_open_help_menu"))
+	box.add_child(help_button)
+
+	var save_settings_button := Button.new()
+	save_settings_button.text = "保存设置"
+	save_settings_button.pressed.connect(Callable(self, "_save_settings_from_menu"))
+	box.add_child(save_settings_button)
+
 	var quit_button := Button.new()
 	quit_button.text = "退出原型"
 	quit_button.pressed.connect(Callable(self, "_quit_game"))
@@ -657,6 +693,14 @@ func _open_pause_menu() -> void:
 	_show_menu(
 		"暂停菜单",
 		"游戏已暂停。你可以继续当前局、按当前设置重新开局，或退出原型。\n卡牌会即时打出即时结算；移动、范围和AOE都按米计算。",
+		not game_over
+	)
+
+
+func _open_help_menu() -> void:
+	_show_menu(
+		"玩法帮助",
+		"核心循环：选区域 → 下注/判断塌陷或存活 → 获取当地候选卡 → 充能后即时打出。\n怪兽无人操控时会按概率选择目标；热度、奖金、下注、距离和瘴气都会影响倾向。\n快捷键：1-5选玩家，Q/E选区，B下注，W撤注，C充能，X拿卡，V夺控，G指挥怪兽，Space暂停，Esc菜单。",
 		not game_over
 	)
 
@@ -684,13 +728,51 @@ func _close_menu() -> void:
 
 
 func _start_new_run_from_menu() -> void:
+	_save_settings(false)
 	_new_game()
 	speed_before_menu = 1.0
 	_close_menu()
 
 
+func _save_settings_from_menu() -> void:
+	_save_settings(true)
+
+
 func _quit_game() -> void:
 	get_tree().quit()
+
+
+func _save_settings(show_log: bool) -> void:
+	var config := ConfigFile.new()
+	config.set_value("setup", "player_count", configured_player_count)
+	config.set_value("setup", "monster_index", configured_monster_index)
+	config.set_value("setup", "guardian_index", configured_guardian_index)
+	config.set_value("setup", "balance_index", current_balance_index)
+	var err: int = config.save(SETTINGS_PATH)
+	if not show_log:
+		return
+	if err == OK:
+		_log("开局设置已保存到本地用户配置。")
+	else:
+		_log("开局设置保存失败：%s。" % error_string(err))
+	_refresh_ui()
+
+
+func _load_settings() -> void:
+	var config := ConfigFile.new()
+	var err: int = config.load(SETTINGS_PATH)
+	if err != OK:
+		return
+	configured_player_count = int(max(MIN_PLAYER_COUNT, min(int(config.get_value("setup", "player_count", DEFAULT_PLAYER_COUNT)), MAX_PLAYER_COUNT)))
+	configured_monster_index = int(max(0, min(int(config.get_value("setup", "monster_index", 0)), int(MONSTER_ROSTER.size()) - 1)))
+	configured_guardian_index = int(max(0, min(int(config.get_value("setup", "guardian_index", 0)), int(GUARDIAN_ROSTER.size()) - 1)))
+	current_balance_index = int(max(0, min(int(config.get_value("setup", "balance_index", 1)), int(BALANCE_PRESETS.size()) - 1)))
+
+
+func _load_settings_from_menu() -> void:
+	_load_settings()
+	_log("已读取本地开局设置；重新开局后生效。")
+	_refresh_ui()
 
 
 func _add_panel(parent: Container, title_text: String) -> VBoxContainer:
@@ -1119,6 +1201,16 @@ func _refresh_setup_panel() -> void:
 	apply_button.pressed.connect(Callable(self, "_new_game"))
 	start_row.add_child(apply_button)
 
+	var save_button := Button.new()
+	save_button.text = "保存设置"
+	save_button.pressed.connect(Callable(self, "_save_settings_from_menu"))
+	start_row.add_child(save_button)
+
+	var load_button := Button.new()
+	load_button.text = "读取设置"
+	load_button.pressed.connect(Callable(self, "_load_settings_from_menu"))
+	start_row.add_child(load_button)
+
 
 func _refresh_board() -> void:
 	if map_view == null:
@@ -1446,6 +1538,7 @@ func _set_balance_preset(index: int) -> void:
 	if clamped_index == current_balance_index:
 		return
 	current_balance_index = clamped_index
+	_save_settings(false)
 	_retime_for_balance_change()
 	var preset: Dictionary = _balance_preset()
 	_log("平衡预设切换为：%s。%s" % [preset["label"], preset["desc"]])
@@ -1454,12 +1547,14 @@ func _set_balance_preset(index: int) -> void:
 
 func _set_configured_player_count(count: int) -> void:
 	configured_player_count = max(MIN_PLAYER_COUNT, min(count, MAX_PLAYER_COUNT))
+	_save_settings(false)
 	_log("下次开局玩家数设置为：%d人。" % configured_player_count)
 	_refresh_ui()
 
 
 func _set_configured_monster(index: int) -> void:
 	configured_monster_index = max(0, min(index, int(MONSTER_ROSTER.size()) - 1))
+	_save_settings(false)
 	var monster_template: Dictionary = _monster_template()
 	_log("下次开局怪兽设置为：%s。" % monster_template["name"])
 	_refresh_ui()
@@ -1467,6 +1562,7 @@ func _set_configured_monster(index: int) -> void:
 
 func _set_configured_guardian(index: int) -> void:
 	configured_guardian_index = max(0, min(index, int(GUARDIAN_ROSTER.size()) - 1))
+	_save_settings(false)
 	var guardian_template: Dictionary = _guardian_template()
 	_log("下次开局守护者设置为：%s。" % guardian_template["name"])
 	_refresh_ui()
