@@ -2,38 +2,33 @@ extends Control
 
 const PLAYER_COUNT := 4
 const BOARD_COLUMNS := 3
-const BET_UNIT := 200
-const CHARGE_UNIT := 100
 const STARTING_CASH := 2000
+const BET_UNIT := 200
+const WITHDRAW_UNIT := 100
+const CHARGE_UNIT := 100
 const DISTRICT_LIMIT := 2
 
-const ACTIONS := [
-	{"id": "first", "name": "起始玩家", "hint": "成为下回合先手。"},
-	{"id": "bet1", "name": "下注1", "hint": "向已下注区域追加最多200筹码。"},
-	{"id": "skill1", "name": "技能1", "hint": "给技能充能，基础上限300。"},
-	{"id": "bet2", "name": "下注2", "hint": "在新区域放置判断指示物并下注。"},
-	{"id": "skill2", "name": "技能2", "hint": "从公共技能栏获得一张技能并充能。"},
-	{"id": "market", "name": "操控市场", "hint": "给选中区域追加200奖金。"},
-	{"id": "bet3", "name": "下注3", "hint": "移动自己的200筹码，或执行下注2。"},
-	{"id": "skill3", "name": "技能3", "hint": "支付500开启技能槽并执行技能2。"},
-	{"id": "control", "name": "操控怪兽", "hint": "获得怪兽操控权并触发战斗轮。"},
-	{"id": "bet4", "name": "下注4", "hint": "移动任意玩家200筹码，或执行下注3。"},
+const SPEEDS := [
+	{"label": "暂停", "value": 0.0},
+	{"label": "1x", "value": 1.0},
+	{"label": "2x", "value": 2.0},
+	{"label": "4x", "value": 4.0},
 ]
 
 const SKILL_CATALOG := {
-	"赌怪1": {"cost": 3, "kind": "bet_boost", "damage": 0, "move": 0, "range": 0, "text": "向选中区域额外下注200。"},
-	"黑幕1": {"cost": 2, "kind": "market_boost", "damage": 0, "move": 0, "range": 0, "text": "选中区域奖金+200。"},
-	"移动1": {"cost": 2, "kind": "move", "damage": 0, "move": 1, "range": 0, "text": "怪兽移动1格，进入区域造成1点区域伤害。"},
-	"移动2": {"cost": 4, "kind": "move", "damage": 0, "move": 1, "range": 0, "text": "怪兽移动1格，较高充能版。"},
+	"赌怪1": {"cost": 3, "kind": "bet_boost", "damage": 0, "move": 0, "range": 0, "text": "立即向选中区域额外下注200。"},
+	"黑幕1": {"cost": 2, "kind": "market_boost", "damage": 0, "move": 0, "range": 0, "text": "选中区域奖金+200，并提高当地热度。"},
+	"移动1": {"cost": 2, "kind": "move", "damage": 0, "move": 1, "range": 0, "text": "指挥怪兽移动1格，进入区域造成1点区域伤害。"},
+	"移动2": {"cost": 4, "kind": "move", "damage": 0, "move": 2, "range": 0, "text": "指挥怪兽最多移动2格。"},
 	"普攻1": {"cost": 2, "kind": "attack", "damage": 1, "move": 0, "range": 1, "text": "近战，对守护者造成1点伤害。"},
 	"普攻2": {"cost": 4, "kind": "attack", "damage": 2, "move": 0, "range": 1, "text": "近战，对守护者造成2点伤害。"},
 	"普攻3": {"cost": 6, "kind": "attack", "damage": 3, "move": 0, "range": 1, "text": "近战，对守护者造成3点伤害。"},
 	"区域破坏1": {"cost": 2, "kind": "area_damage", "damage": 1, "move": 0, "range": 1, "text": "对相邻或所在区域造成1点伤害。"},
-	"飞行1": {"cost": 3, "kind": "fly", "damage": 0, "move": 5, "range": 0, "text": "飞行移动到选中区域，忽略区域阻挡。"},
+	"飞行1": {"cost": 3, "kind": "fly", "damage": 0, "move": 5, "range": 0, "text": "飞行到选中区域，忽略距离限制。"},
 	"龙车1": {"cost": 3, "kind": "charge_attack", "damage": 3, "move": 3, "range": 1, "text": "追近守护者并造成3点近战伤害。"},
-	"甩尾1": {"cost": 2, "kind": "attack", "damage": 2, "move": 0, "range": 1, "text": "近战造成2点伤害，并抽象为击退效果。"},
+	"甩尾1": {"cost": 2, "kind": "attack", "damage": 2, "move": 0, "range": 1, "text": "近战造成2点伤害，抽象为击退。"},
 	"瘴气炮1": {"cost": 4, "kind": "miasma_shot", "damage": 1, "move": 0, "range": 4, "text": "远程1点伤害，并在选中区域留下瘴气。"},
-	"地底潜行1": {"cost": 3, "kind": "burrow", "damage": 0, "move": 3, "range": 0, "text": "无视区域移动到选中区域，怪兽获得2点护甲。"},
+	"地底潜行1": {"cost": 3, "kind": "burrow", "damage": 0, "move": 3, "range": 0, "text": "潜行到选中区域，怪兽获得2点护甲。"},
 }
 
 const MARKET_SKILLS := [
@@ -51,39 +46,39 @@ const MARKET_SKILLS := [
 ]
 
 const GUARDIAN_ACTIONS := [
-	{"name": "普攻", "range": 1, "damage": 2, "text": "近战2伤害，击退1。"},
-	{"name": "普攻", "range": 1, "damage": 2, "text": "近战2伤害，击退1。"},
-	{"name": "火花电击", "range": 4, "damage": 2, "text": "距离4，2伤害，麻痹1。"},
+	{"name": "普攻", "range": 1, "damage": 2, "text": "近战2伤害。"},
+	{"name": "普攻", "range": 1, "damage": 2, "text": "近战2伤害。"},
+	{"name": "火花电击", "range": 4, "damage": 2, "text": "距离4，2伤害。"},
 	{"name": "奥特飓风", "range": 1, "damage": 2, "text": "近战投掷，2坠落伤害。"},
-	{"name": "斯派修姆光线", "range": 6, "damage": 3, "text": "距离6，3伤害，直线击退。"},
-	{"name": "奥特空投", "range": 1, "damage": 4, "text": "近战4伤害，眩晕1。"},
+	{"name": "斯派修姆光线", "range": 6, "damage": 3, "text": "距离6，3伤害。"},
+	{"name": "奥特空投", "range": 1, "damage": 4, "text": "近战4伤害。"},
 ]
 
 var rng := RandomNumberGenerator.new()
 var players := []
 var districts := []
 var skill_market := []
-var taken_actions := {}
 var log_lines := []
 
-var round_index := 1
-var actions_per_player := 2
-var first_player := 0
-var next_first_player := 0
-var active_player_index := 0
+var game_time := 0.0
+var time_scale := 1.0
+var selected_player := 0
 var selected_district := 4
 var selected_market_skill := "赌怪1"
 var prediction_mode := "塌陷"
-var monster_control_pot := 0
-var control_chosen_this_round := false
 var game_over := false
+
+var event_timer := 6.0
+var guardian_timer := 5.0
+var monster_timer := 4.0
+var market_timer := 8.0
+var ui_timer := 0.0
 
 var monster := {}
 var guardian := {}
 
 var status_label: Label
 var board_grid: GridContainer
-var action_box: VBoxContainer
 var player_box: VBoxContainer
 var district_box: VBoxContainer
 var market_box: VBoxContainer
@@ -95,6 +90,38 @@ func _ready() -> void:
 	rng.randomize()
 	_build_layout()
 	_new_game()
+
+
+func _process(delta: float) -> void:
+	if game_over or time_scale <= 0.0:
+		return
+
+	var scaled_delta := delta * time_scale
+	game_time += scaled_delta
+	_decay_player_control(scaled_delta)
+
+	event_timer -= scaled_delta
+	guardian_timer -= scaled_delta
+	monster_timer -= scaled_delta
+	market_timer -= scaled_delta
+
+	if event_timer <= 0.0:
+		_world_event()
+		event_timer = 5.0 + rng.randf_range(0.0, 3.0)
+	if monster_timer <= 0.0:
+		_monster_tick()
+		monster_timer = 3.5 + rng.randf_range(0.0, 2.0)
+	if guardian_timer <= 0.0:
+		_guardian_tick()
+		guardian_timer = 4.5 + rng.randf_range(0.0, 2.5)
+	if market_timer <= 0.0:
+		_market_tick()
+		market_timer = 7.0 + rng.randf_range(0.0, 4.0)
+
+	ui_timer -= delta
+	if ui_timer <= 0.0:
+		_refresh_ui()
+		ui_timer = 0.25
 
 
 func _build_layout() -> void:
@@ -116,21 +143,27 @@ func _build_layout() -> void:
 	margin.add_child(page)
 
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	header.add_theme_constant_override("separation", 10)
 	page.add_child(header)
 
 	var title := Label.new()
-	title.text = "太空辛迪加 / Space Syndicate"
-	title.add_theme_font_size_override("font_size", 28)
+	title.text = "太空辛迪加 / Space Syndicate  即时原型"
+	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", Color("#f8fafc"))
 	header.add_child(title)
 
 	status_label = Label.new()
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	status_label.add_theme_font_size_override("font_size", 16)
+	status_label.add_theme_font_size_override("font_size", 15)
 	status_label.add_theme_color_override("font_color", Color("#cbd5e1"))
 	header.add_child(status_label)
+
+	for speed in SPEEDS:
+		var speed_button := Button.new()
+		speed_button.text = speed["label"]
+		speed_button.pressed.connect(Callable(self, "_set_speed").bind(speed["value"]))
+		header.add_child(speed_button)
 
 	var reset_button := Button.new()
 	reset_button.text = "重新开局"
@@ -148,7 +181,7 @@ func _build_layout() -> void:
 	left_column.add_theme_constant_override("separation", 10)
 	body.add_child(left_column)
 
-	var board_panel := _add_panel(left_column, "地区棋盘")
+	var board_panel := _add_panel(left_column, "实时地区棋盘")
 	_panel_container(board_panel).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	board_grid = GridContainer.new()
 	board_grid.columns = BOARD_COLUMNS
@@ -166,22 +199,19 @@ func _build_layout() -> void:
 	district_box = _add_panel(bottom_row, "选中区域")
 	_panel_container(district_box).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	combat_box = _add_panel(bottom_row, "战斗与状态")
+	combat_box = _add_panel(bottom_row, "实时战斗")
 	_panel_container(combat_box).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var right_column := VBoxContainer.new()
-	right_column.custom_minimum_size = Vector2(430, 0)
+	right_column.custom_minimum_size = Vector2(460, 0)
 	right_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_column.add_theme_constant_override("separation", 10)
 	body.add_child(right_column)
 
-	action_box = _add_panel(right_column, "行动轨")
-
-	player_box = _add_panel(right_column, "当前玩家")
-
+	player_box = _add_panel(right_column, "玩家实时操作")
 	market_box = _add_panel(right_column, "公共技能栏")
 
-	var log_panel := _add_panel(right_column, "日志")
+	var log_panel := _add_panel(right_column, "事件日志")
 	_panel_container(log_panel).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_view = RichTextLabel.new()
 	log_view.bbcode_enabled = true
@@ -235,35 +265,36 @@ func _new_game() -> void:
 	players = []
 	districts = []
 	skill_market = MARKET_SKILLS.duplicate()
-	taken_actions = {}
 	log_lines = []
-	round_index = 1
-	first_player = 0
-	next_first_player = 0
-	active_player_index = 0
+	game_time = 0.0
+	time_scale = 1.0
+	selected_player = 0
 	selected_district = 4
 	selected_market_skill = skill_market[0]
 	prediction_mode = "塌陷"
-	monster_control_pot = 0
-	control_chosen_this_round = false
 	game_over = false
+	event_timer = 4.0
+	guardian_timer = 5.0
+	monster_timer = 3.0
+	market_timer = 8.0
 
 	for i in range(PLAYER_COUNT):
 		players.append({
 			"id": i,
 			"name": "玩家%d" % (i + 1),
 			"cash": STARTING_CASH,
-			"actions": 0,
+			"control": 0.0,
 			"slots": [_make_skill("移动1"), _make_skill("普攻1"), null],
 		})
 
-	var district_names := ["东京湾", "能源塔", "旧城区", "港口", "地球总部", "商业区", "地下基地", "电视台", "轨道电梯"]
+	var names := ["东京湾", "能源塔", "旧城区", "港口", "地球总部", "商业区", "地下基地", "电视台", "轨道电梯"]
 	var hp_values := [2, 3, 2, 3, 4, 2, 3, 2, 4]
-	for i in range(district_names.size()):
+	for i in range(names.size()):
 		districts.append({
-			"name": district_names[i],
+			"name": names[i],
 			"hp": hp_values[i],
 			"damage": 0,
+			"panic": 15 + i * 3,
 			"bonus": 0,
 			"destroyed": false,
 			"miasma": false,
@@ -285,7 +316,7 @@ func _new_game() -> void:
 		"position": 0,
 	}
 
-	_log("开局：4名玩家各获得2000筹码，尸套龙与机械杰克进入战场。")
+	_log("即时原型启动：时间持续推进，玩家可随时下注、充能、夺取怪兽控制权。")
 	_refresh_ui()
 
 
@@ -297,25 +328,32 @@ func _make_skill(skill_name: String) -> Dictionary:
 	return skill
 
 
+func _set_speed(value: float) -> void:
+	time_scale = value
+	_refresh_ui()
+
+
 func _refresh_ui() -> void:
 	_refresh_status()
 	_refresh_board()
-	_refresh_actions()
-	_refresh_player()
-	_refresh_district()
-	_refresh_market()
-	_refresh_combat()
+	_refresh_player_panel()
+	_refresh_district_panel()
+	_refresh_market_panel()
+	_refresh_combat_panel()
 	_refresh_log()
 
 
 func _refresh_status() -> void:
-	var p: Dictionary = players[active_player_index]
-	status_label.text = "第%d回合  当前：%s  行动 %d/%d  怪兽操控奖金：%d" % [
-		round_index,
-		p["name"],
-		p["actions"] + 1,
-		actions_per_player,
-		monster_control_pot,
+	var controller := _monster_controller()
+	var controller_text := "无人"
+	if controller >= 0:
+		controller_text = players[controller]["name"]
+	status_label.text = "时间 %s  速度 %.0fx  怪兽控制:%s  怪兽行动 %.1fs  守护者 %.1fs" % [
+		_format_time(game_time),
+		time_scale,
+		controller_text,
+		max(0.0, monster_timer),
+		max(0.0, guardian_timer),
 	]
 
 
@@ -349,69 +387,41 @@ func _district_button_text(index: int) -> String:
 	var marker_text := ""
 	if not markers.is_empty():
 		marker_text = "\n[%s]" % " / ".join(markers)
-	var destroyed_text := "已破坏" if d["destroyed"] else "HP %d/%d" % [max(0, d["hp"] - d["damage"]), d["hp"]]
-	return "%s%s\n%s  奖金:%d\n下注:%d" % [
+	var state := "已破坏" if d["destroyed"] else "HP %d/%d" % [max(0, d["hp"] - d["damage"]), d["hp"]]
+	return "%s%s\n%s  热度:%d\n奖金:%d  下注:%d" % [
 		d["name"],
 		marker_text,
-		destroyed_text,
+		state,
+		int(d["panic"]),
 		d["bonus"],
 		_total_bets(d),
 	]
 
 
-func _refresh_actions() -> void:
-	_clear_children(action_box)
-	for action in ACTIONS:
-		var id: String = action["id"]
-		var button := Button.new()
-		button.text = "%s  -  %s" % [action["name"], action["hint"]]
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.disabled = game_over or taken_actions.has(id)
-		if taken_actions.has(id):
-			button.text = "✓ %s  (%s已选)" % [action["name"], players[taken_actions[id]]["name"]]
-		button.pressed.connect(Callable(self, "_perform_action").bind(id))
-		action_box.add_child(button)
-
-
-func _refresh_player() -> void:
+func _refresh_player_panel() -> void:
 	_clear_children(player_box)
-	var player: Dictionary = players[active_player_index]
-	player_box.add_child(_plain_label("%s  筹码:%d" % [player["name"], player["cash"]], 16, Color("#e2e8f0")))
-	player_box.add_child(_plain_label("已行动:%d/%d  技能槽:%d/6" % [player["actions"], actions_per_player, player["slots"].size()], 14, Color("#cbd5e1")))
 
-	for i in range(player["slots"].size()):
-		var skill = player["slots"][i]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		player_box.add_child(row)
-		if skill == null:
-			row.add_child(_plain_label("槽%d：空" % (i + 1), 14, Color("#94a3b8")))
-			continue
-		var text := "%s  %d/%d  %s" % [skill["name"], skill["charge"], skill["cost"], skill["text"]]
-		var label := _plain_label(text, 13, Color("#e5e7eb"))
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		var use_button := Button.new()
-		use_button.text = "释放"
-		use_button.disabled = game_over or skill["charge"] < skill["cost"]
-		use_button.pressed.connect(Callable(self, "_use_skill").bind(i))
-		row.add_child(use_button)
+	var selector := HBoxContainer.new()
+	selector.add_theme_constant_override("separation", 6)
+	player_box.add_child(selector)
+	for i in range(players.size()):
+		var button := Button.new()
+		button.text = players[i]["name"]
+		button.toggle_mode = true
+		button.button_pressed = i == selected_player
+		button.pressed.connect(Callable(self, "_select_player").bind(i))
+		selector.add_child(button)
 
-
-func _refresh_district() -> void:
-	_clear_children(district_box)
-	var d: Dictionary = districts[selected_district]
-	district_box.add_child(_plain_label("%s  %s" % [d["name"], "已破坏" if d["destroyed"] else "未破坏"], 16, Color("#f8fafc")))
-	district_box.add_child(_plain_label("区域HP: %d/%d  奖金:%d  瘴气:%s" % [
-		max(0, d["hp"] - d["damage"]),
-		d["hp"],
-		d["bonus"],
-		"有" if d["miasma"] else "无",
-	], 14, Color("#cbd5e1")))
+	var player: Dictionary = players[selected_player]
+	player_box.add_child(_plain_label("%s  筹码:%d  控制权:%.1f" % [
+		player["name"],
+		player["cash"],
+		player["control"],
+	], 16, Color("#e2e8f0")))
 
 	var prediction_row := HBoxContainer.new()
 	prediction_row.add_theme_constant_override("separation", 6)
-	district_box.add_child(prediction_row)
+	player_box.add_child(prediction_row)
 	var collapse_button := Button.new()
 	collapse_button.text = "判断: 塌陷"
 	collapse_button.toggle_mode = true
@@ -425,11 +435,60 @@ func _refresh_district() -> void:
 	survive_button.pressed.connect(Callable(self, "_set_prediction").bind("存活"))
 	prediction_row.add_child(survive_button)
 
-	var bets_text := _format_bets(d)
-	district_box.add_child(_plain_label("下注：\n%s" % bets_text, 13, Color("#e5e7eb")))
+	var action_row := GridContainer.new()
+	action_row.columns = 2
+	action_row.add_theme_constant_override("h_separation", 6)
+	action_row.add_theme_constant_override("v_separation", 6)
+	player_box.add_child(action_row)
+	_add_action_button(action_row, "实时下注 +200", "_place_bet")
+	_add_action_button(action_row, "撤回下注 -100", "_withdraw_bet")
+	_add_action_button(action_row, "技能充能", "_charge_skills")
+	_add_action_button(action_row, "购买选中技能", "_buy_selected_skill")
+	_add_action_button(action_row, "夺取怪兽控制", "_seize_control")
+	_add_action_button(action_row, "指挥怪兽移动", "_direct_monster")
+
+	for i in range(player["slots"].size()):
+		var skill = player["slots"][i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		player_box.add_child(row)
+		if skill == null:
+			row.add_child(_plain_label("槽%d：空" % (i + 1), 13, Color("#94a3b8")))
+			continue
+		var text := "%s  %d/%d  %s" % [skill["name"], skill["charge"], skill["cost"], skill["text"]]
+		var label := _plain_label(text, 13, Color("#e5e7eb"))
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var use_button := Button.new()
+		use_button.text = "释放"
+		use_button.disabled = game_over or skill["charge"] < skill["cost"]
+		use_button.pressed.connect(Callable(self, "_use_skill").bind(i))
+		row.add_child(use_button)
 
 
-func _refresh_market() -> void:
+func _add_action_button(parent: Container, text: String, method: String) -> void:
+	var button := Button.new()
+	button.text = text
+	button.disabled = game_over
+	button.pressed.connect(Callable(self, method))
+	parent.add_child(button)
+
+
+func _refresh_district_panel() -> void:
+	_clear_children(district_box)
+	var d: Dictionary = districts[selected_district]
+	district_box.add_child(_plain_label("%s  %s" % [d["name"], "已破坏" if d["destroyed"] else "未破坏"], 16, Color("#f8fafc")))
+	district_box.add_child(_plain_label("区域HP: %d/%d  热度:%d  奖金:%d  瘴气:%s" % [
+		max(0, d["hp"] - d["damage"]),
+		d["hp"],
+		int(d["panic"]),
+		d["bonus"],
+		"有" if d["miasma"] else "无",
+	], 14, Color("#cbd5e1")))
+	district_box.add_child(_plain_label("下注：\n%s" % _format_bets(d), 13, Color("#e5e7eb")))
+
+
+func _refresh_market_panel() -> void:
 	_clear_children(market_box)
 	if skill_market.is_empty():
 		market_box.add_child(_plain_label("公共技能栏为空。", 14, Color("#94a3b8")))
@@ -445,7 +504,7 @@ func _refresh_market() -> void:
 		market_box.add_child(button)
 
 
-func _refresh_combat() -> void:
+func _refresh_combat_panel() -> void:
 	_clear_children(combat_box)
 	combat_box.add_child(_plain_label("怪兽：%s  HP %d/%d  护甲:%d  位置:%s" % [
 		monster["name"],
@@ -460,22 +519,29 @@ func _refresh_combat() -> void:
 		guardian["max_hp"],
 		districts[guardian["position"]]["name"],
 	], 14, Color("#bae6fd")))
-	combat_box.add_child(_plain_label("距离：%d格" % _distance(monster["position"], guardian["position"]), 14, Color("#cbd5e1")))
+	combat_box.add_child(_plain_label("距离：%d格  事件 %.1fs  市场 %.1fs" % [
+		_distance(monster["position"], guardian["position"]),
+		max(0.0, event_timer),
+		max(0.0, market_timer),
+	], 14, Color("#cbd5e1")))
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	combat_box.add_child(row)
-
 	var guardian_button := Button.new()
 	guardian_button.text = "手动守护者检定"
 	guardian_button.disabled = game_over
-	guardian_button.pressed.connect(Callable(self, "_run_guardian_checks").bind(1))
+	guardian_button.pressed.connect(Callable(self, "_guardian_tick"))
 	row.add_child(guardian_button)
-
+	var event_button := Button.new()
+	event_button.text = "推进突发事件"
+	event_button.disabled = game_over
+	event_button.pressed.connect(Callable(self, "_world_event"))
+	row.add_child(event_button)
 	var settle_button := Button.new()
 	settle_button.text = "强制结算"
 	settle_button.disabled = game_over
-	settle_button.pressed.connect(Callable(self, "_end_game_by_manual_settlement"))
+	settle_button.pressed.connect(Callable(self, "_manual_settlement"))
 	row.add_child(settle_button)
 
 
@@ -485,19 +551,9 @@ func _refresh_log() -> void:
 		log_view.append_text(line + "\n")
 
 
-func _plain_label(text: String, size: int, color: Color) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", color)
-	return label
-
-
-func _clear_children(node: Node) -> void:
-	for child in node.get_children():
-		node.remove_child(child)
-		child.queue_free()
+func _select_player(index: int) -> void:
+	selected_player = index
+	_refresh_ui()
 
 
 func _select_district(index: int) -> void:
@@ -515,257 +571,205 @@ func _select_market_skill(skill_name: String) -> void:
 	_refresh_ui()
 
 
-func _perform_action(action_id: String) -> void:
-	if game_over or taken_actions.has(action_id):
+func _place_bet() -> void:
+	var player: Dictionary = players[selected_player]
+	var district: Dictionary = districts[selected_district]
+	if district["destroyed"]:
+		_log("%s已被破坏，不能继续下注。" % district["name"])
 		return
-	var player: Dictionary = players[active_player_index]
-	match action_id:
-		"first":
-			next_first_player = active_player_index
-			_log("%s抢到下回合先手。" % player["name"])
-		"bet1":
-			_bet_on_selected(BET_UNIT, true)
-		"skill1":
-			_charge_current_player_skills(_charge_limit(player))
-		"bet2":
-			_bet_on_selected(BET_UNIT, false)
-		"skill2":
-			_gain_first_available_skill()
-			_charge_current_player_skills(_charge_limit(player))
-		"market":
-			_add_market_bonus(selected_district, BET_UNIT)
-		"bet3":
-			if not _move_own_bet_to_selected(BET_UNIT):
-				_bet_on_selected(BET_UNIT, false)
-		"skill3":
-			_expand_skill_slot()
-			_gain_first_available_skill()
-			_charge_current_player_skills(_charge_limit(player))
-		"control":
-			_control_monster()
-		"bet4":
-			if not _move_any_bet_to_selected(BET_UNIT):
-				if not _move_own_bet_to_selected(BET_UNIT):
-					_bet_on_selected(BET_UNIT, false)
-		_:
-			_log("未知行动：%s" % action_id)
-
-	taken_actions[action_id] = active_player_index
-	player["actions"] += 1
-	_advance_turn()
+	if player["cash"] <= 0:
+		_log("%s没有可下注筹码。" % player["name"])
+		return
+	var pid: int = player["id"]
+	if not district["bets"].has(pid):
+		if _bettor_count(district) >= DISTRICT_LIMIT:
+			_log("%s下注席位已满。" % district["name"])
+			return
+		district["bets"][pid] = {"amount": 0, "prediction": prediction_mode}
+	var placed: int = min(BET_UNIT, player["cash"])
+	player["cash"] -= placed
+	district["bets"][pid]["amount"] += placed
+	district["bets"][pid]["prediction"] = prediction_mode
+	district["panic"] = min(100, district["panic"] + 4)
+	_log("%s实时押注%s %d，判断为%s。" % [player["name"], district["name"], placed, prediction_mode])
 	_refresh_ui()
 
 
-func _advance_turn() -> void:
-	if game_over:
-		return
-	var all_done := true
-	for p in players:
-		if p["actions"] < actions_per_player:
-			all_done = false
-			break
-	if all_done:
-		_end_round()
-		return
-
-	for step in range(1, PLAYER_COUNT + 1):
-		var candidate := (active_player_index + step) % PLAYER_COUNT
-		if players[candidate]["actions"] < actions_per_player:
-			active_player_index = candidate
-			return
-
-
-func _end_round() -> void:
-	if not control_chosen_this_round:
-		monster_control_pot += 100
-		_log("本回合无人操控怪兽，操控怪兽行动格累积100筹码。")
-	round_index += 1
-	first_player = next_first_player
-	active_player_index = first_player
-	taken_actions = {}
-	control_chosen_this_round = false
-	for p in players:
-		p["actions"] = 0
-	_log("进入第%d回合。先手：%s。" % [round_index, players[first_player]["name"]])
-
-
-func _bet_on_selected(amount: int, require_existing: bool) -> bool:
-	var player: Dictionary = players[active_player_index]
+func _withdraw_bet() -> void:
+	var player: Dictionary = players[selected_player]
 	var district: Dictionary = districts[selected_district]
-	if district["destroyed"]:
-		_log("%s已被破坏，不能下注。" % district["name"])
-		return false
-	if player["cash"] <= 0:
-		_log("%s没有可下注筹码。" % player["name"])
-		return false
-	var bets: Dictionary = district["bets"]
 	var pid: int = player["id"]
-	if not bets.has(pid):
-		if require_existing:
-			_log("%s还没有在%s放置判断指示物，下注1失败。" % [player["name"], district["name"]])
-			return false
-		if _bettor_count(district) >= DISTRICT_LIMIT:
-			_log("%s的下注人数已满。" % district["name"])
-			return false
-		bets[pid] = {"amount": 0, "prediction": prediction_mode}
-	var placed: int = min(amount, player["cash"])
-	player["cash"] -= placed
-	bets[pid]["amount"] += placed
-	bets[pid]["prediction"] = prediction_mode
-	_log("%s在%s押%d，判断为%s。" % [player["name"], district["name"], placed, prediction_mode])
-	return true
-
-
-func _move_own_bet_to_selected(amount: int) -> bool:
-	var player: Dictionary = players[active_player_index]
-	var pid: int = player["id"]
-	var source_index := -1
-	var source_amount := 0
-	for i in range(districts.size()):
-		if i == selected_district:
-			continue
-		var bets: Dictionary = districts[i]["bets"]
-		if bets.has(pid) and bets[pid]["amount"] > source_amount:
-			source_index = i
-			source_amount = bets[pid]["amount"]
-	if source_index == -1:
-		_log("%s没有可移动的己方下注。" % player["name"])
-		return false
-	return _move_bet_between_districts(source_index, selected_district, pid, min(amount, source_amount))
-
-
-func _move_any_bet_to_selected(amount: int) -> bool:
-	var source_index := -1
-	var source_pid := -1
-	var source_amount := 0
-	for i in range(districts.size()):
-		if i == selected_district:
-			continue
-		var bets: Dictionary = districts[i]["bets"]
-		for pid in bets.keys():
-			if bets[pid]["amount"] > source_amount:
-				source_index = i
-				source_pid = pid
-				source_amount = bets[pid]["amount"]
-	if source_index == -1:
-		_log("场上没有可移动的下注。")
-		return false
-	return _move_bet_between_districts(source_index, selected_district, source_pid, min(amount, source_amount))
-
-
-func _move_bet_between_districts(source_index: int, target_index: int, pid: int, amount: int) -> bool:
-	var source: Dictionary = districts[source_index]
-	var target: Dictionary = districts[target_index]
-	if target["destroyed"]:
-		_log("目标区域已破坏，不能移动下注。")
-		return false
-	if not target["bets"].has(pid):
-		if _bettor_count(target) >= DISTRICT_LIMIT:
-			_log("目标区域下注人数已满，不能移动下注。")
-			return false
-		target["bets"][pid] = {"amount": 0, "prediction": prediction_mode}
-	source["bets"][pid]["amount"] -= amount
-	target["bets"][pid]["amount"] += amount
-	if source["bets"][pid]["amount"] <= 0:
-		source["bets"].erase(pid)
-	_log("将%s的%d筹码从%s移动到%s。" % [players[pid]["name"], amount, source["name"], target["name"]])
-	return true
-
-
-func _add_market_bonus(index: int, amount: int) -> void:
-	var d: Dictionary = districts[index]
-	if d["destroyed"]:
-		_log("已破坏区域不能追加奖金。")
+	if not district["bets"].has(pid):
+		_log("%s在%s没有下注可撤回。" % [player["name"], district["name"]])
 		return
-	d["bonus"] += amount
-	_log("%s追加%d区域奖金。" % [d["name"], amount])
+	var amount: int = min(WITHDRAW_UNIT, district["bets"][pid]["amount"])
+	district["bets"][pid]["amount"] -= amount
+	player["cash"] += amount
+	if district["bets"][pid]["amount"] <= 0:
+		district["bets"].erase(pid)
+	_log("%s从%s撤回%d筹码。" % [player["name"], district["name"], amount])
+	_refresh_ui()
 
 
-func _charge_limit(player: Dictionary) -> int:
-	return 300 + max(0, player["slots"].size() - 3) * 200
-
-
-func _charge_current_player_skills(limit_cash: int) -> void:
-	var player: Dictionary = players[active_player_index]
+func _charge_skills() -> void:
+	var player: Dictionary = players[selected_player]
 	var spent := 0
+	var limit := 300 + max(0, player["slots"].size() - 3) * 200
 	for skill in player["slots"]:
 		if skill == null:
 			continue
-		while player["cash"] >= CHARGE_UNIT and spent + CHARGE_UNIT <= limit_cash and skill["charge"] < skill["cost"]:
+		while player["cash"] >= CHARGE_UNIT and spent + CHARGE_UNIT <= limit and skill["charge"] < skill["cost"]:
 			player["cash"] -= CHARGE_UNIT
 			spent += CHARGE_UNIT
 			skill["charge"] += 1
 	if spent == 0:
-		_log("%s没有可充能的技能或筹码不足。" % player["name"])
+		_log("%s没有可充能技能或筹码不足。" % player["name"])
 	else:
-		_log("%s花费%d给技能充能。" % [player["name"], spent])
+		_log("%s实时充能花费%d。" % [player["name"], spent])
+	_refresh_ui()
 
 
-func _expand_skill_slot() -> void:
-	var player: Dictionary = players[active_player_index]
-	if player["slots"].size() >= 6:
-		_log("%s已达到6个技能槽上限。" % player["name"])
-		return
-	if player["cash"] < 500:
-		_log("%s筹码不足，无法开启新技能槽。" % player["name"])
-		return
-	player["cash"] -= 500
-	player["slots"].append(null)
-	_log("%s支付500开启了新的技能槽。" % player["name"])
-
-
-func _gain_first_available_skill() -> void:
-	if skill_market.is_empty():
-		_log("公共技能栏为空。")
-		return
+func _buy_selected_skill() -> void:
+	var player: Dictionary = players[selected_player]
 	if selected_market_skill == "" or not skill_market.has(selected_market_skill):
-		selected_market_skill = skill_market[0]
-	_gain_specific_skill(selected_market_skill)
-
-
-func _gain_specific_skill(skill_name: String) -> void:
-	if game_over:
+		_log("没有可购买的选中技能。")
 		return
-	var player: Dictionary = players[active_player_index]
 	var empty_index := -1
 	for i in range(player["slots"].size()):
 		if player["slots"][i] == null:
 			empty_index = i
 			break
 	if empty_index == -1:
-		_log("%s没有空技能槽，无法获得%s。" % [player["name"], skill_name])
-		return
-	if not skill_market.has(skill_name):
-		_log("%s不在公共技能栏中。" % skill_name)
-		return
-	player["slots"][empty_index] = _make_skill(skill_name)
-	skill_market.erase(skill_name)
+		if player["slots"].size() >= 6:
+			_log("%s已达到6个技能槽上限。" % player["name"])
+			return
+		if player["cash"] < 500:
+			_log("%s需要500筹码开启新技能槽。" % player["name"])
+			return
+		player["cash"] -= 500
+		player["slots"].append(null)
+		empty_index = player["slots"].size() - 1
+		_log("%s支付500开启新技能槽。" % player["name"])
+	player["slots"][empty_index] = _make_skill(selected_market_skill)
+	skill_market.erase(selected_market_skill)
+	_log("%s购入技能：%s。" % [player["name"], selected_market_skill])
 	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
-	_log("%s获得技能卡：%s。" % [player["name"], skill_name])
+	_refresh_ui()
 
 
-func _control_monster() -> void:
-	var player: Dictionary = players[active_player_index]
-	control_chosen_this_round = true
-	var extra_checks := int(monster_control_pot / 100)
-	if monster_control_pot > 0:
-		player["cash"] += monster_control_pot
-		_log("%s拿走操控怪兽行动格上的%d筹码。" % [player["name"], monster_control_pot])
-	monster_control_pot = 0
-	_log("%s获得本回合怪兽操控权，战斗轮开始。" % player["name"])
-	_run_guardian_checks(1 + extra_checks)
-
-
-func _run_guardian_checks(count: int) -> void:
-	if game_over:
+func _seize_control() -> void:
+	var player: Dictionary = players[selected_player]
+	var cost := min(200, player["cash"])
+	if cost <= 0:
+		_log("%s没有筹码夺取控制权。" % player["name"])
 		return
-	for i in range(count):
-		if game_over:
-			break
-		_guardian_action()
+	player["cash"] -= cost
+	player["control"] += 4.0 + float(cost) / 100.0
+	_log("%s投入%d筹码夺取怪兽控制权。" % [player["name"], cost])
+	_refresh_ui()
 
 
-func _guardian_action() -> void:
+func _direct_monster() -> void:
+	var player: Dictionary = players[selected_player]
+	if player["control"] < 1.0:
+		_log("%s控制权不足，无法指挥怪兽。" % player["name"])
+		return
+	if districts[selected_district]["destroyed"]:
+		_log("怪兽不能移动到已破坏区域。")
+		return
+	player["control"] = max(0.0, player["control"] - 1.0)
+	if _distance(monster["position"], selected_district) <= 1:
+		monster["position"] = selected_district
+	else:
+		monster["position"] = _next_step_toward(monster["position"], selected_district)
+	_log("%s实时指挥怪兽移动至%s。" % [player["name"], districts[monster["position"]]["name"]])
+	_damage_district(monster["position"], 1, "怪兽移动")
+	_refresh_ui()
+
+
+func _use_skill(slot_index: int) -> void:
+	var player: Dictionary = players[selected_player]
+	var skill = player["slots"][slot_index]
+	if skill == null or skill["charge"] < skill["cost"]:
+		return
+	_log("%s释放%s。" % [player["name"], skill["name"]])
+	match skill["kind"]:
+		"bet_boost":
+			_place_bet()
+		"market_boost":
+			_add_market_bonus(selected_district, 200)
+			districts[selected_district]["panic"] = min(100, districts[selected_district]["panic"] + 12)
+		"move":
+			_move_monster_by_skill(skill["move"], false)
+		"fly":
+			_move_monster_by_skill(skill["move"], true)
+		"burrow":
+			_move_monster_by_skill(skill["move"], true)
+			monster["armor"] += 2
+			_log("怪兽获得2点护甲。")
+		"attack":
+			_monster_attack_guardian(skill["damage"], skill["range"], skill["name"], selected_player)
+		"charge_attack":
+			_move_monster_toward_guardian(skill["move"])
+			_monster_attack_guardian(skill["damage"], skill["range"], skill["name"], selected_player)
+		"area_damage":
+			if _distance(monster["position"], selected_district) <= skill["range"]:
+				_damage_district(selected_district, skill["damage"], skill["name"])
+			else:
+				_log("选中区域不在区域破坏射程内。")
+		"miasma_shot":
+			if _distance(monster["position"], guardian["position"]) <= skill["range"]:
+				_guardian_take_damage(skill["damage"], skill["name"], selected_player)
+			else:
+				_log("守护者不在瘴气炮射程内。")
+			districts[selected_district]["miasma"] = true
+			_log("%s留下瘴气token。" % districts[selected_district]["name"])
+	skill["charge"] = 0
+	_refresh_ui()
+
+
+func _move_monster_by_skill(max_steps: int, ignore_distance: bool) -> void:
+	if districts[selected_district]["destroyed"]:
+		_log("怪兽不能移动到已破坏区域。")
+		return
+	var dist := _distance(monster["position"], selected_district)
+	if not ignore_distance and dist > max_steps:
+		_log("选中区域距离%d，超过技能移动力%d。" % [dist, max_steps])
+		return
+	monster["position"] = selected_district
+	_log("怪兽移动至%s。" % districts[selected_district]["name"])
+	_damage_district(selected_district, 1, "怪兽移动")
+
+
+func _world_event() -> void:
+	var index := _random_intact_district()
+	if index < 0:
+		_finish_game("所有区域都已破坏。")
+		return
+	var d: Dictionary = districts[index]
+	var heat := rng.randi_range(10, 24)
+	d["panic"] = min(100, d["panic"] + heat)
+	d["bonus"] += 100
+	_log("新闻热度涌向%s：热度+%d，区域奖金+100。" % [d["name"], heat])
+	if d["panic"] >= 100:
+		d["panic"] = 60
+		_damage_district(index, 1, "民众恐慌")
+
+
+func _monster_tick() -> void:
+	var controller := _monster_controller()
+	if controller < 0:
+		var target := _best_monster_target()
+		if target >= 0 and target != monster["position"]:
+			monster["position"] = _next_step_toward(monster["position"], target)
+			_log("无人稳定操控，怪兽向%s移动。" % districts[monster["position"]]["name"])
+	_damage_district(monster["position"], 1, "怪兽暴走")
+	if districts[monster["position"]]["miasma"]:
+		_guardian_take_damage(1, "瘴气", -1)
+		districts[monster["position"]]["miasma"] = false
+
+
+func _guardian_tick() -> void:
 	var roll := rng.randi_range(1, 6)
 	var any_destroyed := false
 	for d in districts:
@@ -777,10 +781,28 @@ func _guardian_action() -> void:
 	var action: Dictionary = GUARDIAN_ACTIONS[roll - 1]
 	_log("守护者D6=%d：%s。" % [roll, action["name"]])
 	_move_guardian_until_in_range(action["range"])
+	if districts[guardian["position"]]["miasma"]:
+		districts[guardian["position"]]["miasma"] = false
+		_guardian_take_damage(1, "瘴气", -1)
 	if _distance(guardian["position"], monster["position"]) <= action["range"]:
 		_monster_take_damage(action["damage"], action["name"])
 	else:
 		_log("守护者未能进入射程，攻击落空。")
+	_refresh_ui()
+
+
+func _market_tick() -> void:
+	var target := _highest_panic_district()
+	if target < 0:
+		return
+	var d: Dictionary = districts[target]
+	d["bonus"] += 100
+	_log("博彩公司抬高%s奖金，区域奖金+100。" % d["name"])
+
+
+func _decay_player_control(delta: float) -> void:
+	for p in players:
+		p["control"] = max(0.0, p["control"] - delta * 0.25)
 
 
 func _move_guardian_until_in_range(required_range: int) -> void:
@@ -792,91 +814,31 @@ func _move_guardian_until_in_range(required_range: int) -> void:
 		_log("守护者移动%d格至%s。" % [moved, districts[guardian["position"]]["name"]])
 
 
-func _use_skill(slot_index: int) -> void:
-	if game_over:
-		return
-	var player: Dictionary = players[active_player_index]
-	var skill = player["slots"][slot_index]
-	if skill == null:
-		return
-	if skill["charge"] < skill["cost"]:
-		_log("%s尚未充满。" % skill["name"])
-		return
-	_log("%s释放%s。" % [player["name"], skill["name"]])
-
-	match skill["kind"]:
-		"bet_boost":
-			_bet_on_selected(BET_UNIT, false)
-		"market_boost":
-			_add_market_bonus(selected_district, BET_UNIT)
-		"move":
-			_move_monster_to_selected(skill["move"], false)
-		"fly":
-			_move_monster_to_selected(skill["move"], true)
-		"burrow":
-			_move_monster_to_selected(skill["move"], true)
-			monster["armor"] += 2
-			_log("怪兽获得2点护甲。")
-		"attack":
-			_monster_attack_guardian(skill["damage"], skill["range"], skill["name"])
-		"charge_attack":
-			_move_monster_toward_guardian(skill["move"])
-			_monster_attack_guardian(skill["damage"], skill["range"], skill["name"])
-		"area_damage":
-			if _distance(monster["position"], selected_district) <= skill["range"]:
-				_damage_district(selected_district, skill["damage"], skill["name"])
-			else:
-				_log("选中区域不在区域破坏射程内。")
-		"miasma_shot":
-			if _distance(monster["position"], guardian["position"]) <= skill["range"]:
-				_guardian_take_damage(skill["damage"], skill["name"])
-			else:
-				_log("守护者不在瘴气炮射程内。")
-			districts[selected_district]["miasma"] = true
-			_log("%s留下瘴气token。" % districts[selected_district]["name"])
-		_:
-			_log("该技能暂未实现具体效果。")
-
-	skill["charge"] = 0
-	_refresh_ui()
-
-
-func _move_monster_to_selected(max_steps: int, ignore_distance: bool) -> void:
-	if districts[selected_district]["destroyed"]:
-		_log("怪兽不能移动到已破坏区域。")
-		return
-	var dist := _distance(monster["position"], selected_district)
-	if not ignore_distance and dist > max_steps:
-		_log("选中区域距离%d，超过移动力%d。" % [dist, max_steps])
-		return
-	monster["position"] = selected_district
-	_log("怪兽移动至%s。" % districts[selected_district]["name"])
-	_damage_district(selected_district, 1, "怪兽移动")
-
-
 func _move_monster_toward_guardian(max_steps: int) -> void:
 	var moved := 0
 	while moved < max_steps and _distance(monster["position"], guardian["position"]) > 1:
 		monster["position"] = _next_step_toward(monster["position"], guardian["position"])
 		moved += 1
-		_damage_district(monster["position"], 1, "怪兽冲撞移动")
+		_damage_district(monster["position"], 1, "怪兽冲撞")
 	if moved > 0:
 		_log("怪兽追近%d格至%s。" % [moved, districts[monster["position"]]["name"]])
 
 
-func _monster_attack_guardian(damage: int, range_limit: int, source: String) -> void:
+func _monster_attack_guardian(damage: int, range_limit: int, source: String, source_pid: int) -> void:
 	if _distance(monster["position"], guardian["position"]) > range_limit:
 		_log("守护者不在%s射程内。" % source)
 		return
-	_guardian_take_damage(damage, source)
+	_guardian_take_damage(damage, source, source_pid)
 
 
-func _guardian_take_damage(damage: int, source: String) -> void:
-	var player: Dictionary = players[active_player_index]
+func _guardian_take_damage(damage: int, source: String, source_pid: int) -> void:
 	guardian["hp"] -= damage
-	var reward := damage * 200
-	player["cash"] += reward
-	_log("%s对守护者造成%d伤害，%s获得%d筹码。" % [source, damage, player["name"], reward])
+	if source_pid >= 0:
+		var reward := damage * 200
+		players[source_pid]["cash"] += reward
+		_log("%s对守护者造成%d伤害，%s获得%d筹码。" % [source, damage, players[source_pid]["name"], reward])
+	else:
+		_log("%s对守护者造成%d伤害。" % [source, damage])
 	if guardian["hp"] <= 0:
 		_finish_game("%s被击败。" % guardian["name"])
 
@@ -887,10 +849,13 @@ func _monster_take_damage(damage: int, source: String) -> void:
 		_log("怪兽护甲抵消%d点伤害。" % min(damage, monster["armor"]))
 	monster["armor"] = max(0, monster["armor"] - damage)
 	monster["hp"] -= reduced
-	var controller: Dictionary = players[active_player_index]
-	var loss := min(controller["cash"], reduced * 100)
-	controller["cash"] -= loss
-	_log("%s对怪兽造成%d伤害，%s支付%d筹码损失。" % [source, reduced, controller["name"], loss])
+	var controller := _monster_controller()
+	if controller >= 0 and reduced > 0:
+		var loss: int = min(players[controller]["cash"], reduced * 100)
+		players[controller]["cash"] -= loss
+		_log("%s对怪兽造成%d伤害，%s支付%d筹码损失。" % [source, reduced, players[controller]["name"], loss])
+	else:
+		_log("%s对怪兽造成%d伤害。" % [source, reduced])
 	if monster["hp"] <= 0:
 		_finish_game("%s被击败。" % monster["name"])
 
@@ -900,11 +865,21 @@ func _damage_district(index: int, amount: int, source: String) -> void:
 	if d["destroyed"]:
 		return
 	d["damage"] += amount
+	d["panic"] = min(100, d["panic"] + amount * 8)
 	_log("%s使%s受到%d点区域伤害。" % [source, d["name"], amount])
 	if d["damage"] >= d["hp"]:
 		d["destroyed"] = true
-		_log("%s被破坏，立即结算该区域。" % d["name"])
+		_log("%s被破坏，塌陷判断立即结算。" % d["name"])
 		_settle_district(index, true)
+
+
+func _add_market_bonus(index: int, amount: int) -> void:
+	var d: Dictionary = districts[index]
+	if d["destroyed"]:
+		_log("已破坏区域不能追加奖金。")
+		return
+	d["bonus"] += amount
+	_log("%s追加%d区域奖金。" % [d["name"], amount])
 
 
 func _settle_district(index: int, collapsed: bool) -> void:
@@ -934,6 +909,11 @@ func _settle_district(index: int, collapsed: bool) -> void:
 	d["bonus"] = 0
 
 
+func _manual_settlement() -> void:
+	_finish_game("手动触发最终结算。")
+	_refresh_ui()
+
+
 func _finish_game(reason: String) -> void:
 	if game_over:
 		return
@@ -949,9 +929,51 @@ func _finish_game(reason: String) -> void:
 	_log("胜者：%s，筹码%d。" % [winner["name"], winner["cash"]])
 
 
-func _end_game_by_manual_settlement() -> void:
-	_finish_game("手动触发最终结算。")
-	_refresh_ui()
+func _monster_controller() -> int:
+	var best_pid := -1
+	var best_control := 0.5
+	for p in players:
+		if p["control"] > best_control:
+			best_pid = p["id"]
+			best_control = p["control"]
+	return best_pid
+
+
+func _best_monster_target() -> int:
+	var best_index := -1
+	var best_score := -9999
+	for i in range(districts.size()):
+		var d: Dictionary = districts[i]
+		if d["destroyed"]:
+			continue
+		var score: int = int(d["panic"]) + int(d["bonus"] / 20) + int(_total_bets(d) / 20)
+		if score > best_score:
+			best_score = score
+			best_index = i
+	return best_index
+
+
+func _highest_panic_district() -> int:
+	var best_index := -1
+	var best_panic := -1
+	for i in range(districts.size()):
+		var d: Dictionary = districts[i]
+		if d["destroyed"]:
+			continue
+		if int(d["panic"]) > best_panic:
+			best_panic = int(d["panic"])
+			best_index = i
+	return best_index
+
+
+func _random_intact_district() -> int:
+	var options := []
+	for i in range(districts.size()):
+		if not districts[i]["destroyed"]:
+			options.append(i)
+	if options.is_empty():
+		return -1
+	return options[rng.randi_range(0, options.size() - 1)]
 
 
 func _distance(a: int, b: int) -> int:
@@ -1012,8 +1034,30 @@ func _format_bets(district: Dictionary) -> String:
 	return "\n".join(lines)
 
 
+func _format_time(seconds: float) -> String:
+	var total := int(seconds)
+	var minutes := int(total / 60)
+	var rest := total % 60
+	return "%02d:%02d" % [minutes, rest]
+
+
+func _plain_label(text: String, size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
+	return label
+
+
+func _clear_children(node: Node) -> void:
+	for child in node.get_children():
+		node.remove_child(child)
+		child.queue_free()
+
+
 func _log(message: String) -> void:
-	var line := "[第%d回合] %s" % [round_index, message]
+	var line := "[%s] %s" % [_format_time(game_time), message]
 	log_lines.append(line)
-	while log_lines.size() > 80:
+	while log_lines.size() > 90:
 		log_lines.pop_front()
