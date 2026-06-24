@@ -148,6 +148,11 @@ const SKILL_CATALOG := {
 	"舆论操控1": {"cost": 3, "kind": "panic_shift", "panic": 30, "damage": 0, "move": 0, "range": 0, "tags": ["热度", "引导"], "text": "选中区域热度+30，立刻提高怪兽和新闻事件对该区的关注。"},
 	"控制电波1": {"cost": 3, "kind": "control_gain", "control": 3.0, "damage": 0, "move": 0, "range": 0, "tags": ["控制", "节奏"], "text": "立即获得3点怪兽控制权，更容易接管下一次实时移动。"},
 	"过载充能1": {"cost": 4, "kind": "charge_other", "charge_amount": 1, "damage": 0, "move": 0, "range": 0, "tags": ["构筑", "充能"], "text": "除自身外，所有已装备卡牌立即+1充能。"},
+	"地下融资1": {"cost": 3, "kind": "cash_gain", "cash": 450, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "续航"], "text": "立即获得450筹码，适合高费卡组提前转动。"},
+	"热搜推送1": {"cost": 4, "kind": "panic_shift", "panic": 45, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["热度", "引导"], "text": "选中区域热度+45，把怪兽概率目标和新闻事件都往这里拽。"},
+	"资本诱饵1": {"cost": 4, "kind": "market_boost", "market_amount": 350, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["市场", "经济"], "text": "选中区域奖金+350、热度+8，用高奖池制造路线诱饵。"},
+	"远程挑衅1": {"cost": 2, "kind": "control_gain", "control": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["控制", "低费"], "text": "立即获得2点怪兽控制权，是低费控制构筑的润滑牌。"},
+	"连锁过载1": {"cost": 6, "kind": "charge_other", "charge_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["构筑", "爆发"], "text": "除自身外，所有已装备卡牌立即+2充能，用于一轮内连锁打出。"},
 	"移动1": {"cost": 2, "kind": "move", "damage": 0, "move": 180.0, "range": 0.0, "text": "指挥怪兽移动约180米，进入区域造成1点区域伤害。"},
 	"移动2": {"cost": 4, "kind": "move", "damage": 0, "move": 280.0, "range": 0.0, "text": "指挥怪兽最多移动约280米。"},
 	"普攻1": {"cost": 2, "kind": "attack", "damage": 1, "move": 0.0, "range": 110.0, "text": "近战AOE约110米，对守护者造成1点伤害。"},
@@ -156,6 +161,8 @@ const SKILL_CATALOG := {
 	"区域破坏1": {"cost": 2, "kind": "area_damage", "damage": 1, "move": 0.0, "range": 180.0, "text": "对180米内区域造成1点区域伤害。"},
 	"区域破坏2": {"cost": 5, "kind": "area_damage", "damage": 2, "move": 0.0, "range": 180.0, "tags": ["破坏", "升级"], "text": "对180米内区域造成2点伤害，作为区域破坏升级牌。"},
 	"区域破坏3": {"cost": 8, "kind": "area_damage", "damage": 3, "move": 0.0, "range": 300.0, "tags": ["破坏", "终端"], "text": "对300米内区域造成3点伤害，适合终结高价值区域。"},
+	"破碎地脉1": {"cost": 4, "kind": "area_damage", "damage": 1, "move": 0.0, "range": 260.0, "tags": ["破坏", "AOE"], "text": "对260米内区域造成1点伤害，兼顾范围与费用。"},
+	"远距破坏1": {"cost": 5, "kind": "area_damage", "damage": 1, "move": 0.0, "range": 420.0, "tags": ["破坏", "远程"], "text": "对420米内区域造成1点伤害，适合不想贴近目标的路线。"},
 	"飞行1": {"cost": 3, "kind": "fly", "damage": 0, "move": 650.0, "range": 0.0, "text": "飞行突进最多650米。"},
 	"飞行2": {"cost": 6, "kind": "fly", "damage": 0, "move": 760.0, "range": 0.0, "text": "飞行突进最多760米，冷却更长但更适合后期牌池。"},
 	"龙车1": {"cost": 3, "kind": "charge_attack", "damage": 3, "move": 320.0, "range": 110.0, "text": "向守护者冲刺320米，并在110米近战圈造成3点伤害。"},
@@ -164,6 +171,7 @@ const SKILL_CATALOG := {
 	"甩尾1": {"cost": 2, "kind": "attack", "damage": 2, "move": 0.0, "range": 130.0, "text": "130米尾击AOE造成2点伤害，抽象为击退。"},
 	"甩尾2": {"cost": 4, "kind": "attack", "damage": 2, "move": 0.0, "range": 160.0, "text": "160米尾击AOE造成2点伤害，作为甩尾升级牌。"},
 	"装甲再生1": {"cost": 3, "kind": "armor_gain", "armor": 3, "damage": 0, "move": 0, "range": 0, "tags": ["防御", "续航"], "text": "怪兽立即获得3点护甲，抵消后续守护者伤害。"},
+	"装甲再生2": {"cost": 6, "kind": "armor_gain", "armor": 7, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["防御", "升级"], "text": "怪兽立即获得7点护甲，支撑高压路线继续推进。"},
 	"瘴气炮1": {"cost": 4, "kind": "miasma_shot", "damage": 1, "move": 0.0, "range": 420.0, "text": "420米远程瘴气炮造成1点伤害，并在选中区域留下瘴气。"},
 	"瘴气爆发1": {"cost": 4, "kind": "miasma_bloom", "damage": 0, "move": 0.0, "range": 220.0, "miasma_count": 3, "text": "在选中区域220米AOE内散布至多3枚瘴气。"},
 	"瘴气爆发2": {"cost": 6, "kind": "miasma_bloom", "damage": 0, "move": 0.0, "range": 260.0, "miasma_count": 5, "tags": ["瘴气", "升级"], "text": "在选中区域260米AOE内散布至多5枚瘴气，作为瘴气爆发升级牌。"},
@@ -199,6 +207,7 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"飞行",
 	"龙车",
 	"甩尾",
+	"装甲再生",
 	"瘴气爆发",
 	"瘴气回收",
 	"咆哮",
@@ -215,35 +224,51 @@ const COMMON_CARD_POOL := [
 	"黑幕2",
 	"黑幕3",
 	"空投筹码1",
+	"地下融资1",
 	"舆论操控1",
+	"热搜推送1",
 	"控制电波1",
+	"远程挑衅1",
 	"过载充能1",
+	"连锁过载1",
+	"资本诱饵1",
 	"移动2",
 	"普攻2",
 	"普攻3",
 	"区域破坏1",
 	"区域破坏2",
 	"区域破坏3",
+	"破碎地脉1",
+	"远距破坏1",
 	"飞行1",
 	"装甲再生1",
+	"装甲再生2",
 ]
 
 const MARKET_SKILLS := [
 	"赌怪1",
 	"黑幕1",
 	"空投筹码1",
+	"地下融资1",
 	"舆论操控1",
+	"热搜推送1",
 	"控制电波1",
+	"远程挑衅1",
 	"过载充能1",
+	"连锁过载1",
+	"资本诱饵1",
 	"移动2",
 	"普攻2",
 	"普攻3",
 	"区域破坏1",
 	"区域破坏2",
+	"破碎地脉1",
+	"远距破坏1",
 	"飞行1",
 	"龙车1",
 	"甩尾1",
 	"装甲再生1",
+	"装甲再生2",
 	"瘴气炮1",
 	"地底潜行1",
 ]
@@ -354,12 +379,18 @@ var district_box: VBoxContainer
 var market_box: VBoxContainer
 var combat_box: VBoxContainer
 var log_view: RichTextLabel
+var menu_overlay: Control
+var menu_title_label: Label
+var menu_body_label: Label
+var menu_continue_button: Button
+var speed_before_menu := 1.0
 
 
 func _ready() -> void:
 	rng.randomize()
 	_build_layout()
 	_new_game()
+	_open_main_menu()
 
 
 func _process(delta: float) -> void:
@@ -399,6 +430,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var key_event := event as InputEventKey
 	if not key_event.pressed or key_event.echo:
+		return
+
+	if key_event.keycode == KEY_ESCAPE:
+		if menu_overlay != null and menu_overlay.visible:
+			_close_menu()
+		else:
+			_open_pause_menu()
+		return
+	if menu_overlay != null and menu_overlay.visible:
+		if key_event.keycode == KEY_ENTER or key_event.keycode == KEY_SPACE:
+			_close_menu()
 		return
 
 	match key_event.keycode:
@@ -482,6 +524,11 @@ func _build_layout() -> void:
 	reset_button.pressed.connect(Callable(self, "_new_game"))
 	header.add_child(reset_button)
 
+	var menu_button := Button.new()
+	menu_button.text = "菜单"
+	menu_button.pressed.connect(Callable(self, "_open_pause_menu"))
+	header.add_child(menu_button)
+
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 12)
@@ -530,6 +577,120 @@ func _build_layout() -> void:
 	log_view.scroll_following = true
 	log_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_panel.add_child(log_view)
+
+	_build_menu_overlay()
+
+
+func _build_menu_overlay() -> void:
+	var shade := ColorRect.new()
+	shade.color = Color(0.02, 0.04, 0.08, 0.88)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.visible = false
+	menu_overlay = shade
+	add_child(shade)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(560, 0)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#0f172a")
+	style.border_color = Color("#38bdf8")
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(12)
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	margin.add_child(box)
+
+	menu_title_label = Label.new()
+	menu_title_label.text = "Space Syndicate"
+	menu_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_title_label.add_theme_font_size_override("font_size", 30)
+	menu_title_label.add_theme_color_override("font_color", Color("#f8fafc"))
+	box.add_child(menu_title_label)
+
+	menu_body_label = Label.new()
+	menu_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	menu_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_body_label.add_theme_font_size_override("font_size", 15)
+	menu_body_label.add_theme_color_override("font_color", Color("#cbd5e1"))
+	box.add_child(menu_body_label)
+
+	menu_continue_button = Button.new()
+	menu_continue_button.text = "继续游戏"
+	menu_continue_button.pressed.connect(Callable(self, "_close_menu"))
+	box.add_child(menu_continue_button)
+
+	var new_run_button := Button.new()
+	new_run_button.text = "开始新局"
+	new_run_button.pressed.connect(Callable(self, "_start_new_run_from_menu"))
+	box.add_child(new_run_button)
+
+	var quit_button := Button.new()
+	quit_button.text = "退出原型"
+	quit_button.pressed.connect(Callable(self, "_quit_game"))
+	box.add_child(quit_button)
+
+
+func _open_main_menu() -> void:
+	_show_menu(
+		"太空辛迪加",
+		"即时卡牌构筑 × 怪兽概率行动 × 连续城市地图\n选择开局设置后点“开始新局”，或直接继续当前随机局。\n快捷键：Enter/Space继续，Esc打开/关闭菜单。",
+		true
+	)
+
+
+func _open_pause_menu() -> void:
+	_show_menu(
+		"暂停菜单",
+		"游戏已暂停。你可以继续当前局、按当前设置重新开局，或退出原型。\n卡牌会即时打出即时结算；移动、范围和AOE都按米计算。",
+		not game_over
+	)
+
+
+func _show_menu(title_text: String, body_text: String, can_continue: bool) -> void:
+	if menu_overlay == null:
+		return
+	if time_scale > 0.0:
+		speed_before_menu = time_scale
+	time_scale = 0.0
+	menu_title_label.text = title_text
+	menu_body_label.text = body_text
+	menu_continue_button.disabled = not can_continue
+	menu_overlay.visible = true
+	_refresh_ui()
+
+
+func _close_menu() -> void:
+	if menu_overlay == null:
+		return
+	menu_overlay.visible = false
+	if not game_over:
+		time_scale = max(1.0, speed_before_menu)
+	_refresh_ui()
+
+
+func _start_new_run_from_menu() -> void:
+	_new_game()
+	speed_before_menu = 1.0
+	_close_menu()
+
+
+func _quit_game() -> void:
+	get_tree().quit()
 
 
 func _add_panel(parent: Container, title_text: String) -> VBoxContainer:

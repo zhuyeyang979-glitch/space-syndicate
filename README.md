@@ -4,7 +4,7 @@ Godot 4 prototype for **太空辛迪加 / Space Syndicate**, based on the local 
 
 ## Current Prototype Scope
 
-- 2-5 player real-time digital tabletop sandbox with an in-game setup panel.
+- 2-5 player real-time digital tabletop sandbox with a lightweight main/pause menu and an in-game setup panel.
 - Continuous clock with pause, 1x, 2x, and 4x speed controls.
 - Balance presets switch between steady, standard, and crisis pacing for event frequency, guardian aggression, monster rampage pressure, and control decay.
 - Setup options choose player count, the monster roster entry, and the guardian roster entry before restarting the run.
@@ -17,6 +17,7 @@ Godot 4 prototype for **太空辛迪加 / Space Syndicate**, based on the local 
 - Charged cards are played instantly, resolve immediately, then enter short cooldown timers shown in the player panel.
 - Roguelike-style generated city map: a continuous 1400m x 950m city plane is partitioned into 10-20 irregular regions, each supporting collapse/survive predictions, chip bets, bonuses, damage, settlement, and 3-4 local card choices.
 - The global card list is now a run-pool reference/debug view; actual card acquisition comes from the selected district's local choices, so route and region choice matter.
+- The common card pool now has more build-around options for economy sustain, heat steering, control tempo, chain charging, long-range district damage, and armor sustain.
 - The map view draws continuous region polygons; monster and guardian movement uses meter distances and speed, not grid steps.
 - Card and skill ranges are meter-based AOE/range checks, so knockback, pursuit, and explosions should be tuned in meters.
 - Monster/guardian combat loop runs on timers with probability-weighted guardian actions, autonomous monster targeting, and instantly played charged cards; there is no card turn structure in the digital prototype.
