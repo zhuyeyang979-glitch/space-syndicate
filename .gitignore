@@ -1,0 +1,15 @@
+# Godot generated/imported state
+.godot/
+.import/
+*.tmp
+*.translation
+
+# Export output
+exports/
+builds/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
