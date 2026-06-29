@@ -1,28 +1,69 @@
-# Rules Summary Used For Prototype
+# Current Prototype Rules Summary
 
-Source: `D:\space syndicat\太空辛迪加space syndicat规则.doc`
+This file summarizes the current Godot prototype rules. `docs/rules_extracted.txt` remains an archival extraction from the older tabletop draft and may contain outdated wording.
 
 ## Core premise
 
-Players are alien syndicate members gambling on a monster invasion of Earth. The winner is the player with the most chips when the monster or guardian conflict ends.
+Players are alien syndicate operators secretly building commercial city clusters during an autonomous monster war on a randomly generated land/ocean planet. They earn from city businesses and trade routes, protect their own urbanization, and try to destroy rival cities or logistics nodes—especially competitors selling or demanding similar products.
 
-## Key systems captured
+## Current digital rules
 
-- 2-5 players; the prototype starts at 4 players.
-- Each player starts with 2000 chips, collapse/survive prediction tokens, player tokens, basic move/attack cards, and card slots.
-- District cards hold chip bets and are settled when destroyed or at game end.
-- Correct predictions pay double the bet amount. Wrong predictions lose their bets.
-- The largest bettor on a district receives that district's bonus.
-- A district can only accept predictions from up to half the player count, rounded up.
-- Monster movement into a district deals 1 district damage; guardians do not damage districts through normal movement.
-- The tabletop action track includes first-player control, several betting actions, card charge/acquisition/slot expansion, market manipulation, and monster control; the digital prototype converts these into real-time actions.
-- If no player chooses monster control in a round, a 100-chip pot accumulates there.
-- Monster control starts battle. The digital prototype resolves guardian and autonomous monster behavior through probability simulation, while players instantly play charged monster cards.
-- Damage to the guardian pays the damaging player from the guardian life pool and public bank in the physical rules; this prototype models it as 200 chips per damage.
-- Guardian damage to the monster costs the current monster controller 100 chips per damage.
+- A run starts with no monsters on the planet. Each player receives an alien syndicate role card with a species, trait, opening passive, and starter monster card; that first summon ignores the normal region and product-flow restrictions.
+- Later monster cards normally require a monster's current region or an adjacent region as their summon point. There is no field-monster cap.
+- Runtime, settings, saves, and the codex UI contain no compatibility-only four-monster lineup or preselection controls. Field monsters come exclusively from played monster cards.
+- All monsters are autonomous actors. No monster is persistently player-controlled; cards and bound skills can only direct a specific one-off action.
+- Monster cards show rank I-IV, HP, movement speed, field duration, summon restriction, fixed-skill count, product-flow requirement, and any extra cash cost. Their cash surcharge can scale with the number of monsters already on the field. Most monsters leave automatically when their field duration ends even if they were not defeated.
+- Summoning is anonymous and grants the summoner persistent bound skill cards according to the monster-card rank. When an owned monster takes damage, the owner loses money in proportion to that monster's max-HP loss and the resulting cash clue reveals its ownership. The economy overview keeps recent monster cash clues with latest loss, cumulative loss, remaining damage-cash pool, source, and public ownership status without revealing unrelated private cash totals. Takeover cards can secretly change ownership, invalidate the previous owner's bound skills, grant the new owner fresh bound skills, and reset the next damage clue to the new owner.
+- Each map is randomly partitioned into land and ocean regions on the spherical world surface.
+- Land regions initially produce one good and have one local demand. Ocean regions produce no goods and mainly act as shipping lanes; anonymous contract cards can later add, replace, or remove supply and demand.
+- Players spend funds to urbanize empty land districts. Every building cluster is visible on the map, but only its owner sees the true ownership.
+- At each business cycle, non-active rival syndicates may automatically spend funds to urbanize empty high-value land. These cities appear as anonymous public buildings, so players must infer ownership from later products, trade routes, attacks, and private guesses.
+- Rival syndicates may also spend operating funds on anonymous commercial actions: raising the price of a product that benefits their city or sabotaging a competing city's trade route. The action is public and stored as a city clue, but the acting owner remains hidden.
+- Each player has private owner-guess annotations for unknown cities. Switching player views switches to that player's own annotations.
+- Each city starts with one produced alien good and one demanded good.
+- Area contract cards require the player to click/select a supply region and a demand region before play. The first five-second card window only publicly displays those preselected endpoints, product, reward, and penalty; after that reveal, the target owner receives a separate five-second accept/reject window; it persists for that player without blocking other cards, and timeout counts as rejection.
+- City demand creates trade routes from other cities or land production zones. Destroying a region on an existing route creates logistics disruption and reduces affected city income.
+- Product overlap with rival cities creates customer competition and reduces periodic income.
+- Surviving cities produce funds every business cycle. Product prices refresh from supply, demand, and disrupted routes before income is paid, so expensive or scarce goods create stronger production and demand income. Destroyed cities stop producing income, and surviving cities add asset value at final scoring.
+- Commercial scale, product competition, trade-route load, and each monster's resource preference make districts more attractive to autonomous monsters, giving players clues and reasons to redirect attacks. If one district contains several goods a monster wants, those resource matches stack and can attract multiple monsters to the same place.
+- Monsters damage region HP through four routes: movement crush along their spherical path, resource drain when a favored good is present, named combat actions from their action tables, and knockback collision damage when a monster is thrown across or into districts. Destroyed regions and cities still resolve through the shared region HP/destruction rules.
+- When autonomous monsters meet within encounter range, they choose a usable named action from their own action table—such as 龙车, 甩尾, 光线, or 撞击—so combat appears as text actions with damage and knockback instead of only visual movement.
+- Players also interact through paid district card acquisition and one-shot card plays.
+- Cards do not charge. A submitted one-shot card immediately leaves the player's hand when it enters the anonymous track, then resolves once after its public display. Persistent bound monster skills stay outside the normal hand limit and remain available after use, entering cooldown instead.
+- Cards are bought from the selected district's supply only when it is a monster's current or adjacent region. The current region grants a 20% discount; an adjacent region charges the rank-I base price. Reacquiring an owned card upgrades it through rank IV with no acquisition limit.
+- Card prices are based on the rank-I effect's power and display as base, advanced, high, or flagship tiers. Ranks II-IV keep the rank-I price. Player economy tracking records build spend, card spend, card income, last-cycle income, and recent cash movement.
+- Playing a card normally requires a specified product and city-flow amount, but does not consume the product. Some cards additionally cost money. All card plays are anonymous public events.
+- Public logs and map callouts show the card, target, and result but not the player who used it. During a live run, each player only sees their own exact cash, city assets, cycle income, cash path, and ledger; rival economies stay private and must be inferred from public actions, product-flow requirements, bids, damage clues, and map changes. Final scoring can reveal exact settlement values.
+- The economy overview includes the current player's inference board. It summarizes that player's private city-owner annotations, public card-owner and monster-owner reveals, and recent anonymous card play requirements. Card requirements are compared only against the current player's own visible product flow; the board does not validate private guesses, scan rival economies, or expose hidden cash/ownership that has not been publicly revealed.
+- Economy cards can raise or short a selected product's current price, reduce its volatility, upgrade a city's lowest-level product, shift a city's product line, redesign city demand, damage public city trade routes, insure and repair the active player's routes, add sustained product contracts through cards such as 远期采购, 期货套保, and 包销协议, or add temporary city order/contract income through cards such as 短期订单, 军需临单, and 星际会展. These changes feed into later market refreshes and business-cycle income.
+- Economy overview shows the recent cash path and tracked-window net change, making expansion costs, card cashflow, and recurring city income visible as a progression rather than only a final balance. The main play screen keeps those details out of the hand area.
+- Cards that require a monster target pause before they enter the public queue and ask the player to choose a target monster. Once a card is submitted, it does not resolve immediately: the first card in an empty stack opens a 0.5-second simultaneous-play window.
+- If only one card appears during that window, it goes into its own 5-second anonymous public display and then resolves. If multiple players submit cards during the window, all submitted cards pause for one 5-second anonymous auction; bids are public amounts, but bidder and card-owner identities remain hidden.
+- After the auction closes, the whole batch order is locked once by bid amount, with equal bids ordered clockwise from the relevant reference player. The locked batch never reopens its auction. Cards submitted after its 0.5-second intake closes or during its displays are accepted into a separate next-batch waiting area instead of being rejected. When the current batch clears, all waiting cards form one new batch and open only one new five-second auction; if only one card is waiting, it goes directly to its own five-second display.
+- Each card with a locked bid privately pays that bid to the previous resolved card's owner when its display begins. This can cross the boundary between batches when cards waited behind an active batch; if no previous card exists, no tip is paid. The public can see anonymous bid/card activity, not the payer or recipient, unless later inference or owner reveal makes that clear.
+- The top anonymous card track records history, current display cards, and pending cards. Players can drag the track, select any card, and guess which player played it. A correct guess transfers the stake from the true owner to the guesser and attaches a public owner label to that card; a wrong guess privately transfers the stake to the true owner without revealing the label. Each anonymous card keeps the play-requirement snapshot from submission time, so the lobby, full-screen reveal, and track can show the public product-flow/cash condition as inference evidence even if the selected trade product changes later. Resolved cards also retain public auction clues such as whether their locked tip paid the previous anonymous card's owner; the clue is visible on the track and economy overview without naming the payer or recipient.
+- Direct monster commands from cards are one-time effects only; they do not grant ongoing control of that monster. Lure cards such as 诱导电波 specify a target monster and temporarily point only that monster's next automatic movement toward the current selected district; after that movement or stop resolves, the lure marker disappears.
+- Starter monster cards are unrestricted for the opening summon. Later monster cards carry their own summon-region text, including generic monster-zone, land monster-zone, or ocean monster-zone requirements.
+- Monster cards have ranks I-IV. Rank I uses the base automatic-action table; ranks II-IV increasingly shift probability weight toward later high-risk skills, while still leaving the monster autonomous.
+- Monster movement, card range, AOE, and knockback are measured in meters on a spherical world surface.
+- The player sees a flat local projection when zoomed in and a globe in space when zoomed out.
+- The map can display the transport path for a selected product, with disrupted routes highlighted.
+- Monster actions, special actions, failed movement, and major reactions appear as text callouts on the map.
+- City construction rises visibly from the map; income cycles and city destruction also appear as anonymous map callouts without revealing ownership.
 
-## Card examples represented
+## Current UI branches
 
-- Basic/common monster cards: 移动, 普攻, 区域破坏, 飞行, 龙车, 甩尾, 瘴气炮, 地底潜行, plus new economy/control/build cards.
-- Guardian baseline: 机械杰克 with HP, movement, and probability action bands derived from the tabletop guardian card.
-- Monster baseline: 尸套龙 with miasma-flavored skills and 50 HP.
+- 游戏规则: temporary home for rules before a later tutorial exists.
+- 经济总览: live current-run dashboard for product hot/cold rankings, active economy weather, route-income prospects with city income breakdowns, and the current player's private cash/assets/income/path/ledger; rival economy entries are hidden until final settlement.
+- 图鉴: unified read-only compendium that opens 角色图鉴, 怪兽图鉴, 卡牌图鉴, 商品图鉴, and 区域图鉴.
+- 角色图鉴: alien syndicate role-card details with procedural temporary card faces, species traits, mechanical passives, starter monster cards, and links to the matching monster/card codex entries. The main game hand area no longer shows the role card; it stays compact for hand/bid/target interaction.
+- 开局准备: main-menu branch that previews player count, lets each player cycle/select an alien role card, shows mechanical passives, starter monster card faces, first-summon access, bound-skill rewards, and the monster landing card-buying radius before the player explicitly confirms a new run.
+- 首召引导: while no monster is on the field, the active player panel shows the current landing district and a direct "在选区首召" action for the starter monster card.
+- 怪兽图鉴: monster details, temporary monster art, action descriptions, action probabilities, linked monster card, fixed skills, resource focus, positive economy weather, movement speed, move-crush damage, resource-drain damage, and knockback-collision damage.
+- 卡牌图鉴: one shared card compendium with monster, economy, business/contract, combat/command, supply/lure, and other subcategories. It shows every card's effect, Roman-numeral rank, target requirement, one-shot or persistent rule, HP/movement/field-duration/summon-region facts for monster cards, rank-I reference price, and temporary card face.
+- 商品图鉴: product price tiers, current and recent price paths, volatility, supply/demand pressure, route-disruption pressure, sustained product contracts, and active product/route-flow economy weather.
+- 区域图鉴: generated region terrain, HP/damage, latest damage source, route load, monster attraction reasons, public economy information, city income breakdowns, latest anonymous business clue, card choices, neighbors, city temporary contracts, city route-flow acceleration, and city public status without revealing hidden owners.
+
+## Current placeholder art policy
+
+Card faces and monster portraits are procedural temporary art. They are intentionally routed through reusable UI components so authored art can replace them later without rewriting the rules logic.

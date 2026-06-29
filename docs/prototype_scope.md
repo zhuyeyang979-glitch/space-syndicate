@@ -4,44 +4,64 @@ This Godot build converts the board-game draft into a playable real-time digital
 
 ## Implemented as interactive systems
 
-- A lightweight main/pause/help menu now wraps the prototype, while the setup panel configures 2-5 players, the monster roster entry, the guardian roster entry, and the active balance preset before restarting the run.
-- The setup choices are persisted in a local `user://` config, so player count, monster, guardian, and balance preset survive relaunches.
-- Guardian roster choices now load separate probability action models for 机械杰克, 机械艾斯, and 纳伊斯, including abstracted repair/support effects for 纳伊斯.
-- Each run now builds a run-specific card pool from common cards, the selected monster's dedicated cards, and response cards tied to the selected guardian/Ultraman.
-- Monster roster choices load differentiated dedicated card pools: 尸套龙 gains expanded miasma bloom/reclaim tools, while 土砂龙 gains charge upgrades, roar delay, burrow upgrades, and roll attacks.
-- Guardian roster choices add tailored real-time response cards, such as 机械杰克 counter windows, 机械艾斯 prediction/armor windows, and 纳伊斯 repair-interference tools.
-- Players start with 2000 chips and can act continuously instead of waiting for turns.
-- A global clock advances news events, market bonuses, monster pressure, and guardian probability actions.
-- Balance presets now tune event/market cadence, news heat, monster district damage, guardian movement/damage, and monster-control decay for steady, standard, or crisis-length sessions.
-- Players can switch active operator at any time, then bet, withdraw chips, charge cards, claim cards from the selected district, seize monster control, or direct monster movement.
-- Player actions use short cooldowns; charged cards are played instantly, resolve immediately, then enter cooldown, without a card-turn structure.
-- Keyboard shortcuts cover the common real-time loop: player selection, district selection, betting, charging, buying, monster control, and pause/resume.
-- Betting now shows the active collapse/survival prediction preview, estimated payout, and district collapse pressure before the player commits chips.
-- Each run generates a larger roguelike-style city map: 10-20 irregular regions partition a continuous 1400m x 950m city plane.
-- The visible map emphasizes continuous region polygons; it no longer exposes or relies on square cells for movement/range gameplay.
-- Districts can receive collapse/survive predictions, bets, market bonuses, damage, and 3-4 local card choices for players to weigh.
-- Run-specific monster and guardian cards are seeded into district choices first, then common cards fill each district to 3-4 options.
-- Destroyed districts settle immediately: collapse predictions pay out, survival predictions lose, and the top bettor receives the district bonus.
-- Unresolved districts settle as survival when a monster or guardian is defeated.
-- Card slots can be charged, expanded, upgraded, replaced, and filled from the selected district's local card choices; the current run's card pool remains visible as a reference/debug list.
-- Monster control now decays over time; the player with the highest control can direct the monster more reliably.
-- Guardian actions are resolved with timed probability simulation based on the rule draft's guardian-card concept.
-- Uncontrolled monster movement now uses a weighted target model instead of a deterministic best-target pick, favoring panic, bonuses, bets, proximity, and miasma pressure.
-- Probability explanations now surface in the UI: guardian action percentages, top monster target candidates, and the selected district's monster-target factors.
-- Monster cards now support several build routes: betting economy, market manipulation, control tempo, charge acceleration, district destruction, long-range pressure, mobility burst, miasma pressure, and armor sustain.
-- The common card pool has been expanded with additional economy, heat-steering, control, chain-charge, market-bait, long-range destruction, and armor-upgrade cards, including several rank-2 upgrade routes.
+- The main play screen is now intentionally focused: a large planet map, the anonymous card track, and the active player's hand. Debug/status-heavy panels are kept out of the primary UI; role/economy/region details are read through menu branches.
+- The map can be opened in a fullscreen overlay from the button above the map.
+- The world uses a spherical surface model. At low zoom the player sees a globe in space with region boundaries projected onto the visible sphere; at high zoom the same surface is projected into a flat XY-style view.
+- Each run randomly partitions the planet into land and ocean regions. Land produces goods; ocean produces no goods and mainly supports shipping routes.
+- The main menu opens a 开局准备 branch before a new run, showing player count, per-player alien role-card selection, each role's opening passive, starter monster card faces, first-summon access, bound-skill rewards, and the monster landing card-buying radius before the player confirms. Each confirmed run starts with no field monsters and gives every player the selected alien syndicate role card. The role card records a species, trait, starter monster card, and a mechanical passive that can adjust starting cash or starter-monster HP/speed/duration/bound-skill count; setup and the role codex show it with procedural temporary card art, while the main game screen keeps only compact hand/cash context. That first summon ignores the normal region/product-flow restriction. Later monster cards can add any number of automatic monsters and print HP, movement, field duration, and summon-region restriction on their card face/rules; different monsters can require generic, land, or ocean monster-zone landing rules. No monster is persistently player-controlled.
+- Legacy four-monster lineup/preselection state and hidden codex controls have been removed from runtime, local settings, and saves. The only setup choice is each player's starter monster card; every field monster thereafter exists because a monster card was played.
+- Empty-field starts show a first-summon prompt in the active player's panel, including the current landing district and a direct starter-card play button.
+- Monster actions, special actions, failed movement, and major reactions appear as text callouts on the map.
+- The player hand uses card-face panels with tags, effect text, action buttons, and procedural temporary card art.
+- Selected districts expose a compact current supply-card choice; cards are acquired with the map/card shortcuts while the full card art remains in the hand and codex.
+- Cards no longer charge. District cards are bought with player funds only from a monster's current or adjacent region, with an 80% current-region price. A submitted non-persistent card leaves the hand as soon as it enters the anonymous track, then resolves once after its public display. Reacquiring an owned card upgrades it through rank IV.
+- Card prices use the rank-I effect's power and display explicit base/advanced/high/flagship tiers; all ranks keep their rank-I purchase price. Playing a card checks city product flow without consuming it, while a few cards also require an extra cash payment; monster cards can surcharge the summoner based on the number of field monsters already present. Economy overview tracks build spend, card spend, card income, last-cycle income, recent cash movement, and private ledgers instead of keeping those details on the main play screen.
+- Economy-card effects include price pumping, short selling, market stabilization, product-level upgrades, product-line shifts, demand redesign, route sabotage, route insurance, product-growth catalysts, route-flow accelerators, sustained product contracts such as 远期采购, 期货套保, and 包销协议, and temporary city order/contract deals such as 短期订单, 军需临单, and 星际会展. They feed back into current prices, volatility, city product/demand lists, disrupted-route penalties, sustained product demand/supply pressure, product growth multipliers, city logistics multipliers, temporary contract income, and later city income.
+- Summoned monsters apply positive economy weather to their preferred products. Some monsters and cards can double or otherwise boost a product's positive price-growth pressure, while logistics cards can speed fulfilled-demand commercial flow for selected owned cities.
+- The economy overview keeps a compact recent cash path, tracked-window net change, and recent economy ledger visible alongside cumulative spending and income; the main play screen keeps this out of the hand area.
+- Cards that require a monster target pause before queueing and ask the player to choose a target monster. All submitted cards then use the same anonymous resolution lane: the first card in an empty lane opens a 0.5-second simultaneous-play window, a lone card proceeds to a 5-second public display, and multiple cards open one 5-second anonymous auction before the whole batch order is locked.
+- Anonymous card auctions show public bid amounts without revealing bidders or owners. The locked batch resolves in bid/clockwise order and does not reopen auctions mid-batch. New cards submitted after intake closes or during display enter a separate next-batch waiting area; when the current batch clears, those cards open one combined auction, while a lone waiting card goes directly to display. Locked bids pay privately to the previous resolved card's owner when one exists, including across a batch boundary.
+- The top card track records anonymous history/current/pending cards, can be dragged horizontally, and supports owner-guess wagers from the current player. Correct guesses publicly label the card owner and transfer the stake from owner to guesser; wrong guesses privately pay the true owner without revealing the label. The simultaneous-play lobby, full-screen reveal, and track all show the submitted card's play-requirement snapshot as public inference evidence, while resolved history and the economy overview keep anonymous tip-payment clues showing when a locked bid paid the previous anonymous card's owner without exposing player identity.
+- Card resolution logs and map callouts are anonymous, including one-shot monster commands, monster-lure cards, and economy effects. Lure cards can redirect a target monster's next automatic movement toward the current selected district, then expire. During live play, only the current player's exact cash, assets, income, cash path, and ledger are visible; rival economies are hidden until final settlement and must be inferred from public clues.
+- The economy overview now also summarizes recent monster damage cash clues, including the latest loss, cumulative owner loss, remaining damage-cash pool, source, and whether ownership has become public while leaving unrelated player cash private.
+- The economy overview includes a current-player inference board that groups private city annotations, publicly revealed card owners, recent anonymous card play requirements, and publicly revealed monster owners without validating guesses, scanning rival economies, or exposing hidden truth.
+- The main menu includes 局势排名, 经济总览, 新手引导, 游戏规则, and a unified 图鉴 branch with submenus for 角色图鉴, 怪兽图鉴, 卡牌图鉴, 商品图鉴, and 区域图鉴.
+- 卡牌图鉴 is one shared card pool, including monster cards, with monster, economy, business/contract, combat/command, supply/lure, and other filters rather than a separate monster-card branch.
+- The menu can save and load the current run locally, including generated map, city ownership, cards, monster state, timers, logs, and scoring state.
+- The main menu has no separate monster-selection branch; monster entry is handled by cards after a run begins.
+- The read-only monster bestiary shows procedural temporary monster art alongside action descriptions, I级/IV级 action probabilities, linked monster-card attributes, fixed skills, resource focus, positive economy weather, movement speed, move-crush damage, resource-drain damage, and knockback-collision damage.
+- The card codex shows every card's tags, target requirement, reference price, effect text, numeric rule facts, and procedural temporary card art, including temporary contract income and duration where relevant.
+- The product codex shows product price tiers, current and recent price paths, volatility, supply/demand counts, route disruption pressure, active product contracts, economy weather, and where products are supplied or demanded in the current run.
+- The region codex shows public details for each generated region, including terrain, HP/damage, latest damage source, route load, monster attraction reasons, local goods, public city state, temporary contract status, route-flow acceleration, region card choices, and neighboring regions without revealing hidden ownership.
+- Players can switch active operator, urbanize districts, save private city-owner guesses, acquire district cards, and play hand cards in realtime.
+- The standings menu previews each player's current cash, surviving city assets, potential cycle income, cumulative business income, and estimated score.
+- The economy overview menu gives a live decision page for product hot/cold rankings, active economy weather, route-income prospects, and the current player's private cash/assets/income/path/ledger while hiding rival economy totals until final settlement.
+- Non-active rival syndicates can automatically and anonymously urbanize profitable empty land during business cycles, spending their own funds and creating new unknown-owner buildings for the active player to mark and infer.
+- Non-active rival syndicates can also perform anonymous commercial actions during business cycles. They spend operating funds to raise a product price or sabotage a competing city's route, leaving public city clues without revealing the acting owner.
+- Generated maps contain 10-20 irregular land/ocean regions with visible city clusters, hidden ownership, private annotations, damage, business income, trade routes, and local card choices.
+- Land regions initially produce one good and have one local demand; ocean regions are non-producing logistics lanes. Anonymous contract cards can later add, replace, or remove supply and demand.
+- Each city starts with one alien product and one demanded product. Demand routes connect to city or land suppliers, and destroyed transit regions disrupt income.
+- Area contract cards require supply and demand endpoints to be selected before play. Their public five-second reveal displays those preselected endpoints and card terms only, then a separate five-second target-owner accept/reject window opens without blocking other card plays; timeout counts as rejection.
+- Product prices are refreshed each business cycle from supply, demand, disrupted routes, sustained product contracts, and any active growth-weather multiplier; those current prices feed production and fulfilled-demand income. Route-flow multipliers increase fulfilled-demand logistics income while their duration lasts.
+- City income now has an explicit breakdown: product revenue, fulfilled-route revenue, permanent bonuses, temporary contract income, competition penalties, and route-disruption penalties. The breakdown is visible in the region codex and economy overview.
+- Matching products across rival cities create customer competition and reduce both cities' cycle income.
+- The map can show routes for a selected product, including disrupted routes.
+- Monster targeting favors panic, commercial city value, product competition, resource preference, trade-route load, proximity, miasma pressure, and other monsters. Multiple matching resources in one district stack, making it possible for several monsters to converge on the same resource-rich area.
+- Movement, pursuit, card range, AOE, and knockback tuning are expressed in meters on the spherical surface. Monster movement crush, resource drain, named combat actions, and knockback collision all feed the shared region HP/destruction track, so cities and trade routes can be damaged by monster travel as well as attacks.
+- A headless smoke test loads the main scene, starts a four-player run, verifies role-card starter monsters, summons four starter monsters for combat coverage, verifies later-summon region restrictions and timed departure, verifies generated land/ocean regions, monster resource drain and collision damage, positive monster economy weather, rival anonymous auto-expansion and business clues, economy-card effects and ledger privacy, anonymous card batching/auction/track guessing, save/load restoration, the menu/codex branches, and the temporary card and monster art views.
 
 ## Deliberate simplifications
 
 - The prototype supports 2-5 players but still removes fixed per-round action counts.
-- Movement, pursuit, card range, AOE, and knockback-style tuning are expressed in meters instead of grid steps.
+- Card faces and monster portraits now have procedural temporary art; authored final card frames, monster portraits, and map art are still future work.
 - Many named cards are represented by reusable effect categories.
-- Full card-chain balancing, every guardian/monster variant, and exact forced-movement targeting are left as future balancing work.
-- Art is placeholder UI only; the art production list is recorded in `docs/art_requirements.md`.
+- Setup and detailed debugging are intentionally de-emphasized while the primary play screen is being shaped.
+- A first-pass tutorial menu is implemented; a fully interactive, step-by-step onboarding flow is still future work.
+- The smoke test is intentionally broad rather than exhaustive; card-by-card balance and long-session economic behavior still need dedicated tests after the rules stabilize.
 
 ## Next useful adjustments
 
-- Continue replacing remaining generic monster effects with exact card-by-card data tables.
-- Add a small visual minimap/animation layer for monster and guardian movement.
-- Split `scripts/main.gd` into model, rules, and UI scripts after the prototype rules settle.
-- Add authored sprites and card frames once the art direction is fixed.
+- Replace procedural temporary card and monster art with authored final assets.
+- Add a proper new-player tutorial once the rules settle.
+- Split `scripts/main.gd` into model, rules, card UI, and map UI scripts after the prototype stabilizes.
+- Continue tuning card-by-card data and monster action probabilities.
