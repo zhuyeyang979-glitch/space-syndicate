@@ -205,6 +205,7 @@ func _run() -> void:
 	var first_monster_card := String(main.call("_monster_card_name", 0, 1))
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
+	_expect(_verify_area_trade_contract_card_variants(main), "area contract card families cover selected, fixed, auto, multi-product, and punitive terms")
 	_expect(String(main.call("_card_price_tier_text", premium_card_price)) == "进阶档", "card price maps into an explicit displayed price tier")
 	_expect(_verify_monster_region_card_pricing(main), "monster landing regions discount card purchases while adjacent regions keep base price")
 	_expect(_verify_reacquired_card_upgrade_rules(main), "reacquiring an owned card upgrades its family and stops at rank IV")
@@ -276,6 +277,7 @@ func _run() -> void:
 		_expect(business_actions > 0, "forced rival business actions create public inference clues")
 		_expect(_rival_cash_total(players_after_business, 0) < rival_cash_before_business, "rival business actions spend hidden rival operating funds")
 		_expect(_city_public_clue_exists(main), "rival business actions leave public clues on city records")
+		_expect(_city_public_clue_history_exists(main), "city public clue history keeps recent anonymous business and contract evidence")
 		var cash_after_build := _player_cash(_as_array(main.get("players")), 0)
 		main.call("_market_tick")
 		await process_frame
@@ -382,6 +384,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品热榜") and menu_body_label.text.contains("低价/供给压制"), "economy overview shows product price gradients")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商路收入前景") and menu_body_label.text.contains("玩家经济隐私"), "economy overview shows route prospects while keeping rival economics private")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气") and menu_body_label.text.contains("最近卡牌余波"), "economy overview explains active product weather and recent card aftermath")
+	_expect(menu_body_label != null and menu_body_label.text.contains("最近城市公开线索") and menu_body_label.text.contains("类型:") and menu_body_label.text.contains("线索商品:"), "economy overview aggregates structured anonymous city clues")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最近怪兽资金线索") and menu_body_label.text.contains("最大生命比例"), "economy overview explains monster damage cash clues")
 	_expect(menu_body_label != null and menu_body_label.text.contains("当前玩家推理板") and menu_body_label.text.contains("城市私标") and menu_body_label.text.contains("公开卡牌归属") and menu_body_label.text.contains("卡牌条件反推") and menu_body_label.text.contains("公开怪兽归属"), "economy overview groups public and private inference clues without resolving hidden truth")
 	_expect(menu_body_label != null and menu_body_label.text.contains("公开状态["), "economy overview shows unified public status tags")
@@ -456,11 +459,14 @@ func _run() -> void:
 	main.call("_open_card_codex_by_name", "城市融资1")
 	await process_frame
 	_expect(menu_body_label != null and menu_body_label.text.contains("城市融资") and menu_body_label.text.contains("匿名投资光幕"), "city economy cards use their own resolution animation script")
+	main.set("selected_trade_product", "活体芯片")
 	main.call("_open_product_codex_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴", "product codex opens from the compendium")
+	_expect(menu_body_label != null and menu_body_label.text.contains("活体芯片"), "product codex opens on the currently selected trade product")
 	_expect(menu_body_label != null and menu_body_label.text.contains("价格梯度") and menu_body_label.text.contains("当前价"), "product codex shows product price and tier information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气"), "product codex shows product growth and flow weather")
+	_expect(menu_body_label != null and menu_body_label.text.contains("商品相关城市线索"), "product codex can filter city clues by product")
 	main.call("_open_region_codex_menu", buildable_district)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴", "region codex opens from the compendium")
@@ -1654,6 +1660,26 @@ func _city_public_clue_exists(main: Node) -> bool:
 	return false
 
 
+func _city_public_clue_history_exists(main: Node) -> bool:
+	for district_variant in _as_array(main.get("districts")):
+		var district := district_variant as Dictionary
+		var city := district.get("city", {}) as Dictionary
+		var clues := _as_array(city.get("public_clues", []))
+		for clue_variant in clues:
+			if clue_variant is Dictionary:
+				var clue_entry := clue_variant as Dictionary
+				var text := String(clue_entry.get("text", ""))
+				var kind := String(clue_entry.get("kind", ""))
+				var products := _as_array(clue_entry.get("products", []))
+				if text != "" and kind != "" and float(clue_entry.get("time", -1.0)) >= 0.0 and not products.is_empty():
+					return true
+				continue
+			var clue := String(clue_variant)
+			if clue.contains("匿名") or clue.contains("周期") or clue.contains("合约"):
+				return true
+	return false
+
+
 func _product_market_has_prices(product_market: Dictionary) -> bool:
 	for entry_variant in product_market.values():
 		if not (entry_variant is Dictionary):
@@ -2793,6 +2819,60 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 	ok = ok and monster_text.contains("分类:怪兽牌")
 	ok = ok and contract_text.contains("分类:经营/合约")
 	return ok
+
+
+func _verify_area_trade_contract_card_variants(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var source_index := _first_empty_land_district_for_contract(main)
+	var target_index := _first_empty_land_district_for_contract(main, [source_index])
+	if source_index < 0 or target_index < 0:
+		return false
+	ok = ok and bool(main.call("_create_city_at_district_for_player", 0, source_index, "合约牌谱供给", false))
+	ok = ok and bool(main.call("_create_city_at_district_for_player", 1, target_index, "合约牌谱需求", false))
+	var districts := _as_array(main.get("districts")).duplicate(true)
+	var source_district := districts[source_index] as Dictionary
+	var source_city := source_district.get("city", {}) as Dictionary
+	source_city["products"] = [{"name": "真空可可", "level": 1}]
+	source_city["demands"] = ["离子香料"]
+	source_district["products"] = ["真空可可"]
+	source_district["demands"] = ["离子香料"]
+	source_district["city"] = source_city
+	districts[source_index] = source_district
+	var target_district := districts[target_index] as Dictionary
+	var target_city := target_district.get("city", {}) as Dictionary
+	target_city["products"] = [{"name": "梦境香氛", "level": 1}]
+	target_city["demands"] = ["重力陶瓷"]
+	target_district["products"] = ["梦境香氛"]
+	target_district["demands"] = ["重力陶瓷"]
+	target_district["city"] = target_city
+	districts[target_index] = target_district
+	main.set("districts", districts)
+	main.set("selected_trade_product", "活体芯片")
+	var selected_skill := main.call("_make_skill", "区域供需合约1") as Dictionary
+	var auto_skill := main.call("_make_skill", "自动撮合合约1") as Dictionary
+	var fixed_skill := main.call("_make_skill", "环晶电池专供1") as Dictionary
+	var multi_skill := main.call("_make_skill", "双边对冲合约1") as Dictionary
+	var punitive_skill := main.call("_make_skill", "惩罚性拒签条款1") as Dictionary
+	var selected_products := _as_string_array(_as_array(main.call("_area_trade_contract_products", selected_skill, source_index, target_index)))
+	var auto_products := _as_string_array(_as_array(main.call("_area_trade_contract_products", auto_skill, source_index, target_index)))
+	var fixed_products := _as_string_array(_as_array(main.call("_area_trade_contract_products", fixed_skill, source_index, target_index)))
+	var multi_products := _as_string_array(_as_array(main.call("_area_trade_contract_products", multi_skill, source_index, target_index)))
+	var punitive_context := main.call("_area_trade_contract_context", punitive_skill, 0, source_index, target_index) as Dictionary
+	var business_names := _as_array(main.call("_card_codex_names", "business"))
+	ok = ok and selected_products.size() == 1 and selected_products[0] == "活体芯片"
+	ok = ok and auto_products.size() >= 1 and auto_products[0] == "真空可可" and not auto_products.has("活体芯片")
+	ok = ok and fixed_products.size() == 1 and fixed_products[0] == "环晶电池"
+	ok = ok and multi_products.size() >= 2 and multi_products.has("活体芯片") and multi_products.has("真空可可")
+	ok = ok and String(punitive_context.get("error", "")) == ""
+	ok = ok and int(punitive_skill.get("decline_cash_penalty", 0)) >= 180 and int(punitive_skill.get("decline_route_damage", 0)) >= 2
+	for name in ["自动撮合合约1", "环晶电池专供1", "双边对冲合约1", "惩罚性拒签条款1"]:
+		var card_name := String(name)
+		var family := _skill_family(card_name)
+		ok = ok and business_names.has(card_name)
+		ok = ok and int(main.call("_card_price", "%s4" % family)) == int(main.call("_card_price", "%s1" % family))
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _first_empty_land_district_for_contract(main: Node, excluded: Array = []) -> int:

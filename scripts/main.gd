@@ -24,6 +24,7 @@ const ACTION_CALLOUT_DURATION := 4.5
 const MAX_ACTION_CALLOUTS := 8
 const MAP_EVENT_EFFECT_DURATION := 1.35
 const MAX_MAP_EVENT_EFFECTS := 32
+const CITY_PUBLIC_CLUE_HISTORY_LIMIT := 6
 const DISTRICT_CARD_CHOICE_MIN := 4
 const DISTRICT_CARD_CHOICE_MAX := 5
 const CARD_INGRESS_TRAIL_DURATION := 5.5
@@ -330,6 +331,10 @@ const SKILL_CATALOG := {
 	"区域供需合约1": {"cost": 4, "kind": "area_trade_contract", "contract_product_mode": "selected", "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 90, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.18, "route_flow_turns": 3, "decline_cash_penalty": 70, "decline_consumption_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "匿名"], "text": "打出前必须先在地图点选供给区与需求区。前5秒只向全员公开两端与条款；展示结束后，目标城市业主另有5秒签/拒窗口，其他玩家此时仍可继续出牌。签约会添加供给/需求并获得现金与物流改善，拒绝会承受罚款和消费降级。"},
 	"区域供需合约2": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "selected", "contract_add_products": 1, "contract_add_demands": 1, "contract_remove_products": 1, "contract_remove_demands": 1, "accept_cash": 160, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.32, "route_flow_turns": 4, "decline_cash_penalty": 120, "decline_transport_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "换线"], "text": "打出前必须先点选供给区与需求区。前5秒只公开换线两端和条款；展示结束后，目标业主另有5秒签/拒窗口。签约时供给区/需求区各删除一项旧商品并接入当前商品；拒绝会带来罚款、交通降级和断路压力。"},
 	"组合供需合约1": {"cost": 7, "kind": "area_trade_contract", "contract_product_mode": "multi", "contract_add_products": 2, "contract_add_demands": 2, "accept_cash": 210, "accept_production_delta": 1, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.45, "route_flow_turns": 4, "decline_cash_penalty": 160, "decline_production_delta": -1, "decline_consumption_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "多商品"], "text": "打出前必须先点选供给区与需求区。前5秒向全员公开要接通的两端、多商品条款和奖惩；展示结束后，目标业主另有5秒签/拒窗口。签约奖励现金、生产和商路速度，拒签会拖慢生产/需求并追加商路压力。"},
+	"自动撮合合约1": {"cost": 5, "kind": "area_trade_contract", "contract_product_mode": "auto", "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 110, "accept_transport_delta": 1, "accept_consumption_delta": 1, "accept_route_flow_multiplier": 1.22, "route_flow_turns": 3, "decline_cash_penalty": 80, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "自动"], "text": "匿名平台自动撮合供给区与需求区：不锁定当前选中商品，而是从两端现有供需中自动挑选可接通商品。签约奖励现金、交通与消费；拒签会留下断路压力。"},
+	"环晶电池专供1": {"cost": 5, "kind": "area_trade_contract", "contract_product_mode": "fixed", "contract_products": ["环晶电池"], "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 130, "accept_production_delta": 1, "accept_route_flow_multiplier": 1.20, "route_flow_turns": 3, "decline_cash_penalty": 95, "decline_consumption_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "指定商品"], "text": "指定环晶电池专供条款：供给区和需求区围绕环晶电池接入生产/需求。签约提高生产和相关流通，拒签会削弱消费并支付罚款。"},
+	"双边对冲合约1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "multi", "contract_add_products": 2, "contract_add_demands": 2, "contract_remove_products": 1, "contract_remove_demands": 1, "accept_cash": 150, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.30, "route_flow_turns": 4, "decline_cash_penalty": 130, "decline_production_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "对冲"], "text": "双商品对冲合约：签约时两端各接入两项商品，并替换一项旧供需以重排经营结构；拒签会压低生产并追加商路压力。"},
+	"惩罚性拒签条款1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "auto", "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 70, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.16, "route_flow_turns": 2, "decline_cash_penalty": 180, "decline_production_delta": -1, "decline_transport_delta": -1, "decline_consumption_delta": -1, "decline_route_damage": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "惩罚"], "text": "强压式匿名条款：签约收益较低但可接通自动撮合商品；拒签会触发高额罚款，并同时拖慢生产、交通、消费和商路。"},
 	"商品换线1": {"cost": 4, "kind": "city_product_shift", "product_shift": 1, "revenue_amount": 18, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "换线"], "text": "选中己方城市：将1项主营商品换成当前商路商品或未经营商品，并使周期收入+18。"},
 	"商品换线2": {"cost": 6, "kind": "city_product_shift", "product_shift": 2, "revenue_amount": 32, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：将2项主营商品换成新的商品线，并使周期收入+32。"},
 	"需求改造1": {"cost": 3, "kind": "city_demand_shift", "demand_shift": 1, "repair_routes": 1, "revenue_amount": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "需求"], "text": "选中己方城市：改造1项需求商品，优先对接当前商路商品，并清除1条断路压力。"},
@@ -445,6 +450,10 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"包销协议",
 	"区域供需合约",
 	"组合供需合约",
+	"自动撮合合约",
+	"环晶电池专供",
+	"双边对冲合约",
+	"惩罚性拒签条款",
 	"商品催化",
 	"星港快线",
 	"共生红利",
@@ -512,6 +521,10 @@ const COMMON_CARD_POOL := [
 	"区域供需合约1",
 	"区域供需合约2",
 	"组合供需合约1",
+	"自动撮合合约1",
+	"环晶电池专供1",
+	"双边对冲合约1",
+	"惩罚性拒签条款1",
 	"商品换线1",
 	"商品换线2",
 	"需求改造1",
@@ -592,6 +605,10 @@ const MARKET_SKILLS := [
 	"区域供需合约1",
 	"区域供需合约2",
 	"组合供需合约1",
+	"自动撮合合约1",
+	"环晶电池专供1",
+	"双边对冲合约1",
+	"惩罚性拒签条款1",
 	"商品换线1",
 	"商品换线2",
 	"需求改造1",
@@ -2189,6 +2206,14 @@ func _economy_overview_text() -> String:
 		for entry in card_aftermath_entries:
 			lines.append("- %s" % _economy_card_aftermath_line(entry as Dictionary))
 	lines.append("")
+	var city_clue_entries := _economy_city_public_clue_entries(6)
+	lines.append("最近城市公开线索：")
+	if city_clue_entries.is_empty():
+		lines.append("- 暂无城市公开线索；匿名商业、合约签拒和城市经营改造会在这里累积。")
+	else:
+		for entry in city_clue_entries:
+			lines.append("- %s" % _economy_city_public_clue_line(entry as Dictionary))
+	lines.append("")
 	var monster_clue_entries := _economy_monster_cash_clue_entries(5)
 	lines.append("最近怪兽资金线索：")
 	lines.append("怪兽受伤会按最大生命比例折算为归属方资金损失；这里公开损失证据，不公开无关玩家当前现金总额。")
@@ -2521,6 +2546,70 @@ func _economy_card_aftermath_line(entry: Dictionary) -> String:
 		owner_text,
 		String(entry.get("clue", "公开结果留下匿名推理痕迹")),
 		tip_text,
+	]
+
+
+func _economy_city_public_clue_entries(limit: int = 6, product_filter: String = "") -> Array:
+	var entries := []
+	for city_index_variant in _active_city_district_indices():
+		var city_index := int(city_index_variant)
+		var city := _district_city(city_index)
+		if not _city_is_active(city):
+			continue
+		var city_products := _city_product_names(city)
+		var city_demands := _city_demand_names(city)
+		var clues := city.get("public_clues", []) as Array
+		if clues.is_empty():
+			var last_clue := String(city.get("last_public_clue", ""))
+			if last_clue != "":
+				clues = [last_clue]
+		for i in range(clues.size() - 1, -1, -1):
+			var clue_entry := _normalize_city_public_clue_entry(clues[i])
+			var clue_text := String(clue_entry.get("text", ""))
+			if clue_text == "":
+				continue
+			var clue_products := (clue_entry.get("products", []) as Array).duplicate(true)
+			if product_filter != "" and not clue_products.has(product_filter) and not city_products.has(product_filter) and not city_demands.has(product_filter):
+				continue
+			entries.append({
+				"district": String(districts[city_index].get("name", "城市")),
+				"city_index": city_index,
+				"clue": clue_text,
+				"time": float(clue_entry.get("time", -1.0)),
+				"cycle": int(clue_entry.get("cycle", 0)),
+				"kind": String(clue_entry.get("kind", "公开")),
+				"clue_products": clue_products,
+				"owner_visible": int(city.get("owner", -1)) == selected_player,
+				"income": int(city.get("last_income", 0)),
+				"products": city_products,
+				"demands": city_demands,
+			})
+	entries.sort_custom(Callable(self, "_sort_economy_city_public_clue_entry"))
+	return _first_entries(entries, limit)
+
+
+func _sort_economy_city_public_clue_entry(a: Dictionary, b: Dictionary) -> bool:
+	var a_time := float(a.get("time", -1.0))
+	var b_time := float(b.get("time", -1.0))
+	if not is_equal_approx(a_time, b_time):
+		return a_time > b_time
+	return String(a.get("clue", "")) > String(b.get("clue", ""))
+
+
+func _economy_city_public_clue_line(entry: Dictionary) -> String:
+	var owner_text := "己方城市" if bool(entry.get("owner_visible", false)) else "业主未知"
+	var time_text := "T+%.0fs" % float(entry.get("time", 0.0)) if float(entry.get("time", -1.0)) >= 0.0 else "时间未知"
+	var clue_products := entry.get("clue_products", []) as Array
+	return "%s｜%s｜%s｜类型:%s｜线索商品:%s｜上次收入%d｜生产:%s｜需求:%s｜线索:%s" % [
+		time_text,
+		String(entry.get("district", "城市")),
+		owner_text,
+		String(entry.get("kind", "公开")),
+		_limited_name_list(clue_products, 3, "无"),
+		int(entry.get("income", 0)),
+		_limited_name_list(entry.get("products", []) as Array, 3, "无"),
+		_limited_name_list(entry.get("demands", []) as Array, 3, "无"),
+		String(entry.get("clue", "")),
 	]
 
 
@@ -3401,6 +3490,8 @@ func _open_product_codex_menu(index: int = -1) -> void:
 	catalog_return_menu = "compendium"
 	if index >= 0:
 		product_codex_index = index
+	elif selected_trade_product != "" and PRODUCT_CATALOG.has(selected_trade_product):
+		product_codex_index = PRODUCT_CATALOG.find(selected_trade_product)
 	_update_product_codex_menu()
 
 
@@ -4048,9 +4139,10 @@ func _product_codex_text(product_name: String, index: int, total: int) -> String
 	var tier_text := String(entry.get("tier", _product_tier(product_name)))
 	var lines := []
 	var base_gap := current_price - base_price
-	lines.append("第%d/%d种｜%s｜当前价 ¥%d｜基准价 ¥%d｜偏离 %s｜趋势 %s" % [
+	lines.append("第%d/%d种｜%s｜%s｜当前价 ¥%d｜基准价 ¥%d｜偏离 %s｜趋势 %s" % [
 		index + 1,
 		total,
+		product_name,
 		tier_text,
 		current_price,
 		base_price,
@@ -4069,6 +4161,13 @@ func _product_codex_text(product_name: String, index: int, total: int) -> String
 	lines.append("本地需求区域：%s" % _product_related_district_names(product_name, "demands"))
 	lines.append("城市生产：%s" % _product_related_city_names(product_name, "products"))
 	lines.append("城市需求：%s" % _product_related_city_names(product_name, "demands"))
+	var product_clue_entries := _economy_city_public_clue_entries(4, product_name)
+	lines.append("商品相关城市线索：")
+	if product_clue_entries.is_empty():
+		lines.append("- 暂无与%s直接相关的城市公开线索。" % product_name)
+	else:
+		for clue_entry in product_clue_entries:
+			lines.append("- %s" % _economy_city_public_clue_line(clue_entry as Dictionary))
 	lines.append("价格梯度：%s。供给越多越便宜，需求和断路越多越贵；每次市场周期会按本局经济状态重新修正。" % _product_tier_summary())
 	return "\n".join(lines)
 
@@ -4184,6 +4283,14 @@ func _region_codex_text(index: int) -> String:
 		var clue := String(city.get("last_public_clue", ""))
 		if clue != "":
 			lines.append("公开线索：%s" % clue)
+		var public_clues := city.get("public_clues", []) as Array
+		if not public_clues.is_empty():
+			var clue_lines := []
+			for i in range(public_clues.size() - 1, -1, -1):
+				var clue_text := _city_public_clue_display_text(public_clues[i])
+				if clue_text != "":
+					clue_lines.append(clue_text)
+			lines.append("最近公开线索：%s" % _limited_name_list(clue_lines, CITY_PUBLIC_CLUE_HISTORY_LIMIT))
 	elif not city.is_empty():
 		lines.append("城市公开信息：城市群废墟/停止经营；真实业主仍不公开。")
 	else:
@@ -6498,6 +6605,7 @@ func _create_city_at_district_for_player(player_index: int, district_index: int,
 		"supplied_demands": 0,
 		"built_at": game_time,
 		"last_public_clue": "",
+		"public_clues": [],
 	}
 	players[player_index] = player
 	districts[district_index] = district
@@ -6779,13 +6887,106 @@ func _pay_rival_business_cost(player_index: int) -> void:
 	_record_player_cash_snapshot(player_index)
 
 
+func _city_public_clue_products_from_text(clue: String) -> Array:
+	var products := []
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		if product_name != "" and clue.contains(product_name):
+			products.append(product_name)
+	return products
+
+
+func _city_public_clue_kind_from_text(clue: String) -> String:
+	if clue.contains("合约") or clue.contains("签约") or clue.contains("拒签"):
+		return "合约"
+	if clue.contains("商路") or clue.contains("断路") or clue.contains("黑客"):
+		return "商路"
+	if clue.contains("需求压力") or clue.contains("市场") or clue.contains("价格"):
+		return "市场"
+	if clue.contains("GDP") or clue.contains("生产") or clue.contains("交通") or clue.contains("消费"):
+		return "经营"
+	return "公开"
+
+
+func _normalize_city_public_clue_entry(value: Variant) -> Dictionary:
+	if value is Dictionary:
+		var entry := (value as Dictionary).duplicate(true)
+		var text := String(entry.get("text", entry.get("clue", ""))).strip_edges()
+		if text == "":
+			return {}
+		entry["text"] = text
+		if not entry.has("time"):
+			entry["time"] = float(entry.get("game_time", -1.0))
+		if not entry.has("cycle"):
+			entry["cycle"] = 0
+		if String(entry.get("kind", "")) == "":
+			entry["kind"] = _city_public_clue_kind_from_text(text)
+		if not (entry.get("products", []) is Array) or (entry.get("products", []) as Array).is_empty():
+			entry["products"] = _city_public_clue_products_from_text(text)
+		return entry
+	var clue_text := String(value).strip_edges()
+	if clue_text == "":
+		return {}
+	var time_value := -1.0
+	var text_value := clue_text
+	if clue_text.begins_with("t") and clue_text.contains("s｜"):
+		var split_parts := clue_text.split("｜", false, 1)
+		if split_parts.size() >= 2:
+			var stamp := String(split_parts[0]).trim_prefix("t").trim_suffix("s")
+			time_value = stamp.to_float()
+			text_value = String(split_parts[1]).strip_edges()
+	return {
+		"time": time_value,
+		"cycle": 0,
+		"kind": _city_public_clue_kind_from_text(text_value),
+		"products": _city_public_clue_products_from_text(text_value),
+		"text": text_value,
+	}
+
+
+func _city_public_clue_display_text(value: Variant) -> String:
+	var entry := _normalize_city_public_clue_entry(value)
+	if entry.is_empty():
+		return ""
+	var time_text := "T+%.0fs" % float(entry.get("time", 0.0)) if float(entry.get("time", -1.0)) >= 0.0 else "时间未知"
+	return "%s｜%s｜商品:%s｜%s" % [
+		time_text,
+		String(entry.get("kind", "公开")),
+		_limited_name_list(entry.get("products", []) as Array, 3, "无"),
+		String(entry.get("text", "")),
+	]
+
+
+func _append_city_public_clue(city: Dictionary, clue: String) -> Dictionary:
+	var clean_clue := clue.strip_edges()
+	if clean_clue == "":
+		return city
+	city["last_public_clue"] = clean_clue
+	var clues := []
+	for clue_variant in city.get("public_clues", []):
+		var clue_entry := _normalize_city_public_clue_entry(clue_variant)
+		if not clue_entry.is_empty():
+			clues.append(clue_entry)
+	clues.append({
+		"time": game_time,
+		"cycle": business_cycle_count,
+		"kind": _city_public_clue_kind_from_text(clean_clue),
+		"products": _city_public_clue_products_from_text(clean_clue),
+		"text": clean_clue,
+	})
+	while clues.size() > CITY_PUBLIC_CLUE_HISTORY_LIMIT:
+		clues.pop_front()
+	city["public_clues"] = clues
+	return city
+
+
 func _set_city_public_clue(city_index: int, clue: String) -> void:
 	if city_index < 0 or city_index >= districts.size():
 		return
 	var city := _district_city(city_index)
 	if city.is_empty():
 		return
-	city["last_public_clue"] = clue
+	city = _append_city_public_clue(city, clue)
 	districts[city_index]["city"] = city
 
 
@@ -6846,7 +7047,7 @@ func _apply_rival_route_sabotage(player_index: int, action: Dictionary) -> bool:
 		districts[target_city_index]["name"],
 		product_name,
 	]
-	target_city["last_public_clue"] = clue
+	target_city = _append_city_public_clue(target_city, clue)
 	districts[target_city_index]["city"] = target_city
 	if own_city_index >= 0 and own_city_index < districts.size():
 		_set_city_public_clue(own_city_index, "周期%d：疑似有匿名财团围绕%s压制竞争城市。" % [business_cycle_count, product_name])
@@ -10886,7 +11087,7 @@ func _apply_contract_region_delta(index: int, production_delta: int, transport_d
 	district["economic_focus_label"] = _district_economy_focus_label(String(district.get("economic_focus", "balanced")))
 	var city := district.get("city", {}) as Dictionary
 	if _city_is_active(city):
-		city["last_public_clue"] = "%s使区域经营参数变化：生产%d→%d、交通%d→%d、消费%d→%d。" % [
+		city = _append_city_public_clue(city, "%s使区域经营参数变化：生产%d→%d、交通%d→%d、消费%d→%d。" % [
 			source,
 			before_production,
 			after_production,
@@ -10894,7 +11095,7 @@ func _apply_contract_region_delta(index: int, production_delta: int, transport_d
 			after_transport,
 			before_consumption,
 			after_consumption,
-		]
+		])
 		district["city"] = city
 	districts[index] = district
 	result["changed"] = before_production != after_production or before_transport != after_transport or before_consumption != after_consumption
@@ -11019,10 +11220,10 @@ func _apply_area_trade_contract_accept(skill: Dictionary, source_index: int, tar
 	var added_district_demands := _add_district_demands(target_index, products, add_demands)
 	var added_city_demands := _add_city_demands_to_city(target_city, products, add_demands)
 	if _city_is_active(source_city):
-		source_city["last_public_clue"] = "%s签约后接入供给：%s。" % [source, _limited_name_list(products, 4)]
+		source_city = _append_city_public_clue(source_city, "%s签约后接入供给：%s。" % [source, _limited_name_list(products, 4)])
 		districts[source_index]["city"] = source_city
 	if _city_is_active(target_city):
-		target_city["last_public_clue"] = "%s签约后接入需求：%s；真实签约业主不公开。" % [source, _limited_name_list(products, 4)]
+		target_city = _append_city_public_clue(target_city, "%s签约后接入需求：%s；真实签约业主不公开。" % [source, _limited_name_list(products, 4)])
 		districts[target_index]["city"] = target_city
 	var production_delta := int(skill.get("accept_production_delta", 0))
 	var transport_delta := int(skill.get("accept_transport_delta", 0))
@@ -11087,12 +11288,12 @@ func _apply_area_trade_contract_decline(skill: Dictionary, source_index: int, ta
 	if _city_is_active(city):
 		if route_damage > 0:
 			city["trade_route_damage"] = int(city.get("trade_route_damage", 0)) + route_damage
-		city["last_public_clue"] = "%s被%s：拒签惩罚%s，商品线索%s。" % [
+		city = _append_city_public_clue(city, "%s被%s：拒签惩罚%s，商品线索%s。" % [
 			source,
 			"超时拒签" if response == CONTRACT_RESPONSE_TIMEOUT else "拒签",
 			_contract_decline_effect_summary(skill),
 			_limited_name_list(products, 4),
-		]
+		])
 		districts[target_index]["city"] = city
 	_refresh_city_networks()
 	_refresh_product_market_prices()
@@ -11529,7 +11730,7 @@ func _apply_region_economy_shift(skill: Dictionary) -> bool:
 	if _city_is_active(city) and repair_routes > 0:
 		city["trade_route_damage"] = maxi(0, int(city.get("trade_route_damage", 0)) - repair_routes)
 	if _city_is_active(city):
-		city["last_public_clue"] = "%s调整区域GDP结构：生产%d→%d、交通%d→%d、消费%d→%d。" % [
+		city = _append_city_public_clue(city, "%s调整区域GDP结构：生产%d→%d、交通%d→%d、消费%d→%d。" % [
 			source,
 			before_production,
 			after_production,
@@ -11537,7 +11738,7 @@ func _apply_region_economy_shift(skill: Dictionary) -> bool:
 			after_transport,
 			before_consumption,
 			after_consumption,
-		]
+		])
 		district["city"] = city
 	districts[selected_district] = district
 	var product_name := _default_economy_product()
@@ -12335,7 +12536,7 @@ func _area_trade_contract_products(skill: Dictionary, source_index: int, target_
 		if result.size() >= goal:
 			return result
 	var mode := String(skill.get("contract_product_mode", "selected"))
-	if selected_trade_product != "" and PRODUCT_CATALOG.has(selected_trade_product):
+	if mode != "auto" and selected_trade_product != "" and PRODUCT_CATALOG.has(selected_trade_product):
 		_append_unique_string(result, selected_trade_product)
 		if mode == "selected" and result.size() >= goal:
 			return result
