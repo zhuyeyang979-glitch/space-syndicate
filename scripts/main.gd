@@ -21042,6 +21042,17 @@ func _skill_fixed_product_requirements(skill: Dictionary) -> Array:
 	return result
 
 
+func _product_requirements_available(required_products: Array, run_products: Array) -> bool:
+	if required_products.is_empty():
+		return true
+	if run_products.is_empty():
+		return true
+	for product_variant in required_products:
+		if not run_products.has(String(product_variant)):
+			return false
+	return true
+
+
 func _skill_uses_current_product(skill: Dictionary) -> bool:
 	var kind := String(skill.get("kind", ""))
 	if ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift"].has(kind):
@@ -21061,17 +21072,146 @@ func _card_allowed_by_run_products(skill_name: String) -> bool:
 	if skill.is_empty():
 		return false
 	if String(skill.get("kind", "")) == "monster_card":
-		return true
+		return _monster_card_allowed_by_run_products(canonical_name)
 	var required_products := _skill_fixed_product_requirements(skill)
-	if required_products.is_empty():
-		return true
+	return _product_requirements_available(required_products, _current_run_product_names())
+
+
+func _monster_card_allowed_by_run_products(skill_name: String) -> bool:
+	if not _is_monster_card_name(skill_name):
+		return false
 	var run_products := _current_run_product_names()
 	if run_products.is_empty():
 		return true
-	for product_variant in required_products:
-		if not run_products.has(String(product_variant)):
-			return false
-	return true
+	var monster_name := _monster_name_from_card_name(skill_name)
+	var catalog_index := _monster_catalog_index_by_name(monster_name)
+	if catalog_index < 0:
+		return false
+	var entry := _catalog_entry(catalog_index)
+	var focus: Array = entry.get("resource_focus", [])
+	if focus.is_empty():
+		return true
+	for product_variant in focus:
+		if run_products.has(String(product_variant)):
+			return true
+	return false
+
+
+func _run_allowed_monster_card_names(rank: int = 1) -> Array:
+	var matched := []
+	var all_cards := _monster_card_names(rank)
+	for card_variant in all_cards:
+		var card_name := String(card_variant)
+		if _monster_card_allowed_by_run_products(card_name):
+			matched.append(card_name)
+	if matched.is_empty():
+		return all_cards
+	return matched
+
+
+func _card_supply_product_filter_audit() -> Dictionary:
+	var run_products := _current_run_product_names()
+	var run_pool := _current_run_card_pool()
+	var violations := []
+	var excluded_fixed_cards := []
+	var allowed_fixed_cards := []
+	var current_product_cards := []
+	for skill_name_variant in COMMON_CARD_POOL:
+		var canonical_name := _canonical_card_supply_name(String(skill_name_variant))
+		if canonical_name == "":
+			continue
+		var skill := _skill_definition(canonical_name)
+		if skill.is_empty():
+			continue
+		var required_products := _skill_fixed_product_requirements(skill)
+		if not required_products.is_empty():
+			if _product_requirements_available(required_products, run_products):
+				_append_unique_string(allowed_fixed_cards, canonical_name)
+				if not run_pool.has(canonical_name):
+					violations.append("%s需要%s且本局存在，但未进入本局卡池" % [canonical_name, "、".join(required_products)])
+			else:
+				_append_unique_string(excluded_fixed_cards, canonical_name)
+				if run_pool.has(canonical_name):
+					violations.append("%s需要%s，但本局商品不存在仍进入卡池" % [canonical_name, "、".join(required_products)])
+		elif _skill_uses_current_product(skill):
+			_append_unique_string(current_product_cards, canonical_name)
+	var all_monster_cards := _monster_card_names(1)
+	var allowed_monster_cards := _run_allowed_monster_card_names(1)
+	var excluded_monster_cards := []
+	var monster_fallback_active := false
+	if not run_products.is_empty():
+		var matched_monster_count := 0
+		for card_variant in all_monster_cards:
+			var card_name := String(card_variant)
+			if _monster_card_allowed_by_run_products(card_name):
+				matched_monster_count += 1
+			else:
+				excluded_monster_cards.append(card_name)
+		monster_fallback_active = matched_monster_count == 0 and all_monster_cards.size() > 0
+	if not monster_fallback_active:
+		for excluded_variant in excluded_monster_cards:
+			var excluded_name := String(excluded_variant)
+			if run_pool.has(excluded_name):
+				violations.append("%s的资源偏好不在本局星球，但仍进入怪兽补给" % excluded_name)
+	for allowed_variant in allowed_monster_cards:
+		var allowed_name := String(allowed_variant)
+		if not run_pool.has(allowed_name):
+			violations.append("%s符合本局资源/回退规则，但未进入本局卡池" % allowed_name)
+	var district_card_count := 0
+	var local_product_cards := 0
+	for district_index in range(districts.size()):
+		var local_products := _district_local_product_names(district_index)
+		for card_variant in districts[district_index].get("card_choices", []):
+			var card_name := _canonical_card_supply_name(String(card_variant))
+			if card_name == "":
+				continue
+			district_card_count += 1
+			if not run_pool.has(card_name):
+				violations.append("%s出现在%s，但不属于本局卡池" % [card_name, String(districts[district_index].get("name", "区域"))])
+			var skill := _skill_definition(card_name)
+			if String(skill.get("kind", "")) == "monster_card":
+				var monster_name := String(skill.get("monster_name", ""))
+				var catalog_index := _monster_catalog_index_by_name(monster_name)
+				var focus: Array = _catalog_entry(catalog_index).get("resource_focus", []) if catalog_index >= 0 else []
+				var has_focus := focus.is_empty()
+				for product_variant in focus:
+					if local_products.has(String(product_variant)):
+						has_focus = true
+						break
+				if not has_focus:
+					violations.append("%s出现在%s，但该区没有任一偏好资源%s" % [card_name, String(districts[district_index].get("name", "区域")), "、".join(focus)])
+				else:
+					local_product_cards += 1
+			else:
+				var required_products := _skill_fixed_product_requirements(skill)
+				if not required_products.is_empty():
+					var has_local_required := false
+					for product_variant in required_products:
+						if local_products.has(String(product_variant)):
+							has_local_required = true
+							break
+					if not has_local_required:
+						violations.append("%s出现在%s，但该区没有所需商品%s" % [card_name, String(districts[district_index].get("name", "区域")), "、".join(required_products)])
+					else:
+						local_product_cards += 1
+				elif _skill_uses_current_product(skill):
+					if local_products.is_empty():
+						violations.append("%s出现在%s，但该区没有可绑定的本地供需商品" % [card_name, String(districts[district_index].get("name", "区域"))])
+					else:
+						local_product_cards += 1
+	return {
+		"run_products": run_products,
+		"run_card_count": run_pool.size(),
+		"district_card_count": district_card_count,
+		"local_product_card_count": local_product_cards,
+		"allowed_fixed_cards": allowed_fixed_cards,
+		"excluded_fixed_cards": excluded_fixed_cards,
+		"current_product_cards": current_product_cards,
+		"monster_allowed_cards": allowed_monster_cards,
+		"monster_excluded_cards": excluded_monster_cards,
+		"monster_fallback_active": monster_fallback_active,
+		"violations": violations,
+	}
 
 
 func _district_card_is_valid_for_district(district_index: int, skill_name: String) -> bool:
@@ -21129,9 +21269,13 @@ func _monster_card_district_affinity_score(skill: Dictionary, district_index: in
 			return -999
 		score += 75
 	var focus: Array = entry.get("resource_focus", [])
+	var matched_focus := false
 	for product_variant in focus:
 		if local_products.has(String(product_variant)):
+			matched_focus = true
 			score += 130
+	if not focus.is_empty() and not matched_focus:
+		return -999
 	var traits: Array = entry.get("movement_traits", [])
 	if terrain == "ocean" and traits.has("aquatic"):
 		score += 70
@@ -21199,17 +21343,17 @@ func _current_run_card_pool() -> Array:
 		var skill_name := String(skill_name_variant)
 		if _card_allowed_by_run_products(skill_name):
 			_append_unique_cards(result, [skill_name])
-	_append_unique_cards(result, _monster_card_names(1))
+	_append_unique_cards(result, _run_allowed_monster_card_names(1))
 	return result
 
 
 func _current_run_featured_cards() -> Array:
-	return _monster_card_names(1)
+	return _run_allowed_monster_card_names(1)
 
 
 func _current_run_featured_card_sources() -> Dictionary:
 	var sources := {}
-	for monster_card_variant in _monster_card_names(1):
+	for monster_card_variant in _run_allowed_monster_card_names(1):
 		var skill_name := String(monster_card_variant)
 		sources[skill_name] = "怪兽卡"
 	return sources

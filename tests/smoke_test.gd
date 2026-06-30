@@ -314,6 +314,7 @@ func _run() -> void:
 	_expect(_all_districts_have_four_to_five_cards(districts), "each district receives four to five available cards")
 	_expect(_all_district_cards_have_sources(districts), "district card choices track their source")
 	_expect(_has_monster_card_source(districts), "monster cards are explicitly mixed into district card supplies")
+	_expect(_verify_card_supply_respects_run_products(main), "run card supply only includes fixed-product and monster-resource cards supported by this planet's goods")
 	_expect(_as_array(main.get("movement_trails")).size() > 0, "summoning starting monsters creates visible summon trails")
 	_expect(_log_contains(main, "区域补给网完成"), "new game announces card pool generation")
 
@@ -839,9 +840,131 @@ func _has_monster_card_source(districts: Array) -> bool:
 		var district := district_variant as Dictionary
 		var sources := district.get("card_sources", {}) as Dictionary
 		for source_variant in sources.values():
-			if String(source_variant).contains("怪兽卡"):
+			if String(source_variant).contains("怪兽"):
 				return true
 	return false
+
+
+func _verify_card_supply_respects_run_products(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var failures := []
+	var current_report := main.call("_card_supply_product_filter_audit") as Dictionary
+	var current_violations := _as_array(current_report.get("violations", []))
+	if not current_violations.is_empty():
+		failures.append("current run: %s" % " / ".join(current_violations))
+		ok = false
+	ok = ok and int(current_report.get("run_card_count", 0)) > 0
+	ok = ok and int(current_report.get("district_card_count", 0)) > 0
+	ok = ok and int(current_report.get("local_product_card_count", 0)) > 0
+
+	var tiny_districts := [
+		{
+			"name": "环晶浅原",
+			"terrain": "land",
+			"products": ["环晶电池"],
+			"demands": ["星露莓"],
+			"card_choices": [],
+			"card_sources": {},
+			"destroyed": false,
+			"city": {},
+			"hp": 8,
+			"damage": 0,
+		},
+		{
+			"name": "可可农丘",
+			"terrain": "land",
+			"products": ["真空可可"],
+			"demands": ["环晶电池"],
+			"card_choices": [],
+			"card_sources": {},
+			"destroyed": false,
+			"city": {},
+			"hp": 8,
+			"damage": 0,
+		},
+		{
+			"name": "星鳍外海",
+			"terrain": "ocean",
+			"products": ["星鳍鱼群"],
+			"demands": ["潮汐电浆"],
+			"card_choices": [],
+			"card_sources": {},
+			"destroyed": false,
+			"city": {},
+			"hp": 8,
+			"damage": 0,
+		},
+		{
+			"name": "潮汐电浆湾",
+			"terrain": "ocean",
+			"products": ["潮汐电浆"],
+			"demands": ["星露莓"],
+			"card_choices": [],
+			"card_sources": {},
+			"destroyed": false,
+			"city": {},
+			"hp": 8,
+			"damage": 0,
+		},
+	]
+	main.set("districts", tiny_districts)
+	main.set("skill_market", [])
+	main.call("_assign_district_card_choices")
+	var run_pool := _as_array(main.call("_current_run_card_pool"))
+	var ring_monster := String(main.call("_monster_card_name", 2, 1))
+	var ocean_monster := String(main.call("_monster_card_name", 0, 1))
+	if not run_pool.has("环晶电池专供1"):
+		failures.append("ring contract missing")
+		ok = false
+	for forbidden_variant in ["夺取怪兽1", "业主透镜1", "相位否决1", "轨道轰炸机1", "重装坦克1", "潜航舰队1"]:
+		var forbidden := String(forbidden_variant)
+		if run_pool.has(forbidden):
+			failures.append("forbidden fixed card in tiny pool: %s" % forbidden)
+			ok = false
+	if not bool(main.call("_card_allowed_by_run_products", ring_monster)) or not run_pool.has(ring_monster):
+		failures.append("matching monster missing: %s" % ring_monster)
+		ok = false
+	if bool(main.call("_card_allowed_by_run_products", ocean_monster)) or run_pool.has(ocean_monster):
+		failures.append("unmatched monster leaked: %s" % ocean_monster)
+		ok = false
+	var tiny_report := main.call("_card_supply_product_filter_audit") as Dictionary
+	var tiny_violations := _as_array(tiny_report.get("violations", []))
+	if not tiny_violations.is_empty():
+		failures.append("tiny run: %s" % " / ".join(tiny_violations))
+		ok = false
+	if not _as_array(tiny_report.get("excluded_fixed_cards", [])).has("夺取怪兽1"):
+		failures.append("excluded fixed audit lacks takeover")
+		ok = false
+	if not _as_array(tiny_report.get("monster_excluded_cards", [])).has(ocean_monster):
+		failures.append("excluded monster audit lacks ocean monster")
+		ok = false
+	if bool(tiny_report.get("monster_fallback_active", false)):
+		failures.append("monster fallback should be inactive when ring monster matches")
+		ok = false
+	var districts_after := _as_array(main.get("districts"))
+	var saw_ring_source := false
+	for district_variant in districts_after:
+		var district := district_variant as Dictionary
+		var choices := _as_array(district.get("card_choices", []))
+		if choices.size() < 4 or choices.size() > 5:
+			failures.append("choice count %s=%d" % [String(district.get("name", "")), choices.size()])
+			ok = false
+		var sources := district.get("card_sources", {}) as Dictionary
+		for card_variant in choices:
+			var card_name := String(card_variant)
+			if card_name == ring_monster and String(sources.get(card_name, "")).contains("环晶电池"):
+				saw_ring_source = true
+			if ["夺取怪兽1", "业主透镜1", "相位否决1", ocean_monster].has(card_name):
+				failures.append("forbidden district card %s in %s" % [card_name, String(district.get("name", ""))])
+				ok = false
+	if not saw_ring_source:
+		failures.append("ring monster lacks local resource source")
+		ok = false
+	var restore_result := int(main.call("_apply_run_state", saved))
+	if not failures.is_empty():
+		print("Card supply product-filter failures: %s" % " / ".join(failures))
+	return ok and restore_result == OK
 
 
 func _players_have_starting_monster_cards(main: Node, players: Array) -> bool:
@@ -2960,6 +3083,7 @@ func _seed_supply_cards_near_ai_monsters_for_test(main: Node) -> void:
 		"星链拆解1",
 		"产权冻结1",
 	]
+	var support_products := ["环晶电池", "轨迹墨水", "活体芯片", "轨道盆栽", "离岸水晶"]
 	for actor_variant in _as_array(main.get("auto_monsters")):
 		if not (actor_variant is Dictionary):
 			continue
@@ -2976,6 +3100,20 @@ func _seed_supply_cards_near_ai_monsters_for_test(main: Node) -> void:
 			var district_index := int(district_index_variant)
 			var district := districts[district_index] as Dictionary
 			district["card_choices"] = supply_cards.duplicate()
+			var products := _as_string_array(_as_array(district.get("products", [])))
+			var demands := _as_string_array(_as_array(district.get("demands", [])))
+			for product_variant in support_products:
+				var product_name := String(product_variant)
+				if not products.has(product_name):
+					products.append(product_name)
+				if not demands.has(product_name):
+					demands.append(product_name)
+			district["products"] = products
+			district["demands"] = demands
+			var sources := {}
+			for card_variant in supply_cards:
+				sources[String(card_variant)] = "烟测补给:%s" % String(district.get("name", "区域"))
+			district["card_sources"] = sources
 			districts[district_index] = district
 	main.set("districts", districts)
 
@@ -2995,8 +3133,87 @@ func _force_ai_cities_to_shared_goods(main: Node) -> void:
 	var players := _as_array(main.get("players"))
 	for player_index in range(1, players.size()):
 		for city_index_variant in _as_array(main.call("_active_city_indices_for_player", player_index)):
-			_set_city_goods_for_test(main, int(city_index_variant), "环晶电池", "轨迹墨水")
+			_set_city_products_and_demands_for_test(
+				main,
+				int(city_index_variant),
+				["环晶电池", "轨迹墨水", "活体芯片", "光合凝胶", "离岸水晶", "轨道盆栽"],
+				["轨迹墨水", "活体芯片", "环晶电池", "光合凝胶", "离岸水晶"],
+				2
+			)
 	main.call("_refresh_city_networks")
+
+
+func _exercise_ai_primary_route_cards_for_test(main: Node) -> Array:
+	var failures := []
+	var route_cards := {
+		0: "城市融资1",
+		1: "商品看涨1",
+		2: "产权冻结1",
+		3: "诱导电波1",
+		4: "区域供需合约1",
+		5: "线索悬赏1",
+	}
+	var players := _as_array(main.get("players")).duplicate(true)
+	for player_index in range(1, players.size()):
+		var player := players[player_index] as Dictionary
+		var profile := player.get("ai_profile", {}) as Dictionary
+		var profile_index := int(profile.get("profile_index", -1))
+		if not route_cards.has(profile_index):
+			continue
+		var card_name := String(route_cards[profile_index])
+		var skill := main.call("_make_skill", card_name) as Dictionary
+		skill.erase("starter_play_free")
+		player["slots"] = [skill]
+		player["cash"] = maxi(int(player.get("cash", 0)), 9000)
+		player["action_cooldown"] = 0.0
+		players[player_index] = player
+	main.set("players", players)
+	var districts := _as_array(main.get("districts"))
+	var clue_city_index := -1
+	for i in range(districts.size()):
+		var city := (districts[i] as Dictionary).get("city", {}) as Dictionary
+		if not city.is_empty() and bool(city.get("active", false)) and not bool(city.get("destroyed", false)) and int(city.get("owner", -1)) > 0:
+			clue_city_index = i
+			break
+	if clue_city_index >= 0:
+		main.set("resolved_card_history", [{
+			"resolution_id": 99041,
+			"queued_order": 99041,
+			"player_index": 2,
+			"skill": main.call("_make_skill", "城市融资1"),
+			"selected_district": clue_city_index,
+			"play_requirement_product": "活体芯片",
+			"play_requirement_flow": 1,
+			"public_owner_revealed": false,
+			"resolved_time": float(main.get("game_time")),
+		}])
+		main.set("selected_card_resolution_id", 99041)
+	for player_index in range(1, players.size()):
+		players = _as_array(main.get("players")).duplicate(true)
+		var player := players[player_index] as Dictionary
+		var profile := player.get("ai_profile", {}) as Dictionary
+		var profile_index := int(profile.get("profile_index", -1))
+		if not route_cards.has(profile_index):
+			continue
+		var expected_card := String(route_cards[profile_index])
+		player["action_cooldown"] = 0.0
+		players[player_index] = player
+		main.set("players", players)
+		var result := String(main.call("_ai_execute_card_turn", player_index, true))
+		if result != "play":
+			var candidates := main.call("_ai_card_play_candidates", player_index) as Array
+			var choice := _find_ai_play_candidate_by_card(candidates, expected_card)
+			failures.append("primary route play p%d %s result=%s choice=%s candidates=%d" % [
+				player_index,
+				expected_card,
+				result,
+				str(not choice.is_empty()),
+				candidates.size(),
+			])
+			continue
+		main.call("_auto_ai_auction_bids", true)
+		_drain_card_resolution_queue_for_test(main, 160)
+	return failures
 
 
 func _clear_ai_cooldowns_for_test(main: Node) -> void:
@@ -3238,6 +3455,10 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		business_actions += int(main.call("_auto_rival_business_actions", true))
 		main.call("_market_tick")
 		main.call("_settle_city_cashflow_seconds", 60.0)
+	var primary_route_failures := _exercise_ai_primary_route_cards_for_test(main)
+	if not primary_route_failures.is_empty():
+		failures.append_array(primary_route_failures)
+		ok = false
 	var after_players := _as_array(main.get("players"))
 	var saw_income := false
 	var sampled_ai := 0
