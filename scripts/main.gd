@@ -5098,10 +5098,53 @@ func _ai_public_pressure_entries(limit: int = 8) -> Array:
 	return entries
 
 
+func _ai_public_pressure_counterplay_for_bucket(bucket: String) -> String:
+	match bucket:
+		"扩张GDP":
+			return "查其焦点商品与新城市，优先断同商品商路或抢需求。"
+		"护路防守":
+			return "别只打城市本体，先找运输瓶颈、做空高GDP或制造绕路压力。"
+		"压制竞品":
+			return "保护高GDP/同商品城市，修路、保险，并标注最近被攻击区域。"
+		"怪兽压制":
+			return "分散商品、看怪兽偏好，必要时用诱导/天气把怪兽转向。"
+		"金融投机":
+			return "稳价、修路、拉需求，避免目标城市GDP在持仓秒数内剧烈下跌。"
+		"合约供需":
+			return "看谁最受益再签约；拒签惩罚高时先准备现金或改走供需。"
+		"情报补给":
+			return "制造伪线索、分散出牌条件，避免连续暴露同一商品流动。"
+		"终局冲刺":
+			return "倒计时里优先压制疑似领先城市，同时保住自己的现金流。"
+	return "继续观察卡牌条件、商品流向和城市线索，先别过早暴露判断。"
+
+
+func _ai_public_pressure_counterplay_text(max_suggestions: int = 3) -> String:
+	var all_entries := _ai_public_pressure_entries(0)
+	if all_entries.is_empty():
+		return "反制建议：暂无AI压力样本；先按开局循环首召、建城、购牌。"
+	var counts := {}
+	for entry_variant in all_entries:
+		var entry := entry_variant as Dictionary
+		var bucket := String(entry.get("bucket", "观察局势"))
+		counts[bucket] = int(counts.get(bucket, 0)) + 1
+	var ordered_buckets := ["终局冲刺", "压制竞品", "怪兽压制", "金融投机", "护路防守", "合约供需", "情报补给", "扩张GDP", "观察局势"]
+	var suggestions := []
+	for bucket in ordered_buckets:
+		if int(counts.get(bucket, 0)) <= 0:
+			continue
+		suggestions.append("%s→%s" % [bucket, _ai_public_pressure_counterplay_for_bucket(bucket)])
+		if suggestions.size() >= max_suggestions:
+			break
+	if suggestions.is_empty():
+		suggestions.append("观察局势→%s" % _ai_public_pressure_counterplay_for_bucket("观察局势"))
+	return "反制建议：%s" % "；".join(suggestions)
+
+
 func _ai_public_pressure_summary_text(limit: int = 4) -> String:
 	var all_entries := _ai_public_pressure_entries(0)
 	if all_entries.is_empty():
-		return "AI对局压力：本局没有AI对手，或AI尚未形成公开可读的路线压力。"
+		return "AI对局压力：本局没有AI对手，或AI尚未形成公开可读的路线压力。%s" % _ai_public_pressure_counterplay_text()
 	var counts := {}
 	for entry_variant in all_entries:
 		var entry := entry_variant as Dictionary
@@ -5123,9 +5166,10 @@ func _ai_public_pressure_summary_text(limit: int = 4) -> String:
 			String(entry.get("product", "商品")),
 			String(entry.get("intent_label", "意图")),
 		])
-	return "AI对局压力：公开路线观察，不显示现金/手牌。%s；样本：%s。" % [
+	return "AI对局压力：公开路线观察，不显示现金/手牌。%s；样本：%s。%s。" % [
 		"｜".join(count_pieces) if not count_pieces.is_empty() else "观察局势×%d" % all_entries.size(),
 		"；".join(samples),
+		_ai_public_pressure_counterplay_text(),
 	]
 
 
