@@ -84,7 +84,7 @@ Next AI tuning should check whether each profile actually does its thing in long
 ## Test gaps to close next
 
 - Covered now: warehouse stockpile loses its stored value when the warehouse city is destroyed, while ordinary non-warehouse futures remain.
-- Commodity futures should pay only from product price movement over real seconds.
+- Covered now: commodity futures settle only after their real-time holding window and pay from actual product price movement, not from abstract economy cycles.
 - Military strike commands should damage districts/routes only through explicit strike commands, never through movement.
 - AI long-run simulation should report whether each profile performs at least one route-specific action.
 - Role cards need a non-duplicate selection test plus a role-budget metadata test.

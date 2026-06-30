@@ -122,6 +122,7 @@ func _run() -> void:
 	_expect(_verify_military_unit_variant_cards(main), "military card families cover air, land, ocean, terrain deployment, GDP pressure, route pressure, and distinct card facts")
 	_expect(_verify_military_runtime_gdp_boundary(main), "military movement avoids monster-style building crush while applying visible short GDP pressure")
 	_expect(_verify_product_futures_warehouse_destruction(main), "warehouse stockpile futures are cleared when the storage city is destroyed while ordinary futures remain")
+	_expect(_verify_product_futures_realtime_payout(main), "commodity futures settle only after their real-time window and pay from actual product price movement")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
@@ -1196,6 +1197,65 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	return ok and restore_result == OK
 
 
+func _verify_product_futures_realtime_payout(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var districts := _as_array(main.get("districts"))
+	var city_index := _first_buildable_land_district(districts)
+	if city_index < 0:
+		return false
+	ok = ok and bool(main.call("_create_city_at_district_for_player", 0, city_index, "商品期货时间窗测试", false))
+	districts = _as_array(main.get("districts"))
+	var city := (districts[city_index] as Dictionary).get("city", {}) as Dictionary
+	var products := _as_array(city.get("products", []))
+	if products.is_empty():
+		main.call("_apply_run_state", saved)
+		return false
+	var product_name := String((products[0] as Dictionary).get("name", ""))
+	main.set("selected_player", 0)
+	main.set("selected_district", city_index)
+	main.set("selected_trade_product", product_name)
+	var product_market := main.get("product_market") as Dictionary
+	var entry := product_market.get(product_name, {}) as Dictionary
+	entry["price"] = maxi(40, int(entry.get("base_price", 60)))
+	entry["futures_positions"] = []
+	product_market[product_name] = entry
+	main.set("product_market", product_market)
+	var baseline_price := int(entry.get("price", 60))
+	var player := (_as_array(main.get("players"))[0] as Dictionary).duplicate(true)
+	var futures_card := main.call("_make_skill", "商品看涨1") as Dictionary
+	futures_card["product_bet_seconds"] = 5.0
+	futures_card["product_bet_multiplier"] = 1.0
+	ok = ok and bool(main.call("_apply_product_futures", player, futures_card))
+	product_market = main.get("product_market") as Dictionary
+	entry = product_market.get(product_name, {}) as Dictionary
+	var positions_after_open := _as_array(entry.get("futures_positions", []))
+	ok = ok and positions_after_open.size() == 1
+	var players_before := _as_array(main.get("players"))
+	var cash_before := int((players_before[0] as Dictionary).get("cash", 0))
+	var income_before := int((players_before[0] as Dictionary).get("total_card_income", 0))
+	entry["price"] = baseline_price + 18
+	product_market[product_name] = entry
+	main.set("product_market", product_market)
+	main.call("_update_product_futures_timers")
+	var players_mid := _as_array(main.get("players"))
+	product_market = main.get("product_market") as Dictionary
+	entry = product_market.get(product_name, {}) as Dictionary
+	ok = ok and int((players_mid[0] as Dictionary).get("cash", 0)) == cash_before
+	ok = ok and _as_array(entry.get("futures_positions", [])).size() == 1
+	main.set("game_time", float(main.get("game_time")) + 5.25)
+	main.call("_update_product_futures_timers")
+	var players_after := _as_array(main.get("players"))
+	product_market = main.get("product_market") as Dictionary
+	entry = product_market.get(product_name, {}) as Dictionary
+	var expected_payout := int(round(float((18 * 10 * 1) * 1.0)))
+	ok = ok and int((players_after[0] as Dictionary).get("cash", 0)) >= cash_before + expected_payout
+	ok = ok and int((players_after[0] as Dictionary).get("total_card_income", 0)) >= income_before + expected_payout
+	ok = ok and _as_array(entry.get("futures_positions", [])).is_empty()
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
 func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var ok := true
@@ -1788,6 +1848,7 @@ func _verify_ai_monster_lure_strategy(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
 	var ok := true
+	var failures := []
 	main.set("ai_card_decision_enabled", true)
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
@@ -1800,6 +1861,7 @@ func _verify_ai_monster_lure_strategy(main: Node) -> bool:
 	var spare_index := _first_empty_land_district_for_contract(main, [own_index, rival_index])
 	if own_index < 0 or rival_index < 0:
 		ok = false
+		failures.append("missing setup districts own=%d rival=%d" % [own_index, rival_index])
 	else:
 		var players := _as_array(main.get("players")).duplicate(true)
 		for player_index in range(players.size()):
@@ -1824,13 +1886,21 @@ func _verify_ai_monster_lure_strategy(main: Node) -> bool:
 		main.set("auto_monsters", [matching_actor, decoy_actor])
 		var lure_skill := main.call("_make_skill", "诱导电波1") as Dictionary
 		var context := main.call("_ai_card_play_context", 1, 0, lure_skill) as Dictionary
-		ok = ok and not context.is_empty()
-		ok = ok and int(context.get("target_slot", -1)) == 0
-		ok = ok and int(context.get("district", -1)) == rival_index
-		ok = ok and int(context.get("target_city", -1)) == rival_index
-		ok = ok and String(context.get("strategic_role", "")) == "monster_lure"
-		ok = ok and int(context.get("resource_match", 0)) > 0
-		ok = ok and int(context.get("attack_value", 0)) > 0
+		if context.is_empty():
+			failures.append("empty context")
+		if int(context.get("target_slot", -1)) != 0:
+			failures.append("target_slot=%d" % int(context.get("target_slot", -1)))
+		if int(context.get("district", -1)) != rival_index:
+			failures.append("district=%d expected=%d" % [int(context.get("district", -1)), rival_index])
+		if int(context.get("target_city", -1)) != rival_index:
+			failures.append("target_city=%d expected=%d" % [int(context.get("target_city", -1)), rival_index])
+		if String(context.get("strategic_role", "")) != "monster_lure":
+			failures.append("role=%s" % String(context.get("strategic_role", "")))
+		if int(context.get("resource_match", 0)) <= 0:
+			failures.append("resource_match=%d" % int(context.get("resource_match", 0)))
+		if int(context.get("attack_value", 0)) <= 0:
+			failures.append("attack_value=%d" % int(context.get("attack_value", 0)))
+		ok = ok and failures.is_empty()
 		var candidates := main.call("_ai_card_play_candidates", 1) as Array
 		var chosen := {}
 		for candidate_variant in candidates:
@@ -1840,14 +1910,23 @@ func _verify_ai_monster_lure_strategy(main: Node) -> bool:
 			if String(candidate.get("card_name", "")) == "诱导电波1":
 				chosen = candidate
 				break
+		if chosen.is_empty():
+			failures.append("missing lure candidate count=%d" % candidates.size())
 		ok = ok and not chosen.is_empty()
 		var lure_queued := bool(main.call("_ai_queue_play_candidate", 1, chosen, candidates))
+		if not lure_queued:
+			failures.append("queue failed chosen=%s" % str(chosen))
 		ok = ok and lure_queued
 		var players_after := _as_array(main.get("players"))
-		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "target_city", rival_index)
-		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "strategic_role", "monster_lure")
+		if not _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "target_city", rival_index):
+			failures.append("missing target_city memory expected=%d chosen=%s" % [rival_index, str(chosen)])
+		if not _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "strategic_role", "monster_lure"):
+			failures.append("missing strategic_role memory")
+		ok = ok and failures.is_empty()
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	if not failures.is_empty():
+		print("AI monster lure failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
 
 
