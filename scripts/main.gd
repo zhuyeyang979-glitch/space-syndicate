@@ -670,6 +670,22 @@ const SKILL_CATALOG := {
 	"灾害保单2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_insurance": true, "play_product": "轨迹墨水", "play_flow_required": 2, "gdp_bet_multiplier": 1.10, "gdp_bet_seconds": 90.0, "gdp_bet_destroy_bonus": 260, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "升级灾害保单：只能保己方城市，持仓90秒；GDP跌幅×1.10赔付，城市被毁额外赔付¥260。"},
 	"灾害保单3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_insurance": true, "play_product": "轨迹墨水", "play_flow_required": 3, "gdp_bet_multiplier": 1.55, "gdp_bet_seconds": 105.0, "gdp_bet_destroy_bonus": 430, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "核心"], "text": "核心灾害保单：只能保己方城市，持仓105秒；适合在怪兽或商路黑客即将压城时把GDP损失转成现金缓冲。"},
 	"灾害保单4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_insurance": true, "play_product": "轨迹墨水", "play_flow_required": 4, "gdp_bet_multiplier": 2.10, "gdp_bet_seconds": 120.0, "gdp_bet_destroy_bonus": 680, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端灾害保单IV：只能保己方城市，持仓120秒；GDP跌幅×2.10赔付，城市摧毁时额外赔付¥680。"},
+	"应急修复1": {"cost": 3, "kind": "route_insurance", "play_product": "光合凝胶", "play_flow_required": 1, "repair_routes": 1, "revenue_amount": 20, "route_flow_multiplier": 1.15, "route_flow_seconds": 45.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "修复", "防御"], "text": "选中己方城市：修复1点商路压力，GDP/min +20，并获得45秒商路流通×1.15的应急窗口。"},
+	"应急修复2": {"cost": 5, "kind": "route_insurance", "play_product": "光合凝胶", "play_flow_required": 2, "repair_routes": 2, "revenue_amount": 40, "route_flow_multiplier": 1.25, "route_flow_seconds": 60.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "修复", "升级"], "text": "选中己方城市：修复2点商路压力，GDP/min +40，并获得60秒商路流通×1.25。"},
+	"应急修复3": {"cost": 7, "kind": "route_insurance", "play_product": "光合凝胶", "play_flow_required": 3, "repair_routes": 3, "revenue_amount": 70, "route_flow_multiplier": 1.40, "route_flow_seconds": 90.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "修复", "核心"], "text": "核心修复牌：修复3点商路压力，GDP/min +70，并给己方城市90秒商路流通×1.40，用来顶住做空和怪兽破坏窗口。"},
+	"应急修复4": {"cost": 9, "kind": "route_insurance", "play_product": "光合凝胶", "play_flow_required": 4, "repair_routes": 4, "revenue_amount": 110, "route_flow_multiplier": 1.60, "route_flow_seconds": 120.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "修复", "IV"], "text": "终端应急修复IV：修复4点商路压力，GDP/min +110，并让己方城市120秒商路流通×1.60；强但会暴露光合凝胶流动线索。"},
+	"竞争封锁1": {"cost": 4, "kind": "region_economy_shift", "play_product": "轨迹墨水", "play_flow_required": 1, "production_delta": -1, "route_damage": 1, "market_supply_pressure": 1, "panic": 12, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "压制", "竞争"], "text": "选中区域生产-1并追加1点商路压力；适合压低同商品竞争城市GDP，留下轨迹墨水流动线索。"},
+	"竞争封锁2": {"cost": 6, "kind": "region_economy_shift", "play_product": "轨迹墨水", "play_flow_required": 2, "production_delta": -1, "transport_delta": -1, "route_damage": 1, "market_supply_pressure": 2, "panic": 20, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "压制", "升级"], "text": "选中区域生产-1、交通-1，并追加1点商路压力；对高运输GDP城市更有效。"},
+	"竞争封锁3": {"cost": 8, "kind": "region_economy_shift", "play_product": "轨迹墨水", "play_flow_required": 3, "production_delta": -2, "transport_delta": -1, "consumption_delta": -1, "route_damage": 2, "market_supply_pressure": 2, "panic": 28, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "压制", "核心"], "text": "核心封锁：生产-2、交通-1、消费-1、断路+2；适合配合城市做空或怪兽踩城。"},
+	"竞争封锁4": {"cost": 10, "kind": "region_economy_shift", "play_product": "轨迹墨水", "play_flow_required": 4, "production_delta": -2, "transport_delta": -2, "consumption_delta": -1, "route_damage": 3, "market_supply_pressure": 3, "panic": 38, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "压制", "IV"], "text": "终端竞争封锁IV：生产-2、交通-2、消费-1、断路+3；强力压GDP，但商品流动门槛和地图结果会留下反推线索。"},
+	"线索悬赏1": {"cost": 3, "kind": "intel_card_trace", "play_product": "活体芯片", "play_flow_required": 1, "trace_card_count": 1, "reveal_city_count": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "悬赏"], "text": "私下追溯1张匿名牌，并尝试查明1座高价值陌生城市业主；答案只进入当前玩家的私人情报。"},
+	"线索悬赏2": {"cost": 5, "kind": "intel_card_trace", "play_product": "活体芯片", "play_flow_required": 2, "trace_card_count": 2, "reveal_city_count": 1, "trace_contract_count": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "悬赏", "升级"], "text": "追溯2张匿名牌，尝试查明1座陌生城市业主，并回溯1份合约；适合把轨道信息转成押注依据。"},
+	"线索悬赏3": {"cost": 7, "kind": "intel_card_trace", "play_product": "活体芯片", "play_flow_required": 3, "trace_card_count": 3, "reveal_city_count": 2, "trace_contract_count": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "悬赏", "核心"], "text": "核心情报牌：追溯3张匿名牌，查明最多2座陌生城市业主，并补一条合约回溯线索。"},
+	"线索悬赏4": {"cost": 9, "kind": "intel_card_trace", "play_product": "活体芯片", "play_flow_required": 4, "trace_card_count": 4, "reveal_city_count": 2, "trace_contract_count": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "悬赏", "IV"], "text": "终端线索悬赏IV：追溯4张匿名牌、2座陌生城市和2份合约；强力破局，但活体芯片流动门槛很醒目。"},
+	"航线预报1": {"cost": 4, "kind": "weather_control", "weather_type": "gravity_tide", "weather_zone_count": 2, "weather_forecast_lead_seconds": 90.0, "weather_duration_seconds": 90.0, "play_product": "离岸水晶", "play_flow_required": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "航线", "商路"], "text": "主动发布引力航线预报：约90秒后影响选中区域附近2区，提高交通/商路窗口，适合买涨或保护己方运输。"},
+	"航线预报2": {"cost": 6, "kind": "weather_control", "weather_type": "gravity_tide", "weather_zone_count": 3, "weather_forecast_lead_seconds": 85.0, "weather_duration_seconds": 105.0, "play_product": "离岸水晶", "play_flow_required": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "航线", "升级"], "text": "升级航线预报：约85秒后覆盖3区，持续105秒，为商路型城市制造更稳定的运输窗口。"},
+	"航线预报3": {"cost": 8, "kind": "weather_control", "weather_type": "gravity_tide", "weather_zone_count": 4, "weather_forecast_lead_seconds": 75.0, "weather_duration_seconds": 120.0, "play_product": "离岸水晶", "play_flow_required": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "航线", "核心"], "text": "核心航线预报：约75秒后覆盖4区，持续120秒；适合围绕海洋/交通区域提前布局GDP买涨。"},
+	"航线预报4": {"cost": 10, "kind": "weather_control", "weather_type": "gravity_tide", "weather_zone_count": 5, "weather_forecast_lead_seconds": 65.0, "weather_duration_seconds": 150.0, "play_product": "离岸水晶", "play_flow_required": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "航线", "IV"], "text": "终端航线预报IV：约65秒后覆盖最多5区并持续150秒；能放大整条运输线，但公开预报给所有玩家反制时间。"},
 	"远期采购1": {"cost": 4, "kind": "product_contract_boon", "market_demand_pressure": 3, "market_contract_turns": 3, "cash": 120, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "合约"], "text": "围绕当前商品签远期采购：获得120资金，并为该商品追加持续90秒的需求压力+3；波动+1。"},
 	"远期采购2": {"cost": 6, "kind": "product_contract_boon", "market_demand_pressure": 5, "market_contract_turns": 4, "cash": 260, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "签更大远期采购：获得260资金，并为当前商品追加持续120秒的需求压力+5；波动+1。"},
 	"期货套保1": {"cost": 3, "kind": "product_contract_boon", "market_supply_pressure": 3, "market_contract_turns": 3, "cash": 90, "volatility_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "套保"], "text": "围绕当前商品做期货套保：获得90资金，追加持续90秒的供给压力+3，并降低波动1。"},
@@ -796,6 +812,10 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"城市买涨",
 	"城市做空",
 	"灾害保单",
+	"应急修复",
+	"竞争封锁",
+	"线索悬赏",
+	"航线预报",
 	"商品换线",
 	"需求改造",
 	"供应链保险",
@@ -895,6 +915,10 @@ const COMMON_CARD_POOL := [
 	"城市做空2",
 	"灾害保单1",
 	"灾害保单2",
+	"应急修复1",
+	"竞争封锁1",
+	"线索悬赏1",
+	"航线预报1",
 	"远期采购1",
 	"远期采购2",
 	"期货套保1",
@@ -11753,7 +11777,41 @@ func _apply_intel_card_trace(_player: Dictionary, skill: Dictionary) -> bool:
 		maxi(1, int(skill.get("trace_card_count", 1))),
 		String(skill.get("name", "出牌追帧"))
 	)
-	return traced > 0
+	var revealed := 0
+	var reveal_count := maxi(0, int(skill.get("reveal_city_count", 0)))
+	if reveal_count > 0:
+		var districts_to_check := []
+		if selected_district >= 0 and selected_district < districts.size():
+			districts_to_check.append(selected_district)
+		for entry_variant in _intel_city_guess_entries(selected_player, 12):
+			if districts_to_check.size() >= reveal_count * 3:
+				break
+			if not (entry_variant is Dictionary):
+				continue
+			var district_index := int((entry_variant as Dictionary).get("district_index", -1))
+			if district_index >= 0 and not districts_to_check.has(district_index):
+				districts_to_check.append(district_index)
+		for district_variant in districts_to_check:
+			if revealed >= reveal_count:
+				break
+			if _reveal_city_owner_by_intel_card(selected_player, int(district_variant), String(skill.get("name", "线索悬赏"))):
+				revealed += 1
+	var contract_traced := 0
+	var contract_count := maxi(0, int(skill.get("trace_contract_count", 0)))
+	if contract_count > 0:
+		contract_traced = _trace_contract_parties_for_player(
+			selected_player,
+			selected_card_resolution_id,
+			contract_count,
+			String(skill.get("name", "线索悬赏"))
+		)
+	if revealed > 0 or contract_traced > 0:
+		_log("%s追加私有悬赏线索：城市%d条，合约%d条；答案不公开。" % [
+			String(skill.get("name", "线索悬赏")),
+			revealed,
+			contract_traced,
+		])
+	return traced > 0 or revealed > 0 or contract_traced > 0
 
 
 func _apply_intel_contract_trace(_player: Dictionary, skill: Dictionary) -> bool:
@@ -13014,10 +13072,10 @@ func _card_strategy_route_label(skill: Dictionary) -> String:
 		return "天气博弈"
 	if kind == "area_trade_contract" or kind == "product_contract_boon" or int(skill.get("contract_income", 0)) > 0 or accept_delta != 0 or decline_delta != 0 or int(skill.get("accept_cash", 0)) != 0 or int(skill.get("decline_cash_penalty", 0)) != 0:
 		return "合约博弈"
-	if kind == "city_gdp_derivative" or kind == "product_speculation" or kind == "market_stabilize" or market_pressure != 0:
-		return "金融投机"
 	if route_damage > 0 or economy_delta < 0 or kind == "route_sabotage" or kind == "area_damage":
 		return "城市压制"
+	if kind == "city_gdp_derivative" or kind == "product_speculation" or kind == "market_stabilize" or market_pressure != 0:
+		return "金融投机"
 	if kind == "card_access_boon" or kind == "supply_draw" or int(skill.get("draw_amount", 0)) > 0 or bool(skill.get("card_access_global", false)) or int(skill.get("card_access_extra_hops", 0)) > 0:
 		return "补给构筑"
 	if repair_routes > 0 or economy_delta > 0 or kind == "city_revenue_boost" or kind == "cash_gain" or kind == "route_insurance" or kind == "city_product_upgrade" or kind == "city_product_shift" or kind == "city_demand_shift" or kind == "route_flow_boon" or kind == "product_growth_boon" or kind == "city_contract_boon" or float(skill.get("route_flow_multiplier", 1.0)) > 1.001 or float(skill.get("growth_multiplier", 1.0)) > 1.001 or int(skill.get("revenue_amount", 0)) > 0 or int(skill.get("cash", 0)) > 0:
@@ -17176,9 +17234,23 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	elif kind == "route_insurance":
 		var damaged_city := _ai_best_city_district(player_index, true, true)
 		if damaged_city < 0 or int(_district_city(damaged_city).get("trade_route_damage", 0)) <= 0:
+			var route_city := _ai_best_owned_route_city_for_product(player_index, route_product, false) if route_product != "" else -1
+			damaged_city = route_city if route_city >= 0 else own_city
+		if damaged_city < 0:
 			return {}
 		context["district"] = damaged_city
-		context["score"] = int(context["score"]) + int(_district_city(damaged_city).get("trade_route_damage", 0)) * 70
+		var defense_city := _district_city(damaged_city)
+		var route_pressure := int(defense_city.get("trade_route_damage", 0)) + int(defense_city.get("trade_disrupted_routes", 0))
+		context["score"] = int(context["score"]) \
+			+ route_pressure * 70 \
+			+ int(skill.get("repair_routes", 0)) * 36 \
+			+ int(skill.get("revenue_amount", 0)) / 2 \
+			+ int(round(maxf(0.0, float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 130.0))
+		context["reason"] = "保护己方城市商路｜断路压力%d｜修复%d｜流通×%.2f" % [
+			route_pressure,
+			int(skill.get("repair_routes", 0)),
+			float(skill.get("route_flow_multiplier", 1.0)),
+		]
 	elif kind == "city_gdp_derivative":
 		var gdp_direction := String(skill.get("gdp_bet_direction", "up"))
 		var gdp_target := _ai_best_city_for_gdp_derivative(player_index, gdp_direction, skill)
@@ -17241,6 +17313,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = own_city if net_shift >= 0 else rival_city
 		if int(context["district"]) < 0:
 			return {}
+		var shifted_city := _district_city(int(context["district"]))
+		if _city_is_active(shifted_city):
+			context["target_city"] = int(context["district"])
+			context["target_owner"] = int(shifted_city.get("owner", -1))
 		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]))
 	elif kind == "intel_city_reveal":
 		if rival_city < 0:
@@ -21307,16 +21383,25 @@ func _apply_route_insurance(player: Dictionary, skill: Dictionary) -> bool:
 	var revenue_amount := int(skill.get("revenue_amount", 0))
 	if revenue_amount > 0:
 		city["revenue_bonus"] = int(city.get("revenue_bonus", 0)) + revenue_amount
+	var before_multiplier := float(city.get("route_flow_multiplier", 1.0))
+	var before_seconds := _remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns")
+	var route_flow_multiplier: float = clampf(float(skill.get("route_flow_multiplier", 1.0)), 1.0, ROUTE_FLOW_MULTIPLIER_MAX)
+	var route_flow_seconds := _skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", 0)
+	if route_flow_multiplier > 1.001:
+		city["route_flow_multiplier"] = maxf(before_multiplier, route_flow_multiplier)
+		_set_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns", maxf(before_seconds, route_flow_seconds))
+		city["route_flow_source"] = _merge_boon_source(String(city.get("route_flow_source", "")), String(skill.get("name", "供应链保险")))
 	districts[selected_district]["city"] = city
 	_refresh_city_networks()
 	_refresh_product_market_prices()
 	_pulse_district(selected_district, Color("#22c55e"))
-	_log("%s为%s投保供应链：断路压力%d→%d，GDP/min永久+%d。" % [
+	_log("%s为%s投保供应链：断路压力%d→%d，GDP/min永久+%d，商路流通%s。" % [
 		String(skill.get("name", "供应链保险")),
 		districts[selected_district]["name"],
 		before_damage,
 		int(city.get("trade_route_damage", 0)),
 		revenue_amount,
+		_city_route_flow_status_text(city),
 	])
 	return true
 

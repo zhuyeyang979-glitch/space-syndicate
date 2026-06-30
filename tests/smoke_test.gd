@@ -286,6 +286,7 @@ func _run() -> void:
 	_expect(growth_strategy_text.contains("城市成长") and speculation_strategy_text.contains("金融投机") and intel_strategy_text.contains("情报推理") and monster_strategy_text.contains("怪兽路线"), "card strategy summaries are derived for economy, speculation, intel, and monster routes")
 	_expect(growth_budget_text.contains("强度预算") and growth_budget_text.contains("主强度") and growth_budget_text.contains("制衡") and monster_budget_text.contains("怪兽"), "card strength budgets explain power drivers and counterplay from data fields")
 	_expect(_verify_development_route_balance_baseline(main), "card pool exposes five AI-readable development routes with card coverage, rank ladders, and profile preferences")
+	_expect(_verify_ten_hour_route_pack(main), "ten-hour route pack adds complete repair, lockdown, intel-bounty, and route-weather ladders with AI-readable fields")
 	_expect(String(main.call("_card_art_stats", main.call("_make_skill", "城市融资1"))).contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
@@ -1904,6 +1905,23 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 		var route_play_memory := _ai_memory_has_kind_with_metadata(players_after_queue, 1, "匿名出牌", "route_plan_stage", "create_demand")
 		var route_gap_score_ok := demand_gap_score > supply_gap_score
 		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and route_gap_direct_ok and saw_route_gap_buy and route_gap_score_ok and saw_route_gap_play and saw_route_contract and not play_choice.is_empty() and route_play_queued and route_play_memory
+		if not first_route_ok:
+			print("AI route plan first-route failures: build=%s demand_plan=%s demand_context=%s route_buy=%s gap_direct=%s gap_buy=%s gap_score=%s gap_play=%s contract=%s play_choice=%s queued=%s memory=%s demand_score=%d supply_score=%d" % [
+				str(build_ok),
+				str(demand_plan_ok),
+				str(demand_context_ok),
+				str(saw_route_buy),
+				str(route_gap_direct_ok),
+				str(saw_route_gap_buy),
+				str(route_gap_score_ok),
+				str(saw_route_gap_play),
+				str(saw_route_contract),
+				str(not play_choice.is_empty()),
+				str(route_play_queued),
+				str(route_play_memory),
+				demand_gap_score,
+				supply_gap_score,
+			])
 		ok = first_route_ok and ok
 		var inventory_players := _as_array(main.get("players")).duplicate(true)
 		var inventory_player := inventory_players[1] as Dictionary
@@ -2036,6 +2054,24 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 			and attack_queued
 			and attack_play_memory
 		)
+		if not attack_ok:
+			print("AI route plan attack-route failures: own=%s rival=%s own_goods=%s rival_goods=%s plan=%s/%s business=%s context=%s context_stage=%s context_bonus=%d choice=%s choice_target=%d expected=%d queued=%s memory=%s" % [
+				str(attack_own_created),
+				str(attack_rival_created),
+				str(attack_own_goods),
+				str(attack_rival_goods),
+				String(attack_plan.get("product", "")),
+				String(attack_plan.get("stage", "")),
+				str(saw_attack_business),
+				str(not attack_context.is_empty()),
+				String(attack_context.get("route_plan_stage", "")),
+				int(attack_context.get("route_plan_bonus", 0)),
+				str(not attack_choice.is_empty()),
+				int(attack_choice.get("target_city", -1)),
+				rival_index,
+				str(attack_queued),
+				str(attack_play_memory),
+			])
 		ok = attack_ok and ok
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
@@ -3303,6 +3339,145 @@ func _verify_card_rank_ladders_are_complete(main: Node) -> bool:
 			previous_budget = budget_points
 		checked += 1
 	return checked >= 40
+
+
+func _verify_ten_hour_route_pack(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var failures := []
+	var families := ["应急修复", "竞争封锁", "线索悬赏", "航线预报"]
+	for family_variant in families:
+		var family := String(family_variant)
+		var base_price := int(main.call("_card_price", "%s1" % family))
+		var previous_budget := -1
+		for rank in range(1, 5):
+			var card_name := "%s%d" % [family, rank]
+			if not bool(main.call("_skill_exists", card_name)):
+				failures.append("missing %s" % card_name)
+				ok = false
+				continue
+			if int(main.call("_card_price", card_name)) != base_price:
+				failures.append("price drift %s" % card_name)
+				ok = false
+			var display := String(main.call("_card_display_name", card_name))
+			if not display.contains("%s级" % _roman_level(rank)):
+				failures.append("roman label %s -> %s" % [card_name, display])
+				ok = false
+			var budget := int(main.call("_card_strength_budget_points", card_name))
+			if previous_budget >= 0 and budget < previous_budget:
+				failures.append("budget regression %s" % card_name)
+				ok = false
+			previous_budget = budget
+	var run_pool := _as_array(main.call("_current_run_card_pool"))
+	for family_variant in families:
+		var base_name := "%s1" % String(family_variant)
+		if not run_pool.has(base_name):
+			failures.append("not in run pool %s" % base_name)
+			ok = false
+		for rank in range(2, 5):
+			if run_pool.has("%s%d" % [String(family_variant), rank]):
+				failures.append("non-base in run pool %s%d" % [String(family_variant), rank])
+				ok = false
+	var route_expectations := {
+		"应急修复1": {"route": "城市成长", "pillars": ["收益", "防御", "公开门槛"]},
+		"竞争封锁1": {"route": "城市压制", "pillars": ["压制", "公开门槛"]},
+		"线索悬赏1": {"route": "情报推理", "pillars": ["信息", "公开门槛"]},
+		"航线预报1": {"route": "天气博弈", "pillars": ["公开门槛"]},
+	}
+	for card_variant in route_expectations.keys():
+		var card_name := String(card_variant)
+		var skill := main.call("_make_skill", card_name) as Dictionary
+		var expected := route_expectations[card_name] as Dictionary
+		var route_label := String(main.call("_card_strategy_route_label", skill))
+		if route_label != String(expected.get("route", "")):
+			failures.append("route %s -> %s" % [card_name, route_label])
+			ok = false
+		var pillars := _as_array(main.call("_card_balance_pillars", skill))
+		for pillar_variant in _as_array(expected.get("pillars", [])):
+			var pillar := String(pillar_variant)
+			if not pillars.has(pillar):
+				failures.append("pillar %s lacks %s -> %s" % [card_name, pillar, str(pillars)])
+				ok = false
+	var districts := _as_array(main.get("districts"))
+	var repair_district := _first_buildable_land_district(districts)
+	if repair_district < 0:
+		failures.append("no repair district")
+		ok = false
+	else:
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 0, repair_district, "十小时修复烟测城", false))
+		ok = ok and _set_city_goods_for_test(main, repair_district, "光合凝胶", "轨迹墨水")
+		main.set("selected_player", 0)
+		main.set("selected_district", repair_district)
+		var districts_after_city := _as_array(main.get("districts")).duplicate(true)
+		var repair_entry := (districts_after_city[repair_district] as Dictionary).duplicate(true)
+		var city := (repair_entry.get("city", {}) as Dictionary).duplicate(true)
+		city["trade_route_damage"] = 3
+		repair_entry["city"] = city
+		districts_after_city[repair_district] = repair_entry
+		main.set("districts", districts_after_city)
+		var repaired := bool(main.call("_apply_route_insurance", _as_array(main.get("players"))[0], main.call("_make_skill", "应急修复3")))
+		var repaired_city := ((_as_array(main.get("districts"))[repair_district] as Dictionary).get("city", {}) as Dictionary)
+		if not repaired or int(repaired_city.get("trade_route_damage", 99)) > 0 or float(repaired_city.get("route_flow_multiplier", 1.0)) < 1.39:
+			failures.append("repair resolver damage=%d flow=%.2f" % [
+				int(repaired_city.get("trade_route_damage", 99)),
+				float(repaired_city.get("route_flow_multiplier", 1.0)),
+			])
+			ok = false
+	var mid_restore := int(main.call("_apply_run_state", saved))
+	if mid_restore != OK:
+		failures.append("mid restore")
+		ok = false
+	var ai_ok := true
+	var ai_districts := _as_array(main.get("districts"))
+	var own_index := _first_buildable_land_district(ai_districts)
+	if own_index >= 0:
+		ai_ok = ai_ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI修复路线烟测城", false))
+		ai_ok = ai_ok and _set_city_goods_for_test(main, own_index, "光合凝胶", "轨迹墨水")
+	var weather_index := _first_buildable_land_district(_as_array(main.get("districts")))
+	if weather_index >= 0:
+		ai_ok = ai_ok and bool(main.call("_create_city_at_district_for_player", 1, weather_index, "AI航线预报烟测城", false))
+		ai_ok = ai_ok and _set_city_goods_for_test(main, weather_index, "离岸水晶", "轨迹墨水")
+	var rival_index := _first_buildable_land_district(_as_array(main.get("districts")))
+	if rival_index >= 0:
+		ai_ok = ai_ok and bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI封锁路线烟测城", false))
+		ai_ok = ai_ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "星尘香料")
+	if ai_ok and own_index >= 0 and rival_index >= 0:
+		var players := _as_array(main.get("players")).duplicate(true)
+		if players.size() > 2:
+			var rival_player := players[2] as Dictionary
+			rival_player["cash"] = 9000
+			players[2] = rival_player
+		var ai_player := players[1] as Dictionary
+		ai_player["cash"] = 8000
+		ai_player["action_cooldown"] = 0.0
+		ai_player["slots"] = [
+			main.call("_make_skill", "应急修复1"),
+			main.call("_make_skill", "竞争封锁1"),
+			main.call("_make_skill", "线索悬赏1"),
+			main.call("_make_skill", "航线预报1"),
+		]
+		players[1] = ai_player
+		main.set("players", players)
+		var ai_contexts := []
+		for slot_index in range(4):
+			var ctx := main.call("_ai_card_play_context", 1, slot_index, (ai_player["slots"][slot_index] as Dictionary)) as Dictionary
+			ai_contexts.append(ctx)
+		if (ai_contexts[0] as Dictionary).is_empty() or String((ai_contexts[0] as Dictionary).get("reason", "")).find("保护") < 0:
+			failures.append("AI repair context missing")
+			ok = false
+		if (ai_contexts[1] as Dictionary).is_empty() or int((ai_contexts[1] as Dictionary).get("target_owner", -1)) != 2:
+			failures.append("AI lockdown target owner")
+			ok = false
+		if (ai_contexts[3] as Dictionary).is_empty() or String((ai_contexts[3] as Dictionary).get("reason", "")).find("天气") < 0:
+			failures.append("AI weather context missing")
+			ok = false
+	else:
+		failures.append("AI route setup")
+		ok = false
+	var restore_result := int(main.call("_apply_run_state", saved))
+	if not failures.is_empty():
+		print("Ten-hour route pack failures: %s" % " / ".join(failures))
+	return ok and restore_result == OK
 
 
 func _verify_development_route_balance_baseline(main: Node) -> bool:
