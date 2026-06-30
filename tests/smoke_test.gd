@@ -376,6 +376,7 @@ func _run() -> void:
 		_expect(int((players_after_market[0] as Dictionary).get("last_cashflow_income", 0)) > 0, "realtime cashflow records income since the last global refresh")
 		_expect(_as_array((players_after_market[0] as Dictionary).get("cash_history", [])).size() >= 3, "player cash history records spending and income changes")
 		_expect(_player_ledger_contains(players_after_market, 0, "城市收入"), "realtime cashflow records city income in the economy ledger")
+		_expect(_verify_realtime_gdp_directionality_pack(main, buildable_district), "realtime GDP breakdown responds to production, consumption, transport, route-flow, route damage, and region damage")
 		_verify_economy_card_effects(main, buildable_district)
 		var score_after_build := int(main.call("_player_final_score", 0))
 		_expect(int(main.call("_save_run")) == OK, "current run can be saved")
@@ -5253,6 +5254,171 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	main.set("game_over", previous_game_over)
 	main.call("_refresh_ui")
 	return play_ok and blocked_ok
+
+
+func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -> bool:
+	var previous_districts := _as_array(main.get("districts")).duplicate(true)
+	var previous_market := (main.get("product_market") as Dictionary).duplicate(true)
+	var previous_selected_district := int(main.get("selected_district"))
+	var previous_selected_product := String(main.get("selected_trade_product"))
+	var previous_log_lines := _as_array(main.get("log_lines")).duplicate(true)
+	var ok := true
+	var districts := previous_districts.duplicate(true)
+	if district_index < 0 or district_index >= districts.size() or districts.size() < 2:
+		ok = false
+	else:
+		var source_index := (district_index + 1) % districts.size()
+		if source_index == district_index:
+			ok = false
+		else:
+			var product_name := "烟测方向商品"
+			var target := (districts[district_index] as Dictionary).duplicate(true)
+			var source := (districts[source_index] as Dictionary).duplicate(true)
+			var target_neighbors := _as_array(target.get("neighbors", [])).duplicate(true)
+			var source_neighbors := _as_array(source.get("neighbors", [])).duplicate(true)
+			if not target_neighbors.has(source_index):
+				target_neighbors.append(source_index)
+			if not source_neighbors.has(district_index):
+				source_neighbors.append(district_index)
+			target["neighbors"] = target_neighbors
+			source["neighbors"] = source_neighbors
+			target["terrain"] = "land"
+			source["terrain"] = "land"
+			target["destroyed"] = false
+			source["destroyed"] = false
+			target["products"] = []
+			source["products"] = [product_name]
+			target["production_level"] = 2
+			target["transport_level"] = 2
+			target["consumption_level"] = 2
+			target["damage"] = 0
+			source["production_level"] = 4
+			source["transport_level"] = 3
+			source["consumption_level"] = 1
+			target.erase("transport_score")
+			source.erase("transport_score")
+			target["city"] = {
+				"active": true,
+				"owner": 0,
+				"products": [{"name": product_name, "level": 1}],
+				"demands": [product_name],
+				"revenue_bonus": 0,
+				"contract_income_bonus": 0,
+				"contract_seconds": 0.0,
+				"contract_turns": 0,
+				"trade_route_damage": 0,
+				"trade_disrupted_routes": 0,
+				"competition_matches": 0,
+				"route_flow_multiplier": 1.0,
+				"route_flow_seconds": 0.0,
+				"route_flow_turns": 0,
+				"route_flow_source": "",
+				"gdp_derivatives": [],
+				"cashflow_remainder": 0.0,
+			}
+			source["city"] = {}
+			districts[district_index] = target
+			districts[source_index] = source
+			var product_market := previous_market.duplicate(true)
+			product_market[product_name] = {
+				"price": 100,
+				"base_price": 100,
+				"tier": "测试",
+				"supply": 4,
+				"demand": 4,
+				"volatility": 1,
+				"temporary_supply_pressure": 0,
+				"temporary_demand_pressure": 0,
+			}
+			main.set("districts", districts)
+			main.set("product_market", product_market)
+			main.set("selected_district", district_index)
+			main.set("selected_trade_product", product_name)
+			main.call("_refresh_city_networks")
+			var baseline := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
+			var baseline_product := int(baseline.get("product", 0))
+			var baseline_route := int(baseline.get("route", 0))
+			var baseline_net := int(baseline.get("net", 0))
+			ok = ok and baseline_product > 0 and baseline_route > 0 and baseline_net > 0
+
+			districts = _as_array(main.get("districts")).duplicate(true)
+			target = (districts[district_index] as Dictionary).duplicate(true)
+			target["production_level"] = 5
+			target.erase("transport_score")
+			districts[district_index] = target
+			main.set("districts", districts)
+			main.call("_refresh_city_networks")
+			var production_breakdown := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
+			var production_product := int(production_breakdown.get("product", 0))
+			ok = ok and production_product > baseline_product
+
+			districts = _as_array(main.get("districts")).duplicate(true)
+			target = (districts[district_index] as Dictionary).duplicate(true)
+			target["transport_level"] = 5
+			target.erase("transport_score")
+			districts[district_index] = target
+			main.set("districts", districts)
+			main.call("_refresh_city_networks")
+			var transport_breakdown := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
+			var transport_product := int(transport_breakdown.get("product", 0))
+			ok = ok and transport_product > production_product
+
+			districts = _as_array(main.get("districts")).duplicate(true)
+			target = (districts[district_index] as Dictionary).duplicate(true)
+			target["consumption_level"] = 5
+			districts[district_index] = target
+			main.set("districts", districts)
+			main.call("_refresh_city_networks")
+			var consumption_breakdown := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
+			var consumption_route := int(consumption_breakdown.get("route", 0))
+			ok = ok and consumption_route > int(transport_breakdown.get("route", 0))
+
+			districts = _as_array(main.get("districts")).duplicate(true)
+			target = (districts[district_index] as Dictionary).duplicate(true)
+			var city := (target.get("city", {}) as Dictionary).duplicate(true)
+			city["route_flow_multiplier"] = 1.6
+			city["route_flow_seconds"] = 120.0
+			city["route_flow_turns"] = 4
+			city["route_flow_source"] = "烟测流速"
+			target["city"] = city
+			districts[district_index] = target
+			main.set("districts", districts)
+			main.call("_refresh_city_networks")
+			var route_flow_breakdown := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
+			var route_flow_route := int(route_flow_breakdown.get("route", 0))
+			var route_flow_net := int(route_flow_breakdown.get("net", 0))
+			ok = ok and route_flow_route > consumption_route
+
+			districts = _as_array(main.get("districts")).duplicate(true)
+			target = (districts[district_index] as Dictionary).duplicate(true)
+			city = (target.get("city", {}) as Dictionary).duplicate(true)
+			city["trade_route_damage"] = 1
+			target["city"] = city
+			districts[district_index] = target
+			main.set("districts", districts)
+			main.call("_refresh_city_networks")
+			var route_damage_breakdown := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
+			ok = ok and int(route_damage_breakdown.get("route_penalty", 0)) > 0 and int(route_damage_breakdown.get("net", 0)) < route_flow_net
+
+			districts = _as_array(main.get("districts")).duplicate(true)
+			target = (districts[district_index] as Dictionary).duplicate(true)
+			target["damage"] = 3
+			districts[district_index] = target
+			main.set("districts", districts)
+			var region_damage_breakdown := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
+			ok = ok and int(region_damage_breakdown.get("damage_penalty", 0)) > int(route_damage_breakdown.get("damage_penalty", 0)) and int(region_damage_breakdown.get("net", 0)) <= int(route_damage_breakdown.get("net", 0))
+
+			var summary := String(main.call("_city_income_breakdown_summary", region_damage_breakdown))
+			var reason := String(main.call("_city_gdp_change_reason_text", region_damage_breakdown))
+			ok = ok and summary.contains("生产GDP") and summary.contains("消费GDP") and summary.contains("断路") and summary.contains("损伤")
+			ok = ok and reason.contains("驱动") and reason.contains("压力")
+	main.set("districts", previous_districts)
+	main.set("product_market", previous_market)
+	main.set("selected_district", previous_selected_district)
+	main.set("selected_trade_product", previous_selected_product)
+	main.set("log_lines", previous_log_lines)
+	main.call("_refresh_ui")
+	return ok
 
 
 func _verify_economy_card_effects(main: Node, district_index: int) -> void:

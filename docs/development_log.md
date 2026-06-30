@@ -3,6 +3,25 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜实时GDP方向性沙盒验证
+
+### 本轮实现
+
+- `tests/smoke_test.gd` 新增 `_verify_realtime_gdp_directionality_pack()`，用受控城市、受控产区和受控商品市场直接验证 GDP/min 拆解方向，而不是只通过卡牌结果间接推断。
+- 新测试会临时构造一座生产/需求/运输都可控的城市，并在结束后完整恢复地图、市场、选区和日志，避免污染后续长 smoke。
+- 方向性断言覆盖：
+  - 提高生产等级会提高 `product` 生产 GDP。
+  - 提高交通等级会提高基于运输速度的生产收益。
+  - 提高消费等级会提高 `route` 消费/商路 GDP。
+  - 提高城市 `route_flow_multiplier` 会继续放大商路 GDP。
+  - 商路损伤会增加 `route_penalty` 并降低净 GDP。
+  - 区域伤害会增加 `damage_penalty` 并继续压低净 GDP。
+  - GDP 拆解摘要必须保留生产、消费、断路、损伤等玩家可解释字段。
+
+### 新增验证
+
+- 完整 Godot headless smoke test 通过，新增断言名称：`realtime GDP breakdown responds to production, consumption, transport, route-flow, route damage, and region damage`。
+
 ## 2026-07-01｜十小时路线补强包与AI字段验证
 
 ### 本轮实现
