@@ -178,6 +178,18 @@ func _run() -> void:
 	_expect(product_market != null and not product_market.is_empty() and _product_market_has_prices(product_market), "new game creates priced product market data")
 	var status_label := main.get("status_label") as Label
 	_expect(status_label != null and status_label.text.contains("天气:") and status_label.text.contains("预报:"), "top status bar exposes active weather and the next public forecast")
+	var weather_active_label := main.get("weather_active_label") as Label
+	var weather_forecast_label := main.get("weather_forecast_label") as Label
+	var weather_impact_label := main.get("weather_impact_label") as Label
+	_expect(
+		weather_active_label != null
+		and weather_forecast_label != null
+		and weather_impact_label != null
+		and weather_active_label.text.contains("现在：")
+		and weather_forecast_label.text.contains("预报：")
+		and weather_impact_label.text.contains("影响："),
+		"main map panel exposes a compact weather forecast strip with current, forecast, and impact text"
+	)
 	_expect(_verify_weather_forecast_system(main), "planet weather forecasts one to five affected regions 60-180 seconds ahead and then affects GDP modifiers")
 	_expect(_verify_news_and_weather_card_rules(main), "news cards are player-made effects while weather-control cards rewrite public forecasts")
 	_summon_starting_monsters_for_smoke(main, EXPECTED_SUMMONED_MONSTER_COUNT)
@@ -2379,6 +2391,7 @@ func _verify_weather_forecast_system(main: Node) -> bool:
 		ok = ok and String(main.call("_weather_status_text")).contains("预报")
 		main.set("game_time", float(forecast.get("starts_at", now)) + 0.2)
 		main.call("_update_weather_system", 0.2)
+		main.call("_refresh_weather_forecast_strip")
 		var active := _as_array(main.get("active_weather_zones"))
 		ok = ok and not active.is_empty()
 		if not active.is_empty():
@@ -2393,6 +2406,10 @@ func _verify_weather_forecast_system(main: Node) -> bool:
 				ok = ok and (absf(production_multiplier - 1.0) > 0.001 or absf(transport_multiplier - 1.0) > 0.001 or absf(consumption_multiplier - 1.0) > 0.001)
 				ok = ok and String(main.call("_district_weather_summary", district_index)).contains(String(main.call("_weather_label", String(active_entry.get("type", "")))))
 			ok = ok and String(main.call("_weather_status_text")).contains("影响")
+			var active_label := main.get("weather_active_label") as Label
+			var impact_label := main.get("weather_impact_label") as Label
+			ok = ok and active_label != null and active_label.text.contains("现在：") and active_label.text.contains(String(main.call("_weather_label", String(active_entry.get("type", "")))))
+			ok = ok and impact_label != null and impact_label.text.contains("产×") and impact_label.text.contains("交×") and impact_label.text.contains("消×")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 

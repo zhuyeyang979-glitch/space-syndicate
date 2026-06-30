@@ -1263,6 +1263,10 @@ var speed_before_target_choice := 1.0
 var run_save_path := RUN_SAVE_PATH
 
 var status_label: Label
+var weather_forecast_panel: PanelContainer
+var weather_active_label: Label
+var weather_forecast_label: Label
+var weather_impact_label: Label
 var map_view: Control
 var player_box: VBoxContainer
 var menu_overlay: Control
@@ -1518,6 +1522,8 @@ func _build_layout() -> void:
 	fullscreen_button.pressed.connect(Callable(self, "_open_fullscreen_map"))
 	map_toolbar.add_child(fullscreen_button)
 
+	_build_weather_forecast_strip(board_panel)
+
 	map_view = MapViewScript.new()
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1531,6 +1537,45 @@ func _build_layout() -> void:
 	_build_full_map_overlay()
 	_build_card_resolution_overlay()
 	_build_menu_overlay()
+
+
+func _build_weather_forecast_strip(parent: Container) -> void:
+	weather_forecast_panel = PanelContainer.new()
+	weather_forecast_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#0f172a")
+	style.border_color = Color("#2563eb")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	weather_forecast_panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(weather_forecast_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	weather_forecast_panel.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	margin.add_child(row)
+
+	var title := _plain_label("星球天气", 12, Color("#bfdbfe"))
+	title.custom_minimum_size = Vector2(72, 0)
+	row.add_child(title)
+
+	weather_active_label = _plain_label("现在：无活跃天气", 12, Color("#e0f2fe"))
+	weather_active_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(weather_active_label)
+
+	weather_forecast_label = _plain_label("预报：开局后生成", 12, Color("#fde68a"))
+	weather_forecast_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(weather_forecast_label)
+
+	weather_impact_label = _plain_label("影响：天气会改变生产/交通/消费", 11, Color("#cbd5e1"))
+	weather_impact_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(weather_impact_label)
 
 
 func _build_card_resolution_track(page: VBoxContainer) -> void:
@@ -9112,6 +9157,7 @@ func _toggle_pause() -> void:
 
 func _refresh_ui() -> void:
 	_refresh_status()
+	_refresh_weather_forecast_strip()
 	_refresh_card_resolution_track()
 	_refresh_board()
 	_refresh_map_controls()
@@ -9134,6 +9180,67 @@ func _refresh_status() -> void:
 		_card_resolution_status_text(),
 		_weather_status_text(),
 		district_name,
+	]
+
+
+func _refresh_weather_forecast_strip() -> void:
+	if weather_active_label == null or weather_forecast_label == null or weather_impact_label == null:
+		return
+	if districts.is_empty():
+		weather_active_label.text = "现在：无活跃天气"
+		weather_forecast_label.text = "预报：开始新局后生成"
+		weather_impact_label.text = "影响：提前公开，方便建城、买涨/做空和调怪兽"
+		return
+	weather_active_label.text = _weather_active_ui_text()
+	weather_forecast_label.text = _weather_forecast_ui_text()
+	weather_impact_label.text = _weather_impact_ui_text()
+
+
+func _weather_active_ui_text() -> String:
+	if active_weather_zones.is_empty():
+		return "现在：无活跃天气"
+	var entry: Dictionary = active_weather_zones[0]
+	var extra := " +%d" % (active_weather_zones.size() - 1) if active_weather_zones.size() > 1 else ""
+	return "现在：%s%s｜%s｜剩%s" % [
+		_weather_label(String(entry.get("type", ""))),
+		extra,
+		_weather_district_names(entry, 3),
+		_duration_short_text(maxf(0.0, float(entry.get("ends_at", game_time)) - game_time)),
+	]
+
+
+func _weather_forecast_ui_text() -> String:
+	if weather_forecast.is_empty():
+		return "预报：暂无下一条"
+	var source_text := "匿名改写" if bool(weather_forecast.get("forced", false)) else "气象台"
+	return "预报：%s｜%s后｜%s｜%s" % [
+		_weather_label(String(weather_forecast.get("type", ""))),
+		_duration_short_text(maxf(0.0, float(weather_forecast.get("starts_at", game_time)) - game_time)),
+		_weather_district_names(weather_forecast, 3),
+		source_text,
+	]
+
+
+func _weather_impact_ui_text() -> String:
+	var entry := {}
+	if not active_weather_zones.is_empty():
+		entry = active_weather_zones[0] as Dictionary
+	elif not weather_forecast.is_empty():
+		entry = weather_forecast
+	if entry.is_empty():
+		return "影响：提前公开，方便建城、买涨/做空和调怪兽"
+	var type_id := String(entry.get("type", ""))
+	var template := _weather_template(type_id)
+	var parts := [
+		"产×%.2f" % float(template.get("production_multiplier", 1.0)),
+		"交×%.2f" % float(template.get("transport_multiplier", 1.0)),
+		"消×%.2f" % float(template.get("consumption_multiplier", 1.0)),
+	]
+	if template.has("ocean_transport_multiplier"):
+		parts.append("海交×%.2f" % float(template.get("ocean_transport_multiplier", 1.0)))
+	return "影响：%s｜持续%s" % [
+		" ".join(parts),
+		_duration_short_text(float(entry.get("duration", WEATHER_DURATION_MIN_SECONDS))),
 	]
 
 
