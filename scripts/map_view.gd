@@ -958,6 +958,21 @@ func _draw_map_event_local(effect: Dictionary, alpha: float, progress: float, ki
 				var start := pos + Vector2(cos(angle), sin(angle)) * base_radius * 0.28
 				var end := pos + Vector2(cos(angle + sin(float(i)) * 0.25), sin(angle + sin(float(i)) * 0.25)) * base_radius * (0.72 + progress * 0.46)
 				draw_line(start, end, shock, 1.8 + alpha * 1.2, true)
+		"wager":
+			var field := color.lightened(0.16)
+			field.a = 0.10 + alpha * 0.26
+			for i in range(4):
+				var radius := base_radius * (0.55 + float(i) * 0.32 + progress * 0.80)
+				draw_arc(pos, radius, 0.0, TAU, 72, field, 2.2 + alpha * 1.8, true)
+			var cross := Color("#fef3c7")
+			cross.a = 0.18 + alpha * 0.38
+			draw_line(pos + Vector2(-base_radius * 1.25, 0.0), pos + Vector2(base_radius * 1.25, 0.0), cross, 2.0 + alpha, true)
+			draw_line(pos + Vector2(0.0, -base_radius * 1.25), pos + Vector2(0.0, base_radius * 1.25), cross, 2.0 + alpha, true)
+			for i in range(10):
+				var angle := float(i) / 10.0 * TAU + progress * 1.4
+				var chip_pos := pos + Vector2(cos(angle), sin(angle)) * base_radius * (0.38 + 0.72 * progress)
+				draw_circle(chip_pos, 2.6 + alpha * 3.2, cross)
+			_draw_map_event_burst(pos, color, alpha, progress, 1.35)
 		_:
 			_draw_map_event_burst(pos, color, alpha, progress, 0.86)
 	_draw_map_event_label(pos, String(effect.get("label", "")), color, alpha)

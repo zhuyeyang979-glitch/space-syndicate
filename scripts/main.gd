@@ -168,6 +168,10 @@ const TEMP_DECISION_CONTRACT := "contract_response"
 const TEMP_DECISION_MONSTER_TARGET := "monster_target_choice"
 const TEMP_DECISION_PLAYER_TARGET := "player_target_choice"
 const TEMP_DECISION_MONSTER_WAGER := "monster_wager"
+const MONSTER_WAGER_SECONDS := 30.0
+const MONSTER_WAGER_DEFAULT_STAKE := 100
+const MONSTER_WAGER_LARGE_STAKE := 500
+const MONSTER_WAGER_HISTORY_LIMIT := 12
 const MONSTER_CARD_PLAY_CASH_PER_EXISTING := 100
 const MONSTER_OWNER_DAMAGE_CASH_POOL := 800
 const MONSTER_CARD_DURATION_BASE_SECONDS := 95.0
@@ -1384,6 +1388,9 @@ var auto_monsters := []
 var next_auto_monster_uid := 1
 var next_special_monster_slot := 0
 var selected_auto_monster_slot := 0
+var active_monster_wagers := []
+var resolved_monster_wager_history := []
+var monster_wager_sequence := 0
 var pending_target_player_index := -1
 var pending_target_slot_index := -1
 var pending_target_paused_time := false
@@ -1497,7 +1504,17 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if game_over or time_scale <= 0.0:
+	if game_over:
+		return
+	if _monster_wager_freezes_game():
+		_update_monster_wagers(delta)
+		_update_visual_cues(delta)
+		ui_timer -= delta
+		if ui_timer <= 0.0:
+			_refresh_ui()
+			ui_timer = 0.25
+		return
+	if time_scale <= 0.0:
 		return
 
 	var scaled_delta := delta * time_scale
@@ -1510,6 +1527,7 @@ func _process(delta: float) -> void:
 	_update_weather_system(scaled_delta)
 	_update_realtime_economy_cashflow(scaled_delta)
 	_age_economic_boons(scaled_delta)
+	_update_monster_wagers(scaled_delta)
 	_update_ai_decisions(scaled_delta)
 	_update_auto_monster_durations(scaled_delta)
 	_update_visual_cues(scaled_delta)
@@ -2531,7 +2549,7 @@ func _build_menu_overlay() -> void:
 	_add_menu_quick_nav_button("standings", "局势", "查看现金目标、终局倒计时和结算估算。", Callable(self, "_open_standings_menu"), Color("#facc15"))
 	_add_menu_quick_nav_button("economy", "经济", "查看GDP、商品、商路、天气和收入拆解。", Callable(self, "_open_economy_overview_menu"), Color("#4ade80"))
 	_add_menu_quick_nav_button("intel", "情报", "整理城市归属推理、卡牌竞猜和怪兽资金线索。", Callable(self, "_open_intel_dossier_menu"), Color("#c084fc"))
-	_add_menu_quick_nav_button("rules", "规则", "查看购牌、出牌、竞价、合约、天气和终局规则。", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
+	_add_menu_quick_nav_button("rules", "规则", "查看购牌、出牌、竞价、合约、怪兽赌局、天气和终局规则。", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
 	_add_menu_quick_nav_button("compendium", "图鉴", "进入角色、怪兽、卡牌、商品和区域图鉴。", Callable(self, "_open_compendium_menu"), Color("#f472b6"))
 
 	menu_interaction_hint_panel = PanelContainer.new()
@@ -2665,7 +2683,7 @@ func _build_menu_overlay() -> void:
 	_add_main_menu_action_grid(box, "资料", "所有规则说明、图鉴和 hover/详情切换入口都集中在这里。", [
 		{
 			"label": "游戏规则",
-			"detail": "查看购牌、出牌、竞价、合约、天气、终局和隐私规则。",
+			"detail": "查看购牌、出牌、竞价、合约、怪兽赌局、天气、终局和隐私规则。",
 			"target": Callable(self, "_open_rules_menu"),
 			"accent": Color("#93c5fd"),
 		},
@@ -3141,7 +3159,7 @@ func _open_rules_menu() -> void:
 	lines.append("")
 	lines.append("1. 身份与AI席位：每局3-8个席位，其中2-7个为AI对手，剩余席位是真人/本地玩家视角。玩家都是外星辛迪加角色；每名玩家开局获得一张角色卡，并在开局准备中从全部怪兽任选一只I级怪兽作为起始怪兽牌；这张起始牌无区域/商品流动门槛，用来把第一只怪兽匿名召唤到星球上。")
 	lines.append("2. 怪兽牌：怪兽通过怪兽牌匿名召唤入场。怪兽有生命值、移动速度、在场时间、召唤区域限制和自动行动概率；大多数怪兽会活动一段时间后自然离场，即使没有被杀掉。同名怪兽牌可用于升级己方同名在场怪兽，刷新生命值和在场时间。")
-	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地初始生产1种商品并有1种本地需求；海洋不生产，主要承载商路并影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
+	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地和海洋都会有1种初始生产商品与1种本地需求；海洋偏向鱼群、巨藻、海底能源、潮汐电力等商品，并继续承载商路、影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
 	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；城市按当前GDP/min持续产生现金，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
 	lines.append("5. 市场价格：商品价格只能由供给、需求、商路断损、城市经营和经济天气重算，不能被玩家直接指定。扩张城市生产/需求、充实商路、引导怪兽破坏，才会改变市场。")
 	lines.append("6. 购牌与升级：卡牌需要花钱购买；默认只能从怪兽落地区或相邻区获取，怪兽所在区域八折，相邻区域原价。点开某区域补给时会按那一瞬间的怪兽位置锁定本窗口购牌资格和价格；选牌途中怪兽离开也不取消本窗口购买。购牌是随时场上动作，不吃行动冷却。角色能力或补给牌可把购牌范围扩到二跳或全局，但会按远程/全局倍率加价；这只影响买牌，不放宽后续怪兽牌的召唤区域。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限；若购买新普通牌会超上限，必须先私下弃掉一张旧普通牌，手牌数量和弃牌内容都不公开。" % PLAYER_HAND_LIMIT)
@@ -3153,10 +3171,11 @@ func _open_rules_menu() -> void:
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
 	lines.append("13. 经济与手牌隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、现金流、资金轨迹、流水、手牌数量和弃牌记录；其他玩家只能从公开行动推测。终局才公开结算资金并按钱判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
-	lines.append("15. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时；倒计时期间只公开“有人达标”，不公开触发者。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
-	lines.append("16. AI训练骨架：AI席位目前会在全局市场刷新和实时决策中自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
-	lines.append("17. 新闻与天气：新闻不会被动触发，只能由玩家打出的匿名新闻牌制造热度、商品传闻、监管风暴或危机快讯。天气是公开星球环境系统，每次影响1-5个区域，通常提前60-180秒在顶部状态栏预报；天气生效后会修正区域生产、交通和消费，天气干预牌可以匿名改写下一条预报。")
-	lines.append("18. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
+	lines.append("15. 怪兽赌局：怪兽遭遇会先冻结整局时间并打开最长30秒公开下注窗。所有玩家必须至少押¥%d到一个参战怪兽，不能观望；下注身份、目标和金额全部公开。多个怪兽同区混战时会形成多方奖池。全员下注后可提前开战，超时未选者会被系统强制押底注；造成最高伤害的怪兽一方获胜，押中者按中奖下注占比分走总奖池。" % MONSTER_WAGER_DEFAULT_STAKE)
+	lines.append("16. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时；倒计时期间只公开“有人达标”，不公开触发者。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
+	lines.append("17. AI训练骨架：AI席位目前会在全局市场刷新和实时决策中自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
+	lines.append("18. 新闻与天气：新闻不会被动触发，只能由玩家打出的匿名新闻牌制造热度、商品传闻、监管风暴或危机快讯。天气是公开星球环境系统，每次影响1-5个区域，通常提前60-180秒在顶部状态栏预报；天气生效后会修正区域生产、交通和消费，天气干预牌可以匿名改写下一条预报。")
+	lines.append("19. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察；怪兽赌局会临时冻结对局时间，直到下注窗口结束。")
 	lines.append("")
 	lines.append("操作入口索引：1-8选席位；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
 	_show_menu(
@@ -3170,12 +3189,13 @@ func _open_rules_menu() -> void:
 func _open_tutorial_menu() -> void:
 	_show_menu(
 		"新手引导",
-		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会按实时局势自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP/min 会持续按秒变成现金。全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照；天气会提前约1-3分钟预报，生效后修正生产、交通和消费。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价。点开区域补给时会按那一瞬间的怪兽位置锁定本窗口资格和价格，选牌途中怪兽离开也仍可买；同一玩家同时只能保留一个区域购牌窗口，新开区域会取消旧窗口资格；购牌不吃行动冷却。角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限；买新普通牌若会超上限，需要先私下弃掉一张旧普通牌。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。城市买涨/做空等金融牌按卡面秒数持仓，到期看即时GDP涨跌结算。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济和手牌隐私：只看得到自己的现金、账本、手牌数量和弃牌记录。对手花了多少、还剩多少、是否满手，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻牌制造的热度、天气窗口、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标或GDP。新闻不会被动发生；怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
+		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路并生产海域商品；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会按实时局势自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP/min 会持续按秒变成现金。全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照；天气会提前约1-3分钟预报，生效后修正生产、交通和消费。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价。点开区域补给时会按那一瞬间的怪兽位置锁定本窗口资格和价格，选牌途中怪兽离开也仍可买；同一玩家同时只能保留一个区域购牌窗口，新开区域会取消旧窗口资格；购牌不吃行动冷却。角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限；买新普通牌若会超上限，需要先私下弃掉一张旧普通牌。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。城市买涨/做空等金融牌按卡面秒数持仓，到期看即时GDP涨跌结算。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 怪兽赌局：怪兽遭遇会冻结对局时间，所有玩家必须公开押至少¥%d到一只参战怪兽；身份、目标和金额公开。多怪兽混战会形成多方奖池，押中最高伤害怪兽的人按中奖下注占比分奖池。\n10. 保护经济和手牌隐私：只看得到自己的现金、账本、手牌数量和弃牌记录。对手花了多少、还剩多少、是否满手，只能结合卡牌、竞价、商品流动条件、赌局下注和地图变化推理。\n11. 借刀杀城：新闻牌制造的热度、天气窗口、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标或GDP。新闻不会被动发生；怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
 			CITY_BUILD_COST,
 			INTEL_CORRECT_GUESS_CASH,
 			INTEL_WRONG_GUESS_COST,
 			PLAYER_HAND_LIMIT,
 			CARD_OWNER_GUESS_STAKE,
+			MONSTER_WAGER_DEFAULT_STAKE,
 		],
 		not game_over
 	)
@@ -8584,6 +8604,9 @@ func _capture_run_state() -> Dictionary:
 		"next_auto_monster_uid": next_auto_monster_uid,
 		"next_special_monster_slot": next_special_monster_slot,
 		"selected_auto_monster_slot": selected_auto_monster_slot,
+		"active_monster_wagers": active_monster_wagers.duplicate(true),
+		"resolved_monster_wager_history": resolved_monster_wager_history.duplicate(true),
+		"monster_wager_sequence": monster_wager_sequence,
 		"pending_target_player_index": pending_target_player_index,
 		"pending_target_slot_index": pending_target_slot_index,
 		"pending_target_paused_time": pending_target_paused_time,
@@ -8702,6 +8725,9 @@ func _apply_run_state(state: Dictionary) -> int:
 	next_auto_monster_uid = int(state.get("next_auto_monster_uid", 1))
 	next_special_monster_slot = int(state.get("next_special_monster_slot", 0))
 	selected_auto_monster_slot = int(state.get("selected_auto_monster_slot", 0))
+	active_monster_wagers = (state.get("active_monster_wagers", []) as Array).duplicate(true)
+	resolved_monster_wager_history = (state.get("resolved_monster_wager_history", []) as Array).duplicate(true)
+	monster_wager_sequence = int(state.get("monster_wager_sequence", 0))
 	pending_target_player_index = int(state.get("pending_target_player_index", -1))
 	pending_target_slot_index = int(state.get("pending_target_slot_index", -1))
 	pending_target_paused_time = bool(state.get("pending_target_paused_time", false))
@@ -9520,6 +9546,9 @@ func _new_game() -> void:
 	next_auto_monster_uid = 1
 	next_special_monster_slot = 0
 	selected_auto_monster_slot = 0
+	active_monster_wagers = []
+	resolved_monster_wager_history = []
+	monster_wager_sequence = 0
 	pending_target_player_index = -1
 	pending_target_slot_index = -1
 	pending_target_paused_time = false
@@ -12611,7 +12640,7 @@ func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
 	action_row.add_child(tutorial_button)
 	var rules_button := Button.new()
 	rules_button.text = "游戏规则"
-	rules_button.tooltip_text = "查看购牌、出牌、竞价、合约、天气、终局和隐私规则。"
+	rules_button.tooltip_text = "查看购牌、出牌、竞价、合约、怪兽赌局、天气、终局和隐私规则。"
 	_style_menu_button(rules_button, Color("#93c5fd"))
 	rules_button.pressed.connect(Callable(self, "_open_rules_menu"))
 	action_row.add_child(rules_button)
@@ -12650,11 +12679,12 @@ func _temporary_decision_blueprint(kind: String) -> Dictionary:
 			blueprint["purpose"] = "直接互动牌先选择目标玩家；公开结果显示目标，出牌者仍匿名。"
 		TEMP_DECISION_MONSTER_WAGER:
 			blueprint["label"] = "怪兽赌局"
-			blueprint["timer_seconds"] = 30.0
+			blueprint["timer_seconds"] = MONSTER_WAGER_SECONDS
+			blueprint["blocks_card_lane"] = true
 			blueprint["public_identity"] = true
 			blueprint["private_to_player"] = false
-			blueprint["purpose"] = "两只怪兽遭遇时开放公开下注；下注身份公开，可作为怪兽归属和策略倾向线索。"
-			blueprint["future_uses"] = ["下注怪兽A", "下注怪兽B", "追加赌注", "观战线索"]
+			blueprint["purpose"] = "两只怪兽遭遇时冻结整局游戏，开放最长30秒的公开下注；身份、方向和金额都公开，全员决定后可提前结算。"
+			blueprint["future_uses"] = ["多方下注", "强制底注", "奖池结算", "观战线索"]
 	return blueprint
 
 
@@ -12787,6 +12817,51 @@ func _add_pending_discard_purchase_panel(parent: Container, player_index: int) -
 	})
 
 
+func _add_active_monster_wager_panel(parent: Container, player_index: int) -> void:
+	if active_monster_wagers.is_empty() or player_index < 0 or player_index >= players.size():
+		return
+	var entry := _latest_active_monster_wager()
+	if entry.is_empty():
+		return
+	var wager_id := int(entry.get("wager_id", -1))
+	var timer := maxf(0.0, float(entry.get("remaining_seconds", entry.get("seconds_total", MONSTER_WAGER_SECONDS))))
+	var decision := _monster_wager_player_decision(entry, player_index)
+	var actions := []
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		var side := String(competitor.get("side", ""))
+		var label := _monster_wager_side_label(entry, side)
+		for stake in [MONSTER_WAGER_DEFAULT_STAKE, MONSTER_WAGER_LARGE_STAKE]:
+			actions.append({
+				"text": "押%s ¥%d" % [label, stake],
+				"tooltip": "公开以%s身份下注¥%d支持%s；身份、方向、金额都公开，奖金来自总奖池。" % [_player_name(player_index), stake, label],
+				"method": "_place_monster_wager",
+				"args": [wager_id, side, stake, player_index],
+				"disabled": decision != "",
+			})
+	var side_hint := "你尚未下注；所有玩家必须至少押¥%d，全部决定后提前开战结算。" % MONSTER_WAGER_DEFAULT_STAKE
+	if decision != "":
+		side_hint = "你已公开下注支持%s；本轮决定已锁定。" % _monster_wager_side_label(entry, decision)
+	_add_temporary_decision_panel(parent, {
+		"kind": TEMP_DECISION_MONSTER_WAGER,
+		"title": "怪兽赌局 #%d" % wager_id,
+		"badge": "全场冻结",
+		"timer": timer,
+		"lines": [
+			"%s｜当前伤害 %s" % [_monster_wager_matchup_text(entry), _monster_wager_damage_score_text(entry)],
+			"整局游戏时间已冻结；最长%.0f秒，所有玩家决定后提前结算。" % MONSTER_WAGER_SECONDS,
+			"每人至少押¥%d；身份、方向和金额公开。押中最高伤害怪兽的人按中奖下注占比分走总奖池。" % MONSTER_WAGER_DEFAULT_STAKE,
+			side_hint,
+		],
+		"meta_lines": [
+			"公开决定：%s" % _monster_wager_public_decision_summary(entry),
+			"已决定 %d/%d" % [_monster_wager_decision_count(entry), players.size()],
+			"触发：%s" % String(entry.get("context", "怪兽遭遇")),
+		],
+		"actions": actions,
+	})
+
+
 func _refresh_player_panel() -> void:
 	_clear_children(player_box)
 	if players.is_empty():
@@ -12818,6 +12893,7 @@ func _refresh_player_panel() -> void:
 	player_box.add_child(_plain_label(_player_quick_goal_hint(selected_player), 11, Color("#bbf7d0")))
 	_add_opening_guide_panel(player_box, selected_player)
 	_add_pending_discard_purchase_panel(player_box, selected_player)
+	_add_active_monster_wager_panel(player_box, selected_player)
 
 	var tip_row := HBoxContainer.new()
 	tip_row.add_theme_constant_override("separation", 6)
@@ -15163,7 +15239,7 @@ func _has_pending_player_target_choice() -> bool:
 
 
 func _has_pending_blocking_decision() -> bool:
-	return _has_pending_target_choice() or _has_pending_player_target_choice()
+	return _has_pending_target_choice() or _has_pending_player_target_choice() or _monster_wager_freezes_game()
 
 
 func _pending_target_skill() -> Dictionary:
@@ -19016,6 +19092,7 @@ func _update_ai_decisions(delta: float) -> void:
 	if ai_auction_reaction_timer <= 0.0:
 		_auto_ai_auction_bids(false)
 		_update_ai_contract_responses(false)
+		_auto_ai_monster_wagers()
 		ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS
 	ai_card_decision_timer -= delta
 	if ai_card_decision_timer <= 0.0:
@@ -25174,7 +25251,694 @@ func _append_unique_string(result: Array, value: String) -> void:
 		result.append(value)
 
 
-func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dictionary, context: String) -> bool:
+func _monster_wager_side_ids() -> Array:
+	return ["a", "b", "c", "d", "e", "f", "g", "h"]
+
+
+func _monster_wager_slot_key(slot: int) -> String:
+	if slot < 0 or slot >= auto_monsters.size():
+		return "slot:%d" % slot
+	var actor: Dictionary = auto_monsters[slot]
+	var uid := int(actor.get("uid", 0))
+	return "uid:%d" % uid if uid > 0 else "slot:%d" % slot
+
+
+func _monster_wager_key_for_competitors(competitors: Array) -> String:
+	var keys := []
+	for competitor_variant in competitors:
+		if not (competitor_variant is Dictionary):
+			continue
+		var competitor := competitor_variant as Dictionary
+		keys.append(_monster_wager_slot_key(int(competitor.get("slot", -1))))
+	keys.sort()
+	return "|".join(keys)
+
+
+func _monster_wager_competitors_for_pair(slot_a: int, slot_b: int) -> Array:
+	var result := []
+	if slot_a < 0 or slot_a >= auto_monsters.size() or slot_b < 0 or slot_b >= auto_monsters.size():
+		return result
+	var side_ids := _monster_wager_side_ids()
+	var used := {}
+	for slot in [slot_a, slot_b]:
+		var actor: Dictionary = auto_monsters[slot]
+		if bool(actor.get("down", false)):
+			continue
+		result.append({
+			"side": String(side_ids[result.size()]),
+			"slot": slot,
+			"uid": int(actor.get("uid", 0)),
+			"name": String(actor.get("name", "怪兽")),
+			"damage": 0,
+		})
+		used[slot] = true
+	if result.size() < 2:
+		return []
+	var anchor_positions := [
+		int((auto_monsters[slot_a] as Dictionary).get("position", -1)),
+		int((auto_monsters[slot_b] as Dictionary).get("position", -1)),
+	]
+	for i in range(auto_monsters.size()):
+		if used.has(i) or result.size() >= side_ids.size():
+			continue
+		var actor: Dictionary = auto_monsters[i]
+		if bool(actor.get("down", false)):
+			continue
+		var position := int(actor.get("position", -1))
+		if not anchor_positions.has(position):
+			continue
+		result.append({
+			"side": String(side_ids[result.size()]),
+			"slot": i,
+			"uid": int(actor.get("uid", 0)),
+			"name": String(actor.get("name", "怪兽")),
+			"damage": 0,
+		})
+	return result
+
+
+func _active_monster_wager_index_for_pair(slot_a: int, slot_b: int) -> int:
+	if slot_a < 0 or slot_a >= auto_monsters.size() or slot_b < 0 or slot_b >= auto_monsters.size():
+		return -1
+	for i in range(active_monster_wagers.size()):
+		var entry: Dictionary = active_monster_wagers[i]
+		if bool(entry.get("resolved", false)):
+			continue
+		if _monster_wager_side_for_slot(entry, slot_a) != "" and _monster_wager_side_for_slot(entry, slot_b) != "":
+			return i
+	return -1
+
+
+func _monster_wager_entry_index_by_id(wager_id: int) -> int:
+	for i in range(active_monster_wagers.size()):
+		var entry: Dictionary = active_monster_wagers[i]
+		if int(entry.get("wager_id", -1)) == wager_id:
+			return i
+	return -1
+
+
+func _latest_active_monster_wager() -> Dictionary:
+	for i in range(active_monster_wagers.size() - 1, -1, -1):
+		var entry: Dictionary = active_monster_wagers[i]
+		if not bool(entry.get("resolved", false)):
+			return entry.duplicate(true)
+	return {}
+
+
+func _monster_wager_current_slot(entry: Dictionary, side: String) -> int:
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		if String(competitor.get("side", "")) != side:
+			continue
+		var uid := int(competitor.get("uid", 0))
+		var slot := _auto_monster_slot_by_uid(uid) if uid > 0 else -1
+		if slot >= 0:
+			return slot
+		slot = int(competitor.get("slot", -1))
+		if slot >= 0 and slot < auto_monsters.size():
+			return slot
+	var key_prefix := "monster_%s" % side
+	var uid := int(entry.get("%s_uid" % key_prefix, 0))
+	var slot := _auto_monster_slot_by_uid(uid) if uid > 0 else -1
+	if slot >= 0:
+		return slot
+	slot = int(entry.get("%s_slot" % key_prefix, -1))
+	if slot >= 0 and slot < auto_monsters.size():
+		var actor: Dictionary = auto_monsters[slot]
+		if uid <= 0 or int(actor.get("uid", 0)) == uid:
+			return slot
+	return -1
+
+
+func _monster_wager_side_active(entry: Dictionary, side: String) -> bool:
+	var slot := _monster_wager_current_slot(entry, side)
+	if slot < 0 or slot >= auto_monsters.size():
+		return false
+	return not bool((auto_monsters[slot] as Dictionary).get("down", false))
+
+
+func _monster_wager_side_for_slot(entry: Dictionary, slot: int) -> String:
+	if slot < 0 or slot >= auto_monsters.size():
+		return ""
+	var actor: Dictionary = auto_monsters[slot]
+	var uid := int(actor.get("uid", 0))
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		if uid > 0 and int(competitor.get("uid", 0)) == uid:
+			return String(competitor.get("side", ""))
+		if int(competitor.get("slot", -1)) == slot:
+			return String(competitor.get("side", ""))
+	if uid > 0:
+		if int(entry.get("monster_a_uid", 0)) == uid:
+			return "a"
+		if int(entry.get("monster_b_uid", 0)) == uid:
+			return "b"
+	if int(entry.get("monster_a_slot", -1)) == slot:
+		return "a"
+	if int(entry.get("monster_b_slot", -1)) == slot:
+		return "b"
+	return ""
+
+
+func _monster_wager_side_label(entry: Dictionary, side: String) -> String:
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		if String(competitor.get("side", "")) == side:
+			return String(competitor.get("name", "怪兽"))
+	if side == "a":
+		return String(entry.get("monster_a_name", "怪兽A"))
+	if side == "b":
+		return String(entry.get("monster_b_name", "怪兽B"))
+	return "平局"
+
+
+func _monster_wager_competitors(entry: Dictionary) -> Array:
+	var competitors: Array = entry.get("competitors", [])
+	if not competitors.is_empty():
+		return competitors
+	var fallback := []
+	if entry.has("monster_a_name"):
+		fallback.append({
+			"side": "a",
+			"slot": int(entry.get("monster_a_slot", -1)),
+			"uid": int(entry.get("monster_a_uid", 0)),
+			"name": String(entry.get("monster_a_name", "怪兽A")),
+			"damage": int(entry.get("damage_a", 0)),
+		})
+	if entry.has("monster_b_name"):
+		fallback.append({
+			"side": "b",
+			"slot": int(entry.get("monster_b_slot", -1)),
+			"uid": int(entry.get("monster_b_uid", 0)),
+			"name": String(entry.get("monster_b_name", "怪兽B")),
+			"damage": int(entry.get("damage_b", 0)),
+		})
+	return fallback
+
+
+func _monster_wager_matchup_text(entry: Dictionary) -> String:
+	var names := []
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		names.append(String(competitor.get("name", "怪兽")))
+	return " vs ".join(names) if not names.is_empty() else "怪兽混战"
+
+
+func _monster_wager_damage_for_side(entry: Dictionary, side: String) -> int:
+	return int(entry.get("damage_%s" % side, 0))
+
+
+func _monster_wager_damage_score_text(entry: Dictionary) -> String:
+	var pieces := []
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		var side := String(competitor.get("side", ""))
+		pieces.append("%s:%d" % [
+			String(competitor.get("name", "怪兽")),
+			_monster_wager_damage_for_side(entry, side),
+		])
+	return " / ".join(pieces) if not pieces.is_empty() else "暂无"
+
+
+func _monster_wager_player_side(entry: Dictionary, player_index: int) -> String:
+	var bets: Dictionary = entry.get("bets", {}) as Dictionary
+	var key := str(player_index)
+	if not bets.has(key) or not (bets[key] is Dictionary):
+		return ""
+	var bet: Dictionary = bets[key]
+	return String(bet.get("side", ""))
+
+
+func _monster_wager_player_decision(entry: Dictionary, player_index: int) -> String:
+	return _monster_wager_player_side(entry, player_index)
+
+
+func _monster_wager_decision_count(entry: Dictionary) -> int:
+	var bets: Dictionary = entry.get("bets", {}) as Dictionary
+	return bets.size()
+
+
+func _monster_wager_all_players_decided(entry: Dictionary) -> bool:
+	return _monster_wager_decision_count(entry) >= players.size()
+
+
+func _monster_wager_public_decision_summary(entry: Dictionary) -> String:
+	var bets: Dictionary = entry.get("bets", {}) as Dictionary
+	if bets.is_empty():
+		return "暂无公开下注"
+	var pieces := []
+	for key_variant in bets.keys():
+		var bet_variant: Variant = bets[key_variant]
+		if not (bet_variant is Dictionary):
+			continue
+		var bet := bet_variant as Dictionary
+		var player_index := int(bet.get("player_index", int(String(key_variant))))
+		var stake := int(bet.get("stake", 0))
+		if stake <= 0:
+			continue
+		pieces.append("%s ¥%d→%s" % [
+			_player_name(player_index),
+			stake,
+			_monster_wager_side_label(entry, String(bet.get("side", ""))),
+		])
+	if pieces.is_empty():
+		return "暂无公开下注"
+	return "；".join(pieces)
+
+
+func _monster_wager_public_bet_summary(entry: Dictionary) -> String:
+	return _monster_wager_public_decision_summary(entry)
+
+
+func _monster_wager_freezes_game() -> bool:
+	for entry_variant in active_monster_wagers:
+		if entry_variant is Dictionary and not bool((entry_variant as Dictionary).get("resolved", false)):
+			return true
+	return false
+
+
+func _monster_wager_forced_side(entry: Dictionary, player_index: int) -> String:
+	var preferred := _ai_monster_wager_side(player_index, entry)
+	if preferred != "":
+		return preferred
+	var best_side := ""
+	var best_damage := -999
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		var side := String(competitor.get("side", ""))
+		var damage := _monster_wager_damage_for_side(entry, side)
+		if best_side == "" or damage > best_damage:
+			best_side = side
+			best_damage = damage
+	return best_side
+
+
+func _force_monster_wager_missing_bets(wager_id: int, reason: String) -> void:
+	var index := _monster_wager_entry_index_by_id(wager_id)
+	if index < 0:
+		return
+	for player_index in range(players.size()):
+		index = _monster_wager_entry_index_by_id(wager_id)
+		if index < 0:
+			return
+		var entry: Dictionary = active_monster_wagers[index]
+		if _monster_wager_player_side(entry, player_index) != "":
+			continue
+		var side := _monster_wager_forced_side(entry, player_index)
+		if side == "":
+			continue
+		if _place_monster_wager(wager_id, side, MONSTER_WAGER_DEFAULT_STAKE, player_index, true):
+			_log("怪兽赌局#%d：%s未在窗口内手动下注，系统按%s强制押底注¥%d。" % [
+				wager_id,
+				_player_name(player_index),
+				reason,
+				MONSTER_WAGER_DEFAULT_STAKE,
+			])
+
+
+func _try_finish_monster_wager_if_ready(wager_id: int) -> bool:
+	var index := _monster_wager_entry_index_by_id(wager_id)
+	if index < 0:
+		return false
+	var entry: Dictionary = active_monster_wagers[index]
+	if not _monster_wager_all_players_decided(entry):
+		return false
+	return _settle_monster_wager_at_index(index, "全员已下注")
+
+
+func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "怪兽遭遇", pending_attack: Dictionary = {}) -> int:
+	if slot_a < 0 or slot_a >= auto_monsters.size() or slot_b < 0 or slot_b >= auto_monsters.size() or slot_a == slot_b:
+		return -1
+	var existing_index := _active_monster_wager_index_for_pair(slot_a, slot_b)
+	if existing_index >= 0:
+		var existing: Dictionary = active_monster_wagers[existing_index]
+		return int(existing.get("wager_id", -1))
+	var competitors := _monster_wager_competitors_for_pair(slot_a, slot_b)
+	if competitors.size() < 2:
+		return -1
+	var actor_a: Dictionary = auto_monsters[slot_a]
+	var actor_b: Dictionary = auto_monsters[slot_b]
+	if bool(actor_a.get("down", false)) or bool(actor_b.get("down", false)):
+		return -1
+	monster_wager_sequence += 1
+	var pair_key := _monster_wager_key_for_competitors(competitors)
+	var entry := {
+		"wager_id": monster_wager_sequence,
+		"pair_key": pair_key,
+		"competitors": competitors.duplicate(true),
+		"monster_a_uid": int(actor_a.get("uid", 0)),
+		"monster_b_uid": int(actor_b.get("uid", 0)),
+		"monster_a_slot": slot_a,
+		"monster_b_slot": slot_b,
+		"monster_a_name": String(actor_a.get("name", "怪兽A")),
+		"monster_b_name": String(actor_b.get("name", "怪兽B")),
+		"damage_a": 0,
+		"damage_b": 0,
+		"bets": {},
+		"public_bets": [],
+		"started_at": game_time,
+		"remaining_seconds": MONSTER_WAGER_SECONDS,
+		"seconds_total": MONSTER_WAGER_SECONDS,
+		"context": context,
+		"pending_attack": pending_attack.duplicate(true),
+		"battle_resolved": pending_attack.is_empty(),
+		"resolved": false,
+	}
+	for competitor_variant in competitors:
+		var competitor := competitor_variant as Dictionary
+		entry["damage_%s" % String(competitor.get("side", ""))] = 0
+	active_monster_wagers.append(entry)
+	_log("公开怪兽赌局#%d开启：%s，整局冻结%.0f秒内强制下注；每人至少¥%d，身份、方向和金额全部公开，押中者按中奖下注占比分走总奖池。" % [
+		monster_wager_sequence,
+		_monster_wager_matchup_text(entry),
+		MONSTER_WAGER_SECONDS,
+		MONSTER_WAGER_DEFAULT_STAKE,
+	])
+	_add_map_event_effect("wager", _entity_world_position(actor_a), Color("#fb923c"), "怪兽赌局", 2.8, 180.0, "monster")
+	_add_action_callout(
+		"怪兽赌局",
+		"全场冻结",
+		"%s：强制下注，金额公开，可作为归属推理线索。" % _monster_wager_matchup_text(entry),
+		Color("#fb923c"),
+		_entity_world_position(actor_a)
+	)
+	_auto_ai_monster_wagers_for_entry(monster_wager_sequence)
+	_try_finish_monster_wager_if_ready(monster_wager_sequence)
+	_refresh_ui()
+	return monster_wager_sequence
+
+
+func _record_monster_wager_damage(attacker_slot: int, target_slot: int, damage: int) -> void:
+	if damage <= 0:
+		return
+	var index := _active_monster_wager_index_for_pair(attacker_slot, target_slot)
+	if index < 0:
+		var opened_id := _open_monster_wager_for_pair(attacker_slot, target_slot, "怪兽交战")
+		if opened_id < 0:
+			return
+		index = _monster_wager_entry_index_by_id(opened_id)
+	if index < 0:
+		return
+	var entry: Dictionary = active_monster_wagers[index]
+	var side := _monster_wager_side_for_slot(entry, attacker_slot)
+	if side == "":
+		return
+	var damage_key := "damage_%s" % side
+	entry[damage_key] = int(entry.get(damage_key, 0)) + damage
+	var competitors := _monster_wager_competitors(entry)
+	for i in range(competitors.size()):
+		var competitor := competitors[i] as Dictionary
+		if String(competitor.get("side", "")) == side:
+			competitor["damage"] = int(competitor.get("damage", 0)) + damage
+			competitors[i] = competitor
+			break
+	entry["competitors"] = competitors
+	active_monster_wagers[index] = entry
+
+
+func _place_monster_wager(wager_id: int, side: String, stake: int = MONSTER_WAGER_DEFAULT_STAKE, player_index: int = -1, forced: bool = false) -> bool:
+	side = side.to_lower()
+	if player_index < 0:
+		player_index = selected_player
+	if player_index < 0 or player_index >= players.size() or stake <= 0:
+		return false
+	var index := _monster_wager_entry_index_by_id(wager_id)
+	if index < 0:
+		return false
+	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
+	if _monster_wager_side_label(entry, side) == "平局":
+		return false
+	stake = maxi(MONSTER_WAGER_DEFAULT_STAKE, stake)
+	var player_cash := int((players[player_index] as Dictionary).get("cash", 0))
+	var bets: Dictionary = (entry.get("bets", {}) as Dictionary).duplicate(true)
+	var player_key := str(player_index)
+	var bet := {}
+	if bets.has(player_key) and bets[player_key] is Dictionary:
+		bet = (bets[player_key] as Dictionary).duplicate(true)
+	var previous_side := String(bet.get("side", ""))
+	if previous_side != "":
+		return false
+	players[player_index]["cash"] = player_cash - stake
+	bet["player_index"] = player_index
+	bet["side"] = side
+	bet["stake"] = stake
+	bet["forced"] = forced
+	bet["last_time"] = game_time
+	bets[player_key] = bet
+	var public_bets: Array = (entry.get("public_bets", []) as Array).duplicate(true)
+	public_bets.append({
+		"player_index": player_index,
+		"side": side,
+		"stake": stake,
+		"forced": forced,
+		"time": game_time,
+	})
+	while public_bets.size() > MONSTER_WAGER_HISTORY_LIMIT:
+		public_bets.pop_front()
+	entry["bets"] = bets
+	entry["public_bets"] = public_bets
+	active_monster_wagers[index] = entry
+	_record_player_economic_event(
+		player_index,
+		"怪兽赌局",
+		"强制底注" if forced else "公开下注",
+		-stake,
+		"赌局#%d：%s¥%d支持%s；身份、方向、金额都公开。" % [wager_id, "强制底注" if forced else "公开下注", stake, _monster_wager_side_label(entry, side)]
+	)
+	_record_player_cash_snapshot(player_index)
+	_log("公开下注：%s在怪兽赌局#%d%s¥%d支持%s。" % [
+		_player_name(player_index),
+		wager_id,
+		"被系统强制押底注" if forced else "下注",
+		stake,
+		_monster_wager_side_label(entry, side),
+	])
+	_try_finish_monster_wager_if_ready(wager_id)
+	_refresh_ui()
+	return true
+
+
+func _ai_monster_wager_side(player_index: int, entry: Dictionary) -> String:
+	var best_side := ""
+	var best_score := -99999
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		var side := String(competitor.get("side", ""))
+		var slot := _monster_wager_current_slot(entry, side)
+		var score := _monster_wager_damage_for_side(entry, side) * 9
+		if slot >= 0 and slot < auto_monsters.size():
+			var actor: Dictionary = auto_monsters[slot]
+			score += int(actor.get("hp", 0)) + int(actor.get("armor", 0)) + int(actor.get("rank", 1)) * 5
+			if int(actor.get("owner", -1)) == player_index:
+				score += 80
+		score += (player_index + int(entry.get("wager_id", 0)) + int(competitor.get("slot", 0))) % 7
+		if best_side == "" or score > best_score:
+			best_side = side
+			best_score = score
+	return best_side
+
+
+func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
+	var index := _monster_wager_entry_index_by_id(wager_id)
+	if index < 0:
+		return 0
+	var acted := 0
+	for player_index in range(players.size()):
+		if not _player_is_ai(player_index):
+			continue
+		var entry: Dictionary = active_monster_wagers[index]
+		if _monster_wager_player_side(entry, player_index) != "":
+			continue
+		var player_cash := int((players[player_index] as Dictionary).get("cash", 0))
+		var stake := MONSTER_WAGER_DEFAULT_STAKE
+		if player_cash >= MONSTER_WAGER_LARGE_STAKE + 1200:
+			stake = MONSTER_WAGER_LARGE_STAKE
+		var side := _ai_monster_wager_side(player_index, entry)
+		if side == "":
+			continue
+		if _place_monster_wager(wager_id, side, stake, player_index):
+			acted += 1
+			index = _monster_wager_entry_index_by_id(wager_id)
+			if index < 0:
+				break
+	return acted
+
+
+func _auto_ai_monster_wagers() -> int:
+	var acted := 0
+	for entry_variant in active_monster_wagers.duplicate(true):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		acted += _auto_ai_monster_wagers_for_entry(int(entry.get("wager_id", -1)))
+	return acted
+
+
+func _update_monster_wagers(delta: float) -> void:
+	if active_monster_wagers.is_empty():
+		return
+	for i in range(active_monster_wagers.size() - 1, -1, -1):
+		var entry: Dictionary = active_monster_wagers[i]
+		if bool(entry.get("resolved", false)):
+			active_monster_wagers.remove_at(i)
+			continue
+		var remaining := maxf(0.0, float(entry.get("remaining_seconds", MONSTER_WAGER_SECONDS)) - delta)
+		entry["remaining_seconds"] = remaining
+		active_monster_wagers[i] = entry
+		if remaining <= 0.0:
+			_force_monster_wager_missing_bets(int(entry.get("wager_id", -1)), "倒计时结束")
+			_settle_monster_wager(int(entry.get("wager_id", -1)), "倒计时结束")
+			continue
+		var active_sides := 0
+		for competitor_variant in _monster_wager_competitors(entry):
+			var competitor := competitor_variant as Dictionary
+			if _monster_wager_side_active(entry, String(competitor.get("side", ""))):
+				active_sides += 1
+		if active_sides < 2:
+			_force_monster_wager_missing_bets(int(entry.get("wager_id", -1)), "怪兽离场")
+			_settle_monster_wager(int(entry.get("wager_id", -1)), "怪兽离场")
+
+
+func _settle_monster_wager(wager_id: int, reason: String = "手动结算") -> bool:
+	var index := _monster_wager_entry_index_by_id(wager_id)
+	if index < 0:
+		return false
+	return _settle_monster_wager_at_index(index, reason)
+
+
+func _resolve_monster_wager_pending_battle_at_index(index: int) -> void:
+	if index < 0 or index >= active_monster_wagers.size():
+		return
+	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
+	if bool(entry.get("battle_resolved", false)):
+		return
+	entry["battle_resolved"] = true
+	active_monster_wagers[index] = entry
+	var pending: Dictionary = entry.get("pending_attack", {}) as Dictionary
+	if pending.is_empty():
+		return
+	var attacker_slot := int(pending.get("attacker_slot", -1))
+	var target_slot := int(pending.get("target_slot", -1))
+	var action: Dictionary = pending.get("action", {}) as Dictionary
+	var context := String(pending.get("context", "怪兽赌局开战"))
+	if attacker_slot < 0 or target_slot < 0 or action.is_empty():
+		return
+	_auto_monster_use_action_on_other(attacker_slot, target_slot, action, context, false)
+
+
+func _settle_monster_wager_at_index(index: int, reason: String) -> bool:
+	if index < 0 or index >= active_monster_wagers.size():
+		return false
+	_resolve_monster_wager_pending_battle_at_index(index)
+	if index < 0 or index >= active_monster_wagers.size():
+		return false
+	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
+	var competitors := _monster_wager_competitors(entry)
+	var winner_sides := []
+	var best_damage := -1
+	for competitor_variant in competitors:
+		var competitor := competitor_variant as Dictionary
+		var side := String(competitor.get("side", ""))
+		var damage := _monster_wager_damage_for_side(entry, side)
+		if damage > best_damage:
+			best_damage = damage
+			winner_sides = [side]
+		elif damage == best_damage:
+			winner_sides.append(side)
+	var bets: Dictionary = entry.get("bets", {}) as Dictionary
+	var total_pot := 0
+	var winning_stake := 0
+	var winning_bets := []
+	for key_variant in bets.keys():
+		var bet_variant: Variant = bets[key_variant]
+		if not (bet_variant is Dictionary):
+			continue
+		var bet := bet_variant as Dictionary
+		var stake := int(bet.get("stake", 0))
+		if stake <= 0:
+			continue
+		total_pot += stake
+		if winner_sides.has(String(bet.get("side", ""))):
+			winning_stake += stake
+			winning_bets.append(bet)
+	var public_outcomes := []
+	var remaining_payout := total_pot
+	var winning_paid := 0
+	for key_variant in bets.keys():
+		var bet_variant: Variant = bets[key_variant]
+		if not (bet_variant is Dictionary):
+			continue
+		var bet := bet_variant as Dictionary
+		var player_index := int(bet.get("player_index", int(String(key_variant))))
+		if player_index < 0 or player_index >= players.size():
+			continue
+		var stake := int(bet.get("stake", 0))
+		if stake <= 0:
+			continue
+		var side := String(bet.get("side", ""))
+		if winner_sides.has(side) and winning_stake > 0:
+			winning_paid += 1
+			var payout := int(floor(float(total_pot) * float(stake) / float(winning_stake)))
+			if winning_paid >= winning_bets.size():
+				payout = remaining_payout
+			remaining_payout -= payout
+			players[player_index]["cash"] = int((players[player_index] as Dictionary).get("cash", 0)) + payout
+			_record_player_economic_event(player_index, "怪兽赌局", "赌局命中", payout, "赌局#%d：%s进入最高伤害方，按中奖下注占比分得总奖池¥%d。" % [
+				int(entry.get("wager_id", -1)),
+				_monster_wager_side_label(entry, side),
+				total_pot,
+			])
+			_record_player_cash_snapshot(player_index)
+			public_outcomes.append("%s命中%s 分得¥%d" % [_player_name(player_index), _monster_wager_side_label(entry, side), payout])
+		else:
+			_record_player_economic_event(player_index, "怪兽赌局", "赌局落空", 0, "赌局#%d：%s未进入最高伤害方，下注进入总奖池。" % [
+				int(entry.get("wager_id", -1)),
+				_monster_wager_side_label(entry, side),
+			])
+			public_outcomes.append("%s落空" % _player_name(player_index))
+	entry["resolved"] = true
+	entry["resolved_at"] = game_time
+	entry["resolution_reason"] = reason
+	entry["winner_sides"] = winner_sides
+	entry["winner_side"] = String(winner_sides[0]) if not winner_sides.is_empty() else ""
+	var winner_labels := []
+	for winner_side_variant in winner_sides:
+		winner_labels.append(_monster_wager_side_label(entry, String(winner_side_variant)))
+	entry["winner_label"] = _limited_name_list(winner_labels, 4, "无胜方")
+	entry["total_pot"] = total_pot
+	entry["public_outcomes"] = public_outcomes
+	resolved_monster_wager_history.append(entry)
+	while resolved_monster_wager_history.size() > MONSTER_WAGER_HISTORY_LIMIT:
+		resolved_monster_wager_history.pop_front()
+	active_monster_wagers.remove_at(index)
+	var result_text := "%s最高伤害" % String(entry.get("winner_label", "无胜方"))
+	_log("怪兽赌局#%d结算：%s（%s，总奖池¥%d，%s）。%s" % [
+		int(entry.get("wager_id", -1)),
+		result_text,
+		_monster_wager_damage_score_text(entry),
+		total_pot,
+		reason,
+		"；".join(public_outcomes) if not public_outcomes.is_empty() else "无人下注",
+	])
+	var anchor_position := Vector2.ZERO
+	for competitor_variant in _monster_wager_competitors(entry):
+		var competitor := competitor_variant as Dictionary
+		var slot := _monster_wager_current_slot(entry, String(competitor.get("side", "")))
+		if slot >= 0 and slot < auto_monsters.size():
+			anchor_position = _entity_world_position(auto_monsters[slot] as Dictionary)
+			break
+	_add_action_callout(
+		"怪兽赌局",
+		"结算",
+		"%s｜%s" % [result_text, _monster_wager_damage_score_text(entry)],
+		Color("#fde68a"),
+		anchor_position
+	)
+	_refresh_ui()
+	return true
+
+
+func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dictionary, context: String, allow_wager: bool = true) -> bool:
 	if slot < 0 or slot >= auto_monsters.size() or target_slot < 0 or target_slot >= auto_monsters.size():
 		return false
 	var actor: Dictionary = auto_monsters[slot]
@@ -25194,6 +25958,14 @@ func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dict
 	var matches := _monster_resource_matches(actor, district_index)
 	if not matches.is_empty():
 		resource_text = "，争夺资源：%s" % _limited_name_list(matches, 3, "未知资源")
+	if allow_wager and _active_monster_wager_index_for_pair(slot, target_slot) < 0:
+		var pending_attack := {
+			"attacker_slot": slot,
+			"target_slot": target_slot,
+			"action": action.duplicate(true),
+			"context": context,
+		}
+		return _open_monster_wager_for_pair(slot, target_slot, context, pending_attack) >= 0
 	_log("怪%d·%s在%s与怪%d·%s相遇，%s使用%s%s。" % [
 		slot + 1,
 		String(actor.get("name", "怪兽")),
@@ -25218,10 +25990,12 @@ func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dict
 	)
 	_add_monster_attack_effect(_entity_world_position(actor), _entity_world_position(target), action_name, range_limit, _auto_monster_color(slot), range_limit > MELEE_RANGE_METERS)
 	var outgoing_damage := int(action.get("damage", 0)) + _auto_monster_damage_bonus_from_passives(slot)
-	_auto_monster_take_damage(target_slot, outgoing_damage, source, slot)
+	var dealt_damage := _auto_monster_take_damage(target_slot, outgoing_damage, source, slot)
+	_record_monster_wager_damage(slot, target_slot, dealt_damage)
 	if target_slot < auto_monsters.size() and _is_auto_mebius_energy_active(target_slot) and range_limit <= MELEE_RANGE_METERS:
 		_maybe_announce_auto_mebius_energy(target_slot)
-		_auto_monster_take_damage(slot, MEBIUS_ENERGY_FLAME_DAMAGE, "%s梦比姆反焰" % action_name, target_slot)
+		var counter_damage := _auto_monster_take_damage(slot, MEBIUS_ENERGY_FLAME_DAMAGE, "%s梦比姆反焰" % action_name, target_slot)
+		_record_monster_wager_damage(target_slot, slot, counter_damage)
 	var knockback := float(action.get("knockback", 0.0))
 	if knockback > 0.5 and target_slot < auto_monsters.size():
 		_knockback_auto_monster_from_actor(target_slot, slot, knockback, action_name)
@@ -25262,12 +26036,12 @@ func _nearest_other_auto_monster_slot(slot: int) -> int:
 	return best_slot
 
 
-func _auto_monster_take_damage(slot: int, damage: int, source: String, source_slot: int) -> void:
+func _auto_monster_take_damage(slot: int, damage: int, source: String, source_slot: int) -> int:
 	if slot < 0 or slot >= auto_monsters.size() or damage <= 0:
-		return
+		return 0
 	var actor: Dictionary = auto_monsters[slot]
 	if bool(actor.get("down", false)):
-		return
+		return 0
 	var remaining := damage
 	var armor := int(actor.get("armor", 0))
 	if armor > 0:
@@ -25298,7 +26072,7 @@ func _auto_monster_take_damage(slot: int, damage: int, source: String, source_sl
 	if int(actor.get("hp", 0)) <= 0:
 		actor["hp"] = 0
 		if _try_start_auto_monster_revival(slot, source, actor):
-			return
+			return remaining
 		actor["down"] = true
 		_invalidate_bound_monster_skills(int(actor.get("uid", 0)))
 		_log("怪%d·%s倒地，之后不再自动行动。" % [slot + 1, String(actor.get("name", "怪兽"))])
@@ -25310,6 +26084,7 @@ func _auto_monster_take_damage(slot: int, damage: int, source: String, source_sl
 			_entity_world_position(actor)
 		)
 	auto_monsters[slot] = actor
+	return remaining
 
 
 func _knockback_auto_monster_from_actor(target_slot: int, source_slot: int, distance_m: float, source: String) -> void:

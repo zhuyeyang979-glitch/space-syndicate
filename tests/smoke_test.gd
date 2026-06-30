@@ -289,6 +289,7 @@ func _run() -> void:
 	_expect(_verify_development_route_balance_baseline(main), "card pool exposes AI-readable development routes with card coverage, rank ladders, and profile preferences")
 	_expect(_verify_direct_player_interaction_cards(main), "direct player-interaction cards cover 拆牌、牵牌、产权冻结、全场齐射 with target-player UI, balance gates, and anonymous clue rules")
 	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, contract, monster target, player target, and monster wager modules")
+	_expect(_verify_monster_wager_system(main), "monster brawls freeze the game for a compulsory public ante wager with visible identity, side, amount, save state, and pooled payout settlement")
 	_expect(_verify_ten_hour_route_pack(main), "ten-hour route pack adds complete repair, lockdown, intel-bounty, and route-weather ladders with AI-readable fields")
 	_expect(String(main.call("_card_art_stats", main.call("_make_skill", "城市融资1"))).contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
@@ -3840,7 +3841,7 @@ func _verify_temporary_decision_blueprints(main: Node) -> bool:
 		"contract_response": {"label": "合约回应", "private": true, "blocks": false},
 		"monster_target_choice": {"label": "怪兽目标", "private": true, "blocks": true},
 		"player_target_choice": {"label": "玩家目标", "private": true, "blocks": true},
-		"monster_wager": {"label": "怪兽赌局", "private": false, "blocks": false},
+		"monster_wager": {"label": "怪兽赌局", "private": false, "blocks": true},
 	}
 	for kind_variant in expected.keys():
 		var kind := String(kind_variant)
@@ -3867,6 +3868,73 @@ func _verify_temporary_decision_blueprints(main: Node) -> bool:
 			return false
 	var wager := main.call("_temporary_decision_blueprint", "monster_wager") as Dictionary
 	return bool(wager.get("public_identity", false)) and float(wager.get("timer_seconds", 0.0)) >= 30.0
+
+
+func _verify_monster_wager_system(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var players := _as_array(main.get("players"))
+	if players.size() < 2:
+		print("Monster wager test requires at least two players")
+		return false
+	for i in range(players.size()):
+		var player := (players[i] as Dictionary).duplicate(true)
+		player["is_ai"] = false
+		player["seat_type"] = "human"
+		player["cash"] = 3000
+		player["cash_history"] = [3000]
+		players[i] = player
+	main.set("players", players)
+	var district_index := maxi(0, int(main.get("selected_district")))
+	var center := main.call("_district_center", district_index) as Vector2
+	var monster_a := main.call("_make_auto_monster", 0, 0, district_index, 0, 1) as Dictionary
+	var monster_b := main.call("_make_auto_monster", 1, 1, district_index, 1, 1) as Dictionary
+	monster_a["world_position"] = center
+	monster_b["world_position"] = center
+	monster_a["hp"] = 30
+	monster_a["max_hp"] = 30
+	monster_b["hp"] = 30
+	monster_b["max_hp"] = 30
+	main.set("auto_monsters", [monster_a, monster_b])
+	main.set("active_monster_wagers", [])
+	main.set("resolved_monster_wager_history", [])
+	var wager_id := int(main.call("_open_monster_wager_for_pair", 0, 1, "烟测赌局"))
+	ok = ok and wager_id > 0
+	var active := _as_array(main.get("active_monster_wagers"))
+	ok = ok and active.size() == 1
+	var human_cash_before := int((_as_array(main.get("players"))[0] as Dictionary).get("cash", 0))
+	ok = ok and bool(main.call("_place_monster_wager", wager_id, "a", 100, 0))
+	active = _as_array(main.get("active_monster_wagers"))
+	if active.is_empty():
+		print("Monster wager did not remain active after placing a bet")
+		ok = false
+	else:
+		var entry := active[0] as Dictionary
+		var summary := String(main.call("_monster_wager_public_decision_summary", entry))
+		ok = ok and summary.contains("玩家1") and summary.contains("¥100")
+		ok = ok and not bool(main.call("_place_monster_wager", wager_id, "b", 100, 0))
+		main.call("_record_monster_wager_damage", 0, 1, 4)
+		active = _as_array(main.get("active_monster_wagers"))
+		entry = active[0] as Dictionary
+		ok = ok and int(entry.get("damage_a", 0)) >= 4
+		var saved_wager_state := main.call("_capture_run_state") as Dictionary
+		ok = ok and _as_array(saved_wager_state.get("active_monster_wagers", [])).size() == 1
+		for bettor_index in range(1, players.size()):
+			ok = ok and bool(main.call("_place_monster_wager", wager_id, "b", 100, bettor_index))
+		var history := _as_array(main.get("resolved_monster_wager_history"))
+		ok = ok and not history.is_empty()
+		var human_cash_after := int((_as_array(main.get("players"))[0] as Dictionary).get("cash", 0))
+		ok = ok and human_cash_after == human_cash_before + (players.size() - 1) * 100
+		var log_lines := _as_array(main.get("log_lines"))
+		var public_amount_log := false
+		for line_variant in log_lines:
+			var line := String(line_variant)
+			if line.contains("公开下注") and line.contains("玩家1") and line.contains("¥100"):
+				public_amount_log = true
+				break
+		ok = ok and public_amount_log
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _verify_development_route_balance_baseline(main: Node) -> bool:
@@ -6175,6 +6243,11 @@ func _verify_monster_resource_and_collision_system(main: Node, district_index: i
 		"knockback": 120.0,
 		"text": "烟测用的近距离撞击。",
 	}, "烟测遭遇"))
+	var active_wagers := _as_array(main.get("active_monster_wagers"))
+	if not active_wagers.is_empty():
+		var wager_id := int((active_wagers[0] as Dictionary).get("wager_id", -1))
+		main.call("_force_monster_wager_missing_bets", wager_id, "烟测自动结束")
+		main.call("_settle_monster_wager", wager_id, "烟测自动结束")
 	auto_monsters = _as_array(main.get("auto_monsters"))
 	var target_after := auto_monsters[1] as Dictionary
 	var target_durability_after := int(target_after.get("hp", 0)) + int(target_after.get("armor", 0))
