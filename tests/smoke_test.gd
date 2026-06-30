@@ -125,6 +125,7 @@ func _run() -> void:
 	_expect(_verify_military_explicit_strike_boundary(main), "military district and route damage happen only through explicit strike commands")
 	_expect(_verify_product_futures_warehouse_destruction(main), "warehouse stockpile futures are cleared when the storage city is destroyed while ordinary futures remain")
 	_expect(_verify_product_futures_realtime_payout(main), "commodity futures settle only after their real-time window and pay from actual product price movement")
+	_expect(_verify_temporary_economy_duration_seconds(main), "temporary economy, contract, commodity, route, and derivative cards expose real seconds as their authoritative duration")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
@@ -1464,6 +1465,14 @@ func _verify_product_futures_realtime_payout(main: Node) -> bool:
 	ok = ok and _as_array(entry.get("futures_positions", [])).is_empty()
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
+
+
+func _verify_temporary_economy_duration_seconds(main: Node) -> bool:
+	var report := main.call("_temporary_economy_seconds_audit") as Dictionary
+	var violations := _as_array(report.get("violations", []))
+	if not violations.is_empty():
+		print("Temporary economy duration audit failures: %s" % " / ".join(violations))
+	return violations.is_empty() and int(report.get("seconds_card_count", 0)) >= 30 and int(report.get("compatibility_mirror_count", 0)) >= 20
 
 
 func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
@@ -6807,7 +6816,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	product_market = main.get("product_market") as Dictionary
 	entry = product_market.get(product_name, {}) as Dictionary
 	_expect(int(entry.get("market_contract_demand", 0)) >= 3, "forward-purchase card adds sustained product demand pressure")
-	_expect(int(entry.get("market_contract_turns", 0)) >= 3, "forward-purchase card adds a visible product contract duration")
+	_expect(float(entry.get("market_contract_seconds", 0.0)) >= 90.0, "forward-purchase card adds a visible real-time product contract duration")
 	_expect(String(main.call("_product_market_boon_text", product_name)).contains("商品合约"), "product contract appears in product economy weather text")
 	var players_after_forward := _as_array(main.get("players"))
 	_expect(int((players_after_forward[0] as Dictionary).get("total_card_income", 0)) == contract_card_income_before + 120, "forward-purchase product contract records card-generated cash")
@@ -6825,7 +6834,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	main.call("_use_skill", 2)
 	product_market = main.get("product_market") as Dictionary
 	entry = product_market.get(product_name, {}) as Dictionary
-	var market_contract_turns_before_age := int(entry.get("market_contract_turns", 0))
+	var market_contract_seconds_before_age := float(entry.get("market_contract_seconds", 0.0))
 	_expect(int(entry.get("market_contract_demand", 0)) >= 4, "distribution contract card strengthens sustained product demand pressure")
 	_expect(float(entry.get("route_flow_multiplier", 1.0)) >= 1.2, "distribution contract card accelerates related product route flow")
 
@@ -6834,9 +6843,9 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	main.call("_use_skill", 2)
 	product_market = main.get("product_market") as Dictionary
 	entry = product_market.get(product_name, {}) as Dictionary
-	var growth_turns_before_age := int(entry.get("growth_turns", 0))
+	var growth_seconds_before_age := float(entry.get("growth_seconds", 0.0))
 	_expect(float(entry.get("growth_multiplier", 1.0)) >= 2.0, "product catalyst card boosts the selected product's positive growth multiplier")
-	_expect(growth_turns_before_age >= 3, "product catalyst card adds a visible turn duration")
+	_expect(growth_seconds_before_age >= 90.0, "product catalyst card adds a visible real-time duration")
 	_expect(String(main.call("_product_market_boon_text", product_name)).contains("增速"), "product catalyst appears in product economy weather text")
 	var product_status_tags := main.call("_product_public_status_tags", product_name) as Array
 	var product_status_text := String(main.call("_public_status_tag_text", product_status_tags))
@@ -6866,10 +6875,10 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	main.call("_use_skill", 2)
 	districts = _as_array(main.get("districts"))
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
-	var contract_turns_before_age := int(city.get("contract_turns", 0))
+	var contract_seconds_before_age := float(city.get("contract_seconds", 0.0))
 	var contract_breakdown := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
 	_expect(int(city.get("contract_income_bonus", 0)) >= 95, "short-term order card adds a temporary city contract income bonus")
-	_expect(contract_turns_before_age >= 3, "short-term order card adds a visible contract duration")
+	_expect(contract_seconds_before_age >= 90.0, "short-term order card adds a visible real-time contract duration")
 	_expect(int(contract_breakdown.get("contract", 0)) >= 95, "temporary city contract appears in city income breakdown")
 	_expect(String(main.call("_city_contract_status_text", city)).contains("+"), "temporary city contract appears in city contract status text")
 
@@ -6879,9 +6888,9 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	main.call("_use_skill", 2)
 	districts = _as_array(main.get("districts"))
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
-	var route_flow_turns_before_age := int(city.get("route_flow_turns", 0))
+	var route_flow_seconds_before_age := float(city.get("route_flow_seconds", 0.0))
 	_expect(float(city.get("route_flow_multiplier", 1.0)) >= maxf(1.45, route_flow_before), "route-flow card accelerates the selected owned city's commercial flow")
-	_expect(route_flow_turns_before_age >= 3, "route-flow card adds a visible turn duration")
+	_expect(route_flow_seconds_before_age >= 90.0, "route-flow card adds a visible real-time duration")
 	_expect(String(main.call("_city_route_flow_status_text", city)).contains("×"), "route-flow card appears in city flow status text")
 	var city_status_tags := main.call("_city_public_status_tags", city) as Array
 	var city_status_text := String(main.call("_public_status_tag_text", city_status_tags))
@@ -6968,10 +6977,10 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	entry = product_market.get(product_name, {}) as Dictionary
 	districts = _as_array(main.get("districts"))
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
-	_expect(int(entry.get("growth_turns", 0)) == maxi(0, growth_turns_before_age - 1), "temporary product-growth boon counts down after an economy age tick")
-	_expect(int(entry.get("market_contract_turns", 0)) == maxi(0, market_contract_turns_before_age - 1), "temporary product contract counts down after an economy age tick")
-	_expect(int(city.get("route_flow_turns", 0)) == maxi(0, route_flow_turns_before_age - 1), "temporary route-flow boon counts down after an economy age tick")
-	_expect(int(city.get("contract_turns", 0)) == maxi(0, contract_turns_before_age - 1), "temporary city contract counts down after an economy age tick")
+	_expect(is_equal_approx(float(entry.get("growth_seconds", 0.0)), maxf(0.0, growth_seconds_before_age - 30.0)), "temporary product-growth boon counts down by elapsed seconds")
+	_expect(is_equal_approx(float(entry.get("market_contract_seconds", 0.0)), maxf(0.0, market_contract_seconds_before_age - 30.0)), "temporary product contract counts down by elapsed seconds")
+	_expect(is_equal_approx(float(city.get("route_flow_seconds", 0.0)), maxf(0.0, route_flow_seconds_before_age - 30.0)), "temporary route-flow boon counts down by elapsed seconds")
+	_expect(is_equal_approx(float(city.get("contract_seconds", 0.0)), maxf(0.0, contract_seconds_before_age - 30.0)), "temporary city contract counts down by elapsed seconds")
 	var player_after_economy := _as_array(main.get("players"))[0] as Dictionary
 	_expect(String(main.call("_player_cash_path_text", player_after_economy)).contains("→"), "economy helpers keep a multi-step recent cash path for overview menus")
 	_clear_player_cooldown(main, 0)
