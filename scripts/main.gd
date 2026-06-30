@@ -116,6 +116,9 @@ const CITY_MINIMUM_INCOME := 40
 const CITY_FINAL_VALUE := 700
 const CITY_BUILD_ANIMATION_SECONDS := 1.2
 const CITY_GDP_HISTORY_LIMIT := 8
+const ECONOMY_CASHFLOW_BASIS_SECONDS := 60.0
+const ECONOMY_CASHFLOW_TICK_SECONDS := 1.0
+const ECONOMY_LEGACY_TURN_SECONDS := 30.0
 const VICTORY_COUNTDOWN_SECONDS := 60.0
 const INTEL_CORRECT_GUESS_CASH := 120
 const INTEL_WRONG_GUESS_COST := 60
@@ -227,7 +230,7 @@ const PLAYER_ROLE_CATALOG := [
 		"species": "雾鳃孢子人",
 		"starter_monster_index": 0,
 		"trait": "擅长把资源偏好伪装成生态灾害；靠菌毯副产物结算现金。",
-		"passive": "起始怪兽生命+8，在场时间+12秒；己方含深海菌毯的城市每个经营周期额外+¥55。",
+		"passive": "起始怪兽生命+8，在场时间+12秒；己方含深海菌毯的城市每分钟现金流额外+¥55。",
 		"starter_hp_bonus": 8,
 		"starter_duration_bonus": 12.0,
 		"resource_cash_product": "深海菌毯",
@@ -239,7 +242,7 @@ const PLAYER_ROLE_CATALOG := [
 		"species": "岩壳重核族",
 		"starter_monster_index": 1,
 		"trait": "矿业城市与重物流保护伞；用重力陶瓷抵押城市现金流。",
-		"passive": "起始怪兽生命+12；己方含重力陶瓷的城市每个经营周期额外+¥45。",
+		"passive": "起始怪兽生命+12；己方含重力陶瓷的城市每分钟现金流额外+¥45。",
 		"starter_hp_bonus": 12,
 		"resource_cash_product": "重力陶瓷",
 		"resource_cash_amount": 45,
@@ -260,7 +263,7 @@ const PLAYER_ROLE_CATALOG := [
 		"species": "藤冠共生体",
 		"starter_monster_index": 4,
 		"trait": "避难产业和修复商品联盟；把光合凝胶做成灾后保险。",
-		"passive": "开局资金+¥120；起始怪兽在场时间+20秒；己方含光合凝胶的城市每个经营周期额外+¥40。",
+		"passive": "开局资金+¥120；起始怪兽在场时间+20秒；己方含光合凝胶的城市每分钟现金流额外+¥40。",
 		"starting_cash_bonus": 120,
 		"starter_duration_bonus": 20.0,
 		"resource_cash_product": "光合凝胶",
@@ -282,7 +285,7 @@ const PLAYER_ROLE_CATALOG := [
 		"species": "鲸胃星民",
 		"starter_monster_index": 6,
 		"trait": "星鲸罐头连锁供应商；怪兽每次变强都会顺便带火一次联名营销。",
-		"passive": "己方含星鲸罐头的城市每个经营周期额外+¥50；己方怪兽升级时获得¥60。",
+		"passive": "己方含星鲸罐头的城市每分钟现金流额外+¥50；己方怪兽升级时获得¥60。",
 		"resource_cash_product": "星鲸罐头",
 		"resource_cash_amount": 50,
 		"monster_upgrade_cash": 60,
@@ -468,8 +471,8 @@ const REALTIME_BALANCE := {
 	"monster_max": 5.5,
 	"special_monster_min": 4.5,
 	"special_monster_max": 7.0,
-	"market_min": 7.0,
-	"market_max": 11.0,
+	"market_min": 30.0,
+	"market_max": 60.0,
 	"event_heat_min": 10,
 	"event_heat_max": 24,
 	"monster_damage": 1,
@@ -478,12 +481,12 @@ const REALTIME_BALANCE := {
 }
 
 const SKILL_CATALOG := {
-	"城市融资1": {"cost": 3, "kind": "city_revenue_boost", "revenue_amount": 60, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "收入"], "text": "选中己方城市的每个经营周期收入+60。"},
-	"城市融资2": {"cost": 5, "kind": "city_revenue_boost", "revenue_amount": 100, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "升级"], "text": "选中己方城市的每个经营周期收入+100。"},
-	"城市融资3": {"cost": 7, "kind": "city_revenue_boost", "revenue_amount": 160, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "终端"], "text": "选中己方城市的每个经营周期收入+160。"},
-	"星际广告1": {"cost": 2, "kind": "city_revenue_boost", "revenue_amount": 45, "panic": 12, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "曝光"], "text": "选中己方城市周期收入+45，同时提高当地曝光与怪兽关注。"},
-	"星际广告2": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 80, "panic": 18, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "升级"], "text": "选中己方城市周期收入+80、区域热度+18。"},
-	"星际广告3": {"cost": 6, "kind": "city_revenue_boost", "revenue_amount": 130, "panic": 28, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "终端"], "text": "选中己方城市周期收入+130、区域热度+28。"},
+	"城市融资1": {"cost": 3, "kind": "city_revenue_boost", "revenue_amount": 60, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "收入"], "text": "选中己方城市的GDP/min +60。"},
+	"城市融资2": {"cost": 5, "kind": "city_revenue_boost", "revenue_amount": 100, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "升级"], "text": "选中己方城市的GDP/min +100。"},
+	"城市融资3": {"cost": 7, "kind": "city_revenue_boost", "revenue_amount": 160, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "终端"], "text": "选中己方城市的GDP/min +160。"},
+	"星际广告1": {"cost": 2, "kind": "city_revenue_boost", "revenue_amount": 45, "panic": 12, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "曝光"], "text": "选中己方城市GDP/min +45，同时提高当地曝光与怪兽关注。"},
+	"星际广告2": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 80, "panic": 18, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "升级"], "text": "选中己方城市GDP/min +80、区域热度+18。"},
+	"星际广告3": {"cost": 6, "kind": "city_revenue_boost", "revenue_amount": 130, "panic": 28, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "终端"], "text": "选中己方城市GDP/min +130、区域热度+28。"},
 	"轨道融资1": {"cost": 3, "kind": "cash_gain", "cash": 300, "damage": 0, "move": 0, "range": 0, "tags": ["经济", "续航"], "text": "立即获得300资金，用于城市化或补给。"},
 	"轨道融资2": {"cost": 5, "kind": "cash_gain", "cash": 700, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "立即获得700资金，支撑扩张或高费构筑。"},
 	"舆论操控1": {"cost": 3, "kind": "panic_shift", "panic": 30, "damage": 0, "move": 0, "range": 0, "tags": ["热度", "引导"], "text": "选中区域热度+30，立刻提高怪兽和新闻事件对该区的关注。"},
@@ -503,36 +506,36 @@ const SKILL_CATALOG := {
 	"星门采购权1": {"cost": 6, "kind": "card_access_boon", "play_product": "离岸水晶", "play_flow_required": 2, "card_access_global": true, "global_card_price_multiplier": 1.35, "card_access_seconds": 25.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["补给", "全局"], "text": "接下来25秒，你可以从任意未毁区域购买候选卡；全局购牌价格×1.35。"},
 	"地下融资1": {"cost": 3, "kind": "cash_gain", "cash": 450, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "续航"], "text": "立即获得450资金，适合扩张或高费卡组提前转动。"},
 	"热搜推送1": {"cost": 4, "kind": "panic_shift", "panic": 45, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["热度", "引导"], "text": "选中区域热度+45，把怪兽概率目标和新闻事件都往这里拽。"},
-	"商业诱饵1": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 70, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "诱饵"], "text": "选中己方城市周期收入+70、热度+8，以商业曝光吸引怪兽路线。"},
-	"商业诱饵2": {"cost": 7, "kind": "city_revenue_boost", "revenue_amount": 125, "panic": 14, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市周期收入+125、热度+14。"},
+	"商业诱饵1": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 70, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "诱饵"], "text": "选中己方城市GDP/min +70、热度+8，以商业曝光吸引怪兽路线。"},
+	"商业诱饵2": {"cost": 7, "kind": "city_revenue_boost", "revenue_amount": 125, "panic": 14, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市GDP/min +125、热度+14。"},
 	"价格套利1": {"cost": 3, "kind": "product_speculation", "cash": 220, "price_delta": 18, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "商品"], "text": "围绕当前商品做短线套利：获得220资金，并制造临时需求压力；价格由下一次供需重算体现。"},
 	"价格套利2": {"cost": 5, "kind": "product_speculation", "cash": 480, "price_delta": 34, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "高阶套利：获得480资金，并制造更强临时需求压力；价格仍由供需关系结算。"},
-	"供应链保险1": {"cost": 3, "kind": "route_insurance", "repair_routes": 1, "revenue_amount": 30, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "商路"], "text": "选中己方城市：清除1条受损商路压力，并使周期收入+30。"},
-	"供应链保险2": {"cost": 5, "kind": "route_insurance", "repair_routes": 2, "revenue_amount": 55, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：清除2条受损商路压力，并使周期收入+55。"},
-	"垄断协议1": {"cost": 5, "kind": "city_revenue_boost", "revenue_amount": 115, "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "垄断"], "text": "选中己方城市周期收入+115、区域热度+22；高收益也会明显吸怪。"},
-	"需求创造1": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 85, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "需求"], "text": "选中己方城市周期收入+85、热度+6，用营销制造稳定需求。"},
-	"短期订单1": {"cost": 4, "kind": "city_contract_boon", "contract_income": 95, "contract_turns": 3, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "合约"], "text": "选中己方城市获得临时订单：每个经营周期额外+95，持续3周期。"},
-	"短期订单2": {"cost": 6, "kind": "city_contract_boon", "contract_income": 155, "contract_turns": 4, "panic": 7, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市获得大额临时订单：每个经营周期额外+155，持续4周期。"},
-	"军需临单1": {"cost": 5, "kind": "city_contract_boon", "contract_income": 130, "contract_turns": 2, "panic": 16, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "军需"], "text": "选中己方城市接军需临单：每个经营周期额外+130，持续2周期；区域热度+16。"},
-	"军需临单2": {"cost": 7, "kind": "city_contract_boon", "contract_income": 210, "contract_turns": 3, "panic": 24, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市接高价军需临单：每个经营周期额外+210，持续3周期；区域热度+24。"},
-	"星际会展1": {"cost": 5, "kind": "city_contract_boon", "contract_income": 80, "contract_turns": 3, "route_flow_multiplier": 1.25, "route_flow_turns": 3, "panic": 12, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "会展"], "text": "选中己方城市举办会展：临时合约收入+80/周期，并使商路流通收入×1.25，持续3周期；区域热度+12。"},
-	"星际会展2": {"cost": 7, "kind": "city_contract_boon", "contract_income": 135, "contract_turns": 4, "route_flow_multiplier": 1.45, "route_flow_turns": 4, "panic": 20, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市举办大型星际会展：临时合约收入+135/周期，并使商路流通收入×1.45，持续4周期；区域热度+20。"},
+	"供应链保险1": {"cost": 3, "kind": "route_insurance", "repair_routes": 1, "revenue_amount": 30, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "商路"], "text": "选中己方城市：清除1条受损商路压力，并使GDP/min +30。"},
+	"供应链保险2": {"cost": 5, "kind": "route_insurance", "repair_routes": 2, "revenue_amount": 55, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：清除2条受损商路压力，并使GDP/min +55。"},
+	"垄断协议1": {"cost": 5, "kind": "city_revenue_boost", "revenue_amount": 115, "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "垄断"], "text": "选中己方城市GDP/min +115、区域热度+22；高收益也会明显吸怪。"},
+	"需求创造1": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 85, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "需求"], "text": "选中己方城市GDP/min +85、热度+6，用营销制造稳定需求。"},
+	"短期订单1": {"cost": 4, "kind": "city_contract_boon", "contract_income": 95, "contract_turns": 3, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "合约"], "text": "选中己方城市获得临时订单：GDP/min +95，持续90秒。"},
+	"短期订单2": {"cost": 6, "kind": "city_contract_boon", "contract_income": 155, "contract_turns": 4, "panic": 7, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市获得大额临时订单：GDP/min +155，持续120秒。"},
+	"军需临单1": {"cost": 5, "kind": "city_contract_boon", "contract_income": 130, "contract_turns": 2, "panic": 16, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "军需"], "text": "选中己方城市接军需临单：GDP/min +130，持续60秒；区域热度+16。"},
+	"军需临单2": {"cost": 7, "kind": "city_contract_boon", "contract_income": 210, "contract_turns": 3, "panic": 24, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市接高价军需临单：GDP/min +210，持续90秒；区域热度+24。"},
+	"星际会展1": {"cost": 5, "kind": "city_contract_boon", "contract_income": 80, "contract_turns": 3, "route_flow_multiplier": 1.25, "route_flow_turns": 3, "panic": 12, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "会展"], "text": "选中己方城市举办会展：临时合约GDP/min +80，并使商路流通收入×1.25，持续90秒；区域热度+12。"},
+	"星际会展2": {"cost": 7, "kind": "city_contract_boon", "contract_income": 135, "contract_turns": 4, "route_flow_multiplier": 1.45, "route_flow_turns": 4, "panic": 20, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市举办大型星际会展：临时合约GDP/min +135，并使商路流通收入×1.45，持续120秒；区域热度+20。"},
 	"商品做空1": {"cost": 4, "kind": "product_speculation", "cash": 260, "price_delta": -24, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "做空"], "text": "围绕当前商品做空：获得260资金，并制造临时供给压力；价格由供需重算体现。"},
 	"商品做空2": {"cost": 6, "kind": "product_speculation", "cash": 560, "price_delta": -42, "panic": 18, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "高阶做空：获得560资金，并制造更强临时供给压力；价格仍由供需关系结算。"},
-	"城市买涨1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.0, "gdp_bet_turns": 2, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "买涨"], "text": "匿名买入选中城市GDP上涨：接下来2个经营周期，若该城市周期GDP高于买入基准，则按增量×1.0获得资金。"},
-	"城市买涨2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.6, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "匿名买入选中城市GDP上涨：持续3个经营周期，收益为GDP增量×1.6。"},
-	"城市买涨3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 2.3, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "高阶买涨城市GDP：持续3周期，若城市扩张、合约或商路使GDP上升，按增量×2.3兑现。"},
-	"城市买涨4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 3.2, "gdp_bet_turns": 4, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端买涨城市GDP：持续4周期，收益为GDP增量×3.2；价格仍按I级购入价体系升级而来。"},
-	"城市做空1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.0, "gdp_bet_turns": 2, "gdp_bet_destroy_bonus": 180, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "做空"], "text": "匿名买入选中城市GDP下跌：接下来2个经营周期，若该城市GDP低于买入基准，则按跌幅×1.0获得资金；城市被毁会额外兑现破产奖励。"},
-	"城市做空2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.7, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 320, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "高阶城市做空：持续3周期，收益为GDP跌幅×1.7；城市破产/摧毁额外兑现¥320。"},
-	"城市做空3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 2.5, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 520, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "终端城市做空：持续3周期，怪兽破坏、商路断裂或区域经济衰退造成的GDP跌幅会按×2.5兑现。"},
-	"城市做空4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 3.4, "gdp_bet_turns": 4, "gdp_bet_destroy_bonus": 760, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端城市做空IV：持续4周期，GDP跌幅×3.4；城市摧毁时额外兑现¥760。"},
-	"远期采购1": {"cost": 4, "kind": "product_contract_boon", "market_demand_pressure": 3, "market_contract_turns": 3, "cash": 120, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "合约"], "text": "围绕当前商品签远期采购：获得120资金，并为该商品追加持续3周期的需求压力+3；波动+1。"},
-	"远期采购2": {"cost": 6, "kind": "product_contract_boon", "market_demand_pressure": 5, "market_contract_turns": 4, "cash": 260, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "签更大远期采购：获得260资金，并为当前商品追加持续4周期的需求压力+5；波动+1。"},
-	"期货套保1": {"cost": 3, "kind": "product_contract_boon", "market_supply_pressure": 3, "market_contract_turns": 3, "cash": 90, "volatility_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "套保"], "text": "围绕当前商品做期货套保：获得90资金，追加持续3周期的供给压力+3，并降低波动1。"},
-	"期货套保2": {"cost": 5, "kind": "product_contract_boon", "market_supply_pressure": 5, "market_contract_turns": 4, "cash": 180, "volatility_delta": -2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "高阶套保：获得180资金，追加持续4周期的供给压力+5，并降低波动2。"},
-	"包销协议1": {"cost": 5, "kind": "product_contract_boon", "market_demand_pressure": 4, "market_contract_turns": 3, "route_flow_multiplier": 1.2, "route_flow_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "包销"], "text": "为当前商品签包销协议：持续3周期需求压力+4，并使该商品相关商路流通×1.20。"},
-	"包销协议2": {"cost": 7, "kind": "product_contract_boon", "market_demand_pressure": 6, "market_contract_turns": 4, "route_flow_multiplier": 1.35, "route_flow_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "大型包销：持续4周期需求压力+6，并使该商品相关商路流通×1.35。"},
+	"城市买涨1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.0, "gdp_bet_seconds": 60.0, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "买涨"], "text": "匿名买入选中城市GDP上涨：持仓60秒，到期时若该城即时GDP高于买入基准，则按增量×1.0获得资金。"},
+	"城市买涨2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.6, "gdp_bet_seconds": 75.0, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "匿名买入选中城市GDP上涨：持仓75秒，到期收益为即时GDP增量×1.6。"},
+	"城市买涨3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 2.3, "gdp_bet_seconds": 90.0, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "高阶买涨城市GDP：持仓90秒，若城市扩张、合约或商路使即时GDP上升，按增量×2.3兑现。"},
+	"城市买涨4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 3.2, "gdp_bet_seconds": 120.0, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端买涨城市GDP：持仓120秒，收益为即时GDP增量×3.2；价格仍按I级购入价体系升级而来。"},
+	"城市做空1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.0, "gdp_bet_seconds": 60.0, "gdp_bet_destroy_bonus": 180, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "做空"], "text": "匿名买入选中城市GDP下跌：持仓60秒，到期时若该城即时GDP低于买入基准，则按跌幅×1.0获得资金；城市被毁会额外兑现破产奖励。"},
+	"城市做空2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.7, "gdp_bet_seconds": 75.0, "gdp_bet_destroy_bonus": 320, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "高阶城市做空：持仓75秒，收益为即时GDP跌幅×1.7；城市破产/摧毁额外兑现¥320。"},
+	"城市做空3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 2.5, "gdp_bet_seconds": 90.0, "gdp_bet_destroy_bonus": 520, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "终端城市做空：持仓90秒，怪兽破坏、商路断裂或区域经济衰退造成的即时GDP跌幅会按×2.5兑现。"},
+	"城市做空4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 3.4, "gdp_bet_seconds": 120.0, "gdp_bet_destroy_bonus": 760, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端城市做空IV：持仓120秒，GDP跌幅×3.4；城市摧毁时额外兑现¥760。"},
+	"远期采购1": {"cost": 4, "kind": "product_contract_boon", "market_demand_pressure": 3, "market_contract_turns": 3, "cash": 120, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "合约"], "text": "围绕当前商品签远期采购：获得120资金，并为该商品追加持续90秒的需求压力+3；波动+1。"},
+	"远期采购2": {"cost": 6, "kind": "product_contract_boon", "market_demand_pressure": 5, "market_contract_turns": 4, "cash": 260, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "签更大远期采购：获得260资金，并为当前商品追加持续120秒的需求压力+5；波动+1。"},
+	"期货套保1": {"cost": 3, "kind": "product_contract_boon", "market_supply_pressure": 3, "market_contract_turns": 3, "cash": 90, "volatility_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "套保"], "text": "围绕当前商品做期货套保：获得90资金，追加持续90秒的供给压力+3，并降低波动1。"},
+	"期货套保2": {"cost": 5, "kind": "product_contract_boon", "market_supply_pressure": 5, "market_contract_turns": 4, "cash": 180, "volatility_delta": -2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "高阶套保：获得180资金，追加持续120秒的供给压力+5，并降低波动2。"},
+	"包销协议1": {"cost": 5, "kind": "product_contract_boon", "market_demand_pressure": 4, "market_contract_turns": 3, "route_flow_multiplier": 1.2, "route_flow_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "包销"], "text": "为当前商品签包销协议：持续90秒需求压力+4，并使该商品相关商路流通×1.20。"},
+	"包销协议2": {"cost": 7, "kind": "product_contract_boon", "market_demand_pressure": 6, "market_contract_turns": 4, "route_flow_multiplier": 1.35, "route_flow_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "大型包销：持续120秒需求压力+6，并使该商品相关商路流通×1.35。"},
 	"区域供需合约1": {"cost": 4, "kind": "area_trade_contract", "contract_product_mode": "selected", "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 90, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.18, "route_flow_turns": 3, "decline_cash_penalty": 70, "decline_consumption_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "匿名"], "text": "打出前必须先在地图点选供给区与需求区。前5秒只向全员公开两端与条款；展示结束后，目标城市业主另有5秒签/拒窗口，其他玩家此时仍可继续出牌。签约会添加供给/需求并获得现金与物流改善，拒绝会承受罚款和消费降级。"},
 	"区域供需合约2": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "selected", "contract_add_products": 1, "contract_add_demands": 1, "contract_remove_products": 1, "contract_remove_demands": 1, "accept_cash": 160, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.32, "route_flow_turns": 4, "decline_cash_penalty": 120, "decline_transport_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "换线"], "text": "打出前必须先点选供给区与需求区。前5秒只公开换线两端和条款；展示结束后，目标业主另有5秒签/拒窗口。签约时供给区/需求区各删除一项旧商品并接入当前商品；拒绝会带来罚款、交通降级和断路压力。"},
 	"组合供需合约1": {"cost": 7, "kind": "area_trade_contract", "contract_product_mode": "multi", "contract_add_products": 2, "contract_add_demands": 2, "accept_cash": 210, "accept_production_delta": 1, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.45, "route_flow_turns": 4, "decline_cash_penalty": 160, "decline_production_delta": -1, "decline_consumption_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "多商品"], "text": "打出前必须先点选供给区与需求区。前5秒向全员公开要接通的两端、多商品条款和奖惩；展示结束后，目标业主另有5秒签/拒窗口。签约奖励现金、生产和商路速度，拒签会拖慢生产/需求并追加商路压力。"},
@@ -540,27 +543,27 @@ const SKILL_CATALOG := {
 	"环晶电池专供1": {"cost": 5, "kind": "area_trade_contract", "contract_product_mode": "fixed", "contract_products": ["环晶电池"], "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 130, "accept_production_delta": 1, "accept_route_flow_multiplier": 1.20, "route_flow_turns": 3, "decline_cash_penalty": 95, "decline_consumption_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "指定商品"], "text": "指定环晶电池专供条款：供给区和需求区围绕环晶电池接入生产/需求。签约提高生产和相关流通，拒签会削弱消费并支付罚款。"},
 	"双边对冲合约1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "multi", "contract_add_products": 2, "contract_add_demands": 2, "contract_remove_products": 1, "contract_remove_demands": 1, "accept_cash": 150, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.30, "route_flow_turns": 4, "decline_cash_penalty": 130, "decline_production_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "对冲"], "text": "双商品对冲合约：签约时两端各接入两项商品，并替换一项旧供需以重排经营结构；拒签会压低生产并追加商路压力。"},
 	"惩罚性拒签条款1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "auto", "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 70, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.16, "route_flow_turns": 2, "decline_cash_penalty": 180, "decline_production_delta": -1, "decline_transport_delta": -1, "decline_consumption_delta": -1, "decline_route_damage": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "惩罚"], "text": "强压式匿名条款：签约收益较低但可接通自动撮合商品；拒签会触发高额罚款，并同时拖慢生产、交通、消费和商路。"},
-	"商品换线1": {"cost": 4, "kind": "city_product_shift", "product_shift": 1, "revenue_amount": 18, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "换线"], "text": "选中己方城市：将1项主营商品换成当前商路商品或未经营商品，并使周期收入+18。"},
-	"商品换线2": {"cost": 6, "kind": "city_product_shift", "product_shift": 2, "revenue_amount": 32, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：将2项主营商品换成新的商品线，并使周期收入+32。"},
+	"商品换线1": {"cost": 4, "kind": "city_product_shift", "product_shift": 1, "revenue_amount": 18, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "换线"], "text": "选中己方城市：将1项主营商品换成当前商路商品或未经营商品，并使GDP/min +18。"},
+	"商品换线2": {"cost": 6, "kind": "city_product_shift", "product_shift": 2, "revenue_amount": 32, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：将2项主营商品换成新的商品线，并使GDP/min +32。"},
 	"需求改造1": {"cost": 3, "kind": "city_demand_shift", "demand_shift": 1, "repair_routes": 1, "revenue_amount": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "需求"], "text": "选中己方城市：改造1项需求商品，优先对接当前商路商品，并清除1条断路压力。"},
-	"需求改造2": {"cost": 5, "kind": "city_demand_shift", "demand_shift": 2, "repair_routes": 1, "revenue_amount": 22, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：改造2项需求商品，刷新商路并清除1条断路压力，周期收入+22。"},
-	"产业升级1": {"cost": 4, "kind": "city_product_upgrade", "product_level": 1, "revenue_amount": 25, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：最低等级商品+1级，并使周期收入+25。"},
-	"产业升级2": {"cost": 7, "kind": "city_product_upgrade", "product_level": 2, "revenue_amount": 45, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "终端"], "text": "选中己方城市：最低等级商品+2级，并使周期收入+45。"},
+	"需求改造2": {"cost": 5, "kind": "city_demand_shift", "demand_shift": 2, "repair_routes": 1, "revenue_amount": 22, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：改造2项需求商品，刷新商路并清除1条断路压力，GDP/min +22。"},
+	"产业升级1": {"cost": 4, "kind": "city_product_upgrade", "product_level": 1, "revenue_amount": 25, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：最低等级商品+1级，并使GDP/min +25。"},
+	"产业升级2": {"cost": 7, "kind": "city_product_upgrade", "product_level": 2, "revenue_amount": 45, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "终端"], "text": "选中己方城市：最低等级商品+2级，并使GDP/min +45。"},
 	"市场稳定1": {"cost": 3, "kind": "market_stabilize", "stabilize_amount": 24, "volatility_delta": -2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "稳定"], "text": "削减当前商品的临时供需压力，并降低后续波动；价格仍由供需重算。"},
 	"商路黑客1": {"cost": 4, "kind": "route_sabotage", "route_damage": 1, "panic": 16, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "破坏"], "text": "选中任意公开城市群：追加1条商路损伤压力；真实业主仍不公开。"},
 	"商路黑客2": {"cost": 7, "kind": "route_sabotage", "route_damage": 2, "panic": 26, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中任意公开城市群：追加2条商路损伤压力，并显著升高当地热度。"},
-	"商品催化1": {"cost": 4, "kind": "product_growth_boon", "growth_multiplier": 2.0, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "催化"], "text": "当前商品接下来3个经营周期的正向价格增速×2。"},
-	"商品催化2": {"cost": 6, "kind": "product_growth_boon", "growth_multiplier": 2.5, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "当前商品接下来4个经营周期的正向价格增速×2.5。"},
-	"星港快线1": {"cost": 4, "kind": "route_flow_boon", "route_flow_multiplier": 1.45, "route_flow_turns": 3, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "物流"], "text": "选中己方城市：清除1条断路压力，并使已满足需求商路流通收入×1.45，持续3周期。"},
-	"星港快线2": {"cost": 6, "kind": "route_flow_boon", "route_flow_multiplier": 1.8, "route_flow_turns": 4, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：清除1条断路压力，并使已满足需求商路流通收入×1.8，持续4周期。"},
+	"商品催化1": {"cost": 4, "kind": "product_growth_boon", "growth_multiplier": 2.0, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "催化"], "text": "当前商品接下来90秒的正向价格增速×2。"},
+	"商品催化2": {"cost": 6, "kind": "product_growth_boon", "growth_multiplier": 2.5, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "当前商品接下来120秒的正向价格增速×2.5。"},
+	"星港快线1": {"cost": 4, "kind": "route_flow_boon", "route_flow_multiplier": 1.45, "route_flow_turns": 3, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "物流"], "text": "选中己方城市：清除1条断路压力，并使已满足需求商路流通收入×1.45，持续90秒。"},
+	"星港快线2": {"cost": 6, "kind": "route_flow_boon", "route_flow_multiplier": 1.8, "route_flow_turns": 4, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：清除1条断路压力，并使已满足需求商路流通收入×1.8，持续120秒。"},
 	"生产扩张1": {"cost": 4, "kind": "region_economy_shift", "production_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "生产"], "text": "选中区域商品生产水平+1。生产型GDP会按可外运商品流动量提高。"},
 	"产能封锁1": {"cost": 4, "kind": "region_economy_shift", "production_delta": -1, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "破坏"], "text": "选中区域商品生产水平-1，并提高当地热度。用于压低对手生产型GDP。"},
 	"交通升级1": {"cost": 4, "kind": "region_economy_shift", "transport_delta": 1, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "交通"], "text": "选中区域公共交通水平+1，并尝试修复1点商路压力。商品流动速度与过境GDP会提高。"},
 	"交通瘫痪1": {"cost": 4, "kind": "region_economy_shift", "transport_delta": -1, "route_damage": 1, "panic": 12, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "破坏"], "text": "选中区域公共交通水平-1，并追加1点商路压力。商品流动速度与过境GDP会下降。"},
 	"消费刺激1": {"cost": 4, "kind": "region_economy_shift", "consumption_delta": 1, "market_demand_pressure": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "消费"], "text": "选中区域商品消费水平+1，并为当前商品制造少量需求压力。消费型GDP会提高。"},
 	"消费冷却1": {"cost": 4, "kind": "region_economy_shift", "consumption_delta": -1, "market_supply_pressure": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["区域", "压制"], "text": "选中区域商品消费水平-1，并制造少量供给侧压力。用于压低消费型GDP。"},
-	"共生红利1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 1.7, "route_flow_multiplier": 1.3, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["怪兽", "经济"], "text": "利用怪兽带来的异星需求：当前商品正向增速×1.7，相关商品商路流通×1.3，持续3周期。"},
-	"共生红利2": {"cost": 7, "kind": "product_growth_boon", "growth_multiplier": 2.2, "route_flow_multiplier": 1.55, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["怪兽", "升级"], "text": "高阶共生经济：当前商品正向增速×2.2，相关商品商路流通×1.55，持续4周期。"},
+	"共生红利1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 1.7, "route_flow_multiplier": 1.3, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["怪兽", "经济"], "text": "利用怪兽带来的异星需求：当前商品正向增速×1.7，相关商品商路流通×1.3，持续90秒。"},
+	"共生红利2": {"cost": 7, "kind": "product_growth_boon", "growth_multiplier": 2.2, "route_flow_multiplier": 1.55, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["怪兽", "升级"], "text": "高阶共生经济：当前商品正向增速×2.2，相关商品商路流通×1.55，持续120秒。"},
 	"远程挑衅1": {"cost": 2, "kind": "monster_lure", "lure_speedup": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["诱导", "低费"], "text": "指定一只怪兽：它下一次自动移动优先朝当前选区推进，并提前最多2秒触发。"},
 	"连锁过载1": {"cost": 6, "kind": "supply_draw", "draw_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["构筑", "爆发"], "text": "从当前区域额外获取2张候选卡，用于一轮内连锁补给。"},
 	"移动1": {"cost": 2, "kind": "move", "damage": 0, "move": 180.0, "range": 0.0, "text": "指挥怪兽移动约180米，进入区域造成1点区域伤害。"},
@@ -611,22 +614,22 @@ const SKILL_CATALOG := {
 	"火花反制1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械杰克", "控场"], "text": "抓住火花电击前摇，指定怪兽的特殊行动节奏延后2秒。"},
 	"斯派修姆锁定1": {"cost": 4, "kind": "panic_shift", "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械杰克", "引导"], "text": "把斯派修姆交火引向选中区域，热度+22，提高怪兽关注。"},
 	"奥特空投诱导1": {"cost": 5, "kind": "mudslide", "damage": 1, "panic": 18, "delay": 2.0, "move": 0.0, "range": 180.0, "tags": ["机械杰克", "破坏"], "text": "诱导奥特空投落点，180米AOE内区域受1点伤害；若其他怪兽靠近则延后行动。"},
-	"流星航线加速1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.65, "route_flow_turns": 3, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械杰克", "物流"], "text": "借机械杰克高速巡航开通流星航线：选中己方城市商路流通收入×1.65，持续3周期，并修复1条断路压力。"},
+	"流星航线加速1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.65, "route_flow_turns": 3, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械杰克", "物流"], "text": "借机械杰克高速巡航开通流星航线：选中己方城市商路流通收入×1.65，持续90秒，并修复1条断路压力。"},
 	"断头刀预判1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械艾斯", "控场"], "text": "读出断头刀轨迹，指定怪兽的特殊行动节奏延后2.5秒。"},
 	"电击踢破绽1": {"cost": 4, "kind": "supply_draw", "draw_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械艾斯", "补给"], "text": "利用电击踢收招破绽，从当前区域额外获取2张候选卡。"},
 	"垂直断头刀窗口1": {"cost": 4, "kind": "armor_gain", "armor": 5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械艾斯", "防御"], "text": "在垂直断头刀命中窗口前缩身防御，怪兽立即获得5点护甲。"},
 	"修复光线干扰1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 18, "delay": 1.5, "move": 0.0, "range": 260.0, "tags": ["纳伊斯", "破坏"], "text": "污染修复光线的落点，260米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
 	"定身闪光余波1": {"cost": 3, "kind": "special_monster_delay", "delay": 3.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["纳伊斯", "控场"], "text": "借定身闪光余波制造短暂空档，其他怪兽概率行动延后3秒。"},
 	"修正铁拳读秒1": {"cost": 4, "kind": "monster_lure", "lure_speedup": 4.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["纳伊斯", "诱导"], "text": "读出修正铁拳冲线时间，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4秒触发。"},
-	"修复光线招商1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.75, "route_flow_turns": 3, "repair_routes": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["纳伊斯", "招商"], "text": "把纳伊斯修复光线包装成招商窗口：选中己方城市商路流通收入×1.75，持续3周期，并修复2条断路压力。"},
+	"修复光线招商1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.75, "route_flow_turns": 3, "repair_routes": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["纳伊斯", "招商"], "text": "把纳伊斯修复光线包装成招商窗口：选中己方城市商路流通收入×1.75，持续90秒，并修复2条断路压力。"},
 	"梦比姆能量诱导1": {"cost": 4, "kind": "special_monster_delay", "delay": 1.8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["梦比优斯", "控场"], "text": "诱导梦比姆能量过早爆发，指定怪兽的特殊行动节奏延后1.8秒。"},
 	"飞踢落点预判1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 20, "delay": 1.2, "move": 0.0, "range": 220.0, "tags": ["梦比优斯", "破坏"], "text": "预判飞踢落点，220米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
 	"梦比姆火焰护甲1": {"cost": 4, "kind": "armor_gain", "armor": 5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["梦比优斯", "防御"], "text": "利用梦比姆火焰前摇缩身防御，怪兽立即获得5点护甲。"},
-	"梦比姆能源热潮1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.3, "route_flow_multiplier": 1.2, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["梦比优斯", "能源"], "text": "把梦比姆能量转成商品热潮：当前商品正向价格增速×2.3、相关商路流通×1.2，持续3周期。"},
+	"梦比姆能源热潮1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.3, "route_flow_multiplier": 1.2, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["梦比优斯", "能源"], "text": "把梦比姆能量转成商品热潮：当前商品正向价格增速×2.3、相关商路流通×1.2，持续90秒。"},
 	"复仇之铠过载1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["希卡利", "控场"], "text": "扰乱复仇之铠的能量回路，指定怪兽的特殊行动节奏延后2秒。"},
 	"热负荷射线诱导1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 24, "delay": 1.5, "move": 0.0, "range": 260.0, "tags": ["希卡利", "破坏"], "text": "诱导热负荷射线扫过城区，260米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
 	"骑士光刃窗口1": {"cost": 4, "kind": "armor_gain", "armor": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["希卡利", "防御"], "text": "利用骑士光刃收招窗口缩身防御，怪兽立即获得6点护甲。"},
-	"骑士专利授权1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.0, "route_flow_multiplier": 1.35, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["希卡利", "专利"], "text": "开放希卡利科技专利：当前商品正向价格增速×2、相关商路流通×1.35，持续4周期。"},
+	"骑士专利授权1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.0, "route_flow_multiplier": 1.35, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["希卡利", "专利"], "text": "开放希卡利科技专利：当前商品正向价格增速×2、相关商路流通×1.35，持续120秒。"},
 	"完美格挡破绽1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["艾斯杀手", "控场"], "text": "骗出完美格挡的空档，指定怪兽的特殊行动节奏延后2秒。"},
 	"混乱光线诱导1": {"cost": 5, "kind": "mudslide", "damage": 1, "panic": 28, "delay": 1.4, "move": 0.0, "range": 300.0, "tags": ["艾斯杀手", "破坏"], "text": "诱导混乱光线扫过城区，300米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
 	"迂回路线封锁1": {"cost": 4, "kind": "monster_lure", "lure_speedup": 4.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["艾斯杀手", "诱导"], "text": "封锁艾斯杀手的迂回路线，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4.5秒触发。"},
@@ -1149,6 +1152,7 @@ var selected_player := 0
 var selected_district := 0
 var selected_market_skill := "城市融资1"
 var previewed_district_card := ""
+var district_card_purchase_snapshot := {}
 var pending_discard_purchase := {}
 var selected_guess_player := -1
 var selected_trade_product := ""
@@ -1173,6 +1177,7 @@ var event_timer := 6.0
 var special_monster_timer := 5.0
 var monster_timer := 4.0
 var market_timer := 8.0
+var economy_cashflow_timer := 0.0
 var ui_timer := 0.0
 var ai_card_decision_timer := AI_CARD_DECISION_INTERVAL_SECONDS
 var ai_auction_reaction_timer := AI_AUCTION_REACTION_INTERVAL_SECONDS
@@ -1286,6 +1291,9 @@ func _process(delta: float) -> void:
 	_update_card_resolution_queue(scaled_delta)
 	_update_pending_contract_offers(scaled_delta)
 	_update_realtime_cooldowns(scaled_delta)
+	_update_city_gdp_derivative_timers()
+	_update_realtime_economy_cashflow(scaled_delta)
+	_age_economic_boons(scaled_delta)
 	_update_ai_decisions(scaled_delta)
 	_update_auto_monster_durations(scaled_delta)
 	_update_visual_cues(scaled_delta)
@@ -2397,7 +2405,7 @@ func _build_menu_overlay() -> void:
 func _open_main_menu() -> void:
 	_show_menu(
 		"太空辛迪加",
-		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个是AI对手。开局先进入准备页查看总席位、AI数量、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；经营周期里AI会按评分匿名扩张和执行商业行动，并记录决策样本供后续训练。玩家需要根据商品竞争、商路和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
+		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个是AI对手。开局先进入准备页查看总席位、AI数量、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；城市现金按当前GDP/min持续按秒流入；全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照。AI会按评分匿名扩张和执行商业行动，并记录决策样本供后续训练。玩家需要根据商品竞争、商路和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
 		true,
 		true
 	)
@@ -2423,19 +2431,19 @@ func _open_rules_menu() -> void:
 	lines.append("1. 身份与AI席位：每局3-8个席位，其中2-7个为AI对手，剩余席位是真人/本地玩家视角。玩家都是外星辛迪加角色；每名玩家开局获得一张角色卡，并在开局准备中从全部怪兽任选一只I级怪兽作为起始怪兽牌；这张起始牌无区域/商品流动门槛，用来把第一只怪兽匿名召唤到星球上。")
 	lines.append("2. 怪兽牌：开局不预选四只场上怪兽，怪兽全部来自怪兽牌。怪兽有生命值、移动速度、在场时间、召唤区域限制和自动行动概率；大多数怪兽会活动一段时间后自然离场，即使没有被杀掉。同名怪兽牌可用于升级己方同名在场怪兽，刷新生命值和在场时间。")
 	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地初始生产1种商品并有1种本地需求；海洋不生产，主要承载商路并影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
-	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；经营周期中，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
+	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；城市按当前GDP/min持续产生现金，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
 	lines.append("5. 市场价格：商品价格只能由供给、需求、商路断损、城市经营和经济天气重算，不能被玩家直接指定。扩张城市生产/需求、充实商路、引导怪兽破坏，才会改变市场。")
-	lines.append("6. 购牌与升级：卡牌需要花钱购买；默认只能从怪兽落地区或相邻区获取，怪兽所在区域八折，相邻区域原价。角色能力或补给牌可把购牌范围扩到二跳或全局，但会按远程/全局倍率加价；这只影响买牌，不放宽后续怪兽牌的召唤区域。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限；若购买新普通牌会超上限，必须先私下弃掉一张旧普通牌，手牌数量和弃牌内容都不公开。" % PLAYER_HAND_LIMIT)
+	lines.append("6. 购牌与升级：卡牌需要花钱购买；默认只能从怪兽落地区或相邻区获取，怪兽所在区域八折，相邻区域原价。点开某区域补给时会按那一瞬间的怪兽位置锁定本窗口购牌资格和价格；选牌途中怪兽离开也不取消本窗口购买。购牌是随时场上动作，不吃行动冷却。角色能力或补给牌可把购牌范围扩到二跳或全局，但会按远程/全局倍率加价；这只影响买牌，不放宽后续怪兽牌的召唤区域。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限；若购买新普通牌会超上限，必须先私下弃掉一张旧普通牌，手牌数量和弃牌内容都不公开。" % PLAYER_HAND_LIMIT)
 	lines.append("7. 出牌门槛：I级怪兽牌没有商品流动要求；II-IV级怪兽牌和多数其他牌要求己方城市满足指定商品流动数量，商品不被消耗。少数牌会额外收取现金。")
 	lines.append("8. 目标询问：打出需要目标怪兽的牌时，会先询问目标。所有出牌都是匿名事件：一次性指令/诱导、夺取归属或固定技能都只作为行动线索公开，不直接揭示玩家身份，也不让玩家持续操控怪兽。")
 	lines.append("9. 手牌消耗：一次性普通牌提交后会先进入顶部匿名卡牌轨道，并立刻离开手牌；它会用提交时的卡牌快照继续等待公开展示与结算。绑定固定怪兽技能不会离手，只在成功结算后进入冷却。")
 	lines.append("10. 同时出牌与竞价：空场第一张牌先进入0.5秒同时判定窗。若窗内只有一张，它直接进入自己的5秒公开展示；若出现复数牌，全部暂停结算并开启5秒匿名竞价。报价公开但报价者匿名，可用+10/+20/+50/+100/+200/+500/+1000快速加价；封盘后按报价、同价按参照玩家顺时针席位一次锁定整批顺序，批次中不重拍。封盘或展示期间打出的新牌不会被拒绝，而是集中进入下一批等待区；当前整批清空后只开启一次新竞价。每张有锁定报价的牌轮到展示时，会把小费私密付给它前一张已结算牌的出牌者；若前面没有牌则不支付。")
 	lines.append("11. 匿名区域合约：打合约牌前必须先在地图分别点选供给区与需求区。第一段5秒只是把这两个要接通的区域、商品和条款向所有玩家公开展示；展示结束后，目标城市真实业主另有独立5秒签约/拒绝窗口。这个决定窗会持续留在该玩家界面，但不占用全局卡牌展示位，其他玩家可以继续出牌；超时按拒签结算。")
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
-	lines.append("13. 经济与手牌隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹、流水、手牌数量和弃牌记录；其他玩家只能从公开行动推测。终局才公开结算资金并按钱判胜。")
+	lines.append("13. 经济与手牌隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、现金流、资金轨迹、流水、手牌数量和弃牌记录；其他玩家只能从公开行动推测。终局才公开结算资金并按钱判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
 	lines.append("15. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时；倒计时期间只公开“有人达标”，不公开触发者。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
-	lines.append("16. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
+	lines.append("16. AI训练骨架：AI席位目前会在全局市场刷新和实时决策中自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
 	lines.append("17. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
 	lines.append("")
 	lines.append("操作入口索引：1-8选席位；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
@@ -2449,7 +2457,7 @@ func _open_rules_menu() -> void:
 func _open_tutorial_menu() -> void:
 	_show_menu(
 		"新手引导",
-		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会在经营周期里自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP最终变成周期现金。商品当前价随供需和断路波动；产业升级、商品换线、需求改造、交通升级与破坏都会改变经营结果。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价，角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限；买新普通牌若会超上限，需要先私下弃掉一张旧普通牌。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济和手牌隐私：只看得到自己的现金、账本、手牌数量和弃牌记录。对手花了多少、还剩多少、是否满手，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻热度、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标。怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
+		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会按实时局势自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP/min 会持续按秒变成现金。全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照；产业升级、商品换线、需求改造、交通升级与破坏都会改变经营结果。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价。点开区域补给时会按那一瞬间的怪兽位置锁定本窗口资格和价格，选牌途中怪兽离开也仍可买；同一玩家同时只能保留一个区域购牌窗口，新开区域会取消旧窗口资格；购牌不吃行动冷却。角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限；买新普通牌若会超上限，需要先私下弃掉一张旧普通牌。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。城市买涨/做空等金融牌按卡面秒数持仓，到期看即时GDP涨跌结算。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济和手牌隐私：只看得到自己的现金、账本、手牌数量和弃牌记录。对手花了多少、还剩多少、是否满手，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻热度、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标。怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
 			CITY_BUILD_COST,
 			INTEL_CORRECT_GUESS_CASH,
 			INTEL_WRONG_GUESS_COST,
@@ -2689,7 +2697,7 @@ func _intel_dossier_text(viewer_index: int) -> String:
 	_refresh_city_networks()
 	var viewer_name := String(players[viewer_index].get("name", "玩家%d" % (viewer_index + 1))) if viewer_index >= 0 and viewer_index < players.size() else "无当前玩家"
 	var lines := []
-	lines.append("当前玩家：%s｜经营周期%d｜当前不揭示正误，不扫描对手现金。" % [
+	lines.append("当前玩家：%s｜全局市场刷新%d｜当前不揭示正误，不扫描对手现金。" % [
 		viewer_name,
 		business_cycle_count,
 	])
@@ -2755,7 +2763,7 @@ func _economy_overview_text() -> String:
 	_ensure_product_market_catalog()
 	_refresh_city_networks()
 	var lines := []
-	lines.append("经营周期%d｜当前玩家：%s｜场上怪兽：%d只" % [
+	lines.append("全局市场刷新%d｜当前玩家：%s｜场上怪兽：%d只" % [
 		business_cycle_count,
 		String(players[selected_player].get("name", "玩家")) if selected_player >= 0 and selected_player < players.size() else "无",
 		auto_monsters.size(),
@@ -3301,18 +3309,18 @@ func _product_public_status_tags(product_name: String) -> Array:
 	if growth_multiplier > 1.001:
 		tags.append("增速×%.2f/%s" % [
 			growth_multiplier,
-			_boon_turn_text(int(entry.get("growth_turns", 0))),
+			_boon_duration_text(_remaining_effect_seconds(entry, "growth_seconds", "growth_turns")),
 		])
 	var route_multiplier := float(entry.get("route_flow_multiplier", 1.0))
 	if route_multiplier > 1.001:
 		tags.append("商路×%.2f/%s" % [
 			route_multiplier,
-			_boon_turn_text(int(entry.get("route_flow_turns", 0))),
+			_boon_duration_text(_remaining_effect_seconds(entry, "route_flow_seconds", "route_flow_turns")),
 		])
-	var contract_turns := int(entry.get("market_contract_turns", 0))
+	var contract_seconds := _remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns")
 	var contract_demand := int(entry.get("market_contract_demand", 0))
 	var contract_supply := int(entry.get("market_contract_supply", 0))
-	if contract_turns > 0 and (contract_demand > 0 or contract_supply > 0):
+	if contract_seconds > 0.0 and (contract_demand > 0 or contract_supply > 0):
 		var pressure_parts := []
 		if contract_demand > 0:
 			pressure_parts.append("需+%d" % contract_demand)
@@ -3320,7 +3328,7 @@ func _product_public_status_tags(product_name: String) -> Array:
 			pressure_parts.append("供+%d" % contract_supply)
 		tags.append("商品合约%s/%s" % [
 			"/".join(pressure_parts),
-			_boon_turn_text(contract_turns),
+			_boon_duration_text(contract_seconds),
 		])
 	var volatility := int(entry.get("volatility", 0))
 	if volatility >= 12:
@@ -3334,13 +3342,13 @@ func _city_public_status_tags(city: Dictionary) -> Array:
 	if contract_income > 0:
 		tags.append("城市合约+%d/%s" % [
 			contract_income,
-			_boon_turn_text(int(city.get("contract_turns", 0))),
+			_boon_duration_text(_remaining_effect_seconds(city, "contract_seconds", "contract_turns")),
 		])
 	var route_multiplier := float(city.get("route_flow_multiplier", 1.0))
 	if route_multiplier > 1.001:
 		tags.append("流通×%.2f/%s" % [
 			route_multiplier,
-			_boon_turn_text(int(city.get("route_flow_turns", 0))),
+			_boon_duration_text(_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns")),
 		])
 	var disrupted := int(city.get("trade_disrupted_routes", 0))
 	if disrupted > 0:
@@ -3774,8 +3782,8 @@ func _sort_economy_player_cash_entry(a: Dictionary, b: Dictionary) -> bool:
 
 func _economy_player_cash_line(entry: Dictionary) -> String:
 	if bool(entry.get("private", false)):
-		return "%s｜现金、结算预估、城市资产、周期收入、资金轨迹与流水均为私人信息；只能从公开行动自行推测。" % String(entry.get("name", "玩家"))
-	return "%s｜%s%d｜现金%d｜城市%d｜%s｜上次周期%s｜角色累计+%d｜潜在周期%d｜最近%s｜窗口%s｜轨迹%s｜流水%s" % [
+		return "%s｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。" % String(entry.get("name", "玩家"))
+	return "%s｜%s%d｜现金%d｜城市%d｜%s｜本刷新现金流%s｜角色累计+%d｜潜在GDP/min %d｜最近%s｜窗口%s｜轨迹%s｜流水%s" % [
 		String(entry.get("name", "玩家")),
 		String(entry.get("score_label", "可见预估")),
 		int(entry.get("score", 0)),
@@ -3843,7 +3851,7 @@ func _standings_text() -> String:
 		INTEL_CORRECT_GUESS_CASH,
 		INTEL_WRONG_GUESS_COST,
 	])
-	lines.append("经营周期：%d｜实时结算｜场上怪兽：%d只" % [
+	lines.append("全局市场刷新：%d｜城市现金按秒线性流入｜场上怪兽：%d只" % [
 		business_cycle_count,
 		auto_monsters.size(),
 	])
@@ -3858,7 +3866,7 @@ func _standings_text() -> String:
 			continue
 		var score_label := String(entry.get("score_label", "可见预估"))
 		var intel_component := _signed_int_text(int(entry.get("intel_cash", 0))) if game_over else "待结算"
-		lines.append("%d. %s  %s%d = 现金%d + 存活城市%d×%d + 情报%s｜本周期潜在收入%d｜累计经营%d｜已建%d座｜%s" % [
+		lines.append("%d. %s  %s%d = 现金%d + 存活城市%d×%d + 情报%s｜潜在GDP/min %d｜累计经营%d｜已建%d座｜%s" % [
 			rank + 1,
 			String(entry.get("name", "玩家")),
 			score_label,
@@ -5827,6 +5835,26 @@ func _ensure_product_market_catalog() -> void:
 		product_market[product_name] = entry.duplicate(true)
 
 
+func _ensure_realtime_economy_state() -> void:
+	_ensure_product_market_catalog()
+	for player_index in range(players.size()):
+		var player: Dictionary = players[player_index]
+		if not player.has("last_cashflow_income"):
+			player["last_cashflow_income"] = int(player.get("last_cycle_income", 0))
+		if not player.has("cashflow_remainder"):
+			player["cashflow_remainder"] = 0.0
+		if not player.has("total_city_income"):
+			player["total_city_income"] = 0
+		if not player.has("total_role_income"):
+			player["total_role_income"] = 0
+		players[player_index] = player
+	for district_index in range(districts.size()):
+		var city := _district_city(district_index)
+		if city.is_empty():
+			continue
+		districts[district_index]["city"] = _normalize_city_runtime_fields(city)
+
+
 func _product_trend_text(product_name: String) -> String:
 	var entry: Dictionary = product_market.get(product_name, {})
 	var trend := int(entry.get("trend", 0))
@@ -5844,6 +5872,10 @@ func _normalize_product_market_boon_fields(entry: Dictionary) -> void:
 		entry["growth_multiplier"] = float(entry.get("base_growth_multiplier", 1.0))
 	if not entry.has("growth_turns"):
 		entry["growth_turns"] = 0
+	if not entry.has("growth_seconds"):
+		entry["growth_seconds"] = _legacy_turns_to_seconds(int(entry.get("growth_turns", 0)))
+	else:
+		_set_remaining_effect_seconds(entry, "growth_seconds", "growth_turns", float(entry.get("growth_seconds", 0.0)))
 	if not entry.has("growth_source"):
 		entry["growth_source"] = ""
 	if not entry.has("base_growth_source"):
@@ -5854,6 +5886,10 @@ func _normalize_product_market_boon_fields(entry: Dictionary) -> void:
 		entry["route_flow_multiplier"] = float(entry.get("base_route_flow_multiplier", 1.0))
 	if not entry.has("route_flow_turns"):
 		entry["route_flow_turns"] = 0
+	if not entry.has("route_flow_seconds"):
+		entry["route_flow_seconds"] = _legacy_turns_to_seconds(int(entry.get("route_flow_turns", 0)))
+	else:
+		_set_remaining_effect_seconds(entry, "route_flow_seconds", "route_flow_turns", float(entry.get("route_flow_seconds", 0.0)))
 	if not entry.has("route_flow_source"):
 		entry["route_flow_source"] = ""
 	if not entry.has("base_route_flow_source"):
@@ -5864,6 +5900,10 @@ func _normalize_product_market_boon_fields(entry: Dictionary) -> void:
 		entry["market_contract_supply"] = 0
 	if not entry.has("market_contract_turns"):
 		entry["market_contract_turns"] = 0
+	if not entry.has("market_contract_seconds"):
+		entry["market_contract_seconds"] = _legacy_turns_to_seconds(int(entry.get("market_contract_turns", 0)))
+	else:
+		_set_remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns", float(entry.get("market_contract_seconds", 0.0)))
 	if not entry.has("market_contract_source"):
 		entry["market_contract_source"] = ""
 
@@ -6241,7 +6281,7 @@ func _product_codex_text(product_name: String, index: int, total: int) -> String
 	else:
 		for clue_entry in product_clue_entries:
 			lines.append("- %s" % _economy_city_public_clue_line(clue_entry as Dictionary))
-	lines.append("价格梯度：%s。供给越多越便宜，需求和断路越多越贵；每次市场周期会按本局经济状态重新修正。" % _product_tier_summary())
+	lines.append("价格梯度：%s。供给越多越便宜，需求和断路越多越贵；每次全局市场刷新会按本局经济状态重新修正。" % _product_tier_summary())
 	return "\n".join(lines)
 
 
@@ -6259,13 +6299,7 @@ func _card_price(skill_name: String, district_index: int = -1, player_index: int
 	var power_cost: int = maxi(2, int(skill.get("cost", 2)))
 	var price: int = CARD_PRICE_UNIT + (power_cost - 2) * CARD_PRICE_COST_STEP
 	if district_index >= 0:
-		match _district_card_access_kind(district_index, player_index):
-			"landed":
-				price = int(round(float(price) * 0.8))
-			"extended":
-				price = int(round(float(price) * _player_extended_card_price_multiplier(player_index)))
-			"global":
-				price = int(round(float(price) * _player_global_card_price_multiplier(player_index)))
+		price = int(round(float(price) * _district_card_price_multiplier(district_index, player_index)))
 	return int(max(CARD_MIN_PRICE, price))
 
 
@@ -6375,10 +6409,10 @@ func _card_budget_driver_facts(skill: Dictionary) -> Array:
 	elif int(skill.get("card_access_extra_hops", 0)) > 0:
 		drivers.append("补给+%d跳" % int(skill.get("card_access_extra_hops", 0)))
 	if String(skill.get("kind", "")) == "city_gdp_derivative":
-		drivers.append("%s×%.2f/%d周期" % [
+		drivers.append("%s×%.2f/%s" % [
 			"买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空",
 			float(skill.get("gdp_bet_multiplier", 1.0)),
-			int(skill.get("gdp_bet_turns", 1)),
+			_duration_short_text(_gdp_bet_duration_seconds(skill)),
 		])
 	if int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
 		drivers.append("市场压%s/%s" % [
@@ -6500,7 +6534,7 @@ func _region_codex_text(index: int) -> String:
 		])
 	var city := _district_city(index)
 	if _city_is_active(city):
-		lines.append("城市公开信息：城市群存在｜等级%d｜生产 %s｜需求 %s｜供给%d/%d｜断路%d｜流通加速%s｜合约%s｜最近周期收入%d｜真实业主不公开。" % [
+		lines.append("城市公开信息：城市群存在｜等级%d｜生产 %s｜需求 %s｜供给%d/%d｜断路%d｜流通加速%s｜合约%s｜最近GDP/min %d｜真实业主不公开。" % [
 			int(city.get("level", 1)),
 			_city_product_price_summary(city),
 			_city_demand_price_summary(city),
@@ -6697,7 +6731,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		starter_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(starter_note)
 
-	var hint := _plain_label("提示：起始怪兽牌第一次召唤不限区域；普通I级怪兽牌免商品流动但仍看落点，II-IV级怪兽牌会要求商品流动。AI席位目前会在经营周期里按评分自动建城和执行商业行动，并记录决策样本供后续训练。", 12, Color("#94a3b8"))
+	var hint := _plain_label("提示：起始怪兽牌第一次召唤不限区域；普通I级怪兽牌免商品流动但仍看落点，II-IV级怪兽牌会要求商品流动。AI席位目前会按实时局势评分自动建城和执行商业行动，并记录决策样本供后续训练。", 12, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(hint)
 
@@ -6825,7 +6859,7 @@ func _run_save_summary_text(path: String = "") -> String:
 		return "存档：暂无已保存局面。保存局面后，可从这里继续。"
 	var saved_players := state.get("players", []) as Array
 	var saved_districts := state.get("districts", []) as Array
-	return "存档：可读取｜时间%s｜经营周期%d｜玩家%d｜存活城市%d｜领先 %s" % [
+	return "存档：可读取｜时间%s｜市场刷新%d｜玩家%d｜存活城市%d｜领先 %s" % [
 		_format_time(float(state.get("game_time", 0.0))),
 		int(state.get("business_cycle_count", 0)),
 		saved_players.size(),
@@ -6996,6 +7030,7 @@ func _capture_run_state() -> Dictionary:
 		"special_monster_timer": special_monster_timer,
 		"monster_timer": monster_timer,
 		"market_timer": market_timer,
+		"economy_cashflow_timer": economy_cashflow_timer,
 		"ai_card_decision_timer": ai_card_decision_timer,
 		"ai_auction_reaction_timer": ai_auction_reaction_timer,
 		"ai_intel_decision_timer": ai_intel_decision_timer,
@@ -7053,6 +7088,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	action_callouts = (state.get("action_callouts", []) as Array).duplicate(true)
 	map_event_effects = (state.get("map_event_effects", []) as Array).duplicate(true)
 	auto_monsters = (state.get("auto_monsters", []) as Array).duplicate(true)
+	_ensure_realtime_economy_state()
 
 	rng.state = int(state.get("rng_state", rng.state))
 	game_time = float(state.get("game_time", 0.0))
@@ -7062,6 +7098,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	selected_market_skill = _canonical_card_supply_name(String(state.get("selected_market_skill", "")))
 	previewed_district_card = _canonical_card_supply_name(String(state.get("previewed_district_card", selected_market_skill)))
 	pending_discard_purchase = (state.get("pending_discard_purchase", {}) as Dictionary).duplicate(true)
+	_open_district_card_purchase_window(selected_district, selected_player, true)
 	selected_guess_player = int(state.get("selected_guess_player", -1))
 	selected_trade_product = String(state.get("selected_trade_product", ""))
 	selected_contract_source_district = int(state.get("selected_contract_source_district", -1))
@@ -7105,6 +7142,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	special_monster_timer = float(state.get("special_monster_timer", 5.0))
 	monster_timer = float(state.get("monster_timer", 4.0))
 	market_timer = float(state.get("market_timer", 8.0))
+	economy_cashflow_timer = maxf(0.0, float(state.get("economy_cashflow_timer", 0.0)))
 	ai_card_decision_timer = maxf(0.1, float(state.get("ai_card_decision_timer", AI_CARD_DECISION_INTERVAL_SECONDS)))
 	ai_auction_reaction_timer = maxf(0.1, float(state.get("ai_auction_reaction_timer", AI_AUCTION_REACTION_INTERVAL_SECONDS)))
 	ai_intel_decision_timer = maxf(0.1, float(state.get("ai_intel_decision_timer", AI_INTEL_DECISION_INTERVAL_SECONDS)))
@@ -7544,16 +7582,19 @@ func _generate_product_market() -> Dictionary:
 			"price_history": [base_price],
 			"base_growth_multiplier": 1.0,
 			"growth_multiplier": 1.0,
+			"growth_seconds": 0.0,
 			"growth_turns": 0,
 			"growth_source": "",
 			"base_growth_source": "",
 			"base_route_flow_multiplier": 1.0,
 			"route_flow_multiplier": 1.0,
+			"route_flow_seconds": 0.0,
 			"route_flow_turns": 0,
 			"route_flow_source": "",
 			"base_route_flow_source": "",
 			"market_contract_demand": 0,
 			"market_contract_supply": 0,
+			"market_contract_seconds": 0.0,
 			"market_contract_turns": 0,
 			"market_contract_source": "",
 		}
@@ -7605,9 +7646,9 @@ func _refresh_product_market_prices() -> void:
 		var volatility := int(entry.get("volatility", 4))
 		var temporary_demand := int(entry.get("temporary_demand_pressure", 0))
 		var temporary_supply := int(entry.get("temporary_supply_pressure", 0))
-		var contract_turns := int(entry.get("market_contract_turns", 0))
-		var contract_demand := int(entry.get("market_contract_demand", 0)) if contract_turns > 0 else 0
-		var contract_supply := int(entry.get("market_contract_supply", 0)) if contract_turns > 0 else 0
+		var contract_seconds := _remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns")
+		var contract_demand := int(entry.get("market_contract_demand", 0)) if contract_seconds > 0.0 else 0
+		var contract_supply := int(entry.get("market_contract_supply", 0)) if contract_seconds > 0.0 else 0
 		var extra_demand := temporary_demand + contract_demand
 		var extra_supply := temporary_supply + contract_supply
 		var demand_score := int(demand.get(product_name, 0)) + extra_demand
@@ -7927,6 +7968,7 @@ func _new_game() -> void:
 	selected_contract_source_district = -1
 	selected_contract_target_district = -1
 	business_cycle_count = 0
+	economy_cashflow_timer = 0.0
 	game_over = false
 	victory_countdown_active = false
 	victory_countdown_timer = 0.0
@@ -7968,6 +8010,8 @@ func _new_game() -> void:
 			"cities_built": 0,
 			"total_city_income": 0,
 			"last_cycle_income": 0,
+			"last_cashflow_income": 0,
+			"cashflow_remainder": 0.0,
 			"total_card_spend": 0,
 			"total_build_spend": 0,
 			"total_card_income": 0,
@@ -7981,11 +8025,13 @@ func _new_game() -> void:
 
 	_generate_roguelike_districts()
 	_assign_district_card_choices()
+	_ensure_realtime_economy_state()
 	_refresh_product_market_prices()
 	var center := Vector2(map_width_m * 0.5, map_height_m * 0.5)
 	selected_district = _nearest_district_to(center)
 	if selected_district < 0:
 		selected_district = 0
+	_open_district_card_purchase_window(selected_district, selected_player)
 	_sync_selected_district_card()
 	_refresh_product_market_prices()
 	_start_card_ingress_animation()
@@ -8644,7 +8690,7 @@ func _player_role_summary(role_card: Dictionary) -> String:
 
 
 func _role_passive_text(role_card: Dictionary) -> String:
-	return String(role_card.get("passive", "暂无被动"))
+	return _realtime_rule_text(String(role_card.get("passive", "暂无被动")))
 
 
 func _player_role_card_for_index(player_index: int) -> Dictionary:
@@ -8696,7 +8742,7 @@ func _district_or_city_has_product(district_index: int, product_name: String) ->
 	return false
 
 
-func _apply_role_market_income_bonus(player_index: int, district_index: int) -> int:
+func _role_market_income_bonus_amount(player_index: int, district_index: int) -> int:
 	if player_index < 0 or player_index >= players.size() or district_index < 0 or district_index >= districts.size():
 		return 0
 	var role := _player_role_card_for_index(player_index)
@@ -8706,8 +8752,18 @@ func _apply_role_market_income_bonus(player_index: int, district_index: int) -> 
 		return 0
 	if not _district_or_city_has_product(district_index, product_name):
 		return 0
+	return amount
+
+
+func _apply_role_market_income_bonus(player_index: int, district_index: int) -> int:
+	var amount := _role_market_income_bonus_amount(player_index, district_index)
+	if amount <= 0:
+		return 0
+	var role := _player_role_card_for_index(player_index)
+	var product_name := String(role.get("resource_cash_product", ""))
 	players[player_index]["cash"] = int(players[player_index].get("cash", 0)) + amount
 	players[player_index]["last_cycle_income"] = int(players[player_index].get("last_cycle_income", 0)) + amount
+	players[player_index]["last_cashflow_income"] = int(players[player_index].get("last_cashflow_income", 0)) + amount
 	players[player_index]["total_city_income"] = int(players[player_index].get("total_city_income", 0)) + amount
 	players[player_index]["total_role_income"] = int(players[player_index].get("total_role_income", 0)) + amount
 	_record_player_economic_event(player_index, "角色收益", String(role.get("name", "角色卡")), amount, "%s资源兑钱｜%s" % [product_name, districts[district_index]["name"]])
@@ -8922,7 +8978,7 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		var delta_anchor := maxi(abs(reference_delta), abs(current_delta))
 		var delta_step := maxi(1, ceili(float(delta_anchor) * 0.35))
 		result[key] = current_delta + direction * delta_step * steps
-	for key in ["move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds"]:
+	for key in ["move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds", "contract_seconds", "market_contract_seconds", "growth_seconds", "route_flow_seconds"]:
 		if not source.has(key) and not base.has(key):
 			continue
 		var current_float := float(source.get(key, base.get(key, 0.0)))
@@ -9022,6 +9078,26 @@ func _district_city(index: int) -> Dictionary:
 	if index < 0 or index >= districts.size():
 		return {}
 	return districts[index].get("city", {}) as Dictionary
+
+
+func _normalize_city_runtime_fields(city: Dictionary) -> Dictionary:
+	if city.is_empty():
+		return city
+	if not city.has("contract_seconds"):
+		city["contract_seconds"] = _legacy_turns_to_seconds(int(city.get("contract_turns", 0)))
+	else:
+		_set_remaining_effect_seconds(city, "contract_seconds", "contract_turns", float(city.get("contract_seconds", 0.0)))
+	if not city.has("route_flow_seconds"):
+		city["route_flow_seconds"] = _legacy_turns_to_seconds(int(city.get("route_flow_turns", 0)))
+	else:
+		_set_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns", float(city.get("route_flow_seconds", 0.0)))
+	if not city.has("cashflow_remainder"):
+		city["cashflow_remainder"] = 0.0
+	if not city.has("last_cashflow_rate"):
+		city["last_cashflow_rate"] = int(city.get("last_income", 0))
+	if not city.has("cashflow_paid_total"):
+		city["cashflow_paid_total"] = 0
+	return city
 
 
 func _city_is_active(city: Dictionary) -> bool:
@@ -9200,14 +9276,22 @@ func _create_city_at_district_for_player(player_index: int, district_index: int,
 		"demands": demands,
 		"revenue_bonus": 0,
 		"contract_income_bonus": 0,
+		"contract_seconds": 0.0,
 		"contract_turns": 0,
 		"contract_source": "",
+		"route_flow_multiplier": 1.0,
+		"route_flow_seconds": 0.0,
+		"route_flow_turns": 0,
+		"route_flow_source": "",
 		"last_income": 0,
+		"last_cashflow_rate": 0,
+		"cashflow_remainder": 0.0,
+		"cashflow_paid_total": 0,
 		"last_gdp": 0,
 		"last_gdp_delta": 0,
 		"last_gdp_cycle": -1,
 		"last_gdp_source": "",
-		"last_gdp_reason": "尚未经历经营周期",
+		"last_gdp_reason": "尚未经历全局市场刷新",
 		"gdp_history": [],
 		"competition_matches": 0,
 		"trade_routes": [],
@@ -9580,7 +9664,7 @@ func _pay_rival_business_cost(player_index: int) -> void:
 	player["cash"] = max(0, int(player.get("cash", 0)) - RIVAL_BUSINESS_ACTION_COST)
 	player["total_business_spend"] = int(player.get("total_business_spend", 0)) + RIVAL_BUSINESS_ACTION_COST
 	players[player_index] = player
-	_record_player_economic_event(player_index, "商业支出", "匿名商业行动", -RIVAL_BUSINESS_ACTION_COST, "经营周期%d" % business_cycle_count)
+	_record_player_economic_event(player_index, "商业支出", "匿名商业行动", -RIVAL_BUSINESS_ACTION_COST, "市场刷新%d" % business_cycle_count)
 	_record_player_cash_snapshot(player_index)
 
 
@@ -9706,7 +9790,7 @@ func _apply_rival_price_pump(player_index: int, action: Dictionary) -> bool:
 	product_market[product_name] = entry
 	_refresh_product_market_prices()
 	var after_price := _product_price(product_name)
-	var clue := "周期%d：匿名财团制造%s需求压力%d，市场按供需重算¥%d→¥%d；疑似有生产该商品的城市受益。" % [
+	var clue := "刷新%d：匿名财团制造%s需求压力%d，市场按供需重算¥%d→¥%d；疑似有生产该商品的城市受益。" % [
 		business_cycle_count,
 		product_name,
 		pressure,
@@ -9739,7 +9823,7 @@ func _apply_rival_route_sabotage(player_index: int, action: Dictionary) -> bool:
 	_pay_rival_business_cost(player_index)
 	var before_damage := int(target_city.get("trade_route_damage", 0))
 	target_city["trade_route_damage"] = before_damage + RIVAL_BUSINESS_ROUTE_DAMAGE
-	var clue := "周期%d：匿名商路黑客攻击%s，疑似围绕%s竞争；真实业主未公开。" % [
+	var clue := "刷新%d：匿名商路黑客攻击%s，疑似围绕%s竞争；真实业主未公开。" % [
 		business_cycle_count,
 		districts[target_city_index]["name"],
 		product_name,
@@ -9747,7 +9831,7 @@ func _apply_rival_route_sabotage(player_index: int, action: Dictionary) -> bool:
 	target_city = _append_city_public_clue(target_city, clue)
 	districts[target_city_index]["city"] = target_city
 	if own_city_index >= 0 and own_city_index < districts.size():
-		_set_city_public_clue(own_city_index, "周期%d：疑似有匿名财团围绕%s压制竞争城市。" % [business_cycle_count, product_name])
+		_set_city_public_clue(own_city_index, "刷新%d：疑似有匿名财团围绕%s压制竞争城市。" % [business_cycle_count, product_name])
 	_refresh_city_networks()
 	_pulse_district(target_city_index, Color("#fb7185"))
 	_add_action_callout(
@@ -10523,7 +10607,7 @@ func _player_quick_goal_hint(player_index: int) -> String:
 		return "目标提示：先召唤怪兽，怪兽落地区和邻区才会开放购牌。"
 	if _player_active_city_count(player_index) <= 0:
 		if selected_district >= 0 and selected_district < districts.size() and _city_build_error_for(player_index, selected_district, false) == "":
-			return "目标提示：当前区域可城市化；城市GDP会按周期变成钱。"
+			return "目标提示：当前区域可城市化；城市GDP/min会按秒变成现金。"
 		return "目标提示：选择陆地区域建城，先建立稳定收入。"
 	if selected_district >= 0 and selected_district < districts.size():
 		if _can_buy_card_from_district(selected_district, player_index) and not (districts[selected_district].get("card_choices", []) as Array).is_empty():
@@ -10608,7 +10692,7 @@ func _opening_guide_lines(player_index: int) -> Array:
 	var progress := _opening_guide_progress(player_index)
 	return [
 		_opening_guide_step(bool(progress.get("has_monster", false)), "先召唤怪兽，开启落地区/邻区购牌。"),
-		_opening_guide_step(bool(progress.get("has_city", false)), "在陆地建城市，GDP 周期收入会变成钱。"),
+		_opening_guide_step(bool(progress.get("has_city", false)), "在陆地建城市，GDP/min 会按秒变成现金。"),
 		_opening_guide_step(bool(progress.get("has_bought_card", false)), "从怪兽补给范围买牌；重复牌自动升到 II/III/IV。"),
 		_opening_guide_step(bool(progress.get("has_played_card", false)), "满足商品流动后匿名出牌，需要目标的牌会先询问。"),
 		_opening_guide_step(bool(progress.get("has_checked_economy", false)), "打开经济总览，看商品、商路和城市收入拆解。"),
@@ -10908,7 +10992,7 @@ func _contract_accept_effect_summary(skill: Dictionary) -> String:
 		pieces.append("消费%s" % _signed_int_text(consumption_delta))
 	var flow_multiplier := float(skill.get("accept_route_flow_multiplier", 1.0))
 	if flow_multiplier > 1.001:
-		pieces.append("流通×%.2f/%d周期" % [flow_multiplier, maxi(1, int(skill.get("route_flow_turns", 1)))])
+		pieces.append("流通×%.2f/%s" % [flow_multiplier, _duration_short_text(_skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", 1))])
 	var add_products := int(skill.get("contract_add_products", 0))
 	var add_demands := int(skill.get("contract_add_demands", 0))
 	var remove_products := int(skill.get("contract_remove_products", 0))
@@ -11228,7 +11312,7 @@ func _role_card_art_stats(role_card: Dictionary) -> String:
 	var resource_product := String(role_card.get("resource_cash_product", ""))
 	var resource_amount := int(role_card.get("resource_cash_amount", 0))
 	if resource_product != "" and resource_amount > 0:
-		parts.append("周期:%s+¥%d" % [resource_product, resource_amount])
+		parts.append("现金流:%s+¥%d/min" % [resource_product, resource_amount])
 	var bonus_product := String(role_card.get("bonus_card_product", ""))
 	if bonus_product != "":
 		parts.append("购牌:%s+1" % bonus_product)
@@ -11326,7 +11410,7 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 			var can_receive_with_discard := _player_can_receive_card_with_discard(players[selected_player], skill_name)
 			var needs_discard := _purchase_requires_discard(players[selected_player], skill_name)
 			action_button.text = ("换购 ¥%d" if needs_discard else "获取 ¥%d") % price
-			action_button.disabled = game_over or _has_pending_target_choice() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or players[selected_player]["action_cooldown"] > 0.0 or int(players[selected_player].get("cash", 0)) < price or not can_receive_with_discard
+			action_button.disabled = game_over or _has_pending_target_choice() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or int(players[selected_player].get("cash", 0)) < price or not can_receive_with_discard
 			if needs_discard:
 				action_button.tooltip_text = "普通手牌已满：点击后会让当前玩家私下选择一张旧普通牌弃掉；弃牌不公开。"
 			action_button.pressed.connect(Callable(self, "_claim_district_card").bind(skill_name))
@@ -11469,6 +11553,61 @@ func _monster_card_duration_text(skill: Dictionary, compact: bool = false) -> St
 	return "%.0fs" % duration if compact else "%.0f秒后自然离场" % duration
 
 
+func _duration_short_text(seconds: float) -> String:
+	var total := maxi(1, int(round(seconds)))
+	if total < 60:
+		return "%d秒" % total
+	var minutes := int(total / 60)
+	var rest := total % 60
+	if rest == 0:
+		return "%d分钟" % minutes
+	return "%d分%d秒" % [minutes, rest]
+
+
+func _legacy_turns_to_seconds(turns: int) -> float:
+	return float(maxi(0, turns)) * ECONOMY_LEGACY_TURN_SECONDS
+
+
+func _skill_duration_seconds(skill: Dictionary, seconds_key: String, turns_key: String, default_turns: int = 0) -> float:
+	if skill.has(seconds_key):
+		return maxf(0.0, float(skill.get(seconds_key, 0.0)))
+	return _legacy_turns_to_seconds(maxi(0, int(skill.get(turns_key, default_turns))))
+
+
+func _remaining_effect_seconds(source: Dictionary, seconds_key: String, turns_key: String) -> float:
+	if source.has(seconds_key):
+		return maxf(0.0, float(source.get(seconds_key, 0.0)))
+	return _legacy_turns_to_seconds(maxi(0, int(source.get(turns_key, 0))))
+
+
+func _set_remaining_effect_seconds(source: Dictionary, seconds_key: String, turns_key: String, seconds: float) -> void:
+	var safe_seconds := maxf(0.0, seconds)
+	source[seconds_key] = safe_seconds
+	source[turns_key] = int(ceil(safe_seconds / ECONOMY_LEGACY_TURN_SECONDS)) if safe_seconds > 0.0 else 0
+
+
+func _age_remaining_effect_seconds(source: Dictionary, seconds_key: String, turns_key: String, delta_seconds: float) -> bool:
+	var before := _remaining_effect_seconds(source, seconds_key, turns_key)
+	if before <= 0.0:
+		_set_remaining_effect_seconds(source, seconds_key, turns_key, 0.0)
+		return false
+	var after := maxf(0.0, before - maxf(0.0, delta_seconds))
+	_set_remaining_effect_seconds(source, seconds_key, turns_key, after)
+	return before > 0.0 and after <= 0.0
+
+
+func _boon_duration_text(seconds: float) -> String:
+	if seconds > 0.0:
+		return _duration_short_text(seconds)
+	return "本局持续"
+
+
+func _gdp_bet_duration_seconds(skill: Dictionary) -> float:
+	if skill.has("gdp_bet_seconds"):
+		return maxf(1.0, float(skill.get("gdp_bet_seconds", 60.0)))
+	return maxf(1.0, float(maxi(1, int(skill.get("gdp_bet_turns", 2)))) * 30.0)
+
+
 func _monster_card_region_text(skill: Dictionary, compact: bool = false) -> String:
 	if bool(skill.get("starter_play_free", false)):
 		return "不限区" if compact else "无（起始怪兽牌）"
@@ -11514,11 +11653,11 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 
 func _card_art_stats(skill: Dictionary) -> String:
 	if String(skill.get("kind", "")) == "city_gdp_derivative":
-		return "%s｜%s×%.2f｜%d周期" % [
+		return "%s｜%s×%.2f｜%s" % [
 			_card_strategy_route_label(skill),
 			"买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空",
 			float(skill.get("gdp_bet_multiplier", 1.0)),
-			int(skill.get("gdp_bet_turns", 1)),
+			_duration_short_text(_gdp_bet_duration_seconds(skill)),
 		]
 	if String(skill.get("kind", "")) != "monster_card":
 		var route := _card_strategy_route_label(skill)
@@ -11568,10 +11707,10 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var product_shift := int(skill.get("product_shift", 0))
 	var demand_shift := int(skill.get("demand_shift", 0))
 	var contract_income := int(skill.get("contract_income", 0))
-	var contract_turns := int(skill.get("contract_turns", 0))
+	var contract_seconds := _skill_duration_seconds(skill, "contract_seconds", "contract_turns", 0)
 	var market_demand_pressure := int(skill.get("market_demand_pressure", 0))
 	var market_supply_pressure := int(skill.get("market_supply_pressure", 0))
-	var market_contract_turns := int(skill.get("market_contract_turns", 0))
+	var market_contract_seconds := _skill_duration_seconds(skill, "market_contract_seconds", "market_contract_turns", 0)
 	var contract_add_products := int(skill.get("contract_add_products", 0))
 	var contract_add_demands := int(skill.get("contract_add_demands", 0))
 	var contract_remove_products := int(skill.get("contract_remove_products", 0))
@@ -11593,9 +11732,9 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var transport_delta := int(skill.get("transport_delta", 0))
 	var consumption_delta := int(skill.get("consumption_delta", 0))
 	var growth_multiplier := float(skill.get("growth_multiplier", 1.0))
-	var growth_turns := int(skill.get("growth_turns", 0))
+	var growth_seconds := _skill_duration_seconds(skill, "growth_seconds", "growth_turns", 0)
 	var route_flow_multiplier := float(skill.get("route_flow_multiplier", 1.0))
-	var route_flow_turns := int(skill.get("route_flow_turns", growth_turns))
+	var route_flow_seconds := _skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", int(ceil(growth_seconds / ECONOMY_LEGACY_TURN_SECONDS)))
 	var delay := float(skill.get("delay", 0.0))
 	var lure_speedup := float(skill.get("lure_speedup", 0.0))
 	var miasma_count := int(skill.get("miasma_count", 0))
@@ -11610,7 +11749,7 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var global_card_price_multiplier := float(skill.get("global_card_price_multiplier", 1.0))
 	var gdp_bet_direction := String(skill.get("gdp_bet_direction", ""))
 	var gdp_bet_multiplier := float(skill.get("gdp_bet_multiplier", 0.0))
-	var gdp_bet_turns := int(skill.get("gdp_bet_turns", 0))
+	var gdp_bet_seconds := _gdp_bet_duration_seconds(skill) if gdp_bet_direction != "" else 0.0
 	var gdp_bet_destroy_bonus := int(skill.get("gdp_bet_destroy_bonus", 0))
 	if move_m > 0.0:
 		facts.append("移动:%s" % _meters_text(move_m))
@@ -11629,7 +11768,7 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	if panic > 0:
 		facts.append("热度:+%d" % panic)
 	if revenue_amount > 0:
-		facts.append("周期收入:+%d" % revenue_amount)
+		facts.append("GDP/min:+%d" % revenue_amount)
 	if cash > 0:
 		facts.append("资金:+%d" % cash)
 	if draw_amount > 0:
@@ -11645,11 +11784,11 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	if demand_shift > 0:
 		facts.append("需求改造:%d" % demand_shift)
 	if contract_income > 0:
-		facts.append("临时合约:+%d/%d周期" % [contract_income, maxi(1, contract_turns)])
+		facts.append("临时合约:+%d/min/%s" % [contract_income, _duration_short_text(contract_seconds)])
 	if market_demand_pressure > 0:
-		facts.append("商品合约需求:+%d/%d周期" % [market_demand_pressure, maxi(1, market_contract_turns)])
+		facts.append("商品合约需求:+%d/%s" % [market_demand_pressure, _duration_short_text(market_contract_seconds)])
 	if market_supply_pressure > 0:
-		facts.append("商品合约供给:+%d/%d周期" % [market_supply_pressure, maxi(1, market_contract_turns)])
+		facts.append("商品合约供给:+%d/%s" % [market_supply_pressure, _duration_short_text(market_contract_seconds)])
 	if contract_add_products > 0 or contract_add_demands > 0:
 		facts.append("合约接入:供%d/需%d" % [maxi(0, contract_add_products), maxi(0, contract_add_demands)])
 	if contract_remove_products > 0 or contract_remove_demands > 0:
@@ -11665,7 +11804,7 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 		if accept_consumption_delta != 0:
 			accept_parts.append("消费%s" % _signed_int_text(accept_consumption_delta))
 		if accept_route_flow_multiplier > 1.001:
-			accept_parts.append("流通×%.2f/%d周期" % [accept_route_flow_multiplier, maxi(1, int(skill.get("route_flow_turns", 1)))])
+			accept_parts.append("流通×%.2f/%s" % [accept_route_flow_multiplier, _duration_short_text(_skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", 1))])
 		facts.append("签约增益:%s" % "、".join(accept_parts))
 	if decline_cash_penalty > 0:
 		facts.append("拒签罚款:¥%d" % decline_cash_penalty)
@@ -11693,9 +11832,9 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	if consumption_delta != 0:
 		facts.append("消费:%s" % _signed_int_text(consumption_delta))
 	if growth_multiplier > 1.001:
-		facts.append("商品增速:×%.2f/%d周期" % [growth_multiplier, maxi(1, growth_turns)])
+		facts.append("商品增速:×%.2f/%s" % [growth_multiplier, _duration_short_text(growth_seconds)])
 	if route_flow_multiplier > 1.001:
-		facts.append("流通:×%.2f/%d周期" % [route_flow_multiplier, maxi(1, route_flow_turns)])
+		facts.append("流通:×%.2f/%s" % [route_flow_multiplier, _duration_short_text(route_flow_seconds)])
 	if delay > 0.0:
 		facts.append("延后行动:%.1fs" % delay)
 	if lure_speedup > 0.0:
@@ -11717,7 +11856,7 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	if gdp_bet_direction != "":
 		facts.append("GDP方向:%s" % ("买涨" if gdp_bet_direction == "up" else "做空"))
 	if gdp_bet_multiplier > 0.0:
-		facts.append("GDP倍率:×%.2f/%d周期" % [gdp_bet_multiplier, maxi(1, gdp_bet_turns)])
+		facts.append("GDP倍率:×%.2f/%s" % [gdp_bet_multiplier, _duration_short_text(gdp_bet_seconds)])
 	if gdp_bet_destroy_bonus > 0:
 		facts.append("破产奖励:¥%d" % gdp_bet_destroy_bonus)
 	return facts
@@ -11776,20 +11915,20 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 		"city_revenue_boost":
 			return [
 				"%s翻开时，目标城市上空亮起匿名投资光幕。" % label,
-				"楼群、广告牌和隐形合同同步加码，周期收入数字从城市边缘浮起。",
+				"楼群、广告牌和隐形合同同步加码，GDP/min数字从城市边缘浮起。",
 				"收益留在城市经营账本里，但出牌者身份仍只能靠城市业主与商品流向推测。",
 			]
 		"city_contract_boon":
 			return [
 				"%s盖下临时合约封印，城市航港短暂变成高价订单会场。" % label,
-				"合约倒计时和额外周期收入挂到城市卡片旁，持续周期逐步扣减。",
+				"合约倒计时和额外GDP/min挂到城市卡片旁，剩余秒数逐步扣减。",
 				"合同余波会继续影响GDP，其他玩家只能从该城收入异动反推匿名出牌者。",
 			]
 		"route_flow_boon", "route_insurance":
 			return [
 				"%s打开一条发光商路，运输节点像星港灯带一样被点亮。" % label,
 				"受损路线被修补或加速，流通倍率贴到目标城市的商路状态上。",
-				"之后几个经营周期，途经商品会以更快速度转成GDP收入。",
+				"持续时间内，途经商品会以更快速度转成GDP/min。",
 			]
 		"route_sabotage":
 			return [
@@ -11806,13 +11945,13 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 		"city_gdp_derivative":
 			return [
 				"%s翻面时，目标城市上方出现匿名买涨/做空盘口。" % label,
-				"系统记录该城当前GDP为基准；之后经营周期按GDP涨跌差额和卡面倍率兑现。",
+				"系统记录该城当前即时GDP为基准；持仓到期后按GDP涨跌差额和卡面倍率兑现。",
 				"若城市被怪兽摧毁，做空合约会进入破产清算；收款人仍保持匿名。",
 			]
 		"product_contract_boon":
 			return [
 				"%s把远期合约钉到当前商品，订单影像沿商路扩散。" % label,
-				"持续供需压力和可能的流通倍率进入商品天气，按周期衰减。",
+				"持续供需压力和可能的流通倍率进入商品天气，按秒衰减。",
 				"商品价格不会被手动改写，只会在后续供需重算里体现这张牌的余波。",
 			]
 		"area_trade_contract":
@@ -11824,7 +11963,7 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 		"product_growth_boon":
 			return [
 				"%s点燃当前商品的增长光环，相关商路出现短暂共鸣。" % label,
-				"正向价格增速与流通倍率进入商品天气，并显示剩余周期。",
+				"正向价格增速与流通倍率进入商品天气，并显示剩余秒数。",
 				"如果城市依赖该商品，后续GDP会在生产、运输或消费端被放大。",
 			]
 		"market_stabilize":
@@ -11843,7 +11982,7 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 			return [
 				"%s把区域切成生产、交通、消费三层经济网格。" % label,
 				"卡面改写对应区域参数：生产量、公共交通速度或消费需求会升降。",
-				"区域GDP来源随之改变，商路和商品流速会在之后周期持续体现。",
+				"区域GDP来源随之改变，商路和商品流速会在之后的秒级现金流中体现。",
 			]
 		"cash_gain":
 			return [
@@ -12244,7 +12383,7 @@ func _add_district_card_button(parent: Container, card_name: String) -> void:
 	]
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.disabled = game_over or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or int(players[selected_player].get("cash", 0)) < price or not _player_can_receive_card(players[selected_player], card_name)
+	button.disabled = game_over or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or int(players[selected_player].get("cash", 0)) < price or not _player_can_receive_card_with_discard(players[selected_player], card_name)
 	button.tooltip_text = _card_detail_tooltip(card_name, selected_district)
 	button.mouse_entered.connect(Callable(self, "_preview_district_card").bind(card_name, true))
 	button.pressed.connect(Callable(self, "_preview_district_card").bind(card_name, true))
@@ -12306,16 +12445,54 @@ func _card_detail_tooltip(card_name: String, district_index: int = -1) -> String
 	]
 
 
+func _resolved_card_access_player_index(player_index: int = -1) -> int:
+	if player_index >= 0:
+		return player_index
+	return selected_player
+
+
+func _card_purchase_snapshot_matches(district_index: int, player_index: int = -1) -> bool:
+	var resolved_player := _resolved_card_access_player_index(player_index)
+	return (
+		not district_card_purchase_snapshot.is_empty()
+		and int(district_card_purchase_snapshot.get("district_index", -1)) == district_index
+		and int(district_card_purchase_snapshot.get("player_index", -1)) == resolved_player
+	)
+
+
+func _open_district_card_purchase_window(district_index: int, player_index: int = -1, preserve_pending_discard: bool = false) -> void:
+	var resolved_player := _resolved_card_access_player_index(player_index)
+	if not preserve_pending_discard and not pending_discard_purchase.is_empty():
+		var pending_player := int(pending_discard_purchase.get("player_index", -1))
+		var pending_district := int(pending_discard_purchase.get("district_index", -1))
+		if pending_player != resolved_player or pending_district != district_index:
+			pending_discard_purchase = {}
+	if district_index < 0 or district_index >= districts.size() or resolved_player < 0 or resolved_player >= players.size():
+		district_card_purchase_snapshot = {}
+		return
+	var kind := _district_card_access_kind_live(district_index, resolved_player)
+	district_card_purchase_snapshot = {
+		"player_index": resolved_player,
+		"district_index": district_index,
+		"access_kind": kind,
+		"opened_at": game_time,
+		"extended_multiplier": _player_extended_card_price_multiplier(resolved_player),
+		"global_multiplier": _player_global_card_price_multiplier(resolved_player),
+	}
+
+
 func _select_player(index: int) -> void:
 	if index < 0 or index >= players.size():
 		return
 	selected_player = index
+	_open_district_card_purchase_window(selected_district, selected_player)
 	_load_selected_district_guess()
 	_refresh_ui()
 
 
 func _select_district(index: int) -> void:
 	selected_district = index
+	_open_district_card_purchase_window(selected_district, selected_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
 	_refresh_ui()
@@ -12611,7 +12788,7 @@ func _empty_ai_memory() -> Dictionary:
 		"economic_focus_rankings": [],
 		"strategic_intent": "",
 		"strategic_intent_score": 0,
-		"strategic_intent_reason": "尚未形成多周期策略意图",
+		"strategic_intent_reason": "尚未形成多步策略意图",
 		"strategic_intent_cycle": -1,
 		"strategic_intent_rankings": [],
 		"route_plan_product": "",
@@ -12637,7 +12814,7 @@ func _empty_ai_memory() -> Dictionary:
 		"episode_last_rank": -1,
 		"episode_last_cash_goal": 0,
 		"episode_last_result": "",
-		"training_note": "记录状态向量、候选评分、经营周期收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。",
+		"training_note": "记录状态向量、候选评分、实时现金流/全局刷新收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。",
 	}
 
 
@@ -12651,6 +12828,16 @@ func _ensure_player_ai_state() -> void:
 		var player: Dictionary = players[i]
 		var seat_type := String(player.get("seat_type", "ai" if i >= human_count else "human"))
 		var is_ai := seat_type == "ai" or bool(player.get("is_ai", false))
+		if not player.has("last_cycle_income"):
+			player["last_cycle_income"] = 0
+		if not player.has("last_cashflow_income"):
+			player["last_cashflow_income"] = int(player.get("last_cycle_income", 0))
+		if not player.has("cashflow_remainder"):
+			player["cashflow_remainder"] = 0.0
+		if not player.has("total_city_income"):
+			player["total_city_income"] = 0
+		if not player.has("total_role_income"):
+			player["total_role_income"] = 0
 		player["seat_type"] = "ai" if is_ai else "human"
 		player["is_ai"] = is_ai
 		if is_ai:
@@ -12681,7 +12868,7 @@ func _ensure_player_ai_state() -> void:
 				if not memory.has("strategic_intent_score"):
 					memory["strategic_intent_score"] = 0
 				if String(memory.get("strategic_intent_reason", "")) == "":
-					memory["strategic_intent_reason"] = "尚未形成多周期策略意图"
+					memory["strategic_intent_reason"] = "尚未形成多步策略意图"
 				if not memory.has("strategic_intent_cycle"):
 					memory["strategic_intent_cycle"] = -1
 				if not (memory.get("strategic_intent_rankings", []) is Array):
@@ -12733,7 +12920,7 @@ func _ensure_player_ai_state() -> void:
 				if not memory.has("episode_last_result"):
 					memory["episode_last_result"] = ""
 				if String(memory.get("training_note", "")) == "":
-					memory["training_note"] = "记录状态向量、候选评分、经营周期收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。"
+					memory["training_note"] = "记录状态向量、候选评分、实时现金流/全局刷新收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。"
 				player["ai_memory"] = memory
 		else:
 			player["ai_profile"] = {}
@@ -14462,7 +14649,7 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	score += int(skill.get("cash", 0)) / 4
 	score += int(skill.get("draw_amount", 0)) * 45
 	score += int(skill.get("revenue_amount", 0)) / 2
-	score += int(skill.get("contract_income", 0)) * maxi(1, int(skill.get("contract_turns", 1))) / 5
+	score += int(skill.get("contract_income", 0)) * maxi(1, int(ceil(_skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1) / ECONOMY_LEGACY_TURN_SECONDS))) / 5
 	score += int(round((float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 120.0)) if helpful_target else 0
 	score += int(skill.get("repair_routes", 0)) * (55 if helpful_target else 18)
 	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))
@@ -14613,11 +14800,11 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = gdp_target
 		context["policy_kind"] = "%s_%s" % [kind, gdp_direction]
 		context["score"] = int(context["score"]) + 110 + int(round(float(skill.get("gdp_bet_multiplier", 1.0)) * 35.0)) + int(skill.get("gdp_bet_destroy_bonus", 0)) / 10
-		context["reason"] = "匿名%s%sGDP｜倍率×%.2f｜持续%d周期" % [
+		context["reason"] = "匿名%s%sGDP｜倍率×%.2f｜持仓%s" % [
 			"买涨" if gdp_direction == "up" else "做空",
 			districts[gdp_target]["name"],
 			float(skill.get("gdp_bet_multiplier", 1.0)),
-			int(skill.get("gdp_bet_turns", 1)),
+			_duration_short_text(_gdp_bet_duration_seconds(skill)),
 		]
 	elif ["route_sabotage", "panic_shift"].has(kind):
 		if rival_city < 0:
@@ -15093,7 +15280,7 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 	accept_score += maxi(0, int(skill.get("accept_consumption_delta", 0))) * 32
 	var accept_route_flow := float(skill.get("accept_route_flow_multiplier", 1.0))
 	if accept_route_flow > 1.001:
-		accept_score += int(round((accept_route_flow - 1.0) * 230.0)) + maxi(1, int(skill.get("route_flow_turns", 1))) * 8
+		accept_score += int(round((accept_route_flow - 1.0) * 230.0)) + maxi(1, int(ceil(_skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", 1) / ECONOMY_LEGACY_TURN_SECONDS))) * 8
 	accept_score += maxi(0, int(skill.get("contract_add_products", 0))) * 38
 	accept_score += maxi(0, int(skill.get("contract_add_demands", 0))) * 42
 	accept_score -= maxi(0, int(skill.get("contract_remove_products", 0))) * 16
@@ -16147,6 +16334,7 @@ func _skill_tag_text(skill: Dictionary) -> String:
 
 func _skill_display_text(skill: Dictionary) -> String:
 	var text := String(skill.get("text", "即时结算干预卡。"))
+	text = _realtime_rule_text(text)
 	if auto_monsters.is_empty():
 		return text
 	text = text.replace("除自身外，所有已装备卡牌立即+1补给。", "从当前区域额外获取1张候选卡。")
@@ -16156,6 +16344,28 @@ func _skill_display_text(skill: Dictionary) -> String:
 	text = text.replace("其他怪兽概率行动", "怪兽特殊行动")
 	text = text.replace("其他怪兽行动", "怪兽特殊行动")
 	return text
+
+
+func _realtime_rule_text(text: String) -> String:
+	var result := text
+	result = result.replace("每个经营周期收入", "GDP/min")
+	result = result.replace("每个经营周期额外", "每分钟现金流额外")
+	result = result.replace("每个经营周期", "每分钟")
+	result = result.replace("周期收入", "GDP/min")
+	result = result.replace("/周期", "/min")
+	result = result.replace("下一次市场重算", "下一次全局市场刷新")
+	result = result.replace("下一次供需重算", "下一次全局市场刷新")
+	result = result.replace("价格由供需重算体现", "价格由全局供需刷新体现")
+	result = result.replace("等待下一次市场重算兑现", "等待下一次全局市场刷新兑现")
+	result = result.replace("等待下一次供需重算兑现", "等待下一次全局市场刷新兑现")
+	for duration_units in range(1, 13):
+		var duration_text := _duration_short_text(_legacy_turns_to_seconds(duration_units))
+		result = result.replace("持续%d周期" % duration_units, "持续%s" % duration_text)
+		result = result.replace("持续%d个经营周期" % duration_units, "持续%s" % duration_text)
+		result = result.replace("接下来%d个经营周期" % duration_units, "接下来%s" % duration_text)
+		result = result.replace("%d周期" % duration_units, duration_text)
+	result = result.replace("经营周期", "全局市场刷新")
+	return result
 
 
 func _derived_skill_tags(kind: String) -> Array:
@@ -16430,7 +16640,7 @@ func _prime_timers_for_new_game() -> void:
 	event_timer = max(1.0, _preset_float("event_min") * 0.75)
 	special_monster_timer = max(1.0, _preset_float("special_monster_min") * 0.9)
 	monster_timer = max(1.0, _preset_float("monster_min") * 0.8)
-	market_timer = max(1.0, _preset_float("market_min") * 0.9)
+	market_timer = _roll_timer("market")
 
 
 func _select_district_card(skill_name: String) -> void:
@@ -16593,7 +16803,7 @@ func _nearest_active_monster_graph_distance(district_index: int, max_steps: int)
 	return -1
 
 
-func _district_card_access_kind(district_index: int, player_index: int = -1) -> String:
+func _district_card_access_kind_live(district_index: int, player_index: int = -1) -> String:
 	if district_index < 0 or district_index >= districts.size():
 		return "none"
 	var effect := _player_card_access_effect(player_index)
@@ -16610,17 +16820,45 @@ func _district_card_access_kind(district_index: int, player_index: int = -1) -> 
 	return "none"
 
 
-func _district_card_access_text(district_index: int, player_index: int = -1) -> String:
-	match _district_card_access_kind(district_index, player_index):
+func _district_card_access_kind(district_index: int, player_index: int = -1) -> String:
+	if _card_purchase_snapshot_matches(district_index, player_index):
+		return String(district_card_purchase_snapshot.get("access_kind", "none"))
+	return _district_card_access_kind_live(district_index, player_index)
+
+
+func _district_card_access_text_for_kind(kind: String, district_index: int, player_index: int = -1) -> String:
+	match kind:
 		"landed":
 			return "怪兽落地区：可购买，八折"
 		"adjacent":
 			return "怪兽相邻区：可购买，原价"
 		"extended":
-			return "远程补给区：可购买，×%.2f" % _player_extended_card_price_multiplier(player_index)
+			var extended_multiplier := float(district_card_purchase_snapshot.get("extended_multiplier", _player_extended_card_price_multiplier(player_index))) if _card_purchase_snapshot_matches(district_index, player_index) else _player_extended_card_price_multiplier(player_index)
+			return "远程补给区：可购买，×%.2f" % extended_multiplier
 		"global":
-			return "全局采购区：可购买，×%.2f" % _player_global_card_price_multiplier(player_index)
+			var global_multiplier := float(district_card_purchase_snapshot.get("global_multiplier", _player_global_card_price_multiplier(player_index))) if _card_purchase_snapshot_matches(district_index, player_index) else _player_global_card_price_multiplier(player_index)
+			return "全局采购区：可购买，×%.2f" % global_multiplier
 	return "不可购买：需要怪兽落地、相邻或补给范围能力"
+
+
+func _district_card_access_text(district_index: int, player_index: int = -1) -> String:
+	return _district_card_access_text_for_kind(_district_card_access_kind(district_index, player_index), district_index, player_index)
+
+
+func _district_card_price_multiplier(district_index: int, player_index: int = -1) -> float:
+	var kind := _district_card_access_kind(district_index, player_index)
+	match kind:
+		"landed":
+			return 0.8
+		"extended":
+			if _card_purchase_snapshot_matches(district_index, player_index):
+				return maxf(1.0, float(district_card_purchase_snapshot.get("extended_multiplier", 1.10)))
+			return _player_extended_card_price_multiplier(player_index)
+		"global":
+			if _card_purchase_snapshot_matches(district_index, player_index):
+				return maxf(1.0, float(district_card_purchase_snapshot.get("global_multiplier", 1.35)))
+			return _player_global_card_price_multiplier(player_index)
+	return 1.0
 
 
 func _can_buy_card_from_district(district_index: int, player_index: int = -1) -> bool:
@@ -17118,6 +17356,9 @@ func _open_discard_purchase_choice(player_index: int, district_index: int, skill
 		"price": price,
 		"ignore_cooldown": ignore_cooldown,
 		"opened_at": game_time,
+		"access_kind": _district_card_access_kind(district_index, player_index),
+		"extended_multiplier": _district_card_price_multiplier(district_index, player_index) if _district_card_access_kind(district_index, player_index) == "extended" else _player_extended_card_price_multiplier(player_index),
+		"global_multiplier": _district_card_price_multiplier(district_index, player_index) if _district_card_access_kind(district_index, player_index) == "global" else _player_global_card_price_multiplier(player_index),
 	}
 	_record_player_economic_event(
 		player_index,
@@ -17144,6 +17385,15 @@ func _confirm_discard_purchase(slot_index: int) -> void:
 	var district_index := int(pending.get("district_index", -1))
 	var skill_name := String(pending.get("skill_name", ""))
 	var ignore_cooldown := bool(pending.get("ignore_cooldown", false))
+	if player_index >= 0 and district_index >= 0:
+		district_card_purchase_snapshot = {
+			"player_index": player_index,
+			"district_index": district_index,
+			"access_kind": String(pending.get("access_kind", "none")),
+			"opened_at": float(pending.get("opened_at", game_time)),
+			"extended_multiplier": float(pending.get("extended_multiplier", 1.10)),
+			"global_multiplier": float(pending.get("global_multiplier", 1.35)),
+		}
 	pending_discard_purchase = {}
 	_buy_card_for_player_from_district(player_index, district_index, skill_name, false, ignore_cooldown, slot_index)
 	_refresh_ui()
@@ -17267,7 +17517,7 @@ func _boost_selected_city_revenue(amount: int, panic_amount: int, source: String
 	if panic_amount > 0:
 		_add_panic(selected_district, panic_amount, source)
 	_pulse_district(selected_district, Color("#facc15"))
-	_log("%s使%s的周期收入永久+%d。" % [source, districts[selected_district]["name"], amount])
+	_log("%s使%s的GDP/min永久+%d。" % [source, districts[selected_district]["name"], amount])
 	return true
 
 
@@ -17281,24 +17531,27 @@ func _apply_city_gdp_derivative(_player: Dictionary, skill: Dictionary) -> bool:
 	if not ["up", "down"].has(direction):
 		return false
 	var baseline := _city_cycle_income(selected_district, _city_competition_matches(selected_district))
+	var duration_seconds := _gdp_bet_duration_seconds(skill)
 	var derivatives: Array = city.get("gdp_derivatives", [])
 	derivatives.append({
 		"owner": selected_player,
 		"direction": direction,
 		"baseline_gdp": baseline,
-		"turns": maxi(1, int(skill.get("gdp_bet_turns", 2))),
+		"duration_seconds": duration_seconds,
+		"created_time": game_time,
+		"expires_at": game_time + duration_seconds,
 		"multiplier": maxf(0.1, float(skill.get("gdp_bet_multiplier", 1.0))),
 		"destroy_bonus": maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0))),
 		"source": source,
 		"created_cycle": business_cycle_count,
 	})
 	city["gdp_derivatives"] = derivatives
-	city = _append_city_public_clue(city, "%s匿名买%s%sGDP，基准%d，持续%d周期。" % [
+	city = _append_city_public_clue(city, "%s匿名买%s%sGDP，基准%d，持仓%s。" % [
 		source,
 		"涨" if direction == "up" else "跌",
 		districts[selected_district]["name"],
 		baseline,
-		maxi(1, int(skill.get("gdp_bet_turns", 2))),
+		_duration_short_text(duration_seconds),
 	])
 	districts[selected_district]["city"] = city
 	_pulse_district(selected_district, Color("#f97316") if direction == "down" else Color("#22c55e"))
@@ -17313,11 +17566,11 @@ func _apply_city_gdp_derivative(_player: Dictionary, skill: Dictionary) -> bool:
 		Color("#22c55e") if direction == "up" else Color("#fb7185"),
 		_district_center(selected_district)
 	)
-	_log("%s匿名挂单%s：基准GDP%d，持续%d周期，倍率×%.2f。" % [
+	_log("%s匿名挂单%s：基准GDP%d，持仓%s，倍率×%.2f。" % [
 		source,
 		districts[selected_district]["name"],
 		baseline,
-		maxi(1, int(skill.get("gdp_bet_turns", 2))),
+		_duration_short_text(duration_seconds),
 		maxf(0.1, float(skill.get("gdp_bet_multiplier", 1.0))),
 	])
 	return true
@@ -17330,7 +17583,7 @@ func _pay_city_gdp_derivative(owner: int, amount: int, source: String, detail: S
 	_record_player_card_income(owner, amount, source, detail)
 
 
-func _resolve_city_gdp_derivatives(district_index: int, current_gdp: int, source: String = "经营周期") -> void:
+func _resolve_city_gdp_derivatives(district_index: int, current_gdp: int, source: String = "实时GDP", force_all: bool = false) -> void:
 	if district_index < 0 or district_index >= districts.size():
 		return
 	var city := _district_city(district_index)
@@ -17341,6 +17594,15 @@ func _resolve_city_gdp_derivatives(district_index: int, current_gdp: int, source
 	var public_hits := 0
 	for entry_variant in derivatives:
 		var entry: Dictionary = entry_variant
+		if not entry.has("expires_at"):
+			var legacy_duration := float(maxi(1, int(entry.get("turns", 1)))) * 30.0
+			entry["duration_seconds"] = legacy_duration
+			entry["created_time"] = game_time
+			entry["expires_at"] = game_time + legacy_duration
+		var expires_at := float(entry.get("expires_at", game_time))
+		if not force_all and game_time < expires_at:
+			remaining.append(entry)
+			continue
 		var baseline := int(entry.get("baseline_gdp", current_gdp))
 		var direction := String(entry.get("direction", "up"))
 		var delta := current_gdp - baseline
@@ -17348,15 +17610,30 @@ func _resolve_city_gdp_derivatives(district_index: int, current_gdp: int, source
 		var payout := int(round(float(paying_delta) * maxf(0.1, float(entry.get("multiplier", 1.0)))))
 		if payout > 0:
 			public_hits += 1
-			_pay_city_gdp_derivative(int(entry.get("owner", -1)), payout, String(entry.get("source", "城市GDP合约")), "%s %sGDP%d→%d" % [districts[district_index]["name"], source, baseline, current_gdp])
-		entry["baseline_gdp"] = current_gdp
-		entry["turns"] = int(entry.get("turns", 1)) - 1
-		if int(entry.get("turns", 0)) > 0:
-			remaining.append(entry)
+			_pay_city_gdp_derivative(int(entry.get("owner", -1)), payout, String(entry.get("source", "城市GDP合约")), "%s %s GDP%d→%d" % [districts[district_index]["name"], source, baseline, current_gdp])
 	city["gdp_derivatives"] = remaining
 	if public_hits > 0:
 		city = _append_city_public_clue(city, "%s的GDP衍生合约因%s兑现%d笔；资金流向不公开。" % [districts[district_index]["name"], source, public_hits])
 	districts[district_index]["city"] = city
+
+
+func _update_city_gdp_derivative_timers() -> void:
+	for index_variant in _active_city_district_indices():
+		var index := int(index_variant)
+		var city := _district_city(index)
+		var derivatives: Array = city.get("gdp_derivatives", [])
+		if derivatives.is_empty():
+			continue
+		var has_expired := false
+		for entry_variant in derivatives:
+			var entry: Dictionary = entry_variant
+			var expires_at := float(entry.get("expires_at", game_time))
+			if game_time >= expires_at:
+				has_expired = true
+				break
+		if has_expired:
+			var current_gdp := _city_cycle_income(index, _city_competition_matches(index))
+			_resolve_city_gdp_derivatives(index, current_gdp, "持仓到期")
 
 
 func _resolve_city_gdp_derivatives_on_destroy(district_index: int, city: Dictionary, source: String) -> Dictionary:
@@ -17425,7 +17702,7 @@ func _product_market_entry(product_name: String) -> Dictionary:
 	return entry
 
 
-func _apply_product_market_boon(product_name: String, growth_multiplier: float, route_flow_multiplier: float, turns: int, source: String, persistent: bool = false) -> bool:
+func _apply_product_market_boon(product_name: String, growth_multiplier: float, route_flow_multiplier: float, turns: int, source: String, persistent: bool = false, duration_seconds: float = -1.0) -> bool:
 	if product_name == "" or not PRODUCT_CATALOG.has(product_name):
 		return false
 	var entry := _product_market_entry(product_name)
@@ -17433,6 +17710,7 @@ func _apply_product_market_boon(product_name: String, growth_multiplier: float, 
 		return false
 	var changed := false
 	var safe_turns: int = maxi(0, turns)
+	var safe_seconds := maxf(0.0, duration_seconds if duration_seconds >= 0.0 else _legacy_turns_to_seconds(safe_turns))
 	if growth_multiplier > 1.0:
 		var growth_value: float = clampf(growth_multiplier, 1.0, PRODUCT_GROWTH_MULTIPLIER_MAX)
 		if persistent:
@@ -17441,7 +17719,7 @@ func _apply_product_market_boon(product_name: String, growth_multiplier: float, 
 				entry["base_growth_source"] = _merge_boon_source(String(entry.get("base_growth_source", "")), source)
 				changed = true
 		else:
-			entry["growth_turns"] = maxi(int(entry.get("growth_turns", 0)), safe_turns)
+			_set_remaining_effect_seconds(entry, "growth_seconds", "growth_turns", maxf(_remaining_effect_seconds(entry, "growth_seconds", "growth_turns"), safe_seconds))
 		if growth_value > float(entry.get("growth_multiplier", 1.0)) or persistent:
 			entry["growth_multiplier"] = maxf(float(entry.get("growth_multiplier", 1.0)), growth_value)
 			entry["growth_source"] = _merge_boon_source(String(entry.get("growth_source", "")), source)
@@ -17454,7 +17732,7 @@ func _apply_product_market_boon(product_name: String, growth_multiplier: float, 
 				entry["base_route_flow_source"] = _merge_boon_source(String(entry.get("base_route_flow_source", "")), source)
 				changed = true
 		else:
-			entry["route_flow_turns"] = maxi(int(entry.get("route_flow_turns", 0)), safe_turns)
+			_set_remaining_effect_seconds(entry, "route_flow_seconds", "route_flow_turns", maxf(_remaining_effect_seconds(entry, "route_flow_seconds", "route_flow_turns"), safe_seconds))
 		if flow_value > float(entry.get("route_flow_multiplier", 1.0)) or persistent:
 			entry["route_flow_multiplier"] = maxf(float(entry.get("route_flow_multiplier", 1.0)), flow_value)
 			entry["route_flow_source"] = _merge_boon_source(String(entry.get("route_flow_source", "")), source)
@@ -17477,7 +17755,7 @@ func _city_route_flow_multiplier(city: Dictionary, product_name: String) -> floa
 
 func _boon_turn_text(turns: int) -> String:
 	if turns > 0:
-		return "%d周期" % turns
+		return _duration_short_text(_legacy_turns_to_seconds(turns))
 	return "本局持续"
 
 
@@ -17492,7 +17770,7 @@ func _product_market_boon_text(product_name: String) -> String:
 		var growth_source_suffix := "｜%s" % growth_source if growth_source != "" else ""
 		pieces.append("增速×%.2f（%s%s）" % [
 			growth_multiplier,
-			_boon_turn_text(int(entry.get("growth_turns", 0))),
+			_boon_duration_text(_remaining_effect_seconds(entry, "growth_seconds", "growth_turns")),
 			growth_source_suffix,
 		])
 	var route_multiplier: float = float(entry.get("route_flow_multiplier", 1.0))
@@ -17501,13 +17779,14 @@ func _product_market_boon_text(product_name: String) -> String:
 		var route_source_suffix := "｜%s" % route_source if route_source != "" else ""
 		pieces.append("流通×%.2f（%s%s）" % [
 			route_multiplier,
-			_boon_turn_text(int(entry.get("route_flow_turns", 0))),
+			_boon_duration_text(_remaining_effect_seconds(entry, "route_flow_seconds", "route_flow_turns")),
 			route_source_suffix,
 		])
+	var contract_seconds := _remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns")
 	var contract_turns := int(entry.get("market_contract_turns", 0))
 	var contract_demand := int(entry.get("market_contract_demand", 0))
 	var contract_supply := int(entry.get("market_contract_supply", 0))
-	if contract_turns > 0 and (contract_demand > 0 or contract_supply > 0):
+	if contract_seconds > 0.0 and (contract_demand > 0 or contract_supply > 0):
 		var contract_source := String(entry.get("market_contract_source", ""))
 		var contract_source_suffix := "｜%s" % contract_source if contract_source != "" else ""
 		var pressure_parts := []
@@ -17517,7 +17796,7 @@ func _product_market_boon_text(product_name: String) -> String:
 			pressure_parts.append("供+%d" % contract_supply)
 		pieces.append("商品合约%s（%s%s）" % [
 			"/".join(pressure_parts),
-			_boon_turn_text(contract_turns),
+			_boon_duration_text(contract_seconds),
 			contract_source_suffix,
 		])
 	if pieces.is_empty():
@@ -17531,7 +17810,7 @@ func _city_route_flow_status_text(city: Dictionary) -> String:
 		return "无"
 	var source := String(city.get("route_flow_source", ""))
 	var source_suffix := "｜%s" % source if source != "" else ""
-	return "×%.2f（%s%s）" % [multiplier, _boon_turn_text(int(city.get("route_flow_turns", 0))), source_suffix]
+	return "×%.2f（%s%s）" % [multiplier, _boon_duration_text(_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns")), source_suffix]
 
 
 func _city_contract_status_text(city: Dictionary) -> String:
@@ -17540,9 +17819,9 @@ func _city_contract_status_text(city: Dictionary) -> String:
 		return "无"
 	var source := String(city.get("contract_source", ""))
 	var source_suffix := "｜%s" % source if source != "" else ""
-	return "+%d/周期（%s%s）" % [
+	return "+%d/min（%s%s）" % [
 		contract_income,
-		_boon_turn_text(int(city.get("contract_turns", 0))),
+		_boon_duration_text(_remaining_effect_seconds(city, "contract_seconds", "contract_turns")),
 		source_suffix,
 	]
 
@@ -17585,58 +17864,41 @@ func _apply_monster_economic_boons() -> void:
 		_log("怪兽经济天气启动：%s。" % "；".join(summaries))
 
 
-func _age_economic_boons() -> void:
+func _age_economic_boons(delta_seconds: float = ECONOMY_CASHFLOW_TICK_SECONDS) -> void:
+	var safe_delta := maxf(0.0, delta_seconds)
+	if safe_delta <= 0.0:
+		return
 	var changed := false
 	for product_variant in product_market.keys():
 		var product_name := String(product_variant)
 		var entry := _product_market_entry(product_name)
 		if entry.is_empty():
 			continue
-		var growth_turns := int(entry.get("growth_turns", 0))
-		if growth_turns > 0:
-			growth_turns -= 1
-			entry["growth_turns"] = growth_turns
-			if growth_turns <= 0:
-				entry["growth_multiplier"] = float(entry.get("base_growth_multiplier", 1.0))
-				entry["growth_source"] = String(entry.get("base_growth_source", ""))
-				changed = true
-		var route_turns := int(entry.get("route_flow_turns", 0))
-		if route_turns > 0:
-			route_turns -= 1
-			entry["route_flow_turns"] = route_turns
-			if route_turns <= 0:
-				entry["route_flow_multiplier"] = float(entry.get("base_route_flow_multiplier", 1.0))
-				entry["route_flow_source"] = String(entry.get("base_route_flow_source", ""))
-				changed = true
-		var market_contract_turns := int(entry.get("market_contract_turns", 0))
-		if market_contract_turns > 0:
-			market_contract_turns -= 1
-			entry["market_contract_turns"] = market_contract_turns
-			if market_contract_turns <= 0:
-				entry["market_contract_demand"] = 0
-				entry["market_contract_supply"] = 0
-				entry["market_contract_source"] = ""
-				changed = true
+		if _age_remaining_effect_seconds(entry, "growth_seconds", "growth_turns", safe_delta):
+			entry["growth_multiplier"] = float(entry.get("base_growth_multiplier", 1.0))
+			entry["growth_source"] = String(entry.get("base_growth_source", ""))
+			changed = true
+		if _age_remaining_effect_seconds(entry, "route_flow_seconds", "route_flow_turns", safe_delta):
+			entry["route_flow_multiplier"] = float(entry.get("base_route_flow_multiplier", 1.0))
+			entry["route_flow_source"] = String(entry.get("base_route_flow_source", ""))
+			changed = true
+		if _age_remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns", safe_delta):
+			entry["market_contract_demand"] = 0
+			entry["market_contract_supply"] = 0
+			entry["market_contract_source"] = ""
+			changed = true
 		product_market[product_name] = entry
 	for index_variant in _active_city_district_indices():
 		var index := int(index_variant)
-		var city := _district_city(index)
-		var turns := int(city.get("route_flow_turns", 0))
-		if turns > 0:
-			turns -= 1
-			city["route_flow_turns"] = turns
-			if turns <= 0:
-				city["route_flow_multiplier"] = 1.0
-				city["route_flow_source"] = ""
-				changed = true
-		var contract_turns := int(city.get("contract_turns", 0))
-		if contract_turns > 0:
-			contract_turns -= 1
-			city["contract_turns"] = contract_turns
-			if contract_turns <= 0:
-				city["contract_income_bonus"] = 0
-				city["contract_source"] = ""
-				changed = true
+		var city := _normalize_city_runtime_fields(_district_city(index))
+		if _age_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns", safe_delta):
+			city["route_flow_multiplier"] = 1.0
+			city["route_flow_source"] = ""
+			changed = true
+		if _age_remaining_effect_seconds(city, "contract_seconds", "contract_turns", safe_delta):
+			city["contract_income_bonus"] = 0
+			city["contract_source"] = ""
+			changed = true
 		districts[index]["city"] = city
 	if changed:
 		_refresh_city_networks()
@@ -17693,18 +17955,18 @@ func _apply_product_contract_boon(player: Dictionary, skill: Dictionary) -> bool
 	var before_price := _product_price(product_name)
 	var before_demand := int(entry.get("market_contract_demand", 0))
 	var before_supply := int(entry.get("market_contract_supply", 0))
-	var before_turns := int(entry.get("market_contract_turns", 0))
+	var before_seconds := _remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns")
 	var before_volatility := int(entry.get("volatility", 4))
 	var demand_pressure: int = maxi(0, int(skill.get("market_demand_pressure", 0)))
 	var supply_pressure: int = maxi(0, int(skill.get("market_supply_pressure", 0)))
-	var turns: int = maxi(1, int(skill.get("market_contract_turns", skill.get("growth_turns", 1))))
+	var contract_seconds := _skill_duration_seconds(skill, "market_contract_seconds", "market_contract_turns", int(skill.get("growth_turns", 1)))
 	var changed := false
 	if demand_pressure > 0 or supply_pressure > 0:
 		entry["market_contract_demand"] = maxi(before_demand, demand_pressure)
 		entry["market_contract_supply"] = maxi(before_supply, supply_pressure)
-		entry["market_contract_turns"] = maxi(before_turns, turns)
+		_set_remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns", maxf(before_seconds, contract_seconds))
 		entry["market_contract_source"] = _merge_boon_source(String(entry.get("market_contract_source", "")), source)
-		changed = int(entry.get("market_contract_demand", 0)) > before_demand or int(entry.get("market_contract_supply", 0)) > before_supply or int(entry.get("market_contract_turns", 0)) > before_turns
+		changed = int(entry.get("market_contract_demand", 0)) > before_demand or int(entry.get("market_contract_supply", 0)) > before_supply or _remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns") > before_seconds
 	var volatility_delta := int(skill.get("volatility_delta", 0))
 	if volatility_delta != 0:
 		var after_volatility := clampi(before_volatility + volatility_delta, PRODUCT_VOLATILITY_MIN, PRODUCT_VOLATILITY_MAX)
@@ -17713,9 +17975,9 @@ func _apply_product_contract_boon(player: Dictionary, skill: Dictionary) -> bool
 	product_market[product_name] = entry
 	var route_flow_multiplier: float = float(skill.get("route_flow_multiplier", 1.0))
 	var growth_multiplier: float = float(skill.get("growth_multiplier", 1.0))
-	var flow_turns: int = maxi(turns, int(skill.get("route_flow_turns", turns)))
+	var flow_seconds: float = maxf(contract_seconds, _skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", int(ceil(contract_seconds / ECONOMY_LEGACY_TURN_SECONDS))))
 	if route_flow_multiplier > 1.001 or growth_multiplier > 1.001:
-		changed = _apply_product_market_boon(product_name, growth_multiplier, route_flow_multiplier, flow_turns, source, false) or changed
+		changed = _apply_product_market_boon(product_name, growth_multiplier, route_flow_multiplier, int(ceil(flow_seconds / ECONOMY_LEGACY_TURN_SECONDS)), source, false, flow_seconds) or changed
 	var cash_gain := int(skill.get("cash", 0))
 	if cash_gain > 0:
 		player["cash"] = int(player.get("cash", 0)) + cash_gain
@@ -17997,16 +18259,16 @@ func _apply_contract_accept_route_flow(target_index: int, skill: Dictionary, sou
 	if not _city_is_active(city):
 		return false
 	var before_flow := float(city.get("route_flow_multiplier", 1.0))
-	var before_turns := int(city.get("route_flow_turns", 0))
+	var before_seconds := _remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns")
 	var flow_multiplier := clampf(float(skill.get("accept_route_flow_multiplier", skill.get("route_flow_multiplier", 1.0))), 1.0, ROUTE_FLOW_MULTIPLIER_MAX)
 	if flow_multiplier <= 1.001:
 		return false
-	var flow_turns := maxi(1, int(skill.get("route_flow_turns", 1)))
+	var flow_seconds := _skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", 1)
 	city["route_flow_multiplier"] = maxf(before_flow, flow_multiplier)
-	city["route_flow_turns"] = maxi(before_turns, flow_turns)
+	_set_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns", maxf(before_seconds, flow_seconds))
 	city["route_flow_source"] = _merge_boon_source(String(city.get("route_flow_source", "")), source)
 	districts[target_index]["city"] = city
-	return float(city.get("route_flow_multiplier", 1.0)) > before_flow + 0.001 or int(city.get("route_flow_turns", 0)) > before_turns
+	return float(city.get("route_flow_multiplier", 1.0)) > before_flow + 0.001 or _remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns") > before_seconds
 
 
 func _enqueue_pending_area_trade_contract(skill: Dictionary, entry: Dictionary) -> bool:
@@ -18201,7 +18463,7 @@ func _apply_route_insurance(player: Dictionary, skill: Dictionary) -> bool:
 	_refresh_city_networks()
 	_refresh_product_market_prices()
 	_pulse_district(selected_district, Color("#22c55e"))
-	_log("%s为%s投保供应链：断路压力%d→%d，周期收入永久+%d。" % [
+	_log("%s为%s投保供应链：断路压力%d→%d，GDP/min永久+%d。" % [
 		String(skill.get("name", "供应链保险")),
 		districts[selected_district]["name"],
 		before_damage,
@@ -18253,11 +18515,11 @@ func _apply_city_product_upgrade(_player: Dictionary, skill: Dictionary) -> bool
 	_add_action_callout(
 		"匿名产业升级",
 		source,
-		"%s的%s升级至%d级，周期收入额外+%d；业主身份未公开。" % [districts[selected_district]["name"], product_name, after_level, revenue_amount],
+		"%s的%s升级至%d级，GDP/min额外+%d；业主身份未公开。" % [districts[selected_district]["name"], product_name, after_level, revenue_amount],
 		Color("#facc15"),
 		_district_center(selected_district)
 	)
-	_log("匿名卡牌为%s升级%s：%d级→%d级，周期收入永久+%d；出牌者不公开。" % [
+	_log("匿名卡牌为%s升级%s：%d级→%d级，GDP/min永久+%d；出牌者不公开。" % [
 		districts[selected_district]["name"],
 		product_name,
 		lowest_level,
@@ -18359,7 +18621,7 @@ func _apply_city_product_shift(_player: Dictionary, skill: Dictionary) -> bool:
 		Color("#f59e0b"),
 		_district_center(selected_district)
 	)
-	_log("匿名卡牌为%s执行商品换线：%s；周期收入永久+%d；出牌者不公开。" % [
+	_log("匿名卡牌为%s执行商品换线：%s；GDP/min永久+%d；出牌者不公开。" % [
 		districts[selected_district]["name"],
 		"、".join(changes),
 		revenue_amount,
@@ -18420,7 +18682,7 @@ func _apply_city_demand_shift(_player: Dictionary, skill: Dictionary) -> bool:
 		Color("#22c55e"),
 		_district_center(selected_district)
 	)
-	_log("匿名卡牌为%s执行需求改造：%s；修复商路压力%d，周期收入永久+%d；出牌者不公开。" % [
+	_log("匿名卡牌为%s执行需求改造：%s；修复商路压力%d，GDP/min永久+%d；出牌者不公开。" % [
 		districts[selected_district]["name"],
 		"、".join(changes),
 		maxi(0, repair_routes),
@@ -18478,15 +18740,15 @@ func _apply_product_growth_boon(skill: Dictionary) -> bool:
 		return false
 	var growth_multiplier: float = float(skill.get("growth_multiplier", 1.0))
 	var route_flow_multiplier: float = float(skill.get("route_flow_multiplier", 1.0))
-	var growth_turns: int = maxi(0, int(skill.get("growth_turns", 0)))
-	var route_flow_turns: int = maxi(0, int(skill.get("route_flow_turns", growth_turns)))
-	var turns: int = maxi(growth_turns, route_flow_turns)
-	if turns <= 0:
-		turns = 1
+	var growth_seconds := _skill_duration_seconds(skill, "growth_seconds", "growth_turns", 0)
+	var route_flow_seconds := _skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", int(ceil(growth_seconds / ECONOMY_LEGACY_TURN_SECONDS)))
+	var duration_seconds := maxf(growth_seconds, route_flow_seconds)
+	if duration_seconds <= 0.0:
+		duration_seconds = ECONOMY_LEGACY_TURN_SECONDS
 	if growth_multiplier <= 1.001 and route_flow_multiplier <= 1.001:
 		_log("%s没有有效的商品增益参数。" % source)
 		return false
-	var changed := _apply_product_market_boon(product_name, growth_multiplier, route_flow_multiplier, turns, source, false)
+	var changed := _apply_product_market_boon(product_name, growth_multiplier, route_flow_multiplier, int(ceil(duration_seconds / ECONOMY_LEGACY_TURN_SECONDS)), source, false, duration_seconds)
 	if not changed:
 		_log("%s没有超过%s当前已有的经济天气。" % [source, product_name])
 		return false
@@ -18519,17 +18781,17 @@ func _apply_route_flow_boon(player: Dictionary, skill: Dictionary) -> bool:
 	if repair_routes > 0:
 		city["trade_route_damage"] = maxi(0, before_damage - repair_routes)
 	var before_multiplier := float(city.get("route_flow_multiplier", 1.0))
-	var before_turns := int(city.get("route_flow_turns", 0))
+	var before_seconds := _remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns")
 	var route_flow_multiplier: float = clampf(float(skill.get("route_flow_multiplier", 1.0)), 1.0, ROUTE_FLOW_MULTIPLIER_MAX)
-	var route_flow_turns: int = maxi(1, int(skill.get("route_flow_turns", skill.get("growth_turns", 1))))
+	var route_flow_seconds := _skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", int(skill.get("growth_turns", 1)))
 	if route_flow_multiplier > 1.001:
 		city["route_flow_multiplier"] = maxf(before_multiplier, route_flow_multiplier)
-		city["route_flow_turns"] = maxi(before_turns, route_flow_turns)
+		_set_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns", maxf(before_seconds, route_flow_seconds))
 		city["route_flow_source"] = _merge_boon_source(String(city.get("route_flow_source", "")), source)
 	var after_damage := int(city.get("trade_route_damage", 0))
 	var after_multiplier := float(city.get("route_flow_multiplier", 1.0))
-	var after_turns := int(city.get("route_flow_turns", 0))
-	var changed := after_damage != before_damage or after_multiplier > before_multiplier + 0.001 or after_turns > before_turns
+	var after_seconds := _remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns")
+	var changed := after_damage != before_damage or after_multiplier > before_multiplier + 0.001 or after_seconds > before_seconds
 	if not changed:
 		_log("%s没有超过%s当前已有的流通加速。" % [source, districts[selected_district]["name"]])
 		return false
@@ -18552,11 +18814,11 @@ func _apply_route_flow_boon(player: Dictionary, skill: Dictionary) -> bool:
 		Color("#22c55e"),
 		_district_center(selected_district)
 	)
-	_log("%s加速%s商路：流通×%.2f/%d周期，断路压力%d→%d；真实业主仍不公开。" % [
+	_log("%s加速%s商路：流通×%.2f/%s，断路压力%d→%d；真实业主仍不公开。" % [
 		source,
 		districts[selected_district]["name"],
 		after_multiplier,
-		after_turns,
+		_duration_short_text(after_seconds),
 		before_damage,
 		after_damage,
 	])
@@ -18660,25 +18922,25 @@ func _apply_city_contract_boon(_player: Dictionary, skill: Dictionary) -> bool:
 		_log("%s只能签给己方城市；对手城市真实归属不会因此揭示。" % source)
 		return false
 	var before_contract := int(city.get("contract_income_bonus", 0))
-	var before_turns := int(city.get("contract_turns", 0))
+	var before_seconds := _remaining_effect_seconds(city, "contract_seconds", "contract_turns")
 	var contract_income: int = maxi(0, int(skill.get("contract_income", 0)))
-	var contract_turns: int = maxi(1, int(skill.get("contract_turns", 1)))
+	var contract_seconds := _skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1)
 	if contract_income > 0:
 		city["contract_income_bonus"] = maxi(before_contract, contract_income)
-		city["contract_turns"] = maxi(before_turns, contract_turns)
+		_set_remaining_effect_seconds(city, "contract_seconds", "contract_turns", maxf(before_seconds, contract_seconds))
 		city["contract_source"] = _merge_boon_source(String(city.get("contract_source", "")), source)
 	var before_flow := float(city.get("route_flow_multiplier", 1.0))
-	var before_flow_turns := int(city.get("route_flow_turns", 0))
+	var before_flow_seconds := _remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns")
 	var route_flow_multiplier: float = clampf(float(skill.get("route_flow_multiplier", 1.0)), 1.0, ROUTE_FLOW_MULTIPLIER_MAX)
-	var route_flow_turns: int = maxi(1, int(skill.get("route_flow_turns", contract_turns)))
+	var route_flow_seconds := _skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", int(ceil(contract_seconds / ECONOMY_LEGACY_TURN_SECONDS)))
 	if route_flow_multiplier > 1.001:
 		city["route_flow_multiplier"] = maxf(before_flow, route_flow_multiplier)
-		city["route_flow_turns"] = maxi(before_flow_turns, route_flow_turns)
+		_set_remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns", maxf(before_flow_seconds, route_flow_seconds))
 		city["route_flow_source"] = _merge_boon_source(String(city.get("route_flow_source", "")), source)
 	var panic_gain: int = maxi(0, int(skill.get("panic", 0)))
 	if panic_gain > 0:
 		_add_panic(selected_district, panic_gain, source)
-	var changed := int(city.get("contract_income_bonus", 0)) > before_contract or int(city.get("contract_turns", 0)) > before_turns or float(city.get("route_flow_multiplier", 1.0)) > before_flow + 0.001 or int(city.get("route_flow_turns", 0)) > before_flow_turns
+	var changed := int(city.get("contract_income_bonus", 0)) > before_contract or _remaining_effect_seconds(city, "contract_seconds", "contract_turns") > before_seconds or float(city.get("route_flow_multiplier", 1.0)) > before_flow + 0.001 or _remaining_effect_seconds(city, "route_flow_seconds", "route_flow_turns") > before_flow_seconds
 	if not changed:
 		_log("%s没有超过%s当前已有的合约/流通加速。" % [source, districts[selected_district]["name"]])
 		return false
@@ -18742,10 +19004,13 @@ func _apply_route_sabotage(skill: Dictionary) -> bool:
 
 
 func _buy_selected_skill() -> void:
-	if not _can_selected_player_act():
+	if game_over:
+		return
+	if _has_pending_target_choice():
+		_log("请先完成当前卡牌的目标怪兽选择。")
 		return
 	_sync_selected_district_card()
-	_buy_card_for_player_from_district(selected_player, selected_district, selected_market_skill, false)
+	_buy_card_for_player_from_district(selected_player, selected_district, selected_market_skill, false, true)
 	_refresh_ui()
 
 
@@ -18754,10 +19019,6 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		return false
 	var player: Dictionary = players[player_index]
 	var actor_label := "匿名财团" if anonymous else String(player.get("name", "玩家"))
-	if not ignore_cooldown and float(player.get("action_cooldown", 0.0)) > 0.0:
-		if not anonymous:
-			_log("%s操作冷却中，还需%.1fs。" % [actor_label, float(player.get("action_cooldown", 0.0))])
-		return false
 	skill_name = _canonical_card_supply_name(skill_name)
 	if skill_name == "" or not _skill_exists(skill_name):
 		if not anonymous:
@@ -18806,7 +19067,6 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 			_log("一次购牌未完成：具体玩家手牌状态和牌名不公开。")
 		return false
 	player["cash"] = int(player.get("cash", 0)) - price
-	player["action_cooldown"] = maxf(float(player.get("action_cooldown", 0.0)), MARKET_COOLDOWN)
 	players[player_index] = player
 	_record_player_card_spend(player_index, price, "购买%s" % _card_display_name(skill_name), districts[district_index]["name"])
 	if int(pending_discard_purchase.get("player_index", -1)) == player_index and String(pending_discard_purchase.get("skill_name", "")) == skill_name:
@@ -20760,6 +21020,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 	if not _city_is_active(city):
 		return {
 			"bonus": 0,
+			"role_bonus": 0,
 			"contract": 0,
 			"product": 0,
 			"route": 0,
@@ -20775,7 +21036,11 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 			"route_lines": [],
 			"transit_lines": [],
 		}
+	city = _normalize_city_runtime_fields(city)
+	var owner := int(city.get("owner", -1))
 	var bonus := int(city.get("revenue_bonus", 0))
+	var role_bonus := _role_market_income_bonus_amount(owner, district_index)
+	bonus += role_bonus
 	var contract_income := int(city.get("contract_income_bonus", 0))
 	var product_income := 0
 	var route_income_total := 0
@@ -20816,6 +21081,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 	var net_before_floor := gross - penalties
 	return {
 		"bonus": bonus,
+		"role_bonus": role_bonus,
 		"contract": contract_income,
 		"product": product_income,
 		"route": route_income_total,
@@ -20898,12 +21164,12 @@ func _city_gdp_trend_text(city: Dictionary) -> String:
 		var fallback := int(city.get("last_gdp", city.get("last_income", 0)))
 		if fallback > 0:
 			return "GDP趋势：本期%d｜较上期暂无｜路径%s。" % [fallback, _city_gdp_history_path_text(city)]
-		return "GDP趋势：暂无历史（下个经营周期开始记录）。"
+		return "GDP趋势：暂无历史（下次全局市场刷新开始记录）。"
 	var current := int(history[history.size() - 1])
 	var delta := int(city.get("last_gdp_delta", 0))
-	var source := String(city.get("last_gdp_source", "经营周期"))
+	var source := String(city.get("last_gdp_source", "全局刷新"))
 	if source == "":
-		source = "经营周期"
+		source = "全局刷新"
 	var reason := String(city.get("last_gdp_reason", ""))
 	if reason == "":
 		reason = "等待收入拆解"
@@ -20917,7 +21183,7 @@ func _city_gdp_trend_text(city: Dictionary) -> String:
 	]
 
 
-func _record_city_gdp_snapshot(district_index: int, income: int, breakdown: Dictionary, source: String = "经营周期") -> void:
+func _record_city_gdp_snapshot(district_index: int, income: int, breakdown: Dictionary, source: String = "全局刷新") -> void:
 	if district_index < 0 or district_index >= districts.size():
 		return
 	var city := _district_city(district_index)
@@ -21238,15 +21504,69 @@ func _apply_trade_disruption_from_destroyed_district(district_index: int, source
 		)
 
 
+func _update_realtime_economy_cashflow(delta_seconds: float) -> void:
+	if game_over or delta_seconds <= 0.0:
+		return
+	economy_cashflow_timer += delta_seconds
+	while economy_cashflow_timer >= ECONOMY_CASHFLOW_TICK_SECONDS:
+		_settle_city_cashflow_seconds(ECONOMY_CASHFLOW_TICK_SECONDS)
+		economy_cashflow_timer -= ECONOMY_CASHFLOW_TICK_SECONDS
+
+
+func _settle_city_cashflow_seconds(seconds: float) -> int:
+	var safe_seconds := maxf(0.0, seconds)
+	if safe_seconds <= 0.0 or players.is_empty() or districts.is_empty():
+		return 0
+	var total_paid := 0
+	var paid_players := {}
+	for index_variant in _active_city_district_indices():
+		var index := int(index_variant)
+		var city := _normalize_city_runtime_fields(_district_city(index))
+		if not _city_is_active(city):
+			continue
+		var owner := int(city.get("owner", -1))
+		if owner < 0 or owner >= players.size():
+			districts[index]["city"] = city
+			continue
+		var competition := _city_competition_matches(index)
+		var breakdown := _city_cycle_income_breakdown(index, competition)
+		var gdp_per_minute := int(breakdown.get("net", 0))
+		var before_remainder := float(city.get("cashflow_remainder", 0.0))
+		var accrued := before_remainder + (float(gdp_per_minute) * safe_seconds / ECONOMY_CASHFLOW_BASIS_SECONDS)
+		var paid := int(floor(accrued))
+		city["cashflow_remainder"] = accrued - float(paid)
+		city["last_cashflow_rate"] = gdp_per_minute
+		city["last_income"] = gdp_per_minute
+		city["competition_matches"] = competition
+		if paid > 0:
+			players[owner]["cash"] = int(players[owner].get("cash", 0)) + paid
+			players[owner]["last_cycle_income"] = int(players[owner].get("last_cycle_income", 0)) + paid
+			players[owner]["last_cashflow_income"] = int(players[owner].get("last_cashflow_income", 0)) + paid
+			players[owner]["total_city_income"] = int(players[owner].get("total_city_income", 0)) + paid
+			var role_bonus := int(breakdown.get("role_bonus", 0))
+			if role_bonus > 0 and gdp_per_minute > 0:
+				var role_paid := mini(paid, int(round(float(paid) * float(role_bonus) / float(maxi(1, gdp_per_minute)))))
+				players[owner]["total_role_income"] = int(players[owner].get("total_role_income", 0)) + role_paid
+			city["cashflow_paid_total"] = int(city.get("cashflow_paid_total", 0)) + paid
+			total_paid += paid
+			paid_players[owner] = true
+			_record_player_economic_event(owner, "城市收入", "实时现金流", paid, "%s｜GDP/min %d" % [districts[index]["name"], gdp_per_minute])
+		districts[index]["city"] = city
+	for owner_variant in paid_players.keys():
+		_record_player_cash_snapshot(int(owner_variant))
+	return total_paid
+
+
 func _market_tick() -> void:
 	business_cycle_count += 1
 	_refresh_city_networks()
 	_refresh_product_market_prices()
 	for i in range(players.size()):
 		players[i]["last_cycle_income"] = 0
+		players[i]["last_cashflow_income"] = 0
 	var city_indices := _active_city_district_indices()
 	if city_indices.is_empty():
-		_log("经营周期%d：目前还没有存活城市群产生收入。" % business_cycle_count)
+		_log("全局市场刷新%d：目前还没有存活城市群；供需与价格已公开重估。" % business_cycle_count)
 	else:
 		for index_variant in city_indices:
 			var index := int(index_variant)
@@ -21257,18 +21577,12 @@ func _market_tick() -> void:
 			var owner := int(city.get("owner", -1))
 			city["competition_matches"] = competition
 			districts[index]["city"] = city
-			_record_city_gdp_snapshot(index, income, breakdown, "周期%d" % business_cycle_count)
-			_resolve_city_gdp_derivatives(index, income, "周期%d" % business_cycle_count)
+			_record_city_gdp_snapshot(index, income, breakdown, "刷新%d" % business_cycle_count)
+			_resolve_city_gdp_derivatives(index, income, "实时采样")
 			city = _district_city(index)
 			if owner >= 0 and owner < players.size():
-				players[owner]["cash"] += income
-				players[owner]["last_cycle_income"] = int(players[owner].get("last_cycle_income", 0)) + income
-				players[owner]["total_city_income"] = int(players[owner].get("total_city_income", 0)) + income
-				_record_player_economic_event(owner, "城市收入", "周期%d收入" % business_cycle_count, income, districts[index]["name"])
-				_apply_role_market_income_bonus(owner, index)
-				_log("经营周期%d：%s的%s收入%d（同类竞争%d，需求供给%d，受损商路%d）。" % [
+				_log("全局市场刷新%d：%s 当前GDP/min %d（同类竞争%d，需求供给%d，受损商路%d）；现金仍按秒线性流入。" % [
 					business_cycle_count,
-					players[owner]["name"],
 					districts[index]["name"],
 					income,
 					competition,
@@ -21276,10 +21590,11 @@ func _market_tick() -> void:
 					int(city.get("trade_disrupted_routes", 0)),
 				])
 			_add_action_callout(
-				"城市经营",
-				"周期%d结算" % business_cycle_count,
-				"%s生产%d种、需求供给%d、受损商路%d；真实业主仍未公开。" % [
+				"市场刷新",
+				"刷新%d" % business_cycle_count,
+				"%s GDP/min %d；生产%d种、需求供给%d、受损商路%d；真实业主仍未公开。" % [
 					districts[index]["name"],
+					income,
 					(city.get("products", []) as Array).size(),
 					int(city.get("supplied_demands", 0)),
 					int(city.get("trade_disrupted_routes", 0)),
@@ -21290,7 +21605,6 @@ func _market_tick() -> void:
 			_pulse_district(index, Color("#2dd4bf"))
 	_auto_expand_rival_syndicates(false)
 	_auto_rival_business_actions(false)
-	_age_economic_boons()
 	_finalize_ai_decision_rewards()
 	for i in range(players.size()):
 		_record_player_cash_snapshot(i)
@@ -21471,7 +21785,7 @@ func _damage_district(index: int, amount: int, source: String) -> void:
 				Color("#fb7185"),
 				_district_center(index)
 			)
-			_log("%s的城市群被摧毁，业主%s失去该城市全部周期收入。" % [d["name"], players[int(city.get("owner", 0))]["name"]])
+			_log("%s的城市群被摧毁，业主%s失去该城市全部GDP现金流。" % [d["name"], players[int(city.get("owner", 0))]["name"]])
 		else:
 			_log("%s的基础设施被彻底破坏。" % d["name"])
 		_refresh_city_networks()

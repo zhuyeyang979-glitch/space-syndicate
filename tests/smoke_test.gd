@@ -109,7 +109,7 @@ func _run() -> void:
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
 	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards with positive mechanical benefits")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
-	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, periodic product cash, and monster-upgrade cash triggers")
+	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, cashflow product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
@@ -119,7 +119,7 @@ func _run() -> void:
 	_expect(_verify_ai_monster_lure_strategy(main), "AI opponents can steer monster-lure cards toward high-value competing cities and record trainable target metadata")
 	_expect(_verify_ai_economic_focus_strategy(main), "AI opponents maintain an economic focus product that shapes city expansion, economy-card targets, and training metadata")
 	_expect(_verify_ai_strategy_intent_policy(main), "AI opponents switch between grow, defend, and disrupt strategic intents and attach strategy metadata to decisions")
-	_expect(_verify_ai_route_plan_policy(main), "AI opponents form multi-cycle product-route plans that bias build, card, contract, and business choices")
+	_expect(_verify_ai_route_plan_policy(main), "AI opponents form multi-step product-route plans that bias build, card, contract, and business choices")
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
 	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, settle, and restore cleanly")
@@ -340,12 +340,13 @@ func _run() -> void:
 		_expect(_city_public_clue_history_exists(main), "city public clue history keeps recent anonymous business and contract evidence")
 		var cash_after_build := _player_cash(_as_array(main.get("players")), 0)
 		main.call("_market_tick")
+		main.call("_settle_city_cashflow_seconds", 60.0)
 		await process_frame
 		var players_after_market := _as_array(main.get("players"))
-		_expect(_player_cash(players_after_market, 0) > cash_after_build, "market cycle pays city income using the economy system")
-		_expect(int((players_after_market[0] as Dictionary).get("last_cycle_income", 0)) > 0, "market cycle records last-cycle income")
+		_expect(_player_cash(players_after_market, 0) > cash_after_build, "global market refresh plus realtime cashflow pays city income")
+		_expect(int((players_after_market[0] as Dictionary).get("last_cashflow_income", 0)) > 0, "realtime cashflow records income since the last global refresh")
 		_expect(_as_array((players_after_market[0] as Dictionary).get("cash_history", [])).size() >= 3, "player cash history records spending and income changes")
-		_expect(_player_ledger_contains(players_after_market, 0, "城市收入"), "market cycle records city income in the economy ledger")
+		_expect(_player_ledger_contains(players_after_market, 0, "城市收入"), "realtime cashflow records city income in the economy ledger")
 		_verify_economy_card_effects(main, buildable_district)
 		var score_after_build := int(main.call("_player_final_score", 0))
 		_expect(int(main.call("_save_run")) == OK, "current run can be saved")
@@ -356,12 +357,14 @@ func _run() -> void:
 		main.call("_new_game")
 		await process_frame
 		_expect(int(main.call("_player_active_city_count", 0)) == 0, "new game clears saved-run city state before load")
-		_expect(int(main.call("_load_run")) == OK, "current run can be loaded")
+		var load_result := int(main.call("_load_run"))
+		var loaded_score_immediately := int(main.call("_player_final_score", 0))
+		_expect(load_result == OK, "current run can be loaded")
 		await process_frame
 		_expect(_players_have_role_cards(main, _as_array(main.get("players"))), "loaded run restores player role cards")
 		_expect(_as_array(main.get("auto_monsters")).size() == EXPECTED_SUMMONED_MONSTER_COUNT, "loaded run restores summoned field monsters")
 		_expect(int(main.call("_player_active_city_count", 0)) == 1, "loaded run restores built city assets")
-		_expect(int(main.call("_player_final_score", 0)) == score_after_build, "loaded run restores the saved player score")
+		_expect(loaded_score_immediately == score_after_build, "loaded run restores the saved player score")
 
 	var menu_overlay := main.get("menu_overlay") as Control
 	_expect(menu_overlay != null and menu_overlay.visible, "main menu overlay opens after setup")
@@ -873,7 +876,7 @@ func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
 	var resource_role := main.call("_make_player_role_card", 0, 1) as Dictionary
 	var upgrade_role := main.call("_make_player_role_card", 0, 3) as Dictionary
 	return String(main.call("_role_card_art_stats", bonus_card_role)).contains("购牌:环晶电池+1") \
-		and String(main.call("_role_card_art_stats", resource_role)).contains("周期:深海菌毯+¥55") \
+		and String(main.call("_role_card_art_stats", resource_role)).contains("现金流:深海菌毯+¥55/min") \
 		and String(main.call("_role_card_art_stats", upgrade_role)).contains("升兽:+¥120")
 
 
@@ -1532,7 +1535,14 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
 	var ok := true
+	main.call("_new_game")
 	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	var strategy_base := main.call("_capture_run_state") as Dictionary
 
 	var own_index := _first_empty_land_district_for_contract(main)
 	if own_index < 0:
@@ -1553,7 +1563,7 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 		var grow_ok := grow_created and grow_goods and String(grow_strategy.get("intent", "")) == "grow_focus"
 		ok = grow_ok and ok
 
-	var restore_mid := int(main.call("_apply_run_state", saved))
+	var restore_mid := int(main.call("_apply_run_state", strategy_base))
 	ok = ok and restore_mid == OK
 	main.set("ai_card_decision_enabled", true)
 	own_index = _first_empty_land_district_for_contract(main)
@@ -1606,7 +1616,7 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 		)
 		ok = defend_ok and ok
 
-	restore_mid = int(main.call("_apply_run_state", saved))
+	restore_mid = int(main.call("_apply_run_state", strategy_base))
 	ok = ok and restore_mid == OK
 	main.set("ai_card_decision_enabled", true)
 	own_index = _first_empty_land_district_for_contract(main)
@@ -2019,6 +2029,7 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 			_drain_card_resolution_queue_for_test(main)
 			business_actions += int(main.call("_auto_rival_business_actions", true))
 			main.call("_market_tick")
+			main.call("_settle_city_cashflow_seconds", 60.0)
 		var after_players := _as_array(main.get("players"))
 		var saw_income := false
 		var saw_samples_for_all := true
@@ -2177,6 +2188,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		_drain_card_resolution_queue_for_test(main, 160)
 		business_actions += int(main.call("_auto_rival_business_actions", true))
 		main.call("_market_tick")
+		main.call("_settle_city_cashflow_seconds", 60.0)
 	var after_players := _as_array(main.get("players"))
 	var saw_income := false
 	var sampled_ai := 0
@@ -2276,6 +2288,7 @@ func _verify_remote_supply_access(main: Node) -> bool:
 		ok = ok and _set_player_role_for_test(main, 0, "星门补给商会")
 		var priced_card := "垄断协议1"
 		var base_price := int(main.call("_card_price", priced_card))
+		main.call("_open_district_card_purchase_window", second_hop, 0)
 		var remote_price := int(main.call("_card_price", priced_card, second_hop, 0))
 		ok = ok and String(main.call("_district_card_access_kind", second_hop, 0)) == "extended"
 		ok = ok and remote_price >= int(round(float(base_price) * 1.10))
@@ -2290,6 +2303,7 @@ func _verify_remote_supply_access(main: Node) -> bool:
 		ok = ok and bool(access_effect.get("global", false))
 		var far_district := int(path.get("far", -1))
 		if far_district >= 0:
+			main.call("_open_district_card_purchase_window", far_district, 0)
 			var global_price := int(main.call("_card_price", priced_card, far_district, 0))
 			ok = ok and String(main.call("_district_card_access_kind", far_district, 0)) == "global"
 			ok = ok and global_price >= int(round(float(base_price) * 1.35))
@@ -2678,6 +2692,42 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 			pricing_ok = pricing_ok and not bool(main.call("_can_buy_card_from_district", i)) \
 				and String(main.call("_district_card_access_text", i)).contains("不可购买")
 			break
+	var saved_players := _as_array(main.get("players")).duplicate(true)
+	var saved_districts := districts.duplicate(true)
+	var saved_monsters := auto_monsters.duplicate(true)
+	var saved_selected_player := int(main.get("selected_player"))
+	var saved_selected_district := int(main.get("selected_district"))
+	var test_card := "城市融资1"
+	var test_district := saved_districts[landed_index] as Dictionary
+	test_district["card_choices"] = [test_card]
+	saved_districts[landed_index] = test_district
+	var test_players := saved_players.duplicate(true)
+	var test_player := test_players[0] as Dictionary
+	test_player["cash"] = 5000
+	test_player["action_cooldown"] = 9.0
+	test_player["slots"] = []
+	test_players[0] = test_player
+	main.set("players", test_players)
+	main.set("districts", saved_districts)
+	main.set("selected_player", 0)
+	main.call("_select_district", landed_index)
+	var disabled_monsters := saved_monsters.duplicate(true)
+	for i in range(disabled_monsters.size()):
+		var actor := disabled_monsters[i] as Dictionary
+		actor["down"] = true
+		disabled_monsters[i] = actor
+	main.set("auto_monsters", disabled_monsters)
+	var snapshot_buy_ok := String(main.call("_district_card_access_kind_live", landed_index)) == "none" \
+		and String(main.call("_district_card_access_kind", landed_index)) == "landed" \
+		and int(main.call("_card_price", test_card, landed_index, 0)) == maxi(80, int(round(float(main.call("_card_price", test_card)) * 0.8))) \
+		and bool(main.call("_buy_card_for_player_from_district", 0, landed_index, test_card, false)) \
+		and _player_card_names(_as_array(main.get("players")), 0).has(test_card)
+	main.set("players", saved_players)
+	main.set("districts", districts)
+	main.set("auto_monsters", saved_monsters)
+	main.set("selected_player", saved_selected_player)
+	main.call("_select_district", saved_selected_district)
+	pricing_ok = pricing_ok and snapshot_buy_ok
 	return pricing_ok
 
 
@@ -2844,6 +2894,8 @@ func _card_rank_power_score(main: Node, skill_name: String) -> float:
 		score += absf(float(skill.get(key, 0.0))) * 0.04
 	for key in ["growth_multiplier", "route_flow_multiplier", "accept_route_flow_multiplier"]:
 		score += absf(float(skill.get(key, 1.0)) - 1.0) * 120.0
+	score += absf(float(skill.get("gdp_bet_multiplier", 0.0))) * 80.0
+	score += maxf(0.0, float(skill.get("gdp_bet_seconds", 0.0))) * 0.5
 	for key in ["contract_turns", "market_contract_turns", "growth_turns", "route_flow_turns"]:
 		score += float(maxi(0, int(skill.get(key, 0)))) * 4.0
 	return score
@@ -3563,6 +3615,7 @@ func _verify_ai_card_policy(main: Node) -> bool:
 	ok = ok and raised > 0 and _queue_highest_bid(queue) >= bid_before
 	var players_after_cards := _as_array(main.get("players"))
 	ok = ok and _ai_memory_has_training_card_sample(players_after_cards, 1)
+	main.call("_settle_city_cashflow_seconds", 60.0)
 	main.call("_market_tick")
 	var players_after_market := _as_array(main.get("players"))
 	ok = ok and _ai_memory_has_finalized_reward(players_after_market, 1)
@@ -4555,7 +4608,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	districts = _as_array(main.get("districts"))
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
 	_expect(_city_product_level(city, product_name) == product_level_before + 1, "industry upgrade raises the lowest-level city product")
-	_expect(int(city.get("revenue_bonus", 0)) == revenue_before + 25, "industry upgrade adds permanent city-cycle revenue")
+	_expect(int(city.get("revenue_bonus", 0)) == revenue_before + 25, "industry upgrade adds permanent city GDP/min revenue")
 
 	var demands_for_shift := _as_array(city.get("demands", []))
 	_expect(not demands_for_shift.is_empty(), "built city has demand products for product-shift testing")
@@ -4747,19 +4800,25 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	districts = _as_array(main.get("districts"))
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
 	_expect(_as_array(city.get("gdp_derivatives", [])).size() >= 1, "city long-GDP card attaches an anonymous GDP derivative to the selected city")
-	main.call("_resolve_city_gdp_derivatives", district_index, gdp_baseline + 140, "烟测上涨")
+	var long_derivative := _as_array(city.get("gdp_derivatives", []))[0] as Dictionary
+	_expect(float(long_derivative.get("duration_seconds", 0.0)) >= 60.0 and float(long_derivative.get("expires_at", 0.0)) > float(main.get("game_time")), "city long-GDP derivative records a real-time holding window")
+	main.call("_resolve_city_gdp_derivatives", district_index, gdp_baseline + 140, "烟测到期上涨", true)
 	var players_after_long := _as_array(main.get("players"))
-	_expect(int((players_after_long[0] as Dictionary).get("total_card_income", 0)) > gdp_card_income_before, "city long-GDP derivative pays out when city GDP rises")
+	_expect(int((players_after_long[0] as Dictionary).get("total_card_income", 0)) > gdp_card_income_before, "city long-GDP derivative pays out after a timed holding window when city GDP rises")
 
 	var short_income_before := int((players_after_long[0] as Dictionary).get("total_card_income", 0))
 	_set_player_skill(main, 0, 2, "城市做空1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
-	main.call("_resolve_city_gdp_derivatives", district_index, maxi(0, gdp_baseline - 120), "烟测下跌")
+	districts = _as_array(main.get("districts"))
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	var short_derivative := _as_array(city.get("gdp_derivatives", []))[0] as Dictionary
+	_expect(float(short_derivative.get("duration_seconds", 0.0)) >= 60.0 and float(short_derivative.get("expires_at", 0.0)) > float(main.get("game_time")), "city short-GDP derivative records a real-time holding window")
+	main.call("_resolve_city_gdp_derivatives", district_index, maxi(0, gdp_baseline - 120), "烟测到期下跌", true)
 	var players_after_short := _as_array(main.get("players"))
-	_expect(int((players_after_short[0] as Dictionary).get("total_card_income", 0)) > short_income_before, "city short-GDP derivative pays out when city GDP falls")
+	_expect(int((players_after_short[0] as Dictionary).get("total_card_income", 0)) > short_income_before, "city short-GDP derivative pays out after a timed holding window when city GDP falls")
 
-	main.call("_age_economic_boons")
+	main.call("_age_economic_boons", 30.0)
 	product_market = main.get("product_market") as Dictionary
 	entry = product_market.get(product_name, {}) as Dictionary
 	districts = _as_array(main.get("districts"))
