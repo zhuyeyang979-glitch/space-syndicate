@@ -7,6 +7,7 @@ const CARD_ART_SCRIPT_PATH := "res://scripts/card_art_view.gd"
 const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
 const TEST_RUN_SAVE_PATH := "user://space_syndicate_smoke_test_run.save"
 const EXPECTED_PLAYER_COUNT := 4
+const EXPECTED_AI_PLAYER_COUNT := 3
 const EXPECTED_SUMMONED_MONSTER_COUNT := 4
 const MIN_REGION_COUNT := 10
 const MAX_REGION_COUNT := 20
@@ -40,6 +41,7 @@ func _run() -> void:
 	_expect(run_save_label != null and run_save_label.text.contains("暂无"), "main menu reports no saved run in the test slot")
 	_expect(load_run_button != null and load_run_button.disabled, "load run button is disabled when no test save exists")
 	main.set("configured_player_count", EXPECTED_PLAYER_COUNT)
+	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
 	main.set("configured_role_indices", [0, 1, 2, 3, 4])
 	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
 	main.call("_new_game")
@@ -91,13 +93,20 @@ func _run() -> void:
 	var product_market := main.get("product_market") as Dictionary
 
 	_expect(players.size() == EXPECTED_PLAYER_COUNT, "new game creates the configured player count")
+	_expect(int(main.get("configured_ai_player_count")) == EXPECTED_AI_PLAYER_COUNT, "new game keeps the configured AI opponent count")
+	_expect(_ai_player_count(players) == EXPECTED_AI_PLAYER_COUNT, "new game creates AI seats for the PVE roguelike run")
+	_expect(not bool((players[0] as Dictionary).get("is_ai", true)) and bool((players[1] as Dictionary).get("is_ai", false)), "player 1 remains the human/local seat while later seats are AI opponents")
+	_expect(((players[1] as Dictionary).get("ai_profile", {}) as Dictionary).has("style") and ((players[1] as Dictionary).get("ai_memory", {}) as Dictionary).has("decision_samples"), "AI seats carry a personality profile and training-memory log")
 	_expect(districts.size() >= MIN_REGION_COUNT and districts.size() <= MAX_REGION_COUNT, "new game creates the expected roguelike region count")
 	_expect(_regions_start_with_single_goods(main), "land regions start with one produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	var empty_field_event_parts := main.call("_event_target_weight_parts", int(main.get("selected_district"))) as Dictionary
 	_expect(int(empty_field_event_parts.get("monster", -1)) == 0, "event targeting handles an empty monster field without a legacy A/B fallback")
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
+	_expect(_role_catalog_has_eight_positive_cards(main), "role codex exposes eight distinct alien cards with positive mechanical benefits")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
+	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, periodic product cash, and monster-upgrade cash triggers")
+	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -253,6 +262,7 @@ func _run() -> void:
 		_expect(auto_expansions > 0, "forced rival auto expansion creates at least one anonymous city")
 		_expect(rival_city_count_after > rival_city_count_before, "rival auto expansion increases non-active-player city count")
 		_expect(_rival_cash_total(players_after_auto_expand, 0) < rival_cash_before, "rival auto expansion spends hidden rival funds")
+		_expect(_ai_decision_sample_count(players_after_auto_expand) > 0, "AI city expansion records decision samples for later training")
 		_expect(_verify_area_trade_contract_accept_and_decline(main), "area trade contracts open a separate non-blocking five-second decision window after reveal and resolve accept, reject, and timeout effects")
 		_expect(int(main.call("_player_active_city_count", 0)) == 1, "rival auto expansion does not create a city for the active player")
 		_expect(_city_markers_include_unknown_rival(main), "active player's map marks rival auto-expanded cities as unknown owners")
@@ -276,6 +286,7 @@ func _run() -> void:
 		var players_after_business := _as_array(main.get("players"))
 		_expect(business_actions > 0, "forced rival business actions create public inference clues")
 		_expect(_rival_cash_total(players_after_business, 0) < rival_cash_before_business, "rival business actions spend hidden rival operating funds")
+		_expect(_ai_decision_sample_count(players_after_business) > _ai_decision_sample_count(players_after_auto_expand), "AI business actions add more decision samples")
 		_expect(_city_public_clue_exists(main), "rival business actions leave public clues on city records")
 		_expect(_city_public_clue_history_exists(main), "city public clue history keeps recent anonymous business and contract evidence")
 		var cash_after_build := _player_cash(_as_array(main.get("players")), 0)
@@ -350,11 +361,16 @@ func _run() -> void:
 	await process_frame
 	main.call("_open_new_game_setup_menu")
 	await process_frame
-	var preview_player_count := 5
+	var preview_player_count := 8
 	main.call("_set_configured_player_count_from_new_game_menu", preview_player_count)
 	await process_frame
 	_expect(int(main.get("configured_player_count")) == preview_player_count, "new-run setup can change the configured player count")
+	main.call("_set_configured_ai_player_count_from_new_game_menu", 7)
+	await process_frame
+	_expect(int(main.get("configured_ai_player_count")) == 7 and menu_preview_box != null and _container_label_text_contains(menu_preview_box, "AI对手7"), "new-run setup can configure a 3-8 seat PVE run with 2-7 AI opponents")
 	main.call("_set_configured_player_count_from_new_game_menu", player_count_before_setup)
+	await process_frame
+	main.call("_set_configured_ai_player_count_from_new_game_menu", EXPECTED_AI_PLAYER_COUNT)
 	await process_frame
 	main.set("configured_role_indices", role_indices_before_setup)
 	main.call("_ensure_configured_role_indices")
@@ -749,13 +765,106 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 		if String(role.get("passive", "")) == "":
 			return false
 		var has_mechanical_field := false
-		for field_name in ["starting_cash_bonus", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
+		for field_name in ["starting_cash_bonus", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus", "resource_cash_product", "bonus_card_product", "monster_upgrade_cash"]:
 			if role.has(field_name):
 				has_mechanical_field = true
 				break
 		if not has_mechanical_field:
 			return false
 	return not players.is_empty()
+
+
+func _role_catalog_has_eight_positive_cards(main: Node) -> bool:
+	if int(main.call("_player_role_catalog_size")) != 8:
+		return false
+	var names := {}
+	for role_index in range(8):
+		var role := main.call("_make_player_role_card", role_index, role_index) as Dictionary
+		var role_name := String(role.get("name", ""))
+		if role_name == "" or names.has(role_name) or String(role.get("species", "")) == "" or String(role.get("passive", "")) == "":
+			return false
+		names[role_name] = true
+		var has_positive_benefit := int(role.get("starting_cash_bonus", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("starter_hp_bonus", 0)) > 0
+		has_positive_benefit = has_positive_benefit or float(role.get("starter_duration_bonus", 0.0)) > 0.0
+		has_positive_benefit = has_positive_benefit or float(role.get("starter_move_multiplier", 1.0)) > 1.0
+		has_positive_benefit = has_positive_benefit or int(role.get("starter_fixed_skill_bonus", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("resource_cash_amount", 0)) > 0
+		has_positive_benefit = has_positive_benefit or String(role.get("bonus_card_product", "")) != ""
+		has_positive_benefit = has_positive_benefit or int(role.get("monster_upgrade_cash", 0)) > 0
+		if not has_positive_benefit:
+			return false
+	return names.size() == 8
+
+
+func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
+	var bonus_card_role := main.call("_make_player_role_card", 0, 0) as Dictionary
+	var resource_role := main.call("_make_player_role_card", 0, 1) as Dictionary
+	var upgrade_role := main.call("_make_player_role_card", 0, 3) as Dictionary
+	return String(main.call("_role_card_art_stats", bonus_card_role)).contains("购牌:环晶电池+1") \
+		and String(main.call("_role_card_art_stats", resource_role)).contains("周期:深海菌毯+¥55") \
+		and String(main.call("_role_card_art_stats", upgrade_role)).contains("升兽:+¥120")
+
+
+func _verify_role_passive_runtime(main: Node) -> bool:
+	var players := _as_array(main.get("players"))
+	var districts := _as_array(main.get("districts"))
+	if players.is_empty() or districts.is_empty():
+		return false
+	var district_index := -1
+	for i in range(districts.size()):
+		if not _as_array((districts[i] as Dictionary).get("card_choices", [])).is_empty():
+			district_index = i
+			break
+	if district_index < 0:
+		return false
+	var saved_player := (players[0] as Dictionary).duplicate(true)
+	var saved_district := (districts[district_index] as Dictionary).duplicate(true)
+	var saved_logs := _as_array(main.get("log_lines")).duplicate(true)
+	var saved_callouts := _as_array(main.get("action_callouts")).duplicate(true)
+	var test_player := saved_player.duplicate(true)
+	test_player["cash"] = 1000
+	test_player["cash_history"] = [1000]
+	test_player["economic_ledger"] = []
+	test_player["slots"] = []
+	test_player["total_card_income"] = 0
+	test_player["total_city_income"] = 0
+	test_player["total_role_income"] = 0
+	test_player["last_cycle_income"] = 0
+	test_player["role_card"] = main.call("_make_player_role_card", 0, 0)
+	players[0] = test_player
+	var test_district := saved_district.duplicate(true)
+	var test_products := _as_array(test_district.get("products", [])).duplicate()
+	for product_name in ["环晶电池", "深海菌毯"]:
+		if not test_products.has(product_name):
+			test_products.append(product_name)
+	test_district["products"] = test_products
+	districts[district_index] = test_district
+	main.set("players", players)
+	main.set("districts", districts)
+	var hand_before := int(main.call("_player_counted_hand_size", players[0] as Dictionary))
+	var bonus_card_granted := bool(main.call("_grant_role_bonus_card_on_purchase", 0, district_index, ""))
+	var hand_after := int(main.call("_player_counted_hand_size", players[0] as Dictionary))
+	(players[0] as Dictionary)["role_card"] = main.call("_make_player_role_card", 0, 1)
+	var cash_before_resource := int((players[0] as Dictionary).get("cash", 0))
+	var resource_reward := int(main.call("_apply_role_market_income_bonus", 0, district_index))
+	var cash_after_resource := int((players[0] as Dictionary).get("cash", 0))
+	(players[0] as Dictionary)["role_card"] = main.call("_make_player_role_card", 0, 3)
+	var cash_before_upgrade := int((players[0] as Dictionary).get("cash", 0))
+	var upgrade_reward := int(main.call("_apply_role_monster_upgrade_cash", 0, "测试怪兽", 1, 2, Vector2.ZERO))
+	var cash_after_upgrade := int((players[0] as Dictionary).get("cash", 0))
+	var total_role_income := int((players[0] as Dictionary).get("total_role_income", 0))
+	var passed := bonus_card_granted and hand_after == hand_before + 1
+	passed = passed and resource_reward == 55 and cash_after_resource == cash_before_resource + 55
+	passed = passed and upgrade_reward == 120 and cash_after_upgrade == cash_before_upgrade + 120
+	passed = passed and total_role_income == 175
+	players[0] = saved_player
+	districts[district_index] = saved_district
+	main.set("players", players)
+	main.set("districts", districts)
+	main.set("log_lines", saved_logs)
+	main.set("action_callouts", saved_callouts)
+	return passed
 
 
 func _starting_monster_cards_match_roles(players: Array) -> bool:
@@ -1763,6 +1872,26 @@ func _rival_cash_total(players: Array, active_player_index: int) -> int:
 			continue
 		var player := players[i] as Dictionary
 		total += int(player.get("cash", 0))
+	return total
+
+
+func _ai_player_count(players: Array) -> int:
+	var total := 0
+	for player_variant in players:
+		var player := player_variant as Dictionary
+		if bool(player.get("is_ai", false)) or String(player.get("seat_type", "")) == "ai":
+			total += 1
+	return total
+
+
+func _ai_decision_sample_count(players: Array) -> int:
+	var total := 0
+	for player_variant in players:
+		var player := player_variant as Dictionary
+		if not (bool(player.get("is_ai", false)) or String(player.get("seat_type", "")) == "ai"):
+			continue
+		var memory := player.get("ai_memory", {}) as Dictionary
+		total += _as_array(memory.get("decision_samples", [])).size()
 	return total
 
 

@@ -4,9 +4,12 @@ const MapViewScript := preload("res://scripts/map_view.gd")
 const CardArtViewScript := preload("res://scripts/card_art_view.gd")
 const MonsterArtViewScript := preload("res://scripts/monster_art_view.gd")
 
-const MIN_PLAYER_COUNT := 2
-const MAX_PLAYER_COUNT := 5
+const MIN_PLAYER_COUNT := 3
+const MAX_PLAYER_COUNT := 8
 const DEFAULT_PLAYER_COUNT := 4
+const MIN_AI_PLAYER_COUNT := 2
+const MAX_AI_PLAYER_COUNT := 7
+const DEFAULT_AI_PLAYER_COUNT := 3
 const MAP_WIDTH_METERS := 1400.0
 const MAP_HEIGHT_METERS := 950.0
 const MAP_SITE_MARGIN_METERS := 70.0
@@ -163,6 +166,9 @@ const PLAYER_COLORS := [
 	Color("#facc15"),
 	Color("#4ade80"),
 	Color("#c084fc"),
+	Color("#fb7185"),
+	Color("#2dd4bf"),
+	Color("#fb923c"),
 ]
 
 const PLAYER_ROLE_CATALOG := [
@@ -170,49 +176,119 @@ const PLAYER_ROLE_CATALOG := [
 		"name": "环港走私议会",
 		"species": "蜂冠商族",
 		"starter_monster_index": 2,
-		"trait": "高速物流与电池黑市专家；起始怪兽牌偏向快速打开补给半径。",
-		"passive": "开局资金+¥80；起始怪兽移动+15%。",
+		"trait": "高速物流与电池黑市专家；喜欢把怪兽登陆伪装成货运事故。",
+		"passive": "开局资金+¥80；起始怪兽移动+15%；在含环晶电池的区域购牌时，免费额外获得1张同区候选牌。",
 		"starting_cash_bonus": 80,
 		"starter_move_multiplier": 1.15,
+		"bonus_card_product": "环晶电池",
 		"flavor": "他们总能把第一只怪兽包装成一次普通货运事故。",
 	},
 	{
 		"name": "深海菌毯使团",
 		"species": "雾鳃孢子人",
 		"starter_monster_index": 0,
-		"trait": "擅长把资源偏好伪装成生态灾害；起始怪兽牌偏向瘴气与高生命压迫。",
-		"passive": "起始怪兽生命+8，在场时间+12秒。",
+		"trait": "擅长把资源偏好伪装成生态灾害；靠菌毯副产物结算现金。",
+		"passive": "起始怪兽生命+8，在场时间+12秒；己方含深海菌毯的城市每个经营周期额外+¥55。",
 		"starter_hp_bonus": 8,
 		"starter_duration_bonus": 12.0,
+		"resource_cash_product": "深海菌毯",
+		"resource_cash_amount": 55,
 		"flavor": "他们的合同像潮湿的孢子一样扩散，没人知道真正的客户是谁。",
 	},
 	{
 		"name": "重力矿联董事会",
 		"species": "岩壳重核族",
 		"starter_monster_index": 1,
-		"trait": "矿业城市与重物流保护伞；起始怪兽牌偏向冲撞、护甲和区域碾压。",
-		"passive": "起始怪兽生命+12，适合硬吃区域反击。",
+		"trait": "矿业城市与重物流保护伞；用重力陶瓷抵押城市现金流。",
+		"passive": "起始怪兽生命+12；己方含重力陶瓷的城市每个经营周期额外+¥45。",
 		"starter_hp_bonus": 12,
+		"resource_cash_product": "重力陶瓷",
+		"resource_cash_amount": 45,
 		"flavor": "他们称一切破坏为地质调整，并且会给调整开票。",
 	},
 	{
 		"name": "离子军购局",
 		"species": "蓝焰档案体",
 		"starter_monster_index": 3,
-		"trait": "军需订单与能量食品投标人；起始怪兽牌偏向高耐久火力压力。",
-		"passive": "起始怪兽召唤后额外获得1张绑定固定技能。",
+		"trait": "军需订单与能量食品投标人；怪兽升级会变成采购预算。",
+		"passive": "起始怪兽召唤后额外获得1张绑定固定技能；己方怪兽升级时获得¥120。",
 		"starter_fixed_skill_bonus": 1,
+		"monster_upgrade_cash": 120,
 		"flavor": "他们从不发动战争，只是提前出售战争会需要的东西。",
 	},
 	{
 		"name": "光合修复会",
 		"species": "藤冠共生体",
 		"starter_monster_index": 4,
-		"trait": "避难产业和修复商品联盟；起始怪兽牌偏向低压教学与商业修复线索。",
-		"passive": "开局资金+¥120；起始怪兽在场时间+20秒。",
+		"trait": "避难产业和修复商品联盟；把光合凝胶做成灾后保险。",
+		"passive": "开局资金+¥120；起始怪兽在场时间+20秒；己方含光合凝胶的城市每个经营周期额外+¥40。",
 		"starting_cash_bonus": 120,
 		"starter_duration_bonus": 20.0,
+		"resource_cash_product": "光合凝胶",
+		"resource_cash_amount": 40,
 		"flavor": "他们的城市总在灾后重建合同签好之后才被灾难发现。",
+	},
+	{
+		"name": "虹膜数据券商",
+		"species": "棱眼账本体",
+		"starter_monster_index": 5,
+		"trait": "把活体芯片写进每笔交易的影子账本；擅长从情报商品区顺手拿牌。",
+		"passive": "开局资金+¥60；在含活体芯片的区域购牌时，免费额外获得1张同区候选牌。",
+		"starting_cash_bonus": 60,
+		"bonus_card_product": "活体芯片",
+		"flavor": "他们不偷情报，他们只是提前拥有账本的下一页。",
+	},
+	{
+		"name": "星鲸餐饮垄断",
+		"species": "鲸胃星民",
+		"starter_monster_index": 6,
+		"trait": "星鲸罐头连锁供应商；怪兽每次变强都会顺便带火一次联名营销。",
+		"passive": "己方含星鲸罐头的城市每个经营周期额外+¥50；己方怪兽升级时获得¥60。",
+		"resource_cash_product": "星鲸罐头",
+		"resource_cash_amount": 50,
+		"monster_upgrade_cash": 60,
+		"flavor": "他们坚称每一次怪兽袭击都只是一次过于成功的试吃会。",
+	},
+	{
+		"name": "静电蜂巢银行",
+		"species": "金翼蜂群意志",
+		"starter_monster_index": 7,
+		"trait": "用静电蜂蜜给黑市信用背书；越靠近甜味商路，越容易多拿一张牌。",
+		"passive": "起始怪兽移动+8%；在含静电蜂蜜的区域购牌时，免费额外获得1张同区候选牌。",
+		"starter_move_multiplier": 1.08,
+		"bonus_card_product": "静电蜂蜜",
+		"flavor": "他们发出的不是贷款通知，是一整座蜂巢的低频催收。",
+	},
+]
+
+const AI_PERSONALITY_CATALOG := [
+	{
+		"name": "拓荒型AI",
+		"style": "优先抢高GDP陆地与海洋邻接位，尽快形成城市收入。",
+		"build_bias": 1.2,
+		"business_bias": 0.9,
+		"monster_bias": 0.8,
+	},
+	{
+		"name": "套利型AI",
+		"style": "追逐高价商品、供需缺口和可持续涨价窗口。",
+		"build_bias": 1.0,
+		"business_bias": 1.25,
+		"monster_bias": 0.75,
+	},
+	{
+		"name": "破坏型AI",
+		"style": "偏好商路黑客和竞争城市压制，让怪兽战争服务于破坏收益。",
+		"build_bias": 0.9,
+		"business_bias": 1.15,
+		"monster_bias": 1.15,
+	},
+	{
+		"name": "驯怪型AI",
+		"style": "更重视怪兽落点、资源偏好和购牌半径，适合后续训练召唤/诱导策略。",
+		"build_bias": 0.95,
+		"business_bias": 1.0,
+		"monster_bias": 1.35,
 	},
 ]
 
@@ -938,6 +1014,7 @@ var selected_contract_source_district := -1
 var selected_contract_target_district := -1
 var business_cycle_count := 0
 var configured_player_count := DEFAULT_PLAYER_COUNT
+var configured_ai_player_count := DEFAULT_AI_PLAYER_COUNT
 var configured_role_indices := []
 var configured_starter_monster_indices := []
 var game_over := false
@@ -2122,7 +2199,7 @@ func _build_menu_overlay() -> void:
 func _open_main_menu() -> void:
 	_show_menu(
 		"太空辛迪加",
-		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n开局先进入准备页查看玩家数、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；经营周期里对手也会匿名扩张，对手需要根据商品竞争、商路和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
+		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个是AI对手。开局先进入准备页查看总席位、AI数量、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；经营周期里AI会按评分匿名扩张和执行商业行动，并记录决策样本供后续训练。玩家需要根据商品竞争、商路和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
 		true,
 		true
 	)
@@ -2145,10 +2222,10 @@ func _open_rules_menu() -> void:
 	var lines := []
 	lines.append("当前原型规则：")
 	lines.append("")
-	lines.append("1. 身份与起始怪兽：玩家都是外星辛迪加角色。每名玩家开局获得一张角色卡，并在开局准备中从全部怪兽任选一只I级怪兽作为起始怪兽牌；这张起始牌无区域/商品流动门槛，用来把第一只怪兽匿名召唤到星球上。")
+	lines.append("1. 身份与AI席位：每局3-8个席位，其中2-7个为AI对手，剩余席位是真人/本地玩家视角。玩家都是外星辛迪加角色；每名玩家开局获得一张角色卡，并在开局准备中从全部怪兽任选一只I级怪兽作为起始怪兽牌；这张起始牌无区域/商品流动门槛，用来把第一只怪兽匿名召唤到星球上。")
 	lines.append("2. 怪兽牌：开局不预选四只场上怪兽，怪兽全部来自怪兽牌。怪兽有生命值、移动速度、在场时间、召唤区域限制和自动行动概率；大多数怪兽会活动一段时间后自然离场，即使没有被杀掉。同名怪兽牌可用于升级己方同名在场怪兽，刷新生命值和在场时间。")
 	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地初始生产1种商品并有1种本地需求；海洋不生产，主要承载商路并影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
-	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；经营周期中，对手也会自动、匿名地在高价值空地扩张。" % CITY_BUILD_COST)
+	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；经营周期中，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
 	lines.append("5. 市场价格：商品价格只能由供给、需求、商路断损、城市经营和经济天气重算，不能被玩家直接指定。扩张城市生产/需求、充实商路、引导怪兽破坏，才会改变市场。")
 	lines.append("6. 购牌与升级：卡牌需要花钱购买，只能从怪兽落地区或相邻区获取；怪兽所在区域八折，相邻区域原价。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限。" % PLAYER_HAND_LIMIT)
 	lines.append("7. 出牌门槛：I级怪兽牌没有商品流动要求；II-IV级怪兽牌和多数其他牌要求己方城市满足指定商品流动数量，商品不被消耗。少数牌会额外收取现金。")
@@ -2159,9 +2236,10 @@ func _open_rules_menu() -> void:
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
 	lines.append("13. 经济隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹与流水；其他玩家的经济只能推测。终局才公开并按结算资金判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
-	lines.append("15. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
+	lines.append("15. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，并把行动类型、目标、评分和理由写入自己的最近决策样本；后续训练会继续扩展到购牌、出牌、竞价和怪兽诱导。")
+	lines.append("16. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
 	lines.append("")
-	lines.append("操作入口索引：1-5选玩家；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
+	lines.append("操作入口索引：1-8选席位；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
 	_show_menu(
 		"游戏规则",
 		"\n".join(lines),
@@ -3437,6 +3515,7 @@ func _economy_player_cash_entries() -> Array:
 			"score_label": "结算资金" if game_over else "可见预估",
 			"intel_summary": _player_intel_display_summary(i),
 			"last_cycle": int(player.get("last_cycle_income", 0)),
+			"role_income": int(player.get("total_role_income", 0)),
 			"cycle_income": _player_cycle_income(i),
 			"recent_delta": _player_recent_cash_delta(player),
 			"window_delta": _player_cash_window_delta(player),
@@ -3461,7 +3540,7 @@ func _sort_economy_player_cash_entry(a: Dictionary, b: Dictionary) -> bool:
 func _economy_player_cash_line(entry: Dictionary) -> String:
 	if bool(entry.get("private", false)):
 		return "%s｜现金、结算预估、城市资产、周期收入、资金轨迹与流水均为私人信息；只能从公开行动自行推测。" % String(entry.get("name", "玩家"))
-	return "%s｜%s%d｜现金%d｜城市%d｜%s｜上次周期%s｜潜在周期%d｜最近%s｜窗口%s｜轨迹%s｜流水%s" % [
+	return "%s｜%s%d｜现金%d｜城市%d｜%s｜上次周期%s｜角色累计+%d｜潜在周期%d｜最近%s｜窗口%s｜轨迹%s｜流水%s" % [
 		String(entry.get("name", "玩家")),
 		String(entry.get("score_label", "可见预估")),
 		int(entry.get("score", 0)),
@@ -3469,6 +3548,7 @@ func _economy_player_cash_line(entry: Dictionary) -> String:
 		int(entry.get("city_count", 0)),
 		String(entry.get("intel_summary", "")),
 		_signed_int_text(int(entry.get("last_cycle", 0))),
+		int(entry.get("role_income", 0)),
 		int(entry.get("cycle_income", 0)),
 		_signed_int_text(int(entry.get("recent_delta", 0))),
 		_signed_int_text(int(entry.get("window_delta", 0))),
@@ -5762,9 +5842,10 @@ func _start_new_run_from_menu() -> void:
 
 
 func _open_new_game_setup_menu() -> void:
+	_ensure_configured_ai_player_count()
 	_show_menu(
 		"开局准备",
-		"新局会重掷星球、陆海区域、城市商路、区域补给和所有玩家手牌。开局不预选四只怪兽；每名玩家先选外星辛迪加角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。确认后，玩家需要先打出自己的起始怪兽牌，把第一只自动怪兽匿名召唤到星球上，才能打开怪兽落地/相邻区域的购牌补给。",
+		"新局会重掷星球、陆海区域、城市商路、区域补给和所有玩家手牌。本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个为AI对手；剩余席位是真人/本地玩家视角。开局不预选四只怪兽；每名玩家先选外星辛迪加角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。确认后，玩家需要先打出自己的起始怪兽牌，把第一只自动怪兽匿名召唤到星球上，才能打开怪兽落地/相邻区域的购牌补给。",
 		not players.is_empty() and not game_over
 	)
 	menu_continue_button.visible = not players.is_empty() and not game_over
@@ -5777,17 +5858,35 @@ func _open_new_game_setup_menu() -> void:
 
 
 func _add_new_game_setup_controls(parent: Container) -> void:
-	parent.add_child(_plain_label("选择本局玩家数：", 13, Color("#cbd5e1")))
+	_ensure_configured_ai_player_count()
+	parent.add_child(_plain_label("选择本局总席位：%d席｜真人/本地%d｜AI对手%d" % [
+		configured_player_count,
+		_configured_human_player_count(),
+		configured_ai_player_count,
+	], 13, Color("#cbd5e1")))
 	var player_row := HBoxContainer.new()
 	player_row.add_theme_constant_override("separation", 6)
 	parent.add_child(player_row)
 	for count in range(MIN_PLAYER_COUNT, MAX_PLAYER_COUNT + 1):
 		var player_button := Button.new()
-		player_button.text = "%d人" % count
+		player_button.text = "%d席" % count
 		player_button.toggle_mode = true
 		player_button.button_pressed = count == configured_player_count
 		player_button.pressed.connect(Callable(self, "_set_configured_player_count_from_new_game_menu").bind(count))
 		player_row.add_child(player_button)
+
+	parent.add_child(_plain_label("选择AI对手数量（至少2个，最多7个；不能挤掉最后一个真人/本地席位）：", 13, Color("#cbd5e1")))
+	var ai_row := HBoxContainer.new()
+	ai_row.add_theme_constant_override("separation", 6)
+	parent.add_child(ai_row)
+	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
+	for count in range(MIN_AI_PLAYER_COUNT, max_ai + 1):
+		var ai_button := Button.new()
+		ai_button.text = "%d AI" % count
+		ai_button.toggle_mode = true
+		ai_button.button_pressed = count == configured_ai_player_count
+		ai_button.pressed.connect(Callable(self, "_set_configured_ai_player_count_from_new_game_menu").bind(count))
+		ai_row.add_child(ai_button)
 
 	parent.add_child(_plain_label("本局角色与起始手牌预览（角色给被动；起始I级怪兽可从全部怪兽中任选，不代表玩家能常驻操控怪兽）：", 13, Color("#fde68a")))
 	var role_scroll := ScrollContainer.new()
@@ -5809,14 +5908,21 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		role_grid.add_child(role_panel)
 		var role_card := _make_configured_player_role_card(i)
 		var starter_card := _make_starting_monster_card(i, role_card)
-		var player_label := _plain_label("玩家%d｜%s｜起始手牌：%s" % [
+		var seat_type := _player_seat_type_for_config_index(i)
+		var ai_profile := _ai_profile_for_config_index(i)
+		var seat_label := "AI·%s" % String(ai_profile.get("name", "训练中")) if seat_type == "ai" else "真人/本地"
+		var player_label := _plain_label("玩家%d｜%s｜%s｜起始手牌：%s" % [
 			i + 1,
+			seat_label,
 			String(role_card.get("species", "未知外星人")),
 			_card_display_name(String(starter_card.get("name", ""))),
 		], 11, Color("#bfdbfe"))
 		player_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(player_label)
-		var passive_label := _plain_label("角色被动：%s" % _role_passive_text(role_card), 10, Color("#fde68a"))
+		var passive_label := _plain_label("角色被动：%s%s" % [
+			_role_passive_text(role_card),
+			"｜AI策略：%s" % String(ai_profile.get("style", "")) if seat_type == "ai" else "",
+		], 10, Color("#fde68a"))
 		passive_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(passive_label)
 		var role_choice_row := HBoxContainer.new()
@@ -5858,7 +5964,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		starter_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(starter_note)
 
-	var hint := _plain_label("提示：起始怪兽牌第一次召唤不限区域；普通I级怪兽牌免商品流动但仍看落点，II-IV级怪兽牌会要求商品流动。", 12, Color("#94a3b8"))
+	var hint := _plain_label("提示：起始怪兽牌第一次召唤不限区域；普通I级怪兽牌免商品流动但仍看落点，II-IV级怪兽牌会要求商品流动。AI席位目前会在经营周期里按评分自动建城和执行商业行动，并记录决策样本供后续训练。", 12, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(hint)
 
@@ -5877,6 +5983,11 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 
 func _set_configured_player_count_from_new_game_menu(count: int) -> void:
 	_set_configured_player_count(count)
+	_open_new_game_setup_menu()
+
+
+func _set_configured_ai_player_count_from_new_game_menu(count: int) -> void:
+	_set_configured_ai_player_count(count)
 	_open_new_game_setup_menu()
 
 
@@ -5902,7 +6013,11 @@ func _starter_monster_setup_summary(starter_card: Dictionary) -> String:
 
 
 func _confirm_start_new_run_from_setup() -> void:
-	_log("开始新局：%d名外星辛迪加角色入局；怪兽将通过起始怪兽牌和后续怪兽卡匿名召唤，场上数量没有硬上限。" % configured_player_count)
+	_log("开始新局：%d席外星辛迪加入局，其中真人/本地%d席，AI对手%d席；怪兽将通过起始怪兽牌和后续怪兽卡匿名召唤，场上数量没有硬上限。" % [
+		configured_player_count,
+		_configured_human_player_count(),
+		configured_ai_player_count,
+	])
 	_new_game()
 	speed_before_menu = 1.0
 	_close_menu()
@@ -6123,6 +6238,7 @@ func _capture_run_state() -> Dictionary:
 		"selected_card_resolution_id": selected_card_resolution_id,
 		"business_cycle_count": business_cycle_count,
 		"configured_player_count": configured_player_count,
+		"configured_ai_player_count": configured_ai_player_count,
 		"configured_role_indices": configured_role_indices.duplicate(true),
 		"configured_starter_monster_indices": configured_starter_monster_indices.duplicate(true),
 		"game_over": game_over,
@@ -6214,12 +6330,15 @@ func _apply_run_state(state: Dictionary) -> int:
 	selected_card_resolution_id = int(state.get("selected_card_resolution_id", -1))
 	business_cycle_count = int(state.get("business_cycle_count", 0))
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
+	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
+	_ensure_configured_ai_player_count()
 	var saved_role_indices: Variant = state.get("configured_role_indices", [])
 	configured_role_indices = (saved_role_indices as Array).duplicate(true) if saved_role_indices is Array else []
 	_ensure_configured_role_indices()
 	var saved_starter_monster_indices: Variant = state.get("configured_starter_monster_indices", [])
 	configured_starter_monster_indices = (saved_starter_monster_indices as Array).duplicate(true) if saved_starter_monster_indices is Array else []
 	_ensure_configured_starter_monster_indices()
+	_ensure_player_ai_state()
 	game_over = bool(state.get("game_over", false))
 	map_width_m = float(state.get("map_width_m", MAP_WIDTH_METERS))
 	map_height_m = float(state.get("map_height_m", MAP_HEIGHT_METERS))
@@ -6272,10 +6391,12 @@ func _quit_game() -> void:
 
 
 func _save_settings(show_log: bool) -> void:
+	_ensure_configured_ai_player_count()
 	_ensure_configured_role_indices()
 	_ensure_configured_starter_monster_indices()
 	var config := ConfigFile.new()
 	config.set_value("setup", "player_count", configured_player_count)
+	config.set_value("setup", "ai_player_count", configured_ai_player_count)
 	config.set_value("setup", "role_indices", configured_role_indices)
 	config.set_value("setup", "starter_monster_indices", configured_starter_monster_indices)
 	var err: int = config.save(SETTINGS_PATH)
@@ -6292,10 +6413,13 @@ func _load_settings() -> void:
 	var config := ConfigFile.new()
 	var err: int = config.load(SETTINGS_PATH)
 	if err != OK:
+		_ensure_configured_ai_player_count()
 		_ensure_configured_role_indices()
 		_ensure_configured_starter_monster_indices()
 		return
-	configured_player_count = int(max(MIN_PLAYER_COUNT, min(int(config.get_value("setup", "player_count", DEFAULT_PLAYER_COUNT)), MAX_PLAYER_COUNT)))
+	configured_player_count = clampi(int(config.get_value("setup", "player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
+	configured_ai_player_count = int(config.get_value("setup", "ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
+	_ensure_configured_ai_player_count()
 	var saved_role_indices: Variant = config.get_value("setup", "role_indices", [])
 	configured_role_indices = (saved_role_indices as Array).duplicate(true) if saved_role_indices is Array else []
 	_ensure_configured_role_indices()
@@ -6978,14 +7102,22 @@ func _new_game() -> void:
 	game_over = false
 	_prime_timers_for_new_game()
 
+	_ensure_configured_ai_player_count()
 	_ensure_configured_role_indices()
 	_ensure_configured_starter_monster_indices()
+	var configured_human_count := _configured_human_player_count()
 	for i in range(configured_player_count):
 		var role_card := _make_configured_player_role_card(i)
 		var starting_cash := STARTING_CASH + int(role_card.get("starting_cash_bonus", 0))
+		var is_ai := i >= configured_human_count
+		var ai_profile := _ai_profile_for_config_index(i) if is_ai else {}
 		players.append({
 			"id": i,
 			"name": "玩家%d" % (i + 1),
+			"seat_type": "ai" if is_ai else "human",
+			"is_ai": is_ai,
+			"ai_profile": ai_profile,
+			"ai_memory": _empty_ai_memory() if is_ai else {},
 			"role_index": int(role_card.get("role_index", i)),
 			"role_card": role_card,
 			"cash": starting_cash,
@@ -7000,11 +7132,13 @@ func _new_game() -> void:
 			"total_card_spend": 0,
 			"total_build_spend": 0,
 			"total_card_income": 0,
+			"total_role_income": 0,
 			"total_business_spend": 0,
 			"action_cooldown": 0.0,
 			"queued_card_tip": 0,
 			"slots": [_make_starting_monster_card(i, role_card)],
 		})
+	_ensure_player_ai_state()
 
 	_generate_roguelike_districts()
 	_assign_district_card_choices()
@@ -7017,7 +7151,12 @@ func _new_game() -> void:
 	_refresh_product_market_prices()
 	_start_card_ingress_animation()
 
-	_log("即时原型启动：%d名玩家；本局怪兽由怪兽卡匿名召唤，场上数量没有硬上限。" % configured_player_count)
+	_log("即时原型启动：%d席玩家，其中真人/本地%d席、AI对手%d席；本局怪兽由怪兽卡匿名召唤，场上数量没有硬上限。" % [
+		configured_player_count,
+		_human_player_count(),
+		_ai_player_count(),
+	])
+	_log("AI训练骨架启动：AI会按城市GDP、商品竞争、商路价值和怪兽风险评分行动，并记录最近10条决策样本。")
 	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
 	_log("星球随机生成陆地与海洋：陆地初始生产1种商品并有1种需求，海洋不生产但承担商路运输；合约牌可继续改写供需。")
 	_log("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
@@ -7455,6 +7594,7 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 	_invalidate_bound_monster_skills(old_uid, "绑定怪兽已升级，旧固定技能失效。")
 	var fixed_skill_count := int(upgraded_card.get("fixed_skill_count", new_rank))
 	var granted := _grant_bound_monster_skills(player_index, old_uid, String(actor.get("name", "怪兽")), new_rank, fixed_skill_count)
+	_apply_role_monster_upgrade_cash(player_index, String(actor.get("name", "怪兽")), old_rank, new_rank, _entity_world_position(actor))
 	_apply_monster_economic_boons()
 	_refresh_product_market_prices()
 	_add_action_callout(
@@ -7551,6 +7691,10 @@ func _player_role_template_index(player_index: int) -> int:
 	return wrapi(player_index, 0, PLAYER_ROLE_CATALOG.size())
 
 
+func _player_role_catalog_size() -> int:
+	return PLAYER_ROLE_CATALOG.size()
+
+
 func _player_role_template(player_index: int, role_index: int = -1) -> Dictionary:
 	if PLAYER_ROLE_CATALOG.is_empty():
 		return {}
@@ -7609,7 +7753,7 @@ func _normalize_player_role_card(role_card: Dictionary, player_index: int) -> Di
 		role["species"] = String(template.get("species", "未知外星人"))
 	if String(role.get("trait", "")) == "":
 		role["trait"] = String(template.get("trait", "起始怪兽牌供应者。"))
-	for field_name in ["passive", "starting_cash_bonus", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus", "flavor"]:
+	for field_name in _role_runtime_copy_fields():
 		if not role.has(field_name) and template.has(field_name):
 			role[field_name] = template[field_name]
 	role["kind"] = "player_role"
@@ -7642,6 +7786,145 @@ func _player_role_summary(role_card: Dictionary) -> String:
 
 func _role_passive_text(role_card: Dictionary) -> String:
 	return String(role_card.get("passive", "暂无被动"))
+
+
+func _player_role_card_for_index(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var role_variant: Variant = (players[player_index] as Dictionary).get("role_card", {})
+	return role_variant as Dictionary if role_variant is Dictionary else {}
+
+
+func _role_runtime_copy_fields() -> Array:
+	return [
+		"passive",
+		"starting_cash_bonus",
+		"starter_hp_bonus",
+		"starter_duration_bonus",
+		"starter_move_multiplier",
+		"starter_fixed_skill_bonus",
+		"resource_cash_product",
+		"resource_cash_amount",
+		"bonus_card_product",
+		"monster_upgrade_cash",
+		"flavor",
+	]
+
+
+func _district_or_city_has_product(district_index: int, product_name: String) -> bool:
+	if product_name == "" or district_index < 0 or district_index >= districts.size():
+		return false
+	var district: Dictionary = districts[district_index]
+	if (district.get("products", []) as Array).has(product_name):
+		return true
+	if (district.get("demands", []) as Array).has(product_name):
+		return true
+	var city := _district_city(district_index)
+	if _city_is_active(city):
+		if _city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name):
+			return true
+	return false
+
+
+func _apply_role_market_income_bonus(player_index: int, district_index: int) -> int:
+	if player_index < 0 or player_index >= players.size() or district_index < 0 or district_index >= districts.size():
+		return 0
+	var role := _player_role_card_for_index(player_index)
+	var product_name := String(role.get("resource_cash_product", ""))
+	var amount := int(role.get("resource_cash_amount", 0))
+	if product_name == "" or amount <= 0:
+		return 0
+	if not _district_or_city_has_product(district_index, product_name):
+		return 0
+	players[player_index]["cash"] = int(players[player_index].get("cash", 0)) + amount
+	players[player_index]["last_cycle_income"] = int(players[player_index].get("last_cycle_income", 0)) + amount
+	players[player_index]["total_city_income"] = int(players[player_index].get("total_city_income", 0)) + amount
+	players[player_index]["total_role_income"] = int(players[player_index].get("total_role_income", 0)) + amount
+	_record_player_economic_event(player_index, "角色收益", String(role.get("name", "角色卡")), amount, "%s资源兑钱｜%s" % [product_name, districts[district_index]["name"]])
+	_record_player_cash_snapshot(player_index)
+	_log("%s触发角色卡：%s在%s把%s兑成¥%d。" % [
+		players[player_index]["name"],
+		String(role.get("name", "外星角色")),
+		districts[district_index]["name"],
+		product_name,
+		amount,
+	])
+	return amount
+
+
+func _bonus_card_candidate_for_role(player: Dictionary, district_index: int, bought_skill_name: String) -> String:
+	if district_index < 0 or district_index >= districts.size():
+		return ""
+	var choices := (districts[district_index].get("card_choices", []) as Array).duplicate()
+	var fallback := ""
+	for choice_variant in choices:
+		var candidate := _canonical_card_supply_name(String(choice_variant))
+		if candidate == "" or not _skill_exists(candidate):
+			continue
+		if candidate == bought_skill_name:
+			fallback = candidate
+			continue
+		if _player_can_receive_card(player, candidate):
+			return candidate
+	if fallback != "" and _player_can_receive_card(player, fallback):
+		return fallback
+	return ""
+
+
+func _grant_role_bonus_card_on_purchase(player_index: int, district_index: int, bought_skill_name: String) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var role := _player_role_card_for_index(player_index)
+	var product_name := String(role.get("bonus_card_product", ""))
+	if product_name == "" or not _district_or_city_has_product(district_index, product_name):
+		return false
+	var player: Dictionary = players[player_index]
+	var bonus_card := _bonus_card_candidate_for_role(player, district_index, bought_skill_name)
+	if bonus_card == "":
+		_log("%s触发%s的额外拿牌条件，但手牌上限或区域候选不足，未获得额外卡。" % [
+			player["name"],
+			String(role.get("name", "角色卡")),
+		])
+		return false
+	if not _acquire_card_for_player(player, bonus_card, district_index, "角色被动:%s" % String(role.get("name", "角色卡"))):
+		return false
+	players[player_index] = player
+	_record_player_economic_event(player_index, "角色收益", "额外拿牌", 0, "%s区域购牌｜免费获得%s" % [product_name, _card_display_name(bonus_card)])
+	_log("%s触发%s：在含%s的区域免费额外获得%s。" % [
+		player["name"],
+		String(role.get("name", "角色卡")),
+		product_name,
+		_card_display_name(bonus_card),
+	])
+	return true
+
+
+func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, old_rank: int, new_rank: int, world_position: Vector2) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return 0
+	var role := _player_role_card_for_index(player_index)
+	var amount := int(role.get("monster_upgrade_cash", 0))
+	if amount <= 0:
+		return 0
+	players[player_index]["cash"] = int(players[player_index].get("cash", 0)) + amount
+	players[player_index]["total_card_income"] = int(players[player_index].get("total_card_income", 0)) + amount
+	players[player_index]["total_role_income"] = int(players[player_index].get("total_role_income", 0)) + amount
+	_record_player_economic_event(player_index, "角色收益", String(role.get("name", "角色卡")), amount, "%s从%s升至%s" % [monster_name, _level_text(old_rank), _level_text(new_rank)])
+	_record_player_cash_snapshot(player_index)
+	_add_action_callout(
+		"角色收益",
+		String(role.get("name", "角色卡")),
+		"%s升级触发返现：¥+%d。" % [monster_name, amount],
+		Color("#fde68a"),
+		world_position
+	)
+	_log("%s触发%s：%s升级，获得¥%d。" % [
+		players[player_index]["name"],
+		String(role.get("name", "角色卡")),
+		monster_name,
+		amount,
+	])
+	return amount
 
 
 func _apply_role_passive_to_starting_monster_card(skill: Dictionary, role_card: Dictionary) -> void:
@@ -8107,7 +8390,7 @@ func _rival_auto_city_cap() -> int:
 
 
 func _can_auto_build_city_for_player(player_index: int) -> bool:
-	if player_index < 0 or player_index >= players.size() or player_index == selected_player:
+	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
 		return false
 	var player: Dictionary = players[player_index]
 	if int(player.get("cash", 0)) < CITY_BUILD_COST + RIVAL_AUTO_BUILD_MIN_CASH_RESERVE:
@@ -8120,7 +8403,7 @@ func _can_auto_build_city_for_player(player_index: int) -> bool:
 func _rival_build_player_order() -> Array:
 	var result := []
 	for i in range(players.size()):
-		if i == selected_player:
+		if not _player_is_ai(i):
 			continue
 		result.append(i)
 	for i in range(result.size()):
@@ -8232,6 +8515,8 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 		if target < 0:
 			continue
 		if _create_city_at_district_for_player(player_index, target, "对手自动扩张", false):
+			var score := _auto_build_score_for_player(player_index, target)
+			_record_ai_decision(player_index, "城市化", target, score, "GDP/商品/交通/竞争/怪兽风险综合评分")
 			built += 1
 	if built > 0:
 		_add_action_callout(
@@ -8271,7 +8556,7 @@ func _competing_city_indices_for_product(player_index: int, product_name: String
 
 func _rival_business_candidates_for_player(player_index: int) -> Array:
 	var result := []
-	if player_index < 0 or player_index >= players.size() or player_index == selected_player:
+	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
 		return result
 	if int(players[player_index].get("cash", 0)) < RIVAL_BUSINESS_ACTION_COST:
 		return result
@@ -8546,6 +8831,8 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 		if action.is_empty():
 			continue
 		if _apply_rival_business_action(player_index, action):
+			var target := int(action.get("target_city", action.get("own_city", -1)))
+			_record_ai_decision(player_index, String(action.get("kind", "商业行动")), target, int(action.get("score", 0)), "商品:%s" % String(action.get("product", "未知")))
 			acted += 1
 	if acted > 0:
 		_log("经营暗流：%d次匿名商业行动留下公开线索，但没有揭示真实业主。" % acted)
@@ -9436,10 +9723,21 @@ func _role_card_tag_text(role_card: Dictionary) -> String:
 
 
 func _role_card_art_stats(role_card: Dictionary) -> String:
+	var parts := ["起始:%s" % _card_display_name(String(role_card.get("starter_monster_card", "")))]
 	var cash_bonus := int(role_card.get("starting_cash_bonus", 0))
 	if cash_bonus > 0:
-		return "起始:%s｜¥+%d" % [_card_display_name(String(role_card.get("starter_monster_card", ""))), cash_bonus]
-	return "起始:%s" % _card_display_name(String(role_card.get("starter_monster_card", "")))
+		parts.append("开局¥+%d" % cash_bonus)
+	var resource_product := String(role_card.get("resource_cash_product", ""))
+	var resource_amount := int(role_card.get("resource_cash_amount", 0))
+	if resource_product != "" and resource_amount > 0:
+		parts.append("周期:%s+¥%d" % [resource_product, resource_amount])
+	var bonus_product := String(role_card.get("bonus_card_product", ""))
+	if bonus_product != "":
+		parts.append("购牌:%s+1" % bonus_product)
+	var upgrade_cash := int(role_card.get("monster_upgrade_cash", 0))
+	if upgrade_cash > 0:
+		parts.append("升兽:+¥%d" % upgrade_cash)
+	return "｜".join(parts)
 
 
 func _role_card_face_text(role_card: Dictionary, compact: bool = false) -> String:
@@ -10575,12 +10873,139 @@ func _cycle_district(step: int) -> void:
 
 
 func _set_configured_player_count(count: int) -> void:
-	configured_player_count = max(MIN_PLAYER_COUNT, min(count, MAX_PLAYER_COUNT))
+	configured_player_count = clampi(count, MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
+	_ensure_configured_ai_player_count()
 	_ensure_configured_role_indices()
 	_ensure_configured_starter_monster_indices()
 	_save_settings(false)
-	_log("下次开局玩家数设置为：%d人。" % configured_player_count)
+	_log("下次开局玩家数设置为：%d席，其中AI %d个。" % [configured_player_count, configured_ai_player_count])
 	_refresh_ui()
+
+
+func _ensure_configured_ai_player_count() -> void:
+	configured_player_count = clampi(configured_player_count, MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
+	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
+	configured_ai_player_count = clampi(configured_ai_player_count, MIN_AI_PLAYER_COUNT, max_ai)
+
+
+func _set_configured_ai_player_count(count: int) -> void:
+	_ensure_configured_ai_player_count()
+	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
+	configured_ai_player_count = clampi(count, MIN_AI_PLAYER_COUNT, max_ai)
+	_save_settings(false)
+	_log("下次开局AI对手数设置为：%d个；真人/本地玩家席位%d个。" % [configured_ai_player_count, _configured_human_player_count()])
+	_refresh_ui()
+
+
+func _configured_human_player_count() -> int:
+	_ensure_configured_ai_player_count()
+	return max(1, configured_player_count - configured_ai_player_count)
+
+
+func _player_seat_type_for_config_index(player_index: int) -> String:
+	return "ai" if player_index >= _configured_human_player_count() else "human"
+
+
+func _player_is_ai(player_index: int) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player: Dictionary = players[player_index]
+	if player.has("is_ai"):
+		return bool(player.get("is_ai", false))
+	return String(player.get("seat_type", "human")) == "ai"
+
+
+func _ai_player_count() -> int:
+	var count := 0
+	for i in range(players.size()):
+		if _player_is_ai(i):
+			count += 1
+	return count
+
+
+func _human_player_count() -> int:
+	return max(0, players.size() - _ai_player_count())
+
+
+func _ai_player_indices() -> Array:
+	var result := []
+	for i in range(players.size()):
+		if _player_is_ai(i):
+			result.append(i)
+	return result
+
+
+func _ai_profile_for_config_index(player_index: int) -> Dictionary:
+	if AI_PERSONALITY_CATALOG.is_empty():
+		return {}
+	var human_count := _configured_human_player_count()
+	var ai_order: int = maxi(0, player_index - human_count)
+	var profile_index := wrapi(ai_order, 0, AI_PERSONALITY_CATALOG.size())
+	var profile := (AI_PERSONALITY_CATALOG[profile_index] as Dictionary).duplicate(true)
+	profile["profile_index"] = profile_index
+	return profile
+
+
+func _empty_ai_memory() -> Dictionary:
+	return {
+		"decision_samples": [],
+		"last_plan": "等待经营周期",
+		"training_note": "记录AI评分、目标和公开线索，用于后续调参/训练。",
+	}
+
+
+func _ensure_player_ai_state() -> void:
+	if players.is_empty():
+		return
+	configured_player_count = clampi(max(configured_player_count, players.size()), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
+	_ensure_configured_ai_player_count()
+	var human_count: int = maxi(1, players.size() - configured_ai_player_count)
+	for i in range(players.size()):
+		var player: Dictionary = players[i]
+		var seat_type := String(player.get("seat_type", "ai" if i >= human_count else "human"))
+		var is_ai := seat_type == "ai" or bool(player.get("is_ai", false))
+		player["seat_type"] = "ai" if is_ai else "human"
+		player["is_ai"] = is_ai
+		if is_ai:
+			if not (player.get("ai_profile", {}) is Dictionary) or (player.get("ai_profile", {}) as Dictionary).is_empty():
+				player["ai_profile"] = _ai_profile_for_config_index(i)
+			if not (player.get("ai_memory", {}) is Dictionary):
+				player["ai_memory"] = _empty_ai_memory()
+			else:
+				var memory := (player.get("ai_memory", {}) as Dictionary).duplicate(true)
+				if not (memory.get("decision_samples", []) is Array):
+					memory["decision_samples"] = []
+				if String(memory.get("last_plan", "")) == "":
+					memory["last_plan"] = "等待经营周期"
+				if String(memory.get("training_note", "")) == "":
+					memory["training_note"] = "记录AI评分、目标和公开线索，用于后续调参/训练。"
+				player["ai_memory"] = memory
+		else:
+			player["ai_profile"] = {}
+			player["ai_memory"] = {}
+		players[i] = player
+
+
+func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String) -> void:
+	if not _player_is_ai(player_index):
+		return
+	var player: Dictionary = players[player_index]
+	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
+	samples.append({
+		"time": game_time,
+		"cycle": business_cycle_count,
+		"kind": kind,
+		"target": target_index,
+		"score": score,
+		"reason": reason,
+	})
+	while samples.size() > 10:
+		samples.pop_front()
+	memory["decision_samples"] = samples
+	memory["last_plan"] = "%s｜目标%d｜评分%d｜%s" % [kind, target_index + 1, score, reason]
+	player["ai_memory"] = memory
+	players[player_index] = player
 
 
 func _ensure_configured_role_indices() -> void:
@@ -13437,8 +13862,10 @@ func _buy_selected_skill() -> void:
 		return
 	if _acquire_card_for_player(player, selected_market_skill, selected_district, "区域获取"):
 		player["cash"] = int(player.get("cash", 0)) - price
+		players[selected_player] = player
 		_record_player_card_spend(selected_player, price, "购买%s" % _card_display_name(selected_market_skill), districts[selected_district]["name"])
 		_log("%s支付¥%d购买%s。" % [player["name"], price, _card_display_name(selected_market_skill)])
+		_grant_role_bonus_card_on_purchase(selected_player, selected_district, selected_market_skill)
 		_start_player_cooldown(MARKET_COOLDOWN)
 	_refresh_ui()
 
@@ -15741,6 +16168,7 @@ func _market_tick() -> void:
 				players[owner]["last_cycle_income"] = int(players[owner].get("last_cycle_income", 0)) + income
 				players[owner]["total_city_income"] = int(players[owner].get("total_city_income", 0)) + income
 				_record_player_economic_event(owner, "城市收入", "周期%d收入" % business_cycle_count, income, districts[index]["name"])
+				_apply_role_market_income_bonus(owner, index)
 				_log("经营周期%d：%s的%s收入%d（同类竞争%d，需求供给%d，受损商路%d）。" % [
 					business_cycle_count,
 					players[owner]["name"],
