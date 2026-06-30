@@ -1148,6 +1148,7 @@ var selected_player := 0
 var selected_district := 0
 var selected_market_skill := "城市融资1"
 var previewed_district_card := ""
+var pending_discard_purchase := {}
 var selected_guess_player := -1
 var selected_trade_product := ""
 var selected_contract_source_district := -1
@@ -2423,14 +2424,14 @@ func _open_rules_menu() -> void:
 	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地初始生产1种商品并有1种本地需求；海洋不生产，主要承载商路并影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
 	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；经营周期中，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
 	lines.append("5. 市场价格：商品价格只能由供给、需求、商路断损、城市经营和经济天气重算，不能被玩家直接指定。扩张城市生产/需求、充实商路、引导怪兽破坏，才会改变市场。")
-	lines.append("6. 购牌与升级：卡牌需要花钱购买；默认只能从怪兽落地区或相邻区获取，怪兽所在区域八折，相邻区域原价。角色能力或补给牌可把购牌范围扩到二跳或全局，但会按远程/全局倍率加价；这只影响买牌，不放宽后续怪兽牌的召唤区域。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限。" % PLAYER_HAND_LIMIT)
+	lines.append("6. 购牌与升级：卡牌需要花钱购买；默认只能从怪兽落地区或相邻区获取，怪兽所在区域八折，相邻区域原价。角色能力或补给牌可把购牌范围扩到二跳或全局，但会按远程/全局倍率加价；这只影响买牌，不放宽后续怪兽牌的召唤区域。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限；若购买新普通牌会超上限，必须先私下弃掉一张旧普通牌，手牌数量和弃牌内容都不公开。" % PLAYER_HAND_LIMIT)
 	lines.append("7. 出牌门槛：I级怪兽牌没有商品流动要求；II-IV级怪兽牌和多数其他牌要求己方城市满足指定商品流动数量，商品不被消耗。少数牌会额外收取现金。")
 	lines.append("8. 目标询问：打出需要目标怪兽的牌时，会先询问目标。所有出牌都是匿名事件：一次性指令/诱导、夺取归属或固定技能都只作为行动线索公开，不直接揭示玩家身份，也不让玩家持续操控怪兽。")
 	lines.append("9. 手牌消耗：一次性普通牌提交后会先进入顶部匿名卡牌轨道，并立刻离开手牌；它会用提交时的卡牌快照继续等待公开展示与结算。绑定固定怪兽技能不会离手，只在成功结算后进入冷却。")
 	lines.append("10. 同时出牌与竞价：空场第一张牌先进入0.5秒同时判定窗。若窗内只有一张，它直接进入自己的5秒公开展示；若出现复数牌，全部暂停结算并开启5秒匿名竞价。报价公开但报价者匿名，可用+10/+20/+50/+100/+200/+500/+1000快速加价；封盘后按报价、同价按参照玩家顺时针席位一次锁定整批顺序，批次中不重拍。封盘或展示期间打出的新牌不会被拒绝，而是集中进入下一批等待区；当前整批清空后只开启一次新竞价。每张有锁定报价的牌轮到展示时，会把小费私密付给它前一张已结算牌的出牌者；若前面没有牌则不支付。")
 	lines.append("11. 匿名区域合约：打合约牌前必须先在地图分别点选供给区与需求区。第一段5秒只是把这两个要接通的区域、商品和条款向所有玩家公开展示；展示结束后，目标城市真实业主另有独立5秒签约/拒绝窗口。这个决定窗会持续留在该玩家界面，但不占用全局卡牌展示位，其他玩家可以继续出牌；超时按拒签结算。")
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
-	lines.append("13. 经济隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹与流水；其他玩家的经济只能推测。终局才公开并按结算资金判胜。")
+	lines.append("13. 经济与手牌隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹、流水、手牌数量和弃牌记录；其他玩家只能从公开行动推测。终局才公开结算资金并按钱判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
 	lines.append("15. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时；倒计时期间只公开“有人达标”，不公开触发者。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
 	lines.append("16. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
@@ -2447,7 +2448,7 @@ func _open_rules_menu() -> void:
 func _open_tutorial_menu() -> void:
 	_show_menu(
 		"新手引导",
-		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会在经营周期里自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP最终变成周期现金。商品当前价随供需和断路波动；产业升级、商品换线、需求改造、交通升级与破坏都会改变经营结果。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价，角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济隐私：只看得到自己的现金与账本。对手花了多少、还剩多少，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻热度、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标。怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
+		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会在经营周期里自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP最终变成周期现金。商品当前价随供需和断路波动；产业升级、商品换线、需求改造、交通升级与破坏都会改变经营结果。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价，角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限；买新普通牌若会超上限，需要先私下弃掉一张旧普通牌。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济和手牌隐私：只看得到自己的现金、账本、手牌数量和弃牌记录。对手花了多少、还剩多少、是否满手，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻热度、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标。怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
 			CITY_BUILD_COST,
 			INTEL_CORRECT_GUESS_CASH,
 			INTEL_WRONG_GUESS_COST,
@@ -6797,6 +6798,7 @@ func _capture_run_state() -> Dictionary:
 		"selected_district": selected_district,
 		"selected_market_skill": selected_market_skill,
 		"previewed_district_card": previewed_district_card,
+		"pending_discard_purchase": pending_discard_purchase.duplicate(true),
 		"selected_guess_player": selected_guess_player,
 		"selected_trade_product": selected_trade_product,
 		"selected_contract_source_district": selected_contract_source_district,
@@ -6899,6 +6901,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	selected_district = clampi(int(state.get("selected_district", 0)), 0, max(0, districts.size() - 1))
 	selected_market_skill = _canonical_card_supply_name(String(state.get("selected_market_skill", "")))
 	previewed_district_card = _canonical_card_supply_name(String(state.get("previewed_district_card", selected_market_skill)))
+	pending_discard_purchase = (state.get("pending_discard_purchase", {}) as Dictionary).duplicate(true)
 	selected_guess_player = int(state.get("selected_guess_player", -1))
 	selected_trade_product = String(state.get("selected_trade_product", ""))
 	selected_contract_source_district = int(state.get("selected_contract_source_district", -1))
@@ -7758,6 +7761,7 @@ func _new_game() -> void:
 	selected_player = 0
 	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
 	previewed_district_card = selected_market_skill
+	pending_discard_purchase = {}
 	selected_guess_player = -1
 	selected_trade_product = ""
 	selected_contract_source_district = -1
@@ -8585,11 +8589,10 @@ func _grant_role_bonus_card_on_purchase(player_index: int, district_index: int, 
 	if product_name == "" or not _district_or_city_has_product(district_index, product_name):
 		return false
 	var player: Dictionary = players[player_index]
-	var actor_label := "匿名财团" if anonymous else String(player.get("name", "玩家"))
 	var bonus_card := _bonus_card_candidate_for_role(player, district_index, bought_skill_name)
 	if bonus_card == "":
-		_log("%s触发%s的额外拿牌条件，但手牌上限或区域候选不足，未获得额外卡。" % [
-			actor_label,
+		_record_player_economic_event(player_index, "角色收益", "额外拿牌未完成", 0, "%s区域购牌触发%s，但没有可接收的额外候选牌；具体手牌状态不公开。" % [
+			product_name,
 			String(role.get("name", "角色卡")),
 		])
 		return false
@@ -8597,11 +8600,8 @@ func _grant_role_bonus_card_on_purchase(player_index: int, district_index: int, 
 		return false
 	players[player_index] = player
 	_record_player_economic_event(player_index, "角色收益", "额外拿牌", 0, "%s区域购牌｜免费获得%s" % [product_name, _card_display_name(bonus_card)])
-	_log("%s触发%s：在含%s的区域免费额外获得%s。" % [
-		actor_label,
+	_log("一次匿名区域购牌触发%s的额外补给条件；具体买家、卡牌和手牌状态不公开。" % [
 		String(role.get("name", "角色卡")),
-		product_name,
-		_card_display_name(bonus_card),
 	])
 	return true
 
@@ -10345,6 +10345,8 @@ func _player_quick_goal_hint(player_index: int) -> String:
 		return "目标提示：选择玩家后开始操作。"
 	if game_over:
 		return "目标提示：本局已结束，查看终局总结，理解钱从哪里来。"
+	if not _pending_discard_purchase_for_player(player_index).is_empty():
+		return "目标提示：手牌已满；请私下选择一张旧普通牌弃掉后完成换购。"
 	if _has_pending_target_choice():
 		return "目标提示：这张牌需要先指定目标怪兽。"
 	if not _pending_contract_offers_for_player(player_index).is_empty():
@@ -10359,7 +10361,7 @@ func _player_quick_goal_hint(player_index: int) -> String:
 		return "目标提示：选择陆地区域建城，先建立稳定收入。"
 	if selected_district >= 0 and selected_district < districts.size():
 		if _can_buy_card_from_district(selected_district, player_index) and not (districts[selected_district].get("card_choices", []) as Array).is_empty():
-			return "目标提示：当前区域可购牌；重复获得同名牌会自动升级。"
+			return "目标提示：当前区域可购牌；重复牌自动升级；满手买新牌会先私密弃牌。"
 		if _city_build_error_for(player_index, selected_district, false) == "":
 			return "目标提示：可以继续建城扩张GDP，但现金要留给购牌和竞价。"
 		var city := _district_city(selected_district)
@@ -10370,7 +10372,7 @@ func _player_quick_goal_hint(player_index: int) -> String:
 			if owner >= 0:
 				return "目标提示：陌生城市可标注业主；猜对终局赚钱，猜错要赔。"
 	if _player_counted_hand_size(players[player_index] as Dictionary) <= 0:
-		return "目标提示：去怪兽所在区或邻区买牌，手牌上限%d张。" % PLAYER_HAND_LIMIT
+		return "目标提示：去怪兽所在区或邻区买牌；普通手牌上限%d张，弃牌私密。" % PLAYER_HAND_LIMIT
 	return "目标提示：满足商品流动后匿名出牌；扩GDP、护商路，或压制竞争城市。"
 
 
@@ -10515,6 +10517,56 @@ func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
 	box.add_child(_plain_label("最后按钱最多获胜；出牌匿名，但条件和结果会留下推理线索。", 10, Color("#fef3c7")))
 
 
+func _add_pending_discard_purchase_panel(parent: Container, player_index: int) -> void:
+	var pending := _pending_discard_purchase_for_player(player_index)
+	if pending.is_empty() or not _can_view_player_private_hand(player_index):
+		return
+	var skill_name := String(pending.get("skill_name", ""))
+	var district_index := int(pending.get("district_index", -1))
+	var price := int(pending.get("price", _card_price(skill_name, district_index, player_index)))
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#1e1b4b")
+	style.border_color = Color("#a78bfa")
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	margin.add_child(box)
+	box.add_child(_plain_label("私密弃牌确认", 13, Color("#ddd6fe")))
+	box.add_child(_plain_label("购买%s（约¥%d）会超过%d张普通手牌上限。请选择一张旧普通牌弃掉；手牌数量和弃牌内容不会公开。" % [
+		_card_display_name(skill_name),
+		price,
+		PLAYER_HAND_LIMIT,
+	], 11, Color("#fef3c7")))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	var player: Dictionary = players[player_index]
+	for slot_variant in _discardable_hand_slots_for_purchase(player):
+		var slot_index := int(slot_variant)
+		var skill: Dictionary = player["slots"][slot_index]
+		var discard_button := Button.new()
+		discard_button.text = "弃掉 %s" % _card_display_name(String(skill.get("name", "旧牌")))
+		discard_button.tooltip_text = "私密弃掉这张旧普通牌，然后完成换购。"
+		discard_button.disabled = game_over
+		discard_button.pressed.connect(Callable(self, "_confirm_discard_purchase").bind(slot_index))
+		row.add_child(discard_button)
+	var cancel_button := Button.new()
+	cancel_button.text = "取消换购"
+	cancel_button.tooltip_text = "取消本次购牌，不公开弃牌信息。"
+	cancel_button.pressed.connect(Callable(self, "_cancel_discard_purchase"))
+	box.add_child(cancel_button)
+
+
 func _refresh_player_panel() -> void:
 	_clear_children(player_box)
 	if players.is_empty():
@@ -10537,16 +10589,15 @@ func _refresh_player_panel() -> void:
 		selector.add_child(button)
 
 	var player: Dictionary = players[selected_player]
-	var player_status := _plain_label("%s｜资金:%d｜手牌:%d/%d" % [
+	var player_status := _plain_label("%s｜%s" % [
 		player["name"],
-		player["cash"],
-		_player_counted_hand_size(player),
-		PLAYER_HAND_LIMIT,
+		_player_private_status_text(selected_player),
 	], 14, Color("#e2e8f0"))
 	player_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(player_status)
 	player_box.add_child(_plain_label(_player_quick_goal_hint(selected_player), 11, Color("#bbf7d0")))
 	_add_opening_guide_panel(player_box, selected_player)
+	_add_pending_discard_purchase_panel(player_box, selected_player)
 
 	var tip_row := HBoxContainer.new()
 	tip_row.add_theme_constant_override("separation", 6)
@@ -10591,7 +10642,11 @@ func _refresh_player_panel() -> void:
 	hand_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hand_box.add_theme_constant_override("separation", 6)
 	player_box.add_child(hand_box)
-	hand_box.add_child(_plain_label("手牌卡面（绑定固定怪兽技能不占上限）", 12, Color("#bfdbfe")))
+	if not _can_view_player_private_hand(selected_player):
+		hand_box.add_child(_plain_label("对手手牌为私人信息", 12, Color("#bfdbfe")))
+		hand_box.add_child(_plain_label("不能查看数量、卡面或弃牌记录；只能从公开出牌、竞价、资源条件和地图变化推理。", 11, Color("#94a3b8")))
+		return
+	hand_box.add_child(_plain_label("手牌卡面（绑定固定怪兽技能不占上限；弃牌私密）", 12, Color("#bfdbfe")))
 	var hand_scroll := ScrollContainer.new()
 	hand_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -11102,8 +11157,12 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 			action_button.pressed.connect(Callable(self, "_use_skill").bind(slot_index))
 		else:
 			var price := _card_price(skill_name, selected_district, selected_player)
-			action_button.text = "获取 ¥%d" % price
-			action_button.disabled = game_over or _has_pending_target_choice() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or players[selected_player]["action_cooldown"] > 0.0 or int(players[selected_player].get("cash", 0)) < price or not _player_can_receive_card(players[selected_player], skill_name)
+			var can_receive_with_discard := _player_can_receive_card_with_discard(players[selected_player], skill_name)
+			var needs_discard := _purchase_requires_discard(players[selected_player], skill_name)
+			action_button.text = ("换购 ¥%d" if needs_discard else "获取 ¥%d") % price
+			action_button.disabled = game_over or _has_pending_target_choice() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or players[selected_player]["action_cooldown"] > 0.0 or int(players[selected_player].get("cash", 0)) < price or not can_receive_with_discard
+			if needs_discard:
+				action_button.tooltip_text = "普通手牌已满：点击后会让当前玩家私下选择一张旧普通牌弃掉；弃牌不公开。"
 			action_button.pressed.connect(Callable(self, "_claim_district_card").bind(skill_name))
 		box.add_child(action_button)
 
@@ -12780,7 +12839,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -14527,12 +14586,13 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var posture := String(phase_info.get("posture", "contesting"))
 	var phase_label := _ai_game_phase_label(phase)
 	var posture_label := _ai_competitive_posture_label(posture)
+	var counted_hand := _player_counted_hand_size(player)
 	for district_index in range(districts.size()):
 		if not _can_buy_card_from_district(district_index, player_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
 		for card_variant in districts[district_index].get("card_choices", []):
 			var card_name := _canonical_card_supply_name(String(card_variant))
-			if card_name == "" or not _player_can_receive_card(player, card_name):
+			if card_name == "" or not _player_can_receive_card_with_discard(player, card_name):
 				continue
 			var price := _card_price(card_name, district_index, player_index)
 			if cash - price < AI_CARD_BUY_MIN_CASH_RESERVE:
@@ -14540,6 +14600,16 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var skill := _make_skill(card_name)
 			var kind := String(skill.get("kind", ""))
 			var score := 55 + int(skill.get("cost", 2)) * 11 - int(round(float(price) / 12.0))
+			var needs_discard := _purchase_requires_discard(player, card_name)
+			var discard_slot := -1
+			var discard_keep_value := 0
+			var hand_pressure_penalty := 0
+			if needs_discard:
+				discard_slot = _ai_discard_slot_for_purchase(player_index, card_name)
+				if discard_slot < 0:
+					continue
+				discard_keep_value = _ai_discard_keep_value(player_index, discard_slot)
+				hand_pressure_penalty = maxi(45, int(round(float(discard_keep_value) * 0.55)) + 30)
 			var focus_bonus := _ai_district_focus_score(player_index, district_index) / 2
 			var family_slot := _find_highest_family_card_slot(player, card_name)
 			if family_slot >= 0:
@@ -14547,6 +14617,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var product_name := _ai_product_for_skill(player_index, skill)
 			var required := _skill_play_flow_required(skill, player_index)
 			var available := _player_product_flow(player_index, product_name)
+			var playability_bonus := 0
 			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name)
 			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name)
 			var target_owner := -999
@@ -14557,9 +14628,15 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
 			var learning_bonus := _ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
 			if required <= 0 or available >= required:
-				score += 35
+				playability_bonus = 55 + mini(45, maxi(0, available) * 8)
 			else:
-				score -= (required - available) * 12
+				playability_bonus = -(required - available) * (38 + counted_hand * 8)
+			score += playability_bonus
+			if needs_discard:
+				score -= hand_pressure_penalty
+			elif counted_hand >= PLAYER_HAND_LIMIT - 1 and required > available:
+				hand_pressure_penalty = 38 + (required - available) * 24
+				score -= hand_pressure_penalty
 			if focus_product != "" and product_name == focus_product:
 				focus_bonus += AI_ECONOMIC_FOCUS_MATCH_BONUS
 			if ["product_speculation", "product_contract_boon", "product_growth_boon", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind) and focus_bonus > 0:
@@ -14604,11 +14681,19 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"phase_bonus": phase_bonus,
 				"generic_effect_bonus": generic_bonus,
 				"learning_bonus": learning_bonus,
-				"reason": "%s｜费用¥%d｜流动%d/%d｜阶段%s/%s+%d｜策略%s+%d｜路线%s/%s+%d｜学习%d｜探索率%.0f%%" % [
+				"playability_bonus": playability_bonus,
+				"hand_pressure_penalty": hand_pressure_penalty,
+				"requires_discard": needs_discard,
+				"discard_slot": discard_slot,
+				"discard_keep_value": discard_keep_value,
+				"counted_hand": counted_hand,
+				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜阶段%s/%s+%d｜策略%s+%d｜路线%s/%s+%d｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
 					price,
 					available,
 					required,
+					_signed_int_text(playability_bonus),
+					hand_pressure_penalty,
 					phase_label,
 					posture_label,
 					phase_bonus,
@@ -14667,7 +14752,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -14735,7 +14820,7 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 		return "wait"
 	var district_index := int(buy_choice.get("district", -1))
 	var card_name := String(buy_choice.get("card_name", ""))
-	if _buy_card_for_player_from_district(player_index, district_index, card_name, true, force):
+	if _buy_card_for_player_from_district(player_index, district_index, card_name, true, force, int(buy_choice.get("discard_slot", -1))):
 		_record_ai_decision(
 			player_index,
 			"区域购牌",
@@ -14764,6 +14849,11 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 				"phase_bonus": int(buy_choice.get("phase_bonus", 0)),
 				"policy_kind": String(buy_choice.get("policy_kind", buy_choice.get("kind", ""))),
 				"learning_bonus": int(buy_choice.get("learning_bonus", 0)),
+				"playability_bonus": int(buy_choice.get("playability_bonus", 0)),
+				"hand_pressure_penalty": int(buy_choice.get("hand_pressure_penalty", 0)),
+				"requires_discard": bool(buy_choice.get("requires_discard", false)),
+				"discard_keep_value": int(buy_choice.get("discard_keep_value", 0)),
+				"counted_hand": int(buy_choice.get("counted_hand", 0)),
 			}
 		)
 		return "buy"
@@ -16805,50 +16895,194 @@ func _player_can_receive_card(player: Dictionary, skill_name: String) -> bool:
 	return _player_can_add_counted_card(player)
 
 
+func _card_would_add_counted_hand_card(player: Dictionary, skill_name: String) -> bool:
+	skill_name = _canonical_card_supply_name(skill_name)
+	if skill_name == "" or not _skill_exists(skill_name):
+		return false
+	if _find_highest_family_card_slot(player, skill_name) >= 0:
+		return false
+	if _find_previous_rank_card_slot(player, skill_name) >= 0:
+		return false
+	var skill := _make_skill(skill_name)
+	return _counts_toward_hand_limit(skill)
+
+
+func _discardable_hand_slots_for_purchase(player: Dictionary) -> Array:
+	var result := []
+	for i in range(player.get("slots", []).size()):
+		var skill_variant = player["slots"][i]
+		if not (skill_variant is Dictionary):
+			continue
+		var skill := skill_variant as Dictionary
+		if not _counts_toward_hand_limit(skill):
+			continue
+		if bool(skill.get("queued_for_resolution", false)) or float(skill.get("lock_left", 0.0)) > 0.0:
+			continue
+		result.append(i)
+	return result
+
+
+func _player_can_receive_card_with_discard(player: Dictionary, skill_name: String) -> bool:
+	if _player_can_receive_card(player, skill_name):
+		return true
+	if not _card_would_add_counted_hand_card(player, skill_name):
+		return false
+	return not _discardable_hand_slots_for_purchase(player).is_empty()
+
+
+func _purchase_requires_discard(player: Dictionary, skill_name: String) -> bool:
+	return not _player_can_receive_card(player, skill_name) and _player_can_receive_card_with_discard(player, skill_name)
+
+
+func _pending_discard_purchase_for_player(player_index: int) -> Dictionary:
+	if int(pending_discard_purchase.get("player_index", -1)) != player_index:
+		return {}
+	return pending_discard_purchase
+
+
+func _open_discard_purchase_choice(player_index: int, district_index: int, skill_name: String, price: int, ignore_cooldown: bool = false) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	pending_discard_purchase = {
+		"player_index": player_index,
+		"district_index": district_index,
+		"skill_name": _canonical_card_supply_name(skill_name),
+		"price": price,
+		"ignore_cooldown": ignore_cooldown,
+		"opened_at": game_time,
+	}
+	_record_player_economic_event(
+		player_index,
+		"手牌整理",
+		"等待私密弃牌",
+		0,
+		"购买%s会超过普通手牌上限%d张；请先私下选择一张旧普通牌弃掉。" % [
+			_card_display_name(skill_name),
+			PLAYER_HAND_LIMIT,
+		]
+	)
+
+
+func _cancel_discard_purchase() -> void:
+	pending_discard_purchase = {}
+	_refresh_ui()
+
+
+func _confirm_discard_purchase(slot_index: int) -> void:
+	var pending := pending_discard_purchase.duplicate(true)
+	if pending.is_empty():
+		return
+	var player_index := int(pending.get("player_index", -1))
+	var district_index := int(pending.get("district_index", -1))
+	var skill_name := String(pending.get("skill_name", ""))
+	var ignore_cooldown := bool(pending.get("ignore_cooldown", false))
+	pending_discard_purchase = {}
+	_buy_card_for_player_from_district(player_index, district_index, skill_name, false, ignore_cooldown, slot_index)
+	_refresh_ui()
+
+
+func _discard_card_from_player(player_index: int, slot_index: int, incoming_card_name: String = "", anonymous: bool = false) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player: Dictionary = players[player_index]
+	if slot_index < 0 or slot_index >= player.get("slots", []).size():
+		return false
+	var skill_variant = player["slots"][slot_index]
+	if not (skill_variant is Dictionary):
+		return false
+	var skill := skill_variant as Dictionary
+	if not _discardable_hand_slots_for_purchase(player).has(slot_index):
+		return false
+	var old_name := String(skill.get("name", "旧牌"))
+	player["slots"][slot_index] = null
+	players[player_index] = player
+	var incoming_text := "以购买%s" % _card_display_name(incoming_card_name) if incoming_card_name != "" else "以腾出手牌空间"
+	_record_player_economic_event(player_index, "手牌整理", "弃牌换购", 0, "%s：弃掉%s；普通手牌上限%d张。此事只写入本玩家私人流水。" % [
+		incoming_text,
+		_card_display_name(old_name),
+		PLAYER_HAND_LIMIT,
+	])
+	return true
+
+
+func _can_view_player_private_hand(player_index: int) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	return not _player_is_ai(player_index)
+
+
+func _player_private_status_text(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return "资金:未知｜手牌:未知"
+	var player: Dictionary = players[player_index]
+	if _can_view_player_private_hand(player_index):
+		return "资金:%d｜手牌:%d/%d" % [
+			int(player.get("cash", 0)),
+			_player_counted_hand_size(player),
+			PLAYER_HAND_LIMIT,
+		]
+	return "资金:隐私｜手牌:隐私"
+
+
+func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return 99999
+	var player: Dictionary = players[player_index]
+	if slot_index < 0 or slot_index >= player.get("slots", []).size():
+		return 99999
+	var skill_variant = player["slots"][slot_index]
+	if not (skill_variant is Dictionary):
+		return 99999
+	var skill := skill_variant as Dictionary
+	var value := int(skill.get("cost", 2)) * 22 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 18
+	var context := _ai_card_play_context(player_index, slot_index, skill)
+	if context.is_empty():
+		value -= 34
+	else:
+		value += clampi(int(context.get("score", 0)) / 4, 0, 120)
+	if String(skill.get("kind", "")) == "monster_card" and _ai_owned_active_monster_count(player_index) <= 0:
+		value += 140
+	return value
+
+
+func _ai_discard_slot_for_purchase(player_index: int, incoming_card_name: String) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return -1
+	var player: Dictionary = players[player_index]
+	var slots := _discardable_hand_slots_for_purchase(player)
+	var best_slot := -1
+	var best_value := 999999
+	for slot_variant in slots:
+		var slot_index := int(slot_variant)
+		var value := _ai_discard_keep_value(player_index, slot_index)
+		if value < best_value:
+			best_value = value
+			best_slot = slot_index
+	return best_slot
+
+
 func _acquire_card_for_player(player: Dictionary, skill_name: String, district_index: int, source: String, anonymous: bool = false) -> bool:
 	skill_name = _canonical_card_supply_name(skill_name)
 	if skill_name == "" or not _skill_exists(skill_name):
 		return false
-	var actor_label := "匿名出牌者" if anonymous else String(player.get("name", "玩家"))
 	var family_slot := _find_highest_family_card_slot(player, skill_name)
 	if family_slot >= 0:
 		var current_skill: Dictionary = player["slots"][family_slot]
 		var current_name := String(current_skill.get("name", skill_name))
 		var next_name := _next_upgrade_name(current_name)
 		if next_name == "":
-			_log("%s已经拥有最高阶%s，无法继续升级。" % [actor_label, _card_display_name(current_name)])
 			return false
 		player["slots"][family_slot] = _make_skill(next_name)
-		_log("%s在%s重新获得%s系列卡，自动升级为%s。" % [
-			actor_label,
-			districts[district_index]["name"] if district_index >= 0 and district_index < districts.size() else source,
-			_skill_family(skill_name),
-			_card_display_name(next_name),
-		])
 		return true
 	var previous_slot := _find_previous_rank_card_slot(player, skill_name)
 	if previous_slot >= 0:
-		var old_skill: Dictionary = player["slots"][previous_slot]
-		var old_name := String(old_skill.get("name", ""))
 		player["slots"][previous_slot] = _make_skill(skill_name)
-		_log("%s获得%s，将%s升级为%s。" % [
-			actor_label,
-			_card_display_name(skill_name),
-			_card_display_name(old_name),
-			_card_display_name(skill_name),
-		])
 		return true
 	var new_skill := _make_skill(skill_name)
 	var empty_index := _first_empty_or_new_slot(player) if _is_hand_limit_exempt_skill(new_skill) else _first_empty_or_new_counted_slot(player)
 	if empty_index < 0:
-		_log("%s手牌已达%d张上限；绑定固定怪兽技能不计入上限，但普通卡牌需要先打出或合成。" % [actor_label, PLAYER_HAND_LIMIT])
 		return false
 	player["slots"][empty_index] = new_skill
-	_log("%s从%s获得一次性卡牌：%s。" % [
-		actor_label,
-		districts[district_index]["name"] if district_index >= 0 and district_index < districts.size() else source,
-		_card_display_name(skill_name),
-	])
 	return true
 
 
@@ -18347,7 +18581,7 @@ func _buy_selected_skill() -> void:
 	_refresh_ui()
 
 
-func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false) -> bool:
+func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false, discard_slot: int = -1) -> bool:
 	if game_over or player_index < 0 or player_index >= players.size():
 		return false
 	var player: Dictionary = players[player_index]
@@ -18373,22 +18607,43 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		if not anonymous:
 			_log("%s不在当前区域候选中；%s。" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
 		return false
-	if not _player_can_receive_card(player, skill_name):
-		if not anonymous:
-			_log("%s暂不能获得%s：普通手牌上限为%d张；重复牌会自动合成。" % [actor_label, _card_display_name(skill_name), PLAYER_HAND_LIMIT])
-		return false
 	var price := _card_price(skill_name, district_index, player_index)
 	if int(player.get("cash", 0)) < price:
 		if not anonymous:
 			_log("%s资金不足，购买%s需要¥%d，当前只有¥%d。" % [actor_label, _card_display_name(skill_name), price, int(player.get("cash", 0))])
 		return false
+	var needs_discard := _purchase_requires_discard(player, skill_name)
+	if not _player_can_receive_card_with_discard(player, skill_name):
+		if not anonymous:
+			_record_player_economic_event(player_index, "卡牌购买", "购买未完成", 0, "%s暂不能接收；可能已达最高级，或没有可私密弃掉的普通手牌。" % _card_display_name(skill_name))
+			_log("一次购牌未完成：具体玩家手牌状态、牌名和弃牌情况不公开。")
+		return false
+	if needs_discard:
+		if discard_slot < 0 and anonymous:
+			discard_slot = _ai_discard_slot_for_purchase(player_index, skill_name)
+		if discard_slot < 0:
+			_open_discard_purchase_choice(player_index, district_index, skill_name, price, ignore_cooldown)
+			if not anonymous:
+				_refresh_ui()
+			return false
+		if not _discard_card_from_player(player_index, discard_slot, skill_name, anonymous):
+			if not anonymous:
+				_record_player_economic_event(player_index, "手牌整理", "弃牌选择失效", 0, "私密弃牌选择已经失效，请重新发起购牌。")
+				_log("一次购牌未完成：具体玩家手牌状态、牌名和弃牌情况不公开。")
+			return false
+		player = players[player_index]
 	if not _acquire_card_for_player(player, skill_name, district_index, "区域获取", anonymous):
+		if not anonymous:
+			_record_player_economic_event(player_index, "卡牌购买", "购买未完成", 0, "%s未能加入手牌；可能已经是最高阶。" % _card_display_name(skill_name))
+			_log("一次购牌未完成：具体玩家手牌状态和牌名不公开。")
 		return false
 	player["cash"] = int(player.get("cash", 0)) - price
 	player["action_cooldown"] = maxf(float(player.get("action_cooldown", 0.0)), MARKET_COOLDOWN)
 	players[player_index] = player
 	_record_player_card_spend(player_index, price, "购买%s" % _card_display_name(skill_name), districts[district_index]["name"])
-	_log("%s支付¥%d购买%s；购牌身份不对外公开。" % [actor_label, price, _card_display_name(skill_name)])
+	if int(pending_discard_purchase.get("player_index", -1)) == player_index and String(pending_discard_purchase.get("skill_name", "")) == skill_name:
+		pending_discard_purchase = {}
+	_log("一次匿名购牌在%s完成；买家、具体卡牌、手牌数量和弃牌情况不公开。" % districts[district_index]["name"])
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
 	return true
 
@@ -19595,10 +19850,7 @@ func _draw_extra_district_cards(player: Dictionary, amount: int, source: String)
 		pool.remove_at(picked_index)
 		if _acquire_card_for_player(player, skill_name, selected_district, source, true):
 			gained += 1
-	if gained > 0:
-		_log("%s额外获取%d张区域候选卡。" % [source, gained])
-	else:
-		_log("%s没有成功获取额外卡牌。" % source)
+	_log("%s执行额外区域补给；具体获得、手牌数量和弃牌状态不公开。" % source)
 
 
 func _world_event() -> void:

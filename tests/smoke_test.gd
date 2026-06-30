@@ -263,6 +263,7 @@ func _run() -> void:
 	_expect(String(main.call("_card_price_tier_text", premium_card_price)) == "进阶档", "card price maps into an explicit displayed price tier")
 	_expect(_verify_monster_region_card_pricing(main), "monster landing regions discount card purchases while adjacent regions keep base price")
 	_expect(_verify_reacquired_card_upgrade_rules(main), "reacquiring an owned card upgrades its family and stops at rank IV")
+	_expect(_verify_private_discard_purchase_flow(main), "full-hand purchases require a private discard choice without leaking hand size, card names, or discard details")
 	_expect(_verify_card_rank_ladders_are_complete(main), "all base card families expose non-regressing I-IV rank ladders at the rank-I price")
 	_expect(_all_card_supply_entries_are_base_rank(main, districts), "card supplies and codex indexes offer base copies while upgrades happen through hand merging")
 	_expect(_verify_cards_have_no_legacy_runtime_fields(main), "card objects and run saves no longer expose legacy charge/control fields")
@@ -2701,6 +2702,104 @@ func _verify_reacquired_card_upgrade_rules(main: Node) -> bool:
 		and rejected_at_cap \
 		and max_names.size() == 1 \
 		and max_names.has("移动4")
+
+
+func _private_discard_log_slice_has_secret(main: Node, start_index: int, needles: Array) -> bool:
+	var logs := _as_array(main.get("log_lines"))
+	for i in range(start_index, logs.size()):
+		var line := String(logs[i])
+		for needle_variant in needles:
+			var needle := String(needle_variant)
+			if needle != "" and line.contains(needle):
+				return true
+	return false
+
+
+func _verify_private_discard_purchase_flow(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var districts := _as_array(main.get("districts"))
+	if districts.is_empty():
+		return false
+	var district_index := -1
+	for i in range(districts.size()):
+		var district := districts[i] as Dictionary
+		if not bool(district.get("destroyed", false)):
+			district_index = i
+			break
+	if district_index < 0:
+		return false
+	var ok := true
+	var prepared_districts := districts.duplicate(true)
+	var district := prepared_districts[district_index] as Dictionary
+	district["card_choices"] = ["城市融资1"]
+	prepared_districts[district_index] = district
+	main.set("districts", prepared_districts)
+	main.set("auto_monsters", [main.call("_make_auto_monster", 0, 0, district_index, 0, 1)])
+	main.set("selected_player", 0)
+	main.set("selected_district", district_index)
+	main.set("selected_market_skill", "城市融资1")
+	main.set("previewed_district_card", "城市融资1")
+	main.set("pending_discard_purchase", {})
+	var players := _as_array(main.get("players"))
+	var player := players[0] as Dictionary
+	player["is_ai"] = false
+	player["seat_type"] = "human"
+	player["role_card"] = {}
+	player["cash"] = 5000
+	player["action_cooldown"] = 0.0
+	player["slots"] = [
+		main.call("_make_skill", "移动1"),
+		main.call("_make_skill", "装甲再生1"),
+		main.call("_make_skill", "舆论操控1"),
+		main.call("_make_skill", "业主透镜1"),
+		main.call("_make_skill", "区域供需合约1"),
+	]
+	player["economic_ledger"] = []
+	players[0] = player
+	main.set("players", players)
+	var log_start := _as_array(main.get("log_lines")).size()
+	ok = ok and not bool(main.call("_buy_card_for_player_from_district", 0, district_index, "城市融资1", false, true))
+	var pending := main.get("pending_discard_purchase") as Dictionary
+	ok = ok and not pending.is_empty() and String(pending.get("skill_name", "")) == "城市融资1"
+	main.call("_refresh_ui")
+	var player_box := main.get("player_box") as VBoxContainer
+	ok = ok and player_box != null \
+		and _container_label_text_contains(player_box, "私密弃牌确认") \
+		and _container_button_text_contains(player_box, "弃掉")
+	main.call("_confirm_discard_purchase", 0)
+	var players_after := _as_array(main.get("players"))
+	var names_after := _player_card_names(players_after, 0)
+	ok = ok and (main.get("pending_discard_purchase") as Dictionary).is_empty()
+	ok = ok and int(main.call("_player_counted_hand_size", players_after[0] as Dictionary)) == 5
+	ok = ok and names_after.has("城市融资1") and not names_after.has("移动1")
+	ok = ok and _player_ledger_contains(players_after, 0, "弃牌换购")
+	ok = ok and not _private_discard_log_slice_has_secret(main, log_start, ["城市融资", "移动", "弃掉"])
+
+	players = _as_array(main.get("players"))
+	player = players[0] as Dictionary
+	player["cash"] = 5000
+	player["action_cooldown"] = 0.0
+	player["slots"] = [
+		main.call("_make_skill", "城市融资1"),
+		main.call("_make_skill", "装甲再生1"),
+		main.call("_make_skill", "舆论操控1"),
+		main.call("_make_skill", "业主透镜1"),
+		main.call("_make_skill", "区域供需合约1"),
+	]
+	player["economic_ledger"] = []
+	players[0] = player
+	main.set("players", players)
+	main.set("pending_discard_purchase", {})
+	var upgrade_log_start := _as_array(main.get("log_lines")).size()
+	ok = ok and bool(main.call("_buy_card_for_player_from_district", 0, district_index, "城市融资1", false, true))
+	var upgrade_players := _as_array(main.get("players"))
+	var upgrade_names := _player_card_names(upgrade_players, 0)
+	ok = ok and int(main.call("_player_counted_hand_size", upgrade_players[0] as Dictionary)) == 5
+	ok = ok and upgrade_names.has("城市融资2") and not upgrade_names.has("城市融资1")
+	ok = ok and (main.get("pending_discard_purchase") as Dictionary).is_empty()
+	ok = ok and not _private_discard_log_slice_has_secret(main, upgrade_log_start, ["弃掉"])
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _roman_level(rank: int) -> String:
