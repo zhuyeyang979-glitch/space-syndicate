@@ -910,6 +910,64 @@ func _set_district_goods_for_test(main: Node, district_index: int, product_name:
 	return true
 
 
+func _reset_ai_memory_for_test(main: Node, player_index: int) -> bool:
+	var players := _as_array(main.get("players")).duplicate(true)
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player := players[player_index] as Dictionary
+	player["ai_memory"] = main.call("_empty_ai_memory")
+	players[player_index] = player
+	main.set("players", players)
+	return true
+
+
+func _reset_route_plan_sandbox_for_test(main: Node) -> void:
+	var districts := _as_array(main.get("districts")).duplicate(true)
+	for i in range(districts.size()):
+		if not (districts[i] is Dictionary):
+			continue
+		var district := districts[i] as Dictionary
+		district["city"] = {}
+		if String(district.get("terrain", "")) == "land":
+			district["destroyed"] = false
+			district["damage"] = 0
+			district["panic"] = 0
+			district["hp"] = 120
+			district["transport_score"] = 1.0
+			district["products"] = ["深海菌毯"]
+			district["demands"] = ["星尘香料"]
+		districts[i] = district
+	main.set("districts", districts)
+	main.set("auto_monsters", [])
+
+
+func _set_product_market_focus_for_test(main: Node, focus_product: String) -> void:
+	var market := (main.get("product_market") as Dictionary).duplicate(true)
+	for key_variant in market.keys():
+		var product_key := String(key_variant)
+		var entry := (market.get(product_key, {}) as Dictionary).duplicate(true)
+		entry["price"] = 54
+		entry["base_price"] = 54
+		entry["demand"] = 0
+		entry["supply"] = 5
+		entry["temporary_demand_pressure"] = 0
+		entry["temporary_supply_pressure"] = 0
+		entry["contract_demand_pressure"] = 0
+		entry["contract_supply_pressure"] = 0
+		market[product_key] = entry
+	var focus_entry := (market.get(focus_product, {}) as Dictionary).duplicate(true)
+	focus_entry["price"] = 260
+	focus_entry["base_price"] = 120
+	focus_entry["demand"] = 10
+	focus_entry["supply"] = 1
+	focus_entry["temporary_demand_pressure"] = 8
+	focus_entry["temporary_supply_pressure"] = 0
+	focus_entry["contract_demand_pressure"] = 4
+	focus_entry["contract_supply_pressure"] = 0
+	market[focus_product] = focus_entry
+	main.set("product_market", market)
+
+
 func _ai_memory_has_kind(players: Array, player_index: int, kind: String) -> bool:
 	if player_index < 0 or player_index >= players.size():
 		return false
@@ -1094,6 +1152,7 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		var saw_card_summary := false
 		var saw_monster_summary := false
 		var saw_ai_route_summary := false
+		var saw_player_breakdown := false
 		for line_variant in _as_array(main.get("log_lines")):
 			var line := String(line_variant)
 			if line.contains("终局倒计时结束"):
@@ -1106,9 +1165,11 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 				saw_monster_summary = true
 			if line.contains("AI路线"):
 				saw_ai_route_summary = true
+			if line.contains("玩家概览"):
+				saw_player_breakdown = true
 		var standings_text := String(main.call("_standings_text"))
-		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_ai_route_summary
-		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("AI路线")
+		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_ai_route_summary and saw_player_breakdown
+		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("AI路线") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -1573,6 +1634,10 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 	main.set("next_card_resolution_queue", [])
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
+	_reset_route_plan_sandbox_for_test(main)
+	ok = ok and _reset_ai_memory_for_test(main, 1)
+	ok = ok and _set_player_role_for_test(main, 1, "环港走私议会")
+	_set_product_market_focus_for_test(main, "环晶电池")
 
 	var seed_index := _first_empty_land_district_for_contract(main)
 	var decoy_index := _first_empty_land_district_for_contract(main, [seed_index])
@@ -1590,22 +1655,6 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 		main.set("players", players)
 		var seed_goods_set := _set_district_goods_for_test(main, seed_index, "环晶电池", "轨迹墨水")
 		var decoy_goods_set := _set_district_goods_for_test(main, decoy_index, "深海菌毯", "星尘香料")
-		var market := (main.get("product_market") as Dictionary).duplicate(true)
-		for key_variant in market.keys():
-			var product_key := String(key_variant)
-			var entry := (market.get(product_key, {}) as Dictionary).duplicate(true)
-			entry["price"] = 54
-			entry["base_price"] = 54
-			entry["demand"] = 0
-			entry["supply"] = 5
-			market[product_key] = entry
-		var focus_entry := (market.get("环晶电池", {}) as Dictionary).duplicate(true)
-		focus_entry["price"] = 260
-		focus_entry["base_price"] = 120
-		focus_entry["demand"] = 10
-		focus_entry["supply"] = 1
-		market["环晶电池"] = focus_entry
-		main.set("product_market", market)
 		var build_plan := main.call("_ai_refresh_route_plan", 1, true) as Dictionary
 		var seed_build_score := int(main.call("_auto_build_score_for_player", 1, seed_index))
 		var decoy_build_score := int(main.call("_auto_build_score_for_player", 1, decoy_index))
@@ -1672,6 +1721,10 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 	main.set("next_card_resolution_queue", [])
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
+	_reset_route_plan_sandbox_for_test(main)
+	ok = ok and _reset_ai_memory_for_test(main, 1)
+	ok = ok and _set_player_role_for_test(main, 1, "环港走私议会")
+	_set_product_market_focus_for_test(main, "环晶电池")
 	var own_index := _first_empty_land_district_for_contract(main)
 	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
 	if own_index < 0 or rival_index < 0:
@@ -2155,7 +2208,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		failures.append("not game over")
 		ok = false
 	var standings_text := String(main.call("_standings_text"))
-	if not standings_text.contains("终局总结") or not standings_text.contains("AI路线") or not standings_text.contains("关键卡牌"):
+	if not standings_text.contains("终局总结") or not standings_text.contains("AI路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
 		failures.append("missing final summary")
 		ok = false
 	var finalized_ai := 0

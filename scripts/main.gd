@@ -4034,6 +4034,52 @@ func _ai_route_summary(limit: int = 3) -> String:
 	return "AI路线：%s。" % "；".join(pieces)
 
 
+func _player_final_playstyle_summary(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return "未知路线"
+	var player: Dictionary = players[player_index]
+	if not bool(player.get("is_ai", false)):
+		return "真人/本地玩家"
+	var memory := (player.get("ai_memory", {}) as Dictionary)
+	var product := String(memory.get("route_plan_product", ""))
+	var stage := String(memory.get("route_plan_stage", ""))
+	var intent := String(memory.get("strategic_intent", ""))
+	return "AI:%s/%s/%s" % [
+		product if product != "" else "未定商品",
+		_ai_route_plan_stage_label(stage),
+		_ai_strategy_intent_label(intent),
+	]
+
+
+func _final_player_breakdown_summary(rankings: Array, limit: int = 8) -> String:
+	if players.is_empty():
+		return "玩家概览：没有可用玩家。"
+	var ordered := rankings
+	if ordered.is_empty():
+		ordered = _final_score_rankings()
+	var pieces := []
+	for rank in range(mini(limit, ordered.size())):
+		var entry := ordered[rank] as Dictionary
+		var player_index := int(entry.get("player_index", rank))
+		if player_index < 0 or player_index >= players.size():
+			continue
+		var player: Dictionary = players[player_index]
+		pieces.append("#%d %s ¥%d｜城收¥%d｜卡牌¥%d｜情报%s｜角色¥%d｜城%d｜%s" % [
+			rank + 1,
+			_player_name(player_index),
+			int(entry.get("score", _player_final_score(player_index))),
+			maxi(0, int(player.get("total_city_income", 0))),
+			maxi(0, int(player.get("total_card_income", 0))),
+			_signed_int_text(_player_intel_cash(player_index)),
+			maxi(0, int(player.get("total_role_income", 0))),
+			_player_active_city_count(player_index),
+			_player_final_playstyle_summary(player_index),
+		])
+	if pieces.is_empty():
+		return "玩家概览：没有可显示玩家。"
+	return "玩家概览：%s。" % "；".join(pieces)
+
+
 func _final_run_summary_text(rankings: Array) -> String:
 	if players.is_empty():
 		return "终局总结：没有可用玩家数据。"
@@ -4071,7 +4117,8 @@ func _final_run_summary_text(rankings: Array) -> String:
 	])
 	lines.append(_top_card_impact_summary())
 	lines.append(_monster_impact_summary())
-	lines.append(_ai_route_summary())
+	lines.append(_ai_route_summary(maxi(3, _ai_player_indices().size())))
+	lines.append(_final_player_breakdown_summary(ordered, maxi(3, players.size())))
 	if int(top_city.get("district", -1)) >= 0:
 		var district_index := int(top_city.get("district", -1))
 		lines.append("关键城市：%s（%s）末期GDP¥%d，供:%s，需:%s。" % [
