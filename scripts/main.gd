@@ -2418,82 +2418,24 @@ func _build_menu_overlay() -> void:
 
 	menu_regular_buttons = []
 
-	var start_section := _plain_label("开局", 12, Color("#93c5fd"))
-	box.add_child(start_section)
-	menu_regular_buttons.append(start_section)
+	_add_main_menu_section(box, "开局", "先确认席位、AI、角色卡与起始怪兽，再开始一局。")
+	_add_main_menu_action(box, "开局准备", "设置3-8席、2-7个AI、Roguelike深度、角色卡和起始怪兽牌。", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"))
 
-	var new_run_button := Button.new()
-	new_run_button.text = "开局准备"
-	new_run_button.pressed.connect(Callable(self, "_start_new_run_from_menu"))
-	box.add_child(new_run_button)
-	menu_regular_buttons.append(new_run_button)
+	_add_main_menu_section(box, "局势", "把复杂经营、推理和复盘信息收在菜单里，主画面只留必要操作。")
+	_add_main_menu_action(box, "局势排名", "查看现金目标、终局倒计时、结算估算和赛后资金来源。", Callable(self, "_open_standings_menu"), Color("#facc15"))
+	_add_main_menu_action(box, "经济总览", "查看GDP/min、商品热榜、商路收入前景、天气与城市收入拆解。", Callable(self, "_open_economy_overview_menu"), Color("#4ade80"))
+	_add_main_menu_action(box, "情报档案", "整理城市私标、卡牌归属竞猜、怪兽资金线索和公开线索。", Callable(self, "_open_intel_dossier_menu"), Color("#c084fc"))
 
-	var situation_section := _plain_label("局势", 12, Color("#93c5fd"))
-	box.add_child(situation_section)
-	menu_regular_buttons.append(situation_section)
+	_add_main_menu_section(box, "资料", "所有规则说明、图鉴和 hover/详情切换入口都集中在这里。")
+	_add_main_menu_action(box, "游戏规则", "查看购牌、出牌、竞价、合约、天气、终局和隐私规则。", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
+	_add_main_menu_action(box, "新手引导", "用短步骤复习首召怪兽、建城、购牌、匿名出牌和经济总览。", Callable(self, "_open_tutorial_menu"), Color("#67e8f9"))
+	_add_main_menu_action(box, "图鉴", "进入角色、怪兽、卡牌、商品、区域图鉴；支持缩略图、hover预览和详情页。", Callable(self, "_open_compendium_menu"), Color("#f472b6"))
 
-	var standings_button := Button.new()
-	standings_button.text = "局势排名"
-	standings_button.pressed.connect(Callable(self, "_open_standings_menu"))
-	box.add_child(standings_button)
-	menu_regular_buttons.append(standings_button)
-
-	var economy_button := Button.new()
-	economy_button.text = "经济总览"
-	economy_button.pressed.connect(Callable(self, "_open_economy_overview_menu"))
-	box.add_child(economy_button)
-	menu_regular_buttons.append(economy_button)
-
-	var intel_button := Button.new()
-	intel_button.text = "情报档案"
-	intel_button.pressed.connect(Callable(self, "_open_intel_dossier_menu"))
-	box.add_child(intel_button)
-	menu_regular_buttons.append(intel_button)
-
-	var reference_section := _plain_label("资料", 12, Color("#93c5fd"))
-	box.add_child(reference_section)
-	menu_regular_buttons.append(reference_section)
-
-	var rules_button := Button.new()
-	rules_button.text = "游戏规则"
-	rules_button.pressed.connect(Callable(self, "_open_rules_menu"))
-	box.add_child(rules_button)
-	menu_regular_buttons.append(rules_button)
-
-	var tutorial_button := Button.new()
-	tutorial_button.text = "新手引导"
-	tutorial_button.pressed.connect(Callable(self, "_open_tutorial_menu"))
-	box.add_child(tutorial_button)
-	menu_regular_buttons.append(tutorial_button)
-
-	var bestiary_button := Button.new()
-	bestiary_button.text = "图鉴"
-	bestiary_button.pressed.connect(Callable(self, "_open_compendium_menu"))
-	box.add_child(bestiary_button)
-	menu_regular_buttons.append(bestiary_button)
-
-	var save_section := _plain_label("存档", 12, Color("#93c5fd"))
-	box.add_child(save_section)
-	menu_regular_buttons.append(save_section)
-
-	var save_settings_button := Button.new()
-	save_settings_button.text = "保存设置"
-	save_settings_button.pressed.connect(Callable(self, "_save_settings_from_menu"))
-	box.add_child(save_settings_button)
-	menu_regular_buttons.append(save_settings_button)
-
-	var save_run_button := Button.new()
-	save_run_button.text = "保存局面"
-	save_run_button.pressed.connect(Callable(self, "_save_run_from_menu"))
-	box.add_child(save_run_button)
-	menu_regular_buttons.append(save_run_button)
-
-	var load_run_button := Button.new()
-	load_run_button.text = "读取局面"
-	load_run_button.pressed.connect(Callable(self, "_load_run_from_menu"))
-	box.add_child(load_run_button)
-	menu_regular_buttons.append(load_run_button)
-	menu_load_run_button = load_run_button
+	_add_main_menu_section(box, "存档", "保存当前局面或读取本地测试存档。")
+	_add_main_menu_action(box, "保存设置", "保存开局配置、席位数、AI数量、深度和角色选择。", Callable(self, "_save_settings_from_menu"), Color("#94a3b8"))
+	_add_main_menu_action(box, "保存局面", "保存当前本地局面，方便继续调试一整局。", Callable(self, "_save_run_from_menu"), Color("#94a3b8"))
+	var load_action := _add_main_menu_action(box, "读取局面", "读取本地保存的当前局面；没有存档时按钮会禁用。", Callable(self, "_load_run_from_menu"), Color("#94a3b8"))
+	menu_load_run_button = load_action.get("button", null) as Button
 
 	menu_run_save_label = Label.new()
 	menu_run_save_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2501,15 +2443,71 @@ func _build_menu_overlay() -> void:
 	menu_run_save_label.add_theme_color_override("font_color", Color("#94a3b8"))
 	box.add_child(menu_run_save_label)
 
-	var system_section := _plain_label("系统", 12, Color("#93c5fd"))
-	box.add_child(system_section)
-	menu_regular_buttons.append(system_section)
+	_add_main_menu_section(box, "系统", "退出当前原型。")
+	_add_main_menu_action(box, "退出原型", "关闭游戏窗口。", Callable(self, "_quit_game"), Color("#fb7185"))
 
-	var quit_button := Button.new()
-	quit_button.text = "退出原型"
-	quit_button.pressed.connect(Callable(self, "_quit_game"))
-	box.add_child(quit_button)
-	menu_regular_buttons.append(quit_button)
+
+func _menu_card_style(accent: Color, fill: Color = Color("#0b1220"), border_width: int = 1, radius: int = 12) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = accent
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(radius)
+	return style
+
+
+func _add_main_menu_section(parent: Container, title_text: String, detail_text: String = "") -> void:
+	var label := _plain_label("◆ %s" % title_text, 12, Color("#93c5fd"))
+	label.tooltip_text = detail_text
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(label)
+	menu_regular_buttons.append(label)
+	if detail_text != "":
+		var detail := _plain_label(detail_text, 10, Color("#64748b"))
+		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		parent.add_child(detail)
+		menu_regular_buttons.append(detail)
+
+
+func _add_main_menu_action(parent: Container, button_text: String, detail_text: String, target: Callable, accent: Color = Color("#38bdf8")) -> Dictionary:
+	var action := _add_menu_action_card(parent, button_text, detail_text, target, accent)
+	menu_regular_buttons.append(action.get("panel"))
+	return action
+
+
+func _add_menu_action_card(parent: Container, button_text: String, detail_text: String, target: Callable, accent: Color = Color("#38bdf8")) -> Dictionary:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.tooltip_text = detail_text
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#0b1220").lerp(accent, 0.08), 1, 12))
+	parent.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	margin.add_child(box)
+
+	var button := Button.new()
+	button.text = button_text
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.tooltip_text = detail_text
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.pressed.connect(target)
+	box.add_child(button)
+
+	var detail := _plain_label(detail_text, 11, Color("#cbd5e1"))
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(detail)
+	return {"panel": panel, "button": button}
 
 
 func _open_main_menu() -> void:
@@ -3945,12 +3943,25 @@ func _open_compendium_menu() -> void:
 func _add_compendium_menu_button(button_text: String, detail_text: String, target: Callable) -> void:
 	if menu_preview_box == null:
 		return
-	var button := Button.new()
-	button.text = "%s  —  %s" % [button_text, detail_text]
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.tooltip_text = detail_text
-	button.pressed.connect(target)
-	menu_preview_box.add_child(button)
+	_add_menu_action_card(menu_preview_box, button_text, detail_text, target, _menu_action_accent_for_text(button_text))
+
+
+func _menu_action_accent_for_text(button_text: String) -> Color:
+	if button_text.contains("经济"):
+		return Color("#4ade80")
+	if button_text.contains("情报") or button_text.contains("角色"):
+		return Color("#c084fc")
+	if button_text.contains("卡牌"):
+		return Color("#f472b6")
+	if button_text.contains("怪兽"):
+		return Color("#fb7185")
+	if button_text.contains("商品"):
+		return Color("#facc15")
+	if button_text.contains("区域") or button_text.contains("地图"):
+		return Color("#38bdf8")
+	if button_text.contains("开局"):
+		return Color("#67e8f9")
+	return Color("#93c5fd")
 
 
 func _standings_text() -> String:
