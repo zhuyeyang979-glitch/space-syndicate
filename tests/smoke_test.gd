@@ -116,6 +116,7 @@ func _run() -> void:
 	_expect(_verify_ai_monster_lure_strategy(main), "AI opponents can steer monster-lure cards toward high-value competing cities and record trainable target metadata")
 	_expect(_verify_ai_economic_focus_strategy(main), "AI opponents maintain an economic focus product that shapes city expansion, economy-card targets, and training metadata")
 	_expect(_verify_ai_strategy_intent_policy(main), "AI opponents switch between grow, defend, and disrupt strategic intents and attach strategy metadata to decisions")
+	_expect(_verify_ai_route_plan_policy(main), "AI opponents form multi-cycle product-route plans that bias build, card, contract, and business choices")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -1247,7 +1248,8 @@ func _verify_ai_monster_lure_strategy(main: Node) -> bool:
 				chosen = candidate
 				break
 		ok = ok and not chosen.is_empty()
-		ok = ok and bool(main.call("_ai_queue_play_candidate", 1, chosen, candidates))
+		var lure_queued := bool(main.call("_ai_queue_play_candidate", 1, chosen, candidates))
+		ok = ok and lure_queued
 		var players_after := _as_array(main.get("players"))
 		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "target_city", rival_index)
 		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "strategic_role", "monster_lure")
@@ -1352,10 +1354,11 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 				player["slots"] = [main.call("_make_skill", "价格套利1")]
 			players[player_index] = player
 		main.set("players", players)
-		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI策略成长城", false))
-		ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
+		var grow_created := bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI策略成长城", false))
+		var grow_goods := _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水") if grow_created else false
 		var grow_strategy := main.call("_ai_refresh_strategy_intent", 1, true) as Dictionary
-		ok = ok and String(grow_strategy.get("intent", "")) == "grow_focus"
+		var grow_ok := grow_created and grow_goods and String(grow_strategy.get("intent", "")) == "grow_focus"
+		ok = grow_ok and ok
 
 	var restore_mid := int(main.call("_apply_run_state", saved))
 	ok = ok and restore_mid == OK
@@ -1373,8 +1376,8 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 				player["slots"] = [main.call("_make_skill", "供应链保险1")]
 			defend_players[player_index] = player
 		main.set("players", defend_players)
-		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI策略防守城", false))
-		ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
+		var defend_created := bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI策略防守城", false))
+		var defend_goods := _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水") if defend_created else false
 		var defend_districts := _as_array(main.get("districts")).duplicate(true)
 		var defend_district := defend_districts[own_index] as Dictionary
 		var defend_city := defend_district.get("city", {}) as Dictionary
@@ -1383,12 +1386,8 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 		defend_districts[own_index] = defend_district
 		main.set("districts", defend_districts)
 		var defend_strategy := main.call("_ai_refresh_strategy_intent", 1, true) as Dictionary
-		ok = ok and String(defend_strategy.get("intent", "")) == "defend_routes"
 		var defend_skill := main.call("_make_skill", "供应链保险1") as Dictionary
 		var defend_context := main.call("_ai_card_play_context", 1, 0, defend_skill) as Dictionary
-		ok = ok and not defend_context.is_empty()
-		ok = ok and String(defend_context.get("strategy_intent", "")) == "defend_routes"
-		ok = ok and int(defend_context.get("strategy_bonus", 0)) > 0
 		var defend_candidates := main.call("_ai_card_play_candidates", 1) as Array
 		var defend_choice := {}
 		for candidate_variant in defend_candidates:
@@ -1398,10 +1397,21 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 			if String(candidate.get("card_name", "")) == "供应链保险1":
 				defend_choice = candidate
 				break
-		ok = ok and not defend_choice.is_empty()
-		ok = ok and bool(main.call("_ai_queue_play_candidate", 1, defend_choice, defend_candidates))
+		var defend_queued := bool(main.call("_ai_queue_play_candidate", 1, defend_choice, defend_candidates)) if not defend_choice.is_empty() else false
 		var players_after_defend := _as_array(main.get("players"))
-		ok = ok and _ai_memory_has_kind_with_metadata(players_after_defend, 1, "匿名出牌", "strategy_intent", "defend_routes")
+		var defend_memory := _ai_memory_has_kind_with_metadata(players_after_defend, 1, "匿名出牌", "strategy_intent", "defend_routes")
+		var defend_ok := (
+			defend_created
+			and defend_goods
+			and String(defend_strategy.get("intent", "")) == "defend_routes"
+			and not defend_context.is_empty()
+			and String(defend_context.get("strategy_intent", "")) == "defend_routes"
+			and int(defend_context.get("strategy_bonus", 0)) > 0
+			and not defend_choice.is_empty()
+			and defend_queued
+			and defend_memory
+		)
+		ok = defend_ok and ok
 
 	restore_mid = int(main.call("_apply_run_state", saved))
 	ok = ok and restore_mid == OK
@@ -1418,10 +1428,10 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 			player["action_cooldown"] = 0.0
 			disrupt_players[player_index] = player
 		main.set("players", disrupt_players)
-		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI策略竞品自城", false))
-		ok = ok and bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI策略竞品敌城", false))
-		ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
-		ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "星尘香料")
+		var disrupt_own_created := bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI策略竞品自城", false))
+		var disrupt_rival_created := bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI策略竞品敌城", false))
+		var disrupt_own_goods := _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水") if disrupt_own_created else false
+		var disrupt_rival_goods := _set_city_goods_for_test(main, rival_index, "环晶电池", "星尘香料") if disrupt_rival_created else false
 		var disrupt_districts := _as_array(main.get("districts")).duplicate(true)
 		var rival_district := disrupt_districts[rival_index] as Dictionary
 		var rival_city := rival_district.get("city", {}) as Dictionary
@@ -1430,7 +1440,6 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 		disrupt_districts[rival_index] = rival_district
 		main.set("districts", disrupt_districts)
 		var disrupt_strategy := main.call("_ai_refresh_strategy_intent", 1, true) as Dictionary
-		ok = ok and String(disrupt_strategy.get("intent", "")) == "disrupt_competitors"
 		var business_candidates := main.call("_rival_business_candidates_for_player", 1) as Array
 		var saw_disrupt_bonus := false
 		for candidate_variant in business_candidates:
@@ -1440,7 +1449,157 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 			if String(candidate.get("kind", "")) == "route_sabotage" and int(candidate.get("target_city", -1)) == rival_index and String(candidate.get("strategy_intent", "")) == "disrupt_competitors" and int(candidate.get("strategy_bonus", 0)) > 0:
 				saw_disrupt_bonus = true
 				break
-		ok = ok and saw_disrupt_bonus
+		var disrupt_ok := disrupt_own_created and disrupt_rival_created and disrupt_own_goods and disrupt_rival_goods and String(disrupt_strategy.get("intent", "")) == "disrupt_competitors" and saw_disrupt_bonus
+		ok = disrupt_ok and ok
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	return ok and restore_result == OK
+
+
+func _verify_ai_route_plan_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+
+	var seed_index := _first_empty_land_district_for_contract(main)
+	var decoy_index := _first_empty_land_district_for_contract(main, [seed_index])
+	if seed_index < 0 or decoy_index < 0:
+		ok = false
+	else:
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 5200
+			player["action_cooldown"] = 0.0
+			if player_index == 1:
+				player["slots"] = [main.call("_make_skill", "需求改造1")]
+			players[player_index] = player
+		main.set("players", players)
+		var seed_goods_set := _set_district_goods_for_test(main, seed_index, "环晶电池", "轨迹墨水")
+		var decoy_goods_set := _set_district_goods_for_test(main, decoy_index, "深海菌毯", "星尘香料")
+		var market := (main.get("product_market") as Dictionary).duplicate(true)
+		for key_variant in market.keys():
+			var product_key := String(key_variant)
+			var entry := (market.get(product_key, {}) as Dictionary).duplicate(true)
+			entry["price"] = 54
+			entry["base_price"] = 54
+			entry["demand"] = 0
+			entry["supply"] = 5
+			market[product_key] = entry
+		var focus_entry := (market.get("环晶电池", {}) as Dictionary).duplicate(true)
+		focus_entry["price"] = 260
+		focus_entry["base_price"] = 120
+		focus_entry["demand"] = 10
+		focus_entry["supply"] = 1
+		market["环晶电池"] = focus_entry
+		main.set("product_market", market)
+		var build_plan := main.call("_ai_refresh_route_plan", 1, true) as Dictionary
+		var seed_build_score := int(main.call("_auto_build_score_for_player", 1, seed_index))
+		var decoy_build_score := int(main.call("_auto_build_score_for_player", 1, decoy_index))
+		var build_ok := seed_goods_set and decoy_goods_set and String(build_plan.get("product", "")) == "环晶电池" and String(build_plan.get("stage", "")) == "build_supply" and int(build_plan.get("partner_district", -1)) == seed_index and seed_build_score > decoy_build_score
+		var route_city_created := bool(main.call("_create_city_at_district_for_player", 1, seed_index, "AI路线供给城", false))
+		var route_goods_set := _set_city_goods_for_test(main, seed_index, "环晶电池", "轨迹墨水") if route_city_created else false
+		var demand_plan := main.call("_ai_refresh_route_plan", 1, true) as Dictionary
+		var demand_plan_ok := route_city_created and route_goods_set and String(demand_plan.get("product", "")) == "环晶电池" and String(demand_plan.get("stage", "")) == "create_demand"
+		var demand_skill := main.call("_make_skill", "需求改造1") as Dictionary
+		var demand_context := main.call("_ai_card_play_context", 1, 0, demand_skill) as Dictionary
+		var demand_context_ok := not demand_context.is_empty() and String(demand_context.get("route_plan_product", "")) == "环晶电池" and String(demand_context.get("route_plan_stage", "")) == "create_demand" and int(demand_context.get("route_plan_bonus", 0)) > 0
+		var districts_for_supply := _as_array(main.get("districts")).duplicate(true)
+		var supply_district := districts_for_supply[seed_index] as Dictionary
+		supply_district["card_choices"] = ["需求改造1"]
+		districts_for_supply[seed_index] = supply_district
+		main.set("districts", districts_for_supply)
+		var actor := main.call("_make_auto_monster", 0, 0, seed_index, 1, 1) as Dictionary
+		main.set("auto_monsters", [actor])
+		var buy_candidates := main.call("_ai_card_buy_candidates", 1) as Array
+		var saw_route_buy := false
+		for candidate_variant in buy_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("card_name", "")) == "需求改造1" and String(candidate.get("route_plan_stage", "")) == "create_demand" and int(candidate.get("route_plan_bonus", 0)) > 0:
+				saw_route_buy = true
+				break
+		var contract_skill := main.call("_make_skill", "环晶电池专供1") as Dictionary
+		var contract_entry := {
+			"skill": contract_skill,
+			"contract_source_district": seed_index,
+			"contract_target_district": seed_index,
+			"contract_products": ["环晶电池"],
+		}
+		var contract_candidates := main.call("_ai_contract_response_candidates", 1, contract_entry) as Array
+		var saw_route_contract := false
+		for candidate_variant in contract_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("action", "")) == "签约" and String(candidate.get("route_plan_stage", "")) == "create_demand" and int(candidate.get("route_plan_bonus", 0)) > 0:
+				saw_route_contract = true
+				break
+		var play_candidates := main.call("_ai_card_play_candidates", 1) as Array
+		var play_choice := {}
+		for candidate_variant in play_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("card_name", "")) == "需求改造1":
+				play_choice = candidate
+				break
+		var route_play_queued := bool(main.call("_ai_queue_play_candidate", 1, play_choice, play_candidates)) if not play_choice.is_empty() else false
+		var players_after_queue := _as_array(main.get("players"))
+		var route_play_memory := _ai_memory_has_kind_with_metadata(players_after_queue, 1, "匿名出牌", "route_plan_stage", "create_demand")
+		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and saw_route_contract and not play_choice.is_empty() and route_play_queued and route_play_memory
+		ok = first_route_ok and ok
+
+	var restore_mid := int(main.call("_apply_run_state", saved))
+	ok = ok and restore_mid == OK
+	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+	if own_index < 0 or rival_index < 0:
+		ok = false
+	else:
+		var rival_players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(rival_players.size()):
+			var player := rival_players[player_index] as Dictionary
+			player["cash"] = 5200
+			player["action_cooldown"] = 0.0
+			rival_players[player_index] = player
+		main.set("players", rival_players)
+		var attack_own_created := bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI路线自城", false))
+		var attack_rival_created := bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI路线竞品城", false))
+		var attack_own_goods := _set_city_goods_for_test(main, own_index, "环晶电池", "环晶电池") if attack_own_created else false
+		var attack_rival_goods := _set_city_goods_for_test(main, rival_index, "环晶电池", "星尘香料") if attack_rival_created else false
+		var districts_for_rival := _as_array(main.get("districts")).duplicate(true)
+		var rival_district := districts_for_rival[rival_index] as Dictionary
+		var rival_city := rival_district.get("city", {}) as Dictionary
+		rival_city["last_income"] = 920
+		rival_district["city"] = rival_city
+		districts_for_rival[rival_index] = rival_district
+		main.set("districts", districts_for_rival)
+		var attack_plan := main.call("_ai_refresh_route_plan", 1, true) as Dictionary
+		var business_candidates := main.call("_rival_business_candidates_for_player", 1) as Array
+		var saw_attack_business := false
+		for candidate_variant in business_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("kind", "")) == "route_sabotage" and int(candidate.get("target_city", -1)) == rival_index and String(candidate.get("route_plan_stage", "")) == "attack_rival" and int(candidate.get("route_plan_bonus", 0)) > 0:
+				saw_attack_business = true
+				break
+		var attack_ok := attack_own_created and attack_rival_created and attack_own_goods and attack_rival_goods and String(attack_plan.get("product", "")) == "环晶电池" and String(attack_plan.get("stage", "")) == "attack_rival" and saw_attack_business
+		ok = attack_ok and ok
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	return ok and restore_result == OK
