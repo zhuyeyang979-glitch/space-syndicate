@@ -1453,11 +1453,28 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	var monster_parts := main.call("_auto_monster_target_weight_parts", actor, city_index) as Dictionary
 	var monster_reason := String(main.call("_auto_monster_target_factor_summary", actor, city_index))
 	main.set("auto_monsters", monsters_before)
+	var warehouse_risk_entries := _as_array(main.call("_economy_warehouse_risk_entries", 5, 1))
+	var warehouse_risk_line := String(main.call("_economy_warehouse_risk_line", warehouse_risk_entries[0] as Dictionary)) if not warehouse_risk_entries.is_empty() else ""
+	main.set("selected_player", 1)
+	var warehouse_economy_text := String(main.call("_economy_overview_text"))
+	var warehouse_intel_text := String(main.call("_intel_dossier_text", 1))
+	main.set("selected_player", 0)
+	var intel_entries := _as_array(main.call("_intel_city_guess_entries", 1, 6))
+	var intel_has_warehouse_priority := false
+	for intel_entry_variant in intel_entries:
+		var intel_entry := intel_entry_variant as Dictionary
+		if int(intel_entry.get("district_index", -1)) == city_index and int(intel_entry.get("warehouse_pressure", 0)) > 0:
+			intel_has_warehouse_priority = true
+			break
 	ok = ok and active_futures_text.contains("匿名期货") and active_futures_text.contains("仓储")
 	ok = ok and active_status_text.contains("匿名期货") and active_status_text.contains("仓")
 	ok = ok and city_status_text.contains("匿名仓储") and city_status_text.contains(product_name) and not city_status_text.contains(String((main.get("players") as Array)[0].get("name", "")))
 	ok = ok and warehouse_pressure > 0
 	ok = ok and int(monster_parts.get("warehouse", 0)) > 0 and int(monster_parts.get("resource", 0)) > 0 and monster_reason.contains("匿名仓储")
+	ok = ok and not warehouse_risk_entries.is_empty() and int((warehouse_risk_entries[0] as Dictionary).get("district_index", -1)) == city_index
+	ok = ok and warehouse_risk_line.contains("仓储风险") and warehouse_risk_line.contains("反制:做空") and warehouse_risk_line.contains(product_name)
+	ok = ok and warehouse_economy_text.contains("仓储靶标") and warehouse_economy_text.contains("匿名仓储") and warehouse_economy_text.contains("对手计划、现金和手牌保持隐藏")
+	ok = ok and warehouse_intel_text.contains("仓储风险线索") and warehouse_intel_text.contains("仓储风险") and intel_has_warehouse_priority
 	ok = ok and warehouse_clue.contains(product_name) and warehouse_clue.contains("匿名仓储") and warehouse_clue.contains("单位") and not warehouse_clue.contains(String((main.get("players") as Array)[0].get("name", "")))
 	ok = ok and String(main.call("_product_codex_text", product_name, 0, 1)).contains("匿名期货")
 	var hp := int((districts[city_index] as Dictionary).get("hp", 1))

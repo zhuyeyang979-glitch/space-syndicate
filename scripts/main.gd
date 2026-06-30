@@ -3406,7 +3406,7 @@ func _populate_economy_overview_summary_cards() -> void:
 		]
 	var clue_count := _economy_city_public_clue_entries(6).size() + _economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size()
 	var public_situation_text := _short_card_text(_public_situation_summary_text(), 78)
-	_show_menu_summary_cards([
+	var summary_cards := [
 		{
 			"title": "GDP/min",
 			"body": "%s｜潜在GDP/min %d｜城市现金按秒流入" % [selected_name, _player_cycle_income(selected_player)],
@@ -3437,7 +3437,21 @@ func _populate_economy_overview_summary_cards() -> void:
 			"meta": "经济总览不提前揭示真相。",
 			"accent": Color("#c084fc"),
 		},
-	], "经济速览｜短卡片给方向，下方文字给证据")
+	]
+	var warehouse_entries := _economy_warehouse_risk_entries(1, selected_player)
+	if not warehouse_entries.is_empty():
+		var warehouse_entry := warehouse_entries[0] as Dictionary
+		summary_cards.append({
+			"title": "仓储风险",
+			"body": "%s｜%s｜压力%d" % [
+				String(warehouse_entry.get("name", "仓储城市")),
+				String(warehouse_entry.get("status", "匿名仓储")),
+				int(warehouse_entry.get("pressure", 0)),
+			],
+			"meta": "高收益仓库更容易被做空、齐射、军队和怪兽盯上。",
+			"accent": Color("#fb923c"),
+		})
+	_show_menu_summary_cards(summary_cards, "经济速览｜短卡片给方向，下方文字给证据")
 
 
 func _open_final_settlement_menu(reason: String, rankings: Array) -> void:
@@ -3764,6 +3778,14 @@ func _intel_dossier_text(viewer_index: int) -> String:
 		else:
 			for entry in city_entries:
 				lines.append("- %s" % _intel_city_guess_line(entry as Dictionary))
+		var warehouse_entries := _economy_warehouse_risk_entries(4, viewer_index)
+		lines.append("")
+		lines.append("仓储风险线索：")
+		if warehouse_entries.is_empty():
+			lines.append("- 暂无公开匿名仓储；港仓囤货出现后，这里会提示哪些城市更可能被做空、齐射、军队或怪兽盯上。")
+		else:
+			for entry in warehouse_entries:
+				lines.append("- %s" % _economy_warehouse_risk_line(entry as Dictionary))
 	lines.append("")
 	lines.append("卡牌归属档案：")
 	lines.append("- 押注规则：每名玩家每张匿名卡最多押注一次；猜中公开牌主标签并由真实出牌者付款，猜错只私下转账不揭示真相。")
@@ -3844,6 +3866,14 @@ func _economy_overview_text() -> String:
 		for entry in city_clue_entries:
 			lines.append("- %s" % _economy_city_public_clue_line(entry as Dictionary))
 	lines.append("")
+	var warehouse_entries := _economy_warehouse_risk_entries(5, selected_player)
+	lines.append("仓储靶标：")
+	if warehouse_entries.is_empty():
+		lines.append("- 暂无公开匿名仓储；港仓囤货会在这里显示商品、单位、到期和可反制方向。")
+	else:
+		for entry in warehouse_entries:
+			lines.append("- %s" % _economy_warehouse_risk_line(entry as Dictionary))
+	lines.append("")
 	var monster_clue_entries := _economy_monster_cash_clue_entries(5)
 	lines.append("最近怪兽资金线索：")
 	lines.append("怪兽受伤会按最大生命比例折算为归属方资金损失；这里公开损失证据，不公开无关玩家当前现金总额。")
@@ -3870,12 +3900,15 @@ func _public_situation_summary_text() -> String:
 	var card_count := _economy_card_aftermath_entries(5).size()
 	var city_clue_count := _economy_city_public_clue_entries(6).size()
 	var monster_clue_count := _economy_monster_cash_clue_entries(5).size()
+	var warehouse_count := _economy_warehouse_risk_entries(5, selected_player).size()
 	if card_count > 0:
 		pieces.append("匿名卡牌余波%d条" % card_count)
 	if city_clue_count > 0:
 		pieces.append("城市公开线索%d条" % city_clue_count)
 	if monster_clue_count > 0:
 		pieces.append("怪兽资金线索%d条" % monster_clue_count)
+	if warehouse_count > 0:
+		pieces.append("匿名仓储%d城" % warehouse_count)
 	if auto_monsters.size() > 0:
 		pieces.append("场上怪兽%d只" % auto_monsters.size())
 	var weather_text := _short_card_text(_weather_status_text(), 32)
@@ -4076,6 +4109,71 @@ func _economy_city_income_line(entry: Dictionary) -> String:
 	]
 
 
+func _economy_warehouse_risk_entries(limit: int = 5, viewer_index: int = -1) -> Array:
+	var entries := []
+	for index_variant in _active_city_district_indices():
+		var index := int(index_variant)
+		var city := _district_city(index)
+		var pressure := _city_warehouse_stockpile_pressure(city)
+		if pressure <= 0:
+			continue
+		var products: Array = city.get("warehouse_stockpile_products", [])
+		var count := int(city.get("warehouse_stockpile_count", 0))
+		var units := int(city.get("warehouse_stockpile_units", 0))
+		var expires_at := float(city.get("warehouse_stockpile_expires_at", -1.0))
+		var seconds_left := maxf(0.0, expires_at - game_time) if expires_at >= 0.0 else -1.0
+		entries.append({
+			"district_index": index,
+			"name": String(districts[index].get("name", "城市")),
+			"owner_view": _city_owner_view_text_for_player(index, viewer_index),
+			"intel_hint": _city_intel_hint_for_player(index, viewer_index),
+			"pressure": pressure,
+			"count": count,
+			"units": units,
+			"products": products.duplicate(true),
+			"status": _city_warehouse_stockpile_status_text(city),
+			"seconds_left": seconds_left,
+			"income": int(city.get("last_income", 0)),
+			"potential_income": _city_cycle_income(index, _city_competition_matches(index)),
+			"latest_clue": _latest_city_public_clue_text(city),
+		})
+	entries.sort_custom(Callable(self, "_sort_economy_warehouse_risk_entry"))
+	return _first_entries(entries, limit)
+
+
+func _sort_economy_warehouse_risk_entry(a: Dictionary, b: Dictionary) -> bool:
+	var pressure_a := int(a.get("pressure", 0))
+	var pressure_b := int(b.get("pressure", 0))
+	if pressure_a != pressure_b:
+		return pressure_a > pressure_b
+	var units_a := int(a.get("units", 0))
+	var units_b := int(b.get("units", 0))
+	if units_a != units_b:
+		return units_a > units_b
+	var income_a := int(a.get("potential_income", 0))
+	var income_b := int(b.get("potential_income", 0))
+	if income_a != income_b:
+		return income_a > income_b
+	return String(a.get("name", "")) < String(b.get("name", ""))
+
+
+func _economy_warehouse_risk_line(entry: Dictionary) -> String:
+	var seconds_left := float(entry.get("seconds_left", -1.0))
+	var duration_text := _duration_short_text(seconds_left) if seconds_left >= 0.0 else "未知"
+	return "%s｜%s｜%s｜仓储风险%d｜%d笔/%d单位｜商品:%s｜到期:%s｜GDP/min %d｜反制:做空/齐射/军队/引怪｜线索:%s" % [
+		String(entry.get("name", "仓储城市")),
+		String(entry.get("owner_view", "业主未知")),
+		String(entry.get("intel_hint", "情报：无")),
+		int(entry.get("pressure", 0)),
+		int(entry.get("count", 0)),
+		int(entry.get("units", 0)),
+		_limited_name_list(entry.get("products", []) as Array, 3, "未知商品"),
+		duration_text,
+		int(entry.get("potential_income", 0)),
+		String(entry.get("latest_clue", "暂无公开线索")),
+	]
+
+
 func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
 	var entries := []
 	if viewer_index < 0 or viewer_index >= players.size():
@@ -4113,6 +4211,8 @@ func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
 			"competition": competition,
 			"disrupted": int(city.get("trade_disrupted_routes", 0)),
 			"latest_clue": _latest_city_public_clue_text(city),
+			"warehouse_pressure": _city_warehouse_stockpile_pressure(city),
+			"warehouse_status": _city_warehouse_stockpile_status_text(city),
 		}
 		entry["priority"] = _city_intel_priority_score(entry)
 		entries.append(entry)
@@ -4143,7 +4243,11 @@ func _intel_city_guess_line(entry: Dictionary) -> String:
 		guess_text = "我的标注:玩家%d" % (guess + 1)
 	var confidence_text := _city_guess_confidence_label(int(entry.get("confidence", 0))) if bool(entry.get("marked", false)) else "无"
 	var reason_text := _city_guess_reason_label(String(entry.get("reason", ""))) if bool(entry.get("marked", false)) else "无"
-	return "%s｜优先级%d｜%s｜置信:%s｜理由:%s｜%s｜%s｜潜在GDP%d/上次%d｜竞争%d/断路%d｜生产:%s｜需求:%s｜最近线索:%s" % [
+	var warehouse_text := ""
+	var warehouse_pressure := int(entry.get("warehouse_pressure", 0))
+	if warehouse_pressure > 0:
+		warehouse_text = "｜仓储风险%d:%s" % [warehouse_pressure, String(entry.get("warehouse_status", "匿名仓储"))]
+	return "%s｜优先级%d｜%s｜置信:%s｜理由:%s｜%s｜%s｜潜在GDP%d/上次%d｜竞争%d/断路%d%s｜生产:%s｜需求:%s｜最近线索:%s" % [
 		String(entry.get("name", "城市")),
 		int(entry.get("priority", 0)),
 		guess_text,
@@ -4155,6 +4259,7 @@ func _intel_city_guess_line(entry: Dictionary) -> String:
 		int(entry.get("last_income", 0)),
 		int(entry.get("competition", 0)),
 		int(entry.get("disrupted", 0)),
+		warehouse_text,
 		_limited_name_list(entry.get("products", []) as Array, 3, "无"),
 		_limited_name_list(entry.get("demands", []) as Array, 3, "无"),
 		String(entry.get("latest_clue", "暂无公开线索")),
@@ -4167,6 +4272,7 @@ func _city_intel_priority_score(entry: Dictionary) -> int:
 	score += clampi(int(entry.get("last_income", 0)) / 20, 0, 30)
 	score += int(entry.get("competition", 0)) * 18
 	score += int(entry.get("disrupted", 0)) * 16
+	score += clampi(int(entry.get("warehouse_pressure", 0)) / 2, 0, 120)
 	score += (entry.get("products", []) as Array).size() * 4
 	score += (entry.get("demands", []) as Array).size() * 4
 	var latest_clue := String(entry.get("latest_clue", ""))
