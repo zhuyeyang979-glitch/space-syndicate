@@ -908,7 +908,7 @@ func _starting_cash_matches_role_bonuses(players: Array) -> bool:
 
 func _role_catalog_has_positive_cards(main: Node) -> bool:
 	var role_count := int(main.call("_player_role_catalog_size"))
-	if role_count < 16:
+	if role_count < 24:
 		return false
 	var names := {}
 	var has_city_intel_role := false
