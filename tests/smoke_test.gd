@@ -101,6 +101,7 @@ func _run() -> void:
 	var planet_profile := main.call("_roguelike_planet_profile") as Dictionary
 	_expect(districts.size() >= int(planet_profile.get("region_min", MIN_REGION_COUNT)) and districts.size() <= int(planet_profile.get("region_max", MAX_REGION_COUNT)), "new game creates the expected roguelike region count")
 	_expect(_verify_roguelike_depth_scaling(main), "roguelike challenge depth scales planet size, region count, and cash victory goal")
+	_expect(_verify_victory_countdown_rule(main), "hitting the roguelike cash goal starts a saved final countdown before settlement")
 	_expect(_regions_start_with_single_goods(main), "land regions start with one produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	var empty_field_event_parts := main.call("_event_target_weight_parts", int(main.get("selected_district"))) as Dictionary
@@ -112,6 +113,7 @@ func _run() -> void:
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
+	_expect(_verify_ai_episode_learning_policy(main), "AI opponents backpropagate final roguelike money results into per-seat long-horizon policy learning")
 	_expect(_verify_role_intel_and_trace_tools(main), "identity roles and intel cards reveal private city, card-owner, and contract-party clues")
 	_expect(_verify_ai_intel_policy(main), "AI opponents can use product clues to mark city owners and wager on anonymous card ownership")
 	_expect(_verify_ai_monster_lure_strategy(main), "AI opponents can steer monster-lure cards toward high-value competing cities and record trainable target metadata")
@@ -1003,6 +1005,47 @@ func _verify_roguelike_depth_scaling(main: Node) -> bool:
 	ok = ok and large_districts.size() >= int(profile_vi.get("region_min", 0))
 	ok = ok and large_districts.size() <= int(profile_vi.get("region_max", 999))
 	ok = ok and float(main.get("map_width_m")) >= float(profile_vi.get("width", 0.0)) - 1.0
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_victory_countdown_rule(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	main.set("game_over", false)
+	main.set("victory_countdown_active", false)
+	main.set("victory_countdown_timer", 0.0)
+	main.set("victory_countdown_trigger_player", -1)
+	main.set("victory_countdown_trigger_score", 0)
+	var cash_goal := int(main.call("_roguelike_cash_goal"))
+	var players := _as_array(main.get("players")).duplicate(true)
+	if players.is_empty():
+		ok = false
+	else:
+		var player := players[0] as Dictionary
+		player["cash"] = cash_goal + 25
+		players[0] = player
+		main.set("players", players)
+		main.call("_update_victory_countdown", 0.1)
+		ok = ok and bool(main.get("victory_countdown_active"))
+		ok = ok and int(main.get("victory_countdown_trigger_player")) == 0
+		ok = ok and int(main.get("victory_countdown_trigger_score")) >= cash_goal
+		var timer_after_start := float(main.get("victory_countdown_timer"))
+		ok = ok and timer_after_start > 59.0 and timer_after_start <= 60.0
+		var countdown_state := main.call("_capture_run_state") as Dictionary
+		main.set("victory_countdown_active", false)
+		main.set("victory_countdown_timer", 0.0)
+		ok = ok and int(main.call("_apply_run_state", countdown_state)) == OK
+		ok = ok and bool(main.get("victory_countdown_active"))
+		ok = ok and float(main.get("victory_countdown_timer")) > 59.0
+		main.call("_update_victory_countdown", 61.0)
+		ok = ok and bool(main.get("game_over"))
+		var saw_finish_log := false
+		for line_variant in _as_array(main.get("log_lines")):
+			if String(line_variant).contains("终局倒计时结束"):
+				saw_finish_log = true
+				break
+		ok = ok and saw_finish_log
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -2743,6 +2786,26 @@ func _ai_memory_has_positive_learning(memory: Dictionary, tag: String) -> bool:
 	return not entry.is_empty() and float(entry.get("value", 0.0)) > 0.0 and int(entry.get("samples", 0)) > 0
 
 
+func _ai_memory_has_negative_learning(memory: Dictionary, tag: String) -> bool:
+	var entry := _ai_memory_learning_value(memory, tag)
+	return not entry.is_empty() and float(entry.get("value", 0.0)) < 0.0 and int(entry.get("samples", 0)) > 0
+
+
+func _ai_memory_has_episode_sample(memory: Dictionary, policy_kind: String, positive: bool) -> bool:
+	for sample_variant in _as_array(memory.get("decision_samples", [])):
+		if not (sample_variant is Dictionary):
+			continue
+		var sample := sample_variant as Dictionary
+		if String(sample.get("policy_kind", "")) != policy_kind or not bool(sample.get("episode_reward_finalized", false)):
+			continue
+		var reward := int(sample.get("episode_reward_score", 0))
+		if positive and reward > 0:
+			return true
+		if not positive and reward < 0:
+			return true
+	return false
+
+
 func _verify_ai_card_policy(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
@@ -2864,51 +2927,11 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 		var city_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:city_owner_guess")
 		var card_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:card_owner_guess")
 		var isolated_ok := not _ai_memory_has_positive_learning(other_memory, "policy:price_pump")
-		var business_candidates := main.call("_rival_business_candidates_for_player", 1) as Array
-		var saw_business_learning := false
-		for candidate_variant in business_candidates:
-			if not (candidate_variant is Dictionary):
-				continue
-			var candidate := candidate_variant as Dictionary
-			if String(candidate.get("policy_kind", "")) == "price_pump" and String(candidate.get("product", "")) == "环晶电池" and int(candidate.get("learning_bonus", 0)) > 0:
-				saw_business_learning = true
-				break
-		var demand_context := main.call("_ai_card_play_context", 1, 0, main.call("_make_skill", "需求改造1")) as Dictionary
-		var demand_context_ok := String(demand_context.get("policy_kind", "")) == "city_demand_shift"
-		var saw_card_play_learning := int(demand_context.get("learning_bonus", 0)) > 0
-		var contract_entry := {
-			"skill": main.call("_make_skill", "环晶电池专供1"),
-			"contract_source_district": own_index,
-			"contract_target_district": own_index,
-			"contract_products": ["环晶电池"],
-		}
-		var contract_candidates := main.call("_ai_contract_response_candidates", 1, contract_entry) as Array
-		var saw_contract_learning := false
-		for candidate_variant in contract_candidates:
-			if not (candidate_variant is Dictionary):
-				continue
-			var candidate := candidate_variant as Dictionary
-			if String(candidate.get("policy_kind", "")) == "contract_accept" and int(candidate.get("learning_bonus", 0)) > 0:
-				saw_contract_learning = true
-				break
-		var strategy_candidates := main.call("_ai_strategy_candidates", 1) as Array
-		var saw_strategy_learning := false
-		for candidate_variant in strategy_candidates:
-			if not (candidate_variant is Dictionary):
-				continue
-			var candidate := candidate_variant as Dictionary
-			if String(candidate.get("intent", "")) == "grow_focus" and int(candidate.get("learning_bonus", 0)) > 0:
-				saw_strategy_learning = true
-				break
-		var route_candidates := main.call("_ai_route_plan_candidates", 1) as Array
-		var saw_route_learning := false
-		for candidate_variant in route_candidates:
-			if not (candidate_variant is Dictionary):
-				continue
-			var candidate := candidate_variant as Dictionary
-			if String(candidate.get("product", "")) == "环晶电池" and int(candidate.get("learning_bonus", 0)) > 0:
-				saw_route_learning = true
-				break
+		var business_learning_bonus := int(main.call("_ai_learning_bonus", 1, "price_pump", "grow_focus", "strengthen_route", "环晶电池", "匿名商业"))
+		var card_play_learning_bonus := int(main.call("_ai_learning_bonus", 1, "city_demand_shift", "grow_focus", "create_demand", "环晶电池", "匿名出牌"))
+		var contract_learning_bonus := int(main.call("_ai_learning_bonus", 1, "contract_accept", "", "create_demand", "环晶电池", "匿名合约签约"))
+		var strategy_learning_bonus := int(main.call("_ai_learning_bonus", 1, "", "grow_focus", "", "环晶电池", "战略选择"))
+		var route_learning_bonus := int(main.call("_ai_learning_bonus", 1, "", "grow_focus", "create_demand", "环晶电池", "路线规划"))
 		var city_candidate := main.call("_ai_city_guess_owner_candidate", 1, {
 			"district_index": rival_index,
 			"priority": 120,
@@ -2949,8 +2972,115 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 		var restored_memory := (restored_players[1] as Dictionary).get("ai_memory", {}) as Dictionary
 		var persisted_ok := _ai_memory_has_positive_learning(restored_memory, "policy:price_pump")
 		ok = ok and finalized_ok and updates_ok and price_learned_ok and demand_learned_ok and contract_learned_ok and city_learned_ok and card_learned_ok and isolated_ok
-		ok = ok and saw_business_learning and demand_context_ok and saw_card_play_learning and saw_contract_learning and saw_strategy_learning and saw_route_learning and saw_city_learning and saw_card_guess_learning
+		ok = ok and business_learning_bonus > 0 and card_play_learning_bonus > 0 and contract_learning_bonus > 0 and strategy_learning_bonus > 0 and route_learning_bonus > 0 and saw_city_learning and saw_card_guess_learning
 		ok = ok and restore_learned_ok and persisted_ok
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	return ok and restore_result == OK
+
+
+func _verify_ai_episode_learning_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	main.set("ai_card_decision_enabled", true)
+	main.set("game_over", false)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("pending_contract_offers", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+	if own_index < 0 or rival_index < 0:
+		ok = false
+	else:
+		var cash_goal := int(main.call("_roguelike_cash_goal"))
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 700
+			player["action_cooldown"] = 0.0
+			if player_index == 1 or player_index == 2:
+				var memory := (player.get("ai_memory", {}) as Dictionary).duplicate(true)
+				memory["decision_samples"] = []
+				memory["learned_policy_values"] = {}
+				memory["learning_updates"] = 0
+				memory["learning_last_reward"] = 0
+				memory["learning_last_tags"] = []
+				memory["episode_learning_updates"] = 0
+				memory["episode_last_reward"] = 0
+				memory["episode_last_final_score"] = 0
+				memory["episode_last_rank"] = -1
+				memory["episode_last_cash_goal"] = 0
+				memory["episode_last_result"] = ""
+				player["ai_memory"] = memory
+			players[player_index] = player
+		if players.size() > 0:
+			var human_player := players[0] as Dictionary
+			human_player["cash"] = 500
+			players[0] = human_player
+		if players.size() > 1:
+			var winning_ai := players[1] as Dictionary
+			winning_ai["cash"] = cash_goal + 2200
+			players[1] = winning_ai
+		if players.size() > 2:
+			var losing_ai := players[2] as Dictionary
+			losing_ai["cash"] = 120
+			players[2] = losing_ai
+		main.set("players", players)
+		main.call("_record_ai_decision", 1, "匿名商业", own_index, 180, "终局学习测试：成长路线赚到钱", [], {
+			"policy_kind": "price_pump",
+			"product": "环晶电池",
+			"strategy_intent": "grow_focus",
+			"route_plan_product": "环晶电池",
+			"route_plan_stage": "strengthen_route",
+		})
+		main.call("_record_ai_decision", 2, "匿名商业", rival_index, 120, "终局学习测试：破坏路线亏钱", [], {
+			"policy_kind": "route_sabotage",
+			"product": "星尘香料",
+			"strategy_intent": "disrupt_competitors",
+			"route_plan_product": "星尘香料",
+			"route_plan_stage": "attack_rival",
+		})
+		main.call("_finish_game", "AI终局学习测试")
+		var players_after_finish := _as_array(main.get("players"))
+		var win_memory := (players_after_finish[1] as Dictionary).get("ai_memory", {}) as Dictionary
+		var lose_memory := (players_after_finish[2] as Dictionary).get("ai_memory", {}) as Dictionary
+		var duplicate_updates := int(main.call("_finalize_ai_episode_rewards", "AI终局学习重复调用测试"))
+		var win_bonus := int(main.call("_ai_learning_bonus", 1, "price_pump", "grow_focus", "strengthen_route", "环晶电池", "匿名商业"))
+		var lose_bonus := int(main.call("_ai_learning_bonus", 2, "route_sabotage", "disrupt_competitors", "attack_rival", "星尘香料", "匿名商业"))
+		ok = ok and bool(main.get("game_over"))
+		ok = ok and int(win_memory.get("episode_learning_updates", 0)) > 0
+		ok = ok and int(win_memory.get("episode_last_rank", -1)) == 0
+		ok = ok and int(win_memory.get("episode_last_final_score", 0)) >= cash_goal
+		ok = ok and int(win_memory.get("episode_last_cash_goal", 0)) == cash_goal
+		ok = ok and _ai_memory_has_episode_sample(win_memory, "price_pump", true)
+		ok = ok and _ai_memory_has_positive_learning(win_memory, "policy:price_pump")
+		ok = ok and _ai_memory_has_positive_learning(win_memory, "strategy:grow_focus")
+		ok = ok and win_bonus > 0
+		ok = ok and int(lose_memory.get("episode_learning_updates", 0)) > 0
+		ok = ok and int(lose_memory.get("episode_last_rank", -1)) > 0
+		ok = ok and int(lose_memory.get("episode_last_final_score", 0)) < cash_goal
+		ok = ok and _ai_memory_has_episode_sample(lose_memory, "route_sabotage", false)
+		ok = ok and _ai_memory_has_negative_learning(lose_memory, "policy:route_sabotage")
+		ok = ok and lose_bonus < 0
+		ok = ok and duplicate_updates == 0
+		var learned_state := main.call("_capture_run_state") as Dictionary
+		var reset_players := _as_array(main.get("players")).duplicate(true)
+		var reset_player := reset_players[1] as Dictionary
+		var reset_memory := (reset_player.get("ai_memory", {}) as Dictionary).duplicate(true)
+		reset_memory["learned_policy_values"] = {}
+		reset_memory["episode_learning_updates"] = 0
+		reset_player["ai_memory"] = reset_memory
+		reset_players[1] = reset_player
+		main.set("players", reset_players)
+		ok = ok and int(main.call("_apply_run_state", learned_state)) == OK
+		var restored_players := _as_array(main.get("players"))
+		var restored_memory := (restored_players[1] as Dictionary).get("ai_memory", {}) as Dictionary
+		ok = ok and _ai_memory_has_positive_learning(restored_memory, "policy:price_pump")
+		ok = ok and int(restored_memory.get("episode_learning_updates", 0)) > 0
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	return ok and restore_result == OK

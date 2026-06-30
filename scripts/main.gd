@@ -36,6 +36,10 @@ const AI_LEARNING_REWARD_CLAMP := 1200
 const AI_LEARNING_VALUE_CLAMP := 90.0
 const AI_LEARNING_BONUS_CLAMP := 140
 const AI_LEARNING_BASE_RATE := 0.22
+const AI_EPISODE_REWARD_CLAMP := 1800
+const AI_EPISODE_SAMPLE_DECAY := 0.88
+const AI_EPISODE_WIN_BONUS := 420
+const AI_EPISODE_GOAL_BONUS := 240
 const MAP_WIDTH_METERS := 1400.0
 const MAP_HEIGHT_METERS := 950.0
 const MAP_SITE_MARGIN_METERS := 70.0
@@ -105,6 +109,7 @@ const TRADE_DISRUPTION_PENALTY := 55
 const CITY_MINIMUM_INCOME := 40
 const CITY_FINAL_VALUE := 700
 const CITY_BUILD_ANIMATION_SECONDS := 1.2
+const VICTORY_COUNTDOWN_SECONDS := 60.0
 const INTEL_CORRECT_GUESS_CASH := 120
 const INTEL_WRONG_GUESS_COST := 60
 const CITY_GUESS_CONFIDENCE_LOW := 1
@@ -1126,6 +1131,10 @@ var configured_roguelike_depth := DEFAULT_ROGUELIKE_DEPTH
 var configured_role_indices := []
 var configured_starter_monster_indices := []
 var game_over := false
+var victory_countdown_active := false
+var victory_countdown_timer := 0.0
+var victory_countdown_trigger_player := -1
+var victory_countdown_trigger_score := 0
 var map_width_m := MAP_WIDTH_METERS
 var map_height_m := MAP_HEIGHT_METERS
 var district_lookup := {}
@@ -1249,6 +1258,9 @@ func _process(delta: float) -> void:
 	_update_auto_monster_durations(scaled_delta)
 	_update_visual_cues(scaled_delta)
 	_update_auto_monster_revivals(scaled_delta)
+	_update_victory_countdown(scaled_delta)
+	if game_over:
+		return
 
 	event_timer -= scaled_delta
 	if _active_auto_monster_count() > 0:
@@ -2390,8 +2402,9 @@ func _open_rules_menu() -> void:
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
 	lines.append("13. 经济隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹与流水；其他玩家的经济只能推测。终局才公开并按结算资金判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
-	lines.append("15. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
-	lines.append("16. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
+	lines.append("15. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
+	lines.append("16. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
+	lines.append("17. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
 	lines.append("")
 	lines.append("操作入口索引：1-8选席位；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
 	_show_menu(
@@ -3772,6 +3785,7 @@ func _standings_text() -> String:
 		business_cycle_count,
 		auto_monsters.size(),
 	])
+	lines.append(_victory_countdown_status_text())
 	lines.append("")
 	var standings := _standing_entries()
 	for rank in range(standings.size()):
@@ -3997,6 +4011,71 @@ func _player_visible_settlement_estimate(player_index: int) -> int:
 		return 0
 	var intel_cash := _player_intel_cash(player_index) if game_over else 0
 	return int(players[player_index].get("cash", 0)) + _player_active_city_count(player_index) * CITY_FINAL_VALUE + intel_cash
+
+
+func _player_name(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return "未知玩家"
+	return String((players[player_index] as Dictionary).get("name", "玩家%d" % (player_index + 1)))
+
+
+func _victory_countdown_status_text() -> String:
+	if not victory_countdown_active:
+		return "终局倒计时：未触发｜目标现金¥%d" % _roguelike_cash_goal()
+	return "终局倒计时：%.0fs｜触发者%s｜触发时预估¥%d｜目标¥%d" % [
+		ceil(victory_countdown_timer),
+		_player_name(victory_countdown_trigger_player),
+		victory_countdown_trigger_score,
+		_roguelike_cash_goal(),
+	]
+
+
+func _victory_countdown_trigger_candidate() -> Dictionary:
+	var cash_goal := _roguelike_cash_goal()
+	var best := {"player_index": -1, "score": cash_goal - 1}
+	for i in range(players.size()):
+		var score := _player_visible_settlement_estimate(i)
+		if score >= cash_goal and score > int(best.get("score", cash_goal - 1)):
+			best = {"player_index": i, "score": score}
+	return best
+
+
+func _start_victory_countdown(player_index: int, score: int) -> void:
+	if victory_countdown_active or game_over:
+		return
+	victory_countdown_active = true
+	victory_countdown_timer = VICTORY_COUNTDOWN_SECONDS
+	victory_countdown_trigger_player = player_index
+	victory_countdown_trigger_score = score
+	_log("%s达到本层目标现金线：可见预估结算¥%d / 目标¥%d。终局倒计时%.0f秒开始，倒计时结束按结算资金最高者定胜负。" % [
+		_player_name(player_index),
+		score,
+		_roguelike_cash_goal(),
+		VICTORY_COUNTDOWN_SECONDS,
+	])
+	if player_index >= 0 and player_index < players.size():
+		_add_action_callout(
+			"终局警报",
+			"目标现金达成",
+			"%s触发%.0f秒终局倒计时；所有玩家仍可反超或破坏。" % [_player_name(player_index), VICTORY_COUNTDOWN_SECONDS],
+			Color("#facc15"),
+			_district_center(selected_district)
+		)
+	_refresh_ui()
+
+
+func _update_victory_countdown(delta: float) -> void:
+	if game_over or players.is_empty():
+		return
+	if not victory_countdown_active:
+		var trigger := _victory_countdown_trigger_candidate()
+		var trigger_player := int(trigger.get("player_index", -1))
+		if trigger_player >= 0:
+			_start_victory_countdown(trigger_player, int(trigger.get("score", 0)))
+		return
+	victory_countdown_timer = maxf(0.0, victory_countdown_timer - delta)
+	if victory_countdown_timer <= 0.0:
+		_finish_game("%s触发的终局倒计时结束。" % _player_name(victory_countdown_trigger_player))
 
 
 func _open_fullscreen_map() -> void:
@@ -6443,6 +6522,10 @@ func _capture_run_state() -> Dictionary:
 		"configured_role_indices": configured_role_indices.duplicate(true),
 		"configured_starter_monster_indices": configured_starter_monster_indices.duplicate(true),
 		"game_over": game_over,
+		"victory_countdown_active": victory_countdown_active,
+		"victory_countdown_timer": victory_countdown_timer,
+		"victory_countdown_trigger_player": victory_countdown_trigger_player,
+		"victory_countdown_trigger_score": victory_countdown_trigger_score,
 		"map_width_m": map_width_m,
 		"map_height_m": map_height_m,
 		"event_timer": event_timer,
@@ -6545,6 +6628,10 @@ func _apply_run_state(state: Dictionary) -> int:
 	_ensure_configured_starter_monster_indices()
 	_ensure_player_ai_state()
 	game_over = bool(state.get("game_over", false))
+	victory_countdown_active = bool(state.get("victory_countdown_active", false))
+	victory_countdown_timer = maxf(0.0, float(state.get("victory_countdown_timer", 0.0)))
+	victory_countdown_trigger_player = int(state.get("victory_countdown_trigger_player", -1))
+	victory_countdown_trigger_score = int(state.get("victory_countdown_trigger_score", 0))
 	map_width_m = float(state.get("map_width_m", MAP_WIDTH_METERS))
 	map_height_m = float(state.get("map_height_m", MAP_HEIGHT_METERS))
 	event_timer = float(state.get("event_timer", 6.0))
@@ -7371,6 +7458,10 @@ func _new_game() -> void:
 	selected_contract_target_district = -1
 	business_cycle_count = 0
 	game_over = false
+	victory_countdown_active = false
+	victory_countdown_timer = 0.0
+	victory_countdown_trigger_player = -1
+	victory_countdown_trigger_score = 0
 	ai_card_decision_timer = 1.0
 	ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS
 	ai_intel_decision_timer = 2.5
@@ -7435,7 +7526,7 @@ func _new_game() -> void:
 		_ai_player_count(),
 	])
 	_log("AI训练骨架启动：AI会按城市GDP、商品竞争、商路价值、怪兽风险与匿名情报评分行动，并记录最近%d条训练样本。" % AI_DECISION_SAMPLE_LIMIT)
-	_log("Roguelike挑战启动：%s；本局目标是赚到更多钱，玩家通关目标现金¥%d，终局仍按结算资金最高者排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal()])
+	_log("Roguelike挑战启动：%s；任一玩家可见预估结算资金先达到目标现金¥%d时，开启%.0f秒终局倒计时；倒计时结束按结算资金最高者排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal(), VICTORY_COUNTDOWN_SECONDS])
 	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
 	_log("星球随机生成陆地与海洋：陆地初始生产1种商品并有1种需求，海洋不生产但承担商路运输；合约牌可继续改写供需。")
 	_log("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
@@ -11701,7 +11792,13 @@ func _empty_ai_memory() -> Dictionary:
 		"learning_updates": 0,
 		"learning_last_reward": 0,
 		"learning_last_tags": [],
-		"training_note": "记录状态向量、候选评分和下一经营周期收益，并把资金结果在线回写到行动/策略/路线偏好。",
+		"episode_learning_updates": 0,
+		"episode_last_reward": 0,
+		"episode_last_final_score": 0,
+		"episode_last_rank": -1,
+		"episode_last_cash_goal": 0,
+		"episode_last_result": "",
+		"training_note": "记录状态向量、候选评分、经营周期收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。",
 	}
 
 
@@ -11774,8 +11871,20 @@ func _ensure_player_ai_state() -> void:
 					memory["learning_last_reward"] = 0
 				if not (memory.get("learning_last_tags", []) is Array):
 					memory["learning_last_tags"] = []
+				if not memory.has("episode_learning_updates"):
+					memory["episode_learning_updates"] = 0
+				if not memory.has("episode_last_reward"):
+					memory["episode_last_reward"] = 0
+				if not memory.has("episode_last_final_score"):
+					memory["episode_last_final_score"] = 0
+				if not memory.has("episode_last_rank"):
+					memory["episode_last_rank"] = -1
+				if not memory.has("episode_last_cash_goal"):
+					memory["episode_last_cash_goal"] = 0
+				if not memory.has("episode_last_result"):
+					memory["episode_last_result"] = ""
 				if String(memory.get("training_note", "")) == "":
-					memory["training_note"] = "记录状态向量、候选评分和下一经营周期收益，并把资金结果在线回写到行动/策略/路线偏好。"
+					memory["training_note"] = "记录状态向量、候选评分、经营周期收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。"
 				player["ai_memory"] = memory
 		else:
 			player["ai_profile"] = {}
@@ -11818,6 +11927,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"route_plan_stage": _ai_route_plan_stage(player_index),
 		"route_plan_score": _ai_route_plan_score(player_index),
 		"learning_updates": int(memory.get("learning_updates", 0)),
+		"episode_learning_updates": int(memory.get("episode_learning_updates", 0)),
 		"learned_policy_count": (memory.get("learned_policy_values", {}) as Dictionary).size(),
 		"cash_goal_gap": maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index)),
 		"queue_current": card_resolution_queue.size(),
@@ -11892,16 +12002,16 @@ func _ai_learning_rate_for_player(player_index: int) -> float:
 	return clampf(AI_LEARNING_BASE_RATE + exploration * 0.35, 0.18, 0.38)
 
 
-func _ai_apply_learning_sample(player_index: int, memory: Dictionary, sample: Dictionary) -> Dictionary:
-	if bool(sample.get("learning_applied", false)):
+func _ai_apply_learning_tags(player_index: int, memory: Dictionary, tags: Array, reward_score: int) -> Dictionary:
+	if tags.is_empty():
 		return memory
-	var reward_score := _ai_learning_reward_for_sample(sample)
 	var target_value := clampf(float(reward_score) / 10.0, -AI_LEARNING_VALUE_CLAMP, AI_LEARNING_VALUE_CLAMP)
 	var learning_rate := _ai_learning_rate_for_player(player_index)
-	var tags := _ai_learning_tags_for_sample(sample)
 	var values := (memory.get("learned_policy_values", {}) as Dictionary).duplicate(true)
 	for tag_variant in tags:
 		var tag := String(tag_variant)
+		if tag == "":
+			continue
 		var entry := (values.get(tag, {}) as Dictionary).duplicate(true)
 		var old_value := float(entry.get("value", 0.0))
 		entry["value"] = clampf(lerpf(old_value, target_value, learning_rate), -AI_LEARNING_VALUE_CLAMP, AI_LEARNING_VALUE_CLAMP)
@@ -11915,6 +12025,14 @@ func _ai_apply_learning_sample(player_index: int, memory: Dictionary, sample: Di
 	memory["learning_last_reward"] = reward_score
 	memory["learning_last_tags"] = tags
 	return memory
+
+
+func _ai_apply_learning_sample(player_index: int, memory: Dictionary, sample: Dictionary) -> Dictionary:
+	if bool(sample.get("learning_applied", false)):
+		return memory
+	var reward_score := _ai_learning_reward_for_sample(sample)
+	var tags := _ai_learning_tags_for_sample(sample)
+	return _ai_apply_learning_tags(player_index, memory, tags, reward_score)
 
 
 func _ai_learned_tag_bonus(player_index: int, tag: String) -> int:
@@ -12017,6 +12135,125 @@ func _finalize_ai_decision_rewards() -> int:
 			player["ai_memory"] = memory
 			players[player_index] = player
 	return finalized
+
+
+func _sort_final_score_rank_desc(a: Dictionary, b: Dictionary) -> bool:
+	var a_score := int(a.get("score", 0))
+	var b_score := int(b.get("score", 0))
+	if a_score == b_score:
+		return int(a.get("player_index", 0)) < int(b.get("player_index", 0))
+	return a_score > b_score
+
+
+func _final_score_rankings() -> Array:
+	var rankings := []
+	for i in range(players.size()):
+		rankings.append({
+			"player_index": i,
+			"score": _player_final_score(i),
+		})
+	rankings.sort_custom(Callable(self, "_sort_final_score_rank_desc"))
+	return rankings
+
+
+func _final_score_rank_for_player(rankings: Array, player_index: int) -> int:
+	for i in range(rankings.size()):
+		var entry := rankings[i] as Dictionary
+		if int(entry.get("player_index", -1)) == player_index:
+			return i
+	return rankings.size()
+
+
+func _ai_episode_reward_for_player(player_index: int, rankings: Array, cash_goal: int) -> Dictionary:
+	var final_score := _player_final_score(player_index)
+	var rank := _final_score_rank_for_player(rankings, player_index)
+	var winner_score := final_score
+	var winner_index := player_index
+	if not rankings.is_empty():
+		var winner := rankings[0] as Dictionary
+		winner_score = int(winner.get("score", final_score))
+		winner_index = int(winner.get("player_index", player_index))
+	var score_vs_goal := final_score - cash_goal
+	var reward := clampi(int(round(float(score_vs_goal) / 6.0)), -680, 680)
+	if final_score >= cash_goal:
+		reward += AI_EPISODE_GOAL_BONUS
+	else:
+		reward -= int(round(float(cash_goal - final_score) / 14.0))
+	if player_index == winner_index:
+		reward += AI_EPISODE_WIN_BONUS
+	else:
+		reward -= 95 * maxi(1, rank)
+		reward += clampi(int(round(float(final_score - winner_score) / 10.0)), -360, 0)
+	var seat_span := maxi(1, players.size() - 1)
+	reward += int(round((float(seat_span - rank) / float(seat_span)) * 220.0)) - 90
+	var result_label := "胜利" if player_index == winner_index else ("达标" if final_score >= cash_goal else "未达标")
+	return {
+		"reward": clampi(reward, -AI_EPISODE_REWARD_CLAMP, AI_EPISODE_REWARD_CLAMP),
+		"final_score": final_score,
+		"rank": rank,
+		"winner_index": winner_index,
+		"winner_score": winner_score,
+		"cash_goal": cash_goal,
+		"result": result_label,
+	}
+
+
+func _ai_episode_sample_reward(base_reward: int, sample: Dictionary) -> int:
+	var sample_cycle := int(sample.get("cycle", business_cycle_count))
+	var age := maxi(0, business_cycle_count - sample_cycle)
+	var decayed := int(round(float(base_reward) * pow(AI_EPISODE_SAMPLE_DECAY, float(age))))
+	return clampi(decayed, -AI_EPISODE_REWARD_CLAMP, AI_EPISODE_REWARD_CLAMP)
+
+
+func _finalize_ai_episode_rewards(reason: String = "") -> int:
+	if players.is_empty():
+		return 0
+	var rankings := _final_score_rankings()
+	var cash_goal := _roguelike_cash_goal()
+	var updated := 0
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		var player: Dictionary = players[player_index]
+		var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+		var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
+		var episode := _ai_episode_reward_for_player(player_index, rankings, cash_goal)
+		var base_reward := int(episode.get("reward", 0))
+		var sample_updates := 0
+		for i in range(samples.size()):
+			if not (samples[i] is Dictionary):
+				continue
+			var sample: Dictionary = samples[i]
+			if bool(sample.get("episode_reward_finalized", false)):
+				continue
+			var sample_reward := _ai_episode_sample_reward(base_reward, sample)
+			sample["episode_reward_score"] = sample_reward
+			sample["episode_base_reward"] = base_reward
+			sample["episode_final_score"] = int(episode.get("final_score", 0))
+			sample["episode_rank"] = int(episode.get("rank", -1))
+			sample["episode_cash_goal"] = cash_goal
+			sample["episode_result"] = String(episode.get("result", ""))
+			sample["episode_reason"] = reason
+			sample["episode_reward_cycle"] = business_cycle_count
+			sample["episode_reward_finalized"] = true
+			var episode_tags := _ai_learning_tags_for_sample(sample)
+			sample["episode_learning_tags"] = episode_tags
+			memory = _ai_apply_learning_tags(player_index, memory, episode_tags, sample_reward)
+			sample["episode_learning_applied"] = true
+			samples[i] = sample
+			sample_updates += 1
+		if sample_updates <= 0:
+			continue
+		memory["decision_samples"] = samples
+		memory["episode_learning_updates"] = int(memory.get("episode_learning_updates", 0)) + sample_updates
+		memory["episode_last_reward"] = base_reward
+		memory["episode_last_final_score"] = int(episode.get("final_score", 0))
+		memory["episode_last_rank"] = int(episode.get("rank", -1))
+		memory["episode_last_cash_goal"] = cash_goal
+		memory["episode_last_result"] = String(episode.get("result", ""))
+		player["ai_memory"] = memory
+		players[player_index] = player
+		updated += sample_updates
+	return updated
 
 
 func _ai_profile_for_player(player_index: int) -> Dictionary:
@@ -19534,8 +19771,9 @@ func _finish_game(reason: String) -> void:
 	game_over = true
 	_log("游戏结束：%s" % reason)
 	var cash_goal := _roguelike_cash_goal()
-	var winner_index := 0
-	var winner_score := _player_final_score(0)
+	var rankings := _final_score_rankings()
+	var winner_index := int((rankings[0] as Dictionary).get("player_index", 0)) if not rankings.is_empty() else 0
+	var winner_score := int((rankings[0] as Dictionary).get("score", 0)) if not rankings.is_empty() else 0
 	for i in range(players.size()):
 		var score := _player_final_score(i)
 		_log("%s终局资金：现金%d + 存活城市%d×%d + 情报现金%s = %d（%s）。" % [
@@ -19547,10 +19785,10 @@ func _finish_game(reason: String) -> void:
 			score,
 			_player_intel_summary(i),
 		])
-		if score > winner_score:
-			winner_index = i
-			winner_score = score
 	_log("胜者：%s，结算资金最高：%d。" % [players[winner_index]["name"], winner_score])
+	var learned_samples := _finalize_ai_episode_rewards(reason)
+	if learned_samples > 0:
+		_log("AI终局训练：已用本局最终资金回写%d条决策样本。" % learned_samples)
 	var local_score := _player_final_score(0) if not players.is_empty() else 0
 	_log("%s通关判定：本层目标¥%d，玩家1结算¥%d，%s。" % [
 		_roguelike_depth_label(),
