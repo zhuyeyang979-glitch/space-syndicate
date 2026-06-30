@@ -309,6 +309,8 @@ func _run() -> void:
 	var menu_body_label := main.get("menu_body_label") as Label
 	var menu_back_button := main.get("menu_back_button") as Button
 	var menu_continue_button := main.get("menu_continue_button") as Button
+	var menu_bestiary_prev_button := main.get("menu_bestiary_prev_button") as Button
+	var menu_bestiary_next_button := main.get("menu_bestiary_next_button") as Button
 	var menu_preview_box := main.get("menu_preview_box") as VBoxContainer
 	main.call("_open_main_menu")
 	await process_frame
@@ -447,7 +449,14 @@ func _run() -> void:
 	main.call("_open_intel_card_codex_link", "城市融资1")
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier card links return to the dossier")
+	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier card links open card detail before returning to thumbnails")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	intel_back_button = main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "card detail returns to thumbnail page before the intel dossier")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "card thumbnail page returns to the intel dossier")
 	main.call("_open_intel_monster_codex_link", 0)
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
@@ -518,13 +527,28 @@ func _run() -> void:
 	main.call("_open_card_codex_from_compendium")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("参考价") and menu_body_label.text.contains("档"), "card codex shows card price and explicit tier information")
-	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and menu_body_label.text.contains("升级梯度") and not menu_body_label.text.contains("Lv"), "card codex labels rank-I base prices and shows Roman-numeral level gradients")
-	_expect(menu_body_label != null and menu_body_label.text.contains("结算演出") and menu_body_label.text.contains("开场：") and menu_body_label.text.contains("余波："), "card codex shows a per-card resolution animation script")
-	_expect(menu_body_label != null and menu_body_label.text.contains("视觉提示") and menu_body_label.text.contains("地图播报"), "card codex links each card animation script to its map visual cue")
-	main.call("_open_card_codex_by_name", "城市融资1")
+	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
+	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
+	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "城市融资") and _container_label_text_contains(menu_preview_box, "升级梯度"), "card codex hover preview shows the selected card details")
+	var codex_detail_event := InputEventMouseButton.new()
+	codex_detail_event.button_index = MOUSE_BUTTON_LEFT
+	codex_detail_event.pressed = true
+	codex_detail_event.double_click = true
+	main.call("_on_card_codex_thumbnail_gui_input", codex_detail_event, "城市融资1")
+	await process_frame
+	var card_codex_back_button := main.get("menu_bestiary_back_button") as Button
+	_expect(menu_body_label != null and menu_body_label.text.contains("参考价") and menu_body_label.text.contains("档"), "card detail shows card price and explicit tier information")
+	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and menu_body_label.text.contains("升级梯度") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices and shows Roman-numeral level gradients")
+	_expect(menu_body_label != null and menu_body_label.text.contains("结算演出") and menu_body_label.text.contains("开场：") and menu_body_label.text.contains("余波："), "card detail shows a per-card resolution animation script")
+	_expect(menu_body_label != null and menu_body_label.text.contains("视觉提示") and menu_body_label.text.contains("地图播报"), "card detail links each card animation script to its map visual cue")
+	_expect(card_codex_back_button != null and card_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "card detail exposes previous/next and a return-to-thumbnails button")
 	_expect(menu_body_label != null and menu_body_label.text.contains("城市融资") and menu_body_label.text.contains("匿名投资光幕"), "city economy cards use their own resolution animation script")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册"), "card detail can return to the thumbnail grid")
 	main.set("selected_trade_product", "活体芯片")
 	main.call("_open_product_codex_menu")
 	await process_frame

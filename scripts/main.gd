@@ -981,6 +981,9 @@ var catalog_return_menu := "main"
 var bestiary_index := 0
 var card_codex_index := 0
 var card_codex_filter := "all"
+var card_codex_grid_page := 0
+var card_codex_show_detail := false
+var previewed_card_codex_card := ""
 var product_codex_index := 0
 var region_codex_index := 0
 var role_codex_index := 0
@@ -3780,6 +3783,8 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 		menu_run_save_label.visible = show_main_actions
 	_refresh_run_save_menu_state()
 	if menu_bestiary_prev_button != null:
+		menu_bestiary_prev_button.text = "上一个"
+		menu_bestiary_next_button.text = "下一个"
 		menu_bestiary_prev_button.visible = false
 		menu_bestiary_next_button.visible = false
 		menu_bestiary_back_button.visible = false
@@ -3794,6 +3799,10 @@ func _open_bestiary_from_compendium() -> void:
 
 func _open_card_codex_from_compendium() -> void:
 	catalog_return_menu = "compendium"
+	card_codex_filter = "all"
+	card_codex_grid_page = 0
+	card_codex_show_detail = false
+	previewed_card_codex_card = ""
 	_open_card_codex_menu()
 
 
@@ -3803,6 +3812,10 @@ func _open_role_codex_from_compendium() -> void:
 
 
 func _back_from_catalog_menu() -> void:
+	if menu_catalog_mode == "card" and card_codex_show_detail:
+		card_codex_show_detail = false
+		_update_card_codex_menu()
+		return
 	match catalog_return_menu:
 		"compendium":
 			_open_compendium_menu()
@@ -3829,12 +3842,18 @@ func _open_bestiary_menu(index: int = -1) -> void:
 
 
 func _open_card_codex_menu(index: int = -1) -> void:
+	card_codex_show_detail = index >= 0
 	if index >= 0:
 		card_codex_index = index
+		card_codex_grid_page = _card_codex_grid_page_for_index(card_codex_index)
+		var names := _card_codex_names()
+		if card_codex_index >= 0 and card_codex_index < names.size():
+			previewed_card_codex_card = String(names[card_codex_index])
 	_update_card_codex_menu()
 
 
 func _open_card_codex_by_name(card_name: String) -> void:
+	card_codex_show_detail = false
 	var direct_skill := _skill_definition(card_name)
 	if not direct_skill.is_empty():
 		card_codex_filter = _card_codex_category_for_card(card_name, direct_skill)
@@ -3845,6 +3864,9 @@ func _open_card_codex_by_name(card_name: String) -> void:
 		index = names.find(family_name)
 	if index >= 0:
 		card_codex_index = index
+		card_codex_show_detail = true
+		card_codex_grid_page = _card_codex_grid_page_for_index(card_codex_index)
+		previewed_card_codex_card = String(names[card_codex_index])
 	else:
 		card_codex_filter = "all"
 		names = _card_codex_names()
@@ -3853,6 +3875,9 @@ func _open_card_codex_by_name(card_name: String) -> void:
 			index = names.find("%s1" % _skill_family(card_name))
 		if index >= 0:
 			card_codex_index = index
+			card_codex_show_detail = true
+			card_codex_grid_page = _card_codex_grid_page_for_index(card_codex_index)
+			previewed_card_codex_card = String(names[card_codex_index])
 	_update_card_codex_menu()
 
 
@@ -3942,7 +3967,16 @@ func _cycle_card_codex(step: int) -> void:
 	var names := _card_codex_names()
 	if names.is_empty():
 		return
-	card_codex_index = wrapi(card_codex_index + step, 0, names.size())
+	if card_codex_show_detail:
+		card_codex_index = wrapi(card_codex_index + step, 0, names.size())
+		previewed_card_codex_card = String(names[card_codex_index])
+		card_codex_grid_page = _card_codex_grid_page_for_index(card_codex_index)
+	else:
+		var page_count := _card_codex_grid_page_count(names.size())
+		card_codex_grid_page = wrapi(card_codex_grid_page + step, 0, page_count)
+		var first_index := _card_codex_first_index_on_page(card_codex_grid_page, names.size())
+		card_codex_index = first_index
+		previewed_card_codex_card = String(names[first_index])
 	_update_card_codex_menu()
 
 
@@ -3952,26 +3986,248 @@ func _update_card_codex_menu() -> void:
 		_show_catalog_empty_page("卡牌图鉴", "当前分类没有卡牌。")
 		return
 	card_codex_index = wrapi(card_codex_index, 0, names.size())
+	var page_count := _card_codex_grid_page_count(names.size())
+	card_codex_grid_page = clampi(card_codex_grid_page, 0, max(0, page_count - 1))
+	if previewed_card_codex_card == "" or not names.has(previewed_card_codex_card):
+		previewed_card_codex_card = String(names[mini(card_codex_index, names.size() - 1)])
 	var card_name := String(names[card_codex_index])
 	var skill: Dictionary = _skill_definition(card_name)
-	_show_menu("卡牌图鉴", _card_codex_text(card_name, skill, card_codex_index, names.size()), false)
+	var body_text := _card_codex_text(card_name, skill, card_codex_index, names.size()) if card_codex_show_detail else _card_codex_grid_text(names.size())
+	_show_menu("卡牌图鉴", body_text, false)
 	menu_catalog_mode = "card"
 	menu_continue_button.visible = false
 	for button in menu_regular_buttons:
 		button.visible = false
 	if menu_run_save_label != null:
 		menu_run_save_label.visible = false
-	menu_bestiary_prev_button.visible = true
-	menu_bestiary_next_button.visible = true
+	menu_bestiary_prev_button.visible = card_codex_show_detail
+	menu_bestiary_next_button.visible = card_codex_show_detail
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = _catalog_back_button_text()
+	menu_bestiary_back_button.text = "返回缩略图" if card_codex_show_detail else _catalog_back_button_text()
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
 		_add_card_codex_filter_buttons(menu_preview_box)
-		var center := CenterContainer.new()
-		menu_preview_box.add_child(center)
-		_add_card_face(center, card_name, skill, -1, false, false, false)
+		if card_codex_show_detail:
+			var center := CenterContainer.new()
+			menu_preview_box.add_child(center)
+			_add_card_face(center, card_name, skill, -1, false, false, false)
+		else:
+			_populate_card_codex_thumbnail_page(menu_preview_box, names)
+
+
+func _card_codex_grid_columns() -> int:
+	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+	return clampi(int(floor((viewport_size.x - 180.0) / 150.0)), 2, 4)
+
+
+func _card_codex_grid_rows() -> int:
+	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+	return clampi(int(floor((viewport_size.y - 260.0) / 180.0)), 1, 3)
+
+
+func _card_codex_cards_per_page() -> int:
+	return maxi(1, _card_codex_grid_columns() * _card_codex_grid_rows())
+
+
+func _card_codex_grid_page_count(total_count: int) -> int:
+	return maxi(1, int(ceil(float(maxi(0, total_count)) / float(_card_codex_cards_per_page()))))
+
+
+func _card_codex_grid_page_for_index(index: int) -> int:
+	var page_index := int(floor(float(maxi(0, index)) / float(_card_codex_cards_per_page())))
+	return clampi(page_index, 0, _card_codex_grid_page_count(_card_codex_names().size()) - 1)
+
+
+func _card_codex_first_index_on_page(page_index: int, total_count: int) -> int:
+	return clampi(page_index * _card_codex_cards_per_page(), 0, max(0, total_count - 1))
+
+
+func _card_codex_grid_text(total_count: int) -> String:
+	var columns := _card_codex_grid_columns()
+	var rows := _card_codex_grid_rows()
+	var page_count := _card_codex_grid_page_count(total_count)
+	return "缩略图册｜当前筛选:%s｜第%d/%d页｜当前缩略图布局：%d×%d\n悬停或单击卡牌缩略图会在下方显示详情预览；双击缩略图进入卡牌详情。进入详情后才使用顶部「上一个/下一个」切换卡牌，也可以点「返回缩略图」回到图册。" % [
+		_card_codex_filter_label(),
+		card_codex_grid_page + 1,
+		page_count,
+		columns,
+		rows,
+	]
+
+
+func _turn_card_codex_grid_page(step: int) -> void:
+	var names := _card_codex_names()
+	if names.is_empty():
+		return
+	var page_count := _card_codex_grid_page_count(names.size())
+	card_codex_grid_page = wrapi(card_codex_grid_page + step, 0, page_count)
+	var first_index := _card_codex_first_index_on_page(card_codex_grid_page, names.size())
+	card_codex_index = first_index
+	previewed_card_codex_card = String(names[first_index])
+	card_codex_show_detail = false
+	_update_card_codex_menu()
+
+
+func _populate_card_codex_thumbnail_page(parent: Container, names: Array) -> void:
+	var total_count := names.size()
+	var page_count := _card_codex_grid_page_count(total_count)
+	card_codex_grid_page = clampi(card_codex_grid_page, 0, max(0, page_count - 1))
+	var per_page := _card_codex_cards_per_page()
+	var start_index := card_codex_grid_page * per_page
+	var end_index := mini(total_count, start_index + per_page)
+	if start_index >= total_count:
+		start_index = _card_codex_first_index_on_page(card_codex_grid_page, total_count)
+		end_index = mini(total_count, start_index + per_page)
+	if previewed_card_codex_card == "" or not names.has(previewed_card_codex_card):
+		previewed_card_codex_card = String(names[start_index])
+		card_codex_index = start_index
+
+	var nav_row := HBoxContainer.new()
+	nav_row.add_theme_constant_override("separation", 8)
+	parent.add_child(nav_row)
+	var previous_button := Button.new()
+	previous_button.text = "缩略图上一页"
+	previous_button.disabled = page_count <= 1
+	previous_button.pressed.connect(Callable(self, "_turn_card_codex_grid_page").bind(-1))
+	nav_row.add_child(previous_button)
+	var page_label := _plain_label("第%d/%d页｜%d张卡｜本页%d-%d" % [
+		card_codex_grid_page + 1,
+		page_count,
+		total_count,
+		start_index + 1,
+		end_index,
+	], 12, Color("#bfdbfe"))
+	page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nav_row.add_child(page_label)
+	var next_button := Button.new()
+	next_button.text = "缩略图下一页"
+	next_button.disabled = page_count <= 1
+	next_button.pressed.connect(Callable(self, "_turn_card_codex_grid_page").bind(1))
+	nav_row.add_child(next_button)
+
+	var grid := GridContainer.new()
+	grid.columns = _card_codex_grid_columns()
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(grid)
+	for i in range(start_index, end_index):
+		_add_card_codex_thumbnail(grid, String(names[i]), i)
+	_add_card_codex_hover_preview(parent)
+
+
+func _add_card_codex_thumbnail(parent: Container, card_name: String, card_index: int) -> void:
+	var skill := _skill_definition(card_name)
+	if skill.is_empty():
+		return
+	var accent := _card_theme_color(skill)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(132, 166)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.tooltip_text = _card_detail_tooltip(card_name)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#0b1120").lerp(accent, 0.14)
+	style.border_color = Color("#fef3c7") if card_name == previewed_card_codex_card else accent
+	style.set_border_width_all(2 if card_name == previewed_card_codex_card else 1)
+	style.set_corner_radius_all(10)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_entered.connect(Callable(self, "_preview_card_codex_card").bind(card_name, true))
+	panel.gui_input.connect(Callable(self, "_on_card_codex_thumbnail_gui_input").bind(card_name))
+	parent.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	margin.add_child(box)
+	var title := _plain_label("%s｜%s" % [_skill_family(card_name), _level_text(_skill_rank(card_name))], 10, Color("#f8fafc"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var art_view = CardArtViewScript.new()
+	art_view.custom_minimum_size = Vector2(0, 82)
+	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art_view.set_card(_card_display_name(card_name), String(skill.get("kind", "")), _skill_tag_text(skill), accent, max(1, _skill_rank(card_name)), true, _card_art_stats(skill))
+	box.add_child(art_view)
+	var meta := _plain_label("%s｜¥%d" % [_card_codex_filter_label(_card_codex_category_for_card(card_name, skill)), _card_price(card_name)], 9, Color("#cbd5e1"))
+	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(meta)
+	var hint := _plain_label("悬停预览｜双击详情", 8, Color("#94a3b8"))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(hint)
+
+
+func _add_card_codex_hover_preview(parent: Container) -> void:
+	var preview_name := previewed_card_codex_card
+	var names := _card_codex_names()
+	if preview_name == "" or not names.has(preview_name):
+		if names.is_empty():
+			return
+		preview_name = String(names[0])
+		previewed_card_codex_card = preview_name
+	var preview_skill := _skill_definition(preview_name)
+	if preview_skill.is_empty():
+		return
+	var preview_panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(_card_theme_color(preview_skill), 0.13)
+	style.border_color = Color("#38bdf8")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	preview_panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(preview_panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	preview_panel.add_child(row)
+	var center := CenterContainer.new()
+	center.custom_minimum_size = Vector2(188, 0)
+	row.add_child(center)
+	_add_card_face(center, preview_name, preview_skill, -1, false, true, false)
+	var detail := _plain_label("悬停详情预览：%s\n%s\n升级梯度：%s\n双击缩略图可进入详情页；详情页使用顶部上一个/下一个翻卡。" % [
+		_card_display_name(preview_name),
+		_card_rules_text(preview_name, preview_skill, true),
+		_card_level_gradient_text(preview_name).replace("\n", " / "),
+	], 11, Color("#dbeafe"))
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(detail)
+
+
+func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
+	var names := _card_codex_names()
+	if card_name == "" or not names.has(card_name):
+		return
+	previewed_card_codex_card = card_name
+	card_codex_index = names.find(card_name)
+	if refresh:
+		_update_card_codex_menu()
+
+
+func _open_card_codex_detail(card_name: String) -> void:
+	_preview_card_codex_card(card_name, false)
+	if card_codex_index < 0:
+		return
+	card_codex_show_detail = true
+	card_codex_grid_page = _card_codex_grid_page_for_index(card_codex_index)
+	_update_card_codex_menu()
+
+
+func _on_card_codex_thumbnail_gui_input(event: InputEvent, card_name: String) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if mouse_event.double_click:
+		_open_card_codex_detail(card_name)
+	else:
+		_preview_card_codex_card(card_name, true)
 
 
 func _role_codex_text(role_card: Dictionary, index: int, total: int) -> String:
@@ -4162,6 +4418,9 @@ func _card_codex_category_for_card(card_name: String, skill: Dictionary) -> Stri
 func _set_card_codex_filter(filter_id: String) -> void:
 	card_codex_filter = filter_id
 	card_codex_index = 0
+	card_codex_grid_page = 0
+	card_codex_show_detail = false
+	previewed_card_codex_card = ""
 	_update_card_codex_menu()
 
 

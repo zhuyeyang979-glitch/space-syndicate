@@ -54,7 +54,7 @@ Players are alien syndicate operators secretly building commercial city clusters
 
 ## Current UI branches
 
-- 游戏规则: temporary home for rules before a later tutorial exists.
+- 游戏规则: temporary dense reference page for full rules and controls before a later tutorial exists.
 - 经济总览: live current-run dashboard for product hot/cold rankings, active economy weather, route-income prospects with city income breakdowns, and the current player's private cash/assets/income/path/ledger; rival economy entries are hidden until final settlement.
 - 情报档案: current-player inference dossier for setting city-owner marks plus their confidence and reason, ranking city investigation priority, card-owner betting state, monster cash clues, recent city public clues, and the exact way intelligence converts back into money without revealing hidden owners early; includes clue jump buttons into related codex/economy pages.
 - 图鉴: unified read-only compendium that opens 角色图鉴, 怪兽图鉴, 卡牌图鉴, 商品图鉴, and 区域图鉴.
@@ -62,7 +62,7 @@ Players are alien syndicate operators secretly building commercial city clusters
 - 开局准备: main-menu branch that previews player count, lets each player cycle/select an alien role card, shows mechanical passives, starter monster card faces, first-summon access, bound-skill rewards, and the monster landing card-buying radius before the player explicitly confirms a new run.
 - 首召引导: while no monster is on the field, the active player panel shows the current landing district and a direct "在选区首召" action for the starter monster card.
 - 怪兽图鉴: monster details, temporary monster art, action descriptions, action probabilities, linked monster card, fixed skills, resource focus, positive economy weather, movement speed, move-crush damage, resource-drain damage, and knockback-collision damage.
-- 卡牌图鉴: one shared card compendium with monster, economy, business/contract, combat/command, supply/lure, and other subcategories. It shows every card's effect, Roman-numeral rank, target requirement, one-shot or persistent rule, HP/movement/field-duration/summon-region facts for monster cards, rank-I reference price, and temporary card face.
+- 卡牌图鉴: one shared card compendium with monster, economy, business/contract, combat/command, supply/lure, and other subcategories. It opens as a responsive thumbnail album; hover or single-click shows a detail preview, double-click opens the full detail page, and only that detail page uses previous/next card navigation plus a return-to-thumbnails button. Detail pages show every card's effect, Roman-numeral rank, target requirement, one-shot or persistent rule, HP/movement/field-duration/summon-region facts for monster cards, rank-I reference price, and temporary card face.
 - 商品图鉴: opens on the currently selected trade-route product when available, then shows product price tiers, current and recent price paths, volatility, supply/demand pressure, route-disruption pressure, sustained product contracts, active product/route-flow economy weather, and product-filtered city clue history.
 - 区域图鉴: generated region terrain, HP/damage, latest damage source, route load, monster attraction reasons, public economy information, city income breakdowns, recent anonymous city clues, card choices, neighbors, city temporary contracts, city route-flow acceleration, and city public status without revealing hidden owners.
 
