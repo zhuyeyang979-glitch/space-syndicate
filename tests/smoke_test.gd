@@ -663,6 +663,7 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
 	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven strategy route overview cards")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame

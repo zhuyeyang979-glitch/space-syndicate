@@ -5444,6 +5444,7 @@ func _update_card_codex_menu() -> void:
 			menu_preview_box.add_child(center)
 			_add_card_face(center, card_name, skill, -1, false, false, false)
 		else:
+			_add_card_development_route_overview(menu_preview_box)
 			_populate_card_codex_thumbnail_page(menu_preview_box, names)
 
 
@@ -5485,6 +5486,49 @@ func _card_codex_grid_text(total_count: int) -> String:
 		columns,
 		rows,
 	]
+
+
+func _add_card_development_route_overview(parent: Container) -> void:
+	var audit := _development_route_audit()
+	if audit.is_empty():
+		return
+	var preference_coverage := _ai_development_route_preference_audit()
+	parent.add_child(_plain_label("卡牌路线总览：先按路线理解卡池，再进入缩略图挑具体卡牌。", 12, Color("#dbeafe")))
+	var grid := GridContainer.new()
+	grid.columns = _menu_summary_grid_columns()
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	parent.add_child(grid)
+	for entry_variant in audit:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("required_for_ai_baseline", false)):
+			continue
+		var route_id := String(entry.get("id", ""))
+		var label := String(entry.get("label", _development_route_label(route_id)))
+		var samples := []
+		for sample_variant in (entry.get("sample_cards", []) as Array):
+			var sample_name := String(sample_variant)
+			if sample_name == "":
+				continue
+			samples.append(_skill_family(sample_name))
+			if samples.size() >= 3:
+				break
+		var sample_text := " / ".join(samples) if not samples.is_empty() else "暂无样例"
+		_add_menu_info_card(
+			grid,
+			"%s路线" % label,
+			"%d张牌｜均预算%d｜完整梯度%d组\n%s" % [
+				int(entry.get("card_count", 0)),
+				int(entry.get("avg_budget", 0)),
+				int(entry.get("complete_rank_ladders", 0)),
+				_development_route_goal_text(route_id),
+			],
+			_menu_action_accent_for_text(label),
+			"AI偏好%d类｜样例:%s" % [int(preference_coverage.get(route_id, 0)), sample_text]
+		)
 
 
 func _turn_card_codex_grid_page(step: int) -> void:
