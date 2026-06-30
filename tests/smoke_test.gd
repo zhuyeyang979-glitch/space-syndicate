@@ -400,6 +400,7 @@ func _run() -> void:
 	var menu_body_label := main.get("menu_body_label") as Label
 	var menu_back_button := main.get("menu_back_button") as Button
 	var menu_continue_button := main.get("menu_continue_button") as Button
+	var menu_quick_nav_row := main.get("menu_quick_nav_row") as HBoxContainer
 	var menu_bestiary_prev_button := main.get("menu_bestiary_prev_button") as Button
 	var menu_bestiary_next_button := main.get("menu_bestiary_next_button") as Button
 	var menu_preview_box := main.get("menu_preview_box") as VBoxContainer
@@ -410,6 +411,7 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加", "main menu opens with the root title")
 	_expect(menu_context_label != null and menu_context_label.text.contains("当前位置：主菜单") and menu_context_label.text.contains("hover"), "main menu exposes a reusable breadcrumb/help strip for flexible subpage navigation")
+	_expect(menu_quick_nav_row != null and menu_quick_nav_row.visible and _container_button_text_contains(menu_quick_nav_row, "开局") and _container_button_text_contains(menu_quick_nav_row, "经济") and _container_button_text_contains(menu_quick_nav_row, "情报") and _container_button_text_contains(menu_quick_nav_row, "图鉴"), "main menu exposes reusable quick navigation chips for major branches")
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
 	_expect(menu_content_scroll != null and menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column")
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
@@ -481,6 +483,14 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("最大生命值损失比例"), "rules menu explains monster ownership cash clues use max-HP proportional losses")
 	_expect(menu_body_label != null and menu_body_label.text.contains("不提供1x/2x/4x时间倍率") and menu_body_label.text.contains("操作入口索引") and not menu_body_label.text.contains("Y切预设"), "rules menu removes player-facing time-multiplier presets and centralizes controls")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "规则速览") and _container_label_text_contains(menu_preview_box, "先召怪兽") and _container_label_text_contains(menu_preview_box, "匿名出牌"), "rules menu exposes a compact card-summary layer above the long rule text")
+	var quick_nav_buttons := main.get("menu_quick_nav_buttons") as Dictionary
+	var rules_quick_button := quick_nav_buttons.get("rules", null) as Button
+	var economy_quick_button := quick_nav_buttons.get("economy", null) as Button
+	_expect(rules_quick_button != null and rules_quick_button.disabled and economy_quick_button != null and not economy_quick_button.disabled, "quick navigation marks the current rules page while leaving other branches available")
+	if economy_quick_button != null:
+		economy_quick_button.emit_signal("pressed")
+		await process_frame
+		_expect(menu_title_label != null and menu_title_label.text == "经济总览", "quick navigation can jump directly from rules to economy overview")
 	main.call("_open_standings_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "局势排名", "standings menu opens from the main scene")

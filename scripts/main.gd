@@ -1301,6 +1301,8 @@ var menu_content_scroll: ScrollContainer
 var menu_content_box: VBoxContainer
 var menu_shell_margin: MarginContainer
 var menu_nav_row: HBoxContainer
+var menu_quick_nav_row: HBoxContainer
+var menu_quick_nav_buttons := {}
 var menu_catalog_nav_row: HBoxContainer
 var menu_title_label: Label
 var menu_context_label: Label
@@ -2413,6 +2415,17 @@ func _build_menu_overlay() -> void:
 	menu_context_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	shell.add_child(menu_context_label)
 
+	menu_quick_nav_row = HBoxContainer.new()
+	menu_quick_nav_row.add_theme_constant_override("separation", 8)
+	menu_quick_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	shell.add_child(menu_quick_nav_row)
+	_add_menu_quick_nav_button("setup", "开局", "进入开局准备：设置席位、AI、角色和起始怪兽。", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"))
+	_add_menu_quick_nav_button("standings", "局势", "查看现金目标、终局倒计时和结算估算。", Callable(self, "_open_standings_menu"), Color("#facc15"))
+	_add_menu_quick_nav_button("economy", "经济", "查看GDP、商品、商路、天气和收入拆解。", Callable(self, "_open_economy_overview_menu"), Color("#4ade80"))
+	_add_menu_quick_nav_button("intel", "情报", "整理城市归属推理、卡牌竞猜和怪兽资金线索。", Callable(self, "_open_intel_dossier_menu"), Color("#c084fc"))
+	_add_menu_quick_nav_button("rules", "规则", "查看购牌、出牌、竞价、合约、天气和终局规则。", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
+	_add_menu_quick_nav_button("compendium", "图鉴", "进入角色、怪兽、卡牌、商品和区域图鉴。", Callable(self, "_open_compendium_menu"), Color("#f472b6"))
+
 	menu_nav_row = HBoxContainer.new()
 	menu_nav_row.add_theme_constant_override("separation", 10)
 	menu_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2590,12 +2603,18 @@ func _refresh_menu_layout() -> void:
 		menu_body_label.add_theme_font_size_override("font_size", 13 if compact else 15)
 	if menu_nav_row != null:
 		menu_nav_row.add_theme_constant_override("separation", 6 if compact else 10)
+	if menu_quick_nav_row != null:
+		menu_quick_nav_row.add_theme_constant_override("separation", 4 if compact else 8)
 	if menu_catalog_nav_row != null:
 		menu_catalog_nav_row.add_theme_constant_override("separation", 6 if compact else 8)
 	for button_variant in [menu_continue_button, menu_back_button, menu_bestiary_prev_button, menu_bestiary_next_button, menu_bestiary_back_button]:
 		if button_variant is Button:
 			var button := button_variant as Button
 			button.custom_minimum_size = Vector2(108 if compact else 124, 32 if compact else 34)
+	for button_variant in menu_quick_nav_buttons.values():
+		if button_variant is Button:
+			var button := button_variant as Button
+			button.custom_minimum_size = Vector2(78 if compact else 88, 30 if compact else 32)
 
 
 func _style_menu_button(button: Button, accent: Color = Color("#38bdf8"), primary: bool = false) -> void:
@@ -2610,6 +2629,55 @@ func _style_menu_button(button: Button, accent: Color = Color("#38bdf8"), primar
 	button.add_theme_color_override("font_hover_color", Color("#ffffff"))
 	button.add_theme_color_override("font_pressed_color", Color("#ffffff"))
 	button.add_theme_color_override("font_disabled_color", Color("#64748b"))
+
+
+func _add_menu_quick_nav_button(key: String, button_text: String, detail_text: String, target: Callable, accent: Color = Color("#38bdf8")) -> Button:
+	if menu_quick_nav_row == null:
+		return null
+	var button := Button.new()
+	button.text = button_text
+	button.tooltip_text = detail_text
+	button.set_meta("quick_nav_tooltip", detail_text)
+	button.custom_minimum_size = Vector2(88, 32)
+	_style_menu_button(button, accent)
+	button.pressed.connect(target)
+	menu_quick_nav_row.add_child(button)
+	menu_quick_nav_buttons[key] = button
+	return button
+
+
+func _menu_quick_nav_active_key(title_text: String) -> String:
+	match title_text:
+		"开局准备":
+			return "setup"
+		"局势排名", "终局结算":
+			return "standings"
+		"经济总览":
+			return "economy"
+		"情报档案":
+			return "intel"
+		"游戏规则", "新手引导":
+			return "rules"
+		"图鉴", "角色图鉴", "怪兽图鉴", "卡牌图鉴", "商品图鉴", "区域图鉴":
+			return "compendium"
+	return ""
+
+
+func _refresh_menu_quick_nav(title_text: String) -> void:
+	if menu_quick_nav_row == null:
+		return
+	menu_quick_nav_row.visible = true
+	var active_key := _menu_quick_nav_active_key(title_text)
+	for key_variant in menu_quick_nav_buttons.keys():
+		var key := String(key_variant)
+		var button := menu_quick_nav_buttons[key] as Button
+		if button == null:
+			continue
+		button.disabled = key == active_key
+		if key == active_key:
+			button.tooltip_text = "当前页面：%s。可用其他快捷按钮跳到别的分支。" % button.text
+		else:
+			button.tooltip_text = String(button.get_meta("quick_nav_tooltip", button.tooltip_text))
 
 
 func _menu_section_style() -> StyleBoxFlat:
@@ -5185,6 +5253,7 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 	menu_title_label.text = title_text
 	if menu_context_label != null:
 		menu_context_label.text = _menu_context_text(title_text, show_main_actions)
+	_refresh_menu_quick_nav(title_text)
 	menu_body_label.text = body_text
 	if menu_preview_box != null:
 		_clear_children(menu_preview_box)

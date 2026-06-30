@@ -61,6 +61,7 @@ Players are alien syndicate operators secretly building commercial city clusters
 
 ## Current UI branches
 
+- 菜单快捷导航: every menu branch keeps top chips for 开局、局势、经济、情报、规则、图鉴. The current branch is disabled as a location cue, while the other chips jump directly to their pages so players do not need to back out through the root menu.
 - 游戏规则: temporary dense reference page for full rules and controls before a later tutorial exists.
 - 经济总览: live current-run dashboard for product hot/cold rankings, active economy weather, route-income prospects with city income breakdowns and GDP trends, and the current player's private cash/assets/income/path/ledger; rival economy entries are hidden until final settlement.
 - 情报档案: current-player inference dossier for setting city-owner marks plus their confidence and reason, ranking city investigation priority, card-owner betting state, monster cash clues, recent city public clues, and the exact way intelligence converts back into money without revealing hidden owners early; includes clue jump buttons into related codex/economy pages.
