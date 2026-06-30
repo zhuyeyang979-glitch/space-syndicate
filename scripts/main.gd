@@ -2467,6 +2467,33 @@ func _open_economy_overview_menu() -> void:
 	_show_menu("经济总览", _economy_overview_text(), not game_over)
 
 
+func _open_final_settlement_menu(reason: String, rankings: Array) -> void:
+	if menu_overlay == null:
+		return
+	var body_lines := []
+	body_lines.append("游戏结束：%s" % reason)
+	body_lines.append("")
+	body_lines.append(_final_run_summary_text(rankings))
+	body_lines.append("")
+	body_lines.append("接下来可以看局势排名确认每席资金来源，或打开经济总览复查 GDP、商品、商路和收入拆解；也可以直接回到开局准备再打一局。")
+	_show_menu("终局结算", "\n".join(body_lines), false)
+	if menu_continue_button != null:
+		menu_continue_button.visible = false
+	for button in menu_regular_buttons:
+		button.visible = false
+	if menu_run_save_label != null:
+		menu_run_save_label.visible = false
+	if menu_preview_box != null:
+		menu_preview_box.visible = true
+		_clear_children(menu_preview_box)
+		var hint := _plain_label("赛后复盘入口：", 13, Color("#fde68a"))
+		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		menu_preview_box.add_child(hint)
+		_add_compendium_menu_button("查看局势排名", "逐席查看结算资金、现金/城市/情报拆解和终局玩家概览。", Callable(self, "_open_standings_menu"))
+		_add_compendium_menu_button("打开经济总览", "复查商品热榜、商路收入前景、城市 GDP 拆解和经济流水。", Callable(self, "_open_economy_overview_menu"))
+		_add_compendium_menu_button("开局准备", "重新选择席位、AI 数量、Roguelike 深度和外星角色，开始下一局测试。", Callable(self, "_start_new_run_from_menu"))
+
+
 func _open_intel_dossier_menu() -> void:
 	_show_menu("情报档案", _intel_dossier_text(selected_player), not game_over)
 	_populate_intel_dossier_links(selected_player)
@@ -20974,6 +21001,7 @@ func _finish_game(reason: String) -> void:
 		local_score,
 		"达标，可进入更大星球" if local_score >= cash_goal else "未达标，需要赚更多钱",
 	])
+	_open_final_settlement_menu(reason, rankings)
 
 
 func _player_final_score(player_index: int) -> int:

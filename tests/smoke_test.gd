@@ -1181,6 +1181,14 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		var standings_text := String(main.call("_standings_text"))
 		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_ai_route_summary and saw_player_breakdown
 		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("AI路线") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报")
+		var final_menu_title := main.get("menu_title_label") as Label
+		var final_menu_body := main.get("menu_body_label") as Label
+		var final_menu_preview := main.get("menu_preview_box") as VBoxContainer
+		var final_continue_button := main.get("menu_continue_button") as Button
+		ok = ok and final_menu_title != null and final_menu_title.text == "终局结算"
+		ok = ok and final_menu_body != null and final_menu_body.text.contains("游戏结束") and final_menu_body.text.contains("终局总结") and final_menu_body.text.contains("接下来")
+		ok = ok and final_continue_button != null and not final_continue_button.visible
+		ok = ok and final_menu_preview != null and _container_button_text_contains(final_menu_preview, "查看局势排名") and _container_button_text_contains(final_menu_preview, "打开经济总览") and _container_button_text_contains(final_menu_preview, "开局准备")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -2221,6 +2229,14 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	var standings_text := String(main.call("_standings_text"))
 	if not standings_text.contains("终局总结") or not standings_text.contains("AI路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
 		failures.append("missing final summary")
+		ok = false
+	var final_menu_title := main.get("menu_title_label") as Label
+	var final_menu_preview := main.get("menu_preview_box") as VBoxContainer
+	if final_menu_title == null or final_menu_title.text != "终局结算":
+		failures.append("missing final settlement menu")
+		ok = false
+	if final_menu_preview == null or not _container_button_text_contains(final_menu_preview, "查看局势排名") or not _container_button_text_contains(final_menu_preview, "打开经济总览") or not _container_button_text_contains(final_menu_preview, "开局准备"):
+		failures.append("missing final settlement menu actions")
 		ok = false
 	var finalized_ai := 0
 	var final_players := _as_array(main.get("players"))
