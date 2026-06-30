@@ -365,6 +365,7 @@ const AI_PERSONALITY_CATALOG := [
 		"economy_bias": 1.05,
 		"bid_aggression": 0.75,
 		"exploration": 0.18,
+		"route_preferences": {"city_growth": 1.30, "contract_route": 1.08, "intel_supply": 1.04},
 	},
 	{
 		"name": "套利型AI",
@@ -375,6 +376,7 @@ const AI_PERSONALITY_CATALOG := [
 		"economy_bias": 1.35,
 		"bid_aggression": 1.05,
 		"exploration": 0.12,
+		"route_preferences": {"finance_speculation": 1.36, "contract_route": 1.12, "city_growth": 1.05},
 	},
 	{
 		"name": "破坏型AI",
@@ -385,6 +387,7 @@ const AI_PERSONALITY_CATALOG := [
 		"economy_bias": 0.85,
 		"bid_aggression": 1.25,
 		"exploration": 0.22,
+		"route_preferences": {"monster_pressure": 1.34, "finance_speculation": 1.10, "intel_supply": 1.06},
 	},
 	{
 		"name": "驯怪型AI",
@@ -395,6 +398,29 @@ const AI_PERSONALITY_CATALOG := [
 		"economy_bias": 0.9,
 		"bid_aggression": 0.95,
 		"exploration": 0.16,
+		"route_preferences": {"monster_pressure": 1.38, "intel_supply": 1.10, "contract_route": 1.04},
+	},
+	{
+		"name": "合约型AI",
+		"style": "优先用合约改写供需，再把商路和城市需求变成稳定GDP。",
+		"build_bias": 1.08,
+		"business_bias": 1.18,
+		"monster_bias": 0.78,
+		"economy_bias": 1.18,
+		"bid_aggression": 0.9,
+		"exploration": 0.14,
+		"route_preferences": {"contract_route": 1.40, "city_growth": 1.12, "finance_speculation": 1.06},
+	},
+	{
+		"name": "情报型AI",
+		"style": "用线索、购牌范围和追溯卡牌减少匿名迷雾，再选择低风险收益路线。",
+		"build_bias": 0.98,
+		"business_bias": 1.02,
+		"monster_bias": 0.9,
+		"economy_bias": 1.12,
+		"bid_aggression": 0.82,
+		"exploration": 0.2,
+		"route_preferences": {"intel_supply": 1.42, "finance_speculation": 1.08, "city_growth": 1.05},
 	},
 ]
 
@@ -11814,6 +11840,145 @@ func _card_strategy_summary(skill: Dictionary, compact: bool = false) -> String:
 	return "策略路线:%s｜用途:%s" % [route, use_text]
 
 
+func _development_route_archetypes() -> Array:
+	return [
+		{
+			"id": "city_growth",
+			"label": "城市成长",
+			"goal": "建设、升级生产/需求/交通，把稳定GDP变成终局现金。",
+			"strategy_labels": ["城市成长"],
+			"required_for_ai_baseline": true,
+		},
+		{
+			"id": "contract_route",
+			"label": "合约供需",
+			"goal": "用匿名合约改写两地供需，让商路和拒签惩罚都能产生收益。",
+			"strategy_labels": ["合约博弈"],
+			"required_for_ai_baseline": true,
+		},
+		{
+			"id": "finance_speculation",
+			"label": "金融投机",
+			"goal": "围绕商品价格或城市GDP的限时涨跌下注，把波动兑现成钱。",
+			"strategy_labels": ["金融投机"],
+			"required_for_ai_baseline": true,
+		},
+		{
+			"id": "monster_pressure",
+			"label": "怪兽压制",
+			"goal": "召唤、升级、诱导怪兽，或用破坏/天气/新闻压低竞争城市GDP。",
+			"strategy_labels": ["怪兽路线", "怪兽诱导", "战斗破坏", "城市压制", "天气博弈", "新闻信息战"],
+			"required_for_ai_baseline": true,
+		},
+		{
+			"id": "intel_supply",
+			"label": "情报补给",
+			"goal": "扩大购牌范围、补手牌、追溯匿名归属，降低误判和缺牌风险。",
+			"strategy_labels": ["情报推理", "补给构筑"],
+			"required_for_ai_baseline": true,
+		},
+		{
+			"id": "tactical_support",
+			"label": "即时战术",
+			"goal": "补足短线现金、目标、位移或其它临场节奏。",
+			"strategy_labels": ["即时战术"],
+			"required_for_ai_baseline": false,
+		},
+	]
+
+
+func _card_development_route_id(skill: Dictionary) -> String:
+	match _card_strategy_route_label(skill):
+		"城市成长":
+			return "city_growth"
+		"合约博弈":
+			return "contract_route"
+		"金融投机":
+			return "finance_speculation"
+		"怪兽路线", "怪兽诱导", "战斗破坏", "城市压制", "天气博弈", "新闻信息战":
+			return "monster_pressure"
+		"情报推理", "补给构筑":
+			return "intel_supply"
+	return "tactical_support"
+
+
+func _development_route_label(route_id: String) -> String:
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if String(route.get("id", "")) == route_id:
+			return String(route.get("label", route_id))
+	return "即时战术"
+
+
+func _development_route_goal_text(route_id: String) -> String:
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if String(route.get("id", "")) == route_id:
+			return String(route.get("goal", "补足当前局势。"))
+	return "补足当前局势。"
+
+
+func _development_route_audit() -> Array:
+	var route_entries := {}
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = (route_variant as Dictionary).duplicate(true)
+		var route_id := String(route.get("id", "tactical_support"))
+		route["card_count"] = 0
+		route["budget_total"] = 0
+		route["avg_budget"] = 0
+		route["complete_rank_ladders"] = 0
+		route["sample_cards"] = []
+		route_entries[route_id] = route
+	for card_variant in _card_codex_names("all"):
+		var card_name := String(card_variant)
+		var skill := _make_skill(card_name)
+		if skill.is_empty():
+			continue
+		var route_id := _card_development_route_id(skill)
+		if not route_entries.has(route_id):
+			route_id = "tactical_support"
+		var entry: Dictionary = route_entries[route_id]
+		entry["card_count"] = int(entry.get("card_count", 0)) + 1
+		entry["budget_total"] = int(entry.get("budget_total", 0)) + _card_strength_budget_points(card_name)
+		var samples: Array = entry.get("sample_cards", [])
+		if samples.size() < 5:
+			samples.append(card_name)
+			entry["sample_cards"] = samples
+		var family := _skill_family(card_name)
+		var has_complete_ladder := family != ""
+		for rank in range(1, 5):
+			if not _skill_exists("%s%d" % [family, rank]):
+				has_complete_ladder = false
+				break
+		if has_complete_ladder:
+			entry["complete_rank_ladders"] = int(entry.get("complete_rank_ladders", 0)) + 1
+		route_entries[route_id] = entry
+	var result := []
+	for route_variant in _development_route_archetypes():
+		var route_id := String((route_variant as Dictionary).get("id", "tactical_support"))
+		var entry: Dictionary = route_entries.get(route_id, {})
+		var count := int(entry.get("card_count", 0))
+		if count > 0:
+			entry["avg_budget"] = int(round(float(entry.get("budget_total", 0)) / float(count)))
+		result.append(entry)
+	return result
+
+
+func _ai_development_route_preference_audit() -> Dictionary:
+	var coverage := {}
+	for profile_variant in AI_PERSONALITY_CATALOG:
+		var profile: Dictionary = profile_variant
+		var preferences_variant: Variant = profile.get("route_preferences", {})
+		if not (preferences_variant is Dictionary):
+			continue
+		var preferences: Dictionary = preferences_variant
+		for route_variant in preferences.keys():
+			var route_id := String(route_variant)
+			if float(preferences.get(route_id, 1.0)) > 1.001:
+				coverage[route_id] = int(coverage.get(route_id, 0)) + 1
+	return coverage
+
+
 func _card_key_rule_facts(skill: Dictionary) -> Array:
 	var result := []
 	for fact_variant in _card_rule_facts(skill):
@@ -13517,7 +13682,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -13566,6 +13731,11 @@ func _ai_learning_tags_for_sample(sample: Dictionary) -> Array:
 		var product_tag := "product:%s" % direct_product
 		if not tags.has(product_tag):
 			tags.append(product_tag)
+	var development_route := String(sample.get("development_route", ""))
+	if development_route != "":
+		var development_tag := "development_route:%s" % development_route
+		if not tags.has(development_tag):
+			tags.append(development_tag)
 	return tags
 
 
@@ -13845,6 +14015,25 @@ func _ai_profile_for_player(player_index: int) -> Dictionary:
 		return {}
 	var profile_variant: Variant = (players[player_index] as Dictionary).get("ai_profile", {})
 	return profile_variant as Dictionary if profile_variant is Dictionary else {}
+
+
+func _ai_development_route_bias(player_index: int, route_id: String) -> float:
+	var profile := _ai_profile_for_player(player_index)
+	var preferences_variant: Variant = profile.get("route_preferences", {})
+	if not (preferences_variant is Dictionary):
+		return 1.0
+	var preferences: Dictionary = preferences_variant
+	return clampf(float(preferences.get(route_id, 1.0)), 0.65, 1.65)
+
+
+func _ai_development_route_bonus(player_index: int, route_id: String) -> int:
+	return int(round((_ai_development_route_bias(player_index, route_id) - 1.0) * 120.0))
+
+
+func _ai_development_route_learning_bonus(player_index: int, route_id: String) -> int:
+	if route_id == "":
+		return 0
+	return _ai_learned_tag_bonus(player_index, "development_route:%s" % route_id)
 
 
 func _ai_product_rival_city_count(player_index: int, product_name: String) -> int:
@@ -15025,6 +15214,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	var route_product := _ai_route_plan_product(player_index)
 	var route_stage := _ai_route_plan_stage(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
+	var development_route := _card_development_route_id(skill)
+	var development_route_bias := _ai_development_route_bias(player_index, development_route)
 	var context := {
 		"action": "出牌",
 		"slot_index": slot_index,
@@ -15044,6 +15235,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"route_plan_stage": route_stage,
 		"route_plan_score": _ai_route_plan_score(player_index),
 		"route_plan_bonus": 0,
+		"development_route": development_route,
+		"development_route_label": _development_route_label(development_route),
+		"development_route_bias": development_route_bias,
+		"development_route_bonus": 0,
 		"game_phase": String(phase_info.get("phase", "midgame")),
 		"competitive_posture": String(phase_info.get("posture", "contesting")),
 		"score_gap_to_leader": int(phase_info.get("gap", 0)),
@@ -15260,6 +15455,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if route_bonus > 0:
 		context["route_plan_bonus"] = int(context.get("route_plan_bonus", 0)) + route_bonus
 		context["score"] = int(context["score"]) + route_bonus
+	var development_route_bonus := _ai_development_route_bonus(player_index, development_route)
+	if development_route_bonus != 0:
+		context["development_route_bonus"] = development_route_bonus
+		context["score"] = int(context["score"]) + development_route_bonus
 	var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
 	if phase_bonus != 0:
 		context["phase_bonus"] = phase_bonus
@@ -15268,7 +15467,12 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if generic_bonus != 0:
 		context["generic_effect_bonus"] = generic_bonus
 		context["score"] = int(context["score"]) + generic_bonus
-	var learning_bonus := _ai_learning_bonus(player_index, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
+	var learning_bonus := clampi(
+		_ai_learning_bonus(player_index, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
+		+ _ai_development_route_learning_bonus(player_index, development_route),
+		-AI_LEARNING_BONUS_CLAMP,
+		AI_LEARNING_BONUS_CLAMP
+	)
 	if learning_bonus != 0:
 		context["learning_bonus"] = learning_bonus
 		context["score"] = int(context["score"]) + learning_bonus
@@ -15327,6 +15531,9 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				continue
 			var skill := _make_skill(card_name)
 			var kind := String(skill.get("kind", ""))
+			var development_route := _card_development_route_id(skill)
+			var development_route_bias := _ai_development_route_bias(player_index, development_route)
+			var development_route_bonus := _ai_development_route_bonus(player_index, development_route)
 			var score := 55 + int(skill.get("cost", 2)) * 11 - int(round(float(price) / 12.0))
 			var needs_discard := _purchase_requires_discard(player, card_name)
 			var discard_slot := -1
@@ -15354,7 +15561,12 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				target_owner = int(city.get("owner", -1))
 			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
 			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
-			var learning_bonus := _ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
+			var learning_bonus := clampi(
+				_ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
+				+ _ai_development_route_learning_bonus(player_index, development_route),
+				-AI_LEARNING_BONUS_CLAMP,
+				AI_LEARNING_BONUS_CLAMP
+			)
 			if required <= 0 or available >= required:
 				playability_bonus = 55 + mini(45, maxi(0, available) * 8)
 			else:
@@ -15373,6 +15585,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score += strategy_bonus
 			if route_bonus > 0:
 				score += route_bonus
+			if development_route_bonus != 0:
+				score += development_route_bonus
 			if generic_bonus != 0:
 				score += generic_bonus
 			if phase_bonus != 0:
@@ -15402,6 +15616,10 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"route_plan_stage": route_stage,
 				"route_plan_score": route_score,
 				"route_plan_bonus": route_bonus,
+				"development_route": development_route,
+				"development_route_label": _development_route_label(development_route),
+				"development_route_bias": development_route_bias,
+				"development_route_bonus": development_route_bonus,
 				"game_phase": phase,
 				"competitive_posture": posture,
 				"score_gap_to_leader": int(phase_info.get("gap", 0)),
@@ -15415,7 +15633,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"discard_slot": discard_slot,
 				"discard_keep_value": discard_keep_value,
 				"counted_hand": counted_hand,
-				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜阶段%s/%s+%d｜策略%s+%d｜路线%s/%s+%d｜学习%d｜探索率%.0f%%" % [
+				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜阶段%s/%s+%d｜策略%s+%d｜商品路线%s/%s+%d｜发展%s+%d｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
 					price,
 					available,
@@ -15430,6 +15648,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					route_product if route_product != "" else "未定",
 					_ai_route_plan_stage_label(route_stage),
 					route_bonus,
+					_development_route_label(development_route),
+					development_route_bonus,
 					learning_bonus,
 					float(profile.get("exploration", 0.15)) * 100.0,
 				],
@@ -15480,7 +15700,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -15570,11 +15790,16 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 				"route_plan_stage": String(buy_choice.get("route_plan_stage", "")),
 				"route_plan_score": int(buy_choice.get("route_plan_score", 0)),
 				"route_plan_bonus": int(buy_choice.get("route_plan_bonus", 0)),
+				"development_route": String(buy_choice.get("development_route", "")),
+				"development_route_label": String(buy_choice.get("development_route_label", "")),
+				"development_route_bias": float(buy_choice.get("development_route_bias", 1.0)),
+				"development_route_bonus": int(buy_choice.get("development_route_bonus", 0)),
 				"game_phase": String(buy_choice.get("game_phase", "")),
 				"competitive_posture": String(buy_choice.get("competitive_posture", "")),
 				"score_gap_to_leader": int(buy_choice.get("score_gap_to_leader", 0)),
 				"leader_index": int(buy_choice.get("leader_index", -1)),
 				"phase_bonus": int(buy_choice.get("phase_bonus", 0)),
+				"generic_effect_bonus": int(buy_choice.get("generic_effect_bonus", 0)),
 				"policy_kind": String(buy_choice.get("policy_kind", buy_choice.get("kind", ""))),
 				"learning_bonus": int(buy_choice.get("learning_bonus", 0)),
 				"playability_bonus": int(buy_choice.get("playability_bonus", 0)),

@@ -282,6 +282,7 @@ func _run() -> void:
 	var monster_budget_text := String(main.call("_card_strength_budget_text", first_monster_card, main.call("_make_skill", first_monster_card)))
 	_expect(growth_strategy_text.contains("城市成长") and speculation_strategy_text.contains("金融投机") and intel_strategy_text.contains("情报推理") and monster_strategy_text.contains("怪兽路线"), "card strategy summaries are derived for economy, speculation, intel, and monster routes")
 	_expect(growth_budget_text.contains("强度预算") and growth_budget_text.contains("主强度") and growth_budget_text.contains("制衡") and monster_budget_text.contains("怪兽"), "card strength budgets explain power drivers and counterplay from data fields")
+	_expect(_verify_development_route_balance_baseline(main), "card pool exposes five AI-readable development routes with card coverage, rank ladders, and profile preferences")
 	_expect(String(main.call("_card_art_stats", main.call("_make_skill", "城市融资1"))).contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
@@ -3106,6 +3107,45 @@ func _verify_card_rank_ladders_are_complete(main: Node) -> bool:
 			previous_budget = budget_points
 		checked += 1
 	return checked >= 40
+
+
+func _verify_development_route_balance_baseline(main: Node) -> bool:
+	var required_routes := ["city_growth", "contract_route", "finance_speculation", "monster_pressure", "intel_supply"]
+	var audit := _as_array(main.call("_development_route_audit"))
+	var by_id := {}
+	for entry_variant in audit:
+		var entry := entry_variant as Dictionary
+		var route_id := String(entry.get("id", ""))
+		if route_id != "":
+			by_id[route_id] = entry
+	for route_variant in required_routes:
+		var route_id := String(route_variant)
+		if not by_id.has(route_id):
+			print("Missing development route audit entry: %s" % route_id)
+			return false
+		var entry: Dictionary = by_id[route_id]
+		if int(entry.get("card_count", 0)) < 3:
+			print("Development route has too few cards: %s count=%d" % [route_id, int(entry.get("card_count", 0))])
+			return false
+		if int(entry.get("budget_total", 0)) <= 0:
+			print("Development route has no strength budget: %s" % route_id)
+			return false
+		if int(entry.get("complete_rank_ladders", 0)) <= 0:
+			print("Development route has no complete I-IV ladder: %s" % route_id)
+			return false
+		if _as_array(entry.get("sample_cards", [])).is_empty():
+			print("Development route has no sample cards: %s" % route_id)
+			return false
+	var preference_coverage := main.call("_ai_development_route_preference_audit") as Dictionary
+	for route_variant in required_routes:
+		var route_id := String(route_variant)
+		if int(preference_coverage.get(route_id, 0)) <= 0:
+			print("No AI personality prefers development route: %s" % route_id)
+			return false
+	if int(main.call("_ai_development_route_bonus", 1, "city_growth")) <= 0:
+		print("First AI profile does not receive a positive city-growth route bonus")
+		return false
+	return true
 
 
 func _verify_playable_card_resolution_coverage(main: Node) -> bool:
