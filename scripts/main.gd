@@ -6043,17 +6043,19 @@ func _add_card_development_route_overview(parent: Container) -> void:
 		_add_menu_info_card(
 			grid,
 			"%s路线" % label,
-			"%d张牌｜强度区间:%s-%s｜均预算%d｜完整梯度%d组\n打法:%s\n反制:%s" % [
+			"%d张牌｜强度区间:%s-%s｜均预算%d｜完整梯度%d组\n平衡:%s｜支点:%s\n打法:%s\n反制:%s" % [
 				int(entry.get("card_count", 0)),
 				min_band,
 				max_band,
 				int(entry.get("avg_budget", 0)),
 				int(entry.get("complete_rank_ladders", 0)),
+				String(entry.get("balance_status", "待审计")),
+				_development_route_pillar_summary(entry),
 				_development_route_play_pattern_text(route_id),
 				_development_route_counterplay_text(route_id),
 			],
 			_menu_action_accent_for_text(label),
-			"预算分布:%s｜样例:%s" % [_development_route_budget_band_summary(entry), sample_text]
+			"预算分布:%s｜检查:%s｜样例:%s" % [_development_route_budget_band_summary(entry), _development_route_balance_note_summary(entry), sample_text]
 		)
 
 
@@ -13182,6 +13184,144 @@ func _development_route_ai_plan_hint(route_id: String) -> String:
 	return "按阶段和现金目标调整权重。"
 
 
+func _append_unique_pillar(pillars: Array, label: String) -> void:
+	if label == "" or pillars.has(label):
+		return
+	pillars.append(label)
+
+
+func _card_balance_pillars(skill: Dictionary) -> Array:
+	var pillars := []
+	var kind := String(skill.get("kind", ""))
+	var tags := _skill_tag_text(skill)
+	var production_delta := int(skill.get("production_delta", 0)) + int(skill.get("accept_production_delta", 0)) + int(skill.get("contract_add_products", 0))
+	var transport_delta := int(skill.get("transport_delta", 0)) + int(skill.get("accept_transport_delta", 0))
+	var consumption_delta := int(skill.get("consumption_delta", 0)) + int(skill.get("accept_consumption_delta", 0)) + int(skill.get("contract_add_demands", 0))
+	var economy_delta := production_delta + transport_delta + consumption_delta
+	var decline_delta := int(skill.get("decline_production_delta", 0)) + int(skill.get("decline_transport_delta", 0)) + int(skill.get("decline_consumption_delta", 0))
+	var route_damage := int(skill.get("route_damage", 0)) + int(skill.get("decline_route_damage", 0))
+	var market_pressure := int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0)) + int(skill.get("price_delta", 0))
+	if int(skill.get("cash", 0)) > 0 \
+		or int(skill.get("revenue_amount", 0)) > 0 \
+		or int(skill.get("contract_income", 0)) > 0 \
+		or int(skill.get("accept_cash", 0)) > 0 \
+		or economy_delta > 0 \
+		or float(skill.get("growth_multiplier", 1.0)) > 1.001 \
+		or float(skill.get("route_flow_multiplier", 1.0)) > 1.001 \
+		or (kind == "city_gdp_derivative" and String(skill.get("gdp_bet_direction", "up")) == "up") \
+		or kind == "product_speculation":
+		_append_unique_pillar(pillars, "收益")
+	if int(skill.get("damage", 0)) > 0 \
+		or route_damage > 0 \
+		or economy_delta < 0 \
+		or decline_delta < 0 \
+		or int(skill.get("panic", 0)) > 0 \
+		or (kind == "city_gdp_derivative" and String(skill.get("gdp_bet_direction", "up")) == "down" and skill.get("gdp_bet_insurance", false) != true) \
+		or kind in ["route_sabotage", "area_damage", "mudslide", "miasma_shot", "corrosive_breath", "panic_shift", "news_event"]:
+		_append_unique_pillar(pillars, "压制")
+	if int(skill.get("repair_routes", 0)) > 0 \
+		or int(skill.get("armor", 0)) > 0 \
+		or int(skill.get("guard", 0)) > 0 \
+		or int(skill.get("ranged_guard", 0)) > 0 \
+		or kind in ["route_insurance", "market_stabilize", "special_monster_delay", "armor_gain"] \
+		or skill.get("gdp_bet_insurance", false) == true \
+		or float(skill.get("route_flow_multiplier", 1.0)) > 1.001:
+		_append_unique_pillar(pillars, "防御")
+	if kind in ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"] or tags.contains("情报"):
+		_append_unique_pillar(pillars, "信息")
+	if int(skill.get("draw_amount", 0)) > 0 \
+		or int(skill.get("card_access_extra_hops", 0)) > 0 \
+		or bool(skill.get("card_access_global", false)) \
+		or kind in ["card_access_boon", "supply_draw"]:
+		_append_unique_pillar(pillars, "补给")
+	if kind == "monster_card" \
+		or kind == "monster_bound_action" \
+		or kind == "monster_lure" \
+		or kind == "monster_takeover" \
+		or tags.contains("怪兽"):
+		_append_unique_pillar(pillars, "怪兽")
+	if kind in ["area_trade_contract", "product_contract_boon"] \
+		or int(skill.get("contract_add_products", 0)) > 0 \
+		or int(skill.get("contract_add_demands", 0)) > 0 \
+		or int(skill.get("contract_remove_products", 0)) > 0 \
+		or int(skill.get("contract_remove_demands", 0)) > 0 \
+		or int(skill.get("accept_cash", 0)) != 0 \
+		or int(skill.get("decline_cash_penalty", 0)) != 0:
+		_append_unique_pillar(pillars, "合约")
+	if kind in ["product_speculation", "market_stabilize", "product_growth_boon", "product_contract_boon"] \
+		or market_pressure != 0 \
+		or float(skill.get("growth_multiplier", 1.0)) > 1.001:
+		_append_unique_pillar(pillars, "市场")
+	if kind == "city_gdp_derivative":
+		_append_unique_pillar(pillars, "GDP金融")
+	if _skill_play_flow_required(skill, selected_player) > 0 \
+		or _skill_play_cash_cost(skill) > 0 \
+		or _skill_targets_monster(skill) \
+		or kind == "area_trade_contract" \
+		or kind == "weather_control" \
+		or (kind == "monster_card" and not bool(skill.get("starter_play_free", false)) and String(skill.get("summon_access", "any")) != "any"):
+		_append_unique_pillar(pillars, "公开门槛")
+	if pillars.is_empty():
+		_append_unique_pillar(pillars, "临场")
+	return pillars
+
+
+func _development_route_expected_pillars(route_id: String) -> Array:
+	match route_id:
+		"city_growth":
+			return ["收益", "防御", "公开门槛"]
+		"contract_route":
+			return ["合约", "收益", "公开门槛"]
+		"finance_speculation":
+			return ["GDP金融", "市场", "防御", "公开门槛"]
+		"monster_pressure":
+			return ["怪兽", "压制", "公开门槛"]
+		"intel_supply":
+			return ["信息", "补给", "公开门槛"]
+	return ["临场"]
+
+
+func _development_route_has_pillar(entry: Dictionary, pillar: String) -> bool:
+	var counts_variant: Variant = entry.get("pillar_counts", {})
+	if not (counts_variant is Dictionary):
+		return false
+	var counts := counts_variant as Dictionary
+	return int(counts.get(pillar, 0)) > 0
+
+
+func _development_route_balance_notes(route_id: String, entry: Dictionary) -> Array:
+	var notes := []
+	var count := int(entry.get("card_count", 0))
+	if bool(entry.get("required_for_ai_baseline", false)) and count < 6:
+		notes.append("牌量偏少")
+	if int(entry.get("complete_rank_ladders", 0)) <= 0:
+		notes.append("缺I-IV梯度")
+	for pillar_variant in _development_route_expected_pillars(route_id):
+		var pillar := String(pillar_variant)
+		if not _development_route_has_pillar(entry, pillar):
+			notes.append("缺%s支点" % pillar)
+	var band_counts_variant: Variant = entry.get("budget_band_counts", {})
+	var band_counts := band_counts_variant as Dictionary if band_counts_variant is Dictionary else {}
+	if bool(entry.get("required_for_ai_baseline", false)):
+		if int(band_counts.get("基础频用", 0)) <= 0:
+			notes.append("缺低门槛I级")
+		if int(band_counts.get("路线核心", 0)) + int(band_counts.get("终端压力", 0)) <= 0:
+			notes.append("缺核心/终端牌")
+	var avg_budget := int(entry.get("avg_budget", 0))
+	var max_budget := int(entry.get("budget_max", 0))
+	if avg_budget > 0 and max_budget > avg_budget * 3:
+		notes.append("终端跳跃过大")
+	return notes
+
+
+func _development_route_balance_status(notes: Array) -> String:
+	if notes.is_empty():
+		return "健康"
+	if notes.size() <= 2:
+		return "可调"
+	return "待补强"
+
+
 func _development_route_audit() -> Array:
 	var route_entries := {}
 	for route_variant in _development_route_archetypes():
@@ -13193,6 +13333,9 @@ func _development_route_audit() -> Array:
 		route["budget_max"] = 0
 		route["avg_budget"] = 0
 		route["budget_band_counts"] = {}
+		route["pillar_counts"] = {}
+		route["balance_notes"] = []
+		route["balance_status"] = "待审计"
 		route["complete_rank_ladders"] = 0
 		route["rank_counts"] = {}
 		route["sample_cards"] = []
@@ -13219,6 +13362,11 @@ func _development_route_audit() -> Array:
 		var rank_label := _roman_level(clampi(maxi(1, _skill_rank(card_name)), 1, 4))
 		rank_counts[rank_label] = int(rank_counts.get(rank_label, 0)) + 1
 		entry["rank_counts"] = rank_counts
+		var pillar_counts: Dictionary = entry.get("pillar_counts", {})
+		for pillar_variant in _card_balance_pillars(skill):
+			var pillar := String(pillar_variant)
+			pillar_counts[pillar] = int(pillar_counts.get(pillar, 0)) + 1
+		entry["pillar_counts"] = pillar_counts
 		var samples: Array = entry.get("sample_cards", [])
 		if samples.size() < 5:
 			samples.append(card_name)
@@ -13241,6 +13389,9 @@ func _development_route_audit() -> Array:
 			entry["avg_budget"] = int(round(float(entry.get("budget_total", 0)) / float(count)))
 		else:
 			entry["budget_min"] = 0
+		var notes := _development_route_balance_notes(route_id, entry)
+		entry["balance_notes"] = notes
+		entry["balance_status"] = _development_route_balance_status(notes)
 		result.append(entry)
 	return result
 
@@ -13258,6 +13409,35 @@ func _development_route_budget_band_summary(entry: Dictionary) -> String:
 	return " / ".join(pieces) if not pieces.is_empty() else "暂无"
 
 
+func _development_route_pillar_summary(entry: Dictionary) -> String:
+	var pillar_counts_variant: Variant = entry.get("pillar_counts", {})
+	if not (pillar_counts_variant is Dictionary):
+		return "暂无"
+	var pillar_counts := pillar_counts_variant as Dictionary
+	var ordered := ["收益", "压制", "防御", "信息", "补给", "怪兽", "合约", "市场", "GDP金融", "公开门槛", "临场"]
+	var pieces := []
+	for pillar in ordered:
+		var count := int(pillar_counts.get(pillar, 0))
+		if count > 0:
+			pieces.append("%s×%d" % [pillar, count])
+		if pieces.size() >= 5:
+			break
+	return " / ".join(pieces) if not pieces.is_empty() else "暂无"
+
+
+func _development_route_balance_note_summary(entry: Dictionary) -> String:
+	var notes_variant: Variant = entry.get("balance_notes", [])
+	var notes := notes_variant as Array if notes_variant is Array else []
+	if notes.is_empty():
+		return "健康：收益/反制/门槛有支撑"
+	var pieces := []
+	for i in range(min(3, notes.size())):
+		pieces.append(String(notes[i]))
+	if notes.size() > pieces.size():
+		pieces.append("+%d" % (notes.size() - pieces.size()))
+	return " / ".join(pieces)
+
+
 func _development_route_balance_summary(route_id: String) -> String:
 	for entry_variant in _development_route_audit():
 		if not (entry_variant is Dictionary):
@@ -13270,17 +13450,20 @@ func _development_route_balance_summary(route_id: String) -> String:
 		var avg_budget := int(entry.get("avg_budget", 0))
 		var min_band := _card_strength_budget_band_text(min_budget) if min_budget > 0 else "暂无"
 		var max_band := _card_strength_budget_band_text(max_budget) if max_budget > 0 else "暂无"
-		return "强度区间:%s-%s（%d-%d分，均%d）｜预算分布:%s｜打法:%s｜反制:%s" % [
+		return "强度区间:%s-%s（%d-%d分，均%d）｜预算分布:%s｜支点:%s｜平衡:%s｜检查:%s｜打法:%s｜反制:%s" % [
 			min_band,
 			max_band,
 			min_budget,
 			max_budget,
 			avg_budget,
 			_development_route_budget_band_summary(entry),
+			_development_route_pillar_summary(entry),
+			String(entry.get("balance_status", "待审计")),
+			_development_route_balance_note_summary(entry),
 			_development_route_play_pattern_text(route_id),
 			_development_route_counterplay_text(route_id),
 		]
-	return "强度区间:暂无｜预算分布:暂无｜打法:%s｜反制:%s" % [
+	return "强度区间:暂无｜预算分布:暂无｜支点:暂无｜平衡:待补强｜打法:%s｜反制:%s" % [
 		_development_route_play_pattern_text(route_id),
 		_development_route_counterplay_text(route_id),
 	]

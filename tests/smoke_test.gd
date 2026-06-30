@@ -672,7 +672,7 @@ func _run() -> void:
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线5/5覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线5/5覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "支点") and _container_label_text_contains(menu_preview_box, "平衡") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
@@ -3332,8 +3332,40 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 		if not (entry.get("budget_band_counts", {}) is Dictionary) or (entry.get("budget_band_counts", {}) as Dictionary).is_empty():
 			print("Development route has no budget band distribution: %s" % route_id)
 			return false
+		if not (entry.get("pillar_counts", {}) is Dictionary) or (entry.get("pillar_counts", {}) as Dictionary).size() < 2:
+			print("Development route has too few balance pillars: %s -> %s" % [route_id, str(entry.get("pillar_counts", {}))])
+			return false
+		var pillar_summary := String(main.call("_development_route_pillar_summary", entry))
+		match route_id:
+			"city_growth":
+				if not pillar_summary.contains("收益"):
+					print("City-growth route lacks income pillar: %s" % pillar_summary)
+					return false
+			"contract_route":
+				if not pillar_summary.contains("合约"):
+					print("Contract route lacks contract pillar: %s" % pillar_summary)
+					return false
+			"finance_speculation":
+				if not pillar_summary.contains("GDP金融") and not pillar_summary.contains("市场"):
+					print("Finance route lacks GDP/market pillar: %s" % pillar_summary)
+					return false
+			"monster_pressure":
+				if not pillar_summary.contains("怪兽") or not pillar_summary.contains("压制"):
+					print("Monster-pressure route lacks monster/pressure pillars: %s" % pillar_summary)
+					return false
+			"intel_supply":
+				if not pillar_summary.contains("信息") or not pillar_summary.contains("补给"):
+					print("Intel-supply route lacks intel/supply pillars: %s" % pillar_summary)
+					return false
+		var balance_status := String(entry.get("balance_status", ""))
+		if not ["健康", "可调", "待补强"].has(balance_status):
+			print("Development route has invalid balance status: %s -> %s" % [route_id, balance_status])
+			return false
+		if not (entry.get("balance_notes", []) is Array):
+			print("Development route balance notes are not structured: %s" % route_id)
+			return false
 		var balance_summary := String(main.call("_development_route_balance_summary", route_id))
-		if not balance_summary.contains("强度区间") or not balance_summary.contains("预算分布") or not balance_summary.contains("打法") or not balance_summary.contains("反制"):
+		if not balance_summary.contains("强度区间") or not balance_summary.contains("预算分布") or not balance_summary.contains("支点") or not balance_summary.contains("平衡") or not balance_summary.contains("检查") or not balance_summary.contains("打法") or not balance_summary.contains("反制"):
 			print("Development route balance summary is incomplete: %s -> %s" % [route_id, balance_summary])
 			return false
 		if int(entry.get("complete_rank_ladders", 0)) <= 0:
