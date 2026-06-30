@@ -32,6 +32,11 @@ const AI_ROUTE_PLAN_MATCH_BONUS := 78
 const AI_ROUTE_PLAN_TOP_LIMIT := 4
 const AI_ROUTE_PLAN_SWITCH_MARGIN := 140
 const AI_ROUTE_PLAN_ENTRENCHED_SWITCH_MARGIN := 360
+const AI_ENDGAME_GOAL_RATIO := 0.72
+const AI_ENDGAME_CYCLE := 7
+const AI_OPENING_CYCLE_MAX := 1
+const AI_LEAD_MARGIN := 280
+const AI_TRAILING_MARGIN := 360
 const AI_LEARNING_REWARD_CLAMP := 1200
 const AI_LEARNING_VALUE_CLAMP := 90.0
 const AI_LEARNING_BONUS_CLAMP := 140
@@ -3835,6 +3840,9 @@ func _standings_text() -> String:
 		])
 	lines.append("")
 	lines.append("提示：领先者通常更怕商路被切断；落后者可以用热度、怪兽目标偏好和商品竞争把压力引到对手城市。")
+	if game_over:
+		lines.append("")
+		lines.append(_final_run_summary_text(_final_score_rankings()))
 	return "\n".join(lines)
 
 
@@ -3878,6 +3886,100 @@ func _sort_standing_entry(a: Dictionary, b: Dictionary) -> bool:
 	if cities_a != cities_b:
 		return cities_a > cities_b
 	return int(a.get("player_index", 0)) < int(b.get("player_index", 0))
+
+
+func _top_player_by_stat(stat_name: String) -> Dictionary:
+	var best := {"player_index": -1, "amount": -999999}
+	for i in range(players.size()):
+		var player: Dictionary = players[i]
+		var amount := int(player.get(stat_name, 0))
+		if amount > int(best.get("amount", -999999)):
+			best = {"player_index": i, "amount": amount}
+	if int(best.get("player_index", -1)) < 0 and not players.is_empty():
+		best = {"player_index": 0, "amount": 0}
+	return best
+
+
+func _top_city_snapshot_entry() -> Dictionary:
+	var best := {"district": -1, "owner": -1, "last_income": -999999, "active": false}
+	var best_score := -999999
+	for i in range(districts.size()):
+		var city := _district_city(i)
+		if city.is_empty() or int(city.get("owner", -1)) < 0:
+			continue
+		var income := int(city.get("last_income", 0))
+		var score := income
+		if bool(city.get("active", true)):
+			score += CITY_FINAL_VALUE / 2
+		score += (city.get("products", []) as Array).size() * 12
+		score += (city.get("demands", []) as Array).size() * 8
+		if score > best_score:
+			best_score = score
+			best = {
+				"district": i,
+				"owner": int(city.get("owner", -1)),
+				"last_income": income,
+				"active": bool(city.get("active", true)),
+				"products": _city_product_names(city),
+				"demands": _city_demand_names(city),
+			}
+	return best
+
+
+func _destroyed_district_count() -> int:
+	var count := 0
+	for district_variant in districts:
+		var district: Dictionary = district_variant
+		if bool(district.get("destroyed", false)):
+			count += 1
+	return count
+
+
+func _final_run_summary_text(rankings: Array) -> String:
+	if players.is_empty():
+		return "终局总结：没有可用玩家数据。"
+	var ordered := rankings
+	if ordered.is_empty():
+		ordered = _final_score_rankings()
+	var winner_index := 0
+	var winner_score := _player_final_score(0)
+	if not ordered.is_empty():
+		var winner := ordered[0] as Dictionary
+		winner_index = int(winner.get("player_index", 0))
+		winner_score = int(winner.get("score", winner_score))
+	var city_income := _top_player_by_stat("total_city_income")
+	var card_income := _top_player_by_stat("total_card_income")
+	var role_income := _top_player_by_stat("total_role_income")
+	var top_city := _top_city_snapshot_entry()
+	var lines := []
+	lines.append("终局总结：%s获胜，结算资金¥%d；胜负按现金 + 存活城市清算 + 情报现金。" % [
+		_player_name(winner_index),
+		winner_score,
+	])
+	lines.append("钱从哪里来：城市经营最高%s累计¥%d；卡牌/情报收益最高%s累计¥%d；角色收益最高%s累计¥%d。" % [
+		_player_name(int(city_income.get("player_index", 0))),
+		maxi(0, int(city_income.get("amount", 0))),
+		_player_name(int(card_income.get("player_index", 0))),
+		maxi(0, int(card_income.get("amount", 0))),
+		_player_name(int(role_income.get("player_index", 0))),
+		maxi(0, int(role_income.get("amount", 0))),
+	])
+	lines.append("地图影响：存活城市%d座，已毁区域%d个，怪兽在场%d/%d；破坏和商路损伤最终都会反映到GDP变化。" % [
+		_active_city_district_indices().size(),
+		_destroyed_district_count(),
+		_active_auto_monster_count(),
+		auto_monsters.size(),
+	])
+	if int(top_city.get("district", -1)) >= 0:
+		var district_index := int(top_city.get("district", -1))
+		lines.append("关键城市：%s（%s）末期GDP¥%d，供:%s，需:%s。" % [
+			String(districts[district_index].get("name", "未知区域")),
+			_player_name(int(top_city.get("owner", -1))),
+			maxi(0, int(top_city.get("last_income", 0))),
+			_limited_name_list(top_city.get("products", []) as Array, 3, "无"),
+			_limited_name_list(top_city.get("demands", []) as Array, 3, "无"),
+		])
+	return "\n".join(lines)
 
 
 func _player_cycle_income(player_index: int) -> int:
@@ -8906,6 +9008,7 @@ func _auto_build_score_for_player(player_index: int, district_index: int) -> int
 	score += _ai_district_focus_score(player_index, district_index)
 	score += _ai_strategy_bonus_for_candidate(player_index, "city_build", district_index, _ai_focus_product(player_index))
 	score += _ai_route_plan_bonus_for_candidate(player_index, "city_build", district_index)
+	score += _ai_phase_bonus_for_candidate(player_index, "city_build", district_index, _ai_focus_product(player_index), player_index)
 	score += _ai_learning_bonus(player_index, "city_build", _ai_strategy_intent(player_index), _ai_route_plan_stage(player_index), _ai_route_plan_product(player_index), "城市化")
 	score += int(float(district.get("transport_score", 1.0)) * 10.0)
 	score += max(0, int(district.get("hp", 0)) - int(district.get("damage", 0)))
@@ -8953,6 +9056,8 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 		var route_product := _ai_route_plan_product(player_index)
 		var route_stage := _ai_route_plan_stage(player_index)
 		var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, "city_build", target)
+		var phase_info := _ai_refresh_game_phase(player_index)
+		var phase_bonus := _ai_phase_bonus_for_candidate(player_index, "city_build", target, focus_product, player_index)
 		var learning_bonus := _ai_learning_bonus(player_index, "city_build", strategy_intent, route_stage, route_product, "城市化")
 		if _create_city_at_district_for_player(player_index, target, "对手自动扩张", false):
 			_record_ai_decision(
@@ -8960,9 +9065,9 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 				"城市化",
 				target,
 				target_score,
-				"GDP/商品/交通/竞争/怪兽风险综合评分｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d" % [focus_product if focus_product != "" else "未定", focus_bonus, strategy_intent if strategy_intent != "" else "未定", strategy_bonus, route_product if route_product != "" else "未定", _ai_route_plan_stage_label(route_stage), route_bonus],
+				"GDP/商品/交通/竞争/怪兽风险综合评分｜阶段:%s/%s+%d｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d" % [_ai_game_phase_label(String(phase_info.get("phase", "midgame"))), _ai_competitive_posture_label(String(phase_info.get("posture", "contesting"))), phase_bonus, focus_product if focus_product != "" else "未定", focus_bonus, strategy_intent if strategy_intent != "" else "未定", strategy_bonus, route_product if route_product != "" else "未定", _ai_route_plan_stage_label(route_stage), route_bonus],
 				[],
-				{"policy_kind": "city_build", "focus_product": focus_product, "focus_score": _ai_focus_score(player_index), "focus_bonus": focus_bonus, "strategy_intent": strategy_intent, "strategy_score": _ai_strategy_score(player_index), "strategy_bonus": strategy_bonus, "route_plan_product": route_product, "route_plan_stage": route_stage, "route_plan_score": _ai_route_plan_score(player_index), "route_plan_bonus": route_bonus, "learning_bonus": learning_bonus}
+				{"policy_kind": "city_build", "focus_product": focus_product, "focus_score": _ai_focus_score(player_index), "focus_bonus": focus_bonus, "strategy_intent": strategy_intent, "strategy_score": _ai_strategy_score(player_index), "strategy_bonus": strategy_bonus, "route_plan_product": route_product, "route_plan_stage": route_stage, "route_plan_score": _ai_route_plan_score(player_index), "route_plan_bonus": route_bonus, "game_phase": String(phase_info.get("phase", "midgame")), "competitive_posture": String(phase_info.get("posture", "contesting")), "score_gap_to_leader": int(phase_info.get("gap", 0)), "leader_index": int(phase_info.get("leader_index", -1)), "phase_bonus": phase_bonus, "learning_bonus": learning_bonus}
 			)
 			built += 1
 	if built > 0:
@@ -9014,6 +9119,9 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 	var route_product := _ai_route_plan_product(player_index)
 	var route_stage := _ai_route_plan_stage(player_index)
 	var plan_route_score := _ai_route_plan_score(player_index)
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var phase := String(phase_info.get("phase", "midgame"))
+	var posture := String(phase_info.get("posture", "contesting"))
 	for own_city_index_variant in _active_city_indices_for_player(player_index):
 		var own_city_index := int(own_city_index_variant)
 		var own_city := _district_city(own_city_index)
@@ -9031,6 +9139,8 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 			price_score += price_strategy_bonus
 			var price_route_bonus := _ai_route_plan_bonus_for_candidate(player_index, "product_speculation", own_city_index, product_name, player_index)
 			price_score += price_route_bonus
+			var price_phase_bonus := _ai_phase_bonus_for_candidate(player_index, "product_speculation", own_city_index, product_name, player_index)
+			price_score += price_phase_bonus
 			var price_learning_bonus := _ai_learning_bonus(player_index, "price_pump", strategy_intent, route_stage, product_name, "匿名商业")
 			price_score += price_learning_bonus
 			result.append({
@@ -9047,6 +9157,11 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 				"route_plan_stage": route_stage,
 				"route_plan_score": plan_route_score,
 				"route_plan_bonus": price_route_bonus,
+				"game_phase": phase,
+				"competitive_posture": posture,
+				"score_gap_to_leader": int(phase_info.get("gap", 0)),
+				"leader_index": int(phase_info.get("leader_index", -1)),
+				"phase_bonus": price_phase_bonus,
 				"policy_kind": "price_pump",
 				"learning_bonus": price_learning_bonus,
 			})
@@ -9063,6 +9178,8 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 				route_score += route_strategy_bonus
 				var sabotage_route_bonus := _ai_route_plan_bonus_for_candidate(player_index, "route_sabotage", target_city_index, product_name, int(target_city.get("owner", -1)))
 				route_score += sabotage_route_bonus
+				var sabotage_phase_bonus := _ai_phase_bonus_for_candidate(player_index, "route_sabotage", target_city_index, product_name, int(target_city.get("owner", -1)))
+				route_score += sabotage_phase_bonus
 				var sabotage_learning_bonus := _ai_learning_bonus(player_index, "route_sabotage", strategy_intent, route_stage, product_name, "匿名商业")
 				route_score += sabotage_learning_bonus
 				result.append({
@@ -9080,6 +9197,11 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 					"route_plan_stage": route_stage,
 					"route_plan_score": plan_route_score,
 					"route_plan_bonus": sabotage_route_bonus,
+					"game_phase": phase,
+					"competitive_posture": posture,
+					"score_gap_to_leader": int(phase_info.get("gap", 0)),
+					"leader_index": int(phase_info.get("leader_index", -1)),
+					"phase_bonus": sabotage_phase_bonus,
 					"policy_kind": "route_sabotage",
 					"learning_bonus": sabotage_learning_bonus,
 				})
@@ -9328,8 +9450,11 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 				"匿名商业",
 				target,
 				int(action.get("score", 0)),
-				"商品:%s｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d" % [
+				"商品:%s｜阶段:%s/%s+%d｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d" % [
 					String(action.get("product", "未知")),
+					_ai_game_phase_label(String(action.get("game_phase", "midgame"))),
+					_ai_competitive_posture_label(String(action.get("competitive_posture", "contesting"))),
+					int(action.get("phase_bonus", 0)),
 					String(action.get("focus_product", "")),
 					int(action.get("focus_bonus", 0)),
 					String(action.get("strategy_intent", "")),
@@ -9339,7 +9464,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 					int(action.get("route_plan_bonus", 0)),
 				],
 				[],
-				{"policy_kind": String(action.get("policy_kind", action.get("kind", ""))), "product": String(action.get("product", "")), "focus_product": String(action.get("focus_product", "")), "focus_bonus": int(action.get("focus_bonus", 0)), "strategy_intent": String(action.get("strategy_intent", "")), "strategy_score": int(action.get("strategy_score", 0)), "strategy_bonus": int(action.get("strategy_bonus", 0)), "route_plan_product": String(action.get("route_plan_product", "")), "route_plan_stage": String(action.get("route_plan_stage", "")), "route_plan_score": int(action.get("route_plan_score", 0)), "route_plan_bonus": int(action.get("route_plan_bonus", 0)), "learning_bonus": int(action.get("learning_bonus", 0))}
+				{"policy_kind": String(action.get("policy_kind", action.get("kind", ""))), "product": String(action.get("product", "")), "focus_product": String(action.get("focus_product", "")), "focus_bonus": int(action.get("focus_bonus", 0)), "strategy_intent": String(action.get("strategy_intent", "")), "strategy_score": int(action.get("strategy_score", 0)), "strategy_bonus": int(action.get("strategy_bonus", 0)), "route_plan_product": String(action.get("route_plan_product", "")), "route_plan_stage": String(action.get("route_plan_stage", "")), "route_plan_score": int(action.get("route_plan_score", 0)), "route_plan_bonus": int(action.get("route_plan_bonus", 0)), "game_phase": String(action.get("game_phase", "midgame")), "competitive_posture": String(action.get("competitive_posture", "contesting")), "score_gap_to_leader": int(action.get("score_gap_to_leader", 0)), "leader_index": int(action.get("leader_index", -1)), "phase_bonus": int(action.get("phase_bonus", 0)), "learning_bonus": int(action.get("learning_bonus", 0))}
 			)
 			acted += 1
 	if acted > 0:
@@ -10030,6 +10155,40 @@ func _district_button_text(index: int) -> String:
 	]
 
 
+func _player_quick_goal_hint(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return "目标提示：选择玩家后开始操作。"
+	if game_over:
+		return "目标提示：本局已结束，查看终局总结，理解钱从哪里来。"
+	if _has_pending_target_choice():
+		return "目标提示：这张牌需要先指定目标怪兽。"
+	if not _pending_contract_offers_for_player(player_index).is_empty():
+		return "目标提示：匿名合约等待回应，签或拒都会留下线索。"
+	if victory_countdown_active:
+		return "目标提示：终局倒计时中，保护现金/城市，或压制疑似领先者。"
+	if _ai_owned_active_monster_count(player_index) <= 0:
+		return "目标提示：先召唤怪兽，怪兽落地区和邻区才会开放购牌。"
+	if _player_active_city_count(player_index) <= 0:
+		if selected_district >= 0 and selected_district < districts.size() and _city_build_error_for(player_index, selected_district, false) == "":
+			return "目标提示：当前区域可城市化；城市GDP会按周期变成钱。"
+		return "目标提示：选择陆地区域建城，先建立稳定收入。"
+	if selected_district >= 0 and selected_district < districts.size():
+		if _can_buy_card_from_district(selected_district, player_index) and not (districts[selected_district].get("card_choices", []) as Array).is_empty():
+			return "目标提示：当前区域可购牌；重复获得同名牌会自动升级。"
+		if _city_build_error_for(player_index, selected_district, false) == "":
+			return "目标提示：可以继续建城扩张GDP，但现金要留给购牌和竞价。"
+		var city := _district_city(selected_district)
+		if _city_is_active(city):
+			var owner := int(city.get("owner", -1))
+			if owner == player_index:
+				return "目标提示：这是己方城市；用生产、需求、交通和合约提高GDP。"
+			if owner >= 0:
+				return "目标提示：陌生城市可标注业主；猜对终局赚钱，猜错要赔。"
+	if _player_counted_hand_size(players[player_index] as Dictionary) <= 0:
+		return "目标提示：去怪兽所在区或邻区买牌，手牌上限%d张。" % PLAYER_HAND_LIMIT
+	return "目标提示：满足商品流动后匿名出牌；扩GDP、护商路，或压制竞争城市。"
+
+
 func _refresh_player_panel() -> void:
 	_clear_children(player_box)
 	if players.is_empty():
@@ -10060,6 +10219,7 @@ func _refresh_player_panel() -> void:
 	], 14, Color("#e2e8f0"))
 	player_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(player_status)
+	player_box.add_child(_plain_label(_player_quick_goal_hint(selected_player), 11, Color("#bbf7d0")))
 
 	var tip_row := HBoxContainer.new()
 	tip_row.add_theme_constant_override("separation", 6)
@@ -11831,6 +11991,11 @@ func _empty_ai_memory() -> Dictionary:
 		"route_plan_target_city": -1,
 		"route_plan_partner_district": -1,
 		"route_plan_rankings": [],
+		"game_phase": "opening",
+		"competitive_posture": "contesting",
+		"score_gap_to_leader": 0,
+		"leader_index": -1,
+		"phase_reason": "开局：优先首召、建城和购基础牌。",
 		"learned_policy_values": {},
 		"learning_updates": 0,
 		"learning_last_reward": 0,
@@ -11906,6 +12071,16 @@ func _ensure_player_ai_state() -> void:
 					memory["route_plan_partner_district"] = -1
 				if not (memory.get("route_plan_rankings", []) is Array):
 					memory["route_plan_rankings"] = []
+				if String(memory.get("game_phase", "")) == "":
+					memory["game_phase"] = "opening"
+				if String(memory.get("competitive_posture", "")) == "":
+					memory["competitive_posture"] = "contesting"
+				if not memory.has("score_gap_to_leader"):
+					memory["score_gap_to_leader"] = 0
+				if not memory.has("leader_index"):
+					memory["leader_index"] = -1
+				if String(memory.get("phase_reason", "")) == "":
+					memory["phase_reason"] = "开局：优先首召、建城和购基础牌。"
 				if not (memory.get("learned_policy_values", {}) is Dictionary):
 					memory["learned_policy_values"] = {}
 				if not memory.has("learning_updates"):
@@ -11944,10 +12119,225 @@ func _ai_owned_active_monster_count(player_index: int) -> int:
 	return count
 
 
+func _visible_score_leader_entry() -> Dictionary:
+	var best := {"player_index": -1, "score": -999999}
+	for i in range(players.size()):
+		var score := _player_visible_settlement_estimate(i)
+		if score > int(best.get("score", -999999)):
+			best = {"player_index": i, "score": score}
+	return best
+
+
+func _ai_score_gap_to_leader(player_index: int) -> int:
+	var leader := _visible_score_leader_entry()
+	if int(leader.get("player_index", -1)) < 0:
+		return 0
+	return _player_visible_settlement_estimate(player_index) - int(leader.get("score", 0))
+
+
+func _ai_game_phase(player_index: int) -> String:
+	var score := _player_visible_settlement_estimate(player_index)
+	var cash_goal := maxi(1, _roguelike_cash_goal())
+	if victory_countdown_active or score >= int(round(float(cash_goal) * AI_ENDGAME_GOAL_RATIO)) or business_cycle_count >= AI_ENDGAME_CYCLE:
+		return "endgame"
+	if business_cycle_count <= AI_OPENING_CYCLE_MAX or _ai_owned_active_monster_count(player_index) <= 0 or _player_active_city_count(player_index) <= 0:
+		return "opening"
+	return "midgame"
+
+
+func _ai_competitive_posture(player_index: int) -> String:
+	var leader := _visible_score_leader_entry()
+	var leader_index := int(leader.get("player_index", -1))
+	var gap := _ai_score_gap_to_leader(player_index)
+	if leader_index == player_index and abs(gap) <= AI_LEAD_MARGIN:
+		return "leader"
+	if leader_index == player_index:
+		return "leader"
+	if gap <= -AI_TRAILING_MARGIN:
+		return "trailing"
+	return "contesting"
+
+
+func _ai_game_phase_reason(player_index: int, phase: String, posture: String, gap: int) -> String:
+	match phase:
+		"opening":
+			return "开局：优先首召、建城和买基础经济牌。"
+		"endgame":
+			return "后期：%s，距离领先者%s；围绕现金目标冲刺、防守或压制。" % [
+				_ai_competitive_posture_label(posture),
+				_signed_int_text(gap),
+			]
+	return "中局：围绕商品路线强化GDP，并开始保护己方收益或攻击竞争城市。"
+
+
+func _ai_refresh_game_phase(player_index: int, force: bool = false) -> Dictionary:
+	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+		return {
+			"phase": "human",
+			"posture": "human",
+			"gap": 0,
+			"leader_index": -1,
+			"reason": "真人玩家",
+		}
+	var player: Dictionary = players[player_index]
+	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var leader := _visible_score_leader_entry()
+	var leader_index := int(leader.get("player_index", -1))
+	var gap := _ai_score_gap_to_leader(player_index)
+	var phase := _ai_game_phase(player_index)
+	var posture := _ai_competitive_posture(player_index)
+	if not force and String(memory.get("game_phase", "")) == phase and String(memory.get("competitive_posture", "")) == posture and int(memory.get("score_gap_to_leader", 0)) == gap and int(memory.get("leader_index", -1)) == leader_index:
+		return {
+			"phase": phase,
+			"posture": posture,
+			"gap": gap,
+			"leader_index": leader_index,
+			"reason": String(memory.get("phase_reason", "")),
+		}
+	var reason := _ai_game_phase_reason(player_index, phase, posture, gap)
+	memory["game_phase"] = phase
+	memory["competitive_posture"] = posture
+	memory["score_gap_to_leader"] = gap
+	memory["leader_index"] = leader_index
+	memory["phase_reason"] = reason
+	player["ai_memory"] = memory
+	players[player_index] = player
+	return {
+		"phase": phase,
+		"posture": posture,
+		"gap": gap,
+		"leader_index": leader_index,
+		"reason": reason,
+	}
+
+
+func _ai_game_phase_label(phase: String) -> String:
+	match phase:
+		"opening":
+			return "开局"
+		"midgame":
+			return "中局"
+		"endgame":
+			return "后期"
+	return "未知阶段"
+
+
+func _ai_competitive_posture_label(posture: String) -> String:
+	match posture:
+		"leader":
+			return "领先"
+		"trailing":
+			return "落后"
+		"contesting":
+			return "争夺中"
+	return "未知态势"
+
+
+func _ai_best_city_for_owner(owner_index: int, prefer_damaged: bool = false) -> int:
+	var best_index := -1
+	var best_score := -999999
+	for city_index_variant in _active_city_district_indices():
+		var city_index := int(city_index_variant)
+		var city := _district_city(city_index)
+		if int(city.get("owner", -1)) != owner_index:
+			continue
+		var score := int(city.get("last_income", 0)) + _city_cycle_income(city_index, _city_competition_matches(city_index))
+		score += (city.get("products", []) as Array).size() * 28
+		score += (city.get("demands", []) as Array).size() * 18
+		score -= int(city.get("trade_route_damage", 0)) * 22
+		score -= int(districts[city_index].get("damage", 0)) * 14
+		if prefer_damaged:
+			score += int(city.get("trade_route_damage", 0)) * 74 + int(districts[city_index].get("damage", 0)) * 36
+		if score > best_score:
+			best_score = score
+			best_index = city_index
+	return best_index
+
+
+func _ai_best_pressure_target_city(player_index: int) -> int:
+	var leader := _visible_score_leader_entry()
+	var leader_index := int(leader.get("player_index", -1))
+	if leader_index >= 0 and leader_index != player_index:
+		var leader_city := _ai_best_city_for_owner(leader_index, _ai_competitive_posture(player_index) == "trailing")
+		if leader_city >= 0:
+			return leader_city
+	return _ai_best_city_district(player_index, false)
+
+
+func _ai_pressure_kind(kind: String, skill: Dictionary = {}) -> bool:
+	if ["route_sabotage", "panic_shift", "monster_lure", "mudslide", "area_damage", "special_monster_delay"].has(kind):
+		return true
+	if kind == "city_gdp_derivative":
+		return String(skill.get("gdp_bet_direction", "up")) == "down"
+	if kind == "region_economy_shift":
+		return int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0)) < 0
+	return false
+
+
+func _ai_defense_kind(kind: String, skill: Dictionary = {}) -> bool:
+	if ["route_insurance", "route_flow_boon", "city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_demand_shift", "market_stabilize"].has(kind):
+		return true
+	if kind == "city_gdp_derivative":
+		return String(skill.get("gdp_bet_direction", "up")) == "up"
+	if kind == "region_economy_shift":
+		return int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0)) > 0
+	return false
+
+
+func _ai_phase_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> int:
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var phase := String(phase_info.get("phase", "midgame"))
+	var posture := String(phase_info.get("posture", "contesting"))
+	var leader_index := int(phase_info.get("leader_index", -1))
+	var helpful_target := target_owner == player_index
+	var harmful_target := target_owner >= 0 and target_owner != player_index
+	var targets_leader := leader_index >= 0 and target_owner == leader_index and leader_index != player_index
+	var bonus := 0
+	match phase:
+		"opening":
+			if kind == "monster_card":
+				bonus += 420 if _ai_owned_active_monster_count(player_index) <= 0 else 40
+			if kind == "city_build":
+				bonus += 150 if _player_active_city_count(player_index) <= 0 else 55
+			if ["cash_gain", "supply_draw", "card_access_boon"].has(kind):
+				bonus += 60
+			if _ai_pressure_kind(kind, skill):
+				bonus -= 35
+		"midgame":
+			if _ai_defense_kind(kind, skill) and helpful_target:
+				bonus += 55
+			if _ai_pressure_kind(kind, skill) and harmful_target:
+				bonus += 65
+			if product_name != "" and (product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index)):
+				bonus += 38
+		"endgame":
+			if posture == "leader":
+				if _ai_defense_kind(kind, skill) and (helpful_target or target_owner == -999):
+					bonus += 145
+				if ["cash_gain", "market_stabilize"].has(kind):
+					bonus += 90
+				if _ai_pressure_kind(kind, skill) and harmful_target:
+					bonus += 35
+			elif posture == "trailing":
+				if _ai_pressure_kind(kind, skill) and (targets_leader or harmful_target):
+					bonus += 170
+				if kind == "city_gdp_derivative" and String(skill.get("gdp_bet_direction", "up")) == "down":
+					bonus += 95
+				if ["cash_gain", "product_speculation"].has(kind):
+					bonus += 70
+			else:
+				if _ai_defense_kind(kind, skill) and helpful_target:
+					bonus += 80
+				if _ai_pressure_kind(kind, skill) and (targets_leader or harmful_target):
+					bonus += 90
+	return bonus
+
+
 func _ai_observation_vector(player_index: int) -> Dictionary:
 	if player_index < 0 or player_index >= players.size():
 		return {}
 	var focus_product := _ai_focus_product(player_index)
+	var phase_info := _ai_refresh_game_phase(player_index)
 	var player: Dictionary = players[player_index]
 	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary)
 	var total_flow := 0
@@ -11969,6 +12359,10 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"route_plan_product": _ai_route_plan_product(player_index),
 		"route_plan_stage": _ai_route_plan_stage(player_index),
 		"route_plan_score": _ai_route_plan_score(player_index),
+		"game_phase": String(phase_info.get("phase", "midgame")),
+		"competitive_posture": String(phase_info.get("posture", "contesting")),
+		"score_gap_to_leader": int(phase_info.get("gap", 0)),
+		"leader_index": int(phase_info.get("leader_index", -1)),
 		"learning_updates": int(memory.get("learning_updates", 0)),
 		"episode_learning_updates": int(memory.get("episode_learning_updates", 0)),
 		"learned_policy_count": (memory.get("learned_policy_values", {}) as Dictionary).size(),
@@ -11982,7 +12376,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "generic_effect_bonus", "learning_bonus"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -12102,6 +12496,7 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 	if not _player_is_ai(player_index):
 		return
 	_ai_refresh_economic_focus(player_index)
+	var phase_info := _ai_refresh_game_phase(player_index)
 	var observation := _ai_observation_vector(player_index)
 	var player: Dictionary = players[player_index]
 	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
@@ -12126,6 +12521,11 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"route_plan_stage": String(memory.get("route_plan_stage", "")),
 		"route_plan_score": int(memory.get("route_plan_score", 0)),
 		"route_plan_reason": String(memory.get("route_plan_reason", "")),
+		"game_phase": String(phase_info.get("phase", "midgame")),
+		"competitive_posture": String(phase_info.get("posture", "contesting")),
+		"score_gap_to_leader": int(phase_info.get("gap", 0)),
+		"leader_index": int(phase_info.get("leader_index", -1)),
+		"phase_reason": String(phase_info.get("reason", "")),
 		"baseline_cash": int(player.get("cash", 0)),
 		"baseline_settlement": int(observation.get("settlement_estimate", 0)),
 		"reward_cash": 0,
@@ -12526,6 +12926,11 @@ func _ai_growth_need_score(player_index: int) -> int:
 
 func _ai_strategy_candidates(player_index: int) -> Array:
 	var focus := _ai_focus_product(player_index)
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var phase := String(phase_info.get("phase", "midgame"))
+	var posture := String(phase_info.get("posture", "contesting"))
+	var phase_label := _ai_game_phase_label(phase)
+	var posture_label := _ai_competitive_posture_label(posture)
 	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
 	var route_threat := _ai_own_route_threat_score(player_index)
 	var rival_pressure := _ai_focus_rival_pressure_score(player_index)
@@ -12533,24 +12938,58 @@ func _ai_strategy_candidates(player_index: int) -> Array:
 	var defend_learning := _ai_learning_bonus(player_index, "", "defend_routes", "", focus, "战略选择")
 	var disrupt_learning := _ai_learning_bonus(player_index, "", "disrupt_competitors", "", focus, "战略选择")
 	var grow_learning := _ai_learning_bonus(player_index, "", "grow_focus", "", focus, "战略选择")
+	var defend_phase_bonus := 0
+	var disrupt_phase_bonus := 0
+	var grow_phase_bonus := 0
+	match phase:
+		"opening":
+			grow_phase_bonus += 150
+			defend_phase_bonus += 20
+			disrupt_phase_bonus -= 35
+		"midgame":
+			grow_phase_bonus += 45
+			defend_phase_bonus += mini(80, route_threat / 3)
+			disrupt_phase_bonus += mini(90, rival_pressure / 3)
+		"endgame":
+			if posture == "leader":
+				defend_phase_bonus += 170
+				grow_phase_bonus += 45
+				disrupt_phase_bonus += 20
+			elif posture == "trailing":
+				disrupt_phase_bonus += 185
+				grow_phase_bonus += 75
+				defend_phase_bonus += route_threat / 2
+			else:
+				disrupt_phase_bonus += 90
+				defend_phase_bonus += 80
+				grow_phase_bonus += 50
 	return [
 		{
 			"intent": "defend_routes",
-			"score": 42 + route_threat + route_threat / 2 + int(round(float(cash_gap) / 80.0)) + defend_learning,
+			"score": 42 + route_threat + route_threat / 2 + int(round(float(cash_gap) / 80.0)) + defend_phase_bonus + defend_learning,
+			"game_phase": phase,
+			"competitive_posture": posture,
+			"phase_bonus": defend_phase_bonus,
 			"learning_bonus": defend_learning,
-			"reason": "保卫商路｜威胁%d｜通关缺口¥%d｜学习%d" % [route_threat, cash_gap, defend_learning],
+			"reason": "保卫商路｜%s/%s｜威胁%d｜通关缺口¥%d｜阶段%d｜学习%d" % [phase_label, posture_label, route_threat, cash_gap, defend_phase_bonus, defend_learning],
 		},
 		{
 			"intent": "disrupt_competitors",
-			"score": 54 + rival_pressure + _player_product_flow(player_index, focus) * 18 + disrupt_learning,
+			"score": 54 + rival_pressure + _player_product_flow(player_index, focus) * 18 + disrupt_phase_bonus + disrupt_learning,
+			"game_phase": phase,
+			"competitive_posture": posture,
+			"phase_bonus": disrupt_phase_bonus,
 			"learning_bonus": disrupt_learning,
-			"reason": "压制竞品｜焦点%s｜竞品压力%d｜学习%d" % [focus if focus != "" else "未定", rival_pressure, disrupt_learning],
+			"reason": "压制竞品｜%s/%s｜焦点%s｜竞品压力%d｜阶段%d｜学习%d" % [phase_label, posture_label, focus if focus != "" else "未定", rival_pressure, disrupt_phase_bonus, disrupt_learning],
 		},
 		{
 			"intent": "grow_focus",
-			"score": growth_need + grow_learning,
+			"score": growth_need + grow_phase_bonus + grow_learning,
+			"game_phase": phase,
+			"competitive_posture": posture,
+			"phase_bonus": grow_phase_bonus,
 			"learning_bonus": grow_learning,
-			"reason": "扩张焦点｜焦点%s｜成长需求%d｜学习%d" % [focus if focus != "" else "未定", growth_need, grow_learning],
+			"reason": "扩张焦点｜%s/%s｜焦点%s｜成长需求%d｜阶段%d｜学习%d" % [phase_label, posture_label, focus if focus != "" else "未定", growth_need, grow_phase_bonus, grow_learning],
 		},
 	]
 
@@ -13420,12 +13859,13 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary) -> Dictionary:
 	var kind := String(skill.get("kind", ""))
 	var own_city := _ai_best_city_district(player_index, true)
-	var rival_city := _ai_best_city_district(player_index, false)
+	var rival_city := _ai_best_pressure_target_city(player_index)
 	var fallback := own_city if own_city >= 0 else _ai_first_alive_district()
 	var focus_product := _ai_focus_product(player_index)
 	var planned_product := _ai_product_for_skill(player_index, skill)
 	var route_product := _ai_route_plan_product(player_index)
 	var route_stage := _ai_route_plan_stage(player_index)
+	var phase_info := _ai_refresh_game_phase(player_index)
 	var context := {
 		"action": "出牌",
 		"slot_index": slot_index,
@@ -13445,6 +13885,11 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"route_plan_stage": route_stage,
 		"route_plan_score": _ai_route_plan_score(player_index),
 		"route_plan_bonus": 0,
+		"game_phase": String(phase_info.get("phase", "midgame")),
+		"competitive_posture": String(phase_info.get("posture", "contesting")),
+		"score_gap_to_leader": int(phase_info.get("gap", 0)),
+		"leader_index": int(phase_info.get("leader_index", -1)),
+		"phase_bonus": 0,
 		"learning_bonus": 0,
 		"contract_source": -1,
 		"contract_target": -1,
@@ -13613,6 +14058,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if route_bonus > 0:
 		context["route_plan_bonus"] = int(context.get("route_plan_bonus", 0)) + route_bonus
 		context["score"] = int(context["score"]) + route_bonus
+	var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
+	if phase_bonus != 0:
+		context["phase_bonus"] = phase_bonus
+		context["score"] = int(context["score"]) + phase_bonus
 	var generic_bonus := _ai_generic_card_effect_score(player_index, skill, context_district, String(context.get("product", "")), target_owner)
 	if generic_bonus != 0:
 		context["generic_effect_bonus"] = generic_bonus
@@ -13658,6 +14107,11 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var route_product := _ai_route_plan_product(player_index)
 	var route_stage := _ai_route_plan_stage(player_index)
 	var route_score := _ai_route_plan_score(player_index)
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var phase := String(phase_info.get("phase", "midgame"))
+	var posture := String(phase_info.get("posture", "contesting"))
+	var phase_label := _ai_game_phase_label(phase)
+	var posture_label := _ai_competitive_posture_label(posture)
 	for district_index in range(districts.size()):
 		if not _can_buy_card_from_district(district_index, player_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
@@ -13685,6 +14139,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			if _city_is_active(city):
 				target_owner = int(city.get("owner", -1))
 			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
+			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
 			var learning_bonus := _ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
 			if required <= 0 or available >= required:
 				score += 35
@@ -13700,6 +14155,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score += route_bonus
 			if generic_bonus != 0:
 				score += generic_bonus
+			if phase_bonus != 0:
+				score += phase_bonus
 			if learning_bonus != 0:
 				score += learning_bonus
 			var role := _player_role_card_for_index(player_index)
@@ -13725,13 +14182,21 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"route_plan_stage": route_stage,
 				"route_plan_score": route_score,
 				"route_plan_bonus": route_bonus,
+				"game_phase": phase,
+				"competitive_posture": posture,
+				"score_gap_to_leader": int(phase_info.get("gap", 0)),
+				"leader_index": int(phase_info.get("leader_index", -1)),
+				"phase_bonus": phase_bonus,
 				"generic_effect_bonus": generic_bonus,
 				"learning_bonus": learning_bonus,
-				"reason": "%s｜费用¥%d｜流动%d/%d｜策略%s+%d｜路线%s/%s+%d｜学习%d｜探索率%.0f%%" % [
+				"reason": "%s｜费用¥%d｜流动%d/%d｜阶段%s/%s+%d｜策略%s+%d｜路线%s/%s+%d｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
 					price,
 					available,
 					required,
+					phase_label,
+					posture_label,
+					phase_bonus,
 					strategy_intent if strategy_intent != "" else "未定",
 					strategy_bonus,
 					route_product if route_product != "" else "未定",
@@ -13787,7 +14252,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "generic_effect_bonus", "learning_bonus"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -13877,6 +14342,11 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 				"route_plan_stage": String(buy_choice.get("route_plan_stage", "")),
 				"route_plan_score": int(buy_choice.get("route_plan_score", 0)),
 				"route_plan_bonus": int(buy_choice.get("route_plan_bonus", 0)),
+				"game_phase": String(buy_choice.get("game_phase", "")),
+				"competitive_posture": String(buy_choice.get("competitive_posture", "")),
+				"score_gap_to_leader": int(buy_choice.get("score_gap_to_leader", 0)),
+				"leader_index": int(buy_choice.get("leader_index", -1)),
+				"phase_bonus": int(buy_choice.get("phase_bonus", 0)),
 				"policy_kind": String(buy_choice.get("policy_kind", buy_choice.get("kind", ""))),
 				"learning_bonus": int(buy_choice.get("learning_bonus", 0)),
 			}
@@ -20105,6 +20575,7 @@ func _finish_game(reason: String) -> void:
 			_player_intel_summary(i),
 		])
 	_log("胜者：%s，结算资金最高：%d。" % [players[winner_index]["name"], winner_score])
+	_log(_final_run_summary_text(rankings))
 	var learned_samples := _finalize_ai_episode_rewards(reason)
 	if learned_samples > 0:
 		_log("AI终局训练：已用本局最终资金回写%d条决策样本。" % learned_samples)
