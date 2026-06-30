@@ -122,7 +122,7 @@ func _run() -> void:
 	_expect(_verify_ai_route_plan_policy(main), "AI opponents form multi-cycle product-route plans that bias build, card, contract, and business choices")
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
-	_expect(_verify_max_ai_seat_opening_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, and restore cleanly")
+	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, settle, and restore cleanly")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -1999,7 +1999,7 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 	return ok and restore_result == OK
 
 
-func _verify_max_ai_seat_opening_smoke(main: Node) -> bool:
+func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
 	var saved_force_duration := float(main.get("card_resolution_force_duration"))
@@ -2122,6 +2122,50 @@ func _verify_max_ai_seat_opening_smoke(main: Node) -> bool:
 		ok = false
 	if sampled_ai < max_ai:
 		failures.append("sampled ai %d" % sampled_ai)
+		ok = false
+	var leader_index := 1
+	var leader_score := -999999
+	for player_index in range(1, max_players):
+		var score := int(main.call("_player_visible_settlement_estimate", player_index))
+		if score > leader_score:
+			leader_score = score
+			leader_index = player_index
+	players = _as_array(main.get("players")).duplicate(true)
+	var cash_goal := int(main.call("_roguelike_cash_goal"))
+	for player_index in range(players.size()):
+		var player := players[player_index] as Dictionary
+		player["cash"] = cash_goal + 1200 if player_index == leader_index else 400
+		players[player_index] = player
+	main.set("players", players)
+	main.call("_update_victory_countdown", 0.1)
+	if not bool(main.get("victory_countdown_active")):
+		failures.append("countdown inactive")
+		ok = false
+	if int(main.get("victory_countdown_trigger_player")) != leader_index:
+		failures.append("countdown trigger %d expected %d" % [int(main.get("victory_countdown_trigger_player")), leader_index])
+		ok = false
+	var countdown_state := main.call("_capture_run_state") as Dictionary
+	main.set("victory_countdown_active", false)
+	main.set("victory_countdown_timer", 0.0)
+	if int(main.call("_apply_run_state", countdown_state)) != OK or not bool(main.get("victory_countdown_active")):
+		failures.append("countdown restore")
+		ok = false
+	main.call("_update_victory_countdown", 61.0)
+	if not bool(main.get("game_over")):
+		failures.append("not game over")
+		ok = false
+	var standings_text := String(main.call("_standings_text"))
+	if not standings_text.contains("终局总结") or not standings_text.contains("AI路线") or not standings_text.contains("关键卡牌"):
+		failures.append("missing final summary")
+		ok = false
+	var finalized_ai := 0
+	var final_players := _as_array(main.get("players"))
+	for player_index in range(1, max_players):
+		var memory := (final_players[player_index] as Dictionary).get("ai_memory", {}) as Dictionary
+		if int(memory.get("episode_learning_updates", 0)) > 0:
+			finalized_ai += 1
+	if finalized_ai < max_ai:
+		failures.append("finalized ai %d" % finalized_ai)
 		ok = false
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
