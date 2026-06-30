@@ -11362,6 +11362,26 @@ func _opening_guide_lines(player_index: int) -> Array:
 	]
 
 
+func _opening_guide_step_entries(player_index: int) -> Array:
+	var progress := _opening_guide_progress(player_index)
+	return [
+		{"done": bool(progress.get("has_monster", false)), "title": "首召怪兽", "body": "选一个落点，打出起始I级怪兽牌，开启落地区/邻区购牌。", "accent": Color("#fb7185")},
+		{"done": bool(progress.get("has_city", false)), "title": "建第一城", "body": "在陆地城市化；GDP/min 会按秒变成现金。", "accent": Color("#4ade80")},
+		{"done": bool(progress.get("has_bought_card", false)), "title": "买第一牌", "body": "去怪兽落地区或邻区买牌；重复牌自动升级。", "accent": Color("#facc15")},
+		{"done": bool(progress.get("has_played_card", false)), "title": "匿名出牌", "body": "满足商品流动后出牌，需要目标的牌会先询问怪兽。", "accent": Color("#c084fc")},
+		{"done": bool(progress.get("has_checked_economy", false)), "title": "看经济总览", "body": "确认商品、商路、GDP和城市收入拆解。", "accent": Color("#38bdf8")},
+	]
+
+
+func _opening_guide_completed_count(player_index: int) -> int:
+	var completed := 0
+	for entry_variant in _opening_guide_step_entries(player_index):
+		var entry: Dictionary = entry_variant
+		if bool(entry.get("done", false)):
+			completed += 1
+	return completed
+
+
 func _opening_guide_next_step_text(player_index: int) -> String:
 	var progress := _opening_guide_progress(player_index)
 	if progress.is_empty():
@@ -11388,16 +11408,34 @@ func _dismiss_opening_guide() -> void:
 	_refresh_ui()
 
 
+func _add_opening_guide_task_card(parent: Container, entry: Dictionary) -> void:
+	var done := bool(entry.get("done", false))
+	var accent: Color = entry.get("accent", Color("#38bdf8"))
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10 if done else 0.05), 1, 10))
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	margin.add_child(box)
+	var title := _plain_label("%s %s" % ["✓" if done else "□", String(entry.get("title", "步骤"))], 10, Color("#e0f2fe") if done else Color("#f8fafc"))
+	box.add_child(title)
+	var body := _plain_label(String(entry.get("body", "")), 9, Color("#94a3b8") if done else Color("#cbd5e1"))
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(body)
+
+
 func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
 	if not _opening_guide_visible(player_index):
 		return
 	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#111827")
-	style.border_color = Color("#38bdf8")
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.08), 1, 12))
 	parent.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 10)
@@ -11417,16 +11455,52 @@ func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
 	var economy_button := Button.new()
 	economy_button.text = "经济总览"
 	economy_button.tooltip_text = "查看GDP、商品、商路和城市收入拆解。"
+	_style_menu_button(economy_button, Color("#4ade80"))
 	economy_button.pressed.connect(Callable(self, "_open_economy_overview_menu"))
 	header.add_child(economy_button)
 	var close_button := Button.new()
 	close_button.text = "关闭"
 	close_button.tooltip_text = "本局不再显示这块轻引导。"
+	_style_menu_button(close_button, Color("#94a3b8"))
 	close_button.pressed.connect(Callable(self, "_dismiss_opening_guide"))
 	header.add_child(close_button)
-	box.add_child(_plain_label(_opening_guide_next_step_text(player_index), 10, Color("#bfdbfe")))
+	var completed := _opening_guide_completed_count(player_index)
+	var progress_label := _plain_label("开局进度 %d/5｜只保留开局1-2分钟，也可以手动关闭。" % completed, 10, Color("#bfdbfe"))
+	box.add_child(progress_label)
+	var progress_bar := ProgressBar.new()
+	progress_bar.min_value = 0
+	progress_bar.max_value = 5
+	progress_bar.value = completed
+	progress_bar.show_percentage = false
+	progress_bar.custom_minimum_size = Vector2(0, 8)
+	box.add_child(progress_bar)
+	_add_menu_info_card(box, "下一步卡片", _opening_guide_next_step_text(player_index), Color("#38bdf8"), "先照这张卡做；更多细则可点规则或经济总览。")
+	var task_grid := GridContainer.new()
+	task_grid.columns = 1
+	task_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	task_grid.add_theme_constant_override("v_separation", 5)
+	box.add_child(task_grid)
+	for entry_variant in _opening_guide_step_entries(player_index):
+		_add_opening_guide_task_card(task_grid, entry_variant as Dictionary)
 	for line_variant in _opening_guide_lines(player_index):
-		box.add_child(_plain_label(String(line_variant), 10, Color("#dbeafe")))
+		var legacy_line := _plain_label(String(line_variant), 9, Color("#dbeafe"))
+		legacy_line.visible = false
+		box.add_child(legacy_line)
+	var action_row := HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 6)
+	box.add_child(action_row)
+	var tutorial_button := Button.new()
+	tutorial_button.text = "新手引导"
+	tutorial_button.tooltip_text = "打开更完整的10步上手说明。"
+	_style_menu_button(tutorial_button, Color("#67e8f9"))
+	tutorial_button.pressed.connect(Callable(self, "_open_tutorial_menu"))
+	action_row.add_child(tutorial_button)
+	var rules_button := Button.new()
+	rules_button.text = "游戏规则"
+	rules_button.tooltip_text = "查看购牌、出牌、竞价、合约、天气、终局和隐私规则。"
+	_style_menu_button(rules_button, Color("#93c5fd"))
+	rules_button.pressed.connect(Callable(self, "_open_rules_menu"))
+	action_row.add_child(rules_button)
 	box.add_child(_plain_label("最后按钱最多获胜；出牌匿名，但条件和结果会留下推理线索。", 10, Color("#fef3c7")))
 
 

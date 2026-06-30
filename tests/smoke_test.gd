@@ -136,6 +136,8 @@ func _run() -> void:
 	_expect(player_box != null and _container_label_text_contains(player_box, "手牌卡面") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示"), "player panel shows one concise next-action hint")
 	_expect(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"), "early-run guide shows a dismissible checklist and economy overview shortcut")
+	_expect(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步卡片") and _container_label_text_contains(player_box, "首召怪兽"), "early-run guide presents progress, next-step card, and task cards")
+	_expect(player_box != null and _container_button_text_contains(player_box, "新手引导") and _container_button_text_contains(player_box, "游戏规则"), "early-run guide exposes tutorial and rules shortcuts")
 	_expect(player_box != null and _container_label_text_contains(player_box, "当前下一步") and _container_label_text_contains(player_box, "□ 打开经济总览"), "early-run guide shows the real next step and leaves economy overview unchecked before it is opened")
 	main.call("_open_economy_overview_menu")
 	main.call("_close_menu")
