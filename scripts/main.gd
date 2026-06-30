@@ -28590,7 +28590,7 @@ func _record_monster_wager_damage(attacker_slot: int, target_slot: int, damage: 
 	active_monster_wagers[index] = entry
 
 
-func _place_monster_wager(wager_id: int, side: String, stake: int = MONSTER_WAGER_DEFAULT_STAKE, player_index: int = -1, forced: bool = false) -> bool:
+func _place_monster_wager(wager_id: int, side: String, stake: int = MONSTER_WAGER_DEFAULT_STAKE, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
 	side = side.to_lower()
 	if player_index < 0:
 		player_index = selected_player
@@ -28618,6 +28618,10 @@ func _place_monster_wager(wager_id: int, side: String, stake: int = MONSTER_WAGE
 	bet["stake"] = stake
 	bet["forced"] = forced
 	bet["last_time"] = game_time
+	for key_variant in metadata.keys():
+		var key := String(key_variant)
+		if key.begins_with("ai_wager_"):
+			bet[key] = metadata[key_variant]
 	bets[player_key] = bet
 	var public_bets: Array = (entry.get("public_bets", []) as Array).duplicate(true)
 	public_bets.append({
@@ -28652,24 +28656,141 @@ func _place_monster_wager(wager_id: int, side: String, stake: int = MONSTER_WAGE
 	return true
 
 
-func _ai_monster_wager_side(player_index: int, entry: Dictionary) -> String:
-	var best_side := ""
-	var best_score := -99999
+func _monster_wager_actor_expected_damage_score(actor: Dictionary) -> int:
+	var actions := _auto_monster_actions(actor)
+	var weights := _auto_monster_action_weights(actor, _has_destroyed_district())
+	var total := _weight_total(weights)
+	if actions.is_empty() or total <= 0:
+		return maxi(1, int(actor.get("rank", 1)))
+	var score := 0.0
+	for i in range(actions.size()):
+		var weight := int(weights[i]) if i < weights.size() else 0
+		if weight <= 0:
+			continue
+		var action: Dictionary = actions[i]
+		var action_damage := int(action.get("damage", action.get("area_damage", 0)))
+		action_damage += int(round(float(action.get("knockback", 0.0)) / 160.0))
+		action_damage += int(action.get("resource_damage", 0))
+		score += float(maxi(0, action_damage)) * float(weight)
+	return maxi(1, int(round(score / float(total))))
+
+
+func _ai_monster_wager_nearest_city_pressure(player_index: int, actor: Dictionary) -> Dictionary:
+	var own_pressure := 0
+	var rival_pressure := 0
+	var nearest_own := 999999.0
+	var nearest_rival := 999999.0
+	for city_index_variant in _active_city_district_indices():
+		var city_index := int(city_index_variant)
+		var city := _district_city(city_index)
+		var owner := int(city.get("owner", -1))
+		var distance := _entity_distance_to_district(actor, city_index)
+		var city_value := _ai_city_target_score(player_index, city_index, owner == player_index, true)
+		var proximity := maxi(0, 360 - int(round(distance)))
+		var pressure := proximity + city_value / 3 + int(city.get("last_income", 0)) / 5
+		if owner == player_index:
+			own_pressure += pressure
+			nearest_own = minf(nearest_own, distance)
+		elif owner >= 0:
+			rival_pressure += pressure
+			nearest_rival = minf(nearest_rival, distance)
+	return {
+		"own_pressure": own_pressure,
+		"rival_pressure": rival_pressure,
+		"nearest_own": int(round(nearest_own)) if nearest_own < 999999.0 else -1,
+		"nearest_rival": int(round(nearest_rival)) if nearest_rival < 999999.0 else -1,
+	}
+
+
+func _ai_monster_wager_side_score(player_index: int, entry: Dictionary, side: String) -> Dictionary:
+	var slot := _monster_wager_current_slot(entry, side)
+	var damage_score := _monster_wager_damage_for_side(entry, side) * 14
+	var combat_score := 0
+	var owner_bias := 0
+	var city_bias := 0
+	var resource_bias := 0
+	var reason_key := "unknown"
+	if slot >= 0 and slot < auto_monsters.size():
+		var actor: Dictionary = auto_monsters[slot]
+		var expected_damage := _monster_wager_actor_expected_damage_score(actor)
+		combat_score = expected_damage * 38 + int(actor.get("hp", 0)) + int(actor.get("armor", 0)) * 6 + int(actor.get("rank", 1)) * 32
+		var owner := int(actor.get("owner", -1))
+		if owner == player_index:
+			owner_bias = 120
+			if not bool(actor.get("owner_revealed", false)):
+				owner_bias -= 28
+			reason_key = "own_monster"
+		elif owner >= 0:
+			var leader_index := int(_ai_refresh_game_phase(player_index).get("leader_index", -1))
+			owner_bias = 38
+			if owner == leader_index and owner != player_index:
+				owner_bias -= 42
+				reason_key = "leader_monster"
+			else:
+				reason_key = "rival_monster"
+		else:
+			owner_bias = 18
+			reason_key = "unknown_owner"
+		var city_pressure := _ai_monster_wager_nearest_city_pressure(player_index, actor)
+		var own_pressure := int(city_pressure.get("own_pressure", 0))
+		var rival_pressure := int(city_pressure.get("rival_pressure", 0))
+		city_bias = rival_pressure / 6 - own_pressure / 8
+		resource_bias = _monster_resource_match_score(actor, int(actor.get("position", -1))) * 18
+	var score := damage_score + combat_score + owner_bias + city_bias + resource_bias
+	score += int(_ai_profile_for_player(player_index).get("risk_tolerance", 1.0) * 18.0)
+	score += (player_index + int(entry.get("wager_id", 0)) + slot) % 7
+	return {
+		"side": side,
+		"score": score,
+		"damage_score": damage_score,
+		"combat_score": combat_score,
+		"owner_bias": owner_bias,
+		"city_bias": city_bias,
+		"resource_bias": resource_bias,
+		"reason_key": reason_key,
+	}
+
+
+func _ai_monster_wager_plan(player_index: int, entry: Dictionary) -> Dictionary:
+	var best := {}
+	var second_score := -999999
 	for competitor_variant in _monster_wager_competitors(entry):
 		var competitor := competitor_variant as Dictionary
 		var side := String(competitor.get("side", ""))
-		var slot := _monster_wager_current_slot(entry, side)
-		var score := _monster_wager_damage_for_side(entry, side) * 9
-		if slot >= 0 and slot < auto_monsters.size():
-			var actor: Dictionary = auto_monsters[slot]
-			score += int(actor.get("hp", 0)) + int(actor.get("armor", 0)) + int(actor.get("rank", 1)) * 5
-			if int(actor.get("owner", -1)) == player_index:
-				score += 80
-		score += (player_index + int(entry.get("wager_id", 0)) + int(competitor.get("slot", 0))) % 7
-		if best_side == "" or score > best_score:
-			best_side = side
-			best_score = score
-	return best_side
+		if side == "":
+			continue
+		var plan := _ai_monster_wager_side_score(player_index, entry, side)
+		var score := int(plan.get("score", -999999))
+		if best.is_empty() or score > int(best.get("score", -999999)):
+			if not best.is_empty():
+				second_score = int(best.get("score", -999999))
+			best = plan
+		elif score > second_score:
+			second_score = score
+	if best.is_empty():
+		return {}
+	var confidence := maxi(0, int(best.get("score", 0)) - second_score)
+	var player_cash := int((players[player_index] as Dictionary).get("cash", 0))
+	var reserve := AI_CARD_BUY_MIN_CASH_RESERVE
+	var stake := MONSTER_WAGER_DEFAULT_STAKE
+	if player_cash >= MONSTER_WAGER_LARGE_STAKE + reserve and confidence >= 150:
+		stake = MONSTER_WAGER_LARGE_STAKE
+	elif player_cash < MONSTER_WAGER_DEFAULT_STAKE + reserve:
+		stake = MONSTER_WAGER_DEFAULT_STAKE
+	best["confidence"] = confidence
+	best["stake"] = stake
+	best["ai_wager_score"] = int(best.get("score", 0))
+	best["ai_wager_confidence"] = confidence
+	best["ai_wager_reason_key"] = String(best.get("reason_key", "unknown"))
+	best["ai_wager_owner_bias"] = int(best.get("owner_bias", 0))
+	best["ai_wager_city_bias"] = int(best.get("city_bias", 0))
+	best["ai_wager_expected_damage"] = int(best.get("combat_score", 0))
+	return best
+
+
+func _ai_monster_wager_side(player_index: int, entry: Dictionary) -> String:
+	var plan := _ai_monster_wager_plan(player_index, entry)
+	return String(plan.get("side", ""))
 
 
 func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
@@ -28683,14 +28804,17 @@ func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
 		var entry: Dictionary = active_monster_wagers[index]
 		if _monster_wager_player_side(entry, player_index) != "":
 			continue
-		var player_cash := int((players[player_index] as Dictionary).get("cash", 0))
-		var stake := MONSTER_WAGER_DEFAULT_STAKE
-		if player_cash >= MONSTER_WAGER_LARGE_STAKE + 1200:
-			stake = MONSTER_WAGER_LARGE_STAKE
-		var side := _ai_monster_wager_side(player_index, entry)
+		var plan := _ai_monster_wager_plan(player_index, entry)
+		var side := String(plan.get("side", ""))
 		if side == "":
 			continue
-		if _place_monster_wager(wager_id, side, stake, player_index):
+		var stake := int(plan.get("stake", MONSTER_WAGER_DEFAULT_STAKE))
+		var metadata := {}
+		for key_variant in plan.keys():
+			var key := String(key_variant)
+			if key.begins_with("ai_wager_"):
+				metadata[key] = plan[key_variant]
+		if _place_monster_wager(wager_id, side, stake, player_index, false, metadata):
 			acted += 1
 			index = _monster_wager_entry_index_by_id(wager_id)
 			if index < 0:

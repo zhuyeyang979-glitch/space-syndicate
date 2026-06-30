@@ -302,6 +302,7 @@ func _run() -> void:
 	_expect(_verify_direct_player_interaction_cards(main), "direct player-interaction cards cover 拆牌、牵牌、产权冻结、全场齐射 with target-player UI, balance gates, and anonymous clue rules")
 	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, contract, monster target, player target, and monster wager modules")
 	_expect(_verify_monster_wager_system(main), "monster brawls freeze the game for a compulsory public ante wager with visible identity, side, amount, save state, and pooled payout settlement")
+	_expect(_verify_ai_monster_wager_policy(main), "AI monster-wager bets use strength, ownership, city-risk, public stake, and hidden scoring metadata")
 	_expect(_verify_ten_hour_route_pack(main), "ten-hour route pack adds complete repair, lockdown, intel-bounty, and route-weather ladders with AI-readable fields")
 	_expect(String(main.call("_card_art_stats", main.call("_make_skill", "城市融资1"))).contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
@@ -5302,6 +5303,94 @@ func _verify_monster_wager_system(main: Node) -> bool:
 				break
 		ok = ok and public_amount_log
 	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_ai_monster_wager_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var failures := []
+	var players := _as_array(main.get("players")).duplicate(true)
+	if players.size() < 3:
+		main.call("_apply_run_state", saved)
+		return false
+	for i in range(players.size()):
+		var player := (players[i] as Dictionary).duplicate(true)
+		player["is_ai"] = i == 1 or i == 2
+		player["seat_type"] = "ai" if bool(player.get("is_ai", false)) else "human"
+		player["cash"] = 6200 if i == 1 else 3400
+		player["cash_history"] = [int(player.get("cash", 0))]
+		player["action_cooldown"] = 0.0
+		players[i] = player
+	main.set("players", players)
+	var district_index := _first_buildable_land_district(_as_array(main.get("districts")))
+	if district_index < 0:
+		district_index = maxi(0, int(main.get("selected_district")))
+	var center := main.call("_district_center", district_index) as Vector2
+	if bool(main.call("_create_city_at_district_for_player", 1, district_index, "AI赌局风险城", false)):
+		ok = ok and _set_city_goods_for_test(main, district_index, "环晶电池", "星尘香料")
+	var monster_a := main.call("_make_auto_monster", 0, 0, district_index, 1, 4) as Dictionary
+	var monster_b := main.call("_make_auto_monster", 1, 1, district_index, 2, 1) as Dictionary
+	monster_a["world_position"] = center
+	monster_b["world_position"] = center
+	monster_a["hp"] = 96
+	monster_a["max_hp"] = 96
+	monster_a["armor"] = 8
+	monster_a["rank"] = 4
+	monster_a["owner_revealed"] = false
+	monster_b["hp"] = 16
+	monster_b["max_hp"] = 16
+	monster_b["armor"] = 0
+	monster_b["rank"] = 1
+	monster_b["owner_revealed"] = true
+	main.set("auto_monsters", [monster_a, monster_b])
+	main.set("active_monster_wagers", [])
+	main.set("resolved_monster_wager_history", [])
+	var ai1_cash_before := int((_as_array(main.get("players"))[1] as Dictionary).get("cash", 0))
+	var wager_id := int(main.call("_open_monster_wager_for_pair", 0, 1, "AI烟测赌局"))
+	ok = ok and wager_id > 0
+	var active := _as_array(main.get("active_monster_wagers"))
+	if active.is_empty():
+		failures.append("no active wager")
+	else:
+		var entry := active[0] as Dictionary
+		var bets := entry.get("bets", {}) as Dictionary
+		var public_bets := _as_array(entry.get("public_bets", []))
+		var ai1_bet := bets.get("1", {}) as Dictionary
+		var summary := String(main.call("_monster_wager_public_decision_summary", entry))
+		var stake := int(ai1_bet.get("stake", 0))
+		var cash_after := int((_as_array(main.get("players"))[1] as Dictionary).get("cash", 0))
+		var public_ai1_line := false
+		for public_variant in public_bets:
+			var public_bet := public_variant as Dictionary
+			if int(public_bet.get("player_index", -1)) == 1 and int(public_bet.get("stake", 0)) == stake and String(public_bet.get("side", "")) == "a":
+				public_ai1_line = true
+				break
+		var metadata_ok := String(ai1_bet.get("side", "")) == "a" \
+			and stake == 500 \
+			and int(ai1_bet.get("ai_wager_score", 0)) > 0 \
+			and int(ai1_bet.get("ai_wager_confidence", 0)) >= 150 \
+			and String(ai1_bet.get("ai_wager_reason_key", "")) == "own_monster" \
+			and int(ai1_bet.get("ai_wager_owner_bias", 0)) > 0
+		ok = ok and metadata_ok
+		ok = ok and cash_after == ai1_cash_before - stake
+		ok = ok and public_ai1_line
+		ok = ok and summary.contains("玩家2") and summary.contains("¥500")
+		ok = ok and not summary.contains("ai_wager") and not summary.contains("score")
+		if not metadata_ok:
+			failures.append("ai1 bet side=%s stake=%d score=%d confidence=%d reason=%s owner=%d" % [
+				String(ai1_bet.get("side", "")),
+				stake,
+				int(ai1_bet.get("ai_wager_score", 0)),
+				int(ai1_bet.get("ai_wager_confidence", 0)),
+				String(ai1_bet.get("ai_wager_reason_key", "")),
+				int(ai1_bet.get("ai_wager_owner_bias", 0)),
+			])
+		if not public_ai1_line:
+			failures.append("public bet line missing")
+	var restore_result := int(main.call("_apply_run_state", saved))
+	if not failures.is_empty():
+		print("AI monster wager policy failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
 
 
