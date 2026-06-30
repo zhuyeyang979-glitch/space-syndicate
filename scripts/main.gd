@@ -78,6 +78,16 @@ const CITY_FINAL_VALUE := 700
 const CITY_BUILD_ANIMATION_SECONDS := 1.2
 const INTEL_CORRECT_GUESS_CASH := 120
 const INTEL_WRONG_GUESS_COST := 60
+const CITY_GUESS_CONFIDENCE_LOW := 1
+const CITY_GUESS_CONFIDENCE_MEDIUM := 2
+const CITY_GUESS_CONFIDENCE_HIGH := 3
+const CITY_GUESS_CONFIDENCE_DEFAULT := CITY_GUESS_CONFIDENCE_MEDIUM
+const CITY_GUESS_REASON_PRODUCT := "product"
+const CITY_GUESS_REASON_ROUTE := "route"
+const CITY_GUESS_REASON_CARD := "card"
+const CITY_GUESS_REASON_MONSTER := "monster"
+const CITY_GUESS_REASON_INTUITION := "intuition"
+const CITY_GUESS_REASON_DEFAULT := CITY_GUESS_REASON_INTUITION
 const RIVAL_AUTO_BUILD_CHANCE_PERCENT := 72
 const RIVAL_AUTO_BUILD_MAX_PER_CYCLE := 2
 const RIVAL_AUTO_BUILD_BASE_CITY_CAP := 2
@@ -2032,6 +2042,12 @@ func _build_menu_overlay() -> void:
 	box.add_child(economy_button)
 	menu_regular_buttons.append(economy_button)
 
+	var intel_button := Button.new()
+	intel_button.text = "情报档案"
+	intel_button.pressed.connect(Callable(self, "_open_intel_dossier_menu"))
+	box.add_child(intel_button)
+	menu_regular_buttons.append(intel_button)
+
 	var reference_section := _plain_label("资料", 12, Color("#93c5fd"))
 	box.add_child(reference_section)
 	menu_regular_buttons.append(reference_section)
@@ -2097,7 +2113,7 @@ func _build_menu_overlay() -> void:
 func _open_main_menu() -> void:
 	_show_menu(
 		"太空辛迪加",
-		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n开局先进入准备页查看玩家数、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；经营周期里对手也会匿名扩张，对手需要根据商品竞争、商路和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
+		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n开局先进入准备页查看玩家数、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；经营周期里对手也会匿名扩张，对手需要根据商品竞争、商路和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
 		true,
 		true
 	)
@@ -2106,7 +2122,7 @@ func _open_main_menu() -> void:
 func _open_pause_menu() -> void:
 	_show_menu(
 		"暂停菜单",
-		"游戏已暂停。你可以保存/读取当前局面，继续当前局、查看局势排名、经济总览、新手引导、图鉴或游戏规则，或重新开一局怪兽牌战争。",
+		"游戏已暂停。你可以保存/读取当前局面，继续当前局、查看局势排名、经济总览、情报档案、新手引导、图鉴或游戏规则，或重新开一局怪兽牌战争。",
 		not game_over,
 		true
 	)
@@ -2164,6 +2180,256 @@ func _open_standings_menu() -> void:
 
 func _open_economy_overview_menu() -> void:
 	_show_menu("经济总览", _economy_overview_text(), not game_over)
+
+
+func _open_intel_dossier_menu() -> void:
+	_show_menu("情报档案", _intel_dossier_text(selected_player), not game_over)
+	_populate_intel_dossier_links(selected_player)
+
+
+func _populate_intel_dossier_links(viewer_index: int) -> void:
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var hint := _plain_label("线索跳转（只打开相关公开资料，不揭示隐藏真相）：", 12, Color("#fde68a"))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_preview_box.add_child(hint)
+	var added := 0
+	var city_control_entries := []
+	var marked_city_entries := []
+	var unmarked_city_entries := []
+	for entry_variant in _intel_city_guess_entries(viewer_index, 8):
+		var city_entry := entry_variant as Dictionary
+		if bool(city_entry.get("marked", false)):
+			marked_city_entries.append(city_entry)
+		else:
+			unmarked_city_entries.append(city_entry)
+	for marked_entry in marked_city_entries:
+		city_control_entries.append(marked_entry)
+	for unmarked_entry in unmarked_city_entries:
+		city_control_entries.append(unmarked_entry)
+	for entry_variant in _first_entries(city_control_entries, 2):
+		var control_entry := entry_variant as Dictionary
+		var district_index := int(control_entry.get("district_index", -1))
+		if district_index < 0:
+			continue
+		_add_intel_city_guess_buttons(control_entry, viewer_index)
+		_add_intel_dossier_link_button(
+			"查看区域线索：%s" % String(control_entry.get("name", "城市")),
+			"跳到区域图鉴查看该城市的公开供需、收入拆解、公开线索和当前玩家私标状态。",
+			Callable(self, "_open_intel_region_codex_link").bind(district_index)
+		)
+		added += 1
+	for entry_variant in _intel_card_guess_entries(viewer_index, 2):
+		var entry := entry_variant as Dictionary
+		var card_name := String(entry.get("card_name", ""))
+		if card_name == "":
+			continue
+		_add_intel_dossier_link_button(
+			"查看卡牌线索：%s" % String(entry.get("card", card_name)),
+			"跳到卡牌图鉴查看该匿名卡的目标、出牌条件、价格梯度和结算演出，帮助反推出牌者。",
+			Callable(self, "_open_intel_card_codex_link").bind(card_name)
+		)
+		added += 1
+	for entry_variant in _economy_monster_cash_clue_entries(2):
+		var entry := entry_variant as Dictionary
+		var monster_index := _monster_catalog_index_by_name(String(entry.get("name", "")))
+		if monster_index < 0:
+			continue
+		_add_intel_dossier_link_button(
+			"查看怪兽线索：怪%d·%s" % [int(entry.get("slot", 0)) + 1, String(entry.get("name", "怪兽"))],
+			"跳到怪兽图鉴查看行动概率、资源偏好和伤害数据，用来判断它为什么袭击某处。",
+			Callable(self, "_open_intel_monster_codex_link").bind(monster_index)
+		)
+		added += 1
+	for entry_variant in _economy_city_public_clue_entries(2):
+		var entry := entry_variant as Dictionary
+		var clue_products: Array = entry.get("clue_products", []) as Array
+		if clue_products.is_empty():
+			continue
+		var product_name := String(clue_products[0])
+		if product_name == "" or not PRODUCT_CATALOG.has(product_name):
+			continue
+		_add_intel_dossier_link_button(
+			"查看商品线索：%s" % product_name,
+			"跳到商品图鉴查看该商品价格、供需、商路断损、经济天气和相关城市线索。",
+			Callable(self, "_open_intel_product_codex_link").bind(product_name)
+		)
+		added += 1
+	if added == 0:
+		var empty_hint := _plain_label("当前还没有可跳转线索；先城市化、出牌、竞猜或制造怪兽冲突后这里会出现入口。", 11, Color("#94a3b8"))
+		empty_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		menu_preview_box.add_child(empty_hint)
+	_add_intel_dossier_link_button(
+		"打开经济总览",
+		"回到经济总览查看商品热榜、商路收入前景和当前玩家经济流水。",
+		Callable(self, "_open_economy_overview_menu")
+	)
+
+
+func _add_intel_dossier_link_button(button_text: String, detail_text: String, target: Callable) -> void:
+	if menu_preview_box == null:
+		return
+	var button := Button.new()
+	button.text = button_text
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.tooltip_text = detail_text
+	button.pressed.connect(target)
+	menu_preview_box.add_child(button)
+
+
+func _add_intel_city_guess_buttons(entry: Dictionary, viewer_index: int) -> void:
+	if menu_preview_box == null or viewer_index < 0 or viewer_index >= players.size():
+		return
+	var district_index := int(entry.get("district_index", -1))
+	if district_index < 0:
+		return
+	var city_name := String(entry.get("name", "城市"))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var label := _plain_label("标注城市：%s" % _short_event_label(city_name, 9), 11, Color("#c4b5fd"))
+	row.add_child(label)
+	for player_index in range(players.size()):
+		if player_index == viewer_index:
+			continue
+		var button := Button.new()
+		button.text = "标玩家%d" % (player_index + 1)
+		button.tooltip_text = "把%s私密标注为玩家%d的城市；终局才结算正误。" % [city_name, player_index + 1]
+		button.pressed.connect(Callable(self, "_mark_city_guess_from_intel").bind(district_index, player_index))
+		row.add_child(button)
+	if bool(entry.get("marked", false)):
+		var confidence_label := _plain_label("置信:", 11, Color("#bae6fd"))
+		row.add_child(confidence_label)
+		for confidence in [CITY_GUESS_CONFIDENCE_LOW, CITY_GUESS_CONFIDENCE_MEDIUM, CITY_GUESS_CONFIDENCE_HIGH]:
+			var confidence_button := Button.new()
+			confidence_button.text = _city_guess_confidence_label(confidence)
+			confidence_button.tooltip_text = "把%s的私人标注置信度设为%s；不改变结算，只用于推理管理。" % [city_name, _city_guess_confidence_label(confidence)]
+			confidence_button.pressed.connect(Callable(self, "_set_city_guess_confidence_from_intel").bind(district_index, confidence))
+			row.add_child(confidence_button)
+		var reason_label := _plain_label("理由:", 11, Color("#bbf7d0"))
+		row.add_child(reason_label)
+		for reason in _city_guess_reason_options():
+			var reason_button := Button.new()
+			reason_button.text = _city_guess_reason_label(reason)
+			reason_button.tooltip_text = "把%s的私人标注理由记为%s；这只是玩家自己的推理备忘。" % [city_name, _city_guess_reason_label(reason)]
+			reason_button.pressed.connect(Callable(self, "_set_city_guess_reason_from_intel").bind(district_index, reason))
+			row.add_child(reason_button)
+	var clear_button := Button.new()
+	clear_button.text = "清除"
+	clear_button.tooltip_text = "清除当前玩家对%s的私人城市归属标注。" % city_name
+	clear_button.pressed.connect(Callable(self, "_mark_city_guess_from_intel").bind(district_index, -1))
+	row.add_child(clear_button)
+	menu_preview_box.add_child(row)
+
+
+func _mark_city_guess_from_intel(city_index: int, guessed_player: int) -> void:
+	if _mark_city_guess_for_player(selected_player, city_index, guessed_player):
+		selected_district = city_index
+		selected_guess_player = guessed_player
+		_open_intel_dossier_menu()
+
+
+func _set_city_guess_confidence_from_intel(city_index: int, confidence: int) -> void:
+	if _set_city_guess_confidence_for_player(selected_player, city_index, confidence):
+		selected_district = city_index
+		_open_intel_dossier_menu()
+
+
+func _set_city_guess_reason_from_intel(city_index: int, reason: String) -> void:
+	if _set_city_guess_reason_for_player(selected_player, city_index, reason):
+		selected_district = city_index
+		_open_intel_dossier_menu()
+
+
+func _open_intel_region_codex_link(index: int) -> void:
+	catalog_return_menu = "intel"
+	if index >= 0:
+		region_codex_index = index
+	_update_region_codex_menu()
+
+
+func _open_intel_card_codex_link(card_name: String) -> void:
+	catalog_return_menu = "intel"
+	_open_card_codex_by_name(card_name)
+
+
+func _open_intel_monster_codex_link(monster_index: int) -> void:
+	catalog_return_menu = "intel"
+	_open_bestiary_menu(monster_index)
+
+
+func _open_intel_product_codex_link(product_name: String) -> void:
+	catalog_return_menu = "intel"
+	if PRODUCT_CATALOG.has(product_name):
+		product_codex_index = PRODUCT_CATALOG.find(product_name)
+	_update_product_codex_menu()
+
+
+func _intel_dossier_text(viewer_index: int) -> String:
+	if players.is_empty() or districts.is_empty():
+		return "还没有当前局情报。开始新局并城市化、出牌、竞猜或制造怪兽冲突后，情报档案会整理当前玩家可见的推理证据。"
+	_refresh_city_networks()
+	var viewer_name := String(players[viewer_index].get("name", "玩家%d" % (viewer_index + 1))) if viewer_index >= 0 and viewer_index < players.size() else "无当前玩家"
+	var lines := []
+	lines.append("当前玩家：%s｜经营周期%d｜当前不揭示正误，不扫描对手现金。" % [
+		viewer_name,
+		business_cycle_count,
+	])
+	lines.append("情报换钱：终局资金 = 现金 + 存活城市清算×%d + 城市业主情报现金；猜对陌生城市业主+¥%d，猜错-¥%d。卡牌归属竞猜则即时私下转账¥%d，猜中才公开卡牌主人标签。" % [
+		CITY_FINAL_VALUE,
+		INTEL_CORRECT_GUESS_CASH,
+		INTEL_WRONG_GUESS_COST,
+		CARD_OWNER_GUESS_STAKE,
+	])
+	lines.append("")
+	lines.append("城市业主情报：")
+	if viewer_index < 0 or viewer_index >= players.size():
+		lines.append("- 无当前玩家，无法显示私人城市标注。")
+	else:
+		lines.append("- %s" % _player_intel_display_summary(viewer_index))
+		lines.append("- %s" % _player_city_guess_confidence_summary(viewer_index))
+		lines.append("- %s" % _player_city_guess_reason_summary(viewer_index))
+		lines.append("- 调查优先级：综合潜在GDP、竞争/断路、公开线索、未标注状态和低置信标注；分数越高，越值得继续查证。")
+		var exposure_stats := _player_intel_exposure_stats(viewer_index)
+		lines.append("- 终局范围：若全对%s / 若全错%s；进行中只显示私人标注数量和潜在风险。" % [
+			_signed_int_text(int(exposure_stats.get("best_cash", 0))),
+			_signed_int_text(int(exposure_stats.get("worst_cash", 0))),
+		])
+		var city_entries := _intel_city_guess_entries(viewer_index, 6)
+		if city_entries.is_empty():
+			lines.append("- 暂无可竞猜的陌生存活城市；对手匿名扩张或你切换视角后可开始标注。")
+		else:
+			for entry in city_entries:
+				lines.append("- %s" % _intel_city_guess_line(entry as Dictionary))
+	lines.append("")
+	lines.append("卡牌归属档案：")
+	lines.append("- 押注规则：每名玩家每张匿名卡最多押注一次；猜中公开牌主标签并由真实出牌者付款，猜错只私下转账不揭示真相。")
+	var card_entries := _intel_card_guess_entries(viewer_index, 5)
+	if card_entries.is_empty():
+		lines.append("- 暂无匿名卡牌记录；顶部卡牌轨道出现卡牌后会在这里汇总押注状态、公开条件和目标。")
+	else:
+		for entry in card_entries:
+			lines.append("- %s" % _intel_card_guess_line(entry as Dictionary))
+	lines.append("")
+	lines.append("怪兽资金档案：")
+	var monster_entries := _economy_monster_cash_clue_entries(5)
+	if monster_entries.is_empty():
+		lines.append("- 暂无怪兽受伤资金线索；怪兽受伤后会按最大生命比例暴露归属方资金损失。")
+	else:
+		for entry in monster_entries:
+			lines.append("- %s" % _economy_monster_cash_clue_line(entry as Dictionary))
+	lines.append("")
+	lines.append("城市公开线索档案：")
+	var city_clue_entries := _economy_city_public_clue_entries(6)
+	if city_clue_entries.is_empty():
+		lines.append("- 暂无城市公开线索；匿名商业动作、合约签拒和城市经营改造会在这里留下证据。")
+	else:
+		for entry in city_clue_entries:
+			lines.append("- %s" % _economy_city_public_clue_line(entry as Dictionary))
+	lines.append("")
+	lines.append("交叉阅读：先看城市生产/需求和商品竞争，再看卡牌条件、竞价小费、怪兽偏好和城市线索；任何单条证据都只是概率，不是公开真相。")
+	return "\n".join(lines)
 
 
 func _economy_overview_text() -> String:
@@ -2420,6 +2686,271 @@ func _economy_city_income_line(entry: Dictionary) -> String:
 		String(entry.get("flow", "无")),
 		_limited_name_list(entry.get("products", []) as Array, 3),
 		_limited_name_list(entry.get("demands", []) as Array, 3),
+	]
+
+
+func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
+	var entries := []
+	if viewer_index < 0 or viewer_index >= players.size():
+		return entries
+	var player: Dictionary = players[viewer_index]
+	var guesses: Dictionary = player.get("city_guesses", {})
+	var confidences: Dictionary = player.get("city_guess_confidence", {})
+	var reasons: Dictionary = player.get("city_guess_reasons", {})
+	for index_variant in _active_city_district_indices():
+		var city_index := int(index_variant)
+		var city := _district_city(city_index)
+		var owner := int(city.get("owner", -1))
+		if owner == viewer_index:
+			continue
+		var guess := int(guesses.get(city_index, -1))
+		var marked := guess >= 0 and guess < players.size()
+		var competition := _city_competition_matches(city_index)
+		var breakdown := _city_cycle_income_breakdown(city_index, competition)
+		var result_text := "终局待判"
+		if game_over and guess >= 0:
+			result_text = "命中+¥%d" % INTEL_CORRECT_GUESS_CASH if guess == owner else "错标-¥%d" % INTEL_WRONG_GUESS_COST
+		var entry := {
+			"district_index": city_index,
+			"name": String(districts[city_index].get("name", "区域%d" % (city_index + 1))),
+			"guess": guess,
+			"marked": marked,
+			"confidence": _normalized_city_guess_confidence(int(confidences.get(city_index, CITY_GUESS_CONFIDENCE_DEFAULT))) if marked else 0,
+			"reason": _normalized_city_guess_reason(String(reasons.get(city_index, CITY_GUESS_REASON_DEFAULT))) if marked else "",
+			"hint": _city_intel_hint_for_player(city_index, viewer_index),
+			"result": result_text,
+			"potential_income": int(breakdown.get("net", 0)),
+			"last_income": int(city.get("last_income", 0)),
+			"products": _city_product_names(city),
+			"demands": _city_demand_names(city),
+			"competition": competition,
+			"disrupted": int(city.get("trade_disrupted_routes", 0)),
+			"latest_clue": _latest_city_public_clue_text(city),
+		}
+		entry["priority"] = _city_intel_priority_score(entry)
+		entries.append(entry)
+	entries.sort_custom(Callable(self, "_sort_intel_city_guess_entry"))
+	return _first_entries(entries, limit)
+
+
+func _sort_intel_city_guess_entry(a: Dictionary, b: Dictionary) -> bool:
+	var a_priority := int(a.get("priority", 0))
+	var b_priority := int(b.get("priority", 0))
+	if a_priority != b_priority:
+		return a_priority > b_priority
+	var a_marked := bool(a.get("marked", false))
+	var b_marked := bool(b.get("marked", false))
+	if a_marked != b_marked:
+		return not a_marked
+	var a_income := int(a.get("potential_income", 0))
+	var b_income := int(b.get("potential_income", 0))
+	if a_income != b_income:
+		return a_income > b_income
+	return String(a.get("name", "")) < String(b.get("name", ""))
+
+
+func _intel_city_guess_line(entry: Dictionary) -> String:
+	var guess := int(entry.get("guess", -1))
+	var guess_text := "未标注"
+	if guess >= 0 and guess < players.size():
+		guess_text = "我的标注:玩家%d" % (guess + 1)
+	var confidence_text := _city_guess_confidence_label(int(entry.get("confidence", 0))) if bool(entry.get("marked", false)) else "无"
+	var reason_text := _city_guess_reason_label(String(entry.get("reason", ""))) if bool(entry.get("marked", false)) else "无"
+	return "%s｜优先级%d｜%s｜置信:%s｜理由:%s｜%s｜%s｜潜在GDP%d/上次%d｜竞争%d/断路%d｜生产:%s｜需求:%s｜最近线索:%s" % [
+		String(entry.get("name", "城市")),
+		int(entry.get("priority", 0)),
+		guess_text,
+		confidence_text,
+		reason_text,
+		String(entry.get("hint", "情报：无")),
+		String(entry.get("result", "终局待判")),
+		int(entry.get("potential_income", 0)),
+		int(entry.get("last_income", 0)),
+		int(entry.get("competition", 0)),
+		int(entry.get("disrupted", 0)),
+		_limited_name_list(entry.get("products", []) as Array, 3, "无"),
+		_limited_name_list(entry.get("demands", []) as Array, 3, "无"),
+		String(entry.get("latest_clue", "暂无公开线索")),
+	]
+
+
+func _city_intel_priority_score(entry: Dictionary) -> int:
+	var score := 0
+	score += clampi(int(entry.get("potential_income", 0)) / 10, 0, 80)
+	score += clampi(int(entry.get("last_income", 0)) / 20, 0, 30)
+	score += int(entry.get("competition", 0)) * 18
+	score += int(entry.get("disrupted", 0)) * 16
+	score += (entry.get("products", []) as Array).size() * 4
+	score += (entry.get("demands", []) as Array).size() * 4
+	var latest_clue := String(entry.get("latest_clue", ""))
+	if latest_clue != "" and latest_clue != "暂无公开线索":
+		score += 20
+	if bool(entry.get("marked", false)):
+		match _normalized_city_guess_confidence(int(entry.get("confidence", CITY_GUESS_CONFIDENCE_DEFAULT))):
+			CITY_GUESS_CONFIDENCE_LOW:
+				score += 18
+			CITY_GUESS_CONFIDENCE_MEDIUM:
+				score += 8
+			CITY_GUESS_CONFIDENCE_HIGH:
+				score -= 12
+	else:
+		score += 45
+	return maxi(0, score)
+
+
+func _normalized_city_guess_confidence(confidence: int) -> int:
+	return clampi(confidence, CITY_GUESS_CONFIDENCE_LOW, CITY_GUESS_CONFIDENCE_HIGH)
+
+
+func _city_guess_confidence_label(confidence: int) -> String:
+	match _normalized_city_guess_confidence(confidence):
+		CITY_GUESS_CONFIDENCE_HIGH:
+			return "高"
+		CITY_GUESS_CONFIDENCE_MEDIUM:
+			return "中"
+		_:
+			return "低"
+
+
+func _player_city_guess_confidence_summary(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return "置信分布：无当前玩家"
+	var player: Dictionary = players[player_index]
+	var guesses: Dictionary = player.get("city_guesses", {})
+	var confidences: Dictionary = player.get("city_guess_confidence", {})
+	var low := 0
+	var medium := 0
+	var high := 0
+	for city_key in guesses.keys():
+		var guessed_owner := int(guesses.get(city_key, -1))
+		if guessed_owner < 0:
+			continue
+		match _normalized_city_guess_confidence(int(confidences.get(city_key, CITY_GUESS_CONFIDENCE_DEFAULT))):
+			CITY_GUESS_CONFIDENCE_HIGH:
+				high += 1
+			CITY_GUESS_CONFIDENCE_MEDIUM:
+				medium += 1
+			_:
+				low += 1
+	return "置信分布：高%d / 中%d / 低%d｜仅用于玩家自己管理推理，不改变终局奖惩。" % [high, medium, low]
+
+
+func _city_guess_reason_options() -> Array:
+	return [
+		CITY_GUESS_REASON_PRODUCT,
+		CITY_GUESS_REASON_ROUTE,
+		CITY_GUESS_REASON_CARD,
+		CITY_GUESS_REASON_MONSTER,
+		CITY_GUESS_REASON_INTUITION,
+	]
+
+
+func _normalized_city_guess_reason(reason: String) -> String:
+	if _city_guess_reason_options().has(reason):
+		return reason
+	return CITY_GUESS_REASON_DEFAULT
+
+
+func _city_guess_reason_label(reason: String) -> String:
+	match _normalized_city_guess_reason(reason):
+		CITY_GUESS_REASON_PRODUCT:
+			return "商品竞争"
+		CITY_GUESS_REASON_ROUTE:
+			return "商路线索"
+		CITY_GUESS_REASON_CARD:
+			return "卡牌条件"
+		CITY_GUESS_REASON_MONSTER:
+			return "怪兽资金"
+		_:
+			return "直觉"
+
+
+func _player_city_guess_reason_summary(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return "理由分布：无当前玩家"
+	var player: Dictionary = players[player_index]
+	var guesses: Dictionary = player.get("city_guesses", {})
+	var reasons: Dictionary = player.get("city_guess_reasons", {})
+	var counts := {}
+	for city_key in guesses.keys():
+		var guessed_owner := int(guesses.get(city_key, -1))
+		if guessed_owner < 0:
+			continue
+		var reason := _normalized_city_guess_reason(String(reasons.get(city_key, CITY_GUESS_REASON_DEFAULT)))
+		counts[reason] = int(counts.get(reason, 0)) + 1
+	var pieces := []
+	for reason in _city_guess_reason_options():
+		var count := int(counts.get(reason, 0))
+		if count > 0:
+			pieces.append("%s%d" % [_city_guess_reason_label(reason), count])
+	return "理由分布：%s｜只是私人推理备忘，不验证正误。" % (" / ".join(pieces) if not pieces.is_empty() else "暂无")
+
+
+func _latest_city_public_clue_text(city: Dictionary) -> String:
+	var public_clues := city.get("public_clues", []) as Array
+	if not public_clues.is_empty():
+		for i in range(public_clues.size() - 1, -1, -1):
+			var clue_text := _city_public_clue_display_text(public_clues[i])
+			if clue_text != "":
+				return clue_text
+	var last_clue := String(city.get("last_public_clue", ""))
+	return last_clue if last_clue != "" else "暂无公开线索"
+
+
+func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
+	var entries := []
+	var source_entries := _public_card_resolution_owner_entries()
+	for i in range(source_entries.size() - 1, -1, -1):
+		var entry_variant: Variant = source_entries[i]
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		var skill: Dictionary = entry.get("skill", {}) as Dictionary
+		if skill.is_empty():
+			continue
+		var card_name := String(skill.get("name", ""))
+		var owner_index := int(entry.get("player_index", -1))
+		var owner_revealed := bool(entry.get("public_owner_revealed", false))
+		var guessers: Array = entry.get("guessers", []) as Array
+		var status := "归属未知，可押注¥%d" % CARD_OWNER_GUESS_STAKE
+		if owner_revealed:
+			status = String(entry.get("public_owner_label", "归属已公开"))
+		elif viewer_index == owner_index:
+			status = "我打出的牌｜仅当前视角可知"
+		elif viewer_index >= 0 and guessers.has(viewer_index):
+			status = "我已押注｜真实归属仍隐藏"
+		var time_value := float(entry.get("resolved_time", entry.get("queued_order", -1.0)))
+		entries.append({
+			"card": _card_resolution_entry_card_label(entry),
+			"card_name": card_name,
+			"status": status,
+			"target": _card_resolution_target_text(skill, entry),
+			"requirement": _card_resolution_play_requirement_text(entry).replace("打出条件：", ""),
+			"tip": _card_resolution_tip_clue_text(entry),
+			"time": time_value,
+			"revealed": owner_revealed,
+		})
+	entries.sort_custom(Callable(self, "_sort_intel_card_guess_entry"))
+	return _first_entries(entries, limit)
+
+
+func _sort_intel_card_guess_entry(a: Dictionary, b: Dictionary) -> bool:
+	var a_time := float(a.get("time", -1.0))
+	var b_time := float(b.get("time", -1.0))
+	if not is_equal_approx(a_time, b_time):
+		return a_time > b_time
+	return String(a.get("card", "")) < String(b.get("card", ""))
+
+
+func _intel_card_guess_line(entry: Dictionary) -> String:
+	var tip := String(entry.get("tip", ""))
+	var tip_text := "｜小费线索:%s" % tip if tip != "" else ""
+	return "%s｜%s｜条件:%s｜目标:%s%s" % [
+		String(entry.get("card", "匿名卡牌")),
+		String(entry.get("status", "归属未知")),
+		String(entry.get("requirement", "未知")),
+		String(entry.get("target", "目标未知")),
+		tip_text,
 	]
 
 
@@ -3272,10 +3803,23 @@ func _open_role_codex_from_compendium() -> void:
 
 
 func _back_from_catalog_menu() -> void:
-	if catalog_return_menu == "compendium":
-		_open_compendium_menu()
-	else:
-		_open_main_menu()
+	match catalog_return_menu:
+		"compendium":
+			_open_compendium_menu()
+		"intel":
+			_open_intel_dossier_menu()
+		_:
+			_open_main_menu()
+
+
+func _catalog_back_button_text() -> String:
+	match catalog_return_menu:
+		"compendium":
+			return "返回图鉴"
+		"intel":
+			return "返回情报档案"
+		_:
+			return "返回主菜单"
 
 
 func _open_bestiary_menu(index: int = -1) -> void:
@@ -3341,7 +3885,7 @@ func _update_role_codex_menu() -> void:
 	menu_bestiary_prev_button.visible = true
 	menu_bestiary_next_button.visible = true
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回图鉴" if catalog_return_menu == "compendium" else "返回主菜单"
+	menu_bestiary_back_button.text = _catalog_back_button_text()
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -3384,7 +3928,7 @@ func _update_bestiary_menu() -> void:
 	menu_bestiary_prev_button.visible = true
 	menu_bestiary_next_button.visible = true
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回图鉴" if catalog_return_menu == "compendium" else "返回主菜单"
+	menu_bestiary_back_button.text = _catalog_back_button_text()
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -3420,7 +3964,7 @@ func _update_card_codex_menu() -> void:
 	menu_bestiary_prev_button.visible = true
 	menu_bestiary_next_button.visible = true
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回图鉴" if catalog_return_menu == "compendium" else "返回主菜单"
+	menu_bestiary_back_button.text = _catalog_back_button_text()
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -3519,7 +4063,7 @@ func _update_product_codex_menu() -> void:
 	menu_bestiary_prev_button.visible = true
 	menu_bestiary_next_button.visible = true
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回图鉴"
+	menu_bestiary_back_button.text = _catalog_back_button_text()
 
 
 func _open_region_codex_menu(index: int = -1) -> void:
@@ -3551,7 +4095,7 @@ func _update_region_codex_menu() -> void:
 	menu_bestiary_prev_button.visible = true
 	menu_bestiary_next_button.visible = true
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回图鉴"
+	menu_bestiary_back_button.text = _catalog_back_button_text()
 
 
 func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
@@ -3575,7 +4119,7 @@ func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
 	menu_bestiary_prev_button.visible = false
 	menu_bestiary_next_button.visible = false
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回图鉴"
+	menu_bestiary_back_button.text = _catalog_back_button_text()
 
 
 func _card_codex_filter_options() -> Array:
@@ -5546,6 +6090,8 @@ func _new_game() -> void:
 			"cash_history": [starting_cash],
 			"economic_ledger": [],
 			"city_guesses": {},
+			"city_guess_confidence": {},
+			"city_guess_reasons": {},
 			"cities_built": 0,
 			"total_city_income": 0,
 			"last_cycle_income": 0,
@@ -7250,33 +7796,110 @@ func _load_selected_district_guess() -> void:
 
 
 func _mark_selected_city_guess() -> void:
-	if selected_player < 0 or selected_player >= players.size():
-		return
-	var city := _district_city(selected_district)
+	if _mark_city_guess_for_player(selected_player, selected_district, selected_guess_player):
+		_refresh_ui()
+
+
+func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return false
+	if city_index < 0 or city_index >= districts.size():
+		return false
+	var city := _district_city(city_index)
 	if not _city_is_active(city):
 		_log("选中区域没有可标注的存活城市群。")
-		return
+		return false
 	var owner := int(city.get("owner", -1))
-	var guesses: Dictionary = players[selected_player].get("city_guesses", {})
-	if owner == selected_player:
-		guesses.erase(selected_district)
-		players[selected_player]["city_guesses"] = guesses
-		_log("这是%s自己的城市，不需要推测归属。" % players[selected_player]["name"])
-	elif selected_guess_player < 0:
-		guesses.erase(selected_district)
-		players[selected_player]["city_guesses"] = guesses
-		_log("%s清除了对%s城市归属的私人标注。" % [players[selected_player]["name"], districts[selected_district]["name"]])
+	var guesses: Dictionary = players[viewer_index].get("city_guesses", {})
+	var confidences: Dictionary = players[viewer_index].get("city_guess_confidence", {})
+	var reasons: Dictionary = players[viewer_index].get("city_guess_reasons", {})
+	if owner == viewer_index:
+		guesses.erase(city_index)
+		confidences.erase(city_index)
+		reasons.erase(city_index)
+		players[viewer_index]["city_guesses"] = guesses
+		players[viewer_index]["city_guess_confidence"] = confidences
+		players[viewer_index]["city_guess_reasons"] = reasons
+		_log("这是%s自己的城市，不需要推测归属。" % players[viewer_index]["name"])
+	elif guessed_player < 0:
+		guesses.erase(city_index)
+		confidences.erase(city_index)
+		reasons.erase(city_index)
+		players[viewer_index]["city_guesses"] = guesses
+		players[viewer_index]["city_guess_confidence"] = confidences
+		players[viewer_index]["city_guess_reasons"] = reasons
+		_log("%s清除了对%s城市归属的私人标注。" % [players[viewer_index]["name"], districts[city_index]["name"]])
+	elif guessed_player == viewer_index:
+		guesses.erase(city_index)
+		confidences.erase(city_index)
+		reasons.erase(city_index)
+		players[viewer_index]["city_guesses"] = guesses
+		players[viewer_index]["city_guess_confidence"] = confidences
+		players[viewer_index]["city_guess_reasons"] = reasons
+		_log("%s不能把陌生城市标成自己；已清除该私人标注。" % players[viewer_index]["name"])
+	elif guessed_player >= players.size():
+		return false
 	else:
-		guesses[selected_district] = selected_guess_player
-		players[selected_player]["city_guesses"] = guesses
-		_log("%s将%s私人标注为：推测属于玩家%d。情报现金终局才揭晓：猜对+¥%d，猜错-¥%d。" % [
-			players[selected_player]["name"],
-			districts[selected_district]["name"],
-			selected_guess_player + 1,
+		guesses[city_index] = guessed_player
+		var normalized_confidence := _normalized_city_guess_confidence(confidence)
+		var normalized_reason := _normalized_city_guess_reason(String(reasons.get(city_index, reason)))
+		confidences[city_index] = normalized_confidence
+		reasons[city_index] = normalized_reason
+		players[viewer_index]["city_guesses"] = guesses
+		players[viewer_index]["city_guess_confidence"] = confidences
+		players[viewer_index]["city_guess_reasons"] = reasons
+		_log("%s将%s私人标注为：推测属于玩家%d（置信:%s｜理由:%s）。情报现金终局才揭晓：猜对+¥%d，猜错-¥%d。" % [
+			players[viewer_index]["name"],
+			districts[city_index]["name"],
+			guessed_player + 1,
+			_city_guess_confidence_label(normalized_confidence),
+			_city_guess_reason_label(normalized_reason),
 			INTEL_CORRECT_GUESS_CASH,
 			INTEL_WRONG_GUESS_COST,
 		])
-	_refresh_ui()
+	return true
+
+
+func _set_city_guess_confidence_for_player(viewer_index: int, city_index: int, confidence: int) -> bool:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return false
+	if city_index < 0 or city_index >= districts.size():
+		return false
+	var guesses: Dictionary = players[viewer_index].get("city_guesses", {})
+	if int(guesses.get(city_index, -1)) < 0:
+		_log("请先给%s设置业主标注，再调整置信度。" % String(districts[city_index].get("name", "城市")))
+		return false
+	var normalized_confidence := _normalized_city_guess_confidence(confidence)
+	var confidences: Dictionary = players[viewer_index].get("city_guess_confidence", {})
+	confidences[city_index] = normalized_confidence
+	players[viewer_index]["city_guess_confidence"] = confidences
+	_log("%s把%s的私人标注置信度调为%s；这只影响推理记录，不改变终局奖惩。" % [
+		players[viewer_index]["name"],
+		String(districts[city_index].get("name", "城市")),
+		_city_guess_confidence_label(normalized_confidence),
+	])
+	return true
+
+
+func _set_city_guess_reason_for_player(viewer_index: int, city_index: int, reason: String) -> bool:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return false
+	if city_index < 0 or city_index >= districts.size():
+		return false
+	var guesses: Dictionary = players[viewer_index].get("city_guesses", {})
+	if int(guesses.get(city_index, -1)) < 0:
+		_log("请先给%s设置业主标注，再记录标注理由。" % String(districts[city_index].get("name", "城市")))
+		return false
+	var normalized_reason := _normalized_city_guess_reason(reason)
+	var reasons: Dictionary = players[viewer_index].get("city_guess_reasons", {})
+	reasons[city_index] = normalized_reason
+	players[viewer_index]["city_guess_reasons"] = reasons
+	_log("%s把%s的私人标注理由记为%s；这只影响推理备忘，不改变终局奖惩。" % [
+		players[viewer_index]["name"],
+		String(districts[city_index].get("name", "城市")),
+		_city_guess_reason_label(normalized_reason),
+	])
+	return true
 
 
 func _selected_city_owner_view_text() -> String:

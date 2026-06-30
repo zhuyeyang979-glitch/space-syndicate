@@ -316,6 +316,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
 	_expect(menu_body_label != null and menu_body_label.text.contains("游戏规则") and not menu_body_label.text.contains("快捷键："), "main menu keeps detailed controls inside the rules branch")
 	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "开局准备"), "main menu routes new games through a setup preview branch")
+	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "情报档案"), "main menu exposes the intel dossier branch")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "选择四怪兽"), "main menu no longer exposes a separate monster-selection branch")
 	_expect(menu_back_button != null and not menu_back_button.visible, "root menu does not show a redundant back button")
 	var player_count_before_setup := int(main.get("configured_player_count"))
@@ -390,6 +391,71 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("公开状态["), "economy overview shows unified public status tags")
 	_expect(menu_body_label != null and menu_body_label.text.contains("流水"), "economy overview shows player economy ledger entries")
 	_expect(menu_body_label != null and menu_body_label.text.contains("收入拆解") and menu_body_label.text.contains("合约"), "economy overview shows city income breakdowns and temporary contract status")
+	main.call("_open_intel_dossier_menu")
+	await process_frame
+	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "intel dossier opens from the main scene")
+	_expect(menu_body_label != null and menu_body_label.text.contains("情报换钱") and menu_body_label.text.contains("当前不揭示正误"), "intel dossier explains money settlement without revealing truth early")
+	_expect(menu_body_label != null and menu_body_label.text.contains("城市业主情报") and menu_body_label.text.contains("终局范围"), "intel dossier summarizes private city-owner guesses")
+	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌归属档案") and menu_body_label.text.contains("押注"), "intel dossier summarizes anonymous card-owner betting status")
+	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽资金档案") and menu_body_label.text.contains("城市公开线索档案"), "intel dossier groups monster cash and city clue evidence")
+	_expect(menu_body_label != null and menu_body_label.text.contains("调查优先级") and menu_body_label.text.contains("优先级"), "intel dossier ranks city-owner leads by investigation priority")
+	menu_preview_box = main.get("menu_preview_box") as VBoxContainer
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "查看区域线索"), "intel dossier exposes region clue jump buttons")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "查看卡牌线索"), "intel dossier exposes card clue jump buttons")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "标玩家") and _container_button_text_contains(menu_preview_box, "清除"), "intel dossier exposes city-owner mark buttons")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "卡牌条件") and _container_button_text_contains(menu_preview_box, "怪兽资金"), "intel dossier exposes city-owner mark reason buttons")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "打开经济总览"), "intel dossier keeps an economy overview jump")
+	var dossier_rival_city_index := _first_rival_city_index(main, 0)
+	if dossier_rival_city_index >= 0:
+		main.call("_mark_city_guess_from_intel", dossier_rival_city_index, -1)
+		await process_frame
+		var players_after_intel_clear := _as_array(main.get("players"))
+		var guesses_after_intel_clear := (players_after_intel_clear[0] as Dictionary).get("city_guesses", {}) as Dictionary
+		_expect(not guesses_after_intel_clear.has(dossier_rival_city_index), "intel dossier can clear a private city-owner mark")
+		main.call("_mark_city_guess_from_intel", dossier_rival_city_index, 1)
+		await process_frame
+		var players_after_intel_mark := _as_array(main.get("players"))
+		var guesses_after_intel_mark := (players_after_intel_mark[0] as Dictionary).get("city_guesses", {}) as Dictionary
+		_expect(int(guesses_after_intel_mark.get(dossier_rival_city_index, -1)) == 1, "intel dossier can update a private city-owner mark")
+		main.call("_set_city_guess_confidence_from_intel", dossier_rival_city_index, 3)
+		await process_frame
+		var players_after_confidence := _as_array(main.get("players"))
+		var confidence_after_intel := (players_after_confidence[0] as Dictionary).get("city_guess_confidence", {}) as Dictionary
+		_expect(int(confidence_after_intel.get(dossier_rival_city_index, 0)) == 3, "intel dossier can update city-owner mark confidence")
+		_expect(menu_body_label != null and menu_body_label.text.contains("置信:高") and menu_body_label.text.contains("置信分布"), "intel dossier displays city-owner mark confidence")
+		main.call("_set_city_guess_reason_from_intel", dossier_rival_city_index, "card")
+		await process_frame
+		var players_after_reason := _as_array(main.get("players"))
+		var reasons_after_intel := (players_after_reason[0] as Dictionary).get("city_guess_reasons", {}) as Dictionary
+		_expect(String(reasons_after_intel.get(dossier_rival_city_index, "")) == "card", "intel dossier can update city-owner mark reason")
+		_expect(menu_body_label != null and menu_body_label.text.contains("理由:卡牌条件") and menu_body_label.text.contains("理由分布"), "intel dossier displays city-owner mark reason")
+		var intel_city_entries := _as_array(main.call("_intel_city_guess_entries", 0, 6))
+		_expect(not intel_city_entries.is_empty() and int((intel_city_entries[0] as Dictionary).get("priority", -1)) >= 0, "intel dossier computes non-negative city investigation priority")
+		var intel_save_state := main.call("_capture_run_state") as Dictionary
+		var intel_save_players := _as_array(intel_save_state.get("players", []))
+		var saved_confidence := (intel_save_players[0] as Dictionary).get("city_guess_confidence", {}) as Dictionary
+		var saved_reasons := (intel_save_players[0] as Dictionary).get("city_guess_reasons", {}) as Dictionary
+		_expect(int(saved_confidence.get(dossier_rival_city_index, 0)) == 3, "run-state capture preserves city-owner mark confidence")
+		_expect(String(saved_reasons.get(dossier_rival_city_index, "")) == "card", "run-state capture preserves city-owner mark reason")
+	main.call("_open_intel_region_codex_link", buildable_district)
+	await process_frame
+	var intel_back_button := main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier region links return to the dossier")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "region codex returns to the intel dossier")
+	main.call("_open_intel_card_codex_link", "城市融资1")
+	await process_frame
+	intel_back_button = main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier card links return to the dossier")
+	main.call("_open_intel_monster_codex_link", 0)
+	await process_frame
+	intel_back_button = main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier monster links return to the dossier")
+	main.call("_open_intel_product_codex_link", "活体芯片")
+	await process_frame
+	intel_back_button = main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier product links return to the dossier")
 	main.call("_open_compendium_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "图鉴", "unified compendium opens from the main scene")
