@@ -129,6 +129,17 @@ func _run() -> void:
 	_expect(player_box != null and _container_label_text_contains(player_box, "手牌卡面") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示"), "player panel shows one concise next-action hint")
 	_expect(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"), "early-run guide shows a dismissible checklist and economy overview shortcut")
+	_expect(player_box != null and _container_label_text_contains(player_box, "当前下一步") and _container_label_text_contains(player_box, "□ 打开经济总览"), "early-run guide shows the real next step and leaves economy overview unchecked before it is opened")
+	main.call("_open_economy_overview_menu")
+	main.call("_close_menu")
+	main.call("_refresh_ui")
+	player_box = main.get("player_box") as VBoxContainer
+	_expect(player_box != null and _container_label_text_contains(player_box, "✓ 打开经济总览"), "early-run guide checks off economy overview only after opening it")
+	var seen_guide_state := main.call("_capture_run_state") as Dictionary
+	main.set("opening_guide_economy_seen_players", {})
+	_expect(int(main.call("_apply_run_state", seen_guide_state)) == OK and bool(main.call("_opening_guide_economy_seen", 0)), "early-run guide economy-overview progress persists in run saves")
+	main.call("_refresh_ui")
+	player_box = main.get("player_box") as VBoxContainer
 	main.call("_dismiss_opening_guide")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer

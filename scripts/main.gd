@@ -1264,6 +1264,7 @@ var card_resolution_status_label: Label
 var card_resolution_badge_box: HBoxContainer
 var card_resolution_art: Control
 var opening_guide_dismissed := false
+var opening_guide_economy_seen_players := {}
 
 
 func _ready() -> void:
@@ -2462,6 +2463,7 @@ func _open_standings_menu() -> void:
 
 
 func _open_economy_overview_menu() -> void:
+	_mark_opening_guide_economy_seen(selected_player)
 	_show_menu("经济总览", _economy_overview_text(), not game_over)
 
 
@@ -6787,6 +6789,7 @@ func _capture_run_state() -> Dictionary:
 		"resolved_card_history": resolved_card_history.duplicate(true),
 		"selected_card_resolution_id": selected_card_resolution_id,
 		"opening_guide_dismissed": opening_guide_dismissed,
+		"opening_guide_economy_seen_players": opening_guide_economy_seen_players.duplicate(true),
 		"business_cycle_count": business_cycle_count,
 		"configured_player_count": configured_player_count,
 		"configured_ai_player_count": configured_ai_player_count,
@@ -6888,6 +6891,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	resolved_card_history = (state.get("resolved_card_history", []) as Array).duplicate(true)
 	selected_card_resolution_id = int(state.get("selected_card_resolution_id", -1))
 	opening_guide_dismissed = bool(state.get("opening_guide_dismissed", false))
+	opening_guide_economy_seen_players = (state.get("opening_guide_economy_seen_players", {}) as Dictionary).duplicate(true)
 	business_cycle_count = int(state.get("business_cycle_count", 0))
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
@@ -7715,6 +7719,7 @@ func _new_game() -> void:
 	resolved_card_history = []
 	selected_card_resolution_id = -1
 	opening_guide_dismissed = false
+	opening_guide_economy_seen_players = {}
 	product_market = _generate_product_market()
 	skill_market = _monster_market_skills()
 	log_lines = []
@@ -10354,7 +10359,26 @@ func _opening_guide_step(done: bool, text: String) -> String:
 	return "%s %s" % ["✓" if done else "□", text]
 
 
-func _opening_guide_lines(player_index: int) -> Array:
+func _opening_guide_player_key(player_index: int) -> String:
+	return str(player_index)
+
+
+func _mark_opening_guide_economy_seen(player_index: int) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	opening_guide_economy_seen_players[_opening_guide_player_key(player_index)] = true
+
+
+func _opening_guide_economy_seen(player_index: int) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	return bool(opening_guide_economy_seen_players.get(_opening_guide_player_key(player_index), false)) \
+		or bool(opening_guide_economy_seen_players.get(player_index, false))
+
+
+func _opening_guide_progress(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
 	var player: Dictionary = players[player_index]
 	var has_monster := _ai_owned_active_monster_count(player_index) > 0
 	var has_city := _player_active_city_count(player_index) > 0
@@ -10375,14 +10399,46 @@ func _opening_guide_lines(player_index: int) -> Array:
 			has_played_card = true
 	if int(active_card_resolution.get("player_index", -1)) == player_index:
 		has_played_card = true
-	var has_checked_economy := game_time > 45.0 or business_cycle_count > 0
+	var has_checked_economy := _opening_guide_economy_seen(player_index)
+	return {
+		"has_monster": has_monster,
+		"has_city": has_city,
+		"has_bought_card": has_bought_card,
+		"has_played_card": has_played_card,
+		"has_checked_economy": has_checked_economy,
+	}
+
+
+func _opening_guide_lines(player_index: int) -> Array:
+	var progress := _opening_guide_progress(player_index)
 	return [
-		_opening_guide_step(has_monster, "先召唤怪兽，开启落地区/邻区购牌。"),
-		_opening_guide_step(has_city, "在陆地建城市，GDP 周期收入会变成钱。"),
-		_opening_guide_step(has_bought_card, "从怪兽补给范围买牌；重复牌自动升到 II/III/IV。"),
-		_opening_guide_step(has_played_card, "满足商品流动后匿名出牌，需要目标的牌会先询问。"),
-		_opening_guide_step(has_checked_economy, "打开经济总览，看商品、商路和城市收入拆解。"),
+		_opening_guide_step(bool(progress.get("has_monster", false)), "先召唤怪兽，开启落地区/邻区购牌。"),
+		_opening_guide_step(bool(progress.get("has_city", false)), "在陆地建城市，GDP 周期收入会变成钱。"),
+		_opening_guide_step(bool(progress.get("has_bought_card", false)), "从怪兽补给范围买牌；重复牌自动升到 II/III/IV。"),
+		_opening_guide_step(bool(progress.get("has_played_card", false)), "满足商品流动后匿名出牌，需要目标的牌会先询问。"),
+		_opening_guide_step(bool(progress.get("has_checked_economy", false)), "打开经济总览，看商品、商路和城市收入拆解。"),
 	]
+
+
+func _opening_guide_next_step_text(player_index: int) -> String:
+	var progress := _opening_guide_progress(player_index)
+	if progress.is_empty():
+		return "当前下一步：选择玩家后开始操作。"
+	if not bool(progress.get("has_monster", false)):
+		return "当前下一步：选一个落点，点「在选区首召」。"
+	if not bool(progress.get("has_city", false)):
+		if selected_district >= 0 and selected_district < districts.size() and _city_build_error_for(player_index, selected_district, false) == "":
+			return "当前下一步：点「城市化」，先建第一座收入城市。"
+		return "当前下一步：切到陆地区域，再点「城市化」。"
+	if not bool(progress.get("has_bought_card", false)):
+		if selected_district >= 0 and selected_district < districts.size() and _can_buy_card_from_district(selected_district, player_index):
+			return "当前下一步：按 X 或点当前区域候选卡，买一张牌。"
+		return "当前下一步：切到怪兽落地区或邻区，按 X 买牌。"
+	if not bool(progress.get("has_played_card", false)):
+		return "当前下一步：选择手牌匿名出牌；需要目标的牌会先询问。"
+	if not bool(progress.get("has_checked_economy", false)):
+		return "当前下一步：点「经济总览」，看 GDP、商品和商路为什么赚钱。"
+	return "当前下一步：扩 GDP、护商路，或压制疑似竞争城市。"
 
 
 func _dismiss_opening_guide() -> void:
@@ -10426,6 +10482,7 @@ func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
 	close_button.tooltip_text = "本局不再显示这块轻引导。"
 	close_button.pressed.connect(Callable(self, "_dismiss_opening_guide"))
 	header.add_child(close_button)
+	box.add_child(_plain_label(_opening_guide_next_step_text(player_index), 10, Color("#bfdbfe")))
 	for line_variant in _opening_guide_lines(player_index):
 		box.add_child(_plain_label(String(line_variant), 10, Color("#dbeafe")))
 	box.add_child(_plain_label("最后按钱最多获胜；出牌匿名，但条件和结果会留下推理线索。", 10, Color("#fef3c7")))
