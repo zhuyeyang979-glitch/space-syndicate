@@ -460,7 +460,14 @@ func _run() -> void:
 	main.call("_open_intel_monster_codex_link", 0)
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier monster links return to the dossier")
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier monster links open monster detail before returning to thumbnails")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	intel_back_button = main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "monster detail returns to thumbnail page before the intel dossier")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "monster thumbnail page returns to the intel dossier")
 	main.call("_open_intel_product_codex_link", "活体芯片")
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
@@ -502,23 +509,38 @@ func _run() -> void:
 	await process_frame
 	main.call("_open_role_starter_monster_in_bestiary", first_role_starter_monster_index)
 	await process_frame
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label != null and menu_body_label.text.contains(first_role_starter_monster), "role starter-monster link can jump to the matching monster codex entry")
+	menu_bestiary_back_button = main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label != null and menu_body_label.text.contains(first_role_starter_monster) and menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回缩略图", "role starter-monster link can jump to the matching monster detail entry")
 	main.call("_open_bestiary_from_compendium")
 	await process_frame
 	menu_bestiary_back_button = main.get("menu_bestiary_back_button") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴", "monster codex opens from the compendium")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "仅查看") and not _container_button_text_contains(menu_overlay, "开局不再预选怪兽"), "monster codex has no hidden legacy lineup controls")
-	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "sub-codex returns to the compendium")
+	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "monster thumbnail codex returns to the compendium")
+	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster codex opens as a responsive thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "monster codex thumbnail page exposes paging and hover preview")
+	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "monster codex hides detail previous/next buttons on the thumbnail page")
+	main.call("_preview_bestiary_entry", 0, true)
+	await process_frame
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "HP:") and _container_label_text_contains(menu_preview_box, "行动:"), "monster codex hover preview shows the selected monster details")
+	var monster_detail_event := InputEventMouseButton.new()
+	monster_detail_event.button_index = MOUSE_BUTTON_LEFT
+	monster_detail_event.pressed = true
+	monster_detail_event.double_click = true
+	main.call("_on_bestiary_thumbnail_gui_input", monster_detail_event, 0)
+	await process_frame
+	menu_bestiary_back_button = main.get("menu_bestiary_back_button") as Button
 	_expect(menu_body_label != null and menu_body_label.text.contains("正面经济天气"), "monster codex shows positive economy abilities")
 	_expect(menu_body_label != null and menu_body_label.text.contains("IV级") and menu_body_label.text.contains("权重修正"), "monster codex explains rank-based action probability shifts")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "¥"), "monster codex exposes linked monster-card buttons with prices")
 	_expect(menu_preview_box != null and _container_button_tooltip_contains(menu_preview_box, "生命"), "monster codex card links expose card details on hover")
 	_expect(menu_preview_box != null and _container_button_tooltip_contains(menu_preview_box, "在场"), "monster codex card links expose field duration on hover")
 	_expect(menu_preview_box != null and _container_button_tooltip_contains(menu_preview_box, "召唤区域"), "monster codex card links expose summon-region restrictions on hover")
+	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "monster detail exposes previous/next and a return-to-thumbnails button")
 	var old_bestiary_text := menu_body_label.text
 	main.call("_cycle_menu_catalog", 1)
 	await process_frame
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label.text != old_bestiary_text, "monster codex next button logic changes pages")
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label.text != old_bestiary_text, "monster detail next button logic changes pages")
 	main.call("_open_card_codex_by_name", first_monster_card)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽卡") and menu_body_label.text.contains("生命"), "monster-card link can jump to the matching card codex entry")

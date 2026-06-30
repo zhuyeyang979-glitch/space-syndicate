@@ -979,6 +979,9 @@ var menu_bestiary_back_button: Button
 var menu_catalog_mode := ""
 var catalog_return_menu := "main"
 var bestiary_index := 0
+var bestiary_grid_page := 0
+var bestiary_show_detail := false
+var previewed_bestiary_index := 0
 var card_codex_index := 0
 var card_codex_filter := "all"
 var card_codex_grid_page := 0
@@ -3794,6 +3797,9 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 
 func _open_bestiary_from_compendium() -> void:
 	catalog_return_menu = "compendium"
+	bestiary_show_detail = false
+	bestiary_grid_page = 0
+	previewed_bestiary_index = 0
 	_open_bestiary_menu()
 
 
@@ -3816,6 +3822,10 @@ func _back_from_catalog_menu() -> void:
 		card_codex_show_detail = false
 		_update_card_codex_menu()
 		return
+	if menu_catalog_mode == "monster" and bestiary_show_detail:
+		bestiary_show_detail = false
+		_update_bestiary_menu()
+		return
 	match catalog_return_menu:
 		"compendium":
 			_open_compendium_menu()
@@ -3836,8 +3846,11 @@ func _catalog_back_button_text() -> String:
 
 
 func _open_bestiary_menu(index: int = -1) -> void:
+	bestiary_show_detail = index >= 0
 	if index >= 0:
 		bestiary_index = index
+		previewed_bestiary_index = _valid_bestiary_index(index)
+		bestiary_grid_page = _bestiary_grid_page_for_index(bestiary_index)
 	_update_bestiary_menu()
 
 
@@ -3935,7 +3948,16 @@ func _cycle_menu_catalog(step: int) -> void:
 func _cycle_bestiary(step: int) -> void:
 	if _catalog_size() <= 0:
 		return
-	bestiary_index = wrapi(bestiary_index + step, 0, _catalog_size())
+	if bestiary_show_detail:
+		bestiary_index = wrapi(bestiary_index + step, 0, _catalog_size())
+		previewed_bestiary_index = bestiary_index
+		bestiary_grid_page = _bestiary_grid_page_for_index(bestiary_index)
+	else:
+		var page_count := _bestiary_grid_page_count(_catalog_size())
+		bestiary_grid_page = wrapi(bestiary_grid_page + step, 0, page_count)
+		var first_index := _bestiary_first_index_on_page(bestiary_grid_page, _catalog_size())
+		bestiary_index = first_index
+		previewed_bestiary_index = first_index
 	_update_bestiary_menu()
 
 
@@ -3943,24 +3965,289 @@ func _update_bestiary_menu() -> void:
 	if _catalog_size() <= 0:
 		return
 	bestiary_index = wrapi(bestiary_index, 0, _catalog_size())
-	_show_menu("怪兽图鉴", _bestiary_text(bestiary_index), false)
+	previewed_bestiary_index = _valid_bestiary_index(previewed_bestiary_index)
+	bestiary_grid_page = clampi(bestiary_grid_page, 0, _bestiary_grid_page_count(_catalog_size()) - 1)
+	var body_text := _bestiary_text(bestiary_index) if bestiary_show_detail else _bestiary_grid_text()
+	_show_menu("怪兽图鉴", body_text, false)
 	menu_catalog_mode = "monster"
 	menu_continue_button.visible = false
 	for button in menu_regular_buttons:
 		button.visible = false
 	if menu_run_save_label != null:
 		menu_run_save_label.visible = false
-	menu_bestiary_prev_button.visible = true
-	menu_bestiary_next_button.visible = true
+	menu_bestiary_prev_button.visible = bestiary_show_detail
+	menu_bestiary_next_button.visible = bestiary_show_detail
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = _catalog_back_button_text()
+	menu_bestiary_back_button.text = "返回缩略图" if bestiary_show_detail else _catalog_back_button_text()
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
-		var center := CenterContainer.new()
-		menu_preview_box.add_child(center)
-		_add_monster_art_preview(center, _catalog_entry(bestiary_index), false)
-		_add_bestiary_monster_card_link(menu_preview_box, bestiary_index)
+		if bestiary_show_detail:
+			var center := CenterContainer.new()
+			menu_preview_box.add_child(center)
+			_add_monster_art_preview(center, _catalog_entry(bestiary_index), false)
+			_add_bestiary_monster_card_link(menu_preview_box, bestiary_index)
+		else:
+			_populate_bestiary_thumbnail_page(menu_preview_box)
+
+
+func _valid_bestiary_index(index: int) -> int:
+	return clampi(index, 0, max(0, _catalog_size() - 1))
+
+
+func _bestiary_grid_columns() -> int:
+	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+	return clampi(int(floor((viewport_size.x - 180.0) / 178.0)), 2, 4)
+
+
+func _bestiary_grid_rows() -> int:
+	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+	return clampi(int(floor((viewport_size.y - 260.0) / 176.0)), 1, 3)
+
+
+func _bestiary_entries_per_page() -> int:
+	return maxi(1, _bestiary_grid_columns() * _bestiary_grid_rows())
+
+
+func _bestiary_grid_page_count(total_count: int) -> int:
+	return maxi(1, int(ceil(float(maxi(0, total_count)) / float(_bestiary_entries_per_page()))))
+
+
+func _bestiary_grid_page_for_index(index: int) -> int:
+	var page_index := int(floor(float(maxi(0, index)) / float(_bestiary_entries_per_page())))
+	return clampi(page_index, 0, _bestiary_grid_page_count(_catalog_size()) - 1)
+
+
+func _bestiary_first_index_on_page(page_index: int, total_count: int) -> int:
+	return clampi(page_index * _bestiary_entries_per_page(), 0, max(0, total_count - 1))
+
+
+func _bestiary_grid_text() -> String:
+	var page_count := _bestiary_grid_page_count(_catalog_size())
+	return "怪兽缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n悬停或单击怪兽缩略图会在下方显示详情预览；双击缩略图进入怪兽详情。进入详情后才使用顶部「上一个/下一个」切换怪兽，也可以点「返回缩略图」回到图册。" % [
+		bestiary_grid_page + 1,
+		page_count,
+		_bestiary_grid_columns(),
+		_bestiary_grid_rows(),
+	]
+
+
+func _turn_bestiary_grid_page(step: int) -> void:
+	if _catalog_size() <= 0:
+		return
+	var page_count := _bestiary_grid_page_count(_catalog_size())
+	bestiary_grid_page = wrapi(bestiary_grid_page + step, 0, page_count)
+	var first_index := _bestiary_first_index_on_page(bestiary_grid_page, _catalog_size())
+	bestiary_index = first_index
+	previewed_bestiary_index = first_index
+	bestiary_show_detail = false
+	_update_bestiary_menu()
+
+
+func _populate_bestiary_thumbnail_page(parent: Container) -> void:
+	var total_count := _catalog_size()
+	if total_count <= 0:
+		return
+	var page_count := _bestiary_grid_page_count(total_count)
+	bestiary_grid_page = clampi(bestiary_grid_page, 0, max(0, page_count - 1))
+	var per_page := _bestiary_entries_per_page()
+	var start_index := bestiary_grid_page * per_page
+	var end_index := mini(total_count, start_index + per_page)
+	if start_index >= total_count:
+		start_index = _bestiary_first_index_on_page(bestiary_grid_page, total_count)
+		end_index = mini(total_count, start_index + per_page)
+	if previewed_bestiary_index < start_index or previewed_bestiary_index >= end_index:
+		previewed_bestiary_index = start_index
+		bestiary_index = start_index
+
+	var nav_row := HBoxContainer.new()
+	nav_row.add_theme_constant_override("separation", 8)
+	parent.add_child(nav_row)
+	var previous_button := Button.new()
+	previous_button.text = "缩略图上一页"
+	previous_button.disabled = page_count <= 1
+	previous_button.pressed.connect(Callable(self, "_turn_bestiary_grid_page").bind(-1))
+	nav_row.add_child(previous_button)
+	var page_label := _plain_label("第%d/%d页｜%d只怪兽｜本页%d-%d" % [
+		bestiary_grid_page + 1,
+		page_count,
+		total_count,
+		start_index + 1,
+		end_index,
+	], 12, Color("#fecdd3"))
+	page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nav_row.add_child(page_label)
+	var next_button := Button.new()
+	next_button.text = "缩略图下一页"
+	next_button.disabled = page_count <= 1
+	next_button.pressed.connect(Callable(self, "_turn_bestiary_grid_page").bind(1))
+	nav_row.add_child(next_button)
+
+	var grid := GridContainer.new()
+	grid.columns = _bestiary_grid_columns()
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(grid)
+	for i in range(start_index, end_index):
+		_add_bestiary_thumbnail(grid, i)
+	_add_bestiary_hover_preview(parent)
+
+
+func _add_bestiary_thumbnail(parent: Container, catalog_index: int) -> void:
+	var entry := _catalog_entry(catalog_index)
+	var monster_name := String(entry.get("name", "怪兽"))
+	var accent := Color("#fb7185")
+	var profile := _monster_art_profile(monster_name)
+	if profile.has("accent"):
+		accent = profile.get("accent")
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(158, 166)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.tooltip_text = _bestiary_detail_tooltip(catalog_index)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#0b1120").lerp(accent, 0.14)
+	style.border_color = Color("#fef3c7") if catalog_index == previewed_bestiary_index else accent
+	style.set_border_width_all(2 if catalog_index == previewed_bestiary_index else 1)
+	style.set_corner_radius_all(10)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_entered.connect(Callable(self, "_preview_bestiary_entry").bind(catalog_index, true))
+	panel.gui_input.connect(Callable(self, "_on_bestiary_thumbnail_gui_input").bind(catalog_index))
+	parent.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	margin.add_child(box)
+	var title := _plain_label(monster_name, 11, Color("#f8fafc"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var art_view = MonsterArtViewScript.new()
+	art_view.custom_minimum_size = Vector2(0, 86)
+	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art_view.set_monster(
+		monster_name,
+		String(entry.get("style", "自动怪兽。")),
+		int(entry.get("hp", 0)),
+		int(entry.get("armor", 0)),
+		_meters_text(float(entry.get("move", MONSTER_RAMPAGE_MOVE_METERS))),
+		profile,
+		true
+	)
+	box.add_child(art_view)
+	var resource_focus: Array = entry.get("resource_focus", [])
+	var meta := _plain_label("HP%d｜%s｜%s" % [
+		int(entry.get("hp", 0)),
+		_meters_text(_catalog_move_speed(catalog_index)),
+		_short_card_text("、".join(resource_focus) if not resource_focus.is_empty() else "无偏好", 16),
+	], 9, Color("#cbd5e1"))
+	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(meta)
+	var hint := _plain_label("悬停预览｜双击详情", 8, Color("#94a3b8"))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(hint)
+
+
+func _add_bestiary_hover_preview(parent: Container) -> void:
+	previewed_bestiary_index = _valid_bestiary_index(previewed_bestiary_index)
+	var entry := _catalog_entry(previewed_bestiary_index)
+	var preview_panel := PanelContainer.new()
+	var profile := _monster_art_profile(String(entry.get("name", "怪兽")))
+	var accent := Color("#fb7185")
+	if profile.has("accent"):
+		accent = profile.get("accent")
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, 0.13)
+	style.border_color = Color("#fb7185")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	preview_panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(preview_panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	preview_panel.add_child(row)
+	var center := CenterContainer.new()
+	center.custom_minimum_size = Vector2(220, 0)
+	row.add_child(center)
+	_add_monster_art_preview(center, entry, true)
+	var detail := _plain_label("悬停详情预览：%s\n%s\n%s\n双击缩略图可进入详情页；详情页使用顶部上一个/下一个切换怪兽。" % [
+		String(entry.get("name", "怪兽")),
+		_bestiary_preview_text(previewed_bestiary_index),
+		_bestiary_monster_card_preview_text(previewed_bestiary_index),
+	], 11, Color("#fee2e2"))
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(detail)
+
+
+func _bestiary_preview_text(catalog_index: int) -> String:
+	var entry := _catalog_entry(catalog_index)
+	var resource_focus: Array = entry.get("resource_focus", [])
+	var resource_text := "、".join(resource_focus) if not resource_focus.is_empty() else "暂无固定偏好"
+	return "HP:%d｜护甲:%d｜移动:%s｜资源偏好:%s｜行动:%s｜IV级权重:%s" % [
+		int(entry.get("hp", 0)),
+		int(entry.get("armor", 0)),
+		_meters_text(_catalog_move_speed(catalog_index)),
+		resource_text,
+		_catalog_action_summary(catalog_index),
+		_catalog_rank_iv_shift_summary(catalog_index, false),
+	]
+
+
+func _bestiary_monster_card_preview_text(catalog_index: int) -> String:
+	var card_name := _monster_card_name(catalog_index, 1)
+	var skill := _skill_definition(card_name)
+	if skill.is_empty():
+		return "怪兽卡：暂无"
+	return "怪兽卡：%s｜¥%d｜%s" % [
+		_card_display_name(card_name),
+		_card_price(card_name),
+		_monster_card_region_text(skill),
+	]
+
+
+func _bestiary_detail_tooltip(catalog_index: int) -> String:
+	var entry := _catalog_entry(catalog_index)
+	return "%s\n%s\n%s\n操作：悬停/单击预览；双击进入完整怪兽详情。" % [
+		String(entry.get("name", "怪兽")),
+		_bestiary_preview_text(catalog_index),
+		_bestiary_monster_card_preview_text(catalog_index),
+	]
+
+
+func _preview_bestiary_entry(catalog_index: int, refresh: bool = true) -> void:
+	if _catalog_size() <= 0:
+		return
+	previewed_bestiary_index = _valid_bestiary_index(catalog_index)
+	bestiary_index = previewed_bestiary_index
+	if refresh:
+		_update_bestiary_menu()
+
+
+func _open_bestiary_detail(catalog_index: int) -> void:
+	_preview_bestiary_entry(catalog_index, false)
+	bestiary_show_detail = true
+	bestiary_grid_page = _bestiary_grid_page_for_index(bestiary_index)
+	_update_bestiary_menu()
+
+
+func _on_bestiary_thumbnail_gui_input(event: InputEvent, catalog_index: int) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if mouse_event.double_click:
+		_open_bestiary_detail(catalog_index)
+	else:
+		_preview_bestiary_entry(catalog_index, true)
 
 
 func _cycle_card_codex(step: int) -> void:
@@ -5510,6 +5797,9 @@ func _capture_run_state() -> Dictionary:
 		"pending_target_paused_time": pending_target_paused_time,
 		"speed_before_target_choice": speed_before_target_choice,
 		"bestiary_index": bestiary_index,
+		"bestiary_grid_page": bestiary_grid_page,
+		"bestiary_show_detail": bestiary_show_detail,
+		"previewed_bestiary_index": previewed_bestiary_index,
 		"card_codex_index": card_codex_index,
 		"card_codex_filter": card_codex_filter,
 		"product_codex_index": product_codex_index,
@@ -5599,6 +5889,9 @@ func _apply_run_state(state: Dictionary) -> int:
 	pending_target_paused_time = bool(state.get("pending_target_paused_time", false))
 	speed_before_target_choice = float(state.get("speed_before_target_choice", 1.0))
 	bestiary_index = int(state.get("bestiary_index", 0))
+	bestiary_grid_page = int(state.get("bestiary_grid_page", 0))
+	bestiary_show_detail = bool(state.get("bestiary_show_detail", false))
+	previewed_bestiary_index = int(state.get("previewed_bestiary_index", bestiary_index))
 	card_codex_index = int(state.get("card_codex_index", 0))
 	card_codex_filter = String(state.get("card_codex_filter", "all"))
 	product_codex_index = int(state.get("product_codex_index", 0))
