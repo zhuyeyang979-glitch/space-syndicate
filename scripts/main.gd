@@ -115,6 +115,7 @@ const CITY_DAMAGE_GDP_PENALTY := 18
 const CITY_MINIMUM_INCOME := 40
 const CITY_FINAL_VALUE := 700
 const CITY_BUILD_ANIMATION_SECONDS := 1.2
+const CITY_GDP_HISTORY_LIMIT := 8
 const VICTORY_COUNTDOWN_SECONDS := 60.0
 const INTEL_CORRECT_GUESS_CASH := 120
 const INTEL_WRONG_GUESS_COST := 60
@@ -2940,6 +2941,7 @@ func _economy_city_income_entries() -> Array:
 			"intel_hint": _city_intel_hint_for_player(index, selected_player),
 			"income": potential_income,
 			"last_income": int(city.get("last_income", 0)),
+			"gdp_trend": _city_gdp_trend_text(city),
 			"products": _city_product_names(city),
 			"demands": _city_demand_names(city),
 			"supplied": int(city.get("supplied_demands", 0)),
@@ -2986,12 +2988,13 @@ func _city_owner_view_text_for_player(city_index: int, viewer_index: int) -> Str
 
 func _economy_city_income_line(entry: Dictionary) -> String:
 	var status_tags: Array = entry.get("status_tags", []) as Array
-	return "%s｜%s｜%s｜潜在收入%d｜上次%d｜收入拆解%s｜公开状态%s｜合约%s｜供给%d/%d｜断路%d｜竞争%d｜流通%s｜生产%s｜需求%s" % [
+	return "%s｜%s｜%s｜潜在收入%d｜上次%d｜%s｜收入拆解%s｜公开状态%s｜合约%s｜供给%d/%d｜断路%d｜竞争%d｜流通%s｜生产%s｜需求%s" % [
 		String(entry.get("name", "城市")),
 		String(entry.get("owner_view", "未知业主")),
 		String(entry.get("intel_hint", "情报：无")),
 		int(entry.get("income", 0)),
 		int(entry.get("last_income", 0)),
+		String(entry.get("gdp_trend", "GDP趋势：暂无历史")),
 		String(entry.get("breakdown", "")),
 		_public_status_tag_text(status_tags),
 		String(entry.get("contract", "无")),
@@ -9200,6 +9203,12 @@ func _create_city_at_district_for_player(player_index: int, district_index: int,
 		"contract_turns": 0,
 		"contract_source": "",
 		"last_income": 0,
+		"last_gdp": 0,
+		"last_gdp_delta": 0,
+		"last_gdp_cycle": -1,
+		"last_gdp_source": "",
+		"last_gdp_reason": "尚未经历经营周期",
+		"gdp_history": [],
 		"competition_matches": 0,
 		"trade_routes": [],
 		"trade_disrupted_routes": 0,
@@ -20838,10 +20847,109 @@ func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
 	]
 
 
+func _city_gdp_change_reason_text(breakdown: Dictionary) -> String:
+	var drivers := []
+	var pressures := []
+	var product_gdp := int(breakdown.get("product", 0))
+	var route_gdp := int(breakdown.get("route", 0))
+	var transit_gdp := int(breakdown.get("transit", 0))
+	var bonus_gdp := int(breakdown.get("bonus", 0))
+	var contract_gdp := int(breakdown.get("contract", 0))
+	var competition_penalty := int(breakdown.get("competition_penalty", 0))
+	var route_penalty := int(breakdown.get("route_penalty", 0))
+	var damage_penalty := int(breakdown.get("damage_penalty", 0))
+	if product_gdp > 0:
+		drivers.append("生产+%d" % product_gdp)
+	if route_gdp > 0:
+		drivers.append("消费+%d" % route_gdp)
+	if transit_gdp > 0:
+		drivers.append("过境+%d" % transit_gdp)
+	if bonus_gdp > 0:
+		drivers.append("加成+%d" % bonus_gdp)
+	if contract_gdp > 0:
+		drivers.append("合约+%d" % contract_gdp)
+	if competition_penalty > 0:
+		pressures.append("竞争-%d" % competition_penalty)
+	if route_penalty > 0:
+		pressures.append("断路-%d" % route_penalty)
+	if damage_penalty > 0:
+		pressures.append("损伤-%d" % damage_penalty)
+	return "驱动%s；压力%s" % [
+		_limited_name_list(drivers, 4, "无主要增益"),
+		_limited_name_list(pressures, 3, "无主要压力"),
+	]
+
+
+func _city_gdp_history_path_text(city: Dictionary, limit: int = 5) -> String:
+	var history: Array = city.get("gdp_history", [])
+	if history.is_empty():
+		var fallback := int(city.get("last_gdp", city.get("last_income", 0)))
+		return str(fallback) if fallback > 0 else "暂无"
+	var start := maxi(0, history.size() - limit)
+	var pieces := []
+	for i in range(start, history.size()):
+		pieces.append(str(int(history[i])))
+	return "→".join(pieces)
+
+
+func _city_gdp_trend_text(city: Dictionary) -> String:
+	var history: Array = city.get("gdp_history", [])
+	if history.is_empty():
+		var fallback := int(city.get("last_gdp", city.get("last_income", 0)))
+		if fallback > 0:
+			return "GDP趋势：本期%d｜较上期暂无｜路径%s。" % [fallback, _city_gdp_history_path_text(city)]
+		return "GDP趋势：暂无历史（下个经营周期开始记录）。"
+	var current := int(history[history.size() - 1])
+	var delta := int(city.get("last_gdp_delta", 0))
+	var source := String(city.get("last_gdp_source", "经营周期"))
+	if source == "":
+		source = "经营周期"
+	var reason := String(city.get("last_gdp_reason", ""))
+	if reason == "":
+		reason = "等待收入拆解"
+	var change_text := "持平" if delta == 0 else _signed_int_text(delta)
+	return "GDP趋势：%s本期%d（较上期%s）｜路径%s｜%s。" % [
+		source,
+		current,
+		change_text,
+		_city_gdp_history_path_text(city),
+		reason,
+	]
+
+
+func _record_city_gdp_snapshot(district_index: int, income: int, breakdown: Dictionary, source: String = "经营周期") -> void:
+	if district_index < 0 or district_index >= districts.size():
+		return
+	var city := _district_city(district_index)
+	if not _city_is_active(city):
+		return
+	var history: Array = city.get("gdp_history", [])
+	var previous := income
+	if not history.is_empty():
+		previous = int(history[history.size() - 1])
+	elif int(city.get("last_gdp", 0)) > 0:
+		previous = int(city.get("last_gdp", income))
+	var delta := income - previous
+	history.append(income)
+	while history.size() > CITY_GDP_HISTORY_LIMIT:
+		history.remove_at(0)
+	city["last_income"] = income
+	city["last_gdp"] = income
+	city["last_gdp_delta"] = delta
+	city["last_gdp_cycle"] = business_cycle_count
+	city["last_gdp_source"] = source
+	city["last_gdp_reason"] = _city_gdp_change_reason_text(breakdown)
+	city["last_gdp_breakdown"] = breakdown.duplicate(true)
+	city["gdp_history"] = history
+	districts[district_index]["city"] = city
+
+
 func _city_income_detail_lines(city_index: int, competition_matches: int) -> Array:
 	var breakdown := _city_cycle_income_breakdown(city_index, competition_matches)
+	var city := _district_city(city_index)
 	var lines := []
 	lines.append("收入拆解：%s。" % _city_income_breakdown_summary(breakdown))
+	lines.append(_city_gdp_trend_text(city))
 	lines.append("合约状态：%s。" % _city_contract_status_text(_district_city(city_index)))
 	lines.append("生产明细：%s。" % _limited_name_list(breakdown.get("product_lines", []) as Array, 5))
 	lines.append("消费明细：%s。" % _limited_name_list(breakdown.get("route_lines", []) as Array, 5))
@@ -21144,11 +21252,12 @@ func _market_tick() -> void:
 			var index := int(index_variant)
 			var city := _district_city(index)
 			var competition := _city_competition_matches(index)
-			var income := _city_cycle_income(index, competition)
+			var breakdown := _city_cycle_income_breakdown(index, competition)
+			var income := int(breakdown.get("net", 0))
 			var owner := int(city.get("owner", -1))
 			city["competition_matches"] = competition
-			city["last_income"] = income
 			districts[index]["city"] = city
+			_record_city_gdp_snapshot(index, income, breakdown, "周期%d" % business_cycle_count)
 			_resolve_city_gdp_derivatives(index, income, "周期%d" % business_cycle_count)
 			city = _district_city(index)
 			if owner >= 0 and owner < players.size():

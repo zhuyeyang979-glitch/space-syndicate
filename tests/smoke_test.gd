@@ -4718,12 +4718,23 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_expect(city_status_text.contains("城市合约") and city_status_text.contains("流通") and city_status_text.contains("永久收入"), "city contracts, flow, and permanent income appear as unified public status tags")
 
 	var damage_penalty_before := int((main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary).get("damage_penalty", 0))
+	var gdp_breakdown_before_damage := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
+	main.call("_record_city_gdp_snapshot", district_index, int(gdp_breakdown_before_damage.get("net", 0)), gdp_breakdown_before_damage, "烟测受损前")
 	districts = _as_array(main.get("districts"))
 	var original_damage := int((districts[district_index] as Dictionary).get("damage", 0))
 	(districts[district_index] as Dictionary)["damage"] = original_damage + 2
 	main.set("districts", districts)
-	var damage_penalty_after := int((main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary).get("damage_penalty", 0))
+	var gdp_breakdown_after_damage := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
+	var damage_penalty_after := int(gdp_breakdown_after_damage.get("damage_penalty", 0))
 	_expect(damage_penalty_after > damage_penalty_before, "district damage is reflected as a GDP penalty in city income breakdown")
+	main.call("_record_city_gdp_snapshot", district_index, int(gdp_breakdown_after_damage.get("net", 0)), gdp_breakdown_after_damage, "烟测受损后")
+	districts = _as_array(main.get("districts"))
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	_expect(_as_array(city.get("gdp_history", [])).size() >= 2, "city records a public GDP history across economy snapshots")
+	_expect(int(city.get("last_gdp_delta", 0)) < 0, "city GDP history records the damage-driven GDP drop")
+	_expect(String(main.call("_city_gdp_trend_text", city)).contains("GDP趋势"), "city GDP trend helper produces readable public trend text")
+	_expect(String(main.call("_economy_overview_text")).contains("GDP趋势"), "economy overview exposes city GDP trend text")
+	_expect(String(main.call("_region_codex_text", district_index)).contains("GDP趋势"), "region codex exposes city GDP trend text")
 	districts = _as_array(main.get("districts"))
 	(districts[district_index] as Dictionary)["damage"] = original_damage
 	main.set("districts", districts)
