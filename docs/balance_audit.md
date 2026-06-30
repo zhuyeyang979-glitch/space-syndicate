@@ -83,7 +83,7 @@ Next AI tuning should check whether each profile actually does its thing in long
 
 ## Test gaps to close next
 
-- Warehouse stockpile should lose its stored value when the warehouse city is destroyed.
+- Covered now: warehouse stockpile loses its stored value when the warehouse city is destroyed, while ordinary non-warehouse futures remain.
 - Commodity futures should pay only from product price movement over real seconds.
 - Military strike commands should damage districts/routes only through explicit strike commands, never through movement.
 - AI long-run simulation should report whether each profile performs at least one route-specific action.

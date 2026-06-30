@@ -121,6 +121,7 @@ func _run() -> void:
 	_expect(_verify_role_control_limit_cards(main), "role cards can publicly extend monster or military control limits without touching starter monsters")
 	_expect(_verify_military_unit_variant_cards(main), "military card families cover air, land, ocean, terrain deployment, GDP pressure, route pressure, and distinct card facts")
 	_expect(_verify_military_runtime_gdp_boundary(main), "military movement avoids monster-style building crush while applying visible short GDP pressure")
+	_expect(_verify_product_futures_warehouse_destruction(main), "warehouse stockpile futures are cleared when the storage city is destroyed while ordinary futures remain")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
@@ -1133,6 +1134,64 @@ func _verify_military_runtime_gdp_boundary(main: Node) -> bool:
 	ok = ok and float(after_city.get("military_pressure_until", 0.0)) > float(main.get("game_time"))
 	ok = ok and String(after_city.get("military_pressure_source", "")).contains("战斗机")
 	ok = ok and int(breakdown.get("military_penalty", 0)) > 0
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var districts := _as_array(main.get("districts"))
+	var city_index := _first_buildable_land_district(districts)
+	if city_index < 0:
+		return false
+	ok = ok and bool(main.call("_create_city_at_district_for_player", 0, city_index, "仓储期货边界测试", false))
+	districts = _as_array(main.get("districts"))
+	var city := (districts[city_index] as Dictionary).get("city", {}) as Dictionary
+	var products := _as_array(city.get("products", []))
+	if products.is_empty():
+		main.call("_apply_run_state", saved)
+		return false
+	var product_name := String((products[0] as Dictionary).get("name", ""))
+	main.set("selected_player", 0)
+	main.set("selected_district", city_index)
+	main.set("selected_trade_product", product_name)
+	var player := (_as_array(main.get("players"))[0] as Dictionary).duplicate(true)
+	var ordinary := main.call("_make_skill", "商品看涨1") as Dictionary
+	var stockpile := main.call("_make_skill", "港仓囤货1") as Dictionary
+	ok = ok and bool(main.call("_apply_product_futures", player, ordinary))
+	ok = ok and bool(main.call("_apply_product_futures", player, stockpile))
+	var product_market := main.get("product_market") as Dictionary
+	var entry := product_market.get(product_name, {}) as Dictionary
+	var futures_before := _as_array(entry.get("futures_positions", []))
+	var saw_ordinary := false
+	var saw_warehouse := false
+	for position_variant in futures_before:
+		var position := position_variant as Dictionary
+		if int(position.get("warehouse_district", -1)) == -1:
+			saw_ordinary = true
+		if int(position.get("warehouse_district", -1)) == city_index:
+			saw_warehouse = true
+	ok = ok and futures_before.size() >= 2 and saw_ordinary and saw_warehouse
+	var hp := int((districts[city_index] as Dictionary).get("hp", 1))
+	var damage_before := int((districts[city_index] as Dictionary).get("damage", 0))
+	main.call("_damage_district", city_index, hp - damage_before + 1, "仓储期货边界测试")
+	product_market = main.get("product_market") as Dictionary
+	entry = product_market.get(product_name, {}) as Dictionary
+	var futures_after := _as_array(entry.get("futures_positions", []))
+	var remaining_ordinary := false
+	var remaining_warehouse := false
+	for position_variant in futures_after:
+		var position := position_variant as Dictionary
+		if int(position.get("warehouse_district", -1)) == -1:
+			remaining_ordinary = true
+		if int(position.get("warehouse_district", -1)) == city_index:
+			remaining_warehouse = true
+	districts = _as_array(main.get("districts"))
+	var destroyed_city := (districts[city_index] as Dictionary).get("city", {}) as Dictionary
+	ok = ok and bool((districts[city_index] as Dictionary).get("destroyed", false))
+	ok = ok and not bool(destroyed_city.get("active", true))
+	ok = ok and remaining_ordinary and not remaining_warehouse
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
