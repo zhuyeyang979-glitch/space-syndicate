@@ -413,10 +413,11 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加", "main menu opens with the root title")
 	_expect(menu_context_label != null and menu_context_label.text.contains("当前位置：主菜单") and menu_context_label.text.contains("hover"), "main menu exposes a reusable breadcrumb/help strip for flexible subpage navigation")
-	_expect(menu_interaction_hint_panel != null and menu_interaction_hint_panel.has_theme_stylebox_override("panel") and menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("响应式主菜单") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("卡片入口可重排"), "main menu exposes a reusable interaction hint strip for responsive layout, hover, and future menu rearrangement")
+	_expect(menu_interaction_hint_panel != null and menu_interaction_hint_panel.has_theme_stylebox_override("panel") and menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("响应式主菜单") and menu_interaction_hint_label.text.contains("分区卡片网格") and menu_interaction_hint_label.text.contains("自动重排") and menu_interaction_hint_label.text.contains("hover"), "main menu exposes a reusable interaction hint strip for responsive card-grid layout, hover, and future menu rearrangement")
 	_expect(menu_quick_nav_row != null and menu_quick_nav_row.visible and _container_button_text_contains(menu_quick_nav_row, "开局") and _container_button_text_contains(menu_quick_nav_row, "经济") and _container_button_text_contains(menu_quick_nav_row, "情报") and _container_button_text_contains(menu_quick_nav_row, "图鉴"), "main menu exposes reusable quick navigation chips for major branches")
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
 	_expect(menu_content_scroll != null and menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column")
+	_expect(menu_overlay != null and _container_has_meta(menu_overlay, "main_menu_action_grid") and _container_has_meta(menu_overlay, "main_menu_grid_card"), "main menu arranges branch entries as reusable responsive card grids")
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
 	_expect(menu_body_label != null and menu_body_label.text.contains("游戏规则") and not menu_body_label.text.contains("快捷键："), "main menu keeps detailed controls inside the rules branch")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主菜单速览") and _container_label_text_contains(menu_preview_box, "主画面原则") and _container_label_text_contains(menu_preview_box, "终局复盘"), "main menu exposes compact responsive summary cards above the detailed action branches")
@@ -4311,6 +4312,15 @@ func _container_button_has_stylebox(container: Node, style_name: String) -> bool
 		if child is Button and (child as Button).has_theme_stylebox_override(style_name):
 			return true
 		if child is Node and _container_button_has_stylebox(child, style_name):
+			return true
+	return false
+
+
+func _container_has_meta(container: Node, meta_name: String) -> bool:
+	if container.has_meta(meta_name):
+		return true
+	for child in container.get_children():
+		if child is Node and _container_has_meta(child, meta_name):
 			return true
 	return false
 

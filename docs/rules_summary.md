@@ -61,6 +61,7 @@ Players are alien syndicate operators secretly building commercial city clusters
 
 ## Current UI branches
 
+- 根菜单入口: the root menu is no longer a rigid vertical button list. Its branch entries are grouped under section headers and rendered through reusable responsive card grids that can reflow across 1-3 columns, preserving hover/pressed styles and callbacks while making future large layout and art-direction changes safer.
 - 菜单快捷导航: every menu branch keeps top chips for 开局、局势、经济、情报、规则、图鉴. The current branch is disabled as a location cue, while the other chips jump directly to their pages so players do not need to back out through the root menu.
 - 菜单交互提示: every menu page now keeps a compact interaction strip under the breadcrumb. The strip is generated from shared page-state logic, so root menus, setup, rules, economy, intel, and codex pages can be visually rearranged later while still telling players what to hover, when thumbnails support double-click detail entry, how previous/next detail navigation works, and how to return to thumbnail pages or parent branches.
 - 游戏规则: temporary dense reference page for full rules and controls before a later tutorial exists.

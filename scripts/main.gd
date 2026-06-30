@@ -1319,6 +1319,7 @@ var menu_bestiary_prev_button: Button
 var menu_bestiary_next_button: Button
 var menu_bestiary_back_button: Button
 var menu_catalog_mode := ""
+var menu_main_action_grids := []
 var catalog_return_menu := "main"
 var bestiary_index := 0
 var bestiary_grid_page := 0
@@ -2524,24 +2525,80 @@ func _build_menu_overlay() -> void:
 	box.add_child(menu_preview_box)
 
 	menu_regular_buttons = []
+	menu_main_action_grids = []
 
-	_add_main_menu_section(box, "开局", "先确认席位、AI、角色卡与起始怪兽，再开始一局。")
-	_add_main_menu_action(box, "开局准备", "设置3-8席、2-7个AI、Roguelike深度、角色卡和起始怪兽牌。", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"))
+	_add_main_menu_action_grid(box, "开局", "先确认席位、AI、角色卡与起始怪兽，再开始一局。", [
+		{
+			"label": "开局准备",
+			"detail": "设置3-8席、2-7个AI、Roguelike深度、角色卡和起始怪兽牌。",
+			"target": Callable(self, "_start_new_run_from_menu"),
+			"accent": Color("#38bdf8"),
+		},
+	])
 
-	_add_main_menu_section(box, "局势", "把复杂经营、推理和复盘信息收在菜单里，主画面只留必要操作。")
-	_add_main_menu_action(box, "局势排名", "查看现金目标、终局倒计时、结算估算和赛后资金来源。", Callable(self, "_open_standings_menu"), Color("#facc15"))
-	_add_main_menu_action(box, "经济总览", "查看GDP/min、商品热榜、商路收入前景、天气与城市收入拆解。", Callable(self, "_open_economy_overview_menu"), Color("#4ade80"))
-	_add_main_menu_action(box, "情报档案", "整理城市私标、卡牌归属竞猜、怪兽资金线索和公开线索。", Callable(self, "_open_intel_dossier_menu"), Color("#c084fc"))
+	_add_main_menu_action_grid(box, "局势", "把复杂经营、推理和复盘信息收在菜单里，主画面只留必要操作。", [
+		{
+			"label": "局势排名",
+			"detail": "查看现金目标、终局倒计时、结算估算和赛后资金来源。",
+			"target": Callable(self, "_open_standings_menu"),
+			"accent": Color("#facc15"),
+		},
+		{
+			"label": "经济总览",
+			"detail": "查看GDP/min、商品热榜、商路收入前景、天气与城市收入拆解。",
+			"target": Callable(self, "_open_economy_overview_menu"),
+			"accent": Color("#4ade80"),
+		},
+		{
+			"label": "情报档案",
+			"detail": "整理城市私标、卡牌归属竞猜、怪兽资金线索和公开线索。",
+			"target": Callable(self, "_open_intel_dossier_menu"),
+			"accent": Color("#c084fc"),
+		},
+	])
 
-	_add_main_menu_section(box, "资料", "所有规则说明、图鉴和 hover/详情切换入口都集中在这里。")
-	_add_main_menu_action(box, "游戏规则", "查看购牌、出牌、竞价、合约、天气、终局和隐私规则。", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
-	_add_main_menu_action(box, "新手引导", "用短步骤复习首召怪兽、建城、购牌、匿名出牌和经济总览。", Callable(self, "_open_tutorial_menu"), Color("#67e8f9"))
-	_add_main_menu_action(box, "图鉴", "进入角色、怪兽、卡牌、商品、区域图鉴；支持缩略图、hover预览和详情页。", Callable(self, "_open_compendium_menu"), Color("#f472b6"))
+	_add_main_menu_action_grid(box, "资料", "所有规则说明、图鉴和 hover/详情切换入口都集中在这里。", [
+		{
+			"label": "游戏规则",
+			"detail": "查看购牌、出牌、竞价、合约、天气、终局和隐私规则。",
+			"target": Callable(self, "_open_rules_menu"),
+			"accent": Color("#93c5fd"),
+		},
+		{
+			"label": "新手引导",
+			"detail": "用短步骤复习首召怪兽、建城、购牌、匿名出牌和经济总览。",
+			"target": Callable(self, "_open_tutorial_menu"),
+			"accent": Color("#67e8f9"),
+		},
+		{
+			"label": "图鉴",
+			"detail": "进入角色、怪兽、卡牌、商品、区域图鉴；支持缩略图、hover预览和详情页。",
+			"target": Callable(self, "_open_compendium_menu"),
+			"accent": Color("#f472b6"),
+		},
+	])
 
-	_add_main_menu_section(box, "存档", "保存当前局面或读取本地测试存档。")
-	_add_main_menu_action(box, "保存设置", "保存开局配置、席位数、AI数量、深度和角色选择。", Callable(self, "_save_settings_from_menu"), Color("#94a3b8"))
-	_add_main_menu_action(box, "保存局面", "保存当前本地局面，方便继续调试一整局。", Callable(self, "_save_run_from_menu"), Color("#94a3b8"))
-	var load_action := _add_main_menu_action(box, "读取局面", "读取本地保存的当前局面；没有存档时按钮会禁用。", Callable(self, "_load_run_from_menu"), Color("#94a3b8"))
+	var persistence_actions := _add_main_menu_action_grid(box, "存档", "保存当前局面或读取本地测试存档。", [
+		{
+			"label": "保存设置",
+			"detail": "保存开局配置、席位数、AI数量、深度和角色选择。",
+			"target": Callable(self, "_save_settings_from_menu"),
+			"accent": Color("#94a3b8"),
+		},
+		{
+			"label": "保存局面",
+			"detail": "保存当前本地局面，方便继续调试一整局。",
+			"target": Callable(self, "_save_run_from_menu"),
+			"accent": Color("#94a3b8"),
+		},
+		{
+			"label": "读取局面",
+			"detail": "读取本地保存的当前局面；没有存档时按钮会禁用。",
+			"target": Callable(self, "_load_run_from_menu"),
+			"accent": Color("#94a3b8"),
+		},
+	])
+	var load_action: Dictionary = persistence_actions[2] as Dictionary if persistence_actions.size() > 2 else {}
 	menu_load_run_button = load_action.get("button", null) as Button
 
 	menu_run_save_label = Label.new()
@@ -2550,8 +2607,14 @@ func _build_menu_overlay() -> void:
 	menu_run_save_label.add_theme_color_override("font_color", Color("#94a3b8"))
 	box.add_child(menu_run_save_label)
 
-	_add_main_menu_section(box, "系统", "退出当前原型。")
-	_add_main_menu_action(box, "退出原型", "关闭游戏窗口。", Callable(self, "_quit_game"), Color("#fb7185"))
+	_add_main_menu_action_grid(box, "系统", "退出当前原型。", [
+		{
+			"label": "退出原型",
+			"detail": "关闭游戏窗口。",
+			"target": Callable(self, "_quit_game"),
+			"accent": Color("#fb7185"),
+		},
+	])
 	_refresh_menu_layout()
 
 
@@ -2647,6 +2710,10 @@ func _refresh_menu_layout() -> void:
 		if button_variant is Button:
 			var button := button_variant as Button
 			button.custom_minimum_size = Vector2(78 if compact else 88, 30 if compact else 32)
+	for grid_variant in menu_main_action_grids:
+		if grid_variant is GridContainer:
+			var grid := grid_variant as GridContainer
+			grid.columns = _main_menu_action_grid_columns(grid.get_child_count())
 
 
 func _style_menu_button(button: Button, accent: Color = Color("#38bdf8"), primary: bool = false) -> void:
@@ -2747,6 +2814,43 @@ func _add_main_menu_action(parent: Container, button_text: String, detail_text: 
 	var action := _add_menu_action_card(parent, button_text, detail_text, target, accent)
 	menu_regular_buttons.append(action.get("panel"))
 	return action
+
+
+func _main_menu_action_grid_columns(action_count: int) -> int:
+	var by_width := int(floor(_menu_available_content_width() / 260.0))
+	return clampi(mini(maxi(1, action_count), by_width), 1, 3)
+
+
+func _add_main_menu_action_grid(parent: Container, section_title: String, detail_text: String, actions: Array) -> Array:
+	_add_main_menu_section(parent, section_title, detail_text)
+	var grid := GridContainer.new()
+	grid.columns = _main_menu_action_grid_columns(actions.size())
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	grid.tooltip_text = "%s｜响应式卡片网格，可随屏幕宽度自动重排。" % detail_text
+	grid.set_meta("main_menu_action_grid", true)
+	parent.add_child(grid)
+	menu_main_action_grids.append(grid)
+	menu_regular_buttons.append(grid)
+	var built_actions := []
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		var built := _add_menu_action_card(
+			grid,
+			String(action.get("label", "入口")),
+			String(action.get("detail", "")),
+			action.get("target", Callable()) as Callable,
+			action.get("accent", Color("#38bdf8")) as Color
+		)
+		var panel := built.get("panel", null) as PanelContainer
+		if panel != null:
+			panel.custom_minimum_size = Vector2(0, 112)
+			panel.set_meta("main_menu_grid_card", true)
+		built_actions.append(built)
+	return built_actions
 
 
 func _add_menu_action_card(parent: Container, button_text: String, detail_text: String, target: Callable, accent: Color = Color("#38bdf8")) -> Dictionary:
@@ -5276,7 +5380,7 @@ func _menu_context_text(title_text: String, show_main_actions: bool = false) -> 
 
 func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = false) -> String:
 	if show_main_actions and title_text == "太空辛迪加":
-		return "响应式主菜单｜快捷chips跳分支｜卡片入口可重排｜hover看用途｜复杂规则收进子菜单。"
+		return "响应式主菜单｜分区卡片网格自动重排｜快捷chips跳分支｜hover看用途｜复杂规则收进子菜单。"
 	if show_main_actions and title_text == "暂停菜单":
 		return "暂停布局｜继续/复查/查资料/保存分区明确｜hover读用途｜不把长规则塞回主画面。"
 	match title_text:
