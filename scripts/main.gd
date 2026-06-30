@@ -1263,6 +1263,7 @@ var card_resolution_body_label: Label
 var card_resolution_status_label: Label
 var card_resolution_badge_box: HBoxContainer
 var card_resolution_art: Control
+var opening_guide_dismissed := false
 
 
 func _ready() -> void:
@@ -3935,6 +3936,104 @@ func _destroyed_district_count() -> int:
 	return count
 
 
+func _card_impact_score(skill: Dictionary, entry: Dictionary) -> int:
+	var score := maxi(1, _skill_rank(String(skill.get("name", "")))) * 10
+	for key in ["cash", "revenue_amount", "damage", "route_damage", "repair_routes", "production_delta", "transport_delta", "consumption_delta", "market_demand_pressure", "market_supply_pressure", "draw_amount", "accept_cash", "decline_cash_penalty", "decline_route_damage", "gdp_bet_destroy_bonus"]:
+		score += abs(int(skill.get(String(key), 0)))
+	score += int(round(absf(float(skill.get("gdp_bet_multiplier", 0.0))) * 80.0))
+	score += int(entry.get("winning_bid", entry.get("tip", 0))) / 5
+	return score
+
+
+func _top_card_impact_summary(limit: int = 3) -> String:
+	if resolved_card_history.is_empty():
+		return "关键卡牌：本局还没有已结算卡牌。"
+	var stats := {}
+	for entry_variant in resolved_card_history:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		var skill: Dictionary = entry.get("skill", {}) as Dictionary
+		var card_name := String(skill.get("name", "匿名卡牌"))
+		var label := _card_display_name(card_name)
+		if label == "":
+			label = card_name
+		var stat := (stats.get(label, {"name": label, "count": 0, "score": 0}) as Dictionary).duplicate(true)
+		stat["count"] = int(stat.get("count", 0)) + 1
+		stat["score"] = int(stat.get("score", 0)) + _card_impact_score(skill, entry)
+		stats[label] = stat
+	var ranked := []
+	for key_variant in stats.keys():
+		ranked.append(stats[key_variant])
+	ranked.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	var pieces := []
+	for i in range(mini(limit, ranked.size())):
+		var stat := ranked[i] as Dictionary
+		pieces.append("%s×%d" % [String(stat.get("name", "卡牌")), int(stat.get("count", 0))])
+	return "关键卡牌：%s。" % "、".join(pieces)
+
+
+func _monster_impact_summary() -> String:
+	if auto_monsters.is_empty():
+		return "怪兽影响：终局时场上没有怪兽。"
+	var ranked := []
+	for actor_variant in auto_monsters:
+		if not (actor_variant is Dictionary):
+			continue
+		var actor := actor_variant as Dictionary
+		var score := int(actor.get("owner_damage_cash_lost", 0)) + maxi(0, int(actor.get("max_hp", 0)) - int(actor.get("hp", 0))) * 12
+		if bool(actor.get("down", false)):
+			score += 60
+		ranked.append({
+			"score": score,
+			"name": String(actor.get("name", "怪兽")),
+			"rank": int(actor.get("rank", 1)),
+			"lost": int(actor.get("owner_damage_cash_lost", 0)),
+			"source": String(actor.get("last_owner_damage_source", "")),
+			"focus": actor.get("resource_focus", []) as Array,
+			"down": bool(actor.get("down", false)),
+		})
+	if ranked.is_empty():
+		return "怪兽影响：终局时场上没有可统计怪兽。"
+	ranked.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	var top := ranked[0] as Dictionary
+	var state_text := "倒地" if bool(top.get("down", false)) else "存活"
+	var source_text := String(top.get("source", ""))
+	var source_suffix := "，最近线索:%s" % source_text if source_text != "" else ""
+	return "怪兽影响：%s%s级%s，已触发归属资金损失¥%d，偏好:%s%s。" % [
+		String(top.get("name", "怪兽")),
+		_roman_level(int(top.get("rank", 1))),
+		state_text,
+		int(top.get("lost", 0)),
+		_limited_name_list(top.get("focus", []) as Array, 3, "无"),
+		source_suffix,
+	]
+
+
+func _ai_route_summary(limit: int = 3) -> String:
+	var pieces := []
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		var player: Dictionary = players[player_index]
+		var memory := (player.get("ai_memory", {}) as Dictionary)
+		var product := String(memory.get("route_plan_product", ""))
+		var stage := String(memory.get("route_plan_stage", ""))
+		var intent := String(memory.get("strategic_intent", ""))
+		if product == "" and intent == "":
+			continue
+		pieces.append("%s:%s/%s/%s" % [
+			_player_name(player_index),
+			product if product != "" else "未定商品",
+			_ai_route_plan_stage_label(stage),
+			_ai_strategy_intent_label(intent),
+		])
+		if pieces.size() >= limit:
+			break
+	if pieces.is_empty():
+		return "AI路线：本局AI尚未留下稳定路线记录。"
+	return "AI路线：%s。" % "；".join(pieces)
+
+
 func _final_run_summary_text(rankings: Array) -> String:
 	if players.is_empty():
 		return "终局总结：没有可用玩家数据。"
@@ -3970,6 +4069,9 @@ func _final_run_summary_text(rankings: Array) -> String:
 		_active_auto_monster_count(),
 		auto_monsters.size(),
 	])
+	lines.append(_top_card_impact_summary())
+	lines.append(_monster_impact_summary())
+	lines.append(_ai_route_summary())
 	if int(top_city.get("district", -1)) >= 0:
 		var district_index := int(top_city.get("district", -1))
 		lines.append("关键城市：%s（%s）末期GDP¥%d，供:%s，需:%s。" % [
@@ -6636,6 +6738,7 @@ func _capture_run_state() -> Dictionary:
 		"last_card_resolution_player_index": last_card_resolution_player_index,
 		"resolved_card_history": resolved_card_history.duplicate(true),
 		"selected_card_resolution_id": selected_card_resolution_id,
+		"opening_guide_dismissed": opening_guide_dismissed,
 		"business_cycle_count": business_cycle_count,
 		"configured_player_count": configured_player_count,
 		"configured_ai_player_count": configured_ai_player_count,
@@ -6736,6 +6839,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	last_card_resolution_player_index = int(state.get("last_card_resolution_player_index", -1))
 	resolved_card_history = (state.get("resolved_card_history", []) as Array).duplicate(true)
 	selected_card_resolution_id = int(state.get("selected_card_resolution_id", -1))
+	opening_guide_dismissed = bool(state.get("opening_guide_dismissed", false))
 	business_cycle_count = int(state.get("business_cycle_count", 0))
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
@@ -7562,6 +7666,7 @@ func _new_game() -> void:
 	card_resolution_visual_stage = -1
 	resolved_card_history = []
 	selected_card_resolution_id = -1
+	opening_guide_dismissed = false
 	product_market = _generate_product_market()
 	skill_market = _monster_market_skills()
 	log_lines = []
@@ -10189,6 +10294,95 @@ func _player_quick_goal_hint(player_index: int) -> String:
 	return "目标提示：满足商品流动后匿名出牌；扩GDP、护商路，或压制竞争城市。"
 
 
+func _opening_guide_visible(player_index: int) -> bool:
+	if opening_guide_dismissed or game_over:
+		return false
+	if player_index < 0 or player_index >= players.size():
+		return false
+	return game_time <= 120.0 or _ai_owned_active_monster_count(player_index) <= 0 or _player_active_city_count(player_index) <= 0
+
+
+func _opening_guide_step(done: bool, text: String) -> String:
+	return "%s %s" % ["✓" if done else "□", text]
+
+
+func _opening_guide_lines(player_index: int) -> Array:
+	var player: Dictionary = players[player_index]
+	var has_monster := _ai_owned_active_monster_count(player_index) > 0
+	var has_city := _player_active_city_count(player_index) > 0
+	var has_bought_card := int(player.get("total_card_spend", 0)) > 0 or _player_counted_hand_size(player) > 1
+	var has_played_card := false
+	for entry_variant in resolved_card_history:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if int(entry.get("player_index", -1)) == player_index:
+			has_played_card = true
+			break
+	for entry_variant in card_resolution_queue:
+		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index:
+			has_played_card = true
+	for entry_variant in next_card_resolution_queue:
+		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index:
+			has_played_card = true
+	if int(active_card_resolution.get("player_index", -1)) == player_index:
+		has_played_card = true
+	var has_checked_economy := game_time > 45.0 or business_cycle_count > 0
+	return [
+		_opening_guide_step(has_monster, "先召唤怪兽，开启落地区/邻区购牌。"),
+		_opening_guide_step(has_city, "在陆地建城市，GDP 周期收入会变成钱。"),
+		_opening_guide_step(has_bought_card, "从怪兽补给范围买牌；重复牌自动升到 II/III/IV。"),
+		_opening_guide_step(has_played_card, "满足商品流动后匿名出牌，需要目标的牌会先询问。"),
+		_opening_guide_step(has_checked_economy, "打开经济总览，看商品、商路和城市收入拆解。"),
+	]
+
+
+func _dismiss_opening_guide() -> void:
+	opening_guide_dismissed = true
+	_refresh_ui()
+
+
+func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
+	if not _opening_guide_visible(player_index):
+		return
+	var panel := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#111827")
+	style.border_color = Color("#38bdf8")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	margin.add_child(box)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	box.add_child(header)
+	var title := _plain_label("开局轻引导（可关闭）", 12, Color("#bae6fd"))
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var economy_button := Button.new()
+	economy_button.text = "经济总览"
+	economy_button.tooltip_text = "查看GDP、商品、商路和城市收入拆解。"
+	economy_button.pressed.connect(Callable(self, "_open_economy_overview_menu"))
+	header.add_child(economy_button)
+	var close_button := Button.new()
+	close_button.text = "关闭"
+	close_button.tooltip_text = "本局不再显示这块轻引导。"
+	close_button.pressed.connect(Callable(self, "_dismiss_opening_guide"))
+	header.add_child(close_button)
+	for line_variant in _opening_guide_lines(player_index):
+		box.add_child(_plain_label(String(line_variant), 10, Color("#dbeafe")))
+	box.add_child(_plain_label("最后按钱最多获胜；出牌匿名，但条件和结果会留下推理线索。", 10, Color("#fef3c7")))
+
+
 func _refresh_player_panel() -> void:
 	_clear_children(player_box)
 	if players.is_empty():
@@ -10220,6 +10414,7 @@ func _refresh_player_panel() -> void:
 	player_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(player_status)
 	player_box.add_child(_plain_label(_player_quick_goal_hint(selected_player), 11, Color("#bbf7d0")))
+	_add_opening_guide_panel(player_box, selected_player)
 
 	var tip_row := HBoxContainer.new()
 	tip_row.add_theme_constant_override("separation", 6)
@@ -13207,6 +13402,17 @@ func _ai_route_plan_stage_label(stage: String) -> String:
 		"attack_rival":
 			return "打击竞品"
 	return "观察路线"
+
+
+func _ai_strategy_intent_label(intent: String) -> String:
+	match intent:
+		"grow_focus":
+			return "扩张GDP"
+		"defend_routes":
+			return "保护商路"
+		"disrupt_competitors":
+			return "压制竞品"
+	return "观察局势"
 
 
 func _ai_route_plan_candidates(player_index: int) -> Array:

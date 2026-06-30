@@ -127,6 +127,16 @@ func _run() -> void:
 	var player_box := main.get("player_box") as VBoxContainer
 	_expect(player_box != null and _container_label_text_contains(player_box, "手牌卡面") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示"), "player panel shows one concise next-action hint")
+	_expect(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"), "early-run guide shows a dismissible checklist and economy overview shortcut")
+	main.call("_dismiss_opening_guide")
+	main.call("_refresh_ui")
+	player_box = main.get("player_box") as VBoxContainer
+	_expect(player_box != null and not _container_label_text_contains(player_box, "开局轻引导"), "early-run guide can be dismissed from the main play panel")
+	var dismissed_guide_state := main.call("_capture_run_state") as Dictionary
+	main.set("opening_guide_dismissed", false)
+	_expect(int(main.call("_apply_run_state", dismissed_guide_state)) == OK and bool(main.get("opening_guide_dismissed")), "early-run guide dismissed state persists in run saves")
+	main.call("_refresh_ui")
+	player_box = main.get("player_box") as VBoxContainer
 	_expect(player_box != null and not _container_label_text_contains(player_box, "角色卡") and not _container_label_text_contains(player_box, "经济流水") and not _container_card_art_kind_contains(player_box, "player_role"), "player panel hides role/economy details from the main play screen")
 	_expect(player_box != null and _container_label_text_contains(player_box, "首召引导") and _container_button_text_contains(player_box, "在选区首召"), "empty-field player panel prompts the starter monster first summon")
 	_expect(_players_have_starting_monster_cards(main, players), "each player starts with a free first monster card")
@@ -1035,6 +1045,33 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		ok = ok and int(main.get("victory_countdown_trigger_score")) >= cash_goal
 		var timer_after_start := float(main.get("victory_countdown_timer"))
 		ok = ok and timer_after_start > 59.0 and timer_after_start <= 60.0
+		var history := _as_array(main.get("resolved_card_history")).duplicate(true)
+		history.append({
+			"resolution_id": 99001,
+			"queued_order": 99001,
+			"player_index": 1,
+			"skill": main.call("_make_skill", "城市融资1"),
+			"winning_bid": 120,
+			"resolved_time": float(main.get("game_time")),
+		})
+		main.set("resolved_card_history", history)
+		var monsters := _as_array(main.get("auto_monsters")).duplicate(true)
+		var actor := main.call("_make_auto_monster", monsters.size(), 0, clampi(int(main.get("selected_district")), 0, max(0, _as_array(main.get("districts")).size() - 1)), 1, 2) as Dictionary
+		actor["owner_damage_cash_lost"] = 240
+		actor["last_owner_damage_source"] = "烟测终局复盘"
+		actor["last_owner_damage_cash_loss"] = 120
+		monsters.append(actor)
+		main.set("auto_monsters", monsters)
+		players = _as_array(main.get("players")).duplicate(true)
+		if players.size() > 1:
+			var ai_player := players[1] as Dictionary
+			var memory := (ai_player.get("ai_memory", {}) as Dictionary).duplicate(true)
+			memory["route_plan_product"] = "环晶电池"
+			memory["route_plan_stage"] = "attack_rival"
+			memory["strategic_intent"] = "disrupt_competitors"
+			ai_player["ai_memory"] = memory
+			players[1] = ai_player
+			main.set("players", players)
 		var countdown_state := main.call("_capture_run_state") as Dictionary
 		main.set("victory_countdown_active", false)
 		main.set("victory_countdown_timer", 0.0)
@@ -1045,14 +1082,24 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		ok = ok and bool(main.get("game_over"))
 		var saw_finish_log := false
 		var saw_summary_log := false
+		var saw_card_summary := false
+		var saw_monster_summary := false
+		var saw_ai_route_summary := false
 		for line_variant in _as_array(main.get("log_lines")):
 			var line := String(line_variant)
 			if line.contains("终局倒计时结束"):
 				saw_finish_log = true
 			if line.contains("终局总结"):
 				saw_summary_log = true
-		ok = ok and saw_finish_log and saw_summary_log
-		ok = ok and String(main.call("_standings_text")).contains("终局总结")
+			if line.contains("关键卡牌"):
+				saw_card_summary = true
+			if line.contains("怪兽影响"):
+				saw_monster_summary = true
+			if line.contains("AI路线"):
+				saw_ai_route_summary = true
+		var standings_text := String(main.call("_standings_text"))
+		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_ai_route_summary
+		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("AI路线")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
