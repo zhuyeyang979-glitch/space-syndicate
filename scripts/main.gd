@@ -666,6 +666,10 @@ const SKILL_CATALOG := {
 	"城市做空2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.7, "gdp_bet_seconds": 75.0, "gdp_bet_destroy_bonus": 320, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "高阶城市做空：持仓75秒，收益为即时GDP跌幅×1.7；城市破产/摧毁额外兑现¥320。"},
 	"城市做空3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 2.5, "gdp_bet_seconds": 90.0, "gdp_bet_destroy_bonus": 520, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "终端城市做空：持仓90秒，怪兽破坏、商路断裂或区域经济衰退造成的即时GDP跌幅会按×2.5兑现。"},
 	"城市做空4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 3.4, "gdp_bet_seconds": 120.0, "gdp_bet_destroy_bonus": 760, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端城市做空IV：持仓120秒，GDP跌幅×3.4；城市摧毁时额外兑现¥760。"},
+	"灾害保单1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_insurance": true, "play_product": "轨迹墨水", "play_flow_required": 1, "gdp_bet_multiplier": 0.75, "gdp_bet_seconds": 75.0, "gdp_bet_destroy_bonus": 140, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "保险"], "text": "匿名为选中己方城市购买灾害保单：持仓75秒，若该城即时GDP低于投保基准，则按跌幅×0.75获得赔付；城市被毁额外赔付¥140。"},
+	"灾害保单2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_insurance": true, "play_product": "轨迹墨水", "play_flow_required": 2, "gdp_bet_multiplier": 1.10, "gdp_bet_seconds": 90.0, "gdp_bet_destroy_bonus": 260, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "升级灾害保单：只能保己方城市，持仓90秒；GDP跌幅×1.10赔付，城市被毁额外赔付¥260。"},
+	"灾害保单3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_insurance": true, "play_product": "轨迹墨水", "play_flow_required": 3, "gdp_bet_multiplier": 1.55, "gdp_bet_seconds": 105.0, "gdp_bet_destroy_bonus": 430, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "核心"], "text": "核心灾害保单：只能保己方城市，持仓105秒；适合在怪兽或商路黑客即将压城时把GDP损失转成现金缓冲。"},
+	"灾害保单4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_insurance": true, "play_product": "轨迹墨水", "play_flow_required": 4, "gdp_bet_multiplier": 2.10, "gdp_bet_seconds": 120.0, "gdp_bet_destroy_bonus": 680, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端灾害保单IV：只能保己方城市，持仓120秒；GDP跌幅×2.10赔付，城市摧毁时额外赔付¥680。"},
 	"远期采购1": {"cost": 4, "kind": "product_contract_boon", "market_demand_pressure": 3, "market_contract_turns": 3, "cash": 120, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "合约"], "text": "围绕当前商品签远期采购：获得120资金，并为该商品追加持续90秒的需求压力+3；波动+1。"},
 	"远期采购2": {"cost": 6, "kind": "product_contract_boon", "market_demand_pressure": 5, "market_contract_turns": 4, "cash": 260, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "签更大远期采购：获得260资金，并为当前商品追加持续120秒的需求压力+5；波动+1。"},
 	"期货套保1": {"cost": 3, "kind": "product_contract_boon", "market_supply_pressure": 3, "market_contract_turns": 3, "cash": 90, "volatility_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "套保"], "text": "围绕当前商品做期货套保：获得90资金，追加持续90秒的供给压力+3，并降低波动1。"},
@@ -791,6 +795,7 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"商品做空",
 	"城市买涨",
 	"城市做空",
+	"灾害保单",
 	"商品换线",
 	"需求改造",
 	"供应链保险",
@@ -830,6 +835,9 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"狂奔",
 ]
 
+# Base run supply pool: these normal cards can be rolled into region card supplies.
+# Monster cards are not duplicated here; _current_run_card_pool() appends all rank-I
+# monster cards so the card codex and district supplies use one unified card economy.
 const COMMON_CARD_POOL := [
 	"城市融资1",
 	"城市融资2",
@@ -885,6 +893,8 @@ const COMMON_CARD_POOL := [
 	"城市买涨2",
 	"城市做空1",
 	"城市做空2",
+	"灾害保单1",
+	"灾害保单2",
 	"远期采购1",
 	"远期采购2",
 	"期货套保1",
@@ -935,103 +945,6 @@ const COMMON_CARD_POOL := [
 	"飞行1",
 	"装甲再生1",
 	"装甲再生2",
-]
-
-const MARKET_SKILLS := [
-	"城市融资1",
-	"星际广告1",
-	"轨道融资1",
-	"轨道融资2",
-	"地下融资1",
-	"舆论操控1",
-	"舆论操控2",
-	"热搜推送1",
-	"危机快讯1",
-	"金融传闻1",
-	"监管风暴1",
-	"太阳风暴预报1",
-	"酸雨云团播种1",
-	"引力潮汐播报1",
-	"电磁雾干涉1",
-	"诱导电波1",
-	"诱导电波2",
-	"远程挑衅1",
-	"夺取怪兽1",
-	"过载补给1",
-	"过载补给2",
-	"连锁过载1",
-	"商业诱饵1",
-	"商业诱饵2",
-	"价格套利1",
-	"价格套利2",
-	"供应链保险1",
-	"供应链保险2",
-	"垄断协议1",
-	"需求创造1",
-	"短期订单1",
-	"短期订单2",
-	"军需临单1",
-	"军需临单2",
-	"星际会展1",
-	"星际会展2",
-	"商品做空1",
-	"商品做空2",
-	"城市买涨1",
-	"城市买涨2",
-	"城市做空1",
-	"城市做空2",
-	"远期采购1",
-	"远期采购2",
-	"期货套保1",
-	"期货套保2",
-	"包销协议1",
-	"包销协议2",
-	"区域供需合约1",
-	"区域供需合约2",
-	"组合供需合约1",
-	"自动撮合合约1",
-	"环晶电池专供1",
-	"双边对冲合约1",
-	"惩罚性拒签条款1",
-	"商品换线1",
-	"商品换线2",
-	"需求改造1",
-	"需求改造2",
-	"产业升级1",
-	"产业升级2",
-	"市场稳定1",
-	"商路黑客1",
-	"商路黑客2",
-	"商品催化1",
-	"商品催化2",
-	"星港快线1",
-	"星港快线2",
-	"生产扩张1",
-	"产能封锁1",
-	"交通升级1",
-	"交通瘫痪1",
-	"消费刺激1",
-	"消费冷却1",
-	"共生红利1",
-	"共生红利2",
-	"移动2",
-	"移动3",
-	"普攻2",
-	"普攻3",
-	"格挡1",
-	"格挡2",
-	"区域破坏1",
-	"区域破坏2",
-	"破碎地脉1",
-	"破碎地脉2",
-	"远距破坏1",
-	"飞行1",
-	"龙车1",
-	"甩尾1",
-	"装甲再生1",
-	"装甲再生2",
-	"瘴气炮1",
-	"地底潜行1",
 ]
 
 const MONSTER_ROSTER := [
@@ -2823,7 +2736,7 @@ func _menu_quick_nav_active_key(title_text: String) -> String:
 			return "intel"
 		"游戏规则", "新手引导":
 			return "rules"
-		"图鉴", "角色图鉴", "怪兽图鉴", "卡牌图鉴", "商品图鉴", "区域图鉴":
+		"图鉴", "角色图鉴", "怪兽生态档案", "卡牌图鉴", "商品图鉴", "区域图鉴":
 			return "compendium"
 	return ""
 
@@ -3451,7 +3364,7 @@ func _populate_intel_dossier_links(viewer_index: int) -> void:
 			continue
 		_add_intel_dossier_link_button(
 			"查看怪兽线索：怪%d·%s" % [int(entry.get("slot", 0)) + 1, String(entry.get("name", "怪兽"))],
-			"跳到怪兽图鉴查看行动概率、资源偏好和伤害数据，用来判断它为什么袭击某处。",
+			"跳到怪兽生态档案查看行动概率、资源偏好和伤害数据，用来判断它为什么袭击某处。怪兽牌本身归在卡牌图鉴。",
 			Callable(self, "_open_intel_monster_codex_link").bind(monster_index)
 		)
 		added += 1
@@ -4717,7 +4630,7 @@ func _open_compendium_menu() -> void:
 	catalog_return_menu = "main"
 	_show_menu(
 		"图鉴",
-		"统一资料库：角色图鉴、怪兽图鉴、卡牌图鉴、商品图鉴、区域图鉴都从这里进入。这里展示公开资料和当前局面可见信息；秘密城市真实业主仍需要玩家自己推理和标注。",
+		"统一资料库：角色图鉴、怪兽生态档案、卡牌图鉴、商品图鉴、区域图鉴都从这里进入。怪兽牌属于卡牌图鉴；怪兽生态档案只解释场上怪兽的自动行动、资源偏好和破坏数据。",
 		false
 	)
 	menu_catalog_mode = "compendium"
@@ -4733,7 +4646,7 @@ func _open_compendium_menu() -> void:
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		menu_preview_box.add_child(hint)
 		_add_compendium_menu_button("角色图鉴", "查看外星辛迪加角色卡、种族特征和起始怪兽牌。", Callable(self, "_open_role_codex_from_compendium"))
-		_add_compendium_menu_button("怪兽图鉴", "查看怪兽属性、自动行动表、资源偏好和对应怪兽牌。", Callable(self, "_open_bestiary_from_compendium"))
+		_add_compendium_menu_button("怪兽生态档案", "查看场上怪兽单位的属性、自动行动表、资源偏好和破坏数据；对应召唤牌从卡牌图鉴跳转。", Callable(self, "_open_bestiary_from_compendium"))
 		_add_compendium_menu_button("卡牌图鉴", "查看所有卡牌规则、目标需求、价格梯度和卡面预览。", Callable(self, "_open_card_codex_from_compendium"))
 		_add_compendium_menu_button("商品图鉴", "查看外星商品价格梯度、本局供需、趋势和商路断损。", Callable(self, "_open_product_codex_menu"))
 		_add_compendium_menu_button("区域图鉴", "查看本局每个区域的地形、供需、城市公开状态和可提供卡牌。", Callable(self, "_open_region_codex_menu"))
@@ -5422,7 +5335,7 @@ func _menu_context_text(title_text: String, show_main_actions: bool = false) -> 
 			return "当前位置：主菜单 → 开局准备｜调整席位、AI、角色卡和起始怪兽后再明确开始。"
 		"图鉴":
 			return "当前位置：主菜单 → 图鉴｜先选资料分类；缩略图支持hover预览、双击详情。"
-		"卡牌图鉴", "怪兽图鉴", "商品图鉴":
+		"卡牌图鉴", "怪兽生态档案", "商品图鉴":
 			return "当前位置：图鉴 → %s｜缩略图页hover/单击预览，双击进详情；详情页再用上一页/下一页。" % title_text
 		"角色图鉴", "区域图鉴":
 			return "当前位置：图鉴 → %s｜用页面按钮切换条目，相关卡牌/区域可继续跳转。" % title_text
@@ -5448,15 +5361,15 @@ func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = f
 		"开局准备":
 			return "开局配置流｜席位、AI、深度、角色、起始怪兽分组展示｜hover看说明｜确认后才开局。"
 		"图鉴":
-			return "图鉴总入口｜先选角色/怪兽/卡牌/商品/区域｜进入后统一使用缩略图、hover预览和详情页。"
+			return "图鉴总入口｜先选角色/怪兽生态/卡牌/商品/区域｜怪兽牌在卡牌图鉴，怪兽行为在生态档案。"
 		"卡牌图鉴":
 			if card_codex_show_detail:
 				return "卡牌详情页｜展示卡面、美工、I-IV梯度和字段效果｜顶部上一页/下一页切换｜返回缩略图。"
 			return "卡牌缩略图｜自适应每页行列｜hover或单击看预览｜双击进详情｜筛选按钮可快速换分类。"
-		"怪兽图鉴":
+		"怪兽生态档案":
 			if bestiary_show_detail:
-				return "怪兽详情页｜展示临时美工、行动概率、速度和经济偏好｜上一页/下一页切换｜返回缩略图。"
-			return "怪兽缩略图｜自适应网格｜hover或单击看行动预览｜双击进详情｜突出每只怪兽的行动差异。"
+				return "怪兽生态详情页｜展示临时美工、行动概率、速度、资源偏好和破坏数据｜怪兽牌请跳卡牌图鉴。"
+			return "怪兽生态缩略图｜自适应网格｜hover或单击看行动预览｜双击进详情｜不重复做怪兽牌图鉴。"
 		"商品图鉴":
 			if product_codex_show_detail:
 				return "商品详情页｜价格、供需、商路、天气和线索集中查看｜上一页/下一页切换｜返回缩略图。"
@@ -5706,7 +5619,7 @@ func _update_bestiary_menu() -> void:
 	previewed_bestiary_index = _valid_bestiary_index(previewed_bestiary_index)
 	bestiary_grid_page = clampi(bestiary_grid_page, 0, _bestiary_grid_page_count(_catalog_size()) - 1)
 	var body_text := _bestiary_text(bestiary_index) if bestiary_show_detail else _bestiary_grid_text()
-	_show_menu("怪兽图鉴", body_text, false)
+	_show_menu("怪兽生态档案", body_text, false)
 	menu_catalog_mode = "monster"
 	menu_continue_button.visible = false
 	for button in menu_regular_buttons:
@@ -5760,7 +5673,7 @@ func _bestiary_first_index_on_page(page_index: int, total_count: int) -> int:
 
 func _bestiary_grid_text() -> String:
 	var page_count := _bestiary_grid_page_count(_catalog_size())
-	return "怪兽缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n悬停或单击怪兽缩略图会在下方显示详情预览；双击缩略图进入怪兽详情。进入详情后才使用顶部「上一个/下一个」切换怪兽，也可以点「返回缩略图」回到图册。" % [
+	return "怪兽生态缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n这里展示场上怪兽单位，不是另一套怪兽牌图鉴；怪兽牌统一放在卡牌图鉴的「怪兽牌」分类。悬停或单击怪兽缩略图会在下方显示详情预览；双击缩略图进入怪兽详情。进入详情后才使用顶部「上一个/下一个」切换怪兽，也可以点「返回缩略图」回到图册。" % [
 		bestiary_grid_page + 1,
 		page_count,
 		_bestiary_grid_columns(),
@@ -6350,7 +6263,7 @@ func _add_role_card_preview(parent: Container, role_card: Dictionary) -> void:
 
 
 func _add_role_starter_links(parent: Container, role_card: Dictionary) -> void:
-	var note := _plain_label("起始怪兽在「开局准备」独立选择；怪兽卡和怪兽资料可从卡牌图鉴/怪兽图鉴查看。", 12, Color("#fde68a"))
+	var note := _plain_label("起始怪兽在「开局准备」独立选择；怪兽牌在卡牌图鉴，怪兽自动行为在怪兽生态档案。", 12, Color("#fde68a"))
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(note)
 
@@ -6776,7 +6689,7 @@ func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
 			menu_catalog_mode = "role"
 		"卡牌图鉴":
 			menu_catalog_mode = "card"
-		"怪兽图鉴":
+		"怪兽生态档案":
 			menu_catalog_mode = "monster"
 		_:
 			menu_catalog_mode = "product"
@@ -7079,7 +6992,7 @@ func _add_bestiary_monster_card_link(parent: Container, catalog_index: int) -> v
 	var skill := _skill_definition(card_name)
 	if skill.is_empty():
 		return
-	parent.add_child(_plain_label("怪兽卡（悬停看属性｜点击跳到卡牌图鉴）：", 12, Color("#fde68a")))
+	parent.add_child(_plain_label("对应怪兽牌（属于卡牌图鉴｜悬停看属性｜点击跳转）：", 12, Color("#fde68a")))
 	var button := Button.new()
 	button.text = "%s｜¥%d" % [_card_display_name(card_name), _card_price(card_name)]
 	button.tooltip_text = _card_detail_tooltip(card_name)
@@ -7761,7 +7674,7 @@ func _card_budget_driver_facts(skill: Dictionary) -> Array:
 		drivers.append("补给+%d跳" % int(skill.get("card_access_extra_hops", 0)))
 	if String(skill.get("kind", "")) == "city_gdp_derivative":
 		drivers.append("%s×%.2f/%s" % [
-			"买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空",
+			"保单" if skill.get("gdp_bet_insurance", false) == true else ("买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空"),
 			float(skill.get("gdp_bet_multiplier", 1.0)),
 			_duration_short_text(_gdp_bet_duration_seconds(skill)),
 		])
@@ -8370,6 +8283,7 @@ func _capture_run_state() -> Dictionary:
 		"selected_district": selected_district,
 		"selected_market_skill": selected_market_skill,
 		"previewed_district_card": previewed_district_card,
+		"district_card_purchase_snapshot": district_card_purchase_snapshot.duplicate(true),
 		"pending_discard_purchase": pending_discard_purchase.duplicate(true),
 		"selected_guess_player": selected_guess_player,
 		"selected_trade_product": selected_trade_product,
@@ -8479,6 +8393,8 @@ func _apply_run_state(state: Dictionary) -> int:
 	previewed_district_card = _canonical_card_supply_name(String(state.get("previewed_district_card", selected_market_skill)))
 	pending_discard_purchase = (state.get("pending_discard_purchase", {}) as Dictionary).duplicate(true)
 	_open_district_card_purchase_window(selected_district, selected_player, true)
+	if state.has("district_card_purchase_snapshot"):
+		district_card_purchase_snapshot = (state.get("district_card_purchase_snapshot", {}) as Dictionary).duplicate(true)
 	selected_guess_player = int(state.get("selected_guess_player", -1))
 	selected_trade_product = String(state.get("selected_trade_product", ""))
 	selected_contract_source_district = int(state.get("selected_contract_source_district", -1))
@@ -13600,7 +13516,7 @@ func _card_art_stats(skill: Dictionary) -> String:
 	if String(skill.get("kind", "")) == "city_gdp_derivative":
 		return "%s｜%s×%.2f｜%s" % [
 			_card_strategy_route_label(skill),
-			"买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空",
+			"保单" if skill.get("gdp_bet_insurance", false) == true else ("买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空"),
 			float(skill.get("gdp_bet_multiplier", 1.0)),
 			_duration_short_text(_gdp_bet_duration_seconds(skill)),
 		]
@@ -13809,7 +13725,7 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	if card_access_global:
 		facts.append("全局购牌:%.0fs×%.2f" % [maxf(1.0, card_access_seconds), maxf(1.0, global_card_price_multiplier)])
 	if gdp_bet_direction != "":
-		facts.append("GDP方向:%s" % ("买涨" if gdp_bet_direction == "up" else "做空"))
+		facts.append("GDP方向:%s" % ("保单" if skill.get("gdp_bet_insurance", false) == true else ("买涨" if gdp_bet_direction == "up" else "做空")))
 	if gdp_bet_multiplier > 0.0:
 		facts.append("GDP倍率:×%.2f/%s" % [gdp_bet_multiplier, _duration_short_text(gdp_bet_seconds)])
 	if gdp_bet_destroy_bonus > 0:
@@ -14456,6 +14372,9 @@ func _open_district_card_purchase_window(district_index: int, player_index: int 
 		district_card_purchase_snapshot = {}
 		return
 	var kind := _district_card_access_kind_live(district_index, resolved_player)
+	if kind == "none":
+		district_card_purchase_snapshot = {}
+		return
 	district_card_purchase_snapshot = {
 		"player_index": resolved_player,
 		"district_index": district_index,
@@ -15094,7 +15013,7 @@ func _ai_pressure_kind(kind: String, skill: Dictionary = {}) -> bool:
 	if kind == "weather_control":
 		return String(skill.get("weather_type", "")) in ["solar_storm", "acid_rain", "magnetic_fog"]
 	if kind == "city_gdp_derivative":
-		return String(skill.get("gdp_bet_direction", "up")) == "down"
+		return String(skill.get("gdp_bet_direction", "up")) == "down" and skill.get("gdp_bet_insurance", false) != true
 	if kind == "region_economy_shift":
 		return int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0)) < 0
 	return false
@@ -15106,7 +15025,7 @@ func _ai_defense_kind(kind: String, skill: Dictionary = {}) -> bool:
 	if kind == "weather_control":
 		return String(skill.get("weather_type", "")) == "gravity_tide"
 	if kind == "city_gdp_derivative":
-		return String(skill.get("gdp_bet_direction", "up")) == "up"
+		return String(skill.get("gdp_bet_direction", "up")) == "up" or skill.get("gdp_bet_insurance", false) == true
 	if kind == "region_economy_shift":
 		return int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0)) > 0
 	return false
@@ -15900,7 +15819,7 @@ func _ai_strategy_score(player_index: int) -> int:
 	return int(strategy.get("score", 0))
 
 
-func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999) -> int:
+func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> int:
 	var strategy := _ai_refresh_strategy_intent(player_index)
 	var intent := String(strategy.get("intent", ""))
 	if intent == "":
@@ -15914,7 +15833,7 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 	var bonus := 0
 	match intent:
 		"defend_routes":
-			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift", "weather_control"].has(kind):
+			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift", "weather_control"].has(kind) or (kind == "city_gdp_derivative" and (String(skill.get("gdp_bet_direction", "up")) == "up" or skill.get("gdp_bet_insurance", false) == true)):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if resolved_owner == player_index:
 				bonus += mini(120, _ai_own_route_threat_score(player_index) / 3)
@@ -16247,7 +16166,7 @@ func _ai_route_plan_score(player_index: int) -> int:
 	return int(plan.get("score", 0))
 
 
-func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999) -> int:
+func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> int:
 	var plan := _ai_refresh_route_plan(player_index)
 	var plan_product := String(plan.get("product", ""))
 	var stage := String(plan.get("stage", ""))
@@ -16285,7 +16204,7 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 			if resolved_owner == player_index:
 				bonus += 34
 		"defend_route":
-			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift", "city_demand_shift", "weather_control"].has(kind):
+			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift", "city_demand_shift", "weather_control"].has(kind) or (kind == "city_gdp_derivative" and skill.get("gdp_bet_insurance", false) == true):
 				bonus += 96
 			if resolved_owner == player_index:
 				bonus += mini(132, _ai_product_route_threat_score(player_index, plan_product) / 2)
@@ -16416,10 +16335,13 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 		growth_boost += int(round((float(skill.get("growth_multiplier", 1.0)) - 1.0) * 3.0))
 	if String(skill.get("gdp_bet_direction", "")) == "up":
 		growth_boost += maxi(1, int(round(float(skill.get("gdp_bet_multiplier", 1.0)))))
+	var insurance_strength := 0
+	if skill.get("gdp_bet_insurance", false) == true:
+		insurance_strength = maxi(1, int(round(float(skill.get("gdp_bet_multiplier", 1.0))))) + int(skill.get("gdp_bet_destroy_bonus", 0)) / 260
 	var pressure_strength := maxi(0, -production_delta) + maxi(0, -transport_delta) + maxi(0, -consumption_delta)
 	pressure_strength += int(skill.get("route_damage", 0)) + int(skill.get("damage", 0)) + decline_pressure
 	pressure_strength += int(skill.get("panic", 0)) / 22 + int(ceil(float(maxi(0, int(skill.get("market_supply_pressure", 0)))) / 2.0))
-	if String(skill.get("gdp_bet_direction", "")) == "down":
+	if String(skill.get("gdp_bet_direction", "")) == "down" and insurance_strength <= 0:
 		pressure_strength += maxi(1, int(round(float(skill.get("gdp_bet_multiplier", 1.0))))) + int(skill.get("gdp_bet_destroy_bonus", 0)) / 240
 	if ["monster_lure", "mudslide", "area_damage", "weather_control", "news_event", "route_sabotage", "panic_shift"].has(kind):
 		pressure_strength += 1
@@ -16460,6 +16382,10 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 				bonus += 78 + (traffic_boost + int(skill.get("repair_routes", 0))) * 35 + mini(150, threat / 2)
 				field_match += 2
 				reasons.append("修复/保险")
+			if insurance_strength > 0 and resolved_owner == player_index:
+				bonus += 84 + insurance_strength * 42 + mini(150, _ai_city_gdp_insurance_score(player_index, district_index) / 4)
+				field_match += 2
+				reasons.append("GDP保单")
 			if pressure_strength > 0 and resolved_owner == player_index:
 				penalty += 60 + pressure_strength * 34
 				reasons.append("避免自伤")
@@ -16850,7 +16776,38 @@ func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	return float(profile.get("economy_bias", 1.0))
 
 
-func _ai_best_city_for_gdp_derivative(player_index: int, direction: String) -> int:
+func _ai_city_gdp_insurance_score(player_index: int, district_index: int) -> int:
+	if district_index < 0 or district_index >= districts.size():
+		return -1
+	var city := _district_city(district_index)
+	if not _city_is_active(city) or int(city.get("owner", -1)) != player_index:
+		return -1
+	var last_income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index))))
+	var damage := int(districts[district_index].get("damage", 0))
+	var disrupted := int(city.get("trade_disrupted_routes", 0)) + int(city.get("trade_route_damage", 0))
+	var score := 90 + maxi(0, last_income)
+	score += damage * 58 + disrupted * 72 + int(districts[district_index].get("panic", 0)) / 2
+	score += _auto_build_monster_risk_score(district_index) / 2
+	score += _district_trade_route_load(district_index) * 12
+	score += _ai_district_focus_score(player_index, district_index)
+	return score
+
+
+func _ai_best_city_for_gdp_insurance(player_index: int) -> int:
+	var best_index := -1
+	var best_score := -1
+	for index_variant in _active_city_indices_for_player(player_index):
+		var index := int(index_variant)
+		var score := _ai_city_gdp_insurance_score(player_index, index)
+		if score > best_score:
+			best_score = score
+			best_index = index
+	return best_index
+
+
+func _ai_best_city_for_gdp_derivative(player_index: int, direction: String, skill: Dictionary = {}) -> int:
+	if skill.get("gdp_bet_insurance", false) == true:
+		return _ai_best_city_for_gdp_insurance(player_index)
 	var best_index := -1
 	var best_score := -999999
 	for index_variant in _active_city_district_indices():
@@ -16910,6 +16867,8 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 		var risk := int(districts[district_index].get("damage", 0)) * 26 + int(city.get("trade_disrupted_routes", 0)) * 32 if district_index >= 0 and district_index < districts.size() else 0
 		if direction == "up":
 			score += int(round(gdp_multiplier * 55.0)) + (80 if helpful_target else 20) + maxi(0, last_income / 6 - risk)
+		elif skill.get("gdp_bet_insurance", false) == true:
+			score += int(round(gdp_multiplier * 58.0)) + (105 if helpful_target else -40) + risk + int(skill.get("gdp_bet_destroy_bonus", 0)) / 10
 		else:
 			score += int(round(gdp_multiplier * 68.0)) + (90 if harmful_target else 20) + risk + int(skill.get("gdp_bet_destroy_bonus", 0)) / 8
 	score += int(skill.get("card_access_extra_hops", 0)) * 42
@@ -17039,14 +16998,19 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["score"] = int(context["score"]) + int(_district_city(damaged_city).get("trade_route_damage", 0)) * 70
 	elif kind == "city_gdp_derivative":
 		var gdp_direction := String(skill.get("gdp_bet_direction", "up"))
-		var gdp_target := _ai_best_city_for_gdp_derivative(player_index, gdp_direction)
+		var gdp_target := _ai_best_city_for_gdp_derivative(player_index, gdp_direction, skill)
 		if gdp_target < 0:
 			return {}
 		context["district"] = gdp_target
-		context["policy_kind"] = "%s_%s" % [kind, gdp_direction]
+		var gdp_insurance: bool = skill.get("gdp_bet_insurance", false) == true
+		context["policy_kind"] = "%s_%s" % [kind, "insurance" if gdp_insurance else gdp_direction]
+		context["target_city"] = gdp_target
+		context["target_owner"] = int(_district_city(gdp_target).get("owner", -1))
 		context["score"] = int(context["score"]) + 110 + int(round(float(skill.get("gdp_bet_multiplier", 1.0)) * 35.0)) + int(skill.get("gdp_bet_destroy_bonus", 0)) / 10
+		if gdp_insurance:
+			context["score"] = int(context["score"]) + _ai_city_gdp_insurance_score(player_index, gdp_target) / 3
 		context["reason"] = "匿名%s%sGDP｜倍率×%.2f｜持仓%s" % [
-			"买涨" if gdp_direction == "up" else "做空",
+			"灾害保单对冲" if gdp_insurance else ("买涨" if gdp_direction == "up" else "做空"),
 			districts[gdp_target]["name"],
 			float(skill.get("gdp_bet_multiplier", 1.0)),
 			_duration_short_text(_gdp_bet_duration_seconds(skill)),
@@ -17167,11 +17131,11 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		var target_city := _district_city(context_district)
 		if _city_is_active(target_city):
 			target_owner = int(target_city.get("owner", -1))
-	var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner)
+	var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
 	if strategy_bonus > 0:
 		context["strategy_bonus"] = int(context.get("strategy_bonus", 0)) + strategy_bonus
 		context["score"] = int(context["score"]) + strategy_bonus
-	var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner)
+	var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
 	if route_bonus > 0:
 		context["route_plan_bonus"] = int(context.get("route_plan_bonus", 0)) + route_bonus
 		context["score"] = int(context["score"]) + route_bonus
@@ -17290,8 +17254,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var required := _skill_play_flow_required(skill, player_index)
 			var available := _player_product_flow(player_index, product_name)
 			var playability_bonus := 0
-			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name)
-			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name)
+			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill)
+			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill)
 			var target_owner := -999
 			var city := _district_city(district_index)
 			if _city_is_active(city):
@@ -18675,7 +18639,7 @@ func _bestiary_text(index: int) -> String:
 	var entry: Dictionary = _catalog_entry(index)
 	var actions := _catalog_actions(index)
 	var lines := []
-	lines.append("%s｜怪兽卡原型" % String(entry.get("name", "怪兽")))
+	lines.append("%s｜场上自动怪兽单位" % String(entry.get("name", "怪兽")))
 	lines.append(String(entry.get("style", "自动怪兽。")))
 	lines.append("HP：%d｜护甲：%d｜移动速度：%s" % [
 		int(entry.get("hp", 0)),
@@ -18699,7 +18663,7 @@ func _bestiary_text(index: int) -> String:
 		])
 	var monster_card := _skill_definition(_monster_card_name(index, 1))
 	if not monster_card.is_empty():
-		lines.append("怪兽卡属性：%s；%s。" % [
+		lines.append("对应召唤牌摘要（完整卡面见卡牌图鉴）：%s；%s。" % [
 			_skill_play_requirement_text(monster_card),
 			"生命%d｜在场%s｜区域限制%s｜固定技能%d张" % [
 				int(monster_card.get("hp", 0)),
@@ -20225,6 +20189,10 @@ func _apply_city_gdp_derivative(_player: Dictionary, skill: Dictionary) -> bool:
 	var direction := String(skill.get("gdp_bet_direction", "up"))
 	if not ["up", "down"].has(direction):
 		return false
+	var is_insurance: bool = skill.get("gdp_bet_insurance", false) == true
+	if is_insurance and int(city.get("owner", -1)) != selected_player:
+		_log("%s只能投保自己的城市；城市真实业主仍不会公开。" % source)
+		return false
 	var baseline := _city_cycle_income(selected_district, _city_competition_matches(selected_district))
 	var duration_seconds := _gdp_bet_duration_seconds(skill)
 	var derivatives: Array = city.get("gdp_derivatives", [])
@@ -20237,13 +20205,14 @@ func _apply_city_gdp_derivative(_player: Dictionary, skill: Dictionary) -> bool:
 		"expires_at": game_time + duration_seconds,
 		"multiplier": maxf(0.1, float(skill.get("gdp_bet_multiplier", 1.0))),
 		"destroy_bonus": maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0))),
+		"insurance": is_insurance,
 		"source": source,
 		"created_cycle": business_cycle_count,
 	})
 	city["gdp_derivatives"] = derivatives
-	city = _append_city_public_clue(city, "%s匿名买%s%sGDP，基准%d，持仓%s。" % [
+	city = _append_city_public_clue(city, "%s匿名%s%sGDP，基准%d，持仓%s。" % [
 		source,
-		"涨" if direction == "up" else "跌",
+		"投保" if is_insurance else ("买涨" if direction == "up" else "做空"),
 		districts[selected_district]["name"],
 		baseline,
 		_duration_short_text(duration_seconds),
@@ -20253,16 +20222,17 @@ func _apply_city_gdp_derivative(_player: Dictionary, skill: Dictionary) -> bool:
 	_add_action_callout(
 		"匿名金融",
 		source,
-		"%s被挂上%s合约：GDP%s时结算，出牌者不公开。" % [
+		"%s被挂上%s：GDP%s时结算，出牌者不公开。" % [
 			districts[selected_district]["name"],
-			"买涨" if direction == "up" else "做空",
+			"灾害保单" if is_insurance else ("买涨合约" if direction == "up" else "做空合约"),
 			"上涨" if direction == "up" else "下跌/破产",
 		],
 		Color("#22c55e") if direction == "up" else Color("#fb7185"),
 		_district_center(selected_district)
 	)
-	_log("%s匿名挂单%s：基准GDP%d，持仓%s，倍率×%.2f。" % [
+	_log("%s匿名%s%s：基准GDP%d，持仓%s，倍率×%.2f。" % [
 		source,
+		"投保" if is_insurance else "挂单",
 		districts[selected_district]["name"],
 		baseline,
 		_duration_short_text(duration_seconds),
@@ -20348,7 +20318,7 @@ func _resolve_city_gdp_derivatives_on_destroy(district_index: int, city: Diction
 		public_hits += 1
 		_pay_city_gdp_derivative(int(entry.get("owner", -1)), payout, String(entry.get("source", "城市做空")), "%s被%s摧毁，GDP%d→0" % [districts[district_index]["name"], source, baseline])
 	if public_hits > 0:
-		city = _append_city_public_clue(city, "%s被摧毁，城市做空/破产合约兑现%d笔；谁收钱仍需推理。" % [districts[district_index]["name"], public_hits])
+		city = _append_city_public_clue(city, "%s被摧毁，城市做空/灾害保单兑现%d笔；谁收钱仍需推理。" % [districts[district_index]["name"], public_hits])
 	city["gdp_derivatives"] = []
 	return city
 

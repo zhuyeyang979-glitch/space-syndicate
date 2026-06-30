@@ -587,11 +587,11 @@ func _run() -> void:
 	main.call("_open_intel_monster_codex_link", 0)
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier monster links open monster detail before returning to thumbnails")
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier monster links open monster detail before returning to thumbnails")
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "monster detail returns to thumbnail page before the intel dossier")
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "monster detail returns to thumbnail page before the intel dossier")
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "monster thumbnail page returns to the intel dossier")
@@ -612,7 +612,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("角色图鉴") and menu_body_label.text.contains("商品图鉴") and menu_body_label.text.contains("区域图鉴"), "compendium introduces all sub-codex sections")
 	menu_preview_box = main.get("menu_preview_box") as VBoxContainer
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "角色图鉴"), "compendium exposes role codex")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "怪兽图鉴"), "compendium exposes monster codex")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "怪兽生态档案"), "compendium exposes monster ecology dossier")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "卡牌图鉴"), "compendium exposes card codex")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "商品图鉴"), "compendium exposes product codex")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "区域图鉴"), "compendium exposes region codex")
@@ -626,7 +626,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("特征") and menu_body_label.text.contains("角色被动") and menu_body_label.text.contains("起始怪兽牌"), "role codex explains role traits, passives, and starter monster cards")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "player_role"), "role codex displays role cards with the shared card-art component")
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "公开身份") and not _container_card_art_stats_contains(menu_preview_box, "起始:"), "role codex card art presents public identity without starter-monster fingerprints")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "独立选择") and not _container_button_text_contains(menu_preview_box, "点击查看卡牌图鉴") and not _container_button_text_contains(menu_preview_box, "查看怪兽图鉴"), "role codex does not link roles to starter monster cards")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "独立选择") and not _container_button_text_contains(menu_preview_box, "点击查看卡牌图鉴") and not _container_button_text_contains(menu_preview_box, "查看怪兽生态档案"), "role codex does not link roles to starter monster cards")
 	var old_role_text := menu_body_label.text
 	main.call("_cycle_menu_catalog", 1)
 	await process_frame
@@ -634,10 +634,10 @@ func _run() -> void:
 	main.call("_open_bestiary_from_compendium")
 	await process_frame
 	menu_bestiary_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴", "monster codex opens from the compendium")
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案", "monster ecology dossier opens from the compendium")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "仅查看") and not _container_button_text_contains(menu_overlay, "开局不再预选怪兽"), "monster codex has no hidden legacy lineup controls")
 	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "monster thumbnail codex returns to the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster codex opens as a responsive thumbnail grid")
+	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and menu_body_label.text.contains("不是另一套怪兽牌图鉴") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster ecology dossier opens as a responsive thumbnail grid without duplicating monster cards")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "monster codex thumbnail page exposes paging and hover preview")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "monster codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_bestiary_entry", 0, true)
@@ -660,7 +660,7 @@ func _run() -> void:
 	var old_bestiary_text := menu_body_label.text
 	main.call("_cycle_menu_catalog", 1)
 	await process_frame
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label.text != old_bestiary_text, "monster detail next button logic changes pages")
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and menu_body_label.text != old_bestiary_text, "monster detail next button logic changes pages")
 	main.call("_open_card_codex_by_name", first_monster_card)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽卡") and menu_body_label.text.contains("生命"), "monster-card link can jump to the matching card codex entry")
@@ -2141,9 +2141,29 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 			main.set("players", players)
 			var leader_phase := main.call("_ai_refresh_game_phase", 1, true) as Dictionary
 			var defense_bonus := int(main.call("_ai_phase_bonus_for_candidate", 1, "route_insurance", own_index, "环晶电池", 1, {}))
+			var defense_districts := _as_array(main.get("districts")).duplicate(true)
+			var defense_district := defense_districts[own_index] as Dictionary
+			defense_district["damage"] = int(defense_district.get("damage", 0)) + 2
+			var defense_city := defense_district.get("city", {}) as Dictionary
+			defense_city["trade_route_damage"] = int(defense_city.get("trade_route_damage", 0)) + 2
+			defense_city["last_income"] = maxi(600, int(defense_city.get("last_income", 0)))
+			defense_district["city"] = defense_city
+			defense_districts[own_index] = defense_district
+			main.set("districts", defense_districts)
+			var insurance_skill := main.call("_make_skill", "灾害保单1") as Dictionary
+			insurance_skill["starter_play_free"] = true
+			var insurance_phase_bonus := int(main.call("_ai_phase_bonus_for_candidate", 1, "city_gdp_derivative", own_index, "环晶电池", 1, insurance_skill))
+			var insurance_context := main.call("_ai_card_play_context", 1, 0, insurance_skill) as Dictionary
 			ok = ok and String(leader_phase.get("phase", "")) == "endgame"
 			ok = ok and String(leader_phase.get("posture", "")) == "leader"
 			ok = ok and defense_bonus > 0
+			ok = ok \
+				and insurance_phase_bonus > 0 \
+				and not insurance_context.is_empty() \
+				and String(insurance_context.get("policy_kind", "")) == "city_gdp_derivative_insurance" \
+				and int(insurance_context.get("target_city", -1)) == own_index \
+				and int(insurance_context.get("target_owner", -1)) == 1 \
+				and int(insurance_context.get("generic_effect_bonus", 0)) > 0
 			main.call("_record_ai_decision", 1, "阶段烟测", own_index, 123, "阶段策略记录", [], {"policy_kind": "phase_smoke", "phase_bonus": defense_bonus})
 			var after_record := _as_array(main.get("players"))
 			ok = ok and _ai_sample_has_field(after_record, 1, "game_phase", "endgame")
@@ -5255,6 +5275,34 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	main.call("_resolve_city_gdp_derivatives", district_index, maxi(0, gdp_baseline - 120), "烟测到期下跌", true)
 	var players_after_short := _as_array(main.get("players"))
 	_expect(int((players_after_short[0] as Dictionary).get("total_card_income", 0)) > short_income_before, "city short-GDP derivative pays out after a timed holding window when city GDP falls")
+
+	districts = _as_array(main.get("districts")).duplicate(true)
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	var original_owner := int(city.get("owner", 0))
+	city["owner"] = 1
+	city["gdp_derivatives"] = []
+	(districts[district_index] as Dictionary)["city"] = city
+	main.set("districts", districts)
+	_set_player_skill(main, 0, 2, "灾害保单1")
+	_clear_player_cooldown(main, 0)
+	var rejected_insurance: bool = main.call("_use_skill", 2) == true
+	districts = _as_array(main.get("districts")).duplicate(true)
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	_expect(not rejected_insurance and _as_array(city.get("gdp_derivatives", [])).is_empty(), "disaster-insurance GDP hedge can only be placed on the player's own city")
+	city["owner"] = original_owner
+	(districts[district_index] as Dictionary)["city"] = city
+	main.set("districts", districts)
+	var insurance_income_before := int((_as_array(main.get("players"))[0] as Dictionary).get("total_card_income", 0))
+	_set_player_skill(main, 0, 2, "灾害保单1")
+	_clear_player_cooldown(main, 0)
+	main.call("_use_skill", 2)
+	districts = _as_array(main.get("districts"))
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	var insurance_derivative := _as_array(city.get("gdp_derivatives", []))[0] as Dictionary
+	_expect(insurance_derivative.get("insurance", false) == true and String(insurance_derivative.get("direction", "")) == "down", "disaster-insurance card records a defensive GDP hedge")
+	main.call("_resolve_city_gdp_derivatives", district_index, maxi(0, gdp_baseline - 150), "烟测保单赔付", true)
+	var players_after_insurance := _as_array(main.get("players"))
+	_expect(int((players_after_insurance[0] as Dictionary).get("total_card_income", 0)) > insurance_income_before, "disaster-insurance card pays when the insured city GDP falls")
 
 	main.call("_age_economic_boons", 30.0)
 	product_market = main.get("product_market") as Dictionary
