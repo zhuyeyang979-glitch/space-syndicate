@@ -16608,6 +16608,9 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 			elif traffic_boost > 0:
 				bonus += 38 + traffic_boost * 20
 				reasons.append("接通需求")
+			elif supply_boost > 0:
+				penalty += 72 + supply_boost * 26
+				reasons.append("暂缓补供给")
 		"strengthen_route":
 			if growth_boost > 0:
 				bonus += 58 + growth_boost * 24
@@ -17079,6 +17082,9 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	var helpful_target := target_owner == player_index
 	score += int(skill.get("cash", 0)) / 4
 	score += int(skill.get("draw_amount", 0)) * 45
+	score += int(skill.get("trace_card_count", 0)) * 42
+	score += int(skill.get("reveal_city_count", 0)) * 48
+	score += int(skill.get("trace_contract_count", 0)) * 45
 	score += int(skill.get("revenue_amount", 0)) / 2
 	score += int(skill.get("contract_income", 0)) * maxi(1, int(ceil(_skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1) / ECONOMY_LEGACY_TURN_SECONDS))) / 5
 	score += int(round((float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 120.0)) if helpful_target else 0
@@ -17240,6 +17246,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = damaged_city
 		var defense_city := _district_city(damaged_city)
+		context["target_city"] = damaged_city
+		context["target_owner"] = int(defense_city.get("owner", -1))
 		var route_pressure := int(defense_city.get("trade_route_damage", 0)) + int(defense_city.get("trade_disrupted_routes", 0))
 		context["score"] = int(context["score"]) \
 			+ route_pressure * 70 \

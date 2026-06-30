@@ -3,6 +3,20 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜AI路线分化与情报字段评分
+
+### 本轮实现
+
+- AI 通用字段评分新增情报字段识别：`trace_card_count`、`reveal_city_count`、`trace_contract_count` 现在会进入 `generic_effect_bonus`，后续新增情报牌只要补齐字段，AI 就能初步理解它的价值。
+- 护路/修复类 `route_insurance` 出牌候选现在写入 `target_city` 和 `target_owner`，让训练样本能区分“保护己方城市”和“误帮别人城市”。
+- AI 商品路线缺口评分修正：在 `create_demand` 阶段，如果一张牌只是补供给、没有补需求或接通商路，会受到“暂缓补供给”的阶段错配惩罚，避免 AI 一边说要补需求、一边被高数值生产牌带偏。
+- 新增 `_verify_ai_strategy_route_diversification_policy()`：用受控沙盒分别验证 AI 能为防御修复、竞争压制、金融做空、情报追踪生成字段驱动候选，并且这些候选进入匿名出牌训练样本。
+
+### 新增验证
+
+- `tests/smoke_test.gd` 新增断言：`AI opponents generate field-driven defense, suppression, finance, and intel route candidates`。
+- 完整 Godot headless smoke test 通过。
+
 ## 2026-07-01｜实时GDP方向性沙盒验证
 
 ### 本轮实现

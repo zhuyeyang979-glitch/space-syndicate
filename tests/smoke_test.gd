@@ -129,6 +129,7 @@ func _run() -> void:
 	_expect(_verify_ai_strategy_intent_policy(main), "AI opponents switch between grow, defend, and disrupt strategic intents and attach strategy metadata to decisions")
 	_expect(_verify_ai_route_plan_policy(main), "AI opponents form multi-step product-route plans that bias build, card, contract, and business choices")
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
+	_expect(_verify_ai_strategy_route_diversification_policy(main), "AI opponents generate field-driven defense, suppression, finance, and intel route candidates")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
 	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, settle, and restore cleanly")
 	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify starting cash without touching starter monsters")
@@ -1015,6 +1016,38 @@ func _set_city_goods_for_test(main: Node, district_index: int, product_name: Str
 	return true
 
 
+func _set_city_products_and_demands_for_test(main: Node, district_index: int, product_names: Array, demand_names: Array, level: int = 2) -> bool:
+	var districts := _as_array(main.get("districts")).duplicate(true)
+	if district_index < 0 or district_index >= districts.size():
+		return false
+	var district := districts[district_index] as Dictionary
+	var city := district.get("city", {}) as Dictionary
+	if city.is_empty():
+		return false
+	var product_entries := []
+	var district_products := []
+	for product_variant in product_names:
+		var product_name := String(product_variant)
+		if product_name == "" or district_products.has(product_name):
+			continue
+		district_products.append(product_name)
+		product_entries.append({"name": product_name, "level": maxi(1, level)})
+	var district_demands := []
+	for demand_variant in demand_names:
+		var demand_name := String(demand_variant)
+		if demand_name == "" or district_demands.has(demand_name):
+			continue
+		district_demands.append(demand_name)
+	city["products"] = product_entries
+	city["demands"] = district_demands
+	district["products"] = district_products
+	district["demands"] = district_demands
+	district["city"] = city
+	districts[district_index] = district
+	main.set("districts", districts)
+	return true
+
+
 func _set_district_goods_for_test(main: Node, district_index: int, product_name: String, demand_name: String) -> bool:
 	var districts := _as_array(main.get("districts")).duplicate(true)
 	if district_index < 0 or district_index >= districts.size():
@@ -1131,6 +1164,16 @@ func _find_card_guess_candidate(candidates: Array, resolution_id: int, guessed_p
 			continue
 		var candidate := candidate_variant as Dictionary
 		if int(candidate.get("resolution_id", -1)) == resolution_id and int(candidate.get("guessed_player", -1)) == guessed_player:
+			return candidate
+	return {}
+
+
+func _find_ai_play_candidate_by_card(candidates: Array, card_name: String) -> Dictionary:
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if String(candidate.get("card_name", "")) == card_name:
 			return candidate
 	return {}
 
@@ -2208,6 +2251,197 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 			ok = ok and _ai_sample_has_field(after_record, 1, "endgame_urgency")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	return ok and restore_result == OK
+
+
+func _verify_ai_strategy_route_diversification_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	var failures := []
+	var cases := [
+		{
+			"label": "defense",
+			"card": "应急修复1",
+			"expected_kind": "route_insurance",
+			"expected_route": "city_growth",
+			"expected_owner": 1,
+			"intent": "defend_routes",
+			"stage": "defend_route",
+		},
+		{
+			"label": "suppression",
+			"card": "竞争封锁1",
+			"expected_kind": "region_economy_shift",
+			"expected_route": "monster_pressure",
+			"expected_owner": 2,
+			"intent": "disrupt_competitors",
+			"stage": "attack_rival",
+		},
+		{
+			"label": "finance",
+			"card": "城市做空1",
+			"expected_kind": "city_gdp_derivative",
+			"expected_policy": "city_gdp_derivative_down",
+			"expected_route": "finance_speculation",
+			"expected_owner": 2,
+			"intent": "disrupt_competitors",
+			"stage": "attack_rival",
+		},
+		{
+			"label": "intel",
+			"card": "线索悬赏1",
+			"expected_kind": "intel_card_trace",
+			"expected_route": "intel_supply",
+			"expected_owner": -999,
+			"intent": "grow_focus",
+			"stage": "create_demand",
+			"needs_trace": true,
+		},
+	]
+	for case_variant in cases:
+		var case := case_variant as Dictionary
+		var restore_case := int(main.call("_apply_run_state", saved))
+		if restore_case != OK:
+			failures.append("%s restore" % String(case.get("label", "")))
+			ok = false
+			continue
+		main.set("ai_card_decision_enabled", true)
+		main.set("game_over", false)
+		main.set("active_card_resolution", {})
+		main.set("card_resolution_queue", [])
+		main.set("next_card_resolution_queue", [])
+		main.set("pending_contract_offers", [])
+		main.set("card_resolution_batch_locked", false)
+		main.set("card_resolution_auction_open", false)
+		main.set("card_resolution_simultaneous_timer", 0.5)
+		main.set("selected_card_resolution_id", -1)
+		main.set("resolved_card_history", [])
+		_reset_route_plan_sandbox_for_test(main)
+		var own_index := _first_empty_land_district_for_contract(main)
+		var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+		if own_index < 0 or rival_index < 0:
+			failures.append("%s missing city slots" % String(case.get("label", "")))
+			ok = false
+			continue
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 6600 if player_index == 1 else (int(main.call("_roguelike_cash_goal")) + 700 if player_index == 2 else 1000)
+			player["action_cooldown"] = 0.0
+			if player_index == 1:
+				var memory := main.call("_empty_ai_memory") as Dictionary
+				memory["economic_focus_product"] = "环晶电池"
+				memory["economic_focus_score"] = 800
+				memory["strategy_intent"] = String(case.get("intent", "grow_focus"))
+				memory["strategy_score"] = 900
+				memory["route_plan_product"] = "环晶电池"
+				memory["route_plan_stage"] = String(case.get("stage", "create_demand"))
+				memory["route_plan_score"] = 900
+				player["ai_memory"] = memory
+				var skill := main.call("_make_skill", String(case.get("card", ""))) as Dictionary
+				skill.erase("starter_play_free")
+				player["slots"] = [skill]
+			players[player_index] = player
+		main.set("players", players)
+		var own_created := bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI路线分化自城", false))
+		var rival_created := bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI路线分化竞城", false))
+		var own_goods := _set_city_products_and_demands_for_test(
+			main,
+			own_index,
+			["环晶电池", "光合凝胶", "轨迹墨水", "活体芯片", "离岸水晶"],
+			["环晶电池", "轨迹墨水", "活体芯片"],
+			2
+		) if own_created else false
+		var rival_goods := _set_city_products_and_demands_for_test(
+			main,
+			rival_index,
+			["环晶电池", "星尘香料"],
+			["轨迹墨水"],
+			2
+		) if rival_created else false
+		if not (own_created and rival_created and own_goods and rival_goods):
+			failures.append("%s city setup" % String(case.get("label", "")))
+			ok = false
+			continue
+		var districts := _as_array(main.get("districts")).duplicate(true)
+		var own_district := districts[own_index] as Dictionary
+		var own_city := own_district.get("city", {}) as Dictionary
+		own_city["trade_route_damage"] = 2
+		own_city["trade_disrupted_routes"] = 2
+		own_city["last_income"] = 720
+		own_district["damage"] = 2
+		own_district["panic"] = 16
+		own_district["city"] = own_city
+		districts[own_index] = own_district
+		var rival_district := districts[rival_index] as Dictionary
+		var rival_city := rival_district.get("city", {}) as Dictionary
+		rival_city["trade_route_damage"] = 3
+		rival_city["trade_disrupted_routes"] = 3
+		rival_city["last_income"] = 920
+		rival_district["damage"] = 4
+		rival_district["panic"] = 36
+		rival_district["city"] = rival_city
+		districts[rival_index] = rival_district
+		main.set("districts", districts)
+		main.call("_refresh_city_networks")
+		if bool(case.get("needs_trace", false)):
+			var history := [{
+				"resolution_id": 88001,
+				"queued_order": 88001,
+				"player_index": 2,
+				"skill": main.call("_make_skill", "城市融资1"),
+				"selected_district": rival_index,
+				"play_requirement_product": "活体芯片",
+				"play_requirement_flow": 1,
+				"public_owner_revealed": false,
+				"resolved_time": float(main.get("game_time")),
+			}]
+			main.set("resolved_card_history", history)
+			main.set("selected_card_resolution_id", 88001)
+		var skill_for_context := main.call("_make_skill", String(case.get("card", ""))) as Dictionary
+		skill_for_context.erase("starter_play_free")
+		var context := main.call("_ai_card_play_context", 1, 0, skill_for_context) as Dictionary
+		var candidates := main.call("_ai_card_play_candidates", 1) as Array
+		var choice := _find_ai_play_candidate_by_card(candidates, String(case.get("card", "")))
+		var label := String(case.get("label", "route"))
+		var expected_kind := String(case.get("expected_kind", ""))
+		var expected_route := String(case.get("expected_route", ""))
+		var expected_owner := int(case.get("expected_owner", -999))
+		var case_ok := not context.is_empty() and not choice.is_empty()
+		case_ok = case_ok and String(choice.get("kind", "")) == expected_kind
+		case_ok = case_ok and String(choice.get("development_route", "")) == expected_route
+		case_ok = case_ok and int(choice.get("generic_effect_bonus", 0)) > 0
+		if expected_owner != -999:
+			case_ok = case_ok and int(choice.get("target_owner", -999)) == expected_owner
+		if case.has("expected_policy"):
+			case_ok = case_ok and String(choice.get("policy_kind", "")) == String(case.get("expected_policy", ""))
+		var queued := bool(main.call("_ai_queue_play_candidate", 1, choice, candidates)) if not choice.is_empty() else false
+		var players_after := _as_array(main.get("players"))
+		var memory_ok := queued and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "development_route", expected_route)
+		if case.has("expected_policy"):
+			memory_ok = memory_ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "policy_kind", String(case.get("expected_policy", "")))
+		else:
+			memory_ok = memory_ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "policy_kind", expected_kind)
+		if not (case_ok and queued and memory_ok):
+			failures.append("%s context=%s choice=%s kind=%s route=%s owner=%d generic=%d score=%d phase=%d queued=%s memory=%s" % [
+				label,
+				str(not context.is_empty()),
+				str(not choice.is_empty()),
+				String(choice.get("kind", "")),
+				String(choice.get("development_route", "")),
+				int(choice.get("target_owner", -999)),
+				int(choice.get("generic_effect_bonus", 0)),
+				int(choice.get("score", 0)),
+				int(choice.get("phase_bonus", 0)),
+				str(queued),
+				str(memory_ok),
+			])
+			ok = false
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	if not failures.is_empty():
+		print("AI strategy route diversification failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
 
 
