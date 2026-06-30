@@ -2612,6 +2612,67 @@ func _add_menu_action_card(parent: Container, button_text: String, detail_text: 
 	return {"panel": panel, "button": button}
 
 
+func _menu_summary_grid_columns() -> int:
+	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+	return clampi(int(floor((viewport_size.x - 140.0) / 270.0)), 1, 3)
+
+
+func _show_menu_summary_cards(cards: Array, heading: String = "页面速览") -> void:
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var heading_label := _plain_label(heading, 13, Color("#dbeafe"))
+	heading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_preview_box.add_child(heading_label)
+	var grid := GridContainer.new()
+	grid.columns = _menu_summary_grid_columns()
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	menu_preview_box.add_child(grid)
+	for card_variant in cards:
+		if card_variant is Dictionary:
+			var card: Dictionary = card_variant
+			_add_menu_info_card(
+				grid,
+				String(card.get("title", "提示")),
+				String(card.get("body", "")),
+				card.get("accent", Color("#38bdf8")) as Color,
+				String(card.get("meta", ""))
+			)
+
+
+func _add_menu_info_card(parent: Container, title_text: String, body_text: String, accent: Color = Color("#38bdf8"), meta_text: String = "") -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = Vector2(0, 112)
+	panel.tooltip_text = body_text
+	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 14))
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	margin.add_child(box)
+	var title := _plain_label(title_text, 12, Color("#f8fafc"))
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(title)
+	var body := _plain_label(body_text, 10, Color("#cbd5e1"))
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(body)
+	if meta_text != "":
+		var meta := _plain_label(meta_text, 9, accent.lightened(0.18))
+		meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(meta)
+	return panel
+
+
 func _open_main_menu() -> void:
 	_show_menu(
 		"太空辛迪加",
@@ -2663,6 +2724,7 @@ func _open_rules_menu() -> void:
 		"\n".join(lines),
 		not game_over
 	)
+	_populate_rules_summary_cards()
 
 
 func _open_tutorial_menu() -> void:
@@ -2681,11 +2743,146 @@ func _open_tutorial_menu() -> void:
 
 func _open_standings_menu() -> void:
 	_show_menu("局势排名", _standings_text(), not game_over)
+	_populate_standings_summary_cards()
 
 
 func _open_economy_overview_menu() -> void:
 	_mark_opening_guide_economy_seen(selected_player)
 	_show_menu("经济总览", _economy_overview_text(), not game_over)
+	_populate_economy_overview_summary_cards()
+
+
+func _populate_rules_summary_cards() -> void:
+	_show_menu_summary_cards([
+		{
+			"title": "1｜先召怪兽",
+			"body": "开局先打出起始I级怪兽牌；怪兽落地区和相邻区会打开购牌来源。",
+			"meta": "没有怪兽落地，就很难开始买牌。",
+			"accent": Color("#fb7185"),
+		},
+		{
+			"title": "2｜建城赚钱",
+			"body": "在陆地城市化，GDP/min 按秒流入现金；海洋主要影响商路运输。",
+			"meta": "最后按钱最多获胜。",
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "3｜匿名出牌",
+			"body": "所有卡牌公开展示但不公开牌主；商品流动门槛、地图变化和小费会留下线索。",
+			"meta": "看结果，不看名字。",
+			"accent": Color("#c084fc"),
+		},
+		{
+			"title": "4｜手牌隐私",
+			"body": "买牌花钱，重复牌升级；普通手牌超上限时私密弃牌，别人不知道你弃了什么。",
+			"meta": "固定兽技不占普通手牌上限。",
+			"accent": Color("#facc15"),
+		},
+	], "规则速览｜先看这四张卡，再读下方细则")
+
+
+func _populate_standings_summary_cards() -> void:
+	var selected_name := "当前玩家"
+	var selected_cash := 0
+	var selected_score := 0
+	var selected_city_count := 0
+	var selected_gdp := 0
+	if selected_player >= 0 and selected_player < players.size():
+		var player: Dictionary = players[selected_player]
+		selected_name = String(player.get("name", selected_name))
+		selected_cash = int(player.get("cash", 0))
+		selected_score = _player_visible_settlement_estimate(selected_player)
+		selected_city_count = _player_active_city_count(selected_player)
+		selected_gdp = _player_cycle_income(selected_player)
+	_show_menu_summary_cards([
+		{
+			"title": "终局条件",
+			"body": "目标¥%d｜%s" % [_roguelike_cash_goal(), _short_card_text(_victory_countdown_status_text(), 54)],
+			"meta": "达标后进入倒计时，结束按钱排名。",
+			"accent": Color("#facc15"),
+		},
+		{
+			"title": "我的可见资金",
+			"body": "%s｜现金¥%d｜预估¥%d" % [selected_name, selected_cash, selected_score],
+			"meta": "其他玩家经济进行中保密。",
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "城市现金流",
+			"body": "%d座城市｜潜在GDP/min %d｜城市清算×%d" % [selected_city_count, selected_gdp, CITY_FINAL_VALUE],
+			"meta": "守住城市，就是守住终局钱。",
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "反超方向",
+			"body": "落后时压制领先城市、做空高风险GDP；领先时保护商路、修复和保险。",
+			"meta": "匿名行动会留下推理线索。",
+			"accent": Color("#fb7185"),
+		},
+	], "局势速览｜先判断自己离终局还有多远")
+
+
+func _populate_economy_overview_summary_cards() -> void:
+	if players.is_empty() or districts.is_empty():
+		_show_menu_summary_cards([
+			{
+				"title": "暂无经济数据",
+				"body": "开始新局并建造城市后，这里会显示GDP、商品、商路和线索摘要。",
+				"accent": Color("#38bdf8"),
+			},
+		], "经济速览")
+		return
+	_ensure_product_market_catalog()
+	_refresh_city_networks()
+	var selected_name := String(players[selected_player].get("name", "玩家")) if selected_player >= 0 and selected_player < players.size() else "当前玩家"
+	var product_entries := _economy_product_entries()
+	var top_product_text := "暂无商品热度"
+	if not product_entries.is_empty():
+		var product_entry: Dictionary = product_entries[0]
+		top_product_text = "%s ¥%d｜供%d/需%d｜趋势%s" % [
+			String(product_entry.get("name", "商品")),
+			int(product_entry.get("price", 0)),
+			int(product_entry.get("supply", 0)),
+			int(product_entry.get("demand", 0)),
+			_signed_int_text(int(product_entry.get("trend", 0))),
+		]
+	var city_entries := _economy_city_income_entries()
+	var city_text := "暂无存活城市；先城市化陆地区域。"
+	if not city_entries.is_empty():
+		var city_entry: Dictionary = city_entries[0]
+		city_text = "%s｜%s｜潜在收入%d｜断路%d" % [
+			String(city_entry.get("name", "城市")),
+			String(city_entry.get("owner_view", "未知业主")),
+			int(city_entry.get("income", 0)),
+			int(city_entry.get("disrupted", 0)),
+		]
+	var clue_count := _economy_city_public_clue_entries(6).size() + _economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size()
+	_show_menu_summary_cards([
+		{
+			"title": "GDP/min",
+			"body": "%s｜潜在GDP/min %d｜城市现金按秒流入" % [selected_name, _player_cycle_income(selected_player)],
+			"meta": "生产×需求×运输速度，再扣损伤和竞争。",
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "商品热榜",
+			"body": top_product_text,
+			"meta": "供给压价，需求和合约抬价。",
+			"accent": Color("#facc15"),
+		},
+		{
+			"title": "商路/城市",
+			"body": city_text,
+			"meta": "运输区受损会拖累途经商路。",
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "匿名线索",
+			"body": "最近可读线索%d条｜城市标注、卡牌条件、怪兽资金线索分开看。" % clue_count,
+			"meta": "经济总览不提前揭示真相。",
+			"accent": Color("#c084fc"),
+		},
+	], "经济速览｜短卡片给方向，下方文字给证据")
 
 
 func _open_final_settlement_menu(reason: String, rankings: Array) -> void:
