@@ -693,8 +693,8 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
-	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
+	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("完整卡池") and menu_body_label.text.contains("区域补给") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览") and _container_label_text_contains(menu_preview_box, "统一卡池") and _container_label_text_contains(menu_preview_box, "商品期货") and _container_label_text_contains(menu_preview_box, "相位反制"), "card codex thumbnail page exposes paging, hover preview, and strict card taxonomy")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "直接互动路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线") and _container_label_text_contains(menu_preview_box, "覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "支点") and _container_label_text_contains(menu_preview_box, "平衡") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	var card_codex_scroll_before := 64
@@ -4235,19 +4235,33 @@ func _verify_monster_takeover_resets_owner_clues(main: Node) -> bool:
 
 
 func _verify_monster_region_card_pricing(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
 	var districts := _as_array(main.get("districts"))
 	var auto_monsters := _as_array(main.get("auto_monsters"))
 	if districts.is_empty() or auto_monsters.is_empty():
 		return false
-	var landed_index := int((auto_monsters[0] as Dictionary).get("position", -1))
-	if landed_index < 0 or landed_index >= districts.size():
+	var landed_index := -1
+	var adjacent_index := -1
+	for i in range(districts.size()):
+		var district := districts[i] as Dictionary
+		if bool(district.get("destroyed", false)):
+			continue
+		var neighbors := _as_array(district.get("neighbors", []))
+		for neighbor_variant in neighbors:
+			var neighbor_index := int(neighbor_variant)
+			if neighbor_index >= 0 and neighbor_index < districts.size() and not bool((districts[neighbor_index] as Dictionary).get("destroyed", false)):
+				landed_index = i
+				adjacent_index = neighbor_index
+				break
+		if landed_index >= 0:
+			break
+	if landed_index < 0 or adjacent_index < 0:
 		return false
-	var neighbors := _as_array((districts[landed_index] as Dictionary).get("neighbors", []))
-	if neighbors.is_empty():
-		return false
-	var adjacent_index := int(neighbors[0])
-	if adjacent_index < 0 or adjacent_index >= districts.size():
-		return false
+	var controlled_monster := (auto_monsters[0] as Dictionary).duplicate(true)
+	controlled_monster["position"] = landed_index
+	controlled_monster["down"] = false
+	main.set("auto_monsters", [controlled_monster])
+	main.set("district_card_purchase_snapshot", {})
 	var card_name := "垄断协议1"
 	var base_price := int(main.call("_card_price", card_name))
 	var landed_price := int(main.call("_card_price", card_name, landed_index))
@@ -4268,10 +4282,8 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 				and String(main.call("_district_card_access_text", i)).contains("不可购买")
 			break
 	var saved_players := _as_array(main.get("players")).duplicate(true)
-	var saved_districts := districts.duplicate(true)
-	var saved_monsters := auto_monsters.duplicate(true)
-	var saved_selected_player := int(main.get("selected_player"))
-	var saved_selected_district := int(main.get("selected_district"))
+	var saved_districts := _as_array(main.get("districts")).duplicate(true)
+	var saved_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var test_card := "城市融资1"
 	var test_district := saved_districts[landed_index] as Dictionary
 	test_district["card_choices"] = [test_card]
@@ -4297,13 +4309,8 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 		and int(main.call("_card_price", test_card, landed_index, 0)) == maxi(80, int(round(float(main.call("_card_price", test_card)) * 0.8))) \
 		and bool(main.call("_buy_card_for_player_from_district", 0, landed_index, test_card, false)) \
 		and _player_card_names(_as_array(main.get("players")), 0).has(test_card)
-	main.set("players", saved_players)
-	main.set("districts", districts)
-	main.set("auto_monsters", saved_monsters)
-	main.set("selected_player", saved_selected_player)
-	main.call("_select_district", saved_selected_district)
-	pricing_ok = pricing_ok and snapshot_buy_ok
-	return pricing_ok
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return pricing_ok and snapshot_buy_ok and restore_result == OK
 
 
 func _verify_reacquired_card_upgrade_rules(main: Node) -> bool:
@@ -7425,23 +7432,74 @@ func _city_has_single_goods(main: Node, district_index: int) -> bool:
 func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 	var monster_card := String(main.call("_monster_card_name", 0, 1))
 	var monster_names := _as_array(main.call("_card_codex_names", "monster"))
-	var business_names := _as_array(main.call("_card_codex_names", "business"))
-	var economy_names := _as_array(main.call("_card_codex_names", "economy"))
+	var monster_skill_names := _as_array(main.call("_card_codex_names", "monster_skill"))
+	var military_names := _as_array(main.call("_card_codex_names", "military"))
+	var counter_names := _as_array(main.call("_card_codex_names", "counter"))
+	var city_names := _as_array(main.call("_card_codex_names", "city"))
+	var commodity_names := _as_array(main.call("_card_codex_names", "commodity"))
+	var futures_names := _as_array(main.call("_card_codex_names", "futures"))
+	var finance_names := _as_array(main.call("_card_codex_names", "finance"))
+	var contract_names := _as_array(main.call("_card_codex_names", "contract"))
+	var business_alias_names := _as_array(main.call("_card_codex_names", "business"))
+	var economy_alias_names := _as_array(main.call("_card_codex_names", "economy"))
 	var all_names := _as_array(main.call("_card_codex_names", "all"))
 	var monster_skill := main.call("_skill_definition", monster_card) as Dictionary
 	var contract_skill := main.call("_skill_definition", "区域供需合约1") as Dictionary
 	var monster_text := String(main.call("_card_codex_text", monster_card, monster_skill, 0, maxi(1, monster_names.size())))
-	var contract_text := String(main.call("_card_codex_text", "区域供需合约1", contract_skill, 0, maxi(1, business_names.size())))
+	var contract_text := String(main.call("_card_codex_text", "区域供需合约1", contract_skill, 0, maxi(1, contract_names.size())))
 	var ok := true
-	ok = ok and monster_names.has(monster_card)
-	ok = ok and business_names.has("区域供需合约1")
-	ok = ok and economy_names.has("远期采购1")
-	ok = ok and all_names.has(monster_card)
-	ok = ok and all_names.has("区域供需合约1")
-	ok = ok and String(main.call("_card_codex_filter_label", "monster")) == "怪兽牌"
-	ok = ok and String(main.call("_card_codex_filter_label", "business")) == "经营/合约"
-	ok = ok and monster_text.contains("分类：怪兽牌")
-	ok = ok and contract_text.contains("分类：经营/合约")
+	var failures := []
+	if not monster_names.has(monster_card):
+		failures.append("monster")
+	if not monster_skill_names.has("移动1"):
+		failures.append("monster_skill")
+	if not military_names.has("制空战斗机1"):
+		failures.append("military")
+	if not counter_names.has("相位否决1"):
+		failures.append("counter")
+	if not city_names.has("应急修复1"):
+		failures.append("city")
+	if not commodity_names.has("远期采购1"):
+		failures.append("commodity")
+	if not futures_names.has("商品看涨1") or not futures_names.has("港仓囤货1"):
+		failures.append("futures")
+	if not finance_names.has("城市买涨1") or not finance_names.has("城市做空1"):
+		failures.append("finance")
+	if not contract_names.has("区域供需合约1"):
+		failures.append("contract")
+	if not business_alias_names.has("区域供需合约1"):
+		failures.append("business_alias")
+	if not economy_alias_names.has("远期采购1") or not economy_alias_names.has("城市买涨1"):
+		failures.append("economy_alias")
+	if not all_names.has(monster_card) or not all_names.has("区域供需合约1"):
+		failures.append("all")
+	if String(main.call("_card_codex_filter_label", "monster")) != "怪兽牌":
+		failures.append("monster_label")
+	if String(main.call("_card_codex_filter_label", "monster_skill")) != "怪兽技能":
+		failures.append("monster_skill_label")
+	if String(main.call("_card_codex_filter_label", "military")) != "军队/军令":
+		failures.append("military_label")
+	if String(main.call("_card_codex_filter_label", "counter")) != "相位反制":
+		failures.append("counter_label")
+	if String(main.call("_card_codex_filter_label", "futures")) != "商品期货":
+		failures.append("futures_label")
+	if String(main.call("_card_codex_filter_label", "finance")) != "金融/GDP":
+		failures.append("finance_label")
+	if String(main.call("_card_codex_filter_label", "business")) != "经营/合约":
+		failures.append("business_alias_label")
+	if not monster_text.contains("分类：怪兽牌"):
+		failures.append("monster_text")
+	if not contract_text.contains("分类：合约"):
+		failures.append("contract_text")
+	if String(main.call("_card_codex_category_for_card", "相位否决1", main.call("_skill_definition", "相位否决1"))) != "counter":
+		failures.append("counter_category")
+	if String(main.call("_card_codex_category_for_card", "商品看涨1", main.call("_skill_definition", "商品看涨1"))) != "futures":
+		failures.append("futures_category")
+	if String(main.call("_card_codex_category_for_card", "城市买涨1", main.call("_skill_definition", "城市买涨1"))) != "finance":
+		failures.append("finance_category")
+	ok = failures.is_empty()
+	if not failures.is_empty():
+		print("Card codex category failures: %s" % " / ".join(failures))
 	return ok
 
 

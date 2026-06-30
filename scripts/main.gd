@@ -968,6 +968,9 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"商业诱饵",
 	"价格套利",
 	"商品做空",
+	"商品看涨",
+	"商品看跌",
+	"港仓囤货",
 	"城市买涨",
 	"城市做空",
 	"灾害保单",
@@ -6161,6 +6164,7 @@ func _add_bestiary_hover_preview(parent: Container) -> void:
 	previewed_bestiary_index = _valid_bestiary_index(previewed_bestiary_index)
 	var entry := _catalog_entry(previewed_bestiary_index)
 	var preview_panel := PanelContainer.new()
+	preview_panel.name = "BestiaryHoverPreview"
 	var profile := _monster_art_profile(String(entry.get("name", "怪兽")))
 	var accent := Color("#fb7185")
 	if profile.has("accent"):
@@ -6187,6 +6191,17 @@ func _add_bestiary_hover_preview(parent: Container) -> void:
 	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(detail)
+
+
+func _refresh_bestiary_hover_preview_only() -> void:
+	if menu_preview_box == null:
+		return
+	for child in menu_preview_box.get_children():
+		if String(child.name) == "BestiaryHoverPreview":
+			menu_preview_box.remove_child(child)
+			child.queue_free()
+			break
+	_add_bestiary_hover_preview(menu_preview_box)
 
 
 func _bestiary_preview_text(catalog_index: int) -> String:
@@ -6231,8 +6246,12 @@ func _preview_bestiary_entry(catalog_index: int, refresh: bool = true) -> void:
 	bestiary_index = previewed_bestiary_index
 	if refresh:
 		var saved_scroll := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else 0
-		_update_bestiary_menu()
-		_queue_restore_menu_scroll(saved_scroll)
+		if not bestiary_show_detail and menu_catalog_mode == "monster" and menu_preview_box != null:
+			_refresh_bestiary_hover_preview_only()
+			_queue_restore_menu_scroll(saved_scroll)
+		else:
+			_update_bestiary_menu()
+			_queue_restore_menu_scroll(saved_scroll)
 
 
 func _open_bestiary_detail(catalog_index: int) -> void:
@@ -6335,7 +6354,7 @@ func _card_codex_grid_text(total_count: int) -> String:
 	var columns := _card_codex_grid_columns()
 	var rows := _card_codex_grid_rows()
 	var page_count := _card_codex_grid_page_count(total_count)
-	return "缩略图册｜当前筛选:%s｜第%d/%d页｜当前缩略图布局：%d×%d\n悬停或单击卡牌缩略图会在下方显示详情预览；双击缩略图进入卡牌详情。进入详情后才使用顶部「上一个/下一个」切换卡牌，也可以点「返回缩略图」回到图册。" % [
+	return "缩略图册｜当前筛选:%s｜第%d/%d页｜当前缩略图布局：%d×%d\n图鉴是完整卡池，区域补给/市场牌池是本局地图实际可购买的局部候选。悬停或单击卡牌缩略图只刷新下方详情预览；双击缩略图进入卡牌详情。进入详情后才使用顶部「上一个/下一个」切换卡牌，也可以点「返回缩略图」回到图册。" % [
 		_card_codex_filter_label(),
 		card_codex_grid_page + 1,
 		page_count,
@@ -6533,6 +6552,7 @@ func _add_card_codex_hover_preview(parent: Container) -> void:
 	if preview_skill.is_empty():
 		return
 	var preview_panel := PanelContainer.new()
+	preview_panel.name = "CardCodexHoverPreview"
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#020617").lerp(_card_theme_color(preview_skill), 0.13)
 	style.border_color = Color("#38bdf8")
@@ -6557,6 +6577,17 @@ func _add_card_codex_hover_preview(parent: Container) -> void:
 	row.add_child(detail)
 
 
+func _refresh_card_codex_hover_preview_only() -> void:
+	if menu_preview_box == null:
+		return
+	for child in menu_preview_box.get_children():
+		if String(child.name) == "CardCodexHoverPreview":
+			menu_preview_box.remove_child(child)
+			child.queue_free()
+			break
+	_add_card_codex_hover_preview(menu_preview_box)
+
+
 func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
 	var names := _card_codex_names()
 	if card_name == "" or not names.has(card_name):
@@ -6565,8 +6596,12 @@ func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
 	card_codex_index = names.find(card_name)
 	if refresh:
 		var saved_scroll := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else 0
-		_update_card_codex_menu()
-		_queue_restore_menu_scroll(saved_scroll)
+		if not card_codex_show_detail and menu_catalog_mode == "card" and menu_preview_box != null:
+			_refresh_card_codex_hover_preview_only()
+			_queue_restore_menu_scroll(saved_scroll)
+		else:
+			_update_card_codex_menu()
+			_queue_restore_menu_scroll(saved_scroll)
 
 
 func _queue_restore_menu_scroll(value: int) -> void:
@@ -7375,14 +7410,20 @@ func _card_codex_filter_options() -> Array:
 	return [
 		{"id": "all", "label": "全部"},
 		{"id": "monster", "label": "怪兽牌"},
-		{"id": "economy", "label": "经济/商品"},
-		{"id": "business", "label": "经营/合约"},
+		{"id": "monster_skill", "label": "怪兽技能"},
+		{"id": "military", "label": "军队/军令"},
+		{"id": "counter", "label": "相位反制"},
+		{"id": "interaction", "label": "玩家互动"},
+		{"id": "city", "label": "城市经营"},
+		{"id": "commodity", "label": "商品经营"},
+		{"id": "futures", "label": "商品期货"},
+		{"id": "finance", "label": "金融/GDP"},
+		{"id": "contract", "label": "合约"},
+		{"id": "intel", "label": "情报推理"},
+		{"id": "supply", "label": "补给/采购"},
+		{"id": "tactic", "label": "怪兽诱导"},
 		{"id": "news", "label": "新闻事件"},
 		{"id": "weather", "label": "天气干预"},
-		{"id": "intel", "label": "情报推理"},
-		{"id": "interaction", "label": "直接互动"},
-		{"id": "combat", "label": "战斗/指令"},
-		{"id": "tactic", "label": "补给/诱导"},
 		{"id": "other", "label": "其他"},
 	]
 
@@ -7411,6 +7452,13 @@ func _card_codex_filter_label(filter_id: String = "") -> String:
 		var option: Dictionary = option_variant
 		if String(option.get("id", "")) == filter_id:
 			return String(option.get("label", filter_id))
+	match filter_id:
+		"economy":
+			return "经济聚合"
+		"business":
+			return "经营/合约"
+		"combat":
+			return "战斗/指令"
 	return "全部"
 
 
@@ -7418,20 +7466,32 @@ func _card_codex_category_for_card(card_name: String, skill: Dictionary) -> Stri
 	if _is_monster_card_name(card_name) or String(skill.get("kind", "")) == "monster_card":
 		return "monster"
 	var kind := String(skill.get("kind", ""))
-	if ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "cash_gain"].has(kind):
-		return "economy"
-	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"].has(kind):
+	if kind == "monster_bound_action" or _is_direct_monster_skill_kind(kind) or ["move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar"].has(kind):
+		return "monster_skill"
+	if ["military_force", "military_command"].has(kind):
+		return "military"
+	if kind == "card_counter":
+		return "counter"
+	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
 		return "interaction"
-	if ["city_revenue_boost", "city_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind):
-		return "business"
+	if ["city_gdp_derivative"].has(kind):
+		return "finance"
+	if ["product_futures"].has(kind):
+		return "futures"
+	if ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "cash_gain"].has(kind):
+		return "commodity"
+	if ["area_trade_contract", "city_contract_boon"].has(kind):
+		return "contract"
+	if ["city_revenue_boost", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_sabotage", "region_economy_shift"].has(kind):
+		return "city"
 	if kind == "news_event":
 		return "news"
 	if kind == "weather_control":
 		return "weather"
-	if _skill_targets_monster(skill) or ["monster_bound_action", "military_force", "military_command", "move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar"].has(kind):
-		return "combat"
-	if ["monster_lure", "special_monster_delay", "monster_takeover", "supply_draw", "panic_shift", "route_sabotage", "card_access_boon"].has(kind):
+	if ["monster_lure", "special_monster_delay", "monster_takeover", "panic_shift"].has(kind) or _skill_targets_monster(skill):
 		return "tactic"
+	if ["supply_draw", "card_access_boon"].has(kind):
+		return "supply"
 	if ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"].has(kind):
 		return "intel"
 	return "other"
@@ -7508,9 +7568,36 @@ func _set_card_codex_filter(filter_id: String) -> void:
 	_update_card_codex_menu()
 
 
+func _card_codex_filter_category_ids(filter_id: String) -> Array:
+	match filter_id:
+		"all":
+			return []
+		"economy":
+			return ["city", "commodity", "futures", "finance", "contract"]
+		"business":
+			return ["city", "contract"]
+		"combat":
+			return ["monster_skill", "military", "tactic"]
+		_:
+			return [filter_id]
+
+
+func _card_codex_filter_matches(filter_id: String, category_id: String) -> bool:
+	if filter_id == "all":
+		return true
+	return _card_codex_filter_category_ids(filter_id).has(category_id)
+
+
 func _add_card_codex_filter_buttons(parent: Container) -> void:
-	parent.add_child(_plain_label("卡牌图鉴分类：按怪兽、经济、金融、合约、情报、新闻、天气等子分类浏览统一卡池。", 11, Color("#bfdbfe")))
-	var row := HBoxContainer.new()
+	parent.add_child(_plain_label("卡牌图鉴分类：怪兽牌、怪兽技能、军队/军令、相位反制、玩家互动、城市经营、商品经营、商品期货、金融/GDP、合约、情报、新闻和天气都在同一套卡牌体系中。", 11, Color("#bfdbfe")))
+	_add_menu_info_card(
+		parent,
+		"统一卡池 / 区域补给 / 市场牌池",
+		"图鉴展示完整卡池；每局星球会按本局商品、地形和怪兽生态生成可购买的区域补给。玩家仍只能在怪兽落地区或相邻区打开补给窗口购买；怪兽生态档案只说明自动行动，怪兽牌本身在卡牌图鉴里查看。",
+		Color("#38bdf8"),
+		"旧的普通牌池理解为候选牌库；真正能买的是当前区域补给。"
+	)
+	var row := HFlowContainer.new()
 	row.add_theme_constant_override("separation", 5)
 	parent.add_child(row)
 	for option_variant in _card_codex_filter_options():
@@ -7527,7 +7614,7 @@ func _add_card_codex_filter_buttons(parent: Container) -> void:
 		button.disabled = count <= 0
 		button.pressed.connect(Callable(self, "_set_card_codex_filter").bind(filter_id))
 		row.add_child(button)
-	var route_row := HBoxContainer.new()
+	var route_row := HFlowContainer.new()
 	route_row.add_theme_constant_override("separation", 5)
 	parent.add_child(route_row)
 	route_row.add_child(_plain_label("路线筛选:", 10, Color("#fde68a")))
@@ -7557,7 +7644,7 @@ func _card_codex_names(filter_id: String = "") -> Array:
 	for monster_card_variant in _monster_card_names(1):
 		var monster_card_name := String(monster_card_variant)
 		var monster_skill := _skill_definition(monster_card_name)
-		if filter_id == "all" or filter_id == "monster" or (route_filter != "" and _card_development_route_id(monster_skill) == route_filter):
+		if _card_codex_filter_matches(filter_id, "monster") or (route_filter != "" and _card_development_route_id(monster_skill) == route_filter):
 			_append_unique_string(names, monster_card_name)
 	for name_variant in SKILL_CATALOG.keys():
 		var card_name := _canonical_card_supply_name(String(name_variant))
@@ -7565,7 +7652,7 @@ func _card_codex_names(filter_id: String = "") -> Array:
 			continue
 		var skill := _skill_definition(card_name)
 		var category := _card_codex_category_for_card(card_name, skill)
-		if filter_id == "all" or category == filter_id or (route_filter != "" and _card_development_route_id(skill) == route_filter):
+		if _card_codex_filter_matches(filter_id, category) or (route_filter != "" and _card_development_route_id(skill) == route_filter):
 			_append_unique_string(names, card_name)
 	names.sort()
 	return names
