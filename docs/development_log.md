@@ -3,6 +3,36 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜商品期货 AI 字段化决策
+
+### 本轮实现
+
+- AI 新增商品期货评估器，不再只把 `商品看涨 / 商品看跌 / 港仓囤货` 当作普通经济牌加一点市场压力分，而是读取卡牌字段判断策略：
+  - `product_bet_direction` 区分看涨/看跌；
+  - `product_bet_multiplier`、`product_bet_seconds` 和 `stockpile_units` 进入收益/风险评分；
+  - `requires_warehouse_city` 会迫使 AI 选择一座己方存活城市作为仓库，并评估该城市的商品匹配、交通、GDP、路线压力、损伤和怪兽风险。
+- AI 出牌上下文新增商品期货元数据：`futures_direction`、`futures_signal`、`futures_market_score`、`futures_stockpile_score`、`futures_stockpile_units`、`futures_duration_seconds`、`futures_multiplier_x100`、`futures_warehouse_city`、`futures_warehouse_required`、`futures_product_flow`。
+- AI 购牌候选同样保留期货元数据，并额外记录 `futures_play_district`，避免“在哪里买到牌”和“这张牌打出时应该选哪个仓库/商品”混在一起。
+- 训练样本和实际匿名出牌记录加入上述字段，后续新增商品期货、仓储、囤积、看涨/看跌类卡牌时，AI 可以先靠字段形成基础判断，再由学习层微调。
+
+### 平衡与规则决策
+
+- 商品金融路线现在更像一条真正的 AI 可走路线：AI 会根据公开供需、商品流动、焦点商品、路线商品、竞争城市和仓库风险来决定看涨、看跌或囤货，而不是随机买金融牌。
+- 港仓囤货仍是高收益高暴露路线：仓库城市会成为公开金融靶标，吸引怪兽、做空、轨道齐射、军队压力和情报推理；AI 也会把这种风险当作攻击/防守目标。
+- 这些判断仍然是 AI 内部工具，玩家界面只显示公开结果和线索，不显示 AI 的评分、压力桶或路线计划。
+
+### 新增验证
+
+- `tests/smoke_test.gd` 新增 `AI evaluates commodity futures from fields for long, short, stockpile, buy, and training metadata`：
+  - 验证 AI 能为商品看涨生成 `product_futures_up` 出牌上下文；
+  - 验证 AI 能为商品看跌生成 `product_futures_down` 出牌上下文；
+  - 验证港仓囤货会选择己方仓库城市并写入仓库元数据；
+  - 验证购牌候选也携带期货信号和实际打出目标；
+  - 验证匿名出牌训练记忆会保存商品期货策略字段。
+- 加固旧仓储风险测试：对照城收入降低，仓储城收入提高，让测试稳定验证“仓储风险会吸引做空、齐射和军队压制”，而不是被随机地图上的高收入对照城干扰。
+- 完整 Godot headless smoke test 通过：
+  - `Godot_v4.6.2-stable_win64_console.exe --headless --path . --script res://tests/smoke_test.gd`
+
 ## 2026-07-01｜卡牌图鉴严格分类与局部 hover 刷新
 
 ### 本轮实现

@@ -17749,7 +17749,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -19067,9 +19067,9 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
 		var rival_product := _ai_preferred_product(player_index, true)
 		if rival_product != "":
 			return rival_product
-	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "area_trade_contract", "news_event", "weather_control"].has(kind)):
+	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "area_trade_contract", "news_event", "weather_control"].has(kind)):
 		return route_product
-	if focus != "" and (_player_product_flow(player_index, focus) > 0 or ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "news_event", "weather_control"].has(kind)):
+	if focus != "" and (_player_product_flow(player_index, focus) > 0 or ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "news_event", "weather_control"].has(kind)):
 		return focus
 	return _skill_play_product(skill, player_index)
 
@@ -19485,6 +19485,169 @@ func _ai_best_city_for_gdp_derivative(player_index: int, direction: String, skil
 	return best_index
 
 
+func _ai_product_futures_direction_label(direction: String) -> String:
+	match direction:
+		"down":
+			return "看跌"
+	return "看涨"
+
+
+func _ai_product_futures_policy_kind(skill: Dictionary) -> String:
+	if bool(skill.get("requires_warehouse_city", false)):
+		return "product_futures_stockpile"
+	return "product_futures_%s" % String(skill.get("product_bet_direction", "up"))
+
+
+func _ai_product_futures_product_score(player_index: int, skill: Dictionary, product_name: String) -> int:
+	if product_name == "" or not PRODUCT_CATALOG.has(product_name):
+		return -999999
+	var direction := String(skill.get("product_bet_direction", "up"))
+	var scores := _product_strategy_scores(product_name)
+	var stockpile_required := bool(skill.get("requires_warehouse_city", false))
+	var market_score := int(scores.get("short", 0)) if direction == "down" else int(scores.get("long", 0))
+	if stockpile_required:
+		market_score = maxi(market_score, int(scores.get("stockpile", 0)))
+	var required := _skill_play_flow_required(skill, player_index)
+	var flow := _player_product_flow(player_index, product_name)
+	var pressure_score := int(skill.get("market_supply_pressure", 0)) * 34 if direction == "down" else int(skill.get("market_demand_pressure", 0)) * 34
+	var multiplier_score := int(round(maxf(0.1, float(skill.get("product_bet_multiplier", 1.0))) * 72.0))
+	var unit_score := maxi(1, int(skill.get("stockpile_units", 1))) * (38 if stockpile_required else 18)
+	var duration_score := mini(72, int(round(_product_futures_duration_seconds(skill) / 2.0)))
+	var score := market_score * 2 + pressure_score + multiplier_score + unit_score + duration_score
+	score += flow * 36
+	if required > 0 and flow < required:
+		score -= (required - flow) * 140
+	var focus := _ai_focus_product(player_index)
+	if product_name == focus and focus != "":
+		score += 95
+	var route_product := _ai_route_plan_product(player_index)
+	if product_name == route_product and route_product != "":
+		score += 80
+	if _ai_product_rival_city_count(player_index, product_name) > 0 and direction == "down":
+		score += 62
+	return score
+
+
+func _ai_product_for_futures_skill(player_index: int, skill: Dictionary, preferred_product: String = "") -> String:
+	var candidates := []
+	var seen := {}
+	var required := _skill_play_flow_required(skill, player_index)
+	for product_variant in [preferred_product, _ai_route_plan_product(player_index), _ai_focus_product(player_index), _best_player_flow_product(player_index, required, [preferred_product]), _ai_preferred_product(player_index), _ai_preferred_product(player_index, true), _skill_play_product(skill, player_index)]:
+		var product_name := String(product_variant)
+		if product_name == "" or seen.has(product_name) or not PRODUCT_CATALOG.has(product_name):
+			continue
+		seen[product_name] = true
+		candidates.append(product_name)
+	for product_variant in PRODUCT_CATALOG:
+		var catalog_product := String(product_variant)
+		if catalog_product == "" or seen.has(catalog_product):
+			continue
+		if required > 0 and _player_product_flow(player_index, catalog_product) < required:
+			continue
+		seen[catalog_product] = true
+		candidates.append(catalog_product)
+	if candidates.is_empty():
+		for product_variant in PRODUCT_CATALOG:
+			var fallback_product := String(product_variant)
+			if fallback_product != "" and not seen.has(fallback_product):
+				seen[fallback_product] = true
+				candidates.append(fallback_product)
+	var best_product := ""
+	var best_score := -999999
+	for candidate_variant in candidates:
+		var candidate_product := String(candidate_variant)
+		var score := _ai_product_futures_product_score(player_index, skill, candidate_product)
+		if score > best_score:
+			best_score = score
+			best_product = candidate_product
+	return best_product
+
+
+func _ai_best_warehouse_city_for_product(player_index: int, product_name: String) -> int:
+	var best_index := -1
+	var best_score := -999999
+	for index_variant in _active_city_indices_for_player(player_index):
+		var index := int(index_variant)
+		var city := _district_city(index)
+		var score := 80 + _ai_city_target_score(player_index, index, true, false)
+		if _city_product_names(city).has(product_name):
+			score += 130
+		if _city_demand_names(city).has(product_name):
+			score += 92
+		score += int(city.get("last_income", 0)) / 4
+		score += int(round(float(districts[index].get("transport_score", 1.0)) * 36.0))
+		score += _district_trade_route_load(index) * 12
+		score -= int(districts[index].get("damage", 0)) * 34
+		score -= int(city.get("trade_route_damage", 0)) * 38
+		score -= int(city.get("trade_disrupted_routes", 0)) * 28
+		score -= _auto_build_monster_risk_score(index) / 3
+		if score > best_score:
+			best_score = score
+			best_index = index
+	return best_index
+
+
+func _ai_product_futures_plan(player_index: int, skill: Dictionary, preferred_product: String = "") -> Dictionary:
+	if String(skill.get("kind", "")) != "product_futures":
+		return {}
+	var product_name := _ai_product_for_futures_skill(player_index, skill, preferred_product)
+	if product_name == "" or not PRODUCT_CATALOG.has(product_name):
+		return {}
+	var direction := String(skill.get("product_bet_direction", "up"))
+	if not ["up", "down"].has(direction):
+		return {}
+	var stockpile_required := bool(skill.get("requires_warehouse_city", false))
+	var district_index := _ai_best_owned_route_city_for_product(player_index, product_name, false)
+	if district_index < 0:
+		district_index = _ai_best_city_district(player_index, true)
+	if district_index < 0:
+		district_index = _ai_first_alive_district()
+	var warehouse_city := -1
+	if stockpile_required:
+		warehouse_city = _ai_best_warehouse_city_for_product(player_index, product_name)
+		if warehouse_city < 0:
+			return {}
+		district_index = warehouse_city
+	var scores := _product_strategy_scores(product_name)
+	var market_score := int(scores.get("short", 0)) if direction == "down" else int(scores.get("long", 0))
+	var stockpile_score := int(scores.get("stockpile", 0))
+	var futures_score := maxi(1, _ai_product_futures_product_score(player_index, skill, product_name))
+	var flow := _player_product_flow(player_index, product_name)
+	var target_owner := -999
+	if district_index >= 0 and district_index < districts.size():
+		var target_city := _district_city(district_index)
+		if _city_is_active(target_city):
+			target_owner = int(target_city.get("owner", -1))
+	var result := {
+		"policy_kind": _ai_product_futures_policy_kind(skill),
+		"district": district_index,
+		"product": product_name,
+		"target_city": warehouse_city if warehouse_city >= 0 else district_index,
+		"target_owner": target_owner,
+		"futures_direction": direction,
+		"futures_signal": futures_score,
+		"futures_market_score": market_score,
+		"futures_stockpile_score": stockpile_score,
+		"futures_stockpile_units": maxi(1, int(skill.get("stockpile_units", 1))),
+		"futures_duration_seconds": int(round(_product_futures_duration_seconds(skill))),
+		"futures_multiplier_x100": int(round(maxf(0.1, float(skill.get("product_bet_multiplier", 1.0))) * 100.0)),
+		"futures_warehouse_city": warehouse_city,
+		"futures_warehouse_required": stockpile_required,
+		"futures_product_flow": flow,
+		"reason": "%s%s｜%s评分%d｜流动%d｜倍率×%.2f｜%s%s后结算" % [
+			product_name,
+			"港仓囤货" if stockpile_required else "商品期货",
+			_ai_product_futures_direction_label(direction),
+			futures_score,
+			flow,
+			maxf(0.1, float(skill.get("product_bet_multiplier", 1.0))),
+			("仓库:%s｜" % String(districts[warehouse_city].get("name", "城市"))) if warehouse_city >= 0 else "",
+			_duration_short_text(_product_futures_duration_seconds(skill)),
+		],
+	}
+	return result
+
+
 func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, district_index: int, product_name: String = "", target_owner: int = -999) -> int:
 	var score := 0
 	var harmful_target := target_owner >= 0 and target_owner != player_index
@@ -19548,6 +19711,15 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 		if product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index):
 			score += abs(demand_pressure - supply_pressure) * 18
 		score += int(skill.get("price_delta", 0)) / 2
+	if String(skill.get("kind", "")) == "product_futures":
+		var futures_plan := _ai_product_futures_plan(player_index, skill, product_name)
+		if not futures_plan.is_empty():
+			var futures_bonus := int(futures_plan.get("futures_signal", 0))
+			score += futures_bonus
+			if bool(futures_plan.get("futures_warehouse_required", false)):
+				score += int(futures_plan.get("futures_stockpile_units", 1)) * 24
+			if String(futures_plan.get("product", "")) == _ai_focus_product(player_index) or String(futures_plan.get("product", "")) == _ai_route_plan_product(player_index):
+				score += 54
 	var gdp_multiplier := float(skill.get("gdp_bet_multiplier", 0.0))
 	if gdp_multiplier > 0.0:
 		var direction := String(skill.get("gdp_bet_direction", "up"))
@@ -19773,6 +19945,11 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			int(skill.get("repair_routes", 0)),
 			float(skill.get("route_flow_multiplier", 1.0)),
 		]
+	elif kind == "product_futures":
+		var futures_plan := _ai_product_futures_plan(player_index, skill, planned_product)
+		if futures_plan.is_empty():
+			return {}
+		context.merge(futures_plan, true)
 	elif kind == "city_gdp_derivative":
 		var gdp_direction := String(skill.get("gdp_bet_direction", "up"))
 		var gdp_target := _ai_best_city_for_gdp_derivative(player_index, gdp_direction, skill)
@@ -19923,6 +20100,11 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if available < required:
 			return {}
 		context["score"] = int(context["score"]) + available * 8
+	if kind == "product_futures":
+		var refreshed_futures_plan := _ai_product_futures_plan(player_index, skill, String(context.get("product", "")))
+		if refreshed_futures_plan.is_empty():
+			return {}
+		context.merge(refreshed_futures_plan, true)
 	var cash_cost := _skill_play_cash_cost(skill)
 	if int((players[player_index] as Dictionary).get("cash", 0)) < cash_cost:
 		return {}
@@ -20054,6 +20236,13 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			if family_slot >= 0:
 				score += 85
 			var product_name := _ai_product_for_skill(player_index, skill)
+			var futures_plan := {}
+			if kind == "product_futures":
+				futures_plan = _ai_product_futures_plan(player_index, skill, product_name)
+				if bool(skill.get("requires_warehouse_city", false)) and futures_plan.is_empty():
+					continue
+				if not futures_plan.is_empty():
+					product_name = String(futures_plan.get("product", product_name))
 			var required := _skill_play_flow_required(skill, player_index)
 			var available := _player_product_flow(player_index, product_name)
 			var playability_bonus := 0
@@ -20094,7 +20283,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score -= hand_pressure_penalty
 			if focus_product != "" and product_name == focus_product:
 				focus_bonus += AI_ECONOMIC_FOCUS_MATCH_BONUS
-			if ["product_speculation", "product_contract_boon", "product_growth_boon", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind) and focus_bonus > 0:
+			if ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind) and focus_bonus > 0:
 				score += focus_bonus
 			if strategy_bonus > 0:
 				score += strategy_bonus
@@ -20120,7 +20309,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			if String(role.get("bonus_card_product", "")) != "" and _district_or_city_has_product(district_index, String(role.get("bonus_card_product", ""))):
 				score += 65
 			score = maxi(1, int(round(float(score) * _ai_card_kind_bias(player_index, kind))))
-			result.append({
+			var candidate := {
 				"action": "购牌",
 				"card_name": card_name,
 				"kind": kind,
@@ -20195,7 +20384,19 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					learning_bonus,
 					float(profile.get("exploration", 0.15)) * 100.0,
 				],
-			})
+			}
+			if not futures_plan.is_empty():
+				for field_name in ["policy_kind", "target_city", "target_owner", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow"]:
+					if futures_plan.has(field_name):
+						candidate[field_name] = futures_plan[field_name]
+				candidate["futures_play_district"] = int(futures_plan.get("district", -1))
+				candidate["futures_reason"] = String(futures_plan.get("reason", ""))
+				candidate["reason"] = "%s｜期货信号%d｜%s" % [
+					String(candidate.get("reason", "")),
+					int(futures_plan.get("futures_signal", 0)),
+					String(futures_plan.get("reason", "")),
+				]
+			result.append(candidate)
 	return result
 
 
@@ -20243,7 +20444,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata

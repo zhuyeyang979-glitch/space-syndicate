@@ -125,6 +125,7 @@ func _run() -> void:
 	_expect(_verify_military_explicit_strike_boundary(main), "military district and route damage happen only through explicit strike commands")
 	_expect(_verify_product_futures_warehouse_destruction(main), "warehouse stockpile futures are cleared when the storage city is destroyed while ordinary futures remain")
 	_expect(_verify_product_futures_realtime_payout(main), "commodity futures settle only after their real-time window and pay from actual product price movement")
+	_expect(_verify_ai_product_futures_policy(main), "AI evaluates commodity futures from fields for long, short, stockpile, buy, and training metadata")
 	_expect(_verify_temporary_economy_duration_seconds(main), "temporary economy, contract, commodity, route, and derivative cards expose real seconds as their authoritative duration")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
@@ -1419,7 +1420,7 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 		districts = _as_array(main.get("districts")).duplicate(true)
 		var warehouse_district := districts[city_index] as Dictionary
 		var warehouse_city := (warehouse_district.get("city", {}) as Dictionary).duplicate(true)
-		warehouse_city["last_income"] = 180
+		warehouse_city["last_income"] = 520
 		warehouse_city["trade_route_damage"] = 0
 		warehouse_city["trade_disrupted_routes"] = 0
 		warehouse_district["damage"] = 0
@@ -1428,7 +1429,7 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 		districts[city_index] = warehouse_district
 		var decoy_district := districts[decoy_index] as Dictionary
 		var decoy_city := (decoy_district.get("city", {}) as Dictionary).duplicate(true)
-		decoy_city["last_income"] = 250
+		decoy_city["last_income"] = 40
 		decoy_city["trade_route_damage"] = 0
 		decoy_city["trade_disrupted_routes"] = 0
 		decoy_district["damage"] = 0
@@ -1586,6 +1587,166 @@ func _verify_product_futures_realtime_payout(main: Node) -> bool:
 	ok = ok and not String(main.call("_product_market_boon_text", product_name)).contains("匿名期货")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
+
+
+func _verify_ai_product_futures_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	var failures := []
+	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	main.set("selected_trade_product", "环晶电池")
+	_reset_route_plan_sandbox_for_test(main)
+	ok = ok and _reset_ai_memory_for_test(main, 1)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+	if own_index < 0 or rival_index < 0:
+		main.call("_apply_run_state", saved)
+		main.set("ai_card_decision_enabled", saved_ai_enabled)
+		return false
+	var players := _as_array(main.get("players")).duplicate(true)
+	for player_index in range(players.size()):
+		var player := players[player_index] as Dictionary
+		player["cash"] = 7200
+		player["action_cooldown"] = 0.0
+		if player_index == 1:
+			var memory := main.call("_empty_ai_memory") as Dictionary
+			memory["economic_focus_product"] = "环晶电池"
+			memory["economic_focus_score"] = 900
+			memory["strategy_intent"] = "grow_focus"
+			memory["strategy_score"] = 820
+			memory["route_plan_product"] = "环晶电池"
+			memory["route_plan_stage"] = "strengthen_route"
+			memory["route_plan_score"] = 760
+			player["ai_memory"] = memory
+			player["slots"] = [
+				main.call("_make_skill", "商品看涨1"),
+				main.call("_make_skill", "商品看跌1"),
+				main.call("_make_skill", "港仓囤货1"),
+			]
+		players[player_index] = player
+	main.set("players", players)
+	var own_created := bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI期货港仓城", false))
+	var rival_created := bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI期货竞品城", false))
+	ok = ok and own_created and rival_created
+	ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "环晶电池")
+	ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "轨迹墨水")
+	main.call("_refresh_city_networks")
+	_set_product_market_focus_for_test(main, "环晶电池")
+	var districts := _as_array(main.get("districts")).duplicate(true)
+	var supply_district := districts[own_index] as Dictionary
+	supply_district["card_choices"] = ["商品看涨1", "商品看跌1", "港仓囤货1"]
+	districts[own_index] = supply_district
+	main.set("districts", districts)
+	var actor := main.call("_make_auto_monster", 0, 0, own_index, 1, 1) as Dictionary
+	main.set("auto_monsters", [actor])
+	var long_skill := main.call("_make_skill", "商品看涨1") as Dictionary
+	var long_context := main.call("_ai_card_play_context", 1, 0, long_skill) as Dictionary
+	var stockpile_skill := main.call("_make_skill", "港仓囤货1") as Dictionary
+	var stockpile_context := main.call("_ai_card_play_context", 1, 2, stockpile_skill) as Dictionary
+	var long_ok := not long_context.is_empty() \
+		and String(long_context.get("policy_kind", "")) == "product_futures_up" \
+		and String(long_context.get("product", "")) == "环晶电池" \
+		and String(long_context.get("futures_direction", "")) == "up" \
+		and int(long_context.get("futures_signal", 0)) > 0 \
+		and int(long_context.get("generic_effect_bonus", 0)) > 0
+	var stockpile_ok := not stockpile_context.is_empty() \
+		and String(stockpile_context.get("policy_kind", "")) == "product_futures_stockpile" \
+		and int(stockpile_context.get("district", -1)) == own_index \
+		and int(stockpile_context.get("futures_warehouse_city", -1)) == own_index \
+		and bool(stockpile_context.get("futures_warehouse_required", false)) \
+		and int(stockpile_context.get("futures_stockpile_units", 0)) >= 2
+	if not long_ok:
+		failures.append("long context=%s policy=%s product=%s signal=%d generic=%d" % [
+			str(not long_context.is_empty()),
+			String(long_context.get("policy_kind", "")),
+			String(long_context.get("product", "")),
+			int(long_context.get("futures_signal", 0)),
+			int(long_context.get("generic_effect_bonus", 0)),
+		])
+	if not stockpile_ok:
+		failures.append("stockpile context=%s district=%d warehouse=%d units=%d" % [
+			str(not stockpile_context.is_empty()),
+			int(stockpile_context.get("district", -1)),
+			int(stockpile_context.get("futures_warehouse_city", -1)),
+			int(stockpile_context.get("futures_stockpile_units", 0)),
+		])
+	var market := (main.get("product_market") as Dictionary).duplicate(true)
+	var short_entry := (market.get("环晶电池", {}) as Dictionary).duplicate(true)
+	short_entry["price"] = 92
+	short_entry["base_price"] = 120
+	short_entry["demand"] = 1
+	short_entry["supply"] = 13
+	short_entry["temporary_demand_pressure"] = 0
+	short_entry["temporary_supply_pressure"] = 7
+	short_entry["volatility"] = 5
+	market["环晶电池"] = short_entry
+	main.set("product_market", market)
+	var short_skill := main.call("_make_skill", "商品看跌1") as Dictionary
+	var short_context := main.call("_ai_card_play_context", 1, 1, short_skill) as Dictionary
+	var short_ok := not short_context.is_empty() \
+		and String(short_context.get("policy_kind", "")) == "product_futures_down" \
+		and String(short_context.get("product", "")) == "环晶电池" \
+		and String(short_context.get("futures_direction", "")) == "down" \
+		and int(short_context.get("futures_market_score", 0)) > 0 \
+		and int(short_context.get("generic_effect_bonus", 0)) > 0
+	if not short_ok:
+		failures.append("short context=%s policy=%s product=%s market=%d generic=%d" % [
+			str(not short_context.is_empty()),
+			String(short_context.get("policy_kind", "")),
+			String(short_context.get("product", "")),
+			int(short_context.get("futures_market_score", 0)),
+			int(short_context.get("generic_effect_bonus", 0)),
+		])
+	var buy_candidates := main.call("_ai_card_buy_candidates", 1) as Array
+	var buy_long := {}
+	var buy_stockpile := {}
+	for candidate_variant in buy_candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if String(candidate.get("card_name", "")) == "商品看涨1":
+			if buy_long.is_empty() or int(candidate.get("district", -1)) == own_index:
+				buy_long = candidate
+		elif String(candidate.get("card_name", "")) == "港仓囤货1":
+			if buy_stockpile.is_empty() or int(candidate.get("futures_warehouse_city", -1)) == own_index:
+				buy_stockpile = candidate
+	var buy_ok := not buy_long.is_empty() \
+		and int(buy_long.get("district", -1)) >= 0 \
+		and int(buy_long.get("futures_play_district", -1)) >= 0 \
+		and String(buy_long.get("policy_kind", "")) == "product_futures_up" \
+		and int(buy_long.get("futures_signal", 0)) > 0 \
+		and not buy_stockpile.is_empty() \
+		and String(buy_stockpile.get("policy_kind", "")) == "product_futures_stockpile" \
+		and int(buy_stockpile.get("futures_warehouse_city", -1)) == own_index
+	if not buy_ok:
+		failures.append("buy long=%s stockpile=%s long_policy=%s stock_policy=%s long_signal=%d warehouse=%d" % [
+			str(not buy_long.is_empty()),
+			str(not buy_stockpile.is_empty()),
+			String(buy_long.get("policy_kind", "")),
+			String(buy_stockpile.get("policy_kind", "")),
+			int(buy_long.get("futures_signal", 0)),
+			int(buy_stockpile.get("futures_warehouse_city", -1)),
+		])
+	var play_candidates := main.call("_ai_card_play_candidates", 1) as Array
+	var stockpile_choice := _find_ai_play_candidate_by_card(play_candidates, "港仓囤货1")
+	var queued := bool(main.call("_ai_queue_play_candidate", 1, stockpile_choice, play_candidates)) if not stockpile_choice.is_empty() else false
+	var players_after := _as_array(main.get("players"))
+	var memory_ok := queued \
+		and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "policy_kind", "product_futures_stockpile") \
+		and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "futures_warehouse_city", own_index)
+	if not memory_ok:
+		failures.append("memory queued=%s choice=%s" % [str(queued), str(not stockpile_choice.is_empty())])
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	if not failures.is_empty():
+		print("AI product futures policy failures: %s" % " / ".join(failures))
+	return ok and long_ok and short_ok and stockpile_ok and buy_ok and memory_ok and restore_result == OK
 
 
 func _verify_temporary_economy_duration_seconds(main: Node) -> bool:
