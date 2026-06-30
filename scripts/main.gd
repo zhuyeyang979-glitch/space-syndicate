@@ -17146,6 +17146,7 @@ func _ai_best_city_for_owner(owner_index: int, prefer_damaged: bool = false) -> 
 		score += (city.get("demands", []) as Array).size() * 18
 		score -= int(city.get("trade_route_damage", 0)) * 22
 		score -= int(districts[city_index].get("damage", 0)) * 14
+		score += _city_warehouse_stockpile_pressure(city) * 2
 		if prefer_damaged:
 			score += int(city.get("trade_route_damage", 0)) * 74 + int(districts[city_index].get("damage", 0)) * 36
 		if score > best_score:
@@ -18651,6 +18652,14 @@ func _ai_city_target_score(player_index: int, district_index: int, own_city: boo
 	score += (city.get("demands", []) as Array).size() * 18
 	score += (city.get("trade_routes", []) as Array).size() * 10
 	score += int(city.get("competition_matches", 0)) * 8
+	var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
+	if warehouse_pressure > 0:
+		if prefer_damaged:
+			score += warehouse_pressure
+		elif own_city:
+			score += warehouse_pressure / 3
+		else:
+			score += warehouse_pressure * 2
 	var focus := _ai_focus_product(player_index)
 	if focus != "":
 		if _city_product_names(city).has(focus):
@@ -18975,6 +18984,7 @@ func _ai_city_gdp_insurance_score(player_index: int, district_index: int) -> int
 	var disrupted := int(city.get("trade_disrupted_routes", 0)) + int(city.get("trade_route_damage", 0))
 	var score := 90 + maxi(0, last_income)
 	score += damage * 58 + disrupted * 72 + int(districts[district_index].get("panic", 0)) / 2
+	score += _city_warehouse_stockpile_pressure(city)
 	score += _auto_build_monster_risk_score(district_index) / 2
 	score += _district_trade_route_load(district_index) * 12
 	score += _ai_district_focus_score(player_index, district_index)
@@ -19005,15 +19015,22 @@ func _ai_best_city_for_gdp_derivative(player_index: int, direction: String, skil
 		var last_income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
 		var damage := int(districts[index].get("damage", 0))
 		var disrupted := int(city.get("trade_disrupted_routes", 0)) + int(city.get("trade_route_damage", 0))
+		var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
 		var score := last_income
 		if direction == "up":
 			score += 180 if owner == player_index else 30
 			score += _ai_district_focus_score(player_index, index)
 			score -= damage * 34 + disrupted * 42
+			if owner == player_index:
+				score += warehouse_pressure / 4
 		else:
 			score += 150 if owner >= 0 and owner != player_index else -40
 			score += damage * 52 + disrupted * 62 + int(districts[index].get("panic", 0)) / 2
 			score += _ai_district_focus_score(player_index, index) / 3
+			if owner >= 0 and owner != player_index:
+				score += warehouse_pressure * 2
+			elif owner == player_index:
+				score -= warehouse_pressure / 2
 		if score > best_score:
 			best_score = score
 			best_index = index
@@ -19024,6 +19041,8 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	var score := 0
 	var harmful_target := target_owner >= 0 and target_owner != player_index
 	var helpful_target := target_owner == player_index
+	var target_city := _district_city(district_index)
+	var warehouse_pressure := _city_warehouse_stockpile_pressure(target_city) if _city_is_active(target_city) else 0
 	score += int(skill.get("cash", 0)) / 4
 	score += int(skill.get("draw_amount", 0)) * 45
 	score += int(skill.get("trace_card_count", 0)) * 42
@@ -19035,6 +19054,8 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	score += int(skill.get("control_gdp_penalty", 0)) * (2 if harmful_target else -1)
 	score += int(round(float(skill.get("control_block_seconds", 0.0)) / 2.5)) if harmful_target else 0
 	score += int(skill.get("global_barrage_target_count", 0)) * 36 + int(skill.get("global_barrage_damage", 0)) * 72 + int(skill.get("global_barrage_route_damage", 0)) * 58
+	if warehouse_pressure > 0 and int(skill.get("global_barrage_damage", 0)) > 0 and (harmful_target or target_owner == -999):
+		score += warehouse_pressure
 	score += int(skill.get("counter_strength", 0)) * 58 + int(skill.get("counter_refund", 0)) / 3 + int(skill.get("counter_trace", 0)) * 42
 	score += int(skill.get("military_hp", 0)) * 7 + int(skill.get("military_damage", 0)) * 70 + int(skill.get("fixed_skill_count", 0)) * 26
 	score += int(round(float(skill.get("military_move", 0.0)) / 18.0)) + int(round(float(skill.get("military_range", 0.0)) / 20.0))
@@ -19046,8 +19067,12 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 			score += 42
 		"guard":
 			score += 76 if helpful_target or target_owner == -999 else 22
+			if helpful_target:
+				score += warehouse_pressure / 2
 		"strike_district":
 			score += 88 if harmful_target or target_owner == -999 else -30
+			if harmful_target or target_owner == -999:
+				score += warehouse_pressure
 		"attack_monster":
 			score += 96 if not auto_monsters.is_empty() else 18
 	score += int(skill.get("revenue_amount", 0)) / 2
@@ -19062,9 +19087,13 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	var route_damage := int(skill.get("route_damage", 0)) + int(skill.get("decline_route_damage", 0))
 	if route_damage > 0:
 		score += route_damage * (75 if harmful_target else 15)
+		if warehouse_pressure > 0 and harmful_target:
+			score += warehouse_pressure / 2
 	var area_damage := int(skill.get("damage", 0))
 	if area_damage > 0:
 		score += area_damage * (58 if harmful_target else 22)
+		if warehouse_pressure > 0 and harmful_target:
+			score += warehouse_pressure / 2
 	var demand_pressure := int(skill.get("market_demand_pressure", 0))
 	var supply_pressure := int(skill.get("market_supply_pressure", 0))
 	if product_name != "":
@@ -19081,8 +19110,12 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 			score += int(round(gdp_multiplier * 55.0)) + (80 if helpful_target else 20) + maxi(0, last_income / 6 - risk)
 		elif skill.get("gdp_bet_insurance", false) == true:
 			score += int(round(gdp_multiplier * 58.0)) + (105 if helpful_target else -40) + risk + int(skill.get("gdp_bet_destroy_bonus", 0)) / 10
+			if helpful_target:
+				score += warehouse_pressure / 2
 		else:
 			score += int(round(gdp_multiplier * 68.0)) + (90 if harmful_target else 20) + risk + int(skill.get("gdp_bet_destroy_bonus", 0)) / 8
+			if harmful_target or target_owner == -999:
+				score += warehouse_pressure
 	score += int(skill.get("card_access_extra_hops", 0)) * 42
 	if bool(skill.get("card_access_global", false)):
 		score += 105
@@ -19107,12 +19140,15 @@ func _ai_best_military_deploy_district(player_index: int, skill: Dictionary) -> 
 		if _city_is_active(city):
 			var income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
 			var route_pressure := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0))
+			var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
 			if owner == player_index:
 				score += (income / 5) + route_pressure * 35
+				score += warehouse_pressure
 				if not prefers_offense:
 					score += 90
 			elif owner >= 0:
 				score += (income / 6) + int(skill.get("military_gdp_penalty", 0)) * 5 + int(skill.get("military_strike_route_damage", 0)) * 42
+				score += warehouse_pressure * (2 if prefers_offense else 1)
 				if prefers_offense:
 					score += 110
 		if prefers_sea_routes:
@@ -24887,6 +24923,7 @@ func _global_barrage_targets(acting_player_index: int, skill: Dictionary) -> Arr
 			continue
 		var income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
 		var score := income + int(districts[index].get("panic", 0)) + int(city.get("trade_route_damage", 0)) * 20
+		score += _city_warehouse_stockpile_pressure(city) * 2
 		if owner >= 0 and owner != acting_player_index:
 			score += 80
 		candidates.append({"district": index, "score": score})

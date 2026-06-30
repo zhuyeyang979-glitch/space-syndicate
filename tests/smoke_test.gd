@@ -1353,6 +1353,15 @@ func _verify_military_explicit_strike_boundary(main: Node) -> bool:
 func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var ok := true
+	var setup_players := _as_array(main.get("players")).duplicate(true)
+	if setup_players.size() >= 2:
+		var setup_player0 := (setup_players[0] as Dictionary).duplicate(true)
+		var setup_player1 := (setup_players[1] as Dictionary).duplicate(true)
+		setup_player0["cash"] = maxi(int(setup_player0.get("cash", 0)), 50000)
+		setup_player1["cash"] = 6600
+		setup_players[0] = setup_player0
+		setup_players[1] = setup_player1
+		main.set("players", setup_players)
 	var districts := _as_array(main.get("districts"))
 	var city_index := _first_buildable_land_district(districts)
 	if city_index < 0:
@@ -1373,6 +1382,50 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	var stockpile := main.call("_make_skill", "港仓囤货1") as Dictionary
 	ok = ok and bool(main.call("_apply_product_futures", player, ordinary))
 	ok = ok and bool(main.call("_apply_product_futures", player, stockpile))
+	var decoy_index := -1
+	districts = _as_array(main.get("districts"))
+	for i in range(districts.size()):
+		if i == city_index:
+			continue
+		var decoy_candidate := districts[i] as Dictionary
+		if String(decoy_candidate.get("terrain", "land")) == "land" and not bool(decoy_candidate.get("destroyed", false)) and (decoy_candidate.get("city", {}) as Dictionary).is_empty():
+			decoy_index = i
+			break
+	if decoy_index >= 0:
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 0, decoy_index, "仓储战略靶标对照城", false))
+		districts = _as_array(main.get("districts")).duplicate(true)
+		var warehouse_district := districts[city_index] as Dictionary
+		var warehouse_city := (warehouse_district.get("city", {}) as Dictionary).duplicate(true)
+		warehouse_city["last_income"] = 180
+		warehouse_city["trade_route_damage"] = 0
+		warehouse_city["trade_disrupted_routes"] = 0
+		warehouse_district["damage"] = 0
+		warehouse_district["panic"] = 0
+		warehouse_district["city"] = warehouse_city
+		districts[city_index] = warehouse_district
+		var decoy_district := districts[decoy_index] as Dictionary
+		var decoy_city := (decoy_district.get("city", {}) as Dictionary).duplicate(true)
+		decoy_city["last_income"] = 250
+		decoy_city["trade_route_damage"] = 0
+		decoy_city["trade_disrupted_routes"] = 0
+		decoy_district["damage"] = 0
+		decoy_district["panic"] = 0
+		decoy_district["city"] = decoy_city
+		districts[decoy_index] = decoy_district
+		main.set("districts", districts)
+		main.call("_refresh_warehouse_stockpile_city_markers")
+		var short_skill := main.call("_make_skill", "城市做空1") as Dictionary
+		var short_target := int(main.call("_ai_best_city_for_gdp_derivative", 1, "down", short_skill))
+		var pressure_target := int(main.call("_ai_best_pressure_target_city", 1))
+		var barrage := main.call("_make_skill", "轨道齐射1") as Dictionary
+		barrage["global_barrage_target_count"] = 1
+		var barrage_targets := _as_array(main.call("_global_barrage_targets", 1, barrage))
+		var bomber := main.call("_make_skill", "轨道轰炸机1") as Dictionary
+		var military_target := int(main.call("_ai_best_military_deploy_district", 1, bomber))
+		ok = ok and short_target == city_index
+		ok = ok and pressure_target == city_index
+		ok = ok and not barrage_targets.is_empty() and int(barrage_targets[0]) == city_index
+		ok = ok and military_target == city_index
 	var product_market := main.get("product_market") as Dictionary
 	var entry := product_market.get(product_name, {}) as Dictionary
 	var futures_before := _as_array(entry.get("futures_positions", []))
