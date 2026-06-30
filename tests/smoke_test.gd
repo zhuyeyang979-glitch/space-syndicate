@@ -111,6 +111,7 @@ func _run() -> void:
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, periodic product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
+	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
 	_expect(_verify_role_intel_and_trace_tools(main), "identity roles and intel cards reveal private city, card-owner, and contract-party clues")
 	_expect(_verify_ai_intel_policy(main), "AI opponents can use product clues to mark city owners and wager on anonymous card ownership")
 	_expect(_verify_ai_monster_lure_strategy(main), "AI opponents can steer monster-lure cards toward high-value competing cities and record trainable target metadata")
@@ -2732,6 +2733,16 @@ func _ai_memory_has_finalized_reward(players: Array, player_index: int) -> bool:
 	return false
 
 
+func _ai_memory_learning_value(memory: Dictionary, tag: String) -> Dictionary:
+	var values := memory.get("learned_policy_values", {}) as Dictionary
+	return values.get(tag, {}) as Dictionary
+
+
+func _ai_memory_has_positive_learning(memory: Dictionary, tag: String) -> bool:
+	var entry := _ai_memory_learning_value(memory, tag)
+	return not entry.is_empty() and float(entry.get("value", 0.0)) > 0.0 and int(entry.get("samples", 0)) > 0
+
+
 func _verify_ai_card_policy(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
@@ -2776,6 +2787,172 @@ func _verify_ai_card_policy(main: Node) -> bool:
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	main.set("card_resolution_force_duration", saved_force_duration)
 	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
+	return ok and restore_result == OK
+
+
+func _verify_ai_online_learning_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("pending_contract_offers", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+	if own_index < 0 or rival_index < 0:
+		ok = false
+	else:
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 6400
+			player["action_cooldown"] = 0.0
+			if player_index == 1:
+				player["slots"] = [main.call("_make_skill", "需求改造1")]
+			players[player_index] = player
+		main.set("players", players)
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI学习自城", false))
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI学习竞品城", false))
+		ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
+		ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "星尘香料")
+		main.call("_record_ai_decision", 1, "匿名商业", own_index, 100, "学习测试：涨价有效", [], {
+			"policy_kind": "price_pump",
+			"product": "环晶电池",
+			"strategy_intent": "grow_focus",
+			"route_plan_product": "环晶电池",
+			"route_plan_stage": "strengthen_route",
+		})
+		main.call("_record_ai_decision", 1, "匿名出牌", own_index, 100, "学习测试：需求改造有效", [], {
+			"policy_kind": "city_demand_shift",
+			"product": "环晶电池",
+			"strategy_intent": "grow_focus",
+			"route_plan_product": "环晶电池",
+			"route_plan_stage": "create_demand",
+		})
+		main.call("_record_ai_decision", 1, "匿名合约签约", own_index, 100, "学习测试：签约有效", [], {
+			"policy_kind": "contract_accept",
+			"product": "环晶电池",
+			"route_plan_product": "环晶电池",
+			"route_plan_stage": "create_demand",
+		})
+		main.call("_record_ai_decision", 1, "城市业主推理", rival_index, 100, "学习测试：城市推理有效", [], {
+			"policy_kind": "city_owner_guess",
+		})
+		main.call("_record_ai_decision", 1, "卡牌归属押注", 83001, 100, "学习测试：卡牌押注有效", [], {
+			"policy_kind": "card_owner_guess",
+			"product": "环晶电池",
+		})
+		var rewarded_players := _as_array(main.get("players")).duplicate(true)
+		var rewarded_player := rewarded_players[1] as Dictionary
+		rewarded_player["cash"] = int(rewarded_player.get("cash", 0)) + 900
+		rewarded_players[1] = rewarded_player
+		main.set("players", rewarded_players)
+		main.set("business_cycle_count", int(main.get("business_cycle_count")) + 1)
+		var finalized := int(main.call("_finalize_ai_decision_rewards"))
+		var players_after_learning := _as_array(main.get("players"))
+		var learned_memory := (players_after_learning[1] as Dictionary).get("ai_memory", {}) as Dictionary
+		var other_memory := (players_after_learning[2] as Dictionary).get("ai_memory", {}) as Dictionary
+		var finalized_ok := finalized >= 5
+		var updates_ok := int(learned_memory.get("learning_updates", 0)) > 0
+		var price_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:price_pump")
+		var demand_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:city_demand_shift")
+		var contract_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:contract_accept")
+		var city_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:city_owner_guess")
+		var card_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:card_owner_guess")
+		var isolated_ok := not _ai_memory_has_positive_learning(other_memory, "policy:price_pump")
+		var business_candidates := main.call("_rival_business_candidates_for_player", 1) as Array
+		var saw_business_learning := false
+		for candidate_variant in business_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("policy_kind", "")) == "price_pump" and String(candidate.get("product", "")) == "环晶电池" and int(candidate.get("learning_bonus", 0)) > 0:
+				saw_business_learning = true
+				break
+		var demand_context := main.call("_ai_card_play_context", 1, 0, main.call("_make_skill", "需求改造1")) as Dictionary
+		var demand_context_ok := String(demand_context.get("policy_kind", "")) == "city_demand_shift"
+		var saw_card_play_learning := int(demand_context.get("learning_bonus", 0)) > 0
+		var contract_entry := {
+			"skill": main.call("_make_skill", "环晶电池专供1"),
+			"contract_source_district": own_index,
+			"contract_target_district": own_index,
+			"contract_products": ["环晶电池"],
+		}
+		var contract_candidates := main.call("_ai_contract_response_candidates", 1, contract_entry) as Array
+		var saw_contract_learning := false
+		for candidate_variant in contract_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("policy_kind", "")) == "contract_accept" and int(candidate.get("learning_bonus", 0)) > 0:
+				saw_contract_learning = true
+				break
+		var strategy_candidates := main.call("_ai_strategy_candidates", 1) as Array
+		var saw_strategy_learning := false
+		for candidate_variant in strategy_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("intent", "")) == "grow_focus" and int(candidate.get("learning_bonus", 0)) > 0:
+				saw_strategy_learning = true
+				break
+		var route_candidates := main.call("_ai_route_plan_candidates", 1) as Array
+		var saw_route_learning := false
+		for candidate_variant in route_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("product", "")) == "环晶电池" and int(candidate.get("learning_bonus", 0)) > 0:
+				saw_route_learning = true
+				break
+		var city_candidate := main.call("_ai_city_guess_owner_candidate", 1, {
+			"district_index": rival_index,
+			"priority": 120,
+			"latest_clue": "环晶电池公开线索",
+			"guess": -1,
+			"confidence": 0,
+		}, 2) as Dictionary
+		var saw_city_learning := String(city_candidate.get("policy_kind", "")) == "city_owner_guess" and int(city_candidate.get("learning_bonus", 0)) > 0
+		var card_guess_entry := {
+			"resolution_id": 83001,
+			"queued_order": 83001,
+			"player_index": 2,
+			"skill": main.call("_make_skill", "城市融资1"),
+			"selected_district": rival_index,
+			"play_requirement_product": "环晶电池",
+			"play_requirement_flow": 1,
+			"winning_bid": 120,
+			"public_owner_revealed": false,
+			"guessers": [],
+			"resolved_time": float(main.get("game_time")),
+		}
+		var history := _as_array(main.get("resolved_card_history")).duplicate(true)
+		history.append(card_guess_entry)
+		main.set("resolved_card_history", history)
+		var card_candidate := main.call("_ai_card_guess_candidate_for_owner", 1, card_guess_entry, 2) as Dictionary
+		var saw_card_guess_learning := String(card_candidate.get("policy_kind", "")) == "card_owner_guess" and int(card_candidate.get("learning_bonus", 0)) > 0
+		var learned_state := main.call("_capture_run_state") as Dictionary
+		var reset_players := _as_array(main.get("players")).duplicate(true)
+		var reset_player := reset_players[1] as Dictionary
+		var reset_memory := (reset_player.get("ai_memory", {}) as Dictionary).duplicate(true)
+		reset_memory["learned_policy_values"] = {}
+		reset_memory["learning_updates"] = 0
+		reset_player["ai_memory"] = reset_memory
+		reset_players[1] = reset_player
+		main.set("players", reset_players)
+		var restore_learned_ok := int(main.call("_apply_run_state", learned_state)) == OK
+		var restored_players := _as_array(main.get("players"))
+		var restored_memory := (restored_players[1] as Dictionary).get("ai_memory", {}) as Dictionary
+		var persisted_ok := _ai_memory_has_positive_learning(restored_memory, "policy:price_pump")
+		ok = ok and finalized_ok and updates_ok and price_learned_ok and demand_learned_ok and contract_learned_ok and city_learned_ok and card_learned_ok and isolated_ok
+		ok = ok and saw_business_learning and demand_context_ok and saw_card_play_learning and saw_contract_learning and saw_strategy_learning and saw_route_learning and saw_city_learning and saw_card_guess_learning
+		ok = ok and restore_learned_ok and persisted_ok
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	return ok and restore_result == OK
 
 

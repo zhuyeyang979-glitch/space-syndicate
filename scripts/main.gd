@@ -32,6 +32,10 @@ const AI_ROUTE_PLAN_MATCH_BONUS := 78
 const AI_ROUTE_PLAN_TOP_LIMIT := 4
 const AI_ROUTE_PLAN_SWITCH_MARGIN := 140
 const AI_ROUTE_PLAN_ENTRENCHED_SWITCH_MARGIN := 360
+const AI_LEARNING_REWARD_CLAMP := 1200
+const AI_LEARNING_VALUE_CLAMP := 90.0
+const AI_LEARNING_BONUS_CLAMP := 140
+const AI_LEARNING_BASE_RATE := 0.22
 const MAP_WIDTH_METERS := 1400.0
 const MAP_HEIGHT_METERS := 950.0
 const MAP_SITE_MARGIN_METERS := 70.0
@@ -8790,6 +8794,7 @@ func _auto_build_score_for_player(player_index: int, district_index: int) -> int
 	score += _ai_district_focus_score(player_index, district_index)
 	score += _ai_strategy_bonus_for_candidate(player_index, "city_build", district_index, _ai_focus_product(player_index))
 	score += _ai_route_plan_bonus_for_candidate(player_index, "city_build", district_index)
+	score += _ai_learning_bonus(player_index, "city_build", _ai_strategy_intent(player_index), _ai_route_plan_stage(player_index), _ai_route_plan_product(player_index), "城市化")
 	score += int(float(district.get("transport_score", 1.0)) * 10.0)
 	score += max(0, int(district.get("hp", 0)) - int(district.get("damage", 0)))
 	score -= int(district.get("damage", 0)) * 9
@@ -8836,6 +8841,7 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 		var route_product := _ai_route_plan_product(player_index)
 		var route_stage := _ai_route_plan_stage(player_index)
 		var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, "city_build", target)
+		var learning_bonus := _ai_learning_bonus(player_index, "city_build", strategy_intent, route_stage, route_product, "城市化")
 		if _create_city_at_district_for_player(player_index, target, "对手自动扩张", false):
 			_record_ai_decision(
 				player_index,
@@ -8844,7 +8850,7 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 				target_score,
 				"GDP/商品/交通/竞争/怪兽风险综合评分｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d" % [focus_product if focus_product != "" else "未定", focus_bonus, strategy_intent if strategy_intent != "" else "未定", strategy_bonus, route_product if route_product != "" else "未定", _ai_route_plan_stage_label(route_stage), route_bonus],
 				[],
-				{"focus_product": focus_product, "focus_score": _ai_focus_score(player_index), "focus_bonus": focus_bonus, "strategy_intent": strategy_intent, "strategy_score": _ai_strategy_score(player_index), "strategy_bonus": strategy_bonus, "route_plan_product": route_product, "route_plan_stage": route_stage, "route_plan_score": _ai_route_plan_score(player_index), "route_plan_bonus": route_bonus}
+				{"policy_kind": "city_build", "focus_product": focus_product, "focus_score": _ai_focus_score(player_index), "focus_bonus": focus_bonus, "strategy_intent": strategy_intent, "strategy_score": _ai_strategy_score(player_index), "strategy_bonus": strategy_bonus, "route_plan_product": route_product, "route_plan_stage": route_stage, "route_plan_score": _ai_route_plan_score(player_index), "route_plan_bonus": route_bonus, "learning_bonus": learning_bonus}
 			)
 			built += 1
 	if built > 0:
@@ -8913,6 +8919,8 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 			price_score += price_strategy_bonus
 			var price_route_bonus := _ai_route_plan_bonus_for_candidate(player_index, "product_speculation", own_city_index, product_name, player_index)
 			price_score += price_route_bonus
+			var price_learning_bonus := _ai_learning_bonus(player_index, "price_pump", strategy_intent, route_stage, product_name, "匿名商业")
+			price_score += price_learning_bonus
 			result.append({
 				"kind": "price_pump",
 				"own_city": own_city_index,
@@ -8927,6 +8935,8 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 				"route_plan_stage": route_stage,
 				"route_plan_score": plan_route_score,
 				"route_plan_bonus": price_route_bonus,
+				"policy_kind": "price_pump",
+				"learning_bonus": price_learning_bonus,
 			})
 			for target_city_variant in competitors:
 				var target_city_index := int(target_city_variant)
@@ -8941,6 +8951,8 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 				route_score += route_strategy_bonus
 				var sabotage_route_bonus := _ai_route_plan_bonus_for_candidate(player_index, "route_sabotage", target_city_index, product_name, int(target_city.get("owner", -1)))
 				route_score += sabotage_route_bonus
+				var sabotage_learning_bonus := _ai_learning_bonus(player_index, "route_sabotage", strategy_intent, route_stage, product_name, "匿名商业")
+				route_score += sabotage_learning_bonus
 				result.append({
 					"kind": "route_sabotage",
 					"own_city": own_city_index,
@@ -8956,6 +8968,8 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 					"route_plan_stage": route_stage,
 					"route_plan_score": plan_route_score,
 					"route_plan_bonus": sabotage_route_bonus,
+					"policy_kind": "route_sabotage",
+					"learning_bonus": sabotage_learning_bonus,
 				})
 	return result
 
@@ -9199,7 +9213,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 			var target := int(action.get("target_city", action.get("own_city", -1)))
 			_record_ai_decision(
 				player_index,
-				String(action.get("kind", "商业行动")),
+				"匿名商业",
 				target,
 				int(action.get("score", 0)),
 				"商品:%s｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d" % [
@@ -9213,7 +9227,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 					int(action.get("route_plan_bonus", 0)),
 				],
 				[],
-				{"product": String(action.get("product", "")), "focus_product": String(action.get("focus_product", "")), "focus_bonus": int(action.get("focus_bonus", 0)), "strategy_intent": String(action.get("strategy_intent", "")), "strategy_score": int(action.get("strategy_score", 0)), "strategy_bonus": int(action.get("strategy_bonus", 0)), "route_plan_product": String(action.get("route_plan_product", "")), "route_plan_stage": String(action.get("route_plan_stage", "")), "route_plan_score": int(action.get("route_plan_score", 0)), "route_plan_bonus": int(action.get("route_plan_bonus", 0))}
+				{"policy_kind": String(action.get("policy_kind", action.get("kind", ""))), "product": String(action.get("product", "")), "focus_product": String(action.get("focus_product", "")), "focus_bonus": int(action.get("focus_bonus", 0)), "strategy_intent": String(action.get("strategy_intent", "")), "strategy_score": int(action.get("strategy_score", 0)), "strategy_bonus": int(action.get("strategy_bonus", 0)), "route_plan_product": String(action.get("route_plan_product", "")), "route_plan_stage": String(action.get("route_plan_stage", "")), "route_plan_score": int(action.get("route_plan_score", 0)), "route_plan_bonus": int(action.get("route_plan_bonus", 0)), "learning_bonus": int(action.get("learning_bonus", 0))}
 			)
 			acted += 1
 	if acted > 0:
@@ -11683,7 +11697,11 @@ func _empty_ai_memory() -> Dictionary:
 		"route_plan_target_city": -1,
 		"route_plan_partner_district": -1,
 		"route_plan_rankings": [],
-		"training_note": "记录状态向量、候选评分、实际选择和下一经营周期收益，用于后续调参/训练。",
+		"learned_policy_values": {},
+		"learning_updates": 0,
+		"learning_last_reward": 0,
+		"learning_last_tags": [],
+		"training_note": "记录状态向量、候选评分和下一经营周期收益，并把资金结果在线回写到行动/策略/路线偏好。",
 	}
 
 
@@ -11748,8 +11766,16 @@ func _ensure_player_ai_state() -> void:
 					memory["route_plan_partner_district"] = -1
 				if not (memory.get("route_plan_rankings", []) is Array):
 					memory["route_plan_rankings"] = []
+				if not (memory.get("learned_policy_values", {}) is Dictionary):
+					memory["learned_policy_values"] = {}
+				if not memory.has("learning_updates"):
+					memory["learning_updates"] = 0
+				if not memory.has("learning_last_reward"):
+					memory["learning_last_reward"] = 0
+				if not (memory.get("learning_last_tags", []) is Array):
+					memory["learning_last_tags"] = []
 				if String(memory.get("training_note", "")) == "":
-					memory["training_note"] = "记录状态向量、候选评分、实际选择和下一经营周期收益，用于后续调参/训练。"
+					memory["training_note"] = "记录状态向量、候选评分和下一经营周期收益，并把资金结果在线回写到行动/策略/路线偏好。"
 				player["ai_memory"] = memory
 		else:
 			player["ai_profile"] = {}
@@ -11771,6 +11797,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		return {}
 	var focus_product := _ai_focus_product(player_index)
 	var player: Dictionary = players[player_index]
+	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary)
 	var total_flow := 0
 	for product_variant in PRODUCT_CATALOG:
 		total_flow += _player_product_flow(player_index, String(product_variant))
@@ -11790,6 +11817,8 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"route_plan_product": _ai_route_plan_product(player_index),
 		"route_plan_stage": _ai_route_plan_stage(player_index),
 		"route_plan_score": _ai_route_plan_score(player_index),
+		"learning_updates": int(memory.get("learning_updates", 0)),
+		"learned_policy_count": (memory.get("learned_policy_values", {}) as Dictionary).size(),
 		"cash_goal_gap": maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index)),
 		"queue_current": card_resolution_queue.size(),
 		"queue_next": next_card_resolution_queue.size(),
@@ -11800,7 +11829,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "learning_bonus"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -11818,6 +11847,94 @@ func _ai_candidate_training_views(candidates: Array) -> Array:
 		if ordered[i] is Dictionary:
 			result.append(_ai_candidate_training_view(ordered[i] as Dictionary))
 	return result
+
+
+func _ai_learning_tags(action_kind: String = "", policy_kind: String = "", strategy_intent: String = "", route_stage: String = "", product_name: String = "") -> Array:
+	var tags := []
+	var candidates := [
+		"action:%s" % action_kind if action_kind != "" else "",
+		"policy:%s" % policy_kind if policy_kind != "" else "",
+		"strategy:%s" % strategy_intent if strategy_intent != "" else "",
+		"route:%s" % route_stage if route_stage != "" else "",
+		"product:%s" % product_name if product_name != "" else "",
+	]
+	for tag_variant in candidates:
+		var tag := String(tag_variant)
+		if tag != "" and not tags.has(tag):
+			tags.append(tag)
+	return tags
+
+
+func _ai_learning_tags_for_sample(sample: Dictionary) -> Array:
+	var tags := _ai_learning_tags(
+		String(sample.get("kind", "")),
+		String(sample.get("policy_kind", sample.get("strategic_role", ""))),
+		String(sample.get("strategy_intent", "")),
+		String(sample.get("route_plan_stage", "")),
+		String(sample.get("route_plan_product", sample.get("focus_product", "")))
+	)
+	var direct_product := String(sample.get("product", ""))
+	if direct_product != "":
+		var product_tag := "product:%s" % direct_product
+		if not tags.has(product_tag):
+			tags.append(product_tag)
+	return tags
+
+
+func _ai_learning_reward_for_sample(sample: Dictionary) -> int:
+	var settlement_reward := int(sample.get("reward_settlement", 0))
+	var cash_reward := int(sample.get("reward_cash", 0))
+	return clampi(settlement_reward + int(round(float(cash_reward) * 0.25)), -AI_LEARNING_REWARD_CLAMP, AI_LEARNING_REWARD_CLAMP)
+
+
+func _ai_learning_rate_for_player(player_index: int) -> float:
+	var exploration := float(_ai_profile_for_player(player_index).get("exploration", 0.15))
+	return clampf(AI_LEARNING_BASE_RATE + exploration * 0.35, 0.18, 0.38)
+
+
+func _ai_apply_learning_sample(player_index: int, memory: Dictionary, sample: Dictionary) -> Dictionary:
+	if bool(sample.get("learning_applied", false)):
+		return memory
+	var reward_score := _ai_learning_reward_for_sample(sample)
+	var target_value := clampf(float(reward_score) / 10.0, -AI_LEARNING_VALUE_CLAMP, AI_LEARNING_VALUE_CLAMP)
+	var learning_rate := _ai_learning_rate_for_player(player_index)
+	var tags := _ai_learning_tags_for_sample(sample)
+	var values := (memory.get("learned_policy_values", {}) as Dictionary).duplicate(true)
+	for tag_variant in tags:
+		var tag := String(tag_variant)
+		var entry := (values.get(tag, {}) as Dictionary).duplicate(true)
+		var old_value := float(entry.get("value", 0.0))
+		entry["value"] = clampf(lerpf(old_value, target_value, learning_rate), -AI_LEARNING_VALUE_CLAMP, AI_LEARNING_VALUE_CLAMP)
+		entry["samples"] = int(entry.get("samples", 0)) + 1
+		entry["reward_total"] = int(entry.get("reward_total", 0)) + reward_score
+		entry["last_reward"] = reward_score
+		entry["last_cycle"] = business_cycle_count
+		values[tag] = entry
+	memory["learned_policy_values"] = values
+	memory["learning_updates"] = int(memory.get("learning_updates", 0)) + tags.size()
+	memory["learning_last_reward"] = reward_score
+	memory["learning_last_tags"] = tags
+	return memory
+
+
+func _ai_learned_tag_bonus(player_index: int, tag: String) -> int:
+	if tag == "" or player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+		return 0
+	var memory := ((players[player_index] as Dictionary).get("ai_memory", _empty_ai_memory()) as Dictionary)
+	var values := memory.get("learned_policy_values", {}) as Dictionary
+	var entry := values.get(tag, {}) as Dictionary
+	var sample_count := int(entry.get("samples", 0))
+	if sample_count <= 0:
+		return 0
+	var confidence := float(sample_count) / float(sample_count + 2)
+	return int(round(float(entry.get("value", 0.0)) * confidence))
+
+
+func _ai_learning_bonus(player_index: int, policy_kind: String = "", strategy_intent: String = "", route_stage: String = "", product_name: String = "", action_kind: String = "") -> int:
+	var bonus := 0
+	for tag_variant in _ai_learning_tags(action_kind, policy_kind, strategy_intent, route_stage, product_name):
+		bonus += _ai_learned_tag_bonus(player_index, String(tag_variant))
+	return clampi(bonus, -AI_LEARNING_BONUS_CLAMP, AI_LEARNING_BONUS_CLAMP)
 
 
 func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String, candidates: Array = [], metadata: Dictionary = {}) -> void:
@@ -11852,7 +11969,9 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"baseline_settlement": int(observation.get("settlement_estimate", 0)),
 		"reward_cash": 0,
 		"reward_settlement": 0,
+		"reward_score": 0,
 		"reward_finalized": false,
+		"learning_applied": false,
 	}
 	for key_variant in metadata.keys():
 		sample[key_variant] = metadata[key_variant]
@@ -11884,8 +12003,12 @@ func _finalize_ai_decision_rewards() -> int:
 				continue
 			sample["reward_cash"] = int(player.get("cash", 0)) - int(sample.get("baseline_cash", int(player.get("cash", 0))))
 			sample["reward_settlement"] = _player_visible_settlement_estimate(player_index) - int(sample.get("baseline_settlement", 0))
+			sample["reward_score"] = _ai_learning_reward_for_sample(sample)
 			sample["reward_finalized"] = true
 			sample["reward_cycle"] = business_cycle_count
+			memory = _ai_apply_learning_sample(player_index, memory, sample)
+			sample["learning_tags"] = _ai_learning_tags_for_sample(sample)
+			sample["learning_applied"] = true
 			samples[i] = sample
 			finalized += 1
 			changed = true
@@ -12127,21 +12250,27 @@ func _ai_strategy_candidates(player_index: int) -> Array:
 	var route_threat := _ai_own_route_threat_score(player_index)
 	var rival_pressure := _ai_focus_rival_pressure_score(player_index)
 	var growth_need := _ai_growth_need_score(player_index)
+	var defend_learning := _ai_learning_bonus(player_index, "", "defend_routes", "", focus, "战略选择")
+	var disrupt_learning := _ai_learning_bonus(player_index, "", "disrupt_competitors", "", focus, "战略选择")
+	var grow_learning := _ai_learning_bonus(player_index, "", "grow_focus", "", focus, "战略选择")
 	return [
 		{
 			"intent": "defend_routes",
-			"score": 42 + route_threat + route_threat / 2 + int(round(float(cash_gap) / 80.0)),
-			"reason": "保卫商路｜威胁%d｜通关缺口¥%d" % [route_threat, cash_gap],
+			"score": 42 + route_threat + route_threat / 2 + int(round(float(cash_gap) / 80.0)) + defend_learning,
+			"learning_bonus": defend_learning,
+			"reason": "保卫商路｜威胁%d｜通关缺口¥%d｜学习%d" % [route_threat, cash_gap, defend_learning],
 		},
 		{
 			"intent": "disrupt_competitors",
-			"score": 54 + rival_pressure + _player_product_flow(player_index, focus) * 18,
-			"reason": "压制竞品｜焦点%s｜竞品压力%d" % [focus if focus != "" else "未定", rival_pressure],
+			"score": 54 + rival_pressure + _player_product_flow(player_index, focus) * 18 + disrupt_learning,
+			"learning_bonus": disrupt_learning,
+			"reason": "压制竞品｜焦点%s｜竞品压力%d｜学习%d" % [focus if focus != "" else "未定", rival_pressure, disrupt_learning],
 		},
 		{
 			"intent": "grow_focus",
-			"score": growth_need,
-			"reason": "扩张焦点｜焦点%s｜成长需求%d" % [focus if focus != "" else "未定", growth_need],
+			"score": growth_need + grow_learning,
+			"learning_bonus": grow_learning,
+			"reason": "扩张焦点｜焦点%s｜成长需求%d｜学习%d" % [focus if focus != "" else "未定", growth_need, grow_learning],
 		},
 	]
 
@@ -12412,10 +12541,13 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 				score += 92 + rival_pressure
 			_:
 				score += 118 + flow * 24
+		var learning_bonus := _ai_learning_bonus(player_index, "", strategy, stage, product_name, "路线规划")
+		score += learning_bonus
 		result.append({
 			"product": product_name,
 			"stage": stage,
 			"score": maxi(1, score),
+			"learning_bonus": learning_bonus,
 			"flow": flow,
 			"supply_cities": supply_count,
 			"demand_cities": demand_count,
@@ -12424,7 +12556,7 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 			"target_city": target_city,
 			"rival_city": int(rival.get("index", -1)),
 			"partner_district": seed_district,
-			"reason": "%s｜%s｜流动%d｜供给城%d｜需求城%d｜威胁%d｜竞品%d" % [
+			"reason": "%s｜%s｜流动%d｜供给城%d｜需求城%d｜威胁%d｜竞品%d｜学习%d" % [
 				product_name,
 				_ai_route_plan_stage_label(stage),
 				flow,
@@ -12432,6 +12564,7 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 				demand_count,
 				route_threat,
 				rival_pressure,
+				learning_bonus,
 			],
 		})
 	return result
@@ -12950,6 +13083,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"slot_index": slot_index,
 		"card_name": String(skill.get("name", "卡牌")),
 		"kind": kind,
+		"policy_kind": kind,
 		"district": fallback,
 		"target_slot": -1,
 		"product": planned_product,
@@ -12963,6 +13097,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"route_plan_stage": route_stage,
 		"route_plan_score": _ai_route_plan_score(player_index),
 		"route_plan_bonus": 0,
+		"learning_bonus": 0,
 		"contract_source": -1,
 		"contract_target": -1,
 		"score": 70 + maxi(0, int(skill.get("cost", 2))) * 12 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 9,
@@ -13116,6 +13251,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if route_bonus > 0:
 		context["route_plan_bonus"] = int(context.get("route_plan_bonus", 0)) + route_bonus
 		context["score"] = int(context["score"]) + route_bonus
+	var learning_bonus := _ai_learning_bonus(player_index, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
+	if learning_bonus != 0:
+		context["learning_bonus"] = learning_bonus
+		context["score"] = int(context["score"]) + learning_bonus
 	context["score"] = maxi(1, int(round(float(context["score"]) * _ai_card_kind_bias(player_index, kind))))
 	context["bid_budget"] = _ai_card_bid_budget(player_index, int(context["score"]), cash_cost)
 	return context
@@ -13175,6 +13314,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var available := _player_product_flow(player_index, product_name)
 			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name)
 			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name)
+			var learning_bonus := _ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
 			if required <= 0 or available >= required:
 				score += 35
 			else:
@@ -13187,6 +13327,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score += strategy_bonus
 			if route_bonus > 0:
 				score += route_bonus
+			if learning_bonus != 0:
+				score += learning_bonus
 			var role := _player_role_card_for_index(player_index)
 			if String(role.get("bonus_card_product", "")) != "" and _district_or_city_has_product(district_index, String(role.get("bonus_card_product", ""))):
 				score += 65
@@ -13195,6 +13337,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"action": "购牌",
 				"card_name": card_name,
 				"kind": kind,
+				"policy_kind": kind,
 				"district": district_index,
 				"product": product_name,
 				"price": price,
@@ -13209,7 +13352,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"route_plan_stage": route_stage,
 				"route_plan_score": route_score,
 				"route_plan_bonus": route_bonus,
-				"reason": "%s｜费用¥%d｜流动%d/%d｜策略%s+%d｜路线%s/%s+%d｜探索率%.0f%%" % [
+				"learning_bonus": learning_bonus,
+				"reason": "%s｜费用¥%d｜流动%d/%d｜策略%s+%d｜路线%s/%s+%d｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
 					price,
 					available,
@@ -13219,6 +13363,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					route_product if route_product != "" else "未定",
 					_ai_route_plan_stage_label(route_stage),
 					route_bonus,
+					learning_bonus,
 					float(profile.get("exploration", 0.15)) * 100.0,
 				],
 			})
@@ -13268,7 +13413,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "learning_bonus"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -13358,6 +13503,8 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 				"route_plan_stage": String(buy_choice.get("route_plan_stage", "")),
 				"route_plan_score": int(buy_choice.get("route_plan_score", 0)),
 				"route_plan_bonus": int(buy_choice.get("route_plan_bonus", 0)),
+				"policy_kind": String(buy_choice.get("policy_kind", buy_choice.get("kind", ""))),
+				"learning_bonus": int(buy_choice.get("learning_bonus", 0)),
 			}
 		)
 		return "buy"
@@ -13390,11 +13537,14 @@ func _auto_ai_auction_bids(force: bool = false) -> int:
 		if current_bid == highest_bid and queue_index == 0:
 			continue
 		var budget := int(entry.get("ai_bid_budget", 0))
+		var bid_learning_bonus := _ai_learning_bonus(player_index, "auction_bid", "", "", "", "匿名竞价")
+		budget = maxi(0, budget + bid_learning_bonus)
 		var target_bid := highest_bid + _ai_next_bid_increment(highest_bid)
 		if target_bid > budget:
 			continue
 		var aggression := float(_ai_profile_for_player(player_index).get("bid_aggression", 1.0))
-		if not force and rng.randf() > clampf(0.42 + aggression * 0.28, 0.0, 0.92):
+		var learned_reaction := clampf(float(bid_learning_bonus) / 240.0, -0.24, 0.24)
+		if not force and rng.randf() > clampf(0.42 + aggression * 0.28 + learned_reaction, 0.0, 0.96):
 			continue
 		if _set_card_bid_for_player(player_index, target_bid, true):
 			_record_ai_decision(
@@ -13404,7 +13554,7 @@ func _auto_ai_auction_bids(force: bool = false) -> int:
 				int(entry.get("ai_utility_score", 0)),
 				"公开最高¥%d→报价¥%d｜预算¥%d" % [highest_bid, target_bid, budget],
 				[],
-				{"card_name": _card_resolution_entry_card_label(entry), "bid": target_bid, "bid_budget": budget}
+				{"policy_kind": "auction_bid", "card_name": _card_resolution_entry_card_label(entry), "bid": target_bid, "bid_budget": budget, "learning_bonus": bid_learning_bonus}
 			)
 			raised += 1
 	return raised
@@ -13449,6 +13599,9 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 	if source_owner == player_index and route_product != "":
 		accept_route_bonus += 46
 	accept_score += accept_route_bonus
+	var contract_product_tag := route_product if contract_matches_route else _limited_name_list(products, 1, "")
+	var accept_learning_bonus := _ai_learning_bonus(player_index, "contract_accept", "", route_stage, contract_product_tag, "匿名合约签约")
+	accept_score += accept_learning_bonus
 	var reject_score := 54
 	if source_owner >= 0 and source_owner != player_index:
 		reject_score += 42
@@ -13457,6 +13610,8 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 	if source_owner >= 0 and source_owner != player_index and route_stage == "attack_rival" and contract_matches_route:
 		reject_route_bonus += 72
 	reject_score += reject_route_bonus
+	var reject_learning_bonus := _ai_learning_bonus(player_index, "contract_reject", "", route_stage, contract_product_tag, "匿名合约拒签")
+	reject_score += reject_learning_bonus
 	var decline_badness := 0
 	decline_badness += int(skill.get("decline_cash_penalty", 0)) / 3
 	decline_badness += maxi(0, -int(skill.get("decline_production_delta", 0))) * 38
@@ -13470,6 +13625,7 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 			"action": "签约",
 			"card_name": String(skill.get("name", "区域供需合约")),
 			"kind": "area_trade_contract_response",
+			"policy_kind": "contract_accept",
 			"district": target_index,
 			"product": _limited_name_list(products, 3, "未指定"),
 			"score": maxi(1, accept_score),
@@ -13482,11 +13638,13 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 			"route_plan_stage": route_stage,
 			"route_plan_score": route_score,
 			"route_plan_bonus": accept_route_bonus,
+			"learning_bonus": accept_learning_bonus,
 		},
 		{
 			"action": "拒签",
 			"card_name": String(skill.get("name", "区域供需合约")),
 			"kind": "area_trade_contract_response",
+			"policy_kind": "contract_reject",
 			"district": target_index,
 			"product": _limited_name_list(products, 3, "未指定"),
 			"score": maxi(1, reject_score),
@@ -13495,6 +13653,7 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 			"route_plan_stage": route_stage,
 			"route_plan_score": route_score,
 			"route_plan_bonus": reject_route_bonus,
+			"learning_bonus": reject_learning_bonus,
 		},
 	]
 
@@ -13532,10 +13691,12 @@ func _update_ai_contract_responses(force: bool = false) -> int:
 				"card_name": String((entry.get("skill", {}) as Dictionary).get("name", "区域供需合约")),
 				"contract_offer_id": contract_id,
 				"contract_response": String(choice.get("action", "")),
+				"policy_kind": String(choice.get("policy_kind", "")),
 				"route_plan_product": String(choice.get("route_plan_product", "")),
 				"route_plan_stage": String(choice.get("route_plan_stage", "")),
 				"route_plan_score": int(choice.get("route_plan_score", 0)),
 				"route_plan_bonus": int(choice.get("route_plan_bonus", 0)),
+				"learning_bonus": int(choice.get("learning_bonus", 0)),
 			}
 		)
 		if _respond_to_pending_contract_for_player(owner, contract_id, accept, false):
@@ -13625,6 +13786,8 @@ func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, g
 	if reason_bits.is_empty():
 		score += 5 + ((city_index + guessed_player * 3 + business_cycle_count) % 11)
 		reason_bits.append("低置信直觉")
+	var learning_bonus := _ai_learning_bonus(viewer_index, "city_owner_guess", "", "", "", "城市业主推理")
+	score += learning_bonus
 	var confidence := CITY_GUESS_CONFIDENCE_LOW
 	if score >= 150:
 		confidence = CITY_GUESS_CONFIDENCE_HIGH
@@ -13633,10 +13796,12 @@ func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, g
 	return {
 		"action": "城市业主标注",
 		"kind": "city_owner_guess",
+		"policy_kind": "city_owner_guess",
 		"district": city_index,
 		"guessed_player": guessed_player,
 		"confidence": confidence,
 		"reason_key": reason_key,
+		"learning_bonus": learning_bonus,
 		"score": maxi(1, score),
 		"reason": "%s→玩家%d｜%s" % [
 			String(districts[city_index].get("name", "城市")),
@@ -13681,9 +13846,11 @@ func _ai_apply_city_guess_candidate(player_index: int, candidate: Dictionary, al
 		String(candidate.get("reason", "按公开商品和城市线索标注")),
 		all_candidates,
 		{
+			"policy_kind": String(candidate.get("policy_kind", "city_owner_guess")),
 			"guessed_player": guessed_player,
 			"confidence": int(candidate.get("confidence", 0)),
 			"reason_key": String(candidate.get("reason_key", "")),
+			"learning_bonus": int(candidate.get("learning_bonus", 0)),
 		}
 	)
 	return true
@@ -13744,15 +13911,19 @@ func _ai_card_guess_candidate_for_owner(player_index: int, entry: Dictionary, gu
 	if reason_bits.is_empty():
 		score += ((resolution_id + guessed_player * 5 + business_cycle_count) % 13)
 		reason_bits.append("弱线索试探")
+	var learning_bonus := _ai_learning_bonus(player_index, "card_owner_guess", "", "", product_name, "卡牌归属押注")
+	score += learning_bonus
 	return {
 		"action": "卡牌归属押注",
 		"kind": "card_owner_guess",
+		"policy_kind": "card_owner_guess",
 		"resolution_id": resolution_id,
 		"card_name": _card_resolution_entry_card_label(entry),
 		"guessed_player": guessed_player,
 		"stake": stake,
 		"district": selected_city,
 		"product": product_name,
+		"learning_bonus": learning_bonus,
 		"score": maxi(1, score),
 		"reason": "轨道#%d《%s》→玩家%d｜%s" % [
 			resolution_id,
@@ -13795,10 +13966,13 @@ func _ai_apply_card_guess_candidate(player_index: int, candidate: Dictionary, al
 		String(candidate.get("reason", "按公开条件与私有线索押注")),
 		all_candidates,
 		{
+			"policy_kind": String(candidate.get("policy_kind", "card_owner_guess")),
 			"resolution_id": int(candidate.get("resolution_id", -1)),
 			"guessed_player": int(candidate.get("guessed_player", -1)),
 			"stake": int(candidate.get("stake", 0)),
 			"card_name": String(candidate.get("card_name", "")),
+			"product": String(candidate.get("product", "")),
+			"learning_bonus": int(candidate.get("learning_bonus", 0)),
 		}
 	)
 	return _guess_card_resolution_owner_for_player(player_index, int(candidate.get("resolution_id", -1)), int(candidate.get("guessed_player", -1)), true)
