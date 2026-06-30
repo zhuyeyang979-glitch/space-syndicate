@@ -1233,6 +1233,7 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		ok = ok and final_menu_body != null and final_menu_body.text.contains("游戏结束") and final_menu_body.text.contains("终局总结") and final_menu_body.text.contains("接下来")
 		ok = ok and final_continue_button != null and not final_continue_button.visible
 		ok = ok and final_menu_preview != null and _container_button_text_contains(final_menu_preview, "查看局势排名") and _container_button_text_contains(final_menu_preview, "打开经济总览") and _container_button_text_contains(final_menu_preview, "开局准备")
+		ok = ok and final_menu_preview != null and _container_label_text_contains(final_menu_preview, "终局速览") and _container_label_text_contains(final_menu_preview, "胜者") and _container_label_text_contains(final_menu_preview, "钱从哪里来") and _container_label_text_contains(final_menu_preview, "关键影响")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -2351,6 +2352,9 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		ok = false
 	if final_menu_preview == null or not _container_button_text_contains(final_menu_preview, "查看局势排名") or not _container_button_text_contains(final_menu_preview, "打开经济总览") or not _container_button_text_contains(final_menu_preview, "开局准备"):
 		failures.append("missing final settlement menu actions")
+		ok = false
+	if final_menu_preview == null or not _container_label_text_contains(final_menu_preview, "终局速览") or not _container_label_text_contains(final_menu_preview, "胜者") or not _container_label_text_contains(final_menu_preview, "钱从哪里来") or not _container_label_text_contains(final_menu_preview, "关键影响"):
+		failures.append("missing final settlement summary cards")
 		ok = false
 	var finalized_ai := 0
 	var final_players := _as_array(main.get("players"))

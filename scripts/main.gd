@@ -2902,14 +2902,88 @@ func _open_final_settlement_menu(reason: String, rankings: Array) -> void:
 	if menu_run_save_label != null:
 		menu_run_save_label.visible = false
 	if menu_preview_box != null:
-		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
+		_populate_final_settlement_summary_cards(reason, rankings)
 		var hint := _plain_label("赛后复盘入口：", 13, Color("#fde68a"))
 		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		menu_preview_box.add_child(hint)
 		_add_compendium_menu_button("查看局势排名", "逐席查看结算资金、现金/城市/情报拆解和终局玩家概览。", Callable(self, "_open_standings_menu"))
 		_add_compendium_menu_button("打开经济总览", "复查商品热榜、商路收入前景、城市 GDP 拆解和经济流水。", Callable(self, "_open_economy_overview_menu"))
 		_add_compendium_menu_button("开局准备", "重新选择席位、AI 数量、Roguelike 深度和外星角色，开始下一局测试。", Callable(self, "_start_new_run_from_menu"))
+
+
+func _populate_final_settlement_summary_cards(reason: String, rankings: Array) -> void:
+	if players.is_empty():
+		_show_menu_summary_cards([
+			{
+				"title": "终局速览",
+				"body": "没有可用玩家数据。",
+				"meta": reason,
+				"accent": Color("#facc15"),
+			},
+		], "终局速览")
+		return
+	var ordered := rankings
+	if ordered.is_empty():
+		ordered = _final_score_rankings()
+	var winner_index := 0
+	var winner_score := _player_final_score(0)
+	if not ordered.is_empty():
+		var winner := ordered[0] as Dictionary
+		winner_index = int(winner.get("player_index", 0))
+		winner_score = int(winner.get("score", winner_score))
+	var city_income := _top_player_by_stat("total_city_income")
+	var card_income := _top_player_by_stat("total_card_income")
+	var role_income := _top_player_by_stat("total_role_income")
+	var top_city := _top_city_snapshot_entry()
+	var city_body := "存活城市%d｜已毁区域%d｜怪兽%d/%d" % [
+		_active_city_district_indices().size(),
+		_destroyed_district_count(),
+		_active_auto_monster_count(),
+		auto_monsters.size(),
+	]
+	if int(top_city.get("district", -1)) >= 0:
+		var district_index := int(top_city.get("district", -1))
+		city_body = "%s｜%s｜末期GDP¥%d" % [
+			String(districts[district_index].get("name", "关键城市")),
+			_player_name(int(top_city.get("owner", -1))),
+			maxi(0, int(top_city.get("last_income", 0))),
+		]
+	_show_menu_summary_cards([
+		{
+			"title": "胜者",
+			"body": "%s｜结算资金¥%d" % [_player_name(winner_index), winner_score],
+			"meta": "游戏结束：%s" % reason,
+			"accent": Color("#facc15"),
+		},
+		{
+			"title": "钱从哪里来",
+			"body": "城收:%s ¥%d｜卡牌:%s ¥%d｜角色:%s ¥%d" % [
+				_player_name(int(city_income.get("player_index", 0))),
+				maxi(0, int(city_income.get("amount", 0))),
+				_player_name(int(card_income.get("player_index", 0))),
+				maxi(0, int(card_income.get("amount", 0))),
+				_player_name(int(role_income.get("player_index", 0))),
+				maxi(0, int(role_income.get("amount", 0))),
+			],
+			"meta": "情报现金和存活城市清算也进入最终排名。",
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "关键地图",
+			"body": city_body,
+			"meta": "破坏、商路损伤和天气最终都会落到GDP变化。",
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "关键影响",
+			"body": "%s｜%s" % [
+				_short_card_text(_top_card_impact_summary(2).replace("关键卡牌：", ""), 44),
+				_short_card_text(_monster_impact_summary().replace("怪兽影响：", ""), 44),
+			],
+			"meta": _short_card_text(_ai_route_summary(maxi(3, _ai_player_indices().size())).replace("AI路线：", ""), 60),
+			"accent": Color("#c084fc"),
+		},
+	], "终局速览｜先看胜者、钱源和关键影响")
 
 
 func _open_intel_dossier_menu() -> void:
