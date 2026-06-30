@@ -27,8 +27,8 @@ const AI_INTEL_ACTIONS_PER_TICK := 2
 const MAP_WIDTH_METERS := 1400.0
 const MAP_HEIGHT_METERS := 950.0
 const MAP_SITE_MARGIN_METERS := 70.0
-const MAP_REGION_COUNT_MIN := 10
-const MAP_REGION_COUNT_MAX := 20
+const MAP_REGION_COUNT_MIN := 6
+const MAP_REGION_COUNT_MAX := 54
 const MONSTER_COMMAND_MOVE_METERS := 220.0
 const MONSTER_RAMPAGE_MOVE_METERS := 190.0
 const MELEE_RANGE_METERS := 110.0
@@ -2378,7 +2378,7 @@ func _open_rules_menu() -> void:
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
 	lines.append("13. 经济隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹与流水；其他玩家的经济只能推测。终局才公开并按结算资金判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
-	lines.append("15. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理和卡牌归属押注，并把行动类型、目标、评分、候选集、理由与后续收益写入最近决策样本；后续训练会继续扩展到更长期的经济规划和怪兽诱导。")
+	lines.append("15. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；诱导牌会按竞争城市价值、商品重叠、怪兽资源偏好和距离评分，并把行动类型、目标、评分、候选集、理由与后续收益写入最近决策样本。后续训练会继续扩展到更长期的经济规划。")
 	lines.append("16. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
 	lines.append("")
 	lines.append("操作入口索引：1-8选席位；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
@@ -6056,7 +6056,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		ai_button.pressed.connect(Callable(self, "_set_configured_ai_player_count_from_new_game_menu").bind(count))
 		ai_row.add_child(ai_button)
 
-	parent.add_child(_plain_label("Roguelike挑战层级：%s。浅层星球更小、区域更少；深层星球更大、区域更多，通关目标现金更高。" % _roguelike_planet_profile_text(), 13, Color("#cbd5e1")))
+	parent.add_child(_plain_label("Roguelike挑战层级：%s。浅层星球很小，可能少于10个区域；深层星球逐步扩到几十个区域。目标统一是赚到更多钱，通关现金也会随层级提高。" % _roguelike_planet_profile_text(), 13, Color("#cbd5e1")))
 	var depth_row := HBoxContainer.new()
 	depth_row.add_theme_constant_override("separation", 6)
 	parent.add_child(depth_row)
@@ -6687,8 +6687,27 @@ func _roguelike_cash_goal(depth: int = -1) -> int:
 
 func _roguelike_planet_profile(depth: int = -1) -> Dictionary:
 	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	var region_min := clampi(4 + value * 4, 7, 40)
-	var region_max := clampi(6 + value * 7, region_min + 2, 54)
+	var region_min := 6
+	var region_max := 9
+	match value:
+		1:
+			region_min = 6
+			region_max = 9
+		2:
+			region_min = 10
+			region_max = 14
+		3:
+			region_min = 15
+			region_max = 21
+		4:
+			region_min = 22
+			region_max = 30
+		5:
+			region_min = 31
+			region_max = 41
+		_:
+			region_min = 40
+			region_max = 54
 	var scale := 0.65 + float(value) * 0.18
 	return {
 		"depth": value,
@@ -7404,7 +7423,7 @@ func _new_game() -> void:
 		_ai_player_count(),
 	])
 	_log("AI训练骨架启动：AI会按城市GDP、商品竞争、商路价值、怪兽风险与匿名情报评分行动，并记录最近%d条训练样本。" % AI_DECISION_SAMPLE_LIMIT)
-	_log("Roguelike挑战启动：%s；玩家通关目标现金¥%d，终局仍按结算资金最高者排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal()])
+	_log("Roguelike挑战启动：%s；本局目标是赚到更多钱，玩家通关目标现金¥%d，终局仍按结算资金最高者排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal()])
 	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
 	_log("星球随机生成陆地与海洋：陆地初始生产1种商品并有1种需求，海洋不生产但承担商路运输；合约牌可继续改写供需。")
 	_log("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
@@ -11638,7 +11657,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key"]:
+	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -11886,6 +11905,154 @@ func _ai_best_district_near_monster(player_index: int, monster_slot: int, range_
 	return int(actor.get("position", _ai_first_alive_district()))
 
 
+func _ai_city_product_overlap_score(player_index: int, target_city_index: int) -> int:
+	var target_city := _district_city(target_city_index)
+	if not _city_is_active(target_city):
+		return 0
+	var target_products := _city_product_names(target_city)
+	var target_demands := _city_demand_names(target_city)
+	var score := 0
+	for own_city_index_variant in _active_city_indices_for_player(player_index):
+		var own_city := _district_city(int(own_city_index_variant))
+		for product_variant in _city_product_names(own_city):
+			var product_name := String(product_variant)
+			if target_products.has(product_name):
+				score += 56 + int(round(float(_product_price(product_name)) / 8.0))
+			if target_demands.has(product_name):
+				score += 18
+		for demand_variant in _city_demand_names(own_city):
+			var demand_name := String(demand_variant)
+			if target_products.has(demand_name):
+				score += 26
+	return score
+
+
+func _ai_rival_city_pressure_score(player_index: int, district_index: int) -> int:
+	if district_index < 0 or district_index >= districts.size() or bool(districts[district_index].get("destroyed", false)):
+		return -1
+	var city := _district_city(district_index)
+	if not _city_is_active(city):
+		return -1
+	var owner := int(city.get("owner", -1))
+	if owner == player_index:
+		return -1
+	var competition := _city_competition_matches(district_index)
+	var breakdown := _city_cycle_income_breakdown(district_index, competition)
+	var score := 150
+	score += int(breakdown.get("net", 0))
+	score += int(city.get("last_income", 0))
+	score += _ai_city_product_overlap_score(player_index, district_index)
+	score += (city.get("trade_routes", []) as Array).size() * 20
+	score += _district_trade_route_load(district_index) * 14
+	score += _city_product_names(city).size() * 24
+	score += _city_demand_names(city).size() * 14
+	score += competition * 18
+	score -= int(city.get("trade_route_damage", 0)) * 12
+	score -= int(districts[district_index].get("damage", 0)) * 5
+	if owner < 0:
+		score -= 25
+	return maxi(1, score)
+
+
+func _ai_monster_lure_plan(player_index: int, skill: Dictionary, range_limit: float = -1.0) -> Dictionary:
+	var best := {}
+	var best_score := -1
+	for slot in range(auto_monsters.size()):
+		var actor: Dictionary = auto_monsters[slot]
+		if bool(actor.get("down", false)):
+			continue
+		var actor_owner := int(actor.get("owner", -1))
+		for city_index_variant in _active_city_district_indices():
+			var city_index := int(city_index_variant)
+			var attack_value := _ai_rival_city_pressure_score(player_index, city_index)
+			if attack_value <= 0:
+				continue
+			var distance := _entity_distance_to_district(actor, city_index)
+			if range_limit > 0.0 and distance > range_limit:
+				continue
+			var resource_match := _monster_resource_match_score(actor, city_index)
+			var score := attack_value
+			score += resource_match * 70
+			score += int(actor.get("rank", 1)) * 36
+			score += int(actor.get("hp", 0)) / 2
+			score += _district_trade_route_load(city_index) * 8
+			score -= int(round(distance / 34.0))
+			if actor_owner == player_index:
+				score -= 28
+			elif actor_owner >= 0:
+				score += 36
+			else:
+				score += 12
+			if int(actor.get("position", -1)) == city_index:
+				score += 34
+			if score <= best_score:
+				continue
+			var city := _district_city(city_index)
+			var target_products := _city_product_names(city)
+			var product_name := String(target_products[0]) if not target_products.is_empty() else _ai_preferred_product(player_index, true)
+			best_score = score
+			best = {
+				"target_slot": slot,
+				"district": city_index,
+				"target_city": city_index,
+				"target_owner": int(city.get("owner", -1)),
+				"product": product_name,
+				"score": maxi(1, score),
+				"attack_value": attack_value,
+				"resource_match": resource_match,
+				"distance_m": int(round(distance)),
+				"strategic_role": "monster_lure",
+				"reason": "诱导怪%d·%s压向%s｜城市价值%d｜资源吻合%d｜距离%s" % [
+					slot + 1,
+					String(actor.get("name", "怪兽")),
+					String(districts[city_index].get("name", "竞争城市")),
+					attack_value,
+					resource_match,
+					_meters_text(distance),
+				],
+			}
+	return best
+
+
+func _ai_monster_delay_plan(player_index: int, skill: Dictionary) -> Dictionary:
+	var best := {}
+	var best_score := -1
+	for slot in range(auto_monsters.size()):
+		var actor: Dictionary = auto_monsters[slot]
+		if bool(actor.get("down", false)) or int(actor.get("owner", -1)) == player_index:
+			continue
+		for city_index_variant in _active_city_indices_for_player(player_index):
+			var city_index := int(city_index_variant)
+			var city_score := _ai_city_target_score(player_index, city_index, true, false)
+			if city_score <= 0:
+				continue
+			var distance := _entity_distance_to_district(actor, city_index)
+			var resource_match := _monster_resource_match_score(actor, city_index)
+			var score := 72 + city_score + resource_match * 42 + int(actor.get("rank", 1)) * 25 - int(round(distance / 28.0))
+			if score <= best_score:
+				continue
+			best_score = score
+			best = {
+				"target_slot": slot,
+				"district": city_index,
+				"target_city": city_index,
+				"target_owner": player_index,
+				"score": maxi(1, score),
+				"attack_value": city_score,
+				"resource_match": resource_match,
+				"distance_m": int(round(distance)),
+				"strategic_role": "monster_delay",
+				"reason": "延后怪%d·%s接近己方%s｜防守价值%d｜距离%s" % [
+					slot + 1,
+					String(actor.get("name", "怪兽")),
+					String(districts[city_index].get("name", "城市")),
+					city_score,
+					_meters_text(distance),
+				],
+			}
+	return best
+
+
 func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	var profile := _ai_profile_for_player(player_index)
 	if kind == "monster_card" or kind == "monster_bound_action" or _skill_targets_monster({"kind": kind}):
@@ -11923,6 +12090,30 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["target_slot"] = bound_slot
 		context["district"] = _ai_best_district_near_monster(player_index, bound_slot)
 		context["score"] = int(context["score"]) + 95
+	elif kind == "monster_lure":
+		var lure_plan := _ai_monster_lure_plan(player_index, skill)
+		if lure_plan.is_empty():
+			return {}
+		var base_lure_score := int(context["score"])
+		context.merge(lure_plan, true)
+		context["score"] = base_lure_score + int(lure_plan.get("score", 0))
+		context["reason"] = String(lure_plan.get("reason", "诱导怪兽压向竞争城市"))
+	elif kind == "mudslide":
+		var mudslide_plan := _ai_monster_lure_plan(player_index, skill, float(skill.get("range", DEFAULT_AOE_RADIUS_METERS)))
+		if mudslide_plan.is_empty():
+			return {}
+		var base_mudslide_score := int(context["score"])
+		context.merge(mudslide_plan, true)
+		context["score"] = base_mudslide_score + int(mudslide_plan.get("score", 0)) + int(skill.get("damage", 1)) * 45
+		context["reason"] = "AOE打击｜%s" % String(mudslide_plan.get("reason", "锁定竞争城市"))
+	elif kind == "special_monster_delay":
+		var delay_plan := _ai_monster_delay_plan(player_index, skill)
+		if delay_plan.is_empty():
+			return {}
+		var base_delay_score := int(context["score"])
+		context.merge(delay_plan, true)
+		context["score"] = base_delay_score + int(delay_plan.get("score", 0))
+		context["reason"] = String(delay_plan.get("reason", "延后威胁怪兽"))
 	elif _skill_targets_monster(skill):
 		var target_slot := _ai_monster_target_for_skill(player_index, skill)
 		if target_slot < 0:
@@ -12117,6 +12308,18 @@ func _ai_next_bid_increment(highest_bid: int) -> int:
 	return 10
 
 
+func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_budget: int) -> Dictionary:
+	var metadata := {
+		"card_name": String(candidate.get("card_name", "")),
+		"target_slot": target_slot,
+		"bid_budget": bid_budget,
+	}
+	for field_name in ["target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role"]:
+		if candidate.has(field_name):
+			metadata[field_name] = candidate[field_name]
+	return metadata
+
+
 func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_candidates: Array = []) -> bool:
 	var slot_index := int(candidate.get("slot_index", -1))
 	var target_slot := int(candidate.get("target_slot", -1))
@@ -12156,9 +12359,9 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			"匿名出牌",
 			int(candidate.get("district", -1)),
 			int(candidate.get("score", 0)),
-			"%s｜目标怪兽%d｜报价预算¥%d" % [String(candidate.get("card_name", "卡牌")), target_slot + 1, budget],
+			"%s｜目标怪兽%d｜报价预算¥%d｜%s" % [String(candidate.get("card_name", "卡牌")), target_slot + 1, budget, String(candidate.get("reason", "按卡牌策略评分"))],
 			all_candidates,
-			{"card_name": String(candidate.get("card_name", "")), "target_slot": target_slot, "bid_budget": budget}
+			_ai_card_decision_metadata(candidate, target_slot, budget)
 		)
 	selected_player = previous_player
 	selected_district = previous_district

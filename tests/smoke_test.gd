@@ -9,8 +9,8 @@ const TEST_RUN_SAVE_PATH := "user://space_syndicate_smoke_test_run.save"
 const EXPECTED_PLAYER_COUNT := 4
 const EXPECTED_AI_PLAYER_COUNT := 3
 const EXPECTED_SUMMONED_MONSTER_COUNT := 4
-const MIN_REGION_COUNT := 10
-const MAX_REGION_COUNT := 20
+const MIN_REGION_COUNT := 6
+const MAX_REGION_COUNT := 54
 
 var _failures: Array[String] = []
 
@@ -113,6 +113,7 @@ func _run() -> void:
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_role_intel_and_trace_tools(main), "identity roles and intel cards reveal private city, card-owner, and contract-party clues")
 	_expect(_verify_ai_intel_policy(main), "AI opponents can use product clues to mark city owners and wager on anonymous card ownership")
+	_expect(_verify_ai_monster_lure_strategy(main), "AI opponents can steer monster-lure cards toward high-value competing cities and record trainable target metadata")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -883,6 +884,22 @@ func _ai_memory_has_kind(players: Array, player_index: int, kind: String) -> boo
 	return false
 
 
+func _ai_memory_has_kind_with_metadata(players: Array, player_index: int, kind: String, field_name: String, expected_value: Variant) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player := players[player_index] as Dictionary
+	var memory := player.get("ai_memory", {}) as Dictionary
+	for sample_variant in _as_array(memory.get("decision_samples", [])):
+		if not (sample_variant is Dictionary):
+			continue
+		var sample := sample_variant as Dictionary
+		if String(sample.get("kind", "")) != kind or not sample.has(field_name):
+			continue
+		if sample[field_name] == expected_value:
+			return true
+	return false
+
+
 func _find_city_guess_candidate(candidates: Array, district_index: int, guessed_player: int) -> Dictionary:
 	for candidate_variant in candidates:
 		if not (candidate_variant is Dictionary):
@@ -953,10 +970,15 @@ func _verify_roguelike_depth_scaling(main: Node) -> bool:
 	var profile_i := main.call("_roguelike_planet_profile", 1) as Dictionary
 	var profile_vi := main.call("_roguelike_planet_profile", 6) as Dictionary
 	var ok := true
+	ok = ok and int(profile_i.get("region_min", 0)) <= 6
+	ok = ok and int(profile_i.get("region_max", 99)) < 10
 	ok = ok and int(profile_i.get("region_min", 0)) < int(profile_vi.get("region_min", 0))
 	ok = ok and int(profile_i.get("region_max", 0)) < int(profile_vi.get("region_max", 0))
+	ok = ok and int(profile_vi.get("region_min", 0)) >= 40
+	ok = ok and int(profile_vi.get("region_max", 0)) >= 50
 	ok = ok and float(profile_i.get("width", 0.0)) < float(profile_vi.get("width", 0.0))
 	ok = ok and int(profile_i.get("cash_goal", 0)) < int(profile_vi.get("cash_goal", 0))
+	ok = ok and String(main.call("_roguelike_planet_profile_text", 1)).contains("区域6-9")
 	ok = ok and String(main.call("_roguelike_planet_profile_text", 6)).contains("深度VI")
 	ok = ok and String(main.call("_roguelike_planet_profile_text", 6)).contains("目标现金")
 	main.call("_set_configured_roguelike_depth", 6)
@@ -1149,6 +1171,72 @@ func _verify_ai_intel_policy(main: Node) -> bool:
 			ok = ok and bool(traced_entry.get("public_owner_revealed", false))
 			ok = ok and _as_array(traced_entry.get("guessers", [])).has(1)
 			ok = ok and _ai_memory_has_kind(players_after_card, 1, "卡牌归属押注")
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	return ok and restore_result == OK
+
+
+func _verify_ai_monster_lure_strategy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_simultaneous_timer", 0.5)
+	main.set("card_resolution_auction_open", false)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+	var spare_index := _first_empty_land_district_for_contract(main, [own_index, rival_index])
+	if own_index < 0 or rival_index < 0:
+		ok = false
+	else:
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 5000
+			player["action_cooldown"] = 0.0
+			if player_index == 1:
+				player["slots"] = [main.call("_make_skill", "诱导电波1")]
+			players[player_index] = player
+		main.set("players", players)
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI诱导自城", false))
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI诱导竞品城", false))
+		ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
+		ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "轨迹墨水")
+		if spare_index >= 0:
+			ok = ok and bool(main.call("_create_city_at_district_for_player", 3, spare_index, "AI诱导干扰城", false))
+			ok = ok and _set_city_goods_for_test(main, spare_index, "深海菌毯", "离岸水晶")
+		var matching_actor := main.call("_make_auto_monster", 0, 0, own_index, 2, 2) as Dictionary
+		matching_actor["resource_focus"] = ["环晶电池"]
+		var decoy_actor := main.call("_make_auto_monster", 1, 1, spare_index if spare_index >= 0 else own_index, 3, 1) as Dictionary
+		decoy_actor["resource_focus"] = ["深海菌毯"]
+		main.set("auto_monsters", [matching_actor, decoy_actor])
+		var lure_skill := main.call("_make_skill", "诱导电波1") as Dictionary
+		var context := main.call("_ai_card_play_context", 1, 0, lure_skill) as Dictionary
+		ok = ok and not context.is_empty()
+		ok = ok and int(context.get("target_slot", -1)) == 0
+		ok = ok and int(context.get("district", -1)) == rival_index
+		ok = ok and int(context.get("target_city", -1)) == rival_index
+		ok = ok and String(context.get("strategic_role", "")) == "monster_lure"
+		ok = ok and int(context.get("resource_match", 0)) > 0
+		ok = ok and int(context.get("attack_value", 0)) > 0
+		var candidates := main.call("_ai_card_play_candidates", 1) as Array
+		var chosen := {}
+		for candidate_variant in candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("card_name", "")) == "诱导电波1":
+				chosen = candidate
+				break
+		ok = ok and not chosen.is_empty()
+		ok = ok and bool(main.call("_ai_queue_play_candidate", 1, chosen, candidates))
+		var players_after := _as_array(main.get("players"))
+		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "target_city", rival_index)
+		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "strategic_role", "monster_lure")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	return ok and restore_result == OK
@@ -3591,6 +3679,44 @@ func _first_empty_land_district_for_contract(main: Node, excluded: Array = []) -
 	return -1
 
 
+func _prepare_land_pair_for_contract_test(main: Node) -> Dictionary:
+	var districts := _as_array(main.get("districts")).duplicate(true)
+	var chosen := []
+	for i in range(districts.size()):
+		var district_variant: Variant = districts[i]
+		if not (district_variant is Dictionary):
+			continue
+		var district := district_variant as Dictionary
+		if String(district.get("terrain", "")) != "land" or bool(district.get("destroyed", false)):
+			continue
+		var city := district.get("city", {}) as Dictionary
+		if city.is_empty():
+			chosen.append(i)
+			if chosen.size() >= 2:
+				break
+	for i in range(districts.size()):
+		if chosen.size() >= 2:
+			break
+		if chosen.has(i):
+			continue
+		var district_variant: Variant = districts[i]
+		if not (district_variant is Dictionary):
+			continue
+		var district := district_variant as Dictionary
+		if String(district.get("terrain", "")) != "land" or bool(district.get("destroyed", false)):
+			continue
+		chosen.append(i)
+	if chosen.size() < 2:
+		return {}
+	for index_variant in chosen:
+		var index := int(index_variant)
+		var district := districts[index] as Dictionary
+		district["city"] = {}
+		districts[index] = district
+	main.set("districts", districts)
+	return {"source": int(chosen[0]), "target": int(chosen[1])}
+
+
 func _test_city_product_names(city: Dictionary) -> Array:
 	var result := []
 	for product_variant in city.get("products", []):
@@ -3636,8 +3762,9 @@ func _verify_area_trade_contract_accept_and_decline(main: Node) -> bool:
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_force_duration", 5.0)
 	main.set("card_resolution_force_simultaneous_window", 0.5)
-	var source_index := _first_empty_land_district_for_contract(main)
-	var target_index := _first_empty_land_district_for_contract(main, [source_index])
+	var land_pair := _prepare_land_pair_for_contract_test(main)
+	var source_index := int(land_pair.get("source", -1))
+	var target_index := int(land_pair.get("target", -1))
 	if source_index < 0 or target_index < 0:
 		ok = false
 	else:
