@@ -401,6 +401,8 @@ func _run() -> void:
 	var menu_back_button := main.get("menu_back_button") as Button
 	var menu_continue_button := main.get("menu_continue_button") as Button
 	var menu_quick_nav_row := main.get("menu_quick_nav_row") as HBoxContainer
+	var menu_interaction_hint_panel := main.get("menu_interaction_hint_panel") as PanelContainer
+	var menu_interaction_hint_label := main.get("menu_interaction_hint_label") as Label
 	var menu_bestiary_prev_button := main.get("menu_bestiary_prev_button") as Button
 	var menu_bestiary_next_button := main.get("menu_bestiary_next_button") as Button
 	var menu_preview_box := main.get("menu_preview_box") as VBoxContainer
@@ -411,6 +413,7 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加", "main menu opens with the root title")
 	_expect(menu_context_label != null and menu_context_label.text.contains("当前位置：主菜单") and menu_context_label.text.contains("hover"), "main menu exposes a reusable breadcrumb/help strip for flexible subpage navigation")
+	_expect(menu_interaction_hint_panel != null and menu_interaction_hint_panel.has_theme_stylebox_override("panel") and menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("响应式主菜单") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("卡片入口可重排"), "main menu exposes a reusable interaction hint strip for responsive layout, hover, and future menu rearrangement")
 	_expect(menu_quick_nav_row != null and menu_quick_nav_row.visible and _container_button_text_contains(menu_quick_nav_row, "开局") and _container_button_text_contains(menu_quick_nav_row, "经济") and _container_button_text_contains(menu_quick_nav_row, "情报") and _container_button_text_contains(menu_quick_nav_row, "图鉴"), "main menu exposes reusable quick navigation chips for major branches")
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
 	_expect(menu_content_scroll != null and menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column")
@@ -441,6 +444,7 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "monster_card"), "new-run setup previews starter monster-card art")
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "不限区"), "new-run setup starter card art shows the unrestricted first-summon access")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "固定技能") and _container_label_text_contains(menu_preview_box, "开放购牌"), "new-run setup explains starter summon rewards and card-access radius")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主路线"), "new-run setup exposes each AI seat's primary development route")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "上一个角色") and _container_button_text_contains(menu_preview_box, "下一个角色"), "new-run setup exposes per-player alien role switching")
 	var first_role_before_setup := int(role_indices_before_setup[0]) if not role_indices_before_setup.is_empty() else 0
 	main.call("_cycle_configured_role_for_player_from_new_game_menu", 0, 1)
@@ -675,9 +679,10 @@ func _run() -> void:
 	main.call("_open_card_codex_from_compendium")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
+	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "AI偏好") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "反制"), "card codex exposes data-driven strategy route overview cards with strength and counterplay windows")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "AI发展路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线5/5覆盖") and _container_label_text_contains(menu_preview_box, "AI偏好") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "反制"), "card codex exposes data-driven strategy route overview cards with AI route coverage, strength, and counterplay windows")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
@@ -691,6 +696,7 @@ func _run() -> void:
 	main.call("_on_card_codex_thumbnail_gui_input", codex_detail_event, "城市融资1")
 	await process_frame
 	var card_codex_back_button := main.get("menu_bestiary_back_button") as Button
+	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌详情页") and menu_interaction_hint_label.text.contains("上一页/下一页") and menu_interaction_hint_label.text.contains("返回缩略图"), "card detail page exposes the shared previous/next and return-to-thumbnail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("参考价") and menu_body_label.text.contains("档"), "card detail shows card price and explicit tier information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and menu_body_label.text.contains("升级预览") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices and shows Roman-numeral level gradients")
 	_expect(menu_body_label != null and menu_body_label.text.contains("策略路线:城市成长") and menu_body_label.text.contains("用途:"), "card detail explains why the card is useful in a strategy route")
@@ -3248,6 +3254,23 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 		if int(preference_coverage.get(route_id, 0)) <= 0:
 			print("No AI personality prefers development route: %s" % route_id)
 			return false
+	var diversity_audit := main.call("_ai_development_route_diversity_audit") as Dictionary
+	if int(diversity_audit.get("profile_count", 0)) < 6:
+		print("AI route diversity audit covers too few personality profiles")
+		return false
+	if int(diversity_audit.get("covered_core_route_count", 0)) < required_routes.size():
+		print("AI primary-route diversity does not cover all core routes: %s" % str(diversity_audit.get("missing_core_routes", [])))
+		return false
+	var primary_counts := diversity_audit.get("primary_counts", {}) as Dictionary
+	for route_variant in required_routes:
+		var route_id := String(route_variant)
+		if int(primary_counts.get(route_id, 0)) <= 0:
+			print("No AI personality has primary route: %s" % route_id)
+			return false
+	var diversity_summary := String(main.call("_ai_development_route_diversity_summary"))
+	if not diversity_summary.contains("核心路线5/5覆盖") or not diversity_summary.contains("城市成长") or not diversity_summary.contains("金融投机") or not diversity_summary.contains("怪兽压制"):
+		print("AI route diversity summary is incomplete: %s" % diversity_summary)
+		return false
 	if int(main.call("_ai_development_route_bonus", 1, "city_growth")) <= 0:
 		print("First AI profile does not receive a positive city-growth route bonus")
 		return false

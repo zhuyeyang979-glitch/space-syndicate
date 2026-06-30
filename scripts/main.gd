@@ -1303,6 +1303,8 @@ var menu_shell_margin: MarginContainer
 var menu_nav_row: HBoxContainer
 var menu_quick_nav_row: HBoxContainer
 var menu_quick_nav_buttons := {}
+var menu_interaction_hint_panel: PanelContainer
+var menu_interaction_hint_label: Label
 var menu_catalog_nav_row: HBoxContainer
 var menu_title_label: Label
 var menu_context_label: Label
@@ -2426,6 +2428,25 @@ func _build_menu_overlay() -> void:
 	_add_menu_quick_nav_button("rules", "规则", "查看购牌、出牌、竞价、合约、天气和终局规则。", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
 	_add_menu_quick_nav_button("compendium", "图鉴", "进入角色、怪兽、卡牌、商品和区域图鉴。", Callable(self, "_open_compendium_menu"), Color("#f472b6"))
 
+	menu_interaction_hint_panel = PanelContainer.new()
+	menu_interaction_hint_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu_interaction_hint_panel.tooltip_text = "当前页面可用的导航、hover、缩略图、详情页或返回方式。"
+	menu_interaction_hint_panel.add_theme_stylebox_override("panel", _menu_interaction_hint_style())
+	shell.add_child(menu_interaction_hint_panel)
+	var interaction_margin := MarginContainer.new()
+	interaction_margin.add_theme_constant_override("margin_left", 12)
+	interaction_margin.add_theme_constant_override("margin_top", 6)
+	interaction_margin.add_theme_constant_override("margin_right", 12)
+	interaction_margin.add_theme_constant_override("margin_bottom", 6)
+	menu_interaction_hint_panel.add_child(interaction_margin)
+	menu_interaction_hint_label = Label.new()
+	menu_interaction_hint_label.text = "响应式布局｜hover查看用途｜卡片入口可重排｜详情页可返回"
+	menu_interaction_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	menu_interaction_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_interaction_hint_label.add_theme_font_size_override("font_size", 10)
+	menu_interaction_hint_label.add_theme_color_override("font_color", Color("#dbeafe"))
+	interaction_margin.add_child(menu_interaction_hint_label)
+
 	menu_nav_row = HBoxContainer.new()
 	menu_nav_row.add_theme_constant_override("separation", 10)
 	menu_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2552,6 +2573,15 @@ func _menu_surface_style() -> StyleBoxFlat:
 	return style
 
 
+func _menu_interaction_hint_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(Color("#38bdf8"), 0.08)
+	style.border_color = Color("#1d4ed8")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(18)
+	return style
+
+
 func _menu_viewport_size() -> Vector2:
 	return get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
 
@@ -2599,6 +2629,8 @@ func _refresh_menu_layout() -> void:
 		menu_title_label.add_theme_font_size_override("font_size", 24 if compact else (34 if wide else 31))
 	if menu_context_label != null:
 		menu_context_label.add_theme_font_size_override("font_size", 10 if compact else 11)
+	if menu_interaction_hint_label != null:
+		menu_interaction_hint_label.add_theme_font_size_override("font_size", 9 if compact else 10)
 	if menu_body_label != null:
 		menu_body_label.add_theme_font_size_override("font_size", 13 if compact else 15)
 	if menu_nav_row != null:
@@ -5242,6 +5274,45 @@ func _menu_context_text(title_text: String, show_main_actions: bool = false) -> 
 	return "当前位置：%s｜hover查看提示；用返回按钮回到上一级或主菜单。" % title_text
 
 
+func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = false) -> String:
+	if show_main_actions and title_text == "太空辛迪加":
+		return "响应式主菜单｜快捷chips跳分支｜卡片入口可重排｜hover看用途｜复杂规则收进子菜单。"
+	if show_main_actions and title_text == "暂停菜单":
+		return "暂停布局｜继续/复查/查资料/保存分区明确｜hover读用途｜不把长规则塞回主画面。"
+	match title_text:
+		"开局准备":
+			return "开局配置流｜席位、AI、深度、角色、起始怪兽分组展示｜hover看说明｜确认后才开局。"
+		"图鉴":
+			return "图鉴总入口｜先选角色/怪兽/卡牌/商品/区域｜进入后统一使用缩略图、hover预览和详情页。"
+		"卡牌图鉴":
+			if card_codex_show_detail:
+				return "卡牌详情页｜展示卡面、美工、I-IV梯度和字段效果｜顶部上一页/下一页切换｜返回缩略图。"
+			return "卡牌缩略图｜自适应每页行列｜hover或单击看预览｜双击进详情｜筛选按钮可快速换分类。"
+		"怪兽图鉴":
+			if bestiary_show_detail:
+				return "怪兽详情页｜展示临时美工、行动概率、速度和经济偏好｜上一页/下一页切换｜返回缩略图。"
+			return "怪兽缩略图｜自适应网格｜hover或单击看行动预览｜双击进详情｜适合后续替换美术。"
+		"商品图鉴":
+			if product_codex_show_detail:
+				return "商品详情页｜价格、供需、商路、天气和线索集中查看｜上一页/下一页切换｜返回缩略图。"
+			return "商品缩略图｜自适应网格｜hover或单击看价格预览｜双击进详情｜方便测试经济路线。"
+		"角色图鉴":
+			return "角色详情页｜外星角色卡、被动、起始牌和相关跳转集中展示｜按钮切换条目。"
+		"区域图鉴":
+			return "区域详情页｜公开地形、HP、城市、商路和补给集中展示｜按钮切换区域或返回来源。"
+		"游戏规则":
+			return "规则页面｜短卡先讲核心循环｜长规则在滚动区｜按键和细节留在这里，不压主UI。"
+		"经济总览":
+			return "经济页面｜速览卡先给GDP/商品/商路/线索方向｜下方展开证据，不暴露对手隐私。"
+		"情报档案":
+			return "情报页面｜标注、置信度、理由和线索跳转分区管理｜推理归推理，不提前揭示真相。"
+		"局势排名":
+			return "局势页面｜先看目标、现金、城市现金流和反超方向｜终局复盘继续跳经济和图鉴。"
+		"新手引导":
+			return "轻引导｜只保留首召、建城、买牌、出牌、经济总览这些试玩步骤｜完整教程以后再做。"
+	return "通用子菜单｜顶部快捷跳分支｜hover看提示｜返回按钮回上级｜详情页尽量保留切换路径。"
+
+
 func _show_menu(title_text: String, body_text: String, can_continue: bool, show_main_actions: bool = false) -> void:
 	if menu_overlay == null:
 		return
@@ -5253,6 +5324,11 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 	menu_title_label.text = title_text
 	if menu_context_label != null:
 		menu_context_label.text = _menu_context_text(title_text, show_main_actions)
+	if menu_interaction_hint_label != null:
+		menu_interaction_hint_label.text = _menu_interaction_hint_text(title_text, show_main_actions)
+	if menu_interaction_hint_panel != null:
+		menu_interaction_hint_panel.visible = true
+		menu_interaction_hint_panel.tooltip_text = _menu_interaction_hint_text(title_text, show_main_actions)
 	_refresh_menu_quick_nav(title_text)
 	menu_body_label.text = body_text
 	if menu_preview_box != null:
@@ -5837,6 +5913,17 @@ func _add_card_development_route_overview(parent: Container) -> void:
 		return
 	var preference_coverage := _ai_development_route_preference_audit()
 	parent.add_child(_plain_label("卡牌路线总览：先按路线理解卡池，再进入缩略图挑具体卡牌。", 12, Color("#dbeafe")))
+	var diversity_audit := _ai_development_route_diversity_audit()
+	_add_menu_info_card(
+		parent,
+		"AI发展路线覆盖",
+		"%s\n这些路线都会把最终目标落到钱：稳定GDP、合约商路、限时投机、怪兽/天气/新闻压制，以及情报/补给降低误判。" % _ai_development_route_diversity_summary(),
+		Color("#a78bfa"),
+		"已覆盖核心路线:%d/%d｜测试目标：AI至少具备4-5种可追钱路线。" % [
+			int(diversity_audit.get("covered_core_route_count", 0)),
+			int(diversity_audit.get("core_route_count", 0)),
+		]
+	)
 	var grid := GridContainer.new()
 	grid.columns = _menu_summary_grid_columns()
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -7663,9 +7750,16 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		], 11, Color("#bfdbfe"))
 		player_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(player_label)
+		var ai_route_note := ""
+		if seat_type == "ai":
+			var primary_route := _ai_profile_primary_development_route(ai_profile)
+			ai_route_note = "｜AI策略：%s｜主路线：%s" % [
+				String(ai_profile.get("style", "")),
+				String(primary_route.get("label", "未定")),
+			]
 		var passive_label := _plain_label("角色被动：%s%s" % [
 			_role_passive_text(role_card),
-			"｜AI策略：%s" % String(ai_profile.get("style", "")) if seat_type == "ai" else "",
+			ai_route_note,
 		], 10, Color("#fde68a"))
 		passive_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(passive_label)
@@ -12915,6 +13009,101 @@ func _ai_development_route_preference_audit() -> Dictionary:
 			if float(preferences.get(route_id, 1.0)) > 1.001:
 				coverage[route_id] = int(coverage.get(route_id, 0)) + 1
 	return coverage
+
+
+func _ai_profile_primary_development_route(profile: Dictionary) -> Dictionary:
+	var preferences_variant: Variant = profile.get("route_preferences", {})
+	if not (preferences_variant is Dictionary):
+		return {}
+	var preferences := preferences_variant as Dictionary
+	var best_route := ""
+	var best_bias := 1.0
+	for route_variant in preferences.keys():
+		var route_id := String(route_variant)
+		var bias := float(preferences.get(route_id, 1.0))
+		if bias > best_bias:
+			best_bias = bias
+			best_route = route_id
+	if best_route == "":
+		return {}
+	return {
+		"route_id": best_route,
+		"label": _development_route_label(best_route),
+		"bias": best_bias,
+	}
+
+
+func _ai_development_route_diversity_audit() -> Dictionary:
+	var core_routes := []
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if bool(route.get("required_for_ai_baseline", false)):
+			core_routes.append(String(route.get("id", "")))
+	var primary_counts := {}
+	var profile_entries := []
+	for profile_variant in AI_PERSONALITY_CATALOG:
+		var profile: Dictionary = profile_variant
+		var primary := _ai_profile_primary_development_route(profile)
+		var route_id := String(primary.get("route_id", ""))
+		if route_id != "":
+			primary_counts[route_id] = int(primary_counts.get(route_id, 0)) + 1
+		var secondary_routes := []
+		var preferences_variant: Variant = profile.get("route_preferences", {})
+		if preferences_variant is Dictionary:
+			var preferences := preferences_variant as Dictionary
+			for route_variant in preferences.keys():
+				var secondary_id := String(route_variant)
+				if secondary_id == route_id:
+					continue
+				if float(preferences.get(secondary_id, 1.0)) > 1.001:
+					secondary_routes.append(_development_route_label(secondary_id))
+		profile_entries.append({
+			"profile": String(profile.get("name", "AI")),
+			"style": String(profile.get("style", "")),
+			"primary_route": route_id,
+			"primary_label": String(primary.get("label", "未定")),
+			"primary_bias": float(primary.get("bias", 1.0)),
+			"secondary_routes": secondary_routes,
+		})
+	var covered_core_routes := []
+	var missing_core_routes := []
+	for route_variant in core_routes:
+		var route_id := String(route_variant)
+		if int(primary_counts.get(route_id, 0)) > 0:
+			covered_core_routes.append(route_id)
+		else:
+			missing_core_routes.append(route_id)
+	return {
+		"profile_count": AI_PERSONALITY_CATALOG.size(),
+		"core_route_count": core_routes.size(),
+		"covered_core_route_count": covered_core_routes.size(),
+		"core_routes": core_routes,
+		"covered_core_routes": covered_core_routes,
+		"missing_core_routes": missing_core_routes,
+		"primary_counts": primary_counts,
+		"profiles": profile_entries,
+	}
+
+
+func _ai_development_route_diversity_summary() -> String:
+	var audit := _ai_development_route_diversity_audit()
+	var counts := audit.get("primary_counts", {}) as Dictionary
+	var pieces := []
+	for route_variant in (audit.get("core_routes", []) as Array):
+		var route_id := String(route_variant)
+		var count := int(counts.get(route_id, 0))
+		if count > 0:
+			pieces.append("%s×%d" % [_development_route_label(route_id), count])
+	var missing_labels := []
+	for route_variant in (audit.get("missing_core_routes", []) as Array):
+		missing_labels.append(_development_route_label(String(route_variant)))
+	return "%d类AI性格｜核心路线%d/%d覆盖｜主偏好:%s%s" % [
+		int(audit.get("profile_count", 0)),
+		int(audit.get("covered_core_route_count", 0)),
+		int(audit.get("core_route_count", 0)),
+		" / ".join(pieces) if not pieces.is_empty() else "暂无",
+		"" if missing_labels.is_empty() else "｜缺口:%s" % " / ".join(missing_labels),
+	]
 
 
 func _card_key_rule_facts(skill: Dictionary) -> Array:
