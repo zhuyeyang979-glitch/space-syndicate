@@ -754,6 +754,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("价格梯度") and menu_body_label.text.contains("当前价"), "product codex shows product price and tier information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气"), "product codex shows product growth and flow weather")
 	_expect(menu_body_label != null and menu_body_label.text.contains("策略摘要") and menu_body_label.text.contains("期货/仓储") and menu_body_label.text.contains("怪兽偏好") and menu_body_label.text.contains("相关卡牌"), "product codex shows strategy, futures, monster, and related-card panels")
+	_expect(menu_body_label != null and menu_body_label.text.contains("【商品卡】") and menu_body_label.text.contains("【市场面板】") and menu_body_label.text.contains("【策略面板】") and menu_body_label.text.contains("【金融与天气】") and menu_body_label.text.contains("【生态与卡牌】"), "product detail uses TCG-style readable strategy sections")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品相关城市线索"), "product codex can filter city clues by product")
 	_expect(product_codex_back_button != null and product_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "product detail exposes previous/next and a return-to-thumbnails button")
 	main.call("_back_from_catalog_menu")

@@ -6970,29 +6970,35 @@ func _product_codex_preview_text(product_name: String) -> String:
 	var profile := _product_profile(product_name)
 	var price := _product_price(product_name)
 	var base_price := int(entry.get("base_price", price))
-	return "商品目录:%s/%s｜地形:%s｜策略用途:%s｜机制钩子:%s｜临时美工:%s｜当前价¥%d｜基准¥%d｜价格梯度:%s｜供给%d/需求%d/断路%d/波动%d｜策略:%s｜期货仓储:%s｜怪兽:%s｜相关卡:%s｜天气:%s｜供给区:%s｜需求区:%s｜城市线索:%s" % [
-		String(profile.get("category", "商品")),
-		String(profile.get("route", "商业线")),
-		String(profile.get("terrain", "通用")),
-		String(profile.get("use", "")),
-		String(profile.get("hook", "")),
-		String(profile.get("glyph", "◇")),
-		price,
-		base_price,
-		String(entry.get("tier", _product_tier(product_name))),
-		int(entry.get("supply", 0)),
-		int(entry.get("demand", 0)),
-		int(entry.get("disrupted", 0)),
-		int(entry.get("volatility", 0)),
-		_product_strategy_summary_text(product_name),
-		_product_futures_warehouse_codex_text(product_name, true),
-		_product_monster_focus_strategy_text(product_name, true),
-		_product_related_card_names(product_name, 4),
-		_product_market_boon_text(product_name),
-		_product_related_district_names(product_name, "products", 3),
-		_product_related_district_names(product_name, "demands", 3),
-		_product_clue_preview_text(product_name),
-	]
+	return "\n".join([
+		"商品目录：%s / %s｜地形：%s｜临时美工：%s" % [
+			String(profile.get("category", "商品")),
+			String(profile.get("route", "商业线")),
+			String(profile.get("terrain", "通用")),
+			String(profile.get("glyph", "◇")),
+		],
+		"价格梯度：%s｜当前价¥%d｜基准¥%d｜供%d 需%d 断%d 波%d" % [
+			String(entry.get("tier", _product_tier(product_name))),
+			price,
+			base_price,
+			int(entry.get("supply", 0)),
+			int(entry.get("demand", 0)),
+			int(entry.get("disrupted", 0)),
+			int(entry.get("volatility", 0)),
+		],
+		"策略:%s" % _product_strategy_summary_text(product_name),
+		"期货仓储：%s" % _product_futures_warehouse_codex_text(product_name, true),
+		"怪兽：%s" % _product_monster_focus_strategy_text(product_name, true),
+		"相关卡：%s" % _product_related_card_names(product_name, 4),
+		"天气：%s" % _short_card_text(_product_market_boon_text(product_name), 84),
+		"供给区：%s｜需求区：%s" % [
+			_product_related_district_names(product_name, "products", 3),
+			_product_related_district_names(product_name, "demands", 3),
+		],
+		"城市线索：%s" % _product_clue_preview_text(product_name),
+		"用途：%s" % _short_card_text(String(profile.get("use", "")), 92),
+		"机制钩子：%s" % _short_card_text(String(profile.get("hook", "")), 92),
+	])
 
 
 func _product_strategy_scores(product_name: String) -> Dictionary:
@@ -8217,45 +8223,69 @@ func _product_related_city_names(product_name: String, field_name: String, limit
 func _product_codex_text(product_name: String, index: int, total: int) -> String:
 	_ensure_product_market_catalog()
 	var entry: Dictionary = product_market.get(product_name, {})
+	var profile := _product_profile(product_name)
 	var current_price := _product_price(product_name)
 	var base_price := int(entry.get("base_price", current_price))
 	var tier_text := String(entry.get("tier", _product_tier(product_name)))
 	var lines := []
 	var base_gap := current_price - base_price
-	lines.append("第%d/%d种｜%s｜%s｜当前价 ¥%d｜基准价 ¥%d｜偏离 %s｜趋势 %s" % [
+	lines.append("【商品卡】第%d/%d种｜%s｜%s｜%s｜地形:%s" % [
 		index + 1,
 		total,
 		product_name,
 		tier_text,
+		String(profile.get("category", "商品")),
+		String(profile.get("terrain", "通用")),
+	])
+	lines.append("卡面符号：%s｜商业线：%s" % [
+		String(profile.get("glyph", "◇")),
+		String(profile.get("route", "商业线")),
+	])
+	lines.append("")
+	lines.append("【市场面板】")
+	lines.append("- 当前价 ¥%d｜基准价 ¥%d｜偏离 %s｜趋势 %s" % [
 		current_price,
 		base_price,
 		_signed_int_text(base_gap),
 		_product_trend_text(product_name),
 	])
-	lines.append("市场计数：公开供给%d｜公开需求%d｜断损商路%d｜波动%d。" % [
+	lines.append("- 市场计数：公开供给%d｜公开需求%d｜断损商路%d｜波动%d。" % [
 		int(entry.get("supply", 0)),
 		int(entry.get("demand", 0)),
 		int(entry.get("disrupted", 0)),
 		int(entry.get("volatility", 0)),
 	])
-	lines.append("近期价格：%s。" % _product_price_path_text(entry))
-	lines.append("经济天气：%s。" % _product_market_boon_text(product_name))
-	lines.append("策略摘要：%s。" % _product_strategy_summary_text(product_name))
-	lines.append("期货/仓储：%s。" % _product_futures_warehouse_codex_text(product_name))
-	lines.append("怪兽偏好：%s。" % _product_monster_focus_strategy_text(product_name))
-	lines.append("相关卡牌：%s" % _product_related_card_names(product_name, 10))
-	lines.append("本地供给区域：%s" % _product_related_district_names(product_name, "products"))
-	lines.append("本地需求区域：%s" % _product_related_district_names(product_name, "demands"))
-	lines.append("城市生产：%s" % _product_related_city_names(product_name, "products"))
-	lines.append("城市需求：%s" % _product_related_city_names(product_name, "demands"))
+	lines.append("- 近期价格：%s。" % _product_price_path_text(entry))
+	lines.append("- 价格梯度：%s。" % _product_tier_summary())
+	lines.append("")
+	lines.append("【策略面板】")
+	lines.append("- 策略摘要：%s。" % _product_strategy_summary_text(product_name))
+	lines.append("- 策略用途：%s" % String(profile.get("use", "观察供需、合约、仓储和怪兽偏好。")))
+	lines.append("- 机制钩子：%s" % String(profile.get("hook", "当前没有额外机制说明。")))
+	lines.append("")
+	lines.append("【金融与天气】")
+	lines.append("- 经济天气：%s。" % _product_market_boon_text(product_name))
+	lines.append("- 期货/仓储：%s。" % _product_futures_warehouse_codex_text(product_name))
+	lines.append("")
+	lines.append("【生态与卡牌】")
+	lines.append("- 怪兽偏好：%s。" % _product_monster_focus_strategy_text(product_name))
+	lines.append("- 相关卡牌：%s" % _product_related_card_names(product_name, 10))
+	lines.append("")
+	lines.append("【地图入口】")
+	lines.append("- 本地供给区域：%s" % _product_related_district_names(product_name, "products"))
+	lines.append("- 本地需求区域：%s" % _product_related_district_names(product_name, "demands"))
+	lines.append("- 城市生产：%s" % _product_related_city_names(product_name, "products"))
+	lines.append("- 城市需求：%s" % _product_related_city_names(product_name, "demands"))
+	lines.append("")
 	var product_clue_entries := _economy_city_public_clue_entries(4, product_name)
-	lines.append("商品相关城市线索：")
+	lines.append("【商品相关城市线索】")
 	if product_clue_entries.is_empty():
 		lines.append("- 暂无与%s直接相关的城市公开线索。" % product_name)
 	else:
 		for clue_entry in product_clue_entries:
 			lines.append("- %s" % _economy_city_public_clue_line(clue_entry as Dictionary))
-	lines.append("价格梯度：%s。供给越多越便宜，需求和断路越多越贵；每次全局市场刷新会按本局经济状态重新修正。" % _product_tier_summary())
+	lines.append("")
+	lines.append("【规则提示】供给越多越便宜，需求和断路越多越贵；每次全局市场刷新会按本局经济状态重新修正。图鉴只显示公开证据，不公开玩家身份、现金、手牌或 AI 内部路线。")
 	return "\n".join(lines)
 
 
