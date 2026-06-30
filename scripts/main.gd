@@ -1296,6 +1296,11 @@ var weather_impact_label: Label
 var map_view: Control
 var player_box: VBoxContainer
 var menu_overlay: Control
+var menu_surface_panel: PanelContainer
+var menu_content_scroll: ScrollContainer
+var menu_content_box: VBoxContainer
+var menu_nav_row: HBoxContainer
+var menu_catalog_nav_row: HBoxContainer
 var menu_title_label: Label
 var menu_body_label: Label
 var menu_preview_box: VBoxContainer
@@ -2355,86 +2360,116 @@ func _add_map_action_controls(toolbar: HBoxContainer) -> void:
 
 func _build_menu_overlay() -> void:
 	var shade := ColorRect.new()
-	shade.color = Color(0.02, 0.04, 0.08, 0.88)
+	shade.color = Color(0.01, 0.015, 0.035, 0.92)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_STOP
 	shade.visible = false
 	menu_overlay = shade
 	add_child(shade)
 
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_child(center)
-
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(720, 0)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#0f172a")
-	style.border_color = Color("#38bdf8")
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(12)
-	panel.add_theme_stylebox_override("panel", style)
-	center.add_child(panel)
+	panel.anchor_left = 0.07
+	panel.anchor_top = 0.055
+	panel.anchor_right = 0.93
+	panel.anchor_bottom = 0.945
+	panel.offset_left = 0
+	panel.offset_top = 0
+	panel.offset_right = 0
+	panel.offset_bottom = 0
+	panel.custom_minimum_size = Vector2(760, 520)
+	panel.add_theme_stylebox_override("panel", _menu_surface_style())
+	menu_surface_panel = panel
+	shade.add_child(panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_bottom", 24)
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_bottom", 18)
 	panel.add_child(margin)
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
-	margin.add_child(box)
+	var shell := VBoxContainer.new()
+	shell.add_theme_constant_override("separation", 12)
+	shell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shell.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(shell)
 
 	menu_title_label = Label.new()
 	menu_title_label.text = "Space Syndicate"
 	menu_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	menu_title_label.add_theme_font_size_override("font_size", 30)
+	menu_title_label.add_theme_font_size_override("font_size", 31)
 	menu_title_label.add_theme_color_override("font_color", Color("#f8fafc"))
-	box.add_child(menu_title_label)
+	shell.add_child(menu_title_label)
 
-	var menu_nav := HBoxContainer.new()
-	menu_nav.add_theme_constant_override("separation", 10)
-	box.add_child(menu_nav)
+	menu_nav_row = HBoxContainer.new()
+	menu_nav_row.add_theme_constant_override("separation", 10)
+	menu_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	shell.add_child(menu_nav_row)
 
 	menu_continue_button = Button.new()
 	menu_continue_button.text = "继续游戏"
+	_style_menu_button(menu_continue_button, Color("#22c55e"), true)
 	menu_continue_button.pressed.connect(Callable(self, "_close_menu"))
-	menu_nav.add_child(menu_continue_button)
+	menu_nav_row.add_child(menu_continue_button)
 
 	menu_back_button = Button.new()
 	menu_back_button.text = "返回主菜单"
+	_style_menu_button(menu_back_button, Color("#38bdf8"))
 	menu_back_button.pressed.connect(Callable(self, "_open_main_menu"))
-	menu_nav.add_child(menu_back_button)
+	menu_nav_row.add_child(menu_back_button)
 
-	var bestiary_nav := HBoxContainer.new()
-	bestiary_nav.add_theme_constant_override("separation", 8)
-	box.add_child(bestiary_nav)
+	menu_catalog_nav_row = HBoxContainer.new()
+	menu_catalog_nav_row.add_theme_constant_override("separation", 8)
+	menu_catalog_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	shell.add_child(menu_catalog_nav_row)
 
 	menu_bestiary_prev_button = Button.new()
 	menu_bestiary_prev_button.text = "上一个"
+	_style_menu_button(menu_bestiary_prev_button, Color("#93c5fd"))
 	menu_bestiary_prev_button.pressed.connect(Callable(self, "_cycle_menu_catalog").bind(-1))
-	bestiary_nav.add_child(menu_bestiary_prev_button)
+	menu_catalog_nav_row.add_child(menu_bestiary_prev_button)
 
 	menu_bestiary_next_button = Button.new()
 	menu_bestiary_next_button.text = "下一个"
+	_style_menu_button(menu_bestiary_next_button, Color("#93c5fd"))
 	menu_bestiary_next_button.pressed.connect(Callable(self, "_cycle_menu_catalog").bind(1))
-	bestiary_nav.add_child(menu_bestiary_next_button)
+	menu_catalog_nav_row.add_child(menu_bestiary_next_button)
 
 	menu_bestiary_back_button = Button.new()
 	menu_bestiary_back_button.text = "返回主菜单"
+	_style_menu_button(menu_bestiary_back_button, Color("#facc15"))
 	menu_bestiary_back_button.pressed.connect(Callable(self, "_back_from_catalog_menu"))
-	bestiary_nav.add_child(menu_bestiary_back_button)
+	menu_catalog_nav_row.add_child(menu_bestiary_back_button)
 	menu_bestiary_prev_button.visible = false
 	menu_bestiary_next_button.visible = false
 	menu_bestiary_back_button.visible = false
+
+	menu_content_scroll = ScrollContainer.new()
+	menu_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu_content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	menu_content_scroll.follow_focus = true
+	shell.add_child(menu_content_scroll)
+
+	var content_margin := MarginContainer.new()
+	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_margin.add_theme_constant_override("margin_left", 2)
+	content_margin.add_theme_constant_override("margin_top", 2)
+	content_margin.add_theme_constant_override("margin_right", 8)
+	content_margin.add_theme_constant_override("margin_bottom", 8)
+	menu_content_scroll.add_child(content_margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu_content_box = box
+	content_margin.add_child(box)
 
 	menu_body_label = Label.new()
 	menu_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	menu_body_label.add_theme_font_size_override("font_size", 15)
 	menu_body_label.add_theme_color_override("font_color", Color("#cbd5e1"))
+	menu_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(menu_body_label)
 
 	menu_preview_box = VBoxContainer.new()
@@ -2482,18 +2517,58 @@ func _menu_card_style(accent: Color, fill: Color = Color("#0b1220"), border_widt
 	return style
 
 
+func _menu_surface_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#07111f").lerp(Color("#1e1b4b"), 0.20)
+	style.border_color = Color("#38bdf8")
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(20)
+	return style
+
+
+func _style_menu_button(button: Button, accent: Color = Color("#38bdf8"), primary: bool = false) -> void:
+	button.custom_minimum_size = Vector2(124 if not primary else 142, 34)
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.add_theme_stylebox_override("normal", _menu_card_style(accent, Color("#0b1220").lerp(accent, 0.18 if primary else 0.09), 1, 16))
+	button.add_theme_stylebox_override("hover", _menu_card_style(accent.lightened(0.18), Color("#0f172a").lerp(accent, 0.24 if primary else 0.16), 2, 16))
+	button.add_theme_stylebox_override("pressed", _menu_card_style(accent.lightened(0.28), Color("#020617").lerp(accent, 0.32 if primary else 0.22), 2, 16))
+	button.add_theme_stylebox_override("focus", _menu_card_style(Color("#fef3c7"), Color("#0b1220").lerp(accent, 0.18), 2, 16))
+	button.add_theme_stylebox_override("disabled", _menu_card_style(Color("#334155"), Color("#020617"), 1, 16))
+	button.add_theme_color_override("font_color", Color("#f8fafc"))
+	button.add_theme_color_override("font_hover_color", Color("#ffffff"))
+	button.add_theme_color_override("font_pressed_color", Color("#ffffff"))
+	button.add_theme_color_override("font_disabled_color", Color("#64748b"))
+
+
+func _menu_section_style() -> StyleBoxFlat:
+	return _menu_card_style(Color("#1d4ed8"), Color("#020617").lerp(Color("#38bdf8"), 0.05), 1, 14)
+
+
 func _add_main_menu_section(parent: Container, title_text: String, detail_text: String = "") -> void:
+	var panel := PanelContainer.new()
+	panel.tooltip_text = detail_text
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _menu_section_style())
+	parent.add_child(panel)
+	menu_regular_buttons.append(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	margin.add_child(box)
 	var label := _plain_label("◆ %s" % title_text, 12, Color("#93c5fd"))
 	label.tooltip_text = detail_text
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(label)
-	menu_regular_buttons.append(label)
+	box.add_child(label)
 	if detail_text != "":
 		var detail := _plain_label(detail_text, 10, Color("#64748b"))
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		parent.add_child(detail)
-		menu_regular_buttons.append(detail)
+		box.add_child(detail)
 
 
 func _add_main_menu_action(parent: Container, button_text: String, detail_text: String, target: Callable, accent: Color = Color("#38bdf8")) -> Dictionary:
@@ -2526,6 +2601,7 @@ func _add_menu_action_card(parent: Container, button_text: String, detail_text: 
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.tooltip_text = detail_text
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_style_menu_button(button, accent)
 	button.pressed.connect(target)
 	box.add_child(button)
 
@@ -3962,6 +4038,7 @@ func _open_compendium_menu() -> void:
 		_add_compendium_menu_button("区域图鉴", "查看本局每个区域的地形、供需、城市公开状态和可提供卡牌。", Callable(self, "_open_region_codex_menu"))
 		var back_button := Button.new()
 		back_button.text = "返回主菜单"
+		_style_menu_button(back_button, Color("#38bdf8"))
 		back_button.pressed.connect(Callable(self, "_open_main_menu"))
 		menu_preview_box.add_child(back_button)
 
@@ -4564,6 +4641,8 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 	if menu_preview_box != null:
 		_clear_children(menu_preview_box)
 		menu_preview_box.visible = false
+	if menu_content_scroll != null:
+		menu_content_scroll.scroll_vertical = 0
 	menu_continue_button.disabled = not can_continue
 	menu_continue_button.visible = true
 	if menu_back_button != null:
@@ -4858,6 +4937,7 @@ func _populate_bestiary_thumbnail_page(parent: Container) -> void:
 	var previous_button := Button.new()
 	previous_button.text = "缩略图上一页"
 	previous_button.disabled = page_count <= 1
+	_style_menu_button(previous_button, Color("#fb7185"))
 	previous_button.pressed.connect(Callable(self, "_turn_bestiary_grid_page").bind(-1))
 	nav_row.add_child(previous_button)
 	var page_label := _plain_label("第%d/%d页｜%d只怪兽｜本页%d-%d" % [
@@ -4873,6 +4953,7 @@ func _populate_bestiary_thumbnail_page(parent: Container) -> void:
 	var next_button := Button.new()
 	next_button.text = "缩略图下一页"
 	next_button.disabled = page_count <= 1
+	_style_menu_button(next_button, Color("#fb7185"))
 	next_button.pressed.connect(Callable(self, "_turn_bestiary_grid_page").bind(1))
 	nav_row.add_child(next_button)
 
@@ -5168,6 +5249,7 @@ func _populate_card_codex_thumbnail_page(parent: Container, names: Array) -> voi
 	var previous_button := Button.new()
 	previous_button.text = "缩略图上一页"
 	previous_button.disabled = page_count <= 1
+	_style_menu_button(previous_button, Color("#93c5fd"))
 	previous_button.pressed.connect(Callable(self, "_turn_card_codex_grid_page").bind(-1))
 	nav_row.add_child(previous_button)
 	var page_label := _plain_label("第%d/%d页｜%d张卡｜本页%d-%d" % [
@@ -5183,6 +5265,7 @@ func _populate_card_codex_thumbnail_page(parent: Container, names: Array) -> voi
 	var next_button := Button.new()
 	next_button.text = "缩略图下一页"
 	next_button.disabled = page_count <= 1
+	_style_menu_button(next_button, Color("#93c5fd"))
 	next_button.pressed.connect(Callable(self, "_turn_card_codex_grid_page").bind(1))
 	nav_row.add_child(next_button)
 
@@ -5343,6 +5426,7 @@ func _add_role_starter_links(parent: Container, role_card: Dictionary) -> void:
 	card_button.text = "%s｜¥%d｜点击查看卡牌图鉴" % [_card_display_name(card_name), _card_price(card_name)]
 	card_button.tooltip_text = _card_detail_tooltip(card_name)
 	card_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_style_menu_button(card_button, Color("#f472b6"))
 	card_button.pressed.connect(Callable(self, "_open_role_starter_card_in_codex").bind(card_name))
 	parent.add_child(card_button)
 
@@ -5351,6 +5435,7 @@ func _add_role_starter_links(parent: Container, role_card: Dictionary) -> void:
 	monster_button.text = "%s｜查看怪兽图鉴" % monster_name
 	monster_button.tooltip_text = "跳到怪兽图鉴查看%s的自动行动概率、资源偏好、生命/速度和伤害数据。" % monster_name
 	monster_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_style_menu_button(monster_button, Color("#fb7185"))
 	monster_button.pressed.connect(Callable(self, "_open_role_starter_monster_in_bestiary").bind(monster_index))
 	parent.add_child(monster_button)
 
@@ -5500,6 +5585,7 @@ func _populate_product_codex_thumbnail_page(parent: Container) -> void:
 	var previous_button := Button.new()
 	previous_button.text = "缩略图上一页"
 	previous_button.disabled = page_count <= 1
+	_style_menu_button(previous_button, Color("#facc15"))
 	previous_button.pressed.connect(Callable(self, "_turn_product_codex_grid_page").bind(-1))
 	nav_row.add_child(previous_button)
 	var page_label := _plain_label("第%d/%d页｜%d种商品｜本页%d-%d" % [
@@ -5515,6 +5601,7 @@ func _populate_product_codex_thumbnail_page(parent: Container) -> void:
 	var next_button := Button.new()
 	next_button.text = "缩略图下一页"
 	next_button.disabled = page_count <= 1
+	_style_menu_button(next_button, Color("#facc15"))
 	next_button.pressed.connect(Callable(self, "_turn_product_codex_grid_page").bind(1))
 	nav_row.add_child(next_button)
 
@@ -5861,6 +5948,7 @@ func _add_card_codex_filter_buttons(parent: Container) -> void:
 		button.toggle_mode = true
 		button.button_pressed = filter_id == card_codex_filter
 		button.tooltip_text = "切换到%s分类。" % label
+		_style_menu_button(button, _menu_action_accent_for_text(label))
 		button.disabled = count <= 0
 		button.pressed.connect(Callable(self, "_set_card_codex_filter").bind(filter_id))
 		row.add_child(button)
@@ -5932,6 +6020,7 @@ func _add_bestiary_special_card_links(parent: Container, cards: Array) -> void:
 		button.text = "%s｜¥%d" % [card_name, _card_price(card_name)]
 		button.tooltip_text = _card_detail_tooltip(card_name)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		_style_menu_button(button, Color("#f472b6"))
 		button.pressed.connect(Callable(self, "_open_card_codex_by_name").bind(card_name))
 		grid.add_child(button)
 
@@ -5946,6 +6035,7 @@ func _add_bestiary_monster_card_link(parent: Container, catalog_index: int) -> v
 	button.text = "%s｜¥%d" % [_card_display_name(card_name), _card_price(card_name)]
 	button.tooltip_text = _card_detail_tooltip(card_name)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_style_menu_button(button, Color("#f472b6"))
 	button.pressed.connect(Callable(self, "_open_card_codex_by_name").bind(card_name))
 	parent.add_child(button)
 
@@ -6847,6 +6937,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		player_button.text = "%d席" % count
 		player_button.toggle_mode = true
 		player_button.button_pressed = count == configured_player_count
+		_style_menu_button(player_button, Color("#38bdf8"))
 		player_button.pressed.connect(Callable(self, "_set_configured_player_count_from_new_game_menu").bind(count))
 		player_row.add_child(player_button)
 
@@ -6860,6 +6951,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		ai_button.text = "%d AI" % count
 		ai_button.toggle_mode = true
 		ai_button.button_pressed = count == configured_ai_player_count
+		_style_menu_button(ai_button, Color("#c084fc"))
 		ai_button.pressed.connect(Callable(self, "_set_configured_ai_player_count_from_new_game_menu").bind(count))
 		ai_row.add_child(ai_button)
 
@@ -6873,6 +6965,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		depth_button.toggle_mode = true
 		depth_button.button_pressed = depth == configured_roguelike_depth
 		depth_button.tooltip_text = _roguelike_planet_profile_text(depth)
+		_style_menu_button(depth_button, Color("#facc15"))
 		depth_button.pressed.connect(Callable(self, "_set_configured_roguelike_depth_from_new_game_menu").bind(depth))
 		depth_row.add_child(depth_button)
 
@@ -6918,6 +7011,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		role_panel.add_child(role_choice_row)
 		var previous_role_button := Button.new()
 		previous_role_button.text = "上一个角色"
+		_style_menu_button(previous_role_button, Color("#c084fc"))
 		previous_role_button.pressed.connect(Callable(self, "_cycle_configured_role_for_player_from_new_game_menu").bind(i, -1))
 		role_choice_row.add_child(previous_role_button)
 		var role_name_label := _plain_label("当前：%s" % String(role_card.get("name", "外星辛迪加")), 10, Color("#e0f2fe"))
@@ -6926,6 +7020,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		role_choice_row.add_child(role_name_label)
 		var next_role_button := Button.new()
 		next_role_button.text = "下一个角色"
+		_style_menu_button(next_role_button, Color("#c084fc"))
 		next_role_button.pressed.connect(Callable(self, "_cycle_configured_role_for_player_from_new_game_menu").bind(i, 1))
 		role_choice_row.add_child(next_role_button)
 		var monster_choice_row := HBoxContainer.new()
@@ -6933,6 +7028,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		role_panel.add_child(monster_choice_row)
 		var previous_monster_button := Button.new()
 		previous_monster_button.text = "上一个起始怪兽"
+		_style_menu_button(previous_monster_button, Color("#fb7185"))
 		previous_monster_button.pressed.connect(Callable(self, "_cycle_configured_starter_monster_for_player_from_new_game_menu").bind(i, -1))
 		monster_choice_row.add_child(previous_monster_button)
 		var monster_name_label := _plain_label("起始怪兽：%s" % String(role_card.get("starter_monster_name", "怪兽")), 10, Color("#fecaca"))
@@ -6941,6 +7037,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		monster_choice_row.add_child(monster_name_label)
 		var next_monster_button := Button.new()
 		next_monster_button.text = "下一个起始怪兽"
+		_style_menu_button(next_monster_button, Color("#fb7185"))
 		next_monster_button.pressed.connect(Callable(self, "_cycle_configured_starter_monster_for_player_from_new_game_menu").bind(i, 1))
 		monster_choice_row.add_child(next_monster_button)
 		var card_row := HBoxContainer.new()
@@ -6961,10 +7058,12 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 	parent.add_child(action_row)
 	var start_button := Button.new()
 	start_button.text = "开始本局"
+	_style_menu_button(start_button, Color("#22c55e"), true)
 	start_button.pressed.connect(Callable(self, "_confirm_start_new_run_from_setup"))
 	action_row.add_child(start_button)
 	var back_button := Button.new()
 	back_button.text = "返回主菜单"
+	_style_menu_button(back_button, Color("#38bdf8"))
 	back_button.pressed.connect(Callable(self, "_open_main_menu"))
 	action_row.add_child(back_button)
 

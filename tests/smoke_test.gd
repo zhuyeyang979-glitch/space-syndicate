@@ -400,13 +400,19 @@ func _run() -> void:
 	var menu_bestiary_prev_button := main.get("menu_bestiary_prev_button") as Button
 	var menu_bestiary_next_button := main.get("menu_bestiary_next_button") as Button
 	var menu_preview_box := main.get("menu_preview_box") as VBoxContainer
+	var menu_surface_panel := main.get("menu_surface_panel") as PanelContainer
+	var menu_content_scroll := main.get("menu_content_scroll") as ScrollContainer
+	var menu_content_box := main.get("menu_content_box") as VBoxContainer
 	main.call("_open_main_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加", "main menu opens with the root title")
+	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
+	_expect(menu_content_scroll != null and menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column")
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
 	_expect(menu_body_label != null and menu_body_label.text.contains("游戏规则") and not menu_body_label.text.contains("快捷键："), "main menu keeps detailed controls inside the rules branch")
 	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "开局准备"), "main menu routes new games through a setup preview branch")
 	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "设置3-8席") and _container_label_text_contains(menu_overlay, "hover预览"), "main menu uses descriptive card-style action entries")
+	_expect(menu_overlay != null and _container_button_has_stylebox(menu_overlay, "hover") and _container_button_has_stylebox(menu_overlay, "pressed"), "menu buttons expose reusable hover and pressed visual states")
 	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "情报档案"), "main menu exposes the intel dossier branch")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "选择四怪兽"), "main menu no longer exposes a separate monster-selection branch")
 	_expect(menu_back_button != null and not menu_back_button.visible, "root menu does not show a redundant back button")
@@ -4173,6 +4179,15 @@ func _container_button_tooltip_contains(container: Node, needle: String) -> bool
 		if child is Button and String((child as Button).tooltip_text).contains(needle):
 			return true
 		if child is Node and _container_button_tooltip_contains(child, needle):
+			return true
+	return false
+
+
+func _container_button_has_stylebox(container: Node, style_name: String) -> bool:
+	for child in container.get_children():
+		if child is Button and (child as Button).has_theme_stylebox_override(style_name):
+			return true
+		if child is Node and _container_button_has_stylebox(child, style_name):
 			return true
 	return false
 
