@@ -10,11 +10,20 @@ const DEFAULT_PLAYER_COUNT := 4
 const MIN_AI_PLAYER_COUNT := 2
 const MAX_AI_PLAYER_COUNT := 7
 const DEFAULT_AI_PLAYER_COUNT := 3
+const ROGUELIKE_DEPTH_MIN := 1
+const ROGUELIKE_DEPTH_MAX := 6
+const DEFAULT_ROGUELIKE_DEPTH := 1
+const ROGUELIKE_CASH_GOAL_BASE := 2200
+const ROGUELIKE_CASH_GOAL_STEP := 1400
 const AI_CARD_DECISION_INTERVAL_SECONDS := 2.2
 const AI_AUCTION_REACTION_INTERVAL_SECONDS := 0.7
+const AI_INTEL_DECISION_INTERVAL_SECONDS := 5.5
 const AI_CARD_BUY_MIN_CASH_RESERVE := 260
 const AI_DECISION_SAMPLE_LIMIT := 48
 const AI_CANDIDATE_SAMPLE_LIMIT := 8
+const AI_INTEL_MIN_CITY_SCORE := 78
+const AI_INTEL_MIN_CARD_SCORE := 125
+const AI_INTEL_ACTIONS_PER_TICK := 2
 const MAP_WIDTH_METERS := 1400.0
 const MAP_HEIGHT_METERS := 950.0
 const MAP_SITE_MARGIN_METERS := 70.0
@@ -94,6 +103,7 @@ const CITY_GUESS_REASON_PRODUCT := "product"
 const CITY_GUESS_REASON_ROUTE := "route"
 const CITY_GUESS_REASON_CARD := "card"
 const CITY_GUESS_REASON_MONSTER := "monster"
+const CITY_GUESS_REASON_ROLE := "role"
 const CITY_GUESS_REASON_INTUITION := "intuition"
 const CITY_GUESS_REASON_DEFAULT := CITY_GUESS_REASON_INTUITION
 const RIVAL_AUTO_BUILD_CHANCE_PERCENT := 72
@@ -264,6 +274,58 @@ const PLAYER_ROLE_CATALOG := [
 		"bonus_card_product": "静电蜂蜜",
 		"flavor": "他们发出的不是贷款通知，是一整座蜂巢的低频催收。",
 	},
+	{
+		"name": "星图审计庭",
+		"species": "银环观测官",
+		"starter_monster_index": 1,
+		"trait": "把每一座城市的施工轨迹写进星图账本；擅长直接锁定陌生区域业主。",
+		"passive": "每局可用2次身份侦测：直接查明当前选中陌生城市的真实业主，并以高置信写入私人标注；城市归属终局命中奖励+¥40。",
+		"intel_city_reveal_charges": 2,
+		"city_guess_reward_bonus": 40,
+		"flavor": "他们从不问“是谁造的”，只问“为什么发票没有经过审计庭”。",
+	},
+	{
+		"name": "幽幕播报社",
+		"species": "暗频主持群",
+		"starter_monster_index": 5,
+		"trait": "专门购买匿名出牌瞬间的影像残帧；可以追溯卡牌轨道上的历史归属。",
+		"passive": "每局可用1次身份追帧：私下查明一张轨道匿名牌是谁打出的；卡牌归属竞猜押注成本-¥40。",
+		"intel_card_trace_charges": 1,
+		"card_owner_guess_discount": 40,
+		"flavor": "所有画面都是雪花屏，只有他们听得见雪花里谁在结账。",
+	},
+	{
+		"name": "双边密约公证团",
+		"species": "镜面章鱼律师",
+		"starter_monster_index": 6,
+		"trait": "从合约墨迹里读出双方的影子；知道更多，但不能免费公开证明。",
+		"passive": "每局可用2次合约回溯：私下查明最近一份匿名合约的出牌方与目标业主；合约类卡牌流动门槛-1（最低0）。",
+		"intel_contract_trace_charges": 2,
+		"contract_flow_discount": 1,
+		"flavor": "他们盖章时会伸出第三只触手，专门握住真正签字的人。",
+	},
+	{
+		"name": "碎光私探行会",
+		"species": "棱镜游民",
+		"starter_monster_index": 3,
+		"trait": "靠半真半假的线索套利；不一定知道答案，但下注成本更低。",
+		"passive": "卡牌归属竞猜押注成本-¥30，猜中额外获得¥30；起始怪兽在场时间+8秒。",
+		"card_owner_guess_discount": 30,
+		"card_owner_guess_bonus": 30,
+		"starter_duration_bonus": 8.0,
+		"flavor": "他们卖出的每条线索都闪闪发光，尤其是错的那条。",
+	},
+	{
+		"name": "星门补给商会",
+		"species": "折跃仓储人",
+		"starter_monster_index": 2,
+		"trait": "把怪兽登陆点当作临时仓库坐标；能从二跳邻区远程买牌，但物流费更高。",
+		"passive": "可从怪兽所在区相邻区域的相邻区域购买卡牌；二跳购牌价格×1.10；开局资金+¥40。",
+		"starting_cash_bonus": 40,
+		"card_access_extra_hops": 1,
+		"extended_card_price_multiplier": 1.10,
+		"flavor": "他们的仓库门永远开在怪兽脚印的下一圈。",
+	},
 ]
 
 const AI_PERSONALITY_CATALOG := [
@@ -407,6 +469,14 @@ const SKILL_CATALOG := {
 	"夺取怪兽1": {"cost": 5, "kind": "monster_takeover", "play_product": "活体芯片", "play_flow_required": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["怪兽", "归属"], "text": "指定一只场上怪兽，匿名夺取其归属权；不会公开是谁打出的，之后该怪兽受伤会暴露新的资金线索。"},
 	"过载补给1": {"cost": 4, "kind": "supply_draw", "draw_amount": 1, "damage": 0, "move": 0, "range": 0, "tags": ["构筑", "补给"], "text": "从当前区域额外获取1张候选卡。"},
 	"过载补给2": {"cost": 6, "kind": "supply_draw", "draw_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["构筑", "升级"], "text": "从当前区域额外获取2张候选卡，是补给连锁的升级核心。"},
+	"业主透镜1": {"cost": 3, "kind": "intel_city_reveal", "play_product": "轨迹墨水", "play_flow_required": 1, "reveal_city_count": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "区域"], "text": "私下查明当前选中陌生城市的真实业主，并以高置信写入自己的地图标注；只公开有人打出了这张线索牌，不公开查到的答案。"},
+	"业主透镜2": {"cost": 5, "kind": "intel_city_reveal", "play_product": "轨迹墨水", "play_flow_required": 2, "reveal_city_count": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "升级"], "text": "私下查明当前选中陌生城市及一个高价值陌生城市的真实业主，各写入高置信私人标注；答案不公开。"},
+	"出牌追帧1": {"cost": 4, "kind": "intel_card_trace", "play_product": "活体芯片", "play_flow_required": 1, "trace_card_count": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "卡牌"], "text": "私下追溯卡牌轨道上一张匿名牌的出牌者：优先查当前选中的轨道卡，未选则查最近未公开的历史牌。"},
+	"出牌追帧2": {"cost": 6, "kind": "intel_card_trace", "play_product": "活体芯片", "play_flow_required": 2, "trace_card_count": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "升级"], "text": "私下追溯最多两张匿名牌的出牌者：优先当前选中卡，再追最近未公开历史牌。"},
+	"密约回溯1": {"cost": 4, "kind": "intel_contract_trace", "play_product": "轨迹墨水", "play_flow_required": 1, "trace_contract_count": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "合约"], "text": "私下查明最近一份匿名合约的出牌方与目标城市业主；若当前轨道选中合约，则优先追溯该合约。"},
+	"密约回溯2": {"cost": 7, "kind": "intel_contract_trace", "play_product": "轨迹墨水", "play_flow_required": 2, "trace_contract_count": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["情报", "升级"], "text": "私下查明最多两份匿名合约的出牌方与目标城市业主；适合在多合约轨道里拆穿双边结构。"},
+	"远程补给链1": {"cost": 3, "kind": "card_access_boon", "play_product": "轨道盆栽", "play_flow_required": 1, "card_access_extra_hops": 1, "extended_card_price_multiplier": 1.10, "card_access_seconds": 45.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["补给", "范围"], "text": "接下来45秒，你可以从怪兽落地区二跳内的区域购买卡牌；二跳购牌价格×1.10。"},
+	"星门采购权1": {"cost": 6, "kind": "card_access_boon", "play_product": "离岸水晶", "play_flow_required": 2, "card_access_global": true, "global_card_price_multiplier": 1.35, "card_access_seconds": 25.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["补给", "全局"], "text": "接下来25秒，你可以从任意未毁区域购买候选卡；全局购牌价格×1.35。"},
 	"地下融资1": {"cost": 3, "kind": "cash_gain", "cash": 450, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "续航"], "text": "立即获得450资金，适合扩张或高费卡组提前转动。"},
 	"热搜推送1": {"cost": 4, "kind": "panic_shift", "panic": 45, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["热度", "引导"], "text": "选中区域热度+45，把怪兽概率目标和新闻事件都往这里拽。"},
 	"商业诱饵1": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 70, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "诱饵"], "text": "选中己方城市周期收入+70、热度+8，以商业曝光吸引怪兽路线。"},
@@ -599,6 +669,14 @@ const COMMON_CARD_POOL := [
 	"过载补给1",
 	"过载补给2",
 	"连锁过载1",
+	"业主透镜1",
+	"业主透镜2",
+	"出牌追帧1",
+	"出牌追帧2",
+	"密约回溯1",
+	"密约回溯2",
+	"远程补给链1",
+	"星门采购权1",
 	"商业诱饵1",
 	"商业诱饵2",
 	"价格套利1",
@@ -1032,6 +1110,7 @@ var selected_contract_target_district := -1
 var business_cycle_count := 0
 var configured_player_count := DEFAULT_PLAYER_COUNT
 var configured_ai_player_count := DEFAULT_AI_PLAYER_COUNT
+var configured_roguelike_depth := DEFAULT_ROGUELIKE_DEPTH
 var configured_role_indices := []
 var configured_starter_monster_indices := []
 var game_over := false
@@ -1046,6 +1125,7 @@ var market_timer := 8.0
 var ui_timer := 0.0
 var ai_card_decision_timer := AI_CARD_DECISION_INTERVAL_SECONDS
 var ai_auction_reaction_timer := AI_AUCTION_REACTION_INTERVAL_SECONDS
+var ai_intel_decision_timer := AI_INTEL_DECISION_INTERVAL_SECONDS
 var ai_card_decision_enabled := true
 
 var auto_monsters := []
@@ -1096,6 +1176,7 @@ var full_map_view: Control
 var map_build_buttons := []
 var map_guess_options := []
 var map_guess_buttons := []
+var map_role_intel_buttons := []
 var map_city_info_labels := []
 var map_trade_options := []
 var map_trade_buttons := []
@@ -1522,12 +1603,13 @@ func _add_card_resolution_track_entry(entry: Dictionary, state_text: String) -> 
 		return
 	var guessers: Array = entry.get("guessers", []) as Array
 	var already_guessed := guessers.has(selected_player)
+	var stake := _card_owner_guess_stake_for_player(selected_player)
 	if owner_revealed:
 		box.add_child(_track_status_badge("证据已公开：所有人可见", Color("#fef3c7"), Color("#713f12")))
 	elif already_guessed:
 		box.add_child(_track_status_badge("我的竞猜：已押注｜真实归属仍隐藏", Color("#c4b5fd"), Color("#312e81")))
 	else:
-		box.add_child(_track_status_badge("我的竞猜：选择头像押注¥%d" % CARD_OWNER_GUESS_STAKE, Color("#bae6fd"), Color("#0c4a6e")))
+		box.add_child(_track_status_badge("我的竞猜：选择头像押注¥%d" % stake, Color("#bae6fd"), Color("#0c4a6e")))
 	var avatar_row := HBoxContainer.new()
 	avatar_row.add_theme_constant_override("separation", 3)
 	box.add_child(avatar_row)
@@ -1535,8 +1617,8 @@ func _add_card_resolution_track_entry(entry: Dictionary, state_text: String) -> 
 		var avatar := Button.new()
 		avatar.text = "P%d" % (player_index + 1)
 		avatar.add_theme_color_override("font_color", _player_color(player_index))
-		avatar.tooltip_text = "当前视角玩家押注¥%d，猜这张牌由玩家%d打出。" % [CARD_OWNER_GUESS_STAKE, player_index + 1]
-		avatar.disabled = game_over or already_guessed or bool(entry.get("public_owner_revealed", false)) or selected_player == int(entry.get("player_index", -1)) or int((players[selected_player] as Dictionary).get("cash", 0)) < CARD_OWNER_GUESS_STAKE
+		avatar.tooltip_text = "当前视角玩家押注¥%d，猜这张牌由玩家%d打出。" % [stake, player_index + 1]
+		avatar.disabled = game_over or already_guessed or bool(entry.get("public_owner_revealed", false)) or selected_player == int(entry.get("player_index", -1)) or int((players[selected_player] as Dictionary).get("cash", 0)) < stake
 		avatar.pressed.connect(Callable(self, "_guess_card_resolution_owner").bind(resolution_id, player_index))
 		avatar_row.add_child(avatar)
 
@@ -1814,55 +1896,81 @@ func _store_card_resolution_entry(entry: Dictionary) -> bool:
 	return false
 
 
+func _card_owner_guess_stake_for_player(viewer_index: int) -> int:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return CARD_OWNER_GUESS_STAKE
+	var role := _player_role_card_for_index(viewer_index)
+	var discount := maxi(0, int(role.get("card_owner_guess_discount", 0)))
+	return maxi(20, CARD_OWNER_GUESS_STAKE - discount)
+
+
+func _card_owner_guess_payout_for_player(viewer_index: int) -> int:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return CARD_OWNER_GUESS_STAKE
+	var role := _player_role_card_for_index(viewer_index)
+	return CARD_OWNER_GUESS_STAKE + maxi(0, int(role.get("card_owner_guess_bonus", 0)))
+
+
 func _guess_card_resolution_owner(resolution_id: int, guessed_player: int) -> void:
-	if game_over or selected_player < 0 or selected_player >= players.size() or guessed_player < 0 or guessed_player >= players.size():
-		return
+	_guess_card_resolution_owner_for_player(selected_player, resolution_id, guessed_player, true)
+
+
+func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: int, guessed_player: int, announce: bool = true) -> bool:
+	if game_over or viewer_index < 0 or viewer_index >= players.size() or guessed_player < 0 or guessed_player >= players.size():
+		return false
 	var entry := _card_resolution_entry_by_id(resolution_id)
 	if entry.is_empty() or bool(entry.get("public_owner_revealed", false)):
-		return
+		return false
 	var actual_owner := int(entry.get("player_index", -1))
 	if actual_owner < 0 or actual_owner >= players.size():
-		return
-	if selected_player == actual_owner:
-		_log("你不能竞猜自己打出的匿名卡牌。")
-		return
+		return false
+	if viewer_index == actual_owner:
+		if announce:
+			_log("你不能竞猜自己打出的匿名卡牌。")
+		return false
 	var guessers: Array = (entry.get("guessers", []) as Array).duplicate()
-	if guessers.has(selected_player):
-		_log("当前玩家已经竞猜过这张牌；每人每张牌只有一次机会。")
-		return
-	if int((players[selected_player] as Dictionary).get("cash", 0)) < CARD_OWNER_GUESS_STAKE:
-		_log("当前视角至少需要¥%d才能进行卡牌归属竞猜。" % CARD_OWNER_GUESS_STAKE)
-		return
-	guessers.append(selected_player)
+	if guessers.has(viewer_index):
+		if announce:
+			_log("当前玩家已经竞猜过这张牌；每人每张牌只有一次机会。")
+		return false
+	var stake := _card_owner_guess_stake_for_player(viewer_index)
+	if int((players[viewer_index] as Dictionary).get("cash", 0)) < stake:
+		if announce:
+			_log("当前视角至少需要¥%d才能进行卡牌归属竞猜。" % stake)
+		return false
+	guessers.append(viewer_index)
 	entry["guessers"] = guessers
 	if guessed_player == actual_owner:
-		var payout := CARD_OWNER_GUESS_STAKE
+		var payout := _card_owner_guess_payout_for_player(viewer_index)
 		players[actual_owner]["cash"] = int(players[actual_owner].get("cash", 0)) - payout
-		players[selected_player]["cash"] = int(players[selected_player].get("cash", 0)) + payout
+		players[viewer_index]["cash"] = int(players[viewer_index].get("cash", 0)) + payout
 		players[actual_owner]["total_card_spend"] = int(players[actual_owner].get("total_card_spend", 0)) + payout
-		players[selected_player]["total_card_income"] = int(players[selected_player].get("total_card_income", 0)) + payout
+		players[viewer_index]["total_card_income"] = int(players[viewer_index].get("total_card_income", 0)) + payout
 		_record_player_economic_event(actual_owner, "归属竞猜", "身份被识破", -payout, "一张匿名卡牌的归属被猜中。")
-		_record_player_economic_event(selected_player, "归属竞猜", "命中归属", payout, "正确猜中玩家%d打出的卡牌。" % (actual_owner + 1))
+		_record_player_economic_event(viewer_index, "归属竞猜", "命中归属", payout, "正确猜中玩家%d打出的卡牌。" % (actual_owner + 1))
 		_record_player_cash_snapshot(actual_owner)
-		_record_player_cash_snapshot(selected_player)
+		_record_player_cash_snapshot(viewer_index)
 		entry["public_owner_revealed"] = true
 		entry["public_owner_label"] = "归属：玩家%d" % (actual_owner + 1)
 		entry["owner_revealed_time"] = game_time
-		_log("归属竞猜命中：这张牌公开贴上“玩家%d”标签；竞猜者获得¥%d，双方当前资金仍不公开。" % [actual_owner + 1, payout])
+		if announce:
+			_log("归属竞猜命中：这张牌公开贴上“玩家%d”标签；竞猜者获得¥%d，双方当前资金仍不公开。" % [actual_owner + 1, payout])
 	else:
-		players[selected_player]["cash"] = int(players[selected_player].get("cash", 0)) - CARD_OWNER_GUESS_STAKE
-		players[actual_owner]["cash"] = int(players[actual_owner].get("cash", 0)) + CARD_OWNER_GUESS_STAKE
-		players[selected_player]["total_card_spend"] = int(players[selected_player].get("total_card_spend", 0)) + CARD_OWNER_GUESS_STAKE
-		players[actual_owner]["total_card_income"] = int(players[actual_owner].get("total_card_income", 0)) + CARD_OWNER_GUESS_STAKE
-		_record_player_economic_event(selected_player, "归属竞猜", "猜错归属", -CARD_OWNER_GUESS_STAKE, "错误竞猜被私下结算；真实归属仍隐藏。")
-		_record_player_economic_event(actual_owner, "归属竞猜", "匿名竞猜收入", CARD_OWNER_GUESS_STAKE, "有人猜错了你打出的卡牌；竞猜者不公开。")
-		_record_player_cash_snapshot(selected_player)
+		players[viewer_index]["cash"] = int(players[viewer_index].get("cash", 0)) - stake
+		players[actual_owner]["cash"] = int(players[actual_owner].get("cash", 0)) + stake
+		players[viewer_index]["total_card_spend"] = int(players[viewer_index].get("total_card_spend", 0)) + stake
+		players[actual_owner]["total_card_income"] = int(players[actual_owner].get("total_card_income", 0)) + stake
+		_record_player_economic_event(viewer_index, "归属竞猜", "猜错归属", -stake, "错误竞猜被私下结算；真实归属仍隐藏。")
+		_record_player_economic_event(actual_owner, "归属竞猜", "匿名竞猜收入", stake, "有人猜错了你打出的卡牌；竞猜者不公开。")
+		_record_player_cash_snapshot(viewer_index)
 		_record_player_cash_snapshot(actual_owner)
-		_log("一次匿名归属竞猜失败并私下结算¥%d；真实出牌者仍未揭晓。" % CARD_OWNER_GUESS_STAKE)
+		if announce:
+			_log("一次匿名归属竞猜失败并私下结算¥%d；真实出牌者仍未揭晓。" % stake)
 	_store_card_resolution_entry(entry)
 	if not active_card_resolution.is_empty():
 		_show_card_resolution_overlay(active_card_resolution, card_resolution_timer)
 	_refresh_ui()
+	return true
 
 
 func _build_full_map_overlay() -> void:
@@ -1996,6 +2104,13 @@ func _add_map_action_controls(toolbar: HBoxContainer) -> void:
 	guess_button.pressed.connect(Callable(self, "_mark_selected_city_guess"))
 	toolbar.add_child(guess_button)
 	map_guess_buttons.append(guess_button)
+
+	var role_intel_button := Button.new()
+	role_intel_button.text = "身份侦测"
+	role_intel_button.tooltip_text = "若当前角色有区域侦测次数，可直接查明选中陌生城市业主并写入私人标注。"
+	role_intel_button.pressed.connect(Callable(self, "_use_selected_role_city_reveal"))
+	toolbar.add_child(role_intel_button)
+	map_role_intel_buttons.append(role_intel_button)
 
 	var trade_option := OptionButton.new()
 	trade_option.tooltip_text = "选择要在地图上显示运输路径的商品。"
@@ -2254,7 +2369,7 @@ func _open_rules_menu() -> void:
 	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地初始生产1种商品并有1种本地需求；海洋不生产，主要承载商路并影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
 	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；经营周期中，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
 	lines.append("5. 市场价格：商品价格只能由供给、需求、商路断损、城市经营和经济天气重算，不能被玩家直接指定。扩张城市生产/需求、充实商路、引导怪兽破坏，才会改变市场。")
-	lines.append("6. 购牌与升级：卡牌需要花钱购买，只能从怪兽落地区或相邻区获取；怪兽所在区域八折，相邻区域原价。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限。" % PLAYER_HAND_LIMIT)
+	lines.append("6. 购牌与升级：卡牌需要花钱购买；默认只能从怪兽落地区或相邻区获取，怪兽所在区域八折，相邻区域原价。角色能力或补给牌可把购牌范围扩到二跳或全局，但会按远程/全局倍率加价；这只影响买牌，不放宽后续怪兽牌的召唤区域。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限。" % PLAYER_HAND_LIMIT)
 	lines.append("7. 出牌门槛：I级怪兽牌没有商品流动要求；II-IV级怪兽牌和多数其他牌要求己方城市满足指定商品流动数量，商品不被消耗。少数牌会额外收取现金。")
 	lines.append("8. 目标询问：打出需要目标怪兽的牌时，会先询问目标。所有出牌都是匿名事件：一次性指令/诱导、夺取归属或固定技能都只作为行动线索公开，不直接揭示玩家身份，也不让玩家持续操控怪兽。")
 	lines.append("9. 手牌消耗：一次性普通牌提交后会先进入顶部匿名卡牌轨道，并立刻离开手牌；它会用提交时的卡牌快照继续等待公开展示与结算。绑定固定怪兽技能不会离手，只在成功结算后进入冷却。")
@@ -2263,7 +2378,7 @@ func _open_rules_menu() -> void:
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
 	lines.append("13. 经济隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹与流水；其他玩家的经济只能推测。终局才公开并按结算资金判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
-	lines.append("15. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，并把行动类型、目标、评分和理由写入自己的最近决策样本；后续训练会继续扩展到购牌、出牌、竞价和怪兽诱导。")
+	lines.append("15. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理和卡牌归属押注，并把行动类型、目标、评分、候选集、理由与后续收益写入最近决策样本；后续训练会继续扩展到更长期的经济规划和怪兽诱导。")
 	lines.append("16. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
 	lines.append("")
 	lines.append("操作入口索引：1-8选席位；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
@@ -2277,7 +2392,7 @@ func _open_rules_menu() -> void:
 func _open_tutorial_menu() -> void:
 	_show_menu(
 		"新手引导",
-		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会在经营周期里自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP最终变成周期现金。商品当前价随供需和断路波动；产业升级、商品换线、需求改造、交通升级与破坏都会改变经营结果。\n6. 买牌/出牌：C 切换选区补给，X 购买；只能从怪兽落地区或相邻区买牌，落地区八折。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济隐私：只看得到自己的现金与账本。对手花了多少、还剩多少，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻热度、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标。怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
+		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会在经营周期里自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP最终变成周期现金。商品当前价随供需和断路波动；产业升级、商品换线、需求改造、交通升级与破坏都会改变经营结果。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价，角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济隐私：只看得到自己的现金与账本。对手花了多少、还剩多少，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻热度、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标。怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
 			CITY_BUILD_COST,
 			INTEL_CORRECT_GUESS_CASH,
 			INTEL_WRONG_GUESS_COST,
@@ -2958,6 +3073,7 @@ func _city_guess_reason_options() -> Array:
 		CITY_GUESS_REASON_ROUTE,
 		CITY_GUESS_REASON_CARD,
 		CITY_GUESS_REASON_MONSTER,
+		CITY_GUESS_REASON_ROLE,
 		CITY_GUESS_REASON_INTUITION,
 	]
 
@@ -2978,6 +3094,8 @@ func _city_guess_reason_label(reason: String) -> String:
 			return "卡牌条件"
 		CITY_GUESS_REASON_MONSTER:
 			return "怪兽资金"
+		CITY_GUESS_REASON_ROLE:
+			return "身份能力"
 		_:
 			return "直觉"
 
@@ -3029,9 +3147,12 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 		var owner_index := int(entry.get("player_index", -1))
 		var owner_revealed := bool(entry.get("public_owner_revealed", false))
 		var guessers: Array = entry.get("guessers", []) as Array
-		var status := "归属未知，可押注¥%d" % CARD_OWNER_GUESS_STAKE
+		var known_owner := _private_known_card_owner_for_entry(viewer_index, entry)
+		var status := "归属未知，可押注¥%d" % _card_owner_guess_stake_for_player(viewer_index)
 		if owner_revealed:
 			status = String(entry.get("public_owner_label", "归属已公开"))
+		elif known_owner >= 0 and known_owner < players.size():
+			status = "我已查明：玩家%d｜尚未公开" % (known_owner + 1)
 		elif viewer_index == owner_index:
 			status = "我打出的牌｜仅当前视角可知"
 		elif viewer_index >= 0 and guessers.has(viewer_index):
@@ -3755,7 +3876,10 @@ func _player_intel_stats(player_index: int) -> Dictionary:
 			stats["correct"] = int(stats["correct"]) + 1
 		else:
 			stats["wrong"] = int(stats["wrong"]) + 1
-	stats["cash"] = int(stats["correct"]) * INTEL_CORRECT_GUESS_CASH - int(stats["wrong"]) * INTEL_WRONG_GUESS_COST
+	var role := _player_role_card_for_index(player_index)
+	var correct_reward := INTEL_CORRECT_GUESS_CASH + maxi(0, int(role.get("city_guess_reward_bonus", 0)))
+	stats["correct_reward"] = correct_reward
+	stats["cash"] = int(stats["correct"]) * correct_reward - int(stats["wrong"]) * INTEL_WRONG_GUESS_COST
 	return stats
 
 
@@ -3768,7 +3892,7 @@ func _player_intel_summary(player_index: int) -> String:
 	return "情报现金%s = 猜对%d×¥%d - 猜错%d×¥%d｜已标%d/%d" % [
 		_signed_int_text(int(stats.get("cash", 0))),
 		int(stats.get("correct", 0)),
-		INTEL_CORRECT_GUESS_CASH,
+		int(stats.get("correct_reward", INTEL_CORRECT_GUESS_CASH)),
 		int(stats.get("wrong", 0)),
 		INTEL_WRONG_GUESS_COST,
 		int(stats.get("guessed", 0)),
@@ -5148,8 +5272,10 @@ func _card_codex_category_for_card(card_name: String, skill: Dictionary) -> Stri
 		return "business"
 	if _skill_targets_monster(skill) or ["monster_bound_action", "move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar"].has(kind):
 		return "combat"
-	if ["monster_lure", "special_monster_delay", "monster_takeover", "supply_draw", "panic_shift", "route_sabotage"].has(kind):
+	if ["monster_lure", "special_monster_delay", "monster_takeover", "supply_draw", "panic_shift", "route_sabotage", "card_access_boon"].has(kind):
 		return "tactic"
+	if ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"].has(kind):
+		return "other"
 	return "other"
 
 
@@ -5207,20 +5333,25 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 	var source_text := "怪兽卡" if _is_monster_card_name(card_name) else ("怪兽固定技能" if _is_monster_technique_card_name(card_name) else "公共/区域补给")
 	var category_text := _card_codex_filter_label(_card_codex_category_for_card(card_name, skill))
 	var price := _card_price(card_name)
-	return "第%d/%d张｜分类:%s / 当前筛选:%s｜%s｜%s｜%s｜%s｜参考价 ¥%d（%s，按I级基础价）\n%s\n升级梯度：\n%s\n结算演出：\n%s\n卡面：已接入同一套卡牌美工组件；游戏内手牌会显示同款卡面。" % [
+	var key_facts := _card_key_rule_facts(skill)
+	var key_text := "；".join(key_facts) if not key_facts.is_empty() else "这张牌没有攻击/生命/范围等战斗数值，主要按效果文字结算。"
+	return "第%d/%d张｜%s｜分类:%s / 当前筛选:%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n效果：%s\n打出：%s｜%s\n关键数值：%s\n升级预览：\n%s\n结算演出：%s\n卡面：游戏内手牌与图鉴使用同一套卡面。" % [
 		index + 1,
 		total,
+		_card_display_name(card_name),
 		category_text,
 		_card_codex_filter_label(),
-		_card_display_name(card_name),
-		_skill_tag_text(skill),
-		target_text,
-		source_text,
 		price,
 		_card_price_tier_text(price),
-		_card_rules_text(card_name, skill, false),
+		_skill_tag_text(skill),
+		source_text,
+		target_text,
+		_skill_display_text(skill),
+		"固定技能，不会消失" if bool(skill.get("persistent", false)) else "一次性，打出后消失",
+		_skill_play_requirement_text(skill, selected_player),
+		key_text,
 		_card_level_gradient_text(card_name),
-		_card_resolution_animation_catalog_text(card_name, skill),
+		_card_resolution_animation_catalog_text(card_name, skill).replace("\n", " / "),
 	]
 
 
@@ -5267,17 +5398,14 @@ func _card_level_gradient_text(card_name: String) -> String:
 		if not _skill_exists(level_name):
 			continue
 		var level_skill := _skill_definition(level_name)
-		var facts := _card_rule_facts(level_skill)
-		var numeric_facts := []
-		for fact_variant in facts:
-			var fact := String(fact_variant)
-			if fact.begins_with("目标:") or fact.begins_with("出牌:"):
-				continue
-			numeric_facts.append(fact)
-		lines.append("%s｜价格¥%d｜%s" % [
+		var numeric_facts := _card_key_rule_facts(level_skill)
+		var preview := _join_first_card_facts(numeric_facts, 4)
+		if preview == "":
+			preview = _short_card_text(_skill_display_text(level_skill), 36)
+		lines.append("%s  ¥%d  %s" % [
 			_level_text(level),
 			_card_price(level_name),
-			_join_first_card_facts(numeric_facts, 6),
+			preview,
 		])
 	return "\n".join(lines) if not lines.is_empty() else "该卡暂无升级梯度。"
 
@@ -5484,12 +5612,19 @@ func _skill_play_product(skill: Dictionary, player_index: int) -> String:
 	return _first_player_flow_product(player_index)
 
 
-func _skill_play_flow_required(skill: Dictionary) -> int:
+func _skill_play_flow_required(skill: Dictionary, player_index: int = -1) -> int:
 	if bool(skill.get("starter_play_free", false)):
 		return 0
+	var requirement := 0
 	if int(skill.get("play_flow_required", 0)) > 0:
-		return int(skill.get("play_flow_required", 0))
-	return maxi(1, int(ceil(float(skill.get("cost", 2)) / 3.0)))
+		requirement = int(skill.get("play_flow_required", 0))
+	else:
+		requirement = maxi(1, int(ceil(float(skill.get("cost", 2)) / 3.0)))
+	var effective_player := player_index if player_index >= 0 else selected_player
+	if String(skill.get("kind", "")) == "area_trade_contract" and effective_player >= 0 and effective_player < players.size():
+		var role := _player_role_card_for_index(effective_player)
+		requirement = maxi(0, requirement - maxi(0, int(role.get("contract_flow_discount", 0))))
+	return requirement
 
 
 func _skill_play_cash_cost(skill: Dictionary) -> int:
@@ -5513,7 +5648,7 @@ func _skill_play_requirement_text(skill: Dictionary, player_index: int = -1) -> 
 			starter_text += "｜额外支付¥%d" % starter_cash_cost
 		return starter_text + contract_suffix
 	var flow_product := _skill_play_product(skill, selected_player if player_index < 0 else player_index)
-	var flow_required := _skill_play_flow_required(skill)
+	var flow_required := _skill_play_flow_required(skill, player_index)
 	var cash_cost := _skill_play_cash_cost(skill)
 	if flow_required <= 0:
 		var free_text := "打出条件：无商品流动门槛"
@@ -5540,7 +5675,7 @@ func _can_play_skill_now(player_index: int, skill: Dictionary, show_log: bool = 
 				_log(error)
 			return false
 	var product_name := _skill_play_product(skill, player_index)
-	var required := _skill_play_flow_required(skill)
+	var required := _skill_play_flow_required(skill, player_index)
 	if required <= 0:
 		var cash_cost_only := _skill_play_cash_cost(skill)
 		if cash_cost_only > 0 and int(players[player_index].get("cash", 0)) < cash_cost_only:
@@ -5717,7 +5852,7 @@ func _is_monster_special_card(skill_name: String) -> bool:
 	return false
 
 
-func _card_price(skill_name: String, district_index: int = -1) -> int:
+func _card_price(skill_name: String, district_index: int = -1, player_index: int = -1) -> int:
 	if skill_name == "":
 		return CARD_MIN_PRICE
 	var price_name := "%s1" % _skill_family(skill_name)
@@ -5726,8 +5861,14 @@ func _card_price(skill_name: String, district_index: int = -1) -> int:
 	var skill: Dictionary = _skill_definition(price_name)
 	var power_cost: int = maxi(2, int(skill.get("cost", 2)))
 	var price: int = CARD_PRICE_UNIT + (power_cost - 2) * CARD_PRICE_COST_STEP
-	if district_index >= 0 and _district_card_access_kind(district_index) == "landed":
-		price = int(round(float(price) * 0.8))
+	if district_index >= 0:
+		match _district_card_access_kind(district_index, player_index):
+			"landed":
+				price = int(round(float(price) * 0.8))
+			"extended":
+				price = int(round(float(price) * _player_extended_card_price_multiplier(player_index)))
+			"global":
+				price = int(round(float(price) * _player_global_card_price_multiplier(player_index)))
 	return int(max(CARD_MIN_PRICE, price))
 
 
@@ -5872,7 +6013,7 @@ func _open_new_game_setup_menu() -> void:
 	_ensure_configured_ai_player_count()
 	_show_menu(
 		"开局准备",
-		"新局会重掷星球、陆海区域、城市商路、区域补给和所有玩家手牌。本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个为AI对手；剩余席位是真人/本地玩家视角。开局不预选四只怪兽；每名玩家先选外星辛迪加角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。确认后，玩家需要先打出自己的起始怪兽牌，把第一只自动怪兽匿名召唤到星球上，才能打开怪兽落地/相邻区域的购牌补给。",
+		"新局会重掷星球、陆海区域、城市商路、区域补给和所有玩家手牌。本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个为AI对手；剩余席位是真人/本地玩家视角。开局不预选四只怪兽；每名玩家先选外星辛迪加角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。确认后，玩家需要先打出自己的起始怪兽牌，把第一只自动怪兽匿名召唤到星球上，才能打开默认的怪兽落地/相邻区域购牌补给；角色或补给牌可扩张购牌半径。",
 		not players.is_empty() and not game_over
 	)
 	menu_continue_button.visible = not players.is_empty() and not game_over
@@ -5914,6 +6055,19 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		ai_button.button_pressed = count == configured_ai_player_count
 		ai_button.pressed.connect(Callable(self, "_set_configured_ai_player_count_from_new_game_menu").bind(count))
 		ai_row.add_child(ai_button)
+
+	parent.add_child(_plain_label("Roguelike挑战层级：%s。浅层星球更小、区域更少；深层星球更大、区域更多，通关目标现金更高。" % _roguelike_planet_profile_text(), 13, Color("#cbd5e1")))
+	var depth_row := HBoxContainer.new()
+	depth_row.add_theme_constant_override("separation", 6)
+	parent.add_child(depth_row)
+	for depth in range(ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX + 1):
+		var depth_button := Button.new()
+		depth_button.text = _level_text(depth)
+		depth_button.toggle_mode = true
+		depth_button.button_pressed = depth == configured_roguelike_depth
+		depth_button.tooltip_text = _roguelike_planet_profile_text(depth)
+		depth_button.pressed.connect(Callable(self, "_set_configured_roguelike_depth_from_new_game_menu").bind(depth))
+		depth_row.add_child(depth_button)
 
 	parent.add_child(_plain_label("本局角色与起始手牌预览（角色给被动；起始I级怪兽可从全部怪兽中任选，不代表玩家能常驻操控怪兽）：", 13, Color("#fde68a")))
 	var role_scroll := ScrollContainer.new()
@@ -6015,6 +6169,11 @@ func _set_configured_player_count_from_new_game_menu(count: int) -> void:
 
 func _set_configured_ai_player_count_from_new_game_menu(count: int) -> void:
 	_set_configured_ai_player_count(count)
+	_open_new_game_setup_menu()
+
+
+func _set_configured_roguelike_depth_from_new_game_menu(depth: int) -> void:
+	_set_configured_roguelike_depth(depth)
 	_open_new_game_setup_menu()
 
 
@@ -6195,7 +6354,9 @@ func _saved_player_intel_cash(saved_players: Array, saved_districts: Array, play
 			correct += 1
 		else:
 			wrong += 1
-	return correct * INTEL_CORRECT_GUESS_CASH - wrong * INTEL_WRONG_GUESS_COST
+	var role: Dictionary = player.get("role_card", {}) if player.get("role_card", {}) is Dictionary else {}
+	var correct_reward := INTEL_CORRECT_GUESS_CASH + maxi(0, int(role.get("city_guess_reward_bonus", 0)))
+	return correct * correct_reward - wrong * INTEL_WRONG_GUESS_COST
 
 
 func _saved_active_city_total_count(saved_districts: Array) -> int:
@@ -6266,6 +6427,7 @@ func _capture_run_state() -> Dictionary:
 		"business_cycle_count": business_cycle_count,
 		"configured_player_count": configured_player_count,
 		"configured_ai_player_count": configured_ai_player_count,
+		"configured_roguelike_depth": configured_roguelike_depth,
 		"configured_role_indices": configured_role_indices.duplicate(true),
 		"configured_starter_monster_indices": configured_starter_monster_indices.duplicate(true),
 		"game_over": game_over,
@@ -6277,6 +6439,7 @@ func _capture_run_state() -> Dictionary:
 		"market_timer": market_timer,
 		"ai_card_decision_timer": ai_card_decision_timer,
 		"ai_auction_reaction_timer": ai_auction_reaction_timer,
+		"ai_intel_decision_timer": ai_intel_decision_timer,
 		"auto_monsters": auto_monsters.duplicate(true),
 		"next_auto_monster_uid": next_auto_monster_uid,
 		"next_special_monster_slot": next_special_monster_slot,
@@ -6361,6 +6524,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
 	_ensure_configured_ai_player_count()
+	configured_roguelike_depth = clampi(int(state.get("configured_roguelike_depth", DEFAULT_ROGUELIKE_DEPTH)), ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
 	var saved_role_indices: Variant = state.get("configured_role_indices", [])
 	configured_role_indices = (saved_role_indices as Array).duplicate(true) if saved_role_indices is Array else []
 	_ensure_configured_role_indices()
@@ -6377,6 +6541,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	market_timer = float(state.get("market_timer", 8.0))
 	ai_card_decision_timer = maxf(0.1, float(state.get("ai_card_decision_timer", AI_CARD_DECISION_INTERVAL_SECONDS)))
 	ai_auction_reaction_timer = maxf(0.1, float(state.get("ai_auction_reaction_timer", AI_AUCTION_REACTION_INTERVAL_SECONDS)))
+	ai_intel_decision_timer = maxf(0.1, float(state.get("ai_intel_decision_timer", AI_INTEL_DECISION_INTERVAL_SECONDS)))
 	ui_timer = 0.0
 	next_auto_monster_uid = int(state.get("next_auto_monster_uid", 1))
 	next_special_monster_slot = int(state.get("next_special_monster_slot", 0))
@@ -6423,11 +6588,13 @@ func _quit_game() -> void:
 
 func _save_settings(show_log: bool) -> void:
 	_ensure_configured_ai_player_count()
+	_ensure_configured_roguelike_depth()
 	_ensure_configured_role_indices()
 	_ensure_configured_starter_monster_indices()
 	var config := ConfigFile.new()
 	config.set_value("setup", "player_count", configured_player_count)
 	config.set_value("setup", "ai_player_count", configured_ai_player_count)
+	config.set_value("setup", "roguelike_depth", configured_roguelike_depth)
 	config.set_value("setup", "role_indices", configured_role_indices)
 	config.set_value("setup", "starter_monster_indices", configured_starter_monster_indices)
 	var err: int = config.save(SETTINGS_PATH)
@@ -6445,12 +6612,15 @@ func _load_settings() -> void:
 	var err: int = config.load(SETTINGS_PATH)
 	if err != OK:
 		_ensure_configured_ai_player_count()
+		_ensure_configured_roguelike_depth()
 		_ensure_configured_role_indices()
 		_ensure_configured_starter_monster_indices()
 		return
 	configured_player_count = clampi(int(config.get_value("setup", "player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	configured_ai_player_count = int(config.get_value("setup", "ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
 	_ensure_configured_ai_player_count()
+	configured_roguelike_depth = int(config.get_value("setup", "roguelike_depth", DEFAULT_ROGUELIKE_DEPTH))
+	_ensure_configured_roguelike_depth()
 	var saved_role_indices: Variant = config.get_value("setup", "role_indices", [])
 	configured_role_indices = (saved_role_indices as Array).duplicate(true) if saved_role_indices is Array else []
 	_ensure_configured_role_indices()
@@ -6505,12 +6675,51 @@ func _panel_container(box: VBoxContainer) -> PanelContainer:
 	return box.get_meta("panel_container") as PanelContainer
 
 
+func _roguelike_depth_label(depth: int = -1) -> String:
+	var value := configured_roguelike_depth if depth < 0 else depth
+	return "深度%s" % _level_text(clampi(value, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX))
+
+
+func _roguelike_cash_goal(depth: int = -1) -> int:
+	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
+	return ROGUELIKE_CASH_GOAL_BASE + (value - 1) * ROGUELIKE_CASH_GOAL_STEP + value * value * 220
+
+
+func _roguelike_planet_profile(depth: int = -1) -> Dictionary:
+	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
+	var region_min := clampi(4 + value * 4, 7, 40)
+	var region_max := clampi(6 + value * 7, region_min + 2, 54)
+	var scale := 0.65 + float(value) * 0.18
+	return {
+		"depth": value,
+		"label": _roguelike_depth_label(value),
+		"region_min": region_min,
+		"region_max": region_max,
+		"width": MAP_WIDTH_METERS * scale,
+		"height": MAP_HEIGHT_METERS * scale,
+		"cash_goal": _roguelike_cash_goal(value),
+	}
+
+
+func _roguelike_planet_profile_text(depth: int = -1) -> String:
+	var profile := _roguelike_planet_profile(depth)
+	return "%s｜星球%.0fm×%.0fm｜区域%d-%d｜目标现金¥%d" % [
+		String(profile.get("label", "深度I")),
+		float(profile.get("width", MAP_WIDTH_METERS)),
+		float(profile.get("height", MAP_HEIGHT_METERS)),
+		int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
+		int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
+		int(profile.get("cash_goal", _roguelike_cash_goal())),
+	]
+
+
 func _generate_roguelike_districts() -> void:
 	districts = []
 	district_lookup = {}
-	map_width_m = MAP_WIDTH_METERS
-	map_height_m = MAP_HEIGHT_METERS
-	var target_region_count := rng.randi_range(MAP_REGION_COUNT_MIN, MAP_REGION_COUNT_MAX)
+	var profile := _roguelike_planet_profile()
+	map_width_m = float(profile.get("width", MAP_WIDTH_METERS))
+	map_height_m = float(profile.get("height", MAP_HEIGHT_METERS))
+	var target_region_count := rng.randi_range(int(profile.get("region_min", MAP_REGION_COUNT_MIN)), int(profile.get("region_max", MAP_REGION_COUNT_MAX)))
 	var sites := _generate_region_sites(target_region_count)
 
 	for i in range(sites.size()):
@@ -7133,10 +7342,12 @@ func _new_game() -> void:
 	game_over = false
 	ai_card_decision_timer = 1.0
 	ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS
+	ai_intel_decision_timer = 2.5
 	ai_card_decision_enabled = true
 	_prime_timers_for_new_game()
 
 	_ensure_configured_ai_player_count()
+	_ensure_configured_roguelike_depth()
 	_ensure_configured_role_indices()
 	_ensure_configured_starter_monster_indices()
 	var configured_human_count := _configured_human_player_count()
@@ -7160,6 +7371,8 @@ func _new_game() -> void:
 			"city_guesses": {},
 			"city_guess_confidence": {},
 			"city_guess_reasons": {},
+			"known_card_owners": {},
+			"known_contract_parties": {},
 			"cities_built": 0,
 			"total_city_income": 0,
 			"last_cycle_income": 0,
@@ -7190,7 +7403,8 @@ func _new_game() -> void:
 		_human_player_count(),
 		_ai_player_count(),
 	])
-	_log("AI训练骨架启动：AI会按城市GDP、商品竞争、商路价值和怪兽风险评分行动，并记录最近10条决策样本。")
+	_log("AI训练骨架启动：AI会按城市GDP、商品竞争、商路价值、怪兽风险与匿名情报评分行动，并记录最近%d条训练样本。" % AI_DECISION_SAMPLE_LIMIT)
+	_log("Roguelike挑战启动：%s；玩家通关目标现金¥%d，终局仍按结算资金最高者排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal()])
 	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
 	_log("星球随机生成陆地与海洋：陆地初始生产1种商品并有1种需求，海洋不生产但承担商路运输；合约牌可继续改写供需。")
 	_log("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
@@ -7207,7 +7421,7 @@ func _start_card_ingress_animation() -> void:
 	_add_action_callout(
 		"区域补给网",
 		"卡池生成",
-		"%d个区域各生成%d-%d张候选卡；怪兽牌已混入区域补给，需从怪兽落地区/相邻区购买。" % [
+		"%d个区域各生成%d-%d张候选卡；怪兽牌已混入区域补给，默认从怪兽落地区/相邻区购买，补给能力可扩张范围。" % [
 			districts.size(),
 			DISTRICT_CARD_CHOICE_MIN,
 			DISTRICT_CARD_CHOICE_MAX,
@@ -7804,6 +8018,23 @@ func _ensure_player_role_cards() -> void:
 		player["role_card"] = role
 		player["role_index"] = int(role.get("role_index", _player_role_template_index(i)))
 		players[i] = player
+	_ensure_player_private_intel_state()
+
+
+func _ensure_player_private_intel_state() -> void:
+	for i in range(players.size()):
+		var player: Dictionary = players[i]
+		if not (player.get("known_card_owners", {}) is Dictionary):
+			player["known_card_owners"] = {}
+		if not (player.get("known_contract_parties", {}) is Dictionary):
+			player["known_contract_parties"] = {}
+		if not (player.get("city_guesses", {}) is Dictionary):
+			player["city_guesses"] = {}
+		if not (player.get("city_guess_confidence", {}) is Dictionary):
+			player["city_guess_confidence"] = {}
+		if not (player.get("city_guess_reasons", {}) is Dictionary):
+			player["city_guess_reasons"] = {}
+		players[i] = player
 
 
 func _player_role_summary(role_card: Dictionary) -> String:
@@ -7841,6 +8072,17 @@ func _role_runtime_copy_fields() -> Array:
 		"resource_cash_amount",
 		"bonus_card_product",
 		"monster_upgrade_cash",
+		"intel_city_reveal_charges",
+		"intel_card_trace_charges",
+		"intel_contract_trace_charges",
+		"city_guess_reward_bonus",
+		"card_owner_guess_discount",
+		"card_owner_guess_bonus",
+		"contract_flow_discount",
+		"card_access_extra_hops",
+		"extended_card_price_multiplier",
+		"card_access_global",
+		"global_card_price_multiplier",
 		"flavor",
 	]
 
@@ -8059,7 +8301,8 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		"damage", "armor", "guard", "ranged_guard", "panic", "revenue_amount", "cash",
 		"draw_amount", "repair_routes", "route_damage", "contract_income", "market_demand_pressure", "market_supply_pressure", "miasma_count",
 		"reclaim_count", "product_level", "product_shift", "demand_shift", "contract_add_products", "contract_add_demands",
-		"contract_remove_products", "contract_remove_demands", "accept_cash", "decline_cash_penalty", "decline_route_damage", "stabilize_amount"
+		"contract_remove_products", "contract_remove_demands", "accept_cash", "decline_cash_penalty", "decline_route_damage", "stabilize_amount",
+		"reveal_city_count", "trace_card_count", "trace_contract_count", "card_access_extra_hops"
 	]:
 		if not source.has(key) and not base.has(key):
 			continue
@@ -8089,7 +8332,7 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		var delta_anchor := maxi(abs(reference_delta), abs(current_delta))
 		var delta_step := maxi(1, ceili(float(delta_anchor) * 0.35))
 		result[key] = current_delta + direction * delta_step * steps
-	for key in ["move", "range", "knockback", "delay", "lure_speedup"]:
+	for key in ["move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds"]:
 		if not source.has(key) and not base.has(key):
 			continue
 		var current_float := float(source.get(key, base.get(key, 0.0)))
@@ -8101,7 +8344,7 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		var float_direction := 1.0 if current_float > 0.0 else -1.0
 		var float_anchor := maxf(absf(reference_float), absf(current_float))
 		result[key] = current_float + float_direction * maxf(0.1, float_anchor * 0.35) * float(steps)
-	for key in ["growth_multiplier", "route_flow_multiplier", "accept_route_flow_multiplier"]:
+	for key in ["growth_multiplier", "route_flow_multiplier", "accept_route_flow_multiplier", "extended_card_price_multiplier", "global_card_price_multiplier"]:
 		if not source.has(key) and not base.has(key):
 			continue
 		var current_multiplier := float(source.get(key, base.get(key, 1.0)))
@@ -8140,9 +8383,15 @@ func _refresh_status() -> void:
 	var district_name := "无区域"
 	if selected_district >= 0 and selected_district < districts.size():
 		district_name = String(districts[selected_district].get("name", "区域"))
-	status_label.text = "%s｜%s｜%s｜%s" % [
+	var goal_text := "%s ¥%d/%d" % [
+		_roguelike_depth_label(),
+		_player_visible_settlement_estimate(selected_player) if selected_player >= 0 and selected_player < players.size() else 0,
+		_roguelike_cash_goal(),
+	]
+	status_label.text = "%s｜%s｜%s｜%s｜%s" % [
 		_format_time(game_time),
 		players[selected_player]["name"] if selected_player >= 0 and selected_player < players.size() else "玩家",
+		goal_text,
 		_card_resolution_status_text(),
 		district_name,
 	]
@@ -9126,6 +9375,274 @@ func _set_city_guess_reason_for_player(viewer_index: int, city_index: int, reaso
 	return true
 
 
+func _role_city_reveal_charges(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return 0
+	var role := _player_role_card_for_index(player_index)
+	return maxi(0, int(role.get("intel_city_reveal_charges", 0)))
+
+
+func _use_selected_role_city_reveal() -> void:
+	if _use_role_city_reveal_for_player(selected_player, selected_district, "身份侦测"):
+		_refresh_ui()
+
+
+func _use_role_city_reveal_for_player(player_index: int, city_index: int, source: String = "身份侦测") -> bool:
+	if game_over or player_index < 0 or player_index >= players.size():
+		return false
+	if city_index < 0 or city_index >= districts.size():
+		return false
+	var city := _district_city(city_index)
+	if not _city_is_active(city):
+		_log("%s没有可侦测的存活城市群。" % String(districts[city_index].get("name", "区域")))
+		return false
+	var owner := int(city.get("owner", -1))
+	if owner < 0 or owner >= players.size() or owner == player_index:
+		_log("%s不是陌生城市；身份侦测不会消耗。" % String(districts[city_index].get("name", "区域")))
+		return false
+	var role := _player_role_card_for_index(player_index)
+	var charges := int(role.get("intel_city_reveal_charges", 0))
+	if charges <= 0:
+		_log("%s没有剩余区域身份侦测次数。" % String(role.get("name", "当前角色")))
+		return false
+	role["intel_city_reveal_charges"] = charges - 1
+	players[player_index]["role_card"] = role
+	var marked := _mark_city_guess_for_player(player_index, city_index, owner, CITY_GUESS_CONFIDENCE_HIGH, CITY_GUESS_REASON_ROLE)
+	if marked:
+		_record_player_economic_event(player_index, "情报", String(role.get("name", source)), 0, "查明%s真实业主为玩家%d；答案只进入私人标注。" % [
+			String(districts[city_index].get("name", "区域")),
+			owner + 1,
+		])
+		_log("%s消耗%s：查明%s的真实业主并写入私人地图；剩余%d次。" % [
+			String(players[player_index].get("name", "玩家")),
+			String(role.get("name", source)),
+			String(districts[city_index].get("name", "区域")),
+			charges - 1,
+		])
+	return marked
+
+
+func _private_known_card_owner_for_entry(viewer_index: int, entry: Dictionary) -> int:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return -1
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	if resolution_id < 0:
+		return -1
+	var known: Dictionary = (players[viewer_index] as Dictionary).get("known_card_owners", {})
+	return int(known.get(str(resolution_id), -1))
+
+
+func _remember_card_owner_for_player(viewer_index: int, entry: Dictionary, source: String) -> bool:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return false
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var owner := int(entry.get("player_index", -1))
+	if resolution_id < 0 or owner < 0 or owner >= players.size():
+		return false
+	var known: Dictionary = (players[viewer_index] as Dictionary).get("known_card_owners", {})
+	if int(known.get(str(resolution_id), -1)) == owner:
+		return false
+	known[str(resolution_id)] = owner
+	players[viewer_index]["known_card_owners"] = known
+	_record_player_economic_event(viewer_index, "情报", source, 0, "私下查明轨道#%d《%s》由玩家%d打出。" % [
+		resolution_id,
+		_card_resolution_entry_card_label(entry),
+		owner + 1,
+	])
+	return true
+
+
+func _traceable_card_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
+	var result := []
+	if preferred_resolution_id >= 0:
+		var preferred := _card_resolution_entry_by_id(preferred_resolution_id)
+		if not preferred.is_empty() and not bool(preferred.get("public_owner_revealed", false)):
+			result.append(preferred)
+	for i in range(resolved_card_history.size() - 1, -1, -1):
+		if result.size() >= limit:
+			return result
+		var entry_variant: Variant = resolved_card_history[i]
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+		if resolution_id < 0 or resolution_id == preferred_resolution_id or bool(entry.get("public_owner_revealed", false)):
+			continue
+		result.append(entry.duplicate(true))
+	return result
+
+
+func _trace_card_owner_for_player(viewer_index: int, preferred_resolution_id: int = -1, count: int = 1, source: String = "出牌追帧") -> int:
+	var traced := 0
+	for entry_variant in _traceable_card_entries(preferred_resolution_id, maxi(1, count)):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if _remember_card_owner_for_player(viewer_index, entry, source):
+			traced += 1
+			_log("%s获得一条匿名卡牌归属线索：轨道#%d《%s》的真实出牌者已写入私人情报。" % [
+				String((players[viewer_index] as Dictionary).get("name", "玩家")),
+				int(entry.get("resolution_id", entry.get("queued_order", -1))),
+				_card_resolution_entry_card_label(entry),
+			])
+	return traced
+
+
+func _remember_contract_parties_for_player(viewer_index: int, entry: Dictionary, source: String) -> bool:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return false
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	if resolution_id < 0:
+		return false
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	if String(skill.get("kind", "")) != "area_trade_contract":
+		return false
+	var proposer := int(entry.get("player_index", -1))
+	var target_owner := int(entry.get("contract_target_owner", -1))
+	if proposer < 0 or proposer >= players.size() or target_owner < 0 or target_owner >= players.size():
+		return false
+	var known: Dictionary = (players[viewer_index] as Dictionary).get("known_contract_parties", {})
+	if known.has(str(resolution_id)):
+		return false
+	known[str(resolution_id)] = {
+		"proposer": proposer,
+		"target_owner": target_owner,
+		"source_district": int(entry.get("contract_source_district", -1)),
+		"target_district": int(entry.get("contract_target_district", -1)),
+		"response": String(entry.get("contract_response", "")),
+	}
+	players[viewer_index]["known_contract_parties"] = known
+	_record_player_economic_event(viewer_index, "情报", source, 0, "私下查明轨道#%d合约：出牌方玩家%d，目标业主玩家%d。" % [
+		resolution_id,
+		proposer + 1,
+		target_owner + 1,
+	])
+	return true
+
+
+func _traceable_contract_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
+	var result := []
+	if preferred_resolution_id >= 0:
+		var preferred := _card_resolution_entry_by_id(preferred_resolution_id)
+		if not preferred.is_empty() and String((preferred.get("skill", {}) as Dictionary).get("kind", "")) == "area_trade_contract":
+			result.append(preferred)
+	for i in range(resolved_card_history.size() - 1, -1, -1):
+		if result.size() >= limit:
+			return result
+		var entry_variant: Variant = resolved_card_history[i]
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+		if resolution_id < 0 or resolution_id == preferred_resolution_id:
+			continue
+		var skill: Dictionary = entry.get("skill", {}) as Dictionary
+		if String(skill.get("kind", "")) != "area_trade_contract":
+			continue
+		result.append(entry.duplicate(true))
+	return result
+
+
+func _trace_contract_parties_for_player(viewer_index: int, preferred_resolution_id: int = -1, count: int = 1, source: String = "密约回溯") -> int:
+	var traced := 0
+	for entry_variant in _traceable_contract_entries(preferred_resolution_id, maxi(1, count)):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if _remember_contract_parties_for_player(viewer_index, entry, source):
+			traced += 1
+			_log("%s获得一条匿名合约线索：轨道#%d的双方身份已写入私人情报。" % [
+				String((players[viewer_index] as Dictionary).get("name", "玩家")),
+				int(entry.get("resolution_id", entry.get("queued_order", -1))),
+			])
+	return traced
+
+
+func _reveal_city_owner_by_intel_card(player_index: int, city_index: int, source: String) -> bool:
+	if player_index < 0 or player_index >= players.size() or city_index < 0 or city_index >= districts.size():
+		return false
+	var city := _district_city(city_index)
+	if not _city_is_active(city):
+		return false
+	var owner := int(city.get("owner", -1))
+	if owner < 0 or owner >= players.size() or owner == player_index:
+		return false
+	if not _mark_city_guess_for_player(player_index, city_index, owner, CITY_GUESS_CONFIDENCE_HIGH, CITY_GUESS_REASON_CARD):
+		return false
+	_record_player_economic_event(player_index, "情报", source, 0, "线索牌查明%s真实业主为玩家%d；答案只进入私人标注。" % [
+		String(districts[city_index].get("name", "区域")),
+		owner + 1,
+	])
+	return true
+
+
+func _apply_intel_city_reveal(_player: Dictionary, skill: Dictionary) -> bool:
+	var count := maxi(1, int(skill.get("reveal_city_count", 1)))
+	var districts_to_check := []
+	if selected_district >= 0 and selected_district < districts.size():
+		districts_to_check.append(selected_district)
+	for entry_variant in _intel_city_guess_entries(selected_player, 12):
+		if districts_to_check.size() >= count * 3:
+			break
+		if not (entry_variant is Dictionary):
+			continue
+		var district_index := int((entry_variant as Dictionary).get("district_index", -1))
+		if district_index >= 0 and not districts_to_check.has(district_index):
+			districts_to_check.append(district_index)
+	var revealed := 0
+	for district_variant in districts_to_check:
+		if revealed >= count:
+			break
+		if _reveal_city_owner_by_intel_card(selected_player, int(district_variant), String(skill.get("name", "业主透镜"))):
+			revealed += 1
+			_log("线索牌%s：%s真实业主已写入当前玩家私人地图标注。" % [
+				String(skill.get("name", "业主透镜")),
+				String(districts[int(district_variant)].get("name", "区域")),
+			])
+	return revealed > 0
+
+
+func _apply_intel_card_trace(_player: Dictionary, skill: Dictionary) -> bool:
+	var traced := _trace_card_owner_for_player(
+		selected_player,
+		selected_card_resolution_id,
+		maxi(1, int(skill.get("trace_card_count", 1))),
+		String(skill.get("name", "出牌追帧"))
+	)
+	return traced > 0
+
+
+func _apply_intel_contract_trace(_player: Dictionary, skill: Dictionary) -> bool:
+	var traced := _trace_contract_parties_for_player(
+		selected_player,
+		selected_card_resolution_id,
+		maxi(1, int(skill.get("trace_contract_count", 1))),
+		String(skill.get("name", "密约回溯"))
+	)
+	return traced > 0
+
+
+func _apply_card_access_boon(player: Dictionary, skill: Dictionary) -> bool:
+	if selected_player < 0 or selected_player >= players.size():
+		return false
+	var seconds := maxf(5.0, float(skill.get("card_access_seconds", 30.0)))
+	var until_time := game_time + seconds
+	player["card_access_expire_time"] = maxf(float(player.get("card_access_expire_time", -1.0)), until_time)
+	player["card_access_extra_hops"] = maxi(maxi(0, int(player.get("card_access_extra_hops", 0))), maxi(0, int(skill.get("card_access_extra_hops", 0))))
+	player["extended_card_price_multiplier"] = maxf(float(player.get("extended_card_price_multiplier", 1.10)), float(skill.get("extended_card_price_multiplier", 1.10)))
+	if bool(skill.get("card_access_global", false)):
+		player["card_access_global"] = true
+		player["global_card_price_multiplier"] = maxf(float(player.get("global_card_price_multiplier", 1.35)), float(skill.get("global_card_price_multiplier", 1.35)))
+	players[selected_player] = player
+	var effect_text := "全局采购×%.2f" % float(player.get("global_card_price_multiplier", 1.35)) if bool(player.get("card_access_global", false)) else "怪兽补给半径+%d跳，远程价×%.2f" % [
+		int(player.get("card_access_extra_hops", 0)),
+		float(player.get("extended_card_price_multiplier", 1.10)),
+	]
+	_record_player_economic_event(selected_player, "补给权限", String(skill.get("name", "远程补给链")), 0, "%s，持续%.0f秒。" % [effect_text, seconds])
+	_log("匿名补给权限生效：一名未公开玩家获得%s，持续%.0f秒。" % [effect_text, seconds])
+	return true
+
+
 func _selected_city_owner_view_text() -> String:
 	var city := _district_city(selected_district)
 	if city.is_empty():
@@ -9180,6 +9697,12 @@ func _refresh_map_controls() -> void:
 			INTEL_CORRECT_GUESS_CASH,
 			INTEL_WRONG_GUESS_COST,
 		] if can_guess else "只有陌生存活城市可以标注业主推测。"
+	var role_city_reveal_charges := _role_city_reveal_charges(selected_player)
+	for button_variant in map_role_intel_buttons:
+		var button: Button = button_variant
+		button.text = "身份侦测×%d" % role_city_reveal_charges
+		button.disabled = not can_guess or role_city_reveal_charges <= 0
+		button.tooltip_text = "消耗1次角色身份侦测，私下查明当前城市真实业主。" if not button.disabled else "需要拥有区域侦测型角色、剩余次数，并选中陌生存活城市。"
 	for option_variant in map_guess_options:
 		var option: OptionButton = option_variant
 		option.disabled = not can_guess
@@ -9867,9 +10390,9 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 			action_button.disabled = game_over or bool(skill.get("queued_for_resolution", false)) or _has_pending_target_choice() or players[selected_player]["action_cooldown"] > 0.0 or float(skill.get("lock_left", 0.0)) > 0.0 or float(skill.get("cooldown_left", 0.0)) > 0.0 or not _can_play_skill_now(selected_player, skill, false)
 			action_button.pressed.connect(Callable(self, "_use_skill").bind(slot_index))
 		else:
-			var price := _card_price(skill_name, selected_district)
+			var price := _card_price(skill_name, selected_district, selected_player)
 			action_button.text = "获取 ¥%d" % price
-			action_button.disabled = game_over or _has_pending_target_choice() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district) or players[selected_player]["action_cooldown"] > 0.0 or int(players[selected_player].get("cash", 0)) < price or not _player_can_receive_card(players[selected_player], skill_name)
+			action_button.disabled = game_over or _has_pending_target_choice() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or players[selected_player]["action_cooldown"] > 0.0 or int(players[selected_player].get("cash", 0)) < price or not _player_can_receive_card(players[selected_player], skill_name)
 			action_button.pressed.connect(Callable(self, "_claim_district_card").bind(skill_name))
 		box.add_child(action_button)
 
@@ -9886,6 +10409,10 @@ func _card_theme_color(skill: Dictionary) -> Color:
 			return Color("#f472b6")
 		"city_revenue_boost", "cash_gain", "product_speculation", "product_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "market_stabilize", "product_growth_boon", "route_flow_boon", "city_contract_boon", "region_economy_shift":
 			return Color("#f59e0b")
+		"intel_city_reveal", "intel_card_trace", "intel_contract_trace":
+			return Color("#60a5fa")
+		"card_access_boon":
+			return Color("#2dd4bf")
 		"panic_shift":
 			return Color("#f97316")
 		"move", "fly", "burrow":
@@ -9907,16 +10434,31 @@ func _card_theme_color(skill: Dictionary) -> Color:
 
 func _card_rules_text(skill_name: String, skill: Dictionary, compact: bool = false) -> String:
 	var effect_text := _skill_display_text(skill)
-	var facts := _card_rule_facts(skill)
+	var key_facts := _card_key_rule_facts(skill)
+	var key_text := _join_first_card_facts(key_facts, 4)
+	if key_text == "":
+		key_text = "按效果文字结算"
 	if compact:
 		return "%s\n%s" % [
 			_short_card_text(effect_text, 54),
-			_join_first_card_facts(facts, 3),
+			key_text,
 		]
-	return "%s\n规则：%s" % [
+	return "%s\n%s｜%s" % [
 		effect_text,
-		"｜".join(facts),
+		"固定技能" if bool(skill.get("persistent", false)) else "一次性",
+		key_text,
 	]
+
+
+func _card_key_rule_facts(skill: Dictionary) -> Array:
+	var result := []
+	for fact_variant in _card_rule_facts(skill):
+		var fact := String(fact_variant)
+		if fact.begins_with("目标:") or fact.begins_with("出牌:") or fact.begins_with("打出条件："):
+			continue
+		if fact.strip_edges() != "":
+			result.append(fact)
+	return result
 
 
 func _monster_card_duration_text(skill: Dictionary, compact: bool = false) -> String:
@@ -9955,11 +10497,11 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 	var terrain := String(districts[district_index].get("terrain", "land"))
 	match String(skill.get("summon_access", "any")):
 		"monster_zone":
-			return _can_buy_card_from_district(district_index)
+			return _nearest_active_monster_graph_distance(district_index, 1) >= 0
 		"land_monster_zone":
-			return terrain == "land" and _can_buy_card_from_district(district_index)
+			return terrain == "land" and _nearest_active_monster_graph_distance(district_index, 1) >= 0
 		"ocean_monster_zone":
-			return terrain == "ocean" and _can_buy_card_from_district(district_index)
+			return terrain == "ocean" and _nearest_active_monster_graph_distance(district_index, 1) >= 0
 		"land":
 			return terrain == "land"
 		"ocean":
@@ -10038,6 +10580,14 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var lure_speedup := float(skill.get("lure_speedup", 0.0))
 	var miasma_count := int(skill.get("miasma_count", 0))
 	var reclaim_count := int(skill.get("reclaim_count", 0))
+	var reveal_city_count := int(skill.get("reveal_city_count", 0))
+	var trace_card_count := int(skill.get("trace_card_count", 0))
+	var trace_contract_count := int(skill.get("trace_contract_count", 0))
+	var card_access_extra_hops := int(skill.get("card_access_extra_hops", 0))
+	var card_access_seconds := float(skill.get("card_access_seconds", 0.0))
+	var extended_card_price_multiplier := float(skill.get("extended_card_price_multiplier", 1.0))
+	var card_access_global := bool(skill.get("card_access_global", false))
+	var global_card_price_multiplier := float(skill.get("global_card_price_multiplier", 1.0))
 	if move_m > 0.0:
 		facts.append("移动:%s" % _meters_text(move_m))
 	if range_m > 0.0:
@@ -10130,6 +10680,16 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 		facts.append("瘴气:%d" % miasma_count)
 	if reclaim_count > 0:
 		facts.append("回收瘴气:%d" % reclaim_count)
+	if reveal_city_count > 0:
+		facts.append("查区域业主:%d" % reveal_city_count)
+	if trace_card_count > 0:
+		facts.append("追溯出牌:%d" % trace_card_count)
+	if trace_contract_count > 0:
+		facts.append("追溯合约:%d" % trace_contract_count)
+	if card_access_extra_hops > 0:
+		facts.append("购牌半径:+%d跳/%.0fs×%.2f" % [card_access_extra_hops, maxf(1.0, card_access_seconds), maxf(1.0, extended_card_price_multiplier)])
+	if card_access_global:
+		facts.append("全局购牌:%.0fs×%.2f" % [maxf(1.0, card_access_seconds), maxf(1.0, global_card_price_multiplier)])
 	return facts
 
 
@@ -10595,7 +11155,7 @@ func _add_selected_district_card_list(parent: Container, district: Dictionary) -
 	if card_choices.is_empty():
 		parent.add_child(_plain_label("区域卡牌选择：暂无候选。", 13, Color("#94a3b8")))
 		return
-	var header := _plain_label("区域卡牌选择（%s｜单击预览｜hover详情｜双击购买）" % _district_card_access_text(selected_district), 13, Color("#fde68a"))
+	var header := _plain_label("区域卡牌选择（%s｜单击预览｜hover详情｜双击购买）" % _district_card_access_text(selected_district, selected_player), 13, Color("#fde68a"))
 	parent.add_child(header)
 	var card_grid := GridContainer.new()
 	card_grid.columns = 1
@@ -10616,7 +11176,7 @@ func _add_selected_district_card_list(parent: Container, district: Dictionary) -
 		var source := _district_card_source(selected_district, preview_name)
 		parent.add_child(_plain_label("当前预览：%s｜价格 ¥%d｜来源：%s｜双击区域卡或按 X 购买。" % [
 			_card_display_name(preview_name),
-			_card_price(preview_name, selected_district),
+			_card_price(preview_name, selected_district, selected_player),
 			source,
 		], 12, Color("#bae6fd")))
 		var center := CenterContainer.new()
@@ -10632,8 +11192,8 @@ func _add_district_card_button(parent: Container, card_name: String) -> void:
 	var selected := card_name == selected_market_skill
 	var upgrade_tag := " [升级]" if _is_upgrade_card(card_name) else ""
 	var source := _district_card_source(selected_district, card_name)
-	var price := _card_price(card_name, selected_district)
-	var access_text := _district_card_access_text(selected_district)
+	var price := _card_price(card_name, selected_district, selected_player)
+	var access_text := _district_card_access_text(selected_district, selected_player)
 	var facts := _join_first_card_facts(_card_rule_facts(skill), 3)
 	var detail := _short_card_text(_skill_display_text(skill), 42)
 	button.text = "%s%s%s｜¥%d｜%s｜%s｜%s｜%s" % [
@@ -10648,7 +11208,7 @@ func _add_district_card_button(parent: Container, card_name: String) -> void:
 	]
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.disabled = game_over or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district) or int(players[selected_player].get("cash", 0)) < price or not _player_can_receive_card(players[selected_player], card_name)
+	button.disabled = game_over or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or int(players[selected_player].get("cash", 0)) < price or not _player_can_receive_card(players[selected_player], card_name)
 	button.tooltip_text = _card_detail_tooltip(card_name, selected_district)
 	button.mouse_entered.connect(Callable(self, "_preview_district_card").bind(card_name, true))
 	button.pressed.connect(Callable(self, "_preview_district_card").bind(card_name, true))
@@ -10689,26 +11249,22 @@ func _card_detail_tooltip(card_name: String, district_index: int = -1) -> String
 	if card_name == "" or not _skill_exists(card_name):
 		return ""
 	var skill: Dictionary = _skill_definition(card_name)
-	var facts: Array = _card_rule_facts(skill)
-	var facts_text := "无额外数值"
-	if not facts.is_empty():
-		var pieces := []
-		for fact_variant in facts:
-			pieces.append(String(fact_variant))
-		facts_text = "｜".join(pieces)
+	var key_facts := _card_key_rule_facts(skill)
+	var facts_text := "无攻击/生命/范围等数值；按效果文字结算。"
+	if not key_facts.is_empty():
+		facts_text = "｜".join(key_facts)
 	var location := _card_choice_location_summary(card_name)
 	var source := _district_card_source(district_index, card_name) if district_index >= 0 else "卡池"
-	var price := _card_price(card_name, district_index)
-	return "%s\n参考价：¥%d（%s，按I级基础价）\n来源：%s\n标签：%s\n数值：%s\n效果：%s\n升级：%s\n演出：%s\n投放：%s\n操作：单击预览；双击从怪兽落地/相邻区域购买；X 购买当前预览卡。" % [
+	var price := _card_price(card_name, district_index, selected_player)
+	return "%s\n参考价：¥%d（%s，按I级基础价）\n来源：%s\n标签：%s\n效果：%s\n关键数值：%s\n升级：%s\n投放：%s\n操作：单击预览；双击购买；X 购买当前预览卡。" % [
 		_card_display_name(card_name),
 		price,
 		_card_price_tier_text(price),
 		source,
 		_skill_tag_text(skill),
-		facts_text,
 		_skill_display_text(skill),
+		facts_text,
 		_card_level_gradient_text(card_name).replace("\n", " / "),
-		_card_resolution_animation_catalog_text(card_name, skill).replace("\n", " / "),
 		location,
 	]
 
@@ -10940,6 +11496,23 @@ func _set_configured_ai_player_count(count: int) -> void:
 	_refresh_ui()
 
 
+func _ensure_configured_roguelike_depth() -> void:
+	configured_roguelike_depth = clampi(configured_roguelike_depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
+
+
+func _set_configured_roguelike_depth(depth: int) -> void:
+	configured_roguelike_depth = clampi(depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
+	_save_settings(false)
+	var profile := _roguelike_planet_profile(configured_roguelike_depth)
+	_log("下次开局挑战层级设为%s：约%d-%d区，目标现金¥%d。" % [
+		_roguelike_depth_label(configured_roguelike_depth),
+		int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
+		int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
+		_roguelike_cash_goal(configured_roguelike_depth),
+	])
+	_refresh_ui()
+
+
 func _configured_human_player_count() -> int:
 	_ensure_configured_ai_player_count()
 	return max(1, configured_player_count - configured_ai_player_count)
@@ -11065,7 +11638,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "product", "price", "bid_budget", "reason"]:
+	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -11390,10 +11963,30 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = own_city if net_shift >= 0 else rival_city
 		if int(context["district"]) < 0:
 			return {}
+	elif kind == "intel_city_reveal":
+		if rival_city < 0:
+			return {}
+		context["district"] = rival_city
+		context["score"] = int(context["score"]) + 88 + _city_intel_priority_score({"potential_income": int(_district_city(rival_city).get("last_income", 0)), "last_income": int(_district_city(rival_city).get("last_income", 0)), "competition": _city_competition_matches(rival_city), "disrupted": int(_district_city(rival_city).get("trade_disrupted_routes", 0)), "products": _city_product_names(_district_city(rival_city)), "demands": _city_demand_names(_district_city(rival_city)), "marked": false})
+	elif kind == "intel_card_trace":
+		if _traceable_card_entries(selected_card_resolution_id, 1).is_empty():
+			return {}
+		context["district"] = _ai_first_alive_district()
+		context["score"] = int(context["score"]) + 95 + resolved_card_history.size() * 4
+	elif kind == "intel_contract_trace":
+		if _traceable_contract_entries(selected_card_resolution_id, 1).is_empty():
+			return {}
+		context["district"] = _ai_first_alive_district()
+		context["score"] = int(context["score"]) + 100 + pending_contract_offers.size() * 18
+	elif kind == "card_access_boon":
+		context["district"] = own_city if own_city >= 0 else _ai_first_alive_district()
+		context["score"] = int(context["score"]) + 90 + int(skill.get("card_access_extra_hops", 0)) * 35
+		if bool(skill.get("card_access_global", false)):
+			context["score"] = int(context["score"]) + 85
 	elif kind == "supply_draw":
 		context["district"] = -1
 		for i in range(districts.size()):
-			if _can_buy_card_from_district(i) and not (districts[i].get("card_choices", []) as Array).is_empty():
+			if _can_buy_card_from_district(i, player_index) and not (districts[i].get("card_choices", []) as Array).is_empty():
 				context["district"] = i
 				break
 		if int(context["district"]) < 0:
@@ -11403,7 +11996,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if int(context.get("district", -1)) < 0:
 		return {}
 	var product_name := String(context.get("product", ""))
-	var required := _skill_play_flow_required(skill)
+	var required := _skill_play_flow_required(skill, player_index)
 	if required > 0:
 		product_name = _skill_play_product(skill, player_index)
 		context["product"] = product_name
@@ -11446,13 +12039,13 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var cash := int(player.get("cash", 0))
 	var profile := _ai_profile_for_player(player_index)
 	for district_index in range(districts.size()):
-		if not _can_buy_card_from_district(district_index) or bool(districts[district_index].get("destroyed", false)):
+		if not _can_buy_card_from_district(district_index, player_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
 		for card_variant in districts[district_index].get("card_choices", []):
 			var card_name := _canonical_card_supply_name(String(card_variant))
 			if card_name == "" or not _player_can_receive_card(player, card_name):
 				continue
-			var price := _card_price(card_name, district_index)
+			var price := _card_price(card_name, district_index, player_index)
 			if cash - price < AI_CARD_BUY_MIN_CASH_RESERVE:
 				continue
 			var skill := _make_skill(card_name)
@@ -11462,7 +12055,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			if family_slot >= 0:
 				score += 85
 			var product_name := _skill_play_product(skill, player_index)
-			var required := _skill_play_flow_required(skill)
+			var required := _skill_play_flow_required(skill, player_index)
 			var available := _player_product_flow(player_index, product_name)
 			if required <= 0 or available >= required:
 				score += 35
@@ -11752,6 +12345,289 @@ func _update_ai_contract_responses(force: bool = false) -> int:
 	return responded
 
 
+func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, product_name: String) -> int:
+	if viewer_index < 0 or viewer_index >= players.size() or guessed_player < 0 or guessed_player >= players.size() or product_name == "":
+		return 0
+	var signal_score := 0
+	var viewer: Dictionary = players[viewer_index]
+	var guesses: Dictionary = viewer.get("city_guesses", {})
+	var confidences: Dictionary = viewer.get("city_guess_confidence", {})
+	for city_key in guesses.keys():
+		if int(guesses.get(city_key, -1)) != guessed_player:
+			continue
+		var city_index := int(city_key)
+		if city_index < 0 or city_index >= districts.size():
+			continue
+		var city := _district_city(city_index)
+		if not _city_is_active(city):
+			continue
+		var confidence := _normalized_city_guess_confidence(int(confidences.get(city_key, CITY_GUESS_CONFIDENCE_DEFAULT)))
+		var confidence_weight := 16 + confidence * 12
+		if _city_product_names(city).has(product_name):
+			signal_score += confidence_weight + 18
+		if _city_demand_names(city).has(product_name):
+			signal_score += confidence_weight
+		var public_clues: Array = city.get("public_clues", [])
+		for clue_variant in public_clues:
+			var clue := _normalize_city_public_clue_entry(clue_variant)
+			if (clue.get("products", []) as Array).has(product_name):
+				signal_score += 8 + confidence * 3
+	for entry_variant in _public_card_resolution_owner_entries():
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("public_owner_revealed", false)) or int(entry.get("player_index", -1)) != guessed_player:
+			continue
+		if String(entry.get("play_requirement_product", "")) == product_name:
+			signal_score += 34
+		var skill: Dictionary = entry.get("skill", {}) as Dictionary
+		if String(skill.get("play_product", "")) == product_name:
+			signal_score += 24
+	return signal_score
+
+
+func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, guessed_player: int) -> Dictionary:
+	var city_index := int(city_entry.get("district_index", -1))
+	if city_index < 0 or city_index >= districts.size() or guessed_player < 0 or guessed_player >= players.size() or guessed_player == viewer_index:
+		return {}
+	var city := _district_city(city_index)
+	if not _city_is_active(city):
+		return {}
+	var score := int(city_entry.get("priority", 0)) + 18
+	var reason_key := CITY_GUESS_REASON_INTUITION
+	var reason_bits := []
+	for product_variant in _city_product_names(city):
+		var product_name := String(product_variant)
+		var product_signal := _ai_public_player_product_signal(viewer_index, guessed_player, product_name)
+		if product_signal > 0:
+			score += product_signal
+			reason_key = CITY_GUESS_REASON_PRODUCT
+			reason_bits.append("%s商品线索+%d" % [product_name, product_signal])
+	for demand_variant in _city_demand_names(city):
+		var demand_name := String(demand_variant)
+		var demand_signal := _ai_public_player_product_signal(viewer_index, guessed_player, demand_name) / 2
+		if demand_signal > 0:
+			score += demand_signal
+			if reason_key == CITY_GUESS_REASON_INTUITION:
+				reason_key = CITY_GUESS_REASON_ROUTE
+			reason_bits.append("%s需求线索+%d" % [demand_name, demand_signal])
+	var latest_clue := String(city_entry.get("latest_clue", ""))
+	if latest_clue != "" and latest_clue != "暂无公开线索":
+		score += 14
+		if latest_clue.contains("卡") or latest_clue.contains("牌"):
+			reason_key = CITY_GUESS_REASON_CARD
+		reason_bits.append("公开线索")
+	var current_guess := int(city_entry.get("guess", -1))
+	var current_confidence := int(city_entry.get("confidence", 0))
+	if current_guess == guessed_player:
+		score += 10 - current_confidence * 3
+	elif current_guess >= 0:
+		score -= 18 + current_confidence * 10
+	if reason_bits.is_empty():
+		score += 5 + ((city_index + guessed_player * 3 + business_cycle_count) % 11)
+		reason_bits.append("低置信直觉")
+	var confidence := CITY_GUESS_CONFIDENCE_LOW
+	if score >= 150:
+		confidence = CITY_GUESS_CONFIDENCE_HIGH
+	elif score >= 105:
+		confidence = CITY_GUESS_CONFIDENCE_MEDIUM
+	return {
+		"action": "城市业主标注",
+		"kind": "city_owner_guess",
+		"district": city_index,
+		"guessed_player": guessed_player,
+		"confidence": confidence,
+		"reason_key": reason_key,
+		"score": maxi(1, score),
+		"reason": "%s→玩家%d｜%s" % [
+			String(districts[city_index].get("name", "城市")),
+			guessed_player + 1,
+			"、".join(reason_bits),
+		],
+	}
+
+
+func _ai_city_guess_candidates(player_index: int) -> Array:
+	var result := []
+	if not _player_is_ai(player_index):
+		return result
+	for entry_variant in _intel_city_guess_entries(player_index, 12):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if bool(entry.get("marked", false)) and int(entry.get("confidence", 0)) >= CITY_GUESS_CONFIDENCE_HIGH:
+			continue
+		var best := {}
+		for guessed_player in range(players.size()):
+			var candidate := _ai_city_guess_owner_candidate(player_index, entry, guessed_player)
+			if candidate.is_empty():
+				continue
+			if best.is_empty() or int(candidate.get("score", 0)) > int(best.get("score", 0)):
+				best = candidate
+		if not best.is_empty():
+			result.append(best)
+	return result
+
+
+func _ai_apply_city_guess_candidate(player_index: int, candidate: Dictionary, all_candidates: Array) -> bool:
+	var district_index := int(candidate.get("district", -1))
+	var guessed_player := int(candidate.get("guessed_player", -1))
+	if not _mark_city_guess_for_player(player_index, district_index, guessed_player, int(candidate.get("confidence", CITY_GUESS_CONFIDENCE_LOW)), String(candidate.get("reason_key", CITY_GUESS_REASON_INTUITION))):
+		return false
+	_record_ai_decision(
+		player_index,
+		"城市业主推理",
+		district_index,
+		int(candidate.get("score", 0)),
+		String(candidate.get("reason", "按公开商品和城市线索标注")),
+		all_candidates,
+		{
+			"guessed_player": guessed_player,
+			"confidence": int(candidate.get("confidence", 0)),
+			"reason_key": String(candidate.get("reason_key", "")),
+		}
+	)
+	return true
+
+
+func _ai_card_guess_candidate_for_owner(player_index: int, entry: Dictionary, guessed_player: int) -> Dictionary:
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	if resolution_id < 0 or guessed_player < 0 or guessed_player >= players.size() or guessed_player == player_index:
+		return {}
+	if bool(entry.get("public_owner_revealed", false)):
+		return {}
+	var actual_owner := int(entry.get("player_index", -1))
+	if actual_owner == player_index:
+		return {}
+	var guessers: Array = entry.get("guessers", [])
+	if guessers.has(player_index):
+		return {}
+	var stake := _card_owner_guess_stake_for_player(player_index)
+	if int((players[player_index] as Dictionary).get("cash", 0)) < stake + AI_CARD_BUY_MIN_CASH_RESERVE:
+		return {}
+	var score := 48
+	var reason_bits := []
+	var private_known := _private_known_card_owner_for_entry(player_index, entry)
+	if private_known == guessed_player:
+		score += 180
+		reason_bits.append("私有追帧命中")
+	elif private_known >= 0:
+		score -= 90
+	var product_name := String(entry.get("play_requirement_product", ""))
+	if product_name != "":
+		var product_signal := _ai_public_player_product_signal(player_index, guessed_player, product_name)
+		if product_signal > 0:
+			score += product_signal + 20
+			reason_bits.append("%s流动条件" % product_name)
+	var selected_city := int(entry.get("selected_district", -1))
+	if selected_city >= 0 and selected_city < districts.size():
+		var guesses: Dictionary = (players[player_index] as Dictionary).get("city_guesses", {})
+		if int(guesses.get(selected_city, -1)) == guessed_player:
+			score += 26
+			reason_bits.append("目标城市私标吻合")
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	var kind := String(skill.get("kind", ""))
+	for previous_variant in resolved_card_history:
+		if not (previous_variant is Dictionary):
+			continue
+		var previous := previous_variant as Dictionary
+		if not bool(previous.get("public_owner_revealed", false)) or int(previous.get("player_index", -1)) != guessed_player:
+			continue
+		var previous_skill: Dictionary = previous.get("skill", {}) as Dictionary
+		if String(previous_skill.get("kind", "")) == kind:
+			score += 18
+			reason_bits.append("已揭示同类牌")
+			break
+	var bid := int(entry.get("winning_bid", entry.get("tip", 0)))
+	if bid >= 100:
+		score += mini(28, bid / 20)
+		reason_bits.append("高报价线索")
+	if reason_bits.is_empty():
+		score += ((resolution_id + guessed_player * 5 + business_cycle_count) % 13)
+		reason_bits.append("弱线索试探")
+	return {
+		"action": "卡牌归属押注",
+		"kind": "card_owner_guess",
+		"resolution_id": resolution_id,
+		"card_name": _card_resolution_entry_card_label(entry),
+		"guessed_player": guessed_player,
+		"stake": stake,
+		"district": selected_city,
+		"product": product_name,
+		"score": maxi(1, score),
+		"reason": "轨道#%d《%s》→玩家%d｜%s" % [
+			resolution_id,
+			_card_resolution_entry_card_label(entry),
+			guessed_player + 1,
+			"、".join(reason_bits),
+		],
+	}
+
+
+func _ai_card_guess_candidates(player_index: int) -> Array:
+	var result := []
+	if not _player_is_ai(player_index):
+		return result
+	for i in range(resolved_card_history.size() - 1, -1, -1):
+		var entry_variant: Variant = resolved_card_history[i]
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if bool(entry.get("public_owner_revealed", false)):
+			continue
+		var best := {}
+		for guessed_player in range(players.size()):
+			var candidate := _ai_card_guess_candidate_for_owner(player_index, entry, guessed_player)
+			if candidate.is_empty():
+				continue
+			if best.is_empty() or int(candidate.get("score", 0)) > int(best.get("score", 0)):
+				best = candidate
+		if not best.is_empty():
+			result.append(best)
+	return result
+
+
+func _ai_apply_card_guess_candidate(player_index: int, candidate: Dictionary, all_candidates: Array) -> bool:
+	_record_ai_decision(
+		player_index,
+		"卡牌归属押注",
+		int(candidate.get("resolution_id", -1)),
+		int(candidate.get("score", 0)),
+		String(candidate.get("reason", "按公开条件与私有线索押注")),
+		all_candidates,
+		{
+			"resolution_id": int(candidate.get("resolution_id", -1)),
+			"guessed_player": int(candidate.get("guessed_player", -1)),
+			"stake": int(candidate.get("stake", 0)),
+			"card_name": String(candidate.get("card_name", "")),
+		}
+	)
+	return _guess_card_resolution_owner_for_player(player_index, int(candidate.get("resolution_id", -1)), int(candidate.get("guessed_player", -1)), true)
+
+
+func _auto_ai_intel_decisions(force: bool = false) -> int:
+	if game_over or not ai_card_decision_enabled:
+		return 0
+	var acted := 0
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		var city_candidates := _ai_city_guess_candidates(player_index)
+		var city_choice := _ai_pick_candidate(player_index, city_candidates, force)
+		if not city_choice.is_empty() and (force or int(city_choice.get("score", 0)) >= AI_INTEL_MIN_CITY_SCORE):
+			if _ai_apply_city_guess_candidate(player_index, city_choice, city_candidates):
+				acted += 1
+		if acted >= AI_INTEL_ACTIONS_PER_TICK and not force:
+			return acted
+		var card_candidates := _ai_card_guess_candidates(player_index)
+		var card_choice := _ai_pick_candidate(player_index, card_candidates, force)
+		if not card_choice.is_empty() and (force or int(card_choice.get("score", 0)) >= AI_INTEL_MIN_CARD_SCORE):
+			if _ai_apply_card_guess_candidate(player_index, card_choice, card_candidates):
+				acted += 1
+		if acted >= AI_INTEL_ACTIONS_PER_TICK and not force:
+			return acted
+	return acted
+
+
 func _update_ai_decisions(delta: float) -> void:
 	if not ai_card_decision_enabled or players.is_empty():
 		return
@@ -11764,6 +12640,10 @@ func _update_ai_decisions(delta: float) -> void:
 	if ai_card_decision_timer <= 0.0:
 		_auto_ai_card_decisions(false)
 		ai_card_decision_timer = AI_CARD_DECISION_INTERVAL_SECONDS
+	ai_intel_decision_timer -= delta
+	if ai_intel_decision_timer <= 0.0:
+		_auto_ai_intel_decisions(false)
+		ai_intel_decision_timer = AI_INTEL_DECISION_INTERVAL_SECONDS
 
 
 func _ensure_configured_role_indices() -> void:
@@ -12393,6 +13273,14 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["经营", "物流"]
 		"region_economy_shift":
 			return ["区域", "GDP"]
+		"intel_city_reveal":
+			return ["情报", "区域"]
+		"intel_card_trace":
+			return ["情报", "卡牌"]
+		"intel_contract_trace":
+			return ["情报", "合约"]
+		"card_access_boon":
+			return ["补给", "范围"]
 		"route_sabotage":
 			return ["经营", "破坏"]
 		"panic_shift":
@@ -12487,7 +13375,7 @@ func _probability_text(weight: int, total: int) -> String:
 
 
 func _roman_level(rank: int) -> String:
-	match clampi(rank, 1, 4):
+	match clampi(rank, 1, 10):
 		1:
 			return "I"
 		2:
@@ -12496,6 +13384,18 @@ func _roman_level(rank: int) -> String:
 			return "III"
 		4:
 			return "IV"
+		5:
+			return "V"
+		6:
+			return "VI"
+		7:
+			return "VII"
+		8:
+			return "VIII"
+		9:
+			return "IX"
+		10:
+			return "X"
 	return "I"
 
 
@@ -12640,8 +13540,8 @@ func _claim_district_card(skill_name: String) -> void:
 		_log("%s已被破坏，不能从这里获取卡牌。" % districts[selected_district]["name"])
 		_refresh_ui()
 		return
-	if not _can_buy_card_from_district(selected_district):
-		_log("%s暂不能购买卡牌：只能从怪兽落地区或相邻区域获取。" % districts[selected_district]["name"])
+	if not _can_buy_card_from_district(selected_district, selected_player):
+		_log("%s暂不能购买卡牌：需要怪兽落地区/相邻区，或补给范围扩张能力。" % districts[selected_district]["name"])
 		_refresh_ui()
 		return
 	if not _selected_district_has_card(skill_name):
@@ -12705,35 +13605,111 @@ func _district_has_card(district_index: int, skill_name: String) -> bool:
 	return choices.has(skill_name)
 
 
-func _district_card_access_kind(district_index: int) -> String:
+func _player_card_access_effect(player_index: int) -> Dictionary:
+	var effect := {
+		"extra_hops": 0,
+		"extended_multiplier": 1.10,
+		"global": false,
+		"global_multiplier": 1.35,
+	}
+	if player_index < 0 or player_index >= players.size():
+		player_index = selected_player
+	if player_index < 0 or player_index >= players.size():
+		return effect
+	var role := _player_role_card_for_index(player_index)
+	effect["extra_hops"] = maxi(int(effect["extra_hops"]), maxi(0, int(role.get("card_access_extra_hops", 0))))
+	effect["extended_multiplier"] = maxf(float(effect["extended_multiplier"]), float(role.get("extended_card_price_multiplier", effect["extended_multiplier"])))
+	if bool(role.get("card_access_global", false)):
+		effect["global"] = true
+		effect["global_multiplier"] = maxf(float(effect["global_multiplier"]), float(role.get("global_card_price_multiplier", effect["global_multiplier"])))
+	var player: Dictionary = players[player_index]
+	if float(player.get("card_access_expire_time", -1.0)) > game_time:
+		effect["extra_hops"] = maxi(int(effect["extra_hops"]), maxi(0, int(player.get("card_access_extra_hops", 0))))
+		effect["extended_multiplier"] = maxf(float(effect["extended_multiplier"]), float(player.get("extended_card_price_multiplier", effect["extended_multiplier"])))
+		if bool(player.get("card_access_global", false)):
+			effect["global"] = true
+			effect["global_multiplier"] = maxf(float(effect["global_multiplier"]), float(player.get("global_card_price_multiplier", effect["global_multiplier"])))
+	return effect
+
+
+func _player_extended_card_price_multiplier(player_index: int) -> float:
+	return maxf(1.0, float(_player_card_access_effect(player_index).get("extended_multiplier", 1.10)))
+
+
+func _player_global_card_price_multiplier(player_index: int) -> float:
+	return maxf(1.0, float(_player_card_access_effect(player_index).get("global_multiplier", 1.35)))
+
+
+func _nearest_active_monster_graph_distance(district_index: int, max_steps: int) -> int:
+	if district_index < 0 or district_index >= districts.size() or max_steps < 0:
+		return -1
+	var frontier := []
+	var seen := {}
+	for actor_variant in auto_monsters:
+		if not (actor_variant is Dictionary):
+			continue
+		var actor := actor_variant as Dictionary
+		if bool(actor.get("down", false)):
+			continue
+		var start := int(actor.get("position", -1))
+		if start < 0 or start >= districts.size():
+			continue
+		if start == district_index:
+			return 0
+		frontier.append({"index": start, "distance": 0})
+		seen[start] = true
+	var cursor := 0
+	while cursor < frontier.size():
+		var item: Dictionary = frontier[cursor]
+		cursor += 1
+		var current := int(item.get("index", -1))
+		var distance := int(item.get("distance", 0))
+		if distance >= max_steps:
+			continue
+		for neighbor_variant in districts[current].get("neighbors", []):
+			var neighbor := int(neighbor_variant)
+			if neighbor < 0 or neighbor >= districts.size() or seen.has(neighbor):
+				continue
+			var next_distance := distance + 1
+			if neighbor == district_index:
+				return next_distance
+			seen[neighbor] = true
+			frontier.append({"index": neighbor, "distance": next_distance})
+	return -1
+
+
+func _district_card_access_kind(district_index: int, player_index: int = -1) -> String:
 	if district_index < 0 or district_index >= districts.size():
 		return "none"
-	for actor_variant in auto_monsters:
-		var actor: Dictionary = actor_variant
-		var monster_district := int(actor.get("position", -1))
-		if monster_district == district_index:
-			return "landed"
-	for actor_variant in auto_monsters:
-		var actor: Dictionary = actor_variant
-		var monster_district := int(actor.get("position", -1))
-		if monster_district >= 0 and monster_district < districts.size():
-			var neighbors: Array = districts[monster_district].get("neighbors", [])
-			if neighbors.has(district_index):
-				return "adjacent"
+	var effect := _player_card_access_effect(player_index)
+	var max_steps := 1 + maxi(0, int(effect.get("extra_hops", 0)))
+	var distance := _nearest_active_monster_graph_distance(district_index, max_steps)
+	if distance == 0:
+		return "landed"
+	if distance == 1:
+		return "adjacent"
+	if distance > 1:
+		return "extended"
+	if bool(effect.get("global", false)) and not bool(districts[district_index].get("destroyed", false)):
+		return "global"
 	return "none"
 
 
-func _district_card_access_text(district_index: int) -> String:
-	match _district_card_access_kind(district_index):
+func _district_card_access_text(district_index: int, player_index: int = -1) -> String:
+	match _district_card_access_kind(district_index, player_index):
 		"landed":
 			return "怪兽落地区：可购买，八折"
 		"adjacent":
 			return "怪兽相邻区：可购买，原价"
-	return "不可购买：需要怪兽落地或相邻"
+		"extended":
+			return "远程补给区：可购买，×%.2f" % _player_extended_card_price_multiplier(player_index)
+		"global":
+			return "全局采购区：可购买，×%.2f" % _player_global_card_price_multiplier(player_index)
+	return "不可购买：需要怪兽落地、相邻或补给范围能力"
 
 
-func _can_buy_card_from_district(district_index: int) -> bool:
-	return ["landed", "adjacent"].has(_district_card_access_kind(district_index))
+func _can_buy_card_from_district(district_index: int, player_index: int = -1) -> bool:
+	return ["landed", "adjacent", "extended", "global"].has(_district_card_access_kind(district_index, player_index))
 
 
 func _selected_district_has_card(skill_name: String) -> bool:
@@ -14622,9 +15598,9 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		if not anonymous:
 			_log("目标区域无效或已被破坏，不能从这里获取卡牌。")
 		return false
-	if not _can_buy_card_from_district(district_index):
+	if not _can_buy_card_from_district(district_index, player_index):
 		if not anonymous:
-			_log("%s暂不能购买卡牌：只能从怪兽落地区或相邻区域获取。" % districts[district_index]["name"])
+			_log("%s暂不能购买卡牌：需要怪兽落地区/相邻区，或补给范围扩张能力。" % districts[district_index]["name"])
 		return false
 	if not _district_has_card(district_index, skill_name):
 		if not anonymous:
@@ -14634,7 +15610,7 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		if not anonymous:
 			_log("%s暂不能获得%s：普通手牌上限为%d张；重复牌会自动合成。" % [actor_label, _card_display_name(skill_name), PLAYER_HAND_LIMIT])
 		return false
-	var price := _card_price(skill_name, district_index)
+	var price := _card_price(skill_name, district_index, player_index)
 	if int(player.get("cash", 0)) < price:
 		if not anonymous:
 			_log("%s资金不足，购买%s需要¥%d，当前只有¥%d。" % [actor_label, _card_display_name(skill_name), price, int(player.get("cash", 0))])
@@ -15378,7 +16354,7 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		"queued_behind_resolution": queue_to_next_batch,
 		"winning_bid": 0,
 		"play_requirement_product": _skill_play_product(skill, player_index),
-		"play_requirement_flow": _skill_play_flow_required(skill),
+		"play_requirement_flow": _skill_play_flow_required(skill, player_index),
 		"play_cash_cost": _skill_play_cash_cost(skill),
 		"play_requirement_text": _skill_play_requirement_text(skill, player_index),
 		"public_owner_revealed": false,
@@ -15756,6 +16732,14 @@ func _resolve_queued_skill(entry: Dictionary) -> void:
 				resolved = _apply_city_contract_boon(player, skill)
 			"route_sabotage":
 				resolved = _apply_route_sabotage(skill)
+			"intel_city_reveal":
+				resolved = _apply_intel_city_reveal(player, skill)
+			"intel_card_trace":
+				resolved = _apply_intel_card_trace(player, skill)
+			"intel_contract_trace":
+				resolved = _apply_intel_contract_trace(player, skill)
+			"card_access_boon":
+				resolved = _apply_card_access_boon(player, skill)
 			"panic_shift":
 				_add_panic(selected_district, int(skill.get("panic", 0)), skill["name"])
 			"supply_draw":
@@ -17176,6 +18160,7 @@ func _finish_game(reason: String) -> void:
 		return
 	game_over = true
 	_log("游戏结束：%s" % reason)
+	var cash_goal := _roguelike_cash_goal()
 	var winner_index := 0
 	var winner_score := _player_final_score(0)
 	for i in range(players.size()):
@@ -17193,6 +18178,13 @@ func _finish_game(reason: String) -> void:
 			winner_index = i
 			winner_score = score
 	_log("胜者：%s，结算资金最高：%d。" % [players[winner_index]["name"], winner_score])
+	var local_score := _player_final_score(0) if not players.is_empty() else 0
+	_log("%s通关判定：本层目标¥%d，玩家1结算¥%d，%s。" % [
+		_roguelike_depth_label(),
+		cash_goal,
+		local_score,
+		"达标，可进入更大星球" if local_score >= cash_goal else "未达标，需要赚更多钱",
+	])
 
 
 func _player_final_score(player_index: int) -> int:

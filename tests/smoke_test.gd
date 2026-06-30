@@ -98,17 +98,21 @@ func _run() -> void:
 	_expect(_ai_player_count(players) == EXPECTED_AI_PLAYER_COUNT, "new game creates AI seats for the PVE roguelike run")
 	_expect(not bool((players[0] as Dictionary).get("is_ai", true)) and bool((players[1] as Dictionary).get("is_ai", false)), "player 1 remains the human/local seat while later seats are AI opponents")
 	_expect(((players[1] as Dictionary).get("ai_profile", {}) as Dictionary).has("style") and ((players[1] as Dictionary).get("ai_memory", {}) as Dictionary).has("decision_samples"), "AI seats carry a personality profile and training-memory log")
-	_expect(districts.size() >= MIN_REGION_COUNT and districts.size() <= MAX_REGION_COUNT, "new game creates the expected roguelike region count")
+	var planet_profile := main.call("_roguelike_planet_profile") as Dictionary
+	_expect(districts.size() >= int(planet_profile.get("region_min", MIN_REGION_COUNT)) and districts.size() <= int(planet_profile.get("region_max", MAX_REGION_COUNT)), "new game creates the expected roguelike region count")
+	_expect(_verify_roguelike_depth_scaling(main), "roguelike challenge depth scales planet size, region count, and cash victory goal")
 	_expect(_regions_start_with_single_goods(main), "land regions start with one produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	var empty_field_event_parts := main.call("_event_target_weight_parts", int(main.get("selected_district"))) as Dictionary
 	_expect(int(empty_field_event_parts.get("monster", -1)) == 0, "event targeting handles an empty monster field without a legacy A/B fallback")
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
-	_expect(_role_catalog_has_eight_positive_cards(main), "role codex exposes eight distinct alien cards with positive mechanical benefits")
+	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards with positive mechanical benefits")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, periodic product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
+	_expect(_verify_role_intel_and_trace_tools(main), "identity roles and intel cards reveal private city, card-owner, and contract-party clues")
+	_expect(_verify_ai_intel_policy(main), "AI opponents can use product clues to mark city owners and wager on anonymous card ownership")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -160,6 +164,7 @@ func _run() -> void:
 	_expect(_verify_monster_lure_replaces_control_window(main), "monster lure cards replace old control-window cards with one-shot anonymous movement guidance")
 	_expect(_verify_anonymous_cash_card(main), "cash-card public events hide the player who played the card")
 	_expect(_verify_anonymous_direct_command(main), "one-shot monster-command events hide the directing player")
+	_expect(_verify_remote_supply_access(main), "remote-supply roles and cards extend purchase range without extending monster summon range")
 	var queue_results: Dictionary = await _verify_card_resolution_auction_and_guess(main)
 	_expect(bool(queue_results.get("five_second_window", false)), "every card enters a five-second public reveal window")
 	_expect(bool(queue_results.get("simultaneous_overlay_status", false)), "simultaneous-play overlay explains stage, join window, and bid context")
@@ -588,7 +593,7 @@ func _run() -> void:
 	await process_frame
 	var card_codex_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_body_label != null and menu_body_label.text.contains("参考价") and menu_body_label.text.contains("档"), "card detail shows card price and explicit tier information")
-	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and menu_body_label.text.contains("升级梯度") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices and shows Roman-numeral level gradients")
+	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and menu_body_label.text.contains("升级预览") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices and shows Roman-numeral level gradients")
 	_expect(menu_body_label != null and menu_body_label.text.contains("结算演出") and menu_body_label.text.contains("开场：") and menu_body_label.text.contains("余波："), "card detail shows a per-card resolution animation script")
 	_expect(menu_body_label != null and menu_body_label.text.contains("视觉提示") and menu_body_label.text.contains("地图播报"), "card detail links each card animation script to its map visual cue")
 	_expect(card_codex_back_button != null and card_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "card detail exposes previous/next and a return-to-thumbnails button")
@@ -776,11 +781,16 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 	return not players.is_empty()
 
 
-func _role_catalog_has_eight_positive_cards(main: Node) -> bool:
-	if int(main.call("_player_role_catalog_size")) != 8:
+func _role_catalog_has_positive_cards(main: Node) -> bool:
+	var role_count := int(main.call("_player_role_catalog_size"))
+	if role_count < 12:
 		return false
 	var names := {}
-	for role_index in range(8):
+	var has_city_intel_role := false
+	var has_card_trace_role := false
+	var has_contract_trace_role := false
+	var has_remote_supply_role := false
+	for role_index in range(role_count):
 		var role := main.call("_make_player_role_card", role_index, role_index) as Dictionary
 		var role_name := String(role.get("name", ""))
 		if role_name == "" or names.has(role_name) or String(role.get("species", "")) == "" or String(role.get("passive", "")) == "":
@@ -794,9 +804,22 @@ func _role_catalog_has_eight_positive_cards(main: Node) -> bool:
 		has_positive_benefit = has_positive_benefit or int(role.get("resource_cash_amount", 0)) > 0
 		has_positive_benefit = has_positive_benefit or String(role.get("bonus_card_product", "")) != ""
 		has_positive_benefit = has_positive_benefit or int(role.get("monster_upgrade_cash", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("intel_city_reveal_charges", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("intel_card_trace_charges", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("intel_contract_trace_charges", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("city_guess_reward_bonus", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("card_owner_guess_discount", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("card_owner_guess_bonus", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("contract_flow_discount", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("card_access_extra_hops", 0)) > 0
+		has_positive_benefit = has_positive_benefit or bool(role.get("card_access_global", false))
 		if not has_positive_benefit:
 			return false
-	return names.size() == 8
+		has_city_intel_role = has_city_intel_role or int(role.get("intel_city_reveal_charges", 0)) > 0
+		has_card_trace_role = has_card_trace_role or int(role.get("intel_card_trace_charges", 0)) > 0
+		has_contract_trace_role = has_contract_trace_role or int(role.get("intel_contract_trace_charges", 0)) > 0
+		has_remote_supply_role = has_remote_supply_role or int(role.get("card_access_extra_hops", 0)) > 0
+	return names.size() == role_count and has_city_intel_role and has_card_trace_role and has_contract_trace_role and has_remote_supply_role
 
 
 func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
@@ -806,6 +829,144 @@ func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
 	return String(main.call("_role_card_art_stats", bonus_card_role)).contains("购牌:环晶电池+1") \
 		and String(main.call("_role_card_art_stats", resource_role)).contains("周期:深海菌毯+¥55") \
 		and String(main.call("_role_card_art_stats", upgrade_role)).contains("升兽:+¥120")
+
+
+func _role_index_by_name(main: Node, role_name: String) -> int:
+	for role_index in range(int(main.call("_player_role_catalog_size"))):
+		var role := main.call("_make_player_role_card", 0, role_index) as Dictionary
+		if String(role.get("name", "")) == role_name:
+			return role_index
+	return -1
+
+
+func _set_player_role_for_test(main: Node, player_index: int, role_name: String) -> bool:
+	var role_index := _role_index_by_name(main, role_name)
+	var players := _as_array(main.get("players")).duplicate(true)
+	if role_index < 0 or player_index < 0 or player_index >= players.size():
+		return false
+	var player := players[player_index] as Dictionary
+	player["role_card"] = main.call("_make_player_role_card", player_index, role_index)
+	players[player_index] = player
+	main.set("players", players)
+	return true
+
+
+func _set_city_goods_for_test(main: Node, district_index: int, product_name: String, demand_name: String) -> bool:
+	var districts := _as_array(main.get("districts")).duplicate(true)
+	if district_index < 0 or district_index >= districts.size():
+		return false
+	var district := districts[district_index] as Dictionary
+	var city := district.get("city", {}) as Dictionary
+	if city.is_empty():
+		return false
+	city["products"] = [{"name": product_name, "level": 1}]
+	city["demands"] = [demand_name]
+	district["products"] = [product_name]
+	district["demands"] = [demand_name]
+	district["city"] = city
+	districts[district_index] = district
+	main.set("districts", districts)
+	return true
+
+
+func _ai_memory_has_kind(players: Array, player_index: int, kind: String) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player := players[player_index] as Dictionary
+	var memory := player.get("ai_memory", {}) as Dictionary
+	for sample_variant in _as_array(memory.get("decision_samples", [])):
+		if not (sample_variant is Dictionary):
+			continue
+		var sample := sample_variant as Dictionary
+		if String(sample.get("kind", "")) == kind:
+			return true
+	return false
+
+
+func _find_city_guess_candidate(candidates: Array, district_index: int, guessed_player: int) -> Dictionary:
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if int(candidate.get("district", -1)) == district_index and int(candidate.get("guessed_player", -1)) == guessed_player:
+			return candidate
+	return {}
+
+
+func _find_card_guess_candidate(candidates: Array, resolution_id: int, guessed_player: int) -> Dictionary:
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if int(candidate.get("resolution_id", -1)) == resolution_id and int(candidate.get("guessed_player", -1)) == guessed_player:
+			return candidate
+	return {}
+
+
+func _graph_distance_limited(districts: Array, origin: int, target: int, max_steps: int) -> int:
+	if origin < 0 or origin >= districts.size() or target < 0 or target >= districts.size() or max_steps < 0:
+		return -1
+	if origin == target:
+		return 0
+	var frontier := [{"index": origin, "distance": 0}]
+	var seen := {origin: true}
+	var cursor := 0
+	while cursor < frontier.size():
+		var item := frontier[cursor] as Dictionary
+		cursor += 1
+		var current := int(item.get("index", -1))
+		var distance := int(item.get("distance", 0))
+		if distance >= max_steps:
+			continue
+		for neighbor_variant in _as_array((districts[current] as Dictionary).get("neighbors", [])):
+			var neighbor := int(neighbor_variant)
+			if neighbor < 0 or neighbor >= districts.size() or seen.has(neighbor):
+				continue
+			var next_distance := distance + 1
+			if neighbor == target:
+				return next_distance
+			seen[neighbor] = true
+			frontier.append({"index": neighbor, "distance": next_distance})
+	return -1
+
+
+func _remote_supply_test_path(main: Node) -> Dictionary:
+	var districts := _as_array(main.get("districts"))
+	for origin in range(districts.size()):
+		var second_hop := -1
+		var far_district := -1
+		for candidate in range(districts.size()):
+			var distance := _graph_distance_limited(districts, origin, candidate, 3)
+			if distance == 2 and second_hop < 0:
+				second_hop = candidate
+			elif distance < 0 and far_district < 0:
+				far_district = candidate
+			elif distance > 2 and far_district < 0:
+				far_district = candidate
+		if second_hop >= 0:
+			return {"origin": origin, "second_hop": second_hop, "far": far_district}
+	return {}
+
+
+func _verify_roguelike_depth_scaling(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var profile_i := main.call("_roguelike_planet_profile", 1) as Dictionary
+	var profile_vi := main.call("_roguelike_planet_profile", 6) as Dictionary
+	var ok := true
+	ok = ok and int(profile_i.get("region_min", 0)) < int(profile_vi.get("region_min", 0))
+	ok = ok and int(profile_i.get("region_max", 0)) < int(profile_vi.get("region_max", 0))
+	ok = ok and float(profile_i.get("width", 0.0)) < float(profile_vi.get("width", 0.0))
+	ok = ok and int(profile_i.get("cash_goal", 0)) < int(profile_vi.get("cash_goal", 0))
+	ok = ok and String(main.call("_roguelike_planet_profile_text", 6)).contains("深度VI")
+	ok = ok and String(main.call("_roguelike_planet_profile_text", 6)).contains("目标现金")
+	main.call("_set_configured_roguelike_depth", 6)
+	main.call("_generate_roguelike_districts")
+	var large_districts := _as_array(main.get("districts"))
+	ok = ok and large_districts.size() >= int(profile_vi.get("region_min", 0))
+	ok = ok and large_districts.size() <= int(profile_vi.get("region_max", 999))
+	ok = ok and float(main.get("map_width_m")) >= float(profile_vi.get("width", 0.0)) - 1.0
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _verify_role_passive_runtime(main: Node) -> bool:
@@ -867,6 +1028,165 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 	main.set("log_lines", saved_logs)
 	main.set("action_callouts", saved_callouts)
 	return passed
+
+
+func _verify_role_intel_and_trace_tools(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var city_index := _first_empty_land_district_for_contract(main)
+	var contract_target_index := _first_empty_land_district_for_contract(main, [city_index])
+	if city_index < 0 or contract_target_index < 0:
+		ok = false
+	else:
+		ok = ok and _set_player_role_for_test(main, 0, "星图审计庭")
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, city_index, "情报测试城市", false))
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 2, contract_target_index, "密约测试城市", false))
+		ok = ok and bool(main.call("_use_role_city_reveal_for_player", 0, city_index, "烟测身份侦测"))
+		var players_after_role := _as_array(main.get("players"))
+		var role_after := (players_after_role[0] as Dictionary).get("role_card", {}) as Dictionary
+		var guesses := (players_after_role[0] as Dictionary).get("city_guesses", {}) as Dictionary
+		ok = ok and int(role_after.get("intel_city_reveal_charges", -1)) == 1
+		ok = ok and int(guesses.get(city_index, -1)) == 1
+		var history := _as_array(main.get("resolved_card_history")).duplicate(true)
+		var card_resolution_id := 81001
+		history.append({
+			"resolution_id": card_resolution_id,
+			"queued_order": card_resolution_id,
+			"player_index": 1,
+			"skill": main.call("_make_skill", "城市融资1"),
+			"selected_district": city_index,
+			"play_requirement_product": "活体芯片",
+			"play_requirement_flow": 1,
+			"public_owner_revealed": false,
+			"guessers": [],
+			"resolved_time": float(main.get("game_time")),
+		})
+		var contract_resolution_id := 81002
+		history.append({
+			"resolution_id": contract_resolution_id,
+			"queued_order": contract_resolution_id,
+			"player_index": 2,
+			"skill": main.call("_make_skill", "区域供需合约1"),
+			"selected_district": city_index,
+			"contract_source_district": city_index,
+			"contract_target_district": contract_target_index,
+			"contract_target_owner": 1,
+			"contract_response": "accepted",
+			"public_owner_revealed": false,
+			"guessers": [],
+			"resolved_time": float(main.get("game_time")),
+		})
+		main.set("resolved_card_history", history)
+		ok = ok and int(main.call("_trace_card_owner_for_player", 0, card_resolution_id, 1, "烟测追帧")) == 1
+		ok = ok and int(main.call("_trace_contract_parties_for_player", 0, contract_resolution_id, 1, "烟测密约")) == 1
+		var players_after_trace := _as_array(main.get("players"))
+		var known_cards := (players_after_trace[0] as Dictionary).get("known_card_owners", {}) as Dictionary
+		var known_contracts := (players_after_trace[0] as Dictionary).get("known_contract_parties", {}) as Dictionary
+		var known_contract := known_contracts.get(str(contract_resolution_id), {}) as Dictionary
+		ok = ok and int(known_cards.get(str(card_resolution_id), -1)) == 1
+		ok = ok and int(known_contract.get("proposer", -1)) == 2
+		ok = ok and int(known_contract.get("target_owner", -1)) == 1
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_ai_intel_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	if _as_array(main.get("players")).size() < 3:
+		ok = false
+	else:
+		main.set("ai_card_decision_enabled", true)
+		var source_index := _first_empty_land_district_for_contract(main)
+		var target_index := _first_empty_land_district_for_contract(main, [source_index])
+		if source_index < 0 or target_index < 0:
+			ok = false
+		else:
+			var players := _as_array(main.get("players")).duplicate(true)
+			for player_index in range(players.size()):
+				var player := players[player_index] as Dictionary
+				player["cash"] = 5000
+				players[player_index] = player
+			main.set("players", players)
+			ok = ok and bool(main.call("_create_city_at_district_for_player", 2, source_index, "AI线索源城", false))
+			ok = ok and bool(main.call("_create_city_at_district_for_player", 2, target_index, "AI推理目标城", false))
+			ok = ok and _set_city_goods_for_test(main, source_index, "活体芯片", "轨迹墨水")
+			ok = ok and _set_city_goods_for_test(main, target_index, "活体芯片", "轨迹墨水")
+			ok = ok and bool(main.call("_mark_city_guess_for_player", 1, source_index, 2, 3, "product"))
+			var city_candidates := main.call("_ai_city_guess_candidates", 1) as Array
+			var city_choice := _find_city_guess_candidate(city_candidates, target_index, 2)
+			ok = ok and not city_choice.is_empty()
+			ok = ok and int(city_choice.get("score", 0)) >= 78
+			ok = ok and bool(main.call("_ai_apply_city_guess_candidate", 1, city_choice, city_candidates))
+			var players_after_city := _as_array(main.get("players"))
+			var city_guesses := (players_after_city[1] as Dictionary).get("city_guesses", {}) as Dictionary
+			ok = ok and int(city_guesses.get(target_index, -1)) == 2
+			ok = ok and _ai_memory_has_kind(players_after_city, 1, "城市业主推理")
+			var resolution_id := 82001
+			var history := _as_array(main.get("resolved_card_history")).duplicate(true)
+			history.append({
+				"resolution_id": resolution_id,
+				"queued_order": resolution_id,
+				"player_index": 2,
+				"skill": main.call("_make_skill", "出牌追帧1"),
+				"selected_district": target_index,
+				"play_requirement_product": "活体芯片",
+				"play_requirement_flow": 1,
+				"winning_bid": 120,
+				"public_owner_revealed": false,
+				"guessers": [],
+				"resolved_time": float(main.get("game_time")),
+			})
+			main.set("resolved_card_history", history)
+			var card_candidates := main.call("_ai_card_guess_candidates", 1) as Array
+			var card_choice := _find_card_guess_candidate(card_candidates, resolution_id, 2)
+			ok = ok and not card_choice.is_empty()
+			ok = ok and int(card_choice.get("score", 0)) >= 125
+			ok = ok and bool(main.call("_ai_apply_card_guess_candidate", 1, card_choice, card_candidates))
+			var traced_entry := main.call("_card_resolution_entry_by_id", resolution_id) as Dictionary
+			var players_after_card := _as_array(main.get("players"))
+			ok = ok and bool(traced_entry.get("public_owner_revealed", false))
+			ok = ok and _as_array(traced_entry.get("guessers", [])).has(1)
+			ok = ok and _ai_memory_has_kind(players_after_card, 1, "卡牌归属押注")
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	return ok and restore_result == OK
+
+
+func _verify_remote_supply_access(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var path := _remote_supply_test_path(main)
+	if path.is_empty():
+		ok = false
+	else:
+		var origin := int(path.get("origin", -1))
+		var second_hop := int(path.get("second_hop", -1))
+		var actor := main.call("_make_auto_monster", 0, 0, origin, 0, 1) as Dictionary
+		main.set("auto_monsters", [actor])
+		ok = ok and _set_player_role_for_test(main, 0, "星门补给商会")
+		var priced_card := "垄断协议1"
+		var base_price := int(main.call("_card_price", priced_card))
+		var remote_price := int(main.call("_card_price", priced_card, second_hop, 0))
+		ok = ok and String(main.call("_district_card_access_kind", second_hop, 0)) == "extended"
+		ok = ok and remote_price >= int(round(float(base_price) * 1.10))
+		var monster_card := main.call("_make_skill", main.call("_monster_card_name", 0, 1)) as Dictionary
+		monster_card["starter_play_free"] = false
+		monster_card["summon_access"] = "monster_zone"
+		ok = ok and not bool(main.call("_can_summon_monster_card_at_district", monster_card, second_hop))
+		main.set("selected_player", 0)
+		var players := _as_array(main.get("players"))
+		ok = ok and bool(main.call("_apply_card_access_boon", players[0] as Dictionary, main.call("_make_skill", "星门采购权1")))
+		var access_effect := main.call("_player_card_access_effect", 0) as Dictionary
+		ok = ok and bool(access_effect.get("global", false))
+		var far_district := int(path.get("far", -1))
+		if far_district >= 0:
+			var global_price := int(main.call("_card_price", priced_card, far_district, 0))
+			ok = ok and String(main.call("_district_card_access_kind", far_district, 0)) == "global"
+			ok = ok and global_price >= int(round(float(base_price) * 1.35))
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _starting_monster_cards_match_roles(players: Array) -> bool:
