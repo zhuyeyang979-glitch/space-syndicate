@@ -121,6 +121,7 @@ func _run() -> void:
 	_expect(_verify_role_control_limit_cards(main), "role cards can publicly extend monster or military control limits without touching starter monsters")
 	_expect(_verify_military_unit_variant_cards(main), "military card families cover air, land, ocean, terrain deployment, GDP pressure, route pressure, and distinct card facts")
 	_expect(_verify_military_runtime_gdp_boundary(main), "military movement avoids monster-style building crush while applying visible short GDP pressure")
+	_expect(_verify_military_explicit_strike_boundary(main), "military district and route damage happen only through explicit strike commands")
 	_expect(_verify_product_futures_warehouse_destruction(main), "warehouse stockpile futures are cleared when the storage city is destroyed while ordinary futures remain")
 	_expect(_verify_product_futures_realtime_payout(main), "commodity futures settle only after their real-time window and pay from actual product price movement")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
@@ -1135,6 +1136,91 @@ func _verify_military_runtime_gdp_boundary(main: Node) -> bool:
 	ok = ok and float(after_city.get("military_pressure_until", 0.0)) > float(main.get("game_time"))
 	ok = ok and String(after_city.get("military_pressure_source", "")).contains("战斗机")
 	ok = ok and int(breakdown.get("military_penalty", 0)) > 0
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_military_explicit_strike_boundary(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var districts := _as_array(main.get("districts"))
+	var city_index := _first_buildable_land_district(districts)
+	if city_index < 0:
+		return false
+	ok = ok and bool(main.call("_create_city_at_district_for_player", 0, city_index, "军令摧毁边界测试", false))
+	var bomber := main.call("_make_skill", "轨道轰炸机3") as Dictionary
+	bomber["fixed_skill_count"] = 4
+	var center: Vector2 = main.call("_district_center", city_index)
+	var unit := {
+		"uid": 91003,
+		"owner": 0,
+		"position": city_index,
+		"world_position": center + Vector2(-28.0, 0.0),
+		"cooldown_left": 0.0,
+		"public_owner_revealed": false,
+	}
+	unit = main.call("_refresh_military_unit_from_skill", unit, bomber, city_index) as Dictionary
+	unit["world_position"] = center + Vector2(-28.0, 0.0)
+	main.set("military_units", [unit])
+	main.set("selected_player", 0)
+	main.set("selected_district", city_index)
+	districts = _as_array(main.get("districts"))
+	var before_district := (districts[city_index] as Dictionary).duplicate(true)
+	var before_city := (before_district.get("city", {}) as Dictionary).duplicate(true)
+	var damage_before := int(before_district.get("damage", 0))
+	var route_before := int(before_city.get("trade_route_damage", 0))
+	var move_command := main.call("_make_military_command_skill", "move", 3, int(unit.get("uid", 0)), "轨道轰炸机3") as Dictionary
+	ok = ok and bool(main.call("_trigger_military_command", move_command, -1, 0))
+	districts = _as_array(main.get("districts"))
+	var after_move_district := (districts[city_index] as Dictionary).duplicate(true)
+	var after_move_city := after_move_district.get("city", {}) as Dictionary
+	ok = ok and int(after_move_district.get("damage", 0)) == damage_before
+	ok = ok and int(after_move_city.get("trade_route_damage", 0)) == route_before
+	var units := _as_array(main.get("military_units")).duplicate(true)
+	if units.is_empty():
+		ok = false
+	else:
+		var moved_unit := units[0] as Dictionary
+		moved_unit["cooldown_left"] = 0.0
+		units[0] = moved_unit
+		main.set("military_units", units)
+	var strike_command := main.call("_make_military_command_skill", "strike_district", 3, int(unit.get("uid", 0)), "轨道轰炸机3") as Dictionary
+	ok = ok and bool(main.call("_trigger_military_command", strike_command, -1, 0))
+	districts = _as_array(main.get("districts"))
+	var after_strike_district := (districts[city_index] as Dictionary).duplicate(true)
+	var after_strike_city := after_strike_district.get("city", {}) as Dictionary
+	var strike_damage := int(((_as_array(main.get("military_units"))[0] as Dictionary).get("damage", 0))) if not _as_array(main.get("military_units")).is_empty() else int(bomber.get("military_damage", 0))
+	var strike_route_damage := int(bomber.get("military_strike_route_damage", 0))
+	ok = ok and int(after_strike_district.get("damage", 0)) >= damage_before + maxi(1, strike_damage)
+	ok = ok and String(after_strike_district.get("last_damage_source", "")).contains("轰炸机")
+	ok = ok and int(after_strike_city.get("trade_route_damage", 0)) >= route_before + strike_route_damage
+	ok = ok and int(after_strike_city.get("military_gdp_penalty", 0)) >= int(bomber.get("military_gdp_penalty", 0))
+	var damage_after_strike := int(after_strike_district.get("damage", 0))
+	var route_after_strike := int(after_strike_city.get("trade_route_damage", 0))
+	units = _as_array(main.get("military_units")).duplicate(true)
+	if units.is_empty():
+		ok = false
+	else:
+		var strike_unit := units[0] as Dictionary
+		strike_unit["cooldown_left"] = 0.0
+		strike_unit["world_position"] = center
+		strike_unit["position"] = city_index
+		units[0] = strike_unit
+		main.set("military_units", units)
+	var target_monster := main.call("_make_auto_monster", 0, 0, city_index, 2, 1) as Dictionary
+	target_monster["world_position"] = center + Vector2(12.0, 0.0)
+	main.set("auto_monsters", [target_monster])
+	var monster_hp_before := int(target_monster.get("hp", 0))
+	var attack_command := main.call("_make_military_command_skill", "attack_monster", 3, int(unit.get("uid", 0)), "轨道轰炸机3") as Dictionary
+	ok = ok and bool(main.call("_trigger_military_command", attack_command, 0, 0))
+	districts = _as_array(main.get("districts"))
+	var after_attack_district := districts[city_index] as Dictionary
+	var after_attack_city := after_attack_district.get("city", {}) as Dictionary
+	var monsters := _as_array(main.get("auto_monsters"))
+	var monster_hp_after := int((monsters[0] as Dictionary).get("hp", monster_hp_before)) if not monsters.is_empty() else monster_hp_before
+	ok = ok and monster_hp_after < monster_hp_before
+	ok = ok and int(after_attack_district.get("damage", 0)) == damage_after_strike
+	ok = ok and int(after_attack_city.get("trade_route_damage", 0)) == route_after_strike
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
