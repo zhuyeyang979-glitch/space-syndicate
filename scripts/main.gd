@@ -465,19 +465,56 @@ const DISTRICT_PALETTE := [
 ]
 
 const REALTIME_BALANCE := {
-	"event_min": 5.0,
-	"event_max": 8.0,
 	"monster_min": 3.5,
 	"monster_max": 5.5,
 	"special_monster_min": 4.5,
 	"special_monster_max": 7.0,
 	"market_min": 30.0,
 	"market_max": 60.0,
-	"event_heat_min": 10,
-	"event_heat_max": 24,
 	"monster_damage": 1,
 	"special_monster_damage_bonus": 0,
 	"special_monster_move_bonus": 0,
+}
+
+const WEATHER_FORECAST_LEAD_MIN_SECONDS := 60.0
+const WEATHER_FORECAST_LEAD_MAX_SECONDS := 180.0
+const WEATHER_DURATION_MIN_SECONDS := 75.0
+const WEATHER_DURATION_MAX_SECONDS := 135.0
+const WEATHER_ZONE_MAX := 5
+const WEATHER_TYPES := {
+	"solar_storm": {
+		"label": "太阳风暴",
+		"production_multiplier": 1.08,
+		"transport_multiplier": 0.82,
+		"consumption_multiplier": 1.06,
+		"color": Color("#f97316"),
+		"text": "电子干扰压低交通速度，但能源与避险消费会短暂升温。",
+	},
+	"acid_rain": {
+		"label": "酸雨云团",
+		"production_multiplier": 0.82,
+		"transport_multiplier": 0.88,
+		"consumption_multiplier": 0.96,
+		"color": Color("#a3e635"),
+		"text": "酸雨削弱露天生产与陆路效率，适合压制高GDP城区。",
+	},
+	"gravity_tide": {
+		"label": "引力潮汐",
+		"production_multiplier": 0.96,
+		"transport_multiplier": 1.10,
+		"ocean_transport_multiplier": 1.26,
+		"consumption_multiplier": 1.02,
+		"color": Color("#38bdf8"),
+		"text": "潮汐让海洋商路和公共交通提速，水域周边城市更容易放大流通GDP。",
+	},
+	"magnetic_fog": {
+		"label": "电磁雾",
+		"production_multiplier": 1.0,
+		"transport_multiplier": 0.92,
+		"consumption_multiplier": 0.90,
+		"color": Color("#c084fc"),
+		"text": "电磁雾拖慢流通与消费判断，让匿名行动留下更多推理噪声。",
+	},
 }
 
 const SKILL_CATALOG := {
@@ -489,8 +526,8 @@ const SKILL_CATALOG := {
 	"星际广告3": {"cost": 6, "kind": "city_revenue_boost", "revenue_amount": 130, "panic": 28, "damage": 0, "move": 0, "range": 0, "tags": ["经营", "终端"], "text": "选中己方城市GDP/min +130、区域热度+28。"},
 	"轨道融资1": {"cost": 3, "kind": "cash_gain", "cash": 300, "damage": 0, "move": 0, "range": 0, "tags": ["经济", "续航"], "text": "立即获得300资金，用于城市化或补给。"},
 	"轨道融资2": {"cost": 5, "kind": "cash_gain", "cash": 700, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "立即获得700资金，支撑扩张或高费构筑。"},
-	"舆论操控1": {"cost": 3, "kind": "panic_shift", "panic": 30, "damage": 0, "move": 0, "range": 0, "tags": ["热度", "引导"], "text": "选中区域热度+30，立刻提高怪兽和新闻事件对该区的关注。"},
-	"舆论操控2": {"cost": 6, "kind": "panic_shift", "panic": 65, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["热度", "升级"], "text": "选中区域热度+65，强行把概率目标推向该区域。"},
+	"舆论操控1": {"cost": 3, "kind": "news_event", "news_category": "heat", "panic": 30, "damage": 0, "move": 0, "range": 0, "tags": ["新闻", "热度"], "text": "匿名制造区域舆论：选中区域热度+30，怪兽目标概率更容易向这里偏移；新闻只由玩家卡牌产生。"},
+	"舆论操控2": {"cost": 6, "kind": "news_event", "news_category": "heat", "panic": 65, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["新闻", "升级"], "text": "大型舆论战：选中区域热度+65，强行制造怪兽关注和公开推理线索。"},
 	"诱导电波1": {"cost": 3, "kind": "monster_lure", "lure_speedup": 3.0, "damage": 0, "move": 0, "range": 0, "tags": ["诱导", "节奏"], "text": "指定一只怪兽：它下一次自动移动优先朝当前选区推进，并提前最多3秒触发；怪兽之后仍按自身概率行动。"},
 	"诱导电波2": {"cost": 5, "kind": "monster_lure", "lure_speedup": 5.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["诱导", "升级"], "text": "指定一只怪兽：它下一次自动移动优先朝当前选区推进，并提前最多5.5秒触发；这是一次性诱导，结算后失效。"},
 	"夺取怪兽1": {"cost": 5, "kind": "monster_takeover", "play_product": "活体芯片", "play_flow_required": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["怪兽", "归属"], "text": "指定一只场上怪兽，匿名夺取其归属权；不会公开是谁打出的，之后该怪兽受伤会暴露新的资金线索。"},
@@ -505,7 +542,14 @@ const SKILL_CATALOG := {
 	"远程补给链1": {"cost": 3, "kind": "card_access_boon", "play_product": "轨道盆栽", "play_flow_required": 1, "card_access_extra_hops": 1, "extended_card_price_multiplier": 1.10, "card_access_seconds": 45.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["补给", "范围"], "text": "接下来45秒，你可以从怪兽落地区二跳内的区域购买卡牌；二跳购牌价格×1.10。"},
 	"星门采购权1": {"cost": 6, "kind": "card_access_boon", "play_product": "离岸水晶", "play_flow_required": 2, "card_access_global": true, "global_card_price_multiplier": 1.35, "card_access_seconds": 25.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["补给", "全局"], "text": "接下来25秒，你可以从任意未毁区域购买候选卡；全局购牌价格×1.35。"},
 	"地下融资1": {"cost": 3, "kind": "cash_gain", "cash": 450, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "续航"], "text": "立即获得450资金，适合扩张或高费卡组提前转动。"},
-	"热搜推送1": {"cost": 4, "kind": "panic_shift", "panic": 45, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["热度", "引导"], "text": "选中区域热度+45，把怪兽概率目标和新闻事件都往这里拽。"},
+	"热搜推送1": {"cost": 4, "kind": "news_event", "news_category": "heat", "panic": 45, "market_demand_pressure": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["新闻", "引导"], "text": "匿名热搜推送：选中区域热度+45，并为当前商品制造少量需求噪声；所有新闻都来自玩家出牌。"},
+	"危机快讯1": {"cost": 4, "kind": "news_event", "news_category": "crisis", "panic": 24, "route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["新闻", "压制"], "text": "匿名发布危机快讯：选中城市/区域热度+24；若这里有存活城市，追加1点商路断损压力。"},
+	"金融传闻1": {"cost": 4, "kind": "news_event", "news_category": "market", "panic": 10, "market_demand_pressure": 2, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["新闻", "商品"], "text": "匿名散布金融传闻：围绕当前商品制造持续到下次供需重算的需求压力，并让目标区域热度+10。"},
+	"监管风暴1": {"cost": 5, "kind": "news_event", "news_category": "regulation", "panic": 18, "production_delta": -1, "consumption_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["新闻", "压制"], "text": "匿名引爆监管风暴：选中区域生产-1、消费-1、热度+18，用来打击高增长城市或做空目标。"},
+	"太阳风暴预报1": {"cost": 4, "kind": "weather_control", "weather_type": "solar_storm", "weather_zone_count": 2, "weather_forecast_lead_seconds": 60.0, "weather_duration_seconds": 90.0, "play_product": "轨迹墨水", "play_flow_required": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "交通"], "text": "主动改写星球天气预报：约60秒后，在选中区域及邻近区域生成太阳风暴，持续90秒；所有玩家提前看到预报。"},
+	"酸雨云团播种1": {"cost": 4, "kind": "weather_control", "weather_type": "acid_rain", "weather_zone_count": 2, "weather_forecast_lead_seconds": 75.0, "weather_duration_seconds": 95.0, "play_product": "离岸水晶", "play_flow_required": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "压制"], "text": "主动制造酸雨云团预报：约75秒后覆盖选中区域附近，压低生产与交通，适合配合城市做空。"},
+	"引力潮汐播报1": {"cost": 4, "kind": "weather_control", "weather_type": "gravity_tide", "weather_zone_count": 3, "weather_forecast_lead_seconds": 80.0, "weather_duration_seconds": 110.0, "play_product": "离岸水晶", "play_flow_required": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "商路"], "text": "主动发布引力潮汐预报：约80秒后覆盖选中区域周边，海洋与交通流速提升，适合强化商路GDP。"},
+	"电磁雾干涉1": {"cost": 5, "kind": "weather_control", "weather_type": "magnetic_fog", "weather_zone_count": 2, "weather_forecast_lead_seconds": 70.0, "weather_duration_seconds": 100.0, "play_product": "轨迹墨水", "play_flow_required": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["天气", "情报"], "text": "主动布置电磁雾预报：约70秒后覆盖选中区域附近，拖慢交通/消费并制造更多匿名推理噪声。"},
 	"商业诱饵1": {"cost": 4, "kind": "city_revenue_boost", "revenue_amount": 70, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "诱饵"], "text": "选中己方城市GDP/min +70、热度+8，以商业曝光吸引怪兽路线。"},
 	"商业诱饵2": {"cost": 7, "kind": "city_revenue_boost", "revenue_amount": 125, "panic": 14, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市GDP/min +125、热度+14。"},
 	"价格套利1": {"cost": 3, "kind": "product_speculation", "cash": 220, "price_delta": 18, "panic": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "商品"], "text": "围绕当前商品做短线套利：获得220资金，并制造临时需求压力；价格由下一次供需重算体现。"},
@@ -640,6 +684,14 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"星际广告",
 	"轨道融资",
 	"舆论操控",
+	"热搜推送",
+	"危机快讯",
+	"金融传闻",
+	"监管风暴",
+	"太阳风暴预报",
+	"酸雨云团播种",
+	"引力潮汐播报",
+	"电磁雾干涉",
 	"诱导电波",
 	"过载补给",
 	"商业诱饵",
@@ -699,6 +751,13 @@ const COMMON_CARD_POOL := [
 	"舆论操控1",
 	"舆论操控2",
 	"热搜推送1",
+	"危机快讯1",
+	"金融传闻1",
+	"监管风暴1",
+	"太阳风暴预报1",
+	"酸雨云团播种1",
+	"引力潮汐播报1",
+	"电磁雾干涉1",
 	"诱导电波1",
 	"诱导电波2",
 	"远程挑衅1",
@@ -795,6 +854,13 @@ const MARKET_SKILLS := [
 	"舆论操控1",
 	"舆论操控2",
 	"热搜推送1",
+	"危机快讯1",
+	"金融传闻1",
+	"监管风暴1",
+	"太阳风暴预报1",
+	"酸雨云团播种1",
+	"引力潮汐播报1",
+	"电磁雾干涉1",
 	"诱导电波1",
 	"诱导电波2",
 	"远程挑衅1",
@@ -1173,7 +1239,9 @@ var map_width_m := MAP_WIDTH_METERS
 var map_height_m := MAP_HEIGHT_METERS
 var district_lookup := {}
 
-var event_timer := 6.0
+var weather_forecast := {}
+var active_weather_zones := []
+var weather_sequence := 0
 var special_monster_timer := 5.0
 var monster_timer := 4.0
 var market_timer := 8.0
@@ -1292,6 +1360,7 @@ func _process(delta: float) -> void:
 	_update_pending_contract_offers(scaled_delta)
 	_update_realtime_cooldowns(scaled_delta)
 	_update_city_gdp_derivative_timers()
+	_update_weather_system(scaled_delta)
 	_update_realtime_economy_cashflow(scaled_delta)
 	_age_economic_boons(scaled_delta)
 	_update_ai_decisions(scaled_delta)
@@ -1302,15 +1371,11 @@ func _process(delta: float) -> void:
 	if game_over:
 		return
 
-	event_timer -= scaled_delta
 	if _active_auto_monster_count() > 0:
 		special_monster_timer -= scaled_delta
 	monster_timer -= scaled_delta
 	market_timer -= scaled_delta
 
-	if event_timer <= 0.0:
-		_world_event()
-		event_timer = _roll_timer("event")
 	if monster_timer <= 0.0:
 		_monster_tick()
 		monster_timer = _roll_timer("monster")
@@ -2405,7 +2470,7 @@ func _build_menu_overlay() -> void:
 func _open_main_menu() -> void:
 	_show_menu(
 		"太空辛迪加",
-		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个是AI对手。开局先进入准备页查看总席位、AI数量、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；城市现金按当前GDP/min持续按秒流入；全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照。AI会按评分匿名扩张和执行商业行动，并记录决策样本供后续训练。玩家需要根据商品竞争、商路和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
+		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个是AI对手。开局先进入准备页查看总席位、AI数量、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；城市现金按当前GDP/min持续按秒流入；全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照。新闻只由玩家匿名新闻牌制造；天气是公开星球系统，会提前约1-3分钟在顶部状态栏预报，也可被天气牌改写。AI会按评分匿名扩张和执行商业行动，并记录决策样本供后续训练。玩家需要根据商品竞争、商路、天气窗口和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
 		true,
 		true
 	)
@@ -2444,7 +2509,8 @@ func _open_rules_menu() -> void:
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
 	lines.append("15. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时；倒计时期间只公开“有人达标”，不公开触发者。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
 	lines.append("16. AI训练骨架：AI席位目前会在全局市场刷新和实时决策中自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
-	lines.append("17. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
+	lines.append("17. 新闻与天气：新闻不会被动触发，只能由玩家打出的匿名新闻牌制造热度、商品传闻、监管风暴或危机快讯。天气是公开星球环境系统，每次影响1-5个区域，通常提前60-180秒在顶部状态栏预报；天气生效后会修正区域生产、交通和消费，天气干预牌可以匿名改写下一条预报。")
+	lines.append("18. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
 	lines.append("")
 	lines.append("操作入口索引：1-8选席位；Q/E选区；B城市化；G切换推测对象；M标注；R查看/关闭商路；T切换商品；C切换区域补给卡；X购买区域卡；Space暂停；Esc菜单。")
 	_show_menu(
@@ -2457,7 +2523,7 @@ func _open_rules_menu() -> void:
 func _open_tutorial_menu() -> void:
 	_show_menu(
 		"新手引导",
-		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会按实时局势自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP/min 会持续按秒变成现金。全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照；产业升级、商品换线、需求改造、交通升级与破坏都会改变经营结果。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价。点开区域补给时会按那一瞬间的怪兽位置锁定本窗口资格和价格，选牌途中怪兽离开也仍可买；同一玩家同时只能保留一个区域购牌窗口，新开区域会取消旧窗口资格；购牌不吃行动冷却。角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限；买新普通牌若会超上限，需要先私下弃掉一张旧普通牌。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。城市买涨/做空等金融牌按卡面秒数持仓，到期看即时GDP涨跌结算。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济和手牌隐私：只看得到自己的现金、账本、手牌数量和弃牌记录。对手花了多少、还剩多少、是否满手，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻热度、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标。怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
+		"目标：你是太空辛迪加的秘密经营者，要在怪兽战争里建城、藏身份、引导破坏，最后用现金、幸存城市清算价值和情报现金结算；谁的钱最多谁赢。\n\n1. 开局：点「开始新局」后，先选外星角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。先把这张起始怪兽牌打出去，第一只怪兽不受区域/商品流动限制；之后摸到的怪兽牌会把生命值、在场时间、移动速度和召唤区域限制写在卡面上。\n2. 找地：陆地可城市化，海洋不能建城但会承载商路；滚轮缩放、拖拽地图，Q/E 选区。\n3. 秘密城市化：选中陆地后按 B 或点「城市化」，花费%d资金建城。建筑公开，但真实业主只对建造者可见；对手也会按实时局势自动匿名扩张。\n4. 做情报：切到别的玩家视角，用 G 选择推测对象、M 保存私人标注；标注只属于当前玩家，不会揭示真实归属。猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本；区域图鉴会记录匿名需求造势、商路黑客等公开线索。\n5. 经营与商路：城市会生产和需求商品；R/T 查看商品商路。商品流动量看生产与需求，流动速度看沿线公共交通，区域/城市GDP/min 会持续按秒变成现金。全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照；天气会提前约1-3分钟预报，生效后修正生产、交通和消费。\n6. 买牌/出牌：C 切换选区补给，X 购买；默认从怪兽落地区或相邻区买牌，落地区八折、相邻区原价。点开区域补给时会按那一瞬间的怪兽位置锁定本窗口资格和价格，选牌途中怪兽离开也仍可买；同一玩家同时只能保留一个区域购牌窗口，新开区域会取消旧窗口资格；购牌不吃行动冷却。角色/补给牌可临时扩到二跳或全局但会加价，且不改变怪兽召唤限制。价格按I级基础价计费，重复获得同系列卡自动合成升级到IV级但不涨价。普通手牌上限%d张，绑定固定兽技不占上限；买新普通牌若会超上限，需要先私下弃掉一张旧普通牌。I级怪兽牌免商品流动；II-IV级怪兽牌和多数经营牌需要己方城市满足指定商品流动，商品不消耗；需要怪兽目标的牌会先询问目标。城市买涨/做空等金融牌按卡面秒数持仓，到期看即时GDP涨跌结算。\n7. 同时出牌：首牌先等待0.5秒。若复数玩家同时出牌，所有牌先进入5秒匿名竞价，再按报价与顺时针次序锁定整批；整批依次展示结算，中间不再拍卖。\n8. 猜卡牌归属：顶部轨道可左右拖动。随时点选一张牌，再点玩家头像押注¥%d；猜中会公开牌主标签，但竞猜者和转账对象关系仍匿名；猜错不会揭晓牌主。\n9. 保护经济和手牌隐私：只看得到自己的现金、账本、手牌数量和弃牌记录。对手花了多少、还剩多少、是否满手，只能结合卡牌、竞价、商品流动条件和地图变化推理。\n10. 借刀杀城：新闻牌制造的热度、天气窗口、城市价值、商品竞争、商路负载和怪兽资源偏好都会影响怪兽目标或GDP。新闻不会被动发生；怪兽仍会随机行动，玩家只能用一次性卡牌或怪兽绑定固定技能制造倾斜。" % [
 			CITY_BUILD_COST,
 			INTEL_CORRECT_GUESS_CASH,
 			INTEL_WRONG_GUESS_COST,
@@ -2769,6 +2835,7 @@ func _economy_overview_text() -> String:
 		auto_monsters.size(),
 	])
 	lines.append("商品热榜按当前价偏离、趋势、需求、断路和经济天气综合排序；商路收入前景不揭示隐藏业主，只显示己方/未知/私人推测。情报现金只在终局兑现，私人业主标注不会提前揭示正误。进行中只有当前玩家能看到自己的现金、资产、收入、资金轨迹与流水；其他玩家的经济只能从公开行动推测。")
+	lines.append("星球天气预报：%s；活跃天气会修正受影响区域的生产、交通和消费，并进入后续GDP/min。" % _weather_status_text())
 	lines.append("")
 	var product_entries := _economy_product_entries()
 	lines.append("商品热榜：")
@@ -5648,6 +5715,9 @@ func _card_codex_filter_options() -> Array:
 		{"id": "monster", "label": "怪兽牌"},
 		{"id": "economy", "label": "经济/商品"},
 		{"id": "business", "label": "经营/合约"},
+		{"id": "news", "label": "新闻事件"},
+		{"id": "weather", "label": "天气干预"},
+		{"id": "intel", "label": "情报推理"},
 		{"id": "combat", "label": "战斗/指令"},
 		{"id": "tactic", "label": "补给/诱导"},
 		{"id": "other", "label": "其他"},
@@ -5672,12 +5742,16 @@ func _card_codex_category_for_card(card_name: String, skill: Dictionary) -> Stri
 		return "economy"
 	if ["city_revenue_boost", "city_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind):
 		return "business"
+	if kind == "news_event":
+		return "news"
+	if kind == "weather_control":
+		return "weather"
 	if _skill_targets_monster(skill) or ["monster_bound_action", "move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar"].has(kind):
 		return "combat"
 	if ["monster_lure", "special_monster_delay", "monster_takeover", "supply_draw", "panic_shift", "route_sabotage", "card_access_boon"].has(kind):
 		return "tactic"
 	if ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"].has(kind):
-		return "other"
+		return "intel"
 	return "other"
 
 
@@ -6332,6 +6406,7 @@ func _card_strength_budget_points(card_name: String) -> int:
 		"contract_add_products", "contract_add_demands", "contract_remove_products", "contract_remove_demands",
 		"repair_routes", "route_damage", "decline_route_damage", "draw_amount",
 		"damage", "armor", "guard", "ranged_guard", "miasma_count", "reclaim_count", "fixed_skill_count",
+		"weather_zone_count",
 	]:
 		points += abs(int(skill.get(key, 0))) * 7
 	points += int(round(absf(float(skill.get("move", 0.0))) / 90.0))
@@ -6339,6 +6414,7 @@ func _card_strength_budget_points(card_name: String) -> int:
 	points += int(round(absf(float(skill.get("knockback", 0.0))) / 120.0))
 	points += int(round(absf(float(skill.get("delay", 0.0))) * 5.0))
 	points += int(round(absf(float(skill.get("duration", 0.0))) / 40.0))
+	points += int(round(absf(float(skill.get("weather_duration_seconds", 0.0))) / 20.0))
 	points += int(round(maxf(0.0, float(skill.get("growth_multiplier", 1.0)) - 1.0) * 24.0))
 	points += int(round(maxf(0.0, float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 24.0))
 	points += int(round(maxf(0.0, float(skill.get("accept_route_flow_multiplier", 1.0)) - 1.0) * 18.0))
@@ -6425,6 +6501,12 @@ func _card_budget_driver_facts(skill: Dictionary) -> Array:
 		drivers.append("价格增速×%.2f" % float(skill.get("growth_multiplier", 1.0)))
 	if float(skill.get("route_flow_multiplier", 1.0)) > 1.001:
 		drivers.append("商路×%.2f" % float(skill.get("route_flow_multiplier", 1.0)))
+	if String(skill.get("weather_type", "")) != "":
+		drivers.append("%s/%d区/%s" % [
+			_weather_label(String(skill.get("weather_type", ""))),
+			int(skill.get("weather_zone_count", 1)),
+			_duration_short_text(float(skill.get("weather_duration_seconds", WEATHER_DURATION_MIN_SECONDS))),
+		])
 	if drivers.is_empty():
 		drivers.append("按效果文字结算")
 	return drivers
@@ -6443,6 +6525,8 @@ func _card_budget_gate_facts(skill: Dictionary) -> Array:
 		gates.append("公开指定怪兽")
 	if String(skill.get("kind", "")) == "area_trade_contract":
 		gates.append("先选供需两区")
+	if String(skill.get("kind", "")) == "weather_control":
+		gates.append("预告%s" % _duration_short_text(float(skill.get("weather_forecast_lead_seconds", WEATHER_FORECAST_LEAD_MIN_SECONDS))))
 	if String(skill.get("kind", "")) == "monster_card" and not bool(skill.get("starter_play_free", false)):
 		gates.append("召唤区限制")
 	if not bool(skill.get("persistent", false)):
@@ -6518,6 +6602,7 @@ func _region_codex_text(index: int) -> String:
 		_district_transport_speed(index),
 		int(district.get("consumption_level", 1)),
 	])
+	lines.append("星球天气：%s；顶部状态栏会提前显示下一条天气预报。" % _district_weather_summary(index))
 	var last_damage_source := String(district.get("last_damage_source", ""))
 	if last_damage_source != "":
 		lines.append("最近破坏：%s造成%d点区域/城市伤害。" % [
@@ -7026,7 +7111,9 @@ func _capture_run_state() -> Dictionary:
 		"victory_countdown_trigger_score": victory_countdown_trigger_score,
 		"map_width_m": map_width_m,
 		"map_height_m": map_height_m,
-		"event_timer": event_timer,
+		"weather_forecast": weather_forecast.duplicate(true),
+		"active_weather_zones": active_weather_zones.duplicate(true),
+		"weather_sequence": weather_sequence,
 		"special_monster_timer": special_monster_timer,
 		"monster_timer": monster_timer,
 		"market_timer": market_timer,
@@ -7138,7 +7225,9 @@ func _apply_run_state(state: Dictionary) -> int:
 	victory_countdown_trigger_score = int(state.get("victory_countdown_trigger_score", 0))
 	map_width_m = float(state.get("map_width_m", MAP_WIDTH_METERS))
 	map_height_m = float(state.get("map_height_m", MAP_HEIGHT_METERS))
-	event_timer = float(state.get("event_timer", 6.0))
+	weather_forecast = (state.get("weather_forecast", {}) as Dictionary).duplicate(true)
+	active_weather_zones = (state.get("active_weather_zones", []) as Array).duplicate(true)
+	weather_sequence = int(state.get("weather_sequence", 0))
 	special_monster_timer = float(state.get("special_monster_timer", 5.0))
 	monster_timer = float(state.get("monster_timer", 4.0))
 	market_timer = float(state.get("market_timer", 8.0))
@@ -7969,6 +8058,9 @@ func _new_game() -> void:
 	selected_contract_target_district = -1
 	business_cycle_count = 0
 	economy_cashflow_timer = 0.0
+	weather_forecast = {}
+	active_weather_zones = []
+	weather_sequence = 0
 	game_over = false
 	victory_countdown_active = false
 	victory_countdown_timer = 0.0
@@ -8031,6 +8123,7 @@ func _new_game() -> void:
 	selected_district = _nearest_district_to(center)
 	if selected_district < 0:
 		selected_district = 0
+	_schedule_next_weather_forecast(true)
 	_open_district_card_purchase_window(selected_district, selected_player)
 	_sync_selected_district_card()
 	_refresh_product_market_prices()
@@ -8948,7 +9041,7 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		"draw_amount", "repair_routes", "route_damage", "contract_income", "market_demand_pressure", "market_supply_pressure", "miasma_count",
 		"reclaim_count", "product_level", "product_shift", "demand_shift", "contract_add_products", "contract_add_demands",
 		"contract_remove_products", "contract_remove_demands", "accept_cash", "decline_cash_penalty", "decline_route_damage", "stabilize_amount",
-		"reveal_city_count", "trace_card_count", "trace_contract_count", "card_access_extra_hops"
+		"reveal_city_count", "trace_card_count", "trace_contract_count", "card_access_extra_hops", "weather_zone_count"
 	]:
 		if not source.has(key) and not base.has(key):
 			continue
@@ -8978,7 +9071,7 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		var delta_anchor := maxi(abs(reference_delta), abs(current_delta))
 		var delta_step := maxi(1, ceili(float(delta_anchor) * 0.35))
 		result[key] = current_delta + direction * delta_step * steps
-	for key in ["move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds", "contract_seconds", "market_contract_seconds", "growth_seconds", "route_flow_seconds"]:
+	for key in ["move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds", "contract_seconds", "market_contract_seconds", "growth_seconds", "route_flow_seconds", "weather_duration_seconds"]:
 		if not source.has(key) and not base.has(key):
 			continue
 		var current_float := float(source.get(key, base.get(key, 0.0)))
@@ -9034,11 +9127,12 @@ func _refresh_status() -> void:
 		_player_visible_settlement_estimate(selected_player) if selected_player >= 0 and selected_player < players.size() else 0,
 		_roguelike_cash_goal(),
 	]
-	status_label.text = "%s｜%s｜%s｜%s｜%s" % [
+	status_label.text = "%s｜%s｜%s｜%s｜%s｜%s" % [
 		_format_time(game_time),
 		players[selected_player]["name"] if selected_player >= 0 and selected_player < players.size() else "玩家",
 		goal_text,
 		_card_resolution_status_text(),
+		_weather_status_text(),
 		district_name,
 	]
 
@@ -9125,7 +9219,8 @@ func _district_transport_speed(index: int) -> float:
 	var district: Dictionary = districts[index]
 	var level := int(district.get("transport_level", 2 if String(district.get("terrain", "land")) == "land" else 4))
 	var base_score := _transport_score_from_level(level, String(district.get("terrain", "land")) == "ocean")
-	return clampf(float(district.get("transport_score", base_score)), REGION_TRANSPORT_SCORE_MIN, REGION_TRANSPORT_SCORE_MAX)
+	var weather_multiplier := _district_weather_multiplier(index, "transport_multiplier", 1.0)
+	return clampf(float(district.get("transport_score", base_score)) * weather_multiplier, REGION_TRANSPORT_SCORE_MIN, REGION_TRANSPORT_SCORE_MAX)
 
 
 func _district_production_factor(index: int) -> float:
@@ -9134,7 +9229,7 @@ func _district_production_factor(index: int) -> float:
 	var district: Dictionary = districts[index]
 	var level := clampi(int(district.get("production_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
 	var focus_bonus := 0.16 if String(district.get("economic_focus", "")) == "production" else 0.0
-	return maxf(0.25, 0.72 + float(level) * 0.16 + focus_bonus)
+	return maxf(0.25, (0.72 + float(level) * 0.16 + focus_bonus) * _district_weather_multiplier(index, "production_multiplier", 1.0))
 
 
 func _district_consumption_factor(index: int) -> float:
@@ -9143,7 +9238,7 @@ func _district_consumption_factor(index: int) -> float:
 	var district: Dictionary = districts[index]
 	var level := clampi(int(district.get("consumption_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
 	var focus_bonus := 0.16 if String(district.get("economic_focus", "")) == "consumption" else 0.0
-	return maxf(0.25, 0.72 + float(level) * 0.16 + focus_bonus)
+	return maxf(0.25, (0.72 + float(level) * 0.16 + focus_bonus) * _district_weather_multiplier(index, "consumption_multiplier", 1.0))
 
 
 func _product_supply_demand_ratio(product_name: String) -> float:
@@ -11431,6 +11526,10 @@ func _card_theme_color(skill: Dictionary) -> Color:
 			return Color("#f59e0b")
 		"intel_city_reveal", "intel_card_trace", "intel_contract_trace":
 			return Color("#60a5fa")
+		"news_event":
+			return Color("#fb923c")
+		"weather_control":
+			return Color("#38bdf8")
 		"card_access_boon":
 			return Color("#2dd4bf")
 		"panic_shift":
@@ -11487,6 +11586,10 @@ func _card_strategy_route_label(skill: Dictionary) -> String:
 		return "怪兽路线"
 	if kind == "intel_city_reveal" or kind == "intel_card_trace" or kind == "intel_contract_trace" or tags.contains("情报"):
 		return "情报推理"
+	if kind == "news_event" or tags.contains("新闻"):
+		return "新闻信息战"
+	if kind == "weather_control" or tags.contains("天气"):
+		return "天气博弈"
 	if kind == "area_trade_contract" or kind == "product_contract_boon" or int(skill.get("contract_income", 0)) > 0 or accept_delta != 0 or decline_delta != 0 or int(skill.get("accept_cash", 0)) != 0 or int(skill.get("decline_cash_penalty", 0)) != 0:
 		return "合约博弈"
 	if kind == "city_gdp_derivative" or kind == "product_speculation" or kind == "market_stabilize" or market_pressure != 0:
@@ -11516,6 +11619,10 @@ func _card_strategy_use_text(skill: Dictionary) -> String:
 			return "连接或改写区域供需，签约有收益，拒签也可能留下惩罚压力。"
 		"情报推理":
 			return "获取城市、卡牌或合约归属线索，帮助把匿名行动反推成钱。"
+		"新闻信息战":
+			return "用匿名新闻制造热度、供需噪声或区域经营压力，引导怪兽和金融判断。"
+		"天气博弈":
+			return "改写星球天气预报，让1-5个区域在一分钟后进入可利用的气候窗口。"
 		"怪兽路线":
 			return "召唤、升级、诱导或夺取自动怪兽，让怪兽灾害影响资源和城市。"
 		"补给构筑":
@@ -11661,6 +11768,12 @@ func _card_art_stats(skill: Dictionary) -> String:
 		]
 	if String(skill.get("kind", "")) != "monster_card":
 		var route := _card_strategy_route_label(skill)
+		if String(skill.get("kind", "")) == "weather_control":
+			return "%s｜%s｜%s后" % [
+				route,
+				_weather_label(String(skill.get("weather_type", "solar_storm"))),
+				_duration_short_text(float(skill.get("weather_forecast_lead_seconds", WEATHER_FORECAST_LEAD_MIN_SECONDS))),
+			]
 		if int(skill.get("cash", 0)) > 0:
 			return "%s｜+¥%d" % [route, int(skill.get("cash", 0))]
 		if int(skill.get("revenue_amount", 0)) > 0:
@@ -11751,6 +11864,10 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var gdp_bet_multiplier := float(skill.get("gdp_bet_multiplier", 0.0))
 	var gdp_bet_seconds := _gdp_bet_duration_seconds(skill) if gdp_bet_direction != "" else 0.0
 	var gdp_bet_destroy_bonus := int(skill.get("gdp_bet_destroy_bonus", 0))
+	var weather_type := String(skill.get("weather_type", ""))
+	var weather_zone_count := int(skill.get("weather_zone_count", 0))
+	var weather_forecast_lead := float(skill.get("weather_forecast_lead_seconds", 0.0))
+	var weather_duration := float(skill.get("weather_duration_seconds", 0.0))
 	if move_m > 0.0:
 		facts.append("移动:%s" % _meters_text(move_m))
 	if range_m > 0.0:
@@ -11859,6 +11976,14 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 		facts.append("GDP倍率:×%.2f/%s" % [gdp_bet_multiplier, _duration_short_text(gdp_bet_seconds)])
 	if gdp_bet_destroy_bonus > 0:
 		facts.append("破产奖励:¥%d" % gdp_bet_destroy_bonus)
+	if weather_type != "":
+		facts.append("天气:%s" % _weather_label(weather_type))
+	if weather_forecast_lead > 0.0:
+		facts.append("预告:%s" % _duration_short_text(weather_forecast_lead))
+	if weather_duration > 0.0:
+		facts.append("持续:%s" % _duration_short_text(weather_duration))
+	if weather_zone_count > 0:
+		facts.append("覆盖:%d区" % weather_zone_count)
 	return facts
 
 
@@ -11993,8 +12118,20 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 		"panic_shift":
 			return [
 				"%s把目标区域推上星际热搜，新闻噪声覆盖地图。" % label,
-				"区域热度上升，怪兽目标概率和事件关注度随之偏移。",
+				"区域热度上升，怪兽目标概率随之偏移；这不是被动新闻，只是卡牌制造的关注。",
 				"如果热度过载，区域还可能因恐慌触发额外损伤。",
+			]
+		"news_event":
+			return [
+				"%s以匿名新闻源身份插入全屏播报，卡轨只显示新闻类型不显示出牌者。" % label,
+				"目标区域热度、商品供需噪声、商路或生产/消费参数按卡面字段改写。",
+				"新闻不会被动发生；这次公开余波会留给所有玩家反推谁最受益。",
+			]
+		"weather_control":
+			return [
+				"%s接入星球气象台，把下一条天气预报改写到目标区域附近。" % label,
+				"所有玩家提前看到天气类型、倒计时、覆盖区域和持续时间，可以据此建城、买涨/做空或转移怪兽。",
+				"到点后天气才生效，生产、交通和消费修正会体现在秒级GDP中。",
 			]
 		"supply_draw":
 			return [
@@ -12224,6 +12361,10 @@ func _card_resolution_aftermath_clue_text(skill: Dictionary, resolved: bool) -> 
 		return "商品天气和供需压力等待重算"
 	if kind == "region_economy_shift":
 		return "区域生产/交通/消费参数已改写"
+	if kind == "news_event":
+		return "匿名新闻改变热度/供需/商路线索"
+	if kind == "weather_control":
+		return "星球天气预报已被改写"
 	if kind == "panic_shift":
 		return "区域热度会偏移怪兽目标"
 	if kind == "supply_draw":
@@ -12257,7 +12398,7 @@ func _card_resolution_effect_radius(skill: Dictionary) -> float:
 	var kind := String(skill.get("kind", ""))
 	if kind == "monster_card":
 		return 120.0
-	if kind.contains("city") or kind == "route_sabotage" or kind == "route_flow_boon" or kind == "route_insurance" or kind == "area_trade_contract":
+	if kind.contains("city") or kind == "route_sabotage" or kind == "route_flow_boon" or kind == "route_insurance" or kind == "area_trade_contract" or kind == "news_event" or kind == "weather_control":
 		return 105.0
 	if kind.contains("product") or kind == "market_stabilize":
 		return 90.0
@@ -12276,6 +12417,10 @@ func _card_resolution_effect_style(skill: Dictionary) -> String:
 		return "product"
 	if kind == "region_economy_shift":
 		return "region"
+	if kind == "news_event":
+		return "news"
+	if kind == "weather_control":
+		return "weather"
 	if kind == "panic_shift":
 		return "heat"
 	if kind == "supply_draw":
@@ -12292,6 +12437,8 @@ func _card_resolution_effect_style_label(style: String) -> String:
 		"city": "城市",
 		"product": "商品",
 		"region": "区域",
+		"news": "新闻",
+		"weather": "天气",
 		"heat": "热度",
 		"supply": "补给",
 		"cash": "资金",
@@ -13083,8 +13230,10 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 
 
 func _ai_pressure_kind(kind: String, skill: Dictionary = {}) -> bool:
-	if ["route_sabotage", "panic_shift", "monster_lure", "mudslide", "area_damage", "special_monster_delay"].has(kind):
+	if ["route_sabotage", "panic_shift", "news_event", "monster_lure", "mudslide", "area_damage", "special_monster_delay"].has(kind):
 		return true
+	if kind == "weather_control":
+		return String(skill.get("weather_type", "")) in ["solar_storm", "acid_rain", "magnetic_fog"]
 	if kind == "city_gdp_derivative":
 		return String(skill.get("gdp_bet_direction", "up")) == "down"
 	if kind == "region_economy_shift":
@@ -13095,6 +13244,8 @@ func _ai_pressure_kind(kind: String, skill: Dictionary = {}) -> bool:
 func _ai_defense_kind(kind: String, skill: Dictionary = {}) -> bool:
 	if ["route_insurance", "route_flow_boon", "city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_demand_shift", "market_stabilize"].has(kind):
 		return true
+	if kind == "weather_control":
+		return String(skill.get("weather_type", "")) == "gravity_tide"
 	if kind == "city_gdp_derivative":
 		return String(skill.get("gdp_bet_direction", "up")) == "up"
 	if kind == "region_economy_shift":
@@ -13867,19 +14018,19 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 	var bonus := 0
 	match intent:
 		"defend_routes":
-			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift"].has(kind):
+			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift", "weather_control"].has(kind):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if resolved_owner == player_index:
 				bonus += mini(120, _ai_own_route_threat_score(player_index) / 3)
 		"disrupt_competitors":
-			if ["route_sabotage", "panic_shift", "monster_lure", "mudslide", "area_damage", "city_gdp_derivative"].has(kind):
+			if ["route_sabotage", "panic_shift", "news_event", "weather_control", "monster_lure", "mudslide", "area_damage", "city_gdp_derivative"].has(kind):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if resolved_owner >= 0 and resolved_owner != player_index:
 				bonus += 70
 			if focus != "" and product_name == focus:
 				bonus += 46
 		"grow_focus":
-			if ["city_build", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "cash_gain", "area_trade_contract", "region_economy_shift"].has(kind):
+			if ["city_build", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "cash_gain", "area_trade_contract", "region_economy_shift", "news_event", "weather_control"].has(kind):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if focus != "" and product_name == focus:
 				bonus += 54
@@ -14233,17 +14384,17 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 			if resolved_owner == player_index:
 				bonus += 42
 		"strengthen_route":
-			if ["route_flow_boon", "city_revenue_boost", "city_product_upgrade", "city_contract_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "area_trade_contract"].has(kind) and product_match:
+			if ["route_flow_boon", "city_revenue_boost", "city_product_upgrade", "city_contract_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "area_trade_contract", "news_event", "weather_control"].has(kind) and product_match:
 				bonus += 108
 			if resolved_owner == player_index:
 				bonus += 34
 		"defend_route":
-			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift", "city_demand_shift"].has(kind):
+			if ["route_insurance", "special_monster_delay", "route_flow_boon", "region_economy_shift", "city_demand_shift", "weather_control"].has(kind):
 				bonus += 96
 			if resolved_owner == player_index:
 				bonus += mini(132, _ai_product_route_threat_score(player_index, plan_product) / 2)
 		"attack_rival":
-			if ["route_sabotage", "monster_lure", "panic_shift", "mudslide", "area_damage", "region_economy_shift", "city_gdp_derivative"].has(kind):
+			if ["route_sabotage", "monster_lure", "panic_shift", "news_event", "weather_control", "mudslide", "area_damage", "region_economy_shift", "city_gdp_derivative"].has(kind):
 				bonus += 116
 			if resolved_owner >= 0 and resolved_owner != player_index:
 				bonus += 76
@@ -14282,9 +14433,9 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
 		var rival_product := _ai_preferred_product(player_index, true)
 		if rival_product != "":
 			return rival_product
-	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "area_trade_contract"].has(kind)):
+	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "area_trade_contract", "news_event", "weather_control"].has(kind)):
 		return route_product
-	if focus != "" and (_player_product_flow(player_index, focus) > 0 or ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift"].has(kind)):
+	if focus != "" and (_player_product_flow(player_index, focus) > 0 or ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "news_event", "weather_control"].has(kind)):
 		return focus
 	return _skill_play_product(skill, player_index)
 
@@ -14805,6 +14956,28 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			districts[gdp_target]["name"],
 			float(skill.get("gdp_bet_multiplier", 1.0)),
 			_duration_short_text(_gdp_bet_duration_seconds(skill)),
+		]
+	elif kind == "news_event":
+		if rival_city < 0:
+			return {}
+		context["district"] = rival_city
+		context["product"] = _ai_preferred_product(player_index, true)
+		if String(context.get("product", "")) == focus_product and focus_product != "":
+			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
+		context["score"] = int(context["score"]) + 115 + int(skill.get("panic", 0)) + int(skill.get("route_damage", 0)) * 45
+	elif kind == "weather_control":
+		var weather_type := String(skill.get("weather_type", ""))
+		var weather_target := own_city if weather_type == "gravity_tide" else rival_city
+		if weather_target < 0:
+			weather_target = own_city if own_city >= 0 else _ai_first_alive_district()
+		if weather_target < 0:
+			return {}
+		context["district"] = weather_target
+		context["score"] = int(context["score"]) + 88 + int(skill.get("weather_zone_count", 1)) * 18
+		context["reason"] = "改写天气预报｜%s｜%d区｜%s后生效" % [
+			_weather_label(weather_type),
+			int(skill.get("weather_zone_count", 1)),
+			_duration_short_text(float(skill.get("weather_forecast_lead_seconds", WEATHER_FORECAST_LEAD_MIN_SECONDS))),
 		]
 	elif ["route_sabotage", "panic_shift"].has(kind):
 		if rival_city < 0:
@@ -16408,6 +16581,10 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["补给", "范围"]
 		"route_sabotage":
 			return ["经营", "破坏"]
+		"news_event":
+			return ["新闻"]
+		"weather_control":
+			return ["天气"]
 		"panic_shift":
 			return ["市场"]
 		"monster_lure":
@@ -16471,6 +16648,228 @@ func _roll_timer(prefix: String) -> float:
 	var low: float = _preset_float("%s_min" % prefix)
 	var high: float = _preset_float("%s_max" % prefix)
 	return low + rng.randf_range(0.0, max(0.0, high - low))
+
+
+func _alive_district_indices() -> Array:
+	var result := []
+	for i in range(districts.size()):
+		if not bool(districts[i].get("destroyed", false)):
+			result.append(i)
+	return result
+
+
+func _weather_template(type_id: String) -> Dictionary:
+	return (WEATHER_TYPES.get(type_id, WEATHER_TYPES.get("solar_storm", {})) as Dictionary).duplicate(true)
+
+
+func _weather_label(type_id: String) -> String:
+	return String(_weather_template(type_id).get("label", type_id))
+
+
+func _weather_color(type_id: String) -> Color:
+	return _weather_template(type_id).get("color", Color("#93c5fd")) as Color
+
+
+func _weather_zone_count_for_planet() -> int:
+	return clampi(ceili(float(maxi(1, districts.size())) / 12.0), 1, WEATHER_ZONE_MAX)
+
+
+func _weather_district_names(entry: Dictionary, limit: int = 3) -> String:
+	var names := []
+	var district_ids: Array = entry.get("districts", [])
+	for i in range(min(limit, district_ids.size())):
+		var district_index := int(district_ids[i])
+		if district_index >= 0 and district_index < districts.size():
+			names.append(String(districts[district_index].get("name", "区域")))
+	var suffix := ""
+	if district_ids.size() > names.size():
+		suffix = "等%d区" % district_ids.size()
+	return " / ".join(names) + suffix
+
+
+func _weather_pick_districts(anchor_index: int, zone_count: int) -> Array:
+	var alive := _alive_district_indices()
+	if alive.is_empty():
+		return []
+	var count := clampi(zone_count, 1, min(WEATHER_ZONE_MAX, alive.size()))
+	var anchor := anchor_index if alive.has(anchor_index) else int(alive[rng.randi_range(0, alive.size() - 1)])
+	var result := [anchor]
+	var frontier := [anchor]
+	while result.size() < count and not frontier.is_empty():
+		var current := int(frontier.pop_front())
+		for neighbor_variant in districts[current].get("neighbors", []):
+			var neighbor := int(neighbor_variant)
+			if neighbor < 0 or neighbor >= districts.size() or bool(districts[neighbor].get("destroyed", false)):
+				continue
+			if result.has(neighbor):
+				continue
+			result.append(neighbor)
+			frontier.append(neighbor)
+			if result.size() >= count:
+				break
+	while result.size() < count and not alive.is_empty():
+		var picked := int(alive[rng.randi_range(0, alive.size() - 1)])
+		alive.erase(picked)
+		if not result.has(picked):
+			result.append(picked)
+	return result
+
+
+func _schedule_weather_forecast(type_id: String, anchor_index: int, zone_count: int, lead_seconds: float, duration_seconds: float, source: String, forced: bool = false) -> bool:
+	if districts.is_empty():
+		return false
+	if not WEATHER_TYPES.has(type_id):
+		type_id = "solar_storm"
+	var district_ids := _weather_pick_districts(anchor_index, zone_count)
+	if district_ids.is_empty():
+		return false
+	weather_sequence += 1
+	weather_forecast = {
+		"id": weather_sequence,
+		"type": type_id,
+		"districts": district_ids,
+		"created_at": game_time,
+		"starts_at": game_time + clampf(lead_seconds, WEATHER_FORECAST_LEAD_MIN_SECONDS, WEATHER_FORECAST_LEAD_MAX_SECONDS),
+		"duration": clampf(duration_seconds, WEATHER_DURATION_MIN_SECONDS * 0.5, WEATHER_DURATION_MAX_SECONDS * 1.5),
+		"source": source,
+		"forced": forced,
+	}
+	_log("星球气象预报%s：%s将在%s后影响%s，持续%s。" % [
+		"被匿名卡牌改写" if forced else "",
+		_weather_label(type_id),
+		_duration_short_text(float(weather_forecast.get("starts_at", game_time)) - game_time),
+		_weather_district_names(weather_forecast, 5),
+		_duration_short_text(float(weather_forecast.get("duration", 0.0))),
+	])
+	return true
+
+
+func _schedule_next_weather_forecast(announce: bool = false) -> void:
+	if not weather_forecast.is_empty() or districts.is_empty():
+		return
+	var keys := WEATHER_TYPES.keys()
+	if keys.is_empty():
+		return
+	var alive := _alive_district_indices()
+	if alive.is_empty():
+		return
+	var type_id := String(keys[rng.randi_range(0, keys.size() - 1)])
+	var anchor := int(alive[rng.randi_range(0, alive.size() - 1)])
+	var lead := rng.randf_range(WEATHER_FORECAST_LEAD_MIN_SECONDS, WEATHER_FORECAST_LEAD_MAX_SECONDS)
+	var duration := rng.randf_range(WEATHER_DURATION_MIN_SECONDS, WEATHER_DURATION_MAX_SECONDS)
+	if _schedule_weather_forecast(type_id, anchor, _weather_zone_count_for_planet(), lead, duration, "星球气象台", false) and announce:
+		_add_action_callout(
+			"星球气象台",
+			"天气预报",
+			_weather_status_text(),
+			_weather_color(type_id),
+			_district_center(anchor),
+			6.0
+		)
+
+
+func _activate_weather_forecast() -> void:
+	if weather_forecast.is_empty():
+		return
+	var entry := weather_forecast.duplicate(true)
+	var type_id := String(entry.get("type", "solar_storm"))
+	entry["started_at"] = game_time
+	entry["ends_at"] = game_time + maxf(1.0, float(entry.get("duration", WEATHER_DURATION_MIN_SECONDS)))
+	active_weather_zones.append(entry)
+	weather_forecast = {}
+	_refresh_city_networks()
+	_refresh_product_market_prices()
+	var center_index := int((entry.get("districts", [selected_district]) as Array)[0])
+	_add_action_callout(
+		"星球天气",
+		_weather_label(type_id),
+		"%s开始影响%s，GDP会按生产/交通/消费修正。" % [_weather_label(type_id), _weather_district_names(entry, 5)],
+		_weather_color(type_id),
+		_district_center(center_index),
+		8.0
+	)
+	_log("天气生效：%s覆盖%s；%s" % [
+		_weather_label(type_id),
+		_weather_district_names(entry, 5),
+		String(_weather_template(type_id).get("text", "天气影响区域经济。")),
+	])
+	_schedule_next_weather_forecast()
+
+
+func _update_weather_system(_delta_seconds: float) -> void:
+	if weather_forecast.is_empty():
+		_schedule_next_weather_forecast()
+	if not weather_forecast.is_empty() and game_time >= float(weather_forecast.get("starts_at", game_time + 9999.0)):
+		_activate_weather_forecast()
+	var remaining := []
+	var expired := false
+	for entry_variant in active_weather_zones:
+		var entry: Dictionary = entry_variant
+		if game_time >= float(entry.get("ends_at", game_time)):
+			expired = true
+			_log("天气结束：%s不再影响%s。" % [_weather_label(String(entry.get("type", ""))), _weather_district_names(entry, 5)])
+			continue
+		remaining.append(entry)
+	if expired:
+		active_weather_zones = remaining
+		_refresh_city_networks()
+		_refresh_product_market_prices()
+
+
+func _weather_entries_for_district(index: int) -> Array:
+	var result := []
+	for entry_variant in active_weather_zones:
+		var entry: Dictionary = entry_variant
+		var district_ids: Array = entry.get("districts", [])
+		if district_ids.has(index):
+			result.append(entry)
+	return result
+
+
+func _district_weather_multiplier(index: int, key: String, default_value: float = 1.0) -> float:
+	var multiplier := default_value
+	for entry_variant in _weather_entries_for_district(index):
+		var entry: Dictionary = entry_variant
+		var type_id := String(entry.get("type", ""))
+		var template := _weather_template(type_id)
+		var value := float(template.get(key, 1.0))
+		if key == "transport_multiplier" and String(districts[index].get("terrain", "land")) == "ocean":
+			value = float(template.get("ocean_transport_multiplier", value))
+		multiplier *= value
+	return multiplier
+
+
+func _district_weather_summary(index: int) -> String:
+	var entries := _weather_entries_for_district(index)
+	if entries.is_empty():
+		return "无活跃天气"
+	var pieces := []
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant
+		pieces.append("%s剩%s" % [
+			_weather_label(String(entry.get("type", ""))),
+			_duration_short_text(maxf(0.0, float(entry.get("ends_at", game_time)) - game_time)),
+		])
+	return " / ".join(pieces)
+
+
+func _weather_status_text() -> String:
+	var active_text := "无活跃天气"
+	if not active_weather_zones.is_empty():
+		var entry: Dictionary = active_weather_zones[0]
+		active_text = "%s影响%s 剩%s" % [
+			_weather_label(String(entry.get("type", ""))),
+			_weather_district_names(entry, 2),
+			_duration_short_text(maxf(0.0, float(entry.get("ends_at", game_time)) - game_time)),
+		]
+	var forecast_text := "暂无预报"
+	if not weather_forecast.is_empty():
+		forecast_text = "%s将在%s后到达%s" % [
+			_weather_label(String(weather_forecast.get("type", ""))),
+			_duration_short_text(maxf(0.0, float(weather_forecast.get("starts_at", game_time)) - game_time)),
+			_weather_district_names(weather_forecast, 2),
+		]
+	return "天气:%s｜预报:%s" % [active_text, forecast_text]
 
 
 func _weight_total(weights: Array) -> int:
@@ -16637,7 +17036,6 @@ func _district_trade_route_load(index: int) -> int:
 
 
 func _prime_timers_for_new_game() -> void:
-	event_timer = max(1.0, _preset_float("event_min") * 0.75)
 	special_monster_timer = max(1.0, _preset_float("special_monster_min") * 0.9)
 	monster_timer = max(1.0, _preset_float("monster_min") * 0.8)
 	market_timer = _roll_timer("market")
@@ -19157,6 +19555,89 @@ func _skill_targets_monster(skill: Dictionary) -> bool:
 	return _is_direct_monster_skill_kind(kind) or ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover"].has(kind)
 
 
+func _non_target_skill_resolution_kinds() -> Array:
+	return [
+		"monster_card",
+		"monster_bound_action",
+		"city_revenue_boost",
+		"cash_gain",
+		"product_speculation",
+		"city_gdp_derivative",
+		"product_contract_boon",
+		"area_trade_contract",
+		"route_insurance",
+		"city_product_upgrade",
+		"city_product_shift",
+		"city_demand_shift",
+		"market_stabilize",
+		"product_growth_boon",
+		"route_flow_boon",
+		"region_economy_shift",
+		"city_contract_boon",
+		"route_sabotage",
+		"news_event",
+		"weather_control",
+		"intel_city_reveal",
+		"intel_card_trace",
+		"intel_contract_trace",
+		"card_access_boon",
+		"panic_shift",
+		"supply_draw",
+	]
+
+
+func _skill_has_resolution_handler(skill: Dictionary) -> bool:
+	var kind := String(skill.get("kind", ""))
+	if kind == "":
+		return false
+	if _skill_targets_monster(skill):
+		return true
+	return _non_target_skill_resolution_kinds().has(kind)
+
+
+func _playable_card_resolution_coverage_report() -> Dictionary:
+	var checked := 0
+	var missing := []
+	var seen := {}
+	for name_variant in _card_codex_names("all"):
+		var base_name := String(name_variant)
+		var family := _skill_family(base_name)
+		if family == "":
+			continue
+		for rank in range(1, 5):
+			var ranked_name := "%s%d" % [family, rank]
+			if seen.has(ranked_name):
+				continue
+			seen[ranked_name] = true
+			if not _skill_exists(ranked_name):
+				missing.append("%s：缺少卡牌定义" % ranked_name)
+				continue
+			checked += 1
+			var skill := _make_skill(ranked_name)
+			if not _skill_has_resolution_handler(skill):
+				missing.append("%s：kind=%s 未接入结算器" % [ranked_name, String(skill.get("kind", ""))])
+	for catalog_index in range(_catalog_size()):
+		var monster_name := String(_catalog_entry(catalog_index).get("name", "怪兽"))
+		var actions := _catalog_actions(catalog_index)
+		for action_index in range(actions.size()):
+			for rank in range(1, 5):
+				var technique_name := _monster_technique_card_name(monster_name, action_index, rank)
+				if seen.has(technique_name):
+					continue
+				seen[technique_name] = true
+				if not _skill_exists(technique_name):
+					missing.append("%s：缺少固定技能定义" % technique_name)
+					continue
+				checked += 1
+				var technique := _make_skill(technique_name)
+				if not _skill_has_resolution_handler(technique):
+					missing.append("%s：kind=%s 未接入结算器" % [technique_name, String(technique.get("kind", ""))])
+	return {
+		"checked": checked,
+		"missing": missing,
+	}
+
+
 func _skill_requires_target_monster(skill: Dictionary) -> bool:
 	return not auto_monsters.is_empty() and _skill_targets_monster(skill)
 
@@ -20185,6 +20666,10 @@ func _resolve_queued_skill(entry: Dictionary) -> void:
 				resolved = _apply_city_contract_boon(player, skill)
 			"route_sabotage":
 				resolved = _apply_route_sabotage(skill)
+			"news_event":
+				resolved = _apply_news_event(skill)
+			"weather_control":
+				resolved = _apply_weather_control(skill)
 			"intel_city_reveal":
 				resolved = _apply_intel_city_reveal(player, skill)
 			"intel_card_trace":
@@ -20281,27 +20766,116 @@ func _draw_extra_district_cards(player: Dictionary, amount: int, source: String)
 	_log("%s执行额外区域补给；具体获得、手牌数量和弃牌状态不公开。" % source)
 
 
-func _world_event() -> void:
-	var index := _weighted_event_district()
-	if index < 0:
-		_finish_game("所有区域都已破坏。")
-		return
-	var d: Dictionary = districts[index]
-	var heat_min: int = _preset_int("event_heat_min")
-	var heat_max: int = _preset_int("event_heat_max")
-	var heat: int = rng.randi_range(heat_min, heat_max)
-	d["panic"] = min(100, d["panic"] + heat)
-	_log("星际商业新闻涌向%s：曝光热度+%d，怪兽关注上升。" % [d["name"], heat])
+func _apply_news_event(skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "匿名新闻"))
+	if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
+		_log("%s需要选中一个未毁区域。" % source)
+		return false
+	var district: Dictionary = districts[selected_district]
+	var changed := false
+	var panic_gain: int = maxi(0, int(skill.get("panic", 0)))
+	if panic_gain > 0:
+		_add_panic(selected_district, panic_gain, source)
+		district = districts[selected_district]
+		changed = true
+	var before_production := clampi(int(district.get("production_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var before_transport := clampi(int(district.get("transport_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var before_consumption := clampi(int(district.get("consumption_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var after_production := clampi(before_production + int(skill.get("production_delta", 0)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var after_transport := clampi(before_transport + int(skill.get("transport_delta", 0)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var after_consumption := clampi(before_consumption + int(skill.get("consumption_delta", 0)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	if after_production != before_production or after_transport != before_transport or after_consumption != before_consumption:
+		district["production_level"] = after_production
+		district["transport_level"] = after_transport
+		district["consumption_level"] = after_consumption
+		district["transport_score"] = _transport_score_from_level(after_transport, String(district.get("terrain", "land")) == "ocean")
+		changed = true
+	var city := district.get("city", {}) as Dictionary
+	var route_damage := maxi(0, int(skill.get("route_damage", 0)))
+	if _city_is_active(city) and route_damage > 0:
+		city["trade_route_damage"] = int(city.get("trade_route_damage", 0)) + route_damage
+		changed = true
+	if _city_is_active(city):
+		city = _append_city_public_clue(city, "%s新闻事件：%s；热度+%d，生产%d→%d、交通%d→%d、消费%d→%d、断路+%d。出牌者匿名。" % [
+			source,
+			String(skill.get("news_category", "公开")),
+			panic_gain,
+			before_production,
+			after_production,
+			before_transport,
+			after_transport,
+			before_consumption,
+			after_consumption,
+			route_damage,
+		])
+		district["city"] = city
+	districts[selected_district] = district
+	var product_name := _default_economy_product()
+	if product_name != "":
+		var entry := _product_market_entry(product_name)
+		if not entry.is_empty():
+			var demand_pressure := maxi(0, int(skill.get("market_demand_pressure", 0)))
+			var supply_pressure := maxi(0, int(skill.get("market_supply_pressure", 0)))
+			var volatility_delta := int(skill.get("volatility_delta", 0))
+			if demand_pressure > 0 or supply_pressure > 0 or volatility_delta != 0:
+				entry["temporary_demand_pressure"] = int(entry.get("temporary_demand_pressure", 0)) + demand_pressure
+				entry["temporary_supply_pressure"] = int(entry.get("temporary_supply_pressure", 0)) + supply_pressure
+				entry["volatility"] = clampi(int(entry.get("volatility", 4)) + volatility_delta, PRODUCT_VOLATILITY_MIN, PRODUCT_VOLATILITY_MAX)
+				product_market[product_name] = entry
+				selected_trade_product = product_name
+				changed = true
+	_refresh_city_networks()
+	_refresh_product_market_prices()
+	_pulse_district(selected_district, Color("#f97316"))
 	_add_action_callout(
-		"星际商业新闻",
-		"区域曝光",
-		"%s热度+%d，城市越活跃越容易成为怪兽目标。" % [d["name"], heat],
-		Color("#fbbf24"),
-		_district_center(index)
+		"匿名新闻",
+		source,
+		"%s制造%s新闻：热度+%d%s；新闻归属不公开。" % [
+			districts[selected_district]["name"],
+			String(skill.get("news_category", "公开")),
+			panic_gain,
+			"，商品/区域参数已变动" if changed else "",
+		],
+		Color("#f97316"),
+		_district_center(selected_district)
 	)
-	if d["panic"] >= 100:
-		d["panic"] = 60
-		_damage_district(index, 1, "民众恐慌")
+	_log("%s在%s制造匿名新闻：%s；热度+%d，商品线索%s，效果归属待推理。" % [
+		source,
+		districts[selected_district]["name"],
+		String(skill.get("news_category", "公开")),
+		panic_gain,
+		product_name if product_name != "" else "无",
+	])
+	return changed or panic_gain > 0
+
+
+func _apply_weather_control(skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "天气干预"))
+	if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
+		_log("%s需要选中一个未毁区域作为天气锚点。" % source)
+		return false
+	var type_id := String(skill.get("weather_type", "solar_storm"))
+	var zone_count := clampi(int(skill.get("weather_zone_count", _weather_zone_count_for_planet())), 1, WEATHER_ZONE_MAX)
+	var lead := float(skill.get("weather_forecast_lead_seconds", WEATHER_FORECAST_LEAD_MIN_SECONDS))
+	var duration := float(skill.get("weather_duration_seconds", WEATHER_DURATION_MIN_SECONDS))
+	var ok := _schedule_weather_forecast(type_id, selected_district, zone_count, lead, duration, source, true)
+	if not ok:
+		_log("%s未能改写天气预报。" % source)
+		return false
+	_add_action_callout(
+		"匿名气象干预",
+		source,
+		"%s预报被改写：%s将在%s后影响%s。" % [
+			"星球天气",
+			_weather_label(type_id),
+			_duration_short_text(maxf(0.0, float(weather_forecast.get("starts_at", game_time)) - game_time)),
+			_weather_district_names(weather_forecast, 5),
+		],
+		_weather_color(type_id),
+		_district_center(selected_district),
+		7.0
+	)
+	return true
 
 
 func _auto_monster_lure_target(actor: Dictionary) -> int:

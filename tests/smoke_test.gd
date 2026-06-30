@@ -63,6 +63,13 @@ func _run() -> void:
 		and not main_source.contains("_manual_settlement"),
 		"runtime removes player-facing pacing presets and manual settlement debug hooks"
 	)
+	_expect(
+		not main_source.contains("event_timer")
+		and not main_source.contains("_world_event")
+		and not main_source.contains("event_min")
+		and not main_source.contains("星际商业新闻"),
+		"news no longer fires as a passive world event; only player news cards can create news effects"
+	)
 	var legacy_detail_panel_terms := [
 		"var setup" + "_box",
 		"var district" + "_box",
@@ -169,6 +176,10 @@ func _run() -> void:
 	_expect(_verify_monster_card_terrain_restriction(main, players, districts), "terrain-restricted monster cards reject the wrong land/ocean district even inside a monster zone")
 	_expect(not skill_market.is_empty(), "new game creates a card/skill market")
 	_expect(product_market != null and not product_market.is_empty() and _product_market_has_prices(product_market), "new game creates priced product market data")
+	var status_label := main.get("status_label") as Label
+	_expect(status_label != null and status_label.text.contains("天气:") and status_label.text.contains("预报:"), "top status bar exposes active weather and the next public forecast")
+	_expect(_verify_weather_forecast_system(main), "planet weather forecasts one to five affected regions 60-180 seconds ahead and then affects GDP modifiers")
+	_expect(_verify_news_and_weather_card_rules(main), "news cards are player-made effects while weather-control cards rewrite public forecasts")
 	_summon_starting_monsters_for_smoke(main, EXPECTED_SUMMONED_MONSTER_COUNT)
 	await process_frame
 	players = _as_array(main.get("players"))
@@ -268,6 +279,7 @@ func _run() -> void:
 	_expect(_verify_reacquired_card_upgrade_rules(main), "reacquiring an owned card upgrades its family and stops at rank IV")
 	_expect(_verify_private_discard_purchase_flow(main), "full-hand purchases require a private discard choice without leaking hand size, card names, or discard details")
 	_expect(_verify_card_rank_ladders_are_complete(main), "all base card families expose non-regressing I-IV rank ladders at the rank-I price")
+	_expect(_verify_playable_card_resolution_coverage(main), "all codex cards and generated monster fixed-skill cards have concrete resolution handlers")
 	_expect(_all_card_supply_entries_are_base_rank(main, districts), "card supplies and codex indexes offer base copies while upgrades happen through hand merging")
 	_expect(_verify_cards_have_no_legacy_runtime_fields(main), "card objects and run saves no longer expose legacy charge/control fields")
 	_expect(_all_districts_have_four_to_five_cards(districts), "each district receives four to five available cards")
@@ -2351,6 +2363,79 @@ func _all_monster_cards_have_field_attributes(main: Node) -> bool:
 	return total > 0 and finite_duration_count * 2 > total and land_zone_count > 0 and ocean_zone_count > 0
 
 
+func _verify_weather_forecast_system(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var forecast := main.get("weather_forecast") as Dictionary
+	if forecast == null or forecast.is_empty():
+		print("Missing initial weather forecast")
+		ok = false
+	else:
+		var now := float(main.get("game_time"))
+		var lead := float(forecast.get("starts_at", now)) - now
+		var affected := _as_array(forecast.get("districts", []))
+		ok = ok and lead >= 59.9 and lead <= 180.1
+		ok = ok and affected.size() >= 1 and affected.size() <= 5
+		ok = ok and String(main.call("_weather_status_text")).contains("预报")
+		main.set("game_time", float(forecast.get("starts_at", now)) + 0.2)
+		main.call("_update_weather_system", 0.2)
+		var active := _as_array(main.get("active_weather_zones"))
+		ok = ok and not active.is_empty()
+		if not active.is_empty():
+			var active_entry := active[0] as Dictionary
+			var active_districts := _as_array(active_entry.get("districts", []))
+			ok = ok and active_districts.size() >= 1 and active_districts.size() <= 5
+			var district_index := int(active_districts[0]) if not active_districts.is_empty() else -1
+			if district_index >= 0:
+				var production_multiplier := float(main.call("_district_weather_multiplier", district_index, "production_multiplier", 1.0))
+				var transport_multiplier := float(main.call("_district_weather_multiplier", district_index, "transport_multiplier", 1.0))
+				var consumption_multiplier := float(main.call("_district_weather_multiplier", district_index, "consumption_multiplier", 1.0))
+				ok = ok and (absf(production_multiplier - 1.0) > 0.001 or absf(transport_multiplier - 1.0) > 0.001 or absf(consumption_multiplier - 1.0) > 0.001)
+				ok = ok and String(main.call("_district_weather_summary", district_index)).contains(String(main.call("_weather_label", String(active_entry.get("type", "")))))
+			ok = ok and String(main.call("_weather_status_text")).contains("影响")
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_news_and_weather_card_rules(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var districts := _as_array(main.get("districts"))
+	var district_index := -1
+	for i in range(districts.size()):
+		var district := districts[i] as Dictionary
+		if not bool(district.get("destroyed", false)):
+			district_index = i
+			break
+	if district_index < 0:
+		return false
+	main.set("selected_district", district_index)
+	main.set("selected_player", 0)
+	var news_skill := main.call("_make_skill", "热搜推送1") as Dictionary
+	var weather_skill := main.call("_make_skill", "太阳风暴预报1") as Dictionary
+	ok = ok and String(main.call("_card_codex_filter_label", "news")) == "新闻事件"
+	ok = ok and String(main.call("_card_codex_filter_label", "weather")) == "天气干预"
+	ok = ok and String(main.call("_card_codex_category_for_card", "热搜推送1", news_skill)) == "news"
+	ok = ok and String(main.call("_card_codex_category_for_card", "太阳风暴预报1", weather_skill)) == "weather"
+	ok = ok and String(main.call("_card_strategy_summary", news_skill)).contains("新闻信息战")
+	ok = ok and String(main.call("_card_strategy_summary", weather_skill)).contains("天气博弈")
+	ok = ok and String(main.call("_card_art_stats", weather_skill)).contains("太阳风暴")
+	var before_panic := int((districts[district_index] as Dictionary).get("panic", 0))
+	ok = ok and bool(main.call("_apply_news_event", news_skill))
+	var after_districts := _as_array(main.get("districts"))
+	var after_panic := int((after_districts[district_index] as Dictionary).get("panic", 0))
+	ok = ok and after_panic > before_panic
+	ok = ok and bool(main.call("_apply_weather_control", weather_skill))
+	var forecast := main.get("weather_forecast") as Dictionary
+	ok = ok and forecast != null and not forecast.is_empty()
+	ok = ok and bool(forecast.get("forced", false))
+	ok = ok and String(forecast.get("type", "")) == "solar_storm"
+	ok = ok and _as_array(forecast.get("districts", [])).size() >= 1 and _as_array(forecast.get("districts", [])).size() <= 5
+	ok = ok and float(forecast.get("starts_at", 0.0)) - float(main.get("game_time")) >= 59.9
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
 func _verify_monster_card_terrain_restriction(main: Node, players: Array, districts: Array) -> bool:
 	if players.is_empty() or districts.is_empty():
 		return false
@@ -2942,6 +3027,19 @@ func _verify_card_rank_ladders_are_complete(main: Node) -> bool:
 			previous_budget = budget_points
 		checked += 1
 	return checked >= 40
+
+
+func _verify_playable_card_resolution_coverage(main: Node) -> bool:
+	var report := main.call("_playable_card_resolution_coverage_report") as Dictionary
+	var missing := _as_array(report.get("missing", []))
+	if not missing.is_empty():
+		print("Missing playable card resolution handlers: %s" % " / ".join(missing))
+		return false
+	var checked := int(report.get("checked", 0))
+	if checked < 120:
+		print("Playable card resolution coverage checked too few cards: %d" % checked)
+		return false
+	return true
 
 
 func _all_card_supply_entries_are_base_rank(main: Node, districts: Array) -> bool:
