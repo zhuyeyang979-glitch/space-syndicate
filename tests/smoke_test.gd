@@ -109,7 +109,7 @@ func _run() -> void:
 	_expect(districts.size() >= int(planet_profile.get("region_min", MIN_REGION_COUNT)) and districts.size() <= int(planet_profile.get("region_max", MAX_REGION_COUNT)), "new game creates the expected roguelike region count")
 	_expect(_verify_roguelike_depth_scaling(main), "roguelike challenge depth scales planet size, region count, and cash victory goal")
 	_expect(_verify_victory_countdown_rule(main), "hitting the roguelike cash goal starts a saved final countdown before settlement")
-	_expect(_regions_start_with_single_goods(main), "land regions start with one produced good and one demanded good before contracts expand them")
+	_expect(_regions_start_with_terrain_goods(main), "land and ocean regions start with one terrain-appropriate produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	var empty_field_event_parts := main.call("_event_target_weight_parts", int(main.get("selected_district"))) as Dictionary
 	_expect(int(empty_field_event_parts.get("monster", -1)) == 0, "event targeting handles an empty monster field without a legacy A/B fallback")
@@ -286,7 +286,9 @@ func _run() -> void:
 	var monster_budget_text := String(main.call("_card_strength_budget_text", first_monster_card, main.call("_make_skill", first_monster_card)))
 	_expect(growth_strategy_text.contains("城市成长") and speculation_strategy_text.contains("金融投机") and intel_strategy_text.contains("情报推理") and monster_strategy_text.contains("怪兽路线"), "card strategy summaries are derived for economy, speculation, intel, and monster routes")
 	_expect(growth_budget_text.contains("强度预算") and growth_budget_text.contains("主强度") and growth_budget_text.contains("制衡") and monster_budget_text.contains("怪兽"), "card strength budgets explain power drivers and counterplay from data fields")
-	_expect(_verify_development_route_balance_baseline(main), "card pool exposes five AI-readable development routes with card coverage, rank ladders, and profile preferences")
+	_expect(_verify_development_route_balance_baseline(main), "card pool exposes AI-readable development routes with card coverage, rank ladders, and profile preferences")
+	_expect(_verify_direct_player_interaction_cards(main), "direct player-interaction cards cover 拆牌、牵牌、产权冻结、全场齐射 with target-player UI, balance gates, and anonymous clue rules")
+	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, contract, monster target, player target, and monster wager modules")
 	_expect(_verify_ten_hour_route_pack(main), "ten-hour route pack adds complete repair, lockdown, intel-bounty, and route-weather ladders with AI-readable fields")
 	_expect(String(main.call("_card_art_stats", main.call("_make_skill", "城市融资1"))).contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
@@ -640,7 +642,7 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案", "monster ecology dossier opens from the compendium")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "仅查看") and not _container_button_text_contains(menu_overlay, "开局不再预选怪兽"), "monster codex has no hidden legacy lineup controls")
 	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "monster thumbnail codex returns to the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and menu_body_label.text.contains("不是另一套怪兽牌图鉴") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster ecology dossier opens as a responsive thumbnail grid without duplicating monster cards")
+	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and menu_body_label.text.contains("行动概率") and menu_body_label.text.contains("怪兽牌在卡牌图鉴") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster ecology dossier opens as a responsive thumbnail grid focused on ecology while monster cards stay in the card codex")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "monster codex thumbnail page exposes paging and hover preview")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "monster codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_bestiary_entry", 0, true)
@@ -675,7 +677,7 @@ func _run() -> void:
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线5/5覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "支点") and _container_label_text_contains(menu_preview_box, "平衡") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "直接互动路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线") and _container_label_text_contains(menu_preview_box, "覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "支点") and _container_label_text_contains(menu_preview_box, "平衡") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
@@ -3606,7 +3608,7 @@ func _verify_ten_hour_route_pack(main: Node) -> bool:
 	var run_pool := _as_array(main.call("_current_run_card_pool"))
 	for family_variant in families:
 		var base_name := "%s1" % String(family_variant)
-		if not run_pool.has(base_name):
+		if bool(main.call("_card_allowed_by_run_products", base_name)) and not run_pool.has(base_name):
 			failures.append("not in run pool %s" % base_name)
 			ok = false
 		for rank in range(2, 5):
@@ -3650,6 +3652,8 @@ func _verify_ten_hour_route_pack(main: Node) -> bool:
 		repair_entry["city"] = city
 		districts_after_city[repair_district] = repair_entry
 		main.set("districts", districts_after_city)
+		main.set("selected_player", 0)
+		main.set("selected_district", repair_district)
 		var repaired := bool(main.call("_apply_route_insurance", _as_array(main.get("players"))[0], main.call("_make_skill", "应急修复3")))
 		var repaired_city := ((_as_array(main.get("districts"))[repair_district] as Dictionary).get("city", {}) as Dictionary)
 		if not repaired or int(repaired_city.get("trade_route_damage", 99)) > 0 or float(repaired_city.get("route_flow_multiplier", 1.0)) < 1.39:
@@ -3715,8 +3719,158 @@ func _verify_ten_hour_route_pack(main: Node) -> bool:
 	return ok and restore_result == OK
 
 
+func _verify_direct_player_interaction_cards(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var failures := []
+	var families := {
+		"过河拆桥": "player_hand_disrupt",
+		"顺手牵羊": "player_hand_steal",
+		"产权冻结": "city_control_dispute",
+		"万箭齐发": "global_barrage",
+	}
+	var interaction_names := _as_array(main.call("_card_codex_names", "interaction"))
+	var run_pool := _as_array(main.call("_current_run_card_pool"))
+	for family_variant in families.keys():
+		var family := String(family_variant)
+		var expected_kind := String(families[family])
+		var base_price := int(main.call("_card_price", "%s1" % family))
+		var previous_budget := -1
+		for rank in range(1, 5):
+			var card_name := "%s%d" % [family, rank]
+			if not bool(main.call("_skill_exists", card_name)):
+				failures.append("missing %s" % card_name)
+				ok = false
+				continue
+			var skill := main.call("_make_skill", card_name) as Dictionary
+			if String(skill.get("kind", "")) != expected_kind:
+				failures.append("kind %s -> %s" % [card_name, String(skill.get("kind", ""))])
+				ok = false
+			if int(main.call("_card_price", card_name)) != base_price:
+				failures.append("price drift %s" % card_name)
+				ok = false
+			if not String(main.call("_card_display_name", card_name)).contains("%s级" % _roman_level(rank)):
+				failures.append("roman label missing %s" % card_name)
+				ok = false
+			if String(main.call("_card_strategy_route_label", skill)) != "直接互动":
+				failures.append("route %s" % card_name)
+				ok = false
+			if String(main.call("_card_codex_category_for_card", card_name, skill)) != "interaction":
+				failures.append("category %s" % card_name)
+				ok = false
+			var budget := int(main.call("_card_strength_budget_points", card_name))
+			if budget <= 0 or (previous_budget >= 0 and budget < previous_budget):
+				failures.append("budget regression %s" % card_name)
+				ok = false
+			previous_budget = budget
+		var base_name := "%s1" % family
+		if bool(main.call("_card_allowed_by_run_products", base_name)):
+			if not interaction_names.has(base_name):
+				failures.append("interaction codex lacks %s" % base_name)
+				ok = false
+			if not run_pool.has(base_name):
+				failures.append("run pool lacks %s" % base_name)
+				ok = false
+	for family_variant in families.keys():
+		var family := String(family_variant)
+		for rank in range(2, 5):
+			if run_pool.has("%s%d" % [family, rank]):
+				failures.append("run pool exposes upgraded %s%d" % [family, rank])
+				ok = false
+	var disrupt := main.call("_make_skill", "过河拆桥1") as Dictionary
+	var steal := main.call("_make_skill", "顺手牵羊1") as Dictionary
+	var freeze := main.call("_make_skill", "产权冻结1") as Dictionary
+	var barrage := main.call("_make_skill", "万箭齐发1") as Dictionary
+	ok = ok and bool(main.call("_skill_requires_target_player", disrupt))
+	ok = ok and bool(main.call("_skill_requires_target_player", steal))
+	ok = ok and not bool(main.call("_skill_requires_target_player", freeze))
+	ok = ok and not bool(main.call("_skill_requires_target_player", barrage))
+	ok = ok and str(main.call("_card_rule_facts", disrupt)).contains("指定玩家")
+	ok = ok and str(main.call("_card_rule_facts", steal)).contains("牵牌")
+	ok = ok and str(main.call("_card_rule_facts", freeze)).contains("产权冻结")
+	ok = ok and str(main.call("_card_rule_facts", barrage)).contains("齐射")
+	if _as_array(main.get("players")).size() >= 2:
+		main.set("selected_player", 0)
+		main.set("selected_district", maxi(0, int(main.get("selected_district"))))
+		_set_player_skill(main, 1, 2, "城市融资1")
+		_set_player_skill(main, 1, 3, "价格套利1")
+		var target_hand_before := _player_card_names(_as_array(main.get("players")), 1).size()
+		ok = ok and bool(main.call("_apply_player_hand_disrupt", 0, 1, disrupt))
+		var target_hand_after := _player_card_names(_as_array(main.get("players")), 1).size()
+		ok = ok and target_hand_after < target_hand_before
+		_set_player_skill(main, 1, 2, "城市融资1")
+		var actor_hand_before := _player_card_names(_as_array(main.get("players")), 0).size()
+		ok = ok and bool(main.call("_apply_player_hand_steal", 0, 1, steal))
+		var actor_hand_after := _player_card_names(_as_array(main.get("players")), 0).size()
+		ok = ok and actor_hand_after >= actor_hand_before
+		_set_player_skill(main, 0, 2, "过河拆桥1")
+		_clear_player_cooldown(main, 0)
+		main.call("_use_skill", 2)
+		ok = ok and bool(main.call("_has_pending_player_target_choice"))
+		main.call("_cancel_pending_player_target_choice")
+	var districts := _as_array(main.get("districts"))
+	var freeze_target := -1
+	for i in range(districts.size()):
+		var district := districts[i] as Dictionary
+		if String(district.get("terrain", "")) == "land" and not bool(district.get("destroyed", false)):
+			freeze_target = i
+			break
+	if freeze_target >= 0:
+		main.call("_create_city_at_district_for_player", 1, freeze_target, "互动烟测城", false)
+		main.set("selected_player", 0)
+		main.set("selected_district", freeze_target)
+		ok = ok and bool(main.call("_apply_city_control_dispute", 0, freeze))
+		districts = _as_array(main.get("districts"))
+		var city := ((districts[freeze_target] as Dictionary).get("city", {}) as Dictionary)
+		ok = ok and float(city.get("control_dispute_until", 0.0)) > float(main.get("game_time"))
+		var damage_before := int((districts[freeze_target] as Dictionary).get("damage", 0))
+		ok = ok and bool(main.call("_apply_global_barrage", 0, barrage))
+		districts = _as_array(main.get("districts"))
+		ok = ok and int((districts[freeze_target] as Dictionary).get("damage", 0)) > damage_before
+	if not failures.is_empty():
+		print("Direct interaction card failures: %s" % " / ".join(failures))
+		ok = false
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_temporary_decision_blueprints(main: Node) -> bool:
+	var expected := {
+		"discard_purchase": {"label": "私密弃牌", "private": true, "blocks": false},
+		"contract_response": {"label": "合约回应", "private": true, "blocks": false},
+		"monster_target_choice": {"label": "怪兽目标", "private": true, "blocks": true},
+		"player_target_choice": {"label": "玩家目标", "private": true, "blocks": true},
+		"monster_wager": {"label": "怪兽赌局", "private": false, "blocks": false},
+	}
+	for kind_variant in expected.keys():
+		var kind := String(kind_variant)
+		var want := expected[kind] as Dictionary
+		var blueprint := main.call("_temporary_decision_blueprint", kind) as Dictionary
+		if String(blueprint.get("kind", "")) != kind:
+			print("Temporary decision kind mismatch: %s" % kind)
+			return false
+		if String(blueprint.get("label", "")) != String(want.get("label", "")):
+			print("Temporary decision label mismatch: %s -> %s" % [kind, String(blueprint.get("label", ""))])
+			return false
+		if bool(blueprint.get("private_to_player", false)) != bool(want.get("private", false)):
+			print("Temporary decision privacy mismatch: %s" % kind)
+			return false
+		if bool(blueprint.get("blocks_card_lane", false)) != bool(want.get("blocks", false)):
+			print("Temporary decision blocking mismatch: %s" % kind)
+			return false
+		if String(blueprint.get("purpose", "")) == "":
+			print("Temporary decision lacks purpose: %s" % kind)
+			return false
+		var style := main.call("_temporary_decision_style", kind) as Dictionary
+		if not style.has("bg") or not style.has("border") or not style.has("title"):
+			print("Temporary decision style incomplete: %s" % kind)
+			return false
+	var wager := main.call("_temporary_decision_blueprint", "monster_wager") as Dictionary
+	return bool(wager.get("public_identity", false)) and float(wager.get("timer_seconds", 0.0)) >= 30.0
+
+
 func _verify_development_route_balance_baseline(main: Node) -> bool:
-	var required_routes := ["city_growth", "contract_route", "finance_speculation", "monster_pressure", "intel_supply"]
+	var required_routes := ["city_growth", "contract_route", "finance_speculation", "monster_pressure", "intel_supply", "direct_interaction"]
 	var audit := _as_array(main.call("_development_route_audit"))
 	var by_id := {}
 	for entry_variant in audit:
@@ -3730,7 +3884,8 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 			print("Missing development route audit entry: %s" % route_id)
 			return false
 		var entry: Dictionary = by_id[route_id]
-		if int(entry.get("card_count", 0)) < 3:
+		var min_cards := 2 if route_id == "direct_interaction" else 3
+		if int(entry.get("card_count", 0)) < min_cards:
 			print("Development route has too few cards: %s count=%d" % [route_id, int(entry.get("card_count", 0))])
 			return false
 		if int(entry.get("budget_total", 0)) <= 0:
@@ -3766,6 +3921,10 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 			"intel_supply":
 				if not pillar_summary.contains("信息") or not pillar_summary.contains("补给"):
 					print("Intel-supply route lacks intel/supply pillars: %s" % pillar_summary)
+					return false
+			"direct_interaction":
+				if not pillar_summary.contains("互动") or not pillar_summary.contains("压制"):
+					print("Direct-interaction route lacks interaction/pressure pillars: %s" % pillar_summary)
 					return false
 		var balance_status := String(entry.get("balance_status", ""))
 		if not ["健康", "可调", "待补强"].has(balance_status):
@@ -3804,7 +3963,7 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 			print("No AI personality has primary route: %s" % route_id)
 			return false
 	var diversity_summary := String(main.call("_ai_development_route_diversity_summary"))
-	if not diversity_summary.contains("核心路线5/5覆盖") or not diversity_summary.contains("城市成长") or not diversity_summary.contains("金融投机") or not diversity_summary.contains("怪兽压制"):
+	if not diversity_summary.contains("核心路线6/6覆盖") or not diversity_summary.contains("城市成长") or not diversity_summary.contains("金融投机") or not diversity_summary.contains("怪兽压制") or not diversity_summary.contains("直接互动"):
 		print("AI route diversity summary is incomplete: %s" % diversity_summary)
 		return false
 	if int(main.call("_ai_development_route_bonus", 1, "city_growth")) <= 0:
@@ -6186,23 +6345,33 @@ func _map_effects_contain_min_duration(main: Node, kind: String, min_duration: f
 	return false
 
 
-func _regions_start_with_single_goods(main: Node) -> bool:
+func _regions_start_with_terrain_goods(main: Node) -> bool:
 	var districts := _as_array(main.get("districts"))
+	var ocean_products := _as_array(main.call("_ocean_product_catalog_names"))
+	var land_products := _as_array(main.call("_product_pool_for_terrain", "land"))
 	var saw_land := false
+	var saw_ocean := false
 	for district_variant in districts:
 		if not (district_variant is Dictionary):
 			continue
 		var district := district_variant as Dictionary
-		if String(district.get("terrain", "")) != "land":
-			if (district.get("products", []) as Array).size() != 0:
+		var terrain := String(district.get("terrain", "land"))
+		var products := _as_array(district.get("products", []))
+		var demands := _as_array(district.get("demands", []))
+		if products.size() != 1:
+			return false
+		if demands.size() != 1:
+			return false
+		var product_name := String(products[0])
+		if terrain == "ocean":
+			saw_ocean = true
+			if not ocean_products.has(product_name):
 				return false
-			continue
-		saw_land = true
-		if (district.get("products", []) as Array).size() != 1:
-			return false
-		if (district.get("demands", []) as Array).size() != 1:
-			return false
-	return saw_land
+		else:
+			saw_land = true
+			if not land_products.has(product_name):
+				return false
+	return saw_land and saw_ocean
 
 
 func _city_has_single_goods(main: Node, district_index: int) -> bool:

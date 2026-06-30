@@ -163,6 +163,11 @@ const CONTRACT_RESPONSE_ACCEPTED := "accepted"
 const CONTRACT_RESPONSE_REJECTED := "rejected"
 const CONTRACT_RESPONSE_TIMEOUT := "timeout"
 const CONTRACT_DECISION_SECONDS := 5.0
+const TEMP_DECISION_DISCARD := "discard_purchase"
+const TEMP_DECISION_CONTRACT := "contract_response"
+const TEMP_DECISION_MONSTER_TARGET := "monster_target_choice"
+const TEMP_DECISION_PLAYER_TARGET := "player_target_choice"
+const TEMP_DECISION_MONSTER_WAGER := "monster_wager"
 const MONSTER_CARD_PLAY_CASH_PER_EXISTING := 100
 const MONSTER_OWNER_DAMAGE_CASH_POOL := 800
 const MONSTER_CARD_DURATION_BASE_SECONDS := 95.0
@@ -453,7 +458,7 @@ const AI_PERSONALITY_CATALOG := [
 		"economy_bias": 0.85,
 		"bid_aggression": 1.25,
 		"exploration": 0.22,
-		"route_preferences": {"monster_pressure": 1.34, "finance_speculation": 1.10, "intel_supply": 1.06},
+		"route_preferences": {"direct_interaction": 1.34, "monster_pressure": 1.18, "finance_speculation": 1.10, "intel_supply": 1.06},
 	},
 	{
 		"name": "驯怪型AI",
@@ -464,7 +469,7 @@ const AI_PERSONALITY_CATALOG := [
 		"economy_bias": 0.9,
 		"bid_aggression": 0.95,
 		"exploration": 0.16,
-		"route_preferences": {"monster_pressure": 1.38, "intel_supply": 1.10, "contract_route": 1.04},
+		"route_preferences": {"monster_pressure": 1.42, "direct_interaction": 1.10, "intel_supply": 1.08, "contract_route": 1.04},
 	},
 	{
 		"name": "合约型AI",
@@ -493,11 +498,16 @@ const AI_PERSONALITY_CATALOG := [
 const PRODUCT_CATALOG := [
 	"星露莓", "磁核榴莲", "月壤葡萄", "量子蜜瓜", "彗尾柑", "脉冲咖啡",
 	"真空可可", "离子香料", "孢子丝绸", "环晶电池", "重力陶瓷", "梦境香氛",
-	"零点饮料", "活体芯片", "星鲸罐头", "云母玩具", "光合凝胶", "轨道盆栽",
-	"极光盐", "蓝潮藻", "风暴珍珠", "赤道香草", "寒冠冰糖", "太阳鳞片",
-	"深海菌毯", "反物质茶", "虹膜矿粉", "引力棉", "钛壳贝", "夜航香蕉",
-	"陨铁酱料", "静电蜂蜜", "星尘面包", "暗礁珊瑚", "离岸水晶", "晨昏奶酪",
+	"零点饮料", "活体芯片", "星鲸罐头", "星鳍鱼群", "云母玩具", "光合凝胶", "轨道盆栽",
+	"极光盐", "蓝潮藻", "巨藻纤维", "风暴珍珠", "赤道香草", "寒冠冰糖", "太阳鳞片",
+	"深海菌毯", "海底黑油", "反物质茶", "虹膜矿粉", "引力棉", "钛壳贝", "夜航香蕉",
+	"陨铁酱料", "静电蜂蜜", "星尘面包", "暗礁珊瑚", "离岸水晶", "潮汐电浆", "晨昏奶酪",
 	"轨迹墨水", "等离子米", "北极薄荷", "火山番茄", "卫星坚果", "梦游蘑菇",
+]
+
+const OCEAN_PRODUCT_CATALOG := [
+	"星鲸罐头", "星鳍鱼群", "蓝潮藻", "巨藻纤维", "风暴珍珠", "深海菌毯",
+	"海底黑油", "钛壳贝", "夜航香蕉", "暗礁珊瑚", "离岸水晶", "潮汐电浆",
 ]
 
 const OCEAN_DISTRICT_NAME_POOL := [
@@ -511,6 +521,56 @@ const PRODUCT_PRICE_TIERS := [
 	{"label": "奢侈品", "weight": 22, "min": 112, "max": 174, "volatility": 11},
 	{"label": "战略稀缺", "weight": 10, "min": 184, "max": 260, "volatility": 16},
 ]
+const PRODUCT_FUTURES_PAYOUT_UNIT := 10
+
+const PRODUCT_PROFILES := {
+	"星露莓": {"category": "鲜果消费", "route": "食品消费线", "terrain": "温带陆地", "use": "稳定低门槛消费，适合早期城市现金流和需求扩张。", "hook": "供需变化温和，适合作为新手理解商品价格的样本。", "flavor": "结着星光露水的小浆果，是殖民城市最常见的甜味来源。", "glyph": "✦", "accent": Color("#f472b6"), "secondary": Color("#fde68a")},
+	"磁核榴莲": {"category": "高能鲜果", "route": "高危能源线", "terrain": "磁暴陆地", "use": "高波动食品，可做买涨/做空和怪兽诱导的噪声商品。", "hook": "适合绑定天气、新闻和热度牌，价格上行快但容易被供给压回。", "flavor": "果核像小型磁星，运输舱要贴三层隔离膜。", "glyph": "⬢", "accent": Color("#f59e0b"), "secondary": Color("#7c3aed")},
+	"月壤葡萄": {"category": "农业奢侈", "route": "食品消费线", "terrain": "月壤农区", "use": "中低风险城市消费品，适合连接生产区和高需求商业区。", "hook": "适合合约牌添加需求，形成稳定商路而不是爆发套利。", "flavor": "根系吃月尘，果皮会反射淡银色环光。", "glyph": "○", "accent": Color("#a78bfa"), "secondary": Color("#e0f2fe")},
+	"量子蜜瓜": {"category": "奢侈鲜果", "route": "奢侈套利线", "terrain": "研究温室", "use": "高价高记忆点商品，适合买涨、包销和会展型城市。", "hook": "需求少时安静，一旦被合约/广告抬起来，GDP弹性很强。", "flavor": "切开前没人知道它甜不甜，商人因此发明了期货瓜。", "glyph": "◇", "accent": Color("#22d3ee"), "secondary": Color("#f0abfc")},
+	"彗尾柑": {"category": "高能水果", "route": "高危能源线", "terrain": "火山/高空带", "use": "适合和高速怪兽、天气窗口、能源热潮形成联动。", "hook": "在高热天气和怪兽经济天气下适合做短时间买涨。", "flavor": "剥皮时会拖出一束橙色等离子尾光。", "glyph": "☄", "accent": Color("#fb923c"), "secondary": Color("#fef08a")},
+	"脉冲咖啡": {"category": "功能饮料", "route": "食品消费线", "terrain": "城市商业区", "use": "稳定消费需求，可支撑交通/办公城市的现金流。", "hook": "适合消费刺激、短期订单和城市会展类卡牌。", "flavor": "一杯能让外星会计连续算完三座港口的账。", "glyph": "≋", "accent": Color("#92400e"), "secondary": Color("#facc15")},
+	"真空可可": {"category": "基础食品", "route": "食品消费线", "terrain": "干燥陆地", "use": "低价、易流通，适合作为合约教学和早期供需连接。", "hook": "不会天然爆炸，但能让城市路线更稳。", "flavor": "在无氧仓里发酵，入口有轻微星尘味。", "glyph": "●", "accent": Color("#78350f"), "secondary": Color("#fbbf24")},
+	"离子香料": {"category": "军需香料", "route": "奢侈套利线", "terrain": "干热贸易港", "use": "高需求高波动，适合军需临单、做空和怪兽偏好冲突。", "hook": "需求压力会显著推价，供给扩张也会迅速制造竞争。", "flavor": "洒进锅里会劈啪放电，舰队食堂很爱它。", "glyph": "ϟ", "accent": Color("#e879f9"), "secondary": Color("#f97316")},
+	"孢子丝绸": {"category": "生物纺材", "route": "生态材料线", "terrain": "潮湿森林", "use": "偏生产型商品，适合城市工业升级和稳定外运。", "hook": "容易吸引生态怪兽，也适合通过合约补需求。", "flavor": "一卷丝绸里睡着几百万个温顺孢子。", "glyph": "∴", "accent": Color("#86efac"), "secondary": Color("#c084fc")},
+	"环晶电池": {"category": "能源科技", "route": "能源科技线", "terrain": "工业/轨道区", "use": "核心能源商品，适合科技城市、固定合约和机械怪兽路线。", "hook": "已绑定专供合约和机械杰克偏好，是最清楚的商品路线样板。", "flavor": "环形晶体里锁着可反复折叠的微型晨光。", "glyph": "◎", "accent": Color("#38bdf8"), "secondary": Color("#facc15")},
+	"重力陶瓷": {"category": "工业建材", "route": "工业建设线", "terrain": "矿带陆地", "use": "建设与装甲商品，适合生产扩张、城市耐久和土砂龙压力。", "hook": "高生产价值但容易被工业竞争和怪兽冲撞盯上。", "flavor": "杯子放桌上会把桌子往杯子里拽。", "glyph": "▣", "accent": Color("#94a3b8"), "secondary": Color("#f97316")},
+	"梦境香氛": {"category": "奢侈体验", "route": "奢侈套利线", "terrain": "商业/疗养区", "use": "高利润消费品，适合角色现金流、会展和需求扩张。", "hook": "需求一旦成型，价格与城市GDP都很漂亮，但容易被情报推理锁定。", "flavor": "闻到它的人会梦见自己已经盈利。", "glyph": "☁", "accent": Color("#f0abfc"), "secondary": Color("#60a5fa")},
+	"零点饮料": {"category": "功能饮料", "route": "食品消费线", "terrain": "夜间城市", "use": "中价消费品，可支撑稳定需求和短线订单。", "hook": "适合作为低冲突城市的现金流底盘。", "flavor": "永远保持零度，连账本亏损都能冷静下来。", "glyph": "◌", "accent": Color("#67e8f9"), "secondary": Color("#dbeafe")},
+	"活体芯片": {"category": "生物科技", "route": "情报科技线", "terrain": "研究院/数据塔", "use": "情报、追踪、怪兽夺取的关键门槛商品。", "hook": "出牌条件会暴露强烈线索，是匿名推理局的核心商品之一。", "flavor": "芯片会自己读合同，并偶尔提出反对意见。", "glyph": "▥", "accent": Color("#4ade80"), "secondary": Color("#38bdf8")},
+	"星鲸罐头": {"category": "海洋食品", "route": "海洋物流线", "terrain": "远洋港口", "use": "海洋运输型食品，适合港口城市和航线合约。", "hook": "在海洋路线受损时会变成断路价格信号。", "flavor": "每罐都声称没有伤害真正的星鲸，没人完全相信。", "glyph": "◒", "accent": Color("#0ea5e9"), "secondary": Color("#f8fafc")},
+	"星鳍鱼群": {"category": "海洋渔获", "route": "海洋物流线", "terrain": "外海渔场", "use": "鱼类供给商品，适合海洋区域生产、食品需求和港口运输。", "hook": "海洋被怪兽或天气破坏时，鱼群供给会成为清晰的价格线索。", "flavor": "鱼鳍像小卫星一样闪光，整群迁徙时能照亮夜海。", "glyph": "魚", "accent": Color("#38bdf8"), "secondary": Color("#e0f2fe")},
+	"云母玩具": {"category": "轻工业消费", "route": "食品消费线", "terrain": "城市娱乐区", "use": "低中价消费品，适合需求扩张和广告路线。", "hook": "竞争多时利润薄，但适合做城市热度诱饵。", "flavor": "儿童会拿它拼出自己的第一艘逃税飞船。", "glyph": "□", "accent": Color("#f9a8d4"), "secondary": Color("#93c5fd")},
+	"光合凝胶": {"category": "修复材料", "route": "修复避难线", "terrain": "避难/医疗区", "use": "防御、修复、灾后保险路线的核心商品。", "hook": "已绑定应急修复，适合领先者保护高GDP城市。", "flavor": "涂在墙上会自己晒太阳，顺便补洞。", "glyph": "✚", "accent": Color("#22c55e"), "secondary": Color("#bef264")},
+	"轨道盆栽": {"category": "生态消费", "route": "修复避难线", "terrain": "轨道居住区", "use": "补给范围和城市舒适度商品，适合远程采购路线。", "hook": "可作为低风险补给型角色/卡牌门槛。", "flavor": "盆栽会按轨道周期开花，花粉有点会计味。", "glyph": "♧", "accent": Color("#65a30d"), "secondary": Color("#86efac")},
+	"极光盐": {"category": "晶体调味", "route": "精密晶体线", "terrain": "极地/晶体带", "use": "中高价晶体商品，适合专利、天气和精密制造路线。", "hook": "容易被希卡利类科技怪兽偏好放大。", "flavor": "撒一点，汤面会出现极光。", "glyph": "✧", "accent": Color("#67e8f9"), "secondary": Color("#a78bfa")},
+	"蓝潮藻": {"category": "海洋生物", "route": "海洋物流线", "terrain": "浅海/洋流", "use": "海洋基础供给，适合运输、养殖和低价大流量商路。", "hook": "海洋天气和交通升级会显著提高它的流通价值。", "flavor": "潮水退去时会在礁石上写蓝色广告。", "glyph": "≈", "accent": Color("#06b6d4"), "secondary": Color("#22c55e")},
+	"巨藻纤维": {"category": "海洋纤维", "route": "海洋物流线", "terrain": "巨藻森林", "use": "海带/巨藻类材料，连接海洋生产、生态工业和修复商品。", "hook": "适合做低价大流量供给，也能被合约升级成工业需求。", "flavor": "一根巨藻能从海底长到低轨道电梯广告牌。", "glyph": "〰", "accent": Color("#10b981"), "secondary": Color("#67e8f9")},
+	"风暴珍珠": {"category": "海洋奢侈", "route": "奢侈套利线", "terrain": "风暴海域", "use": "高价海洋奢侈品，适合天气预报、买涨和商路保护。", "hook": "风暴/断路会让价格信号非常明显，适合高风险玩家。", "flavor": "每颗珍珠都存着一次台风的回声。", "glyph": "◉", "accent": Color("#7dd3fc"), "secondary": Color("#fef3c7")},
+	"赤道香草": {"category": "热带香料", "route": "奢侈套利线", "terrain": "赤道陆地", "use": "消费需求强，适合合约和需求扩张。", "hook": "热带城市争夺它时，会天然形成竞争目标。", "flavor": "香味会绕星球赤道跑一圈才散。", "glyph": "∿", "accent": Color("#bef264"), "secondary": Color("#f59e0b")},
+	"寒冠冰糖": {"category": "极地甜品", "route": "食品消费线", "terrain": "寒冠极地", "use": "稳定消费品，适合低波动需求和极地城市特色。", "hook": "适合作为防御型城市的温和收入来源。", "flavor": "含在嘴里会短暂听见雪落在别的星球。", "glyph": "❄", "accent": Color("#bae6fd"), "secondary": Color("#ffffff")},
+	"太阳鳞片": {"category": "高能材料", "route": "高危能源线", "terrain": "太阳能带", "use": "爆发型高能商品，适合怪兽热潮和GDP买涨窗口。", "hook": "价格增速被放大时很可怕，但断路/做空也会很痛。", "flavor": "摸起来像一片很有意见的太阳。", "glyph": "☀", "accent": Color("#facc15"), "secondary": Color("#ef4444")},
+	"深海菌毯": {"category": "海洋生态", "route": "海洋物流线", "terrain": "深海海盆", "use": "水域生态商品，适合尸套龙、黑市药材和海洋城市。", "hook": "怪兽偏好强，赚钱的同时也更容易把战场拉过来。", "flavor": "像地毯一样铺在海底，踩上去会问你要不要投资。", "glyph": "▩", "accent": Color("#14b8a6"), "secondary": Color("#a855f7")},
+	"海底黑油": {"category": "海底能源", "route": "高危能源线", "terrain": "深海油脊", "use": "海底石油型高收益能源，适合做空、污染新闻和高风险运输。", "hook": "被破坏时会同时影响能源价格、海路安全和城市GDP。", "flavor": "黑得像董事会的会议纪要，燃起来却很诚实。", "glyph": "油", "accent": Color("#111827"), "secondary": Color("#f97316")},
+	"反物质茶": {"category": "高危饮品", "route": "高危能源线", "terrain": "实验茶馆", "use": "高波动投机商品，适合金融传闻、市场稳定和做空。", "hook": "利润感强，但应给玩家明显风险提示。", "flavor": "泡茶前要先确认茶杯和宇宙没有互相抵消。", "glyph": "☕", "accent": Color("#c084fc"), "secondary": Color("#f43f5e")},
+	"虹膜矿粉": {"category": "精密矿物", "route": "工业建设线", "terrain": "矿山/研究区", "use": "工业和光学材料，适合生产扩张、专利和怪兽矿物偏好。", "hook": "土砂龙路线会让它更像战场诱饵。", "flavor": "粉末会凝视价格曲线，仿佛早就知道。", "glyph": "◈", "accent": Color("#c084fc"), "secondary": Color("#38bdf8")},
+	"引力棉": {"category": "工业纺材", "route": "工业建设线", "terrain": "低重力农场", "use": "轻工业/运输包装商品，适合交通型城市。", "hook": "运输速度越高越能体现价值。", "flavor": "一团棉花能把货箱轻轻往目的地推。", "glyph": "☁", "accent": Color("#e5e7eb"), "secondary": Color("#60a5fa")},
+	"钛壳贝": {"category": "海陆矿壳", "route": "工业建设线", "terrain": "礁岸/矿带", "use": "装甲建材商品，适合城市防御和工业GDP。", "hook": "高生产价值会吸引冲撞型怪兽。", "flavor": "贝壳硬到需要请律师开壳。", "glyph": "◖", "accent": Color("#64748b"), "secondary": Color("#38bdf8")},
+	"夜航香蕉": {"category": "远洋水果", "route": "海洋物流线", "terrain": "夜航港口", "use": "低中价物流商品，适合港口消费和运输教学。", "hook": "玩家容易记住，适合做 UI 目录里的轻松商品。", "flavor": "成熟时会指向最近的走私航线。", "glyph": "☾", "accent": Color("#fde047"), "secondary": Color("#312e81")},
+	"陨铁酱料": {"category": "工业调味", "route": "工业建设线", "terrain": "陨坑工厂", "use": "介于食品和矿物之间，适合军需/工业混合城市。", "hook": "能把生产竞争和消费需求挂在同一商品上。", "flavor": "淋在饭上会让餐盘获得轻微护甲。", "glyph": "▰", "accent": Color("#b45309"), "secondary": Color("#94a3b8")},
+	"静电蜂蜜": {"category": "能量食品", "route": "食品消费线", "terrain": "雷暴农场", "use": "军需食品，适合能量怪兽和消费型城市。", "hook": "需求压力高时价格弹性不错。", "flavor": "倒出来会噼啪作响，甜到让雷达失灵。", "glyph": "⚡", "accent": Color("#facc15"), "secondary": Color("#f472b6")},
+	"星尘面包": {"category": "基础食品", "route": "食品消费线", "terrain": "普通城市", "use": "最低理解成本的城市消费品，适合教学和低价大流量。", "hook": "竞争多、利润薄，但很适合合约扩需求。", "flavor": "每片面包都撒着一点合法星尘。", "glyph": "▭", "accent": Color("#fbbf24"), "secondary": Color("#fed7aa")},
+	"暗礁珊瑚": {"category": "海洋建材", "route": "海洋物流线", "terrain": "暗礁海域", "use": "海洋生产和运输商品，适合商路断损/修复博弈。", "hook": "海洋区域被破坏时，它会成为可读的经济线索。", "flavor": "会在走私船底悄悄长出发票。", "glyph": "♒", "accent": Color("#f472b6"), "secondary": Color("#06b6d4")},
+	"离岸水晶": {"category": "航线晶体", "route": "海洋物流线", "terrain": "离岸平台", "use": "天气、航线、全局采购和远程补给的关键商品。", "hook": "已绑定航线预报和星门采购权，是物流策略核心。", "flavor": "水晶会折射出还没到来的航线。", "glyph": "◇", "accent": Color("#38bdf8"), "secondary": Color("#f0abfc")},
+	"潮汐电浆": {"category": "海浪能源", "route": "海洋物流线", "terrain": "潮汐发电阵列", "use": "海浪供电商品，适合交通速度、航线预报和能源城市买涨。", "hook": "天气预报和海洋交通水平会直接影响它的策略价值。", "flavor": "每一次浪涌都被压缩成一枚蓝白色电浆币。", "glyph": "≈⚡", "accent": Color("#0ea5e9"), "secondary": Color("#facc15")},
+	"晨昏奶酪": {"category": "极地食品", "route": "食品消费线", "terrain": "晨昏牧场", "use": "中价稳定消费品，可接精密/晶体路线需求。", "hook": "适合成为城市需求端而非强投机端。", "flavor": "早晨吃像黎明，晚上吃像加班。", "glyph": "◐", "accent": Color("#fef08a"), "secondary": Color("#fb7185")},
+	"轨迹墨水": {"category": "情报材料", "route": "情报科技线", "terrain": "数据塔/海关", "use": "匿名推理、合约回溯、天气干涉和竞争封锁的关键门槛。", "hook": "打出它会暴露强线索，是信息战路线核心。", "flavor": "写下去的字会标出作者刚刚去过哪里。", "glyph": "⌁", "accent": Color("#1d4ed8"), "secondary": Color("#a855f7")},
+	"等离子米": {"category": "能量主粮", "route": "食品消费线", "terrain": "能源农场", "use": "军需和大众消费之间的桥梁商品。", "hook": "适合机械艾斯/艾斯杀手相关能量食品偏好。", "flavor": "煮熟后米粒会悬浮三厘米，方便偷吃。", "glyph": "⋯", "accent": Color("#fb7185"), "secondary": Color("#facc15")},
+	"北极薄荷": {"category": "修复药材", "route": "修复避难线", "terrain": "极地温室", "use": "避难、医疗、冷却城市的辅助商品。", "hook": "适合和光合凝胶组成防御经济线。", "flavor": "闻一下，过热的怪兽也会短暂怀疑人生。", "glyph": "✚", "accent": Color("#2dd4bf"), "secondary": Color("#d9f99d")},
+	"火山番茄": {"category": "高热食品", "route": "高危能源线", "terrain": "火山陆地", "use": "高热高波动消费品，适合爆发怪兽和买涨窗口。", "hook": "被破坏或天气影响时 GDP 变化很戏剧化。", "flavor": "切开会冒岩浆味番茄汁。", "glyph": "◆", "accent": Color("#ef4444"), "secondary": Color("#f97316")},
+	"卫星坚果": {"category": "轨道零食", "route": "食品消费线", "terrain": "轨道仓储", "use": "轻量消费和运输商品，适合补给型城市。", "hook": "中性商品，适合作为随机地图里的缓冲经济。", "flavor": "坚果壳会绕包装袋公转。", "glyph": "◍", "accent": Color("#a16207"), "secondary": Color("#facc15")},
+	"梦游蘑菇": {"category": "生态奢侈", "route": "生态材料线", "terrain": "夜间菌林", "use": "高记忆点生态商品，适合奢侈消费和怪兽资源诱导。", "hook": "需求扩大后适合配合新闻/会展，但也会引怪。", "flavor": "它会自己走去价格最高的市场。", "glyph": "☽", "accent": Color("#c084fc"), "secondary": Color("#86efac")},
+}
 
 const SPECIAL_MONSTER_EARLY_ACTION_WEIGHTS := [2, 2, 2, 0, 0, 0]
 const SPECIAL_MONSTER_ESCALATED_ACTION_WEIGHTS := [1, 1, 1, 1, 1, 1]
@@ -658,6 +718,18 @@ const SKILL_CATALOG := {
 	"星际会展2": {"cost": 7, "kind": "city_contract_boon", "contract_income": 135, "contract_turns": 4, "route_flow_multiplier": 1.45, "route_flow_turns": 4, "panic": 20, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市举办大型星际会展：临时合约GDP/min +135，并使商路流通收入×1.45，持续120秒；区域热度+20。"},
 	"商品做空1": {"cost": 4, "kind": "product_speculation", "cash": 260, "price_delta": -24, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "做空"], "text": "围绕当前商品做空：获得260资金，并制造临时供给压力；价格由供需重算体现。"},
 	"商品做空2": {"cost": 6, "kind": "product_speculation", "cash": 560, "price_delta": -42, "panic": 18, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "高阶做空：获得560资金，并制造更强临时供给压力；价格仍由供需关系结算。"},
+	"商品看涨1": {"cost": 4, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 1.0, "product_bet_seconds": 60.0, "market_demand_pressure": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "看涨"], "text": "围绕当前商品建立匿名看涨头寸：持仓60秒，到期若商品价高于基准价，按涨幅×1.0获得资金；同时制造少量需求压力。"},
+	"商品看涨2": {"cost": 6, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 1.45, "product_bet_seconds": 75.0, "market_demand_pressure": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "升级"], "text": "升级商品看涨：持仓75秒，价格涨幅×1.45兑现；需求压力更明显，出牌条件会留下商品线索。"},
+	"商品看涨3": {"cost": 8, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 2.05, "product_bet_seconds": 95.0, "market_demand_pressure": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "核心"], "text": "核心商品看涨：持仓95秒，价格涨幅×2.05兑现；适合配合合约、商路修复或怪兽经济天气。"},
+	"商品看涨4": {"cost": 10, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 2.8, "product_bet_seconds": 120.0, "market_demand_pressure": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "IV"], "text": "终端商品看涨IV：持仓120秒，涨幅×2.8兑现；强收益但会公开暴露商品价格战窗口。"},
+	"商品看跌1": {"cost": 4, "kind": "product_futures", "product_bet_direction": "down", "product_bet_multiplier": 1.0, "product_bet_seconds": 60.0, "market_supply_pressure": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "看跌"], "text": "围绕当前商品建立匿名看跌头寸：持仓60秒，到期若商品价低于基准价，按跌幅×1.0获得资金；同时制造少量供给压力。"},
+	"商品看跌2": {"cost": 6, "kind": "product_futures", "product_bet_direction": "down", "product_bet_multiplier": 1.45, "product_bet_seconds": 75.0, "market_supply_pressure": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "升级"], "text": "升级商品看跌：持仓75秒，价格跌幅×1.45兑现；适合打击供给过剩或竞争商品。"},
+	"商品看跌3": {"cost": 8, "kind": "product_futures", "product_bet_direction": "down", "product_bet_multiplier": 2.05, "product_bet_seconds": 95.0, "market_supply_pressure": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "核心"], "text": "核心商品看跌：持仓95秒，价格跌幅×2.05兑现；适合配合产能扩张、消费冷却或交通瘫痪。"},
+	"商品看跌4": {"cost": 10, "kind": "product_futures", "product_bet_direction": "down", "product_bet_multiplier": 2.8, "product_bet_seconds": 120.0, "market_supply_pressure": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "期货", "IV"], "text": "终端商品看跌IV：持仓120秒，跌幅×2.8兑现；强力压制商品线，但供需结果会给其他玩家反推机会。"},
+	"港仓囤货1": {"cost": 5, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 0.75, "product_bet_seconds": 90.0, "requires_warehouse_city": true, "stockpile_units": 2, "market_demand_pressure": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "仓储", "囤积"], "text": "选中一座己方存活城市作为匿名仓库，囤积当前商品90秒：商品涨价时按涨幅×0.75×囤货量兑现；仓库被毁则囤货损失。"},
+	"港仓囤货2": {"cost": 7, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 0.9, "product_bet_seconds": 105.0, "requires_warehouse_city": true, "stockpile_units": 3, "market_demand_pressure": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "仓储", "升级"], "text": "升级港仓囤货：仓储105秒，涨幅×0.9×囤货量兑现；城市会留下仓储经济线索，方便对手引怪破坏。"},
+	"港仓囤货3": {"cost": 9, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 1.05, "product_bet_seconds": 120.0, "requires_warehouse_city": true, "stockpile_units": 5, "market_demand_pressure": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "仓储", "核心"], "text": "核心港仓囤货：仓储120秒，涨幅×1.05×囤货量兑现；收益高，但仓库城市成为可被怪兽反制的目标。"},
+	"港仓囤货4": {"cost": 11, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 1.25, "product_bet_seconds": 150.0, "requires_warehouse_city": true, "stockpile_units": 8, "market_demand_pressure": 5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "仓储", "IV"], "text": "终端港仓囤货IV：仓储150秒，涨幅×1.25×囤货量兑现；利润强但城市仓库风险极高。"},
 	"城市买涨1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.0, "gdp_bet_seconds": 60.0, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "买涨"], "text": "匿名买入选中城市GDP上涨：持仓60秒，到期时若该城即时GDP高于买入基准，则按增量×1.0获得资金。"},
 	"城市买涨2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.6, "gdp_bet_seconds": 75.0, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "匿名买入选中城市GDP上涨：持仓75秒，到期收益为即时GDP增量×1.6。"},
 	"城市买涨3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 2.3, "gdp_bet_seconds": 90.0, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "高阶买涨城市GDP：持仓90秒，若城市扩张、合约或商路使即时GDP上升，按增量×2.3兑现。"},
@@ -699,6 +771,22 @@ const SKILL_CATALOG := {
 	"环晶电池专供1": {"cost": 5, "kind": "area_trade_contract", "contract_product_mode": "fixed", "contract_products": ["环晶电池"], "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 130, "accept_production_delta": 1, "accept_route_flow_multiplier": 1.20, "route_flow_turns": 3, "decline_cash_penalty": 95, "decline_consumption_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "指定商品"], "text": "指定环晶电池专供条款：供给区和需求区围绕环晶电池接入生产/需求。签约提高生产和相关流通，拒签会削弱消费并支付罚款。"},
 	"双边对冲合约1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "multi", "contract_add_products": 2, "contract_add_demands": 2, "contract_remove_products": 1, "contract_remove_demands": 1, "accept_cash": 150, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.30, "route_flow_turns": 4, "decline_cash_penalty": 130, "decline_production_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "对冲"], "text": "双商品对冲合约：签约时两端各接入两项商品，并替换一项旧供需以重排经营结构；拒签会压低生产并追加商路压力。"},
 	"惩罚性拒签条款1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "auto", "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 70, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.16, "route_flow_turns": 2, "decline_cash_penalty": 180, "decline_production_delta": -1, "decline_transport_delta": -1, "decline_consumption_delta": -1, "decline_route_damage": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "惩罚"], "text": "强压式匿名条款：签约收益较低但可接通自动撮合商品；拒签会触发高额罚款，并同时拖慢生产、交通、消费和商路。"},
+	"过河拆桥1": {"cost": 4, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 1, "hand_discard_count": 1, "hand_lock_seconds": 0.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "情报"], "text": "指定一名对手，匿名拆掉其1张可弃普通手牌。公开层只显示目标玩家被拆牌，具体牌名只写入受害者私人流水。"},
+	"过河拆桥2": {"cost": 6, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 2, "hand_discard_count": 1, "hand_lock_seconds": 10.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "升级"], "text": "指定一名对手，拆掉1张可弃普通手牌；若目标还有可行动普通牌，再随机封锁1张10秒。目标公开、出牌者匿名。"},
+	"过河拆桥3": {"cost": 8, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 3, "hand_discard_count": 1, "hand_lock_seconds": 18.0, "target_cash_penalty": 80, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "核心"], "text": "核心拆牌：拆掉1张可弃普通手牌，随机封锁1张18秒，并让目标支付少量应急重组成本。"},
+	"过河拆桥4": {"cost": 10, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 4, "hand_discard_count": 2, "hand_lock_seconds": 20.0, "target_cash_penalty": 120, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "IV"], "text": "终端拆牌IV：最多拆掉2张可弃普通手牌，再封锁1张20秒并追加重组成本；强效果会留下明显目标线索。"},
+	"顺手牵羊1": {"cost": 5, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 2, "hand_steal_count": 1, "steal_fail_cash": 60, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "情报"], "text": "指定一名对手，匿名牵取其1张可弃普通手牌并加入自己手牌；若自己无法接收，则改为拆牌并获得少量情报补偿。"},
+	"顺手牵羊2": {"cost": 7, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 2, "hand_steal_count": 1, "hand_lock_seconds": 8.0, "steal_fail_cash": 90, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "升级"], "text": "升级牵牌：牵取1张可弃普通手牌；若成功，目标再随机封锁1张8秒，制造更明显的手牌节奏线索。"},
+	"顺手牵羊3": {"cost": 9, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 3, "hand_steal_count": 1, "hand_lock_seconds": 15.0, "steal_fail_cash": 140, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "核心"], "text": "核心牵牌：牵取1张可弃普通手牌并封锁目标1张15秒；如果牵取失败，获得更高情报补偿。"},
+	"顺手牵羊4": {"cost": 11, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 4, "hand_steal_count": 2, "hand_lock_seconds": 18.0, "steal_fail_cash": 220, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "IV"], "text": "终端牵牌IV：最多牵取2张可弃普通手牌，随后封锁目标1张18秒；极强但会公开目标玩家与资源门槛线索。"},
+	"产权冻结1": {"cost": 4, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 2, "control_block_seconds": 20.0, "control_gdp_penalty": 35, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "归属"], "text": "选中一座公开存活城市，匿名制造产权争议20秒；城市GDP/min受到小幅归属惩罚，真实业主不公开。"},
+	"产权冻结2": {"cost": 6, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 2, "control_block_seconds": 30.0, "control_gdp_penalty": 50, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "升级"], "text": "升级产权冻结：产权争议30秒，GDP/min归属惩罚提高，并给该城留下公开法律/舆论线索。"},
+	"产权冻结3": {"cost": 8, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 3, "control_block_seconds": 45.0, "control_gdp_penalty": 70, "panic": 14, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "核心"], "text": "核心产权冻结：产权争议45秒，显著压低目标城市GDP/min；适合配合城市做空、怪兽破坏或归属推理。"},
+	"产权冻结4": {"cost": 10, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 4, "control_block_seconds": 60.0, "control_gdp_penalty": 95, "panic": 20, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "IV"], "text": "终端产权冻结IV：产权争议60秒并施加高额GDP/min归属惩罚；强力压制但目标城市和商品条件会暴露反推线索。"},
+	"万箭齐发1": {"cost": 5, "kind": "global_barrage", "play_flow_required": 2, "global_barrage_damage": 1, "global_barrage_target_count": 2, "global_barrage_route_damage": 0, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "全场"], "text": "匿名轨道齐射：优先打击最多2座非己方高GDP公开城市，每座区域/城市受到1点伤害。目标城市公开，出牌者匿名。"},
+	"万箭齐发2": {"cost": 7, "kind": "global_barrage", "play_flow_required": 3, "global_barrage_damage": 1, "global_barrage_target_count": 3, "global_barrage_route_damage": 1, "panic": 12, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "升级"], "text": "升级齐射：优先打击最多3座非己方高GDP城市，每座受1点伤害，并追加少量商路损伤。"},
+	"万箭齐发3": {"cost": 9, "kind": "global_barrage", "play_flow_required": 4, "global_barrage_damage": 2, "global_barrage_target_count": 4, "global_barrage_route_damage": 1, "panic": 16, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "核心"], "text": "核心齐射：优先打击最多4座非己方高GDP城市，每座受2点伤害并追加商路损伤，适合终局压制领先者。"},
+	"万箭齐发4": {"cost": 11, "kind": "global_barrage", "play_flow_required": 5, "global_barrage_damage": 2, "global_barrage_target_count": 6, "global_barrage_route_damage": 2, "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "IV"], "text": "终端齐射IV：优先打击最多6座非己方高GDP城市，每座受2点伤害并追加2点商路损伤；影响巨大但公开目标非常多。"},
 	"商品换线1": {"cost": 4, "kind": "city_product_shift", "product_shift": 1, "revenue_amount": 18, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "换线"], "text": "选中己方城市：将1项主营商品换成当前商路商品或未经营商品，并使GDP/min +18。"},
 	"商品换线2": {"cost": 6, "kind": "city_product_shift", "product_shift": 2, "revenue_amount": 32, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：将2项主营商品换成新的商品线，并使GDP/min +32。"},
 	"需求改造1": {"cost": 3, "kind": "city_demand_shift", "demand_shift": 1, "repair_routes": 1, "revenue_amount": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "需求"], "text": "选中己方城市：改造1项需求商品，优先对接当前商路商品，并清除1条断路压力。"},
@@ -833,6 +921,10 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"环晶电池专供",
 	"双边对冲合约",
 	"惩罚性拒签条款",
+	"过河拆桥",
+	"顺手牵羊",
+	"产权冻结",
+	"万箭齐发",
 	"商品催化",
 	"星港快线",
 	"共生红利",
@@ -909,6 +1001,9 @@ const COMMON_CARD_POOL := [
 	"星际会展2",
 	"商品做空1",
 	"商品做空2",
+	"商品看涨1",
+	"商品看跌1",
+	"港仓囤货1",
 	"城市买涨1",
 	"城市买涨2",
 	"城市做空1",
@@ -932,6 +1027,10 @@ const COMMON_CARD_POOL := [
 	"环晶电池专供1",
 	"双边对冲合约1",
 	"惩罚性拒签条款1",
+	"过河拆桥1",
+	"顺手牵羊1",
+	"产权冻结1",
+	"万箭齐发1",
 	"商品换线1",
 	"商品换线2",
 	"需求改造1",
@@ -1288,6 +1387,8 @@ var selected_auto_monster_slot := 0
 var pending_target_player_index := -1
 var pending_target_slot_index := -1
 var pending_target_paused_time := false
+var pending_player_target_player_index := -1
+var pending_player_target_slot_index := -1
 var speed_before_target_choice := 1.0
 var run_save_path := RUN_SAVE_PATH
 
@@ -1405,6 +1506,7 @@ func _process(delta: float) -> void:
 	_update_pending_contract_offers(scaled_delta)
 	_update_realtime_cooldowns(scaled_delta)
 	_update_city_gdp_derivative_timers()
+	_update_product_futures_timers()
 	_update_weather_system(scaled_delta)
 	_update_realtime_economy_cashflow(scaled_delta)
 	_age_economic_boons(scaled_delta)
@@ -5393,7 +5495,7 @@ func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = f
 		"怪兽生态档案":
 			if bestiary_show_detail:
 				return "怪兽生态详情页｜展示临时美工、行动概率、速度、资源偏好和破坏数据｜怪兽牌请跳卡牌图鉴。"
-			return "怪兽生态缩略图｜自适应网格｜hover或单击看行动预览｜双击进详情｜不重复做怪兽牌图鉴。"
+			return "怪兽生态缩略图｜自适应网格｜hover或单击看行动预览｜双击进详情｜怪兽牌见卡牌图鉴。"
 		"商品图鉴":
 			if product_codex_show_detail:
 				return "商品详情页｜价格、供需、商路、天气和线索集中查看｜上一页/下一页切换｜返回缩略图。"
@@ -5697,7 +5799,7 @@ func _bestiary_first_index_on_page(page_index: int, total_count: int) -> int:
 
 func _bestiary_grid_text() -> String:
 	var page_count := _bestiary_grid_page_count(_catalog_size())
-	return "怪兽生态缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n这里展示场上怪兽单位，不是另一套怪兽牌图鉴；怪兽牌统一放在卡牌图鉴的「怪兽牌」分类。悬停或单击怪兽缩略图会在下方显示详情预览；双击缩略图进入怪兽详情。进入详情后才使用顶部「上一个/下一个」切换怪兽，也可以点「返回缩略图」回到图册。" % [
+	return "怪兽生态缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n这里展示怪兽生态、行动概率、移动特征和伤害表现；怪兽牌在卡牌图鉴的「怪兽牌」分类查看。悬停或单击怪兽缩略图会在下方显示详情预览；双击缩略图进入怪兽详情。进入详情后才使用顶部「上一个/下一个」切换怪兽，也可以点「返回缩略图」回到图册。" % [
 		bestiary_grid_page + 1,
 		page_count,
 		_bestiary_grid_columns(),
@@ -6033,7 +6135,7 @@ func _add_card_development_route_overview(parent: Container) -> void:
 	_add_menu_info_card(
 		parent,
 		"卡牌路线覆盖",
-		"核心路线把最终目标落到钱：稳定GDP、合约商路、限时投机、怪兽/天气/新闻压制，以及情报/补给降低误判。",
+		"核心路线把最终目标落到钱：稳定GDP、合约商路、限时投机、怪兽/天气/新闻压制、直接玩家互动，以及情报/补给降低误判。",
 		Color("#a78bfa"),
 		"核心路线%d/%d覆盖｜用于检查卡池策略深度。" % [covered_core, required_core]
 	)
@@ -6471,9 +6573,10 @@ func _populate_product_codex_thumbnail_page(parent: Container) -> void:
 func _add_product_codex_thumbnail(parent: Container, catalog_index: int) -> void:
 	var product_name := String(PRODUCT_CATALOG[_valid_product_codex_index(catalog_index)])
 	var entry: Dictionary = product_market.get(product_name, {})
+	var profile := _product_profile(product_name)
 	var accent := _product_codex_color(product_name)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(156, 142)
+	panel.custom_minimum_size = Vector2(156, 166)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.tooltip_text = _product_codex_tooltip(catalog_index)
@@ -6496,9 +6599,18 @@ func _add_product_codex_thumbnail(parent: Container, catalog_index: int) -> void
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
+	var glyph := _plain_label(String(profile.get("glyph", "◇")), 20, _product_codex_secondary_color(product_name))
+	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(glyph)
 	var title := _plain_label(product_name, 11, Color("#f8fafc"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
+	var profile_label := _plain_label("%s｜%s" % [
+		String(profile.get("category", "商品")),
+		String(profile.get("route", "商业线")),
+	], 8, Color("#fde68a"))
+	profile_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(profile_label)
 	var price := _product_price(product_name)
 	var price_label := _plain_label("¥%d｜%s｜%s" % [price, String(entry.get("tier", _product_tier(product_name))), _product_trend_text(product_name)], 10, Color("#bbf7d0"))
 	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -6552,8 +6664,10 @@ func _add_product_codex_detail_preview(parent: Container, product_name: String) 
 
 func _add_product_codex_badge(parent: Container, product_name: String, compact: bool = false) -> void:
 	var accent := _product_codex_color(product_name)
+	var secondary := _product_codex_secondary_color(product_name)
+	var profile := _product_profile(product_name)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(150, 136) if compact else Vector2(240, 190)
+	panel.custom_minimum_size = Vector2(168, 164) if compact else Vector2(260, 238)
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#0b1120").lerp(accent, 0.18)
@@ -6571,9 +6685,22 @@ func _add_product_codex_badge(parent: Container, product_name: String, compact: 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	margin.add_child(box)
+	var glyph := _plain_label(String(profile.get("glyph", "◇")), 32 if compact else 46, secondary)
+	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(glyph)
 	var title := _plain_label(product_name, 14 if compact else 18, Color("#f8fafc"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
+	var profile_line := _plain_label("%s｜%s" % [
+		String(profile.get("category", "商品")),
+		String(profile.get("route", "商业线")),
+	], 9 if compact else 11, Color("#fde68a"))
+	profile_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	profile_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(profile_line)
+	var terrain_line := _plain_label("地形:%s" % String(profile.get("terrain", "通用")), 9 if compact else 10, Color("#bfdbfe"))
+	terrain_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(terrain_line)
 	var entry: Dictionary = product_market.get(product_name, {})
 	var price := _product_price(product_name)
 	var base_price := int(entry.get("base_price", price))
@@ -6591,14 +6718,26 @@ func _add_product_codex_badge(parent: Container, product_name: String, compact: 
 	var weather := _plain_label(_short_card_text(_product_market_boon_text(product_name), 52 if compact else 80), 9 if compact else 11, Color("#fde68a"))
 	weather.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(weather)
+	if not compact:
+		var use_line := _plain_label(_short_card_text(String(profile.get("use", "")), 72), 10, Color("#dcfce7"))
+		use_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		use_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(use_line)
 
 
 func _product_codex_preview_text(product_name: String) -> String:
 	_ensure_product_market_catalog()
 	var entry: Dictionary = product_market.get(product_name, {})
+	var profile := _product_profile(product_name)
 	var price := _product_price(product_name)
 	var base_price := int(entry.get("base_price", price))
-	return "当前价¥%d｜基准¥%d｜价格梯度:%s｜供给%d/需求%d/断路%d/波动%d｜天气:%s｜供给区:%s｜需求区:%s｜城市线索:%s" % [
+	return "商品目录:%s/%s｜地形:%s｜策略用途:%s｜机制钩子:%s｜临时美工:%s｜当前价¥%d｜基准¥%d｜价格梯度:%s｜供给%d/需求%d/断路%d/波动%d｜天气:%s｜供给区:%s｜需求区:%s｜城市线索:%s" % [
+		String(profile.get("category", "商品")),
+		String(profile.get("route", "商业线")),
+		String(profile.get("terrain", "通用")),
+		String(profile.get("use", "")),
+		String(profile.get("hook", "")),
+		String(profile.get("glyph", "◇")),
 		price,
 		base_price,
 		String(entry.get("tier", _product_tier(product_name))),
@@ -6624,7 +6763,61 @@ func _product_clue_preview_text(product_name: String) -> String:
 	return "；".join(names)
 
 
+func _product_profile(product_name: String) -> Dictionary:
+	var profile: Dictionary = PRODUCT_PROFILES.get(product_name, {})
+	if not profile.is_empty():
+		return profile
+	return {
+		"category": "未分类商品",
+		"route": "通用商业线",
+		"terrain": "随机区域",
+		"use": "参与供需、商路、GDP和出牌门槛。",
+		"hook": "等待后续平衡时补充专属机制。",
+		"flavor": "一件还没有被星际商会充分命名的货物。",
+		"glyph": "◇",
+		"accent": Color("#22c55e"),
+		"secondary": Color("#f8fafc"),
+	}
+
+
+func _product_profile_has_required_fields(product_name: String) -> bool:
+	var profile := _product_profile(product_name)
+	for key in ["category", "route", "terrain", "use", "hook", "flavor", "glyph", "accent", "secondary"]:
+		if not profile.has(String(key)):
+			return false
+		if ["category", "route", "terrain", "use", "hook", "flavor", "glyph"].has(String(key)) and String(profile.get(String(key), "")) == "":
+			return false
+	return true
+
+
+func _product_related_card_names(product_name: String, limit: int = 8) -> String:
+	var names := []
+	for skill_name_variant in SKILL_CATALOG.keys():
+		var skill_name := String(skill_name_variant)
+		var skill: Dictionary = SKILL_CATALOG[skill_name]
+		var matches := String(skill.get("play_product", "")) == product_name
+		var contract_products_variant: Variant = skill.get("contract_products", [])
+		if not matches and contract_products_variant is Array:
+			matches = (contract_products_variant as Array).has(product_name)
+		if matches:
+			names.append(skill_name)
+	return _limited_name_list(names, limit, "无固定门槛；可通过当前商路商品类卡牌临时选用")
+
+
+func _product_monster_focus_names(product_name: String, limit: int = 6) -> String:
+	var names := []
+	for monster_variant in MONSTER_ROSTER:
+		var monster: Dictionary = monster_variant
+		var focus: Array = monster.get("resource_focus", [])
+		if focus.has(product_name):
+			names.append(String(monster.get("name", "怪兽")))
+	return _limited_name_list(names, limit, "暂无固定偏好怪兽")
+
+
 func _product_codex_color(product_name: String) -> Color:
+	var profile := _product_profile(product_name)
+	if profile.has("accent"):
+		return profile.get("accent", Color("#22c55e"))
 	var seed: int = absi(hash(product_name))
 	var palette := [
 		Color("#22c55e"),
@@ -6635,6 +6828,13 @@ func _product_codex_color(product_name: String) -> Color:
 		Color("#84cc16"),
 	]
 	return palette[seed % palette.size()] as Color
+
+
+func _product_codex_secondary_color(product_name: String) -> Color:
+	var profile := _product_profile(product_name)
+	if profile.has("secondary"):
+		return profile.get("secondary", Color("#f8fafc"))
+	return Color("#f8fafc")
 
 
 func _product_codex_tooltip(catalog_index: int) -> String:
@@ -6739,6 +6939,7 @@ func _card_codex_filter_options() -> Array:
 		{"id": "news", "label": "新闻事件"},
 		{"id": "weather", "label": "天气干预"},
 		{"id": "intel", "label": "情报推理"},
+		{"id": "interaction", "label": "直接互动"},
 		{"id": "combat", "label": "战斗/指令"},
 		{"id": "tactic", "label": "补给/诱导"},
 		{"id": "other", "label": "其他"},
@@ -6778,6 +6979,8 @@ func _card_codex_category_for_card(card_name: String, skill: Dictionary) -> Stri
 	var kind := String(skill.get("kind", ""))
 	if ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "cash_gain"].has(kind):
 		return "economy"
+	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
+		return "interaction"
 	if ["city_revenue_boost", "city_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind):
 		return "business"
 	if kind == "news_event":
@@ -7140,6 +7343,8 @@ func _normalize_product_market_boon_fields(entry: Dictionary) -> void:
 		_set_remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns", float(entry.get("market_contract_seconds", 0.0)))
 	if not entry.has("market_contract_source"):
 		entry["market_contract_source"] = ""
+	if not entry.has("futures_positions"):
+		entry["futures_positions"] = []
 
 
 func _append_product_price_history(entry: Dictionary, price: int) -> void:
@@ -7620,7 +7825,8 @@ func _card_strength_budget_points(card_name: String) -> int:
 		"contract_add_products", "contract_add_demands", "contract_remove_products", "contract_remove_demands",
 		"repair_routes", "route_damage", "decline_route_damage", "draw_amount",
 		"damage", "armor", "guard", "ranged_guard", "miasma_count", "reclaim_count", "fixed_skill_count",
-		"weather_zone_count",
+		"weather_zone_count", "stockpile_units", "hand_discard_count", "hand_steal_count",
+		"target_cash_penalty", "control_gdp_penalty", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage",
 	]:
 		points += abs(int(skill.get(key, 0))) * 7
 	points += int(round(absf(float(skill.get("move", 0.0))) / 90.0))
@@ -7629,10 +7835,13 @@ func _card_strength_budget_points(card_name: String) -> int:
 	points += int(round(absf(float(skill.get("delay", 0.0))) * 5.0))
 	points += int(round(absf(float(skill.get("duration", 0.0))) / 40.0))
 	points += int(round(absf(float(skill.get("weather_duration_seconds", 0.0))) / 20.0))
+	points += int(round(absf(float(skill.get("hand_lock_seconds", 0.0))) / 3.0))
+	points += int(round(absf(float(skill.get("control_block_seconds", 0.0))) / 5.0))
 	points += int(round(maxf(0.0, float(skill.get("growth_multiplier", 1.0)) - 1.0) * 24.0))
 	points += int(round(maxf(0.0, float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 24.0))
 	points += int(round(maxf(0.0, float(skill.get("accept_route_flow_multiplier", 1.0)) - 1.0) * 18.0))
 	points += int(round(maxf(0.0, float(skill.get("gdp_bet_multiplier", 1.0)) - 1.0) * 18.0))
+	points += int(round(maxf(0.0, float(skill.get("product_bet_multiplier", 1.0)) - 1.0) * 18.0))
 	points += int(float(maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0)))) / 20.0)
 	if String(skill.get("kind", "")) == "monster_card":
 		points += int(float(int(skill.get("hp", 0))) / 5.0)
@@ -7704,6 +7913,16 @@ func _card_budget_driver_facts(skill: Dictionary) -> Array:
 			float(skill.get("gdp_bet_multiplier", 1.0)),
 			_duration_short_text(_gdp_bet_duration_seconds(skill)),
 		])
+	if int(skill.get("hand_discard_count", 0)) > 0:
+		drivers.append("拆牌%d" % int(skill.get("hand_discard_count", 0)))
+	if int(skill.get("hand_steal_count", 0)) > 0:
+		drivers.append("牵牌%d" % int(skill.get("hand_steal_count", 0)))
+	if float(skill.get("hand_lock_seconds", 0.0)) > 0.0:
+		drivers.append("手牌封锁%s" % _duration_short_text(float(skill.get("hand_lock_seconds", 0.0))))
+	if int(skill.get("control_gdp_penalty", 0)) > 0:
+		drivers.append("产权GDP-%d/%s" % [int(skill.get("control_gdp_penalty", 0)), _duration_short_text(float(skill.get("control_block_seconds", 0.0)))])
+	if int(skill.get("global_barrage_damage", 0)) > 0:
+		drivers.append("齐射%d城×%d伤" % [maxi(1, int(skill.get("global_barrage_target_count", 1))), int(skill.get("global_barrage_damage", 0))])
 	if int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
 		drivers.append("市场压%s/%s" % [
 			_signed_int_text(int(skill.get("market_demand_pressure", 0))),
@@ -7737,8 +7956,12 @@ func _card_budget_gate_facts(skill: Dictionary) -> Array:
 		gates.append("打出¥%d" % play_cash_cost)
 	if _skill_targets_monster(skill):
 		gates.append("公开指定怪兽")
+	if _skill_targets_player(skill):
+		gates.append("公开指定玩家")
 	if String(skill.get("kind", "")) == "area_trade_contract":
 		gates.append("先选供需两区")
+	if ["city_control_dispute", "global_barrage"].has(String(skill.get("kind", ""))):
+		gates.append("目标城市公开")
 	if String(skill.get("kind", "")) == "weather_control":
 		gates.append("预告%s" % _duration_short_text(float(skill.get("weather_forecast_lead_seconds", WEATHER_FORECAST_LEAD_MIN_SECONDS))))
 	if String(skill.get("kind", "")) == "monster_card" and not bool(skill.get("starter_play_free", false)):
@@ -7825,7 +8048,10 @@ func _region_codex_text(index: int) -> String:
 		])
 	lines.append("商路负载：%d条运输路径途经或使用此区域；区域被毁会把相关城市的断路压力写入收入结算。" % _district_trade_route_load(index))
 	if String(district.get("terrain", "land")) == "ocean":
-		lines.append("区域经济：海洋区不生产商品，主要承担低成本商路；本地需求 %s。" % _product_list_with_prices(district.get("demands", []), 4))
+		lines.append("区域经济：海洋区可出产鱼群、巨藻、黑油或潮汐能源等海域商品，同时承担低成本商路；本地供给 %s｜本地需求 %s。" % [
+			_product_list_with_prices(district.get("products", []), 4),
+			_product_list_with_prices(district.get("demands", []), 4),
+		])
 	else:
 		lines.append("区域经济：本地供给 %s｜本地需求 %s。" % [
 			_product_list_with_prices(district.get("products", []), 4),
@@ -8361,6 +8587,8 @@ func _capture_run_state() -> Dictionary:
 		"pending_target_player_index": pending_target_player_index,
 		"pending_target_slot_index": pending_target_slot_index,
 		"pending_target_paused_time": pending_target_paused_time,
+		"pending_player_target_player_index": pending_player_target_player_index,
+		"pending_player_target_slot_index": pending_player_target_slot_index,
 		"speed_before_target_choice": speed_before_target_choice,
 		"bestiary_index": bestiary_index,
 		"bestiary_grid_page": bestiary_grid_page,
@@ -8477,6 +8705,8 @@ func _apply_run_state(state: Dictionary) -> int:
 	pending_target_player_index = int(state.get("pending_target_player_index", -1))
 	pending_target_slot_index = int(state.get("pending_target_slot_index", -1))
 	pending_target_paused_time = bool(state.get("pending_target_paused_time", false))
+	pending_player_target_player_index = int(state.get("pending_player_target_player_index", -1))
+	pending_player_target_slot_index = int(state.get("pending_player_target_slot_index", -1))
 	speed_before_target_choice = float(state.get("speed_before_target_choice", 1.0))
 	bestiary_index = int(state.get("bestiary_index", 0))
 	bestiary_grid_page = int(state.get("bestiary_grid_page", 0))
@@ -8797,8 +9027,9 @@ func _assign_district_terrain_and_goods() -> void:
 			district["terrain_label"] = "海洋"
 			district["economic_focus"] = "ocean_transport"
 			district["economic_focus_label"] = _district_economy_focus_label("ocean_transport")
-			district["products"] = []
-			district["demands"] = []
+			var ocean_products := _random_product_names_for_terrain("ocean", DISTRICT_PRODUCT_COUNT_MIN, DISTRICT_PRODUCT_COUNT_MAX)
+			district["products"] = ocean_products
+			district["demands"] = _random_product_names(DISTRICT_DEMAND_COUNT_MIN, DISTRICT_DEMAND_COUNT_MAX, ocean_products)
 			district["production_level"] = REGION_ECONOMY_LEVEL_MIN
 			district["transport_level"] = 4
 			district["consumption_level"] = REGION_ECONOMY_LEVEL_MIN
@@ -8828,7 +9059,7 @@ func _assign_district_terrain_and_goods() -> void:
 					district["production_level"] = 2
 					district["transport_level"] = 2
 					district["consumption_level"] = 2
-			var products := _random_product_names(DISTRICT_PRODUCT_COUNT_MIN, DISTRICT_PRODUCT_COUNT_MAX)
+			var products := _random_product_names_for_terrain("land", DISTRICT_PRODUCT_COUNT_MIN, DISTRICT_PRODUCT_COUNT_MAX)
 			district["products"] = products
 			district["demands"] = _random_product_names(DISTRICT_DEMAND_COUNT_MIN, DISTRICT_DEMAND_COUNT_MAX, products)
 			district["transport_score"] = _transport_score_from_level(int(district["transport_level"]), false)
@@ -8867,8 +9098,36 @@ func _roll_ocean_district_indices() -> Array:
 
 
 func _random_product_names(count_min: int, count_max: int, excluded: Array = []) -> Array:
+	return _random_product_names_from_pool(PRODUCT_CATALOG, count_min, count_max, excluded)
+
+
+func _random_product_names_for_terrain(terrain: String, count_min: int, count_max: int, excluded: Array = []) -> Array:
+	return _random_product_names_from_pool(_product_pool_for_terrain(terrain), count_min, count_max, excluded)
+
+
+func _product_pool_for_terrain(terrain: String) -> Array:
+	if terrain == "ocean":
+		return OCEAN_PRODUCT_CATALOG.duplicate()
 	var pool := []
 	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		if product_name == "" or OCEAN_PRODUCT_CATALOG.has(product_name):
+			continue
+		pool.append(product_name)
+	return pool
+
+
+func _product_catalog_names() -> Array:
+	return PRODUCT_CATALOG.duplicate()
+
+
+func _ocean_product_catalog_names() -> Array:
+	return OCEAN_PRODUCT_CATALOG.duplicate()
+
+
+func _random_product_names_from_pool(source_pool: Array, count_min: int, count_max: int, excluded: Array = []) -> Array:
+	var pool := []
+	for product_variant in source_pool:
 		var product_name := String(product_variant)
 		if product_name == "" or excluded.has(product_name):
 			continue
@@ -8921,6 +9180,7 @@ func _generate_product_market() -> Dictionary:
 			"market_contract_seconds": 0.0,
 			"market_contract_turns": 0,
 			"market_contract_source": "",
+			"futures_positions": [],
 		}
 	return result
 
@@ -9120,6 +9380,7 @@ func _polygon_centroid(polygon: Array) -> Vector2:
 
 
 func _assign_district_card_choices() -> void:
+	skill_market = _current_run_card_pool()
 	if skill_market.is_empty():
 		for district in districts:
 			district["card_choices"] = []
@@ -9142,12 +9403,14 @@ func _assign_district_card_choices() -> void:
 		var placed := false
 		for offset in range(districts.size()):
 			var district_index := (cursor + offset) % districts.size()
+			if not _district_card_is_valid_for_district(district_index, skill_name):
+				continue
 			var choices: Array = districts[district_index]["card_choices"]
 			if choices.size() >= DISTRICT_CARD_CHOICE_MAX or choices.has(skill_name):
 				continue
 			choices.append(skill_name)
 			districts[district_index]["card_choices"] = choices
-			_set_district_card_source(district_index, skill_name, String(featured_sources.get(skill_name, "怪兽卡")))
+			_set_district_card_source(district_index, skill_name, String(featured_sources.get(skill_name, _district_card_supply_source_label(district_index, skill_name))))
 			cursor = (district_index + 1) % districts.size()
 			placed = true
 			break
@@ -9158,12 +9421,15 @@ func _assign_district_card_choices() -> void:
 		var choices: Array = districts[i]["card_choices"]
 		var choice_count: int = max(int(choice_targets[i]), choices.size())
 		choice_count = min(DISTRICT_CARD_CHOICE_MAX, choice_count)
+		var candidate_pool := _district_card_candidate_pool(i)
 		var attempts := 0
-		while choices.size() < choice_count and attempts < 80:
-			var skill_name := String(skill_market[rng.randi_range(0, skill_market.size() - 1)])
+		while choices.size() < choice_count and attempts < max(80, candidate_pool.size() * 2):
+			if candidate_pool.is_empty():
+				break
+			var skill_name := String(candidate_pool[attempts % candidate_pool.size()])
 			if not choices.has(skill_name):
 				choices.append(skill_name)
-				_set_district_card_source(i, skill_name, "公共补给")
+				_set_district_card_source(i, skill_name, _district_card_supply_source_label(i, skill_name))
 			attempts += 1
 		districts[i]["card_choices"] = choices
 
@@ -9183,18 +9449,19 @@ func _normalize_card_supply_state() -> void:
 		for old_name_variant in old_choices:
 			var old_name := String(old_name_variant)
 			var canonical_name := _canonical_card_supply_name(old_name)
-			if canonical_name == "" or choices.has(canonical_name):
+			if canonical_name == "" or choices.has(canonical_name) or not _district_card_is_valid_for_district(district_index, canonical_name):
 				continue
 			choices.append(canonical_name)
-			sources[canonical_name] = String(old_sources.get(old_name, old_sources.get(canonical_name, "公共补给")))
-		for offset in range(normalized_market.size()):
+			sources[canonical_name] = String(old_sources.get(old_name, old_sources.get(canonical_name, _district_card_supply_source_label(district_index, canonical_name))))
+		var candidate_pool := _district_card_candidate_pool(district_index)
+		for offset in range(candidate_pool.size()):
 			if choices.size() >= DISTRICT_CARD_CHOICE_MIN:
 				break
-			var candidate := String(normalized_market[(district_index + offset) % normalized_market.size()])
+			var candidate := String(candidate_pool[(district_index + offset) % candidate_pool.size()])
 			if candidate == "" or choices.has(candidate):
 				continue
 			choices.append(candidate)
-			sources[candidate] = "公共补给"
+			sources[candidate] = _district_card_supply_source_label(district_index, candidate)
 		while choices.size() > DISTRICT_CARD_CHOICE_MAX:
 			var removed_name := String(choices.pop_back())
 			sources.erase(removed_name)
@@ -9256,6 +9523,8 @@ func _new_game() -> void:
 	pending_target_player_index = -1
 	pending_target_slot_index = -1
 	pending_target_paused_time = false
+	pending_player_target_player_index = -1
+	pending_player_target_slot_index = -1
 	card_resolution_queue = []
 	next_card_resolution_queue = []
 	active_card_resolution = {}
@@ -9373,7 +9642,7 @@ func _new_game() -> void:
 	_log("AI对手已入局：会围绕城市GDP、商品竞争、商路价值、怪兽风险与匿名情报做出行动。")
 	_log("Roguelike挑战启动：%s；任一玩家可见预估结算资金先达到目标现金¥%d时，开启%.0f秒终局倒计时；倒计时结束按结算资金最高者排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal(), VICTORY_COUNTDOWN_SECONDS])
 	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
-	_log("星球随机生成陆地与海洋：陆地初始生产1种商品并有1种需求，海洋不生产但承担商路运输；合约牌可继续改写供需。")
+	_log("星球随机生成陆地与海洋：陆地和海洋都会出现本地商品；海洋偏向鱼群、巨藻、海底能源和潮汐电力，并继续承担高价值商路运输；合约牌可继续改写供需。")
 	_log("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
 	_log("本局地图：%.0fm×%.0fm球面投影星球，生成%d个随机陆海区域。" % [map_width_m, map_height_m, districts.size()])
 	_log("本局卡池由通用牌与怪兽卡组成；购买花钱，打出需要己方城市满足对应商品流动条件。每个区域提供%d-%d张候选卡。" % [DISTRICT_CARD_CHOICE_MIN, DISTRICT_CARD_CHOICE_MAX])
@@ -10266,7 +10535,8 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		"draw_amount", "repair_routes", "route_damage", "contract_income", "market_demand_pressure", "market_supply_pressure", "miasma_count",
 		"reclaim_count", "product_level", "product_shift", "demand_shift", "contract_add_products", "contract_add_demands",
 		"contract_remove_products", "contract_remove_demands", "accept_cash", "decline_cash_penalty", "decline_route_damage", "stabilize_amount",
-		"reveal_city_count", "trace_card_count", "trace_contract_count", "card_access_extra_hops", "weather_zone_count"
+		"reveal_city_count", "trace_card_count", "trace_contract_count", "card_access_extra_hops", "weather_zone_count",
+		"hand_discard_count", "hand_steal_count", "target_cash_penalty", "control_gdp_penalty", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage"
 	]:
 		if not source.has(key) and not base.has(key):
 			continue
@@ -10296,7 +10566,7 @@ func _derived_rank_skill_definition(family: String, rank: int) -> Dictionary:
 		var delta_anchor := maxi(abs(reference_delta), abs(current_delta))
 		var delta_step := maxi(1, ceili(float(delta_anchor) * 0.35))
 		result[key] = current_delta + direction * delta_step * steps
-	for key in ["move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds", "contract_seconds", "market_contract_seconds", "growth_seconds", "route_flow_seconds", "weather_duration_seconds"]:
+	for key in ["move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds", "contract_seconds", "market_contract_seconds", "growth_seconds", "route_flow_seconds", "weather_duration_seconds", "hand_lock_seconds", "control_block_seconds"]:
 		if not source.has(key) and not base.has(key):
 			continue
 		var current_float := float(source.get(key, base.get(key, 0.0)))
@@ -10607,8 +10877,8 @@ func _make_city_demands(products: Array, district_index: int) -> Array:
 func _city_build_error() -> String:
 	if game_over:
 		return "本局已结束"
-	if _has_pending_target_choice():
-		return "先完成卡牌目标选择"
+	if _has_pending_blocking_decision():
+		return "先完成当前临时选择"
 	return _city_build_error_for(selected_player, selected_district, true)
 
 
@@ -11990,7 +12260,7 @@ func _district_button_text(index: int) -> String:
 	var district_products: Array = d.get("products", [])
 	var district_demands: Array = d.get("demands", [])
 	if String(d.get("terrain", "land")) == "ocean":
-		terrain_text += "航道"
+		terrain_text += "航道 产%d/需%d" % [district_products.size(), district_demands.size()]
 	else:
 		terrain_text += " 产%d/需%d" % [district_products.size(), district_demands.size()]
 	var city_text := "未城市化"
@@ -12017,6 +12287,8 @@ func _player_quick_goal_hint(player_index: int) -> String:
 		return "目标提示：手牌已满；请私下选择一张旧普通牌弃掉后完成换购。"
 	if _has_pending_target_choice():
 		return "目标提示：这张牌需要先指定目标怪兽。"
+	if _has_pending_player_target_choice():
+		return "目标提示：这张互动牌需要先指定目标玩家。"
 	if not _pending_contract_offers_for_player(player_index).is_empty():
 		return "目标提示：匿名合约等待回应，签或拒都会留下线索。"
 	if victory_countdown_active:
@@ -12346,20 +12618,80 @@ func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
 	box.add_child(_plain_label("最后按钱最多获胜；出牌匿名，但条件和结果会留下推理线索。", 10, Color("#fef3c7")))
 
 
-func _add_pending_discard_purchase_panel(parent: Container, player_index: int) -> void:
-	var pending := _pending_discard_purchase_for_player(player_index)
-	if pending.is_empty() or not _can_view_player_private_hand(player_index):
+func _temporary_decision_blueprint(kind: String) -> Dictionary:
+	var blueprint := {
+		"kind": kind,
+		"label": "临时决策",
+		"blocks_card_lane": false,
+		"public_identity": false,
+		"private_to_player": true,
+		"timer_seconds": 0.0,
+		"purpose": "把短时间选择、响应或下注统一成同一套可复用UI。",
+		"future_uses": ["合约签拒", "弃牌换购", "目标选择"],
+	}
+	match kind:
+		TEMP_DECISION_DISCARD:
+			blueprint["label"] = "私密弃牌"
+			blueprint["blocks_card_lane"] = false
+			blueprint["private_to_player"] = true
+			blueprint["purpose"] = "手牌超过上限时私下选一张旧普通牌弃掉，再完成购牌。"
+		TEMP_DECISION_CONTRACT:
+			blueprint["label"] = "合约回应"
+			blueprint["timer_seconds"] = CONTRACT_DECISION_SECONDS
+			blueprint["private_to_player"] = true
+			blueprint["purpose"] = "公开展示结束后，目标城市真实业主独立签约或拒签，不阻塞其他玩家出牌。"
+		TEMP_DECISION_MONSTER_TARGET:
+			blueprint["label"] = "怪兽目标"
+			blueprint["blocks_card_lane"] = true
+			blueprint["purpose"] = "打出需要指定怪兽目标的卡牌前，先选择目标怪兽，再进入匿名卡牌轨道。"
+		TEMP_DECISION_PLAYER_TARGET:
+			blueprint["label"] = "玩家目标"
+			blueprint["blocks_card_lane"] = true
+			blueprint["purpose"] = "直接互动牌先选择目标玩家；公开结果显示目标，出牌者仍匿名。"
+		TEMP_DECISION_MONSTER_WAGER:
+			blueprint["label"] = "怪兽赌局"
+			blueprint["timer_seconds"] = 30.0
+			blueprint["public_identity"] = true
+			blueprint["private_to_player"] = false
+			blueprint["purpose"] = "两只怪兽遭遇时开放公开下注；下注身份公开，可作为怪兽归属和策略倾向线索。"
+			blueprint["future_uses"] = ["下注怪兽A", "下注怪兽B", "追加赌注", "观战线索"]
+	return blueprint
+
+
+func _temporary_decision_style(kind: String) -> Dictionary:
+	match kind:
+		TEMP_DECISION_DISCARD:
+			return {"bg": Color("#1e1b4b"), "border": Color("#a78bfa"), "title": Color("#ddd6fe")}
+		TEMP_DECISION_CONTRACT:
+			return {"bg": Color("#1f2937"), "border": Color("#fbbf24"), "title": Color("#fef3c7")}
+		TEMP_DECISION_MONSTER_TARGET:
+			return {"bg": Color("#2f1d1f"), "border": Color("#fb7185"), "title": Color("#fecdd3")}
+		TEMP_DECISION_PLAYER_TARGET:
+			return {"bg": Color("#172554"), "border": Color("#60a5fa"), "title": Color("#dbeafe")}
+		TEMP_DECISION_MONSTER_WAGER:
+			return {"bg": Color("#29180f"), "border": Color("#fb923c"), "title": Color("#fed7aa")}
+	return {"bg": Color("#111827"), "border": Color("#94a3b8"), "title": Color("#e5e7eb")}
+
+
+func _temporary_decision_callable(method_name: String, args: Array = []) -> Callable:
+	var callable := Callable(self, method_name)
+	for arg in args:
+		callable = callable.bind(arg)
+	return callable
+
+
+func _add_temporary_decision_panel(parent: Container, spec: Dictionary) -> void:
+	if parent == null:
 		return
-	var skill_name := String(pending.get("skill_name", ""))
-	var district_index := int(pending.get("district_index", -1))
-	var price := int(pending.get("price", _card_price(skill_name, district_index, player_index)))
+	var kind := String(spec.get("kind", ""))
+	var style := _temporary_decision_style(kind)
 	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#1e1b4b")
-	style.border_color = Color("#a78bfa")
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	panel.add_theme_stylebox_override("panel", style)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = style.get("bg", Color("#111827")) as Color
+	panel_style.border_color = style.get("border", Color("#94a3b8")) as Color
+	panel_style.set_border_width_all(2)
+	panel_style.set_corner_radius_all(9)
+	panel.add_theme_stylebox_override("panel", panel_style)
 	parent.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 10)
@@ -12370,30 +12702,89 @@ func _add_pending_discard_purchase_panel(parent: Container, player_index: int) -
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	margin.add_child(box)
-	box.add_child(_plain_label("私密弃牌确认", 13, Color("#ddd6fe")))
-	box.add_child(_plain_label("购买%s（约¥%d）会超过%d张普通手牌上限。请选择一张旧普通牌弃掉；手牌数量和弃牌内容不会公开。" % [
-		_card_display_name(skill_name),
-		price,
-		PLAYER_HAND_LIMIT,
-	], 11, Color("#fef3c7")))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	box.add_child(row)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	box.add_child(header)
+	var title_text := String(spec.get("title", "临时决策"))
+	var timer := float(spec.get("timer", -1.0))
+	if timer >= 0.0:
+		title_text += "｜剩余%.1fs" % maxf(0.0, timer)
+	var title := _plain_label(title_text, 13, style.get("title", Color("#e5e7eb")) as Color)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var badge := String(spec.get("badge", ""))
+	if badge != "":
+		var badge_label := _plain_label(badge, 10, Color("#bfdbfe"))
+		badge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		header.add_child(badge_label)
+	for line_variant in spec.get("lines", []):
+		var line := String(line_variant)
+		if line == "":
+			continue
+		box.add_child(_plain_label(line, 11, Color("#f8fafc")))
+	for meta_variant in spec.get("meta_lines", []):
+		var meta := String(meta_variant)
+		if meta == "":
+			continue
+		box.add_child(_plain_label(meta, 10, Color("#93c5fd")))
+	var actions: Array = spec.get("actions", [])
+	if actions.is_empty():
+		return
+	var action_row := HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 8)
+	box.add_child(action_row)
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action := action_variant as Dictionary
+		var button := Button.new()
+		button.text = String(action.get("text", "选择"))
+		button.tooltip_text = String(action.get("tooltip", ""))
+		button.disabled = game_over or bool(action.get("disabled", false))
+		var method_name := String(action.get("method", ""))
+		if method_name != "":
+			button.pressed.connect(_temporary_decision_callable(method_name, action.get("args", []) as Array))
+		action_row.add_child(button)
+
+
+func _add_pending_discard_purchase_panel(parent: Container, player_index: int) -> void:
+	var pending := _pending_discard_purchase_for_player(player_index)
+	if pending.is_empty() or not _can_view_player_private_hand(player_index):
+		return
+	var skill_name := String(pending.get("skill_name", ""))
+	var district_index := int(pending.get("district_index", -1))
+	var price := int(pending.get("price", _card_price(skill_name, district_index, player_index)))
 	var player: Dictionary = players[player_index]
+	var actions := []
 	for slot_variant in _discardable_hand_slots_for_purchase(player):
 		var slot_index := int(slot_variant)
 		var skill: Dictionary = player["slots"][slot_index]
-		var discard_button := Button.new()
-		discard_button.text = "弃掉 %s" % _card_display_name(String(skill.get("name", "旧牌")))
-		discard_button.tooltip_text = "私密弃掉这张旧普通牌，然后完成换购。"
-		discard_button.disabled = game_over
-		discard_button.pressed.connect(Callable(self, "_confirm_discard_purchase").bind(slot_index))
-		row.add_child(discard_button)
-	var cancel_button := Button.new()
-	cancel_button.text = "取消换购"
-	cancel_button.tooltip_text = "取消本次购牌，不公开弃牌信息。"
-	cancel_button.pressed.connect(Callable(self, "_cancel_discard_purchase"))
-	box.add_child(cancel_button)
+		actions.append({
+			"text": "弃掉 %s" % _card_display_name(String(skill.get("name", "旧牌"))),
+			"tooltip": "私密弃掉这张旧普通牌，然后完成换购。",
+			"method": "_confirm_discard_purchase",
+			"args": [slot_index],
+		})
+	actions.append({
+		"text": "取消换购",
+		"tooltip": "取消本次购牌，不公开弃牌信息。",
+		"method": "_cancel_discard_purchase",
+	})
+	_add_temporary_decision_panel(parent, {
+		"kind": TEMP_DECISION_DISCARD,
+		"title": "私密弃牌确认",
+		"badge": "统一决策面板",
+		"lines": [
+			"购买%s（约¥%d）会超过%d张普通手牌上限。" % [
+				_card_display_name(skill_name),
+				price,
+				PLAYER_HAND_LIMIT,
+			],
+			"请选择一张旧普通牌弃掉；手牌数量和弃牌内容不会公开。",
+		],
+		"meta_lines": ["这是购牌窗口锁定后的私密选择，不会进入匿名卡牌轨道。"],
+		"actions": actions,
+	})
 
 
 func _refresh_player_panel() -> void:
@@ -12459,9 +12850,9 @@ func _refresh_player_panel() -> void:
 	player_box.add_child(_plain_label(_card_bid_control_status_text(selected_player), 11, _card_bid_control_status_color(selected_player)))
 
 	if _has_pending_target_choice():
-		var pending_skill := _pending_target_skill()
-		player_box.add_child(_plain_label("请选择目标怪兽：%s 需要指定目标后才会结算。" % String(pending_skill.get("name", "这张卡")), 13, Color("#fef3c7")))
 		_add_pending_target_buttons(player_box)
+	if _has_pending_player_target_choice():
+		_add_pending_player_target_buttons(player_box)
 	_add_active_contract_response_panel(player_box)
 
 	_add_first_summon_prompt(player_box, player)
@@ -12614,50 +13005,39 @@ func _add_pending_contract_offer_panel(parent: Container, entry: Dictionary) -> 
 	var source_index := int(entry.get("contract_source_district", -1))
 	var target_index := int(entry.get("contract_target_district", -1))
 	var contract_id := int(entry.get("contract_offer_id", entry.get("resolution_id", -1)))
-	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#1f2937")
-	style.border_color = Color("#fbbf24")
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(8)
-	panel.add_theme_stylebox_override("panel", style)
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	margin.add_child(box)
-	box.add_child(_plain_label("匿名合约签署窗口｜剩余%.1fs" % maxf(0.0, float(entry.get("contract_decision_timer", CONTRACT_DECISION_SECONDS))), 13, Color("#fef3c7")))
-	box.add_child(_plain_label("%s：%s → %s｜商品：%s｜发起者匿名" % [
-		_card_display_name(String(skill.get("name", "合约牌"))),
-		_contract_district_short_name(source_index),
-		_contract_district_short_name(target_index),
-		_contract_entry_product_text(entry),
-	], 12, Color("#fde68a")))
-	box.add_child(_plain_label("签约奖励：%s｜拒签惩罚：%s" % [
-		_contract_accept_effect_summary(skill),
-		_contract_decline_effect_summary(skill),
-	], 11, Color("#cbd5e1")))
-	box.add_child(_plain_label("这是公开展示结束后的独立5秒决定窗口；它不会阻塞其他玩家继续出牌。", 11, Color("#93c5fd")))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	box.add_child(row)
-	var accept_button := Button.new()
-	accept_button.text = "签约"
-	accept_button.tooltip_text = "接受这份已完成公开展示的匿名合约。"
-	accept_button.disabled = game_over
-	accept_button.pressed.connect(Callable(self, "_respond_to_pending_contract").bind(contract_id, true))
-	row.add_child(accept_button)
-	var reject_button := Button.new()
-	reject_button.text = "拒绝"
-	reject_button.tooltip_text = "拒绝匿名合约；如果卡面带拒签惩罚，结算时会生效。"
-	reject_button.disabled = game_over
-	reject_button.pressed.connect(Callable(self, "_respond_to_pending_contract").bind(contract_id, false))
-	row.add_child(reject_button)
+	_add_temporary_decision_panel(parent, {
+		"kind": TEMP_DECISION_CONTRACT,
+		"title": "匿名合约签署窗口",
+		"timer": maxf(0.0, float(entry.get("contract_decision_timer", CONTRACT_DECISION_SECONDS))),
+		"badge": "独立决定",
+		"lines": [
+			"%s：%s → %s｜商品：%s｜发起者匿名" % [
+				_card_display_name(String(skill.get("name", "合约牌"))),
+				_contract_district_short_name(source_index),
+				_contract_district_short_name(target_index),
+				_contract_entry_product_text(entry),
+			],
+			"签约奖励：%s｜拒签惩罚：%s" % [
+				_contract_accept_effect_summary(skill),
+				_contract_decline_effect_summary(skill),
+			],
+		],
+		"meta_lines": ["这是公开展示结束后的独立5秒决定窗口；它不会阻塞其他玩家继续出牌。"],
+		"actions": [
+			{
+				"text": "签约",
+				"tooltip": "接受这份已完成公开展示的匿名合约。",
+				"method": "_respond_to_pending_contract",
+				"args": [contract_id, true],
+			},
+			{
+				"text": "拒绝",
+				"tooltip": "拒绝匿名合约；如果卡面带拒签惩罚，结算时会生效。",
+				"method": "_respond_to_pending_contract",
+				"args": [contract_id, false],
+			},
+		],
+	})
 
 
 func _respond_to_active_contract(accept: bool) -> void:
@@ -12815,7 +13195,7 @@ func _add_role_card_face(parent: Container, role_card: Dictionary, compact: bool
 
 
 func _add_first_summon_prompt(parent: Container, player: Dictionary) -> void:
-	if not auto_monsters.is_empty() or _has_pending_target_choice():
+	if not auto_monsters.is_empty() or _has_pending_blocking_decision():
 		return
 	var starter_slot := _first_starter_monster_slot(player)
 	if starter_slot < 0:
@@ -12978,14 +13358,14 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 		var action_button := Button.new()
 		if is_hand_card:
 			action_button.text = "排队中" if bool(skill.get("queued_for_resolution", false)) else "打出"
-			action_button.disabled = game_over or bool(skill.get("queued_for_resolution", false)) or _has_pending_target_choice() or players[selected_player]["action_cooldown"] > 0.0 or float(skill.get("lock_left", 0.0)) > 0.0 or float(skill.get("cooldown_left", 0.0)) > 0.0 or not _can_play_skill_now(selected_player, skill, false)
+			action_button.disabled = game_over or bool(skill.get("queued_for_resolution", false)) or _has_pending_blocking_decision() or players[selected_player]["action_cooldown"] > 0.0 or float(skill.get("lock_left", 0.0)) > 0.0 or float(skill.get("cooldown_left", 0.0)) > 0.0 or not _can_play_skill_now(selected_player, skill, false)
 			action_button.pressed.connect(Callable(self, "_use_skill").bind(slot_index))
 		else:
 			var price := _card_price(skill_name, selected_district, selected_player)
 			var can_receive_with_discard := _player_can_receive_card_with_discard(players[selected_player], skill_name)
 			var needs_discard := _purchase_requires_discard(players[selected_player], skill_name)
 			action_button.text = ("换购 ¥%d" if needs_discard else "获取 ¥%d") % price
-			action_button.disabled = game_over or _has_pending_target_choice() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or int(players[selected_player].get("cash", 0)) < price or not can_receive_with_discard
+			action_button.disabled = game_over or _has_pending_blocking_decision() or selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)) or not _can_buy_card_from_district(selected_district, selected_player) or int(players[selected_player].get("cash", 0)) < price or not can_receive_with_discard
 			if needs_discard:
 				action_button.tooltip_text = "普通手牌已满：点击后会让当前玩家私下选择一张旧普通牌弃掉；弃牌不公开。"
 			action_button.pressed.connect(Callable(self, "_claim_district_card").bind(skill_name))
@@ -13002,7 +13382,9 @@ func _card_theme_color(skill: Dictionary) -> Color:
 			return Color("#c084fc")
 		"monster_takeover":
 			return Color("#f472b6")
-		"city_revenue_boost", "cash_gain", "product_speculation", "product_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "market_stabilize", "product_growth_boon", "route_flow_boon", "city_contract_boon", "region_economy_shift":
+		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage":
+			return Color("#60a5fa")
+		"city_revenue_boost", "cash_gain", "product_speculation", "product_futures", "product_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "market_stabilize", "product_growth_boon", "route_flow_boon", "city_contract_boon", "region_economy_shift":
 			return Color("#f59e0b")
 		"intel_city_reveal", "intel_card_trace", "intel_contract_trace":
 			return Color("#60a5fa")
@@ -13064,6 +13446,8 @@ func _card_strategy_route_label(skill: Dictionary) -> String:
 	var market_pressure := int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0)) + int(skill.get("price_delta", 0))
 	if kind == "monster_card" or kind == "monster_bound_action" or kind == "monster_lure" or kind == "monster_takeover" or tags.contains("怪兽"):
 		return "怪兽路线"
+	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind) or tags.contains("互动"):
+		return "直接互动"
 	if kind == "intel_city_reveal" or kind == "intel_card_trace" or kind == "intel_contract_trace" or tags.contains("情报"):
 		return "情报推理"
 	if kind == "news_event" or tags.contains("新闻"):
@@ -13103,6 +13487,8 @@ func _card_strategy_use_text(skill: Dictionary) -> String:
 			return "用匿名新闻制造热度、供需噪声或区域经营压力，引导怪兽和金融判断。"
 		"天气博弈":
 			return "改写星球天气预报，让1-5个区域在一分钟后进入可利用的气候窗口。"
+		"直接互动":
+			return "直接点名对手、手牌或城市归属状态；效果强，但目标公开，会制造反推线索。"
 		"怪兽路线":
 			return "召唤、升级、诱导或夺取自动怪兽，让怪兽灾害影响资源和城市。"
 		"补给构筑":
@@ -13175,6 +13561,16 @@ func _development_route_archetypes() -> Array:
 			"required_for_ai_baseline": true,
 		},
 		{
+			"id": "direct_interaction",
+			"label": "直接互动",
+			"goal": "用点名拆牌、牵牌、产权冻结和全场齐射干扰对手，同时留下可利用的公开线索。",
+			"play_pattern": "先判断谁最可能领先或握有关键牌，再用互动牌打断节奏、冻结高GDP城市或逼出身份倾向。",
+			"counterplay": "分散手牌价值、保留防御/修复牌、降低单城GDP暴露，或反向猜测谁最受益。",
+			"ai_plan_hint": "落后或需要阻止领先者时提高权重；领先时只少量使用，避免暴露过多意图。",
+			"strategy_labels": ["直接互动"],
+			"required_for_ai_baseline": true,
+		},
+		{
 			"id": "tactical_support",
 			"label": "即时战术",
 			"goal": "补足短线现金、目标、位移或其它临场节奏。",
@@ -13199,6 +13595,8 @@ func _card_development_route_id(skill: Dictionary) -> String:
 			return "monster_pressure"
 		"情报推理", "补给构筑":
 			return "intel_supply"
+		"直接互动":
+			return "direct_interaction"
 	return "tactical_support"
 
 
@@ -13274,8 +13672,12 @@ func _card_balance_pillars(skill: Dictionary) -> Array:
 		or economy_delta < 0 \
 		or decline_delta < 0 \
 		or int(skill.get("panic", 0)) > 0 \
+		or int(skill.get("hand_discard_count", 0)) > 0 \
+		or int(skill.get("hand_steal_count", 0)) > 0 \
+		or int(skill.get("control_gdp_penalty", 0)) > 0 \
+		or int(skill.get("global_barrage_damage", 0)) > 0 \
 		or (kind == "city_gdp_derivative" and String(skill.get("gdp_bet_direction", "up")) == "down" and skill.get("gdp_bet_insurance", false) != true) \
-		or kind in ["route_sabotage", "area_damage", "mudslide", "miasma_shot", "corrosive_breath", "panic_shift", "news_event"]:
+		or kind in ["route_sabotage", "area_damage", "mudslide", "miasma_shot", "corrosive_breath", "panic_shift", "news_event", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"]:
 		_append_unique_pillar(pillars, "压制")
 	if int(skill.get("repair_routes", 0)) > 0 \
 		or int(skill.get("armor", 0)) > 0 \
@@ -13287,6 +13689,8 @@ func _card_balance_pillars(skill: Dictionary) -> Array:
 		_append_unique_pillar(pillars, "防御")
 	if kind in ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"] or tags.contains("情报"):
 		_append_unique_pillar(pillars, "信息")
+	if tags.contains("互动") or kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"]:
+		_append_unique_pillar(pillars, "互动")
 	if int(skill.get("draw_amount", 0)) > 0 \
 		or int(skill.get("card_access_extra_hops", 0)) > 0 \
 		or bool(skill.get("card_access_global", false)) \
@@ -13336,6 +13740,8 @@ func _development_route_expected_pillars(route_id: String) -> Array:
 			return ["怪兽", "压制", "公开门槛"]
 		"intel_supply":
 			return ["信息", "补给", "公开门槛"]
+		"direct_interaction":
+			return ["互动", "压制", "公开门槛"]
 	return ["临场"]
 
 
@@ -13472,7 +13878,7 @@ func _development_route_pillar_summary(entry: Dictionary) -> String:
 	if not (pillar_counts_variant is Dictionary):
 		return "暂无"
 	var pillar_counts := pillar_counts_variant as Dictionary
-	var ordered := ["收益", "压制", "防御", "信息", "补给", "怪兽", "合约", "市场", "GDP金融", "公开门槛", "临场"]
+	var ordered := ["收益", "压制", "防御", "互动", "信息", "补给", "怪兽", "合约", "市场", "GDP金融", "公开门槛", "临场"]
 	var pieces := []
 	for pillar in ordered:
 		var count := int(pillar_counts.get(pillar, 0))
@@ -13761,6 +14167,38 @@ func _card_art_stats(skill: Dictionary) -> String:
 			float(skill.get("gdp_bet_multiplier", 1.0)),
 			_duration_short_text(_gdp_bet_duration_seconds(skill)),
 		]
+	if String(skill.get("kind", "")) == "product_futures":
+		return "%s｜%s×%.2f｜%s%s" % [
+			_card_strategy_route_label(skill),
+			"看涨" if String(skill.get("product_bet_direction", "up")) == "up" else "看跌",
+			float(skill.get("product_bet_multiplier", 1.0)),
+			_duration_short_text(_product_futures_duration_seconds(skill)),
+			"｜仓库" if bool(skill.get("requires_warehouse_city", false)) else "",
+		]
+	if String(skill.get("kind", "")) == "player_hand_disrupt":
+		return "%s｜拆%d%s" % [
+			_card_strategy_route_label(skill),
+			maxi(1, int(skill.get("hand_discard_count", 1))),
+			"｜封%s" % _duration_short_text(float(skill.get("hand_lock_seconds", 0.0))) if float(skill.get("hand_lock_seconds", 0.0)) > 0.0 else "",
+		]
+	if String(skill.get("kind", "")) == "player_hand_steal":
+		return "%s｜牵%d%s" % [
+			_card_strategy_route_label(skill),
+			maxi(1, int(skill.get("hand_steal_count", 1))),
+			"｜封%s" % _duration_short_text(float(skill.get("hand_lock_seconds", 0.0))) if float(skill.get("hand_lock_seconds", 0.0)) > 0.0 else "",
+		]
+	if String(skill.get("kind", "")) == "city_control_dispute":
+		return "%s｜冻结%s｜GDP-%d" % [
+			_card_strategy_route_label(skill),
+			_duration_short_text(float(skill.get("control_block_seconds", 0.0))),
+			int(skill.get("control_gdp_penalty", 0)),
+		]
+	if String(skill.get("kind", "")) == "global_barrage":
+		return "%s｜%d城×%d伤" % [
+			_card_strategy_route_label(skill),
+			maxi(1, int(skill.get("global_barrage_target_count", 1))),
+			maxi(1, int(skill.get("global_barrage_damage", 1))),
+		]
 	if String(skill.get("kind", "")) != "monster_card":
 		var route := _card_strategy_route_label(skill)
 		if String(skill.get("kind", "")) == "weather_control":
@@ -13791,7 +14229,8 @@ func _card_art_stats(skill: Dictionary) -> String:
 
 func _card_rule_facts(skill: Dictionary) -> Array:
 	var facts := []
-	facts.append("目标:%s" % ("指定怪兽" if _skill_requires_target_monster(skill) else "无需指定怪兽"))
+	var target_label := "指定怪兽" if _skill_targets_monster(skill) else ("指定玩家" if _skill_targets_player(skill) else "无需指定怪兽")
+	facts.append("目标:%s" % target_label)
 	facts.append("出牌:%s" % ("固定技能，不会消失" if bool(skill.get("persistent", false)) else "一次性，打出后消失"))
 	facts.append(_skill_play_requirement_text(skill, selected_player))
 	if String(skill.get("kind", "")) == "monster_card":
@@ -13863,6 +14302,15 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var weather_zone_count := int(skill.get("weather_zone_count", 0))
 	var weather_forecast_lead := float(skill.get("weather_forecast_lead_seconds", 0.0))
 	var weather_duration := float(skill.get("weather_duration_seconds", 0.0))
+	var hand_discard_count := int(skill.get("hand_discard_count", 0))
+	var hand_steal_count := int(skill.get("hand_steal_count", 0))
+	var hand_lock_seconds := float(skill.get("hand_lock_seconds", 0.0))
+	var target_cash_penalty := int(skill.get("target_cash_penalty", 0))
+	var control_block_seconds := float(skill.get("control_block_seconds", 0.0))
+	var control_gdp_penalty := int(skill.get("control_gdp_penalty", 0))
+	var global_barrage_damage := int(skill.get("global_barrage_damage", 0))
+	var global_barrage_target_count := int(skill.get("global_barrage_target_count", 0))
+	var global_barrage_route_damage := int(skill.get("global_barrage_route_damage", 0))
 	if move_m > 0.0:
 		facts.append("移动:%s" % _meters_text(move_m))
 	if range_m > 0.0:
@@ -13979,6 +14427,22 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 		facts.append("持续:%s" % _duration_short_text(weather_duration))
 	if weather_zone_count > 0:
 		facts.append("覆盖:%d区" % weather_zone_count)
+	if hand_discard_count > 0:
+		facts.append("拆牌:%d" % hand_discard_count)
+	if hand_steal_count > 0:
+		facts.append("牵牌:%d" % hand_steal_count)
+	if hand_lock_seconds > 0.0:
+		facts.append("封锁手牌:%s" % _duration_short_text(hand_lock_seconds))
+	if target_cash_penalty > 0:
+		facts.append("目标成本:¥%d" % target_cash_penalty)
+	if control_block_seconds > 0.0:
+		facts.append("产权冻结:%s" % _duration_short_text(control_block_seconds))
+	if control_gdp_penalty > 0:
+		facts.append("归属惩罚:%dGDP/min" % control_gdp_penalty)
+	if global_barrage_damage > 0:
+		facts.append("齐射伤害:%d×%d城" % [global_barrage_damage, max(1, global_barrage_target_count)])
+	if global_barrage_route_damage > 0:
+		facts.append("齐射断路:+%d" % global_barrage_route_damage)
 	return facts
 
 
@@ -14079,6 +14543,30 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 				"%s公开翻面：供给区、需求区和合约商品被投到所有玩家屏幕中央。" % label,
 				"公开展示结束后，目标城市真实业主会再获得独立5秒签约/拒绝窗口；发起者仍保持匿名。",
 				"签约会写入区域供需和流通奖励，拒签或超时会按卡面惩罚落到账本与商路。",
+			]
+		"player_hand_disrupt":
+			return [
+				"%s翻面时，目标玩家头像被短暂标蓝，出牌者仍被匿名遮罩盖住。" % label,
+				"系统私下拆除目标的一张普通手牌；具体牌名只进入目标玩家自己的流水。",
+				"公开轨道只留下“谁被拆牌”和商品流动门槛，方便其他玩家反推谁最受益。",
+			]
+		"player_hand_steal":
+			return [
+				"%s打开一条隐形补给索，目标玩家与匿名出牌者之间闪过牵取轨迹。" % label,
+				"目标的一张普通手牌会被私下牵走；若牵取方无法接收，则转化成拆牌和情报补偿。",
+				"手牌内容不公开，但目标、时机和商品门槛会成为身份推理线索。",
+			]
+		"city_control_dispute":
+			return [
+				"%s把目标城市的产权登记切成多层匿名印章。" % label,
+				"城市进入短暂产权争议，GDP/min受到归属惩罚；真实业主仍不公开。",
+				"争议会留在城市公开线索中，可配合做空、怪兽破坏或归属竞猜。",
+			]
+		"global_barrage":
+			return [
+				"%s展开轨道齐射矩阵，数座高价值城市被依次锁定。" % label,
+				"齐射优先打击非己方高GDP城市，造成区域/城市伤害，并可能追加商路损伤。",
+				"所有目标都会公开，强压制同时也暴露出牌者可能想阻止谁领先。",
 			]
 		"product_growth_boon":
 			return [
@@ -14247,6 +14735,9 @@ func _card_resolution_target_text(skill: Dictionary, entry: Dictionary = {}) -> 
 			var actor: Dictionary = auto_monsters[target_slot]
 			actor_name = String(actor.get("name", "怪兽"))
 		pieces.append("目标怪兽：怪%d·%s" % [target_slot + 1, actor_name])
+	var target_player := int(entry.get("target_player", -1))
+	if target_player >= 0 and target_player < players.size():
+		pieces.append("目标玩家：玩家%d" % (target_player + 1))
 	if String(skill.get("kind", "")) == "area_trade_contract":
 		pieces.append("合约：%s→%s" % [
 			_contract_district_short_name(int(entry.get("contract_source_district", -1))),
@@ -14350,9 +14841,15 @@ func _card_resolution_aftermath_clue_text(skill: Dictionary, resolved: bool) -> 
 		return "城市经营结构和账本会持续变化"
 	if kind == "area_trade_contract":
 		return "匿名合约会改写区域供需与签拒线索"
+	if ["player_hand_disrupt", "player_hand_steal"].has(kind):
+		return "目标玩家公开，手牌细节私密"
+	if kind == "city_control_dispute":
+		return "城市产权争议会压低GDP并留下归属线索"
+	if kind == "global_barrage":
+		return "多座目标城市公开受击，可反推压制意图"
 	if ["route_flow_boon", "route_insurance", "route_sabotage"].has(kind):
 		return "商路速度或断损会影响后续GDP"
-	if ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize"].has(kind):
+	if ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize"].has(kind):
 		return "商品天气和供需压力等待重算"
 	if kind == "region_economy_shift":
 		return "区域生产/交通/消费参数已改写"
@@ -14378,6 +14875,8 @@ func _card_resolution_effect_position(skill: Dictionary, entry: Dictionary = {})
 		var target_index := int(entry.get("contract_target_district", -1))
 		if target_index >= 0 and target_index < districts.size():
 			return _district_center(target_index)
+	if _skill_targets_player(skill) and selected_district >= 0 and selected_district < districts.size():
+		return _district_center(selected_district)
 	var district_index := int(entry.get("selected_district", selected_district))
 	if district_index >= 0 and district_index < districts.size():
 		return _district_center(district_index)
@@ -14408,7 +14907,9 @@ func _card_resolution_effect_style(skill: Dictionary) -> String:
 		return "monster_command"
 	if ["city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance", "route_sabotage", "area_trade_contract"].has(kind):
 		return "city"
-	if ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize"].has(kind):
+	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
+		return "interaction"
+	if ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize"].has(kind):
 		return "product"
 	if kind == "region_economy_shift":
 		return "region"
@@ -14434,6 +14935,7 @@ func _card_resolution_effect_style_label(style: String) -> String:
 		"region": "区域",
 		"news": "新闻",
 		"weather": "天气",
+		"interaction": "互动",
 		"heat": "热度",
 		"supply": "补给",
 		"cash": "资金",
@@ -14462,7 +14964,7 @@ func _short_card_text(text: String, max_len: int) -> String:
 func _add_action_button(parent: Container, text: String, method: String) -> void:
 	var button := Button.new()
 	button.text = text
-	button.disabled = game_over or _has_pending_target_choice() or players[selected_player]["action_cooldown"] > 0.0
+	button.disabled = game_over or _has_pending_blocking_decision() or players[selected_player]["action_cooldown"] > 0.0
 	button.pressed.connect(Callable(self, method))
 	parent.add_child(button)
 
@@ -14656,6 +15158,14 @@ func _has_pending_target_choice() -> bool:
 	return pending_target_player_index >= 0 and pending_target_slot_index >= 0
 
 
+func _has_pending_player_target_choice() -> bool:
+	return pending_player_target_player_index >= 0 and pending_player_target_slot_index >= 0
+
+
+func _has_pending_blocking_decision() -> bool:
+	return _has_pending_target_choice() or _has_pending_player_target_choice()
+
+
 func _pending_target_skill() -> Dictionary:
 	if pending_target_player_index < 0 or pending_target_player_index >= players.size():
 		return {}
@@ -14663,6 +15173,18 @@ func _pending_target_skill() -> Dictionary:
 	if pending_target_slot_index < 0 or pending_target_slot_index >= player["slots"].size():
 		return {}
 	var skill = player["slots"][pending_target_slot_index]
+	if skill == null:
+		return {}
+	return skill as Dictionary
+
+
+func _pending_player_target_skill() -> Dictionary:
+	if pending_player_target_player_index < 0 or pending_player_target_player_index >= players.size():
+		return {}
+	var player: Dictionary = players[pending_player_target_player_index]
+	if pending_player_target_slot_index < 0 or pending_player_target_slot_index >= player["slots"].size():
+		return {}
+	var skill = player["slots"][pending_player_target_slot_index]
 	if skill == null:
 		return {}
 	return skill as Dictionary
@@ -14686,12 +15208,34 @@ func _begin_target_monster_choice(slot_index: int) -> void:
 	_refresh_ui()
 
 
+func _begin_target_player_choice(slot_index: int) -> void:
+	if selected_player < 0 or selected_player >= players.size():
+		return
+	var player: Dictionary = players[selected_player]
+	if slot_index < 0 or slot_index >= player["slots"].size():
+		return
+	var skill = player["slots"][slot_index]
+	if skill == null:
+		return
+	if not _can_play_skill_now(selected_player, skill as Dictionary, true):
+		return
+	pending_player_target_player_index = selected_player
+	pending_player_target_slot_index = slot_index
+	_log("匿名打出%s：请选择一个目标玩家；目标会公开，出牌者仍匿名。" % _card_display_name(String(skill["name"])))
+	_refresh_ui()
+
+
 func _clear_pending_target_choice(resume_time := true) -> void:
 	pending_target_player_index = -1
 	pending_target_slot_index = -1
 	if resume_time and pending_target_paused_time and not game_over and (menu_overlay == null or not menu_overlay.visible):
 		time_scale = max(1.0, speed_before_target_choice)
 	pending_target_paused_time = false
+
+
+func _clear_pending_player_target_choice() -> void:
+	pending_player_target_player_index = -1
+	pending_player_target_slot_index = -1
 
 
 func _cancel_pending_target_choice() -> void:
@@ -14706,21 +15250,70 @@ func _cancel_pending_target_choice() -> void:
 	_refresh_ui()
 
 
+func _cancel_pending_player_target_choice() -> void:
+	if not _has_pending_player_target_choice():
+		return
+	var skill := _pending_player_target_skill()
+	var card_label := _card_display_name(String(skill.get("name", "")))
+	if card_label == "":
+		card_label = "卡牌"
+	_log("已取消%s的目标玩家选择，卡牌未消耗。" % card_label)
+	_clear_pending_player_target_choice()
+	_refresh_ui()
+
+
 func _add_pending_target_buttons(parent: Container) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	parent.add_child(row)
+	var pending_skill := _pending_target_skill()
+	var actions := []
 	for i in range(auto_monsters.size()):
 		var actor: Dictionary = auto_monsters[i]
-		var button := Button.new()
-		button.text = "怪%d %s" % [i + 1, String(actor.get("name", "怪兽"))]
-		button.disabled = bool(actor.get("down", false))
-		button.pressed.connect(Callable(self, "_choose_pending_target_monster").bind(i))
-		row.add_child(button)
-	var cancel_button := Button.new()
-	cancel_button.text = "取消"
-	cancel_button.pressed.connect(Callable(self, "_cancel_pending_target_choice"))
-	row.add_child(cancel_button)
+		actions.append({
+			"text": "怪%d %s" % [i + 1, String(actor.get("name", "怪兽"))],
+			"tooltip": "指定这只怪兽作为本张卡的目标。",
+			"disabled": bool(actor.get("down", false)),
+			"method": "_choose_pending_target_monster",
+			"args": [i],
+		})
+	actions.append({
+		"text": "取消",
+		"tooltip": "取消目标选择，卡牌留在手牌。",
+		"method": "_cancel_pending_target_choice",
+	})
+	_add_temporary_decision_panel(parent, {
+		"kind": TEMP_DECISION_MONSTER_TARGET,
+		"title": "请选择目标怪兽",
+		"badge": "指定后入轨道",
+		"lines": ["%s 需要指定目标后才会结算。" % String(pending_skill.get("name", "这张卡"))],
+		"meta_lines": ["目标选择不公开出牌者；进入匿名轨道后，卡面和目标会向所有玩家展示。"],
+		"actions": actions,
+	})
+
+
+func _add_pending_player_target_buttons(parent: Container) -> void:
+	var pending_skill := _pending_player_target_skill()
+	var actions := []
+	for i in range(players.size()):
+		if i == pending_player_target_player_index:
+			continue
+		actions.append({
+			"text": "玩家%d" % (i + 1),
+			"tooltip": "把这名玩家作为直接互动目标；目标会成为公开线索。",
+			"method": "_choose_pending_target_player",
+			"args": [i],
+		})
+	actions.append({
+		"text": "取消",
+		"tooltip": "取消目标玩家选择，卡牌留在手牌。",
+		"method": "_cancel_pending_player_target_choice",
+	})
+	_add_temporary_decision_panel(parent, {
+		"kind": TEMP_DECISION_PLAYER_TARGET,
+		"title": "请选择目标玩家",
+		"badge": "直接互动",
+		"lines": ["%s 会影响指定玩家；效果公开，出牌者匿名。" % String(pending_skill.get("name", "这张卡"))],
+		"meta_lines": ["目标玩家、影响类型和结算时间会变成推理线索；手牌细节仍保持私密。"],
+		"actions": actions,
+	})
 
 
 func _choose_pending_target_monster(slot: int) -> void:
@@ -14750,6 +15343,36 @@ func _choose_pending_target_monster(slot: int) -> void:
 		return
 	if _queue_skill_resolution(pending_target_player_index, pending_target_slot_index, slot):
 		_clear_pending_target_choice(true)
+	_refresh_ui()
+
+
+func _choose_pending_target_player(target_player: int) -> void:
+	if not _has_pending_player_target_choice():
+		return
+	if pending_player_target_player_index < 0 or pending_player_target_player_index >= players.size():
+		_clear_pending_player_target_choice()
+		_refresh_ui()
+		return
+	var player: Dictionary = players[pending_player_target_player_index]
+	if pending_player_target_slot_index < 0 or pending_player_target_slot_index >= player["slots"].size():
+		_clear_pending_player_target_choice()
+		_refresh_ui()
+		return
+	var skill = player["slots"][pending_player_target_slot_index]
+	if skill == null:
+		_clear_pending_player_target_choice()
+		_refresh_ui()
+		return
+	if not _can_play_skill_now(pending_player_target_player_index, skill as Dictionary, true):
+		_clear_pending_player_target_choice()
+		_refresh_ui()
+		return
+	if target_player < 0 or target_player >= players.size() or target_player == pending_player_target_player_index:
+		_log("目标玩家无效，请重新选择。")
+		_refresh_ui()
+		return
+	if _queue_skill_resolution(pending_player_target_player_index, pending_player_target_slot_index, -1, target_player):
+		_clear_pending_player_target_choice()
 	_refresh_ui()
 
 
@@ -15248,8 +15871,29 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 	return _ai_best_city_district(player_index, false)
 
 
+func _ai_direct_interaction_target_player(player_index: int) -> int:
+	var best_player := -1
+	var best_score := -999999
+	var leader := _visible_score_leader_entry()
+	var leader_index := int(leader.get("player_index", -1))
+	for i in range(players.size()):
+		if i == player_index:
+			continue
+		var score := _player_visible_settlement_estimate(i)
+		score += _player_active_city_count(i) * 90
+		score += _ai_owned_active_monster_count(i) * 35
+		if i == leader_index:
+			score += 260
+		if _ai_competitive_posture(player_index) == "trailing":
+			score += 80
+		if score > best_score:
+			best_score = score
+			best_player = i
+	return best_player
+
+
 func _ai_pressure_kind(kind: String, skill: Dictionary = {}) -> bool:
-	if ["route_sabotage", "panic_shift", "news_event", "monster_lure", "mudslide", "area_damage", "special_monster_delay"].has(kind):
+	if ["route_sabotage", "panic_shift", "news_event", "monster_lure", "mudslide", "area_damage", "special_monster_delay", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
 		return true
 	if kind == "weather_control":
 		return String(skill.get("weather_type", "")) in ["solar_storm", "acid_rain", "magnetic_fog"]
@@ -15369,7 +16013,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -16079,7 +16723,7 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 			if resolved_owner == player_index:
 				bonus += mini(120, _ai_own_route_threat_score(player_index) / 3)
 		"disrupt_competitors":
-			if ["route_sabotage", "panic_shift", "news_event", "weather_control", "monster_lure", "mudslide", "area_damage", "city_gdp_derivative"].has(kind):
+			if ["route_sabotage", "panic_shift", "news_event", "weather_control", "monster_lure", "mudslide", "area_damage", "city_gdp_derivative", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if resolved_owner >= 0 and resolved_owner != player_index:
 				bonus += 70
@@ -16450,7 +17094,7 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 			if resolved_owner == player_index:
 				bonus += mini(132, _ai_product_route_threat_score(player_index, plan_product) / 2)
 		"attack_rival":
-			if ["route_sabotage", "monster_lure", "panic_shift", "news_event", "weather_control", "mudslide", "area_damage", "region_economy_shift", "city_gdp_derivative"].has(kind):
+			if ["route_sabotage", "monster_lure", "panic_shift", "news_event", "weather_control", "mudslide", "area_damage", "region_economy_shift", "city_gdp_derivative", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
 				bonus += 116
 			if resolved_owner >= 0 and resolved_owner != player_index:
 				bonus += 76
@@ -16584,7 +17228,8 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 	pressure_strength += int(skill.get("panic", 0)) / 22 + int(ceil(float(maxi(0, int(skill.get("market_supply_pressure", 0)))) / 2.0))
 	if String(skill.get("gdp_bet_direction", "")) == "down" and insurance_strength <= 0:
 		pressure_strength += maxi(1, int(round(float(skill.get("gdp_bet_multiplier", 1.0))))) + int(skill.get("gdp_bet_destroy_bonus", 0)) / 240
-	if ["monster_lure", "mudslide", "area_damage", "weather_control", "news_event", "route_sabotage", "panic_shift"].has(kind):
+	pressure_strength += int(skill.get("hand_discard_count", 0)) + int(skill.get("hand_steal_count", 0)) * 2 + int(skill.get("control_gdp_penalty", 0)) / 45 + int(skill.get("global_barrage_damage", 0)) * maxi(1, int(skill.get("global_barrage_target_count", 0)))
+	if ["monster_lure", "mudslide", "area_damage", "weather_control", "news_event", "route_sabotage", "panic_shift", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
 		pressure_strength += 1
 	var bonus := 0
 	var penalty := 0
@@ -16602,14 +17247,14 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 				reasons.append("供给城交通")
 		"create_demand":
 			if demand_boost > 0:
-				bonus += 92 + demand_boost * 38
+				bonus += 140 + demand_boost * 56
 				field_match += 2
 				reasons.append("补需求")
 			elif traffic_boost > 0:
 				bonus += 38 + traffic_boost * 20
 				reasons.append("接通需求")
 			elif supply_boost > 0:
-				penalty += 72 + supply_boost * 26
+				penalty += 180 + supply_boost * 60
 				reasons.append("暂缓补供给")
 		"strengthen_route":
 			if growth_boost > 0:
@@ -17085,6 +17730,12 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	score += int(skill.get("trace_card_count", 0)) * 42
 	score += int(skill.get("reveal_city_count", 0)) * 48
 	score += int(skill.get("trace_contract_count", 0)) * 45
+	score += int(skill.get("hand_discard_count", 0)) * (82 if harmful_target or target_owner == -999 else -30)
+	score += int(skill.get("hand_steal_count", 0)) * (112 if harmful_target or target_owner == -999 else -45)
+	score += int(round(float(skill.get("hand_lock_seconds", 0.0)) * 2.0)) if harmful_target or target_owner == -999 else 0
+	score += int(skill.get("control_gdp_penalty", 0)) * (2 if harmful_target else -1)
+	score += int(round(float(skill.get("control_block_seconds", 0.0)) / 2.5)) if harmful_target else 0
+	score += int(skill.get("global_barrage_target_count", 0)) * 36 + int(skill.get("global_barrage_damage", 0)) * 72 + int(skill.get("global_barrage_route_damage", 0)) * 58
 	score += int(skill.get("revenue_amount", 0)) / 2
 	score += int(skill.get("contract_income", 0)) * maxi(1, int(ceil(_skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1) / ECONOMY_LEGACY_TURN_SECONDS))) / 5
 	score += int(round((float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 120.0)) if helpful_target else 0
@@ -17145,6 +17796,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"policy_kind": kind,
 		"district": fallback,
 		"target_slot": -1,
+		"target_player": -1,
 		"product": planned_product,
 		"focus_product": focus_product,
 		"focus_score": _ai_focus_score(player_index),
@@ -17218,6 +17870,15 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		var target_range := float(skill.get("range", -1.0)) if kind == "mudslide" else -1.0
 		context["district"] = _ai_best_district_near_monster(player_index, target_slot, target_range)
 		context["score"] = int(context["score"]) + 80
+	elif _skill_targets_player(skill):
+		var target_player := _ai_direct_interaction_target_player(player_index)
+		if target_player < 0:
+			return {}
+		context["target_player"] = target_player
+		context["district"] = rival_city if rival_city >= 0 else fallback
+		context["target_owner"] = target_player
+		context["score"] = int(context["score"]) + 100 + maxi(0, _player_visible_settlement_estimate(target_player) - _player_visible_settlement_estimate(player_index)) / 18
+		context["reason"] = "直接互动压制%s｜公开目标但隐藏出牌者" % _interaction_target_label(target_player)
 	elif kind == "area_trade_contract":
 		if own_city < 0 or rival_city < 0:
 			return {}
@@ -17326,6 +17987,28 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			context["target_city"] = int(context["district"])
 			context["target_owner"] = int(shifted_city.get("owner", -1))
 		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]))
+	elif kind == "city_control_dispute":
+		if rival_city < 0:
+			return {}
+		context["district"] = rival_city
+		context["target_city"] = rival_city
+		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
+		context["score"] = int(context["score"]) + 120 + int(skill.get("control_gdp_penalty", 0)) * 2
+		context["reason"] = "冻结竞争城市产权｜%s｜GDP惩罚%d" % [
+			String(districts[rival_city].get("name", "城市")),
+			int(skill.get("control_gdp_penalty", 0)),
+		]
+	elif kind == "global_barrage":
+		if rival_city < 0:
+			return {}
+		context["district"] = rival_city
+		context["target_city"] = rival_city
+		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
+		context["score"] = int(context["score"]) + 130 + int(skill.get("global_barrage_target_count", 1)) * 24 + int(skill.get("global_barrage_damage", 1)) * 58
+		context["reason"] = "全场齐射压制高价值城市｜目标数%d｜伤害%d" % [
+			int(skill.get("global_barrage_target_count", 1)),
+			int(skill.get("global_barrage_damage", 1)),
+		]
 	elif kind == "intel_city_reveal":
 		if rival_city < 0:
 			return {}
@@ -17704,9 +18387,10 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 	var metadata := {
 		"card_name": String(candidate.get("card_name", "")),
 		"target_slot": target_slot,
+		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -17715,6 +18399,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_candidates: Array = []) -> bool:
 	var slot_index := int(candidate.get("slot_index", -1))
 	var target_slot := int(candidate.get("target_slot", -1))
+	var target_player := int(candidate.get("target_player", -1))
 	var previous_player := selected_player
 	var previous_district := selected_district
 	var previous_product := selected_trade_product
@@ -17730,7 +18415,7 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	if not card_resolution_queue.is_empty() and not card_resolution_batch_locked and active_card_resolution.is_empty():
 		desired_bid = mini(budget, _highest_card_resolution_bid() + _ai_next_bid_increment(_highest_card_resolution_bid()))
 	_set_card_bid_for_player(player_index, desired_bid, false)
-	var queued := _queue_skill_resolution(player_index, slot_index, target_slot)
+	var queued := _queue_skill_resolution(player_index, slot_index, target_slot, target_player)
 	if queued:
 		var queue_index := _queued_card_entry_index_for_player(player_index)
 		var in_next_batch := false
@@ -17751,7 +18436,12 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			"匿名出牌",
 			int(candidate.get("district", -1)),
 			int(candidate.get("score", 0)),
-			"%s｜目标怪兽%d｜报价预算¥%d｜%s" % [String(candidate.get("card_name", "卡牌")), target_slot + 1, budget, String(candidate.get("reason", "按卡牌策略评分"))],
+			"%s｜目标%s｜报价预算¥%d｜%s" % [
+				String(candidate.get("card_name", "卡牌")),
+				("玩家%d" % (target_player + 1)) if target_player >= 0 else ("怪兽%d" % (target_slot + 1) if target_slot >= 0 else "当前区域/商品"),
+				budget,
+				String(candidate.get("reason", "按卡牌策略评分")),
+			],
 			all_candidates,
 			_ai_card_decision_metadata(candidate, target_slot, budget)
 		)
@@ -18995,9 +19685,213 @@ func _canonical_card_supply_name(skill_name: String) -> String:
 	return base_name if _skill_exists(base_name) else ""
 
 
+func _current_run_product_names() -> Array:
+	var result := []
+	for i in range(districts.size()):
+		var district_variant: Variant = districts[i]
+		if not (district_variant is Dictionary):
+			continue
+		var district: Dictionary = district_variant
+		for product_variant in district.get("products", []):
+			_append_unique_string(result, String(product_variant))
+		for demand_variant in district.get("demands", []):
+			_append_unique_string(result, String(demand_variant))
+		var city := _district_city(i)
+		if _city_is_active(city):
+			for product_name_variant in _city_product_names(city):
+				_append_unique_string(result, String(product_name_variant))
+			for demand_name_variant in _city_demand_names(city):
+				_append_unique_string(result, String(demand_name_variant))
+	return result
+
+
+func _district_local_product_names(district_index: int) -> Array:
+	var result := []
+	if district_index < 0 or district_index >= districts.size():
+		return result
+	var district: Dictionary = districts[district_index]
+	for product_variant in district.get("products", []):
+		_append_unique_string(result, String(product_variant))
+	for demand_variant in district.get("demands", []):
+		_append_unique_string(result, String(demand_variant))
+	var city := _district_city(district_index)
+	if _city_is_active(city):
+		for product_name_variant in _city_product_names(city):
+			_append_unique_string(result, String(product_name_variant))
+		for demand_name_variant in _city_demand_names(city):
+			_append_unique_string(result, String(demand_name_variant))
+	return result
+
+
+func _skill_fixed_product_requirements(skill: Dictionary) -> Array:
+	var result := []
+	var play_product := String(skill.get("play_product", ""))
+	if play_product != "":
+		_append_unique_string(result, play_product)
+	var contract_products_variant: Variant = skill.get("contract_products", [])
+	if contract_products_variant is Array:
+		for product_variant in contract_products_variant:
+			_append_unique_string(result, String(product_variant))
+	return result
+
+
+func _skill_uses_current_product(skill: Dictionary) -> bool:
+	var kind := String(skill.get("kind", ""))
+	if ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift"].has(kind):
+		return true
+	if kind == "area_trade_contract" and String(skill.get("contract_product_mode", "selected")) != "fixed":
+		return true
+	if int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
+		return true
+	return false
+
+
+func _card_allowed_by_run_products(skill_name: String) -> bool:
+	var canonical_name := _canonical_card_supply_name(skill_name)
+	if canonical_name == "":
+		return false
+	var skill := _skill_definition(canonical_name)
+	if skill.is_empty():
+		return false
+	if String(skill.get("kind", "")) == "monster_card":
+		return true
+	var required_products := _skill_fixed_product_requirements(skill)
+	if required_products.is_empty():
+		return true
+	var run_products := _current_run_product_names()
+	if run_products.is_empty():
+		return true
+	for product_variant in required_products:
+		if not run_products.has(String(product_variant)):
+			return false
+	return true
+
+
+func _district_card_is_valid_for_district(district_index: int, skill_name: String) -> bool:
+	return _district_card_affinity_score(district_index, skill_name) >= 0
+
+
+func _district_card_affinity_score(district_index: int, skill_name: String) -> int:
+	var canonical_name := _canonical_card_supply_name(skill_name)
+	if canonical_name == "" or district_index < 0 or district_index >= districts.size():
+		return -999
+	if not _card_allowed_by_run_products(canonical_name):
+		return -999
+	var skill := _skill_definition(canonical_name)
+	if skill.is_empty():
+		return -999
+	var local_products := _district_local_product_names(district_index)
+	var terrain := String(districts[district_index].get("terrain", "land"))
+	if String(skill.get("kind", "")) == "monster_card":
+		return _monster_card_district_affinity_score(skill, district_index, local_products, terrain)
+	var required_products := _skill_fixed_product_requirements(skill)
+	if not required_products.is_empty():
+		var local_match := false
+		for product_variant in required_products:
+			if local_products.has(String(product_variant)):
+				local_match = true
+				break
+		return 230 if local_match else -999
+	var score := 20
+	if _skill_uses_current_product(skill):
+		if local_products.is_empty():
+			return -999
+		score += 90
+	var kind := String(skill.get("kind", ""))
+	if terrain == "ocean" and ["weather_control", "route_flow_boon", "route_insurance", "card_access_boon", "product_contract_boon"].has(kind):
+		score += 45
+	if terrain == "land" and ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "region_economy_shift"].has(kind):
+		score += 35
+	return score
+
+
+func _monster_card_district_affinity_score(skill: Dictionary, district_index: int, local_products: Array, terrain: String) -> int:
+	var monster_name := String(skill.get("monster_name", ""))
+	var catalog_index := _monster_catalog_index_by_name(monster_name)
+	if catalog_index < 0:
+		return 20
+	var entry := _catalog_entry(catalog_index)
+	var score := 35
+	var summon_access := String(skill.get("summon_access", entry.get("summon_access", "monster_zone")))
+	if summon_access == "ocean_monster_zone" or summon_access == "ocean":
+		if terrain != "ocean":
+			return -999
+		score += 95
+	elif summon_access == "land_monster_zone" or summon_access == "land":
+		if terrain != "land":
+			return -999
+		score += 75
+	var focus: Array = entry.get("resource_focus", [])
+	for product_variant in focus:
+		if local_products.has(String(product_variant)):
+			score += 130
+	var traits: Array = entry.get("movement_traits", [])
+	if terrain == "ocean" and traits.has("aquatic"):
+		score += 70
+	if terrain == "land" and not traits.has("aquatic"):
+		score += 20
+	return score
+
+
+func _district_card_candidate_pool(district_index: int) -> Array:
+	var priority := []
+	var secondary := []
+	var fallback := []
+	for skill_name_variant in _current_run_card_pool():
+		var skill_name := String(skill_name_variant)
+		var score := _district_card_affinity_score(district_index, skill_name)
+		if score < 0:
+			continue
+		if score >= 150:
+			priority.append(skill_name)
+		elif score >= 70:
+			secondary.append(skill_name)
+		else:
+			fallback.append(skill_name)
+	return _shuffled_card_list(priority) + _shuffled_card_list(secondary) + _shuffled_card_list(fallback)
+
+
+func _district_card_supply_source_label(district_index: int, skill_name: String) -> String:
+	var canonical_name := _canonical_card_supply_name(skill_name)
+	if canonical_name == "":
+		return "区域补给"
+	var skill := _skill_definition(canonical_name)
+	if skill.is_empty():
+		return "区域补给"
+	var local_products := _district_local_product_names(district_index)
+	if String(skill.get("kind", "")) == "monster_card":
+		var monster_name := String(skill.get("monster_name", ""))
+		var catalog_index := _monster_catalog_index_by_name(monster_name)
+		var entry := _catalog_entry(catalog_index) if catalog_index >= 0 else {}
+		var focus: Array = entry.get("resource_focus", [])
+		for product_variant in focus:
+			if local_products.has(String(product_variant)):
+				return "怪兽偏好:%s" % String(product_variant)
+		var summon_access := String(skill.get("summon_access", entry.get("summon_access", "monster_zone")))
+		if summon_access == "ocean_monster_zone" or summon_access == "ocean":
+			return "海域怪兽"
+		if summon_access == "land_monster_zone" or summon_access == "land":
+			return "陆域怪兽"
+		return "怪兽卡"
+	var required_products := _skill_fixed_product_requirements(skill)
+	for product_variant in required_products:
+		var product_name := String(product_variant)
+		if local_products.has(product_name):
+			return "本区商品:%s" % product_name
+	if _skill_uses_current_product(skill) and not local_products.is_empty():
+		return "本区供需:%s" % String(local_products[0])
+	var terrain := String(districts[district_index].get("terrain", "land")) if district_index >= 0 and district_index < districts.size() else "land"
+	if terrain == "ocean":
+		return "海域补给"
+	return "公共补给"
+
+
 func _current_run_card_pool() -> Array:
 	var result := []
-	_append_unique_cards(result, COMMON_CARD_POOL)
+	for skill_name_variant in COMMON_CARD_POOL:
+		var skill_name := String(skill_name_variant)
+		if _card_allowed_by_run_products(skill_name):
+			_append_unique_cards(result, [skill_name])
 	_append_unique_cards(result, _monster_card_names(1))
 	return result
 
@@ -19083,6 +19977,14 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["经济", "合约"]
 		"area_trade_contract":
 			return ["经营", "合约"]
+		"player_hand_disrupt":
+			return ["互动", "拆牌"]
+		"player_hand_steal":
+			return ["互动", "牵牌"]
+		"city_control_dispute":
+			return ["互动", "城市"]
+		"global_barrage":
+			return ["互动", "齐射"]
 		"route_insurance":
 			return ["经营", "商路"]
 		"city_product_upgrade":
@@ -19883,6 +20785,9 @@ func _can_selected_player_act() -> bool:
 		return false
 	if _has_pending_target_choice():
 		_log("请先完成当前卡牌的目标怪兽选择。")
+		return false
+	if _has_pending_player_target_choice():
+		_log("请先完成当前卡牌的目标玩家选择。")
 		return false
 	var player: Dictionary = players[selected_player]
 	if player["action_cooldown"] > 0.0:
@@ -20872,6 +21777,153 @@ func _apply_product_speculation(player: Dictionary, skill: Dictionary) -> bool:
 		cash_gain,
 	])
 	return true
+
+
+func _product_futures_duration_seconds(skill: Dictionary) -> float:
+	return maxf(5.0, float(skill.get("product_bet_seconds", _skill_duration_seconds(skill, "product_bet_seconds", "product_bet_turns", 2))))
+
+
+func _apply_product_futures(player: Dictionary, skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "商品期货"))
+	var product_name := _default_economy_product()
+	if product_name == "" or not PRODUCT_CATALOG.has(product_name):
+		_log("%s没有可建仓商品。" % source)
+		return false
+	var warehouse_district := -1
+	if bool(skill.get("requires_warehouse_city", false)):
+		var city := _district_city(selected_district)
+		if not _city_is_active(city):
+			_log("%s需要选中一座己方存活城市作为仓库。" % source)
+			return false
+		if int(city.get("owner", -1)) != selected_player:
+			_log("%s只能把囤货放进己方城市仓库；仓库真实业主仍不公开。" % source)
+			return false
+		warehouse_district = selected_district
+		city = _append_city_public_clue(city, "%s在本城附近形成匿名仓储活动；具体商品与仓储方仍需推理。" % source)
+		districts[selected_district]["city"] = city
+	var entry := _product_market_entry(product_name)
+	if entry.is_empty():
+		_log("%s没有可建仓商品。" % source)
+		return false
+	var before_price := _product_price(product_name)
+	var direction := String(skill.get("product_bet_direction", "up"))
+	if not ["up", "down"].has(direction):
+		return false
+	var units := maxi(1, int(skill.get("stockpile_units", 1)))
+	var futures: Array = entry.get("futures_positions", [])
+	futures.append({
+		"owner": selected_player,
+		"source": source,
+		"direction": direction,
+		"baseline_price": before_price,
+		"expires_at": game_time + _product_futures_duration_seconds(skill),
+		"multiplier": maxf(0.1, float(skill.get("product_bet_multiplier", 1.0))),
+		"units": units,
+		"warehouse_district": warehouse_district,
+	})
+	entry["futures_positions"] = futures
+	var demand_pressure := maxi(0, int(skill.get("market_demand_pressure", 0)))
+	var supply_pressure := maxi(0, int(skill.get("market_supply_pressure", 0)))
+	if demand_pressure > 0:
+		entry["temporary_demand_pressure"] = int(entry.get("temporary_demand_pressure", 0)) + demand_pressure
+	if supply_pressure > 0:
+		entry["temporary_supply_pressure"] = int(entry.get("temporary_supply_pressure", 0)) + supply_pressure
+	product_market[product_name] = entry
+	selected_trade_product = product_name
+	_refresh_product_market_prices()
+	var warehouse_text := "｜仓库:%s" % String(districts[warehouse_district].get("name", "城市")) if warehouse_district >= 0 else ""
+	_add_action_callout(
+		"匿名商品期货",
+		source,
+		"%s%s｜%s｜基准¥%d｜%s后结算" % [product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(_product_futures_duration_seconds(skill))],
+		Color("#22d3ee"),
+		_district_center(selected_district)
+	)
+	_log("匿名商品期货建仓：%s围绕%s%s建立%s头寸，基准价¥%d，持仓%s；价格仍由供需、商路、天气和合约决定。" % [
+		source,
+		product_name,
+		warehouse_text,
+		"看涨" if direction == "up" else "看跌",
+		before_price,
+		_duration_short_text(_product_futures_duration_seconds(skill)),
+	])
+	return true
+
+
+func _update_product_futures_timers() -> void:
+	if product_market.is_empty():
+		return
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		var entry := _product_market_entry(product_name)
+		if entry.is_empty():
+			continue
+		var futures: Array = entry.get("futures_positions", [])
+		if futures.is_empty():
+			continue
+		var remaining := []
+		var current_price := _product_price(product_name)
+		for futures_variant in futures:
+			if not (futures_variant is Dictionary):
+				continue
+			var position: Dictionary = futures_variant
+			if game_time < float(position.get("expires_at", game_time)):
+				remaining.append(position)
+				continue
+			var payout := _product_futures_payout(product_name, current_price, position)
+			if payout > 0:
+				_pay_product_futures(int(position.get("owner", -1)), payout, String(position.get("source", "商品期货")), product_name, position)
+			else:
+				_log("匿名商品期货到期：%s %s未达到兑现方向，头寸归零。" % [product_name, String(position.get("source", "商品期货"))])
+		entry["futures_positions"] = remaining
+		product_market[product_name] = entry
+
+
+func _product_futures_payout(product_name: String, current_price: int, position: Dictionary) -> int:
+	var baseline := int(position.get("baseline_price", current_price))
+	var direction := String(position.get("direction", "up"))
+	var delta := current_price - baseline
+	var paying_delta := maxi(0, delta) if direction == "up" else maxi(0, -delta)
+	var multiplier := maxf(0.1, float(position.get("multiplier", 1.0)))
+	var units := maxi(1, int(position.get("units", 1)))
+	return int(round(float(paying_delta * PRODUCT_FUTURES_PAYOUT_UNIT * units) * multiplier))
+
+
+func _pay_product_futures(player_index: int, amount: int, source: String, product_name: String, position: Dictionary) -> void:
+	if player_index < 0 or player_index >= players.size() or amount <= 0:
+		return
+	players[player_index]["cash"] = int(players[player_index].get("cash", 0)) + amount
+	_record_player_card_income(player_index, amount, source, "%s期货" % product_name)
+	_log("匿名商品期货兑现：%s围绕%s获得¥%d；收款人不公开。" % [source, product_name, amount])
+
+
+func _clear_product_futures_for_destroyed_warehouse(district_index: int, source: String) -> int:
+	if district_index < 0:
+		return 0
+	var cleared := 0
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		var entry := _product_market_entry(product_name)
+		if entry.is_empty():
+			continue
+		var futures: Array = entry.get("futures_positions", [])
+		if futures.is_empty():
+			continue
+		var remaining := []
+		for futures_variant in futures:
+			if not (futures_variant is Dictionary):
+				continue
+			var position: Dictionary = futures_variant
+			if int(position.get("warehouse_district", -1)) == district_index:
+				cleared += 1
+				continue
+			remaining.append(position)
+		if remaining.size() != futures.size():
+			entry["futures_positions"] = remaining
+			product_market[product_name] = entry
+	if cleared > 0:
+		_log("%s摧毁仓库区：%d笔商品囤积头寸作废，资金归属不公开。" % [source, cleared])
+	return cleared
 
 
 func _apply_product_contract_boon(player: Dictionary, skill: Dictionary) -> bool:
@@ -21944,11 +22996,236 @@ func _apply_route_sabotage(skill: Dictionary) -> bool:
 	return true
 
 
+func _interaction_target_label(player_index: int) -> String:
+	return "玩家%d" % (player_index + 1) if player_index >= 0 and player_index < players.size() else "未知玩家"
+
+
+func _take_private_hand_card_from_player(player_index: int, source: String) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var player: Dictionary = players[player_index]
+	var slots := _discardable_hand_slots_for_purchase(player)
+	if slots.is_empty():
+		return {}
+	var picked_slot := int(slots[rng.randi_range(0, slots.size() - 1)])
+	var skill: Dictionary = player["slots"][picked_slot]
+	var old_name := String(skill.get("name", "手牌"))
+	player["slots"][picked_slot] = null
+	players[player_index] = player
+	_record_player_economic_event(player_index, "直接互动", "手牌被影响", 0, "%s使你失去%s；这条具体牌名只在你的私人流水中可见。" % [
+		source,
+		_card_display_name(old_name),
+	])
+	return {
+		"slot": picked_slot,
+		"card_name": old_name,
+		"skill": skill.duplicate(true),
+	}
+
+
+func _lock_private_hand_card_for_player(player_index: int, seconds: float, source: String) -> bool:
+	if player_index < 0 or player_index >= players.size() or seconds <= 0.0:
+		return false
+	var player: Dictionary = players[player_index]
+	var slots := _discardable_hand_slots_for_purchase(player)
+	if slots.is_empty():
+		return false
+	var picked_slot := int(slots[rng.randi_range(0, slots.size() - 1)])
+	var skill: Dictionary = player["slots"][picked_slot]
+	skill["lock_left"] = maxf(float(skill.get("lock_left", 0.0)), seconds)
+	player["slots"][picked_slot] = skill
+	players[player_index] = player
+	_record_player_economic_event(player_index, "直接互动", "手牌被封锁", 0, "%s使%s被封锁%s；具体牌名只在你的私人流水中可见。" % [
+		source,
+		_card_display_name(String(skill.get("name", "手牌"))),
+		_duration_short_text(seconds),
+	])
+	return true
+
+
+func _apply_player_hand_disrupt(acting_player_index: int, target_player_index: int, skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "过河拆桥"))
+	if acting_player_index < 0 or acting_player_index >= players.size() or target_player_index < 0 or target_player_index >= players.size() or target_player_index == acting_player_index:
+		_log("%s需要指定一名其他玩家。" % source)
+		return false
+	var discard_goal := maxi(1, int(skill.get("hand_discard_count", 1)))
+	var discarded := 0
+	for _i in range(discard_goal):
+		var removed := _take_private_hand_card_from_player(target_player_index, source)
+		if removed.is_empty():
+			break
+		discarded += 1
+	var locked := _lock_private_hand_card_for_player(target_player_index, float(skill.get("hand_lock_seconds", 0.0)), source)
+	var penalty := maxi(0, int(skill.get("target_cash_penalty", 0)))
+	if penalty > 0:
+		var paid: int = mini(penalty, int(players[target_player_index].get("cash", 0)))
+		players[target_player_index]["cash"] = int(players[target_player_index].get("cash", 0)) - paid
+		_record_player_card_spend(target_player_index, paid, "直接互动重组成本", source)
+		_record_player_cash_snapshot(target_player_index)
+	if discarded <= 0 and not locked and penalty <= 0:
+		_log("%s结算失败：%s没有可影响的普通手牌。" % [source, _interaction_target_label(target_player_index)])
+		return false
+	_log("%s匿名影响%s：拆掉%d张普通手牌%s%s；具体牌名和手牌数量仍为私密。" % [
+		source,
+		_interaction_target_label(target_player_index),
+		discarded,
+		"，并封锁1张手牌" if locked else "",
+		"，目标支付重组成本¥%d" % penalty if penalty > 0 else "",
+	])
+	_add_action_callout(
+		"直接互动",
+		source,
+		"%s被拆牌；来源匿名，手牌细节私密。" % _interaction_target_label(target_player_index),
+		_card_theme_color(skill),
+		_district_center(selected_district)
+	)
+	return true
+
+
+func _apply_player_hand_steal(acting_player_index: int, target_player_index: int, skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "顺手牵羊"))
+	if acting_player_index < 0 or acting_player_index >= players.size() or target_player_index < 0 or target_player_index >= players.size() or target_player_index == acting_player_index:
+		_log("%s需要指定一名其他玩家。" % source)
+		return false
+	var steal_goal := maxi(1, int(skill.get("hand_steal_count", 1)))
+	var stolen := 0
+	var converted := 0
+	for _i in range(steal_goal):
+		var removed := _take_private_hand_card_from_player(target_player_index, source)
+		if removed.is_empty():
+			break
+		var card_name := String(removed.get("card_name", ""))
+		var acting_player: Dictionary = players[acting_player_index]
+		if _player_can_receive_card(acting_player, card_name) and _acquire_card_for_player(acting_player, card_name, selected_district, source, true):
+			players[acting_player_index] = acting_player
+			stolen += 1
+			_record_player_economic_event(acting_player_index, "直接互动", "牵取手牌", 0, "%s牵取到%s；来源目标对全员不可见。" % [source, _card_display_name(card_name)])
+		else:
+			converted += 1
+	var locked := _lock_private_hand_card_for_player(target_player_index, float(skill.get("hand_lock_seconds", 0.0)), source)
+	var compensation := maxi(0, int(skill.get("steal_fail_cash", 0))) if converted > 0 or stolen <= 0 else 0
+	if compensation > 0:
+		players[acting_player_index]["cash"] = int(players[acting_player_index].get("cash", 0)) + compensation
+		_record_player_card_income(acting_player_index, compensation, source, "牵取失败补偿")
+		_record_player_cash_snapshot(acting_player_index)
+	if stolen <= 0 and converted <= 0 and not locked:
+		_log("%s结算失败：%s没有可牵取的普通手牌。" % [source, _interaction_target_label(target_player_index)])
+		return false
+	_log("%s匿名影响%s：牵取%d张、拆除转化%d张%s；具体牌名、手牌数量和收牌者仍为私密。" % [
+		source,
+		_interaction_target_label(target_player_index),
+		stolen,
+		converted,
+		"，并封锁1张手牌" if locked else "",
+	])
+	_add_action_callout(
+		"直接互动",
+		source,
+		"%s被牵牌；目标公开，来源匿名。" % _interaction_target_label(target_player_index),
+		_card_theme_color(skill),
+		_district_center(selected_district)
+	)
+	return true
+
+
+func _apply_city_control_dispute(acting_player_index: int, skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "产权冻结"))
+	var city := _district_city(selected_district)
+	if not _city_is_active(city):
+		_log("%s需要选中一座存活城市。" % source)
+		return false
+	var owner := int(city.get("owner", -1))
+	if owner == acting_player_index:
+		_log("%s不能故意冻结自己的城市；请选中竞争城市或未知业主城市。" % source)
+		return false
+	var seconds := maxf(5.0, float(skill.get("control_block_seconds", 20.0)))
+	var penalty := maxi(1, int(skill.get("control_gdp_penalty", 35)))
+	city["control_dispute_until"] = maxf(float(city.get("control_dispute_until", 0.0)), game_time + seconds)
+	city["control_gdp_penalty"] = maxi(int(city.get("control_gdp_penalty", 0)), penalty)
+	city["control_dispute_source"] = source
+	city = _append_city_public_clue(city, "%s制造产权争议%s，城市GDP/min归属惩罚%d；出牌者匿名。" % [
+		source,
+		_duration_short_text(seconds),
+		penalty,
+	])
+	districts[selected_district]["city"] = city
+	var panic_gain := int(skill.get("panic", 0))
+	if panic_gain > 0:
+		_add_panic(selected_district, panic_gain, source)
+	_record_city_gdp_snapshot(selected_district, _city_cycle_income(selected_district, _city_competition_matches(selected_district)), _city_cycle_income_breakdown(selected_district, _city_competition_matches(selected_district)), source)
+	_log("%s匿名冻结%s产权%s：GDP/min归属惩罚%d；真实业主和出牌者仍不公开。" % [
+		source,
+		districts[selected_district]["name"],
+		_duration_short_text(seconds),
+		penalty,
+	])
+	_add_action_callout("产权争议", source, "%s进入产权冻结%s。" % [districts[selected_district]["name"], _duration_short_text(seconds)], _card_theme_color(skill), _district_center(selected_district))
+	return true
+
+
+func _global_barrage_targets(acting_player_index: int, skill: Dictionary) -> Array:
+	var candidates := []
+	for index_variant in _active_city_district_indices():
+		var index := int(index_variant)
+		var city := _district_city(index)
+		var owner := int(city.get("owner", -1))
+		if owner == acting_player_index:
+			continue
+		var income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
+		var score := income + int(districts[index].get("panic", 0)) + int(city.get("trade_route_damage", 0)) * 20
+		if owner >= 0 and owner != acting_player_index:
+			score += 80
+		candidates.append({"district": index, "score": score})
+	candidates.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	var result := []
+	var limit := maxi(1, int(skill.get("global_barrage_target_count", 2)))
+	for i in range(mini(limit, candidates.size())):
+		result.append(int((candidates[i] as Dictionary).get("district", -1)))
+	return result
+
+
+func _apply_global_barrage(acting_player_index: int, skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "万箭齐发"))
+	var targets := _global_barrage_targets(acting_player_index, skill)
+	if targets.is_empty():
+		_log("%s没有找到可齐射的非己方城市。" % source)
+		return false
+	var damage := maxi(1, int(skill.get("global_barrage_damage", 1)))
+	var route_damage := maxi(0, int(skill.get("global_barrage_route_damage", 0)))
+	var panic_gain := int(skill.get("panic", 0))
+	var hit_names := []
+	for target_variant in targets:
+		var index := int(target_variant)
+		if index < 0 or index >= districts.size():
+			continue
+		hit_names.append(String(districts[index].get("name", "城市")))
+		_damage_district(index, damage, source)
+		var city := _district_city(index)
+		if _city_is_active(city) and route_damage > 0:
+			city["trade_route_damage"] = maxi(0, int(city.get("trade_route_damage", 0)) + route_damage)
+			city = _append_city_public_clue(city, "%s齐射追加商路损伤+%d；出牌者匿名。" % [source, route_damage])
+			districts[index]["city"] = city
+		if panic_gain > 0:
+			_add_panic(index, panic_gain, source)
+	_log("%s匿名齐射：命中%d座非己方高价值城市（%s），每城伤害%d%s。" % [
+		source,
+		hit_names.size(),
+		_limited_name_list(hit_names, 4, "无"),
+		damage,
+		"，商路损伤+%d" % route_damage if route_damage > 0 else "",
+	])
+	_add_action_callout("轨道齐射", source, "命中%d座城市；目标公开，来源匿名。" % hit_names.size(), _card_theme_color(skill), _district_center(selected_district))
+	return true
+
+
 func _buy_selected_skill() -> void:
 	if game_over:
 		return
 	if _has_pending_target_choice():
 		_log("请先完成当前卡牌的目标怪兽选择。")
+		return
+	if _has_pending_player_target_choice():
+		_log("请先完成当前卡牌的目标玩家选择。")
 		return
 	_sync_selected_district_card()
 	_buy_card_for_player_from_district(selected_player, selected_district, selected_market_skill, false, true)
@@ -22098,6 +23375,10 @@ func _skill_targets_monster(skill: Dictionary) -> bool:
 	return _is_direct_monster_skill_kind(kind) or ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover"].has(kind)
 
 
+func _skill_targets_player(skill: Dictionary) -> bool:
+	return ["player_hand_disrupt", "player_hand_steal"].has(String(skill.get("kind", ""))) or bool(skill.get("target_player_required", false))
+
+
 func _non_target_skill_resolution_kinds() -> Array:
 	return [
 		"monster_card",
@@ -22105,6 +23386,7 @@ func _non_target_skill_resolution_kinds() -> Array:
 		"city_revenue_boost",
 		"cash_gain",
 		"product_speculation",
+		"product_futures",
 		"city_gdp_derivative",
 		"product_contract_boon",
 		"area_trade_contract",
@@ -22126,6 +23408,8 @@ func _non_target_skill_resolution_kinds() -> Array:
 		"card_access_boon",
 		"panic_shift",
 		"supply_draw",
+		"city_control_dispute",
+		"global_barrage",
 	]
 
 
@@ -22134,6 +23418,8 @@ func _skill_has_resolution_handler(skill: Dictionary) -> bool:
 	if kind == "":
 		return false
 	if _skill_targets_monster(skill):
+		return true
+	if _skill_targets_player(skill):
 		return true
 	return _non_target_skill_resolution_kinds().has(kind)
 
@@ -22183,6 +23469,10 @@ func _playable_card_resolution_coverage_report() -> Dictionary:
 
 func _skill_requires_target_monster(skill: Dictionary) -> bool:
 	return not auto_monsters.is_empty() and _skill_targets_monster(skill)
+
+
+func _skill_requires_target_player(skill: Dictionary) -> bool:
+	return players.size() > 1 and _skill_targets_player(skill)
 
 
 func _finish_played_skill(player_index: int, slot_index: int, skill: Dictionary, cooldown: float = COMMAND_COOLDOWN) -> void:
@@ -22750,7 +24040,7 @@ func _area_trade_contract_products(skill: Dictionary, source_index: int, target_
 	return result
 
 
-func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1) -> bool:
+func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1) -> bool:
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var player: Dictionary = players[player_index]
@@ -22812,6 +24102,7 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		"player_index": player_index,
 		"slot_index": slot_index,
 		"target_slot": target_slot,
+		"target_player": target_player,
 		"selected_district": selected_district,
 		"selected_trade_product": selected_trade_product,
 		"contract_source_district": int(contract_context.get("source", -1)),
@@ -23168,6 +24459,16 @@ func _resolve_queued_skill(entry: Dictionary) -> void:
 			])
 		else:
 			resolved = _resolve_targeted_skill(skill, player, target_slot, player_index)
+	elif _skill_targets_player(skill):
+		var target_player := int(entry.get("target_player", -1))
+		match String(skill.get("kind", "")):
+			"player_hand_disrupt":
+				resolved = _apply_player_hand_disrupt(player_index, target_player, skill)
+			"player_hand_steal":
+				resolved = _apply_player_hand_steal(player_index, target_player, skill)
+			_:
+				resolved = false
+				_log("%s的目标玩家互动结算器尚未接入。" % card_label)
 	else:
 		match skill["kind"]:
 			"monster_card":
@@ -23183,6 +24484,8 @@ func _resolve_queued_skill(entry: Dictionary) -> void:
 				_log("匿名资金牌结算：一名未公开玩家获得%d资金。" % cash_gain)
 			"product_speculation":
 				resolved = _apply_product_speculation(player, skill)
+			"product_futures":
+				resolved = _apply_product_futures(player, skill)
 			"city_gdp_derivative":
 				resolved = _apply_city_gdp_derivative(player, skill)
 			"product_contract_boon":
@@ -23209,6 +24512,10 @@ func _resolve_queued_skill(entry: Dictionary) -> void:
 				resolved = _apply_city_contract_boon(player, skill)
 			"route_sabotage":
 				resolved = _apply_route_sabotage(skill)
+			"city_control_dispute":
+				resolved = _apply_city_control_dispute(player_index, skill)
+			"global_barrage":
+				resolved = _apply_global_barrage(player_index, skill)
 			"news_event":
 				resolved = _apply_news_event(skill)
 			"weather_control":
@@ -23243,6 +24550,9 @@ func _use_skill(slot_index: int) -> void:
 	if _has_pending_target_choice():
 		_log("请先完成当前卡牌的目标怪兽选择。")
 		return
+	if _has_pending_player_target_choice():
+		_log("请先完成当前卡牌的目标玩家选择。")
+		return
 	if not _can_selected_player_act():
 		return
 	if selected_player < 0 or selected_player >= players.size():
@@ -23271,6 +24581,9 @@ func _use_skill(slot_index: int) -> void:
 		return
 	if _skill_requires_target_monster(skill):
 		_begin_target_monster_choice(slot_index)
+		return
+	if _skill_requires_target_player(skill):
+		_begin_target_player_choice(slot_index)
 		return
 	_queue_skill_resolution(selected_player, slot_index, -1)
 	_refresh_ui()
@@ -24146,6 +25459,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 			"competition_penalty": 0,
 			"route_penalty": 0,
 			"damage_penalty": 0,
+			"control_penalty": 0,
 			"penalty": 0,
 			"net_before_floor": 0,
 			"net": 0,
@@ -24194,7 +25508,8 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 	var competition_penalty := competition_matches * CITY_COMPETITION_PENALTY
 	var route_penalty := int(city.get("trade_disrupted_routes", 0)) * TRADE_DISRUPTION_PENALTY
 	var damage_penalty := int(districts[district_index].get("damage", 0)) * CITY_DAMAGE_GDP_PENALTY
-	var penalties := competition_penalty + route_penalty + damage_penalty
+	var control_penalty := int(city.get("control_gdp_penalty", 0)) if float(city.get("control_dispute_until", 0.0)) > game_time else 0
+	var penalties := competition_penalty + route_penalty + damage_penalty + control_penalty
 	var net_before_floor := gross - penalties
 	return {
 		"bonus": bonus,
@@ -24207,6 +25522,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 		"competition_penalty": competition_penalty,
 		"route_penalty": route_penalty,
 		"damage_penalty": damage_penalty,
+		"control_penalty": control_penalty,
 		"penalty": penalties,
 		"net_before_floor": net_before_floor,
 		"net": max(CITY_MINIMUM_INCOME, net_before_floor),
@@ -24217,7 +25533,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 
 
 func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
-	return "生产GDP%d + 消费GDP%d + 过境GDP%d + 加成%d + 合约%d - 竞争%d - 断路%d - 损伤%d = %d" % [
+	return "生产GDP%d + 消费GDP%d + 过境GDP%d + 加成%d + 合约%d - 竞争%d - 断路%d - 损伤%d - 产权%d = %d" % [
 		int(breakdown.get("product", 0)),
 		int(breakdown.get("route", 0)),
 		int(breakdown.get("transit", 0)),
@@ -24226,6 +25542,7 @@ func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
 		int(breakdown.get("competition_penalty", 0)),
 		int(breakdown.get("route_penalty", 0)),
 		int(breakdown.get("damage_penalty", 0)),
+		int(breakdown.get("control_penalty", 0)),
 		int(breakdown.get("net", 0)),
 	]
 
@@ -24241,6 +25558,7 @@ func _city_gdp_change_reason_text(breakdown: Dictionary) -> String:
 	var competition_penalty := int(breakdown.get("competition_penalty", 0))
 	var route_penalty := int(breakdown.get("route_penalty", 0))
 	var damage_penalty := int(breakdown.get("damage_penalty", 0))
+	var control_penalty := int(breakdown.get("control_penalty", 0))
 	if product_gdp > 0:
 		drivers.append("生产+%d" % product_gdp)
 	if route_gdp > 0:
@@ -24257,9 +25575,11 @@ func _city_gdp_change_reason_text(breakdown: Dictionary) -> String:
 		pressures.append("断路-%d" % route_penalty)
 	if damage_penalty > 0:
 		pressures.append("损伤-%d" % damage_penalty)
+	if control_penalty > 0:
+		pressures.append("产权-%d" % control_penalty)
 	return "驱动%s；压力%s" % [
 		_limited_name_list(drivers, 4, "无主要增益"),
-		_limited_name_list(pressures, 3, "无主要压力"),
+		_limited_name_list(pressures, 4, "无主要压力"),
 	]
 
 
@@ -24891,6 +26211,7 @@ func _damage_district(index: int, amount: int, source: String) -> void:
 		var city := _district_city(index)
 		if _city_is_active(city):
 			city = _resolve_city_gdp_derivatives_on_destroy(index, city, source)
+			var cleared_stockpiles := _clear_product_futures_for_destroyed_warehouse(index, source)
 			city["active"] = false
 			city["destroyed_at"] = game_time
 			d["city"] = city
@@ -24902,7 +26223,8 @@ func _damage_district(index: int, amount: int, source: String) -> void:
 				Color("#fb7185"),
 				_district_center(index)
 			)
-			_log("%s的城市群被摧毁，业主%s失去该城市全部GDP现金流。" % [d["name"], players[int(city.get("owner", 0))]["name"]])
+			var stockpile_text := "；%d笔仓储囤货作废" % cleared_stockpiles if cleared_stockpiles > 0 else ""
+			_log("%s的城市群被摧毁，业主%s失去该城市全部GDP现金流%s。" % [d["name"], players[int(city.get("owner", 0))]["name"], stockpile_text])
 		else:
 			_log("%s的基础设施被彻底破坏。" % d["name"])
 		_refresh_city_networks()
