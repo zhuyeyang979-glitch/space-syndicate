@@ -141,6 +141,7 @@ func _run() -> void:
 	_expect(_verify_ai_strategy_intent_policy(main), "AI opponents switch between grow, defend, and disrupt strategic intents and attach strategy metadata to decisions")
 	_expect(_verify_ai_route_plan_policy(main), "AI opponents form multi-step product-route plans that bias build, card, contract, and business choices")
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
+	_expect(_verify_ai_weather_control_policy(main), "AI opponents choose weather-control targets from route, terrain, GDP, and disruption value")
 	_expect(_verify_ai_strategy_route_diversification_policy(main), "AI opponents generate field-driven defense, suppression, finance, and intel route candidates")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
 	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, report profile route actions, settle, and restore cleanly")
@@ -3416,6 +3417,130 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 			ok = ok and _ai_sample_has_field(after_record, 1, "endgame_urgency")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	return ok and restore_result == OK
+
+
+func _verify_ai_weather_control_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	var failures := []
+	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("pending_contract_offers", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	_reset_route_plan_sandbox_for_test(main)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+	var support_index := _first_empty_land_district_for_contract(main, [own_index, rival_index])
+	if own_index < 0 or rival_index < 0:
+		failures.append("missing land slots")
+		ok = false
+	else:
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI天气自城", false))
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI天气竞城", false))
+		if support_index >= 0:
+			ok = ok and bool(main.call("_create_city_at_district_for_player", 1, support_index, "AI天气需求城", false))
+		ok = ok and _set_city_products_and_demands_for_test(main, own_index, ["离岸水晶", "轨迹墨水", "潮汐电浆"], ["环晶电池", "蓝潮藻"], 3)
+		ok = ok and _set_city_products_and_demands_for_test(main, rival_index, ["环晶电池", "太阳鳞片"], ["离岸水晶", "轨迹墨水"], 3)
+		if support_index >= 0:
+			ok = ok and _set_city_products_and_demands_for_test(main, support_index, ["蓝潮藻"], ["离岸水晶"], 2)
+		var districts := _as_array(main.get("districts")).duplicate(true)
+		var own_district := districts[own_index] as Dictionary
+		var own_city := own_district.get("city", {}) as Dictionary
+		own_city["last_income"] = 860
+		own_city["trade_routes"] = [
+			{"product": "离岸水晶", "source": own_index, "destination": support_index if support_index >= 0 else own_index, "path": [own_index, support_index if support_index >= 0 else own_index], "disrupted": false},
+			{"product": "潮汐电浆", "source": own_index, "destination": support_index if support_index >= 0 else own_index, "path": [own_index, support_index if support_index >= 0 else own_index], "disrupted": false},
+		]
+		own_district["transport_score"] = 1.45
+		own_district["city"] = own_city
+		districts[own_index] = own_district
+		var rival_district := districts[rival_index] as Dictionary
+		var rival_city := rival_district.get("city", {}) as Dictionary
+		rival_city["last_income"] = 980
+		rival_city["trade_routes"] = [
+			{"product": "环晶电池", "source": rival_index, "destination": own_index, "path": [rival_index, own_index], "disrupted": false},
+		]
+		rival_district["transport_score"] = 1.1
+		rival_district["panic"] = 30
+		rival_district["city"] = rival_city
+		districts[rival_index] = rival_district
+		main.set("districts", districts)
+		main.call("_refresh_city_networks")
+		# Restore explicit route pressure after network refresh, because the test wants deterministic weather-route scoring.
+		districts = _as_array(main.get("districts")).duplicate(true)
+		own_district = districts[own_index] as Dictionary
+		own_city = own_district.get("city", {}) as Dictionary
+		own_city["last_income"] = 860
+		own_city["trade_routes"] = [
+			{"product": "离岸水晶", "source": own_index, "destination": support_index if support_index >= 0 else own_index, "path": [own_index, support_index if support_index >= 0 else own_index], "disrupted": false},
+			{"product": "潮汐电浆", "source": own_index, "destination": support_index if support_index >= 0 else own_index, "path": [own_index, support_index if support_index >= 0 else own_index], "disrupted": false},
+		]
+		own_district["city"] = own_city
+		districts[own_index] = own_district
+		rival_district = districts[rival_index] as Dictionary
+		rival_city = rival_district.get("city", {}) as Dictionary
+		rival_city["last_income"] = 980
+		rival_city["trade_routes"] = [{"product": "环晶电池", "source": rival_index, "destination": own_index, "path": [rival_index, own_index], "disrupted": false}]
+		rival_district["city"] = rival_city
+		districts[rival_index] = rival_district
+		main.set("districts", districts)
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 7000
+			player["action_cooldown"] = 0.0
+			if player_index == 1:
+				var memory := main.call("_empty_ai_memory") as Dictionary
+				memory["economic_focus_product"] = "离岸水晶"
+				memory["economic_focus_score"] = 900
+				memory["strategy_intent"] = "defend_routes"
+				memory["strategy_score"] = 850
+				memory["route_plan_product"] = "离岸水晶"
+				memory["route_plan_stage"] = "defend_route"
+				memory["route_plan_score"] = 880
+				player["ai_memory"] = memory
+				player["slots"] = [main.call("_make_skill", "引力潮汐播报1"), main.call("_make_skill", "酸雨云团播种1")]
+			players[player_index] = player
+		main.set("players", players)
+		var tide_skill := main.call("_make_skill", "引力潮汐播报1") as Dictionary
+		var acid_skill := main.call("_make_skill", "酸雨云团播种1") as Dictionary
+		var tide_plan := main.call("_ai_weather_control_plan", 1, tide_skill) as Dictionary
+		var acid_plan := main.call("_ai_weather_control_plan", 1, acid_skill) as Dictionary
+		var tide_context := main.call("_ai_card_play_context", 1, 0, tide_skill) as Dictionary
+		var acid_context := main.call("_ai_card_play_context", 1, 1, acid_skill) as Dictionary
+		var tide_ok := not tide_plan.is_empty() \
+			and String(tide_plan.get("weather_type", "")) == "gravity_tide" \
+			and String(tide_plan.get("weather_plan_role", "")) == "boost_own_route" \
+			and int(tide_plan.get("target_owner", -1)) == 1 \
+			and int(tide_plan.get("weather_own_value", 0)) > 0 \
+			and int(tide_context.get("weather_plan_score", 0)) > 0
+		var acid_ok := not acid_plan.is_empty() \
+			and String(acid_plan.get("weather_type", "")) == "acid_rain" \
+			and String(acid_plan.get("weather_plan_role", "")) == "suppress_rival_city" \
+			and int(acid_plan.get("target_owner", -1)) == 2 \
+			and int(acid_plan.get("weather_rival_value", 0)) > 0 \
+			and int(acid_context.get("weather_plan_score", 0)) > 0
+		var queued := bool(main.call("_ai_queue_play_candidate", 1, tide_context, [tide_context, acid_context])) if tide_ok else false
+		var players_after := _as_array(main.get("players"))
+		var memory_ok := queued \
+			and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "policy_kind", "weather_control_gravity_tide") \
+			and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "weather_plan_role", "boost_own_route")
+		if not tide_ok:
+			failures.append("tide plan=%s context=%s" % [str(tide_plan), str(tide_context)])
+		if not acid_ok:
+			failures.append("acid plan=%s context=%s" % [str(acid_plan), str(acid_context)])
+		if not memory_ok:
+			failures.append("weather memory queued=%s" % str(queued))
+		ok = ok and tide_ok and acid_ok and memory_ok
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	if not failures.is_empty():
+		print("AI weather control failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
 
 

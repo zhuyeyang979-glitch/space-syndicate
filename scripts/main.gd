@@ -17751,7 +17751,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -19678,6 +19678,217 @@ func _ai_counter_response_candidate(player_index: int, slot_index: int, source_s
 	}
 
 
+func _ai_weather_city_value(player_index: int, district_index: int) -> int:
+	if district_index < 0 or district_index >= districts.size():
+		return 0
+	var city := _district_city(district_index)
+	if not _city_is_active(city):
+		return 0
+	var owner := int(city.get("owner", -1))
+	if owner == player_index:
+		return maxi(1, _ai_city_target_score(player_index, district_index, true, true))
+	if owner >= 0:
+		return maxi(1, _ai_rival_city_pressure_score(player_index, district_index))
+	var income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index))))
+	return maxi(1, 100 + income + _district_trade_route_load(district_index) * 16)
+
+
+func _ai_weather_city_effect(player_index: int, district_index: int, type_id: String) -> Dictionary:
+	var city := _district_city(district_index)
+	if not _city_is_active(city):
+		return {"score": 0, "owner": -1, "positive": 0, "negative": 0, "value": 0}
+	var template := _weather_template(type_id)
+	var production_multiplier := float(template.get("production_multiplier", 1.0))
+	var transport_multiplier := float(template.get("transport_multiplier", 1.0))
+	if String(districts[district_index].get("terrain", "land")) == "ocean":
+		transport_multiplier = float(template.get("ocean_transport_multiplier", transport_multiplier))
+	var consumption_multiplier := float(template.get("consumption_multiplier", 1.0))
+	var route_load := _district_trade_route_load(district_index)
+	var product_weight := 110 + _city_product_names(city).size() * 34 + int(city.get("last_income", 0)) / 10
+	var transport_weight := 120 + route_load * 48 + (_city_trade_routes(district_index) as Array).size() * 36 + int(round(float(districts[district_index].get("transport_score", 1.0)) * 28.0))
+	var consumption_weight := 92 + _city_demand_names(city).size() * 30
+	var positive := int(round(maxf(0.0, production_multiplier - 1.0) * product_weight * 5.0)) \
+		+ int(round(maxf(0.0, transport_multiplier - 1.0) * transport_weight * 5.0)) \
+		+ int(round(maxf(0.0, consumption_multiplier - 1.0) * consumption_weight * 5.0))
+	var negative := int(round(maxf(0.0, 1.0 - production_multiplier) * product_weight * 5.0)) \
+		+ int(round(maxf(0.0, 1.0 - transport_multiplier) * transport_weight * 5.0)) \
+		+ int(round(maxf(0.0, 1.0 - consumption_multiplier) * consumption_weight * 5.0))
+	var owner := int(city.get("owner", -1))
+	var city_value := _ai_weather_city_value(player_index, district_index)
+	var score := 0
+	if owner == player_index:
+		score = positive * 3 - negative * 4
+		score += city_value / 5 if positive >= negative else -city_value / 6
+	elif owner >= 0:
+		score = negative * 4 - positive * 5
+		score += city_value / 6 if negative > positive else -city_value / 8
+	else:
+		score = negative * 2 - positive + city_value / 10
+	return {
+		"score": score,
+		"owner": owner,
+		"positive": positive,
+		"negative": negative,
+		"value": city_value,
+		"route_load": route_load,
+	}
+
+
+func _ai_weather_empty_district_effect(player_index: int, district_index: int, type_id: String) -> int:
+	if district_index < 0 or district_index >= districts.size():
+		return 0
+	var template := _weather_template(type_id)
+	var terrain := String(districts[district_index].get("terrain", "land"))
+	var transport_multiplier := float(template.get("transport_multiplier", 1.0))
+	if terrain == "ocean":
+		transport_multiplier = float(template.get("ocean_transport_multiplier", transport_multiplier))
+	var route_load := _district_trade_route_load(district_index)
+	var score := 0
+	if terrain == "ocean" and transport_multiplier > 1.001:
+		score += 48 + int(round((transport_multiplier - 1.0) * 220.0)) + route_load * 42
+	elif transport_multiplier < 0.999 and route_load > 0:
+		score += int(round((1.0 - transport_multiplier) * 180.0)) + route_load * 18
+	var focus := _ai_focus_product(player_index)
+	var route_product := _ai_route_plan_product(player_index)
+	for product_variant in districts[district_index].get("products", []):
+		var product_name := String(product_variant)
+		if product_name != "" and (product_name == focus or product_name == route_product):
+			score += 28
+	for demand_variant in districts[district_index].get("demands", []):
+		var demand_name := String(demand_variant)
+		if demand_name != "" and (demand_name == focus or demand_name == route_product):
+			score += 22
+	return score
+
+
+func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionary:
+	if String(skill.get("kind", "")) != "weather_control":
+		return {}
+	var type_id := String(skill.get("weather_type", "solar_storm"))
+	if not WEATHER_TYPES.has(type_id):
+		type_id = "solar_storm"
+	var zone_count := clampi(int(skill.get("weather_zone_count", _weather_zone_count_for_planet())), 1, WEATHER_ZONE_MAX)
+	var best := {}
+	var best_score := -999999
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var posture := String(phase_info.get("posture", "contesting"))
+	var route_product := _ai_route_plan_product(player_index)
+	var focus_product := _ai_focus_product(player_index)
+	for anchor_variant in _alive_district_indices():
+		var anchor := int(anchor_variant)
+		var covered := _weather_preview_districts(anchor, zone_count)
+		if covered.is_empty():
+			continue
+		var own_value := 0
+		var rival_value := 0
+		var neutral_value := 0
+		var route_load := 0
+		var covered_cities := 0
+		var best_city := -1
+		var best_city_score := -999999
+		var best_owner := -1
+		var terrain_bonus := 0
+		var product_bonus := 0
+		for covered_variant in covered:
+			var district_index := int(covered_variant)
+			route_load += _district_trade_route_load(district_index)
+			if String(districts[district_index].get("terrain", "land")) == "ocean":
+				var template := _weather_template(type_id)
+				var ocean_transport := float(template.get("ocean_transport_multiplier", template.get("transport_multiplier", 1.0)))
+				if ocean_transport > 1.001:
+					terrain_bonus += 58 + int(round((ocean_transport - 1.0) * 180.0))
+				elif ocean_transport < 0.999:
+					terrain_bonus += 20
+			var empty_score := _ai_weather_empty_district_effect(player_index, district_index, type_id)
+			neutral_value += empty_score
+			var city := _district_city(district_index)
+			if _city_is_active(city):
+				covered_cities += 1
+				var city_effect := _ai_weather_city_effect(player_index, district_index, type_id)
+				var owner := int(city_effect.get("owner", -1))
+				var city_score := int(city_effect.get("score", 0))
+				if owner == player_index:
+					own_value += city_score
+				elif owner >= 0:
+					rival_value += city_score
+				else:
+					neutral_value += city_score / 2
+				if city_score > best_city_score:
+					best_city_score = city_score
+					best_city = district_index
+					best_owner = owner
+				for product_variant in _city_product_names(city):
+					var product_name := String(product_variant)
+					if product_name != "" and (product_name == route_product or product_name == focus_product):
+						product_bonus += 44
+				for demand_variant in _city_demand_names(city):
+					var demand_name := String(demand_variant)
+					if demand_name != "" and (demand_name == route_product or demand_name == focus_product):
+						product_bonus += 32
+		var template := _weather_template(type_id)
+		var transport_multiplier := float(template.get("transport_multiplier", 1.0))
+		var production_multiplier := float(template.get("production_multiplier", 1.0))
+		var consumption_multiplier := float(template.get("consumption_multiplier", 1.0))
+		var role := "weather_pressure"
+		var score := 80 + zone_count * 20 + route_load * 12 + product_bonus
+		var helpful_bias := maxi(0, own_value) + maxi(0, neutral_value / 2)
+		var harmful_bias := maxi(0, rival_value)
+		if transport_multiplier > 1.001 or production_multiplier > 1.001 or consumption_multiplier > 1.001:
+			score += helpful_bias + terrain_bonus
+			if helpful_bias + terrain_bonus >= harmful_bias:
+				role = "boost_own_route"
+			else:
+				score += harmful_bias / 2
+				role = "deny_rival_route"
+		if production_multiplier < 0.999 or transport_multiplier < 0.999 or consumption_multiplier < 0.999:
+			score += harmful_bias
+			if harmful_bias > helpful_bias:
+				role = "suppress_rival_city"
+			else:
+				score -= maxi(0, -own_value) / 2
+		if posture == "leader" and role == "boost_own_route":
+			score += 45
+		elif posture == "trailing" and role != "boost_own_route":
+			score += 58
+		if best_city < 0:
+			best_city = anchor
+			best_owner = -1
+		if score > best_score:
+			best_score = score
+			best = {
+				"policy_kind": "weather_control_%s" % type_id,
+				"district": anchor,
+				"target_city": best_city,
+				"target_owner": best_owner,
+				"score": maxi(1, score),
+				"weather_type": type_id,
+				"weather_plan_role": role,
+				"weather_plan_score": maxi(1, score),
+				"weather_zone_count": zone_count,
+				"weather_target_terrain": String(districts[anchor].get("terrain", "land")),
+				"weather_covered_cities": covered_cities,
+				"weather_route_load": route_load,
+				"weather_own_value": own_value,
+				"weather_rival_value": rival_value,
+				"weather_neutral_value": neutral_value,
+				"weather_product_bonus": product_bonus,
+				"weather_terrain_bonus": terrain_bonus,
+				"product": String(skill.get("play_product", focus_product if focus_product != "" else route_product)),
+				"reason": "天气规划｜%s｜%s｜锚点%s｜覆盖%d区/%d城｜己方%d｜竞品%d｜商路%d｜商品%d" % [
+					_weather_label(type_id),
+					role,
+					String(districts[anchor].get("name", "区域")),
+					covered.size(),
+					covered_cities,
+					own_value,
+					rival_value,
+					route_load,
+					product_bonus,
+				],
+			}
+	return best
+
+
 func _ai_city_gdp_insurance_score(player_index: int, district_index: int) -> int:
 	if district_index < 0 or district_index >= districts.size():
 		return -1
@@ -19996,6 +20207,18 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	score += int(skill.get("card_access_extra_hops", 0)) * 42
 	if bool(skill.get("card_access_global", false)):
 		score += 105
+	if String(skill.get("kind", "")) == "weather_control":
+		var weather_plan := _ai_weather_control_plan(player_index, skill)
+		score += int(skill.get("weather_zone_count", 1)) * 42
+		score += int(round(float(skill.get("weather_duration_seconds", WEATHER_DURATION_MIN_SECONDS)) / 3.0))
+		score += maxi(0, int(round((WEATHER_FORECAST_LEAD_MAX_SECONDS - float(skill.get("weather_forecast_lead_seconds", WEATHER_FORECAST_LEAD_MIN_SECONDS))) / 3.0)))
+		if not weather_plan.is_empty():
+			score += int(weather_plan.get("weather_plan_score", 0)) / 3
+			var weather_role := String(weather_plan.get("weather_plan_role", ""))
+			var strategy_intent := _ai_strategy_intent(player_index)
+			if (weather_role == "boost_own_route" and ["grow_focus", "defend_routes"].has(strategy_intent)) \
+				or (weather_role != "boost_own_route" and strategy_intent == "disrupt_competitors"):
+				score += 28
 	return score
 
 
@@ -20553,21 +20776,14 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
 		context["score"] = int(context["score"]) + 115 + int(skill.get("panic", 0)) + int(skill.get("route_damage", 0)) * 45
 	elif kind == "weather_control":
-		var weather_type := String(skill.get("weather_type", ""))
-		var weather_target := own_city if weather_type == "gravity_tide" else rival_city
-		if weather_target < 0:
-			weather_target = own_city if own_city >= 0 else _ai_first_alive_district()
-		if weather_target < 0:
+		var weather_plan := _ai_weather_control_plan(player_index, skill)
+		if weather_plan.is_empty():
 			return {}
-		context["district"] = weather_target
-		var weather_city := _district_city(weather_target)
-		if _city_is_active(weather_city):
-			context["target_city"] = weather_target
-			context["target_owner"] = int(weather_city.get("owner", -1))
-		context["score"] = int(context["score"]) + 88 + int(skill.get("weather_zone_count", 1)) * 18
-		context["reason"] = "改写天气预报｜%s｜%d区｜%s后生效" % [
-			_weather_label(weather_type),
-			int(skill.get("weather_zone_count", 1)),
+		var base_weather_score := int(context["score"])
+		context.merge(weather_plan, true)
+		context["score"] = base_weather_score + int(weather_plan.get("score", 0))
+		context["reason"] = "%s｜%s后生效" % [
+			String(weather_plan.get("reason", "改写天气预报")),
 			_duration_short_text(float(skill.get("weather_forecast_lead_seconds", WEATHER_FORECAST_LEAD_MIN_SECONDS))),
 		]
 	elif ["route_sabotage", "panic_shift"].has(kind):
@@ -21036,7 +21252,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -23067,6 +23283,35 @@ func _weather_pick_districts(anchor_index: int, zone_count: int) -> Array:
 	while result.size() < count and not alive.is_empty():
 		var picked := int(alive[rng.randi_range(0, alive.size() - 1)])
 		alive.erase(picked)
+		if not result.has(picked):
+			result.append(picked)
+	return result
+
+
+func _weather_preview_districts(anchor_index: int, zone_count: int) -> Array:
+	var alive := _alive_district_indices()
+	if alive.is_empty():
+		return []
+	var count := clampi(zone_count, 1, min(WEATHER_ZONE_MAX, alive.size()))
+	var anchor := anchor_index if alive.has(anchor_index) else int(alive[0])
+	var result := [anchor]
+	var frontier := [anchor]
+	while result.size() < count and not frontier.is_empty():
+		var current := int(frontier.pop_front())
+		for neighbor_variant in districts[current].get("neighbors", []):
+			var neighbor := int(neighbor_variant)
+			if neighbor < 0 or neighbor >= districts.size() or bool(districts[neighbor].get("destroyed", false)):
+				continue
+			if result.has(neighbor):
+				continue
+			result.append(neighbor)
+			frontier.append(neighbor)
+			if result.size() >= count:
+				break
+	for alive_variant in alive:
+		if result.size() >= count:
+			break
+		var picked := int(alive_variant)
 		if not result.has(picked):
 			result.append(picked)
 	return result
