@@ -118,6 +118,8 @@ func _run() -> void:
 	_expect(_verify_random_ai_roles_resolve_unique(main), "random AI role setup resolves to public non-duplicate role cards")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, cashflow product cash, and monster-upgrade cash triggers")
+	_expect(_verify_role_control_limit_cards(main), "role cards can publicly extend monster or military control limits without touching starter monsters")
+	_expect(_verify_military_unit_variant_cards(main), "military card families cover air, land, ocean, terrain deployment, GDP pressure, route pressure, and distinct card facts")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
@@ -214,6 +216,7 @@ func _run() -> void:
 	_expect(int(first_actor.get("max_hp", 0)) == int(first_starting_card.get("hp", -1)) and is_equal_approx(float(first_actor.get("duration", 0.0)), float(first_starting_card.get("duration", -1.0))), "starter monster card HP and duration become the summoned monster's field attributes without role overrides")
 	_expect(_verify_monster_card_runtime_overrides(main), "summoned monsters read HP, duration, and movement directly from their played card")
 	_expect(_verify_field_monster_card_upgrade_refreshes_state(main), "same-name monster cards upgrade an owned field monster and refresh HP, duration, and damage-cash risk")
+	_expect(_verify_single_owned_monster_limit_and_rank_iv_refresh(main), "one-player monster cap blocks new monsters but allows same-name rank-IV refresh")
 	_expect(_verify_monster_duration_expiry(main), "a monster automatically leaves when its card field duration expires")
 	_expect(_verify_monster_card_play_cash_cost(main), "monster-card play cash cost scales with field monster count and records card spend")
 	_expect(_verify_ranked_monster_action_weights(main, first_actor), "summoned higher-rank monsters use rank-tilted auto-action probability weights")
@@ -268,12 +271,12 @@ func _run() -> void:
 	_expect(_verify_monster_takeover_resets_owner_clues(main), "monster takeover revokes old bound skills and resets cash clues to the new owner")
 	_expect(_economy_ledgers_respect_active_view(main), "economy overview keeps other players' detailed ledgers private")
 	players = _as_array(main.get("players"))
-	_expect(_product_market_float(product_market, "环晶电池", "growth_multiplier") >= 1.3, "mechanical Jack applies a positive product-growth economy weather at new game start")
-	_expect(_product_market_float(product_market, "环晶电池", "route_flow_multiplier") >= 1.35, "mechanical Jack applies a positive route-flow economy weather at new game start")
+	_expect(_product_market_float(product_market, "环晶电池", "growth_multiplier") >= 1.3, "流星哨兵 applies a positive product-growth economy weather at new game start")
+	_expect(_product_market_float(product_market, "环晶电池", "route_flow_multiplier") >= 1.35, "流星哨兵 applies a positive route-flow economy weather at new game start")
 	var basic_card_price := int(main.call("_card_price", "移动1"))
 	var premium_card_price := int(main.call("_card_price", "垄断协议1"))
 	var first_monster_card := String(main.call("_monster_card_name", 0, 1))
-	_expect(String(main.call("_card_display_name", "怪兽·尸套龙4")).contains("IV级") and not String(main.call("_card_display_name", "怪兽·尸套龙4")).contains("Lv"), "visible card names use Roman-numeral rank text without legacy Lv labels")
+	_expect(String(main.call("_card_display_name", "怪兽·孢雾海皇4")).contains("IV级") and not String(main.call("_card_display_name", "怪兽·孢雾海皇4")).contains("Lv"), "visible card names use Roman-numeral rank text without legacy Lv labels")
 	_expect(premium_card_price > basic_card_price, "card prices rise with the card's economic power cost")
 	_expect(int(main.call("_card_price", "价格套利2")) == int(main.call("_card_price", "价格套利1")), "higher-rank economy cards keep the same rank-I base price")
 	_expect(int(main.call("_card_price", "短期订单2")) == int(main.call("_card_price", "短期订单1")), "temporary contract upgrades keep the same rank-I base price")
@@ -876,7 +879,7 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 		if String(role.get("passive", "")) == "":
 			return false
 		var has_mechanical_field := false
-		for field_name in ["starting_cash_bonus", "resource_cash_product", "resource_cash_amount", "bonus_card_product", "monster_upgrade_cash", "intel_city_reveal_charges", "intel_card_trace_charges", "intel_contract_trace_charges", "city_guess_reward_bonus", "card_owner_guess_discount", "card_owner_guess_bonus", "contract_flow_discount", "card_access_extra_hops", "card_access_global"]:
+		for field_name in ["starting_cash_bonus", "resource_cash_product", "resource_cash_amount", "bonus_card_product", "monster_upgrade_cash", "intel_city_reveal_charges", "intel_card_trace_charges", "intel_contract_trace_charges", "city_guess_reward_bonus", "card_owner_guess_discount", "card_owner_guess_bonus", "contract_flow_discount", "card_access_extra_hops", "card_access_global", "monster_control_limit_bonus", "military_control_limit_bonus"]:
 			if role.has(field_name):
 				has_mechanical_field = true
 				break
@@ -911,6 +914,8 @@ func _role_catalog_has_positive_cards(main: Node) -> bool:
 	var has_card_trace_role := false
 	var has_contract_trace_role := false
 	var has_remote_supply_role := false
+	var has_monster_limit_role := false
+	var has_military_limit_role := false
 	for role_index in range(role_count):
 		var role := main.call("_make_player_role_card", role_index, role_index) as Dictionary
 		var role_name := String(role.get("name", ""))
@@ -933,23 +938,160 @@ func _role_catalog_has_positive_cards(main: Node) -> bool:
 		has_positive_benefit = has_positive_benefit or int(role.get("contract_flow_discount", 0)) > 0
 		has_positive_benefit = has_positive_benefit or int(role.get("card_access_extra_hops", 0)) > 0
 		has_positive_benefit = has_positive_benefit or bool(role.get("card_access_global", false))
+		has_positive_benefit = has_positive_benefit or int(role.get("monster_control_limit_bonus", 0)) > 0
+		has_positive_benefit = has_positive_benefit or int(role.get("military_control_limit_bonus", 0)) > 0
 		if not has_positive_benefit:
 			return false
 		has_city_intel_role = has_city_intel_role or int(role.get("intel_city_reveal_charges", 0)) > 0
 		has_card_trace_role = has_card_trace_role or int(role.get("intel_card_trace_charges", 0)) > 0
 		has_contract_trace_role = has_contract_trace_role or int(role.get("intel_contract_trace_charges", 0)) > 0
 		has_remote_supply_role = has_remote_supply_role or int(role.get("card_access_extra_hops", 0)) > 0
-	return names.size() == role_count and has_city_intel_role and has_card_trace_role and has_contract_trace_role and has_remote_supply_role
+		has_monster_limit_role = has_monster_limit_role or int(role.get("monster_control_limit_bonus", 0)) > 0
+		has_military_limit_role = has_military_limit_role or int(role.get("military_control_limit_bonus", 0)) > 0
+	return names.size() == role_count and has_city_intel_role and has_card_trace_role and has_contract_trace_role and has_remote_supply_role and has_monster_limit_role and has_military_limit_role
 
 
 func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
 	var bonus_card_role := main.call("_make_player_role_card", 0, 0) as Dictionary
 	var resource_role := main.call("_make_player_role_card", 0, 1) as Dictionary
 	var upgrade_role := main.call("_make_player_role_card", 0, 3) as Dictionary
+	var monster_limit_role_index := _role_index_by_name(main, "孪星兽栏同盟")
+	var military_limit_role_index := _role_index_by_name(main, "蜂巢防务议会")
+	var monster_limit_role := {}
+	if monster_limit_role_index >= 0:
+		monster_limit_role = main.call("_make_player_role_card", 0, monster_limit_role_index) as Dictionary
+	var military_limit_role := {}
+	if military_limit_role_index >= 0:
+		military_limit_role = main.call("_make_player_role_card", 0, military_limit_role_index) as Dictionary
 	return String(main.call("_role_card_art_stats", bonus_card_role)).contains("公开身份") \
 		and String(main.call("_role_card_art_stats", bonus_card_role)).contains("购牌:环晶电池+1") \
 		and String(main.call("_role_card_art_stats", resource_role)).contains("现金流:深海菌毯+¥55/min") \
-		and String(main.call("_role_card_art_stats", upgrade_role)).contains("升兽:+¥160")
+		and String(main.call("_role_card_art_stats", upgrade_role)).contains("升兽:+¥160") \
+		and not monster_limit_role.is_empty() \
+		and String(main.call("_role_card_art_stats", monster_limit_role)).contains("怪兽上限:2") \
+		and not military_limit_role.is_empty() \
+		and String(main.call("_role_card_art_stats", military_limit_role)).contains("军队上限:2")
+
+
+func _verify_role_control_limit_cards(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var players := _as_array(main.get("players")).duplicate(true)
+	var districts := _as_array(main.get("districts"))
+	var catalog_size := int(main.call("_catalog_size"))
+	if players.size() < 2 or districts.is_empty() or catalog_size < 3:
+		return false
+	var landing := clampi(int(main.get("selected_district")), 0, districts.size() - 1)
+	ok = ok and _role_index_by_name(main, "孪星兽栏同盟") >= 0
+	ok = ok and _role_index_by_name(main, "蜂巢防务议会") >= 0
+	ok = ok and _set_player_role_for_test(main, 0, "孪星兽栏同盟")
+	ok = ok and _set_player_role_for_test(main, 1, "蜂巢防务议会")
+	ok = ok and int(main.call("_player_monster_control_limit", 0)) == 2
+	ok = ok and int(main.call("_player_military_control_limit", 1)) == 2
+	ok = ok and int(main.call("_player_monster_control_limit", 1)) == 1
+	ok = ok and int(main.call("_player_military_control_limit", 0)) == 1
+	main.set("auto_monsters", [])
+	main.set("military_units", [])
+	main.set("next_military_unit_uid", 1)
+	main.set("selected_player", 0)
+	main.set("selected_district", landing)
+	players = _as_array(main.get("players")).duplicate(true)
+	for monster_rank in range(3):
+		var card := main.call("_make_skill", main.call("_monster_card_name", monster_rank, 1)) as Dictionary
+		card["starter_play_free"] = true
+		card["summon_access"] = "any"
+		var summoned := bool(main.call("_summon_monster_from_card", players[0] as Dictionary, card))
+		if monster_rank < 2:
+			ok = ok and summoned
+		else:
+			ok = ok and not summoned
+	var monsters := _as_array(main.get("auto_monsters"))
+	ok = ok and monsters.size() == 2 and int(main.call("_owned_active_monster_count", 0)) == 2
+	var military_card := main.call("_make_skill", "行星防卫军1") as Dictionary
+	main.set("selected_player", 1)
+	main.set("selected_district", landing)
+	var first_army := bool(main.call("_summon_military_unit_from_card", 1, military_card))
+	main.set("selected_district", wrapi(landing + 1, 0, districts.size()))
+	var second_army := bool(main.call("_summon_military_unit_from_card", 1, military_card))
+	var two_armies := _as_array(main.get("military_units"))
+	main.set("selected_district", wrapi(landing + 2, 0, districts.size()))
+	var third_army_refresh := bool(main.call("_summon_military_unit_from_card", 1, military_card))
+	var final_armies := _as_array(main.get("military_units"))
+	ok = ok and first_army and second_army and third_army_refresh
+	ok = ok and two_armies.size() == 2 and final_armies.size() == 2 and int(main.call("_owned_active_military_unit_count", 1)) == 2
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _verify_military_unit_variant_cards(main: Node) -> bool:
+	var districts := _as_array(main.get("districts"))
+	var land_index := _first_terrain_district(districts, "land")
+	var ocean_index := _first_terrain_district(districts, "ocean")
+	if land_index < 0 or ocean_index < 0:
+		return false
+	var families := [
+		{"base": "行星防卫军", "type": "defense", "domain": "mixed", "gdp": false, "route": false},
+		{"base": "制空战斗机", "type": "fighter", "domain": "air", "gdp": true, "route": false},
+		{"base": "轨道轰炸机", "type": "bomber", "domain": "air", "gdp": true, "route": true},
+		{"base": "重装坦克", "type": "tank", "domain": "land", "gdp": true, "route": false},
+		{"base": "导弹阵地", "type": "missile", "domain": "land", "gdp": true, "route": true},
+		{"base": "潜航舰队", "type": "submarine", "domain": "sea", "gdp": true, "route": true},
+		{"base": "星海战舰", "type": "warship", "domain": "sea", "gdp": true, "route": true},
+	]
+	for family_variant in families:
+		var family := family_variant as Dictionary
+		var previous_hp := 0
+		var previous_damage := 0
+		var previous_duration := 0.0
+		for rank in range(1, 5):
+			var card_name := "%s%d" % [String(family.get("base", "")), rank]
+			var skill := main.call("_make_skill", card_name) as Dictionary
+			if skill.is_empty() or String(skill.get("kind", "")) != "military_force":
+				return false
+			if String(skill.get("military_type", "defense")) != String(family.get("type", "")):
+				return false
+			if String(skill.get("military_domain", "mixed")) != String(family.get("domain", "")):
+				return false
+			var hp := int(skill.get("military_hp", 0))
+			var damage := int(skill.get("military_damage", 0))
+			var duration := float(skill.get("military_duration_seconds", 0.0))
+			if hp <= 0 or damage <= 0 or float(skill.get("military_move", 0.0)) <= 0.0 or float(skill.get("military_range", 0.0)) <= 0.0 or duration <= 0.0:
+				return false
+			if rank > 1 and (hp < previous_hp or damage < previous_damage or duration < previous_duration):
+				return false
+			previous_hp = hp
+			previous_damage = damage
+			previous_duration = duration
+			if bool(family.get("gdp", false)) and int(skill.get("military_gdp_penalty", 0)) <= 0:
+				return false
+			if bool(family.get("route", false)) and int(skill.get("military_strike_route_damage", 0)) <= 0:
+				return false
+			if String(family.get("type", "")) != "defense":
+				if _as_array(skill.get("movement_traits", [])).is_empty() or (skill.get("terrain_move_multiplier", {}) as Dictionary).is_empty():
+					return false
+			var facts := _as_array(main.call("_card_rule_facts", skill))
+			var facts_text := ""
+			for fact_variant in facts:
+				facts_text += "%s\n" % String(fact_variant)
+			var art_stats := String(main.call("_card_art_stats", skill))
+			if not facts_text.contains("军队生命") or not facts_text.contains("军队机动") or not facts_text.contains("军队在场") or not art_stats.contains("HP"):
+				return false
+	var fighter := main.call("_make_skill", "制空战斗机1") as Dictionary
+	var tank := main.call("_make_skill", "重装坦克1") as Dictionary
+	var submarine := main.call("_make_skill", "潜航舰队1") as Dictionary
+	if not bool(main.call("_can_deploy_military_card_at_district", fighter, land_index)) or not bool(main.call("_can_deploy_military_card_at_district", fighter, ocean_index)):
+		return false
+	if not bool(main.call("_can_deploy_military_card_at_district", tank, land_index)) or bool(main.call("_can_deploy_military_card_at_district", tank, ocean_index)):
+		return false
+	if bool(main.call("_can_deploy_military_card_at_district", submarine, land_index)) or not bool(main.call("_can_deploy_military_card_at_district", submarine, ocean_index)):
+		return false
+	var tank_land := float(main.call("_military_unit_terrain_move_multiplier", tank, land_index))
+	var tank_ocean := float(main.call("_military_unit_terrain_move_multiplier", tank, ocean_index))
+	var sub_land := float(main.call("_military_unit_terrain_move_multiplier", submarine, land_index))
+	var sub_ocean := float(main.call("_military_unit_terrain_move_multiplier", submarine, ocean_index))
+	var fighter_land := float(main.call("_military_unit_terrain_move_multiplier", fighter, land_index))
+	var fighter_ocean := float(main.call("_military_unit_terrain_move_multiplier", fighter, ocean_index))
+	return tank_land > tank_ocean and sub_ocean > sub_land and fighter_land > 1.0 and fighter_ocean > 1.0
 
 
 func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
@@ -3226,6 +3368,72 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	return upgrade_ok and damage_ok
 
 
+func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
+	var previous_players := _as_array(main.get("players")).duplicate(true)
+	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
+	var previous_logs := _as_array(main.get("log_lines")).duplicate(true)
+	var previous_callouts := _as_array(main.get("action_callouts")).duplicate(true)
+	var previous_selected_player := int(main.get("selected_player"))
+	var previous_selected_district := int(main.get("selected_district"))
+	var districts := _as_array(main.get("districts"))
+	if previous_players.is_empty() or previous_monsters.is_empty() or districts.is_empty():
+		return false
+	var owner := 0
+	var owned_slot := -1
+	for i in range(previous_monsters.size()):
+		var actor := previous_monsters[i] as Dictionary
+		if int(actor.get("owner", -1)) == owner and not bool(actor.get("down", false)):
+			owned_slot = i
+			break
+	if owned_slot < 0:
+		return false
+	var monsters := previous_monsters.duplicate(true)
+	var actor := (monsters[owned_slot] as Dictionary).duplicate(true)
+	var catalog_index := int(actor.get("catalog_index", 0))
+	var other_catalog_index := (catalog_index + 1) % int(main.call("_catalog_size"))
+	var district_index := clampi(int(actor.get("position", previous_selected_district)), 0, districts.size() - 1)
+	main.set("auto_monsters", monsters)
+	main.set("selected_player", owner)
+	main.set("selected_district", district_index)
+	var other_card := main.call("_make_skill", main.call("_monster_card_name", other_catalog_index, 1)) as Dictionary
+	other_card["starter_play_free"] = true
+	other_card["summon_access"] = "any"
+	var rejected_new_monster := not bool(main.call("_summon_monster_from_card", previous_players[owner] as Dictionary, other_card))
+	var after_reject := _as_array(main.get("auto_monsters"))
+	var cap_ok := rejected_new_monster and after_reject.size() == previous_monsters.size()
+	monsters = after_reject.duplicate(true)
+	actor = (monsters[owned_slot] as Dictionary).duplicate(true)
+	actor["rank"] = 4
+	actor["hp"] = 1
+	actor["remaining_time"] = 0.25
+	actor["owner_revealed"] = false
+	actor["owner_clue"] = ""
+	monsters[owned_slot] = actor
+	main.set("auto_monsters", monsters)
+	var same_card := main.call("_make_skill", main.call("_monster_card_name", catalog_index, 1)) as Dictionary
+	same_card["starter_play_free"] = true
+	same_card["summon_access"] = "any"
+	var rank_four_card := main.call("_make_skill", main.call("_monster_card_name", catalog_index, 4)) as Dictionary
+	var refreshed := bool(main.call("_summon_monster_from_card", previous_players[owner] as Dictionary, same_card))
+	var after_refresh := _as_array(main.get("auto_monsters"))
+	var refreshed_actor := after_refresh[owned_slot] as Dictionary
+	var refresh_ok := refreshed \
+		and after_refresh.size() == previous_monsters.size() \
+		and int(refreshed_actor.get("rank", 0)) == 4 \
+		and int(refreshed_actor.get("hp", 0)) == int(rank_four_card.get("hp", -1)) \
+		and int(refreshed_actor.get("max_hp", 0)) == int(rank_four_card.get("hp", -2)) \
+		and is_equal_approx(float(refreshed_actor.get("remaining_time", 0.0)), float(rank_four_card.get("duration", -1.0))) \
+		and is_equal_approx(float(refreshed_actor.get("duration", 0.0)), float(rank_four_card.get("duration", -2.0)))
+	main.set("players", previous_players)
+	main.set("auto_monsters", previous_monsters)
+	main.set("log_lines", previous_logs)
+	main.set("action_callouts", previous_callouts)
+	main.set("selected_player", previous_selected_player)
+	main.set("selected_district", previous_selected_district)
+	main.call("_refresh_ui")
+	return cap_ok and refresh_ok
+
+
 func _verify_monster_takeover_resets_owner_clues(main: Node) -> bool:
 	var previous_players := _as_array(main.get("players")).duplicate(true)
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
@@ -3239,6 +3447,13 @@ func _verify_monster_takeover_resets_owner_clues(main: Node) -> bool:
 		return false
 	var old_owner := 0
 	var new_owner := 1
+	for i in range(monsters.size()):
+		if i == 0:
+			continue
+		var other_actor := monsters[i] as Dictionary
+		if int(other_actor.get("owner", -1)) == new_owner:
+			other_actor["owner"] = -1
+			monsters[i] = other_actor
 	var old_owner_active_before := _active_bound_skill_count_for_uid(players, old_owner, monster_uid)
 	if old_owner_active_before <= 0:
 		return false
@@ -3725,10 +3940,10 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 	var ok := true
 	var failures := []
 	var families := {
-		"过河拆桥": "player_hand_disrupt",
-		"顺手牵羊": "player_hand_steal",
+		"星链拆解": "player_hand_disrupt",
+		"影仓牵引": "player_hand_steal",
 		"产权冻结": "city_control_dispute",
-		"万箭齐发": "global_barrage",
+		"轨道齐射": "global_barrage",
 	}
 	var interaction_names := _as_array(main.call("_card_codex_names", "interaction"))
 	var run_pool := _as_array(main.call("_current_run_card_pool"))
@@ -3778,10 +3993,10 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 			if run_pool.has("%s%d" % [family, rank]):
 				failures.append("run pool exposes upgraded %s%d" % [family, rank])
 				ok = false
-	var disrupt := main.call("_make_skill", "过河拆桥1") as Dictionary
-	var steal := main.call("_make_skill", "顺手牵羊1") as Dictionary
+	var disrupt := main.call("_make_skill", "星链拆解1") as Dictionary
+	var steal := main.call("_make_skill", "影仓牵引1") as Dictionary
 	var freeze := main.call("_make_skill", "产权冻结1") as Dictionary
-	var barrage := main.call("_make_skill", "万箭齐发1") as Dictionary
+	var barrage := main.call("_make_skill", "轨道齐射1") as Dictionary
 	ok = ok and bool(main.call("_skill_requires_target_player", disrupt))
 	ok = ok and bool(main.call("_skill_requires_target_player", steal))
 	ok = ok and not bool(main.call("_skill_requires_target_player", freeze))
@@ -3804,7 +4019,7 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 		ok = ok and bool(main.call("_apply_player_hand_steal", 0, 1, steal))
 		var actor_hand_after := _player_card_names(_as_array(main.get("players")), 0).size()
 		ok = ok and actor_hand_after >= actor_hand_before
-		_set_player_skill(main, 0, 2, "过河拆桥1")
+		_set_player_skill(main, 0, 2, "星链拆解1")
 		_clear_player_cooldown(main, 0)
 		main.call("_use_skill", 2)
 		ok = ok and bool(main.call("_has_pending_player_target_choice"))
@@ -4161,9 +4376,18 @@ func _verify_monster_duration_expiry(main: Node) -> bool:
 func _verify_monster_card_runtime_overrides(main: Node) -> bool:
 	var players := _as_array(main.get("players"))
 	var districts := _as_array(main.get("districts"))
-	var before_count := _as_array(main.get("auto_monsters")).size()
 	if players.is_empty() or districts.is_empty():
 		return false
+	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
+	var previous_selected_player := int(main.get("selected_player"))
+	var previous_selected_district := int(main.get("selected_district"))
+	var test_monsters := []
+	for actor_variant in previous_monsters:
+		var actor := actor_variant as Dictionary
+		if int(actor.get("owner", -1)) != 0:
+			test_monsters.append(actor)
+	main.set("auto_monsters", test_monsters)
+	var before_count := test_monsters.size()
 	var card := main.call("_make_skill", main.call("_monster_card_name", 0, 1)) as Dictionary
 	card["starter_play_free"] = true
 	card["summon_access"] = "any"
@@ -4173,9 +4397,15 @@ func _verify_monster_card_runtime_overrides(main: Node) -> bool:
 	main.set("selected_player", 0)
 	main.set("selected_district", clampi(int(main.get("selected_district")), 0, districts.size() - 1))
 	if not bool(main.call("_summon_monster_from_card", players[0] as Dictionary, card)):
+		main.set("auto_monsters", previous_monsters)
+		main.set("selected_player", previous_selected_player)
+		main.set("selected_district", previous_selected_district)
 		return false
 	var after := _as_array(main.get("auto_monsters"))
 	if after.size() != before_count + 1:
+		main.set("auto_monsters", previous_monsters)
+		main.set("selected_player", previous_selected_player)
+		main.set("selected_district", previous_selected_district)
 		return false
 	var actor := after[after.size() - 1] as Dictionary
 	var matches := int(actor.get("hp", 0)) == 77 \
@@ -4183,7 +4413,9 @@ func _verify_monster_card_runtime_overrides(main: Node) -> bool:
 		and is_equal_approx(float(actor.get("duration", 0.0)), 13.5) \
 		and is_equal_approx(float(actor.get("remaining_time", 0.0)), 13.5) \
 		and is_equal_approx(float(actor.get("move", 0.0)), 333.0)
-	main.call("_remove_auto_monster", after.size() - 1, "烟测清理")
+	main.set("auto_monsters", previous_monsters)
+	main.set("selected_player", previous_selected_player)
+	main.set("selected_district", previous_selected_district)
 	return matches
 
 
@@ -4217,7 +4449,7 @@ func _verify_monster_card_play_cash_cost(main: Node) -> bool:
 		var entry := entry_variant as Dictionary
 		if String(entry.get("kind", "")) == "卡牌支出" \
 			and int(entry.get("amount", 0)) == -expected_cost \
-			and String(entry.get("label", "")).contains("怪兽·尸套龙 I级"):
+			and String(entry.get("label", "")).contains("怪兽·孢雾海皇 I级"):
 			ledger_ok = true
 			break
 	var result := int(after_player.get("cash", 0)) == 5000 - expected_cost \
@@ -4273,7 +4505,7 @@ func _verify_anonymous_cash_card(main: Node) -> bool:
 func _verify_anonymous_direct_command(main: Node) -> bool:
 	main.set("selected_player", 0)
 	var test_slot := 11
-	_set_player_skill(main, 0, test_slot, "垂直断头刀窗口1")
+	_set_player_skill(main, 0, test_slot, "垂直裂刃窗口1")
 	_clear_player_cooldown(main, 0)
 	var actors := _as_array(main.get("auto_monsters"))
 	if actors.is_empty():
@@ -4290,8 +4522,8 @@ func _verify_anonymous_direct_command(main: Node) -> bool:
 	_clear_player_cooldown(main, 0)
 	actors = _as_array(main.get("auto_monsters"))
 	return int((actors[0] as Dictionary).get("armor", 0)) > armor_before \
-		and _log_after_marker_hides_player(main, marker, "垂直断头刀窗口1", player_name) \
-		and _card_callouts_hide_player(main, "垂直断头刀窗口1", player_name)
+		and _log_after_marker_hides_player(main, marker, "垂直裂刃窗口1", player_name) \
+		and _card_callouts_hide_player(main, "垂直裂刃窗口1", player_name)
 
 
 func _first_lure_target_district(main: Node, current_position: int) -> int:
@@ -6271,32 +6503,32 @@ func _verify_special_monster_passives(main: Node) -> void:
 	var start_district := maxi(0, int(main.get("selected_district")))
 
 	main.set("game_over", false)
-	var mebius_index := int(main.call("_monster_catalog_index_by_name", "梦比优斯"))
-	_expect(mebius_index >= 0, "monster catalog contains Mebius")
-	if mebius_index >= 0:
-		var mebius := main.call("_make_auto_monster", 0, mebius_index, start_district) as Dictionary
-		mebius["hp"] = 18
-		main.set("auto_monsters", [mebius])
-		main.call("_auto_monster_take_damage", 0, 3, "烟测梦比姆炸弹", -1)
-		var mebius_after := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
-		_expect(int(mebius_after.get("hp", 0)) == 15, "Mebius Bomb self-damage reduces Mebius HP by 3")
-		_expect(bool(main.call("_is_auto_mebius_energy_active", 0)), "Mebius Energy activates at 15 HP")
-		_expect(bool(mebius_after.get("mebius_energy_announced", false)), "Mebius Energy activation is announced once")
+	var ember_ring_index := int(main.call("_monster_catalog_index_by_name", "焰环幼星"))
+	_expect(ember_ring_index >= 0, "monster catalog contains 焰环幼星")
+	if ember_ring_index >= 0:
+		var ember_ring := main.call("_make_auto_monster", 0, ember_ring_index, start_district) as Dictionary
+		ember_ring["hp"] = 18
+		main.set("auto_monsters", [ember_ring])
+		main.call("_auto_monster_take_damage", 0, 3, "烟测星焰炸弹", -1)
+		var ember_ring_after := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
+		_expect(int(ember_ring_after.get("hp", 0)) == 15, "星焰炸弹 self-damage reduces 焰环幼星 HP by 3")
+		_expect(bool(main.call("_is_auto_ember_ring_energy_active", 0)), "星焰能量 activates at 15 HP")
+		_expect(bool(ember_ring_after.get("ember_ring_energy_announced", false)), "星焰能量 activation is announced once")
 
-	var hikari_index := int(main.call("_monster_catalog_index_by_name", "希卡利"))
-	_expect(hikari_index >= 0, "monster catalog contains Hikari")
-	if hikari_index >= 0:
-		var hikari := main.call("_make_auto_monster", 0, hikari_index, start_district) as Dictionary
-		hikari["hp"] = 20
-		main.set("auto_monsters", [hikari])
-		main.call("_maybe_announce_auto_hikari_revenge_armor", 0)
-		var hikari_active := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
-		_expect(bool(hikari_active.get("hikari_revenge_armor_active", false)), "Hikari Revenge Armor activates at 20 HP")
-		_expect(int(main.call("_auto_monster_damage_bonus_from_passives", 0)) == 1, "Hikari Revenge Armor grants +1 outgoing damage")
-		var hikari_hp_before := int(hikari_active.get("hp", 0))
+	var blue_lancer_index := int(main.call("_monster_catalog_index_by_name", "蓝锋骑士"))
+	_expect(blue_lancer_index >= 0, "monster catalog contains 蓝锋骑士")
+	if blue_lancer_index >= 0:
+		var blue_lancer := main.call("_make_auto_monster", 0, blue_lancer_index, start_district) as Dictionary
+		blue_lancer["hp"] = 20
+		main.set("auto_monsters", [blue_lancer])
+		main.call("_maybe_announce_auto_blue_lancer_reactive_armor", 0)
+		var blue_lancer_active := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
+		_expect(bool(blue_lancer_active.get("blue_lancer_reactive_armor_active", false)), "蓝锋反应甲 activates at 20 HP")
+		_expect(int(main.call("_auto_monster_damage_bonus_from_passives", 0)) == 1, "蓝锋反应甲 grants +1 outgoing damage")
+		var blue_lancer_hp_before := int(blue_lancer_active.get("hp", 0))
 		main.call("_auto_monster_take_damage", 0, 3, "烟测近战", -1)
-		var hikari_after := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
-		_expect(hikari_hp_before - int(hikari_after.get("hp", 0)) == 2, "Hikari Revenge Armor reduces incoming damage by 1")
+		var blue_lancer_after := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
+		_expect(blue_lancer_hp_before - int(blue_lancer_after.get("hp", 0)) == 2, "蓝锋反应甲 reduces incoming damage by 1")
 
 	main.set("auto_monsters", saved_auto_monsters)
 	main.set("game_over", saved_game_over)
@@ -6314,7 +6546,7 @@ func _verify_card_art_script() -> void:
 	_expect(card_view != null, "card art script instantiates a Control")
 	if card_view != null:
 		get_root().add_child(card_view)
-		card_view.call("set_card", "怪兽·尸套龙1", "monster_card", "怪兽卡 / 召唤", Color("#fb7185"), 1, false, "HP50｜95s｜移190m｜怪区邻接")
+		card_view.call("set_card", "怪兽·孢雾海皇1", "monster_card", "怪兽卡 / 召唤", Color("#fb7185"), 1, false, "HP50｜95s｜移190m｜怪区邻接")
 		_expect(String(card_view.get("card_stats")).contains("HP50"), "card art accepts an on-face monster attribute line")
 		card_view.call("set_card", "环港走私议会", "player_role", "角色卡 / 蜂冠商族", Color("#38bdf8"), 1, false, "公开身份｜购牌:环晶电池+1")
 		_expect(String(card_view.get("card_kind")) == "player_role" and String(card_view.get("card_stats")).contains("公开身份"), "card art accepts public player-role card faces without starter fingerprints")
@@ -6332,7 +6564,7 @@ func _verify_monster_art_script() -> void:
 		get_root().add_child(monster_view)
 		monster_view.call(
 			"set_monster",
-			"尸套龙",
+			"孢雾海皇",
 			"自动怪兽",
 			40,
 			0,

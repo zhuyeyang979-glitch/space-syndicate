@@ -102,18 +102,18 @@ func _draw_silhouette(rect: Rect2) -> void:
 			_draw_miasma_silhouette(center, radius, body_color)
 		"mud":
 			_draw_mud_silhouette(center, radius, body_color)
-		"jack":
+		"meteor_sentinel":
 			_draw_robot_silhouette(center, radius, body_color, false)
-		"ace":
+		"prism_armor":
 			_draw_robot_silhouette(center, radius, body_color, true)
-		"nice":
+		"oasis_support":
 			_draw_support_silhouette(center, radius, body_color)
-		"mebius":
+		"ember_ring":
 			_draw_flame_silhouette(center, radius, body_color)
-		"hikari":
+		"blue_lancer":
 			_draw_blade_silhouette(center, radius, body_color)
-		"killer":
-			_draw_killer_silhouette(center, radius, body_color)
+		"mirror_hunter":
+			_draw_mirror_hunter_silhouette(center, radius, body_color)
 		_:
 			_draw_beast_silhouette(center, radius, body_color)
 	_draw_glyph(center, radius)
@@ -153,14 +153,14 @@ func _draw_mud_silhouette(center: Vector2, radius: float, color: Color) -> void:
 	draw_line(center + Vector2(-radius * 0.65, radius * 0.56), center + Vector2(radius * 0.72, radius * 0.46), mud, 4.0, true)
 
 
-func _draw_robot_silhouette(center: Vector2, radius: float, color: Color, ace_shape: bool) -> void:
-	var head_size := Vector2(radius * (1.06 if ace_shape else 0.94), radius * 0.86)
+func _draw_robot_silhouette(center: Vector2, radius: float, color: Color, prism_shape: bool) -> void:
+	var head_size := Vector2(radius * (1.06 if prism_shape else 0.94), radius * 0.86)
 	var head := Rect2(center - head_size * 0.5, head_size)
 	draw_rect(head, color, true)
 	var visor := secondary.lightened(0.18)
 	visor.a = 0.92
 	draw_rect(Rect2(head.position + Vector2(head_size.x * 0.16, head_size.y * 0.34), Vector2(head_size.x * 0.68, head_size.y * 0.16)), visor, true)
-	if ace_shape:
+	if prism_shape:
 		draw_line(center + Vector2(0.0, -radius * 0.75), center + Vector2(0.0, radius * 0.18), visor, 3.0, true)
 		draw_line(center + Vector2(-radius * 0.48, -radius * 0.54), center + Vector2(radius * 0.48, -radius * 0.54), visor, 2.0, true)
 	else:
@@ -200,7 +200,7 @@ func _draw_blade_silhouette(center: Vector2, radius: float, color: Color) -> voi
 	draw_line(center + Vector2(-radius * 0.30, -radius * 0.74), center + Vector2(radius * 0.34, radius * 0.70), blade, 2.0, true)
 
 
-func _draw_killer_silhouette(center: Vector2, radius: float, color: Color) -> void:
+func _draw_mirror_hunter_silhouette(center: Vector2, radius: float, color: Color) -> void:
 	var head := PackedVector2Array([
 		center + Vector2(0.0, -radius * 0.82),
 		center + Vector2(radius * 0.72, -radius * 0.28),

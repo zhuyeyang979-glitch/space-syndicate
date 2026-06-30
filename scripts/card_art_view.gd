@@ -87,6 +87,8 @@ func _draw_motif(rect: Rect2) -> void:
 			_draw_wave_motif(center, radius)
 		"monster_takeover":
 			_draw_signal_motif(center, radius)
+		"military_force", "military_command":
+			_draw_military_motif(center, radius)
 		"cash_gain":
 			_draw_coin_motif(center, radius)
 		"city_revenue_boost":
@@ -117,6 +119,66 @@ func _draw_motif(rect: Rect2) -> void:
 			_draw_supply_motif(center, radius)
 		_:
 			_draw_wave_motif(center, radius)
+
+
+func _draw_military_motif(center: Vector2, radius: float) -> void:
+	var label_source := "%s｜%s｜%s" % [card_name, card_tags, card_stats]
+	if label_source.contains("战斗机") or label_source.contains("空军") or label_source.contains("前进"):
+		var wing := PackedVector2Array([
+			center + Vector2(0.0, -radius * 0.78),
+			center + Vector2(radius * 0.18, radius * 0.04),
+			center + Vector2(radius * 0.82, radius * 0.34),
+			center + Vector2(radius * 0.14, radius * 0.30),
+			center + Vector2(0.0, radius * 0.78),
+			center + Vector2(-radius * 0.14, radius * 0.30),
+			center + Vector2(-radius * 0.82, radius * 0.34),
+			center + Vector2(-radius * 0.18, radius * 0.04),
+		])
+		draw_colored_polygon(wing, accent.darkened(0.10))
+		draw_polyline(wing, Color("#e0f2fe"), 1.8, true)
+		return
+	if label_source.contains("轰炸"):
+		draw_circle(center + Vector2(0.0, -radius * 0.18), radius * 0.34, accent.darkened(0.08))
+		for i in range(3):
+			var x := (float(i) - 1.0) * radius * 0.34
+			draw_line(center + Vector2(x, radius * 0.02), center + Vector2(x * 0.55, radius * 0.70), Color("#fed7aa"), 2.4, true)
+		_draw_crack_motif(center + Vector2(0.0, radius * 0.32), radius * 0.58)
+		return
+	if label_source.contains("坦克"):
+		var body := Rect2(center - Vector2(radius * 0.62, radius * 0.18), Vector2(radius * 1.24, radius * 0.46))
+		draw_rect(body, accent.darkened(0.12), true)
+		draw_rect(body, Color("#e2e8f0"), false, 1.8)
+		draw_line(center + Vector2(radius * 0.08, -radius * 0.12), center + Vector2(radius * 0.78, -radius * 0.42), Color("#e2e8f0"), 3.0, true)
+		for i in range(4):
+			draw_circle(center + Vector2((float(i) - 1.5) * radius * 0.34, radius * 0.30), radius * 0.10, Color("#0f172a"))
+		return
+	if label_source.contains("导弹"):
+		for i in range(3):
+			var x := (float(i) - 1.0) * radius * 0.28
+			var tip := center + Vector2(x, -radius * 0.76)
+			var tail := center + Vector2(x, radius * 0.58)
+			draw_line(tail, tip, Color("#ddd6fe"), 3.0, true)
+			draw_circle(tip, radius * 0.08, Color("#fef3c7"))
+		draw_arc(center, radius * 0.72, PI * 0.10, PI * 0.90, 36, accent.lightened(0.20), 2.0, true)
+		return
+	if label_source.contains("潜"):
+		_draw_wave_motif(center, radius)
+		draw_arc(center + Vector2(0.0, radius * 0.05), radius * 0.58, PI * 0.05, PI * 0.95, 32, Color("#bae6fd"), 3.0, true)
+		draw_line(center + Vector2(0.0, -radius * 0.48), center + Vector2(0.0, -radius * 0.78), Color("#bae6fd"), 2.4, true)
+		return
+	if label_source.contains("舰") or label_source.contains("战舰"):
+		_draw_wave_motif(center + Vector2(0.0, radius * 0.26), radius * 0.70)
+		var hull := PackedVector2Array([
+			center + Vector2(-radius * 0.78, radius * 0.12),
+			center + Vector2(radius * 0.78, radius * 0.12),
+			center + Vector2(radius * 0.46, radius * 0.52),
+			center + Vector2(-radius * 0.48, radius * 0.52),
+		])
+		draw_colored_polygon(hull, accent.darkened(0.12))
+		draw_polyline(hull, Color("#cffafe"), 1.8, true)
+		draw_line(center + Vector2(0.0, radius * 0.10), center + Vector2(0.0, -radius * 0.56), Color("#cffafe"), 2.4, true)
+		return
+	_draw_shield_motif(center, radius)
 
 
 func _draw_role_motif(center: Vector2, radius: float) -> void:
@@ -202,7 +264,7 @@ func _draw_role_variant_marks(center: Vector2, radius: float, variant: int) -> v
 
 func _draw_monster_card_motif(center: Vector2, radius: float) -> void:
 	var identity := "%s %s" % [card_name, card_tags]
-	if _contains_any(identity, ["飞", "空", "翼", "流星", "希卡", "梦比"]):
+	if _contains_any(identity, ["飞", "空", "翼", "流星", "蓝锋", "星焰"]):
 		_draw_motion_motif(center, radius)
 		_draw_wing_marks(center, radius)
 		return
@@ -210,7 +272,7 @@ func _draw_monster_card_motif(center: Vector2, radius: float) -> void:
 		_draw_wave_motif(center, radius)
 		_draw_miasma_motif(center + Vector2(radius * 0.10, -radius * 0.08), radius * 0.70)
 		return
-	if _contains_any(identity, ["甲", "铠", "盾", "壳", "机械", "杰克", "装甲"]):
+	if _contains_any(identity, ["甲", "铠", "盾", "壳", "机甲", "哨兵", "装甲"]):
 		_draw_shield_motif(center, radius)
 		_draw_claw_motif(center + Vector2(radius * 0.06, 0.0), radius * 0.78)
 		return

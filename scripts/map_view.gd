@@ -739,16 +739,16 @@ func _draw_monster_token_motif(pos: Vector2, radius: float, motif: String, color
 			])
 			draw_colored_polygon(body, color.darkened(0.18))
 			draw_line(pos + Vector2(-radius * 0.56, radius * 0.55), pos + Vector2(radius * 0.58, radius * 0.45), detail, 2.4, true)
-		"jack", "ace":
+		"meteor_sentinel", "prism_armor":
 			var head := Rect2(pos - Vector2(radius * 0.48, radius * 0.36), Vector2(radius * 0.96, radius * 0.72))
 			draw_rect(head, color.darkened(0.18), true)
 			draw_rect(Rect2(head.position + Vector2(radius * 0.18, radius * 0.24), Vector2(radius * 0.60, radius * 0.12)), detail, true)
-			if motif == "ace":
+			if motif == "prism_armor":
 				draw_line(pos + Vector2(0.0, -radius * 0.56), pos + Vector2(0.0, radius * 0.22), detail, 2.0, true)
-		"nice":
+		"oasis_support":
 			draw_line(pos + Vector2(-radius * 0.46, 0.0), pos + Vector2(radius * 0.46, 0.0), detail, 3.0, true)
 			draw_line(pos + Vector2(0.0, -radius * 0.46), pos + Vector2(0.0, radius * 0.46), detail, 3.0, true)
-		"mebius":
+		"ember_ring":
 			var flame := PackedVector2Array([
 				pos + Vector2(0.0, -radius * 0.62),
 				pos + Vector2(radius * 0.42, radius * 0.12),
@@ -757,14 +757,69 @@ func _draw_monster_token_motif(pos: Vector2, radius: float, motif: String, color
 			])
 			draw_colored_polygon(flame, color.lightened(0.08))
 			draw_circle(pos + Vector2(0.0, radius * 0.16), radius * 0.20, detail)
-		"hikari":
+		"blue_lancer":
 			draw_line(pos + Vector2(-radius * 0.58, radius * 0.54), pos + Vector2(radius * 0.58, -radius * 0.58), detail, 3.0, true)
 			draw_line(pos + Vector2(-radius * 0.20, -radius * 0.54), pos + Vector2(radius * 0.26, radius * 0.52), detail, 1.6, true)
-		"killer":
+		"mirror_hunter":
 			var eye := Rect2(pos - Vector2(radius * 0.48, radius * 0.08), Vector2(radius * 0.96, radius * 0.16))
 			draw_rect(eye, detail, true)
 			draw_line(pos + Vector2(-radius * 0.50, -radius * 0.36), pos + Vector2(-radius * 0.76, -radius * 0.64), detail, 1.6, true)
 			draw_line(pos + Vector2(radius * 0.50, -radius * 0.36), pos + Vector2(radius * 0.76, -radius * 0.64), detail, 1.6, true)
+		"force":
+			var shield := PackedVector2Array([
+				pos + Vector2(0.0, -radius * 0.62),
+				pos + Vector2(radius * 0.50, -radius * 0.22),
+				pos + Vector2(radius * 0.36, radius * 0.42),
+				pos + Vector2(0.0, radius * 0.66),
+				pos + Vector2(-radius * 0.36, radius * 0.42),
+				pos + Vector2(-radius * 0.50, -radius * 0.22),
+			])
+			draw_colored_polygon(shield, color.darkened(0.12))
+			draw_line(pos + Vector2(-radius * 0.28, -radius * 0.04), pos + Vector2(radius * 0.28, -radius * 0.04), detail, 2.2, true)
+			draw_line(pos + Vector2(0.0, -radius * 0.34), pos + Vector2(0.0, radius * 0.36), detail, 2.2, true)
+		"fighter":
+			var wing := PackedVector2Array([
+				pos + Vector2(0.0, -radius * 0.72),
+				pos + Vector2(radius * 0.18, radius * 0.04),
+				pos + Vector2(radius * 0.72, radius * 0.30),
+				pos + Vector2(radius * 0.12, radius * 0.28),
+				pos + Vector2(0.0, radius * 0.68),
+				pos + Vector2(-radius * 0.12, radius * 0.28),
+				pos + Vector2(-radius * 0.72, radius * 0.30),
+				pos + Vector2(-radius * 0.18, radius * 0.04),
+			])
+			draw_colored_polygon(wing, color.darkened(0.12))
+			draw_polyline(wing, detail, 1.8, true)
+		"bomber":
+			draw_circle(pos + Vector2(0.0, -radius * 0.12), radius * 0.34, color.darkened(0.10))
+			for i in range(3):
+				var x := (float(i) - 1.0) * radius * 0.30
+				draw_line(pos + Vector2(x, radius * 0.05), pos + Vector2(x * 0.50, radius * 0.62), detail, 2.0, true)
+		"tank":
+			var body := Rect2(pos - Vector2(radius * 0.58, radius * 0.18), Vector2(radius * 1.16, radius * 0.44))
+			draw_rect(body, color.darkened(0.16), true)
+			draw_rect(body, detail, false, 1.6)
+			draw_line(pos + Vector2(radius * 0.08, -radius * 0.10), pos + Vector2(radius * 0.66, -radius * 0.34), detail, 2.4, true)
+		"missile":
+			for i in range(2):
+				var x := (float(i) - 0.5) * radius * 0.34
+				draw_line(pos + Vector2(x, radius * 0.58), pos + Vector2(x, -radius * 0.70), detail, 2.4, true)
+				draw_circle(pos + Vector2(x, -radius * 0.70), radius * 0.08, secondary)
+			draw_arc(pos, radius * 0.68, PI * 0.12, PI * 0.88, 28, detail, 1.8, true)
+		"submarine":
+			draw_arc(pos, radius * 0.66, PI * 0.05, PI * 0.95, 28, detail, 2.4, true)
+			draw_line(pos + Vector2(0.0, -radius * 0.42), pos + Vector2(0.0, -radius * 0.68), detail, 2.0, true)
+			draw_line(pos + Vector2(-radius * 0.50, radius * 0.32), pos + Vector2(radius * 0.50, radius * 0.32), detail, 2.0, true)
+		"warship":
+			var hull := PackedVector2Array([
+				pos + Vector2(-radius * 0.70, radius * 0.08),
+				pos + Vector2(radius * 0.70, radius * 0.08),
+				pos + Vector2(radius * 0.40, radius * 0.48),
+				pos + Vector2(-radius * 0.42, radius * 0.48),
+			])
+			draw_colored_polygon(hull, color.darkened(0.14))
+			draw_polyline(hull, detail, 1.8, true)
+			draw_line(pos + Vector2(0.0, radius * 0.04), pos + Vector2(0.0, -radius * 0.52), detail, 2.2, true)
 		_:
 			draw_line(pos + Vector2(-radius * 0.26, -radius * 0.42), pos + Vector2(-radius * 0.58, -radius * 0.72), detail, 2.2, true)
 			draw_line(pos + Vector2(radius * 0.26, -radius * 0.42), pos + Vector2(radius * 0.58, -radius * 0.72), detail, 2.2, true)

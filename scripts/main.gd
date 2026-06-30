@@ -81,13 +81,13 @@ const AUTO_MONSTER_DEFAULT_COLLISION_DAMAGE := 1
 const STATUS_PARALYSIS_SECONDS := 4.0
 const STATUS_STUN_DELAY_SECONDS := 1.4
 const STATUS_TETHER_MOVE_PENALTY_METERS := 85.0
-const MEBIUS_ENERGY_THRESHOLD := 15
-const MEBIUS_ENERGY_MOVE_BONUS_METERS := 180.0
-const MEBIUS_ENERGY_FLAME_DAMAGE := 1
-const MEBIUS_BOMB_SELF_DAMAGE := 3
-const HIKARI_REVENGE_ARMOR_THRESHOLD := 20
-const HIKARI_REVENGE_DAMAGE_REDUCTION := 1
-const HIKARI_REVENGE_DAMAGE_BONUS := 1
+const EMBER_RING_ENERGY_THRESHOLD := 15
+const EMBER_RING_ENERGY_MOVE_BONUS_METERS := 180.0
+const EMBER_RING_ENERGY_FLAME_DAMAGE := 1
+const EMBER_RING_BOMB_SELF_DAMAGE := 3
+const BLUE_LANCER_REACTIVE_ARMOR_THRESHOLD := 20
+const BLUE_LANCER_REACTIVE_DAMAGE_REDUCTION := 1
+const BLUE_LANCER_REACTIVE_DAMAGE_BONUS := 1
 const ACE_KILLER_SKIRMISH_RANGE_METERS := 420.0
 const ACE_KILLER_PERFECT_GUARD_REDUCTION := 3
 const ACE_KILLER_PERFECT_GUARD_COUNTER_DAMAGE := 2
@@ -172,6 +172,11 @@ const MONSTER_WAGER_SECONDS := 30.0
 const MONSTER_WAGER_DEFAULT_STAKE := 100
 const MONSTER_WAGER_LARGE_STAKE := 500
 const MONSTER_WAGER_HISTORY_LIMIT := 12
+const MILITARY_UNIT_DEFAULT_DURATION_SECONDS := 28.0
+const MILITARY_UNIT_DEFAULT_COOLDOWN_SECONDS := 7.5
+const MILITARY_UNIT_HISTORY_LIMIT := 16
+const MILITARY_UNIT_COMMAND_COOLDOWN_SECONDS := 5.0
+const CARD_COUNTER_RESPONSE_SECONDS := 5.0
 const MONSTER_CARD_PLAY_CASH_PER_EXISTING := 100
 const MONSTER_OWNER_DAMAGE_CASH_POOL := 800
 const MONSTER_CARD_DURATION_BASE_SECONDS := 95.0
@@ -428,6 +433,33 @@ const PLAYER_ROLE_CATALOG := [
 		"resource_cash_amount": 30,
 		"flavor": "他们从不隐藏财富，只隐藏财富旁边的怪兽脚印。",
 	},
+	{
+		"name": "孪星兽栏同盟",
+		"species": "双核驯灾族",
+		"trait": "把灾害承包给成对的轨道兽栏；适合同时铺两条怪兽压力线，但资金线索也会翻倍暴露。",
+		"passive": "怪兽归属上限+1：可同时拥有2只在场怪兽。第二只怪兽仍自动行动，受伤时照常让归属者按生命比例失去资金并公开线索；同名怪兽牌仍优先升级/刷新场上同名怪兽。",
+		"monster_control_limit_bonus": 1,
+		"starting_cash_bonus": 30,
+		"flavor": "他们从不问哪只怪兽更忠诚，只问哪只怪兽离竞品城市更近。",
+	},
+	{
+		"name": "蜂巢防务议会",
+		"species": "群巢参谋体",
+		"trait": "把军队拆成多个匿名战术节点；适合一支保卫收益线，一支压制竞争区。",
+		"passive": "军队归属上限+1：可同时维持2支短时防卫军。每支军队各自绑定私有军令牌；军队仍不会自主行动，且军令执行不公开下令者。",
+		"military_control_limit_bonus": 1,
+		"starting_cash_bonus": 30,
+		"flavor": "蜂巢的命令从不来自一个脑袋，所以也没人知道该追查哪一个脑袋。",
+	},
+	{
+		"name": "悖论兽契社",
+		"species": "逆相契约体",
+		"trait": "把怪兽召唤契约改写成相位保险；擅长用怪兽牌抵消关键匿名行动。",
+		"passive": "在一张匿名牌展示结束后的5秒相位响应窗口内，可把任意手中怪兽牌当作相位否决打出；会消耗那张怪兽牌，但不暴露该怪兽原本属于谁。",
+		"monster_cards_as_counter": true,
+		"starting_cash_bonus": 40,
+		"flavor": "他们相信怪兽不是武器，而是一份足够荒谬的撤销条款。",
+	},
 ]
 
 const AI_PERSONALITY_CATALOG := [
@@ -537,8 +569,8 @@ const PRODUCT_PROFILES := {
 	"真空可可": {"category": "基础食品", "route": "食品消费线", "terrain": "干燥陆地", "use": "低价、易流通，适合作为合约教学和早期供需连接。", "hook": "不会天然爆炸，但能让城市路线更稳。", "flavor": "在无氧仓里发酵，入口有轻微星尘味。", "glyph": "●", "accent": Color("#78350f"), "secondary": Color("#fbbf24")},
 	"离子香料": {"category": "军需香料", "route": "奢侈套利线", "terrain": "干热贸易港", "use": "高需求高波动，适合军需临单、做空和怪兽偏好冲突。", "hook": "需求压力会显著推价，供给扩张也会迅速制造竞争。", "flavor": "洒进锅里会劈啪放电，舰队食堂很爱它。", "glyph": "ϟ", "accent": Color("#e879f9"), "secondary": Color("#f97316")},
 	"孢子丝绸": {"category": "生物纺材", "route": "生态材料线", "terrain": "潮湿森林", "use": "偏生产型商品，适合城市工业升级和稳定外运。", "hook": "容易吸引生态怪兽，也适合通过合约补需求。", "flavor": "一卷丝绸里睡着几百万个温顺孢子。", "glyph": "∴", "accent": Color("#86efac"), "secondary": Color("#c084fc")},
-	"环晶电池": {"category": "能源科技", "route": "能源科技线", "terrain": "工业/轨道区", "use": "核心能源商品，适合科技城市、固定合约和机械怪兽路线。", "hook": "已绑定专供合约和机械杰克偏好，是最清楚的商品路线样板。", "flavor": "环形晶体里锁着可反复折叠的微型晨光。", "glyph": "◎", "accent": Color("#38bdf8"), "secondary": Color("#facc15")},
-	"重力陶瓷": {"category": "工业建材", "route": "工业建设线", "terrain": "矿带陆地", "use": "建设与装甲商品，适合生产扩张、城市耐久和土砂龙压力。", "hook": "高生产价值但容易被工业竞争和怪兽冲撞盯上。", "flavor": "杯子放桌上会把桌子往杯子里拽。", "glyph": "▣", "accent": Color("#94a3b8"), "secondary": Color("#f97316")},
+	"环晶电池": {"category": "能源科技", "route": "能源科技线", "terrain": "工业/轨道区", "use": "核心能源商品，适合科技城市、固定合约和机械怪兽路线。", "hook": "已绑定专供合约和流星哨兵偏好，是最清楚的商品路线样板。", "flavor": "环形晶体里锁着可反复折叠的微型晨光。", "glyph": "◎", "accent": Color("#38bdf8"), "secondary": Color("#facc15")},
+	"重力陶瓷": {"category": "工业建材", "route": "工业建设线", "terrain": "矿带陆地", "use": "建设与装甲商品，适合生产扩张、城市耐久和砂铠陆行兽压力。", "hook": "高生产价值但容易被工业竞争和怪兽冲撞盯上。", "flavor": "杯子放桌上会把桌子往杯子里拽。", "glyph": "▣", "accent": Color("#94a3b8"), "secondary": Color("#f97316")},
 	"梦境香氛": {"category": "奢侈体验", "route": "奢侈套利线", "terrain": "商业/疗养区", "use": "高利润消费品，适合角色现金流、会展和需求扩张。", "hook": "需求一旦成型，价格与城市GDP都很漂亮，但容易被情报推理锁定。", "flavor": "闻到它的人会梦见自己已经盈利。", "glyph": "☁", "accent": Color("#f0abfc"), "secondary": Color("#60a5fa")},
 	"零点饮料": {"category": "功能饮料", "route": "食品消费线", "terrain": "夜间城市", "use": "中价消费品，可支撑稳定需求和短线订单。", "hook": "适合作为低冲突城市的现金流底盘。", "flavor": "永远保持零度，连账本亏损都能冷静下来。", "glyph": "◌", "accent": Color("#67e8f9"), "secondary": Color("#dbeafe")},
 	"活体芯片": {"category": "生物科技", "route": "情报科技线", "terrain": "研究院/数据塔", "use": "情报、追踪、怪兽夺取的关键门槛商品。", "hook": "出牌条件会暴露强烈线索，是匿名推理局的核心商品之一。", "flavor": "芯片会自己读合同，并偶尔提出反对意见。", "glyph": "▥", "accent": Color("#4ade80"), "secondary": Color("#38bdf8")},
@@ -547,17 +579,17 @@ const PRODUCT_PROFILES := {
 	"云母玩具": {"category": "轻工业消费", "route": "食品消费线", "terrain": "城市娱乐区", "use": "低中价消费品，适合需求扩张和广告路线。", "hook": "竞争多时利润薄，但适合做城市热度诱饵。", "flavor": "儿童会拿它拼出自己的第一艘逃税飞船。", "glyph": "□", "accent": Color("#f9a8d4"), "secondary": Color("#93c5fd")},
 	"光合凝胶": {"category": "修复材料", "route": "修复避难线", "terrain": "避难/医疗区", "use": "防御、修复、灾后保险路线的核心商品。", "hook": "已绑定应急修复，适合领先者保护高GDP城市。", "flavor": "涂在墙上会自己晒太阳，顺便补洞。", "glyph": "✚", "accent": Color("#22c55e"), "secondary": Color("#bef264")},
 	"轨道盆栽": {"category": "生态消费", "route": "修复避难线", "terrain": "轨道居住区", "use": "补给范围和城市舒适度商品，适合远程采购路线。", "hook": "可作为低风险补给型角色/卡牌门槛。", "flavor": "盆栽会按轨道周期开花，花粉有点会计味。", "glyph": "♧", "accent": Color("#65a30d"), "secondary": Color("#86efac")},
-	"极光盐": {"category": "晶体调味", "route": "精密晶体线", "terrain": "极地/晶体带", "use": "中高价晶体商品，适合专利、天气和精密制造路线。", "hook": "容易被希卡利类科技怪兽偏好放大。", "flavor": "撒一点，汤面会出现极光。", "glyph": "✧", "accent": Color("#67e8f9"), "secondary": Color("#a78bfa")},
+	"极光盐": {"category": "晶体调味", "route": "精密晶体线", "terrain": "极地/晶体带", "use": "中高价晶体商品，适合专利、天气和精密制造路线。", "hook": "容易被蓝锋骑士类科技怪兽偏好放大。", "flavor": "撒一点，汤面会出现极光。", "glyph": "✧", "accent": Color("#67e8f9"), "secondary": Color("#a78bfa")},
 	"蓝潮藻": {"category": "海洋生物", "route": "海洋物流线", "terrain": "浅海/洋流", "use": "海洋基础供给，适合运输、养殖和低价大流量商路。", "hook": "海洋天气和交通升级会显著提高它的流通价值。", "flavor": "潮水退去时会在礁石上写蓝色广告。", "glyph": "≈", "accent": Color("#06b6d4"), "secondary": Color("#22c55e")},
 	"巨藻纤维": {"category": "海洋纤维", "route": "海洋物流线", "terrain": "巨藻森林", "use": "海带/巨藻类材料，连接海洋生产、生态工业和修复商品。", "hook": "适合做低价大流量供给，也能被合约升级成工业需求。", "flavor": "一根巨藻能从海底长到低轨道电梯广告牌。", "glyph": "〰", "accent": Color("#10b981"), "secondary": Color("#67e8f9")},
 	"风暴珍珠": {"category": "海洋奢侈", "route": "奢侈套利线", "terrain": "风暴海域", "use": "高价海洋奢侈品，适合天气预报、买涨和商路保护。", "hook": "风暴/断路会让价格信号非常明显，适合高风险玩家。", "flavor": "每颗珍珠都存着一次台风的回声。", "glyph": "◉", "accent": Color("#7dd3fc"), "secondary": Color("#fef3c7")},
 	"赤道香草": {"category": "热带香料", "route": "奢侈套利线", "terrain": "赤道陆地", "use": "消费需求强，适合合约和需求扩张。", "hook": "热带城市争夺它时，会天然形成竞争目标。", "flavor": "香味会绕星球赤道跑一圈才散。", "glyph": "∿", "accent": Color("#bef264"), "secondary": Color("#f59e0b")},
 	"寒冠冰糖": {"category": "极地甜品", "route": "食品消费线", "terrain": "寒冠极地", "use": "稳定消费品，适合低波动需求和极地城市特色。", "hook": "适合作为防御型城市的温和收入来源。", "flavor": "含在嘴里会短暂听见雪落在别的星球。", "glyph": "❄", "accent": Color("#bae6fd"), "secondary": Color("#ffffff")},
 	"太阳鳞片": {"category": "高能材料", "route": "高危能源线", "terrain": "太阳能带", "use": "爆发型高能商品，适合怪兽热潮和GDP买涨窗口。", "hook": "价格增速被放大时很可怕，但断路/做空也会很痛。", "flavor": "摸起来像一片很有意见的太阳。", "glyph": "☀", "accent": Color("#facc15"), "secondary": Color("#ef4444")},
-	"深海菌毯": {"category": "海洋生态", "route": "海洋物流线", "terrain": "深海海盆", "use": "水域生态商品，适合尸套龙、黑市药材和海洋城市。", "hook": "怪兽偏好强，赚钱的同时也更容易把战场拉过来。", "flavor": "像地毯一样铺在海底，踩上去会问你要不要投资。", "glyph": "▩", "accent": Color("#14b8a6"), "secondary": Color("#a855f7")},
+	"深海菌毯": {"category": "海洋生态", "route": "海洋物流线", "terrain": "深海海盆", "use": "水域生态商品，适合孢雾海皇、黑市药材和海洋城市。", "hook": "怪兽偏好强，赚钱的同时也更容易把战场拉过来。", "flavor": "像地毯一样铺在海底，踩上去会问你要不要投资。", "glyph": "▩", "accent": Color("#14b8a6"), "secondary": Color("#a855f7")},
 	"海底黑油": {"category": "海底能源", "route": "高危能源线", "terrain": "深海油脊", "use": "海底石油型高收益能源，适合做空、污染新闻和高风险运输。", "hook": "被破坏时会同时影响能源价格、海路安全和城市GDP。", "flavor": "黑得像董事会的会议纪要，燃起来却很诚实。", "glyph": "油", "accent": Color("#111827"), "secondary": Color("#f97316")},
 	"反物质茶": {"category": "高危饮品", "route": "高危能源线", "terrain": "实验茶馆", "use": "高波动投机商品，适合金融传闻、市场稳定和做空。", "hook": "利润感强，但应给玩家明显风险提示。", "flavor": "泡茶前要先确认茶杯和宇宙没有互相抵消。", "glyph": "☕", "accent": Color("#c084fc"), "secondary": Color("#f43f5e")},
-	"虹膜矿粉": {"category": "精密矿物", "route": "工业建设线", "terrain": "矿山/研究区", "use": "工业和光学材料，适合生产扩张、专利和怪兽矿物偏好。", "hook": "土砂龙路线会让它更像战场诱饵。", "flavor": "粉末会凝视价格曲线，仿佛早就知道。", "glyph": "◈", "accent": Color("#c084fc"), "secondary": Color("#38bdf8")},
+	"虹膜矿粉": {"category": "精密矿物", "route": "工业建设线", "terrain": "矿山/研究区", "use": "工业和光学材料，适合生产扩张、专利和怪兽矿物偏好。", "hook": "砂铠陆行兽路线会让它更像战场诱饵。", "flavor": "粉末会凝视价格曲线，仿佛早就知道。", "glyph": "◈", "accent": Color("#c084fc"), "secondary": Color("#38bdf8")},
 	"引力棉": {"category": "工业纺材", "route": "工业建设线", "terrain": "低重力农场", "use": "轻工业/运输包装商品，适合交通型城市。", "hook": "运输速度越高越能体现价值。", "flavor": "一团棉花能把货箱轻轻往目的地推。", "glyph": "☁", "accent": Color("#e5e7eb"), "secondary": Color("#60a5fa")},
 	"钛壳贝": {"category": "海陆矿壳", "route": "工业建设线", "terrain": "礁岸/矿带", "use": "装甲建材商品，适合城市防御和工业GDP。", "hook": "高生产价值会吸引冲撞型怪兽。", "flavor": "贝壳硬到需要请律师开壳。", "glyph": "◖", "accent": Color("#64748b"), "secondary": Color("#38bdf8")},
 	"夜航香蕉": {"category": "远洋水果", "route": "海洋物流线", "terrain": "夜航港口", "use": "低中价物流商品，适合港口消费和运输教学。", "hook": "玩家容易记住，适合做 UI 目录里的轻松商品。", "flavor": "成熟时会指向最近的走私航线。", "glyph": "☾", "accent": Color("#fde047"), "secondary": Color("#312e81")},
@@ -569,7 +601,7 @@ const PRODUCT_PROFILES := {
 	"潮汐电浆": {"category": "海浪能源", "route": "海洋物流线", "terrain": "潮汐发电阵列", "use": "海浪供电商品，适合交通速度、航线预报和能源城市买涨。", "hook": "天气预报和海洋交通水平会直接影响它的策略价值。", "flavor": "每一次浪涌都被压缩成一枚蓝白色电浆币。", "glyph": "≈⚡", "accent": Color("#0ea5e9"), "secondary": Color("#facc15")},
 	"晨昏奶酪": {"category": "极地食品", "route": "食品消费线", "terrain": "晨昏牧场", "use": "中价稳定消费品，可接精密/晶体路线需求。", "hook": "适合成为城市需求端而非强投机端。", "flavor": "早晨吃像黎明，晚上吃像加班。", "glyph": "◐", "accent": Color("#fef08a"), "secondary": Color("#fb7185")},
 	"轨迹墨水": {"category": "情报材料", "route": "情报科技线", "terrain": "数据塔/海关", "use": "匿名推理、合约回溯、天气干涉和竞争封锁的关键门槛。", "hook": "打出它会暴露强线索，是信息战路线核心。", "flavor": "写下去的字会标出作者刚刚去过哪里。", "glyph": "⌁", "accent": Color("#1d4ed8"), "secondary": Color("#a855f7")},
-	"等离子米": {"category": "能量主粮", "route": "食品消费线", "terrain": "能源农场", "use": "军需和大众消费之间的桥梁商品。", "hook": "适合机械艾斯/艾斯杀手相关能量食品偏好。", "flavor": "煮熟后米粒会悬浮三厘米，方便偷吃。", "glyph": "⋯", "accent": Color("#fb7185"), "secondary": Color("#facc15")},
+	"等离子米": {"category": "能量主粮", "route": "食品消费线", "terrain": "能源农场", "use": "军需和大众消费之间的桥梁商品。", "hook": "适合棱刃重甲/镜像猎兵相关能量食品偏好。", "flavor": "煮熟后米粒会悬浮三厘米，方便偷吃。", "glyph": "⋯", "accent": Color("#fb7185"), "secondary": Color("#facc15")},
 	"北极薄荷": {"category": "修复药材", "route": "修复避难线", "terrain": "极地温室", "use": "避难、医疗、冷却城市的辅助商品。", "hook": "适合和光合凝胶组成防御经济线。", "flavor": "闻一下，过热的怪兽也会短暂怀疑人生。", "glyph": "✚", "accent": Color("#2dd4bf"), "secondary": Color("#d9f99d")},
 	"火山番茄": {"category": "高热食品", "route": "高危能源线", "terrain": "火山陆地", "use": "高热高波动消费品，适合爆发怪兽和买涨窗口。", "hook": "被破坏或天气影响时 GDP 变化很戏剧化。", "flavor": "切开会冒岩浆味番茄汁。", "glyph": "◆", "accent": Color("#ef4444"), "secondary": Color("#f97316")},
 	"卫星坚果": {"category": "轨道零食", "route": "食品消费线", "terrain": "轨道仓储", "use": "轻量消费和运输商品，适合补给型城市。", "hook": "中性商品，适合作为随机地图里的缓冲经济。", "flavor": "坚果壳会绕包装袋公转。", "glyph": "◍", "accent": Color("#a16207"), "secondary": Color("#facc15")},
@@ -775,22 +807,54 @@ const SKILL_CATALOG := {
 	"环晶电池专供1": {"cost": 5, "kind": "area_trade_contract", "contract_product_mode": "fixed", "contract_products": ["环晶电池"], "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 130, "accept_production_delta": 1, "accept_route_flow_multiplier": 1.20, "route_flow_turns": 3, "decline_cash_penalty": 95, "decline_consumption_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "指定商品"], "text": "指定环晶电池专供条款：供给区和需求区围绕环晶电池接入生产/需求。签约提高生产和相关流通，拒签会削弱消费并支付罚款。"},
 	"双边对冲合约1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "multi", "contract_add_products": 2, "contract_add_demands": 2, "contract_remove_products": 1, "contract_remove_demands": 1, "accept_cash": 150, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.30, "route_flow_turns": 4, "decline_cash_penalty": 130, "decline_production_delta": -1, "decline_route_damage": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "对冲"], "text": "双商品对冲合约：签约时两端各接入两项商品，并替换一项旧供需以重排经营结构；拒签会压低生产并追加商路压力。"},
 	"惩罚性拒签条款1": {"cost": 6, "kind": "area_trade_contract", "contract_product_mode": "auto", "contract_add_products": 1, "contract_add_demands": 1, "accept_cash": 70, "accept_transport_delta": 1, "accept_route_flow_multiplier": 1.16, "route_flow_turns": 2, "decline_cash_penalty": 180, "decline_production_delta": -1, "decline_transport_delta": -1, "decline_consumption_delta": -1, "decline_route_damage": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["合约", "惩罚"], "text": "强压式匿名条款：签约收益较低但可接通自动撮合商品；拒签会触发高额罚款，并同时拖慢生产、交通、消费和商路。"},
-	"过河拆桥1": {"cost": 4, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 1, "hand_discard_count": 1, "hand_lock_seconds": 0.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "情报"], "text": "指定一名对手，匿名拆掉其1张可弃普通手牌。公开层只显示目标玩家被拆牌，具体牌名只写入受害者私人流水。"},
-	"过河拆桥2": {"cost": 6, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 2, "hand_discard_count": 1, "hand_lock_seconds": 10.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "升级"], "text": "指定一名对手，拆掉1张可弃普通手牌；若目标还有可行动普通牌，再随机封锁1张10秒。目标公开、出牌者匿名。"},
-	"过河拆桥3": {"cost": 8, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 3, "hand_discard_count": 1, "hand_lock_seconds": 18.0, "target_cash_penalty": 80, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "核心"], "text": "核心拆牌：拆掉1张可弃普通手牌，随机封锁1张18秒，并让目标支付少量应急重组成本。"},
-	"过河拆桥4": {"cost": 10, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 4, "hand_discard_count": 2, "hand_lock_seconds": 20.0, "target_cash_penalty": 120, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "IV"], "text": "终端拆牌IV：最多拆掉2张可弃普通手牌，再封锁1张20秒并追加重组成本；强效果会留下明显目标线索。"},
-	"顺手牵羊1": {"cost": 5, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 2, "hand_steal_count": 1, "steal_fail_cash": 60, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "情报"], "text": "指定一名对手，匿名牵取其1张可弃普通手牌并加入自己手牌；若自己无法接收，则改为拆牌并获得少量情报补偿。"},
-	"顺手牵羊2": {"cost": 7, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 2, "hand_steal_count": 1, "hand_lock_seconds": 8.0, "steal_fail_cash": 90, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "升级"], "text": "升级牵牌：牵取1张可弃普通手牌；若成功，目标再随机封锁1张8秒，制造更明显的手牌节奏线索。"},
-	"顺手牵羊3": {"cost": 9, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 3, "hand_steal_count": 1, "hand_lock_seconds": 15.0, "steal_fail_cash": 140, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "核心"], "text": "核心牵牌：牵取1张可弃普通手牌并封锁目标1张15秒；如果牵取失败，获得更高情报补偿。"},
-	"顺手牵羊4": {"cost": 11, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 4, "hand_steal_count": 2, "hand_lock_seconds": 18.0, "steal_fail_cash": 220, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "IV"], "text": "终端牵牌IV：最多牵取2张可弃普通手牌，随后封锁目标1张18秒；极强但会公开目标玩家与资源门槛线索。"},
+	"星链拆解1": {"cost": 4, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 1, "hand_discard_count": 1, "hand_lock_seconds": 0.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "情报"], "text": "指定一名对手，匿名拆掉其1张可弃普通手牌。公开层只显示目标玩家被拆牌，具体牌名只写入受害者私人流水。"},
+	"星链拆解2": {"cost": 6, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 2, "hand_discard_count": 1, "hand_lock_seconds": 10.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "升级"], "text": "指定一名对手，拆掉1张可弃普通手牌；若目标还有可行动普通牌，再随机封锁1张10秒。目标公开、出牌者匿名。"},
+	"星链拆解3": {"cost": 8, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 3, "hand_discard_count": 1, "hand_lock_seconds": 18.0, "target_cash_penalty": 80, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "核心"], "text": "核心拆牌：拆掉1张可弃普通手牌，随机封锁1张18秒，并让目标支付少量应急重组成本。"},
+	"星链拆解4": {"cost": 10, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 4, "hand_discard_count": 2, "hand_lock_seconds": 20.0, "target_cash_penalty": 120, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "拆牌", "IV"], "text": "终端拆牌IV：最多拆掉2张可弃普通手牌，再封锁1张20秒并追加重组成本；强效果会留下明显目标线索。"},
+	"影仓牵引1": {"cost": 5, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 2, "hand_steal_count": 1, "steal_fail_cash": 60, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "情报"], "text": "指定一名对手，匿名牵取其1张可弃普通手牌并加入自己手牌；若自己无法接收，则改为拆牌并获得少量情报补偿。"},
+	"影仓牵引2": {"cost": 7, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 2, "hand_steal_count": 1, "hand_lock_seconds": 8.0, "steal_fail_cash": 90, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "升级"], "text": "升级牵牌：牵取1张可弃普通手牌；若成功，目标再随机封锁1张8秒，制造更明显的手牌节奏线索。"},
+	"影仓牵引3": {"cost": 9, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 3, "hand_steal_count": 1, "hand_lock_seconds": 15.0, "steal_fail_cash": 140, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "核心"], "text": "核心牵牌：牵取1张可弃普通手牌并封锁目标1张15秒；如果牵取失败，获得更高情报补偿。"},
+	"影仓牵引4": {"cost": 11, "kind": "player_hand_steal", "target_player_required": true, "play_product": "活体芯片", "play_flow_required": 4, "hand_steal_count": 2, "hand_lock_seconds": 18.0, "steal_fail_cash": 220, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "牵牌", "IV"], "text": "终端牵牌IV：最多牵取2张可弃普通手牌，随后封锁目标1张18秒；极强但会公开目标玩家与资源门槛线索。"},
 	"产权冻结1": {"cost": 4, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 2, "control_block_seconds": 20.0, "control_gdp_penalty": 35, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "归属"], "text": "选中一座公开存活城市，匿名制造产权争议20秒；城市GDP/min受到小幅归属惩罚，真实业主不公开。"},
 	"产权冻结2": {"cost": 6, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 2, "control_block_seconds": 30.0, "control_gdp_penalty": 50, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "升级"], "text": "升级产权冻结：产权争议30秒，GDP/min归属惩罚提高，并给该城留下公开法律/舆论线索。"},
 	"产权冻结3": {"cost": 8, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 3, "control_block_seconds": 45.0, "control_gdp_penalty": 70, "panic": 14, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "核心"], "text": "核心产权冻结：产权争议45秒，显著压低目标城市GDP/min；适合配合城市做空、怪兽破坏或归属推理。"},
 	"产权冻结4": {"cost": 10, "kind": "city_control_dispute", "play_product": "轨迹墨水", "play_flow_required": 4, "control_block_seconds": 60.0, "control_gdp_penalty": 95, "panic": 20, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "城市", "IV"], "text": "终端产权冻结IV：产权争议60秒并施加高额GDP/min归属惩罚；强力压制但目标城市和商品条件会暴露反推线索。"},
-	"万箭齐发1": {"cost": 5, "kind": "global_barrage", "play_flow_required": 2, "global_barrage_damage": 1, "global_barrage_target_count": 2, "global_barrage_route_damage": 0, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "全场"], "text": "匿名轨道齐射：优先打击最多2座非己方高GDP公开城市，每座区域/城市受到1点伤害。目标城市公开，出牌者匿名。"},
-	"万箭齐发2": {"cost": 7, "kind": "global_barrage", "play_flow_required": 3, "global_barrage_damage": 1, "global_barrage_target_count": 3, "global_barrage_route_damage": 1, "panic": 12, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "升级"], "text": "升级齐射：优先打击最多3座非己方高GDP城市，每座受1点伤害，并追加少量商路损伤。"},
-	"万箭齐发3": {"cost": 9, "kind": "global_barrage", "play_flow_required": 4, "global_barrage_damage": 2, "global_barrage_target_count": 4, "global_barrage_route_damage": 1, "panic": 16, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "核心"], "text": "核心齐射：优先打击最多4座非己方高GDP城市，每座受2点伤害并追加商路损伤，适合终局压制领先者。"},
-	"万箭齐发4": {"cost": 11, "kind": "global_barrage", "play_flow_required": 5, "global_barrage_damage": 2, "global_barrage_target_count": 6, "global_barrage_route_damage": 2, "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "IV"], "text": "终端齐射IV：优先打击最多6座非己方高GDP城市，每座受2点伤害并追加2点商路损伤；影响巨大但公开目标非常多。"},
+	"轨道齐射1": {"cost": 5, "kind": "global_barrage", "play_flow_required": 2, "global_barrage_damage": 1, "global_barrage_target_count": 2, "global_barrage_route_damage": 0, "panic": 8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "全场"], "text": "匿名轨道齐射：优先打击最多2座非己方高GDP公开城市，每座区域/城市受到1点伤害。目标城市公开，出牌者匿名。"},
+	"轨道齐射2": {"cost": 7, "kind": "global_barrage", "play_flow_required": 3, "global_barrage_damage": 1, "global_barrage_target_count": 3, "global_barrage_route_damage": 1, "panic": 12, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "升级"], "text": "升级齐射：优先打击最多3座非己方高GDP城市，每座受1点伤害，并追加少量商路损伤。"},
+	"轨道齐射3": {"cost": 9, "kind": "global_barrage", "play_flow_required": 4, "global_barrage_damage": 2, "global_barrage_target_count": 4, "global_barrage_route_damage": 1, "panic": 16, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "核心"], "text": "核心齐射：优先打击最多4座非己方高GDP城市，每座受2点伤害并追加商路损伤，适合终局压制领先者。"},
+	"轨道齐射4": {"cost": 11, "kind": "global_barrage", "play_flow_required": 5, "global_barrage_damage": 2, "global_barrage_target_count": 6, "global_barrage_route_damage": 2, "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["互动", "齐射", "IV"], "text": "终端齐射IV：优先打击最多6座非己方高GDP城市，每座受2点伤害并追加2点商路损伤；影响巨大但公开目标非常多。"},
+	"相位否决1": {"cost": 4, "kind": "card_counter", "play_product": "轨迹墨水", "play_flow_required": 1, "counter_window_seconds": 5.0, "counter_strength": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["反制", "互动", "防御"], "text": "反制牌：每张可反制牌公开展示结束后，都会进入5秒相位响应窗口；此牌可取消那张牌的结算。"},
+	"相位否决2": {"cost": 6, "kind": "card_counter", "play_product": "轨迹墨水", "play_flow_required": 2, "counter_window_seconds": 5.0, "counter_strength": 2, "counter_refund": 40, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["反制", "互动", "升级"], "text": "升级反制：在相位响应窗口取消原牌；若成功，反制者私下回收少量相位押金。"},
+	"相位否决3": {"cost": 8, "kind": "card_counter", "play_product": "轨迹墨水", "play_flow_required": 3, "counter_window_seconds": 5.0, "counter_strength": 3, "counter_refund": 90, "counter_trace": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["反制", "互动", "核心"], "text": "核心反制：在相位响应窗口取消原牌，并私下获得一条关于被反制牌的出牌者线索。"},
+	"相位否决4": {"cost": 10, "kind": "card_counter", "play_product": "轨迹墨水", "play_flow_required": 4, "counter_window_seconds": 5.0, "counter_strength": 4, "counter_refund": 160, "counter_trace": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["反制", "互动", "IV"], "text": "终端反制IV：在相位响应窗口取消原牌，回收更高押金，并私下追溯更多出牌线索；强但轨迹墨水门槛明显。"},
+	"行星防卫军1": {"cost": 5, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 1, "military_hp": 8, "military_damage": 1, "military_move": 260.0, "military_range": 260.0, "military_duration_seconds": 28.0, "fixed_skill_count": 2, "damage": 0, "move": 0.0, "range": 260.0, "tags": ["军队", "防卫军", "短时"], "text": "在选中未毁区域匿名部署一支短时防卫军。基础军队上限为1支，公开角色被动可提高上限；达到上限时会刷新较早的军队。军队完全受控，只响应私有固定军令牌。"},
+	"行星防卫军2": {"cost": 7, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 2, "military_hp": 12, "military_damage": 2, "military_move": 320.0, "military_range": 320.0, "military_duration_seconds": 36.0, "fixed_skill_count": 3, "damage": 0, "move": 0.0, "range": 320.0, "tags": ["军队", "防卫军", "升级"], "text": "升级防卫军：在未达上限时部署新军队；达到上限时刷新较早军队的生命和在场时间，解锁更强军令。"},
+	"行星防卫军3": {"cost": 9, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 3, "military_hp": 16, "military_damage": 3, "military_move": 380.0, "military_range": 380.0, "military_duration_seconds": 44.0, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 380.0, "tags": ["军队", "防卫军", "核心"], "text": "核心防卫军：部署或刷新当前角色上限内的一支防卫军，完整解锁前进、保卫、摧毁和猎兽军令。"},
+	"行星防卫军4": {"cost": 11, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 4, "military_hp": 22, "military_damage": 4, "military_move": 460.0, "military_range": 460.0, "military_duration_seconds": 56.0, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 460.0, "tags": ["军队", "防卫军", "IV"], "text": "终端防卫军IV：刷新/部署一支强力短时军队；仍遵守当前角色的军队归属上限，所有操作由私有军令牌触发。"},
+	"制空战斗机1": {"cost": 5, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 1, "military_type": "fighter", "military_domain": "air", "movement_traits": ["air"], "terrain_move_multiplier": {"land": 1.25, "ocean": 1.25}, "military_hp": 5, "military_damage": 1, "military_move": 520.0, "military_range": 420.0, "military_duration_seconds": 22.0, "military_gdp_penalty": 6, "military_gdp_pressure_seconds": 12.0, "fixed_skill_count": 2, "damage": 0, "move": 0.0, "range": 420.0, "tags": ["军队", "空军", "高速"], "text": "部署高速制空战斗机：空中移动，陆海机动都快，适合追击怪兽或快速保卫；火力较低，军事管制只造成轻微短时GDP压力。"},
+	"制空战斗机2": {"cost": 7, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 2, "military_type": "fighter", "military_domain": "air", "movement_traits": ["air"], "terrain_move_multiplier": {"land": 1.30, "ocean": 1.30}, "military_hp": 7, "military_damage": 2, "military_move": 640.0, "military_range": 500.0, "military_duration_seconds": 28.0, "military_gdp_penalty": 8, "military_gdp_pressure_seconds": 14.0, "fixed_skill_count": 3, "damage": 0, "move": 0.0, "range": 500.0, "tags": ["军队", "空军", "升级"], "text": "升级战斗机：更快接近目标并解锁更多军令，仍以机动和截击为主，不擅长长期压城。"},
+	"制空战斗机3": {"cost": 9, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 3, "military_type": "fighter", "military_domain": "air", "movement_traits": ["air"], "terrain_move_multiplier": {"land": 1.35, "ocean": 1.35}, "military_hp": 9, "military_damage": 2, "military_move": 760.0, "military_range": 580.0, "military_duration_seconds": 34.0, "military_gdp_penalty": 10, "military_gdp_pressure_seconds": 16.0, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 580.0, "tags": ["军队", "空军", "核心"], "text": "核心战斗机：全军令解锁，适合快速反怪兽、反空袭、补位防守；伤害成长克制但反应半径优秀。"},
+	"制空战斗机4": {"cost": 11, "kind": "military_force", "play_product": "重力陶瓷", "play_flow_required": 4, "military_type": "fighter", "military_domain": "air", "movement_traits": ["air"], "terrain_move_multiplier": {"land": 1.42, "ocean": 1.42}, "military_hp": 12, "military_damage": 3, "military_move": 900.0, "military_range": 680.0, "military_duration_seconds": 42.0, "military_gdp_penalty": 12, "military_gdp_pressure_seconds": 18.0, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 680.0, "tags": ["军队", "空军", "IV"], "text": "终端战斗机IV：极高速短时制空资产，适合终局抢先保卫或猎兽；火力仍低于轰炸机和导弹路线。"},
+	"轨道轰炸机1": {"cost": 6, "kind": "military_force", "play_product": "太阳鳞片", "play_flow_required": 1, "military_type": "bomber", "military_domain": "air", "movement_traits": ["air", "bombard"], "terrain_move_multiplier": {"land": 1.10, "ocean": 1.10}, "military_hp": 4, "military_damage": 2, "military_move": 430.0, "military_range": 520.0, "military_duration_seconds": 18.0, "military_gdp_penalty": 16, "military_gdp_pressure_seconds": 18.0, "military_strike_route_damage": 1, "fixed_skill_count": 2, "damage": 0, "move": 0.0, "range": 520.0, "tags": ["军队", "空军", "轰炸"], "text": "部署轨道轰炸机：跨地形飞行，区域轰击会压低城市GDP并可能制造商路压力；生命低、在场短，适合配合城市做空。"},
+	"轨道轰炸机2": {"cost": 8, "kind": "military_force", "play_product": "太阳鳞片", "play_flow_required": 2, "military_type": "bomber", "military_domain": "air", "movement_traits": ["air", "bombard"], "terrain_move_multiplier": {"land": 1.14, "ocean": 1.14}, "military_hp": 6, "military_damage": 3, "military_move": 500.0, "military_range": 620.0, "military_duration_seconds": 24.0, "military_gdp_penalty": 24, "military_gdp_pressure_seconds": 22.0, "military_strike_route_damage": 1, "fixed_skill_count": 3, "damage": 0, "move": 0.0, "range": 620.0, "tags": ["军队", "空军", "升级"], "text": "升级轰炸机：火力和半径提高，打城市GDP更明显；仍怕被集中攻击，适合短窗口压制。"},
+	"轨道轰炸机3": {"cost": 10, "kind": "military_force", "play_product": "太阳鳞片", "play_flow_required": 3, "military_type": "bomber", "military_domain": "air", "movement_traits": ["air", "bombard"], "terrain_move_multiplier": {"land": 1.18, "ocean": 1.18}, "military_hp": 8, "military_damage": 4, "military_move": 580.0, "military_range": 740.0, "military_duration_seconds": 30.0, "military_gdp_penalty": 34, "military_gdp_pressure_seconds": 26.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 740.0, "tags": ["军队", "空军", "核心"], "text": "核心轰炸机：区域摧毁军令会形成明显GDP压力和断路风险，是金融做空与城市压制路线的核心资产。"},
+	"轨道轰炸机4": {"cost": 12, "kind": "military_force", "play_product": "太阳鳞片", "play_flow_required": 4, "military_type": "bomber", "military_domain": "air", "movement_traits": ["air", "bombard"], "terrain_move_multiplier": {"land": 1.22, "ocean": 1.22}, "military_hp": 10, "military_damage": 5, "military_move": 660.0, "military_range": 860.0, "military_duration_seconds": 36.0, "military_gdp_penalty": 46, "military_gdp_pressure_seconds": 30.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 860.0, "tags": ["军队", "空军", "IV"], "text": "终端轰炸机IV：远距高压空袭，能把城市GDP窗口打出剧烈下跌；代价高且目标线索非常明显。"},
+	"重装坦克1": {"cost": 5, "kind": "military_force", "play_product": "钛壳贝", "play_flow_required": 1, "military_type": "tank", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "armor"], "terrain_move_multiplier": {"land": 1.10, "ocean": 0.10}, "military_hp": 12, "military_damage": 2, "military_move": 150.0, "military_range": 220.0, "military_duration_seconds": 36.0, "military_gdp_penalty": 8, "military_gdp_pressure_seconds": 18.0, "fixed_skill_count": 2, "damage": 0, "move": 0.0, "range": 220.0, "tags": ["军队", "陆军", "装甲"], "text": "在陆地区域部署重装坦克：陆地守城强、生命高，跨海几乎不可用；移动不踩建筑，但军事管制会轻微压低当地GDP。"},
+	"重装坦克2": {"cost": 7, "kind": "military_force", "play_product": "钛壳贝", "play_flow_required": 2, "military_type": "tank", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "armor"], "terrain_move_multiplier": {"land": 1.14, "ocean": 0.10}, "military_hp": 16, "military_damage": 3, "military_move": 180.0, "military_range": 280.0, "military_duration_seconds": 44.0, "military_gdp_penalty": 12, "military_gdp_pressure_seconds": 20.0, "fixed_skill_count": 3, "damage": 0, "move": 0.0, "range": 280.0, "tags": ["军队", "陆军", "升级"], "text": "升级坦克：更可靠的陆地防线和城市护卫，适合保护高GDP陆城或推进近距离摧毁。"},
+	"重装坦克3": {"cost": 9, "kind": "military_force", "play_product": "钛壳贝", "play_flow_required": 3, "military_type": "tank", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "armor"], "terrain_move_multiplier": {"land": 1.18, "ocean": 0.10}, "military_hp": 22, "military_damage": 4, "military_move": 210.0, "military_range": 340.0, "military_duration_seconds": 52.0, "military_gdp_penalty": 16, "military_gdp_pressure_seconds": 24.0, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 340.0, "tags": ["军队", "陆军", "核心"], "text": "核心坦克：完整军令解锁，陆地保卫和短线压城都稳定；慢速让它难以追逐远处怪兽。"},
+	"重装坦克4": {"cost": 11, "kind": "military_force", "play_product": "钛壳贝", "play_flow_required": 4, "military_type": "tank", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "armor"], "terrain_move_multiplier": {"land": 1.22, "ocean": 0.10}, "military_hp": 30, "military_damage": 5, "military_move": 240.0, "military_range": 400.0, "military_duration_seconds": 64.0, "military_gdp_penalty": 20, "military_gdp_pressure_seconds": 28.0, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 400.0, "tags": ["军队", "陆军", "IV"], "text": "终端坦克IV：高生命陆地堡垒，能稳住关键城市或缓慢压进；弱点是海洋与远距离应变。"},
+	"导弹阵地1": {"cost": 6, "kind": "military_force", "play_product": "轨迹墨水", "play_flow_required": 2, "military_type": "missile", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "artillery"], "terrain_move_multiplier": {"land": 0.55, "ocean": 0.05}, "military_hp": 6, "military_damage": 2, "military_move": 70.0, "military_range": 800.0, "military_duration_seconds": 30.0, "military_gdp_penalty": 10, "military_gdp_pressure_seconds": 18.0, "military_strike_route_damage": 1, "fixed_skill_count": 2, "damage": 0, "move": 0.0, "range": 800.0, "tags": ["军队", "导弹", "远程"], "text": "在陆地部署导弹阵地：机动很差但射程极远，适合远程攻击怪兽或城市；部署位置会暴露战略意图。"},
+	"导弹阵地2": {"cost": 8, "kind": "military_force", "play_product": "轨迹墨水", "play_flow_required": 3, "military_type": "missile", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "artillery"], "terrain_move_multiplier": {"land": 0.58, "ocean": 0.05}, "military_hp": 8, "military_damage": 3, "military_move": 80.0, "military_range": 960.0, "military_duration_seconds": 40.0, "military_gdp_penalty": 14, "military_gdp_pressure_seconds": 22.0, "military_strike_route_damage": 1, "fixed_skill_count": 3, "damage": 0, "move": 0.0, "range": 960.0, "tags": ["军队", "导弹", "升级"], "text": "升级导弹阵地：射程和伤害提高，可以隔区干扰海陆商路，但被贴近后转移困难。"},
+	"导弹阵地3": {"cost": 10, "kind": "military_force", "play_product": "轨迹墨水", "play_flow_required": 4, "military_type": "missile", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "artillery"], "terrain_move_multiplier": {"land": 0.60, "ocean": 0.05}, "military_hp": 10, "military_damage": 4, "military_move": 90.0, "military_range": 1120.0, "military_duration_seconds": 50.0, "military_gdp_penalty": 18, "military_gdp_pressure_seconds": 26.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 1120.0, "tags": ["军队", "导弹", "核心"], "text": "核心导弹阵地：全军令解锁，远程火力强，适合保护领跑城市或威慑高GDP竞争城。"},
+	"导弹阵地4": {"cost": 12, "kind": "military_force", "play_product": "轨迹墨水", "play_flow_required": 5, "military_type": "missile", "military_domain": "land", "military_deploy_terrain": "land", "movement_traits": ["land", "artillery"], "terrain_move_multiplier": {"land": 0.62, "ocean": 0.05}, "military_hp": 12, "military_damage": 5, "military_move": 100.0, "military_range": 1300.0, "military_duration_seconds": 60.0, "military_gdp_penalty": 24, "military_gdp_pressure_seconds": 30.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 1300.0, "tags": ["军队", "导弹", "IV"], "text": "终端导弹阵地IV：近乎全图威慑的短时火力资产，强在射程和压制，弱在机动与公开落点。"},
+	"潜航舰队1": {"cost": 5, "kind": "military_force", "play_product": "离岸水晶", "play_flow_required": 1, "military_type": "submarine", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "submerged"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.35}, "military_hp": 8, "military_damage": 2, "military_move": 360.0, "military_range": 360.0, "military_duration_seconds": 34.0, "military_gdp_penalty": 8, "military_gdp_pressure_seconds": 18.0, "military_strike_route_damage": 1, "fixed_skill_count": 2, "damage": 0, "move": 0.0, "range": 360.0, "tags": ["军队", "海军", "潜艇"], "text": "在海洋部署潜航舰队：海域移动快、陆地几乎不可达，适合伏击海路怪兽和破坏海洋商路。"},
+	"潜航舰队2": {"cost": 7, "kind": "military_force", "play_product": "离岸水晶", "play_flow_required": 2, "military_type": "submarine", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "submerged"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.40}, "military_hp": 11, "military_damage": 3, "military_move": 430.0, "military_range": 440.0, "military_duration_seconds": 42.0, "military_gdp_penalty": 12, "military_gdp_pressure_seconds": 22.0, "military_strike_route_damage": 1, "fixed_skill_count": 3, "damage": 0, "move": 0.0, "range": 440.0, "tags": ["军队", "海军", "升级"], "text": "升级潜航舰队：更长海域巡航和更强猎兽能力，能稳定威胁依赖海运的城市。"},
+	"潜航舰队3": {"cost": 9, "kind": "military_force", "play_product": "离岸水晶", "play_flow_required": 3, "military_type": "submarine", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "submerged"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.45}, "military_hp": 14, "military_damage": 4, "military_move": 500.0, "military_range": 520.0, "military_duration_seconds": 50.0, "military_gdp_penalty": 16, "military_gdp_pressure_seconds": 26.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 520.0, "tags": ["军队", "海军", "核心"], "text": "核心潜航舰队：海路封锁和反海怪路线成型，适合压制依赖离岸水晶、鱼群和海底能源的GDP。"},
+	"潜航舰队4": {"cost": 11, "kind": "military_force", "play_product": "离岸水晶", "play_flow_required": 4, "military_type": "submarine", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "submerged"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.52}, "military_hp": 18, "military_damage": 5, "military_move": 580.0, "military_range": 620.0, "military_duration_seconds": 62.0, "military_gdp_penalty": 22, "military_gdp_pressure_seconds": 30.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 620.0, "tags": ["军队", "海军", "IV"], "text": "终端潜航舰队IV：海洋路线的隐秘重锤，能长期压制关键海路；几乎不适合处理深内陆事件。"},
+	"星海战舰1": {"cost": 6, "kind": "military_force", "play_product": "海底黑油", "play_flow_required": 1, "military_type": "warship", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "fleet"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.20}, "military_hp": 14, "military_damage": 2, "military_move": 260.0, "military_range": 420.0, "military_duration_seconds": 40.0, "military_gdp_penalty": 10, "military_gdp_pressure_seconds": 20.0, "military_strike_route_damage": 1, "fixed_skill_count": 2, "damage": 0, "move": 0.0, "range": 420.0, "tags": ["军队", "海军", "战舰"], "text": "在海洋部署星海战舰：海上生命高、保卫海路强，能护航也能炮击岸线；登陆能力极差。"},
+	"星海战舰2": {"cost": 8, "kind": "military_force", "play_product": "海底黑油", "play_flow_required": 2, "military_type": "warship", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "fleet"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.24}, "military_hp": 18, "military_damage": 3, "military_move": 320.0, "military_range": 520.0, "military_duration_seconds": 48.0, "military_gdp_penalty": 14, "military_gdp_pressure_seconds": 24.0, "military_strike_route_damage": 1, "fixed_skill_count": 3, "damage": 0, "move": 0.0, "range": 520.0, "tags": ["军队", "海军", "升级"], "text": "升级战舰：更强海路控制和炮击半径，适合保住自己的海运GDP或打断对手港口。"},
+	"星海战舰3": {"cost": 10, "kind": "military_force", "play_product": "海底黑油", "play_flow_required": 3, "military_type": "warship", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "fleet"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.28}, "military_hp": 24, "military_damage": 4, "military_move": 380.0, "military_range": 640.0, "military_duration_seconds": 58.0, "military_gdp_penalty": 20, "military_gdp_pressure_seconds": 28.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 640.0, "tags": ["军队", "海军", "核心"], "text": "核心战舰：完整军令解锁，海域护航、岸线压制和反海兽都能兼顾，是海洋经济路线的主力资产。"},
+	"星海战舰4": {"cost": 12, "kind": "military_force", "play_product": "海底黑油", "play_flow_required": 4, "military_type": "warship", "military_domain": "sea", "military_deploy_terrain": "ocean", "movement_traits": ["sea", "fleet"], "terrain_move_multiplier": {"land": 0.05, "ocean": 1.34}, "military_hp": 32, "military_damage": 5, "military_move": 450.0, "military_range": 780.0, "military_duration_seconds": 70.0, "military_gdp_penalty": 28, "military_gdp_pressure_seconds": 32.0, "military_strike_route_damage": 2, "fixed_skill_count": 4, "damage": 0, "move": 0.0, "range": 780.0, "tags": ["军队", "海军", "IV"], "text": "终端战舰IV：海洋控制终端牌，耐久、射程、护航都强；昂贵且离开海域后价值急剧下降。"},
 	"商品换线1": {"cost": 4, "kind": "city_product_shift", "product_shift": 1, "revenue_amount": 18, "panic": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "换线"], "text": "选中己方城市：将1项主营商品换成当前商路商品或未经营商品，并使GDP/min +18。"},
 	"商品换线2": {"cost": 6, "kind": "city_product_shift", "product_shift": 2, "revenue_amount": 32, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市：将2项主营商品换成新的商品线，并使GDP/min +32。"},
 	"需求改造1": {"cost": 3, "kind": "city_demand_shift", "demand_shift": 1, "repair_routes": 1, "revenue_amount": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "需求"], "text": "选中己方城市：改造1项需求商品，优先对接当前商路商品，并清除1条断路压力。"},
@@ -831,9 +895,9 @@ const SKILL_CATALOG := {
 	"远距破坏1": {"cost": 5, "kind": "area_damage", "damage": 1, "move": 0.0, "range": 420.0, "tags": ["破坏", "远程"], "text": "对420米内区域造成1点伤害，适合不想贴近目标的路线。"},
 	"飞行1": {"cost": 3, "kind": "fly", "damage": 0, "move": 650.0, "range": 0.0, "text": "飞行突进最多650米。"},
 	"飞行2": {"cost": 6, "kind": "fly", "damage": 0, "move": 760.0, "range": 0.0, "text": "飞行突进最多760米，冷却更长但更适合后期牌池。"},
-	"龙车1": {"cost": 3, "kind": "charge_attack", "damage": 3, "move": 320.0, "range": 110.0, "knockback": 320.0, "tags": ["冲撞", "击退"], "text": "向其他怪兽冲刺320米，并在110米近战圈造成3点伤害，命中后直线击退约320米。"},
-	"龙车2": {"cost": 6, "kind": "charge_attack", "damage": 3, "move": 380.0, "range": 110.0, "knockback": 320.0, "tags": ["冲撞", "升级", "击退"], "text": "向其他怪兽冲刺380米并造成3点近战伤害，命中后直线击退约320米。"},
-	"龙车3": {"cost": 8, "kind": "charge_attack", "damage": 5, "move": 440.0, "range": 120.0, "knockback": 420.0, "delay": 1.0, "tags": ["冲撞", "终端", "击退"], "text": "强力龙车，冲刺440米并在120米近战圈造成5点伤害；命中后击退约420米并短暂硬直其他怪兽。"},
+	"重壳冲锋1": {"cost": 3, "kind": "charge_attack", "damage": 3, "move": 320.0, "range": 110.0, "knockback": 320.0, "tags": ["冲撞", "击退"], "text": "向其他怪兽冲刺320米，并在110米近战圈造成3点伤害，命中后直线击退约320米。"},
+	"重壳冲锋2": {"cost": 6, "kind": "charge_attack", "damage": 3, "move": 380.0, "range": 110.0, "knockback": 320.0, "tags": ["冲撞", "升级", "击退"], "text": "向其他怪兽冲刺380米并造成3点近战伤害，命中后直线击退约320米。"},
+	"重壳冲锋3": {"cost": 8, "kind": "charge_attack", "damage": 5, "move": 440.0, "range": 120.0, "knockback": 420.0, "delay": 1.0, "tags": ["冲撞", "终端", "击退"], "text": "强力重壳冲锋，冲刺440米并在120米近战圈造成5点伤害；命中后击退约420米并短暂硬直其他怪兽。"},
 	"甩尾1": {"cost": 2, "kind": "attack", "damage": 2, "move": 0.0, "range": 130.0, "knockback": 320.0, "tags": ["攻击", "击退"], "text": "130米尾击AOE造成2点伤害，并把其他怪兽击退约320米。"},
 	"甩尾2": {"cost": 4, "kind": "attack", "damage": 2, "move": 0.0, "range": 160.0, "knockback": 320.0, "tags": ["攻击", "升级", "击退"], "text": "160米尾击AOE造成2点伤害，并把其他怪兽击退约320米。"},
 	"装甲再生1": {"cost": 3, "kind": "armor_gain", "armor": 3, "damage": 0, "move": 0, "range": 0, "tags": ["防御", "续航"], "text": "怪兽立即获得3点护甲，抵消后续其他怪兽伤害。"},
@@ -857,30 +921,30 @@ const SKILL_CATALOG := {
 	"打滚2": {"cost": 6, "kind": "roll_attack", "damage": 3, "move": 380.0, "range": 130.0, "tags": ["冲撞", "升级"], "text": "高阶打滚，向选中区域翻滚380米；落点造成区域伤害，130米内命中其他怪兽造成3点伤害。"},
 	"狂奔1": {"cost": 3, "kind": "roll_attack", "damage": 2, "move": 340.0, "range": 120.0, "tags": ["冲撞", "机动"], "text": "向选中区域高速狂奔340米；120米内贴近其他怪兽则造成2点伤害。"},
 	"狂奔2": {"cost": 6, "kind": "roll_attack", "damage": 3, "move": 460.0, "range": 130.0, "tags": ["冲撞", "升级"], "text": "向选中区域高速狂奔460米；130米内贴近其他怪兽则造成3点伤害。"},
-	"泥甲1": {"cost": 3, "kind": "armor_gain", "armor": 4, "damage": 0, "move": 0, "range": 0, "tags": ["护甲", "土砂龙"], "text": "怪兽立即获得4点护甲，适合冲撞构筑续航。"},
+	"泥甲1": {"cost": 3, "kind": "armor_gain", "armor": 4, "damage": 0, "move": 0, "range": 0, "tags": ["护甲", "砂铠陆行兽"], "text": "怪兽立即获得4点护甲，适合冲撞构筑续航。"},
 	"泥石流1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 24, "delay": 1.2, "move": 0.0, "range": 220.0, "tags": ["破坏", "控场"], "text": "220米AOE内区域受到1点伤害并热度+24；若其他怪兽在AOE内，延后其行动。"},
-	"火花反制1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械杰克", "控场"], "text": "抓住火花电击前摇，指定怪兽的特殊行动节奏延后2秒。"},
-	"斯派修姆锁定1": {"cost": 4, "kind": "panic_shift", "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械杰克", "引导"], "text": "把斯派修姆交火引向选中区域，热度+22，提高怪兽关注。"},
-	"奥特空投诱导1": {"cost": 5, "kind": "mudslide", "damage": 1, "panic": 18, "delay": 2.0, "move": 0.0, "range": 180.0, "tags": ["机械杰克", "破坏"], "text": "诱导奥特空投落点，180米AOE内区域受1点伤害；若其他怪兽靠近则延后行动。"},
-	"流星航线加速1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.65, "route_flow_turns": 3, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械杰克", "物流"], "text": "借机械杰克高速巡航开通流星航线：选中己方城市商路流通收入×1.65，持续90秒，并修复1条断路压力。"},
-	"断头刀预判1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械艾斯", "控场"], "text": "读出断头刀轨迹，指定怪兽的特殊行动节奏延后2.5秒。"},
-	"电击踢破绽1": {"cost": 4, "kind": "supply_draw", "draw_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械艾斯", "补给"], "text": "利用电击踢收招破绽，从当前区域额外获取2张候选卡。"},
-	"垂直断头刀窗口1": {"cost": 4, "kind": "armor_gain", "armor": 5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["机械艾斯", "防御"], "text": "在垂直断头刀命中窗口前缩身防御，怪兽立即获得5点护甲。"},
-	"修复光线干扰1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 18, "delay": 1.5, "move": 0.0, "range": 260.0, "tags": ["纳伊斯", "破坏"], "text": "污染修复光线的落点，260米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
-	"定身闪光余波1": {"cost": 3, "kind": "special_monster_delay", "delay": 3.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["纳伊斯", "控场"], "text": "借定身闪光余波制造短暂空档，其他怪兽概率行动延后3秒。"},
-	"修正铁拳读秒1": {"cost": 4, "kind": "monster_lure", "lure_speedup": 4.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["纳伊斯", "诱导"], "text": "读出修正铁拳冲线时间，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4秒触发。"},
-	"修复光线招商1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.75, "route_flow_turns": 3, "repair_routes": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["纳伊斯", "招商"], "text": "把纳伊斯修复光线包装成招商窗口：选中己方城市商路流通收入×1.75，持续90秒，并修复2条断路压力。"},
-	"梦比姆能量诱导1": {"cost": 4, "kind": "special_monster_delay", "delay": 1.8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["梦比优斯", "控场"], "text": "诱导梦比姆能量过早爆发，指定怪兽的特殊行动节奏延后1.8秒。"},
-	"飞踢落点预判1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 20, "delay": 1.2, "move": 0.0, "range": 220.0, "tags": ["梦比优斯", "破坏"], "text": "预判飞踢落点，220米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
-	"梦比姆火焰护甲1": {"cost": 4, "kind": "armor_gain", "armor": 5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["梦比优斯", "防御"], "text": "利用梦比姆火焰前摇缩身防御，怪兽立即获得5点护甲。"},
-	"梦比姆能源热潮1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.3, "route_flow_multiplier": 1.2, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["梦比优斯", "能源"], "text": "把梦比姆能量转成商品热潮：当前商品正向价格增速×2.3、相关商路流通×1.2，持续90秒。"},
-	"复仇之铠过载1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["希卡利", "控场"], "text": "扰乱复仇之铠的能量回路，指定怪兽的特殊行动节奏延后2秒。"},
-	"热负荷射线诱导1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 24, "delay": 1.5, "move": 0.0, "range": 260.0, "tags": ["希卡利", "破坏"], "text": "诱导热负荷射线扫过城区，260米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
-	"骑士光刃窗口1": {"cost": 4, "kind": "armor_gain", "armor": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["希卡利", "防御"], "text": "利用骑士光刃收招窗口缩身防御，怪兽立即获得6点护甲。"},
-	"骑士专利授权1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.0, "route_flow_multiplier": 1.35, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["希卡利", "专利"], "text": "开放希卡利科技专利：当前商品正向价格增速×2、相关商路流通×1.35，持续120秒。"},
-	"完美格挡破绽1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["艾斯杀手", "控场"], "text": "骗出完美格挡的空档，指定怪兽的特殊行动节奏延后2秒。"},
-	"混乱光线诱导1": {"cost": 5, "kind": "mudslide", "damage": 1, "panic": 28, "delay": 1.4, "move": 0.0, "range": 300.0, "tags": ["艾斯杀手", "破坏"], "text": "诱导混乱光线扫过城区，300米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
-	"迂回路线封锁1": {"cost": 4, "kind": "monster_lure", "lure_speedup": 4.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["艾斯杀手", "诱导"], "text": "封锁艾斯杀手的迂回路线，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4.5秒触发。"},
+	"火花反制1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["流星哨兵", "控场"], "text": "抓住火花电击前摇，指定怪兽的特殊行动节奏延后2秒。"},
+	"白谱锁定1": {"cost": 4, "kind": "panic_shift", "panic": 22, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["流星哨兵", "引导"], "text": "把白谱交火引向选中区域，热度+22，提高怪兽关注。"},
+	"轨降擒投诱导1": {"cost": 5, "kind": "mudslide", "damage": 1, "panic": 18, "delay": 2.0, "move": 0.0, "range": 180.0, "tags": ["流星哨兵", "破坏"], "text": "诱导轨降擒投落点，180米AOE内区域受1点伤害；若其他怪兽靠近则延后行动。"},
+	"流星航线加速1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.65, "route_flow_turns": 3, "repair_routes": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["流星哨兵", "物流"], "text": "借流星哨兵高速巡航开通流星航线：选中己方城市商路流通收入×1.65，持续90秒，并修复1条断路压力。"},
+	"裂刃预判1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["棱刃重甲", "控场"], "text": "读出裂刃轨迹，指定怪兽的特殊行动节奏延后2.5秒。"},
+	"电击踢破绽1": {"cost": 4, "kind": "supply_draw", "draw_amount": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["棱刃重甲", "补给"], "text": "利用电击踢收招破绽，从当前区域额外获取2张候选卡。"},
+	"垂直裂刃窗口1": {"cost": 4, "kind": "armor_gain", "armor": 5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["棱刃重甲", "防御"], "text": "在垂直裂刃命中窗口前缩身防御，怪兽立即获得5点护甲。"},
+	"修复光线干扰1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 18, "delay": 1.5, "move": 0.0, "range": 260.0, "tags": ["绿洲修复体", "破坏"], "text": "污染修复光线的落点，260米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
+	"定身闪光余波1": {"cost": 3, "kind": "special_monster_delay", "delay": 3.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["绿洲修复体", "控场"], "text": "借定身闪光余波制造短暂空档，其他怪兽概率行动延后3秒。"},
+	"修正铁拳读秒1": {"cost": 4, "kind": "monster_lure", "lure_speedup": 4.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["绿洲修复体", "诱导"], "text": "读出修正铁拳冲线时间，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4秒触发。"},
+	"修复光线招商1": {"cost": 5, "kind": "route_flow_boon", "route_flow_multiplier": 1.75, "route_flow_turns": 3, "repair_routes": 2, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["绿洲修复体", "招商"], "text": "把绿洲修复体修复光线包装成招商窗口：选中己方城市商路流通收入×1.75，持续90秒，并修复2条断路压力。"},
+	"星焰能量诱导1": {"cost": 4, "kind": "special_monster_delay", "delay": 1.8, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["焰环幼星", "控场"], "text": "诱导星焰能量过早爆发，指定怪兽的特殊行动节奏延后1.8秒。"},
+	"飞踢落点预判1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 20, "delay": 1.2, "move": 0.0, "range": 220.0, "tags": ["焰环幼星", "破坏"], "text": "预判飞踢落点，220米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
+	"星焰火焰护甲1": {"cost": 4, "kind": "armor_gain", "armor": 5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["焰环幼星", "防御"], "text": "利用星焰火焰前摇缩身防御，怪兽立即获得5点护甲。"},
+	"星焰能源热潮1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.3, "route_flow_multiplier": 1.2, "growth_turns": 3, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["焰环幼星", "能源"], "text": "把星焰能量转成商品热潮：当前商品正向价格增速×2.3、相关商路流通×1.2，持续90秒。"},
+	"复仇之铠过载1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["蓝锋骑士", "控场"], "text": "扰乱复仇之铠的能量回路，指定怪兽的特殊行动节奏延后2秒。"},
+	"热负荷射线诱导1": {"cost": 4, "kind": "mudslide", "damage": 1, "panic": 24, "delay": 1.5, "move": 0.0, "range": 260.0, "tags": ["蓝锋骑士", "破坏"], "text": "诱导热负荷射线扫过城区，260米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
+	"蓝锋光刃窗口1": {"cost": 4, "kind": "armor_gain", "armor": 6, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["蓝锋骑士", "防御"], "text": "利用蓝锋光刃收招窗口缩身防御，怪兽立即获得6点护甲。"},
+	"蓝锋专利授权1": {"cost": 5, "kind": "product_growth_boon", "growth_multiplier": 2.0, "route_flow_multiplier": 1.35, "growth_turns": 4, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["蓝锋骑士", "专利"], "text": "开放蓝锋骑士科技专利：当前商品正向价格增速×2、相关商路流通×1.35，持续120秒。"},
+	"完美格挡破绽1": {"cost": 4, "kind": "special_monster_delay", "delay": 2.0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["镜像猎兵", "控场"], "text": "骗出完美格挡的空档，指定怪兽的特殊行动节奏延后2秒。"},
+	"混乱光线诱导1": {"cost": 5, "kind": "mudslide", "damage": 1, "panic": 28, "delay": 1.4, "move": 0.0, "range": 300.0, "tags": ["镜像猎兵", "破坏"], "text": "诱导混乱光线扫过城区，300米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"},
+	"迂回路线封锁1": {"cost": 4, "kind": "monster_lure", "lure_speedup": 4.5, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["镜像猎兵", "诱导"], "text": "封锁镜像猎兵的迂回路线，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4.5秒触发。"},
 }
 
 const UPGRADEABLE_SKILL_FAMILIES := [
@@ -925,10 +989,18 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"环晶电池专供",
 	"双边对冲合约",
 	"惩罚性拒签条款",
-	"过河拆桥",
-	"顺手牵羊",
+	"星链拆解",
+	"影仓牵引",
 	"产权冻结",
-	"万箭齐发",
+	"轨道齐射",
+	"相位否决",
+	"行星防卫军",
+	"制空战斗机",
+	"轨道轰炸机",
+	"重装坦克",
+	"导弹阵地",
+	"潜航舰队",
+	"星海战舰",
 	"商品催化",
 	"星港快线",
 	"共生红利",
@@ -938,7 +1010,7 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"区域破坏",
 	"破碎地脉",
 	"飞行",
-	"龙车",
+	"重壳冲锋",
 	"甩尾",
 	"装甲再生",
 	"瘴气炮",
@@ -1031,10 +1103,18 @@ const COMMON_CARD_POOL := [
 	"环晶电池专供1",
 	"双边对冲合约1",
 	"惩罚性拒签条款1",
-	"过河拆桥1",
-	"顺手牵羊1",
+	"星链拆解1",
+	"影仓牵引1",
 	"产权冻结1",
-	"万箭齐发1",
+	"轨道齐射1",
+	"相位否决1",
+	"行星防卫军1",
+	"制空战斗机1",
+	"轨道轰炸机1",
+	"重装坦克1",
+	"导弹阵地1",
+	"潜航舰队1",
+	"星海战舰1",
 	"商品换线1",
 	"商品换线2",
 	"需求改造1",
@@ -1076,7 +1156,7 @@ const COMMON_CARD_POOL := [
 
 const MONSTER_ROSTER := [
 	{
-		"name": "尸套龙",
+		"name": "孢雾海皇",
 		"hp": 50,
 		"armor": 0,
 		"move": 190.0,
@@ -1089,24 +1169,24 @@ const MONSTER_ROSTER := [
 		"resource_focus": ["深海菌毯", "梦境香氛", "孢子丝绸"],
 		"summon_access": "ocean_monster_zone",
 		"economy_boon": {"label": "瘴气菌毯红利", "growth_multiplier": 1.35, "route_flow_multiplier": 1.1, "text": "偏好商品会形成黑市药材需求：正向价格增速×1.35，相关商路流通×1.1。"},
-		"market_skills": ["城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "舆论操控1", "诱导电波1", "过载补给1", "移动2", "移动3", "普攻2", "普攻3", "格挡1", "格挡2", "区域破坏1", "区域破坏2", "区域破坏3", "飞行1", "飞行2", "龙车1", "龙车2", "甩尾1", "甩尾2", "装甲再生1", "瘴气炮1", "瘴气炮2", "瘴气结界1", "瘴气结界2", "瘴气爆发1", "瘴气爆发2", "瘴气回收1", "瘴气回收2", "瘴气回收3", "腐蚀吐息1"],
+		"market_skills": ["城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "舆论操控1", "诱导电波1", "过载补给1", "移动2", "移动3", "普攻2", "普攻3", "格挡1", "格挡2", "区域破坏1", "区域破坏2", "区域破坏3", "飞行1", "飞行2", "重壳冲锋1", "重壳冲锋2", "甩尾1", "甩尾2", "装甲再生1", "瘴气炮1", "瘴气炮2", "瘴气结界1", "瘴气结界2", "瘴气爆发1", "瘴气爆发2", "瘴气回收1", "瘴气回收2", "瘴气回收3", "腐蚀吐息1"],
 	},
 	{
-		"name": "土砂龙",
+		"name": "砂铠陆行兽",
 		"hp": 40,
 		"armor": 2,
 		"move": 220.0,
 		"move_damage": 2,
 		"collision_damage": 2,
 		"resource_drain": 1,
-		"style": "冲撞护甲型：初始护甲更高，会用龙车、潜行和泥石流冲散城区。",
+		"style": "冲撞护甲型：初始护甲更高，会用重壳冲锋、潜行和泥石流冲散城区。",
 		"resource_focus": ["重力陶瓷", "钛壳贝", "虹膜矿粉"],
 		"summon_access": "land_monster_zone",
 		"economy_boon": {"label": "地壳矿带开采潮", "growth_multiplier": 1.45, "route_flow_multiplier": 1.15, "text": "偏好矿物商品获得开采热潮：正向价格增速×1.45，相关商路流通×1.15。"},
-		"market_skills": ["城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "舆论操控1", "诱导电波1", "过载补给1", "移动2", "移动3", "普攻2", "普攻3", "格挡1", "格挡2", "格挡3", "区域破坏1", "区域破坏2", "区域破坏3", "龙车1", "龙车2", "龙车3", "甩尾1", "甩尾2", "装甲再生1", "咆哮1", "咆哮2", "地底潜行1", "地底潜行2", "地底潜行3", "打滚1", "打滚2", "狂奔2", "泥甲1", "泥石流1"],
+		"market_skills": ["城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "舆论操控1", "诱导电波1", "过载补给1", "移动2", "移动3", "普攻2", "普攻3", "格挡1", "格挡2", "格挡3", "区域破坏1", "区域破坏2", "区域破坏3", "重壳冲锋1", "重壳冲锋2", "重壳冲锋3", "甩尾1", "甩尾2", "装甲再生1", "咆哮1", "咆哮2", "地底潜行1", "地底潜行2", "地底潜行3", "打滚1", "打滚2", "狂奔2", "泥甲1", "泥石流1"],
 	},
 	{
-		"name": "机械杰克",
+		"name": "流星哨兵",
 		"hp": 30,
 		"move": 360.0,
 		"move_damage": 1,
@@ -1118,10 +1198,10 @@ const MONSTER_ROSTER := [
 		"resource_focus": ["环晶电池", "活体芯片", "轨迹墨水"],
 		"summon_access": "monster_zone",
 		"economy_boon": {"label": "高速航线窗口", "growth_multiplier": 1.3, "route_flow_multiplier": 1.35, "text": "偏好科技商品借高速巡航扩散：正向价格增速×1.3，相关商路流通×1.35。"},
-		"special_cards": ["火花反制1", "斯派修姆锁定1", "奥特空投诱导1", "流星航线加速1"],
+		"special_cards": ["火花反制1", "白谱锁定1", "轨降擒投诱导1", "流星航线加速1"],
 	},
 	{
-		"name": "机械艾斯",
+		"name": "棱刃重甲",
 		"hp": 45,
 		"move": 280.0,
 		"move_damage": 1,
@@ -1131,10 +1211,10 @@ const MONSTER_ROSTER := [
 		"resource_focus": ["离子香料", "静电蜂蜜", "等离子米"],
 		"summon_access": "land_monster_zone",
 		"economy_boon": {"label": "军需采购波", "growth_multiplier": 1.55, "route_flow_multiplier": 1.1, "text": "偏好能量食品被军需采购推高：正向价格增速×1.55，相关商路流通×1.1。"},
-		"special_cards": ["断头刀预判1", "电击踢破绽1", "垂直断头刀窗口1"],
+		"special_cards": ["裂刃预判1", "电击踢破绽1", "垂直裂刃窗口1"],
 	},
 	{
-		"name": "纳伊斯",
+		"name": "绿洲修复体",
 		"hp": 30,
 		"move": 300.0,
 		"move_damage": 1,
@@ -1147,20 +1227,20 @@ const MONSTER_ROSTER := [
 		"special_cards": ["修复光线干扰1", "定身闪光余波1", "修正铁拳读秒1", "修复光线招商1"],
 	},
 	{
-		"name": "梦比优斯",
+		"name": "焰环幼星",
 		"hp": 45,
 		"move": 300.0,
 		"move_damage": 1,
 		"collision_damage": 2,
 		"resource_drain": 1,
-		"style": "近战爆发型：HP降至15或以下后启动梦比姆能量，移动更快且近战互伤会追加火焰。",
+		"style": "近战爆发型：HP降至15或以下后启动星焰能量，移动更快且近战互伤会追加火焰。",
 		"resource_focus": ["太阳鳞片", "火山番茄", "彗尾柑"],
 		"summon_access": "land_monster_zone",
-		"economy_boon": {"label": "梦比姆能源热潮", "growth_multiplier": 2.0, "route_flow_multiplier": 1.15, "text": "偏好高能商品被战场能源需求点燃：正向价格增速×2，相关商路流通×1.15。"},
-		"special_cards": ["梦比姆能量诱导1", "飞踢落点预判1", "梦比姆火焰护甲1", "梦比姆能源热潮1"],
+		"economy_boon": {"label": "星焰能源热潮", "growth_multiplier": 2.0, "route_flow_multiplier": 1.15, "text": "偏好高能商品被战场能源需求点燃：正向价格增速×2，相关商路流通×1.15。"},
+		"special_cards": ["星焰能量诱导1", "飞踢落点预判1", "星焰火焰护甲1", "星焰能源热潮1"],
 	},
 	{
-		"name": "希卡利",
+		"name": "蓝锋骑士",
 		"hp": 50,
 		"move": 360.0,
 		"move_damage": 1,
@@ -1169,11 +1249,11 @@ const MONSTER_ROSTER := [
 		"style": "复仇装甲型：HP降至20或以下后穿上复仇之铠，减伤、增伤，并在移动时破坏城区。",
 		"resource_focus": ["极光盐", "离岸水晶", "晨昏奶酪"],
 		"summon_access": "monster_zone",
-		"economy_boon": {"label": "骑士专利授权", "growth_multiplier": 1.65, "route_flow_multiplier": 1.35, "text": "偏好晶体/精密商品获得科技授权：正向价格增速×1.65，相关商路流通×1.35。"},
-		"special_cards": ["复仇之铠过载1", "热负荷射线诱导1", "骑士光刃窗口1", "骑士专利授权1"],
+		"economy_boon": {"label": "蓝锋专利授权", "growth_multiplier": 1.65, "route_flow_multiplier": 1.35, "text": "偏好晶体/精密商品获得科技授权：正向价格增速×1.65，相关商路流通×1.35。"},
+		"special_cards": ["复仇之铠过载1", "热负荷射线诱导1", "蓝锋光刃窗口1", "蓝锋专利授权1"],
 	},
 	{
-		"name": "艾斯杀手",
+		"name": "镜像猎兵",
 		"hp": 45,
 		"move": 220.0,
 		"move_damage": 1,
@@ -1188,66 +1268,66 @@ const MONSTER_ROSTER := [
 ]
 
 const MONSTER_ART_PROFILES := {
-	"尸套龙": {
+	"孢雾海皇": {
 		"accent": Color("#a855f7"),
 		"secondary": Color("#4ade80"),
 		"glyph": "瘴",
 		"motif": "miasma",
 		"subtitle": "瘴气古龙｜临时美工",
 	},
-	"土砂龙": {
+	"砂铠陆行兽": {
 		"accent": Color("#d97706"),
 		"secondary": Color("#facc15"),
 		"glyph": "砂",
 		"motif": "mud",
 		"subtitle": "冲撞泥甲｜临时美工",
 	},
-	"机械杰克": {
+	"流星哨兵": {
 		"accent": Color("#38bdf8"),
 		"secondary": Color("#f87171"),
 		"glyph": "杰",
-		"motif": "jack",
+		"motif": "meteor_sentinel",
 		"subtitle": "高速机械战士｜临时美工",
 	},
-	"机械艾斯": {
+	"棱刃重甲": {
 		"accent": Color("#60a5fa"),
 		"secondary": Color("#f472b6"),
 		"glyph": "断",
-		"motif": "ace",
-		"subtitle": "重装断头刀｜临时美工",
+		"motif": "prism_armor",
+		"subtitle": "重装裂刃｜临时美工",
 	},
-	"纳伊斯": {
+	"绿洲修复体": {
 		"accent": Color("#22c55e"),
 		"secondary": Color("#93c5fd"),
 		"glyph": "修",
-		"motif": "nice",
+		"motif": "oasis_support",
 		"subtitle": "防守救援型｜临时美工",
 	},
-	"梦比优斯": {
+	"焰环幼星": {
 		"accent": Color("#fb7185"),
 		"secondary": Color("#f97316"),
 		"glyph": "炎",
-		"motif": "mebius",
-		"subtitle": "梦比姆火焰｜临时美工",
+		"motif": "ember_ring",
+		"subtitle": "星焰火焰｜临时美工",
 	},
-	"希卡利": {
+	"蓝锋骑士": {
 		"accent": Color("#06b6d4"),
 		"secondary": Color("#818cf8"),
 		"glyph": "刃",
-		"motif": "hikari",
+		"motif": "blue_lancer",
 		"subtitle": "复仇光刃｜临时美工",
 	},
-	"艾斯杀手": {
+	"镜像猎兵": {
 		"accent": Color("#ef4444"),
 		"secondary": Color("#a3e635"),
 		"glyph": "杀",
-		"motif": "killer",
+		"motif": "mirror_hunter",
 		"subtitle": "远程猎杀者｜临时美工",
 	},
 }
 
 const MONSTER_ACTION_TABLES := {
-	"尸套龙": [
+	"孢雾海皇": [
 		{"name": "瘴气漫步", "range": 0.0, "damage": 1, "move_override": 190.0, "miasma_count": 1, "text": "自动向高热城区移动约190米，落点造成1点区域伤害并尝试留下瘴气。"},
 		{"name": "腐蚀吐息", "range": 420.0, "damage": 2, "move_override": -1.0, "miasma_count": 2, "text": "420米腐蚀吐息，对目标城区造成2点压力，并在周边留下瘴气。"},
 		{"name": "瘴气炮", "range": 520.0, "damage": 2, "move_override": -1.0, "miasma_count": 3, "text": "520米远程瘴气炮，沿路径污染城区并造成2点区域伤害。"},
@@ -1255,31 +1335,31 @@ const MONSTER_ACTION_TABLES := {
 		{"name": "瘴气回收", "range": 240.0, "damage": 1, "move_override": -1.0, "self_heal": 2, "text": "回收周边瘴气回复自身，并让附近城区承受1点腐蚀压力。"},
 		{"name": "灾厄压迫", "range": 180.0, "damage": 3, "move_override": 160.0, "text": "向最近高价值城区压迫推进，180米内造成3点区域伤害。"},
 	],
-	"土砂龙": [
-		{"name": "龙车", "range": 130.0, "damage": 3, "move_override": 320.0, "knockback": 260.0, "text": "自动冲向高权重城区约320米，落点和近身目标承受强力冲撞。"},
+	"砂铠陆行兽": [
+		{"name": "重壳冲锋", "range": 130.0, "damage": 3, "move_override": 320.0, "knockback": 260.0, "text": "自动冲向高权重城区约320米，落点和近身目标承受强力冲撞。"},
 		{"name": "甩尾", "range": 160.0, "damage": 2, "move_override": -1.0, "knockback": 220.0, "text": "160米范围尾击，造成2点区域/近身伤害并击退附近怪兽。"},
 		{"name": "咆哮", "range": 450.0, "damage": 1, "move_override": -1.0, "delay": 1.5, "text": "450米咆哮提高城区热度，并拖慢下一次特殊行动节奏。"},
 		{"name": "地底潜行", "range": 0.0, "damage": 1, "move_override": 340.0, "armor": 2, "text": "潜入地下移动约340米，获得2点护甲并在落点造成1点区域破坏。"},
 		{"name": "打滚", "range": 140.0, "damage": 2, "move_override": 260.0, "knockback": 180.0, "text": "翻滚推进约260米，落点区域和140米内目标承受2点伤害。"},
 		{"name": "泥石流", "range": 220.0, "damage": 2, "move_override": -1.0, "panic": 24, "text": "220米范围泥石流，造成2点区域伤害并显著提高当地热度。"},
 	],
-	"机械杰克": [
+	"流星哨兵": [
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
 		{"name": "火花电击", "range": 420.0, "damage": 2, "move_override": -1.0, "paralyze": 1, "text": "420米射程，2伤害，并封锁一张怪兽技能卡。"},
-		{"name": "奥特飓风", "range": 120.0, "damage": 2, "move_override": -1.0, "throw_radius": 420.0, "text": "120米近战投掷，2坠落伤害，并把怪兽投向420米内区域。"},
-		{"name": "斯派修姆光线", "range": 600.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "600米光线，3伤害，并直线击退怪兽约320米。"},
-		{"name": "奥特空投", "range": 120.0, "damage": 4, "move_override": -1.0, "throw_radius": 320.0, "stun": 1, "text": "120米近战空投，4伤害，把怪兽摔向320米内区域并使其补给受挫。"},
+		{"name": "高空气旋", "range": 120.0, "damage": 2, "move_override": -1.0, "throw_radius": 420.0, "text": "120米近战投掷，2坠落伤害，并把怪兽投向420米内区域。"},
+		{"name": "白谱光线", "range": 600.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "600米光线，3伤害，并直线击退怪兽约320米。"},
+		{"name": "轨降擒投", "range": 120.0, "damage": 4, "move_override": -1.0, "throw_radius": 320.0, "stun": 1, "text": "120米近战空投，4伤害，把怪兽摔向320米内区域并使其补给受挫。"},
 	],
-	"机械艾斯": [
+	"棱刃重甲": [
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
 		{"name": "电击踢", "range": 120.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "paralyze": 1, "text": "120米近战AOE，2伤害，击退怪兽并封锁一张技能卡。"},
 		{"name": "闪光手刀", "range": 120.0, "damage": 3, "move_override": 420.0, "paralyze": 1, "text": "高速追近420米后近战3伤害，并封锁一张技能卡。"},
-		{"name": "水平断头刀", "range": 240.0, "damage": 3, "move_override": -1.0, "cripple": 1, "text": "240米射程，3伤害，并致残1张技能卡。"},
-		{"name": "十字断头刀", "range": 320.0, "damage": 2, "move_override": -1.0, "cripple": 1, "stun": 1, "text": "320米射程，2伤害，并致残1张技能卡、削减技能补给。"},
-		{"name": "垂直断头刀", "range": 260.0, "damage": 4, "move_override": -1.0, "cripple": 2, "text": "260米射程，4伤害，并致残2张技能卡。"},
+		{"name": "水平裂刃", "range": 240.0, "damage": 3, "move_override": -1.0, "cripple": 1, "text": "240米射程，3伤害，并致残1张技能卡。"},
+		{"name": "十字裂刃", "range": 320.0, "damage": 2, "move_override": -1.0, "cripple": 1, "stun": 1, "text": "320米射程，2伤害，并致残1张技能卡、削减技能补给。"},
+		{"name": "垂直裂刃", "range": 260.0, "damage": 4, "move_override": -1.0, "cripple": 2, "text": "260米射程，4伤害，并致残2张技能卡。"},
 	],
-	"纳伊斯": [
+	"绿洲修复体": [
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "tether": 1, "text": "110米近战AOE，2伤害，并牵制怪兽下次移动。"},
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "tether": 1, "text": "110米近战AOE，2伤害，并牵制怪兽下次移动。"},
 		{"name": "束缚光线", "range": 420.0, "damage": 2, "move_override": -1.0, "tether": 2, "text": "420米束缚光线，2伤害，并施加2层牵制。"},
@@ -1287,15 +1367,15 @@ const MONSTER_ACTION_TABLES := {
 		{"name": "定身闪光", "range": 160.0, "damage": 2, "move_override": -1.0, "repair_radius": 220.0, "tether": 4, "text": "220米修复AOE，并对160米近身目标2伤害，施加4层牵制。"},
 		{"name": "修正铁拳", "range": 130.0, "damage": 5, "move_override": 560.0, "repair_path": 1, "stun_if_tethered": 3, "text": "追近560米，沿追击路径修复受损区域，对130米内目标5伤害；若怪兽被牵制则追加强眩晕。"},
 	],
-	"梦比优斯": [
+	"焰环幼星": [
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
 		{"name": "重拳", "range": 120.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "120米重拳，3伤害，并击退怪兽约320米。"},
 		{"name": "飞踢", "range": 140.0, "damage": 3, "move_override": 420.0, "stun": 1, "text": "向前飞踢追近420米，对140米内目标造成3近战伤害并眩晕1。"},
-		{"name": "梦比姆斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米远程2伤害，并致残1张技能牌。"},
-		{"name": "梦比姆爆裂", "range": 320.0, "damage": 4, "move_override": -1.0, "stun": 1, "text": "320米远程爆裂，4伤害，并眩晕1。"},
-		{"name": "梦比姆炸弹", "range": 120.0, "damage": 8, "move_override": -1.0, "stun": 2, "self_damage": MEBIUS_BOMB_SELF_DAMAGE, "text": "120米近战爆弹，8伤害并眩晕2；之后梦比优斯承受3点反冲。"},
+		{"name": "星焰斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米远程2伤害，并致残1张技能牌。"},
+		{"name": "星焰爆裂", "range": 320.0, "damage": 4, "move_override": -1.0, "stun": 1, "text": "320米远程爆裂，4伤害，并眩晕1。"},
+		{"name": "星焰炸弹", "range": 120.0, "damage": 8, "move_override": -1.0, "stun": 2, "self_damage": EMBER_RING_BOMB_SELF_DAMAGE, "text": "120米近战爆弹，8伤害并眩晕2；之后焰环幼星承受3点反冲。"},
 	],
-	"希卡利": [
+	"蓝锋骑士": [
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
 		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
 		{"name": "斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米远程2伤害，并致残1张技能牌。"},
@@ -1303,7 +1383,7 @@ const MONSTER_ACTION_TABLES := {
 		{"name": "热负荷射线", "range": 420.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "stun": 1, "text": "420米热负荷射线，3伤害，直线击退怪兽约320米并眩晕1。"},
 		{"name": "热负荷闪光", "range": 600.0, "damage": 1, "move_override": -1.0, "self_heal": 4, "paralyze": 2, "stun": 2, "text": "自身回复4HP；600米闪光造成1伤害，并麻痹2、眩晕2。"},
 	],
-	"艾斯杀手": [
+	"镜像猎兵": [
 		{"name": "劣质光线", "range": 420.0, "damage": 2, "move_override": -1.0, "knockback": 220.0, "chaos_ray": true, "text": "420米劣质光线，2伤害，直线击退怪兽约220米，并破坏光线路径。"},
 		{"name": "劣质光线", "range": 420.0, "damage": 2, "move_override": -1.0, "knockback": 220.0, "chaos_ray": true, "text": "420米劣质光线，2伤害，直线击退怪兽约220米，并破坏光线路径。"},
 		{"name": "劣质炸弹", "range": 420.0, "damage": 3, "move_override": -1.0, "stun": 1, "text": "420米劣质炸弹，3伤害，并眩晕1。"},
@@ -1318,20 +1398,20 @@ const JACK_BRACELET_ACTION_TABLE := [
 	{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
 	{"name": "手镯炸弹", "range": 420.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "420米手镯炸弹，3伤害，并直线击退怪兽约320米。"},
 	{"name": "手镯炸弹", "range": 420.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "420米手镯炸弹，3伤害，并直线击退怪兽约320米。"},
-	{"name": "奥特火花", "range": 520.0, "damage": 4, "move_override": -1.0, "text": "520米奥特火花，4伤害。"},
-	{"name": "奥特火花", "range": 520.0, "damage": 4, "move_override": -1.0, "text": "520米奥特火花，4伤害。"},
+	{"name": "星弧火花", "range": 520.0, "damage": 4, "move_override": -1.0, "text": "520米星弧火花，4伤害。"},
+	{"name": "星弧火花", "range": 520.0, "damage": 4, "move_override": -1.0, "text": "520米星弧火花，4伤害。"},
 ]
 
 const MONSTER_SKILL_WEIGHT_TABLES := {
-	"尸套龙": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
-	"土砂龙": {"early": [3, 2, 1, 0, 0, 0], "escalated": [3, 2, 1, 2, 2, 1]},
-	"机械杰克": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
-	"机械艾斯": {"early": [2, 2, 2, 0, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
-	"纳伊斯": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
-	"梦比优斯": {"early": [2, 2, 2, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
-	"希卡利": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
-	"艾斯杀手": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
-	"手镯杰克": {"early": [2, 2, 1, 1, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
+	"孢雾海皇": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
+	"砂铠陆行兽": {"early": [3, 2, 1, 0, 0, 0], "escalated": [3, 2, 1, 2, 2, 1]},
+	"流星哨兵": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
+	"棱刃重甲": {"early": [2, 2, 2, 0, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
+	"绿洲修复体": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
+	"焰环幼星": {"early": [2, 2, 2, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
+	"蓝锋骑士": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 1, 2, 1]},
+	"镜像猎兵": {"early": [3, 2, 1, 0, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
+	"腕环哨兵": {"early": [2, 2, 1, 1, 0, 0], "escalated": [2, 2, 2, 2, 1, 1]},
 }
 
 var rng := RandomNumberGenerator.new()
@@ -1388,6 +1468,8 @@ var auto_monsters := []
 var next_auto_monster_uid := 1
 var next_special_monster_slot := 0
 var selected_auto_monster_slot := 0
+var military_units := []
+var next_military_unit_uid := 1
 var active_monster_wagers := []
 var resolved_monster_wager_history := []
 var monster_wager_sequence := 0
@@ -1466,6 +1548,8 @@ var next_card_resolution_queue := []
 var active_card_resolution := {}
 var pending_contract_offers := []
 var card_resolution_timer := 0.0
+var card_resolution_counter_window_active := false
+var card_resolution_counter_timer := 0.0
 var card_resolution_force_duration := -1.0
 var card_resolution_simultaneous_timer := 0.0
 var card_resolution_auction_timer := 0.0
@@ -1529,6 +1613,7 @@ func _process(delta: float) -> void:
 	_age_economic_boons(scaled_delta)
 	_update_monster_wagers(scaled_delta)
 	_update_ai_decisions(scaled_delta)
+	_update_military_units(scaled_delta)
 	_update_auto_monster_durations(scaled_delta)
 	_update_visual_cues(scaled_delta)
 	_update_auto_monster_revivals(scaled_delta)
@@ -3166,7 +3251,7 @@ func _open_rules_menu() -> void:
 	lines.append("7. 出牌门槛：I级怪兽牌没有商品流动要求；II-IV级怪兽牌和多数其他牌要求己方城市满足指定商品流动数量，商品不被消耗。少数牌会额外收取现金。")
 	lines.append("8. 目标询问：打出需要目标怪兽的牌时，会先询问目标。所有出牌都是匿名事件：一次性指令/诱导、夺取归属或固定技能都只作为行动线索公开，不直接揭示玩家身份，也不让玩家持续操控怪兽。")
 	lines.append("9. 手牌消耗：一次性普通牌提交后会先进入顶部匿名卡牌轨道，并立刻离开手牌；它会用提交时的卡牌快照继续等待公开展示与结算。绑定固定怪兽技能不会离手，只在成功结算后进入冷却。")
-	lines.append("10. 同时出牌与竞价：空场第一张牌先进入0.5秒同时判定窗。若窗内只有一张，它直接进入自己的5秒公开展示；若出现复数牌，全部暂停结算并开启5秒匿名竞价。报价公开但报价者匿名，可用+10/+20/+50/+100/+200/+500/+1000快速加价；封盘后按报价、同价按参照玩家顺时针席位一次锁定整批顺序，批次中不重拍。封盘或展示期间打出的新牌不会被拒绝，而是集中进入下一批等待区；当前整批清空后只开启一次新竞价。每张有锁定报价的牌轮到展示时，会把小费私密付给它前一张已结算牌的出牌者；若前面没有牌则不支付。")
+	lines.append("10. 同时出牌与竞价：空场第一张牌先进入0.5秒同时判定窗。若窗内只有一张，它直接进入自己的5秒公开展示；若出现复数牌，全部暂停结算并开启5秒匿名竞价。报价公开但报价者匿名，可用+10/+20/+50/+100/+200/+500/+1000快速加价；封盘后按报价、同价按参照玩家顺时针席位一次锁定整批顺序，批次中不重拍。每张牌公开展示结束后，都会进入固定5秒相位响应窗口；所有玩家都能决定是否打出相位否决，没人反制才结算原牌。封盘、展示或相位响应期间打出的新牌不会被拒绝，而是集中进入下一批等待区；当前整批清空后只开启一次新竞价。每张有锁定报价的牌轮到展示时，会把小费私密付给它前一张已结算牌的出牌者；若前面没有牌则不支付。")
 	lines.append("11. 匿名区域合约：打合约牌前必须先在地图分别点选供给区与需求区。第一段5秒只是把这两个要接通的区域、商品和条款向所有玩家公开展示；展示结束后，目标城市真实业主另有独立5秒签约/拒绝窗口。这个决定窗会持续留在该玩家界面，但不占用全局卡牌展示位，其他玩家可以继续出牌；超时按拒签结算。")
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
 	lines.append("13. 经济与手牌隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、现金流、资金轨迹、流水、手牌数量和弃牌记录；其他玩家只能从公开行动推测。终局才公开结算资金并按钱判胜。")
@@ -6999,7 +7084,7 @@ func _card_codex_category_for_card(card_name: String, skill: Dictionary) -> Stri
 	var kind := String(skill.get("kind", ""))
 	if ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "cash_gain"].has(kind):
 		return "economy"
-	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
+	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"].has(kind):
 		return "interaction"
 	if ["city_revenue_boost", "city_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind):
 		return "business"
@@ -7007,13 +7092,75 @@ func _card_codex_category_for_card(card_name: String, skill: Dictionary) -> Stri
 		return "news"
 	if kind == "weather_control":
 		return "weather"
-	if _skill_targets_monster(skill) or ["monster_bound_action", "move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar"].has(kind):
+	if _skill_targets_monster(skill) or ["monster_bound_action", "military_force", "military_command", "move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar"].has(kind):
 		return "combat"
 	if ["monster_lure", "special_monster_delay", "monster_takeover", "supply_draw", "panic_shift", "route_sabotage", "card_access_boon"].has(kind):
 		return "tactic"
 	if ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"].has(kind):
 		return "intel"
 	return "other"
+
+
+func _card_primary_type_label(skill: Dictionary, card_name: String = "") -> String:
+	var kind := String(skill.get("kind", ""))
+	if _is_monster_card_name(card_name) or kind == "monster_card":
+		return "怪兽牌"
+	match kind:
+		"monster_bound_action":
+			return "怪兽技能牌"
+		"military_force":
+			return "军队牌"
+		"military_command":
+			return "军令技能牌"
+		"card_counter":
+			return "反制牌"
+		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage":
+			return "玩家互动牌"
+		"city_gdp_derivative":
+			return "金融牌"
+		"product_futures":
+			return "期货牌"
+		"product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize":
+			return "商品牌"
+		"area_trade_contract", "city_contract_boon":
+			return "合约牌"
+		"city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_insurance", "route_flow_boon", "route_sabotage", "region_economy_shift":
+			return "经营牌"
+		"intel_city_reveal", "intel_card_trace", "intel_contract_trace", "card_access_boon", "supply_draw":
+			return "情报/补给牌"
+		"news_event":
+			return "新闻牌"
+		"weather_control":
+			return "天气牌"
+		"monster_lure", "monster_takeover", "special_monster_delay", "panic_shift":
+			return "诱导牌"
+	if _is_direct_monster_skill_kind(kind) or ["area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath"].has(kind):
+		return "怪兽技能牌"
+	return "战术牌"
+
+
+func _card_subtype_label(skill: Dictionary) -> String:
+	var route := _card_strategy_route_label(skill)
+	var kind := String(skill.get("kind", ""))
+	if kind == "city_gdp_derivative":
+		return "GDP衍生品"
+	if kind == "product_futures":
+		return "商品期货"
+	if kind == "card_counter":
+		return "响应反制"
+	if kind == "military_force":
+		return "%s资产" % _military_domain_label(skill)
+	if kind == "military_command":
+		return "可回收指令"
+	return route
+
+
+func _card_type_line(skill: Dictionary, card_name: String = "") -> String:
+	return "%s / %s / %s" % [
+		_card_primary_type_label(skill, card_name),
+		_card_subtype_label(skill),
+		_skill_tag_text(skill),
+	]
 
 
 func _set_card_codex_filter(filter_id: String) -> void:
@@ -7095,11 +7242,13 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 	var price := _card_price(card_name)
 	var key_facts := _card_key_rule_facts(skill)
 	var key_text := "；".join(key_facts) if not key_facts.is_empty() else "这张牌没有攻击/生命/范围等战斗数值，主要按效果文字结算。"
-	return "第%d/%d张｜%s\n分类：%s｜当前筛选：%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n速读：%s\n关键：%s" % [
+	return "第%d/%d张｜%s\n分类：%s｜主类型：%s｜子路线：%s｜当前筛选：%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n速读：%s\n关键：%s" % [
 		index + 1,
 		total,
 		_card_display_name(card_name),
 		category_text,
+		_card_primary_type_label(skill, card_name),
+		_card_subtype_label(skill),
 		_card_codex_filter_label(),
 		price,
 		_card_price_tier_text(price),
@@ -7145,7 +7294,7 @@ func _add_card_codex_detail_layout(parent: Container, card_name: String, skill: 
 		"牌面定位",
 		"%s\n%s" % [_card_strategy_summary(skill), _card_strength_budget_text(card_name, skill)],
 		accent,
-		"%s｜%s｜%s" % [_card_codex_filter_label(_card_codex_category_for_card(card_name, skill)), source_text, _skill_tag_text(skill)]
+		"%s｜%s｜%s" % [_card_primary_type_label(skill, card_name), _card_subtype_label(skill), source_text]
 	)
 	_add_menu_info_card(
 		fact_grid,
@@ -7566,8 +7715,8 @@ func _skill_play_flow_required(skill: Dictionary, player_index: int = -1) -> int
 	if bool(skill.get("starter_play_free", false)):
 		return 0
 	var requirement := 0
-	if int(skill.get("play_flow_required", 0)) > 0:
-		requirement = int(skill.get("play_flow_required", 0))
+	if skill.has("play_flow_required"):
+		requirement = maxi(0, int(skill.get("play_flow_required", 0)))
 	else:
 		requirement = maxi(1, int(ceil(float(skill.get("cost", 2)) / 3.0)))
 	var effective_player := player_index if player_index >= 0 else selected_player
@@ -7623,6 +7772,31 @@ func _can_play_skill_now(player_index: int, skill: Dictionary, show_log: bool = 
 		if error != "":
 			if show_log:
 				_log(error)
+			return false
+	if _is_counter_skill(skill):
+		if not card_resolution_counter_window_active or active_card_resolution.is_empty():
+			if show_log:
+				_log("%s只能在相位响应窗口内打出。" % card_label)
+			return false
+		var active_skill: Dictionary = active_card_resolution.get("skill", {}) as Dictionary
+		if active_skill.is_empty() or _is_counter_skill(active_skill):
+			if show_log:
+				_log("%s当前没有可反制的匿名牌。" % card_label)
+			return false
+	if String(skill.get("kind", "")) == "military_command":
+		var unit := _active_military_unit_for_player(player_index, int(skill.get("bound_military_uid", 0)))
+		if unit.is_empty():
+			if show_log:
+				_log("%s绑定的军队不在场。" % card_label)
+			return false
+		if float(unit.get("cooldown_left", 0.0)) > 0.0:
+			if show_log:
+				_log("%s所属军队还在执行上一条军令，%.1fs后可再行动。" % [card_label, float(unit.get("cooldown_left", 0.0))])
+			return false
+	if String(skill.get("kind", "")) == "military_force":
+		if not _can_deploy_military_card_at_district(skill, selected_district):
+			if show_log:
+				_log("%s部署限制：需要%s。" % [card_label, _military_deploy_terrain_label(skill)])
 			return false
 	var product_name := _skill_play_product(skill, player_index)
 	var required := _skill_play_flow_required(skill, player_index)
@@ -7847,13 +8021,19 @@ func _card_strength_budget_points(card_name: String) -> int:
 		"damage", "armor", "guard", "ranged_guard", "miasma_count", "reclaim_count", "fixed_skill_count",
 		"weather_zone_count", "stockpile_units", "hand_discard_count", "hand_steal_count",
 		"target_cash_penalty", "control_gdp_penalty", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage",
+		"counter_strength", "counter_refund", "counter_trace",
+		"military_hp", "military_damage", "military_gdp_penalty", "military_strike_gdp_penalty", "military_strike_route_damage",
 	]:
 		points += abs(int(skill.get(key, 0))) * 7
 	points += int(round(absf(float(skill.get("move", 0.0))) / 90.0))
 	points += int(round(absf(float(skill.get("range", 0.0))) / 110.0))
+	points += int(round(absf(float(skill.get("military_move", 0.0))) / 90.0))
+	points += int(round(absf(float(skill.get("military_range", 0.0))) / 110.0))
 	points += int(round(absf(float(skill.get("knockback", 0.0))) / 120.0))
 	points += int(round(absf(float(skill.get("delay", 0.0))) * 5.0))
 	points += int(round(absf(float(skill.get("duration", 0.0))) / 40.0))
+	points += int(round(absf(float(skill.get("military_duration_seconds", 0.0))) / 24.0))
+	points += int(round(absf(float(skill.get("counter_window_seconds", 0.0))) / 2.0))
 	points += int(round(absf(float(skill.get("weather_duration_seconds", 0.0))) / 20.0))
 	points += int(round(absf(float(skill.get("hand_lock_seconds", 0.0))) / 3.0))
 	points += int(round(absf(float(skill.get("control_block_seconds", 0.0))) / 5.0))
@@ -8566,6 +8746,8 @@ func _capture_run_state() -> Dictionary:
 		"active_card_resolution": active_card_resolution.duplicate(true),
 		"pending_contract_offers": pending_contract_offers.duplicate(true),
 		"card_resolution_timer": card_resolution_timer,
+		"card_resolution_counter_window_active": card_resolution_counter_window_active,
+		"card_resolution_counter_timer": card_resolution_counter_timer,
 		"card_resolution_simultaneous_timer": card_resolution_simultaneous_timer,
 		"card_resolution_auction_timer": card_resolution_auction_timer,
 		"card_resolution_auction_open": card_resolution_auction_open,
@@ -8604,6 +8786,8 @@ func _capture_run_state() -> Dictionary:
 		"next_auto_monster_uid": next_auto_monster_uid,
 		"next_special_monster_slot": next_special_monster_slot,
 		"selected_auto_monster_slot": selected_auto_monster_slot,
+		"military_units": military_units.duplicate(true),
+		"next_military_unit_uid": next_military_unit_uid,
 		"active_monster_wagers": active_monster_wagers.duplicate(true),
 		"resolved_monster_wager_history": resolved_monster_wager_history.duplicate(true),
 		"monster_wager_sequence": monster_wager_sequence,
@@ -8659,6 +8843,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	action_callouts = (state.get("action_callouts", []) as Array).duplicate(true)
 	map_event_effects = (state.get("map_event_effects", []) as Array).duplicate(true)
 	auto_monsters = (state.get("auto_monsters", []) as Array).duplicate(true)
+	military_units = (state.get("military_units", []) as Array).duplicate(true)
 	_ensure_realtime_economy_state()
 
 	rng.state = int(state.get("rng_state", rng.state))
@@ -8681,6 +8866,8 @@ func _apply_run_state(state: Dictionary) -> int:
 	active_card_resolution = (state.get("active_card_resolution", {}) as Dictionary).duplicate(true)
 	pending_contract_offers = (state.get("pending_contract_offers", []) as Array).duplicate(true)
 	card_resolution_timer = max(0.0, float(state.get("card_resolution_timer", 0.0)))
+	card_resolution_counter_window_active = bool(state.get("card_resolution_counter_window_active", false))
+	card_resolution_counter_timer = max(0.0, float(state.get("card_resolution_counter_timer", 0.0)))
 	card_resolution_simultaneous_timer = max(0.0, float(state.get("card_resolution_simultaneous_timer", 0.0)))
 	card_resolution_auction_timer = max(0.0, float(state.get("card_resolution_auction_timer", 0.0)))
 	card_resolution_auction_open = bool(state.get("card_resolution_auction_open", false))
@@ -8725,6 +8912,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	next_auto_monster_uid = int(state.get("next_auto_monster_uid", 1))
 	next_special_monster_slot = int(state.get("next_special_monster_slot", 0))
 	selected_auto_monster_slot = int(state.get("selected_auto_monster_slot", 0))
+	next_military_unit_uid = int(state.get("next_military_unit_uid", 1))
 	active_monster_wagers = (state.get("active_monster_wagers", []) as Array).duplicate(true)
 	resolved_monster_wager_history = (state.get("resolved_monster_wager_history", []) as Array).duplicate(true)
 	monster_wager_sequence = int(state.get("monster_wager_sequence", 0))
@@ -9546,6 +9734,8 @@ func _new_game() -> void:
 	next_auto_monster_uid = 1
 	next_special_monster_slot = 0
 	selected_auto_monster_slot = 0
+	military_units = []
+	next_military_unit_uid = 1
 	active_monster_wagers = []
 	resolved_monster_wager_history = []
 	monster_wager_sequence = 0
@@ -9559,6 +9749,8 @@ func _new_game() -> void:
 	active_card_resolution = {}
 	pending_contract_offers = []
 	card_resolution_timer = 0.0
+	card_resolution_counter_window_active = false
+	card_resolution_counter_timer = 0.0
 	card_resolution_simultaneous_timer = 0.0
 	card_resolution_auction_timer = 0.0
 	card_resolution_auction_open = false
@@ -9767,11 +9959,11 @@ func _make_auto_monster(slot: int, catalog_index: int, start_district: int, owne
 		"last_owner_damage_amount": 0,
 		"last_owner_damage_source": "",
 		"last_owner_damage_time": -1.0,
-		"revive_available": String(template.get("name", "")) == "机械杰克",
+		"revive_available": String(template.get("name", "")) == "流星哨兵",
 		"revive_timer": 0.0,
 		"bracelet_active": false,
-		"mebius_energy_announced": false,
-		"hikari_revenge_armor_active": false,
+		"ember_ring_energy_announced": false,
+		"blue_lancer_reactive_armor_active": false,
 	}
 
 
@@ -9876,6 +10068,423 @@ func _remove_auto_monster(slot: int, reason: String) -> void:
 	next_special_monster_slot = wrapi(next_special_monster_slot, 0, max(1, auto_monsters.size()))
 
 
+func _military_unit_type_label(unit_or_skill: Dictionary) -> String:
+	match String(unit_or_skill.get("military_type", "defense")):
+		"fighter":
+			return "制空战斗机"
+		"bomber":
+			return "轨道轰炸机"
+		"tank":
+			return "重装坦克"
+		"missile":
+			return "导弹阵地"
+		"submarine":
+			return "潜航舰队"
+		"warship":
+			return "星海战舰"
+	return "行星防卫军"
+
+
+func _military_unit_type_glyph(unit_or_skill: Dictionary) -> String:
+	match String(unit_or_skill.get("military_type", "defense")):
+		"fighter":
+			return "空"
+		"bomber":
+			return "轰"
+		"tank":
+			return "坦"
+		"missile":
+			return "弹"
+		"submarine":
+			return "潜"
+		"warship":
+			return "舰"
+	return "军"
+
+
+func _military_unit_motif(unit_or_skill: Dictionary) -> String:
+	match String(unit_or_skill.get("military_type", "defense")):
+		"fighter":
+			return "fighter"
+		"bomber":
+			return "bomber"
+		"tank":
+			return "tank"
+		"missile":
+			return "missile"
+		"submarine":
+			return "submarine"
+		"warship":
+			return "warship"
+	return "force"
+
+
+func _military_unit_color(unit: Dictionary = {}) -> Color:
+	match String(unit.get("military_type", "defense")):
+		"fighter":
+			return Color("#38bdf8")
+		"bomber":
+			return Color("#fb923c")
+		"tank":
+			return Color("#94a3b8")
+		"missile":
+			return Color("#a78bfa")
+		"submarine":
+			return Color("#0ea5e9")
+		"warship":
+			return Color("#22d3ee")
+	return Color("#67e8f9")
+
+
+func _military_domain_label(unit_or_skill: Dictionary) -> String:
+	match String(unit_or_skill.get("military_domain", "mixed")):
+		"air":
+			return "空中"
+		"land":
+			return "陆地"
+		"sea":
+			return "海上"
+	return "通用"
+
+
+func _military_deploy_terrain_label(unit_or_skill: Dictionary) -> String:
+	match String(unit_or_skill.get("military_deploy_terrain", "any")):
+		"land":
+			return "陆地"
+		"ocean":
+			return "海洋"
+	return "任意未毁区域"
+
+
+func _can_deploy_military_card_at_district(skill: Dictionary, district_index: int) -> bool:
+	if district_index < 0 or district_index >= districts.size():
+		return false
+	if bool(districts[district_index].get("destroyed", false)):
+		return false
+	var required := String(skill.get("military_deploy_terrain", "any"))
+	if required == "any" or required == "":
+		return true
+	return String(districts[district_index].get("terrain", "land")) == required
+
+
+func _military_unit_terrain_move_multiplier(unit_or_skill: Dictionary, district_index: int) -> float:
+	if district_index < 0 or district_index >= districts.size():
+		return 1.0
+	var terrain := String(districts[district_index].get("terrain", "land"))
+	var multipliers: Dictionary = unit_or_skill.get("terrain_move_multiplier", {})
+	return maxf(0.05, float(multipliers.get(terrain, 1.0)))
+
+
+func _military_unit_mobility_summary(unit_or_skill: Dictionary) -> String:
+	var multipliers: Dictionary = unit_or_skill.get("terrain_move_multiplier", {})
+	var land := float(multipliers.get("land", 1.0))
+	var ocean := float(multipliers.get("ocean", 1.0))
+	return "%s｜部署:%s｜陆×%.2f 海×%.2f" % [
+		_military_domain_label(unit_or_skill),
+		_military_deploy_terrain_label(unit_or_skill),
+		land,
+		ocean,
+	]
+
+
+func _military_unit_gdp_pressure(skill_or_unit: Dictionary, command: String = "") -> int:
+	var base := int(skill_or_unit.get("military_gdp_penalty", 0))
+	if command == "strike_district":
+		base += int(skill_or_unit.get("military_strike_gdp_penalty", 0))
+	return maxi(0, base)
+
+
+func _military_unit_gdp_pressure_seconds(skill_or_unit: Dictionary) -> float:
+	return maxf(0.0, float(skill_or_unit.get("military_gdp_pressure_seconds", 0.0)))
+
+
+func _apply_military_gdp_pressure(unit: Dictionary, district_index: int, command: String, source: String) -> int:
+	if district_index < 0 or district_index >= districts.size():
+		return 0
+	var city := _district_city(district_index)
+	if not _city_is_active(city):
+		return 0
+	var pressure := _military_unit_gdp_pressure(unit, command)
+	var seconds := _military_unit_gdp_pressure_seconds(unit)
+	if pressure <= 0 or seconds <= 0.0:
+		return 0
+	city["military_gdp_penalty"] = maxi(int(city.get("military_gdp_penalty", 0)), pressure)
+	city["military_pressure_until"] = maxf(float(city.get("military_pressure_until", 0.0)), game_time + seconds)
+	city["military_pressure_source"] = source
+	districts[district_index]["city"] = city
+	_set_city_public_clue(district_index, "%s造成军事管制：GDP/min短时-%d，持续%s。" % [
+		source,
+		pressure,
+		_duration_short_text(seconds),
+	])
+	return pressure
+
+
+func _military_unit_duration(skill: Dictionary) -> float:
+	return maxf(8.0, float(skill.get("military_duration_seconds", MILITARY_UNIT_DEFAULT_DURATION_SECONDS)))
+
+
+func _military_unit_range(skill: Dictionary) -> float:
+	return maxf(80.0, float(skill.get("military_range", skill.get("range", 260.0))))
+
+
+func _military_unit_move(skill: Dictionary) -> float:
+	return maxf(60.0, float(skill.get("military_move", 260.0)))
+
+
+func _military_unit_damage(skill: Dictionary) -> int:
+	return maxi(1, int(skill.get("military_damage", skill.get("damage", 1))))
+
+
+func _military_unit_hp(skill: Dictionary) -> int:
+	return maxi(1, int(skill.get("military_hp", 8)))
+
+
+func _military_unit_index_by_uid(uid: int) -> int:
+	if uid <= 0:
+		return -1
+	for i in range(military_units.size()):
+		var unit: Dictionary = military_units[i]
+		if int(unit.get("uid", 0)) == uid:
+			return i
+	return -1
+
+
+func _owned_active_military_unit_index(player_index: int) -> int:
+	if player_index < 0:
+		return -1
+	for i in range(military_units.size()):
+		var unit: Dictionary = military_units[i]
+		if int(unit.get("owner", -1)) == player_index:
+			return i
+	return -1
+
+
+func _owned_active_military_unit_count(player_index: int) -> int:
+	if player_index < 0:
+		return 0
+	var count := 0
+	for unit_variant in military_units:
+		var unit: Dictionary = unit_variant
+		if int(unit.get("owner", -1)) == player_index:
+			count += 1
+	return count
+
+
+func _oldest_owned_military_unit_index(player_index: int) -> int:
+	if player_index < 0:
+		return -1
+	var best_index := -1
+	var best_remaining := INF
+	for i in range(military_units.size()):
+		var unit: Dictionary = military_units[i]
+		if int(unit.get("owner", -1)) != player_index:
+			continue
+		var remaining := float(unit.get("remaining_time", 0.0))
+		if remaining < best_remaining:
+			best_remaining = remaining
+			best_index = i
+	return best_index
+
+
+func _invalidate_bound_military_commands(unit_uid: int, reason: String = "绑定军队已离场，此军令失效。") -> void:
+	if unit_uid <= 0:
+		return
+	for player_index in range(players.size()):
+		var player: Dictionary = players[player_index]
+		var slots: Array = player.get("slots", [])
+		for i in range(slots.size()):
+			if not (slots[i] is Dictionary):
+				continue
+			var skill: Dictionary = slots[i]
+			if int(skill.get("bound_military_uid", 0)) != unit_uid:
+				continue
+			skill["bound_military_uid"] = -1
+			skill["lock_left"] = max(float(skill.get("lock_left", 0.0)), 9999.0)
+			skill["text"] = "%s（%s）" % [String(skill.get("text", "")), reason]
+			slots[i] = skill
+		player["slots"] = slots
+		players[player_index] = player
+
+
+func _military_command_label(command: String) -> String:
+	return String({
+		"move": "前进",
+		"guard": "保卫区域",
+		"strike_district": "摧毁区域",
+		"attack_monster": "攻击怪兽",
+	}.get(command, "军令"))
+
+
+func _make_military_command_skill(command: String, rank: int, unit_uid: int, source_card: String = "") -> Dictionary:
+	var safe_rank := clampi(rank, 1, 4)
+	var command_label := _military_command_label(command)
+	var descriptions := {
+		"move": "命令绑定军队向当前选区前进；公开显示为匿名军队行动，不显示下令者。",
+		"guard": "命令绑定军队保卫当前选区：修复少量区域/商路压力并降低热度；不公开下令者。",
+		"strike_district": "命令绑定军队轰击当前选区，对区域和城市造成伤害，并可能形成短时GDP压力；不公开下令者。",
+		"attack_monster": "指定目标怪兽，命令绑定军队开火；军队操控者不因受伤承担怪兽式资金损失。",
+	}
+	var skill := {
+		"name": "军令·%s%d" % [command_label, safe_rank],
+		"kind": "military_command",
+		"military_command": command,
+		"bound_military_uid": unit_uid,
+		"source_card": source_card,
+		"rank": safe_rank,
+		"cost": 0,
+		"play_flow_required": 0,
+		"cooldown": maxf(2.0, MILITARY_UNIT_COMMAND_COOLDOWN_SECONDS - float(safe_rank) * 0.35),
+		"persistent": true,
+		"damage": safe_rank,
+		"move": 220.0 + float(safe_rank) * 55.0,
+		"range": 220.0 + float(safe_rank) * 60.0,
+		"repair_routes": 1 if command == "guard" else 0,
+		"tags": ["军令", "固定技能", "军队"],
+		"text": "%s（绑定一支短时防卫军；不占普通手牌上限，可冷却后重复使用。）" % String(descriptions.get(command, "命令己方唯一防卫军执行简单行动。")),
+	}
+	return skill
+
+
+func _military_command_order() -> Array:
+	return ["move", "guard", "strike_district", "attack_monster"]
+
+
+func _grant_bound_military_commands(player_index: int, unit_uid: int, rank: int, source_card: String, fixed_skill_count: int = -1) -> Array:
+	var granted := []
+	if player_index < 0 or player_index >= players.size() or unit_uid <= 0:
+		return granted
+	var commands := _military_command_order()
+	var count := mini(maxi(1, fixed_skill_count if fixed_skill_count > 0 else rank), commands.size())
+	var player: Dictionary = players[player_index]
+	for i in range(count):
+		var skill := _make_military_command_skill(String(commands[i]), rank, unit_uid, source_card)
+		var slot_index := _first_empty_or_new_slot(player)
+		player["slots"][slot_index] = skill
+		granted.append(String(skill.get("name", "军令")))
+	players[player_index] = player
+	return granted
+
+
+func _refresh_military_unit_from_skill(unit: Dictionary, skill: Dictionary, district_index: int = -1) -> Dictionary:
+	var rank := clampi(int(skill.get("rank", _skill_rank(String(skill.get("name", ""))))), 1, 4)
+	unit["rank"] = rank
+	unit["name"] = _military_unit_type_label(skill)
+	unit["source_card"] = String(skill.get("name", unit["name"]))
+	unit["military_type"] = String(skill.get("military_type", "defense"))
+	unit["military_domain"] = String(skill.get("military_domain", "mixed"))
+	unit["movement_traits"] = (skill.get("movement_traits", []) as Array).duplicate(true)
+	unit["terrain_move_multiplier"] = (skill.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true)
+	unit["military_gdp_penalty"] = int(skill.get("military_gdp_penalty", 0))
+	unit["military_gdp_pressure_seconds"] = float(skill.get("military_gdp_pressure_seconds", 0.0))
+	unit["military_strike_gdp_penalty"] = int(skill.get("military_strike_gdp_penalty", 0))
+	unit["military_strike_route_damage"] = int(skill.get("military_strike_route_damage", 0))
+	unit["hp"] = _military_unit_hp(skill)
+	unit["max_hp"] = int(unit["hp"])
+	unit["damage"] = _military_unit_damage(skill)
+	unit["range"] = _military_unit_range(skill)
+	unit["move"] = _military_unit_move(skill)
+	unit["duration"] = _military_unit_duration(skill)
+	unit["remaining_time"] = float(unit["duration"])
+	if district_index >= 0 and district_index < districts.size():
+		unit["position"] = district_index
+		unit["world_position"] = _district_center(district_index)
+	return unit
+
+
+func _summon_military_unit_from_card(player_index: int, skill: Dictionary) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
+		_log("%s需要选中一个未毁区域作为军队部署点。" % String(skill.get("name", "军队牌")))
+		return false
+	if not _can_deploy_military_card_at_district(skill, selected_district):
+		_log("%s只能部署在%s；当前区域是%s。" % [
+			String(skill.get("name", "军队牌")),
+			_military_deploy_terrain_label(skill),
+			"海洋" if String(districts[selected_district].get("terrain", "land")) == "ocean" else "陆地",
+		])
+		return false
+	var rank := clampi(int(skill.get("rank", _skill_rank(String(skill.get("name", ""))))), 1, 4)
+	var existing_index := -1
+	if _owned_active_military_unit_count(player_index) >= _player_military_control_limit(player_index):
+		existing_index = _oldest_owned_military_unit_index(player_index)
+	var unit := {}
+	var old_uid := 0
+	if existing_index >= 0:
+		unit = military_units[existing_index] as Dictionary
+		old_uid = int(unit.get("uid", 0))
+		unit = _refresh_military_unit_from_skill(unit, skill, selected_district)
+		military_units[existing_index] = unit
+		_invalidate_bound_military_commands(old_uid, "防卫军已被新军队牌刷新，旧军令失效。")
+	else:
+		unit = {
+			"uid": next_military_unit_uid,
+			"owner": player_index,
+			"position": selected_district,
+			"world_position": _district_center(selected_district),
+			"cooldown_left": 0.0,
+			"public_owner_revealed": false,
+		}
+		next_military_unit_uid += 1
+		unit = _refresh_military_unit_from_skill(unit, skill, selected_district)
+		military_units.append(unit)
+	var unit_label := _military_unit_type_label(unit)
+	var granted := _grant_bound_military_commands(player_index, int(unit.get("uid", 0)), rank, String(skill.get("name", unit_label)), int(skill.get("fixed_skill_count", rank)))
+	_add_visual_trail(_district_center(selected_district) + Vector2(0, -70), _district_center(selected_district), _military_unit_color(unit), unit_label)
+	_add_action_callout(
+		"匿名军队牌",
+		("部署%s" % unit_label) if existing_index < 0 else ("刷新%s" % unit_label),
+		"%s出现%s%s；%s，不会自主行动，只响应私有军令牌。" % [
+			String(districts[selected_district].get("name", "选区")),
+			unit_label,
+			_level_text(rank),
+			_military_unit_mobility_summary(unit),
+		],
+		_military_unit_color(unit),
+		_entity_world_position(unit)
+	)
+	_log("匿名军队牌结算：%s在%s%s一支%s；该玩家军队上限%d；%s。新军令：%s。" % [
+		String(skill.get("name", unit_label)),
+		String(districts[selected_district].get("name", "区域")),
+		"刷新" if existing_index >= 0 else "部署",
+		unit_label,
+		_player_military_control_limit(player_index),
+		_military_unit_mobility_summary(unit),
+		_limited_name_list(granted, 4, "无"),
+	])
+	_refresh_ui()
+	return true
+
+
+func _remove_military_unit(index: int, reason: String) -> void:
+	if index < 0 or index >= military_units.size():
+		return
+	var unit: Dictionary = military_units[index]
+	_invalidate_bound_military_commands(int(unit.get("uid", 0)))
+	_add_action_callout(
+		"匿名%s" % _military_unit_type_label(unit),
+		"撤离",
+		reason,
+		Color("#94a3b8"),
+		_entity_world_position(unit)
+	)
+	_log("匿名%s撤离：%s" % [_military_unit_type_label(unit), reason])
+	military_units.remove_at(index)
+
+
+func _update_military_units(delta: float) -> void:
+	for i in range(military_units.size() - 1, -1, -1):
+		var unit: Dictionary = military_units[i]
+		var remaining := maxf(0.0, float(unit.get("remaining_time", 0.0)) - delta)
+		unit["remaining_time"] = remaining
+		unit["cooldown_left"] = maxf(0.0, float(unit.get("cooldown_left", 0.0)) - delta)
+		if remaining <= 0.0 or int(unit.get("hp", 0)) <= 0:
+			_remove_military_unit(i, "在场时间结束或战力耗尽。")
+			continue
+		military_units[i] = unit
+
+
 func _update_auto_monster_durations(delta: float) -> void:
 	for slot in range(auto_monsters.size() - 1, -1, -1):
 		var actor: Dictionary = auto_monsters[slot]
@@ -9915,7 +10524,7 @@ func _update_auto_monster_revivals(delta: float) -> void:
 
 
 func _try_start_auto_monster_revival(slot: int, source: String, actor: Dictionary) -> bool:
-	if String(actor.get("name", "")) != "机械杰克":
+	if String(actor.get("name", "")) != "流星哨兵":
 		return false
 	if not bool(actor.get("revive_available", false)):
 		return false
@@ -9925,9 +10534,9 @@ func _try_start_auto_monster_revival(slot: int, source: String, actor: Dictionar
 	actor["revive_timer"] = float(rng.randi_range(1, 6)) * 4.0
 	special_monster_timer = min(special_monster_timer, float(actor["revive_timer"]))
 	auto_monsters[slot] = actor
-	_log("%s击倒怪%d·机械杰克，手镯复活启动：%.1fs后满血回归。" % [source, slot + 1, float(actor["revive_timer"])])
+	_log("%s击倒怪%d·流星哨兵，手镯复活启动：%.1fs后满血回归。" % [source, slot + 1, float(actor["revive_timer"])])
 	_add_action_callout(
-		"怪%d·机械杰克" % (slot + 1),
+		"怪%d·流星哨兵" % (slot + 1),
 		"手镯复活启动",
 		"倒地等待%.1fs后满血回归。" % float(actor["revive_timer"]),
 		_auto_monster_color(slot),
@@ -9936,53 +10545,53 @@ func _try_start_auto_monster_revival(slot: int, source: String, actor: Dictionar
 	return true
 
 
-func _is_auto_mebius_energy_active(slot: int) -> bool:
+func _is_auto_ember_ring_energy_active(slot: int) -> bool:
 	if slot < 0 or slot >= auto_monsters.size():
 		return false
 	var actor: Dictionary = auto_monsters[slot]
-	return String(actor.get("name", "")) == "梦比优斯" and not bool(actor.get("down", false)) and int(actor.get("hp", 0)) <= MEBIUS_ENERGY_THRESHOLD
+	return String(actor.get("name", "")) == "焰环幼星" and not bool(actor.get("down", false)) and int(actor.get("hp", 0)) <= EMBER_RING_ENERGY_THRESHOLD
 
 
-func _maybe_announce_auto_mebius_energy(slot: int) -> void:
-	if not _is_auto_mebius_energy_active(slot):
+func _maybe_announce_auto_ember_ring_energy(slot: int) -> void:
+	if not _is_auto_ember_ring_energy_active(slot):
 		return
 	var actor: Dictionary = auto_monsters[slot]
-	if bool(actor.get("mebius_energy_announced", false)):
+	if bool(actor.get("ember_ring_energy_announced", false)):
 		return
-	actor["mebius_energy_announced"] = true
+	actor["ember_ring_energy_announced"] = true
 	auto_monsters[slot] = actor
-	_log("怪%d·梦比优斯HP降至%d以下，梦比姆能量启动：移动力提升，近战互伤会追加火焰。" % [slot + 1, MEBIUS_ENERGY_THRESHOLD])
+	_log("怪%d·焰环幼星HP降至%d以下，星焰能量启动：移动力提升，近战互伤会追加火焰。" % [slot + 1, EMBER_RING_ENERGY_THRESHOLD])
 	_add_action_callout(
-		"怪%d·梦比优斯" % (slot + 1),
-		"梦比姆能量启动",
+		"怪%d·焰环幼星" % (slot + 1),
+		"星焰能量启动",
 		"移动力提升，近战互伤追加火焰伤害。",
 		_auto_monster_color(slot),
 		_entity_world_position(actor)
 	)
 
 
-func _is_auto_hikari_revenge_armor_active(slot: int) -> bool:
+func _is_auto_blue_lancer_reactive_armor_active(slot: int) -> bool:
 	if slot < 0 or slot >= auto_monsters.size():
 		return false
 	var actor: Dictionary = auto_monsters[slot]
-	return String(actor.get("name", "")) == "希卡利" and bool(actor.get("hikari_revenge_armor_active", false))
+	return String(actor.get("name", "")) == "蓝锋骑士" and bool(actor.get("blue_lancer_reactive_armor_active", false))
 
 
-func _maybe_announce_auto_hikari_revenge_armor(slot: int) -> void:
+func _maybe_announce_auto_blue_lancer_reactive_armor(slot: int) -> void:
 	if slot < 0 or slot >= auto_monsters.size():
 		return
 	var actor: Dictionary = auto_monsters[slot]
-	if String(actor.get("name", "")) != "希卡利":
+	if String(actor.get("name", "")) != "蓝锋骑士":
 		return
-	if bool(actor.get("hikari_revenge_armor_active", false)):
+	if bool(actor.get("blue_lancer_reactive_armor_active", false)):
 		return
-	if int(actor.get("hp", 0)) > HIKARI_REVENGE_ARMOR_THRESHOLD:
+	if int(actor.get("hp", 0)) > BLUE_LANCER_REACTIVE_ARMOR_THRESHOLD:
 		return
-	actor["hikari_revenge_armor_active"] = true
+	actor["blue_lancer_reactive_armor_active"] = true
 	auto_monsters[slot] = actor
-	_log("怪%d·希卡利HP降至%d以下，复仇之铠启动：受伤-1、造成伤害+1。" % [slot + 1, HIKARI_REVENGE_ARMOR_THRESHOLD])
+	_log("怪%d·蓝锋骑士HP降至%d以下，复仇之铠启动：受伤-1、造成伤害+1。" % [slot + 1, BLUE_LANCER_REACTIVE_ARMOR_THRESHOLD])
 	_add_action_callout(
-		"怪%d·希卡利" % (slot + 1),
+		"怪%d·蓝锋骑士" % (slot + 1),
 		"复仇之铠启动",
 		"受伤-1，造成伤害+1。",
 		_auto_monster_color(slot),
@@ -9991,9 +10600,9 @@ func _maybe_announce_auto_hikari_revenge_armor(slot: int) -> void:
 
 
 func _auto_monster_damage_bonus_from_passives(slot: int) -> int:
-	if _is_auto_hikari_revenge_armor_active(slot):
-		_maybe_announce_auto_hikari_revenge_armor(slot)
-		return HIKARI_REVENGE_DAMAGE_BONUS
+	if _is_auto_blue_lancer_reactive_armor_active(slot):
+		_maybe_announce_auto_blue_lancer_reactive_armor(slot)
+		return BLUE_LANCER_REACTIVE_DAMAGE_BONUS
 	return 0
 
 
@@ -10075,10 +10684,35 @@ func _field_monster_upgrade_slot_for_card(player_index: int, skill: Dictionary) 
 			continue
 		if String(actor.get("name", "")) != monster_name:
 			continue
-		if int(actor.get("rank", 1)) >= 4:
-			continue
 		return i
 	return -1
+
+
+func _owned_active_monster_slot(player_index: int) -> int:
+	if player_index < 0:
+		return -1
+	for i in range(auto_monsters.size()):
+		var actor: Dictionary = auto_monsters[i]
+		if bool(actor.get("down", false)):
+			continue
+		if int(actor.get("owner", -1)) == player_index:
+			return i
+	return -1
+
+
+func _owned_active_monster_count(player_index: int, exclude_slot: int = -1) -> int:
+	if player_index < 0:
+		return 0
+	var count := 0
+	for i in range(auto_monsters.size()):
+		if i == exclude_slot:
+			continue
+		var actor: Dictionary = auto_monsters[i]
+		if bool(actor.get("down", false)):
+			continue
+		if int(actor.get("owner", -1)) == player_index:
+			count += 1
+	return count
 
 
 func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> bool:
@@ -10090,8 +10724,9 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 	var old_rank := clampi(int(actor.get("rank", 1)), 1, 4)
 	var card_rank := clampi(int(skill.get("rank", _skill_rank(String(skill.get("name", ""))))), 1, 4)
 	var new_rank := clampi(maxi(old_rank + 1, card_rank), 1, 4)
-	if new_rank <= old_rank:
-		return false
+	var refresh_only := new_rank <= old_rank
+	if refresh_only:
+		new_rank = old_rank
 	var upgraded_card := _make_skill(_monster_card_name(catalog_index, new_rank))
 	var old_uid := int(actor.get("uid", 0))
 	var old_owner_revealed := bool(actor.get("owner_revealed", false))
@@ -10109,21 +10744,22 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 	_invalidate_bound_monster_skills(old_uid, "绑定怪兽已升级，旧固定技能失效。")
 	var fixed_skill_count := int(upgraded_card.get("fixed_skill_count", new_rank))
 	var granted := _grant_bound_monster_skills(player_index, old_uid, String(actor.get("name", "怪兽")), new_rank, fixed_skill_count)
-	_apply_role_monster_upgrade_cash(player_index, String(actor.get("name", "怪兽")), old_rank, new_rank, _entity_world_position(actor))
+	if not refresh_only:
+		_apply_role_monster_upgrade_cash(player_index, String(actor.get("name", "怪兽")), old_rank, new_rank, _entity_world_position(actor))
 	_apply_monster_economic_boons()
 	_refresh_product_market_prices()
 	_add_action_callout(
 		"匿名怪兽卡",
-		"%s升级" % String(actor.get("name", "怪兽")),
-		"同名怪兽牌使场上怪兽升至%s；HP和在场时间刷新，归属不额外公开。" % _level_text(new_rank),
+		"%s%s" % [String(actor.get("name", "怪兽")), "刷新" if refresh_only else "升级"],
+		"同名怪兽牌%s；HP和在场时间刷新，归属不额外公开。" % ("达到等级上限，改为刷新在场状态" if refresh_only else "使场上怪兽升至%s" % _level_text(new_rank)),
 		_auto_monster_color(slot),
 		_entity_world_position(actor)
 	)
-	_log("匿名怪兽卡升级：怪%d·%s从%s升至%s，HP刷新为%d、在场时间刷新为%s；新固定技能：%s。归属不额外公开。" % [
+	_log("匿名怪兽卡%s：怪%d·%s%s，HP刷新为%d、在场时间刷新为%s；固定技能刷新：%s。归属不额外公开。" % [
+		"刷新" if refresh_only else "升级",
 		slot + 1,
 		String(actor.get("name", "怪兽")),
-		_level_text(old_rank),
-		_level_text(new_rank),
+		"保持%s" % _level_text(old_rank) if refresh_only else "从%s升至%s" % [_level_text(old_rank), _level_text(new_rank)],
 		int(actor.get("max_hp", 0)),
 		_monster_card_duration_text(upgraded_card),
 		_limited_name_list(granted, 4, "无"),
@@ -10139,6 +10775,18 @@ func _summon_monster_from_card(player: Dictionary, skill: Dictionary) -> bool:
 		return false
 	if _upgrade_field_monster_from_card(selected_player, skill):
 		return true
+	var owned_count := _owned_active_monster_count(selected_player)
+	var monster_limit := _player_monster_control_limit(selected_player)
+	if owned_count >= monster_limit:
+		var existing_owned_slot := _owned_active_monster_slot(selected_player)
+		var owned_actor: Dictionary = auto_monsters[existing_owned_slot] if existing_owned_slot >= 0 else {}
+		_log("%s无法新增怪兽：当前角色同时最多归属%d只怪兽；当前已拥有%d只%s。同名怪兽牌仍可用于升级或刷新同名怪兽。" % [
+			String(skill.get("name", "怪兽卡")),
+			monster_limit,
+			owned_count,
+			"（包括怪%d·%s）" % [existing_owned_slot + 1, String(owned_actor.get("name", "怪兽"))] if existing_owned_slot >= 0 else "",
+		])
+		return false
 	if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
 		_log("%s需要选中一个未毁区域作为召唤落点。" % String(skill.get("name", "怪兽卡")))
 		return false
@@ -10345,6 +10993,34 @@ func _player_role_card_for_index(player_index: int) -> Dictionary:
 	return role_variant as Dictionary if role_variant is Dictionary else {}
 
 
+func _role_can_use_monster_card_as_counter(player_index: int) -> bool:
+	var role := _player_role_card_for_index(player_index)
+	return bool(role.get("monster_cards_as_counter", false))
+
+
+func _player_monster_control_limit(player_index: int) -> int:
+	var role := _player_role_card_for_index(player_index)
+	return maxi(1, 1 + int(role.get("monster_control_limit_bonus", 0)))
+
+
+func _player_military_control_limit(player_index: int) -> int:
+	var role := _player_role_card_for_index(player_index)
+	return maxi(1, 1 + int(role.get("military_control_limit_bonus", 0)))
+
+
+func _active_military_unit_for_player(player_index: int, bound_uid: int = 0) -> Dictionary:
+	if bound_uid > 0:
+		var bound_index := _military_unit_index_by_uid(bound_uid)
+		if bound_index >= 0:
+			var bound_unit: Dictionary = military_units[bound_index]
+			if int(bound_unit.get("owner", -1)) == player_index:
+				return bound_unit
+	var index := _owned_active_military_unit_index(player_index)
+	if index < 0:
+		return {}
+	return (military_units[index] as Dictionary).duplicate(true)
+
+
 func _role_runtime_copy_fields() -> Array:
 	return [
 		"passive",
@@ -10364,6 +11040,9 @@ func _role_runtime_copy_fields() -> Array:
 		"extended_card_price_multiplier",
 		"card_access_global",
 		"global_card_price_multiplier",
+		"monster_cards_as_counter",
+		"monster_control_limit_bonus",
+		"military_control_limit_bonus",
 		"flavor",
 	]
 
@@ -10779,6 +11458,12 @@ func _normalize_city_runtime_fields(city: Dictionary) -> Dictionary:
 		city["last_cashflow_rate"] = int(city.get("last_income", 0))
 	if not city.has("cashflow_paid_total"):
 		city["cashflow_paid_total"] = 0
+	if not city.has("military_gdp_penalty"):
+		city["military_gdp_penalty"] = 0
+	if not city.has("military_pressure_until"):
+		city["military_pressure_until"] = 0.0
+	if not city.has("military_pressure_source"):
+		city["military_pressure_source"] = ""
 	return city
 
 
@@ -10980,6 +11665,9 @@ func _create_city_at_district_for_player(player_index: int, district_index: int,
 		"trade_routes": [],
 		"trade_disrupted_routes": 0,
 		"trade_route_damage": 0,
+		"military_gdp_penalty": 0,
+		"military_pressure_until": 0.0,
+		"military_pressure_source": "",
 		"supplied_demands": 0,
 		"built_at": game_time,
 		"last_public_clue": "",
@@ -13354,6 +14042,12 @@ func _role_card_art_stats(role_card: Dictionary) -> String:
 	var upgrade_cash := int(role_card.get("monster_upgrade_cash", 0))
 	if upgrade_cash > 0:
 		parts.append("升兽:+¥%d" % upgrade_cash)
+	var monster_limit_bonus := int(role_card.get("monster_control_limit_bonus", 0))
+	if monster_limit_bonus > 0:
+		parts.append("怪兽上限:%d" % (1 + monster_limit_bonus))
+	var military_limit_bonus := int(role_card.get("military_control_limit_bonus", 0))
+	if military_limit_bonus > 0:
+		parts.append("军队上限:%d" % (1 + military_limit_bonus))
 	return "｜".join(parts)
 
 
@@ -13408,7 +14102,7 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 
-	var tag_label := _plain_label(_skill_tag_text(skill), 10 if compact else 11, Color("#c4b5fd"))
+	var tag_label := _plain_label(_card_type_line(skill, skill_name), 10 if compact else 11, Color("#c4b5fd"))
 	tag_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(tag_label)
 
@@ -13418,7 +14112,7 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	art_view.set_card(
 		_card_display_name(skill_name),
 		String(skill.get("kind", "")),
-		_skill_tag_text(skill),
+		_card_type_line(skill, skill_name),
 		accent,
 		max(1, _skill_rank(skill_name)),
 		compact,
@@ -13458,6 +14152,10 @@ func _card_theme_color(skill: Dictionary) -> Color:
 			return Color("#c084fc")
 		"monster_takeover":
 			return Color("#f472b6")
+		"military_force", "military_command":
+			return Color("#67e8f9")
+		"card_counter":
+			return Color("#a78bfa")
 		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage":
 			return Color("#60a5fa")
 		"city_revenue_boost", "cash_gain", "product_speculation", "product_futures", "product_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "market_stabilize", "product_growth_boon", "route_flow_boon", "city_contract_boon", "region_economy_shift":
@@ -13520,6 +14218,10 @@ func _card_strategy_route_label(skill: Dictionary) -> String:
 	var accept_delta := int(skill.get("accept_production_delta", 0)) + int(skill.get("accept_transport_delta", 0)) + int(skill.get("accept_consumption_delta", 0))
 	var decline_delta := int(skill.get("decline_production_delta", 0)) + int(skill.get("decline_transport_delta", 0)) + int(skill.get("decline_consumption_delta", 0))
 	var market_pressure := int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0)) + int(skill.get("price_delta", 0))
+	if kind == "card_counter":
+		return "直接互动"
+	if kind == "military_force" or kind == "military_command":
+		return "战斗破坏"
 	if kind == "monster_card" or kind == "monster_bound_action" or kind == "monster_lure" or kind == "monster_takeover" or tags.contains("怪兽"):
 		return "怪兽路线"
 	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind) or tags.contains("互动"):
@@ -13752,20 +14454,23 @@ func _card_balance_pillars(skill: Dictionary) -> Array:
 		or int(skill.get("hand_steal_count", 0)) > 0 \
 		or int(skill.get("control_gdp_penalty", 0)) > 0 \
 		or int(skill.get("global_barrage_damage", 0)) > 0 \
+		or int(skill.get("military_damage", 0)) > 0 \
 		or (kind == "city_gdp_derivative" and String(skill.get("gdp_bet_direction", "up")) == "down" and skill.get("gdp_bet_insurance", false) != true) \
-		or kind in ["route_sabotage", "area_damage", "mudslide", "miasma_shot", "corrosive_breath", "panic_shift", "news_event", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"]:
+		or kind in ["route_sabotage", "area_damage", "mudslide", "miasma_shot", "corrosive_breath", "panic_shift", "news_event", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "military_force", "military_command"]:
 		_append_unique_pillar(pillars, "压制")
 	if int(skill.get("repair_routes", 0)) > 0 \
 		or int(skill.get("armor", 0)) > 0 \
 		or int(skill.get("guard", 0)) > 0 \
 		or int(skill.get("ranged_guard", 0)) > 0 \
-		or kind in ["route_insurance", "market_stabilize", "special_monster_delay", "armor_gain"] \
+		or int(skill.get("counter_strength", 0)) > 0 \
+		or int(skill.get("military_hp", 0)) > 0 \
+		or kind in ["route_insurance", "market_stabilize", "special_monster_delay", "armor_gain", "card_counter", "military_force"] \
 		or skill.get("gdp_bet_insurance", false) == true \
 		or float(skill.get("route_flow_multiplier", 1.0)) > 1.001:
 		_append_unique_pillar(pillars, "防御")
 	if kind in ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"] or tags.contains("情报"):
 		_append_unique_pillar(pillars, "信息")
-	if tags.contains("互动") or kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"]:
+	if tags.contains("互动") or kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"]:
 		_append_unique_pillar(pillars, "互动")
 	if int(skill.get("draw_amount", 0)) > 0 \
 		or int(skill.get("card_access_extra_hops", 0)) > 0 \
@@ -13778,6 +14483,10 @@ func _card_balance_pillars(skill: Dictionary) -> Array:
 		or kind == "monster_takeover" \
 		or tags.contains("怪兽"):
 		_append_unique_pillar(pillars, "怪兽")
+	if kind in ["military_force", "military_command"] \
+		or tags.contains("军队") \
+		or tags.contains("军令"):
+		_append_unique_pillar(pillars, "军队")
 	if kind in ["area_trade_contract", "product_contract_boon"] \
 		or int(skill.get("contract_add_products", 0)) > 0 \
 		or int(skill.get("contract_add_demands", 0)) > 0 \
@@ -13796,6 +14505,7 @@ func _card_balance_pillars(skill: Dictionary) -> Array:
 		or _skill_play_cash_cost(skill) > 0 \
 		or _skill_targets_monster(skill) \
 		or kind == "area_trade_contract" \
+		or kind == "card_counter" \
 		or kind == "weather_control" \
 		or (kind == "monster_card" and not bool(skill.get("starter_play_free", false)) and String(skill.get("summon_access", "any")) != "any"):
 		_append_unique_pillar(pillars, "公开门槛")
@@ -14236,6 +14946,26 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 
 
 func _card_art_stats(skill: Dictionary) -> String:
+	if String(skill.get("kind", "")) == "card_counter":
+		return "%s｜响应%s｜强度%d" % [
+			_card_strategy_route_label(skill),
+			_duration_short_text(float(skill.get("counter_window_seconds", CARD_COUNTER_RESPONSE_SECONDS))),
+			maxi(1, int(skill.get("counter_strength", 1))),
+		]
+	if String(skill.get("kind", "")) == "military_force":
+		return "%s｜%s｜HP%d｜伤%d｜%s" % [
+			_military_unit_type_label(skill),
+			_military_domain_label(skill),
+			_military_unit_hp(skill),
+			_military_unit_damage(skill),
+			_duration_short_text(_military_unit_duration(skill)),
+		]
+	if String(skill.get("kind", "")) == "military_command":
+		return "%s｜%s｜%s" % [
+			_card_strategy_route_label(skill),
+			_military_command_label(String(skill.get("military_command", ""))),
+			_meters_text(float(skill.get("range", 0.0))),
+		]
 	if String(skill.get("kind", "")) == "city_gdp_derivative":
 		return "%s｜%s×%.2f｜%s" % [
 			_card_strategy_route_label(skill),
@@ -14387,6 +15117,18 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var global_barrage_damage := int(skill.get("global_barrage_damage", 0))
 	var global_barrage_target_count := int(skill.get("global_barrage_target_count", 0))
 	var global_barrage_route_damage := int(skill.get("global_barrage_route_damage", 0))
+	var counter_window_seconds := float(skill.get("counter_window_seconds", 0.0))
+	var counter_strength := int(skill.get("counter_strength", 0))
+	var counter_refund := int(skill.get("counter_refund", 0))
+	var counter_trace := int(skill.get("counter_trace", 0))
+	var military_hp := int(skill.get("military_hp", 0))
+	var military_damage := int(skill.get("military_damage", 0))
+	var military_move := float(skill.get("military_move", 0.0))
+	var military_range := float(skill.get("military_range", 0.0))
+	var military_duration := float(skill.get("military_duration_seconds", 0.0))
+	var military_command := String(skill.get("military_command", ""))
+	var military_gdp_penalty := int(skill.get("military_gdp_penalty", 0))
+	var military_strike_route_damage := int(skill.get("military_strike_route_damage", 0))
 	if move_m > 0.0:
 		facts.append("移动:%s" % _meters_text(move_m))
 	if range_m > 0.0:
@@ -14519,6 +15261,31 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 		facts.append("齐射伤害:%d×%d城" % [global_barrage_damage, max(1, global_barrage_target_count)])
 	if global_barrage_route_damage > 0:
 		facts.append("齐射断路:+%d" % global_barrage_route_damage)
+	if counter_window_seconds > 0.0:
+		facts.append("响应窗口:%s" % _duration_short_text(counter_window_seconds))
+	if counter_strength > 0:
+		facts.append("反制强度:%d" % counter_strength)
+	if counter_refund > 0:
+		facts.append("成功返还:¥%d" % counter_refund)
+	if counter_trace > 0:
+		facts.append("反制线索:%d" % counter_trace)
+	if military_hp > 0:
+		facts.append("兵种:%s/%s" % [_military_unit_type_label(skill), _military_unit_mobility_summary(skill)])
+		facts.append("军队生命:%d" % military_hp)
+	if military_damage > 0:
+		facts.append("军队火力:%d" % military_damage)
+	if military_move > 0.0:
+		facts.append("军队机动:%s" % _meters_text(military_move))
+	if military_range > 0.0:
+		facts.append("军队半径:%s" % _meters_text(military_range))
+	if military_duration > 0.0:
+		facts.append("军队在场:%s" % _duration_short_text(military_duration))
+	if military_gdp_penalty > 0:
+		facts.append("军事GDP压力:%d/%s" % [military_gdp_penalty, _duration_short_text(_military_unit_gdp_pressure_seconds(skill))])
+	if military_strike_route_damage > 0:
+		facts.append("轰击断路:+%d" % military_strike_route_damage)
+	if military_command != "":
+		facts.append("军令:%s" % _military_command_label(military_command))
 	return facts
 
 
@@ -14571,6 +15338,32 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 					_monster_card_duration_text(skill, true),
 				],
 				"怪兽归属仍隐藏；之后它受伤造成的资金损失才会把召唤者线索公开。",
+			]
+		"card_counter":
+			return [
+				"%s在相位响应窗口内翻开，紫色断层盖住上一张匿名牌。" % label,
+				"系统公开宣布原牌被折叠取消；反制者身份仍隐藏，只留下商品流动门槛与时机线索。",
+				"如果由角色能力把怪兽牌改写而来，原怪兽牌会被消耗，轨道只显示这次匿名反制。",
+			]
+		"military_force":
+			var unit_label := _military_unit_type_label(skill)
+			return [
+				"%s从近地轨道投下短时%s，军徽被匿名遮罩处理。" % [label, unit_label],
+				"%s生命%d、火力%d、机动%s、在场%s写入地图；%s；同一玩家达到军队上限时只刷新较早军队。" % [
+					unit_label,
+					_military_unit_hp(skill),
+					_military_unit_damage(skill),
+					_meters_text(_military_unit_move(skill)),
+					_duration_short_text(_military_unit_duration(skill)),
+					_military_unit_mobility_summary(skill),
+				],
+				"军队不会自主行动；移动不造成怪兽式建筑破坏，但军事行动可能留下短时GDP压力。",
+			]
+		"military_command":
+			return [
+				"%s以匿名军令形式亮起，地图只显示防卫军行动，不显示下令者。" % label,
+				"军令类型为%s：前进、保卫、摧毁或攻击怪兽之一；执行后进入短冷却。" % _military_command_label(String(skill.get("military_command", ""))),
+				"军队受伤不会让操控者损失资金，因此它更像一次短时公开战术资产。",
 			]
 		"city_revenue_boost":
 			return [
@@ -14968,6 +15761,12 @@ func _card_resolution_effect_radius(skill: Dictionary) -> float:
 	var kind := String(skill.get("kind", ""))
 	if kind == "monster_card":
 		return 120.0
+	if kind == "military_force":
+		return clampf(_military_unit_range(skill), 90.0, 360.0)
+	if kind == "military_command":
+		return clampf(float(skill.get("range", 220.0)), 80.0, 330.0)
+	if kind == "card_counter":
+		return 145.0
 	if kind.contains("city") or kind == "route_sabotage" or kind == "route_flow_boon" or kind == "route_insurance" or kind == "area_trade_contract" or kind == "news_event" or kind == "weather_control":
 		return 105.0
 	if kind.contains("product") or kind == "market_stabilize":
@@ -14979,6 +15778,10 @@ func _card_resolution_effect_style(skill: Dictionary) -> String:
 	var kind := String(skill.get("kind", ""))
 	if kind == "monster_card":
 		return "summon"
+	if kind == "card_counter":
+		return "counter"
+	if kind == "military_force" or kind == "military_command":
+		return "military"
 	if _skill_targets_monster(skill) or ["move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar", "monster_lure", "special_monster_delay", "monster_takeover", "monster_bound_action"].has(kind):
 		return "monster_command"
 	if ["city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance", "route_sabotage", "area_trade_contract"].has(kind):
@@ -15005,6 +15808,8 @@ func _card_resolution_effect_style(skill: Dictionary) -> String:
 func _card_resolution_effect_style_label(style: String) -> String:
 	return String({
 		"summon": "召唤",
+		"counter": "反制",
+		"military": "军队",
 		"monster_command": "指令",
 		"city": "城市",
 		"product": "商品",
@@ -15452,8 +16257,56 @@ func _choose_pending_target_player(target_player: int) -> void:
 	_refresh_ui()
 
 
+func _can_convert_monster_card_to_counter(player_index: int, skill: Dictionary) -> bool:
+	if not _role_can_use_monster_card_as_counter(player_index):
+		return false
+	if String(skill.get("kind", "")) != "monster_card":
+		return false
+	if active_card_resolution.is_empty() or not card_resolution_counter_window_active:
+		return false
+	var active_skill: Dictionary = active_card_resolution.get("skill", {}) as Dictionary
+	if active_skill.is_empty() or _is_counter_skill(active_skill):
+		return false
+	return true
+
+
+func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_skill: Dictionary) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player: Dictionary = players[player_index]
+	var slots: Array = player.get("slots", [])
+	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+		return false
+	var counter_rank := clampi(_skill_rank(String(source_skill.get("name", ""))), 1, 4)
+	var counter_skill := _make_skill("相位否决%d" % counter_rank)
+	if counter_skill.is_empty():
+		return false
+	counter_skill["source_card_name"] = String(source_skill.get("name", "怪兽牌"))
+	counter_skill["text"] = "%s（由%s临时改写；会消耗该怪兽牌。）" % [
+		String(counter_skill.get("text", "")),
+		_card_display_name(String(source_skill.get("name", "怪兽牌"))),
+	]
+	var original_skill := (slots[slot_index] as Dictionary).duplicate(true)
+	slots[slot_index] = counter_skill
+	player["slots"] = slots
+	players[player_index] = player
+	var queued := _queue_skill_resolution(player_index, slot_index, -1)
+	if queued:
+		_log("%s触发角色被动：一张怪兽牌被临时改写为相位否决并进入匿名反制等待。" % _player_name(player_index))
+		return true
+	player = players[player_index]
+	slots = player.get("slots", [])
+	if slot_index >= 0 and slot_index < slots.size():
+		slots[slot_index] = original_skill
+		player["slots"] = slots
+		players[player_index] = player
+	return false
+
+
 func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: int, acting_player_index: int = -1) -> bool:
 	var kind := String(skill.get("kind", ""))
+	if kind == "military_command":
+		return _trigger_military_command(skill, target_slot, acting_player_index)
 	if _is_direct_monster_skill_kind(kind):
 		return _trigger_auto_monster_card_command(skill, player, target_slot)
 	if kind == "monster_lure":
@@ -17734,6 +18587,10 @@ func _ai_monster_delay_plan(player_index: int, skill: Dictionary) -> Dictionary:
 
 func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	var profile := _ai_profile_for_player(player_index)
+	if kind == "card_counter":
+		return maxf(float(profile.get("business_bias", 1.0)), float(profile.get("economy_bias", 1.0))) * 0.86
+	if kind == "military_force" or kind == "military_command":
+		return (float(profile.get("monster_bias", 1.0)) + float(profile.get("business_bias", 1.0))) * 0.5
 	if kind == "monster_card" or kind == "monster_bound_action" or _skill_targets_monster({"kind": kind}):
 		return float(profile.get("monster_bias", 1.0))
 	if ["route_sabotage", "panic_shift", "monster_takeover", "mudslide", "special_monster_delay"].has(kind):
@@ -17812,6 +18669,21 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	score += int(skill.get("control_gdp_penalty", 0)) * (2 if harmful_target else -1)
 	score += int(round(float(skill.get("control_block_seconds", 0.0)) / 2.5)) if harmful_target else 0
 	score += int(skill.get("global_barrage_target_count", 0)) * 36 + int(skill.get("global_barrage_damage", 0)) * 72 + int(skill.get("global_barrage_route_damage", 0)) * 58
+	score += int(skill.get("counter_strength", 0)) * 58 + int(skill.get("counter_refund", 0)) / 3 + int(skill.get("counter_trace", 0)) * 42
+	score += int(skill.get("military_hp", 0)) * 7 + int(skill.get("military_damage", 0)) * 70 + int(skill.get("fixed_skill_count", 0)) * 26
+	score += int(round(float(skill.get("military_move", 0.0)) / 18.0)) + int(round(float(skill.get("military_range", 0.0)) / 20.0))
+	score += int(round(float(skill.get("military_duration_seconds", 0.0)) / 1.5))
+	score += int(skill.get("military_gdp_penalty", 0)) * (5 if harmful_target or target_owner == -999 else 1)
+	score += int(skill.get("military_strike_route_damage", 0)) * (74 if harmful_target or target_owner == -999 else 18)
+	match String(skill.get("military_command", "")):
+		"move":
+			score += 42
+		"guard":
+			score += 76 if helpful_target or target_owner == -999 else 22
+		"strike_district":
+			score += 88 if harmful_target or target_owner == -999 else -30
+		"attack_monster":
+			score += 96 if not auto_monsters.is_empty() else 18
 	score += int(skill.get("revenue_amount", 0)) / 2
 	score += int(skill.get("contract_income", 0)) * maxi(1, int(ceil(_skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1) / ECONOMY_LEGACY_TURN_SECONDS))) / 5
 	score += int(round((float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 120.0)) if helpful_target else 0
@@ -17849,6 +18721,46 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	if bool(skill.get("card_access_global", false)):
 		score += 105
 	return score
+
+
+func _ai_best_military_deploy_district(player_index: int, skill: Dictionary) -> int:
+	var best_index := -1
+	var best_score := -999999
+	var military_type := String(skill.get("military_type", "defense"))
+	var prefers_offense := ["bomber", "missile", "submarine"].has(military_type)
+	var prefers_sea_routes := ["submarine", "warship"].has(military_type)
+	for index in range(districts.size()):
+		if not _can_deploy_military_card_at_district(skill, index):
+			continue
+		var city := _district_city(index)
+		var owner := int(city.get("owner", -1)) if _city_is_active(city) else -1
+		var terrain_multiplier := _military_unit_terrain_move_multiplier(skill, index)
+		var score := 48 + int(round(terrain_multiplier * 35.0))
+		score += int(skill.get("military_hp", 0)) * 2 + int(skill.get("military_damage", 0)) * 18
+		score += int(round(float(skill.get("military_range", 0.0)) / 24.0))
+		if _city_is_active(city):
+			var income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
+			var route_pressure := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0))
+			if owner == player_index:
+				score += (income / 5) + route_pressure * 35
+				if not prefers_offense:
+					score += 90
+			elif owner >= 0:
+				score += (income / 6) + int(skill.get("military_gdp_penalty", 0)) * 5 + int(skill.get("military_strike_route_damage", 0)) * 42
+				if prefers_offense:
+					score += 110
+		if prefers_sea_routes:
+			score += _district_trade_route_load(index) * 16
+		if String(districts[index].get("terrain", "land")) == "ocean" and prefers_sea_routes:
+			score += 70
+		if String(districts[index].get("terrain", "land")) == "land" and military_type == "tank":
+			score += 55
+		score += _ai_district_focus_score(player_index, index) / (2 if owner == player_index else 4)
+		score += _auto_build_monster_risk_score(index) / (3 if owner == player_index else 5)
+		if score > best_score:
+			best_score = score
+			best_index = index
+	return best_index
 
 
 func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary) -> Dictionary:
@@ -17955,6 +18867,21 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["target_owner"] = target_player
 		context["score"] = int(context["score"]) + 100 + maxi(0, _player_visible_settlement_estimate(target_player) - _player_visible_settlement_estimate(player_index)) / 18
 		context["reason"] = "直接互动压制%s｜公开目标但隐藏出牌者" % _interaction_target_label(target_player)
+	elif kind == "military_force":
+		var military_district := _ai_best_military_deploy_district(player_index, skill)
+		if military_district < 0:
+			return {}
+		context["district"] = military_district
+		var military_city := _district_city(military_district)
+		if _city_is_active(military_city):
+			context["target_city"] = military_district
+			context["target_owner"] = int(military_city.get("owner", -1))
+		context["score"] = int(context["score"]) + 105 + _ai_generic_card_effect_score(player_index, skill, military_district, String(context.get("product", "")), int(context.get("target_owner", -999))) / 2
+		context["reason"] = "部署%s｜%s｜%s" % [
+			_military_unit_type_label(skill),
+			String(districts[military_district].get("name", "区域")),
+			_military_unit_mobility_summary(skill),
+		]
 	elif kind == "area_trade_contract":
 		if own_city < 0 or rival_city < 0:
 			return {}
@@ -19461,11 +20388,11 @@ func _catalog_actions(index: int) -> Array:
 	var name := String(entry.get("name", ""))
 	if MONSTER_ACTION_TABLES.has(name):
 		return MONSTER_ACTION_TABLES[name] as Array
-	return MONSTER_ACTION_TABLES["尸套龙"] as Array
+	return MONSTER_ACTION_TABLES["孢雾海皇"] as Array
 
 
 func _auto_monster_actions(actor: Dictionary) -> Array:
-	if String(actor.get("name", "")) == "机械杰克" and bool(actor.get("bracelet_active", false)):
+	if String(actor.get("name", "")) == "流星哨兵" and bool(actor.get("bracelet_active", false)):
 		return JACK_BRACELET_ACTION_TABLE
 	return _catalog_actions(int(actor.get("catalog_index", 0)))
 
@@ -20062,6 +20989,12 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["互动", "城市"]
 		"global_barrage":
 			return ["互动", "齐射"]
+		"card_counter":
+			return ["互动", "反制"]
+		"military_force":
+			return ["军队", "短时资产"]
+		"military_command":
+			return ["军令", "固定技能"]
 		"route_insurance":
 			return ["经营", "商路"]
 		"city_product_upgrade":
@@ -21086,6 +22019,13 @@ func _card_resolution_phase_text(entry: Dictionary = {}, seconds_left: float = -
 		var label := _card_display_name(String(skill.get("name", "卡牌")))
 		if label == "":
 			label = "匿名卡牌"
+		if card_resolution_counter_window_active:
+			var counter_remaining := seconds_left if seconds_left >= 0.0 else card_resolution_counter_timer
+			return "阶段：相位响应｜%s｜剩余%.1fs｜可打反制：是｜原牌暂未结算｜出牌者%s" % [
+				label,
+				max(0.0, counter_remaining),
+				"已揭晓" if bool(active_entry.get("public_owner_revealed", false)) else "未知",
+			]
 		var remaining := seconds_left if seconds_left >= 0.0 else card_resolution_timer
 		return "阶段：公开展示｜%s｜剩余%.1fs｜锁定候补%d｜可加价：否｜新牌：进入下一批等待｜下批等待%d｜出牌者%s" % [
 			label,
@@ -21166,7 +22106,7 @@ func _first_empty_or_new_slot(player: Dictionary) -> int:
 
 
 func _is_hand_limit_exempt_skill(skill: Dictionary) -> bool:
-	return String(skill.get("kind", "")) == "monster_bound_action" and bool(skill.get("persistent", false))
+	return ["monster_bound_action", "military_command"].has(String(skill.get("kind", ""))) and bool(skill.get("persistent", false))
 
 
 func _counts_toward_hand_limit(skill: Dictionary) -> bool:
@@ -21812,6 +22752,10 @@ func _age_economic_boons(delta_seconds: float = ECONOMY_CASHFLOW_TICK_SECONDS) -
 		if _age_remaining_effect_seconds(city, "contract_seconds", "contract_turns", safe_delta):
 			city["contract_income_bonus"] = 0
 			city["contract_source"] = ""
+			changed = true
+		if int(city.get("military_gdp_penalty", 0)) > 0 and float(city.get("military_pressure_until", 0.0)) <= game_time:
+			city["military_gdp_penalty"] = 0
+			city["military_pressure_source"] = ""
 			changed = true
 		districts[index]["city"] = city
 	if changed:
@@ -23121,7 +24065,7 @@ func _lock_private_hand_card_for_player(player_index: int, seconds: float, sourc
 
 
 func _apply_player_hand_disrupt(acting_player_index: int, target_player_index: int, skill: Dictionary) -> bool:
-	var source := String(skill.get("name", "过河拆桥"))
+	var source := String(skill.get("name", "星链拆解"))
 	if acting_player_index < 0 or acting_player_index >= players.size() or target_player_index < 0 or target_player_index >= players.size() or target_player_index == acting_player_index:
 		_log("%s需要指定一名其他玩家。" % source)
 		return false
@@ -23160,7 +24104,7 @@ func _apply_player_hand_disrupt(acting_player_index: int, target_player_index: i
 
 
 func _apply_player_hand_steal(acting_player_index: int, target_player_index: int, skill: Dictionary) -> bool:
-	var source := String(skill.get("name", "顺手牵羊"))
+	var source := String(skill.get("name", "影仓牵引"))
 	if acting_player_index < 0 or acting_player_index >= players.size() or target_player_index < 0 or target_player_index >= players.size() or target_player_index == acting_player_index:
 		_log("%s需要指定一名其他玩家。" % source)
 		return false
@@ -23262,7 +24206,7 @@ func _global_barrage_targets(acting_player_index: int, skill: Dictionary) -> Arr
 
 
 func _apply_global_barrage(acting_player_index: int, skill: Dictionary) -> bool:
-	var source := String(skill.get("name", "万箭齐发"))
+	var source := String(skill.get("name", "轨道齐射"))
 	var targets := _global_barrage_targets(acting_player_index, skill)
 	if targets.is_empty():
 		_log("%s没有找到可齐射的非己方城市。" % source)
@@ -23449,7 +24393,7 @@ func _is_direct_monster_skill_kind(kind: String) -> bool:
 
 func _skill_targets_monster(skill: Dictionary) -> bool:
 	var kind := String(skill.get("kind", ""))
-	return _is_direct_monster_skill_kind(kind) or ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover"].has(kind)
+	return _is_direct_monster_skill_kind(kind) or ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover"].has(kind) or (kind == "military_command" and String(skill.get("military_command", "")) == "attack_monster")
 
 
 func _skill_targets_player(skill: Dictionary) -> bool:
@@ -23487,6 +24431,9 @@ func _non_target_skill_resolution_kinds() -> Array:
 		"supply_draw",
 		"city_control_dispute",
 		"global_barrage",
+		"card_counter",
+		"military_force",
+		"military_command",
 	]
 
 
@@ -23684,6 +24631,119 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 	return true
 
 
+func _trigger_military_command(skill: Dictionary, target_slot: int = -1, acting_player_index: int = -1) -> bool:
+	var player_index := acting_player_index if acting_player_index >= 0 else selected_player
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var bound_uid := int(skill.get("bound_military_uid", 0))
+	var unit_index := _military_unit_index_by_uid(bound_uid)
+	if unit_index < 0:
+		unit_index = _owned_active_military_unit_index(player_index)
+	if unit_index < 0:
+		_log("%s没有可接收军令的防卫军。" % String(skill.get("name", "军令")))
+		return false
+	var unit: Dictionary = military_units[unit_index]
+	var unit_label := _military_unit_type_label(unit)
+	if int(unit.get("owner", -1)) != player_index:
+		_log("%s绑定的军队已失效。" % String(skill.get("name", "军令")))
+		return false
+	if float(unit.get("cooldown_left", 0.0)) > 0.0:
+		_log("匿名%s仍在执行上一条军令，%.1fs后才能再次行动。" % [unit_label, float(unit.get("cooldown_left", 0.0))])
+		return false
+	var command := String(skill.get("military_command", ""))
+	var damage := maxi(1, int(unit.get("damage", skill.get("damage", 1))))
+	var command_range := maxf(80.0, float(unit.get("range", skill.get("range", 220.0))))
+	var command_move := maxf(60.0, float(unit.get("move", skill.get("move", 220.0))))
+	var source := "匿名%s·%s" % [unit_label, _skill_family(String(skill.get("name", "军令")))]
+	var before := _entity_world_position(unit)
+	var resolved := false
+	match command:
+		"move":
+			if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
+				_log("%s需要选中一个未毁区域作为前进目标。" % String(skill.get("name", "军令")))
+				return false
+			var terrain_multiplier := _military_unit_terrain_move_multiplier(unit, selected_district)
+			var moved := _move_entity_toward(unit, _district_center(selected_district), command_move * terrain_multiplier)
+			unit["position"] = _nearest_district_to(_entity_world_position(unit))
+			var gdp_pressure := _apply_military_gdp_pressure(unit, int(unit.get("position", selected_district)), command, source)
+			_add_visual_trail(before, _entity_world_position(unit), _military_unit_color(unit), "军令前进")
+			_add_action_callout("匿名%s" % unit_label, "前进", "%s向%s推进%s（地形×%.2f）%s。" % [
+				unit_label,
+				districts[selected_district]["name"],
+				_meters_text(moved),
+				terrain_multiplier,
+				("，军事管制GDP-%d" % gdp_pressure) if gdp_pressure > 0 else "",
+			], _military_unit_color(unit), _entity_world_position(unit))
+			resolved = moved > 0.5
+		"guard":
+			if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
+				_log("%s需要选中一个未毁区域作为保卫目标。" % String(skill.get("name", "军令")))
+				return false
+			if _entity_distance_to_district(unit, selected_district) > command_range:
+				_log("%s目标距离%s，超过军队支援半径%s。" % [String(skill.get("name", "军令")), _entity_distance_to_district_label(unit, selected_district), _meters_text(command_range)])
+				return false
+			var repaired := _repair_district(selected_district, maxi(1, int(skill.get("rank", 1))), source)
+			var city := _district_city(selected_district)
+			var route_repaired := 0
+			if _city_is_active(city) and int(city.get("trade_route_damage", 0)) > 0:
+				route_repaired = mini(int(city.get("trade_route_damage", 0)), maxi(1, int(skill.get("repair_routes", 1))))
+				city["trade_route_damage"] = int(city.get("trade_route_damage", 0)) - route_repaired
+				districts[selected_district]["city"] = city
+			districts[selected_district]["panic"] = max(0, int(districts[selected_district].get("panic", 0)) - 6 * maxi(1, int(skill.get("rank", 1))))
+			_add_action_callout("匿名%s" % unit_label, "保卫区域", "%s获得%s支援：区域修复%d，商路修复%d。" % [districts[selected_district]["name"], unit_label, repaired, route_repaired], _military_unit_color(unit), _district_center(selected_district))
+			resolved = true
+		"strike_district":
+			if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
+				_log("%s需要选中一个未毁区域作为摧毁目标。" % String(skill.get("name", "军令")))
+				return false
+			if _entity_distance_to_district(unit, selected_district) > command_range:
+				_log("%s目标距离%s，超过军队火力半径%s。" % [String(skill.get("name", "军令")), _entity_distance_to_district_label(unit, selected_district), _meters_text(command_range)])
+				return false
+			_add_monster_attack_effect(_entity_world_position(unit), _district_center(selected_district), source, command_range, _military_unit_color(unit), true)
+			_damage_district(selected_district, damage, source)
+			var city := _district_city(selected_district)
+			var route_damage := 0
+			if _city_is_active(city):
+				route_damage = maxi(0, int(unit.get("military_strike_route_damage", 0)))
+				if route_damage > 0:
+					city["trade_route_damage"] = int(city.get("trade_route_damage", 0)) + route_damage
+					districts[selected_district]["city"] = city
+			var strike_pressure := _apply_military_gdp_pressure(unit, selected_district, command, source)
+			_add_action_callout("匿名%s" % unit_label, "摧毁区域", "%s轰击%s，造成%d点破坏%s%s。" % [
+				unit_label,
+				districts[selected_district]["name"],
+				damage,
+				("，商路压力+%d" % route_damage) if route_damage > 0 else "",
+				("，GDP-%d" % strike_pressure) if strike_pressure > 0 else "",
+			], _military_unit_color(unit), _district_center(selected_district))
+			resolved = true
+		"attack_monster":
+			if target_slot < 0 or target_slot >= auto_monsters.size() or bool((auto_monsters[target_slot] as Dictionary).get("down", false)):
+				_log("%s需要指定一只有效怪兽。" % String(skill.get("name", "军令")))
+				return false
+			var target_actor: Dictionary = auto_monsters[target_slot]
+			var distance := _wrapped_distance(_entity_world_position(unit), _entity_world_position(target_actor))
+			if distance > command_range:
+				_log("%s目标怪%d·%s距离%s，超过军队火力半径%s。" % [String(skill.get("name", "军令")), target_slot + 1, String(target_actor.get("name", "怪兽")), _meters_text(distance), _meters_text(command_range)])
+				return false
+			_add_monster_attack_effect(_entity_world_position(unit), _entity_world_position(target_actor), source, command_range, _military_unit_color(unit), true)
+			_auto_monster_take_damage(target_slot, damage, source, -1)
+			_add_action_callout("匿名%s" % unit_label, "攻击怪兽", "%s向怪%d·%s开火，造成%d点伤害。" % [unit_label, target_slot + 1, String(target_actor.get("name", "怪兽")), damage], _military_unit_color(unit), _entity_world_position(target_actor))
+			resolved = true
+		_:
+			_log("%s尚未接入军令结算。" % String(skill.get("name", "军令")))
+			return false
+	if not resolved:
+		return false
+	unit["cooldown_left"] = maxf(float(unit.get("cooldown_left", 0.0)), maxf(1.0, float(skill.get("cooldown", MILITARY_UNIT_COMMAND_COOLDOWN_SECONDS))))
+	military_units[unit_index] = unit
+	_log("匿名%s执行%s；下令者不公开，军队不会自主行动。" % [unit_label, _skill_family(String(skill.get("name", "军令")))])
+	_refresh_city_networks()
+	_refresh_product_market_prices()
+	_refresh_ui()
+	return true
+
+
 func _trigger_bound_monster_skill(skill: Dictionary, _player: Dictionary) -> bool:
 	var uid := int(skill.get("bound_monster_uid", 0))
 	var slot := _auto_monster_slot_by_uid(uid)
@@ -23759,6 +24819,16 @@ func _apply_monster_takeover(skill: Dictionary, target_slot: int, player_index: 
 	var actor: Dictionary = auto_monsters[target_slot]
 	if bool(actor.get("down", false)):
 		_log("%s无法夺取倒地怪兽。" % String(skill.get("name", "夺取怪兽")))
+		return false
+	var owned_count_excluding_target := _owned_active_monster_count(player_index, target_slot)
+	var monster_limit := _player_monster_control_limit(player_index)
+	if int(actor.get("owner", -1)) != player_index and owned_count_excluding_target >= monster_limit:
+		_log("%s无法夺取怪%d·%s：当前角色同时最多归属%d只怪兽。" % [
+			String(skill.get("name", "夺取怪兽")),
+			target_slot + 1,
+			String(actor.get("name", "怪兽")),
+			monster_limit,
+		])
 		return false
 	var old_owner := int(actor.get("owner", -1))
 	var monster_uid := int(actor.get("uid", 0))
@@ -23858,12 +24928,53 @@ func _card_simultaneous_window_duration() -> float:
 	return CARD_SIMULTANEOUS_WINDOW_SECONDS
 
 
+func _card_counter_response_duration() -> float:
+	if DisplayServer.get_name().to_lower() == "headless":
+		return 0.0
+	return CARD_COUNTER_RESPONSE_SECONDS
+
+
+func _card_can_open_counter_window(entry: Dictionary) -> bool:
+	if entry.is_empty():
+		return false
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	if skill.is_empty():
+		return false
+	if _is_counter_skill(skill):
+		return false
+	if bool(entry.get("countered", false)):
+		return false
+	return true
+
+
+func _begin_card_counter_response_window() -> void:
+	if active_card_resolution.is_empty():
+		return
+	if not _card_can_open_counter_window(active_card_resolution):
+		_complete_active_card_resolution()
+		return
+	card_resolution_counter_window_active = true
+	card_resolution_counter_timer = _card_counter_response_duration()
+	var skill: Dictionary = active_card_resolution.get("skill", {}) as Dictionary
+	var label := _card_display_name(String(skill.get("name", "匿名牌")))
+	_log("%s展示结束，进入%.0f秒相位响应窗口；所有玩家可打出相位否决，没人反制才结算原牌。" % [label, CARD_COUNTER_RESPONSE_SECONDS])
+	_show_card_resolution_overlay(active_card_resolution, card_resolution_counter_timer)
+	if card_resolution_counter_timer <= 0.0:
+		_complete_active_card_resolution()
+
+
 func _update_card_resolution_queue(delta: float) -> void:
 	if not active_card_resolution.is_empty():
+		if card_resolution_counter_window_active:
+			card_resolution_counter_timer = maxf(0.0, card_resolution_counter_timer - delta)
+			_show_card_resolution_overlay(active_card_resolution, card_resolution_counter_timer)
+			if card_resolution_counter_timer <= 0.0:
+				_complete_active_card_resolution()
+			return
 		card_resolution_timer = maxf(0.0, card_resolution_timer - delta)
 		_show_card_resolution_overlay(active_card_resolution, card_resolution_timer)
 		if card_resolution_timer <= 0.0:
-			_complete_active_card_resolution()
+			_begin_card_counter_response_window()
 		return
 	if card_resolution_batch_locked:
 		_start_next_card_resolution()
@@ -24289,10 +25400,12 @@ func _start_next_card_resolution() -> void:
 	card_resolution_visual_id = -1
 	card_resolution_visual_stage = -1
 	card_resolution_auction_open = false
+	card_resolution_counter_window_active = false
+	card_resolution_counter_timer = 0.0
 	card_resolution_timer = _card_resolution_duration(skill)
 	_show_card_resolution_overlay(active_card_resolution, card_resolution_timer)
 	if card_resolution_timer <= 0.0:
-		_complete_active_card_resolution()
+		_begin_card_counter_response_window()
 
 
 func _show_card_batch_lobby_overlay() -> void:
@@ -24365,13 +25478,22 @@ func _show_card_resolution_overlay(entry: Dictionary, seconds_left: float) -> vo
 			_card_art_stats(skill)
 		)
 	if card_resolution_body_label != null:
-		card_resolution_body_label.text = "%s\n%s\n%s\n%s\n%s" % [
-			_card_resolution_animation_text(card_name, skill, entry, seconds_left),
-			_skill_display_text(skill),
-			_card_resolution_contract_public_text(entry),
-			_card_resolution_play_requirement_text(entry),
-			"顶部轨道已锁定当前/候补顺序；本张展示期间不能加价，但新打出的牌会进入下一批等待区。",
-		]
+		if card_resolution_counter_window_active:
+			card_resolution_body_label.text = "%s\n%s\n%s\n%s\n%s" % [
+				"相位响应窗口：原牌展示已结束，但尚未结算。",
+				"所有玩家现在有%.1f秒可以匿名打出相位否决；没人反制时，原牌才会生效。" % max(0.0, seconds_left),
+				_skill_display_text(skill),
+				_card_resolution_contract_public_text(entry),
+				"可反制牌会进入匿名轨道；出牌者仍未知，但反制结果会公开。",
+			]
+		else:
+			card_resolution_body_label.text = "%s\n%s\n%s\n%s\n%s" % [
+				_card_resolution_animation_text(card_name, skill, entry, seconds_left),
+				_skill_display_text(skill),
+				_card_resolution_contract_public_text(entry),
+				_card_resolution_play_requirement_text(entry),
+				"顶部轨道已锁定当前/候补顺序；展示结束后有5秒相位响应窗口，然后才结算。",
+			]
 
 
 func _card_resolution_contract_public_text(entry: Dictionary) -> String:
@@ -24398,16 +25520,102 @@ func _hide_card_resolution_overlay() -> void:
 	card_resolution_visual_stage = -1
 
 
+func _is_counter_skill(skill: Dictionary) -> bool:
+	return String(skill.get("kind", "")) == "card_counter"
+
+
+func _counter_entry_can_cancel(counter_entry: Dictionary, target_entry: Dictionary) -> bool:
+	if counter_entry.is_empty() or target_entry.is_empty():
+		return false
+	var counter_skill: Dictionary = counter_entry.get("skill", {}) as Dictionary
+	var target_skill: Dictionary = target_entry.get("skill", {}) as Dictionary
+	if counter_skill.is_empty() or target_skill.is_empty():
+		return false
+	if not _is_counter_skill(counter_skill):
+		return false
+	if _is_counter_skill(target_skill):
+		return false
+	if bool(target_entry.get("countered", false)):
+		return false
+	var counter_player := int(counter_entry.get("player_index", -1))
+	if counter_player < 0 or counter_player >= players.size():
+		return false
+	return _can_play_skill_now(counter_player, counter_skill, false)
+
+
+func _pop_counter_entry_from_queue(target_entry: Dictionary) -> Dictionary:
+	for i in range(next_card_resolution_queue.size()):
+		var counter_entry: Dictionary = next_card_resolution_queue[i]
+		if _counter_entry_can_cancel(counter_entry, target_entry):
+			next_card_resolution_queue.remove_at(i)
+			return counter_entry
+	for i in range(card_resolution_queue.size()):
+		var counter_entry: Dictionary = card_resolution_queue[i]
+		if _counter_entry_can_cancel(counter_entry, target_entry):
+			card_resolution_queue.remove_at(i)
+			return counter_entry
+	return {}
+
+
+func _resolve_reactive_counter_for_entry(target_entry: Dictionary) -> Dictionary:
+	var counter_entry := _pop_counter_entry_from_queue(target_entry)
+	if counter_entry.is_empty():
+		return {}
+	var counter_player := int(counter_entry.get("player_index", -1))
+	var counter_skill: Dictionary = counter_entry.get("skill", {}) as Dictionary
+	var target_skill: Dictionary = target_entry.get("skill", {}) as Dictionary
+	var counter_label := _card_display_name(String(counter_skill.get("name", "相位否决")))
+	var target_label := _card_display_name(String(target_skill.get("name", "匿名牌")))
+	if counter_label == "":
+		counter_label = "相位否决"
+	if target_label == "":
+		target_label = "匿名牌"
+	_pay_skill_play_cost(counter_player, counter_skill)
+	players[counter_player]["action_cooldown"] = max(float(players[counter_player].get("action_cooldown", 0.0)), COMMAND_COOLDOWN)
+	var refund := maxi(0, int(counter_skill.get("counter_refund", 0)))
+	if refund > 0:
+		players[counter_player]["cash"] = int(players[counter_player].get("cash", 0)) + refund
+		_record_player_card_income(counter_player, refund, String(counter_skill.get("name", "相位否决")), "反制押金回收")
+	var source_card := String(counter_skill.get("source_card_name", ""))
+	var source_text := "；由%s改写" % _card_display_name(source_card) if source_card != "" else ""
+	_log("匿名反制生效：%s取消了%s的结算%s。反制者仍不公开。" % [counter_label, target_label, source_text])
+	_add_action_callout(
+		"匿名反制",
+		counter_label,
+		"%s被相位折叠，原牌不产生效果；反制者不公开。" % target_label,
+		Color("#a78bfa"),
+		_district_center(int(target_entry.get("selected_district", selected_district)))
+	)
+	counter_entry["resolved_time"] = game_time
+	counter_entry["countered_resolution_id"] = int(target_entry.get("resolution_id", -1))
+	counter_entry["aftermath_clue"] = "反制成功：%s被取消%s。" % [target_label, source_text]
+	resolved_card_history.append(counter_entry)
+	while resolved_card_history.size() > CARD_RESOLUTION_HISTORY_LIMIT:
+		resolved_card_history.pop_front()
+	return counter_entry
+
+
 func _complete_active_card_resolution() -> void:
 	if active_card_resolution.is_empty():
 		return
 	var entry := active_card_resolution.duplicate(true)
 	last_card_resolution_player_index = int(entry.get("player_index", last_card_resolution_player_index))
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	var counter_entry := _resolve_reactive_counter_for_entry(entry)
 	active_card_resolution = {}
 	card_resolution_auction_open = false
 	card_resolution_timer = 0.0
+	card_resolution_counter_window_active = false
+	card_resolution_counter_timer = 0.0
 	_hide_card_resolution_overlay()
-	_resolve_queued_skill(entry)
+	if counter_entry.is_empty():
+		_resolve_queued_skill(entry)
+	else:
+		entry["countered"] = true
+		entry["countered_by_resolution_id"] = int(counter_entry.get("resolution_id", -1))
+		entry["aftermath_clue"] = "被%s反制，未结算。" % _card_display_name(String((counter_entry.get("skill", {}) as Dictionary).get("name", "相位否决")))
+		var consumed_on_queue := bool(entry.get("consumed_on_queue", false))
+		_finish_played_skill(int(entry.get("player_index", -1)), -1 if consumed_on_queue else int(entry.get("slot_index", -1)), skill, COMMAND_COOLDOWN)
 	entry["resolved_time"] = game_time
 	resolved_card_history.append(entry)
 	while resolved_card_history.size() > CARD_RESOLUTION_HISTORY_LIMIT:
@@ -24552,6 +25760,13 @@ func _resolve_queued_skill(entry: Dictionary) -> void:
 				resolved = _summon_monster_from_card(player, skill)
 			"monster_bound_action":
 				resolved = _trigger_bound_monster_skill(skill, player)
+			"military_force":
+				resolved = _summon_military_unit_from_card(player_index, skill)
+			"military_command":
+				resolved = _trigger_military_command(skill, -1, player_index)
+			"card_counter":
+				resolved = false
+				_log("%s没有处在有效相位响应窗口内，未产生反制效果。" % card_label)
 			"city_revenue_boost":
 				resolved = _boost_selected_city_revenue(int(skill.get("revenue_amount", 40)), int(skill.get("panic", 0)), skill["name"])
 			"cash_gain":
@@ -24650,6 +25865,10 @@ func _use_skill(slot_index: int) -> void:
 		return
 	if bool(skill.get("queued_for_resolution", false)):
 		_log("%s已经在匿名结算轨道上。" % card_label)
+		return
+	if _can_convert_monster_card_to_counter(selected_player, skill):
+		_queue_monster_card_as_counter(selected_player, slot_index, skill)
+		_refresh_ui()
 		return
 	if _skill_targets_monster(skill) and auto_monsters.is_empty():
 		_log("%s需要指定一只在场怪兽；当前没有合法目标，卡牌未消耗。" % card_label)
@@ -25103,7 +26322,7 @@ func _apply_auto_monster_path_effects(actor: Dictionary, from_position: Vector2,
 			Color("#fb7185"),
 			_entity_world_position(actor)
 		)
-	if String(actor.get("name", "")) != "尸套龙":
+	if String(actor.get("name", "")) != "孢雾海皇":
 		return applied_damage
 	var candidates := []
 	_append_unique_district_index(candidates, _district_at_point(from_position))
@@ -25116,7 +26335,7 @@ func _apply_auto_monster_path_effects(actor: Dictionary, from_position: Vector2,
 			continue
 		districts[index]["miasma"] = true
 		_pulse_district(index, Color("#a855f7"))
-		_log("%s使尸套龙沿路径在%s留下瘴气。" % [source, districts[index]["name"]])
+		_log("%s使孢雾海皇沿路径在%s留下瘴气。" % [source, districts[index]["name"]])
 		return applied_damage
 	return applied_damage
 
@@ -25992,9 +27211,9 @@ func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dict
 	var outgoing_damage := int(action.get("damage", 0)) + _auto_monster_damage_bonus_from_passives(slot)
 	var dealt_damage := _auto_monster_take_damage(target_slot, outgoing_damage, source, slot)
 	_record_monster_wager_damage(slot, target_slot, dealt_damage)
-	if target_slot < auto_monsters.size() and _is_auto_mebius_energy_active(target_slot) and range_limit <= MELEE_RANGE_METERS:
-		_maybe_announce_auto_mebius_energy(target_slot)
-		var counter_damage := _auto_monster_take_damage(slot, MEBIUS_ENERGY_FLAME_DAMAGE, "%s梦比姆反焰" % action_name, target_slot)
+	if target_slot < auto_monsters.size() and _is_auto_ember_ring_energy_active(target_slot) and range_limit <= MELEE_RANGE_METERS:
+		_maybe_announce_auto_ember_ring_energy(target_slot)
+		var counter_damage := _auto_monster_take_damage(slot, EMBER_RING_ENERGY_FLAME_DAMAGE, "%s星焰反焰" % action_name, target_slot)
 		_record_monster_wager_damage(target_slot, slot, counter_damage)
 	var knockback := float(action.get("knockback", 0.0))
 	if knockback > 0.5 and target_slot < auto_monsters.size():
@@ -26050,10 +27269,10 @@ func _auto_monster_take_damage(slot: int, damage: int, source: String, source_sl
 		remaining -= absorbed
 		_log("%s护甲抵消%d点%s伤害。" % [String(actor.get("name", "怪兽")), absorbed, source])
 	auto_monsters[slot] = actor
-	_maybe_announce_auto_hikari_revenge_armor(slot)
+	_maybe_announce_auto_blue_lancer_reactive_armor(slot)
 	actor = auto_monsters[slot]
-	if remaining > 0 and _is_auto_hikari_revenge_armor_active(slot):
-		var armor_reduced: int = min(remaining, HIKARI_REVENGE_DAMAGE_REDUCTION)
+	if remaining > 0 and _is_auto_blue_lancer_reactive_armor_active(slot):
+		var armor_reduced: int = min(remaining, BLUE_LANCER_REACTIVE_DAMAGE_REDUCTION)
 		remaining = max(0, remaining - armor_reduced)
 		_log("复仇之铠抵消%d点%s伤害。" % [armor_reduced, source])
 	actor["hp"] = int(actor.get("hp", 0)) - remaining
@@ -26067,7 +27286,7 @@ func _auto_monster_take_damage(slot: int, damage: int, source: String, source_sl
 	if remaining > 0:
 		_apply_owner_damage_cash_loss(slot, remaining, source)
 		actor = auto_monsters[slot]
-	_maybe_announce_auto_mebius_energy(slot)
+	_maybe_announce_auto_ember_ring_energy(slot)
 	actor = auto_monsters[slot]
 	if int(actor.get("hp", 0)) <= 0:
 		actor["hp"] = 0
@@ -26235,6 +27454,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 			"route_penalty": 0,
 			"damage_penalty": 0,
 			"control_penalty": 0,
+			"military_penalty": 0,
 			"penalty": 0,
 			"net_before_floor": 0,
 			"net": 0,
@@ -26284,7 +27504,8 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 	var route_penalty := int(city.get("trade_disrupted_routes", 0)) * TRADE_DISRUPTION_PENALTY
 	var damage_penalty := int(districts[district_index].get("damage", 0)) * CITY_DAMAGE_GDP_PENALTY
 	var control_penalty := int(city.get("control_gdp_penalty", 0)) if float(city.get("control_dispute_until", 0.0)) > game_time else 0
-	var penalties := competition_penalty + route_penalty + damage_penalty + control_penalty
+	var military_penalty := int(city.get("military_gdp_penalty", 0)) if float(city.get("military_pressure_until", 0.0)) > game_time else 0
+	var penalties := competition_penalty + route_penalty + damage_penalty + control_penalty + military_penalty
 	var net_before_floor := gross - penalties
 	return {
 		"bonus": bonus,
@@ -26298,6 +27519,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 		"route_penalty": route_penalty,
 		"damage_penalty": damage_penalty,
 		"control_penalty": control_penalty,
+		"military_penalty": military_penalty,
 		"penalty": penalties,
 		"net_before_floor": net_before_floor,
 		"net": max(CITY_MINIMUM_INCOME, net_before_floor),
@@ -26308,7 +27530,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 
 
 func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
-	return "生产GDP%d + 消费GDP%d + 过境GDP%d + 加成%d + 合约%d - 竞争%d - 断路%d - 损伤%d - 产权%d = %d" % [
+	return "生产GDP%d + 消费GDP%d + 过境GDP%d + 加成%d + 合约%d - 竞争%d - 断路%d - 损伤%d - 产权%d - 军事%d = %d" % [
 		int(breakdown.get("product", 0)),
 		int(breakdown.get("route", 0)),
 		int(breakdown.get("transit", 0)),
@@ -26318,6 +27540,7 @@ func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
 		int(breakdown.get("route_penalty", 0)),
 		int(breakdown.get("damage_penalty", 0)),
 		int(breakdown.get("control_penalty", 0)),
+		int(breakdown.get("military_penalty", 0)),
 		int(breakdown.get("net", 0)),
 	]
 
@@ -26334,6 +27557,7 @@ func _city_gdp_change_reason_text(breakdown: Dictionary) -> String:
 	var route_penalty := int(breakdown.get("route_penalty", 0))
 	var damage_penalty := int(breakdown.get("damage_penalty", 0))
 	var control_penalty := int(breakdown.get("control_penalty", 0))
+	var military_penalty := int(breakdown.get("military_penalty", 0))
 	if product_gdp > 0:
 		drivers.append("生产+%d" % product_gdp)
 	if route_gdp > 0:
@@ -26352,6 +27576,8 @@ func _city_gdp_change_reason_text(breakdown: Dictionary) -> String:
 		pressures.append("损伤-%d" % damage_penalty)
 	if control_penalty > 0:
 		pressures.append("产权-%d" % control_penalty)
+	if military_penalty > 0:
+		pressures.append("军事-%d" % military_penalty)
 	return "驱动%s；压力%s" % [
 		_limited_name_list(drivers, 4, "无主要增益"),
 		_limited_name_list(pressures, 4, "无主要压力"),
@@ -27080,6 +28306,20 @@ func _auto_monster_markers() -> Array:
 			"glyph": String(profile.get("glyph", "怪")),
 			"motif": String(profile.get("motif", "beast")),
 			"down": bool(actor.get("down", false)),
+		})
+	for i in range(military_units.size()):
+		var unit: Dictionary = military_units[i]
+		var unit_label := _military_unit_type_label(unit)
+		result.append({
+			"position": _entity_world_position(unit),
+			"label": _military_unit_type_glyph(unit),
+			"name": "匿名%s" % unit_label,
+			"color": _military_unit_color(unit),
+			"slot_color": Color("#facc15"),
+			"secondary": Color("#bfdbfe"),
+			"glyph": _military_unit_type_glyph(unit),
+			"motif": _military_unit_motif(unit),
+			"down": false,
 		})
 	return result
 
