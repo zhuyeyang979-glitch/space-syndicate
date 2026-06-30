@@ -25,6 +25,8 @@ const AI_CANDIDATE_SAMPLE_LIMIT := 8
 const AI_INTEL_MIN_CITY_SCORE := 78
 const AI_INTEL_MIN_CARD_SCORE := 125
 const AI_INTEL_ACTIONS_PER_TICK := 2
+const AI_COUNTER_RESPONSE_MIN_SCORE := 160
+const AI_COUNTER_RESPONSE_CONFIDENT_SCORE := 270
 const AI_ECONOMIC_FOCUS_TOP_LIMIT := 3
 const AI_ECONOMIC_FOCUS_MATCH_BONUS := 85
 const AI_STRATEGY_MATCH_BONUS := 92
@@ -17749,7 +17751,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -19421,6 +19423,261 @@ func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	return float(profile.get("economy_bias", 1.0))
 
 
+func _counter_skill_for_ai_candidate(player_index: int, source_skill: Dictionary) -> Dictionary:
+	if _is_counter_skill(source_skill):
+		return source_skill.duplicate(true)
+	if not _can_convert_monster_card_to_counter(player_index, source_skill):
+		return {}
+	var counter_rank := clampi(_skill_rank(String(source_skill.get("name", ""))), 1, 4)
+	return _make_skill("相位否决%d" % counter_rank)
+
+
+func _ai_counter_entry_target_city(entry: Dictionary) -> int:
+	var district_index := int(entry.get("selected_district", -1))
+	if district_index >= 0 and district_index < districts.size() and _city_is_active(_district_city(district_index)):
+		return district_index
+	return -1
+
+
+func _ai_counter_entry_target_owner(entry: Dictionary) -> int:
+	var target_player := int(entry.get("target_player", -1))
+	if target_player >= 0 and target_player < players.size():
+		return target_player
+	var target_city := _ai_counter_entry_target_city(entry)
+	if target_city >= 0:
+		return int(_district_city(target_city).get("owner", -1))
+	return -1
+
+
+func _ai_counter_nearest_owned_city_pressure(player_index: int, district_index: int) -> int:
+	if district_index < 0 or district_index >= districts.size():
+		return 0
+	var best := 0
+	for city_variant in _active_city_indices_for_player(player_index):
+		var city_index := int(city_variant)
+		var distance := _wrapped_distance(_district_center(city_index), _district_center(district_index))
+		var score := maxi(0, 220 - int(round(distance))) + _ai_city_target_score(player_index, city_index, true, true) / 4
+		if score > best:
+			best = score
+	return best
+
+
+func _ai_counter_target_threat(player_index: int, target_entry: Dictionary) -> Dictionary:
+	if target_entry.is_empty():
+		return {"score": -999999, "reason_key": "no_target", "summary": "没有可反制目标。"}
+	var skill: Dictionary = target_entry.get("skill", {}) as Dictionary
+	if skill.is_empty() or _is_counter_skill(skill):
+		return {"score": -999999, "reason_key": "not_counterable", "summary": "当前牌不可反制。"}
+	if int(target_entry.get("player_index", -1)) == player_index:
+		return {"score": -999999, "reason_key": "own_card", "summary": "AI不会反制自己已经提交的匿名牌。"}
+	var kind := String(skill.get("kind", ""))
+	var district_index := int(target_entry.get("selected_district", -1))
+	var target_player := int(target_entry.get("target_player", -1))
+	var target_owner := _ai_counter_entry_target_owner(target_entry)
+	var own_city_target := target_owner == player_index
+	var rival_city_target := target_owner >= 0 and target_owner != player_index
+	var direct_self_target := target_player == player_index
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var leader_index := int(phase_info.get("leader_index", -1))
+	var posture := String(phase_info.get("posture", "contesting"))
+	var score := 0
+	var reasons := []
+	if direct_self_target:
+		var direct_pressure := int(skill.get("hand_discard_count", 0)) * 165 \
+			+ int(skill.get("hand_steal_count", 0)) * 215 \
+			+ int(round(float(skill.get("hand_lock_seconds", 0.0)) * 8.0))
+		if direct_pressure > 0:
+			score += direct_pressure + 80
+			reasons.append("直接打击自己+%d" % (direct_pressure + 80))
+	if own_city_target:
+		var city := _district_city(district_index)
+		var negative_delta := maxi(0, -int(skill.get("production_delta", 0))) \
+			+ maxi(0, -int(skill.get("transport_delta", 0))) \
+			+ maxi(0, -int(skill.get("consumption_delta", 0))) \
+			+ maxi(0, -int(skill.get("accept_production_delta", 0))) \
+			+ maxi(0, -int(skill.get("accept_transport_delta", 0))) \
+			+ maxi(0, -int(skill.get("accept_consumption_delta", 0)))
+		var route_damage := maxi(0, int(skill.get("route_damage", 0))) \
+			+ maxi(0, int(skill.get("decline_route_damage", 0))) \
+			+ maxi(0, int(skill.get("global_barrage_route_damage", 0))) \
+			+ maxi(0, int(skill.get("military_strike_route_damage", 0)))
+		var area_damage := maxi(0, int(skill.get("damage", 0))) + maxi(0, int(skill.get("global_barrage_damage", 0)))
+		var city_pressure := negative_delta * 128 + route_damage * 132 + area_damage * 118
+		city_pressure += maxi(0, int(skill.get("control_gdp_penalty", 0))) * 3
+		city_pressure += maxi(0, int(skill.get("decline_cash_penalty", 0))) / 2
+		city_pressure += _city_warehouse_stockpile_pressure(city)
+		city_pressure += _ai_city_target_score(player_index, district_index, true, true) / 3
+		if city_pressure > 0:
+			score += city_pressure
+			reasons.append("保护己城+%d" % city_pressure)
+		if String(skill.get("gdp_bet_direction", "")) == "down" and float(skill.get("gdp_bet_multiplier", 0.0)) > 0.0:
+			var gdp_short_pressure := 175 + int(round(float(skill.get("gdp_bet_multiplier", 1.0)) * 90.0)) + int(skill.get("gdp_bet_destroy_bonus", 0)) / 8
+			score += gdp_short_pressure
+			reasons.append("阻止己城做空+%d" % gdp_short_pressure)
+	if rival_city_target:
+		var positive_delta := maxi(0, int(skill.get("production_delta", 0))) \
+			+ maxi(0, int(skill.get("transport_delta", 0))) \
+			+ maxi(0, int(skill.get("consumption_delta", 0))) \
+			+ maxi(0, int(skill.get("accept_production_delta", 0))) \
+			+ maxi(0, int(skill.get("accept_transport_delta", 0))) \
+			+ maxi(0, int(skill.get("accept_consumption_delta", 0)))
+		var rival_boost := positive_delta * 78 \
+			+ int(skill.get("revenue_amount", 0)) / 3 \
+			+ int(skill.get("contract_income", 0)) / 4 \
+			+ maxi(0, int(skill.get("repair_routes", 0))) * 64
+		var flow_multiplier := float(skill.get("route_flow_multiplier", skill.get("accept_route_flow_multiplier", 1.0)))
+		if flow_multiplier > 1.001:
+			rival_boost += int(round((flow_multiplier - 1.0) * 160.0))
+		if String(skill.get("gdp_bet_direction", "")) == "up" and float(skill.get("gdp_bet_multiplier", 0.0)) > 0.0:
+			rival_boost += 110 + int(round(float(skill.get("gdp_bet_multiplier", 1.0)) * 72.0))
+		if target_owner == leader_index and leader_index != player_index:
+			rival_boost += 70 + _ai_endgame_urgency_score(player_index) / 2
+		if posture == "trailing":
+			rival_boost += 35
+		if rival_boost > 0:
+			score += rival_boost
+			reasons.append("阻止竞品增益+%d" % rival_boost)
+	if kind == "monster_card":
+		var monster_pressure := int(skill.get("hp", 0)) * 2 \
+			+ int(skill.get("fixed_skill_count", 0)) * 48 \
+			+ maxi(1, _skill_rank(String(skill.get("name", "")))) * 74 \
+			+ _ai_counter_nearest_owned_city_pressure(player_index, district_index) / 2
+		if monster_pressure > 0:
+			score += monster_pressure
+			reasons.append("阻止新怪兽+%d" % monster_pressure)
+	elif kind == "monster_lure" or kind == "special_monster_delay":
+		var monster_impact := maxi(0, int(skill.get("damage", 0))) * 72 \
+			+ int(round(float(skill.get("lure_speedup", 0.0)) * 30.0)) \
+			+ _ai_counter_nearest_owned_city_pressure(player_index, district_index)
+		if monster_impact > 0:
+			score += monster_impact
+			reasons.append("阻止怪兽压线+%d" % monster_impact)
+	elif kind == "global_barrage":
+		var own_city_count := _active_city_indices_for_player(player_index).size()
+		var barrage_pressure := own_city_count * maxi(1, int(skill.get("global_barrage_target_count", 1))) * (int(skill.get("global_barrage_damage", 0)) * 44 + int(skill.get("global_barrage_route_damage", 0)) * 36)
+		if own_city_target:
+			barrage_pressure += 90
+		if barrage_pressure > 0:
+			score += barrage_pressure
+			reasons.append("压制全场齐射+%d" % barrage_pressure)
+	elif kind == "area_trade_contract" and own_city_target:
+		var contract_pressure := maxi(0, int(skill.get("decline_cash_penalty", 0))) / 2 \
+			+ maxi(0, int(skill.get("decline_route_damage", 0))) * 90 \
+			+ maxi(0, -int(skill.get("decline_transport_delta", 0))) * 80 \
+			+ maxi(0, -int(skill.get("decline_consumption_delta", 0))) * 70
+		if contract_pressure > 0:
+			score += contract_pressure
+			reasons.append("拆解惩罚合约+%d" % contract_pressure)
+	elif kind == "weather_control":
+		var weather_pressure := _ai_counter_nearest_owned_city_pressure(player_index, district_index) / 2 + int(skill.get("weather_zone_count", 1)) * 28
+		if own_city_target:
+			weather_pressure += 75
+		if weather_pressure > 0:
+			score += weather_pressure
+			reasons.append("阻止天气改写+%d" % weather_pressure)
+	if reasons.is_empty():
+		reasons.append("公开字段威胁较低")
+	return {
+		"score": score,
+		"reason_key": "self_defense" if own_city_target or direct_self_target else ("leader_denial" if target_owner == leader_index and leader_index != player_index else ("rival_boost_denial" if rival_city_target else kind)),
+		"summary": "；".join(reasons),
+		"target_owner": target_owner,
+		"target_city": district_index,
+	}
+
+
+func _ai_counter_opportunity_cost(source_skill: Dictionary, counter_skill: Dictionary) -> int:
+	var counter_rank := maxi(1, _skill_rank(String(counter_skill.get("name", source_skill.get("name", "")))))
+	var cost := 70 + counter_rank * 34 + int(counter_skill.get("counter_strength", 1)) * 24
+	cost += int(counter_skill.get("cost", 0)) * 9
+	cost -= int(counter_skill.get("counter_refund", 0)) / 4 + int(counter_skill.get("counter_trace", 0)) * 28
+	if String(source_skill.get("kind", "")) == "monster_card":
+		var source_rank := maxi(1, _skill_rank(String(source_skill.get("name", ""))))
+		cost += 185 + source_rank * 76 + int(source_skill.get("hp", 0)) / 3 + int(source_skill.get("fixed_skill_count", 0)) * 46
+	return maxi(35, cost)
+
+
+func _ai_counter_response_candidate(player_index: int, slot_index: int, source_skill: Dictionary, target_entry: Dictionary = {}) -> Dictionary:
+	if not _player_is_ai(player_index):
+		return {}
+	if active_card_resolution.is_empty() or not card_resolution_counter_window_active:
+		return {}
+	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
+		return {}
+	var entry := active_card_resolution if target_entry.is_empty() else target_entry
+	if not _card_can_open_counter_window(entry):
+		return {}
+	var counter_skill := _counter_skill_for_ai_candidate(player_index, source_skill)
+	if counter_skill.is_empty():
+		return {}
+	if not _can_play_skill_now(player_index, counter_skill, false):
+		return {}
+	var threat := _ai_counter_target_threat(player_index, entry)
+	var threat_score := int(threat.get("score", -999999))
+	if threat_score <= 0:
+		return {}
+	var counter_strength := maxi(1, int(counter_skill.get("counter_strength", 1)))
+	var opportunity_cost := _ai_counter_opportunity_cost(source_skill, counter_skill)
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var score := threat_score + counter_strength * 38 + int(counter_skill.get("counter_refund", 0)) / 2 + int(counter_skill.get("counter_trace", 0)) * 64 - opportunity_cost
+	if String(phase_info.get("posture", "contesting")) == "leader" and String(threat.get("reason_key", "")) == "self_defense":
+		score += 56
+	elif String(phase_info.get("posture", "contesting")) == "trailing" and String(threat.get("reason_key", "")) != "self_defense":
+		score += 44
+	score += _ai_endgame_urgency_score(player_index) / 4
+	if score < AI_COUNTER_RESPONSE_MIN_SCORE:
+		return {}
+	var card_name := String(source_skill.get("name", "相位否决"))
+	var counter_name := String(counter_skill.get("name", "相位否决"))
+	var converts_monster := not _is_counter_skill(source_skill)
+	var product_name := _skill_play_product(counter_skill, player_index)
+	var learning_bonus := clampi(
+		_ai_learning_bonus(player_index, "counter_response", String(_ai_strategy_intent(player_index)), String(_ai_route_plan_stage(player_index)), product_name, "相位反制"),
+		-AI_LEARNING_BONUS_CLAMP,
+		AI_LEARNING_BONUS_CLAMP
+	)
+	if learning_bonus != 0:
+		score += learning_bonus
+	return {
+		"action": "相位反制",
+		"slot_index": slot_index,
+		"card_name": card_name,
+		"kind": String(counter_skill.get("kind", "card_counter")),
+		"policy_kind": "counter_response",
+		"district": int(entry.get("selected_district", _ai_first_alive_district())),
+		"target_slot": -1,
+		"target_player": int(entry.get("target_player", -1)),
+		"target_city": int(threat.get("target_city", -1)),
+		"target_owner": int(threat.get("target_owner", -1)),
+		"product": product_name,
+		"score": maxi(1, score),
+		"counter_target_resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1))),
+		"counter_target_card": _card_resolution_entry_card_label(entry),
+		"counter_strength": counter_strength,
+		"counter_threat_score": threat_score,
+		"counter_opportunity_cost": opportunity_cost,
+		"counter_reason_key": String(threat.get("reason_key", "")),
+		"counter_source_card": card_name if converts_monster else "",
+		"counter_converted_monster": converts_monster,
+		"counter_card_name": counter_name,
+		"game_phase": String(phase_info.get("phase", "midgame")),
+		"competitive_posture": String(phase_info.get("posture", "contesting")),
+		"score_gap_to_leader": int(phase_info.get("gap", 0)),
+		"leader_index": int(phase_info.get("leader_index", -1)),
+		"endgame_urgency": _ai_endgame_urgency_score(player_index),
+		"learning_bonus": learning_bonus,
+		"reason": "%s%s｜目标:%s｜威胁%d｜机会成本%d｜强度%d｜%s" % [
+			"怪兽牌改写为" if converts_monster else "",
+			_card_display_name(counter_name),
+			_card_resolution_entry_card_label(entry),
+			threat_score,
+			opportunity_cost,
+			counter_strength,
+			String(threat.get("summary", "")),
+		],
+	}
+
+
 func _ai_city_gdp_insurance_score(player_index: int, district_index: int) -> int:
 	if district_index < 0 or district_index >= districts.size():
 		return -1
@@ -20148,6 +20405,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"score": 70 + maxi(0, int(skill.get("cost", 2))) * 12 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 9,
 		"reason": "按卡牌强度、目标价值、商品流动、路线计划与AI性格评分",
 	}
+	if kind == "card_counter":
+		return _ai_counter_response_candidate(player_index, slot_index, skill)
 	if kind == "monster_card":
 		context["district"] = _ai_best_monster_card_district(player_index, skill)
 		context["score"] = 1180 if bool(skill.get("starter_play_free", false)) else int(context["score"]) + 150
@@ -20777,7 +21036,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -20953,6 +21212,135 @@ func _auto_ai_auction_bids(force: bool = false) -> int:
 			)
 			raised += 1
 	return raised
+
+
+func _ai_counter_response_candidates(player_index: int) -> Array:
+	var result := []
+	if not _player_is_ai(player_index) or not card_resolution_counter_window_active or active_card_resolution.is_empty():
+		return result
+	if float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+		return result
+	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
+		return result
+	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
+	for slot_index in range(slots.size()):
+		if not (slots[slot_index] is Dictionary):
+			continue
+		var source_skill: Dictionary = slots[slot_index]
+		if bool(source_skill.get("queued_for_resolution", false)) or float(source_skill.get("cooldown_left", 0.0)) > 0.0 or float(source_skill.get("lock_left", 0.0)) > 0.0:
+			continue
+		var candidate := _ai_counter_response_candidate(player_index, slot_index, source_skill)
+		if not candidate.is_empty():
+			result.append(candidate)
+	return result
+
+
+func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictionary, all_candidates: Array = []) -> bool:
+	var slot_index := int(candidate.get("slot_index", -1))
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
+	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+		return false
+	var source_skill: Dictionary = slots[slot_index]
+	var previous_player := selected_player
+	var previous_district := selected_district
+	var previous_product := selected_trade_product
+	selected_player = player_index
+	selected_district = int(candidate.get("district", int(active_card_resolution.get("selected_district", _ai_first_alive_district()))))
+	selected_trade_product = String(candidate.get("product", _skill_play_product(source_skill, player_index)))
+	_set_card_bid_for_player(player_index, 0, false)
+	var queued := false
+	if bool(candidate.get("counter_converted_monster", false)):
+		queued = _queue_monster_card_as_counter(player_index, slot_index, source_skill)
+	else:
+		queued = _queue_skill_resolution(player_index, slot_index, -1)
+	if queued:
+		var queue_index := _next_batch_card_entry_index_for_player(player_index)
+		var in_next_batch := true
+		if queue_index < 0:
+			queue_index = _queued_card_entry_index_for_player(player_index)
+			in_next_batch = false
+		if queue_index >= 0:
+			var entry: Dictionary = (next_card_resolution_queue[queue_index] if in_next_batch else card_resolution_queue[queue_index]) as Dictionary
+			entry["ai_utility_score"] = int(candidate.get("score", 0))
+			entry["ai_bid_budget"] = 0
+			entry["ai_reason"] = String(candidate.get("reason", "相位反制"))
+			entry["ai_counter_response"] = true
+			for field_name in ["counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "target_city", "target_owner", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "learning_bonus"]:
+				if candidate.has(field_name):
+					entry[field_name] = candidate[field_name]
+			if in_next_batch:
+				next_card_resolution_queue[queue_index] = entry
+			else:
+				card_resolution_queue[queue_index] = entry
+		_record_ai_decision(
+			player_index,
+			"相位反制",
+			int(candidate.get("counter_target_resolution_id", -1)),
+			int(candidate.get("score", 0)),
+			String(candidate.get("reason", "相位反制")),
+			all_candidates,
+			{
+				"policy_kind": "counter_response",
+				"card_name": String(candidate.get("card_name", "")),
+				"counter_card_name": String(candidate.get("counter_card_name", "")),
+				"counter_target_resolution_id": int(candidate.get("counter_target_resolution_id", -1)),
+				"counter_target_card": String(candidate.get("counter_target_card", "")),
+				"counter_strength": int(candidate.get("counter_strength", 0)),
+				"counter_threat_score": int(candidate.get("counter_threat_score", 0)),
+				"counter_opportunity_cost": int(candidate.get("counter_opportunity_cost", 0)),
+				"counter_reason_key": String(candidate.get("counter_reason_key", "")),
+				"counter_source_card": String(candidate.get("counter_source_card", "")),
+				"counter_converted_monster": bool(candidate.get("counter_converted_monster", false)),
+				"target_city": int(candidate.get("target_city", -1)),
+				"target_owner": int(candidate.get("target_owner", -1)),
+				"product": String(candidate.get("product", "")),
+				"game_phase": String(candidate.get("game_phase", "")),
+				"competitive_posture": String(candidate.get("competitive_posture", "")),
+				"score_gap_to_leader": int(candidate.get("score_gap_to_leader", 0)),
+				"leader_index": int(candidate.get("leader_index", -1)),
+				"endgame_urgency": int(candidate.get("endgame_urgency", 0)),
+				"learning_bonus": int(candidate.get("learning_bonus", 0)),
+			}
+		)
+	selected_player = previous_player
+	selected_district = previous_district
+	selected_trade_product = previous_product
+	return queued
+
+
+func _auto_ai_counter_responses(force: bool = false) -> int:
+	if not ai_card_decision_enabled or not card_resolution_counter_window_active or active_card_resolution.is_empty():
+		return 0
+	var candidates := []
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		for candidate_variant in _ai_counter_response_candidates(player_index):
+			if candidate_variant is Dictionary:
+				var candidate: Dictionary = candidate_variant
+				candidate["player_index"] = player_index
+				candidates.append(candidate)
+	if candidates.is_empty():
+		return 0
+	candidates.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	for candidate_variant in candidates:
+		var candidate: Dictionary = candidate_variant
+		var score := int(candidate.get("score", 0))
+		if not force and score < AI_COUNTER_RESPONSE_MIN_SCORE:
+			continue
+		if not force and score < AI_COUNTER_RESPONSE_CONFIDENT_SCORE:
+			var chance := clampf(0.32 + float(score - AI_COUNTER_RESPONSE_MIN_SCORE) / float(maxi(1, AI_COUNTER_RESPONSE_CONFIDENT_SCORE - AI_COUNTER_RESPONSE_MIN_SCORE)) * 0.44, 0.08, 0.76)
+			if rng.randf() > chance:
+				continue
+		var player_index := int(candidate.get("player_index", -1))
+		var player_candidates := []
+		for peer_variant in candidates:
+			if peer_variant is Dictionary and int((peer_variant as Dictionary).get("player_index", -1)) == player_index:
+				player_candidates.append(peer_variant)
+		if _ai_queue_counter_response_candidate(player_index, candidate, player_candidates):
+			return 1
+	return 0
 
 
 func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> Array:
@@ -21401,6 +21789,7 @@ func _update_ai_decisions(delta: float) -> void:
 		return
 	ai_auction_reaction_timer -= delta
 	if ai_auction_reaction_timer <= 0.0:
+		_auto_ai_counter_responses(false)
 		_auto_ai_auction_bids(false)
 		_update_ai_contract_responses(false)
 		_auto_ai_monster_wagers()

@@ -131,6 +131,7 @@ func _run() -> void:
 	_expect(_verify_temporary_economy_duration_seconds(main), "temporary economy, contract, commodity, route, and derivative cards expose real seconds as their authoritative duration")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
+	_expect(_verify_ai_counter_response_policy(main), "AI opponents can evaluate a phase-response window, queue a field-driven counter, and record hidden counter metadata")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
 	_expect(_verify_ai_episode_learning_policy(main), "AI opponents backpropagate final roguelike money results into per-seat long-horizon policy learning")
 	_expect(_verify_role_intel_and_trace_tools(main), "identity roles and intel cards reveal private city, card-owner, and contract-party clues")
@@ -6206,6 +6207,129 @@ func _verify_ai_card_policy(main: Node) -> bool:
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	main.set("card_resolution_force_duration", saved_force_duration)
 	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
+	return ok and restore_result == OK
+
+
+func _verify_ai_counter_response_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	var failures := []
+	main.set("ai_card_decision_enabled", true)
+	main.set("game_over", false)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("pending_contract_offers", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	main.set("card_resolution_counter_window_active", false)
+	main.set("card_resolution_counter_timer", 0.0)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
+	if own_index < 0 or rival_index < 0:
+		failures.append("missing city slots")
+		ok = false
+	else:
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI反制自城", false))
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI反制竞城", false))
+		ok = ok and _set_city_goods_for_test(main, own_index, "轨迹墨水", "环晶电池")
+		ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "轨迹墨水")
+		var districts := _as_array(main.get("districts")).duplicate(true)
+		var own_district := districts[own_index] as Dictionary
+		var own_city := own_district.get("city", {}) as Dictionary
+		own_city["last_income"] = 840
+		own_city["trade_route_damage"] = 2
+		own_district["damage"] = 2
+		own_district["panic"] = 18
+		own_district["city"] = own_city
+		districts[own_index] = own_district
+		main.set("districts", districts)
+		main.call("_refresh_city_networks")
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 6600
+			player["action_cooldown"] = 0.0
+			if player_index == 1:
+				var memory := main.call("_empty_ai_memory") as Dictionary
+				memory["economic_focus_product"] = "轨迹墨水"
+				memory["economic_focus_score"] = 620
+				memory["strategy_intent"] = "defend_routes"
+				memory["strategy_score"] = 780
+				memory["route_plan_product"] = "轨迹墨水"
+				memory["route_plan_stage"] = "defend_route"
+				memory["route_plan_score"] = 760
+				player["ai_memory"] = memory
+				player["slots"] = [main.call("_make_skill", "相位否决1")]
+			players[player_index] = player
+		main.set("players", players)
+		var target_skill := main.call("_make_skill", "轨道齐射1") as Dictionary
+		var active_entry := {
+			"player_index": 2,
+			"slot_index": -1,
+			"target_slot": -1,
+			"target_player": -1,
+			"selected_district": own_index,
+			"selected_trade_product": "环晶电池",
+			"queued_time": float(main.get("game_time")),
+			"queued_order": 99001,
+			"resolution_id": 99001,
+			"tip": 0,
+			"winning_bid": 0,
+			"play_requirement_product": "环晶电池",
+			"play_requirement_flow": 1,
+			"play_cash_cost": 0,
+			"public_owner_revealed": false,
+			"public_owner_label": "",
+			"guessers": [],
+			"consumed_on_queue": true,
+			"skill": target_skill,
+		}
+		main.set("active_card_resolution", active_entry)
+		main.set("card_resolution_counter_window_active", true)
+		main.set("card_resolution_counter_timer", 5.0)
+		var threat := main.call("_ai_counter_target_threat", 1, active_entry) as Dictionary
+		var candidates := main.call("_ai_counter_response_candidates", 1) as Array
+		var acted := int(main.call("_auto_ai_counter_responses", true))
+		var next_queue := _as_array(main.get("next_card_resolution_queue"))
+		var queued_entry := {}
+		if next_queue.size() > 0 and next_queue[0] is Dictionary:
+			queued_entry = next_queue[0] as Dictionary
+		var queued_skill := queued_entry.get("skill", {}) as Dictionary
+		var players_after_queue := _as_array(main.get("players"))
+		var candidate_ok := int(threat.get("score", 0)) > 0 and not candidates.is_empty()
+		var queue_ok := acted == 1 \
+			and next_queue.size() == 1 \
+			and String(queued_skill.get("kind", "")) == "card_counter" \
+			and bool(queued_entry.get("ai_counter_response", false)) \
+			and int(queued_entry.get("counter_target_resolution_id", -1)) == 99001 \
+			and int(queued_entry.get("counter_threat_score", 0)) > int(queued_entry.get("counter_opportunity_cost", 0))
+		var memory_ok := _ai_memory_has_kind_with_metadata(players_after_queue, 1, "相位反制", "policy_kind", "counter_response") \
+			and _ai_memory_has_kind_with_metadata(players_after_queue, 1, "相位反制", "counter_target_resolution_id", 99001)
+		main.call("_complete_active_card_resolution")
+		var history := _as_array(main.get("resolved_card_history"))
+		var countered_ok := false
+		for entry_variant in history:
+			if not (entry_variant is Dictionary):
+				continue
+			var entry := entry_variant as Dictionary
+			if int(entry.get("resolution_id", -1)) == 99001 and bool(entry.get("countered", false)):
+				countered_ok = true
+				break
+		if not candidate_ok:
+			failures.append("candidate threat=%s candidates=%d" % [str(threat), candidates.size()])
+		if not queue_ok:
+			failures.append("queue acted=%d next=%d entry=%s" % [acted, next_queue.size(), str(queued_entry)])
+		if not memory_ok:
+			failures.append("memory")
+		if not countered_ok:
+			failures.append("countered")
+		ok = ok and candidate_ok and queue_ok and memory_ok and countered_ok
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	if not failures.is_empty():
+		print("AI counter response failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
 
 
