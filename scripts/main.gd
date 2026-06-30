@@ -6159,6 +6159,60 @@ func _first_player_flow_product(player_index: int) -> String:
 	return selected_trade_product if selected_trade_product != "" else (String(PRODUCT_CATALOG[0]) if not PRODUCT_CATALOG.is_empty() else "")
 
 
+func _best_player_flow_product(player_index: int, required: int = 1, preferred_products: Array = []) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return ""
+	var safe_required: int = maxi(1, required)
+	var seen := {}
+	var preferred := []
+	for product_variant in preferred_products:
+		var product_name := String(product_variant)
+		if product_name == "" or seen.has(product_name):
+			continue
+		seen[product_name] = true
+		preferred.append(product_name)
+	for product_variant in preferred:
+		if _player_product_flow(player_index, String(product_variant)) >= safe_required:
+			return String(product_variant)
+	var best_product := ""
+	var best_flow := -1
+	for city_index_variant in _active_city_indices_for_player(player_index):
+		var city := _district_city(int(city_index_variant))
+		var products := _city_product_names(city)
+		for product_variant in products:
+			var product_name := String(product_variant)
+			if product_name == "" or seen.has(product_name):
+				continue
+			seen[product_name] = true
+			var flow := _player_product_flow(player_index, product_name)
+			if flow >= safe_required and flow > best_flow:
+				best_product = product_name
+				best_flow = flow
+		var demands := _city_demand_names(city)
+		for demand_variant in demands:
+			var demand_name := String(demand_variant)
+			if demand_name == "" or seen.has(demand_name):
+				continue
+			seen[demand_name] = true
+			var demand_flow := _player_product_flow(player_index, demand_name)
+			if demand_flow >= safe_required and demand_flow > best_flow:
+				best_product = demand_name
+				best_flow = demand_flow
+		for route_variant in city.get("trade_routes", []):
+			var route: Dictionary = route_variant
+			if bool(route.get("disrupted", false)):
+				continue
+			var route_product := String(route.get("product", ""))
+			if route_product == "" or seen.has(route_product):
+				continue
+			seen[route_product] = true
+			var route_flow := _player_product_flow(player_index, route_product)
+			if route_flow >= safe_required and route_flow > best_flow:
+				best_product = route_product
+				best_flow = route_flow
+	return best_product
+
+
 func _skill_play_product(skill: Dictionary, player_index: int) -> String:
 	var explicit := String(skill.get("play_product", ""))
 	if explicit != "":
@@ -14011,6 +14065,13 @@ func _ai_strategy_candidates(player_index: int) -> Array:
 	var route_threat := _ai_own_route_threat_score(player_index)
 	var rival_pressure := _ai_focus_rival_pressure_score(player_index)
 	var growth_need := _ai_growth_need_score(player_index)
+	var established_competition_bonus := 0
+	var growth_overextension_penalty := 0
+	if phase != "opening" and _player_active_city_count(player_index) > 0 and rival_pressure >= 260:
+		established_competition_bonus = mini(320, rival_pressure / 2)
+		if focus != "" and _player_product_flow(player_index, focus) > 0:
+			established_competition_bonus += 65
+		growth_overextension_penalty = mini(150, rival_pressure / 4)
 	var defend_learning := _ai_learning_bonus(player_index, "", "defend_routes", "", focus, "战略选择")
 	var disrupt_learning := _ai_learning_bonus(player_index, "", "disrupt_competitors", "", focus, "战略选择")
 	var grow_learning := _ai_learning_bonus(player_index, "", "grow_focus", "", focus, "战略选择")
@@ -14051,21 +14112,21 @@ func _ai_strategy_candidates(player_index: int) -> Array:
 		},
 		{
 			"intent": "disrupt_competitors",
-			"score": 54 + rival_pressure + _player_product_flow(player_index, focus) * 18 + disrupt_phase_bonus + disrupt_learning,
+			"score": 54 + rival_pressure + _player_product_flow(player_index, focus) * 18 + established_competition_bonus + disrupt_phase_bonus + disrupt_learning,
 			"game_phase": phase,
 			"competitive_posture": posture,
 			"phase_bonus": disrupt_phase_bonus,
 			"learning_bonus": disrupt_learning,
-			"reason": "压制竞品｜%s/%s｜焦点%s｜竞品压力%d｜阶段%d｜学习%d" % [phase_label, posture_label, focus if focus != "" else "未定", rival_pressure, disrupt_phase_bonus, disrupt_learning],
+			"reason": "压制竞品｜%s/%s｜焦点%s｜竞品压力%d｜成型竞品%d｜阶段%d｜学习%d" % [phase_label, posture_label, focus if focus != "" else "未定", rival_pressure, established_competition_bonus, disrupt_phase_bonus, disrupt_learning],
 		},
 		{
 			"intent": "grow_focus",
-			"score": growth_need + grow_phase_bonus + grow_learning,
+			"score": growth_need + grow_phase_bonus + grow_learning - growth_overextension_penalty,
 			"game_phase": phase,
 			"competitive_posture": posture,
 			"phase_bonus": grow_phase_bonus,
 			"learning_bonus": grow_learning,
-			"reason": "扩张焦点｜%s/%s｜焦点%s｜成长需求%d｜阶段%d｜学习%d" % [phase_label, posture_label, focus if focus != "" else "未定", growth_need, grow_phase_bonus, grow_learning],
+			"reason": "扩张焦点｜%s/%s｜焦点%s｜成长需求%d｜竞品牵制-%d｜阶段%d｜学习%d" % [phase_label, posture_label, focus if focus != "" else "未定", growth_need, growth_overextension_penalty, grow_phase_bonus, grow_learning],
 		},
 	]
 
@@ -15068,6 +15129,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if rival_city < 0:
 			return {}
 		context["district"] = rival_city
+		context["target_city"] = rival_city
+		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
 		context["product"] = _ai_preferred_product(player_index, true)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
@@ -15080,6 +15143,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if weather_target < 0:
 			return {}
 		context["district"] = weather_target
+		var weather_city := _district_city(weather_target)
+		if _city_is_active(weather_city):
+			context["target_city"] = weather_target
+			context["target_owner"] = int(weather_city.get("owner", -1))
 		context["score"] = int(context["score"]) + 88 + int(skill.get("weather_zone_count", 1)) * 18
 		context["reason"] = "改写天气预报｜%s｜%d区｜%s后生效" % [
 			_weather_label(weather_type),
@@ -15090,6 +15157,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if rival_city < 0:
 			return {}
 		context["district"] = rival_city
+		context["target_city"] = rival_city
+		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
 		context["product"] = _ai_preferred_product(player_index, true)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
@@ -15138,11 +15207,24 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["score"] = int(context["score"]) + int(context.get("focus_bonus", 0))
 	var required := _skill_play_flow_required(skill, player_index)
 	if required > 0:
-		product_name = String(skill.get("play_product", ""))
+		var explicit_play_product := String(skill.get("play_product", ""))
+		product_name = explicit_play_product
 		if product_name == "":
-			product_name = String(context.get("product", ""))
-		if product_name == "":
-			product_name = _skill_play_product(skill, player_index)
+			var preferred_play_products := []
+			var context_product := String(context.get("product", ""))
+			if context_product != "":
+				preferred_play_products.append(context_product)
+			if route_product != "":
+				preferred_play_products.append(route_product)
+			if focus_product != "":
+				preferred_play_products.append(focus_product)
+			var playable_product := _best_player_flow_product(player_index, required, preferred_play_products)
+			if playable_product != "":
+				product_name = playable_product
+			elif context_product != "":
+				product_name = context_product
+			else:
+				product_name = _skill_play_product(skill, player_index)
 		context["product"] = product_name
 		var available := _player_product_flow(player_index, product_name)
 		if available < required:
