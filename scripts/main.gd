@@ -5726,7 +5726,7 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 	var price := _card_price(card_name)
 	var key_facts := _card_key_rule_facts(skill)
 	var key_text := "；".join(key_facts) if not key_facts.is_empty() else "这张牌没有攻击/生命/范围等战斗数值，主要按效果文字结算。"
-	return "第%d/%d张｜%s｜分类:%s / 当前筛选:%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n%s\n效果：%s\n打出：%s｜%s\n关键数值：%s\n升级预览：\n%s\n结算演出：%s\n卡面：游戏内手牌与图鉴使用同一套卡面。" % [
+	return "第%d/%d张｜%s｜分类:%s / 当前筛选:%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n%s\n%s\n效果：%s\n打出：%s｜%s\n关键数值：%s\n升级预览：\n%s\n结算演出：%s\n卡面：游戏内手牌与图鉴使用同一套卡面。" % [
 		index + 1,
 		total,
 		_card_display_name(card_name),
@@ -5738,6 +5738,7 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 		source_text,
 		target_text,
 		_card_strategy_summary(skill),
+		_card_strength_budget_text(card_name, skill),
 		_skill_display_text(skill),
 		"固定技能，不会消失" if bool(skill.get("persistent", false)) else "一次性，打出后消失",
 		_skill_play_requirement_text(skill, selected_player),
@@ -5794,9 +5795,10 @@ func _card_level_gradient_text(card_name: String) -> String:
 		var preview := _join_first_card_facts(numeric_facts, 4)
 		if preview == "":
 			preview = _short_card_text(_skill_display_text(level_skill), 36)
-		lines.append("%s  ¥%d  %s" % [
+		lines.append("%s  ¥%d  %s｜%s" % [
 			_level_text(level),
 			_card_price(level_name),
+			_card_strength_budget_band_text(_card_strength_budget_points(level_name)),
 			preview,
 		])
 	return "\n".join(lines) if not lines.is_empty() else "该卡暂无升级梯度。"
@@ -6272,6 +6274,161 @@ func _card_price_tier_text(price: int) -> String:
 	if price <= 305:
 		return "高阶档"
 	return "旗舰档"
+
+
+func _card_strength_budget_points(card_name: String) -> int:
+	if card_name == "" or not _skill_exists(card_name):
+		return 0
+	var skill := _skill_definition(card_name)
+	var points := maxi(2, int(skill.get("cost", 2))) * 10
+	points += int(float(abs(int(skill.get("cash", 0)))) / 35.0)
+	points += int(float(abs(int(skill.get("revenue_amount", 0)))) / 10.0)
+	points += int(float(abs(int(skill.get("contract_income", 0)))) / 12.0)
+	points += int(float(abs(int(skill.get("accept_cash", 0)))) / 30.0)
+	points += int(float(abs(int(skill.get("decline_cash_penalty", 0)))) / 35.0)
+	for key in [
+		"production_delta", "transport_delta", "consumption_delta",
+		"accept_production_delta", "accept_transport_delta", "accept_consumption_delta",
+		"decline_production_delta", "decline_transport_delta", "decline_consumption_delta",
+		"price_delta", "market_demand_pressure", "market_supply_pressure",
+		"product_level", "product_shift", "demand_shift",
+		"contract_add_products", "contract_add_demands", "contract_remove_products", "contract_remove_demands",
+		"repair_routes", "route_damage", "decline_route_damage", "draw_amount",
+		"damage", "armor", "guard", "ranged_guard", "miasma_count", "reclaim_count", "fixed_skill_count",
+	]:
+		points += abs(int(skill.get(key, 0))) * 7
+	points += int(round(absf(float(skill.get("move", 0.0))) / 90.0))
+	points += int(round(absf(float(skill.get("range", 0.0))) / 110.0))
+	points += int(round(absf(float(skill.get("knockback", 0.0))) / 120.0))
+	points += int(round(absf(float(skill.get("delay", 0.0))) * 5.0))
+	points += int(round(absf(float(skill.get("duration", 0.0))) / 40.0))
+	points += int(round(maxf(0.0, float(skill.get("growth_multiplier", 1.0)) - 1.0) * 24.0))
+	points += int(round(maxf(0.0, float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 24.0))
+	points += int(round(maxf(0.0, float(skill.get("accept_route_flow_multiplier", 1.0)) - 1.0) * 18.0))
+	points += int(round(maxf(0.0, float(skill.get("gdp_bet_multiplier", 1.0)) - 1.0) * 18.0))
+	points += int(float(maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0)))) / 20.0)
+	if String(skill.get("kind", "")) == "monster_card":
+		points += int(float(int(skill.get("hp", 0))) / 5.0)
+		points += maxi(0, int(skill.get("fixed_skill_count", 0))) * 8
+		if String(skill.get("summon_access", "any")) != "any":
+			points -= 5
+	return maxi(1, points)
+
+
+func _card_strength_budget_band_text(points: int) -> String:
+	if points <= 44:
+		return "基础频用"
+	if points <= 76:
+		return "效率扩张"
+	if points <= 112:
+		return "路线核心"
+	return "终端压力"
+
+
+func _card_rank_budget_role_text(card_name: String) -> String:
+	match clampi(maxi(1, _skill_rank(card_name)), 1, 4):
+		1:
+			return "I级基础：低门槛、常用试探或开路线。"
+		2:
+			return "II级效率：提高数值、范围或持续时间。"
+		3:
+			return "III级核心：足以围绕它组织一条经济/破坏路线。"
+		4:
+			return "IV级终端：强力但应留下公开线索、门槛或反制窗口。"
+	return "I级基础：低门槛、常用试探或开路线。"
+
+
+func _card_budget_driver_facts(skill: Dictionary) -> Array:
+	var drivers := []
+	if String(skill.get("kind", "")) == "monster_card":
+		drivers.append("怪兽HP%d/在场%s" % [int(skill.get("hp", 0)), _monster_card_duration_text(skill, true)])
+		drivers.append("移动%s/召唤%s" % [_meters_text(float(skill.get("move", 0.0))), _monster_card_region_text(skill, true)])
+		if int(skill.get("fixed_skill_count", 0)) > 0:
+			drivers.append("固定技能%d" % int(skill.get("fixed_skill_count", 0)))
+	if int(skill.get("cash", 0)) != 0:
+		drivers.append("现金¥%s" % _signed_int_text(int(skill.get("cash", 0))))
+	if int(skill.get("revenue_amount", 0)) > 0:
+		drivers.append("城市GDP+%d" % int(skill.get("revenue_amount", 0)))
+	if int(skill.get("production_delta", 0)) != 0 or int(skill.get("transport_delta", 0)) != 0 or int(skill.get("consumption_delta", 0)) != 0:
+		drivers.append("产/交/消%s/%s/%s" % [
+			_signed_int_text(int(skill.get("production_delta", 0))),
+			_signed_int_text(int(skill.get("transport_delta", 0))),
+			_signed_int_text(int(skill.get("consumption_delta", 0))),
+		])
+	if int(skill.get("route_damage", 0)) > 0:
+		drivers.append("断路+%d" % int(skill.get("route_damage", 0)))
+	if int(skill.get("repair_routes", 0)) > 0:
+		drivers.append("修路%d" % int(skill.get("repair_routes", 0)))
+	if int(skill.get("damage", 0)) > 0:
+		drivers.append("伤害%d" % int(skill.get("damage", 0)))
+	if int(skill.get("armor", 0)) > 0 or int(skill.get("guard", 0)) > 0:
+		drivers.append("防护%d" % (int(skill.get("armor", 0)) + int(skill.get("guard", 0))))
+	if float(skill.get("range", 0.0)) > 0.0:
+		drivers.append("范围%s" % _meters_text(float(skill.get("range", 0.0))))
+	if int(skill.get("draw_amount", 0)) > 0:
+		drivers.append("补牌%d" % int(skill.get("draw_amount", 0)))
+	if bool(skill.get("card_access_global", false)):
+		drivers.append("全局采购")
+	elif int(skill.get("card_access_extra_hops", 0)) > 0:
+		drivers.append("补给+%d跳" % int(skill.get("card_access_extra_hops", 0)))
+	if String(skill.get("kind", "")) == "city_gdp_derivative":
+		drivers.append("%s×%.2f/%d周期" % [
+			"买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空",
+			float(skill.get("gdp_bet_multiplier", 1.0)),
+			int(skill.get("gdp_bet_turns", 1)),
+		])
+	if int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
+		drivers.append("市场压%s/%s" % [
+			_signed_int_text(int(skill.get("market_demand_pressure", 0))),
+			_signed_int_text(int(skill.get("market_supply_pressure", 0))),
+		])
+	if int(skill.get("contract_add_products", 0)) > 0 or int(skill.get("contract_add_demands", 0)) > 0:
+		drivers.append("合约供%d/需%d" % [int(skill.get("contract_add_products", 0)), int(skill.get("contract_add_demands", 0))])
+	if float(skill.get("growth_multiplier", 1.0)) > 1.001:
+		drivers.append("价格增速×%.2f" % float(skill.get("growth_multiplier", 1.0)))
+	if float(skill.get("route_flow_multiplier", 1.0)) > 1.001:
+		drivers.append("商路×%.2f" % float(skill.get("route_flow_multiplier", 1.0)))
+	if drivers.is_empty():
+		drivers.append("按效果文字结算")
+	return drivers
+
+
+func _card_budget_gate_facts(skill: Dictionary) -> Array:
+	var gates := []
+	var required := _skill_play_flow_required(skill, selected_player)
+	var product := _skill_play_product(skill, selected_player)
+	if required > 0:
+		gates.append("%s流动%d" % [product if product != "" else "商品", required])
+	var play_cash_cost := _skill_play_cash_cost(skill)
+	if play_cash_cost > 0:
+		gates.append("打出¥%d" % play_cash_cost)
+	if _skill_targets_monster(skill):
+		gates.append("公开指定怪兽")
+	if String(skill.get("kind", "")) == "area_trade_contract":
+		gates.append("先选供需两区")
+	if String(skill.get("kind", "")) == "monster_card" and not bool(skill.get("starter_play_free", false)):
+		gates.append("召唤区限制")
+	if not bool(skill.get("persistent", false)):
+		gates.append("一次性")
+	else:
+		gates.append("固定技能冷却")
+	return gates
+
+
+func _card_strength_budget_text(card_name: String, skill: Dictionary, compact: bool = false) -> String:
+	var points := _card_strength_budget_points(card_name)
+	var band := _card_strength_budget_band_text(points)
+	var drivers := _join_first_card_facts(_card_budget_driver_facts(skill), 3)
+	var gates := _join_first_card_facts(_card_budget_gate_facts(skill), 3)
+	if compact:
+		return "预算:%s｜主强度:%s" % [band, _short_card_text(drivers, 34)]
+	return "强度预算:%s（%d分）｜%s｜主强度:%s｜制衡:%s" % [
+		band,
+		points,
+		_card_rank_budget_role_text(card_name),
+		drivers,
+		gates,
+	]
 
 
 func _region_card_choice_summary(district_index: int, limit: int = 5) -> String:
@@ -11213,11 +11370,12 @@ func _card_rules_text(skill_name: String, skill: Dictionary, compact: bool = fal
 		return "%s\n%s\n%s" % [
 			_short_card_text(effect_text, 54),
 			strategy_text,
-			key_text,
+			_card_strength_budget_text(skill_name, skill, true),
 		]
-	return "%s\n%s\n%s｜%s" % [
+	return "%s\n%s\n%s\n%s｜%s" % [
 		effect_text,
 		strategy_text,
+		_card_strength_budget_text(skill_name, skill),
 		"固定技能" if bool(skill.get("persistent", false)) else "一次性",
 		key_text,
 	]
@@ -12125,10 +12283,11 @@ func _card_detail_tooltip(card_name: String, district_index: int = -1) -> String
 	var location := _card_choice_location_summary(card_name)
 	var source := _district_card_source(district_index, card_name) if district_index >= 0 else "卡池"
 	var price := _card_price(card_name, district_index, selected_player)
-	return "%s\n参考价：¥%d（%s，按I级基础价）\n来源：%s\n标签：%s\n效果：%s\n关键数值：%s\n升级：%s\n投放：%s\n操作：单击预览；双击购买；X 购买当前预览卡。" % [
+	return "%s\n参考价：¥%d（%s，按I级基础价）\n%s\n来源：%s\n标签：%s\n效果：%s\n关键数值：%s\n升级：%s\n投放：%s\n操作：单击预览；双击购买；X 购买当前预览卡。" % [
 		_card_display_name(card_name),
 		price,
 		_card_price_tier_text(price),
+		_card_strength_budget_text(card_name, skill),
 		source,
 		_skill_tag_text(skill),
 		_skill_display_text(skill),
