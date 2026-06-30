@@ -412,6 +412,7 @@ func _run() -> void:
 	_expect(menu_content_scroll != null and menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column")
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
 	_expect(menu_body_label != null and menu_body_label.text.contains("游戏规则") and not menu_body_label.text.contains("快捷键："), "main menu keeps detailed controls inside the rules branch")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主菜单速览") and _container_label_text_contains(menu_preview_box, "主画面原则") and _container_label_text_contains(menu_preview_box, "终局复盘"), "main menu exposes compact responsive summary cards above the detailed action branches")
 	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "开局准备"), "main menu routes new games through a setup preview branch")
 	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "设置3-8席") and _container_label_text_contains(menu_overlay, "hover预览"), "main menu uses descriptive card-style action entries")
 	_expect(menu_overlay != null and _container_button_has_stylebox(menu_overlay, "hover") and _container_button_has_stylebox(menu_overlay, "pressed"), "menu buttons expose reusable hover and pressed visual states")
@@ -1227,7 +1228,7 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 				saw_player_breakdown = true
 		var standings_text := String(main.call("_standings_text"))
 		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_ai_route_summary and saw_player_breakdown
-		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("AI路线") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报")
+		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("AI路线") and standings_text.contains("发展路线") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报")
 		var final_menu_title := main.get("menu_title_label") as Label
 		var final_menu_body := main.get("menu_body_label") as Label
 		var final_menu_preview := main.get("menu_preview_box") as VBoxContainer
@@ -2345,7 +2346,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		failures.append("not game over")
 		ok = false
 	var standings_text := String(main.call("_standings_text"))
-	if not standings_text.contains("终局总结") or not standings_text.contains("AI路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
+	if not standings_text.contains("终局总结") or not standings_text.contains("AI路线") or not standings_text.contains("发展路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
 		failures.append("missing final summary")
 		ok = false
 	var final_menu_title := main.get("menu_title_label") as Label

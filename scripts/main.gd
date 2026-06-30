@@ -1299,6 +1299,7 @@ var menu_overlay: Control
 var menu_surface_panel: PanelContainer
 var menu_content_scroll: ScrollContainer
 var menu_content_box: VBoxContainer
+var menu_shell_margin: MarginContainer
 var menu_nav_row: HBoxContainer
 var menu_catalog_nav_row: HBoxContainer
 var menu_title_label: Label
@@ -2386,6 +2387,7 @@ func _build_menu_overlay() -> void:
 	margin.add_theme_constant_override("margin_top", 18)
 	margin.add_theme_constant_override("margin_right", 22)
 	margin.add_theme_constant_override("margin_bottom", 18)
+	menu_shell_margin = margin
 	panel.add_child(margin)
 
 	var shell := VBoxContainer.new()
@@ -2506,6 +2508,7 @@ func _build_menu_overlay() -> void:
 
 	_add_main_menu_section(box, "系统", "退出当前原型。")
 	_add_main_menu_action(box, "退出原型", "关闭游戏窗口。", Callable(self, "_quit_game"), Color("#fb7185"))
+	_refresh_menu_layout()
 
 
 func _menu_card_style(accent: Color, fill: Color = Color("#0b1220"), border_width: int = 1, radius: int = 12) -> StyleBoxFlat:
@@ -2524,6 +2527,63 @@ func _menu_surface_style() -> StyleBoxFlat:
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(20)
 	return style
+
+
+func _menu_viewport_size() -> Vector2:
+	return get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+
+
+func _menu_available_content_width() -> float:
+	var viewport_size := _menu_viewport_size()
+	var panel_ratio := 0.86
+	if menu_surface_panel != null:
+		panel_ratio = maxf(0.45, menu_surface_panel.anchor_right - menu_surface_panel.anchor_left)
+	var side_padding := 84.0
+	if menu_shell_margin != null:
+		side_padding = float(menu_shell_margin.get_theme_constant("margin_left") + menu_shell_margin.get_theme_constant("margin_right") + 42)
+	return maxf(260.0, viewport_size.x * panel_ratio - side_padding)
+
+
+func _menu_available_content_height() -> float:
+	var viewport_size := _menu_viewport_size()
+	var panel_ratio := 0.89
+	if menu_surface_panel != null:
+		panel_ratio = maxf(0.45, menu_surface_panel.anchor_bottom - menu_surface_panel.anchor_top)
+	return maxf(260.0, viewport_size.y * panel_ratio - 170.0)
+
+
+func _refresh_menu_layout() -> void:
+	if menu_surface_panel == null:
+		return
+	var viewport_size := _menu_viewport_size()
+	var compact := viewport_size.x < 900.0 or viewport_size.y < 620.0
+	var wide := viewport_size.x >= 1400.0 and viewport_size.y >= 780.0
+	var side_anchor := 0.025 if compact else (0.10 if wide else 0.07)
+	var vertical_anchor := 0.025 if compact else (0.065 if wide else 0.055)
+	menu_surface_panel.anchor_left = side_anchor
+	menu_surface_panel.anchor_right = 1.0 - side_anchor
+	menu_surface_panel.anchor_top = vertical_anchor
+	menu_surface_panel.anchor_bottom = 1.0 - vertical_anchor
+	menu_surface_panel.custom_minimum_size = Vector2(760, 500) if compact else Vector2(760, 520)
+	if menu_shell_margin != null:
+		var horizontal_margin := 14 if compact else (28 if wide else 22)
+		var vertical_margin := 12 if compact else (22 if wide else 18)
+		menu_shell_margin.add_theme_constant_override("margin_left", horizontal_margin)
+		menu_shell_margin.add_theme_constant_override("margin_right", horizontal_margin)
+		menu_shell_margin.add_theme_constant_override("margin_top", vertical_margin)
+		menu_shell_margin.add_theme_constant_override("margin_bottom", vertical_margin)
+	if menu_title_label != null:
+		menu_title_label.add_theme_font_size_override("font_size", 24 if compact else (34 if wide else 31))
+	if menu_body_label != null:
+		menu_body_label.add_theme_font_size_override("font_size", 13 if compact else 15)
+	if menu_nav_row != null:
+		menu_nav_row.add_theme_constant_override("separation", 6 if compact else 10)
+	if menu_catalog_nav_row != null:
+		menu_catalog_nav_row.add_theme_constant_override("separation", 6 if compact else 8)
+	for button_variant in [menu_continue_button, menu_back_button, menu_bestiary_prev_button, menu_bestiary_next_button, menu_bestiary_back_button]:
+		if button_variant is Button:
+			var button := button_variant as Button
+			button.custom_minimum_size = Vector2(108 if compact else 124, 32 if compact else 34)
 
 
 func _style_menu_button(button: Button, accent: Color = Color("#38bdf8"), primary: bool = false) -> void:
@@ -2613,8 +2673,7 @@ func _add_menu_action_card(parent: Container, button_text: String, detail_text: 
 
 
 func _menu_summary_grid_columns() -> int:
-	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-	return clampi(int(floor((viewport_size.x - 140.0) / 270.0)), 1, 3)
+	return clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 4)
 
 
 func _show_menu_summary_cards(cards: Array, heading: String = "页面速览") -> void:
@@ -2680,6 +2739,7 @@ func _open_main_menu() -> void:
 		true,
 		true
 	)
+	_populate_main_menu_summary_cards()
 
 
 func _open_pause_menu() -> void:
@@ -2689,10 +2749,69 @@ func _open_pause_menu() -> void:
 		not game_over,
 		true
 	)
+	_populate_pause_menu_summary_cards()
 
 
 func _open_help_menu() -> void:
 	_open_rules_menu()
+
+
+func _populate_main_menu_summary_cards() -> void:
+	_show_menu_summary_cards([
+		{
+			"title": "开局准备",
+			"body": "选择3-8席、2-7个AI、Roguelike深度、外星角色卡和起始I级怪兽牌。",
+			"meta": "新局相关选择只放在这里，不挤进根菜单。",
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "主画面原则",
+			"body": "一局中只盯地图、手牌、匿名卡牌轨道、现金/倒计时和当前选区操作。",
+			"meta": "复杂解释收进规则、经济、情报和图鉴分支。",
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "图鉴/详情",
+			"body": "图鉴用自适应缩略图；hover看预览，双击进详情，详情页再上一页/下一页切换。",
+			"meta": "卡牌、怪兽、商品、角色、区域共用这套切换习惯。",
+			"accent": Color("#f472b6"),
+		},
+		{
+			"title": "终局复盘",
+			"body": "达标后倒计时，结束按钱排名；赛后看资金来源、关键牌、怪兽影响和AI发展路线。",
+			"meta": "方便测试者理解为什么输赢。",
+			"accent": Color("#facc15"),
+		},
+	], "主菜单速览｜先选入口，细节进分支")
+
+
+func _populate_pause_menu_summary_cards() -> void:
+	_show_menu_summary_cards([
+		{
+			"title": "继续观察",
+			"body": "回到地图后继续看手牌、匿名卡牌轨道、天气预报和当前区域操作。",
+			"meta": "暂停只用于读信息，不改变实时规则。",
+			"accent": Color("#22c55e"),
+		},
+		{
+			"title": "复查局势",
+			"body": "局势排名看终局距离，经济总览看GDP/商品/商路，情报档案整理推理。",
+			"meta": "先看短卡片，再读证据文本。",
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "查资料",
+			"body": "游戏规则收纳按键与细则；图鉴用于 hover 预览、详情切换和卡牌路线理解。",
+			"meta": "避免主画面被规则文字淹没。",
+			"accent": Color("#c084fc"),
+		},
+		{
+			"title": "保存/重开",
+			"body": "保存设置或当前局面；也可以回到开局准备，调整席位、AI和角色后重测。",
+			"meta": "测试阶段优先快速迭代。",
+			"accent": Color("#94a3b8"),
+		},
+	], "暂停速览｜先决定继续、复查、查资料还是重开")
 
 
 func _open_rules_menu() -> void:
@@ -4548,6 +4667,119 @@ func _monster_impact_summary() -> String:
 	]
 
 
+func _ai_sample_development_route_id(sample: Dictionary) -> String:
+	var route_id := String(sample.get("development_route", ""))
+	if route_id != "":
+		return route_id
+	var best_route := ""
+	var best_score := -2147483648
+	var candidates_variant: Variant = sample.get("candidates", [])
+	if candidates_variant is Array:
+		for candidate_variant in (candidates_variant as Array):
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			var candidate_route := String(candidate.get("development_route", ""))
+			if candidate_route == "":
+				continue
+			var candidate_score := int(candidate.get("score", 0))
+			if best_route == "" or candidate_score > best_score:
+				best_route = candidate_route
+				best_score = candidate_score
+	return best_route
+
+
+func _ai_profile_development_route_summary(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var player: Dictionary = players[player_index]
+	var profile_variant: Variant = player.get("ai_profile", {})
+	if not (profile_variant is Dictionary):
+		return {}
+	var preferences_variant: Variant = (profile_variant as Dictionary).get("route_preferences", {})
+	if not (preferences_variant is Dictionary):
+		return {}
+	var preferences := preferences_variant as Dictionary
+	var best_route := ""
+	var best_bias := 1.0
+	for route_variant in preferences.keys():
+		var route_id := String(route_variant)
+		var bias := float(preferences.get(route_id, 1.0))
+		if bias > best_bias:
+			best_bias = bias
+			best_route = route_id
+	if best_route == "":
+		return {}
+	return {
+		"route_id": best_route,
+		"label": _development_route_label(best_route),
+		"count": 0,
+		"score": int(round((best_bias - 1.0) * 100.0)),
+		"source": "性格偏好",
+	}
+
+
+func _ai_development_route_sample_summary(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var player: Dictionary = players[player_index]
+	var memory_variant: Variant = player.get("ai_memory", {})
+	if not (memory_variant is Dictionary):
+		return _ai_profile_development_route_summary(player_index)
+	var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
+	if not (samples_variant is Array):
+		return _ai_profile_development_route_summary(player_index)
+	var route_stats := {}
+	for sample_variant in (samples_variant as Array):
+		if not (sample_variant is Dictionary):
+			continue
+		var sample := sample_variant as Dictionary
+		var route_id := _ai_sample_development_route_id(sample)
+		if route_id == "":
+			continue
+		var stat: Dictionary = {}
+		if route_stats.has(route_id):
+			stat = (route_stats[route_id] as Dictionary).duplicate(true)
+		else:
+			stat = {
+				"route_id": route_id,
+				"label": _development_route_label(route_id),
+				"count": 0,
+				"score": 0,
+				"source": "决策样本",
+			}
+		stat["count"] = int(stat.get("count", 0)) + 1
+		stat["score"] = int(stat.get("score", 0)) + maxi(1, int(sample.get("score", 0)))
+		route_stats[route_id] = stat
+	var best_summary := {}
+	for route_variant in route_stats.keys():
+		var stat := route_stats[route_variant] as Dictionary
+		var stat_score := int(stat.get("score", 0))
+		var best_score := int(best_summary.get("score", 0))
+		var stat_count := int(stat.get("count", 0))
+		var best_count := int(best_summary.get("count", 0))
+		var better_summary := best_summary.is_empty() or stat_score > best_score or (stat_score == best_score and stat_count > best_count)
+		if better_summary:
+			best_summary = stat
+	if best_summary.is_empty():
+		return _ai_profile_development_route_summary(player_index)
+	return best_summary
+
+
+func _ai_development_route_summary_text(player_index: int) -> String:
+	var summary := _ai_development_route_sample_summary(player_index)
+	if summary.is_empty():
+		return "发展路线未定"
+	var label := String(summary.get("label", "即时战术"))
+	var count := int(summary.get("count", 0))
+	var source := String(summary.get("source", ""))
+	if count > 0:
+		return "发展路线:%s×%d" % [label, count]
+	if source != "":
+		return "发展路线:%s(%s)" % [label, source]
+	return "发展路线:%s" % label
+
+
 func _ai_route_summary(limit: int = 3) -> String:
 	var pieces := []
 	for player_index_variant in _ai_player_indices():
@@ -4557,10 +4789,12 @@ func _ai_route_summary(limit: int = 3) -> String:
 		var product := String(memory.get("route_plan_product", ""))
 		var stage := String(memory.get("route_plan_stage", ""))
 		var intent := String(memory.get("strategic_intent", ""))
-		if product == "" and intent == "":
+		var development_summary := _ai_development_route_summary_text(player_index)
+		if product == "" and intent == "" and development_summary == "发展路线未定":
 			continue
-		pieces.append("%s:%s/%s/%s" % [
+		pieces.append("%s:%s｜%s/%s/%s" % [
 			_player_name(player_index),
+			development_summary,
 			product if product != "" else "未定商品",
 			_ai_route_plan_stage_label(stage),
 			_ai_strategy_intent_label(intent),
@@ -4582,7 +4816,8 @@ func _player_final_playstyle_summary(player_index: int) -> String:
 	var product := String(memory.get("route_plan_product", ""))
 	var stage := String(memory.get("route_plan_stage", ""))
 	var intent := String(memory.get("strategic_intent", ""))
-	return "AI:%s/%s/%s" % [
+	return "AI:%s｜%s/%s/%s" % [
+		_ai_development_route_summary_text(player_index),
 		product if product != "" else "未定商品",
 		_ai_route_plan_stage_label(stage),
 		_ai_strategy_intent_label(intent),
@@ -4903,6 +5138,7 @@ func _close_fullscreen_map() -> void:
 func _show_menu(title_text: String, body_text: String, can_continue: bool, show_main_actions: bool = false) -> void:
 	if menu_overlay == null:
 		return
+	_refresh_menu_layout()
 	if time_scale > 0.0:
 		speed_before_menu = time_scale
 	time_scale = 0.0
@@ -4930,6 +5166,7 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 		menu_bestiary_next_button.visible = false
 		menu_bestiary_back_button.visible = false
 	menu_overlay.visible = true
+	_refresh_menu_layout()
 	_refresh_ui()
 
 
@@ -5138,13 +5375,11 @@ func _valid_bestiary_index(index: int) -> int:
 
 
 func _bestiary_grid_columns() -> int:
-	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-	return clampi(int(floor((viewport_size.x - 180.0) / 178.0)), 2, 4)
+	return clampi(int(floor(_menu_available_content_width() / 180.0)), 2, 5)
 
 
 func _bestiary_grid_rows() -> int:
-	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-	return clampi(int(floor((viewport_size.y - 260.0) / 176.0)), 1, 3)
+	return clampi(int(floor(_menu_available_content_height() / 176.0)), 1, 4)
 
 
 func _bestiary_entries_per_page() -> int:
@@ -5449,13 +5684,11 @@ func _update_card_codex_menu() -> void:
 
 
 func _card_codex_grid_columns() -> int:
-	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-	return clampi(int(floor((viewport_size.x - 180.0) / 150.0)), 2, 4)
+	return clampi(int(floor(_menu_available_content_width() / 155.0)), 2, 5)
 
 
 func _card_codex_grid_rows() -> int:
-	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-	return clampi(int(floor((viewport_size.y - 260.0) / 180.0)), 1, 3)
+	return clampi(int(floor(_menu_available_content_height() / 180.0)), 1, 4)
 
 
 func _card_codex_cards_per_page() -> int:
@@ -5830,13 +6063,11 @@ func _valid_product_codex_index(index: int) -> int:
 
 
 func _product_codex_grid_columns() -> int:
-	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-	return clampi(int(floor((viewport_size.x - 180.0) / 170.0)), 2, 4)
+	return clampi(int(floor(_menu_available_content_width() / 170.0)), 2, 5)
 
 
 func _product_codex_grid_rows() -> int:
-	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-	return clampi(int(floor((viewport_size.y - 260.0) / 150.0)), 1, 3)
+	return clampi(int(floor(_menu_available_content_height() / 150.0)), 1, 4)
 
 
 func _product_codex_entries_per_page() -> int:
@@ -9661,6 +9892,8 @@ func _toggle_pause() -> void:
 
 
 func _refresh_ui() -> void:
+	if menu_overlay != null and menu_overlay.visible:
+		_refresh_menu_layout()
 	_refresh_status()
 	_refresh_weather_forecast_strip()
 	_refresh_card_resolution_track()
