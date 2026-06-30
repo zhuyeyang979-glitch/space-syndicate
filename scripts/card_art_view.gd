@@ -82,7 +82,7 @@ func _draw_motif(rect: Rect2) -> void:
 		"player_role":
 			_draw_role_motif(center, radius)
 		"monster_card":
-			_draw_claw_motif(center, radius)
+			_draw_monster_card_motif(center, radius)
 		"monster_bound_action":
 			_draw_wave_motif(center, radius)
 		"monster_takeover":
@@ -147,6 +147,103 @@ func _draw_role_motif(center: Vector2, radius: float) -> void:
 	var visor := Rect2(center + Vector2(-radius * 0.32, -radius * 0.10), Vector2(radius * 0.64, radius * 0.20))
 	draw_rect(visor, Color("#0f172a"), true)
 	draw_rect(visor, trim, false, 1.2)
+	_draw_role_variant_marks(center, radius, _name_seed() % 8)
+
+
+func _draw_role_variant_marks(center: Vector2, radius: float, variant: int) -> void:
+	var color := accent.lightened(0.42)
+	color.a = 0.72
+	var soft := accent.lightened(0.22)
+	soft.a = 0.34
+	match variant:
+		0:
+			for i in range(3):
+				var y := center.y - radius * 0.44 + float(i) * radius * 0.24
+				draw_line(center + Vector2(-radius * 0.72, y), center + Vector2(radius * 0.72, y + radius * 0.12), color, 1.5, true)
+		1:
+			for i in range(3):
+				draw_arc(center, radius * (0.48 + float(i) * 0.12), -PI * 0.12, PI * 1.12, 48, color, 1.4, true)
+		2:
+			for i in range(4):
+				var angle := float(i) * TAU / 4.0 + PI * 0.25
+				var p := center + Vector2(cos(angle), sin(angle)) * radius * 0.58
+				draw_circle(p, radius * 0.09, soft)
+				draw_line(center, p, color, 1.2, true)
+		3:
+			var crown := PackedVector2Array([
+				center + Vector2(-radius * 0.52, -radius * 0.36),
+				center + Vector2(-radius * 0.22, -radius * 0.68),
+				center + Vector2(0.0, -radius * 0.36),
+				center + Vector2(radius * 0.22, -radius * 0.68),
+				center + Vector2(radius * 0.52, -radius * 0.36),
+			])
+			draw_polyline(crown, color, 2.0, false)
+		4:
+			for i in range(5):
+				var x := center.x - radius * 0.52 + float(i) * radius * 0.26
+				draw_rect(Rect2(Vector2(x, center.y + radius * 0.34), Vector2(radius * 0.10, radius * 0.28 + float(i % 2) * radius * 0.10)), soft, true)
+		5:
+			for i in range(3):
+				var p := center + Vector2(float(i - 1) * radius * 0.34, -radius * 0.52)
+				draw_circle(p, radius * 0.075, color)
+				draw_line(p, p + Vector2(radius * 0.18, radius * 0.30), color, 1.4, true)
+		6:
+			draw_arc(center + Vector2(0.0, radius * 0.18), radius * 0.62, PI * 1.04, PI * 1.96, 42, color, 2.0, true)
+			draw_arc(center + Vector2(0.0, radius * 0.18), radius * 0.42, PI * 1.08, PI * 1.92, 42, color, 1.5, true)
+		_:
+			var diamond := PackedVector2Array([
+				center + Vector2(0.0, -radius * 0.62),
+				center + Vector2(radius * 0.34, -radius * 0.20),
+				center + Vector2(0.0, radius * 0.22),
+				center + Vector2(-radius * 0.34, -radius * 0.20),
+			])
+			draw_polyline(diamond, color, 1.8, true)
+
+
+func _draw_monster_card_motif(center: Vector2, radius: float) -> void:
+	var identity := "%s %s" % [card_name, card_tags]
+	if _contains_any(identity, ["飞", "空", "翼", "流星", "希卡", "梦比"]):
+		_draw_motion_motif(center, radius)
+		_draw_wing_marks(center, radius)
+		return
+	if _contains_any(identity, ["海", "水", "深", "潮", "菌", "尸套", "瘴", "腐"]):
+		_draw_wave_motif(center, radius)
+		_draw_miasma_motif(center + Vector2(radius * 0.10, -radius * 0.08), radius * 0.70)
+		return
+	if _contains_any(identity, ["甲", "铠", "盾", "壳", "机械", "杰克", "装甲"]):
+		_draw_shield_motif(center, radius)
+		_draw_claw_motif(center + Vector2(radius * 0.06, 0.0), radius * 0.78)
+		return
+	if _contains_any(identity, ["火", "焰", "热", "熔", "光线"]):
+		_draw_flare_motif(center, radius)
+		_draw_claw_motif(center, radius * 0.72)
+		return
+	if _contains_any(identity, ["地", "钻", "潜", "砂", "岩"]):
+		_draw_crack_motif(center, radius)
+		_draw_motion_motif(center + Vector2(0.0, radius * 0.12), radius * 0.66)
+		return
+	_draw_claw_motif(center, radius)
+
+
+func _draw_wing_marks(center: Vector2, radius: float) -> void:
+	var color := accent.lightened(0.34)
+	color.a = 0.48
+	for side in [-1, 1]:
+		var inner := center + Vector2(float(side) * radius * 0.10, -radius * 0.06)
+		var outer := center + Vector2(float(side) * radius * 0.78, -radius * 0.48)
+		var tip := center + Vector2(float(side) * radius * 0.52, radius * 0.24)
+		draw_polyline(PackedVector2Array([inner, outer, tip, inner]), color, 2.0, true)
+
+
+func _draw_flare_motif(center: Vector2, radius: float) -> void:
+	var flame := accent.lightened(0.30)
+	flame.a = 0.46
+	for i in range(8):
+		var angle := float(i) * TAU / 8.0
+		var inner := center + Vector2(cos(angle), sin(angle)) * radius * 0.22
+		var outer := center + Vector2(cos(angle), sin(angle)) * radius * (0.58 + float(i % 2) * 0.18)
+		draw_line(inner, outer, flame, 2.4, true)
+	draw_circle(center, radius * 0.28, flame)
 
 
 func _draw_coin_motif(center: Vector2, radius: float) -> void:
@@ -463,6 +560,13 @@ func _short_text(text: String, max_len: int) -> String:
 	if text.length() <= max_len:
 		return text
 	return text.left(max(1, max_len - 1)) + "…"
+
+
+func _contains_any(text: String, needles: Array) -> bool:
+	for needle_variant in needles:
+		if text.find(String(needle_variant)) >= 0:
+			return true
+	return false
 
 
 func _name_seed() -> int:

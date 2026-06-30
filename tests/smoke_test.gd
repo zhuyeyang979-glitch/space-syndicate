@@ -115,6 +115,7 @@ func _run() -> void:
 	_expect(int(empty_field_event_parts.get("monster", -1)) == 0, "event targeting handles an empty monster field without a legacy A/B fallback")
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
 	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards with positive mechanical benefits")
+	_expect(_verify_random_ai_roles_resolve_unique(main), "random AI role setup resolves to public non-duplicate role cards")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, cashflow product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
@@ -130,8 +131,8 @@ func _run() -> void:
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
 	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, settle, and restore cleanly")
-	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
-	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
+	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify starting cash without touching starter monsters")
+	_expect(_starting_monster_cards_match_configured_choices(main, players), "starter monster cards come from independent setup choices, not role-card fingerprints")
 	var player_box := main.get("player_box") as VBoxContainer
 	_expect(player_box != null and _container_label_text_contains(player_box, "手牌卡面") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示"), "player panel shows one concise next-action hint")
@@ -166,9 +167,9 @@ func _run() -> void:
 	_expect(String(main.call("_monster_card_region_text", first_starting_card)).contains("起始怪兽牌"), "starter card rules visibly say that its summon region is unrestricted")
 	var regular_monster_card := main.call("_make_skill", String(first_starting_card.get("name", main.call("_monster_card_name", 0, 1)))) as Dictionary
 	_expect(int(regular_monster_card.get("hp", 0)) > 0 and float(regular_monster_card.get("duration", 0.0)) > 0.0 and float(regular_monster_card.get("move", 0.0)) > 0.0, "monster cards carry HP, field duration, and movement attributes")
-	_expect(String(first_starting_card.get("role_passive_summary", "")) != "" and float(first_starting_card.get("move", 0.0)) > float(regular_monster_card.get("move", 0.0)), "role passive modifies the starter monster card attributes")
+	_expect(String(first_starting_card.get("role_passive_summary", "")) == "" and is_equal_approx(float(first_starting_card.get("move", 0.0)), float(regular_monster_card.get("move", 0.0))), "role passives do not modify starter monster movement or expose ownership fingerprints")
 	var fourth_starter := ((_as_array((players[3] as Dictionary).get("slots", [])))[0]) as Dictionary
-	_expect(int(fourth_starter.get("fixed_skill_count", 0)) > int((main.call("_make_skill", String(fourth_starter.get("name", ""))) as Dictionary).get("fixed_skill_count", 0)), "role passive can increase starter monster bound-skill count")
+	_expect(int(fourth_starter.get("fixed_skill_count", 0)) == int((main.call("_make_skill", String(fourth_starter.get("name", ""))) as Dictionary).get("fixed_skill_count", 0)), "role passives do not increase starter monster bound-skill count")
 	_expect(String(regular_monster_card.get("summon_access", "")).ends_with("monster_zone"), "post-start monster cards carry a landed-or-adjacent monster-zone summon restriction")
 	_expect(String(main.call("_card_art_stats", regular_monster_card)).contains("HP") and String(main.call("_card_art_stats", regular_monster_card)).contains("怪区"), "monster-card artwork prints HP, duration, movement, and region access")
 	_expect(_all_monster_cards_have_field_attributes(main), "every monster card rank defines HP, movement, duration, and summon-region attributes")
@@ -209,14 +210,14 @@ func _run() -> void:
 	_expect(_summoned_monsters_have_hidden_owners(auto_monsters), "summoned monster ownership starts hidden while HP and duration are visible")
 	_expect(_verify_monster_owner_damage_cash_clue(main), "monster damage cash clues reveal ownership with max-HP proportional losses")
 	var first_actor := auto_monsters[0] as Dictionary
-	_expect(int(first_actor.get("max_hp", 0)) == int(first_starting_card.get("hp", -1)) and is_equal_approx(float(first_actor.get("duration", 0.0)), float(first_starting_card.get("duration", -1.0))), "role-modified starter monster-card HP and duration become the summoned monster's field attributes")
+	_expect(int(first_actor.get("max_hp", 0)) == int(first_starting_card.get("hp", -1)) and is_equal_approx(float(first_actor.get("duration", 0.0)), float(first_starting_card.get("duration", -1.0))), "starter monster card HP and duration become the summoned monster's field attributes without role overrides")
 	_expect(_verify_monster_card_runtime_overrides(main), "summoned monsters read HP, duration, and movement directly from their played card")
 	_expect(_verify_field_monster_card_upgrade_refreshes_state(main), "same-name monster cards upgrade an owned field monster and refresh HP, duration, and damage-cash risk")
 	_expect(_verify_monster_duration_expiry(main), "a monster automatically leaves when its card field duration expires")
 	_expect(_verify_monster_card_play_cash_cost(main), "monster-card play cash cost scales with field monster count and records card spend")
 	_expect(_verify_ranked_monster_action_weights(main, first_actor), "summoned higher-rank monsters use rank-tilted auto-action probability weights")
 	_expect(_player_has_bound_monster_skill(players, 0), "summoning a monster grants its owner a persistent bound skill card")
-	_expect(_player_bound_monster_skill_count(players, 3) >= 2, "fixed-skill role passive grants extra bound monster skills after summoning")
+	_expect(_player_bound_monster_skill_count(players, 3) >= 1, "summoning grants printed bound monster skills without role-based starter boosts")
 	_expect(_verify_bound_monster_skill_persistence(main), "bound monster skills stay in hand and enter cooldown after use")
 	_expect(_verify_monster_lure_replaces_control_window(main), "monster lure cards replace old control-window cards with one-shot anonymous movement guidance")
 	_expect(_verify_anonymous_cash_card(main), "cash-card public events hide the player who played the card")
@@ -416,7 +417,7 @@ func _run() -> void:
 	_expect(menu_interaction_hint_panel != null and menu_interaction_hint_panel.has_theme_stylebox_override("panel") and menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("响应式主菜单") and menu_interaction_hint_label.text.contains("分区卡片网格") and menu_interaction_hint_label.text.contains("自动重排") and menu_interaction_hint_label.text.contains("hover"), "main menu exposes a reusable interaction hint strip for responsive card-grid layout, hover, and future menu rearrangement")
 	_expect(menu_quick_nav_row != null and menu_quick_nav_row.visible and _container_button_text_contains(menu_quick_nav_row, "开局") and _container_button_text_contains(menu_quick_nav_row, "经济") and _container_button_text_contains(menu_quick_nav_row, "情报") and _container_button_text_contains(menu_quick_nav_row, "图鉴"), "main menu exposes reusable quick navigation chips for major branches")
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
-	_expect(menu_content_scroll != null and menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column")
+	_expect(menu_content_scroll != null and not menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column without focus-jumping on hover")
 	_expect(menu_overlay != null and _container_has_meta(menu_overlay, "main_menu_action_grid") and _container_has_meta(menu_overlay, "main_menu_grid_card"), "main menu arranges branch entries as reusable responsive card grids")
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
 	_expect(menu_body_label != null and menu_body_label.text.contains("游戏规则") and not menu_body_label.text.contains("快捷键："), "main menu keeps detailed controls inside the rules branch")
@@ -445,7 +446,7 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "monster_card"), "new-run setup previews starter monster-card art")
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "不限区"), "new-run setup starter card art shows the unrestricted first-summon access")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "固定技能") and _container_label_text_contains(menu_preview_box, "开放购牌"), "new-run setup explains starter summon rewards and card-access radius")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主路线"), "new-run setup exposes each AI seat's primary development route")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "随机角色") and not _container_label_text_contains(menu_preview_box, "主路线"), "new-run setup supports random AI roles while hiding AI internal development routes")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "上一个角色") and _container_button_text_contains(menu_preview_box, "下一个角色"), "new-run setup exposes per-player alien role switching")
 	var first_role_before_setup := int(role_indices_before_setup[0]) if not role_indices_before_setup.is_empty() else 0
 	main.call("_cycle_configured_role_for_player_from_new_game_menu", 0, 1)
@@ -500,7 +501,7 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "局势排名", "standings menu opens from the main scene")
 	_expect(menu_body_label != null and menu_body_label.text.contains("预估结算资金"), "standings menu explains estimated settlement money")
-	_expect(menu_body_label != null and menu_body_label.text.contains("AI对局压力") and menu_body_label.text.contains("不显示现金/手牌") and menu_body_label.text.contains("反制建议") and menu_body_label.text.contains("推荐卡牌路线"), "standings menu summarizes public AI pressure, counterplay, and card-route responses without leaking rival cash or hands")
+	_expect(menu_body_label != null and menu_body_label.text.contains("公开异动") and menu_body_label.text.contains("对手计划、现金和手牌保持隐藏") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("反制建议") and not menu_body_label.text.contains("推荐卡牌路线"), "standings menu shows only public situation clues and hides AI route/bucket data")
 	_expect(menu_body_label != null and menu_body_label.text.contains("情报待结算"), "standings keeps intelligence cash pending until final settlement")
 	_expect(menu_body_label != null and menu_body_label.text.contains("存活城市1×"), "standings menu reflects built city assets")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "局势速览") and _container_label_text_contains(menu_preview_box, "终局条件") and _container_label_text_contains(menu_preview_box, "我的可见资金"), "standings menu exposes compact victory and cash summary cards")
@@ -510,7 +511,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("情报现金只在终局兑现"), "economy overview avoids revealing intelligence correctness early")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品热榜") and menu_body_label.text.contains("低价/供给压制"), "economy overview shows product price gradients")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商路收入前景") and menu_body_label.text.contains("玩家经济隐私"), "economy overview shows route prospects while keeping rival economics private")
-	_expect(menu_body_label != null and menu_body_label.text.contains("AI对局压力") and menu_body_label.text.contains("公开路线观察") and menu_body_label.text.contains("不显示现金/手牌") and menu_body_label.text.contains("反制建议") and menu_body_label.text.contains("推荐卡牌路线"), "economy overview shows AI route pressure, counterplay, and card-route responses without revealing private economy or hand information")
+	_expect(menu_body_label != null and menu_body_label.text.contains("公开异动") and menu_body_label.text.contains("对手计划、现金和手牌保持隐藏") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("公开路线观察") and not menu_body_label.text.contains("推荐卡牌路线"), "economy overview shows public results while hiding AI route/bucket data")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气") and menu_body_label.text.contains("最近卡牌余波"), "economy overview explains active product weather and recent card aftermath")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最近城市公开线索") and menu_body_label.text.contains("类型:") and menu_body_label.text.contains("线索商品:"), "economy overview aggregates structured anonymous city clues")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最近怪兽资金线索") and menu_body_label.text.contains("最大生命比例"), "economy overview explains monster damage cash clues")
@@ -518,7 +519,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("公开状态["), "economy overview shows unified public status tags")
 	_expect(menu_body_label != null and menu_body_label.text.contains("流水"), "economy overview shows player economy ledger entries")
 	_expect(menu_body_label != null and menu_body_label.text.contains("收入拆解") and menu_body_label.text.contains("合约"), "economy overview shows city income breakdowns and temporary contract status")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "经济速览") and _container_label_text_contains(menu_preview_box, "商品热榜") and _container_label_text_contains(menu_preview_box, "AI压力") and _container_label_text_contains(menu_preview_box, "匿名线索"), "economy overview exposes compact GDP, product, route, AI pressure, and clue summary cards")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "经济速览") and _container_label_text_contains(menu_preview_box, "商品热榜") and _container_label_text_contains(menu_preview_box, "公开异动") and _container_label_text_contains(menu_preview_box, "匿名线索"), "economy overview exposes compact GDP, product, route, public-situation, and clue summary cards")
 	main.call("_open_intel_dossier_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "intel dossier opens from the main scene")
@@ -617,9 +618,6 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "区域图鉴"), "compendium exposes region codex")
 	players = _as_array(main.get("players"))
 	var first_role := (players[0] as Dictionary).get("role_card", {}) as Dictionary
-	var first_role_starter_card := String(first_role.get("starter_monster_card", ""))
-	var first_role_starter_monster := String(first_role.get("starter_monster_name", ""))
-	var first_role_starter_monster_index := int(first_role.get("starter_monster_index", -1))
 	main.call("_open_role_codex_from_compendium")
 	await process_frame
 	var menu_bestiary_back_button := main.get("menu_bestiary_back_button") as Button
@@ -627,23 +625,12 @@ func _run() -> void:
 	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "role codex returns to the compendium")
 	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("特征") and menu_body_label.text.contains("角色被动") and menu_body_label.text.contains("起始怪兽牌"), "role codex explains role traits, passives, and starter monster cards")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "player_role"), "role codex displays role cards with the shared card-art component")
-	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "起始:"), "role codex card art prints the starter monster-card line")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "点击查看卡牌图鉴"), "role codex links the starter monster card to card codex")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "查看怪兽图鉴"), "role codex links the starter monster to monster codex")
-	_expect(menu_preview_box != null and _container_button_tooltip_contains(menu_preview_box, "召唤区域"), "role codex starter-card link exposes summon-region details on hover")
+	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "公开身份") and not _container_card_art_stats_contains(menu_preview_box, "起始:"), "role codex card art presents public identity without starter-monster fingerprints")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "独立选择") and not _container_button_text_contains(menu_preview_box, "点击查看卡牌图鉴") and not _container_button_text_contains(menu_preview_box, "查看怪兽图鉴"), "role codex does not link roles to starter monster cards")
 	var old_role_text := menu_body_label.text
 	main.call("_cycle_menu_catalog", 1)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "角色图鉴" and menu_body_label.text != old_role_text, "role codex next button logic changes pages")
-	main.call("_open_role_starter_card_in_codex", first_role_starter_card)
-	await process_frame
-	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽卡") and menu_body_label.text.contains("生命"), "role starter-card link can jump to the matching card codex entry")
-	main.call("_open_role_codex_from_compendium")
-	await process_frame
-	main.call("_open_role_starter_monster_in_bestiary", first_role_starter_monster_index)
-	await process_frame
-	menu_bestiary_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽图鉴" and menu_body_label != null and menu_body_label.text.contains(first_role_starter_monster) and menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回缩略图", "role starter-monster link can jump to the matching monster detail entry")
 	main.call("_open_bestiary_from_compendium")
 	await process_frame
 	menu_bestiary_back_button = main.get("menu_bestiary_back_button") as Button
@@ -685,7 +672,7 @@ func _run() -> void:
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "AI发展路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线5/5覆盖") and _container_label_text_contains(menu_preview_box, "AI偏好") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "反制"), "card codex exposes data-driven strategy route overview cards with AI route coverage, strength, and counterplay windows")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线5/5覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
@@ -701,13 +688,12 @@ func _run() -> void:
 	var card_codex_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌详情页") and menu_interaction_hint_label.text.contains("上一页/下一页") and menu_interaction_hint_label.text.contains("返回缩略图"), "card detail page exposes the shared previous/next and return-to-thumbnail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("参考价") and menu_body_label.text.contains("档"), "card detail shows card price and explicit tier information")
-	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and menu_body_label.text.contains("升级预览") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices and shows Roman-numeral level gradients")
-	_expect(menu_body_label != null and menu_body_label.text.contains("策略路线:城市成长") and menu_body_label.text.contains("用途:"), "card detail explains why the card is useful in a strategy route")
-	_expect(menu_body_label != null and menu_body_label.text.contains("强度预算") and menu_body_label.text.contains("制衡:"), "card detail explains the strength budget and counterplay window")
-	_expect(menu_body_label != null and menu_body_label.text.contains("结算演出") and menu_body_label.text.contains("开场：") and menu_body_label.text.contains("余波："), "card detail shows a per-card resolution animation script")
-	_expect(menu_body_label != null and menu_body_label.text.contains("视觉提示") and menu_body_label.text.contains("地图播报"), "card detail links each card animation script to its map visual cue")
+	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices with Roman-numeral ranks")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "牌面定位") and _container_label_text_contains(menu_preview_box, "费用与门槛") and _container_label_text_contains(menu_preview_box, "核心效果") and _container_label_text_contains(menu_preview_box, "关键字段"), "card detail uses TCG-style sections for purpose, cost, effect, and key fields")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "I-IV升级梯度") and _container_label_text_contains(menu_preview_box, "预算:"), "card detail shows a structured I-IV level-gradient grid")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "结算演出") and _container_label_text_contains(menu_preview_box, "匿名"), "card detail shows the public anonymous resolution presentation")
 	_expect(card_codex_back_button != null and card_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "card detail exposes previous/next and a return-to-thumbnails button")
-	_expect(menu_body_label != null and menu_body_label.text.contains("城市融资") and menu_body_label.text.contains("匿名投资光幕"), "city economy cards use their own resolution animation script")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "匿名投资光幕"), "city economy cards use their own resolution animation script")
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册"), "card detail can return to the thumbnail grid")
@@ -869,8 +855,10 @@ func _players_have_role_cards(main: Node, players: Array) -> bool:
 			return false
 		if String(role.get("name", "")) == "" or String(role.get("species", "")) == "" or String(role.get("trait", "")) == "":
 			return false
-		var starter_card := String(role.get("starter_monster_card", ""))
-		if starter_card == "" or not bool(main.call("_is_monster_card_name", starter_card)):
+		for starter_field in ["starter_monster_index", "starter_monster_name", "starter_monster_card", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
+			if role.has(starter_field):
+				return false
+		if not role.has("role_index"):
 			return false
 	return not players.is_empty()
 
@@ -882,7 +870,7 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 		if String(role.get("passive", "")) == "":
 			return false
 		var has_mechanical_field := false
-		for field_name in ["starting_cash_bonus", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus", "resource_cash_product", "bonus_card_product", "monster_upgrade_cash"]:
+		for field_name in ["starting_cash_bonus", "resource_cash_product", "resource_cash_amount", "bonus_card_product", "monster_upgrade_cash", "intel_city_reveal_charges", "intel_card_trace_charges", "intel_contract_trace_charges", "city_guess_reward_bonus", "card_owner_guess_discount", "card_owner_guess_bonus", "contract_flow_discount", "card_access_extra_hops", "card_access_global"]:
 			if role.has(field_name):
 				has_mechanical_field = true
 				break
@@ -891,9 +879,26 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 	return not players.is_empty()
 
 
+func _starting_cash_matches_role_bonuses(players: Array) -> bool:
+	if players.is_empty():
+		return false
+	var baseline := 0
+	var saw_cash_bonus := false
+	for i in range(players.size()):
+		var player := players[i] as Dictionary
+		var role := player.get("role_card", {}) as Dictionary
+		var bonus := int(role.get("starting_cash_bonus", 0))
+		if i == 0:
+			baseline = int(player.get("cash", 0)) - bonus
+		if int(player.get("cash", 0)) != baseline + bonus:
+			return false
+		saw_cash_bonus = saw_cash_bonus or bonus > 0
+	return baseline > 0 and saw_cash_bonus
+
+
 func _role_catalog_has_positive_cards(main: Node) -> bool:
 	var role_count := int(main.call("_player_role_catalog_size"))
-	if role_count < 12:
+	if role_count < 16:
 		return false
 	var names := {}
 	var has_city_intel_role := false
@@ -906,11 +911,10 @@ func _role_catalog_has_positive_cards(main: Node) -> bool:
 		if role_name == "" or names.has(role_name) or String(role.get("species", "")) == "" or String(role.get("passive", "")) == "":
 			return false
 		names[role_name] = true
+		for starter_field in ["starter_monster_index", "starter_monster_name", "starter_monster_card", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
+			if role.has(starter_field):
+				return false
 		var has_positive_benefit := int(role.get("starting_cash_bonus", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("starter_hp_bonus", 0)) > 0
-		has_positive_benefit = has_positive_benefit or float(role.get("starter_duration_bonus", 0.0)) > 0.0
-		has_positive_benefit = has_positive_benefit or float(role.get("starter_move_multiplier", 1.0)) > 1.0
-		has_positive_benefit = has_positive_benefit or int(role.get("starter_fixed_skill_bonus", 0)) > 0
 		has_positive_benefit = has_positive_benefit or int(role.get("resource_cash_amount", 0)) > 0
 		has_positive_benefit = has_positive_benefit or String(role.get("bonus_card_product", "")) != ""
 		has_positive_benefit = has_positive_benefit or int(role.get("monster_upgrade_cash", 0)) > 0
@@ -936,9 +940,39 @@ func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
 	var bonus_card_role := main.call("_make_player_role_card", 0, 0) as Dictionary
 	var resource_role := main.call("_make_player_role_card", 0, 1) as Dictionary
 	var upgrade_role := main.call("_make_player_role_card", 0, 3) as Dictionary
-	return String(main.call("_role_card_art_stats", bonus_card_role)).contains("购牌:环晶电池+1") \
+	return String(main.call("_role_card_art_stats", bonus_card_role)).contains("公开身份") \
+		and String(main.call("_role_card_art_stats", bonus_card_role)).contains("购牌:环晶电池+1") \
 		and String(main.call("_role_card_art_stats", resource_role)).contains("现金流:深海菌毯+¥55/min") \
-		and String(main.call("_role_card_art_stats", upgrade_role)).contains("升兽:+¥120")
+		and String(main.call("_role_card_art_stats", upgrade_role)).contains("升兽:+¥160")
+
+
+func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var random_index := -1
+	main.set("configured_player_count", 8)
+	main.set("configured_ai_player_count", 7)
+	main.set("configured_role_indices", [0, random_index, random_index, random_index, random_index, random_index, random_index, random_index])
+	main.call("_ensure_configured_role_indices")
+	var configured := _as_array(main.get("configured_role_indices"))
+	ok = ok and configured.size() >= 8 and int(configured[1]) == random_index and int(configured[7]) == random_index
+	main.call("_new_game")
+	var players := _as_array(main.get("players"))
+	var used := {}
+	ok = ok and players.size() == 8
+	for player_variant in players:
+		var player := player_variant as Dictionary
+		var role := player.get("role_card", {}) as Dictionary
+		var role_index := int(role.get("role_index", -1))
+		if role_index < 0 or used.has(role_index):
+			ok = false
+			break
+		used[role_index] = true
+		if String(role.get("name", "")) == "随机角色":
+			ok = false
+			break
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _role_index_by_name(main: Node, role_name: String) -> int:
@@ -1232,7 +1266,7 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		var saw_summary_log := false
 		var saw_card_summary := false
 		var saw_monster_summary := false
-		var saw_ai_route_summary := false
+		var saw_hidden_plan_summary := false
 		var saw_player_breakdown := false
 		for line_variant in _as_array(main.get("log_lines")):
 			var line := String(line_variant)
@@ -1244,13 +1278,13 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 				saw_card_summary = true
 			if line.contains("怪兽影响"):
 				saw_monster_summary = true
-			if line.contains("AI路线"):
-				saw_ai_route_summary = true
+			if line.contains("对手计划") and line.contains("内部决策"):
+				saw_hidden_plan_summary = true
 			if line.contains("玩家概览"):
 				saw_player_breakdown = true
 		var standings_text := String(main.call("_standings_text"))
-		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_ai_route_summary and saw_player_breakdown
-		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("AI路线") and standings_text.contains("发展路线") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报")
+		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_hidden_plan_summary and saw_player_breakdown
+		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("对手计划") and standings_text.contains("内部决策") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报") and not standings_text.contains("AI路线") and not standings_text.contains("发展路线")
 		var final_menu_title := main.get("menu_title_label") as Label
 		var final_menu_body := main.get("menu_body_label") as Label
 		var final_menu_preview := main.get("menu_preview_box") as VBoxContainer
@@ -1303,19 +1337,28 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 	var hand_before := int(main.call("_player_counted_hand_size", players[0] as Dictionary))
 	var bonus_card_granted := bool(main.call("_grant_role_bonus_card_on_purchase", 0, district_index, ""))
 	var hand_after := int(main.call("_player_counted_hand_size", players[0] as Dictionary))
-	(players[0] as Dictionary)["role_card"] = main.call("_make_player_role_card", 0, 1)
+	players = _as_array(main.get("players")).duplicate(true)
+	var resource_player := players[0] as Dictionary
+	resource_player["role_card"] = main.call("_make_player_role_card", 0, 1)
+	players[0] = resource_player
+	main.set("players", players)
 	var cash_before_resource := int((players[0] as Dictionary).get("cash", 0))
 	var resource_reward := int(main.call("_apply_role_market_income_bonus", 0, district_index))
+	players = _as_array(main.get("players")).duplicate(true)
 	var cash_after_resource := int((players[0] as Dictionary).get("cash", 0))
-	(players[0] as Dictionary)["role_card"] = main.call("_make_player_role_card", 0, 3)
+	var upgrade_player := players[0] as Dictionary
+	upgrade_player["role_card"] = main.call("_make_player_role_card", 0, 3)
+	players[0] = upgrade_player
+	main.set("players", players)
 	var cash_before_upgrade := int((players[0] as Dictionary).get("cash", 0))
 	var upgrade_reward := int(main.call("_apply_role_monster_upgrade_cash", 0, "测试怪兽", 1, 2, Vector2.ZERO))
+	players = _as_array(main.get("players")).duplicate(true)
 	var cash_after_upgrade := int((players[0] as Dictionary).get("cash", 0))
 	var total_role_income := int((players[0] as Dictionary).get("total_role_income", 0))
 	var passed := bonus_card_granted and hand_after == hand_before + 1
 	passed = passed and resource_reward == 55 and cash_after_resource == cash_before_resource + 55
-	passed = passed and upgrade_reward == 120 and cash_after_upgrade == cash_before_upgrade + 120
-	passed = passed and total_role_income == 175
+	passed = passed and upgrade_reward == 160 and cash_after_upgrade == cash_before_upgrade + 160
+	passed = passed and total_role_income == 215
 	players[0] = saved_player
 	districts[district_index] = saved_district
 	main.set("players", players)
@@ -2434,7 +2477,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		failures.append("not game over")
 		ok = false
 	var standings_text := String(main.call("_standings_text"))
-	if not standings_text.contains("终局总结") or not standings_text.contains("AI路线") or not standings_text.contains("发展路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
+	if not standings_text.contains("终局总结") or not standings_text.contains("对手计划") or not standings_text.contains("内部决策") or standings_text.contains("AI路线") or standings_text.contains("发展路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
 		failures.append("missing final summary")
 		ok = false
 	var final_menu_title := main.get("menu_title_label") as Label
@@ -2503,17 +2546,22 @@ func _verify_remote_supply_access(main: Node) -> bool:
 	return ok and restore_result == OK
 
 
-func _starting_monster_cards_match_roles(players: Array) -> bool:
-	for player_variant in players:
-		var player := player_variant as Dictionary
+func _starting_monster_cards_match_configured_choices(main: Node, players: Array) -> bool:
+	for player_index in range(players.size()):
+		var player := players[player_index] as Dictionary
 		var role := player.get("role_card", {}) as Dictionary
 		var slots := _as_array(player.get("slots", []))
 		if role.is_empty() or slots.is_empty() or slots[0] == null:
 			return false
 		var starter := slots[0] as Dictionary
-		if String(starter.get("name", "")) != String(role.get("starter_monster_card", "")):
+		var expected_index := int(main.call("_configured_starter_monster_index", player_index))
+		var expected_name := String(main.call("_monster_card_name", expected_index, 1))
+		if String(starter.get("name", "")) != expected_name:
 			return false
-		if String(starter.get("source_role", "")) != String(role.get("name", "")):
+		for starter_field in ["starter_monster_index", "starter_monster_name", "starter_monster_card", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
+			if role.has(starter_field):
+				return false
+		if starter.has("source_role") or starter.has("starter_role_index") or starter.has("role_passive_summary"):
 			return false
 	return not players.is_empty()
 
@@ -5358,8 +5406,8 @@ func _verify_card_art_script() -> void:
 		get_root().add_child(card_view)
 		card_view.call("set_card", "怪兽·尸套龙1", "monster_card", "怪兽卡 / 召唤", Color("#fb7185"), 1, false, "HP50｜95s｜移190m｜怪区邻接")
 		_expect(String(card_view.get("card_stats")).contains("HP50"), "card art accepts an on-face monster attribute line")
-		card_view.call("set_card", "环港走私议会", "player_role", "角色卡 / 蜂冠商族", Color("#38bdf8"), 1, false, "起始:怪兽·机械杰克 I")
-		_expect(String(card_view.get("card_kind")) == "player_role" and String(card_view.get("card_stats")).contains("起始:"), "card art accepts player-role card faces")
+		card_view.call("set_card", "环港走私议会", "player_role", "角色卡 / 蜂冠商族", Color("#38bdf8"), 1, false, "公开身份｜购牌:环晶电池+1")
+		_expect(String(card_view.get("card_kind")) == "player_role" and String(card_view.get("card_stats")).contains("公开身份"), "card art accepts public player-role card faces without starter fingerprints")
 		card_view.queue_free()
 
 
@@ -5508,8 +5556,8 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 	ok = ok and all_names.has("区域供需合约1")
 	ok = ok and String(main.call("_card_codex_filter_label", "monster")) == "怪兽牌"
 	ok = ok and String(main.call("_card_codex_filter_label", "business")) == "经营/合约"
-	ok = ok and monster_text.contains("分类:怪兽牌")
-	ok = ok and contract_text.contains("分类:经营/合约")
+	ok = ok and monster_text.contains("分类：怪兽牌")
+	ok = ok and contract_text.contains("分类：经营/合约")
 	return ok
 
 

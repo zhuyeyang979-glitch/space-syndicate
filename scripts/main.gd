@@ -10,6 +10,7 @@ const DEFAULT_PLAYER_COUNT := 4
 const MIN_AI_PLAYER_COUNT := 2
 const MAX_AI_PLAYER_COUNT := 7
 const DEFAULT_AI_PLAYER_COUNT := 3
+const ROLE_RANDOM_INDEX := -1
 const ROGUELIKE_DEPTH_MIN := 1
 const ROGUELIKE_DEPTH_MAX := 6
 const DEFAULT_ROGUELIKE_DEPTH := 1
@@ -217,22 +218,18 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "环港走私议会",
 		"species": "蜂冠商族",
-		"starter_monster_index": 2,
 		"trait": "高速物流与电池黑市专家；喜欢把怪兽登陆伪装成货运事故。",
-		"passive": "开局资金+¥80；起始怪兽移动+15%；在含环晶电池的区域购牌时，免费额外获得1张同区候选牌。",
+		"passive": "开局资金+¥80；在含环晶电池的区域购牌时，免费额外获得1张同区候选牌。",
 		"starting_cash_bonus": 80,
-		"starter_move_multiplier": 1.15,
 		"bonus_card_product": "环晶电池",
 		"flavor": "他们总能把第一只怪兽包装成一次普通货运事故。",
 	},
 	{
 		"name": "深海菌毯使团",
 		"species": "雾鳃孢子人",
-		"starter_monster_index": 0,
 		"trait": "擅长把资源偏好伪装成生态灾害；靠菌毯副产物结算现金。",
-		"passive": "起始怪兽生命+8，在场时间+12秒；己方含深海菌毯的城市每分钟现金流额外+¥55。",
-		"starter_hp_bonus": 8,
-		"starter_duration_bonus": 12.0,
+		"passive": "开局资金+¥80；己方含深海菌毯的城市每分钟现金流额外+¥55。",
+		"starting_cash_bonus": 80,
 		"resource_cash_product": "深海菌毯",
 		"resource_cash_amount": 55,
 		"flavor": "他们的合同像潮湿的孢子一样扩散，没人知道真正的客户是谁。",
@@ -240,10 +237,9 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "重力矿联董事会",
 		"species": "岩壳重核族",
-		"starter_monster_index": 1,
 		"trait": "矿业城市与重物流保护伞；用重力陶瓷抵押城市现金流。",
-		"passive": "起始怪兽生命+12；己方含重力陶瓷的城市每分钟现金流额外+¥45。",
-		"starter_hp_bonus": 12,
+		"passive": "开局资金+¥90；己方含重力陶瓷的城市每分钟现金流额外+¥45。",
+		"starting_cash_bonus": 90,
 		"resource_cash_product": "重力陶瓷",
 		"resource_cash_amount": 45,
 		"flavor": "他们称一切破坏为地质调整，并且会给调整开票。",
@@ -251,21 +247,17 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "离子军购局",
 		"species": "蓝焰档案体",
-		"starter_monster_index": 3,
 		"trait": "军需订单与能量食品投标人；怪兽升级会变成采购预算。",
-		"passive": "起始怪兽召唤后额外获得1张绑定固定技能；己方怪兽升级时获得¥120。",
-		"starter_fixed_skill_bonus": 1,
-		"monster_upgrade_cash": 120,
+		"passive": "己方怪兽升级时获得¥160。",
+		"monster_upgrade_cash": 160,
 		"flavor": "他们从不发动战争，只是提前出售战争会需要的东西。",
 	},
 	{
 		"name": "光合修复会",
 		"species": "藤冠共生体",
-		"starter_monster_index": 4,
 		"trait": "避难产业和修复商品联盟；把光合凝胶做成灾后保险。",
-		"passive": "开局资金+¥120；起始怪兽在场时间+20秒；己方含光合凝胶的城市每分钟现金流额外+¥40。",
+		"passive": "开局资金+¥120；己方含光合凝胶的城市每分钟现金流额外+¥40。",
 		"starting_cash_bonus": 120,
-		"starter_duration_bonus": 20.0,
 		"resource_cash_product": "光合凝胶",
 		"resource_cash_amount": 40,
 		"flavor": "他们的城市总在灾后重建合同签好之后才被灾难发现。",
@@ -273,7 +265,6 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "虹膜数据券商",
 		"species": "棱眼账本体",
-		"starter_monster_index": 5,
 		"trait": "把活体芯片写进每笔交易的影子账本；擅长从情报商品区顺手拿牌。",
 		"passive": "开局资金+¥60；在含活体芯片的区域购牌时，免费额外获得1张同区候选牌。",
 		"starting_cash_bonus": 60,
@@ -283,7 +274,6 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "星鲸餐饮垄断",
 		"species": "鲸胃星民",
-		"starter_monster_index": 6,
 		"trait": "星鲸罐头连锁供应商；怪兽每次变强都会顺便带火一次联名营销。",
 		"passive": "己方含星鲸罐头的城市每分钟现金流额外+¥50；己方怪兽升级时获得¥60。",
 		"resource_cash_product": "星鲸罐头",
@@ -294,17 +284,15 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "静电蜂巢银行",
 		"species": "金翼蜂群意志",
-		"starter_monster_index": 7,
 		"trait": "用静电蜂蜜给黑市信用背书；越靠近甜味商路，越容易多拿一张牌。",
-		"passive": "起始怪兽移动+8%；在含静电蜂蜜的区域购牌时，免费额外获得1张同区候选牌。",
-		"starter_move_multiplier": 1.08,
+		"passive": "在含静电蜂蜜的区域购牌时，免费额外获得1张同区候选牌；卡牌归属竞猜押注成本-¥20。",
 		"bonus_card_product": "静电蜂蜜",
+		"card_owner_guess_discount": 20,
 		"flavor": "他们发出的不是贷款通知，是一整座蜂巢的低频催收。",
 	},
 	{
 		"name": "星图审计庭",
 		"species": "银环观测官",
-		"starter_monster_index": 1,
 		"trait": "把每一座城市的施工轨迹写进星图账本；擅长直接锁定陌生区域业主。",
 		"passive": "每局可用2次身份侦测：直接查明当前选中陌生城市的真实业主，并以高置信写入私人标注；城市归属终局命中奖励+¥40。",
 		"intel_city_reveal_charges": 2,
@@ -314,7 +302,6 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "幽幕播报社",
 		"species": "暗频主持群",
-		"starter_monster_index": 5,
 		"trait": "专门购买匿名出牌瞬间的影像残帧；可以追溯卡牌轨道上的历史归属。",
 		"passive": "每局可用1次身份追帧：私下查明一张轨道匿名牌是谁打出的；卡牌归属竞猜押注成本-¥40。",
 		"intel_card_trace_charges": 1,
@@ -324,7 +311,6 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "双边密约公证团",
 		"species": "镜面章鱼律师",
-		"starter_monster_index": 6,
 		"trait": "从合约墨迹里读出双方的影子；知道更多，但不能免费公开证明。",
 		"passive": "每局可用2次合约回溯：私下查明最近一份匿名合约的出牌方与目标业主；合约类卡牌流动门槛-1（最低0）。",
 		"intel_contract_trace_charges": 2,
@@ -334,24 +320,104 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "碎光私探行会",
 		"species": "棱镜游民",
-		"starter_monster_index": 3,
 		"trait": "靠半真半假的线索套利；不一定知道答案，但下注成本更低。",
-		"passive": "卡牌归属竞猜押注成本-¥30，猜中额外获得¥30；起始怪兽在场时间+8秒。",
+		"passive": "卡牌归属竞猜押注成本-¥30，猜中额外获得¥30。",
 		"card_owner_guess_discount": 30,
 		"card_owner_guess_bonus": 30,
-		"starter_duration_bonus": 8.0,
 		"flavor": "他们卖出的每条线索都闪闪发光，尤其是错的那条。",
 	},
 	{
 		"name": "星门补给商会",
 		"species": "折跃仓储人",
-		"starter_monster_index": 2,
 		"trait": "把怪兽登陆点当作临时仓库坐标；能从二跳邻区远程买牌，但物流费更高。",
 		"passive": "可从怪兽所在区相邻区域的相邻区域购买卡牌；二跳购牌价格×1.10；开局资金+¥40。",
 		"starting_cash_bonus": 40,
 		"card_access_extra_hops": 1,
 		"extended_card_price_multiplier": 1.10,
 		"flavor": "他们的仓库门永远开在怪兽脚印的下一圈。",
+	},
+	{
+		"name": "赤环航运托拉斯",
+		"species": "红环渡航民",
+		"trait": "经营海洋保险、航道租赁和绕行合同；最擅长从运输瓶颈里抽佣。",
+		"passive": "己方含风暴珍珠的城市每分钟现金流额外+¥35；合约类卡牌流动门槛-1（最低0）；开局资金+¥50。",
+		"starting_cash_bonus": 50,
+		"resource_cash_product": "风暴珍珠",
+		"resource_cash_amount": 35,
+		"contract_flow_discount": 1,
+		"flavor": "他们不拥有海洋，只拥有所有必须穿过海洋的发票。",
+	},
+	{
+		"name": "霓虹需求剧院",
+		"species": "幕光拟态族",
+		"trait": "把消费欲望包装成演出；适合做需求城市、会展和短期订单。",
+		"passive": "己方含梦境香氛的城市每分钟现金流额外+¥45；在含梦境香氛的区域购牌时，免费额外获得1张同区候选牌。",
+		"resource_cash_product": "梦境香氛",
+		"resource_cash_amount": 45,
+		"bonus_card_product": "梦境香氛",
+		"flavor": "他们出售的不是商品，是观众相信自己需要商品的那一秒。",
+	},
+	{
+		"name": "极昼农业云",
+		"species": "日冕叶群",
+		"trait": "喜欢低价稳定商品和长线现金流；抗压但爆发较慢。",
+		"passive": "开局资金+¥110；己方含星露莓的城市每分钟现金流额外+¥35；城市归属终局命中奖励+¥20。",
+		"starting_cash_bonus": 110,
+		"resource_cash_product": "星露莓",
+		"resource_cash_amount": 35,
+		"city_guess_reward_bonus": 20,
+		"flavor": "极昼温室从不休息，账本也不休息。",
+	},
+	{
+		"name": "黑潮风险基金",
+		"species": "墨鳍量化体",
+		"trait": "以灾害波动和匿名押注为食；适合金融买涨/做空与情报竞猜混合路线。",
+		"passive": "开局资金+¥70；卡牌归属竞猜押注成本-¥20；猜中额外获得¥40。",
+		"starting_cash_bonus": 70,
+		"card_owner_guess_discount": 20,
+		"card_owner_guess_bonus": 40,
+		"flavor": "他们看见怪兽时先问：这次波动能不能加杠杆？",
+	},
+	{
+		"name": "白噪安保公司",
+		"species": "噪羽守密者",
+		"trait": "保护运输、擦除痕迹、低调收钱；适合领先后的防守与保险路线。",
+		"passive": "己方含轨迹墨水的城市每分钟现金流额外+¥40；卡牌归属竞猜押注成本-¥25；开局资金+¥40。",
+		"starting_cash_bonus": 40,
+		"resource_cash_product": "轨迹墨水",
+		"resource_cash_amount": 40,
+		"card_owner_guess_discount": 25,
+		"flavor": "白噪声里什么都能消失，包括一张过于关键的发票。",
+	},
+	{
+		"name": "钛壳互助清算所",
+		"species": "钛壳贝群",
+		"trait": "把城市修复、保险和低风险商品做成互助池；收益稳但依赖城市存活。",
+		"passive": "开局资金+¥60；己方含钛壳贝的城市每分钟现金流额外+¥55。",
+		"starting_cash_bonus": 60,
+		"resource_cash_product": "钛壳贝",
+		"resource_cash_amount": 55,
+		"flavor": "他们愿意赔付一切损失，只要损失发生前你已经买了他们的下一份合约。",
+	},
+	{
+		"name": "暗礁公证黑市",
+		"species": "珊瑚印章群",
+		"trait": "专门处理不该被看见的合约副本；擅长追溯签约关系。",
+		"passive": "每局可用1次合约回溯：私下查明最近一份匿名合约的出牌方与目标业主；合约类卡牌流动门槛-1（最低0）；开局资金+30。",
+		"starting_cash_bonus": 30,
+		"intel_contract_trace_charges": 1,
+		"contract_flow_discount": 1,
+		"flavor": "他们的印章长在暗礁上，只有退潮时才露出真正的名字。",
+	},
+	{
+		"name": "太阳鳞片王朝",
+		"species": "金鳞恒温族",
+		"trait": "偏好高价值奢侈品、公众热度和终局现金冲刺；很容易成为被盯上的富目标。",
+		"passive": "开局资金+¥150；己方含太阳鳞片的城市每分钟现金流额外+¥30。",
+		"starting_cash_bonus": 150,
+		"resource_cash_product": "太阳鳞片",
+		"resource_cash_amount": 30,
+		"flavor": "他们从不隐藏财富，只隐藏财富旁边的怪兽脚印。",
 	},
 ]
 
@@ -2494,7 +2560,7 @@ func _build_menu_overlay() -> void:
 	menu_content_scroll = ScrollContainer.new()
 	menu_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	menu_content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	menu_content_scroll.follow_focus = true
+	menu_content_scroll.follow_focus = false
 	shell.add_child(menu_content_scroll)
 
 	var content_margin := MarginContainer.new()
@@ -2951,7 +3017,7 @@ func _add_menu_info_card(parent: Container, title_text: String, body_text: Strin
 func _open_main_menu() -> void:
 	_show_menu(
 		"太空辛迪加",
-		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个是AI对手。开局先进入准备页查看总席位、AI数量、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；城市现金按当前GDP/min持续按秒流入；全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照。新闻只由玩家匿名新闻牌制造；天气是公开星球系统，会提前约1-3分钟在顶部状态栏预报，也可被天气牌改写。AI会按评分匿名扩张和执行商业行动，并记录决策样本供后续训练。玩家需要根据商品竞争、商路、天气窗口和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
+		"秘密城市化经营 × 陆海商路 × 怪兽牌匿名战争\n每局3-8个席位，其中2-7个是AI对手。开局先进入准备页查看总席位、AI数量、外星角色卡，并为每名玩家从全部怪兽中任选一只I级怪兽作为起始怪兽牌；玩家从起始怪兽牌开始，把怪兽匿名召唤到星球上。怪兽没有硬上限，也没有玩家常驻可控单位：它们按自身概率自动行动，玩家只能通过一次性卡牌或绑定固定技能影响局势。\n星球每局随机生成陆地与海洋：陆地生产商品，海洋负责运输。城市建筑公开出现，真实业主只对建造者可见；城市现金按当前GDP/min持续按秒流入；全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照。新闻只由玩家匿名新闻牌制造；天气是公开星球系统，会提前约1-3分钟在顶部状态栏预报，也可被天气牌改写。AI对手会匿名扩张、买牌、出牌和回应合约；玩家需要根据商品竞争、商路、天气窗口和怪兽偏好自行标注推测。经济总览会汇总商品热榜、商路收入前景和玩家经济隐私；情报档案会集中整理城市私标、卡牌竞猜、怪兽资金线索和公开城市线索。\n具体按键、购牌、匿名出牌和竞价细节已收纳到「游戏规则」。",
 		true,
 		true
 	)
@@ -2994,7 +3060,7 @@ func _populate_main_menu_summary_cards() -> void:
 		},
 		{
 			"title": "终局复盘",
-			"body": "达标后倒计时，结束按钱排名；赛后看资金来源、关键牌、怪兽影响和AI发展路线。",
+			"body": "达标后倒计时，结束按钱排名；赛后看资金来源、关键牌、怪兽影响和公开行动。",
 			"meta": "方便测试者理解为什么输赢。",
 			"accent": Color("#facc15"),
 		},
@@ -3035,7 +3101,7 @@ func _open_rules_menu() -> void:
 	lines.append("当前原型规则：")
 	lines.append("")
 	lines.append("1. 身份与AI席位：每局3-8个席位，其中2-7个为AI对手，剩余席位是真人/本地玩家视角。玩家都是外星辛迪加角色；每名玩家开局获得一张角色卡，并在开局准备中从全部怪兽任选一只I级怪兽作为起始怪兽牌；这张起始牌无区域/商品流动门槛，用来把第一只怪兽匿名召唤到星球上。")
-	lines.append("2. 怪兽牌：开局不预选四只场上怪兽，怪兽全部来自怪兽牌。怪兽有生命值、移动速度、在场时间、召唤区域限制和自动行动概率；大多数怪兽会活动一段时间后自然离场，即使没有被杀掉。同名怪兽牌可用于升级己方同名在场怪兽，刷新生命值和在场时间。")
+	lines.append("2. 怪兽牌：怪兽通过怪兽牌匿名召唤入场。怪兽有生命值、移动速度、在场时间、召唤区域限制和自动行动概率；大多数怪兽会活动一段时间后自然离场，即使没有被杀掉。同名怪兽牌可用于升级己方同名在场怪兽，刷新生命值和在场时间。")
 	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地初始生产1种商品并有1种本地需求；海洋不生产，主要承载商路并影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
 	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；城市按当前GDP/min持续产生现金，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
 	lines.append("5. 市场价格：商品价格只能由供给、需求、商路断损、城市经营和经济天气重算，不能被玩家直接指定。扩张城市生产/需求、充实商路、引导怪兽破坏，才会改变市场。")
@@ -3192,7 +3258,7 @@ func _populate_economy_overview_summary_cards() -> void:
 			int(city_entry.get("disrupted", 0)),
 		]
 	var clue_count := _economy_city_public_clue_entries(6).size() + _economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size()
-	var ai_pressure_text := _short_card_text(_ai_public_pressure_summary_text(2).replace("AI对局压力：", ""), 70)
+	var public_situation_text := _short_card_text(_public_situation_summary_text(), 78)
 	_show_menu_summary_cards([
 		{
 			"title": "GDP/min",
@@ -3213,9 +3279,9 @@ func _populate_economy_overview_summary_cards() -> void:
 			"accent": Color("#38bdf8"),
 		},
 		{
-			"title": "AI压力",
-			"body": ai_pressure_text,
-			"meta": "只显示路线/阶段/意图，不显示对手现金或手牌。",
+			"title": "公开异动",
+			"body": public_situation_text,
+			"meta": "只读公开结果，不显示任何对手计划、现金或手牌。",
 			"accent": Color("#fb7185"),
 		},
 		{
@@ -3322,7 +3388,7 @@ func _populate_final_settlement_summary_cards(reason: String, rankings: Array) -
 				_short_card_text(_top_card_impact_summary(2).replace("关键卡牌：", ""), 44),
 				_short_card_text(_monster_impact_summary().replace("怪兽影响：", ""), 44),
 			],
-			"meta": _short_card_text(_ai_route_summary(maxi(3, _ai_player_indices().size())).replace("AI路线：", ""), 60),
+			"meta": "只复盘公开卡牌、怪兽和地图影响；不显示对手内部计划。",
 			"accent": Color("#c084fc"),
 		},
 	], "终局速览｜先看胜者、钱源和关键影响")
@@ -3594,7 +3660,7 @@ func _economy_overview_text() -> String:
 	])
 	lines.append("商品热榜按当前价偏离、趋势、需求、断路和经济天气综合排序；商路收入前景不揭示隐藏业主，只显示己方/未知/私人推测。情报现金只在终局兑现，私人业主标注不会提前揭示正误。进行中只有当前玩家能看到自己的现金、资产、收入、资金轨迹与流水；其他玩家的经济只能从公开行动推测。")
 	lines.append("星球天气预报：%s；活跃天气会修正受影响区域的生产、交通和消费，并进入后续GDP/min。" % _weather_status_text())
-	lines.append(_ai_public_pressure_summary_text(maxi(3, _ai_player_indices().size())))
+	lines.append(_public_situation_summary_text())
 	lines.append("")
 	var product_entries := _economy_product_entries()
 	lines.append("商品热榜：")
@@ -3650,6 +3716,27 @@ func _economy_overview_text() -> String:
 	lines.append("")
 	lines.append("操作提示：R/T 在地图上查看商品商路；商品催化和共生红利适合追热榜，远期采购/包销协议适合制造持续需求，期货套保适合压供给侧价格和波动，星港快线/供应链保险适合守住高潜在收入城市；短期订单/军需临单/星际会展适合给己方城市做限时现金流。")
 	return "\n".join(lines)
+
+
+func _public_situation_summary_text() -> String:
+	var pieces := []
+	var card_count := _economy_card_aftermath_entries(5).size()
+	var city_clue_count := _economy_city_public_clue_entries(6).size()
+	var monster_clue_count := _economy_monster_cash_clue_entries(5).size()
+	if card_count > 0:
+		pieces.append("匿名卡牌余波%d条" % card_count)
+	if city_clue_count > 0:
+		pieces.append("城市公开线索%d条" % city_clue_count)
+	if monster_clue_count > 0:
+		pieces.append("怪兽资金线索%d条" % monster_clue_count)
+	if auto_monsters.size() > 0:
+		pieces.append("场上怪兽%d只" % auto_monsters.size())
+	var weather_text := _short_card_text(_weather_status_text(), 32)
+	if weather_text != "":
+		pieces.append("天气:%s" % weather_text)
+	if pieces.is_empty():
+		return "公开异动：暂无明显场面结果；继续观察商品价格、城市GDP、怪兽落点和匿名卡牌轨道。"
+	return "公开异动：%s。页面只汇总场面结果；对手计划、现金和手牌保持隐藏。" % "；".join(pieces)
 
 
 func _first_entries(entries: Array, limit: int) -> Array:
@@ -4696,7 +4783,7 @@ func _standings_text() -> String:
 		auto_monsters.size(),
 	])
 	lines.append(_victory_countdown_status_text())
-	lines.append(_ai_public_pressure_summary_text(maxi(3, _ai_player_indices().size())))
+	lines.append(_public_situation_summary_text())
 	lines.append("")
 	var standings := _standing_entries()
 	for rank in range(standings.size()):
@@ -5005,237 +5092,13 @@ func _ai_development_route_summary_text(player_index: int) -> String:
 	return "发展路线:%s" % label
 
 
-func _ai_route_summary(limit: int = 3) -> String:
-	var pieces := []
-	for player_index_variant in _ai_player_indices():
-		var player_index := int(player_index_variant)
-		var player: Dictionary = players[player_index]
-		var memory := (player.get("ai_memory", {}) as Dictionary)
-		var product := String(memory.get("route_plan_product", ""))
-		var stage := String(memory.get("route_plan_stage", ""))
-		var intent := String(memory.get("strategic_intent", ""))
-		var development_summary := _ai_development_route_summary_text(player_index)
-		if product == "" and intent == "" and development_summary == "发展路线未定":
-			continue
-		pieces.append("%s:%s｜%s/%s/%s" % [
-			_player_name(player_index),
-			development_summary,
-			product if product != "" else "未定商品",
-			_ai_route_plan_stage_label(stage),
-			_ai_strategy_intent_label(intent),
-		])
-		if pieces.size() >= limit:
-			break
-	if pieces.is_empty():
-		return "AI路线：本局AI尚未留下稳定路线记录。"
-	return "AI路线：%s。" % "；".join(pieces)
-
-
-func _ai_public_pressure_bucket(route_id: String, intent: String, stage: String, phase: String) -> String:
-	if phase == "endgame":
-		return "终局冲刺"
-	match intent:
-		"defend_routes":
-			return "护路防守"
-		"disrupt_competitors":
-			return "压制竞品"
-		"grow_focus":
-			return "扩张GDP"
-	match stage:
-		"defend_route":
-			return "护路防守"
-		"attack_rival":
-			return "压制竞品"
-		"build_supply", "create_demand", "strengthen_route":
-			return "扩张GDP"
-	match route_id:
-		"monster_pressure":
-			return "怪兽压制"
-		"finance_speculation":
-			return "金融投机"
-		"intel_supply":
-			return "情报补给"
-		"contract_route":
-			return "合约供需"
-		"city_growth":
-			return "扩张GDP"
-	return "观察局势"
-
-
-func _ai_public_pressure_entries(limit: int = 8) -> Array:
-	var entries := []
-	for player_index_variant in _ai_player_indices():
-		var player_index := int(player_index_variant)
-		var phase_info := _ai_refresh_game_phase(player_index)
-		var phase := String(phase_info.get("phase", "midgame"))
-		var strategy := _ai_refresh_strategy_intent(player_index)
-		var plan := _ai_refresh_route_plan(player_index)
-		var route_summary := _ai_development_route_sample_summary(player_index)
-		var route_id := String(route_summary.get("route_id", ""))
-		var intent := String(strategy.get("intent", ""))
-		var stage := String(plan.get("stage", ""))
-		var product := String(plan.get("product", ""))
-		var bucket := _ai_public_pressure_bucket(route_id, intent, stage, phase)
-		var score := int(strategy.get("score", 0)) + int(plan.get("score", 0)) + int(route_summary.get("score", 0))
-		entries.append({
-			"player_index": player_index,
-			"name": _player_name(player_index),
-			"phase": phase,
-			"phase_label": _ai_game_phase_label(phase),
-			"bucket": bucket,
-			"route_id": route_id,
-			"route_label": String(route_summary.get("label", "即时战术")) if not route_summary.is_empty() else "即时战术",
-			"product": product if product != "" else "未定商品",
-			"stage": stage,
-			"stage_label": _ai_route_plan_stage_label(stage),
-			"intent": intent,
-			"intent_label": _ai_strategy_intent_label(intent),
-			"score": maxi(1, score),
-		})
-	entries.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
-	if limit > 0 and entries.size() > limit:
-		return entries.slice(0, limit)
-	return entries
-
-
-func _ai_public_pressure_counterplay_for_bucket(bucket: String) -> String:
-	match bucket:
-		"扩张GDP":
-			return "查其焦点商品与新城市，优先断同商品商路或抢需求。"
-		"护路防守":
-			return "别只打城市本体，先找运输瓶颈、做空高GDP或制造绕路压力。"
-		"压制竞品":
-			return "保护高GDP/同商品城市，修路、保险，并标注最近被攻击区域。"
-		"怪兽压制":
-			return "分散商品、看怪兽偏好，必要时用诱导/天气把怪兽转向。"
-		"金融投机":
-			return "稳价、修路、拉需求，避免目标城市GDP在持仓秒数内剧烈下跌。"
-		"合约供需":
-			return "看谁最受益再签约；拒签惩罚高时先准备现金或改走供需。"
-		"情报补给":
-			return "制造伪线索、分散出牌条件，避免连续暴露同一商品流动。"
-		"终局冲刺":
-			return "倒计时里优先压制疑似领先城市，同时保住自己的现金流。"
-	return "继续观察卡牌条件、商品流向和城市线索，先别过早暴露判断。"
-
-
-func _ai_public_pressure_card_route_hint_for_bucket(bucket: String) -> String:
-	match bucket:
-		"扩张GDP":
-			return "城市压制/金融做空/怪兽压制"
-		"护路防守":
-			return "金融投机/合约改线/怪兽诱导"
-		"压制竞品":
-			return "城市成长/修路保险/情报追溯"
-		"怪兽压制":
-			return "怪兽诱导/天气干预/区域修复"
-		"金融投机":
-			return "市场稳定/供应链保险/需求扩张"
-		"合约供需":
-			return "合约博弈/情报推理/商路破坏"
-		"情报补给":
-			return "伪线索新闻/补给构筑/分散门槛"
-		"终局冲刺":
-			return "现金冲刺/做空领先城/护路保险"
-	return "情报推理/基础经济/低成本补牌"
-
-
-func _ai_public_pressure_counterplay_text(max_suggestions: int = 3) -> String:
-	var all_entries := _ai_public_pressure_entries(0)
-	if all_entries.is_empty():
-		return "反制建议：暂无AI压力样本；先按开局循环首召、建城、购牌。"
-	var counts := {}
-	for entry_variant in all_entries:
-		var entry := entry_variant as Dictionary
-		var bucket := String(entry.get("bucket", "观察局势"))
-		counts[bucket] = int(counts.get(bucket, 0)) + 1
-	var ordered_buckets := ["终局冲刺", "压制竞品", "怪兽压制", "金融投机", "护路防守", "合约供需", "情报补给", "扩张GDP", "观察局势"]
-	var suggestions := []
-	for bucket in ordered_buckets:
-		if int(counts.get(bucket, 0)) <= 0:
-			continue
-		suggestions.append("%s→%s" % [bucket, _ai_public_pressure_counterplay_for_bucket(bucket)])
-		if suggestions.size() >= max_suggestions:
-			break
-	if suggestions.is_empty():
-		suggestions.append("观察局势→%s" % _ai_public_pressure_counterplay_for_bucket("观察局势"))
-	return "反制建议：%s" % "；".join(suggestions)
-
-
-func _ai_public_pressure_card_route_text(max_suggestions: int = 3) -> String:
-	var all_entries := _ai_public_pressure_entries(0)
-	if all_entries.is_empty():
-		return "推荐卡牌路线：先找首召、城市化、基础经济和补牌类效果。"
-	var counts := {}
-	for entry_variant in all_entries:
-		var entry := entry_variant as Dictionary
-		var bucket := String(entry.get("bucket", "观察局势"))
-		counts[bucket] = int(counts.get(bucket, 0)) + 1
-	var ordered_buckets := ["终局冲刺", "压制竞品", "怪兽压制", "金融投机", "护路防守", "合约供需", "情报补给", "扩张GDP", "观察局势"]
-	var hints := []
-	for bucket in ordered_buckets:
-		if int(counts.get(bucket, 0)) <= 0:
-			continue
-		hints.append("%s→%s" % [bucket, _ai_public_pressure_card_route_hint_for_bucket(bucket)])
-		if hints.size() >= max_suggestions:
-			break
-	if hints.is_empty():
-		hints.append("观察局势→%s" % _ai_public_pressure_card_route_hint_for_bucket("观察局势"))
-	return "推荐卡牌路线：%s" % "；".join(hints)
-
-
-func _ai_public_pressure_summary_text(limit: int = 4) -> String:
-	var all_entries := _ai_public_pressure_entries(0)
-	if all_entries.is_empty():
-		return "AI对局压力：本局没有AI对手，或AI尚未形成公开可读的路线压力。%s。%s" % [
-			_ai_public_pressure_counterplay_text(),
-			_ai_public_pressure_card_route_text(),
-		]
-	var counts := {}
-	for entry_variant in all_entries:
-		var entry := entry_variant as Dictionary
-		var bucket := String(entry.get("bucket", "观察局势"))
-		counts[bucket] = int(counts.get(bucket, 0)) + 1
-	var ordered_buckets := ["扩张GDP", "护路防守", "压制竞品", "怪兽压制", "金融投机", "合约供需", "情报补给", "终局冲刺", "观察局势"]
-	var count_pieces := []
-	for bucket in ordered_buckets:
-		var count := int(counts.get(bucket, 0))
-		if count > 0:
-			count_pieces.append("%s×%d" % [bucket, count])
-	var samples := []
-	for entry_variant in _ai_public_pressure_entries(limit):
-		var entry := entry_variant as Dictionary
-		samples.append("%s:%s/%s/%s/%s" % [
-			String(entry.get("name", "AI")),
-			String(entry.get("phase_label", "阶段")),
-			String(entry.get("route_label", "路线")),
-			String(entry.get("product", "商品")),
-			String(entry.get("intent_label", "意图")),
-		])
-	return "AI对局压力：公开路线观察，不显示现金/手牌。%s；样本：%s。%s。%s。" % [
-		"｜".join(count_pieces) if not count_pieces.is_empty() else "观察局势×%d" % all_entries.size(),
-		"；".join(samples),
-		_ai_public_pressure_counterplay_text(),
-		_ai_public_pressure_card_route_text(),
-	]
-
-
 func _player_final_playstyle_summary(player_index: int) -> String:
 	if player_index < 0 or player_index >= players.size():
 		return "未知路线"
 	var player: Dictionary = players[player_index]
 	if not bool(player.get("is_ai", false)):
 		return "真人/本地玩家"
-	var memory := (player.get("ai_memory", {}) as Dictionary)
-	var product := String(memory.get("route_plan_product", ""))
-	var stage := String(memory.get("route_plan_stage", ""))
-	var intent := String(memory.get("strategic_intent", ""))
-	return "AI:%s｜%s/%s/%s" % [
-		_ai_development_route_summary_text(player_index),
-		product if product != "" else "未定商品",
-		_ai_route_plan_stage_label(stage),
-		_ai_strategy_intent_label(intent),
-	]
+	return "AI对手｜计划隐藏"
 
 
 func _final_player_breakdown_summary(rankings: Array, limit: int = 8) -> String:
@@ -5304,7 +5167,7 @@ func _final_run_summary_text(rankings: Array) -> String:
 	])
 	lines.append(_top_card_impact_summary())
 	lines.append(_monster_impact_summary())
-	lines.append(_ai_route_summary(maxi(3, _ai_player_indices().size())))
+	lines.append("对手计划：内部决策不进入玩家复盘；请根据公开卡牌、城市GDP、商路、怪兽和情报线索判断。")
 	lines.append(_final_player_breakdown_summary(ordered, maxi(3, players.size())))
 	if int(top_city.get("district", -1)) >= 0:
 		var district_index := int(top_city.get("district", -1))
@@ -5593,7 +5456,7 @@ func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = f
 		"怪兽图鉴":
 			if bestiary_show_detail:
 				return "怪兽详情页｜展示临时美工、行动概率、速度和经济偏好｜上一页/下一页切换｜返回缩略图。"
-			return "怪兽缩略图｜自适应网格｜hover或单击看行动预览｜双击进详情｜适合后续替换美术。"
+			return "怪兽缩略图｜自适应网格｜hover或单击看行动预览｜双击进详情｜突出每只怪兽的行动差异。"
 		"商品图鉴":
 			if product_codex_show_detail:
 				return "商品详情页｜价格、供需、商路、天气和线索集中查看｜上一页/下一页切换｜返回缩略图。"
@@ -5698,6 +5561,10 @@ func _back_from_catalog_menu() -> void:
 			_open_compendium_menu()
 		"intel":
 			_open_intel_dossier_menu()
+		"economy":
+			_open_economy_overview_menu()
+		"standings":
+			_open_standings_menu()
 		_:
 			_open_main_menu()
 
@@ -5708,6 +5575,10 @@ func _catalog_back_button_text() -> String:
 			return "返回图鉴"
 		"intel":
 			return "返回情报档案"
+		"economy":
+			return "返回经济总览"
+		"standings":
+			return "返回局势排名"
 		_:
 			return "返回主菜单"
 
@@ -6163,9 +6034,7 @@ func _update_card_codex_menu() -> void:
 		_clear_children(menu_preview_box)
 		_add_card_codex_filter_buttons(menu_preview_box)
 		if card_codex_show_detail:
-			var center := CenterContainer.new()
-			menu_preview_box.add_child(center)
-			_add_card_face(center, card_name, skill, -1, false, false, false)
+			_add_card_codex_detail_layout(menu_preview_box, card_name, skill)
 		else:
 			_add_card_development_route_overview(menu_preview_box)
 			_populate_card_codex_thumbnail_page(menu_preview_box, names)
@@ -6213,18 +6082,23 @@ func _add_card_development_route_overview(parent: Container) -> void:
 	var audit := _development_route_audit()
 	if audit.is_empty():
 		return
-	var preference_coverage := _ai_development_route_preference_audit()
 	parent.add_child(_plain_label("卡牌路线总览：先按路线理解卡池，再进入缩略图挑具体卡牌。", 12, Color("#dbeafe")))
-	var diversity_audit := _ai_development_route_diversity_audit()
+	var covered_core := 0
+	var required_core := 0
+	for entry_variant in audit:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if bool(entry.get("required_for_ai_baseline", false)):
+			required_core += 1
+			if int(entry.get("card_count", 0)) > 0:
+				covered_core += 1
 	_add_menu_info_card(
 		parent,
-		"AI发展路线覆盖",
-		"%s\n这些路线都会把最终目标落到钱：稳定GDP、合约商路、限时投机、怪兽/天气/新闻压制，以及情报/补给降低误判。" % _ai_development_route_diversity_summary(),
+		"卡牌路线覆盖",
+		"核心路线把最终目标落到钱：稳定GDP、合约商路、限时投机、怪兽/天气/新闻压制，以及情报/补给降低误判。",
 		Color("#a78bfa"),
-		"已覆盖核心路线:%d/%d｜测试目标：AI至少具备4-5种可追钱路线。" % [
-			int(diversity_audit.get("covered_core_route_count", 0)),
-			int(diversity_audit.get("core_route_count", 0)),
-		]
+		"核心路线%d/%d覆盖｜用于检查卡池策略深度。" % [covered_core, required_core]
 	)
 	var grid := GridContainer.new()
 	grid.columns = _menu_summary_grid_columns()
@@ -6266,7 +6140,7 @@ func _add_card_development_route_overview(parent: Container) -> void:
 				_development_route_counterplay_text(route_id),
 			],
 			_menu_action_accent_for_text(label),
-			"AI偏好%d类｜预算分布:%s｜样例:%s" % [int(preference_coverage.get(route_id, 0)), _development_route_budget_band_summary(entry), sample_text]
+			"预算分布:%s｜样例:%s" % [_development_route_budget_band_summary(entry), sample_text]
 		)
 
 
@@ -6422,7 +6296,15 @@ func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
 	previewed_card_codex_card = card_name
 	card_codex_index = names.find(card_name)
 	if refresh:
+		var saved_scroll := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else 0
 		_update_card_codex_menu()
+		call_deferred("_restore_menu_scroll", saved_scroll)
+
+
+func _restore_menu_scroll(value: int) -> void:
+	if menu_content_scroll == null:
+		return
+	menu_content_scroll.scroll_vertical = max(0, value)
 
 
 func _open_card_codex_detail(card_name: String) -> void:
@@ -6447,17 +6329,13 @@ func _on_card_codex_thumbnail_gui_input(event: InputEvent, card_name: String) ->
 
 
 func _role_codex_text(role_card: Dictionary, index: int, total: int) -> String:
-	var starter_card := String(role_card.get("starter_monster_card", ""))
-	var starter_monster := String(role_card.get("starter_monster_name", "怪兽"))
-	return "第%d/%d张｜角色卡｜%s｜%s\n特征：%s\n角色被动：%s\n起始怪兽牌：%s（召唤%s）\n设定：%s\n规则：角色卡不是手牌，不会被打出、消耗或匿名公开；它定义玩家的外星身份与开局第一张怪兽牌。起始怪兽牌通常没有区域/商品流动门槛，用来把第一只怪兽召唤到星球上；之后获得的怪兽牌仍按卡面写明的生命值、在场时间、移动速度和召唤区域限制执行。" % [
+	return "第%d/%d张｜角色卡｜%s｜%s\n特征：%s\n角色被动：%s\n设定：%s\n规则：角色卡是公开身份资料，停留在资料区。起始怪兽牌在开局准备中独立选择；首召怪兽使用怪兽卡自身写明的生命、速度、在场时间和固定技能数量。" % [
 		index + 1,
 		total,
 		String(role_card.get("name", "外星辛迪加")),
 		String(role_card.get("species", "未知外星人")),
 		String(role_card.get("trait", "暂无特征")),
 		_role_passive_text(role_card),
-		_card_display_name(starter_card),
-		starter_monster,
 		String(role_card.get("flavor", "暂无设定")),
 	]
 
@@ -6466,32 +6344,15 @@ func _add_role_card_preview(parent: Container, role_card: Dictionary) -> void:
 	var center := CenterContainer.new()
 	parent.add_child(center)
 	_add_role_card_face(center, role_card, false)
-	var note := _plain_label("角色卡详情收纳在开局准备与角色图鉴中：它决定起始怪兽牌，不代表玩家能常驻操控怪兽。", 11, Color("#94a3b8"))
+	var note := _plain_label("角色卡是公开身份与经济/情报被动；起始怪兽在开局准备中独立选择，保持首召归属匿名。", 11, Color("#94a3b8"))
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(note)
 
 
 func _add_role_starter_links(parent: Container, role_card: Dictionary) -> void:
-	var monster_index := _role_starter_monster_index(role_card, role_codex_index)
-	var monster_name := String(role_card.get("starter_monster_name", String(_catalog_entry(monster_index).get("name", "怪兽"))))
-	var card_name := String(role_card.get("starter_monster_card", _monster_card_name(monster_index, 1)))
-	parent.add_child(_plain_label("起始怪兽牌（悬停看详情｜点击跳到卡牌图鉴）：", 12, Color("#fde68a")))
-	var card_button := Button.new()
-	card_button.text = "%s｜¥%d｜点击查看卡牌图鉴" % [_card_display_name(card_name), _card_price(card_name)]
-	card_button.tooltip_text = _card_detail_tooltip(card_name)
-	card_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_style_menu_button(card_button, Color("#f472b6"))
-	card_button.pressed.connect(Callable(self, "_open_role_starter_card_in_codex").bind(card_name))
-	parent.add_child(card_button)
-
-	parent.add_child(_plain_label("起始怪兽（点击跳到怪兽图鉴）：", 12, Color("#fde68a")))
-	var monster_button := Button.new()
-	monster_button.text = "%s｜查看怪兽图鉴" % monster_name
-	monster_button.tooltip_text = "跳到怪兽图鉴查看%s的自动行动概率、资源偏好、生命/速度和伤害数据。" % monster_name
-	monster_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_style_menu_button(monster_button, Color("#fb7185"))
-	monster_button.pressed.connect(Callable(self, "_open_role_starter_monster_in_bestiary").bind(monster_index))
-	parent.add_child(monster_button)
+	var note := _plain_label("起始怪兽在「开局准备」独立选择；怪兽卡和怪兽资料可从卡牌图鉴/怪兽图鉴查看。", 12, Color("#fde68a"))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	parent.add_child(note)
 
 
 func _open_role_starter_card_in_codex(card_name: String) -> void:
@@ -6945,9 +6806,26 @@ func _card_codex_filter_options() -> Array:
 	]
 
 
+func _card_codex_route_filter_options() -> Array:
+	var result := []
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if bool(route.get("required_for_ai_baseline", false)):
+			var route_id := String(route.get("id", ""))
+			if route_id != "":
+				result.append({
+					"id": "route:%s" % route_id,
+					"route_id": route_id,
+					"label": "路线:%s" % String(route.get("label", route_id)),
+				})
+	return result
+
+
 func _card_codex_filter_label(filter_id: String = "") -> String:
 	if filter_id == "":
 		filter_id = card_codex_filter
+	if filter_id.begins_with("route:"):
+		return "路线:%s" % _development_route_label(filter_id.trim_prefix("route:"))
 	for option_variant in _card_codex_filter_options():
 		var option: Dictionary = option_variant
 		if String(option.get("id", "")) == filter_id:
@@ -6986,7 +6864,7 @@ func _set_card_codex_filter(filter_id: String) -> void:
 
 
 func _add_card_codex_filter_buttons(parent: Container) -> void:
-	parent.add_child(_plain_label("卡牌图鉴分类：怪兽牌已经并入卡牌池；这里按子分类浏览，不再另开怪兽卡牌分支。", 11, Color("#bfdbfe")))
+	parent.add_child(_plain_label("卡牌图鉴分类：按怪兽、经济、金融、合约、情报、新闻、天气等子分类浏览统一卡池。", 11, Color("#bfdbfe")))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 5)
 	parent.add_child(row)
@@ -7004,15 +6882,37 @@ func _add_card_codex_filter_buttons(parent: Container) -> void:
 		button.disabled = count <= 0
 		button.pressed.connect(Callable(self, "_set_card_codex_filter").bind(filter_id))
 		row.add_child(button)
+	var route_row := HBoxContainer.new()
+	route_row.add_theme_constant_override("separation", 5)
+	parent.add_child(route_row)
+	route_row.add_child(_plain_label("路线筛选:", 10, Color("#fde68a")))
+	for option_variant in _card_codex_route_filter_options():
+		var option: Dictionary = option_variant
+		var filter_id := String(option.get("id", "all"))
+		var label := String(option.get("label", filter_id))
+		var count := _card_codex_names(filter_id).size()
+		var button := Button.new()
+		button.text = "%s%s(%d)" % ["●" if filter_id == card_codex_filter else "", label, count]
+		button.toggle_mode = true
+		button.button_pressed = filter_id == card_codex_filter
+		button.tooltip_text = "按%s查看卡牌；用于快速浏览同一策略路线下的卡牌。" % label
+		_style_menu_button(button, _menu_action_accent_for_text(label))
+		button.disabled = count <= 0
+		button.pressed.connect(Callable(self, "_set_card_codex_filter").bind(filter_id))
+		route_row.add_child(button)
 
 
 func _card_codex_names(filter_id: String = "") -> Array:
 	if filter_id == "":
 		filter_id = card_codex_filter
+	var route_filter := ""
+	if filter_id.begins_with("route:"):
+		route_filter = filter_id.trim_prefix("route:")
 	var names := []
 	for monster_card_variant in _monster_card_names(1):
 		var monster_card_name := String(monster_card_variant)
-		if filter_id == "all" or filter_id == "monster":
+		var monster_skill := _skill_definition(monster_card_name)
+		if filter_id == "all" or filter_id == "monster" or (route_filter != "" and _card_development_route_id(monster_skill) == route_filter):
 			_append_unique_string(names, monster_card_name)
 	for name_variant in SKILL_CATALOG.keys():
 		var card_name := _canonical_card_supply_name(String(name_variant))
@@ -7020,7 +6920,7 @@ func _card_codex_names(filter_id: String = "") -> Array:
 			continue
 		var skill := _skill_definition(card_name)
 		var category := _card_codex_category_for_card(card_name, skill)
-		if filter_id == "all" or category == filter_id:
+		if filter_id == "all" or category == filter_id or (route_filter != "" and _card_development_route_id(skill) == route_filter):
 			_append_unique_string(names, card_name)
 	names.sort()
 	return names
@@ -7033,7 +6933,7 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 	var price := _card_price(card_name)
 	var key_facts := _card_key_rule_facts(skill)
 	var key_text := "；".join(key_facts) if not key_facts.is_empty() else "这张牌没有攻击/生命/范围等战斗数值，主要按效果文字结算。"
-	return "第%d/%d张｜%s｜分类:%s / 当前筛选:%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n%s\n%s\n效果：%s\n打出：%s｜%s\n关键数值：%s\n升级预览：\n%s\n结算演出：%s\n卡面：游戏内手牌与图鉴使用同一套卡面。" % [
+	return "第%d/%d张｜%s\n分类：%s｜当前筛选：%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n速读：%s\n关键：%s" % [
 		index + 1,
 		total,
 		_card_display_name(card_name),
@@ -7045,20 +6945,117 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 		source_text,
 		target_text,
 		_card_strategy_summary(skill),
-		_card_strength_budget_text(card_name, skill),
-		_skill_display_text(skill),
-		"固定技能，不会消失" if bool(skill.get("persistent", false)) else "一次性，打出后消失",
-		_skill_play_requirement_text(skill, selected_player),
 		key_text,
-		_card_level_gradient_text(card_name),
-		_card_resolution_animation_catalog_text(card_name, skill).replace("\n", " / "),
 	]
+
+
+func _add_card_codex_detail_layout(parent: Container, card_name: String, skill: Dictionary) -> void:
+	var accent := _card_theme_color(skill)
+	var hero := HBoxContainer.new()
+	hero.add_theme_constant_override("separation", 14)
+	hero.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(hero)
+
+	var face_column := VBoxContainer.new()
+	face_column.custom_minimum_size = Vector2(250, 0)
+	face_column.add_theme_constant_override("separation", 8)
+	hero.add_child(face_column)
+	var center := CenterContainer.new()
+	face_column.add_child(center)
+	_add_card_face(center, card_name, skill, -1, false, false, false)
+	var face_note := _plain_label("手牌、轨道和图鉴使用同一张卡面，玩家看到的名称、等级、类型和关键数值保持一致。", 10, Color("#94a3b8"))
+	face_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	face_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	face_column.add_child(face_note)
+
+	var fact_grid := GridContainer.new()
+	fact_grid.columns = 2
+	fact_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fact_grid.add_theme_constant_override("h_separation", 10)
+	fact_grid.add_theme_constant_override("v_separation", 10)
+	hero.add_child(fact_grid)
+
+	var target_text := "怪兽目标" if _skill_requires_target_monster(skill) else "按卡面/选区结算"
+	var persistence_text := "固定技能，可重复使用" if bool(skill.get("persistent", false)) else "一次性牌，结算后离手"
+	var source_text := "怪兽牌" if _is_monster_card_name(card_name) else ("怪兽固定技能" if _is_monster_technique_card_name(card_name) else "区域/公共补给")
+	_add_menu_info_card(
+		fact_grid,
+		"牌面定位",
+		"%s\n%s" % [_card_strategy_summary(skill), _card_strength_budget_text(card_name, skill)],
+		accent,
+		"%s｜%s｜%s" % [_card_codex_filter_label(_card_codex_category_for_card(card_name, skill)), source_text, _skill_tag_text(skill)]
+	)
+	_add_menu_info_card(
+		fact_grid,
+		"费用与门槛",
+		"购买参考价 ¥%d（%s）。打出时看商品流动、目标和区域条件；商品用于证明流动能力，不会被消耗。" % [
+			_card_price(card_name),
+			_card_price_tier_text(_card_price(card_name)),
+		],
+		Color("#facc15"),
+		"%s｜目标:%s" % [_skill_play_requirement_text(skill, selected_player), target_text]
+	)
+	_add_menu_info_card(
+		fact_grid,
+		"核心效果",
+		_skill_display_text(skill),
+		accent.lightened(0.12),
+		persistence_text
+	)
+	var numeric_facts := _card_key_rule_facts(skill)
+	_add_menu_info_card(
+		fact_grid,
+		"关键字段",
+		"\n".join(numeric_facts) if not numeric_facts.is_empty() else "这张牌偏向规则/情报/合约结算，没有攻击力、生命值或距离等通用战斗字段。",
+		Color("#38bdf8"),
+		"字段越明确，玩家越容易判断收益、风险和反制窗口。"
+	)
+
+	var gradient_label := _plain_label("I-IV升级梯度", 13, Color("#fde68a"))
+	gradient_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	parent.add_child(gradient_label)
+	_add_card_level_gradient_cards(parent, card_name)
+
+	var animation_text := _card_resolution_animation_catalog_text(card_name, skill).replace("\n", " / ")
+	_add_menu_info_card(
+		parent,
+		"结算演出",
+		animation_text,
+		Color("#fb7185"),
+		"所有玩家都会看到卡牌展示，出牌者仍保持匿名，归属只能通过线索或竞猜揭晓。"
+	)
+
+
+func _add_card_level_gradient_cards(parent: Container, card_name: String) -> void:
+	var family := _skill_family(card_name)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	parent.add_child(grid)
+	for level in range(1, 5):
+		var level_name := "%s%d" % [family, level]
+		if not _skill_exists(level_name):
+			continue
+		var level_skill := _skill_definition(level_name)
+		var preview := _join_first_card_facts(_card_key_rule_facts(level_skill), 4)
+		if preview == "":
+			preview = _short_card_text(_skill_display_text(level_skill), 56)
+		var level_accent := _card_theme_color(level_skill).lerp(Color("#fef3c7"), 0.08 * float(level - 1))
+		_add_menu_info_card(
+			grid,
+			"%s｜¥%d" % [_level_text(level), _card_price(level_name)],
+			preview,
+			level_accent,
+			"%s｜预算:%d" % [_card_strength_budget_band_text(_card_strength_budget_points(level_name)), _card_strength_budget_points(level_name)]
+		)
 
 
 func _add_bestiary_special_card_links(parent: Container, cards: Array) -> void:
 	if cards.is_empty():
 		return
-	parent.add_child(_plain_label("旧版关联卡片（悬停看详情｜点击跳到卡牌图鉴）：", 12, Color("#fde68a")))
+	parent.add_child(_plain_label("关联技能卡（悬停看详情｜点击跳到卡牌图鉴）：", 12, Color("#fde68a")))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 6)
@@ -7962,7 +7959,7 @@ func _open_new_game_setup_menu() -> void:
 	_ensure_configured_ai_player_count()
 	_show_menu(
 		"开局准备",
-		"新局会重掷星球、陆海区域、城市商路、区域补给和所有玩家手牌。本原型朝PVE roguelike推进：每局3-8个席位，其中2-7个为AI对手；剩余席位是真人/本地玩家视角。开局不预选四只怪兽；每名玩家先选外星辛迪加角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。确认后，玩家需要先打出自己的起始怪兽牌，把第一只自动怪兽匿名召唤到星球上，才能打开默认的怪兽落地/相邻区域购牌补给；角色或补给牌可扩张购牌半径。",
+		"新局会重掷星球、陆海区域、城市商路、区域补给和所有玩家手牌。每局3-8个席位，其中2-7个为AI对手；剩余席位是真人/本地玩家视角。每名玩家先选一个公开外星辛迪加角色卡，再从全部怪兽中任选一只I级怪兽作为起始怪兽牌。确认后，玩家需要先打出自己的起始怪兽牌，把第一只自动怪兽匿名召唤到星球上，才能打开默认的怪兽落地/相邻区域购牌补给；角色或补给牌可扩张购牌半径。",
 		not players.is_empty() and not game_over
 	)
 	menu_continue_button.visible = not players.is_empty() and not game_over
@@ -8040,10 +8037,12 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		role_panel.add_theme_constant_override("separation", 4)
 		role_grid.add_child(role_panel)
 		var role_card := _make_configured_player_role_card(i)
-		var starter_card := _make_starting_monster_card(i, role_card)
+		var starter_card := _make_starting_monster_card(i)
+		var starter_monster_index := _configured_starter_monster_index(i)
+		var role_selection_label := _configured_role_selection_label(i)
 		var seat_type := _player_seat_type_for_config_index(i)
 		var ai_profile := _ai_profile_for_config_index(i)
-		var seat_label := "AI·%s" % String(ai_profile.get("name", "训练中")) if seat_type == "ai" else "真人/本地"
+		var seat_label := "AI·%s" % String(ai_profile.get("name", "对手")) if seat_type == "ai" else "真人/本地"
 		var player_label := _plain_label("玩家%d｜%s｜%s｜起始手牌：%s" % [
 			i + 1,
 			seat_label,
@@ -8052,17 +8051,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		], 11, Color("#bfdbfe"))
 		player_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(player_label)
-		var ai_route_note := ""
-		if seat_type == "ai":
-			var primary_route := _ai_profile_primary_development_route(ai_profile)
-			ai_route_note = "｜AI策略：%s｜主路线：%s" % [
-				String(ai_profile.get("style", "")),
-				String(primary_route.get("label", "未定")),
-			]
-		var passive_label := _plain_label("角色被动：%s%s" % [
-			_role_passive_text(role_card),
-			ai_route_note,
-		], 10, Color("#fde68a"))
+		var passive_label := _plain_label("角色被动：%s" % _role_passive_text(role_card), 10, Color("#fde68a"))
 		passive_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(passive_label)
 		var role_choice_row := HBoxContainer.new()
@@ -8082,6 +8071,16 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		_style_menu_button(next_role_button, Color("#c084fc"))
 		next_role_button.pressed.connect(Callable(self, "_cycle_configured_role_for_player_from_new_game_menu").bind(i, 1))
 		role_choice_row.add_child(next_role_button)
+		if seat_type == "ai":
+			var random_role_button := Button.new()
+			random_role_button.text = "随机角色"
+			random_role_button.toggle_mode = true
+			random_role_button.button_pressed = _configured_role_index(i) == ROLE_RANDOM_INDEX
+			random_role_button.tooltip_text = "本局开始时从未被占用的角色中随机分配，仍会公开显示，且全局不重复。"
+			_style_menu_button(random_role_button, Color("#a78bfa"))
+			random_role_button.pressed.connect(Callable(self, "_set_configured_role_random_for_player_from_new_game_menu").bind(i))
+			role_choice_row.add_child(random_role_button)
+		role_name_label.text = "当前：%s" % role_selection_label
 		var monster_choice_row := HBoxContainer.new()
 		monster_choice_row.add_theme_constant_override("separation", 6)
 		role_panel.add_child(monster_choice_row)
@@ -8090,7 +8089,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		_style_menu_button(previous_monster_button, Color("#fb7185"))
 		previous_monster_button.pressed.connect(Callable(self, "_cycle_configured_starter_monster_for_player_from_new_game_menu").bind(i, -1))
 		monster_choice_row.add_child(previous_monster_button)
-		var monster_name_label := _plain_label("起始怪兽：%s" % String(role_card.get("starter_monster_name", "怪兽")), 10, Color("#fecaca"))
+		var monster_name_label := _plain_label("起始怪兽：%s" % String(_catalog_entry(starter_monster_index).get("name", "怪兽")), 10, Color("#fecaca"))
 		monster_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		monster_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		monster_choice_row.add_child(monster_name_label)
@@ -8108,7 +8107,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		starter_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		role_panel.add_child(starter_note)
 
-	var hint := _plain_label("提示：起始怪兽牌第一次召唤不限区域；普通I级怪兽牌免商品流动但仍看落点，II-IV级怪兽牌会要求商品流动。AI席位目前会按实时局势评分自动建城和执行商业行动，并记录决策样本供后续训练。", 12, Color("#94a3b8"))
+	var hint := _plain_label("提示：角色卡是公开身份；起始怪兽是独立选择的匿名首召牌。第一次召唤不限区域；普通I级怪兽牌免商品流动但仍看落点，II-IV级怪兽牌会要求商品流动。AI席位会按实时局势自动建城、买牌和匿名出牌。", 12, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	parent.add_child(hint)
 
@@ -9371,8 +9370,9 @@ func _new_game() -> void:
 	_ensure_configured_role_indices()
 	_ensure_configured_starter_monster_indices()
 	var configured_human_count := _configured_human_player_count()
+	var run_role_indices := _resolve_configured_role_indices_for_run()
 	for i in range(configured_player_count):
-		var role_card := _make_configured_player_role_card(i)
+		var role_card := _make_player_role_card(i, int(run_role_indices[i]) if i < run_role_indices.size() else _player_role_template_index(i))
 		var starting_cash := STARTING_CASH + int(role_card.get("starting_cash_bonus", 0))
 		var is_ai := i >= configured_human_count
 		var ai_profile := _ai_profile_for_config_index(i) if is_ai else {}
@@ -9405,7 +9405,7 @@ func _new_game() -> void:
 			"total_business_spend": 0,
 			"action_cooldown": 0.0,
 			"queued_card_tip": 0,
-			"slots": [_make_starting_monster_card(i, role_card)],
+			"slots": [_make_starting_monster_card(i)],
 		})
 	_ensure_player_ai_state()
 
@@ -9428,7 +9428,7 @@ func _new_game() -> void:
 		_human_player_count(),
 		_ai_player_count(),
 	])
-	_log("AI训练骨架启动：AI会按城市GDP、商品竞争、商路价值、怪兽风险与匿名情报评分行动，并记录最近%d条训练样本。" % AI_DECISION_SAMPLE_LIMIT)
+	_log("AI对手已入局：会围绕城市GDP、商品竞争、商路价值、怪兽风险与匿名情报做出行动。")
 	_log("Roguelike挑战启动：%s；任一玩家可见预估结算资金先达到目标现金¥%d时，开启%.0f秒终局倒计时；倒计时结束按结算资金最高者排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal(), VICTORY_COUNTDOWN_SECONDS])
 	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
 	_log("星球随机生成陆地与海洋：陆地初始生产1种商品并有1种需求，海洋不生产但承担商路运输；合约牌可继续改写供需。")
@@ -9985,6 +9985,20 @@ func _role_starter_monster_index(role_card: Dictionary, fallback_index: int = 0)
 	return clampi(index, 0, max(0, _catalog_size() - 1))
 
 
+func _strip_role_starter_fields(role: Dictionary) -> Dictionary:
+	for key in [
+		"starter_monster_index",
+		"starter_monster_name",
+		"starter_monster_card",
+		"starter_hp_bonus",
+		"starter_duration_bonus",
+		"starter_move_multiplier",
+		"starter_fixed_skill_bonus",
+	]:
+		role.erase(key)
+	return role
+
+
 func _make_player_role_card(player_index: int, role_index: int = -1) -> Dictionary:
 	var template_index := _player_role_template_index(player_index)
 	if role_index >= 0:
@@ -9992,28 +10006,33 @@ func _make_player_role_card(player_index: int, role_index: int = -1) -> Dictiona
 	var role := _player_role_template(player_index, template_index)
 	role["kind"] = "player_role"
 	role["role_index"] = template_index
-	var monster_index := _role_starter_monster_index(role, player_index)
-	_apply_starter_monster_to_role_card(role, monster_index)
-	return role
-
-
-func _apply_starter_monster_to_role_card(role: Dictionary, monster_index: int) -> void:
-	monster_index = clampi(monster_index, 0, max(0, _catalog_size() - 1))
-	role["starter_monster_index"] = monster_index
-	role["starter_monster_name"] = String(_catalog_entry(monster_index).get("name", "怪兽"))
-	role["starter_monster_card"] = _monster_card_name(monster_index, 1)
-	role["text"] = "%s｜本局起始怪兽牌：%s｜特征：%s｜被动：%s" % [
+	_strip_role_starter_fields(role)
+	role["text"] = "%s｜特征：%s｜被动：%s" % [
 		String(role.get("species", "未知外星人")),
-		String(role.get("starter_monster_card", "怪兽牌")),
 		String(role.get("trait", "暂无特征")),
 		_role_passive_text(role),
 	]
+	return role
 
 
 func _make_configured_player_role_card(player_index: int) -> Dictionary:
-	var role := _make_player_role_card(player_index, _configured_role_index(player_index))
-	_apply_starter_monster_to_role_card(role, _configured_starter_monster_index(player_index))
-	return role
+	var role_index := _configured_role_index(player_index)
+	if role_index == ROLE_RANDOM_INDEX:
+		return _random_role_placeholder_card()
+	return _make_player_role_card(player_index, role_index)
+
+
+func _random_role_placeholder_card() -> Dictionary:
+	return {
+		"name": "随机角色",
+		"species": "未揭示外星人",
+		"trait": "开局确认时从本局未占用角色中抽取。",
+		"passive": "随机获得一个公开角色被动。",
+		"flavor": "席位已登记，真正的辛迪加代表将在开局时入场。",
+		"kind": "player_role",
+		"role_index": ROLE_RANDOM_INDEX,
+		"text": "随机角色｜开局确认时分配一个未重复公开角色。",
+	}
 
 
 func _normalize_player_role_card(role_card: Dictionary, player_index: int) -> Dictionary:
@@ -10032,7 +10051,7 @@ func _normalize_player_role_card(role_card: Dictionary, player_index: int) -> Di
 		if not role.has(field_name) and template.has(field_name):
 			role[field_name] = template[field_name]
 	role["kind"] = "player_role"
-	_apply_starter_monster_to_role_card(role, _role_starter_monster_index(role, player_index))
+	_strip_role_starter_fields(role)
 	return role
 
 
@@ -10067,12 +10086,11 @@ func _ensure_player_private_intel_state() -> void:
 func _player_role_summary(role_card: Dictionary) -> String:
 	if role_card.is_empty():
 		return "角色卡：未配置"
-	return "角色卡：%s｜%s｜特征：%s｜被动：%s｜起始怪兽牌：%s" % [
+	return "角色卡：%s｜%s｜特征：%s｜被动：%s" % [
 		String(role_card.get("name", "外星辛迪加")),
 		String(role_card.get("species", "未知外星人")),
 		String(role_card.get("trait", "暂无特征")),
 		_role_passive_text(role_card),
-		_card_display_name(String(role_card.get("starter_monster_card", ""))),
 	]
 
 
@@ -10091,10 +10109,6 @@ func _role_runtime_copy_fields() -> Array:
 	return [
 		"passive",
 		"starting_cash_bonus",
-		"starter_hp_bonus",
-		"starter_duration_bonus",
-		"starter_move_multiplier",
-		"starter_fixed_skill_bonus",
 		"resource_cash_product",
 		"resource_cash_amount",
 		"bonus_card_product",
@@ -10237,39 +10251,14 @@ func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, o
 	return amount
 
 
-func _apply_role_passive_to_starting_monster_card(skill: Dictionary, role_card: Dictionary) -> void:
-	if skill.is_empty() or role_card.is_empty():
-		return
-	var hp_bonus := int(role_card.get("starter_hp_bonus", 0))
-	if hp_bonus != 0:
-		skill["hp"] = maxi(1, int(skill.get("hp", 1)) + hp_bonus)
-	var duration_bonus := float(role_card.get("starter_duration_bonus", 0.0))
-	if abs(duration_bonus) > 0.001 and float(skill.get("duration", -1.0)) >= 0.0:
-		skill["duration"] = maxf(1.0, float(skill.get("duration", 1.0)) + duration_bonus)
-	var move_multiplier := float(role_card.get("starter_move_multiplier", 1.0))
-	if move_multiplier > 0.001 and not is_equal_approx(move_multiplier, 1.0):
-		skill["move"] = maxf(1.0, float(skill.get("move", 1.0)) * move_multiplier)
-	var fixed_skill_bonus := int(role_card.get("starter_fixed_skill_bonus", 0))
-	if fixed_skill_bonus != 0:
-		skill["fixed_skill_count"] = maxi(1, int(skill.get("fixed_skill_count", 1)) + fixed_skill_bonus)
-	skill["role_passive_summary"] = _role_passive_text(role_card)
-
-
 func _make_starting_monster_card(player_index: int, role_card: Dictionary = {}) -> Dictionary:
-	var monster_index := _role_starter_monster_index(role_card, player_index)
+	var monster_index := _configured_starter_monster_index(player_index)
 	var skill := _make_skill(_monster_card_name(monster_index, 1))
 	skill["starter_play_free"] = true
 	skill["summon_access"] = "any"
-	skill["source_role"] = String(role_card.get("name", "玩家角色卡"))
-	skill["starter_role_index"] = int(role_card.get("role_index", _player_role_template_index(player_index)))
-	_apply_role_passive_to_starting_monster_card(skill, role_card)
-	skill["text"] = "%s（%s的起始怪兽牌：开局第一只可直接打出，用来打开怪兽落地/相邻区域补给。）" % [
+	skill["text"] = "%s（起始怪兽牌：开局第一只可直接打出，用来打开怪兽落地/相邻区域补给。）" % [
 		String(skill.get("text", "")),
-		String(role_card.get("name", "玩家角色卡")),
 	]
-	var passive := _role_passive_text(role_card)
-	if passive != "":
-		skill["text"] = "%s 角色被动：%s" % [String(skill.get("text", "")), passive]
 	return skill
 
 
@@ -12919,7 +12908,7 @@ func _role_card_tag_text(role_card: Dictionary) -> String:
 
 
 func _role_card_art_stats(role_card: Dictionary) -> String:
-	var parts := ["起始:%s" % _card_display_name(String(role_card.get("starter_monster_card", "")))]
+	var parts := ["公开身份"]
 	var cash_bonus := int(role_card.get("starting_cash_bonus", 0))
 	if cash_bonus > 0:
 		parts.append("开局¥+%d" % cash_bonus)
@@ -12938,27 +12927,23 @@ func _role_card_art_stats(role_card: Dictionary) -> String:
 
 func _role_card_face_text(role_card: Dictionary, compact: bool = false) -> String:
 	var role_trait := String(role_card.get("trait", "暂无特征"))
-	var starter := _card_display_name(String(role_card.get("starter_monster_card", "")))
 	if compact:
-		return "特征:%s\n被动:%s\n起始:%s" % [
+		return "特征:%s\n被动:%s\n公开角色" % [
 			_short_card_text(role_trait, 34),
 			_short_card_text(_role_passive_text(role_card), 26),
-			_short_card_text(starter, 16),
 		]
-	return "特征：%s\n被动：%s\n起始怪兽牌：%s\n角色资料：不会被打出或消耗。" % [
+	return "特征：%s\n被动：%s\n角色资料：公开身份；开局怪兽独立选择。" % [
 		role_trait,
 		_role_passive_text(role_card),
-		starter,
 	]
 
 
 func _role_card_tooltip(role_card: Dictionary) -> String:
-	return "%s\n种族：%s\n特征：%s\n被动：%s\n起始怪兽牌：%s\n规则：角色卡留在开局资料和角色图鉴中，不会被打出或消耗；起始怪兽牌用于开局召唤第一只自动怪兽。" % [
+	return "%s\n种族：%s\n特征：%s\n被动：%s\n规则：角色卡是公开身份资料；起始怪兽在开局准备中独立选择。" % [
 		String(role_card.get("name", "外星辛迪加")),
 		String(role_card.get("species", "未知外星人")),
 		String(role_card.get("trait", "暂无特征")),
 		_role_passive_text(role_card),
-		_card_display_name(String(role_card.get("starter_monster_card", ""))),
 	]
 
 
@@ -13218,7 +13203,7 @@ func _development_route_archetypes() -> Array:
 			"label": "即时战术",
 			"goal": "补足短线现金、目标、位移或其它临场节奏。",
 			"play_pattern": "用短线效果修补当前局势，不强行形成长期路线。",
-			"counterplay": "观察结算余波和资源门槛，判断它服务哪条隐藏主路线。",
+			"counterplay": "观察结算余波和资源门槛，判断它服务哪条赚钱路线。",
 			"ai_plan_hint": "只作为补位加权，不能压过明确的经济/破坏计划。",
 			"strategy_labels": ["即时战术"],
 			"required_for_ai_baseline": false,
@@ -14705,6 +14690,7 @@ func _set_configured_ai_player_count(count: int) -> void:
 	_ensure_configured_ai_player_count()
 	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
 	configured_ai_player_count = clampi(count, MIN_AI_PLAYER_COUNT, max_ai)
+	_ensure_configured_role_indices()
 	_save_settings(false)
 	_log("下次开局AI对手数设置为：%d个；真人/本地玩家席位%d个。" % [configured_ai_player_count, _configured_human_player_count()])
 	_refresh_ui()
@@ -17967,12 +17953,42 @@ func _update_ai_decisions(delta: float) -> void:
 
 func _ensure_configured_role_indices() -> void:
 	var normalized := []
+	var used := {}
 	for i in range(MAX_PLAYER_COUNT):
 		var value := _player_role_template_index(i)
 		if i < configured_role_indices.size():
 			value = int(configured_role_indices[i])
-		normalized.append(_clamp_role_index(value))
+		if value == ROLE_RANDOM_INDEX and _player_seat_type_for_config_index(i) == "ai":
+			normalized.append(ROLE_RANDOM_INDEX)
+			continue
+		var role_index := _next_available_configured_role_index(value, used if i < configured_player_count else {})
+		normalized.append(role_index)
+		if i < configured_player_count:
+			used[role_index] = true
 	configured_role_indices = normalized
+
+
+func _next_available_configured_role_index(start_index: int, used: Dictionary) -> int:
+	if PLAYER_ROLE_CATALOG.is_empty():
+		return 0
+	var start := _clamp_role_index(start_index)
+	for offset in range(PLAYER_ROLE_CATALOG.size()):
+		var candidate := wrapi(start + offset, 0, PLAYER_ROLE_CATALOG.size())
+		if not used.has(candidate):
+			return candidate
+	return start
+
+
+func _configured_role_used_by_other(player_index: int) -> Dictionary:
+	_ensure_configured_ai_player_count()
+	var used := {}
+	for i in range(configured_player_count):
+		if i == player_index or i >= configured_role_indices.size():
+			continue
+		var value := int(configured_role_indices[i])
+		if value >= 0:
+			used[_clamp_role_index(value)] = true
+	return used
 
 
 func _ensure_configured_starter_monster_indices() -> void:
@@ -17995,7 +18011,10 @@ func _configured_role_index(player_index: int) -> int:
 	_ensure_configured_role_indices()
 	if player_index < 0 or player_index >= configured_role_indices.size():
 		return _player_role_template_index(player_index)
-	return _clamp_role_index(int(configured_role_indices[player_index]))
+	var value := int(configured_role_indices[player_index])
+	if value == ROLE_RANDOM_INDEX:
+		return ROLE_RANDOM_INDEX
+	return _clamp_role_index(value)
 
 
 func _configured_starter_monster_index(player_index: int) -> int:
@@ -18009,17 +18028,71 @@ func _set_configured_role_for_player(player_index: int, role_index: int) -> void
 	if player_index < 0 or player_index >= MAX_PLAYER_COUNT:
 		return
 	_ensure_configured_role_indices()
-	configured_role_indices[player_index] = _clamp_role_index(role_index)
+	if role_index == ROLE_RANDOM_INDEX and _player_seat_type_for_config_index(player_index) == "ai":
+		configured_role_indices[player_index] = ROLE_RANDOM_INDEX
+	else:
+		configured_role_indices[player_index] = _next_available_configured_role_index(role_index, _configured_role_used_by_other(player_index))
 	_save_settings(false)
-	_log("玩家%d下次开局角色设置为：%s。" % [
-		player_index + 1,
-		String(_make_player_role_card(player_index, _configured_role_index(player_index)).get("name", "外星辛迪加")),
-	])
+	_log("玩家%d下次开局角色设置为：%s。" % [player_index + 1, _configured_role_selection_label(player_index)])
 	_refresh_ui()
 
 
 func _cycle_configured_role_for_player(player_index: int, step: int) -> void:
-	_set_configured_role_for_player(player_index, _configured_role_index(player_index) + step)
+	var current := _configured_role_index(player_index)
+	if current == ROLE_RANDOM_INDEX:
+		current = _player_role_template_index(player_index)
+	_set_configured_role_for_player(player_index, current + step)
+
+
+func _set_configured_role_random_for_player(player_index: int) -> void:
+	_set_configured_role_for_player(player_index, ROLE_RANDOM_INDEX)
+
+
+func _set_configured_role_random_for_player_from_new_game_menu(player_index: int) -> void:
+	_set_configured_role_random_for_player(player_index)
+	_open_new_game_setup_menu()
+
+
+func _configured_role_selection_label(player_index: int) -> String:
+	var role_index := _configured_role_index(player_index)
+	if role_index == ROLE_RANDOM_INDEX:
+		return "随机角色"
+	return String(_make_player_role_card(player_index, role_index).get("name", "外星辛迪加"))
+
+
+func _resolve_configured_role_indices_for_run() -> Array:
+	_ensure_configured_role_indices()
+	var resolved := []
+	var used := {}
+	var random_slots := []
+	for i in range(configured_player_count):
+		var value := _configured_role_index(i)
+		if value == ROLE_RANDOM_INDEX:
+			resolved.append(ROLE_RANDOM_INDEX)
+			random_slots.append(i)
+			continue
+		var role_index := _next_available_configured_role_index(value, used)
+		resolved.append(role_index)
+		used[role_index] = true
+	var available := []
+	for role_index in range(PLAYER_ROLE_CATALOG.size()):
+		if not used.has(role_index):
+			available.append(role_index)
+	for slot_variant in random_slots:
+		var slot := int(slot_variant)
+		if available.is_empty():
+			available = []
+			for role_index in range(PLAYER_ROLE_CATALOG.size()):
+				if not used.has(role_index):
+					available.append(role_index)
+			if available.is_empty():
+				available.append(_player_role_template_index(slot))
+		var pick := rng.randi_range(0, available.size() - 1)
+		var role_index := int(available[pick])
+		available.remove_at(pick)
+		resolved[slot] = role_index
+		used[role_index] = true
+	return resolved
 
 
 func _set_configured_starter_monster_for_player(player_index: int, monster_index: int) -> void:
