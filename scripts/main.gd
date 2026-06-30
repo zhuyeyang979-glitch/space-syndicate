@@ -988,6 +988,9 @@ var card_codex_grid_page := 0
 var card_codex_show_detail := false
 var previewed_card_codex_card := ""
 var product_codex_index := 0
+var product_codex_grid_page := 0
+var product_codex_show_detail := false
+var previewed_product_codex_index := 0
 var region_codex_index := 0
 var role_codex_index := 0
 var speed_before_menu := 1.0
@@ -2369,6 +2372,9 @@ func _open_intel_product_codex_link(product_name: String) -> void:
 	catalog_return_menu = "intel"
 	if PRODUCT_CATALOG.has(product_name):
 		product_codex_index = PRODUCT_CATALOG.find(product_name)
+		previewed_product_codex_index = product_codex_index
+		product_codex_grid_page = _product_codex_grid_page_for_index(product_codex_index)
+		product_codex_show_detail = true
 	_update_product_codex_menu()
 
 
@@ -3826,6 +3832,10 @@ func _back_from_catalog_menu() -> void:
 		bestiary_show_detail = false
 		_update_bestiary_menu()
 		return
+	if menu_catalog_mode == "product" and product_codex_show_detail:
+		product_codex_show_detail = false
+		_update_product_codex_menu()
+		return
 	match catalog_return_menu:
 		"compendium":
 			_open_compendium_menu()
@@ -4575,17 +4585,31 @@ func _open_role_starter_monster_in_bestiary(monster_index: int) -> void:
 
 func _open_product_codex_menu(index: int = -1) -> void:
 	catalog_return_menu = "compendium"
+	product_codex_show_detail = index >= 0
 	if index >= 0:
 		product_codex_index = index
+		previewed_product_codex_index = _valid_product_codex_index(index)
+		product_codex_grid_page = _product_codex_grid_page_for_index(product_codex_index)
 	elif selected_trade_product != "" and PRODUCT_CATALOG.has(selected_trade_product):
 		product_codex_index = PRODUCT_CATALOG.find(selected_trade_product)
+		previewed_product_codex_index = product_codex_index
+		product_codex_grid_page = _product_codex_grid_page_for_index(product_codex_index)
 	_update_product_codex_menu()
 
 
 func _cycle_product_codex(step: int) -> void:
 	if PRODUCT_CATALOG.is_empty():
 		return
-	product_codex_index = wrapi(product_codex_index + step, 0, PRODUCT_CATALOG.size())
+	if product_codex_show_detail:
+		product_codex_index = wrapi(product_codex_index + step, 0, PRODUCT_CATALOG.size())
+		previewed_product_codex_index = product_codex_index
+		product_codex_grid_page = _product_codex_grid_page_for_index(product_codex_index)
+	else:
+		var page_count := _product_codex_grid_page_count(PRODUCT_CATALOG.size())
+		product_codex_grid_page = wrapi(product_codex_grid_page + step, 0, page_count)
+		var first_index := _product_codex_first_index_on_page(product_codex_grid_page, PRODUCT_CATALOG.size())
+		product_codex_index = first_index
+		previewed_product_codex_index = first_index
 	_update_product_codex_menu()
 
 
@@ -4595,18 +4619,338 @@ func _update_product_codex_menu() -> void:
 		return
 	_ensure_product_market_catalog()
 	product_codex_index = wrapi(product_codex_index, 0, PRODUCT_CATALOG.size())
+	previewed_product_codex_index = _valid_product_codex_index(previewed_product_codex_index)
+	product_codex_grid_page = clampi(product_codex_grid_page, 0, _product_codex_grid_page_count(PRODUCT_CATALOG.size()) - 1)
 	var product_name := String(PRODUCT_CATALOG[product_codex_index])
-	_show_menu("商品图鉴", _product_codex_text(product_name, product_codex_index, PRODUCT_CATALOG.size()), false)
+	var body_text := _product_codex_text(product_name, product_codex_index, PRODUCT_CATALOG.size()) if product_codex_show_detail else _product_codex_grid_text()
+	_show_menu("商品图鉴", body_text, false)
 	menu_catalog_mode = "product"
 	menu_continue_button.visible = false
 	for button in menu_regular_buttons:
 		button.visible = false
 	if menu_run_save_label != null:
 		menu_run_save_label.visible = false
-	menu_bestiary_prev_button.visible = true
-	menu_bestiary_next_button.visible = true
+	menu_bestiary_prev_button.visible = product_codex_show_detail
+	menu_bestiary_next_button.visible = product_codex_show_detail
 	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = _catalog_back_button_text()
+	menu_bestiary_back_button.text = "返回缩略图" if product_codex_show_detail else _catalog_back_button_text()
+	if menu_preview_box != null:
+		menu_preview_box.visible = true
+		_clear_children(menu_preview_box)
+		if product_codex_show_detail:
+			_add_product_codex_detail_preview(menu_preview_box, product_name)
+		else:
+			_populate_product_codex_thumbnail_page(menu_preview_box)
+
+
+func _valid_product_codex_index(index: int) -> int:
+	return clampi(index, 0, max(0, PRODUCT_CATALOG.size() - 1))
+
+
+func _product_codex_grid_columns() -> int:
+	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+	return clampi(int(floor((viewport_size.x - 180.0) / 170.0)), 2, 4)
+
+
+func _product_codex_grid_rows() -> int:
+	var viewport_size := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
+	return clampi(int(floor((viewport_size.y - 260.0) / 150.0)), 1, 3)
+
+
+func _product_codex_entries_per_page() -> int:
+	return maxi(1, _product_codex_grid_columns() * _product_codex_grid_rows())
+
+
+func _product_codex_grid_page_count(total_count: int) -> int:
+	return maxi(1, int(ceil(float(maxi(0, total_count)) / float(_product_codex_entries_per_page()))))
+
+
+func _product_codex_grid_page_for_index(index: int) -> int:
+	var page_index := int(floor(float(maxi(0, index)) / float(_product_codex_entries_per_page())))
+	return clampi(page_index, 0, _product_codex_grid_page_count(PRODUCT_CATALOG.size()) - 1)
+
+
+func _product_codex_first_index_on_page(page_index: int, total_count: int) -> int:
+	return clampi(page_index * _product_codex_entries_per_page(), 0, max(0, total_count - 1))
+
+
+func _product_codex_grid_text() -> String:
+	var page_count := _product_codex_grid_page_count(PRODUCT_CATALOG.size())
+	return "商品缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n悬停或单击商品缩略图会在下方显示价格、供需、经济天气和城市线索预览；双击缩略图进入商品详情。进入详情后才使用顶部「上一个/下一个」切换商品，也可以点「返回缩略图」回到图册。" % [
+		product_codex_grid_page + 1,
+		page_count,
+		_product_codex_grid_columns(),
+		_product_codex_grid_rows(),
+	]
+
+
+func _turn_product_codex_grid_page(step: int) -> void:
+	if PRODUCT_CATALOG.is_empty():
+		return
+	var page_count := _product_codex_grid_page_count(PRODUCT_CATALOG.size())
+	product_codex_grid_page = wrapi(product_codex_grid_page + step, 0, page_count)
+	var first_index := _product_codex_first_index_on_page(product_codex_grid_page, PRODUCT_CATALOG.size())
+	product_codex_index = first_index
+	previewed_product_codex_index = first_index
+	product_codex_show_detail = false
+	_update_product_codex_menu()
+
+
+func _populate_product_codex_thumbnail_page(parent: Container) -> void:
+	var total_count := PRODUCT_CATALOG.size()
+	if total_count <= 0:
+		return
+	var page_count := _product_codex_grid_page_count(total_count)
+	product_codex_grid_page = clampi(product_codex_grid_page, 0, max(0, page_count - 1))
+	var per_page := _product_codex_entries_per_page()
+	var start_index := product_codex_grid_page * per_page
+	var end_index := mini(total_count, start_index + per_page)
+	if start_index >= total_count:
+		start_index = _product_codex_first_index_on_page(product_codex_grid_page, total_count)
+		end_index = mini(total_count, start_index + per_page)
+	if previewed_product_codex_index < start_index or previewed_product_codex_index >= end_index:
+		previewed_product_codex_index = start_index
+		product_codex_index = start_index
+
+	var nav_row := HBoxContainer.new()
+	nav_row.add_theme_constant_override("separation", 8)
+	parent.add_child(nav_row)
+	var previous_button := Button.new()
+	previous_button.text = "缩略图上一页"
+	previous_button.disabled = page_count <= 1
+	previous_button.pressed.connect(Callable(self, "_turn_product_codex_grid_page").bind(-1))
+	nav_row.add_child(previous_button)
+	var page_label := _plain_label("第%d/%d页｜%d种商品｜本页%d-%d" % [
+		product_codex_grid_page + 1,
+		page_count,
+		total_count,
+		start_index + 1,
+		end_index,
+	], 12, Color("#bbf7d0"))
+	page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nav_row.add_child(page_label)
+	var next_button := Button.new()
+	next_button.text = "缩略图下一页"
+	next_button.disabled = page_count <= 1
+	next_button.pressed.connect(Callable(self, "_turn_product_codex_grid_page").bind(1))
+	nav_row.add_child(next_button)
+
+	var grid := GridContainer.new()
+	grid.columns = _product_codex_grid_columns()
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(grid)
+	for i in range(start_index, end_index):
+		_add_product_codex_thumbnail(grid, i)
+	_add_product_codex_hover_preview(parent)
+
+
+func _add_product_codex_thumbnail(parent: Container, catalog_index: int) -> void:
+	var product_name := String(PRODUCT_CATALOG[_valid_product_codex_index(catalog_index)])
+	var entry: Dictionary = product_market.get(product_name, {})
+	var accent := _product_codex_color(product_name)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(156, 142)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.tooltip_text = _product_codex_tooltip(catalog_index)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#0b1120").lerp(accent, 0.16)
+	style.border_color = Color("#fef3c7") if catalog_index == previewed_product_codex_index else accent
+	style.set_border_width_all(2 if catalog_index == previewed_product_codex_index else 1)
+	style.set_corner_radius_all(10)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_entered.connect(Callable(self, "_preview_product_codex_entry").bind(catalog_index, true))
+	panel.gui_input.connect(Callable(self, "_on_product_codex_thumbnail_gui_input").bind(catalog_index))
+	parent.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	margin.add_child(box)
+	var title := _plain_label(product_name, 11, Color("#f8fafc"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var price := _product_price(product_name)
+	var price_label := _plain_label("¥%d｜%s｜%s" % [price, String(entry.get("tier", _product_tier(product_name))), _product_trend_text(product_name)], 10, Color("#bbf7d0"))
+	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(price_label)
+	var market_label := _plain_label("供%d｜需%d｜断%d｜波%d" % [
+		int(entry.get("supply", 0)),
+		int(entry.get("demand", 0)),
+		int(entry.get("disrupted", 0)),
+		int(entry.get("volatility", 0)),
+	], 9, Color("#cbd5e1"))
+	market_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(market_label)
+	var hint := _plain_label("悬停预览｜双击详情", 8, Color("#94a3b8"))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(hint)
+
+
+func _add_product_codex_hover_preview(parent: Container) -> void:
+	previewed_product_codex_index = _valid_product_codex_index(previewed_product_codex_index)
+	var product_name := String(PRODUCT_CATALOG[previewed_product_codex_index])
+	var preview_panel := PanelContainer.new()
+	var accent := _product_codex_color(product_name)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, 0.13)
+	style.border_color = accent
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	preview_panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(preview_panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	preview_panel.add_child(row)
+	var badge := CenterContainer.new()
+	badge.custom_minimum_size = Vector2(180, 0)
+	row.add_child(badge)
+	_add_product_codex_badge(badge, product_name, true)
+	var detail := _plain_label("悬停详情预览：%s\n%s\n双击缩略图可进入详情页；详情页使用顶部上一个/下一个切换商品。" % [
+		product_name,
+		_product_codex_preview_text(product_name),
+	], 11, Color("#dcfce7"))
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(detail)
+
+
+func _add_product_codex_detail_preview(parent: Container, product_name: String) -> void:
+	var center := CenterContainer.new()
+	parent.add_child(center)
+	_add_product_codex_badge(center, product_name, false)
+
+
+func _add_product_codex_badge(parent: Container, product_name: String, compact: bool = false) -> void:
+	var accent := _product_codex_color(product_name)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(150, 136) if compact else Vector2(240, 190)
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#0b1120").lerp(accent, 0.18)
+	style.border_color = accent
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(12)
+	panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	margin.add_child(box)
+	var title := _plain_label(product_name, 14 if compact else 18, Color("#f8fafc"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var entry: Dictionary = product_market.get(product_name, {})
+	var price := _product_price(product_name)
+	var base_price := int(entry.get("base_price", price))
+	var price_line := _plain_label("¥%d｜基准¥%d｜%s" % [price, base_price, _product_trend_text(product_name)], 11 if compact else 13, Color("#bbf7d0"))
+	price_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(price_line)
+	var meter := _plain_label("供%d 需%d 断%d 波%d" % [
+		int(entry.get("supply", 0)),
+		int(entry.get("demand", 0)),
+		int(entry.get("disrupted", 0)),
+		int(entry.get("volatility", 0)),
+	], 10 if compact else 12, Color("#e5e7eb"))
+	meter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(meter)
+	var weather := _plain_label(_short_card_text(_product_market_boon_text(product_name), 52 if compact else 80), 9 if compact else 11, Color("#fde68a"))
+	weather.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(weather)
+
+
+func _product_codex_preview_text(product_name: String) -> String:
+	_ensure_product_market_catalog()
+	var entry: Dictionary = product_market.get(product_name, {})
+	var price := _product_price(product_name)
+	var base_price := int(entry.get("base_price", price))
+	return "当前价¥%d｜基准¥%d｜价格梯度:%s｜供给%d/需求%d/断路%d/波动%d｜天气:%s｜供给区:%s｜需求区:%s｜城市线索:%s" % [
+		price,
+		base_price,
+		String(entry.get("tier", _product_tier(product_name))),
+		int(entry.get("supply", 0)),
+		int(entry.get("demand", 0)),
+		int(entry.get("disrupted", 0)),
+		int(entry.get("volatility", 0)),
+		_product_market_boon_text(product_name),
+		_product_related_district_names(product_name, "products", 3),
+		_product_related_district_names(product_name, "demands", 3),
+		_product_clue_preview_text(product_name),
+	]
+
+
+func _product_clue_preview_text(product_name: String) -> String:
+	var clues := _economy_city_public_clue_entries(2, product_name)
+	if clues.is_empty():
+		return "暂无"
+	var names := []
+	for clue_variant in clues:
+		var clue: Dictionary = clue_variant
+		names.append("%s/%s" % [String(clue.get("city", "城市")), String(clue.get("type", "线索"))])
+	return "；".join(names)
+
+
+func _product_codex_color(product_name: String) -> Color:
+	var seed: int = absi(hash(product_name))
+	var palette := [
+		Color("#22c55e"),
+		Color("#06b6d4"),
+		Color("#a78bfa"),
+		Color("#f59e0b"),
+		Color("#f472b6"),
+		Color("#84cc16"),
+	]
+	return palette[seed % palette.size()] as Color
+
+
+func _product_codex_tooltip(catalog_index: int) -> String:
+	var index := _valid_product_codex_index(catalog_index)
+	var product_name := String(PRODUCT_CATALOG[index])
+	return "%s\n%s\n操作：悬停/单击预览；双击进入完整商品详情。" % [
+		product_name,
+		_product_codex_preview_text(product_name),
+	]
+
+
+func _preview_product_codex_entry(catalog_index: int, refresh: bool = true) -> void:
+	if PRODUCT_CATALOG.is_empty():
+		return
+	previewed_product_codex_index = _valid_product_codex_index(catalog_index)
+	product_codex_index = previewed_product_codex_index
+	if refresh:
+		_update_product_codex_menu()
+
+
+func _open_product_codex_detail(catalog_index: int) -> void:
+	_preview_product_codex_entry(catalog_index, false)
+	product_codex_show_detail = true
+	product_codex_grid_page = _product_codex_grid_page_for_index(product_codex_index)
+	_update_product_codex_menu()
+
+
+func _on_product_codex_thumbnail_gui_input(event: InputEvent, catalog_index: int) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if mouse_event.double_click:
+		_open_product_codex_detail(catalog_index)
+	else:
+		_preview_product_codex_entry(catalog_index, true)
 
 
 func _open_region_codex_menu(index: int = -1) -> void:
@@ -5803,6 +6147,9 @@ func _capture_run_state() -> Dictionary:
 		"card_codex_index": card_codex_index,
 		"card_codex_filter": card_codex_filter,
 		"product_codex_index": product_codex_index,
+		"product_codex_grid_page": product_codex_grid_page,
+		"product_codex_show_detail": product_codex_show_detail,
+		"previewed_product_codex_index": previewed_product_codex_index,
 		"region_codex_index": region_codex_index,
 		"role_codex_index": role_codex_index,
 	}
@@ -5895,6 +6242,9 @@ func _apply_run_state(state: Dictionary) -> int:
 	card_codex_index = int(state.get("card_codex_index", 0))
 	card_codex_filter = String(state.get("card_codex_filter", "all"))
 	product_codex_index = int(state.get("product_codex_index", 0))
+	product_codex_grid_page = int(state.get("product_codex_grid_page", 0))
+	product_codex_show_detail = bool(state.get("product_codex_show_detail", false))
+	previewed_product_codex_index = int(state.get("previewed_product_codex_index", product_codex_index))
 	region_codex_index = int(state.get("region_codex_index", 0))
 	role_codex_index = int(state.get("role_codex_index", 0))
 	_normalize_card_supply_state()

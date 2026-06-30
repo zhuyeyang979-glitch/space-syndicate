@@ -471,7 +471,14 @@ func _run() -> void:
 	main.call("_open_intel_product_codex_link", "活体芯片")
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier product links return to the dossier")
+	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier product links open product detail before returning to thumbnails")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	intel_back_button = main.get("menu_bestiary_back_button") as Button
+	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "product detail returns to thumbnail page before the intel dossier")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "product thumbnail page returns to the intel dossier")
 	main.call("_open_compendium_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "图鉴", "unified compendium opens from the main scene")
@@ -575,10 +582,28 @@ func _run() -> void:
 	main.call("_open_product_codex_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴", "product codex opens from the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("活体芯片"), "product codex opens on the currently selected trade product")
+	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入商品详情"), "product codex opens as a responsive thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "product codex thumbnail page exposes paging and hover preview")
+	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "product codex hides detail previous/next buttons on the thumbnail page")
+	var product_preview_index := int(main.get("product_codex_index"))
+	main.call("_preview_product_codex_entry", product_preview_index, true)
+	await process_frame
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格梯度"), "product codex hover preview shows the selected product details")
+	var product_detail_event := InputEventMouseButton.new()
+	product_detail_event.button_index = MOUSE_BUTTON_LEFT
+	product_detail_event.pressed = true
+	product_detail_event.double_click = true
+	main.call("_on_product_codex_thumbnail_gui_input", product_detail_event, product_preview_index)
+	await process_frame
+	var product_codex_back_button := main.get("menu_bestiary_back_button") as Button
+	_expect(menu_body_label != null and menu_body_label.text.contains("活体芯片"), "product detail opens on the currently selected trade product")
 	_expect(menu_body_label != null and menu_body_label.text.contains("价格梯度") and menu_body_label.text.contains("当前价"), "product codex shows product price and tier information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气"), "product codex shows product growth and flow weather")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品相关城市线索"), "product codex can filter city clues by product")
+	_expect(product_codex_back_button != null and product_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "product detail exposes previous/next and a return-to-thumbnails button")
+	main.call("_back_from_catalog_menu")
+	await process_frame
+	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册"), "product detail can return to the thumbnail grid")
 	main.call("_open_region_codex_menu", buildable_district)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴", "region codex opens from the compendium")
