@@ -120,6 +120,7 @@ func _run() -> void:
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, cashflow product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_control_limit_cards(main), "role cards can publicly extend monster or military control limits without touching starter monsters")
 	_expect(_verify_military_unit_variant_cards(main), "military card families cover air, land, ocean, terrain deployment, GDP pressure, route pressure, and distinct card facts")
+	_expect(_verify_military_runtime_gdp_boundary(main), "military movement avoids monster-style building crush while applying visible short GDP pressure")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
@@ -1092,6 +1093,48 @@ func _verify_military_unit_variant_cards(main: Node) -> bool:
 	var fighter_land := float(main.call("_military_unit_terrain_move_multiplier", fighter, land_index))
 	var fighter_ocean := float(main.call("_military_unit_terrain_move_multiplier", fighter, ocean_index))
 	return tank_land > tank_ocean and sub_ocean > sub_land and fighter_land > 1.0 and fighter_ocean > 1.0
+
+
+func _verify_military_runtime_gdp_boundary(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var districts := _as_array(main.get("districts"))
+	var city_index := _first_buildable_land_district(districts)
+	if city_index < 0:
+		return false
+	ok = ok and bool(main.call("_create_city_at_district_for_player", 0, city_index, "军队GDP边界测试", false))
+	var fighter := main.call("_make_skill", "制空战斗机2") as Dictionary
+	fighter["fixed_skill_count"] = 4
+	var center: Vector2 = main.call("_district_center", city_index)
+	var unit := {
+		"uid": 91002,
+		"owner": 0,
+		"position": city_index,
+		"world_position": center + Vector2(-24.0, 0.0),
+		"cooldown_left": 0.0,
+		"public_owner_revealed": false,
+	}
+	unit = main.call("_refresh_military_unit_from_skill", unit, fighter, city_index) as Dictionary
+	unit["world_position"] = center + Vector2(-24.0, 0.0)
+	main.set("military_units", [unit])
+	main.set("selected_player", 0)
+	main.set("selected_district", city_index)
+	var before_district := (_as_array(main.get("districts"))[city_index] as Dictionary).duplicate(true)
+	var damage_before := int(before_district.get("damage", 0))
+	var last_source_before := String(before_district.get("last_damage_source", ""))
+	var command := main.call("_make_military_command_skill", "move", 2, int(unit.get("uid", 0)), "制空战斗机2") as Dictionary
+	ok = ok and bool(main.call("_trigger_military_command", command, -1, 0))
+	var after_district := (_as_array(main.get("districts"))[city_index] as Dictionary).duplicate(true)
+	var after_city := after_district.get("city", {}) as Dictionary
+	var breakdown := main.call("_city_cycle_income_breakdown", city_index, 0) as Dictionary
+	ok = ok and int(after_district.get("damage", 0)) == damage_before
+	ok = ok and String(after_district.get("last_damage_source", "")) == last_source_before
+	ok = ok and int(after_city.get("military_gdp_penalty", 0)) > 0
+	ok = ok and float(after_city.get("military_pressure_until", 0.0)) > float(main.get("game_time"))
+	ok = ok and String(after_city.get("military_pressure_source", "")).contains("战斗机")
+	ok = ok and int(breakdown.get("military_penalty", 0)) > 0
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
