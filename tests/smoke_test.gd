@@ -396,6 +396,7 @@ func _run() -> void:
 	var menu_overlay := main.get("menu_overlay") as Control
 	_expect(menu_overlay != null and menu_overlay.visible, "main menu overlay opens after setup")
 	var menu_title_label := main.get("menu_title_label") as Label
+	var menu_context_label := main.get("menu_context_label") as Label
 	var menu_body_label := main.get("menu_body_label") as Label
 	var menu_back_button := main.get("menu_back_button") as Button
 	var menu_continue_button := main.get("menu_continue_button") as Button
@@ -408,6 +409,7 @@ func _run() -> void:
 	main.call("_open_main_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加", "main menu opens with the root title")
+	_expect(menu_context_label != null and menu_context_label.text.contains("当前位置：主菜单") and menu_context_label.text.contains("hover"), "main menu exposes a reusable breadcrumb/help strip for flexible subpage navigation")
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
 	_expect(menu_content_scroll != null and menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column")
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
@@ -428,6 +430,7 @@ func _run() -> void:
 	main.call("_start_new_run_from_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "开局准备", "new-run entry opens the setup preview instead of immediately starting")
+	_expect(menu_context_label != null and menu_context_label.text.contains("主菜单 → 开局准备"), "setup branch updates the breadcrumb/help strip")
 	_expect(_as_array(main.get("players")).size() == current_players_before_setup, "opening setup preview does not wipe the current run")
 	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("起始怪兽牌"), "new-run setup explains role cards and starter monster cards")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "开始本局"), "new-run setup requires an explicit start confirmation")
@@ -1998,7 +2001,7 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 		else:
 			ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI阶段自城", false))
 			ok = ok and bool(main.call("_create_city_at_district_for_player", 2, rival_index, "AI阶段敌城", false))
-			ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
+			ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "环晶电池")
 			ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "星尘香料")
 			var actor := main.call("_make_auto_monster", 0, 0, own_index, 1, 1) as Dictionary
 			main.set("auto_monsters", [actor])
@@ -2031,6 +2034,18 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 					break
 			var sabotage_bonus := int(main.call("_ai_phase_bonus_for_candidate", 1, "route_sabotage", rival_index, "环晶电池", 2, {}))
 			ok = ok and saw_trailing_disrupt and sabotage_bonus > 0
+			main.set("victory_countdown_active", true)
+			main.set("victory_countdown_timer", 12.0)
+			var countdown_urgency := int(main.call("_ai_endgame_urgency_score", 1))
+			var urgent_sabotage_bonus := int(main.call("_ai_phase_bonus_for_candidate", 1, "route_sabotage", rival_index, "环晶电池", 2, {}))
+			var sabotage_skill := main.call("_make_skill", "商路黑客1") as Dictionary
+			var sabotage_context := main.call("_ai_card_play_context", 1, 0, sabotage_skill) as Dictionary
+			ok = ok \
+				and countdown_urgency > 0 \
+				and urgent_sabotage_bonus > sabotage_bonus \
+				and not sabotage_context.is_empty() \
+				and int(sabotage_context.get("endgame_urgency", 0)) == countdown_urgency \
+				and int(sabotage_context.get("phase_bonus", 0)) >= urgent_sabotage_bonus
 			players = _as_array(main.get("players")).duplicate(true)
 			ai_player = players[1] as Dictionary
 			ai_player["cash"] = int(main.call("_roguelike_cash_goal")) + 1200
@@ -2048,6 +2063,7 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 			var after_record := _as_array(main.get("players"))
 			ok = ok and _ai_sample_has_field(after_record, 1, "game_phase", "endgame")
 			ok = ok and _ai_sample_has_field(after_record, 1, "competitive_posture", "leader")
+			ok = ok and _ai_sample_has_field(after_record, 1, "endgame_urgency")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	return ok and restore_result == OK

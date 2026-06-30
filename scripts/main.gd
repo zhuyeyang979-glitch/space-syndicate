@@ -1303,6 +1303,7 @@ var menu_shell_margin: MarginContainer
 var menu_nav_row: HBoxContainer
 var menu_catalog_nav_row: HBoxContainer
 var menu_title_label: Label
+var menu_context_label: Label
 var menu_body_label: Label
 var menu_preview_box: VBoxContainer
 var menu_continue_button: Button
@@ -2403,6 +2404,15 @@ func _build_menu_overlay() -> void:
 	menu_title_label.add_theme_color_override("font_color", Color("#f8fafc"))
 	shell.add_child(menu_title_label)
 
+	menu_context_label = Label.new()
+	menu_context_label.text = "当前位置：主菜单｜hover查看提示，进入子页面后可返回。"
+	menu_context_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	menu_context_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_context_label.add_theme_font_size_override("font_size", 11)
+	menu_context_label.add_theme_color_override("font_color", Color("#94a3b8"))
+	menu_context_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shell.add_child(menu_context_label)
+
 	menu_nav_row = HBoxContainer.new()
 	menu_nav_row.add_theme_constant_override("separation", 10)
 	menu_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2574,6 +2584,8 @@ func _refresh_menu_layout() -> void:
 		menu_shell_margin.add_theme_constant_override("margin_bottom", vertical_margin)
 	if menu_title_label != null:
 		menu_title_label.add_theme_font_size_override("font_size", 24 if compact else (34 if wide else 31))
+	if menu_context_label != null:
+		menu_context_label.add_theme_font_size_override("font_size", 10 if compact else 11)
 	if menu_body_label != null:
 		menu_body_label.add_theme_font_size_override("font_size", 13 if compact else 15)
 	if menu_nav_row != null:
@@ -5135,6 +5147,33 @@ func _close_fullscreen_map() -> void:
 	_refresh_board()
 
 
+func _menu_context_text(title_text: String, show_main_actions: bool = false) -> String:
+	if show_main_actions and title_text == "太空辛迪加":
+		return "当前位置：主菜单｜先选分支，规则/图鉴/经济/情报都可随时返回；hover查看入口用途。"
+	if show_main_actions and title_text == "暂停菜单":
+		return "当前位置：暂停菜单｜继续、复查局势、查资料或保存；主画面信息保持简洁。"
+	match title_text:
+		"开局准备":
+			return "当前位置：主菜单 → 开局准备｜调整席位、AI、角色卡和起始怪兽后再明确开始。"
+		"图鉴":
+			return "当前位置：主菜单 → 图鉴｜先选资料分类；缩略图支持hover预览、双击详情。"
+		"卡牌图鉴", "怪兽图鉴", "商品图鉴":
+			return "当前位置：图鉴 → %s｜缩略图页hover/单击预览，双击进详情；详情页再用上一页/下一页。" % title_text
+		"角色图鉴", "区域图鉴":
+			return "当前位置：图鉴 → %s｜用页面按钮切换条目，相关卡牌/区域可继续跳转。" % title_text
+		"游戏规则":
+			return "当前位置：主菜单 → 游戏规则｜短卡先给玩法骨架，长规则收在滚动区。"
+		"经济总览":
+			return "当前位置：主菜单 → 经济总览｜GDP、商品、商路、天气和城市收入拆解集中查看。"
+		"情报档案":
+			return "当前位置：主菜单 → 情报档案｜整理推理线索，不提前揭示隐藏归属。"
+		"局势排名":
+			return "当前位置：主菜单 → 局势排名｜查看现金目标、终局倒计时和排名推断。"
+		"新手引导":
+			return "当前位置：主菜单 → 新手引导｜只保留试玩必要步骤，复杂细则进规则页。"
+	return "当前位置：%s｜hover查看提示；用返回按钮回到上一级或主菜单。" % title_text
+
+
 func _show_menu(title_text: String, body_text: String, can_continue: bool, show_main_actions: bool = false) -> void:
 	if menu_overlay == null:
 		return
@@ -5144,6 +5183,8 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 	time_scale = 0.0
 	menu_catalog_mode = ""
 	menu_title_label.text = title_text
+	if menu_context_label != null:
+		menu_context_label.text = _menu_context_text(title_text, show_main_actions)
 	menu_body_label.text = body_text
 	if menu_preview_box != null:
 		_clear_children(menu_preview_box)
@@ -14288,6 +14329,26 @@ func _ai_competitive_posture(player_index: int) -> String:
 	return "contesting"
 
 
+func _ai_endgame_urgency_score(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return 0
+	var score := 0
+	var settlement_estimate := _player_visible_settlement_estimate(player_index)
+	var cash_goal := maxi(1, _roguelike_cash_goal())
+	var cash_gap := maxi(0, cash_goal - settlement_estimate)
+	var leader_gap := _ai_score_gap_to_leader(player_index)
+	if cash_gap > 0:
+		score += mini(95, int(round(float(cash_gap) / 80.0)))
+	if leader_gap < 0:
+		score += mini(115, int(round(float(abs(leader_gap)) / 55.0)))
+	if victory_countdown_active:
+		var elapsed_ratio := clampf(1.0 - (victory_countdown_timer / maxf(1.0, VICTORY_COUNTDOWN_SECONDS)), 0.0, 1.0)
+		score += 55 + int(round(elapsed_ratio * 120.0))
+		if victory_countdown_timer <= 20.0:
+			score += 45
+	return clampi(score, 0, 260)
+
+
 func _ai_game_phase_reason(player_index: int, phase: String, posture: String, gap: int) -> String:
 	match phase:
 		"opening":
@@ -14426,6 +14487,10 @@ func _ai_phase_bonus_for_candidate(player_index: int, kind: String, district_ind
 	var helpful_target := target_owner == player_index
 	var harmful_target := target_owner >= 0 and target_owner != player_index
 	var targets_leader := leader_index >= 0 and target_owner == leader_index and leader_index != player_index
+	var endgame_urgency := _ai_endgame_urgency_score(player_index)
+	var urgency_half := int(round(float(endgame_urgency) / 2.0))
+	var urgency_third := int(round(float(endgame_urgency) / 3.0))
+	var urgency_fifth := int(round(float(endgame_urgency) / 5.0))
 	var bonus := 0
 	match phase:
 		"opening":
@@ -14447,23 +14512,23 @@ func _ai_phase_bonus_for_candidate(player_index: int, kind: String, district_ind
 		"endgame":
 			if posture == "leader":
 				if _ai_defense_kind(kind, skill) and (helpful_target or target_owner == -999):
-					bonus += 145
+					bonus += 145 + endgame_urgency
 				if ["cash_gain", "market_stabilize"].has(kind):
-					bonus += 90
+					bonus += 90 + urgency_half
 				if _ai_pressure_kind(kind, skill) and harmful_target:
-					bonus += 35
+					bonus += 35 + urgency_fifth
 			elif posture == "trailing":
 				if _ai_pressure_kind(kind, skill) and (targets_leader or harmful_target):
-					bonus += 170
+					bonus += 170 + endgame_urgency
 				if kind == "city_gdp_derivative" and String(skill.get("gdp_bet_direction", "up")) == "down":
-					bonus += 95
+					bonus += 95 + urgency_half
 				if ["cash_gain", "product_speculation"].has(kind):
-					bonus += 70
+					bonus += 70 + urgency_third
 			else:
 				if _ai_defense_kind(kind, skill) and helpful_target:
-					bonus += 80
+					bonus += 80 + urgency_half
 				if _ai_pressure_kind(kind, skill) and (targets_leader or harmful_target):
-					bonus += 90
+					bonus += 90 + urgency_half
 	return bonus
 
 
@@ -14497,6 +14562,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"competitive_posture": String(phase_info.get("posture", "contesting")),
 		"score_gap_to_leader": int(phase_info.get("gap", 0)),
 		"leader_index": int(phase_info.get("leader_index", -1)),
+		"endgame_urgency": _ai_endgame_urgency_score(player_index),
 		"learning_updates": int(memory.get("learning_updates", 0)),
 		"episode_learning_updates": int(memory.get("episode_learning_updates", 0)),
 		"learned_policy_count": (memory.get("learned_policy_values", {}) as Dictionary).size(),
@@ -14510,7 +14576,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -14665,6 +14731,7 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"score_gap_to_leader": int(phase_info.get("gap", 0)),
 		"leader_index": int(phase_info.get("leader_index", -1)),
 		"phase_reason": String(phase_info.get("reason", "")),
+		"endgame_urgency": _ai_endgame_urgency_score(player_index),
 		"baseline_cash": int(player.get("cash", 0)),
 		"baseline_settlement": int(observation.get("settlement_estimate", 0)),
 		"reward_cash": 0,
@@ -16113,6 +16180,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	var route_product := _ai_route_plan_product(player_index)
 	var route_stage := _ai_route_plan_stage(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
+	var endgame_urgency := _ai_endgame_urgency_score(player_index)
 	var development_route := _card_development_route_id(skill)
 	var development_route_bias := _ai_development_route_bias(player_index, development_route)
 	var context := {
@@ -16142,6 +16210,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"competitive_posture": String(phase_info.get("posture", "contesting")),
 		"score_gap_to_leader": int(phase_info.get("gap", 0)),
 		"leader_index": int(phase_info.get("leader_index", -1)),
+		"endgame_urgency": endgame_urgency,
 		"phase_bonus": 0,
 		"learning_bonus": 0,
 		"contract_source": -1,
@@ -16415,6 +16484,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))
 	var posture := String(phase_info.get("posture", "contesting"))
+	var endgame_urgency := _ai_endgame_urgency_score(player_index)
 	var phase_label := _ai_game_phase_label(phase)
 	var posture_label := _ai_competitive_posture_label(posture)
 	var counted_hand := _player_counted_hand_size(player)
@@ -16538,6 +16608,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"competitive_posture": posture,
 				"score_gap_to_leader": int(phase_info.get("gap", 0)),
 				"leader_index": int(phase_info.get("leader_index", -1)),
+				"endgame_urgency": endgame_urgency,
 				"phase_bonus": phase_bonus,
 				"generic_effect_bonus": generic_bonus,
 				"learning_bonus": learning_bonus,
@@ -16547,7 +16618,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"discard_slot": discard_slot,
 				"discard_keep_value": discard_keep_value,
 				"counted_hand": counted_hand,
-				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜路线库存%d/%d/%d +%d/-%d｜阶段%s/%s+%d｜策略%s+%d｜商品路线%s/%s+%d｜发展%s+%d｜学习%d｜探索率%.0f%%" % [
+				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜路线库存%d/%d/%d +%d/-%d｜阶段%s/%s+%d｜终局紧迫%d｜策略%s+%d｜商品路线%s/%s+%d｜发展%s+%d｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
 					price,
 					available,
@@ -16562,6 +16633,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					phase_label,
 					posture_label,
 					phase_bonus,
+					endgame_urgency,
 					strategy_intent if strategy_intent != "" else "未定",
 					strategy_bonus,
 					route_product if route_product != "" else "未定",
@@ -16619,7 +16691,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -16722,6 +16794,7 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 				"competitive_posture": String(buy_choice.get("competitive_posture", "")),
 				"score_gap_to_leader": int(buy_choice.get("score_gap_to_leader", 0)),
 				"leader_index": int(buy_choice.get("leader_index", -1)),
+				"endgame_urgency": int(buy_choice.get("endgame_urgency", 0)),
 				"phase_bonus": int(buy_choice.get("phase_bonus", 0)),
 				"generic_effect_bonus": int(buy_choice.get("generic_effect_bonus", 0)),
 				"policy_kind": String(buy_choice.get("policy_kind", buy_choice.get("kind", ""))),
