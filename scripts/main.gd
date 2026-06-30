@@ -17749,7 +17749,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -19742,47 +19742,134 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	return score
 
 
-func _ai_best_military_deploy_district(player_index: int, skill: Dictionary) -> int:
-	var best_index := -1
-	var best_score := -999999
+func _ai_military_deploy_plan_for_district(player_index: int, skill: Dictionary, district_index: int) -> Dictionary:
+	if not _can_deploy_military_card_at_district(skill, district_index):
+		return {}
 	var military_type := String(skill.get("military_type", "defense"))
 	var prefers_offense := ["bomber", "missile", "submarine"].has(military_type)
 	var prefers_sea_routes := ["submarine", "warship"].has(military_type)
+	var city := _district_city(district_index)
+	var owner := int(city.get("owner", -1)) if _city_is_active(city) else -1
+	var terrain := String(districts[district_index].get("terrain", "land"))
+	var terrain_multiplier := _military_unit_terrain_move_multiplier(skill, district_index)
+	var income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index)))) if _city_is_active(city) else 0
+	var route_pressure := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0)) if _city_is_active(city) else 0
+	var warehouse_pressure := _city_warehouse_stockpile_pressure(city) if _city_is_active(city) else 0
+	var route_load := _district_trade_route_load(district_index)
+	var monster_risk := _auto_build_monster_risk_score(district_index)
+	var damage := int(districts[district_index].get("damage", 0))
+	var panic := int(districts[district_index].get("panic", 0))
+	var stat_score := int(skill.get("military_hp", 0)) * 2 \
+		+ int(skill.get("military_damage", 0)) * 18 \
+		+ int(round(float(skill.get("military_range", 0.0)) / 24.0)) \
+		+ int(round(float(skill.get("military_move", 0.0)) / 26.0)) \
+		+ int(round(float(skill.get("military_duration_seconds", 0.0)) / 2.0))
+	var defense_score := 0
+	var strike_score := 0
+	var monster_score := monster_risk + int(skill.get("military_damage", 0)) * 42 + int(round(float(skill.get("military_range", 0.0)) / 18.0))
+	var route_score := route_load * (36 if prefers_sea_routes else 18) + int(skill.get("military_strike_route_damage", 0)) * 62
+	var staging_score := int(round(terrain_multiplier * 70.0)) + stat_score / 3
+	if owner == player_index:
+		defense_score = 100 + income / 4 + damage * 48 + panic / 2 + route_pressure * 64 + warehouse_pressure * 2 + monster_risk
+		defense_score += _ai_district_focus_score(player_index, district_index)
+		if not prefers_offense:
+			defense_score += 80
+		if military_type == "defense":
+			defense_score += 160
+	elif owner >= 0:
+		strike_score = 96 + _ai_rival_city_pressure_score(player_index, district_index) + income / 7
+		strike_score += warehouse_pressure * (3 if prefers_offense else 1)
+		strike_score += int(skill.get("military_gdp_penalty", 0)) * 7 + int(skill.get("military_strike_route_damage", 0)) * 86
+		strike_score += route_load * 18 + route_pressure * 28
+		if prefers_offense:
+			strike_score += 105
+		elif military_type == "defense":
+			strike_score = int(round(float(strike_score) * 0.42))
+	if prefers_sea_routes and terrain == "ocean":
+		route_score += 92
+	if military_type == "tank" and terrain == "land":
+		defense_score += 58
+		staging_score += 48
+	if military_type == "fighter":
+		monster_score += 84
+	if military_type == "missile":
+		monster_score += 56
+		strike_score += 50
+	if military_type == "warship" and terrain == "ocean":
+		defense_score += 48
+		route_score += 68
+	if military_type == "submarine" and terrain == "ocean":
+		strike_score += 62
+		route_score += 82
+	var role := "terrain_staging"
+	var role_score := staging_score
+	if defense_score > role_score:
+		role = "guard_own_city"
+		role_score = defense_score
+	if strike_score > role_score:
+		role = "strike_rival_city"
+		role_score = strike_score
+	if monster_score > role_score:
+		role = "intercept_monster"
+		role_score = monster_score
+	if route_score > role_score:
+		role = "route_control"
+		role_score = route_score
+	var total_score := 52 + int(round(terrain_multiplier * 36.0)) + stat_score + role_score
+	var target_city := district_index if _city_is_active(city) else -1
+	var reason_label: String = String({
+		"guard_own_city": "护航己方城市",
+		"strike_rival_city": "压制竞争城市",
+		"intercept_monster": "截击怪兽威胁",
+		"route_control": "控制商路节点",
+		"terrain_staging": "占据适配地形",
+	}.get(role, "军事部署"))
+	return {
+		"district": district_index,
+		"target_city": target_city,
+		"target_owner": owner,
+		"score": maxi(1, total_score),
+		"military_deploy_role": role,
+		"military_deploy_score": maxi(1, role_score),
+		"military_deploy_terrain": terrain,
+		"military_deploy_route_load": route_load,
+		"military_deploy_monster_risk": monster_risk,
+		"military_unit_type": military_type,
+		"strategic_role": role,
+		"reason": "部署%s｜%s｜%s｜地形×%.2f｜GDP%d｜商路%d｜仓储%d｜怪兽%d" % [
+			_military_unit_type_label(skill),
+			String(reason_label),
+			String(districts[district_index].get("name", "区域")),
+			terrain_multiplier,
+			income,
+			route_load + route_pressure,
+			warehouse_pressure,
+			monster_risk,
+		],
+	}
+
+
+func _ai_military_deploy_plan(player_index: int, skill: Dictionary) -> Dictionary:
+	if String(skill.get("kind", "")) != "military_force":
+		return {}
+	var best := {}
+	var best_score := -999999
 	for index in range(districts.size()):
-		if not _can_deploy_military_card_at_district(skill, index):
+		var plan := _ai_military_deploy_plan_for_district(player_index, skill, index)
+		if plan.is_empty():
 			continue
-		var city := _district_city(index)
-		var owner := int(city.get("owner", -1)) if _city_is_active(city) else -1
-		var terrain_multiplier := _military_unit_terrain_move_multiplier(skill, index)
-		var score := 48 + int(round(terrain_multiplier * 35.0))
-		score += int(skill.get("military_hp", 0)) * 2 + int(skill.get("military_damage", 0)) * 18
-		score += int(round(float(skill.get("military_range", 0.0)) / 24.0))
-		if _city_is_active(city):
-			var income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
-			var route_pressure := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0))
-			var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
-			if owner == player_index:
-				score += (income / 5) + route_pressure * 35
-				score += warehouse_pressure
-				if not prefers_offense:
-					score += 90
-			elif owner >= 0:
-				score += (income / 6) + int(skill.get("military_gdp_penalty", 0)) * 5 + int(skill.get("military_strike_route_damage", 0)) * 42
-				score += warehouse_pressure * (2 if prefers_offense else 1)
-				if prefers_offense:
-					score += 110
-		if prefers_sea_routes:
-			score += _district_trade_route_load(index) * 16
-		if String(districts[index].get("terrain", "land")) == "ocean" and prefers_sea_routes:
-			score += 70
-		if String(districts[index].get("terrain", "land")) == "land" and military_type == "tank":
-			score += 55
-		score += _ai_district_focus_score(player_index, index) / (2 if owner == player_index else 4)
-		score += _auto_build_monster_risk_score(index) / (3 if owner == player_index else 5)
+		var score := int(plan.get("score", 0))
 		if score > best_score:
 			best_score = score
-			best_index = index
-	return best_index
+			best = plan
+	if not best.is_empty():
+		best["policy_kind"] = "military_force_%s" % String(best.get("military_deploy_role", "deploy"))
+	return best
+
+
+func _ai_best_military_deploy_district(player_index: int, skill: Dictionary) -> int:
+	var plan := _ai_military_deploy_plan(player_index, skill)
+	return int(plan.get("district", -1)) if not plan.is_empty() else -1
 
 
 func _ai_military_unit_for_command(player_index: int, skill: Dictionary) -> Dictionary:
@@ -20121,18 +20208,14 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["score"] = int(context["score"]) + 100 + maxi(0, _player_visible_settlement_estimate(target_player) - _player_visible_settlement_estimate(player_index)) / 18
 		context["reason"] = "直接互动压制%s｜公开目标但隐藏出牌者" % _interaction_target_label(target_player)
 	elif kind == "military_force":
-		var military_district := _ai_best_military_deploy_district(player_index, skill)
-		if military_district < 0:
+		var military_plan := _ai_military_deploy_plan(player_index, skill)
+		if military_plan.is_empty():
 			return {}
-		context["district"] = military_district
-		var military_city := _district_city(military_district)
-		if _city_is_active(military_city):
-			context["target_city"] = military_district
-			context["target_owner"] = int(military_city.get("owner", -1))
-		context["score"] = int(context["score"]) + 105 + _ai_generic_card_effect_score(player_index, skill, military_district, String(context.get("product", "")), int(context.get("target_owner", -999))) / 2
-		context["reason"] = "部署%s｜%s｜%s" % [
-			_military_unit_type_label(skill),
-			String(districts[military_district].get("name", "区域")),
+		var base_military_score := int(context["score"])
+		context.merge(military_plan, true)
+		context["score"] = base_military_score + int(military_plan.get("score", 0))
+		context["reason"] = "%s｜%s" % [
+			String(military_plan.get("reason", "部署军队")),
 			_military_unit_mobility_summary(skill),
 		]
 	elif kind == "area_trade_contract":
@@ -20474,6 +20557,13 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					continue
 				if not futures_plan.is_empty():
 					product_name = String(futures_plan.get("product", product_name))
+			var military_plan := {}
+			var military_deploy_bonus := 0
+			if kind == "military_force":
+				military_plan = _ai_military_deploy_plan(player_index, skill)
+				if military_plan.is_empty():
+					continue
+				military_deploy_bonus = int(military_plan.get("score", 0)) / 2
 			var required := _skill_play_flow_required(skill, player_index)
 			var available := _player_product_flow(player_index, product_name)
 			var playability_bonus := 0
@@ -20532,6 +20622,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score -= route_inventory_penalty
 			if generic_bonus != 0:
 				score += generic_bonus
+			if military_deploy_bonus != 0:
+				score += military_deploy_bonus
 			if phase_bonus != 0:
 				score += phase_bonus
 			if learning_bonus != 0:
@@ -20627,6 +20719,16 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					int(futures_plan.get("futures_signal", 0)),
 					String(futures_plan.get("reason", "")),
 				]
+			if not military_plan.is_empty():
+				for field_name in ["policy_kind", "target_city", "target_owner", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_unit_type", "strategic_role"]:
+					if military_plan.has(field_name):
+						candidate[field_name] = military_plan[field_name]
+				candidate["military_deploy_district"] = int(military_plan.get("district", -1))
+				candidate["reason"] = "%s｜军事部署+%d｜%s" % [
+					String(candidate.get("reason", "")),
+					military_deploy_bonus,
+					String(military_plan.get("reason", "")),
+				]
 			result.append(candidate)
 	return result
 
@@ -20675,7 +20777,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
