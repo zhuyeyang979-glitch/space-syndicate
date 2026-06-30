@@ -1852,6 +1852,27 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 			if String(candidate.get("card_name", "")) == "需求改造1" and String(candidate.get("route_plan_stage", "")) == "create_demand" and int(candidate.get("route_plan_bonus", 0)) > 0:
 				saw_route_buy = true
 				break
+		var demand_gap := main.call("_ai_route_gap_adjustment", 1, main.call("_make_skill", "消费刺激1"), seed_index, "环晶电池", 1) as Dictionary
+		var supply_gap := main.call("_ai_route_gap_adjustment", 1, main.call("_make_skill", "生产扩张1"), seed_index, "环晶电池", 1) as Dictionary
+		var route_gap_direct_ok := int(demand_gap.get("bonus", 0)) > int(supply_gap.get("bonus", 0)) and String(demand_gap.get("reason", "")).contains("补需求")
+		var districts_for_gap := _as_array(main.get("districts")).duplicate(true)
+		var gap_district := districts_for_gap[seed_index] as Dictionary
+		gap_district["card_choices"] = ["消费刺激1", "生产扩张1"]
+		districts_for_gap[seed_index] = gap_district
+		main.set("districts", districts_for_gap)
+		var gap_candidates := main.call("_ai_card_buy_candidates", 1) as Array
+		var saw_route_gap_buy := false
+		var demand_gap_score := -999999
+		var supply_gap_score := -999999
+		for candidate_variant in gap_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("card_name", "")) == "消费刺激1":
+				demand_gap_score = int(candidate.get("score", 0))
+				saw_route_gap_buy = int(candidate.get("route_gap_bonus", 0)) > int(candidate.get("route_gap_penalty", 0)) and String(candidate.get("route_gap_reason", "")).contains("补需求") and int(candidate.get("route_gap_field_match", 0)) >= 2
+			elif String(candidate.get("card_name", "")) == "生产扩张1":
+				supply_gap_score = int(candidate.get("score", 0))
 		var contract_skill := main.call("_make_skill", "环晶电池专供1") as Dictionary
 		var contract_entry := {
 			"skill": contract_skill,
@@ -1877,10 +1898,12 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 			if String(candidate.get("card_name", "")) == "需求改造1":
 				play_choice = candidate
 				break
+		var saw_route_gap_play := not play_choice.is_empty() and int(play_choice.get("route_gap_bonus", 0)) > int(play_choice.get("route_gap_penalty", 0)) and String(play_choice.get("route_gap_reason", "")).contains("补需求")
 		var route_play_queued := bool(main.call("_ai_queue_play_candidate", 1, play_choice, play_candidates)) if not play_choice.is_empty() else false
 		var players_after_queue := _as_array(main.get("players"))
 		var route_play_memory := _ai_memory_has_kind_with_metadata(players_after_queue, 1, "匿名出牌", "route_plan_stage", "create_demand")
-		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and saw_route_contract and not play_choice.is_empty() and route_play_queued and route_play_memory
+		var route_gap_score_ok := demand_gap_score > supply_gap_score
+		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and route_gap_direct_ok and saw_route_gap_buy and route_gap_score_ok and saw_route_gap_play and saw_route_contract and not play_choice.is_empty() and route_play_queued and route_play_memory
 		ok = first_route_ok and ok
 		var inventory_players := _as_array(main.get("players")).duplicate(true)
 		var inventory_player := inventory_players[1] as Dictionary

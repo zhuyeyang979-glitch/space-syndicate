@@ -1,7 +1,21 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-06-30。
+> 最新记录日期：2026-07-01。
+
+## 2026-07-01｜AI商品路线缺口评分
+
+### 本轮实现
+
+- 新增 `_ai_route_gap_adjustment()`：AI 购牌和出牌不再只看“当前能不能打”，还会按当前商品路线阶段识别缺口：补供给、补需求、放大 GDP、修复/保险、压制竞品。
+- 缺口评分完全由卡牌字段推断，包括 `production_delta`、`consumption_delta`、`transport_delta`、`repair_routes`、`route_damage`、`route_flow_multiplier`、`gdp_bet_*`、合约增删供需字段等；新增卡只要补齐字段，AI 就能初步理解它服务哪条赚钱/压制链。
+- AI 候选样本新增内部字段 `route_gap_bonus`、`route_gap_penalty`、`route_gap_reason`、`route_gap_field_match`，用于训练和 smoke test 观察；这些字段不进入玩家 UI，继续保持 AI 计划、手牌压力和路线桶隐藏。
+- 修正区域经济牌目标判断的字段错位：`region_economy_shift` 现在使用 `consumption_delta` 判断消费刺激/消费冷却的正负，而不是旧的 `demand_delta`。
+
+### 新增验证
+
+- `tests/smoke_test.gd` 扩展 AI 商品路线测试：当 AI 处在“制造需求”阶段时，消费刺激类字段会比生产扩张更高分；购牌候选、出牌候选和训练元数据都必须记录路线缺口评分。
+- 完整 Godot headless smoke test 通过。
 
 ## 2026-06-30｜公开角色、TCG图鉴与临时图标美术整理
 
