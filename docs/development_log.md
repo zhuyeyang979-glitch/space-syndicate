@@ -3,6 +3,35 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜AI 军队可回收指令目标规划
+
+### 本轮实现
+
+- AI 新增军队指令规划器，不再只把绑定军令当作普通卡牌评分，而是读取 `military_command`、绑定军队 UID、军队类型、射程、火力、地形适配和当前地图状态来选择目标。
+- 可回收军令现在按用途分流：
+  - `guard` 优先保护己方高 GDP、受损、断路、恐慌、仓储压力或怪兽威胁较高的城市；
+  - `strike_district` 优先打击竞争城市、仓储城市、高商路负载城市和与己方商品路线冲突的城市；
+  - `attack_monster` 优先猎杀靠近己方城市、资源吻合度高、生命/等级威胁高的怪兽；
+  - `move` 会按军队类型、地形倍率、己方防守价值、敌方进攻价值和商路负载选择重新部署点。
+- AI 出牌候选、匿名出牌记忆和训练样本新增军令元数据：`military_command`、`military_command_role`、`military_command_score`、`military_command_distance_m`、`military_unit_uid`、`military_unit_type`。
+- 调整 AI 出牌上下文的分支顺序，让“攻击怪兽”军令优先走军令规划器，而不是被通用怪兽目标逻辑提前截走。
+
+### 平衡与规则决策
+
+- 军队继续与怪兽区分：军队完全靠玩家/AI 的可回收指令行动，不产生怪兽式自主行为，也不会因为受伤让操控者承担怪兽伤害资金损失。
+- 军队路线现在能形成四种清晰策略：护航己方 GDP、打击竞品城市、清理怪兽威胁、抢占地形/商路节点。
+- 这些评分、压力桶和路线偏好仍是隐藏 AI 工具；玩家只会看到公开军队行动、地图结果、GDP 压力和匿名卡牌线索。
+
+### 新增验证
+
+- `tests/smoke_test.gd` 新增 `AI uses reusable military commands to guard cities, strike rivals, attack monsters, and record command metadata`：
+  - 验证 AI 能为防守军令选择己方城市；
+  - 验证 AI 能为轰击军令选择竞争城市；
+  - 验证 AI 能为猎兽军令选择威胁怪兽，并记录资源匹配；
+  - 验证匿名出牌训练记忆会保存军令类型、角色和绑定军队 UID。
+- 完整 Godot headless smoke test 通过：
+  - `Godot_v4.6.2-stable_win64_console.exe --headless --path . --script res://tests/smoke_test.gd`
+
 ## 2026-07-01｜商品期货 AI 字段化决策
 
 ### 本轮实现
