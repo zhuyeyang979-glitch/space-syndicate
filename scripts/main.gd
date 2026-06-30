@@ -3247,8 +3247,8 @@ func _open_rules_menu() -> void:
 	lines.append("")
 	lines.append("1. 身份与AI席位：每局3-8个席位，其中2-7个为AI对手，剩余席位是真人/本地玩家视角。玩家都是外星辛迪加角色；每名玩家开局获得一张角色卡，并在开局准备中从全部怪兽任选一只I级怪兽作为起始怪兽牌；这张起始牌无区域/商品流动门槛，用来把第一只怪兽匿名召唤到星球上。")
 	lines.append("2. 怪兽牌：怪兽通过怪兽牌匿名召唤入场。怪兽有生命值、移动速度、在场时间、召唤区域限制和自动行动概率；大多数怪兽会活动一段时间后自然离场，即使没有被杀掉。同名怪兽牌可用于升级己方同名在场怪兽，刷新生命值和在场时间。")
-	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地和海洋都会有1种初始生产商品与1种本地需求；海洋偏向鱼群、巨藻、海底能源、潮汐电力等商品，并继续承载商路、影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。")
-	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；城市按当前GDP/min持续产生现金，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
+	lines.append("3. 星球地图：每局星球随机划分区域并分配陆地/海洋。陆地和海洋都会有1种初始生产商品与1种本地需求；海洋偏向鱼群、巨藻、海底能源、潮汐电力等商品，并继续承载商路、影响途经商品运输。后续可用匿名合约牌扩张、替换或删除供需。区域分为生产、交通、消费与均衡倾向；商品流动量由生产/需求关系决定，流动速度由公共交通水平决定，收入最终都折算为GDP现金。全局市场刷新每30-60秒公开重估供需、价格、商路和GDP快照；它是公开信息刷新，不是发钱周期。")
+	lines.append("4. 秘密城市化：玩家花费%d资金在陆地区域城市化。建筑公开冒起，但真实业主只对建造者可见；城市按当前GDP/min持续按秒变成现金，AI对手会按GDP、商品竞争、交通和怪兽风险评分，自动且匿名地在高价值空地扩张。" % CITY_BUILD_COST)
 	lines.append("5. 市场价格：商品价格只能由供给、需求、商路断损、城市经营和经济天气重算，不能被玩家直接指定。扩张城市生产/需求、充实商路、引导怪兽破坏，才会改变市场。")
 	lines.append("6. 购牌与升级：卡牌需要花钱购买；默认只能从怪兽落地区或相邻区获取，怪兽所在区域八折，相邻区域原价。点开某区域补给时会按那一瞬间的怪兽位置锁定本窗口购牌资格和价格；选牌途中怪兽离开也不取消本窗口购买。购牌是随时场上动作，不吃行动冷却。角色能力或补给牌可把购牌范围扩到二跳或全局，但会按远程/全局倍率加价；这只影响买牌，不放宽后续怪兽牌的召唤区域。重复获得同系列卡会自动合成到最高IV级，价格仍按I级基础价。普通手牌上限为%d张，绑定固定怪兽技能不占上限；若购买新普通牌会超上限，必须先私下弃掉一张旧普通牌，手牌数量和弃牌内容都不公开。" % PLAYER_HAND_LIMIT)
 	lines.append("7. 出牌门槛：I级怪兽牌没有商品流动要求；II-IV级怪兽牌和多数其他牌要求己方城市满足指定商品流动数量，商品不被消耗。少数牌会额外收取现金。")
@@ -3341,7 +3341,7 @@ func _populate_standings_summary_cards() -> void:
 		selected_cash = int(player.get("cash", 0))
 		selected_score = _player_visible_settlement_estimate(selected_player)
 		selected_city_count = _player_active_city_count(selected_player)
-		selected_gdp = _player_cycle_income(selected_player)
+		selected_gdp = _player_gdp_per_minute(selected_player)
 	_show_menu_summary_cards([
 		{
 			"title": "终局条件",
@@ -3409,7 +3409,7 @@ func _populate_economy_overview_summary_cards() -> void:
 	var summary_cards := [
 		{
 			"title": "GDP/min",
-			"body": "%s｜潜在GDP/min %d｜城市现金按秒流入" % [selected_name, _player_cycle_income(selected_player)],
+			"body": "%s｜潜在GDP/min %d｜城市现金按秒流入" % [selected_name, _player_gdp_per_minute(selected_player)],
 			"meta": "生产×需求×运输速度，再扣损伤和竞争。",
 			"accent": Color("#4ade80"),
 		},
@@ -4931,7 +4931,7 @@ func _economy_player_cash_entries() -> Array:
 			"intel_summary": _player_intel_display_summary(i),
 			"last_cycle": int(player.get("last_cycle_income", 0)),
 			"role_income": int(player.get("total_role_income", 0)),
-			"cycle_income": _player_cycle_income(i),
+			"gdp_per_minute": _player_gdp_per_minute(i),
 			"recent_delta": _player_recent_cash_delta(player),
 			"window_delta": _player_cash_window_delta(player),
 			"path": _player_cash_path_text(player, 6),
@@ -4955,7 +4955,7 @@ func _sort_economy_player_cash_entry(a: Dictionary, b: Dictionary) -> bool:
 func _economy_player_cash_line(entry: Dictionary) -> String:
 	if bool(entry.get("private", false)):
 		return "%s｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。" % String(entry.get("name", "玩家"))
-	return "%s｜%s%d｜现金%d｜城市%d｜%s｜本刷新现金流%s｜角色累计+%d｜潜在GDP/min %d｜最近%s｜窗口%s｜轨迹%s｜流水%s" % [
+	return "%s｜%s%d｜现金%d｜城市%d｜%s｜实时现金流%s｜角色累计+%d｜潜在GDP/min %d｜最近%s｜窗口%s｜轨迹%s｜流水%s" % [
 		String(entry.get("name", "玩家")),
 		String(entry.get("score_label", "可见预估")),
 		int(entry.get("score", 0)),
@@ -4964,7 +4964,7 @@ func _economy_player_cash_line(entry: Dictionary) -> String:
 		String(entry.get("intel_summary", "")),
 		_signed_int_text(int(entry.get("last_cycle", 0))),
 		int(entry.get("role_income", 0)),
-		int(entry.get("cycle_income", 0)),
+		int(entry.get("gdp_per_minute", 0)),
 		_signed_int_text(int(entry.get("recent_delta", 0))),
 		_signed_int_text(int(entry.get("window_delta", 0))),
 		String(entry.get("path", "")),
@@ -5062,7 +5062,7 @@ func _standings_text() -> String:
 			int(entry.get("active_cities", 0)),
 			CITY_FINAL_VALUE,
 			intel_component,
-			int(entry.get("cycle_income", 0)),
+			int(entry.get("gdp_per_minute", 0)),
 			int(entry.get("total_income", 0)),
 			int(entry.get("cities_built", 0)),
 			String(entry.get("intel_summary", "")),
@@ -5080,7 +5080,7 @@ func _standing_entries() -> Array:
 	for i in range(players.size()):
 		var player: Dictionary = players[i]
 		var active_city_count := _player_active_city_count(i)
-		var cycle_income := _player_cycle_income(i)
+		var gdp_per_minute := _player_gdp_per_minute(i)
 		var intel_stats := _player_intel_stats(i)
 		var intel_cash := int(intel_stats.get("cash", 0))
 		entries.append({
@@ -5092,7 +5092,7 @@ func _standing_entries() -> Array:
 			"score_label": "结算资金" if game_over else "可见预估",
 			"intel_cash": intel_cash if game_over else 0,
 			"intel_summary": _player_intel_display_summary(i),
-			"cycle_income": cycle_income,
+			"gdp_per_minute": gdp_per_minute,
 			"total_income": int(player.get("total_city_income", 0)),
 			"cities_built": int(player.get("cities_built", 0)),
 		})
@@ -5440,7 +5440,7 @@ func _final_run_summary_text(rankings: Array) -> String:
 	return "\n".join(lines)
 
 
-func _player_cycle_income(player_index: int) -> int:
+func _player_gdp_per_minute(player_index: int) -> int:
 	if player_index < 0 or player_index >= players.size():
 		return 0
 	var total := 0
@@ -5449,8 +5449,13 @@ func _player_cycle_income(player_index: int) -> int:
 		var city := _district_city(index)
 		if int(city.get("owner", -1)) != player_index:
 			continue
-		total += _city_cycle_income(index, int(city.get("competition_matches", _city_competition_matches(index))))
+		total += _city_gdp_per_minute(index, int(city.get("competition_matches", _city_competition_matches(index))))
 	return total
+
+
+func _player_cycle_income(player_index: int) -> int:
+	# Save/test compatibility wrapper. Player-facing economy is GDP/min converted to cash every second.
+	return _player_gdp_per_minute(player_index)
 
 
 func _player_intel_stats(player_index: int) -> Dictionary:
@@ -21615,7 +21620,7 @@ func _realtime_rule_text(text: String) -> String:
 		result = result.replace("持续%d个经营周期" % duration_units, "持续%s" % duration_text)
 		result = result.replace("接下来%d个经营周期" % duration_units, "接下来%s" % duration_text)
 		result = result.replace("%d周期" % duration_units, duration_text)
-	result = result.replace("经营周期", "全局市场刷新")
+	result = result.replace("经营周期", "实时窗口")
 	return result
 
 
@@ -28271,11 +28276,16 @@ func _district_transit_gdp(district_index: int) -> Dictionary:
 	return {"income": total, "lines": lines}
 
 
+func _city_gdp_per_minute(district_index: int, competition_matches: int) -> int:
+	return int(_city_gdp_per_minute_breakdown(district_index, competition_matches).get("net", 0))
+
+
 func _city_cycle_income(district_index: int, competition_matches: int) -> int:
-	return int(_city_cycle_income_breakdown(district_index, competition_matches).get("net", 0))
+	# Save/test compatibility wrapper. This value is not a payout cycle; it is current GDP/min.
+	return _city_gdp_per_minute(district_index, competition_matches)
 
 
-func _city_cycle_income_breakdown(district_index: int, competition_matches: int) -> Dictionary:
+func _city_gdp_per_minute_breakdown(district_index: int, competition_matches: int) -> Dictionary:
 	var city := _district_city(district_index)
 	if not _city_is_active(city):
 		return {
@@ -28365,6 +28375,11 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 	}
 
 
+func _city_cycle_income_breakdown(district_index: int, competition_matches: int) -> Dictionary:
+	# Save/test compatibility wrapper. The authoritative economy breakdown is per-minute GDP.
+	return _city_gdp_per_minute_breakdown(district_index, competition_matches)
+
+
 func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
 	return "生产GDP%d + 消费GDP%d + 过境GDP%d + 加成%d + 合约%d - 竞争%d - 断路%d - 损伤%d - 产权%d - 军事%d = %d" % [
 		int(breakdown.get("product", 0)),
@@ -28437,7 +28452,7 @@ func _city_gdp_trend_text(city: Dictionary) -> String:
 	if history.is_empty():
 		var fallback := int(city.get("last_gdp", city.get("last_income", 0)))
 		if fallback > 0:
-			return "GDP趋势：本期%d｜较上期暂无｜路径%s。" % [fallback, _city_gdp_history_path_text(city)]
+			return "GDP趋势：当前快照%d｜上次快照暂无｜路径%s。" % [fallback, _city_gdp_history_path_text(city)]
 		return "GDP趋势：暂无历史（下次全局市场刷新开始记录）。"
 	var current := int(history[history.size() - 1])
 	var delta := int(city.get("last_gdp_delta", 0))
@@ -28448,7 +28463,7 @@ func _city_gdp_trend_text(city: Dictionary) -> String:
 	if reason == "":
 		reason = "等待收入拆解"
 	var change_text := "持平" if delta == 0 else _signed_int_text(delta)
-	return "GDP趋势：%s本期%d（较上期%s）｜路径%s｜%s。" % [
+	return "GDP趋势：%s当前快照%d（较上次%s）｜路径%s｜%s。" % [
 		source,
 		current,
 		change_text,
