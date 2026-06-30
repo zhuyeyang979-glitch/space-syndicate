@@ -14829,6 +14829,125 @@ func _ai_development_route_diversity_summary() -> String:
 	]
 
 
+func _ai_profile_route_action_report() -> Dictionary:
+	var profiles_by_index := {}
+	for profile_index in range(AI_PERSONALITY_CATALOG.size()):
+		var profile: Dictionary = AI_PERSONALITY_CATALOG[profile_index]
+		var primary := _ai_profile_primary_development_route(profile)
+		profiles_by_index[profile_index] = {
+			"profile_index": profile_index,
+			"profile": String(profile.get("name", "AI")),
+			"style": String(profile.get("style", "")),
+			"primary_route": String(primary.get("route_id", "")),
+			"primary_label": String(primary.get("label", "未定")),
+			"player_count": 0,
+			"sample_count": 0,
+			"route_sample_count": 0,
+			"primary_route_count": 0,
+			"route_counts": {},
+			"action_counts": {},
+		}
+	var distinct_routes := {}
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		if player_index < 0 or player_index >= players.size():
+			continue
+		var player: Dictionary = players[player_index]
+		var profile_variant: Variant = player.get("ai_profile", {})
+		if not (profile_variant is Dictionary):
+			continue
+		var profile := profile_variant as Dictionary
+		var profile_index := int(profile.get("profile_index", -1))
+		if profile_index < 0 or profile_index >= AI_PERSONALITY_CATALOG.size() or not profiles_by_index.has(profile_index):
+			continue
+		var entry := (profiles_by_index[profile_index] as Dictionary).duplicate(true)
+		entry["player_count"] = int(entry.get("player_count", 0)) + 1
+		var route_counts := (entry.get("route_counts", {}) as Dictionary).duplicate(true)
+		var action_counts := (entry.get("action_counts", {}) as Dictionary).duplicate(true)
+		var memory_variant: Variant = player.get("ai_memory", {})
+		var samples := []
+		if memory_variant is Dictionary:
+			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
+			if samples_variant is Array:
+				samples = samples_variant as Array
+		for sample_variant in samples:
+			if not (sample_variant is Dictionary):
+				continue
+			var sample := sample_variant as Dictionary
+			entry["sample_count"] = int(entry.get("sample_count", 0)) + 1
+			var action_kind := String(sample.get("kind", ""))
+			if action_kind != "":
+				action_counts[action_kind] = int(action_counts.get(action_kind, 0)) + 1
+			var route_id := _ai_sample_development_route_id(sample)
+			if route_id == "":
+				continue
+			route_counts[route_id] = int(route_counts.get(route_id, 0)) + 1
+			distinct_routes[route_id] = true
+			entry["route_sample_count"] = int(entry.get("route_sample_count", 0)) + 1
+			if route_id == String(entry.get("primary_route", "")):
+				entry["primary_route_count"] = int(entry.get("primary_route_count", 0)) + 1
+		entry["route_counts"] = route_counts
+		entry["action_counts"] = action_counts
+		entry["has_route_action"] = int(entry.get("route_sample_count", 0)) > 0
+		entry["has_primary_route_action"] = int(entry.get("primary_route_count", 0)) > 0
+		profiles_by_index[profile_index] = entry
+	var entries := []
+	var missing_route_profiles := []
+	var missing_primary_profiles := []
+	var primary_covered := 0
+	for profile_index in range(AI_PERSONALITY_CATALOG.size()):
+		var entry := profiles_by_index[profile_index] as Dictionary
+		if int(entry.get("route_sample_count", 0)) <= 0:
+			missing_route_profiles.append(String(entry.get("profile", "AI")))
+		if String(entry.get("primary_route", "")) != "" and int(entry.get("primary_route_count", 0)) <= 0:
+			missing_primary_profiles.append(String(entry.get("profile", "AI")))
+		else:
+			primary_covered += 1
+		entries.append(entry)
+	return {
+		"profile_count": AI_PERSONALITY_CATALOG.size(),
+		"simulated_profile_count": entries.size() - missing_route_profiles.size(),
+		"covered_distinct_route_count": distinct_routes.size(),
+		"distinct_routes": distinct_routes.keys(),
+		"primary_covered_profile_count": primary_covered,
+		"missing_route_profiles": missing_route_profiles,
+		"missing_primary_profiles": missing_primary_profiles,
+		"profiles": entries,
+	}
+
+
+func _ai_profile_route_action_summary(report: Dictionary = {}) -> String:
+	var source := report
+	if source.is_empty():
+		source = _ai_profile_route_action_report()
+	var pieces := []
+	for entry_variant in (source.get("profiles", []) as Array):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		var primary_label := String(entry.get("primary_label", "未定"))
+		var primary_count := int(entry.get("primary_route_count", 0))
+		var route_count := int(entry.get("route_sample_count", 0))
+		pieces.append("%s:%s×%d/路线样本%d" % [
+			String(entry.get("profile", "AI")),
+			primary_label,
+			primary_count,
+			route_count,
+		])
+	var missing_route := source.get("missing_route_profiles", []) as Array
+	var missing_primary := source.get("missing_primary_profiles", []) as Array
+	return "AI路线行动报告：profile %d/%d有路线样本｜核心路线覆盖%d｜主偏好覆盖%d/%d｜%s%s%s" % [
+		int(source.get("simulated_profile_count", 0)),
+		int(source.get("profile_count", 0)),
+		int(source.get("covered_distinct_route_count", 0)),
+		int(source.get("primary_covered_profile_count", 0)),
+		int(source.get("profile_count", 0)),
+		"；".join(pieces),
+		"" if missing_route.is_empty() else "｜缺路线样本:%s" % "、".join(missing_route),
+		"" if missing_primary.is_empty() else "｜缺主偏好:%s" % "、".join(missing_primary),
+	]
+
+
 func _card_key_rule_facts(skill: Dictionary) -> Array:
 	var result := []
 	for fact_variant in _card_rule_facts(skill):

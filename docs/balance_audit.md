@@ -86,5 +86,5 @@ Next AI tuning should check whether each profile actually does its thing in long
 - Covered now: warehouse stockpile loses its stored value when the warehouse city is destroyed, while ordinary non-warehouse futures remain.
 - Covered now: commodity futures settle only after their real-time holding window and pay from actual product price movement, not from abstract economy cycles.
 - Covered now: military movement and monster-attack commands do not damage districts/routes; district and route damage is reserved for explicit strike commands.
-- AI long-run simulation should report whether each profile performs at least one route-specific action.
+- Covered now: the eight-seat AI smoke run reports route-tagged decision samples per AI profile, verifies every profile gets route actions, and checks that multiple core routes plus primary-profile routes appear.
 - Role cards need a non-duplicate selection test plus a role-budget metadata test.

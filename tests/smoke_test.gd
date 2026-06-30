@@ -137,7 +137,7 @@ func _run() -> void:
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
 	_expect(_verify_ai_strategy_route_diversification_policy(main), "AI opponents generate field-driven defense, suppression, finance, and intel route candidates")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
-	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, settle, and restore cleanly")
+	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, report profile route actions, settle, and restore cleanly")
 	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify starting cash without touching starter monsters")
 	_expect(_starting_monster_cards_match_configured_choices(main, players), "starter monster cards come from independent setup choices, not role-card fingerprints")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -2868,7 +2868,23 @@ func _drain_card_resolution_queue_for_test(main: Node, max_steps: int = 80) -> v
 
 func _seed_supply_cards_near_ai_monsters_for_test(main: Node) -> void:
 	var districts := _as_array(main.get("districts")).duplicate(true)
-	var supply_cards := ["城市融资1", "供应链保险1", "商路黑客1", "需求改造1", "价格套利1", "交通升级1", "城市做空1"]
+	var supply_cards := [
+		"城市融资1",
+		"供应链保险1",
+		"交通升级1",
+		"区域供需合约1",
+		"自动撮合合约1",
+		"价格套利1",
+		"城市做空1",
+		"商品看涨1",
+		"商路黑客1",
+		"诱导电波1",
+		"线索悬赏1",
+		"业主透镜1",
+		"远程补给链1",
+		"星链拆解1",
+		"产权冻结1",
+	]
 	for actor_variant in _as_array(main.get("auto_monsters")):
 		if not (actor_variant is Dictionary):
 			continue
@@ -3170,6 +3186,20 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		ok = false
 	if sampled_ai < max_ai:
 		failures.append("sampled ai %d" % sampled_ai)
+		ok = false
+	var route_report := main.call("_ai_profile_route_action_report") as Dictionary
+	var route_summary := String(main.call("_ai_profile_route_action_summary", route_report))
+	if int(route_report.get("profile_count", 0)) < 6:
+		failures.append("route profiles %d" % int(route_report.get("profile_count", 0)))
+		ok = false
+	if not _as_array(route_report.get("missing_route_profiles", [])).is_empty():
+		failures.append("route missing %s" % route_summary)
+		ok = false
+	if int(route_report.get("covered_distinct_route_count", 0)) < 4:
+		failures.append("route distinct %d %s" % [int(route_report.get("covered_distinct_route_count", 0)), route_summary])
+		ok = false
+	if int(route_report.get("primary_covered_profile_count", 0)) < 4:
+		failures.append("route primary %d %s" % [int(route_report.get("primary_covered_profile_count", 0)), route_summary])
 		ok = false
 	var leader_index := 1
 	var leader_score := -999999
