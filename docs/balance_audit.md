@@ -55,7 +55,7 @@ The prototype should not balance by making every route equally strong in every s
    - Submarine and warship should matter most on ocean trade maps.
 2. Commodity futures and warehouse stockpile are now strategically interesting, but the payout unit and stockpile unit counts need long-run tests against ordinary city income.
 3. Direct hand pressure should create inference clues and disruption, not simply delete the best player’s options every time.
-4. Role cards need a separate role-budget audit. The current role pool is broad enough, but some public passives may be easier to exploit than others:
+4. Role cards now have a separate role-budget audit. The current role pool is broad enough, but the next tuning pass should watch high-leverage public passives:
    - Extra purchase range can be very strong on large planets.
    - Monster or military control-limit bonuses are board-state dependent.
    - Intel charges are powerful only if the cash reward and guessing stakes justify them.
@@ -87,4 +87,4 @@ Next AI tuning should check whether each profile actually does its thing in long
 - Covered now: commodity futures settle only after their real-time holding window and pay from actual product price movement, not from abstract economy cycles.
 - Covered now: military movement and monster-attack commands do not damage districts/routes; district and route damage is reserved for explicit strike commands.
 - Covered now: the eight-seat AI smoke run reports route-tagged decision samples per AI profile, verifies every profile gets route actions, and checks that multiple core routes plus primary-profile routes appear.
-- Role cards need a non-duplicate selection test plus a role-budget metadata test.
+- Covered now: role setup resolves duplicate public-role selections into unique seats, random AI roles resolve without duplicates at run start, and every real role card exposes hidden balance-budget metadata for audit tests.

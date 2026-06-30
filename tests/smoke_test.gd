@@ -116,6 +116,7 @@ func _run() -> void:
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
 	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards with positive mechanical benefits")
 	_expect(_verify_random_ai_roles_resolve_unique(main), "random AI role setup resolves to public non-duplicate role cards")
+	_expect(_verify_role_selection_and_budget_audit(main), "role setup resolves duplicate selections and every public role exposes balance-budget metadata")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, cashflow product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_control_limit_cards(main), "role cards can publicly extend monster or military control limits without touching starter monsters")
@@ -1367,6 +1368,80 @@ func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
 		if String(role.get("name", "")) == "随机角色":
 			ok = false
 			break
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
+
+
+func _role_index_array_is_unique(indices: Array, seat_count: int, allow_random: bool = false) -> bool:
+	if indices.size() < seat_count:
+		return false
+	var used := {}
+	for seat in range(seat_count):
+		var role_index := int(indices[seat])
+		if role_index == -1 and allow_random:
+			continue
+		if role_index < 0 or used.has(role_index):
+			return false
+		used[role_index] = true
+	return true
+
+
+func _verify_role_selection_and_budget_audit(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var role_count := int(main.call("_player_role_catalog_size"))
+	ok = ok and role_count >= 24
+	var audit := main.call("_role_balance_audit") as Dictionary
+	var duplicate_names := _as_array(audit.get("duplicate_names", []))
+	var missing_budget_roles := _as_array(audit.get("missing_budget_roles", []))
+	var missing_positive_roles := _as_array(audit.get("missing_positive_roles", []))
+	var band_counts := audit.get("budget_band_counts", {}) as Dictionary
+	ok = ok and int(audit.get("role_count", 0)) == role_count
+	ok = ok and duplicate_names.is_empty()
+	ok = ok and missing_budget_roles.is_empty()
+	ok = ok and missing_positive_roles.is_empty()
+	ok = ok and int(audit.get("budget_min", 0)) > 0
+	ok = ok and int(audit.get("budget_max", 0)) > int(audit.get("budget_min", 0))
+	ok = ok and float(audit.get("budget_average", 0.0)) > 0.0
+	ok = ok and band_counts.size() >= 2
+	var summary := String(main.call("_role_balance_audit_summary", audit))
+	ok = ok and summary.contains("角色预算审计") and summary.contains("强度")
+	var saw_economy := false
+	var saw_supply := false
+	var saw_intel := false
+	var saw_control := false
+	for role_index in range(role_count):
+		var role := main.call("_make_player_role_card", role_index, role_index) as Dictionary
+		var budget_points := int(role.get("balance_budget", 0))
+		var band := String(role.get("balance_band", ""))
+		var drivers := _as_array(role.get("balance_drivers", []))
+		var tags := _as_array(role.get("balance_tags", []))
+		ok = ok and budget_points > 0 and band != "" and not drivers.is_empty() and not tags.is_empty()
+		ok = ok and String(role.get("balance_summary", "")).contains("强度预算")
+		for starter_field in ["starter_monster_index", "starter_monster_name", "starter_monster_card", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
+			ok = ok and not role.has(starter_field)
+		saw_economy = saw_economy or tags.has("economy") or tags.has("opening")
+		saw_supply = saw_supply or tags.has("supply")
+		saw_intel = saw_intel or tags.has("intel")
+		saw_control = saw_control or tags.has("monster") or tags.has("military") or tags.has("counter")
+	ok = ok and saw_economy and saw_supply and saw_intel and saw_control
+	var seat_count := mini(8, role_count)
+	var duplicate_config := []
+	for duplicate_seat in range(seat_count):
+		duplicate_config.append(0)
+	main.set("configured_player_count", seat_count)
+	main.set("configured_ai_player_count", maxi(0, seat_count - 1))
+	main.set("configured_role_indices", duplicate_config)
+	main.call("_ensure_configured_role_indices")
+	ok = ok and _role_index_array_is_unique(_as_array(main.get("configured_role_indices")), seat_count, false)
+	var random_config := [0]
+	for random_seat in range(1, seat_count):
+		random_config.append(-1)
+	main.set("configured_role_indices", random_config)
+	main.call("_ensure_configured_role_indices")
+	ok = ok and _role_index_array_is_unique(_as_array(main.get("configured_role_indices")), seat_count, true)
+	var resolved := main.call("_resolve_configured_role_indices_for_run") as Array
+	ok = ok and _role_index_array_is_unique(resolved, seat_count, false)
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 

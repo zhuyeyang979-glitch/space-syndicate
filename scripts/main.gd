@@ -10887,6 +10887,183 @@ func _strip_role_starter_fields(role: Dictionary) -> Dictionary:
 	return role
 
 
+func _role_budget_add_component(report: Dictionary, label: String, points: int, tag: String) -> void:
+	if points <= 0:
+		return
+	report["points"] = int(report.get("points", 0)) + points
+	var drivers := report.get("drivers", []) as Array
+	drivers.append("%s+%d" % [label, points])
+	report["drivers"] = drivers
+	var tags := report.get("tags", []) as Array
+	if tag != "" and not tags.has(tag):
+		tags.append(tag)
+	report["tags"] = tags
+
+
+func _role_budget_band(points: int) -> String:
+	if points <= 0:
+		return "未配置"
+	if points <= 55:
+		return "轻量"
+	if points <= 95:
+		return "标准"
+	if points <= 135:
+		return "强力"
+	return "高风险强力"
+
+
+func _role_card_budget(role_card: Dictionary) -> Dictionary:
+	var report := {
+		"points": 0,
+		"drivers": [],
+		"tags": [],
+		"positive_field_count": 0,
+		"band": "未配置",
+		"summary": "",
+	}
+	var starting_cash := int(role_card.get("starting_cash_bonus", 0))
+	if starting_cash > 0:
+		_role_budget_add_component(report, "开局资金", maxi(1, int(ceil(float(starting_cash) / 5.0))), "opening")
+	var resource_amount := int(role_card.get("resource_cash_amount", 0))
+	var resource_product := String(role_card.get("resource_cash_product", ""))
+	if resource_amount > 0 and resource_product != "":
+		_role_budget_add_component(report, "商品现金流", resource_amount, "economy")
+	var bonus_product := String(role_card.get("bonus_card_product", ""))
+	if bonus_product != "":
+		_role_budget_add_component(report, "区域赠牌", 42, "supply")
+	var monster_upgrade_cash := int(role_card.get("monster_upgrade_cash", 0))
+	if monster_upgrade_cash > 0:
+		_role_budget_add_component(report, "升兽现金", maxi(1, int(ceil(float(monster_upgrade_cash) / 4.0))), "monster")
+	var city_reveal_charges := int(role_card.get("intel_city_reveal_charges", 0))
+	if city_reveal_charges > 0:
+		_role_budget_add_component(report, "城市归属侦测", city_reveal_charges * 42, "intel")
+	var card_trace_charges := int(role_card.get("intel_card_trace_charges", 0))
+	if card_trace_charges > 0:
+		_role_budget_add_component(report, "卡牌追帧", card_trace_charges * 48, "intel")
+	var contract_trace_charges := int(role_card.get("intel_contract_trace_charges", 0))
+	if contract_trace_charges > 0:
+		_role_budget_add_component(report, "合约回溯", contract_trace_charges * 40, "intel")
+	var city_guess_reward_bonus := int(role_card.get("city_guess_reward_bonus", 0))
+	if city_guess_reward_bonus > 0:
+		_role_budget_add_component(report, "城市竞猜奖励", maxi(1, int(ceil(float(city_guess_reward_bonus) / 4.0))), "intel")
+	var guess_discount := int(role_card.get("card_owner_guess_discount", 0))
+	if guess_discount > 0:
+		_role_budget_add_component(report, "卡牌竞猜折扣", maxi(1, int(ceil(float(guess_discount) * 0.8))), "intel")
+	var guess_bonus := int(role_card.get("card_owner_guess_bonus", 0))
+	if guess_bonus > 0:
+		_role_budget_add_component(report, "卡牌竞猜奖励", maxi(1, int(ceil(float(guess_bonus) * 0.8))), "intel")
+	var contract_flow_discount := int(role_card.get("contract_flow_discount", 0))
+	if contract_flow_discount > 0:
+		_role_budget_add_component(report, "合约门槛折扣", contract_flow_discount * 34, "contract")
+	var extra_hops := int(role_card.get("card_access_extra_hops", 0))
+	if extra_hops > 0:
+		_role_budget_add_component(report, "远程购牌", extra_hops * 44, "supply")
+	if bool(role_card.get("card_access_global", false)):
+		_role_budget_add_component(report, "全图购牌", 90, "supply")
+	if bool(role_card.get("monster_cards_as_counter", false)):
+		_role_budget_add_component(report, "怪兽牌否决", 64, "counter")
+	var monster_limit_bonus := int(role_card.get("monster_control_limit_bonus", 0))
+	if monster_limit_bonus > 0:
+		_role_budget_add_component(report, "怪兽归属上限", monster_limit_bonus * 58, "monster")
+	var military_limit_bonus := int(role_card.get("military_control_limit_bonus", 0))
+	if military_limit_bonus > 0:
+		_role_budget_add_component(report, "军队归属上限", military_limit_bonus * 52, "military")
+	var points := int(report.get("points", 0))
+	var drivers := report.get("drivers", []) as Array
+	report["positive_field_count"] = drivers.size()
+	report["band"] = _role_budget_band(points)
+	report["summary"] = "%s｜强度预算%d｜%s" % [
+		String(role_card.get("name", "角色卡")),
+		points,
+		String(report.get("band", "未配置")),
+	]
+	return report
+
+
+func _apply_role_balance_metadata(role: Dictionary) -> Dictionary:
+	var budget := _role_card_budget(role)
+	role["balance_budget"] = int(budget.get("points", 0))
+	role["balance_band"] = String(budget.get("band", "未配置"))
+	role["balance_tags"] = (budget.get("tags", []) as Array).duplicate(true)
+	role["balance_drivers"] = (budget.get("drivers", []) as Array).duplicate(true)
+	role["balance_summary"] = String(budget.get("summary", ""))
+	return role
+
+
+func _role_balance_audit() -> Dictionary:
+	var entries := []
+	var duplicate_names := []
+	var missing_budget_roles := []
+	var missing_positive_roles := []
+	var seen_names := {}
+	var band_counts := {}
+	var min_budget := 0
+	var max_budget := 0
+	var total_budget := 0
+	for role_index in range(PLAYER_ROLE_CATALOG.size()):
+		var role := _make_player_role_card(role_index, role_index)
+		var role_name := String(role.get("name", "角色卡%d" % role_index))
+		if seen_names.has(role_name):
+			duplicate_names.append(role_name)
+		seen_names[role_name] = true
+		var budget := _role_card_budget(role)
+		var points := int(budget.get("points", 0))
+		if role_index == 0 or points < min_budget:
+			min_budget = points
+		if role_index == 0 or points > max_budget:
+			max_budget = points
+		total_budget += points
+		var band := String(budget.get("band", "未配置"))
+		band_counts[band] = int(band_counts.get(band, 0)) + 1
+		var drivers := budget.get("drivers", []) as Array
+		var tags := budget.get("tags", []) as Array
+		if int(role.get("balance_budget", 0)) <= 0 or String(role.get("balance_band", "")) == "" or (role.get("balance_drivers", []) as Array).is_empty():
+			missing_budget_roles.append(role_name)
+		if points <= 0 or drivers.is_empty() or tags.is_empty():
+			missing_positive_roles.append(role_name)
+		entries.append({
+			"index": role_index,
+			"name": role_name,
+			"points": points,
+			"band": band,
+			"tags": tags.duplicate(true),
+			"drivers": drivers.duplicate(true),
+		})
+	var average := 0.0
+	if PLAYER_ROLE_CATALOG.size() > 0:
+		average = float(total_budget) / float(PLAYER_ROLE_CATALOG.size())
+	return {
+		"role_count": PLAYER_ROLE_CATALOG.size(),
+		"entries": entries,
+		"duplicate_names": duplicate_names,
+		"missing_budget_roles": missing_budget_roles,
+		"missing_positive_roles": missing_positive_roles,
+		"budget_min": min_budget,
+		"budget_max": max_budget,
+		"budget_average": average,
+		"budget_band_counts": band_counts,
+	}
+
+
+func _role_balance_audit_summary(report: Dictionary = {}) -> String:
+	var audit := report if not report.is_empty() else _role_balance_audit()
+	var band_counts := audit.get("budget_band_counts", {}) as Dictionary
+	var band_parts := []
+	for band in ["轻量", "标准", "强力", "高风险强力", "未配置"]:
+		var count := int(band_counts.get(band, 0))
+		if count > 0:
+			band_parts.append("%s×%d" % [band, count])
+	return "角色预算审计：%d张｜强度%d-%d｜均值%.1f｜分布%s｜重复%d｜缺预算%d" % [
+		int(audit.get("role_count", 0)),
+		int(audit.get("budget_min", 0)),
+		int(audit.get("budget_max", 0)),
+		float(audit.get("budget_average", 0.0)),
+		"，".join(band_parts),
+		(audit.get("duplicate_names", []) as Array).size(),
+		(audit.get("missing_budget_roles", []) as Array).size(),
+	]
+
+
 func _make_player_role_card(player_index: int, role_index: int = -1) -> Dictionary:
 	var template_index := _player_role_template_index(player_index)
 	if role_index >= 0:
@@ -10895,6 +11072,7 @@ func _make_player_role_card(player_index: int, role_index: int = -1) -> Dictiona
 	role["kind"] = "player_role"
 	role["role_index"] = template_index
 	_strip_role_starter_fields(role)
+	_apply_role_balance_metadata(role)
 	role["text"] = "%s｜特征：%s｜被动：%s" % [
 		String(role.get("species", "未知外星人")),
 		String(role.get("trait", "暂无特征")),
@@ -10919,6 +11097,11 @@ func _random_role_placeholder_card() -> Dictionary:
 		"flavor": "席位已登记，真正的辛迪加代表将在开局时入场。",
 		"kind": "player_role",
 		"role_index": ROLE_RANDOM_INDEX,
+		"balance_budget": 0,
+		"balance_band": "待分配",
+		"balance_tags": [],
+		"balance_drivers": [],
+		"balance_summary": "随机角色｜开局时分配未重复公开角色",
 		"text": "随机角色｜开局确认时分配一个未重复公开角色。",
 	}
 
@@ -10940,6 +11123,7 @@ func _normalize_player_role_card(role_card: Dictionary, player_index: int) -> Di
 			role[field_name] = template[field_name]
 	role["kind"] = "player_role"
 	_strip_role_starter_fields(role)
+	_apply_role_balance_metadata(role)
 	return role
 
 
