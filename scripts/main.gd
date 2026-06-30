@@ -11975,24 +11975,80 @@ func _opening_guide_completed_count(player_index: int) -> int:
 
 
 func _opening_guide_next_step_text(player_index: int) -> String:
+	var card := _opening_guide_next_step_card(player_index)
+	if card.is_empty():
+		return "当前下一步：选择玩家后开始操作。"
+	return "当前下一步：%s｜为什么：%s｜入口：%s" % [
+		String(card.get("action", "选择玩家后开始操作。")),
+		String(card.get("reason", "先建立可执行的开局路径。")),
+		String(card.get("entry", "点击可见按钮或查看规则。")),
+	]
+
+
+func _opening_guide_next_step_card(player_index: int) -> Dictionary:
 	var progress := _opening_guide_progress(player_index)
 	if progress.is_empty():
-		return "当前下一步：选择玩家后开始操作。"
+		return {
+			"action": "选择玩家后开始操作。",
+			"reason": "每名玩家的现金、手牌和情报都是私密的。",
+			"entry": "点玩家席位。",
+			"accent": Color("#94a3b8"),
+		}
 	if not bool(progress.get("has_monster", false)):
-		return "当前下一步：选一个落点，点「在选区首召」。"
+		return {
+			"action": "选一个落点，点「在选区首召」。",
+			"reason": "首召怪兽后，落地区和邻区才会开放购牌。",
+			"entry": "地图选区 → 在选区首召。",
+			"accent": Color("#fb7185"),
+		}
 	if not bool(progress.get("has_city", false)):
 		if selected_district >= 0 and selected_district < districts.size() and _city_build_error_for(player_index, selected_district, false) == "":
-			return "当前下一步：点「城市化」，先建第一座收入城市。"
-		return "当前下一步：切到陆地区域，再点「城市化」。"
+			return {
+				"action": "点「城市化」，先建第一座收入城市。",
+				"reason": "城市 GDP/min 会按秒变成现金，终局也会清算城市价值。",
+				"entry": "当前选区 → 城市化。",
+				"accent": Color("#4ade80"),
+			}
+		return {
+			"action": "切到陆地区域，再点「城市化」。",
+			"reason": "海洋主要承载运输，陆地才是开局建城收入来源。",
+			"entry": "Q/E 选陆地 → 城市化。",
+			"accent": Color("#4ade80"),
+		}
 	if not bool(progress.get("has_bought_card", false)):
 		if selected_district >= 0 and selected_district < districts.size() and _can_buy_card_from_district(selected_district, player_index):
-			return "当前下一步：按 X 或点当前区域候选卡，买一张牌。"
-		return "当前下一步：切到怪兽落地区或邻区，按 X 买牌。"
+			return {
+				"action": "按 X 或点当前区域候选卡，买一张牌。",
+				"reason": "买牌扩展你的赚钱、干扰、防守或情报路线；重复牌自动升级。",
+				"entry": "当前区域候选卡 / X。",
+				"accent": Color("#facc15"),
+			}
+		return {
+			"action": "切到怪兽落地区或邻区，按 X 买牌。",
+			"reason": "购牌来源跟怪兽位置绑定，怪兽所在区还有折扣。",
+			"entry": "Q/E 找补给区 → X。",
+			"accent": Color("#facc15"),
+		}
 	if not bool(progress.get("has_played_card", false)):
-		return "当前下一步：选择手牌匿名出牌；需要目标的牌会先询问。"
+		return {
+			"action": "选择手牌匿名出牌；需要目标的牌会先询问。",
+			"reason": "出牌能扩 GDP、保护商路、制造线索或压制竞争城市。",
+			"entry": "手牌区 → 出牌按钮。",
+			"accent": Color("#c084fc"),
+		}
 	if not bool(progress.get("has_checked_economy", false)):
-		return "当前下一步：点「经济总览」，看 GDP、商品和商路为什么赚钱。"
-	return "当前下一步：扩 GDP、护商路，或压制疑似竞争城市。"
+		return {
+			"action": "点「经济总览」，看 GDP、商品和商路为什么赚钱。",
+			"reason": "理解收入拆解后，才能判断该扩张、保护还是攻击。",
+			"entry": "轻引导顶部 → 经济总览。",
+			"accent": Color("#38bdf8"),
+		}
+	return {
+		"action": "扩 GDP、护商路，或压制疑似竞争城市。",
+		"reason": "最后按钱最多获胜；所有匿名行动都会留下可推理线索。",
+		"entry": "地图 / 手牌 / 经济总览。",
+		"accent": Color("#22c55e"),
+	}
 
 
 func _dismiss_opening_guide() -> void:
@@ -12021,6 +12077,37 @@ func _add_opening_guide_task_card(parent: Container, entry: Dictionary) -> void:
 	var body := _plain_label(String(entry.get("body", "")), 9, Color("#94a3b8") if done else Color("#cbd5e1"))
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(body)
+
+
+func _add_opening_guide_next_step_card(parent: Container, player_index: int) -> void:
+	var card := _opening_guide_next_step_card(player_index)
+	var accent: Color = card.get("accent", Color("#38bdf8"))
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.tooltip_text = _opening_guide_next_step_text(player_index)
+	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.12), 1, 12))
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	margin.add_child(box)
+	var title := _plain_label("下一步卡片｜当前下一步", 11, Color("#e0f2fe"))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var action := _plain_label("行动：%s" % String(card.get("action", "选择玩家后开始操作。")), 10, Color("#f8fafc"))
+	action.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(action)
+	var reason := _plain_label("为什么：%s" % String(card.get("reason", "先建立可执行的开局路径。")), 9, Color("#cbd5e1"))
+	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(reason)
+	var entry := _plain_label("入口：%s" % String(card.get("entry", "点击可见按钮或查看规则。")), 9, accent.lightened(0.16))
+	entry.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(entry)
 
 
 func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
@@ -12066,7 +12153,7 @@ func _add_opening_guide_panel(parent: Container, player_index: int) -> void:
 	progress_bar.show_percentage = false
 	progress_bar.custom_minimum_size = Vector2(0, 8)
 	box.add_child(progress_bar)
-	_add_menu_info_card(box, "下一步卡片", _opening_guide_next_step_text(player_index), Color("#38bdf8"), "先照这张卡做；更多细则可点规则或经济总览。")
+	_add_opening_guide_next_step_card(box, player_index)
 	var task_grid := GridContainer.new()
 	task_grid.columns = 1
 	task_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
