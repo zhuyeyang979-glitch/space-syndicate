@@ -2402,7 +2402,7 @@ func _open_rules_menu() -> void:
 	lines.append("12. 匿名卡牌轨道：顶部轨道保存历史、当前牌和待结算牌，可拖动或滚轮横向查看。当前视角玩家可随时选牌并用玩家头像竞猜归属，每人每张一次、押注¥%d；猜中时牌主付给匿名竞猜者并给卡牌贴公开归属标签，猜错时竞猜者私下付给真实牌主且不揭晓归属。" % CARD_OWNER_GUESS_STAKE)
 	lines.append("13. 经济隐私：游戏进行中，每名玩家只能看到自己的现金、资产归属、周期收入、资金轨迹与流水；其他玩家的经济只能推测。终局才公开并按结算资金判胜。")
 	lines.append("14. 怪兽战斗线索：怪兽没有硬上限，也没有常驻玩家可控怪兽。怪兽会按自身概率行动、争抢资源、相遇战斗；怪兽受伤时，归属玩家会按怪兽最大生命值损失比例掉钱，从而暴露可推理线索。终局只按结算资金定胜负：猜对存活陌生城市业主获得¥%d情报奖金，猜错支付¥%d错误情报成本。" % [INTEL_CORRECT_GUESS_CASH, INTEL_WRONG_GUESS_COST])
-	lines.append("15. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
+	lines.append("15. 结束条件：本局按Roguelike深度给出目标现金。任一玩家的可见预估结算资金（现金+存活城市清算值；情报现金仍等终局）先达到目标时，开启%.0f秒终局倒计时；倒计时期间只公开“有人达标”，不公开触发者。倒计时不会因触发者被打回目标以下而取消；所有玩家可在最后一分钟反超、破坏或下注。倒计时结束后公开结算资金，谁的钱最多谁赢；若所有区域提前毁灭，也会立刻终局。" % VICTORY_COUNTDOWN_SECONDS)
 	lines.append("16. AI训练骨架：AI席位目前会在经营周期里自动建城、需求造势或商路黑客，也会评分购牌、匿名出牌、竞价、合约回应、城市业主推理、卡牌归属押注和怪兽诱导目标；每个AI会维护经济焦点商品，并在扩张焦点、保卫商路、压制竞品三种策略意图之间切换。行动类型、目标、评分、候选集、焦点/策略理由与后续收益都会写入最近决策样本。")
 	lines.append("17. 实时节奏：游戏按实时计时推进，不提供1x/2x/4x时间倍率；暂停只用于菜单、读规则和临时观察。")
 	lines.append("")
@@ -4022,10 +4022,8 @@ func _player_name(player_index: int) -> String:
 func _victory_countdown_status_text() -> String:
 	if not victory_countdown_active:
 		return "终局倒计时：未触发｜目标现金¥%d" % _roguelike_cash_goal()
-	return "终局倒计时：%.0fs｜触发者%s｜触发时预估¥%d｜目标¥%d" % [
+	return "终局倒计时：%.0fs｜触发者匿名｜目标¥%d" % [
 		ceil(victory_countdown_timer),
-		_player_name(victory_countdown_trigger_player),
-		victory_countdown_trigger_score,
 		_roguelike_cash_goal(),
 	]
 
@@ -4047,9 +4045,7 @@ func _start_victory_countdown(player_index: int, score: int) -> void:
 	victory_countdown_timer = VICTORY_COUNTDOWN_SECONDS
 	victory_countdown_trigger_player = player_index
 	victory_countdown_trigger_score = score
-	_log("%s达到本层目标现金线：可见预估结算¥%d / 目标¥%d。终局倒计时%.0f秒开始，倒计时结束按结算资金最高者定胜负。" % [
-		_player_name(player_index),
-		score,
+	_log("有玩家达到本层目标现金线：可见预估结算已不低于目标¥%d。终局倒计时%.0f秒开始，触发者保持匿名；倒计时结束按结算资金最高者定胜负。" % [
 		_roguelike_cash_goal(),
 		VICTORY_COUNTDOWN_SECONDS,
 	])
@@ -4057,7 +4053,7 @@ func _start_victory_countdown(player_index: int, score: int) -> void:
 		_add_action_callout(
 			"终局警报",
 			"目标现金达成",
-			"%s触发%.0f秒终局倒计时；所有玩家仍可反超或破坏。" % [_player_name(player_index), VICTORY_COUNTDOWN_SECONDS],
+			"有玩家触发%.0f秒终局倒计时；所有玩家仍可反超或破坏。" % VICTORY_COUNTDOWN_SECONDS,
 			Color("#facc15"),
 			_district_center(selected_district)
 		)
