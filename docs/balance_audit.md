@@ -83,7 +83,7 @@ Next AI tuning should check whether each profile actually does its thing in long
 
 ## Test gaps to close next
 
-- Covered now: warehouse stockpile loses its stored value when the warehouse city is destroyed, while ordinary non-warehouse futures remain.
+- Covered now: warehouse stockpile leaves public but anonymous clues on the product and city surfaces: product status/codex show active anonymous futures direction, nearest expiry, and warehouse count; the warehouse city clue shows product and units without revealing the owner. Destroying that city clears only the warehouse stockpile while ordinary non-warehouse futures remain.
 - Covered now: commodity futures settle only after their real-time holding window and pay from actual product price movement, not from abstract economy cycles.
 - Covered now: temporary economy durations are audited as real seconds. City contracts, product contracts, product-growth boons, route-flow boons, GDP derivatives, and commodity futures expose `*_seconds` fields; old `*_turns` fields are treated as compatibility mirrors in tests.
 - Covered now: military movement and monster-attack commands do not damage districts/routes; district and route damage is reserved for explicit strike commands.

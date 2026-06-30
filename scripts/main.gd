@@ -4390,6 +4390,9 @@ func _product_public_status_tags(product_name: String) -> Array:
 	var volatility := int(entry.get("volatility", 0))
 	if volatility >= 12:
 		tags.append("高波动%d" % volatility)
+	var futures_text := _product_futures_public_text(product_name, true)
+	if futures_text != "":
+		tags.append(futures_text)
 	return tags
 
 
@@ -23143,9 +23146,77 @@ func _product_market_boon_text(product_name: String) -> String:
 			_boon_duration_text(contract_seconds),
 			contract_source_suffix,
 		])
+	var futures_text := _product_futures_public_text(product_name)
+	if futures_text != "":
+		pieces.append(futures_text)
 	if pieces.is_empty():
 		return "无"
 	return "；".join(pieces)
+
+
+func _product_futures_public_counts(product_name: String) -> Dictionary:
+	var entry := _product_market_entry(product_name)
+	var futures: Array = entry.get("futures_positions", [])
+	var result := {
+		"count": 0,
+		"up": 0,
+		"down": 0,
+		"warehouse": 0,
+		"units": 0,
+		"soonest_seconds": -1.0,
+	}
+	for futures_variant in futures:
+		if not (futures_variant is Dictionary):
+			continue
+		var position := futures_variant as Dictionary
+		result["count"] = int(result.get("count", 0)) + 1
+		var direction := String(position.get("direction", "up"))
+		if direction == "down":
+			result["down"] = int(result.get("down", 0)) + 1
+		else:
+			result["up"] = int(result.get("up", 0)) + 1
+		var units := maxi(1, int(position.get("units", 1)))
+		result["units"] = int(result.get("units", 0)) + units
+		if int(position.get("warehouse_district", -1)) >= 0:
+			result["warehouse"] = int(result.get("warehouse", 0)) + 1
+		var expires_at := float(position.get("expires_at", game_time))
+		var seconds_left := maxf(0.0, expires_at - game_time)
+		var soonest := float(result.get("soonest_seconds", -1.0))
+		if soonest < 0.0 or seconds_left < soonest:
+			result["soonest_seconds"] = seconds_left
+	return result
+
+
+func _product_futures_public_text(product_name: String, compact: bool = false) -> String:
+	var counts := _product_futures_public_counts(product_name)
+	var total := int(counts.get("count", 0))
+	if total <= 0:
+		return ""
+	var up_count := int(counts.get("up", 0))
+	var down_count := int(counts.get("down", 0))
+	var warehouse_count := int(counts.get("warehouse", 0))
+	var units := int(counts.get("units", 0))
+	var duration := _duration_short_text(maxf(1.0, float(counts.get("soonest_seconds", 1.0))))
+	if compact:
+		var compact_parts := []
+		if up_count > 0:
+			compact_parts.append("涨%d" % up_count)
+		if down_count > 0:
+			compact_parts.append("跌%d" % down_count)
+		if warehouse_count > 0:
+			compact_parts.append("仓%d" % warehouse_count)
+		return "匿名期货%s/%s" % ["".join(compact_parts), duration]
+	var direction_parts := []
+	if up_count > 0:
+		direction_parts.append("看涨%d笔" % up_count)
+	if down_count > 0:
+		direction_parts.append("看跌%d笔" % down_count)
+	var warehouse_text := "，其中仓储%d笔/%d单位" % [warehouse_count, units] if warehouse_count > 0 else ""
+	return "匿名期货%s%s，最近%s后到期" % [
+		"、".join(direction_parts),
+		warehouse_text,
+		duration,
+	]
 
 
 func _city_route_flow_status_text(city: Dictionary) -> String:
@@ -23310,8 +23381,6 @@ func _apply_product_futures(player: Dictionary, skill: Dictionary) -> bool:
 			_log("%s只能把囤货放进己方城市仓库；仓库真实业主仍不公开。" % source)
 			return false
 		warehouse_district = selected_district
-		city = _append_city_public_clue(city, "%s在本城附近形成匿名仓储活动；具体商品与仓储方仍需推理。" % source)
-		districts[selected_district]["city"] = city
 	var entry := _product_market_entry(product_name)
 	if entry.is_empty():
 		_log("%s没有可建仓商品。" % source)
@@ -23321,13 +23390,24 @@ func _apply_product_futures(player: Dictionary, skill: Dictionary) -> bool:
 	if not ["up", "down"].has(direction):
 		return false
 	var units := maxi(1, int(skill.get("stockpile_units", 1)))
+	var duration_seconds := _product_futures_duration_seconds(skill)
+	if warehouse_district >= 0:
+		var warehouse_city := _district_city(warehouse_district)
+		warehouse_city = _append_city_public_clue(warehouse_city, "%s在本城建立%s匿名仓储：%s%d单位，%s后结算；仓储方不公开，但仓库被毁会让这笔囤货作废。" % [
+			source,
+			"看涨" if direction == "up" else "看跌",
+			product_name,
+			units,
+			_duration_short_text(duration_seconds),
+		])
+		districts[warehouse_district]["city"] = warehouse_city
 	var futures: Array = entry.get("futures_positions", [])
 	futures.append({
 		"owner": selected_player,
 		"source": source,
 		"direction": direction,
 		"baseline_price": before_price,
-		"expires_at": game_time + _product_futures_duration_seconds(skill),
+		"expires_at": game_time + duration_seconds,
 		"multiplier": maxf(0.1, float(skill.get("product_bet_multiplier", 1.0))),
 		"units": units,
 		"warehouse_district": warehouse_district,
@@ -23346,7 +23426,7 @@ func _apply_product_futures(player: Dictionary, skill: Dictionary) -> bool:
 	_add_action_callout(
 		"匿名商品期货",
 		source,
-		"%s%s｜%s｜基准¥%d｜%s后结算" % [product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(_product_futures_duration_seconds(skill))],
+		"%s%s｜%s｜基准¥%d｜%s后结算" % [product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(duration_seconds)],
 		Color("#22d3ee"),
 		_district_center(selected_district)
 	)
@@ -23356,7 +23436,7 @@ func _apply_product_futures(player: Dictionary, skill: Dictionary) -> bool:
 		warehouse_text,
 		"看涨" if direction == "up" else "看跌",
 		before_price,
-		_duration_short_text(_product_futures_duration_seconds(skill)),
+		_duration_short_text(duration_seconds),
 	])
 	return true
 

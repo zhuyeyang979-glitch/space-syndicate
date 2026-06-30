@@ -1385,6 +1385,15 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 		if int(position.get("warehouse_district", -1)) == city_index:
 			saw_warehouse = true
 	ok = ok and futures_before.size() >= 2 and saw_ordinary and saw_warehouse
+	var active_futures_text := String(main.call("_product_market_boon_text", product_name))
+	var active_status_text := String(main.call("_public_status_tag_text", main.call("_product_public_status_tags", product_name) as Array))
+	districts = _as_array(main.get("districts"))
+	city = (districts[city_index] as Dictionary).get("city", {}) as Dictionary
+	var warehouse_clue := String(main.call("_latest_city_public_clue_text", city))
+	ok = ok and active_futures_text.contains("匿名期货") and active_futures_text.contains("仓储")
+	ok = ok and active_status_text.contains("匿名期货") and active_status_text.contains("仓")
+	ok = ok and warehouse_clue.contains(product_name) and warehouse_clue.contains("匿名仓储") and warehouse_clue.contains("单位") and not warehouse_clue.contains(String((main.get("players") as Array)[0].get("name", "")))
+	ok = ok and String(main.call("_product_codex_text", product_name, 0, 1)).contains("匿名期货")
 	var hp := int((districts[city_index] as Dictionary).get("hp", 1))
 	var damage_before := int((districts[city_index] as Dictionary).get("damage", 0))
 	main.call("_damage_district", city_index, hp - damage_before + 1, "仓储期货边界测试")
@@ -1404,6 +1413,8 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	ok = ok and bool((districts[city_index] as Dictionary).get("destroyed", false))
 	ok = ok and not bool(destroyed_city.get("active", true))
 	ok = ok and remaining_ordinary and not remaining_warehouse
+	var after_destroy_text := String(main.call("_product_market_boon_text", product_name))
+	ok = ok and after_destroy_text.contains("匿名期货") and not after_destroy_text.contains("仓储")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -1442,6 +1453,7 @@ func _verify_product_futures_realtime_payout(main: Node) -> bool:
 	entry = product_market.get(product_name, {}) as Dictionary
 	var positions_after_open := _as_array(entry.get("futures_positions", []))
 	ok = ok and positions_after_open.size() == 1
+	ok = ok and String(main.call("_product_market_boon_text", product_name)).contains("匿名期货")
 	var players_before := _as_array(main.get("players"))
 	var cash_before := int((players_before[0] as Dictionary).get("cash", 0))
 	var income_before := int((players_before[0] as Dictionary).get("total_card_income", 0))
@@ -1463,6 +1475,7 @@ func _verify_product_futures_realtime_payout(main: Node) -> bool:
 	ok = ok and int((players_after[0] as Dictionary).get("cash", 0)) >= cash_before + expected_payout
 	ok = ok and int((players_after[0] as Dictionary).get("total_card_income", 0)) >= income_before + expected_payout
 	ok = ok and _as_array(entry.get("futures_positions", [])).is_empty()
+	ok = ok and not String(main.call("_product_market_boon_text", product_name)).contains("匿名期货")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
