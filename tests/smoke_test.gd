@@ -233,12 +233,18 @@ func _run() -> void:
 	_expect(_product_market_float(product_market, "环晶电池", "route_flow_multiplier") >= 1.35, "mechanical Jack applies a positive route-flow economy weather at new game start")
 	var basic_card_price := int(main.call("_card_price", "移动1"))
 	var premium_card_price := int(main.call("_card_price", "垄断协议1"))
+	var first_monster_card := String(main.call("_monster_card_name", 0, 1))
 	_expect(String(main.call("_card_display_name", "怪兽·尸套龙4")).contains("IV级") and not String(main.call("_card_display_name", "怪兽·尸套龙4")).contains("Lv"), "visible card names use Roman-numeral rank text without legacy Lv labels")
 	_expect(premium_card_price > basic_card_price, "card prices rise with the card's economic power cost")
 	_expect(int(main.call("_card_price", "价格套利2")) == int(main.call("_card_price", "价格套利1")), "higher-rank economy cards keep the same rank-I base price")
 	_expect(int(main.call("_card_price", "短期订单2")) == int(main.call("_card_price", "短期订单1")), "temporary contract upgrades keep the same rank-I base price")
 	_expect(int(main.call("_card_price", "远期采购2")) == int(main.call("_card_price", "远期采购1")), "product contract upgrades keep the same rank-I base price")
-	var first_monster_card := String(main.call("_monster_card_name", 0, 1))
+	var growth_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", "城市融资1")))
+	var speculation_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", "城市做空1")))
+	var intel_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", "业主透镜1")))
+	var monster_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", first_monster_card)))
+	_expect(growth_strategy_text.contains("城市成长") and speculation_strategy_text.contains("金融投机") and intel_strategy_text.contains("情报推理") and monster_strategy_text.contains("怪兽路线"), "card strategy summaries are derived for economy, speculation, intel, and monster routes")
+	_expect(String(main.call("_card_art_stats", main.call("_make_skill", "城市融资1"))).contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
 	_expect(_verify_area_trade_contract_card_variants(main), "area contract card families cover selected, fixed, auto, multi-product, and punitive terms")
@@ -605,6 +611,7 @@ func _run() -> void:
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "城市融资") and _container_label_text_contains(menu_preview_box, "升级梯度"), "card codex hover preview shows the selected card details")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "路线:城市成长"), "card codex hover preview explains the card's strategic route")
 	var codex_detail_event := InputEventMouseButton.new()
 	codex_detail_event.button_index = MOUSE_BUTTON_LEFT
 	codex_detail_event.pressed = true
@@ -614,6 +621,7 @@ func _run() -> void:
 	var card_codex_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_body_label != null and menu_body_label.text.contains("参考价") and menu_body_label.text.contains("档"), "card detail shows card price and explicit tier information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and menu_body_label.text.contains("升级预览") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices and shows Roman-numeral level gradients")
+	_expect(menu_body_label != null and menu_body_label.text.contains("策略路线:城市成长") and menu_body_label.text.contains("用途:"), "card detail explains why the card is useful in a strategy route")
 	_expect(menu_body_label != null and menu_body_label.text.contains("结算演出") and menu_body_label.text.contains("开场：") and menu_body_label.text.contains("余波："), "card detail shows a per-card resolution animation script")
 	_expect(menu_body_label != null and menu_body_label.text.contains("视觉提示") and menu_body_label.text.contains("地图播报"), "card detail links each card animation script to its map visual cue")
 	_expect(card_codex_back_button != null and card_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "card detail exposes previous/next and a return-to-thumbnails button")

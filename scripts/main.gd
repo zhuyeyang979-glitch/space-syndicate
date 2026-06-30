@@ -5649,7 +5649,7 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 	var price := _card_price(card_name)
 	var key_facts := _card_key_rule_facts(skill)
 	var key_text := "；".join(key_facts) if not key_facts.is_empty() else "这张牌没有攻击/生命/范围等战斗数值，主要按效果文字结算。"
-	return "第%d/%d张｜%s｜分类:%s / 当前筛选:%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n效果：%s\n打出：%s｜%s\n关键数值：%s\n升级预览：\n%s\n结算演出：%s\n卡面：游戏内手牌与图鉴使用同一套卡面。" % [
+	return "第%d/%d张｜%s｜分类:%s / 当前筛选:%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n%s\n效果：%s\n打出：%s｜%s\n关键数值：%s\n升级预览：\n%s\n结算演出：%s\n卡面：游戏内手牌与图鉴使用同一套卡面。" % [
 		index + 1,
 		total,
 		_card_display_name(card_name),
@@ -5660,6 +5660,7 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 		_skill_tag_text(skill),
 		source_text,
 		target_text,
+		_card_strategy_summary(skill),
 		_skill_display_text(skill),
 		"固定技能，不会消失" if bool(skill.get("persistent", false)) else "一次性，打出后消失",
 		_skill_play_requirement_text(skill, selected_player),
@@ -11013,20 +11014,84 @@ func _card_theme_color(skill: Dictionary) -> Color:
 
 func _card_rules_text(skill_name: String, skill: Dictionary, compact: bool = false) -> String:
 	var effect_text := _skill_display_text(skill)
+	var strategy_text := _card_strategy_summary(skill, compact)
 	var key_facts := _card_key_rule_facts(skill)
 	var key_text := _join_first_card_facts(key_facts, 4)
 	if key_text == "":
 		key_text = "按效果文字结算"
 	if compact:
-		return "%s\n%s" % [
+		return "%s\n%s\n%s" % [
 			_short_card_text(effect_text, 54),
+			strategy_text,
 			key_text,
 		]
-	return "%s\n%s｜%s" % [
+	return "%s\n%s\n%s｜%s" % [
 		effect_text,
+		strategy_text,
 		"固定技能" if bool(skill.get("persistent", false)) else "一次性",
 		key_text,
 	]
+
+
+func _card_strategy_route_label(skill: Dictionary) -> String:
+	var kind := String(skill.get("kind", ""))
+	var tags := _skill_tag_text(skill)
+	var route_damage := int(skill.get("route_damage", 0)) + int(skill.get("decline_route_damage", 0))
+	var repair_routes := int(skill.get("repair_routes", 0))
+	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))
+	var accept_delta := int(skill.get("accept_production_delta", 0)) + int(skill.get("accept_transport_delta", 0)) + int(skill.get("accept_consumption_delta", 0))
+	var decline_delta := int(skill.get("decline_production_delta", 0)) + int(skill.get("decline_transport_delta", 0)) + int(skill.get("decline_consumption_delta", 0))
+	var market_pressure := int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0)) + int(skill.get("price_delta", 0))
+	if kind == "monster_card" or kind == "monster_bound_action" or kind == "monster_lure" or kind == "monster_takeover" or tags.contains("怪兽"):
+		return "怪兽路线"
+	if kind == "intel_city_reveal" or kind == "intel_card_trace" or kind == "intel_contract_trace" or tags.contains("情报"):
+		return "情报推理"
+	if kind == "area_trade_contract" or kind == "product_contract_boon" or int(skill.get("contract_income", 0)) > 0 or accept_delta != 0 or decline_delta != 0 or int(skill.get("accept_cash", 0)) != 0 or int(skill.get("decline_cash_penalty", 0)) != 0:
+		return "合约博弈"
+	if kind == "city_gdp_derivative" or kind == "product_speculation" or kind == "market_stabilize" or market_pressure != 0:
+		return "金融投机"
+	if route_damage > 0 or economy_delta < 0 or kind == "route_sabotage" or kind == "area_damage":
+		return "城市压制"
+	if kind == "card_access_boon" or kind == "supply_draw" or int(skill.get("draw_amount", 0)) > 0 or bool(skill.get("card_access_global", false)) or int(skill.get("card_access_extra_hops", 0)) > 0:
+		return "补给构筑"
+	if repair_routes > 0 or economy_delta > 0 or kind == "city_revenue_boost" or kind == "cash_gain" or kind == "route_insurance" or kind == "city_product_upgrade" or kind == "city_product_shift" or kind == "city_demand_shift" or kind == "route_flow_boon" or kind == "product_growth_boon" or kind == "city_contract_boon" or float(skill.get("route_flow_multiplier", 1.0)) > 1.001 or float(skill.get("growth_multiplier", 1.0)) > 1.001 or int(skill.get("revenue_amount", 0)) > 0 or int(skill.get("cash", 0)) > 0:
+		return "城市成长"
+	if int(skill.get("damage", 0)) > 0 or kind in ["attack", "charge_attack", "roll_attack", "mudslide", "miasma_shot", "corrosive_breath"]:
+		return "战斗破坏"
+	if int(skill.get("panic", 0)) > 0 or kind == "panic_shift":
+		return "怪兽诱导"
+	return "即时战术"
+
+
+func _card_strategy_use_text(skill: Dictionary) -> String:
+	match _card_strategy_route_label(skill):
+		"城市成长":
+			return "提高己方GDP、商品/需求/交通或商路效率，适合领先或做长期收入。"
+		"城市压制":
+			return "压低目标城市GDP或破坏商路，适合打击竞品、配合城市做空。"
+		"金融投机":
+			return "围绕商品价格或城市GDP下注，把供需变化和破坏结果转成现金。"
+		"合约博弈":
+			return "连接或改写区域供需，签约有收益，拒签也可能留下惩罚压力。"
+		"情报推理":
+			return "获取城市、卡牌或合约归属线索，帮助把匿名行动反推成钱。"
+		"怪兽路线":
+			return "召唤、升级、诱导或夺取自动怪兽，让怪兽灾害影响资源和城市。"
+		"补给构筑":
+			return "扩大购牌范围或补手牌，让牌组更快升级成II/III/IV。"
+		"战斗破坏":
+			return "制造区域/怪兽伤害，推动城市损毁和GDP下跌。"
+		"怪兽诱导":
+			return "提高区域热度或改变怪兽下一步关注，制造可推理的灾害方向。"
+	return "即时改变局势，通常用来补足当前回合的现金、目标或节奏缺口。"
+
+
+func _card_strategy_summary(skill: Dictionary, compact: bool = false) -> String:
+	var route := _card_strategy_route_label(skill)
+	var use_text := _card_strategy_use_text(skill)
+	if compact:
+		return "路线:%s｜%s" % [route, _short_card_text(use_text, 34)]
+	return "策略路线:%s｜用途:%s" % [route, use_text]
 
 
 func _card_key_rule_facts(skill: Dictionary) -> Array:
@@ -11092,14 +11157,27 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 
 func _card_art_stats(skill: Dictionary) -> String:
 	if String(skill.get("kind", "")) == "city_gdp_derivative":
-		return "%s｜×%.2f｜%d周期" % [
+		return "%s｜%s×%.2f｜%d周期" % [
+			_card_strategy_route_label(skill),
 			"买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空",
 			float(skill.get("gdp_bet_multiplier", 1.0)),
 			int(skill.get("gdp_bet_turns", 1)),
 		]
 	if String(skill.get("kind", "")) != "monster_card":
-		return ""
-	return "HP%d｜%s｜移%s｜%s" % [
+		var route := _card_strategy_route_label(skill)
+		if int(skill.get("cash", 0)) > 0:
+			return "%s｜+¥%d" % [route, int(skill.get("cash", 0))]
+		if int(skill.get("revenue_amount", 0)) > 0:
+			return "%s｜GDP+%d" % [route, int(skill.get("revenue_amount", 0))]
+		if int(skill.get("route_damage", 0)) > 0:
+			return "%s｜断路+%d" % [route, int(skill.get("route_damage", 0))]
+		if int(skill.get("repair_routes", 0)) > 0:
+			return "%s｜修路%d" % [route, int(skill.get("repair_routes", 0))]
+		if int(skill.get("draw_amount", 0)) > 0:
+			return "%s｜抽%d" % [route, int(skill.get("draw_amount", 0))]
+		return route
+	return "%s｜HP%d｜%s｜移%s｜%s" % [
+		_card_strategy_route_label(skill),
 		int(skill.get("hp", 0)),
 		_monster_card_duration_text(skill, true),
 		_meters_text(float(skill.get("move", 0.0))),
