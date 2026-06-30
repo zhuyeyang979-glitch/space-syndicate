@@ -1390,8 +1390,21 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	districts = _as_array(main.get("districts"))
 	city = (districts[city_index] as Dictionary).get("city", {}) as Dictionary
 	var warehouse_clue := String(main.call("_latest_city_public_clue_text", city))
+	var city_status_text := String(main.call("_public_status_tag_text", main.call("_city_public_status_tags", city) as Array))
+	var event_parts := main.call("_event_target_weight_parts", city_index) as Dictionary
+	var warehouse_pressure := int(event_parts.get("warehouse", 0))
+	var actor := main.call("_make_auto_monster", 0, 0, city_index, 1, 1) as Dictionary
+	actor["resource_focus"] = [product_name]
+	var monsters_before := _as_array(main.get("auto_monsters"))
+	main.set("auto_monsters", [actor])
+	var monster_parts := main.call("_auto_monster_target_weight_parts", actor, city_index) as Dictionary
+	var monster_reason := String(main.call("_auto_monster_target_factor_summary", actor, city_index))
+	main.set("auto_monsters", monsters_before)
 	ok = ok and active_futures_text.contains("匿名期货") and active_futures_text.contains("仓储")
 	ok = ok and active_status_text.contains("匿名期货") and active_status_text.contains("仓")
+	ok = ok and city_status_text.contains("匿名仓储") and city_status_text.contains(product_name) and not city_status_text.contains(String((main.get("players") as Array)[0].get("name", "")))
+	ok = ok and warehouse_pressure > 0
+	ok = ok and int(monster_parts.get("warehouse", 0)) > 0 and int(monster_parts.get("resource", 0)) > 0 and monster_reason.contains("匿名仓储")
 	ok = ok and warehouse_clue.contains(product_name) and warehouse_clue.contains("匿名仓储") and warehouse_clue.contains("单位") and not warehouse_clue.contains(String((main.get("players") as Array)[0].get("name", "")))
 	ok = ok and String(main.call("_product_codex_text", product_name, 0, 1)).contains("匿名期货")
 	var hp := int((districts[city_index] as Dictionary).get("hp", 1))
@@ -1413,6 +1426,7 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	ok = ok and bool((districts[city_index] as Dictionary).get("destroyed", false))
 	ok = ok and not bool(destroyed_city.get("active", true))
 	ok = ok and remaining_ordinary and not remaining_warehouse
+	ok = ok and int(destroyed_city.get("warehouse_stockpile_count", 0)) == 0 and int((main.call("_event_target_weight_parts", city_index) as Dictionary).get("warehouse", 0)) == 0
 	var after_destroy_text := String(main.call("_product_market_boon_text", product_name))
 	ok = ok and after_destroy_text.contains("匿名期货") and not after_destroy_text.contains("仓储")
 	var restore_result := int(main.call("_apply_run_state", saved))

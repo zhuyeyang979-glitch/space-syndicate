@@ -621,6 +621,9 @@ const MONSTER_TARGET_CITY_BONUS := 38
 const MONSTER_TARGET_PRODUCT_WEIGHT := 3
 const MONSTER_TARGET_COMPETITION_WEIGHT := 5
 const MONSTER_TARGET_RESOURCE_WEIGHT := 12
+const WAREHOUSE_STOCKPILE_COUNT_PRESSURE := 34
+const WAREHOUSE_STOCKPILE_UNIT_PRESSURE := 8
+const WAREHOUSE_STOCKPILE_PRODUCT_PRESSURE := 10
 
 const EVENT_TARGET_BASE_WEIGHT := 8
 const EVENT_TARGET_PANIC_WEIGHT := 1
@@ -4419,6 +4422,9 @@ func _city_public_status_tags(city: Dictionary) -> Array:
 	var revenue_bonus := int(city.get("revenue_bonus", 0))
 	if revenue_bonus > 0:
 		tags.append("永久收入+%d" % revenue_bonus)
+	var warehouse_text := _city_warehouse_stockpile_status_text(city)
+	if warehouse_text != "":
+		tags.append(warehouse_text)
 	return tags
 
 
@@ -7462,6 +7468,7 @@ func _ensure_realtime_economy_state() -> void:
 		if city.is_empty():
 			continue
 		districts[district_index]["city"] = _normalize_city_runtime_fields(city)
+	_refresh_warehouse_stockpile_city_markers()
 
 
 func _product_trend_text(product_name: String) -> String:
@@ -8273,6 +8280,9 @@ func _region_codex_text(index: int) -> String:
 			_city_contract_status_text(city),
 			int(city.get("last_income", 0)),
 		])
+		var city_status := _public_status_tag_text(_city_public_status_tags(city))
+		if city_status != "[无持续状态]":
+			lines.append("城市公开状态：%s。" % city_status)
 		for income_line in _city_income_detail_lines(index, _city_competition_matches(index)):
 			lines.append(String(income_line))
 		lines.append("当前玩家情报：%s" % _city_intel_hint_for_player(index, selected_player))
@@ -11651,6 +11661,7 @@ func _normalize_city_runtime_fields(city: Dictionary) -> Dictionary:
 		city["military_pressure_until"] = 0.0
 	if not city.has("military_pressure_source"):
 		city["military_pressure_source"] = ""
+	city = _normalize_city_warehouse_stockpile_fields(city)
 	return city
 
 
@@ -11855,6 +11866,10 @@ func _create_city_at_district_for_player(player_index: int, district_index: int,
 		"military_gdp_penalty": 0,
 		"military_pressure_until": 0.0,
 		"military_pressure_source": "",
+		"warehouse_stockpile_count": 0,
+		"warehouse_stockpile_units": 0,
+		"warehouse_stockpile_products": [],
+		"warehouse_stockpile_expires_at": -1.0,
 		"supplied_demands": 0,
 		"built_at": game_time,
 		"last_public_clue": "",
@@ -17816,6 +17831,7 @@ func _ai_own_route_threat_score(player_index: int) -> int:
 		score += int(city.get("trade_disrupted_routes", 0)) * 46
 		score += int(districts[city_index].get("damage", 0)) * 18
 		score += int(districts[city_index].get("panic", 0)) / 3
+		score += _city_warehouse_stockpile_pressure(city)
 		for actor_variant in auto_monsters:
 			var actor: Dictionary = actor_variant
 			if bool(actor.get("down", false)):
@@ -18827,6 +18843,7 @@ func _ai_rival_city_pressure_score(player_index: int, district_index: int) -> in
 	score += _district_trade_route_load(district_index) * 14
 	score += _city_product_names(city).size() * 24
 	score += _city_demand_names(city).size() * 14
+	score += _city_warehouse_stockpile_pressure(city) * 2
 	score += competition * 18
 	score -= int(city.get("trade_route_damage", 0)) * 12
 	score -= int(districts[district_index].get("damage", 0)) * 5
@@ -21889,6 +21906,7 @@ func _event_target_weight_parts(index: int) -> Dictionary:
 		"city": 0,
 		"competition": 0,
 		"trade": 0,
+		"warehouse": 0,
 		"miasma": 0,
 		"monster": 0,
 	}
@@ -21903,6 +21921,7 @@ func _event_target_weight_parts(index: int) -> Dictionary:
 	if _city_is_active(city):
 		parts["city"] = EVENT_TARGET_CITY_BONUS + (city.get("products", []) as Array).size()
 		parts["competition"] = int(city.get("competition_matches", 0)) * EVENT_TARGET_COMPETITION_WEIGHT
+		parts["warehouse"] = _city_warehouse_stockpile_pressure(city)
 	parts["trade"] = _district_trade_route_load(index) * EVENT_TARGET_TRADE_WEIGHT
 	if d["miasma"]:
 		parts["miasma"] = EVENT_TARGET_MIASMA_BONUS
@@ -21936,6 +21955,7 @@ func _monster_resource_match_score(actor: Dictionary, index: int) -> int:
 	var city := _district_city(index)
 	var city_products := _city_product_names(city) if _city_is_active(city) else []
 	var city_demands := _city_demand_names(city) if _city_is_active(city) else []
+	var warehouse_products: Array = city.get("warehouse_stockpile_products", []) if _city_is_active(city) else []
 	for product_variant in focus:
 		var product_name := String(product_variant)
 		if district_products.has(product_name):
@@ -21946,6 +21966,8 @@ func _monster_resource_match_score(actor: Dictionary, index: int) -> int:
 			score += 2
 		if city_demands.has(product_name):
 			score += 1
+		if warehouse_products.has(product_name):
+			score += 2 + mini(3, int(city.get("warehouse_stockpile_units", 0)) / 2)
 		for route_variant in _trade_routes_for_product(product_name):
 			var route: Dictionary = route_variant
 			var path: Array = route.get("path", [])
@@ -23219,6 +23241,104 @@ func _product_futures_public_text(product_name: String, compact: bool = false) -
 	]
 
 
+func _reset_city_warehouse_stockpile_marker(city: Dictionary) -> Dictionary:
+	if city.is_empty():
+		return city
+	city["warehouse_stockpile_count"] = 0
+	city["warehouse_stockpile_units"] = 0
+	city["warehouse_stockpile_products"] = []
+	city["warehouse_stockpile_expires_at"] = -1.0
+	return city
+
+
+func _normalize_city_warehouse_stockpile_fields(city: Dictionary) -> Dictionary:
+	if city.is_empty():
+		return city
+	if not city.has("warehouse_stockpile_count"):
+		city["warehouse_stockpile_count"] = 0
+	if not city.has("warehouse_stockpile_units"):
+		city["warehouse_stockpile_units"] = 0
+	if not city.has("warehouse_stockpile_products"):
+		city["warehouse_stockpile_products"] = []
+	if not city.has("warehouse_stockpile_expires_at"):
+		city["warehouse_stockpile_expires_at"] = -1.0
+	return city
+
+
+func _add_city_warehouse_stockpile_marker(district_index: int, product_name: String, units: int, expires_at: float) -> void:
+	if district_index < 0 or district_index >= districts.size():
+		return
+	var city := _normalize_city_warehouse_stockpile_fields(_district_city(district_index))
+	if not _city_is_active(city):
+		return
+	city["warehouse_stockpile_count"] = int(city.get("warehouse_stockpile_count", 0)) + 1
+	city["warehouse_stockpile_units"] = int(city.get("warehouse_stockpile_units", 0)) + maxi(1, units)
+	var products: Array = city.get("warehouse_stockpile_products", [])
+	_append_unique_string(products, product_name)
+	city["warehouse_stockpile_products"] = products
+	var current_expires := float(city.get("warehouse_stockpile_expires_at", -1.0))
+	if current_expires < 0.0 or expires_at < current_expires:
+		city["warehouse_stockpile_expires_at"] = expires_at
+	districts[district_index]["city"] = city
+
+
+func _refresh_warehouse_stockpile_city_markers() -> void:
+	for district_index in range(districts.size()):
+		var city := _district_city(district_index)
+		if city.is_empty():
+			continue
+		districts[district_index]["city"] = _reset_city_warehouse_stockpile_marker(city)
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		var entry := _product_market_entry(product_name)
+		if entry.is_empty():
+			continue
+		var futures: Array = entry.get("futures_positions", [])
+		for futures_variant in futures:
+			if not (futures_variant is Dictionary):
+				continue
+			var position := futures_variant as Dictionary
+			var warehouse_district := int(position.get("warehouse_district", -1))
+			if warehouse_district < 0:
+				continue
+			_add_city_warehouse_stockpile_marker(
+				warehouse_district,
+				product_name,
+				maxi(1, int(position.get("units", 1))),
+				float(position.get("expires_at", game_time))
+			)
+
+
+func _city_warehouse_stockpile_pressure(city: Dictionary) -> int:
+	if not _city_is_active(city):
+		return 0
+	var count := maxi(0, int(city.get("warehouse_stockpile_count", 0)))
+	var units := maxi(0, int(city.get("warehouse_stockpile_units", 0)))
+	var products: Array = city.get("warehouse_stockpile_products", [])
+	if count <= 0 and units <= 0 and products.is_empty():
+		return 0
+	return count * WAREHOUSE_STOCKPILE_COUNT_PRESSURE + units * WAREHOUSE_STOCKPILE_UNIT_PRESSURE + products.size() * WAREHOUSE_STOCKPILE_PRODUCT_PRESSURE
+
+
+func _city_warehouse_stockpile_status_text(city: Dictionary) -> String:
+	if not _city_is_active(city):
+		return ""
+	var count := maxi(0, int(city.get("warehouse_stockpile_count", 0)))
+	if count <= 0:
+		return ""
+	var units := maxi(0, int(city.get("warehouse_stockpile_units", 0)))
+	var products: Array = city.get("warehouse_stockpile_products", [])
+	var product_text := _limited_name_list(products, 3)
+	var expires_at := float(city.get("warehouse_stockpile_expires_at", -1.0))
+	var duration_text := _duration_short_text(maxf(1.0, expires_at - game_time)) if expires_at >= 0.0 else "未知"
+	return "匿名仓储%d笔/%d单位/%s/%s" % [
+		count,
+		units,
+		product_text if product_text != "" else "未知商品",
+		duration_text,
+	]
+
+
 func _city_route_flow_status_text(city: Dictionary) -> String:
 	var multiplier: float = float(city.get("route_flow_multiplier", 1.0))
 	if multiplier <= 1.001:
@@ -23420,6 +23540,7 @@ func _apply_product_futures(player: Dictionary, skill: Dictionary) -> bool:
 	if supply_pressure > 0:
 		entry["temporary_supply_pressure"] = int(entry.get("temporary_supply_pressure", 0)) + supply_pressure
 	product_market[product_name] = entry
+	_refresh_warehouse_stockpile_city_markers()
 	selected_trade_product = product_name
 	_refresh_product_market_prices()
 	var warehouse_text := "｜仓库:%s" % String(districts[warehouse_district].get("name", "城市")) if warehouse_district >= 0 else ""
@@ -23468,6 +23589,7 @@ func _update_product_futures_timers() -> void:
 				_log("匿名商品期货到期：%s %s未达到兑现方向，头寸归零。" % [product_name, String(position.get("source", "商品期货"))])
 		entry["futures_positions"] = remaining
 		product_market[product_name] = entry
+	_refresh_warehouse_stockpile_city_markers()
 
 
 func _product_futures_payout(product_name: String, current_price: int, position: Dictionary) -> int:
@@ -23513,6 +23635,7 @@ func _clear_product_futures_for_destroyed_warehouse(district_index: int, source:
 			entry["futures_positions"] = remaining
 			product_market[product_name] = entry
 	if cleared > 0:
+		_refresh_warehouse_stockpile_city_markers()
 		_log("%s摧毁仓库区：%d笔商品囤积头寸作废，资金归属不公开。" % [source, cleared])
 	return cleared
 
@@ -28783,6 +28906,8 @@ func _damage_district(index: int, amount: int, source: String) -> void:
 		if _city_is_active(city):
 			city = _resolve_city_gdp_derivatives_on_destroy(index, city, source)
 			var cleared_stockpiles := _clear_product_futures_for_destroyed_warehouse(index, source)
+			if cleared_stockpiles > 0:
+				city = _reset_city_warehouse_stockpile_marker(city)
 			city["active"] = false
 			city["destroyed_at"] = game_time
 			d["city"] = city
@@ -28910,6 +29035,7 @@ func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Diction
 		"panic": 0,
 		"city": 0,
 		"competition": 0,
+		"warehouse": 0,
 		"resource": 0,
 		"distance": 0,
 		"miasma": 0,
@@ -28926,6 +29052,7 @@ func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Diction
 	if _city_is_active(city):
 		parts["city"] = MONSTER_TARGET_CITY_BONUS + (city.get("products", []) as Array).size() * MONSTER_TARGET_PRODUCT_WEIGHT
 		parts["competition"] = int(city.get("competition_matches", 0)) * MONSTER_TARGET_COMPETITION_WEIGHT
+		parts["warehouse"] = _city_warehouse_stockpile_pressure(city)
 	parts["resource"] = _monster_resource_match_score(actor, index) * MONSTER_TARGET_RESOURCE_WEIGHT
 	parts["distance"] = max(0, MONSTER_TARGET_DISTANCE_BASE - _entity_distance_to_district(actor, index) * MONSTER_TARGET_DISTANCE_STEP)
 	if d["miasma"]:
@@ -29003,6 +29130,7 @@ func _auto_monster_target_factor_summary(actor: Dictionary, index: int) -> Strin
 		{"name": "距离", "value": int(parts["distance"])},
 		{"name": "城市经营", "value": int(parts["city"])},
 		{"name": "商品竞争", "value": int(parts["competition"])},
+		{"name": "匿名仓储", "value": int(parts["warehouse"])},
 		{"name": "资源偏好", "value": int(parts["resource"])},
 		{"name": "瘴气", "value": int(parts["miasma"])},
 		{"name": "同场怪兽", "value": int(parts["monster"])},
