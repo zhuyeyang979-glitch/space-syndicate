@@ -114,6 +114,7 @@ func _run() -> void:
 	_expect(_verify_role_intel_and_trace_tools(main), "identity roles and intel cards reveal private city, card-owner, and contract-party clues")
 	_expect(_verify_ai_intel_policy(main), "AI opponents can use product clues to mark city owners and wager on anonymous card ownership")
 	_expect(_verify_ai_monster_lure_strategy(main), "AI opponents can steer monster-lure cards toward high-value competing cities and record trainable target metadata")
+	_expect(_verify_ai_economic_focus_strategy(main), "AI opponents maintain an economic focus product that shapes city expansion, economy-card targets, and training metadata")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -870,6 +871,18 @@ func _set_city_goods_for_test(main: Node, district_index: int, product_name: Str
 	return true
 
 
+func _set_district_goods_for_test(main: Node, district_index: int, product_name: String, demand_name: String) -> bool:
+	var districts := _as_array(main.get("districts")).duplicate(true)
+	if district_index < 0 or district_index >= districts.size():
+		return false
+	var district := districts[district_index] as Dictionary
+	district["products"] = [product_name]
+	district["demands"] = [demand_name]
+	districts[district_index] = district
+	main.set("districts", districts)
+	return true
+
+
 func _ai_memory_has_kind(players: Array, player_index: int, kind: String) -> bool:
 	if player_index < 0 or player_index >= players.size():
 		return false
@@ -1237,6 +1250,83 @@ func _verify_ai_monster_lure_strategy(main: Node) -> bool:
 		var players_after := _as_array(main.get("players"))
 		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "target_city", rival_index)
 		ok = ok and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "strategic_role", "monster_lure")
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	return ok and restore_result == OK
+
+
+func _verify_ai_economic_focus_strategy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var ok := true
+	main.set("ai_card_decision_enabled", true)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_simultaneous_timer", 0.5)
+	main.set("card_resolution_auction_open", false)
+	var own_index := _first_empty_land_district_for_contract(main)
+	var focus_index := _first_empty_land_district_for_contract(main, [own_index])
+	var decoy_index := _first_empty_land_district_for_contract(main, [own_index, focus_index])
+	if own_index < 0 or focus_index < 0 or decoy_index < 0:
+		ok = false
+	else:
+		var players := _as_array(main.get("players")).duplicate(true)
+		for player_index in range(players.size()):
+			var player := players[player_index] as Dictionary
+			player["cash"] = 5000
+			player["action_cooldown"] = 0.0
+			if player_index == 1:
+				player["slots"] = [main.call("_make_skill", "价格套利1")]
+			players[player_index] = player
+		main.set("players", players)
+		ok = ok and bool(main.call("_create_city_at_district_for_player", 1, own_index, "AI焦点电池城", false))
+		ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
+		ok = ok and _set_district_goods_for_test(main, focus_index, "环晶电池", "离岸水晶")
+		ok = ok and _set_district_goods_for_test(main, decoy_index, "深海菌毯", "星尘香料")
+		var market := (main.get("product_market") as Dictionary).duplicate(true)
+		var focus_entry := (market.get("环晶电池", {}) as Dictionary).duplicate(true)
+		focus_entry["price"] = 240
+		focus_entry["base_price"] = 120
+		focus_entry["demand"] = 8
+		focus_entry["supply"] = 1
+		market["环晶电池"] = focus_entry
+		var decoy_entry := (market.get("深海菌毯", {}) as Dictionary).duplicate(true)
+		decoy_entry["price"] = 70
+		decoy_entry["base_price"] = 70
+		decoy_entry["demand"] = 1
+		decoy_entry["supply"] = 4
+		market["深海菌毯"] = decoy_entry
+		main.set("product_market", market)
+		var focus_product := String(main.call("_ai_refresh_economic_focus", 1, true))
+		ok = ok and focus_product == "环晶电池"
+		var players_after_focus := _as_array(main.get("players"))
+		var memory := (players_after_focus[1] as Dictionary).get("ai_memory", {}) as Dictionary
+		ok = ok and String(memory.get("economic_focus_product", "")) == "环晶电池"
+		ok = ok and String(memory.get("economic_focus_reason", "")).contains("通关缺口")
+		var focus_build_score := int(main.call("_auto_build_score_for_player", 1, focus_index))
+		var decoy_build_score := int(main.call("_auto_build_score_for_player", 1, decoy_index))
+		ok = ok and focus_build_score > decoy_build_score
+		var skill := main.call("_make_skill", "价格套利1") as Dictionary
+		var context := main.call("_ai_card_play_context", 1, 0, skill) as Dictionary
+		ok = ok and not context.is_empty()
+		ok = ok and String(context.get("product", "")) == "环晶电池"
+		ok = ok and String(context.get("focus_product", "")) == "环晶电池"
+		ok = ok and int(context.get("focus_bonus", 0)) > 0
+		var candidates := main.call("_ai_card_play_candidates", 1) as Array
+		var chosen := {}
+		for candidate_variant in candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("card_name", "")) == "价格套利1":
+				chosen = candidate
+				break
+		ok = ok and not chosen.is_empty()
+		ok = ok and bool(main.call("_ai_queue_play_candidate", 1, chosen, candidates))
+		var players_after_queue := _as_array(main.get("players"))
+		ok = ok and _ai_memory_has_kind_with_metadata(players_after_queue, 1, "匿名出牌", "focus_product", "环晶电池")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	return ok and restore_result == OK

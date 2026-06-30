@@ -24,6 +24,8 @@ const AI_CANDIDATE_SAMPLE_LIMIT := 8
 const AI_INTEL_MIN_CITY_SCORE := 78
 const AI_INTEL_MIN_CARD_SCORE := 125
 const AI_INTEL_ACTIONS_PER_TICK := 2
+const AI_ECONOMIC_FOCUS_TOP_LIMIT := 3
+const AI_ECONOMIC_FOCUS_MATCH_BONUS := 85
 const MAP_WIDTH_METERS := 1400.0
 const MAP_HEIGHT_METERS := 950.0
 const MAP_SITE_MARGIN_METERS := 70.0
@@ -8779,6 +8781,7 @@ func _auto_build_score_for_player(player_index: int, district_index: int) -> int
 	score += _district_ocean_neighbor_count(district_index) * 18
 	score += _district_trade_route_load(district_index) * 6
 	score += _district_product_overlap_with_rival_cities(player_index, district_index) * 14
+	score += _ai_district_focus_score(player_index, district_index)
 	score += int(float(district.get("transport_score", 1.0)) * 10.0)
 	score += max(0, int(district.get("hp", 0)) - int(district.get("damage", 0)))
 	score -= int(district.get("damage", 0)) * 9
@@ -8819,7 +8822,17 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 			continue
 		if _create_city_at_district_for_player(player_index, target, "对手自动扩张", false):
 			var score := _auto_build_score_for_player(player_index, target)
-			_record_ai_decision(player_index, "城市化", target, score, "GDP/商品/交通/竞争/怪兽风险综合评分")
+			var focus_product := _ai_focus_product(player_index)
+			var focus_bonus := _ai_district_focus_score(player_index, target)
+			_record_ai_decision(
+				player_index,
+				"城市化",
+				target,
+				score,
+				"GDP/商品/交通/竞争/怪兽风险综合评分｜经济焦点:%s｜焦点加成%d" % [focus_product if focus_product != "" else "未定", focus_bonus],
+				[],
+				{"focus_product": focus_product, "focus_score": _ai_focus_score(player_index), "focus_bonus": focus_bonus}
+			)
 			built += 1
 	if built > 0:
 		_add_action_callout(
@@ -8864,6 +8877,7 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 	if int(players[player_index].get("cash", 0)) < RIVAL_BUSINESS_ACTION_COST:
 		return result
 	_ensure_product_market_catalog()
+	var focus_product := _ai_focus_product(player_index)
 	for own_city_index_variant in _active_city_indices_for_player(player_index):
 		var own_city_index := int(own_city_index_variant)
 		var own_city := _district_city(own_city_index)
@@ -8875,11 +8889,15 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 			var supply_score := int(entry.get("supply", 0))
 			var competitors := _competing_city_indices_for_product(player_index, product_name)
 			var price_score := 35 + int(round(float(price) / 6.0)) + demand_score * 5 - supply_score * 2 + competitors.size() * 22
+			if product_name == focus_product:
+				price_score += AI_ECONOMIC_FOCUS_MATCH_BONUS
 			result.append({
 				"kind": "price_pump",
 				"own_city": own_city_index,
 				"product": product_name,
 				"score": max(1, price_score),
+				"focus_product": focus_product,
+				"focus_bonus": AI_ECONOMIC_FOCUS_MATCH_BONUS if product_name == focus_product else 0,
 			})
 			for target_city_variant in competitors:
 				var target_city_index := int(target_city_variant)
@@ -8888,12 +8906,16 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 				route_score += (target_city.get("trade_routes", []) as Array).size() * 4
 				route_score += int(target_city.get("last_income", 0)) / 8
 				route_score += int(target_city.get("competition_matches", 0)) * 7
+				if product_name == focus_product:
+					route_score += AI_ECONOMIC_FOCUS_MATCH_BONUS + 24
 				result.append({
 					"kind": "route_sabotage",
 					"own_city": own_city_index,
 					"target_city": target_city_index,
 					"product": product_name,
 					"score": max(1, route_score),
+					"focus_product": focus_product,
+					"focus_bonus": AI_ECONOMIC_FOCUS_MATCH_BONUS + 24 if product_name == focus_product else 0,
 				})
 	return result
 
@@ -9135,7 +9157,19 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 			continue
 		if _apply_rival_business_action(player_index, action):
 			var target := int(action.get("target_city", action.get("own_city", -1)))
-			_record_ai_decision(player_index, String(action.get("kind", "商业行动")), target, int(action.get("score", 0)), "商品:%s" % String(action.get("product", "未知")))
+			_record_ai_decision(
+				player_index,
+				String(action.get("kind", "商业行动")),
+				target,
+				int(action.get("score", 0)),
+				"商品:%s｜经济焦点:%s｜焦点加成%d" % [
+					String(action.get("product", "未知")),
+					String(action.get("focus_product", "")),
+					int(action.get("focus_bonus", 0)),
+				],
+				[],
+				{"product": String(action.get("product", "")), "focus_product": String(action.get("focus_product", "")), "focus_bonus": int(action.get("focus_bonus", 0))}
+			)
 			acted += 1
 	if acted > 0:
 		_log("经营暗流：%d次匿名商业行动留下公开线索，但没有揭示真实业主。" % acted)
@@ -11586,6 +11620,11 @@ func _empty_ai_memory() -> Dictionary:
 		"decision_samples": [],
 		"action_counts": {},
 		"last_plan": "等待牌局决策",
+		"economic_focus_product": "",
+		"economic_focus_score": 0,
+		"economic_focus_reason": "尚未形成商品焦点",
+		"economic_focus_cycle": -1,
+		"economic_focus_rankings": [],
 		"training_note": "记录状态向量、候选评分、实际选择和下一经营周期收益，用于后续调参/训练。",
 	}
 
@@ -11615,6 +11654,16 @@ func _ensure_player_ai_state() -> void:
 					memory["action_counts"] = {}
 				if String(memory.get("last_plan", "")) == "":
 					memory["last_plan"] = "等待牌局决策"
+				if String(memory.get("economic_focus_product", "")) == "":
+					memory["economic_focus_product"] = ""
+				if not memory.has("economic_focus_score"):
+					memory["economic_focus_score"] = 0
+				if String(memory.get("economic_focus_reason", "")) == "":
+					memory["economic_focus_reason"] = "尚未形成商品焦点"
+				if not memory.has("economic_focus_cycle"):
+					memory["economic_focus_cycle"] = -1
+				if not (memory.get("economic_focus_rankings", []) is Array):
+					memory["economic_focus_rankings"] = []
 				if String(memory.get("training_note", "")) == "":
 					memory["training_note"] = "记录状态向量、候选评分、实际选择和下一经营周期收益，用于后续调参/训练。"
 				player["ai_memory"] = memory
@@ -11636,6 +11685,7 @@ func _ai_owned_active_monster_count(player_index: int) -> int:
 func _ai_observation_vector(player_index: int) -> Dictionary:
 	if player_index < 0 or player_index >= players.size():
 		return {}
+	var focus_product := _ai_focus_product(player_index)
 	var player: Dictionary = players[player_index]
 	var total_flow := 0
 	for product_variant in PRODUCT_CATALOG:
@@ -11648,6 +11698,10 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"owned_monsters": _ai_owned_active_monster_count(player_index),
 		"field_monsters": _active_auto_monster_count(),
 		"total_product_flow": total_flow,
+		"focus_product": focus_product,
+		"focus_flow": _player_product_flow(player_index, focus_product),
+		"focus_score": _ai_focus_score(player_index),
+		"cash_goal_gap": maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index)),
 		"queue_current": card_resolution_queue.size(),
 		"queue_next": next_card_resolution_queue.size(),
 		"auction_open": card_resolution_auction_open,
@@ -11657,7 +11711,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role"]:
+	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -11680,10 +11734,12 @@ func _ai_candidate_training_views(candidates: Array) -> Array:
 func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String, candidates: Array = [], metadata: Dictionary = {}) -> void:
 	if not _player_is_ai(player_index):
 		return
+	_ai_refresh_economic_focus(player_index)
 	var player: Dictionary = players[player_index]
 	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
 	var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
 	var observation := _ai_observation_vector(player_index)
+	var focus_product := String(memory.get("economic_focus_product", ""))
 	var sample := {
 		"time": game_time,
 		"cycle": business_cycle_count,
@@ -11693,6 +11749,9 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"reason": reason,
 		"state": observation,
 		"candidates": _ai_candidate_training_views(candidates),
+		"focus_product": focus_product,
+		"focus_score": int(memory.get("economic_focus_score", 0)),
+		"focus_reason": String(memory.get("economic_focus_reason", "")),
 		"baseline_cash": int(player.get("cash", 0)),
 		"baseline_settlement": int(observation.get("settlement_estimate", 0)),
 		"reward_cash": 0,
@@ -11748,6 +11807,201 @@ func _ai_profile_for_player(player_index: int) -> Dictionary:
 	return profile_variant as Dictionary if profile_variant is Dictionary else {}
 
 
+func _ai_product_rival_city_count(player_index: int, product_name: String) -> int:
+	var count := 0
+	if product_name == "":
+		return count
+	for city_index_variant in _active_city_district_indices():
+		var city_index := int(city_index_variant)
+		var city := _district_city(city_index)
+		if int(city.get("owner", -1)) == player_index:
+			continue
+		if _city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name):
+			count += 1
+	return count
+
+
+func _ai_product_market_signal_score(product_name: String) -> int:
+	if product_name == "":
+		return 0
+	_ensure_product_market_catalog()
+	var entry: Dictionary = product_market.get(product_name, {})
+	if entry.is_empty():
+		return _product_price(product_name) / 3
+	var price := int(entry.get("price", entry.get("base_price", _product_price(product_name))))
+	var base_price := int(entry.get("base_price", price))
+	var demand := int(entry.get("demand", 0))
+	var supply := int(entry.get("supply", 0))
+	var temporary_demand := int(entry.get("temporary_demand_pressure", 0))
+	var temporary_supply := int(entry.get("temporary_supply_pressure", 0))
+	var contract_demand := int(entry.get("market_contract_demand", 0))
+	var contract_supply := int(entry.get("market_contract_supply", 0))
+	var score := int(round(float(price) / 3.0))
+	score += max(0, price - base_price) / 2
+	score += demand * 9
+	score -= supply * 4
+	score += temporary_demand * 12
+	score -= temporary_supply * 5
+	score += contract_demand * 14
+	score -= contract_supply * 5
+	score += int(round((float(entry.get("growth_multiplier", 1.0)) - 1.0) * 50.0))
+	score += int(round((float(entry.get("route_flow_multiplier", 1.0)) - 1.0) * 42.0))
+	return score
+
+
+func _ai_product_city_exposure_score(player_index: int, product_name: String) -> int:
+	if product_name == "":
+		return 0
+	var score := _player_product_flow(player_index, product_name) * 74
+	for city_index_variant in _active_city_district_indices():
+		var city_index := int(city_index_variant)
+		var city := _district_city(city_index)
+		var owner := int(city.get("owner", -1))
+		var product_match := _city_product_names(city).has(product_name)
+		var demand_match := _city_demand_names(city).has(product_name)
+		if owner == player_index:
+			if product_match:
+				score += 72 + int(city.get("last_income", 0)) / 4
+			if demand_match:
+				score += 46
+			for route_variant in city.get("trade_routes", []):
+				var route: Dictionary = route_variant
+				if String(route.get("product", "")) == product_name and not bool(route.get("disrupted", false)):
+					score += 34
+		elif product_match or demand_match:
+			score += 26
+			if product_match and _player_product_flow(player_index, product_name) > 0:
+				score += 44
+	return score
+
+
+func _ai_product_focus_score(player_index: int, product_name: String) -> int:
+	if product_name == "" or not PRODUCT_CATALOG.has(product_name):
+		return -999
+	var score := _ai_product_market_signal_score(product_name)
+	score += _ai_product_city_exposure_score(player_index, product_name)
+	var role := _player_role_card_for_index(player_index)
+	if String(role.get("resource_cash_product", "")) == product_name:
+		score += 155 + int(role.get("resource_cash_amount", 0))
+	if String(role.get("bonus_card_product", "")) == product_name:
+		score += 120
+	var rival_count := _ai_product_rival_city_count(player_index, product_name)
+	score += rival_count * (32 + (_player_product_flow(player_index, product_name) * 8))
+	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
+	if cash_gap > 0:
+		score += int(round(float(cash_gap) / 900.0)) * (8 + int(round(float(_product_price(product_name)) / 35.0)))
+	if _player_product_flow(player_index, product_name) <= 0 and String(role.get("resource_cash_product", "")) != product_name and String(role.get("bonus_card_product", "")) != product_name:
+		score -= 45
+	return score
+
+
+func _sort_ai_focus_score_desc(a: Dictionary, b: Dictionary) -> bool:
+	return int(a.get("score", 0)) > int(b.get("score", 0))
+
+
+func _ai_focus_reason(player_index: int, product_name: String, score: int) -> String:
+	if product_name == "":
+		return "尚未形成商品焦点"
+	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
+	return "%s｜流动%d｜市价¥%d｜竞品城%d｜通关缺口¥%d｜评分%d" % [
+		product_name,
+		_player_product_flow(player_index, product_name),
+		_product_price(product_name),
+		_ai_product_rival_city_count(player_index, product_name),
+		cash_gap,
+		score,
+	]
+
+
+func _ai_refresh_economic_focus(player_index: int, force: bool = false) -> String:
+	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+		return ""
+	var player: Dictionary = players[player_index]
+	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var cached_product := String(memory.get("economic_focus_product", ""))
+	if not force and int(memory.get("economic_focus_cycle", -1)) == business_cycle_count and cached_product != "" and PRODUCT_CATALOG.has(cached_product):
+		return cached_product
+	var rankings := []
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		if product_name == "":
+			continue
+		rankings.append({
+			"product": product_name,
+			"score": _ai_product_focus_score(player_index, product_name),
+			"flow": _player_product_flow(player_index, product_name),
+			"price": _product_price(product_name),
+			"rivals": _ai_product_rival_city_count(player_index, product_name),
+		})
+	if rankings.is_empty():
+		return ""
+	rankings.sort_custom(Callable(self, "_sort_ai_focus_score_desc"))
+	var best := rankings[0] as Dictionary
+	var best_product := String(best.get("product", ""))
+	var best_score := int(best.get("score", 0))
+	var compact_rankings := []
+	for i in range(mini(AI_ECONOMIC_FOCUS_TOP_LIMIT, rankings.size())):
+		compact_rankings.append(rankings[i])
+	memory["economic_focus_product"] = best_product
+	memory["economic_focus_score"] = best_score
+	memory["economic_focus_reason"] = _ai_focus_reason(player_index, best_product, best_score)
+	memory["economic_focus_cycle"] = business_cycle_count
+	memory["economic_focus_rankings"] = compact_rankings
+	player["ai_memory"] = memory
+	players[player_index] = player
+	return best_product
+
+
+func _ai_focus_product(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return ""
+	if not _player_is_ai(player_index):
+		return _first_player_flow_product(player_index)
+	return _ai_refresh_economic_focus(player_index)
+
+
+func _ai_focus_score(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+		return 0
+	_ai_refresh_economic_focus(player_index)
+	var memory := ((players[player_index] as Dictionary).get("ai_memory", _empty_ai_memory()) as Dictionary)
+	return int(memory.get("economic_focus_score", 0))
+
+
+func _ai_district_focus_score(player_index: int, district_index: int) -> int:
+	var focus := _ai_focus_product(player_index)
+	if focus == "" or district_index < 0 or district_index >= districts.size():
+		return 0
+	var score := 0
+	if (districts[district_index].get("products", []) as Array).has(focus):
+		score += AI_ECONOMIC_FOCUS_MATCH_BONUS + int(round(float(_product_price(focus)) / 4.0))
+	if (districts[district_index].get("demands", []) as Array).has(focus):
+		score += 48
+	var city := _district_city(district_index)
+	if _city_is_active(city):
+		if _city_product_names(city).has(focus):
+			score += 72
+		if _city_demand_names(city).has(focus):
+			score += 36
+	return score
+
+
+func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
+	var explicit := String(skill.get("play_product", ""))
+	if explicit != "":
+		return explicit
+	var focus := _ai_focus_product(player_index)
+	var kind := String(skill.get("kind", ""))
+	var harmful_supply := int(skill.get("price_delta", 0)) < 0 or int(skill.get("market_supply_pressure", 0)) > int(skill.get("market_demand_pressure", 0))
+	if harmful_supply:
+		var rival_product := _ai_preferred_product(player_index, true)
+		if rival_product != "":
+			return rival_product
+	if focus != "" and (_player_product_flow(player_index, focus) > 0 or ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift"].has(kind)):
+		return focus
+	return _skill_play_product(skill, player_index)
+
+
 func _ai_first_alive_district() -> int:
 	for i in range(districts.size()):
 		if not bool(districts[i].get("destroyed", false)):
@@ -11768,6 +12022,14 @@ func _ai_city_target_score(player_index: int, district_index: int, own_city: boo
 	score += (city.get("demands", []) as Array).size() * 18
 	score += (city.get("trade_routes", []) as Array).size() * 10
 	score += int(city.get("competition_matches", 0)) * 8
+	var focus := _ai_focus_product(player_index)
+	if focus != "":
+		if _city_product_names(city).has(focus):
+			score += 82 if own_city else 96
+		if _city_demand_names(city).has(focus):
+			score += 44 if own_city else 34
+		if not own_city and _player_product_flow(player_index, focus) > 0 and _city_product_names(city).has(focus):
+			score += 78
 	if prefer_damaged:
 		score += int(city.get("trade_route_damage", 0)) * 80
 		score += int(districts[district_index].get("damage", 0)) * 20
@@ -11789,6 +12051,12 @@ func _ai_best_city_district(player_index: int, own_city: bool, prefer_damaged: b
 
 
 func _ai_preferred_product(player_index: int, use_rivals: bool = false) -> String:
+	var focus := _ai_focus_product(player_index)
+	if focus != "":
+		if not use_rivals and _player_product_flow(player_index, focus) > 0:
+			return focus
+		if use_rivals and not _competing_city_indices_for_product(player_index, focus).is_empty():
+			return focus
 	var scores := {}
 	for district_index_variant in _active_city_district_indices():
 		var district_index := int(district_index_variant)
@@ -12067,6 +12335,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	var own_city := _ai_best_city_district(player_index, true)
 	var rival_city := _ai_best_city_district(player_index, false)
 	var fallback := own_city if own_city >= 0 else _ai_first_alive_district()
+	var focus_product := _ai_focus_product(player_index)
+	var planned_product := _ai_product_for_skill(player_index, skill)
 	var context := {
 		"action": "出牌",
 		"slot_index": slot_index,
@@ -12074,7 +12344,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"kind": kind,
 		"district": fallback,
 		"target_slot": -1,
-		"product": _ai_preferred_product(player_index, false),
+		"product": planned_product,
+		"focus_product": focus_product,
+		"focus_score": _ai_focus_score(player_index),
+		"focus_bonus": 0,
 		"contract_source": -1,
 		"contract_target": -1,
 		"score": 70 + maxi(0, int(skill.get("cost", 2))) * 12 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 9,
@@ -12129,7 +12402,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["contract_target"] = rival_city
 		context["district"] = rival_city
 		var source_products := _city_product_names(_district_city(own_city))
-		if not source_products.is_empty():
+		if focus_product != "" and source_products.has(focus_product):
+			context["product"] = focus_product
+			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
+		elif not source_products.is_empty():
 			context["product"] = String(source_products[0])
 		context["score"] = int(context["score"]) + 110 + int(skill.get("accept_cash", 0)) / 3
 	elif ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon"].has(kind):
@@ -12137,6 +12413,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = own_city
 		context["score"] = int(context["score"]) + 90
+		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, own_city)
 	elif kind == "route_insurance":
 		var damaged_city := _ai_best_city_district(player_index, true, true)
 		if damaged_city < 0 or int(_district_city(damaged_city).get("trade_route_damage", 0)) <= 0:
@@ -12148,12 +12425,15 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = rival_city
 		context["product"] = _ai_preferred_product(player_index, true)
+		if String(context.get("product", "")) == focus_product and focus_product != "":
+			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
 		context["score"] = int(context["score"]) + 105
 	elif kind == "region_economy_shift":
 		var net_shift := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("demand_delta", 0))
 		context["district"] = own_city if net_shift >= 0 else rival_city
 		if int(context["district"]) < 0:
 			return {}
+		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]))
 	elif kind == "intel_city_reveal":
 		if rival_city < 0:
 			return {}
@@ -12187,9 +12467,16 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if int(context.get("district", -1)) < 0:
 		return {}
 	var product_name := String(context.get("product", ""))
+	if focus_product != "" and product_name == focus_product:
+		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
+		context["score"] = int(context["score"]) + int(context.get("focus_bonus", 0))
 	var required := _skill_play_flow_required(skill, player_index)
 	if required > 0:
-		product_name = _skill_play_product(skill, player_index)
+		product_name = String(skill.get("play_product", ""))
+		if product_name == "":
+			product_name = String(context.get("product", ""))
+		if product_name == "":
+			product_name = _skill_play_product(skill, player_index)
 		context["product"] = product_name
 		var available := _player_product_flow(player_index, product_name)
 		if available < required:
@@ -12229,6 +12516,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var player: Dictionary = players[player_index]
 	var cash := int(player.get("cash", 0))
 	var profile := _ai_profile_for_player(player_index)
+	var focus_product := _ai_focus_product(player_index)
 	for district_index in range(districts.size()):
 		if not _can_buy_card_from_district(district_index, player_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
@@ -12242,16 +12530,21 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var skill := _make_skill(card_name)
 			var kind := String(skill.get("kind", ""))
 			var score := 55 + int(skill.get("cost", 2)) * 11 - int(round(float(price) / 12.0))
+			var focus_bonus := _ai_district_focus_score(player_index, district_index) / 2
 			var family_slot := _find_highest_family_card_slot(player, card_name)
 			if family_slot >= 0:
 				score += 85
-			var product_name := _skill_play_product(skill, player_index)
+			var product_name := _ai_product_for_skill(player_index, skill)
 			var required := _skill_play_flow_required(skill, player_index)
 			var available := _player_product_flow(player_index, product_name)
 			if required <= 0 or available >= required:
 				score += 35
 			else:
 				score -= (required - available) * 12
+			if focus_product != "" and product_name == focus_product:
+				focus_bonus += AI_ECONOMIC_FOCUS_MATCH_BONUS
+			if ["product_speculation", "product_contract_boon", "product_growth_boon", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind) and focus_bonus > 0:
+				score += focus_bonus
 			var role := _player_role_card_for_index(player_index)
 			if String(role.get("bonus_card_product", "")) != "" and _district_or_city_has_product(district_index, String(role.get("bonus_card_product", ""))):
 				score += 65
@@ -12264,6 +12557,9 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"product": product_name,
 				"price": price,
 				"score": score,
+				"focus_product": focus_product,
+				"focus_score": _ai_focus_score(player_index),
+				"focus_bonus": focus_bonus,
 				"reason": "%s｜费用¥%d｜流动%d/%d｜探索率%.0f%%" % [
 					_card_display_name(card_name), price, available, required, float(profile.get("exploration", 0.15)) * 100.0,
 				],
@@ -12314,7 +12610,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role"]:
+	for field_name in ["target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -12390,7 +12686,14 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 			int(buy_choice.get("score", 0)),
 			String(buy_choice.get("reason", "按价格、流动与手牌协同评分")),
 			buy_candidates,
-			{"card_name": card_name, "price": int(buy_choice.get("price", 0))}
+			{
+				"card_name": card_name,
+				"price": int(buy_choice.get("price", 0)),
+				"product": String(buy_choice.get("product", "")),
+				"focus_product": String(buy_choice.get("focus_product", "")),
+				"focus_score": int(buy_choice.get("focus_score", 0)),
+				"focus_bonus": int(buy_choice.get("focus_bonus", 0)),
+			}
 		)
 		return "buy"
 	return "wait"
