@@ -500,6 +500,7 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "局势排名", "standings menu opens from the main scene")
 	_expect(menu_body_label != null and menu_body_label.text.contains("预估结算资金"), "standings menu explains estimated settlement money")
+	_expect(menu_body_label != null and menu_body_label.text.contains("AI对局压力") and menu_body_label.text.contains("不显示现金/手牌"), "standings menu summarizes public AI pressure without leaking rival cash or hands")
 	_expect(menu_body_label != null and menu_body_label.text.contains("情报待结算"), "standings keeps intelligence cash pending until final settlement")
 	_expect(menu_body_label != null and menu_body_label.text.contains("存活城市1×"), "standings menu reflects built city assets")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "局势速览") and _container_label_text_contains(menu_preview_box, "终局条件") and _container_label_text_contains(menu_preview_box, "我的可见资金"), "standings menu exposes compact victory and cash summary cards")
@@ -509,6 +510,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("情报现金只在终局兑现"), "economy overview avoids revealing intelligence correctness early")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品热榜") and menu_body_label.text.contains("低价/供给压制"), "economy overview shows product price gradients")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商路收入前景") and menu_body_label.text.contains("玩家经济隐私"), "economy overview shows route prospects while keeping rival economics private")
+	_expect(menu_body_label != null and menu_body_label.text.contains("AI对局压力") and menu_body_label.text.contains("公开路线观察") and menu_body_label.text.contains("不显示现金/手牌"), "economy overview shows AI route pressure without revealing private economy or hand information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气") and menu_body_label.text.contains("最近卡牌余波"), "economy overview explains active product weather and recent card aftermath")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最近城市公开线索") and menu_body_label.text.contains("类型:") and menu_body_label.text.contains("线索商品:"), "economy overview aggregates structured anonymous city clues")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最近怪兽资金线索") and menu_body_label.text.contains("最大生命比例"), "economy overview explains monster damage cash clues")
@@ -516,7 +518,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("公开状态["), "economy overview shows unified public status tags")
 	_expect(menu_body_label != null and menu_body_label.text.contains("流水"), "economy overview shows player economy ledger entries")
 	_expect(menu_body_label != null and menu_body_label.text.contains("收入拆解") and menu_body_label.text.contains("合约"), "economy overview shows city income breakdowns and temporary contract status")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "经济速览") and _container_label_text_contains(menu_preview_box, "商品热榜") and _container_label_text_contains(menu_preview_box, "匿名线索"), "economy overview exposes compact GDP, product, route, and clue summary cards")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "经济速览") and _container_label_text_contains(menu_preview_box, "商品热榜") and _container_label_text_contains(menu_preview_box, "AI压力") and _container_label_text_contains(menu_preview_box, "匿名线索"), "economy overview exposes compact GDP, product, route, AI pressure, and clue summary cards")
 	main.call("_open_intel_dossier_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "intel dossier opens from the main scene")

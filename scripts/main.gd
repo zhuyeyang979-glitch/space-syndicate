@@ -3192,6 +3192,7 @@ func _populate_economy_overview_summary_cards() -> void:
 			int(city_entry.get("disrupted", 0)),
 		]
 	var clue_count := _economy_city_public_clue_entries(6).size() + _economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size()
+	var ai_pressure_text := _short_card_text(_ai_public_pressure_summary_text(2).replace("AI对局压力：", ""), 70)
 	_show_menu_summary_cards([
 		{
 			"title": "GDP/min",
@@ -3210,6 +3211,12 @@ func _populate_economy_overview_summary_cards() -> void:
 			"body": city_text,
 			"meta": "运输区受损会拖累途经商路。",
 			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "AI压力",
+			"body": ai_pressure_text,
+			"meta": "只显示路线/阶段/意图，不显示对手现金或手牌。",
+			"accent": Color("#fb7185"),
 		},
 		{
 			"title": "匿名线索",
@@ -3587,6 +3594,7 @@ func _economy_overview_text() -> String:
 	])
 	lines.append("商品热榜按当前价偏离、趋势、需求、断路和经济天气综合排序；商路收入前景不揭示隐藏业主，只显示己方/未知/私人推测。情报现金只在终局兑现，私人业主标注不会提前揭示正误。进行中只有当前玩家能看到自己的现金、资产、收入、资金轨迹与流水；其他玩家的经济只能从公开行动推测。")
 	lines.append("星球天气预报：%s；活跃天气会修正受影响区域的生产、交通和消费，并进入后续GDP/min。" % _weather_status_text())
+	lines.append(_ai_public_pressure_summary_text(maxi(3, _ai_player_indices().size())))
 	lines.append("")
 	var product_entries := _economy_product_entries()
 	lines.append("商品热榜：")
@@ -4688,6 +4696,7 @@ func _standings_text() -> String:
 		auto_monsters.size(),
 	])
 	lines.append(_victory_countdown_status_text())
+	lines.append(_ai_public_pressure_summary_text(maxi(3, _ai_player_indices().size())))
 	lines.append("")
 	var standings := _standing_entries()
 	for rank in range(standings.size()):
@@ -5020,6 +5029,104 @@ func _ai_route_summary(limit: int = 3) -> String:
 	if pieces.is_empty():
 		return "AI路线：本局AI尚未留下稳定路线记录。"
 	return "AI路线：%s。" % "；".join(pieces)
+
+
+func _ai_public_pressure_bucket(route_id: String, intent: String, stage: String, phase: String) -> String:
+	if phase == "endgame":
+		return "终局冲刺"
+	match intent:
+		"defend_routes":
+			return "护路防守"
+		"disrupt_competitors":
+			return "压制竞品"
+		"grow_focus":
+			return "扩张GDP"
+	match stage:
+		"defend_route":
+			return "护路防守"
+		"attack_rival":
+			return "压制竞品"
+		"build_supply", "create_demand", "strengthen_route":
+			return "扩张GDP"
+	match route_id:
+		"monster_pressure":
+			return "怪兽压制"
+		"finance_speculation":
+			return "金融投机"
+		"intel_supply":
+			return "情报补给"
+		"contract_route":
+			return "合约供需"
+		"city_growth":
+			return "扩张GDP"
+	return "观察局势"
+
+
+func _ai_public_pressure_entries(limit: int = 8) -> Array:
+	var entries := []
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		var phase_info := _ai_refresh_game_phase(player_index)
+		var phase := String(phase_info.get("phase", "midgame"))
+		var strategy := _ai_refresh_strategy_intent(player_index)
+		var plan := _ai_refresh_route_plan(player_index)
+		var route_summary := _ai_development_route_sample_summary(player_index)
+		var route_id := String(route_summary.get("route_id", ""))
+		var intent := String(strategy.get("intent", ""))
+		var stage := String(plan.get("stage", ""))
+		var product := String(plan.get("product", ""))
+		var bucket := _ai_public_pressure_bucket(route_id, intent, stage, phase)
+		var score := int(strategy.get("score", 0)) + int(plan.get("score", 0)) + int(route_summary.get("score", 0))
+		entries.append({
+			"player_index": player_index,
+			"name": _player_name(player_index),
+			"phase": phase,
+			"phase_label": _ai_game_phase_label(phase),
+			"bucket": bucket,
+			"route_id": route_id,
+			"route_label": String(route_summary.get("label", "即时战术")) if not route_summary.is_empty() else "即时战术",
+			"product": product if product != "" else "未定商品",
+			"stage": stage,
+			"stage_label": _ai_route_plan_stage_label(stage),
+			"intent": intent,
+			"intent_label": _ai_strategy_intent_label(intent),
+			"score": maxi(1, score),
+		})
+	entries.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	if limit > 0 and entries.size() > limit:
+		return entries.slice(0, limit)
+	return entries
+
+
+func _ai_public_pressure_summary_text(limit: int = 4) -> String:
+	var all_entries := _ai_public_pressure_entries(0)
+	if all_entries.is_empty():
+		return "AI对局压力：本局没有AI对手，或AI尚未形成公开可读的路线压力。"
+	var counts := {}
+	for entry_variant in all_entries:
+		var entry := entry_variant as Dictionary
+		var bucket := String(entry.get("bucket", "观察局势"))
+		counts[bucket] = int(counts.get(bucket, 0)) + 1
+	var ordered_buckets := ["扩张GDP", "护路防守", "压制竞品", "怪兽压制", "金融投机", "合约供需", "情报补给", "终局冲刺", "观察局势"]
+	var count_pieces := []
+	for bucket in ordered_buckets:
+		var count := int(counts.get(bucket, 0))
+		if count > 0:
+			count_pieces.append("%s×%d" % [bucket, count])
+	var samples := []
+	for entry_variant in _ai_public_pressure_entries(limit):
+		var entry := entry_variant as Dictionary
+		samples.append("%s:%s/%s/%s/%s" % [
+			String(entry.get("name", "AI")),
+			String(entry.get("phase_label", "阶段")),
+			String(entry.get("route_label", "路线")),
+			String(entry.get("product", "商品")),
+			String(entry.get("intent_label", "意图")),
+		])
+	return "AI对局压力：公开路线观察，不显示现金/手牌。%s；样本：%s。" % [
+		"｜".join(count_pieces) if not count_pieces.is_empty() else "观察局势×%d" % all_entries.size(),
+		"；".join(samples),
+	]
 
 
 func _player_final_playstyle_summary(player_index: int) -> String:
