@@ -122,6 +122,7 @@ func _run() -> void:
 	_expect(_verify_ai_route_plan_policy(main), "AI opponents form multi-cycle product-route plans that bias build, card, contract, and business choices")
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
+	_expect(_verify_max_ai_seat_opening_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, and restore cleanly")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -1854,7 +1855,8 @@ func _ai_owned_monster_owner_count(main: Node, owner_index: int) -> int:
 
 
 func _force_ai_cities_to_shared_goods(main: Node) -> void:
-	for player_index in range(1, EXPECTED_PLAYER_COUNT):
+	var players := _as_array(main.get("players"))
+	for player_index in range(1, players.size()):
 		for city_index_variant in _as_array(main.call("_active_city_indices_for_player", player_index)):
 			_set_city_goods_for_test(main, int(city_index_variant), "环晶电池", "轨迹墨水")
 	main.call("_refresh_city_networks")
@@ -1994,6 +1996,139 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
 	if not failures.is_empty():
 		print("AI progress smoke failures: %s" % " / ".join(failures))
+	return ok and restore_result == OK
+
+
+func _verify_max_ai_seat_opening_smoke(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var saved_force_duration := float(main.get("card_resolution_force_duration"))
+	var saved_force_simultaneous := float(main.get("card_resolution_force_simultaneous_window"))
+	var ok := true
+	var failures := []
+	var max_players := 8
+	var max_ai := 7
+	var role_indices := []
+	var starter_indices := []
+	var catalog_size := int(main.call("_catalog_size"))
+	for i in range(max_players):
+		role_indices.append(i)
+		starter_indices.append(i % max(1, catalog_size))
+	main.set("configured_player_count", max_players)
+	main.set("configured_ai_player_count", max_ai)
+	main.set("configured_roguelike_depth", 5)
+	main.set("configured_role_indices", role_indices)
+	main.set("configured_starter_monster_indices", starter_indices)
+	main.call("_new_game")
+	main.set("ai_card_decision_enabled", true)
+	main.set("game_over", false)
+	main.set("victory_countdown_active", false)
+	main.set("victory_countdown_timer", 0.0)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("pending_contract_offers", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	main.set("card_resolution_force_duration", 0.0)
+	main.set("card_resolution_force_simultaneous_window", 0.5)
+	var players := _as_array(main.get("players")).duplicate(true)
+	var districts := _as_array(main.get("districts"))
+	if players.size() != max_players:
+		failures.append("players %d" % players.size())
+		ok = false
+	if _ai_player_count(players) != max_ai:
+		failures.append("ai count %d" % _ai_player_count(players))
+		ok = false
+	if districts.size() < 31:
+		failures.append("districts %d" % districts.size())
+		ok = false
+	for player_index in range(players.size()):
+		var player := players[player_index] as Dictionary
+		player["cash"] = 7600
+		player["action_cooldown"] = 0.0
+		players[player_index] = player
+		if player_index == 0 and bool(player.get("is_ai", true)):
+			failures.append("human seat ai")
+			ok = false
+		if player_index > 0 and not bool(player.get("is_ai", false)):
+			failures.append("ai seat %d not ai" % player_index)
+			ok = false
+		var role := player.get("role_card", {}) as Dictionary
+		var slots := _as_array(player.get("slots", []))
+		if role.is_empty() or slots.is_empty():
+			failures.append("missing role/slot %d" % player_index)
+			ok = false
+	main.set("players", players)
+	var first_summon_plays := 0
+	for player_index in range(1, max_players):
+		var result := String(main.call("_ai_execute_card_turn", player_index, true))
+		if result == "play":
+			first_summon_plays += 1
+	main.call("_auto_ai_auction_bids", true)
+	_drain_card_resolution_queue_for_test(main, 160)
+	if first_summon_plays != max_ai:
+		failures.append("first summons %d" % first_summon_plays)
+		ok = false
+	for player_index in range(1, max_players):
+		if _ai_owned_monster_owner_count(main, player_index) <= 0:
+			failures.append("missing monster owner %d" % player_index)
+			ok = false
+	_seed_supply_cards_near_ai_monsters_for_test(main)
+	var built := int(main.call("_auto_expand_rival_syndicates", true))
+	_force_ai_cities_to_shared_goods(main)
+	if built < max_ai:
+		failures.append("built %d" % built)
+		ok = false
+	for player_index in range(1, max_players):
+		if int(main.call("_player_active_city_count", player_index)) <= 0:
+			failures.append("missing city %d" % player_index)
+			ok = false
+	var bought := {}
+	var post_opening_play_count := 0
+	var business_actions := 0
+	for _cycle in range(4):
+		_clear_ai_cooldowns_for_test(main)
+		for player_index in range(1, max_players):
+			var result := String(main.call("_ai_execute_card_turn", player_index, true))
+			if result == "buy":
+				bought[player_index] = true
+			elif result == "play":
+				post_opening_play_count += 1
+		main.call("_auto_ai_auction_bids", true)
+		_drain_card_resolution_queue_for_test(main, 160)
+		business_actions += int(main.call("_auto_rival_business_actions", true))
+		main.call("_market_tick")
+	var after_players := _as_array(main.get("players"))
+	var saw_income := false
+	var sampled_ai := 0
+	for player_index in range(1, max_players):
+		var player := after_players[player_index] as Dictionary
+		saw_income = saw_income or int(player.get("total_city_income", 0)) > 0
+		var memory := player.get("ai_memory", {}) as Dictionary
+		if not _as_array(memory.get("decision_samples", [])).is_empty():
+			sampled_ai += 1
+	if bought.size() < max_ai:
+		failures.append("bought %d" % bought.size())
+		ok = false
+	if post_opening_play_count <= 0:
+		failures.append("post opening plays 0")
+		ok = false
+	if business_actions <= 0:
+		failures.append("business actions 0")
+		ok = false
+	if not saw_income:
+		failures.append("no income")
+		ok = false
+	if sampled_ai < max_ai:
+		failures.append("sampled ai %d" % sampled_ai)
+		ok = false
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	main.set("card_resolution_force_duration", saved_force_duration)
+	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
+	if not failures.is_empty():
+		print("Max AI seat smoke failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
 
 
