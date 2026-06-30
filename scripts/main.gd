@@ -5119,6 +5119,27 @@ func _ai_public_pressure_counterplay_for_bucket(bucket: String) -> String:
 	return "继续观察卡牌条件、商品流向和城市线索，先别过早暴露判断。"
 
 
+func _ai_public_pressure_card_route_hint_for_bucket(bucket: String) -> String:
+	match bucket:
+		"扩张GDP":
+			return "城市压制/金融做空/怪兽压制"
+		"护路防守":
+			return "金融投机/合约改线/怪兽诱导"
+		"压制竞品":
+			return "城市成长/修路保险/情报追溯"
+		"怪兽压制":
+			return "怪兽诱导/天气干预/区域修复"
+		"金融投机":
+			return "市场稳定/供应链保险/需求扩张"
+		"合约供需":
+			return "合约博弈/情报推理/商路破坏"
+		"情报补给":
+			return "伪线索新闻/补给构筑/分散门槛"
+		"终局冲刺":
+			return "现金冲刺/做空领先城/护路保险"
+	return "情报推理/基础经济/低成本补牌"
+
+
 func _ai_public_pressure_counterplay_text(max_suggestions: int = 3) -> String:
 	var all_entries := _ai_public_pressure_entries(0)
 	if all_entries.is_empty():
@@ -5141,10 +5162,35 @@ func _ai_public_pressure_counterplay_text(max_suggestions: int = 3) -> String:
 	return "反制建议：%s" % "；".join(suggestions)
 
 
+func _ai_public_pressure_card_route_text(max_suggestions: int = 3) -> String:
+	var all_entries := _ai_public_pressure_entries(0)
+	if all_entries.is_empty():
+		return "推荐卡牌路线：先找首召、城市化、基础经济和补牌类效果。"
+	var counts := {}
+	for entry_variant in all_entries:
+		var entry := entry_variant as Dictionary
+		var bucket := String(entry.get("bucket", "观察局势"))
+		counts[bucket] = int(counts.get(bucket, 0)) + 1
+	var ordered_buckets := ["终局冲刺", "压制竞品", "怪兽压制", "金融投机", "护路防守", "合约供需", "情报补给", "扩张GDP", "观察局势"]
+	var hints := []
+	for bucket in ordered_buckets:
+		if int(counts.get(bucket, 0)) <= 0:
+			continue
+		hints.append("%s→%s" % [bucket, _ai_public_pressure_card_route_hint_for_bucket(bucket)])
+		if hints.size() >= max_suggestions:
+			break
+	if hints.is_empty():
+		hints.append("观察局势→%s" % _ai_public_pressure_card_route_hint_for_bucket("观察局势"))
+	return "推荐卡牌路线：%s" % "；".join(hints)
+
+
 func _ai_public_pressure_summary_text(limit: int = 4) -> String:
 	var all_entries := _ai_public_pressure_entries(0)
 	if all_entries.is_empty():
-		return "AI对局压力：本局没有AI对手，或AI尚未形成公开可读的路线压力。%s" % _ai_public_pressure_counterplay_text()
+		return "AI对局压力：本局没有AI对手，或AI尚未形成公开可读的路线压力。%s。%s" % [
+			_ai_public_pressure_counterplay_text(),
+			_ai_public_pressure_card_route_text(),
+		]
 	var counts := {}
 	for entry_variant in all_entries:
 		var entry := entry_variant as Dictionary
@@ -5166,10 +5212,11 @@ func _ai_public_pressure_summary_text(limit: int = 4) -> String:
 			String(entry.get("product", "商品")),
 			String(entry.get("intent_label", "意图")),
 		])
-	return "AI对局压力：公开路线观察，不显示现金/手牌。%s；样本：%s。%s。" % [
+	return "AI对局压力：公开路线观察，不显示现金/手牌。%s；样本：%s。%s。%s。" % [
 		"｜".join(count_pieces) if not count_pieces.is_empty() else "观察局势×%d" % all_entries.size(),
 		"；".join(samples),
 		_ai_public_pressure_counterplay_text(),
+		_ai_public_pressure_card_route_text(),
 	]
 
 
