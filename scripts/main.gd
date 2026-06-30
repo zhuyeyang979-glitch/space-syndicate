@@ -6970,7 +6970,7 @@ func _product_codex_preview_text(product_name: String) -> String:
 	var profile := _product_profile(product_name)
 	var price := _product_price(product_name)
 	var base_price := int(entry.get("base_price", price))
-	return "商品目录:%s/%s｜地形:%s｜策略用途:%s｜机制钩子:%s｜临时美工:%s｜当前价¥%d｜基准¥%d｜价格梯度:%s｜供给%d/需求%d/断路%d/波动%d｜天气:%s｜供给区:%s｜需求区:%s｜城市线索:%s" % [
+	return "商品目录:%s/%s｜地形:%s｜策略用途:%s｜机制钩子:%s｜临时美工:%s｜当前价¥%d｜基准¥%d｜价格梯度:%s｜供给%d/需求%d/断路%d/波动%d｜策略:%s｜期货仓储:%s｜怪兽:%s｜相关卡:%s｜天气:%s｜供给区:%s｜需求区:%s｜城市线索:%s" % [
 		String(profile.get("category", "商品")),
 		String(profile.get("route", "商业线")),
 		String(profile.get("terrain", "通用")),
@@ -6984,11 +6984,157 @@ func _product_codex_preview_text(product_name: String) -> String:
 		int(entry.get("demand", 0)),
 		int(entry.get("disrupted", 0)),
 		int(entry.get("volatility", 0)),
+		_product_strategy_summary_text(product_name),
+		_product_futures_warehouse_codex_text(product_name, true),
+		_product_monster_focus_strategy_text(product_name, true),
+		_product_related_card_names(product_name, 4),
 		_product_market_boon_text(product_name),
 		_product_related_district_names(product_name, "products", 3),
 		_product_related_district_names(product_name, "demands", 3),
 		_product_clue_preview_text(product_name),
 	]
+
+
+func _product_strategy_scores(product_name: String) -> Dictionary:
+	_ensure_product_market_catalog()
+	var entry: Dictionary = product_market.get(product_name, {})
+	var supply := int(entry.get("supply", 0))
+	var demand := int(entry.get("demand", 0))
+	var disrupted := int(entry.get("disrupted", 0))
+	var volatility := int(entry.get("volatility", 0))
+	var temporary_demand := int(entry.get("temporary_demand_pressure", 0))
+	var temporary_supply := int(entry.get("temporary_supply_pressure", 0))
+	var contract_seconds := _remaining_effect_seconds(entry, "market_contract_seconds", "market_contract_turns")
+	var contract_demand := int(entry.get("market_contract_demand", 0)) if contract_seconds > 0.0 else 0
+	var contract_supply := int(entry.get("market_contract_supply", 0)) if contract_seconds > 0.0 else 0
+	var futures := _product_futures_public_counts(product_name)
+	var warehouse_units := int(futures.get("warehouse_units", 0))
+	var monster_focus_count := _product_monster_focus_count(product_name)
+	var growth_bonus := int(round(maxf(0.0, float(entry.get("growth_multiplier", 1.0)) - 1.0) * 40.0))
+	var route_bonus := int(round(maxf(0.0, float(entry.get("route_flow_multiplier", 1.0)) - 1.0) * 32.0))
+	var long_score := maxi(0, demand - supply) * 14 + demand * 3 + disrupted * 10 + temporary_demand * 8 + contract_demand * 9 + growth_bonus + int(futures.get("up", 0)) * 3
+	var short_score := maxi(0, supply - demand) * 14 + supply * 3 + temporary_supply * 8 + contract_supply * 9 + volatility * 2 + int(futures.get("down", 0)) * 3
+	var stockpile_score := long_score + volatility * 4 + warehouse_units * 5 + route_bonus
+	var route_score := (supply + demand) * 6 + route_bonus + disrupted * 4 + contract_demand * 3 + contract_supply * 3
+	var monster_risk_score := monster_focus_count * 18 + warehouse_units * 7 + disrupted * 3
+	return {
+		"long": maxi(0, long_score),
+		"short": maxi(0, short_score),
+		"stockpile": maxi(0, stockpile_score),
+		"route": maxi(0, route_score),
+		"monster": maxi(0, monster_risk_score),
+		"supply": supply,
+		"demand": demand,
+		"disrupted": disrupted,
+		"volatility": volatility,
+	}
+
+
+func _product_strategy_summary_text(product_name: String) -> String:
+	var scores := _product_strategy_scores(product_name)
+	var ranked := [
+		{"label": "看涨", "score": int(scores.get("long", 0)), "hint": "需求、断路、合约或成长天气正在支撑价格。"},
+		{"label": "看跌", "score": int(scores.get("short", 0)), "hint": "供给、套保或供给压力较强，适合压价。"},
+		{"label": "囤货", "score": int(scores.get("stockpile", 0)), "hint": "波动和看涨空间适合港仓囤货，但仓库会变成公开靶标。"},
+		{"label": "商路", "score": int(scores.get("route", 0)), "hint": "供需两端和流通速度适合合约、交通和城市GDP路线。"},
+		{"label": "怪兽风险", "score": int(scores.get("monster", 0)), "hint": "偏好该商品的怪兽或仓储压力会增加被引怪概率。"},
+	]
+	ranked.sort_custom(Callable(self, "_sort_product_strategy_score_desc"))
+	var first := ranked[0] as Dictionary
+	var second := ranked[1] as Dictionary
+	return "%s%d / %s%d｜建议:%s" % [
+		String(first.get("label", "策略")),
+		int(first.get("score", 0)),
+		String(second.get("label", "次选")),
+		int(second.get("score", 0)),
+		String(first.get("hint", "观察供需变化。")),
+	]
+
+
+func _sort_product_strategy_score_desc(a: Dictionary, b: Dictionary) -> bool:
+	var score_a := int(a.get("score", 0))
+	var score_b := int(b.get("score", 0))
+	if score_a != score_b:
+		return score_a > score_b
+	return String(a.get("label", "")) < String(b.get("label", ""))
+
+
+func _product_futures_warehouse_codex_text(product_name: String, compact: bool = false) -> String:
+	var futures_text := _product_futures_public_text(product_name, compact)
+	var warehouse_text := _product_warehouse_city_public_text(product_name, 2 if compact else 4)
+	if futures_text == "" and warehouse_text == "":
+		return "暂无公开期货/仓储；可用商品看涨、商品看跌或港仓囤货制造价格窗口。"
+	if compact:
+		var compact_parts := []
+		if futures_text != "":
+			compact_parts.append(futures_text)
+		if warehouse_text != "":
+			compact_parts.append(warehouse_text)
+		return _limited_name_list(compact_parts, 2, "暂无")
+	var pieces := []
+	if futures_text != "":
+		pieces.append(futures_text)
+	if warehouse_text != "":
+		pieces.append("仓库:%s" % warehouse_text)
+	return "；".join(pieces)
+
+
+func _product_warehouse_city_public_text(product_name: String, limit: int = 4) -> String:
+	var entries := []
+	for index_variant in _active_city_district_indices():
+		var index := int(index_variant)
+		var city := _district_city(index)
+		var products: Array = city.get("warehouse_stockpile_products", [])
+		if not products.has(product_name):
+			continue
+		var pressure := _city_warehouse_stockpile_pressure(city)
+		var expires_at := float(city.get("warehouse_stockpile_expires_at", -1.0))
+		var duration_text := _duration_short_text(maxf(1.0, expires_at - game_time)) if expires_at >= 0.0 else "未知"
+		entries.append({
+			"name": String(districts[index].get("name", "城市")),
+			"pressure": pressure,
+			"units": int(city.get("warehouse_stockpile_units", 0)),
+			"count": int(city.get("warehouse_stockpile_count", 0)),
+			"duration": duration_text,
+		})
+	entries.sort_custom(Callable(self, "_sort_product_warehouse_entry"))
+	var pieces := []
+	for i in range(mini(limit, entries.size())):
+		var entry := entries[i] as Dictionary
+		pieces.append("%s 风险%d %d笔/%d单位 %s" % [
+			String(entry.get("name", "城市")),
+			int(entry.get("pressure", 0)),
+			int(entry.get("count", 0)),
+			int(entry.get("units", 0)),
+			String(entry.get("duration", "未知")),
+		])
+	return "；".join(pieces)
+
+
+func _sort_product_warehouse_entry(a: Dictionary, b: Dictionary) -> bool:
+	var pressure_a := int(a.get("pressure", 0))
+	var pressure_b := int(b.get("pressure", 0))
+	if pressure_a != pressure_b:
+		return pressure_a > pressure_b
+	return int(a.get("units", 0)) > int(b.get("units", 0))
+
+
+func _product_monster_focus_count(product_name: String) -> int:
+	var count := 0
+	for monster_variant in MONSTER_ROSTER:
+		var monster: Dictionary = monster_variant
+		var focus: Array = monster.get("resource_focus", [])
+		if focus.has(product_name):
+			count += 1
+	return count
+
+
+func _product_monster_focus_strategy_text(product_name: String, compact: bool = false) -> String:
+	var names := _product_monster_focus_names(product_name, 3 if compact else 6)
+	if names == "暂无固定偏好怪兽":
+		return names
+	var suffix := "；这些怪兽更容易被该商品产区、需求城或仓库吸引。" if not compact else ""
+	return "%s%s" % [names, suffix]
 
 
 func _product_clue_preview_text(product_name: String) -> String:
@@ -8094,6 +8240,10 @@ func _product_codex_text(product_name: String, index: int, total: int) -> String
 	])
 	lines.append("近期价格：%s。" % _product_price_path_text(entry))
 	lines.append("经济天气：%s。" % _product_market_boon_text(product_name))
+	lines.append("策略摘要：%s。" % _product_strategy_summary_text(product_name))
+	lines.append("期货/仓储：%s。" % _product_futures_warehouse_codex_text(product_name))
+	lines.append("怪兽偏好：%s。" % _product_monster_focus_strategy_text(product_name))
+	lines.append("相关卡牌：%s" % _product_related_card_names(product_name, 10))
 	lines.append("本地供给区域：%s" % _product_related_district_names(product_name, "products"))
 	lines.append("本地需求区域：%s" % _product_related_district_names(product_name, "demands"))
 	lines.append("城市生产：%s" % _product_related_city_names(product_name, "products"))
@@ -23348,6 +23498,7 @@ func _product_futures_public_counts(product_name: String) -> Dictionary:
 		"down": 0,
 		"warehouse": 0,
 		"units": 0,
+		"warehouse_units": 0,
 		"soonest_seconds": -1.0,
 	}
 	for futures_variant in futures:
@@ -23364,6 +23515,7 @@ func _product_futures_public_counts(product_name: String) -> Dictionary:
 		result["units"] = int(result.get("units", 0)) + units
 		if int(position.get("warehouse_district", -1)) >= 0:
 			result["warehouse"] = int(result.get("warehouse", 0)) + 1
+			result["warehouse_units"] = int(result.get("warehouse_units", 0)) + units
 		var expires_at := float(position.get("expires_at", game_time))
 		var seconds_left := maxf(0.0, expires_at - game_time)
 		var soonest := float(result.get("soonest_seconds", -1.0))
@@ -23381,6 +23533,7 @@ func _product_futures_public_text(product_name: String, compact: bool = false) -
 	var down_count := int(counts.get("down", 0))
 	var warehouse_count := int(counts.get("warehouse", 0))
 	var units := int(counts.get("units", 0))
+	var warehouse_units := int(counts.get("warehouse_units", 0))
 	var duration := _duration_short_text(maxf(1.0, float(counts.get("soonest_seconds", 1.0))))
 	if compact:
 		var compact_parts := []
@@ -23396,7 +23549,7 @@ func _product_futures_public_text(product_name: String, compact: bool = false) -
 		direction_parts.append("看涨%d笔" % up_count)
 	if down_count > 0:
 		direction_parts.append("看跌%d笔" % down_count)
-	var warehouse_text := "，其中仓储%d笔/%d单位" % [warehouse_count, units] if warehouse_count > 0 else ""
+	var warehouse_text := "，其中仓储%d笔/%d单位" % [warehouse_count, warehouse_units] if warehouse_count > 0 else ""
 	return "匿名期货%s%s，最近%s后到期" % [
 		"、".join(direction_parts),
 		warehouse_text,

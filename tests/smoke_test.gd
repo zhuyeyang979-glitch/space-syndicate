@@ -742,7 +742,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_expect(menu_content_scroll != null and (product_codex_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == product_codex_scroll_before), "product codex hover preview preserves scroll position when the page is scrollable")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格梯度"), "product codex hover preview shows the selected product details")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格梯度") and _container_label_text_contains(menu_preview_box, "策略:"), "product codex hover preview shows the selected product strategy details")
 	var product_detail_event := InputEventMouseButton.new()
 	product_detail_event.button_index = MOUSE_BUTTON_LEFT
 	product_detail_event.pressed = true
@@ -753,6 +753,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("活体芯片"), "product detail opens on the currently selected trade product")
 	_expect(menu_body_label != null and menu_body_label.text.contains("价格梯度") and menu_body_label.text.contains("当前价"), "product codex shows product price and tier information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气"), "product codex shows product growth and flow weather")
+	_expect(menu_body_label != null and menu_body_label.text.contains("策略摘要") and menu_body_label.text.contains("期货/仓储") and menu_body_label.text.contains("怪兽偏好") and menu_body_label.text.contains("相关卡牌"), "product codex shows strategy, futures, monster, and related-card panels")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品相关城市线索"), "product codex can filter city clues by product")
 	_expect(product_codex_back_button != null and product_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "product detail exposes previous/next and a return-to-thumbnails button")
 	main.call("_back_from_catalog_menu")
@@ -1495,7 +1496,8 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	ok = ok and warehouse_economy_text.contains("仓储靶标") and warehouse_economy_text.contains("匿名仓储") and warehouse_economy_text.contains("对手计划、现金和手牌保持隐藏")
 	ok = ok and warehouse_intel_text.contains("仓储风险线索") and warehouse_intel_text.contains("仓储风险") and intel_has_warehouse_priority
 	ok = ok and warehouse_clue.contains(product_name) and warehouse_clue.contains("匿名仓储") and warehouse_clue.contains("单位") and not warehouse_clue.contains(String((main.get("players") as Array)[0].get("name", "")))
-	ok = ok and String(main.call("_product_codex_text", product_name, 0, 1)).contains("匿名期货")
+	var stockpile_product_codex_text := String(main.call("_product_codex_text", product_name, 0, 1))
+	ok = ok and stockpile_product_codex_text.contains("匿名期货") and stockpile_product_codex_text.contains("期货/仓储") and stockpile_product_codex_text.contains("仓库:") and stockpile_product_codex_text.contains("策略摘要")
 	var hp := int((districts[city_index] as Dictionary).get("hp", 1))
 	var damage_before := int((districts[city_index] as Dictionary).get("damage", 0))
 	main.call("_damage_district", city_index, hp - damage_before + 1, "仓储期货边界测试")
