@@ -45,6 +45,7 @@ func _run() -> void:
 	main.set("configured_role_indices", [0, 1, 2, 3, 4])
 	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
 	main.call("_new_game")
+	main.set("ai_card_decision_enabled", false)
 	main.call("_open_main_menu")
 	await process_frame
 	var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
@@ -107,6 +108,7 @@ func _run() -> void:
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, periodic product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
+	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(int((players[0] as Dictionary).get("cash", 0)) > int((players[1] as Dictionary).get("cash", 0)), "role passives can modify starting cash")
 	_expect(_starting_monster_cards_match_roles(players), "each player's starter monster card is granted by their role card")
 	var player_box := main.get("player_box") as VBoxContainer
@@ -1895,6 +1897,117 @@ func _ai_decision_sample_count(players: Array) -> int:
 	return total
 
 
+func _ai_candidates_have_starter_monster(candidates: Array) -> bool:
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if String(candidate.get("action", "")) == "出牌" and String(candidate.get("kind", "")) == "monster_card" and int(candidate.get("score", 0)) > 0:
+			return true
+	return false
+
+
+func _queue_has_ai_card_entry(queue: Array, player_index: int) -> bool:
+	for entry_variant in queue:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if int(entry.get("player_index", -1)) != player_index:
+			continue
+		var skill := entry.get("skill", {}) as Dictionary
+		return String(skill.get("kind", "")) == "monster_card" and int(entry.get("ai_utility_score", 0)) > 0 and entry.has("ai_bid_budget")
+	return false
+
+
+func _queue_highest_bid(queue: Array) -> int:
+	var highest := 0
+	for entry_variant in queue:
+		if entry_variant is Dictionary:
+			highest = maxi(highest, int((entry_variant as Dictionary).get("tip", 0)))
+	return highest
+
+
+func _ai_memory_has_training_card_sample(players: Array, player_index: int) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player := players[player_index] as Dictionary
+	var memory := player.get("ai_memory", {}) as Dictionary
+	var action_counts := memory.get("action_counts", {}) as Dictionary
+	if int(action_counts.get("匿名出牌", 0)) <= 0:
+		return false
+	for sample_variant in _as_array(memory.get("decision_samples", [])):
+		if not (sample_variant is Dictionary):
+			continue
+		var sample := sample_variant as Dictionary
+		if String(sample.get("kind", "")) != "匿名出牌":
+			continue
+		var state := sample.get("state", {}) as Dictionary
+		var candidates := _as_array(sample.get("candidates", []))
+		return state.has("cash") and state.has("total_product_flow") and not candidates.is_empty() and sample.has("baseline_cash")
+	return false
+
+
+func _ai_memory_has_finalized_reward(players: Array, player_index: int) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player := players[player_index] as Dictionary
+	var memory := player.get("ai_memory", {}) as Dictionary
+	for sample_variant in _as_array(memory.get("decision_samples", [])):
+		if not (sample_variant is Dictionary):
+			continue
+		var sample := sample_variant as Dictionary
+		if String(sample.get("kind", "")) == "匿名出牌" and bool(sample.get("reward_finalized", false)) and sample.has("reward_cash") and sample.has("reward_settlement"):
+			return true
+	return false
+
+
+func _verify_ai_card_policy(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var saved_force_duration: float = float(main.get("card_resolution_force_duration"))
+	var saved_force_simultaneous: float = float(main.get("card_resolution_force_simultaneous_window"))
+	var ok := true
+	main.set("ai_card_decision_enabled", true)
+	main.set("card_resolution_force_duration", 5.0)
+	main.set("card_resolution_force_simultaneous_window", 0.5)
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("pending_contract_offers", [])
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_simultaneous_timer", 0.5)
+	main.set("card_resolution_auction_timer", 0.0)
+	main.set("card_resolution_auction_open", false)
+	var players := _as_array(main.get("players")).duplicate(true)
+	for i in range(players.size()):
+		var player := players[i] as Dictionary
+		player["action_cooldown"] = 0.0
+		players[i] = player
+	main.set("players", players)
+	var candidates := main.call("_ai_card_play_candidates", 1) as Array
+	ok = ok and not candidates.is_empty() and _ai_candidates_have_starter_monster(candidates)
+	var first_result := String(main.call("_ai_execute_card_turn", 1, true))
+	var second_result := String(main.call("_ai_execute_card_turn", 2, true))
+	var queue := _as_array(main.get("card_resolution_queue"))
+	ok = ok and first_result == "play" and second_result == "play"
+	ok = ok and queue.size() >= 2 and bool(main.get("card_resolution_auction_open"))
+	ok = ok and _queue_has_ai_card_entry(queue, 1) and _queue_has_ai_card_entry(queue, 2)
+	var bid_before := _queue_highest_bid(queue)
+	var raised := int(main.call("_auto_ai_auction_bids", true))
+	queue = _as_array(main.get("card_resolution_queue"))
+	ok = ok and raised > 0 and _queue_highest_bid(queue) >= bid_before
+	var players_after_cards := _as_array(main.get("players"))
+	ok = ok and _ai_memory_has_training_card_sample(players_after_cards, 1)
+	main.call("_market_tick")
+	var players_after_market := _as_array(main.get("players"))
+	ok = ok and _ai_memory_has_finalized_reward(players_after_market, 1)
+	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	main.set("card_resolution_force_duration", saved_force_duration)
+	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
+	return ok and restore_result == OK
+
+
 func _first_rival_city_index(main: Node, active_player_index: int) -> int:
 	var districts := _as_array(main.get("districts"))
 	for i in range(districts.size()):
@@ -3385,6 +3498,17 @@ func _verify_area_trade_contract_accept_and_decline(main: Node) -> bool:
 		ok = ok and _as_array(main.get("pending_contract_offers")).is_empty()
 		var players_after_timeout := _as_array(main.get("players"))
 		ok = ok and int((players_after_timeout[target_owner] as Dictionary).get("cash", 0)) < timeout_cash_before
+		var ai_entry := entry.duplicate(true)
+		var punitive_skill := main.call("_make_skill", "惩罚性拒签条款1") as Dictionary
+		ai_entry["resolution_id"] = 90004
+		ai_entry["skill"] = punitive_skill.duplicate(true)
+		ai_entry["contract_response"] = "pending"
+		var ai_samples_before := _ai_decision_sample_count(_as_array(main.get("players")))
+		ok = ok and bool(main.call("_apply_area_trade_contract", _as_array(main.get("players"))[0] as Dictionary, punitive_skill, ai_entry))
+		ok = ok and _as_array(main.get("pending_contract_offers")).size() == 1
+		var ai_contract_responses := int(main.call("_update_ai_contract_responses", true))
+		ok = ok and ai_contract_responses == 1 and _as_array(main.get("pending_contract_offers")).is_empty()
+		ok = ok and _ai_decision_sample_count(_as_array(main.get("players"))) > ai_samples_before
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("card_resolution_force_duration", saved_force_duration)
 	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)

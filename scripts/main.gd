@@ -10,6 +10,11 @@ const DEFAULT_PLAYER_COUNT := 4
 const MIN_AI_PLAYER_COUNT := 2
 const MAX_AI_PLAYER_COUNT := 7
 const DEFAULT_AI_PLAYER_COUNT := 3
+const AI_CARD_DECISION_INTERVAL_SECONDS := 2.2
+const AI_AUCTION_REACTION_INTERVAL_SECONDS := 0.7
+const AI_CARD_BUY_MIN_CASH_RESERVE := 260
+const AI_DECISION_SAMPLE_LIMIT := 48
+const AI_CANDIDATE_SAMPLE_LIMIT := 8
 const MAP_WIDTH_METERS := 1400.0
 const MAP_HEIGHT_METERS := 950.0
 const MAP_SITE_MARGIN_METERS := 70.0
@@ -268,6 +273,9 @@ const AI_PERSONALITY_CATALOG := [
 		"build_bias": 1.2,
 		"business_bias": 0.9,
 		"monster_bias": 0.8,
+		"economy_bias": 1.05,
+		"bid_aggression": 0.75,
+		"exploration": 0.18,
 	},
 	{
 		"name": "套利型AI",
@@ -275,6 +283,9 @@ const AI_PERSONALITY_CATALOG := [
 		"build_bias": 1.0,
 		"business_bias": 1.25,
 		"monster_bias": 0.75,
+		"economy_bias": 1.35,
+		"bid_aggression": 1.05,
+		"exploration": 0.12,
 	},
 	{
 		"name": "破坏型AI",
@@ -282,6 +293,9 @@ const AI_PERSONALITY_CATALOG := [
 		"build_bias": 0.9,
 		"business_bias": 1.15,
 		"monster_bias": 1.15,
+		"economy_bias": 0.85,
+		"bid_aggression": 1.25,
+		"exploration": 0.22,
 	},
 	{
 		"name": "驯怪型AI",
@@ -289,6 +303,9 @@ const AI_PERSONALITY_CATALOG := [
 		"build_bias": 0.95,
 		"business_bias": 1.0,
 		"monster_bias": 1.35,
+		"economy_bias": 0.9,
+		"bid_aggression": 0.95,
+		"exploration": 0.16,
 	},
 ]
 
@@ -1027,6 +1044,9 @@ var special_monster_timer := 5.0
 var monster_timer := 4.0
 var market_timer := 8.0
 var ui_timer := 0.0
+var ai_card_decision_timer := AI_CARD_DECISION_INTERVAL_SECONDS
+var ai_auction_reaction_timer := AI_AUCTION_REACTION_INTERVAL_SECONDS
+var ai_card_decision_enabled := true
 
 var auto_monsters := []
 var next_auto_monster_uid := 1
@@ -1132,6 +1152,7 @@ func _process(delta: float) -> void:
 	_update_card_resolution_queue(scaled_delta)
 	_update_pending_contract_offers(scaled_delta)
 	_update_realtime_cooldowns(scaled_delta)
+	_update_ai_decisions(scaled_delta)
 	_update_auto_monster_durations(scaled_delta)
 	_update_visual_cues(scaled_delta)
 	_update_auto_monster_revivals(scaled_delta)
@@ -1195,6 +1216,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_select_player(3)
 		KEY_5:
 			_select_player(4)
+		KEY_6:
+			_select_player(5)
+		KEY_7:
+			_select_player(6)
+		KEY_8:
+			_select_player(7)
 		KEY_Q:
 			_cycle_district(-1)
 		KEY_E:
@@ -6248,6 +6275,8 @@ func _capture_run_state() -> Dictionary:
 		"special_monster_timer": special_monster_timer,
 		"monster_timer": monster_timer,
 		"market_timer": market_timer,
+		"ai_card_decision_timer": ai_card_decision_timer,
+		"ai_auction_reaction_timer": ai_auction_reaction_timer,
 		"auto_monsters": auto_monsters.duplicate(true),
 		"next_auto_monster_uid": next_auto_monster_uid,
 		"next_special_monster_slot": next_special_monster_slot,
@@ -6346,6 +6375,8 @@ func _apply_run_state(state: Dictionary) -> int:
 	special_monster_timer = float(state.get("special_monster_timer", 5.0))
 	monster_timer = float(state.get("monster_timer", 4.0))
 	market_timer = float(state.get("market_timer", 8.0))
+	ai_card_decision_timer = maxf(0.1, float(state.get("ai_card_decision_timer", AI_CARD_DECISION_INTERVAL_SECONDS)))
+	ai_auction_reaction_timer = maxf(0.1, float(state.get("ai_auction_reaction_timer", AI_AUCTION_REACTION_INTERVAL_SECONDS)))
 	ui_timer = 0.0
 	next_auto_monster_uid = int(state.get("next_auto_monster_uid", 1))
 	next_special_monster_slot = int(state.get("next_special_monster_slot", 0))
@@ -7100,6 +7131,9 @@ func _new_game() -> void:
 	selected_contract_target_district = -1
 	business_cycle_count = 0
 	game_over = false
+	ai_card_decision_timer = 1.0
+	ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS
+	ai_card_decision_enabled = true
 	_prime_timers_for_new_game()
 
 	_ensure_configured_ai_player_count()
@@ -7871,7 +7905,7 @@ func _bonus_card_candidate_for_role(player: Dictionary, district_index: int, bou
 	return ""
 
 
-func _grant_role_bonus_card_on_purchase(player_index: int, district_index: int, bought_skill_name: String) -> bool:
+func _grant_role_bonus_card_on_purchase(player_index: int, district_index: int, bought_skill_name: String, anonymous: bool = false) -> bool:
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var role := _player_role_card_for_index(player_index)
@@ -7879,19 +7913,20 @@ func _grant_role_bonus_card_on_purchase(player_index: int, district_index: int, 
 	if product_name == "" or not _district_or_city_has_product(district_index, product_name):
 		return false
 	var player: Dictionary = players[player_index]
+	var actor_label := "匿名财团" if anonymous else String(player.get("name", "玩家"))
 	var bonus_card := _bonus_card_candidate_for_role(player, district_index, bought_skill_name)
 	if bonus_card == "":
 		_log("%s触发%s的额外拿牌条件，但手牌上限或区域候选不足，未获得额外卡。" % [
-			player["name"],
+			actor_label,
 			String(role.get("name", "角色卡")),
 		])
 		return false
-	if not _acquire_card_for_player(player, bonus_card, district_index, "角色被动:%s" % String(role.get("name", "角色卡"))):
+	if not _acquire_card_for_player(player, bonus_card, district_index, "角色被动:%s" % String(role.get("name", "角色卡")), anonymous):
 		return false
 	players[player_index] = player
 	_record_player_economic_event(player_index, "角色收益", "额外拿牌", 0, "%s区域购牌｜免费获得%s" % [product_name, _card_display_name(bonus_card)])
 	_log("%s触发%s：在含%s的区域免费额外获得%s。" % [
-		player["name"],
+		actor_label,
 		String(role.get("name", "角色卡")),
 		product_name,
 		_card_display_name(bonus_card),
@@ -9516,23 +9551,31 @@ func _respond_to_active_contract(accept: bool) -> void:
 
 
 func _respond_to_pending_contract(contract_id: int, accept: bool) -> void:
+	_respond_to_pending_contract_for_player(selected_player, contract_id, accept)
+
+
+func _respond_to_pending_contract_for_player(player_index: int, contract_id: int, accept: bool, announce: bool = true) -> bool:
 	var index := _pending_contract_offer_index_for_id(contract_id)
 	if index < 0:
-		_log("这份匿名合约已经结算或不再有效。")
-		return
+		if announce:
+			_log("这份匿名合约已经结算或不再有效。")
+		return false
 	var entry: Dictionary = pending_contract_offers[index]
-	if int(entry.get("contract_target_owner", -1)) != selected_player:
-		_log("只有目标城市的真实业主可以回应这份匿名合约。")
-		return
+	if int(entry.get("contract_target_owner", -1)) != player_index:
+		if announce:
+			_log("只有目标城市的真实业主可以回应这份匿名合约。")
+		return false
 	pending_contract_offers.remove_at(index)
 	entry["contract_response"] = CONTRACT_RESPONSE_ACCEPTED if accept else CONTRACT_RESPONSE_REJECTED
-	entry["contract_response_player"] = selected_player
+	entry["contract_response_player"] = player_index
 	entry["contract_response_time"] = game_time
 	var skill: Dictionary = entry.get("skill", {}) as Dictionary
 	_apply_area_trade_contract({}, skill, entry)
 	_store_pending_contract_result(entry)
-	_log("目标城市业主已在展示后的独立5秒窗口中%s匿名合约；合约发起者仍不公开。" % ("签署" if accept else "拒绝"))
+	if announce:
+		_log("目标城市业主已在展示后的独立5秒窗口中%s匿名合约；合约发起者仍不公开。" % ("签署" if accept else "拒绝"))
 	_refresh_ui()
+	return true
 
 
 func _store_pending_contract_result(entry: Dictionary) -> void:
@@ -10949,8 +10992,9 @@ func _ai_profile_for_config_index(player_index: int) -> Dictionary:
 func _empty_ai_memory() -> Dictionary:
 	return {
 		"decision_samples": [],
-		"last_plan": "等待经营周期",
-		"training_note": "记录AI评分、目标和公开线索，用于后续调参/训练。",
+		"action_counts": {},
+		"last_plan": "等待牌局决策",
+		"training_note": "记录状态向量、候选评分、实际选择和下一经营周期收益，用于后续调参/训练。",
 	}
 
 
@@ -10975,10 +11019,12 @@ func _ensure_player_ai_state() -> void:
 				var memory := (player.get("ai_memory", {}) as Dictionary).duplicate(true)
 				if not (memory.get("decision_samples", []) is Array):
 					memory["decision_samples"] = []
+				if not (memory.get("action_counts", {}) is Dictionary):
+					memory["action_counts"] = {}
 				if String(memory.get("last_plan", "")) == "":
-					memory["last_plan"] = "等待经营周期"
+					memory["last_plan"] = "等待牌局决策"
 				if String(memory.get("training_note", "")) == "":
-					memory["training_note"] = "记录AI评分、目标和公开线索，用于后续调参/训练。"
+					memory["training_note"] = "记录状态向量、候选评分、实际选择和下一经营周期收益，用于后续调参/训练。"
 				player["ai_memory"] = memory
 		else:
 			player["ai_profile"] = {}
@@ -10986,26 +11032,738 @@ func _ensure_player_ai_state() -> void:
 		players[i] = player
 
 
-func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String) -> void:
+func _ai_owned_active_monster_count(player_index: int) -> int:
+	var count := 0
+	for actor_variant in auto_monsters:
+		var actor: Dictionary = actor_variant
+		if not bool(actor.get("down", false)) and int(actor.get("owner", -1)) == player_index:
+			count += 1
+	return count
+
+
+func _ai_observation_vector(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var player: Dictionary = players[player_index]
+	var total_flow := 0
+	for product_variant in PRODUCT_CATALOG:
+		total_flow += _player_product_flow(player_index, String(product_variant))
+	return {
+		"cash": int(player.get("cash", 0)),
+		"settlement_estimate": _player_visible_settlement_estimate(player_index),
+		"counted_hand": _player_counted_hand_size(player),
+		"cities": _player_active_city_count(player_index),
+		"owned_monsters": _ai_owned_active_monster_count(player_index),
+		"field_monsters": _active_auto_monster_count(),
+		"total_product_flow": total_flow,
+		"queue_current": card_resolution_queue.size(),
+		"queue_next": next_card_resolution_queue.size(),
+		"auction_open": card_resolution_auction_open,
+		"cycle": business_cycle_count,
+	}
+
+
+func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
+	var result := {}
+	for field_name in ["action", "card_name", "kind", "score", "district", "target_slot", "product", "price", "bid_budget", "reason"]:
+		if candidate.has(field_name):
+			result[field_name] = candidate[field_name]
+	return result
+
+
+func _sort_ai_candidate_score_desc(a: Dictionary, b: Dictionary) -> bool:
+	return int(a.get("score", 0)) > int(b.get("score", 0))
+
+
+func _ai_candidate_training_views(candidates: Array) -> Array:
+	var ordered := candidates.duplicate(true)
+	ordered.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	var result := []
+	for i in range(mini(AI_CANDIDATE_SAMPLE_LIMIT, ordered.size())):
+		if ordered[i] is Dictionary:
+			result.append(_ai_candidate_training_view(ordered[i] as Dictionary))
+	return result
+
+
+func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String, candidates: Array = [], metadata: Dictionary = {}) -> void:
 	if not _player_is_ai(player_index):
 		return
 	var player: Dictionary = players[player_index]
 	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
 	var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
-	samples.append({
+	var observation := _ai_observation_vector(player_index)
+	var sample := {
 		"time": game_time,
 		"cycle": business_cycle_count,
 		"kind": kind,
 		"target": target_index,
 		"score": score,
 		"reason": reason,
-	})
-	while samples.size() > 10:
+		"state": observation,
+		"candidates": _ai_candidate_training_views(candidates),
+		"baseline_cash": int(player.get("cash", 0)),
+		"baseline_settlement": int(observation.get("settlement_estimate", 0)),
+		"reward_cash": 0,
+		"reward_settlement": 0,
+		"reward_finalized": false,
+	}
+	for key_variant in metadata.keys():
+		sample[key_variant] = metadata[key_variant]
+	samples.append(sample)
+	while samples.size() > AI_DECISION_SAMPLE_LIMIT:
 		samples.pop_front()
 	memory["decision_samples"] = samples
+	var action_counts := (memory.get("action_counts", {}) as Dictionary).duplicate(true)
+	action_counts[kind] = int(action_counts.get(kind, 0)) + 1
+	memory["action_counts"] = action_counts
 	memory["last_plan"] = "%s｜目标%d｜评分%d｜%s" % [kind, target_index + 1, score, reason]
 	player["ai_memory"] = memory
 	players[player_index] = player
+
+
+func _finalize_ai_decision_rewards() -> int:
+	var finalized := 0
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		var player: Dictionary = players[player_index]
+		var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+		var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
+		var changed := false
+		for i in range(samples.size()):
+			if not (samples[i] is Dictionary):
+				continue
+			var sample: Dictionary = samples[i]
+			if bool(sample.get("reward_finalized", false)) or int(sample.get("cycle", business_cycle_count)) >= business_cycle_count:
+				continue
+			sample["reward_cash"] = int(player.get("cash", 0)) - int(sample.get("baseline_cash", int(player.get("cash", 0))))
+			sample["reward_settlement"] = _player_visible_settlement_estimate(player_index) - int(sample.get("baseline_settlement", 0))
+			sample["reward_finalized"] = true
+			sample["reward_cycle"] = business_cycle_count
+			samples[i] = sample
+			finalized += 1
+			changed = true
+		if changed:
+			memory["decision_samples"] = samples
+			player["ai_memory"] = memory
+			players[player_index] = player
+	return finalized
+
+
+func _ai_profile_for_player(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var profile_variant: Variant = (players[player_index] as Dictionary).get("ai_profile", {})
+	return profile_variant as Dictionary if profile_variant is Dictionary else {}
+
+
+func _ai_first_alive_district() -> int:
+	for i in range(districts.size()):
+		if not bool(districts[i].get("destroyed", false)):
+			return i
+	return -1
+
+
+func _ai_city_target_score(player_index: int, district_index: int, own_city: bool, prefer_damaged: bool = false) -> int:
+	var city := _district_city(district_index)
+	if not _city_is_active(city):
+		return -1
+	var is_owned := int(city.get("owner", -1)) == player_index
+	if is_owned != own_city:
+		return -1
+	var score := 30
+	score += int(city.get("last_income", 0))
+	score += (city.get("products", []) as Array).size() * 28
+	score += (city.get("demands", []) as Array).size() * 18
+	score += (city.get("trade_routes", []) as Array).size() * 10
+	score += int(city.get("competition_matches", 0)) * 8
+	if prefer_damaged:
+		score += int(city.get("trade_route_damage", 0)) * 80
+		score += int(districts[district_index].get("damage", 0)) * 20
+	else:
+		score -= int(city.get("trade_route_damage", 0)) * 6
+	return score
+
+
+func _ai_best_city_district(player_index: int, own_city: bool, prefer_damaged: bool = false) -> int:
+	var best_index := -1
+	var best_score := -1
+	for district_index_variant in _active_city_district_indices():
+		var district_index := int(district_index_variant)
+		var score := _ai_city_target_score(player_index, district_index, own_city, prefer_damaged)
+		if score > best_score:
+			best_score = score
+			best_index = district_index
+	return best_index
+
+
+func _ai_preferred_product(player_index: int, use_rivals: bool = false) -> String:
+	var scores := {}
+	for district_index_variant in _active_city_district_indices():
+		var district_index := int(district_index_variant)
+		var city := _district_city(district_index)
+		var is_owned := int(city.get("owner", -1)) == player_index
+		if is_owned == use_rivals:
+			continue
+		for product_variant in _city_product_names(city):
+			var product_name := String(product_variant)
+			scores[product_name] = int(scores.get(product_name, 0)) + 50 + int(round(float(_product_price(product_name)) / 4.0))
+		for demand_variant in _city_demand_names(city):
+			var demand_name := String(demand_variant)
+			scores[demand_name] = int(scores.get(demand_name, 0)) + 25 + int(round(float(_product_price(demand_name)) / 7.0))
+	var best_product := ""
+	var best_score := -1
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		var score := int(scores.get(product_name, 0))
+		if score <= 0 and scores.is_empty():
+			score = _product_price(product_name)
+		if score > best_score:
+			best_score = score
+			best_product = product_name
+	return best_product
+
+
+func _ai_monster_card_landing_score(player_index: int, skill: Dictionary, district_index: int) -> int:
+	if not _can_summon_monster_card_at_district(skill, district_index):
+		return -1
+	var score := 40
+	var district: Dictionary = districts[district_index]
+	var catalog_index := int(skill.get("catalog_index", 0))
+	var template := _catalog_entry(catalog_index)
+	var probe := {"resource_focus": (template.get("resource_focus", []) as Array).duplicate(true)}
+	score += _monster_resource_match_score(probe, district_index) * 28
+	for product_variant in district.get("products", []):
+		score += int(round(float(_product_price(String(product_variant))) / 8.0))
+	score += int(round(float(district.get("transport_score", 1.0)) * 15.0))
+	score += (district.get("card_choices", []) as Array).size() * 7
+	var city := _district_city(district_index)
+	if _city_is_active(city):
+		if int(city.get("owner", -1)) == player_index:
+			score -= 120
+		else:
+			score += 130 + int(city.get("last_income", 0))
+	score -= int(district.get("damage", 0)) * 8
+	return score
+
+
+func _ai_best_monster_card_district(player_index: int, skill: Dictionary) -> int:
+	var monster_name := String(skill.get("monster_name", ""))
+	for actor_variant in auto_monsters:
+		var actor: Dictionary = actor_variant
+		if not bool(actor.get("down", false)) and int(actor.get("owner", -1)) == player_index and String(actor.get("name", "")) == monster_name and int(actor.get("rank", 1)) < 4:
+			return int(actor.get("position", _ai_first_alive_district()))
+	var best_index := -1
+	var best_score := -1
+	for i in range(districts.size()):
+		var score := _ai_monster_card_landing_score(player_index, skill, i)
+		if score > best_score:
+			best_score = score
+			best_index = i
+	return best_index
+
+
+func _ai_monster_target_for_skill(player_index: int, skill: Dictionary) -> int:
+	var bound_uid := int(skill.get("bound_monster_uid", 0))
+	if bound_uid > 0:
+		var bound_slot := _auto_monster_slot_by_uid(bound_uid)
+		if bound_slot >= 0 and not bool((auto_monsters[bound_slot] as Dictionary).get("down", false)):
+			return bound_slot
+	var kind := String(skill.get("kind", ""))
+	var prefer_foreign := ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover"].has(kind)
+	var best_slot := -1
+	var best_score := -1
+	for slot in range(auto_monsters.size()):
+		var actor: Dictionary = auto_monsters[slot]
+		if bool(actor.get("down", false)):
+			continue
+		var is_owned := int(actor.get("owner", -1)) == player_index
+		if prefer_foreign and is_owned:
+			continue
+		if not prefer_foreign and not is_owned:
+			continue
+		var score := int(actor.get("rank", 1)) * 45 + int(actor.get("hp", 0)) + int(actor.get("armor", 0)) * 8
+		if prefer_foreign:
+			score += int(actor.get("owner_damage_cash_pool", 0)) / 20
+		if score > best_score:
+			best_score = score
+			best_slot = slot
+	return best_slot
+
+
+func _ai_best_district_near_monster(player_index: int, monster_slot: int, range_limit: float = -1.0) -> int:
+	if monster_slot < 0 or monster_slot >= auto_monsters.size():
+		return _ai_best_city_district(player_index, false)
+	var actor: Dictionary = auto_monsters[monster_slot]
+	var best_index := -1
+	var best_score := -1
+	for i in range(districts.size()):
+		if bool(districts[i].get("destroyed", false)):
+			continue
+		if range_limit > 0.0 and _entity_distance_to_district(actor, i) > range_limit:
+			continue
+		var score := _district_event_weight(i)
+		var city := _district_city(i)
+		if _city_is_active(city):
+			score += 100 if int(city.get("owner", -1)) != player_index else -120
+		if score > best_score:
+			best_score = score
+			best_index = i
+	if best_index >= 0:
+		return best_index
+	return int(actor.get("position", _ai_first_alive_district()))
+
+
+func _ai_card_kind_bias(player_index: int, kind: String) -> float:
+	var profile := _ai_profile_for_player(player_index)
+	if kind == "monster_card" or kind == "monster_bound_action" or _skill_targets_monster({"kind": kind}):
+		return float(profile.get("monster_bias", 1.0))
+	if ["route_sabotage", "panic_shift", "monster_takeover", "mudslide", "special_monster_delay"].has(kind):
+		return float(profile.get("business_bias", 1.0))
+	return float(profile.get("economy_bias", 1.0))
+
+
+func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary) -> Dictionary:
+	var kind := String(skill.get("kind", ""))
+	var own_city := _ai_best_city_district(player_index, true)
+	var rival_city := _ai_best_city_district(player_index, false)
+	var fallback := own_city if own_city >= 0 else _ai_first_alive_district()
+	var context := {
+		"action": "出牌",
+		"slot_index": slot_index,
+		"card_name": String(skill.get("name", "卡牌")),
+		"kind": kind,
+		"district": fallback,
+		"target_slot": -1,
+		"product": _ai_preferred_product(player_index, false),
+		"contract_source": -1,
+		"contract_target": -1,
+		"score": 70 + maxi(0, int(skill.get("cost", 2))) * 12 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 9,
+		"reason": "按卡牌强度、目标价值、商品流动与AI性格评分",
+	}
+	if kind == "monster_card":
+		context["district"] = _ai_best_monster_card_district(player_index, skill)
+		context["score"] = 1180 if bool(skill.get("starter_play_free", false)) else int(context["score"]) + 150
+	elif kind == "monster_bound_action":
+		var bound_slot := _ai_monster_target_for_skill(player_index, skill)
+		if bound_slot < 0:
+			return {}
+		context["target_slot"] = bound_slot
+		context["district"] = _ai_best_district_near_monster(player_index, bound_slot)
+		context["score"] = int(context["score"]) + 95
+	elif _skill_targets_monster(skill):
+		var target_slot := _ai_monster_target_for_skill(player_index, skill)
+		if target_slot < 0:
+			return {}
+		context["target_slot"] = target_slot
+		var target_range := float(skill.get("range", -1.0)) if kind == "mudslide" else -1.0
+		context["district"] = _ai_best_district_near_monster(player_index, target_slot, target_range)
+		context["score"] = int(context["score"]) + 80
+	elif kind == "area_trade_contract":
+		if own_city < 0 or rival_city < 0:
+			return {}
+		context["contract_source"] = own_city
+		context["contract_target"] = rival_city
+		context["district"] = rival_city
+		var source_products := _city_product_names(_district_city(own_city))
+		if not source_products.is_empty():
+			context["product"] = String(source_products[0])
+		context["score"] = int(context["score"]) + 110 + int(skill.get("accept_cash", 0)) / 3
+	elif ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon"].has(kind):
+		if own_city < 0:
+			return {}
+		context["district"] = own_city
+		context["score"] = int(context["score"]) + 90
+	elif kind == "route_insurance":
+		var damaged_city := _ai_best_city_district(player_index, true, true)
+		if damaged_city < 0 or int(_district_city(damaged_city).get("trade_route_damage", 0)) <= 0:
+			return {}
+		context["district"] = damaged_city
+		context["score"] = int(context["score"]) + int(_district_city(damaged_city).get("trade_route_damage", 0)) * 70
+	elif ["route_sabotage", "panic_shift"].has(kind):
+		if rival_city < 0:
+			return {}
+		context["district"] = rival_city
+		context["product"] = _ai_preferred_product(player_index, true)
+		context["score"] = int(context["score"]) + 105
+	elif kind == "region_economy_shift":
+		var net_shift := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("demand_delta", 0))
+		context["district"] = own_city if net_shift >= 0 else rival_city
+		if int(context["district"]) < 0:
+			return {}
+	elif kind == "supply_draw":
+		context["district"] = -1
+		for i in range(districts.size()):
+			if _can_buy_card_from_district(i) and not (districts[i].get("card_choices", []) as Array).is_empty():
+				context["district"] = i
+				break
+		if int(context["district"]) < 0:
+			return {}
+	elif ["cash_gain", "product_speculation", "product_contract_boon", "market_stabilize", "product_growth_boon"].has(kind):
+		context["score"] = int(context["score"]) + int(skill.get("cash", 0)) / 3 + 45
+	if int(context.get("district", -1)) < 0:
+		return {}
+	var product_name := String(context.get("product", ""))
+	var required := _skill_play_flow_required(skill)
+	if required > 0:
+		product_name = _skill_play_product(skill, player_index)
+		context["product"] = product_name
+		var available := _player_product_flow(player_index, product_name)
+		if available < required:
+			return {}
+		context["score"] = int(context["score"]) + available * 8
+	var cash_cost := _skill_play_cash_cost(skill)
+	if int((players[player_index] as Dictionary).get("cash", 0)) < cash_cost:
+		return {}
+	context["score"] = maxi(1, int(round(float(context["score"]) * _ai_card_kind_bias(player_index, kind))))
+	context["bid_budget"] = _ai_card_bid_budget(player_index, int(context["score"]), cash_cost)
+	return context
+
+
+func _ai_card_play_candidates(player_index: int) -> Array:
+	var result := []
+	if not _player_is_ai(player_index) or float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+		return result
+	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
+		return result
+	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
+	for slot_index in range(slots.size()):
+		if not (slots[slot_index] is Dictionary):
+			continue
+		var skill: Dictionary = slots[slot_index]
+		if bool(skill.get("queued_for_resolution", false)) or float(skill.get("cooldown_left", 0.0)) > 0.0 or float(skill.get("lock_left", 0.0)) > 0.0:
+			continue
+		var context := _ai_card_play_context(player_index, slot_index, skill)
+		if not context.is_empty():
+			result.append(context)
+	return result
+
+
+func _ai_card_buy_candidates(player_index: int) -> Array:
+	var result := []
+	if not _player_is_ai(player_index) or float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+		return result
+	var player: Dictionary = players[player_index]
+	var cash := int(player.get("cash", 0))
+	var profile := _ai_profile_for_player(player_index)
+	for district_index in range(districts.size()):
+		if not _can_buy_card_from_district(district_index) or bool(districts[district_index].get("destroyed", false)):
+			continue
+		for card_variant in districts[district_index].get("card_choices", []):
+			var card_name := _canonical_card_supply_name(String(card_variant))
+			if card_name == "" or not _player_can_receive_card(player, card_name):
+				continue
+			var price := _card_price(card_name, district_index)
+			if cash - price < AI_CARD_BUY_MIN_CASH_RESERVE:
+				continue
+			var skill := _make_skill(card_name)
+			var kind := String(skill.get("kind", ""))
+			var score := 55 + int(skill.get("cost", 2)) * 11 - int(round(float(price) / 12.0))
+			var family_slot := _find_highest_family_card_slot(player, card_name)
+			if family_slot >= 0:
+				score += 85
+			var product_name := _skill_play_product(skill, player_index)
+			var required := _skill_play_flow_required(skill)
+			var available := _player_product_flow(player_index, product_name)
+			if required <= 0 or available >= required:
+				score += 35
+			else:
+				score -= (required - available) * 12
+			var role := _player_role_card_for_index(player_index)
+			if String(role.get("bonus_card_product", "")) != "" and _district_or_city_has_product(district_index, String(role.get("bonus_card_product", ""))):
+				score += 65
+			score = maxi(1, int(round(float(score) * _ai_card_kind_bias(player_index, kind))))
+			result.append({
+				"action": "购牌",
+				"card_name": card_name,
+				"kind": kind,
+				"district": district_index,
+				"product": product_name,
+				"price": price,
+				"score": score,
+				"reason": "%s｜费用¥%d｜流动%d/%d｜探索率%.0f%%" % [
+					_card_display_name(card_name), price, available, required, float(profile.get("exploration", 0.15)) * 100.0,
+				],
+			})
+	return result
+
+
+func _ai_pick_candidate(player_index: int, candidates: Array, force: bool = false) -> Dictionary:
+	if candidates.is_empty():
+		return {}
+	var ordered := candidates.duplicate(true)
+	ordered.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	var exploration := float(_ai_profile_for_player(player_index).get("exploration", 0.15))
+	if force or ordered.size() == 1 or rng.randf() >= exploration:
+		return ordered[0] as Dictionary
+	var top_count := mini(4, ordered.size())
+	var weights := []
+	for i in range(top_count):
+		weights.append(maxi(1, int((ordered[i] as Dictionary).get("score", 1))))
+	var picked := _weighted_pick_index(weights)
+	return ordered[picked] as Dictionary if picked >= 0 else ordered[0] as Dictionary
+
+
+func _ai_card_bid_budget(player_index: int, utility_score: int, play_cash_cost: int = 0) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return 0
+	var profile := _ai_profile_for_player(player_index)
+	var aggression := float(profile.get("bid_aggression", 1.0))
+	var cash := int((players[player_index] as Dictionary).get("cash", 0))
+	var affordable := maxi(0, cash - play_cash_cost - AI_CARD_BUY_MIN_CASH_RESERVE)
+	var utility_budget := int(floor(float(maxi(0, utility_score - 60)) * aggression / 3.0 / 10.0)) * 10
+	return mini(affordable, maxi(0, utility_budget))
+
+
+func _ai_next_bid_increment(highest_bid: int) -> int:
+	if highest_bid >= 500:
+		return 100
+	if highest_bid >= 200:
+		return 50
+	if highest_bid >= 50:
+		return 20
+	return 10
+
+
+func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_candidates: Array = []) -> bool:
+	var slot_index := int(candidate.get("slot_index", -1))
+	var target_slot := int(candidate.get("target_slot", -1))
+	var previous_player := selected_player
+	var previous_district := selected_district
+	var previous_product := selected_trade_product
+	var previous_source := selected_contract_source_district
+	var previous_target := selected_contract_target_district
+	selected_player = player_index
+	selected_district = int(candidate.get("district", _ai_first_alive_district()))
+	selected_trade_product = String(candidate.get("product", ""))
+	selected_contract_source_district = int(candidate.get("contract_source", -1))
+	selected_contract_target_district = int(candidate.get("contract_target", -1))
+	var desired_bid := 0
+	var budget := int(candidate.get("bid_budget", 0))
+	if not card_resolution_queue.is_empty() and not card_resolution_batch_locked and active_card_resolution.is_empty():
+		desired_bid = mini(budget, _highest_card_resolution_bid() + _ai_next_bid_increment(_highest_card_resolution_bid()))
+	_set_card_bid_for_player(player_index, desired_bid, false)
+	var queued := _queue_skill_resolution(player_index, slot_index, target_slot)
+	if queued:
+		var queue_index := _queued_card_entry_index_for_player(player_index)
+		var in_next_batch := false
+		if queue_index < 0:
+			queue_index = _next_batch_card_entry_index_for_player(player_index)
+			in_next_batch = true
+		if queue_index >= 0:
+			var entry: Dictionary = (next_card_resolution_queue[queue_index] if in_next_batch else card_resolution_queue[queue_index]) as Dictionary
+			entry["ai_utility_score"] = int(candidate.get("score", 0))
+			entry["ai_bid_budget"] = budget
+			entry["ai_reason"] = String(candidate.get("reason", ""))
+			if in_next_batch:
+				next_card_resolution_queue[queue_index] = entry
+			else:
+				card_resolution_queue[queue_index] = entry
+		_record_ai_decision(
+			player_index,
+			"匿名出牌",
+			int(candidate.get("district", -1)),
+			int(candidate.get("score", 0)),
+			"%s｜目标怪兽%d｜报价预算¥%d" % [String(candidate.get("card_name", "卡牌")), target_slot + 1, budget],
+			all_candidates,
+			{"card_name": String(candidate.get("card_name", "")), "target_slot": target_slot, "bid_budget": budget}
+		)
+	selected_player = previous_player
+	selected_district = previous_district
+	selected_trade_product = previous_product
+	selected_contract_source_district = previous_source
+	selected_contract_target_district = previous_target
+	return queued
+
+
+func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
+	var play_candidates := _ai_card_play_candidates(player_index)
+	var play_choice := _ai_pick_candidate(player_index, play_candidates, force)
+	if not play_choice.is_empty() and _ai_queue_play_candidate(player_index, play_choice, play_candidates):
+		return "play"
+	var buy_candidates := _ai_card_buy_candidates(player_index)
+	var buy_choice := _ai_pick_candidate(player_index, buy_candidates, force)
+	if buy_choice.is_empty():
+		return "wait"
+	var district_index := int(buy_choice.get("district", -1))
+	var card_name := String(buy_choice.get("card_name", ""))
+	if _buy_card_for_player_from_district(player_index, district_index, card_name, true, force):
+		_record_ai_decision(
+			player_index,
+			"区域购牌",
+			district_index,
+			int(buy_choice.get("score", 0)),
+			String(buy_choice.get("reason", "按价格、流动与手牌协同评分")),
+			buy_candidates,
+			{"card_name": card_name, "price": int(buy_choice.get("price", 0))}
+		)
+		return "buy"
+	return "wait"
+
+
+func _auto_ai_card_decisions(force: bool = false) -> int:
+	if game_over or not ai_card_decision_enabled:
+		return 0
+	var acted := 0
+	for player_index_variant in _ai_player_indices():
+		var result := _ai_execute_card_turn(int(player_index_variant), force)
+		if result != "wait":
+			acted += 1
+	return acted
+
+
+func _auto_ai_auction_bids(force: bool = false) -> int:
+	if not ai_card_decision_enabled or not card_resolution_auction_open or card_resolution_queue.size() < 2:
+		return 0
+	var raised := 0
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		var queue_index := _queued_card_entry_index_for_player(player_index)
+		if queue_index < 0:
+			continue
+		var entry: Dictionary = card_resolution_queue[queue_index]
+		var current_bid := int(entry.get("tip", 0))
+		var highest_bid := _highest_card_resolution_bid()
+		if current_bid == highest_bid and queue_index == 0:
+			continue
+		var budget := int(entry.get("ai_bid_budget", 0))
+		var target_bid := highest_bid + _ai_next_bid_increment(highest_bid)
+		if target_bid > budget:
+			continue
+		var aggression := float(_ai_profile_for_player(player_index).get("bid_aggression", 1.0))
+		if not force and rng.randf() > clampf(0.42 + aggression * 0.28, 0.0, 0.92):
+			continue
+		if _set_card_bid_for_player(player_index, target_bid, true):
+			_record_ai_decision(
+				player_index,
+				"匿名竞价",
+				int(entry.get("resolution_id", -1)),
+				int(entry.get("ai_utility_score", 0)),
+				"公开最高¥%d→报价¥%d｜预算¥%d" % [highest_bid, target_bid, budget],
+				[],
+				{"card_name": _card_resolution_entry_card_label(entry), "bid": target_bid, "bid_budget": budget}
+			)
+			raised += 1
+	return raised
+
+
+func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> Array:
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	var source_index := int(entry.get("contract_source_district", -1))
+	var target_index := int(entry.get("contract_target_district", -1))
+	var products: Array = entry.get("contract_products", []) as Array
+	var source_owner := -1
+	if source_index >= 0 and source_index < districts.size():
+		source_owner = int(_district_city(source_index).get("owner", -1))
+	var target_city := _district_city(target_index)
+	var accept_score := 62
+	accept_score += int(skill.get("accept_cash", 0)) / 3
+	accept_score += maxi(0, int(skill.get("accept_production_delta", 0))) * 34
+	accept_score += maxi(0, int(skill.get("accept_transport_delta", 0))) * 42
+	accept_score += maxi(0, int(skill.get("accept_consumption_delta", 0))) * 32
+	var accept_route_flow := float(skill.get("accept_route_flow_multiplier", 1.0))
+	if accept_route_flow > 1.001:
+		accept_score += int(round((accept_route_flow - 1.0) * 230.0)) + maxi(1, int(skill.get("route_flow_turns", 1))) * 8
+	accept_score += maxi(0, int(skill.get("contract_add_products", 0))) * 38
+	accept_score += maxi(0, int(skill.get("contract_add_demands", 0))) * 42
+	accept_score -= maxi(0, int(skill.get("contract_remove_products", 0))) * 16
+	accept_score -= maxi(0, int(skill.get("contract_remove_demands", 0))) * 16
+	accept_score += products.size() * 15
+	if _city_is_active(target_city):
+		accept_score += int(target_city.get("trade_route_damage", 0)) * 14
+		accept_score += maxi(0, 4 - (target_city.get("demands", []) as Array).size()) * 12
+	if source_owner == player_index:
+		accept_score += 58
+	var reject_score := 54
+	if source_owner >= 0 and source_owner != player_index:
+		reject_score += 42
+	reject_score += maxi(0, int(skill.get("contract_remove_products", 0)) + int(skill.get("contract_remove_demands", 0))) * 10
+	var decline_badness := 0
+	decline_badness += int(skill.get("decline_cash_penalty", 0)) / 3
+	decline_badness += maxi(0, -int(skill.get("decline_production_delta", 0))) * 38
+	decline_badness += maxi(0, -int(skill.get("decline_transport_delta", 0))) * 44
+	decline_badness += maxi(0, -int(skill.get("decline_consumption_delta", 0))) * 34
+	decline_badness += maxi(0, int(skill.get("decline_route_damage", 0))) * 52
+	accept_score += decline_badness
+	reject_score -= int(round(float(decline_badness) * 0.55))
+	return [
+		{
+			"action": "签约",
+			"card_name": String(skill.get("name", "区域供需合约")),
+			"kind": "area_trade_contract_response",
+			"district": target_index,
+			"product": _limited_name_list(products, 3, "未指定"),
+			"score": maxi(1, accept_score),
+			"reason": "签约奖励:%s｜拒签代价:%s｜商品:%s" % [
+				_contract_accept_effect_summary(skill),
+				_contract_decline_effect_summary(skill),
+				_limited_name_list(products, 3, "未指定"),
+			],
+		},
+		{
+			"action": "拒签",
+			"card_name": String(skill.get("name", "区域供需合约")),
+			"kind": "area_trade_contract_response",
+			"district": target_index,
+			"product": _limited_name_list(products, 3, "未指定"),
+			"score": maxi(1, reject_score),
+			"reason": "拒绝可能避免帮对手供给区扩张｜拒签惩罚:%s" % _contract_decline_effect_summary(skill),
+		},
+	]
+
+
+func _update_ai_contract_responses(force: bool = false) -> int:
+	if pending_contract_offers.is_empty():
+		return 0
+	var responded := 0
+	var offers_snapshot := pending_contract_offers.duplicate(true)
+	for offer_variant in offers_snapshot:
+		if not (offer_variant is Dictionary):
+			continue
+		var entry: Dictionary = offer_variant
+		if String(entry.get("contract_response", CONTRACT_RESPONSE_PENDING)) != CONTRACT_RESPONSE_PENDING:
+			continue
+		var owner := int(entry.get("contract_target_owner", -1))
+		if not _player_is_ai(owner):
+			continue
+		if not force and float(entry.get("contract_decision_timer", CONTRACT_DECISION_SECONDS)) > CONTRACT_DECISION_SECONDS - 1.0:
+			continue
+		var candidates := _ai_contract_response_candidates(owner, entry)
+		var choice := _ai_pick_candidate(owner, candidates, force)
+		if choice.is_empty():
+			continue
+		var accept := String(choice.get("action", "")) == "签约"
+		var contract_id := int(entry.get("contract_offer_id", entry.get("resolution_id", -1)))
+		_record_ai_decision(
+			owner,
+			"匿名合约%s" % String(choice.get("action", "回应")),
+			int(entry.get("contract_target_district", -1)),
+			int(choice.get("score", 0)),
+			String(choice.get("reason", "按奖励、惩罚和是否帮对手评分")),
+			candidates,
+			{
+				"card_name": String((entry.get("skill", {}) as Dictionary).get("name", "区域供需合约")),
+				"contract_offer_id": contract_id,
+				"contract_response": String(choice.get("action", "")),
+			}
+		)
+		if _respond_to_pending_contract_for_player(owner, contract_id, accept, false):
+			_log("目标城市业主匿名%s了一份合约；系统只公开结果，不公开是哪位玩家回应。" % ("签署" if accept else "拒绝"))
+			responded += 1
+	return responded
+
+
+func _update_ai_decisions(delta: float) -> void:
+	if not ai_card_decision_enabled or players.is_empty():
+		return
+	ai_auction_reaction_timer -= delta
+	if ai_auction_reaction_timer <= 0.0:
+		_auto_ai_auction_bids(false)
+		_update_ai_contract_responses(false)
+		ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS
+	ai_card_decision_timer -= delta
+	if ai_card_decision_timer <= 0.0:
+		_auto_ai_card_decisions(false)
+		ai_card_decision_timer = AI_CARD_DECISION_INTERVAL_SECONDS
 
 
 func _ensure_configured_role_indices() -> void:
@@ -12211,41 +12969,51 @@ func _reset_selected_card_bid() -> void:
 
 
 func _set_selected_card_bid_absolute(amount: int) -> void:
-	if selected_player < 0 or selected_player >= players.size():
-		return
+	_set_card_bid_for_player(selected_player, amount, true)
+
+
+func _set_card_bid_for_player(player_index: int, amount: int, announce: bool = true) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
 	var clamped: int = maxi(0, amount)
-	var queued_index: int = _queued_card_entry_index_for_player(selected_player)
+	var queued_index: int = _queued_card_entry_index_for_player(player_index)
 	if queued_index >= 0:
 		if not card_resolution_auction_open:
-			_log("本轮拍卖已经封盘，锁定报价不能再修改。")
-			return
+			if announce:
+				_log("本轮拍卖已经封盘，锁定报价不能再修改。")
+			return false
 		var entry: Dictionary = card_resolution_queue[queued_index]
 		var old_bid := int(entry.get("tip", 0))
 		if clamped == old_bid:
-			return
+			return false
 		var skill: Dictionary = _queued_skill_from_entry(entry)
 		var cash_needed: int = _skill_play_cash_cost(skill) + clamped
-		if int(players[selected_player].get("cash", 0)) < cash_needed:
-			_log("当前视角资金不足，无法把候补卡匿名报价改为¥%d（还需预留打出费用¥%d）。" % [
-				clamped,
-				_skill_play_cash_cost(skill),
-			])
-			return
+		if int(players[player_index].get("cash", 0)) < cash_needed:
+			if announce:
+				_log("当前视角资金不足，无法把候补卡匿名报价改为¥%d（还需预留打出费用¥%d）。" % [
+					clamped,
+					_skill_play_cash_cost(skill),
+				])
+			return false
 		entry["tip"] = clamped
 		entry["bid_time"] = game_time
 		card_resolution_queue[queued_index] = entry
 		_sort_card_resolution_queue()
-		_log("公开报价：一张匿名候补卡把小费报价%s为¥%d；其他玩家可在展示结束前继续竞价。" % ["提高" if clamped > old_bid else "撤回", clamped])
+		if announce:
+			_log("公开报价：一张匿名候补卡把小费报价%s为¥%d；其他玩家可在展示结束前继续竞价。" % ["提高" if clamped > old_bid else "撤回", clamped])
 		_refresh_ui()
-		return
-	if _next_batch_card_entry_index_for_player(selected_player) >= 0:
-		_log("下一批等待牌已经提交；当前批次清空并进入统一竞价前，报价暂不修改。")
-		return
-	if int(players[selected_player].get("cash", 0)) < clamped:
-		_log("当前视角资金不足，无法预设¥%d匿名报价。" % clamped)
-		return
-	players[selected_player]["queued_card_tip"] = clamped
+		return true
+	if _next_batch_card_entry_index_for_player(player_index) >= 0:
+		if announce:
+			_log("下一批等待牌已经提交；当前批次清空并进入统一竞价前，报价暂不修改。")
+		return false
+	if int(players[player_index].get("cash", 0)) < clamped:
+		if announce:
+			_log("当前视角资金不足，无法预设¥%d匿名报价。" % clamped)
+		return false
+	players[player_index]["queued_card_tip"] = clamped
 	_refresh_ui()
+	return true
 
 
 func _card_resolution_status_text() -> String:
@@ -13832,42 +14600,54 @@ func _buy_selected_skill() -> void:
 	if not _can_selected_player_act():
 		return
 	_sync_selected_district_card()
-	var player: Dictionary = players[selected_player]
-	if selected_market_skill == "" or not _skill_exists(selected_market_skill):
-		_log("没有可获取的选中卡牌。")
-		return
-	if selected_district < 0 or selected_district >= districts.size():
-		return
-	if districts[selected_district]["destroyed"]:
-		_log("%s已被破坏，不能从这里获取卡牌。" % districts[selected_district]["name"])
-		return
-	if not _can_buy_card_from_district(selected_district):
-		_log("%s暂不能购买卡牌：只能从怪兽落地区或相邻区域获取。" % districts[selected_district]["name"])
-		return
-	if not _selected_district_has_card(selected_market_skill):
-		_log("%s不在当前区域候选中；%s。" % [_card_display_name(selected_market_skill), _card_choice_location_summary(selected_market_skill)])
-		return
-	if not _player_can_receive_card(player, selected_market_skill):
-		_log("%s暂不能获得%s：普通手牌上限为%d张；重复牌会自动合成，绑定固定怪兽技能不占上限。" % [
-			player["name"],
-			_card_display_name(selected_market_skill),
-			PLAYER_HAND_LIMIT,
-		])
-		_refresh_ui()
-		return
-	var price := _card_price(selected_market_skill, selected_district)
-	if int(player.get("cash", 0)) < price:
-		_log("%s资金不足，购买%s需要¥%d，当前只有¥%d。" % [player["name"], _card_display_name(selected_market_skill), price, int(player.get("cash", 0))])
-		_refresh_ui()
-		return
-	if _acquire_card_for_player(player, selected_market_skill, selected_district, "区域获取"):
-		player["cash"] = int(player.get("cash", 0)) - price
-		players[selected_player] = player
-		_record_player_card_spend(selected_player, price, "购买%s" % _card_display_name(selected_market_skill), districts[selected_district]["name"])
-		_log("%s支付¥%d购买%s。" % [player["name"], price, _card_display_name(selected_market_skill)])
-		_grant_role_bonus_card_on_purchase(selected_player, selected_district, selected_market_skill)
-		_start_player_cooldown(MARKET_COOLDOWN)
+	_buy_card_for_player_from_district(selected_player, selected_district, selected_market_skill, false)
 	_refresh_ui()
+
+
+func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false) -> bool:
+	if game_over or player_index < 0 or player_index >= players.size():
+		return false
+	var player: Dictionary = players[player_index]
+	var actor_label := "匿名财团" if anonymous else String(player.get("name", "玩家"))
+	if not ignore_cooldown and float(player.get("action_cooldown", 0.0)) > 0.0:
+		if not anonymous:
+			_log("%s操作冷却中，还需%.1fs。" % [actor_label, float(player.get("action_cooldown", 0.0))])
+		return false
+	skill_name = _canonical_card_supply_name(skill_name)
+	if skill_name == "" or not _skill_exists(skill_name):
+		if not anonymous:
+			_log("没有可获取的选中卡牌。")
+		return false
+	if district_index < 0 or district_index >= districts.size() or bool(districts[district_index].get("destroyed", false)):
+		if not anonymous:
+			_log("目标区域无效或已被破坏，不能从这里获取卡牌。")
+		return false
+	if not _can_buy_card_from_district(district_index):
+		if not anonymous:
+			_log("%s暂不能购买卡牌：只能从怪兽落地区或相邻区域获取。" % districts[district_index]["name"])
+		return false
+	if not _district_has_card(district_index, skill_name):
+		if not anonymous:
+			_log("%s不在当前区域候选中；%s。" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
+		return false
+	if not _player_can_receive_card(player, skill_name):
+		if not anonymous:
+			_log("%s暂不能获得%s：普通手牌上限为%d张；重复牌会自动合成。" % [actor_label, _card_display_name(skill_name), PLAYER_HAND_LIMIT])
+		return false
+	var price := _card_price(skill_name, district_index)
+	if int(player.get("cash", 0)) < price:
+		if not anonymous:
+			_log("%s资金不足，购买%s需要¥%d，当前只有¥%d。" % [actor_label, _card_display_name(skill_name), price, int(player.get("cash", 0))])
+		return false
+	if not _acquire_card_for_player(player, skill_name, district_index, "区域获取", anonymous):
+		return false
+	player["cash"] = int(player.get("cash", 0)) - price
+	player["action_cooldown"] = maxf(float(player.get("action_cooldown", 0.0)), MARKET_COOLDOWN)
+	players[player_index] = player
+	_record_player_card_spend(player_index, price, "购买%s" % _card_display_name(skill_name), districts[district_index]["name"])
+	_log("%s支付¥%d购买%s；购牌身份不对外公开。" % [actor_label, price, _card_display_name(skill_name)])
+	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
+	return true
 
 
 func _upgrade_skill_slot(slot_index: int) -> void:
@@ -16194,6 +16974,7 @@ func _market_tick() -> void:
 	_auto_expand_rival_syndicates(false)
 	_auto_rival_business_actions(false)
 	_age_economic_boons()
+	_finalize_ai_decision_rewards()
 	for i in range(players.size()):
 		_record_player_cash_snapshot(i)
 
