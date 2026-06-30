@@ -106,6 +106,7 @@ const CITY_TRANSIT_GDP_BASE := 18
 const CITY_TRANSIT_PRICE_DIVISOR := 20
 const CITY_COMPETITION_PENALTY := 16
 const TRADE_DISRUPTION_PENALTY := 55
+const CITY_DAMAGE_GDP_PENALTY := 18
 const CITY_MINIMUM_INCOME := 40
 const CITY_FINAL_VALUE := 700
 const CITY_BUILD_ANIMATION_SECONDS := 1.2
@@ -512,6 +513,14 @@ const SKILL_CATALOG := {
 	"星际会展2": {"cost": 7, "kind": "city_contract_boon", "contract_income": 135, "contract_turns": 4, "route_flow_multiplier": 1.45, "route_flow_turns": 4, "panic": 20, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经营", "升级"], "text": "选中己方城市举办大型星际会展：临时合约收入+135/周期，并使商路流通收入×1.45，持续4周期；区域热度+20。"},
 	"商品做空1": {"cost": 4, "kind": "product_speculation", "cash": 260, "price_delta": -24, "panic": 10, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "做空"], "text": "围绕当前商品做空：获得260资金，并制造临时供给压力；价格由供需重算体现。"},
 	"商品做空2": {"cost": 6, "kind": "product_speculation", "cash": 560, "price_delta": -42, "panic": 18, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "高阶做空：获得560资金，并制造更强临时供给压力；价格仍由供需关系结算。"},
+	"城市买涨1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.0, "gdp_bet_turns": 2, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "买涨"], "text": "匿名买入选中城市GDP上涨：接下来2个经营周期，若该城市周期GDP高于买入基准，则按增量×1.0获得资金。"},
+	"城市买涨2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.6, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "匿名买入选中城市GDP上涨：持续3个经营周期，收益为GDP增量×1.6。"},
+	"城市买涨3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 2.3, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "高阶买涨城市GDP：持续3周期，若城市扩张、合约或商路使GDP上升，按增量×2.3兑现。"},
+	"城市买涨4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 3.2, "gdp_bet_turns": 4, "gdp_bet_destroy_bonus": 0, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端买涨城市GDP：持续4周期，收益为GDP增量×3.2；价格仍按I级购入价体系升级而来。"},
+	"城市做空1": {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.0, "gdp_bet_turns": 2, "gdp_bet_destroy_bonus": 180, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "做空"], "text": "匿名买入选中城市GDP下跌：接下来2个经营周期，若该城市GDP低于买入基准，则按跌幅×1.0获得资金；城市被毁会额外兑现破产奖励。"},
+	"城市做空2": {"cost": 6, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.7, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 320, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "升级"], "text": "高阶城市做空：持续3周期，收益为GDP跌幅×1.7；城市破产/摧毁额外兑现¥320。"},
+	"城市做空3": {"cost": 8, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 2.5, "gdp_bet_turns": 3, "gdp_bet_destroy_bonus": 520, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "终端"], "text": "终端城市做空：持续3周期，怪兽破坏、商路断裂或区域经济衰退造成的GDP跌幅会按×2.5兑现。"},
+	"城市做空4": {"cost": 10, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 3.4, "gdp_bet_turns": 4, "gdp_bet_destroy_bonus": 760, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "GDP", "IV"], "text": "终端城市做空IV：持续4周期，GDP跌幅×3.4；城市摧毁时额外兑现¥760。"},
 	"远期采购1": {"cost": 4, "kind": "product_contract_boon", "market_demand_pressure": 3, "market_contract_turns": 3, "cash": 120, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "合约"], "text": "围绕当前商品签远期采购：获得120资金，并为该商品追加持续3周期的需求压力+3；波动+1。"},
 	"远期采购2": {"cost": 6, "kind": "product_contract_boon", "market_demand_pressure": 5, "market_contract_turns": 4, "cash": 260, "volatility_delta": 1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "升级"], "text": "签更大远期采购：获得260资金，并为当前商品追加持续4周期的需求压力+5；波动+1。"},
 	"期货套保1": {"cost": 3, "kind": "product_contract_boon", "market_supply_pressure": 3, "market_contract_turns": 3, "cash": 90, "volatility_delta": -1, "damage": 0, "move": 0.0, "range": 0.0, "tags": ["经济", "套保"], "text": "围绕当前商品做期货套保：获得90资金，追加持续3周期的供给压力+3，并降低波动1。"},
@@ -627,6 +636,8 @@ const UPGRADEABLE_SKILL_FAMILIES := [
 	"商业诱饵",
 	"价格套利",
 	"商品做空",
+	"城市买涨",
+	"城市做空",
 	"商品换线",
 	"需求改造",
 	"供应链保险",
@@ -710,6 +721,10 @@ const COMMON_CARD_POOL := [
 	"星际会展2",
 	"商品做空1",
 	"商品做空2",
+	"城市买涨1",
+	"城市买涨2",
+	"城市做空1",
+	"城市做空2",
 	"远期采购1",
 	"远期采购2",
 	"期货套保1",
@@ -794,6 +809,10 @@ const MARKET_SKILLS := [
 	"星际会展2",
 	"商品做空1",
 	"商品做空2",
+	"城市买涨1",
+	"城市买涨2",
+	"城市做空1",
+	"城市做空2",
 	"远期采购1",
 	"远期采购2",
 	"期货套保1",
@@ -857,7 +876,9 @@ const MONSTER_ROSTER := [
 		"move_damage": 1,
 		"collision_damage": 1,
 		"resource_drain": 2,
-		"style": "瘴气压制型：生命高，会用瘴气炮和持续区域压力污染城区。",
+		"movement_traits": ["aquatic"],
+		"terrain_move_multiplier": {"ocean": 1.35, "land": 0.72},
+		"style": "瘴气水栖型：生命高，海洋移动更快、陆地迟钝，会用瘴气炮和持续区域压力污染城区。",
 		"resource_focus": ["深海菌毯", "梦境香氛", "孢子丝绸"],
 		"summon_access": "ocean_monster_zone",
 		"economy_boon": {"label": "瘴气菌毯红利", "growth_multiplier": 1.35, "route_flow_multiplier": 1.1, "text": "偏好商品会形成黑市药材需求：正向价格增速×1.35，相关商路流通×1.1。"},
@@ -884,7 +905,9 @@ const MONSTER_ROSTER := [
 		"move_damage": 1,
 		"collision_damage": 1,
 		"resource_drain": 1,
-		"style": "高速追击型：移动速度高，适合标准压力局。",
+		"movement_traits": ["flying"],
+		"terrain_move_multiplier": {"land": 1.18, "ocean": 1.18},
+		"style": "高速飞行型：移动速度高，飞行移动不会碾压路径区域，适合标准压力局。",
 		"resource_focus": ["环晶电池", "活体芯片", "轨迹墨水"],
 		"summon_access": "monster_zone",
 		"economy_boon": {"label": "高速航线窗口", "growth_multiplier": 1.3, "route_flow_multiplier": 1.35, "text": "偏好科技商品借高速巡航扩散：正向价格增速×1.3，相关商路流通×1.35。"},
@@ -7599,6 +7622,8 @@ func _make_auto_monster(slot: int, catalog_index: int, start_district: int, owne
 		"move": move_speed,
 		"move_damage": int(template.get("move_damage", AUTO_MONSTER_DEFAULT_MOVE_DAMAGE)),
 		"collision_damage": int(template.get("collision_damage", AUTO_MONSTER_DEFAULT_COLLISION_DAMAGE)),
+		"movement_traits": (template.get("movement_traits", []) as Array).duplicate(true),
+		"terrain_move_multiplier": (template.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true),
 		"resource_drain": int(template.get("resource_drain", 1)),
 		"resource_focus": (template.get("resource_focus", []) as Array).duplicate(),
 		"position": start_index,
@@ -10711,6 +10736,12 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 
 
 func _card_art_stats(skill: Dictionary) -> String:
+	if String(skill.get("kind", "")) == "city_gdp_derivative":
+		return "%s｜×%.2f｜%d周期" % [
+			"买涨" if String(skill.get("gdp_bet_direction", "up")) == "up" else "做空",
+			float(skill.get("gdp_bet_multiplier", 1.0)),
+			int(skill.get("gdp_bet_turns", 1)),
+		]
 	if String(skill.get("kind", "")) != "monster_card":
 		return ""
 	return "HP%d｜%s｜移%s｜%s" % [
@@ -10787,6 +10818,10 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 	var extended_card_price_multiplier := float(skill.get("extended_card_price_multiplier", 1.0))
 	var card_access_global := bool(skill.get("card_access_global", false))
 	var global_card_price_multiplier := float(skill.get("global_card_price_multiplier", 1.0))
+	var gdp_bet_direction := String(skill.get("gdp_bet_direction", ""))
+	var gdp_bet_multiplier := float(skill.get("gdp_bet_multiplier", 0.0))
+	var gdp_bet_turns := int(skill.get("gdp_bet_turns", 0))
+	var gdp_bet_destroy_bonus := int(skill.get("gdp_bet_destroy_bonus", 0))
 	if move_m > 0.0:
 		facts.append("移动:%s" % _meters_text(move_m))
 	if range_m > 0.0:
@@ -10889,6 +10924,12 @@ func _card_rule_facts(skill: Dictionary) -> Array:
 		facts.append("购牌半径:+%d跳/%.0fs×%.2f" % [card_access_extra_hops, maxf(1.0, card_access_seconds), maxf(1.0, extended_card_price_multiplier)])
 	if card_access_global:
 		facts.append("全局购牌:%.0fs×%.2f" % [maxf(1.0, card_access_seconds), maxf(1.0, global_card_price_multiplier)])
+	if gdp_bet_direction != "":
+		facts.append("GDP方向:%s" % ("买涨" if gdp_bet_direction == "up" else "做空"))
+	if gdp_bet_multiplier > 0.0:
+		facts.append("GDP倍率:×%.2f/%d周期" % [gdp_bet_multiplier, maxi(1, gdp_bet_turns)])
+	if gdp_bet_destroy_bonus > 0:
+		facts.append("破产奖励:¥%d" % gdp_bet_destroy_bonus)
 	return facts
 
 
@@ -10971,6 +11012,12 @@ func _card_resolution_animation_stages(card_name: String, skill: Dictionary) -> 
 				"%s把当前商品推上匿名交易屏，价格曲线先剧烈抖动。" % label,
 				"卡牌不直接改价，而是写入临时供需压力，等待下一次市场重算兑现。",
 				"现金收益立即进匿名玩家账本；市场波动则成为其他玩家的反推证据。",
+			]
+		"city_gdp_derivative":
+			return [
+				"%s翻面时，目标城市上方出现匿名买涨/做空盘口。" % label,
+				"系统记录该城当前GDP为基准；之后经营周期按GDP涨跌差额和卡面倍率兑现。",
+				"若城市被怪兽摧毁，做空合约会进入破产清算；收款人仍保持匿名。",
 			]
 		"product_contract_boon":
 			return [
@@ -11935,7 +11982,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "learning_bonus"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "generic_effect_bonus", "learning_bonus"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -12568,14 +12615,14 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 			if resolved_owner == player_index:
 				bonus += mini(120, _ai_own_route_threat_score(player_index) / 3)
 		"disrupt_competitors":
-			if ["route_sabotage", "panic_shift", "monster_lure", "mudslide", "area_damage"].has(kind):
+			if ["route_sabotage", "panic_shift", "monster_lure", "mudslide", "area_damage", "city_gdp_derivative"].has(kind):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if resolved_owner >= 0 and resolved_owner != player_index:
 				bonus += 70
 			if focus != "" and product_name == focus:
 				bonus += 46
 		"grow_focus":
-			if ["city_build", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon", "product_speculation", "product_contract_boon", "product_growth_boon", "cash_gain", "area_trade_contract", "region_economy_shift"].has(kind):
+			if ["city_build", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "cash_gain", "area_trade_contract", "region_economy_shift"].has(kind):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if focus != "" and product_name == focus:
 				bonus += 54
@@ -12918,7 +12965,7 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 			if resolved_owner == player_index:
 				bonus += 42
 		"strengthen_route":
-			if ["route_flow_boon", "city_revenue_boost", "city_product_upgrade", "city_contract_boon", "product_speculation", "product_contract_boon", "product_growth_boon", "area_trade_contract"].has(kind) and product_match:
+			if ["route_flow_boon", "city_revenue_boost", "city_product_upgrade", "city_contract_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "area_trade_contract"].has(kind) and product_match:
 				bonus += 108
 			if resolved_owner == player_index:
 				bonus += 34
@@ -12928,7 +12975,7 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 			if resolved_owner == player_index:
 				bonus += mini(132, _ai_product_route_threat_score(player_index, plan_product) / 2)
 		"attack_rival":
-			if ["route_sabotage", "monster_lure", "panic_shift", "mudslide", "area_damage", "region_economy_shift"].has(kind):
+			if ["route_sabotage", "monster_lure", "panic_shift", "mudslide", "area_damage", "region_economy_shift", "city_gdp_derivative"].has(kind):
 				bonus += 116
 			if resolved_owner >= 0 and resolved_owner != player_index:
 				bonus += 76
@@ -13302,6 +13349,74 @@ func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	return float(profile.get("economy_bias", 1.0))
 
 
+func _ai_best_city_for_gdp_derivative(player_index: int, direction: String) -> int:
+	var best_index := -1
+	var best_score := -999999
+	for index_variant in _active_city_district_indices():
+		var index := int(index_variant)
+		var city := _district_city(index)
+		var owner := int(city.get("owner", -1))
+		var last_income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
+		var damage := int(districts[index].get("damage", 0))
+		var disrupted := int(city.get("trade_disrupted_routes", 0)) + int(city.get("trade_route_damage", 0))
+		var score := last_income
+		if direction == "up":
+			score += 180 if owner == player_index else 30
+			score += _ai_district_focus_score(player_index, index)
+			score -= damage * 34 + disrupted * 42
+		else:
+			score += 150 if owner >= 0 and owner != player_index else -40
+			score += damage * 52 + disrupted * 62 + int(districts[index].get("panic", 0)) / 2
+			score += _ai_district_focus_score(player_index, index) / 3
+		if score > best_score:
+			best_score = score
+			best_index = index
+	return best_index
+
+
+func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, district_index: int, product_name: String = "", target_owner: int = -999) -> int:
+	var score := 0
+	var harmful_target := target_owner >= 0 and target_owner != player_index
+	var helpful_target := target_owner == player_index
+	score += int(skill.get("cash", 0)) / 4
+	score += int(skill.get("draw_amount", 0)) * 45
+	score += int(skill.get("revenue_amount", 0)) / 2
+	score += int(skill.get("contract_income", 0)) * maxi(1, int(skill.get("contract_turns", 1))) / 5
+	score += int(round((float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 120.0)) if helpful_target else 0
+	score += int(skill.get("repair_routes", 0)) * (55 if helpful_target else 18)
+	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))
+	if economy_delta > 0:
+		score += economy_delta * (60 if helpful_target else 24)
+	elif economy_delta < 0:
+		score += abs(economy_delta) * (70 if harmful_target else -45)
+	var route_damage := int(skill.get("route_damage", 0)) + int(skill.get("decline_route_damage", 0))
+	if route_damage > 0:
+		score += route_damage * (75 if harmful_target else 15)
+	var area_damage := int(skill.get("damage", 0))
+	if area_damage > 0:
+		score += area_damage * (58 if harmful_target else 22)
+	var demand_pressure := int(skill.get("market_demand_pressure", 0))
+	var supply_pressure := int(skill.get("market_supply_pressure", 0))
+	if product_name != "":
+		if product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index):
+			score += abs(demand_pressure - supply_pressure) * 18
+		score += int(skill.get("price_delta", 0)) / 2
+	var gdp_multiplier := float(skill.get("gdp_bet_multiplier", 0.0))
+	if gdp_multiplier > 0.0:
+		var direction := String(skill.get("gdp_bet_direction", "up"))
+		var city := _district_city(district_index)
+		var last_income := int(city.get("last_income", 0))
+		var risk := int(districts[district_index].get("damage", 0)) * 26 + int(city.get("trade_disrupted_routes", 0)) * 32 if district_index >= 0 and district_index < districts.size() else 0
+		if direction == "up":
+			score += int(round(gdp_multiplier * 55.0)) + (80 if helpful_target else 20) + maxi(0, last_income / 6 - risk)
+		else:
+			score += int(round(gdp_multiplier * 68.0)) + (90 if harmful_target else 20) + risk + int(skill.get("gdp_bet_destroy_bonus", 0)) / 8
+	score += int(skill.get("card_access_extra_hops", 0)) * 42
+	if bool(skill.get("card_access_global", false)):
+		score += 105
+	return score
+
+
 func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary) -> Dictionary:
 	var kind := String(skill.get("kind", ""))
 	var own_city := _ai_best_city_district(player_index, true)
@@ -13403,6 +13518,20 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = damaged_city
 		context["score"] = int(context["score"]) + int(_district_city(damaged_city).get("trade_route_damage", 0)) * 70
+	elif kind == "city_gdp_derivative":
+		var gdp_direction := String(skill.get("gdp_bet_direction", "up"))
+		var gdp_target := _ai_best_city_for_gdp_derivative(player_index, gdp_direction)
+		if gdp_target < 0:
+			return {}
+		context["district"] = gdp_target
+		context["policy_kind"] = "%s_%s" % [kind, gdp_direction]
+		context["score"] = int(context["score"]) + 110 + int(round(float(skill.get("gdp_bet_multiplier", 1.0)) * 35.0)) + int(skill.get("gdp_bet_destroy_bonus", 0)) / 10
+		context["reason"] = "匿名%s%sGDP｜倍率×%.2f｜持续%d周期" % [
+			"买涨" if gdp_direction == "up" else "做空",
+			districts[gdp_target]["name"],
+			float(skill.get("gdp_bet_multiplier", 1.0)),
+			int(skill.get("gdp_bet_turns", 1)),
+		]
 	elif ["route_sabotage", "panic_shift"].has(kind):
 		if rival_city < 0:
 			return {}
@@ -13484,6 +13613,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if route_bonus > 0:
 		context["route_plan_bonus"] = int(context.get("route_plan_bonus", 0)) + route_bonus
 		context["score"] = int(context["score"]) + route_bonus
+	var generic_bonus := _ai_generic_card_effect_score(player_index, skill, context_district, String(context.get("product", "")), target_owner)
+	if generic_bonus != 0:
+		context["generic_effect_bonus"] = generic_bonus
+		context["score"] = int(context["score"]) + generic_bonus
 	var learning_bonus := _ai_learning_bonus(player_index, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
 	if learning_bonus != 0:
 		context["learning_bonus"] = learning_bonus
@@ -13547,6 +13680,11 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var available := _player_product_flow(player_index, product_name)
 			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name)
 			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name)
+			var target_owner := -999
+			var city := _district_city(district_index)
+			if _city_is_active(city):
+				target_owner = int(city.get("owner", -1))
+			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
 			var learning_bonus := _ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
 			if required <= 0 or available >= required:
 				score += 35
@@ -13560,6 +13698,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score += strategy_bonus
 			if route_bonus > 0:
 				score += route_bonus
+			if generic_bonus != 0:
+				score += generic_bonus
 			if learning_bonus != 0:
 				score += learning_bonus
 			var role := _player_role_card_for_index(player_index)
@@ -13585,6 +13725,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"route_plan_stage": route_stage,
 				"route_plan_score": route_score,
 				"route_plan_bonus": route_bonus,
+				"generic_effect_bonus": generic_bonus,
 				"learning_bonus": learning_bonus,
 				"reason": "%s｜费用¥%d｜流动%d/%d｜策略%s+%d｜路线%s/%s+%d｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
@@ -13646,7 +13787,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "learning_bonus"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "generic_effect_bonus", "learning_bonus"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -14352,6 +14493,25 @@ func _catalog_move_speed(index: int) -> float:
 	return float(entry.get("move", MONSTER_RAMPAGE_MOVE_METERS))
 
 
+func _monster_mobility_summary_from_fields(traits: Array, terrain_multiplier: Dictionary) -> String:
+	var pieces := []
+	if traits.has("flying"):
+		pieces.append("飞行免碾压")
+	if traits.has("aquatic"):
+		pieces.append("水栖")
+	var ocean := float(terrain_multiplier.get("ocean", 1.0))
+	var land := float(terrain_multiplier.get("land", 1.0))
+	if absf(ocean - 1.0) > 0.01 or absf(land - 1.0) > 0.01:
+		pieces.append("海×%.2f/陆×%.2f" % [ocean, land])
+	if pieces.is_empty():
+		return "普通步行"
+	return "、".join(pieces)
+
+
+func _monster_mobility_summary(actor: Dictionary) -> String:
+	return _monster_mobility_summary_from_fields(actor.get("movement_traits", []) as Array, actor.get("terrain_move_multiplier", {}) as Dictionary)
+
+
 func _monster_catalog_index_by_name(monster_name: String) -> int:
 	for i in range(MONSTER_ROSTER.size()):
 		var entry: Dictionary = MONSTER_ROSTER[i]
@@ -14399,6 +14559,9 @@ func _monster_card_definition(card_name: String) -> Dictionary:
 	var duration_text := "不限时" if duration < 0.0 else "%.0fs" % duration
 	var summon_access := String(entry.get("summon_access", "monster_zone"))
 	var summon_access_text := _monster_card_region_text({"summon_access": summon_access})
+	var movement_traits: Array = (entry.get("movement_traits", []) as Array).duplicate(true)
+	var terrain_move_multiplier: Dictionary = (entry.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true)
+	var mobility_text := _monster_mobility_summary_from_fields(movement_traits, terrain_move_multiplier)
 	return {
 		"kind": "monster_card",
 		"monster_name": monster_name,
@@ -14413,14 +14576,17 @@ func _monster_card_definition(card_name: String) -> Dictionary:
 		"hp": hp_bonus,
 		"duration": duration,
 		"move": move_bonus,
+		"movement_traits": movement_traits,
+		"terrain_move_multiplier": terrain_move_multiplier,
 		"damage": 0,
 		"range": 0.0,
 		"tags": ["怪兽卡", "召唤", _level_text(rank)],
-		"text": "匿名召唤%s入场，或在同名己方怪兽仍在场时用于升级并刷新生命/在场时间。卡牌属性：生命%d｜在场%s｜移动%s｜区域限制：%s（起始怪兽牌会改写为不限区）。I级怪兽牌免商品流动；II-IV级需要对应商品流动。召唤者获得/刷新%d张绑定固定技能牌；怪兽仍按自身概率自动行动。场上每已有一只怪兽，额外支付¥%d。" % [
+		"text": "匿名召唤%s入场，或在同名己方怪兽仍在场时用于升级并刷新生命/在场时间。卡牌属性：生命%d｜在场%s｜移动%s｜机动:%s｜区域限制：%s（起始怪兽牌会改写为不限区）。I级怪兽牌免商品流动；II-IV级需要对应商品流动。召唤者获得/刷新%d张绑定固定技能牌；怪兽仍按自身概率自动行动。场上每已有一只怪兽，额外支付¥%d。" % [
 			monster_name,
 			hp_bonus,
 			duration_text,
 			_meters_text(move_bonus),
+			mobility_text,
 			summon_access_text,
 			rank,
 			MONSTER_CARD_PLAY_CASH_PER_EXISTING,
@@ -15816,6 +15982,116 @@ func _boost_selected_city_revenue(amount: int, panic_amount: int, source: String
 	_pulse_district(selected_district, Color("#facc15"))
 	_log("%s使%s的周期收入永久+%d。" % [source, districts[selected_district]["name"], amount])
 	return true
+
+
+func _apply_city_gdp_derivative(_player: Dictionary, skill: Dictionary) -> bool:
+	var source := String(skill.get("name", "城市GDP合约"))
+	var city := _district_city(selected_district)
+	if not _city_is_active(city):
+		_log("%s需要选中一座存活城市；买涨/买跌不要求知道真实业主。" % source)
+		return false
+	var direction := String(skill.get("gdp_bet_direction", "up"))
+	if not ["up", "down"].has(direction):
+		return false
+	var baseline := _city_cycle_income(selected_district, _city_competition_matches(selected_district))
+	var derivatives: Array = city.get("gdp_derivatives", [])
+	derivatives.append({
+		"owner": selected_player,
+		"direction": direction,
+		"baseline_gdp": baseline,
+		"turns": maxi(1, int(skill.get("gdp_bet_turns", 2))),
+		"multiplier": maxf(0.1, float(skill.get("gdp_bet_multiplier", 1.0))),
+		"destroy_bonus": maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0))),
+		"source": source,
+		"created_cycle": business_cycle_count,
+	})
+	city["gdp_derivatives"] = derivatives
+	city = _append_city_public_clue(city, "%s匿名买%s%sGDP，基准%d，持续%d周期。" % [
+		source,
+		"涨" if direction == "up" else "跌",
+		districts[selected_district]["name"],
+		baseline,
+		maxi(1, int(skill.get("gdp_bet_turns", 2))),
+	])
+	districts[selected_district]["city"] = city
+	_pulse_district(selected_district, Color("#f97316") if direction == "down" else Color("#22c55e"))
+	_add_action_callout(
+		"匿名金融",
+		source,
+		"%s被挂上%s合约：GDP%s时结算，出牌者不公开。" % [
+			districts[selected_district]["name"],
+			"买涨" if direction == "up" else "做空",
+			"上涨" if direction == "up" else "下跌/破产",
+		],
+		Color("#22c55e") if direction == "up" else Color("#fb7185"),
+		_district_center(selected_district)
+	)
+	_log("%s匿名挂单%s：基准GDP%d，持续%d周期，倍率×%.2f。" % [
+		source,
+		districts[selected_district]["name"],
+		baseline,
+		maxi(1, int(skill.get("gdp_bet_turns", 2))),
+		maxf(0.1, float(skill.get("gdp_bet_multiplier", 1.0))),
+	])
+	return true
+
+
+func _pay_city_gdp_derivative(owner: int, amount: int, source: String, detail: String) -> void:
+	if owner < 0 or owner >= players.size() or amount <= 0:
+		return
+	players[owner]["cash"] = int(players[owner].get("cash", 0)) + amount
+	_record_player_card_income(owner, amount, source, detail)
+
+
+func _resolve_city_gdp_derivatives(district_index: int, current_gdp: int, source: String = "经营周期") -> void:
+	if district_index < 0 or district_index >= districts.size():
+		return
+	var city := _district_city(district_index)
+	var derivatives: Array = city.get("gdp_derivatives", [])
+	if derivatives.is_empty():
+		return
+	var remaining := []
+	var public_hits := 0
+	for entry_variant in derivatives:
+		var entry: Dictionary = entry_variant
+		var baseline := int(entry.get("baseline_gdp", current_gdp))
+		var direction := String(entry.get("direction", "up"))
+		var delta := current_gdp - baseline
+		var paying_delta: int = maxi(0, delta) if direction == "up" else maxi(0, -delta)
+		var payout := int(round(float(paying_delta) * maxf(0.1, float(entry.get("multiplier", 1.0)))))
+		if payout > 0:
+			public_hits += 1
+			_pay_city_gdp_derivative(int(entry.get("owner", -1)), payout, String(entry.get("source", "城市GDP合约")), "%s %sGDP%d→%d" % [districts[district_index]["name"], source, baseline, current_gdp])
+		entry["baseline_gdp"] = current_gdp
+		entry["turns"] = int(entry.get("turns", 1)) - 1
+		if int(entry.get("turns", 0)) > 0:
+			remaining.append(entry)
+	city["gdp_derivatives"] = remaining
+	if public_hits > 0:
+		city = _append_city_public_clue(city, "%s的GDP衍生合约因%s兑现%d笔；资金流向不公开。" % [districts[district_index]["name"], source, public_hits])
+	districts[district_index]["city"] = city
+
+
+func _resolve_city_gdp_derivatives_on_destroy(district_index: int, city: Dictionary, source: String) -> Dictionary:
+	var derivatives: Array = city.get("gdp_derivatives", [])
+	if derivatives.is_empty():
+		return city
+	var public_hits := 0
+	for entry_variant in derivatives:
+		var entry: Dictionary = entry_variant
+		if String(entry.get("direction", "up")) != "down":
+			continue
+		var baseline := int(entry.get("baseline_gdp", 0))
+		var drop_payout := int(round(float(maxi(0, baseline)) * maxf(0.1, float(entry.get("multiplier", 1.0)))))
+		var payout := drop_payout + maxi(0, int(entry.get("destroy_bonus", 0)))
+		if payout <= 0:
+			continue
+		public_hits += 1
+		_pay_city_gdp_derivative(int(entry.get("owner", -1)), payout, String(entry.get("source", "城市做空")), "%s被%s摧毁，GDP%d→0" % [districts[district_index]["name"], source, baseline])
+	if public_hits > 0:
+		city = _append_city_public_clue(city, "%s被摧毁，城市做空/破产合约兑现%d笔；谁收钱仍需推理。" % [districts[district_index]["name"], public_hits])
+	city["gdp_derivatives"] = []
+	return city
 
 
 func _default_economy_product() -> String:
@@ -17355,7 +17631,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 				_log("%s指挥怪%d·%s移动，但它没有完成有效位移。" % [String(skill["name"]), slot + 1, String(actor.get("name", "怪兽"))])
 				return false
 			_add_visual_trail(before, _entity_world_position(actor), _auto_monster_color(slot), String(skill["name"]))
-			_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(skill["name"]))
+			_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(skill["name"]), "fly" if kind == "fly" else _auto_monster_movement_mode(actor))
 			_auto_monster_resource_drain(actor, int(actor["position"]), String(skill["name"]))
 			if kind == "burrow":
 				var burrow_armor: int = int(skill.get("armor", 0))
@@ -17372,7 +17648,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 			moved = _move_entity_toward(actor, _entity_world_position(target_actor), float(skill.get("move", 0.0)))
 			if moved > 0.5:
 				_add_visual_trail(before, _entity_world_position(actor), _auto_monster_color(slot), String(skill["name"]))
-				_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(skill["name"]))
+				_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(skill["name"]), _auto_monster_movement_mode(actor))
 				_auto_monster_resource_drain(actor, int(actor["position"]), String(skill["name"]))
 			auto_monsters[slot] = actor
 			resolved = _command_auto_monster_attack(slot, skill)
@@ -17421,7 +17697,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 				_log("%s没有完成有效翻滚。" % skill["name"])
 				return false
 			_add_visual_trail(before, _entity_world_position(actor), _auto_monster_color(slot), String(skill["name"]))
-			_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(skill["name"]))
+			_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(skill["name"]), _auto_monster_movement_mode(actor))
 			_damage_district(int(actor["position"]), max(1, int(skill.get("damage", 1))), String(skill["name"]))
 			_auto_monster_resource_drain(actor, int(actor["position"]), String(skill["name"]))
 			auto_monsters[slot] = actor
@@ -17472,12 +17748,13 @@ func _trigger_bound_monster_skill(skill: Dictionary, _player: Dictionary) -> boo
 	var move_budget: float = float(action.get("move_override", -1.0))
 	if move_budget < 0.0:
 		move_budget = float(actor.get("move", MONSTER_RAMPAGE_MOVE_METERS))
+	move_budget *= _monster_terrain_move_multiplier(actor, target)
 	if required_range <= 0.0 or _entity_distance_to_district(actor, target) > required_range:
 		_move_entity_toward(actor, _district_center(target), move_budget)
 	var moved := _wrapped_distance(before, _entity_world_position(actor))
 	if moved > 0.5:
 		_add_visual_trail(before, _entity_world_position(actor), _auto_monster_color(slot), String(action.get("name", "兽技")))
-		_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(action.get("name", "兽技")))
+		_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(action.get("name", "兽技")), _auto_monster_movement_mode(actor))
 	var target_after_move := target
 	if required_range <= 0.0:
 		target_after_move = int(actor.get("position", target))
@@ -18314,6 +18591,8 @@ func _resolve_queued_skill(entry: Dictionary) -> void:
 				_log("匿名资金牌结算：一名未公开玩家获得%d资金。" % cash_gain)
 			"product_speculation":
 				resolved = _apply_product_speculation(player, skill)
+			"city_gdp_derivative":
+				resolved = _apply_city_gdp_derivative(player, skill)
 			"product_contract_boon":
 				resolved = _apply_product_contract_boon(player, skill)
 			"area_trade_contract":
@@ -18500,7 +18779,7 @@ func _auto_monster_movement_tick() -> void:
 		var moved := 0.0
 		var path_damage_done := 0
 		if target != int(actor.get("position", -1)):
-			moved = _move_entity_toward(actor, _district_center(target), float(actor.get("move", MONSTER_RAMPAGE_MOVE_METERS)) * AUTO_MONSTER_MOVE_RATIO)
+			moved = _move_entity_toward(actor, _district_center(target), _auto_monster_move_budget(actor, target) * AUTO_MONSTER_MOVE_RATIO)
 		if moved > 0.5:
 			var movement_label := "怪%d诱导" % (slot + 1) if was_lured else "怪%d自动" % (slot + 1)
 			var movement_reason := "被%s诱导" % lure_source if was_lured else _auto_monster_target_factor_summary(actor, target)
@@ -18527,7 +18806,7 @@ func _auto_monster_movement_tick() -> void:
 				_auto_monster_color(slot),
 				_entity_world_position(actor)
 			)
-			path_damage_done = _apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), "诱导移动" if was_lured else "自动移动")
+			path_damage_done = _apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), "诱导移动" if was_lured else "自动移动", _auto_monster_movement_mode(actor))
 		else:
 			_log("怪%d·%s%s停留在%s并继续施压（%s）。" % [
 				slot + 1,
@@ -18546,8 +18825,9 @@ func _auto_monster_movement_tick() -> void:
 				_auto_monster_color(slot),
 				_entity_world_position(actor)
 			)
-		if moved <= 0.5 or path_damage_done <= 0:
-			_damage_district(int(actor["position"]), _auto_monster_move_damage(actor), "%s自动破坏" % String(actor.get("name", "怪兽")))
+		var landing_damage := _auto_monster_move_damage(actor, _auto_monster_movement_mode(actor))
+		if landing_damage > 0 and (moved <= 0.5 or path_damage_done <= 0):
+			_damage_district(int(actor["position"]), landing_damage, "%s自动破坏" % String(actor.get("name", "怪兽")))
 		_auto_monster_resource_drain(actor, int(actor["position"]), "自动移动")
 		auto_monsters[slot] = actor
 		_resolve_auto_monster_encounter(slot, "同区遭遇")
@@ -18600,12 +18880,13 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 	var move_budget: float = float(action.get("move_override", -1.0))
 	if move_budget < 0.0:
 		move_budget = float(actor.get("move", MONSTER_RAMPAGE_MOVE_METERS))
+	move_budget *= _monster_terrain_move_multiplier(actor, target)
 	if required_range <= 0.0 or _entity_distance_to_district(actor, target) > required_range:
 		_move_entity_toward(actor, _district_center(target), move_budget)
 	var moved: float = _wrapped_distance(before, _entity_world_position(actor))
 	if moved > 0.5:
 		_add_visual_trail(before, _entity_world_position(actor), _auto_monster_color(slot), String(action.get("name", "行动")))
-		_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(action.get("name", "行动")))
+		_apply_auto_monster_path_effects(actor, before, _entity_world_position(actor), String(action.get("name", "行动")), _auto_monster_movement_mode(actor))
 	var target_after_move: int = target
 	if required_range <= 0.0:
 		target_after_move = int(actor.get("position", target))
@@ -18662,7 +18943,39 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 		_auto_monster_take_damage(slot, self_damage, "%s反冲" % String(action.get("name", "行动")), -1)
 
 
-func _auto_monster_move_damage(actor: Dictionary) -> int:
+func _monster_has_trait(actor: Dictionary, trait_name: String) -> bool:
+	var traits: Array = actor.get("movement_traits", []) as Array
+	return traits.has(trait_name)
+
+
+func _monster_movement_mode(actor: Dictionary) -> String:
+	if _monster_has_trait(actor, "flying"):
+		return "fly"
+	if _monster_has_trait(actor, "aquatic"):
+		return "aquatic"
+	return "walk"
+
+
+func _auto_monster_movement_mode(actor: Dictionary) -> String:
+	return _monster_movement_mode(actor)
+
+
+func _monster_terrain_move_multiplier(actor: Dictionary, district_index: int) -> float:
+	var multipliers: Dictionary = actor.get("terrain_move_multiplier", {}) as Dictionary
+	if district_index < 0 or district_index >= districts.size():
+		return float(multipliers.get("default", 1.0))
+	var terrain := String(districts[district_index].get("terrain", "land"))
+	return maxf(0.2, float(multipliers.get(terrain, multipliers.get("default", 1.0))))
+
+
+func _auto_monster_move_budget(actor: Dictionary, target_index: int) -> float:
+	return float(actor.get("move", MONSTER_RAMPAGE_MOVE_METERS)) * _monster_terrain_move_multiplier(actor, target_index)
+
+
+func _auto_monster_move_damage(actor: Dictionary, movement_mode: String = "") -> int:
+	var mode := movement_mode if movement_mode != "" else _auto_monster_movement_mode(actor)
+	if mode == "fly" or _monster_has_trait(actor, "flying"):
+		return 0
 	return max(_preset_int("monster_damage"), int(actor.get("move_damage", AUTO_MONSTER_DEFAULT_MOVE_DAMAGE)))
 
 
@@ -18703,9 +19016,12 @@ func _damage_districts_on_monster_path(actor: Dictionary, from_position: Vector2
 	return applied
 
 
-func _apply_auto_monster_path_effects(actor: Dictionary, from_position: Vector2, to_position: Vector2, source: String) -> int:
+func _apply_auto_monster_path_effects(actor: Dictionary, from_position: Vector2, to_position: Vector2, source: String, movement_mode: String = "") -> int:
+	if movement_mode == "fly" or _monster_has_trait(actor, "flying"):
+		_log("%s以飞行路线穿越区域，未造成路径碾压破坏。" % String(actor.get("name", "怪兽")))
+		return 0
 	var damage_source := "%s·%s移动碾压" % [String(actor.get("name", "怪兽")), source]
-	var applied_damage := _damage_districts_on_monster_path(actor, from_position, to_position, _auto_monster_move_damage(actor), damage_source)
+	var applied_damage := _damage_districts_on_monster_path(actor, from_position, to_position, _auto_monster_move_damage(actor, movement_mode), damage_source)
 	if applied_damage > 0:
 		_log("%s沿途造成合计%d点区域/城市破坏。" % [damage_source, applied_damage])
 		_add_action_callout(
@@ -19146,6 +19462,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 			"gross": 0,
 			"competition_penalty": 0,
 			"route_penalty": 0,
+			"damage_penalty": 0,
 			"penalty": 0,
 			"net_before_floor": 0,
 			"net": 0,
@@ -19189,7 +19506,8 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 	var gross := bonus + contract_income + product_income + route_income_total + transit_income_total
 	var competition_penalty := competition_matches * CITY_COMPETITION_PENALTY
 	var route_penalty := int(city.get("trade_disrupted_routes", 0)) * TRADE_DISRUPTION_PENALTY
-	var penalties := competition_penalty + route_penalty
+	var damage_penalty := int(districts[district_index].get("damage", 0)) * CITY_DAMAGE_GDP_PENALTY
+	var penalties := competition_penalty + route_penalty + damage_penalty
 	var net_before_floor := gross - penalties
 	return {
 		"bonus": bonus,
@@ -19200,6 +19518,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 		"gross": gross,
 		"competition_penalty": competition_penalty,
 		"route_penalty": route_penalty,
+		"damage_penalty": damage_penalty,
 		"penalty": penalties,
 		"net_before_floor": net_before_floor,
 		"net": max(CITY_MINIMUM_INCOME, net_before_floor),
@@ -19210,7 +19529,7 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 
 
 func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
-	return "生产GDP%d + 消费GDP%d + 过境GDP%d + 加成%d + 合约%d - 竞争%d - 断路%d = %d" % [
+	return "生产GDP%d + 消费GDP%d + 过境GDP%d + 加成%d + 合约%d - 竞争%d - 断路%d - 损伤%d = %d" % [
 		int(breakdown.get("product", 0)),
 		int(breakdown.get("route", 0)),
 		int(breakdown.get("transit", 0)),
@@ -19218,6 +19537,7 @@ func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
 		int(breakdown.get("contract", 0)),
 		int(breakdown.get("competition_penalty", 0)),
 		int(breakdown.get("route_penalty", 0)),
+		int(breakdown.get("damage_penalty", 0)),
 		int(breakdown.get("net", 0)),
 	]
 
@@ -19533,6 +19853,8 @@ func _market_tick() -> void:
 			city["competition_matches"] = competition
 			city["last_income"] = income
 			districts[index]["city"] = city
+			_resolve_city_gdp_derivatives(index, income, "周期%d" % business_cycle_count)
+			city = _district_city(index)
 			if owner >= 0 and owner < players.size():
 				players[owner]["cash"] += income
 				players[owner]["last_cycle_income"] = int(players[owner].get("last_cycle_income", 0)) + income
@@ -19732,6 +20054,7 @@ func _damage_district(index: int, amount: int, source: String) -> void:
 		_apply_trade_disruption_from_destroyed_district(index, source)
 		var city := _district_city(index)
 		if _city_is_active(city):
+			city = _resolve_city_gdp_derivatives_on_destroy(index, city, source)
 			city["active"] = false
 			city["destroyed_at"] = game_time
 			d["city"] = city

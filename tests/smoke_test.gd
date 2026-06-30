@@ -3996,6 +3996,38 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	var city_status_tags := main.call("_city_public_status_tags", city) as Array
 	var city_status_text := String(main.call("_public_status_tag_text", city_status_tags))
 	_expect(city_status_text.contains("城市合约") and city_status_text.contains("流通") and city_status_text.contains("永久收入"), "city contracts, flow, and permanent income appear as unified public status tags")
+
+	var damage_penalty_before := int((main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary).get("damage_penalty", 0))
+	districts = _as_array(main.get("districts"))
+	var original_damage := int((districts[district_index] as Dictionary).get("damage", 0))
+	(districts[district_index] as Dictionary)["damage"] = original_damage + 2
+	main.set("districts", districts)
+	var damage_penalty_after := int((main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary).get("damage_penalty", 0))
+	_expect(damage_penalty_after > damage_penalty_before, "district damage is reflected as a GDP penalty in city income breakdown")
+	districts = _as_array(main.get("districts"))
+	(districts[district_index] as Dictionary)["damage"] = original_damage
+	main.set("districts", districts)
+
+	var gdp_baseline := int(main.call("_city_cycle_income", district_index, int(city.get("competition_matches", 0))))
+	var gdp_card_income_before := int((_as_array(main.get("players"))[0] as Dictionary).get("total_card_income", 0))
+	_set_player_skill(main, 0, 2, "城市买涨1")
+	_clear_player_cooldown(main, 0)
+	main.call("_use_skill", 2)
+	districts = _as_array(main.get("districts"))
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	_expect(_as_array(city.get("gdp_derivatives", [])).size() >= 1, "city long-GDP card attaches an anonymous GDP derivative to the selected city")
+	main.call("_resolve_city_gdp_derivatives", district_index, gdp_baseline + 140, "烟测上涨")
+	var players_after_long := _as_array(main.get("players"))
+	_expect(int((players_after_long[0] as Dictionary).get("total_card_income", 0)) > gdp_card_income_before, "city long-GDP derivative pays out when city GDP rises")
+
+	var short_income_before := int((players_after_long[0] as Dictionary).get("total_card_income", 0))
+	_set_player_skill(main, 0, 2, "城市做空1")
+	_clear_player_cooldown(main, 0)
+	main.call("_use_skill", 2)
+	main.call("_resolve_city_gdp_derivatives", district_index, maxi(0, gdp_baseline - 120), "烟测下跌")
+	var players_after_short := _as_array(main.get("players"))
+	_expect(int((players_after_short[0] as Dictionary).get("total_card_income", 0)) > short_income_before, "city short-GDP derivative pays out when city GDP falls")
+
 	main.call("_age_economic_boons")
 	product_market = main.get("product_market") as Dictionary
 	entry = product_market.get(product_name, {}) as Dictionary
@@ -4044,6 +4076,52 @@ func _verify_monster_resource_and_collision_system(main: Node, district_index: i
 	_expect(int(district_after_drain.get("damage", 0)) == damage_before + 2, "resource drain damages the district/city HP track")
 	_expect(String(district_after_drain.get("last_damage_source", "")).contains("资源吸取"), "district records the latest monster resource damage source")
 	_expect(_map_effects_contain(main, "stomp"), "monster resource damage emits a temporary stomp map animation")
+
+	districts = _as_array(main.get("districts"))
+	var neighbor_index := -1
+	for neighbor_variant in _as_array((districts[district_index] as Dictionary).get("neighbors", [])):
+		var candidate := int(neighbor_variant)
+		if candidate >= 0 and candidate < districts.size() and not bool((districts[candidate] as Dictionary).get("destroyed", false)):
+			neighbor_index = candidate
+			break
+	if neighbor_index >= 0:
+		var from_position := main.call("_district_center", district_index) as Vector2
+		var to_position := main.call("_district_center", neighbor_index) as Vector2
+		var walking_actor := (auto_monsters[0] as Dictionary).duplicate(true)
+		walking_actor["position"] = neighbor_index
+		walking_actor["movement_traits"] = []
+		walking_actor["move_damage"] = 1
+		var path_damage_before := 0
+		for district_variant in _as_array(main.get("districts")):
+			path_damage_before += int((district_variant as Dictionary).get("damage", 0))
+		var walking_damage := int(main.call("_apply_auto_monster_path_effects", walking_actor, from_position, to_position, "烟测步行", "walk"))
+		var path_damage_after_walk := 0
+		for district_variant in _as_array(main.get("districts")):
+			path_damage_after_walk += int((district_variant as Dictionary).get("damage", 0))
+		var flying_actor := walking_actor.duplicate(true)
+		flying_actor["movement_traits"] = ["flying"]
+		var flying_damage := int(main.call("_apply_auto_monster_path_effects", flying_actor, from_position, to_position, "烟测飞行", "fly"))
+		var path_damage_after_fly := 0
+		for district_variant in _as_array(main.get("districts")):
+			path_damage_after_fly += int((district_variant as Dictionary).get("damage", 0))
+		_expect(walking_damage > 0 and path_damage_after_walk > path_damage_before, "walking monster path movement crushes regions")
+		_expect(flying_damage == 0 and path_damage_after_fly == path_damage_after_walk, "flying monster path movement does not crush regions")
+
+	var ocean_index := -1
+	var land_index := -1
+	districts = _as_array(main.get("districts"))
+	for i in range(districts.size()):
+		var terrain := String((districts[i] as Dictionary).get("terrain", "land"))
+		if terrain == "ocean" and ocean_index < 0:
+			ocean_index = i
+		if terrain == "land" and land_index < 0:
+			land_index = i
+	if ocean_index >= 0 and land_index >= 0:
+		var aquatic_actor := {
+			"movement_traits": ["aquatic"],
+			"terrain_move_multiplier": {"ocean": 1.35, "land": 0.72},
+		}
+		_expect(float(main.call("_monster_terrain_move_multiplier", aquatic_actor, ocean_index)) > float(main.call("_monster_terrain_move_multiplier", aquatic_actor, land_index)), "aquatic monster movement is faster in ocean than on land")
 
 	auto_monsters = _as_array(main.get("auto_monsters"))
 	var target_before := auto_monsters[1] as Dictionary
