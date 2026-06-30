@@ -5750,17 +5750,24 @@ func _add_card_development_route_overview(parent: Container) -> void:
 			if samples.size() >= 3:
 				break
 		var sample_text := " / ".join(samples) if not samples.is_empty() else "暂无样例"
+		var min_budget := int(entry.get("budget_min", 0))
+		var max_budget := int(entry.get("budget_max", 0))
+		var min_band := _card_strength_budget_band_text(min_budget) if min_budget > 0 else "暂无"
+		var max_band := _card_strength_budget_band_text(max_budget) if max_budget > 0 else "暂无"
 		_add_menu_info_card(
 			grid,
 			"%s路线" % label,
-			"%d张牌｜均预算%d｜完整梯度%d组\n%s" % [
+			"%d张牌｜强度区间:%s-%s｜均预算%d｜完整梯度%d组\n打法:%s\n反制:%s" % [
 				int(entry.get("card_count", 0)),
+				min_band,
+				max_band,
 				int(entry.get("avg_budget", 0)),
 				int(entry.get("complete_rank_ladders", 0)),
-				_development_route_goal_text(route_id),
+				_development_route_play_pattern_text(route_id),
+				_development_route_counterplay_text(route_id),
 			],
 			_menu_action_accent_for_text(label),
-			"AI偏好%d类｜样例:%s" % [int(preference_coverage.get(route_id, 0)), sample_text]
+			"AI偏好%d类｜预算分布:%s｜样例:%s" % [int(preference_coverage.get(route_id, 0)), _development_route_budget_band_summary(entry), sample_text]
 		)
 
 
@@ -12567,6 +12574,9 @@ func _development_route_archetypes() -> Array:
 			"id": "city_growth",
 			"label": "城市成长",
 			"goal": "建设、升级生产/需求/交通，把稳定GDP变成终局现金。",
+			"play_pattern": "先建稳定城市，再补生产、需求和交通，把GDP按秒滚成现金。",
+			"counterplay": "断商路、做空GDP、诱导怪兽踩城，或用合约改走需求。",
+			"ai_plan_hint": "领先时继续修路/保险；落后时只在安全高GDP区域扩张。",
 			"strategy_labels": ["城市成长"],
 			"required_for_ai_baseline": true,
 		},
@@ -12574,6 +12584,9 @@ func _development_route_archetypes() -> Array:
 			"id": "contract_route",
 			"label": "合约供需",
 			"goal": "用匿名合约改写两地供需，让商路和拒签惩罚都能产生收益。",
+			"play_pattern": "把生产区和需求城接成新商路，用奖惩条款迫使对方签或吃罚。",
+			"counterplay": "识别谁最受益、拒签诱饵、破坏运输区，或抢先替换供需。",
+			"ai_plan_hint": "优先接自己能吃GDP的供需；拒签惩罚足够强时才施压敌城。",
 			"strategy_labels": ["合约博弈"],
 			"required_for_ai_baseline": true,
 		},
@@ -12581,6 +12594,9 @@ func _development_route_archetypes() -> Array:
 			"id": "finance_speculation",
 			"label": "金融投机",
 			"goal": "围绕商品价格或城市GDP的限时涨跌下注，把波动兑现成钱。",
+			"play_pattern": "先读供需、天气、怪兽风险，再用买涨/做空在限定秒数内兑现波动。",
+			"counterplay": "稳价、修路、保险、临时拉需求，或反向打击被下注城市。",
+			"ai_plan_hint": "落后时更敢做空高风险领先城市；领先时用套保和稳定牌降波动。",
 			"strategy_labels": ["金融投机"],
 			"required_for_ai_baseline": true,
 		},
@@ -12588,6 +12604,9 @@ func _development_route_archetypes() -> Array:
 			"id": "monster_pressure",
 			"label": "怪兽压制",
 			"goal": "召唤、升级、诱导怪兽，或用破坏/天气/新闻压低竞争城市GDP。",
+			"play_pattern": "用怪兽资源偏好、新闻热度和天气窗口，把自动怪兽推向高价值竞品城市。",
+			"counterplay": "分散商品、修复区域、诱导怪兽转向，或侦查怪兽资金线索。",
+			"ai_plan_hint": "优先盯商品重叠且GDP高的敌城；己方怪兽受伤暴露时减少乱升级。",
 			"strategy_labels": ["怪兽路线", "怪兽诱导", "战斗破坏", "城市压制", "天气博弈", "新闻信息战"],
 			"required_for_ai_baseline": true,
 		},
@@ -12595,6 +12614,9 @@ func _development_route_archetypes() -> Array:
 			"id": "intel_supply",
 			"label": "情报补给",
 			"goal": "扩大购牌范围、补手牌、追溯匿名归属，降低误判和缺牌风险。",
+			"play_pattern": "扩大购牌半径、补手牌和追溯归属，把匿名行动转成可下注线索。",
+			"counterplay": "制造伪线索、分散出牌条件、避免连续暴露同一商品流动门槛。",
+			"ai_plan_hint": "缺关键牌时补给；终局前把高置信线索转成情报现金。",
 			"strategy_labels": ["情报推理", "补给构筑"],
 			"required_for_ai_baseline": true,
 		},
@@ -12602,6 +12624,9 @@ func _development_route_archetypes() -> Array:
 			"id": "tactical_support",
 			"label": "即时战术",
 			"goal": "补足短线现金、目标、位移或其它临场节奏。",
+			"play_pattern": "用短线效果修补当前局势，不强行形成长期路线。",
+			"counterplay": "观察结算余波和资源门槛，判断它服务哪条隐藏主路线。",
+			"ai_plan_hint": "只作为补位加权，不能压过明确的经济/破坏计划。",
 			"strategy_labels": ["即时战术"],
 			"required_for_ai_baseline": false,
 		},
@@ -12639,6 +12664,30 @@ func _development_route_goal_text(route_id: String) -> String:
 	return "补足当前局势。"
 
 
+func _development_route_play_pattern_text(route_id: String) -> String:
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if String(route.get("id", "")) == route_id:
+			return String(route.get("play_pattern", "按局势选择能转化成现金的行动。"))
+	return "按局势选择能转化成现金的行动。"
+
+
+func _development_route_counterplay_text(route_id: String) -> String:
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if String(route.get("id", "")) == route_id:
+			return String(route.get("counterplay", "观察公开线索，打断它的收益链。"))
+	return "观察公开线索，打断它的收益链。"
+
+
+func _development_route_ai_plan_hint(route_id: String) -> String:
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if String(route.get("id", "")) == route_id:
+			return String(route.get("ai_plan_hint", "按阶段和现金目标调整权重。"))
+	return "按阶段和现金目标调整权重。"
+
+
 func _development_route_audit() -> Array:
 	var route_entries := {}
 	for route_variant in _development_route_archetypes():
@@ -12646,8 +12695,12 @@ func _development_route_audit() -> Array:
 		var route_id := String(route.get("id", "tactical_support"))
 		route["card_count"] = 0
 		route["budget_total"] = 0
+		route["budget_min"] = 999999
+		route["budget_max"] = 0
 		route["avg_budget"] = 0
+		route["budget_band_counts"] = {}
 		route["complete_rank_ladders"] = 0
+		route["rank_counts"] = {}
 		route["sample_cards"] = []
 		route_entries[route_id] = route
 	for card_variant in _card_codex_names("all"):
@@ -12659,8 +12712,19 @@ func _development_route_audit() -> Array:
 		if not route_entries.has(route_id):
 			route_id = "tactical_support"
 		var entry: Dictionary = route_entries[route_id]
+		var budget_points := _card_strength_budget_points(card_name)
 		entry["card_count"] = int(entry.get("card_count", 0)) + 1
-		entry["budget_total"] = int(entry.get("budget_total", 0)) + _card_strength_budget_points(card_name)
+		entry["budget_total"] = int(entry.get("budget_total", 0)) + budget_points
+		entry["budget_min"] = mini(int(entry.get("budget_min", budget_points)), budget_points)
+		entry["budget_max"] = maxi(int(entry.get("budget_max", budget_points)), budget_points)
+		var band_counts: Dictionary = entry.get("budget_band_counts", {})
+		var band := _card_strength_budget_band_text(budget_points)
+		band_counts[band] = int(band_counts.get(band, 0)) + 1
+		entry["budget_band_counts"] = band_counts
+		var rank_counts: Dictionary = entry.get("rank_counts", {})
+		var rank_label := _roman_level(clampi(maxi(1, _skill_rank(card_name)), 1, 4))
+		rank_counts[rank_label] = int(rank_counts.get(rank_label, 0)) + 1
+		entry["rank_counts"] = rank_counts
 		var samples: Array = entry.get("sample_cards", [])
 		if samples.size() < 5:
 			samples.append(card_name)
@@ -12681,8 +12745,51 @@ func _development_route_audit() -> Array:
 		var count := int(entry.get("card_count", 0))
 		if count > 0:
 			entry["avg_budget"] = int(round(float(entry.get("budget_total", 0)) / float(count)))
+		else:
+			entry["budget_min"] = 0
 		result.append(entry)
 	return result
+
+
+func _development_route_budget_band_summary(entry: Dictionary) -> String:
+	var band_counts_variant: Variant = entry.get("budget_band_counts", {})
+	if not (band_counts_variant is Dictionary):
+		return "暂无"
+	var band_counts := band_counts_variant as Dictionary
+	var pieces := []
+	for band in ["基础频用", "效率扩张", "路线核心", "终端压力"]:
+		var count := int(band_counts.get(band, 0))
+		if count > 0:
+			pieces.append("%s×%d" % [band, count])
+	return " / ".join(pieces) if not pieces.is_empty() else "暂无"
+
+
+func _development_route_balance_summary(route_id: String) -> String:
+	for entry_variant in _development_route_audit():
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if String(entry.get("id", "")) != route_id:
+			continue
+		var min_budget := int(entry.get("budget_min", 0))
+		var max_budget := int(entry.get("budget_max", 0))
+		var avg_budget := int(entry.get("avg_budget", 0))
+		var min_band := _card_strength_budget_band_text(min_budget) if min_budget > 0 else "暂无"
+		var max_band := _card_strength_budget_band_text(max_budget) if max_budget > 0 else "暂无"
+		return "强度区间:%s-%s（%d-%d分，均%d）｜预算分布:%s｜打法:%s｜反制:%s" % [
+			min_band,
+			max_band,
+			min_budget,
+			max_budget,
+			avg_budget,
+			_development_route_budget_band_summary(entry),
+			_development_route_play_pattern_text(route_id),
+			_development_route_counterplay_text(route_id),
+		]
+	return "强度区间:暂无｜预算分布:暂无｜打法:%s｜反制:%s" % [
+		_development_route_play_pattern_text(route_id),
+		_development_route_counterplay_text(route_id),
+	]
 
 
 func _ai_development_route_preference_audit() -> Dictionary:

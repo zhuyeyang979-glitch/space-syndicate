@@ -664,7 +664,7 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
 	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven strategy route overview cards")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "AI偏好") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "反制"), "card codex exposes data-driven strategy route overview cards with strength and counterplay windows")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
@@ -3146,6 +3146,16 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 			return false
 		if int(entry.get("budget_total", 0)) <= 0:
 			print("Development route has no strength budget: %s" % route_id)
+			return false
+		if int(entry.get("budget_min", 0)) <= 0 or int(entry.get("budget_max", 0)) < int(entry.get("budget_min", 0)):
+			print("Development route has invalid budget range: %s min=%d max=%d" % [route_id, int(entry.get("budget_min", 0)), int(entry.get("budget_max", 0))])
+			return false
+		if not (entry.get("budget_band_counts", {}) is Dictionary) or (entry.get("budget_band_counts", {}) as Dictionary).is_empty():
+			print("Development route has no budget band distribution: %s" % route_id)
+			return false
+		var balance_summary := String(main.call("_development_route_balance_summary", route_id))
+		if not balance_summary.contains("强度区间") or not balance_summary.contains("预算分布") or not balance_summary.contains("打法") or not balance_summary.contains("反制"):
+			print("Development route balance summary is incomplete: %s -> %s" % [route_id, balance_summary])
 			return false
 		if int(entry.get("complete_rank_ladders", 0)) <= 0:
 			print("Development route has no complete I-IV ladder: %s" % route_id)
