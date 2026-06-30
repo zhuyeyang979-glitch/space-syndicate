@@ -6230,7 +6230,9 @@ func _preview_bestiary_entry(catalog_index: int, refresh: bool = true) -> void:
 	previewed_bestiary_index = _valid_bestiary_index(catalog_index)
 	bestiary_index = previewed_bestiary_index
 	if refresh:
+		var saved_scroll := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else 0
 		_update_bestiary_menu()
+		_queue_restore_menu_scroll(saved_scroll)
 
 
 func _open_bestiary_detail(catalog_index: int) -> void:
@@ -6564,7 +6566,19 @@ func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
 	if refresh:
 		var saved_scroll := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else 0
 		_update_card_codex_menu()
-		call_deferred("_restore_menu_scroll", saved_scroll)
+		_queue_restore_menu_scroll(saved_scroll)
+
+
+func _queue_restore_menu_scroll(value: int) -> void:
+	call_deferred("_restore_menu_scroll", value)
+	_restore_menu_scroll_after_layout(value)
+
+
+func _restore_menu_scroll_after_layout(value: int) -> void:
+	if get_tree() == null:
+		return
+	await get_tree().process_frame
+	_restore_menu_scroll(value)
 
 
 func _restore_menu_scroll(value: int) -> void:
@@ -7077,7 +7091,9 @@ func _preview_product_codex_entry(catalog_index: int, refresh: bool = true) -> v
 	previewed_product_codex_index = _valid_product_codex_index(catalog_index)
 	product_codex_index = previewed_product_codex_index
 	if refresh:
+		var saved_scroll := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else 0
 		_update_product_codex_menu()
+		_queue_restore_menu_scroll(saved_scroll)
 
 
 func _open_product_codex_detail(catalog_index: int) -> void:

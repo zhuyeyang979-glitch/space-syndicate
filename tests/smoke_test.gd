@@ -657,8 +657,14 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and menu_body_label.text.contains("行动概率") and menu_body_label.text.contains("怪兽牌在卡牌图鉴") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster ecology dossier opens as a responsive thumbnail grid focused on ecology while monster cards stay in the card codex")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "monster codex thumbnail page exposes paging and hover preview")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "monster codex hides detail previous/next buttons on the thumbnail page")
+	var bestiary_scroll_before := 48
+	if menu_content_scroll != null:
+		menu_content_scroll.scroll_vertical = bestiary_scroll_before
+		bestiary_scroll_before = int(menu_content_scroll.scroll_vertical)
 	main.call("_preview_bestiary_entry", 0, true)
 	await process_frame
+	await process_frame
+	_expect(menu_content_scroll != null and (bestiary_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == bestiary_scroll_before), "monster codex hover preview preserves scroll position when the page is scrollable")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "HP:") and _container_label_text_contains(menu_preview_box, "行动:"), "monster codex hover preview shows the selected monster details")
 	var monster_detail_event := InputEventMouseButton.new()
 	monster_detail_event.button_index = MOUSE_BUTTON_LEFT
@@ -691,8 +697,14 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "card codex thumbnail page exposes paging and hover preview")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "直接互动路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线") and _container_label_text_contains(menu_preview_box, "覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "支点") and _container_label_text_contains(menu_preview_box, "平衡") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
+	var card_codex_scroll_before := 64
+	if menu_content_scroll != null:
+		menu_content_scroll.scroll_vertical = card_codex_scroll_before
+		card_codex_scroll_before = int(menu_content_scroll.scroll_vertical)
 	main.call("_preview_card_codex_card", "城市融资1", true)
 	await process_frame
+	await process_frame
+	_expect(menu_content_scroll != null and (card_codex_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == card_codex_scroll_before), "card codex hover preview preserves scroll position when the page is scrollable")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "城市融资") and _container_label_text_contains(menu_preview_box, "升级梯度"), "card codex hover preview shows the selected card details")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "预算:") and _container_label_text_contains(menu_preview_box, "主强度"), "card codex hover preview shows the field-derived strength budget")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "路线:城市成长"), "card codex hover preview explains the card's strategic route")
@@ -722,8 +734,14 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "product codex thumbnail page exposes paging and hover preview")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "product codex hides detail previous/next buttons on the thumbnail page")
 	var product_preview_index := int(main.get("product_codex_index"))
+	var product_codex_scroll_before := 56
+	if menu_content_scroll != null:
+		menu_content_scroll.scroll_vertical = product_codex_scroll_before
+		product_codex_scroll_before = int(menu_content_scroll.scroll_vertical)
 	main.call("_preview_product_codex_entry", product_preview_index, true)
 	await process_frame
+	await process_frame
+	_expect(menu_content_scroll != null and (product_codex_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == product_codex_scroll_before), "product codex hover preview preserves scroll position when the page is scrollable")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格梯度"), "product codex hover preview shows the selected product details")
 	var product_detail_event := InputEventMouseButton.new()
 	product_detail_event.button_index = MOUSE_BUTTON_LEFT
