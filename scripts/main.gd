@@ -6570,15 +6570,21 @@ func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
 
 
 func _queue_restore_menu_scroll(value: int) -> void:
+	_restore_menu_scroll(value)
 	call_deferred("_restore_menu_scroll", value)
-	_restore_menu_scroll_after_layout(value)
+	_queue_restore_menu_scroll_on_next_frame(value, 0)
 
 
-func _restore_menu_scroll_after_layout(value: int) -> void:
+func _queue_restore_menu_scroll_on_next_frame(value: int, pass_index: int) -> void:
 	if get_tree() == null:
 		return
-	await get_tree().process_frame
+	get_tree().process_frame.connect(Callable(self, "_restore_menu_scroll_frame_step").bind(value, pass_index), CONNECT_ONE_SHOT)
+
+
+func _restore_menu_scroll_frame_step(value: int, pass_index: int) -> void:
 	_restore_menu_scroll(value)
+	if pass_index < 4:
+		_queue_restore_menu_scroll_on_next_frame(value, pass_index + 1)
 
 
 func _restore_menu_scroll(value: int) -> void:
@@ -6736,7 +6742,7 @@ func _product_codex_first_index_on_page(page_index: int, total_count: int) -> in
 
 func _product_codex_grid_text() -> String:
 	var page_count := _product_codex_grid_page_count(PRODUCT_CATALOG.size())
-	return "商品缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n悬停或单击商品缩略图会在下方显示价格、供需、经济天气和城市线索预览；双击缩略图进入商品详情。进入详情后才使用顶部「上一个/下一个」切换商品，也可以点「返回缩略图」回到图册。" % [
+	return "商品缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n每张缩略图直接显示价格、供需、主策略和操作提示；悬停或单击会在下方展开经济天气、期货仓储、怪兽偏好和城市线索预览。双击缩略图进入商品详情；进入详情后才使用顶部「上一个/下一个」切换商品，也可以点「返回缩略图」回到图册。" % [
 		product_codex_grid_page + 1,
 		page_count,
 		_product_codex_grid_columns(),
@@ -6815,7 +6821,7 @@ func _add_product_codex_thumbnail(parent: Container, catalog_index: int) -> void
 	var profile := _product_profile(product_name)
 	var accent := _product_codex_color(product_name)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(156, 166)
+	panel.custom_minimum_size = Vector2(156, 182)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.tooltip_text = _product_codex_tooltip(catalog_index)
@@ -6862,6 +6868,10 @@ func _add_product_codex_thumbnail(parent: Container, catalog_index: int) -> void
 	], 9, Color("#cbd5e1"))
 	market_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(market_label)
+	var strategy_label := _plain_label(_product_primary_strategy_tag(product_name), 9, Color("#fef08a"))
+	strategy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	strategy_label.tooltip_text = _product_strategy_summary_text(product_name)
+	box.add_child(strategy_label)
 	var hint := _plain_label("悬停预览｜双击详情", 8, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(hint)
@@ -6871,6 +6881,7 @@ func _add_product_codex_hover_preview(parent: Container) -> void:
 	previewed_product_codex_index = _valid_product_codex_index(previewed_product_codex_index)
 	var product_name := String(PRODUCT_CATALOG[previewed_product_codex_index])
 	var preview_panel := PanelContainer.new()
+	preview_panel.name = "ProductCodexHoverPreview"
 	var accent := _product_codex_color(product_name)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#020617").lerp(accent, 0.13)
@@ -6893,6 +6904,17 @@ func _add_product_codex_hover_preview(parent: Container) -> void:
 	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(detail)
+
+
+func _refresh_product_codex_hover_preview_only() -> void:
+	if menu_preview_box == null:
+		return
+	for child in menu_preview_box.get_children():
+		if String(child.name) == "ProductCodexHoverPreview":
+			menu_preview_box.remove_child(child)
+			child.queue_free()
+			break
+	_add_product_codex_hover_preview(menu_preview_box)
 
 
 func _add_product_codex_detail_preview(parent: Container, product_name: String) -> void:
@@ -7037,6 +7059,21 @@ func _product_strategy_scores(product_name: String) -> Dictionary:
 
 
 func _product_strategy_summary_text(product_name: String) -> String:
+	var ranked := _product_strategy_rankings(product_name)
+	if ranked.size() < 2:
+		return "观察0 / 线索0｜建议:观察供需变化。"
+	var first := ranked[0] as Dictionary
+	var second := ranked[1] as Dictionary
+	return "%s%d / %s%d｜建议:%s" % [
+		String(first.get("label", "策略")),
+		int(first.get("score", 0)),
+		String(second.get("label", "次选")),
+		int(second.get("score", 0)),
+		String(first.get("hint", "观察供需变化。")),
+	]
+
+
+func _product_strategy_rankings(product_name: String) -> Array:
 	var scores := _product_strategy_scores(product_name)
 	var ranked := [
 		{"label": "看涨", "score": int(scores.get("long", 0)), "hint": "需求、断路、合约或成长天气正在支撑价格。"},
@@ -7046,14 +7083,21 @@ func _product_strategy_summary_text(product_name: String) -> String:
 		{"label": "怪兽风险", "score": int(scores.get("monster", 0)), "hint": "偏好该商品的怪兽或仓储压力会增加被引怪概率。"},
 	]
 	ranked.sort_custom(Callable(self, "_sort_product_strategy_score_desc"))
-	var first := ranked[0] as Dictionary
-	var second := ranked[1] as Dictionary
-	return "%s%d / %s%d｜建议:%s" % [
-		String(first.get("label", "策略")),
-		int(first.get("score", 0)),
-		String(second.get("label", "次选")),
-		int(second.get("score", 0)),
-		String(first.get("hint", "观察供需变化。")),
+	return ranked
+
+
+func _product_primary_strategy_entry(product_name: String) -> Dictionary:
+	var ranked := _product_strategy_rankings(product_name)
+	if ranked.is_empty():
+		return {"label": "观察", "score": 0, "hint": "观察供需变化。"}
+	return ranked[0] as Dictionary
+
+
+func _product_primary_strategy_tag(product_name: String) -> String:
+	var entry := _product_primary_strategy_entry(product_name)
+	return "主策略:%s%d" % [
+		String(entry.get("label", "观察")),
+		int(entry.get("score", 0)),
 	]
 
 
@@ -7244,8 +7288,12 @@ func _preview_product_codex_entry(catalog_index: int, refresh: bool = true) -> v
 	product_codex_index = previewed_product_codex_index
 	if refresh:
 		var saved_scroll := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else 0
-		_update_product_codex_menu()
-		_queue_restore_menu_scroll(saved_scroll)
+		if not product_codex_show_detail and menu_catalog_mode == "product" and menu_preview_box != null:
+			_refresh_product_codex_hover_preview_only()
+			_queue_restore_menu_scroll(saved_scroll)
+		else:
+			_update_product_codex_menu()
+			_queue_restore_menu_scroll(saved_scroll)
 
 
 func _open_product_codex_detail(catalog_index: int) -> void:
@@ -17614,7 +17662,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -19185,7 +19233,11 @@ func _ai_monster_lure_plan(player_index: int, skill: Dictionary, range_limit: fl
 			if range_limit > 0.0 and distance > range_limit:
 				continue
 			var resource_match := _monster_resource_match_score(actor, city_index)
+			var product_overlap := _ai_city_product_overlap_score(player_index, city_index)
 			var score := attack_value
+			score += product_overlap * 2
+			if product_overlap > 0:
+				score += 42
 			score += resource_match * 70
 			score += int(actor.get("rank", 1)) * 36
 			score += int(actor.get("hp", 0)) / 2
@@ -19214,13 +19266,15 @@ func _ai_monster_lure_plan(player_index: int, skill: Dictionary, range_limit: fl
 				"score": maxi(1, score),
 				"attack_value": attack_value,
 				"resource_match": resource_match,
+				"product_overlap": product_overlap,
 				"distance_m": int(round(distance)),
 				"strategic_role": "monster_lure",
-				"reason": "诱导怪%d·%s压向%s｜城市价值%d｜资源吻合%d｜距离%s" % [
+				"reason": "诱导怪%d·%s压向%s｜城市价值%d｜竞品压力%d｜资源吻合%d｜距离%s" % [
 					slot + 1,
 					String(actor.get("name", "怪兽")),
 					String(districts[city_index].get("name", "竞争城市")),
 					attack_value,
+					product_overlap,
 					resource_match,
 					_meters_text(distance),
 				],
@@ -20102,7 +20156,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata

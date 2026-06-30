@@ -730,8 +730,9 @@ func _run() -> void:
 	main.call("_open_product_codex_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴", "product codex opens from the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入商品详情"), "product codex opens as a responsive thumbnail grid")
+	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("主策略") and menu_body_label.text.contains("双击缩略图进入商品详情"), "product codex opens as a responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "product codex thumbnail page exposes paging and hover preview")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主策略:"), "product thumbnails expose a primary strategy tag before opening detail")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "product codex hides detail previous/next buttons on the thumbnail page")
 	var product_preview_index := int(main.get("product_codex_index"))
 	var product_codex_scroll_before := 56
@@ -741,7 +742,8 @@ func _run() -> void:
 	main.call("_preview_product_codex_entry", product_preview_index, true)
 	await process_frame
 	await process_frame
-	_expect(menu_content_scroll != null and (product_codex_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == product_codex_scroll_before), "product codex hover preview preserves scroll position when the page is scrollable")
+	var product_codex_scroll_after := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else -1
+	_expect(menu_content_scroll != null and (product_codex_scroll_before <= 0 or product_codex_scroll_after == product_codex_scroll_before), "product codex hover preview preserves scroll position when the page is scrollable")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格梯度") and _container_label_text_contains(menu_preview_box, "策略:"), "product codex hover preview shows the selected product strategy details")
 	var product_detail_event := InputEventMouseButton.new()
 	product_detail_event.button_index = MOUSE_BUTTON_LEFT
@@ -2310,6 +2312,8 @@ func _verify_ai_monster_lure_strategy(main: Node) -> bool:
 			failures.append("role=%s" % String(context.get("strategic_role", "")))
 		if int(context.get("resource_match", 0)) <= 0:
 			failures.append("resource_match=%d" % int(context.get("resource_match", 0)))
+		if int(context.get("product_overlap", 0)) <= 0:
+			failures.append("product_overlap=%d" % int(context.get("product_overlap", 0)))
 		if int(context.get("attack_value", 0)) <= 0:
 			failures.append("attack_value=%d" % int(context.get("attack_value", 0)))
 		ok = ok and failures.is_empty()
@@ -7017,10 +7021,17 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 
 	var damage_penalty_before := int((main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary).get("damage_penalty", 0))
 	var gdp_breakdown_before_damage := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
+	districts = _as_array(main.get("districts"))
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	city["gdp_history"] = []
+	city["last_gdp"] = 0
+	city["last_gdp_delta"] = 0
+	(districts[district_index] as Dictionary)["city"] = city
+	main.set("districts", districts)
 	main.call("_record_city_gdp_snapshot", district_index, int(gdp_breakdown_before_damage.get("net", 0)), gdp_breakdown_before_damage, "烟测受损前")
 	districts = _as_array(main.get("districts"))
 	var original_damage := int((districts[district_index] as Dictionary).get("damage", 0))
-	(districts[district_index] as Dictionary)["damage"] = original_damage + 2
+	(districts[district_index] as Dictionary)["damage"] = original_damage + 6
 	main.set("districts", districts)
 	var gdp_breakdown_after_damage := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
 	var damage_penalty_after := int(gdp_breakdown_after_damage.get("damage_penalty", 0))
