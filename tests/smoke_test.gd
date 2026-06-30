@@ -1817,6 +1817,59 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 		var route_play_memory := _ai_memory_has_kind_with_metadata(players_after_queue, 1, "匿名出牌", "route_plan_stage", "create_demand")
 		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and saw_route_contract and not play_choice.is_empty() and route_play_queued and route_play_memory
 		ok = first_route_ok and ok
+		var inventory_players := _as_array(main.get("players")).duplicate(true)
+		var inventory_player := inventory_players[1] as Dictionary
+		var blocked_growth_a := main.call("_make_skill", "城市融资1") as Dictionary
+		blocked_growth_a["play_product"] = "离岸水晶"
+		blocked_growth_a["play_flow_required"] = 4
+		var blocked_growth_b := main.call("_make_skill", "需求改造1") as Dictionary
+		blocked_growth_b["play_product"] = "深海菌毯"
+		blocked_growth_b["play_flow_required"] = 4
+		inventory_player["slots"] = [blocked_growth_a, blocked_growth_b]
+		inventory_player["cash"] = 5200
+		inventory_player["action_cooldown"] = 0.0
+		inventory_players[1] = inventory_player
+		main.set("players", inventory_players)
+		var inventory_districts := _as_array(main.get("districts")).duplicate(true)
+		var inventory_district := inventory_districts[seed_index] as Dictionary
+		inventory_district["card_choices"] = ["城市融资1", "远程补给链1"]
+		inventory_districts[seed_index] = inventory_district
+		main.set("districts", inventory_districts)
+		var inventory_candidates := main.call("_ai_card_buy_candidates", 1) as Array
+		var saw_inventory_bonus := false
+		for candidate_variant in inventory_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("card_name", "")) == "城市融资1" and int(candidate.get("route_hand_total", 0)) >= 2 and int(candidate.get("route_hand_blocked", 0)) >= 2 and int(candidate.get("route_inventory_bonus", 0)) > 0 and int(candidate.get("route_inventory_penalty", 0)) == 0:
+				saw_inventory_bonus = true
+				break
+		var blocked_intel_a := main.call("_make_skill", "业主透镜1") as Dictionary
+		blocked_intel_a["play_product"] = "轨迹墨水"
+		blocked_intel_a["play_flow_required"] = 4
+		var blocked_intel_b := main.call("_make_skill", "密约回溯1") as Dictionary
+		blocked_intel_b["play_product"] = "轨迹墨水"
+		blocked_intel_b["play_flow_required"] = 4
+		inventory_players = _as_array(main.get("players")).duplicate(true)
+		inventory_player = inventory_players[1] as Dictionary
+		inventory_player["slots"] = [blocked_intel_a, blocked_intel_b]
+		inventory_players[1] = inventory_player
+		main.set("players", inventory_players)
+		inventory_districts = _as_array(main.get("districts")).duplicate(true)
+		inventory_district = inventory_districts[seed_index] as Dictionary
+		inventory_district["card_choices"] = ["远程补给链1"]
+		inventory_districts[seed_index] = inventory_district
+		main.set("districts", inventory_districts)
+		inventory_candidates = main.call("_ai_card_buy_candidates", 1) as Array
+		var saw_inventory_penalty := false
+		for candidate_variant in inventory_candidates:
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			if String(candidate.get("card_name", "")) == "远程补给链1" and int(candidate.get("route_hand_blocked", 0)) >= 2 and int(candidate.get("route_inventory_penalty", 0)) > 0:
+				saw_inventory_penalty = true
+				break
+		ok = ok and saw_inventory_bonus and saw_inventory_penalty
 
 	var restore_mid := int(main.call("_apply_run_state", saved))
 	ok = ok and restore_mid == OK

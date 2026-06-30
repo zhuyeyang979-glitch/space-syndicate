@@ -14510,7 +14510,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -15599,6 +15599,77 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 	return max(0, bonus)
 
 
+func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary:
+	var result := {
+		"total": 0,
+		"playable": 0,
+		"blocked_flow": 0,
+		"blocked_cash": 0,
+		"blocked_gap": 0,
+	}
+	if player_index < 0 or player_index >= players.size() or route_id == "":
+		return result
+	var player: Dictionary = players[player_index]
+	var slots_variant: Variant = player.get("slots", [])
+	if not (slots_variant is Array):
+		return result
+	var cash := int(player.get("cash", 0))
+	for slot_variant in (slots_variant as Array):
+		if not (slot_variant is Dictionary):
+			continue
+		var skill := slot_variant as Dictionary
+		if bool(skill.get("queued_for_resolution", false)) or float(skill.get("lock_left", 0.0)) > 0.0:
+			continue
+		if _card_development_route_id(skill) != route_id:
+			continue
+		result["total"] = int(result.get("total", 0)) + 1
+		var required := _skill_play_flow_required(skill, player_index)
+		var product_name := _ai_product_for_skill(player_index, skill)
+		var available := _player_product_flow(player_index, product_name)
+		var cash_cost := _skill_play_cash_cost(skill)
+		if required <= available and cash >= cash_cost:
+			result["playable"] = int(result.get("playable", 0)) + 1
+		else:
+			if required > available:
+				result["blocked_flow"] = int(result.get("blocked_flow", 0)) + 1
+				result["blocked_gap"] = int(result.get("blocked_gap", 0)) + required - available
+			if cash < cash_cost:
+				result["blocked_cash"] = int(result.get("blocked_cash", 0)) + 1
+	return result
+
+
+func _ai_route_inventory_adjustment(player_index: int, route_id: String, required: int, available: int, counted_hand: int, route_bonus: int, development_route_bonus: int) -> Dictionary:
+	var inventory := _ai_route_hand_inventory(player_index, route_id)
+	var total := int(inventory.get("total", 0))
+	var playable := int(inventory.get("playable", 0))
+	var blocked_flow := int(inventory.get("blocked_flow", 0))
+	var blocked_gap := int(inventory.get("blocked_gap", 0))
+	var adjustment := {
+		"bonus": 0,
+		"penalty": 0,
+		"total": total,
+		"playable": playable,
+		"blocked_flow": blocked_flow,
+		"blocked_gap": blocked_gap,
+	}
+	var candidate_playable := required <= 0 or available >= required
+	if candidate_playable:
+		if total > 0 and playable <= 0:
+			adjustment["bonus"] = int(adjustment.get("bonus", 0)) + 42
+		if blocked_flow > 0:
+			adjustment["bonus"] = int(adjustment.get("bonus", 0)) + mini(64, 18 + blocked_gap * 10)
+		if route_bonus > 0 or development_route_bonus > 0:
+			adjustment["bonus"] = int(adjustment.get("bonus", 0)) + 18
+	else:
+		if blocked_flow > 0:
+			adjustment["penalty"] = int(adjustment.get("penalty", 0)) + 46 + blocked_flow * 28 + blocked_gap * 12 + counted_hand * 8
+		elif total >= 2:
+			adjustment["penalty"] = int(adjustment.get("penalty", 0)) + 30 + total * 16
+		if counted_hand >= PLAYER_HAND_LIMIT - 1:
+			adjustment["penalty"] = int(adjustment.get("penalty", 0)) + 36
+	return adjustment
+
+
 func _ai_district_focus_score(player_index: int, district_index: int) -> int:
 	var focus := _ai_focus_product(player_index)
 	if focus == "" or district_index < 0 or district_index >= districts.size():
@@ -16389,6 +16460,12 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				target_owner = int(city.get("owner", -1))
 			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
 			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
+			var route_inventory := _ai_route_inventory_adjustment(player_index, development_route, required, available, counted_hand, route_bonus, development_route_bonus)
+			var route_inventory_bonus := int(route_inventory.get("bonus", 0))
+			var route_inventory_penalty := int(route_inventory.get("penalty", 0))
+			var route_hand_total := int(route_inventory.get("total", 0))
+			var route_hand_playable := int(route_inventory.get("playable", 0))
+			var route_hand_blocked := int(route_inventory.get("blocked_flow", 0))
 			var learning_bonus := clampi(
 				_ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
 				+ _ai_development_route_learning_bonus(player_index, development_route),
@@ -16415,6 +16492,10 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score += route_bonus
 			if development_route_bonus != 0:
 				score += development_route_bonus
+			if route_inventory_bonus != 0:
+				score += route_inventory_bonus
+			if route_inventory_penalty != 0:
+				score -= route_inventory_penalty
 			if generic_bonus != 0:
 				score += generic_bonus
 			if phase_bonus != 0:
@@ -16448,6 +16529,11 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"development_route_label": _development_route_label(development_route),
 				"development_route_bias": development_route_bias,
 				"development_route_bonus": development_route_bonus,
+				"route_inventory_bonus": route_inventory_bonus,
+				"route_inventory_penalty": route_inventory_penalty,
+				"route_hand_total": route_hand_total,
+				"route_hand_playable": route_hand_playable,
+				"route_hand_blocked": route_hand_blocked,
 				"game_phase": phase,
 				"competitive_posture": posture,
 				"score_gap_to_leader": int(phase_info.get("gap", 0)),
@@ -16461,13 +16547,18 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"discard_slot": discard_slot,
 				"discard_keep_value": discard_keep_value,
 				"counted_hand": counted_hand,
-				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜阶段%s/%s+%d｜策略%s+%d｜商品路线%s/%s+%d｜发展%s+%d｜学习%d｜探索率%.0f%%" % [
+				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜路线库存%d/%d/%d +%d/-%d｜阶段%s/%s+%d｜策略%s+%d｜商品路线%s/%s+%d｜发展%s+%d｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
 					price,
 					available,
 					required,
 					_signed_int_text(playability_bonus),
 					hand_pressure_penalty,
+					route_hand_total,
+					route_hand_playable,
+					route_hand_blocked,
+					route_inventory_bonus,
+					route_inventory_penalty,
 					phase_label,
 					posture_label,
 					phase_bonus,
@@ -16528,7 +16619,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_slot": target_slot,
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "product", "attack_value", "resource_match", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -16622,6 +16713,11 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 				"development_route_label": String(buy_choice.get("development_route_label", "")),
 				"development_route_bias": float(buy_choice.get("development_route_bias", 1.0)),
 				"development_route_bonus": int(buy_choice.get("development_route_bonus", 0)),
+				"route_inventory_bonus": int(buy_choice.get("route_inventory_bonus", 0)),
+				"route_inventory_penalty": int(buy_choice.get("route_inventory_penalty", 0)),
+				"route_hand_total": int(buy_choice.get("route_hand_total", 0)),
+				"route_hand_playable": int(buy_choice.get("route_hand_playable", 0)),
+				"route_hand_blocked": int(buy_choice.get("route_hand_blocked", 0)),
 				"game_phase": String(buy_choice.get("game_phase", "")),
 				"competitive_posture": String(buy_choice.get("competitive_posture", "")),
 				"score_gap_to_leader": int(buy_choice.get("score_gap_to_leader", 0)),
