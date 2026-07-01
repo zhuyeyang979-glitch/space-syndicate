@@ -3,6 +3,39 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜区域牌架加入商店状态筹码
+
+### 本轮实现
+
+- 区域购牌侧边抽屉新增 `DistrictSupplyMarketStatusRail`：
+  - `可买`：当前窗口可以直接购买的牌；
+  - `弃牌`：买入会进入私密弃牌选择的牌；
+  - `仅看`：可以浏览但当前窗口不可购买的牌；
+  - `受阻`：资金不足、已满级或其他状态暂时不能接收的牌；
+  - `升级`：重复获得会推进罗马等级的牌。
+- 单张区域市场卡新增 `DistrictSupplyMarketCardStateBand`，把购买状态做成小色条和短标签，不再要求玩家读长句。
+- 区域牌架短文案改成 `市场牌架｜悬停看｜双击买`，长规则继续留在 tooltip 和规则分支。
+- `tests/smoke_test.gd` 新增运行时验证：双击区域后必须出现 deckbuilder 式市场状态筹码。
+- 扩充 `docs/reference_ui_notes.md`：
+  - 把 `UiCard` 标成下一阶段卡牌交互的优先参考；
+  - 纳入 Balatro、Hearthstone、NueDeck、MTG Arena 类 UI、CardHouse、Cyanilux/Cards 等卡牌手感参考；
+  - 纳入 DisasterCity、Kaiju Response Team、Kaiju Homecoming、destruct-o 等巨兽/城市破坏参考；
+  - 纳入 Solar System Demo、chunked LOD planet、ProceduralPlanetGodot、Planet-Generator、Tiny Pixel Planets 等行星/科幻空间参考。
+
+### 设计意图
+
+- 购牌窗口应该像电子桌游/roguelike deckbuilder 的商店牌架：先看牌面和状态筹码，再决定买不买。
+- 玩家打开区域时需要立刻知道“现在能买什么”，而不是从段落说明里找答案。
+- 手牌上限、私密弃牌、怪兽范围锁定这些规则都应该通过状态标签表达，不常驻长文本。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+
 ## 2026-07-01｜顶部匿名牌轨增加空状态薄轨
 
 ### 本轮实现

@@ -1554,6 +1554,7 @@ var district_supply_overlay: Control
 var district_supply_title_label: Label
 var district_supply_access_label: Label
 var district_supply_chip_row: HBoxContainer
+var district_supply_state_rail: HFlowContainer
 var district_supply_list_box: HFlowContainer
 var district_supply_preview_box: VBoxContainer
 var district_supply_open_district := -1
@@ -3596,7 +3597,7 @@ func _build_district_supply_overlay() -> void:
 	close_button.pressed.connect(Callable(self, "_close_district_supply_overlay"))
 	top.add_child(close_button)
 
-	district_supply_access_label = _plain_label("市场牌板｜单击预览｜双击购买｜资格已锁", 10, Color("#bae6fd"))
+	district_supply_access_label = _plain_label("市场牌架｜悬停看｜双击买", 10, Color("#bae6fd"))
 	district_supply_access_label.name = "DistrictSupplyRuleStrip"
 	district_supply_access_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	shelf_stack.add_child(district_supply_access_label)
@@ -3606,6 +3607,13 @@ func _build_district_supply_overlay() -> void:
 	district_supply_chip_row.add_theme_constant_override("separation", 5)
 	district_supply_chip_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	shelf_stack.add_child(district_supply_chip_row)
+
+	district_supply_state_rail = HFlowContainer.new()
+	district_supply_state_rail.name = "DistrictSupplyMarketStatusRail"
+	district_supply_state_rail.add_theme_constant_override("h_separation", 5)
+	district_supply_state_rail.add_theme_constant_override("v_separation", 3)
+	district_supply_state_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shelf_stack.add_child(district_supply_state_rail)
 
 	var drawer_stack := HBoxContainer.new()
 	drawer_stack.name = "DistrictSupplyDrawerStack"
@@ -24925,8 +24933,8 @@ func _refresh_district_supply_overlay() -> void:
 		var access_kind := _district_card_access_kind(district_supply_open_district, selected_player)
 		var can_buy := _can_buy_card_from_district(district_supply_open_district, selected_player)
 		var choices: Array = district.get("card_choices", [])
-		district_supply_access_label.text = "侧边牌架｜市场格｜悬停预览｜双击购买"
-		district_supply_access_label.tooltip_text = "侧边牌架 %d张｜%s｜%s\n打开时锁定价格和购买资格；怪兽之后离开不影响这次市场。单击地图不会关闭，双击其他区域会切换牌架。" % [
+		district_supply_access_label.text = "市场牌架｜悬停看｜双击买"
+		district_supply_access_label.tooltip_text = "区域牌架 %d张｜%s｜%s\n打开时锁定价格和购买资格；怪兽之后离开不影响这次市场。单击地图不会关闭，双击其他区域会切换牌架。" % [
 			choices.size(),
 			"可购买" if can_buy else "仅浏览",
 			_district_card_access_text_for_kind(access_kind, district_supply_open_district, selected_player),
@@ -24934,6 +24942,9 @@ func _refresh_district_supply_overlay() -> void:
 	if district_supply_chip_row != null:
 		_clear_children(district_supply_chip_row)
 		_add_district_supply_header_chips(district_supply_chip_row, district_supply_open_district, selected_player)
+	if district_supply_state_rail != null:
+		_clear_children(district_supply_state_rail)
+		_add_district_supply_market_status_rail(district_supply_state_rail, district_supply_open_district, selected_player)
 	if district_supply_list_box != null:
 		_clear_children(district_supply_list_box)
 		var choices: Array = district.get("card_choices", [])
@@ -25027,6 +25038,57 @@ func _add_district_supply_header_chips(parent: Container, district_index: int, p
 		for product_variant in products:
 			product_labels.append(String(product_variant))
 		parent.add_child(_track_status_badge("◇ %s" % _short_card_text(" / ".join(product_labels), 16), Color("#99f6e4"), Color("#134e4a")))
+
+
+func _district_supply_market_summary(district_index: int, player_index: int) -> Dictionary:
+	var summary := {
+		"total": 0,
+		"buy_now": 0,
+		"discard": 0,
+		"browse": 0,
+		"blocked": 0,
+		"upgrade": 0,
+	}
+	if district_index < 0 or district_index >= districts.size():
+		return summary
+	var district: Dictionary = districts[district_index]
+	var choices: Array = district.get("card_choices", [])
+	for card_name_variant in choices:
+		var card_name := String(card_name_variant)
+		if not _skill_exists(card_name):
+			continue
+		summary["total"] = int(summary.get("total", 0)) + 1
+		if _is_upgrade_card(card_name):
+			summary["upgrade"] = int(summary.get("upgrade", 0)) + 1
+		var state := _district_supply_purchase_state(district_index, card_name, player_index)
+		if bool(state.get("actionable", false)):
+			if bool(state.get("requires_discard", false)):
+				summary["discard"] = int(summary.get("discard", 0)) + 1
+			else:
+				summary["buy_now"] = int(summary.get("buy_now", 0)) + 1
+		elif String(state.get("label", "")) == "仅浏览":
+			summary["browse"] = int(summary.get("browse", 0)) + 1
+		else:
+			summary["blocked"] = int(summary.get("blocked", 0)) + 1
+	return summary
+
+
+func _add_district_supply_summary_chip(parent: Container, text: String, value: int, accent: Color, tooltip: String, active: bool = true) -> void:
+	var bg := Color("#020617").lerp(accent, 0.24 if active else 0.10)
+	var chip := _track_status_badge("%s %d" % [text, value], accent.lightened(0.12) if active else Color("#94a3b8"), bg)
+	chip.name = "DistrictSupplyMarketSummaryChip"
+	chip.tooltip_text = tooltip
+	parent.add_child(chip)
+
+
+func _add_district_supply_market_status_rail(parent: Container, district_index: int, player_index: int) -> void:
+	var summary := _district_supply_market_summary(district_index, player_index)
+	_add_district_supply_summary_chip(parent, "可买", int(summary.get("buy_now", 0)), Color("#4ade80"), "现在可以直接购买的牌。", int(summary.get("buy_now", 0)) > 0)
+	_add_district_supply_summary_chip(parent, "弃牌", int(summary.get("discard", 0)), Color("#facc15"), "买入前会进入私密弃牌选择。", int(summary.get("discard", 0)) > 0)
+	_add_district_supply_summary_chip(parent, "仅看", int(summary.get("browse", 0)), Color("#93c5fd"), "可以查看，但这次窗口不能购买。", int(summary.get("browse", 0)) > 0)
+	_add_district_supply_summary_chip(parent, "受阻", int(summary.get("blocked", 0)), Color("#fb7185"), "资金不足、已满级或其他状态导致暂时不能接收。", int(summary.get("blocked", 0)) > 0)
+	if int(summary.get("upgrade", 0)) > 0:
+		_add_district_supply_summary_chip(parent, "升级", int(summary.get("upgrade", 0)), Color("#c084fc"), "重复获得会升级到下一罗马等级。")
 
 
 func _district_supply_access_short_label(access_kind: String) -> String:
@@ -25235,6 +25297,22 @@ func _add_district_supply_card_button(parent: Container, district_index: int, ca
 	body.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	body.tooltip_text = facts
 	box.add_child(body)
+	var state_band := HBoxContainer.new()
+	state_band.name = "DistrictSupplyMarketCardStateBand"
+	state_band.add_theme_constant_override("separation", 4)
+	state_band.tooltip_text = String(state.get("detail", ""))
+	box.add_child(state_band)
+	var state_signal := ColorRect.new()
+	state_signal.name = "DistrictSupplyMarketCardStateSignal"
+	state_signal.color = state.get("accent", theme_color) as Color
+	state_signal.custom_minimum_size = Vector2(7, 12)
+	state_band.add_child(state_signal)
+	var state_text := _plain_label(_short_card_text(status_label, 12), 8, state.get("accent", Color("#94a3b8")) as Color)
+	state_text.name = "DistrictSupplyMarketCardStateLabel"
+	state_text.autowrap_mode = TextServer.AUTOWRAP_OFF
+	state_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	state_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	state_band.add_child(state_text)
 	var tick := ColorRect.new()
 	tick.name = "DistrictSupplyMarketCardColorTick"
 	tick.color = state.get("accent", theme_color) as Color
