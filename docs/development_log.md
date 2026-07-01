@@ -4403,3 +4403,22 @@
 - `tests/smoke_test.gd` 完整通过。
 - Godot 普通有头启动通过：Vulkan / NVIDIA GeForce RTX 4080 SUPER，自动退出无报错。
 - `git diff --check` 通过；仅有 LF/CRLF 提示。
+
+## 2026-07-01｜固定主行动条与二号屏有头测试约定
+
+- 继续按 Terraforming Mars 电子桌游的“当前行动清楚、次级信息折叠”方向压缩主牌桌：
+  - `TableGoalPrompt` 从行动托盘滚动内容移到托盘固定顶部。
+  - 主提示改成单行固定行动条：左侧一句“目标提示｜下一步”，中间 2-3 个状态筹码，右侧只保留一个主按钮。
+  - 开局时玩家不滚动就能看到“在选区首召”，建城/买牌/出牌也会在同一位置替换为当前主动作。
+  - `MainActionDock` 按钮与标题缩小一档，保留四个快捷动作，但减少底部空间占用。
+  - 次级面板继续放在滚动区，避免合约、竞猜、竞价、目标选择把主按钮挤出首屏。
+- 有头测试约定：
+  - 当前检测到二号屏为 `DISPLAY2`，坐标约 `X=-1267, Y=-2160, 1280×720`。
+  - 后续有头 Godot 快照优先使用 `--position -1247,-2140 --resolution 1200x680`，尽量不占用主屏；二号屏不可用时再回退主屏。
+
+### 本轮验证
+
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_snapshot_capture.gd` 二号屏有头通过，并重新生成 4 张 UI 快照。

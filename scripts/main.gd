@@ -18695,54 +18695,58 @@ func _add_table_goal_prompt(parent: Container, player_index: int) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "TableGoalPrompt"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 58)
-	panel.tooltip_text = "牌桌只提示当前一步；完整说明在「游戏规则」和「经济总览」。"
+	panel.custom_minimum_size = Vector2(0, 42)
+	panel.tooltip_text = "固定行动条：只提示当前一步；完整说明在「游戏规则」和「经济总览」。"
 	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 10))
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 6)
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 5)
 	panel.add_child(margin)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
 
 	var top_row := HBoxContainer.new()
 	top_row.name = "TableGoalPrimaryActionRail"
-	top_row.add_theme_constant_override("separation", 8)
-	box.add_child(top_row)
-	var action := _plain_label("目标提示｜下一步｜%s" % body, 10, Color("#f8fafc"))
-	action.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	top_row.add_theme_constant_override("separation", 6)
+	margin.add_child(top_row)
+
+	var action := _plain_label("目标提示｜下一步｜%s" % body, 9, Color("#f8fafc"))
+	action.autowrap_mode = TextServer.AUTOWRAP_OFF
+	action.clip_text = true
+	action.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	action.tooltip_text = body
 	top_row.add_child(action)
+
+	var rail := HFlowContainer.new()
+	rail.name = "TableGoalPromptChipRail"
+	rail.custom_minimum_size = Vector2(104, 0)
+	rail.size_flags_horizontal = Control.SIZE_SHRINK_END
+	rail.add_theme_constant_override("h_separation", 4)
+	rail.add_theme_constant_override("v_separation", 2)
+	top_row.add_child(rail)
+	var chip_entries := _goal_hint_chip_entries(body)
+	for i in range(mini(3, chip_entries.size())):
+		var entry: Dictionary = chip_entries[i]
+		var chip_accent: Color = entry.get("accent", accent)
+		var chip := _track_status_badge(String(entry.get("text", "")), chip_accent.lightened(0.18), Color("#020617").lerp(chip_accent, 0.22))
+		chip.tooltip_text = body
+		rail.add_child(chip)
+
 	var button := Button.new()
 	button.name = "TableGoalPrimaryActionButton"
 	button.text = String(primary_action.get("label", "行动"))
 	button.tooltip_text = String(primary_action.get("detail", body))
 	button.disabled = bool(primary_action.get("disabled", false))
-	button.custom_minimum_size = Vector2(118, 28)
+	button.custom_minimum_size = Vector2(108, 28)
 	_style_menu_button(button, primary_action.get("accent", accent) as Color, not button.disabled)
 	var target := primary_action.get("target", Callable()) as Callable
 	if not button.disabled and target.is_valid():
 		button.pressed.connect(target)
 	top_row.add_child(button)
-
-	var rail := HFlowContainer.new()
-	rail.name = "TableGoalPromptChipRail"
-	rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rail.add_theme_constant_override("h_separation", 5)
-	rail.add_theme_constant_override("v_separation", 3)
-	box.add_child(rail)
-	for chip_variant in _goal_hint_chip_entries(body):
-		var entry: Dictionary = chip_variant
-		var chip_accent: Color = entry.get("accent", accent)
-		var chip := _track_status_badge(String(entry.get("text", "")), chip_accent.lightened(0.18), Color("#020617").lerp(chip_accent, 0.22))
-		chip.tooltip_text = body
-		rail.add_child(chip)
 
 
 func _opening_guide_visible(player_index: int) -> bool:
@@ -20254,7 +20258,6 @@ func _refresh_player_panel() -> void:
 	tray_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	table_rail.add_child(tray_column)
 	var action_tray := _add_player_action_tray(tray_column, selected_player)
-	_add_table_goal_prompt(action_tray, selected_player)
 	_add_selected_district_action_panel(action_tray, selected_player)
 	_add_opening_guide_panel(action_tray, selected_player)
 	_add_pending_discard_purchase_panel(action_tray, selected_player)
@@ -20568,9 +20571,9 @@ func _add_main_action_dock_button(parent: Container, entry: Dictionary) -> void:
 	button.tooltip_text = String(entry.get("tooltip", ""))
 	button.disabled = disabled
 	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.add_theme_font_size_override("font_size", 9)
+	button.add_theme_font_size_override("font_size", 8)
 	_style_menu_button(button, accent, not disabled)
-	button.custom_minimum_size = Vector2(70, 42)
+	button.custom_minimum_size = Vector2(64, 36)
 	if not disabled:
 		var target := entry.get("target", Callable()) as Callable
 		if target.is_valid():
@@ -20587,19 +20590,19 @@ func _add_main_action_dock(parent: Container, player_index: int) -> void:
 	parent.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 6)
-	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_top", 4)
 	margin.add_theme_constant_override("margin_right", 6)
-	margin.add_theme_constant_override("margin_bottom", 5)
+	margin.add_theme_constant_override("margin_bottom", 4)
 	panel.add_child(margin)
 	var row := HBoxContainer.new()
 	row.name = "MainActionDockRow"
 	row.add_theme_constant_override("separation", 5)
 	margin.add_child(row)
-	var title := _plain_label("快捷\n行动", 9, Color("#fef3c7"))
+	var title := _plain_label("快捷\n行动", 8, Color("#fef3c7"))
 	title.name = "MainActionDockTitle"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.custom_minimum_size = Vector2(42, 0)
+	title.custom_minimum_size = Vector2(36, 0)
 	title.tooltip_text = "先做这四件事：建城、看牌、买牌、出牌。"
 	row.add_child(title)
 	for entry_variant in _main_action_dock_entries(player_index):
@@ -20610,7 +20613,7 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 166)
+	panel.custom_minimum_size = Vector2(0, 158)
 	panel.tooltip_text = "当前行动栏：主动作优先，其它模块用筹码定位；不遮住星球和手牌。"
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#06111f")
@@ -20628,6 +20631,7 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	panel.add_child(margin)
 
 	var box := VBoxContainer.new()
+	box.name = "PlayerActionTrayStack"
 	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
 
@@ -20648,11 +20652,12 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	tray_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	tray_hint.tooltip_text = "像电子桌游的行动区：先看筹码，再点下方动作。"
 	header.add_child(tray_hint)
+	_add_table_goal_prompt(box, player_index)
 	_add_action_tray_module_rail(box, player_index)
 	_add_main_action_dock(box, player_index)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 124)
+	scroll.custom_minimum_size = Vector2(0, 94)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
