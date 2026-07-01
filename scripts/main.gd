@@ -1897,15 +1897,15 @@ func _build_layout() -> void:
 
 	player_panel_scroll = ScrollContainer.new()
 	player_panel_scroll.name = "TableEdgeHandViewport"
-	player_panel_scroll.custom_minimum_size = Vector2(0, 318)
+	player_panel_scroll.custom_minimum_size = Vector2(0, 300)
 	player_panel_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	player_panel_scroll.size_flags_vertical = Control.SIZE_SHRINK_END
 	player_panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	player_panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	player_panel_scroll.follow_focus = false
-	player_panel_scroll.tooltip_text = "桌边牌架固定在地图下方；首屏优先看到自己的手牌，资源筹码和更多操作只滚动牌架，不会把中央星球挤出屏幕。"
+	player_panel_scroll.tooltip_text = "桌边玩家板固定在地图下方；首屏先扫资源筹码、手牌和行动托盘，更多细节只滚动玩家板，不挤走中央星球。"
 	body.add_child(player_panel_scroll)
-	player_box = _add_panel(player_panel_scroll, "桌边牌架")
+	player_box = _add_panel(player_panel_scroll, "玩家板｜桌边牌架")
 	var player_panel := _panel_container(player_box)
 	player_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	player_panel.custom_minimum_size = Vector2(0, 0)
@@ -19757,14 +19757,14 @@ func _player_seat_button_tooltip(player_index: int, viewer_index: int) -> String
 
 
 func _add_player_seat_strip(parent: HBoxContainer, viewer_index: int) -> void:
-	var title := _plain_label("公开席位", 10, Color("#bfdbfe"))
+	var title := _plain_label("公开席位", 9, Color("#bfdbfe"))
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	title.custom_minimum_size = Vector2(58, 0)
+	title.custom_minimum_size = Vector2(54, 0)
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.tooltip_text = "像电子桌游的玩家席位条：只放公开/当前视角可知信息。"
 	parent.add_child(title)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(420, 52)
+	scroll.custom_minimum_size = Vector2(382, 40)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -19779,8 +19779,9 @@ func _add_player_seat_strip(parent: HBoxContainer, viewer_index: int) -> void:
 		button.button_pressed = i == viewer_index
 		button.tooltip_text = _player_seat_button_tooltip(i, viewer_index)
 		_style_menu_button(button, _player_color(i), i == viewer_index)
+		button.add_theme_font_size_override("font_size", 8)
 		button.add_theme_color_override("font_color", Color("#f8fafc") if i == viewer_index else _player_color(i).lightened(0.20))
-		button.custom_minimum_size = Vector2(146, 46)
+		button.custom_minimum_size = Vector2(124, 34)
 		button.pressed.connect(Callable(self, "_select_player").bind(i))
 		row.add_child(button)
 
@@ -19793,6 +19794,22 @@ func _refresh_player_panel() -> void:
 		selected_player = 0
 
 	var player: Dictionary = players[selected_player]
+	var dashboard_rail := HBoxContainer.new()
+	dashboard_rail.name = "PlayerDashboardTopRail"
+	dashboard_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dashboard_rail.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	dashboard_rail.add_theme_constant_override("separation", 8)
+	player_box.add_child(dashboard_rail)
+	_add_player_resource_cube_rail(dashboard_rail, selected_player)
+	var seat_row := HBoxContainer.new()
+	seat_row.name = "PlayerSeatSelectorRail"
+	seat_row.custom_minimum_size = Vector2(430, 0)
+	seat_row.size_flags_horizontal = Control.SIZE_SHRINK_END
+	seat_row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	seat_row.add_theme_constant_override("separation", 6)
+	dashboard_rail.add_child(seat_row)
+	_add_player_seat_strip(seat_row, selected_player)
+
 	var table_rail := HBoxContainer.new()
 	table_rail.name = "PlayerTableRail"
 	table_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -19806,14 +19823,13 @@ func _refresh_player_panel() -> void:
 	hand_column.add_theme_constant_override("separation", 5)
 	table_rail.add_child(hand_column)
 	_add_player_hand_rack(hand_column, player, selected_player)
-	_add_player_resource_cube_rail(hand_column, selected_player)
-	_add_table_goal_prompt(hand_column, selected_player)
 	var tray_column := VBoxContainer.new()
 	tray_column.name = "PlayerActionColumn"
 	tray_column.custom_minimum_size = Vector2(340, 0)
 	tray_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	table_rail.add_child(tray_column)
 	var action_tray := _add_player_action_tray(tray_column, selected_player)
+	_add_table_goal_prompt(action_tray, selected_player)
 	_add_first_summon_prompt(action_tray, player)
 	_add_selected_district_action_panel(action_tray, selected_player)
 	_add_opening_guide_panel(action_tray, selected_player)
@@ -19827,12 +19843,6 @@ func _refresh_player_panel() -> void:
 	if _has_pending_player_target_choice():
 		_add_pending_player_target_buttons(action_tray)
 	_add_active_contract_response_panel(action_tray)
-
-	var top_row := HBoxContainer.new()
-	top_row.name = "PlayerSeatSelectorRail"
-	top_row.add_theme_constant_override("separation", 8)
-	player_box.add_child(top_row)
-	_add_player_seat_strip(top_row, selected_player)
 	_add_player_tableau_strip(player_box, selected_player)
 
 
@@ -20054,7 +20064,7 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 198)
+	panel.custom_minimum_size = Vector2(0, 178)
 	panel.tooltip_text = "桌边行动托盘：收纳选区、竞价、竞猜、合约、目标选择和临时决策，避免遮住星球与手牌。"
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#06111f")
@@ -20094,7 +20104,7 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	_add_action_tray_module_rail(box, player_index)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 150)
+	scroll.custom_minimum_size = Vector2(0, 132)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -33735,35 +33745,35 @@ func _add_player_identity_mini_card(parent: Container, player_index: int) -> voi
 	var accent := _player_color(player_index)
 	var panel := PanelContainer.new()
 	panel.name = "PlayerIdentityMiniCard"
-	panel.custom_minimum_size = Vector2(218, 0)
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = Vector2(178, 0)
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	panel.tooltip_text = _player_role_summary(role)
 	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.14), 1, 14))
 	parent.add_child(panel)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 7)
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_bottom", 5)
 	panel.add_child(margin)
 	var box := VBoxContainer.new()
 	box.name = "PlayerIdentityMiniCardStack"
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 2)
 	margin.add_child(box)
-	var name_label := _plain_label("◎ %s" % _short_card_text(String(player.get("name", "玩家")), 12), 13, Color("#f8fafc"))
+	var name_label := _plain_label("◎ %s" % _short_card_text(String(player.get("name", "玩家")), 10), 11, Color("#f8fafc"))
 	name_label.name = "PlayerIdentitySeatName"
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	name_label.clip_text = true
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(name_label)
-	var role_label := _plain_label("公开角色｜%s" % _short_card_text(String(role.get("name", "外星辛迪加")), 12), 10, Color("#fde68a"))
+	var role_label := _plain_label("角色｜%s" % _short_card_text(String(role.get("name", "外星辛迪加")), 10), 9, Color("#fde68a"))
 	role_label.name = "PlayerIdentityRoleName"
 	role_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	role_label.clip_text = true
 	role_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	role_label.tooltip_text = _role_passive_text(role)
 	box.add_child(role_label)
-	var species_label := _plain_label(_short_card_text(String(role.get("species", "未知外星人")), 16), 9, Color("#93c5fd"))
+	var species_label := _plain_label(_short_card_text(String(role.get("species", "未知外星人")), 12), 8, Color("#93c5fd"))
 	species_label.name = "PlayerIdentitySpecies"
 	species_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	species_label.clip_text = true
@@ -33771,8 +33781,8 @@ func _add_player_identity_mini_card(parent: Container, player_index: int) -> voi
 	box.add_child(species_label)
 	var chip_rail := HFlowContainer.new()
 	chip_rail.name = "PlayerIdentityChipRail"
-	chip_rail.add_theme_constant_override("h_separation", 4)
-	chip_rail.add_theme_constant_override("v_separation", 2)
+	chip_rail.add_theme_constant_override("h_separation", 3)
+	chip_rail.add_theme_constant_override("v_separation", 1)
 	box.add_child(chip_rail)
 	chip_rail.add_child(_track_status_badge(_player_tableau_visibility_text(player_index), Color("#bfdbfe"), Color("#0f172a")))
 	chip_rail.add_child(_track_status_badge("角色公开", Color("#fde68a"), Color("#422006")))
@@ -33782,25 +33792,25 @@ func _add_player_tableau_chip(parent: Container, entry: Dictionary) -> void:
 	var accent: Color = entry.get("accent", Color("#38bdf8")) as Color
 	var panel := PanelContainer.new()
 	panel.name = "PlayerTableauChip"
-	panel.custom_minimum_size = Vector2(86, 46)
+	panel.custom_minimum_size = Vector2(78, 34)
 	panel.tooltip_text = String(entry.get("tooltip", ""))
 	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.11), 1, 12))
 	parent.add_child(panel)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 5)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 5)
+	margin.add_theme_constant_override("margin_left", 5)
+	margin.add_theme_constant_override("margin_top", 3)
+	margin.add_theme_constant_override("margin_right", 5)
+	margin.add_theme_constant_override("margin_bottom", 3)
 	panel.add_child(margin)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 1)
 	margin.add_child(box)
-	var top := _plain_label("%s %s" % [String(entry.get("icon", "□")), String(entry.get("label", ""))], 9, accent.lightened(0.24))
+	var top := _plain_label("%s %s" % [String(entry.get("icon", "□")), String(entry.get("label", ""))], 8, accent.lightened(0.24))
 	top.name = "PlayerTableauChipLabel"
 	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	top.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(top)
-	var value := _plain_label(String(entry.get("value", "")), 12, Color("#f8fafc"))
+	var value := _plain_label(String(entry.get("value", "")), 10, Color("#f8fafc"))
 	value.name = "PlayerTableauChipValue"
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	value.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -33810,7 +33820,7 @@ func _add_player_tableau_chip(parent: Container, entry: Dictionary) -> void:
 	var tick := ColorRect.new()
 	tick.name = "PlayerTableauChipColorTick"
 	tick.color = accent
-	tick.custom_minimum_size = Vector2(0, 3)
+	tick.custom_minimum_size = Vector2(0, 2)
 	box.add_child(tick)
 
 
@@ -33861,26 +33871,26 @@ func _add_player_tableau_goal_meter(parent: Container, player_index: int) -> voi
 	meter.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 10))
 	parent.add_child(meter)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 5)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 5)
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_top", 3)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_bottom", 3)
 	meter.add_child(margin)
 	var box := VBoxContainer.new()
 	box.name = "PlayerTableauGoalMeterStack"
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 2)
 	margin.add_child(box)
 	var label_row := HBoxContainer.new()
 	label_row.add_theme_constant_override("separation", 8)
 	box.add_child(label_row)
-	var title := _plain_label(String(data.get("title", "终局目标")), 10, Color("#f8fafc"))
+	var title := _plain_label(String(data.get("title", "终局目标")), 9, Color("#f8fafc"))
 	title.name = "PlayerTableauGoalLabel"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label_row.add_child(title)
-	var meta := _plain_label(String(data.get("meta", "")), 9, accent.lightened(0.16))
+	var meta := _plain_label(String(data.get("meta", "")), 8, accent.lightened(0.16))
 	meta.name = "PlayerTableauGoalMeta"
 	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
 	meta.clip_text = true
@@ -33888,7 +33898,7 @@ func _add_player_tableau_goal_meter(parent: Container, player_index: int) -> voi
 	label_row.add_child(meta)
 	var bar := ProgressBar.new()
 	bar.name = "PlayerTableauGoalProgressBar"
-	bar.custom_minimum_size = Vector2(0, 12)
+	bar.custom_minimum_size = Vector2(0, 7)
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.min_value = 0.0
 	bar.max_value = 100.0
@@ -33904,6 +33914,7 @@ func _add_player_tableau_strip(parent: Container, player_index: int) -> void:
 	var board := PanelContainer.new()
 	board.name = "PlayerTableauBoard"
 	board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	board.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	board.tooltip_text = "玩家板｜资源筹码：先看公开角色和资源筹码，再决定建城、买牌、出牌或下注。"
 	var board_style := StyleBoxFlat.new()
 	board_style.bg_color = Color("#030712").lerp(Color("#1e293b"), 0.34)
@@ -33913,38 +33924,38 @@ func _add_player_tableau_strip(parent: Container, player_index: int) -> void:
 	board.add_theme_stylebox_override("panel", board_style)
 	parent.add_child(board)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 6)
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_bottom", 4)
 	board.add_child(margin)
 	var wrap := HBoxContainer.new()
 	wrap.name = "PlayerTableauBoardRow"
-	wrap.add_theme_constant_override("separation", 8)
+	wrap.add_theme_constant_override("separation", 6)
 	margin.add_child(wrap)
 	_add_player_identity_mini_card(wrap, player_index)
 	var chip_stack := VBoxContainer.new()
 	chip_stack.name = "PlayerTableauChipStack"
 	chip_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip_stack.add_theme_constant_override("separation", 4)
+	chip_stack.add_theme_constant_override("separation", 3)
 	wrap.add_child(chip_stack)
 	var title_row := HBoxContainer.new()
 	title_row.name = "PlayerTableauTitleRow"
 	title_row.add_theme_constant_override("separation", 6)
 	chip_stack.add_child(title_row)
-	var title := _plain_label("玩家板｜资源筹码", 10, Color("#fde68a"))
+	var title := _plain_label("玩家板｜资源筹码", 9, Color("#fde68a"))
 	title.tooltip_text = "像电子桌游的玩家板：公开身份在左，资源筹码在右；对手隐私仍隐藏。"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(title)
-	var hint := _plain_label("少读字，先看筹码", 9, Color("#94a3b8"))
+	var hint := _plain_label("少读字，先看筹码", 8, Color("#94a3b8"))
 	hint.name = "PlayerTableauScanHint"
 	title_row.add_child(hint)
 	_add_player_tableau_goal_meter(chip_stack, player_index)
 	var row := HFlowContainer.new()
 	row.name = "PlayerTableauChipGrid"
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("h_separation", 6)
-	row.add_theme_constant_override("v_separation", 4)
+	row.add_theme_constant_override("h_separation", 4)
+	row.add_theme_constant_override("v_separation", 3)
 	chip_stack.add_child(row)
 	for entry_variant in _player_tableau_chip_entries(player_index):
 		_add_player_tableau_chip(row, entry_variant as Dictionary)
