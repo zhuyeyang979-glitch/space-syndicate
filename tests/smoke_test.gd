@@ -209,7 +209,7 @@ func _run() -> void:
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
 	_expect(player_box != null and not _container_label_text_contains(player_box, "角色卡") and not _container_label_text_contains(player_box, "经济流水") and not _container_card_art_kind_contains(player_box, "player_role"), "player panel hides role/economy details from the main play screen")
-	_expect(player_box != null and (_container_label_text_contains(player_box, "首召怪兽") or _container_label_text_contains(player_box, "首召预览")) and _container_button_text_contains(player_box, "在选区首召"), "empty-field player panel prompts the starter monster first summon")
+	_expect(player_box != null and _container_label_text_contains(player_box, "首召怪兽") and _container_button_text_contains(player_box, "在选区首召") and not _container_has_named_node(player_box, "FirstSummonCard"), "empty-field player panel prompts the starter monster first summon through one primary action slot")
 	_expect(_players_have_starting_monster_cards(main, players), "each player starts with a free first monster card")
 	var first_starting_card := ((_as_array((players[0] as Dictionary).get("slots", [])))[0]) as Dictionary
 	_expect(String(first_starting_card.get("summon_access", "")) == "any", "the starter monster card explicitly has no region restriction")

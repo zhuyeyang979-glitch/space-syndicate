@@ -19917,7 +19917,6 @@ func _refresh_player_panel() -> void:
 	table_rail.add_child(tray_column)
 	var action_tray := _add_player_action_tray(tray_column, selected_player)
 	_add_table_goal_prompt(action_tray, selected_player)
-	_add_first_summon_prompt(action_tray, player)
 	_add_selected_district_action_panel(action_tray, selected_player)
 	_add_opening_guide_panel(action_tray, selected_player)
 	_add_pending_discard_purchase_panel(action_tray, selected_player)

@@ -3,6 +3,38 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜首召收敛到单一主行动槽
+
+### 本轮实现
+
+- 下载并记录三个 UI/美术参考项目：
+  - Terraforming Mars：主游戏页、顶栏、手牌/已打出牌折叠。
+  - Gaia Project：星图、行动按钮、图例和定义页。
+  - Night Patrol：临时卡框、按钮、音效和视觉氛围参考。
+- 新增 `docs/reference_ui_notes.md`，把参考结论转成后续可执行 UI 规则。
+- 开局右侧行动托盘不再同时显示 `目标提示` 和第二张 `首召预览` 卡。
+- 首召现在只通过一个主行动槽执行：
+  - 右侧 `目标提示｜下一步` 显示 `在选区首召`；
+  - 底部手牌仍显示起始怪兽卡面；
+  - 细节通过手牌 hover/图鉴查看。
+- 更新测试护栏，防止 `FirstSummonCard` 重新作为常驻右侧卡片出现。
+
+### 设计意图
+
+- 电子桌游主界面应该一次只强调一个当前动作；同一件事出现两张面板会让玩家误以为有两个入口。
+- 右侧行动托盘应像“当前行动槽 + 模块抽屉”，而不是堆叠说明卡。
+- 这一步继续落实 Terraforming Mars 式层级：主桌面只做行动，卡牌和规则细节收进手牌/hover/图鉴。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+- 已采集有头 UI 快照：
+  - `C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/04_play_table.png`
+
 ## 2026-07-01｜右侧首召提示压缩为决策条
 
 ### 本轮实现
