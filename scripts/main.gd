@@ -1522,6 +1522,7 @@ var weather_impact_label: Label
 var playtest_flow_compass_panel: PanelContainer
 var playtest_flow_compass_row: HFlowContainer
 var playtest_flow_compass_next_label: Label
+var playtest_flow_compass_signature := ""
 var map_view: Control
 var player_box: VBoxContainer
 var player_panel_scroll: ScrollContainer
@@ -1623,6 +1624,7 @@ var card_resolution_track_dragging := false
 var card_resolution_track_drag_start_x := 0.0
 var card_resolution_track_drag_start_scroll := 0
 var card_resolution_track_manual_scroll_until_msec := 0
+var card_resolution_track_signature := ""
 var card_resolution_overlay: Control
 var card_resolution_title_label: Label
 var card_resolution_body_label: Label
@@ -2201,6 +2203,10 @@ func _playtest_flow_next_text(player_index: int) -> String:
 func _refresh_playtest_flow_compass() -> void:
 	if playtest_flow_compass_row == null or playtest_flow_compass_next_label == null:
 		return
+	var next_signature := _playtest_flow_compass_signature()
+	if next_signature == playtest_flow_compass_signature and playtest_flow_compass_row.get_child_count() > 0:
+		return
+	playtest_flow_compass_signature = next_signature
 	_clear_children(playtest_flow_compass_row)
 	if players.is_empty() or selected_player < 0 or selected_player >= players.size():
 		for entry_variant in [
@@ -2215,6 +2221,21 @@ func _refresh_playtest_flow_compass() -> void:
 		_add_playtest_flow_compass_chip(playtest_flow_compass_row, entry_variant as Dictionary)
 	playtest_flow_compass_next_label.text = _playtest_flow_next_text(selected_player)
 	playtest_flow_compass_next_label.tooltip_text = "这是中央星球旁的短提示；具体按钮在底部快捷行动和手牌架。"
+
+
+func _playtest_flow_compass_signature() -> String:
+	if players.is_empty() or selected_player < 0 or selected_player >= players.size():
+		return "empty:%d:%d" % [selected_player, selected_district]
+	var progress := _opening_guide_progress(selected_player)
+	return "%d:%d:%d:%d:%d:%d:%s" % [
+		selected_player,
+		selected_district,
+		1 if bool(progress.get("has_monster", false)) else 0,
+		1 if bool(progress.get("has_city", false)) else 0,
+		1 if bool(progress.get("has_bought_card", false)) else 0,
+		1 if bool(progress.get("has_played_card", false)) else 0,
+		_playtest_flow_next_text(selected_player),
+	]
 
 
 func _build_weather_forecast_strip(parent: Container) -> void:
@@ -2691,6 +2712,11 @@ func _card_resolution_track_max_scroll() -> int:
 func _refresh_card_resolution_track() -> void:
 	if card_resolution_track == null:
 		return
+	var next_signature := _card_resolution_track_signature()
+	if next_signature == card_resolution_track_signature and card_resolution_track.get_child_count() > 0:
+		_maybe_follow_card_resolution_track(_card_resolution_track_has_entries())
+		return
+	card_resolution_track_signature = next_signature
 	_clear_children(card_resolution_track)
 	card_resolution_track.custom_minimum_size = Vector2.ZERO
 	var has_entries := false
@@ -2705,7 +2731,7 @@ func _refresh_card_resolution_track() -> void:
 		visible_slot_count += 1
 	if not active_card_resolution.is_empty():
 		current_segment = _add_card_resolution_track_segment_if_needed(current_segment, "current")
-		_add_card_resolution_track_entry(active_card_resolution, "当前展示 %.1fs" % max(0.0, card_resolution_timer))
+		_add_card_resolution_track_entry(active_card_resolution, "当前展示")
 		has_entries = true
 		visible_slot_count += 1
 	if not card_resolution_queue.is_empty():
@@ -2731,6 +2757,54 @@ func _refresh_card_resolution_track() -> void:
 		_add_card_resolution_track_ghost_slot(i, not has_entries and i == 0, not has_entries)
 	_sync_card_resolution_track_width()
 	_maybe_follow_card_resolution_track(has_entries)
+
+
+func _card_resolution_track_has_entries() -> bool:
+	return not resolved_card_history.is_empty() or not active_card_resolution.is_empty() or not card_resolution_queue.is_empty() or not next_card_resolution_queue.is_empty()
+
+
+func _card_resolution_track_signature() -> String:
+	var parts := [
+		"selected:%d" % selected_card_resolution_id,
+		"viewer:%d" % selected_player,
+		"auction:%d" % (1 if card_resolution_auction_open else 0),
+		"locked:%d" % (1 if card_resolution_batch_locked else 0),
+		"active:%s" % _card_resolution_track_entry_signature(active_card_resolution),
+	]
+	var history_parts := []
+	for entry_variant in resolved_card_history:
+		if entry_variant is Dictionary:
+			history_parts.append(_card_resolution_track_entry_signature(entry_variant as Dictionary))
+	parts.append("history:%s" % "|".join(history_parts))
+	var queue_parts := []
+	for entry_variant in card_resolution_queue:
+		if entry_variant is Dictionary:
+			queue_parts.append(_card_resolution_track_entry_signature(entry_variant as Dictionary))
+	parts.append("queue:%s" % "|".join(queue_parts))
+	var next_parts := []
+	for entry_variant in next_card_resolution_queue:
+		if entry_variant is Dictionary:
+			next_parts.append(_card_resolution_track_entry_signature(entry_variant as Dictionary))
+	parts.append("next:%s" % "|".join(next_parts))
+	return "\n".join(parts)
+
+
+func _card_resolution_track_entry_signature(entry: Dictionary) -> String:
+	if entry.is_empty():
+		return "empty"
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	return "%d:%d:%s:%d:%d:%d:%s:%s:%s:%s" % [
+		int(entry.get("resolution_id", entry.get("queued_order", -1))),
+		int(entry.get("player_index", -1)),
+		String(skill.get("name", "")),
+		int(entry.get("tip", entry.get("winning_bid", 0))),
+		int(entry.get("winning_bid", 0)),
+		1 if bool(entry.get("public_owner_revealed", false)) else 0,
+		String(entry.get("public_owner_label", "")),
+		String(entry.get("contract_response", "")),
+		String(entry.get("contract_result_clue", "")),
+		String(entry.get("aftermath_clue", "")),
+	]
 
 
 func _set_card_resolution_track_compact_empty(compact_empty: bool) -> void:

@@ -5,6 +5,21 @@
 
 ## 2026-07-01｜主桌性能止血：实时层与重布局分离
 
+### 追加实现
+
+- 牌桌静态组件继续降重：
+  - 匿名牌轨新增 `card_resolution_track_signature`、`_card_resolution_track_signature()`、`_card_resolution_track_entry_signature()`；
+  - 牌轨只在历史/当前展示/候补队列/小费/公开归属/选中槽位等内容变化时重建；
+  - 当前展示槽不再显示秒数，倒计时统一交给底部沙漏条，避免为了时间文字重建整条牌轨；
+  - 试玩流程罗盘新增 `playtest_flow_compass_signature` 和 `_playtest_flow_compass_signature()`，五步筹码未变化时不再清空重建。
+
+### 追加验证
+
+- 已通过：
+  - `tests/smoke_test.gd --check-only`
+  - `tests/ui_text_smoke_test.gd`
+  - 有头 `tests/visual_snapshot.gd`
+
 ### 本轮实现
 
 - 按 Godot 性能管线参考，先处理当前最影响试玩的卡顿：
