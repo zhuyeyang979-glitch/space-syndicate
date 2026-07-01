@@ -170,6 +170,7 @@ func _run() -> void:
 	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify starting cash without touching starter monsters")
 	_expect(_starting_monster_cards_match_configured_choices(main, players), "starter monster cards come from independent setup choices, not role-card fingerprints")
 	var player_box := main.get("player_box") as VBoxContainer
+	_expect(_container_has_named_node(main, "PlaytestFlowCompass") and _container_label_text_contains(main, "试玩") and _container_label_text_contains(main, "罗盘") and _container_label_text_contains(main, "点区") and _container_label_text_contains(main, "首召") and _container_label_text_contains(main, "建城") and _container_label_text_contains(main, "买牌") and _container_label_text_contains(main, "出牌"), "main planet board exposes a thin first-minute playtest flow compass beside the map")
 	_expect(player_box != null and _container_label_text_contains(player_box, "我的手牌") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "玩家板｜资源筹码") and _container_label_text_contains(player_box, "GDP") and _container_label_text_contains(player_box, "终局"), "player panel exposes a Terraforming-Mars-style resource chip tableau before detailed hand text")
 	_expect(player_box != null and _container_label_text_contains(player_box, "状态：") and (

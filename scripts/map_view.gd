@@ -11,6 +11,10 @@ const PLANET_PROJECTION_VISIBILITY_FADE_START := 0.74
 const MIN_VIEW_ZOOM := 0.34
 const MAX_VIEW_ZOOM := 5.0
 const DRAG_THRESHOLD_PIXELS := 4.0
+const ANIMATED_REDRAW_INTERVAL_SECONDS := 1.0 / 30.0
+const ZOOM_SMOOTHING_SPEED := 12.0
+const ZOOM_WHEEL_STEP := 1.11
+const LABEL_INTERACTION_ZOOM_EPSILON := 0.018
 const BETTING_TABLE_THEME_NAME := "星际赌桌"
 const BETTING_TABLE_CHIP_COUNT := 18
 const BETTING_TABLE_SEAT_COUNT := 8
@@ -32,11 +36,14 @@ var _scale := 1.0
 var _map_offset := Vector2.ZERO
 var _view_center_m := Vector2(700.0, 475.0)
 var _view_zoom := 1.0
+var _target_view_zoom := 1.0
 var _dragging := false
 var _drag_moved := false
 var _drag_start := Vector2.ZERO
 var _last_mouse_position := Vector2.ZERO
 var _map_signature := ""
+var _visual_payload_signature := ""
+var _animated_redraw_timer := 0.0
 
 
 func _ready() -> void:
@@ -60,12 +67,30 @@ func betting_table_theme_report() -> Dictionary:
 	}
 
 
+func _has_active_animation_layers() -> bool:
+	return not action_callouts.is_empty() or not movement_trails.is_empty() or not map_event_effects.is_empty()
+
+
+func _update_smooth_zoom(delta: float) -> bool:
+	if is_equal_approx(_view_zoom, _target_view_zoom):
+		return false
+	var before := _view_zoom
+	var weight := clampf(delta * ZOOM_SMOOTHING_SPEED, 0.0, 1.0)
+	_view_zoom = lerpf(_view_zoom, _target_view_zoom, weight)
+	if absf(_view_zoom - _target_view_zoom) <= 0.002:
+		_view_zoom = _target_view_zoom
+	return not is_equal_approx(before, _view_zoom)
+
+
 func _process(delta: float) -> void:
-	var needs_redraw := false
-	if not action_callouts.is_empty() or not movement_trails.is_empty() or not map_event_effects.is_empty():
-		needs_redraw = true
-	if needs_redraw:
+	var zoom_changed := _update_smooth_zoom(delta)
+	var has_animated_layers := _has_active_animation_layers()
+	if has_animated_layers:
+		_animated_redraw_timer -= delta
+	if zoom_changed or (has_animated_layers and _animated_redraw_timer <= 0.0):
 		queue_redraw()
+		if has_animated_layers:
+			_animated_redraw_timer = ANIMATED_REDRAW_INTERVAL_SECONDS
 
 
 func set_map(
@@ -84,6 +109,18 @@ func set_map(
 ) -> void:
 	var next_signature := _build_map_signature(new_districts, width_m, height_m)
 	var should_center_view := next_signature != _map_signature
+	var next_payload_signature := _build_visual_payload_signature(
+		new_districts,
+		selected,
+		trails,
+		callouts,
+		event_effects,
+		monster_markers,
+		new_city_markers,
+		new_trade_route_markers,
+		new_trade_product
+	)
+	var should_redraw := should_center_view or next_payload_signature != _visual_payload_signature
 	districts = new_districts
 	map_width_m = max(1.0, width_m)
 	map_height_m = max(1.0, height_m)
@@ -100,7 +137,9 @@ func set_map(
 	trade_product = new_trade_product
 	if should_center_view:
 		_map_signature = next_signature
-	queue_redraw()
+	_visual_payload_signature = next_payload_signature
+	if should_redraw:
+		queue_redraw()
 
 
 func _draw() -> void:
@@ -126,11 +165,12 @@ func _draw() -> void:
 	for i in range(districts.size()):
 		if _region_is_near_view(i):
 			_draw_region_effects(i)
+	var draw_dense_labels := _should_draw_dense_region_labels()
 	for i in range(districts.size()):
 		if _region_is_near_view(i):
 			_draw_region_outline(i)
 	for i in range(districts.size()):
-		if _region_is_near_view(i):
+		if _region_is_near_view(i) and (draw_dense_labels or i == selected_district):
 			_draw_region_label(i)
 	_draw_trade_routes()
 	_draw_city_clusters()
@@ -145,11 +185,11 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
-			_view_zoom = clamp(_view_zoom * 1.15, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
+			_target_view_zoom = clamp(_target_view_zoom * ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			queue_redraw()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_event.pressed:
-			_view_zoom = clamp(_view_zoom / 1.15, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
+			_target_view_zoom = clamp(_target_view_zoom / ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			queue_redraw()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT:
@@ -320,6 +360,16 @@ func _region_is_near_view(index: int) -> bool:
 	return _surface_delta(_view_center_m, center).length() * _scale <= max_screen_distance
 
 
+func _should_draw_dense_region_labels() -> bool:
+	if _dragging:
+		return false
+	if absf(_view_zoom - _target_view_zoom) > LABEL_INTERACTION_ZOOM_EPSILON:
+		return false
+	if districts.size() > 32 and _globe_blend() > 0.05:
+		return false
+	return true
+
+
 func _draw_local_grid() -> void:
 	var grid_color := Color("#1e293b")
 	grid_color.a = 0.6 * (1.0 - _globe_blend() * 0.72)
@@ -434,8 +484,10 @@ func _draw_globe_projection() -> void:
 	_draw_globe_graticule(center, radius)
 	for i in range(districts.size()):
 		_draw_globe_region_outline(i)
+	var draw_dense_labels := _should_draw_dense_region_labels()
 	for i in range(districts.size()):
-		_draw_globe_region_label(i)
+		if draw_dense_labels or i == selected_district:
+			_draw_globe_region_label(i)
 	_draw_trade_routes()
 	_draw_city_clusters()
 	_draw_movement_trails()
@@ -1453,6 +1505,90 @@ func _region_color(index: int) -> Color:
 	if palette.is_empty():
 		return Color("#1e293b")
 	return palette[index % palette.size()] as Color
+
+
+func _build_visual_payload_signature(
+	new_districts: Array,
+	selected: int,
+	trails: Array,
+	callouts: Array,
+	event_effects: Array,
+	monster_markers: Array,
+	new_city_markers: Array,
+	new_trade_route_markers: Array,
+	new_trade_product: String
+) -> String:
+	var parts := [
+		"sel:%d" % selected,
+		"product:%s" % new_trade_product,
+		"trail:%s" % _marker_array_signature(trails, ["from", "to", "color", "label", "style", "duration", "remaining"]),
+		"call:%s" % _marker_array_signature(callouts, ["position", "actor", "action", "detail", "color", "duration", "remaining"]),
+		"effect:%s" % _marker_array_signature(event_effects, ["position", "kind", "label", "color", "duration", "remaining", "radius"]),
+		"monster:%s" % _marker_array_signature(monster_markers, ["position", "label", "name", "glyph", "motif", "down"]),
+		"city:%s" % _marker_array_signature(new_city_markers, ["district", "position", "level", "active", "tag", "products", "competition", "rise"]),
+		"route:%s" % _marker_array_signature(new_trade_route_markers, ["product", "from", "to", "points", "disrupted", "flow_multiplier"]),
+	]
+	for i in range(new_districts.size()):
+		var district: Dictionary = new_districts[i]
+		var city: Dictionary = district.get("city", {}) as Dictionary
+		var city_active := 0
+		var city_level := 0
+		var city_products := 0
+		var city_demands := 0
+		if not city.is_empty():
+			city_active = 1 if bool(city.get("active", true)) else 0
+			city_level = int(city.get("level", 1))
+			city_products = (city.get("products", []) as Array).size()
+			city_demands = (city.get("demands", []) as Array).size()
+		parts.append("d%d:%s:%d:%d:%d:%d:%d:%d:%d:%d" % [
+			i,
+			String(district.get("terrain", "")),
+			int(district.get("damage", 0)),
+			int(district.get("hp", 0)),
+			1 if bool(district.get("destroyed", false)) else 0,
+			int(district.get("panic", 0)),
+			(district.get("products", []) as Array).size(),
+			(district.get("demands", []) as Array).size(),
+			city_active,
+			city_level + city_products + city_demands,
+		])
+	return "|".join(parts)
+
+
+func _marker_array_signature(items: Array, keys: Array) -> String:
+	var parts := ["n%d" % items.size()]
+	for item_variant in items:
+		if not (item_variant is Dictionary):
+			parts.append(str(item_variant))
+			continue
+		var item: Dictionary = item_variant
+		var item_parts := []
+		for key_variant in keys:
+			var key := String(key_variant)
+			item_parts.append("%s=%s" % [key, _visual_value_signature(item.get(key, ""))])
+		parts.append(",".join(item_parts))
+	return ";".join(parts)
+
+
+func _visual_value_signature(value) -> String:
+	if value is Vector2:
+		var point: Vector2 = value
+		return "%.1f,%.1f" % [point.x, point.y]
+	if value is Color:
+		var color: Color = value
+		return color.to_html(true)
+	if value is Array:
+		var values: Array = value
+		if values.is_empty():
+			return "[]"
+		return "[%d:%s:%s]" % [
+			values.size(),
+			_visual_value_signature(values.front()),
+			_visual_value_signature(values.back()),
+		]
+	if value is float:
+		return "%.2f" % float(value)
+	return str(value)
 
 
 func _build_map_signature(new_districts: Array, width_m: float, height_m: float) -> String:

@@ -53,6 +53,53 @@
 - [CaveJohnson376/godot-3dplanets](https://github.com/CaveJohnson376/godot-3dplanets)：Godot 3D spherical planet 实验，参考角色/相机在球面上的方向处理和方块放置。
 - [Bauxitedev/stylized-planet-generator](https://github.com/Bauxitedev/stylized-planet-generator)：Godot 风格化程序星球，参考简洁、可读的星球临时美术。
 
+### Brotato / Survivor Roguelike / 怪兽攻击碰撞参考
+
+- [Roo-Roo-Roo/survivors-roguelike-kit](https://github.com/Roo-Roo-Roo/survivors-roguelike-kit)：最优先参考。Unity 2D survivors-like roguelike 模板；重点看 playable loop、角色/关卡选择、技能、敌人、buff、loot、程序化刷怪、进化武器和伤害飘字，用于后续怪兽攻击碰撞、自动行动演出和 roguelike 奖励梯度。
+- [matthiasbroske/VampireSurvivorsClone](https://github.com/matthiasbroske/VampireSurvivorsClone)：参考武器冷却、自动发射、碰撞、伤害、掉落、宝箱和刷怪概率/速率 keyframe；适合借鉴“地图演出 + 自动攻击结算 + 升级选择”的完整节奏。
+- [yagizkoryurek/Vampire_Survivors-clone](https://github.com/yagizkoryurek/Vampire_Survivors-clone)：Python/Pygame，代码短；重点参考最小化攻击结算、XP/升级、武器进化、Boss、宝箱、金币和 meta progression。
+- [kairess/Vampire-Survivors-Python](https://github.com/kairess/Vampire-Survivors-Python)：Python/Pygame 原型；参考玩家移动、敌人追踪、碰撞、攻击判定和经验掉落的基础结构。
+- [Quillraven/slime-survivor](https://github.com/Quillraven/slime-survivor)：Java/LibGDX 教程项目；重点参考 rectangle overlapping、vector-based movement、attack animations、player movement 和 audio，适合本项目简化怪兽命中/击退判定。
+- [jody3t/brotato-clone](https://github.com/jody3t/brotato-clone)：Brotato-style arena survivor；参考 Brotato 式竞技场生存、控制器支持和网页端小型结构。
+- [newbdez33/minecraft-survivors](https://github.com/newbdez33/minecraft-survivors)：Godot 4.5 + GDScript；参考自动攻击、XP/升级、附魔式升级、武器进化、昼夜刷怪修正、Boss 和测试脚本。主题素材/IP 不直接使用。
+- [imitatehappiness/GDLastOfTheSurvivors](https://github.com/imitatehappiness/GDLastOfTheSurvivors)：Godot top-down survival；参考波次推进、击杀得经验、升级后选择新武器/被动物品或强化现有装备。
+- [BLXCKBXXST/brotato-mini](https://github.com/BLXCKBXXST/brotato-mini)：Godot 4.4 / Brotato inspired；作为 Brotato 风格 Godot 入口，后续参考前先确认仓库内容和 LICENSE。
+- [giovanneluna/poke-survivors](https://github.com/giovanneluna/poke-survivors)：Phaser 3 + TypeScript；参考 attacks/entities/systems/Collision/systems/Spawn/SpatialHashGrid 等系统分层。Fan-made 题材，不能使用素材/IP。
+- [KeJunMao/emoji-survival-game](https://github.com/KeJunMao/emoji-survival-game)：Phaser 3 + TypeScript，中文 README；参考前端 survivors-like 的碰撞事件、NPC 和道具购买结构。
+- [larkan28/monster-waves](https://github.com/larkan28/monster-waves)：Unity 小型 Vampire Survivors-like；适合看最小波次/生存实现。
+- [BrotatoMods/Brotato-ContentLoader](https://github.com/BrotatoMods/Brotato-ContentLoader)、[otDan/Brotato-WeaponExplorer](https://github.com/otDan/Brotato-WeaponExplorer)、[BrotatoMods/Brotato-Attack-Speed-Calculator](https://github.com/BrotatoMods/Brotato-Attack-Speed-Calculator)：参考 Brotato mod 内容扩展、武器数据显示、冷却/攻速面板，不作为完整攻击结算源码。
+
+太空辛迪加落地规则：
+
+- 怪兽攻击演出按“自动索敌/动作选择 → hitbox 或路径碰撞 → 伤害/击退 → 地图特效 → GDP/区域损伤”的短链条设计。
+- 怪兽技能、道具/卡牌和 roguelike 奖励要做梯度：I 级启动，II 级效率，III 级路线核心，IV 级终端但可被推理/反制。
+- 地图演出优先做清楚的命中反馈：攻击范围、路径线、击退方向、伤害数字、区域裂纹/城市摇晃、短音效。
+- 随机性要服务构筑：怪兽行动概率、区域牌池、商品池、奖励选择和 AI 路线都要能被玩家读出倾向，而不是纯随机噪声。
+
+### Godot 性能管线 / 防卡顿 / 批量演出参考
+
+- [Godot Background loading](https://docs.godotengine.org/en/stable/tutorials/io/background_loading.html)：官方后台加载。后续切换主菜单、进入局、加载星球/怪兽/大型 VFX 时优先用 `ResourceLoader.load_threaded_request()`，先查询状态和进度，再取资源，避免战斗中阻塞。
+- [Reducing stutter from shader/pipeline compilations](https://docs.godotengine.org/en/stable/tutorials/performance/pipeline_compilations.html)：官方 shader / pipeline 编译防卡顿。后续怪兽技能、城市破坏、天气和卡牌结算特效要在 loading/warmup 阶段预实例化或预热，避免首次出现时卡顿。
+- [Godot Profiler](https://docs.godotengine.org/en/stable/tutorials/scripting/debug/the_profiler.html)：用于定位卡顿到底来自脚本、物理、渲染、UI、粒子还是加载；每次大规模怪兽/特效/牌轨改动后应优先 profile 再优化。
+- [General optimization](https://docs.godotengine.org/en/stable/tutorials/performance/general_optimization.html)：官方通用优化流程。后续高频单位、伤害数字、商品路径和区域状态更新要先看瓶颈，再做数据布局/预处理/线性访问优化。
+- [Using MultiMesh](https://docs.godotengine.org/en/stable/tutorials/performance/using_multimesh.html)：大量同类视觉对象参考，例如城市碎片、海浪/运输线装饰、怪兽脚印、导弹残影和区域裂纹；需要按区域拆分，避免整体裁剪粒度太粗。
+- [Optimization using Servers](https://docs.godotengine.org/en/stable/tutorials/performance/using_servers.html)：当未来出现成千上万个投射物、特效、筹码或模拟单位时，参考 RenderingServer / PhysicsServer 低层批量控制，避免 SceneTree 节点过多。
+- [Project organization](https://docs.godotengine.org/en/stable/tutorials/best_practices/project_organization.html)、[Import process](https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/import_process.html)：第三方插件放 `addons/`，项目文件夹保持清楚；提交 `.import` 元数据，不提交 `.godot/imported` 缓存；大型原始素材可用 `.gdignore` 隔离。
+- [Godot demo projects threaded loading](https://github.com/godotengine/godot-demo-projects/blob/939ca55eaad4b3fa156a88289deef2e3e9479679/loading/load_threaded/load_threaded.gd)：官方 MIT 示例，作为异步加载最小实现参考。
+- [Maaack/Godot-Scene-Loader](https://github.com/Maaack/Godot-Scene-Loader)：Godot 4 场景加载插件，参考 loading screen、进度条、错误处理和 autoload 式场景切换。
+- [Maaack/Godot-Game-Template](https://github.com/Maaack/Godot-Game-Template)：参考正式项目的主菜单、暂停菜单、设置、scene loader、global state、关卡加载和发布脚本结构。
+- [anasrar/godot-object-pooling](https://github.com/anasrar/godot-object-pooling)：Godot 4 对象池示例，后续怪兽 hitbox、伤害数字、爆炸、筹码飞行动画、掉落物和临时文字优先参考。
+- [Minoqi/minos-damage-numbers-for-godot](https://github.com/Minoqi/minos-damage-numbers-for-godot)：Godot 4 伤害数字插件，含对象池；重点参考高频反馈 UI 的复用方式。
+- [sempitern0/Fast-Pool](https://github.com/sempitern0/Fast-Pool)：轻量对象池参考；使用前先确认 Godot 版本和 LICENSE。
+
+太空辛迪加落地规则：
+
+- 新局流程逐步演进为 `Boot → Warmup/Loading → MainMenu → GameLoading → GameScene`；加载星球、卡牌美术、怪兽美术、天气/VFX 和音效时尽量提前异步加载。
+- 所有高频临时对象优先池化：`MonsterHitbox`、`DamageNumber`、`CardFlyFX`、`ExplosionVFX`、`CityCrackFX`、`RouteSparkFX`、`ChipTransferFX`、`FloatingText`、`AudioOneShotPlayer`。
+- 大量程序化生成时先设置属性再加入 SceneTree；怪兽、军队、城市碎片和商品运输线都要避免边 add_child 边反复改 transform/材质/脚本状态。
+- 小型常驻数据和通用 UI 可 `preload`；大型场景、怪兽/VFX 包、星球地图包和音频包进入异步加载或 warmup。
+- 每次加入大规模怪兽碰撞、城市破坏、伤害飘字、卡牌飞行动画或批量区域特效后，必须至少跑一次 Profiler / 有头测试，确认没有首次播放卡顿。
+
 ## 可直接落到本项目的 UI 原则
 
 ### 1. 主界面只保留桌面必需层

@@ -86,6 +86,8 @@ const CARD_TRACK_CURRENT_SLOT_WIDTH := 60
 const CARD_TRACK_SLOT_HEIGHT := 22
 const CARD_TRACK_EMPTY_SLOT_HEIGHT := 15
 const CARD_TRACK_SEGMENT_WIDTH := 9
+const UI_LIVE_REFRESH_SECONDS := 0.12
+const UI_FULL_REFRESH_SECONDS := 1.15
 const HAND_CARD_HOVER_SCALE := 1.08
 const HAND_CARD_HOVER_LIFT_PIXELS := 13.0
 const HAND_CARD_HOVER_TWEEN_SECONDS := 0.10
@@ -1486,6 +1488,7 @@ var monster_timer := 4.0
 var market_timer := 8.0
 var economy_cashflow_timer := 0.0
 var ui_timer := 0.0
+var ui_full_refresh_timer := 0.0
 var ai_card_decision_timer := AI_CARD_DECISION_INTERVAL_SECONDS
 var ai_auction_reaction_timer := AI_AUCTION_REACTION_INTERVAL_SECONDS
 var ai_intel_decision_timer := AI_INTEL_DECISION_INTERVAL_SECONDS
@@ -1516,6 +1519,9 @@ var weather_forecast_panel: PanelContainer
 var weather_active_label: Label
 var weather_forecast_label: Label
 var weather_impact_label: Label
+var playtest_flow_compass_panel: PanelContainer
+var playtest_flow_compass_row: HFlowContainer
+var playtest_flow_compass_next_label: Label
 var map_view: Control
 var player_box: VBoxContainer
 var player_panel_scroll: ScrollContainer
@@ -1714,10 +1720,7 @@ func _process(delta: float) -> void:
 	if _monster_wager_freezes_game():
 		_update_monster_wagers(delta)
 		_update_visual_cues(delta)
-		ui_timer -= delta
-		if ui_timer <= 0.0:
-			_refresh_ui()
-			ui_timer = 0.25
+		_update_process_ui_refresh(delta)
 		return
 	if time_scale <= 0.0:
 		return
@@ -1758,10 +1761,18 @@ func _process(delta: float) -> void:
 		_market_tick()
 		market_timer = _roll_timer("market")
 
+	_update_process_ui_refresh(delta)
+
+
+func _update_process_ui_refresh(delta: float) -> void:
 	ui_timer -= delta
+	ui_full_refresh_timer -= delta
 	if ui_timer <= 0.0:
+		_refresh_live_ui()
+		ui_timer = UI_LIVE_REFRESH_SECONDS
+	if ui_full_refresh_timer <= 0.0:
 		_refresh_ui()
-		ui_timer = 0.25
+		ui_full_refresh_timer = UI_FULL_REFRESH_SECONDS
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1899,6 +1910,7 @@ func _build_layout() -> void:
 	fullscreen_button.pressed.connect(Callable(self, "_open_fullscreen_map"))
 	map_toolbar.add_child(fullscreen_button)
 
+	_build_playtest_flow_compass(board_panel)
 	_build_weather_forecast_strip(board_panel)
 
 	map_view = MapViewScript.new()
@@ -2098,6 +2110,111 @@ func _table_tempo_status() -> Dictionary:
 		"text": "◆ 空闲",
 		"tip": "当前没有全桌冻结、报价沙漏或展示窗口；可以正常看图、买牌、建城和出牌。",
 	}
+
+
+func _build_playtest_flow_compass(parent: Container) -> void:
+	playtest_flow_compass_panel = PanelContainer.new()
+	playtest_flow_compass_panel.name = "PlaytestFlowCompass"
+	playtest_flow_compass_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	playtest_flow_compass_panel.custom_minimum_size = Vector2(0, 34)
+	playtest_flow_compass_panel.tooltip_text = "中央星球试玩罗盘：先扫五步，再回到底部手牌和快捷行动。"
+	playtest_flow_compass_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#fef3c7"), Color("#020617").lerp(Color("#f59e0b"), 0.10), 1, 11))
+	parent.add_child(playtest_flow_compass_panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 4)
+	playtest_flow_compass_panel.add_child(margin)
+	var row := HBoxContainer.new()
+	row.name = "PlaytestFlowCompassRow"
+	row.add_theme_constant_override("separation", 7)
+	margin.add_child(row)
+	var title := _plain_label("试玩\n罗盘", 9, Color("#fef3c7"))
+	title.name = "PlaytestFlowCompassTitle"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.custom_minimum_size = Vector2(44, 0)
+	title.tooltip_text = "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。"
+	row.add_child(title)
+	playtest_flow_compass_row = HFlowContainer.new()
+	playtest_flow_compass_row.name = "PlaytestFlowCompassStepRail"
+	playtest_flow_compass_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	playtest_flow_compass_row.add_theme_constant_override("h_separation", 5)
+	playtest_flow_compass_row.add_theme_constant_override("v_separation", 2)
+	row.add_child(playtest_flow_compass_row)
+	playtest_flow_compass_next_label = _plain_label("下一步：开局准备", 9, Color("#fde68a"))
+	playtest_flow_compass_next_label.name = "PlaytestFlowCompassNextLabel"
+	playtest_flow_compass_next_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	playtest_flow_compass_next_label.clip_text = true
+	playtest_flow_compass_next_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	playtest_flow_compass_next_label.custom_minimum_size = Vector2(150, 0)
+	row.add_child(playtest_flow_compass_next_label)
+
+
+func _playtest_flow_compass_entries(player_index: int) -> Array:
+	var has_selection := selected_district >= 0 and selected_district < districts.size()
+	var progress := _opening_guide_progress(player_index)
+	var steps := [
+		{"label": "点区", "done": has_selection, "accent": Color("#38bdf8"), "tip": "在中央星球点一个区域；双击可查看区域牌架。"},
+		{"label": "首召", "done": bool(progress.get("has_monster", false)), "accent": Color("#fb7185"), "tip": "打出起始怪兽，解锁怪兽落地区/邻区购牌。"},
+		{"label": "建城", "done": bool(progress.get("has_city", false)), "accent": Color("#4ade80"), "tip": "在陆地城市化，开始获得实时GDP现金流。"},
+		{"label": "买牌", "done": bool(progress.get("has_bought_card", false)), "accent": Color("#facc15"), "tip": "从怪兽所在区或相邻区买牌；重复牌自动升级。"},
+		{"label": "出牌", "done": bool(progress.get("has_played_card", false)), "accent": Color("#c084fc"), "tip": "满足商品流动后匿名出牌；需要目标的牌会先询问。"},
+	]
+	var current_index := -1
+	for i in range(steps.size()):
+		var entry: Dictionary = steps[i]
+		if not bool(entry.get("done", false)):
+			current_index = i
+			break
+	if current_index < 0:
+		current_index = steps.size() - 1
+	for i in range(steps.size()):
+		var entry: Dictionary = steps[i]
+		entry["current"] = i == current_index and not bool(entry.get("done", false))
+		steps[i] = entry
+	return steps
+
+
+func _add_playtest_flow_compass_chip(parent: Container, entry: Dictionary) -> void:
+	var accent: Color = entry.get("accent", Color("#94a3b8")) as Color
+	var done := bool(entry.get("done", false))
+	var current := bool(entry.get("current", false))
+	var prefix := "✓" if done else ("▶" if current else "□")
+	var fg := Color("#e0f2fe") if done else (accent.lightened(0.20) if current else Color("#94a3b8"))
+	var bg := Color("#064e3b") if done else Color("#020617").lerp(accent, 0.28 if current else 0.10)
+	var chip := _track_status_badge("%s %s" % [prefix, String(entry.get("label", "步骤"))], fg, bg)
+	chip.name = "PlaytestFlowCompassStepChip"
+	chip.tooltip_text = String(entry.get("tip", "试玩步骤"))
+	parent.add_child(chip)
+
+
+func _playtest_flow_next_text(player_index: int) -> String:
+	if players.is_empty():
+		return "下一步：开局准备"
+	if selected_district < 0 or selected_district >= districts.size():
+		return "下一步：点星球区域"
+	return "下一步：%s" % _short_card_text(_goal_hint_body(_player_quick_goal_hint(player_index)), 18)
+
+
+func _refresh_playtest_flow_compass() -> void:
+	if playtest_flow_compass_row == null or playtest_flow_compass_next_label == null:
+		return
+	_clear_children(playtest_flow_compass_row)
+	if players.is_empty() or selected_player < 0 or selected_player >= players.size():
+		for entry_variant in [
+			{"label": "开局", "done": false, "current": true, "accent": Color("#fef3c7"), "tip": "先从开局准备进入一桌测试局。"},
+			{"label": "点区", "done": false, "current": false, "accent": Color("#38bdf8"), "tip": "进局后先点中央星球区域。"},
+			{"label": "首召", "done": false, "current": false, "accent": Color("#fb7185"), "tip": "再打出起始怪兽。"},
+		]:
+			_add_playtest_flow_compass_chip(playtest_flow_compass_row, entry_variant as Dictionary)
+		playtest_flow_compass_next_label.text = "下一步：开局准备"
+		return
+	for entry_variant in _playtest_flow_compass_entries(selected_player):
+		_add_playtest_flow_compass_chip(playtest_flow_compass_row, entry_variant as Dictionary)
+	playtest_flow_compass_next_label.text = _playtest_flow_next_text(selected_player)
+	playtest_flow_compass_next_label.tooltip_text = "这是中央星球旁的短提示；具体按钮在底部快捷行动和手牌架。"
 
 
 func _build_weather_forecast_strip(parent: Container) -> void:
@@ -2526,19 +2643,44 @@ func _set_card_resolution_track_scroll(amount: int) -> int:
 	if card_resolution_track_scroll == null:
 		return 0
 	var max_scroll := _card_resolution_track_max_scroll()
+	_ensure_card_resolution_track_scrollable(max_scroll)
 	var clamped := clampi(amount, 0, max_scroll)
 	card_resolution_track_scroll.scroll_horizontal = clamped
 	return clamped
+
+
+func _ensure_card_resolution_track_scrollable(max_scroll: int) -> void:
+	if max_scroll <= 0 or card_resolution_track_scroll == null or card_resolution_track == null:
+		return
+	var viewport_width := maxf(1.0, card_resolution_track_scroll.size.x)
+	var required_content_width := viewport_width + float(max_scroll) + 1.0
+	if card_resolution_track.custom_minimum_size.x < required_content_width:
+		card_resolution_track.custom_minimum_size = Vector2(required_content_width, card_resolution_track.custom_minimum_size.y)
+		card_resolution_track.update_minimum_size()
+		card_resolution_track_scroll.update_minimum_size()
+	var scrollbar := card_resolution_track_scroll.get_h_scroll_bar()
+	if scrollbar != null:
+		scrollbar.page = maxf(1.0, viewport_width)
+		scrollbar.max_value = maxf(scrollbar.max_value, required_content_width)
 
 
 func _card_resolution_track_max_scroll() -> int:
 	if card_resolution_track_scroll == null:
 		return 0
 	var content_width := 0.0
+	var child_count := 0
+	var separation := 0
 	if card_resolution_track != null:
 		content_width = card_resolution_track.get_combined_minimum_size().x
+		child_count = card_resolution_track.get_child_count()
+		separation = card_resolution_track.get_theme_constant("separation")
 	var viewport_width := card_resolution_track_scroll.size.x
 	var layout_max := maxi(0, int(ceil(content_width - viewport_width)))
+	if child_count > CARD_TRACK_VISIBLE_SLOT_COUNT:
+		var fallback_slot_width := CARD_TRACK_SLOT_WIDTH + maxi(0, separation)
+		var fallback_content_width := float(child_count * fallback_slot_width)
+		var fallback_viewport_width := float(CARD_TRACK_VISIBLE_SLOT_COUNT * fallback_slot_width)
+		layout_max = maxi(layout_max, int(ceil(fallback_content_width - fallback_viewport_width)))
 	var scrollbar_max := 0
 	var scrollbar := card_resolution_track_scroll.get_h_scroll_bar()
 	if scrollbar != null:
@@ -16417,15 +16559,27 @@ func _toggle_pause() -> void:
 
 
 func _refresh_ui() -> void:
+	ui_timer = UI_LIVE_REFRESH_SECONDS
+	ui_full_refresh_timer = UI_FULL_REFRESH_SECONDS
 	if menu_overlay != null and menu_overlay.visible:
 		_refresh_menu_layout()
 	_refresh_status()
+	_refresh_playtest_flow_compass()
 	_refresh_weather_forecast_strip()
 	_refresh_card_resolution_track()
 	_refresh_board()
 	_refresh_map_controls()
 	_refresh_district_supply_overlay()
 	_refresh_player_panel()
+	_refresh_bottom_countdown_bar()
+
+
+func _refresh_live_ui() -> void:
+	if menu_overlay != null and menu_overlay.visible:
+		return
+	_refresh_status()
+	_refresh_weather_forecast_strip()
+	_refresh_board()
 	_refresh_bottom_countdown_bar()
 
 
@@ -16815,9 +16969,9 @@ func _make_city_demands(products: Array, district_index: int) -> Array:
 func _city_build_error() -> String:
 	if game_over:
 		return "本局已结束"
-	if _has_pending_blocking_decision():
-		return "先完成当前临时选择"
-	return _city_build_error_for(selected_player, selected_district, true)
+	if _monster_wager_freezes_game():
+		return "先完成怪兽赌局"
+	return _city_build_error_for(selected_player, selected_district, false)
 
 
 func _city_build_error_for(player_index: int, district_index: int, require_cooldown: bool = false) -> String:
@@ -16939,8 +17093,7 @@ func _build_city_in_selected_district() -> void:
 		_log("无法在选区城市化：%s。" % error)
 		_refresh_ui()
 		return
-	if _create_city_at_district_for_player(selected_player, selected_district, "玩家城市化", true):
-		_start_player_cooldown(ACTION_COOLDOWN)
+	_create_city_at_district_for_player(selected_player, selected_district, "玩家城市化", true)
 	_refresh_ui()
 
 
