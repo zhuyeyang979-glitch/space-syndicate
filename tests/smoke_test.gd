@@ -4434,6 +4434,9 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	if int(profile_identity_report.get("signature_family_covered_count", 0)) < 3:
 		failures.append("profile identity signatures %d %s" % [int(profile_identity_report.get("signature_family_covered_count", 0)), profile_identity_summary])
 		ok = false
+	if int(profile_identity_report.get("signature_bonus_profile_count", 0)) < 6:
+		failures.append("profile identity signature bonus %d %s" % [int(profile_identity_report.get("signature_bonus_profile_count", 0)), profile_identity_summary])
+		ok = false
 	var leader_index := 1
 	var leader_score := -999999
 	for player_index in range(1, max_players):
