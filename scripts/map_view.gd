@@ -670,30 +670,24 @@ func _draw_selected_region_card_badges(index: int, anchor: Vector2) -> void:
 	var choices: Array = district.get("card_choices", [])
 	if choices.is_empty():
 		return
-	var sources: Dictionary = district.get("card_sources", {})
 	var font := get_theme_default_font()
-	var width := 210.0
-	var row_height := 17.0
-	var height := 24.0 + row_height * float(min(choices.size(), 5))
+	var width := 118.0
+	var height := 30.0
 	var x: float = clamp(anchor.x, 8.0, max(8.0, size.x - width - 8.0))
 	var y: float = clamp(anchor.y, 34.0, max(34.0, size.y - height - 8.0))
 	if _is_globe_mode():
 		var globe_center := _globe_center()
-		x = clamp(globe_center.x - _globe_radius() - width - 22.0, 10.0, max(10.0, size.x - width - 10.0))
+		x = clamp(globe_center.x - _globe_radius() - width - 16.0, 10.0, max(10.0, size.x - width - 10.0))
 		y = clamp(globe_center.y - height * 0.5, 34.0, max(34.0, size.y - height - 10.0))
 	var background := Color("#020617")
-	background.a = 0.88
-	draw_rect(Rect2(x, y, width, height), background, true)
-	draw_rect(Rect2(x, y, width, 22.0), Color(0.12, 0.10, 0.02, 0.86), true)
-	draw_string(font, Vector2(x + 8.0, y + 16.0), "区域可提供卡片", HORIZONTAL_ALIGNMENT_LEFT, width - 16.0, 11, Color("#fde68a"))
-	for i in range(min(choices.size(), 5)):
-		var card_name := String(choices[i])
-		var source := String(sources.get(card_name, "公共补给"))
-		var color := Color("#e2e8f0")
-		if source.contains("特殊卡"):
-			color = Color("#fbcfe8")
-		var line := "%d. %s｜%s" % [i + 1, _short_action_text(card_name, 12), _short_action_text(source, 7)]
-		draw_string(font, Vector2(x + 8.0, y + 38.0 + float(i) * row_height), line, HORIZONTAL_ALIGNMENT_LEFT, width - 16.0, 10, color)
+	background.a = 0.82
+	var rect := Rect2(x, y, width, height)
+	draw_rect(rect, background, true)
+	draw_rect(rect, Color("#f59e0b"), false, 1.2)
+	draw_circle(Vector2(x + 14.0, y + 15.0), 6.0, Color("#f59e0b"))
+	draw_string(font, Vector2(x + 5.5, y + 18.5), "+", HORIZONTAL_ALIGNMENT_CENTER, 17.0, 12, Color("#020617"))
+	draw_string(font, Vector2(x + 25.0, y + 13.0), "牌架 %d" % choices.size(), HORIZONTAL_ALIGNMENT_LEFT, width - 32.0, 10, Color("#fde68a"))
+	draw_string(font, Vector2(x + 25.0, y + 25.0), "双击区域看牌", HORIZONTAL_ALIGNMENT_LEFT, width - 32.0, 8, Color("#cbd5e1"))
 
 
 func _draw_trade_routes() -> void:

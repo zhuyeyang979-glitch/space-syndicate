@@ -3,6 +3,35 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜地图区域牌架从长列表改成主板短徽章
+
+### 本轮实现
+
+- 将选中区域地图上的 `区域可提供卡片` 黑色长列表移除。
+- 地图主板现在只显示短徽章：
+  - `牌架 N`
+  - `双击区域看牌`
+- 完整区域卡名、价格、购买资格和预览继续放在右侧 `区域牌架` 抽屉里。
+- 补充视觉护栏：
+  - `tests/visual_snapshot.gd` 检查地图源码不再包含 `区域可提供卡片`；
+  - 选中区域必须保留短 `牌架 %d` 与 `双击区域看牌` 提示。
+
+### 设计意图
+
+- 参考 Terraforming Mars 的主板读法：地图格子只放图标/短标签，详细牌面和操作进侧栏或卡牌区。
+- 中央星球是主视野，不能被区域卡名列表遮住；玩家只需要知道“这里有牌架，可以双击查看”。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+  - 有头 UI 快照采集 `tests/ui_snapshot_capture.gd`
+- 有头复查快照：
+  - `C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/04_play_table.png`
+
 ## 2026-07-01｜手牌架改成首屏完整 mini-card
 
 ### 本轮实现

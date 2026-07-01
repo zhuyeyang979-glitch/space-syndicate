@@ -75,6 +75,7 @@ func _run() -> void:
 	_expect(map_source.contains("PLANET_PROJECTION_BLEND_NAME := \"PlanetProjectionBlend\"") and map_source.contains("func _planet_projection_blend") and map_source.contains("func _projection_smoothstep"), "map projection has an explicit smooth local-to-globe blend contract")
 	_expect(map_source.contains("PLANET_PROJECTION_VISIBILITY_FADE_START") and map_source.contains("_projection_visibility_alpha_for_district"), "map projection fades far-side labels and regions during the globe transition")
 	_expect(map_source.contains("星球全景｜滚轮贴近") and map_source.contains("拉远中｜地表牌板正在卷成星球") and map_source.contains("局部地表｜滚轮拉远看星球"), "map projection hints use player-facing table language")
+	_expect(map_source.contains("\"牌架 %d\"") and map_source.contains("双击区域看牌") and not map_source.contains("区域可提供卡片"), "selected map region shows a compact card-rack badge instead of a long card list over the planet")
 	_expect(map_source.contains("projection_contract") and map_source.contains("local_xy_eases_into_center_globe"), "betting table map report exposes the planet projection policy")
 	_finish()
 
