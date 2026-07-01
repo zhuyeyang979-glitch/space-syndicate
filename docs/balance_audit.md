@@ -47,12 +47,12 @@ The prototype should not balance by making every route equally strong in every s
 
 ## Immediate numeric watchlist
 
-1. Military-force cards have strong identity now, but their GDP pressure numbers need simulation:
-   - Fighter should be a low-damage fast responder.
-   - Bomber should be the primary city-GDP pressure unit.
-   - Tank should be the durable land defender.
-   - Missile should be range-gated and position-readable.
-   - Submarine and warship should matter most on ocean trade maps.
+1. Covered now: military-force cards have an automated identity audit that checks GDP pressure, pressure duration, explicit route damage, mobility, range, durability, and land/ocean multipliers:
+   - Fighter remains a low-GDP-pressure fast responder.
+   - Bomber remains the primary city-GDP pressure unit.
+   - Tank remains the durable land defender with weak ocean mobility.
+   - Missile remains range-gated and position-readable.
+   - Submarine and warship remain strongest on ocean trade maps.
 2. Commodity futures and warehouse stockpile are now strategically interesting, but the payout unit and stockpile unit counts need long-run tests against ordinary city income.
 3. Direct hand pressure should create inference clues and disruption, not simply delete the best player’s options every time.
 4. Role cards now have a separate role-budget audit. The current role pool is broad enough, but the next tuning pass should watch high-leverage public passives:
@@ -90,3 +90,4 @@ Next AI tuning should check whether each profile actually does its thing in long
 - Covered now: the eight-seat AI smoke run reports route-tagged decision samples per AI profile, verifies every profile gets route actions, and checks that multiple core routes plus primary-profile routes appear.
 - Covered now: role setup resolves duplicate public-role selections into unique seats, random AI roles resolve without duplicates at run start, and every real role card exposes hidden balance-budget metadata for audit tests.
 - Covered now: generated-run card supply respects planet goods. Fixed-product cards enter only when their required product exists, monster cards enter by resource focus with a safe fallback, and district choices are audited against local products/demands so unavailable goods do not leak into purchasable cards.
+- Covered now: military identity balance is audited from the card data. The smoke test verifies each military family has I-IV cards, non-regressing rank gradients, fighter mobility, bomber GDP pressure, missile range, tank durability/terrain weakness, ocean-force sea mobility, and route-damage boundaries.

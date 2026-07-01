@@ -10655,6 +10655,207 @@ func _military_unit_gdp_pressure_seconds(skill_or_unit: Dictionary) -> float:
 	return maxf(0.0, float(skill_or_unit.get("military_gdp_pressure_seconds", 0.0)))
 
 
+func _military_force_balance_role(skill: Dictionary) -> String:
+	match String(skill.get("military_type", "defense")):
+		"fighter":
+			return "高速截击/猎兽/补位防守"
+		"bomber":
+			return "城市GDP压制/做空配合"
+		"tank":
+			return "陆地耐久防守/近距推进"
+		"missile":
+			return "远程威慑/位置可读"
+		"submarine":
+			return "海路伏击/海运封锁"
+		"warship":
+			return "海域护航/岸线炮击"
+	return "基础防卫/短时守城"
+
+
+func _military_force_balance_pressure_score(skill: Dictionary) -> int:
+	var pressure := _military_unit_gdp_pressure(skill, "strike_district")
+	var seconds := _military_unit_gdp_pressure_seconds(skill)
+	var route_damage := int(skill.get("military_strike_route_damage", 0))
+	return int(round(float(pressure) * maxf(1.0, seconds) / 10.0)) + route_damage * 18
+
+
+func _military_force_balance_entry(card_name: String, skill: Dictionary) -> Dictionary:
+	var multipliers: Dictionary = skill.get("terrain_move_multiplier", {})
+	var land_multiplier := float(multipliers.get("land", 1.0))
+	var ocean_multiplier := float(multipliers.get("ocean", 1.0))
+	var move_value := _military_unit_move(skill)
+	var range_value := _military_unit_range(skill)
+	var hp_value := _military_unit_hp(skill)
+	var damage_value := _military_unit_damage(skill)
+	var duration_value := _military_unit_duration(skill)
+	var pressure_value := _military_unit_gdp_pressure(skill, "strike_district")
+	var pressure_seconds := _military_unit_gdp_pressure_seconds(skill)
+	var route_damage := int(skill.get("military_strike_route_damage", 0))
+	return {
+		"name": card_name,
+		"family": _skill_family(card_name),
+		"rank": clampi(_skill_rank(card_name), 1, 4),
+		"type": String(skill.get("military_type", "defense")),
+		"domain": String(skill.get("military_domain", "mixed")),
+		"role": _military_force_balance_role(skill),
+		"hp": hp_value,
+		"damage": damage_value,
+		"move": move_value,
+		"range": range_value,
+		"duration": duration_value,
+		"land_multiplier": land_multiplier,
+		"ocean_multiplier": ocean_multiplier,
+		"gdp_pressure": pressure_value,
+		"gdp_pressure_seconds": pressure_seconds,
+		"route_damage": route_damage,
+		"pressure_score": _military_force_balance_pressure_score(skill),
+		"mobility_score": int(round(move_value * maxf(land_multiplier, ocean_multiplier) / 10.0 + range_value / 20.0)),
+		"durability_score": int(round(float(hp_value) * 3.0 + duration_value / 2.0)),
+	}
+
+
+func _military_force_balance_report() -> Dictionary:
+	var families := {}
+	var family_names := []
+	var family_entries := {}
+	var issues := []
+	for skill_name_variant in SKILL_CATALOG.keys():
+		var card_name := String(skill_name_variant)
+		var skill := _make_skill(card_name)
+		if String(skill.get("kind", "")) != "military_force":
+			continue
+		var entry := _military_force_balance_entry(card_name, skill)
+		var type_key := String(entry.get("type", "defense"))
+		var family_key := String(entry.get("family", card_name))
+		if not families.has(type_key):
+			families[type_key] = {
+				"count": 0,
+				"families": [],
+				"cards": [],
+				"role": String(entry.get("role", "")),
+				"domain": String(entry.get("domain", "mixed")),
+				"max_hp": 0,
+				"max_damage": 0,
+				"max_move": 0.0,
+				"max_range": 0.0,
+				"max_duration": 0.0,
+				"max_gdp_pressure": 0,
+				"max_pressure_score": 0,
+				"max_route_damage": 0,
+				"max_mobility_score": 0,
+				"max_durability_score": 0,
+				"min_land_multiplier": 999.0,
+				"max_land_multiplier": 0.0,
+				"min_ocean_multiplier": 999.0,
+				"max_ocean_multiplier": 0.0,
+			}
+		var summary: Dictionary = families[type_key]
+		summary["count"] = int(summary.get("count", 0)) + 1
+		var summary_families: Array = summary.get("families", [])
+		if not summary_families.has(family_key):
+			summary_families.append(family_key)
+		summary["families"] = summary_families
+		var cards: Array = summary.get("cards", [])
+		cards.append(card_name)
+		summary["cards"] = cards
+		summary["max_hp"] = maxi(int(summary.get("max_hp", 0)), int(entry.get("hp", 0)))
+		summary["max_damage"] = maxi(int(summary.get("max_damage", 0)), int(entry.get("damage", 0)))
+		summary["max_move"] = maxf(float(summary.get("max_move", 0.0)), float(entry.get("move", 0.0)))
+		summary["max_range"] = maxf(float(summary.get("max_range", 0.0)), float(entry.get("range", 0.0)))
+		summary["max_duration"] = maxf(float(summary.get("max_duration", 0.0)), float(entry.get("duration", 0.0)))
+		summary["max_gdp_pressure"] = maxi(int(summary.get("max_gdp_pressure", 0)), int(entry.get("gdp_pressure", 0)))
+		summary["max_pressure_score"] = maxi(int(summary.get("max_pressure_score", 0)), int(entry.get("pressure_score", 0)))
+		summary["max_route_damage"] = maxi(int(summary.get("max_route_damage", 0)), int(entry.get("route_damage", 0)))
+		summary["max_mobility_score"] = maxi(int(summary.get("max_mobility_score", 0)), int(entry.get("mobility_score", 0)))
+		summary["max_durability_score"] = maxi(int(summary.get("max_durability_score", 0)), int(entry.get("durability_score", 0)))
+		summary["min_land_multiplier"] = minf(float(summary.get("min_land_multiplier", 999.0)), float(entry.get("land_multiplier", 1.0)))
+		summary["max_land_multiplier"] = maxf(float(summary.get("max_land_multiplier", 0.0)), float(entry.get("land_multiplier", 1.0)))
+		summary["min_ocean_multiplier"] = minf(float(summary.get("min_ocean_multiplier", 999.0)), float(entry.get("ocean_multiplier", 1.0)))
+		summary["max_ocean_multiplier"] = maxf(float(summary.get("max_ocean_multiplier", 0.0)), float(entry.get("ocean_multiplier", 1.0)))
+		families[type_key] = summary
+		if not family_names.has(family_key):
+			family_names.append(family_key)
+		if not family_entries.has(family_key):
+			family_entries[family_key] = []
+		var entries: Array = family_entries[family_key]
+		entries.append(entry)
+		family_entries[family_key] = entries
+	for required_type in ["defense", "fighter", "bomber", "tank", "missile", "submarine", "warship"]:
+		if not families.has(required_type):
+			issues.append("缺少军种:%s" % required_type)
+		elif int((families[required_type] as Dictionary).get("count", 0)) < 4:
+			issues.append("%s军种少于I-IV四张" % required_type)
+	for family_variant in family_names:
+		var family_name := String(family_variant)
+		var previous_hp := -1
+		var previous_damage := -1
+		var previous_duration := -1.0
+		var previous_pressure_score := -1
+		var previous_route_damage := -1
+		for rank in range(1, 5):
+			var card_name := "%s%d" % [family_name, rank]
+			if not SKILL_CATALOG.has(card_name):
+				issues.append("%s缺少%d级" % [family_name, rank])
+				continue
+			var entry := _military_force_balance_entry(card_name, _make_skill(card_name))
+			var hp := int(entry.get("hp", 0))
+			var damage := int(entry.get("damage", 0))
+			var duration := float(entry.get("duration", 0.0))
+			var pressure_score := int(entry.get("pressure_score", 0))
+			var route_damage := int(entry.get("route_damage", 0))
+			if previous_hp >= 0 and hp < previous_hp:
+				issues.append("%s HP梯度倒退" % card_name)
+			if previous_damage >= 0 and damage < previous_damage:
+				issues.append("%s 伤害梯度倒退" % card_name)
+			if previous_duration >= 0.0 and duration < previous_duration:
+				issues.append("%s 在场时间梯度倒退" % card_name)
+			if previous_pressure_score >= 0 and pressure_score < previous_pressure_score:
+				issues.append("%s GDP/断路压力梯度倒退" % card_name)
+			if previous_route_damage >= 0 and route_damage < previous_route_damage:
+				issues.append("%s 断路梯度倒退" % card_name)
+			previous_hp = hp
+			previous_damage = damage
+			previous_duration = duration
+			previous_pressure_score = pressure_score
+			previous_route_damage = route_damage
+	if families.has("fighter") and families.has("bomber"):
+		if float((families["fighter"] as Dictionary).get("max_move", 0.0)) <= float((families["bomber"] as Dictionary).get("max_move", 0.0)):
+			issues.append("战斗机机动应高于轰炸机")
+	if families.has("fighter") and families.has("missile"):
+		if float((families["fighter"] as Dictionary).get("max_move", 0.0)) <= float((families["missile"] as Dictionary).get("max_move", 0.0)):
+			issues.append("战斗机机动应高于导弹阵地")
+	if families.has("bomber") and families.has("fighter"):
+		if int((families["bomber"] as Dictionary).get("max_gdp_pressure", 0)) <= int((families["fighter"] as Dictionary).get("max_gdp_pressure", 0)):
+			issues.append("轰炸机GDP压制应高于战斗机")
+	if families.has("bomber") and families.has("warship"):
+		if int((families["bomber"] as Dictionary).get("max_gdp_pressure", 0)) <= int((families["warship"] as Dictionary).get("max_gdp_pressure", 0)):
+			issues.append("轰炸机应是最高城市GDP压制军种")
+	if families.has("missile") and families.has("bomber"):
+		if float((families["missile"] as Dictionary).get("max_range", 0.0)) <= float((families["bomber"] as Dictionary).get("max_range", 0.0)):
+			issues.append("导弹阵地射程应高于轰炸机")
+	if families.has("tank") and families.has("fighter"):
+		if int((families["tank"] as Dictionary).get("max_hp", 0)) <= int((families["fighter"] as Dictionary).get("max_hp", 0)):
+			issues.append("坦克耐久应高于战斗机")
+	if families.has("tank") and float((families["tank"] as Dictionary).get("max_ocean_multiplier", 1.0)) >= 0.5:
+		issues.append("坦克跨海能力过高")
+	if families.has("submarine") and float((families["submarine"] as Dictionary).get("max_ocean_multiplier", 0.0)) <= float((families["submarine"] as Dictionary).get("max_land_multiplier", 0.0)):
+		issues.append("潜艇海域机动应高于陆地")
+	if families.has("warship") and float((families["warship"] as Dictionary).get("max_ocean_multiplier", 0.0)) <= float((families["warship"] as Dictionary).get("max_land_multiplier", 0.0)):
+		issues.append("战舰海域机动应高于陆地")
+	for route_type in ["bomber", "missile", "submarine", "warship"]:
+		if families.has(route_type) and int((families[route_type] as Dictionary).get("max_route_damage", 0)) <= 0:
+			issues.append("%s缺少显式断路打击" % route_type)
+	for low_route_type in ["defense", "fighter", "tank"]:
+		if families.has(low_route_type) and int((families[low_route_type] as Dictionary).get("max_route_damage", 0)) > 0:
+			issues.append("%s不应偷走断路专长" % low_route_type)
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"families": families,
+		"summary": "军队身份：战斗机高机动，轰炸机主压GDP，坦克主耐久，导弹主射程，潜艇/战舰主海域路线。",
+	}
+
+
 func _apply_military_gdp_pressure(unit: Dictionary, district_index: int, command: String, source: String) -> int:
 	if district_index < 0 or district_index >= districts.size():
 		return 0

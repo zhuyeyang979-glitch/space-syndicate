@@ -121,6 +121,7 @@ func _run() -> void:
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, cashflow product cash, and monster-upgrade cash triggers")
 	_expect(_verify_role_control_limit_cards(main), "role cards can publicly extend monster or military control limits without touching starter monsters")
 	_expect(_verify_military_unit_variant_cards(main), "military card families cover air, land, ocean, terrain deployment, GDP pressure, route pressure, and distinct card facts")
+	_expect(_verify_military_balance_identity(main), "military balance audit preserves fighter, bomber, tank, missile, submarine, and warship identities")
 	_expect(_verify_military_runtime_gdp_boundary(main), "military movement avoids monster-style building crush while applying visible short GDP pressure")
 	_expect(_verify_military_explicit_strike_boundary(main), "military district and route damage happen only through explicit strike commands")
 	_expect(_verify_ai_military_command_policy(main), "AI uses reusable military commands to guard cities, strike rivals, attack monsters, and record command metadata")
@@ -1250,6 +1251,50 @@ func _verify_military_unit_variant_cards(main: Node) -> bool:
 	var fighter_land := float(main.call("_military_unit_terrain_move_multiplier", fighter, land_index))
 	var fighter_ocean := float(main.call("_military_unit_terrain_move_multiplier", fighter, ocean_index))
 	return tank_land > tank_ocean and sub_ocean > sub_land and fighter_land > 1.0 and fighter_ocean > 1.0
+
+
+func _verify_military_balance_identity(main: Node) -> bool:
+	var report := main.call("_military_force_balance_report") as Dictionary
+	var families := report.get("families", {}) as Dictionary
+	var issues := _as_array(report.get("issues", []))
+	if not bool(report.get("ok", false)):
+		print("Military balance audit issues: %s" % " / ".join(issues))
+		return false
+	for required_type in ["defense", "fighter", "bomber", "tank", "missile", "submarine", "warship"]:
+		if not families.has(required_type):
+			return false
+	var fighter := families["fighter"] as Dictionary
+	var bomber := families["bomber"] as Dictionary
+	var tank := families["tank"] as Dictionary
+	var missile := families["missile"] as Dictionary
+	var submarine := families["submarine"] as Dictionary
+	var warship := families["warship"] as Dictionary
+	var defense := families["defense"] as Dictionary
+	var identity_ok := true
+	identity_ok = identity_ok and String(report.get("summary", "")).contains("战斗机高机动")
+	identity_ok = identity_ok and String(fighter.get("role", "")).contains("高速")
+	identity_ok = identity_ok and String(bomber.get("role", "")).contains("GDP")
+	identity_ok = identity_ok and String(tank.get("role", "")).contains("耐久")
+	identity_ok = identity_ok and float(fighter.get("max_move", 0.0)) > float(bomber.get("max_move", 0.0))
+	identity_ok = identity_ok and float(fighter.get("max_move", 0.0)) > float(missile.get("max_move", 0.0))
+	identity_ok = identity_ok and int(bomber.get("max_gdp_pressure", 0)) > int(fighter.get("max_gdp_pressure", 0))
+	identity_ok = identity_ok and int(bomber.get("max_gdp_pressure", 0)) > int(warship.get("max_gdp_pressure", 0))
+	identity_ok = identity_ok and float(missile.get("max_range", 0.0)) > float(bomber.get("max_range", 0.0))
+	identity_ok = identity_ok and float(missile.get("max_range", 0.0)) > float(warship.get("max_range", 0.0))
+	identity_ok = identity_ok and int(tank.get("max_hp", 0)) > int(fighter.get("max_hp", 0))
+	identity_ok = identity_ok and float(tank.get("max_ocean_multiplier", 1.0)) < 0.5
+	identity_ok = identity_ok and float(submarine.get("max_ocean_multiplier", 0.0)) > float(submarine.get("max_land_multiplier", 0.0))
+	identity_ok = identity_ok and float(warship.get("max_ocean_multiplier", 0.0)) > float(warship.get("max_land_multiplier", 0.0))
+	identity_ok = identity_ok and int(bomber.get("max_route_damage", 0)) > 0
+	identity_ok = identity_ok and int(missile.get("max_route_damage", 0)) > 0
+	identity_ok = identity_ok and int(submarine.get("max_route_damage", 0)) > 0
+	identity_ok = identity_ok and int(warship.get("max_route_damage", 0)) > 0
+	identity_ok = identity_ok and int(defense.get("max_route_damage", 0)) == 0
+	identity_ok = identity_ok and int(fighter.get("max_route_damage", 0)) == 0
+	identity_ok = identity_ok and int(tank.get("max_route_damage", 0)) == 0
+	if not identity_ok:
+		print("Military balance identity report: %s" % str(report))
+	return identity_ok
 
 
 func _verify_military_runtime_gdp_boundary(main: Node) -> bool:
