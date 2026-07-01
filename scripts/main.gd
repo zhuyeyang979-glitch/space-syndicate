@@ -20135,7 +20135,7 @@ func _add_action_tray_module_chip(parent: Container, entry: Dictionary) -> void:
 	var text := "%s｜%s" % [String(entry.get("text", "模块")), String(entry.get("state", ""))]
 	var chip := _track_status_badge(text, accent.lightened(0.16) if active else Color("#94a3b8"), Color("#020617").lerp(accent, 0.24 if active else 0.10))
 	chip.name = "ActionTrayModuleChip"
-	chip.tooltip_text = "桌边操作模块：先扫筹码，再在下方执行具体按钮。"
+	chip.tooltip_text = "行动模块：筹码只做快速定位，具体按钮在下方。"
 	parent.add_child(chip)
 
 
@@ -20154,8 +20154,8 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 178)
-	panel.tooltip_text = "桌边行动托盘：收纳选区、竞价、竞猜、合约、目标选择和临时决策，避免遮住星球与手牌。"
+	panel.custom_minimum_size = Vector2(0, 166)
+	panel.tooltip_text = "当前行动栏：主动作优先，其它模块用筹码定位；不遮住星球和手牌。"
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#06111f")
 	style.border_color = Color("#475569")
@@ -20165,36 +20165,37 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 7)
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 5)
 	panel.add_child(margin)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 5)
+	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 8)
+	header.name = "ActionTrayCurrentHeader"
 	box.add_child(header)
-	var title := _plain_label("桌边行动托盘", 11, Color("#fde68a"))
+	var title := _plain_label("当前行动", 11, Color("#fde68a"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.tooltip_text = "常驻信息看星球、牌轨、资源筹码和手牌；具体动作收在这里。"
+	title.tooltip_text = "右侧只放当前可执行动作；规则和详情进菜单或 hover。"
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(title)
-	var tray_hint := _plain_label("模块先扫", 9, Color("#94a3b8"))
+	var tray_hint := _plain_label("筹码定位", 9, Color("#94a3b8"))
 	tray_hint.autowrap_mode = TextServer.AUTOWRAP_OFF
 	tray_hint.clip_text = true
 	tray_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	tray_hint.tooltip_text = "先看模块筹码，再展开下方具体动作。"
+	tray_hint.tooltip_text = "像电子桌游的行动区：先看筹码，再点下方动作。"
 	header.add_child(tray_hint)
 	_add_action_tray_module_rail(box, player_index)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 132)
+	scroll.custom_minimum_size = Vector2(0, 124)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

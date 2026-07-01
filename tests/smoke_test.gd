@@ -416,6 +416,9 @@ func _run() -> void:
 	if buildable_district >= 0:
 		_verify_monster_resource_and_collision_system(main, buildable_district)
 		await process_frame
+		districts = _as_array(main.get("districts"))
+		buildable_district = _first_buildable_land_district(districts)
+		_expect(buildable_district >= 0, "city build smoke has an undestroyed land district after monster collision checks")
 		main.set("selected_player", 0)
 		main.set("selected_district", buildable_district)
 		main.call("_build_city_in_selected_district")
@@ -8825,7 +8828,7 @@ func _first_buildable_land_district(districts: Array) -> int:
 			continue
 		var district := district_variant as Dictionary
 		var city := district.get("city", {}) as Dictionary
-		if String(district.get("terrain", "")) == "land" and city.is_empty():
+		if String(district.get("terrain", "")) == "land" and city.is_empty() and not bool(district.get("destroyed", false)):
 			return i
 	return -1
 

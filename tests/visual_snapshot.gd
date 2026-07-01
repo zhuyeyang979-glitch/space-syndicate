@@ -68,7 +68,7 @@ func _run() -> void:
 	_expect(goal_index < 0 and action_goal_index > tray_index and action_goal_index < district_action_index, "next-step goal prompt lives at the top of the action tray")
 	_expect(first_summon_index < 0 and district_action_index > action_goal_index, "starter summon now uses the single primary action slot instead of a duplicate action-tray card")
 	_expect(district_action_index > tray_index and bid_row_index > tray_index, "district actions and bid controls are inside the action tray")
-	_expect(main_source.contains("桌边行动托盘") and main_source.contains("避免遮住星球与手牌") and main_source.contains("模块先扫"), "secondary actions are explicitly contained in a readable table-edge action tray")
+	_expect(main_source.contains("ActionTrayCurrentHeader") and main_source.contains("当前行动") and main_source.contains("筹码定位") and main_source.contains("不遮住星球和手牌"), "secondary actions are explicitly contained in a compact table-edge current-action tray")
 	_expect(main_source.contains("BidControlCard") and main_source.contains("BidControlChipRail") and main_source.contains("公开报价"), "bid controls use a compact public-bid table card")
 	_expect(main_source.contains("OwnerGuessCard") and main_source.contains("OwnerGuessChipRail") and main_source.contains("OwnerGuessAvatarRow"), "card-owner guessing uses a dedicated table-side wager card")
 	_expect(main_source.contains("资料大厅") and main_source.contains("价格带") and not main_source.contains("价格梯度"), "player-facing menu text remains concise and non-developmental")
