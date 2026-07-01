@@ -3,6 +3,39 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜手牌加入 UiCard 式悬停抬起
+
+### 本轮实现
+
+- 下载本地参考 `reference/UiCard`，确认其核心手感参数：hover scale、hover height、hover speed、手牌弧形/间距、拖拽和出牌/弃牌区。
+- 当前手牌卡新增轻量 hover 动效：
+  - `HAND_CARD_HOVER_SCALE := 1.08`
+  - `HAND_CARD_HOVER_LIFT_PIXELS := 13.0`
+  - `HAND_CARD_HOVER_TWEEN_SECONDS := 0.10`
+  - 鼠标经过手牌时卡牌抬起、放大、提高层级并轻微提亮；
+  - 鼠标离开后平滑回到牌架。
+- 手牌架提示从 `悬停详情` 调整为 `悬停抬起`，让测试者知道这不是静态按钮。
+- 扩充 UI 护栏：
+  - 源码级检查 `HandCardHoverLiftCard`、`_connect_hand_card_hover`、`_animate_hand_card_hover`；
+  - 完整 smoke 会在真实主桌面中确认手牌 hover 节点和提示筹码存在。
+- 参考库补充用户提供的巨兽/城市破坏与行星/太空科幻项目：
+  - 优先参考 `DisasterCity`、`Destroyable_Buildings_Generation`、`solar_system_demo`、`BlocksBeyondTheStars`；
+  - 同步记录 Kaiju / 可破坏建筑 / 太空交易 / 行星沙盒 / 航天器模拟等后续标杆。
+
+### 设计意图
+
+- 手牌不能只是排成一排按钮；它要先有“卡牌物件感”，测试者才会自然理解 hover、选择、出牌和弃牌。
+- 这一步先做低风险 hover lift，不引入拖拽状态机；后续再接“拖拽预备 → 目标槽 → 飞入匿名结算轨道”。
+- 巨兽破坏和行星参考先写进文档，后续做城市受损动画、建筑碎裂、球面缩放时有明确标杆。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+
 ## 2026-07-01｜区域牌架加入商店状态筹码
 
 ### 本轮实现

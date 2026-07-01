@@ -86,6 +86,10 @@ const CARD_TRACK_CURRENT_SLOT_WIDTH := 60
 const CARD_TRACK_SLOT_HEIGHT := 22
 const CARD_TRACK_EMPTY_SLOT_HEIGHT := 15
 const CARD_TRACK_SEGMENT_WIDTH := 9
+const HAND_CARD_HOVER_SCALE := 1.08
+const HAND_CARD_HOVER_LIFT_PIXELS := 13.0
+const HAND_CARD_HOVER_TWEEN_SECONDS := 0.10
+const HAND_CARD_HOVER_Z_INDEX := 80
 const AUTO_MONSTER_MOVE_RATIO := 0.72
 const AUTO_MONSTER_MIN_SPECIAL_DAMAGE := 1
 const AUTO_MONSTER_ENCOUNTER_RANGE_METERS := 170.0
@@ -2404,6 +2408,64 @@ func _set_card_resolution_track_slot_hover(control: Control, hovered: bool) -> v
 		return
 	control.z_index = 20 if hovered else 0
 	control.scale = Vector2(1.06, 1.06) if hovered else Vector2.ONE
+
+
+func _connect_hand_card_hover(control: Control) -> void:
+	if control == null:
+		return
+	var enter_callback := Callable(self, "_set_hand_card_hover").bind(control, true)
+	if not control.mouse_entered.is_connected(enter_callback):
+		control.mouse_entered.connect(enter_callback)
+	var exit_callback := Callable(self, "_set_hand_card_hover").bind(control, false)
+	if not control.mouse_exited.is_connected(exit_callback):
+		control.mouse_exited.connect(exit_callback)
+
+
+func _set_hand_card_hover(control: Control, hovered: bool) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	var base_position: Vector2 = control.get_meta("hand_card_base_position", control.position)
+	if hovered:
+		if not bool(control.get_meta("hand_card_hovered", false)):
+			base_position = control.position
+			control.set_meta("hand_card_base_position", base_position)
+		control.z_index = HAND_CARD_HOVER_Z_INDEX
+		control.pivot_offset = control.size * 0.5 if control.size != Vector2.ZERO else control.custom_minimum_size * 0.5
+	control.set_meta("hand_card_hovered", hovered)
+	var target_scale := Vector2(HAND_CARD_HOVER_SCALE, HAND_CARD_HOVER_SCALE) if hovered else Vector2.ONE
+	var target_position := base_position + (Vector2(0.0, -HAND_CARD_HOVER_LIFT_PIXELS) if hovered else Vector2.ZERO)
+	var target_modulate := Color(1.06, 1.06, 1.06, 1.0) if hovered else Color.WHITE
+	_animate_hand_card_hover(control, target_position, target_scale, target_modulate, hovered)
+
+
+func _animate_hand_card_hover(control: Control, target_position: Vector2, target_scale: Vector2, target_modulate: Color, hovered: bool) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	var old_tween_variant = control.get_meta("hand_card_hover_tween", null)
+	if old_tween_variant is Tween:
+		var old_tween := old_tween_variant as Tween
+		old_tween.kill()
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(control, "position", target_position, HAND_CARD_HOVER_TWEEN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(control, "scale", target_scale, HAND_CARD_HOVER_TWEEN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(control, "modulate", target_modulate, HAND_CARD_HOVER_TWEEN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	control.set_meta("hand_card_hover_tween", tween)
+	if not hovered:
+		var finish_callback := Callable(self, "_finish_hand_card_hover_reset").bind(control)
+		if not tween.finished.is_connected(finish_callback):
+			tween.finished.connect(finish_callback)
+
+
+func _finish_hand_card_hover_reset(control: Control) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	if bool(control.get_meta("hand_card_hovered", false)):
+		return
+	control.z_index = 0
+	control.position = control.get_meta("hand_card_base_position", control.position)
+	control.scale = Vector2.ONE
+	control.modulate = Color.WHITE
 
 
 func _on_card_resolution_track_gui_input(event: InputEvent) -> void:
@@ -20127,7 +20189,7 @@ func _add_player_hand_rack(parent: Container, player: Dictionary, player_index: 
 	hand_info.add_child(hand_chip_rail)
 	_add_player_hand_rack_chip(hand_chip_rail, "手牌 %d/%d" % [_player_counted_hand_size(player), PLAYER_HAND_LIMIT], Color("#c084fc"), "普通手牌上限；固定技能牌不占格。")
 	_add_player_hand_rack_chip(hand_chip_rail, "状态：%s" % _short_card_text(_player_hand_rack_overall_state_text(player, player_index), 12), Color("#38bdf8"), "手牌架总状态：只显示当前玩家自己的出牌可用性；对手手牌仍是隐私。")
-	_add_player_hand_rack_chip(hand_chip_rail, "悬停详情", Color("#60a5fa"), "鼠标停在卡牌上看完整说明。")
+	_add_player_hand_rack_chip(hand_chip_rail, "悬停抬起", Color("#60a5fa"), "鼠标停在卡牌上会抬起放大，tooltip 显示完整说明。")
 	_add_player_hand_rack_chip(hand_chip_rail, "首召/出牌", Color("#f59e0b"), "起始怪兽显示首召；普通牌按钮会进入匿名出牌队列或目标选择。")
 	var hand_scroll := ScrollContainer.new()
 	hand_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -21493,11 +21555,13 @@ func _add_card_face_chip_rail(parent: Container, skill_name: String, skill: Dict
 func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, slot_index: int = -1, is_hand_card: bool = false, compact: bool = false, show_action: bool = true) -> void:
 	var accent := _card_theme_color(skill)
 	var panel := PanelContainer.new()
+	panel.name = "HandCardHoverLiftCard" if is_hand_card else "CardFacePanel"
 	var card_minimum_size := Vector2(170, 198) if compact else Vector2(218, 268)
 	if compact and is_hand_card:
 		card_minimum_size = Vector2(148, 148)
 	panel.custom_minimum_size = card_minimum_size
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.tooltip_text = _card_detail_tooltip(skill_name)
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#0b1120").lerp(accent, 0.16)
@@ -21505,6 +21569,10 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(12)
 	panel.add_theme_stylebox_override("panel", style)
+	if is_hand_card:
+		panel.set_meta("hand_card_hover_lift", true)
+		panel.set_meta("hand_card_slot", slot_index)
+		_connect_hand_card_hover(panel)
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()

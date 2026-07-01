@@ -181,6 +181,7 @@ func _run() -> void:
 		or _container_label_text_contains(player_box, "冷却中")
 		or _container_label_text_contains(player_box, "需补牌")
 	), "hand cards show a board-game style playability state instead of a blind play button")
+	_expect(player_box != null and _container_has_named_node(player_box, "HandCardHoverLiftCard") and _container_label_text_contains(player_box, "悬停抬起"), "hand cards expose UiCard-style hover lift affordance")
 	_expect(player_box != null and _container_button_tooltip_contains(player_box, "打出条件："), "hand card action buttons expose concise play requirements")
 	_expect(player_box != null and _container_label_text_contains(player_box, "公开席位") and _container_button_text_contains(player_box, "明怪") and _container_button_tooltip_contains(player_box, "现金、手牌和弃牌不公开"), "player panel exposes a board-game style public seat strip without leaking private hands or cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail"), "player panel shows one concise table-goal next-action card")

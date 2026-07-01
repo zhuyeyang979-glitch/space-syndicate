@@ -9,6 +9,7 @@
 - `gaia-project`：重点参考星图 SVG、行动按钮、资源表格、规则/定义页的图标化结构。
 - `Night-Patrol`：重点参考临时美术、卡框、按钮、音效和启动图氛围。其仓库声明为 CC BY-NC 4.0，开发期可借鉴，商业发行前应替换或重新确认授权。
 - `hypnagonia`：来自 GitHub `topics/slaythespire`，Godot/GDScript 的 spire-like deckbuilder。重点参考卡牌数据组织、卡牌 hover 解释、商店/奖励选择和可完整跑通的 deckbuilder 流程；其仓库为 AGPL-3.0，当前仅做结构和交互参考。
+- `UiCard`：重点参考手牌弧形、hover 放大、拖拽、弃牌/出牌区和运动参数；MIT license，当前只抽取交互原则。
 
 ## 在线参考清单
 
@@ -25,15 +26,26 @@
 
 ### 巨兽 / 城市破坏 / 灾害感参考
 
-- [binary-machinery/DisasterCity](https://github.com/binary-machinery/DisasterCity)：Unity RTS 原型，主题就是巨型 kaiju-like 怪兽攻击城市；重点参考城市被怪兽压迫时的全局态势表达。
+- [binary-machinery/DisasterCity](https://github.com/binary-machinery/DisasterCity)：优先参考。Unity RTS 原型，主题就是巨型 kaiju-like 怪兽攻击城市；重点参考城市被怪兽压迫时的全局态势表达。
+- [Moth-Fried-Games/moth-kaijuice](https://github.com/Moth-Fried-Games/moth-kaijuice)：Godot / MIT game jam 原型，参考怪兽成长、实验室/怪兽题材 UI 和 Godot 项目组织。
+- [PolyBrew-Studios/GMTK2024-CARJU](https://github.com/PolyBrew-Studios/GMTK2024-CARJU)：Unity “godzilla-katamari-car” 方向，参考破坏、吸收碎片、变大的循环。
+- [Amnexistence/Destroyable_Buildings_Generation](https://github.com/Amnexistence/Destroyable_Buildings_Generation)：优先参考。Unity C# / CC0-1.0，可破坏建筑生成；重点参考巨兽撞楼、建筑碎裂和破坏状态生成。
+- [ALEX-WHISPER/ARDestructibleScene](https://github.com/ALEX-WHISPER/ARDestructibleScene)：Unity AR 破坏 demo，参考炸弹爆炸、弹坑、建筑碎裂和粒子反馈。
 - [N64brew-Game-Jam-2025/kaiju-response-team](https://github.com/N64brew-Game-Jam-2025/kaiju-response-team)：N64 homebrew，玩家开车在城市中修复怪兽造成的损害；重点参考“城市受损→抢救/修复→小地图提示”的循环。
 - [doctor-g/KaijuHomecoming](https://github.com/doctor-g/KaijuHomecoming)：Unreal / Global Game Jam kaiju 项目；参考怪兽主题、城市玩具感比例和原型资产组织。
 - [mattbucci/destruct-o](https://github.com/mattbucci/destruct-o)：体素破坏项目，参考破坏反馈、碎裂对象和破坏后状态保存思路。
+- [RobDiggle/kaiju_battle](https://github.com/RobDiggle/kaiju_battle)：公开 Kaiju battle 仓库；后续若参考需先确认 LICENSE。
+- [phoenixgoldz/KaijuUprising-UE5](https://github.com/phoenixgoldz/KaijuUprising-UE5)：UE5 Kaiju 题材公开仓库；适合看 Unreal 项目结构，后续若参考需先确认 LICENSE。
 - [KaijuEngine/kaiju](https://github.com/KaijuEngine/kaiju)：不是巨兽游戏而是 Go/Vulkan 引擎，但命名和项目结构可作为 2D/3D 原型工程参考，不作为玩法标杆。
 
 ### 行星 / 球面 / 科幻空间参考
 
 - [Zylann/solar_system_demo](https://github.com/Zylann/solar_system_demo)：Godot 4 + Voxel Tools 的 3D space game demo，含程序生成星球、可编辑体素地形、地表到太空飞行、菜单和音效；重点参考“从地表拉远到太空”的尺度感。
+- [pioneerspacesim/pioneer](https://github.com/pioneerspacesim/pioneer)：GPLv3 太空冒险/交易/战斗模拟器，参考星系探索、登陆行星、飞船 HUD 和太空经济氛围。
+- [marceld23/BlocksBeyondTheStars](https://github.com/marceld23/BlocksBeyondTheStars)：优先参考。Unity + .NET / AGPL-3.0 太空建造沙盒，参考程序恒星系、行星登陆、挖掘、基地/空间站和太空沙盒背景。
+- [TheOpenSpaceProgram/osp-magnum](https://github.com/TheOpenSpaceProgram/osp-magnum)：MIT 航天器建造框架，参考飞行器、刚体物理、轨道、行星地形组件和 Kerbal-like 系统层级。
+- [OoliteProject/oolite](https://github.com/OoliteProject/oolite)：Elite 风格开源太空交易/战斗游戏，参考科幻 HUD、飞船战斗、星系交易和扩展包结构。
+- [vegastrike/Vega-Strike-Engine-Source](https://github.com/vegastrike/Vega-Strike-Engine-Source)：Vega Strike 太空飞行模拟引擎，参考探索、贸易、战斗、多星系、HUD、爆炸和动态宇宙系统。
 - [cuberact/godot-cuberact-planet-chunked-lod](https://github.com/cuberact/godot-cuberact-planet-chunked-lod)：Godot 4.6 / GDScript 程序星球，动态 LOD、地形和大气；重点参考球面地图从远近距离切换细节。
 - [athillion/ProceduralPlanetGodot](https://github.com/athillion/ProceduralPlanetGodot)：Godot 程序星球，参考球形星球生成和 Sebastian Lague 式星球构造。
 - [Hoimar/Planet-Generator](https://github.com/Hoimar/Planet-Generator)：Godot procedural planet addon，参考噪声地形、LOD chunks 和可配置星球生成。
