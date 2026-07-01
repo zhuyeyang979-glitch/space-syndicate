@@ -4394,6 +4394,26 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	if int(live_route_report.get("action_kind_count", 0)) < 3:
 		failures.append("live route actions %d %s" % [int(live_route_report.get("action_kind_count", 0)), live_route_summary])
 		ok = false
+	var product_bridge_report := main.call("_ai_product_route_bridge_report") as Dictionary
+	var product_bridge_summary := String(main.call("_ai_product_route_bridge_summary", product_bridge_report))
+	if not bool(product_bridge_report.get("ok", false)):
+		failures.append("product route bridge audit %s" % product_bridge_summary)
+		ok = false
+	if int(product_bridge_report.get("product_sample_ai_count", 0)) < max_ai:
+		failures.append("product route bridge ai %d %s" % [int(product_bridge_report.get("product_sample_ai_count", 0)), product_bridge_summary])
+		ok = false
+	if int(product_bridge_report.get("distinct_product_count", 0)) < 4:
+		failures.append("product route bridge goods %d %s" % [int(product_bridge_report.get("distinct_product_count", 0)), product_bridge_summary])
+		ok = false
+	if int(product_bridge_report.get("route_stage_count", 0)) < 2:
+		failures.append("product route bridge stages %d %s" % [int(product_bridge_report.get("route_stage_count", 0)), product_bridge_summary])
+		ok = false
+	if int(product_bridge_report.get("development_route_count", 0)) < 3:
+		failures.append("product route bridge development routes %d %s" % [int(product_bridge_report.get("development_route_count", 0)), product_bridge_summary])
+		ok = false
+	if int(product_bridge_report.get("policy_family_count", 0)) < 3:
+		failures.append("product route bridge families %d %s" % [int(product_bridge_report.get("policy_family_count", 0)), product_bridge_summary])
+		ok = false
 	var leader_index := 1
 	var leader_score := -999999
 	for player_index in range(1, max_players):

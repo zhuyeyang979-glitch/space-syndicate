@@ -17099,6 +17099,242 @@ func _ai_live_route_balance_summary(report: Dictionary = {}) -> String:
 	]
 
 
+func _ai_sample_primary_product(sample: Dictionary) -> String:
+	var product_candidates := [
+		String(sample.get("product", "")),
+		String(sample.get("route_plan_product", "")),
+		String(sample.get("focus_product", "")),
+	]
+	for product_variant in product_candidates:
+		var product_name := String(product_variant)
+		if product_name != "" and PRODUCT_CATALOG.has(product_name):
+			return product_name
+	var candidates_variant: Variant = sample.get("candidates", [])
+	if candidates_variant is Array:
+		var best_product := ""
+		var best_score := -2147483648
+		for candidate_variant in (candidates_variant as Array):
+			if not (candidate_variant is Dictionary):
+				continue
+			var candidate := candidate_variant as Dictionary
+			var candidate_product := String(candidate.get("product", ""))
+			if candidate_product == "" or not PRODUCT_CATALOG.has(candidate_product):
+				candidate_product = String(candidate.get("route_plan_product", ""))
+			if candidate_product == "" or not PRODUCT_CATALOG.has(candidate_product):
+				candidate_product = String(candidate.get("focus_product", ""))
+			if candidate_product == "" or not PRODUCT_CATALOG.has(candidate_product):
+				continue
+			var candidate_score := int(candidate.get("score", 0))
+			if best_product == "" or candidate_score > best_score:
+				best_product = candidate_product
+				best_score = candidate_score
+		return best_product
+	return ""
+
+
+func _ai_product_sample_policy_family(sample: Dictionary) -> String:
+	var kind := String(sample.get("kind", ""))
+	var policy_kind := String(sample.get("policy_kind", ""))
+	var strategic_role := String(sample.get("strategic_role", ""))
+	if String(sample.get("futures_direction", "")) != "" or policy_kind.contains("futures") or kind == "product_futures":
+		return "期货"
+	if kind.contains("合约") or kind == "area_trade_contract" or policy_kind.contains("contract") or String(sample.get("contract_response_role", "")) != "":
+		return "合约"
+	if String(sample.get("weather_type", "")) != "" or policy_kind.contains("weather") or kind == "weather_control":
+		return "天气"
+	if String(sample.get("direct_interaction_role", "")) != "" or policy_kind.contains("direct") or kind.contains("直接") or ["city_control_dispute", "global_barrage"].has(kind):
+		return "直接互动"
+	if policy_kind.contains("monster_lure") or kind == "monster_lure" or strategic_role.contains("怪兽") or kind.contains("怪兽诱导"):
+		return "怪兽诱导"
+	if kind == "城市化" or policy_kind == "city_build":
+		return "城市化"
+	if kind == "区域购牌":
+		return "购牌"
+	if kind == "匿名出牌":
+		return "出牌"
+	if kind.contains("商业") or policy_kind.contains("route_sabotage") or policy_kind.contains("price_pump") or policy_kind.contains("product") or policy_kind.contains("market"):
+		return "经营动作"
+	if kind.contains("军队") or policy_kind.contains("military"):
+		return "军队"
+	if kind.contains("情报") or policy_kind.contains("intel"):
+		return "情报"
+	return "其他"
+
+
+func _ai_product_route_bridge_report() -> Dictionary:
+	var player_entries := []
+	var product_counts := {}
+	var route_stage_counts := {}
+	var policy_family_counts := {}
+	var development_route_counts := {}
+	var ai_count := 0
+	var sampled_ai_count := 0
+	var product_sample_ai_count := 0
+	var route_product_ai_count := 0
+	var focus_product_ai_count := 0
+	var total_sample_count := 0
+	var product_sample_count := 0
+	var route_product_sample_count := 0
+	var focus_product_sample_count := 0
+	var aligned_sample_count := 0
+	var distinct_products := []
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		if player_index < 0 or player_index >= players.size():
+			continue
+		ai_count += 1
+		var player: Dictionary = players[player_index]
+		var profile: Dictionary = player.get("ai_profile", {}) as Dictionary
+		var memory_variant: Variant = player.get("ai_memory", {})
+		var samples := []
+		if memory_variant is Dictionary:
+			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
+			if samples_variant is Array:
+				samples = samples_variant as Array
+		if not samples.is_empty():
+			sampled_ai_count += 1
+		var player_products := []
+		var player_policy_families := {}
+		var player_sample_count := 0
+		var player_product_sample_count := 0
+		var player_route_product_sample_count := 0
+		var player_focus_product_sample_count := 0
+		var player_aligned_sample_count := 0
+		for sample_variant in samples:
+			if not (sample_variant is Dictionary):
+				continue
+			var sample := sample_variant as Dictionary
+			player_sample_count += 1
+			total_sample_count += 1
+			var direct_product := String(sample.get("product", ""))
+			var route_product := String(sample.get("route_plan_product", ""))
+			var focus_product := String(sample.get("focus_product", ""))
+			var primary_product := _ai_sample_primary_product(sample)
+			if primary_product != "":
+				player_product_sample_count += 1
+				product_sample_count += 1
+				product_counts[primary_product] = int(product_counts.get(primary_product, 0)) + 1
+				_append_unique_string(player_products, primary_product)
+				_append_unique_string(distinct_products, primary_product)
+			if route_product != "" and PRODUCT_CATALOG.has(route_product):
+				player_route_product_sample_count += 1
+				route_product_sample_count += 1
+			if focus_product != "" and PRODUCT_CATALOG.has(focus_product):
+				player_focus_product_sample_count += 1
+				focus_product_sample_count += 1
+			if direct_product != "" and PRODUCT_CATALOG.has(direct_product) and (direct_product == route_product or direct_product == focus_product):
+				player_aligned_sample_count += 1
+				aligned_sample_count += 1
+			var route_stage := String(sample.get("route_plan_stage", ""))
+			if route_stage != "":
+				route_stage_counts[route_stage] = int(route_stage_counts.get(route_stage, 0)) + 1
+			var development_route := _ai_sample_development_route_id(sample)
+			if development_route != "":
+				development_route_counts[development_route] = int(development_route_counts.get(development_route, 0)) + 1
+			var family := _ai_product_sample_policy_family(sample)
+			policy_family_counts[family] = int(policy_family_counts.get(family, 0)) + 1
+			player_policy_families[family] = int(player_policy_families.get(family, 0)) + 1
+		if player_product_sample_count > 0:
+			product_sample_ai_count += 1
+		if player_route_product_sample_count > 0:
+			route_product_ai_count += 1
+		if player_focus_product_sample_count > 0:
+			focus_product_ai_count += 1
+		player_entries.append({
+			"player_index": player_index,
+			"profile": String(profile.get("name", "AI")),
+			"sample_count": player_sample_count,
+			"product_sample_count": player_product_sample_count,
+			"route_product_sample_count": player_route_product_sample_count,
+			"focus_product_sample_count": player_focus_product_sample_count,
+			"aligned_sample_count": player_aligned_sample_count,
+			"focus_product": String((player.get("ai_memory", {}) as Dictionary).get("economic_focus_product", "")) if player.get("ai_memory", {}) is Dictionary else "",
+			"route_plan_product": String((player.get("ai_memory", {}) as Dictionary).get("route_plan_product", "")) if player.get("ai_memory", {}) is Dictionary else "",
+			"route_plan_stage": String((player.get("ai_memory", {}) as Dictionary).get("route_plan_stage", "")) if player.get("ai_memory", {}) is Dictionary else "",
+			"products": player_products,
+			"policy_families": player_policy_families,
+		})
+	var minimum_product_ai := ai_count
+	var minimum_route_product_ai := maxi(1, ai_count - 1)
+	var minimum_distinct_products := mini(4, PRODUCT_CATALOG.size())
+	var minimum_policy_families := 3
+	var minimum_route_stages := 2
+	var minimum_development_routes := 3
+	var minimum_aligned_samples := maxi(1, int(ceil(float(maxi(1, ai_count)) / 2.0)))
+	var issues := []
+	if ai_count <= 0:
+		issues.append("没有AI席位")
+	if sampled_ai_count < ai_count:
+		issues.append("部分AI缺少决策样本:%d/%d" % [sampled_ai_count, ai_count])
+	if product_sample_ai_count < minimum_product_ai:
+		issues.append("商品样本AI不足:%d/%d" % [product_sample_ai_count, minimum_product_ai])
+	if route_product_ai_count < minimum_route_product_ai:
+		issues.append("路线商品AI不足:%d/%d" % [route_product_ai_count, minimum_route_product_ai])
+	if distinct_products.size() < minimum_distinct_products:
+		issues.append("覆盖商品不足:%d/%d" % [distinct_products.size(), minimum_distinct_products])
+	if policy_family_counts.keys().size() < minimum_policy_families:
+		issues.append("策略族不足:%d/%d" % [policy_family_counts.keys().size(), minimum_policy_families])
+	if route_stage_counts.keys().size() < minimum_route_stages:
+		issues.append("路线阶段不足:%d/%d" % [route_stage_counts.keys().size(), minimum_route_stages])
+	if development_route_counts.keys().size() < minimum_development_routes:
+		issues.append("发展路线不足:%d/%d" % [development_route_counts.keys().size(), minimum_development_routes])
+	if aligned_sample_count < minimum_aligned_samples:
+		issues.append("商品/焦点/路线对齐样本不足:%d/%d" % [aligned_sample_count, minimum_aligned_samples])
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"ai_count": ai_count,
+		"sampled_ai_count": sampled_ai_count,
+		"product_sample_ai_count": product_sample_ai_count,
+		"route_product_ai_count": route_product_ai_count,
+		"focus_product_ai_count": focus_product_ai_count,
+		"total_sample_count": total_sample_count,
+		"product_sample_count": product_sample_count,
+		"route_product_sample_count": route_product_sample_count,
+		"focus_product_sample_count": focus_product_sample_count,
+		"aligned_sample_count": aligned_sample_count,
+		"distinct_product_count": distinct_products.size(),
+		"product_counts": product_counts,
+		"route_stage_counts": route_stage_counts,
+		"route_stage_count": route_stage_counts.keys().size(),
+		"policy_family_counts": policy_family_counts,
+		"policy_family_count": policy_family_counts.keys().size(),
+		"development_route_counts": development_route_counts,
+		"development_route_count": development_route_counts.keys().size(),
+		"players": player_entries,
+		"minimum_product_ai": minimum_product_ai,
+		"minimum_route_product_ai": minimum_route_product_ai,
+		"minimum_distinct_products": minimum_distinct_products,
+		"minimum_policy_families": minimum_policy_families,
+		"minimum_route_stages": minimum_route_stages,
+		"minimum_development_routes": minimum_development_routes,
+		"minimum_aligned_samples": minimum_aligned_samples,
+	}
+
+
+func _ai_product_route_bridge_summary(report: Dictionary = {}) -> String:
+	var source := report
+	if source.is_empty():
+		source = _ai_product_route_bridge_report()
+	var issues := source.get("issues", []) as Array
+	return "AI商品路线桥接审计：AI%d｜有样本%d｜商品样本AI%d｜路线商品AI%d｜样本%d/%d｜对齐%d｜商品%d｜阶段%d｜发展路线%d｜策略族%d%s｜商品:%s｜策略:%s" % [
+		int(source.get("ai_count", 0)),
+		int(source.get("sampled_ai_count", 0)),
+		int(source.get("product_sample_ai_count", 0)),
+		int(source.get("route_product_ai_count", 0)),
+		int(source.get("product_sample_count", 0)),
+		int(source.get("total_sample_count", 0)),
+		int(source.get("aligned_sample_count", 0)),
+		int(source.get("distinct_product_count", 0)),
+		int(source.get("route_stage_count", 0)),
+		int(source.get("development_route_count", 0)),
+		int(source.get("policy_family_count", 0)),
+		"" if issues.is_empty() else "｜问题:%s" % "、".join(issues),
+		_product_count_summary(source.get("product_counts", {}) as Dictionary, 5, "暂无"),
+		_product_count_summary(source.get("policy_family_counts", {}) as Dictionary, 5, "暂无"),
+	]
+
+
 func _card_key_rule_facts(skill: Dictionary) -> Array:
 	var result := []
 	for fact_variant in _card_rule_facts(skill):
