@@ -1,888 +1,330 @@
 # AGENTS.md
 
-## Project Role
+## Project Identity
 
-You are working on a game design and simulation toolkit for:
+This repository is the Godot 4 prototype for **太空辛迪加 / Space Syndicate**.
 
-1. TCG / CCG card balance.
-2. Item and currency price-gradient balancing.
-3. AI opponent difficulty tuning for multiplayer digital board games.
+The project is a real-time, PVE roguelike, hidden-information digital board game about alien syndicates, anonymous card play, monster pressure, city GDP, commodity routes, contracts, wagers, and inference.
 
-The goal is not to build a full commercial game immediately.
-The goal is to build a clean, testable, simulation-first prototype that can help designers evaluate balance changes quickly.
+The current product goal is not a generic TCG engine. The goal is to make this prototype **human-playable against AI**, with UI and flow moving toward a polished commercial board-game adaptation. Terraforming Mars, Gaia Project, Through the Ages-style card rails, modern deckbuilders, and gambling-table presentation are the main UX references.
 
-Prioritize clarity, reproducibility, and testability over visual polish.
+When continuing work, optimize for:
 
----
+1. A human tester can start and finish a run against 2-7 AI opponents.
+2. The main game screen is readable at a glance.
+3. UI feels like a board-game table, not a debug panel.
+4. Rules, economy, cards, monsters, and AI behavior remain data-driven and testable.
+5. AI gets smarter without exposing hidden reasoning to the player.
 
-## Core Product Goal
+## Current High-Level Game Loop
 
-Build a modular balance lab with three main systems:
+Preserve this loop unless the user explicitly changes it:
 
-### 1. Card Balance Simulator
+1. Start a 3-8 seat PVE run.
+2. Players publicly choose non-duplicate alien role cards.
+3. Starter monster choice is independent from role identity.
+4. Players first summon a monster.
+5. Players urbanize land districts into anonymous cities.
+6. Players buy cards from monster-accessible regional supply.
+7. Cards enter an anonymous public reveal/auction/track system.
+8. Cities produce realtime GDP from production, demand, transport, routes, damage, contracts, and market pressure.
+9. Monsters and military units create visible map pressure and economic consequences.
+10. Players infer hidden owners and anonymous card sources.
+11. When a cash goal is reached, a final countdown starts; final ranking is by money.
 
-A system for defining cards, decks, game rules, bots, and batch simulations.
+Important rules:
 
-It should support:
+- Monsters are not continuously player-controlled. They auto-act from probability tables.
+- Monster cards can summon/upgrade/refresh monsters and grant reusable bound skills.
+- Military units are weaker controlled forces that use reusable command cards.
+- Card play is anonymous unless later inference reveals ownership.
+- Player cash, hand size, discard choices, AI pressure buckets, and AI route plans are private.
+- Public UI may show clues, aftermath, costs, bids, revealed owners, city damage, GDP trends, and product pressure.
+- The economy is realtime/seconds-based; do not reintroduce turn-cycle language for GDP or temporary financial windows.
 
-- Data-driven card definitions.
-- Deterministic simulations using a seed.
-- Legal move generation.
-- Simple AI bots.
-- Batch self-play.
-- Win-rate and matchup reports.
-- Per-card impact statistics.
+## Player-Facing UI Principles
 
-The system should make it easy to answer questions such as:
+The user strongly prefers humanized, elegant UI. Treat this as a product requirement, not cosmetic polish.
 
-- Is one archetype too strong?
-- Does first player advantage exceed an acceptable threshold?
-- Which cards are overperforming?
-- Which cards are dead draws?
-- Which decks create non-interactive games?
-- How does a card change affect the whole metagame?
+### Main Table
 
----
+The main game screen should prioritize:
 
-### 2. Item Economy and Price Gradient Tool
+1. Central planet/map.
+2. Current player's resource/goal/cashflow chips.
+3. Current player's hand.
+4. Anonymous card track.
+5. One stable current-action area.
+6. Short prompts for what to do next.
 
-A system for calculating and testing item prices, shop prices, upgrade costs, and resource sinks.
+Avoid putting long rules, debug explanations, AI internals, or development history on the main screen.
 
-It should support:
+### Menus and Codex Pages
 
-- Base item value calculation.
-- Rarity multipliers.
-- Progression-stage multipliers.
-- Currency income assumptions.
-- Resource faucet and sink modeling.
-- Optional dynamic price simulation.
-- CSV / JSON export for designer review.
+- Each page should only show controls relevant to that page.
+- Subpages should have local back/previous/next controls, not irrelevant global buttons.
+- Codex pages should use thumbnail grids with hover previews and double-click detail.
+- Detail pages may show richer information, but still in TCG/card-board sections.
+- Rules pages should describe the current rules only. Do not mention obsolete rules or development history.
+- Player-facing text should be short, concrete, and decision-oriented.
 
-The system should make it easy to answer questions such as:
+### Card UI
 
-- Is this item too cheap for its power?
-- Does the player earn enough currency to buy meaningful upgrades?
-- Are premium / rare / late-game items scaling too aggressively?
-- Are there enough currency sinks?
-- Is the economy inflated after repeated play?
+Card faces should emphasize:
 
----
+- Name/family.
+- Roman rank I-IV.
+- Price / cost / requirement chips.
+- Target type.
+- One-line effect.
+- Route/category icon.
+- Hover/detail for full rules.
 
-### 3. Board Game / Multiplayer AI Difficulty Tuning
+Do not put developer fields, generic design principles, or internal AI scoring text on card faces.
 
-A system for implementing AI opponents with adjustable strength.
+### Map UI
 
-It should support:
+- The planet should feel central and alive.
+- Zooming should be smooth, not an abrupt projection switch.
+- Local view may be a flat XY projection of the spherical world.
+- Zoomed-out view should read as a planet in space.
+- Map layers should become icon/chip toggles: products, routes, intel, weather, monsters, cities.
+- Movement, knockback, attacks, city damage, route damage, weather, and card effects should have visible map feedback.
 
-- Random bot.
-- Rule-based heuristic bot.
-- Search-based bot.
-- Optional MCTS / ISMCTS style bot for hidden-information games.
-- Difficulty presets.
-- AI evaluation through self-play.
-- Elo-like or win-rate based comparison.
+## Design and Balance Principles
 
-The system should make it easy to answer questions such as:
+### Cards
 
-- Is Easy AI weak but still believable?
-- Is Hard AI strong without cheating?
-- How much does search depth affect win rate?
-- Does the AI make human-like mistakes?
-- Does the AI use hidden information unfairly?
-- Can the AI be used both for player-facing gameplay and balance testing?
+Cards should be field-driven where possible. New cards should expose AI-readable effect fields rather than relying only on card names.
 
----
+Useful field categories include:
 
-## Reference Projects To Study
-
-Use these projects as conceptual references. Do not copy their code unless license compatibility is confirmed.
-
-### TCG / CCG Balance and Simulation References
-
-- deckgym-core
-- gym-locm
-- CodinGame Legends of Code and Magic
-- reinforced-greediness
-- TheCardGoat / tcg-engines
-- RyuuPlay
-- Forge
-- XMage
-- MageZero
-- OpenDuelyst
-- mtg_deck_simulator
-- Niantic metagame-balance
-
-Study them for:
-
-- Card rule engines.
-- Data-driven card definitions.
-- Large-scale match simulation.
-- Matchup matrix generation.
-- Bot vs bot evaluation.
-- Deck archetype comparison.
-- Search + heuristic hybrid AI.
-- Reinforcement learning environments.
-- Metagame diversity metrics.
-
----
-
-### Item Economy and Price Gradient References
-
-- GEEvo-game-economies
-- bazaarBot
-- EconSim
-- williammoran/economy
-- Dynamic-Economy-For-Games
-- Aurelium
-- Game Developer economy balancing spreadsheet article
-- GitHub game-economy topic projects
-
-Study them for:
-
-- Resource graph modeling.
-- Price formulas.
-- Production-chain pricing.
-- Dynamic market simulation.
-- Supply and demand behavior.
-- Auction house systems.
-- Item price history.
-- Spreadsheet-friendly economy design.
-
----
-
-### Board Game AI / Multiplayer AI References
-
-- boardgame.io
-- GAIGResearch TabletopGames / TAG
-- Ludii
-- Ludii AI Competition
-- OpenSpiel
-- RLCard
-- Hanabi Learning Environment
-- GBG
-- thomasmarsh/monkey
-- brianberns/Hearts
-
-Study them for:
-
-- Turn-based game state modeling.
-- Legal action generation.
-- Bot interfaces.
-- Search algorithms.
-- Hidden information handling.
-- MCTS / ISMCTS.
-- Reinforcement learning environments.
-- Multi-agent evaluation.
-- AI difficulty tuning.
-
----
-
-## Design Principles
-
-### Simulation First
-
-Every balance feature should be testable through automated simulation.
-
-Do not rely only on manual playtesting.
-Manual playtesting is useful, but it should come after automated sanity checks.
-
----
-
-### Deterministic Reproducibility
-
-All simulations must support deterministic random seeds.
-
-A failed or suspicious simulation should be reproducible by reusing:
-
-- Rules version.
-- Card data version.
-- Deck list.
-- Bot type.
-- Random seed.
-- Simulation config.
-
----
-
-### Data-Driven Design
-
-Cards, items, currencies, shops, and AI difficulty presets should be represented as data whenever reasonable.
-
-Prefer JSON, YAML, TOML, or CSV-compatible structures for designer-facing values.
-
-Avoid hardcoding balance numbers deeply inside logic.
-
----
-
-### Separation of Concerns
-
-Keep these layers separate:
-
-1. Data definitions.
-2. Rules engine.
-3. Bot decision logic.
-4. Simulation runner.
-5. Metrics and reports.
-6. CLI / UI.
-7. Tests.
-
-Do not mix card rules, bot logic, and report generation in the same file unless the prototype is extremely small.
-
----
-
-### Minimal First, Extensible Later
-
-Do not attempt to support every possible TCG or board game rule.
-
-Start with a small but complete vertical slice:
-
-- Health.
-- Mana / energy.
-- Hand.
-- Deck.
-- Board.
-- Attack.
-- Spell.
-- Draw.
-- End turn.
-- Win / lose condition.
-- Simple bots.
-- Batch simulation.
-- Report output.
-
-Then extend.
-
----
-
-## Suggested Repository Structure
-
-Use this structure unless the existing repository already has a better one.
-
-```txt
-/game-balance-lab
-  /data
-    /cards
-      starter_cards.json
-    /decks
-      aggro.json
-      control.json
-      midrange.json
-    /economy
-      items.json
-      currencies.json
-      shops.json
-      progression.json
-    /ai
-      difficulty_presets.json
-
-  /src
-    /core
-      rng.*
-      types.*
-      errors.*
-
-    /tcg
-      card.*
-      deck.*
-      game_state.*
-      rules.*
-      actions.*
-      legal_moves.*
-      resolver.*
-      simulation.*
-      metrics.*
-
-    /tcg/bots
-      random_bot.*
-      heuristic_bot.*
-      search_bot.*
-
-    /economy
-      item_value.*
-      price_formula.*
-      resource_graph.*
-      income_model.*
-      market_simulation.*
-      economy_metrics.*
-
-    /board_ai
-      game_adapter.*
-      bot_interface.*
-      difficulty.*
-      mcts.*
-      ismcts.*
-      evaluation.*
-
-    /reports
-      matchup_report.*
-      card_impact_report.*
-      economy_report.*
-      ai_difficulty_report.*
-
-    /cli
-      simulate_tcg.*
-      analyze_economy.*
-      evaluate_ai.*
-
-  /tests
-    /tcg
-    /economy
-    /board_ai
-
-  /docs
-    balance_methodology.md
-    economy_methodology.md
-    ai_tuning_methodology.md
-```
-
----
-
-## TCG Balance Model
-
-### Required Card Fields
-
-Each card should support at least:
-
-```ts
-type Card = {
-  id: string;
-  name: string;
-  cost: number;
-  type: "unit" | "spell" | "equipment" | "resource";
-  rarity?: "common" | "rare" | "epic" | "legendary";
-  attack?: number;
-  health?: number;
-  tags?: string[];
-  effects?: Effect[];
-};
-```
-
-Use equivalent types if the project is not TypeScript.
-
----
-
-### Required Deck Fields
-
-```ts
-type DeckList = {
-  id: string;
-  name: string;
-  archetype: "aggro" | "midrange" | "control" | "combo" | "test";
-  cards: Array<{
-    cardId: string;
-    count: number;
-  }>;
-};
-```
-
----
-
-### Required Game Metrics
-
-The simulator should collect:
-
-```ts
-type MatchResult = {
-  winner: 0 | 1;
-  turns: number;
-  seed: number;
-  firstPlayer: 0 | 1;
-  deckA: string;
-  deckB: string;
-  botA: string;
-  botB: string;
-  reason: "health_zero" | "deck_out" | "turn_limit" | "concede" | "error";
-};
-
-type CardStats = {
-  cardId: string;
-  drawnCount: number;
-  playedCount: number;
-  keptInOpeningHandCount: number;
-  winWhenDrawn: number;
-  winWhenPlayed: number;
-  averageTurnPlayed: number;
-  averageValueEstimate?: number;
-};
-```
-
----
-
-### Required Balance Reports
-
-Implement reports for:
-
-1. Matchup matrix.
-2. First-player advantage.
-3. Average game length.
-4. Win-rate by archetype.
-5. Per-card drawn win rate.
-6. Per-card played win rate.
-7. Dead-card rate.
-8. Overperforming card list.
-9. Non-interactive game rate.
-10. Turn-limit / stall rate.
-
----
-
-### TCG Balance Heuristics
-
-Flag potential balance problems when:
-
-- A deck has more than 55 percent win rate across broad matchups.
-- A deck has more than 60 percent win rate against most archetypes.
-- First player advantage exceeds 53 percent.
-- A single card has much higher win-when-drawn than the deck average.
-- A single card is played in most winning games but rarely in losing games.
-- Games often end before the opponent can meaningfully respond.
-- Games often reach turn limit.
-- A low-cost card generates too much value compared with its cost.
-
-These thresholds are starting points, not absolute truths.
-Make them configurable.
-
----
-
-## Item Economy and Price Gradient Model
-
-### Required Item Fields
-
-```ts
-type Item = {
-  id: string;
-  name: string;
-  category: "weapon" | "armor" | "consumable" | "material" | "card_pack" | "upgrade" | "cosmetic";
-  rarity: "common" | "rare" | "epic" | "legendary";
-  progressionTier: number;
-  baseStats?: Record<string, number>;
-  tags?: string[];
-  acquisition?: {
-    source: "shop" | "drop" | "craft" | "quest" | "event";
-    dropRate?: number;
-    timeGateHours?: number;
-  };
-};
-```
-
----
-
-### Suggested Price Formula
-
-Use a transparent formula:
-
-```txt
-base_value =
-  attack_value
-+ defense_value
-+ utility_value
-+ draw_value
-+ control_value
-+ durability_value
-+ convenience_value
-
-final_price =
-  base_value
-* rarity_multiplier
-* progression_multiplier
-* acquisition_difficulty_multiplier
-* demand_multiplier
-* sink_adjustment
-```
-
-All multipliers should be configurable.
-
----
-
-### Suggested Rarity Multipliers
-
-```json
-{
-  "common": 1.0,
-  "rare": 1.8,
-  "epic": 3.5,
-  "legendary": 7.0
-}
-```
-
-These are placeholders.
-Expose them in data files.
-
----
-
-### Suggested Progression Curve
-
-Support multiple curve types:
-
-```txt
-linear:
-  price = base * tier
-
-quadratic:
-  price = base * tier^2
-
-soft_exponential:
-  price = base * pow(1.35, tier)
-
-capped_exponential:
-  price = min(max_price, base * pow(rate, tier))
-```
-
-Use different curves for different item categories.
-
-Recommended defaults:
-
-- Consumables: linear.
-- Basic equipment: linear or mild quadratic.
-- Upgrades: quadratic.
-- Rare build-defining items: soft exponential with cap.
-- Cosmetics: independent from power economy.
-- Card packs: tied to expected card value and target acquisition speed.
-
----
-
-### Required Economy Metrics
-
-The economy analyzer should calculate:
-
-```ts
-type EconomyMetrics = {
-  averageCurrencyIncomePerRun: number;
-  averageCurrencyIncomePerHour: number;
-  itemAffordabilityInRuns: Record<string, number>;
-  itemAffordabilityInHours: Record<string, number>;
-  currencySinkTotal: number;
-  currencyFaucetTotal: number;
-  inflationRiskScore: number;
-  progressionBlockers: string[];
-};
-```
-
----
-
-### Economy Balance Heuristics
-
-Flag potential economy problems when:
-
-- A required early item takes too many runs to afford.
-- A late-game item is cheaper than a mid-game item with similar power.
-- A currency has faucets but no meaningful sinks.
-- A currency has many sinks but no reliable faucet.
-- Consumables are priced so high that players never use them.
-- Upgrade costs scale faster than player income.
-- Dynamic markets allow obvious arbitrage loops.
-- Rare items are priced by rarity only, ignoring actual utility.
-
----
-
-## Board Game AI Difficulty Model
-
-### Required Bot Interface
-
-All bots should implement the same interface:
-
-```ts
-interface Bot {
-  id: string;
-  name: string;
-  chooseAction(state: GameState, legalActions: Action[], context: BotContext): Action;
-}
-```
-
-Use equivalent structures if the project is not TypeScript.
-
----
-
-### Required Bot Types
-
-Implement at least:
-
-1. `RandomBot`
-
-   - Chooses random legal action.
-   - Used as a baseline.
-
-2. `HeuristicBot`
-
-   - Scores legal actions with a transparent evaluation function.
-   - Used for normal player-facing AI.
-
-3. `SearchBot`
-
-   - Searches one or more turns ahead.
-   - Uses the same evaluation function.
-   - Used for hard AI and balance testing.
-
-4. Optional `MCTSBot`
-
-   - Uses Monte Carlo rollouts.
-   - Useful for games with many possible actions.
-
-5. Optional `ISMCTSBot`
-
-   - Uses information-set MCTS.
-   - Useful for hidden-information games.
-
----
-
-### Suggested AI Evaluation Function
-
-For TCG-like games, use weighted features:
-
-```txt
-score =
-  health_weight * health_difference
-+ board_weight * board_power_difference
-+ hand_weight * hand_size_difference
-+ mana_weight * mana_efficiency
-+ tempo_weight * tempo_score
-+ lethal_weight * lethal_threat
-+ survival_weight * survival_score
-+ card_advantage_weight * card_advantage
-```
-
-Weights should be configurable by difficulty or AI personality.
-
----
-
-### Difficulty Presets
-
-Use difficulty presets instead of hardcoding behavior.
-
-```json
-{
-  "easy": {
-    "botType": "heuristic",
-    "searchDepth": 0,
-    "candidateActionLimit": 3,
-    "mistakeRate": 0.25,
-    "hiddenInfoAccess": false,
-    "evaluationNoise": 0.35
-  },
-  "normal": {
-    "botType": "heuristic",
-    "searchDepth": 1,
-    "candidateActionLimit": 8,
-    "mistakeRate": 0.10,
-    "hiddenInfoAccess": false,
-    "evaluationNoise": 0.15
-  },
-  "hard": {
-    "botType": "search",
-    "searchDepth": 2,
-    "candidateActionLimit": 16,
-    "mistakeRate": 0.03,
-    "hiddenInfoAccess": false,
-    "evaluationNoise": 0.05
-  },
-  "expert": {
-    "botType": "search",
-    "searchDepth": 3,
-    "candidateActionLimit": 32,
-    "mistakeRate": 0.0,
-    "hiddenInfoAccess": false,
-    "evaluationNoise": 0.0
-  }
-}
-```
-
-Important rule:
-
-AI should not cheat by reading hidden player information unless the mode is explicitly a developer-only debug mode.
-
----
-
-### AI Tuning Principles
-
-Use these knobs to tune AI strength:
-
-1. Search depth.
-2. Rollout count.
-3. Candidate action limit.
-4. Evaluation noise.
-5. Mistake rate.
-6. Personality weights.
-7. Risk tolerance.
-8. Information access.
-9. Time budget.
-10. Memory / opponent modeling.
-
-Do not make weak AI look stupid.
-Make weak AI less farsighted, less consistent, or more personality-driven.
-
----
-
-## Player-Facing AI vs Balance-Testing AI
-
-Separate these two roles:
-
-### PlayerFacingBot
-
-Used in actual gameplay.
-
-It should:
-
-- Feel believable.
-- Have personality.
-- Make occasional human-like mistakes.
-- Avoid obvious cheating.
-- Avoid taking too long.
-- Prefer fun gameplay over perfect play.
-
-### BalanceBot
-
-Used for automated balance testing.
-
-It should:
-
-- Be stable.
-- Be deterministic when seeded.
-- Play reasonably strong.
-- Avoid personality noise.
-- Avoid intentional mistakes.
-- Produce reproducible data.
-- Be suitable for thousands of simulations.
-
-Do not use the exact same bot configuration for both purposes.
-
----
-
-## CLI Requirements
-
-Add CLI commands or scripts for:
-
-```bash
-# Run TCG simulations
-simulate-tcg --deck-a aggro --deck-b control --bot-a heuristic --bot-b heuristic --games 1000 --seed 42
-
-# Generate matchup matrix
-simulate-tcg-matrix --decks aggro,control,midrange --games 1000 --seed 42 --output reports/matchups.csv
-
-# Analyze economy
-analyze-economy --items data/economy/items.json --progression data/economy/progression.json --output reports/economy.json
-
-# Evaluate AI difficulty
-evaluate-ai --game tcg-demo --bots easy,normal,hard,expert --games 1000 --seed 42 --output reports/ai_difficulty.csv
-```
-
-Adapt command names to the project language and tooling.
-
----
-
-## Testing Requirements
-
-Add tests for:
-
-### TCG
-
-- Deck shuffling is deterministic with seed.
-- Legal actions are valid.
-- Illegal actions are rejected.
-- Drawing from deck works.
-- Playing a card pays cost.
-- Attacks reduce health correctly.
-- Game ends when health reaches zero.
-- Simulations are reproducible with the same seed.
-- Match result schema is stable.
+- `cash`, `revenue_amount`
+- `production_delta`, `transport_delta`, `consumption_delta`
+- `route_damage`, `repair_routes`, `route_flow_multiplier`, `route_flow_turns`
+- `price_delta`, `market_demand_pressure`, `market_supply_pressure`, `growth_multiplier`
+- `gdp_bet_direction`, `gdp_bet_multiplier`, `gdp_bet_turns`, `gdp_bet_destroy_bonus`
+- `damage`, `route_damage`, `region_damage`, `knockback`
+- `intel_city_reveal`, `intel_card_trace`, `intel_contract_trace`
+- `weather_control`
+- `military_force`, `military_command`
+- `generic_effect_bonus`
+
+Rank gradient guideline:
+
+- I: base effect / route entry.
+- II: efficiency or longer duration.
+- III: route core.
+- IV: strong terminal pressure that remains readable and counterable.
+
+Ranks I-IV normally keep the rank-I purchase price.
 
 ### Economy
 
-- Price formula is deterministic.
-- Rarity multiplier is applied.
-- Progression multiplier is applied.
-- Required items are flagged if unaffordable.
-- Currency sink and faucet totals are calculated.
-- Exported report format is stable.
+- GDP, cashflow, commodity price movement, futures, contracts, and temporary effects should be based on realtime seconds.
+- Global public refreshes, such as broad supply/demand refresh, may happen every 30-60 seconds.
+- Market prices should move from supply/demand/pressure, not direct arbitrary player price-setting.
+- Monster damage and route damage should ultimately be visible through GDP, income, or city/route status changes.
 
 ### AI
 
-- RandomBot always returns a legal action.
-- HeuristicBot always returns a legal action.
-- SearchBot always returns a legal action.
-- Easy AI is weaker than Hard AI across enough simulations.
-- AI does not access hidden information unless debug mode allows it.
-- Difficulty presets load correctly.
+AI should behave like a planned test opponent:
 
----
+- Open with starter monster and city building.
+- Buy cards from accessible regional supply.
+- Build around a product/economy route.
+- Use cards anonymously.
+- Defend owned income.
+- Pressure competitors and leaders.
+- Participate in auctions, contracts, wagers, and inference.
 
-## Reporting Requirements
+Do not expose AI development routes, pressure buckets, hidden scores, exact cash, hands, discard choices, or private route plans in player-facing UI.
 
-Reports should be machine-readable first and human-readable second.
+### Hidden Information
 
-Prefer JSON and CSV outputs.
+When implementing UI or reports, always distinguish:
 
-Minimum report files:
+- Public facts.
+- Current player's private facts.
+- Rival private facts.
+- Developer/test-only facts.
+
+If unsure, hide the information from players and expose it only in tests/logs/docs.
+
+## Reference Material
+
+Root reference index:
+
+- `REFERENCE_LINKS.md`
+
+Local reference clones may exist under:
+
+- `C:/Users/Administrator/Documents/New project/reference/terraforming-mars`
+- `C:/Users/Administrator/Documents/New project/reference/gaia-project`
+- `C:/Users/Administrator/Documents/New project/reference/UiCard`
+- `C:/Users/Administrator/Documents/New project/reference/Night-Patrol`
+- `C:/Users/Administrator/Documents/New project/reference/hypnagonia`
+
+Use them as references for interaction patterns and information hierarchy. Do not copy licensed code or assets unless compatibility is confirmed.
+
+Highest-priority references:
+
+1. Terraforming Mars — central board, resource/player panels, card organization, menus.
+2. Gaia Project — map/action/resource iconography and board-game information hierarchy.
+3. UiCard — card hover, drag, hand layout, card-object feel.
+4. Night Patrol — temporary UI/art/audio atmosphere.
+5. Godot performance references — async loading, shader warmup, object pooling, profiler workflow.
+
+## Repository Orientation
+
+Key files and folders:
+
+- `project.godot` — Godot project.
+- `scenes/main.tscn` — main scene.
+- `scripts/main.gd` — current large prototype script containing most game/UI logic.
+- `tests/smoke_test.gd` — full behavioral smoke test.
+- `tests/ui_text_smoke_test.gd` — source-level UI text/contract guard.
+- `tests/visual_snapshot.gd` — source-level visual/layout contract guard.
+- `tests/ui_snapshot_capture.gd` — headed screenshot capture for visual QA.
+- `docs/rules_summary.md` — current rules summary.
+- `docs/development_log.md` — running development log.
+- `docs/reference_ui_notes.md` — deeper reference notes.
+- `REFERENCE_LINKS.md` — root list of reference URLs.
+
+The codebase is still prototype-heavy. Prefer improving stability and readability over large rewrites unless a rewrite directly reduces future risk.
+
+## Godot Commands
+
+Godot executable usually lives at:
+
+```powershell
+..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe
+```
+
+From repository root:
+
+```powershell
+# Fast source/UI text guard
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/ui_text_smoke_test.gd
+
+# Visual/layout source contract
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/visual_snapshot.gd
+
+# Fast script/load check
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd --check-only
+
+# Full smoke test
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd
+```
+
+Headed UI snapshots should usually run on the second monitor when available:
+
+```powershell
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --windowed --position -1247,-2140 --resolution 1200x680 --script res://tests/ui_snapshot_capture.gd
+```
+
+If monitor layout changes, detect screens with:
+
+```powershell
+Add-Type -AssemblyName System.Windows.Forms
+[System.Windows.Forms.Screen]::AllScreens | ForEach-Object { $_.DeviceName, $_.Primary, $_.Bounds }
+```
+
+Do not interrupt the user's primary screen for headed tests when the second monitor is available.
+
+## Testing Expectations
+
+For most implementation changes, run at least:
+
+1. `tests/ui_text_smoke_test.gd`
+2. `tests/visual_snapshot.gd`
+3. `tests/smoke_test.gd --check-only`
+
+For gameplay, AI, economy, save/load, map, or card-resolution changes, also run full:
+
+```powershell
+tests/smoke_test.gd
+```
+
+For UI/layout changes, also capture headed screenshots and inspect:
+
+- `01_main_menu.png`
+- `02_card_codex_grid.png`
+- `03_card_codex_detail.png`
+- `04_play_table.png`
+
+Snapshot output path:
 
 ```txt
-/reports
-  matchup_matrix.csv
-  card_impact.csv
-  first_player_advantage.json
-  economy_summary.json
-  item_price_table.csv
-  ai_difficulty_eval.csv
+C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/
 ```
 
-Include enough metadata to reproduce results:
+## Performance Expectations
 
-```json
-{
-  "rulesVersion": "0.1.0",
-  "dataVersion": "0.1.0",
-  "seed": 42,
-  "games": 1000,
-  "createdAt": "ISO_TIMESTAMP",
-  "botConfigs": {},
-  "deckIds": []
-}
-```
+The game has had UI/map stutter. Preserve these rules:
 
----
+- Avoid rebuilding large UI trees every frame.
+- Keep realtime status refresh separate from heavy layout rebuilds.
+- Cache signatures for stable card rails, compass strips, and other repeated UI structures.
+- Avoid excessive `queue_redraw()` on map interactions.
+- Use object pools for frequent temporary effects when implemented.
+- Warm up shaders/VFX or async-load large assets before use.
+- Profile before and after big animation, monster, map, or UI changes.
 
-## Implementation Style
+## Text and Localization Style
 
-Prefer small pure functions.
+Most player-facing text is currently Chinese.
 
-Avoid global mutable state.
+Guidelines:
 
-Avoid hidden randomness.
-Always pass RNG or seed explicitly.
+- Use concise player-facing language.
+- Prefer verbs and outcomes over explanations.
+- Use icons/chips where they reduce reading load.
+- Do not mention obsolete rules, removed systems, or development reasoning in player UI.
+- Put long explanations in 游戏规则, 经济总览, 情报档案, or docs.
+- Keep developer-only terms out of player-facing screens.
 
-Use clear names:
+## Development Workflow
 
-- `GameState`
-- `Action`
-- `LegalMoveGenerator`
-- `SimulationRunner`
-- `MatchupMatrix`
-- `CardImpactAnalyzer`
-- `EconomyAnalyzer`
-- `PriceFormula`
-- `BotEvaluator`
-- `DifficultyPreset`
+Before editing:
 
-Do not create complex abstractions before the basic vertical slice works.
+1. Check `git status --short`.
+2. Inspect the relevant current code and screenshots.
+3. Preserve unrelated user changes.
 
----
+While editing:
+
+- Prefer small, testable changes.
+- Use existing UI helpers/styles before creating new visual systems.
+- Add or update tests when changing behavior or UI contracts.
+- Keep docs in sync when rules, workflows, or major UI patterns change.
+
+After editing:
+
+1. Run relevant tests.
+2. Capture headed UI screenshots for visual changes.
+3. Update `docs/development_log.md`.
+4. Commit with a clear message.
+5. Push when the user has asked for GitHub sync or the thread is already operating in sync mode.
 
 ## Definition of Done
 
-A task is done only when:
+A change is done when:
 
-1. The code runs.
-2. Tests pass.
-3. A sample simulation can be executed.
-4. A report file is generated.
-5. The output is deterministic when using the same seed.
-6. The README or docs explain how to run it.
-7. New assumptions are documented.
-
----
+1. It moves the prototype closer to a human-playable PVE board-game experience.
+2. Player-facing UI remains concise and readable.
+3. Hidden information stays hidden.
+4. Relevant automated tests pass.
+5. Visual changes have been inspected in headed screenshots when practical.
+6. Development log or docs are updated for meaningful gameplay/UI/rule changes.
+7. The worktree is clean after commit/push when a commit is expected.
 
 ## When Unsure
 
-When uncertain about a design decision:
+If a design choice is ambiguous:
 
-1. Prefer the simpler implementation.
-2. Add a TODO with the tradeoff.
-3. Keep the data model extensible.
-4. Write a test for the current behavior.
-5. Do not silently introduce hidden rules.
+1. Prefer the more human-readable UI.
+2. Preserve hidden-information integrity.
+3. Preserve data-driven card/economy/AI fields.
+4. Prefer Terraforming Mars / Gaia Project style board-game clarity over debug density.
+5. Make a small reversible change with tests instead of a broad rewrite.

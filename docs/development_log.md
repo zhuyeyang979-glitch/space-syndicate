@@ -3,6 +3,43 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-02｜项目专用 AGENTS 与桌边核心行动条
+
+### 本轮实现
+
+- 重写根目录 `AGENTS.md`：
+  - 从通用“TCG/经济平衡实验室”模板改成《太空辛迪加》专用开发手册；
+  - 明确当前目标是“人类可试玩的实时 PVE roguelike 桌游原型”；
+  - 固化核心循环、隐藏信息规则、UI 原则、AI 原则、性能原则、测试命令、二号屏有头测试命令和交付习惯；
+  - 指向 `REFERENCE_LINKS.md` 和本地参考目录，避免后续 Codex 脱离 Terraforming Mars / Gaia Project / UiCard 等标杆。
+- 主桌玩家板新增 `PlayerDashboardActionDock`：
+  - 在资源筹码下方固定显示“建城 / 牌架 / 买牌 / 首召或出牌”；
+  - 复用现有 `_main_action_dock_entries()`，不新增独立规则；
+  - 右侧 `MainActionDock` 继续作为详细当前行动托盘，顶部新条只解决第一屏可操作性。
+- 测试护栏同步更新：
+  - `tests/smoke_test.gd` 要求玩家板同时拥有第一屏桌边行动条和详细行动托盘；
+  - `tests/ui_text_smoke_test.gd` 和 `tests/visual_snapshot.gd` 检查 `PlayerDashboardActionDock`、按钮命名和出现顺序。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+  - 二号屏有头 `tests/ui_snapshot_capture.gd`
+  - `git diff --check`
+- 二号屏主桌截图确认：
+  - 新桌边行动条在资源筹码下方第一屏可见；
+  - 手牌仍在第一屏可见；
+  - 地图主体没有被挤坏。
+
+### 设计意图
+
+- 让测试者打开一局后不用在右侧滚动/细读，就能先做四个核心动作；
+- 更接近 Terraforming Mars 这类桌游电子版的“资源板 + 稳定行动区 + 卡牌架”布局；
+- `AGENTS.md` 后续作为 Codex 接手项目时的第一层稳定上下文，避免再被通用模板带偏。
+
 ## 2026-07-01｜卡牌图鉴分类筹码与根目录参考索引
 
 ### 本轮实现

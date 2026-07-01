@@ -20256,6 +20256,8 @@ func _refresh_player_panel() -> void:
 	dashboard_rail.add_child(seat_row)
 	_add_player_seat_strip(seat_row, selected_player)
 
+	_add_player_dashboard_action_dock(player_box, selected_player)
+
 	var table_rail := HBoxContainer.new()
 	table_rail.name = "PlayerTableRail"
 	table_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -20624,6 +20626,63 @@ func _add_main_action_dock(parent: Container, player_index: int) -> void:
 	row.add_child(title)
 	for entry_variant in _main_action_dock_entries(player_index):
 		_add_main_action_dock_button(row, entry_variant as Dictionary)
+
+
+func _add_player_dashboard_action_button(parent: Container, entry: Dictionary) -> void:
+	var accent: Color = entry.get("accent", Color("#94a3b8")) as Color
+	var disabled := bool(entry.get("disabled", false))
+	var label := String(entry.get("label", "行动"))
+	var status := String(entry.get("status", ""))
+	var button := Button.new()
+	button.name = "PlayerDashboardActionButton"
+	button.text = "%s\n%s" % [label, status]
+	button.tooltip_text = "%s｜%s\n%s" % [label, status, String(entry.get("tooltip", ""))]
+	button.disabled = disabled
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.add_theme_font_size_override("font_size", 8)
+	_style_menu_button(button, accent, not disabled)
+	button.custom_minimum_size = Vector2(62, 32)
+	if not disabled:
+		var target := entry.get("target", Callable()) as Callable
+		if target.is_valid():
+			button.pressed.connect(target)
+	parent.add_child(button)
+
+
+func _add_player_dashboard_action_dock(parent: Container, player_index: int) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "PlayerDashboardActionDock"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.tooltip_text = "固定桌边行动条：像桌游电子版一样，把建城、看牌架、买牌、出牌放在玩家板第一眼可见的位置。"
+	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#fef3c7"), Color("#020617").lerp(Color("#f59e0b"), 0.06), 1, 10))
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_bottom", 4)
+	panel.add_child(margin)
+	var row := HBoxContainer.new()
+	row.name = "PlayerDashboardActionDockRow"
+	row.add_theme_constant_override("separation", 5)
+	margin.add_child(row)
+	var title := _plain_label("桌边\n行动", 8, Color("#fef3c7"))
+	title.name = "PlayerDashboardActionDockTitle"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.custom_minimum_size = Vector2(40, 0)
+	title.tooltip_text = "第一分钟先点这里：建城、看牌架、买牌、首召/出牌。"
+	row.add_child(title)
+	for entry_variant in _main_action_dock_entries(player_index):
+		_add_player_dashboard_action_button(row, entry_variant as Dictionary)
+	var hint := _plain_label("先扫资源，再点行动；详细状态看右侧当前行动。", 9, Color("#94a3b8"))
+	hint.name = "PlayerDashboardActionDockHint"
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
+	hint.clip_text = true
+	hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(hint)
 
 
 func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxContainer:
