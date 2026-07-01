@@ -23874,6 +23874,298 @@ func _catalog_rank_iv_shift_summary(index: int, any_destroyed: bool = false) -> 
 	return _action_weight_delta_summary(base_weights, rank_iv_weights)
 
 
+func _monster_action_role_tags(action: Dictionary) -> Array:
+	var tags := []
+	var range := float(action.get("range", 0.0))
+	var move_override := float(action.get("move_override", -1.0))
+	var damage := maxi(int(action.get("damage", 0)), int(action.get("close_damage", 0)))
+	if move_override > 0.0:
+		tags.append("机动")
+	if range >= 400.0:
+		tags.append("远程")
+	elif range > 0.0:
+		tags.append("近身/区域")
+	if damage >= 4:
+		tags.append("高伤")
+	elif damage > 0:
+		tags.append("伤害")
+	if float(action.get("knockback", 0.0)) > 0.0 or float(action.get("throw_radius", 0.0)) > 0.0:
+		tags.append("位移/击退")
+	if int(action.get("miasma_count", 0)) > 0 or int(action.get("reclaim_count", 0)) > 0 or bool(action.get("chaos_ray", false)):
+		tags.append("路径/场地")
+	if int(action.get("repair", 0)) > 0 or float(action.get("repair_radius", 0.0)) > 0.0 or int(action.get("repair_path", 0)) > 0:
+		tags.append("修复")
+	if int(action.get("armor", 0)) > 0 or int(action.get("self_heal", 0)) > 0:
+		tags.append("续航")
+	if int(action.get("tether", 0)) > 0 \
+		or int(action.get("stun", 0)) > 0 \
+		or int(action.get("paralyze", 0)) > 0 \
+		or int(action.get("cripple", 0)) > 0 \
+		or int(action.get("delay", 0)) > 0 \
+		or int(action.get("stun_if_tethered", 0)) > 0:
+		tags.append("控制")
+	if int(action.get("panic", 0)) > 0:
+		tags.append("热度")
+	if int(action.get("self_damage", 0)) > 0:
+		tags.append("自损爆发")
+	if tags.is_empty():
+		tags.append("基础")
+	return tags
+
+
+func _monster_ecology_movement_archetype(entry: Dictionary) -> String:
+	var traits: Array = entry.get("movement_traits", []) as Array
+	var terrain: Dictionary = entry.get("terrain_move_multiplier", {}) as Dictionary
+	var summon_access := String(entry.get("summon_access", "monster_zone"))
+	var ocean_multiplier := float(terrain.get("ocean", 1.0))
+	var land_multiplier := float(terrain.get("land", 1.0))
+	if traits.has("flying"):
+		return "飞行"
+	if traits.has("aquatic") or ocean_multiplier > land_multiplier + 0.25 or summon_access == "ocean_monster_zone":
+		return "水栖/海域"
+	if summon_access == "land_monster_zone" or land_multiplier >= ocean_multiplier:
+		return "陆行"
+	return "通用"
+
+
+func _monster_ecology_identity_entry(index: int) -> Dictionary:
+	var entry := _catalog_entry(index)
+	var name := String(entry.get("name", "怪兽"))
+	var actions := _catalog_actions(index)
+	var early_weights := _catalog_action_weights_for_index(index, false)
+	var escalated_weights := _catalog_action_weights_for_index(index, true)
+	var rank_iv_weights := _catalog_ranked_action_weights_for_index(index, false, 4)
+	var role_tags := []
+	var action_names := []
+	var active_early := 0
+	var active_escalated := 0
+	var late_shift_score := 0
+	var max_damage := 0
+	var max_range := 0.0
+	var max_move := 0.0
+	for i in range(actions.size()):
+		var action: Dictionary = actions[i]
+		action_names.append(String(action.get("name", "招式")))
+		if int(early_weights[i]) > 0:
+			active_early += 1
+		if int(escalated_weights[i]) > 0:
+			active_escalated += 1
+		if i < rank_iv_weights.size() and i < early_weights.size() and int(rank_iv_weights[i]) > int(early_weights[i]):
+			late_shift_score += int(rank_iv_weights[i]) - int(early_weights[i])
+		max_damage = maxi(max_damage, maxi(int(action.get("damage", 0)), int(action.get("close_damage", 0))))
+		max_range = maxf(max_range, float(action.get("range", 0.0)))
+		max_move = maxf(max_move, float(action.get("move_override", 0.0)))
+		for tag_variant in _monster_action_role_tags(action):
+			var tag := String(tag_variant)
+			if not role_tags.has(tag):
+				role_tags.append(tag)
+	var sorted_signature := role_tags.duplicate()
+	sorted_signature.sort()
+	var resource_focus: Array = (entry.get("resource_focus", []) as Array).duplicate(true)
+	var special_cards := _catalog_special_cards(index).duplicate(true)
+	var missing_special_cards := []
+	for card_variant in special_cards:
+		var card_name := String(card_variant)
+		if card_name != "" and not _skill_exists(card_name):
+			missing_special_cards.append(card_name)
+	var bound_skill_counts := []
+	var bound_skill_missing := []
+	for rank in range(1, 5):
+		var card := _make_skill(_monster_card_name(index, rank))
+		bound_skill_counts.append(int(card.get("fixed_skill_count", 0)))
+		var wanted := mini(rank, actions.size())
+		for action_index in range(wanted):
+			var technique_name := _monster_technique_card_name(name, action_index, rank)
+			if not _skill_exists(technique_name):
+				bound_skill_missing.append(technique_name)
+	var movement_archetype := _monster_ecology_movement_archetype(entry)
+	var ecology_score := actions.size() * 12 \
+		+ role_tags.size() * 24 \
+		+ resource_focus.size() * 18 \
+		+ special_cards.size() * 7 \
+		+ late_shift_score * 6 \
+		+ max_damage * 11 \
+		+ int(round(max_range / 35.0)) \
+		+ int(round(max_move / 45.0))
+	if entry.has("economy_boon"):
+		ecology_score += 34
+	if not _monster_art_profile(name).is_empty():
+		ecology_score += 18
+	return {
+		"index": index,
+		"name": name,
+		"hp": int(entry.get("hp", 0)),
+		"armor": int(entry.get("armor", 0)),
+		"move": float(entry.get("move", 0.0)),
+		"move_damage": int(entry.get("move_damage", 0)),
+		"collision_damage": int(entry.get("collision_damage", 0)),
+		"resource_drain": int(entry.get("resource_drain", 0)),
+		"resource_focus": resource_focus,
+		"resource_focus_count": resource_focus.size(),
+		"summon_access": String(entry.get("summon_access", "monster_zone")),
+		"movement_traits": (entry.get("movement_traits", []) as Array).duplicate(true),
+		"terrain_move_multiplier": (entry.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true),
+		"movement_archetype": movement_archetype,
+		"style": String(entry.get("style", "")),
+		"economy_boon": entry.get("economy_boon", {}) as Dictionary,
+		"has_economy_boon": entry.has("economy_boon") and not (entry.get("economy_boon", {}) as Dictionary).is_empty(),
+		"has_art_profile": MONSTER_ART_PROFILES.has(name),
+		"special_cards": special_cards,
+		"missing_special_cards": missing_special_cards,
+		"action_count": actions.size(),
+		"action_names": action_names,
+		"active_early_actions": active_early,
+		"active_escalated_actions": active_escalated,
+		"role_tags": role_tags,
+		"action_signature": "+".join(sorted_signature),
+		"late_shift_score": late_shift_score,
+		"rank_iv_shift": _catalog_rank_iv_shift_summary(index),
+		"bound_skill_counts": bound_skill_counts,
+		"bound_skill_missing": bound_skill_missing,
+		"max_damage": max_damage,
+		"max_range": max_range,
+		"max_move": max_move,
+		"ecology_score": ecology_score,
+	}
+
+
+func _monster_ecology_balance_report() -> Dictionary:
+	var entries := []
+	var issues := []
+	var movement_counts := {}
+	var action_signatures := {}
+	var role_tag_counts := {}
+	var resource_goods := {}
+	var monsters_with_resource_focus := 0
+	var monsters_with_economy_boon := 0
+	var monsters_with_art := 0
+	var monsters_with_late_shift := 0
+	var monsters_with_bound_ladder := 0
+	for i in range(_catalog_size()):
+		var entry := _monster_ecology_identity_entry(i)
+		entries.append(entry)
+		var name := String(entry.get("name", "怪兽"))
+		var movement := String(entry.get("movement_archetype", "通用"))
+		movement_counts[movement] = int(movement_counts.get(movement, 0)) + 1
+		var signature := String(entry.get("action_signature", ""))
+		if signature != "":
+			action_signatures[signature] = int(action_signatures.get(signature, 0)) + 1
+		for tag_variant in (entry.get("role_tags", []) as Array):
+			var tag := String(tag_variant)
+			role_tag_counts[tag] = int(role_tag_counts.get(tag, 0)) + 1
+		for product_variant in (entry.get("resource_focus", []) as Array):
+			var product := String(product_variant)
+			if product != "":
+				resource_goods[product] = true
+		if int(entry.get("resource_focus_count", 0)) > 0:
+			monsters_with_resource_focus += 1
+		if bool(entry.get("has_economy_boon", false)):
+			monsters_with_economy_boon += 1
+		if bool(entry.get("has_art_profile", false)):
+			monsters_with_art += 1
+		if int(entry.get("late_shift_score", 0)) > 0:
+			monsters_with_late_shift += 1
+		var bound_counts: Array = entry.get("bound_skill_counts", []) as Array
+		var bound_ok := bound_counts.size() == 4
+		for rank in range(1, 5):
+			if rank - 1 >= bound_counts.size() or int(bound_counts[rank - 1]) < rank:
+				bound_ok = false
+		if bound_ok and (entry.get("bound_skill_missing", []) as Array).is_empty():
+			monsters_with_bound_ladder += 1
+		if int(entry.get("action_count", 0)) < 6:
+			issues.append("%s行动少于6个" % name)
+		if int(entry.get("active_early_actions", 0)) < 3:
+			issues.append("%s早期行动过少" % name)
+		if int(entry.get("active_escalated_actions", 0)) < 5:
+			issues.append("%s升级/破坏后行动过少" % name)
+		if (entry.get("role_tags", []) as Array).size() < 3:
+			issues.append("%s行动定位过窄" % name)
+		if int(entry.get("resource_focus_count", 0)) < 2:
+			issues.append("%s缺商品偏好" % name)
+		if not bool(entry.get("has_economy_boon", false)):
+			issues.append("%s缺经济钩子" % name)
+		if not bool(entry.get("has_art_profile", false)):
+			issues.append("%s缺临时美工档案" % name)
+		if not (entry.get("missing_special_cards", []) as Array).is_empty():
+			issues.append("%s带入卡缺定义:%s" % [name, "、".join(entry.get("missing_special_cards", []) as Array)])
+		if not (entry.get("bound_skill_missing", []) as Array).is_empty():
+			issues.append("%s固定技能缺定义" % name)
+	var catalog_count := _catalog_size()
+	if catalog_count < 8:
+		issues.append("怪兽数量不足:%d" % catalog_count)
+	if int(movement_counts.get("飞行", 0)) <= 0:
+		issues.append("缺飞行怪兽生态位")
+	if int(movement_counts.get("水栖/海域", 0)) <= 0:
+		issues.append("缺水栖/海域怪兽生态位")
+	if int(movement_counts.get("陆行", 0)) <= 0:
+		issues.append("缺陆行怪兽生态位")
+	if resource_goods.keys().size() < mini(12, catalog_count * 2):
+		issues.append("怪兽商品偏好池过窄:%d" % resource_goods.keys().size())
+	if action_signatures.keys().size() < maxi(5, catalog_count - 1):
+		issues.append("怪兽行动签名同质化:%d/%d" % [action_signatures.keys().size(), catalog_count])
+	if role_tag_counts.keys().size() < 8:
+		issues.append("怪兽行动标签过少:%d" % role_tag_counts.keys().size())
+	if monsters_with_resource_focus < catalog_count:
+		issues.append("部分怪兽没有商品偏好")
+	if monsters_with_economy_boon < catalog_count:
+		issues.append("部分怪兽没有经济钩子")
+	if monsters_with_art < catalog_count:
+		issues.append("部分怪兽缺临时美工")
+	if monsters_with_late_shift < catalog_count:
+		issues.append("部分怪兽升级概率没有倾斜")
+	if monsters_with_bound_ladder < catalog_count:
+		issues.append("部分怪兽固定技能梯度不完整")
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"catalog_count": catalog_count,
+		"entries": entries,
+		"movement_counts": movement_counts,
+		"action_signature_count": action_signatures.keys().size(),
+		"action_signatures": action_signatures,
+		"role_tag_count": role_tag_counts.keys().size(),
+		"role_tag_counts": role_tag_counts,
+		"resource_good_count": resource_goods.keys().size(),
+		"resource_goods": resource_goods.keys(),
+		"monsters_with_resource_focus": monsters_with_resource_focus,
+		"monsters_with_economy_boon": monsters_with_economy_boon,
+		"monsters_with_art": monsters_with_art,
+		"monsters_with_late_shift": monsters_with_late_shift,
+		"monsters_with_bound_ladder": monsters_with_bound_ladder,
+		"summary": _monster_ecology_balance_summary_from_entries(entries, movement_counts, role_tag_counts, resource_goods.keys().size(), issues),
+	}
+
+
+func _monster_ecology_balance_summary_from_entries(entries: Array, movement_counts: Dictionary, role_tag_counts: Dictionary, resource_good_count: int, issues: Array) -> String:
+	var movement_pieces := []
+	for movement_variant in movement_counts.keys():
+		var movement := String(movement_variant)
+		movement_pieces.append("%s×%d" % [movement, int(movement_counts.get(movement, 0))])
+	var sample_pieces := []
+	for entry_variant in entries.slice(0, mini(4, entries.size())):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		sample_pieces.append("%s:%s/%s/生态%d" % [
+			String(entry.get("name", "怪兽")),
+			String(entry.get("movement_archetype", "通用")),
+			"、".join(entry.get("role_tags", []) as Array),
+			int(entry.get("ecology_score", 0)),
+		])
+	return "怪兽生态审计：%d只｜移动:%s｜行动标签%d类｜商品偏好%d种｜样例:%s%s" % [
+		entries.size(),
+		" / ".join(movement_pieces) if not movement_pieces.is_empty() else "暂无",
+		role_tag_counts.keys().size(),
+		resource_good_count,
+		"；".join(sample_pieces) if not sample_pieces.is_empty() else "暂无",
+		"" if issues.is_empty() else "｜问题:%s" % "、".join(issues),
+	]
+
+
+func _monster_ecology_balance_summary() -> String:
+	return String(_monster_ecology_balance_report().get("summary", "怪兽生态审计：暂无"))
+
+
 func _monster_ranked_action_weight_delta_summary(actor: Dictionary, any_destroyed: bool = false) -> String:
 	var rank := clampi(int(actor.get("rank", 1)), 1, 4)
 	if rank <= 1:

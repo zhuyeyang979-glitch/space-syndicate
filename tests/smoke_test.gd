@@ -190,6 +190,7 @@ func _run() -> void:
 	_expect(String(main.call("_card_art_stats", regular_monster_card)).contains("HP") and String(main.call("_card_art_stats", regular_monster_card)).contains("怪区"), "monster-card artwork prints HP, duration, movement, and region access")
 	_expect(_all_monster_cards_have_field_attributes(main), "every monster card rank defines HP, movement, duration, and summon-region attributes")
 	_expect(bool(main.call("_assert_ranked_action_weights_escalate", 0)), "rank-IV monster cards tilt auto-action weights toward later dangerous skills")
+	_expect(_verify_monster_ecology_balance_audit(main), "monster ecology balance audit preserves movement, resources, actions, bound skills, and art identities")
 	var regular_summon_rejected := not bool(main.call("_summon_monster_from_card", players[0] as Dictionary, regular_monster_card))
 	_expect(regular_summon_rejected and _as_array(main.get("auto_monsters")).is_empty(), "post-start monster cards cannot summon outside a landed or adjacent monster region")
 	_expect(_verify_monster_card_terrain_restriction(main, players, districts), "terrain-restricted monster cards reject the wrong land/ocean district even inside a monster zone")
@@ -6255,6 +6256,63 @@ func _verify_ranked_monster_action_weights(main: Node, actor: Dictionary) -> boo
 	var rank_iv_weights := main.call("_catalog_ranked_action_weights_for_index", catalog_index, false, 4) as Array
 	return rank_i_weights.size() == rank_iv_weights.size() \
 		and _late_weight_total(rank_iv_weights) > _late_weight_total(rank_i_weights)
+
+
+func _verify_monster_ecology_balance_audit(main: Node) -> bool:
+	var report := main.call("_monster_ecology_balance_report") as Dictionary
+	var issues := _as_array(report.get("issues", []))
+	if not bool(report.get("ok", false)):
+		print("Monster ecology balance issues: %s" % " / ".join(issues))
+		return false
+	var catalog_count := int(report.get("catalog_count", 0))
+	var movement_counts := report.get("movement_counts", {}) as Dictionary
+	var summary := String(report.get("summary", ""))
+	var entries := _as_array(report.get("entries", []))
+	if catalog_count < 8 or entries.size() != catalog_count:
+		print("Monster ecology catalog count mismatch: %d entries=%d" % [catalog_count, entries.size()])
+		return false
+	if int(movement_counts.get("飞行", 0)) <= 0 or int(movement_counts.get("水栖/海域", 0)) <= 0 or int(movement_counts.get("陆行", 0)) <= 0:
+		print("Monster ecology movement coverage too narrow: %s" % str(movement_counts))
+		return false
+	if int(report.get("resource_good_count", 0)) < 12:
+		print("Monster ecology resource pool too small: %d" % int(report.get("resource_good_count", 0)))
+		return false
+	if int(report.get("action_signature_count", 0)) < catalog_count - 1:
+		print("Monster ecology signatures too similar: %d/%d" % [int(report.get("action_signature_count", 0)), catalog_count])
+		return false
+	if int(report.get("role_tag_count", 0)) < 8:
+		print("Monster ecology role tags too few: %d" % int(report.get("role_tag_count", 0)))
+		return false
+	if int(report.get("monsters_with_resource_focus", 0)) != catalog_count \
+		or int(report.get("monsters_with_economy_boon", 0)) != catalog_count \
+		or int(report.get("monsters_with_art", 0)) != catalog_count \
+		or int(report.get("monsters_with_late_shift", 0)) != catalog_count \
+		or int(report.get("monsters_with_bound_ladder", 0)) != catalog_count:
+		print("Monster ecology coverage incomplete: %s" % str(report))
+		return false
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			return false
+		var entry := entry_variant as Dictionary
+		var role_tags := _as_array(entry.get("role_tags", []))
+		var bound_counts := _as_array(entry.get("bound_skill_counts", []))
+		var ecology_score := int(entry.get("ecology_score", 0))
+		if int(entry.get("action_count", 0)) < 6 \
+			or int(entry.get("active_early_actions", 0)) < 3 \
+			or int(entry.get("active_escalated_actions", 0)) < 5 \
+			or int(entry.get("resource_focus_count", 0)) < 2 \
+			or role_tags.size() < 3 \
+			or ecology_score < 170:
+			print("Monster ecology entry weak: %s" % str(entry))
+			return false
+		for rank in range(1, 5):
+			if rank - 1 >= bound_counts.size() or int(bound_counts[rank - 1]) < rank:
+				print("Monster bound skill ladder weak: %s" % str(entry))
+				return false
+	if not summary.contains("怪兽生态审计") or not summary.contains("移动:") or not summary.contains("商品偏好"):
+		print("Monster ecology summary incomplete: %s" % summary)
+		return false
+	return true
 
 
 func _verify_anonymous_cash_card(main: Node) -> bool:
