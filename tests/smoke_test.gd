@@ -4414,6 +4414,26 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	if int(product_bridge_report.get("policy_family_count", 0)) < 3:
 		failures.append("product route bridge families %d %s" % [int(product_bridge_report.get("policy_family_count", 0)), product_bridge_summary])
 		ok = false
+	var profile_identity_report := main.call("_ai_profile_strategy_identity_report") as Dictionary
+	var profile_identity_summary := String(main.call("_ai_profile_strategy_identity_summary", profile_identity_report))
+	if not bool(profile_identity_report.get("ok", false)):
+		failures.append("profile identity audit %s" % profile_identity_summary)
+		ok = false
+	if int(profile_identity_report.get("simulated_profile_count", 0)) < 6:
+		failures.append("profile identity simulated %d %s" % [int(profile_identity_report.get("simulated_profile_count", 0)), profile_identity_summary])
+		ok = false
+	if int(profile_identity_report.get("identity_profile_count", 0)) < 6:
+		failures.append("profile identity ready %d %s" % [int(profile_identity_report.get("identity_profile_count", 0)), profile_identity_summary])
+		ok = false
+	if int(profile_identity_report.get("distinct_primary_route_count", 0)) < 5:
+		failures.append("profile identity routes %d %s" % [int(profile_identity_report.get("distinct_primary_route_count", 0)), profile_identity_summary])
+		ok = false
+	if int(profile_identity_report.get("expected_family_covered_count", 0)) < 4:
+		failures.append("profile identity families %d %s" % [int(profile_identity_report.get("expected_family_covered_count", 0)), profile_identity_summary])
+		ok = false
+	if int(profile_identity_report.get("signature_family_covered_count", 0)) < 3:
+		failures.append("profile identity signatures %d %s" % [int(profile_identity_report.get("signature_family_covered_count", 0)), profile_identity_summary])
+		ok = false
 	var leader_index := 1
 	var leader_score := -999999
 	for player_index in range(1, max_players):

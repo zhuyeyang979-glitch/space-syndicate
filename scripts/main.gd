@@ -17335,6 +17335,270 @@ func _ai_product_route_bridge_summary(report: Dictionary = {}) -> String:
 	]
 
 
+func _ai_policy_families_for_development_route(route_id: String) -> Array:
+	match route_id:
+		"city_growth":
+			return ["城市化", "经营动作", "出牌", "购牌"]
+		"contract_route":
+			return ["合约", "经营动作", "出牌", "购牌"]
+		"finance_speculation":
+			return ["期货", "经营动作", "出牌", "购牌"]
+		"monster_pressure":
+			return ["怪兽诱导", "经营动作", "出牌", "购牌"]
+		"intel_supply":
+			return ["情报", "购牌", "出牌"]
+		"direct_interaction":
+			return ["直接互动", "经营动作", "出牌", "购牌"]
+	return ["出牌", "购牌"]
+
+
+func _ai_signature_policy_families_for_development_route(route_id: String) -> Array:
+	match route_id:
+		"city_growth":
+			return ["城市化"]
+		"contract_route":
+			return ["合约"]
+		"finance_speculation":
+			return ["期货"]
+		"monster_pressure":
+			return ["怪兽诱导"]
+		"intel_supply":
+			return ["情报"]
+		"direct_interaction":
+			return ["直接互动"]
+	return []
+
+
+func _ai_profile_expected_route_ids(profile: Dictionary) -> Array:
+	var result := []
+	var primary := _ai_profile_primary_development_route(profile)
+	var primary_route := String(primary.get("route_id", ""))
+	if primary_route != "":
+		_append_unique_string(result, primary_route)
+	var preferences_variant: Variant = profile.get("route_preferences", {})
+	if preferences_variant is Dictionary:
+		var preferences := preferences_variant as Dictionary
+		for route_variant in preferences.keys():
+			var route_id := String(route_variant)
+			if route_id == "" or float(preferences.get(route_id, 1.0)) < 1.05:
+				continue
+			_append_unique_string(result, route_id)
+	return result
+
+
+func _ai_profile_expected_policy_families(profile: Dictionary) -> Array:
+	var result := []
+	for route_variant in _ai_profile_expected_route_ids(profile):
+		for family_variant in _ai_policy_families_for_development_route(String(route_variant)):
+			_append_unique_string(result, String(family_variant))
+	return result
+
+
+func _ai_profile_signature_policy_families(profile: Dictionary) -> Array:
+	var result := []
+	for route_variant in _ai_profile_expected_route_ids(profile):
+		for family_variant in _ai_signature_policy_families_for_development_route(String(route_variant)):
+			_append_unique_string(result, String(family_variant))
+	return result
+
+
+func _ai_profile_strategy_identity_report() -> Dictionary:
+	var profiles_by_index := {}
+	for profile_index in range(AI_PERSONALITY_CATALOG.size()):
+		var profile: Dictionary = AI_PERSONALITY_CATALOG[profile_index]
+		var primary := _ai_profile_primary_development_route(profile)
+		var expected_routes := _ai_profile_expected_route_ids(profile)
+		var expected_families := _ai_profile_expected_policy_families(profile)
+		var signature_families := _ai_profile_signature_policy_families(profile)
+		profiles_by_index[profile_index] = {
+			"profile_index": profile_index,
+			"profile": String(profile.get("name", "AI")),
+			"style": String(profile.get("style", "")),
+			"primary_route": String(primary.get("route_id", "")),
+			"primary_label": String(primary.get("label", "未定")),
+			"expected_routes": expected_routes,
+			"expected_families": expected_families,
+			"signature_families": signature_families,
+			"player_count": 0,
+			"sample_count": 0,
+			"product_sample_count": 0,
+			"primary_route_count": 0,
+			"expected_route_count": 0,
+			"expected_family_count": 0,
+			"signature_family_count": 0,
+			"route_counts": {},
+			"family_counts": {},
+			"product_counts": {},
+			"strategy_intent_counts": {},
+			"policy_kind_counts": {},
+		}
+	var ai_count := 0
+	var global_primary_routes := {}
+	var global_signature_families := {}
+	var global_expected_families := {}
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		if player_index < 0 or player_index >= players.size():
+			continue
+		ai_count += 1
+		var player: Dictionary = players[player_index]
+		var profile_variant: Variant = player.get("ai_profile", {})
+		if not (profile_variant is Dictionary):
+			continue
+		var profile := profile_variant as Dictionary
+		var profile_index := int(profile.get("profile_index", -1))
+		if profile_index < 0 or profile_index >= AI_PERSONALITY_CATALOG.size() or not profiles_by_index.has(profile_index):
+			continue
+		var entry := (profiles_by_index[profile_index] as Dictionary).duplicate(true)
+		entry["player_count"] = int(entry.get("player_count", 0)) + 1
+		var expected_routes := entry.get("expected_routes", []) as Array
+		var expected_families := entry.get("expected_families", []) as Array
+		var signature_families := entry.get("signature_families", []) as Array
+		var route_counts := (entry.get("route_counts", {}) as Dictionary).duplicate(true)
+		var family_counts := (entry.get("family_counts", {}) as Dictionary).duplicate(true)
+		var product_counts := (entry.get("product_counts", {}) as Dictionary).duplicate(true)
+		var strategy_intent_counts := (entry.get("strategy_intent_counts", {}) as Dictionary).duplicate(true)
+		var policy_kind_counts := (entry.get("policy_kind_counts", {}) as Dictionary).duplicate(true)
+		var memory_variant: Variant = player.get("ai_memory", {})
+		var samples := []
+		if memory_variant is Dictionary:
+			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
+			if samples_variant is Array:
+				samples = samples_variant as Array
+		for sample_variant in samples:
+			if not (sample_variant is Dictionary):
+				continue
+			var sample := sample_variant as Dictionary
+			entry["sample_count"] = int(entry.get("sample_count", 0)) + 1
+			var route_id := _ai_sample_development_route_id(sample)
+			if route_id != "":
+				route_counts[route_id] = int(route_counts.get(route_id, 0)) + 1
+				if route_id == String(entry.get("primary_route", "")):
+					entry["primary_route_count"] = int(entry.get("primary_route_count", 0)) + 1
+					global_primary_routes[route_id] = true
+				if expected_routes.has(route_id):
+					entry["expected_route_count"] = int(entry.get("expected_route_count", 0)) + 1
+			var family := _ai_product_sample_policy_family(sample)
+			if family != "":
+				family_counts[family] = int(family_counts.get(family, 0)) + 1
+				if expected_families.has(family):
+					entry["expected_family_count"] = int(entry.get("expected_family_count", 0)) + 1
+					global_expected_families[family] = true
+				if signature_families.has(family):
+					entry["signature_family_count"] = int(entry.get("signature_family_count", 0)) + 1
+					global_signature_families[family] = true
+			var product_name := _ai_sample_primary_product(sample)
+			if product_name != "":
+				entry["product_sample_count"] = int(entry.get("product_sample_count", 0)) + 1
+				product_counts[product_name] = int(product_counts.get(product_name, 0)) + 1
+			var strategy_intent := String(sample.get("strategy_intent", ""))
+			if strategy_intent != "":
+				strategy_intent_counts[strategy_intent] = int(strategy_intent_counts.get(strategy_intent, 0)) + 1
+			var policy_kind := String(sample.get("policy_kind", ""))
+			if policy_kind != "":
+				policy_kind_counts[policy_kind] = int(policy_kind_counts.get(policy_kind, 0)) + 1
+		entry["route_counts"] = route_counts
+		entry["family_counts"] = family_counts
+		entry["product_counts"] = product_counts
+		entry["strategy_intent_counts"] = strategy_intent_counts
+		entry["policy_kind_counts"] = policy_kind_counts
+		profiles_by_index[profile_index] = entry
+	var entries := []
+	var simulated_profile_count := 0
+	var identity_profile_count := 0
+	var missing_identity_profiles := []
+	for profile_index in range(AI_PERSONALITY_CATALOG.size()):
+		var entry := profiles_by_index[profile_index] as Dictionary
+		var player_count := int(entry.get("player_count", 0))
+		if player_count > 0:
+			simulated_profile_count += 1
+		var has_identity := player_count > 0 \
+			and int(entry.get("sample_count", 0)) > 0 \
+			and int(entry.get("primary_route_count", 0)) > 0 \
+			and int(entry.get("expected_route_count", 0)) > 0 \
+			and int(entry.get("expected_family_count", 0)) > 0 \
+			and int(entry.get("product_sample_count", 0)) > 0
+		entry["identity_ready"] = has_identity
+		if has_identity:
+			identity_profile_count += 1
+		elif player_count > 0:
+			missing_identity_profiles.append(String(entry.get("profile", "AI")))
+		entries.append(entry)
+	var expected_simulated_profiles := mini(AI_PERSONALITY_CATALOG.size(), ai_count)
+	var minimum_identity_profiles := expected_simulated_profiles
+	var minimum_primary_routes := mini(5, expected_simulated_profiles)
+	var minimum_expected_families := mini(4, expected_simulated_profiles)
+	var minimum_signature_families := mini(3, expected_simulated_profiles)
+	var issues := []
+	if ai_count <= 0:
+		issues.append("没有AI席位")
+	if simulated_profile_count < expected_simulated_profiles:
+		issues.append("实战性格覆盖不足:%d/%d" % [simulated_profile_count, expected_simulated_profiles])
+	if identity_profile_count < minimum_identity_profiles:
+		issues.append("性格身份不足:%d/%d" % [identity_profile_count, minimum_identity_profiles])
+	if global_primary_routes.keys().size() < minimum_primary_routes:
+		issues.append("主路线种类不足:%d/%d" % [global_primary_routes.keys().size(), minimum_primary_routes])
+	if global_expected_families.keys().size() < minimum_expected_families:
+		issues.append("预期行动族不足:%d/%d" % [global_expected_families.keys().size(), minimum_expected_families])
+	if global_signature_families.keys().size() < minimum_signature_families:
+		issues.append("签名行动族不足:%d/%d" % [global_signature_families.keys().size(), minimum_signature_families])
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"ai_count": ai_count,
+		"profile_count": AI_PERSONALITY_CATALOG.size(),
+		"simulated_profile_count": simulated_profile_count,
+		"identity_profile_count": identity_profile_count,
+		"missing_identity_profiles": missing_identity_profiles,
+		"distinct_primary_route_count": global_primary_routes.keys().size(),
+		"expected_family_covered_count": global_expected_families.keys().size(),
+		"signature_family_covered_count": global_signature_families.keys().size(),
+		"covered_primary_routes": global_primary_routes.keys(),
+		"covered_expected_families": global_expected_families.keys(),
+		"covered_signature_families": global_signature_families.keys(),
+		"profiles": entries,
+		"expected_simulated_profiles": expected_simulated_profiles,
+		"minimum_identity_profiles": minimum_identity_profiles,
+		"minimum_primary_routes": minimum_primary_routes,
+		"minimum_expected_families": minimum_expected_families,
+		"minimum_signature_families": minimum_signature_families,
+	}
+
+
+func _ai_profile_strategy_identity_summary(report: Dictionary = {}) -> String:
+	var source := report
+	if source.is_empty():
+		source = _ai_profile_strategy_identity_report()
+	var profile_pieces := []
+	for entry_variant in (source.get("profiles", []) as Array):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if int(entry.get("player_count", 0)) <= 0:
+			continue
+		profile_pieces.append("%s:%s 路线%d/行动%d/签名%d/商品%d" % [
+			String(entry.get("profile", "AI")),
+			String(entry.get("primary_label", "未定")),
+			int(entry.get("primary_route_count", 0)),
+			int(entry.get("expected_family_count", 0)),
+			int(entry.get("signature_family_count", 0)),
+			int(entry.get("product_sample_count", 0)),
+		])
+	var issues := source.get("issues", []) as Array
+	return "AI性格身份审计：AI%d｜性格%d/%d｜身份%d/%d｜主路线%d｜预期行动族%d｜签名行动族%d%s｜%s" % [
+		int(source.get("ai_count", 0)),
+		int(source.get("simulated_profile_count", 0)),
+		int(source.get("expected_simulated_profiles", 0)),
+		int(source.get("identity_profile_count", 0)),
+		int(source.get("minimum_identity_profiles", 0)),
+		int(source.get("distinct_primary_route_count", 0)),
+		int(source.get("expected_family_covered_count", 0)),
+		int(source.get("signature_family_covered_count", 0)),
+		"" if issues.is_empty() else "｜问题:%s" % "、".join(issues),
+		"；".join(profile_pieces) if not profile_pieces.is_empty() else "暂无AI性格样本",
+	]
+
+
 func _card_key_rule_facts(skill: Dictionary) -> Array:
 	var result := []
 	for fact_variant in _card_rule_facts(skill):
