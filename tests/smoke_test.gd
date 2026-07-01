@@ -187,6 +187,7 @@ func _run() -> void:
 	_expect(player_box != null and _container_label_text_contains(player_box, "公开席位") and _container_button_text_contains(player_box, "明怪") and _container_button_tooltip_contains(player_box, "现金、手牌和弃牌不公开"), "player panel exposes a board-game style public seat strip without leaking private hands or cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail"), "player panel shows one concise table-goal next-action card")
 	_expect(player_box != null and _container_has_named_node(player_box, "PlayerDashboardActionDock") and _container_has_named_node(player_box, "MainActionDock") and _container_label_text_contains(player_box, "桌边") and _container_button_text_contains(player_box, "建城") and _container_button_text_contains(player_box, "牌架") and _container_button_text_contains(player_box, "买牌") and (_container_button_text_contains(player_box, "出牌") or _container_button_text_contains(player_box, "首召")), "player panel exposes a first-screen dashboard action dock plus the detailed quick action tray for build, market, buy, and play")
+	_expect(player_box != null and _container_has_named_node(player_box, "PlayerDashboardDistrictSummary") and _container_label_text_contains(player_box, "选区｜"), "player panel keeps the selected district summary beside first-screen actions")
 	_expect(player_box != null and _container_label_text_contains(player_box, "选区行动") and _container_label_text_contains(player_box, "牌架") and _container_label_text_contains(player_box, "HP") and _container_button_text_contains(player_box, "查看牌") and _container_button_text_contains(player_box, "商路"), "player panel exposes a chip-based selected-region action card")
 	_expect(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"), "early-run guide shows a dismissible checklist and economy overview shortcut")
 	_expect(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "首召怪兽") and _container_label_text_contains(player_box, "建第一城") and not _container_label_text_contains(player_box, "为什么：") and not _container_label_text_contains(player_box, "入口："), "early-run guide presents compact progress chips and a short next-step strip")
@@ -418,6 +419,7 @@ func _run() -> void:
 	_expect(buildable_district >= 0, "generated planet includes a buildable land district")
 	if buildable_district >= 0:
 		_verify_monster_resource_and_collision_system(main, buildable_district)
+		_settle_all_active_monster_wagers(main, "烟测建城前清场")
 		await process_frame
 		districts = _as_array(main.get("districts"))
 		buildable_district = _first_buildable_land_district(districts)
@@ -482,6 +484,7 @@ func _run() -> void:
 		_expect(int(main.call("_save_run")) == OK, "current run can be saved")
 		main.call("_open_main_menu")
 		await process_frame
+		load_run_button = main.get("menu_load_run_button") as Button
 		_expect(run_save_label != null and run_save_label.text.contains("可读取"), "main menu reports a readable saved run in the test slot")
 		_expect(load_run_button != null and not load_run_button.disabled, "load run button is enabled when the test save is readable")
 		main.call("_new_game")
@@ -515,22 +518,21 @@ func _run() -> void:
 	var menu_content_box := main.get("menu_content_box") as VBoxContainer
 	main.call("_open_main_menu")
 	await process_frame
-	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加", "main menu opens with the root title")
-	_expect(menu_context_label != null and menu_context_label.text.contains("当前位置：主菜单") and menu_context_label.text.contains("悬停"), "main menu exposes a player-facing breadcrumb/help strip for subpage navigation")
-	_expect(menu_interaction_hint_panel != null and menu_interaction_hint_panel.has_theme_stylebox_override("panel") and menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("悬停预览") and menu_interaction_hint_label.text.contains("缩略图") and menu_interaction_hint_label.text.contains("双击详情"), "main menu exposes a short board-game interaction hint strip")
-	_expect(menu_quick_nav_row != null and menu_quick_nav_row.visible and _container_button_text_contains(menu_quick_nav_row, "开局") and _container_button_text_contains(menu_quick_nav_row, "经济") and _container_button_text_contains(menu_quick_nav_row, "情报") and _container_button_text_contains(menu_quick_nav_row, "图鉴"), "main menu exposes reusable quick navigation chips for major branches")
+	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加｜星球赌桌", "main menu opens with the table-lobby title")
+	_expect(menu_context_label != null and not menu_context_label.visible, "root main menu hides breadcrumb text")
+	_expect(menu_interaction_hint_panel != null and not menu_interaction_hint_panel.visible, "root main menu hides generic help strip")
+	_expect(menu_quick_nav_row != null and not menu_quick_nav_row.visible, "root main menu no longer shows a top branch-button row")
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
 	_expect(menu_content_scroll != null and not menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column without focus-jumping on hover")
-	_expect(menu_overlay != null and _container_has_meta(menu_overlay, "main_menu_action_grid") and _container_has_meta(menu_overlay, "main_menu_grid_card"), "main menu arranges branch entries as reusable responsive card grids")
-	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
-	_expect(menu_body_label != null and menu_body_label.text.contains("游戏规则") and not menu_body_label.text.contains("快捷键："), "main menu keeps detailed controls inside the rules branch")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主菜单速览") and _container_label_text_contains(menu_preview_box, "牌桌布局") and _container_label_text_contains(menu_preview_box, "终局复盘"), "main menu exposes compact player-facing summary cards above the detailed action branches")
-	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "开局准备"), "main menu routes new games through a setup preview branch")
-	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "设置3-8席") and _container_label_text_contains(menu_overlay, "缩略图看全局"), "main menu uses descriptive card-style action entries")
+	_expect(menu_overlay != null and _container_has_named_node(menu_overlay, "MainMenuPlanetLobbyPanel") and _container_has_named_node(menu_overlay, "MainMenuCommandCard") and _container_has_named_node(menu_overlay, "MainMenuUtilityRail"), "main menu arranges only the planet lobby and compact command buttons")
+	_expect(menu_body_label != null and menu_body_label.text.contains("最后钱最多") and not menu_body_label.text.contains("游戏规则"), "main menu keeps only a short objective line")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "星球赌桌大厅") and _container_button_text_contains(menu_preview_box, "开新一桌") and _container_button_text_contains(menu_preview_box, "继续牌桌") and _container_button_text_contains(menu_preview_box, "资料库"), "main menu exposes three table-lobby primary actions")
+	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "开新一桌"), "main menu routes new games through the table-lobby start button")
+	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "选席位") and _container_label_text_contains(menu_overlay, "建城｜怪兽｜下注｜推理"), "main menu uses short player-facing command labels")
 	_expect(menu_overlay != null and _container_button_has_stylebox(menu_overlay, "hover") and _container_button_has_stylebox(menu_overlay, "pressed"), "menu buttons expose reusable hover and pressed visual states")
-	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "情报档案"), "main menu exposes the intel dossier branch")
+	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "情报档案") and not _container_button_text_contains(menu_overlay, "经济总览") and not _container_button_text_contains(menu_overlay, "局势排名"), "main menu keeps in-game analysis pages out of the root lobby")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "选择四怪兽"), "main menu no longer exposes a separate monster-selection branch")
-	_expect(menu_back_button != null and not menu_back_button.visible, "root menu does not show a redundant back button")
+	_expect(menu_back_button != null and not menu_back_button.visible and menu_continue_button != null and not menu_continue_button.visible, "root menu does not show redundant global back/continue buttons")
 	var player_count_before_setup := int(main.get("configured_player_count"))
 	var role_indices_before_setup := _as_array(main.get("configured_role_indices")).duplicate(true)
 	if role_indices_before_setup.is_empty():
@@ -8714,6 +8716,20 @@ func _verify_monster_resource_and_collision_system(main: Node, district_index: i
 		var damage_district := district_variant as Dictionary
 		total_damage_after_hit += int(damage_district.get("damage", 0))
 	_expect(total_damage_after_hit > damage_before + 2, "monster knockback collision damages at least one region")
+
+
+func _settle_all_active_monster_wagers(main: Node, reason: String) -> void:
+	for _attempt in range(8):
+		var active_wagers := _as_array(main.get("active_monster_wagers"))
+		if active_wagers.is_empty():
+			return
+		for wager_variant in active_wagers:
+			var wager := wager_variant as Dictionary
+			var wager_id := int(wager.get("wager_id", -1))
+			if wager_id < 0:
+				continue
+			main.call("_force_monster_wager_missing_bets", wager_id, reason)
+			main.call("_settle_monster_wager", wager_id, reason)
 
 
 func _verify_special_monster_passives(main: Node) -> void:

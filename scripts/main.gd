@@ -4207,94 +4207,11 @@ func _build_menu_overlay() -> void:
 	menu_regular_buttons = []
 	menu_main_action_grids = []
 
-	_add_main_menu_action_grid(box, "开局", "先确认席位、对手、角色卡与首召怪兽，再开始一局。", [
-		{
-			"label": "开局准备",
-			"detail": "设置3-8席、2-7个电脑对手、挑战层级、角色卡和首召怪兽。",
-			"target": Callable(self, "_start_new_run_from_menu"),
-			"accent": Color("#38bdf8"),
-		},
-	])
-
-	_add_main_menu_action_grid(box, "局势", "查看排名、现金流和推理线索；牌桌上只留即时操作。", [
-		{
-			"label": "局势排名",
-			"detail": "查看现金目标、终局倒计时、结算估算和赛后资金来源。",
-			"target": Callable(self, "_open_standings_menu"),
-			"accent": Color("#facc15"),
-		},
-		{
-			"label": "经济总览",
-			"detail": "查看GDP/min、商品热榜、商路收入前景、天气与城市收入拆解。",
-			"target": Callable(self, "_open_economy_overview_menu"),
-			"accent": Color("#4ade80"),
-		},
-		{
-			"label": "情报档案",
-			"detail": "整理城市私标、卡牌归属竞猜、怪兽资金线索和公开线索。",
-			"target": Callable(self, "_open_intel_dossier_menu"),
-			"accent": Color("#c084fc"),
-		},
-	])
-
-	_add_main_menu_action_grid(box, "资料", "查规则、图鉴和卡牌详情；需要时再打开。", [
-		{
-			"label": "游戏规则",
-			"detail": "查看购牌、出牌、竞价、合约、怪兽赌局、天气、终局和隐私规则。",
-			"target": Callable(self, "_open_rules_menu"),
-			"accent": Color("#93c5fd"),
-		},
-		{
-			"label": "新手引导",
-			"detail": "用短步骤复习首召怪兽、建城、购牌、匿名出牌和经济总览。",
-			"target": Callable(self, "_open_tutorial_menu"),
-			"accent": Color("#67e8f9"),
-		},
-		{
-			"label": "图鉴",
-			"detail": "角色、卡牌、商品、区域图鉴；缩略图看全局，双击看详情。",
-			"target": Callable(self, "_open_compendium_menu"),
-			"accent": Color("#f472b6"),
-		},
-	])
-
-	var persistence_actions := _add_main_menu_action_grid(box, "存档", "保存当前局面或读取本地存档。", [
-		{
-			"label": "保存设置",
-			"detail": "保存开局配置、席位数、对手数量、深度和角色选择。",
-			"target": Callable(self, "_save_settings_from_menu"),
-			"accent": Color("#94a3b8"),
-		},
-		{
-			"label": "保存局面",
-			"detail": "保存当前本地局面，之后继续这一局。",
-			"target": Callable(self, "_save_run_from_menu"),
-			"accent": Color("#94a3b8"),
-		},
-		{
-			"label": "读取局面",
-			"detail": "读取本地保存的当前局面；没有存档时按钮会禁用。",
-			"target": Callable(self, "_load_run_from_menu"),
-			"accent": Color("#94a3b8"),
-		},
-	])
-	var load_action: Dictionary = persistence_actions[2] as Dictionary if persistence_actions.size() > 2 else {}
-	menu_load_run_button = load_action.get("button", null) as Button
-
 	menu_run_save_label = Label.new()
 	menu_run_save_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu_run_save_label.add_theme_font_size_override("font_size", 12)
 	menu_run_save_label.add_theme_color_override("font_color", Color("#94a3b8"))
 	box.add_child(menu_run_save_label)
-
-	_add_main_menu_action_grid(box, "系统", "退出游戏。", [
-		{
-			"label": "退出游戏",
-			"detail": "关闭游戏窗口。",
-			"target": Callable(self, "_quit_game"),
-			"accent": Color("#fb7185"),
-		},
-	])
 	_refresh_menu_layout()
 
 
@@ -4354,13 +4271,17 @@ func _refresh_menu_layout() -> void:
 	var viewport_size := _menu_viewport_size()
 	var compact := viewport_size.x < 900.0 or viewport_size.y < 620.0
 	var wide := viewport_size.x >= 1400.0 and viewport_size.y >= 780.0
+	var root_lobby := menu_title_label != null and menu_title_label.text == "太空辛迪加｜星球赌桌"
 	var side_anchor := 0.025 if compact else (0.10 if wide else 0.07)
 	var vertical_anchor := 0.025 if compact else (0.065 if wide else 0.055)
+	if root_lobby:
+		side_anchor = 0.045 if compact else (0.10 if wide else 0.08)
+		vertical_anchor = 0.055 if compact else (0.14 if wide else 0.10)
 	menu_surface_panel.anchor_left = side_anchor
 	menu_surface_panel.anchor_right = 1.0 - side_anchor
 	menu_surface_panel.anchor_top = vertical_anchor
-	menu_surface_panel.anchor_bottom = 1.0 - vertical_anchor
-	menu_surface_panel.custom_minimum_size = Vector2(760, 500) if compact else Vector2(760, 520)
+	menu_surface_panel.anchor_bottom = 1.0 - vertical_anchor if not root_lobby else (0.86 if compact else (0.72 if wide else 0.76))
+	menu_surface_panel.custom_minimum_size = Vector2(760, 420) if root_lobby else (Vector2(760, 500) if compact else Vector2(760, 520))
 	if menu_shell_margin != null:
 		var horizontal_margin := 14 if compact else (28 if wide else 22)
 		var vertical_margin := 12 if compact else (22 if wide else 18)
@@ -4445,8 +4366,9 @@ func _menu_quick_nav_active_key(title_text: String) -> String:
 func _refresh_menu_quick_nav(title_text: String, show_main_actions: bool = false) -> void:
 	if menu_quick_nav_row == null:
 		return
-	menu_quick_nav_row.visible = show_main_actions
-	if not show_main_actions:
+	var root_table_menu := title_text == "太空辛迪加｜星球赌桌" or title_text == "暂停菜单"
+	menu_quick_nav_row.visible = show_main_actions and not root_table_menu
+	if not menu_quick_nav_row.visible:
 		return
 	var active_key := _menu_quick_nav_active_key(title_text)
 	for key_variant in menu_quick_nav_buttons.keys():
@@ -4632,8 +4554,8 @@ func _add_menu_info_card(parent: Container, title_text: String, body_text: Strin
 
 func _open_main_menu() -> void:
 	_show_menu(
-		"太空辛迪加",
-		"秘密建城，匿名出牌，围着中央星球下注与推理。\n最后钱最多的辛迪加获胜。新局从一张起始怪兽牌开始；完整细节放在游戏规则、图鉴、经济总览和情报档案分支。",
+		"太空辛迪加｜星球赌桌",
+		"秘密建城 · 匿名出牌 · 怪兽赌局\n最后钱最多。",
 		not players.is_empty() and not game_over,
 		true
 	)
@@ -4659,24 +4581,15 @@ func _populate_main_menu_summary_cards() -> void:
 		return
 	menu_preview_box.visible = true
 	_clear_children(menu_preview_box)
-	var overview_grid := GridContainer.new()
-	overview_grid.name = "MainMenuOverviewCardGrid"
-	overview_grid.columns = clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 3)
-	overview_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	overview_grid.add_theme_constant_override("h_separation", 10)
-	overview_grid.add_theme_constant_override("v_separation", 10)
-	menu_preview_box.add_child(overview_grid)
-	_add_menu_info_card(overview_grid, "主菜单速览", "开局、继续、规则、经济、情报和图鉴都从这里进；每个子页只保留本页要用的按钮。", Color("#38bdf8"), "悬停预览入口用途。")
-	_add_menu_info_card(overview_grid, "牌桌布局", "中央星球最大；顶部匿名牌轨小而可拖；底部手牌像桌边牌架，详情用 hover 和双击打开。", Color("#c084fc"), "缩略图先看全局。")
-	_add_menu_info_card(overview_grid, "终局复盘", "有人到现金目标后倒计时；结束看钱从城市、卡牌、怪兽、金融和情报哪里来。", Color("#facc15"), "最后钱最多获胜。")
 	_add_main_menu_planet_lobby_panel(menu_preview_box)
+	_refresh_run_save_menu_state()
 
 
 func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "MainMenuPlanetLobbyPanel"
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "开桌大厅：先看目标、牌桌读法和本局入口。"
+	panel.tooltip_text = "星球赌桌大厅：只保留开局、继续和资料入口。"
 	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#f59e0b"), Color("#020617").lerp(Color("#f59e0b"), 0.08), 1, 18))
 	parent.add_child(panel)
 
@@ -4689,20 +4602,20 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 
 	var stack := VBoxContainer.new()
 	stack.name = "MainMenuPlanetLobbyStack"
-	stack.add_theme_constant_override("separation", 10)
+	stack.add_theme_constant_override("separation", 12)
 	margin.add_child(stack)
 
 	var header := HBoxContainer.new()
 	header.name = "MainMenuPlanetLobbyHeader"
 	header.add_theme_constant_override("separation", 10)
 	stack.add_child(header)
-	var title := _plain_label("星球牌桌｜开桌大厅", 15, Color("#fef3c7"))
+	var title := _plain_label("星球赌桌大厅", 18, Color("#fef3c7"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.tooltip_text = "中央星球是主视觉；牌、钱、情报和下注都围绕星球发生。"
+	title.tooltip_text = "参考电子桌游主菜单：一个主视觉，少量明确入口，细节进入子页。"
 	header.add_child(title)
-	var status := _plain_label("最后钱最多", 12, Color("#bbf7d0"))
+	var status := _plain_label("最后钱最多", 13, Color("#bbf7d0"))
 	status.autowrap_mode = TextServer.AUTOWRAP_OFF
-	status.tooltip_text = "终局按钱排名；城市、卡牌、怪兽和金融路线最终都落到现金。"
+	status.tooltip_text = "终局按钱排名。"
 	header.add_child(status)
 
 	var body := HBoxContainer.new()
@@ -4712,7 +4625,7 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 
 	var planet := PanelContainer.new()
 	planet.name = "MainMenuPlanetMedallion"
-	planet.custom_minimum_size = Vector2(220, 168)
+	planet.custom_minimum_size = Vector2(260, 232)
 	planet.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.12), 1, 18))
 	body.add_child(planet)
 	var planet_margin := MarginContainer.new()
@@ -4722,16 +4635,16 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 	planet_margin.add_theme_constant_override("margin_bottom", 12)
 	planet.add_child(planet_margin)
 	var planet_stack := VBoxContainer.new()
-	planet_stack.add_theme_constant_override("separation", 6)
+	planet_stack.add_theme_constant_override("separation", 8)
 	planet_margin.add_child(planet_stack)
-	var planet_mark := _plain_label("◎", 42, Color("#93c5fd"))
+	var planet_mark := _plain_label("◎", 58, Color("#93c5fd"))
 	planet_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	planet_mark.tooltip_text = "星球是牌桌中心；地图、城市、怪兽、天气和商路都从这里读。"
+	planet_mark.tooltip_text = "星球是牌桌中心。"
 	planet_stack.add_child(planet_mark)
-	var planet_title := _plain_label("中央星球", 14, Color("#e0f2fe"))
+	var planet_title := _plain_label("中央星球", 16, Color("#e0f2fe"))
 	planet_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	planet_stack.add_child(planet_title)
-	var planet_hint := _plain_label("建城赚钱｜匿名出牌｜公开下注｜线索推理", 10, Color("#cbd5e1"))
+	var planet_hint := _plain_label("建城｜怪兽｜下注｜推理", 11, Color("#cbd5e1"))
 	planet_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	planet_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	planet_stack.add_child(planet_hint)
@@ -4741,44 +4654,89 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 	chip_rail.add_theme_constant_override("v_separation", 4)
 	planet_stack.add_child(chip_rail)
 	_add_main_menu_lobby_chip(chip_rail, "3-8席", Color("#bfdbfe"), "真人玩家对2-7个电脑对手。")
-	_add_main_menu_lobby_chip(chip_rail, "起始怪兽", Color("#fda4af"), "开局先打一张I级怪兽牌，再围绕怪兽落点买牌。")
-	_add_main_menu_lobby_chip(chip_rail, "匿名牌轨", Color("#c084fc"), "出牌公开，牌主隐藏；顶部牌轨可竞猜。")
-	_add_main_menu_lobby_chip(chip_rail, "按秒结算", Color("#86efac"), "GDP、天气、金融持仓和单位移动按实时秒数推进。")
+	_add_main_menu_lobby_chip(chip_rail, "怪兽开局", Color("#fda4af"), "新局在开局准备里选择起始怪兽。")
+	_add_main_menu_lobby_chip(chip_rail, "匿名牌轨", Color("#c084fc"), "出牌公开，牌主隐藏。")
 
 	var right := VBoxContainer.new()
 	right.name = "MainMenuLobbyRightColumn"
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.add_theme_constant_override("separation", 10)
+	right.add_theme_constant_override("separation", 12)
 	body.add_child(right)
 
-	var kpi_grid := GridContainer.new()
-	kpi_grid.name = "MainMenuLobbyKpiGrid"
-	kpi_grid.columns = clampi(int(floor(_menu_available_content_width() / 250.0)), 1, 4)
-	kpi_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kpi_grid.add_theme_constant_override("h_separation", 8)
-	kpi_grid.add_theme_constant_override("v_separation", 8)
-	right.add_child(kpi_grid)
-	_add_main_menu_lobby_kpi_card(kpi_grid, "先开一桌", "选角色和起始怪兽", "开局准备", Color("#38bdf8"))
-	_add_main_menu_lobby_kpi_card(kpi_grid, "看中央星球", "城市、天气、怪兽、商路", "主画面", Color("#4ade80"))
-	_add_main_menu_lobby_kpi_card(kpi_grid, "读公共牌轨", "历史、当前、候补、竞猜", "匿名线索", Color("#c084fc"))
-	_add_main_menu_lobby_kpi_card(kpi_grid, "钱最多获胜", "达标后倒计时结算", "终局", Color("#facc15"))
+	var table_line := _plain_label("选择入口", 13, Color("#cbd5e1"))
+	table_line.tooltip_text = "主菜单只负责进入牌桌或资料；局势、经济和情报在牌局内查看。"
+	right.add_child(table_line)
 
 	var action_grid := GridContainer.new()
 	action_grid.name = "MainMenuLobbyActionGrid"
-	action_grid.columns = clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3)
+	action_grid.columns = clampi(int(floor(_menu_available_content_width() / 255.0)), 1, 3)
 	action_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	action_grid.add_theme_constant_override("h_separation", 8)
-	action_grid.add_theme_constant_override("v_separation", 8)
+	action_grid.add_theme_constant_override("h_separation", 10)
+	action_grid.add_theme_constant_override("v_separation", 10)
 	right.add_child(action_grid)
-	_add_menu_action_card(action_grid, "开新一桌", "设置席位、电脑对手、角色和起始怪兽。", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"))
-	var continue_action := _add_menu_action_card(action_grid, "继续本局", "回到星球牌桌，继续看手牌、牌轨和地图。", Callable(self, "_close_menu"), Color("#22c55e"))
-	var continue_button := continue_action.get("button", null) as Button
+	_add_main_menu_command_card(action_grid, "开新一桌", "选席位、角色、起始怪兽", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"), true)
+	var continue_button := _add_main_menu_command_card(action_grid, "继续牌桌", "回到当前星球", Callable(self, "_close_menu"), Color("#22c55e"), true)
 	if continue_button != null:
 		continue_button.disabled = players.is_empty() or game_over
 		if continue_button.disabled:
-			continue_button.text = "暂无本局"
+			continue_button.text = "暂无牌桌"
 			continue_button.tooltip_text = "先开新一桌。"
-	_add_menu_action_card(action_grid, "查资料", "打开角色、怪兽、卡牌、商品和区域图鉴。", Callable(self, "_open_compendium_menu"), Color("#f472b6"))
+	_add_main_menu_command_card(action_grid, "资料库", "图鉴、卡牌、商品、区域", Callable(self, "_open_compendium_menu"), Color("#f472b6"), true)
+
+	var utility_rail := HFlowContainer.new()
+	utility_rail.name = "MainMenuUtilityRail"
+	utility_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	utility_rail.add_theme_constant_override("h_separation", 7)
+	utility_rail.add_theme_constant_override("v_separation", 6)
+	right.add_child(utility_rail)
+	_add_main_menu_utility_button(utility_rail, "游戏规则", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
+	menu_load_run_button = _add_main_menu_utility_button(utility_rail, "读取局面", Callable(self, "_load_run_from_menu"), Color("#94a3b8"))
+	_add_main_menu_utility_button(utility_rail, "退出游戏", Callable(self, "_quit_game"), Color("#fb7185"))
+
+
+func _add_main_menu_command_card(parent: Container, button_text: String, meta_text: String, target: Callable, accent: Color, primary: bool = false) -> Button:
+	var panel := PanelContainer.new()
+	panel.name = "MainMenuCommandCard"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = Vector2(0, 112 if primary else 84)
+	panel.tooltip_text = meta_text
+	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#0b1220").lerp(accent, 0.12 if primary else 0.08), 1, 14))
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	margin.add_child(box)
+	var button := Button.new()
+	button.text = button_text
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.tooltip_text = meta_text
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.custom_minimum_size = Vector2(0, 42 if primary else 34)
+	_style_menu_button(button, accent, primary)
+	button.pressed.connect(target)
+	box.add_child(button)
+	var meta := _plain_label(meta_text, 10, Color("#cbd5e1"))
+	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(meta)
+	return button
+
+
+func _add_main_menu_utility_button(parent: Container, button_text: String, target: Callable, accent: Color) -> Button:
+	var button := Button.new()
+	button.name = "MainMenuUtilityButton"
+	button.text = button_text
+	button.custom_minimum_size = Vector2(120, 30)
+	button.tooltip_text = button_text
+	_style_menu_button(button, accent)
+	button.pressed.connect(target)
+	parent.add_child(button)
+	return button
 
 
 func _add_main_menu_lobby_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
@@ -8048,8 +8006,8 @@ func _close_fullscreen_map() -> void:
 
 
 func _menu_context_text(title_text: String, show_main_actions: bool = false) -> String:
-	if show_main_actions and title_text == "太空辛迪加":
-		return "当前位置：主菜单｜先选分支，规则/图鉴/经济/情报都可随时返回；悬停查看入口用途。"
+	if show_main_actions and title_text == "太空辛迪加｜星球赌桌":
+		return ""
 	if show_main_actions and title_text == "暂停菜单":
 		return "当前位置：暂停菜单｜继续、复查局势、查资料或保存；主画面信息保持简洁。"
 	match title_text:
@@ -8075,8 +8033,8 @@ func _menu_context_text(title_text: String, show_main_actions: bool = false) -> 
 
 
 func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = false) -> String:
-	if show_main_actions and title_text == "太空辛迪加":
-		return "主菜单｜缩略图看全局｜悬停预览入口用途｜双击详情只在图鉴和牌槽使用。"
+	if show_main_actions and title_text == "太空辛迪加｜星球赌桌":
+		return ""
 	if show_main_actions and title_text == "暂停菜单":
 		return "暂停菜单｜继续、复查局势、查资料或保存。"
 	match title_text:
@@ -8120,25 +8078,31 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 		speed_before_menu = time_scale
 	time_scale = 0.0
 	menu_catalog_mode = ""
+	var root_table_menu := show_main_actions and title_text == "太空辛迪加｜星球赌桌"
 	menu_title_label.text = title_text
 	if menu_context_label != null:
 		menu_context_label.text = _menu_context_text(title_text, show_main_actions)
+		menu_context_label.visible = not root_table_menu
 	if menu_interaction_hint_label != null:
 		menu_interaction_hint_label.text = _menu_interaction_hint_text(title_text, show_main_actions)
 	if menu_interaction_hint_panel != null:
-		menu_interaction_hint_panel.visible = true
+		menu_interaction_hint_panel.visible = not root_table_menu
 		menu_interaction_hint_panel.tooltip_text = _menu_interaction_hint_text(title_text, show_main_actions)
 	_refresh_menu_quick_nav(title_text, show_main_actions)
 	menu_body_label.text = body_text
+	menu_body_label.visible = body_text != ""
 	if menu_preview_box != null:
+		menu_load_run_button = null
 		_clear_children(menu_preview_box)
 		menu_preview_box.visible = false
 	if menu_content_scroll != null:
 		menu_content_scroll.scroll_vertical = 0
 	menu_continue_button.disabled = not can_continue
-	menu_continue_button.visible = can_continue and show_main_actions
+	menu_continue_button.visible = can_continue and show_main_actions and not root_table_menu
 	if menu_back_button != null:
 		menu_back_button.visible = not show_main_actions
+	if menu_nav_row != null:
+		menu_nav_row.visible = not root_table_menu
 	for button in menu_regular_buttons:
 		button.visible = show_main_actions
 	if menu_run_save_label != null:
@@ -20675,14 +20639,43 @@ func _add_player_dashboard_action_dock(parent: Container, player_index: int) -> 
 	row.add_child(title)
 	for entry_variant in _main_action_dock_entries(player_index):
 		_add_player_dashboard_action_button(row, entry_variant as Dictionary)
-	var hint := _plain_label("先扫资源，再点行动；详细状态看右侧当前行动。", 9, Color("#94a3b8"))
-	hint.name = "PlayerDashboardActionDockHint"
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
-	hint.clip_text = true
-	hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(hint)
+	_add_player_dashboard_district_summary(row, player_index)
+
+
+func _player_dashboard_district_summary_text(player_index: int) -> String:
+	if selected_district < 0 or selected_district >= districts.size():
+		return "选区｜点中央星球"
+	var status := _selected_district_status_text(player_index)
+	var supply := _selected_district_supply_text(player_index)
+	var action_hint := "看牌架"
+	if _city_build_error_for(player_index, selected_district, false) == "":
+		action_hint = "可建城"
+	elif _selected_district_can_receive_first_summon():
+		action_hint = "可首召"
+	elif _can_buy_card_from_district(selected_district, player_index):
+		action_hint = "可买牌"
+	return "选区｜%s｜%s｜%s" % [
+		_short_card_text(status, 28),
+		_short_card_text(supply, 18),
+		action_hint,
+	]
+
+
+func _add_player_dashboard_district_summary(parent: Container, player_index: int) -> void:
+	var text := _player_dashboard_district_summary_text(player_index)
+	var label := _plain_label(text, 9, Color("#bfdbfe"))
+	label.name = "PlayerDashboardDistrictSummary"
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.tooltip_text = "%s\n%s\n%s" % [
+		_selected_district_status_text(player_index),
+		_selected_district_supply_text(player_index),
+		_selected_district_focus_text(selected_district, player_index),
+	]
+	parent.add_child(label)
 
 
 func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxContainer:
