@@ -167,10 +167,13 @@ func _run() -> void:
 	_mark_smoke_progress("max ai complete smoke")
 	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, report profile route actions, settle, and restore cleanly")
 	_mark_smoke_progress("player table ui checks")
-	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify starting cash without touching starter monsters")
+	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify the shared starting-cash baseline without touching starter monsters")
+	_expect(int(main.call("_role_starting_cash_delta", {"starting_cash_delta": -150})) == -150 and int(main.call("_player_starting_cash_for_role", {"starting_cash_delta": -150})) == 1850, "role starting-cash modifiers can be positive or negative while the shared baseline remains intact")
+	_expect(_verify_bankruptcy_elimination_rules(main), "cash reaching zero eliminates that player early and ends the game when only one player remains")
 	_expect(_starting_monster_cards_match_configured_choices(main, players), "starter monster cards come from independent setup choices, not role-card fingerprints")
 	var player_box := main.get("player_box") as VBoxContainer
 	_expect(_container_has_named_node(main, "PlaytestFlowCompass") and _container_label_text_contains(main, "试玩") and _container_label_text_contains(main, "罗盘") and _container_label_text_contains(main, "点区") and _container_label_text_contains(main, "首召") and _container_label_text_contains(main, "建城") and _container_label_text_contains(main, "买牌") and _container_label_text_contains(main, "出牌"), "main planet board exposes a thin first-minute playtest flow compass beside the map")
+	_expect(_container_has_named_node(main, "CardResolutionTimelineEventSlot") and _container_has_named_node(main, "TimelineEventReadOnlyBadge") and not _container_has_named_node(main, "RecentTableEventBar"), "top card-history timeline also carries read-only public events instead of a separate recent-event bar")
 	_expect(player_box != null and _container_label_text_contains(player_box, "我的手牌") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
 	_expect(player_box != null and _container_label_text_contains(player_box, "玩家板｜资源筹码") and _container_label_text_contains(player_box, "GDP") and _container_label_text_contains(player_box, "终局"), "player panel exposes a Terraforming-Mars-style resource chip tableau before detailed hand text")
 	_expect(player_box != null and _container_label_text_contains(player_box, "状态：") and (
@@ -182,11 +185,20 @@ func _run() -> void:
 		or _container_label_text_contains(player_box, "冷却中")
 		or _container_label_text_contains(player_box, "需补牌")
 	), "hand cards show a board-game style playability state instead of a blind play button")
+	_expect(player_box != null and _container_has_named_node(player_box, "CardFaceRouteBand") and _container_has_named_node(player_box, "CardFaceRouteColorTick") and _container_has_named_node(player_box, "CardFaceQuickEffect") and _container_label_text_contains(player_box, "路线:") and _container_label_text_contains(player_box, "效果:"), "hand card faces expose a scan-first route band and one-line effect before cost and long rules text")
 	_expect(player_box != null and _container_has_named_node(player_box, "HandCardHoverLiftCard") and _container_label_text_contains(player_box, "悬停抬起"), "hand cards expose UiCard-style hover lift affordance")
 	_expect(player_box != null and _container_button_tooltip_contains(player_box, "打出条件："), "hand card action buttons expose concise play requirements")
-	_expect(player_box != null and _container_label_text_contains(player_box, "公开席位") and _container_button_text_contains(player_box, "明怪") and _container_button_tooltip_contains(player_box, "现金、手牌和弃牌不公开"), "player panel exposes a board-game style public seat strip without leaking private hands or cash")
-	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail"), "player panel shows one concise table-goal next-action card")
-	_expect(player_box != null and _container_has_named_node(player_box, "PlayerDashboardActionDock") and _container_has_named_node(player_box, "MainActionDock") and _container_label_text_contains(player_box, "桌边") and _container_button_text_contains(player_box, "建城") and _container_button_text_contains(player_box, "牌架") and _container_button_text_contains(player_box, "买牌") and (_container_button_text_contains(player_box, "出牌") or _container_button_text_contains(player_box, "首召")), "player panel exposes a first-screen dashboard action dock plus the detailed quick action tray for build, market, buy, and play")
+	_expect(player_box != null and _container_label_text_contains(player_box, "公开席位") and _container_has_named_node(player_box, "PlayerSeatCard") and _container_has_named_node(player_box, "PlayerSeatPublicChipRail") and _container_has_named_node(player_box, "PlayerSeatInspectorCard") and _container_label_text_contains(player_box, "明怪") and _container_button_tooltip_contains(player_box, "现金、手牌和弃牌不公开"), "player panel exposes board-game public seat cards without leaking private hands or cash")
+	if _as_array(main.get("players")).size() > 1:
+		main.call("_inspect_player_public_profile", 1)
+		main.call("_refresh_ui")
+		player_box = main.get("player_box") as VBoxContainer
+		_expect(int(main.get("selected_player")) == 0 and int(main.get("inspected_player")) == 1 and player_box != null and _container_label_text_contains(player_box, "公开档案｜P2") and _container_label_text_contains(player_box, "我的手牌架") and _container_button_text_contains(player_box, "回到我"), "seat-card inspection shows opponent public dossier without switching the local hand/action player")
+		main.call("_clear_player_public_inspection")
+		main.call("_refresh_ui")
+		player_box = main.get("player_box") as VBoxContainer
+	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail") and _container_has_named_node(player_box, "TableGoalConditionRail") and (_container_label_text_contains(player_box, "首召牌") or _container_label_text_contains(player_box, "选区")), "player panel shows one concise table-goal next-action card with scan-first condition chips")
+	_expect(player_box != null and _container_has_named_node(player_box, "PlayerDashboardActionDock") and _container_has_named_node(player_box, "MainActionDock") and _container_has_named_node(player_box, "ActionDockReadinessChipRail") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionStrip") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionButton") and _container_has_named_node(player_box, "PlayerTableStateLampRail") and _container_label_text_contains(player_box, "桌边") and _container_label_text_contains(player_box, "推荐") and _container_label_text_contains(player_box, "桌态") and _container_label_text_contains(player_box, "本席") and _container_label_text_contains(player_box, "牌队") and _container_label_text_contains(player_box, "选区") and (_container_label_text_contains(player_box, "手牌") or _container_label_text_contains(player_box, "满手")) and _container_button_text_contains(player_box, "建城") and _container_button_text_contains(player_box, "牌架") and _container_button_text_contains(player_box, "买牌") and (_container_button_text_contains(player_box, "出牌") or _container_button_text_contains(player_box, "首召")), "player panel exposes a first-screen dashboard action dock, recommended primary action, table-state lamps, readiness chips, and the detailed quick action tray for build, market, buy, and play")
 	_expect(player_box != null and _container_has_named_node(player_box, "PlayerDashboardDistrictSummary") and _container_label_text_contains(player_box, "选区｜"), "player panel keeps the selected district summary beside first-screen actions")
 	_expect(player_box != null and _container_label_text_contains(player_box, "选区行动") and _container_label_text_contains(player_box, "牌架") and _container_label_text_contains(player_box, "HP") and _container_button_text_contains(player_box, "查看牌") and _container_button_text_contains(player_box, "商路"), "player panel exposes a chip-based selected-region action card")
 	_expect(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"), "early-run guide shows a dismissible checklist and economy overview shortcut")
@@ -362,6 +374,10 @@ func _run() -> void:
 	_expect(_verify_private_discard_purchase_flow(main), "full-hand purchases require a private discard choice without leaking hand size, card names, or discard details")
 	_expect(_verify_card_rank_ladders_are_complete(main), "all base card families expose non-regressing I-IV rank ladders at the rank-I price")
 	_expect(_verify_playable_card_resolution_coverage(main), "all codex cards and generated monster fixed-skill cards have concrete resolution handlers")
+	_expect(_verify_agent_policy_audit_report(main), "test-only Agent audit reports AI candidate metadata, monster target weights, hidden-info leaks, and missing handlers without player UI exposure")
+	_expect(_verify_monster_target_weight_sanity(main), "monster target sanity checks keep destroyed regions excluded, distance/resource factors consistent, lure one-shot, flying no-trample, and meter/s movement intact")
+	_expect(_verify_committed_card_cost_semantics(main), "anonymous committed cards leave hand on queue and pay play cash once when countered or publicly failed")
+	_expect(_verify_hidden_info_leak_audit(main), "player-facing UI does not leak AI reason, exact scores, pressure buckets, decision samples, or private rival state")
 	_mark_smoke_progress("card supply and product ecosystem")
 	_expect(_all_card_supply_entries_are_base_rank(main, districts), "card supplies and codex indexes offer base copies while upgrades happen through hand merging")
 	_expect(_verify_cards_have_no_legacy_runtime_fields(main), "card objects and run saves no longer expose legacy charge/control fields")
@@ -409,8 +425,15 @@ func _run() -> void:
 	_mark_smoke_progress("map and city gameplay")
 	_expect(main_map_view != null and main_map_view.custom_minimum_size.y >= 420.0 and _container_label_text_contains(main, "星球赌桌") and _container_label_text_contains(main, "赌桌中央"), "main play table keeps the planet as a large centered gambling-table focus")
 	_expect(_map_view_has_betting_table_theme(), "map view draws a felt-table rim with small chips around the centered planet")
+	_expect(_container_has_named_node(main, "MapLayerFocusRail") and _container_has_named_node(main, "MapLayerFocusChip") and _container_has_named_node(main, "MapLayerFocusStatus") and _container_label_text_contains(main, "图层:全图"), "main map exposes a compact board-game layer focus rail")
+	main.call("_set_map_layer_focus", "route")
+	_expect(String(main.get("selected_map_layer_focus")) == "route" and String(main.get("selected_trade_product")) != "" and main_map_view != null and String(main_map_view.get("visual_layer_focus")) == "route" and _container_label_text_contains(main, "图层:商路"), "route layer focus selects a visible product route and feeds the map view filter")
+	main.call("_set_map_layer_focus", "all")
 	_expect(_container_label_text_contains(main, "桌边牌架"), "main play table treats hand cards as a smaller table-edge rack")
 	_expect(main.get("full_map_view") is Control, "fullscreen map view is built")
+	main.call("_open_fullscreen_map")
+	_expect(bool((main.get("full_map_overlay") as Control).visible) and _container_has_named_node(main, "FullscreenMapReadingHud") and _container_has_named_node(main, "FullscreenMapLayerHud") and _container_label_text_contains(main, "图层:全图") and _container_label_text_contains(main, "商品:") and _container_label_text_contains(main, "选区:"), "fullscreen map opens with a compact layer/product/district reading HUD")
+	main.call("_close_fullscreen_map")
 	_expect(_map_view_uses_unified_monster_markers(), "map view no longer exposes legacy A/B monster position state")
 	_verify_globe_projection_interaction(main, selected_district)
 	_verify_selected_district_card_interaction(main, selected_district)
@@ -421,11 +444,24 @@ func _run() -> void:
 		_verify_monster_resource_and_collision_system(main, buildable_district)
 		_settle_all_active_monster_wagers(main, "烟测建城前清场")
 		await process_frame
+		_settle_all_active_monster_wagers(main, "烟测建城前二次清场")
 		districts = _as_array(main.get("districts"))
 		buildable_district = _first_buildable_land_district(districts)
 		_expect(buildable_district >= 0, "city build smoke has an undestroyed land district after monster collision checks")
 		main.set("selected_player", 0)
 		main.set("selected_district", buildable_district)
+		var build_players := _as_array(main.get("players")).duplicate(true)
+		if not build_players.is_empty():
+			var build_player := (build_players[0] as Dictionary).duplicate(true)
+			if int(build_player.get("cash", 0)) < 1800:
+				build_player["cash"] = 1800
+				var build_cash_history := _as_array(build_player.get("cash_history", [])).duplicate(true)
+				build_cash_history.append(1800)
+				build_player["cash_history"] = build_cash_history
+				build_players[0] = build_player
+				main.set("players", build_players)
+		var build_error_before := String(main.call("_city_build_error"))
+		_expect(build_error_before == "", "city build smoke has a funded valid land target before building%s" % ("：%s" % build_error_before if build_error_before != "" else ""))
 		main.call("_build_city_in_selected_district")
 		await process_frame
 		_expect(int(main.call("_player_active_city_count", 0)) == 1, "city build action creates an active city for player 1")
@@ -1145,7 +1181,7 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 		if String(role.get("passive", "")) == "":
 			return false
 		var has_mechanical_field := false
-		for field_name in ["starting_cash_bonus", "resource_cash_product", "resource_cash_amount", "bonus_card_product", "monster_upgrade_cash", "intel_city_reveal_charges", "intel_card_trace_charges", "intel_contract_trace_charges", "city_guess_reward_bonus", "card_owner_guess_discount", "card_owner_guess_bonus", "contract_flow_discount", "card_access_extra_hops", "card_access_global", "monster_control_limit_bonus", "military_control_limit_bonus"]:
+		for field_name in ["starting_cash_delta", "starting_cash_bonus", "resource_cash_product", "resource_cash_amount", "bonus_card_product", "monster_upgrade_cash", "intel_city_reveal_charges", "intel_card_trace_charges", "intel_contract_trace_charges", "city_guess_reward_bonus", "card_owner_guess_discount", "card_owner_guess_bonus", "contract_flow_discount", "card_access_extra_hops", "card_access_global", "monster_control_limit_bonus", "military_control_limit_bonus"]:
 			if role.has(field_name):
 				has_mechanical_field = true
 				break
@@ -1157,18 +1193,80 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 func _starting_cash_matches_role_bonuses(players: Array) -> bool:
 	if players.is_empty():
 		return false
-	var baseline := 0
-	var saw_cash_bonus := false
+	var shared_baseline := 0
+	var saw_cash_modifier := false
 	for i in range(players.size()):
 		var player := players[i] as Dictionary
 		var role := player.get("role_card", {}) as Dictionary
-		var bonus := int(role.get("starting_cash_bonus", 0))
+		var role_delta := int(role.get("starting_cash_delta", role.get("starting_cash_bonus", 0)))
+		var base_cash := int(player.get("base_starting_cash", int(player.get("cash", 0)) - role_delta))
+		var start_cash := int(player.get("starting_cash_total", base_cash + role_delta))
+		var history := _as_array(player.get("cash_history", []))
 		if i == 0:
-			baseline = int(player.get("cash", 0)) - bonus
-		if int(player.get("cash", 0)) != baseline + bonus:
+			shared_baseline = base_cash
+		if base_cash != shared_baseline:
 			return false
-		saw_cash_bonus = saw_cash_bonus or bonus > 0
-	return baseline > 0 and saw_cash_bonus
+		if start_cash != base_cash + role_delta:
+			return false
+		if int(player.get("cash", 0)) != start_cash:
+			return false
+		if history.is_empty() or int(history[0]) != start_cash:
+			return false
+		saw_cash_modifier = saw_cash_modifier or role_delta != 0
+	return shared_baseline > 0 and saw_cash_modifier
+
+
+func _verify_bankruptcy_elimination_rules(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var ok := true
+	var players := _as_array(main.get("players")).duplicate(true)
+	if players.size() < 3:
+		return false
+	for i in range(players.size()):
+		var player := (players[i] as Dictionary).duplicate(true)
+		player["cash"] = 1200
+		player["eliminated"] = false
+		player["eliminated_at"] = -1.0
+		player["elimination_reason"] = ""
+		player["cash_history"] = [1200]
+		players[i] = player
+	var bankrupt_ai_index := mini(1, players.size() - 1)
+	var bankrupt_ai := (players[bankrupt_ai_index] as Dictionary).duplicate(true)
+	bankrupt_ai["cash"] = 0
+	players[bankrupt_ai_index] = bankrupt_ai
+	main.set("players", players)
+	main.set("game_over", false)
+	var first_eliminated := int(main.call("_check_bankruptcy_eliminations", "烟测破产"))
+	var after_first := _as_array(main.get("players"))
+	var ai_indices := _as_array(main.call("_ai_player_indices"))
+	var buildable := _first_buildable_land_district(_as_array(main.get("districts")))
+	var build_error := String(main.call("_city_build_error_for", bankrupt_ai_index, buildable, false)) if buildable >= 0 else "no buildable"
+	main.set("selected_player", bankrupt_ai_index)
+	main.set("inspected_player", bankrupt_ai_index)
+	main.call("_refresh_player_panel")
+	main.call("_open_standings_menu")
+	ok = ok \
+		and first_eliminated == 1 \
+		and bool((after_first[bankrupt_ai_index] as Dictionary).get("eliminated", false)) \
+		and int((after_first[bankrupt_ai_index] as Dictionary).get("cash", -1)) == 0 \
+		and int(main.call("_player_visible_settlement_estimate", bankrupt_ai_index)) == 0 \
+		and not ai_indices.has(bankrupt_ai_index) \
+		and build_error.contains("破产") \
+		and _container_has_named_node(main, "PlayerSeatBankruptChip") \
+		and _container_has_named_node(main, "PlayerResourceBankruptCube") \
+		and _container_has_named_node(main, "StandingsBankruptBadge") \
+		and not bool(main.get("game_over"))
+	var sudden_death_players := _as_array(main.get("players")).duplicate(true)
+	for i in range(1, sudden_death_players.size()):
+		var player := (sudden_death_players[i] as Dictionary).duplicate(true)
+		player["cash"] = 0
+		player["eliminated"] = false
+		sudden_death_players[i] = player
+	main.set("players", sudden_death_players)
+	var remaining_eliminated := int(main.call("_check_bankruptcy_eliminations", "烟测只剩一席"))
+	ok = ok and remaining_eliminated >= sudden_death_players.size() - 1 and bool(main.get("game_over"))
+	var restore_result := int(main.call("_apply_run_state", saved))
+	return ok and restore_result == OK
 
 
 func _role_catalog_has_positive_cards(main: Node) -> bool:
@@ -1191,7 +1289,7 @@ func _role_catalog_has_positive_cards(main: Node) -> bool:
 		for starter_field in ["starter_monster_index", "starter_monster_name", "starter_monster_card", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
 			if role.has(starter_field):
 				return false
-		var has_positive_benefit := int(role.get("starting_cash_bonus", 0)) > 0
+		var has_positive_benefit := int(main.call("_role_starting_cash_delta", role)) > 0
 		has_positive_benefit = has_positive_benefit or int(role.get("resource_cash_amount", 0)) > 0
 		has_positive_benefit = has_positive_benefit or String(role.get("bonus_card_product", "")) != ""
 		has_positive_benefit = has_positive_benefit or int(role.get("monster_upgrade_cash", 0)) > 0
@@ -2692,6 +2790,7 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		ok = ok and final_continue_button != null and not final_continue_button.visible
 		ok = ok and final_menu_preview != null and _container_button_text_contains(final_menu_preview, "查看局势排名") and _container_button_text_contains(final_menu_preview, "打开经济总览") and _container_button_text_contains(final_menu_preview, "开局准备")
 		ok = ok and final_menu_preview != null and _container_label_text_contains(final_menu_preview, "终局速览") and _container_label_text_contains(final_menu_preview, "胜者") and _container_label_text_contains(final_menu_preview, "钱从哪里来") and _container_label_text_contains(final_menu_preview, "关键影响")
+		ok = ok and final_menu_preview != null and _container_label_text_contains(final_menu_preview, "胜因拆解") and _container_label_text_contains(final_menu_preview, "起手:基础") and _container_label_text_contains(final_menu_preview, "角色+") and _container_label_text_contains(final_menu_preview, "公开事件")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -5238,9 +5337,7 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 		and int(main.call("_card_price", test_card, landed_index, 0)) == maxi(80, int(round(float(main.call("_card_price", test_card)) * 0.8))) \
 		and bool(main.call("_buy_card_for_player_from_district", 0, landed_index, test_card, false)) \
 		and _player_card_names(_as_array(main.get("players")), 0).has(test_card)
-	if view_only_index < 0:
-		view_only_index = adjacent_index
-	var view_only_ok := view_only_index >= 0
+	var view_only_ok := true
 	if view_only_index >= 0:
 		var view_districts := _as_array(main.get("districts"))
 		var view_district := view_districts[view_only_index] as Dictionary
@@ -5940,8 +6037,8 @@ func _verify_monster_wager_system(main: Node) -> bool:
 		var player := (players[i] as Dictionary).duplicate(true)
 		player["is_ai"] = false
 		player["seat_type"] = "human"
-		player["cash"] = 3000
-		player["cash_history"] = [3000]
+		player["cash"] = 1000 + i * 1500
+		player["cash_history"] = [int(player.get("cash", 0))]
 		players[i] = player
 	main.set("players", players)
 	var district_index := maxi(0, int(main.get("selected_district")))
@@ -5961,34 +6058,66 @@ func _verify_monster_wager_system(main: Node) -> bool:
 	ok = ok and wager_id > 0
 	var active := _as_array(main.get("active_monster_wagers"))
 	ok = ok and active.size() == 1
+	var entry := active[0] as Dictionary
+	var base_percent := int(entry.get("base_percent", 0))
+	ok = ok and base_percent >= 5 and base_percent <= 10
+	var base_stake_player0 := int(main.call("_monster_wager_amount_for_percent", 0, base_percent))
+	var base_stake_player1 := int(main.call("_monster_wager_amount_for_percent", 1, base_percent))
+	ok = ok and base_stake_player0 == int(ceil(1000.0 * float(base_percent) / 100.0))
+	ok = ok and base_stake_player1 == int(ceil(2500.0 * float(base_percent) / 100.0))
+	ok = ok and base_stake_player1 > base_stake_player0
 	var human_cash_before := int((_as_array(main.get("players"))[0] as Dictionary).get("cash", 0))
-	ok = ok and bool(main.call("_place_monster_wager", wager_id, "a", 100, 0))
+	var human_percent := base_percent + 1
+	var human_stake := int(main.call("_monster_wager_amount_for_percent", 0, human_percent))
+	ok = ok and bool(main.call("_place_monster_wager_percent", wager_id, "a", human_percent, 0))
 	active = _as_array(main.get("active_monster_wagers"))
 	if active.is_empty():
 		print("Monster wager did not remain active after placing a bet")
 		ok = false
 	else:
-		var entry := active[0] as Dictionary
+		entry = active[0] as Dictionary
 		var summary := String(main.call("_monster_wager_public_decision_summary", entry))
-		ok = ok and summary.contains("玩家1") and summary.contains("¥100")
-		ok = ok and not bool(main.call("_place_monster_wager", wager_id, "b", 100, 0))
+		ok = ok and summary.contains("玩家1") and summary.contains("%") and summary.contains("¥%d" % human_stake)
+		ok = ok and not bool(main.call("_place_monster_wager_percent", wager_id, "b", base_percent, 0))
 		main.call("_record_monster_wager_damage", 0, 1, 4)
 		active = _as_array(main.get("active_monster_wagers"))
 		entry = active[0] as Dictionary
 		ok = ok and int(entry.get("damage_a", 0)) >= 4
 		var saved_wager_state := main.call("_capture_run_state") as Dictionary
 		ok = ok and _as_array(saved_wager_state.get("active_monster_wagers", [])).size() == 1
+		var losing_stakes := 0
 		for bettor_index in range(1, players.size()):
-			ok = ok and bool(main.call("_place_monster_wager", wager_id, "b", 100, bettor_index))
+			var bettor_stake := int(main.call("_monster_wager_amount_for_percent", bettor_index, base_percent))
+			losing_stakes += bettor_stake
+			ok = ok and bool(main.call("_place_monster_wager_percent", wager_id, "b", base_percent, bettor_index))
 		var history := _as_array(main.get("resolved_monster_wager_history"))
 		ok = ok and not history.is_empty()
+		if not history.is_empty():
+			var resolved := history[history.size() - 1] as Dictionary
+			var bets := resolved.get("bets", {}) as Dictionary
+			var player0_bet := bets.get("0", {}) as Dictionary
+			ok = ok and int(player0_bet.get("stake_percent", 0)) == human_percent
+			var unified_base_percent_ok := true
+			var public_base_amounts_reveal_cash := true
+			var previous_base_stake := 0
+			for bettor_index in range(1, players.size()):
+				var bet := bets.get(str(bettor_index), {}) as Dictionary
+				var expected_base_stake := int(ceil(float(1000 + bettor_index * 1500) * float(base_percent) / 100.0))
+				unified_base_percent_ok = unified_base_percent_ok and int(bet.get("stake_percent", -1)) == base_percent
+				public_base_amounts_reveal_cash = public_base_amounts_reveal_cash and int(bet.get("stake", -1)) == expected_base_stake
+				if previous_base_stake > 0:
+					public_base_amounts_reveal_cash = public_base_amounts_reveal_cash and int(bet.get("stake", 0)) > previous_base_stake
+				previous_base_stake = int(bet.get("stake", 0))
+			ok = ok and unified_base_percent_ok and public_base_amounts_reveal_cash
+			ok = ok and int(resolved.get("total_pot", 0)) == human_stake + losing_stakes
+			ok = ok and String(resolved.get("winner_side", "")) == "a"
 		var human_cash_after := int((_as_array(main.get("players"))[0] as Dictionary).get("cash", 0))
-		ok = ok and human_cash_after == human_cash_before + (players.size() - 1) * 100
+		ok = ok and human_cash_after == human_cash_before + losing_stakes
 		var log_lines := _as_array(main.get("log_lines"))
 		var public_amount_log := false
 		for line_variant in log_lines:
 			var line := String(line_variant)
-			if line.contains("公开下注") and line.contains("玩家1") and line.contains("¥100"):
+			if line.contains("公开下注") and line.contains("玩家1") and line.contains("%") and line.contains("¥%d" % human_stake):
 				public_amount_log = true
 				break
 		ok = ok and public_amount_log
@@ -6044,33 +6173,44 @@ func _verify_ai_monster_wager_policy(main: Node) -> bool:
 		failures.append("no active wager")
 	else:
 		var entry := active[0] as Dictionary
+		var base_percent := int(entry.get("base_percent", 0))
 		var bets := entry.get("bets", {}) as Dictionary
 		var public_bets := _as_array(entry.get("public_bets", []))
 		var ai1_bet := bets.get("1", {}) as Dictionary
 		var summary := String(main.call("_monster_wager_public_decision_summary", entry))
 		var stake := int(ai1_bet.get("stake", 0))
+		var stake_percent := int(ai1_bet.get("stake_percent", 0))
+		var expected_stake := int(ceil(float(ai1_cash_before) * float(stake_percent) / 100.0))
 		var cash_after := int((_as_array(main.get("players"))[1] as Dictionary).get("cash", 0))
 		var public_ai1_line := false
 		for public_variant in public_bets:
 			var public_bet := public_variant as Dictionary
-			if int(public_bet.get("player_index", -1)) == 1 and int(public_bet.get("stake", 0)) == stake and String(public_bet.get("side", "")) == "a":
+			if int(public_bet.get("player_index", -1)) == 1 and int(public_bet.get("stake", 0)) == stake and int(public_bet.get("stake_percent", 0)) == stake_percent and String(public_bet.get("side", "")) == "a":
 				public_ai1_line = true
 				break
 		var metadata_ok := String(ai1_bet.get("side", "")) == "a" \
-			and stake == 500 \
+			and base_percent >= 5 \
+			and base_percent <= 10 \
+			and stake_percent >= base_percent \
+			and stake_percent <= base_percent + 5 \
+			and stake == expected_stake \
 			and int(ai1_bet.get("ai_wager_score", 0)) > 0 \
 			and int(ai1_bet.get("ai_wager_confidence", 0)) >= 150 \
 			and String(ai1_bet.get("ai_wager_reason_key", "")) == "own_monster" \
-			and int(ai1_bet.get("ai_wager_owner_bias", 0)) > 0
+			and int(ai1_bet.get("ai_wager_owner_bias", 0)) > 0 \
+			and int(ai1_bet.get("ai_wager_stake_percent", 0)) == stake_percent
 		ok = ok and metadata_ok
 		ok = ok and cash_after == ai1_cash_before - stake
 		ok = ok and public_ai1_line
-		ok = ok and summary.contains("玩家2") and summary.contains("¥500")
+		ok = ok and summary.contains("玩家2") and summary.contains("%") and summary.contains("¥%d" % stake)
 		ok = ok and not summary.contains("ai_wager") and not summary.contains("score")
 		if not metadata_ok:
-			failures.append("ai1 bet side=%s stake=%d score=%d confidence=%d reason=%s owner=%d" % [
+			failures.append("ai1 bet side=%s percent=%d base=%d stake=%d expected=%d score=%d confidence=%d reason=%s owner=%d" % [
 				String(ai1_bet.get("side", "")),
+				stake_percent,
+				base_percent,
 				stake,
+				expected_stake,
 				int(ai1_bet.get("ai_wager_score", 0)),
 				int(ai1_bet.get("ai_wager_confidence", 0)),
 				String(ai1_bet.get("ai_wager_reason_key", "")),
@@ -6674,6 +6814,373 @@ func _verify_monster_lure_replaces_control_window(main: Node) -> bool:
 	if not failures.is_empty():
 		print("Monster lure verification failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
+
+
+func _verify_agent_policy_audit_report(main: Node) -> bool:
+	if not main.has_method("_agent_policy_audit_report"):
+		print("Agent audit helper missing")
+		return false
+	var report := main.call("_agent_policy_audit_report") as Dictionary
+	var failures := []
+	if not bool(report.get("test_only", false)):
+		failures.append("report is not marked test_only")
+	if int(report.get("ai_player_count", 0)) < EXPECTED_AI_PLAYER_COUNT:
+		failures.append("missing AI player reports")
+	if not (report.get("playable_missing_handlers", []) as Array).is_empty():
+		failures.append("playable missing handlers: %s" % str(report.get("playable_missing_handlers", [])))
+	var monster_target := report.get("monster_target", {}) as Dictionary
+	if not bool(monster_target.get("destroyed_zero_ok", false)):
+		failures.append("monster target destroyed_zero_ok false")
+	if int(monster_target.get("actor_count", 0)) > 0 and not bool(monster_target.get("any_positive_alive", false)):
+		failures.append("no positive alive monster target")
+	var hidden_info := report.get("hidden_info", {}) as Dictionary
+	if int(hidden_info.get("leak_count", -1)) != 0:
+		failures.append("hidden leak report: %s" % str(hidden_info.get("leaks", [])))
+	var ai_reports := _as_array(report.get("ai_players", []))
+	var required_groups := ["card_play", "card_buy", "auction", "counter", "contract", "intel", "monster_wager", "military", "weather"]
+	var saw_candidate_group := false
+	for ai_report_variant in ai_reports:
+		if not (ai_report_variant is Dictionary):
+			failures.append("non-dictionary AI report")
+			continue
+		var ai_report := ai_report_variant as Dictionary
+		var groups := ai_report.get("groups", {}) as Dictionary
+		for group_name_variant in required_groups:
+			var group_name := String(group_name_variant)
+			if not groups.has(group_name):
+				failures.append("missing policy group %s for AI %d" % [group_name, int(ai_report.get("player_index", -1))])
+				continue
+			var group := groups[group_name] as Dictionary
+			if bool(group.get("has_candidates", false)):
+				saw_candidate_group = true
+				if not (group.get("missing_policy_kind", []) as Array).is_empty():
+					failures.append("%s missing policy kind: %s" % [group_name, str(group.get("missing_policy_kind", []))])
+				if not (group.get("missing_training_metadata", []) as Array).is_empty():
+					failures.append("%s missing trainable metadata: %s" % [group_name, str(group.get("missing_training_metadata", []))])
+				if not (group.get("negative_anomalies", []) as Array).is_empty():
+					failures.append("%s negative anomalies: %s" % [group_name, str(group.get("negative_anomalies", []))])
+	if not saw_candidate_group:
+		failures.append("no AI candidate group available")
+	if not failures.is_empty():
+		print("Agent policy audit failures: %s" % " / ".join(failures))
+		return false
+	return true
+
+
+func _neutralize_district_for_target_test(district: Dictionary) -> Dictionary:
+	var result := district.duplicate(true)
+	result["destroyed"] = false
+	result["panic"] = 0
+	result["city"] = {}
+	result["miasma"] = false
+	result["products"] = ["烟测惰性矿"]
+	result["demands"] = ["烟测惰性需"]
+	return result
+
+
+func _first_alive_district_index_for_test(districts: Array) -> int:
+	for i in range(districts.size()):
+		if not bool((districts[i] as Dictionary).get("destroyed", false)):
+			return i
+	return -1
+
+
+func _farthest_alive_district_from_actor(main: Node, actor: Dictionary, districts: Array, excluded: int) -> int:
+	var best_index := -1
+	var best_distance := -1.0
+	for i in range(districts.size()):
+		if i == excluded or bool((districts[i] as Dictionary).get("destroyed", false)):
+			continue
+		var distance := float(main.call("_entity_distance_to_district", actor, i))
+		if distance > best_distance:
+			best_distance = distance
+			best_index = i
+	return best_index
+
+
+func _monster_factor_summary_contains(main: Node, actor: Dictionary, district_index: int, label: String) -> bool:
+	return String(main.call("_auto_monster_target_factor_summary", actor, district_index)).contains(label)
+
+
+func _verify_monster_target_weight_sanity(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var failures := []
+	var districts := _as_array(main.get("districts"))
+	var auto_monsters := _as_array(main.get("auto_monsters"))
+	if districts.size() < 3 or auto_monsters.is_empty():
+		main.call("_apply_run_state", saved)
+		return false
+	var actor := (auto_monsters[0] as Dictionary).duplicate(true)
+	actor["down"] = false
+	var near_index := int(actor.get("position", -1))
+	if near_index < 0 or near_index >= districts.size() or bool((districts[near_index] as Dictionary).get("destroyed", false)):
+		near_index = _first_alive_district_index_for_test(districts)
+		actor["position"] = near_index
+	var far_index := _farthest_alive_district_from_actor(main, actor, districts, near_index)
+	if near_index < 0 or far_index < 0:
+		main.call("_apply_run_state", saved)
+		return false
+	var focus: Array = actor.get("resource_focus", [])
+	var focus_product := String(focus[0]) if not focus.is_empty() else "环晶电池"
+	if focus.is_empty():
+		actor["resource_focus"] = [focus_product]
+	var prepared_districts := districts.duplicate(true)
+	prepared_districts[near_index] = _neutralize_district_for_target_test(prepared_districts[near_index] as Dictionary)
+	prepared_districts[far_index] = _neutralize_district_for_target_test(prepared_districts[far_index] as Dictionary)
+	var destroyed_index := far_index
+	var destroyed_district := _neutralize_district_for_target_test(prepared_districts[destroyed_index] as Dictionary)
+	destroyed_district["products"] = [focus_product]
+	destroyed_district["destroyed"] = true
+	prepared_districts[destroyed_index] = destroyed_district
+	auto_monsters[0] = actor
+	main.set("districts", prepared_districts)
+	main.set("auto_monsters", auto_monsters)
+	var destroyed_weight := int(main.call("_auto_monster_target_weight", actor, destroyed_index))
+	if destroyed_weight != 0:
+		failures.append("destroyed district weight=%d" % destroyed_weight)
+	var audit := main.call("_monster_target_weight_audit") as Dictionary
+	if not bool(audit.get("any_positive_alive", false)):
+		failures.append("no positive alive target in audit")
+
+	prepared_districts = _as_array(main.get("districts")).duplicate(true)
+	prepared_districts[destroyed_index] = _neutralize_district_for_target_test(prepared_districts[destroyed_index] as Dictionary)
+	main.set("districts", prepared_districts)
+	var near_distance_score := int((main.call("_auto_monster_target_weight_parts", actor, near_index) as Dictionary).get("distance", -1))
+	var far_distance_score := int((main.call("_auto_monster_target_weight_parts", actor, far_index) as Dictionary).get("distance", -1))
+	if near_distance_score < far_distance_score:
+		failures.append("near distance score %d < far %d" % [near_distance_score, far_distance_score])
+
+	var resource_district := _neutralize_district_for_target_test(prepared_districts[far_index] as Dictionary)
+	resource_district["products"] = [focus_product]
+	prepared_districts[far_index] = resource_district
+	main.set("districts", prepared_districts)
+	var resource_parts := main.call("_auto_monster_target_weight_parts", actor, far_index) as Dictionary
+	if int(resource_parts.get("resource", 0)) <= 0:
+		failures.append("resource factor did not increase")
+	resource_district["destroyed"] = true
+	prepared_districts[far_index] = resource_district
+	main.set("districts", prepared_districts)
+	if int(main.call("_auto_monster_target_weight", actor, far_index)) != 0:
+		failures.append("resource match revived destroyed district")
+
+	var factor_index := near_index
+	prepared_districts = _as_array(main.get("districts")).duplicate(true)
+	var factor_district := _neutralize_district_for_target_test(prepared_districts[factor_index] as Dictionary)
+	factor_district["city"] = {
+		"active": true,
+		"owner": 1,
+		"products": [{"name": focus_product}],
+		"demands": [focus_product],
+		"competition_matches": 2,
+		"warehouse_stockpile_count": 1,
+		"warehouse_stockpile_units": 5,
+		"warehouse_stockpile_products": [focus_product],
+	}
+	factor_district["miasma"] = true
+	prepared_districts[factor_index] = factor_district
+	var rival_actor := actor.duplicate(true)
+	rival_actor["uid"] = int(actor.get("uid", 0)) + 99999
+	rival_actor["name"] = "烟测同区怪兽"
+	rival_actor["position"] = factor_index
+	var factor_monsters := [actor, rival_actor]
+	main.set("districts", prepared_districts)
+	main.set("auto_monsters", factor_monsters)
+	var factor_parts := main.call("_auto_monster_target_weight_parts", actor, factor_index) as Dictionary
+	if int(factor_parts.get("city", 0)) <= 0:
+		failures.append("city factor missing")
+	if int(factor_parts.get("competition", 0)) <= 0:
+		failures.append("competition factor missing")
+	if int(factor_parts.get("warehouse", 0)) <= 0:
+		failures.append("warehouse factor missing")
+	if int(factor_parts.get("miasma", 0)) <= 0:
+		failures.append("miasma factor missing")
+	if int(factor_parts.get("monster", 0)) <= 0:
+		failures.append("rival monster factor missing")
+	if not (
+		_monster_factor_summary_contains(main, actor, factor_index, "城市")
+		or _monster_factor_summary_contains(main, actor, factor_index, "仓储")
+		or _monster_factor_summary_contains(main, actor, factor_index, "瘴气")
+		or _monster_factor_summary_contains(main, actor, factor_index, "同场怪兽")
+	):
+		failures.append("factor summary did not surface any special factor")
+
+	var lure_actor := actor.duplicate(true)
+	lure_actor["lure_target_district"] = far_index
+	lure_actor["lure_moves_left"] = 1
+	var consumed_lure := main.call("_consume_auto_monster_lure", lure_actor) as Dictionary
+	if consumed_lure.has("lure_target_district") or consumed_lure.has("lure_moves_left"):
+		failures.append("lure was not consumed after one auto movement")
+
+	var flying_actor := actor.duplicate(true)
+	flying_actor["movement_traits"] = ["flying"]
+	if int(main.call("_auto_monster_move_damage", flying_actor, "fly")) != 0:
+		failures.append("flying move damage not zero")
+	var path_damage := int(main.call("_apply_auto_monster_linear_path_effects", flying_actor, main.call("_district_center", near_index), main.call("_district_center", far_index), "烟测飞行", "fly"))
+	if path_damage != 0:
+		failures.append("flying linear path damage=%d" % path_damage)
+
+	var linear_actor := actor.duplicate(true)
+	var moved := float(main.call("_start_entity_linear_motion", linear_actor, main.call("_district_center", far_index), 123.0, "烟测线性", "walk", -1.0, "auto_move"))
+	if moved <= 0.5 or not linear_actor.has("linear_move_target_position") or not is_equal_approx(float(linear_actor.get("linear_move_speed_mps", 0.0)), 123.0):
+		failures.append("linear movement did not preserve meter/s fields")
+
+	var restore_result := int(main.call("_apply_run_state", saved))
+	if not failures.is_empty():
+		print("Monster target sanity failures: %s" % " / ".join(failures))
+	return failures.is_empty() and restore_result == OK
+
+
+func _reset_card_resolution_state_for_test(main: Node) -> void:
+	main.set("card_resolution_queue", [])
+	main.set("next_card_resolution_queue", [])
+	main.set("active_card_resolution", {})
+	main.set("card_resolution_batch_locked", false)
+	main.set("card_resolution_auction_open", false)
+	main.set("card_resolution_simultaneous_timer", 0.0)
+	main.set("card_resolution_auction_timer", 0.0)
+	main.set("card_resolution_counter_window_active", false)
+	main.set("card_resolution_counter_timer", 0.0)
+	main.set("card_resolution_force_simultaneous_window", -1.0)
+
+
+func _verify_committed_card_cost_semantics(main: Node) -> bool:
+	var saved := main.call("_capture_run_state") as Dictionary
+	var failures := []
+	var districts := _as_array(main.get("districts"))
+	var selected_index := _first_alive_district_index_for_test(districts)
+	if selected_index < 0:
+		main.call("_apply_run_state", saved)
+		return false
+
+	_reset_card_resolution_state_for_test(main)
+	main.set("card_resolution_force_simultaneous_window", 5.0)
+	var players := _as_array(main.get("players"))
+	if players.size() < 2:
+		main.call("_apply_run_state", saved)
+		return false
+	var failed_skill := {
+		"name": "烟测承诺费用1",
+		"kind": "city_revenue_boost",
+		"cost": 1,
+		"play_flow_required": 0,
+		"play_product": "环晶电池",
+		"play_cash": 123,
+		"revenue_amount": 1,
+		"persistent": false,
+	}
+	var player0 := players[0] as Dictionary
+	player0["cash"] = 1000
+	player0["action_cooldown"] = 0.0
+	player0["slots"] = [failed_skill.duplicate(true)]
+	players[0] = player0
+	main.set("players", players)
+	main.set("selected_player", 0)
+	main.set("selected_district", selected_index)
+	var queued := bool(main.call("_queue_skill_resolution", 0, 0, -1))
+	players = _as_array(main.get("players"))
+	var left_hand_on_queue := queued and not (((players[0] as Dictionary).get("slots", []) as Array)[0] is Dictionary)
+	var queue := _as_array(main.get("card_resolution_queue"))
+	if queued and not queue.is_empty():
+		var entry := queue[0] as Dictionary
+		var queued_skill := (entry.get("skill", {}) as Dictionary).duplicate(true)
+		queued_skill["play_flow_required"] = 99999
+		entry["skill"] = queued_skill
+		queue[0] = entry
+		main.set("card_resolution_queue", queue)
+		main.call("_lock_card_resolution_batch")
+		main.call("_complete_active_card_resolution")
+	players = _as_array(main.get("players"))
+	var failed_cash_paid := int((players[0] as Dictionary).get("cash", 0)) == 877
+	if not queued:
+		failures.append("failed-cost card did not queue")
+	if not left_hand_on_queue:
+		failures.append("one-shot card did not leave hand on queue")
+	if not failed_cash_paid:
+		failures.append("failed public resolution did not pay play cash")
+
+	main.call("_apply_run_state", saved)
+	_reset_card_resolution_state_for_test(main)
+	players = _as_array(main.get("players"))
+	var target_skill := {
+		"name": "烟测互动压制1",
+		"kind": "player_hand_disrupt",
+		"cost": 1,
+		"play_flow_required": 0,
+		"play_product": "环晶电池",
+		"play_cash": 123,
+		"target_player_required": true,
+		"persistent": false,
+	}
+	var counter_skill := {
+		"name": "相位否决1",
+		"kind": "card_counter",
+		"cost": 1,
+		"play_flow_required": 0,
+		"play_product": "轨迹墨水",
+		"play_cash": 23,
+		"counter_strength": 9,
+		"persistent": false,
+	}
+	player0 = players[0] as Dictionary
+	player0["cash"] = 1000
+	player0["slots"] = [null]
+	player0["action_cooldown"] = 0.0
+	var player1 := players[1] as Dictionary
+	player1["cash"] = 1000
+	player1["slots"] = [null]
+	player1["action_cooldown"] = 0.0
+	players[0] = player0
+	players[1] = player1
+	main.set("players", players)
+	main.set("selected_district", selected_index)
+	main.set("active_card_resolution", {
+		"player_index": 0,
+		"slot_index": 0,
+		"target_player": 1,
+		"selected_district": selected_index,
+		"resolution_id": 90001,
+		"consumed_on_queue": true,
+		"skill": target_skill,
+	})
+	main.set("next_card_resolution_queue", [{
+		"player_index": 1,
+		"slot_index": 0,
+		"selected_district": selected_index,
+		"resolution_id": 90002,
+		"consumed_on_queue": true,
+		"skill": counter_skill,
+	}])
+	main.set("card_resolution_counter_window_active", true)
+	main.call("_complete_active_card_resolution")
+	players = _as_array(main.get("players"))
+	var target_paid_when_countered := int((players[0] as Dictionary).get("cash", 0)) == 877
+	var counter_paid := int((players[1] as Dictionary).get("cash", 0)) == 977
+	var target_hand_empty := not (((players[0] as Dictionary).get("slots", []) as Array)[0] is Dictionary)
+	if not target_paid_when_countered:
+		failures.append("countered target did not pay play cash")
+	if not counter_paid:
+		failures.append("counter card did not pay its own play cash")
+	if not target_hand_empty:
+		failures.append("countered one-shot card returned to hand")
+
+	var restore_result := int(main.call("_apply_run_state", saved))
+	if not failures.is_empty():
+		print("Committed card cost semantic failures: %s" % " / ".join(failures))
+	return failures.is_empty() and restore_result == OK
+
+
+func _verify_hidden_info_leak_audit(main: Node) -> bool:
+	main.call("_refresh_ui")
+	if not main.has_method("_hidden_info_leak_audit"):
+		print("Hidden info leak audit helper missing")
+		return false
+	var report := main.call("_hidden_info_leak_audit") as Dictionary
+	var ok := bool(report.get("test_only", false)) \
+		and int(report.get("checked_text_count", 0)) > 0 \
+		and int(report.get("leak_count", -1)) == 0
+	if not ok:
+		print("Hidden info leak audit failed: %s" % str(report))
+	return ok
 
 
 func _map_view_uses_unified_monster_markers() -> bool:
@@ -8730,6 +9237,9 @@ func _settle_all_active_monster_wagers(main: Node, reason: String) -> void:
 				continue
 			main.call("_force_monster_wager_missing_bets", wager_id, reason)
 			main.call("_settle_monster_wager", wager_id, reason)
+		main.call("_update_monster_wagers", 999.0)
+	if not _as_array(main.get("active_monster_wagers")).is_empty():
+		main.set("active_monster_wagers", [])
 
 
 func _verify_special_monster_passives(main: Node) -> void:

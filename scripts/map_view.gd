@@ -37,6 +37,7 @@ var auto_monster_markers: Array = []
 var city_markers: Array = []
 var trade_route_markers: Array = []
 var trade_product := ""
+var visual_layer_focus := "all"
 
 var _scale := 1.0
 var _map_offset := Vector2.ZERO
@@ -136,7 +137,8 @@ func set_map(
 	monster_markers: Array = [],
 	new_city_markers: Array = [],
 	new_trade_route_markers: Array = [],
-	new_trade_product: String = ""
+	new_trade_product: String = "",
+	new_visual_layer_focus: String = "all"
 ) -> void:
 	var next_signature := _build_map_signature(new_districts, width_m, height_m)
 	var should_center_view := next_signature != _map_signature
@@ -149,7 +151,8 @@ func set_map(
 		monster_markers,
 		new_city_markers,
 		new_trade_route_markers,
-		new_trade_product
+		new_trade_product,
+		new_visual_layer_focus
 	)
 	var should_redraw := should_center_view or next_payload_signature != _visual_payload_signature
 	districts = new_districts
@@ -166,6 +169,7 @@ func set_map(
 	city_markers = new_city_markers
 	trade_route_markers = new_trade_route_markers
 	trade_product = new_trade_product
+	visual_layer_focus = new_visual_layer_focus
 	if should_center_view:
 		_map_signature = next_signature
 	_visual_payload_signature = next_payload_signature
@@ -198,26 +202,47 @@ func _draw() -> void:
 				_draw_region_fill_fast(i)
 			else:
 				_draw_region_fill(i)
-	if not reduced_detail:
+	if not reduced_detail and _layer_focus_allows("effects"):
 		for i in range(districts.size()):
 			if _region_is_near_view(i):
 				_draw_region_effects(i)
-	var draw_dense_labels := _should_draw_dense_region_labels()
+	var draw_dense_labels := _should_draw_dense_region_labels() or visual_layer_focus in ["product", "city", "route", "intel"]
 	for i in range(districts.size()):
 		if _region_is_near_view(i) and (not reduced_detail or i == selected_district):
 			_draw_region_outline(i)
 	for i in range(districts.size()):
 		if _region_is_near_view(i) and (draw_dense_labels or i == selected_district):
 			_draw_region_label(i)
-	_draw_trade_routes()
-	_draw_city_clusters()
-	_draw_movement_trails()
-	if not reduced_detail:
+	if _layer_focus_allows("route"):
+		_draw_trade_routes()
+	if _layer_focus_allows("city"):
+		_draw_city_clusters()
+	if _layer_focus_allows("movement"):
+		_draw_movement_trails()
+	if not reduced_detail and _layer_focus_allows("events"):
 		_draw_map_event_effects()
-	_draw_auto_monster_markers()
-	if not reduced_detail:
+	if _layer_focus_allows("monster"):
+		_draw_auto_monster_markers()
+	if not reduced_detail and _layer_focus_allows("callouts"):
 		_draw_action_callouts()
 	_draw_scale_hint()
+
+
+func _layer_focus_allows(layer_id: String) -> bool:
+	if visual_layer_focus == "" or visual_layer_focus == "all":
+		return true
+	match layer_id:
+		"route":
+			return visual_layer_focus in ["route", "product"]
+		"city":
+			return visual_layer_focus in ["city", "intel", "route"]
+		"monster", "movement":
+			return visual_layer_focus == "monster"
+		"effects", "events":
+			return visual_layer_focus in ["weather", "monster", "city"]
+		"callouts":
+			return visual_layer_focus in ["weather", "monster", "city", "intel"]
+	return visual_layer_focus == layer_id
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -532,17 +557,21 @@ func _draw_globe_projection() -> void:
 	for i in range(districts.size()):
 		if not reduced_detail or i == selected_district:
 			_draw_globe_region_outline(i)
-	var draw_dense_labels := _should_draw_dense_region_labels()
+	var draw_dense_labels := _should_draw_dense_region_labels() or visual_layer_focus in ["product", "city", "route", "intel"]
 	for i in range(districts.size()):
 		if draw_dense_labels or i == selected_district:
 			_draw_globe_region_label(i)
-	_draw_trade_routes()
-	_draw_city_clusters()
-	_draw_movement_trails()
-	if not reduced_detail:
+	if _layer_focus_allows("route"):
+		_draw_trade_routes()
+	if _layer_focus_allows("city"):
+		_draw_city_clusters()
+	if _layer_focus_allows("movement"):
+		_draw_movement_trails()
+	if not reduced_detail and _layer_focus_allows("events"):
 		_draw_map_event_effects()
-	_draw_auto_monster_markers()
-	if not reduced_detail:
+	if _layer_focus_allows("monster"):
+		_draw_auto_monster_markers()
+	if not reduced_detail and _layer_focus_allows("callouts"):
 		_draw_action_callouts()
 	_draw_scale_hint()
 
@@ -1622,11 +1651,13 @@ func _build_visual_payload_signature(
 	monster_markers: Array,
 	new_city_markers: Array,
 	new_trade_route_markers: Array,
-	new_trade_product: String
+	new_trade_product: String,
+	new_visual_layer_focus: String = "all"
 ) -> String:
 	var parts := [
 		"sel:%d" % selected,
 		"product:%s" % new_trade_product,
+		"layer:%s" % new_visual_layer_focus,
 		"trail:%s" % _marker_array_signature(trails, ["from", "to", "color", "label", "style", "duration", "remaining"]),
 		"call:%s" % _marker_array_signature(callouts, ["position", "actor", "action", "detail", "color", "duration", "remaining"]),
 		"effect:%s" % _marker_array_signature(event_effects, ["position", "kind", "label", "color", "duration", "remaining", "radius"]),

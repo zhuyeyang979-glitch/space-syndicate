@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hand_rack.gd" id="1_hand_rack"]
+
+[node name="HandRack" type="Control"]
+custom_minimum_size = Vector2(0, 210)
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_hand_rack")

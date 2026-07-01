@@ -34,6 +34,7 @@ Preserve this loop unless the user explicitly changes it:
 
 Important rules:
 
+- All seats share the same base starting cash as the general rule, but public alien role cards may explicitly modify their own starting cash through visible role passives. Do not erase role identity by forcing final starting cash to be identical.
 - Monsters are not continuously player-controlled. They auto-act from probability tables.
 - Monster cards can summon/upgrade/refresh monsters and grant reusable bound skills.
 - Military units are weaker controlled forces that use reusable command cards.

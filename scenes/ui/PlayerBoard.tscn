@@ -1,0 +1,32 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/HandRack.tscn" id="2_hand_rack"]
+[ext_resource type="Script" path="res://scripts/ui/player_board.gd" id="3_player_board"]
+
+[node name="PlayerBoard" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 230)
+theme = ExtResource("1_theme")
+script = ExtResource("3_player_board")
+
+[node name="PlayerRows" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PlayerBoardTitle" type="Label" parent="PlayerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "玩家板｜手牌"
+horizontal_alignment = 1
+
+[node name="PlayerActionHint" type="Label" parent="PlayerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "选择一张手牌后，右侧详情会显示主操作。"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="HandRack" parent="PlayerRows" instance=ExtResource("2_hand_rack")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3

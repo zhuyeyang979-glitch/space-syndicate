@@ -1,0 +1,41 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/right_inspector.gd" id="2_right_inspector"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DistrictInfoPanel.tscn" id="3_district_info"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ActionDock.tscn" id="4_action_dock"]
+
+[node name="RightInspector" type="PanelContainer"]
+custom_minimum_size = Vector2(310, 0)
+theme = ExtResource("1_theme")
+script = ExtResource("2_right_inspector")
+
+[node name="InspectorRows" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="InspectorTitle" type="Label" parent="InspectorRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "右侧说明书"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="DistrictInfoPanel" parent="InspectorRows" instance=ExtResource("3_district_info")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CurrentActionPanel" parent="InspectorRows" instance=ExtResource("4_action_dock")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="EventLogPanel" type="PanelContainer" parent="InspectorRows"]
+custom_minimum_size = Vector2(0, 132)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EventLogLabel" type="Label" parent="InspectorRows/EventLogPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "公开日志\n- 暂无公开事件"
+autowrap_mode = 3

@@ -1,0 +1,77 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/game_screen.gd" id="2_game_screen"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TopBar.tscn" id="3_top_bar"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardTrack.tscn" id="4_card_track"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetBoard.tscn" id="5_planet_board"]
+[ext_resource type="PackedScene" path="res://scenes/ui/RightInspector.tscn" id="6_right_inspector"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlayerBoard.tscn" id="7_player_board"]
+[ext_resource type="PackedScene" path="res://scenes/ui/OverlayLayer.tscn" id="8_overlay"]
+
+[node name="GameScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_game_screen")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.025, 0.031, 0.043, 1)
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="MainRows" type="VBoxContainer" parent="SafeArea"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TopBar" parent="SafeArea/MainRows" instance=ExtResource("3_top_bar")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CardTrack" parent="SafeArea/MainRows" instance=ExtResource("4_card_track")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="TableArea" type="HBoxContainer" parent="SafeArea/MainRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="PlanetBoard" parent="SafeArea/MainRows/TableArea" instance=ExtResource("5_planet_board")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightInspector" parent="SafeArea/MainRows/TableArea" instance=ExtResource("6_right_inspector")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(310, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayerBoard" parent="SafeArea/MainRows" instance=ExtResource("7_player_board")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OverlayLayer" parent="." instance=ExtResource("8_overlay")]
+unique_name_in_owner = true

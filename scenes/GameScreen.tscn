@@ -1,0 +1,322 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/HandLayout.gd" id="2_hand_layout"]
+[ext_resource type="Script" path="res://scripts/GameScreen.gd" id="3_game_screen"]
+
+[node name="GameScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("3_game_screen")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.025, 0.031, 0.043, 1)
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="MainRows" type="VBoxContainer" parent="SafeArea"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TopBar" type="PanelContainer" parent="SafeArea/MainRows"]
+custom_minimum_size = Vector2(0, 58)
+layout_mode = 2
+
+[node name="TopBarRow" type="HBoxContainer" parent="SafeArea/MainRows/TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PhaseLabel" type="Label" parent="SafeArea/MainRows/TopBar/TopBarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+text = "阶段｜开局"
+vertical_alignment = 1
+
+[node name="TurnLabel" type="Label" parent="SafeArea/MainRows/TopBar/TopBarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "席位｜1/4"
+vertical_alignment = 1
+
+[node name="ResourceBar" type="HBoxContainer" parent="SafeArea/MainRows/TopBar/TopBarRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="MoneyChip" type="Label" parent="SafeArea/MainRows/TopBar/TopBarRow/ResourceBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "¥ 1200"
+vertical_alignment = 1
+
+[node name="GDPChip" type="Label" parent="SafeArea/MainRows/TopBar/TopBarRow/ResourceBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "GDP +18/s"
+vertical_alignment = 1
+
+[node name="GoalChip" type="Label" parent="SafeArea/MainRows/TopBar/TopBarRow/ResourceBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "目标 5000"
+vertical_alignment = 1
+
+[node name="HandChip" type="Label" parent="SafeArea/MainRows/TopBar/TopBarRow/ResourceBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "手牌 3/5"
+vertical_alignment = 1
+
+[node name="EndTurnButton" type="Button" parent="SafeArea/MainRows/TopBar/TopBarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(116, 0)
+layout_mode = 2
+text = "结束操作"
+
+[node name="TableRow" type="HBoxContainer" parent="SafeArea/MainRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="LeftInfoPanel" type="PanelContainer" parent="SafeArea/MainRows/TableRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+
+[node name="LeftInfoRows" type="VBoxContainer" parent="SafeArea/MainRows/TableRow/LeftInfoPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PlayerListTitle" type="Label" parent="SafeArea/MainRows/TableRow/LeftInfoPanel/LeftInfoRows"]
+layout_mode = 2
+text = "牌桌席位"
+horizontal_alignment = 1
+
+[node name="PlayerCardHuman" type="Label" parent="SafeArea/MainRows/TableRow/LeftInfoPanel/LeftInfoRows"]
+layout_mode = 2
+text = "你｜公开角色：星港经纪"
+autowrap_mode = 3
+
+[node name="OpponentCardA" type="Label" parent="SafeArea/MainRows/TableRow/LeftInfoPanel/LeftInfoRows"]
+layout_mode = 2
+text = "AI-2｜公开角色：雾港审计员"
+autowrap_mode = 3
+
+[node name="OpponentCardB" type="Label" parent="SafeArea/MainRows/TableRow/LeftInfoPanel/LeftInfoRows"]
+layout_mode = 2
+text = "AI-3｜公开角色：轨道信使"
+autowrap_mode = 3
+
+[node name="OpponentCardC" type="Label" parent="SafeArea/MainRows/TableRow/LeftInfoPanel/LeftInfoRows"]
+layout_mode = 2
+text = "AI-4｜公开角色：深海承运商"
+autowrap_mode = 3
+
+[node name="CenterTablePanel" type="PanelContainer" parent="SafeArea/MainRows/TableRow"]
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CenterRows" type="VBoxContainer" parent="SafeArea/MainRows/TableRow/CenterTablePanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TableTitle" type="Label" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows"]
+layout_mode = 2
+text = "星球赌桌｜地图居中"
+horizontal_alignment = 1
+
+[node name="BoardArea" type="PanelContainer" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows"]
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlanetPlaceholder" type="Label" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows/BoardArea"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "PLANET MAP\n双击区域查看牌架｜滚轮缩放｜拖拽星球"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TableSlotRow" type="HBoxContainer" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows"]
+custom_minimum_size = Vector2(0, 82)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DrawPileSlot" type="PanelContainer" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows/TableSlotRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+
+[node name="DrawPileLabel" type="Label" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows/TableSlotRow/DrawPileSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "抽牌堆"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RevealTrackSlot" type="PanelContainer" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows/TableSlotRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RevealTrackLabel" type="Label" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows/TableSlotRow/RevealTrackSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "匿名牌轨｜历史牌与事件共用时间轴"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DiscardPileSlot" type="PanelContainer" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows/TableSlotRow"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+
+[node name="DiscardPileLabel" type="Label" parent="SafeArea/MainRows/TableRow/CenterTablePanel/CenterRows/TableSlotRow/DiscardPileSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "弃牌堆"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RightInfoPanel" type="PanelContainer" parent="SafeArea/MainRows/TableRow"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+
+[node name="RightRows" type="VBoxContainer" parent="SafeArea/MainRows/TableRow/RightInfoPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DetailTitle" type="Label" parent="SafeArea/MainRows/TableRow/RightInfoPanel/RightRows"]
+layout_mode = 2
+text = "详情 / 日志"
+horizontal_alignment = 1
+
+[node name="DetailText" type="Label" parent="SafeArea/MainRows/TableRow/RightInfoPanel/RightRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "悬停卡牌或区域时，在这里显示短详情。"
+autowrap_mode = 3
+
+[node name="LogPanel" type="PanelContainer" parent="SafeArea/MainRows/TableRow/RightInfoPanel/RightRows"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LogText" type="Label" parent="SafeArea/MainRows/TableRow/RightInfoPanel/RightRows/LogPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "公开日志\n- 有人打出一张匿名牌\n- 怪兽靠近海港"
+autowrap_mode = 3
+
+[node name="PlayerPanel" type="PanelContainer" parent="SafeArea/MainRows"]
+custom_minimum_size = Vector2(0, 222)
+layout_mode = 2
+
+[node name="PlayerPanelRows" type="VBoxContainer" parent="SafeArea/MainRows/PlayerPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PlayerPanelTitle" type="Label" parent="SafeArea/MainRows/PlayerPanel/PlayerPanelRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "我的手牌｜悬停放大，双击详情"
+horizontal_alignment = 1
+
+[node name="HandArea" type="Control" parent="SafeArea/MainRows/PlayerPanel/PlayerPanelRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("2_hand_layout")
+
+[node name="OverlayLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="OverlayDock" type="MarginContainer" parent="OverlayLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="OverlayColumns" type="HBoxContainer" parent="OverlayLayer/OverlayDock"]
+layout_mode = 2
+
+[node name="OverlaySpacer" type="Control" parent="OverlayLayer/OverlayDock/OverlayColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TooltipPanel" type="PanelContainer" parent="OverlayLayer/OverlayDock/OverlayColumns"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(280, 100)
+layout_mode = 2
+
+[node name="TooltipText" type="Label" parent="OverlayLayer/OverlayDock/OverlayColumns/TooltipPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Tooltip"
+autowrap_mode = 3
+
+[node name="DragPreviewLayer" type="Control" parent="OverlayLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ConfirmPopupCenter" type="CenterContainer" parent="OverlayLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ConfirmPopup" type="PanelContainer" parent="OverlayLayer/ConfirmPopupCenter"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(360, 160)
+layout_mode = 2
+
+[node name="ConfirmText" type="Label" parent="OverlayLayer/ConfirmPopupCenter/ConfirmPopup"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "确认操作"
+horizontal_alignment = 1
+vertical_alignment = 1

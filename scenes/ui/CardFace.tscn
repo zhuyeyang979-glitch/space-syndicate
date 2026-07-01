@@ -1,0 +1,7 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/CardUI.tscn" id="1_base_card"]
+[ext_resource type="Script" path="res://scripts/ui/card_face.gd" id="2_card_face"]
+
+[node name="CardFace" instance=ExtResource("1_base_card")]
+script = ExtResource("2_card_face")

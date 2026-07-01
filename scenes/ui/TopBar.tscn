@@ -1,0 +1,41 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/top_bar.gd" id="2_top_bar"]
+
+[node name="TopBar" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 54)
+theme = ExtResource("1_theme")
+script = ExtResource("2_top_bar")
+
+[node name="TopBarRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PhaseLabel" type="Label" parent="TopBarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "阶段｜开局"
+vertical_alignment = 1
+
+[node name="TurnLabel" type="Label" parent="TopBarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(118, 0)
+layout_mode = 2
+text = "席位｜1/4"
+vertical_alignment = 1
+
+[node name="ResourceLabel" type="Label" parent="TopBarRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "¥ 1200   GDP +18/s   目标 5000   手牌 3/5"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="EndTurnButton" type="Button" parent="TopBarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 0)
+layout_mode = 2
+text = "结束操作"
