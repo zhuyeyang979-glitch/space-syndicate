@@ -4345,6 +4345,26 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	if int(route_report.get("primary_covered_profile_count", 0)) < 4:
 		failures.append("route primary %d %s" % [int(route_report.get("primary_covered_profile_count", 0)), route_summary])
 		ok = false
+	var live_route_report := main.call("_ai_live_route_balance_report") as Dictionary
+	var live_route_summary := String(main.call("_ai_live_route_balance_summary", live_route_report))
+	if not bool(live_route_report.get("ok", false)):
+		failures.append("live route audit %s" % live_route_summary)
+		ok = false
+	if int(live_route_report.get("route_sample_ai_count", 0)) < max_ai:
+		failures.append("live route ai %d %s" % [int(live_route_report.get("route_sample_ai_count", 0)), live_route_summary])
+		ok = false
+	if int(live_route_report.get("money_progress_ai_count", 0)) < max_ai - 1:
+		failures.append("live route money %d %s" % [int(live_route_report.get("money_progress_ai_count", 0)), live_route_summary])
+		ok = false
+	if int(live_route_report.get("covered_core_route_count", 0)) < 4:
+		failures.append("live route core %d %s" % [int(live_route_report.get("covered_core_route_count", 0)), live_route_summary])
+		ok = false
+	if int(live_route_report.get("primary_route_player_count", 0)) < 4:
+		failures.append("live route primary %d %s" % [int(live_route_report.get("primary_route_player_count", 0)), live_route_summary])
+		ok = false
+	if int(live_route_report.get("action_kind_count", 0)) < 3:
+		failures.append("live route actions %d %s" % [int(live_route_report.get("action_kind_count", 0)), live_route_summary])
+		ok = false
 	var leader_index := 1
 	var leader_score := -999999
 	for player_index in range(1, max_players):

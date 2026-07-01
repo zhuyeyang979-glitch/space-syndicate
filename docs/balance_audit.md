@@ -84,6 +84,8 @@ Next AI tuning should check whether each profile actually does its thing in long
 - 合约型AI should build supply/demand links and accept/reject deals sensibly.
 - 情报型AI should use traces and owner guesses as a money route, not just as flavor.
 
+Current automated runtime guard: the eight-seat smoke run now calls `_ai_live_route_balance_report()` after AI opening, city building, buying, playing, business actions, cashflow, and primary-route exercises. The report is internal-only and checks that live samples include route diversity, money progress, primary-route hits, and multiple action kinds. This closes the gap between “card fields say the route exists” and “AI actually plays that route in a simulated run.”
+
 ## Test gaps to close next
 
 - Covered now: warehouse stockpile leaves public but anonymous clues on the product and city surfaces: product status/codex show active anonymous futures direction, nearest expiry, and warehouse count; the warehouse city clue shows product and units without revealing the owner. Destroying that city clears only the warehouse stockpile while ordinary non-warehouse futures remain.
@@ -98,3 +100,4 @@ Next AI tuning should check whether each profile actually does its thing in long
 - Covered now: direct-interaction balance is audited from card fields. The smoke test verifies 星链拆解, 影仓牵引, 产权冻结, and 轨道齐射 all have I-IV ladders, non-regressing pressure/gates, product-flow gates, public target/result clues, and counter-window support.
 - Covered now: core development-route pressure is audited from card fields. The smoke test verifies city growth, contract route, finance speculation, monster pressure, intel/supply, and direct interaction all have enough card coverage, at least one full I-IV ladder, field-driven money or disruption value, gates, public clues, counterplay, sample cards, and AI profile coverage.
 - Covered now: the AI strategy-intent test now uses explicit scenarios instead of relying on incidental cash-goal scale. A damaged leading route must trigger `defend_routes`; a trailing AI facing a rich competing city must trigger `disrupt_competitors`; opening growth remains `grow_focus`.
+- Covered now: live AI route balance is audited inside the eight-seat smoke run. The test verifies all seven AI seats produce route-tagged samples, at least six show money progress, at least four core routes appear in live samples, at least four AI seats hit their primary route, and action samples contain at least three distinct action kinds.

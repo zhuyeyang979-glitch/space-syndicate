@@ -16522,6 +16522,195 @@ func _ai_profile_route_action_summary(report: Dictionary = {}) -> String:
 	]
 
 
+func _ai_live_route_balance_report() -> Dictionary:
+	var required_core_routes := []
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = route_variant
+		if bool(route.get("required_for_ai_baseline", false)):
+			required_core_routes.append(String(route.get("id", "")))
+	var route_counts := {}
+	var route_score_totals := {}
+	var action_counts := {}
+	var player_entries := []
+	var ai_count := 0
+	var route_sample_ai_count := 0
+	var money_progress_ai_count := 0
+	var primary_route_player_count := 0
+	var total_route_samples := 0
+	var total_samples := 0
+	for player_index_variant in _ai_player_indices():
+		var player_index := int(player_index_variant)
+		if player_index < 0 or player_index >= players.size():
+			continue
+		ai_count += 1
+		var player: Dictionary = players[player_index]
+		var profile: Dictionary = player.get("ai_profile", {}) as Dictionary
+		var primary := _ai_profile_primary_development_route(profile)
+		var primary_route := String(primary.get("route_id", ""))
+		var memory_variant: Variant = player.get("ai_memory", {})
+		var samples := []
+		if memory_variant is Dictionary:
+			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
+			if samples_variant is Array:
+				samples = samples_variant as Array
+		var player_route_counts := {}
+		var player_action_counts := {}
+		var player_route_score := {}
+		var player_route_samples := 0
+		var player_primary_samples := 0
+		for sample_variant in samples:
+			if not (sample_variant is Dictionary):
+				continue
+			var sample := sample_variant as Dictionary
+			total_samples += 1
+			var action_kind := String(sample.get("kind", ""))
+			if action_kind != "":
+				action_counts[action_kind] = int(action_counts.get(action_kind, 0)) + 1
+				player_action_counts[action_kind] = int(player_action_counts.get(action_kind, 0)) + 1
+			var route_id := _ai_sample_development_route_id(sample)
+			if route_id == "":
+				continue
+			player_route_samples += 1
+			total_route_samples += 1
+			player_route_counts[route_id] = int(player_route_counts.get(route_id, 0)) + 1
+			route_counts[route_id] = int(route_counts.get(route_id, 0)) + 1
+			var score := maxi(0, int(sample.get("score", 0)))
+			player_route_score[route_id] = int(player_route_score.get(route_id, 0)) + score
+			route_score_totals[route_id] = int(route_score_totals.get(route_id, 0)) + score
+			if route_id == primary_route:
+				player_primary_samples += 1
+		if player_route_samples > 0:
+			route_sample_ai_count += 1
+		if player_primary_samples > 0:
+			primary_route_player_count += 1
+		var top_route := ""
+		var top_route_score := -1
+		for route_variant in player_route_score.keys():
+			var route_id := String(route_variant)
+			var score := int(player_route_score.get(route_id, 0))
+			var count := int(player_route_counts.get(route_id, 0))
+			var best_count := int(player_route_counts.get(top_route, 0)) if top_route != "" else -1
+			if score > top_route_score or (score == top_route_score and count > best_count):
+				top_route = route_id
+				top_route_score = score
+		var money_progress := maxi(0, int(player.get("total_city_income", 0))) \
+			+ maxi(0, int(player.get("total_card_income", 0))) \
+			+ maxi(0, int(player.get("total_role_income", 0)))
+		var board_progress := int(player.get("cities_built", 0)) \
+			+ _player_active_city_count(player_index) \
+			+ _ai_owned_active_monster_count(player_index)
+		var settlement_estimate := _player_visible_settlement_estimate(player_index)
+		var spent_pressure := maxi(0, int(player.get("total_card_spend", 0))) \
+			+ maxi(0, int(player.get("total_build_spend", 0))) \
+			+ maxi(0, int(player.get("total_business_spend", 0)))
+		var has_money_progress := money_progress > 0
+		if has_money_progress:
+			money_progress_ai_count += 1
+		player_entries.append({
+			"player_index": player_index,
+			"profile": String(profile.get("name", "AI")),
+			"primary_route": primary_route,
+			"primary_label": String(primary.get("label", "未定")),
+			"sample_count": samples.size(),
+			"route_sample_count": player_route_samples,
+			"primary_route_count": player_primary_samples,
+			"top_route": top_route,
+			"top_route_label": _development_route_label(top_route),
+			"top_route_score": maxi(0, top_route_score),
+			"route_counts": player_route_counts,
+			"action_counts": player_action_counts,
+			"money_progress": money_progress,
+			"settlement_estimate": settlement_estimate,
+			"spent_pressure": spent_pressure,
+			"board_progress": board_progress,
+			"has_money_progress": has_money_progress,
+		})
+	var covered_core_routes := []
+	var missing_core_routes := []
+	for route_variant in required_core_routes:
+		var route_id := String(route_variant)
+		if int(route_counts.get(route_id, 0)) > 0:
+			covered_core_routes.append(route_id)
+		else:
+			missing_core_routes.append(route_id)
+	var strongest_route := ""
+	var strongest_score := -1
+	for route_variant in route_score_totals.keys():
+		var route_id := String(route_variant)
+		var score := int(route_score_totals.get(route_id, 0))
+		if score > strongest_score:
+			strongest_route = route_id
+			strongest_score = score
+	var minimum_money_progress := maxi(1, ai_count - 1)
+	var minimum_primary := mini(ai_count, 4)
+	var minimum_core_routes := mini(required_core_routes.size(), 4)
+	var action_kind_count := action_counts.keys().size()
+	var issues := []
+	if ai_count <= 0:
+		issues.append("没有AI席位")
+	if route_sample_ai_count < ai_count:
+		issues.append("部分AI缺少路线样本:%d/%d" % [route_sample_ai_count, ai_count])
+	if money_progress_ai_count < minimum_money_progress:
+		issues.append("经济推进AI不足:%d/%d" % [money_progress_ai_count, minimum_money_progress])
+	if covered_core_routes.size() < minimum_core_routes:
+		issues.append("实战核心路线不足:%d/%d" % [covered_core_routes.size(), minimum_core_routes])
+	if primary_route_player_count < minimum_primary:
+		issues.append("主偏好命中不足:%d/%d" % [primary_route_player_count, minimum_primary])
+	if action_kind_count < 3:
+		issues.append("行动种类不足:%d" % action_kind_count)
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"ai_count": ai_count,
+		"route_sample_ai_count": route_sample_ai_count,
+		"money_progress_ai_count": money_progress_ai_count,
+		"primary_route_player_count": primary_route_player_count,
+		"total_sample_count": total_samples,
+		"total_route_sample_count": total_route_samples,
+		"required_core_routes": required_core_routes,
+		"covered_core_routes": covered_core_routes,
+		"missing_core_routes": missing_core_routes,
+		"covered_core_route_count": covered_core_routes.size(),
+		"distinct_route_count": route_counts.keys().size(),
+		"route_counts": route_counts,
+		"route_score_totals": route_score_totals,
+		"strongest_route": strongest_route,
+		"strongest_route_label": _development_route_label(strongest_route),
+		"strongest_route_score": maxi(0, strongest_score),
+		"action_counts": action_counts,
+		"action_kind_count": action_kind_count,
+		"players": player_entries,
+		"minimum_money_progress": minimum_money_progress,
+		"minimum_primary": minimum_primary,
+		"minimum_core_routes": minimum_core_routes,
+	}
+
+
+func _ai_live_route_balance_summary(report: Dictionary = {}) -> String:
+	var source := report
+	if source.is_empty():
+		source = _ai_live_route_balance_report()
+	var route_pieces := []
+	var route_counts: Dictionary = source.get("route_counts", {}) as Dictionary
+	for route_variant in route_counts.keys():
+		var route_id := String(route_variant)
+		route_pieces.append("%s×%d" % [_development_route_label(route_id), int(route_counts.get(route_id, 0))])
+	var issues := source.get("issues", []) as Array
+	return "AI实战路线审计：AI%d｜有路线样本%d｜经济推进%d｜核心路线%d/%d｜主偏好%d｜行动%d类｜最强:%s(%d)%s｜%s" % [
+		int(source.get("ai_count", 0)),
+		int(source.get("route_sample_ai_count", 0)),
+		int(source.get("money_progress_ai_count", 0)),
+		int(source.get("covered_core_route_count", 0)),
+		(source.get("required_core_routes", []) as Array).size(),
+		int(source.get("primary_route_player_count", 0)),
+		int(source.get("action_kind_count", 0)),
+		String(source.get("strongest_route_label", "未定")),
+		int(source.get("strongest_route_score", 0)),
+		"" if issues.is_empty() else "｜问题:%s" % "、".join(issues),
+		"；".join(route_pieces) if not route_pieces.is_empty() else "暂无路线样本",
+	]
+
+
 func _card_key_rule_facts(skill: Dictionary) -> Array:
 	var result := []
 	for fact_variant in _card_rule_facts(skill):
