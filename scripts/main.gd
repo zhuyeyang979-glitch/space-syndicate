@@ -20255,6 +20255,124 @@ func _add_action_tray_module_rail(parent: Container, player_index: int) -> void:
 		_add_action_tray_module_chip(rail, entry_variant as Dictionary)
 
 
+func _main_action_dock_entries(player_index: int) -> Array:
+	var can_operate := _can_view_player_private_hand(player_index)
+	var has_selection := selected_district >= 0 and selected_district < districts.size()
+	var selection_tip := "先在中央星球点一个区域。" if not has_selection else String(districts[selected_district].get("name", "选区"))
+	var build_error := _city_build_error_for(player_index, selected_district, false) if has_selection else selection_tip
+	var build_ready := can_operate and build_error == ""
+	var entries := [
+		{
+			"label": "建城",
+			"status": "可建" if build_ready else "待选",
+			"accent": Color("#22c55e"),
+			"disabled": not build_ready,
+			"target": Callable(self, "_build_city_in_selected_district"),
+			"tooltip": "花费¥%d城市化，开始获得实时GDP现金流。" % CITY_BUILD_COST if build_ready else build_error,
+		},
+	]
+	var choices := _selected_district_card_choices()
+	entries.append({
+		"label": "牌架",
+		"status": "%d张" % choices.size() if has_selection else "选区",
+		"accent": Color("#38bdf8"),
+		"disabled": not has_selection,
+		"target": Callable(self, "_open_district_supply_from_map").bind(selected_district),
+		"tooltip": "打开区域牌架；不能购买时也能查看卡面。购买资格按窗口打开瞬间锁定。" if has_selection else selection_tip,
+	})
+	var buy_card := selected_market_skill
+	if (buy_card == "" or not _selected_district_has_card(buy_card)) and not choices.is_empty():
+		buy_card = String(choices[0])
+	var buy_state := _district_supply_purchase_state(selected_district, buy_card, player_index) if has_selection and buy_card != "" else {}
+	var buy_ready := can_operate and has_selection and buy_card != "" and bool(buy_state.get("actionable", false))
+	var buy_status := "可买" if buy_ready else _short_card_text(String(buy_state.get("label", "不可")), 4)
+	if buy_ready:
+		buy_status = "¥%d" % int(buy_state.get("price", _card_price(buy_card, selected_district, player_index)))
+	entries.append({
+		"label": "买牌",
+		"status": buy_status,
+		"accent": Color("#f59e0b"),
+		"disabled": not buy_ready,
+		"target": Callable(self, "_claim_district_card").bind(buy_card),
+		"tooltip": "%s｜%s" % [_card_display_name(buy_card), String(buy_state.get("detail", "先打开区域牌架选择卡牌。"))] if buy_card != "" else "当前选区没有可购买的候选牌。",
+	})
+	var play_slot := _first_actionable_hand_slot(player_index) if can_operate else -1
+	var play_label := "出牌"
+	var play_status := "卡住"
+	var play_accent := Color("#c084fc")
+	var play_tooltip := "当前没有可直接打出的手牌；看手牌状态筹码或打开区域牌架补牌。"
+	if play_slot >= 0:
+		var player: Dictionary = players[player_index]
+		var skill: Dictionary = (player.get("slots", []) as Array)[play_slot]
+		play_accent = _card_theme_color(skill)
+		play_label = "首召" if bool(skill.get("starter_play_free", false)) else "出牌"
+		play_status = _short_card_text(_card_display_name(String(skill.get("name", "卡牌"))), 5)
+		play_tooltip = _skill_play_requirement_text(skill, player_index)
+	entries.append({
+		"label": play_label,
+		"status": play_status,
+		"accent": play_accent,
+		"disabled": play_slot < 0,
+		"target": Callable(self, "_use_skill").bind(play_slot),
+		"tooltip": play_tooltip,
+	})
+	if not can_operate:
+		for i in range(entries.size()):
+			var entry: Dictionary = entries[i]
+			entry["disabled"] = true
+			entry["status"] = "隐私"
+			entry["tooltip"] = "当前选中的是电脑/对手席位；现金、手牌和实际操作保持私密。"
+			entries[i] = entry
+	return entries
+
+
+func _add_main_action_dock_button(parent: Container, entry: Dictionary) -> void:
+	var accent: Color = entry.get("accent", Color("#94a3b8")) as Color
+	var disabled := bool(entry.get("disabled", false))
+	var button := Button.new()
+	button.name = "MainActionDockButton"
+	button.text = "%s\n%s" % [String(entry.get("label", "行动")), String(entry.get("status", ""))]
+	button.tooltip_text = String(entry.get("tooltip", ""))
+	button.disabled = disabled
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.add_theme_font_size_override("font_size", 9)
+	_style_menu_button(button, accent, not disabled)
+	button.custom_minimum_size = Vector2(70, 42)
+	if not disabled:
+		var target := entry.get("target", Callable()) as Callable
+		if target.is_valid():
+			button.pressed.connect(target)
+	parent.add_child(button)
+
+
+func _add_main_action_dock(parent: Container, player_index: int) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "MainActionDock"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.tooltip_text = "桌边快捷行动：建城、看牌架、买选中牌、打出第一张可用手牌。详细规则留在 hover 和菜单里。"
+	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#fef3c7"), Color("#020617").lerp(Color("#f59e0b"), 0.08), 1, 10))
+	parent.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	panel.add_child(margin)
+	var row := HBoxContainer.new()
+	row.name = "MainActionDockRow"
+	row.add_theme_constant_override("separation", 5)
+	margin.add_child(row)
+	var title := _plain_label("快捷\n行动", 9, Color("#fef3c7"))
+	title.name = "MainActionDockTitle"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.custom_minimum_size = Vector2(42, 0)
+	title.tooltip_text = "先做这四件事：建城、看牌、买牌、出牌。"
+	row.add_child(title)
+	for entry_variant in _main_action_dock_entries(player_index):
+		_add_main_action_dock_button(row, entry_variant as Dictionary)
+
+
 func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -20298,6 +20416,7 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	tray_hint.tooltip_text = "像电子桌游的行动区：先看筹码，再点下方动作。"
 	header.add_child(tray_hint)
 	_add_action_tray_module_rail(box, player_index)
+	_add_main_action_dock(box, player_index)
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 124)
