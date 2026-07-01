@@ -20800,23 +20800,23 @@ func _add_first_summon_prompt(parent: Container, player: Dictionary) -> void:
 	parent.add_child(prompt_box)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 7)
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 5)
 	prompt_box.add_child(margin)
 
 	var box := VBoxContainer.new()
 	box.name = "FirstSummonCardStack"
-	box.add_theme_constant_override("separation", 5)
+	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 8)
 	box.add_child(header)
-	var title := _plain_label("首召怪兽", 11, Color("#fecaca"))
+	var title := _plain_label("首召预览", 11, Color("#fecaca"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.tooltip_text = "开局第一只怪兽：任选未毁区域部署，之后开启怪兽落地区/邻区牌架。"
+	title.tooltip_text = "右侧只保留首召决策；完整卡面看手牌架或悬停。"
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.clip_text = true
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -20847,31 +20847,26 @@ func _add_first_summon_prompt(parent: Container, player: Dictionary) -> void:
 		chip_rail.add_child(chip)
 
 	var body := HBoxContainer.new()
-	body.name = "FirstSummonBodyRow"
-	body.add_theme_constant_override("separation", 8)
+	body.name = "FirstSummonPreviewStrip"
+	body.add_theme_constant_override("separation", 7)
 	box.add_child(body)
 
-	var art_view = CardArtViewScript.new()
-	art_view.name = "FirstSummonCardArt"
-	art_view.custom_minimum_size = Vector2(88, 58)
-	art_view.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	art_view.set_card(
-		_card_display_name(String(starter_card.get("name", "起始怪兽"))),
-		String(starter_card.get("kind", "monster_card")),
-		"首召 / 免门槛",
-		accent,
-		maxi(1, _skill_rank(String(starter_card.get("name", "")))),
-		true,
-		_card_art_stats(starter_card)
-	)
-	body.add_child(art_view)
+	var icon := _track_status_badge("怪", Color("#fecaca"), Color("#7f1d1d"))
+	icon.name = "FirstSummonPreviewIcon"
+	icon.custom_minimum_size = Vector2(30, 28)
+	icon.tooltip_text = "起始怪兽牌；完整卡面在手牌架。"
+	body.add_child(icon)
 
 	var info_box := VBoxContainer.new()
 	info_box.name = "FirstSummonInfoStack"
 	info_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info_box.add_theme_constant_override("separation", 2)
+	info_box.add_theme_constant_override("separation", 1)
 	body.add_child(info_box)
-	var hint := _plain_label("首召后开启落地区/邻区牌架", 9, Color("#fef3c7"))
+	var hint := _plain_label("%s｜%s｜固定技%d" % [
+		_short_card_text(String(starter_card.get("monster_name", _skill_family(String(starter_card.get("name", "怪兽"))))), 8),
+		_monster_card_duration_text(starter_card, true),
+		int(starter_card.get("fixed_skill_count", 1)),
+	], 9, Color("#fef3c7"))
 	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
 	hint.clip_text = true
 	hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -20891,7 +20886,7 @@ func _add_first_summon_prompt(parent: Container, player: Dictionary) -> void:
 	button.tooltip_text = "把起始怪兽牌打到当前选中的区域。首召不限区域/商品流动，之后才会开启怪兽落地区与相邻区购牌。"
 	button.disabled = game_over or bool(starter_card.get("queued_for_resolution", false)) or not _selected_district_can_receive_first_summon() or players[selected_player]["action_cooldown"] > 0.0 or not _can_play_skill_now(selected_player, starter_card, false)
 	_style_menu_button(button, accent, not button.disabled)
-	button.custom_minimum_size = Vector2(104, 34)
+	button.custom_minimum_size = Vector2(104, 30)
 	button.pressed.connect(Callable(self, "_use_skill").bind(starter_slot))
 	body.add_child(button)
 
