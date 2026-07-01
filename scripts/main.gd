@@ -1897,13 +1897,13 @@ func _build_layout() -> void:
 
 	player_panel_scroll = ScrollContainer.new()
 	player_panel_scroll.name = "TableEdgeHandViewport"
-	player_panel_scroll.custom_minimum_size = Vector2(0, 190)
+	player_panel_scroll.custom_minimum_size = Vector2(0, 318)
 	player_panel_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	player_panel_scroll.size_flags_vertical = Control.SIZE_SHRINK_END
 	player_panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	player_panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	player_panel_scroll.follow_focus = false
-	player_panel_scroll.tooltip_text = "桌边牌架固定在地图下方；内容较多时只滚动牌架，不会把中央星球挤出屏幕。"
+	player_panel_scroll.tooltip_text = "桌边牌架固定在地图下方；首屏优先看到自己的手牌，资源筹码和更多操作只滚动牌架，不会把中央星球挤出屏幕。"
 	body.add_child(player_panel_scroll)
 	player_box = _add_panel(player_panel_scroll, "桌边牌架")
 	var player_panel := _panel_container(player_box)
@@ -19813,15 +19813,16 @@ func _refresh_player_panel() -> void:
 	hand_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hand_column.add_theme_constant_override("separation", 5)
 	table_rail.add_child(hand_column)
+	_add_player_hand_rack(hand_column, player, selected_player)
 	_add_player_resource_cube_rail(hand_column, selected_player)
 	_add_table_goal_prompt(hand_column, selected_player)
-	_add_player_hand_rack(hand_column, player, selected_player)
 	var tray_column := VBoxContainer.new()
 	tray_column.name = "PlayerActionColumn"
-	tray_column.custom_minimum_size = Vector2(390, 0)
+	tray_column.custom_minimum_size = Vector2(340, 0)
 	tray_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	table_rail.add_child(tray_column)
 	var action_tray := _add_player_action_tray(tray_column, selected_player)
+	_add_first_summon_prompt(action_tray, player)
 	_add_selected_district_action_panel(action_tray, selected_player)
 	_add_opening_guide_panel(action_tray, selected_player)
 	_add_pending_discard_purchase_panel(action_tray, selected_player)
@@ -19834,8 +19835,6 @@ func _refresh_player_panel() -> void:
 	if _has_pending_player_target_choice():
 		_add_pending_player_target_buttons(action_tray)
 	_add_active_contract_response_panel(action_tray)
-
-	_add_first_summon_prompt(action_tray, player)
 
 	var top_row := HBoxContainer.new()
 	top_row.name = "PlayerSeatSelectorRail"
@@ -19998,7 +19997,7 @@ func _add_player_hand_rack(parent: Container, player: Dictionary, player_index: 
 	var hand_scroll := ScrollContainer.new()
 	hand_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	hand_scroll.custom_minimum_size = Vector2(0, 198)
+	hand_scroll.custom_minimum_size = Vector2(0, 168)
 	hand_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	hand_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	hand_box.add_child(hand_scroll)
@@ -20090,8 +20089,16 @@ func _add_player_action_tray(parent: Container, player_index: int = -1) -> VBoxC
 	var title := _plain_label("桌边行动托盘", 11, Color("#fde68a"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.tooltip_text = "常驻信息看星球、牌轨、资源筹码和手牌；具体动作收在这里。"
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(title)
-	header.add_child(_plain_label("模块筹码先扫，细节下拉", 9, Color("#94a3b8")))
+	var tray_hint := _plain_label("模块先扫", 9, Color("#94a3b8"))
+	tray_hint.autowrap_mode = TextServer.AUTOWRAP_OFF
+	tray_hint.clip_text = true
+	tray_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	tray_hint.tooltip_text = "先看模块筹码，再展开下方具体动作。"
+	header.add_child(tray_hint)
 	_add_action_tray_module_rail(box, player_index)
 
 	var scroll := ScrollContainer.new()
@@ -20578,7 +20585,7 @@ func _store_pending_contract_result(entry: Dictionary) -> void:
 func _add_empty_card_slot(parent: Container, slot_index: int) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "PlayerHandEmptySlot"
-	panel.custom_minimum_size = Vector2(170, 198)
+	panel.custom_minimum_size = Vector2(160, 168)
 	panel.tooltip_text = "空手牌槽：从区域牌架获取卡牌；超出上限时私密弃掉旧普通牌。"
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#020617").lerp(Color("#475569"), 0.16)
@@ -20717,9 +20724,16 @@ func _add_first_summon_prompt(parent: Container, player: Dictionary) -> void:
 	var title := _plain_label("首召怪兽", 11, Color("#fecaca"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.tooltip_text = "开局第一只怪兽：任选未毁区域部署，之后开启怪兽落地区/邻区牌架。"
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(title)
 	var card_name := _plain_label(_short_card_text(_card_display_name(String(starter_card.get("name", ""))), 16), 10, Color("#f8fafc"))
 	card_name.tooltip_text = _card_detail_tooltip(String(starter_card.get("name", "")))
+	card_name.custom_minimum_size = Vector2(96, 0)
+	card_name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	card_name.clip_text = true
+	card_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(card_name)
 
 	var chip_rail := HFlowContainer.new()
@@ -20764,11 +20778,17 @@ func _add_first_summon_prompt(parent: Container, player: Dictionary) -> void:
 	info_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info_box.add_theme_constant_override("separation", 2)
 	body.add_child(info_box)
-	var hint := _plain_label(_short_card_text(_first_summon_prompt_text(starter_card), 72), 9, Color("#fef3c7"))
+	var hint := _plain_label("首召后开启落地区/邻区牌架", 9, Color("#fef3c7"))
+	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
+	hint.clip_text = true
+	hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	hint.tooltip_text = _first_summon_prompt_text(starter_card)
 	info_box.add_child(hint)
-	var drop_zone := _plain_label(_first_summon_drop_zone_text(), 9, Color("#bae6fd"))
+	var drop_zone := _plain_label(_short_card_text(_first_summon_drop_zone_text(), 30), 9, Color("#bae6fd"))
 	drop_zone.name = "FirstSummonDropZone"
+	drop_zone.autowrap_mode = TextServer.AUTOWRAP_OFF
+	drop_zone.clip_text = true
+	drop_zone.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	drop_zone.tooltip_text = "先在中央星球上点一个未毁区域作为怪兽落点。"
 	info_box.add_child(drop_zone)
 
@@ -20778,7 +20798,7 @@ func _add_first_summon_prompt(parent: Container, player: Dictionary) -> void:
 	button.tooltip_text = "把起始怪兽牌打到当前选中的区域。首召不限区域/商品流动，之后才会开启怪兽落地区与相邻区购牌。"
 	button.disabled = game_over or bool(starter_card.get("queued_for_resolution", false)) or not _selected_district_can_receive_first_summon() or players[selected_player]["action_cooldown"] > 0.0 or not _can_play_skill_now(selected_player, starter_card, false)
 	_style_menu_button(button, accent, not button.disabled)
-	button.custom_minimum_size = Vector2(96, 34)
+	button.custom_minimum_size = Vector2(104, 34)
 	button.pressed.connect(Callable(self, "_use_skill").bind(starter_slot))
 	body.add_child(button)
 
@@ -21307,7 +21327,10 @@ func _add_card_face_chip_rail(parent: Container, skill_name: String, skill: Dict
 func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, slot_index: int = -1, is_hand_card: bool = false, compact: bool = false, show_action: bool = true) -> void:
 	var accent := _card_theme_color(skill)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(170, 198) if compact else Vector2(218, 268)
+	var card_minimum_size := Vector2(170, 198) if compact else Vector2(218, 268)
+	if compact and is_hand_card:
+		card_minimum_size = Vector2(160, 168)
+	panel.custom_minimum_size = card_minimum_size
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	panel.tooltip_text = _card_detail_tooltip(skill_name)
 	var style := StyleBoxFlat.new()
@@ -21339,7 +21362,7 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	box.add_child(tag_label)
 
 	var art_view = CardArtViewScript.new()
-	var art_height := 50 if compact and is_hand_card else (62 if compact else 112)
+	var art_height := 42 if compact and is_hand_card else (62 if compact else 112)
 	art_view.custom_minimum_size = Vector2(0, art_height)
 	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art_view.set_card(
@@ -21370,8 +21393,17 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 			_skill_play_requirement_text(skill, selected_player),
 		]
 
-	var effect := _plain_label(_card_rules_text(skill_name, skill, compact or is_hand_card), 9 if compact else 11, Color("#e5e7eb"))
+	var effect := _plain_label(
+		_short_card_text(_card_rules_text(skill_name, skill, true).replace("\n", "｜"), 40) if compact and is_hand_card else _card_rules_text(skill_name, skill, compact or is_hand_card),
+		8 if compact and is_hand_card else (9 if compact else 11),
+		Color("#e5e7eb")
+	)
 	effect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	if compact and is_hand_card:
+		effect.autowrap_mode = TextServer.AUTOWRAP_OFF
+		effect.clip_text = true
+		effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		effect.tooltip_text = _card_rules_text(skill_name, skill, false)
 	box.add_child(effect)
 
 	if show_action:

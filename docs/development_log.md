@@ -3833,3 +3833,32 @@
 - `tests/ui_snapshot_capture.gd` 有头通过，并生成 4 张 UI 快照。
 - Godot 普通有头启动通过：Vulkan / NVIDIA GeForce RTX 4080 SUPER，自动退出无报错。
 - `git diff --check` 通过；仅有 Git 提示 LF 将在下次触碰时转为 CRLF。
+
+## 2026-07-01｜主牌桌底部玩家板改成手牌优先
+
+- 继续按“中央星球 + 桌边玩家板”的电子桌游结构收敛主界面：
+  - `TableEdgeHandViewport` 高度提高，并把底部左列调整为“手牌优先，资源筹码和目标提示在下方”。
+  - 这样 1600×1000 的测试窗口里，玩家进入一局后第一眼能看到自己的手牌，而不是只看到资源条和长提示。
+- 手牌卡改成更紧凑的桌边小卡：
+  - 手牌卡最小尺寸改为 `160×168`，空槽同尺寸。
+  - 手牌卡正面只保留卡名、路线/类型、短状态、关键筹码和按钮；长效果和状态原因放进 hover/tooltip。
+  - `HandCardPlayStateRail` 在紧凑模式下只显示前两个状态筹码，不再额外塞一行理由文字，减少主桌文本密度。
+- 右侧行动托盘继续承担“可操作但不抢地图”的角色：
+  - 托盘宽度从 390 缩到 340，给手牌区更多横向空间。
+  - 首召怪兽提示前置到托盘顶部，开局玩家更容易找到“在选区首召”。
+  - 首召卡改成窄栏友好布局：卡面、落点、固定技/开牌架筹码和首召按钮可见；长解释放 tooltip。
+  - 修复行动托盘提示文字在窄栏里被挤成竖排的问题。
+- 守卫同步：
+  - `tests/visual_snapshot.gd` 增加底部牌架高度、手牌优先、资源条后移、首召前置和小手牌卡尺寸合同。
+  - `tests/ui_text_smoke_test.gd` 更新紧凑手牌卡的 42px 美术高度合同。
+  - `tests/smoke_test.gd` 更新首召提示断言，从旧“首召引导”改为当前玩家词“首召怪兽”。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 有头通过，并重新生成主菜单、卡牌图鉴缩略图、卡牌详情和主牌桌快照。
+- `tests/smoke_test.gd` 完整通过。
+- Godot 普通有头启动通过：Vulkan / NVIDIA GeForce RTX 4080 SUPER，自动退出无报错。
+- `git diff --check` 通过；仅有 LF/CRLF 提示。
