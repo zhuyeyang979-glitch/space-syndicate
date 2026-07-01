@@ -6,6 +6,7 @@ const MAP_VIEW_SCRIPT_PATH := "res://scripts/map_view.gd"
 const CARD_ART_SCRIPT_PATH := "res://scripts/card_art_view.gd"
 const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
 const TEST_RUN_SAVE_PATH := "user://space_syndicate_smoke_test_run.save"
+const SMOKE_PROGRESS_PATH := "user://space_syndicate_smoke_progress.log"
 const EXPECTED_PLAYER_COUNT := 4
 const EXPECTED_AI_PLAYER_COUNT := 3
 const EXPECTED_SUMMONED_MONSTER_COUNT := 4
@@ -13,6 +14,7 @@ const MIN_REGION_COUNT := 6
 const MAX_REGION_COUNT := 54
 
 var _failures: Array[String] = []
+var _smoke_start_msec := 0
 
 
 func _init() -> void:
@@ -20,22 +22,36 @@ func _init() -> void:
 
 
 func _run() -> void:
+	_start_smoke_progress_log()
+	_mark_smoke_progress("start")
 	_cleanup_test_save()
 	var packed := load(MAIN_SCENE_PATH)
+	_mark_smoke_progress("main scene loaded")
 	_expect(packed is PackedScene, "main scene loads as PackedScene")
 	if not (packed is PackedScene):
 		_finish()
 		return
 
 	var main := (packed as PackedScene).instantiate()
+	_mark_smoke_progress("main scene instantiated")
 	get_root().add_child(main)
+	_mark_smoke_progress("main scene added")
 	await process_frame
+	_mark_smoke_progress("first process frame")
 	await process_frame
+	_mark_smoke_progress("second process frame")
 
 	_expect(main is Control, "main scene instantiates as Control")
+	_mark_smoke_progress("before run save path set")
 	main.set("run_save_path", TEST_RUN_SAVE_PATH)
+	_mark_smoke_progress("after run save path set")
+	var catalog_probe := int(main.call("_catalog_size"))
+	_mark_smoke_progress("after catalog probe %d" % catalog_probe)
+	_mark_smoke_progress("before open main menu")
 	main.call("_open_main_menu")
+	_mark_smoke_progress("main menu opened")
 	await process_frame
+	_mark_smoke_progress("main menu frame")
 	var load_run_button := main.get("menu_load_run_button") as Button
 	var run_save_label := main.get("menu_run_save_label") as Label
 	_expect(run_save_label != null and run_save_label.text.contains("暂无"), "main menu reports no saved run in the test slot")
@@ -44,6 +60,7 @@ func _run() -> void:
 	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
 	main.set("configured_role_indices", [0, 1, 2, 3, 4])
 	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
+	_mark_smoke_progress("new game setup")
 	main.call("_new_game")
 	main.set("ai_card_decision_enabled", false)
 	main.call("_open_main_menu")
@@ -145,22 +162,37 @@ func _run() -> void:
 	_expect(_verify_ai_game_phase_policy(main), "AI opponents adapt choices to opening, midgame, endgame, leader, and trailing states")
 	_expect(_verify_ai_weather_control_policy(main), "AI opponents choose weather-control targets from route, terrain, GDP, and disruption value")
 	_expect(_verify_ai_strategy_route_diversification_policy(main), "AI opponents generate field-driven defense, suppression, finance, and intel route candidates")
+	_mark_smoke_progress("ai progress smoke")
 	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
+	_mark_smoke_progress("max ai complete smoke")
 	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, report profile route actions, settle, and restore cleanly")
+	_mark_smoke_progress("player table ui checks")
 	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify starting cash without touching starter monsters")
 	_expect(_starting_monster_cards_match_configured_choices(main, players), "starter monster cards come from independent setup choices, not role-card fingerprints")
 	var player_box := main.get("player_box") as VBoxContainer
-	_expect(player_box != null and _container_label_text_contains(player_box, "手牌卡面") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
-	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示"), "player panel shows one concise next-action hint")
+	_expect(player_box != null and _container_label_text_contains(player_box, "我的手牌") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
+	_expect(player_box != null and _container_label_text_contains(player_box, "玩家板｜资源筹码") and _container_label_text_contains(player_box, "GDP") and _container_label_text_contains(player_box, "终局"), "player panel exposes a Terraforming-Mars-style resource chip tableau before detailed hand text")
+	_expect(player_box != null and _container_label_text_contains(player_box, "状态：") and (
+		_container_label_text_contains(player_box, "可打出")
+		or _container_label_text_contains(player_box, "需商品")
+		or _container_label_text_contains(player_box, "需怪兽目标")
+		or _container_label_text_contains(player_box, "需玩家目标")
+		or _container_label_text_contains(player_box, "冷却中")
+		or _container_label_text_contains(player_box, "需补牌")
+	), "hand cards show a board-game style playability state instead of a blind play button")
+	_expect(player_box != null and _container_button_tooltip_contains(player_box, "打出条件："), "hand card action buttons expose concise play requirements")
+	_expect(player_box != null and _container_label_text_contains(player_box, "公开席位") and _container_button_text_contains(player_box, "明怪") and _container_button_tooltip_contains(player_box, "现金、手牌和弃牌不公开"), "player panel exposes a board-game style public seat strip without leaking private hands or cash")
+	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail"), "player panel shows one concise table-goal next-action card")
+	_expect(player_box != null and _container_label_text_contains(player_box, "选区行动") and _container_label_text_contains(player_box, "牌架") and _container_label_text_contains(player_box, "HP") and _container_button_text_contains(player_box, "查看牌") and _container_button_text_contains(player_box, "商路"), "player panel exposes a chip-based selected-region action card")
 	_expect(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"), "early-run guide shows a dismissible checklist and economy overview shortcut")
-	_expect(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步卡片") and _container_label_text_contains(player_box, "行动：") and _container_label_text_contains(player_box, "为什么：") and _container_label_text_contains(player_box, "入口：") and _container_label_text_contains(player_box, "首召怪兽"), "early-run guide presents progress, structured next-step card, and task cards")
+	_expect(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "首召怪兽") and _container_label_text_contains(player_box, "建第一城") and not _container_label_text_contains(player_box, "为什么：") and not _container_label_text_contains(player_box, "入口："), "early-run guide presents compact progress chips and a short next-step strip")
 	_expect(player_box != null and _container_button_text_contains(player_box, "新手引导") and _container_button_text_contains(player_box, "游戏规则"), "early-run guide exposes tutorial and rules shortcuts")
-	_expect(player_box != null and _container_label_text_contains(player_box, "当前下一步") and _container_label_text_contains(player_box, "□ 打开经济总览"), "early-run guide shows the real next step and leaves economy overview unchecked before it is opened")
+	_expect(player_box != null and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "□ 看经济总览"), "early-run guide shows the real next step and leaves economy overview unchecked before it is opened")
 	main.call("_open_economy_overview_menu")
 	main.call("_close_menu")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
-	_expect(player_box != null and _container_label_text_contains(player_box, "✓ 打开经济总览"), "early-run guide checks off economy overview only after opening it")
+	_expect(player_box != null and _container_label_text_contains(player_box, "✓ 看经济总览"), "early-run guide checks off economy overview only after opening it")
 	var seen_guide_state := main.call("_capture_run_state") as Dictionary
 	main.set("opening_guide_economy_seen_players", {})
 	_expect(int(main.call("_apply_run_state", seen_guide_state)) == OK and bool(main.call("_opening_guide_economy_seen", 0)), "early-run guide economy-overview progress persists in run saves")
@@ -214,6 +246,7 @@ func _run() -> void:
 	_expect(_verify_news_and_weather_card_rules(main), "news cards are player-made effects while weather-control cards rewrite public forecasts")
 	_summon_starting_monsters_for_smoke(main, EXPECTED_SUMMONED_MONSTER_COUNT)
 	await process_frame
+	_mark_smoke_progress("field monster checks")
 	players = _as_array(main.get("players"))
 	districts = _as_array(main.get("districts"))
 	skill_market = _as_array(main.get("skill_market"))
@@ -241,6 +274,7 @@ func _run() -> void:
 	_expect(_verify_anonymous_cash_card(main), "cash-card public events hide the player who played the card")
 	_expect(_verify_anonymous_direct_command(main), "one-shot monster-command events hide the directing player")
 	_expect(_verify_remote_supply_access(main), "remote-supply roles and cards extend purchase range without extending monster summon range")
+	_mark_smoke_progress("card resolution auction smoke")
 	var queue_results: Dictionary = await _verify_card_resolution_auction_and_guess(main)
 	_expect(bool(queue_results.get("five_second_window", false)), "every card enters a five-second public reveal window")
 	_expect(bool(queue_results.get("simultaneous_overlay_status", false)), "simultaneous-play overlay explains stage, join window, and bid context")
@@ -250,6 +284,7 @@ func _run() -> void:
 	_expect(bool(queue_results.get("auction_overlay_status", false)), "auction overlay explains stage, highest public bid, and bid availability")
 	_expect(bool(queue_results.get("bid_status_auction_visible", false)), "hand bid controls explain when a queued card can still raise its public bid")
 	_expect(bool(queue_results.get("track_badges_auction_visible", false)), "card track marks the current player's queued card and highest public bids during auction")
+	_expect(bool(queue_results.get("track_compact_hover_detail", false)), "card track stays compact while preserving hover detail and double-click card access")
 	_expect(bool(queue_results.get("clockwise_tie", false)), "equal bids fall back to the clockwise-nearest queued player")
 	_expect(bool(queue_results.get("batch_order_locked", false)), "one auction locks the whole batch order without reopening between queued cards")
 	_expect(bool(queue_results.get("active_overlay_status", false)), "public reveal overlay explains that new cards enter the next-batch waiting area")
@@ -257,6 +292,7 @@ func _run() -> void:
 	_expect(bool(queue_results.get("active_overlay_requirement_snapshot_visible", false)), "public reveal overlay shows the resolving card's play-requirement snapshot")
 	_expect(bool(queue_results.get("active_overlay_my_badge_visible", false)), "public reveal overlay marks the current player's own displayed anonymous card only in that player's view")
 	_expect(bool(queue_results.get("active_overlay_animation_visible", false)), "public reveal overlay shows the card's current resolution animation script")
+	_expect(bool(queue_results.get("active_overlay_compact_hover_detail", false)), "public reveal overlay uses a compact board-game toast and moves long detail into hover text")
 	_expect(bool(queue_results.get("active_overlay_stage_map_effects", false)), "public reveal overlay drives staged card map effects")
 	_expect(bool(queue_results.get("card_stage_effect_styles_visible", false)), "card map effects use different visual styles for city, product, and monster cards")
 	_expect(bool(queue_results.get("bid_status_locked_visible", false)), "hand bid controls explain when a queued card bid is locked")
@@ -321,6 +357,7 @@ func _run() -> void:
 	_expect(_verify_private_discard_purchase_flow(main), "full-hand purchases require a private discard choice without leaking hand size, card names, or discard details")
 	_expect(_verify_card_rank_ladders_are_complete(main), "all base card families expose non-regressing I-IV rank ladders at the rank-I price")
 	_expect(_verify_playable_card_resolution_coverage(main), "all codex cards and generated monster fixed-skill cards have concrete resolution handlers")
+	_mark_smoke_progress("card supply and product ecosystem")
 	_expect(_all_card_supply_entries_are_base_rank(main, districts), "card supplies and codex indexes offer base copies while upgrades happen through hand merging")
 	_expect(_verify_cards_have_no_legacy_runtime_fields(main), "card objects and run saves no longer expose legacy charge/control fields")
 	_expect(_all_districts_have_four_to_five_cards(districts), "each district receives four to five available cards")
@@ -363,6 +400,11 @@ func _run() -> void:
 	var selected_district := int(main.get("selected_district"))
 	_expect(selected_district >= 0 and selected_district < districts.size(), "selected district is inside the generated map")
 	_expect(main.get("map_view") is Control, "main map view is built")
+	var main_map_view := main.get("map_view") as Control
+	_mark_smoke_progress("map and city gameplay")
+	_expect(main_map_view != null and main_map_view.custom_minimum_size.y >= 420.0 and _container_label_text_contains(main, "星球赌桌") and _container_label_text_contains(main, "赌桌中央"), "main play table keeps the planet as a large centered gambling-table focus")
+	_expect(_map_view_has_betting_table_theme(), "map view draws a felt-table rim with small chips around the centered planet")
+	_expect(_container_label_text_contains(main, "桌边牌架"), "main play table treats hand cards as a smaller table-edge rack")
 	_expect(main.get("full_map_view") is Control, "fullscreen map view is built")
 	_expect(_map_view_uses_unified_monster_markers(), "map view no longer exposes legacy A/B monster position state")
 	_verify_globe_projection_interaction(main, selected_district)
@@ -449,6 +491,7 @@ func _run() -> void:
 
 	var menu_overlay := main.get("menu_overlay") as Control
 	_expect(menu_overlay != null and menu_overlay.visible, "main menu overlay opens after setup")
+	_mark_smoke_progress("menu and codex navigation")
 	var menu_title_label := main.get("menu_title_label") as Label
 	var menu_context_label := main.get("menu_context_label") as Label
 	var menu_body_label := main.get("menu_body_label") as Label
@@ -466,17 +509,17 @@ func _run() -> void:
 	main.call("_open_main_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加", "main menu opens with the root title")
-	_expect(menu_context_label != null and menu_context_label.text.contains("当前位置：主菜单") and menu_context_label.text.contains("hover"), "main menu exposes a reusable breadcrumb/help strip for flexible subpage navigation")
-	_expect(menu_interaction_hint_panel != null and menu_interaction_hint_panel.has_theme_stylebox_override("panel") and menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("响应式主菜单") and menu_interaction_hint_label.text.contains("分区卡片网格") and menu_interaction_hint_label.text.contains("自动重排") and menu_interaction_hint_label.text.contains("hover"), "main menu exposes a reusable interaction hint strip for responsive card-grid layout, hover, and future menu rearrangement")
+	_expect(menu_context_label != null and menu_context_label.text.contains("当前位置：主菜单") and menu_context_label.text.contains("悬停"), "main menu exposes a player-facing breadcrumb/help strip for subpage navigation")
+	_expect(menu_interaction_hint_panel != null and menu_interaction_hint_panel.has_theme_stylebox_override("panel") and menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("悬停预览") and menu_interaction_hint_label.text.contains("缩略图") and menu_interaction_hint_label.text.contains("双击详情"), "main menu exposes a short board-game interaction hint strip")
 	_expect(menu_quick_nav_row != null and menu_quick_nav_row.visible and _container_button_text_contains(menu_quick_nav_row, "开局") and _container_button_text_contains(menu_quick_nav_row, "经济") and _container_button_text_contains(menu_quick_nav_row, "情报") and _container_button_text_contains(menu_quick_nav_row, "图鉴"), "main menu exposes reusable quick navigation chips for major branches")
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
 	_expect(menu_content_scroll != null and not menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column without focus-jumping on hover")
 	_expect(menu_overlay != null and _container_has_meta(menu_overlay, "main_menu_action_grid") and _container_has_meta(menu_overlay, "main_menu_grid_card"), "main menu arranges branch entries as reusable responsive card grids")
 	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽牌"), "main menu points new games to the monster-card start flow")
 	_expect(menu_body_label != null and menu_body_label.text.contains("游戏规则") and not menu_body_label.text.contains("快捷键："), "main menu keeps detailed controls inside the rules branch")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主菜单速览") and _container_label_text_contains(menu_preview_box, "主画面原则") and _container_label_text_contains(menu_preview_box, "终局复盘"), "main menu exposes compact responsive summary cards above the detailed action branches")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主菜单速览") and _container_label_text_contains(menu_preview_box, "牌桌布局") and _container_label_text_contains(menu_preview_box, "终局复盘"), "main menu exposes compact player-facing summary cards above the detailed action branches")
 	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "开局准备"), "main menu routes new games through a setup preview branch")
-	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "设置3-8席") and _container_label_text_contains(menu_overlay, "hover预览"), "main menu uses descriptive card-style action entries")
+	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "设置3-8席") and _container_label_text_contains(menu_overlay, "缩略图看全局"), "main menu uses descriptive card-style action entries")
 	_expect(menu_overlay != null and _container_button_has_stylebox(menu_overlay, "hover") and _container_button_has_stylebox(menu_overlay, "pressed"), "menu buttons expose reusable hover and pressed visual states")
 	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "情报档案"), "main menu exposes the intel dossier branch")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "选择四怪兽"), "main menu no longer exposes a separate monster-selection branch")
@@ -492,13 +535,15 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "开局准备", "new-run entry opens the setup preview instead of immediately starting")
 	_expect(menu_context_label != null and menu_context_label.text.contains("主菜单 → 开局准备"), "setup branch updates the breadcrumb/help strip")
 	_expect(_as_array(main.get("players")).size() == current_players_before_setup, "opening setup preview does not wipe the current run")
-	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("起始怪兽牌"), "new-run setup explains role cards and starter monster cards")
+	_expect(menu_body_label != null and menu_body_label.text.contains("公开角色") and menu_body_label.text.contains("首召怪兽"), "new-run setup explains role cards and starter monster cards")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "开始本局"), "new-run setup requires an explicit start confirmation")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "角色被动"), "new-run setup previews role passive rules")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "player_role"), "new-run setup previews player role-card art")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "monster_card"), "new-run setup previews starter monster-card art")
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "不限区"), "new-run setup starter card art shows the unrestricted first-summon access")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "固定技能") and _container_label_text_contains(menu_preview_box, "开放购牌"), "new-run setup explains starter summon rewards and card-access radius")
+	_expect(menu_preview_box != null and _container_has_meta(menu_preview_box, "setup_summary_chips") and _container_has_meta(menu_preview_box, "setup_seat_card") and _container_has_meta(menu_preview_box, "setup_seat_chips"), "new-run setup uses compact board-game setup chips and seat cards")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "目标¥") and _container_label_text_contains(menu_preview_box, "角色不重复") and _container_label_text_contains(menu_preview_box, "首召独立"), "new-run setup summary chips expose the key setup facts")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "固定技") and _container_label_text_contains(menu_preview_box, "落点开牌架"), "new-run setup explains starter summon rewards and card-access radius with short player labels")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "随机角色") and not _container_label_text_contains(menu_preview_box, "主路线"), "new-run setup supports random AI roles while hiding AI internal development routes")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "上一个角色") and _container_button_text_contains(menu_preview_box, "下一个角色"), "new-run setup exposes per-player alien role switching")
 	var first_role_before_setup := int(role_indices_before_setup[0]) if not role_indices_before_setup.is_empty() else 0
@@ -518,7 +563,7 @@ func _run() -> void:
 	_expect(int(main.get("configured_player_count")) == preview_player_count, "new-run setup can change the configured player count")
 	main.call("_set_configured_ai_player_count_from_new_game_menu", 7)
 	await process_frame
-	_expect(int(main.get("configured_ai_player_count")) == 7 and menu_preview_box != null and _container_label_text_contains(menu_preview_box, "AI对手7"), "new-run setup can configure a 3-8 seat PVE run with 2-7 AI opponents")
+	_expect(int(main.get("configured_ai_player_count")) == 7 and menu_preview_box != null and _container_label_text_contains(menu_preview_box, "电脑对手7"), "new-run setup can configure a 3-8 seat PVE run with 2-7 AI opponents")
 	main.call("_set_configured_player_count_from_new_game_menu", player_count_before_setup)
 	await process_frame
 	main.call("_set_configured_ai_player_count_from_new_game_menu", EXPECTED_AI_PLAYER_COUNT)
@@ -531,31 +576,30 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "新手引导", "tutorial menu opens from the main scene")
 	_expect(menu_back_button != null and menu_back_button.visible, "tutorial subpage exposes a visible return-to-main button")
-	_expect(menu_continue_button != null and menu_continue_button.visible, "tutorial subpage still lets the player continue the game")
-	_expect(menu_body_label != null and menu_body_label.text.contains("秘密城市化"), "tutorial explains the secret city loop")
-	_expect(menu_body_label != null and menu_body_label.text.contains("I级基础价") and not menu_body_label.text.contains("Lv"), "tutorial describes rank-I base-price card upgrades with Roman-numeral ranks")
+	_expect(menu_continue_button != null and not menu_continue_button.visible, "tutorial subpage hides global continue so only page-relevant navigation remains")
+	_expect(menu_body_label != null and menu_body_label.text.contains("首召怪兽") and menu_body_label.text.contains("城市公开，业主隐藏"), "tutorial explains the first-summon and hidden-owner city loop in player-facing language")
+	_expect(menu_body_label != null and menu_body_label.text.contains("I级怪兽牌") and menu_body_label.text.contains("普通手牌最多") and not menu_body_label.text.contains("Lv"), "tutorial keeps card ranks and hand limits concise with Roman-numeral ranks")
 	main.call("_open_rules_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "游戏规则", "rules menu opens from the main scene")
-	_expect(menu_body_label != null and menu_body_label.text.contains("I级基础价") and menu_body_label.text.contains("IV级") and not menu_body_label.text.contains("Lv"), "rules menu explains rank-I base prices and rank-IV caps with Roman-numeral ranks")
-	_expect(menu_body_label != null and menu_body_label.text.contains("一次性普通牌") and menu_body_label.text.contains("立刻离开手牌") and menu_body_label.text.contains("卡牌快照"), "rules menu documents one-shot cards leaving hand as soon as they enter the anonymous track")
-	_expect(menu_body_label != null and menu_body_label.text.contains("最大生命值损失比例"), "rules menu explains monster ownership cash clues use max-HP proportional losses")
-	_expect(menu_body_label != null and menu_body_label.text.contains("不提供1x/2x/4x时间倍率") and menu_body_label.text.contains("操作入口索引") and not menu_body_label.text.contains("Y切预设"), "rules menu removes player-facing time-multiplier presets and centralizes controls")
-	_expect(menu_body_label != null and menu_body_label.text.contains("持续按秒变成现金") and menu_body_label.text.contains("全局市场刷新每30-60秒") and not menu_body_label.text.contains("经营周期") and not menu_body_label.text.contains("经济周期"), "rules menu frames GDP as per-second cashflow with market refreshes as public snapshots")
+	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and menu_back_button.visible, "rules subpage shows return navigation without a global continue button")
+	_expect(menu_body_label != null and menu_body_label.text.contains("价格按I级算") and menu_body_label.text.contains("IV级") and not menu_body_label.text.contains("Lv"), "rules menu explains rank-I base prices and rank-IV caps with concise Roman-numeral ranks")
+	_expect(menu_body_label != null and menu_body_label.text.contains("所有牌都会公开展示") and menu_body_label.text.contains("出牌者匿名"), "rules menu explains anonymous card play without implementation wording")
+	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽受伤会让归属玩家掉钱"), "rules menu explains monster ownership cash clues in player-facing language")
+	_expect(menu_body_label != null and menu_body_label.text.contains("常用操作") and not menu_body_label.text.contains("Y切预设") and not menu_body_label.text.contains("AI训练") and not menu_body_label.text.contains("当前原型规则"), "rules menu removes development history, AI training, and obsolete debug controls")
+	_expect(menu_body_label != null and menu_body_label.text.contains("GDP/min会按秒变成现金") and not menu_body_label.text.contains("经营周期") and not menu_body_label.text.contains("经济周期"), "rules menu frames GDP as per-second cashflow without cycle wording")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "规则速览") and _container_label_text_contains(menu_preview_box, "先召怪兽") and _container_label_text_contains(menu_preview_box, "匿名出牌"), "rules menu exposes a compact card-summary layer above the long rule text")
 	var quick_nav_buttons := main.get("menu_quick_nav_buttons") as Dictionary
-	var rules_quick_button := quick_nav_buttons.get("rules", null) as Button
-	var economy_quick_button := quick_nav_buttons.get("economy", null) as Button
-	_expect(rules_quick_button != null and rules_quick_button.disabled and economy_quick_button != null and not economy_quick_button.disabled, "quick navigation marks the current rules page while leaving other branches available")
-	if economy_quick_button != null:
-		economy_quick_button.emit_signal("pressed")
-		await process_frame
-		_expect(menu_title_label != null and menu_title_label.text == "经济总览", "quick navigation can jump directly from rules to economy overview")
+	var quick_nav_row := main.get("menu_quick_nav_row") as HBoxContainer
+	_expect(quick_nav_row != null and not quick_nav_row.visible and quick_nav_buttons.has("rules") and quick_nav_buttons.has("economy"), "rules subpage hides global quick navigation so the page only shows relevant controls")
+	main.call("_open_economy_overview_menu")
+	await process_frame
+	_expect(menu_title_label != null and menu_title_label.text == "经济总览", "economy overview remains reachable from menu actions")
 	main.call("_open_standings_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "局势排名", "standings menu opens from the main scene")
 	_expect(menu_body_label != null and menu_body_label.text.contains("预估结算资金"), "standings menu explains estimated settlement money")
-	_expect(menu_body_label != null and menu_body_label.text.contains("公开异动") and menu_body_label.text.contains("对手计划、现金和手牌保持隐藏") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("反制建议") and not menu_body_label.text.contains("推荐卡牌路线"), "standings menu shows only public situation clues and hides AI route/bucket data")
+	_expect(menu_body_label != null and menu_body_label.text.contains("公开异动") and menu_body_label.text.contains("对手现金、手牌和私密推理保持隐藏") and not menu_body_label.text.contains("对手计划") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("反制建议") and not menu_body_label.text.contains("推荐卡牌路线"), "standings menu shows only public situation clues and hides AI route/bucket data")
 	_expect(menu_body_label != null and menu_body_label.text.contains("情报待结算"), "standings keeps intelligence cash pending until final settlement")
 	_expect(menu_body_label != null and menu_body_label.text.contains("存活城市1×"), "standings menu reflects built city assets")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "局势速览") and _container_label_text_contains(menu_preview_box, "终局条件") and _container_label_text_contains(menu_preview_box, "我的可见资金"), "standings menu exposes compact victory and cash summary cards")
@@ -565,7 +609,7 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("情报现金只在终局兑现"), "economy overview avoids revealing intelligence correctness early")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品热榜") and menu_body_label.text.contains("低价/供给压制"), "economy overview shows product price gradients")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商路收入前景") and menu_body_label.text.contains("玩家经济隐私"), "economy overview shows route prospects while keeping rival economics private")
-	_expect(menu_body_label != null and menu_body_label.text.contains("公开异动") and menu_body_label.text.contains("对手计划、现金和手牌保持隐藏") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("公开路线观察") and not menu_body_label.text.contains("推荐卡牌路线"), "economy overview shows public results while hiding AI route/bucket data")
+	_expect(menu_body_label != null and menu_body_label.text.contains("公开异动") and menu_body_label.text.contains("对手现金、手牌和私密推理保持隐藏") and not menu_body_label.text.contains("对手计划") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("公开路线观察") and not menu_body_label.text.contains("推荐卡牌路线"), "economy overview shows public results while hiding AI route/bucket data")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气") and menu_body_label.text.contains("最近卡牌余波"), "economy overview explains active product weather and recent card aftermath")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最近城市公开线索") and menu_body_label.text.contains("类型:") and menu_body_label.text.contains("线索商品:"), "economy overview aggregates structured anonymous city clues")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最近怪兽资金线索") and menu_body_label.text.contains("最大生命比例"), "economy overview explains monster damage cash clues")
@@ -634,7 +678,7 @@ func _run() -> void:
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "card detail returns to thumbnail page before the intel dossier")
+	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("卡牌图鉴") and intel_back_button != null and intel_back_button.text == "返回情报档案", "card detail returns to thumbnail page before the intel dossier")
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "card thumbnail page returns to the intel dossier")
@@ -645,7 +689,7 @@ func _run() -> void:
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "monster detail returns to thumbnail page before the intel dossier")
+	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and menu_body_label != null and menu_body_label.text.contains("怪兽生态｜") and intel_back_button != null and intel_back_button.text == "返回情报档案", "monster detail returns to thumbnail page before the intel dossier")
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "monster thumbnail page returns to the intel dossier")
@@ -656,7 +700,7 @@ func _run() -> void:
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	intel_back_button = main.get("menu_bestiary_back_button") as Button
-	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and intel_back_button != null and intel_back_button.text == "返回情报档案", "product detail returns to thumbnail page before the intel dossier")
+	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and menu_body_label != null and menu_body_label.text.contains("商品目录｜") and intel_back_button != null and intel_back_button.text == "返回情报档案", "product detail returns to thumbnail page before the intel dossier")
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "product thumbnail page returns to the intel dossier")
@@ -677,7 +721,7 @@ func _run() -> void:
 	var menu_bestiary_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "角色图鉴", "role codex opens from the compendium")
 	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "role codex returns to the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("特征") and menu_body_label.text.contains("角色被动") and menu_body_label.text.contains("起始怪兽牌"), "role codex explains role traits, passives, and starter monster cards")
+	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("特征") and menu_body_label.text.contains("被动") and menu_body_label.text.contains("首召怪兽"), "role codex explains role traits, passives, and independent starter monster choice")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "player_role"), "role codex displays role cards with the shared card-art component")
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "公开身份") and not _container_card_art_stats_contains(menu_preview_box, "起始:"), "role codex card art presents public identity without starter-monster fingerprints")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "独立选择") and not _container_button_text_contains(menu_preview_box, "点击查看卡牌图鉴") and not _container_button_text_contains(menu_preview_box, "查看怪兽生态档案"), "role codex does not link roles to starter monster cards")
@@ -691,8 +735,8 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案", "monster ecology dossier opens from the compendium")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "仅查看") and not _container_button_text_contains(menu_overlay, "开局不再预选怪兽"), "monster codex has no hidden legacy lineup controls")
 	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "monster thumbnail codex returns to the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and menu_body_label.text.contains("行动概率") and menu_body_label.text.contains("怪兽牌在卡牌图鉴") and menu_body_label.text.contains("生态位") and menu_body_label.text.contains("商品偏好") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster ecology dossier opens as a responsive thumbnail grid focused on ecology while monster cards stay in the card codex")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "生态速览") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "monster codex thumbnail page exposes paging and hover preview")
+	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态｜") and menu_body_label.text.contains("行动概率") and menu_body_label.text.contains("怪兽牌在卡牌图鉴") and menu_body_label.text.contains("本页") and menu_body_label.text.contains("悬停预览") and menu_body_label.text.contains("双击详情"), "monster ecology dossier opens as a thumbnail atlas focused on ecology while monster cards stay in the card codex")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "生态速览") and _container_label_text_contains(menu_preview_box, "悬停预览"), "monster codex thumbnail page exposes paging and hover preview")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "飞行") and _container_label_text_contains(menu_preview_box, "水栖") and _container_label_text_contains(menu_preview_box, "陆行"), "monster codex thumbnail page summarizes movement ecology coverage")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "monster codex hides detail previous/next buttons on the thumbnail page")
 	var bestiary_scroll_before := 48
@@ -725,16 +769,17 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and menu_body_label.text != old_bestiary_text, "monster detail next button logic changes pages")
 	main.call("_open_card_codex_by_name", first_monster_card)
 	await process_frame
-	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽卡") and menu_body_label.text.contains("生命"), "monster-card link can jump to the matching card codex entry")
+	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽牌") and menu_body_label.text.contains("生命"), "monster-card link can jump to the matching card codex entry")
 	main.call("_open_bestiary_from_compendium")
 	await process_frame
 	main.call("_open_card_codex_from_compendium")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
-	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
-	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("三层牌池") and menu_body_label.text.contains("图鉴全集") and menu_body_label.text.contains("本局星球牌池") and menu_body_label.text.contains("区域补给") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览") and _container_label_text_contains(menu_preview_box, "三层牌池") and _container_label_text_contains(menu_preview_box, "本局星球") and _container_label_text_contains(menu_preview_box, "购买窗口锁定规则") and _container_label_text_contains(menu_preview_box, "商品期货") and _container_label_text_contains(menu_preview_box, "相位反制") and not _container_label_text_contains(menu_preview_box, "旧的普通牌池"), "card codex thumbnail page exposes paging, hover preview, strict card taxonomy, and player-facing pool layers")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "直接互动路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线") and _container_label_text_contains(menu_preview_box, "覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "支点") and _container_label_text_contains(menu_preview_box, "平衡") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
+	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and not menu_back_button.visible, "card codex hides global continue/back buttons and keeps only codex-local navigation")
+	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("悬停") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
+	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌图鉴") and menu_body_label.text.contains("本局牌池") and menu_body_label.text.contains("区域补给") and menu_body_label.text.contains("双击看详情"), "card codex opens as a concise responsive thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停预览") and _container_label_text_contains(menu_preview_box, "商品期货") and _container_label_text_contains(menu_preview_box, "玩家互动") and not _container_label_text_contains(menu_preview_box, "旧的普通牌池") and not _container_label_text_contains(menu_preview_box, "相位反制"), "card codex thumbnail page exposes paging, hover preview, strict card taxonomy, and no legacy category labels")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "牌路总览") and _container_label_text_contains(menu_preview_box, "城市成长") and _container_label_text_contains(menu_preview_box, "金融投机") and _container_label_text_contains(menu_preview_box, "直接互动") and _container_label_text_contains(menu_preview_box, "打法") and _container_label_text_contains(menu_preview_box, "防法") and not _container_label_text_contains(menu_preview_box, "强度区间") and not _container_label_text_contains(menu_preview_box, "支点") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes player-facing strategy route overview cards without internal audit language or AI route leaks")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	var card_codex_scroll_before := 64
 	if menu_content_scroll != null:
@@ -744,9 +789,8 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_expect(menu_content_scroll != null and (card_codex_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == card_codex_scroll_before), "card codex hover preview preserves scroll position when the page is scrollable")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "城市融资") and _container_label_text_contains(menu_preview_box, "升级梯度"), "card codex hover preview shows the selected card details")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "预算:") and _container_label_text_contains(menu_preview_box, "主强度"), "card codex hover preview shows the field-derived strength budget")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "路线:城市成长"), "card codex hover preview explains the card's strategic route")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "城市融资") and _container_label_text_contains(menu_preview_box, "I→IV"), "card codex hover preview shows the selected card details")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "路线：城市成长") and not _container_label_text_contains(menu_preview_box, "预算:"), "card codex hover preview explains the card's strategic route without internal budget text")
 	var codex_detail_event := InputEventMouseButton.new()
 	codex_detail_event.button_index = MOUSE_BUTTON_LEFT
 	codex_detail_event.pressed = true
@@ -755,22 +799,22 @@ func _run() -> void:
 	await process_frame
 	var card_codex_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌详情页") and menu_interaction_hint_label.text.contains("上一页/下一页") and menu_interaction_hint_label.text.contains("返回缩略图"), "card detail page exposes the shared previous/next and return-to-thumbnail interaction hint")
-	_expect(menu_body_label != null and menu_body_label.text.contains("参考价") and menu_body_label.text.contains("档"), "card detail shows card price and explicit tier information")
-	_expect(menu_body_label != null and menu_body_label.text.contains("按I级基础价") and not menu_body_label.text.contains("Lv"), "card detail labels rank-I base prices with Roman-numeral ranks")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "牌面定位") and _container_label_text_contains(menu_preview_box, "费用与门槛") and _container_label_text_contains(menu_preview_box, "核心效果") and _container_label_text_contains(menu_preview_box, "关键字段"), "card detail uses TCG-style sections for purpose, cost, effect, and key fields")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "I-IV升级梯度") and _container_label_text_contains(menu_preview_box, "预算:"), "card detail shows a structured I-IV level-gradient grid")
+	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and not menu_back_button.visible, "card detail keeps global menu buttons hidden")
+	_expect(menu_body_label != null and menu_body_label.text.contains("¥") and menu_body_label.text.contains("不需要指定怪兽") and not menu_body_label.text.contains("Lv"), "card detail shows concise price and target information with Roman-numeral ranks")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "牌面定位") and _container_label_text_contains(menu_preview_box, "费用与门槛") and _container_label_text_contains(menu_preview_box, "核心效果") and _container_label_text_contains(menu_preview_box, "关键数值") and not _container_label_text_contains(menu_preview_box, "关键字段"), "card detail uses TCG-style player-facing sections for purpose, cost, effect, and key numbers")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "I→IV 强化") and not _container_label_text_contains(menu_preview_box, "预算:"), "card detail shows a structured I-IV level-gradient grid without internal budget text")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "结算演出") and _container_label_text_contains(menu_preview_box, "匿名"), "card detail shows the public anonymous resolution presentation")
 	_expect(card_codex_back_button != null and card_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "card detail exposes previous/next and a return-to-thumbnails button")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "匿名投资光幕"), "city economy cards use their own resolution animation script")
 	main.call("_back_from_catalog_menu")
 	await process_frame
-	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册"), "card detail can return to the thumbnail grid")
+	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌图鉴"), "card detail can return to the thumbnail grid")
 	main.set("selected_trade_product", "活体芯片")
 	main.call("_open_product_codex_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴", "product codex opens from the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("本局商品生态") and menu_body_label.text.contains("主策略") and menu_body_label.text.contains("双击缩略图进入商品详情"), "product codex opens as a responsive thumbnail grid")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "本局商品生态") and _container_label_text_contains(menu_preview_box, "策略机会") and _container_label_text_contains(menu_preview_box, "商品路线分布") and _container_label_text_contains(menu_preview_box, "机制钩子") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "product codex thumbnail page exposes paging, ecosystem overview, and hover preview")
+	_expect(menu_body_label != null and menu_body_label.text.contains("商品目录｜") and menu_body_label.text.contains("本页") and menu_body_label.text.contains("本局出现") and menu_body_label.text.contains("主打法") and menu_body_label.text.contains("双击详情"), "product codex opens as a concise thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "本局商品生态") and _container_label_text_contains(menu_preview_box, "策略入口") and _container_label_text_contains(menu_preview_box, "商品路线分布") and _container_label_text_contains(menu_preview_box, "牌路连接") and _container_label_text_contains(menu_preview_box, "悬停预览"), "product codex thumbnail page exposes paging, ecosystem overview, and hover preview")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主策略:"), "product thumbnails expose a primary strategy tag before opening detail")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "product codex hides detail previous/next buttons on the thumbnail page")
 	var product_preview_index := int(main.get("product_codex_index"))
@@ -783,7 +827,7 @@ func _run() -> void:
 	await process_frame
 	var product_codex_scroll_after := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else -1
 	_expect(menu_content_scroll != null and (product_codex_scroll_before <= 0 or product_codex_scroll_after == product_codex_scroll_before), "product codex hover preview preserves scroll position when the page is scrollable")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格梯度") and _container_label_text_contains(menu_preview_box, "策略:"), "product codex hover preview shows the selected product strategy details")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格带") and _container_label_text_contains(menu_preview_box, "策略:"), "product codex hover preview shows the selected product strategy details")
 	var product_detail_event := InputEventMouseButton.new()
 	product_detail_event.button_index = MOUSE_BUTTON_LEFT
 	product_detail_event.pressed = true
@@ -792,7 +836,7 @@ func _run() -> void:
 	await process_frame
 	var product_codex_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_body_label != null and menu_body_label.text.contains("活体芯片"), "product detail opens on the currently selected trade product")
-	_expect(menu_body_label != null and menu_body_label.text.contains("价格梯度") and menu_body_label.text.contains("当前价"), "product codex shows product price and tier information")
+	_expect(menu_body_label != null and menu_body_label.text.contains("价格带") and menu_body_label.text.contains("当前价"), "product codex shows product price and tier information")
 	_expect(menu_body_label != null and menu_body_label.text.contains("经济天气"), "product codex shows product growth and flow weather")
 	_expect(menu_body_label != null and menu_body_label.text.contains("策略摘要") and menu_body_label.text.contains("期货/仓储") and menu_body_label.text.contains("怪兽偏好") and menu_body_label.text.contains("相关卡牌"), "product codex shows strategy, futures, monster, and related-card panels")
 	_expect(menu_body_label != null and menu_body_label.text.contains("【商品卡】") and menu_body_label.text.contains("【市场面板】") and menu_body_label.text.contains("【策略面板】") and menu_body_label.text.contains("【金融与天气】") and menu_body_label.text.contains("【生态与卡牌】"), "product detail uses TCG-style readable strategy sections")
@@ -800,7 +844,7 @@ func _run() -> void:
 	_expect(product_codex_back_button != null and product_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "product detail exposes previous/next and a return-to-thumbnails button")
 	main.call("_back_from_catalog_menu")
 	await process_frame
-	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册"), "product detail can return to the thumbnail grid")
+	_expect(menu_body_label != null and menu_body_label.text.contains("商品目录｜"), "product detail can return to the thumbnail grid")
 	main.call("_open_region_codex_menu", buildable_district)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴", "region codex opens from the compendium")
@@ -823,6 +867,7 @@ func _run() -> void:
 
 	main.queue_free()
 	await process_frame
+	_mark_smoke_progress("finish")
 	_finish()
 
 
@@ -840,6 +885,25 @@ func _verify_selected_district_card_interaction(main: Node, district_index: int)
 	main.call("_preview_district_card", card_name, false)
 	_expect(String(main.get("previewed_district_card")) == card_name, "hover preview selects the district card")
 	_expect(String(main.get("selected_market_skill")) == card_name, "hover preview makes the card the acquire target")
+	main.call("_open_district_supply_from_map", district_index)
+	main.call("_refresh_ui")
+	var supply_overlay := main.get("district_supply_overlay") as Control
+	var supply_access_label := main.get("district_supply_access_label") as Label
+	var supply_chip_row := main.get("district_supply_chip_row") as HBoxContainer
+	var supply_list_box := main.get("district_supply_list_box") as Container
+	var supply_preview_box := main.get("district_supply_preview_box") as VBoxContainer
+	_expect(supply_overlay != null and supply_overlay.visible, "double-clicking a region opens a visible district side drawer")
+	_expect(supply_access_label != null and supply_access_label.text.contains("侧边牌架") and supply_access_label.text.contains("悬停预览") and supply_access_label.tooltip_text.contains("锁定价格和购买资格"), "district card rack explains side-drawer preview, purchase, and locked-window affordances")
+	_expect(supply_chip_row != null and _container_label_text_contains(supply_chip_row, "牌架") and (_container_label_text_contains(supply_chip_row, "可购买") or _container_label_text_contains(supply_chip_row, "仅浏览")) and _container_label_text_contains(supply_chip_row, "价格已锁") and _container_label_text_contains(supply_chip_row, "单窗口"), "district card rack shows board-game status chips for count, access, locked price, and single-window state")
+	_expect(supply_list_box != null and (_container_button_text_contains(supply_list_box, "¥") or _container_label_text_contains(supply_list_box, "¥")) and (_container_button_text_contains(supply_list_box, "可购买") or _container_label_text_contains(supply_list_box, "可购买") or _container_button_text_contains(supply_list_box, "需弃牌") or _container_label_text_contains(supply_list_box, "需弃牌") or _container_button_text_contains(supply_list_box, "仅浏览") or _container_label_text_contains(supply_list_box, "仅浏览") or _container_button_text_contains(supply_list_box, "资金不足") or _container_label_text_contains(supply_list_box, "资金不足")), "district market card rows show price and readable purchase state")
+	_expect(supply_preview_box != null and _container_button_tooltip_contains(supply_preview_box, "查看总是允许") and (_container_label_text_contains(supply_preview_box, "可购买") or _container_label_text_contains(supply_preview_box, "需弃牌") or _container_label_text_contains(supply_preview_box, "仅浏览") or _container_label_text_contains(supply_preview_box, "资金不足")), "district market preview shows the selected card's purchase conclusion")
+	if districts.size() > 1:
+		var other_district_index := (district_index + 1) % districts.size()
+		main.call("_select_district", other_district_index)
+		main.call("_refresh_ui")
+		supply_overlay = main.get("district_supply_overlay") as Control
+		var supply_title_label := main.get("district_supply_title_label") as Label
+		_expect(supply_overlay != null and supply_overlay.visible and int(main.get("district_supply_open_district")) == district_index and supply_title_label != null and supply_title_label.text.contains("区域牌架"), "district card rack remains pinned to the opened region when the player single-clicks elsewhere")
 	var before_cards := _player_card_names(_as_array(main.get("players")), 0)
 	var before_cash := _player_cash(_as_array(main.get("players")), 0)
 	var event := InputEventMouseButton.new()
@@ -1358,6 +1422,7 @@ func _verify_military_runtime_gdp_boundary(main: Node) -> bool:
 	var last_source_before := String(before_district.get("last_damage_source", ""))
 	var command := main.call("_make_military_command_skill", "move", 2, int(unit.get("uid", 0)), "制空战斗机2") as Dictionary
 	ok = ok and bool(main.call("_trigger_military_command", command, -1, 0))
+	main.call("_update_military_units", 1.0)
 	var after_district := (_as_array(main.get("districts"))[city_index] as Dictionary).duplicate(true)
 	var after_city := after_district.get("city", {}) as Dictionary
 	var breakdown := main.call("_city_cycle_income_breakdown", city_index, 0) as Dictionary
@@ -1402,6 +1467,7 @@ func _verify_military_explicit_strike_boundary(main: Node) -> bool:
 	var route_before := int(before_city.get("trade_route_damage", 0))
 	var move_command := main.call("_make_military_command_skill", "move", 3, int(unit.get("uid", 0)), "轨道轰炸机3") as Dictionary
 	ok = ok and bool(main.call("_trigger_military_command", move_command, -1, 0))
+	main.call("_update_military_units", 1.0)
 	districts = _as_array(main.get("districts"))
 	var after_move_district := (districts[city_index] as Dictionary).duplicate(true)
 	var after_move_city := after_move_district.get("city", {}) as Dictionary
@@ -1837,7 +1903,7 @@ func _verify_product_futures_warehouse_destruction(main: Node) -> bool:
 	ok = ok and int(monster_parts.get("warehouse", 0)) > 0 and int(monster_parts.get("resource", 0)) > 0 and monster_reason.contains("匿名仓储")
 	ok = ok and not warehouse_risk_entries.is_empty() and int((warehouse_risk_entries[0] as Dictionary).get("district_index", -1)) == city_index
 	ok = ok and warehouse_risk_line.contains("仓储风险") and warehouse_risk_line.contains("反制:做空") and warehouse_risk_line.contains(product_name)
-	ok = ok and warehouse_economy_text.contains("仓储靶标") and warehouse_economy_text.contains("匿名仓储") and warehouse_economy_text.contains("对手计划、现金和手牌保持隐藏")
+	ok = ok and warehouse_economy_text.contains("仓储靶标") and warehouse_economy_text.contains("匿名仓储") and warehouse_economy_text.contains("对手现金、手牌和私密推理保持隐藏")
 	ok = ok and warehouse_intel_text.contains("仓储风险线索") and warehouse_intel_text.contains("仓储风险") and intel_has_warehouse_priority
 	ok = ok and warehouse_clue.contains(product_name) and warehouse_clue.contains("匿名仓储") and warehouse_clue.contains("单位") and not warehouse_clue.contains(String((main.get("players") as Array)[0].get("name", "")))
 	var stockpile_product_codex_text := String(main.call("_product_codex_text", product_name, 0, 1))
@@ -2587,7 +2653,7 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 		var saw_summary_log := false
 		var saw_card_summary := false
 		var saw_monster_summary := false
-		var saw_hidden_plan_summary := false
+		var saw_public_clue_summary := false
 		var saw_player_breakdown := false
 		for line_variant in _as_array(main.get("log_lines")):
 			var line := String(line_variant)
@@ -2599,13 +2665,13 @@ func _verify_victory_countdown_rule(main: Node) -> bool:
 				saw_card_summary = true
 			if line.contains("怪兽影响"):
 				saw_monster_summary = true
-			if line.contains("对手计划") and line.contains("内部决策"):
-				saw_hidden_plan_summary = true
+			if line.contains("公开线索"):
+				saw_public_clue_summary = true
 			if line.contains("玩家概览"):
 				saw_player_breakdown = true
 		var standings_text := String(main.call("_standings_text"))
-		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_hidden_plan_summary and saw_player_breakdown
-		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("对手计划") and standings_text.contains("内部决策") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报") and not standings_text.contains("AI路线") and not standings_text.contains("发展路线")
+		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_public_clue_summary and saw_player_breakdown
+		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("公开线索") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报") and not standings_text.contains("对手计划") and not standings_text.contains("内部决策") and not standings_text.contains("AI路线") and not standings_text.contains("发展路线")
 		var final_menu_title := main.get("menu_title_label") as Label
 		var final_menu_body := main.get("menu_body_label") as Label
 		var final_menu_preview := main.get("menu_preview_box") as VBoxContainer
@@ -4405,6 +4471,24 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	if int(live_route_report.get("action_kind_count", 0)) < 3:
 		failures.append("live route actions %d %s" % [int(live_route_report.get("action_kind_count", 0)), live_route_summary])
 		ok = false
+	var route_viability_report := main.call("_ai_route_viability_report") as Dictionary
+	var route_viability_summary := String(main.call("_ai_route_viability_summary", route_viability_report))
+	if not bool(route_viability_report.get("ok", false)):
+		failures.append("route viability audit %s" % route_viability_summary)
+		ok = false
+	if int(route_viability_report.get("viable_required_route_count", 0)) < int(route_viability_report.get("minimum_viable_required_routes", 5)):
+		failures.append("route viability count %d/%d %s" % [
+			int(route_viability_report.get("viable_required_route_count", 0)),
+			int(route_viability_report.get("minimum_viable_required_routes", 5)),
+			route_viability_summary,
+		])
+		ok = false
+	if not _as_array(route_viability_report.get("missing_required_routes", [])).is_empty():
+		failures.append("route viability missing %s %s" % [
+			"、".join(_as_array(route_viability_report.get("missing_required_routes", []))),
+			route_viability_summary,
+		])
+		ok = false
 	var product_bridge_report := main.call("_ai_product_route_bridge_report") as Dictionary
 	var product_bridge_summary := String(main.call("_ai_product_route_bridge_summary", product_bridge_report))
 	if not bool(product_bridge_report.get("ok", false)):
@@ -4480,7 +4564,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		failures.append("not game over")
 		ok = false
 	var standings_text := String(main.call("_standings_text"))
-	if not standings_text.contains("终局总结") or not standings_text.contains("对手计划") or not standings_text.contains("内部决策") or standings_text.contains("AI路线") or standings_text.contains("发展路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
+	if not standings_text.contains("终局总结") or not standings_text.contains("公开线索") or standings_text.contains("对手计划") or standings_text.contains("内部决策") or standings_text.contains("AI路线") or standings_text.contains("发展路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
 		failures.append("missing final summary")
 		ok = false
 	var final_menu_title := main.get("menu_title_label") as Label
@@ -5055,9 +5139,18 @@ func _verify_monster_takeover_resets_owner_clues(main: Node) -> bool:
 
 func _verify_monster_region_card_pricing(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
+	main.set("game_over", false)
+	main.set("district_card_purchase_snapshot", {})
+	main.set("pending_discard_purchase", {})
+	main.set("district_supply_open_district", -1)
+	main.set("district_supply_open_player", -1)
+	var district_supply_overlay := main.get("district_supply_overlay") as Control
+	if district_supply_overlay != null:
+		district_supply_overlay.visible = false
 	var districts := _as_array(main.get("districts"))
 	var auto_monsters := _as_array(main.get("auto_monsters"))
 	if districts.is_empty() or auto_monsters.is_empty():
+		main.call("_apply_run_state", saved)
 		return false
 	var landed_index := -1
 	var adjacent_index := -1
@@ -5075,6 +5168,7 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 		if landed_index >= 0:
 			break
 	if landed_index < 0 or adjacent_index < 0:
+		main.call("_apply_run_state", saved)
 		return false
 	var controlled_monster := (auto_monsters[0] as Dictionary).duplicate(true)
 	controlled_monster["position"] = landed_index
@@ -5096,9 +5190,11 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 		and adjacent_price == base_price \
 		and bool(main.call("_can_buy_card_from_district", landed_index, 0)) \
 		and bool(main.call("_can_buy_card_from_district", adjacent_index, 0))
+	var view_only_index := -1
 	for i in range(districts.size()):
 		var kind := String(main.call("_district_card_access_kind", i, 0))
 		if kind == "none":
+			view_only_index = i
 			pricing_ok = pricing_ok and not bool(main.call("_can_buy_card_from_district", i, 0)) \
 				and String(main.call("_district_card_access_text", i, 0)).contains("不可购买")
 			break
@@ -5118,7 +5214,8 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 	main.set("players", test_players)
 	main.set("districts", saved_districts)
 	main.set("selected_player", 0)
-	main.call("_select_district", landed_index)
+	main.set("selected_district", landed_index)
+	main.call("_open_district_card_purchase_window", landed_index, 0)
 	var disabled_monsters := saved_monsters.duplicate(true)
 	for i in range(disabled_monsters.size()):
 		var actor := disabled_monsters[i] as Dictionary
@@ -5130,8 +5227,24 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 		and int(main.call("_card_price", test_card, landed_index, 0)) == maxi(80, int(round(float(main.call("_card_price", test_card)) * 0.8))) \
 		and bool(main.call("_buy_card_for_player_from_district", 0, landed_index, test_card, false)) \
 		and _player_card_names(_as_array(main.get("players")), 0).has(test_card)
+	if view_only_index < 0:
+		view_only_index = adjacent_index
+	var view_only_ok := view_only_index >= 0
+	if view_only_index >= 0:
+		var view_districts := _as_array(main.get("districts"))
+		var view_district := view_districts[view_only_index] as Dictionary
+		view_district["card_choices"] = ["垄断协议1"]
+		view_districts[view_only_index] = view_district
+		main.set("districts", view_districts)
+		main.call("_open_district_card_purchase_window", view_only_index, 0)
+		var view_snapshot := main.get("district_card_purchase_snapshot") as Dictionary
+		view_only_ok = int(view_snapshot.get("district_index", -1)) == view_only_index \
+			and String(view_snapshot.get("access_kind", "")) == "none" \
+			and String(main.call("_district_card_access_text", view_only_index, 0)).contains("不可购买") \
+			and not bool(main.call("_can_buy_card_from_district", view_only_index, 0)) \
+			and not bool(main.call("_buy_card_for_player_from_district", 0, view_only_index, "垄断协议1", false))
 	var restore_result := int(main.call("_apply_run_state", saved))
-	return pricing_ok and snapshot_buy_ok and restore_result == OK
+	return pricing_ok and snapshot_buy_ok and view_only_ok and restore_result == OK
 
 
 func _verify_reacquired_card_upgrade_rules(main: Node) -> bool:
@@ -5222,7 +5335,10 @@ func _verify_private_discard_purchase_flow(main: Node) -> bool:
 	main.call("_refresh_ui")
 	var player_box := main.get("player_box") as VBoxContainer
 	ok = ok and player_box != null \
-		and _container_label_text_contains(player_box, "私密弃牌确认") \
+		and _container_label_text_contains(player_box, "桌边决策｜私密弃牌确认") \
+		and _container_has_named_node(player_box, "TemporaryDecisionChipRail") \
+		and _container_label_text_contains(player_box, "私密") \
+		and _container_label_text_contains(player_box, "不阻塞") \
 		and _container_button_text_contains(player_box, "弃掉")
 	main.call("_confirm_discard_purchase", 0)
 	var players_after := _as_array(main.get("players"))
@@ -5787,6 +5903,17 @@ func _verify_temporary_decision_blueprints(main: Node) -> bool:
 		if not style.has("bg") or not style.has("border") or not style.has("title"):
 			print("Temporary decision style incomplete: %s" % kind)
 			return false
+		var privacy_badge := String(main.call("_temporary_decision_privacy_badge", kind))
+		if privacy_badge == "":
+			print("Temporary decision privacy badge missing: %s" % kind)
+			return false
+		var block_badge := String(main.call("_temporary_decision_block_badge", kind))
+		if block_badge != ("阻塞出牌" if bool(want.get("blocks", false)) else "不阻塞"):
+			print("Temporary decision block badge mismatch: %s -> %s" % [kind, block_badge])
+			return false
+	if int(main.call("_temporary_decision_action_columns", 1)) != 1 or int(main.call("_temporary_decision_action_columns", 4)) != 2 or int(main.call("_temporary_decision_action_columns", 6)) != 3:
+		print("Temporary decision action columns are not compact grid friendly")
+		return false
 	var wager := main.call("_temporary_decision_blueprint", "monster_wager") as Dictionary
 	return bool(wager.get("public_identity", false)) and float(wager.get("timer_seconds", 0.0)) >= 30.0
 
@@ -6516,6 +6643,7 @@ func _verify_monster_lure_replaces_control_window(main: Node) -> bool:
 				ok = false
 			var lure_callout_seen := _callouts_contain(_as_array(main.get("action_callouts")), "诱导")
 			main.call("_auto_monster_movement_tick")
+			main.call("_update_auto_monster_linear_movement", 1.0)
 			actors = _as_array(main.get("auto_monsters"))
 			var after_actor := actors[0] as Dictionary
 			var distance_after := float(main.call("_entity_distance_to_district", after_actor, target_index))
@@ -6543,6 +6671,27 @@ func _map_view_uses_unified_monster_markers() -> bool:
 		and not source.contains("monster_world_position") \
 		and not source.contains("rival_monster_world_position") \
 		and not source.contains("_legacy_monsters_visible")
+
+
+func _map_view_has_betting_table_theme() -> bool:
+	var script := load(MAP_VIEW_SCRIPT_PATH) as Script
+	if script == null:
+		return false
+	var map_view := script.new() as Control
+	if map_view == null or not map_view.has_method("betting_table_theme_report"):
+		if map_view != null:
+			map_view.free()
+		return false
+	var report := map_view.call("betting_table_theme_report") as Dictionary
+	map_view.free()
+	return bool(report.get("enabled", false)) \
+		and String(report.get("name", "")).contains("赌桌") \
+		and String(report.get("felt_color", "")) == "#052e24" \
+		and String(report.get("rim_color", "")) == "#d6a440" \
+		and int(report.get("chip_count", 0)) >= 12 \
+		and int(report.get("seat_count", 0)) >= 6 \
+		and String(report.get("planet_center_policy", "")) == "globe_center" \
+		and String(report.get("detail_policy", "")).contains("edge_icons")
 
 
 func _log_after_marker_hides_player(main: Node, marker: String, card_name: String, player_name: String) -> bool:
@@ -7357,6 +7506,15 @@ func _container_has_meta(container: Node, meta_name: String) -> bool:
 	return false
 
 
+func _container_has_named_node(container: Node, node_name: String) -> bool:
+	if String(container.name) == node_name:
+		return true
+	for child in container.get_children():
+		if child is Node and _container_has_named_node(child, node_name):
+			return true
+	return false
+
+
 func _container_card_art_kind_contains(container: Node, kind: String) -> bool:
 	for child in container.get_children():
 		if child.has_method("set_card") and String(child.get("card_kind")) == kind:
@@ -7414,6 +7572,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		"auction_overlay_status": false,
 		"bid_status_auction_visible": false,
 		"track_badges_auction_visible": false,
+		"track_compact_hover_detail": false,
 		"clockwise_tie": false,
 		"batch_order_locked": false,
 		"active_overlay_status": false,
@@ -7421,6 +7580,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		"active_overlay_requirement_snapshot_visible": false,
 		"active_overlay_my_badge_visible": false,
 		"active_overlay_animation_visible": false,
+		"active_overlay_compact_hover_detail": false,
 		"active_overlay_stage_map_effects": false,
 		"card_stage_effect_styles_visible": false,
 		"bid_status_locked_visible": false,
@@ -7519,19 +7679,19 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	var simultaneous_status := String(status_label.text) if status_label != null else ""
 	result["simultaneous_overlay_status"] = simultaneous_window_started \
 		and simultaneous_status.contains("阶段：同时判定") \
-		and simultaneous_status.contains("新牌：0.5秒内可加入") \
+		and simultaneous_status.contains("新牌：短窗内可加入") \
 		and simultaneous_status.contains("可加价：预设")
 	var overlay_body_label := main.get("card_resolution_body_label") as Label
 	var simultaneous_body := String(overlay_body_label.text) if overlay_body_label != null else ""
 	result["simultaneous_requirement_visible"] = simultaneous_window_started \
-		and simultaneous_body.contains("队首公开条件") \
+		and simultaneous_body.contains("条件：") \
 		and simultaneous_body.contains("起始怪兽牌")
 	main.call("_refresh_ui")
 	var player_box := main.get("player_box") as VBoxContainer
 	result["bid_status_waiting_visible"] = simultaneous_window_started \
 		and player_box != null \
 		and _container_label_text_contains(player_box, "报价状态：候补牌待竞价") \
-		and _container_label_text_contains(player_box, "等待0.5秒同时判定")
+		and _container_label_text_contains(player_box, "等待同时判定短窗")
 	var auction_log_start: int = _as_array(main.get("log_lines")).size()
 	var bids := [100, 200, 200]
 	for i in range(1, 4):
@@ -7554,12 +7714,18 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		and _container_label_text_contains(player_box, "报价状态：候补牌参拍中") \
 		and _container_label_text_contains(player_box, "可继续加价")
 	var auction_track := main.get("card_resolution_track") as HBoxContainer
+	var auction_track_scroll := main.get("card_resolution_track_scroll") as ScrollContainer
 	result["track_badges_auction_visible"] = bool(result["five_second_window"]) \
 		and auction_track != null \
-		and _container_label_text_contains(auction_track, "我的候补匿名牌") \
-		and _container_label_text_contains(auction_track, "最高公开报价") \
-		and _container_label_text_contains(auction_track, "当前竞价队首") \
+		and _container_button_text_contains(auction_track, "竞拍1") \
+		and _container_label_text_contains(auction_track, "¥200") \
+		and _container_button_tooltip_contains(auction_track, "舆论操控") \
 		and not _container_label_text_contains(auction_track, "公开归属标签｜玩家")
+	result["track_compact_hover_detail"] = bool(result["five_second_window"]) \
+		and auction_track_scroll != null \
+		and auction_track_scroll.custom_minimum_size.y <= 64.0 \
+		and _container_button_tooltip_contains(auction_track, "单击竞猜归属") \
+		and _container_button_tooltip_contains(auction_track, "双击打开卡牌图鉴")
 
 	main.call("_update_card_resolution_queue", 5.1)
 	var active_after_auction: Dictionary = main.get("active_card_resolution") as Dictionary
@@ -7575,21 +7741,24 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	result["active_overlay_badges_visible"] = not active_after_auction.is_empty() \
 		and overlay != null \
 		and _container_label_text_contains(overlay, "归属未知") \
-		and _container_label_text_contains(overlay, "成交小费¥200") \
-		and _container_label_text_contains(overlay, "锁定候补3") \
+		and _container_label_text_contains(overlay, "小费") \
 		and not _container_label_text_contains(overlay, "公开归属标签｜玩家")
 	result["active_overlay_requirement_snapshot_visible"] = not active_after_auction.is_empty() \
 		and overlay != null \
-		and _container_label_text_contains(overlay, "出牌条件｜") \
+		and (_container_label_text_contains(overlay, "出牌条件｜") or _container_label_text_contains(overlay, "条件：")) \
 		and _container_label_text_contains(overlay, "起始怪兽牌")
 	result["active_overlay_animation_visible"] = not active_after_auction.is_empty() \
 		and overlay != null \
-		and _container_label_text_contains(overlay, "结算演出") \
-		and _container_label_text_contains(overlay, "当前分镜：开场") \
-		and _container_label_text_contains(overlay, "视觉提示") \
-		and _container_label_text_contains(overlay, "地图播报") \
-		and _container_label_text_contains(overlay, "展示进度") \
-		and _container_label_text_contains(overlay, "落点：")
+		and _container_label_text_contains(overlay, "效果：")
+	var active_overlay_art := main.get("card_resolution_art") as Control
+	var active_overlay_body_label := main.get("card_resolution_body_label") as Label
+	var active_overlay_body_text := String(active_overlay_body_label.text) if active_overlay_body_label != null else ""
+	result["active_overlay_compact_hover_detail"] = not active_after_auction.is_empty() \
+		and active_overlay_art != null \
+		and active_overlay_art.custom_minimum_size.y <= 52.0 \
+		and active_overlay_body_text.split("\n").size() <= 2 \
+		and active_overlay_body_label != null \
+		and String(active_overlay_body_label.tooltip_text).contains("更完整的卡面")
 	if not active_after_auction.is_empty():
 		main.call("_show_card_resolution_overlay", active_after_auction, 2.4)
 		main.call("_show_card_resolution_overlay", active_after_auction, 0.4)
@@ -7627,17 +7796,14 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	var locked_track := main.get("card_resolution_track") as HBoxContainer
 	result["track_badges_locked_visible"] = not active_after_auction.is_empty() \
 		and locked_track != null \
-		and _container_label_text_contains(locked_track, "正在全屏展示") \
-		and _container_label_text_contains(locked_track, "下一张将展示") \
-		and _container_label_text_contains(locked_track, "我的候补匿名牌")
+		and _container_button_text_contains(locked_track, "当前展示") \
+		and _container_button_text_contains(locked_track, "锁定1")
 	result["track_requirement_badges_visible"] = not active_after_auction.is_empty() \
 		and locked_track != null \
-		and _container_label_text_contains(locked_track, "出牌条件｜") \
-		and _container_label_text_contains(locked_track, "起始怪兽牌")
+		and _container_button_tooltip_contains(locked_track, "起始怪兽牌")
 	result["track_visual_cues_visible"] = not active_after_auction.is_empty() \
 		and locked_track != null \
-		and _container_label_text_contains(locked_track, "演出风格｜") \
-		and _container_label_text_contains(locked_track, "地图播报｜")
+		and _container_button_tooltip_contains(locked_track, "舆论操控")
 	result["clockwise_tie"] = locked_queue.size() >= 1 and int((locked_queue[0] as Dictionary).get("player_index", -1)) == 3
 	result["batch_order_locked"] = bool(main.get("card_resolution_batch_locked")) \
 		and not bool(main.get("card_resolution_auction_open")) \
@@ -7665,8 +7831,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	main.call("_refresh_ui")
 	var waiting_track := main.get("card_resolution_track") as HBoxContainer
 	result["next_batch_track_visible"] = waiting_track != null \
-		and _container_button_text_contains(waiting_track, "下批等待1") \
-		and _container_label_text_contains(waiting_track, "下一批等待区")
+		and _container_button_text_contains(waiting_track, "下批等待1")
 	var waiting_save_state := main.call("_capture_run_state") as Dictionary
 	result["next_batch_save_state"] = _as_array(waiting_save_state.get("next_card_resolution_queue", [])).size() == 2
 
@@ -7706,7 +7871,6 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	result["card_aftermath_clues_visible"] = history.size() >= 1 \
 		and String((history[0] as Dictionary).get("aftermath_clue", "")) != "" \
 		and track != null \
-		and _container_label_text_contains(track, "余波线索｜") \
 		and _callouts_contain(_as_array(main.get("action_callouts")), "卡牌余波") \
 		and _map_effects_contain_min_duration(main, "card_afterglow", 7.5)
 	var economy_aftermath_text := String(main.call("_economy_overview_text"))
@@ -7722,7 +7886,6 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		and second_tip_clue.contains("轨道#") \
 		and second_tip_clue.contains("身份仍匿名") \
 		and track != null \
-		and _container_label_text_contains(track, "竞价线索｜") \
 		and economy_aftermath_text.contains("竞价:") \
 		and economy_aftermath_text.contains("已私密支付") \
 		and economy_aftermath_text.contains("身份仍匿名")
@@ -7766,7 +7929,6 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		main.call("_refresh_ui")
 		track = main.get("card_resolution_track") as HBoxContainer
 		result["correct_guess_badge_visible"] = track != null \
-			and _container_label_text_contains(track, "公开归属标签") \
 			and _container_label_text_contains(track, "玩家3")
 		var inference_after_correct := String(main.call("_economy_overview_text"))
 		result["inference_board_public_card_owner_visible"] = bool(result["correct_guess"]) \
@@ -7802,9 +7964,9 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		main.set("selected_card_resolution_id", second_id)
 		main.call("_refresh_ui")
 		track = main.get("card_resolution_track") as HBoxContainer
-		result["wrong_guess_status_visible"] = track != null \
-			and _container_label_text_contains(track, "我的竞猜：已押注") \
-			and _container_label_text_contains(track, "真实归属仍隐藏") \
+		player_box = main.get("player_box") as VBoxContainer
+		result["wrong_guess_status_visible"] = player_box != null \
+			and _container_label_text_contains(player_box, "已竞猜") \
 			and not _container_label_text_contains(track, "公开归属标签｜玩家4")
 
 	var public_lines: Array = _as_array(main.get("log_lines"))
@@ -8332,18 +8494,21 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	var city_status_text := String(main.call("_public_status_tag_text", city_status_tags))
 	_expect(city_status_text.contains("城市合约") and city_status_text.contains("流通") and city_status_text.contains("永久收入"), "city contracts, flow, and permanent income appear as unified public status tags")
 
-	var damage_penalty_before := int((main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary).get("damage_penalty", 0))
-	var gdp_breakdown_before_damage := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
 	districts = _as_array(main.get("districts"))
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	var original_damage := int((districts[district_index] as Dictionary).get("damage", 0))
+	var original_revenue_bonus := int(city.get("revenue_bonus", 0))
+	(districts[district_index] as Dictionary)["damage"] = 0
+	city["revenue_bonus"] = original_revenue_bonus + 260
 	city["gdp_history"] = []
 	city["last_gdp"] = 0
 	city["last_gdp_delta"] = 0
 	(districts[district_index] as Dictionary)["city"] = city
 	main.set("districts", districts)
+	var damage_penalty_before := int((main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary).get("damage_penalty", 0))
+	var gdp_breakdown_before_damage := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
 	main.call("_record_city_gdp_snapshot", district_index, int(gdp_breakdown_before_damage.get("net", 0)), gdp_breakdown_before_damage, "烟测受损前")
 	districts = _as_array(main.get("districts"))
-	var original_damage := int((districts[district_index] as Dictionary).get("damage", 0))
 	(districts[district_index] as Dictionary)["damage"] = original_damage + 6
 	main.set("districts", districts)
 	var gdp_breakdown_after_damage := main.call("_city_cycle_income_breakdown", district_index, int(city.get("competition_matches", 0))) as Dictionary
@@ -8359,6 +8524,9 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_expect(String(main.call("_region_codex_text", district_index)).contains("GDP趋势"), "region codex exposes city GDP trend text")
 	districts = _as_array(main.get("districts"))
 	(districts[district_index] as Dictionary)["damage"] = original_damage
+	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
+	city["revenue_bonus"] = original_revenue_bonus
+	(districts[district_index] as Dictionary)["city"] = city
 	main.set("districts", districts)
 
 	var gdp_baseline := int(main.call("_city_cycle_income", district_index, int(city.get("competition_matches", 0))))
@@ -8619,7 +8787,7 @@ func _verify_monster_art_script() -> void:
 				"secondary": Color("#e2e8f0"),
 				"glyph": "瘴",
 				"motif": "miasma",
-				"subtitle": "临时美工",
+				"subtitle": "星兽档案",
 			},
 			false
 		)
@@ -8740,7 +8908,7 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 	var monster_names := _as_array(main.call("_card_codex_names", "monster"))
 	var monster_skill_names := _as_array(main.call("_card_codex_names", "monster_skill"))
 	var military_names := _as_array(main.call("_card_codex_names", "military"))
-	var counter_names := _as_array(main.call("_card_codex_names", "counter"))
+	var interaction_names := _as_array(main.call("_card_codex_names", "interaction"))
 	var city_names := _as_array(main.call("_card_codex_names", "city"))
 	var commodity_names := _as_array(main.call("_card_codex_names", "commodity"))
 	var futures_names := _as_array(main.call("_card_codex_names", "futures"))
@@ -8771,8 +8939,8 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 		failures.append("monster_skill")
 	if not military_names.has("制空战斗机1"):
 		failures.append("military")
-	if not counter_names.has("相位否决1"):
-		failures.append("counter")
+	if not interaction_names.has("相位否决1") or not interaction_names.has("星链拆解1"):
+		failures.append("interaction")
 	if not city_names.has("应急修复1"):
 		failures.append("city")
 	if not commodity_names.has("远期采购1"):
@@ -8795,26 +8963,26 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 		failures.append("monster_skill_label")
 	if String(main.call("_card_codex_filter_label", "military")) != "军队/军令":
 		failures.append("military_label")
-	if String(main.call("_card_codex_filter_label", "counter")) != "相位反制":
-		failures.append("counter_label")
+	if String(main.call("_card_codex_filter_label", "interaction")) != "玩家互动":
+		failures.append("interaction_label")
 	if String(main.call("_card_codex_filter_label", "futures")) != "商品期货":
 		failures.append("futures_label")
 	if String(main.call("_card_codex_filter_label", "finance")) != "金融/GDP":
 		failures.append("finance_label")
 	if String(main.call("_card_codex_filter_label", "business")) != "经营/合约":
 		failures.append("business_alias_label")
-	if not monster_text.contains("分类：怪兽牌"):
+	if not monster_text.contains("怪兽牌"):
 		failures.append("monster_text")
-	if not contract_text.contains("分类：合约"):
+	if not contract_text.contains("合约"):
 		failures.append("contract_text")
-	if not monster_text.contains("牌池层：") or not contract_text.contains("牌池层："):
-		failures.append("pool_layer_text")
 	if district_supply_card == "" or String(main.call("_card_supply_layer_for_card", district_supply_card)) != "区域补给":
 		failures.append("district_supply_layer")
-	if district_supply_card != "" and not String(main.call("_card_detail_tooltip", district_supply_card, district_supply_index)).contains("牌池层：区域补给"):
-		failures.append("district_tooltip_layer")
-	if String(main.call("_card_codex_category_for_card", "相位否决1", main.call("_skill_definition", "相位否决1"))) != "counter":
-		failures.append("counter_category")
+	if district_supply_card != "":
+		var district_card_visible_name := String(main.call("_card_display_name", district_supply_card))
+		if not String(main.call("_card_detail_tooltip", district_supply_card, district_supply_index)).contains(district_card_visible_name):
+			failures.append("district_tooltip_preview")
+	if String(main.call("_card_codex_category_for_card", "相位否决1", main.call("_skill_definition", "相位否决1"))) != "interaction":
+		failures.append("phase_cancel_interaction_category")
 	if String(main.call("_card_codex_category_for_card", "商品看涨1", main.call("_skill_definition", "商品看涨1"))) != "futures":
 		failures.append("futures_category")
 	if String(main.call("_card_codex_category_for_card", "城市买涨1", main.call("_skill_definition", "城市买涨1"))) != "finance":
@@ -9192,6 +9360,29 @@ func _expect(condition: bool, label: String) -> void:
 	else:
 		_failures.append(label)
 		push_error("FAIL: %s" % label)
+
+
+func _start_smoke_progress_log() -> void:
+	_smoke_start_msec = Time.get_ticks_msec()
+	var absolute_path := ProjectSettings.globalize_path(SMOKE_PROGRESS_PATH)
+	if FileAccess.file_exists(SMOKE_PROGRESS_PATH):
+		DirAccess.remove_absolute(absolute_path)
+	_mark_smoke_progress("progress log ready")
+
+
+func _mark_smoke_progress(label: String) -> void:
+	if _smoke_start_msec <= 0:
+		_smoke_start_msec = Time.get_ticks_msec()
+	var elapsed_seconds := float(Time.get_ticks_msec() - _smoke_start_msec) / 1000.0
+	var line := "%.2fs｜%s\n" % [elapsed_seconds, label]
+	var file := FileAccess.open(SMOKE_PROGRESS_PATH, FileAccess.READ_WRITE)
+	if file == null:
+		file = FileAccess.open(SMOKE_PROGRESS_PATH, FileAccess.WRITE)
+	if file != null:
+		file.seek_end()
+		file.store_string(line)
+		file = null
+	print("SMOKE: %s" % line.strip_edges())
 
 
 func _finish() -> void:

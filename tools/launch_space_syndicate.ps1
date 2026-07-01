@@ -51,5 +51,5 @@ if ($godot) {
 } else {
   Start-Process -FilePath explorer.exe -ArgumentList $projectRoot
   Add-Type -AssemblyName PresentationFramework
-  [System.Windows.MessageBox]::Show("Godot was not found on this PC. The project folder has been opened instead.`n`nInstall Godot 4.x or set GODOT_EXE, then use this shortcut again.", "Space Syndicate Prototype")
+  [System.Windows.MessageBox]::Show("Godot was not found on this PC. The project folder has been opened instead.`n`nInstall Godot 4.x or set GODOT_EXE, then use this shortcut again.", "太空辛迪加")
 }

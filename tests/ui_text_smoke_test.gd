@@ -1,0 +1,85 @@
+extends SceneTree
+
+var _failures: Array[String] = []
+
+
+func _init() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source != "", "main script source can be read")
+	_expect(main_source.contains("太空辛迪加｜星球赌桌") and main_source.contains("最后钱最多"), "main menu speaks in player-facing objective language")
+	_expect(main_source.contains("MainMenuPlanetLobbyPanel") and main_source.contains("星球牌桌｜开桌大厅") and main_source.contains("MainMenuPlanetMedallion") and main_source.contains("MainMenuLobbyChipRail") and main_source.contains("MainMenuLobbyKpiGrid") and main_source.contains("MainMenuLobbyActionGrid") and main_source.contains("开新一桌") and main_source.contains("继续本局") and main_source.contains("查资料"), "main menu opens with a planet-table lobby board instead of a plain entry list")
+	_expect(main_source.contains("悬停预览｜缩略图选牌｜双击详情｜返回牌桌") and not main_source.contains("响应式布局｜hover查看用途｜卡片入口可重排"), "main menu interaction strip uses player-facing table language")
+	_expect(main_source.contains("setup_summary_chips") and main_source.contains("setup_seat_card") and main_source.contains("NewGameSetupLobbyPanel") and main_source.contains("NewGameSetupSeatIdentityBoard") and main_source.contains("AI策略隐藏") and main_source.contains("开桌流程") and main_source.contains("角色不重复") and main_source.contains("首召独立") and not main_source.contains("\"AI·%s\""), "new game setup uses a compact board-game lobby with public seat cards while hiding AI internal routes")
+	_expect(main_source.contains("资料大厅") and main_source.contains("怪兽牌属于卡牌图鉴"), "compendium uses player-facing catalogue language")
+	_expect(main_source.contains("角色卡公开；怪兽归属仍靠场上线索推理。") and main_source.contains("首召怪兽独立选择") and main_source.contains("RoleCodexIdentityBoardPanel") and main_source.contains("RoleCodexAbilityKpiGrid") and main_source.contains("RoleCodexRouteCardGrid") and main_source.contains("看下方公开身份牌"), "role codex uses a public identity board while separating public role identity from anonymous starter monster ownership")
+	_expect(main_source.contains("价格带") and main_source.contains("◎ 牌面定位") and main_source.contains("¥ 费用与门槛") and main_source.contains("✦ 核心效果") and main_source.contains("◈ 关键数值"), "card and product pages use TCG-style sections and short labels")
+	_expect(main_source.contains("图标：◆怪兽") and main_source.contains("◇商品") and main_source.contains("☄天气"), "card codex exposes a stable board-game icon legend")
+	_expect(main_source.contains("CardFaceChipRail") and main_source.contains("_card_face_chip_entries") and main_source.contains("HandCardPlayLamp") and main_source.contains("HandCardPlayLampSignal") and main_source.contains("HandCardPlayLampAction") and main_source.contains("HandCardPlayStateRail") and main_source.contains("HandCardPlayStateChip") and main_source.contains("免门槛") and main_source.contains("按选区"), "card faces expose board-game cost, requirement, target, persistence, and playability chips")
+	_expect(main_source.contains("var max_chips := 2 if compact else 5") and main_source.contains("if compact:\n\t\treturn") and main_source.contains("var art_height := 50 if compact and is_hand_card else"), "compact hand cards keep status reasons in hover instead of adding another text row")
+	_expect(main_source.contains("CardCodexTcgSummaryPanel") and main_source.contains("读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV升级") and main_source.contains("CardCodexUpgradeStepCard") and main_source.contains("CardCodexUpgradeRomanLevel"), "card detail page exposes a concise TCG reading order and roman-level upgrade ladder")
+	_expect(main_source.contains("牌桌规则") and main_source.contains("◆ 首召怪兽") and main_source.contains("＋ 区域牌架") and main_source.contains("♠ 怪兽赌局"), "rules page uses board-game icon cues instead of prose-heavy development copy")
+	_expect(main_source.contains("TutorialQuickStartPanel") and main_source.contains("试玩速成板") and main_source.contains("TutorialQuickStartStepCard") and main_source.contains("TutorialQuickStartTrapCard"), "tutorial page uses a board-game quick-start task board instead of a long rule page")
+	_expect(main_source.contains("商品目录｜") and main_source.contains("牌路连接") and main_source.contains("画像、速度、偏好、行动概率"), "catalog pages use player-facing atlas/card language")
+	_expect(main_source.contains("BestiaryMonsterBoardPanel") and main_source.contains("BestiaryMonsterKpiGrid") and main_source.contains("BestiaryMonsterActionGrid") and main_source.contains("BestiaryMonsterActionCard") and main_source.contains("看下方怪兽档案板"), "monster detail uses a scan-first monster board with action probability cards")
+	_expect(main_source.contains("ProductCodexMarketBoardPanel") and main_source.contains("ProductCodexMarketKpiGrid") and main_source.contains("ProductCodexStrategyGrid") and main_source.contains("商品市场板") and main_source.contains("看下方商品市场板"), "product codex detail uses a scan-first market board instead of a long market report")
+	_expect(main_source.contains("RegionCodexTileBoardPanel") and main_source.contains("RegionCodexTileKpiGrid") and main_source.contains("RegionCodexActionClueGrid") and main_source.contains("区域地块板") and main_source.contains("看下方区域地块板"), "region codex uses a scan-first tile board instead of a long region report")
+	_expect(main_source.contains("HeaderStatusChipRail") and main_source.contains("◆ 空闲") and main_source.contains("_table_tempo_status") and main_source.contains("◎ 玩家") and main_source.contains("☄ 预报"), "top status is split into player-facing table chips")
+	_expect(main_source.contains("MapControlBar") and main_source.contains("MapControlChipRail") and main_source.contains("◎ 赌桌中央") and main_source.contains("双击看牌"), "map controls use compact table chips instead of a long instruction sentence")
+	_expect(main_source.contains("_add_player_tableau_strip") and main_source.contains("玩家板｜资源筹码") and main_source.contains("PlayerTableauBoard") and main_source.contains("PlayerIdentityMiniCard") and main_source.contains("PlayerTableauGoalMeter") and main_source.contains("PlayerTableauGoalProgressBar") and main_source.contains("少读字，先看筹码"), "main play UI keeps a board-game resource tableau with a victory-goal meter")
+	_expect(main_source.contains("WeatherForecastChipRail") and main_source.contains("现在：无天气") and main_source.contains("影响：产/交/消"), "weather forecast strip uses player-facing chips instead of long status prose")
+	_expect(main_source.contains("CardResolutionTableBanner") and main_source.contains("全桌结算横幅") and main_source.contains("BottomCountdownOverlay") and main_source.contains("CardResolutionRevealTimerBar") and main_source.contains("CardResolutionRevealTimerLabel"), "card reveal UI uses a table-banner presentation plus a bottom sandglass timer instead of a blocking modal")
+	_expect(main_source.contains("匿名牌轨") and main_source.contains("CardResolutionTtaMarketPanel") and main_source.contains("CardResolutionTtaOfferRailFrame") and main_source.contains("CardResolutionTtaOfferRailLegend") and main_source.contains("公共牌槽") and main_source.contains("拖看｜悬停") and main_source.contains("CardResolutionTtaSlotMarketMat") and main_source.contains("CardResolutionTtaAgeMarketRuler") and main_source.contains("CardResolutionTtaCostBandRail") and main_source.contains("CardResolutionTtaCostCell") and main_source.contains("CardResolutionTtaSlotGrooveRail") and main_source.contains("CardResolutionTtaScrollShell") and main_source.contains("CardResolutionTtaScrollCue") and main_source.contains("CardResolutionTtaGhostSlot") and main_source.contains("固定公共牌槽") and main_source.contains("CardResolutionTtaMiniCard") and main_source.contains("CardResolutionAgeTrackChipRail") and main_source.contains("CardResolutionCostPipRail") and main_source.contains("CARD_TRACK_MANUAL_SCROLL_HOLD_MSEC") and main_source.contains("_mark_card_resolution_track_manual_scroll") and main_source.contains("_maybe_follow_card_resolution_track") and main_source.contains("_connect_card_resolution_track_hover"), "anonymous card track uses a Through-the-Ages-style public offer rail instead of prose cards")
+	_expect(main_source.contains("EconomyDashboardPanel") and main_source.contains("EconomyDashboardKpiCard") and main_source.contains("EconomyDashboardListCard") and main_source.contains("经济仪表板") and main_source.contains("看三件事：钱从哪座城来"), "economy overview uses a short board-game dashboard instead of a prose-heavy report")
+	_expect(main_source.contains("StandingsScoreboardPanel") and main_source.contains("局势记分板") and main_source.contains("StandingsPlayerScoreCard") and main_source.contains("对手隐私") and main_source.contains("下方记分板只精确显示当前玩家"), "standings page uses a concise scoreboard while preserving opponent privacy")
+	_expect(main_source.contains("FinalSettlementBoardPanel") and main_source.contains("终局速览｜赛后记分板") and main_source.contains("排名轨｜结算资金") and main_source.contains("赛后入口｜查原因或再开一桌") and main_source.contains("电脑对手｜身份线索保密"), "final settlement uses a concise postgame board while preserving AI hidden routes")
+	_expect(main_source.contains("IntelDossierBoardPanel") and main_source.contains("情报侦探板") and main_source.contains("IntelDossierClueCard") and main_source.contains("下方侦探板把城市嫌疑") and main_source.contains("不扫描对手现金/手牌"), "intel dossier uses a concise detective board and preserves hidden economy/hand privacy")
+	_expect(main_source.contains("PlayerTableRail") and main_source.contains("PlayerHandColumn") and main_source.contains("PlayerActionColumn"), "main play UI separates the bottom rail into hand and action columns")
+	_expect(main_source.contains("PlayerHandRackPanel") and main_source.contains("PlayerHandRackChipRail") and main_source.contains("我的手牌架") and main_source.contains("PlayerHandEmptySlot"), "hand cards sit in a table-edge card rack with scan-first chips")
+	_expect(main_source.contains("TableGoalPrompt") and main_source.contains("TableGoalPrimaryActionRail") and main_source.contains("TableGoalPrimaryActionButton") and main_source.contains("TableGoalPromptChipRail") and main_source.contains("目标提示｜下一步") and main_source.contains("在选区首召") and main_source.contains("打开牌架"), "main play UI turns the next action into a compact table-goal card with a primary action button")
+	_expect(main_source.contains("SelectedDistrictBoard") and main_source.contains("SelectedDistrictTilePlate") and main_source.contains("SelectedDistrictActionGrid") and main_source.contains("SelectedDistrictChipRail") and main_source.contains("SelectedDistrictActionLampRail") and main_source.contains("SelectedDistrictActionLampSignal") and main_source.contains("OpeningGuideTimeline") and main_source.contains("OpeningGuideNextStepCard") and main_source.contains("OpeningGuidePrimaryActionRail") and main_source.contains("OpeningGuidePrimaryActionButton") and main_source.contains("下一步｜"), "main play UI uses compact tile-board and timeline guidance for selected district and opening guide")
+	_expect(main_source.contains("FirstSummonCard") and main_source.contains("FirstSummonChipRail") and main_source.contains("FirstSummonDropZone") and main_source.contains("在选区首召"), "first summon UI is a compact starter card with drop-zone chips")
+	_expect(main_source.contains("ActionTrayModuleChipRail") and main_source.contains("＋竞价") and main_source.contains("◇竞猜") and main_source.contains("◎目标"), "action tray exposes scan-first module chips for secondary actions")
+	_expect(main_source.contains("TemporaryDecisionCard") and main_source.contains("TemporaryDecisionChipRail") and main_source.contains("桌边决策｜") and main_source.contains("ContractOfferTermsBoard") and main_source.contains("ContractOfferTermRail") and main_source.contains("ContractOfferTermLamp") and main_source.contains("ContractOfferTermSignal") and main_source.contains("ContractOfferTermLabel") and main_source.contains("ContractOfferDecisionTimerBar") and main_source.contains("_contract_offer_term_entries"), "temporary decisions share a compact table-edge decision card with scan-first contract terms")
+	_expect(main_source.contains("MonsterWagerChipRail") and main_source.contains("MonsterWagerSideChipRail") and main_source.contains("MonsterWagerPublicBetBoard") and main_source.contains("MonsterWagerPublicBetGrid") and main_source.contains("MonsterWagerPublicBetCard") and main_source.contains("公开下注板") and main_source.contains("底注¥"), "monster wager decisions expose betting-table chips")
+	var hand_index := main_source.find("_add_player_hand_rack(hand_column")
+	var tray_index := main_source.find("_add_player_action_tray(tray_column")
+	var district_action_index := main_source.find("_add_selected_district_action_panel(action_tray")
+	_expect(hand_index >= 0 and tray_index > hand_index and district_action_index > tray_index, "main play UI places the hand rack before a bounded action tray and keeps secondary prompts inside that tray")
+	_expect(main_source.contains("BidControlCard") and main_source.contains("BidControlChipRail") and main_source.contains("公开报价"), "bid controls are framed as a readable public-bid table card")
+	_expect(main_source.contains("OwnerGuessCard") and main_source.contains("OwnerGuessChipRail") and main_source.contains("归属竞猜"), "card-owner guessing is framed as a readable table-side wager card")
+	_expect(main_source.contains("桌边行动托盘") and main_source.contains("避免遮住星球与手牌"), "main play UI uses a bounded action tray instead of letting secondary prompts crowd the table")
+	_expect(main_source.contains("DistrictSupplyShelfBoard") and main_source.contains("district_supply_chip_row") and main_source.contains("价格已锁") and main_source.contains("单窗口") and main_source.contains("手牌 %d/%d"), "district card rack uses board-game shelf chips and short locked-window affordances")
+	_expect(main_source.contains("侧边牌架｜市场格｜悬停预览｜双击购买") and main_source.contains("DistrictSupplySideDrawer") and main_source.contains("DistrictSupplyMarketGrid") and main_source.contains("DistrictSupplyMarketCardPanel") and main_source.contains("DistrictSupplyMarketCardChipRail") and main_source.contains("DistrictSupplyMarketCardRank") and main_source.contains("DistrictSupplySelectedPreview") and main_source.contains("DistrictSupplyPurchaseVerdictRail") and main_source.contains("DistrictSupplyPurchaseVerdictSignal"), "district card rack uses a compact side-drawer market presentation with board-game market cards")
+	_expect(main_source.contains("menu_continue_button.visible = can_continue and show_main_actions") and main_source.contains("func _hide_global_menu_navigation_for_catalog"), "subpages do not inherit global continue/back controls by default")
+	_expect(main_source.contains("_hide_global_menu_navigation_for_catalog()") and main_source.contains("menu_bestiary_back_button.text = \"返回缩略图\""), "codex pages keep local previous/next/back navigation instead of global menu controls")
+	_expect(main_source.contains("\"资金:\"") and main_source.contains("\"GDP\"") and main_source.contains("\"终局\""), "resource tableau source includes cash, GDP, and victory target chips")
+	_expect(main_source.contains("\"手牌\"") and main_source.contains("\"怪兽\"") and main_source.contains("\"军队\""), "resource tableau source includes hand, monster, and military chips")
+	_expect(not _contains_any(main_source, ["太空辛迪加 / Space Syndicate  即时原型", "即时原型", "统一资料库", "玩家可读资料", "价格梯度", "统一决策面板", "可复用UI", "测试阶段优先快速迭代", "AI 内部路线", "当前原型规则", "关键字段", "主画面原则", "响应式卡片网格", "hover查看用途", "临时美工", "机制钩子", "当前缩略图布局", "操作提示", "为什么：", "入口："]), "player-facing source avoids obvious development wording regressions")
+	_finish()
+
+
+func _expect(condition: bool, message: String) -> void:
+	if condition:
+		return
+	_failures.append(message)
+	push_error("UI text smoke failure: %s" % message)
+
+
+func _contains_any(text: String, needles: Array) -> bool:
+	for needle_variant in needles:
+		if text.contains(String(needle_variant)):
+			return true
+	return false
+
+
+func _finish() -> void:
+	if _failures.is_empty():
+		print("UI text smoke test passed.")
+		quit(0)
+	else:
+		print("UI text smoke test failed: %s" % " / ".join(_failures))
+		quit(1)

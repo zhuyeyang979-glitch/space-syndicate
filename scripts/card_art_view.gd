@@ -2,6 +2,19 @@ extends Control
 
 const STAR_COUNT_FULL := 30
 const STAR_COUNT_COMPACT := 18
+const NIGHT_PATROL_SIGIL_PATH := "res://assets/third_party/night_patrol/ui/card-sigil.svg"
+const NIGHT_PATROL_FRAME_PATHS := {
+	"monster_card": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
+	"military_force": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
+	"military_command": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
+	"card_counter": "res://assets/third_party/night_patrol/ui/card-frame-skill.png",
+	"area_trade_contract": "res://assets/third_party/night_patrol/ui/card-frame-power.png",
+	"city_contract_boon": "res://assets/third_party/night_patrol/ui/card-frame-power.png",
+	"product_contract_boon": "res://assets/third_party/night_patrol/ui/card-frame-power.png",
+	"city_gdp_derivative": "res://assets/third_party/night_patrol/ui/card-frame-status.png",
+	"product_futures": "res://assets/third_party/night_patrol/ui/card-frame-status.png",
+}
+const NIGHT_PATROL_DEFAULT_FRAME_PATH := "res://assets/third_party/night_patrol/ui/card-frame-skill.png"
 
 var card_name := ""
 var card_kind := ""
@@ -10,10 +23,18 @@ var accent := Color("#94a3b8")
 var card_rank := 1
 var compact := false
 var card_stats := ""
+var night_patrol_sigil_texture: Texture2D
+var night_patrol_frame_textures := {}
+var night_patrol_default_frame_texture: Texture2D
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	night_patrol_sigil_texture = _load_optional_texture(NIGHT_PATROL_SIGIL_PATH)
+	night_patrol_default_frame_texture = _load_optional_texture(NIGHT_PATROL_DEFAULT_FRAME_PATH)
+	for kind_variant in NIGHT_PATROL_FRAME_PATHS.keys():
+		var kind := String(kind_variant)
+		night_patrol_frame_textures[kind] = _load_optional_texture(String(NIGHT_PATROL_FRAME_PATHS[kind]))
 
 
 func set_card(name: String, kind: String, tags: String, color: Color, rank: int, is_compact: bool, stats: String = "") -> void:
@@ -35,6 +56,7 @@ func _draw() -> void:
 	draw_rect(rect, base, true)
 	_draw_energy_wash(rect)
 	_draw_starfield(rect)
+	_draw_night_patrol_reference_frame(rect)
 	_draw_motif(rect)
 	_draw_rank_marks(rect)
 	_draw_border(rect)
@@ -89,18 +111,29 @@ func _draw_motif(rect: Rect2) -> void:
 			_draw_signal_motif(center, radius)
 		"military_force", "military_command":
 			_draw_military_motif(center, radius)
+		"card_counter", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage":
+			_draw_signal_motif(center, radius)
 		"cash_gain":
 			_draw_coin_motif(center, radius)
 		"city_revenue_boost":
 			_draw_city_motif(center, radius)
-		"product_speculation", "market_stabilize":
+		"city_gdp_derivative", "product_futures", "product_speculation", "market_stabilize":
 			_draw_market_chart_motif(center, radius)
-		"route_insurance":
+		"area_trade_contract", "city_contract_boon", "product_contract_boon", "route_insurance":
 			_draw_route_motif(center, radius, false)
 		"route_sabotage":
 			_draw_route_motif(center, radius, true)
-		"city_product_upgrade", "city_product_shift", "city_demand_shift":
+		"city_product_upgrade", "city_product_shift", "city_demand_shift", "product_growth_boon", "region_economy_shift":
 			_draw_product_crate_motif(center, radius)
+		"route_flow_boon":
+			_draw_motion_motif(center, radius)
+			_draw_route_motif(center, radius * 0.74, false)
+		"intel_city_reveal", "intel_card_trace", "intel_contract_trace", "card_access_boon":
+			_draw_signal_motif(center, radius)
+			_draw_supply_motif(center + Vector2(radius * 0.08, radius * 0.10), radius * 0.62)
+		"news_event", "weather_control":
+			_draw_signal_motif(center, radius)
+			_draw_wave_motif(center + Vector2(0.0, radius * 0.12), radius * 0.72)
 		"panic_shift":
 			_draw_signal_motif(center, radius)
 		"move", "fly", "burrow":
@@ -119,6 +152,46 @@ func _draw_motif(rect: Rect2) -> void:
 			_draw_supply_motif(center, radius)
 		_:
 			_draw_wave_motif(center, radius)
+	_draw_night_patrol_sigil(center, radius)
+
+
+func _load_optional_texture(path: String) -> Texture2D:
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	var resource := load(path)
+	return resource as Texture2D
+
+
+func _night_patrol_frame_texture_for_kind() -> Texture2D:
+	var texture := night_patrol_frame_textures.get(card_kind, null) as Texture2D
+	if texture != null:
+		return texture
+	if card_kind.contains("attack") or card_kind.contains("damage") or card_tags.contains("战斗"):
+		texture = night_patrol_frame_textures.get("monster_card", null) as Texture2D
+		if texture != null:
+			return texture
+	if card_tags.contains("经济") or card_tags.contains("期货") or card_tags.contains("GDP"):
+		texture = night_patrol_frame_textures.get("city_gdp_derivative", null) as Texture2D
+		if texture != null:
+			return texture
+	return night_patrol_default_frame_texture
+
+
+func _draw_night_patrol_reference_frame(rect: Rect2) -> void:
+	var texture := _night_patrol_frame_texture_for_kind()
+	if texture == null:
+		return
+	var tint := Color(1.0, 1.0, 1.0, 0.28 if compact else 0.36)
+	draw_texture_rect(texture, rect.grow(-2.0), false, tint)
+
+
+func _draw_night_patrol_sigil(center: Vector2, radius: float) -> void:
+	if night_patrol_sigil_texture == null:
+		return
+	var icon_size := radius * (1.12 if compact else 1.28)
+	var tint := accent.lightened(0.38)
+	tint.a = 0.18 if compact else 0.24
+	draw_texture_rect(night_patrol_sigil_texture, Rect2(center - Vector2(icon_size, icon_size) * 0.5, Vector2(icon_size, icon_size)), false, tint)
 
 
 func _draw_military_motif(center: Vector2, radius: float) -> void:
@@ -558,12 +631,40 @@ func _glyph_for_kind() -> String:
 			return "技"
 		"monster_takeover":
 			return "夺"
+		"military_force":
+			return "军"
+		"military_command":
+			return "令"
+		"card_counter":
+			return "消"
+		"player_hand_disrupt":
+			return "拆"
+		"player_hand_steal":
+			return "牵"
+		"city_control_dispute":
+			return "冻"
+		"global_barrage":
+			return "齐"
 		"city_revenue_boost":
 			return "城"
 		"cash_gain":
 			return "¥"
+		"city_gdp_derivative":
+			return "涨"
+		"product_futures":
+			return "期"
 		"product_speculation":
 			return "价"
+		"product_contract_boon":
+			return "订"
+		"product_growth_boon":
+			return "催"
+		"area_trade_contract":
+			return "约"
+		"city_contract_boon":
+			return "单"
+		"route_flow_boon":
+			return "速"
 		"market_stabilize":
 			return "稳"
 		"route_insurance":
@@ -576,6 +677,20 @@ func _glyph_for_kind() -> String:
 			return "换"
 		"city_demand_shift":
 			return "需"
+		"region_economy_shift":
+			return "域"
+		"intel_city_reveal":
+			return "查"
+		"intel_card_trace":
+			return "溯"
+		"intel_contract_trace":
+			return "契"
+		"card_access_boon":
+			return "购"
+		"news_event":
+			return "闻"
+		"weather_control":
+			return "天"
 		"panic_shift":
 			return "热"
 		"move":

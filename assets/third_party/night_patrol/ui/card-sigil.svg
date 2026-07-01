@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" viewBox="0 0 280 180" role="img" aria-label="朱砂符箓纹样">
+  <rect width="280" height="180" rx="18" fill="#ead7aa"/>
+  <path d="M38 32 H242 M38 148 H242 M62 22 V158 M218 22 V158" fill="none" stroke="#8b2f26" stroke-opacity=".4" stroke-width="3"/>
+  <path d="M140 30 C112 54 126 78 95 93 C132 98 112 132 140 150 C168 132 148 98 185 93 C154 78 168 54 140 30 Z" fill="none" stroke="#9c2e25" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M140 54 V126 M112 74 C135 76 145 91 168 90 M108 112 C132 104 148 118 174 106" fill="none" stroke="#9c2e25" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="140" cy="90" r="16" fill="none" stroke="#b9944e" stroke-width="4"/>
+  <path d="M28 28 C44 18 54 18 70 28 M210 28 C226 18 236 18 252 28 M28 152 C44 162 54 162 70 152 M210 152 C226 162 236 162 252 152" fill="none" stroke="#1c201c" stroke-opacity=".25" stroke-width="3"/>
+</svg>

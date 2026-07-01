@@ -1,11 +1,19 @@
 extends Control
 
 signal district_selected(index: int)
+signal district_double_clicked(index: int)
 
-const GLOBE_MODE_ZOOM_THRESHOLD := 0.78
+const GLOBE_MODE_ZOOM_THRESHOLD := 0.58
+const PLANET_PROJECTION_BLEND_NAME := "PlanetProjectionBlend"
+const PLANET_PROJECTION_LOCAL_ZOOM := 0.96
+const PLANET_PROJECTION_GLOBE_ZOOM := 0.58
+const PLANET_PROJECTION_VISIBILITY_FADE_START := 0.74
 const MIN_VIEW_ZOOM := 0.34
 const MAX_VIEW_ZOOM := 5.0
 const DRAG_THRESHOLD_PIXELS := 4.0
+const BETTING_TABLE_THEME_NAME := "星际赌桌"
+const BETTING_TABLE_CHIP_COUNT := 18
+const BETTING_TABLE_SEAT_COUNT := 8
 
 var districts: Array = []
 var map_width_m := 1400.0
@@ -35,6 +43,21 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	custom_minimum_size = Vector2(720, 720)
 	set_process(true)
+
+
+func betting_table_theme_report() -> Dictionary:
+	return {
+		"enabled": true,
+		"name": BETTING_TABLE_THEME_NAME,
+		"felt_color": "#052e24",
+		"rim_color": "#d6a440",
+		"chip_count": BETTING_TABLE_CHIP_COUNT,
+		"seat_count": BETTING_TABLE_SEAT_COUNT,
+		"planet_center_policy": "globe_center",
+		"detail_policy": "edge_icons_stay_small_until_clicked",
+		"projection_contract": PLANET_PROJECTION_BLEND_NAME,
+		"projection_policy": "local_xy_eases_into_center_globe",
+	}
 
 
 func _process(delta: float) -> void:
@@ -86,12 +109,15 @@ func _draw() -> void:
 	_scale = min(size.x / map_width_m, size.y / map_height_m)
 	if _scale <= 0.01:
 		return
-	if _is_globe_mode():
+	var globe_blend := _globe_blend()
+	if globe_blend >= 0.985:
 		_draw_globe_projection()
 		return
 	_scale *= _view_zoom
 	_map_offset = size * 0.5
-	draw_rect(Rect2(Vector2.ZERO, size), Color("#020617"), true)
+	_draw_betting_table_background(globe_blend)
+	if globe_blend > 0.001:
+		_draw_projection_transition_backdrop(globe_blend)
 	_draw_local_grid()
 
 	for i in range(districts.size()):
@@ -132,6 +158,13 @@ func _gui_input(event: InputEvent) -> void:
 				_drag_moved = false
 				_drag_start = mouse_event.position
 				_last_mouse_position = mouse_event.position
+				if mouse_event.double_click:
+					var double_world_position := _screen_to_world(mouse_event.position)
+					var double_index := _district_at_point(double_world_position)
+					if double_index >= 0:
+						district_double_clicked.emit(double_index)
+					accept_event()
+					return
 			else:
 				_dragging = false
 				if not _drag_moved:
@@ -151,7 +184,29 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _is_globe_mode() -> bool:
-	return _view_zoom < GLOBE_MODE_ZOOM_THRESHOLD
+	return _globe_blend() >= 0.985
+
+
+func _globe_blend() -> float:
+	return _planet_projection_blend()
+
+
+func _planet_projection_blend() -> float:
+	var denom: float = max(0.001, PLANET_PROJECTION_LOCAL_ZOOM - PLANET_PROJECTION_GLOBE_ZOOM)
+	var t: float = clamp((PLANET_PROJECTION_LOCAL_ZOOM - _view_zoom) / denom, 0.0, 1.0)
+	return _projection_smoothstep(t)
+
+
+func _projection_smoothstep(t: float) -> float:
+	t = clamp(t, 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
+func _projection_visibility_alpha(z_value: float, blend: float) -> float:
+	if blend < PLANET_PROJECTION_VISIBILITY_FADE_START:
+		return 1.0
+	var horizon_fade: float = clampf((z_value + 0.10) / 0.28, 0.0, 1.0)
+	return lerp(1.0, horizon_fade, clampf((blend - PLANET_PROJECTION_VISIBILITY_FADE_START) / 0.24, 0.0, 1.0))
 
 
 func _wrap_world_position(position: Vector2) -> Vector2:
@@ -205,7 +260,7 @@ func _sphere_unit(position: Vector2) -> Vector3:
 
 
 func _globe_radius() -> float:
-	return min(size.x, size.y) * lerp(0.43, 0.48, clamp(_view_zoom / GLOBE_MODE_ZOOM_THRESHOLD, 0.0, 1.0))
+	return min(size.x, size.y) * lerp(0.47, 0.43, _globe_blend())
 
 
 func _globe_center() -> Vector2:
@@ -247,7 +302,7 @@ func _screen_to_globe_world(screen_position: Vector2) -> Vector2:
 
 
 func _pan_view(delta_screen: Vector2) -> void:
-	if _is_globe_mode():
+	if _globe_blend() > 0.62:
 		var radius: float = max(1.0, _globe_radius())
 		var lon_lat: Vector2 = _world_to_lon_lat(_view_center_m)
 		var lon: float = lon_lat.x - delta_screen.x / radius
@@ -258,6 +313,8 @@ func _pan_view(delta_screen: Vector2) -> void:
 
 
 func _region_is_near_view(index: int) -> bool:
+	if _globe_blend() > 0.08:
+		return true
 	var center: Vector2 = districts[index].get("center", Vector2.ZERO)
 	var max_screen_distance: float = max(size.x, size.y) * 0.72
 	return _surface_delta(_view_center_m, center).length() * _scale <= max_screen_distance
@@ -265,7 +322,7 @@ func _region_is_near_view(index: int) -> bool:
 
 func _draw_local_grid() -> void:
 	var grid_color := Color("#1e293b")
-	grid_color.a = 0.6
+	grid_color.a = 0.6 * (1.0 - _globe_blend() * 0.72)
 	var step_m := 100.0
 	for x in range(-8, 9):
 		var world_x := _view_center_m.x + float(x) * step_m
@@ -279,8 +336,94 @@ func _draw_local_grid() -> void:
 		draw_line(from_y, to_y, grid_color, 1.0)
 
 
+func _draw_betting_table_background(globe_blend: float) -> void:
+	var felt := Color("#052e24")
+	var dark_felt := Color("#021510")
+	draw_rect(Rect2(Vector2.ZERO, size), dark_felt, true)
+	var center: Vector2 = _globe_center()
+	felt.a = 0.92
+	draw_rect(Rect2(Vector2.ZERO, size), felt, true)
+	var felt_glow := Color("#064e3b")
+	felt_glow.a = 0.50
+	draw_circle(center, max(size.x, size.y) * 0.52, felt_glow)
+	_draw_betting_table_weave(globe_blend)
+	var planet_radius: float = _globe_radius()
+	var rail_radius: float = min(min(size.x, size.y) * 0.49, planet_radius + 34.0)
+	var shadow := Color("#020617")
+	shadow.a = 0.70
+	draw_arc(center, rail_radius + 10.0, 0.0, TAU, 128, shadow, 10.0, true)
+	var rim := Color("#d6a440")
+	rim.a = 0.34 + globe_blend * 0.16
+	draw_arc(center, rail_radius + 5.0, 0.0, TAU, 128, rim, 3.0, true)
+	var inner_rim := Color("#fde68a")
+	inner_rim.a = 0.12 + globe_blend * 0.08
+	draw_arc(center, max(8.0, planet_radius + 8.0), 0.0, TAU, 128, inner_rim, 1.6, true)
+	_draw_betting_table_edge_chips(center, rail_radius + 22.0, globe_blend)
+
+
+func _draw_betting_table_weave(globe_blend: float) -> void:
+	var line_color := Color("#a7f3d0")
+	line_color.a = 0.040 + globe_blend * 0.018
+	var step: float = 44.0
+	var x: float = fposmod(-_view_center_m.x * 0.018, step)
+	while x < size.x:
+		draw_line(Vector2(x, 0.0), Vector2(x, size.y), line_color, 1.0)
+		x += step
+	var y: float = fposmod(-_view_center_m.y * 0.018, step)
+	while y < size.y:
+		draw_line(Vector2(0.0, y), Vector2(size.x, y), line_color, 1.0)
+		y += step
+
+
+func _draw_betting_table_edge_chips(center: Vector2, preferred_radius: float, globe_blend: float) -> void:
+	var chip_palette := [
+		Color("#ef4444"),
+		Color("#f59e0b"),
+		Color("#38bdf8"),
+		Color("#a78bfa"),
+		Color("#f8fafc"),
+		Color("#22c55e"),
+	]
+	var safe_radius: float = min(preferred_radius, max(24.0, min(size.x, size.y) * 0.5 - 18.0))
+	for i in range(BETTING_TABLE_CHIP_COUNT):
+		var angle: float = -PI * 0.5 + TAU * float(i) / float(BETTING_TABLE_CHIP_COUNT)
+		var pos: Vector2 = center + Vector2(cos(angle), sin(angle)) * safe_radius
+		if pos.x < 8.0 or pos.y < 8.0 or pos.x > size.x - 8.0 or pos.y > size.y - 8.0:
+			continue
+		var chip_color: Color = chip_palette[i % chip_palette.size()]
+		chip_color.a = 0.56 + globe_blend * 0.12
+		var chip_radius: float = 4.4 if i % 3 != 0 else 5.8
+		var chip_shadow := Color("#020617")
+		chip_shadow.a = 0.78
+		draw_circle(pos, chip_radius + 2.4, chip_shadow)
+		draw_circle(pos, chip_radius, chip_color)
+		var chip_mark := Color("#020617")
+		chip_mark.a = 0.42
+		draw_arc(pos, max(2.0, chip_radius - 1.2), 0.0, TAU, 20, chip_mark, 0.9, true)
+	for seat in range(BETTING_TABLE_SEAT_COUNT):
+		var seat_angle: float = -PI * 0.5 + TAU * (float(seat) + 0.5) / float(BETTING_TABLE_SEAT_COUNT)
+		var seat_pos: Vector2 = center + Vector2(cos(seat_angle), sin(seat_angle)) * max(18.0, safe_radius - 18.0)
+		var seat_glow := Color("#facc15")
+		seat_glow.a = 0.14 + globe_blend * 0.05
+		draw_arc(seat_pos, 9.0, 0.0, TAU, 24, seat_glow, 1.4, true)
+
+
+func _draw_projection_transition_backdrop(globe_blend: float) -> void:
+	var center := _globe_center()
+	var radius := _globe_radius()
+	var shadow := Color("#02040a")
+	shadow.a = 0.18 + globe_blend * 0.46
+	draw_circle(center, radius + 6.0 * globe_blend, shadow)
+	var ocean := Color("#0f172a")
+	ocean.a = 0.08 + globe_blend * 0.36
+	draw_circle(center, radius, ocean)
+	var edge := Color("#38bdf8")
+	edge.a = 0.10 + globe_blend * 0.42
+	draw_arc(center, radius, 0.0, TAU, 96, edge, 1.0 + globe_blend * 2.2, true)
+
+
 func _draw_globe_projection() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color("#02040a"), true)
+	_draw_betting_table_background(1.0)
 	_map_offset = _globe_center()
 	var center := _globe_center()
 	var radius := _globe_radius()
@@ -430,6 +573,7 @@ func _draw_region_fill(index: int) -> void:
 		var panic_ratio: float = float(district.get("panic", 0)) / 100.0
 		color = color.lerp(Color("#7f1d1d"), clamp(damage_ratio * 0.55, 0.0, 0.55))
 		color = color.lerp(Color("#f97316"), clamp(panic_ratio * 0.18, 0.0, 0.18))
+	color.a *= _projection_visibility_alpha_for_district(index)
 	var points := _screen_polygon(district.get("polygon", []))
 	if points.size() >= 3:
 		if _can_fill_polygon(points):
@@ -443,10 +587,11 @@ func _draw_region_effects(index: int) -> void:
 	var points := _screen_polygon(district.get("polygon", []))
 	if points.size() < 3:
 		return
+	var projection_alpha := _projection_visibility_alpha_for_district(index)
 	var pulse: float = float(district.get("pulse", 0.0))
 	if pulse > 0.0:
 		var pulse_color: Color = district.get("pulse_color", Color("#facc15"))
-		pulse_color.a = clamp(pulse / 1.2, 0.0, 1.0) * 0.38
+		pulse_color.a = clamp(pulse / 1.2, 0.0, 1.0) * 0.38 * projection_alpha
 		if _can_fill_polygon(points):
 			draw_colored_polygon(points, pulse_color)
 		else:
@@ -455,13 +600,17 @@ func _draw_region_effects(index: int) -> void:
 		var center := _world_to_screen(district.get("center", Vector2.ZERO))
 		var radius: float = clamp(16.0 * _scale, 7.0, 13.0)
 		var miasma_color := Color("#a855f7")
-		miasma_color.a = 0.42
+		miasma_color.a = 0.42 * projection_alpha
 		draw_circle(center, radius, miasma_color)
-		draw_arc(center, radius + 3.0, 0.0, TAU, 24, Color("#c084fc"), 2.0, true)
+		var miasma_ring := Color("#c084fc")
+		miasma_ring.a *= projection_alpha
+		draw_arc(center, radius + 3.0, 0.0, TAU, 24, miasma_ring, 2.0, true)
 	if int(district.get("damage", 0)) > 0 and not bool(district.get("destroyed", false)):
 		var center_damage := _world_to_screen(district.get("center", Vector2.ZERO))
 		var damage_ratio: float = float(district.get("damage", 0)) / max(1.0, float(district.get("hp", 1)))
-		draw_arc(center_damage, clamp(24.0 * _scale, 12.0, 20.0), -PI * 0.5, -PI * 0.5 + TAU * clamp(damage_ratio, 0.0, 1.0), 18, Color("#fca5a5"), 3.0, true)
+		var damage_color := Color("#fca5a5")
+		damage_color.a *= projection_alpha
+		draw_arc(center_damage, clamp(24.0 * _scale, 12.0, 20.0), -PI * 0.5, -PI * 0.5 + TAU * clamp(damage_ratio, 0.0, 1.0), 18, damage_color, 3.0, true)
 
 
 func _draw_region_outline(index: int) -> void:
@@ -471,6 +620,7 @@ func _draw_region_outline(index: int) -> void:
 		return
 	var selected := index == selected_district
 	var line_color := Color("#facc15") if selected else Color("#020617")
+	line_color.a *= _projection_visibility_alpha_for_district(index)
 	var line_width := 3.0 if selected else 1.25
 	var closed := points.duplicate()
 	closed.append(points[0])
@@ -484,7 +634,16 @@ func _draw_region_label(index: int) -> void:
 	var font := get_theme_default_font()
 	var label := String(district.get("name", "区域"))
 	var text_width := 96.0
-	draw_string(font, pos + Vector2(-text_width * 0.5, -30), label, HORIZONTAL_ALIGNMENT_CENTER, text_width, 12, Color("#f8fafc"))
+	var blend := _globe_blend()
+	var label_alpha: float = _projection_visibility_alpha_for_district(index) * (1.0 - clampf((blend - 0.36) / 0.48, 0.0, 1.0) * 0.72)
+	if label_alpha <= 0.05 and index != selected_district:
+		return
+	var label_color := Color("#f8fafc")
+	label_color.a = 0.90 * label_alpha
+	if index == selected_district:
+		label_color = Color("#fef3c7")
+		label_color.a = maxf(0.82, label_alpha)
+	draw_string(font, pos + Vector2(-text_width * 0.5, -30), label, HORIZONTAL_ALIGNMENT_CENTER, text_width, 12, label_color)
 	var terrain := String(district.get("terrain", "land"))
 	var sublabel := "海运"
 	if terrain != "ocean":
@@ -492,10 +651,13 @@ func _draw_region_label(index: int) -> void:
 			(district.get("products", []) as Array).size(),
 			(district.get("demands", []) as Array).size(),
 		]
-	draw_string(font, pos + Vector2(-text_width * 0.5, -16), sublabel, HORIZONTAL_ALIGNMENT_CENTER, text_width, 10, Color("#bae6fd") if terrain == "ocean" else Color("#bbf7d0"))
-	var hp_total: int = max(1, int(district.get("hp", 1)))
-	var hp_left: int = max(0, hp_total - int(district.get("damage", 0)))
-	var hp_color := Color("#fecaca") if hp_left <= max(1, int(ceil(float(hp_total) * 0.35))) else Color("#fde68a")
+	var sub_color := Color("#bae6fd") if terrain == "ocean" else Color("#bbf7d0")
+	sub_color.a = 0.86 * label_alpha
+	draw_string(font, pos + Vector2(-text_width * 0.5, -16), sublabel, HORIZONTAL_ALIGNMENT_CENTER, text_width, 10, sub_color)
+	var hp_total: int = maxi(1, int(district.get("hp", 1)))
+	var hp_left: int = maxi(0, hp_total - int(district.get("damage", 0)))
+	var hp_color := Color("#fecaca") if hp_left <= maxi(1, int(ceil(float(hp_total) * 0.35))) else Color("#fde68a")
+	hp_color.a = 0.84 * label_alpha
 	draw_string(font, pos + Vector2(-text_width * 0.5, -4), "HP %d/%d" % [hp_left, hp_total], HORIZONTAL_ALIGNMENT_CENTER, text_width, 9, hp_color)
 	if index == selected_district:
 		_draw_selected_region_card_badges(index, pos + Vector2(20.0, 18.0))
@@ -1109,6 +1271,15 @@ func _draw_map_event_label(pos: Vector2, label: String, color: Color, alpha: flo
 func _map_event_screen_position(world_position: Vector2) -> Dictionary:
 	if _is_globe_mode():
 		return _project_globe(world_position)
+	var blend := _globe_blend()
+	if blend > 0.001:
+		var local_position := _map_offset + _surface_delta(_view_center_m, world_position) * _scale
+		var projected := _project_globe(world_position)
+		return {
+			"position": local_position.lerp(projected["position"] as Vector2, blend),
+			"visible": true if blend < 0.96 else bool(projected["visible"]),
+			"z": projected["z"],
+		}
 	return {
 		"position": _world_to_screen(world_position),
 		"visible": true,
@@ -1193,9 +1364,11 @@ func _draw_scale_hint() -> void:
 	var text := ""
 	var anchor := Vector2(12, 22)
 	if _is_globe_mode():
-		text = "星球视图：真实球面投影；滚轮贴近/拉远，拖拽旋转星球；编号圆点是在场怪兽"
+		text = "星球全景｜滚轮贴近｜拖拽旋转｜圆点=在场单位"
+	elif _globe_blend() > 0.001:
+		text = "拉远中｜地表牌板正在卷成星球"
 	else:
-		text = "局部平面投影：球面表面被拉伸为XY直角坐标；滚轮拉远看星球，拖拽平移"
+		text = "局部地表｜滚轮拉远看星球｜拖拽平移｜双击区域看牌"
 	draw_string(font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, min(760.0, size.x - 24.0), 12, Color("#cbd5e1"))
 
 
@@ -1216,11 +1389,26 @@ func _world_to_screen(position_m: Vector2) -> Vector2:
 	if _is_globe_mode():
 		var projected := _project_globe(position_m)
 		return projected["position"]
-	return _map_offset + _surface_delta(_view_center_m, position_m) * _scale
+	var local_position := _map_offset + _surface_delta(_view_center_m, position_m) * _scale
+	var blend := _globe_blend()
+	if blend <= 0.001:
+		return local_position
+	var projected := _project_globe(position_m)
+	return local_position.lerp(projected["position"] as Vector2, blend)
+
+
+func _projection_visibility_alpha_for_district(index: int) -> float:
+	if index < 0 or index >= districts.size():
+		return 1.0
+	var blend := _globe_blend()
+	if blend < PLANET_PROJECTION_VISIBILITY_FADE_START:
+		return 1.0
+	var projected := _project_globe(districts[index].get("center", Vector2.ZERO))
+	return _projection_visibility_alpha(float(projected.get("z", 1.0)), blend)
 
 
 func _screen_to_world(position: Vector2) -> Vector2:
-	if _is_globe_mode():
+	if _globe_blend() > 0.62:
 		return _screen_to_globe_world(position)
 	return _wrap_world_position(_view_center_m + (position - _map_offset) / max(0.001, _scale))
 

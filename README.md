@@ -1,6 +1,6 @@
-# Space Syndicate Prototype
+# 太空辛迪加 / Space Syndicate
 
-Godot 4 prototype for **太空辛迪加 / Space Syndicate**, based on the local rules draft and art requirement list.
+Godot 4 project for **太空辛迪加 / Space Syndicate**, based on the local rules draft and art requirement list.
 
 ## Current Prototype Scope
 
@@ -58,7 +58,7 @@ Godot 4 prototype for **太空辛迪加 / Space Syndicate**, based on the local 
 
 Open this folder in Godot 4.x and run `scenes/main.tscn`.
 
-On Windows, `Launch Space Syndicate Prototype.cmd` tries to find Godot from PATH, `GODOT_EXE`, the sibling workspace `tools/godot-*` folder, or common install locations, then opens this project. If Godot is not installed yet, it opens the project folder instead.
+On Windows, `Launch Space Syndicate.cmd` tries to find Godot from PATH, `GODOT_EXE`, the sibling workspace `tools/godot-*` folder, or common install locations, then opens this project. `Launch Space Syndicate Prototype.cmd` is kept as a compatibility alias. If Godot is not installed yet, the launcher opens the project folder instead.
 
 ## Smoke Test
 

@@ -12,7 +12,7 @@ var accent := Color("#94a3b8")
 var secondary := Color("#e2e8f0")
 var glyph := "怪"
 var motif := "beast"
-var subtitle := "临时美工"
+var subtitle := "星兽档案"
 var compact := false
 
 
@@ -30,7 +30,7 @@ func set_monster(name: String, style: String, hp_value: int, armor_value: int, m
 	secondary = profile.get("secondary", Color("#e2e8f0")) as Color
 	glyph = String(profile.get("glyph", "怪"))
 	motif = String(profile.get("motif", "beast"))
-	subtitle = String(profile.get("subtitle", "临时美工"))
+	subtitle = String(profile.get("subtitle", "星兽档案"))
 	compact = is_compact
 	queue_redraw()
 
