@@ -3567,13 +3567,18 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 			var countdown_urgency := int(main.call("_ai_endgame_urgency_score", 1))
 			var urgent_sabotage_bonus := int(main.call("_ai_phase_bonus_for_candidate", 1, "route_sabotage", rival_index, "环晶电池", 2, {}))
 			var sabotage_skill := main.call("_make_skill", "商路黑客1") as Dictionary
+			var sabotage_victory := main.call("_ai_victory_race_bonus_for_candidate", 1, "route_sabotage", rival_index, "环晶电池", 2, sabotage_skill) as Dictionary
 			var sabotage_context := main.call("_ai_card_play_context", 1, 0, sabotage_skill) as Dictionary
 			ok = ok \
 				and countdown_urgency > 0 \
 				and urgent_sabotage_bonus > sabotage_bonus \
+				and int(sabotage_victory.get("bonus", 0)) > 0 \
+				and String(sabotage_victory.get("role", "")) == "break_countdown" \
 				and not sabotage_context.is_empty() \
 				and int(sabotage_context.get("endgame_urgency", 0)) == countdown_urgency \
-				and int(sabotage_context.get("phase_bonus", 0)) >= urgent_sabotage_bonus
+				and int(sabotage_context.get("phase_bonus", 0)) >= urgent_sabotage_bonus \
+				and int(sabotage_context.get("victory_race_bonus", 0)) >= int(sabotage_victory.get("bonus", 0)) \
+				and String(sabotage_context.get("victory_race_role", "")) == "break_countdown"
 			players = _as_array(main.get("players")).duplicate(true)
 			ai_player = players[1] as Dictionary
 			ai_player["cash"] = int(main.call("_roguelike_cash_goal")) + 1200
@@ -3596,22 +3601,28 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 			var insurance_skill := main.call("_make_skill", "灾害保单1") as Dictionary
 			insurance_skill["starter_play_free"] = true
 			var insurance_phase_bonus := int(main.call("_ai_phase_bonus_for_candidate", 1, "city_gdp_derivative", own_index, "环晶电池", 1, insurance_skill))
+			var insurance_victory := main.call("_ai_victory_race_bonus_for_candidate", 1, "city_gdp_derivative", own_index, "轨迹墨水", 1, insurance_skill) as Dictionary
 			var insurance_context := main.call("_ai_card_play_context", 1, 0, insurance_skill) as Dictionary
 			ok = ok and String(leader_phase.get("phase", "")) == "endgame"
 			ok = ok and String(leader_phase.get("posture", "")) == "leader"
 			ok = ok and defense_bonus > 0
 			ok = ok \
 				and insurance_phase_bonus > 0 \
+				and int(insurance_victory.get("bonus", 0)) > 0 \
+				and String(insurance_victory.get("role", "")) == "protect_lead" \
 				and not insurance_context.is_empty() \
 				and String(insurance_context.get("policy_kind", "")) == "city_gdp_derivative_insurance" \
 				and int(insurance_context.get("target_city", -1)) == own_index \
 				and int(insurance_context.get("target_owner", -1)) == 1 \
+				and int(insurance_context.get("victory_race_bonus", 0)) >= int(insurance_victory.get("bonus", 0)) \
+				and String(insurance_context.get("victory_race_role", "")) == "protect_lead" \
 				and int(insurance_context.get("generic_effect_bonus", 0)) > 0
-			main.call("_record_ai_decision", 1, "阶段烟测", own_index, 123, "阶段策略记录", [], {"policy_kind": "phase_smoke", "phase_bonus": defense_bonus})
+			main.call("_record_ai_decision", 1, "阶段烟测", own_index, 123, "阶段策略记录", [], {"policy_kind": "phase_smoke", "phase_bonus": defense_bonus, "victory_race_bonus": int(insurance_victory.get("bonus", 0)), "victory_race_role": String(insurance_victory.get("role", ""))})
 			var after_record := _as_array(main.get("players"))
 			ok = ok and _ai_sample_has_field(after_record, 1, "game_phase", "endgame")
 			ok = ok and _ai_sample_has_field(after_record, 1, "competitive_posture", "leader")
 			ok = ok and _ai_sample_has_field(after_record, 1, "endgame_urgency")
+			ok = ok and _ai_sample_has_field(after_record, 1, "victory_race_role", "protect_lead")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	return ok and restore_result == OK

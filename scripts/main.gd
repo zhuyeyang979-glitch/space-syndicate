@@ -13424,6 +13424,7 @@ func _auto_build_score_for_player(player_index: int, district_index: int) -> int
 	score += _ai_route_plan_bonus_for_candidate(player_index, "city_build", district_index)
 	score += int(_ai_profile_signature_bonus_for_candidate(player_index, "city_build", district_index, _ai_focus_product(player_index), player_index).get("bonus", 0))
 	score += _ai_phase_bonus_for_candidate(player_index, "city_build", district_index, _ai_focus_product(player_index), player_index)
+	score += int(_ai_victory_race_bonus_for_candidate(player_index, "city_build", district_index, _ai_focus_product(player_index), player_index).get("bonus", 0))
 	score += _ai_learning_bonus(player_index, "city_build", _ai_strategy_intent(player_index), _ai_route_plan_stage(player_index), _ai_route_plan_product(player_index), "城市化")
 	score += int(float(district.get("transport_score", 1.0)) * 10.0)
 	score += max(0, int(district.get("hp", 0)) - int(district.get("damage", 0)))
@@ -13475,6 +13476,8 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 		var profile_signature_bonus := int(profile_signature.get("bonus", 0))
 		var phase_info := _ai_refresh_game_phase(player_index)
 		var phase_bonus := _ai_phase_bonus_for_candidate(player_index, "city_build", target, focus_product, player_index)
+		var victory_race := _ai_victory_race_bonus_for_candidate(player_index, "city_build", target, focus_product, player_index)
+		var victory_race_bonus := int(victory_race.get("bonus", 0))
 		var learning_bonus := _ai_learning_bonus(player_index, "city_build", strategy_intent, route_stage, route_product, "城市化")
 		if _create_city_at_district_for_player(player_index, target, "对手自动扩张", false):
 			_record_ai_decision(
@@ -13482,9 +13485,9 @@ func _auto_expand_rival_syndicates(force: bool = false) -> int:
 				"城市化",
 				target,
 				target_score,
-				"GDP/商品/交通/竞争/怪兽风险综合评分｜阶段:%s/%s+%d｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d｜性格签名+%d:%s" % [_ai_game_phase_label(String(phase_info.get("phase", "midgame"))), _ai_competitive_posture_label(String(phase_info.get("posture", "contesting"))), phase_bonus, focus_product if focus_product != "" else "未定", focus_bonus, strategy_intent if strategy_intent != "" else "未定", strategy_bonus, route_product if route_product != "" else "未定", _ai_route_plan_stage_label(route_stage), route_bonus, profile_signature_bonus, String(profile_signature.get("reason", ""))],
+				"GDP/商品/交通/竞争/怪兽风险综合评分｜阶段:%s/%s+%d｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d｜性格签名+%d:%s｜终局竞速+%d:%s" % [_ai_game_phase_label(String(phase_info.get("phase", "midgame"))), _ai_competitive_posture_label(String(phase_info.get("posture", "contesting"))), phase_bonus, focus_product if focus_product != "" else "未定", focus_bonus, strategy_intent if strategy_intent != "" else "未定", strategy_bonus, route_product if route_product != "" else "未定", _ai_route_plan_stage_label(route_stage), route_bonus, profile_signature_bonus, String(profile_signature.get("reason", "")), victory_race_bonus, String(victory_race.get("reason", ""))],
 				[],
-				{"policy_kind": "city_build", "focus_product": focus_product, "focus_score": _ai_focus_score(player_index), "focus_bonus": focus_bonus, "strategy_intent": strategy_intent, "strategy_score": _ai_strategy_score(player_index), "strategy_bonus": strategy_bonus, "route_plan_product": route_product, "route_plan_stage": route_stage, "route_plan_score": _ai_route_plan_score(player_index), "route_plan_bonus": route_bonus, "profile_signature_bonus": profile_signature_bonus, "profile_signature_family": String(profile_signature.get("family", "")), "profile_signature_route": String(profile_signature.get("route", "")), "profile_signature_reason": String(profile_signature.get("reason", "")), "game_phase": String(phase_info.get("phase", "midgame")), "competitive_posture": String(phase_info.get("posture", "contesting")), "score_gap_to_leader": int(phase_info.get("gap", 0)), "leader_index": int(phase_info.get("leader_index", -1)), "phase_bonus": phase_bonus, "learning_bonus": learning_bonus}
+				{"policy_kind": "city_build", "focus_product": focus_product, "focus_score": _ai_focus_score(player_index), "focus_bonus": focus_bonus, "strategy_intent": strategy_intent, "strategy_score": _ai_strategy_score(player_index), "strategy_bonus": strategy_bonus, "route_plan_product": route_product, "route_plan_stage": route_stage, "route_plan_score": _ai_route_plan_score(player_index), "route_plan_bonus": route_bonus, "profile_signature_bonus": profile_signature_bonus, "profile_signature_family": String(profile_signature.get("family", "")), "profile_signature_route": String(profile_signature.get("route", "")), "profile_signature_reason": String(profile_signature.get("reason", "")), "victory_race_bonus": victory_race_bonus, "victory_race_role": String(victory_race.get("role", "")), "victory_race_reason": String(victory_race.get("reason", "")), "game_phase": String(phase_info.get("phase", "midgame")), "competitive_posture": String(phase_info.get("posture", "contesting")), "score_gap_to_leader": int(phase_info.get("gap", 0)), "leader_index": int(phase_info.get("leader_index", -1)), "phase_bonus": phase_bonus, "learning_bonus": learning_bonus}
 			)
 			built += 1
 	if built > 0:
@@ -13563,6 +13566,9 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 			var price_signature := _ai_profile_signature_bonus_for_candidate(player_index, "product_speculation", own_city_index, product_name, player_index)
 			var price_signature_bonus := int(price_signature.get("bonus", 0))
 			price_score += price_signature_bonus
+			var price_victory := _ai_victory_race_bonus_for_candidate(player_index, "product_speculation", own_city_index, product_name, player_index)
+			var price_victory_bonus := int(price_victory.get("bonus", 0))
+			price_score += price_victory_bonus
 			result.append({
 				"kind": "price_pump",
 				"own_city": own_city_index,
@@ -13588,6 +13594,9 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 				"profile_signature_family": String(price_signature.get("family", "")),
 				"profile_signature_route": String(price_signature.get("route", "")),
 				"profile_signature_reason": String(price_signature.get("reason", "")),
+				"victory_race_bonus": price_victory_bonus,
+				"victory_race_role": String(price_victory.get("role", "")),
+				"victory_race_reason": String(price_victory.get("reason", "")),
 			})
 			for target_city_variant in competitors:
 				var target_city_index := int(target_city_variant)
@@ -13609,6 +13618,9 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 				var sabotage_signature := _ai_profile_signature_bonus_for_candidate(player_index, "route_sabotage", target_city_index, product_name, int(target_city.get("owner", -1)))
 				var sabotage_signature_bonus := int(sabotage_signature.get("bonus", 0))
 				route_score += sabotage_signature_bonus
+				var sabotage_victory := _ai_victory_race_bonus_for_candidate(player_index, "route_sabotage", target_city_index, product_name, int(target_city.get("owner", -1)))
+				var sabotage_victory_bonus := int(sabotage_victory.get("bonus", 0))
+				route_score += sabotage_victory_bonus
 				result.append({
 					"kind": "route_sabotage",
 					"own_city": own_city_index,
@@ -13635,6 +13647,9 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 					"profile_signature_family": String(sabotage_signature.get("family", "")),
 					"profile_signature_route": String(sabotage_signature.get("route", "")),
 					"profile_signature_reason": String(sabotage_signature.get("reason", "")),
+					"victory_race_bonus": sabotage_victory_bonus,
+					"victory_race_role": String(sabotage_victory.get("role", "")),
+					"victory_race_reason": String(sabotage_victory.get("reason", "")),
 				})
 	return result
 
@@ -13881,7 +13896,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 				"匿名商业",
 				target,
 				int(action.get("score", 0)),
-				"商品:%s｜阶段:%s/%s+%d｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d｜性格签名+%d:%s" % [
+				"商品:%s｜阶段:%s/%s+%d｜经济焦点:%s｜焦点加成%d｜策略:%s｜策略加成%d｜路线:%s/%s｜路线加成%d｜性格签名+%d:%s｜终局竞速+%d:%s" % [
 					String(action.get("product", "未知")),
 					_ai_game_phase_label(String(action.get("game_phase", "midgame"))),
 					_ai_competitive_posture_label(String(action.get("competitive_posture", "contesting"))),
@@ -13895,9 +13910,11 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 					int(action.get("route_plan_bonus", 0)),
 					int(action.get("profile_signature_bonus", 0)),
 					String(action.get("profile_signature_reason", "")),
+					int(action.get("victory_race_bonus", 0)),
+					String(action.get("victory_race_reason", "")),
 				],
 				[],
-				{"policy_kind": String(action.get("policy_kind", action.get("kind", ""))), "product": String(action.get("product", "")), "focus_product": String(action.get("focus_product", "")), "focus_bonus": int(action.get("focus_bonus", 0)), "strategy_intent": String(action.get("strategy_intent", "")), "strategy_score": int(action.get("strategy_score", 0)), "strategy_bonus": int(action.get("strategy_bonus", 0)), "route_plan_product": String(action.get("route_plan_product", "")), "route_plan_stage": String(action.get("route_plan_stage", "")), "route_plan_score": int(action.get("route_plan_score", 0)), "route_plan_bonus": int(action.get("route_plan_bonus", 0)), "profile_signature_bonus": int(action.get("profile_signature_bonus", 0)), "profile_signature_family": String(action.get("profile_signature_family", "")), "profile_signature_route": String(action.get("profile_signature_route", "")), "profile_signature_reason": String(action.get("profile_signature_reason", "")), "game_phase": String(action.get("game_phase", "midgame")), "competitive_posture": String(action.get("competitive_posture", "contesting")), "score_gap_to_leader": int(action.get("score_gap_to_leader", 0)), "leader_index": int(action.get("leader_index", -1)), "phase_bonus": int(action.get("phase_bonus", 0)), "learning_bonus": int(action.get("learning_bonus", 0))}
+				{"policy_kind": String(action.get("policy_kind", action.get("kind", ""))), "product": String(action.get("product", "")), "focus_product": String(action.get("focus_product", "")), "focus_bonus": int(action.get("focus_bonus", 0)), "strategy_intent": String(action.get("strategy_intent", "")), "strategy_score": int(action.get("strategy_score", 0)), "strategy_bonus": int(action.get("strategy_bonus", 0)), "route_plan_product": String(action.get("route_plan_product", "")), "route_plan_stage": String(action.get("route_plan_stage", "")), "route_plan_score": int(action.get("route_plan_score", 0)), "route_plan_bonus": int(action.get("route_plan_bonus", 0)), "profile_signature_bonus": int(action.get("profile_signature_bonus", 0)), "profile_signature_family": String(action.get("profile_signature_family", "")), "profile_signature_route": String(action.get("profile_signature_route", "")), "profile_signature_reason": String(action.get("profile_signature_reason", "")), "victory_race_bonus": int(action.get("victory_race_bonus", 0)), "victory_race_role": String(action.get("victory_race_role", "")), "victory_race_reason": String(action.get("victory_race_reason", "")), "game_phase": String(action.get("game_phase", "midgame")), "competitive_posture": String(action.get("competitive_posture", "contesting")), "score_gap_to_leader": int(action.get("score_gap_to_leader", 0)), "leader_index": int(action.get("leader_index", -1)), "phase_bonus": int(action.get("phase_bonus", 0)), "learning_bonus": int(action.get("learning_bonus", 0))}
 			)
 			acted += 1
 	if acted > 0:
@@ -19935,6 +19952,98 @@ func _ai_phase_bonus_for_candidate(player_index: int, kind: String, district_ind
 	return bonus
 
 
+func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> Dictionary:
+	var result := {
+		"bonus": 0,
+		"role": "",
+		"reason": "",
+	}
+	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+		return result
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var phase := String(phase_info.get("phase", "midgame"))
+	var posture := String(phase_info.get("posture", "contesting"))
+	var leader_index := int(phase_info.get("leader_index", -1))
+	var leader_score := int(_visible_score_leader_entry().get("score", 0))
+	var own_score := _player_visible_settlement_estimate(player_index)
+	var cash_goal := maxi(1, _roguelike_cash_goal())
+	var cash_gap := cash_goal - own_score
+	var leader_goal_gap := cash_goal - leader_score
+	var urgency := _ai_endgame_urgency_score(player_index)
+	var is_endgame_pressure := phase == "endgame" or victory_countdown_active or own_score >= int(round(float(cash_goal) * 0.82)) or leader_score >= int(round(float(cash_goal) * 0.86))
+	if not is_endgame_pressure:
+		return result
+	var resolved_owner := target_owner
+	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
+		var city := _district_city(district_index)
+		if _city_is_active(city):
+			resolved_owner = int(city.get("owner", -1))
+	var helpful_target := resolved_owner == player_index
+	var harmful_target := resolved_owner >= 0 and resolved_owner != player_index
+	var targets_leader := leader_index >= 0 and leader_index != player_index and resolved_owner == leader_index
+	var route_id := _ai_development_route_for_kind(kind, skill)
+	var product_match := product_name != "" and (product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index))
+	var pressure := _ai_pressure_kind(kind, skill)
+	var defense := _ai_defense_kind(kind, skill)
+	var bonus := 0
+	var role := "race_to_goal"
+	var reasons := []
+	if victory_countdown_active and leader_index >= 0 and leader_index != player_index:
+		role = "break_countdown"
+		if pressure and (targets_leader or harmful_target):
+			bonus += 160 + urgency
+			reasons.append("阻断倒计时+%d" % (160 + urgency))
+		if kind == "city_gdp_derivative" and String(skill.get("gdp_bet_direction", "")) == "down":
+			bonus += 95 + int(round(float(urgency) / 2.0))
+			reasons.append("做空领先GDP")
+		if route_id == "finance_speculation":
+			bonus += 46
+			reasons.append("终局金融反扑")
+	elif posture == "leader" or cash_gap <= 0 or own_score >= int(round(float(cash_goal) * 0.9)):
+		role = "protect_lead"
+		if defense and (helpful_target or resolved_owner == -999):
+			bonus += 125 + int(round(float(urgency) / 2.0))
+			reasons.append("保护领先+%d" % (125 + int(round(float(urgency) / 2.0))))
+		if ["cash_gain", "market_stabilize"].has(kind):
+			bonus += 70
+			reasons.append("锁定现金")
+		if route_id == "city_growth" and helpful_target:
+			bonus += 38
+			reasons.append("稳住GDP")
+		if pressure and harmful_target:
+			bonus += 28
+			reasons.append("低风险牵制")
+	elif posture == "trailing" or cash_gap > 0 and leader_goal_gap <= 0:
+		role = "last_push"
+		if pressure and (targets_leader or harmful_target):
+			bonus += 115 + urgency
+			reasons.append("追分压制+%d" % (115 + urgency))
+		if route_id == "finance_speculation":
+			bonus += 70 + int(round(float(urgency) / 3.0))
+			reasons.append("高杠杆追分")
+		if ["cash_gain", "product_speculation"].has(kind):
+			bonus += 54
+			reasons.append("补现金缺口")
+	else:
+		role = "race_to_goal"
+		if defense and helpful_target:
+			bonus += 58 + int(round(float(urgency) / 3.0))
+			reasons.append("护住收益")
+		if pressure and (targets_leader or harmful_target):
+			bonus += 70 + int(round(float(urgency) / 3.0))
+			reasons.append("压制领先线")
+		if route_id == "city_growth" and helpful_target:
+			bonus += 44
+			reasons.append("冲刺GDP")
+	if product_match:
+		bonus += 18
+		reasons.append("商品路线吻合")
+	result["bonus"] = clampi(bonus, 0, 260)
+	result["role"] = role
+	result["reason"] = "、".join(reasons) if not reasons.is_empty() else "终局竞速观察"
+	return result
+
+
 func _ai_observation_vector(player_index: int) -> Dictionary:
 	if player_index < 0 or player_index >= players.size():
 		return {}
@@ -19979,7 +20088,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "profile_signature_bonus", "profile_signature_family", "profile_signature_route", "profile_signature_reason", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "victory_race_bonus", "victory_race_role", "victory_race_reason", "generic_effect_bonus", "profile_signature_bonus", "profile_signature_family", "profile_signature_route", "profile_signature_reason", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -23261,6 +23370,18 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if phase_bonus != 0:
 		context["phase_bonus"] = phase_bonus
 		context["score"] = int(context["score"]) + phase_bonus
+	var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
+	var victory_race_bonus := int(victory_race.get("bonus", 0))
+	if victory_race_bonus != 0:
+		context["victory_race_bonus"] = victory_race_bonus
+		context["victory_race_role"] = String(victory_race.get("role", ""))
+		context["victory_race_reason"] = String(victory_race.get("reason", ""))
+		context["score"] = int(context["score"]) + victory_race_bonus
+		context["reason"] = "%s｜终局竞速+%d:%s" % [
+			String(context.get("reason", "按卡牌策略评分")),
+			victory_race_bonus,
+			String(victory_race.get("reason", "")),
+		]
 	var generic_bonus := _ai_generic_card_effect_score(player_index, skill, context_district, String(context.get("product", "")), target_owner)
 	if generic_bonus != 0:
 		context["generic_effect_bonus"] = generic_bonus
@@ -23387,6 +23508,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				target_owner = int(city.get("owner", -1))
 			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
 			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
+			var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
+			var victory_race_bonus := int(victory_race.get("bonus", 0))
 			var profile_signature := _ai_profile_signature_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
 			var profile_signature_bonus := int(profile_signature.get("bonus", 0))
 			var route_gap := _ai_route_gap_adjustment(player_index, skill, district_index, product_name, target_owner)
@@ -23442,6 +23565,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score += military_deploy_bonus
 			if phase_bonus != 0:
 				score += phase_bonus
+			if victory_race_bonus != 0:
+				score += victory_race_bonus
 			if learning_bonus != 0:
 				score += learning_bonus
 			var role := _player_role_card_for_index(player_index)
@@ -23486,6 +23611,9 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"leader_index": int(phase_info.get("leader_index", -1)),
 				"endgame_urgency": endgame_urgency,
 				"phase_bonus": phase_bonus,
+				"victory_race_bonus": victory_race_bonus,
+				"victory_race_role": String(victory_race.get("role", "")),
+				"victory_race_reason": String(victory_race.get("reason", "")),
 				"generic_effect_bonus": generic_bonus,
 				"profile_signature_bonus": profile_signature_bonus,
 				"profile_signature_family": String(profile_signature.get("family", "")),
@@ -23498,7 +23626,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"discard_slot": discard_slot,
 				"discard_keep_value": discard_keep_value,
 				"counted_hand": counted_hand,
-				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜路线缺口%s+%d/-%d｜路线库存%d/%d/%d +%d/-%d｜阶段%s/%s+%d｜终局紧迫%d｜策略%s+%d｜商品路线%s/%s+%d｜发展%s+%d｜性格签名+%d:%s｜学习%d｜探索率%.0f%%" % [
+				"reason": "%s｜费用¥%d｜流动%d/%d｜可打出%s｜手压-%d｜路线缺口%s+%d/-%d｜路线库存%d/%d/%d +%d/-%d｜阶段%s/%s+%d｜终局紧迫%d｜终局竞速+%d:%s｜策略%s+%d｜商品路线%s/%s+%d｜发展%s+%d｜性格签名+%d:%s｜学习%d｜探索率%.0f%%" % [
 					_card_display_name(card_name),
 					price,
 					available,
@@ -23517,6 +23645,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					posture_label,
 					phase_bonus,
 					endgame_urgency,
+					victory_race_bonus,
+					String(victory_race.get("reason", "")),
 					strategy_intent if strategy_intent != "" else "未定",
 					strategy_bonus,
 					route_product if route_product != "" else "未定",
@@ -23599,7 +23729,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "profile_signature_bonus", "profile_signature_family", "profile_signature_route", "profile_signature_reason", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "victory_race_bonus", "victory_race_role", "victory_race_reason", "generic_effect_bonus", "profile_signature_bonus", "profile_signature_family", "profile_signature_route", "profile_signature_reason", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -23714,6 +23844,9 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 				"leader_index": int(buy_choice.get("leader_index", -1)),
 				"endgame_urgency": int(buy_choice.get("endgame_urgency", 0)),
 				"phase_bonus": int(buy_choice.get("phase_bonus", 0)),
+				"victory_race_bonus": int(buy_choice.get("victory_race_bonus", 0)),
+				"victory_race_role": String(buy_choice.get("victory_race_role", "")),
+				"victory_race_reason": String(buy_choice.get("victory_race_reason", "")),
 				"generic_effect_bonus": int(buy_choice.get("generic_effect_bonus", 0)),
 				"profile_signature_bonus": int(buy_choice.get("profile_signature_bonus", 0)),
 				"profile_signature_family": String(buy_choice.get("profile_signature_family", "")),
