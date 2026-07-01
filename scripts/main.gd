@@ -1506,6 +1506,7 @@ var run_save_path := RUN_SAVE_PATH
 var status_label: Label
 var header_status_chip_rail: HFlowContainer
 var header_status_chip_labels := {}
+var header_status_chip_bars := {}
 var weather_forecast_panel: PanelContainer
 var weather_active_label: Label
 var weather_forecast_label: Label
@@ -1919,6 +1920,7 @@ func _build_layout() -> void:
 
 func _build_header_status_chip_rail(parent: HBoxContainer) -> void:
 	header_status_chip_labels = {}
+	header_status_chip_bars = {}
 	header_status_chip_rail = HFlowContainer.new()
 	header_status_chip_rail.name = "HeaderStatusChipRail"
 	header_status_chip_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1926,7 +1928,7 @@ func _build_header_status_chip_rail(parent: HBoxContainer) -> void:
 	header_status_chip_rail.add_theme_constant_override("v_separation", 3)
 	parent.add_child(header_status_chip_rail)
 	_add_header_status_chip("tempo", "◆ 空闲", Color("#a7f3d0"), "桌面节奏：显示当前最需要注意的全桌状态。")
-	_add_header_status_chip("time", "◷ 00:00", Color("#93c5fd"), "本局实时计时。")
+	_add_header_status_meter_chip("time", "⌛ 沙漏", Color("#93c5fd"), "牌桌节奏条：有全桌窗口时按真实窗口缩短；平时只做低调节奏提示。")
 	_add_header_status_chip("seat", "◎ 玩家", Color("#bfdbfe"), "当前查看的玩家席位。")
 	_add_header_status_chip("goal", "♛ 目标", Color("#fef3c7"), "本层现金目标与当前可见结算估计。")
 	_add_header_status_chip("queue", "▤ 空闲", Color("#c084fc"), "匿名出牌列和当前结算状态。")
@@ -1956,6 +1958,48 @@ func _add_header_status_chip(key: String, text: String, accent: Color, tooltip: 
 	return label
 
 
+func _add_header_status_meter_chip(key: String, text: String, accent: Color, tooltip: String) -> Label:
+	if header_status_chip_rail == null:
+		return null
+	var chip := PanelContainer.new()
+	chip.name = "HeaderStatusMeterChip"
+	chip.tooltip_text = tooltip
+	chip.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
+	header_status_chip_rail.add_child(chip)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_top", 2)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_bottom", 2)
+	chip.add_child(margin)
+	var row := HBoxContainer.new()
+	row.name = "HeaderStatusMeterRow"
+	row.add_theme_constant_override("separation", 6)
+	margin.add_child(row)
+	var label := _plain_label(text, 10, accent.lightened(0.12))
+	label.name = "HeaderStatusMeterLabel"
+	label.custom_minimum_size = Vector2(48, 0)
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.tooltip_text = tooltip
+	row.add_child(label)
+	var bar := ProgressBar.new()
+	bar.name = "HeaderStatusMeterBar"
+	bar.custom_minimum_size = Vector2(46, 8)
+	bar.min_value = 0.0
+	bar.max_value = 100.0
+	bar.value = 100.0
+	bar.show_percentage = false
+	bar.tooltip_text = tooltip
+	bar.add_theme_stylebox_override("background", _menu_card_style(Color("#334155"), Color("#020617"), 1, 5))
+	bar.add_theme_stylebox_override("fill", _menu_card_style(accent, Color("#020617").lerp(accent, 0.70), 0, 5))
+	row.add_child(bar)
+	header_status_chip_labels[key] = label
+	header_status_chip_bars[key] = bar
+	return label
+
+
 func _set_header_status_chip(key: String, text: String, tooltip: String = "") -> void:
 	var label := header_status_chip_labels.get(key, null) as Label
 	if label == null:
@@ -1963,6 +2007,37 @@ func _set_header_status_chip(key: String, text: String, tooltip: String = "") ->
 	label.text = text
 	if tooltip != "":
 		label.tooltip_text = tooltip
+
+
+func _set_header_status_meter(key: String, text: String, ratio: float, accent: Color, tooltip: String = "") -> void:
+	_set_header_status_chip(key, text, tooltip)
+	var bar := header_status_chip_bars.get(key, null) as ProgressBar
+	if bar == null:
+		return
+	bar.value = clampf(ratio, 0.0, 1.0) * 100.0
+	bar.add_theme_stylebox_override("fill", _menu_card_style(accent, Color("#020617").lerp(accent, 0.70), 0, 5))
+	if tooltip != "":
+		bar.tooltip_text = tooltip
+
+
+func _header_tempo_meter_state() -> Dictionary:
+	var active_state := _active_bottom_countdown_state()
+	if bool(active_state.get("visible", false)):
+		var remaining := maxf(0.0, float(active_state.get("remaining", 0.0)))
+		var total := maxf(0.001, float(active_state.get("total", 1.0)))
+		return {
+			"label": String(active_state.get("label", "沙漏")),
+			"ratio": clampf(remaining / total, 0.0, 1.0),
+			"accent": active_state.get("accent", Color("#93c5fd")),
+			"tip": "条越短，当前全桌窗口越接近结束；真正倒计时在底部沙漏条。",
+		}
+	var phase := fposmod(game_time, 12.0) / 12.0
+	return {
+		"label": "桌面",
+		"ratio": 1.0 - phase,
+		"accent": Color("#93c5fd"),
+		"tip": "当前没有全桌倒计时；顶部只保留低调节奏条，具体窗口交给底部沙漏。",
+	}
 
 
 func _table_tempo_status() -> Dictionary:
@@ -16263,6 +16338,7 @@ func _refresh_status() -> void:
 	var queue_status := _card_resolution_status_text()
 	var weather_status := _weather_status_text()
 	var tempo_status := _table_tempo_status()
+	var meter_status := _header_tempo_meter_state()
 	if status_label != null:
 		status_label.text = "%s｜%s｜%s｜%s｜%s｜%s" % [
 			_format_time(game_time),
@@ -16273,7 +16349,13 @@ func _refresh_status() -> void:
 			district_name,
 		]
 	_set_header_status_chip("tempo", String(tempo_status.get("text", "◆ 空闲")), String(tempo_status.get("tip", "桌面节奏。")))
-	_set_header_status_chip("time", "◷ %s" % _format_time(game_time), "本局实时计时。")
+	_set_header_status_meter(
+		"time",
+		"⌛ %s" % _short_card_text(String(meter_status.get("label", "沙漏")), 4),
+		float(meter_status.get("ratio", 1.0)),
+		meter_status.get("accent", Color("#93c5fd")) as Color,
+		String(meter_status.get("tip", "牌桌节奏条。"))
+	)
 	_set_header_status_chip("seat", "◎ %s" % _short_card_text(player_name, 10), "当前查看席位；现金、手牌和弃牌只对自己可见。")
 	_set_header_status_chip("goal", "♛ ¥%d/%d" % [visible_cash, _roguelike_cash_goal()], "%s｜终局按钱最多排名。" % _roguelike_depth_label())
 	_set_header_status_chip("queue", "▤ %s" % _short_card_text(queue_status, 16), "匿名出牌列：历史、当前展示、候补和下批等待。")

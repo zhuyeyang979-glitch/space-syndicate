@@ -3,6 +3,38 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜顶部数字时间改成牌桌沙漏条
+
+### 本轮实现
+
+- 将主牌桌顶栏原来的 `◷ 00:00` 数字时间筹码替换为 `HeaderStatusMeterChip`：
+  - 左侧显示短状态，例如 `⌛ 天气…`、`⌛ 展示`、`⌛ 竞价`；
+  - 右侧显示小型 `HeaderStatusMeterBar`；
+  - 不再在顶栏常驻显示具体秒数。
+- 顶部节奏条现在复用底部全桌窗口状态：
+  - 怪兽赌局、匿名竞价、同时出牌、相位响应、公开展示、合约回应、终局沙漏、天气预报/影响都会显示对应条；
+  - 没有全桌窗口时，只显示低调脉冲条，不制造额外数字负担。
+- 更新 UI 护栏：
+  - `tests/visual_snapshot.gd` 检查顶栏使用 `HeaderStatusMeterBar`，且不再回到 `◷ 00:00`；
+  - `tests/ui_text_smoke_test.gd` 同步检查沙漏条契约。
+
+### 设计意图
+
+- 试玩桌面应像赌桌/电子桌游：重要倒计时用条状沙漏表达，玩家不用反复读数字时间。
+- 顶栏只负责提示“现在桌面是什么状态”；真正的全桌倒计时继续交给屏幕底部 `BottomCountdownPanel`。
+- 这一步继续减少主游戏画面的常驻文字，让中央星球、手牌和行动托盘更突出。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+  - 有头 UI 快照采集 `tests/ui_snapshot_capture.gd`
+- 有头复查快照：
+  - `C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/04_play_table.png`
+
 ## 2026-07-01｜卡牌详情页压缩重复文案并修正梯度卡排版
 
 ### 本轮实现
