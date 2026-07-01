@@ -33,6 +33,8 @@ The prototype should not balance by making every route equally strong in every s
 
 ## Major route audit
 
+The current branch now has an automated development-route pressure audit. It checks the six required AI-baseline routes — city growth, contract route, finance speculation, monster pressure, intel/supply, and direct interaction — for card coverage, complete I-IV ladders, money/disruption/protection/intel pressure, gates, public inference clues, counterplay, and at least one primary AI profile.
+
 | Route | Current support | Main risk | Next balancing need |
 | --- | --- | --- | --- |
 | City GDP growth | City financing, product/demand shifts, temporary orders, route-flow buffs, contracts | Can snowball if early city remains untouched | Keep GDP boosts readable through breakdown; add more targeted city defense and city-specific sabotage tests |
@@ -53,9 +55,10 @@ The prototype should not balance by making every route equally strong in every s
    - Tank remains the durable land defender with weak ocean mobility.
    - Missile remains range-gated and position-readable.
    - Submarine and warship remain strongest on ocean trade maps.
-2. Covered now: commodity futures and warehouse stockpile have an automated balance audit that compares leverage against ordinary city-income reference values and checks that stronger payouts carry real-time windows, product-flow gates, public product/warehouse clues, and warehouse destruction risk.
-3. Covered now: direct interaction cards have an automated balance audit. The four I-IV families must keep pressure, gates, public clues, and counter availability aligned, so hand pressure creates disruption plus inference clues instead of becoming cheap invisible deletion.
-4. Role cards now have a separate role-budget audit. The current role pool is broad enough, but the next tuning pass should watch high-leverage public passives:
+2. Covered now: core development routes have an automated pressure audit. City growth, contract route, finance speculation, monster pressure, intel/supply, and direct interaction must each maintain enough cards, at least one complete I-IV ladder, money/disruption/intel/protection pressure, gates, public clues, counterplay, and AI profile coverage.
+3. Covered now: commodity futures and warehouse stockpile have an automated balance audit that compares leverage against ordinary city-income reference values and checks that stronger payouts carry real-time windows, product-flow gates, public product/warehouse clues, and warehouse destruction risk.
+4. Covered now: direct interaction cards have an automated balance audit. The four I-IV families must keep pressure, gates, public clues, and counter availability aligned, so hand pressure creates disruption plus inference clues instead of becoming cheap invisible deletion.
+5. Role cards now have a separate role-budget audit. The current role pool is broad enough, but the next tuning pass should watch high-leverage public passives:
    - Extra purchase range can be very strong on large planets.
    - Monster or military control-limit bonuses are board-state dependent.
    - Intel charges are powerful only if the cash reward and guessing stakes justify them.
@@ -93,3 +96,5 @@ Next AI tuning should check whether each profile actually does its thing in long
 - Covered now: generated-run card supply respects planet goods. Fixed-product cards enter only when their required product exists, monster cards enter by resource focus with a safe fallback, and district choices are audited against local products/demands so unavailable goods do not leak into purchasable cards.
 - Covered now: military identity balance is audited from the card data. The smoke test verifies each military family has I-IV cards, non-regressing rank gradients, fighter mobility, bomber GDP pressure, missile range, tank durability/terrain weakness, ocean-force sea mobility, and route-damage boundaries.
 - Covered now: direct-interaction balance is audited from card fields. The smoke test verifies 星链拆解, 影仓牵引, 产权冻结, and 轨道齐射 all have I-IV ladders, non-regressing pressure/gates, product-flow gates, public target/result clues, and counter-window support.
+- Covered now: core development-route pressure is audited from card fields. The smoke test verifies city growth, contract route, finance speculation, monster pressure, intel/supply, and direct interaction all have enough card coverage, at least one full I-IV ladder, field-driven money or disruption value, gates, public clues, counterplay, sample cards, and AI profile coverage.
+- Covered now: the AI strategy-intent test now uses explicit scenarios instead of relying on incidental cash-goal scale. A damaged leading route must trigger `defend_routes`; a trailing AI facing a rich competing city must trigger `disrupt_competitors`; opening growth remains `grow_focus`.

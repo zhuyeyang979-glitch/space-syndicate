@@ -303,6 +303,7 @@ func _run() -> void:
 	_expect(growth_strategy_text.contains("城市成长") and speculation_strategy_text.contains("金融投机") and intel_strategy_text.contains("情报推理") and monster_strategy_text.contains("怪兽路线"), "card strategy summaries are derived for economy, speculation, intel, and monster routes")
 	_expect(growth_budget_text.contains("强度预算") and growth_budget_text.contains("主强度") and growth_budget_text.contains("制衡") and monster_budget_text.contains("怪兽"), "card strength budgets explain power drivers and counterplay from data fields")
 	_expect(_verify_development_route_balance_baseline(main), "card pool exposes AI-readable development routes with card coverage, rank ladders, and profile preferences")
+	_expect(_verify_development_route_pressure_audit(main), "development route pressure audit proves core strategies have money pressure, gates, clues, and AI coverage")
 	_expect(_verify_direct_player_interaction_cards(main), "direct player-interaction cards cover 拆牌、牵牌、产权冻结、全场齐射 with target-player UI, balance gates, and anonymous clue rules")
 	_expect(_verify_direct_interaction_balance_audit(main), "direct-interaction balance audit gates strong pressure with flow, public clues, and counter windows")
 	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, contract, monster target, player target, and monster wager modules")
@@ -2978,6 +2979,13 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 		var grow_goods := _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水") if grow_created else false
 		var grow_strategy := main.call("_ai_refresh_strategy_intent", 1, true) as Dictionary
 		var grow_ok := grow_created and grow_goods and String(grow_strategy.get("intent", "")) == "grow_focus"
+		if not grow_ok:
+			print("AI strategy grow failures: created=%s goods=%s intent=%s strategy=%s" % [
+				str(grow_created),
+				str(grow_goods),
+				String(grow_strategy.get("intent", "")),
+				str(grow_strategy),
+			])
 		ok = grow_ok and ok
 
 	var restore_mid := int(main.call("_apply_run_state", strategy_base))
@@ -2987,10 +2995,13 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 	if own_index < 0:
 		ok = false
 	else:
+		var defend_cash_goal := int(main.call("_roguelike_cash_goal"))
+		var defend_leader_cash := maxi(5000, int(round(float(defend_cash_goal) * 0.84)))
+		var defend_other_cash := maxi(1800, int(round(float(defend_cash_goal) * 0.38)))
 		var defend_players := _as_array(main.get("players")).duplicate(true)
 		for player_index in range(defend_players.size()):
 			var player := defend_players[player_index] as Dictionary
-			player["cash"] = 5000
+			player["cash"] = defend_leader_cash if player_index == 1 else defend_other_cash
 			player["action_cooldown"] = 0.0
 			if player_index == 1:
 				player["slots"] = [main.call("_make_skill", "供应链保险1")]
@@ -3001,10 +3012,17 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 		var defend_districts := _as_array(main.get("districts")).duplicate(true)
 		var defend_district := defend_districts[own_index] as Dictionary
 		var defend_city := defend_district.get("city", {}) as Dictionary
-		defend_city["trade_route_damage"] = 4
+		defend_city["trade_route_damage"] = 8
+		defend_city["trade_disrupted_routes"] = 2
 		defend_district["city"] = defend_city
+		defend_district["damage"] = maxi(int(defend_district.get("damage", 0)), 4)
 		defend_districts[own_index] = defend_district
 		main.set("districts", defend_districts)
+		main.set("business_cycle_count", 3)
+		var defend_actor := main.call("_make_auto_monster", 0, 0, own_index, 1, 1) as Dictionary
+		main.set("auto_monsters", [defend_actor])
+		var defend_phase_info := main.call("_ai_refresh_game_phase", 1, true) as Dictionary
+		var defend_rankings := main.call("_ai_strategy_candidates", 1) as Array
 		var defend_strategy := main.call("_ai_refresh_strategy_intent", 1, true) as Dictionary
 		var defend_skill := main.call("_make_skill", "供应链保险1") as Dictionary
 		var defend_context := main.call("_ai_card_play_context", 1, 0, defend_skill) as Dictionary
@@ -3031,6 +3049,22 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 			and defend_queued
 			and defend_memory
 		)
+		if not defend_ok:
+			print("AI strategy defend failures: created=%s goods=%s phase=%s posture=%s intent=%s context=%s context_intent=%s bonus=%d choice=%s queued=%s memory=%s candidates=%d rankings=%s" % [
+				str(defend_created),
+				str(defend_goods),
+				String(defend_phase_info.get("phase", "")),
+				String(defend_phase_info.get("posture", "")),
+				String(defend_strategy.get("intent", "")),
+				str(not defend_context.is_empty()),
+				String(defend_context.get("strategy_intent", "")),
+				int(defend_context.get("strategy_bonus", 0)),
+				str(not defend_choice.is_empty()),
+				str(defend_queued),
+				str(defend_memory),
+				defend_candidates.size(),
+				str(defend_rankings),
+			])
 		ok = defend_ok and ok
 
 	restore_mid = int(main.call("_apply_run_state", strategy_base))
@@ -3041,10 +3075,14 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 	if own_index < 0 or rival_index < 0:
 		ok = false
 	else:
+		var disrupt_cash_goal := int(main.call("_roguelike_cash_goal"))
+		var disrupt_ai_cash := maxi(2600, int(round(float(disrupt_cash_goal) * 0.36)))
+		var disrupt_rival_cash := maxi(5200, int(round(float(disrupt_cash_goal) * 0.82)))
+		var disrupt_neutral_cash := maxi(2400, int(round(float(disrupt_cash_goal) * 0.42)))
 		var disrupt_players := _as_array(main.get("players")).duplicate(true)
 		for player_index in range(disrupt_players.size()):
 			var player := disrupt_players[player_index] as Dictionary
-			player["cash"] = 5000
+			player["cash"] = disrupt_ai_cash if player_index == 1 else (disrupt_rival_cash if player_index == 2 else disrupt_neutral_cash)
 			player["action_cooldown"] = 0.0
 			if player_index == 1:
 				player["slots"] = [main.call("_make_skill", "商路黑客1")]
@@ -3061,6 +3099,9 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 		rival_district["city"] = rival_city
 		disrupt_districts[rival_index] = rival_district
 		main.set("districts", disrupt_districts)
+		main.set("business_cycle_count", 3)
+		var disrupt_actor := main.call("_make_auto_monster", 0, 0, own_index, 1, 1) as Dictionary
+		main.set("auto_monsters", [disrupt_actor])
 		var disrupt_strategy := main.call("_ai_refresh_strategy_intent", 1, true) as Dictionary
 		var business_candidates := main.call("_rival_business_candidates_for_player", 1) as Array
 		var saw_disrupt_bonus := false
@@ -3100,6 +3141,24 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 			and disrupt_queued
 			and disrupt_memory
 		)
+		if not disrupt_ok:
+			print("AI strategy disrupt failures: own=%s rival=%s own_goods=%s rival_goods=%s intent=%s business=%s context=%s context_intent=%s bonus=%d choice=%s target=%d expected=%d queued=%s memory=%s candidates=%d" % [
+				str(disrupt_own_created),
+				str(disrupt_rival_created),
+				str(disrupt_own_goods),
+				str(disrupt_rival_goods),
+				String(disrupt_strategy.get("intent", "")),
+				str(saw_disrupt_bonus),
+				str(not disrupt_context.is_empty()),
+				String(disrupt_context.get("strategy_intent", "")),
+				int(disrupt_context.get("strategy_bonus", 0)),
+				str(not disrupt_choice.is_empty()),
+				int(disrupt_choice.get("target_city", -1)),
+				rival_index,
+				str(disrupt_queued),
+				str(disrupt_memory),
+				disrupt_play_candidates.size(),
+			])
 		ok = disrupt_ok and ok
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
@@ -5881,6 +5940,70 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 		return false
 	if int(main.call("_ai_development_route_bonus", 1, "city_growth")) <= 0:
 		print("First AI profile does not receive a positive city-growth route bonus")
+		return false
+	return true
+
+
+func _verify_development_route_pressure_audit(main: Node) -> bool:
+	var required_routes := ["city_growth", "contract_route", "finance_speculation", "monster_pressure", "intel_supply", "direct_interaction"]
+	var report := main.call("_development_route_pressure_audit") as Dictionary
+	var routes := _as_array(report.get("routes", []))
+	var issues := _as_array(report.get("issues", []))
+	if not bool(report.get("ok", false)):
+		print("Development route pressure audit issues: %s" % " / ".join(issues))
+		return false
+	var by_id := {}
+	for route_variant in routes:
+		if not (route_variant is Dictionary):
+			continue
+		var route := route_variant as Dictionary
+		var route_id := String(route.get("id", ""))
+		if route_id != "":
+			by_id[route_id] = route
+	for route_variant in required_routes:
+		var route_id := String(route_variant)
+		if not by_id.has(route_id):
+			print("Missing pressure route: %s" % route_id)
+			return false
+		var route := by_id[route_id] as Dictionary
+		var status := String(route.get("status", ""))
+		var notes := _as_array(route.get("notes", []))
+		var total_pressure := int(route.get("total_pressure", 0))
+		var gate_score := int(route.get("gate_score", 0))
+		var clue_score := int(route.get("public_clue_score", 0))
+		var counter_score := int(route.get("counterplay_score", 0))
+		var money_score := int(route.get("money_score", 0))
+		var disruption_score := int(route.get("disruption_score", 0))
+		var intel_supply_score := int(route.get("intel_supply_score", 0))
+		var ok := status == "可追目标" \
+			and notes.is_empty() \
+			and int(route.get("card_count", 0)) >= 8 \
+			and int(route.get("complete_rank_ladders", 0)) >= 1 \
+			and total_pressure >= 160 \
+			and gate_score >= 120 \
+			and clue_score >= 80 \
+			and counter_score >= 130 \
+			and int(route.get("primary_ai_profiles", 0)) >= 1 \
+			and not _as_array(route.get("sample_cards", [])).is_empty()
+		match route_id:
+			"city_growth":
+				ok = ok and money_score > 0
+			"contract_route":
+				ok = ok and money_score > 0 and gate_score > 0
+			"finance_speculation":
+				ok = ok and money_score > 0 and clue_score > 0
+			"monster_pressure":
+				ok = ok and disruption_score > 0
+			"intel_supply":
+				ok = ok and intel_supply_score > 0
+			"direct_interaction":
+				ok = ok and disruption_score > 0 and clue_score > 0
+		if not ok:
+			print("Development route pressure failed %s: %s" % [route_id, str(route)])
+			return false
+	var summary := String(report.get("summary", ""))
+	if not summary.contains("核心路线压力审计") or not summary.contains("城市成长") or not summary.contains("金融投机") or not summary.contains("直接互动"):
+		print("Development route pressure summary incomplete: %s" % summary)
 		return false
 	return true
 

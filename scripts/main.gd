@@ -15909,6 +15909,317 @@ func _development_route_audit() -> Array:
 	return result
 
 
+func _development_route_pressure_card_entry(card_name: String, skill: Dictionary) -> Dictionary:
+	var kind := String(skill.get("kind", ""))
+	var money_score := 0
+	var disruption_score := 0
+	var protection_score := 0
+	var intel_supply_score := 0
+	var gate_score := maxi(0, int(skill.get("cost", 0))) * 8
+	var public_clue_score := 0
+	var product_flow_required := maxi(0, _skill_play_flow_required(skill, selected_player))
+	var gate_facts := _card_budget_gate_facts(skill)
+	var pillars := _card_balance_pillars(skill)
+	gate_score += product_flow_required * 42
+	gate_score += gate_facts.size() * 18
+	if String(_skill_play_product(skill, selected_player)) != "":
+		public_clue_score += 18
+	if product_flow_required > 0:
+		public_clue_score += 26
+	if _skill_targets_player(skill):
+		gate_score += 28
+		public_clue_score += 54
+	if _skill_targets_monster(skill):
+		gate_score += 24
+		public_clue_score += 42
+	if ["city_control_dispute", "global_barrage", "area_trade_contract", "weather_control", "military_force"].has(kind):
+		public_clue_score += 44
+	if not bool(skill.get("persistent", false)):
+		gate_score += 8
+	else:
+		protection_score += 18
+	if pillars.has("公开门槛"):
+		public_clue_score += 18
+	money_score += maxi(0, int(skill.get("cash", 0))) / 35
+	money_score += maxi(0, int(skill.get("revenue_amount", 0))) / 8
+	money_score += maxi(0, int(skill.get("contract_income", 0))) / 10
+	money_score += maxi(0, int(skill.get("accept_cash", 0))) / 30
+	money_score += maxi(0, int(skill.get("production_delta", 0))) * 44
+	money_score += maxi(0, int(skill.get("transport_delta", 0))) * 42
+	money_score += maxi(0, int(skill.get("consumption_delta", 0))) * 42
+	money_score += maxi(0, int(skill.get("accept_production_delta", 0))) * 38
+	money_score += maxi(0, int(skill.get("accept_transport_delta", 0))) * 36
+	money_score += maxi(0, int(skill.get("accept_consumption_delta", 0))) * 36
+	money_score += maxi(0, int(skill.get("contract_add_products", 0))) * 34
+	money_score += maxi(0, int(skill.get("contract_add_demands", 0))) * 34
+	money_score += int(round(maxf(0.0, float(skill.get("growth_multiplier", 1.0)) - 1.0) * 120.0))
+	money_score += int(round(maxf(0.0, float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 110.0))
+	money_score += int(round(maxf(0.0, float(skill.get("accept_route_flow_multiplier", 1.0)) - 1.0) * 88.0))
+	disruption_score += maxi(0, int(skill.get("damage", 0))) * 42
+	disruption_score += maxi(0, int(skill.get("route_damage", 0))) * 68
+	disruption_score += maxi(0, int(skill.get("decline_route_damage", 0))) * 64
+	disruption_score += maxi(0, -int(skill.get("production_delta", 0))) * 48
+	disruption_score += maxi(0, -int(skill.get("transport_delta", 0))) * 48
+	disruption_score += maxi(0, -int(skill.get("consumption_delta", 0))) * 48
+	disruption_score += maxi(0, -int(skill.get("decline_production_delta", 0))) * 42
+	disruption_score += maxi(0, -int(skill.get("decline_transport_delta", 0))) * 42
+	disruption_score += maxi(0, -int(skill.get("decline_consumption_delta", 0))) * 42
+	disruption_score += maxi(0, int(skill.get("panic", 0))) * 3
+	disruption_score += maxi(0, int(skill.get("hand_discard_count", 0))) * 86
+	disruption_score += maxi(0, int(skill.get("hand_steal_count", 0))) * 118
+	disruption_score += maxi(0, int(skill.get("target_cash_penalty", 0))) / 2
+	disruption_score += int(round(maxf(0.0, float(skill.get("control_block_seconds", 0.0))) * maxi(0, int(skill.get("control_gdp_penalty", 0))) / 18.0))
+	disruption_score += maxi(0, int(skill.get("global_barrage_target_count", 0))) * (maxi(0, int(skill.get("global_barrage_damage", 0))) * 70 + maxi(0, int(skill.get("global_barrage_route_damage", 0))) * 46)
+	protection_score += maxi(0, int(skill.get("repair_routes", 0))) * 62
+	protection_score += maxi(0, int(skill.get("armor", 0))) * 18
+	protection_score += maxi(0, int(skill.get("guard", 0))) * 18
+	protection_score += maxi(0, int(skill.get("ranged_guard", 0))) * 18
+	protection_score += maxi(0, int(skill.get("counter_strength", 0))) * 80
+	protection_score += maxi(0, int(skill.get("stabilize_amount", 0))) * 36
+	if kind == "market_stabilize":
+		protection_score += 64
+	intel_supply_score += maxi(0, int(skill.get("trace_card_count", 0))) * 84
+	intel_supply_score += maxi(0, int(skill.get("trace_contract_count", 0))) * 88
+	intel_supply_score += maxi(0, int(skill.get("reveal_city_count", 0))) * 92
+	intel_supply_score += maxi(0, int(skill.get("draw_amount", 0))) * 72
+	intel_supply_score += maxi(0, int(skill.get("card_access_extra_hops", 0))) * 68
+	if bool(skill.get("card_access_global", false)):
+		intel_supply_score += 140
+	if kind == "product_futures":
+		var futures_payout := _product_futures_balance_projected_payout(skill)
+		money_score += futures_payout / 18
+		if String(skill.get("product_bet_direction", "up")) == "down":
+			disruption_score += futures_payout / 26
+		public_clue_score += _product_futures_balance_public_clue_score(skill) / 2
+		if bool(skill.get("requires_warehouse_city", false)):
+			gate_score += 70
+			public_clue_score += 46
+	if kind == "city_gdp_derivative":
+		var gdp_multiplier := maxf(0.1, float(skill.get("gdp_bet_multiplier", 1.0)))
+		var gdp_window := _gdp_bet_duration_seconds(skill)
+		var derivative_score := int(round(gdp_multiplier * 78.0 + gdp_window / 3.0 + float(maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0)))) / 8.0))
+		if skill.get("gdp_bet_insurance", false) == true:
+			protection_score += derivative_score
+		elif String(skill.get("gdp_bet_direction", "up")) == "down":
+			disruption_score += derivative_score
+		else:
+			money_score += derivative_score
+		public_clue_score += 30
+	if kind == "monster_card":
+		disruption_score += maxi(0, int(skill.get("hp", 0))) / 3
+		disruption_score += maxi(0, int(skill.get("damage", 0))) * 34
+		disruption_score += maxi(0, int(skill.get("fixed_skill_count", 0))) * 45
+		public_clue_score += 34
+	if kind == "monster_lure":
+		disruption_score += int(round(maxf(0.0, float(skill.get("lure_speedup", 0.0))) * 18.0))
+		public_clue_score += 36
+	if kind == "monster_takeover":
+		disruption_score += 160
+		public_clue_score += 48
+	if kind == "military_force" or kind == "military_command":
+		disruption_score += _military_force_balance_pressure_score(skill)
+		disruption_score += maxi(0, int(skill.get("military_damage", 0))) * 40
+		protection_score += maxi(0, int(skill.get("military_hp", 0))) * 5
+		public_clue_score += 42
+	if kind == "weather_control":
+		var zones := maxi(1, int(skill.get("weather_zone_count", 1)))
+		var duration := maxf(1.0, float(skill.get("weather_duration_seconds", WEATHER_DURATION_MIN_SECONDS)))
+		money_score += zones * 10
+		disruption_score += zones * 16 + int(round(duration / 10.0))
+		public_clue_score += 56
+	if kind == "news_event":
+		disruption_score += maxi(0, int(skill.get("panic", 0))) * 2 + maxi(0, int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0))) * 24
+		public_clue_score += 38
+	var total_pressure := money_score + disruption_score + int(round(float(protection_score) * 0.65)) + int(round(float(intel_supply_score) * 0.70))
+	return {
+		"name": card_name,
+		"route_id": _card_development_route_id(skill),
+		"route_label": _card_strategy_route_label(skill),
+		"kind": kind,
+		"rank": clampi(_skill_rank(card_name), 1, 4),
+		"budget": _card_strength_budget_points(card_name),
+		"pillars": pillars,
+		"money_score": money_score,
+		"disruption_score": disruption_score,
+		"protection_score": protection_score,
+		"intel_supply_score": intel_supply_score,
+		"gate_score": gate_score,
+		"public_clue_score": public_clue_score,
+		"total_pressure": total_pressure,
+	}
+
+
+func _development_route_pressure_notes(route_id: String, entry: Dictionary) -> Array:
+	var notes := []
+	var card_count := int(entry.get("card_count", 0))
+	if bool(entry.get("required_for_ai_baseline", false)) and card_count < 6:
+		notes.append("牌量不足")
+	if int(entry.get("complete_rank_ladders", 0)) <= 0:
+		notes.append("缺少完整I-IV梯度")
+	if int(entry.get("money_score", 0)) + int(entry.get("disruption_score", 0)) + int(entry.get("intel_supply_score", 0)) <= 0:
+		notes.append("缺少能转化为现金的收益/压制/情报支点")
+	if int(entry.get("total_pressure", 0)) < 160:
+		notes.append("路线压力过低")
+	var gate_score := int(entry.get("gate_score", 0))
+	var clue_score := int(entry.get("public_clue_score", 0))
+	if bool(entry.get("required_for_ai_baseline", false)) and gate_score < max(120, card_count * 22):
+		notes.append("门槛偏低或不可读")
+	if bool(entry.get("required_for_ai_baseline", false)) and clue_score < max(80, card_count * 12):
+		notes.append("公开线索不足")
+	if int(entry.get("counterplay_score", 0)) < 130:
+		notes.append("反制支撑不足")
+	if bool(entry.get("required_for_ai_baseline", false)) and int(entry.get("primary_ai_profiles", 0)) <= 0:
+		notes.append("没有AI主路线")
+	match route_id:
+		"city_growth":
+			if int(entry.get("money_score", 0)) <= 0:
+				notes.append("城市成长缺收益引擎")
+		"contract_route":
+			if int(entry.get("money_score", 0)) <= 0 or int(entry.get("gate_score", 0)) <= 0:
+				notes.append("合约路线缺收益或谈判门槛")
+		"finance_speculation":
+			if int(entry.get("money_score", 0)) <= 0 or int(entry.get("public_clue_score", 0)) <= 0:
+				notes.append("金融路线缺兑现或公开价格/GDP线索")
+		"monster_pressure":
+			if int(entry.get("disruption_score", 0)) <= 0:
+				notes.append("怪兽路线缺压制破坏")
+		"intel_supply":
+			if int(entry.get("intel_supply_score", 0)) <= 0:
+				notes.append("情报补给路线缺线索或购牌范围支撑")
+		"direct_interaction":
+			if int(entry.get("disruption_score", 0)) <= 0 or int(entry.get("public_clue_score", 0)) <= 0:
+				notes.append("直接互动缺压制或公开目标线索")
+	return notes
+
+
+func _development_route_pressure_status(notes: Array) -> String:
+	if notes.is_empty():
+		return "可追目标"
+	if notes.size() <= 2:
+		return "需观察"
+	return "需补强"
+
+
+func _development_route_pressure_audit() -> Dictionary:
+	var route_entries := {}
+	var primary_counts := (_ai_development_route_diversity_audit().get("primary_counts", {}) as Dictionary)
+	for route_variant in _development_route_archetypes():
+		var route: Dictionary = (route_variant as Dictionary).duplicate(true)
+		var route_id := String(route.get("id", "tactical_support"))
+		route["card_count"] = 0
+		route["families"] = []
+		route["complete_rank_ladders"] = 0
+		route["money_score"] = 0
+		route["disruption_score"] = 0
+		route["protection_score"] = 0
+		route["intel_supply_score"] = 0
+		route["gate_score"] = 0
+		route["public_clue_score"] = 0
+		route["counterplay_score"] = 0
+		route["total_pressure"] = 0
+		route["max_single_card_pressure"] = 0
+		route["sample_cards"] = []
+		route["primary_ai_profiles"] = int(primary_counts.get(route_id, 0))
+		route["notes"] = []
+		route["status"] = "待审计"
+		route_entries[route_id] = route
+	var seen_ladders := {}
+	for card_variant in _card_codex_names("all"):
+		var base_name := String(card_variant)
+		if base_name == "":
+			continue
+		var family := _skill_family(base_name)
+		var family_complete := family != ""
+		for rank in range(1, 5):
+			if not _skill_exists("%s%d" % [family, rank]):
+				family_complete = false
+				break
+		for rank in range(1, 5):
+			var card_name := "%s%d" % [family, rank]
+			if not _skill_exists(card_name):
+				continue
+			var skill := _make_skill(card_name)
+			if skill.is_empty():
+				continue
+			var card_entry := _development_route_pressure_card_entry(card_name, skill)
+			var route_id := String(card_entry.get("route_id", "tactical_support"))
+			if not route_entries.has(route_id):
+				route_id = "tactical_support"
+			var route_entry: Dictionary = route_entries[route_id]
+			route_entry["card_count"] = int(route_entry.get("card_count", 0)) + 1
+			route_entry["money_score"] = int(route_entry.get("money_score", 0)) + int(card_entry.get("money_score", 0))
+			route_entry["disruption_score"] = int(route_entry.get("disruption_score", 0)) + int(card_entry.get("disruption_score", 0))
+			route_entry["protection_score"] = int(route_entry.get("protection_score", 0)) + int(card_entry.get("protection_score", 0))
+			route_entry["intel_supply_score"] = int(route_entry.get("intel_supply_score", 0)) + int(card_entry.get("intel_supply_score", 0))
+			route_entry["gate_score"] = int(route_entry.get("gate_score", 0)) + int(card_entry.get("gate_score", 0))
+			route_entry["public_clue_score"] = int(route_entry.get("public_clue_score", 0)) + int(card_entry.get("public_clue_score", 0))
+			route_entry["total_pressure"] = int(route_entry.get("total_pressure", 0)) + int(card_entry.get("total_pressure", 0))
+			route_entry["max_single_card_pressure"] = maxi(int(route_entry.get("max_single_card_pressure", 0)), int(card_entry.get("total_pressure", 0)))
+			var families: Array = route_entry.get("families", [])
+			if not families.has(family):
+				families.append(family)
+			route_entry["families"] = families
+			var samples: Array = route_entry.get("sample_cards", [])
+			if samples.size() < 6 and not samples.has(card_name):
+				samples.append(card_name)
+			route_entry["sample_cards"] = samples
+			if family_complete and not seen_ladders.has("%s:%s" % [route_id, family]):
+				route_entry["complete_rank_ladders"] = int(route_entry.get("complete_rank_ladders", 0)) + 1
+				seen_ladders["%s:%s" % [route_id, family]] = true
+			route_entries[route_id] = route_entry
+	var required_ok := true
+	var issues := []
+	var routes := []
+	for route_variant in _development_route_archetypes():
+		var route_id := String((route_variant as Dictionary).get("id", "tactical_support"))
+		var entry: Dictionary = route_entries.get(route_id, {})
+		var counterplay_score := int(entry.get("public_clue_score", 0)) + int(round(float(entry.get("gate_score", 0)) * 0.45))
+		if String(entry.get("counterplay", "")) != "":
+			counterplay_score += 90
+		if _development_route_has_pillar(entry, "防御"):
+			counterplay_score += 40
+		entry["counterplay_score"] = counterplay_score
+		var notes := _development_route_pressure_notes(route_id, entry)
+		entry["notes"] = notes
+		entry["status"] = _development_route_pressure_status(notes)
+		if bool(entry.get("required_for_ai_baseline", false)) and not notes.is_empty():
+			required_ok = false
+			for note_variant in notes:
+				issues.append("%s:%s" % [_development_route_label(route_id), String(note_variant)])
+		routes.append(entry)
+	return {
+		"ok": required_ok,
+		"issues": issues,
+		"routes": routes,
+		"summary": _development_route_pressure_summary_from_entries(routes),
+	}
+
+
+func _development_route_pressure_summary_from_entries(routes: Array) -> String:
+	var pieces := []
+	for entry_variant in routes:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("required_for_ai_baseline", false)):
+			continue
+		var route_id := String(entry.get("id", ""))
+		var route_label := String(entry.get("label", _development_route_label(route_id)))
+		pieces.append("%s:%s/压%d/门%d/线%d/AI%d" % [
+			route_label,
+			String(entry.get("status", "待审计")),
+			int(entry.get("total_pressure", 0)),
+			int(entry.get("gate_score", 0)),
+			int(entry.get("public_clue_score", 0)),
+			int(entry.get("primary_ai_profiles", 0)),
+		])
+	return "核心路线压力审计｜%s" % ("；".join(pieces) if not pieces.is_empty() else "暂无核心路线")
+
+
+func _development_route_pressure_summary() -> String:
+	return String(_development_route_pressure_audit().get("summary", "核心路线压力审计｜暂无"))
+
+
 func _development_route_budget_band_summary(entry: Dictionary) -> String:
 	var band_counts_variant: Variant = entry.get("budget_band_counts", {})
 	if not (band_counts_variant is Dictionary):
