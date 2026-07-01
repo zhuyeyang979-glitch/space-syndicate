@@ -5993,6 +5993,7 @@ func _update_bestiary_menu() -> void:
 			var center := CenterContainer.new()
 			menu_preview_box.add_child(center)
 			_add_monster_art_preview(center, _catalog_entry(bestiary_index), false)
+			_add_bestiary_ecology_info_cards(menu_preview_box, bestiary_index, false)
 			_add_bestiary_monster_card_link(menu_preview_box, bestiary_index)
 		else:
 			_populate_bestiary_thumbnail_page(menu_preview_box)
@@ -6029,7 +6030,7 @@ func _bestiary_first_index_on_page(page_index: int, total_count: int) -> int:
 
 func _bestiary_grid_text() -> String:
 	var page_count := _bestiary_grid_page_count(_catalog_size())
-	return "怪兽生态缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n这里展示怪兽生态、行动概率、移动特征和伤害表现；怪兽牌在卡牌图鉴的「怪兽牌」分类查看。悬停或单击怪兽缩略图会在下方显示详情预览；双击缩略图进入怪兽详情。进入详情后才使用顶部「上一个/下一个」切换怪兽，也可以点「返回缩略图」回到图册。" % [
+	return "怪兽生态缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n这里展示怪兽生态位、商品偏好、行动定位、行动概率、移动特征和伤害表现；怪兽牌在卡牌图鉴的「怪兽牌」分类查看。悬停或单击怪兽缩略图会在下方显示详情预览；双击缩略图进入怪兽详情。进入详情后才使用顶部「上一个/下一个」切换怪兽，也可以点「返回缩略图」回到图册。" % [
 		bestiary_grid_page + 1,
 		page_count,
 		_bestiary_grid_columns(),
@@ -6091,6 +6092,8 @@ func _populate_bestiary_thumbnail_page(parent: Container) -> void:
 	next_button.pressed.connect(Callable(self, "_turn_bestiary_grid_page").bind(1))
 	nav_row.add_child(next_button)
 
+	_add_bestiary_ecology_catalog_overview(parent)
+
 	var grid := GridContainer.new()
 	grid.columns = _bestiary_grid_columns()
 	grid.add_theme_constant_override("h_separation", 8)
@@ -6150,6 +6153,7 @@ func _add_bestiary_thumbnail(parent: Container, catalog_index: int) -> void:
 	)
 	box.add_child(art_view)
 	var resource_focus: Array = entry.get("resource_focus", [])
+	var ecology := _monster_ecology_identity_entry(catalog_index)
 	var meta := _plain_label("HP%d｜%s｜%s" % [
 		int(entry.get("hp", 0)),
 		_meters_text(_catalog_move_speed(catalog_index)),
@@ -6157,9 +6161,129 @@ func _add_bestiary_thumbnail(parent: Container, catalog_index: int) -> void:
 	], 9, Color("#cbd5e1"))
 	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(meta)
+	var identity := _plain_label("%s｜%s" % [
+		String(ecology.get("movement_archetype", "通用")),
+		_short_card_text("、".join(ecology.get("role_tags", []) as Array), 18),
+	], 8, Color("#fde68a"))
+	identity.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(identity)
 	var hint := _plain_label("悬停预览｜双击详情", 8, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(hint)
+
+
+func _bestiary_public_resource_text(entry: Dictionary) -> String:
+	var resource_focus: Array = entry.get("resource_focus", []) as Array
+	if resource_focus.is_empty():
+		return "暂无固定偏好"
+	return "、".join(resource_focus)
+
+
+func _bestiary_bound_ladder_text(catalog_index: int) -> String:
+	var ecology := _monster_ecology_identity_entry(catalog_index)
+	var counts: Array = ecology.get("bound_skill_counts", []) as Array
+	var pieces := []
+	for i in range(min(4, counts.size())):
+		pieces.append("%s:%d张" % [_level_text(i + 1), int(counts[i])])
+	return " / ".join(pieces) if not pieces.is_empty() else "暂无"
+
+
+func _bestiary_public_identity_text(catalog_index: int) -> String:
+	var ecology := _monster_ecology_identity_entry(catalog_index)
+	return "生态位:%s｜行动定位:%s｜固定技能成长:%s" % [
+		String(ecology.get("movement_archetype", "通用")),
+		"、".join(ecology.get("role_tags", []) as Array),
+		_bestiary_bound_ladder_text(catalog_index),
+	]
+
+
+func _bestiary_public_economy_text(catalog_index: int) -> String:
+	var entry := _catalog_entry(catalog_index)
+	var boon: Dictionary = entry.get("economy_boon", {}) as Dictionary
+	var boon_label := String(boon.get("label", "暂无经济钩子")) if not boon.is_empty() else "暂无经济钩子"
+	return "商品偏好:%s｜经济:%s" % [
+		_bestiary_public_resource_text(entry),
+		boon_label,
+	]
+
+
+func _add_bestiary_ecology_catalog_overview(parent: Container) -> void:
+	var report := _monster_ecology_balance_report()
+	var movement_counts: Dictionary = report.get("movement_counts", {}) as Dictionary
+	var movement_pieces := []
+	for movement_variant in movement_counts.keys():
+		var movement := String(movement_variant)
+		movement_pieces.append("%s×%d" % [movement, int(movement_counts.get(movement, 0))])
+	_add_menu_info_card(
+		parent,
+		"生态速览",
+		"%d只怪兽｜移动生态:%s｜商品偏好%d种｜行动定位%d类。这里是玩家可读资料，不显示AI路线桶。" % [
+			int(report.get("catalog_count", _catalog_size())),
+			" / ".join(movement_pieces) if not movement_pieces.is_empty() else "暂无",
+			int(report.get("resource_good_count", 0)),
+			int(report.get("role_tag_count", 0)),
+		],
+		Color("#fb7185"),
+		"飞行 / 水栖海域 / 陆行都会改变它们接近城市和商路的方式。"
+	)
+
+
+func _add_bestiary_ecology_info_cards(parent: Container, catalog_index: int, compact: bool = false) -> void:
+	var entry := _catalog_entry(catalog_index)
+	var ecology := _monster_ecology_identity_entry(catalog_index)
+	var role_tags := "、".join(ecology.get("role_tags", []) as Array)
+	var movement_text := _monster_mobility_summary_from_fields(
+		ecology.get("movement_traits", []) as Array,
+		ecology.get("terrain_move_multiplier", {}) as Dictionary
+	)
+	var boon: Dictionary = ecology.get("economy_boon", {}) as Dictionary
+	var economy_text := String(boon.get("label", "暂无经济钩子")) if not boon.is_empty() else "暂无经济钩子"
+	_add_menu_info_card(
+		parent,
+		"生态位",
+		"%s｜%s｜召唤:%s｜移动:%s" % [
+			String(ecology.get("movement_archetype", "通用")),
+			movement_text,
+			String(ecology.get("summon_access", "monster_zone")),
+			_meters_text(float(ecology.get("move", 0.0))),
+		],
+		Color("#f97316"),
+		"看它更适合追陆城、海路还是跨地形切入。"
+	)
+	_add_menu_info_card(
+		parent,
+		"资源与经济",
+		"%s｜资源吸取%d｜%s" % [
+			_bestiary_public_resource_text(entry),
+			int(ecology.get("resource_drain", 0)),
+			economy_text,
+		],
+		Color("#22c55e"),
+		"商品偏好会影响怪兽目标权重，也会成为玩家诱导和反推的线索。"
+	)
+	_add_menu_info_card(
+		parent,
+		"行动定位",
+		"%s｜最大伤害%d｜最远%s｜最远移动%s" % [
+			role_tags,
+			int(ecology.get("max_damage", 0)),
+			_meters_text(float(ecology.get("max_range", 0.0))),
+			_meters_text(float(ecology.get("max_move", 0.0))),
+		],
+		Color("#38bdf8"),
+		"这些标签帮助判断它会制造位移、控场、修复、远程压制还是爆发。"
+	)
+	if not compact:
+		_add_menu_info_card(
+			parent,
+			"固定技能成长",
+			"%s｜IV级概率:%s" % [
+				_bestiary_bound_ladder_text(catalog_index),
+				String(ecology.get("rank_iv_shift", "无变化")),
+			],
+			Color("#fde047"),
+			"召唤者获得的绑定技能不占手牌上限；升级会增加技能张数并提高危险行动概率。"
+		)
 
 
 func _add_bestiary_hover_preview(parent: Container) -> void:
@@ -6185,8 +6309,9 @@ func _add_bestiary_hover_preview(parent: Container) -> void:
 	center.custom_minimum_size = Vector2(220, 0)
 	row.add_child(center)
 	_add_monster_art_preview(center, entry, true)
-	var detail := _plain_label("悬停详情预览：%s\n%s\n%s\n双击缩略图可进入详情页；详情页使用顶部上一个/下一个切换怪兽。" % [
+	var detail := _plain_label("悬停详情预览：%s\n%s\n%s\n%s\n双击缩略图可进入详情页；详情页使用顶部上一个/下一个切换怪兽。" % [
 		String(entry.get("name", "怪兽")),
+		_bestiary_public_identity_text(previewed_bestiary_index),
 		_bestiary_preview_text(previewed_bestiary_index),
 		_bestiary_monster_card_preview_text(previewed_bestiary_index),
 	], 11, Color("#fee2e2"))

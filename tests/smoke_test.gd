@@ -665,8 +665,9 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案", "monster ecology dossier opens from the compendium")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "仅查看") and not _container_button_text_contains(menu_overlay, "开局不再预选怪兽"), "monster codex has no hidden legacy lineup controls")
 	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "monster thumbnail codex returns to the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and menu_body_label.text.contains("行动概率") and menu_body_label.text.contains("怪兽牌在卡牌图鉴") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster ecology dossier opens as a responsive thumbnail grid focused on ecology while monster cards stay in the card codex")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "monster codex thumbnail page exposes paging and hover preview")
+	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽生态缩略图册") and menu_body_label.text.contains("行动概率") and menu_body_label.text.contains("怪兽牌在卡牌图鉴") and menu_body_label.text.contains("生态位") and menu_body_label.text.contains("商品偏好") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("双击缩略图进入怪兽详情"), "monster ecology dossier opens as a responsive thumbnail grid focused on ecology while monster cards stay in the card codex")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "生态速览") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "monster codex thumbnail page exposes paging and hover preview")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "飞行") and _container_label_text_contains(menu_preview_box, "水栖") and _container_label_text_contains(menu_preview_box, "陆行"), "monster codex thumbnail page summarizes movement ecology coverage")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "monster codex hides detail previous/next buttons on the thumbnail page")
 	var bestiary_scroll_before := 48
 	if menu_content_scroll != null:
@@ -676,7 +677,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_expect(menu_content_scroll != null and (bestiary_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == bestiary_scroll_before), "monster codex hover preview preserves scroll position when the page is scrollable")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "HP:") and _container_label_text_contains(menu_preview_box, "行动:"), "monster codex hover preview shows the selected monster details")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "HP:") and _container_label_text_contains(menu_preview_box, "生态位:") and _container_label_text_contains(menu_preview_box, "行动定位:") and _container_label_text_contains(menu_preview_box, "行动:"), "monster codex hover preview shows the selected monster details")
 	var monster_detail_event := InputEventMouseButton.new()
 	monster_detail_event.button_index = MOUSE_BUTTON_LEFT
 	monster_detail_event.pressed = true
@@ -686,6 +687,7 @@ func _run() -> void:
 	menu_bestiary_back_button = main.get("menu_bestiary_back_button") as Button
 	_expect(menu_body_label != null and menu_body_label.text.contains("正面经济天气"), "monster codex shows positive economy abilities")
 	_expect(menu_body_label != null and menu_body_label.text.contains("IV级") and menu_body_label.text.contains("权重修正"), "monster codex explains rank-based action probability shifts")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "生态位") and _container_label_text_contains(menu_preview_box, "资源与经济") and _container_label_text_contains(menu_preview_box, "行动定位") and _container_label_text_contains(menu_preview_box, "固定技能成长"), "monster detail uses readable ecology identity cards")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "¥"), "monster codex exposes linked monster-card buttons with prices")
 	_expect(menu_preview_box != null and _container_button_tooltip_contains(menu_preview_box, "生命"), "monster codex card links expose card details on hover")
 	_expect(menu_preview_box != null and _container_button_tooltip_contains(menu_preview_box, "在场"), "monster codex card links expose field duration on hover")
