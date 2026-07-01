@@ -19959,52 +19959,56 @@ func _add_player_hand_rack(parent: Container, player: Dictionary, player_index: 
 	hand_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#60a5fa"), Color("#020617").lerp(Color("#1e3a8a"), 0.18), 1, 14))
 	parent.add_child(hand_panel)
 	var hand_margin := MarginContainer.new()
-	hand_margin.add_theme_constant_override("margin_left", 8)
-	hand_margin.add_theme_constant_override("margin_top", 6)
-	hand_margin.add_theme_constant_override("margin_right", 8)
-	hand_margin.add_theme_constant_override("margin_bottom", 6)
+	hand_margin.add_theme_constant_override("margin_left", 7)
+	hand_margin.add_theme_constant_override("margin_top", 4)
+	hand_margin.add_theme_constant_override("margin_right", 7)
+	hand_margin.add_theme_constant_override("margin_bottom", 4)
 	hand_panel.add_child(hand_margin)
 	var hand_box := VBoxContainer.new()
 	hand_box.name = "PlayerHandRackStack"
 	hand_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	hand_box.add_theme_constant_override("separation", 5)
+	hand_box.add_theme_constant_override("separation", 3)
 	hand_margin.add_child(hand_box)
 	if not _can_view_player_private_hand(player_index):
 		var hidden_label := _plain_label("对手手牌：隐私｜只能从公开出牌、竞价、资源条件和地图变化推理。", 11, Color("#94a3b8"))
 		hidden_label.tooltip_text = "对手现金、手牌数量、卡面和弃牌记录都不公开。"
 		hand_box.add_child(hidden_label)
 		return
-	var hand_header := HBoxContainer.new()
-	hand_header.name = "PlayerHandRackHeader"
-	hand_header.add_theme_constant_override("separation", 8)
-	hand_box.add_child(hand_header)
-	var hand_title := _plain_label("我的手牌架", 11, Color("#bfdbfe"))
+	var hand_body := HBoxContainer.new()
+	hand_body.name = "PlayerHandRackBody"
+	hand_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hand_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	hand_body.add_theme_constant_override("separation", 7)
+	hand_box.add_child(hand_body)
+	var hand_info := VBoxContainer.new()
+	hand_info.name = "PlayerHandRackInfoRail"
+	hand_info.custom_minimum_size = Vector2(132, 0)
+	hand_info.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	hand_info.add_theme_constant_override("separation", 4)
+	hand_body.add_child(hand_info)
+	var hand_title := _plain_label("我的手牌架", 10, Color("#bfdbfe"))
 	hand_title.tooltip_text = "绑定怪兽技能和军令固定技能不占普通手牌上限；超上限换购会私密弃牌。"
-	hand_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hand_header.add_child(hand_title)
+	hand_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hand_info.add_child(hand_title)
 	var hand_chip_rail := HFlowContainer.new()
 	hand_chip_rail.name = "PlayerHandRackChipRail"
 	hand_chip_rail.add_theme_constant_override("h_separation", 4)
 	hand_chip_rail.add_theme_constant_override("v_separation", 2)
-	hand_header.add_child(hand_chip_rail)
+	hand_info.add_child(hand_chip_rail)
 	_add_player_hand_rack_chip(hand_chip_rail, "手牌 %d/%d" % [_player_counted_hand_size(player), PLAYER_HAND_LIMIT], Color("#c084fc"), "普通手牌上限；固定技能牌不占格。")
+	_add_player_hand_rack_chip(hand_chip_rail, "状态：%s" % _short_card_text(_player_hand_rack_overall_state_text(player, player_index), 12), Color("#38bdf8"), "手牌架总状态：只显示当前玩家自己的出牌可用性；对手手牌仍是隐私。")
 	_add_player_hand_rack_chip(hand_chip_rail, "悬停详情", Color("#60a5fa"), "鼠标停在卡牌上看完整说明。")
 	_add_player_hand_rack_chip(hand_chip_rail, "点打出", Color("#f59e0b"), "点卡牌按钮后进入匿名出牌队列或目标选择。")
-	var rack_state := _plain_label("状态：%s" % _player_hand_rack_overall_state_text(player, player_index), 9, Color("#bfdbfe"))
-	rack_state.name = "PlayerHandRackOverallState"
-	rack_state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	rack_state.tooltip_text = "手牌架总状态：只显示当前玩家自己的出牌可用性；对手手牌仍是隐私。"
-	hand_box.add_child(rack_state)
 	var hand_scroll := ScrollContainer.new()
 	hand_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	hand_scroll.custom_minimum_size = Vector2(0, 168)
+	hand_scroll.custom_minimum_size = Vector2(0, 148)
 	hand_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	hand_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	hand_box.add_child(hand_scroll)
+	hand_body.add_child(hand_scroll)
 	var hand_row := HBoxContainer.new()
-	hand_row.add_theme_constant_override("separation", 10)
+	hand_row.add_theme_constant_override("separation", 8)
 	hand_scroll.add_child(hand_row)
 	var visible_slot_count := maxi(player["slots"].size(), PLAYER_HAND_LIMIT)
 	for i in range(visible_slot_count):
@@ -20587,7 +20591,7 @@ func _store_pending_contract_result(entry: Dictionary) -> void:
 func _add_empty_card_slot(parent: Container, slot_index: int) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "PlayerHandEmptySlot"
-	panel.custom_minimum_size = Vector2(160, 168)
+	panel.custom_minimum_size = Vector2(148, 148)
 	panel.tooltip_text = "空手牌槽：从区域牌架获取卡牌；超出上限时私密弃掉旧普通牌。"
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#020617").lerp(Color("#475569"), 0.16)
@@ -20598,25 +20602,25 @@ func _add_empty_card_slot(parent: Container, slot_index: int) -> void:
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 8)
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
 	panel.add_child(margin)
 
 	var box := VBoxContainer.new()
 	box.name = "PlayerHandEmptySlotStack"
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
-	var top := _plain_label("空槽 %d" % (slot_index + 1), 12, Color("#94a3b8"))
+	var top := _plain_label("空槽 %d" % (slot_index + 1), 10, Color("#94a3b8"))
 	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(top)
 	var tick := ColorRect.new()
 	tick.name = "PlayerHandEmptySlotTick"
 	tick.color = Color("#334155")
-	tick.custom_minimum_size = Vector2(0, 4)
+	tick.custom_minimum_size = Vector2(0, 3)
 	box.add_child(tick)
-	var hint := _plain_label("从区域牌架获取卡牌。", 10, Color("#64748b"))
+	var hint := _plain_label("从区域牌架获取卡牌。", 8, Color("#64748b"))
 	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -21207,18 +21211,18 @@ func _add_hand_card_play_lamp(parent: Container, state: Dictionary, skill: Dicti
 	var signal_bar := ColorRect.new()
 	signal_bar.name = "HandCardPlayLampSignal"
 	signal_bar.color = accent.lightened(0.14) if actionable else accent.darkened(0.08)
-	signal_bar.custom_minimum_size = Vector2(7, 18 if compact else 22)
+	signal_bar.custom_minimum_size = Vector2(5 if compact else 7, 14 if compact else 22)
 	row.add_child(signal_bar)
 	var label_box := VBoxContainer.new()
 	label_box.add_theme_constant_override("separation", 0)
 	label_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label_box)
-	var status := _plain_label("状态：%s" % _hand_card_state_primary_text(state), 9 if compact else 10, accent.lightened(0.20))
+	var status := _plain_label("状态：%s" % _hand_card_state_primary_text(state), 8 if compact else 10, accent.lightened(0.20))
 	status.name = "HandCardPlayLampStatus"
 	status.autowrap_mode = TextServer.AUTOWRAP_OFF
 	status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label_box.add_child(status)
-	var action := _plain_label("按钮｜%s" % _hand_card_action_text(state, skill), 7 if compact else 8, Color("#cbd5e1"))
+	var action := _plain_label("按钮｜%s" % _hand_card_action_text(state, skill), 6 if compact else 8, Color("#cbd5e1"))
 	action.name = "HandCardPlayLampAction"
 	action.autowrap_mode = TextServer.AUTOWRAP_OFF
 	action.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -21313,7 +21317,7 @@ func _add_card_face_chip_rail(parent: Container, skill_name: String, skill: Dict
 	parent.add_child(chip_row)
 	var district_index := -1 if is_hand_card else selected_district
 	var player_index := selected_player
-	var max_chips := 4 if compact else 6
+	var max_chips := 3 if compact and is_hand_card else (4 if compact else 6)
 	var entries := _card_face_chip_entries(skill_name, skill, player_index, district_index)
 	for i in range(mini(max_chips, entries.size())):
 		var entry := entries[i] as Dictionary
@@ -21331,7 +21335,7 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	var panel := PanelContainer.new()
 	var card_minimum_size := Vector2(170, 198) if compact else Vector2(218, 268)
 	if compact and is_hand_card:
-		card_minimum_size = Vector2(160, 168)
+		card_minimum_size = Vector2(148, 148)
 	panel.custom_minimum_size = card_minimum_size
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	panel.tooltip_text = _card_detail_tooltip(skill_name)
@@ -21344,27 +21348,28 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7 if compact else 10)
-	margin.add_theme_constant_override("margin_top", 7 if compact else 10)
-	margin.add_theme_constant_override("margin_right", 7 if compact else 10)
-	margin.add_theme_constant_override("margin_bottom", 7 if compact else 10)
+	var compact_hand_card := compact and is_hand_card
+	margin.add_theme_constant_override("margin_left", 5 if compact_hand_card else (7 if compact else 10))
+	margin.add_theme_constant_override("margin_top", 5 if compact_hand_card else (7 if compact else 10))
+	margin.add_theme_constant_override("margin_right", 5 if compact_hand_card else (7 if compact else 10))
+	margin.add_theme_constant_override("margin_bottom", 5 if compact_hand_card else (7 if compact else 10))
 	panel.add_child(margin)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 5 if compact else 7)
+	box.add_theme_constant_override("separation", 3 if compact_hand_card else (5 if compact else 7))
 	margin.add_child(box)
 
-	var title := _plain_label("%s %s  %s" % [_card_icon_for_card(skill, skill_name), _skill_family(skill_name), _level_text(max(1, _skill_rank(skill_name)))], 12 if compact else 16, Color("#f8fafc"))
+	var title := _plain_label("%s %s  %s" % [_card_icon_for_card(skill, skill_name), _skill_family(skill_name), _level_text(max(1, _skill_rank(skill_name)))], 10 if compact_hand_card else (12 if compact else 16), Color("#f8fafc"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 
 	var face_type_line := "%s｜%s" % [_card_icon_type_label(skill, skill_name), _card_icon_route_label(skill)] if compact else _card_type_line(skill, skill_name)
-	var tag_label := _plain_label(face_type_line, 10 if compact else 11, Color("#c4b5fd"))
+	var tag_label := _plain_label(face_type_line, 8 if compact_hand_card else (10 if compact else 11), Color("#c4b5fd"))
 	tag_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(tag_label)
 
 	var art_view = CardArtViewScript.new()
-	var art_height := 42 if compact and is_hand_card else (62 if compact else 112)
+	var art_height := 34 if compact_hand_card else (62 if compact else 112)
 	art_view.custom_minimum_size = Vector2(0, art_height)
 	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art_view.set_card(
@@ -21384,7 +21389,8 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	if is_hand_card:
 		hand_play_state = _hand_card_play_state(selected_player, skill)
 		_add_hand_card_play_lamp(box, hand_play_state, skill, compact)
-		_add_hand_card_play_state_rail(box, hand_play_state, skill, compact)
+		if not compact_hand_card:
+			_add_hand_card_play_state_rail(box, hand_play_state, skill, compact)
 		var state_text := "状态：%s｜%s" % [
 			String(hand_play_state.get("label", "不可用")),
 			_short_card_text(String(hand_play_state.get("detail", "")), 44 if compact else 58),
@@ -21395,18 +21401,19 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 			_skill_play_requirement_text(skill, selected_player),
 		]
 
-	var effect := _plain_label(
-		_short_card_text(_card_rules_text(skill_name, skill, true).replace("\n", "｜"), 40) if compact and is_hand_card else _card_rules_text(skill_name, skill, compact or is_hand_card),
-		8 if compact and is_hand_card else (9 if compact else 11),
-		Color("#e5e7eb")
-	)
-	effect.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	if compact and is_hand_card:
-		effect.autowrap_mode = TextServer.AUTOWRAP_OFF
-		effect.clip_text = true
-		effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		effect.tooltip_text = _card_rules_text(skill_name, skill, false)
-	box.add_child(effect)
+	if not compact_hand_card:
+		var effect := _plain_label(
+			_short_card_text(_card_rules_text(skill_name, skill, true).replace("\n", "｜"), 40) if compact and is_hand_card else _card_rules_text(skill_name, skill, compact or is_hand_card),
+			8 if compact and is_hand_card else (9 if compact else 11),
+			Color("#e5e7eb")
+		)
+		effect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		if compact and is_hand_card:
+			effect.autowrap_mode = TextServer.AUTOWRAP_OFF
+			effect.clip_text = true
+			effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			effect.tooltip_text = _card_rules_text(skill_name, skill, false)
+		box.add_child(effect)
 
 	if show_action:
 		var action_button := Button.new()
@@ -21435,7 +21442,7 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 			_style_menu_button(action_button, accent, not action_button.disabled)
 			action_button.pressed.connect(Callable(self, "_claim_district_card").bind(skill_name))
 		if compact:
-			action_button.custom_minimum_size = Vector2(0, 24)
+			action_button.custom_minimum_size = Vector2(0, 22 if is_hand_card else 24)
 		box.add_child(action_button)
 
 

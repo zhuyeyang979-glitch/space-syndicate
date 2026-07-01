@@ -3,6 +3,36 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜手牌架改成首屏完整 mini-card
+
+### 本轮实现
+
+- 参考 Terraforming Mars 电子桌游的手牌读法，把底部手牌从“标题在上、卡牌在下”改成：
+  - 左侧 `PlayerHandRackInfoRail`：手牌数、整体状态、悬停详情、点打出；
+  - 右侧横向 mini-card 架：卡牌从手牌框顶部开始排，首屏能看到完整卡体。
+- 普通手牌 mini-card 压缩：
+  - 卡体从 `160×168` 改成 `148×148`；
+  - 卡面小图从 `42px` 改成 `34px`；
+  - 常驻只保留标题、类型、少量筹码、状态灯和出牌按钮；
+  - 长效果和详细打出条件继续放进 hover / 图鉴详情。
+- 空手牌槽同步改成 `148×148`，保证真实手牌和空槽像同一排桌游卡架。
+
+### 设计意图
+
+- 真人初测最重要的是“我有哪些牌、哪张能打、按钮在哪里”一眼可见。
+- 规则文字不应挤占手牌卡体；电子桌游中小卡先用于识别与操作，详情通过 hover/放大/图鉴进入。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+  - 有头 UI 快照采集 `tests/ui_snapshot_capture.gd`
+- 有头复查快照：
+  - `C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/04_play_table.png`
+
 ## 2026-07-01｜底部玩家板改成资源筹码 + 手牌 + 行动托盘首屏
 
 ### 本轮实现
