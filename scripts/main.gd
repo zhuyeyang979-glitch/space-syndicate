@@ -79,12 +79,12 @@ const CARD_INGRESS_TRAIL_DURATION := 5.5
 const CARD_INGRESS_CALLOUT_DURATION := 6.5
 const CARD_TRACK_DRAG_DEADZONE_PIXELS := 4.0
 const CARD_TRACK_MANUAL_SCROLL_HOLD_MSEC := 6500
-const CARD_TRACK_WHEEL_STEP_PIXELS := 58
+const CARD_TRACK_WHEEL_STEP_PIXELS := 52
 const CARD_TRACK_VISIBLE_SLOT_COUNT := 12
-const CARD_TRACK_SLOT_WIDTH := 58
-const CARD_TRACK_CURRENT_SLOT_WIDTH := 66
-const CARD_TRACK_SLOT_HEIGHT := 30
-const CARD_TRACK_SEGMENT_WIDTH := 12
+const CARD_TRACK_SLOT_WIDTH := 52
+const CARD_TRACK_CURRENT_SLOT_WIDTH := 60
+const CARD_TRACK_SLOT_HEIGHT := 22
+const CARD_TRACK_SEGMENT_WIDTH := 9
 const AUTO_MONSTER_MOVE_RATIO := 0.72
 const AUTO_MONSTER_MIN_SPECIAL_DAMAGE := 1
 const AUTO_MONSTER_ENCOUNTER_RANGE_METERS := 170.0
@@ -2074,7 +2074,7 @@ func _add_weather_forecast_chip(parent: Container, text: String, accent: Color) 
 func _build_card_resolution_track(page: VBoxContainer) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "CardResolutionTtaMarketPanel"
-	panel.custom_minimum_size = Vector2(0, 48)
+	panel.custom_minimum_size = Vector2(0, 36)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var panel_style := StyleBoxFlat.new()
 	panel_style.bg_color = Color("#04110f").lerp(Color("#0f172a"), 0.42)
@@ -2093,12 +2093,12 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 
 	var rail_frame := HBoxContainer.new()
 	rail_frame.name = "CardResolutionTtaOfferRailFrame"
-	rail_frame.add_theme_constant_override("separation", 6)
+	rail_frame.add_theme_constant_override("separation", 4)
 	margin.add_child(rail_frame)
 
 	var legend_panel := PanelContainer.new()
 	legend_panel.name = "CardResolutionTtaOfferRailLegend"
-	legend_panel.custom_minimum_size = Vector2(76, 0)
+	legend_panel.custom_minimum_size = Vector2(54, 0)
 	legend_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#f59e0b"), Color("#020617").lerp(Color("#f59e0b"), 0.14), 1, 9))
 	rail_frame.add_child(legend_panel)
 	var legend_margin := MarginContainer.new()
@@ -2110,19 +2110,19 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 	var legend_stack := VBoxContainer.new()
 	legend_stack.add_theme_constant_override("separation", 0)
 	legend_margin.add_child(legend_stack)
-	var title := _plain_label("匿名牌轨", 7, Color("#fef3c7"))
+	var title := _plain_label("牌轨", 7, Color("#fef3c7"))
 	title.name = "CardResolutionTtaMarketTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.tooltip_text = "电子桌游式公共牌列：默认扫槽位、报价和归属，悬停看详情，双击进卡牌详情。"
 	legend_stack.add_child(title)
-	var hint := _plain_label("拖看｜悬停", 6, Color("#94a3b8"))
+	var hint := _plain_label("拖看｜悬停", 5, Color("#94a3b8"))
 	hint.name = "CardResolutionTtaRailHint"
 	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
 	hint.tooltip_text = "单击牌槽竞猜归属；双击牌面打开图鉴详情。"
 	legend_stack.add_child(hint)
 	var header := HFlowContainer.new()
 	header.name = "CardResolutionTtaMarketHeader"
-	header.add_theme_constant_override("h_separation", 2)
+	header.add_theme_constant_override("h_separation", 1)
 	header.add_theme_constant_override("v_separation", 1)
 	legend_stack.add_child(header)
 	_add_card_resolution_track_header_chip(header, "✓", Color("#64748b"), "历史已结算")
@@ -2159,7 +2159,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 		ruler.add_child(tick)
 	var cost_band := HBoxContainer.new()
 	cost_band.name = "CardResolutionTtaCostBandRail"
-	cost_band.custom_minimum_size = Vector2(0, 7)
+	cost_band.custom_minimum_size = Vector2(0, 5)
 	cost_band.add_theme_constant_override("separation", 3)
 	cost_band.tooltip_text = "牌槽读法：✓历史，0当前展示，+为本批，N为下一批。"
 	slot_stack.add_child(cost_band)
@@ -2167,7 +2167,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 		_add_card_resolution_track_cost_cell(cost_band, i)
 	var groove_rail := HBoxContainer.new()
 	groove_rail.name = "CardResolutionTtaSlotGrooveRail"
-	groove_rail.custom_minimum_size = Vector2(0, 3)
+	groove_rail.custom_minimum_size = Vector2(0, 2)
 	groove_rail.add_theme_constant_override("separation", 3)
 	groove_rail.tooltip_text = "固定公共牌槽：牌进入槽位，玩家扫颜色、位置、小费和归属。"
 	slot_stack.add_child(groove_rail)
@@ -2188,7 +2188,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 		groove_rail.add_child(groove)
 	var scroll_shell := HBoxContainer.new()
 	scroll_shell.name = "CardResolutionTtaScrollShell"
-	scroll_shell.custom_minimum_size = Vector2(0, 29)
+	scroll_shell.custom_minimum_size = Vector2(0, 23)
 	scroll_shell.add_theme_constant_override("separation", 2)
 	scroll_shell.tooltip_text = "像电子桌游公共牌列一样横向拖看；不操作时会跟随最新牌。"
 	slot_stack.add_child(scroll_shell)
@@ -2199,7 +2199,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 	scroll_shell.add_child(left_cue)
 	card_resolution_track_scroll = ScrollContainer.new()
 	card_resolution_track_scroll.name = "CardResolutionTtaMarketScroll"
-	card_resolution_track_scroll.custom_minimum_size = Vector2(0, 29)
+	card_resolution_track_scroll.custom_minimum_size = Vector2(0, 23)
 	card_resolution_track_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card_resolution_track_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	card_resolution_track_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -2466,21 +2466,21 @@ func _add_card_resolution_track_ghost_slot(slot_index: int, show_idle_label: boo
 	card_resolution_track.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 3)
-	margin.add_theme_constant_override("margin_top", 2)
+	margin.add_theme_constant_override("margin_top", 1)
 	margin.add_theme_constant_override("margin_right", 3)
-	margin.add_theme_constant_override("margin_bottom", 2)
+	margin.add_theme_constant_override("margin_bottom", 1)
 	panel.add_child(margin)
 	var box := VBoxContainer.new()
 	box.name = "CardResolutionTtaGhostSlotStack"
-	box.add_theme_constant_override("separation", 2)
+	box.add_theme_constant_override("separation", 1)
 	margin.add_child(box)
 	var line := ColorRect.new()
 	line.name = "CardResolutionTtaGhostSlotLine"
 	line.color = Color("#334155")
-	line.custom_minimum_size = Vector2(0, 2)
+	line.custom_minimum_size = Vector2(0, 1)
 	box.add_child(line)
 	var label_text := "待出牌" if show_idle_label else "·"
-	var label := _plain_label(label_text, 7, Color("#64748b"))
+	var label := _plain_label(label_text, 6, Color("#64748b"))
 	label.name = "CardResolutionTtaEmptySlotLabel"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -2490,7 +2490,7 @@ func _add_card_resolution_track_ghost_slot(slot_index: int, show_idle_label: boo
 	var lower_line := ColorRect.new()
 	lower_line.name = "CardResolutionTtaGhostCostLine"
 	lower_line.color = Color("#1e293b")
-	lower_line.custom_minimum_size = Vector2(0, 2)
+	lower_line.custom_minimum_size = Vector2(0, 1)
 	box.add_child(lower_line)
 
 
@@ -2573,15 +2573,15 @@ func _add_card_resolution_track_segment_divider(segment_key: String) -> void:
 	divider.add_theme_stylebox_override("panel", style)
 	card_resolution_track.add_child(divider)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 4)
-	margin.add_theme_constant_override("margin_top", 4)
-	margin.add_theme_constant_override("margin_right", 4)
-	margin.add_theme_constant_override("margin_bottom", 4)
+	margin.add_theme_constant_override("margin_left", 2)
+	margin.add_theme_constant_override("margin_top", 2)
+	margin.add_theme_constant_override("margin_right", 2)
+	margin.add_theme_constant_override("margin_bottom", 2)
 	divider.add_child(margin)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 2)
 	margin.add_child(box)
-	var label := _plain_label(_card_resolution_track_segment_label(segment_key), 8, accent.lightened(0.18))
+	var label := _plain_label(_card_resolution_track_segment_label(segment_key), 7, accent.lightened(0.18))
 	label.name = "CardResolutionAgeTrackDividerLabel"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -2591,7 +2591,7 @@ func _add_card_resolution_track_segment_divider(segment_key: String) -> void:
 	var tick := ColorRect.new()
 	tick.name = "CardResolutionAgeTrackDividerTick"
 	tick.color = accent
-	tick.custom_minimum_size = Vector2(0, 3)
+	tick.custom_minimum_size = Vector2(0, 2)
 	box.add_child(tick)
 
 
@@ -2743,7 +2743,7 @@ func _add_card_resolution_track_entry(entry: Dictionary, state_text: String) -> 
 	var top_strip := ColorRect.new()
 	top_strip.name = "CardResolutionAgeTrackStateStrip"
 	top_strip.color = accent if not is_current else Color("#fde68a")
-	top_strip.custom_minimum_size = Vector2(0, 2)
+	top_strip.custom_minimum_size = Vector2(0, 1)
 	box.add_child(top_strip)
 	var meta_row := HBoxContainer.new()
 	meta_row.name = "CardResolutionAgeTrackMetaRow"
@@ -2754,25 +2754,33 @@ func _add_card_resolution_track_entry(entry: Dictionary, state_text: String) -> 
 	lane_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	lane_label.tooltip_text = "%s｜当前牌为0，候补牌用+1/+2，历史牌用✓。" % _card_resolution_track_lane_text(state_text)
 	meta_row.add_child(lane_label)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	meta_row.add_child(spacer)
-	var rank_label := _plain_label(_roman_level(maxi(1, _skill_rank(card_name))), 6, Color("#e5e7eb"))
-	rank_label.name = "CardResolutionTtaRankPip"
-	rank_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	rank_label.tooltip_text = "卡牌等级"
-	meta_row.add_child(rank_label)
 	var select_button := Button.new()
 	select_button.name = "CardResolutionTtaMiniCard"
 	var family_label := _skill_family(card_name)
 	if family_label == "":
 		family_label = card_label
-	select_button.text = "%s %s" % [state_text, _short_card_text(family_label, 5 if is_current else 4)]
+	var bid := int(entry.get("tip", entry.get("winning_bid", 0)))
+	if state_text.begins_with("已结算") and int(entry.get("winning_bid", 0)) > 0:
+		bid = int(entry.get("winning_bid", 0))
+	var owner_revealed := bool(entry.get("public_owner_revealed", false))
+	var owner_text := String(entry.get("public_owner_label", "")) if owner_revealed else "匿名"
+	var owner_compact := owner_text.replace("归属：", "").replace("归属:", "")
+	var money_text := "¥%d" % bid if bid > 0 else ""
+	var owner_short := _short_card_text(owner_compact, 4) if owner_revealed else ""
+	var extra_text := money_text if money_text != "" else owner_short
+	if money_text != "" and owner_short != "":
+		extra_text = "%s/%s" % [money_text, owner_short]
+	select_button.text = "%s %s%s" % [
+		state_text,
+		_short_card_text(family_label, 5 if is_current else 4),
+		" %s" % extra_text if extra_text != "" else "",
+	]
 	select_button.toggle_mode = true
 	select_button.button_pressed = selected
+	select_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	select_button.custom_minimum_size = Vector2(0, 12)
 	select_button.tooltip_text = _card_resolution_track_entry_tooltip(entry, state_text)
-	select_button.add_theme_font_size_override("font_size", 7)
+	select_button.add_theme_font_size_override("font_size", 6)
 	select_button.add_theme_color_override("font_color", Color("#f8fafc"))
 	select_button.add_theme_stylebox_override("normal", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 6))
 	select_button.add_theme_stylebox_override("hover", _menu_card_style(accent.lightened(0.20), Color("#0f172a").lerp(accent, 0.26), 2, 6))
@@ -2780,29 +2788,13 @@ func _add_card_resolution_track_entry(entry: Dictionary, state_text: String) -> 
 	select_button.add_theme_stylebox_override("focus", _menu_card_style(Color("#fef3c7"), Color("#020617").lerp(accent, 0.22), 2, 6))
 	select_button.pressed.connect(Callable(self, "_select_card_resolution_track_entry").bind(resolution_id))
 	select_button.gui_input.connect(Callable(self, "_on_card_resolution_track_entry_button_gui_input").bind(resolution_id, card_name))
-	box.add_child(select_button)
+	meta_row.add_child(select_button)
+	var rank_label := _plain_label(_roman_level(maxi(1, _skill_rank(card_name))), 6, Color("#e5e7eb"))
+	rank_label.name = "CardResolutionTtaRankPip"
+	rank_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	rank_label.tooltip_text = "卡牌等级"
+	meta_row.add_child(rank_label)
 	_add_card_resolution_track_pip_rail(box, state_text, accent)
-	var bid := int(entry.get("tip", entry.get("winning_bid", 0)))
-	var owner_revealed := bool(entry.get("public_owner_revealed", false))
-	var owner_text := String(entry.get("public_owner_label", "")) if owner_revealed else "匿名"
-	var chip_rail := HFlowContainer.new()
-	chip_rail.name = "CardResolutionAgeTrackChipRail"
-	chip_rail.add_theme_constant_override("h_separation", 2)
-	chip_rail.add_theme_constant_override("v_separation", 0)
-	box.add_child(chip_rail)
-	var bid_color := Color("#fde68a") if bid > 0 or int(entry.get("winning_bid", 0)) > 0 else Color("#64748b")
-	var bid_text := "¥%d" % bid if bid > 0 else "无费"
-	if state_text.begins_with("已结算") and int(entry.get("winning_bid", 0)) > 0:
-		bid_text = "¥%d" % int(entry.get("winning_bid", 0))
-	_add_card_resolution_track_slot_chip(chip_rail, bid_text, bid_color, _card_resolution_tip_clue_text(entry))
-	var owner_color := Color("#94a3b8")
-	if owner_revealed:
-		var owner_index := int(entry.get("player_index", -1))
-		owner_color = _player_color(owner_index) if owner_index >= 0 else accent
-	_add_card_resolution_track_slot_chip(chip_rail, _short_card_text(owner_text if owner_revealed else "匿名", 5), owner_color, "出牌者身份线索")
-	for badge_variant in _card_resolution_track_visible_badge_texts(entry, state_text, bid):
-		var badge_text := String(badge_variant)
-		_add_card_resolution_track_slot_chip(chip_rail, badge_text, _card_resolution_track_badge_color(badge_text), badge_text)
 
 
 func _card_resolution_track_entry_tooltip(entry: Dictionary, state_text: String) -> String:

@@ -7718,7 +7718,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	result["track_badges_auction_visible"] = bool(result["five_second_window"]) \
 		and auction_track != null \
 		and _container_button_text_contains(auction_track, "竞拍1") \
-		and _container_label_text_contains(auction_track, "¥200") \
+		and _container_button_text_contains(auction_track, "¥200") \
 		and _container_button_tooltip_contains(auction_track, "舆论操控") \
 		and not _container_label_text_contains(auction_track, "公开归属标签｜玩家")
 	result["track_compact_hover_detail"] = bool(result["five_second_window"]) \
@@ -7929,7 +7929,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		main.call("_refresh_ui")
 		track = main.get("card_resolution_track") as HBoxContainer
 		result["correct_guess_badge_visible"] = track != null \
-			and _container_label_text_contains(track, "玩家3")
+			and _container_button_text_contains(track, "玩家3")
 		var inference_after_correct := String(main.call("_economy_overview_text"))
 		result["inference_board_public_card_owner_visible"] = bool(result["correct_guess"]) \
 			and inference_after_correct.contains("当前玩家推理板") \

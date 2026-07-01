@@ -588,17 +588,28 @@ func _draw_border(rect: Rect2) -> void:
 
 func _draw_glyph(rect: Rect2) -> void:
 	var font := get_theme_default_font()
-	var font_size := 34 if compact else 46
+	var tiny_compact := compact and rect.size.y <= 50.0
+	var font_size := 24 if tiny_compact else (34 if compact else 46)
 	var glyph := _glyph_for_kind()
 	var shadow := Color("#020617")
 	shadow.a = 0.82
-	var baseline_y := rect.size.y * (0.55 if compact else 0.57)
+	var baseline_y := rect.size.y * (0.47 if tiny_compact else (0.55 if compact else 0.57))
 	draw_string(font, Vector2(2.0, baseline_y + 2.0), glyph, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, shadow)
 	draw_string(font, Vector2(0.0, baseline_y), glyph, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, Color("#f8fafc"))
 
 
 func _draw_caption(rect: Rect2) -> void:
 	var font := get_theme_default_font()
+	var tiny_compact := compact and rect.size.y <= 50.0
+	if tiny_compact:
+		var band := Color("#020617")
+		band.a = 0.72
+		draw_rect(Rect2(4.0, rect.size.y - 21.0, rect.size.x - 8.0, 17.0), band, true)
+		var tiny_title := _short_text(card_name, 8)
+		var tiny_tag := _short_text(card_tags, 10)
+		draw_string(font, Vector2(0.0, rect.size.y - 10.0), tiny_title, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 8, Color("#e0f2fe"))
+		draw_string(font, Vector2(0.0, rect.size.y - 2.0), tiny_tag, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 6, accent.lightened(0.40))
+		return
 	var name_size := 11 if compact else 13
 	var tag_size := 8 if compact else 10
 	var title := _short_text(card_name, 9 if compact else 12)
