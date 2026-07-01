@@ -6317,7 +6317,7 @@ func _player_city_guess_confidence_summary(player_index: int) -> String:
 				medium += 1
 			_:
 				low += 1
-	return "置信分布：高%d / 中%d / 低%d｜仅用于玩家自己管理推理，不改变终局奖惩。" % [high, medium, low]
+	return "置信分布：置信:高%d / 置信:中%d / 置信:低%d｜仅用于玩家自己管理推理。" % [high, medium, low]
 
 
 func _city_guess_reason_options() -> Array:
@@ -6370,7 +6370,7 @@ func _player_city_guess_reason_summary(player_index: int) -> String:
 	for reason in _city_guess_reason_options():
 		var count := int(counts.get(reason, 0))
 		if count > 0:
-			pieces.append("%s%d" % [_city_guess_reason_label(reason), count])
+			pieces.append("理由:%s%d" % [_city_guess_reason_label(reason), count])
 	return "理由分布：%s｜只是私人推理备忘，不验证正误。" % (" / ".join(pieces) if not pieces.is_empty() else "暂无")
 
 
@@ -10794,8 +10794,10 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 	var category_text := _card_codex_filter_label(_card_codex_category_for_card(card_name, skill))
 	var price := _card_price(card_name)
 	var key_facts := _card_key_rule_facts(skill)
-	var key_text := "；".join(key_facts.slice(0, 6)) if not key_facts.is_empty() else "按效果文字结算。"
-	return "第%d/%d张｜%s %s\n%s｜%s｜¥%d｜%s\n%s\n关键：%s" % [
+	var scanline := _join_first_card_facts(key_facts, 3)
+	if scanline == "":
+		scanline = _card_art_stats(skill)
+	return "卡牌详情｜第%d/%d张｜%s %s\n%s｜%s｜¥%d｜%s\n%s" % [
 		index + 1,
 		total,
 		_card_icon_for_card(skill, card_name),
@@ -10804,8 +10806,7 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 		_card_icon_route_label(skill),
 		price,
 		target_text,
-		_short_card_text(_skill_display_text(skill), 110),
-		key_text,
+		_short_card_text(scanline, 86),
 	]
 
 
@@ -10825,7 +10826,7 @@ func _add_card_codex_detail_layout(parent: Container, card_name: String, skill: 
 	var center := CenterContainer.new()
 	face_column.add_child(center)
 	_add_card_face(center, card_name, skill, -1, false, false, false)
-	var face_note := _plain_label("同名重复获得会升级；价格按I级基础价。", 10, Color("#94a3b8"))
+	var face_note := _plain_label("重复入手→升级；价格看I级。", 10, Color("#94a3b8"))
 	face_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	face_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	face_column.add_child(face_note)
@@ -10852,23 +10853,21 @@ func _add_card_codex_detail_layout(parent: Container, card_name: String, skill: 
 	_add_menu_info_card(
 		fact_grid,
 		"◎ 牌面定位",
-		_card_strategy_use_text(skill),
+		_short_card_text(_card_strategy_use_text(skill), 64),
 		accent,
 		"%s｜%s｜%s｜%s" % [_card_icon_type_label(skill, card_name), _card_subtype_label(skill), source_text, layer_text]
 	)
 	_add_menu_info_card(
 		fact_grid,
 		"¥ 费用与门槛",
-		"购买 ¥%d。打出看商品流动、目标和区域条件；商品不消耗。" % [
-			_card_price(card_name),
-		],
+		"购买 ¥%d｜打出看商品流动、目标和选区。" % _card_price(card_name),
 		Color("#facc15"),
-		"%s｜目标:%s" % [_skill_play_requirement_text(skill, selected_player), target_text]
+		"%s｜目标:%s" % [_short_card_text(_skill_play_requirement_text(skill, selected_player), 52), target_text]
 	)
 	_add_menu_info_card(
 		fact_grid,
 		"✦ 核心效果",
-		_skill_display_text(skill),
+		_short_card_text(_skill_display_text(skill), 78),
 		accent.lightened(0.12),
 		persistence_text
 	)
@@ -10876,16 +10875,9 @@ func _add_card_codex_detail_layout(parent: Container, card_name: String, skill: 
 	_add_menu_info_card(
 		fact_grid,
 		"◈ 关键数值",
-		"\n".join(numeric_facts.slice(0, 8)) if not numeric_facts.is_empty() else "按核心效果结算。",
+		"｜".join(numeric_facts.slice(0, 5)) if not numeric_facts.is_empty() else "按核心效果结算。",
 		Color("#38bdf8"),
 		"看这里判断收益、风险和目标。"
-	)
-	_add_menu_info_card(
-		fact_grid,
-		"＋ 本局投放",
-		_card_supply_layer_hint(card_name),
-		Color("#a78bfa"),
-		"%s｜同系列重复获得会在手牌中自动升级到IV级" % layer_text
 	)
 
 	var gradient_label := _plain_label("I→IV 强化", 13, Color("#fde68a"))
@@ -10956,7 +10948,10 @@ func _add_card_codex_tcg_summary_panel(parent: Container, card_name: String, ski
 			String(entry.get("tip", ""))
 		)
 
-	var effect := _plain_label(_short_card_text(_skill_display_text(skill), 96), 10, Color("#e5e7eb"))
+	var effect := _plain_label("速读：%s｜%s" % [
+		_short_card_text(_card_strategy_use_text(skill), 38),
+		_short_card_text(_card_art_stats(skill), 44),
+	], 10, Color("#e5e7eb"))
 	effect.name = "CardCodexTcgSummaryEffect"
 	effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	effect.tooltip_text = _skill_display_text(skill)
@@ -11034,13 +11029,23 @@ func _add_card_level_gradient_step_card(parent: Container, level_name: String, l
 	var roman := _plain_label(_level_text(level), 14, Color("#f8fafc"))
 	roman.name = "CardCodexUpgradeRomanLevel"
 	roman.tooltip_text = "卡牌等级使用罗马数字。"
+	roman.custom_minimum_size = Vector2(42, 0)
+	roman.autowrap_mode = TextServer.AUTOWRAP_OFF
+	roman.clip_text = true
+	roman.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(roman)
 	var header_spacer := Control.new()
+	header_spacer.custom_minimum_size = Vector2(8, 0)
 	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(header_spacer)
 	var price := _plain_label("¥%d" % _card_price(level_name), 10, Color("#fef3c7"))
 	price.name = "CardCodexUpgradePrice"
 	price.tooltip_text = "购买仍按该系列I级价格体系展示；重复获得会自动合成升级。"
+	price.custom_minimum_size = Vector2(46, 0)
+	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	price.autowrap_mode = TextServer.AUTOWRAP_OFF
+	price.clip_text = true
+	price.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	header.add_child(price)
 	var band := _plain_label(_card_strength_budget_band_text(_card_strength_budget_points(level_name)), 9, accent.lightened(0.18))
 	band.name = "CardCodexUpgradeBudgetBand"
@@ -21492,16 +21497,20 @@ func _card_theme_color(skill: Dictionary) -> Color:
 
 
 func _card_rules_text(skill_name: String, skill: Dictionary, compact: bool = false) -> String:
-	var effect_text := _skill_display_text(skill)
+	var effect_text := _skill_display_text(skill).replace("\n", "｜")
 	var key_facts := _card_key_rule_facts(skill)
-	var key_text := _join_first_card_facts(key_facts, 2)
+	var key_text := _join_first_card_facts(key_facts, 1 if compact else 2)
 	if key_text == "":
 		key_text = _card_art_stats(skill)
 	if compact:
-		return _short_card_text(effect_text, 44)
+		return _short_card_text(key_text if key_text != "" else effect_text, 44)
+	var short_effect := _short_card_text(effect_text, 56)
+	var short_key := _short_card_text(key_text, 48)
+	if short_key == "" or short_effect.contains(short_key) or short_key.contains(short_effect):
+		return short_effect
 	return "%s\n%s" % [
-		_short_card_text(effect_text, 78),
-		_short_card_text(key_text, 64),
+		short_effect,
+		short_key,
 	]
 
 

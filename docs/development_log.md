@@ -3,6 +3,48 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜卡牌详情页压缩重复文案并修正梯度卡排版
+
+### 本轮实现
+
+- 卡牌详情页顶部改成短速读：
+  - `卡牌详情｜第N/M张｜牌名`
+  - `类型｜路线｜价格｜是否指定怪兽`
+  - 最后一行优先显示关键事实，例如怪兽牌的生命、在场时间、召唤区域。
+- 详情页右侧仍保留桌游/TCG式四块结构，但每块减少重复：
+  - `牌面定位` 只讲这张牌适合做什么；
+  - `费用与门槛` 只放购买价、打出条件和目标；
+  - `核心效果` 只出现一次简短效果；
+  - `关键数值` 改成一行筹码式事实。
+- 卡面正文同步收短：
+  - 普通卡面优先展示关键数值/路线；
+  - 长规则留给 hover、图鉴详情和后续完整规则页。
+- `I→IV 强化` 梯度卡修复了窄列换行问题：
+  - 罗马等级不再被拆成竖排；
+  - 价格不再被挤成竖排；
+  - 四张等级卡第一屏可读。
+- 顺手修正情报档案的私密标注摘要：
+  - `置信分布`、`理由分布` 自身带可扫读标签；
+  - 不再依赖某座城市是否挤进前四个调查优先级列表。
+
+### 设计意图
+
+- 玩家读卡时先看“这张牌怎么用”，不要在多个位置反复读同一段效果文字。
+- 参考 Terraforming Mars / 电子桌游的读法：短卡面负责识别和操作，详细规则通过 hover、详情页和规则页承接。
+- 图鉴详情页应像 TCG 卡牌说明板，而不是开发规则备忘录。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+  - 有头 UI 快照采集 `tests/ui_snapshot_capture.gd`
+- 有头复查快照：
+  - `C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/03_card_codex_detail.png`
+  - `C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/04_play_table.png`
+
 ## 2026-07-01｜地图区域牌架从长列表改成主板短徽章
 
 ### 本轮实现
