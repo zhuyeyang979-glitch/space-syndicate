@@ -327,6 +327,15 @@ func _run() -> void:
 	_expect(_all_district_cards_have_sources(districts), "district card choices track their source")
 	_expect(_has_monster_card_source(districts), "monster cards are explicitly mixed into district card supplies")
 	_expect(_verify_card_supply_respects_run_products(main), "run card supply only includes fixed-product and monster-resource cards supported by this planet's goods")
+	var card_supply_layers := main.call("_card_supply_layer_report") as Dictionary
+	_expect(
+		int(card_supply_layers.get("codex_count", 0)) >= int(card_supply_layers.get("run_pool_count", 0))
+		and int(card_supply_layers.get("run_pool_count", 0)) > 0
+		and int(card_supply_layers.get("district_supply_count", 0)) > 0
+		and int(card_supply_layers.get("district_unique_count", 0)) > 0
+		and int(card_supply_layers.get("filter_violation_count", 0)) == 0,
+		"card supply layer report separates full codex, current-planet pool, and district supply without filter violations"
+	)
 	_expect(_as_array(main.get("movement_trails")).size() > 0, "summoning starting monsters creates visible summon trails")
 	_expect(_log_contains(main, "区域补给网完成"), "new game announces card pool generation")
 
@@ -706,8 +715,8 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("hover") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
-	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("完整卡池") and menu_body_label.text.contains("区域补给") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览") and _container_label_text_contains(menu_preview_box, "统一卡池") and _container_label_text_contains(menu_preview_box, "商品期货") and _container_label_text_contains(menu_preview_box, "相位反制"), "card codex thumbnail page exposes paging, hover preview, and strict card taxonomy")
+	_expect(menu_body_label != null and menu_body_label.text.contains("缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("三层牌池") and menu_body_label.text.contains("图鉴全集") and menu_body_label.text.contains("本局星球牌池") and menu_body_label.text.contains("区域补给") and menu_body_label.text.contains("双击缩略图进入卡牌详情"), "card codex opens as a responsive thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览") and _container_label_text_contains(menu_preview_box, "三层牌池") and _container_label_text_contains(menu_preview_box, "本局星球") and _container_label_text_contains(menu_preview_box, "购买窗口锁定规则") and _container_label_text_contains(menu_preview_box, "商品期货") and _container_label_text_contains(menu_preview_box, "相位反制") and not _container_label_text_contains(menu_preview_box, "旧的普通牌池"), "card codex thumbnail page exposes paging, hover preview, strict card taxonomy, and player-facing pool layers")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "卡牌路线总览") and _container_label_text_contains(menu_preview_box, "城市成长路线") and _container_label_text_contains(menu_preview_box, "金融投机路线") and _container_label_text_contains(menu_preview_box, "直接互动路线") and _container_label_text_contains(menu_preview_box, "卡牌路线覆盖") and _container_label_text_contains(menu_preview_box, "核心路线") and _container_label_text_contains(menu_preview_box, "覆盖") and _container_label_text_contains(menu_preview_box, "强度区间") and _container_label_text_contains(menu_preview_box, "支点") and _container_label_text_contains(menu_preview_box, "平衡") and _container_label_text_contains(menu_preview_box, "反制") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex exposes data-driven public strategy route overview cards without AI route leaks")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "card codex hides detail previous/next buttons on the thumbnail page")
 	var card_codex_scroll_before := 64

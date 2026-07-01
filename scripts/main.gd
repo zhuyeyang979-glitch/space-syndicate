@@ -6481,12 +6481,16 @@ func _card_codex_grid_text(total_count: int) -> String:
 	var columns := _card_codex_grid_columns()
 	var rows := _card_codex_grid_rows()
 	var page_count := _card_codex_grid_page_count(total_count)
-	return "缩略图册｜当前筛选:%s｜第%d/%d页｜当前缩略图布局：%d×%d\n图鉴是完整卡池，区域补给/市场牌池是本局地图实际可购买的局部候选。悬停或单击卡牌缩略图只刷新下方详情预览；双击缩略图进入卡牌详情。进入详情后才使用顶部「上一个/下一个」切换卡牌，也可以点「返回缩略图」回到图册。" % [
+	var layer_report := _card_supply_layer_report()
+	return "缩略图册｜当前筛选:%s｜第%d/%d页｜当前缩略图布局：%d×%d\n三层牌池：图鉴全集%d张用于学习规则；本局星球牌池%d张按当前商品、地形和怪兽生态筛选；区域补给%d张才是地图上可购买候选。悬停或单击卡牌缩略图只刷新下方详情预览；双击缩略图进入卡牌详情。进入详情后才使用顶部「上一个/下一个」切换卡牌，也可以点「返回缩略图」回到图册。" % [
 		_card_codex_filter_label(),
 		card_codex_grid_page + 1,
 		page_count,
 		columns,
 		rows,
+		int(layer_report.get("codex_count", total_count)),
+		int(layer_report.get("run_pool_count", 0)),
+		int(layer_report.get("district_supply_count", 0)),
 	]
 
 
@@ -7715,14 +7719,93 @@ func _card_codex_filter_matches(filter_id: String, category_id: String) -> bool:
 	return _card_codex_filter_category_ids(filter_id).has(category_id)
 
 
+func _card_supply_layer_report() -> Dictionary:
+	var codex_names := _card_codex_names("all")
+	var run_pool := _current_run_card_pool()
+	var audit := _card_supply_product_filter_audit()
+	var district_supply_count := 0
+	var district_unique_cards := []
+	var accessible_supply_count := 0
+	var source_counts := {}
+	for district_index in range(districts.size()):
+		var district: Dictionary = districts[district_index]
+		var choices: Array = district.get("card_choices", [])
+		var sources: Dictionary = district.get("card_sources", {})
+		var access_kind := _district_card_access_kind(district_index, selected_player)
+		var can_access := ["landed", "adjacent", "extended", "global"].has(access_kind)
+		for card_variant in choices:
+			var card_name := _canonical_card_supply_name(String(card_variant))
+			if card_name == "":
+				continue
+			district_supply_count += 1
+			_append_unique_string(district_unique_cards, card_name)
+			if can_access:
+				accessible_supply_count += 1
+			var source := String(sources.get(String(card_variant), sources.get(card_name, _district_card_supply_source_label(district_index, card_name))))
+			if source == "":
+				source = "区域补给"
+			source_counts[source] = int(source_counts.get(source, 0)) + 1
+	return {
+		"codex_count": codex_names.size(),
+		"run_pool_count": run_pool.size(),
+		"district_supply_count": district_supply_count,
+		"district_unique_count": district_unique_cards.size(),
+		"accessible_supply_count": accessible_supply_count,
+		"run_product_count": (audit.get("run_products", []) as Array).size(),
+		"local_product_card_count": int(audit.get("local_product_card_count", 0)),
+		"filtered_fixed_count": (audit.get("excluded_fixed_cards", []) as Array).size(),
+		"filtered_monster_count": (audit.get("monster_excluded_cards", []) as Array).size(),
+		"filter_violation_count": (audit.get("violations", []) as Array).size(),
+		"source_counts": source_counts,
+	}
+
+
+func _card_supply_source_summary(report: Dictionary, limit: int = 4) -> String:
+	var source_counts: Dictionary = report.get("source_counts", {})
+	var pieces := []
+	var keys := source_counts.keys()
+	keys.sort()
+	for source_variant in keys:
+		var source := String(source_variant)
+		pieces.append("%s×%d" % [source, int(source_counts.get(source, 0))])
+		if pieces.size() >= limit:
+			break
+	if pieces.is_empty():
+		return "暂无区域补给"
+	var suffix := ""
+	if source_counts.size() > pieces.size():
+		suffix = " 等%d类来源" % source_counts.size()
+	return "%s%s" % [" / ".join(pieces), suffix]
+
+
 func _add_card_codex_filter_buttons(parent: Container) -> void:
 	parent.add_child(_plain_label("卡牌图鉴分类：怪兽牌、怪兽技能、军队/军令、相位反制、玩家互动、城市经营、商品经营、商品期货、金融/GDP、合约、情报、新闻和天气都在同一套卡牌体系中。", 11, Color("#bfdbfe")))
+	var layer_report := _card_supply_layer_report()
 	_add_menu_info_card(
 		parent,
-		"统一卡池 / 区域补给 / 市场牌池",
-		"图鉴展示完整卡池；每局星球会按本局商品、地形和怪兽生态生成可购买的区域补给。玩家仍只能在怪兽落地区或相邻区打开补给窗口购买；怪兽生态档案只说明自动行动，怪兽牌本身在卡牌图鉴里查看。",
+		"三层牌池：图鉴全集 / 本局星球 / 区域补给",
+		"图鉴全集%d张，只负责学习规则；本局星球牌池%d张，会按%d种地图商品、地形和怪兽生态筛选；区域补给%d张（去重%d张）才是本局实际投放到地图上的购买候选。" % [
+			int(layer_report.get("codex_count", 0)),
+			int(layer_report.get("run_pool_count", 0)),
+			int(layer_report.get("run_product_count", 0)),
+			int(layer_report.get("district_supply_count", 0)),
+			int(layer_report.get("district_unique_count", 0)),
+		],
 		Color("#38bdf8"),
-		"旧的普通牌池理解为候选牌库；真正能买的是当前区域补给。"
+		"当前可触达补给%d张｜本地商品绑定%d张｜已过滤不适配固定商品牌%d张、怪兽牌%d张｜来源:%s" % [
+			int(layer_report.get("accessible_supply_count", 0)),
+			int(layer_report.get("local_product_card_count", 0)),
+			int(layer_report.get("filtered_fixed_count", 0)),
+			int(layer_report.get("filtered_monster_count", 0)),
+			_card_supply_source_summary(layer_report),
+		]
+	)
+	_add_menu_info_card(
+		parent,
+		"购买窗口锁定规则",
+		"地图上点开一个区域补给窗口时，会按打开瞬间的怪兽位置、补给范围和价格倍率锁定本窗口资格；选牌途中怪兽离开也能完成这次购买。同一玩家同时只保留一个区域补给窗口。",
+		Color("#facc15"),
+		"落地区八折｜相邻区原价｜二跳/全局采购按角色或卡牌倍率加价。"
 	)
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("separation", 5)
