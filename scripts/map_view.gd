@@ -11,10 +11,16 @@ const PLANET_PROJECTION_VISIBILITY_FADE_START := 0.74
 const MIN_VIEW_ZOOM := 0.34
 const MAX_VIEW_ZOOM := 5.0
 const DRAG_THRESHOLD_PIXELS := 4.0
-const ANIMATED_REDRAW_INTERVAL_SECONDS := 1.0 / 30.0
+const ANIMATED_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
 const ZOOM_SMOOTHING_SPEED := 12.0
 const ZOOM_WHEEL_STEP := 1.11
 const LABEL_INTERACTION_ZOOM_EPSILON := 0.018
+const INTERACTION_DETAIL_SETTLE_SECONDS := 0.28
+const INTERACTION_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
+const GLOBE_POLYGON_DETAIL_STEP_METERS := 45.0
+const GLOBE_POLYGON_INTERACTION_STEP_METERS := 120.0
+const GLOBE_EDGE_DETAIL_STEP_METERS := 28.0
+const GLOBE_EDGE_INTERACTION_STEP_METERS := 90.0
 const BETTING_TABLE_THEME_NAME := "星际赌桌"
 const BETTING_TABLE_CHIP_COUNT := 18
 const BETTING_TABLE_SEAT_COUNT := 8
@@ -44,6 +50,9 @@ var _last_mouse_position := Vector2.ZERO
 var _map_signature := ""
 var _visual_payload_signature := ""
 var _animated_redraw_timer := 0.0
+var _interaction_detail_timer := 0.0
+var _interaction_redraw_timer := 0.0
+var _interaction_redraw_requested := false
 
 
 func _ready() -> void:
@@ -82,13 +91,35 @@ func _update_smooth_zoom(delta: float) -> bool:
 	return not is_equal_approx(before, _view_zoom)
 
 
+func _mark_interaction_detail_dirty() -> void:
+	_interaction_detail_timer = INTERACTION_DETAIL_SETTLE_SECONDS
+	_interaction_redraw_requested = true
+
+
+func _map_detail_reduced() -> bool:
+	return _dragging \
+		or _interaction_detail_timer > 0.0 \
+		or absf(_view_zoom - _target_view_zoom) > LABEL_INTERACTION_ZOOM_EPSILON
+
+
 func _process(delta: float) -> void:
 	var zoom_changed := _update_smooth_zoom(delta)
+	if zoom_changed:
+		_mark_interaction_detail_dirty()
+	var was_interacting := _interaction_detail_timer > 0.0
+	if _interaction_detail_timer > 0.0:
+		_interaction_detail_timer = maxf(0.0, _interaction_detail_timer - delta)
+	var interaction_settled := was_interacting and _interaction_detail_timer <= 0.0 and not _dragging and not zoom_changed
+	_interaction_redraw_timer -= delta
 	var has_animated_layers := _has_active_animation_layers()
 	if has_animated_layers:
 		_animated_redraw_timer -= delta
-	if zoom_changed or (has_animated_layers and _animated_redraw_timer <= 0.0):
+	var interaction_redraw_due := (zoom_changed or _interaction_redraw_requested) and _interaction_redraw_timer <= 0.0
+	if interaction_redraw_due or interaction_settled or (has_animated_layers and _animated_redraw_timer <= 0.0):
 		queue_redraw()
+		if interaction_redraw_due:
+			_interaction_redraw_timer = INTERACTION_REDRAW_INTERVAL_SECONDS
+			_interaction_redraw_requested = false
 		if has_animated_layers:
 			_animated_redraw_timer = ANIMATED_REDRAW_INTERVAL_SECONDS
 
@@ -149,6 +180,7 @@ func _draw() -> void:
 	if _scale <= 0.01:
 		return
 	var globe_blend := _globe_blend()
+	var reduced_detail := _map_detail_reduced()
 	if globe_blend >= 0.985:
 		_draw_globe_projection()
 		return
@@ -157,17 +189,22 @@ func _draw() -> void:
 	_draw_betting_table_background(globe_blend)
 	if globe_blend > 0.001:
 		_draw_projection_transition_backdrop(globe_blend)
-	_draw_local_grid()
+	if not reduced_detail:
+		_draw_local_grid()
 
 	for i in range(districts.size()):
 		if _region_is_near_view(i):
-			_draw_region_fill(i)
-	for i in range(districts.size()):
-		if _region_is_near_view(i):
-			_draw_region_effects(i)
+			if reduced_detail:
+				_draw_region_fill_fast(i)
+			else:
+				_draw_region_fill(i)
+	if not reduced_detail:
+		for i in range(districts.size()):
+			if _region_is_near_view(i):
+				_draw_region_effects(i)
 	var draw_dense_labels := _should_draw_dense_region_labels()
 	for i in range(districts.size()):
-		if _region_is_near_view(i):
+		if _region_is_near_view(i) and (not reduced_detail or i == selected_district):
 			_draw_region_outline(i)
 	for i in range(districts.size()):
 		if _region_is_near_view(i) and (draw_dense_labels or i == selected_district):
@@ -175,9 +212,11 @@ func _draw() -> void:
 	_draw_trade_routes()
 	_draw_city_clusters()
 	_draw_movement_trails()
-	_draw_map_event_effects()
+	if not reduced_detail:
+		_draw_map_event_effects()
 	_draw_auto_monster_markers()
-	_draw_action_callouts()
+	if not reduced_detail:
+		_draw_action_callouts()
 	_draw_scale_hint()
 
 
@@ -186,11 +225,11 @@ func _gui_input(event: InputEvent) -> void:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
 			_target_view_zoom = clamp(_target_view_zoom * ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
-			queue_redraw()
+			_mark_interaction_detail_dirty()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_event.pressed:
 			_target_view_zoom = clamp(_target_view_zoom / ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
-			queue_redraw()
+			_mark_interaction_detail_dirty()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT:
 			if mouse_event.pressed:
@@ -212,7 +251,7 @@ func _gui_input(event: InputEvent) -> void:
 					var index := _district_at_point(world_position)
 					if index >= 0:
 						district_selected.emit(index)
-				queue_redraw()
+				_mark_interaction_detail_dirty()
 	if event is InputEventMouseMotion and _dragging:
 		var motion_event := event as InputEventMouseMotion
 		var delta := motion_event.position - _last_mouse_position
@@ -220,7 +259,7 @@ func _gui_input(event: InputEvent) -> void:
 			_drag_moved = true
 		_pan_view(delta)
 		_last_mouse_position = motion_event.position
-		queue_redraw()
+		_mark_interaction_detail_dirty()
 
 
 func _is_globe_mode() -> bool:
@@ -396,19 +435,22 @@ func _draw_betting_table_background(globe_blend: float) -> void:
 	var felt_glow := Color("#064e3b")
 	felt_glow.a = 0.50
 	draw_circle(center, max(size.x, size.y) * 0.52, felt_glow)
-	_draw_betting_table_weave(globe_blend)
+	var reduced_detail := _map_detail_reduced()
+	if not reduced_detail:
+		_draw_betting_table_weave(globe_blend)
 	var planet_radius: float = _globe_radius()
 	var rail_radius: float = min(min(size.x, size.y) * 0.49, planet_radius + 34.0)
 	var shadow := Color("#020617")
 	shadow.a = 0.70
-	draw_arc(center, rail_radius + 10.0, 0.0, TAU, 128, shadow, 10.0, true)
+	draw_arc(center, rail_radius + 10.0, 0.0, TAU, 48 if reduced_detail else 128, shadow, 10.0, true)
 	var rim := Color("#d6a440")
 	rim.a = 0.34 + globe_blend * 0.16
-	draw_arc(center, rail_radius + 5.0, 0.0, TAU, 128, rim, 3.0, true)
+	draw_arc(center, rail_radius + 5.0, 0.0, TAU, 48 if reduced_detail else 128, rim, 3.0, true)
 	var inner_rim := Color("#fde68a")
 	inner_rim.a = 0.12 + globe_blend * 0.08
-	draw_arc(center, max(8.0, planet_radius + 8.0), 0.0, TAU, 128, inner_rim, 1.6, true)
-	_draw_betting_table_edge_chips(center, rail_radius + 22.0, globe_blend)
+	draw_arc(center, max(8.0, planet_radius + 8.0), 0.0, TAU, 48 if reduced_detail else 128, inner_rim, 1.6, true)
+	if not reduced_detail:
+		_draw_betting_table_edge_chips(center, rail_radius + 22.0, globe_blend)
 
 
 func _draw_betting_table_weave(globe_blend: float) -> void:
@@ -477,13 +519,19 @@ func _draw_globe_projection() -> void:
 	_map_offset = _globe_center()
 	var center := _globe_center()
 	var radius := _globe_radius()
+	var reduced_detail := _map_detail_reduced()
 	draw_circle(center, radius + 4.0, Color("#020617"))
 	draw_circle(center, radius, Color("#0f172a"))
 	for i in range(districts.size()):
-		_draw_globe_region_fill(i)
-	_draw_globe_graticule(center, radius)
+		if reduced_detail:
+			_draw_globe_region_fill_fast(i)
+		else:
+			_draw_globe_region_fill(i)
+	if not reduced_detail:
+		_draw_globe_graticule(center, radius)
 	for i in range(districts.size()):
-		_draw_globe_region_outline(i)
+		if not reduced_detail or i == selected_district:
+			_draw_globe_region_outline(i)
 	var draw_dense_labels := _should_draw_dense_region_labels()
 	for i in range(districts.size()):
 		if draw_dense_labels or i == selected_district:
@@ -491,9 +539,11 @@ func _draw_globe_projection() -> void:
 	_draw_trade_routes()
 	_draw_city_clusters()
 	_draw_movement_trails()
-	_draw_map_event_effects()
+	if not reduced_detail:
+		_draw_map_event_effects()
 	_draw_auto_monster_markers()
-	_draw_action_callouts()
+	if not reduced_detail:
+		_draw_action_callouts()
 	_draw_scale_hint()
 
 
@@ -544,6 +594,27 @@ func _draw_globe_region_fill(index: int) -> void:
 			draw_circle(pos, marker_radius, color)
 
 
+func _draw_globe_region_fill_fast(index: int) -> void:
+	var district: Dictionary = districts[index]
+	var projected := _project_globe(district.get("center", Vector2.ZERO))
+	if not bool(projected["visible"]):
+		return
+	var pos: Vector2 = projected["position"]
+	var color := _region_color(index)
+	if bool(district.get("destroyed", false)):
+		color = Color("#475569")
+	else:
+		var damage_ratio: float = float(district.get("damage", 0)) / max(1.0, float(district.get("hp", 1)))
+		color = color.lerp(Color("#7f1d1d"), clamp(damage_ratio * 0.34, 0.0, 0.34))
+	color.a = 0.74 * _projection_visibility_alpha(float(projected.get("z", 1.0)), 1.0)
+	var marker_radius: float = clamp(float(district.get("radius_m", 45.0)) * _globe_radius() / max(1.0, map_width_m) * 0.40, 2.8, 9.0)
+	if index == selected_district:
+		var selected_glow := Color("#facc15")
+		selected_glow.a = 0.34
+		draw_circle(pos, marker_radius + 5.0, selected_glow)
+	draw_circle(pos, marker_radius, color)
+
+
 func _draw_globe_region_outline(index: int) -> void:
 	var district: Dictionary = districts[index]
 	var selected := index == selected_district
@@ -574,11 +645,13 @@ func _globe_projected_polygon(world_polygon: Array) -> PackedVector2Array:
 	var points := PackedVector2Array()
 	if world_polygon.size() < 3:
 		return points
+	var step_m := GLOBE_POLYGON_INTERACTION_STEP_METERS if _map_detail_reduced() else GLOBE_POLYGON_DETAIL_STEP_METERS
+	var max_steps := 8 if _map_detail_reduced() else 18
 	for i in range(world_polygon.size()):
 		var a: Vector2 = world_polygon[i]
 		var b: Vector2 = world_polygon[(i + 1) % world_polygon.size()]
 		var delta := _surface_delta(a, b)
-		var steps: int = clampi(int(ceil(delta.length() / 45.0)), 2, 18)
+		var steps: int = clampi(int(ceil(delta.length() / step_m)), 2, max_steps)
 		for step in range(steps):
 			var t := float(step) / float(steps)
 			var projected := _project_globe(_wrap_world_position(a + delta * t))
@@ -600,7 +673,8 @@ func _draw_globe_polygon_outline(world_polygon: Array, color: Color, width: floa
 
 func _draw_globe_edge(a: Vector2, b: Vector2, color: Color, width: float) -> void:
 	var delta := _surface_delta(a, b)
-	var steps: int = clampi(int(ceil(delta.length() / 28.0)), 3, 24)
+	var step_m := GLOBE_EDGE_INTERACTION_STEP_METERS if _map_detail_reduced() else GLOBE_EDGE_DETAIL_STEP_METERS
+	var steps: int = clampi(int(ceil(delta.length() / step_m)), 2, 12 if _map_detail_reduced() else 24)
 	var run := PackedVector2Array()
 	for step in range(steps + 1):
 		var t := float(step) / float(steps)
@@ -613,6 +687,25 @@ func _draw_globe_edge(a: Vector2, b: Vector2, color: Color, width: float) -> voi
 			run = PackedVector2Array()
 	if run.size() > 1:
 		draw_polyline(run, color, width, true)
+
+
+func _draw_region_fill_fast(index: int) -> void:
+	var district: Dictionary = districts[index]
+	var center: Vector2 = district.get("center", Vector2.ZERO)
+	var pos := _world_to_screen(center)
+	var color := _region_color(index)
+	if bool(district.get("destroyed", false)):
+		color = Color("#334155")
+	else:
+		var damage_ratio: float = float(district.get("damage", 0)) / max(1.0, float(district.get("hp", 1)))
+		color = color.lerp(Color("#7f1d1d"), clamp(damage_ratio * 0.38, 0.0, 0.38))
+	color.a = 0.72 * _projection_visibility_alpha_for_district(index)
+	var radius: float = clamp(float(district.get("radius_m", 48.0)) * _scale * 0.30, 4.0, 18.0)
+	if index == selected_district:
+		var selected_glow := Color("#facc15")
+		selected_glow.a = 0.30
+		draw_circle(pos, radius + 5.0, selected_glow)
+	draw_circle(pos, radius, color)
 
 
 func _draw_region_fill(index: int) -> void:
@@ -746,6 +839,7 @@ func _draw_trade_routes() -> void:
 	if trade_route_markers.is_empty():
 		return
 	var font := get_theme_default_font()
+	var reduced_detail := _map_detail_reduced()
 	for route_variant in trade_route_markers:
 		var route: Dictionary = route_variant
 		var points: Array = route.get("points", [])
@@ -765,6 +859,8 @@ func _draw_trade_routes() -> void:
 				_draw_trade_segment(from_projected["position"], to_projected["position"], color, disrupted)
 			else:
 				_draw_trade_segment(_world_to_screen(from_world), _world_to_screen(to_world), color, disrupted)
+		if reduced_detail:
+			continue
 		var label_index: int = clampi(int(points.size() / 2), 0, points.size() - 1)
 		var label_world: Vector2 = points[label_index]
 		if _is_globe_mode():
@@ -814,7 +910,7 @@ func _draw_city_cluster(pos: Vector2, marker: Dictionary) -> void:
 	var font := get_theme_default_font()
 	var active := bool(marker.get("active", true))
 	var tag_color: Color = marker.get("tag_color", Color("#94a3b8"))
-	if _is_globe_mode():
+	if _is_globe_mode() or _map_detail_reduced():
 		var pin_color := Color("#64748b") if active else Color("#3f3f46")
 		draw_rect(Rect2(pos + Vector2(-3.0, -7.0), Vector2(3.0, 7.0)), pin_color, true)
 		draw_rect(Rect2(pos + Vector2(1.0, -10.0), Vector2(3.0, 10.0)), pin_color.lightened(0.16), true)
@@ -891,8 +987,9 @@ func _draw_auto_monster_markers() -> void:
 				continue
 			pos = projected["position"]
 		_draw_monster_token(pos, marker, color)
-		var name := _short_action_text(String(marker.get("name", "怪兽")), 8)
-		draw_string(font, pos + Vector2(18, -14), name, HORIZONTAL_ALIGNMENT_LEFT, 92.0, 11, color)
+		if not _map_detail_reduced():
+			var name := _short_action_text(String(marker.get("name", "怪兽")), 8)
+			draw_string(font, pos + Vector2(18, -14), name, HORIZONTAL_ALIGNMENT_LEFT, 92.0, 11, color)
 
 
 func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void:
@@ -904,6 +1001,13 @@ func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void
 	var base := color.darkened(0.08)
 	var glow := secondary.lightened(0.12)
 	glow.a = 0.24
+	if _map_detail_reduced():
+		draw_circle(pos, radius + 2.0, Color("#020617"))
+		draw_circle(pos, radius, base)
+		draw_arc(pos, radius + 1.0, 0.0, TAU, 18, slot_color, 2.0, true)
+		var font := get_theme_default_font()
+		draw_string(font, pos + Vector2(-radius, radius * 0.35), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, int(clamp(radius * 1.10, 12.0, 18.0)), Color("#f8fafc"))
+		return
 	draw_circle(pos, radius + 6.0, glow)
 	draw_circle(pos, radius + 2.5, Color("#020617"))
 	draw_circle(pos, radius, base)
@@ -1048,6 +1152,7 @@ func _draw_range_ring(center_m: Vector2, radius_m: float, color: Color, label: S
 
 func _draw_movement_trails() -> void:
 	var font := get_theme_default_font()
+	var reduced_detail := _map_detail_reduced()
 	for trail_variant in movement_trails:
 		var trail: Dictionary = trail_variant
 		var from_world: Vector2 = trail.get("from", Vector2.ZERO)
@@ -1068,10 +1173,11 @@ func _draw_movement_trails() -> void:
 		color.a = 0.14 + alpha * 0.38 if is_card_ingress else 0.25 + alpha * 0.65
 		var width: float = 0.9 + alpha * 1.4 if is_card_ingress else 1.5 + alpha * 2.5
 		draw_line(from_pos, to_pos, color, width, true)
-		_draw_arrow_head(from_pos, to_pos, color, alpha, 0.58 if is_card_ingress else 1.0)
+		if not reduced_detail:
+			_draw_arrow_head(from_pos, to_pos, color, alpha, 0.58 if is_card_ingress else 1.0)
 		draw_circle(to_pos, (2.5 + alpha * 2.5) if is_card_ingress else (4.0 + alpha * 4.0), color)
 		var label := String(trail.get("label", ""))
-		if label != "" and (not is_card_ingress or not _is_globe_mode()):
+		if label != "" and not reduced_detail and (not is_card_ingress or not _is_globe_mode()):
 			var label_color := color
 			label_color.a = min(1.0, color.a + 0.1)
 			draw_string(font, to_pos + Vector2(7, -7), label, HORIZONTAL_ALIGNMENT_LEFT, 88.0, 11, label_color)

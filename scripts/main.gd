@@ -86,8 +86,9 @@ const CARD_TRACK_CURRENT_SLOT_WIDTH := 60
 const CARD_TRACK_SLOT_HEIGHT := 22
 const CARD_TRACK_EMPTY_SLOT_HEIGHT := 15
 const CARD_TRACK_SEGMENT_WIDTH := 9
-const UI_LIVE_REFRESH_SECONDS := 0.12
-const UI_FULL_REFRESH_SECONDS := 1.15
+const UI_LIVE_REFRESH_SECONDS := 0.18
+const UI_MAP_REFRESH_SECONDS := 0.16
+const UI_FULL_REFRESH_SECONDS := 1.80
 const HAND_CARD_HOVER_SCALE := 1.08
 const HAND_CARD_HOVER_LIFT_PIXELS := 13.0
 const HAND_CARD_HOVER_TWEEN_SECONDS := 0.10
@@ -1488,6 +1489,7 @@ var monster_timer := 4.0
 var market_timer := 8.0
 var economy_cashflow_timer := 0.0
 var ui_timer := 0.0
+var ui_map_refresh_timer := 0.0
 var ui_full_refresh_timer := 0.0
 var ai_card_decision_timer := AI_CARD_DECISION_INTERVAL_SECONDS
 var ai_auction_reaction_timer := AI_AUCTION_REACTION_INTERVAL_SECONDS
@@ -1768,10 +1770,14 @@ func _process(delta: float) -> void:
 
 func _update_process_ui_refresh(delta: float) -> void:
 	ui_timer -= delta
+	ui_map_refresh_timer -= delta
 	ui_full_refresh_timer -= delta
 	if ui_timer <= 0.0:
 		_refresh_live_ui()
 		ui_timer = UI_LIVE_REFRESH_SECONDS
+	if ui_map_refresh_timer <= 0.0:
+		_refresh_board()
+		ui_map_refresh_timer = UI_MAP_REFRESH_SECONDS
 	if ui_full_refresh_timer <= 0.0:
 		_refresh_ui()
 		ui_full_refresh_timer = UI_FULL_REFRESH_SECONDS
@@ -16634,6 +16640,7 @@ func _toggle_pause() -> void:
 
 func _refresh_ui() -> void:
 	ui_timer = UI_LIVE_REFRESH_SECONDS
+	ui_map_refresh_timer = UI_MAP_REFRESH_SECONDS
 	ui_full_refresh_timer = UI_FULL_REFRESH_SECONDS
 	if menu_overlay != null and menu_overlay.visible:
 		_refresh_menu_layout()
@@ -16653,7 +16660,6 @@ func _refresh_live_ui() -> void:
 		return
 	_refresh_status()
 	_refresh_weather_forecast_strip()
-	_refresh_board()
 	_refresh_bottom_countdown_bar()
 
 
