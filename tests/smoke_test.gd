@@ -303,6 +303,7 @@ func _run() -> void:
 	_expect(growth_budget_text.contains("强度预算") and growth_budget_text.contains("主强度") and growth_budget_text.contains("制衡") and monster_budget_text.contains("怪兽"), "card strength budgets explain power drivers and counterplay from data fields")
 	_expect(_verify_development_route_balance_baseline(main), "card pool exposes AI-readable development routes with card coverage, rank ladders, and profile preferences")
 	_expect(_verify_direct_player_interaction_cards(main), "direct player-interaction cards cover 拆牌、牵牌、产权冻结、全场齐射 with target-player UI, balance gates, and anonymous clue rules")
+	_expect(_verify_direct_interaction_balance_audit(main), "direct-interaction balance audit gates strong pressure with flow, public clues, and counter windows")
 	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, contract, monster target, player target, and monster wager modules")
 	_expect(_verify_monster_wager_system(main), "monster brawls freeze the game for a compulsory public ante wager with visible identity, side, amount, save state, and pooled payout settlement")
 	_expect(_verify_ai_monster_wager_policy(main), "AI monster-wager bets use strength, ownership, city-risk, public stake, and hidden scoring metadata")
@@ -5474,6 +5475,66 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 		ok = false
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
+
+
+func _verify_direct_interaction_balance_audit(main: Node) -> bool:
+	var report := main.call("_direct_interaction_balance_report") as Dictionary
+	var families := report.get("families", {}) as Dictionary
+	var entries := _as_array(report.get("entries", []))
+	var issues := _as_array(report.get("issues", []))
+	if not bool(report.get("ok", false)):
+		print("Direct interaction balance audit issues: %s" % " / ".join(issues))
+		return false
+	var required := {
+		"星链拆解": "player_hand_disrupt",
+		"影仓牵引": "player_hand_steal",
+		"产权冻结": "city_control_dispute",
+		"轨道齐射": "global_barrage",
+	}
+	var ok := true
+	for family_variant in required.keys():
+		var family := String(family_variant)
+		if not families.has(family):
+			ok = false
+			continue
+		var summary := families[family] as Dictionary
+		ok = ok and String(summary.get("kind", "")) == String(required[family])
+		ok = ok and _as_array(summary.get("cards", [])).size() == 4
+		ok = ok and int(summary.get("max_flow_required", 0)) >= 4
+		ok = ok and int(summary.get("max_gate_score", 0)) >= 180
+		ok = ok and int(summary.get("max_public_clue_score", 0)) >= 80
+		ok = ok and bool(summary.get("counter_available", false))
+	var by_name := {}
+	for entry_variant in entries:
+		if entry_variant is Dictionary:
+			var entry := entry_variant as Dictionary
+			by_name[String(entry.get("name", ""))] = entry
+	for card_name in ["星链拆解4", "影仓牵引4", "产权冻结4", "轨道齐射4"]:
+		if not by_name.has(card_name):
+			ok = false
+			continue
+		var entry := by_name[card_name] as Dictionary
+		ok = ok and int(entry.get("effect_score", 0)) >= 150
+		ok = ok and int(entry.get("gate_score", 0)) >= 120
+		ok = ok and int(entry.get("public_clue_score", 0)) >= 78
+		ok = ok and int(entry.get("play_flow_required", 0)) > 0
+		ok = ok and bool(entry.get("counter_available", false))
+	var disrupt_one := by_name.get("星链拆解1", {}) as Dictionary
+	var disrupt_four := by_name.get("星链拆解4", {}) as Dictionary
+	var steal_one := by_name.get("影仓牵引1", {}) as Dictionary
+	var steal_four := by_name.get("影仓牵引4", {}) as Dictionary
+	var freeze_one := by_name.get("产权冻结1", {}) as Dictionary
+	var freeze_four := by_name.get("产权冻结4", {}) as Dictionary
+	var barrage_one := by_name.get("轨道齐射1", {}) as Dictionary
+	var barrage_four := by_name.get("轨道齐射4", {}) as Dictionary
+	ok = ok and not disrupt_one.is_empty() and not disrupt_four.is_empty() and int(disrupt_four.get("effect_score", 0)) >= int(disrupt_one.get("effect_score", 0))
+	ok = ok and not steal_one.is_empty() and not steal_four.is_empty() and int(steal_four.get("gate_score", 0)) >= int(steal_one.get("gate_score", 0))
+	ok = ok and not freeze_one.is_empty() and not freeze_four.is_empty() and int(freeze_four.get("control_gdp_penalty", 0)) > int(freeze_one.get("control_gdp_penalty", 0))
+	ok = ok and not barrage_one.is_empty() and not barrage_four.is_empty() and int(barrage_four.get("global_barrage_target_count", 0)) > int(barrage_one.get("global_barrage_target_count", 0))
+	ok = ok and String(report.get("summary", "")).contains("商品流动门槛")
+	if not ok:
+		print("Direct interaction balance report: %s" % str(report))
+	return ok
 
 
 func _verify_temporary_decision_blueprints(main: Node) -> bool:

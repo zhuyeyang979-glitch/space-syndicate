@@ -54,7 +54,7 @@ The prototype should not balance by making every route equally strong in every s
    - Missile remains range-gated and position-readable.
    - Submarine and warship remain strongest on ocean trade maps.
 2. Commodity futures and warehouse stockpile are now strategically interesting, but the payout unit and stockpile unit counts need long-run tests against ordinary city income.
-3. Direct hand pressure should create inference clues and disruption, not simply delete the best player’s options every time.
+3. Covered now: direct interaction cards have an automated balance audit. The four I-IV families must keep pressure, gates, public clues, and counter availability aligned, so hand pressure creates disruption plus inference clues instead of becoming cheap invisible deletion.
 4. Role cards now have a separate role-budget audit. The current role pool is broad enough, but the next tuning pass should watch high-leverage public passives:
    - Extra purchase range can be very strong on large planets.
    - Monster or military control-limit bonuses are board-state dependent.
@@ -91,3 +91,4 @@ Next AI tuning should check whether each profile actually does its thing in long
 - Covered now: role setup resolves duplicate public-role selections into unique seats, random AI roles resolve without duplicates at run start, and every real role card exposes hidden balance-budget metadata for audit tests.
 - Covered now: generated-run card supply respects planet goods. Fixed-product cards enter only when their required product exists, monster cards enter by resource focus with a safe fallback, and district choices are audited against local products/demands so unavailable goods do not leak into purchasable cards.
 - Covered now: military identity balance is audited from the card data. The smoke test verifies each military family has I-IV cards, non-regressing rank gradients, fighter mobility, bomber GDP pressure, missile range, tank durability/terrain weakness, ocean-force sea mobility, and route-damage boundaries.
+- Covered now: direct-interaction balance is audited from card fields. The smoke test verifies 星链拆解, 影仓牵引, 产权冻结, and 轨道齐射 all have I-IV ladders, non-regressing pressure/gates, product-flow gates, public target/result clues, and counter-window support.

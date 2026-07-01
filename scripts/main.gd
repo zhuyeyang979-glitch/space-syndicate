@@ -10856,6 +10856,175 @@ func _military_force_balance_report() -> Dictionary:
 	}
 
 
+func _direct_interaction_balance_effect_score(skill: Dictionary) -> int:
+	var kind := String(skill.get("kind", ""))
+	var score := 0
+	score += maxi(0, int(skill.get("hand_discard_count", 0))) * 85
+	score += maxi(0, int(skill.get("hand_steal_count", 0))) * 120
+	score += int(round(maxf(0.0, float(skill.get("hand_lock_seconds", 0.0))) * 3.6))
+	score += maxi(0, int(skill.get("target_cash_penalty", 0))) / 2
+	score += maxi(0, int(skill.get("steal_fail_cash", 0))) / 3
+	score += int(round(maxf(0.0, float(skill.get("control_block_seconds", 0.0))) * maxi(0, int(skill.get("control_gdp_penalty", 0))) / 18.0))
+	var barrage_targets := maxi(0, int(skill.get("global_barrage_target_count", 0)))
+	var barrage_damage := maxi(0, int(skill.get("global_barrage_damage", 0)))
+	var barrage_route_damage := maxi(0, int(skill.get("global_barrage_route_damage", 0)))
+	score += barrage_targets * barrage_damage * 74
+	score += barrage_targets * barrage_route_damage * 52
+	score += maxi(0, int(skill.get("panic", 0))) * 2
+	if kind == "global_barrage" and barrage_targets >= 4:
+		score += 28
+	if kind == "player_hand_steal":
+		score += 22
+	if kind == "city_control_dispute":
+		score += 18
+	return maxi(1, score)
+
+
+func _direct_interaction_balance_gate_score(skill: Dictionary) -> int:
+	var score := maxi(0, int(skill.get("cost", 0))) * 9
+	score += maxi(0, _skill_play_flow_required(skill, selected_player)) * 48
+	if String(_skill_play_product(skill, selected_player)) != "":
+		score += 18
+	if bool(skill.get("target_player_required", false)):
+		score += 18
+	if ["city_control_dispute", "global_barrage"].has(String(skill.get("kind", ""))):
+		score += 24
+	if not bool(skill.get("persistent", false)):
+		score += 10
+	if int(skill.get("global_barrage_target_count", 0)) >= 4:
+		score += 24
+	return score
+
+
+func _direct_interaction_balance_public_clue_score(skill: Dictionary) -> int:
+	var kind := String(skill.get("kind", ""))
+	var score := 0
+	if bool(skill.get("target_player_required", false)):
+		score += 48
+	if ["city_control_dispute", "global_barrage"].has(kind):
+		score += 52
+	if _skill_play_flow_required(skill, selected_player) > 0:
+		score += 22
+	if String(_skill_play_product(skill, selected_player)) != "":
+		score += 18
+	if int(skill.get("global_barrage_target_count", 0)) > 1:
+		score += 12
+	if int(skill.get("hand_discard_count", 0)) > 0 or int(skill.get("hand_steal_count", 0)) > 0:
+		score += 8
+	if int(skill.get("control_gdp_penalty", 0)) > 0 or int(skill.get("global_barrage_damage", 0)) > 0:
+		score += 12
+	return score
+
+
+func _direct_interaction_balance_entry(card_name: String, skill: Dictionary) -> Dictionary:
+	var kind := String(skill.get("kind", ""))
+	var target_kind := "玩家" if bool(skill.get("target_player_required", false)) else "公开城市/全场"
+	if kind == "global_barrage":
+		target_kind = "多座公开城市"
+	elif kind == "city_control_dispute":
+		target_kind = "单座公开城市"
+	var effect_score := _direct_interaction_balance_effect_score(skill)
+	var gate_score := _direct_interaction_balance_gate_score(skill)
+	var clue_score := _direct_interaction_balance_public_clue_score(skill)
+	var counter_available := SKILL_CATALOG.has("相位否决1")
+	return {
+		"name": card_name,
+		"family": _skill_family(card_name),
+		"rank": clampi(_skill_rank(card_name), 1, 4),
+		"kind": kind,
+		"target_kind": target_kind,
+		"effect_score": effect_score,
+		"gate_score": gate_score,
+		"public_clue_score": clue_score,
+		"counter_available": counter_available,
+		"play_flow_required": maxi(0, _skill_play_flow_required(skill, selected_player)),
+		"play_product": String(_skill_play_product(skill, selected_player)),
+		"hand_discard_count": maxi(0, int(skill.get("hand_discard_count", 0))),
+		"hand_steal_count": maxi(0, int(skill.get("hand_steal_count", 0))),
+		"hand_lock_seconds": maxf(0.0, float(skill.get("hand_lock_seconds", 0.0))),
+		"target_cash_penalty": maxi(0, int(skill.get("target_cash_penalty", 0))),
+		"control_gdp_penalty": maxi(0, int(skill.get("control_gdp_penalty", 0))),
+		"control_block_seconds": maxf(0.0, float(skill.get("control_block_seconds", 0.0))),
+		"global_barrage_damage": maxi(0, int(skill.get("global_barrage_damage", 0))),
+		"global_barrage_target_count": maxi(0, int(skill.get("global_barrage_target_count", 0))),
+		"global_barrage_route_damage": maxi(0, int(skill.get("global_barrage_route_damage", 0))),
+	}
+
+
+func _direct_interaction_balance_report() -> Dictionary:
+	var expected_families := {
+		"星链拆解": "player_hand_disrupt",
+		"影仓牵引": "player_hand_steal",
+		"产权冻结": "city_control_dispute",
+		"轨道齐射": "global_barrage",
+	}
+	var families := {}
+	var entries := []
+	var issues := []
+	for family_variant in expected_families.keys():
+		var family := String(family_variant)
+		var expected_kind := String(expected_families[family])
+		var summary := {
+			"kind": expected_kind,
+			"cards": [],
+			"max_effect_score": 0,
+			"max_gate_score": 0,
+			"max_public_clue_score": 0,
+			"max_flow_required": 0,
+			"counter_available": SKILL_CATALOG.has("相位否决1"),
+		}
+		var previous_effect := -1
+		var previous_gate := -1
+		for rank in range(1, 5):
+			var card_name := "%s%d" % [family, rank]
+			if not SKILL_CATALOG.has(card_name):
+				issues.append("%s缺少%d级" % [family, rank])
+				continue
+			var skill := _make_skill(card_name)
+			if String(skill.get("kind", "")) != expected_kind:
+				issues.append("%s类型错误:%s" % [card_name, String(skill.get("kind", ""))])
+			var entry := _direct_interaction_balance_entry(card_name, skill)
+			entries.append(entry)
+			var cards: Array = summary.get("cards", [])
+			cards.append(card_name)
+			summary["cards"] = cards
+			summary["max_effect_score"] = maxi(int(summary.get("max_effect_score", 0)), int(entry.get("effect_score", 0)))
+			summary["max_gate_score"] = maxi(int(summary.get("max_gate_score", 0)), int(entry.get("gate_score", 0)))
+			summary["max_public_clue_score"] = maxi(int(summary.get("max_public_clue_score", 0)), int(entry.get("public_clue_score", 0)))
+			summary["max_flow_required"] = maxi(int(summary.get("max_flow_required", 0)), int(entry.get("play_flow_required", 0)))
+			var effect_score := int(entry.get("effect_score", 0))
+			var gate_score := int(entry.get("gate_score", 0))
+			var clue_score := int(entry.get("public_clue_score", 0))
+			if previous_effect >= 0 and effect_score < previous_effect:
+				issues.append("%s效果压力梯度倒退" % card_name)
+			if previous_gate >= 0 and gate_score < previous_gate:
+				issues.append("%s门槛梯度倒退" % card_name)
+			previous_effect = effect_score
+			previous_gate = gate_score
+			if int(entry.get("play_flow_required", 0)) <= 0:
+				issues.append("%s缺少商品流动门槛" % card_name)
+			if not bool(entry.get("counter_available", false)):
+				issues.append("%s缺少相位反制窗口支撑" % card_name)
+			if effect_score >= 150 and gate_score < 120:
+				issues.append("%s强效果门槛过低" % card_name)
+			if effect_score >= 150 and clue_score < 78:
+				issues.append("%s强效果公开线索不足" % card_name)
+			if expected_kind in ["player_hand_disrupt", "player_hand_steal"] and not bool(skill.get("target_player_required", false)):
+				issues.append("%s缺少指定玩家目标" % card_name)
+			if expected_kind == "global_barrage" and int(entry.get("global_barrage_target_count", 0)) < 2:
+				issues.append("%s齐射目标过少，无法形成公开全场线索" % card_name)
+			if expected_kind == "city_control_dispute" and (int(entry.get("control_gdp_penalty", 0)) <= 0 or float(entry.get("control_block_seconds", 0.0)) <= 0.0):
+				issues.append("%s产权冻结缺少GDP/持续字段" % card_name)
+		families[family] = summary
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"families": families,
+		"entries": entries,
+		"summary": "直接互动护栏：点名玩家或公开城市、商品流动门槛、5秒反制窗口、公开结果线索，强效果随等级提高但门槛和线索同步提高。",
+	}
+
+
 func _apply_military_gdp_pressure(unit: Dictionary, district_index: int, command: String, source: String) -> int:
 	if district_index < 0 or district_index >= districts.size():
 		return 0
