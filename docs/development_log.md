@@ -3,6 +3,44 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜卡牌图鉴分类筹码与根目录参考索引
+
+### 本轮实现
+
+- 卡牌图鉴缩略图页新增固定在第一屏顶部的 `CardCodexCategoryRail`：
+  - 用 `CardCodexCategoryChip` 显示“全部、怪兽、兽技、军队、互动、城市、商品、期货、金融、合约、情报、补给、诱导、新闻、天气”等短筹码；
+  - 每个筹码直接显示图标、短标签和数量；
+  - 筛选栏从缩略图网格下方移到上方，避免玩家翻页时找不到分类入口。
+- 卡牌图鉴首页去掉常驻的“牌路总览/打法/防法/牌库来源/区域买牌规则”长说明：
+  - 首页现在专注于分类筹码、缩略卡、悬停预览、双击详情；
+  - 复杂规则继续留给规则页、经济总览、区域牌架和后续教程。
+- 新增根目录 `AGENTS.md`：
+  - 保存用户提供的 Codex 项目级工作说明；
+  - 强调 simulation-first、可复现、可测试、数据驱动、AI 难度评估和经济/卡牌平衡工具链。
+- 新增根目录 `REFERENCE_LINKS.md`：
+  - 集中保存聊天中提供的开源参考链接；
+  - 覆盖 Terraforming Mars、Gaia Project、Night Patrol、UiCard、Balatro/Hearthstone/MTG 类卡牌 UI、巨兽破坏、行星/太空、Brotato/Vampire Survivors-like、Godot 性能管线等参考；
+  - 明确商业发布前仍需重新确认 LICENSE 和素材授权。
+
+### 测试与验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+  - 二号屏有头 `tests/ui_snapshot_capture.gd`
+  - `git diff --check`
+- 本轮二号屏快照确认：
+  - `02_card_codex_grid.png` 第一屏可见分类筹码；
+  - 详情页仍保留 TCG 式卡面/费用/核心效果/I-IV 梯度结构；
+  - 主桌不被本次图鉴改动影响。
+
+### 设计意图
+
+- 图鉴应该像桌游电子版的卡牌浏览器：先看分类和卡面，再通过 hover/双击读详情；不要把开发说明常驻在玩家浏览路径上。
+- 根目录参考索引让后续 Codex 继续开发时先看正确标杆，减少“凭空设计”和重复追问。
+
 ## 2026-07-01｜主桌性能止血：实时层与重布局分离
 
 ### 追加实现

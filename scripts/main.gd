@@ -9014,11 +9014,9 @@ func _update_card_codex_menu() -> void:
 		_clear_children(menu_preview_box)
 		if card_codex_show_detail:
 			_add_card_codex_detail_layout(menu_preview_box, card_name, skill)
-			_add_card_codex_filter_buttons(menu_preview_box)
 		else:
-			_populate_card_codex_thumbnail_page(menu_preview_box, names)
 			_add_card_codex_filter_buttons(menu_preview_box)
-			_add_card_development_route_overview(menu_preview_box)
+			_populate_card_codex_thumbnail_page(menu_preview_box, names)
 
 
 func _card_codex_grid_columns() -> int:
@@ -9049,12 +9047,14 @@ func _card_codex_first_index_on_page(page_index: int, total_count: int) -> int:
 func _card_codex_grid_text(total_count: int) -> String:
 	var page_count := _card_codex_grid_page_count(total_count)
 	var layer_report := _card_supply_layer_report()
-	return "卡牌图鉴｜%s｜第%d/%d页\n本局牌池%d张，区域补给%d张。悬停预览，双击看详情。" % [
+	return "卡牌图鉴｜%s｜第%d/%d页\n%s。悬停预览，双击看详情。" % [
 		_card_codex_filter_label(),
 		card_codex_grid_page + 1,
 		page_count,
-		int(layer_report.get("run_pool_count", 0)),
-		int(layer_report.get("district_supply_count", 0)),
+		"本局牌池%d张｜区域补给%d张" % [
+			int(layer_report.get("run_pool_count", 0)),
+			int(layer_report.get("district_supply_count", 0)),
+		],
 	]
 
 
@@ -11095,76 +11095,93 @@ func _card_supply_source_summary(report: Dictionary, limit: int = 4) -> String:
 
 
 func _add_card_codex_filter_buttons(parent: Container) -> void:
-	parent.add_child(_plain_label("按牌型筛选：怪兽牌、兽技、军队、玩家互动、城市、商品、商品期货、金融、合约、情报、新闻、天气。", 11, Color("#bfdbfe")))
-	var icon_legend := _plain_label(_card_icon_legend_text(), 10, Color("#fde68a"))
-	icon_legend.tooltip_text = "先读图标，再读牌名和关键数值。"
-	parent.add_child(icon_legend)
-	var layer_report := _card_supply_layer_report()
-	_add_menu_info_card(
-		parent,
-		"牌库来源",
-		"全部卡%d张｜本局可见%d张｜区域牌架%d张（去重%d张）。本局只投放和这颗星球商品、地形、怪兽生态有关的牌。" % [
-			int(layer_report.get("codex_count", 0)),
-			int(layer_report.get("run_pool_count", 0)),
-			int(layer_report.get("district_supply_count", 0)),
-			int(layer_report.get("district_unique_count", 0)),
-		],
-		Color("#38bdf8"),
-		"可购买范围内%d张｜本地商品%d张｜来源:%s" % [
-			int(layer_report.get("accessible_supply_count", 0)),
-			int(layer_report.get("local_product_card_count", 0)),
-			_card_supply_source_summary(layer_report),
-		]
-	)
-	_add_menu_info_card(
-		parent,
-		"区域买牌",
-		"打开区域牌架时，价格和购买资格立刻锁定；怪兽之后离开也不影响这次购买。同一时间只保留一个区域牌架。",
-		Color("#facc15"),
-		"落地区八折｜相邻区原价｜二跳/全局采购按角色或卡牌倍率加价。"
-	)
+	var rail_panel := PanelContainer.new()
+	rail_panel.name = "CardCodexCategoryRail"
+	rail_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rail_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.08), 1, 14))
+	parent.add_child(rail_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	rail_panel.add_child(margin)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
+	margin.add_child(box)
+
+	var legend := _plain_label("牌型筛选｜%s" % _card_icon_legend_text(), 10, Color("#fde68a"))
+	legend.name = "CardCodexCategoryLegend"
+	legend.tooltip_text = "点筹码只看这一类牌；悬停卡牌看预览，双击进入详情。"
+	legend.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(legend)
+
 	var row := HFlowContainer.new()
-	row.add_theme_constant_override("separation", 5)
-	parent.add_child(row)
+	row.name = "CardCodexCategoryChipRow"
+	row.add_theme_constant_override("h_separation", 5)
+	row.add_theme_constant_override("v_separation", 4)
+	box.add_child(row)
 	for option_variant in _card_codex_filter_options():
 		var option: Dictionary = option_variant
 		var filter_id := String(option.get("id", "all"))
 		var label := String(option.get("label", filter_id))
+		var short_label := _card_codex_short_filter_label(filter_id)
 		var count := _card_codex_names(filter_id).size()
 		var button := Button.new()
-		button.text = "%s%s %s(%d)" % [
+		button.name = "CardCodexCategoryChip"
+		button.text = "%s%s%s·%d" % [
 			"●" if filter_id == card_codex_filter else "",
 			_card_category_icon(filter_id),
-			label,
+			short_label,
 			count,
 		]
 		button.toggle_mode = true
 		button.button_pressed = filter_id == card_codex_filter
-		button.tooltip_text = "切换到%s分类。" % label
+		button.tooltip_text = "%s：%d张。点击后只看这一类。" % [label, count]
 		_style_menu_button(button, _menu_action_accent_for_text(label))
+		button.custom_minimum_size = Vector2(86, 28)
 		button.disabled = count <= 0
 		button.pressed.connect(Callable(self, "_set_card_codex_filter").bind(filter_id))
 		row.add_child(button)
-	var route_row := HFlowContainer.new()
-	route_row.add_theme_constant_override("separation", 5)
-	parent.add_child(route_row)
-	route_row.add_child(_plain_label("路线筛选:", 10, Color("#fde68a")))
-	for option_variant in _card_codex_route_filter_options():
-		var option: Dictionary = option_variant
-		var filter_id := String(option.get("id", "all"))
-		var label := String(option.get("label", filter_id))
-		var count := _card_codex_names(filter_id).size()
-		var route_id := String(option.get("route_id", ""))
-		var route_icon := _card_route_icon(_development_route_label(route_id)) if route_id != "" else "□"
-		var button := Button.new()
-		button.text = "%s%s %s(%d)" % ["●" if filter_id == card_codex_filter else "", route_icon, label, count]
-		button.toggle_mode = true
-		button.button_pressed = filter_id == card_codex_filter
-		button.tooltip_text = "按%s查看卡牌；用于快速浏览同一策略路线下的卡牌。" % label
-		_style_menu_button(button, _menu_action_accent_for_text(label))
-		button.disabled = count <= 0
-		button.pressed.connect(Callable(self, "_set_card_codex_filter").bind(filter_id))
-		route_row.add_child(button)
+
+
+func _card_codex_short_filter_label(filter_id: String) -> String:
+	match filter_id:
+		"all":
+			return "全部"
+		"monster":
+			return "怪兽"
+		"monster_skill":
+			return "兽技"
+		"military":
+			return "军队"
+		"interaction":
+			return "互动"
+		"city":
+			return "城市"
+		"commodity":
+			return "商品"
+		"futures":
+			return "期货"
+		"finance":
+			return "金融"
+		"contract":
+			return "合约"
+		"intel":
+			return "情报"
+		"supply":
+			return "补给"
+		"tactic":
+			return "诱导"
+		"news":
+			return "新闻"
+		"weather":
+			return "天气"
+		"other":
+			return "其他"
+	return _card_codex_filter_label(filter_id)
 
 
 func _card_codex_names(filter_id: String = "") -> Array:
