@@ -174,6 +174,7 @@ func _run() -> void:
 	_expect(player_box != null and _container_label_text_contains(player_box, "玩家板｜资源筹码") and _container_label_text_contains(player_box, "GDP") and _container_label_text_contains(player_box, "终局"), "player panel exposes a Terraforming-Mars-style resource chip tableau before detailed hand text")
 	_expect(player_box != null and _container_label_text_contains(player_box, "状态：") and (
 		_container_label_text_contains(player_box, "可打出")
+		or _container_label_text_contains(player_box, "首召就绪")
 		or _container_label_text_contains(player_box, "需商品")
 		or _container_label_text_contains(player_box, "需怪兽目标")
 		or _container_label_text_contains(player_box, "需玩家目标")

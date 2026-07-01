@@ -20086,7 +20086,7 @@ func _add_player_hand_rack(parent: Container, player: Dictionary, player_index: 
 	_add_player_hand_rack_chip(hand_chip_rail, "手牌 %d/%d" % [_player_counted_hand_size(player), PLAYER_HAND_LIMIT], Color("#c084fc"), "普通手牌上限；固定技能牌不占格。")
 	_add_player_hand_rack_chip(hand_chip_rail, "状态：%s" % _short_card_text(_player_hand_rack_overall_state_text(player, player_index), 12), Color("#38bdf8"), "手牌架总状态：只显示当前玩家自己的出牌可用性；对手手牌仍是隐私。")
 	_add_player_hand_rack_chip(hand_chip_rail, "悬停详情", Color("#60a5fa"), "鼠标停在卡牌上看完整说明。")
-	_add_player_hand_rack_chip(hand_chip_rail, "点打出", Color("#f59e0b"), "点卡牌按钮后进入匿名出牌队列或目标选择。")
+	_add_player_hand_rack_chip(hand_chip_rail, "首召/出牌", Color("#f59e0b"), "起始怪兽显示首召；普通牌按钮会进入匿名出牌队列或目标选择。")
 	var hand_scroll := ScrollContainer.new()
 	hand_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -21067,6 +21067,22 @@ func _hand_card_play_state(player_index: int, skill: Dictionary) -> Dictionary:
 		state["actionable"] = false
 		state["accent"] = Color("#facc15")
 		return state
+	if bool(skill.get("starter_play_free", false)):
+		state["accent"] = Color("#fb7185")
+		if selected_district < 0 or selected_district >= districts.size():
+			state["label"] = "选落点"
+			state["detail"] = "先在星球上选一个区域，再首召怪兽。"
+			state["actionable"] = false
+			return state
+		if bool(districts[selected_district].get("destroyed", false)):
+			state["label"] = "换落点"
+			state["detail"] = "当前区域已毁，换一个区域首召。"
+			state["actionable"] = false
+			return state
+		state["label"] = "首召就绪"
+		state["detail"] = "落点：%s｜首召免商品流动，落地后附近开牌架。" % String(districts[selected_district].get("name", "区域"))
+		state["actionable"] = true
+		return state
 	if _can_convert_monster_card_to_counter(player_index, skill):
 		state["label"] = "可否决"
 		state["detail"] = "可把这张怪兽牌作为相位否决响应当前互动牌。"
@@ -21172,6 +21188,8 @@ func _hand_card_action_text(state: Dictionary, skill: Dictionary) -> String:
 	var label := String(state.get("label", ""))
 	if label == "排队中":
 		return "排队中"
+	if label == "首召就绪":
+		return "首召"
 	if label == "可否决":
 		return "相位否决"
 	if label == "需怪兽目标" or label == "需玩家目标":
@@ -21183,6 +21201,8 @@ func _hand_card_action_text(state: Dictionary, skill: Dictionary) -> String:
 
 func _hand_card_state_primary_text(state: Dictionary) -> String:
 	var label := String(state.get("label", "不可用"))
+	if label == "首召就绪":
+		return "首召"
 	if bool(state.get("actionable", false)):
 		if label.begins_with("需"):
 			return "可选目标"
@@ -21200,6 +21220,21 @@ func _hand_card_state_chip_entries(state: Dictionary, skill: Dictionary) -> Arra
 			"tip": String(state.get("detail", "")),
 		},
 	]
+	if bool(skill.get("starter_play_free", false)):
+		entries.append({
+			"text": "免流动",
+			"fg": Color("#fecaca"),
+			"bg": Color("#7f1d1d"),
+			"tip": "起始怪兽首召不需要商品流动，也不限制区域。",
+		})
+		if selected_district >= 0 and selected_district < districts.size():
+			entries.append({
+				"text": "落点:%s" % _short_card_text(String(districts[selected_district].get("name", "区域")), 4),
+				"fg": Color("#fef3c7"),
+				"bg": Color("#713f12"),
+				"tip": "当前首召落点；也可改选其他区域。",
+			})
+		return entries
 	var flow_required := _skill_play_flow_required(skill, selected_player)
 	if flow_required > 0:
 		var product_name := _skill_play_product(skill, selected_player)
