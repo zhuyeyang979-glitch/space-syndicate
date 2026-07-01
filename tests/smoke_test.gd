@@ -8753,6 +8753,16 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 	var contract_skill := main.call("_skill_definition", "区域供需合约1") as Dictionary
 	var monster_text := String(main.call("_card_codex_text", monster_card, monster_skill, 0, maxi(1, monster_names.size())))
 	var contract_text := String(main.call("_card_codex_text", "区域供需合约1", contract_skill, 0, maxi(1, contract_names.size())))
+	var district_supply_card := ""
+	var district_supply_index := -1
+	var districts := _as_array(main.get("districts"))
+	for district_index in range(districts.size()):
+		var district := districts[district_index] as Dictionary
+		var choices := _as_array(district.get("card_choices", []))
+		if not choices.is_empty():
+			district_supply_card = String(choices[0])
+			district_supply_index = district_index
+			break
 	var ok := true
 	var failures := []
 	if not monster_names.has(monster_card):
@@ -8797,6 +8807,12 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 		failures.append("monster_text")
 	if not contract_text.contains("分类：合约"):
 		failures.append("contract_text")
+	if not monster_text.contains("牌池层：") or not contract_text.contains("牌池层："):
+		failures.append("pool_layer_text")
+	if district_supply_card == "" or String(main.call("_card_supply_layer_for_card", district_supply_card)) != "区域补给":
+		failures.append("district_supply_layer")
+	if district_supply_card != "" and not String(main.call("_card_detail_tooltip", district_supply_card, district_supply_index)).contains("牌池层：区域补给"):
+		failures.append("district_tooltip_layer")
 	if String(main.call("_card_codex_category_for_card", "相位否决1", main.call("_skill_definition", "相位否决1"))) != "counter":
 		failures.append("counter_category")
 	if String(main.call("_card_codex_category_for_card", "商品看涨1", main.call("_skill_definition", "商品看涨1"))) != "futures":

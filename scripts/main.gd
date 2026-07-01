@@ -7899,6 +7899,82 @@ func _card_codex_filter_matches(filter_id: String, category_id: String) -> bool:
 	return _card_codex_filter_category_ids(filter_id).has(category_id)
 
 
+func _card_source_type_label(card_name: String, skill: Dictionary) -> String:
+	if _is_monster_card_name(card_name) or String(skill.get("kind", "")) == "monster_card":
+		return "怪兽牌"
+	if _is_monster_technique_card_name(card_name) or String(skill.get("kind", "")) == "monster_bound_action":
+		return "怪兽固定技能"
+	if bool(skill.get("persistent", false)):
+		return "固定技能"
+	return "公共卡牌"
+
+
+func _card_is_in_district_supply(card_name: String) -> bool:
+	var canonical_name := _canonical_card_supply_name(card_name)
+	if canonical_name == "":
+		return false
+	for district_variant in districts:
+		if not (district_variant is Dictionary):
+			continue
+		var district: Dictionary = district_variant
+		for choice_variant in district.get("card_choices", []):
+			if _canonical_card_supply_name(String(choice_variant)) == canonical_name:
+				return true
+	return false
+
+
+func _card_supply_layer_for_card(card_name: String) -> String:
+	var canonical_name := _canonical_card_supply_name(card_name)
+	if canonical_name == "":
+		return "图鉴全集"
+	if _card_is_in_district_supply(canonical_name):
+		return "区域补给"
+	if _current_run_card_pool().has(canonical_name):
+		return "本局星球牌池"
+	return "图鉴全集"
+
+
+func _card_supply_locations_text(card_name: String, limit: int = 3) -> String:
+	var canonical_name := _canonical_card_supply_name(card_name)
+	if canonical_name == "":
+		return "不在当前区域补给"
+	var names := []
+	for district_index in range(districts.size()):
+		var district: Dictionary = districts[district_index]
+		for choice_variant in district.get("card_choices", []):
+			if _canonical_card_supply_name(String(choice_variant)) != canonical_name:
+				continue
+			names.append(String(district.get("name", "区域%d" % district_index)))
+			break
+		if names.size() >= limit:
+			break
+	if names.is_empty():
+		return "暂未投放到区域补给"
+	var suffix := ""
+	var total := 0
+	for district_variant in districts:
+		if not (district_variant is Dictionary):
+			continue
+		var district: Dictionary = district_variant
+		for choice_variant in district.get("card_choices", []):
+			if _canonical_card_supply_name(String(choice_variant)) == canonical_name:
+				total += 1
+				break
+	if total > names.size():
+		suffix = " 等%d区" % total
+	return "%s%s" % ["、".join(names), suffix]
+
+
+func _card_supply_layer_hint(card_name: String) -> String:
+	var layer := _card_supply_layer_for_card(card_name)
+	match layer:
+		"区域补给":
+			return "已投放到%s；能否购买取决于你打开窗口时的怪兽范围、角色/补给范围和价格倍率。" % _card_supply_locations_text(card_name)
+		"本局星球牌池":
+			return "符合当前星球的商品、地形或怪兽生态，可能被分配到区域补给；当前暂未落到具体区域候选。"
+	return "可在图鉴学习卡面与规则；本局不一定出现，通常因为地图商品、地形或怪兽生态不匹配。"
+
+
 func _card_supply_layer_report() -> Dictionary:
 	var codex_names := _card_codex_names("all")
 	var run_pool := _current_run_card_pool()
@@ -8050,12 +8126,13 @@ func _card_codex_names(filter_id: String = "") -> Array:
 
 func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: int) -> String:
 	var target_text := "需要指定目标怪兽" if _skill_requires_target_monster(skill) else "不需要指定怪兽"
-	var source_text := "怪兽卡" if _is_monster_card_name(card_name) else ("怪兽固定技能" if _is_monster_technique_card_name(card_name) else "公共/区域补给")
+	var source_text := _card_source_type_label(card_name, skill)
+	var layer_text := _card_supply_layer_for_card(card_name)
 	var category_text := _card_codex_filter_label(_card_codex_category_for_card(card_name, skill))
 	var price := _card_price(card_name)
 	var key_facts := _card_key_rule_facts(skill)
 	var key_text := "；".join(key_facts) if not key_facts.is_empty() else "这张牌没有攻击/生命/范围等战斗数值，主要按效果文字结算。"
-	return "第%d/%d张｜%s\n分类：%s｜主类型：%s｜子路线：%s｜当前筛选：%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜目标：%s\n速读：%s\n关键：%s" % [
+	return "第%d/%d张｜%s\n分类：%s｜主类型：%s｜子路线：%s｜当前筛选：%s｜参考价 ¥%d（%s，按I级基础价）\n标签：%s｜来源：%s｜牌池层：%s｜目标：%s\n速读：%s\n关键：%s\n投放：%s" % [
 		index + 1,
 		total,
 		_card_display_name(card_name),
@@ -8067,9 +8144,11 @@ func _card_codex_text(card_name: String, skill: Dictionary, index: int, total: i
 		_card_price_tier_text(price),
 		_skill_tag_text(skill),
 		source_text,
+		layer_text,
 		target_text,
 		_card_strategy_summary(skill),
 		key_text,
+		_card_supply_layer_hint(card_name),
 	]
 
 
@@ -8101,13 +8180,14 @@ func _add_card_codex_detail_layout(parent: Container, card_name: String, skill: 
 
 	var target_text := "怪兽目标" if _skill_requires_target_monster(skill) else "按卡面/选区结算"
 	var persistence_text := "固定技能，可重复使用" if bool(skill.get("persistent", false)) else "一次性牌，结算后离手"
-	var source_text := "怪兽牌" if _is_monster_card_name(card_name) else ("怪兽固定技能" if _is_monster_technique_card_name(card_name) else "区域/公共补给")
+	var source_text := _card_source_type_label(card_name, skill)
+	var layer_text := _card_supply_layer_for_card(card_name)
 	_add_menu_info_card(
 		fact_grid,
 		"牌面定位",
 		"%s\n%s" % [_card_strategy_summary(skill), _card_strength_budget_text(card_name, skill)],
 		accent,
-		"%s｜%s｜%s" % [_card_primary_type_label(skill, card_name), _card_subtype_label(skill), source_text]
+		"%s｜%s｜%s｜%s" % [_card_primary_type_label(skill, card_name), _card_subtype_label(skill), source_text, layer_text]
 	)
 	_add_menu_info_card(
 		fact_grid,
@@ -8133,6 +8213,13 @@ func _add_card_codex_detail_layout(parent: Container, card_name: String, skill: 
 		"\n".join(numeric_facts) if not numeric_facts.is_empty() else "这张牌偏向规则/情报/合约结算，没有攻击力、生命值或距离等通用战斗字段。",
 		Color("#38bdf8"),
 		"字段越明确，玩家越容易判断收益、风险和反制窗口。"
+	)
+	_add_menu_info_card(
+		fact_grid,
+		"本局投放",
+		_card_supply_layer_hint(card_name),
+		Color("#a78bfa"),
+		"%s｜同系列重复获得会在手牌中自动升级到IV级" % layer_text
 	)
 
 	var gradient_label := _plain_label("I-IV升级梯度", 13, Color("#fde68a"))
@@ -18821,18 +18908,21 @@ func _card_detail_tooltip(card_name: String, district_index: int = -1) -> String
 		facts_text = "｜".join(key_facts)
 	var location := _card_choice_location_summary(card_name)
 	var source := _district_card_source(district_index, card_name) if district_index >= 0 else "卡池"
+	var layer := _card_supply_layer_for_card(card_name)
 	var price := _card_price(card_name, district_index, selected_player)
-	return "%s\n参考价：¥%d（%s，按I级基础价）\n%s\n来源：%s\n标签：%s\n效果：%s\n关键数值：%s\n升级：%s\n投放：%s\n操作：单击预览；双击购买；X 购买当前预览卡。" % [
+	return "%s\n参考价：¥%d（%s，按I级基础价）\n%s\n来源：%s｜牌池层：%s\n标签：%s\n效果：%s\n关键数值：%s\n升级：%s\n投放：%s\n%s\n操作：单击预览；双击购买；X 购买当前预览卡。" % [
 		_card_display_name(card_name),
 		price,
 		_card_price_tier_text(price),
 		_card_strength_budget_text(card_name, skill),
 		source,
+		layer,
 		_skill_tag_text(skill),
 		_skill_display_text(skill),
 		facts_text,
 		_card_level_gradient_text(card_name).replace("\n", " / "),
 		location,
+		_card_supply_layer_hint(card_name),
 	]
 
 
