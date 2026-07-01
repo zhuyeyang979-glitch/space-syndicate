@@ -5304,11 +5304,97 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 		main.call("_use_skill", 2)
 		ok = ok and bool(main.call("_has_pending_player_target_choice"))
 		main.call("_cancel_pending_player_target_choice")
+	if _as_array(main.get("players")).size() >= 3:
+		var setup_players := _as_array(main.get("players"))
+		for i in range(setup_players.size()):
+			var setup_player := setup_players[i] as Dictionary
+			setup_player["cash"] = 5000 + i * 1200
+			if i == 0:
+				setup_player["is_ai"] = true
+				setup_player["seat_type"] = "ai"
+			setup_players[i] = setup_player
+		main.set("players", setup_players)
+		var ai_setup_indices := []
+		var setup_districts := _as_array(main.get("districts"))
+		for i in range(setup_districts.size()):
+			var setup_district := setup_districts[i] as Dictionary
+			if String(setup_district.get("terrain", "")) == "land" and not bool(setup_district.get("destroyed", false)) and ((setup_district.get("city", {}) as Dictionary).is_empty()):
+				ai_setup_indices.append(i)
+				if ai_setup_indices.size() >= 3:
+					break
+		if ai_setup_indices.size() >= 3:
+			var own_ai_city := int(ai_setup_indices[0])
+			var rival_ai_city := int(ai_setup_indices[1])
+			var leader_ai_city := int(ai_setup_indices[2])
+			main.call("_create_city_at_district_for_player", 0, own_ai_city, "直接互动AI自城", false)
+			main.call("_create_city_at_district_for_player", 1, rival_ai_city, "直接互动AI竞城", false)
+			main.call("_create_city_at_district_for_player", 2, leader_ai_city, "直接互动AI领跑城", false)
+			setup_districts = _as_array(main.get("districts"))
+			var own_city := ((setup_districts[own_ai_city] as Dictionary).get("city", {}) as Dictionary)
+			own_city["products"] = [{"name": "轨迹墨水", "level": 4}]
+			own_city["demands"] = ["活体芯片"]
+			own_city["last_income"] = 360
+			var own_ai_district := setup_districts[own_ai_city] as Dictionary
+			own_ai_district["city"] = own_city
+			setup_districts[own_ai_city] = own_ai_district
+			var rival_city := ((setup_districts[rival_ai_city] as Dictionary).get("city", {}) as Dictionary)
+			rival_city["products"] = [{"name": "活体芯片", "level": 2}]
+			rival_city["demands"] = ["轨迹墨水"]
+			rival_city["last_income"] = 460
+			var rival_ai_district := setup_districts[rival_ai_city] as Dictionary
+			rival_ai_district["city"] = rival_city
+			setup_districts[rival_ai_city] = rival_ai_district
+			var leader_city := ((setup_districts[leader_ai_city] as Dictionary).get("city", {}) as Dictionary)
+			leader_city["products"] = [{"name": "轨迹墨水", "level": 3}, {"name": "活体芯片", "level": 2}]
+			leader_city["demands"] = ["星鳍鱼群", "巨藻纤维"]
+			leader_city["last_income"] = 1400
+			leader_city["warehouse_stockpile_count"] = 2
+			leader_city["warehouse_stockpile_units"] = 5
+			leader_city["warehouse_stockpile_products"] = ["轨迹墨水"]
+			leader_city["trade_routes"] = [{"product": "轨迹墨水", "path": [leader_ai_city], "flow_amount": 2.0, "flow_speed": 1.0}]
+			var leader_ai_district := setup_districts[leader_ai_city] as Dictionary
+			leader_ai_district["city"] = leader_city
+			setup_districts[leader_ai_city] = leader_ai_district
+			main.set("districts", setup_districts)
+			var rich_players := _as_array(main.get("players"))
+			(rich_players[0] as Dictionary)["cash"] = 5200
+			(rich_players[1] as Dictionary)["cash"] = 6100
+			(rich_players[2] as Dictionary)["cash"] = 12000
+			main.set("players", rich_players)
+			var disrupt_context := main.call("_ai_card_play_context", 0, 2, disrupt) as Dictionary
+			if disrupt_context.is_empty() or int(disrupt_context.get("target_player", -1)) != 2:
+				failures.append("AI direct player target plan")
+				ok = false
+			if String(disrupt_context.get("direct_interaction_role", "")).find("leader") < 0 or int(disrupt_context.get("direct_effect_pressure", 0)) <= 0:
+				failures.append("AI direct player metadata")
+				ok = false
+			var direct_training := main.call("_ai_candidate_training_view", disrupt_context) as Dictionary
+			if not direct_training.has("direct_interaction_role") or not direct_training.has("direct_target_public_card_signal"):
+				failures.append("AI direct training view")
+				ok = false
+			var freeze_context := main.call("_ai_card_play_context", 0, 2, freeze) as Dictionary
+			if freeze_context.is_empty() or int(freeze_context.get("target_city", -1)) != leader_ai_city:
+				failures.append("AI control dispute target plan")
+				ok = false
+			if int(freeze_context.get("direct_city_warehouse_pressure", 0)) <= 0 or String(freeze_context.get("direct_interaction_role", "")).find("leader") < 0:
+				failures.append("AI control dispute metadata")
+				ok = false
+			var barrage_context := main.call("_ai_card_play_context", 0, 2, barrage) as Dictionary
+			var planned_barrage_targets := _as_array(main.call("_global_barrage_targets", 0, barrage))
+			if barrage_context.is_empty() or planned_barrage_targets.is_empty() or int(planned_barrage_targets[0]) != leader_ai_city:
+				failures.append("AI barrage target plan")
+				ok = false
+			if int(barrage_context.get("direct_barrage_expected_damage", 0)) <= 0 or int(barrage_context.get("direct_city_warehouse_pressure", 0)) <= 0:
+				failures.append("AI barrage metadata")
+				ok = false
+		else:
+			failures.append("AI direct interaction setup lacks land districts")
+			ok = false
 	var districts := _as_array(main.get("districts"))
 	var freeze_target := -1
 	for i in range(districts.size()):
 		var district := districts[i] as Dictionary
-		if String(district.get("terrain", "")) == "land" and not bool(district.get("destroyed", false)):
+		if String(district.get("terrain", "")) == "land" and not bool(district.get("destroyed", false)) and ((district.get("city", {}) as Dictionary).is_empty()):
 			freeze_target = i
 			break
 	if freeze_target >= 0:
@@ -5319,10 +5405,17 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 		districts = _as_array(main.get("districts"))
 		var city := ((districts[freeze_target] as Dictionary).get("city", {}) as Dictionary)
 		ok = ok and float(city.get("control_dispute_until", 0.0)) > float(main.get("game_time"))
-		var damage_before := int((districts[freeze_target] as Dictionary).get("damage", 0))
+		var damage_before := 0
+		for damage_district_variant in districts:
+			var damage_district := damage_district_variant as Dictionary
+			damage_before += int(damage_district.get("damage", 0))
 		ok = ok and bool(main.call("_apply_global_barrage", 0, barrage))
 		districts = _as_array(main.get("districts"))
-		ok = ok and int((districts[freeze_target] as Dictionary).get("damage", 0)) > damage_before
+		var damage_after := 0
+		for damage_district_after_variant in districts:
+			var damage_district_after := damage_district_after_variant as Dictionary
+			damage_after += int(damage_district_after.get("damage", 0))
+		ok = ok and damage_after > damage_before
 	if not failures.is_empty():
 		print("Direct interaction card failures: %s" % " / ".join(failures))
 		ok = false

@@ -3,6 +3,33 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜AI 直接互动目标规划字段化
+
+### 本轮实现
+
+- AI 直接互动牌新增专门计划器，不再只按“领先者/高估值”粗暴选目标：
+  - `星链拆解`、`影仓牵引` 会按可见结算估值差、城市/怪兽经营压力、已公开或私下追踪到的卡牌归属线索、终局落后压力和卡牌自身拆牌/牵牌/封锁/罚款强度选择目标玩家；
+  - `产权冻结` 会选择高 GDP、仓储压力、商路负载、领先者所属或更适合被压制的竞争城市；
+  - `轨道齐射` 的实际目标排序也接入同一套城市压力评分，优先命中高价值、仓储/商路压力更高的非己方城市群。
+- 新增隐藏训练字段：`direct_interaction_role`、`direct_interaction_score`、`direct_target_settlement`、`direct_target_gap`、`direct_target_city_pressure`、`direct_target_monster_pressure`、`direct_target_public_card_signal`、`direct_effect_pressure`、`direct_city_pressure`、`direct_city_gdp`、`direct_city_warehouse_pressure`、`direct_city_route_damage`、`direct_city_damage`、`direct_barrage_target_count`、`direct_barrage_expected_damage`。
+- 这些字段写入 AI 候选视图和匿名出牌决策元数据，只用于内部训练/调试；玩家仍只看到公开目标、公开结果、卡牌轨道和经济变化，不会看到 AI 压力桶。
+
+### 平衡与规则决策
+
+- AI 选择拆牌/牵牌目标时不把对手真实手牌数量作为公开信息来展示；目标价值主要来自可见估值、已公开卡牌归属、城市/怪兽/金融压力和终局局势。
+- 直接互动路线现在有更明确的策略位置：落后 AI 会更愿意用它压领先者或破坏高价值经营路线，领先 AI 则更谨慎，把它当作防止追赶和清理威胁的工具。
+- `轨道齐射` 不再被测试假设为“打当前选区”，而是全场匿名压制牌：选区只是出牌上下文，实际命中由非己方城市压力排序决定。
+
+### 新增验证
+
+- `tests/smoke_test.gd` 扩展 `direct player-interaction cards cover 拆牌、牵牌、产权冻结、全场齐射...`：
+  - 验证 AI 拆牌计划会选高估值/领先目标玩家，并写入直接互动隐藏元数据；
+  - 验证 AI 产权冻结会选择带仓储压力的高价值竞争城市；
+  - 验证轨道齐射目标排序优先命中高价值仓储城市；
+  - 验证训练视图保留 direct 字段，但玩家可见逻辑仍只展示匿名结果。
+- 完整 Godot headless smoke test 通过：
+  - `Godot_v4.6.2-stable_win64_console.exe --headless --path . --script res://tests/smoke_test.gd`
+
 ## 2026-07-01｜AI 怪兽赌局下注策略
 
 ### 本轮实现

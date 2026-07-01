@@ -17610,24 +17610,211 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 
 
 func _ai_direct_interaction_target_player(player_index: int) -> int:
-	var best_player := -1
+	var plan := _ai_direct_player_interaction_plan(player_index, {})
+	return int(plan.get("target_player", -1))
+
+
+func _ai_public_card_owner_signal_for_player(viewer_index: int, target_player: int) -> int:
+	if viewer_index < 0 or viewer_index >= players.size() or target_player < 0 or target_player >= players.size():
+		return 0
+	var score := 0
+	var scanned := 0
+	for i in range(resolved_card_history.size() - 1, -1, -1):
+		var entry_variant: Variant = resolved_card_history[i]
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		var known_owner := int(entry.get("player_index", -1)) if bool(entry.get("public_owner_revealed", false)) else _private_known_card_owner_for_entry(viewer_index, entry)
+		if known_owner != target_player:
+			continue
+		var skill: Dictionary = entry.get("skill", {}) as Dictionary
+		var card_name := String(skill.get("name", entry.get("card_name", "")))
+		var kind := String(skill.get("kind", ""))
+		score += 18 + mini(95, _card_strength_budget_points(card_name) / 3)
+		score += int(entry.get("winning_bid", 0)) / 15
+		if _ai_pressure_kind(kind, skill):
+			score += 26
+		if _ai_defense_kind(kind, skill):
+			score += 18
+		scanned += 1
+		if scanned >= 5:
+			break
+	return score
+
+
+func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
+	if player_index < 0 or player_index >= players.size() or players.size() <= 1:
+		return {}
+	var kind := String(skill.get("kind", "player_hand_disrupt"))
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var leader_index := int(phase_info.get("leader_index", -1))
+	var posture := String(phase_info.get("posture", "contesting"))
+	var self_estimate := _player_visible_settlement_estimate(player_index)
+	var hand_effect_pressure := int(skill.get("hand_discard_count", 0)) * 118 \
+		+ int(skill.get("hand_steal_count", 0)) * 154 \
+		+ int(round(float(skill.get("hand_lock_seconds", 0.0)) * 4.0)) \
+		+ int(skill.get("target_cash_penalty", 0)) / 2
+	if hand_effect_pressure <= 0:
+		hand_effect_pressure = 75
+	var receive_pressure := 0
+	if kind == "player_hand_steal":
+		var actor: Dictionary = players[player_index]
+		if _player_counted_hand_size(actor) < PLAYER_HAND_LIMIT:
+			receive_pressure += 46
+		else:
+			receive_pressure += maxi(0, int(skill.get("steal_fail_cash", 0))) / 3 - 32
+	var best := {}
 	var best_score := -999999
-	var leader := _visible_score_leader_entry()
-	var leader_index := int(leader.get("player_index", -1))
 	for i in range(players.size()):
 		if i == player_index:
 			continue
-		var score := _player_visible_settlement_estimate(i)
-		score += _player_active_city_count(i) * 90
-		score += _ai_owned_active_monster_count(i) * 35
+		var settlement := _player_visible_settlement_estimate(i)
+		var settlement_gap := settlement - self_estimate
+		var city_pressure := _player_active_city_count(i) * 74
+		var monster_pressure := _ai_owned_active_monster_count(i) * 42
+		var public_signal := _ai_public_card_owner_signal_for_player(player_index, i)
+		var leader_bonus := 0
 		if i == leader_index:
-			score += 260
-		if _ai_competitive_posture(player_index) == "trailing":
-			score += 80
+			leader_bonus = 245 + _ai_endgame_urgency_score(player_index) / 2
+		var posture_bonus := 0
+		if posture == "trailing":
+			posture_bonus = 92 + maxi(0, settlement_gap) / 12
+		elif posture == "leader":
+			posture_bonus = 38
+		var score := 90 \
+			+ settlement / 24 \
+			+ maxi(0, settlement_gap) / 10 \
+			+ city_pressure \
+			+ monster_pressure \
+			+ public_signal \
+			+ leader_bonus \
+			+ posture_bonus \
+			+ hand_effect_pressure \
+			+ receive_pressure
+		score += (i * 13 + player_index * 7 + business_cycle_count) % 17
+		var role := "pressure_high_value_player"
+		if i == leader_index:
+			role = "pressure_leader_hand"
+		elif public_signal >= 80:
+			role = "pressure_revealed_operator"
+		elif city_pressure >= 140:
+			role = "pressure_city_operator"
+		elif monster_pressure >= 84:
+			role = "pressure_monster_operator"
 		if score > best_score:
 			best_score = score
-			best_player = i
-	return best_player
+			best = {
+				"policy_kind": "direct_%s" % kind,
+				"target_player": i,
+				"target_owner": i,
+				"direct_interaction_role": role,
+				"direct_interaction_score": score,
+				"direct_target_settlement": settlement,
+				"direct_target_gap": settlement_gap,
+				"direct_target_city_pressure": city_pressure,
+				"direct_target_monster_pressure": monster_pressure,
+				"direct_target_public_card_signal": public_signal,
+				"direct_effect_pressure": hand_effect_pressure,
+				"score": score,
+				"reason": "直接互动%s｜%s｜估值差%d｜公开牌线索%d｜效果压强%d" % [
+					_interaction_target_label(i),
+					role,
+					settlement_gap,
+					public_signal,
+					hand_effect_pressure,
+				],
+			}
+	return best
+
+
+func _ai_direct_city_target_score(player_index: int, district_index: int, skill: Dictionary) -> int:
+	if district_index < 0 or district_index >= districts.size():
+		return -999999
+	var city := _district_city(district_index)
+	if not _city_is_active(city):
+		return -999999
+	var owner := int(city.get("owner", -1))
+	if owner == player_index:
+		return -999999
+	var kind := String(skill.get("kind", "city_control_dispute"))
+	var phase_info := _ai_refresh_game_phase(player_index)
+	var leader_index := int(phase_info.get("leader_index", -1))
+	var income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index))))
+	var route_load := (city.get("trade_routes", []) as Array).size()
+	var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
+	var route_damage := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0))
+	var district_damage := int(districts[district_index].get("damage", 0))
+	var score := 80 + maxi(0, _ai_city_target_score(player_index, district_index, false, false))
+	score += income / 2 + route_load * 22 + warehouse_pressure * 2
+	if owner == leader_index and leader_index != player_index:
+		score += 155 + _ai_endgame_urgency_score(player_index) / 2
+	if kind == "city_control_dispute":
+		score += int(skill.get("control_gdp_penalty", 0)) * 3 + int(round(float(skill.get("control_block_seconds", 0.0)) / 2.0))
+		score += maxi(0, income) / 3
+	elif kind == "global_barrage":
+		score += maxi(1, int(skill.get("global_barrage_target_count", 1))) * 18
+		score += maxi(0, int(skill.get("global_barrage_damage", 0))) * 82
+		score += maxi(0, int(skill.get("global_barrage_route_damage", 0))) * 64
+		score += maxi(0, 5 - district_damage) * 12
+	if route_damage > 0:
+		score += route_damage * (34 if kind == "global_barrage" else 18)
+	return score
+
+
+func _ai_direct_city_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var kind := String(skill.get("kind", "city_control_dispute"))
+	var best_city := -1
+	var best_score := -999999
+	for city_index_variant in _active_city_district_indices():
+		var city_index := int(city_index_variant)
+		var score := _ai_direct_city_target_score(player_index, city_index, skill)
+		if score > best_score:
+			best_score = score
+			best_city = city_index
+	if best_city < 0:
+		return {}
+	var city := _district_city(best_city)
+	var owner := int(city.get("owner", -1))
+	var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
+	var route_damage := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0))
+	var district_damage := int(districts[best_city].get("damage", 0))
+	var expected_damage := 0
+	var role := "freeze_rival_city"
+	if kind == "global_barrage":
+		expected_damage = maxi(1, int(skill.get("global_barrage_target_count", 1))) * maxi(1, int(skill.get("global_barrage_damage", 1)))
+		role = "barrage_rival_cluster"
+		if warehouse_pressure > 0:
+			role = "barrage_warehouse_cluster"
+	elif warehouse_pressure > 0:
+		role = "freeze_warehouse_city"
+	var leader_index := int(_ai_refresh_game_phase(player_index).get("leader_index", -1))
+	if owner == leader_index and leader_index != player_index:
+		role = "%s_leader" % role
+	return {
+		"policy_kind": "direct_%s" % kind,
+		"district": best_city,
+		"target_city": best_city,
+		"target_owner": owner,
+		"direct_interaction_role": role,
+		"direct_interaction_score": best_score,
+		"direct_city_pressure": best_score,
+		"direct_city_gdp": int(city.get("last_income", 0)),
+		"direct_city_warehouse_pressure": warehouse_pressure,
+		"direct_city_route_damage": route_damage,
+		"direct_city_damage": district_damage,
+		"direct_barrage_target_count": maxi(1, int(skill.get("global_barrage_target_count", 1))) if kind == "global_barrage" else 0,
+		"direct_barrage_expected_damage": expected_damage,
+		"score": best_score,
+		"reason": "直接城市互动｜%s｜%s｜GDP/min%d｜仓储压强%d｜商路损伤%d" % [
+			role,
+			String(districts[best_city].get("name", "城市")),
+			int(city.get("last_income", 0)),
+			warehouse_pressure,
+			route_damage,
+		],
+	}
 
 
 func _ai_pressure_kind(kind: String, skill: Dictionary = {}) -> bool:
@@ -17751,7 +17938,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 
 func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 	var result := {}
-	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -20681,14 +20868,14 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = _ai_best_district_near_monster(player_index, target_slot, target_range)
 		context["score"] = int(context["score"]) + 80
 	elif _skill_targets_player(skill):
-		var target_player := _ai_direct_interaction_target_player(player_index)
-		if target_player < 0:
+		var direct_plan := _ai_direct_player_interaction_plan(player_index, skill)
+		if direct_plan.is_empty():
 			return {}
-		context["target_player"] = target_player
+		var base_direct_score := int(context["score"])
+		context.merge(direct_plan, true)
 		context["district"] = rival_city if rival_city >= 0 else fallback
-		context["target_owner"] = target_player
-		context["score"] = int(context["score"]) + 100 + maxi(0, _player_visible_settlement_estimate(target_player) - _player_visible_settlement_estimate(player_index)) / 18
-		context["reason"] = "直接互动压制%s｜公开目标但隐藏出牌者" % _interaction_target_label(target_player)
+		context["score"] = base_direct_score + int(direct_plan.get("score", 0))
+		context["reason"] = String(direct_plan.get("reason", "直接互动压制目标玩家｜公开目标但隐藏出牌者"))
 	elif kind == "military_force":
 		var military_plan := _ai_military_deploy_plan(player_index, skill)
 		if military_plan.is_empty():
@@ -20807,24 +20994,25 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			context["target_owner"] = int(shifted_city.get("owner", -1))
 		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]))
 	elif kind == "city_control_dispute":
-		if rival_city < 0:
+		var control_plan := _ai_direct_city_interaction_plan(player_index, skill)
+		if control_plan.is_empty():
 			return {}
-		context["district"] = rival_city
-		context["target_city"] = rival_city
-		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
-		context["score"] = int(context["score"]) + 120 + int(skill.get("control_gdp_penalty", 0)) * 2
-		context["reason"] = "冻结竞争城市产权｜%s｜GDP惩罚%d" % [
-			String(districts[rival_city].get("name", "城市")),
+		var base_control_score := int(context["score"])
+		context.merge(control_plan, true)
+		context["score"] = base_control_score + int(control_plan.get("score", 0)) + int(skill.get("control_gdp_penalty", 0)) * 2
+		context["reason"] = "%s｜GDP惩罚%d" % [
+			String(control_plan.get("reason", "冻结竞争城市产权")),
 			int(skill.get("control_gdp_penalty", 0)),
 		]
 	elif kind == "global_barrage":
-		if rival_city < 0:
+		var barrage_plan := _ai_direct_city_interaction_plan(player_index, skill)
+		if barrage_plan.is_empty():
 			return {}
-		context["district"] = rival_city
-		context["target_city"] = rival_city
-		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
-		context["score"] = int(context["score"]) + 130 + int(skill.get("global_barrage_target_count", 1)) * 24 + int(skill.get("global_barrage_damage", 1)) * 58
-		context["reason"] = "全场齐射压制高价值城市｜目标数%d｜伤害%d" % [
+		var base_barrage_score := int(context["score"])
+		context.merge(barrage_plan, true)
+		context["score"] = base_barrage_score + int(barrage_plan.get("score", 0)) + int(skill.get("global_barrage_target_count", 1)) * 24 + int(skill.get("global_barrage_damage", 1)) * 58
+		context["reason"] = "%s｜目标数%d｜伤害%d" % [
+			String(barrage_plan.get("reason", "全场齐射压制高价值城市")),
 			int(skill.get("global_barrage_target_count", 1)),
 			int(skill.get("global_barrage_damage", 1)),
 		]
@@ -21252,7 +21440,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_bud
 		"target_player": int(candidate.get("target_player", -1)),
 		"bid_budget": bid_budget,
 	}
-	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
+	for field_name in ["policy_kind", "target_city", "target_owner", "target_player", "product", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "generic_effect_bonus", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand"]:
 		if candidate.has(field_name):
 			metadata[field_name] = candidate[field_name]
 	return metadata
@@ -26540,11 +26728,8 @@ func _global_barrage_targets(acting_player_index: int, skill: Dictionary) -> Arr
 		var owner := int(city.get("owner", -1))
 		if owner == acting_player_index:
 			continue
-		var income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
-		var score := income + int(districts[index].get("panic", 0)) + int(city.get("trade_route_damage", 0)) * 20
-		score += _city_warehouse_stockpile_pressure(city) * 2
-		if owner >= 0 and owner != acting_player_index:
-			score += 80
+		var score := _ai_direct_city_target_score(acting_player_index, index, skill)
+		score += int(districts[index].get("panic", 0))
 		candidates.append({"district": index, "score": score})
 	candidates.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
 	var result := []
