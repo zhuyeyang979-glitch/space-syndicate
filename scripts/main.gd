@@ -6906,13 +6906,177 @@ func _product_codex_first_index_on_page(page_index: int, total_count: int) -> in
 	return clampi(page_index * _product_codex_entries_per_page(), 0, max(0, total_count - 1))
 
 
+func _product_count_summary(counts: Dictionary, limit: int = 4, empty_text: String = "暂无") -> String:
+	var entries := []
+	for key_variant in counts.keys():
+		var key := String(key_variant)
+		entries.append({"label": key, "count": int(counts.get(key, 0))})
+	entries.sort_custom(Callable(self, "_sort_product_count_entry_desc"))
+	var pieces := []
+	for i in range(mini(limit, entries.size())):
+		var entry := entries[i] as Dictionary
+		pieces.append("%s×%d" % [String(entry.get("label", "")), int(entry.get("count", 0))])
+	return " / ".join(pieces) if not pieces.is_empty() else empty_text
+
+
+func _sort_product_count_entry_desc(a: Dictionary, b: Dictionary) -> bool:
+	var count_a := int(a.get("count", 0))
+	var count_b := int(b.get("count", 0))
+	if count_a != count_b:
+		return count_a > count_b
+	return String(a.get("label", "")) < String(b.get("label", ""))
+
+
+func _sort_product_strategy_hotspot_desc(a: Dictionary, b: Dictionary) -> bool:
+	var score_a := int(a.get("score", 0))
+	var score_b := int(b.get("score", 0))
+	if score_a != score_b:
+		return score_a > score_b
+	return String(a.get("product", "")) < String(b.get("product", ""))
+
+
+func _product_ecosystem_report() -> Dictionary:
+	_ensure_product_market_catalog()
+	var run_products := _current_run_product_names()
+	var run_ocean_count := 0
+	var route_counts := {}
+	var category_counts := {}
+	var strategy_counts := {}
+	var strategy_hotspots := []
+	var related_card_product_count := 0
+	var monster_focus_product_count := 0
+	var district_product_slots := 0
+	var district_demand_slots := 0
+	var active_city_product_slots := 0
+	var active_city_demand_slots := 0
+	for district_index in range(districts.size()):
+		var district: Dictionary = districts[district_index]
+		district_product_slots += (district.get("products", []) as Array).size()
+		district_demand_slots += (district.get("demands", []) as Array).size()
+		var city := _district_city(district_index)
+		if _city_is_active(city):
+			active_city_product_slots += _city_product_names(city).size()
+			active_city_demand_slots += _city_demand_names(city).size()
+	for product_variant in run_products:
+		var product_name := String(product_variant)
+		if OCEAN_PRODUCT_CATALOG.has(product_name):
+			run_ocean_count += 1
+		var profile := _product_profile(product_name)
+		var route := String(profile.get("route", "通用商业线"))
+		route_counts[route] = int(route_counts.get(route, 0)) + 1
+		var category := String(profile.get("category", "商品"))
+		category_counts[category] = int(category_counts.get(category, 0)) + 1
+		var primary := _product_primary_strategy_entry(product_name)
+		var strategy_label := String(primary.get("label", "观察"))
+		strategy_counts[strategy_label] = int(strategy_counts.get(strategy_label, 0)) + 1
+		strategy_hotspots.append({
+			"product": product_name,
+			"label": strategy_label,
+			"score": int(primary.get("score", 0)),
+		})
+		if _product_related_card_count(product_name) > 0:
+			related_card_product_count += 1
+		if _product_monster_focus_count(product_name) > 0:
+			monster_focus_product_count += 1
+	strategy_hotspots.sort_custom(Callable(self, "_sort_product_strategy_hotspot_desc"))
+	var top_hotspot_names := []
+	for i in range(mini(5, strategy_hotspots.size())):
+		var hotspot := strategy_hotspots[i] as Dictionary
+		top_hotspot_names.append("%s/%s%d" % [
+			String(hotspot.get("product", "商品")),
+			String(hotspot.get("label", "观察")),
+			int(hotspot.get("score", 0)),
+		])
+	var profile_complete_count := 0
+	for product_name_variant in PRODUCT_CATALOG:
+		if _product_profile_has_required_fields(String(product_name_variant)):
+			profile_complete_count += 1
+	return {
+		"catalog_count": PRODUCT_CATALOG.size(),
+		"ocean_catalog_count": OCEAN_PRODUCT_CATALOG.size(),
+		"run_product_count": run_products.size(),
+		"run_ocean_count": run_ocean_count,
+		"run_land_count": maxi(0, run_products.size() - run_ocean_count),
+		"district_product_slots": district_product_slots,
+		"district_demand_slots": district_demand_slots,
+		"active_city_product_slots": active_city_product_slots,
+		"active_city_demand_slots": active_city_demand_slots,
+		"route_counts": route_counts,
+		"category_counts": category_counts,
+		"strategy_counts": strategy_counts,
+		"strategy_hotspots": strategy_hotspots,
+		"top_hotspots": top_hotspot_names,
+		"related_card_product_count": related_card_product_count,
+		"monster_focus_product_count": monster_focus_product_count,
+		"profile_complete_count": profile_complete_count,
+	}
+
+
+func _add_product_ecosystem_overview(parent: Container) -> void:
+	var report := _product_ecosystem_report()
+	var grid := GridContainer.new()
+	grid.columns = _menu_summary_grid_columns()
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	parent.add_child(grid)
+	_add_menu_info_card(
+		grid,
+		"本局商品生态",
+		"图鉴%d种｜本局%d种｜海洋%d/陆地%d｜区域生产槽%d｜区域需求槽%d" % [
+			int(report.get("catalog_count", 0)),
+			int(report.get("run_product_count", 0)),
+			int(report.get("run_ocean_count", 0)),
+			int(report.get("run_land_count", 0)),
+			int(report.get("district_product_slots", 0)),
+			int(report.get("district_demand_slots", 0)),
+		],
+		Color("#22c55e"),
+		"城市生产槽%d｜城市需求槽%d｜完整临时美工%d/%d" % [
+			int(report.get("active_city_product_slots", 0)),
+			int(report.get("active_city_demand_slots", 0)),
+			int(report.get("profile_complete_count", 0)),
+			int(report.get("catalog_count", 0)),
+		]
+	)
+	_add_menu_info_card(
+		grid,
+		"策略机会",
+		_product_count_summary(report.get("strategy_counts", {}) as Dictionary, 5),
+		Color("#facc15"),
+		"热点:%s" % _limited_name_list(report.get("top_hotspots", []) as Array, 5, "暂无")
+	)
+	_add_menu_info_card(
+		grid,
+		"商品路线分布",
+		_product_count_summary(report.get("route_counts", {}) as Dictionary, 5),
+		Color("#38bdf8"),
+		"品类:%s" % _product_count_summary(report.get("category_counts", {}) as Dictionary, 4)
+	)
+	_add_menu_info_card(
+		grid,
+		"机制钩子",
+		"固定相关卡覆盖%d种本局商品｜怪兽偏好覆盖%d种本局商品" % [
+			int(report.get("related_card_product_count", 0)),
+			int(report.get("monster_focus_product_count", 0)),
+		],
+		Color("#c084fc"),
+		"商品会影响GDP、卡牌门槛、区域补给、期货、仓储、商路和怪兽目标。"
+	)
+
+
 func _product_codex_grid_text() -> String:
 	var page_count := _product_codex_grid_page_count(PRODUCT_CATALOG.size())
-	return "商品缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n每张缩略图直接显示价格、供需、主策略和操作提示；悬停或单击会在下方展开经济天气、期货仓储、怪兽偏好和城市线索预览。双击缩略图进入商品详情；进入详情后才使用顶部「上一个/下一个」切换商品，也可以点「返回缩略图」回到图册。" % [
+	var report := _product_ecosystem_report()
+	return "商品缩略图册｜第%d/%d页｜当前缩略图布局：%d×%d\n本局商品生态：图鉴%d种，本局星球出现%d种，其中海洋%d种、陆地%d种。每张缩略图直接显示价格、供需、主策略和操作提示；悬停或单击会在下方展开经济天气、期货仓储、怪兽偏好和城市线索预览。双击缩略图进入商品详情；进入详情后才使用顶部「上一个/下一个」切换商品，也可以点「返回缩略图」回到图册。" % [
 		product_codex_grid_page + 1,
 		page_count,
 		_product_codex_grid_columns(),
 		_product_codex_grid_rows(),
+		int(report.get("catalog_count", PRODUCT_CATALOG.size())),
+		int(report.get("run_product_count", 0)),
+		int(report.get("run_ocean_count", 0)),
+		int(report.get("run_land_count", 0)),
 	]
 
 
@@ -6969,6 +7133,8 @@ func _populate_product_codex_thumbnail_page(parent: Container) -> void:
 	_style_menu_button(next_button, Color("#facc15"))
 	next_button.pressed.connect(Callable(self, "_turn_product_codex_grid_page").bind(1))
 	nav_row.add_child(next_button)
+
+	_add_product_ecosystem_overview(parent)
 
 	var grid := GridContainer.new()
 	grid.columns = _product_codex_grid_columns()
@@ -7389,6 +7555,20 @@ func _product_profile_has_required_fields(product_name: String) -> bool:
 		if ["category", "route", "terrain", "use", "hook", "flavor", "glyph"].has(String(key)) and String(profile.get(String(key), "")) == "":
 			return false
 	return true
+
+
+func _product_related_card_count(product_name: String) -> int:
+	var count := 0
+	for skill_name_variant in SKILL_CATALOG.keys():
+		var skill_name := String(skill_name_variant)
+		var skill: Dictionary = SKILL_CATALOG[skill_name]
+		var matches := String(skill.get("play_product", "")) == product_name
+		var contract_products_variant: Variant = skill.get("contract_products", [])
+		if not matches and contract_products_variant is Array:
+			matches = (contract_products_variant as Array).has(product_name)
+		if matches:
+			count += 1
+	return count
 
 
 func _product_related_card_names(product_name: String, limit: int = 8) -> String:

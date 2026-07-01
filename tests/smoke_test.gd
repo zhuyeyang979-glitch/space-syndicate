@@ -336,6 +336,23 @@ func _run() -> void:
 		and int(card_supply_layers.get("filter_violation_count", 0)) == 0,
 		"card supply layer report separates full codex, current-planet pool, and district supply without filter violations"
 	)
+	var product_ecosystem := main.call("_product_ecosystem_report") as Dictionary
+	var product_strategy_counts := product_ecosystem.get("strategy_counts", {}) as Dictionary
+	_expect(
+		int(product_ecosystem.get("catalog_count", 0)) >= 40
+		and int(product_ecosystem.get("ocean_catalog_count", 0)) >= 12
+		and int(product_ecosystem.get("profile_complete_count", 0)) == int(product_ecosystem.get("catalog_count", -1)),
+		"product catalog has broad goods coverage and complete temporary art/profile fields"
+	)
+	_expect(
+		int(product_ecosystem.get("run_product_count", 0)) > 0
+		and int(product_ecosystem.get("run_ocean_count", 0)) > 0
+		and int(product_ecosystem.get("run_land_count", 0)) > 0
+		and int(product_ecosystem.get("district_product_slots", 0)) > 0
+		and int(product_ecosystem.get("district_demand_slots", 0)) > 0
+		and not product_strategy_counts.is_empty(),
+		"product ecosystem report exposes current-run goods, land/ocean split, supply/demand slots, and strategy opportunities"
+	)
 	_expect(_as_array(main.get("movement_trails")).size() > 0, "summoning starting monsters creates visible summon trails")
 	_expect(_log_contains(main, "区域补给网完成"), "new game announces card pool generation")
 
@@ -752,8 +769,8 @@ func _run() -> void:
 	main.call("_open_product_codex_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴", "product codex opens from the compendium")
-	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("主策略") and menu_body_label.text.contains("双击缩略图进入商品详情"), "product codex opens as a responsive thumbnail grid")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "product codex thumbnail page exposes paging and hover preview")
+	_expect(menu_body_label != null and menu_body_label.text.contains("商品缩略图册") and menu_body_label.text.contains("当前缩略图布局") and menu_body_label.text.contains("本局商品生态") and menu_body_label.text.contains("主策略") and menu_body_label.text.contains("双击缩略图进入商品详情"), "product codex opens as a responsive thumbnail grid")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "本局商品生态") and _container_label_text_contains(menu_preview_box, "策略机会") and _container_label_text_contains(menu_preview_box, "商品路线分布") and _container_label_text_contains(menu_preview_box, "机制钩子") and _container_label_text_contains(menu_preview_box, "悬停详情预览"), "product codex thumbnail page exposes paging, ecosystem overview, and hover preview")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主策略:"), "product thumbnails expose a primary strategy tag before opening detail")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "product codex hides detail previous/next buttons on the thumbnail page")
 	var product_preview_index := int(main.get("product_codex_index"))
@@ -5010,24 +5027,26 @@ func _verify_monster_region_card_pricing(main: Node) -> bool:
 	controlled_monster["down"] = false
 	main.set("auto_monsters", [controlled_monster])
 	main.set("district_card_purchase_snapshot", {})
+	main.set("selected_player", 0)
+	main.set("selected_district", landed_index)
 	var card_name := "垄断协议1"
 	var base_price := int(main.call("_card_price", card_name))
-	var landed_price := int(main.call("_card_price", card_name, landed_index))
-	var adjacent_price := int(main.call("_card_price", card_name, adjacent_index))
+	var landed_price := int(main.call("_card_price", card_name, landed_index, 0))
+	var adjacent_price := int(main.call("_card_price", card_name, adjacent_index, 0))
 	var expected_landed_price := maxi(80, int(round(float(base_price) * 0.8)))
-	var pricing_ok := String(main.call("_district_card_access_kind", landed_index)) == "landed" \
-		and String(main.call("_district_card_access_kind", adjacent_index)) == "adjacent" \
-		and String(main.call("_district_card_access_text", landed_index)).contains("八折") \
-		and String(main.call("_district_card_access_text", adjacent_index)).contains("原价") \
+	var pricing_ok := String(main.call("_district_card_access_kind", landed_index, 0)) == "landed" \
+		and String(main.call("_district_card_access_kind", adjacent_index, 0)) == "adjacent" \
+		and String(main.call("_district_card_access_text", landed_index, 0)).contains("八折") \
+		and String(main.call("_district_card_access_text", adjacent_index, 0)).contains("原价") \
 		and landed_price == expected_landed_price \
 		and adjacent_price == base_price \
-		and bool(main.call("_can_buy_card_from_district", landed_index)) \
-		and bool(main.call("_can_buy_card_from_district", adjacent_index))
+		and bool(main.call("_can_buy_card_from_district", landed_index, 0)) \
+		and bool(main.call("_can_buy_card_from_district", adjacent_index, 0))
 	for i in range(districts.size()):
-		var kind := String(main.call("_district_card_access_kind", i))
+		var kind := String(main.call("_district_card_access_kind", i, 0))
 		if kind == "none":
-			pricing_ok = pricing_ok and not bool(main.call("_can_buy_card_from_district", i)) \
-				and String(main.call("_district_card_access_text", i)).contains("不可购买")
+			pricing_ok = pricing_ok and not bool(main.call("_can_buy_card_from_district", i, 0)) \
+				and String(main.call("_district_card_access_text", i, 0)).contains("不可购买")
 			break
 	var saved_players := _as_array(main.get("players")).duplicate(true)
 	var saved_districts := _as_array(main.get("districts")).duplicate(true)
