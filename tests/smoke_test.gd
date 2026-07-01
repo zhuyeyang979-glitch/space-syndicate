@@ -129,6 +129,7 @@ func _run() -> void:
 	_expect(_verify_product_futures_warehouse_destruction(main), "warehouse stockpile futures are cleared when the storage city is destroyed while ordinary futures remain")
 	_expect(_verify_product_futures_realtime_payout(main), "commodity futures settle only after their real-time window and pay from actual product price movement")
 	_expect(_verify_ai_product_futures_policy(main), "AI evaluates commodity futures from fields for long, short, stockpile, buy, and training metadata")
+	_expect(_verify_product_futures_balance_audit(main), "commodity futures balance audit gates long, short, and warehouse stockpile leverage with flow, public clues, and warehouse risk")
 	_expect(_verify_temporary_economy_duration_seconds(main), "temporary economy, contract, commodity, route, and derivative cards expose real seconds as their authoritative duration")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
@@ -2056,6 +2057,60 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 	if not failures.is_empty():
 		print("AI product futures policy failures: %s" % " / ".join(failures))
 	return ok and long_ok and short_ok and stockpile_ok and buy_ok and memory_ok and restore_result == OK
+
+
+func _verify_product_futures_balance_audit(main: Node) -> bool:
+	var report := main.call("_product_futures_balance_report") as Dictionary
+	var issues := _as_array(report.get("issues", []))
+	var families := report.get("families", {}) as Dictionary
+	var entries := _as_array(report.get("entries", []))
+	var ok := bool(report.get("ok", false)) and issues.is_empty()
+	for family_name in ["商品看涨", "商品看跌", "港仓囤货"]:
+		if not families.has(family_name):
+			ok = false
+			issues.append("missing family %s" % family_name)
+			continue
+		var summary := families.get(family_name, {}) as Dictionary
+		ok = ok and _as_array(summary.get("cards", [])).size() == 4
+		ok = ok and int(summary.get("max_effect_score", 0)) > 0
+		ok = ok and int(summary.get("max_gate_score", 0)) >= 145
+		ok = ok and int(summary.get("max_public_clue_score", 0)) >= 92
+		ok = ok and int(summary.get("max_flow_required", 0)) >= 4
+		ok = ok and float(summary.get("max_duration_seconds", 0.0)) >= 90.0
+	var long_summary := families.get("商品看涨", {}) as Dictionary
+	var short_summary := families.get("商品看跌", {}) as Dictionary
+	var warehouse_summary := families.get("港仓囤货", {}) as Dictionary
+	ok = ok and String(long_summary.get("direction", "")) == "up"
+	ok = ok and String(short_summary.get("direction", "")) == "down"
+	ok = ok and not bool(long_summary.get("warehouse_required", true))
+	ok = ok and not bool(short_summary.get("warehouse_required", true))
+	ok = ok and bool(warehouse_summary.get("warehouse_required", false))
+	ok = ok and int(warehouse_summary.get("max_stockpile_units", 0)) >= 8
+	ok = ok and int(warehouse_summary.get("max_public_clue_score", 0)) >= 145
+	ok = ok and int(long_summary.get("max_exposure_to_city_income_x100", 0)) <= 1000
+	ok = ok and int(short_summary.get("max_exposure_to_city_income_x100", 0)) <= 1000
+	ok = ok and int(warehouse_summary.get("max_exposure_to_city_income_x100", 0)) <= 3600
+	ok = ok and int(warehouse_summary.get("max_exposure_to_city_income_x100", 0)) > int(long_summary.get("max_exposure_to_city_income_x100", 0))
+	ok = ok and entries.size() >= 12
+	var realtime_count := 0
+	var warehouse_entry_count := 0
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if bool(entry.get("uses_realtime_seconds", false)):
+			realtime_count += 1
+		if bool(entry.get("requires_warehouse_city", false)):
+			warehouse_entry_count += 1
+			ok = ok and int(entry.get("stockpile_units", 0)) >= 2
+			ok = ok and int(entry.get("public_clue_score", 0)) >= 145
+		else:
+			ok = ok and int(entry.get("stockpile_units", 0)) == 1
+	ok = ok and realtime_count >= 12
+	ok = ok and warehouse_entry_count == 4
+	if not ok:
+		print("Product futures balance audit failures: %s / families=%s" % [" / ".join(issues), str(families)])
+	return ok
 
 
 func _verify_temporary_economy_duration_seconds(main: Node) -> bool:

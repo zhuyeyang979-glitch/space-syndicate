@@ -37,7 +37,7 @@ The prototype should not balance by making every route equally strong in every s
 | --- | --- | --- | --- |
 | City GDP growth | City financing, product/demand shifts, temporary orders, route-flow buffs, contracts | Can snowball if early city remains untouched | Keep GDP boosts readable through breakdown; add more targeted city defense and city-specific sabotage tests |
 | Contract economy | Supply/demand contract families, punitive refusal terms, temporary city contracts | Some contracts can feel abstract without clear route visualization | Make contract acceptance/rejection consequences more visible in economy overview and card previews |
-| Finance/GDP speculation | City buy-up, city short, disaster insurance, commodity futures, warehouse stockpile | High leverage can become “cash from nowhere” if not tied to visible GDP/price movement | Keep payouts tied to real-time windows; add more tests around warehouse destruction and public clues |
+| Finance/GDP speculation | City buy-up, city short, disaster insurance, commodity futures, warehouse stockpile | High leverage can become “cash from nowhere” if not tied to visible GDP/price movement | Commodity futures now have field-driven leverage/gate/clue audits; next pass should compare long-run AI profits across city GDP, commodity futures, and monster pressure routes |
 | Monster pressure | Monster cards, lures, takeover, resource preferences, monster wagers | Randomness can feel unfair if target reasons are hidden | Continue exposing attraction reasons, resource matches, and action text without revealing owner |
 | Military command | Defense army, fighter, bomber, tank, missile, submarine, warship, reusable commands | Could overlap too much with monster destruction if not bounded | Keep movement non-crushing; reserve area HP damage for explicit strike commands; tune GDP pressure by unit role |
 | Intel/supply | Owner lens, card trace, contract trace, remote supply, global purchase | Too much truth can collapse the anonymous inference game | Prefer limited charges, private clues, and money stakes over full public reveal |
@@ -53,7 +53,7 @@ The prototype should not balance by making every route equally strong in every s
    - Tank remains the durable land defender with weak ocean mobility.
    - Missile remains range-gated and position-readable.
    - Submarine and warship remain strongest on ocean trade maps.
-2. Commodity futures and warehouse stockpile are now strategically interesting, but the payout unit and stockpile unit counts need long-run tests against ordinary city income.
+2. Covered now: commodity futures and warehouse stockpile have an automated balance audit that compares leverage against ordinary city-income reference values and checks that stronger payouts carry real-time windows, product-flow gates, public product/warehouse clues, and warehouse destruction risk.
 3. Covered now: direct interaction cards have an automated balance audit. The four I-IV families must keep pressure, gates, public clues, and counter availability aligned, so hand pressure creates disruption plus inference clues instead of becoming cheap invisible deletion.
 4. Role cards now have a separate role-budget audit. The current role pool is broad enough, but the next tuning pass should watch high-leverage public passives:
    - Extra purchase range can be very strong on large planets.
@@ -85,6 +85,7 @@ Next AI tuning should check whether each profile actually does its thing in long
 
 - Covered now: warehouse stockpile leaves public but anonymous clues on the product and city surfaces: product status/codex show active anonymous futures direction, nearest expiry, and warehouse count; the warehouse city clue shows product and units without revealing the owner. Destroying that city clears only the warehouse stockpile while ordinary non-warehouse futures remain.
 - Covered now: commodity futures settle only after their real-time holding window and pay from actual product price movement, not from abstract economy cycles.
+- Covered now: commodity futures balance is audited from card fields. The smoke test verifies 商品看涨, 商品看跌, and 港仓囤货 all have I-IV ladders, real seconds, non-regressing leverage/gate gradients, product-flow gates, public clues, ordinary-futures exposure caps, and higher warehouse exposure only when tied to warehouse-city risk.
 - Covered now: temporary economy durations are audited as real seconds. City contracts, product contracts, product-growth boons, route-flow boons, GDP derivatives, and commodity futures expose `*_seconds` fields; old `*_turns` fields are treated as compatibility mirrors in tests.
 - Covered now: military movement and monster-attack commands do not damage districts/routes; district and route damage is reserved for explicit strike commands.
 - Covered now: the eight-seat AI smoke run reports route-tagged decision samples per AI profile, verifies every profile gets route actions, and checks that multiple core routes plus primary-profile routes appear.

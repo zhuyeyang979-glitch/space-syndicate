@@ -11025,6 +11025,210 @@ func _direct_interaction_balance_report() -> Dictionary:
 	}
 
 
+func _product_futures_balance_effect_score(skill: Dictionary) -> int:
+	var multiplier := maxf(0.1, float(skill.get("product_bet_multiplier", 1.0)))
+	var duration_seconds := _product_futures_duration_seconds(skill)
+	var units := maxi(1, int(skill.get("stockpile_units", 1)))
+	var demand_pressure := maxi(0, int(skill.get("market_demand_pressure", 0)))
+	var supply_pressure := maxi(0, int(skill.get("market_supply_pressure", 0)))
+	var pressure := demand_pressure + supply_pressure
+	var score := int(round(multiplier * 80.0))
+	score += int(round(duration_seconds / 3.0))
+	score += pressure * 18
+	if bool(skill.get("requires_warehouse_city", false)):
+		score += units * 42
+		score += 50
+	else:
+		score += units * 10
+	if String(skill.get("product_bet_direction", "up")) == "down":
+		score += 8
+	return maxi(1, score)
+
+
+func _product_futures_balance_gate_score(skill: Dictionary) -> int:
+	var score := maxi(0, int(skill.get("cost", 0))) * 9
+	score += maxi(0, _skill_play_flow_required(skill, selected_player)) * 45
+	if String(_skill_play_product(skill, selected_player)) != "":
+		score += 18
+	if _product_futures_duration_seconds(skill) >= 90.0:
+		score += 16
+	if bool(skill.get("requires_warehouse_city", false)):
+		score += 70
+		score += maxi(1, int(skill.get("stockpile_units", 1))) * 4
+	if maxi(0, int(skill.get("market_demand_pressure", 0))) + maxi(0, int(skill.get("market_supply_pressure", 0))) > 0:
+		score += 12
+	return score
+
+
+func _product_futures_balance_public_clue_score(skill: Dictionary) -> int:
+	var score := 0
+	if String(skill.get("product_bet_direction", "")) != "":
+		score += 26
+	if skill.has("product_bet_seconds"):
+		score += 22
+	if _skill_play_flow_required(skill, selected_player) > 0:
+		score += 20
+	if String(_skill_play_product(skill, selected_player)) != "":
+		score += 16
+	if maxi(0, int(skill.get("market_demand_pressure", 0))) + maxi(0, int(skill.get("market_supply_pressure", 0))) > 0:
+		score += 16
+	if bool(skill.get("requires_warehouse_city", false)):
+		score += 64
+	if maxi(0, int(skill.get("stockpile_units", 0))) > 0:
+		score += 24
+	return score
+
+
+func _product_futures_balance_projected_payout(skill: Dictionary, benchmark_price_delta: int = 30) -> int:
+	var units := maxi(1, int(skill.get("stockpile_units", 1)))
+	var multiplier := maxf(0.1, float(skill.get("product_bet_multiplier", 1.0)))
+	return int(round(float(maxi(1, benchmark_price_delta) * PRODUCT_FUTURES_PAYOUT_UNIT * units) * multiplier))
+
+
+func _product_futures_balance_entry(card_name: String, skill: Dictionary) -> Dictionary:
+	var duration_seconds := _product_futures_duration_seconds(skill)
+	var multiplier := maxf(0.1, float(skill.get("product_bet_multiplier", 1.0)))
+	var units := maxi(1, int(skill.get("stockpile_units", 1)))
+	var projected_payout := _product_futures_balance_projected_payout(skill)
+	var city_income_reference := maxi(1, CITY_PRODUCT_BASE_REVENUE + CITY_DEMAND_SUPPLY_REVENUE + CITY_TRANSIT_GDP_BASE)
+	return {
+		"name": card_name,
+		"family": _skill_family(card_name),
+		"rank": clampi(_skill_rank(card_name), 1, 4),
+		"kind": String(skill.get("kind", "")),
+		"direction": String(skill.get("product_bet_direction", "")),
+		"multiplier_x100": int(round(multiplier * 100.0)),
+		"duration_seconds": duration_seconds,
+		"stockpile_units": units,
+		"requires_warehouse_city": bool(skill.get("requires_warehouse_city", false)),
+		"market_demand_pressure": maxi(0, int(skill.get("market_demand_pressure", 0))),
+		"market_supply_pressure": maxi(0, int(skill.get("market_supply_pressure", 0))),
+		"effect_score": _product_futures_balance_effect_score(skill),
+		"gate_score": _product_futures_balance_gate_score(skill),
+		"public_clue_score": _product_futures_balance_public_clue_score(skill),
+		"play_flow_required": maxi(0, _skill_play_flow_required(skill, selected_player)),
+		"play_product": String(_skill_play_product(skill, selected_player)),
+		"cost": maxi(0, int(skill.get("cost", 0))),
+		"projected_payout_on_30_price_delta": projected_payout,
+		"exposure_to_city_income_x100": int(round(float(projected_payout) / float(city_income_reference) * 100.0)),
+		"uses_realtime_seconds": skill.has("product_bet_seconds") and duration_seconds > 0.0,
+	}
+
+
+func _product_futures_balance_report() -> Dictionary:
+	var expected_families := {
+		"商品看涨": "up",
+		"商品看跌": "down",
+		"港仓囤货": "up",
+	}
+	var families := {}
+	var entries := []
+	var issues := []
+	for family_variant in expected_families.keys():
+		var family := String(family_variant)
+		var expected_direction := String(expected_families[family])
+		var summary := {
+			"cards": [],
+			"direction": expected_direction,
+			"warehouse_required": family == "港仓囤货",
+			"max_effect_score": 0,
+			"max_gate_score": 0,
+			"max_public_clue_score": 0,
+			"max_flow_required": 0,
+			"max_duration_seconds": 0.0,
+			"max_multiplier_x100": 0,
+			"max_stockpile_units": 0,
+			"max_projected_payout": 0,
+			"max_exposure_to_city_income_x100": 0,
+		}
+		var previous_effect := -1
+		var previous_gate := -1
+		var previous_duration := -1.0
+		var previous_multiplier := -1
+		var previous_units := -1
+		for rank in range(1, 5):
+			var card_name := "%s%d" % [family, rank]
+			if not SKILL_CATALOG.has(card_name):
+				issues.append("%s缺少%d级" % [family, rank])
+				continue
+			var skill := _make_skill(card_name)
+			if String(skill.get("kind", "")) != "product_futures":
+				issues.append("%s不是商品期货牌" % card_name)
+			var entry := _product_futures_balance_entry(card_name, skill)
+			entries.append(entry)
+			var cards: Array = summary.get("cards", [])
+			cards.append(card_name)
+			summary["cards"] = cards
+			summary["max_effect_score"] = maxi(int(summary.get("max_effect_score", 0)), int(entry.get("effect_score", 0)))
+			summary["max_gate_score"] = maxi(int(summary.get("max_gate_score", 0)), int(entry.get("gate_score", 0)))
+			summary["max_public_clue_score"] = maxi(int(summary.get("max_public_clue_score", 0)), int(entry.get("public_clue_score", 0)))
+			summary["max_flow_required"] = maxi(int(summary.get("max_flow_required", 0)), int(entry.get("play_flow_required", 0)))
+			summary["max_duration_seconds"] = maxf(float(summary.get("max_duration_seconds", 0.0)), float(entry.get("duration_seconds", 0.0)))
+			summary["max_multiplier_x100"] = maxi(int(summary.get("max_multiplier_x100", 0)), int(entry.get("multiplier_x100", 0)))
+			summary["max_stockpile_units"] = maxi(int(summary.get("max_stockpile_units", 0)), int(entry.get("stockpile_units", 0)))
+			summary["max_projected_payout"] = maxi(int(summary.get("max_projected_payout", 0)), int(entry.get("projected_payout_on_30_price_delta", 0)))
+			summary["max_exposure_to_city_income_x100"] = maxi(int(summary.get("max_exposure_to_city_income_x100", 0)), int(entry.get("exposure_to_city_income_x100", 0)))
+			var effect_score := int(entry.get("effect_score", 0))
+			var gate_score := int(entry.get("gate_score", 0))
+			var clue_score := int(entry.get("public_clue_score", 0))
+			var duration_seconds := float(entry.get("duration_seconds", 0.0))
+			var multiplier_x100 := int(entry.get("multiplier_x100", 0))
+			var units := int(entry.get("stockpile_units", 0))
+			var exposure_x100 := int(entry.get("exposure_to_city_income_x100", 0))
+			var is_warehouse := bool(entry.get("requires_warehouse_city", false))
+			if String(entry.get("direction", "")) != expected_direction:
+				issues.append("%s方向错误:%s" % [card_name, String(entry.get("direction", ""))])
+			if bool(summary.get("warehouse_required", false)) != is_warehouse:
+				issues.append("%s仓储要求边界错误" % card_name)
+			if previous_effect >= 0 and effect_score < previous_effect:
+				issues.append("%s收益压力梯度倒退" % card_name)
+			if previous_gate >= 0 and gate_score < previous_gate:
+				issues.append("%s门槛梯度倒退" % card_name)
+			if previous_duration >= 0.0 and duration_seconds < previous_duration:
+				issues.append("%s持仓秒数梯度倒退" % card_name)
+			if previous_multiplier >= 0 and multiplier_x100 < previous_multiplier:
+				issues.append("%s倍率梯度倒退" % card_name)
+			if is_warehouse and previous_units >= 0 and units < previous_units:
+				issues.append("%s囤货单位梯度倒退" % card_name)
+			previous_effect = effect_score
+			previous_gate = gate_score
+			previous_duration = duration_seconds
+			previous_multiplier = multiplier_x100
+			previous_units = units
+			if not bool(entry.get("uses_realtime_seconds", false)):
+				issues.append("%s缺少真实秒数持仓字段" % card_name)
+			if duration_seconds < 30.0 or duration_seconds > 180.0:
+				issues.append("%s持仓窗口不在30-180秒护栏内" % card_name)
+			if int(entry.get("play_flow_required", 0)) <= 0:
+				issues.append("%s缺少商品流动门槛" % card_name)
+			if int(entry.get("market_demand_pressure", 0)) + int(entry.get("market_supply_pressure", 0)) <= 0:
+				issues.append("%s缺少供需影响线索" % card_name)
+			if effect_score >= 180 and gate_score < 145:
+				issues.append("%s强期货效果门槛过低" % card_name)
+			if effect_score >= 180 and clue_score < 92:
+				issues.append("%s强期货效果公开线索不足" % card_name)
+			if is_warehouse:
+				if units <= 1:
+					issues.append("%s仓储牌囤货单位过低，无法形成仓库风险" % card_name)
+				if clue_score < 145:
+					issues.append("%s仓储牌公开仓库线索不足" % card_name)
+				if exposure_x100 > 3600:
+					issues.append("%s仓储杠杆相对普通城市收入过高" % card_name)
+			else:
+				if units != 1:
+					issues.append("%s普通期货不应叠加囤货单位" % card_name)
+				if exposure_x100 > 1000:
+					issues.append("%s普通期货杠杆相对普通城市收入过高" % card_name)
+		families[family] = summary
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"families": families,
+		"entries": entries,
+		"summary": "商品期货护栏：看涨/看跌吃真实价格变化，港仓囤货用更高仓储杠杆换取公开仓库线索和可被摧毁风险；收益、门槛、秒数和线索随I-IV同步提高。",
+	}
+
+
 func _apply_military_gdp_pressure(unit: Dictionary, district_index: int, command: String, source: String) -> int:
 	if district_index < 0 or district_index >= districts.size():
 		return 0
