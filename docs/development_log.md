@@ -3,6 +3,35 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜顶部匿名牌轨增加空状态薄轨
+
+### 本轮实现
+
+- 顶部匿名牌轨新增 `compact empty` 模式：
+  - 没有真实匿名牌时，隐藏标尺、费用带、槽沟和图例分区筹码；
+  - 空牌槽高度从常规 `22` 压到 `15`；
+  - 外框最小高度从常规 `36` 压到 `24`；
+  - 有历史牌、当前展示牌、竞价牌或下一批等待牌时自动恢复完整牌轨。
+- 保留 `牌轨 / 拖看｜悬停` 的基础读法，不让新手以为顶部区域消失。
+- 更新 UI 护栏，检查 `CARD_TRACK_EMPTY_SLOT_HEIGHT` 和 `_set_card_resolution_track_compact_empty`。
+- 将 GitHub `topics/slaythespire` 和本地 `reference/hypnagonia` 纳入参考笔记，后续用于手牌牌架、购牌窗口、hover 详情和 deckbuilder 构筑路线的 UI 改造。
+
+### 设计意图
+
+- 开局空牌轨不应该像一根大棒子压住星球；它只需要提示“这里之后会出现匿名牌”。
+- 有牌时才展示完整 Through-the-Ages 式公共牌槽信息，空状态保持轻薄。
+- 这一步继续落实“中央星球优先，公共信息按需变厚”的桌游电子版布局。
+
+### 验证
+
+- 已通过：
+  - `tests/ui_text_smoke_test.gd`
+  - `tests/visual_snapshot.gd`
+  - `tests/smoke_test.gd --check-only`
+  - 完整 `tests/smoke_test.gd`
+- 已采集有头 UI 快照：
+  - `C:/Users/Administrator/AppData/Roaming/Godot/app_userdata/太空辛迪加/space_syndicate_ui_snapshots/04_play_table.png`
+
 ## 2026-07-01｜右侧行动托盘改成当前行动栏
 
 ### 本轮实现

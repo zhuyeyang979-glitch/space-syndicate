@@ -84,6 +84,7 @@ const CARD_TRACK_VISIBLE_SLOT_COUNT := 12
 const CARD_TRACK_SLOT_WIDTH := 52
 const CARD_TRACK_CURRENT_SLOT_WIDTH := 60
 const CARD_TRACK_SLOT_HEIGHT := 22
+const CARD_TRACK_EMPTY_SLOT_HEIGHT := 15
 const CARD_TRACK_SEGMENT_WIDTH := 9
 const AUTO_MONSTER_MOVE_RATIO := 0.72
 const AUTO_MONSTER_MIN_SPECIAL_DAMAGE := 1
@@ -1600,6 +1601,13 @@ var resolved_card_history := []
 var selected_card_resolution_id := -1
 var card_resolution_track_scroll: ScrollContainer
 var card_resolution_track: HBoxContainer
+var card_resolution_track_panel: PanelContainer
+var card_resolution_track_legend_panel: PanelContainer
+var card_resolution_track_legend_header: HFlowContainer
+var card_resolution_track_ruler: HBoxContainer
+var card_resolution_track_cost_band: HBoxContainer
+var card_resolution_track_groove_rail: HBoxContainer
+var card_resolution_track_scroll_shell: HBoxContainer
 var card_resolution_track_dragging := false
 var card_resolution_track_drag_start_x := 0.0
 var card_resolution_track_drag_start_scroll := 0
@@ -2148,6 +2156,7 @@ func _add_weather_forecast_chip(parent: Container, text: String, accent: Color) 
 
 func _build_card_resolution_track(page: VBoxContainer) -> void:
 	var panel := PanelContainer.new()
+	card_resolution_track_panel = panel
 	panel.name = "CardResolutionTtaMarketPanel"
 	panel.custom_minimum_size = Vector2(0, 36)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2172,6 +2181,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 	margin.add_child(rail_frame)
 
 	var legend_panel := PanelContainer.new()
+	card_resolution_track_legend_panel = legend_panel
 	legend_panel.name = "CardResolutionTtaOfferRailLegend"
 	legend_panel.custom_minimum_size = Vector2(54, 0)
 	legend_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#f59e0b"), Color("#020617").lerp(Color("#f59e0b"), 0.14), 1, 9))
@@ -2196,6 +2206,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 	hint.tooltip_text = "单击牌槽竞猜归属；双击牌面打开图鉴详情。"
 	legend_stack.add_child(hint)
 	var header := HFlowContainer.new()
+	card_resolution_track_legend_header = header
 	header.name = "CardResolutionTtaMarketHeader"
 	header.add_theme_constant_override("h_separation", 1)
 	header.add_theme_constant_override("v_separation", 1)
@@ -2221,6 +2232,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 	slot_stack.add_theme_constant_override("separation", 0)
 	slot_margin.add_child(slot_stack)
 	var ruler := HBoxContainer.new()
+	card_resolution_track_ruler = ruler
 	ruler.name = "CardResolutionTtaAgeMarketRuler"
 	ruler.custom_minimum_size = Vector2(0, 2)
 	ruler.add_theme_constant_override("separation", 3)
@@ -2233,6 +2245,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 		tick.custom_minimum_size = Vector2(18, 2)
 		ruler.add_child(tick)
 	var cost_band := HBoxContainer.new()
+	card_resolution_track_cost_band = cost_band
 	cost_band.name = "CardResolutionTtaCostBandRail"
 	cost_band.custom_minimum_size = Vector2(0, 5)
 	cost_band.add_theme_constant_override("separation", 3)
@@ -2241,6 +2254,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 	for i in range(CARD_TRACK_VISIBLE_SLOT_COUNT):
 		_add_card_resolution_track_cost_cell(cost_band, i)
 	var groove_rail := HBoxContainer.new()
+	card_resolution_track_groove_rail = groove_rail
 	groove_rail.name = "CardResolutionTtaSlotGrooveRail"
 	groove_rail.custom_minimum_size = Vector2(0, 2)
 	groove_rail.add_theme_constant_override("separation", 3)
@@ -2262,6 +2276,7 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 		groove.custom_minimum_size = Vector2(CARD_TRACK_SLOT_WIDTH, 2)
 		groove_rail.add_child(groove)
 	var scroll_shell := HBoxContainer.new()
+	card_resolution_track_scroll_shell = scroll_shell
 	scroll_shell.name = "CardResolutionTtaScrollShell"
 	scroll_shell.custom_minimum_size = Vector2(0, 23)
 	scroll_shell.add_theme_constant_override("separation", 2)
@@ -2505,11 +2520,31 @@ func _refresh_card_resolution_track() -> void:
 		_add_card_resolution_track_entry(next_entry_variant as Dictionary, "下批等待%d" % (i + 1))
 		has_entries = true
 		visible_slot_count += 1
+	_set_card_resolution_track_compact_empty(not has_entries)
 	var ghost_count := maxi(0, CARD_TRACK_VISIBLE_SLOT_COUNT - visible_slot_count)
 	for i in range(ghost_count):
-		_add_card_resolution_track_ghost_slot(i, not has_entries and i == 0)
+		_add_card_resolution_track_ghost_slot(i, not has_entries and i == 0, not has_entries)
 	_sync_card_resolution_track_width()
 	_maybe_follow_card_resolution_track(has_entries)
+
+
+func _set_card_resolution_track_compact_empty(compact_empty: bool) -> void:
+	if card_resolution_track_panel != null:
+		card_resolution_track_panel.custom_minimum_size = Vector2(0, 24 if compact_empty else 36)
+	if card_resolution_track_legend_panel != null:
+		card_resolution_track_legend_panel.custom_minimum_size = Vector2(46 if compact_empty else 54, 0)
+	if card_resolution_track_legend_header != null:
+		card_resolution_track_legend_header.visible = not compact_empty
+	if card_resolution_track_ruler != null:
+		card_resolution_track_ruler.visible = not compact_empty
+	if card_resolution_track_cost_band != null:
+		card_resolution_track_cost_band.visible = not compact_empty
+	if card_resolution_track_groove_rail != null:
+		card_resolution_track_groove_rail.visible = not compact_empty
+	if card_resolution_track_scroll_shell != null:
+		card_resolution_track_scroll_shell.custom_minimum_size = Vector2(0, 16 if compact_empty else 23)
+	if card_resolution_track_scroll != null:
+		card_resolution_track_scroll.custom_minimum_size = Vector2(0, 16 if compact_empty else 23)
 
 
 func _maybe_follow_card_resolution_track(has_entries: bool) -> void:
@@ -2523,12 +2558,12 @@ func _maybe_follow_card_resolution_track(has_entries: bool) -> void:
 	_set_card_resolution_track_scroll(_card_resolution_track_max_scroll())
 
 
-func _add_card_resolution_track_ghost_slot(slot_index: int, show_idle_label: bool = false) -> void:
+func _add_card_resolution_track_ghost_slot(slot_index: int, show_idle_label: bool = false, compact_empty: bool = false) -> void:
 	if card_resolution_track == null:
 		return
 	var panel := PanelContainer.new()
 	panel.name = "CardResolutionTtaGhostSlot"
-	panel.custom_minimum_size = Vector2(CARD_TRACK_SLOT_WIDTH, CARD_TRACK_SLOT_HEIGHT)
+	panel.custom_minimum_size = Vector2(CARD_TRACK_SLOT_WIDTH, CARD_TRACK_EMPTY_SLOT_HEIGHT if compact_empty else CARD_TRACK_SLOT_HEIGHT)
 	panel.tooltip_text = "空牌槽：匿名牌进入后会占用这里；悬停真牌看详情，双击真牌进图鉴。"
 	_connect_card_resolution_track_hover(panel)
 	var style := StyleBoxFlat.new()
