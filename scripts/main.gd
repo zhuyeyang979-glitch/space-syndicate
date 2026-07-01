@@ -14404,6 +14404,29 @@ func _contract_decline_effect_summary(skill: Dictionary) -> String:
 	return "、".join(pieces) if not pieces.is_empty() else "无额外惩罚"
 
 
+func _contract_response_result_clue(entry: Dictionary, skill: Dictionary = {}) -> String:
+	if skill.is_empty():
+		skill = entry.get("skill", {}) as Dictionary
+	var response := String(entry.get("contract_response", CONTRACT_RESPONSE_PENDING))
+	var response_label := _contract_response_public_label(entry)
+	var source_index := int(entry.get("contract_source_district", -1))
+	var target_index := int(entry.get("contract_target_district", -1))
+	var products_text := _contract_entry_product_text(entry)
+	var effect_label := "签约奖励" if response == CONTRACT_RESPONSE_ACCEPTED else "拒签惩罚"
+	var effect_summary := _contract_accept_effect_summary(skill) if response == CONTRACT_RESPONSE_ACCEPTED else _contract_decline_effect_summary(skill)
+	if response == CONTRACT_RESPONSE_PENDING:
+		effect_label = "待定影响"
+		effect_summary = "等待目标业主回应"
+	return "合约%s｜%s→%s｜商品:%s｜%s:%s｜发起者和回应者仍需推理" % [
+		response_label,
+		_contract_district_short_name(source_index),
+		_contract_district_short_name(target_index),
+		products_text,
+		effect_label,
+		effect_summary,
+	]
+
+
 func _add_active_contract_response_panel(parent: Container) -> void:
 	var offers := _pending_contract_offers_for_player(selected_player)
 	for offer_variant in offers:
@@ -14488,6 +14511,14 @@ func _respond_to_pending_contract_for_player(player_index: int, contract_id: int
 
 func _store_pending_contract_result(entry: Dictionary) -> void:
 	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	entry["contract_accept_summary"] = _contract_accept_effect_summary(skill)
+	entry["contract_decline_summary"] = _contract_decline_effect_summary(skill)
+	entry["contract_result_clue"] = _contract_response_result_clue(entry, skill)
+	entry["aftermath_clue"] = String(entry["contract_result_clue"])
+	entry["aftermath_style"] = _card_resolution_effect_style(skill)
+	if not entry.has("resolved_time") or float(entry.get("resolved_time", -1.0)) < 0.0:
+		entry["resolved_time"] = game_time
 	var stored := _card_resolution_entry_by_id(resolution_id)
 	if stored.is_empty():
 		stored = entry.duplicate(true)
@@ -14500,10 +14531,22 @@ func _store_pending_contract_result(entry: Dictionary) -> void:
 			"contract_response_time",
 			"contract_decision_timer",
 			"contract_decision_started_time",
+			"contract_products",
+			"contract_source_district",
+			"contract_target_district",
+			"contract_accept_summary",
+			"contract_decline_summary",
+			"contract_result_clue",
+			"aftermath_clue",
+			"aftermath_style",
+			"resolved_time",
 		]:
 			if entry.has(field):
 				stored[field] = entry[field]
-	_store_card_resolution_entry(stored)
+	if not _store_card_resolution_entry(stored):
+		resolved_card_history.append(stored.duplicate(true))
+		while resolved_card_history.size() > CARD_RESOLUTION_HISTORY_LIMIT:
+			resolved_card_history.pop_front()
 
 
 func _add_empty_card_slot(parent: Container, slot_index: int) -> void:
@@ -21807,6 +21850,40 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 	decline_badness += maxi(0, int(skill.get("decline_route_damage", 0))) * 52
 	accept_score += decline_badness
 	reject_score -= int(round(float(decline_badness) * 0.55))
+	var target_gdp := 0
+	var target_route_damage := 0
+	var target_product_count := 0
+	var target_demand_count := 0
+	if _city_is_active(target_city):
+		target_gdp = int(target_city.get("last_gdp", target_city.get("last_income", 0)))
+		target_route_damage = int(target_city.get("trade_route_damage", 0)) + int(target_city.get("trade_disrupted_routes", 0))
+		target_product_count = (target_city.get("products", []) as Array).size()
+		target_demand_count = (target_city.get("demands", []) as Array).size()
+	var accept_economic_delta := int(skill.get("accept_cash", 0))
+	accept_economic_delta += int(skill.get("accept_production_delta", 0)) * 26
+	accept_economic_delta += int(skill.get("accept_transport_delta", 0)) * 32
+	accept_economic_delta += int(skill.get("accept_consumption_delta", 0)) * 24
+	accept_economic_delta += int(round(maxf(0.0, accept_route_flow - 1.0) * 120.0))
+	accept_economic_delta += maxi(0, int(skill.get("contract_add_products", 0))) * 26
+	accept_economic_delta += maxi(0, int(skill.get("contract_add_demands", 0))) * 30
+	accept_economic_delta -= maxi(0, int(skill.get("contract_remove_products", 0)) + int(skill.get("contract_remove_demands", 0))) * 14
+	var decline_economic_delta := -int(skill.get("decline_cash_penalty", 0))
+	decline_economic_delta += int(skill.get("decline_production_delta", 0)) * 26
+	decline_economic_delta += int(skill.get("decline_transport_delta", 0)) * 32
+	decline_economic_delta += int(skill.get("decline_consumption_delta", 0)) * 24
+	decline_economic_delta -= maxi(0, int(skill.get("decline_route_damage", 0))) * 38
+	var accept_role := "accept_economic_gain"
+	if decline_badness >= 90:
+		accept_role = "accept_avoid_punishment"
+	elif accept_route_bonus > 0:
+		accept_role = "accept_route_plan"
+	elif source_owner == player_index:
+		accept_role = "accept_self_supply"
+	var reject_role := "reject_low_value"
+	if source_owner >= 0 and source_owner != player_index and reject_route_bonus > 0:
+		reject_role = "reject_rival_route"
+	elif source_owner >= 0 and source_owner != player_index:
+		reject_role = "reject_rival_supply"
 	return [
 		{
 			"action": "签约",
@@ -21826,6 +21903,21 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 			"route_plan_score": route_score,
 			"route_plan_bonus": accept_route_bonus,
 			"learning_bonus": accept_learning_bonus,
+			"contract_response_role": accept_role,
+			"contract_source_district": source_index,
+			"contract_target_district": target_index,
+			"contract_source_owner": source_owner,
+			"contract_target_gdp": target_gdp,
+			"contract_target_route_damage": target_route_damage,
+			"contract_target_product_count": target_product_count,
+			"contract_target_demand_count": target_demand_count,
+			"contract_route_match": 1 if contract_matches_route else 0,
+			"contract_accept_value": maxi(1, accept_score),
+			"contract_reject_value": maxi(1, reject_score),
+			"contract_response_margin": accept_score - reject_score,
+			"contract_decline_risk": decline_badness,
+			"contract_accept_economic_delta": accept_economic_delta,
+			"contract_decline_economic_delta": decline_economic_delta,
 		},
 		{
 			"action": "拒签",
@@ -21841,6 +21933,21 @@ func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> A
 			"route_plan_score": route_score,
 			"route_plan_bonus": reject_route_bonus,
 			"learning_bonus": reject_learning_bonus,
+			"contract_response_role": reject_role,
+			"contract_source_district": source_index,
+			"contract_target_district": target_index,
+			"contract_source_owner": source_owner,
+			"contract_target_gdp": target_gdp,
+			"contract_target_route_damage": target_route_damage,
+			"contract_target_product_count": target_product_count,
+			"contract_target_demand_count": target_demand_count,
+			"contract_route_match": 1 if contract_matches_route else 0,
+			"contract_accept_value": maxi(1, accept_score),
+			"contract_reject_value": maxi(1, reject_score),
+			"contract_response_margin": reject_score - accept_score,
+			"contract_decline_risk": decline_badness,
+			"contract_accept_economic_delta": accept_economic_delta,
+			"contract_decline_economic_delta": decline_economic_delta,
 		},
 	]
 
@@ -21884,6 +21991,20 @@ func _update_ai_contract_responses(force: bool = false) -> int:
 				"route_plan_score": int(choice.get("route_plan_score", 0)),
 				"route_plan_bonus": int(choice.get("route_plan_bonus", 0)),
 				"learning_bonus": int(choice.get("learning_bonus", 0)),
+				"product": String(choice.get("product", "")),
+				"contract_response_role": String(choice.get("contract_response_role", "")),
+				"contract_source_district": int(choice.get("contract_source_district", -1)),
+				"contract_target_district": int(choice.get("contract_target_district", -1)),
+				"contract_source_owner": int(choice.get("contract_source_owner", -1)),
+				"contract_target_gdp": int(choice.get("contract_target_gdp", 0)),
+				"contract_target_route_damage": int(choice.get("contract_target_route_damage", 0)),
+				"contract_route_match": int(choice.get("contract_route_match", 0)),
+				"contract_accept_value": int(choice.get("contract_accept_value", 0)),
+				"contract_reject_value": int(choice.get("contract_reject_value", 0)),
+				"contract_response_margin": int(choice.get("contract_response_margin", 0)),
+				"contract_decline_risk": int(choice.get("contract_decline_risk", 0)),
+				"contract_accept_economic_delta": int(choice.get("contract_accept_economic_delta", 0)),
+				"contract_decline_economic_delta": int(choice.get("contract_decline_economic_delta", 0)),
 			}
 		)
 		if _respond_to_pending_contract_for_player(owner, contract_id, accept, false):

@@ -3093,12 +3093,19 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 		}
 		var contract_candidates := main.call("_ai_contract_response_candidates", 1, contract_entry) as Array
 		var saw_route_contract := false
+		var saw_contract_metadata := false
 		for candidate_variant in contract_candidates:
 			if not (candidate_variant is Dictionary):
 				continue
 			var candidate := candidate_variant as Dictionary
 			if String(candidate.get("action", "")) == "签约" and String(candidate.get("route_plan_stage", "")) == "create_demand" and int(candidate.get("route_plan_bonus", 0)) > 0:
 				saw_route_contract = true
+				saw_contract_metadata = String(candidate.get("contract_response_role", "")) == "accept_route_plan" \
+					and int(candidate.get("contract_route_match", 0)) == 1 \
+					and int(candidate.get("contract_accept_value", 0)) > int(candidate.get("contract_reject_value", 0)) \
+					and int(candidate.get("contract_response_margin", 0)) > 0 \
+					and candidate.has("contract_decline_risk") \
+					and candidate.has("contract_accept_economic_delta")
 				break
 		var play_candidates := main.call("_ai_card_play_candidates", 1) as Array
 		var play_choice := {}
@@ -3114,9 +3121,9 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 		var players_after_queue := _as_array(main.get("players"))
 		var route_play_memory := _ai_memory_has_kind_with_metadata(players_after_queue, 1, "匿名出牌", "route_plan_stage", "create_demand")
 		var route_gap_score_ok := demand_gap_score > supply_gap_score
-		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and route_gap_direct_ok and saw_route_gap_buy and route_gap_score_ok and saw_route_gap_play and saw_route_contract and not play_choice.is_empty() and route_play_queued and route_play_memory
+		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and route_gap_direct_ok and saw_route_gap_buy and route_gap_score_ok and saw_route_gap_play and saw_route_contract and saw_contract_metadata and not play_choice.is_empty() and route_play_queued and route_play_memory
 		if not first_route_ok:
-			print("AI route plan first-route failures: build=%s demand_plan=%s demand_context=%s route_buy=%s gap_direct=%s gap_buy=%s gap_score=%s gap_play=%s contract=%s play_choice=%s queued=%s memory=%s demand_score=%d supply_score=%d" % [
+			print("AI route plan first-route failures: build=%s demand_plan=%s demand_context=%s route_buy=%s gap_direct=%s gap_buy=%s gap_score=%s gap_play=%s contract=%s contract_meta=%s play_choice=%s queued=%s memory=%s demand_score=%d supply_score=%d" % [
 				str(build_ok),
 				str(demand_plan_ok),
 				str(demand_context_ok),
@@ -3126,6 +3133,7 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 				str(route_gap_score_ok),
 				str(saw_route_gap_play),
 				str(saw_route_contract),
+				str(saw_contract_metadata),
 				str(not play_choice.is_empty()),
 				str(route_play_queued),
 				str(route_play_memory),
@@ -8654,6 +8662,9 @@ func _verify_area_trade_contract_accept_and_decline(main: Node) -> bool:
 		var stored_accept := main.call("_card_resolution_entry_by_id", queued_contract_id) as Dictionary
 		ok = ok and String(stored_accept.get("contract_response", "")) == "accepted"
 		ok = ok and bool(stored_accept.get("public_owner_revealed", false)) and (stored_accept.get("guessers", []) as Array).has(2)
+		ok = ok and String(stored_accept.get("contract_result_clue", "")).contains("合约已签约")
+		ok = ok and String(stored_accept.get("contract_accept_summary", "")).contains("流通")
+		ok = ok and String(stored_accept.get("aftermath_clue", "")).contains("发起者和回应者仍需推理")
 		var districts_after_accept := _as_array(main.get("districts"))
 		var source_district := districts_after_accept[source_index] as Dictionary
 		var target_district := districts_after_accept[target_index] as Dictionary
@@ -8702,7 +8713,11 @@ func _verify_area_trade_contract_accept_and_decline(main: Node) -> bool:
 		ok = ok and _as_array(main.get("pending_contract_offers")).size() == 1
 		var ai_contract_responses := int(main.call("_update_ai_contract_responses", true))
 		ok = ok and ai_contract_responses == 1 and _as_array(main.get("pending_contract_offers")).is_empty()
-		ok = ok and _ai_decision_sample_count(_as_array(main.get("players"))) > ai_samples_before
+		var players_after_ai_contract := _as_array(main.get("players"))
+		ok = ok and _ai_decision_sample_count(players_after_ai_contract) > ai_samples_before
+		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "policy_kind", "contract_accept")
+		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "contract_response_role", "accept_avoid_punishment")
+		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "contract_source_district", source_index)
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("card_resolution_force_duration", saved_force_duration)
 	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)

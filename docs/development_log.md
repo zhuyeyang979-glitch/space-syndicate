@@ -3,6 +3,35 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-01。
 
+## 2026-07-01｜AI 合约回应字段化与结果线索回写
+
+### 本轮实现
+
+- 合约签/拒结果现在会回写到匿名卡牌轨道和经济总览余波线索：
+  - 记录 `contract_result_clue`、`contract_accept_summary`、`contract_decline_summary`；
+  - 线索明确显示供给区→需求区、商品、已签约/拒签/超时拒签、奖励或惩罚；
+  - 仍然只公开结果，不公开合约发起者和真实回应者。
+- AI 合约回应新增字段化评分，不再只输出“签约/拒签”：
+  - 记录 `contract_response_role`、`contract_route_match`、`contract_accept_value`、`contract_reject_value`、`contract_response_margin`、`contract_decline_risk`；
+  - 同步记录合约两端区域、来源城市业主、目标城市 GDP、目标断路压力、签约经济增量和拒签经济代价；
+  - 惩罚型合约会被标记为 `accept_avoid_punishment`，路线吻合型合约会被标记为 `accept_route_plan`。
+- 如果未来某些特殊合约不是从标准匿名轨道进入，结算结果也会作为卡牌余波进入历史，避免“结算了但玩家看不到公开证据”的断层。
+
+### 平衡与规则决策
+
+- 合约回应是公开结果、隐藏动机：玩家可以从商品、区域、奖惩和后续 GDP 变化推理身份；AI 的风险/路线评分仍是训练数据，不出现在玩家 UI。
+- 拒签不是默认正确或错误：AI 会把“帮对手扩张供给”“拒签惩罚”“是否补齐自己的商品路线”“目标城市受损/缺需求”等因素一起评分。
+- 合约结果线索会成为经济推理链的一环，后续可以继续接入卡牌归属竞猜、合约追溯卡和商品目录的相关城市线索。
+
+### 新增验证
+
+- `tests/smoke_test.gd` 扩展合约烟测：
+  - 验证签约后轨道条目写入具体 `contract_result_clue` 和奖励摘要；
+  - 验证 AI 对惩罚性拒签条款会签约，并写入 `contract_response_role=accept_avoid_punishment`；
+  - 验证路线计划中的合约候选带有 `contract_route_match`、签/拒价值、回应边际和经济字段。
+- 完整 Godot headless smoke test 通过：
+  - `Godot_v4.6.2-stable_win64_console.exe --headless --path . --script res://tests/smoke_test.gd`
+
 ## 2026-07-01｜AI 直接互动目标规划字段化
 
 ### 本轮实现
