@@ -1450,8 +1450,8 @@ const MONSTER_ACTION_TABLES := {
 		{"name": "泥石流", "range": 220.0, "damage": 2, "move_override": -1.0, "panic": 24, "text": "220米范围泥石流，造成2点区域伤害并显著提高当地热度。"},
 	],
 	"流星哨兵": [
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
+		{"name": "翼爪扫击", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米翼爪横扫，2伤害，并击退怪兽约120米。"},
+		{"name": "俯冲肩撞", "range": 125.0, "damage": 2, "move_override": 260.0, "knockback": 150.0, "text": "短距俯冲约260米后肩撞，2伤害，并击退怪兽约150米。"},
 		{"name": "火花电击", "range": 420.0, "damage": 2, "move_override": -1.0, "paralyze": 1, "text": "420米射程，2伤害，并封锁一张怪兽技能卡。"},
 		{"name": "高空气旋", "range": 120.0, "damage": 2, "move_override": -1.0, "throw_radius": 420.0, "text": "120米近战投掷，2坠落伤害，并把怪兽投向420米内区域。"},
 		{"name": "白谱光线", "range": 600.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "600米光线，3伤害，并直线击退怪兽约320米。"},
@@ -1466,8 +1466,8 @@ const MONSTER_ACTION_TABLES := {
 		{"name": "垂直裂刃", "range": 260.0, "damage": 4, "move_override": -1.0, "cripple": 2, "text": "260米射程，4伤害，并致残2张技能卡。"},
 	],
 	"绿洲修复体": [
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "tether": 1, "text": "110米近战AOE，2伤害，并牵制怪兽下次移动。"},
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "tether": 1, "text": "110米近战AOE，2伤害，并牵制怪兽下次移动。"},
+		{"name": "藤蔓掌击", "range": 110.0, "damage": 2, "move_override": -1.0, "tether": 1, "text": "110米藤蔓掌击，2伤害，并牵制怪兽下次移动。"},
+		{"name": "绿洲钩拳", "range": 125.0, "damage": 2, "move_override": -1.0, "tether": 2, "text": "125米绿洲钩拳，2伤害，并施加2层牵制。"},
 		{"name": "束缚光线", "range": 420.0, "damage": 2, "move_override": -1.0, "tether": 2, "text": "420米束缚光线，2伤害，并施加2层牵制。"},
 		{"name": "修复光线", "range": 420.0, "damage": 3, "move_override": -1.0, "repair": 1, "text": "420米修复光线，3伤害，并修复所在区域。"},
 		{"name": "定身闪光", "range": 160.0, "damage": 2, "move_override": -1.0, "repair_radius": 220.0, "tether": 4, "text": "220米修复AOE，并对160米近身目标2伤害，施加4层牵制。"},
@@ -1482,16 +1482,16 @@ const MONSTER_ACTION_TABLES := {
 		{"name": "星焰炸弹", "range": 120.0, "damage": 8, "move_override": -1.0, "stun": 2, "self_damage": EMBER_RING_BOMB_SELF_DAMAGE, "text": "120米近战爆弹，8伤害并眩晕2；之后焰环幼星承受3点反冲。"},
 	],
 	"蓝锋骑士": [
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
-		{"name": "斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米远程2伤害，并致残1张技能牌。"},
-		{"name": "斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米远程2伤害，并致残1张技能牌。"},
+		{"name": "蓝锋轻斩", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米轻斩AOE，2伤害，并击退怪兽约120米。"},
+		{"name": "回旋刃撞", "range": 125.0, "damage": 2, "move_override": 220.0, "knockback": 160.0, "text": "回旋突进约220米，125米内造成2伤害，并击退怪兽约160米。"},
+		{"name": "蓝锋斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米蓝锋远斩2伤害，并致残1张技能牌。"},
+		{"name": "逆刃斩击", "range": 260.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "knockback": 140.0, "text": "260米逆刃斩击；近身3伤害，远程2伤害，并致残1张技能牌、击退约140米。"},
 		{"name": "热负荷射线", "range": 420.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "stun": 1, "text": "420米热负荷射线，3伤害，直线击退怪兽约320米并眩晕1。"},
 		{"name": "热负荷闪光", "range": 600.0, "damage": 1, "move_override": -1.0, "self_heal": 4, "paralyze": 2, "stun": 2, "text": "自身回复4HP；600米闪光造成1伤害，并麻痹2、眩晕2。"},
 	],
 	"镜像猎兵": [
 		{"name": "劣质光线", "range": 420.0, "damage": 2, "move_override": -1.0, "knockback": 220.0, "chaos_ray": true, "text": "420米劣质光线，2伤害，直线击退怪兽约220米，并破坏光线路径。"},
-		{"name": "劣质光线", "range": 420.0, "damage": 2, "move_override": -1.0, "knockback": 220.0, "chaos_ray": true, "text": "420米劣质光线，2伤害，直线击退怪兽约220米，并破坏光线路径。"},
+		{"name": "折射劣光", "range": 460.0, "damage": 2, "move_override": -1.0, "knockback": 180.0, "chaos_ray": true, "text": "460米折射劣光，2伤害，斜向击退怪兽约180米，并破坏光线路径。"},
 		{"name": "劣质炸弹", "range": 420.0, "damage": 3, "move_override": -1.0, "stun": 1, "text": "420米劣质炸弹，3伤害，并眩晕1。"},
 		{"name": "改良光线", "range": 520.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "chaos_ray": true, "text": "520米改良光线，3伤害，直线击退怪兽约320米，并破坏光线路径。"},
 		{"name": "改良炸弹", "range": 520.0, "damage": 4, "move_override": -1.0, "stun": 2, "text": "520米改良炸弹，4伤害，并眩晕2。"},
@@ -1500,12 +1500,12 @@ const MONSTER_ACTION_TABLES := {
 }
 
 const JACK_BRACELET_ACTION_TABLE := [
-	{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
-	{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
+	{"name": "腕环拳击", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米腕环拳击，2伤害，并击退怪兽约120米。"},
+	{"name": "腕环回旋踢", "range": 125.0, "damage": 2, "move_override": -1.0, "knockback": 150.0, "text": "125米回旋踢，2伤害，并击退怪兽约150米。"},
 	{"name": "手镯炸弹", "range": 420.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "420米手镯炸弹，3伤害，并直线击退怪兽约320米。"},
-	{"name": "手镯炸弹", "range": 420.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "420米手镯炸弹，3伤害，并直线击退怪兽约320米。"},
+	{"name": "延迟手镯炸弹", "range": 460.0, "damage": 3, "move_override": -1.0, "knockback": 360.0, "text": "460米延迟爆弹，3伤害，并直线击退怪兽约360米。"},
 	{"name": "星弧火花", "range": 520.0, "damage": 4, "move_override": -1.0, "text": "520米星弧火花，4伤害。"},
-	{"name": "星弧火花", "range": 520.0, "damage": 4, "move_override": -1.0, "text": "520米星弧火花，4伤害。"},
+	{"name": "星弧连闪", "range": 560.0, "damage": 4, "move_override": -1.0, "paralyze": 1, "text": "560米星弧连闪，4伤害，并短暂麻痹目标。"},
 ]
 
 const MONSTER_SKILL_WEIGHT_TABLES := {
@@ -38228,6 +38228,271 @@ func _current_run_card_pool() -> Array:
 			_append_unique_cards(result, [skill_name])
 	_append_unique_cards(result, _run_allowed_monster_card_names(1))
 	return result
+
+
+func _art_identity_audit_card_sources() -> Array:
+	var names := []
+	for skill_name_variant in SKILL_CATALOG.keys():
+		_append_unique_cards(names, [String(skill_name_variant)])
+	for skill_name_variant in COMMON_CARD_POOL:
+		_append_unique_cards(names, [String(skill_name_variant)])
+	for rank in range(1, 5):
+		_append_unique_cards(names, _monster_card_names(rank))
+	for catalog_index in range(_catalog_size()):
+		_append_unique_cards(names, _catalog_special_cards(catalog_index))
+	names.sort()
+	var sources := []
+	for card_name_variant in names:
+		var card_name := String(card_name_variant)
+		if not _skill_exists(card_name):
+			continue
+		var skill := _skill_definition(card_name)
+		if skill.is_empty():
+			continue
+		sources.append({
+			"name": card_name,
+			"kind": String(skill.get("kind", "")),
+			"tags": _skill_tag_text(skill),
+			"rank": _skill_rank(card_name),
+			"accent": _card_theme_color(skill),
+			"stats": _art_identity_card_stats(card_name, skill),
+		})
+	return sources
+
+
+func _art_identity_audit_monster_sources() -> Array:
+	var sources := []
+	for catalog_index in range(_catalog_size()):
+		var entry := _catalog_entry(catalog_index)
+		var monster_name := String(entry.get("name", "怪兽"))
+		var profile := _monster_art_profile(monster_name)
+		sources.append({
+			"name": monster_name,
+			"style": String(entry.get("style", "自动怪兽")),
+			"hp": int(entry.get("hp", 0)),
+			"armor": int(entry.get("armor", 0)),
+			"move_text": _meters_text(float(entry.get("move", 0.0))),
+			"profile": profile,
+		})
+	return sources
+
+
+func _art_identity_audit_monster_action_sources() -> Array:
+	var sources := []
+	for catalog_index in range(_catalog_size()):
+		var entry := _catalog_entry(catalog_index)
+		var monster_name := String(entry.get("name", "怪兽"))
+		var actions := _catalog_actions(catalog_index)
+		for action_index in range(actions.size()):
+			var action: Dictionary = actions[action_index]
+			var profile := _monster_action_animation_profile(monster_name, action, action_index)
+			sources.append({
+				"monster_name": monster_name,
+				"action_name": String(action.get("name", "行动")),
+				"action_index": action_index,
+				"damage": int(action.get("damage", 0)),
+				"range": float(action.get("range", 0.0)),
+				"knockback": float(action.get("knockback", 0.0)),
+				"profile": profile,
+			})
+	return sources
+
+
+func _monster_action_animation_profile(monster_name: String, action: Dictionary, action_index: int = -1) -> Dictionary:
+	var action_name := String(action.get("name", "行动"))
+	var range_meters := float(action.get("range", 0.0))
+	var move_override_mps := float(action.get("move_override", -1.0))
+	var knockback_meters := float(action.get("knockback", 0.0))
+	var throw_meters := float(action.get("throw_radius", 0.0))
+	var damage := int(action.get("damage", 0))
+	var motion_family := _monster_action_motion_family(action)
+	var profile := {
+		"motion_family": motion_family,
+		"pose_key": _monster_action_pose_key(action_name),
+		"effect_layer": _monster_action_effect_layer(action),
+		"range_meters": range_meters,
+		"move_override_mps": move_override_mps,
+		"knockback_meters": knockback_meters,
+		"throw_meters": throw_meters,
+		"damage": damage,
+		"anticipation_seconds": _monster_action_anticipation_seconds(motion_family, range_meters, move_override_mps),
+		"active_seconds": _monster_action_active_seconds(motion_family, range_meters, knockback_meters, throw_meters),
+		"recovery_seconds": _monster_action_recovery_seconds(motion_family, damage),
+		"impact_seconds": 0.45 if knockback_meters > 0.0 or throw_meters > 0.0 else 0.18,
+		"scale_contract": _monster_action_scale_contract(action),
+	}
+	profile["profile_key"] = _monster_action_animation_profile_key(profile)
+	return profile
+
+
+func _monster_action_animation_profile_key(profile: Dictionary) -> String:
+	return "%s|%s|%s|%s|%s|%s|%s|%s" % [
+		str(profile.get("motion_family", "")),
+		str(profile.get("pose_key", "")),
+		str(profile.get("effect_layer", "")),
+		str(profile.get("range_meters", "")),
+		str(profile.get("move_override_mps", "")),
+		str(profile.get("knockback_meters", "")),
+		str(profile.get("throw_meters", "")),
+		str(profile.get("damage", "")),
+	]
+
+
+func _monster_action_motion_family(action: Dictionary) -> String:
+	var name := String(action.get("name", ""))
+	var range_meters := float(action.get("range", 0.0))
+	var move_override_mps := float(action.get("move_override", -1.0))
+	if action.has("throw_radius"):
+		return "throw_grapple"
+	if action.has("miasma_count"):
+		return "miasma_zone"
+	if action.has("repair") or action.has("repair_radius") or action.has("repair_path"):
+		return "repair_beam"
+	if name.contains("咆哮"):
+		return "roar_wave"
+	if name.contains("潜"):
+		return "burrow_dash"
+	if name.contains("打滚") or name.contains("滚"):
+		return "roll_crush"
+	if name.contains("炸弹") or name.contains("爆裂") or name.contains("爆弹"):
+		return "blast_projectile"
+	if name.contains("光线") or name.contains("射线") or name.contains("火花") or name.contains("连闪") or range_meters >= 420.0:
+		return "beam_line"
+	if move_override_mps > 0.0 and int(action.get("damage", 0)) > 0:
+		return "dash_melee"
+	if float(action.get("knockback", 0.0)) > 0.0:
+		return "impact_melee"
+	if int(action.get("damage", 0)) > 0:
+		return "close_melee"
+	return "utility_pose"
+
+
+func _monster_action_effect_layer(action: Dictionary) -> String:
+	var name := String(action.get("name", ""))
+	if action.has("miasma_count") or name.contains("瘴"):
+		return "miasma_cloud"
+	if action.has("repair") or action.has("repair_radius") or action.has("repair_path"):
+		return "repair_green"
+	if action.has("paralyze") or name.contains("电") or name.contains("闪"):
+		return "electric_arc"
+	if action.has("cripple") or name.contains("刃") or name.contains("斩"):
+		return "blade_arc"
+	if action.has("stun") or action.has("knockback") or action.has("throw_radius"):
+		return "impact_burst"
+	if name.contains("火") or name.contains("焰") or name.contains("爆"):
+		return "flame_burst"
+	if name.contains("泥") or name.contains("地"):
+		return "ground_crack"
+	if name.contains("咆哮") or name.contains("潮") or name.contains("波"):
+		return "shock_wave"
+	return "body_motion"
+
+
+func _monster_action_pose_key(action_name: String) -> String:
+	var seed := _art_identity_text_seed(action_name)
+	return "%s_%03d" % [_monster_action_pose_family(action_name), seed % 997]
+
+
+func _monster_action_pose_family(action_name: String) -> String:
+	if action_name.contains("翼") or action_name.contains("俯冲"):
+		return "air_sweep"
+	if action_name.contains("冲锋") or action_name.contains("肩撞") or action_name.contains("狂奔"):
+		return "charge"
+	if action_name.contains("光线") or action_name.contains("射线") or action_name.contains("火花") or action_name.contains("连闪"):
+		return "beam"
+	if action_name.contains("炸弹") or action_name.contains("爆"):
+		return "bomb"
+	if action_name.contains("修复") or action_name.contains("藤") or action_name.contains("绿洲"):
+		return "support"
+	if action_name.contains("瘴") or action_name.contains("腐蚀"):
+		return "miasma"
+	if action_name.contains("斩") or action_name.contains("刃") or action_name.contains("手刀"):
+		return "blade"
+	if action_name.contains("泥") or action_name.contains("潜") or action_name.contains("滚"):
+		return "earth"
+	if action_name.contains("咆哮") or action_name.contains("闪光"):
+		return "wave"
+	if action_name.contains("拳") or action_name.contains("踢") or action_name.contains("尾") or action_name.contains("掌"):
+		return "melee"
+	return "pose"
+
+
+func _monster_action_anticipation_seconds(motion_family: String, range_meters: float, move_override_mps: float) -> float:
+	if motion_family == "beam_line" or motion_family == "blast_projectile":
+		return 0.32
+	if motion_family == "dash_melee" or move_override_mps > 0.0:
+		return 0.22
+	if motion_family == "throw_grapple":
+		return 0.28
+	if range_meters <= 140.0:
+		return 0.18
+	return 0.24
+
+
+func _monster_action_active_seconds(motion_family: String, range_meters: float, knockback_meters: float, throw_meters: float) -> float:
+	if motion_family == "beam_line":
+		return clampf(0.28 + range_meters / 2000.0, 0.32, 0.62)
+	if motion_family == "throw_grapple":
+		return 0.46
+	if knockback_meters > 0.0 or throw_meters > 0.0:
+		return 0.42
+	return 0.30
+
+
+func _monster_action_recovery_seconds(motion_family: String, damage: int) -> float:
+	if motion_family == "blast_projectile" or damage >= 5:
+		return 0.58
+	if motion_family == "beam_line":
+		return 0.42
+	return 0.30
+
+
+func _monster_action_scale_contract(action: Dictionary) -> String:
+	var range_meters := float(action.get("range", 0.0))
+	var move_override_mps := float(action.get("move_override", -1.0))
+	var knockback_meters := float(action.get("knockback", 0.0))
+	var throw_meters := float(action.get("throw_radius", 0.0))
+	return "range:%sm｜move:%sm/s｜knock:%sm｜throw:%sm｜linear-meter-stage" % [
+		_meters_number_text(range_meters),
+		_meters_number_text(move_override_mps),
+		_meters_number_text(knockback_meters),
+		_meters_number_text(throw_meters),
+	]
+
+
+func _meters_number_text(value: float) -> String:
+	if value < 0.0:
+		return "-"
+	return str(int(round(value)))
+
+
+func _art_identity_text_seed(text: String) -> int:
+	var seed := 193
+	for i in range(text.length()):
+		seed = (seed * 37 + text.unicode_at(i)) % 1000003
+	return max(1, seed)
+
+
+func _art_identity_card_stats(card_name: String, skill: Dictionary) -> String:
+	var parts := []
+	var cost := int(skill.get("cost", 0))
+	if cost > 0:
+		parts.append("¥%d" % cost)
+	var play_product := String(skill.get("play_product", ""))
+	if play_product != "":
+		parts.append(play_product)
+	var flow_required := int(skill.get("play_flow_required", 0))
+	if flow_required > 0:
+		parts.append("流%d" % flow_required)
+	if skill.has("damage") and int(skill.get("damage", 0)) > 0:
+		parts.append("伤%d" % int(skill.get("damage", 0)))
+	if skill.has("hp") and int(skill.get("hp", 0)) > 0:
+		parts.append("HP%d" % int(skill.get("hp", 0)))
+	if skill.has("move") and float(skill.get("move", 0.0)) > 0.0:
+		parts.append("移%s" % _meters_text(float(skill.get("move", 0.0))))
+	if parts.is_empty():
+		parts.append(_skill_family(card_name))
+	return "｜".join(parts)
 
 
 func _current_run_featured_cards() -> Array:

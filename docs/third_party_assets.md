@@ -38,6 +38,74 @@ Current player-facing use:
 - The same component overlays Night Patrol frame variants, red/blue button strips, and the sigil over procedural sci-fi motifs.
 - Because `CardArtView` is shared by hand cards, district supply cards, card-codex thumbnails, and detail cards, this is the current prototype-wide temporary card-art skin.
 
+## Moth Kaijuice sprite reference pack
+
+Source: <https://github.com/Moth-Fried-Games/moth-kaijuice>
+
+License observed from GitHub API / upstream `LICENSE`: MIT.
+
+Imported for the current prototype:
+
+- `assets/third_party/moth_kaijuice/LICENSE`
+- `assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png`
+- `assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png`
+- `assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png`
+- `assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png`
+- `assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png`
+- `assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_soldier.png`
+- `assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_m.png`
+- `assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_s.png`
+
+Current player-facing use:
+
+- `scripts/card_art_view.gd` theme `moth-kaijuice-mit-sprite-illustrations-v1` uses these sprites as the central card illustration layer.
+- `scripts/monster_art_view.gd` theme `multi-source-open-monster-sprites-v2` may use the Moth Kaijuice kaiju body art for exactly one current monster family. The art identity gate rejects broad reuse of the MOS/Moth kaiju body across the roster.
+- The sprites are combined with card-specific sprite cells, composition variants, color variants, effects, and procedural motifs so the art gate can require one visual identity per card.
+
+Implementation note:
+
+- These textures are loaded as optional Godot resources with an `Image.load()` fallback, so freshly copied PNG files work before Godot has generated `.import` metadata.
+- The imported sprites are prototype placeholders and a visual benchmark. Keep the upstream MIT license with any redistributed prototype build that includes them.
+
+## Monster Battler sprite reference pack
+
+Source: <https://github.com/victrolaface/monster_battler>
+
+License observed from upstream `LICENSE`: CC0 1.0 Universal.
+
+Imported for the current prototype:
+
+- `assets/third_party/monster_battler/LICENSE`
+- `assets/third_party/monster_battler/monsters/dino.png`
+- `assets/third_party/monster_battler/monsters/rock.png`
+- `assets/third_party/monster_battler/monsters/rodent.png`
+- `assets/third_party/monster_battler/monsters/salamander.png`
+- `assets/third_party/monster_battler/monsters/turtle.png`
+
+Current player-facing use:
+
+- `scripts/monster_art_view.gd` uses these sprites as distinct current monster body-art families, with one body family per assigned monster.
+- These CC0 sprites are temporary prototype monster anchors; later passes should replace them with owned or more coherent sci-fi kaiju art while preserving the one-monster-one-body-family gate.
+
+## Kenney CC0 sprite reference pack
+
+Source: <https://github.com/iwenzhou/kenney>
+
+License observed from upstream `LICENSE.md`: CC0 1.0 Universal.
+
+Imported for the current prototype:
+
+- `assets/third_party/kenney_cc0/LICENSE.md`
+- `assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png`
+- `assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png`
+- `assets/third_party/kenney_cc0/hexagon/alienBlue.png`
+- `assets/third_party/kenney_cc0/space/enemyUFO.png`
+
+Current player-facing use:
+
+- `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for ocean, alien, ooze/support, and orbital/flying silhouettes.
+- The Kenney assets are CC0 placeholders; keep source attribution in this document for traceability even though attribution is not required by the license.
+
 ## Terraforming Mars open-source reference
 
 Source: <https://github.com/terraforming-mars/terraforming-mars>

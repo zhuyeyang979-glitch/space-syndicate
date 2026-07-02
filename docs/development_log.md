@@ -110,6 +110,35 @@
 - `tests/layout_scene_smoke_test.gd` 通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜卡牌/怪兽逐张逐只美术硬门禁
+
+- 回应“接下来所有任务先做一张一张插画、一个一个怪兽美术”的约束，本轮把美术生产从口头要求改成可测试闸门：
+  - 新增 `docs/art_production_contract.md`，明确当前阶段先做卡牌插画、怪兽造型和怪兽动作 profile；未完成前不继续扩玩法/经济/AI/菜单。
+  - 新增 `tests/art_identity_gate_test.gd`，完整审计全卡池、怪兽目录和怪兽动作表。
+  - 卡牌必须有唯一 `sprite_key / sprite_cell / layout_variant / palette_variant / effect_variant / composition_variant / motif_family`。
+  - 怪兽必须有唯一 `sprite_key / sprite_cell / silhouette / layout_variant / palette_variant / effect_layer / composition_variant`。
+  - 怪兽动作必须有唯一 `motion_family / pose_key / effect_layer / range_meters / move_override_mps / knockback_meters / timing / scale_contract`。
+- 接入 `Moth-Fried-Games/moth-kaijuice` MIT 素材：
+  - 新增 `assets/third_party/moth_kaijuice/`，包含 kaiju、力场、光线、机甲、坦克、士兵和建筑 PNG，以及 upstream `LICENSE`。
+  - `CardArtView` 新增 `moth-kaijuice-mit-sprite-illustrations-v1` 中央插画层，配合 Night Patrol 框架、sprite cell、构图/色彩/特效变体生成每张卡的视觉 profile。
+  - `MonsterArtView` 新增 `moth-kaijuice-mit-monster-sprites-v1` 怪兽 sprite 层，按怪兽 motif 映射 kaiju / mech / vehicle sprite family 和不同 effect layer。
+  - `docs/third_party_assets.md` 记录素材来源、许可证、用途和运行时加载方式。
+- 拆掉怪兽动作表中的重复动作占位：
+  - 例如流星哨兵的两个 `普攻` 改为 `翼爪扫击` / `俯冲肩撞`。
+  - 蓝锋骑士的重复普攻/斩击改为 `蓝锋轻斩`、`回旋刃撞`、`蓝锋斩击`、`逆刃斩击`。
+  - 镜像猎兵的重复 `劣质光线` 改为 `劣质光线` / `折射劣光`。
+  - 腕环哨兵动作也从重复占位改成独立拳击、回旋踢、炸弹、延迟炸弹、星弧火花、星弧连闪。
+- 新增有头截图脚本 `tests/art_contact_sheet_capture.gd`：
+  - 生成 `reports/art/art_card_monster_contact_sheet_1600x960.png`。
+  - 生成 `reports/art/art_monster_action_profiles_1600x960.png`。
+  - headless dummy renderer 无法抓 viewport texture，因此该截图脚本必须用有头 Godot 运行。
+- `tests/visual_snapshot.gd` 增加护栏，确认 Moth Kaijuice 素材、Art Production Contract、art identity gate 和 contact sheet capture 脚本都存在。
+
+### 本轮验证
+
+- `tests/art_identity_gate_test.gd` 通过。
+- 有头运行 `tests/art_contact_sheet_capture.gd` 通过，已生成两张 `reports/art/` 验收截图。
 - `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `play_table_1280x720.png`，确认剧本教练辅助入口在标题栏且主体区域只保留主 CTA。
 
 ## 2026-07-03｜剧本教练收敛为一主按钮
@@ -6224,6 +6253,36 @@
 
 ### 本轮验证
 
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜怪兽美术改为多来源硬门禁
+
+- 纠正上一轮风险：Moth Kaijuice/MOS kaiju 不能被当成所有怪兽的通用身体模板，只能服务一个当前怪兽家族。
+- 新增两组可追踪开源占位素材：
+  - `victrolaface/monster_battler`，CC0，导入 dino / rock / rodent / salamander / turtle。
+  - Kenney CC0 参考包，导入 fish / slime / alienBlue / enemyUFO。
+- `MonsterArtView` 改成 `multi-source-open-monster-sprites-v2`：
+  - 每只当前怪兽输出 `visual_source_id`。
+  - 每只当前怪兽使用不同 body sprite key。
+  - MOS/Moth kaiju body art 只分配给 `焰环幼星` 这一只怪兽家族。
+  - 其它怪兽分别来自 Kenney 或 Monster Battler 的不同身体家族，并继续叠加本项目自己的轮廓、颜色、光效和标题结构。
+- `tests/art_identity_gate_test.gd` 加硬门禁：
+  - 当前怪兽数 = body sprite key 数 = `visual_source_id` 数。
+  - `moth_source_count == 1`。
+  - 怪兽动作仍要求每个 action slot 有独立动作 profile、pose、effect、timing、meter scale。
+- `docs/art_production_contract.md` 写入当前阶段硬约束：接下来每个怪兽/每张卡牌必须逐个完成，不能靠同一素材换动作、换颜色糊过去。
+- `tests/art_contact_sheet_capture.gd` 继续输出美术验收截图，供人工看缩略图和动作表是否真的有差异。
+
+### 本轮验证
+
+- `tests/art_identity_gate_test.gd` 通过。
+- `tests/art_contact_sheet_capture.gd` 有头通过，重新生成：
+  - `reports/art/art_card_monster_contact_sheet_1600x960.png`
+  - `reports/art/art_monster_action_profiles_1600x960.png`
 - `tests/visual_snapshot.gd` 通过。
 - `tests/ui_text_smoke_test.gd` 通过。
 - `tests/layout_scene_smoke_test.gd` 通过。

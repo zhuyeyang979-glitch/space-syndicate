@@ -2,6 +2,22 @@ extends Control
 
 const STAR_COUNT_FULL := 34
 const STAR_COUNT_COMPACT := 20
+const MONSTER_ART_EXTERNAL_THEME := "multi-source-open-monster-sprites-v2"
+const MOTH_KAIJUICE_KAIJU_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png"
+const MOTH_KAIJUICE_ATFIELD_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png"
+const MOTH_KAIJUICE_LASER_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png"
+const MOTH_KAIJUICE_MECH_PATH := "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png"
+const MOTH_KAIJUICE_TANK_PATH := "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png"
+const MOTH_KAIJUICE_CELL_SIZE := Vector2(93.0, 93.0)
+const MONSTER_BATTLER_DINO_PATH := "res://assets/third_party/monster_battler/monsters/dino.png"
+const MONSTER_BATTLER_ROCK_PATH := "res://assets/third_party/monster_battler/monsters/rock.png"
+const MONSTER_BATTLER_RODENT_PATH := "res://assets/third_party/monster_battler/monsters/rodent.png"
+const MONSTER_BATTLER_SALAMANDER_PATH := "res://assets/third_party/monster_battler/monsters/salamander.png"
+const MONSTER_BATTLER_TURTLE_PATH := "res://assets/third_party/monster_battler/monsters/turtle.png"
+const KENNEY_FISH_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png"
+const KENNEY_SLIME_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png"
+const KENNEY_ALIEN_BLUE_PATH := "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
+const KENNEY_ENEMY_UFO_PATH := "res://assets/third_party/kenney_cc0/space/enemyUFO.png"
 
 var monster_name := "怪兽"
 var style_text := "自动怪兽"
@@ -14,10 +30,28 @@ var glyph := "怪"
 var motif := "beast"
 var subtitle := "星兽档案"
 var compact := false
+var moth_kaijuice_textures := {}
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_meta("monster_art_external_asset_theme", MONSTER_ART_EXTERNAL_THEME)
+	moth_kaijuice_textures = {
+		"moth_kaijuice_kaiju": _load_optional_texture(MOTH_KAIJUICE_KAIJU_PATH),
+		"moth_kaijuice_atfield": _load_optional_texture(MOTH_KAIJUICE_ATFIELD_PATH),
+		"moth_kaijuice_laser": _load_optional_texture(MOTH_KAIJUICE_LASER_PATH),
+		"moth_kaijuice_mech": _load_optional_texture(MOTH_KAIJUICE_MECH_PATH),
+		"moth_kaijuice_tank": _load_optional_texture(MOTH_KAIJUICE_TANK_PATH),
+		"monster_battler_dino": _load_optional_texture(MONSTER_BATTLER_DINO_PATH),
+		"monster_battler_rock": _load_optional_texture(MONSTER_BATTLER_ROCK_PATH),
+		"monster_battler_rodent": _load_optional_texture(MONSTER_BATTLER_RODENT_PATH),
+		"monster_battler_salamander": _load_optional_texture(MONSTER_BATTLER_SALAMANDER_PATH),
+		"monster_battler_turtle": _load_optional_texture(MONSTER_BATTLER_TURTLE_PATH),
+		"kenney_fish": _load_optional_texture(KENNEY_FISH_PATH),
+		"kenney_slime": _load_optional_texture(KENNEY_SLIME_PATH),
+		"kenney_alien_blue": _load_optional_texture(KENNEY_ALIEN_BLUE_PATH),
+		"kenney_enemy_ufo": _load_optional_texture(KENNEY_ENEMY_UFO_PATH),
+	}
 
 
 func set_monster(name: String, style: String, hp_value: int, armor_value: int, move_value_text: String, profile: Dictionary, is_compact: bool = false) -> void:
@@ -43,6 +77,7 @@ func _draw() -> void:
 	_draw_starfield(rect)
 	_draw_portrait_frame(rect)
 	_draw_silhouette(rect)
+	_draw_moth_kaijuice_reference_sprite(rect)
 	_draw_nameplate(rect)
 	_draw_stat_strip(rect)
 
@@ -229,6 +264,206 @@ func _draw_glyph(center: Vector2, radius: float) -> void:
 	var y := center.y + radius * 0.18
 	draw_string(font, Vector2(center.x - radius, y + 2.0), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, font_size, Color("#020617"))
 	draw_string(font, Vector2(center.x - radius, y), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, font_size, Color("#f8fafc"))
+
+
+func monster_visual_profile_snapshot() -> Dictionary:
+	var seed := _name_seed()
+	var sprite_key := _monster_reference_sprite_key()
+	return {
+		"theme": MONSTER_ART_EXTERNAL_THEME,
+		"visual_source_id": _monster_visual_source_id(sprite_key),
+		"sprite_key": sprite_key,
+		"sprite_cell": _monster_reference_sprite_cell(sprite_key),
+		"silhouette": motif,
+		"layout_variant": seed % 11,
+		"palette_variant": int(seed / 7) % 13,
+		"effect_layer": _monster_reference_effect_layer(),
+		"composition_variant": int(seed / 17) % 17,
+	}
+
+
+func monster_visual_profile_key() -> String:
+	var profile := monster_visual_profile_snapshot()
+	return "%s|%s|%s|%s|%s|%s|%s|%s" % [
+		str(profile.get("visual_source_id", "")),
+		str(profile.get("sprite_key", "")),
+		str(profile.get("sprite_cell", "")),
+		str(profile.get("silhouette", "")),
+		str(profile.get("layout_variant", "")),
+		str(profile.get("palette_variant", "")),
+		str(profile.get("effect_layer", "")),
+		str(profile.get("composition_variant", "")),
+	]
+
+
+func _draw_moth_kaijuice_reference_sprite(rect: Rect2) -> void:
+	var profile := monster_visual_profile_snapshot()
+	var sprite_key := String(profile.get("sprite_key", ""))
+	var texture := moth_kaijuice_textures.get(sprite_key, null) as Texture2D
+	if texture == null:
+		return
+	var seed := _name_seed()
+	var portrait_rect := Rect2(
+		Vector2(rect.size.x * 0.18, rect.size.y * (0.22 if compact else 0.20)),
+		Vector2(rect.size.x * 0.64, rect.size.y * (0.44 if compact else 0.50))
+	)
+	var halo := accent.lightened(0.28)
+	halo.a = 0.20 if compact else 0.28
+	draw_circle(portrait_rect.get_center(), min(portrait_rect.size.x, portrait_rect.size.y) * 0.48, halo)
+	var scale := 0.82 + float(seed % 4) * 0.045
+	var source_region := _monster_reference_sprite_region(sprite_key)
+	var sprite_rect := Rect2(Vector2.ZERO, _fit_size_inside(portrait_rect.size * scale, source_region.size))
+	sprite_rect.position = portrait_rect.position + (portrait_rect.size - sprite_rect.size) * 0.5 + Vector2(float((seed % 5) - 2) * 2.2, float((int(seed / 17) % 5) - 2) * 2.0)
+	var tint := Color(1.0, 1.0, 1.0, 0.74 if compact else 0.88)
+	tint = tint.lerp(accent.lightened(0.14), 0.10)
+	draw_texture_rect_region(texture, sprite_rect, source_region, tint)
+
+	var effect_layer := String(profile.get("effect_layer", ""))
+	if effect_layer == "field":
+		_draw_moth_kaijuice_monster_field(portrait_rect)
+	elif effect_layer == "laser":
+		_draw_moth_kaijuice_monster_laser(portrait_rect, seed)
+	elif effect_layer == "impact":
+		_draw_moth_kaijuice_monster_impact(portrait_rect, seed)
+
+
+func _draw_moth_kaijuice_monster_field(portrait_rect: Rect2) -> void:
+	var center := portrait_rect.get_center()
+	var field := secondary.lightened(0.20)
+	field.a = 0.34 if compact else 0.48
+	for i in range(3):
+		var radius: float = min(portrait_rect.size.x, portrait_rect.size.y) * (0.22 + float(i) * 0.095)
+		draw_arc(center, radius, -PI * 0.15 + float(i) * 0.28, PI * 1.58 + float(i) * 0.18, 48, field, 2.0, true)
+		field.a *= 0.76
+
+
+func _draw_moth_kaijuice_monster_laser(portrait_rect: Rect2, seed: int) -> void:
+	var y := portrait_rect.position.y + portrait_rect.size.y * (0.35 + float(seed % 4) * 0.08)
+	var core := accent.lightened(0.45)
+	var glow := secondary.lightened(0.35)
+	glow.a = 0.26 if compact else 0.38
+	core.a = 0.72 if compact else 0.88
+	var start := Vector2(portrait_rect.position.x + portrait_rect.size.x * 0.10, y)
+	var end := Vector2(portrait_rect.end.x - portrait_rect.size.x * 0.08, y + float((seed % 3) - 1) * 4.0)
+	draw_line(start, end, glow, max(7.0, portrait_rect.size.y * 0.055), true)
+	draw_line(start, end, core, max(2.0, portrait_rect.size.y * 0.022), true)
+
+
+func _draw_moth_kaijuice_monster_impact(portrait_rect: Rect2, seed: int) -> void:
+	var impact := secondary.lightened(0.16)
+	impact.a = 0.40 if compact else 0.56
+	for i in range(3):
+		var t := float(i) / 2.0
+		var p0 := portrait_rect.position + Vector2(portrait_rect.size.x * (0.18 + t * 0.28), portrait_rect.size.y * 0.82)
+		var p1 := p0 + Vector2(float((seed + i) % 5 - 2) * 6.0, -portrait_rect.size.y * (0.24 + t * 0.08))
+		draw_line(p0, p1, impact, 2.0 + t, true)
+
+
+func _monster_reference_sprite_key() -> String:
+	match motif:
+		"miasma":
+			return "kenney_fish"
+		"mud":
+			return "monster_battler_rock"
+		"meteor_sentinel":
+			return "kenney_enemy_ufo"
+		"prism_armor":
+			return "monster_battler_dino"
+		"oasis_support":
+			return "kenney_slime"
+		"ember_ring":
+			return "moth_kaijuice_kaiju"
+		"blue_lancer":
+			return "kenney_alien_blue"
+		"mirror_hunter":
+			return "monster_battler_salamander"
+		_:
+			return "monster_battler_rodent"
+
+
+func _monster_visual_source_id(sprite_key: String) -> String:
+	match sprite_key:
+		"moth_kaijuice_kaiju":
+			return "moth_kaijuice_mit_kaiju_family"
+		"monster_battler_dino":
+			return "monster_battler_cc0_dino_family"
+		"monster_battler_rock":
+			return "monster_battler_cc0_rock_family"
+		"monster_battler_rodent":
+			return "monster_battler_cc0_rodent_family"
+		"monster_battler_salamander":
+			return "monster_battler_cc0_salamander_family"
+		"monster_battler_turtle":
+			return "monster_battler_cc0_turtle_family"
+		"kenney_fish":
+			return "kenney_cc0_fish_family"
+		"kenney_slime":
+			return "kenney_cc0_slime_family"
+		"kenney_alien_blue":
+			return "kenney_cc0_alien_blue_family"
+		"kenney_enemy_ufo":
+			return "kenney_cc0_enemy_ufo_family"
+		_:
+			return "procedural_fallback_family"
+
+
+func _monster_reference_sprite_cell(sprite_key: String) -> String:
+	if sprite_key == "moth_kaijuice_kaiju":
+		var cell_index := _name_seed() % 32
+		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+	if sprite_key == "moth_kaijuice_mech":
+		var cell_index := _name_seed() % 24
+		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+	return "full"
+
+
+func _monster_reference_sprite_region(sprite_key: String) -> Rect2:
+	var texture := moth_kaijuice_textures.get(sprite_key, null) as Texture2D
+	if texture == null:
+		return Rect2()
+	if sprite_key == "moth_kaijuice_kaiju" or sprite_key == "moth_kaijuice_mech":
+		var cell_text := _monster_reference_sprite_cell(sprite_key)
+		var parts := cell_text.split(",")
+		var cell_x := int(parts[0]) if parts.size() > 0 else 0
+		var cell_y := int(parts[1]) if parts.size() > 1 else 0
+		return Rect2(Vector2(float(cell_x) * MOTH_KAIJUICE_CELL_SIZE.x, float(cell_y) * MOTH_KAIJUICE_CELL_SIZE.y), MOTH_KAIJUICE_CELL_SIZE)
+	return Rect2(Vector2.ZERO, texture.get_size())
+
+
+func _monster_reference_effect_layer() -> String:
+	match motif:
+		"miasma", "oasis_support":
+			return "field"
+		"ember_ring", "blue_lancer", "mirror_hunter":
+			return "laser"
+		"mud", "prism_armor":
+			return "impact"
+		_:
+			return "none"
+
+
+func _fit_size_inside(bounds: Vector2, source_size: Vector2) -> Vector2:
+	if source_size.x <= 0.0 or source_size.y <= 0.0:
+		return bounds
+	var aspect := source_size.x / source_size.y
+	var fitted := bounds
+	if fitted.x / max(1.0, fitted.y) > aspect:
+		fitted.x = fitted.y * aspect
+	else:
+		fitted.y = fitted.x / aspect
+	return fitted
+
+
+func _load_optional_texture(path: String) -> Texture2D:
+	if path == "":
+		return null
+	if ResourceLoader.exists(path):
+		var resource := load(path)
+		return resource as Texture2D
+	var image := Image.new()
+	if image.load(path) == OK:
+		return ImageTexture.create_from_image(image)
+	return null
 
 
 func _draw_nameplate(rect: Rect2) -> void:

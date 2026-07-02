@@ -7,6 +7,16 @@ const NIGHT_PATROL_SIGIL_PATH := "res://assets/third_party/night_patrol/ui/card-
 const NIGHT_PATROL_PANEL_PATH := "res://assets/third_party/night_patrol/ui/panel-talisman.png"
 const NIGHT_PATROL_BUTTON_RED_PATH := "res://assets/third_party/night_patrol/ui/button-red.png"
 const NIGHT_PATROL_BUTTON_BLUE_PATH := "res://assets/third_party/night_patrol/ui/button-blue.png"
+const MOTH_KAIJUICE_SPRITE_THEME := "moth-kaijuice-mit-sprite-illustrations-v1"
+const MOTH_KAIJUICE_KAIJU_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png"
+const MOTH_KAIJUICE_ATFIELD_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png"
+const MOTH_KAIJUICE_LASER_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png"
+const MOTH_KAIJUICE_MECH_PATH := "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_mech.png"
+const MOTH_KAIJUICE_TANK_PATH := "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_tank.png"
+const MOTH_KAIJUICE_SOLDIER_PATH := "res://assets/third_party/moth_kaijuice/city/npcs/mothkaiju_npc_soldier.png"
+const MOTH_KAIJUICE_BUILDING_M_PATH := "res://assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_m.png"
+const MOTH_KAIJUICE_BUILDING_S_PATH := "res://assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_s.png"
+const MOTH_KAIJUICE_CELL_SIZE := Vector2(93.0, 93.0)
 const NIGHT_PATROL_FRAME_PATHS := {
 	"monster_card": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
 	"military_force": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
@@ -33,11 +43,13 @@ var night_patrol_button_red_texture: Texture2D
 var night_patrol_button_blue_texture: Texture2D
 var night_patrol_frame_textures := {}
 var night_patrol_default_frame_texture: Texture2D
+var moth_kaijuice_textures := {}
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_meta("card_art_external_asset_theme", CARD_ART_EXTERNAL_THEME)
+	set_meta("card_art_open_source_sprite_theme", MOTH_KAIJUICE_SPRITE_THEME)
 	night_patrol_sigil_texture = _load_optional_texture(NIGHT_PATROL_SIGIL_PATH)
 	night_patrol_panel_texture = _load_optional_texture(NIGHT_PATROL_PANEL_PATH)
 	night_patrol_button_red_texture = _load_optional_texture(NIGHT_PATROL_BUTTON_RED_PATH)
@@ -46,6 +58,16 @@ func _ready() -> void:
 	for kind_variant in NIGHT_PATROL_FRAME_PATHS.keys():
 		var kind := String(kind_variant)
 		night_patrol_frame_textures[kind] = _load_optional_texture(String(NIGHT_PATROL_FRAME_PATHS[kind]))
+	moth_kaijuice_textures = {
+		"kaiju": _load_optional_texture(MOTH_KAIJUICE_KAIJU_PATH),
+		"atfield": _load_optional_texture(MOTH_KAIJUICE_ATFIELD_PATH),
+		"laser": _load_optional_texture(MOTH_KAIJUICE_LASER_PATH),
+		"mech": _load_optional_texture(MOTH_KAIJUICE_MECH_PATH),
+		"tank": _load_optional_texture(MOTH_KAIJUICE_TANK_PATH),
+		"soldier": _load_optional_texture(MOTH_KAIJUICE_SOLDIER_PATH),
+		"building_m": _load_optional_texture(MOTH_KAIJUICE_BUILDING_M_PATH),
+		"building_s": _load_optional_texture(MOTH_KAIJUICE_BUILDING_S_PATH),
+	}
 
 
 func set_card(name: String, kind: String, tags: String, color: Color, rank: int, is_compact: bool, stats: String = "") -> void:
@@ -70,6 +92,7 @@ func _draw() -> void:
 	_draw_starfield(rect)
 	_draw_night_patrol_reference_frame(rect)
 	_draw_night_patrol_reference_strips(rect)
+	_draw_moth_kaijuice_reference_illustration(rect)
 	_draw_motif(rect)
 	_draw_rank_marks(rect)
 	_draw_border(rect)
@@ -169,10 +192,15 @@ func _draw_motif(rect: Rect2) -> void:
 
 
 func _load_optional_texture(path: String) -> Texture2D:
-	if path == "" or not ResourceLoader.exists(path):
+	if path == "":
 		return null
-	var resource := load(path)
-	return resource as Texture2D
+	if ResourceLoader.exists(path):
+		var resource := load(path)
+		return resource as Texture2D
+	var image := Image.new()
+	if image.load(path) == OK:
+		return ImageTexture.create_from_image(image)
+	return null
 
 
 func _night_patrol_frame_texture_for_kind() -> Texture2D:
@@ -235,6 +263,152 @@ func _draw_night_patrol_sigil(center: Vector2, radius: float) -> void:
 	var tint := accent.lightened(0.38)
 	tint.a = 0.26 if compact else 0.34
 	draw_texture_rect(night_patrol_sigil_texture, Rect2(center - Vector2(icon_size, icon_size) * 0.5, Vector2(icon_size, icon_size)), false, tint)
+
+
+func card_visual_profile_snapshot() -> Dictionary:
+	var seed := _name_seed()
+	var sprite_key := _moth_kaijuice_card_sprite_key()
+	return {
+		"theme": MOTH_KAIJUICE_SPRITE_THEME,
+		"sprite_key": sprite_key,
+		"sprite_cell": _moth_kaijuice_card_sprite_cell(sprite_key),
+		"layout_variant": seed % 9,
+		"palette_variant": int(seed / 7) % 11,
+		"effect_variant": int(seed / 13) % 9,
+		"composition_variant": int(seed / 17) % 37,
+		"motif_family": _card_motif_family_key(),
+	}
+
+
+func card_visual_profile_key() -> String:
+	var profile := card_visual_profile_snapshot()
+	return "%s|%s|%s|%s|%s|%s|%s" % [
+		str(profile.get("sprite_key", "")),
+		str(profile.get("sprite_cell", "")),
+		str(profile.get("layout_variant", "")),
+		str(profile.get("palette_variant", "")),
+		str(profile.get("effect_variant", "")),
+		str(profile.get("composition_variant", "")),
+		str(profile.get("motif_family", "")),
+	]
+
+
+func _draw_moth_kaijuice_reference_illustration(rect: Rect2) -> void:
+	var profile := card_visual_profile_snapshot()
+	var sprite_key := String(profile.get("sprite_key", ""))
+	var texture := moth_kaijuice_textures.get(sprite_key, null) as Texture2D
+	if texture == null:
+		return
+	var seed := _name_seed()
+	var art_rect := Rect2(
+		Vector2(rect.size.x * 0.18, rect.size.y * (0.22 if compact else 0.20)),
+		Vector2(rect.size.x * 0.64, rect.size.y * (0.44 if compact else 0.48))
+	)
+	var plate := Color("#020617").lerp(accent, 0.22)
+	plate.a = 0.48 if compact else 0.56
+	draw_rect(art_rect.grow(2.0), plate, true)
+	var rim := accent.lightened(0.26)
+	rim.a = 0.34 if compact else 0.46
+	draw_rect(art_rect.grow(2.0), rim, false, 1.4)
+
+	var scale := 0.78 + float(seed % 5) * 0.045
+	var offset := Vector2(float((seed % 7) - 3) * art_rect.size.x * 0.025, float((int(seed / 11) % 5) - 2) * art_rect.size.y * 0.025)
+	var sprite_rect := Rect2(Vector2.ZERO, art_rect.size * scale)
+	sprite_rect.position = art_rect.position + (art_rect.size - sprite_rect.size) * 0.5 + offset
+	var tint := Color(1.0, 1.0, 1.0, 0.74 if compact else 0.86)
+	tint = tint.lerp(accent.lightened(0.18), 0.08 + float(seed % 3) * 0.035)
+	var src_rect := _moth_kaijuice_card_sprite_region(sprite_key)
+	draw_texture_rect_region(texture, sprite_rect, src_rect, tint)
+
+	if str(profile.get("effect_variant", "")) in ["2", "5", "8"] or _contains_any("%s｜%s" % [card_kind, card_tags], ["光线", "攻击", "破坏", "齐射"]):
+		_draw_moth_kaijuice_laser_accent(art_rect, seed)
+	if _contains_any("%s｜%s" % [card_kind, card_tags], ["格挡", "防御", "保险", "修复", "否决"]):
+		_draw_moth_kaijuice_field_accent(art_rect, seed)
+
+
+func _draw_moth_kaijuice_laser_accent(art_rect: Rect2, seed: int) -> void:
+	var texture := moth_kaijuice_textures.get("laser", null) as Texture2D
+	if texture == null:
+		return
+	var h: float = max(3.0, art_rect.size.y * 0.07)
+	var y: float = art_rect.position.y + art_rect.size.y * (0.30 + float(seed % 5) * 0.09)
+	var src := Rect2(Vector2.ZERO, texture.get_size())
+	var tint := accent.lightened(0.34)
+	tint.a = 0.52 if compact else 0.66
+	draw_texture_rect_region(texture, Rect2(Vector2(art_rect.position.x, y), Vector2(art_rect.size.x, h)), src, tint)
+
+
+func _draw_moth_kaijuice_field_accent(art_rect: Rect2, seed: int) -> void:
+	var texture := moth_kaijuice_textures.get("atfield", null) as Texture2D
+	if texture == null:
+		return
+	var size_factor: float = 0.46 + float(seed % 4) * 0.04
+	var field_size := Vector2(art_rect.size.x * size_factor, art_rect.size.y * size_factor)
+	var field_rect := Rect2(art_rect.position + (art_rect.size - field_size) * 0.5, field_size)
+	var tint := Color(1.0, 1.0, 1.0, 0.30 if compact else 0.42)
+	draw_texture_rect_region(texture, field_rect, Rect2(Vector2.ZERO, texture.get_size()), tint)
+
+
+func _moth_kaijuice_card_sprite_key() -> String:
+	var identity := "%s｜%s｜%s｜%s" % [card_name, card_kind, card_tags, card_stats]
+	if card_kind == "monster_card" or _contains_any(identity, ["怪兽", "星兽", "诱导", "夺取"]):
+		return "kaiju"
+	if _contains_any(identity, ["机甲", "战斗机", "轰炸", "防卫军"]):
+		return "mech"
+	if _contains_any(identity, ["坦克", "导弹", "舰队", "战舰", "潜航"]):
+		return "tank"
+	if _contains_any(identity, ["士兵", "军队", "齐射", "拆解", "牵引", "冻结"]):
+		return "soldier"
+	if _contains_any(identity, ["光线", "炮", "射线", "远距", "黑客", "风暴"]):
+		return "laser"
+	if _contains_any(identity, ["格挡", "否决", "保险", "修复", "稳定", "护"]):
+		return "atfield"
+	if _contains_any(identity, ["城市", "融资", "合约", "商品", "需求", "生产", "交通", "GDP", "期货", "仓", "港"]):
+		return "building_m" if _name_seed() % 2 == 0 else "building_s"
+	return "building_s" if _name_seed() % 3 == 0 else "building_m"
+
+
+func _moth_kaijuice_card_sprite_cell(sprite_key: String) -> String:
+	if sprite_key == "kaiju":
+		var cell_index := _name_seed() % 32
+		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+	if sprite_key == "mech":
+		var cell_index := _name_seed() % 24
+		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+	return "full"
+
+
+func _moth_kaijuice_card_sprite_region(sprite_key: String) -> Rect2:
+	var texture := moth_kaijuice_textures.get(sprite_key, null) as Texture2D
+	if texture == null:
+		return Rect2()
+	if sprite_key == "kaiju" or sprite_key == "mech":
+		var cell_text := _moth_kaijuice_card_sprite_cell(sprite_key)
+		var parts := cell_text.split(",")
+		var cell_x := int(parts[0]) if parts.size() > 0 else 0
+		var cell_y := int(parts[1]) if parts.size() > 1 else 0
+		return Rect2(Vector2(float(cell_x) * MOTH_KAIJUICE_CELL_SIZE.x, float(cell_y) * MOTH_KAIJUICE_CELL_SIZE.y), MOTH_KAIJUICE_CELL_SIZE)
+	return Rect2(Vector2.ZERO, texture.get_size())
+
+
+func _card_motif_family_key() -> String:
+	if card_kind == "monster_card":
+		return "monster"
+	if card_kind.contains("military"):
+		return "military"
+	if card_kind.contains("contract"):
+		return "contract"
+	if card_kind.contains("intel"):
+		return "intel"
+	if card_kind.contains("futures") or card_kind.contains("gdp") or card_kind.contains("speculation"):
+		return "finance"
+	if card_kind.contains("route"):
+		return "route"
+	if card_kind.contains("weather") or card_kind.contains("news"):
+		return "weather"
+	if card_kind.contains("product") or card_kind.contains("demand") or card_kind.contains("economy"):
+		return "product"
+	return "utility"
 
 
 func _draw_military_motif(center: Vector2, radius: float) -> void:

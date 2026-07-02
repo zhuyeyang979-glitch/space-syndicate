@@ -1,0 +1,157 @@
+# Art Production Contract
+
+This document is a hard development gate for the current phase of Space Syndicate.
+
+## Current priority
+
+Do not start new gameplay, AI, economy, campaign, menu, or balance feature work until the card illustration pass and monster art pass are complete enough for human playtesting.
+
+The active production queue is:
+
+1. Make every monster family visually distinct.
+2. Make every card face visually distinct.
+3. Give every monster action an independent motion/attack profile.
+4. Verify the full card, monster, and monster-action catalog with automated art identity tests.
+5. Only then resume downstream gameplay/balance/UI feature work.
+
+## Card illustration hard standard
+
+Every player-facing card must have a unique visual identity. It is not enough to change the title or effect text.
+
+Each card illustration profile must include:
+
+- `sprite_key`: which imported/procedural illustration family is used.
+- `sprite_cell`: which sprite-sheet cell or texture region is used.
+- `layout_variant`: where the visual weight sits inside the card art area.
+- `palette_variant`: color treatment beyond the card route color.
+- `effect_variant`: overlay/effect treatment such as beam, shield, route, crack, market pulse, or weather wave.
+- `composition_variant`: a secondary composition differentiator for cards that share sprite family and type.
+- `motif_family`: monster, military, finance, route, contract, intel, product, weather, or utility.
+
+Acceptance:
+
+- The full card catalog must be audited, not only the cards that appear in one run.
+- Every audited card must have one unique visual profile key.
+- The key may be generated from the card name as a seed, but the key itself must be composed from visual dimensions, not the card name string.
+- At least six sprite/illustration families must be used across the current catalog.
+- Card art must be visible in hand, region supply, card codex thumbnail, and card detail contexts because these all share `CardArtView`.
+
+## Monster art hard standard
+
+Every monster family must have a distinct silhouette and portrait profile.
+
+Each monster art profile must include:
+
+- `visual_source_id`: the exact body-art source family. This is stricter than a palette or pose variant.
+- `sprite_key`: the imported/procedural body sprite family.
+- `sprite_cell`: concrete sprite-sheet cell or texture region.
+- `silhouette`: monster-specific silhouette/motif key.
+- `layout_variant`: pose/layout variation.
+- `palette_variant`: color treatment.
+- `effect_layer`: field, laser, impact, miasma, weather, or none.
+- `composition_variant`: additional composition differentiator.
+
+Acceptance:
+
+- Every current monster family must have a unique visual profile key.
+- Every current monster family must have a distinct silhouette/motif assignment.
+- Every current monster family must use a distinct body sprite key and a distinct `visual_source_id`; it is not acceptable to reuse one monster body with different action overlays.
+- Moth Kaijuice/MOS kaiju body art can be assigned to at most one current monster family. Other monsters must come from different open-source body-art families or a clearly different authored/procedural body.
+- Monster art must be visible in the bestiary/detail contexts and reusable by later map tokens/card faces.
+
+## Monster action hard standard
+
+Every monster action slot must have an authored animation profile. Repeating the same action entry to fake probability weight is not allowed. If two probability slots are meant to feel similar, they still need different action names, poses, timings, ranges, impact shapes, or effect layers.
+
+Each monster action profile must include:
+
+- `motion_family`: close melee, dash melee, beam line, projectile blast, throw/grapple, miasma zone, repair beam, burrow dash, roar wave, roll crush, or another explicit family.
+- `pose_key`: an authored pose identity derived from the action, not a generic `"attack"` fallback.
+- `effect_layer`: impact burst, blade arc, electric arc, miasma cloud, repair green, flame burst, ground crack, shock wave, or another explicit effect.
+- `range_meters`: action reach in meters.
+- `move_override_mps`: action movement speed in meters per second, or `-1` if stationary.
+- `knockback_meters`: knockback distance in meters.
+- `throw_meters`: throw/launch distance in meters.
+- `anticipation_seconds`, `active_seconds`, `recovery_seconds`, `impact_seconds`.
+- `scale_contract`: a readable summary tying movement, attack, and knockback to meter-based staging.
+
+Acceptance:
+
+- Every current monster must keep six authored action slots with independent animation identities.
+- Action names must not be duplicated within one monster.
+- `profile_key` and `pose_key` must not duplicate within one monster.
+- Damage actions must not use a generic utility pose.
+- Knockback/throw impacts must resolve within a readable sub-second window; current hard gate is `impact_seconds <= 0.60`.
+- The current roster must cover at least eight motion families and seven effect layers.
+- Full movement and combat animation implementation must follow these profiles: normal movement, flying movement, dash, beam, projectile, throw, knockback, field, repair, and roar cannot all reuse one animation.
+
+## Open-source asset policy for this phase
+
+Current imported sources:
+
+- Night Patrol UI skin: `assets/third_party/night_patrol/`, CC BY-NC 4.0, temporary non-commercial prototype use.
+- Moth Kaijuice city/kaiju sprites: `assets/third_party/moth_kaijuice/`, MIT, temporary prototype illustration source. MOS/Moth kaiju body art is limited to one monster family in the current roster.
+- Monster Battler monster sprites: `assets/third_party/monster_battler/`, CC0, temporary monster body-art source.
+- Kenney CC0 sprites: `assets/third_party/kenney_cc0/`, CC0, temporary monster body-art source.
+
+Before any new copied asset becomes player-facing:
+
+1. Save the LICENSE or source attribution under `assets/third_party/<source>/`.
+2. Add the source to `docs/third_party_assets.md`.
+3. State whether it is copied, adapted, or only used as visual reference.
+4. Add/extend an automated art identity test if the asset creates a new visual family.
+
+## Automated gate
+
+Run:
+
+```powershell
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/art_identity_gate_test.gd
+```
+
+This test is allowed to read dev-only art audit helpers. It must not expose private gameplay information to player UI.
+
+The gate fails if:
+
+- a card lacks a concrete sprite key/cell;
+- a card lacks multi-axis visual fields;
+- two cards share the same visual profile key;
+- fewer than six card sprite families are used;
+- a monster lacks a concrete sprite key/cell;
+- a monster lacks a concrete `visual_source_id`;
+- a monster lacks multi-axis visual fields;
+- two monsters share the same visual profile key;
+- any current monster shares another monster's silhouette/motif;
+- any current monster shares another monster's body sprite key or `visual_source_id`;
+- more than one current monster uses Moth Kaijuice/MOS kaiju body art;
+- a monster action duplicates another action name, pose key, or animation profile inside the same monster;
+- a damage action uses a generic utility pose;
+- knockback/throw impact takes more than 0.60 seconds;
+- roster-wide motion/effect diversity falls below the current gate.
+
+## Visual review screenshots
+
+Run this as a visible Godot process, not `--headless`, because the headless dummy renderer cannot capture viewport textures:
+
+```powershell
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --script res://tests/art_contact_sheet_capture.gd
+```
+
+It writes:
+
+- `reports/art/art_card_monster_contact_sheet_1600x960.png`
+- `reports/art/art_monster_action_profiles_1600x960.png`
+
+Use these images for human review after each art pass. The first sheet checks whether cards and monsters are visually distinguishable at a glance. The second sheet checks whether each monster action has a distinct motion/effect/timing/meter profile before full animation work starts.
+
+## Human review checklist
+
+For every card or monster completed manually, record:
+
+- name;
+- route/type;
+- source asset or procedural profile;
+- what makes it visually different at thumbnail size;
+- what makes it visually different at hover/detail size;
+- whether the art matches the card/monster mechanics;
+- whether the license/attribution is recorded.

@@ -7,7 +7,7 @@
 - 手牌、区域牌架、结算展示、图鉴缩略图、图鉴详情必须共享同一套卡面视觉语言。
 - `CardUI` / `CardFace` 负责卡牌框架：费用、名称、等级、插图区、关键词、效果和类型。
 - `CardUI` 必须有可见的类型符号锚点；玩家不能只靠读文字判断这张牌属于怪兽、军队、金融、商品或情报路线。
-- `CardArtView` 负责程序美术：星空底、类型纹样、等级标记、Night Patrol backplate/frame/strip/sigil 可选参考层。
+- `CardArtView` 负责共享卡面美术：星空底、Moth Kaijuice 中央 sprite 插画、类型纹样、等级标记、Night Patrol backplate/frame/strip/sigil 参考层。
 - Night Patrol 参考层必须肉眼可见：内板、边框、上下饰条和中心纹章共同形成临时卡面，而不是只留一层低透明度装饰。
 - 区域牌架左栏是 market-cell 小卡，必须用 `CardArtView` 做视觉锚；右栏购买预览再用 `CardFace` 展示更完整的读牌状态。
 
@@ -26,13 +26,15 @@
 
 ## 3. 视觉差异硬指标
 
-- 怪兽、军队、金融、商品、合约、情报、天气、商路、直接互动等牌型要有不同 glyph / motif。
+- 怪兽、军队、金融、商品、合约、情报、天气、商路、直接互动等牌型要有不同 sprite family / sprite cell / glyph / motif。
 - 不允许只靠文字区分卡牌类别。
-- 同一类别的不同路线至少要通过颜色、纹样、关键词或统计行形成第二层差异。
+- 同一类别的不同路线至少要通过 sprite cell、构图、颜色、纹样、关键词或统计行形成第二层差异。
+- 每张卡必须能生成唯一 visual profile；详见 `docs/art_production_contract.md` 和 `tests/art_identity_gate_test.gd`。
 
 ## 4. 开源素材边界
 
 - 当前原型可使用 `assets/third_party/night_patrol/ui/` 下的 frame、sigil、panel、button strip 作为非商业参考素材。
+- 当前原型可使用 `assets/third_party/moth_kaijuice/` 下的 MIT sprite 作为卡牌插画/怪兽造型临时素材。
 - 代码必须把这些素材当作 optional reference layer：缺失时回退程序美术，不让游戏崩溃。
 - 商业发布前必须替换为自有素材或获得明确授权；详见 `docs/third_party_assets.md`。
 
