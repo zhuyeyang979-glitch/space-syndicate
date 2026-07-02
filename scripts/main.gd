@@ -25056,8 +25056,8 @@ func _main_action_dock_entries(player_index: int) -> Array:
 		var player: Dictionary = players[player_index]
 		var skill: Dictionary = (player.get("slots", []) as Array)[play_slot]
 		play_accent = _card_theme_color(skill)
-		play_label = "首召" if bool(skill.get("starter_play_free", false)) else "出牌"
-		play_status = _short_card_text(_card_display_name(String(skill.get("name", "卡牌"))), 5)
+		play_label = "出牌"
+		play_status = "首召" if bool(skill.get("starter_play_free", false)) else _short_card_text(_card_display_name(String(skill.get("name", "卡牌"))), 5)
 		play_tooltip = _skill_play_requirement_text(skill, player_index)
 	entries.append({
 		"id": "play",
@@ -42936,14 +42936,14 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 			if _entity_distance_to_district(actor, target) > area_range:
 				_log("%s目标距离%s，超过范围%s。" % [String(skill["name"]), _entity_distance_to_district_label(actor, target), _meters_text(area_range)])
 				return false
-			_add_monster_attack_effect(_entity_world_position(actor), _district_center(target), String(skill["name"]), area_range, _auto_monster_color(slot), area_range > MELEE_RANGE_METERS)
+			_add_monster_attack_effect(_entity_world_position(actor), _district_center(target), String(skill["name"]), area_range, _auto_monster_color(slot), area_range > MELEE_RANGE_METERS, _monster_action_animation_profile(String(actor.get("name", "怪兽")), skill))
 			_damage_district(target, max(1, int(skill.get("damage", 1))), String(skill["name"]))
 			resolved = true
 		"miasma_shot", "corrosive_breath":
 			if _entity_distance_to_district(actor, target) > float(skill.get("range", 0.0)):
 				_log("%s目标距离%s，超过射程%s。" % [String(skill["name"]), _entity_distance_to_district_label(actor, target), _meters_text(float(skill.get("range", 0.0)))])
 				return false
-			_add_monster_attack_effect(_entity_world_position(actor), _district_center(target), String(skill["name"]), float(skill.get("range", 0.0)), _auto_monster_color(slot), true)
+			_add_monster_attack_effect(_entity_world_position(actor), _district_center(target), String(skill["name"]), float(skill.get("range", 0.0)), _auto_monster_color(slot), true, _monster_action_animation_profile(String(actor.get("name", "怪兽")), skill))
 			_damage_district(target, max(1, int(skill.get("damage", 1))), String(skill["name"]))
 			_place_auto_miasma(actor, target, int(skill.get("miasma_count", 0)), String(skill["name"]))
 			resolved = true
@@ -43168,7 +43168,7 @@ func _trigger_bound_monster_skill(skill: Dictionary, _player: Dictionary) -> boo
 	var in_range := required_range <= 0.0 or _entity_distance_to_district(actor, target_after_move) <= required_range
 	if in_range:
 		var district_damage: int = max(AUTO_MONSTER_MIN_SPECIAL_DAMAGE, int(ceil(float(action.get("damage", 1)) * 0.5)))
-		_add_monster_attack_effect(_entity_world_position(actor), _district_center(target_after_move), String(action.get("name", "兽技")), required_range, _auto_monster_color(slot), required_range > MELEE_RANGE_METERS)
+		_add_monster_attack_effect(_entity_world_position(actor), _district_center(target_after_move), String(action.get("name", "兽技")), required_range, _auto_monster_color(slot), required_range > MELEE_RANGE_METERS, _monster_action_animation_profile(String(actor.get("name", "怪兽")), action))
 		_damage_district(target_after_move, district_damage, "%s·%s" % [String(actor.get("name", "怪兽")), String(action.get("name", "兽技"))])
 		_auto_monster_resource_drain(actor, target_after_move, String(action.get("name", "兽技")))
 		var panic_gain := int(action.get("panic", 0))
@@ -43264,7 +43264,7 @@ func _command_auto_monster_attack(slot: int, skill: Dictionary) -> bool:
 			_meters_text(range_limit),
 		])
 		return false
-	_add_monster_attack_effect(_entity_world_position(actor), _entity_world_position(target), String(skill.get("name", "攻击")), range_limit, _auto_monster_color(slot), range_limit > MELEE_RANGE_METERS)
+	_add_monster_attack_effect(_entity_world_position(actor), _entity_world_position(target), String(skill.get("name", "攻击")), range_limit, _auto_monster_color(slot), range_limit > MELEE_RANGE_METERS, _monster_action_animation_profile(String(actor.get("name", "怪兽")), skill))
 	_auto_monster_take_damage(target_slot, int(skill.get("damage", 0)), "%s·%s" % [String(actor.get("name", "怪兽")), String(skill.get("name", "攻击"))], slot)
 	var knockback_model := _monster_knockback_model(skill, actor)
 	var knockback: float = float(knockback_model.get("knockback_m", skill.get("knockback", 0.0)))
@@ -44789,7 +44789,7 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 		_entity_world_position(actor)
 	)
 	if district_in_range:
-		_add_monster_attack_effect(_entity_world_position(actor), _district_center(target_after_move), String(action.get("name", "行动")), required_range, _auto_monster_color(slot), required_range > MELEE_RANGE_METERS)
+		_add_monster_attack_effect(_entity_world_position(actor), _district_center(target_after_move), String(action.get("name", "行动")), required_range, _auto_monster_color(slot), required_range > MELEE_RANGE_METERS, _monster_action_animation_profile(String(actor.get("name", "怪兽")), action, action_index))
 		_damage_district(target_after_move, district_damage, "%s·%s" % [String(actor.get("name", "怪兽")), String(action.get("name", "行动"))])
 		_auto_monster_resource_drain(actor, target_after_move, String(action.get("name", "行动")))
 		var panic_gain := int(action.get("panic", 0))
@@ -46029,7 +46029,7 @@ func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dict
 		_auto_monster_color(slot),
 		_entity_world_position(actor)
 	)
-	_add_monster_attack_effect(_entity_world_position(actor), _entity_world_position(target), action_name, range_limit, _auto_monster_color(slot), range_limit > MELEE_RANGE_METERS)
+	_add_monster_attack_effect(_entity_world_position(actor), _entity_world_position(target), action_name, range_limit, _auto_monster_color(slot), range_limit > MELEE_RANGE_METERS, _monster_action_animation_profile(String(actor.get("name", "怪兽")), action))
 	var outgoing_damage := int(action.get("damage", 0)) + _auto_monster_damage_bonus_from_passives(slot)
 	var dealt_damage := _auto_monster_take_damage(target_slot, outgoing_damage, source, slot)
 	_record_monster_wager_damage(slot, target_slot, dealt_damage)
@@ -46970,7 +46970,7 @@ func _add_map_event_effect(kind: String, world_position: Vector2, color: Color, 
 	})
 
 
-func _add_map_event_attack_effect(kind: String, from_position: Vector2, to_position: Vector2, color: Color, label: String = "", duration: float = 0.95, radius_m: float = 80.0) -> void:
+func _add_map_event_attack_effect(kind: String, from_position: Vector2, to_position: Vector2, color: Color, label: String = "", duration: float = 0.95, radius_m: float = 80.0, action_profile: Dictionary = {}) -> void:
 	_push_map_event_effect({
 		"kind": kind,
 		"position": _wrap_world_position(to_position),
@@ -46981,6 +46981,14 @@ func _add_map_event_attack_effect(kind: String, from_position: Vector2, to_posit
 		"life": max(0.1, duration),
 		"duration": max(0.1, duration),
 		"radius_m": max(1.0, radius_m),
+		"motion_family": String(action_profile.get("motion_family", "")),
+		"pose_key": String(action_profile.get("pose_key", "")),
+		"effect_layer": String(action_profile.get("effect_layer", "")),
+		"profile_key": String(action_profile.get("profile_key", "")),
+		"range_meters": float(action_profile.get("range_meters", radius_m)),
+		"knockback_meters": float(action_profile.get("knockback_meters", 0.0)),
+		"throw_meters": float(action_profile.get("throw_meters", 0.0)),
+		"impact_seconds": float(action_profile.get("impact_seconds", 0.45)),
 	})
 
 
@@ -46990,9 +46998,9 @@ func _push_map_event_effect(effect: Dictionary) -> void:
 		map_event_effects.pop_front()
 
 
-func _add_monster_attack_effect(from_position: Vector2, to_position: Vector2, source: String, range_limit_m: float, color: Color, is_ranged: bool = false) -> void:
+func _add_monster_attack_effect(from_position: Vector2, to_position: Vector2, source: String, range_limit_m: float, color: Color, is_ranged: bool = false, action_profile: Dictionary = {}) -> void:
 	var kind := "laser" if is_ranged or _source_looks_ranged(source, range_limit_m) else "melee"
-	_add_map_event_attack_effect(kind, from_position, to_position, color, source, 1.05 if kind == "laser" else 0.82, range_limit_m)
+	_add_map_event_attack_effect(kind, from_position, to_position, color, source, 1.05 if kind == "laser" else 0.82, range_limit_m, action_profile)
 
 
 func _add_district_damage_effect(index: int, source: String, color: Color = Color("#f97316")) -> void:

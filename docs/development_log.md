@@ -3,6 +3,26 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜怪兽动作 Profile 接入运行态地图演出
+
+- 继续推进“每只怪兽、每种攻击都要有独立动作”的硬约束，这轮不改规则、伤害、概率或经济，只把已经存在的动作 profile 真正接进主地图演出：
+  - `_add_monster_attack_effect()` 现在可携带 `motion_family / pose_key / effect_layer / profile_key / range_meters / knockback_meters / throw_meters / impact_seconds`。
+  - 自动怪兽特殊行动、遭遇战、绑定技能、怪兽主动攻击会把 `_monster_action_animation_profile()` 生成的 profile 传给地图事件。
+  - `MapView` 新增 profile-driven 灰盒动作语法：beam、projectile、dash/roll/burrow、throw、miasma、repair、roar/wave、melee/blade/electric/flame 都有不同绘制骨架。
+  - `MapView` 的 visual payload signature 纳入动作 profile 字段，避免同一位置不同动作被缓存成同一张图。
+- 新增 `tests/monster_action_map_effect_capture.gd`：
+  - 读取真实怪兽动作审计数据，挑选不同 `motion_family` 的动作。
+  - 使用真实 `MapView` 生成 `reports/art/art_monster_action_map_effects_1600x960.png`。
+  - 验收图显示开发字段，但玩家正式 UI 不展示这些字段。
+- `docs/art_production_contract.md` 更新：动作 profile 不只停留在图鉴 contact sheet，运行态地图事件也必须消费这些字段；后续精修动画时不能退回卡名硬编码。
+
+### 本轮验证
+
+- `tests/monster_action_map_effect_capture.gd` 有头通过，输出 `reports/art/art_monster_action_map_effects_1600x960.png`。
+- `tests/art_identity_gate_test.gd` 通过，继续保证 MOS/Moth kaiju 只作为一个怪兽美术来源，不允许全怪兽复用换皮。
+- `tests/visual_snapshot.gd`、`tests/ui_text_smoke_test.gd`、`tests/layout_scene_smoke_test.gd`、`tests/smoke_test.gd --check-only`、完整 `tests/smoke_test.gd` 通过。
+- 顺手修正旧行动 dock 的首召按钮呈现：主按钮保持“出牌”，首召作为状态显示，避免玩家和测试都在同一动作入口上看到不稳定标签。
+
 ## 2026-07-03｜运行期数值梯度与规则漏洞补洞
 
 - 追加收尾：把运行期平衡从 `main.gd` 继续拆出独立模块，避免后续把所有公式堆回主控脚本：

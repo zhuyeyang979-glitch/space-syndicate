@@ -1454,6 +1454,12 @@ func _draw_map_event_attack(effect: Dictionary, alpha: float, progress: float, k
 	var from_pos: Vector2 = from_projected["position"]
 	var to_pos: Vector2 = to_projected["position"]
 	var color: Color = effect.get("color", Color("#fbbf24"))
+	var motion_family := String(effect.get("motion_family", ""))
+	var effect_layer := String(effect.get("effect_layer", ""))
+	if motion_family != "" or effect_layer != "":
+		if _draw_profiled_map_event_attack(from_pos, to_pos, color, alpha, progress, kind, motion_family, effect_layer):
+			_draw_map_event_label(to_pos, String(effect.get("label", "")), color, alpha)
+			return
 	if kind == "melee":
 		var sweep_color := color.lightened(0.10)
 		sweep_color.a = 0.28 + alpha * 0.46
@@ -1483,6 +1489,231 @@ func _draw_map_event_attack(effect: Dictionary, alpha: float, progress: float, k
 	draw_circle(spark_pos, 4.0 + alpha * 5.0, spark_color)
 	_draw_map_event_burst(to_pos, color, alpha, progress, 1.0)
 	_draw_map_event_label(to_pos, String(effect.get("label", "")), color, alpha)
+
+
+func _draw_profiled_map_event_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float, kind: String, motion_family: String, effect_layer: String) -> bool:
+	var profiled_color := _profiled_effect_color(color, effect_layer)
+	match motion_family:
+		"beam_line":
+			_draw_profiled_beam_attack(from_pos, to_pos, profiled_color, alpha, progress, effect_layer)
+			return true
+		"blast_projectile":
+			_draw_profiled_projectile_attack(from_pos, to_pos, profiled_color, alpha, progress, effect_layer)
+			return true
+		"dash_melee", "roll_crush", "burrow_dash":
+			_draw_profiled_dash_attack(from_pos, to_pos, profiled_color, alpha, progress, motion_family)
+			return true
+		"throw_grapple":
+			_draw_profiled_throw_attack(from_pos, to_pos, profiled_color, alpha, progress)
+			return true
+		"miasma_zone":
+			_draw_profiled_miasma_attack(from_pos, to_pos, profiled_color, alpha, progress)
+			return true
+		"repair_beam":
+			_draw_profiled_repair_attack(from_pos, to_pos, profiled_color, alpha, progress)
+			return true
+		"roar_wave":
+			_draw_profiled_wave_attack(from_pos, to_pos, profiled_color, alpha, progress)
+			return true
+	if effect_layer == "blade_arc" or effect_layer == "electric_arc" or effect_layer == "flame_burst" or kind == "melee":
+		_draw_profiled_melee_attack(from_pos, to_pos, profiled_color, alpha, progress, effect_layer)
+		return true
+	return false
+
+
+func _profiled_effect_color(base: Color, effect_layer: String) -> Color:
+	match effect_layer:
+		"electric_arc":
+			return base.lerp(Color("#67e8f9"), 0.52).lightened(0.10)
+		"blade_arc":
+			return base.lerp(Color("#e0f2fe"), 0.34).lightened(0.06)
+		"miasma_cloud":
+			return base.lerp(Color("#a855f7"), 0.58)
+		"repair_green":
+			return base.lerp(Color("#22c55e"), 0.60).lightened(0.08)
+		"flame_burst":
+			return base.lerp(Color("#fb923c"), 0.58).lightened(0.06)
+		"ground_crack":
+			return base.lerp(Color("#92400e"), 0.42)
+		"shock_wave":
+			return base.lerp(Color("#fde68a"), 0.40).lightened(0.10)
+	return base
+
+
+func _draw_profiled_beam_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float, effect_layer: String) -> void:
+	var direction: Vector2 = to_pos - from_pos
+	if direction.length() <= 1.0:
+		_draw_map_event_burst(to_pos, color, alpha, progress, 1.0)
+		return
+	var normal := direction.normalized().orthogonal()
+	var glow := color
+	glow.a = 0.14 + alpha * 0.34
+	var core := color.lightened(0.30)
+	core.a = 0.44 + alpha * 0.44
+	var hot := Color("#f8fafc")
+	hot.a = 0.32 + alpha * 0.48
+	var offset: float = 2.5 + sin(progress * PI) * 2.2
+	draw_line(from_pos, to_pos, glow, 13.0 + alpha * 5.0, true)
+	draw_line(from_pos + normal * offset, to_pos + normal * offset, core, 2.4 + alpha * 2.4, true)
+	draw_line(from_pos - normal * offset, to_pos - normal * offset, core, 2.4 + alpha * 2.4, true)
+	draw_line(from_pos, to_pos, hot, 1.2 + alpha * 1.8, true)
+	for i in range(4):
+		var t := clampf(progress + (float(i) - 1.5) * 0.08, 0.0, 1.0)
+		var spark := from_pos.lerp(to_pos, t)
+		draw_circle(spark, 2.0 + alpha * 2.4, hot)
+	_draw_arrow_head(from_pos, to_pos, core, alpha, 0.70)
+	_draw_map_event_burst(to_pos, color, alpha, progress, 1.05)
+	if effect_layer == "electric_arc":
+		_draw_zigzag_arc(from_pos, to_pos, color.lightened(0.35), alpha, 6)
+
+
+func _draw_profiled_projectile_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float, effect_layer: String) -> void:
+	var projectile := from_pos.lerp(to_pos, clampf(progress, 0.0, 1.0))
+	var direction: Vector2 = to_pos - from_pos
+	var normal := Vector2.UP
+	if direction.length() > 1.0:
+		normal = direction.normalized().orthogonal()
+	var trail_color := color
+	trail_color.a = 0.18 + alpha * 0.34
+	draw_line(from_pos, projectile, trail_color, 2.4 + alpha * 2.0, true)
+	var orb := color.lightened(0.25)
+	orb.a = 0.48 + alpha * 0.38
+	draw_circle(projectile, 5.5 + alpha * 5.0, orb)
+	var hot := Color("#fef3c7") if effect_layer == "flame_burst" else Color("#f8fafc")
+	hot.a = 0.36 + alpha * 0.46
+	draw_circle(projectile + normal * 2.0, 2.6 + alpha * 2.2, hot)
+	_draw_map_event_burst(to_pos, color, alpha, progress, 0.95 + progress * 0.35)
+
+
+func _draw_profiled_dash_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float, motion_family: String) -> void:
+	var direction: Vector2 = to_pos - from_pos
+	if direction.length() <= 1.0:
+		_draw_map_event_burst(to_pos, color, alpha, progress, 0.95)
+		return
+	var forward := direction.normalized()
+	var normal := forward.orthogonal()
+	var dash_head := from_pos.lerp(to_pos, clampf(progress * 1.08, 0.0, 1.0))
+	var trail := color
+	trail.a = 0.16 + alpha * 0.34
+	_draw_dashed_attack_line(from_pos, to_pos, trail, 8.0, 8.0, 3.0 + alpha * 1.5)
+	var wedge_size := 12.0 + alpha * 8.0
+	var wedge := PackedVector2Array([
+		dash_head + forward * wedge_size,
+		dash_head - forward * wedge_size * 0.65 + normal * wedge_size * 0.60,
+		dash_head - forward * wedge_size * 0.65 - normal * wedge_size * 0.60,
+	])
+	var body := color.lightened(0.18)
+	body.a = 0.36 + alpha * 0.42
+	draw_colored_polygon(wedge, body)
+	if motion_family == "roll_crush":
+		draw_arc(dash_head, wedge_size * 0.72, progress * TAU, progress * TAU + PI * 1.55, 28, body.lightened(0.12), 3.0, true)
+	if motion_family == "burrow_dash":
+		_draw_dashed_attack_line(from_pos + normal * 6.0, to_pos + normal * 6.0, body.darkened(0.22), 5.0, 7.0, 2.4)
+		_draw_dashed_attack_line(from_pos - normal * 6.0, to_pos - normal * 6.0, body.darkened(0.22), 5.0, 7.0, 2.4)
+	_draw_map_event_burst(to_pos, color, alpha, progress, 0.92)
+
+
+func _draw_profiled_throw_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float) -> void:
+	var mid := from_pos.lerp(to_pos, 0.5) + Vector2(0.0, -36.0 * sin(progress * PI))
+	var curve := color
+	curve.a = 0.18 + alpha * 0.38
+	var last := from_pos
+	for i in range(1, 12):
+		var t := float(i) / 11.0
+		var a := from_pos.lerp(mid, t)
+		var b := mid.lerp(to_pos, t)
+		var next := a.lerp(b, t)
+		draw_line(last, next, curve, 2.2 + alpha * 1.3, true)
+		last = next
+	var grip := color.lightened(0.22)
+	grip.a = 0.32 + alpha * 0.46
+	draw_arc(from_pos, 15.0 + progress * 5.0, -0.8, PI + 0.8, 32, grip, 3.0, true)
+	_draw_map_event_burst(to_pos, color, alpha, progress, 1.22)
+
+
+func _draw_profiled_miasma_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float) -> void:
+	var mist := color
+	mist.a = 0.10 + alpha * 0.28
+	for i in range(6):
+		var t := float(i) / 5.0
+		var center := from_pos.lerp(to_pos, t)
+		var drift := Vector2(cos(t * TAU + progress), sin(t * TAU * 0.7 + progress)) * (5.0 + progress * 8.0)
+		draw_circle(center + drift, 7.0 + alpha * 8.0 + float(i % 2) * 3.0, mist)
+	var ring := color.lightened(0.18)
+	ring.a = 0.18 + alpha * 0.36
+	draw_arc(to_pos, 18.0 + progress * 26.0, 0.0, TAU, 48, ring, 2.0 + alpha * 1.4, true)
+
+
+func _draw_profiled_repair_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float) -> void:
+	var line := color.lightened(0.18)
+	line.a = 0.22 + alpha * 0.42
+	draw_line(from_pos, to_pos, line, 4.0 + alpha * 2.5, true)
+	for i in range(4):
+		var t := clampf(progress + float(i) * 0.13, 0.0, 1.0)
+		var node := from_pos.lerp(to_pos, t)
+		draw_line(node + Vector2(-5.0, 0.0), node + Vector2(5.0, 0.0), Color("#dcfce7"), 1.8 + alpha, true)
+		draw_line(node + Vector2(0.0, -5.0), node + Vector2(0.0, 5.0), Color("#dcfce7"), 1.8 + alpha, true)
+	draw_arc(to_pos, 16.0 + progress * 18.0, 0.0, TAU, 36, line, 2.4, true)
+
+
+func _draw_profiled_wave_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float) -> void:
+	var center := from_pos.lerp(to_pos, 0.62)
+	var wave := color.lightened(0.22)
+	wave.a = 0.16 + alpha * 0.36
+	for i in range(3):
+		var radius := 16.0 + progress * 46.0 + float(i) * 16.0
+		draw_arc(center, radius, 0.0, TAU, 64, wave, 2.0 + alpha * 1.4, true)
+	_draw_arrow_head(from_pos, to_pos, wave, alpha, 0.55)
+
+
+func _draw_profiled_melee_attack(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, progress: float, effect_layer: String) -> void:
+	var angle := (to_pos - from_pos).angle()
+	var radius: float = clamp(22.0 + progress * 24.0, 20.0, 52.0)
+	var sweep := color.lightened(0.12)
+	sweep.a = 0.26 + alpha * 0.50
+	var span := 1.10
+	if effect_layer == "blade_arc":
+		span = 0.72
+	if effect_layer == "electric_arc":
+		span = 1.35
+	draw_arc(to_pos, radius, angle - span, angle + span, 32, sweep, 4.0 + alpha * 2.5, true)
+	if effect_layer == "blade_arc":
+		draw_arc(to_pos, radius * 0.72, angle - 0.52, angle + 0.52, 24, Color("#f8fafc"), 1.4 + alpha, true)
+	elif effect_layer == "electric_arc":
+		_draw_zigzag_arc(from_pos, to_pos, sweep.lightened(0.30), alpha, 5)
+	elif effect_layer == "flame_burst":
+		for i in range(5):
+			var flare_angle := angle - 0.8 + float(i) * 0.4
+			draw_line(to_pos, to_pos + Vector2(cos(flare_angle), sin(flare_angle)) * radius * (0.45 + progress * 0.35), sweep, 2.0, true)
+	_draw_map_event_burst(to_pos, color, alpha, progress, 0.88)
+
+
+func _draw_dashed_attack_line(from_pos: Vector2, to_pos: Vector2, color: Color, dash: float, gap: float, width: float) -> void:
+	var direction: Vector2 = to_pos - from_pos
+	var length := direction.length()
+	if length <= 1.0:
+		return
+	var forward := direction / length
+	var cursor := 0.0
+	while cursor < length:
+		var next_cursor: float = min(length, cursor + dash)
+		draw_line(from_pos + forward * cursor, from_pos + forward * next_cursor, color, width, true)
+		cursor += dash + gap
+
+
+func _draw_zigzag_arc(from_pos: Vector2, to_pos: Vector2, color: Color, alpha: float, segments: int) -> void:
+	var direction: Vector2 = to_pos - from_pos
+	if direction.length() <= 1.0:
+		return
+	var normal := direction.normalized().orthogonal()
+	var last := from_pos
+	color.a = 0.20 + alpha * 0.42
+	for i in range(1, segments + 1):
+		var t := float(i) / float(segments)
+		var offset := normal * ((-1.0 if i % 2 == 0 else 1.0) * (4.0 + alpha * 5.0))
+		var next := from_pos.lerp(to_pos, t) + offset
+		draw_line(last, next, color, 1.4 + alpha, true)
+		last = next
 
 
 func _draw_map_event_local(effect: Dictionary, alpha: float, progress: float, kind: String) -> void:
@@ -2044,7 +2275,7 @@ func _build_visual_payload_signature(
 		"layer:%s" % new_visual_layer_focus,
 		"trail:%s" % _marker_array_signature(trails, ["from", "to", "color", "label", "style", "duration", "remaining"]),
 		"call:%s" % _marker_array_signature(callouts, ["position", "actor", "action", "detail", "color", "duration", "remaining"]),
-		"effect:%s" % _marker_array_signature(event_effects, ["position", "kind", "label", "color", "duration", "remaining", "radius"]),
+		"effect:%s" % _marker_array_signature(event_effects, ["position", "from", "to", "kind", "label", "color", "duration", "remaining", "radius", "motion_family", "pose_key", "effect_layer", "profile_key", "range_meters", "knockback_meters", "throw_meters", "impact_seconds"]),
 		"monster:%s" % _marker_array_signature(monster_markers, ["position", "label", "name", "glyph", "motif", "sprite_key", "sprite_cell", "visual_source_id", "upstream_source_id", "down"]),
 		"city:%s" % _marker_array_signature(new_city_markers, ["district", "position", "level", "active", "tag", "products", "competition", "rise"]),
 		"route:%s" % _marker_array_signature(new_trade_route_markers, ["product", "from", "to", "points", "disrupted", "flow_multiplier"]),

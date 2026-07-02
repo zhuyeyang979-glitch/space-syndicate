@@ -63,6 +63,7 @@ Acceptance:
 - Moth Kaijuice/MOS kaiju body art can be assigned to at most one current monster family. Other monsters must come from different open-source body-art families or a clearly different authored/procedural body.
 - The current monster roster must draw body art from at least four upstream/open-source packs, and no single upstream pack may provide more than half of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
 - Monster art must be visible in the bestiary/detail contexts, monster cards, and runtime map tokens. The map token may be compact, but it must consume the same `sprite_key`, `visual_source_id`, and `upstream_source_id` contract instead of falling back to only number/color/glyph.
+- Runtime monster actions must consume the same action animation profile used by the art audit. A beam, projectile, dash, miasma, repair, roar/wave, throw, and melee action may still be greybox, but they must not all collapse into one generic map line or circle.
 
 ## Monster action hard standard
 
@@ -89,6 +90,7 @@ Acceptance:
 - Knockback/throw impacts must resolve within a readable sub-second window; current hard gate is `impact_seconds <= 0.60`.
 - The current roster must cover at least eight motion families and seven effect layers.
 - Full movement and combat animation implementation must follow these profiles: normal movement, flying movement, dash, beam, projectile, throw, knockback, field, repair, and roar cannot all reuse one animation.
+- Runtime `MapView` event payloads must carry `motion_family`, `pose_key`, `effect_layer`, `profile_key`, and meter fields so later animation polish can happen without adding card-name-specific hacks.
 
 ## Open-source asset policy for this phase
 
@@ -152,9 +154,11 @@ It writes:
 - `reports/art/art_card_monster_contact_sheet_1600x960.png`
 - `reports/art/art_monster_action_profiles_1600x960.png`
 - `reports/art/art_monster_map_tokens_1600x960.png`
+- `reports/art/art_monster_action_map_effects_1600x960.png`
 
 Use these images for human review after each art pass. The first sheet checks whether cards and monsters are visually distinguishable at a glance. The second sheet checks whether each monster action has a distinct motion/effect/timing/meter profile before full animation work starts.
 The third sheet checks whether the real `MapView` renders source-specific monster body sprites at tabletop-token scale, so the in-game planet is not reduced to numbered colored dots.
+The fourth sheet checks whether the real `MapView` renders distinct greybox action grammars for beams, projectiles, dash/roll/burrow, miasma, repair, roar/wave, throw, and melee before final frame-by-frame monster animation work.
 
 ## Human review checklist
 
