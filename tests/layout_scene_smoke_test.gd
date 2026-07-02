@@ -638,6 +638,18 @@ func _check_split_game_screen_data_binding() -> void:
 			hand_rack.emit_signal("card_drag_preview_moved", blocked_preview_data, map_host.get_global_rect().get_center())
 			await process_frame
 			_expect(drag_drop_target_panel != null and drag_drop_target_panel.visible and drag_drop_target_label != null and drag_drop_target_label.text.contains("冷却中") and drag_preview_label != null and drag_preview_label.text.contains("不能出"), "split drag preview shows rule-state block reasons over MapHost instead of a generic map hint")
+			_expect(drag_drop_target_label != null and drag_drop_target_label.horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT and drag_drop_target_label.vertical_alignment == VERTICAL_ALIGNMENT_TOP, "map drop-target label stays on the target edge instead of covering the planet center")
+			if drag_preview_panel is Control:
+				var map_rect := map_host.get_global_rect()
+				var planet_core_rect := Rect2(
+					map_rect.position + Vector2(map_rect.size.x * 0.24, map_rect.size.y * 0.08),
+					Vector2(map_rect.size.x * 0.52, map_rect.size.y * 0.84)
+				)
+				var preview_rect := (drag_preview_panel as Control).get_global_rect()
+				var preview_left_of_map := preview_rect.position.x + preview_rect.size.x <= map_rect.position.x - 4.0
+				var preview_right_of_map := preview_rect.position.x >= map_rect.position.x + map_rect.size.x + 4.0
+				_expect(not preview_rect.intersects(planet_core_rect), "invalid drag preview docks away from the central planet core")
+				_expect(preview_left_of_map or preview_right_of_map, "invalid drag preview uses the map side lane instead of hovering over the globe")
 		hand_rack.emit_signal("card_drag_preview_ended", preview_data)
 		await process_frame
 		_expect(drag_preview_panel != null and not drag_preview_panel.visible, "split HandRack drag preview end hides OverlayLayer preview")

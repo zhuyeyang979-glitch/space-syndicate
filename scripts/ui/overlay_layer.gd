@@ -25,6 +25,7 @@ signal temporary_decision_action_requested(action_id: String)
 @onready var drag_preview_label: Label = %DragPreviewLabel
 
 const DRAG_PREVIEW_SIZE := Vector2(176.0, 118.0)
+const DRAG_PREVIEW_SIDE_GAP := 12.0
 const TEMP_DECISION_BODY_LIMIT := 72
 const SIDE_DRAWER_SUMMARY_LIMIT := 96
 const SIDE_DRAWER_SECTION_BODY_LIMIT := 132
@@ -109,7 +110,7 @@ func show_drag_preview(text: String, screen_position: Vector2 = Vector2.ZERO, dr
 	drag_preview_panel.custom_minimum_size = DRAG_PREVIEW_SIZE
 	drag_preview_panel.size = DRAG_PREVIEW_SIZE
 	drag_preview_label.custom_minimum_size = Vector2(DRAG_PREVIEW_SIZE.x - 22.0, 0.0)
-	drag_preview_panel.position = _clamped_overlay_position(drag_preview_panel, screen_position)
+	drag_preview_panel.position = _drag_preview_position(drag_preview_panel, screen_position, drop_hint)
 	_apply_drag_preview_style(drop_hint)
 	_show_drag_drop_target_hint(drop_hint)
 	drag_preview_panel.visible = text.strip_edges() != ""
@@ -154,9 +155,11 @@ func _show_drag_drop_target_hint(data: Dictionary) -> void:
 	drag_drop_target_panel.tooltip_text = str(data.get("tooltip", data.get("label", "")))
 	drag_drop_target_label.text = _short_text(str(data.get("label", "松开出牌" if valid else "拖到星球地图")), 18)
 	drag_drop_target_label.tooltip_text = drag_drop_target_panel.tooltip_text
+	drag_drop_target_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	drag_drop_target_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	drag_drop_target_label.add_theme_color_override("font_color", accent.lightened(0.25))
 	var fill := Color("#020617").lerp(accent, 0.16)
-	fill.a = 0.20
+	fill.a = 0.14 if valid else 0.08
 	drag_drop_target_panel.add_theme_stylebox_override("panel", _panel_style(accent, fill, 3 if valid else 2, 8))
 	drag_drop_target_panel.visible = true
 
@@ -181,6 +184,45 @@ func _clamped_overlay_position(panel: Control, desired_position: Vector2) -> Vec
 		clampf(desired_position.x, 8.0, maxf(8.0, viewport_size.x - panel_size.x - 8.0)),
 		clampf(desired_position.y, 8.0, maxf(8.0, viewport_size.y - panel_size.y - 8.0))
 	)
+
+
+func _drag_preview_position(panel: Control, desired_position: Vector2, drop_hint: Dictionary) -> Vector2:
+	if not _should_dock_invalid_drag_preview(drop_hint):
+		return _clamped_overlay_position(panel, desired_position)
+	var rect_variant: Variant = drop_hint.get("target_rect", Rect2())
+	var target_rect: Rect2 = rect_variant if rect_variant is Rect2 else Rect2()
+	return _side_lane_drag_preview_position(panel, desired_position, target_rect)
+
+
+func _should_dock_invalid_drag_preview(drop_hint: Dictionary) -> bool:
+	if drop_hint.is_empty() or bool(drop_hint.get("valid", false)):
+		return false
+	var label := str(drop_hint.get("label", "")).strip_edges()
+	if label == "" or label.contains("拖到星球地图"):
+		return false
+	var rect_variant: Variant = drop_hint.get("target_rect", Rect2())
+	var target_rect: Rect2 = rect_variant if rect_variant is Rect2 else Rect2()
+	return target_rect.size.x > 2.0 and target_rect.size.y > 2.0
+
+
+func _side_lane_drag_preview_position(panel: Control, desired_position: Vector2, target_rect: Rect2) -> Vector2:
+	var viewport_size := Vector2(get_viewport().get_visible_rect().size)
+	var panel_size := panel.size
+	if panel_size.x <= 1.0 or panel_size.y <= 1.0:
+		panel_size = panel.custom_minimum_size
+	var right_x := target_rect.position.x + target_rect.size.x + DRAG_PREVIEW_SIDE_GAP
+	var left_x := target_rect.position.x - panel_size.x - DRAG_PREVIEW_SIDE_GAP
+	var x := right_x
+	if x + panel_size.x > viewport_size.x - 8.0 and left_x >= 8.0:
+		x = left_x
+	x = clampf(x, 8.0, maxf(8.0, viewport_size.x - panel_size.x - 8.0))
+	var y := desired_position.y - panel_size.y * 0.5
+	var min_y := maxf(8.0, target_rect.position.y + DRAG_PREVIEW_SIDE_GAP)
+	var max_y := minf(maxf(8.0, viewport_size.y - panel_size.y - 8.0), target_rect.position.y + target_rect.size.y - panel_size.y - DRAG_PREVIEW_SIDE_GAP)
+	if max_y < min_y:
+		max_y = min_y
+	y = clampf(y, min_y, max_y)
+	return Vector2(x, y)
 
 
 func _set_label_chip_row(row: HFlowContainer, entries_variant: Variant) -> void:
