@@ -1,8 +1,8 @@
 extends PanelContainer
 class_name SpaceSyndicateRightInspector
 
-const WHY_TEXT_CHAR_LIMIT := 86
-const SUMMARY_TEXT_CHAR_LIMIT := 72
+const WHY_TEXT_CHAR_LIMIT := 48
+const SUMMARY_TEXT_CHAR_LIMIT := 44
 
 signal action_requested(action_id: String)
 
@@ -35,7 +35,7 @@ func set_context(data: Dictionary) -> void:
 	var shows_reason_panel := reason_text != "" or has_requirements
 	if reason_panel != null:
 		reason_panel.visible = shows_reason_panel
-		reason_panel.custom_minimum_size = Vector2(0, 54 if has_requirements else 42) if shows_reason_panel else Vector2.ZERO
+		reason_panel.custom_minimum_size = Vector2(0, 46 if has_requirements else 34) if shows_reason_panel else Vector2.ZERO
 	reason_label.text = _short_table_text(reason_text, WHY_TEXT_CHAR_LIMIT) if shows_reason_panel else ""
 	reason_label.tooltip_text = reason_text
 	if requirement_chip_row != null:
@@ -92,7 +92,7 @@ func show_card(card_data: Dictionary) -> void:
 			"chips": chips,
 		},
 		"actions": inspector_card.get("actions", []),
-		"why": str(inspector_card.get("why", full_detail if full_detail.strip_edges() != "" else "能否打出取决于费用、目标和当前选区。")),
+		"why": str(inspector_card.get("why", full_detail if full_detail.strip_edges() != "" else "看费用、目标、选区。")),
 		"requirements": inspector_card.get("requirements", [
 			{"text": "费用 %s" % str(inspector_card.get("cost", "--"))},
 			{"text": "目标 %s" % str(inspector_card.get("target", "任意"))},
@@ -153,7 +153,7 @@ func _set_chip_row(row: HFlowContainer, chips_variant: Variant, fallback_when_em
 	for chip_variant in chips:
 		var chip: Dictionary = chip_variant if chip_variant is Dictionary else {"text": str(chip_variant)}
 		var label := Label.new()
-		label.text = str(chip.get("text", "条件"))
+		label.text = _short_table_text(str(chip.get("text", "条件")), 14)
 		label.tooltip_text = str(chip.get("tooltip", ""))
 		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		row.add_child(label)
@@ -173,7 +173,7 @@ func _set_deep_links(links_variant: Variant) -> void:
 	for link_variant in links:
 		var link: Dictionary = link_variant if link_variant is Dictionary else {"id": str(link_variant), "label": str(link_variant)}
 		var button := Button.new()
-		button.text = str(link.get("label", "详情"))
+		button.text = _short_table_text(str(link.get("label", "详情")), 8)
 		button.tooltip_text = str(link.get("tooltip", ""))
 		button.custom_minimum_size = Vector2(0, 28)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -195,8 +195,8 @@ func _set_event_log(logs_variant: Variant) -> void:
 	if event_log_panel != null:
 		event_log_panel.visible = true
 		event_log_panel.custom_minimum_size = Vector2(0, 36)
-	var latest := _short_log_line(str(logs[logs.size() - 1]), 46)
-	event_log_label.text = "最近公开日志｜%s" % latest
+	var latest := _short_log_line(str(logs[logs.size() - 1]), 34)
+	event_log_label.text = "公开｜%s" % latest
 
 
 func _short_log_line(value: String, max_chars: int) -> String:

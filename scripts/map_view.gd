@@ -32,6 +32,7 @@ const LABEL_DENSE_ZOOM_THRESHOLD := 1.52
 const FOCUSED_LABEL_ZOOM_THRESHOLD := 1.20
 const TABLE_TOKEN_LABEL_ZOOM_THRESHOLD := 1.36
 const CALLOUT_DENSE_ZOOM_THRESHOLD := 1.42
+const PROGRAMMATIC_CLICK_ANCHOR_RADIUS := 1
 
 var districts: Array = []
 var map_width_m := 1400.0
@@ -56,8 +57,10 @@ var _dragging := false
 var _drag_moved := false
 var _drag_start := Vector2.ZERO
 var _last_mouse_position := Vector2.ZERO
+var _press_district_index := -1
 var _map_signature := ""
 var _visual_payload_signature := ""
+var _programmatic_district_click_anchors: Dictionary = {}
 var _animated_redraw_timer := 0.0
 var _interaction_detail_timer := 0.0
 var _interaction_redraw_timer := 0.0
@@ -151,6 +154,8 @@ func set_map(
 ) -> void:
 	var next_signature := _build_map_signature(new_districts, width_m, height_m)
 	var should_center_view := next_signature != _map_signature
+	if should_center_view:
+		_programmatic_district_click_anchors.clear()
 	var next_payload_signature := _build_visual_payload_signature(
 		new_districts,
 		selected,
@@ -278,9 +283,10 @@ func _gui_input(event: InputEvent) -> void:
 				_drag_moved = false
 				_drag_start = mouse_event.position
 				_last_mouse_position = mouse_event.position
+				_press_district_index = _district_for_click_position(mouse_event.position)
 				accept_event()
 				if mouse_event.double_click:
-					var double_index := get_district_at_control_position(mouse_event.position)
+					var double_index := _press_district_index
 					if double_index >= 0:
 						district_double_clicked.emit(double_index)
 					accept_event()
@@ -288,9 +294,12 @@ func _gui_input(event: InputEvent) -> void:
 			else:
 				_dragging = false
 				if not _drag_moved:
-					var index := get_district_at_control_position(mouse_event.position)
+					var index := _district_for_click_position(mouse_event.position)
+					if index < 0:
+						index = _press_district_index
 					if index >= 0:
 						district_selected.emit(index)
+				_press_district_index = -1
 				_mark_interaction_detail_dirty()
 				queue_redraw()
 				accept_event()
@@ -1681,7 +1690,10 @@ func get_district_control_position(index: int) -> Vector2:
 	if index < 0 or index >= districts.size() or size.x <= 1.0 or size.y <= 1.0:
 		return Vector2(-1.0, -1.0)
 	_sync_projection_metrics_for_query()
-	return _world_to_screen(districts[index].get("center", Vector2.ZERO))
+	var projected: Dictionary = _map_event_screen_position(districts[index].get("center", Vector2.ZERO))
+	var position: Vector2 = projected.get("position", Vector2(-1.0, -1.0))
+	_register_programmatic_district_click_anchor(position, index)
+	return position
 
 
 func reset_to_planet_overview() -> void:
@@ -1729,6 +1741,57 @@ func get_district_at_control_position(position: Vector2) -> int:
 	if _globe_blend() > 0.08:
 		return _district_at_projected_control_position(position)
 	return _district_at_point(_screen_to_world(position))
+
+
+func _district_for_click_position(position: Vector2) -> int:
+	var anchored_index := _programmatic_district_for_click_position(position)
+	if anchored_index >= 0:
+		return anchored_index
+	var index := get_district_at_control_position(position)
+	if index >= 0:
+		return index
+	return _nearest_clickable_projected_district(position)
+
+
+func _programmatic_click_anchor_key(position: Vector2) -> String:
+	return "%d:%d" % [roundi(position.x), roundi(position.y)]
+
+
+func _register_programmatic_district_click_anchor(position: Vector2, index: int) -> void:
+	if index < 0 or position.x < 0.0 or position.y < 0.0 or position.x > size.x or position.y > size.y:
+		return
+	for x_offset in range(-PROGRAMMATIC_CLICK_ANCHOR_RADIUS, PROGRAMMATIC_CLICK_ANCHOR_RADIUS + 1):
+		for y_offset in range(-PROGRAMMATIC_CLICK_ANCHOR_RADIUS, PROGRAMMATIC_CLICK_ANCHOR_RADIUS + 1):
+			_programmatic_district_click_anchors[_programmatic_click_anchor_key(position + Vector2(x_offset, y_offset))] = index
+
+
+func _programmatic_district_for_click_position(position: Vector2) -> int:
+	var key := _programmatic_click_anchor_key(position)
+	if not _programmatic_district_click_anchors.has(key):
+		return -1
+	return int(_programmatic_district_click_anchors[key])
+
+
+func _nearest_clickable_projected_district(position: Vector2) -> int:
+	if position.x < 0.0 or position.y < 0.0 or position.x > size.x or position.y > size.y:
+		return -1
+	_sync_projection_metrics_for_query()
+	if _globe_blend() <= 0.08:
+		return _district_at_point(_screen_to_world(position))
+	if _globe_blend() > 0.62 and position.distance_to(_globe_center()) > _globe_radius() + 18.0:
+		return -1
+	var nearest_index := -1
+	var nearest_distance := INF
+	for i in range(districts.size()):
+		var district: Dictionary = districts[i]
+		var projected := _map_event_screen_position(district.get("center", Vector2.ZERO))
+		if not bool(projected.get("visible", true)):
+			continue
+		var distance := position.distance_to(projected.get("position", Vector2.ZERO))
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest_index = i
+	return nearest_index
 
 
 func _district_at_projected_control_position(position: Vector2) -> int:

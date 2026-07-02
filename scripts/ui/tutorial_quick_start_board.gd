@@ -112,12 +112,12 @@ func _add_step_card(entry: Dictionary) -> void:
 	title.name = "TutorialQuickStartStepTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
-	var body := _label(_short_text(body_text, 58), 10, Color("#f8fafc"))
+	var body := _label(_short_text(body_text, 34), 10, Color("#f8fafc"))
 	body.name = "TutorialQuickStartStepBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = body_text
 	box.add_child(body)
-	var meta := _label(_short_text(meta_text, 58), 9, Color("#94a3b8"))
+	var meta := _label(_short_text(meta_text, 28), 9, Color("#94a3b8"))
 	meta.name = "TutorialQuickStartStepMeta"
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.tooltip_text = meta_text
@@ -143,7 +143,7 @@ func _add_trap_card(entry: Dictionary) -> void:
 	title.name = "TutorialQuickStartTrapCardTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
-	var body := _label(_short_text(body_text, 78), 9, Color("#cbd5e1"))
+	var body := _label(_short_text(body_text, 42), 9, Color("#cbd5e1"))
 	body.name = "TutorialQuickStartTrapCardBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = body_text

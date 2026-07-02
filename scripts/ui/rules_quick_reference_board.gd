@@ -111,13 +111,13 @@ func _add_kpi_card(entry: Dictionary) -> void:
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
 	var body_text := str(entry.get("body", ""))
-	var body := _label(_short_text(body_text, 54), 10, Color("#f8fafc"))
+	var body := _label(_short_text(body_text, 34), 10, Color("#f8fafc"))
 	body.name = "RulesQuickReferenceKpiBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = body_text
 	box.add_child(body)
 	var meta_text := str(entry.get("meta", ""))
-	var meta := _label(_short_text(meta_text, 44), 8, Color("#94a3b8"))
+	var meta := _label(_short_text(meta_text, 28), 8, Color("#94a3b8"))
 	meta.name = "RulesQuickReferenceKpiMeta"
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.tooltip_text = str(entry.get("tooltip", meta_text))
@@ -144,12 +144,12 @@ func _add_module_card(entry: Dictionary) -> void:
 	title.name = "RulesQuickReferenceModuleTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
-	var body := _label(_short_text(body_text, 60), 9, Color("#f8fafc"))
+	var body := _label(_short_text(body_text, 34), 9, Color("#f8fafc"))
 	body.name = "RulesQuickReferenceModuleBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = body_text
 	box.add_child(body)
-	var meta := _label(_short_text(meta_text, 52), 8, Color("#94a3b8"))
+	var meta := _label(_short_text(meta_text, 28), 8, Color("#94a3b8"))
 	meta.name = "RulesQuickReferenceModuleMeta"
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.tooltip_text = meta_text

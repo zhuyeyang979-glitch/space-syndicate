@@ -57,7 +57,7 @@ func _side_drawer_body_lines(inspector: Dictionary, district: Dictionary) -> Arr
 		var log_lines: Array[String] = []
 		for log_variant in logs.slice(maxi(0, logs.size() - 4), logs.size()):
 			log_lines.append("- %s" % str(log_variant))
-		body_lines.append("最近公开日志：\n%s" % "\n".join(log_lines))
+		body_lines.append("公开日志：\n%s" % "\n".join(log_lines))
 	return body_lines
 
 
@@ -80,7 +80,7 @@ func _side_drawer_sections(inspector: Dictionary, district: Dictionary) -> Array
 		var log_lines: Array[String] = []
 		for log_variant in logs.slice(maxi(0, logs.size() - 4), logs.size()):
 			log_lines.append("- %s" % str(log_variant))
-		result.append({"title": "最近公开日志", "body": "\n".join(log_lines), "accent": Color("#94a3b8")})
+		result.append({"title": "公开日志", "body": "\n".join(log_lines), "accent": Color("#94a3b8")})
 	return result
 
 

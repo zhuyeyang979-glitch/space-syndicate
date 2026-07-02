@@ -2213,16 +2213,22 @@ func _activate_runtime_snapshot_action(entry: Dictionary) -> bool:
 
 
 func _build_runtime_map_view(fallback_parent: Node = null) -> void:
-	if map_view != null:
-		return
-	map_view = MapViewScript.new()
+	if map_view == null:
+		map_view = MapViewScript.new()
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_view.district_selected.connect(Callable(self, "_select_district"))
-	map_view.district_double_clicked.connect(Callable(self, "_open_district_supply_from_map"))
+	var select_callback := Callable(self, "_select_district")
+	if not map_view.district_selected.is_connected(select_callback):
+		map_view.district_selected.connect(select_callback)
+	var double_callback := Callable(self, "_open_district_supply_from_map")
+	if not map_view.district_double_clicked.is_connected(double_callback):
+		map_view.district_double_clicked.connect(double_callback)
 	if runtime_game_screen != null and runtime_game_screen.has_method("attach_runtime_map"):
 		runtime_game_screen.call("attach_runtime_map", map_view)
-	elif fallback_parent != null:
+	elif fallback_parent != null and map_view.get_parent() != fallback_parent:
+		var current_parent := map_view.get_parent()
+		if current_parent != null:
+			current_parent.remove_child(map_view)
 		fallback_parent.add_child(map_view)
 	map_view.custom_minimum_size = Vector2(560, 430)
 
@@ -5891,18 +5897,10 @@ func _restart_active_scenario_from_pause() -> void:
 
 func _open_rules_menu() -> void:
 	var lines := []
-	lines.append("牌桌规则")
-	lines.append("")
-	lines.append("目标：最后钱最多。城市、金融、情报和终局清算都会变成现金。")
-	lines.append("")
-	lines.append("价格按I级算；同名牌复购升级，最高到IV级。")
-	lines.append("所有牌都会公开展示，出牌者匿名；顶部牌轨只显示公开结果、报价和归属线索。")
-	lines.append("怪兽受伤会让归属玩家掉钱，掉钱会按最大生命比例留下公开资金线索。")
-	lines.append("GDP/min会按秒变成现金；商品、商路、天气、合约和破坏会改变城市现金流。")
-	lines.append("")
-	lines.append("先看下方规则速查板：胜利、首轮、隐私、牌架、匿名出牌、赌局、合约和天气都按卡片拆开。")
-	lines.append("")
-	lines.append("常用操作：滚轮缩放星球｜拖拽地图｜双击区域看牌｜B城市化｜G切换推测对象｜M标注｜R商路｜T商品｜Space暂停。")
+	lines.append("目标：最后钱最多。")
+	lines.append("开局：公开角色，匿名首召怪兽。")
+	lines.append("循环：建城赚钱，买牌扩张，匿名出牌，读线索。")
+	lines.append("操作：滚轮缩放｜拖拽地图｜双击区域看牌｜Space暂停。")
 	_show_menu(
 		"游戏规则",
 		"\n".join(lines),
@@ -5914,7 +5912,7 @@ func _open_rules_menu() -> void:
 func _open_tutorial_menu() -> void:
 	_show_menu(
 		"新手引导",
-		"试玩目标：最后钱最多。\n首召怪兽：先打出一张I级怪兽牌。城市公开，业主隐藏；普通手牌最多%d张。先按下方速成板完成建城、买牌和匿名出牌；复杂细则进「游戏规则」。" % PLAYER_HAND_LIMIT,
+		"第一局只做四件事：首召、建城、买牌、出牌。",
 		not game_over
 	)
 	_populate_tutorial_quick_start_board()
@@ -5951,23 +5949,23 @@ func _tutorial_quick_start_snapshot() -> Dictionary:
 			{"text": "细则进规则", "accent": Color("#c4b5fd"), "tooltip": "本页只放试玩动作；完整解释在游戏规则。"},
 		],
 		"steps": [
-			{"title": "1｜首召怪兽", "body": "选一个区域，打出起始I级怪兽。", "meta": "怪兽落地后，附近区域才是购牌锚点。", "accent": Color("#fb7185")},
-			{"title": "2｜建第一城", "body": "找陆地，花¥%d城市化。" % CITY_BUILD_COST, "meta": "城市会产生GDP/min，业主身份隐藏。", "accent": Color("#4ade80")},
-			{"title": "3｜看区域牌架", "body": "双击区域看卡牌；可看不等于可买。", "meta": "怪兽落地区八折，相邻区原价。", "accent": Color("#38bdf8")},
-			{"title": "4｜买第一张牌", "body": "买牌花钱；重复牌自动升级。", "meta": "普通手牌上限%d张，满手买新牌会私下弃旧。" % PLAYER_HAND_LIMIT, "accent": Color("#facc15")},
-			{"title": "5｜打匿名牌", "body": "看手牌状态筹码，满足门槛后打出。", "meta": "卡牌公开展示，出牌者匿名。", "accent": Color("#c084fc")},
-			{"title": "6｜读公共牌轨", "body": "顶部牌槽记录历史、当前和候补牌。", "meta": "点牌再点头像，可押¥%d猜牌主。" % CARD_OWNER_GUESS_STAKE, "accent": Color("#f472b6")},
-			{"title": "7｜看经济/情报", "body": "经济看钱从哪里来；情报看可疑线索。", "meta": "对手现金和手牌隐藏，靠公开结果推理。", "accent": Color("#2dd4bf")},
-			{"title": "8｜终局冲刺", "body": "有人达标后倒计时，结束按钱排名。", "meta": "领先时护城修路；落后时压领先城市。", "accent": Color("#fb923c")},
+			{"title": "1｜首召怪兽", "body": "选区，打一张I级怪兽。", "meta": "附近开牌架。", "accent": Color("#fb7185")},
+			{"title": "2｜建第一城", "body": "找陆地，花¥%d城市化。" % CITY_BUILD_COST, "meta": "城市产现金流。", "accent": Color("#4ade80")},
+			{"title": "3｜看区域牌架", "body": "双击区域看卡牌。", "meta": "能看不等于能买。", "accent": Color("#38bdf8")},
+			{"title": "4｜买第一张牌", "body": "花钱买一张能用的牌。", "meta": "重复牌升级。", "accent": Color("#facc15")},
+			{"title": "5｜打匿名牌", "body": "满足筹码条件后打出。", "meta": "亮牌不亮人。", "accent": Color("#c084fc")},
+			{"title": "6｜读公共牌轨", "body": "看顶部牌槽。", "meta": "可猜牌主。", "accent": Color("#f472b6")},
+			{"title": "7｜看经济/情报", "body": "查钱从哪来。", "meta": "用公开结果推理。", "accent": Color("#2dd4bf")},
+			{"title": "8｜终局冲刺", "body": "达标后沙漏结算。", "meta": "按钱排名。", "accent": Color("#fb923c")},
 		],
 		"trap_title": "卡点急救｜先排这四件事",
 		"traps": [
-			{"title": "买不了牌", "body": "先确认场上有怪兽，并且牌架是在怪兽落地区或相邻区打开。", "accent": Color("#fb7185")},
-			{"title": "牌打不出", "body": "看手牌状态筹码：商品流动、目标、选区、现金和队列都会影响可打状态。", "accent": Color("#facc15")},
-			{"title": "看不懂谁领先", "body": "打开局势记分板；进行中只精确显示自己，对手靠线索判断。", "accent": Color("#38bdf8")},
-			{"title": "不知道查哪里", "body": "打开情报侦探板，先标高GDP、仓储、低置信城市。", "accent": Color("#c084fc")},
+			{"title": "买不了牌", "body": "看怪兽是否在本区或邻区。", "accent": Color("#fb7185")},
+			{"title": "牌打不出", "body": "看手牌状态筹码。", "accent": Color("#facc15")},
+			{"title": "看不懂领先", "body": "打开局势记分板。", "accent": Color("#38bdf8")},
+			{"title": "不知道查哪", "body": "打开情报侦探板。", "accent": Color("#c084fc")},
 		],
-		"footer": "完整细则进游戏规则；这一页只帮你把第一局跑起来。",
+		"footer": "先跑通第一局；细则进游戏规则。",
 	}
 
 
@@ -6013,23 +6011,23 @@ func _rules_quick_reference_snapshot() -> Dictionary:
 			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "对手现金、手牌和身份线索不直接公开。"},
 		],
 		"kpis": [
-			{"title": "胜利目标", "body": "最后钱最多。", "meta": "现金、城市、金融、情报和终局清算都会变成钱。", "accent": Color("#fef3c7")},
-			{"title": "第一轮顺序", "body": "首召怪兽 → 建城 → 看牌架 → 买牌 → 匿名出牌。", "meta": "不会玩时先回新手引导。", "accent": Color("#38bdf8")},
-			{"title": "信息边界", "body": "建筑公开，业主隐藏；出牌公开，牌主匿名。", "meta": "看地图和牌轨推理，不扫对手私牌。", "accent": Color("#c084fc")},
-			{"title": "结算节奏", "body": "达标后进入终局沙漏。", "meta": "领先时护城修路；落后时压领先资产。", "accent": Color("#fb923c")},
+			{"title": "胜利目标", "body": "最后钱最多。", "meta": "都落到现金。", "accent": Color("#fef3c7")},
+			{"title": "第一轮", "body": "首召 → 建城 → 买牌 → 出牌。", "meta": "卡住看引导。", "accent": Color("#38bdf8")},
+			{"title": "信息边界", "body": "公开结果，隐藏归属。", "meta": "靠牌轨推理。", "accent": Color("#c084fc")},
+			{"title": "终局", "body": "达标后开沙漏。", "meta": "沙漏完按钱排。", "accent": Color("#fb923c")},
 		],
-		"module_title": "牌桌模块｜先召怪兽，再读匿名出牌和现金流",
+		"module_title": "牌桌模块｜先看图标，再查细节",
 		"modules": [
-			{"title": "◆ 先召怪兽", "body": "开局先打一张I级怪兽牌。", "meta": "怪兽落地区和相邻区会打开购牌来源。", "accent": Color("#fb7185")},
-			{"title": "▣ 建城赚钱", "body": "陆地城市化¥%d，GDP/min按秒进账。" % CITY_BUILD_COST, "meta": "城市公开，业主隐藏。", "accent": Color("#4ade80")},
-			{"title": "＋ 区域牌架", "body": "双击区域看牌；查看始终允许。", "meta": "落地区八折，相邻区原价，开架时锁定资格。", "accent": Color("#38bdf8")},
-			{"title": "◎ 匿名出牌", "body": "卡牌公开展示，出牌者匿名。", "meta": "商品流动是门槛，不会被消耗。", "accent": Color("#c084fc")},
-			{"title": "¥ 竞价/猜牌主", "body": "多人出牌先报价；公共牌轨可押钱猜牌主。", "meta": "数字公开，身份仍匿名。", "accent": Color("#facc15")},
-			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇会冻结时间，全员公开下注。", "meta": "押中高伤害方平分奖池。", "accent": Color("#fb923c")},
-			{"title": "⇄ 合约", "body": "先点供给区和需求区，再打合约牌。", "meta": "目标业主在独立窗口签或拒。", "accent": Color("#2dd4bf")},
-			{"title": "☄ 天气/现金流", "body": "天气影响生产、交通和消费。", "meta": "商品、商路、城市伤害会改变GDP/min。", "accent": Color("#93c5fd")},
+			{"title": "◆ 怪兽", "body": "开局先首召。", "meta": "附近可买牌。", "accent": Color("#fb7185")},
+			{"title": "▣ 城市", "body": "陆地花¥%d城市化。" % CITY_BUILD_COST, "meta": "GDP按秒进账。", "accent": Color("#4ade80")},
+			{"title": "＋ 牌架", "body": "双击区域看牌。", "meta": "开架锁资格。", "accent": Color("#38bdf8")},
+			{"title": "◎ 匿名牌", "body": "亮牌不亮人。", "meta": "条件会留线索。", "accent": Color("#c084fc")},
+			{"title": "¥ 报价", "body": "多人出牌先竞价。", "meta": "金额公开。", "accent": Color("#facc15")},
+			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇会停表下注。", "meta": "押中分奖池。", "accent": Color("#fb923c")},
+			{"title": "⇄ 合约", "body": "连接供给和需求。", "meta": "签拒都留线索。", "accent": Color("#2dd4bf")},
+			{"title": "☄ 天气/GDP", "body": "天气改现金流。", "meta": "看预报筹码。", "accent": Color("#93c5fd")},
 		],
-		"footer": "完整细则在本页正文；主桌只保留当前能做什么和为什么不能做。",
+		"footer": "主桌只显示当前能做什么。",
 	}
 
 
@@ -9171,27 +9169,27 @@ func _menu_context_text(title_text: String, show_main_actions: bool = false) -> 
 	if show_main_actions and title_text == "太空辛迪加｜星球赌桌":
 		return ""
 	if show_main_actions and title_text == "暂停菜单":
-		return "当前位置：暂停菜单｜继续、复查局势、查资料或保存；主画面信息保持简洁。"
+		return "暂停｜继续、局势、资料、保存"
 	match title_text:
 		"开局准备":
-			return "当前位置：主菜单 → 开局准备｜调整席位、AI、角色卡和起始怪兽后再明确开始。"
+			return "开局｜席位、AI、角色、起始怪兽"
 		"图鉴":
-			return "当前位置：主菜单 → 图鉴｜先选资料分类；缩略图支持悬停预览、双击详情。"
+			return "图鉴｜选分类"
 		"卡牌图鉴", "怪兽生态档案", "商品图鉴":
-			return "当前位置：图鉴 → %s｜缩略图页悬停/单击预览，双击进详情；详情页再用上一页/下一页。" % title_text
+			return "%s｜悬停预览，双击详情" % title_text
 		"角色图鉴", "区域图鉴":
-			return "当前位置：图鉴 → %s｜用页面按钮切换条目，相关卡牌/区域可继续跳转。" % title_text
+			return "%s｜按钮切换" % title_text
 		"游戏规则":
-			return "当前位置：主菜单 → 游戏规则｜短卡先给玩法骨架，长规则收在滚动区。"
+			return "规则｜先看短卡"
 		"经济总览":
-			return "当前位置：主菜单 → 经济总览｜GDP、商品、商路、天气和城市收入拆解集中查看。"
+			return "经济｜GDP、商品、商路"
 		"情报档案":
-			return "当前位置：主菜单 → 情报档案｜整理推理线索，不提前揭示隐藏归属。"
+			return "情报｜整理公开线索"
 		"局势排名":
-			return "当前位置：主菜单 → 局势排名｜查看现金目标、终局倒计时和排名推断。"
+			return "局势｜目标与排名"
 		"新手引导":
-			return "当前位置：主菜单 → 新手引导｜只保留试玩必要步骤，复杂细则进规则页。"
-	return "当前位置：%s｜悬停查看提示；用返回按钮回到上一级或主菜单。" % title_text
+			return "引导｜首局四步"
+	return "%s｜返回回上级" % title_text
 
 
 func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = false) -> String:
@@ -9201,36 +9199,36 @@ func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = f
 		return "暂停菜单｜继续、复查局势、查资料或保存。"
 	match title_text:
 		"开局准备":
-			return "开局准备｜选席位、难度、角色和起始怪兽｜确认后开局。"
+			return "选席位、难度、角色、怪兽。"
 		"图鉴":
-			return "图鉴总入口｜先选角色/怪兽生态/卡牌/商品/区域｜怪兽牌在卡牌图鉴，怪兽行为在生态档案。"
+			return "先选资料分类。"
 		"卡牌图鉴":
 			if card_codex_show_detail:
-				return "卡牌详情页｜卡面、I-IV梯度、关键数值｜上一页/下一页切换｜返回缩略图。"
-			return "卡牌缩略图｜每页按屏幕排布｜悬停或单击看预览｜双击进详情｜筛选按钮可快速换分类。"
+				return "卡面、梯度、关键数值。"
+			return "悬停预览，双击详情。"
 		"怪兽生态档案":
 			if bestiary_show_detail:
-				return "怪兽生态详情页｜画像、行动概率、速度、资源偏好和破坏数据｜怪兽牌请跳卡牌图鉴。"
-			return "怪兽生态缩略图｜按屏幕排布｜悬停或单击看行动预览｜双击进详情｜怪兽牌见卡牌图鉴。"
+				return "画像、行动、速度、偏好。"
+			return "悬停预览，双击详情。"
 		"商品图鉴":
 			if product_codex_show_detail:
-				return "商品详情页｜价格、供需、商路、天气和线索集中查看｜上一页/下一页切换｜返回缩略图。"
-			return "商品缩略图｜按屏幕排布｜悬停或单击看价格预览｜双击进详情。"
+				return "价格、供需、商路。"
+			return "悬停预览，双击详情。"
 		"角色图鉴":
-			return "角色详情页｜外星角色卡、被动、起始牌和相关跳转集中展示｜按钮切换条目。"
+			return "公开角色卡。"
 		"区域图鉴":
-			return "区域详情页｜公开地形、HP、城市、商路和补给集中展示｜按钮切换区域或返回来源。"
+			return "地形、HP、城市、商路。"
 		"游戏规则":
-			return "规则页面｜先看短卡，再读细节；局内主桌保持简洁。"
+			return "先看短卡。"
 		"经济总览":
-			return "经济页面｜速览卡先给GDP/商品/商路/线索方向｜下方展开证据，不暴露对手隐私。"
+			return "看GDP、商品、商路。"
 		"情报档案":
-			return "情报页面｜标注、置信度、理由和线索跳转分区管理｜推理归推理，不提前揭示真相。"
+			return "只整理公开线索。"
 		"局势排名":
-			return "局势页面｜先看目标、现金、城市现金流和反超方向｜终局复盘继续跳经济和图鉴。"
+			return "看目标和排名。"
 		"新手引导":
-			return "轻引导｜只保留首召、建城、买牌、出牌、经济总览这些试玩步骤｜完整教程以后再做。"
-	return "子页面｜只显示本页操作｜悬停看提示｜返回按钮回上级。"
+			return "首召、建城、买牌、出牌。"
+	return "只显示本页操作。"
 
 
 func _show_menu(title_text: String, body_text: String, can_continue: bool, show_main_actions: bool = false) -> void:
@@ -18818,16 +18816,15 @@ func _runtime_temporary_decision_snapshot_source(player_index: int) -> Dictionar
 		"id": "discard_purchase",
 		"kind": TEMP_DECISION_DISCARD,
 		"title": "私密弃牌确认",
-		"body": "购买%s（约¥%d）会超过%d张普通手牌上限。\n请选择一张旧普通牌弃掉；手牌数量和弃牌内容不会公开。" % [
+		"body": "手牌已满。弃1张旧牌，接收%s（约¥%d）。" % [
 			_card_display_name(skill_name),
 			price,
-			PLAYER_HAND_LIMIT,
 		],
 		"tooltip": "这是购牌窗口锁定后的私密选择，不会进入匿名卡牌轨道。",
 		"chips": [
-			{"text": "私密", "tooltip": "只有当前玩家自己的手牌和弃牌选择可见。", "accent": Color("#bfdbfe")},
-			{"text": "不公开", "tooltip": "公开日志不会写出手牌数量、卡名或弃牌内容。", "accent": Color("#facc15")},
-			{"text": "换购", "tooltip": "弃一张旧普通牌后接收新牌。", "accent": Color("#22c55e")},
+			{"text": "私密", "tooltip": "只有当前玩家可见。", "accent": Color("#bfdbfe")},
+			{"text": "不公开", "tooltip": "公开日志不会写手牌或弃牌。", "accent": Color("#facc15")},
+			{"text": "换购", "tooltip": "弃旧牌后接收新牌。", "accent": Color("#22c55e")},
 		],
 		"actions": actions,
 		"accent": Color("#facc15"),
@@ -19390,7 +19387,7 @@ func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary
 			"title": "未选区",
 			"summary": "先点星球区域。",
 			"detail": "先点星球区域。",
-			"full_detail": "选择中央星球区域，查看城市、牌架和行动条件。",
+			"full_detail": "点星球区域，查看城市、牌架和行动。",
 			"chips": [{"text": "未选择"}],
 		}
 	var district: Dictionary = districts[selected_district]
@@ -19408,7 +19405,7 @@ func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary
 		district_summary,
 		supply_summary,
 	]
-	var table_summary := _short_card_text("%s｜%s" % [district_summary, supply_summary], 56)
+	var table_summary := _short_card_text("%s｜%s" % [district_summary, supply_summary], 40)
 	return {
 		"id": str(selected_district),
 		"title": String(district.get("name", "区域")),
@@ -19550,9 +19547,9 @@ func _runtime_card_track_event_snapshots() -> Array:
 			"accent": entry.get("accent", Color("#a78bfa")),
 			"tooltip": "公共事件：只读，不可竞猜｜%s" % String(entry.get("tooltip", entry.get("text", ""))),
 			"title": "牌轨事件",
-			"summary": _short_card_text(String(entry.get("text", "公共事件")), 58),
+			"summary": _short_card_text(String(entry.get("text", "公共事件")), 36),
 			"detail": String(entry.get("tooltip", entry.get("text", ""))),
-			"why": "这是公共时间轴上的只读事件；不会暴露匿名出牌者。",
+			"why": "公共只读事件。",
 			"requirements": [{"text": "只读"}, {"text": "公共事件"}],
 			"deep_links": [{"id": "detail_intel", "label": "情报详情"}],
 		})
@@ -19636,10 +19633,10 @@ func _runtime_card_track_entry_snapshot(entry: Dictionary, state_text: String) -
 		"accent": _card_theme_color(skill),
 		"tooltip": tooltip,
 		"title": "牌轨详情",
-		"summary": "%s｜%s｜%s" % [state_text, _short_card_text(card_label, 14), "归属:%s" % owner_text],
-		"detail": _short_card_text(tooltip, 120),
+		"summary": "%s｜%s｜%s" % [state_text, _short_card_text(card_label, 10), "归属:%s" % owner_text],
+		"detail": _short_card_text(tooltip, 64),
 		"full_detail": tooltip,
-		"why": "单击牌槽选中竞猜；看报价、目标、余波和归属标记推理来源。",
+		"why": "看报价、目标、余波猜来源。",
 		"requirements": requirements,
 		"actions": actions,
 		"deep_links": deep_links,
@@ -19910,9 +19907,9 @@ func _runtime_hand_card_drop_label(play_state: Dictionary, skill: Dictionary) ->
 
 func _runtime_selected_context_why(player_index: int) -> String:
 	if players.is_empty():
-		return "开新一桌或读取牌桌后，这里会显示当前能做什么。"
+		return "开桌后显示下一步。"
 	if selected_district < 0 or selected_district >= districts.size():
-		return "先点中央星球上的区域，再查看城市、牌架和卡牌选择。"
+		return "先点星球区域。"
 	var active_labels: Array[String] = []
 	for entry_variant in _selected_district_action_lamp_entries(player_index):
 		if not (entry_variant is Dictionary):
@@ -19925,7 +19922,7 @@ func _runtime_selected_context_why(player_index: int) -> String:
 	var build_error: String = _city_build_error_for(player_index, selected_district, false)
 	if build_error != "":
 		return "主要阻碍：%s" % build_error
-	return "暂无紧急阻碍。需要深读时打开牌架、路线或图鉴详情。"
+	return "暂无阻碍。"
 
 
 func _runtime_deep_link_snapshots() -> Array:

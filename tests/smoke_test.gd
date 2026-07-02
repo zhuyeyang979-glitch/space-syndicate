@@ -731,7 +731,7 @@ func _run() -> void:
 	main.call("_start_new_run_from_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "开局准备", "new-run entry opens the setup preview instead of immediately starting")
-	_expect(menu_context_label != null and menu_context_label.text.contains("主菜单 → 开局准备"), "setup branch updates the breadcrumb/help strip")
+	_expect(menu_context_label != null and menu_context_label.text.contains("开局｜"), "setup branch updates the compact breadcrumb/help strip")
 	_expect(_as_array(main.get("players")).size() == current_players_before_setup, "opening setup preview does not wipe the current run")
 	_expect(menu_body_label != null and menu_body_label.text.contains("公开角色") and menu_body_label.text.contains("首召怪兽"), "new-run setup explains role cards and starter monster cards")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "开始本局"), "new-run setup requires an explicit start confirmation")
@@ -775,18 +775,17 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "新手引导", "tutorial menu opens from the main scene")
 	_expect(menu_back_button != null and menu_back_button.visible, "tutorial subpage exposes a visible return-to-main button")
 	_expect(menu_continue_button != null and not menu_continue_button.visible, "tutorial subpage hides global continue so only page-relevant navigation remains")
-	_expect(menu_body_label != null and menu_body_label.text.contains("首召怪兽") and menu_body_label.text.contains("城市公开，业主隐藏"), "tutorial explains the first-summon and hidden-owner city loop in player-facing language")
-	_expect(menu_body_label != null and menu_body_label.text.contains("I级怪兽牌") and menu_body_label.text.contains("普通手牌最多") and not menu_body_label.text.contains("Lv"), "tutorial keeps card ranks and hand limits concise with Roman-numeral ranks")
+	_expect(menu_body_label != null and menu_body_label.text == "第一局只做四件事：首召、建城、买牌、出牌。", "tutorial opens with a one-line first-game action path")
+	_expect(menu_body_label != null and not menu_body_label.text.contains("Lv") and menu_body_label.text.length() <= 28, "tutorial keeps the top copy short enough for playtesting")
 	main.call("_open_rules_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "游戏规则", "rules menu opens from the main scene")
 	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and menu_back_button.visible, "rules subpage shows return navigation without a global continue button")
-	_expect(menu_body_label != null and menu_body_label.text.contains("价格按I级算") and menu_body_label.text.contains("IV级") and not menu_body_label.text.contains("Lv"), "rules menu explains rank-I base prices and rank-IV caps with concise Roman-numeral ranks")
-	_expect(menu_body_label != null and menu_body_label.text.contains("所有牌都会公开展示") and menu_body_label.text.contains("出牌者匿名"), "rules menu explains anonymous card play without implementation wording")
-	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽受伤会让归属玩家掉钱"), "rules menu explains monster ownership cash clues in player-facing language")
-	_expect(menu_body_label != null and menu_body_label.text.contains("常用操作") and not menu_body_label.text.contains("Y切预设") and not menu_body_label.text.contains("AI训练") and not menu_body_label.text.contains("当前原型规则"), "rules menu removes development history, AI training, and obsolete debug controls")
-	_expect(menu_body_label != null and menu_body_label.text.contains("GDP/min会按秒变成现金") and not menu_body_label.text.contains("经营周期") and not menu_body_label.text.contains("经济周期"), "rules menu frames GDP as per-second cashflow without cycle wording")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "规则速览") and _container_label_text_contains(menu_preview_box, "先召怪兽") and _container_label_text_contains(menu_preview_box, "匿名出牌"), "rules menu exposes a compact card-summary layer above the long rule text")
+	_expect(menu_body_label != null and menu_body_label.text.contains("目标：最后钱最多。") and menu_body_label.text.contains("公开角色，匿名首召怪兽") and not menu_body_label.text.contains("Lv"), "rules menu opens with the current core loop in compact player language")
+	_expect(menu_body_label != null and not menu_body_label.text.contains("所有牌都会公开展示") and not menu_body_label.text.contains("怪兽受伤会让归属玩家掉钱"), "rules top body no longer repeats dense detail prose")
+	_expect(menu_body_label != null and menu_body_label.text.contains("操作：") and not menu_body_label.text.contains("Y切预设") and not menu_body_label.text.contains("AI训练") and not menu_body_label.text.contains("当前原型规则"), "rules menu removes development history, AI training, and obsolete debug controls")
+	_expect(menu_body_label != null and not menu_body_label.text.contains("经营周期") and not menu_body_label.text.contains("经济周期"), "rules menu avoids cycle wording")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "规则速览") and _container_label_text_contains(menu_preview_box, "怪兽") and _container_label_text_contains(menu_preview_box, "匿名牌"), "rules menu exposes a compact card-summary layer above the short rule text")
 	var quick_nav_buttons := main.get("menu_quick_nav_buttons") as Dictionary
 	var quick_nav_row := main.get("menu_quick_nav_row") as HBoxContainer
 	_expect(quick_nav_row != null and not quick_nav_row.visible and quick_nav_buttons.has("rules") and quick_nav_buttons.has("economy"), "rules subpage hides global quick navigation so the page only shows relevant controls")
@@ -974,7 +973,7 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
 	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and not menu_back_button.visible, "card codex hides global continue/back buttons and keeps only codex-local navigation")
-	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌缩略图") and menu_interaction_hint_label.text.contains("悬停") and menu_interaction_hint_label.text.contains("双击进详情"), "card codex thumbnail page exposes the shared hover/detail interaction hint")
+	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("悬停") and menu_interaction_hint_label.text.contains("双击详情") and menu_interaction_hint_label.text.length() <= 12, "card codex thumbnail page exposes a compact shared hover/detail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌图鉴") and menu_body_label.text.contains("本局牌池") and menu_body_label.text.contains("区域补给") and menu_body_label.text.contains("双击看详情"), "card codex opens as a concise responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_has_named_node(menu_preview_box, "CardCodexCategoryRail") and _container_button_text_contains(menu_preview_box, "怪兽") and _container_button_text_contains(menu_preview_box, "期货") and _container_button_text_contains(menu_preview_box, "互动") and _container_button_text_contains(menu_preview_box, "军队"), "card codex thumbnail page keeps strict card categories in a visible top chip rail")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "悬停预览") and not _container_label_text_contains(menu_preview_box, "旧的普通牌池") and not _container_label_text_contains(menu_preview_box, "相位反制") and not _container_label_text_contains(menu_preview_box, "牌路总览") and not _container_label_text_contains(menu_preview_box, "AI发展路线") and not _container_label_text_contains(menu_preview_box, "AI偏好"), "card codex thumbnail page stays browse-first without legacy labels or development-route prose")
@@ -996,7 +995,7 @@ func _run() -> void:
 	main.call("_on_card_codex_thumbnail_gui_input", codex_detail_event, "城市融资1")
 	await process_frame
 	var card_codex_back_button := main.get("menu_bestiary_back_button") as Button
-	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡牌详情页") and menu_interaction_hint_label.text.contains("上一页/下一页") and menu_interaction_hint_label.text.contains("返回缩略图"), "card detail page exposes the shared previous/next and return-to-thumbnail interaction hint")
+	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡面") and menu_interaction_hint_label.text.contains("梯度") and menu_interaction_hint_label.text.length() <= 18, "card detail page exposes a compact interaction hint")
 	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and not menu_back_button.visible, "card detail keeps global menu buttons hidden")
 	_expect(menu_body_label != null and menu_body_label.text.contains("¥") and menu_body_label.text.contains("不需要指定怪兽") and not menu_body_label.text.contains("Lv"), "card detail shows concise price and target information with Roman-numeral ranks")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "牌面定位") and _container_label_text_contains(menu_preview_box, "费用与门槛") and _container_label_text_contains(menu_preview_box, "核心效果") and _container_label_text_contains(menu_preview_box, "关键数值") and not _container_label_text_contains(menu_preview_box, "关键字段"), "card detail uses TCG-style player-facing sections for purpose, cost, effect, and key numbers")

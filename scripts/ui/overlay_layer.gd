@@ -24,6 +24,9 @@ signal temporary_decision_action_requested(action_id: String)
 @onready var drag_preview_label: Label = %DragPreviewLabel
 
 const DRAG_PREVIEW_SIZE := Vector2(176.0, 118.0)
+const TEMP_DECISION_BODY_LIMIT := 72
+const SIDE_DRAWER_SUMMARY_LIMIT := 96
+const SIDE_DRAWER_SECTION_BODY_LIMIT := 132
 
 
 func _ready() -> void:
@@ -40,7 +43,7 @@ func hide_tooltip() -> void:
 
 func show_confirm(text: String) -> void:
 	confirm_panel.name = "ConfirmPanel"
-	confirm_label.text = text
+	confirm_label.text = _short_text(text, TEMP_DECISION_BODY_LIMIT)
 	confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	confirm_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	confirm_panel.tooltip_text = text
@@ -62,7 +65,8 @@ func show_temporary_decision(data: Dictionary) -> void:
 	var body := str(data.get("body", data.get("summary", ""))).strip_edges()
 	confirm_panel.name = "TemporaryDecisionModal"
 	confirm_panel.tooltip_text = str(data.get("tooltip", body))
-	confirm_label.text = "%s\n%s" % [title, body] if body != "" else title
+	var visible_body := _short_text(body, TEMP_DECISION_BODY_LIMIT)
+	confirm_label.text = "%s\n%s" % [title, visible_body] if visible_body != "" else title
 	confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	confirm_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	confirm_label.tooltip_text = confirm_panel.tooltip_text
@@ -73,9 +77,9 @@ func show_temporary_decision(data: Dictionary) -> void:
 
 
 func show_side_drawer(data: Dictionary) -> void:
-	side_drawer_title.text = str(data.get("title", "详情抽屉"))
+	side_drawer_title.text = _short_text(str(data.get("title", "详情抽屉")), 18)
 	var sections: Array = data.get("sections", []) if data.get("sections", []) is Array else []
-	side_drawer_summary.text = str(data.get("body", data.get("summary", "")))
+	side_drawer_summary.text = _short_text(str(data.get("body", data.get("summary", ""))), SIDE_DRAWER_SUMMARY_LIMIT)
 	side_drawer_summary.visible = side_drawer_summary.text.strip_edges() != "" and sections.is_empty()
 	_set_side_drawer_sections(sections)
 	_set_label_chip_row(side_drawer_chip_row, data.get("chips", []))
@@ -127,7 +131,7 @@ func _show_drag_drop_target_hint(data: Dictionary) -> void:
 	drag_drop_target_panel.size = target_rect.size
 	drag_drop_target_panel.custom_minimum_size = target_rect.size
 	drag_drop_target_panel.tooltip_text = str(data.get("tooltip", data.get("label", "")))
-	drag_drop_target_label.text = str(data.get("label", "松开出牌" if valid else "拖到星球地图"))
+	drag_drop_target_label.text = _short_text(str(data.get("label", "松开出牌" if valid else "拖到星球地图")), 18)
 	drag_drop_target_label.tooltip_text = drag_drop_target_panel.tooltip_text
 	drag_drop_target_label.add_theme_color_override("font_color", accent.lightened(0.25))
 	var fill := Color("#020617").lerp(accent, 0.16)
@@ -213,7 +217,7 @@ func _drawer_section_card(entry: Dictionary, index: int) -> PanelContainer:
 		rows.add_child(title)
 	var body := Label.new()
 	body.name = "SideDrawerSectionBody"
-	body.text = str(entry.get("body", entry.get("text", ""))).strip_edges()
+	body.text = _short_text(str(entry.get("body", entry.get("text", ""))).strip_edges(), SIDE_DRAWER_SECTION_BODY_LIMIT)
 	body.tooltip_text = panel.tooltip_text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_size_override("font_size", 12)
@@ -225,7 +229,7 @@ func _drawer_section_card(entry: Dictionary, index: int) -> PanelContainer:
 func _drawer_chip_label(entry: Dictionary) -> Label:
 	var label := Label.new()
 	label.name = "SideDrawerChip"
-	label.text = str(entry.get("text", entry.get("label", "")))
+	label.text = _short_text(str(entry.get("text", entry.get("label", ""))), 14)
 	label.tooltip_text = str(entry.get("tooltip", ""))
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.add_theme_font_size_override("font_size", 10)
@@ -243,7 +247,7 @@ func _set_side_drawer_action_row(entries_variant: Variant) -> void:
 		var action_id := str(entry.get("id", ""))
 		var button := Button.new()
 		button.name = "SideDrawerActionButton"
-		button.text = str(entry.get("label", entry.get("text", "打开")))
+		button.text = _short_text(str(entry.get("label", entry.get("text", "打开"))), 12)
 		button.tooltip_text = str(entry.get("tooltip", ""))
 		button.disabled = action_id.strip_edges() == ""
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -265,7 +269,7 @@ func _set_temporary_decision_action_row(entries_variant: Variant) -> void:
 		var action_id := str(entry.get("id", ""))
 		var button := Button.new()
 		button.name = "TemporaryDecisionActionButton"
-		button.text = str(entry.get("label", entry.get("text", "选择")))
+		button.text = _short_text(str(entry.get("label", entry.get("text", "选择"))), 12)
 		button.tooltip_text = str(entry.get("tooltip", ""))
 		button.disabled = action_id.strip_edges() == "" or bool(entry.get("disabled", false))
 		button.custom_minimum_size = Vector2(142, 32)
@@ -283,6 +287,13 @@ func _entry_color(entry: Dictionary, fallback: Color) -> Color:
 	if value is String and str(value).begins_with("#"):
 		return Color(str(value))
 	return fallback
+
+
+func _short_text(value: String, limit: int) -> String:
+	var text := value.replace("\n", " ").strip_edges()
+	if limit <= 0 or text.length() <= limit:
+		return text
+	return "%s…" % text.substr(0, maxi(1, limit - 1))
 
 
 func _panel_style(accent: Color, fill: Color, border_width: int, radius: int) -> StyleBoxFlat:
