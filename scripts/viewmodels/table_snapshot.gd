@@ -7,6 +7,8 @@ const PLANET_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/planet_b
 const PUBLIC_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/public_track_snapshot.gd")
 const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right_inspector_snapshot.gd")
 const TOP_BAR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/top_bar_snapshot.gd")
+const FIRST_RUN_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/first_run_coach_snapshot.gd")
+const SCENARIO_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/scenario_coach_snapshot.gd")
 
 var top_bar: Dictionary = {}
 var card_track: Array = []
@@ -14,6 +16,8 @@ var planet: Dictionary = {}
 var right_inspector: Dictionary = {}
 var player_board: Dictionary = {}
 var temporary_decision: Dictionary = {}
+var first_run_coach: Dictionary = {}
+var scenario_coach: Dictionary = {}
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
@@ -35,6 +39,8 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	if not inspector_source.has("logs"):
 		inspector_source["logs"] = data.get("logs", []) if data.get("logs", []) is Array else []
 	right_inspector = RIGHT_INSPECTOR_SNAPSHOT_SCRIPT.new().apply_dictionary(inspector_source).to_ui_dictionary()
+	first_run_coach = FIRST_RUN_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("first_run_coach", {}) if data.get("first_run_coach", {}) is Dictionary else {}).to_ui_dictionary()
+	scenario_coach = SCENARIO_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("scenario_coach", {}) if data.get("scenario_coach", {}) is Dictionary else {}).to_ui_dictionary()
 	temporary_decision = _normalize_temporary_decision(data.get("temporary_decision", {}))
 	return self
 
@@ -46,6 +52,8 @@ func to_ui_dictionary() -> Dictionary:
 		"planet": planet,
 		"right_inspector": right_inspector,
 		"player_board": player_board,
+		"first_run_coach": first_run_coach,
+		"scenario_coach": scenario_coach,
 		"temporary_decision": temporary_decision,
 	}
 

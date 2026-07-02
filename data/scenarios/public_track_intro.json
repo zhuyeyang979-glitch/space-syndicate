@@ -1,0 +1,24 @@
+{
+  "id": "public_track_intro",
+  "title": "03 匿名牌轨",
+  "category": "系统训练",
+  "difficulty": "intro",
+  "duration_label": "4-6分钟",
+  "player_count": 4,
+  "ai_count": 3,
+  "summary": "出牌后查看公开牌轨、右侧详情和卡牌详情入口。",
+  "recommended_for": "想理解匿名出牌的人",
+  "core_system": "公开牌轨",
+  "allowed_private_information": "current_player_only",
+  "fixture": {"focus": "public_track", "public_summary": "牌轨已有一张刚公开的匿名牌。", "has_public_track": true},
+  "replay_snapshots": [
+    {"key": "start", "label": "开始"},
+    {"key": "after_play", "label": "出牌后"},
+    {"key": "after_track", "label": "牌轨出现后"}
+  ],
+  "phases": [
+    {"id": "select_track_card", "label": "看牌轨", "goal": "选中顶部公开牌轨上的匿名牌。", "primary_action_hint": "点选牌轨卡", "success_signal": "track_selected", "snapshot_key": "after_track"},
+    {"id": "read_inspector", "label": "读详情", "goal": "在右侧查看这张牌的公开结算信息。", "primary_action_hint": "查看右侧详情", "success_signal": "inspector_read", "snapshot_key": "after_track"},
+    {"id": "open_card_detail", "label": "看卡牌", "goal": "打开卡牌详情，理解它的公开效果。", "primary_action_hint": "打开卡牌详情", "success_signal": "card_detail_opened", "snapshot_key": "after_track"}
+  ]
+}

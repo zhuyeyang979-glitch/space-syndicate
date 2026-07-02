@@ -1,0 +1,78 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/scenario_coach.gd" id="2_script"]
+
+[node name="ScenarioCoach" type="PanelContainer"]
+custom_minimum_size = Vector2(360, 92)
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="ScenarioCoachStack" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ScenarioCoachExpanded" type="VBoxContainer" parent="ScenarioCoachStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ScenarioCoachHeader" type="HBoxContainer" parent="ScenarioCoachStack/ScenarioCoachExpanded"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ScenarioCoachTitle" type="Label" parent="ScenarioCoachStack/ScenarioCoachExpanded/ScenarioCoachHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "试玩剧本"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="ScenarioCoachProgress" type="Label" parent="ScenarioCoachStack/ScenarioCoachExpanded/ScenarioCoachHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+text = "1/8"
+horizontal_alignment = 2
+
+[node name="ScenarioCoachBody" type="HBoxContainer" parent="ScenarioCoachStack/ScenarioCoachExpanded"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ScenarioCoachPhase" type="Label" parent="ScenarioCoachStack/ScenarioCoachExpanded/ScenarioCoachBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 0)
+layout_mode = 2
+text = "目标"
+
+[node name="ScenarioCoachGoal" type="Label" parent="ScenarioCoachStack/ScenarioCoachExpanded/ScenarioCoachBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "完成当前目标。"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="ScenarioCoachPrimaryButton" type="Button" parent="ScenarioCoachStack/ScenarioCoachExpanded/ScenarioCoachBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(116, 30)
+layout_mode = 2
+text = "下一步"
+
+[node name="ScenarioCoachSecondaryRow" type="HFlowContainer" parent="ScenarioCoachStack/ScenarioCoachExpanded"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+
+[node name="ScenarioCoachCollapsed" type="HBoxContainer" parent="ScenarioCoachStack"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ScenarioCoachCollapsedButton" type="Button" parent="ScenarioCoachStack/ScenarioCoachCollapsed"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "剧本目标"

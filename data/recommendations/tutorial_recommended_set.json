@@ -1,0 +1,41 @@
+{
+  "id": "tutorial_recommended_set",
+  "title": "新手战役推荐配置",
+  "player_count": 4,
+  "ai_count": 3,
+  "roguelike_depth": 1,
+  "role_indices": [0, 1, 2, 3],
+  "starter_monster_indices": [7, 6, 2, 4],
+  "presets": [
+    {
+      "id": "stable_economy",
+      "title": "新手稳定经济",
+      "recommended_for": "第一次试玩",
+      "learns": "建城、GDP、牌架",
+      "estimated_minutes": 10,
+      "difficulty": "intro",
+      "role_indices": [0, 1, 2, 3],
+      "starter_monster_indices": [7, 6, 2, 4]
+    },
+    {
+      "id": "monster_pressure",
+      "title": "怪兽压力",
+      "recommended_for": "想看怪兽影响城市",
+      "learns": "怪兽、城市受损、GDP下降",
+      "estimated_minutes": 12,
+      "difficulty": "practice",
+      "role_indices": [3, 4, 5, 6],
+      "starter_monster_indices": [1, 3, 5, 7]
+    },
+    {
+      "id": "anonymous_inference",
+      "title": "匿名牌推理",
+      "recommended_for": "想练牌轨和线索",
+      "learns": "匿名出牌、公开线索、归属猜测",
+      "estimated_minutes": 12,
+      "difficulty": "practice",
+      "role_indices": [5, 6, 7, 8],
+      "starter_monster_indices": [0, 2, 4, 6]
+    }
+  ]
+}

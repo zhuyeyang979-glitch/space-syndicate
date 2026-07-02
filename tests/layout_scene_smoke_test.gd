@@ -19,6 +19,16 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/DistrictInfoPanel.tscn",
 	"res://scenes/ui/PublicTrack.tscn",
 	"res://scenes/ui/CardTrack.tscn",
+	"res://scenes/ui/FirstRunCoach.tscn",
+	"res://scenes/ui/ScenarioBrowser.tscn",
+	"res://scenes/ui/ScenarioCoach.tscn",
+	"res://scenes/ui/ScenarioActionLog.tscn",
+	"res://scenes/ui/ScenarioReplayPanel.tscn",
+	"res://scenes/ui/CampaignMenu.tscn",
+	"res://scenes/ui/CampaignBriefing.tscn",
+	"res://scenes/ui/CampaignProgressMap.tscn",
+	"res://scenes/ui/CampaignRewardPanel.tscn",
+	"res://scenes/ui/MatchRecapPanel.tscn",
 	"res://scenes/ui/OverlayLayer.tscn",
 	"res://scenes/ui/CardResolutionBanner.tscn",
 	"res://scenes/ui/BottomCountdownBar.tscn",
@@ -58,6 +68,16 @@ const SPLIT_UI_SCRIPT_PATHS := [
 	"res://scripts/ui/bid_board.gd",
 	"res://scripts/ui/district_info_panel.gd",
 	"res://scripts/ui/card_track.gd",
+	"res://scripts/ui/first_run_coach.gd",
+	"res://scripts/ui/scenario_browser.gd",
+	"res://scripts/ui/scenario_coach.gd",
+	"res://scripts/ui/scenario_action_log.gd",
+	"res://scripts/ui/scenario_replay_panel.gd",
+	"res://scripts/ui/campaign_menu.gd",
+	"res://scripts/ui/campaign_briefing.gd",
+	"res://scripts/ui/campaign_progress_map.gd",
+	"res://scripts/ui/campaign_reward_panel.gd",
+	"res://scripts/ui/match_recap_panel.gd",
 	"res://scripts/ui/bottom_countdown_bar.gd",
 	"res://scripts/ui/district_supply_market_card.gd",
 	"res://scripts/ui/district_supply_preview_card.gd",
@@ -93,6 +113,16 @@ const VIEWMODEL_SCRIPT_PATHS := [
 	"res://scripts/viewmodels/public_track_snapshot.gd",
 	"res://scripts/viewmodels/planet_board_snapshot.gd",
 	"res://scripts/viewmodels/table_snapshot.gd",
+	"res://scripts/viewmodels/first_run_coach_snapshot.gd",
+	"res://scripts/viewmodels/scenario_browser_snapshot.gd",
+	"res://scripts/viewmodels/scenario_coach_snapshot.gd",
+	"res://scripts/viewmodels/scenario_action_log_snapshot.gd",
+	"res://scripts/viewmodels/scenario_replay_panel_snapshot.gd",
+	"res://scripts/viewmodels/campaign_menu_snapshot.gd",
+	"res://scripts/viewmodels/campaign_briefing_snapshot.gd",
+	"res://scripts/viewmodels/campaign_progress_map_snapshot.gd",
+	"res://scripts/viewmodels/campaign_reward_snapshot.gd",
+	"res://scripts/viewmodels/match_recap_snapshot.gd",
 	"res://scripts/viewmodels/player_board_snapshot.gd",
 	"res://scripts/viewmodels/card_view_snapshot.gd",
 	"res://scripts/viewmodels/district_view_snapshot.gd",
@@ -126,6 +156,7 @@ func _run() -> void:
 		await _check_scene_loads(path, path.ends_with("OverlayLayer.tscn"))
 	_check_main_player_panel_refresh_contract()
 	await _check_game_screen_structure()
+	await _check_first_run_coach_component()
 	await _check_split_game_screen_structure()
 	await _check_split_game_screen_data_binding()
 	await _check_menu_overlay_shell_component()
@@ -194,6 +225,93 @@ func _check_game_screen_structure() -> void:
 	screen.queue_free()
 
 
+func _check_first_run_coach_component() -> void:
+	var packed := load("res://scenes/ui/FirstRunCoach.tscn") as PackedScene
+	_expect(packed != null, "FirstRunCoach scene loads")
+	if packed == null:
+		return
+	var coach := packed.instantiate() as Control
+	root.add_child(coach)
+	await process_frame
+	_expect(coach.has_method("set_coach") and coach.has_signal("primary_action_requested"), "FirstRunCoach exposes data binding and one primary action signal")
+	var emitted_actions: Array[String] = []
+	if coach.has_signal("primary_action_requested"):
+		coach.connect("primary_action_requested", func(action_id: String) -> void:
+			emitted_actions.append(action_id)
+		)
+	var snapshot_script := load("res://scripts/viewmodels/first_run_coach_snapshot.gd")
+	var first_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
+		"visible": true,
+		"progress": {
+			"selected_district": false,
+			"has_monster": false,
+			"has_city": false,
+			"has_opened_supply": false,
+			"has_bought_card": false,
+			"has_played_card": false,
+			"has_seen_public_track": false,
+			"has_seen_clues": false,
+		},
+	}).to_ui_dictionary()
+	coach.call("set_coach", first_snapshot)
+	await process_frame
+	var button := coach.find_child("CoachPrimaryButton", true, false) as Button
+	var visible_buttons := _visible_button_count(coach)
+	_expect(button != null and button.visible and not button.disabled and (button.text.contains("点") or button.text.contains("确认")), "FirstRunCoach renders a single visible next-step CTA for the current phase")
+	_expect(visible_buttons == 1, "FirstRunCoach keeps exactly one visible CTA in expanded mode")
+	if button != null:
+		button.emit_signal("pressed")
+		await process_frame
+	if emitted_actions.is_empty() and coach.has_method("_on_primary_button_pressed"):
+		coach.call("_on_primary_button_pressed")
+		await process_frame
+	_expect(emitted_actions.has("coach_select_district"), "FirstRunCoach primary CTA emits the normalized coach action id")
+	var folded_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
+		"visible": true,
+		"progress": {
+			"selected_district": true,
+			"has_monster": true,
+			"has_city": true,
+			"has_opened_supply": true,
+			"has_bought_card": true,
+			"has_played_card": true,
+			"has_seen_public_track": true,
+			"has_seen_clues": false,
+		},
+		"auto_fold_when_track_seen": true,
+	}).to_ui_dictionary()
+	coach.call("set_coach", folded_snapshot)
+	await process_frame
+	var collapsed := coach.find_child("CoachCollapsed", true, false) as Control
+	_expect(collapsed != null and collapsed.visible and _node_tree_text(coach).contains("首局引导完成"), "FirstRunCoach auto-folds after the player has played a card and inspected the public track")
+	_expect(_visible_button_count(coach) == 0, "FirstRunCoach collapsed mode removes primary CTA clutter")
+	var clue_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
+		"progress": {
+			"selected_district": true,
+			"has_monster": true,
+			"has_city": true,
+			"has_opened_supply": true,
+			"has_bought_card": true,
+			"has_played_card": true,
+			"has_seen_public_track": true,
+			"has_seen_clues": false,
+		},
+		"auto_fold_when_track_seen": false,
+	}).to_ui_dictionary()
+	_expect(str(clue_snapshot.get("stage", "")) == "inspect_clues" and str(clue_snapshot.get("title", "")).contains("线索"), "FirstRunCoach stage model still includes the clue-inspection phase for non-folded/tutorial variants")
+	root.remove_child(coach)
+	coach.queue_free()
+
+
+func _visible_button_count(node: Node) -> int:
+	var count := 0
+	if node is Button and (node as Button).visible and (node as Button).is_visible_in_tree():
+		count += 1
+	for child in node.get_children():
+		count += _visible_button_count(child)
+	return count
+
+
 func _check_split_game_screen_structure() -> void:
 	var packed := load("res://scenes/ui/GameScreen.tscn") as PackedScene
 	if packed == null:
@@ -201,7 +319,7 @@ func _check_split_game_screen_structure() -> void:
 	var screen: Node = packed.instantiate()
 	root.add_child(screen)
 	await process_frame
-	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragDropTargetLabel", "DragPreviewPanel"]:
+	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragDropTargetLabel", "DragPreviewPanel"]:
 		_expect(screen.find_child(node_name, true, false) != null, "split GameScreen contains %s" % node_name)
 	root.remove_child(screen)
 	screen.queue_free()
@@ -329,6 +447,20 @@ func _check_split_game_screen_data_binding() -> void:
 				{"id": "test_hand_1", "name": "相位否决", "cost": "1", "type": "互动", "rank": "I", "effect": "反制直接互动牌。"},
 			],
 		},
+		"first_run_coach": {
+			"visible": true,
+			"progress": {
+				"selected_district": true,
+				"has_monster": false,
+				"has_city": false,
+				"has_opened_supply": false,
+				"has_bought_card": false,
+				"has_played_card": false,
+				"has_seen_public_track": false,
+				"has_seen_clues": false,
+			},
+			"primary_action": {"id": "coach_first_summon", "label": "在选区首召", "tooltip": "首召后开启附近牌架。"},
+		},
 		"logs": ["有人打出匿名牌", "怪兽靠近雾港"],
 	})
 	await process_frame
@@ -341,6 +473,8 @@ func _check_split_game_screen_data_binding() -> void:
 	var public_track_pip := screen.find_child("PublicTrackStatePip", true, false) as ColorRect
 	var public_track_label := screen.find_child("PublicTrackSlotLabel", true, false) as Label
 	var public_track_meta := screen.find_child("PublicTrackSlotMeta", true, false) as Label
+	var first_run_coach := screen.find_child("FirstRunCoach", true, false)
+	var first_run_coach_button := screen.find_child("CoachPrimaryButton", true, false) as Button
 	var track_focus_ribbon := screen.find_child("TrackFocusRibbon", true, false) as Control
 	var track_focus_label := screen.find_child("TrackFocusLabel", true, false) as Label
 	var map_host := screen.find_child("MapHost", true, false) as Control
@@ -419,6 +553,7 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(player_readiness_chip_row != null and player_readiness_chip_row.get_child_count() == 1, "split PlayerBoard binds action-readiness chips from snapshot data")
 	_expect(player_action_row != null and player_action_row.get_child_count() == 2, "split PlayerBoard binds compact primary action buttons inside the single main action dock")
 	_expect(public_track != null and public_track.custom_minimum_size.y <= 48.0, "split PublicTrack remains a thin anonymous offer rail")
+	_expect(first_run_coach != null and first_run_coach_button != null and first_run_coach_button.text.contains("首召"), "split GameScreen binds FirstRunCoach below the public track with a single next-step CTA")
 	_expect(public_track_slot != null and public_track_slot.custom_minimum_size.y <= 36.0, "split PublicTrack renders compact public slots instead of full cards")
 	_expect(public_track_pip != null, "split PublicTrack renders a compact state color pip")
 	_expect(public_track_label != null and public_track_label.text.contains("匿名牌"), "split PublicTrack binds the anonymous card short label")
@@ -1985,6 +2120,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_expect(snapshot.has("player_board"), "runtime snapshot contains player_board")
 	_expect(snapshot.has("card_track"), "runtime snapshot contains card_track")
 	_expect(snapshot.has("planet"), "runtime snapshot contains planet")
+	_expect(snapshot.has("first_run_coach"), "runtime snapshot contains first_run_coach")
 	_expect(not _variant_contains_callable(snapshot), "runtime TableSnapshot bridge emits data-only snapshots without Callable rule handles")
 	var snapshot_source_variant: Variant = main.call("_runtime_table_snapshot_source") if main.has_method("_runtime_table_snapshot_source") else {}
 	var snapshot_source: Dictionary = snapshot_source_variant if snapshot_source_variant is Dictionary else {}
@@ -1992,6 +2128,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	var top_bar: Dictionary = snapshot.get("top_bar", {}) if snapshot.get("top_bar", {}) is Dictionary else {}
 	var right_inspector: Dictionary = snapshot.get("right_inspector", {}) if snapshot.get("right_inspector", {}) is Dictionary else {}
 	var player_board: Dictionary = snapshot.get("player_board", {}) if snapshot.get("player_board", {}) is Dictionary else {}
+	var first_run_coach_snapshot: Dictionary = snapshot.get("first_run_coach", {}) if snapshot.get("first_run_coach", {}) is Dictionary else {}
 	_expect(str(top_bar.get("identity", "")).strip_edges() != "", "runtime top_bar snapshot has first-glance identity")
 	_expect(str(top_bar.get("selected_district", "")).strip_edges() != "", "runtime top_bar snapshot has selected district")
 	_expect(str(top_bar.get("primary_action", "")).strip_edges() != "", "runtime top_bar snapshot has primary action")
@@ -1999,6 +2136,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_expect(right_inspector.get("requirements", []) is Array and (right_inspector.get("requirements", []) as Array).size() > 0, "runtime right_inspector snapshot has requirement chips")
 	_expect(right_inspector.get("deep_links", []) is Array and (right_inspector.get("deep_links", []) as Array).size() > 0, "runtime right_inspector snapshot has deeper-detail links")
 	_expect(player_board.get("actions", []) is Array and (player_board.get("actions", []) as Array).size() > 0, "runtime player_board snapshot has compact actions")
+	_expect(first_run_coach_snapshot.has("recommended_setup"), "runtime first_run_coach snapshot carries recommended first-run setup metadata")
 	var screen := split_packed.instantiate() as Control
 	root.add_child(screen)
 	await process_frame
@@ -2031,6 +2169,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	var live_snapshot: Dictionary = live_snapshot_variant if live_snapshot_variant is Dictionary else {}
 	var live_player_board: Dictionary = live_snapshot.get("player_board", {}) if live_snapshot.get("player_board", {}) is Dictionary else {}
 	var live_right_inspector: Dictionary = live_snapshot.get("right_inspector", {}) if live_snapshot.get("right_inspector", {}) is Dictionary else {}
+	var live_first_run_coach: Dictionary = live_snapshot.get("first_run_coach", {}) if live_snapshot.get("first_run_coach", {}) is Dictionary else {}
 	var live_deep_links: Array = live_right_inspector.get("deep_links", []) if live_right_inspector.get("deep_links", []) is Array else []
 	_expect(live_player_board.get("hand_cards", []) is Array and (live_player_board.get("hand_cards", []) as Array).size() > 0, "runtime player_board snapshot includes live hand-card data after a new run starts")
 	_expect(live_player_board.get("quick_actions", []) is Array and (live_player_board.get("quick_actions", []) as Array).size() == 4, "runtime player_board snapshot includes Build/Rack/Buy/Play scan chips after a new run starts")
@@ -2038,6 +2177,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_expect(live_player_board.get("readiness_chips", []) is Array and (live_player_board.get("readiness_chips", []) as Array).size() > 0, "runtime player_board snapshot includes action-readiness chips after a new run starts")
 	_expect(live_player_board.get("actions", []) is Array and (live_player_board.get("actions", []) as Array).size() > 0, "runtime player_board snapshot includes live compact actions after a new run starts")
 	_expect(live_right_inspector.get("requirements", []) is Array and (live_right_inspector.get("requirements", []) as Array).size() > 0, "runtime right_inspector snapshot includes live selected-region requirements after a new run starts")
+	_expect(bool(live_first_run_coach.get("visible", false)) and str(live_first_run_coach.get("stage", "")).strip_edges() != "", "runtime first-run coach renders a live next-step phase after a new run starts")
 	_expect(_action_list_has_id(live_deep_links, "detail_region") and _action_list_has_id(live_deep_links, "detail_cards") and not _action_list_has_id(live_deep_links, "codex_region"), "runtime right_inspector deep links open the 30-second drawer layer before Codex")
 	_prepare_runtime_open_card_auction(main)
 	_force_runtime_screen_sync(main)
