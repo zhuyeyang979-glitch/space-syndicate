@@ -420,6 +420,16 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(public_track_label != null and public_track_label.text.contains("匿名牌"), "split PublicTrack binds the anonymous card short label")
 	_expect(public_track_meta != null and public_track_meta.text.contains("匿名"), "split PublicTrack keeps ownership as a scan-first anonymous hint")
 	_expect(public_track != null and public_track.find_child("CardFace", true, false) == null, "split PublicTrack does not render full CardFace nodes")
+	if public_track_slot != null:
+		var pre_hover_title := inspector_title.text if inspector_title != null else ""
+		var pre_hover_reason := reason_label.text if reason_label != null else ""
+		public_track_slot.emit_signal("mouse_entered")
+		await process_frame
+		_expect(inspector_title != null and not inspector_title.text == pre_hover_title and district_title != null and public_track_label != null and district_title.text.contains(public_track_label.text), "split PublicTrack hover previews the anonymous card slot in RightInspector")
+		_expect(reason_label != null and not reason_label.text == pre_hover_reason and reason_label.text.strip_edges() != "", "split PublicTrack hover shows public card-state reasoning instead of leaving the region explanation in place")
+		public_track_slot.emit_signal("mouse_exited")
+		await process_frame
+		_expect(inspector_title != null and inspector_title.text == pre_hover_title and reason_label != null and reason_label.text == pre_hover_reason, "split PublicTrack unhover restores the prior RightInspector context")
 	_expect(left_rail_title != null and left_rail_title.text == "地表情报" and right_rail_title != null and right_rail_title.text == "外围压力", "split PlanetBoard binds public side-rail titles from snapshot data")
 	_expect(left_rail_entries.size() == 3 and right_rail_entries.size() == 3, "split PlanetBoard renders data-driven public intelligence and outer-pressure side-rail entries")
 	_expect(left_rail_text != null and not left_rail_text.visible and right_rail_text != null and not right_rail_text.visible, "split PlanetBoard hides static side-rail fallback labels after snapshot binding")

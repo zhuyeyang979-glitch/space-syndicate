@@ -127,15 +127,23 @@ func _set_public_track_hover(action_id: String) -> void:
 
 func _on_track_entry_hovered(entry: Dictionary) -> void:
 	_set_player_board_track_hover(_track_hover_action(entry))
+	_show_track_entry_hover_preview(entry)
 
 
 func _on_track_entry_unhovered(_entry: Dictionary) -> void:
 	_set_player_board_track_hover("")
+	_restore_right_inspector_context()
 
 
 func _set_player_board_track_hover(action_id: String) -> void:
 	if player_board != null and player_board.has_method("set_hovered_track_action"):
 		player_board.call("set_hovered_track_action", action_id)
+
+
+func _show_track_entry_hover_preview(entry: Dictionary) -> void:
+	if entry.is_empty() or right_inspector == null or not right_inspector.has_method("set_context"):
+		return
+	right_inspector.call("set_context", _track_entry_inspector_context(entry))
 
 
 func _on_side_drawer_action_requested(action_id: String) -> void:

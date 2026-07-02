@@ -5668,3 +5668,21 @@
 - `tests/visual_snapshot.gd` 通过。
 - `tests/ui_text_smoke_test.gd` 通过。
 - `tests/layout_scene_smoke_test.gd` 通过。
+
+## 2026-07-02｜公开牌轨 Hover 接入右侧说明层
+
+- 继续按“桌面信息互相指认”的商业桌游读法推进：
+  - 顶部公开牌轨槽位 hover 时，不再只点亮 BidBoard 指针，也会把该匿名牌槽的公开状态、归属提示、报价、条件和详情入口临时显示到 `RightInspector`。
+  - 鼠标离开牌轨后，右侧说明恢复最近一次主桌上下文，避免玩家扫牌轨时把当前选区/行动说明永久冲掉。
+  - 这复用 `GameScreen._track_entry_inspector_context()`，仍然只走 UI snapshot/信号层，不把规则逻辑塞进 `CardTrack`。
+- 可玩性意义：
+  - 玩家扫顶部匿名牌轨时能立刻看到“这张公共牌为什么重要、可以点哪里、归属线索是什么”，不用先点击或翻情报页。
+  - 牌轨、BidBoard、RightInspector 三块信息开始形成同一张桌面的短反馈链。
+
+### 本轮验证
+
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
