@@ -119,9 +119,9 @@ func _sync_campaign_focus_layout(enabled: bool, ui_data: Dictionary) -> void:
 	if scenario_coach_host != null:
 		scenario_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if enabled:
-			_set_overlay_anchor_rect(scenario_coach_host, 0.018, 0.142, 0.305, 0.300)
+			_set_overlay_anchor_rect(scenario_coach_host, 0.635, 0.145, 0.790, 0.270)
 		else:
-			_set_overlay_anchor_rect(scenario_coach_host, 0.36, 0.13, 0.82, 0.285)
+			_set_overlay_anchor_rect(scenario_coach_host, 0.635, 0.145, 0.790, 0.285)
 	if first_run_coach_host != null:
 		first_run_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}

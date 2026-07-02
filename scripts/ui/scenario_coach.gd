@@ -28,19 +28,20 @@ func set_coach(data: Dictionary) -> void:
 	if not visible:
 		return
 	var compact := bool(data.get("campaign_focus_mode", data.get("compact", false)))
-	custom_minimum_size = Vector2(300, 0) if compact else Vector2.ZERO
+	custom_minimum_size = Vector2(220, 0) if compact else Vector2.ZERO
 	var collapsed := bool(data.get("collapsed", false))
 	expanded_panel.visible = not collapsed
 	collapsed_panel.visible = collapsed
 	if collapsed:
 		collapsed_button.text = "剧本目标｜%s" % str(data.get("progress_text", "完成"))
 		return
-	title_label.text = str(data.get("title", "试玩剧本"))
+	title_label.text = _short_text(str(data.get("title", "试玩剧本")), 18 if compact else 32)
+	phase_label.visible = not compact
 	phase_label.text = str(data.get("phase_label", "目标"))
 	progress_label.text = str(data.get("progress_text", "1/1"))
-	goal_label.text = str(data.get("goal", "完成当前目标。"))
+	goal_label.text = _short_text(str(data.get("goal", "完成当前目标。")), 16 if compact else 34)
 	goal_label.tooltip_text = str(data.get("detail", goal_label.text))
-	help_label.visible = bool(data.get("help_visible", false))
+	help_label.visible = bool(data.get("help_visible", false)) and not compact
 	help_label.text = "卡住了吗？%s" % str(data.get("help_text", "看高亮区域，完成当前目标。"))
 	help_label.tooltip_text = str(data.get("help_text", ""))
 	var font_scale := clampf(float(data.get("font_scale_percent", 100)) / 100.0, 0.85, 1.30)
@@ -54,6 +55,7 @@ func set_coach(data: Dictionary) -> void:
 	primary_button.text = str(action.get("label", "下一步"))
 	primary_button.tooltip_text = str(action.get("tooltip", ""))
 	primary_button.disabled = bool(action.get("disabled", false)) or _primary_action_id == ""
+	primary_button.custom_minimum_size = Vector2(74, 26) if compact else Vector2(88, 28)
 	_render_secondary([] if compact else data.get("secondary_actions", []))
 
 
@@ -94,3 +96,10 @@ func _panel_style(accent: Color) -> StyleBoxFlat:
 	style.set_content_margin(SIDE_RIGHT, 8)
 	style.set_content_margin(SIDE_BOTTOM, 6)
 	return style
+
+
+func _short_text(value: String, limit: int) -> String:
+	var text := value.replace("\n", " ").strip_edges()
+	if text.length() <= limit:
+		return text
+	return "%s..." % text.left(maxi(1, limit - 3))

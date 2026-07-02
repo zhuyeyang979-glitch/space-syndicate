@@ -144,7 +144,7 @@ size_flags_vertical = 3
 
 [node name="PlayerCommandTableau" type="PanelContainer" parent="PlayerRows/PlayerBoardBody"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(292, 0)
+custom_minimum_size = Vector2(276, 0)
 layout_mode = 2
 size_flags_vertical = 3
 
@@ -154,7 +154,7 @@ theme_override_constants/separation = 4
 
 [node name="PlayerBidBoard" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows" instance=ExtResource("5_bid_board")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 64)
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 
 [node name="PlayerMainActionDock" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows" instance=ExtResource("4_action_dock")]

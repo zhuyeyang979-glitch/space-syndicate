@@ -19014,7 +19014,7 @@ func _runtime_player_board_bid_board(player_index: int) -> Dictionary:
 		return {
 			"title": "公开竞价",
 			"phase": "未开局",
-			"status": "开新一桌后才能预设匿名牌公开报价。",
+			"status": "开新一桌后才能预设公开报价。",
 			"active": false,
 			"accent": Color("#94a3b8"),
 			"chips": [],
@@ -19049,7 +19049,7 @@ func _runtime_player_board_bid_board(player_index: int) -> Dictionary:
 	var chips := [
 		{"label": "我的", "state": "¥%d" % active_tip, "active": active_tip > 0 or queued_index >= 0 or next_queued_index >= 0, "accent": Color("#fde68a"), "tooltip": status_text, "max_chars": 9},
 		{"label": "最高", "state": "¥%d" % _highest_card_resolution_bid(), "active": card_resolution_auction_open, "accent": Color("#f59e0b"), "tooltip": "当前本批最高公开报价；不显示出价者身份。", "max_chars": 9},
-		{"label": "本批", "state": "%d张" % queue_count, "active": queue_count > 0, "accent": Color("#c084fc"), "tooltip": "当前批等待或正在结算的匿名牌数量。", "max_chars": 8},
+		{"label": "本批", "state": "%d张" % queue_count, "active": queue_count > 0, "accent": Color("#c084fc"), "tooltip": "当前批等待或正在结算的牌数量。", "max_chars": 8},
 		{"label": "下批", "state": "%d张" % next_count, "active": next_count > 0, "accent": Color("#38bdf8"), "tooltip": "当前批次清空后才会统一竞价的等待牌。", "max_chars": 8},
 	]
 	return {
@@ -19101,12 +19101,12 @@ func _runtime_scenario_bid_board_demo_track_link() -> Dictionary:
 	var selected := selected_card_resolution_id == resolution_id
 	return {
 		"id": "track_select_%d" % resolution_id,
-		"label": "教学牌",
+			"label": "教学牌",
 		"state": "竞拍1 ¥40",
 		"active": true,
 		"selected": selected,
 		"accent": Color("#f59e0b"),
-		"tooltip": "对应顶部公开牌轨的教学匿名牌；竞价金额公开，出牌者仍匿名。",
+		"tooltip": "对应顶部公开牌轨的教学牌；竞价金额公开，出牌者不显示。",
 		"max_chars": 13,
 	}
 
@@ -19503,7 +19503,7 @@ func _runtime_scenario_demo_card_track_entry() -> Dictionary:
 			"id": "scenario_demo_track",
 			"resolution_id": _runtime_scenario_demo_resolution_id(),
 			"card_name": card_name,
-			"label": "教学匿名牌",
+		"label": "教学牌",
 			"slot": "教学",
 			"state": "教学牌轨",
 			"kind": "queue",
@@ -22281,7 +22281,7 @@ func _first_run_coach_progress(player_index: int) -> Dictionary:
 
 
 func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
-	if active_scenario_id != "":
+	if _runtime_campaign_focus_mode():
 		return {}
 	if player_index < 0 or player_index >= players.size() or game_over:
 		return {}
@@ -38897,10 +38897,10 @@ func _card_bid_control_status_color(player_index: int) -> Color:
 
 func _card_bid_button_tooltip(player_index: int, target_tip: int) -> String:
 	if player_index < 0 or player_index >= players.size():
-		return "没有当前玩家，无法设置匿名报价。"
+		return "没有当前玩家，无法设置报价。"
 	var active_tip := _selected_card_tip_amount(player_index)
 	if game_over:
-		return "游戏已经结束，不能修改匿名报价。"
+		return "游戏已经结束，不能修改报价。"
 	var queued_index := _queued_card_entry_index_for_player(player_index)
 	var next_queued_index := _next_batch_card_entry_index_for_player(player_index)
 	if queued_index >= 0:
@@ -38919,15 +38919,15 @@ func _card_bid_button_tooltip(player_index: int, target_tip: int) -> String:
 				play_cash_cost,
 				cash,
 			]
-		return "把当前候补牌匿名公开报价改为¥%d；封盘后整批按报价排序，同价按顺时针席位。" % target_tip
+		return "把当前候补牌公开报价改为¥%d；封盘后整批按报价排序，同价按顺时针席位。" % target_tip
 	if next_queued_index >= 0:
 		return "下一批等待牌已经提交；它会在当前整批清空后进入统一竞价，届时才可继续加价。"
 	var cash := int((players[player_index] as Dictionary).get("cash", 0))
 	if cash < maxi(0, target_tip):
-		return "资金不足：无法把下一张牌预设匿名报价设为¥%d；当前资金¥%d。" % [target_tip, cash]
+		return "资金不足：无法把下一张牌预设报价设为¥%d；当前资金¥%d。" % [target_tip, cash]
 	if target_tip <= 0:
-		return "清空下一张牌的预设匿名报价；已在队列中的锁定牌不受影响。"
-	return "把下一张牌预设匿名报价设为¥%d；提交卡牌时会随卡进入同时判定短窗。" % target_tip
+		return "清空下一张牌的预设报价；已在队列中的锁定牌不受影响。"
+	return "把下一张牌预设报价设为¥%d；提交卡牌时会随卡进入同时判定短窗。" % target_tip
 
 
 func _selected_card_tip_amount(player_index: int) -> int:

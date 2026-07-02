@@ -2,6 +2,7 @@ extends SceneTree
 
 const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right_inspector_snapshot.gd")
 const FIRST_RUN_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/first_run_coach_snapshot.gd")
+const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 
 var _failures: Array[String] = []
 
@@ -14,6 +15,7 @@ func _run() -> void:
 	_check_right_inspector_snapshot_density()
 	_check_first_run_coach_density()
 	_check_player_facing_source_guards()
+	await _check_default_scenario_coach_stays_off_planet()
 	_finish()
 
 
@@ -55,11 +57,13 @@ func _check_first_run_coach_density() -> void:
 
 func _check_player_facing_source_guards() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
 	var inspector_source := FileAccess.get_file_as_string("res://scripts/ui/right_inspector.gd")
 	var overlay_source := FileAccess.get_file_as_string("res://scripts/ui/overlay_layer.gd")
 	var tutorial_source := FileAccess.get_file_as_string("res://scripts/ui/tutorial_quick_start_board.gd")
 	var rules_source := FileAccess.get_file_as_string("res://scripts/ui/rules_quick_reference_board.gd")
 	var snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/right_inspector_snapshot.gd")
+	var bid_board_scene := FileAccess.get_file_as_string("res://scenes/ui/BidBoard.tscn")
 	_expect(snapshot_source.contains("WHY_TEXT_CHAR_LIMIT := 48") and snapshot_source.contains("DETAIL_SUMMARY_CHAR_LIMIT := 44"), "right inspector snapshot has strict scan-first limits")
 	_expect(inspector_source.contains("WHY_TEXT_CHAR_LIMIT := 48") and inspector_source.contains("SUMMARY_TEXT_CHAR_LIMIT := 44"), "right inspector UI has strict scan-first limits")
 	_expect(overlay_source.contains("TEMP_DECISION_BODY_LIMIT := 72") and overlay_source.contains("SIDE_DRAWER_SECTION_BODY_LIMIT := 132"), "overlay modals/drawers cap visible prose")
@@ -68,6 +72,49 @@ func _check_player_facing_source_guards() -> void:
 	_expect(not main_source.contains("当前位置：主菜单"), "menu breadcrumb prose is not shown as player-facing navigation copy")
 	_expect(not main_source.contains("所有牌都会公开展示，出牌者匿名"), "rules menu no longer repeats long prose in the page body")
 	_expect(main_source.contains("第一局只做四件事：首召、建城、买牌、出牌。"), "tutorial menu opens with one-line first-game guidance")
+	_expect(game_screen_source.contains("0.635, 0.145, 0.790, 0.285"), "default scenario coach uses the planet side lane instead of the table center")
+	_expect(not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board does not over-explain anonymity in the always-visible table text")
+	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")
+
+
+func _check_default_scenario_coach_stays_off_planet() -> void:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	_expect(packed != null, "main scene loads for scenario coach readability check")
+	if packed == null:
+		return
+	root.size = Vector2i(1600, 960)
+	var main := packed.instantiate()
+	root.add_child(main)
+	await process_frame
+	await process_frame
+	if main.has_method("_start_scenario_from_menu"):
+		main.call("_start_scenario_from_menu", "first_table")
+	await process_frame
+	await process_frame
+	await process_frame
+	var map_host := main.find_child("MapHost", true, false) as Control
+	var coach_host := main.find_child("ScenarioCoachHost", true, false) as Control
+	var first_run_coach := main.find_child("FirstRunCoach", true, false) as Control
+	var right_inspector := main.find_child("RightInspector", true, false) as Control
+	_expect(map_host != null and coach_host != null, "scenario coach and map host exist in runtime")
+	if map_host != null and coach_host != null:
+		var map_rect := map_host.get_global_rect()
+		var coach_rect := coach_host.get_global_rect()
+		var planet_core_rect := Rect2(
+			map_rect.position + Vector2(map_rect.size.x * 0.24, map_rect.size.y * 0.08),
+			Vector2(map_rect.size.x * 0.52, map_rect.size.y * 0.84)
+		)
+		var coach_center_x := coach_rect.position.x + coach_rect.size.x * 0.5
+		var map_center_x := map_rect.position.x + map_rect.size.x * 0.5
+		_expect(coach_rect.size.x <= 270.0, "default scenario coach remains a compact side card")
+		_expect(absf(coach_center_x - map_center_x) >= map_rect.size.x * 0.22, "default scenario coach sits in a left/right planet side lane")
+		_expect(not coach_rect.intersects(planet_core_rect), "default scenario coach does not cover the central planet body")
+		if right_inspector != null:
+			_expect(not coach_rect.intersects(right_inspector.get_global_rect()), "default scenario coach does not cover the right inspector")
+	_expect(first_run_coach != null and not first_run_coach.visible, "scenario runtime hides the generic first-run coach so only one CTA card is on the table")
+	root.remove_child(main)
+	main.queue_free()
+	await process_frame
 
 
 func _expect(condition: bool, message: String) -> void:

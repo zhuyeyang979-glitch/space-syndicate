@@ -29,7 +29,7 @@ func set_bid_state(data: Dictionary) -> void:
 	title_label.text = str(data.get("title", "公开竞价"))
 	phase_label.text = _short_text(str(data.get("phase", "预设")), 12)
 	phase_label.tooltip_text = str(data.get("phase_tooltip", data.get("status", "")))
-	var status_text := str(data.get("status", "下一张匿名牌可预设公开报价。"))
+	var status_text := str(data.get("status", "下一张牌可预设报价。"))
 	var track_links: Array = data.get("track_links", []) if data.get("track_links", []) is Array else []
 	var track_text := _track_link_text(track_links)
 	status_label.text = _short_text(status_text if status_text != "" else track_text, 38)
@@ -46,7 +46,7 @@ func set_bid_state(data: Dictionary) -> void:
 func _render_chips(chips: Array) -> void:
 	_clear_row(chip_row)
 	if chips.is_empty():
-		_add_chip({"label": "我的", "state": "¥0", "active": false, "accent": Color("#fde68a"), "tooltip": "当前没有公开报价。"})
+		_add_chip({"label": "我的", "state": "¥0", "active": false, "accent": Color("#fde68a"), "tooltip": "当前没有报价。"})
 		_add_chip({"label": "最高", "state": "¥0", "active": false, "accent": Color("#f59e0b"), "tooltip": "当前没有参拍牌。"})
 		return
 	for chip_variant in chips:
@@ -105,8 +105,8 @@ func _add_track_link(entry: Dictionary) -> void:
 	button.name = "BidBoardTrackLinkButton"
 	button.text = _short_text(_entry_status_text(entry), int(entry.get("max_chars", 13)))
 	button.disabled = action_id == ""
-	button.tooltip_text = str(entry.get("tooltip", "单击选中顶部公开牌轨中的对应匿名牌。"))
-	button.custom_minimum_size = Vector2(78, 21)
+	button.tooltip_text = str(entry.get("tooltip", "单击选中顶部牌轨中的对应牌槽。"))
+	button.custom_minimum_size = Vector2(72, 20)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.set_meta("action_id", action_id)
 	button.set_meta("accent", accent)
@@ -191,7 +191,7 @@ func _add_action(entry: Dictionary) -> void:
 	button.text = _short_text(str(entry.get("label", action_id)), 6)
 	button.disabled = disabled
 	button.tooltip_text = str(entry.get("tooltip", ""))
-	button.custom_minimum_size = Vector2(48, 24)
+	button.custom_minimum_size = Vector2(44, 22)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_stylebox_override("normal", _action_style(accent, disabled))
 	button.add_theme_stylebox_override("hover", _action_style(accent, false))
@@ -246,10 +246,10 @@ func _panel_style(accent: Color, active: bool) -> StyleBoxFlat:
 	style.border_color = Color("#334155").lerp(accent, 0.52 if active else 0.34)
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(6)
-	style.set_content_margin(SIDE_LEFT, 7.0)
-	style.set_content_margin(SIDE_RIGHT, 7.0)
-	style.set_content_margin(SIDE_TOP, 5.0)
-	style.set_content_margin(SIDE_BOTTOM, 5.0)
+	style.set_content_margin(SIDE_LEFT, 6.0)
+	style.set_content_margin(SIDE_RIGHT, 6.0)
+	style.set_content_margin(SIDE_TOP, 4.0)
+	style.set_content_margin(SIDE_BOTTOM, 4.0)
 	return style
 
 
