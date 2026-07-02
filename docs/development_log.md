@@ -3,6 +3,44 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-02。
 
+## 2026-07-02｜Hearthstone-grade Vertical Slice v1
+
+### 参考方向
+
+- 本轮不复制暴雪 IP、素材、图标、卡背、文本或规则，只学习商业卡牌游戏的产品结构：明确桌面舞台、手牌对象感、目标反馈、出牌演出、怪兽攻击、资源浮字、音效 hook、帧序列验收。
+- 继续使用开源参考的结构而非素材：CardHouse 的事件/目标 staging，Balatro-Feel 的反馈节奏语言，UiCard 的目标/拖放反馈，Godot card plugin 的 data/visual/hand/drag/rules 分离。
+- 不改 Codex B 的 Scenario 系统，不碰竞价推荐、公开牌轨逻辑、AI、经济公式、怪兽规则、匿名牌真实归属或卡牌数据表。
+
+### 本轮实现
+
+- 新增 `docs/hearthstone_grade_ux_matrix.md`、`docs/commercial_readiness_scorecard.md`、`docs/vertical_slice_showcase_spec.md`，把商业切片拆成桌面、手牌、hover/drag、目标选择、出牌、召唤、攻击、受损、资源、日志、音效和截图验收。
+- 新增 `docs/card_frame_spec.md`、`docs/art_direction.md`、`docs/vfx_event_language.md`、`docs/balance_pricing_model.md`，锁定 MiniHandCard / InspectorCard / TrackCard、VFX 事件语言和价格公式。
+- 新增 `scenes/ui/VerticalSliceShowcase.tscn`、`scripts/ui/vertical_slice_showcase.gd`、`scripts/ui/showcase_director.gd` 与 `data/showcase/hearthstone_grade_sequence.json`，可独立播放 45 秒展示序列：桌面就绪、手牌 hover、有效/非法拖牌、出牌飞行、公开 reveal、怪兽出现/移动/攻击、城市受损、BidBoard 高亮、平衡报告预览。
+- 新增 `VisualEventLayer`、`TargetingOverlay`、`VisualEventQueue`、`VisualEventSnapshot`，覆盖 card_play、target_arrow、card_reveal、monster_spawn、monster_move、monster_attack、city_damage、route_damage、cash_gain、gdp_delta、final_countdown 等事件，支持 reduced_motion 和 32 事件上限。
+- 新增 monster/city/route/combat presenter，用 UI-only 事件表达怪兽出现、移动、攻击、城市受损、商路受损、军队射线。
+- 新增 silent `AudioEventBus` / `AudioEventRegistry` 和 `data/audio/audio_event_map.json`，覆盖 ui、card、bid、monster、city、route、resource、final_countdown hook。
+- 新增 `scripts/balance/*`、`data/balance/*`、`docs/balance_report.md`，输出价格过低 Top 20、价格过高 Top 20、Rank I-IV 梯度异常、同类型异常、首局推荐卡和复杂卡排除；报告只建议，不改真实卡牌数据。
+- 新增 `tests/vertical_slice_showcase_test.gd`、`tests/visual_event_smoke_test.gd`、`tests/balance_report_test.gd`、`tests/showcase_frame_capture.gd`，并扩展 `tests/visual_snapshot.gd` 锁住新合同和帧序列文件名。
+
+### 验证
+
+- `Godot 4.7 --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/vertical_slice_showcase_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/visual_event_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/balance_report_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/showcase_frame_capture.gd` 通过，并生成 14 张 showcase / 帧序列 / 价格报告预览图。
+- `git diff --check` 将在最终提交前复跑。
+
+### 剩余缺口
+
+- v1 仍是程序化 UI 视觉和 silent 音效 hook，下一轮可替换为 CC0 临时音效和更完整的 token/冲击动画。
+- 目前通过本地 showcase fixture 播放，等 Codex B 的 Scenario Lab 暴露 `visual_events` 后再接真实剧本入口。
+- 平衡报告只建议垂直切片卡组，不应直接全局改价。
+
 ## 2026-07-02｜HandRack / CardFace Commercial Feel v3
 
 ### 参考方向

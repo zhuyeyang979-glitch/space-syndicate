@@ -1,0 +1,18 @@
+{
+  "ui_hover": {"mode": "silent", "category": "ui"},
+  "ui_click": {"mode": "silent", "category": "ui"},
+  "card_pickup": {"mode": "silent", "category": "card"},
+  "card_drop_valid": {"mode": "silent", "category": "card"},
+  "card_drop_invalid": {"mode": "silent", "category": "card"},
+  "card_play": {"mode": "silent", "category": "card"},
+  "card_reveal": {"mode": "silent", "category": "public_track"},
+  "bid_update": {"mode": "silent", "category": "bid"},
+  "monster_spawn": {"mode": "silent", "category": "monster"},
+  "monster_move": {"mode": "silent", "category": "monster"},
+  "monster_attack": {"mode": "silent", "category": "monster"},
+  "city_damage": {"mode": "silent", "category": "city"},
+  "route_damage": {"mode": "silent", "category": "route"},
+  "cash_gain": {"mode": "silent", "category": "resource"},
+  "gdp_delta": {"mode": "silent", "category": "resource"},
+  "final_countdown": {"mode": "silent", "category": "finale"}
+}

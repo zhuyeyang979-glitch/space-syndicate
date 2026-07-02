@@ -1,0 +1,23 @@
+{
+  "base_by_type": {
+    "经济": 60,
+    "怪兽": 80,
+    "情报": 55,
+    "军队": 70,
+    "合约": 65,
+    "商路": 58,
+    "天气": 62,
+    "互动": 66
+  },
+  "rank_step": {"I": 0, "II": 45, "III": 95, "IV": 160},
+  "weights": {
+    "effect_power": 8,
+    "targeting_premium": 12,
+    "hidden_info_premium": 10,
+    "economy_scaling_premium": 9,
+    "interaction_premium": 8,
+    "setup_requirement_discount": 9,
+    "delayed_effect_discount": 7,
+    "self_risk_discount": 8
+  }
+}

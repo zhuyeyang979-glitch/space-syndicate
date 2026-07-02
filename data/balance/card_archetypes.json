@@ -1,0 +1,10 @@
+{
+  "经济": {"complexity_floor": 1, "onboarding": "easy"},
+  "怪兽": {"complexity_floor": 3, "onboarding": "medium"},
+  "情报": {"complexity_floor": 3, "onboarding": "hard"},
+  "军队": {"complexity_floor": 2, "onboarding": "medium"},
+  "合约": {"complexity_floor": 3, "onboarding": "medium"},
+  "商路": {"complexity_floor": 2, "onboarding": "easy"},
+  "天气": {"complexity_floor": 2, "onboarding": "medium"},
+  "互动": {"complexity_floor": 3, "onboarding": "hard"}
+}
