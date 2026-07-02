@@ -88,12 +88,19 @@ func _normalize_filters(entries_variant: Variant, active_filter_id: String) -> A
 func _normalize_card(source_variant: Variant, card_index: int, selected_card: String) -> Dictionary:
 	var source: Dictionary = source_variant if source_variant is Dictionary else {}
 	var card_name := _first_text(source, ["card_name", "id", "name"], "")
+	var rank_label := _first_text(source, ["rank", "stats", "level_text"], "I")
+	var rank_number := _rank_number(source.get("rank_number", source.get("level", rank_label)))
 	return {
 		"card_name": card_name,
 		"title": _first_text(source, ["title"], card_name),
 		"title_tooltip": _first_text(source, ["title_tooltip", "display_name"], card_name),
+		"display_name": _first_text(source, ["display_name", "title_tooltip"], card_name),
 		"art_text": _first_text(source, ["art_text", "kind"], ""),
 		"kind": _first_text(source, ["kind"], ""),
+		"rank": rank_label,
+		"rank_number": rank_number,
+		"card_stats": _first_text(source, ["card_stats", "stats"], rank_label),
+		"card_art_stats": _first_text(source, ["card_art_stats", "art_stats", "card_stats", "stats"], rank_label),
 		"chips": _normalize_chips(source.get("chips", [])),
 		"route": _first_text(source, ["route"], ""),
 		"route_tooltip": _first_text(source, ["route_tooltip"], ""),
@@ -168,3 +175,19 @@ func _first_text(data: Dictionary, keys: Array, fallback: String) -> String:
 			if value != "":
 				return value
 	return fallback
+
+
+func _rank_number(value: Variant) -> int:
+	if value is int or value is float:
+		return maxi(1, int(value))
+	var text := str(value).strip_edges().to_upper()
+	match text:
+		"I":
+			return 1
+		"II":
+			return 2
+		"III":
+			return 3
+		"IV":
+			return 4
+	return maxi(1, int(text))

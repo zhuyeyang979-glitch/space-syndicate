@@ -10514,10 +10514,15 @@ func _card_codex_browser_card_source(card_name: String, card_index: int) -> Dict
 		})
 	return {
 		"card_name": card_name,
+		"display_name": _card_display_name(card_name),
 		"title": "%s %s｜%s" % [_card_icon_for_card(skill, card_name), _skill_family(card_name), _level_text(_skill_rank(card_name))],
 		"title_tooltip": _card_display_name(card_name),
 		"art_text": "%s\n%s" % [_card_display_name(card_name), _skill_tag_text(skill)],
 		"kind": String(skill.get("kind", "")),
+		"rank": _level_text(_skill_rank(card_name)),
+		"rank_number": max(1, _skill_rank(card_name)),
+		"card_stats": _card_art_stats(skill),
+		"card_art_stats": _card_art_stats(skill),
 		"chips": chips,
 		"route": _short_card_text(_card_strategy_route_label(skill), 18),
 		"route_tooltip": _card_strategy_summary(skill, true),

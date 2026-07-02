@@ -5945,3 +5945,25 @@
 - `tests/ui_text_smoke_test.gd` 通过。
 - `tests/smoke_test.gd` 完整通过。
 - `tests/ui_snapshot_capture.gd` 有头通过，并重新生成主桌、情报档案、抽屉和 Codex/仪表板快照。
+
+## 2026-07-03｜卡牌图鉴缩略图接入共享卡面美术层
+
+- 继续推进“真人可读、像桌游卡牌而不是开发说明块”的方向：
+  - 新增 `docs/card_visual_theme_contract.md`，把同源卡面、缩略图硬指标、视觉差异、开源素材边界和玩家阅读顺序写成后续开发契约。
+  - `CardCodexBrowser` 的缩略图中间美术位改为使用 `CardArtView`，与手牌、详情、结算展示共享程序卡面语言。
+  - 缩略图继续保留速读 chip、路线、短效果和 hover/detail 路径；长规则仍放入 hover 预览和详情页。
+  - `CardCodexBrowserSnapshot` 现在显式传递 `display_name`、`rank_number`、`card_stats`、`card_art_stats`，避免 UI 侧猜测卡牌等级和美术统计行。
+  - `CardArtView` 继续把 Night Patrol frame/sigil 当作 optional reference layer；缺失素材时仍回退程序美术。
+- 可玩性意义：
+  - 玩家在图鉴缩略图、手牌和详情页看到的是同一种卡牌视觉语言，降低学习成本。
+  - 卡牌不再只靠文字区分类别，怪兽、军队、金融、商品、合约等路线会通过 glyph/motif/颜色形成第一眼差异。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 有头通过；确认 `card_codex_grid_1600x960.png` 的缩略图已经使用共享卡面美术区。

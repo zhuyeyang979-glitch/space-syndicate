@@ -6,6 +6,8 @@ signal page_step_requested(delta: int)
 signal card_preview_requested(card_name: String)
 signal card_detail_requested(card_name: String)
 
+const CardArtViewScript := preload("res://scripts/card_art_view.gd")
+
 @onready var category_rail: PanelContainer = %CardCodexCategoryRail
 @onready var category_legend: Label = %CardCodexCategoryLegend
 @onready var category_chip_row: HFlowContainer = %CardCodexCategoryChipRow
@@ -124,7 +126,7 @@ func _add_card(entry: Dictionary) -> void:
 	var selected := bool(entry.get("selected", false))
 	var panel := PanelContainer.new()
 	panel.name = "CardCodexThumbnailCard"
-	panel.custom_minimum_size = Vector2(142, 184)
+	panel.custom_minimum_size = Vector2(146, 204)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -149,17 +151,31 @@ func _add_card(entry: Dictionary) -> void:
 	box.add_child(title)
 	var art := PanelContainer.new()
 	art.name = "CardCodexThumbnailArt"
-	art.custom_minimum_size = Vector2(0, 56)
+	art.custom_minimum_size = Vector2(0, 76)
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art.set_meta("card_codex_thumbnail_uses_shared_art_view", true)
 	art.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.20), 1, 8))
 	box.add_child(art)
 	var art_margin := _margin(6, 4, 6, 4)
 	art.add_child(art_margin)
-	var art_label := _label(str(entry.get("art_text", entry.get("kind", ""))), 9, accent.lightened(0.2))
-	art_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	art_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	art_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	art_margin.add_child(art_label)
+	var art_view := CardArtViewScript.new() as Control
+	art_view.name = "CardCodexThumbnailArtView"
+	art_view.custom_minimum_size = Vector2(0, 66)
+	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	art_view.set_meta("card_codex_thumbnail_visual_theme", "shared-card-art-night-patrol-frame")
+	art_margin.add_child(art_view)
+	if art_view.has_method("set_card"):
+		art_view.call(
+			"set_card",
+			str(entry.get("display_name", entry.get("title_tooltip", card_name))),
+			str(entry.get("kind", "")),
+			str(entry.get("route", entry.get("art_text", ""))),
+			accent,
+			maxi(1, int(entry.get("rank_number", 1))),
+			true,
+			str(entry.get("card_art_stats", entry.get("card_stats", "")))
+		)
 	_render_chips(box, entry.get("chips", []))
 	var route := _label(str(entry.get("route", "")), 8, accent.lightened(0.18))
 	route.name = "CardCodexThumbnailRouteBand"
