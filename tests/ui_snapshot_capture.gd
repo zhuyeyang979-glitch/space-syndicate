@@ -143,6 +143,18 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	else:
 		_capture_failures.append("runtime first-run coach was not visible for %s" % suffix)
 	await _save_viewport_snapshot("play_table_%s.png" % suffix)
+	if capture_size == Vector2i(1600, 960):
+		if _stage_runtime_hand_hover(main):
+			await _pump_frames(6)
+			await _save_viewport_snapshot("play_table_hand_hover_%s.png" % suffix)
+			_clear_runtime_hand_hover(main)
+		else:
+			_capture_failures.append("runtime hand hover state was not available for %s" % suffix)
+		if _stage_runtime_hand_selected(main):
+			await _pump_frames(6)
+			await _save_viewport_snapshot("play_table_hand_selected_%s.png" % suffix)
+		else:
+			_capture_failures.append("runtime hand selected state was not available for %s" % suffix)
 	if _show_runtime_drag_drop_hint(main):
 		await _pump_frames(6)
 		await _save_viewport_snapshot("play_table_drag_drop_%s.png" % suffix)
@@ -157,6 +169,8 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		if _show_runtime_drag_drop_hint(main):
 			await _pump_frames(6)
 			await _save_viewport_snapshot("play_table_drag_blocked_%s.png" % suffix)
+			if capture_size == Vector2i(1600, 960):
+				await _save_viewport_snapshot("play_table_drag_invalid_%s.png" % suffix)
 			_hide_runtime_drag_drop_hint(main)
 			await _pump_frames(2)
 		else:
@@ -184,6 +198,7 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	get_root().add_child(layout_demo)
 	await _pump_frames(8)
 	await _save_viewport_snapshot("layout_demo_%s.png" % suffix)
+	await _save_viewport_snapshot("hand_rack_demo_%s.png" % suffix)
 	get_root().remove_child(layout_demo)
 	layout_demo.queue_free()
 	await _pump_frames(4)
@@ -268,6 +283,60 @@ func _runtime_first_run_coach_visible(root_node: Node) -> bool:
 	var coach := runtime_screen.find_child("FirstRunCoach", true, false) as Control
 	var button := runtime_screen.find_child("CoachPrimaryButton", true, false) as Button
 	return coach != null and coach.visible and coach.is_visible_in_tree() and button != null
+
+
+func _stage_runtime_hand_hover(root_node: Node) -> bool:
+	var hand_rack := _runtime_hand_rack(root_node)
+	if hand_rack == null or not hand_rack.has_method("set_hovered_card"):
+		return false
+	var card := _runtime_hand_card_at(hand_rack, 0)
+	if card == null:
+		return false
+	hand_rack.call("set_hovered_card", card)
+	if card.has_method("get_card_data"):
+		var data_variant: Variant = card.call("get_card_data")
+		if hand_rack.has_signal("card_hovered"):
+			hand_rack.emit_signal("card_hovered", data_variant if data_variant is Dictionary else {})
+	return true
+
+
+func _clear_runtime_hand_hover(root_node: Node) -> void:
+	var hand_rack := _runtime_hand_rack(root_node)
+	if hand_rack != null and hand_rack.has_method("set_hovered_card"):
+		hand_rack.call("set_hovered_card", null)
+		if hand_rack.has_signal("card_unhovered"):
+			hand_rack.emit_signal("card_unhovered")
+
+
+func _stage_runtime_hand_selected(root_node: Node) -> bool:
+	var hand_rack := _runtime_hand_rack(root_node)
+	if hand_rack == null or not hand_rack.has_method("set_selected_card"):
+		return false
+	var card := _runtime_hand_card_at(hand_rack, 0)
+	if card == null:
+		return false
+	hand_rack.call("set_selected_card", card)
+	if card.has_method("get_card_data") and hand_rack.has_signal("card_selected"):
+		var data_variant: Variant = card.call("get_card_data")
+		hand_rack.emit_signal("card_selected", data_variant if data_variant is Dictionary else {})
+	return true
+
+
+func _runtime_hand_rack(root_node: Node) -> Node:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	if runtime_screen == null:
+		return null
+	return runtime_screen.find_child("HandRack", true, false)
+
+
+func _runtime_hand_card_at(hand_rack: Node, index: int) -> Control:
+	var card_index := 0
+	for child in hand_rack.get_children():
+		if child is Control and child.has_method("get_card_data"):
+			if card_index == index:
+				return child as Control
+			card_index += 1
+	return null
 
 
 func _show_runtime_drag_drop_hint(root_node: Node) -> bool:

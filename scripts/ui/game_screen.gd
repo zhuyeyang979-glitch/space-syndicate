@@ -9,6 +9,7 @@ signal action_requested(action_id: String)
 signal card_selected(card_data: Dictionary)
 signal card_hovered(card_data: Dictionary)
 signal card_unhovered
+signal card_unselected(card_data: Dictionary)
 signal card_drag_preview_started(card_data: Dictionary)
 signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
@@ -18,14 +19,19 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var card_track: Node = get_node_or_null("%CardTrack")
 @onready var first_run_coach: Node = get_node_or_null("%FirstRunCoach")
 @onready var scenario_coach: Node = get_node_or_null("%ScenarioCoach")
+@onready var track_focus_ribbon: PanelContainer = get_node_or_null("%TrackFocusRibbon") as PanelContainer
+@onready var track_focus_label: Label = get_node_or_null("%TrackFocusLabel") as Label
 @onready var planet_board: Node = %PlanetBoard
 @onready var right_inspector: Node = %RightInspector
 @onready var player_board: Node = %PlayerBoard
 @onready var overlay_layer: Node = %OverlayLayer
 
 var current_ui_data: Dictionary = {}
+var _temporary_track_focus_active := false
+var _selected_hand_card_data: Dictionary = {}
 
 func _ready() -> void:
+	_configure_track_focus_ribbon()
 	if top_bar.has_signal("end_turn_requested"):
 		top_bar.connect("end_turn_requested", Callable(self, "_on_end_turn_requested"))
 	if top_bar.has_signal("menu_requested"):
@@ -51,6 +57,8 @@ func _ready() -> void:
 		player_board.connect("card_hovered", Callable(self, "_on_card_hovered"))
 	if player_board.has_signal("card_unhovered"):
 		player_board.connect("card_unhovered", Callable(self, "_on_card_unhovered"))
+	if player_board.has_signal("card_unselected"):
+		player_board.connect("card_unselected", Callable(self, "_on_card_unselected"))
 	if player_board.has_signal("card_drag_preview_started"):
 		player_board.connect("card_drag_preview_started", Callable(self, "_on_card_drag_preview_started"))
 	if player_board.has_signal("card_drag_preview_moved"):
@@ -91,6 +99,8 @@ func apply_state(data: Dictionary) -> void:
 		right_inspector.call("set_context", inspector)
 	if player_board.has_method("set_player_state"):
 		player_board.call("set_player_state", ui_data.get("player_board", {}))
+	if not _temporary_track_focus_active:
+		_sync_selected_track_focus_from_state()
 	_sync_temporary_decision_overlay(ui_data.get("temporary_decision", {}))
 
 
@@ -123,10 +133,14 @@ func _on_action_requested(action_id: String) -> void:
 
 func _on_track_link_hovered(action_id: String) -> void:
 	_set_public_track_hover(action_id)
+	_show_track_action_hover_preview(action_id)
 
 
 func _on_track_link_unhovered(_action_id: String) -> void:
 	_set_public_track_hover("")
+	_temporary_track_focus_active = false
+	_restore_right_inspector_context()
+	_sync_selected_track_focus_from_state()
 
 
 func _set_public_track_hover(action_id: String) -> void:
@@ -137,15 +151,35 @@ func _set_public_track_hover(action_id: String) -> void:
 
 func _on_track_entry_hovered(entry: Dictionary) -> void:
 	_set_player_board_track_hover(_track_hover_action(entry))
+	_show_track_entry_hover_preview(entry)
+	_show_track_focus_for_entry(entry, "牌轨对照", true)
 
 
 func _on_track_entry_unhovered(_entry: Dictionary) -> void:
 	_set_player_board_track_hover("")
+	_temporary_track_focus_active = false
+	_restore_right_inspector_context()
+	_sync_selected_track_focus_from_state()
 
 
 func _set_player_board_track_hover(action_id: String) -> void:
 	if player_board != null and player_board.has_method("set_hovered_track_action"):
 		player_board.call("set_hovered_track_action", action_id)
+
+
+func _show_track_entry_hover_preview(entry: Dictionary) -> void:
+	if entry.is_empty() or right_inspector == null or not right_inspector.has_method("set_context"):
+		return
+	right_inspector.call("set_context", _track_entry_inspector_context(entry))
+
+
+func _show_track_action_hover_preview(action_id: String) -> void:
+	var entry := _track_entry_for_action(action_id)
+	if entry.is_empty():
+		_show_track_focus_for_action(action_id, true)
+		return
+	_show_track_entry_hover_preview(entry)
+	_show_track_focus_for_entry(entry, "竞价对照", true)
 
 
 func _on_side_drawer_action_requested(action_id: String) -> void:
@@ -157,6 +191,7 @@ func _on_temporary_decision_action_requested(action_id: String) -> void:
 
 
 func _on_card_selected(card_data: Dictionary) -> void:
+	_selected_hand_card_data = card_data.duplicate(true)
 	if right_inspector.has_method("show_card"):
 		right_inspector.call("show_card", card_data)
 	card_selected.emit(card_data)
@@ -169,13 +204,23 @@ func _on_card_hovered(card_data: Dictionary) -> void:
 
 
 func _on_card_unhovered() -> void:
-	_restore_right_inspector_context()
+	if not _selected_hand_card_data.is_empty() and right_inspector.has_method("show_card"):
+		right_inspector.call("show_card", _selected_hand_card_data)
+	else:
+		_restore_right_inspector_context()
 	card_unhovered.emit()
+
+
+func _on_card_unselected(card_data: Dictionary) -> void:
+	_selected_hand_card_data = {}
+	_restore_right_inspector_context()
+	card_unselected.emit(card_data)
 
 
 func _on_track_entry_selected(entry: Dictionary) -> void:
 	if right_inspector.has_method("set_context"):
 		right_inspector.call("set_context", _track_entry_inspector_context(entry))
+	_show_track_focus_for_entry(entry, "已选牌轨", false)
 	var action_id := str(entry.get("select_action", "")).strip_edges()
 	if action_id != "":
 		action_requested.emit(action_id)
@@ -184,6 +229,7 @@ func _on_track_entry_selected(entry: Dictionary) -> void:
 func _on_track_entry_opened(entry: Dictionary) -> void:
 	if right_inspector.has_method("set_context"):
 		right_inspector.call("set_context", _track_entry_inspector_context(entry))
+	_show_track_focus_for_entry(entry, "打开牌轨", false)
 	var action_id := str(entry.get("open_action", "")).strip_edges()
 	if action_id != "":
 		action_requested.emit(action_id)
@@ -289,6 +335,129 @@ func _track_hover_action(entry: Dictionary) -> String:
 		return action_id
 	var resolution_id := int(entry.get("resolution_id", -1))
 	return "track_select_%d" % resolution_id if resolution_id >= 0 else ""
+
+
+func _configure_track_focus_ribbon() -> void:
+	if track_focus_ribbon == null:
+		return
+	track_focus_ribbon.visible = false
+	track_focus_ribbon.add_theme_stylebox_override("panel", _track_focus_style())
+	if track_focus_label != null:
+		track_focus_label.add_theme_font_size_override("font_size", 10)
+		track_focus_label.add_theme_color_override("font_color", Color("#fde68a"))
+
+
+func _sync_selected_track_focus_from_state() -> void:
+	var selected_entry := _selected_track_entry()
+	if selected_entry.is_empty():
+		_clear_track_focus_ribbon()
+		return
+	_show_track_focus_for_entry(selected_entry, "已选牌轨", false)
+
+
+func _selected_track_entry() -> Dictionary:
+	var entries: Array = current_ui_data.get("card_track", []) if current_ui_data.get("card_track", []) is Array else []
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {}
+		if bool(entry.get("selected", entry.get("focused", false))):
+			return entry
+	return {}
+
+
+func _track_entry_for_action(action_id: String) -> Dictionary:
+	var normalized := action_id.strip_edges()
+	if normalized == "":
+		return {}
+	var entries: Array = current_ui_data.get("card_track", []) if current_ui_data.get("card_track", []) is Array else []
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {}
+		if _track_entry_matches_action(entry, normalized):
+			return entry
+	return {}
+
+
+func _track_entry_matches_action(entry: Dictionary, action_id: String) -> bool:
+	for key in ["select_action", "open_action"]:
+		if str(entry.get(key, "")).strip_edges() == action_id:
+			return true
+	if _track_hover_action(entry) == action_id:
+		return true
+	var actions: Array = entry.get("actions", []) if entry.get("actions", []) is Array else []
+	for action_variant in actions:
+		var action: Dictionary = action_variant if action_variant is Dictionary else {}
+		if str(action.get("id", action.get("action_id", ""))).strip_edges() == action_id:
+			return true
+	return false
+
+
+func _show_track_focus_for_entry(entry: Dictionary, prefix: String, temporary: bool) -> void:
+	if track_focus_ribbon == null or track_focus_label == null:
+		return
+	_temporary_track_focus_active = temporary
+	track_focus_label.text = _track_focus_text(entry, prefix)
+	track_focus_label.tooltip_text = str(entry.get("tooltip", entry.get("detail", "")))
+	track_focus_ribbon.visible = true
+
+
+func _show_track_focus_for_action(action_id: String, temporary: bool) -> void:
+	if track_focus_ribbon == null or track_focus_label == null:
+		return
+	_temporary_track_focus_active = temporary
+	track_focus_label.text = _short_track_focus_text("竞价对照｜%s" % action_id)
+	track_focus_label.tooltip_text = "该竞价指针正在对照顶部公开牌轨。"
+	track_focus_ribbon.visible = true
+
+
+func _clear_track_focus_ribbon() -> void:
+	_temporary_track_focus_active = false
+	if track_focus_ribbon != null:
+		track_focus_ribbon.visible = false
+	if track_focus_label != null:
+		track_focus_label.text = ""
+		track_focus_label.tooltip_text = ""
+
+
+func _track_focus_text(entry: Dictionary, prefix: String) -> String:
+	var pieces: Array[String] = []
+	var slot := str(entry.get("slot", "")).strip_edges()
+	var label := str(entry.get("label", entry.get("title", "公共牌"))).strip_edges()
+	if slot != "" and label != "":
+		pieces.append("%s %s" % [slot, label])
+	elif label != "":
+		pieces.append(label)
+	var state := str(entry.get("state", "")).strip_edges()
+	if state != "":
+		pieces.append(state)
+	var owner_hint := str(entry.get("owner_hint", "")).strip_edges()
+	if owner_hint != "":
+		pieces.append("归属:%s" % owner_hint)
+	var cost := str(entry.get("cost", "")).strip_edges()
+	if cost != "":
+		pieces.append("报价%s" % cost)
+	if pieces.is_empty():
+		pieces.append("公共牌槽")
+	return _short_track_focus_text("%s｜%s" % [prefix, "｜".join(pieces)])
+
+
+func _short_track_focus_text(text: String) -> String:
+	var value := text.replace("\n", " ").strip_edges()
+	if value.length() <= 58:
+		return value
+	return "%s..." % value.left(55)
+
+
+func _track_focus_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	var accent := Color("#f59e0b")
+	style.bg_color = Color("#020617").lerp(accent, 0.12)
+	style.border_color = Color("#334155").lerp(accent, 0.56)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(5)
+	style.set_content_margin(SIDE_LEFT, 8.0)
+	style.set_content_margin(SIDE_RIGHT, 8.0)
+	style.set_content_margin(SIDE_TOP, 2.0)
+	style.set_content_margin(SIDE_BOTTOM, 2.0)
+	return style
 
 
 func _should_open_detail_drawer(action_id: String) -> bool:

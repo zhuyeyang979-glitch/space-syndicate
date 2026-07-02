@@ -1,7 +1,6 @@
 extends Control
 
-const CARD_SCENE := preload("res://scenes/CardUI.tscn")
-const HAND_LAYOUT_SCRIPT := preload("res://scripts/HandLayout.gd")
+const HAND_RACK_SCENE := preload("res://scenes/ui/HandRack.tscn")
 
 const SAMPLE_CARDS := [
 	{"name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "城市现金流小幅上升。", "accent": Color(0.42, 0.66, 0.96)},
@@ -20,7 +19,7 @@ const SAMPLE_CARDS := [
 func _ready() -> void:
 	_build_table_slots()
 	_build_hand_samples()
-	log_text.text = "灰盒布局日志\n- 中央桌面保留星球主位\n- 右侧只放短详情和公开日志\n- 手牌由 HandLayout 自己布局，不交给 HBox 硬挤"
+	log_text.text = "灰盒布局日志\n- 中央桌面保留星球主位\n- 右侧只放短详情和公开日志\n- 手牌由 HandRack v3 自己布局，不交给 HBox 硬挤\n- 示例覆盖 hover / selected / drag / invalid drop / disabled"
 
 
 func _build_table_slots() -> void:
@@ -53,33 +52,54 @@ func _make_hand_sample(count: int) -> PanelContainer:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rows.add_child(title)
 
-	var hand := HAND_LAYOUT_SCRIPT.new() as Control
+	var hand := HAND_RACK_SCENE.instantiate() as Control
+	hand.name = "HandRackFeelDemo%d" % count
 	hand.custom_minimum_size = Vector2(0, 236)
 	hand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hand.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	rows.add_child(hand)
 
-	if count == 0:
-		var empty := Label.new()
-		empty.text = "空手牌：区域保留，不挤压桌面。"
-		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		rows.add_child(empty)
-	else:
-		for i in range(count):
-			hand.add_child(_make_card(i))
+	var cards: Array = []
+	for i in range(count):
+		cards.append(_sample_card_data(i, count))
+	if hand.has_method("set_cards"):
+		hand.call("set_cards", cards)
 		hand.call_deferred("relayout")
+	call_deferred("_stage_hand_sample_state", hand, count)
 	return panel
 
 
-func _make_card(index: int) -> Control:
+func _sample_card_data(index: int, count: int) -> Dictionary:
 	var data: Dictionary = SAMPLE_CARDS[index % SAMPLE_CARDS.size()].duplicate()
+	data["id"] = "layout_demo_%d_%d" % [count, index]
+	data["presentation"] = "mini_hand"
+	data["detail_policy"] = "right_inspector"
+	data["actions"] = [{"id": "play_%d" % index, "label": "出牌", "disabled": false}]
 	if index >= SAMPLE_CARDS.size():
 		data["rank"] = ["I", "II", "III", "IV"][index % 4]
-	var card := CARD_SCENE.instantiate() as Control
-	if card.has_method("set_card_data"):
-		card.call("set_card_data", data)
-	return card
+	if count >= 15 and index == 7:
+		data["play_state"] = "冷却"
+		data["drop_enabled"] = false
+		data["actionable"] = false
+		data["block_reason"] = "冷却中，不能拖到地图。"
+		data["actions"] = [{"id": "play_%d" % index, "label": "出牌", "disabled": true}]
+	return data
+
+
+func _stage_hand_sample_state(hand: Control, count: int) -> void:
+	if hand == null or not is_instance_valid(hand):
+		return
+	if count == 1 and hand.get_child_count() >= 1 and hand.has_method("set_selected_card"):
+		hand.call("set_selected_card", hand.get_child(0))
+	elif count == 5 and hand.get_child_count() >= 3 and hand.has_method("set_hovered_card"):
+		hand.call("set_hovered_card", hand.get_child(2))
+	elif count == 10 and hand.get_child_count() >= 6:
+		if hand.has_method("set_selected_card"):
+			hand.call("set_selected_card", hand.get_child(4))
+		if hand.has_method("set_dragged_card"):
+			hand.call("set_dragged_card", hand.get_child(5), true)
+	elif count == 15 and hand.get_child_count() >= 8 and hand.has_method("set_dragged_card"):
+		hand.call("set_dragged_card", hand.get_child(7), false)
 
 
 func _make_slot(title_text: String, detail_text: String) -> PanelContainer:

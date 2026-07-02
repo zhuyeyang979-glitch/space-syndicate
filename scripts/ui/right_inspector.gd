@@ -72,35 +72,71 @@ func _has_meaningful_requirement_chips(chips_variant: Variant) -> bool:
 
 
 func show_card(card_data: Dictionary) -> void:
+	var inspector_card := card_data.duplicate(true)
+	inspector_card["presentation"] = "inspector_full"
 	var chips: Array = []
-	for key in ["rank", "type", "cost", "target"]:
-		if card_data.has(key) and str(card_data[key]) != "":
-			chips.append({"text": "%s %s" % [_card_chip_label(key), str(card_data[key])]})
-	var full_detail := str(card_data.get("effect", card_data.get("description", "选择卡牌查看效果。")))
-	var summary := str(card_data.get("summary", "")).strip_edges()
+	for key in ["rank", "type", "cost", "target", "play_state"]:
+		if inspector_card.has(key) and str(inspector_card[key]) != "":
+			chips.append({"text": "%s %s" % [_card_chip_label(key), str(inspector_card[key])]})
+	var full_detail := _card_inspector_full_detail(inspector_card)
+	var summary := str(inspector_card.get("summary", "")).strip_edges()
 	if summary == "":
 		summary = _short_table_text(full_detail, SUMMARY_TEXT_CHAR_LIMIT)
 	set_context({
 		"title": "卡牌详情",
 		"district": {
-			"title": str(card_data.get("name", "未命名卡牌")),
+			"title": str(inspector_card.get("name", "未命名卡牌")),
 			"summary": summary,
 			"detail": summary,
 			"full_detail": full_detail,
 			"chips": chips,
 		},
-		"actions": card_data.get("actions", []),
-		"why": str(card_data.get("why", full_detail if full_detail.strip_edges() != "" else "能否打出取决于费用、目标和当前选区。")),
-		"requirements": card_data.get("requirements", [
-			{"text": "费用 %s" % str(card_data.get("cost", "--"))},
-			{"text": "目标 %s" % str(card_data.get("target", "任意"))},
+		"actions": inspector_card.get("actions", []),
+		"why": str(inspector_card.get("why", full_detail if full_detail.strip_edges() != "" else "能否打出取决于费用、目标和当前选区。")),
+		"requirements": inspector_card.get("requirements", [
+			{"text": "费用 %s" % str(inspector_card.get("cost", "--"))},
+			{"text": "目标 %s" % str(inspector_card.get("target", "任意"))},
 		]),
-		"deep_links": card_data.get("deep_links", [
+		"deep_links": inspector_card.get("deep_links", [
 			{"id": "detail_card", "label": "卡牌详情"},
 			{"id": "detail_region", "label": "区域详情"},
 		]),
 		"logs": [],
 	})
+
+
+func _card_inspector_full_detail(card_data: Dictionary) -> String:
+	var lines: Array[String] = []
+	var target := str(card_data.get("target", card_data.get("target_type", ""))).strip_edges()
+	var requirement := str(card_data.get("requirement", card_data.get("play_requirement", card_data.get("condition", "")))).strip_edges()
+	var effect := str(card_data.get("effect", card_data.get("description", "选择卡牌查看效果。"))).strip_edges()
+	var disabled_reason := str(card_data.get("disabled_reason", card_data.get("block_reason", ""))).strip_edges()
+	var primary_action := _first_enabled_action_label(card_data)
+	if target != "":
+		lines.append("目标｜%s" % target)
+	if requirement != "":
+		lines.append("条件｜%s" % requirement)
+	if effect != "":
+		lines.append("效果｜%s" % effect)
+	if primary_action != "":
+		lines.append("主动作｜%s" % primary_action)
+	if disabled_reason != "":
+		lines.append("暂不可用｜%s" % disabled_reason)
+	return "\n".join(lines) if not lines.is_empty() else "选择卡牌查看效果。"
+
+
+func _first_enabled_action_label(card_data: Dictionary) -> String:
+	var actions: Array = card_data.get("actions", []) if card_data.get("actions", []) is Array else []
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		if bool(action.get("disabled", false)):
+			continue
+		var label := str(action.get("label", action.get("id", ""))).strip_edges()
+		if label != "":
+			return label
+	return ""
 
 
 func _set_chip_row(row: HFlowContainer, chips_variant: Variant, fallback_when_empty: bool = false) -> void:
@@ -201,6 +237,8 @@ func _card_chip_label(key: String) -> String:
 			return "费用"
 		"target":
 			return "目标"
+		"play_state":
+			return "状态"
 	return key
 
 

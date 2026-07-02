@@ -1,0 +1,63 @@
+{
+  "id": "hearthstone_grade_vertical_slice_v1",
+  "duration_seconds": 45,
+  "scenarios": ["first_table", "monster_pressure", "public_track_intro", "bid_practice"],
+  "scenario_lab_bridge": {
+    "owner": "Codex B Scenario Lab",
+    "consumer": "Codex A commercial presentation",
+    "visual_events_field": "visual_events",
+    "no_core_scenario_mutation": true,
+    "hidden_information_policy": "public labels, anonymous cards, public bids, local showcase data only"
+  },
+  "scenario_segments": [
+    {
+      "id": "first_table",
+      "label": "首局入门",
+      "required_stage_ids": ["board_idle", "card_hover", "card_drag_valid", "card_drag_invalid", "card_play_frame_00", "card_play_frame_08", "card_play_frame_16", "balance_report_preview"],
+      "required_event_classes": ["card_play", "target_arrow", "card_reveal", "cash_gain", "gdp_delta", "final_countdown"],
+      "required_audio_hooks": ["ui_hover", "card_pickup", "card_drop_valid", "card_drop_invalid", "card_play", "cash_gain", "gdp_delta"],
+      "showcase_goal": "玩家先读桌面、拿起手牌、判断合法目标、完成一次出牌，并看到资源浮字和推荐卡组。"
+    },
+    {
+      "id": "monster_pressure",
+      "label": "怪兽压迫",
+      "required_stage_ids": ["monster_spawn", "monster_move", "monster_attack_frame_00", "monster_attack_frame_12", "monster_attack_frame_24", "balance_report_preview"],
+      "required_event_classes": ["monster_spawn", "monster_move", "monster_attack", "city_damage", "cash_gain", "gdp_delta", "final_countdown"],
+      "required_audio_hooks": ["monster_spawn", "monster_move", "monster_attack", "city_damage", "cash_gain", "gdp_delta"],
+      "showcase_goal": "怪兽出现、移动、攻击城市，城市受损与 GDP/现金变化不用读日志也能看懂。"
+    },
+    {
+      "id": "public_track_intro",
+      "label": "公开牌轨入门",
+      "required_stage_ids": ["card_play_frame_16", "public_track_reveal", "bid_highlight", "balance_report_preview"],
+      "required_event_classes": ["card_reveal", "route_damage", "target_arrow", "final_countdown"],
+      "required_audio_hooks": ["card_play", "card_reveal", "bid_update", "route_damage"],
+      "showcase_goal": "出牌进入公开轨、匿名 reveal 和公开线索可读，但不暴露真实归属。"
+    },
+    {
+      "id": "bid_practice",
+      "label": "竞价练习",
+      "required_stage_ids": ["bid_highlight", "balance_report_preview"],
+      "required_event_classes": ["target_arrow", "card_reveal", "final_countdown"],
+      "required_audio_hooks": ["bid_update", "ui_click", "final_countdown"],
+      "showcase_goal": "BidBoard 指向同一张公开匿名牌，主读法仍是保守 / 追平 / 压过 / 清零。"
+    }
+  ],
+  "stages": [
+    {"time": 0.0, "id": "board_idle", "scenario_ids": ["first_table"], "title": "星球赌桌就绪", "inspector": "first_table：先读星球桌面，再读手牌、资源和右侧解释。", "audio_hooks": [], "events": []},
+    {"time": 3.0, "id": "card_hover", "scenario_ids": ["first_table"], "title": "摸牌预览", "inspector": "first_table：悬停只预览卡牌，不改变稳定选中。", "audio_hooks": ["ui_hover"], "events": [{"type": "card_hover_glow", "from": [755, 780], "to": [755, 650], "label": "悬停预览"}]},
+    {"time": 6.0, "id": "card_drag_valid", "scenario_ids": ["first_table"], "title": "有效拖牌", "inspector": "first_table：目标合法，寒冠洋可承接首召。", "audio_hooks": ["card_pickup", "card_drop_valid"], "targeting": {"valid": true, "label": "松开出牌", "reason": "寒冠洋｜首召合法"}, "events": [{"type": "card_pickup", "from": [755, 780], "to": [760, 585], "label": "拿起卡牌"}, {"type": "card_drag_valid", "from": [760, 585], "to": [705, 432], "label": "松开出牌"}, {"type": "target_arrow", "from": [760, 585], "to": [705, 432], "label": "目标"}]},
+    {"time": 8.0, "id": "card_drag_invalid", "scenario_ids": ["first_table"], "title": "非法目标", "inspector": "first_table：目标非法，冷却中不能在当前窗口出牌。", "audio_hooks": ["card_drop_invalid"], "targeting": {"valid": false, "label": "不能出牌", "reason": "冷却中"}, "events": [{"type": "card_drag_invalid", "from": [760, 585], "to": [555, 430], "label": "不能出牌"}, {"type": "target_arrow", "from": [760, 585], "to": [555, 430], "label": "冷却中"}]},
+    {"time": 10.0, "id": "card_play_frame_00", "scenario_ids": ["first_table"], "title": "出牌起手", "inspector": "first_table：卡牌离开手牌，进入公开结算节奏。", "audio_hooks": ["card_play"], "events": [{"type": "card_play_flyout", "from": [755, 770], "to": [710, 520], "progress": 0.1, "label": "出牌"}]},
+    {"time": 12.0, "id": "card_play_frame_08", "scenario_ids": ["first_table"], "title": "出牌飞行", "inspector": "first_table：目标闪光，现金和 GDP 变化开始浮起。", "audio_hooks": ["cash_gain", "gdp_delta"], "events": [{"type": "card_play_flyout", "from": [755, 770], "to": [710, 430], "progress": 0.55, "label": "飞向目标"}, {"type": "cash_gain_float", "at": [870, 480], "label": "+¥120"}, {"type": "gdp_delta_float", "at": [930, 520], "label": "+4 GDP"}]},
+    {"time": 15.0, "id": "card_play_frame_16", "scenario_ids": ["first_table", "public_track_intro"], "title": "公开结算", "inspector": "first_table / public_track_intro：公开牌轨出现匿名结算，隐藏归属仍不泄露。", "audio_hooks": ["card_play", "card_reveal"], "events": [{"type": "card_reveal_flash", "at": [520, 116], "label": "匿名牌 reveal"}, {"type": "cash_gain_float", "at": [872, 480], "label": "+¥120"}, {"type": "gdp_delta_float", "at": [930, 520], "label": "+4 GDP"}]},
+    {"time": 18.0, "id": "monster_spawn", "scenario_ids": ["monster_pressure"], "title": "怪兽出现", "inspector": "monster_pressure：怪兽 token 落下，区域威胁升高。", "audio_hooks": ["monster_spawn"], "events": [{"type": "monster_spawn_pulse", "at": [650, 420], "label": "怪兽出现"}]},
+    {"time": 23.0, "id": "monster_move", "scenario_ids": ["monster_pressure"], "title": "怪兽移动", "inspector": "monster_pressure：怪兽移动显示轨迹和终点威胁。", "audio_hooks": ["monster_move"], "events": [{"type": "monster_move_trail", "from": [650, 420], "to": [760, 465], "label": "移动轨迹"}]},
+    {"time": 28.0, "id": "monster_attack_frame_00", "scenario_ids": ["monster_pressure"], "title": "攻击蓄力", "inspector": "monster_pressure：攻击先蓄力，玩家能读到威胁方向。", "audio_hooks": ["monster_attack"], "events": [{"type": "monster_attack_windup", "from": [760, 465], "to": [840, 500], "label": "蓄力"}]},
+    {"time": 31.0, "id": "monster_attack_frame_12", "scenario_ids": ["monster_pressure"], "title": "攻击命中", "inspector": "monster_pressure：冲击波命中城市，城市边缘闪烁。", "audio_hooks": ["monster_attack", "city_damage"], "events": [{"type": "monster_attack_impact", "from": [760, 465], "to": [840, 500], "label": "冲击"}]},
+    {"time": 35.0, "id": "monster_attack_frame_24", "scenario_ids": ["monster_pressure"], "title": "城市受损", "inspector": "monster_pressure：城市 HP 和 GDP 变化用浮字交代，不需要读日志。", "audio_hooks": ["city_damage", "cash_gain", "gdp_delta"], "events": [{"type": "city_damage_crack", "at": [840, 500], "label": "城市受损"}, {"type": "gdp_delta_float", "at": [900, 510], "label": "-6 GDP"}, {"type": "cash_gain_float", "at": [810, 540], "label": "-¥90"}]},
+    {"time": 38.0, "id": "public_track_reveal", "scenario_ids": ["public_track_intro"], "title": "公开牌轨 reveal", "inspector": "public_track_intro：牌轨显示公开匿名信息，仍不暴露真实归属。", "audio_hooks": ["card_reveal", "route_damage"], "events": [{"type": "card_reveal_flash", "at": [760, 116], "label": "公开轨 reveal"}, {"type": "route_damage_spark", "from": [690, 480], "to": [875, 540], "label": "商路受损"}]},
+    {"time": 40.0, "id": "bid_highlight", "scenario_ids": ["public_track_intro", "bid_practice"], "title": "竞价指针", "inspector": "bid_practice：BidBoard 高亮对应公开牌，但只显示公开竞价。", "audio_hooks": ["bid_update", "ui_click"], "events": [{"type": "target_arrow", "from": [1280, 810], "to": [760, 116], "label": "领跑牌"}, {"type": "card_reveal_flash", "at": [1280, 810], "label": "竞价高亮"}]},
+    {"time": 45.0, "id": "balance_report_preview", "scenario_ids": ["first_table", "monster_pressure", "public_track_intro", "bid_practice"], "title": "价格曲线预览", "inspector": "全部剧本：报告只给建议，不直接改全局卡牌数据。", "audio_hooks": ["final_countdown"], "events": [{"type": "final_countdown_pulse", "at": [1020, 210], "label": "报告就绪"}]}
+  ]
+}

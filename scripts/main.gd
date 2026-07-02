@@ -2044,6 +2044,18 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				var discard_slot := int(action_id.substr("discard_purchase_".length()))
 				_confirm_discard_purchase(discard_slot)
 				handled = true
+			elif action_id.begins_with("track_return_"):
+				var return_resolution_id := int(action_id.substr("track_return_".length()))
+				selected_runtime_card_slot = -1
+				_focus_card_resolution_track_entry(return_resolution_id)
+				_close_menu()
+				handled = true
+			elif action_id.begins_with("track_guess_"):
+				var guess_resolution_id := int(action_id.substr("track_guess_".length()))
+				selected_runtime_card_slot = -1
+				_focus_card_resolution_track_entry(guess_resolution_id)
+				_close_menu()
+				handled = true
 			elif action_id.begins_with("track_select_"):
 				var resolution_id := int(action_id.substr("track_select_".length()))
 				selected_runtime_card_slot = -1
@@ -4046,6 +4058,11 @@ func _track_status_badge(text: String, text_color: Color, bg_color: Color) -> Pa
 
 func _select_card_resolution_track_entry(resolution_id: int) -> void:
 	selected_card_resolution_id = -1 if selected_card_resolution_id == resolution_id else resolution_id
+	_refresh_card_resolution_track()
+
+
+func _focus_card_resolution_track_entry(resolution_id: int) -> void:
+	selected_card_resolution_id = resolution_id
 	_refresh_card_resolution_track()
 
 
@@ -6565,7 +6582,39 @@ func _add_intel_dossier_board_panel(parent: Container, viewer_index: int) -> voi
 		_report_required_ui_scene_missing("IntelDossierBoard", "set_dossier")
 		return
 	parent.add_child(board)
+	if board.has_signal("action_requested"):
+		board.connect("action_requested", Callable(self, "_on_intel_dossier_board_action_requested"))
 	board.call("set_dossier", _intel_dossier_board_snapshot(viewer_index))
+
+
+func _on_intel_dossier_board_action_requested(action_id: String) -> void:
+	var handled := false
+	if action_id.begins_with("track_return_"):
+		var return_resolution_id := int(action_id.substr("track_return_".length()))
+		selected_runtime_card_slot = -1
+		_focus_card_resolution_track_entry(return_resolution_id)
+		_close_menu()
+		handled = true
+	elif action_id.begins_with("track_guess_"):
+		var guess_resolution_id := int(action_id.substr("track_guess_".length()))
+		selected_runtime_card_slot = -1
+		_focus_card_resolution_track_entry(guess_resolution_id)
+		_close_menu()
+		handled = true
+	elif action_id.begins_with("track_select_"):
+		var resolution_id := int(action_id.substr("track_select_".length()))
+		selected_runtime_card_slot = -1
+		_focus_card_resolution_track_entry(resolution_id)
+		_close_menu()
+		handled = true
+	elif action_id.begins_with("track_open_"):
+		var card_name := action_id.substr("track_open_".length()).strip_edges()
+		if card_name != "":
+			selected_runtime_card_slot = -1
+			_open_card_codex_by_name(card_name)
+			handled = true
+	if handled:
+		_sync_runtime_game_screen(true)
 
 
 func _intel_dossier_board_snapshot(viewer_index: int) -> Dictionary:
@@ -6605,8 +6654,40 @@ func _intel_dossier_board_snapshot(viewer_index: int) -> Dictionary:
 		"clue_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
 		"chips": chips,
 		"kpis": _intel_dossier_kpi_snapshots(stats, card_entries, monster_entries, warehouse_entries),
+		"actions": _focused_intel_card_action_snapshots(focused_card),
 		"clues": clue_cards,
 	}
+
+
+func _focused_intel_card_action_snapshots(entry: Dictionary) -> Array:
+	if entry.is_empty():
+		return []
+	var resolution_id := int(entry.get("resolution_id", -1))
+	if resolution_id < 0:
+		return []
+	var card_name := String(entry.get("card_name", "")).strip_edges()
+	var actions: Array = [
+		{
+			"id": "track_return_%d" % resolution_id,
+			"label": "回到牌轨",
+			"accent": Color("#38bdf8"),
+			"tooltip": "关闭情报档案，回到主桌并保持这张匿名牌为已选牌轨。",
+		},
+		{
+			"id": "track_guess_%d" % resolution_id,
+			"label": "竞猜",
+			"accent": Color("#c084fc"),
+			"tooltip": "回到主桌的归属竞猜面板；竞猜仍按当前玩家视角和公开线索结算。",
+		},
+	]
+	if card_name != "":
+		actions.append({
+			"id": "track_open_%s" % card_name,
+			"label": "卡牌详情",
+			"accent": Color("#f472b6"),
+			"tooltip": "打开这张匿名牌对应的卡牌详情，用公开条件、目标和结算演出来反推来源。",
+		})
+	return actions
 
 
 func _intel_dossier_chip_snapshots() -> Array:

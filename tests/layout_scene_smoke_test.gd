@@ -178,6 +178,8 @@ func _run() -> void:
 	_check_code_layer_contracts()
 	_check_viewmodel_contracts()
 	await _check_hand_layout_counts()
+	await _check_hand_rack_v3_interaction_contract()
+	await _check_card_face_presentation_specs()
 	await _check_empty_player_board_affordance()
 	_finish()
 
@@ -317,7 +319,7 @@ func _check_split_game_screen_structure() -> void:
 	var screen: Node = packed.instantiate()
 	root.add_child(screen)
 	await process_frame
-	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragDropTargetLabel", "DragPreviewPanel"]:
+	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragDropTargetLabel", "DragPreviewPanel"]:
 		_expect(screen.find_child(node_name, true, false) != null, "split GameScreen contains %s" % node_name)
 	root.remove_child(screen)
 	screen.queue_free()
@@ -473,6 +475,8 @@ func _check_split_game_screen_data_binding() -> void:
 	var public_track_meta := screen.find_child("PublicTrackSlotMeta", true, false) as Label
 	var first_run_coach := screen.find_child("FirstRunCoach", true, false)
 	var first_run_coach_button := screen.find_child("CoachPrimaryButton", true, false) as Button
+	var track_focus_ribbon := screen.find_child("TrackFocusRibbon", true, false) as Control
+	var track_focus_label := screen.find_child("TrackFocusLabel", true, false) as Label
 	var map_host := screen.find_child("MapHost", true, false) as Control
 	var left_rail_title := screen.find_child("LeftRailTitle", true, false) as Label
 	var right_rail_title := screen.find_child("RightRailTitle", true, false) as Label
@@ -555,6 +559,19 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(public_track_label != null and public_track_label.text.contains("匿名牌"), "split PublicTrack binds the anonymous card short label")
 	_expect(public_track_meta != null and public_track_meta.text.contains("匿名"), "split PublicTrack keeps ownership as a scan-first anonymous hint")
 	_expect(public_track != null and public_track.find_child("CardFace", true, false) == null, "split PublicTrack does not render full CardFace nodes")
+	_expect(track_focus_ribbon != null and track_focus_label != null and not track_focus_ribbon.visible, "split GameScreen owns a hidden table-focus ribbon for temporary public-track/BidBoard context")
+	if public_track_slot != null:
+		var pre_hover_title := inspector_title.text if inspector_title != null else ""
+		var pre_hover_reason := reason_label.text if reason_label != null else ""
+		public_track_slot.emit_signal("mouse_entered")
+		await process_frame
+		_expect(inspector_title != null and not inspector_title.text == pre_hover_title and district_title != null and public_track_label != null and district_title.text.contains(public_track_label.text), "split PublicTrack hover previews the anonymous card slot in RightInspector")
+		_expect(reason_label != null and not reason_label.text == pre_hover_reason and reason_label.text.strip_edges() != "", "split PublicTrack hover shows public card-state reasoning instead of leaving the region explanation in place")
+		_expect(track_focus_ribbon != null and track_focus_ribbon.visible and track_focus_label != null and track_focus_label.text.contains("牌轨对照") and track_focus_label.text.contains("匿名牌") and track_focus_label.text.contains("报价"), "split PublicTrack hover opens a short table-focus ribbon that connects the anonymous slot to public bid context")
+		public_track_slot.emit_signal("mouse_exited")
+		await process_frame
+		_expect(inspector_title != null and inspector_title.text == pre_hover_title and reason_label != null and reason_label.text == pre_hover_reason, "split PublicTrack unhover restores the prior RightInspector context")
+		_expect(track_focus_ribbon != null and not track_focus_ribbon.visible, "split PublicTrack unhover clears the temporary table-focus ribbon when no track card is selected")
 	_expect(left_rail_title != null and left_rail_title.text == "地表情报" and right_rail_title != null and right_rail_title.text == "外围压力", "split PlanetBoard binds public side-rail titles from snapshot data")
 	_expect(left_rail_entries.size() == 3 and right_rail_entries.size() == 3, "split PlanetBoard renders data-driven public intelligence and outer-pressure side-rail entries")
 	_expect(left_rail_text != null and not left_rail_text.visible and right_rail_text != null and not right_rail_text.visible, "split PlanetBoard hides static side-rail fallback labels after snapshot binding")
@@ -1393,7 +1410,21 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 		var menu_preview_box := main.get("menu_preview_box") as VBoxContainer
 		var dossier_text := _node_tree_text(menu_preview_box)
 		_expect(track_action_ids.has("track_intel_%d" % selected_resolution_id), "pressing the runtime track dossier action emits the focused track_intel command")
-		_expect(menu_title_label != null and menu_title_label.text == "情报档案" and dossier_text.contains("已选牌轨") and dossier_text.contains("查看卡牌线索") and dossier_text.contains("已选匿名牌证据链") and dossier_text.contains("出价记录") and dossier_text.contains("余波线索") and dossier_text.contains("私人推理"), "runtime track dossier action opens the intel dossier with the selected anonymous card evidence chain focused")
+		_expect(menu_title_label != null and menu_title_label.text == "情报档案" and dossier_text.contains("已选牌轨") and dossier_text.contains("查看卡牌线索") and dossier_text.contains("已选匿名牌证据链") and dossier_text.contains("出价记录") and dossier_text.contains("余波线索") and dossier_text.contains("私人推理") and dossier_text.contains("回到牌轨") and dossier_text.contains("竞猜") and dossier_text.contains("卡牌详情"), "runtime track dossier action opens the intel dossier with the selected anonymous card evidence chain focused and track/guess/detail paths")
+		var dossier_guess_button := _find_visible_button_containing(menu_preview_box, "竞猜")
+		_expect(dossier_guess_button != null, "runtime focused IntelDossier exposes a guess path back to the selected public-track card")
+		if dossier_guess_button != null:
+			dossier_guess_button.emit_signal("pressed")
+			await process_frame
+			await process_frame
+			var menu_overlay := main.get("menu_overlay") as Control
+			_expect(menu_overlay != null and not menu_overlay.visible, "runtime IntelDossier guess path returns to the main table instead of resolving inside the dossier")
+			_expect(int(main.get("selected_card_resolution_id")) == selected_resolution_id, "runtime IntelDossier guess path keeps the same selected public-track resolution_id")
+			_force_runtime_screen_sync(main)
+			await process_frame
+			var selected_track_marker := runtime_screen.find_child("PublicTrackSlotSelected", true, false)
+			var track_focus_label := runtime_screen.find_child("TrackFocusLabel", true, false) as Label
+			_expect(selected_track_marker != null and track_focus_label != null and track_focus_label.text.contains("已选牌轨"), "runtime IntelDossier guess path returns to the same selected PublicTrack focus")
 
 
 func _check_runtime_blocked_hand_card_drag_reason(main: Node, runtime_screen: Control) -> void:
@@ -1792,6 +1823,14 @@ func _double_click_card_control(card: Control) -> void:
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
 	event.double_click = true
+	card.call("_gui_input", event)
+
+
+func _single_click_card_control(card: Control) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	event.double_click = false
 	card.call("_gui_input", event)
 
 
@@ -2199,11 +2238,18 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		runtime_leader_link_button.emit_signal("mouse_entered")
 		await process_frame
 		var hovered_track_marker := runtime_screen.find_child("PublicTrackSlotHover", true, false)
+		var runtime_track_focus_ribbon := runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
+		var runtime_track_focus_label := runtime_screen.find_child("TrackFocusLabel", true, false) as Label
+		var runtime_hover_inspector_text := _node_tree_text(runtime_screen.find_child("RightInspector", true, false))
 		_expect(hovered_track_marker != null, "hovering the BidBoard leader pointer temporarily highlights the matching public-track slot")
+		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("竞价对照"), "hovering the BidBoard leader pointer opens the table-focus ribbon for the matching public-track card")
+		_expect(runtime_hover_inspector_text.contains("牌轨详情") and runtime_hover_inspector_text.contains("线索档案"), "hovering the BidBoard leader pointer previews the matching public-track card in RightInspector")
 		runtime_leader_link_button.emit_signal("mouse_exited")
 		await process_frame
 		hovered_track_marker = runtime_screen.find_child("PublicTrackSlotHover", true, false)
 		_expect(hovered_track_marker == null, "leaving the BidBoard leader pointer clears the temporary public-track hover highlight")
+		runtime_track_focus_ribbon = runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
+		_expect(runtime_track_focus_ribbon != null and not runtime_track_focus_ribbon.visible, "leaving the BidBoard leader pointer clears the temporary table-focus ribbon before a card is selected")
 		runtime_leader_link_button.emit_signal("pressed")
 		await process_frame
 		_expect(int(main.get("selected_card_resolution_id")) == 9002, "clicking the BidBoard leader pointer selects the matching public-track card")
@@ -2211,6 +2257,9 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		await process_frame
 		var selected_track_marker := runtime_screen.find_child("PublicTrackSlotSelected", true, false)
 		_expect(selected_track_marker != null, "public card track highlights the selected card after a BidBoard pointer click")
+		runtime_track_focus_ribbon = runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
+		runtime_track_focus_label = runtime_screen.find_child("TrackFocusLabel", true, false) as Label
+		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("已选牌轨"), "selected public-track cards keep a persistent short focus ribbon after BidBoard pointer click")
 	var live_bid_before := int(main.call("_selected_card_tip_amount", 0)) if main.has_method("_selected_card_tip_amount") else 0
 	var runtime_bid_plus_button := _find_visible_button_containing(runtime_screen, "+10")
 	_expect(runtime_bid_plus_button != null and not runtime_bid_plus_button.disabled, "runtime BidBoard exposes an enabled +10 public-bid button for the current queued card")
@@ -3232,6 +3281,12 @@ func _check_intel_dossier_board_component() -> void:
 	root.add_child(board)
 	await process_frame
 	_expect(board.has_method("set_dossier"), "IntelDossierBoard owns dossier snapshot rendering")
+	_expect(board.has_signal("action_requested"), "IntelDossierBoard exposes selected-card evidence-chain action signals")
+	var emitted_dossier_actions: Array[String] = []
+	if board.has_signal("action_requested"):
+		board.connect("action_requested", func(action_id: String) -> void:
+			emitted_dossier_actions.append(action_id)
+		)
 	board.call("set_dossier", {
 		"title": "情报侦探板",
 		"title_tooltip": "先扫线索类别，再决定标注城市、猜卡牌归属或跳到图鉴查证。",
@@ -3248,6 +3303,11 @@ func _check_intel_dossier_board_component() -> void:
 			{"title": "匿名牌", "value": "4", "meta": "牌轨归属/条件", "accent": Color("#f472b6"), "tooltip": "匿名牌轨"},
 			{"title": "公开资金线索", "value": "2", "meta": "怪兽受伤/仓储风险1", "accent": Color("#fb7185"), "tooltip": "公开线索"},
 		],
+		"actions": [
+			{"id": "track_return_42", "label": "回到牌轨", "accent": Color("#38bdf8"), "tooltip": "回到主桌"},
+			{"id": "track_guess_42", "label": "竞猜", "accent": Color("#c084fc"), "tooltip": "回到归属竞猜"},
+			{"id": "track_open_orbital_finance_i", "label": "卡牌详情", "accent": Color("#f472b6"), "tooltip": "打开卡牌详情"},
+		],
 		"clues": [
 			{"title": "已选匿名牌证据链", "lines": ["牌槽证据｜#42｜竞拍1｜业主透镜｜归属未知", "出牌条件｜轨迹墨水流动≥2", "目标线索｜区域：雾港", "出价记录｜锁定报价¥80", "余波线索｜金融｜T+12.0s｜GDP跳变", "私人推理｜尚未押注"], "accent": Color("#f472b6"), "tooltip": "已选匿名牌", "line_limit": 6},
 			{"title": "城市嫌疑", "lines": ["雾港｜优先88｜标P2/高｜GDP48｜仓储"], "accent": Color("#38bdf8"), "tooltip": "城市嫌疑"},
@@ -3263,9 +3323,16 @@ func _check_intel_dossier_board_component() -> void:
 	_expect(String(board.name) == "IntelDossierBoardPanel", "IntelDossierBoard keeps the detective board root")
 	_expect(board.find_child("IntelDossierBoardHeader", true, false) != null and board.find_child("IntelDossierBoardChip", true, false) != null, "IntelDossierBoard renders header chips")
 	_expect(board.find_child("IntelDossierKpiGrid", true, false) != null and board.find_child("IntelDossierKpiCard", true, false) != null and board.find_child("IntelDossierKpiValue", true, false) != null, "IntelDossierBoard renders KPI cards")
+	_expect(board.find_child("IntelDossierActionRow", true, false) != null, "IntelDossierBoard owns a focused anonymous-card action row")
 	_expect(board.find_child("IntelDossierClueGrid", true, false) != null and board.find_child("IntelDossierClueCard", true, false) != null and board.find_child("IntelDossierClueLine", true, false) != null, "IntelDossierBoard renders clue cards")
 	var board_text := _node_tree_text(board)
-	_expect(board_text.contains("已选匿名牌证据链") and board_text.contains("出价记录") and board_text.contains("余波线索") and board_text.contains("私人推理"), "IntelDossierBoard can render a selected anonymous-card evidence chain with bid, aftermath, and private-note lines")
+	_expect(board_text.contains("已选匿名牌证据链") and board_text.contains("出价记录") and board_text.contains("余波线索") and board_text.contains("私人推理") and board_text.contains("回到牌轨") and board_text.contains("竞猜") and board_text.contains("卡牌详情"), "IntelDossierBoard can render a selected anonymous-card evidence chain with bid, aftermath, private-note lines, and track/guess/detail paths")
+	for label_text in ["回到牌轨", "竞猜", "卡牌详情"]:
+		var action_button := _find_visible_button_containing(board, label_text)
+		if action_button != null:
+			action_button.emit_signal("pressed")
+	await process_frame
+	_expect(emitted_dossier_actions.has("track_return_42") and emitted_dossier_actions.has("track_guess_42") and emitted_dossier_actions.has("track_open_orbital_finance_i"), "IntelDossierBoard action buttons emit data-only public-track action ids")
 	root.remove_child(board)
 	board.queue_free()
 
@@ -3468,6 +3535,138 @@ func _check_code_layer_contracts() -> void:
 			_expect(not source.contains(token), "%s UI scene renderer consumes snapshots/signals instead of domain state or rule functions (%s)" % [script_path, token])
 
 
+func _check_hand_rack_v3_interaction_contract() -> void:
+	var packed := load("res://scenes/ui/HandRack.tscn") as PackedScene
+	_expect(packed != null, "HandRack scene loads for commercial cardfeel v3")
+	if packed == null:
+		return
+	var hand := packed.instantiate() as Control
+	hand.size = Vector2(1000, 250)
+	root.add_child(hand)
+	var selected_events: Array[String] = []
+	var unselected_events: Array[String] = []
+	var drag_releases: Array[String] = []
+	if hand.has_signal("card_selected"):
+		hand.connect("card_selected", func(card_data: Dictionary) -> void:
+			selected_events.append(str(card_data.get("id", "")))
+		)
+	if hand.has_signal("card_unselected"):
+		hand.connect("card_unselected", func(card_data: Dictionary) -> void:
+			unselected_events.append(str(card_data.get("id", "")))
+		)
+	if hand.has_signal("card_drag_released"):
+		hand.connect("card_drag_released", func(card_data: Dictionary, _screen_position: Vector2) -> void:
+			drag_releases.append(str(card_data.get("id", "")))
+		)
+	hand.call("set_cards", [
+		{"id": "feel_v3_a", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "短效果。", "actions": [{"id": "play_0", "label": "出牌"}]},
+		{"id": "feel_v3_b", "name": "雾港合约", "cost": "3", "type": "合约", "rank": "II", "effect": "短效果。", "actions": [{"id": "play_1", "label": "出牌"}]},
+		{"id": "feel_v3_c", "name": "冷却卡", "cost": "1", "type": "互动", "rank": "I", "effect": "短效果。", "drop_enabled": false, "actionable": false, "play_state": "冷却", "block_reason": "冷却中", "actions": [{"id": "play_2", "label": "出牌", "disabled": true}]},
+	])
+	await process_frame
+	_expect(hand.has_signal("card_unselected"), "HandRack exposes card_unselected for stable selected-card focus")
+	_expect(hand.get_child_count() == 3, "HandRack v3 renders three CardFace children")
+	var first := hand.get_child(0) as Control
+	var second := hand.get_child(1) as Control
+	var disabled := hand.get_child(2) as Control
+	_single_click_card_control(first)
+	await process_frame
+	_expect(selected_events.has("feel_v3_a"), "single-clicking a HandRack card emits card_selected")
+	var selected_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var selected_snapshot: Array = selected_snapshot_variant if selected_snapshot_variant is Array else []
+	_expect(selected_snapshot.size() == 3, "HandRack v3 snapshot exposes every rendered card")
+	if selected_snapshot.size() < 3:
+		root.remove_child(hand)
+		hand.queue_free()
+		return
+	_expect(bool((selected_snapshot[0] as Dictionary).get("selected", false)) and not bool((selected_snapshot[0] as Dictionary).get("hovered", false)), "selected card remains a stable focus separate from hover")
+	var selected_entry: Dictionary = selected_snapshot[0] as Dictionary
+	var disabled_entry: Dictionary = selected_snapshot[2] as Dictionary
+	_expect(selected_entry.has("target_position") and selected_entry.has("target_rotation") and selected_entry.has("target_scale") and selected_entry.has("visible_ratio") and selected_entry.has("overflow_hidden"), "HandRack v3 snapshot includes target motion and overflow visibility fields")
+	_expect(str(disabled_entry.get("drag_state", "")) == "disabled", "disabled hand cards advertise disabled drag_state before dragging")
+	hand.call("set_hovered_card", second)
+	await process_frame
+	var hover_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var hover_snapshot: Array = hover_snapshot_variant if hover_snapshot_variant is Array else []
+	_expect(bool((hover_snapshot[0] as Dictionary).get("selected", false)) and bool((hover_snapshot[1] as Dictionary).get("hovered", false)), "hovering another card does not clear the selected card")
+	hand.call("set_hovered_card", null)
+	await process_frame
+	var post_hover_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var post_hover_snapshot: Array = post_hover_snapshot_variant if post_hover_snapshot_variant is Array else []
+	_expect(bool((post_hover_snapshot[0] as Dictionary).get("selected", false)) and not bool((post_hover_snapshot[1] as Dictionary).get("hovered", false)), "leaving hover returns to the stable selected card")
+	hand.call("set_dragged_card", disabled, false)
+	await process_frame
+	var invalid_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var invalid_snapshot: Array = invalid_snapshot_variant if invalid_snapshot_variant is Array else []
+	var invalid_entry: Dictionary = invalid_snapshot[2] as Dictionary
+	_expect(bool(invalid_entry.get("dragging", false)) and bool(invalid_entry.get("drop_invalid", false)) and str(invalid_entry.get("drag_state", "")) == "invalid_drop" and int(invalid_entry.get("z_index", 0)) >= 1100, "invalid drop is a distinct dragging state with top z-index")
+	hand.call("clear_dragged_card")
+	await process_frame
+	var return_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var return_snapshot: Array = return_snapshot_variant if return_snapshot_variant is Array else []
+	_expect(not bool((return_snapshot[2] as Dictionary).get("dragging", false)) and str((return_snapshot[2] as Dictionary).get("drag_state", "")) == "returning" and bool((return_snapshot[0] as Dictionary).get("selected", false)), "clearing invalid drag returns the card while preserving selected focus")
+	_drag_card_control_to_screen(disabled, hand.get_global_rect().get_center() + Vector2(120, -80))
+	await process_frame
+	_expect(drag_releases.has("feel_v3_c"), "drag release from HandRack only emits card_drag_released data")
+	var background_click := InputEventMouseButton.new()
+	background_click.button_index = MOUSE_BUTTON_LEFT
+	background_click.pressed = true
+	hand.call("_gui_input", background_click)
+	await process_frame
+	_expect(unselected_events.has("feel_v3_a"), "clicking the empty HandRack background clears the selected card")
+	root.remove_child(hand)
+	hand.queue_free()
+
+
+func _check_card_face_presentation_specs() -> void:
+	var packed := load("res://scenes/ui/CardFace.tscn") as PackedScene
+	_expect(packed != null, "CardFace scene loads for presentation specs")
+	if packed == null:
+		return
+	var mini := packed.instantiate() as Control
+	root.add_child(mini)
+	mini.size = Vector2(96, 128)
+	mini.call("set_card_data", {
+		"id": "mini_spec",
+		"name": "超长轨道融资测试卡",
+		"cost": "2",
+		"type": "经济",
+		"rank": "I",
+		"effect": "这是一段很长的规则说明，MiniCard 不应该把它完整塞进底部手牌。",
+		"presentation": "mini_hand",
+	})
+	await process_frame
+	var mini_effect := mini.find_child("EffectLabel", true, false) as Label
+	_expect(str(mini.get_meta("card_presentation_spec", "")) == "MiniCard" and mini_effect != null and mini_effect.max_lines_visible == 1 and mini_effect.text.length() < 32, "MiniCard presentation keeps one-line scan text instead of long rules")
+	root.remove_child(mini)
+	mini.queue_free()
+
+	var inspector := packed.instantiate() as Control
+	root.add_child(inspector)
+	inspector.size = Vector2(240, 320)
+	inspector.call("set_card_data", {
+		"id": "inspector_spec",
+		"name": "轨道融资",
+		"cost": "2",
+		"type": "经济",
+		"rank": "II",
+		"target": "己方城市",
+		"requirement": "选区有城市",
+		"effect": "现金流上升并留下公开线索。",
+		"disabled_reason": "当前未选城市",
+		"presentation": "inspector_full",
+		"actions": [{"id": "play_0", "label": "出牌", "disabled": false}],
+	})
+	await process_frame
+	var inspector_effect := inspector.find_child("EffectLabel", true, false) as Label
+	var inspector_text := inspector_effect.text if inspector_effect != null else ""
+	_expect(str(inspector.get_meta("card_presentation_spec", "")) == "inspector_full" and inspector_text.contains("目标｜己方城市") and inspector_text.contains("条件｜选区有城市") and inspector_text.contains("主动作｜出牌") and inspector_text.contains("暂不可用｜当前未选城市"), "inspector_full presentation carries target, requirement, full effect, action, and disabled reason")
+	inspector.call("set_interaction_state", {"selected": true, "hovered": false, "dragging": false, "drop_valid": true, "drop_invalid": false})
+	_expect(str(inspector.get_meta("card_visual_state", "")) == "selected", "CardFace exposes selected visual state metadata")
+	root.remove_child(inspector)
+	inspector.queue_free()
+
+
 func _check_empty_player_board_affordance() -> void:
 	var packed := load("res://scenes/ui/PlayerBoard.tscn") as PackedScene
 	_expect(packed != null, "PlayerBoard scene loads for empty-hand affordance")
@@ -3482,6 +3681,7 @@ func _check_empty_player_board_affordance() -> void:
 	var hand_rack := board.find_child("HandRack", true, false)
 	_expect(hand_rack != null, "PlayerBoard keeps a HandRack node for empty hands")
 	_expect(hand_rack != null and hand_rack.get_child_count() == 1 and hand_rack.get_child(0) is Label, "PlayerBoard renders an empty-hand affordance instead of collapsing the rack")
+	_expect(hand_rack != null and _node_tree_text(hand_rack).contains("暂无手牌") and _node_tree_text(hand_rack).contains("区域牌架"), "empty HandRack copy points the player to supply instead of sounding like debug text")
 	board.call("set_player_state", {"title": "玩家板｜手牌", "hand_cards": [{"id": "stable_card_0", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "现金流上升。"}]})
 	await process_frame
 	var first_card_id := -1
@@ -3539,7 +3739,8 @@ func _check_main_player_panel_refresh_contract() -> void:
 	_expect(player_board_source.contains("hand_rack.call(\"set_cards\", cards)") and not player_board_source.contains("hand_rack.remove_child"), "split PlayerBoard delegates hand rendering to HandRack instead of clearing card nodes")
 	_expect(player_board_source.contains("func _first_enabled_card_action_id") and player_board_source.contains("card_double_selected") and player_board_source.contains("action_requested.emit(action_id)"), "split PlayerBoard turns a double-clicked enabled hand card into its snapshot action instead of reading gameplay rules")
 	_expect(hand_rack_source.contains("func set_cards") and hand_rack_source.contains("_card_identity_key") and hand_rack_source.contains("_sync_card_nodes"), "split HandRack performs same-id card-node synchronization for live snapshot rendering")
-	_expect(hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("_event_screen_position") and hand_rack_source.contains("card_drag_released.emit"), "split HandRack reports card drag release coordinates without reading gameplay rules")
+	_expect(hand_rack_source.contains("signal card_unselected") and hand_rack_source.contains("_selected_identity") and hand_rack_source.contains("_select_card_node") and hand_rack_source.contains("_unselect_current_card"), "split HandRack owns stable selected-card focus without relying on hover")
+	_expect(hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("_event_screen_position") and hand_rack_source.contains("card_drag_released.emit") and hand_rack_source.contains("_card_drag_drop_valid") and not hand_rack_source.contains("_use_skill"), "split HandRack reports card drag release coordinates and invalid-drop state without reading gameplay rules")
 
 
 func _check_hand_layout_counts() -> void:

@@ -3,6 +3,82 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-02。
 
+## 2026-07-02｜Hearthstone-grade Vertical Slice v1
+
+### 参考方向
+
+- 本轮不复制暴雪 IP、素材、图标、卡背、文本或规则，只学习商业卡牌游戏的产品结构：明确桌面舞台、手牌对象感、目标反馈、出牌演出、怪兽攻击、资源浮字、音效 hook、帧序列验收。
+- 继续使用开源参考的结构而非素材：CardHouse 的事件/目标 staging，Balatro-Feel 的反馈节奏语言，UiCard 的目标/拖放反馈，Godot card plugin 的 data/visual/hand/drag/rules 分离。
+- 不改 Codex B 的 Scenario 系统，不碰竞价推荐、公开牌轨逻辑、AI、经济公式、怪兽规则、匿名牌真实归属或卡牌数据表。
+
+### 本轮实现
+
+- 新增 `docs/hearthstone_grade_ux_matrix.md`、`docs/commercial_readiness_scorecard.md`、`docs/vertical_slice_showcase_spec.md`，把商业切片拆成桌面、手牌、hover/drag、目标选择、出牌、召唤、攻击、受损、资源、日志、音效和截图验收。
+- 新增 `docs/card_frame_spec.md`、`docs/art_direction.md`、`docs/vfx_event_language.md`、`docs/balance_pricing_model.md`，锁定 MiniHandCard / InspectorCard / TrackCard、VFX 事件语言和价格公式。
+- 新增 `scenes/ui/VerticalSliceShowcase.tscn`、`scripts/ui/vertical_slice_showcase.gd`、`scripts/ui/showcase_director.gd` 与 `data/showcase/hearthstone_grade_sequence.json`，可独立播放 45 秒展示序列：桌面就绪、手牌 hover、有效/非法拖牌、出牌飞行、公开 reveal、怪兽出现/移动/攻击、城市受损、BidBoard 高亮、平衡报告预览。
+- 新增 `VisualEventLayer`、`TargetingOverlay`、`VisualEventQueue`、`VisualEventSnapshot`，覆盖 card_play、target_arrow、card_reveal、monster_spawn、monster_move、monster_attack、city_damage、route_damage、cash_gain、gdp_delta、final_countdown 等事件，支持 reduced_motion 和 32 事件上限。
+- 新增 monster/city/route/combat presenter，用 UI-only 事件表达怪兽出现、移动、攻击、城市受损、商路受损、军队射线。
+- 新增 silent `AudioEventBus` / `AudioEventRegistry` 和 `data/audio/audio_event_map.json`，覆盖 ui、card、bid、monster、city、route、resource、final_countdown hook。
+- 新增 `scripts/balance/*`、`data/balance/*`、`docs/balance_report.md`，输出价格过低 Top 20、价格过高 Top 20、Rank I-IV 梯度异常、同类型异常、首局推荐卡和复杂卡排除；报告只建议，不改真实卡牌数据。
+- 新增 `tests/vertical_slice_showcase_test.gd`、`tests/visual_event_smoke_test.gd`、`tests/balance_report_test.gd`、`tests/showcase_frame_capture.gd`，并扩展 `tests/visual_snapshot.gd` 锁住新合同和帧序列文件名。
+- 继续补强 `data/showcase/hearthstone_grade_sequence.json` 的 `scenario_lab_bridge` 与 `scenario_segments`，把 `first_table`、`monster_pressure`、`public_track_intro`、`bid_practice` 显式映射到 stage、VFX event class 和 silent audio hook。
+- `ShowcaseDirector` 新增 `get_scenario_ids()`、`stage_ids_for_scenario()`、`scenario_snapshot()`；`VerticalSliceShowcase` 新增 `play_scenario()` / `get_scenario_contract()`，给未来 Codex B Scenario Browser/Scenario Lab 入口消费。
+- `docs/balance_report.md` 和 balance analyzer/reporter 增加“剧本价格/强度曲线”，并输出怪兽压迫、公开牌轨、竞价练习各自的推荐卡组。
+
+### 验证
+
+- `Godot 4.7 --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/vertical_slice_showcase_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/visual_event_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/balance_report_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/showcase_frame_capture.gd` 通过，并生成 19 张 showcase / 剧本证明帧 / 帧序列 / 价格报告预览图。
+- `git diff --check` 将在最终提交前复跑。
+
+### 剩余缺口
+
+- v1 仍是程序化 UI 视觉和 silent 音效 hook，下一轮可替换为 CC0 临时音效和更完整的 token/冲击动画。
+- 目前仍通过本地 showcase fixture 播放，但已有窄桥接合同：等 Codex B 的 Scenario Lab 暴露 `visual_events` 后，A 侧可直接按剧本消费展示事件。
+- 平衡报告只建议垂直切片卡组，不应直接全局改价。
+
+## 2026-07-02｜HandRack / CardFace Commercial Feel v3
+
+### 参考方向
+
+- 继续按 `CardHouse` 的 card group / gate / seeker 思路重写为本项目 Godot `Control` 结构：HandLayout 只管理位置、旋转、缩放、z-index 和交互状态，不触碰规则。
+- 参考 `Balatro-Feel` 的 hover/selected/invalid drop 节奏，把底部手牌从按钮列表感推进到 deckbuilder 式的抬升、让位、焦点和回位反馈。
+- 参考 `UiCard` 与 Godot card 插件的组件边界，把卡牌数据、MiniCard 视觉、Inspector full 详情、HandRack 信号和 main 规则入口继续拆开。
+- 保持复制边界：没有复制 Unity/C#/JS 源码，没有引入 GPL/AGPL/LGPL 代码或外部素材；只移植结构、参数和交互模式。
+
+### 本轮实现
+
+- `scripts/HandLayout.gd` 增加 `single_focus / comfortable / compressed / pressure / overflow_stack` profile，并把 `gap_ratio`、fan/arc 强度、缩放下限、hover lift、邻牌让位、max visible/overflow 策略集中到可调参数层。
+- HandLayout 新增 selected、pressed、dragging、returning、disabled、valid_drop、invalid_drop 状态；`get_card_target_snapshot()` 现在暴露 `target_position`、`target_rotation`、`target_scale`、`drag_state`、`visible_ratio`、`overflow_hidden` 等测试合同。
+- `scripts/ui/hand_rack.gd` 补齐 `card_unselected`、稳定选中、空白取消、同 ID live refresh 保节点、pressed/disabled 元数据、deadzone drag 和 invalid release 回位；拖拽释放仍只发 `card_drag_released`，不直接调用规则函数。
+- `scripts/CardUI.gd` 与 `scripts/ui/card_face.gd` 明确 MiniCard / inspector_full / codex_full presentation contract；MiniCard 保持短名称、费用、路线/类型、rank、单行效果和状态灯，Inspector full 承接目标、条件、完整效果、主动作和 disabled reason。
+- `PlayerBoard -> GameScreen -> RightInspector` 只做 UI 桥接：hover 临时预览，selected 稳定聚焦，hover 离开后恢复 selected card 详情。
+- `scripts/LayoutDemo.gd` 改为 HandRack feel demo，覆盖 0/1/5/10/15 张手牌，以及 hover、selected、dragging、invalid drop、disabled 示例。
+- `tests/layout_scene_smoke_test.gd`、`tests/visual_snapshot.gd`、`tests/ui_text_smoke_test.gd`、`tests/ui_snapshot_capture.gd` 增加 HandRack v3、MiniCard、Inspector full 和多分辨率截图护栏。
+
+### 验证
+
+- `Godot 4.7 --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/ui_snapshot_capture.gd` 通过，并生成 `hand_rack_demo_1280x720.png`、`hand_rack_demo_1600x960.png`、`hand_rack_demo_1920x1080.png`、`play_table_hand_hover_1600x960.png`、`play_table_hand_selected_1600x960.png`、`play_table_drag_invalid_1600x960.png`。
+- `git diff --check` 退出码 0；仅有 Windows 工作区既有 LF/CRLF 转换提示。
+
+### 剩余缺口
+
+- `codex_full` 目前主要是 presentation/test contract，后续可以专门重做图鉴详情页的完整卡牌规格。
+- HandRack 已有 overflow_stack 数据合同；如果未来手牌超过 15 张很多，可以再做真正可滚动/折叠的 overflow rack。
+- 视觉手感已经能区分 hover、selected、drag、invalid drop，但还可以继续做更细的弹性 overshoot、音效和触觉节奏。
+
 ## 2026-07-02｜BidBoard 指针 Hover 同步公开牌轨
 
 ### 参考方向
@@ -5704,3 +5780,43 @@
 - `tests/scenario_privacy_test.gd` 通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-02｜公开牌轨 Hover 接入右侧说明层
+
+- 继续按“桌面信息互相指认”的商业桌游读法推进：
+  - 顶部公开牌轨槽位 hover 时，不再只点亮 BidBoard 指针，也会把该匿名牌槽的公开状态、归属提示、报价、条件和详情入口临时显示到 `RightInspector`。
+  - 鼠标离开牌轨后，右侧说明恢复最近一次主桌上下文，避免玩家扫牌轨时把当前选区/行动说明永久冲掉。
+  - 这复用 `GameScreen._track_entry_inspector_context()`，仍然只走 UI snapshot/信号层，不把规则逻辑塞进 `CardTrack`。
+- 可玩性意义：
+  - 玩家扫顶部匿名牌轨时能立刻看到“这张公共牌为什么重要、可以点哪里、归属线索是什么”，不用先点击或翻情报页。
+  - 牌轨、BidBoard、RightInspector 三块信息开始形成同一张桌面的短反馈链。
+
+### 本轮验证
+
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+
+## 2026-07-02｜匿名牌对象闭环接通情报档案
+
+- Codex A 本轮只处理公开牌轨、竞价、右侧说明和匿名牌证据链，没有新增玩法/卡牌/AI，也没有改首局引导、新游戏菜单、教程、经济、怪兽或卡牌数据。
+- 继续参考 Through the Ages 式公共牌列、Terraforming Mars 桌面信息分层和 CardHouse 的 card group/gate 思路，把同一张匿名牌对象用 `resolution_id` 串起来：
+  - `PublicTrack` hover 继续高亮 `BidBoard` 指针，并临时预览到 `RightInspector`。
+  - `BidBoard` 指针 hover 现在也会反向预览对应 `PublicTrack` 牌槽到 `RightInspector`。
+  - `GameScreen` 增加短 `TrackFocusRibbon`，在 hover/选中公开牌时显示槽位、状态、匿名归属和报价，避免玩家在顶部牌轨、底部竞价和右侧说明之间迷路。
+  - `PublicTrack` / `BidBoard` 选中后保持同一 `resolution_id` 焦点，右侧说明和牌轨焦点条同步显示“已选牌轨”。
+  - `IntelDossierBoard` 增加 scene-owned action row，已选匿名牌证据链提供“回到牌轨 / 竞猜 / 卡牌详情”路径；按钮只 emit 数据化 action id，`main.gd` 只做匿名牌桥接。
+- 隐藏信息边界：
+  - 焦点条和档案按钮只展示公开槽位、公开状态、匿名归属提示、报价与卡牌公开详情入口。
+  - “竞猜”路径只是回到主桌同一 `resolution_id`，由已有归属竞猜面板继续处理；不在档案页直接结算或泄露真牌主。
+
+### 本轮验证
+
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 有头通过，并重新生成主桌、情报档案、抽屉和 Codex/仪表板快照。

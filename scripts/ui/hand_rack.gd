@@ -4,6 +4,7 @@ class_name SpaceSyndicateHandRack
 signal card_hovered(card_data: Dictionary)
 signal card_unhovered
 signal card_selected(card_data: Dictionary)
+signal card_unselected(card_data: Dictionary)
 signal card_double_selected(card_data: Dictionary)
 signal card_drag_preview_started(card_data: Dictionary, screen_position: Vector2)
 signal card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2)
@@ -21,9 +22,22 @@ const DRAG_PREVIEW_SCREEN_POSITION_META := "hand_drag_preview_screen_position"
 
 var _pressed_card: Control = null
 var _drag_preview_card: Control = null
+var _selected_identity := ""
 var _press_screen_position: Vector2 = Vector2.ZERO
 var _cards_signature: String = ""
 var _empty_label: Label = null
+
+
+func _ready() -> void:
+	super._ready()
+	mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
+			_unselect_current_card()
 
 
 func set_cards(cards: Array) -> void:
@@ -88,10 +102,12 @@ func _show_empty_hand() -> void:
 	_end_drag_preview()
 	_clear_hand_children()
 	_hovered_card = null
+	_selected_card = null
 	_pressed_card = null
+	_selected_identity = ""
 	_empty_label = Label.new()
 	_empty_label.name = "PlayerHandEmptySlot"
-	_empty_label.text = "手牌为空"
+	_empty_label.text = "暂无手牌｜点选区域牌架或等待补给"
 	_empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -107,6 +123,7 @@ func _sync_card_nodes(cards: Array) -> void:
 	_empty_label = null
 	var existing_by_key := _existing_card_nodes_by_key()
 	var wanted_nodes: Array[Control] = []
+	var selected_node: Control = null
 	for index in range(cards.size()):
 		var card_data: Dictionary = cards[index] if cards[index] is Dictionary else {}
 		var identity := str(card_data.get("_hand_identity", _card_identity_key(card_data, index)))
@@ -119,21 +136,43 @@ func _sync_card_nodes(cards: Array) -> void:
 		_render_card_data(card, card_data)
 		_connect_card_node_signals(card)
 		wanted_nodes.append(card)
+		if _card_data_marks_selected(card_data) or (_selected_identity != "" and identity == _selected_identity):
+			selected_node = card
+			_selected_identity = identity
 	for child in _card_children():
 		if not wanted_nodes.has(child):
 			if child == _hovered_card:
 				_hovered_card = null
+			if child == _selected_card:
+				_selected_card = null
+			if child == _drag_preview_card:
+				_drag_preview_card = null
 			remove_child(child)
 			child.queue_free()
 	for index in range(wanted_nodes.size()):
 		move_child(wanted_nodes[index], index)
+	if selected_node != null:
+		set_selected_card(selected_node)
+	elif _selected_identity != "":
+		_selected_identity = ""
+		clear_selected_card()
 
 
 func _update_card_data(cards: Array) -> void:
 	var nodes := _card_children()
+	var selected_node: Control = null
 	for index in range(mini(nodes.size(), cards.size())):
 		var card_data: Dictionary = cards[index] if cards[index] is Dictionary else {}
+		var identity := str(card_data.get("_hand_identity", _card_identity_key(card_data, index)))
 		_render_card_data(nodes[index], card_data)
+		if _card_data_marks_selected(card_data) or (_selected_identity != "" and identity == _selected_identity):
+			selected_node = nodes[index]
+			_selected_identity = identity
+	if selected_node != null:
+		set_selected_card(selected_node)
+	elif _selected_identity != "" and get_selected_card() == null:
+		_selected_identity = ""
+		clear_selected_card()
 
 
 func _existing_card_nodes_by_key() -> Dictionary:
@@ -154,15 +193,16 @@ func _render_card_data(card: Control, card_data: Dictionary) -> void:
 		display_data["detail_policy"] = "right_inspector"
 	if card.has_method("set_card_data"):
 		card.call("set_card_data", display_data)
+	card.set_meta("hand_card_drag_disabled", not _card_data_drag_valid(display_data))
 
 
 func _connect_card_node_signals(card: Control) -> void:
 	if card.has_signal("card_clicked"):
-		var clicked := Callable(self, "_on_card_clicked")
+		var clicked := Callable(self, "_on_card_clicked").bind(card)
 		if not card.is_connected("card_clicked", clicked):
 			card.connect("card_clicked", clicked)
 	if card.has_signal("card_double_clicked"):
-		var double_clicked := Callable(self, "_on_card_double_clicked")
+		var double_clicked := Callable(self, "_on_card_double_clicked").bind(card)
 		if not card.is_connected("card_double_clicked", double_clicked):
 			card.connect("card_double_clicked", double_clicked)
 
@@ -195,11 +235,13 @@ func _on_card_mouse_exited(card: Control) -> void:
 	card_unhovered.emit()
 
 
-func _on_card_clicked(card_data: Dictionary) -> void:
+func _on_card_clicked(card_data: Dictionary, card: Control) -> void:
+	_select_card_node(card)
 	card_selected.emit(card_data)
 
 
-func _on_card_double_clicked(card_data: Dictionary) -> void:
+func _on_card_double_clicked(card_data: Dictionary, card: Control) -> void:
+	_select_card_node(card)
 	card_double_selected.emit(card_data)
 
 
@@ -212,7 +254,10 @@ func _on_card_gui_input(event: InputEvent, card: Control) -> void:
 		if mouse_button.pressed:
 			_pressed_card = card
 			_press_screen_position = screen_position
+			card.set_meta("hand_card_pressed", true)
+			set_drag_drop_valid(_card_drag_drop_valid(card))
 			return
+		card.remove_meta("hand_card_pressed")
 		_end_drag_preview(screen_position, true)
 		_pressed_card = null
 	elif event is InputEventMouseMotion:
@@ -231,12 +276,14 @@ func _begin_drag_preview(card: Control, screen_position: Vector2) -> void:
 	card.set_meta(DRAG_PREVIEW_ORIGIN_META, _press_screen_position)
 	card.set_meta(DRAG_PREVIEW_SCREEN_POSITION_META, screen_position)
 	set_hovered_card(card)
+	set_dragged_card(card, _card_drag_drop_valid(card))
 	card_drag_preview_started.emit(_card_data_for(card), screen_position)
 
 
 func _move_drag_preview(card: Control, screen_position: Vector2) -> void:
 	card.set_meta(DRAG_PREVIEW_ACTIVE_META, true)
 	card.set_meta(DRAG_PREVIEW_SCREEN_POSITION_META, screen_position)
+	set_dragged_card(card, _card_drag_drop_valid(card))
 	card_drag_preview_moved.emit(_card_data_for(card), screen_position)
 
 
@@ -251,6 +298,8 @@ func _end_drag_preview(screen_position: Vector2 = Vector2.INF, emit_release: boo
 		preview_card.remove_meta(DRAG_PREVIEW_ACTIVE_META)
 		preview_card.remove_meta(DRAG_PREVIEW_ORIGIN_META)
 		preview_card.remove_meta(DRAG_PREVIEW_SCREEN_POSITION_META)
+		preview_card.remove_meta("hand_card_pressed")
+		clear_dragged_card()
 		card_drag_preview_ended.emit(card_data)
 		if emit_release:
 			card_drag_released.emit(card_data, release_position)
@@ -272,3 +321,48 @@ func _event_screen_position(event: InputEvent, card: Control) -> Vector2:
 		if card != null:
 			return card.get_global_position() + mouse_event.position
 	return get_viewport().get_mouse_position()
+
+
+func _select_card_node(card: Control) -> void:
+	if card == null or card.get_parent() != self:
+		return
+	if get_selected_card() != null and get_selected_card() != card:
+		card_unselected.emit(_card_data_for(get_selected_card()))
+	_selected_identity = str(card.get_meta("hand_card_identity", ""))
+	set_selected_card(card)
+
+
+func _unselect_current_card() -> void:
+	var selected := get_selected_card()
+	if selected == null and _selected_identity == "":
+		return
+	var previous_data := _card_data_for(selected) if selected != null else {}
+	_selected_identity = ""
+	clear_selected_card()
+	if not previous_data.is_empty():
+		card_unselected.emit(previous_data)
+
+
+func _card_data_marks_selected(card_data: Dictionary) -> bool:
+	return bool(card_data.get("selected", card_data.get("focused", false)))
+
+
+func _card_drag_drop_valid(card: Control) -> bool:
+	var data := _card_data_for(card)
+	return _card_data_drag_valid(data)
+
+
+func _card_data_drag_valid(data: Dictionary) -> bool:
+	if data.has("drop_enabled"):
+		return bool(data.get("drop_enabled", false))
+	if data.has("actionable"):
+		return bool(data.get("actionable", false))
+	var actions: Array = data.get("actions", []) if data.get("actions", []) is Array else []
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		var action_id := str(action.get("id", ""))
+		if action_id.begins_with("play_"):
+			return not bool(action.get("disabled", false))
+	return true
