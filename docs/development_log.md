@@ -21,6 +21,9 @@
 - 新增 silent `AudioEventBus` / `AudioEventRegistry` 和 `data/audio/audio_event_map.json`，覆盖 ui、card、bid、monster、city、route、resource、final_countdown hook。
 - 新增 `scripts/balance/*`、`data/balance/*`、`docs/balance_report.md`，输出价格过低 Top 20、价格过高 Top 20、Rank I-IV 梯度异常、同类型异常、首局推荐卡和复杂卡排除；报告只建议，不改真实卡牌数据。
 - 新增 `tests/vertical_slice_showcase_test.gd`、`tests/visual_event_smoke_test.gd`、`tests/balance_report_test.gd`、`tests/showcase_frame_capture.gd`，并扩展 `tests/visual_snapshot.gd` 锁住新合同和帧序列文件名。
+- 继续补强 `data/showcase/hearthstone_grade_sequence.json` 的 `scenario_lab_bridge` 与 `scenario_segments`，把 `first_table`、`monster_pressure`、`public_track_intro`、`bid_practice` 显式映射到 stage、VFX event class 和 silent audio hook。
+- `ShowcaseDirector` 新增 `get_scenario_ids()`、`stage_ids_for_scenario()`、`scenario_snapshot()`；`VerticalSliceShowcase` 新增 `play_scenario()` / `get_scenario_contract()`，给未来 Codex B Scenario Browser/Scenario Lab 入口消费。
+- `docs/balance_report.md` 和 balance analyzer/reporter 增加“剧本价格/强度曲线”，并输出怪兽压迫、公开牌轨、竞价练习各自的推荐卡组。
 
 ### 验证
 
@@ -32,13 +35,13 @@
 - `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
 - `Godot 4.7 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
 - `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd` 通过。
-- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/showcase_frame_capture.gd` 通过，并生成 14 张 showcase / 帧序列 / 价格报告预览图。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/showcase_frame_capture.gd` 通过，并生成 19 张 showcase / 剧本证明帧 / 帧序列 / 价格报告预览图。
 - `git diff --check` 将在最终提交前复跑。
 
 ### 剩余缺口
 
 - v1 仍是程序化 UI 视觉和 silent 音效 hook，下一轮可替换为 CC0 临时音效和更完整的 token/冲击动画。
-- 目前通过本地 showcase fixture 播放，等 Codex B 的 Scenario Lab 暴露 `visual_events` 后再接真实剧本入口。
+- 目前仍通过本地 showcase fixture 播放，但已有窄桥接合同：等 Codex B 的 Scenario Lab 暴露 `visual_events` 后，A 侧可直接按剧本消费展示事件。
 - 平衡报告只建议垂直切片卡组，不应直接全局改价。
 
 ## 2026-07-02｜HandRack / CardFace Commercial Feel v3

@@ -18,6 +18,11 @@ const FRAME_PLAN := [
 	{"stage": "public_track_reveal", "file": "showcase_public_track_reveal_1600x960.png"},
 	{"stage": "bid_highlight", "file": "showcase_bid_highlight_1600x960.png"},
 	{"stage": "balance_report_preview", "file": "balance_report_preview_1600x960.png"},
+	{"stage": "board_idle", "file": "first_table_board_idle_1600x960.png"},
+	{"stage": "card_play_frame_16", "file": "first_table_card_play_frame_16.png"},
+	{"stage": "monster_attack_frame_24", "file": "monster_pressure_attack_frame_24.png"},
+	{"stage": "public_track_reveal", "file": "public_track_intro_reveal_1600x960.png"},
+	{"stage": "bid_highlight", "file": "bid_practice_highlight_1600x960.png"},
 ]
 
 var _saved_paths: Array[String] = []

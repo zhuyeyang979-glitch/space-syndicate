@@ -15,7 +15,12 @@ func generate_report() -> String:
 	_append_rows(lines, "价格过低 Top 20", result.get("price_too_low_top20", []))
 	_append_rows(lines, "价格过高 Top 20", result.get("price_too_high_top20", []))
 	_append_anomalies(lines, "Rank I-IV 梯度异常", result.get("rank_gradient_anomalies", []))
+	_append_curve(lines, "剧本价格/强度曲线", result.get("scenario_power_curve", []))
 	_append_rows(lines, "首局剧本推荐卡", result.get("first_table_recommendations", []))
+	var recommendations: Dictionary = result.get("scenario_recommendations", {}) if result.get("scenario_recommendations", {}) is Dictionary else {}
+	_append_rows(lines, "怪兽压迫推荐卡", recommendations.get("monster_pressure", []))
+	_append_rows(lines, "公开牌轨推荐卡", recommendations.get("public_track_intro", []))
+	_append_rows(lines, "竞价练习推荐卡", recommendations.get("bid_practice", []))
 	_append_rows(lines, "不适合首局剧本的复杂卡", result.get("complexity_exclusions", []))
 	return "\n".join(lines) + "\n"
 
@@ -56,6 +61,27 @@ func _append_rows(lines: Array[String], heading: String, rows_variant: Variant) 
 			int(row.get("interaction_score", 0)),
 			str(row.get("onboarding_difficulty", "")),
 			", ".join(tags),
+		])
+	lines.append("")
+
+
+func _append_curve(lines: Array[String], heading: String, rows_variant: Variant) -> void:
+	lines.append("## %s" % heading)
+	lines.append("")
+	lines.append("| Scenario | 卡牌数 | 平均当前价 | 平均建议价 | 平均强度 | 平均复杂度 |")
+	lines.append("| --- | ---: | ---: | ---: | ---: | ---: |")
+	var rows: Array = rows_variant if rows_variant is Array else []
+	for row_variant in rows:
+		if not (row_variant is Dictionary):
+			continue
+		var row: Dictionary = row_variant
+		lines.append("| %s | %d | %d | %d | %d | %d |" % [
+			str(row.get("scenario_id", "")),
+			int(row.get("card_count", 0)),
+			int(row.get("avg_current_price", 0)),
+			int(row.get("avg_suggested_price", 0)),
+			int(row.get("avg_power_score", 0)),
+			int(row.get("avg_complexity_score", 0)),
 		])
 	lines.append("")
 

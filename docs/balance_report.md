@@ -49,6 +49,22 @@ The analyzer generates this table from `data/balance/vertical_slice_card_set.jso
 - 军队 cards are underpriced in monster-pressure frames because they are easy to understand and high-impact.
 - 互动 cards are safest as later tutorial cards; they are more complex than their visible price suggests.
 
+## 剧本价格/强度曲线
+
+| Scenario | 卡牌数 | 平均当前价 | 平均建议价 | 平均强度 | 平均复杂度 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| first_table | 10 | 98 | 190 | 6 | 2 |
+| monster_pressure | 8 | 134 | 244 | 8 | 3 |
+| public_track_intro | 6 | 88 | 169 | 4 | 4 |
+| bid_practice | 6 | 160 | 238 | 6 | 5 |
+
+Interpretation:
+
+- `first_table` should stay cheap and low-complexity, but several Rank II/III support cards are underpriced for their effect strength.
+- `monster_pressure` has the highest recommended average price because monster and military cards have immediate visible board impact.
+- `public_track_intro` is low power but high hidden-info complexity; it should be taught after the first card-play frame.
+- `bid_practice` is deliberately expensive and complex, so it belongs after players can already read public anonymous cards.
+
 ## 首局剧本推荐卡
 
 - `orbital_finance_i` / 轨道融资: clear cashflow read, easy card play frame.
@@ -56,6 +72,30 @@ The analyzer generates this table from `data/balance/vertical_slice_card_set.jso
 - `route_spark_i` / 商路点火: explains route/value feedback.
 - `weather_lane_i` / 低轨气象窗: introduces public forecast without hidden-info load.
 - `missile_cover_i` / 导弹掩护: simple response to monster pressure.
+
+## 怪兽压迫推荐卡
+
+- `fog_harbor_beast_i` / 怪兽-抱雾海皇: first readable spawn/attack target.
+- `missile_cover_i` / 导弹掩护: direct military response to monster pressure.
+- `city_repair_i` / 城市抢修: links city damage to recovery.
+- `city_repair_ii` / 城市抢修 II: stronger repair card after the first damage frame.
+- `beast_lure_ii` / 怪兽诱导 II: useful once the player understands threat direction.
+
+## 公开牌轨推荐卡
+
+- `public_tip_i` / 公开悬赏: simplest anonymous-card clue.
+- `route_spark_i` / 商路点火: makes public route consequences visible.
+- `public_tip_ii` / 公开悬赏 II: stronger clue, better after first reveal.
+- `public_tip_iii` / 公开悬赏 III: high-impact public-track card for later practice.
+- `final_countdown_i` / 终局倒计时: bridges public-track read to endgame pressure.
+
+## 竞价练习推荐卡
+
+- `bid_pressure_i` / 竞价施压: first bid-practice action card.
+- `public_tip_i` / 公开悬赏: anchors the bid to a readable public card.
+- `bid_pressure_ii` / 竞价施压 II: teaches higher-stakes pressure after one safe bid.
+- `public_tip_ii` / 公开悬赏 II: gives a stronger public signal for bid comparison.
+- `bid_pressure_iv` / 竞价施压 IV: reserve for advanced pressure, not first-table.
 
 ## 不适合首局剧本的复杂卡
 

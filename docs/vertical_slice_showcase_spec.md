@@ -4,6 +4,24 @@
 
 `Hearthstone-grade Vertical Slice v1` is a deterministic 45-90 second commercial showcase for Space Syndicate. It does not replace Scenario Lab and does not modify scenario progression. It consumes Scenario Lab visual events when available; until then it uses `data/showcase/hearthstone_grade_sequence.json`.
 
+## Scenario Lab Bridge
+
+Codex A owns the commercial presentation surface. Codex B owns Scenario Lab fixtures, scenario navigation, coach copy, replay, and scenario progression. The bridge contract is intentionally narrow:
+
+- Scenario Lab may provide `visual_events: Array[Dictionary]` with the same event vocabulary used by `VisualEventLayer`.
+- `ShowcaseDirector.scenario_snapshot(id)` groups stages, event classes, and silent audio hooks for `first_table`, `monster_pressure`, `public_track_intro`, and `bid_practice`.
+- `VerticalSliceShowcase.play_scenario(id)` starts the first stage of that segment, so future Scenario Browser entries can launch the same presentation layer without changing rules.
+- Hidden truth, opponent hand contents, true anonymous-card ownership, AI scoring, and private cash remain outside the bridge.
+
+## Scenario Coverage
+
+| Scenario | Required commercial proof |
+| --- | --- |
+| `first_table` | Board idle, card hover, valid/invalid targeting, card flyout, public reveal, resource floats, and balance preview. |
+| `monster_pressure` | Monster spawn, movement trail, attack windup, impact, city crack, cash/GDP floats, and pressure-card balance preview. |
+| `public_track_intro` | Anonymous reveal, route-damage spark, public-track highlight, bid pointer handoff, and hidden-info boundary copy. |
+| `bid_practice` | BidBoard pointer, public anonymous card highlight, public bid labels, recommendation vocabulary, and final-countdown hook. |
+
 ## Sequence
 
 | Time | Stage | Required visible behavior |

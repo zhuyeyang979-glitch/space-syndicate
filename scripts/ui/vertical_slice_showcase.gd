@@ -51,8 +51,9 @@ func play_stage(stage_id: String) -> void:
 		return
 	var snapshot: Dictionary = _director.call("stage_snapshot", stage_id)
 	var title := str(snapshot.get("title", ""))
+	var scenario_label := _scenario_label(snapshot)
 	_stage_label.text = title
-	_phase_label.text = "%s｜%s" % [str(snapshot.get("id", "")), "45 秒商业垂直切片"]
+	_phase_label.text = "%s｜%s｜%s" % [scenario_label, str(snapshot.get("id", "")), "45 秒商业垂直切片"]
 	_inspector_title.text = "当前解释｜%s" % title
 	_inspector_body.text = str(snapshot.get("inspector", ""))
 	_stage_hand_state(stage_id)
@@ -64,15 +65,47 @@ func play_stage(stage_id: String) -> void:
 	_stage_targeting(snapshot)
 
 
+func play_scenario(scenario_id: String) -> void:
+	if _director == null:
+		return
+	var stage_ids: Array = _director.call("stage_ids_for_scenario", scenario_id)
+	if not stage_ids.is_empty():
+		play_stage(str(stage_ids[0]))
+
+
+func get_scenario_contract(scenario_id: String) -> Dictionary:
+	if _director == null:
+		return {}
+	return _director.call("scenario_snapshot", scenario_id)
+
+
 func get_showcase_contract() -> Dictionary:
+	var scenario_ids: Array = _director.call("get_scenario_ids") if _director != null else []
+	var scenario_stage_map := {}
+	for scenario_id_variant in scenario_ids:
+		var scenario_id := str(scenario_id_variant)
+		scenario_stage_map[scenario_id] = _director.call("stage_ids_for_scenario", scenario_id)
 	return {
 		"stage_ids": _director.call("get_stage_ids") if _director != null else [],
+		"scenario_ids": scenario_ids,
+		"scenario_stage_map": scenario_stage_map,
 		"duration": _director.call("get_duration_seconds") if _director != null else 0.0,
 		"reduced_motion": reduced_motion,
 		"has_visual_layer": _visual_layer != null,
 		"has_targeting_overlay": _targeting_overlay != null,
 		"has_hand_rack": _hand_rack != null,
 	}
+
+
+func _scenario_label(snapshot: Dictionary) -> String:
+	var ids_variant: Variant = snapshot.get("scenario_ids", [])
+	var ids: Array = ids_variant if ids_variant is Array else []
+	if ids.is_empty():
+		return "showcase"
+	var parts: PackedStringArray = []
+	for id_variant in ids:
+		parts.append(str(id_variant))
+	return " / ".join(parts)
 
 
 func _build_showcase_ui() -> void:
