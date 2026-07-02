@@ -89,6 +89,7 @@ Do not put developer fields, generic design principles, or internal AI scoring t
 - Zooming should be smooth, not an abrupt projection switch.
 - Local view may be a flat XY projection of the spherical world.
 - Zoomed-out view should read as a planet in space.
+- The runtime `MapView` is a core table asset. Do not replace it with placeholders, static screenshots, `ColorRect` boards, fake flat maps, or non-zoomable panels. The real `main.tscn` table must default to a scalable globe planet, with local flat projection available through zoom.
 - Map layers should become icon/chip toggles: products, routes, intel, weather, monsters, cities.
 - Movement, knockback, attacks, city damage, route damage, weather, and card effects should have visible map feedback.
 

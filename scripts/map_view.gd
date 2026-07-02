@@ -7,6 +7,7 @@ const GLOBE_MODE_ZOOM_THRESHOLD := 0.58
 const PLANET_PROJECTION_BLEND_NAME := "PlanetProjectionBlend"
 const PLANET_PROJECTION_LOCAL_ZOOM := 0.98
 const PLANET_PROJECTION_GLOBE_ZOOM := 0.48
+const PLANET_PROJECTION_DEFAULT_ZOOM := PLANET_PROJECTION_GLOBE_ZOOM
 const PLANET_PROJECTION_VISIBILITY_FADE_START := 0.74
 const FLAT_PROJECTION_SPACE_MASK_NAME := "FlatProjectionSpaceMask"
 const LOCAL_PROJECTION_MARGIN_SCALE := 0.80
@@ -49,8 +50,8 @@ var visual_layer_focus := "all"
 var _scale := 1.0
 var _map_offset := Vector2.ZERO
 var _view_center_m := Vector2(700.0, 475.0)
-var _view_zoom := 1.0
-var _target_view_zoom := 1.0
+var _view_zoom := PLANET_PROJECTION_DEFAULT_ZOOM
+var _target_view_zoom := PLANET_PROJECTION_DEFAULT_ZOOM
 var _dragging := false
 var _drag_moved := false
 var _drag_start := Vector2.ZERO
@@ -66,6 +67,7 @@ var _interaction_redraw_requested := false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	custom_minimum_size = Vector2(720, 720)
+	reset_to_planet_overview()
 	set_process(true)
 
 
@@ -166,7 +168,7 @@ func set_map(
 	map_width_m = max(1.0, width_m)
 	map_height_m = max(1.0, height_m)
 	if should_center_view:
-		_view_center_m = Vector2(map_width_m * 0.5, map_height_m * 0.5)
+		reset_to_planet_overview()
 	selected_district = selected
 	palette = colors
 	movement_trails = trails
@@ -646,10 +648,7 @@ func _draw_globe_projection() -> void:
 	draw_circle(center, radius + 4.0, Color("#020617"))
 	draw_circle(center, radius, Color("#0f172a"))
 	for i in range(districts.size()):
-		if reduced_detail:
-			_draw_globe_region_fill_fast(i)
-		else:
-			_draw_globe_region_fill(i)
+		_draw_globe_region_fill_fast(i)
 	if not reduced_detail:
 		_draw_globe_graticule(center, radius)
 	for i in range(districts.size()):
@@ -1676,6 +1675,42 @@ func get_district_control_position(index: int) -> Vector2:
 		return Vector2(-1.0, -1.0)
 	_sync_projection_metrics_for_query()
 	return _world_to_screen(districts[index].get("center", Vector2.ZERO))
+
+
+func reset_to_planet_overview() -> void:
+	_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
+	_target_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
+	_view_center_m = Vector2(map_width_m * 0.5, map_height_m * 0.5)
+	_mark_interaction_detail_dirty()
+	queue_redraw()
+
+
+func zoom_to_local_projection() -> void:
+	_view_zoom = PLANET_PROJECTION_LOCAL_ZOOM
+	_target_view_zoom = PLANET_PROJECTION_LOCAL_ZOOM
+	_mark_interaction_detail_dirty()
+	queue_redraw()
+
+
+func get_projection_debug_snapshot() -> Dictionary:
+	var blend := _globe_blend()
+	var mode := "globe"
+	if blend < 0.001:
+		mode = "local"
+	elif blend < 0.985:
+		mode = "transition"
+	return {
+		"view_zoom": _view_zoom,
+		"target_view_zoom": _target_view_zoom,
+		"default_zoom": PLANET_PROJECTION_DEFAULT_ZOOM,
+		"globe_zoom": PLANET_PROJECTION_GLOBE_ZOOM,
+		"local_zoom": PLANET_PROJECTION_LOCAL_ZOOM,
+		"globe_blend": blend,
+		"mode": mode,
+		"globe_mode": _is_globe_mode(),
+		"complex_polygon_fill_in_globe": false,
+		"flat_projection_mask": FLAT_PROJECTION_SPACE_MASK_NAME,
+	}
 
 
 func get_district_at_control_position(position: Vector2) -> int:

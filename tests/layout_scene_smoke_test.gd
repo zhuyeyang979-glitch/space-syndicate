@@ -175,6 +175,7 @@ func _run() -> void:
 	await _check_final_settlement_board_component()
 	await _check_runtime_table_snapshot_bridge()
 	await _check_core_layout_no_overlap()
+	await _check_map_view_projection_defaults()
 	_check_code_layer_contracts()
 	_check_viewmodel_contracts()
 	await _check_hand_layout_counts()
@@ -884,6 +885,103 @@ func _check_core_layout_for_scene(path: String, groups: Dictionary) -> void:
 		viewport.queue_free()
 
 
+func _check_map_view_projection_defaults() -> void:
+	var map_script := load("res://scripts/map_view.gd") as Script
+	_expect(map_script != null, "MapView script loads for planet projection regression checks")
+	if map_script == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(720, 720)
+	root.add_child(viewport)
+	var map_view := map_script.new() as Control
+	_expect(map_view != null, "MapView instantiates for globe/local projection checks")
+	if map_view == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	map_view.size = Vector2(720, 720)
+	viewport.add_child(map_view)
+	await process_frame
+	if map_view.has_method("set_map"):
+		map_view.call("set_map", _map_view_projection_test_districts(), 1400.0, 950.0, 0, [
+			Color("#0ea5e9"),
+			Color("#22c55e"),
+			Color("#f59e0b"),
+			Color("#a855f7"),
+		])
+	await process_frame
+	var default_snapshot: Dictionary = _map_projection_snapshot(map_view)
+	_expect(float(default_snapshot.get("globe_blend", 0.0)) >= 0.95 and bool(default_snapshot.get("globe_mode", false)) and str(default_snapshot.get("mode", "")) == "globe", "MapView defaults to globe overview instead of flat/local color-block projection")
+	_expect(absf(float(default_snapshot.get("view_zoom", 0.0)) - float(default_snapshot.get("globe_zoom", 1.0))) <= 0.002 and absf(float(default_snapshot.get("target_view_zoom", 0.0)) - float(default_snapshot.get("globe_zoom", 1.0))) <= 0.002, "MapView default view and target zoom use PLANET_PROJECTION_GLOBE_ZOOM")
+	_expect(not bool(default_snapshot.get("complex_polygon_fill_in_globe", true)), "MapView globe overview avoids complex filled polygons that can become giant color blocks")
+	for _i in range(12):
+		var wheel := InputEventMouseButton.new()
+		wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+		wheel.pressed = true
+		map_view.call("_gui_input", wheel)
+	for _frame in range(36):
+		await process_frame
+	var local_snapshot: Dictionary = _map_projection_snapshot(map_view)
+	_expect(str(local_snapshot.get("mode", "")) == "local" or float(local_snapshot.get("globe_blend", 1.0)) <= 0.05, "MapView mouse wheel can still zoom from globe overview into local projection")
+	if map_view.has_method("reset_to_planet_overview"):
+		map_view.call("reset_to_planet_overview")
+	await process_frame
+	var returned_snapshot: Dictionary = _map_projection_snapshot(map_view)
+	_expect(float(returned_snapshot.get("globe_blend", 0.0)) >= 0.95 and str(returned_snapshot.get("mode", "")) == "globe", "MapView can return from local zoom to the default globe overview")
+	viewport.remove_child(map_view)
+	map_view.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _map_projection_snapshot(map_view: Node) -> Dictionary:
+	if map_view != null and map_view.has_method("get_projection_debug_snapshot"):
+		var snapshot_variant: Variant = map_view.call("get_projection_debug_snapshot")
+		return snapshot_variant if snapshot_variant is Dictionary else {}
+	return {}
+
+
+func _map_view_projection_test_districts() -> Array:
+	return [
+		{
+			"name": "寒冠洋",
+			"terrain": "ocean",
+			"center": Vector2(360, 260),
+			"radius_m": 84.0,
+			"hp": 18,
+			"products": ["ice"],
+			"polygon": [Vector2(210, 160), Vector2(520, 180), Vector2(500, 340), Vector2(240, 360)],
+		},
+		{
+			"name": "雾港城",
+			"terrain": "land",
+			"center": Vector2(760, 310),
+			"radius_m": 78.0,
+			"hp": 20,
+			"products": ["ore"],
+			"polygon": [Vector2(620, 220), Vector2(890, 210), Vector2(930, 390), Vector2(650, 420)],
+		},
+		{
+			"name": "商路中继",
+			"terrain": "ocean",
+			"center": Vector2(520, 610),
+			"radius_m": 68.0,
+			"hp": 16,
+			"products": ["water"],
+			"polygon": [Vector2(360, 500), Vector2(620, 500), Vector2(640, 700), Vector2(390, 720)],
+		},
+		{
+			"name": "试玩罗盘",
+			"terrain": "land",
+			"center": Vector2(930, 650),
+			"radius_m": 92.0,
+			"hp": 22,
+			"products": ["crystal"],
+			"polygon": [Vector2(760, 500), Vector2(1110, 520), Vector2(1080, 780), Vector2(790, 760)],
+		},
+	]
+
+
 func _check_named_controls_do_not_overlap(screen: Control, names: Array, path: String, viewport_size: Vector2) -> void:
 	for i in range(names.size()):
 		var first := screen.find_child(str(names[i]), true, false) as Control
@@ -1205,7 +1303,7 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 		_force_runtime_screen_sync(main)
 		await process_frame
 		dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
-		var rack_button := _find_visible_button_containing(dock, "牌架")
+		var rack_button := _find_enabled_visible_button_containing(dock, "牌架")
 		_expect(rack_button != null and not rack_button.disabled, "runtime PlayerMainActionDock renders an enabled Rack quick button for a supplied district")
 		if rack_button != null and not rack_button.disabled:
 			rack_button.emit_signal("pressed")
@@ -1225,7 +1323,7 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 		_force_runtime_screen_sync(main)
 		await process_frame
 		dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
-		var build_button := _find_visible_button_containing(dock, "建城")
+		var build_button := _find_enabled_visible_button_containing(dock, "建城")
 		var cities_before := _runtime_active_city_count(main)
 		_expect(build_button != null and not build_button.disabled, "runtime PlayerMainActionDock renders an enabled Build quick button for a legal city district")
 		if build_button != null and not build_button.disabled:
@@ -1235,15 +1333,15 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 			var built_city := _runtime_district_city(main, build_district)
 			_expect(_runtime_active_city_count(main) == cities_before + 1 and not built_city.is_empty() and int(built_city.get("owner", -1)) == 0, "clicking the live Build quick button creates a player city through the gameplay controller")
 
-	var first_alive_district := _first_runtime_alive_district(main)
-	if first_alive_district >= 0:
-		main.set("selected_district", first_alive_district)
+	var action_context := _first_runtime_actionable_hand_context(main)
+	var actionable_slot := int(action_context.get("slot", -1))
+	if not action_context.is_empty():
+		main.set("selected_district", int(action_context.get("district", -1)))
 	_clear_runtime_player_action_cooldown(main, 0)
 	_force_runtime_screen_sync(main)
 	await process_frame
 	dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
-	var actionable_slot := int(main.call("_first_actionable_hand_slot", 0)) if main.has_method("_first_actionable_hand_slot") else -1
-	var play_button := _find_visible_button_containing(dock, "出牌")
+	var play_button := _find_enabled_visible_button_containing(dock, "出牌")
 	var queue_before := _runtime_card_resolution_entry_count(main)
 	_expect(actionable_slot >= 0 and play_button != null and not play_button.disabled, "runtime PlayerMainActionDock renders an enabled Play quick button when a hand card is actionable")
 	if actionable_slot >= 0 and play_button != null and not play_button.disabled:
@@ -1265,7 +1363,7 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 		_force_runtime_screen_sync(main)
 		await process_frame
 		dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
-		var buy_quick_button := _find_visible_button_containing(dock, "买牌")
+		var buy_quick_button := _find_enabled_visible_button_containing(dock, "买牌")
 		_expect(buy_quick_button != null and not buy_quick_button.disabled, "runtime PlayerMainActionDock renders an enabled Buy quick button for a monster-accessible supply")
 		if buy_quick_button != null and not buy_quick_button.disabled:
 			var hand_before := _runtime_player_counted_hand_size(main, 0)
@@ -1353,6 +1451,9 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 	_expect(map_view != null and map_view.has_method("get_district_control_position") and map_view.has_method("get_district_at_control_position"), "runtime hand-card drag-to-map flow uses MapView coordinate and hit-test helpers")
 	if map_view == null or not map_view.has_method("get_district_control_position"):
 		return
+	if map_view.has_method("zoom_to_local_projection"):
+		map_view.call("zoom_to_local_projection")
+		await process_frame
 	var previous_district := _first_runtime_alive_district_except(main, target_district)
 	if previous_district >= 0:
 		main.set("selected_district", previous_district)
@@ -1646,6 +1747,22 @@ func _find_visible_button_containing(node: Node, text: String) -> Button:
 			return button
 	for child in node.get_children():
 		var found := _find_visible_button_containing(child, text)
+		if found != null:
+			return found
+	return null
+
+
+func _find_enabled_visible_button_containing(node: Node, text: String) -> Button:
+	if node == null:
+		return null
+	if node is CanvasItem and not (node as CanvasItem).is_visible_in_tree():
+		return null
+	if node is Button:
+		var button := node as Button
+		if button.text.contains(text) and not button.disabled:
+			return button
+	for child in node.get_children():
+		var found := _find_enabled_visible_button_containing(child, text)
 		if found != null:
 			return found
 	return null

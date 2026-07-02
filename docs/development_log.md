@@ -1,7 +1,35 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-02。
+> 最新记录日期：2026-07-03。
+
+## 2026-07-03｜MapView 默认球体回归修复
+
+### 参考方向
+
+- 这是主桌中央星球的回归修复，不是美术重做：真实 `main.tscn` 第一眼必须是可缩放 globe planet，不能退成平面色块、矩形遮罩或 placeholder。
+- 保持现有 `PlanetBoard -> MapHost -> MapView` 分层：`PlanetBoard` 负责方形舞台和侧栏，`MapView` 负责投影、缩放、拖拽和命中，不碰经济、AI、怪兽、Scenario/Campaign 或卡牌数据。
+- 对 Codex A/B 的共同边界已写入 `AGENTS.md`：中央 `MapView` 是核心桌面资产，不得被静态截图、`ColorRect`、假平面地图或不可缩放面板替换。
+
+### 本轮实现
+
+- `scripts/map_view.gd` 新增 `PLANET_PROJECTION_DEFAULT_ZOOM := PLANET_PROJECTION_GLOBE_ZOOM`，并把 `_view_zoom / _target_view_zoom` 默认改为 globe zoom，`_ready()` 与新地图签名进入时都会 `reset_to_planet_overview()`。
+- 新增 `reset_to_planet_overview()`、`zoom_to_local_projection()` 和 `get_projection_debug_snapshot()`，让测试和截图脚本能明确验证 globe / local / return-globe 三态。
+- globe 概览下区域绘制降级为 marker/outline 优先，不再直接填充复杂 polygon，避免跨球体背面/边缘连成大色块；局部 local projection 仍保留完整区域面。
+- `tests/layout_scene_smoke_test.gd` 新增 MapView 投影回归断言：默认 `globe_blend >= 0.95`、默认 zoom 等于 `PLANET_PROJECTION_GLOBE_ZOOM`、globe 概览不启用复杂 polygon fill、滚轮可进入 local projection、可 reset 回 globe。
+- `tests/ui_snapshot_capture.gd` 新增 `play_table_planet_globe_1600x960.png`、`play_table_planet_zoom_local_1600x960.png`、`play_table_planet_return_globe_1600x960.png`，用真实运行时 `MapHost` 中的 MapView 截图。
+- `tests/visual_snapshot.gd` 锁住 globe 默认常量、debug/reset/local 方法和新增截图文件名，防止后续 UI/Showcase 改动再把主桌默认带回 flat/local。
+
+### 验证
+
+- `Godot 4.7 --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/ui_snapshot_capture.gd` 通过，并生成 `play_table_planet_globe_1600x960.png`、`play_table_planet_zoom_local_1600x960.png`、`play_table_planet_return_globe_1600x960.png`。
+- 目检 `play_table_planet_globe_1600x960.png` 与 `play_table_planet_return_globe_1600x960.png`：主桌中央第一眼是球体星球，不是平面色块；`play_table_planet_zoom_local_1600x960.png` 仍能进入局部投影且边界外有宇宙空间。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd` 目前仍有一处非本轮范围红灯：`monster landing regions discount card purchases while adjacent regions keep base price`。本轮按禁改边界不触碰经济、怪兽或卡牌购买规则。
+- `git diff --check` 通过；仅有 Windows 工作区 LF/CRLF 转换提示。
 
 ## 2026-07-02｜Hearthstone-grade Vertical Slice v1
 

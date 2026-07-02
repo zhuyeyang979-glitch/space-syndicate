@@ -144,6 +144,22 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		_capture_failures.append("runtime first-run coach was not visible for %s" % suffix)
 	await _save_viewport_snapshot("play_table_%s.png" % suffix)
 	if capture_size == Vector2i(1600, 960):
+		if _stage_runtime_planet_globe(main):
+			await _pump_frames(8)
+			await _save_viewport_snapshot("play_table_planet_globe_%s.png" % suffix)
+		else:
+			_capture_failures.append("runtime MapView globe overview was not available for %s" % suffix)
+		if _stage_runtime_planet_local(main):
+			await _pump_frames(8)
+			await _save_viewport_snapshot("play_table_planet_zoom_local_%s.png" % suffix)
+		else:
+			_capture_failures.append("runtime MapView local projection was not available for %s" % suffix)
+		if _stage_runtime_planet_globe(main):
+			await _pump_frames(8)
+			await _save_viewport_snapshot("play_table_planet_return_globe_%s.png" % suffix)
+		else:
+			_capture_failures.append("runtime MapView return-to-globe was not available for %s" % suffix)
+	if capture_size == Vector2i(1600, 960):
 		if _stage_runtime_hand_hover(main):
 			await _pump_frames(6)
 			await _save_viewport_snapshot("play_table_hand_hover_%s.png" % suffix)
@@ -336,6 +352,53 @@ func _runtime_hand_card_at(hand_rack: Node, index: int) -> Control:
 			if card_index == index:
 				return child as Control
 			card_index += 1
+	return null
+
+
+func _stage_runtime_planet_globe(root_node: Node) -> bool:
+	var map_view := _runtime_map_view(root_node)
+	if map_view == null or not map_view.has_method("reset_to_planet_overview"):
+		return false
+	map_view.call("reset_to_planet_overview")
+	return _runtime_map_projection_mode(map_view) == "globe"
+
+
+func _stage_runtime_planet_local(root_node: Node) -> bool:
+	var map_view := _runtime_map_view(root_node)
+	if map_view == null or not map_view.has_method("zoom_to_local_projection"):
+		return false
+	map_view.call("zoom_to_local_projection")
+	return _runtime_map_projection_mode(map_view) == "local"
+
+
+func _runtime_map_projection_mode(map_view: Node) -> String:
+	if map_view == null or not map_view.has_method("get_projection_debug_snapshot"):
+		return ""
+	var snapshot_variant: Variant = map_view.call("get_projection_debug_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	return str(snapshot.get("mode", ""))
+
+
+func _runtime_map_view(root_node: Node) -> Node:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	var search_root: Node = runtime_screen if runtime_screen != null else root_node
+	var map_host := search_root.find_child("MapHost", true, false)
+	if map_host != null:
+		var map_from_host := _find_node_with_method(map_host, "get_projection_debug_snapshot")
+		if map_from_host != null:
+			return map_from_host
+	return _find_node_with_method(search_root, "get_projection_debug_snapshot")
+
+
+func _find_node_with_method(node: Node, method_name: String) -> Node:
+	if node == null:
+		return null
+	if node.has_method(method_name):
+		return node
+	for child in node.get_children():
+		var found := _find_node_with_method(child, method_name)
+		if found != null:
+			return found
 	return null
 
 
