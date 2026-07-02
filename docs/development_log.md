@@ -3,6 +3,41 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-02。
 
+## 2026-07-02｜HandRack / CardFace Commercial Feel v3
+
+### 参考方向
+
+- 继续按 `CardHouse` 的 card group / gate / seeker 思路重写为本项目 Godot `Control` 结构：HandLayout 只管理位置、旋转、缩放、z-index 和交互状态，不触碰规则。
+- 参考 `Balatro-Feel` 的 hover/selected/invalid drop 节奏，把底部手牌从按钮列表感推进到 deckbuilder 式的抬升、让位、焦点和回位反馈。
+- 参考 `UiCard` 与 Godot card 插件的组件边界，把卡牌数据、MiniCard 视觉、Inspector full 详情、HandRack 信号和 main 规则入口继续拆开。
+- 保持复制边界：没有复制 Unity/C#/JS 源码，没有引入 GPL/AGPL/LGPL 代码或外部素材；只移植结构、参数和交互模式。
+
+### 本轮实现
+
+- `scripts/HandLayout.gd` 增加 `single_focus / comfortable / compressed / pressure / overflow_stack` profile，并把 `gap_ratio`、fan/arc 强度、缩放下限、hover lift、邻牌让位、max visible/overflow 策略集中到可调参数层。
+- HandLayout 新增 selected、pressed、dragging、returning、disabled、valid_drop、invalid_drop 状态；`get_card_target_snapshot()` 现在暴露 `target_position`、`target_rotation`、`target_scale`、`drag_state`、`visible_ratio`、`overflow_hidden` 等测试合同。
+- `scripts/ui/hand_rack.gd` 补齐 `card_unselected`、稳定选中、空白取消、同 ID live refresh 保节点、pressed/disabled 元数据、deadzone drag 和 invalid release 回位；拖拽释放仍只发 `card_drag_released`，不直接调用规则函数。
+- `scripts/CardUI.gd` 与 `scripts/ui/card_face.gd` 明确 MiniCard / inspector_full / codex_full presentation contract；MiniCard 保持短名称、费用、路线/类型、rank、单行效果和状态灯，Inspector full 承接目标、条件、完整效果、主动作和 disabled reason。
+- `PlayerBoard -> GameScreen -> RightInspector` 只做 UI 桥接：hover 临时预览，selected 稳定聚焦，hover 离开后恢复 selected card 详情。
+- `scripts/LayoutDemo.gd` 改为 HandRack feel demo，覆盖 0/1/5/10/15 张手牌，以及 hover、selected、dragging、invalid drop、disabled 示例。
+- `tests/layout_scene_smoke_test.gd`、`tests/visual_snapshot.gd`、`tests/ui_text_smoke_test.gd`、`tests/ui_snapshot_capture.gd` 增加 HandRack v3、MiniCard、Inspector full 和多分辨率截图护栏。
+
+### 验证
+
+- `Godot 4.7 --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/ui_snapshot_capture.gd` 通过，并生成 `hand_rack_demo_1280x720.png`、`hand_rack_demo_1600x960.png`、`hand_rack_demo_1920x1080.png`、`play_table_hand_hover_1600x960.png`、`play_table_hand_selected_1600x960.png`、`play_table_drag_invalid_1600x960.png`。
+- `git diff --check` 退出码 0；仅有 Windows 工作区既有 LF/CRLF 转换提示。
+
+### 剩余缺口
+
+- `codex_full` 目前主要是 presentation/test contract，后续可以专门重做图鉴详情页的完整卡牌规格。
+- HandRack 已有 overflow_stack 数据合同；如果未来手牌超过 15 张很多，可以再做真正可滚动/折叠的 overflow rack。
+- 视觉手感已经能区分 hover、selected、drag、invalid drop，但还可以继续做更细的弹性 overshoot、音效和触觉节奏。
+
 ## 2026-07-02｜BidBoard 指针 Hover 同步公开牌轨
 
 ### 参考方向

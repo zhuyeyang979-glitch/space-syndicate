@@ -4,6 +4,7 @@ class_name SpaceSyndicatePlayerBoard
 signal card_selected(card_data: Dictionary)
 signal card_hovered(card_data: Dictionary)
 signal card_unhovered
+signal card_unselected(card_data: Dictionary)
 signal card_drag_preview_started(card_data: Dictionary, screen_position: Vector2)
 signal card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2)
 signal card_drag_preview_ended(card_data: Dictionary)
@@ -43,6 +44,8 @@ func _ready() -> void:
 		hand_rack.connect("card_hovered", Callable(self, "_on_card_hovered"))
 	if hand_rack != null and hand_rack.has_signal("card_unhovered"):
 		hand_rack.connect("card_unhovered", Callable(self, "_on_card_unhovered"))
+	if hand_rack != null and hand_rack.has_signal("card_unselected"):
+		hand_rack.connect("card_unselected", Callable(self, "_on_card_unselected"))
 	if hand_rack != null and hand_rack.has_signal("card_selected"):
 		hand_rack.connect("card_selected", Callable(self, "_on_card_clicked"))
 	if hand_rack != null and hand_rack.has_signal("card_double_selected"):
@@ -131,6 +134,10 @@ func _on_card_hovered(card_data: Dictionary) -> void:
 
 func _on_card_unhovered() -> void:
 	card_unhovered.emit()
+
+
+func _on_card_unselected(card_data: Dictionary) -> void:
+	card_unselected.emit(card_data)
 
 
 func _on_card_drag_preview_started(card_data: Dictionary, screen_position: Vector2) -> void:

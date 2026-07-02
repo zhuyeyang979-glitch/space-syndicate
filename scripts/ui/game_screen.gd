@@ -9,6 +9,7 @@ signal action_requested(action_id: String)
 signal card_selected(card_data: Dictionary)
 signal card_hovered(card_data: Dictionary)
 signal card_unhovered
+signal card_unselected(card_data: Dictionary)
 signal card_drag_preview_started(card_data: Dictionary)
 signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
@@ -25,6 +26,7 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 
 var current_ui_data: Dictionary = {}
 var _temporary_track_focus_active := false
+var _selected_hand_card_data: Dictionary = {}
 
 func _ready() -> void:
 	_configure_track_focus_ribbon()
@@ -49,6 +51,8 @@ func _ready() -> void:
 		player_board.connect("card_hovered", Callable(self, "_on_card_hovered"))
 	if player_board.has_signal("card_unhovered"):
 		player_board.connect("card_unhovered", Callable(self, "_on_card_unhovered"))
+	if player_board.has_signal("card_unselected"):
+		player_board.connect("card_unselected", Callable(self, "_on_card_unselected"))
 	if player_board.has_signal("card_drag_preview_started"):
 		player_board.connect("card_drag_preview_started", Callable(self, "_on_card_drag_preview_started"))
 	if player_board.has_signal("card_drag_preview_moved"):
@@ -177,6 +181,7 @@ func _on_temporary_decision_action_requested(action_id: String) -> void:
 
 
 func _on_card_selected(card_data: Dictionary) -> void:
+	_selected_hand_card_data = card_data.duplicate(true)
 	if right_inspector.has_method("show_card"):
 		right_inspector.call("show_card", card_data)
 	card_selected.emit(card_data)
@@ -189,8 +194,17 @@ func _on_card_hovered(card_data: Dictionary) -> void:
 
 
 func _on_card_unhovered() -> void:
-	_restore_right_inspector_context()
+	if not _selected_hand_card_data.is_empty() and right_inspector.has_method("show_card"):
+		right_inspector.call("show_card", _selected_hand_card_data)
+	else:
+		_restore_right_inspector_context()
 	card_unhovered.emit()
+
+
+func _on_card_unselected(card_data: Dictionary) -> void:
+	_selected_hand_card_data = {}
+	_restore_right_inspector_context()
+	card_unselected.emit(card_data)
 
 
 func _on_track_entry_selected(entry: Dictionary) -> void:

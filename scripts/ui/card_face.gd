@@ -18,3 +18,11 @@ func set_card_data(data: Dictionary) -> void:
 	set_meta("card_kind", card_kind)
 	set_meta("card_stats", card_stats)
 	super.set_card_data(data)
+	set_meta("card_face_visual_contract", _card_face_visual_contract())
+
+
+func _card_face_visual_contract() -> String:
+	var presentation := str(get_meta("card_presentation_spec", presentation_mode)).strip_edges()
+	if presentation == "":
+		presentation = presentation_mode
+	return "CardFace:%s:%s:%s" % [presentation, card_kind if card_kind != "" else "card", card_stats if card_stats != "" else "rank"]

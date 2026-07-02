@@ -147,6 +147,8 @@ func _run() -> void:
 	_check_code_layer_contracts()
 	_check_viewmodel_contracts()
 	await _check_hand_layout_counts()
+	await _check_hand_rack_v3_interaction_contract()
+	await _check_card_face_presentation_specs()
 	await _check_empty_player_board_affordance()
 	_finish()
 
@@ -1686,6 +1688,14 @@ func _double_click_card_control(card: Control) -> void:
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
 	event.double_click = true
+	card.call("_gui_input", event)
+
+
+func _single_click_card_control(card: Control) -> void:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	event.double_click = false
 	card.call("_gui_input", event)
 
 
@@ -3385,6 +3395,138 @@ func _check_code_layer_contracts() -> void:
 			_expect(not source.contains(token), "%s UI scene renderer consumes snapshots/signals instead of domain state or rule functions (%s)" % [script_path, token])
 
 
+func _check_hand_rack_v3_interaction_contract() -> void:
+	var packed := load("res://scenes/ui/HandRack.tscn") as PackedScene
+	_expect(packed != null, "HandRack scene loads for commercial cardfeel v3")
+	if packed == null:
+		return
+	var hand := packed.instantiate() as Control
+	hand.size = Vector2(1000, 250)
+	root.add_child(hand)
+	var selected_events: Array[String] = []
+	var unselected_events: Array[String] = []
+	var drag_releases: Array[String] = []
+	if hand.has_signal("card_selected"):
+		hand.connect("card_selected", func(card_data: Dictionary) -> void:
+			selected_events.append(str(card_data.get("id", "")))
+		)
+	if hand.has_signal("card_unselected"):
+		hand.connect("card_unselected", func(card_data: Dictionary) -> void:
+			unselected_events.append(str(card_data.get("id", "")))
+		)
+	if hand.has_signal("card_drag_released"):
+		hand.connect("card_drag_released", func(card_data: Dictionary, _screen_position: Vector2) -> void:
+			drag_releases.append(str(card_data.get("id", "")))
+		)
+	hand.call("set_cards", [
+		{"id": "feel_v3_a", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "短效果。", "actions": [{"id": "play_0", "label": "出牌"}]},
+		{"id": "feel_v3_b", "name": "雾港合约", "cost": "3", "type": "合约", "rank": "II", "effect": "短效果。", "actions": [{"id": "play_1", "label": "出牌"}]},
+		{"id": "feel_v3_c", "name": "冷却卡", "cost": "1", "type": "互动", "rank": "I", "effect": "短效果。", "drop_enabled": false, "actionable": false, "play_state": "冷却", "block_reason": "冷却中", "actions": [{"id": "play_2", "label": "出牌", "disabled": true}]},
+	])
+	await process_frame
+	_expect(hand.has_signal("card_unselected"), "HandRack exposes card_unselected for stable selected-card focus")
+	_expect(hand.get_child_count() == 3, "HandRack v3 renders three CardFace children")
+	var first := hand.get_child(0) as Control
+	var second := hand.get_child(1) as Control
+	var disabled := hand.get_child(2) as Control
+	_single_click_card_control(first)
+	await process_frame
+	_expect(selected_events.has("feel_v3_a"), "single-clicking a HandRack card emits card_selected")
+	var selected_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var selected_snapshot: Array = selected_snapshot_variant if selected_snapshot_variant is Array else []
+	_expect(selected_snapshot.size() == 3, "HandRack v3 snapshot exposes every rendered card")
+	if selected_snapshot.size() < 3:
+		root.remove_child(hand)
+		hand.queue_free()
+		return
+	_expect(bool((selected_snapshot[0] as Dictionary).get("selected", false)) and not bool((selected_snapshot[0] as Dictionary).get("hovered", false)), "selected card remains a stable focus separate from hover")
+	var selected_entry: Dictionary = selected_snapshot[0] as Dictionary
+	var disabled_entry: Dictionary = selected_snapshot[2] as Dictionary
+	_expect(selected_entry.has("target_position") and selected_entry.has("target_rotation") and selected_entry.has("target_scale") and selected_entry.has("visible_ratio") and selected_entry.has("overflow_hidden"), "HandRack v3 snapshot includes target motion and overflow visibility fields")
+	_expect(str(disabled_entry.get("drag_state", "")) == "disabled", "disabled hand cards advertise disabled drag_state before dragging")
+	hand.call("set_hovered_card", second)
+	await process_frame
+	var hover_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var hover_snapshot: Array = hover_snapshot_variant if hover_snapshot_variant is Array else []
+	_expect(bool((hover_snapshot[0] as Dictionary).get("selected", false)) and bool((hover_snapshot[1] as Dictionary).get("hovered", false)), "hovering another card does not clear the selected card")
+	hand.call("set_hovered_card", null)
+	await process_frame
+	var post_hover_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var post_hover_snapshot: Array = post_hover_snapshot_variant if post_hover_snapshot_variant is Array else []
+	_expect(bool((post_hover_snapshot[0] as Dictionary).get("selected", false)) and not bool((post_hover_snapshot[1] as Dictionary).get("hovered", false)), "leaving hover returns to the stable selected card")
+	hand.call("set_dragged_card", disabled, false)
+	await process_frame
+	var invalid_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var invalid_snapshot: Array = invalid_snapshot_variant if invalid_snapshot_variant is Array else []
+	var invalid_entry: Dictionary = invalid_snapshot[2] as Dictionary
+	_expect(bool(invalid_entry.get("dragging", false)) and bool(invalid_entry.get("drop_invalid", false)) and str(invalid_entry.get("drag_state", "")) == "invalid_drop" and int(invalid_entry.get("z_index", 0)) >= 1100, "invalid drop is a distinct dragging state with top z-index")
+	hand.call("clear_dragged_card")
+	await process_frame
+	var return_snapshot_variant: Variant = hand.call("get_card_target_snapshot")
+	var return_snapshot: Array = return_snapshot_variant if return_snapshot_variant is Array else []
+	_expect(not bool((return_snapshot[2] as Dictionary).get("dragging", false)) and str((return_snapshot[2] as Dictionary).get("drag_state", "")) == "returning" and bool((return_snapshot[0] as Dictionary).get("selected", false)), "clearing invalid drag returns the card while preserving selected focus")
+	_drag_card_control_to_screen(disabled, hand.get_global_rect().get_center() + Vector2(120, -80))
+	await process_frame
+	_expect(drag_releases.has("feel_v3_c"), "drag release from HandRack only emits card_drag_released data")
+	var background_click := InputEventMouseButton.new()
+	background_click.button_index = MOUSE_BUTTON_LEFT
+	background_click.pressed = true
+	hand.call("_gui_input", background_click)
+	await process_frame
+	_expect(unselected_events.has("feel_v3_a"), "clicking the empty HandRack background clears the selected card")
+	root.remove_child(hand)
+	hand.queue_free()
+
+
+func _check_card_face_presentation_specs() -> void:
+	var packed := load("res://scenes/ui/CardFace.tscn") as PackedScene
+	_expect(packed != null, "CardFace scene loads for presentation specs")
+	if packed == null:
+		return
+	var mini := packed.instantiate() as Control
+	root.add_child(mini)
+	mini.size = Vector2(96, 128)
+	mini.call("set_card_data", {
+		"id": "mini_spec",
+		"name": "超长轨道融资测试卡",
+		"cost": "2",
+		"type": "经济",
+		"rank": "I",
+		"effect": "这是一段很长的规则说明，MiniCard 不应该把它完整塞进底部手牌。",
+		"presentation": "mini_hand",
+	})
+	await process_frame
+	var mini_effect := mini.find_child("EffectLabel", true, false) as Label
+	_expect(str(mini.get_meta("card_presentation_spec", "")) == "MiniCard" and mini_effect != null and mini_effect.max_lines_visible == 1 and mini_effect.text.length() < 32, "MiniCard presentation keeps one-line scan text instead of long rules")
+	root.remove_child(mini)
+	mini.queue_free()
+
+	var inspector := packed.instantiate() as Control
+	root.add_child(inspector)
+	inspector.size = Vector2(240, 320)
+	inspector.call("set_card_data", {
+		"id": "inspector_spec",
+		"name": "轨道融资",
+		"cost": "2",
+		"type": "经济",
+		"rank": "II",
+		"target": "己方城市",
+		"requirement": "选区有城市",
+		"effect": "现金流上升并留下公开线索。",
+		"disabled_reason": "当前未选城市",
+		"presentation": "inspector_full",
+		"actions": [{"id": "play_0", "label": "出牌", "disabled": false}],
+	})
+	await process_frame
+	var inspector_effect := inspector.find_child("EffectLabel", true, false) as Label
+	var inspector_text := inspector_effect.text if inspector_effect != null else ""
+	_expect(str(inspector.get_meta("card_presentation_spec", "")) == "inspector_full" and inspector_text.contains("目标｜己方城市") and inspector_text.contains("条件｜选区有城市") and inspector_text.contains("主动作｜出牌") and inspector_text.contains("暂不可用｜当前未选城市"), "inspector_full presentation carries target, requirement, full effect, action, and disabled reason")
+	inspector.call("set_interaction_state", {"selected": true, "hovered": false, "dragging": false, "drop_valid": true, "drop_invalid": false})
+	_expect(str(inspector.get_meta("card_visual_state", "")) == "selected", "CardFace exposes selected visual state metadata")
+	root.remove_child(inspector)
+	inspector.queue_free()
+
+
 func _check_empty_player_board_affordance() -> void:
 	var packed := load("res://scenes/ui/PlayerBoard.tscn") as PackedScene
 	_expect(packed != null, "PlayerBoard scene loads for empty-hand affordance")
@@ -3399,6 +3541,7 @@ func _check_empty_player_board_affordance() -> void:
 	var hand_rack := board.find_child("HandRack", true, false)
 	_expect(hand_rack != null, "PlayerBoard keeps a HandRack node for empty hands")
 	_expect(hand_rack != null and hand_rack.get_child_count() == 1 and hand_rack.get_child(0) is Label, "PlayerBoard renders an empty-hand affordance instead of collapsing the rack")
+	_expect(hand_rack != null and _node_tree_text(hand_rack).contains("暂无手牌") and _node_tree_text(hand_rack).contains("区域牌架"), "empty HandRack copy points the player to supply instead of sounding like debug text")
 	board.call("set_player_state", {"title": "玩家板｜手牌", "hand_cards": [{"id": "stable_card_0", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "现金流上升。"}]})
 	await process_frame
 	var first_card_id := -1
@@ -3456,7 +3599,8 @@ func _check_main_player_panel_refresh_contract() -> void:
 	_expect(player_board_source.contains("hand_rack.call(\"set_cards\", cards)") and not player_board_source.contains("hand_rack.remove_child"), "split PlayerBoard delegates hand rendering to HandRack instead of clearing card nodes")
 	_expect(player_board_source.contains("func _first_enabled_card_action_id") and player_board_source.contains("card_double_selected") and player_board_source.contains("action_requested.emit(action_id)"), "split PlayerBoard turns a double-clicked enabled hand card into its snapshot action instead of reading gameplay rules")
 	_expect(hand_rack_source.contains("func set_cards") and hand_rack_source.contains("_card_identity_key") and hand_rack_source.contains("_sync_card_nodes"), "split HandRack performs same-id card-node synchronization for live snapshot rendering")
-	_expect(hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("_event_screen_position") and hand_rack_source.contains("card_drag_released.emit"), "split HandRack reports card drag release coordinates without reading gameplay rules")
+	_expect(hand_rack_source.contains("signal card_unselected") and hand_rack_source.contains("_selected_identity") and hand_rack_source.contains("_select_card_node") and hand_rack_source.contains("_unselect_current_card"), "split HandRack owns stable selected-card focus without relying on hover")
+	_expect(hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("_event_screen_position") and hand_rack_source.contains("card_drag_released.emit") and hand_rack_source.contains("_card_drag_drop_valid") and not hand_rack_source.contains("_use_skill"), "split HandRack reports card drag release coordinates and invalid-drop state without reading gameplay rules")
 
 
 func _check_hand_layout_counts() -> void:
