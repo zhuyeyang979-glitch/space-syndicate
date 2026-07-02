@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name SpaceSyndicateCampaignProgressMap
 
+const FOCUS_TOOLS := preload("res://scripts/ui/focus_tools.gd")
+
 signal action_requested(action_id: String)
 
 @onready var title_label: Label = %CampaignProgressMapTitle
@@ -30,8 +32,15 @@ func set_progress_map(data: Dictionary) -> void:
 		button.custom_minimum_size = Vector2(84, 42)
 		button.disabled = not bool(chapter.get("unlocked", false))
 		button.add_theme_color_override("font_color", accent.lightened(0.12))
-		button.pressed.connect(_emit_action.bind("campaign_chapter_%s" % str(chapter.get("id", ""))))
+		var action_id := "campaign_chapter_%s" % str(chapter.get("id", ""))
+		FOCUS_TOOLS.prepare_button(button, action_id, "CampaignProgressChapterButton")
+		button.pressed.connect(_emit_action.bind(action_id))
 		chapter_row.add_child(button)
+	call_deferred("_focus_default_action")
+
+
+func _focus_default_action() -> void:
+	FOCUS_TOOLS.focus_first_enabled(self)
 
 
 func _emit_action(action_id: String) -> void:

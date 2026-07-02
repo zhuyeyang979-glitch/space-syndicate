@@ -14,11 +14,11 @@
 | 复盘质量 | 4 | MatchRecapPanel + key logs | 后续增加更多经济解释 |
 | 继续游玩动机 | 4 | 推荐继续/下一关 | 增加毕业挑战后循环 |
 | 多分辨率 | 4 | layout/campaign screenshot tests | 手柄焦点仍需人工测 |
-| 键盘/手柄可用性 | 3 | Button focus mode | 下一轮补完整焦点顺序测试 |
+| 键盘/手柄可用性 | 4 | `tests/campaign_focus_navigation_test.gd` verifies CampaignMenu、Briefing、Reward、Recap、ProgressMap default focus, stable dynamic button names, and keyboard/gamepad reachable action buttons. | 下一轮补运行牌桌内手牌/牌轨/地图的完整焦点顺序 |
 | 隐藏信息安全 | 5 | scenario/campaign privacy tests | 持续维护禁词护栏 |
 
 ## 当前最低分修复计划
 
-1. 键盘/手柄：为 Campaign 场景增加更明确的 focus neighbor。
+1. 运行牌桌焦点：补手牌、牌轨、地图、牌架抽屉之间的完整键盘/手柄焦点顺序。
 2. 自动定位：连续失败后打开对应区域/牌架/详情。
 3. 焦点高亮：让 `focus_target` 驱动地图/手牌/牌架/牌轨的可见高亮。

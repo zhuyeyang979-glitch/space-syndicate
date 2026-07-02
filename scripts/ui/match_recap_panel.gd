@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name SpaceSyndicateMatchRecapPanel
 
+const FOCUS_TOOLS := preload("res://scripts/ui/focus_tools.gd")
+
 signal action_requested(action_id: String)
 
 @onready var title_label: Label = %MatchRecapTitle
@@ -22,6 +24,7 @@ func set_recap(data: Dictionary) -> void:
 	_render_list(suggestion_box, data.get("suggestions", []), "建议")
 	_render_actions(checkpoint_row, data.get("checkpoint_actions", []))
 	_render_actions(secondary_row, data.get("secondary_actions", []))
+	call_deferred("_focus_default_action")
 
 
 func _render_list(parent: VBoxContainer, value: Variant, prefix: String) -> void:
@@ -46,8 +49,13 @@ func _render_actions(parent: HFlowContainer, value: Variant) -> void:
 			var action: Dictionary = action_variant
 			var button := Button.new()
 			button.text = str(action.get("label", "动作"))
+			FOCUS_TOOLS.prepare_button(button, str(action.get("id", "")), "MatchRecapActionButton")
 			button.pressed.connect(_emit_action.bind(str(action.get("id", ""))))
 			parent.add_child(button)
+
+
+func _focus_default_action() -> void:
+	FOCUS_TOOLS.focus_first_enabled(self)
 
 
 func _emit_action(action_id: String) -> void:

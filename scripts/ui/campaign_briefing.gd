@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name SpaceSyndicateCampaignBriefing
 
+const FOCUS_TOOLS := preload("res://scripts/ui/focus_tools.gd")
+
 signal action_requested(action_id: String)
 
 @onready var title_label: Label = %CampaignBriefingTitle
@@ -19,6 +21,7 @@ var _primary_action_id := ""
 
 func _ready() -> void:
 	add_theme_stylebox_override("panel", _panel_style(Color("#38bdf8")))
+	FOCUS_TOOLS.prepare_button(primary_button)
 	primary_button.pressed.connect(_emit_primary)
 
 
@@ -36,6 +39,7 @@ func set_briefing(data: Dictionary) -> void:
 	primary_button.text = str(primary.get("label", "开始"))
 	primary_button.disabled = bool(primary.get("disabled", false)) or _primary_action_id == ""
 	_render_secondary(data.get("secondary_actions", []))
+	call_deferred("_focus_default_action")
 
 
 func _render_list(parent: VBoxContainer, value: Variant, prefix: String) -> void:
@@ -58,8 +62,13 @@ func _render_secondary(value: Variant) -> void:
 			var action: Dictionary = action_variant
 			var button := Button.new()
 			button.text = str(action.get("label", "动作"))
+			FOCUS_TOOLS.prepare_button(button, str(action.get("id", "")), "CampaignBriefingSecondaryButton")
 			button.pressed.connect(_emit_action.bind(str(action.get("id", ""))))
 			secondary_row.add_child(button)
+
+
+func _focus_default_action() -> void:
+	FOCUS_TOOLS.focus_first_enabled(self, primary_button)
 
 
 func _emit_primary() -> void:

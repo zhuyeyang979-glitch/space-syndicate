@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name SpaceSyndicateCampaignMenu
 
+const FOCUS_TOOLS := preload("res://scripts/ui/focus_tools.gd")
+
 signal action_requested(action_id: String)
 
 @onready var title_label: Label = %CampaignMenuTitle
@@ -17,6 +19,7 @@ var _primary_action_id := ""
 
 func _ready() -> void:
 	add_theme_stylebox_override("panel", _panel_style(Color("#f59e0b")))
+	FOCUS_TOOLS.prepare_button(primary_button)
 	primary_button.pressed.connect(_emit_primary)
 
 
@@ -35,6 +38,7 @@ func set_campaign_menu(data: Dictionary) -> void:
 	_render_chapters(data.get("chapters", []))
 	_render_presets(data.get("presets", []))
 	_render_secondary(data.get("secondary_actions", []))
+	call_deferred("_focus_default_action")
 
 
 func _render_chapters(value: Variant) -> void:
@@ -58,6 +62,7 @@ func _render_chapters(value: Variant) -> void:
 		button.text = "%s%s" % ["✓ " if bool(chapter.get("completed", false)) else "🔒 " if bool(chapter.get("locked", false)) else "", str(chapter.get("title", "关卡"))]
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.disabled = bool(chapter.get("locked", false))
+		FOCUS_TOOLS.prepare_button(button, str(chapter.get("action_id", "")), "CampaignChapterButton")
 		button.pressed.connect(_emit_action.bind(str(chapter.get("action_id", ""))))
 		box.add_child(button)
 		var meta := _label(str(chapter.get("meta", "")), 10, accent.lightened(0.18))
@@ -78,6 +83,7 @@ func _render_presets(value: Variant) -> void:
 		button.text = str(preset.get("title", "快速开局"))
 		button.tooltip_text = "%s\n%s" % [str(preset.get("detail", "")), str(preset.get("meta", ""))]
 		button.custom_minimum_size = Vector2(146, 32)
+		FOCUS_TOOLS.prepare_button(button, str(preset.get("action_id", "")), "CampaignPresetButton")
 		button.pressed.connect(_emit_action.bind(str(preset.get("action_id", ""))))
 		preset_row.add_child(button)
 
@@ -91,8 +97,13 @@ func _render_secondary(value: Variant) -> void:
 		var action: Dictionary = action_variant
 		var button := Button.new()
 		button.text = str(action.get("label", "动作"))
+		FOCUS_TOOLS.prepare_button(button, str(action.get("id", "")), "CampaignSecondaryButton")
 		button.pressed.connect(_emit_action.bind(str(action.get("id", ""))))
 		secondary_row.add_child(button)
+
+
+func _focus_default_action() -> void:
+	FOCUS_TOOLS.focus_first_enabled(self, primary_button)
 
 
 func _emit_primary() -> void:
