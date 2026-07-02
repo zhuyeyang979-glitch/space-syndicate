@@ -17,8 +17,8 @@
     {"key": "settlement", "label": "结算"}
   ],
   "phases": [
-    {"id": "read_goal", "label": "目标", "goal": "查看现金目标和当前进度。", "primary_action_hint": "查看顶部目标", "success_signal": "goal_read", "snapshot_key": "start"},
-    {"id": "open_standings", "label": "局势", "goal": "打开局势页，看公开排名估算。", "primary_action_hint": "打开局势", "success_signal": "standings_opened", "snapshot_key": "countdown_started"},
-    {"id": "open_settlement", "label": "结算", "goal": "查看结算页如何解释胜负来源。", "primary_action_hint": "查看结算", "success_signal": "settlement_opened", "snapshot_key": "settlement"}
+    {"id": "read_goal", "label": "目标", "goal": "查看现金目标和当前进度。", "primary_action_hint": "查看顶部目标", "success_signal": "goal_read", "snapshot_key": "start", "focus_target": "top_bar", "stuck_hint": "看顶部目标筹码和底部沙漏条；不用读具体秒数。"},
+    {"id": "open_standings", "label": "局势", "goal": "打开局势页，看公开排名估算。", "primary_action_hint": "打开局势", "success_signal": "standings_opened", "snapshot_key": "countdown_started", "focus_target": "standings", "stuck_hint": "从菜单或局势按钮进入排名页；它只显示公开估算和已揭示信息。"},
+    {"id": "open_settlement", "label": "结算", "goal": "查看结算页如何解释胜负来源。", "primary_action_hint": "查看结算", "success_signal": "settlement_opened", "snapshot_key": "settlement", "focus_target": "settlement", "stuck_hint": "打开结算页，看钱从城市、卡牌、怪兽和合约中如何累积。"}
   ]
 }

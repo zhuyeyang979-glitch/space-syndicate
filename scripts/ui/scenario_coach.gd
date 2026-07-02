@@ -9,6 +9,7 @@ signal action_requested(action_id: String)
 @onready var phase_label: Label = %ScenarioCoachPhase
 @onready var progress_label: Label = %ScenarioCoachProgress
 @onready var goal_label: Label = %ScenarioCoachGoal
+@onready var help_label: Label = %ScenarioCoachHelp
 @onready var primary_button: Button = %ScenarioCoachPrimaryButton
 @onready var secondary_row: HFlowContainer = %ScenarioCoachSecondaryRow
 @onready var collapsed_button: Button = %ScenarioCoachCollapsedButton
@@ -37,11 +38,15 @@ func set_coach(data: Dictionary) -> void:
 	progress_label.text = str(data.get("progress_text", "1/1"))
 	goal_label.text = str(data.get("goal", "完成当前目标。"))
 	goal_label.tooltip_text = str(data.get("detail", goal_label.text))
+	help_label.visible = bool(data.get("help_visible", false))
+	help_label.text = "卡住了吗？%s" % str(data.get("help_text", "看高亮区域，完成当前目标。"))
+	help_label.tooltip_text = str(data.get("help_text", ""))
 	var font_scale := clampf(float(data.get("font_scale_percent", 100)) / 100.0, 0.85, 1.30)
 	title_label.add_theme_font_size_override("font_size", int(round(13.0 * font_scale)))
 	phase_label.add_theme_font_size_override("font_size", int(round(12.0 * font_scale)))
 	progress_label.add_theme_font_size_override("font_size", int(round(11.0 * font_scale)))
 	goal_label.add_theme_font_size_override("font_size", int(round(11.0 * font_scale)))
+	help_label.add_theme_font_size_override("font_size", int(round(11.0 * font_scale)))
 	var action: Dictionary = data.get("primary_action", {}) if data.get("primary_action", {}) is Dictionary else {}
 	_primary_action_id = str(action.get("id", ""))
 	primary_button.text = str(action.get("label", "下一步"))

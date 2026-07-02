@@ -17,8 +17,8 @@
     {"key": "after_track", "label": "牌轨出现后"}
   ],
   "phases": [
-    {"id": "select_track_card", "label": "看牌轨", "goal": "选中顶部公开牌轨上的匿名牌。", "primary_action_hint": "点选牌轨卡", "success_signal": "track_selected", "snapshot_key": "after_track"},
-    {"id": "read_inspector", "label": "读详情", "goal": "在右侧查看这张牌的公开结算信息。", "primary_action_hint": "查看右侧详情", "success_signal": "inspector_read", "snapshot_key": "after_track"},
-    {"id": "open_card_detail", "label": "看卡牌", "goal": "打开卡牌详情，理解它的公开效果。", "primary_action_hint": "打开卡牌详情", "success_signal": "card_detail_opened", "snapshot_key": "after_track"}
+    {"id": "select_track_card", "label": "看牌轨", "goal": "选中顶部公开牌轨上的匿名牌。", "primary_action_hint": "点选牌轨卡", "success_signal": "track_selected", "snapshot_key": "after_track", "focus_target": "public_track", "stuck_hint": "看屏幕上方细长牌轨，单击一张匿名牌槽。"},
+    {"id": "read_inspector", "label": "读详情", "goal": "在右侧查看这张牌的公开结算信息。", "primary_action_hint": "查看右侧详情", "success_signal": "inspector_read", "snapshot_key": "after_track", "focus_target": "right_inspector", "stuck_hint": "选中牌轨后，看右侧说明层；这里只显示公开条件和线索。"},
+    {"id": "open_card_detail", "label": "看卡牌", "goal": "打开卡牌详情，理解它的公开效果。", "primary_action_hint": "打开卡牌详情", "success_signal": "card_detail_opened", "snapshot_key": "after_track", "focus_target": "right_inspector", "stuck_hint": "在右侧详情里点“卡牌详情”，或双击牌轨卡槽。"}
   ]
 }

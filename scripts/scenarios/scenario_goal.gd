@@ -9,6 +9,8 @@ var success_signal := ""
 var allowed_actions: Array = []
 var snapshot_key := ""
 var detail := ""
+var focus_target := ""
+var stuck_hint := ""
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
@@ -20,6 +22,8 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	allowed_actions = (data.get("allowed_actions", []) as Array).duplicate(true) if data.get("allowed_actions", []) is Array else []
 	snapshot_key = str(data.get("snapshot_key", id)).strip_edges()
 	detail = str(data.get("detail", goal)).strip_edges()
+	focus_target = str(data.get("focus_target", "scenario_coach")).strip_edges()
+	stuck_hint = str(data.get("stuck_hint", detail)).strip_edges()
 	return self
 
 
@@ -33,4 +37,6 @@ func to_dictionary() -> Dictionary:
 		"allowed_actions": allowed_actions.duplicate(true),
 		"snapshot_key": snapshot_key,
 		"detail": detail,
+		"focus_target": focus_target,
+		"stuck_hint": stuck_hint,
 	}

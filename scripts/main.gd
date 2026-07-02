@@ -1721,6 +1721,8 @@ var selected_scenario_id := "first_table"
 var active_scenario_id := ""
 var active_scenario_snapshot_key := "start"
 var scenario_completed_signals := {}
+var scenario_phase_failed_attempts := {}
+var scenario_phase_started_at := 0.0
 var scenario_coach_closed := false
 var scenario_teaching_hints_enabled := true
 var scenario_auto_pause_prompts_enabled := true
@@ -5032,9 +5034,11 @@ func _load_campaign_progress_state() -> void:
 
 
 func _save_campaign_progress_state() -> void:
+	var progress := _campaign_progress_dictionary(selected_campaign_chapter_id)
 	CampaignSaveScript.new().save_progress({
 		"campaign_id": active_campaign_id,
 		"completed_chapter_ids": campaign_completed_chapter_ids.duplicate(true),
+		"unlocked_chapter_ids": (progress.get("unlocked_chapter_ids", []) as Array).duplicate(true) if progress.get("unlocked_chapter_ids", []) is Array else [],
 		"selected_chapter_id": selected_campaign_chapter_id,
 		"last_completed_chapter_id": active_campaign_chapter_id,
 	})
@@ -5494,6 +5498,8 @@ func _start_scenario_from_menu(scenario_id: String) -> void:
 	active_scenario_id = scenario_id
 	active_scenario_snapshot_key = "start"
 	scenario_completed_signals = {}
+	scenario_phase_failed_attempts = {}
+	scenario_phase_started_at = game_time
 	scenario_coach_closed = false
 	scenario_action_log_entries = []
 	configured_player_count = clampi(int(scenario.get("player_count", 4)), 3, 8)
@@ -5529,12 +5535,14 @@ func _complete_scenario_signal(signal_id: String, public_text: String, snapshot_
 	var scenario: Dictionary = ScenarioLoaderScript.new().load_by_id(active_scenario_id)
 	if scenario.is_empty():
 		return false
-	var progress: Variant = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed)
+	var progress: Variant = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed, scenario_phase_failed_attempts, scenario_phase_started_at, game_time)
 	var phase: Dictionary = progress.current_phase()
 	var expected_signal := str(phase.get("success_signal", phase.get("id", ""))).strip_edges()
 	if expected_signal != signal_id:
 		return false
 	scenario_completed_signals[signal_id] = true
+	scenario_phase_failed_attempts = {}
+	scenario_phase_started_at = game_time
 	active_scenario_snapshot_key = snapshot_key if snapshot_key.strip_edges() != "" else str(phase.get("snapshot_key", active_scenario_snapshot_key))
 	_record_scenario_action(
 		str(phase.get("id", signal_id)),
@@ -5555,7 +5563,7 @@ func _runtime_scenario_coach_snapshot_source(player_index: int) -> Dictionary:
 	var scenario: Dictionary = ScenarioLoaderScript.new().load_by_id(active_scenario_id)
 	if scenario.is_empty():
 		return {}
-	var progress: Dictionary = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed).to_dictionary()
+	var progress: Dictionary = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed, scenario_phase_failed_attempts, scenario_phase_started_at, game_time).to_dictionary()
 	var phase: Dictionary = progress.get("current_phase", {}) if progress.get("current_phase", {}) is Dictionary else {}
 	if active_campaign_chapter_id != "":
 		var chapter := _campaign_chapter_by_id(active_campaign_chapter_id)
@@ -5572,7 +5580,7 @@ func _activate_scenario_action(action_id: String) -> bool:
 	if active_scenario_id == "":
 		return false
 	var scenario: Dictionary = ScenarioLoaderScript.new().load_by_id(active_scenario_id)
-	var progress: Variant = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed)
+	var progress: Variant = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed, scenario_phase_failed_attempts, scenario_phase_started_at, game_time)
 	var phase: Dictionary = progress.current_phase()
 	if action_id == "scenario_reopen_coach":
 		scenario_coach_closed = false
@@ -5583,21 +5591,33 @@ func _activate_scenario_action(action_id: String) -> bool:
 		_sync_runtime_game_screen(true)
 		return true
 	if action_id == "scenario_hint":
-		_record_scenario_action(str(phase.get("id", "hint")), "查看剧本提示", str(phase.get("detail", phase.get("goal", ""))), "", str(phase.get("snapshot_key", "")), "scenario_coach")
+		_record_scenario_help_request(phase, "查看剧本提示")
+		_sync_runtime_game_screen(true)
 		return true
 	if action_id == "scenario_restart":
 		_start_scenario_from_menu(active_scenario_id)
 		return true
-	if action_id == "scenario_skip_step" or action_id.begins_with("scenario_step_"):
-		var signal_id := str(phase.get("success_signal", phase.get("id", ""))).strip_edges()
-		if signal_id != "":
-			scenario_completed_signals[signal_id] = true
-		active_scenario_snapshot_key = str(phase.get("snapshot_key", active_scenario_snapshot_key))
-		_record_scenario_action(str(phase.get("id", "")), "完成剧本目标：%s" % str(phase.get("label", "目标")), "", "signal:%s" % signal_id, active_scenario_snapshot_key, "scenario_coach")
+	if action_id == "scenario_focus_target" or action_id.begins_with("scenario_step_"):
+		_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
 		_sync_runtime_game_screen(true)
-		_maybe_finish_campaign_chapter_from_signals()
 		return true
 	return false
+
+
+func _record_scenario_help_request(phase: Dictionary, public_text: String) -> void:
+	var phase_id := str(phase.get("id", "hint")).strip_edges()
+	if phase_id == "":
+		phase_id = "hint"
+	scenario_phase_failed_attempts[phase_id] = maxi(0, int(scenario_phase_failed_attempts.get(phase_id, 0))) + 1
+	active_scenario_snapshot_key = str(phase.get("snapshot_key", active_scenario_snapshot_key))
+	_record_scenario_action(
+		phase_id,
+		public_text,
+		str(phase.get("stuck_hint", phase.get("detail", phase.get("goal", "")))),
+		"",
+		active_scenario_snapshot_key,
+		str(phase.get("focus_target", "scenario_coach"))
+	)
 
 
 func _open_scenario_action_log_menu() -> void:

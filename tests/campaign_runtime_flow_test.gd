@@ -94,11 +94,19 @@ func _check_first_chapter_reward_and_recap(main: Node, chapters: Array) -> void:
 	save.save_progress({
 		"campaign_id": str(main.get("active_campaign_id")),
 		"completed_chapter_ids": (main.get("campaign_completed_chapter_ids") as Array).duplicate(true),
+		"unlocked_chapter_ids": (_progress_for_save(main).get("unlocked_chapter_ids", []) as Array).duplicate(true),
 		"selected_chapter_id": str(main.get("selected_campaign_chapter_id")),
 	}, save_path)
 	var saved: Dictionary = save.load_progress(save_path)
 	_expect((saved.get("completed_chapter_ids", []) as Array).has(chapter_id), "campaign progress save contains completed runtime chapter")
+	_expect((saved.get("unlocked_chapter_ids", []) as Array).has("01_first_table"), "campaign progress save contains unlocked runtime chapters")
 	save.reset(save_path)
+
+
+func _progress_for_save(main: Node) -> Dictionary:
+	var campaign: Dictionary = CAMPAIGN_SCRIPT.new().load_by_id("tutorial_campaign")
+	var completed: Array = (main.get("campaign_completed_chapter_ids") as Array).duplicate(true) if main.get("campaign_completed_chapter_ids") is Array else []
+	return PROGRESS_SCRIPT.new().apply_state(campaign, completed, str(main.get("selected_campaign_chapter_id"))).to_dictionary()
 
 
 func _has_named_node(node: Node, node_name: String) -> bool:

@@ -17,8 +17,8 @@
     {"key": "guess_marked", "label": "做出猜测"}
   ],
   "phases": [
-    {"id": "select_anonymous_card", "label": "选牌", "goal": "选中一张匿名公开牌。", "primary_action_hint": "点选牌轨", "success_signal": "track_selected", "snapshot_key": "track_clue"},
-    {"id": "open_intel", "label": "线索", "goal": "从牌轨进入线索档案。", "primary_action_hint": "打开线索档案", "success_signal": "intel_opened", "snapshot_key": "track_clue"},
-    {"id": "mark_guess", "label": "猜测", "goal": "标注你认为的打牌玩家。", "primary_action_hint": "标注嫌疑人", "success_signal": "guess_marked", "snapshot_key": "guess_marked"}
+    {"id": "select_anonymous_card", "label": "选牌", "goal": "选中一张匿名公开牌。", "primary_action_hint": "点选牌轨", "success_signal": "track_selected", "snapshot_key": "track_clue", "focus_target": "public_track", "stuck_hint": "看上方匿名牌轨，单击一张有公开线索的牌。"},
+    {"id": "open_intel", "label": "线索", "goal": "从牌轨进入线索档案。", "primary_action_hint": "打开线索档案", "success_signal": "intel_opened", "snapshot_key": "track_clue", "focus_target": "intel_dossier", "stuck_hint": "选中匿名牌后，从右侧详情进入线索档案。"},
+    {"id": "mark_guess", "label": "猜测", "goal": "标注你认为的打牌玩家。", "primary_action_hint": "标注嫌疑人", "success_signal": "guess_marked", "snapshot_key": "guess_marked", "focus_target": "intel_dossier", "stuck_hint": "在线索档案里选择一个玩家头像做猜测；不要期望直接看到真相。"}
   ]
 }

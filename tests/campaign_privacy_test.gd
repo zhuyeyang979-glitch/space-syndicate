@@ -22,12 +22,17 @@ func _run() -> void:
 		"progress": progress,
 		"recommendations": RECOMMEND_SCRIPT.new().load_recommendations(),
 		"opponent_cash": 999999,
+		"opponent_hand": ["秘密手牌"],
+		"ai_private_plan": "hidden",
 		"ai_route_plan": "hidden",
+		"true_owner": 2,
+		"hidden_owner": 3,
+		"owner_truth": "rival",
 	}).to_ui_dictionary()
 	_assert_no_forbidden(var_to_str(menu_snapshot), "campaign menu snapshot")
 	var chapter: Dictionary = (campaign.get("chapters", []) as Array)[0] if (campaign.get("chapters", []) as Array).size() > 0 else {}
 	var recap: Dictionary = REWARD_SERVICE_SCRIPT.new().build_recap(campaign, chapter, [
-		{"time": "00:01", "public_text": "有人完成公开行动。", "private_text": "rival exact hand", "developer_text": "true_owner=3 ai_utility_score=999"},
+		{"time": "00:01", "public_text": "有人完成公开行动。", "private_text": "opponent hand rival exact hand hidden_owner=2", "developer_text": "true_owner=3 owner_truth=3 ai_private_plan=attack ai_utility_score=999"},
 	], {})
 	var recap_snapshot: Dictionary = RECAP_SNAPSHOT_SCRIPT.new().apply_dictionary(recap).to_ui_dictionary()
 	_assert_no_forbidden(var_to_str(recap_snapshot), "campaign recap snapshot")
@@ -35,8 +40,9 @@ func _run() -> void:
 
 
 func _assert_no_forbidden(text: String, label: String) -> void:
-	for forbidden in ["opponent_cash", "rival exact hand", "ai_route_plan", "true_owner", "developer_text", "ai_utility_score", "pressure bucket", "decision_samples", "learning_bonus"]:
-		_expect(not text.contains(forbidden), "%s hides %s" % [label, forbidden])
+	var lower_text := text.to_lower()
+	for forbidden in ["opponent_cash", "opponent cash", "opponent_hand", "opponent hand", "rival exact hand", "ai_private_plan", "ai private plan", "ai_route_plan", "true_owner", "hidden_owner", "owner_truth", "developer_text", "ai_utility_score", "pressure bucket", "decision_samples", "learning_bonus"]:
+		_expect(not lower_text.contains(forbidden), "%s hides %s" % [label, forbidden])
 
 
 func _expect(condition: bool, message: String) -> void:

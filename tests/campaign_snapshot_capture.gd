@@ -11,6 +11,7 @@ const REWARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/campaign_rewar
 const RECAP_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/match_recap_snapshot.gd")
 const SCENARIO_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/scenario_coach_snapshot.gd")
 
+const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const OUTPUT_DIR := "user://campaign_snapshots"
 
 var _failures: Array[String] = []
@@ -47,6 +48,10 @@ func _run() -> void:
 	await _capture_scene("res://scenes/ui/CampaignMenu.tscn", "set_campaign_menu", MENU_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "progress": progress_mid, "recommendations": recommendations}).to_ui_dictionary(), Vector2i(1600, 960), "campaign_progress_continue_1600x960.png")
 	await _capture_scene("res://scenes/ui/CampaignBriefing.tscn", "set_briefing", BRIEFING_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "chapter": chapter_final}).to_ui_dictionary(), Vector2i(1600, 960), "graduation_match_start_1600x960.png")
 	await _capture_scene("res://scenes/ui/CampaignRewardPanel.tscn", "set_reward", REWARD_SNAPSHOT_SCRIPT.new().apply_dictionary(REWARD_SERVICE_SCRIPT.new().build_reward(campaign, chapter_final, progress_mid, {"time_text": "11:40", "objectives_completed": 4, "objectives_total": 4, "errors": 2, "hints": 1})).to_ui_dictionary(), Vector2i(1600, 960), "graduation_match_result_1600x960.png")
+	await _capture_campaign_runtime("01_first_table", "campaign_first_table_runtime_1600x960.png")
+	await _capture_campaign_runtime("05_monster_pressure", "campaign_monster_pressure_runtime_1600x960.png")
+	await _capture_campaign_runtime("03_public_track", "campaign_public_track_runtime_1600x960.png")
+	await _capture_campaign_runtime("04_bid_practice", "campaign_bid_practice_runtime_1600x960.png")
 	if _failures.is_empty():
 		print("Campaign snapshots written to %s" % ProjectSettings.globalize_path(OUTPUT_DIR))
 	else:
@@ -98,6 +103,58 @@ func _capture_control(node: Control, size: Vector2i, filename: String, method: S
 	root.remove_child(host)
 	host.queue_free()
 	await process_frame
+
+
+func _capture_campaign_runtime(chapter_id: String, filename: String) -> void:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		_failures.append("%s loads" % MAIN_SCENE_PATH)
+		return
+	var size := Vector2i(1600, 960)
+	root.size = size
+	var main := packed.instantiate()
+	root.add_child(main)
+	await process_frame
+	await process_frame
+	main.set("campaign_completed_chapter_ids", [])
+	main.set("selected_campaign_chapter_id", chapter_id)
+	main.call("_start_campaign_chapter", chapter_id)
+	await process_frame
+	await process_frame
+	await process_frame
+	await process_frame
+	var runtime_screen := main.find_child("RuntimeGameScreen", true, false) as Control
+	_expect(runtime_screen != null and runtime_screen.visible, "%s runtime screenshot uses live RuntimeGameScreen" % chapter_id)
+	await _save_current_viewport(size, filename)
+	root.remove_child(main)
+	main.queue_free()
+	await process_frame
+
+
+func _save_current_viewport(size: Vector2i, filename: String) -> void:
+	var image: Image = null
+	var display_name := DisplayServer.get_name()
+	if display_name == "headless":
+		image = Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
+		image.fill(Color("#020617"))
+	else:
+		var viewport_texture := root.get_texture()
+		if viewport_texture != null:
+			image = viewport_texture.get_image()
+	if image == null:
+		image = Image.create_empty(size.x, size.y, false, Image.FORMAT_RGBA8)
+		image.fill(Color("#020617"))
+	var path := "%s/%s" % [OUTPUT_DIR, filename]
+	var err := image.save_png(path)
+	if err != OK:
+		_failures.append("save %s: %s" % [filename, error_string(err)])
+
+
+func _expect(condition: bool, message: String) -> void:
+	if condition:
+		print("PASS: %s" % message)
+	else:
+		_failures.append(message)
 
 
 func _coach_snapshot(title: String, phase_label: String, goal: String, progress_text: String) -> Dictionary:

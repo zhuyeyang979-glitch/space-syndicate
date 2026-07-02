@@ -8,7 +8,7 @@
 | 新手战役入口 | 4 | CampaignMenu/ProgressMap | 增加更强视觉路径 |
 | 关卡目标清晰度 | 4 | CampaignBriefing + Coach | 为每关补更多真实动作定位 |
 | 一步一目标 | 4 | ScenarioCoach 单主 CTA | 卡住状态需要更多自动定位 |
-| 错误反馈 | 3 | 已有 failure_hints 数据 | 下一轮接真实失败计数 |
+| 错误反馈 | 4 | Scenario 阶段已要求 `stuck_hint` / `focus_target`；Coach 求助会显示短卡住提示 | 下一轮接真实焦点高亮 |
 | 成功反馈 | 4 | RewardPanel + action log | 增加声音/动效 |
 | 奖励动机 | 4 | 解锁、徽章、推荐角色 | 后续接更多图鉴解锁 |
 | 复盘质量 | 4 | MatchRecapPanel + key logs | 后续增加更多经济解释 |
@@ -19,6 +19,6 @@
 
 ## 当前最低分修复计划
 
-1. 错误反馈：把失败操作和卡住 20 秒接入真实统计。
-2. 键盘/手柄：为 Campaign 场景增加更明确的 focus neighbor。
-3. 自动定位：连续失败后打开对应区域/牌架/详情。
+1. 键盘/手柄：为 Campaign 场景增加更明确的 focus neighbor。
+2. 自动定位：连续失败后打开对应区域/牌架/详情。
+3. 焦点高亮：让 `focus_target` 驱动地图/手牌/牌架/牌轨的可见高亮。

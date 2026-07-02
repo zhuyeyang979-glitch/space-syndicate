@@ -29,6 +29,7 @@ func _safe_progress(value: Dictionary) -> Dictionary:
 	return {
 		"campaign_id": str(value.get("campaign_id", "tutorial_campaign")),
 		"completed_chapter_ids": _string_array(value.get("completed_chapter_ids", [])),
+		"unlocked_chapter_ids": _string_array(value.get("unlocked_chapter_ids", [])),
 		"selected_chapter_id": str(value.get("selected_chapter_id", value.get("current_chapter_id", ""))).strip_edges(),
 		"last_completed_chapter_id": str(value.get("last_completed_chapter_id", "")).strip_edges(),
 	}

@@ -3,13 +3,19 @@ class_name ScenarioProgress
 
 var scenario: Dictionary = {}
 var completed_signals := {}
+var phase_failed_attempts := {}
+var phase_started_at := 0.0
+var now_seconds := 0.0
 var dismissed := false
 var closed_to_chip := false
 
 
-func apply_state(definition: Dictionary, signals: Dictionary = {}, is_dismissed: bool = false, is_closed_to_chip: bool = false) -> RefCounted:
+func apply_state(definition: Dictionary, signals: Dictionary = {}, is_dismissed: bool = false, is_closed_to_chip: bool = false, failures: Dictionary = {}, started_at: float = 0.0, current_time: float = 0.0) -> RefCounted:
 	scenario = definition.duplicate(true)
 	completed_signals = signals.duplicate(true)
+	phase_failed_attempts = failures.duplicate(true)
+	phase_started_at = maxf(0.0, started_at)
+	now_seconds = maxf(phase_started_at, current_time)
 	dismissed = is_dismissed
 	closed_to_chip = is_closed_to_chip
 	return self
@@ -44,6 +50,23 @@ func current_phase() -> Dictionary:
 	return {}
 
 
+func current_phase_id() -> String:
+	return str(current_phase().get("id", "")).strip_edges()
+
+
+func current_phase_failed_attempts() -> int:
+	var phase_id := current_phase_id()
+	if phase_id == "":
+		return 0
+	return maxi(0, int(phase_failed_attempts.get(phase_id, 0)))
+
+
+func current_phase_stuck_seconds() -> float:
+	if is_complete() or phase_started_at <= 0.0:
+		return 0.0
+	return maxf(0.0, now_seconds - phase_started_at)
+
+
 func to_dictionary() -> Dictionary:
 	return {
 		"scenario_id": str(scenario.get("id", "")),
@@ -55,5 +78,7 @@ func to_dictionary() -> Dictionary:
 		"completed": is_complete(),
 		"dismissed": dismissed,
 		"closed_to_chip": closed_to_chip,
+		"failed_attempts": current_phase_failed_attempts(),
+		"stuck_seconds": current_phase_stuck_seconds(),
 		"completed_signals": completed_signals.duplicate(true),
 	}

@@ -17,8 +17,8 @@
     {"key": "city_damaged", "label": "城市受损"}
   ],
   "phases": [
-    {"id": "inspect_monster", "label": "看怪兽", "goal": "选中接近城市的怪兽。", "primary_action_hint": "选中怪兽", "success_signal": "monster_inspected", "snapshot_key": "monster_near"},
-    {"id": "inspect_city_gdp", "label": "看GDP", "goal": "查看城市 GDP 为什么降低。", "primary_action_hint": "查看城市详情", "success_signal": "gdp_reason_read", "snapshot_key": "city_damaged"},
-    {"id": "open_economy", "label": "经济", "goal": "打开经济总览，确认损伤如何折算成现金流。", "primary_action_hint": "打开经济总览", "success_signal": "economy_opened", "snapshot_key": "city_damaged"}
+    {"id": "inspect_monster", "label": "看怪兽", "goal": "选中接近城市的怪兽。", "primary_action_hint": "选中怪兽", "success_signal": "monster_inspected", "snapshot_key": "monster_near", "focus_target": "planet", "stuck_hint": "看中央星球上靠近城市的怪兽标记，单击它查看状态。"},
+    {"id": "inspect_city_gdp", "label": "看GDP", "goal": "查看城市 GDP 为什么降低。", "primary_action_hint": "查看城市详情", "success_signal": "gdp_reason_read", "snapshot_key": "city_damaged", "focus_target": "right_inspector", "stuck_hint": "选中受损城市后看右侧说明，GDP 下降会显示为损伤和路线压力。"},
+    {"id": "open_economy", "label": "经济", "goal": "打开经济总览，确认损伤如何折算成现金流。", "primary_action_hint": "打开经济总览", "success_signal": "economy_opened", "snapshot_key": "city_damaged", "focus_target": "economy_overview", "stuck_hint": "从菜单或右侧详情进入经济总览，查看城市收入拆解。"}
   ]
 }

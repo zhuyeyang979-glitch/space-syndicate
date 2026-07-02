@@ -27,6 +27,13 @@ func _run() -> void:
 		_expect(str(scenario.get("summary", "")).strip_edges() != "", "%s has a summary" % id)
 		_expect(scenario.get("phases", []) is Array and (scenario.get("phases", []) as Array).size() > 0, "%s has playable phases" % id)
 		_expect(str(scenario.get("allowed_private_information", "")) == "current_player_only", "%s keeps scenario privacy scoped to the current player" % id)
+		for phase_variant in scenario.get("phases", []):
+			var phase: Dictionary = phase_variant if phase_variant is Dictionary else {}
+			var phase_id := str(phase.get("id", ""))
+			_expect(str(phase.get("success_signal", "")).strip_edges() != "", "%s/%s has a real success signal" % [id, phase_id])
+			_expect(str(phase.get("snapshot_key", "")).strip_edges() != "", "%s/%s has a replay snapshot key" % [id, phase_id])
+			_expect(str(phase.get("focus_target", "")).strip_edges() != "", "%s/%s has a focus target for human recovery" % [id, phase_id])
+			_expect(str(phase.get("stuck_hint", "")).strip_edges() != "", "%s/%s has a short stuck hint" % [id, phase_id])
 	for required_id in LOADER_SCRIPT.SCENARIO_IDS:
 		_expect(bool(ids.get(str(required_id), false)), "scenario pack includes %s" % str(required_id))
 		var fixture: Dictionary = FIXTURE_FACTORY_SCRIPT.new().make_fixture(str(required_id), "start")
@@ -38,8 +45,12 @@ func _run() -> void:
 	var first_fixture: Dictionary = FIXTURE_FACTORY_SCRIPT.new().make_fixture("first_table", "start")
 	var coach_source: Dictionary = first_fixture.get("coach", {}) as Dictionary
 	coach_source["font_scale_percent"] = 110
+	coach_source["failed_attempts"] = 1
 	var coach_snapshot: Dictionary = COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(coach_source).to_ui_dictionary()
 	_expect(_actions_include_id(coach_snapshot.get("secondary_actions", []), "scenario_close_coach"), "scenario coach can collapse to a chip")
+	_expect(_actions_include_id(coach_snapshot.get("secondary_actions", []), "scenario_focus_target"), "scenario coach offers focus instead of fake completion")
+	_expect(not _actions_include_id(coach_snapshot.get("secondary_actions", []), "scenario_skip_step"), "scenario coach does not expose a visible skip-step button")
+	_expect(bool(coach_snapshot.get("help_visible", false)) and str(coach_snapshot.get("help_text", "")).strip_edges() != "", "scenario coach shows a short stuck hint after help requests")
 	_expect(int(coach_snapshot.get("font_scale_percent", 0)) == 110, "scenario coach carries a readable font-scale setting")
 	await _check_component("res://scenes/ui/ScenarioCoach.tscn", "set_coach", coach_snapshot)
 	await _check_component("res://scenes/ui/ScenarioActionLog.tscn", "set_log", LOG_SNAPSHOT_SCRIPT.new().apply_dictionary(first_fixture.get("action_log", {}) as Dictionary).to_ui_dictionary())

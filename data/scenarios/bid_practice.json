@@ -17,8 +17,8 @@
     {"key": "after_bid", "label": "加价后"}
   ],
   "phases": [
-    {"id": "read_bid_board", "label": "读竞价", "goal": "看清我的报价、最高价、本批和下批。", "primary_action_hint": "查看竞价板", "success_signal": "bid_board_read", "snapshot_key": "batch_ready"},
-    {"id": "raise_bid", "label": "加价", "goal": "用一个按钮加价，观察公开金额变化。", "primary_action_hint": "加价一次", "success_signal": "bid_raised", "snapshot_key": "after_bid"},
-    {"id": "reset_bid", "label": "清零", "goal": "把自己的预设报价清零。", "primary_action_hint": "清零报价", "success_signal": "bid_reset", "snapshot_key": "after_bid"}
+    {"id": "read_bid_board", "label": "读竞价", "goal": "看清我的报价、最高价、本批和下批。", "primary_action_hint": "查看竞价板", "success_signal": "bid_board_read", "snapshot_key": "batch_ready", "focus_target": "bid_board", "stuck_hint": "看底部竞价板：我的报价、最高报价、本批和下批都在那里。"},
+    {"id": "raise_bid", "label": "加价", "goal": "用一个按钮加价，观察公开金额变化。", "primary_action_hint": "加价一次", "success_signal": "bid_raised", "snapshot_key": "after_bid", "focus_target": "bid_board", "stuck_hint": "点击竞价板上的加价按钮；金额公开，但打牌者身份仍匿名。"},
+    {"id": "reset_bid", "label": "清零", "goal": "把自己的预设报价清零。", "primary_action_hint": "清零报价", "success_signal": "bid_reset", "snapshot_key": "after_bid", "focus_target": "bid_board", "stuck_hint": "点击竞价板的清零按钮，确认报价状态变回零。"}
   ]
 }

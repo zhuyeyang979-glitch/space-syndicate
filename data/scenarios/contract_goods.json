@@ -17,8 +17,8 @@
     {"key": "route_changed", "label": "路线变化"}
   ],
   "phases": [
-    {"id": "inspect_goods", "label": "商品", "goal": "查看一个区域生产什么、需求什么。", "primary_action_hint": "查看商品", "success_signal": "goods_read", "snapshot_key": "start"},
-    {"id": "offer_contract", "label": "合约", "goal": "发起或查看一份供需合约。", "primary_action_hint": "查看合约", "success_signal": "contract_seen", "snapshot_key": "contract_offer"},
-    {"id": "route_delta", "label": "商路", "goal": "观察合约如何改变路线和价格。", "primary_action_hint": "查看路线", "success_signal": "route_delta_read", "snapshot_key": "route_changed"}
+    {"id": "inspect_goods", "label": "商品", "goal": "查看一个区域生产什么、需求什么。", "primary_action_hint": "查看商品", "success_signal": "goods_read", "snapshot_key": "start", "focus_target": "right_inspector", "stuck_hint": "选中一个城市或区域，看右侧的生产/需求商品。"},
+    {"id": "offer_contract", "label": "合约", "goal": "发起或查看一份供需合约。", "primary_action_hint": "查看合约", "success_signal": "contract_seen", "snapshot_key": "contract_offer", "focus_target": "contract_prompt", "stuck_hint": "查看合约弹窗或右侧合约入口，只需要判断签或不签。"},
+    {"id": "route_delta", "label": "商路", "goal": "观察合约如何改变路线和价格。", "primary_action_hint": "查看路线", "success_signal": "route_delta_read", "snapshot_key": "route_changed", "focus_target": "route_layer", "stuck_hint": "打开路线/商品层，观察合约后运输路径和商品压力的变化。"}
   ]
 }
