@@ -108,6 +108,26 @@ Current player-facing use:
 - `scripts/card_art_view.gd` uses selected Kenney sprites as route-specific temporary card illustrations for ocean, alien, and orbital/air cards.
 - The Kenney assets are CC0 placeholders; keep source attribution in this document for traceability even though attribution is not required by the license.
 
+## Superpowers Asset Packs CC0 monster reference
+
+Source: <https://github.com/sparklinlabs/superpowers-asset-packs>
+
+License observed from upstream `LICENSE.txt`: CC0 1.0 Universal.
+
+Imported for the current prototype:
+
+- `assets/third_party/superpowers_cc0/LICENSE.txt`
+- `assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png`
+- `assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png`
+- `assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png`
+- `assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png`
+
+Current player-facing use:
+
+- `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for miasma dragon, land bruiser, blade serpent, and mirror/slime hunter profiles.
+- This pack is intentionally used to reduce visual dependence on the MOS/Moth kaiju sheet. The art identity gate now requires at least four upstream monster body-art packs and rejects any one pack supplying more than half of the current roster.
+- These CC0 sprites are temporary prototype anchors. Later owned art should preserve the same per-monster silhouette/source-family diversity.
+
 ## Terraforming Mars open-source reference
 
 Source: <https://github.com/terraforming-mars/terraforming-mars>

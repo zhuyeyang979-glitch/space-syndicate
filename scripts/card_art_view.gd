@@ -296,12 +296,13 @@ func card_visual_profile_snapshot() -> Dictionary:
 		"effect_variant": int(seed / 13) % 9,
 		"composition_variant": int(seed / 17) % 37,
 		"motif_family": _card_motif_family_key(),
+		"first_run_art_focus": _first_run_art_focus_key(),
 	}
 
 
 func card_visual_profile_key() -> String:
 	var profile := card_visual_profile_snapshot()
-	return "%s|%s|%s|%s|%s|%s|%s|%s" % [
+	return "%s|%s|%s|%s|%s|%s|%s|%s|%s" % [
 		str(profile.get("visual_source_id", "")),
 		str(profile.get("sprite_key", "")),
 		str(profile.get("sprite_cell", "")),
@@ -310,6 +311,7 @@ func card_visual_profile_key() -> String:
 		str(profile.get("effect_variant", "")),
 		str(profile.get("composition_variant", "")),
 		str(profile.get("motif_family", "")),
+		str(profile.get("first_run_art_focus", "")),
 	]
 
 
@@ -341,6 +343,7 @@ func _draw_moth_kaijuice_reference_illustration(rect: Rect2) -> void:
 	sprite_rect.size = _fit_size_inside(sprite_rect.size, src_rect.size)
 	sprite_rect.position = art_rect.position + (art_rect.size - sprite_rect.size) * 0.5 + offset
 	draw_texture_rect_region(texture, sprite_rect, src_rect, tint)
+	_draw_first_run_focus_overlay(art_rect, String(profile.get("first_run_art_focus", "")), seed)
 
 	if str(profile.get("effect_variant", "")) in ["2", "5", "8"] or _contains_any("%s｜%s" % [card_kind, card_tags], ["光线", "攻击", "破坏", "齐射"]):
 		_draw_moth_kaijuice_laser_accent(art_rect, seed)
@@ -369,6 +372,218 @@ func _draw_moth_kaijuice_field_accent(art_rect: Rect2, seed: int) -> void:
 	var field_rect := Rect2(art_rect.position + (art_rect.size - field_size) * 0.5, field_size)
 	var tint := Color(1.0, 1.0, 1.0, 0.30 if compact else 0.42)
 	draw_texture_rect_region(texture, field_rect, Rect2(Vector2.ZERO, texture.get_size()), tint)
+
+
+func _first_run_art_focus_key() -> String:
+	var identity := "%s｜%s｜%s｜%s" % [card_name, card_kind, card_tags, card_stats]
+	if card_kind == "monster_card":
+		return "monster_anchor"
+	if _contains_any(identity, ["城市融资", "轨道融资", "红利"]):
+		return "city_money"
+	if _contains_any(identity, ["产业升级", "生产", "商品+1", "产品线"]):
+		return "factory_upgrade"
+	if _contains_any(identity, ["交通升级", "流通", "航线", "运输", "路线"]):
+		return "transit_route"
+	if _contains_any(identity, ["星际广告", "舆论", "广告", "新闻"]):
+		return "broadcast"
+	if _contains_any(identity, ["诱导电波", "挑衅", "诱导"]):
+		return "lure_beacon"
+	if _contains_any(identity, ["过载补给", "补给", "抽牌", "牌架"]):
+		return "supply_cache"
+	if _contains_any(identity, ["移动", "飞行", "潜行", "前进"]):
+		return "movement_arrow"
+	if _contains_any(identity, ["普攻", "冲锋", "甩尾", "齐射", "攻击", "光线", "射线", "炮"]):
+		return "impact_attack"
+	if _contains_any(identity, ["格挡", "护", "保险", "修复", "否决", "稳定"]):
+		return "shield_guard"
+	if _contains_any(identity, ["区域破坏", "泥石流", "破坏", "拆解", "冻结"]):
+		return "district_crack"
+	if _contains_any(identity, ["合约", "契约"]):
+		return "contract_link"
+	if _contains_any(identity, ["情报", "追溯", "查", "线索", "锁定"]):
+		return "intel_lens"
+	if _contains_any(identity, ["期货", "买涨", "做空", "GDP", "套利"]):
+		return "market_curve"
+	return "route_mark"
+
+
+func _draw_first_run_focus_overlay(art_rect: Rect2, focus_key: String, seed: int) -> void:
+	if focus_key == "":
+		return
+	var c := accent.lightened(0.42)
+	c.a = 0.62 if compact else 0.76
+	var soft := c
+	soft.a = 0.20 if compact else 0.28
+	var center := art_rect.get_center()
+	var radius: float = min(art_rect.size.x, art_rect.size.y) * 0.28
+	match focus_key:
+		"city_money":
+			_draw_focus_city_money(center, radius, c, soft)
+		"factory_upgrade":
+			_draw_focus_factory_upgrade(center, radius, c, soft)
+		"transit_route":
+			_draw_focus_transit_route(art_rect, c, soft)
+		"broadcast":
+			_draw_focus_broadcast(center, radius, c, soft)
+		"lure_beacon":
+			_draw_focus_lure_beacon(center, radius, c, soft)
+		"supply_cache":
+			_draw_focus_supply_cache(center, radius, c, soft)
+		"movement_arrow":
+			_draw_focus_movement_arrow(art_rect, c, soft)
+		"impact_attack":
+			_draw_focus_impact_attack(center, radius, c, soft, seed)
+		"shield_guard":
+			_draw_focus_shield_guard(center, radius, c, soft)
+		"district_crack":
+			_draw_focus_district_crack(art_rect, c, soft)
+		"contract_link":
+			_draw_focus_contract_link(center, radius, c, soft)
+		"intel_lens":
+			_draw_focus_intel_lens(center, radius, c, soft)
+		"market_curve":
+			_draw_focus_market_curve(art_rect, c, soft)
+		"monster_anchor":
+			_draw_focus_monster_anchor(center, radius, c, soft)
+		_:
+			_draw_focus_route_mark(art_rect, c, soft)
+
+
+func _draw_focus_city_money(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var base_y := center.y + radius * 0.40
+	for i in range(3):
+		var w := radius * (0.34 + float(i) * 0.18)
+		var h := radius * (0.34 + float(i) * 0.20)
+		var x := center.x - radius * 0.58 + float(i) * radius * 0.42
+		var r := Rect2(Vector2(x, base_y - h), Vector2(w, h))
+		draw_rect(r, soft, true)
+		draw_rect(r, color, false, 1.6)
+	draw_circle(center + Vector2(radius * 0.62, -radius * 0.22), radius * 0.22, color)
+	draw_line(center + Vector2(radius * 0.62, -radius * 0.36), center + Vector2(radius * 0.62, -radius * 0.08), Color("#020617"), 2.0, true)
+
+
+func _draw_focus_factory_upgrade(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var body := Rect2(center + Vector2(-radius * 0.72, -radius * 0.08), Vector2(radius * 1.42, radius * 0.58))
+	draw_rect(body, soft, true)
+	draw_rect(body, color, false, 1.8)
+	for i in range(3):
+		var x := body.position.x + radius * (0.18 + float(i) * 0.34)
+		draw_line(Vector2(x, body.position.y), Vector2(x + radius * 0.16, body.position.y - radius * 0.40), color, 2.0, true)
+	draw_line(center + Vector2(radius * 0.40, -radius * 0.56), center + Vector2(radius * 0.40, radius * 0.20), color, 2.4, true)
+	draw_line(center + Vector2(radius * 0.16, -radius * 0.32), center + Vector2(radius * 0.40, -radius * 0.56), color, 2.4, true)
+	draw_line(center + Vector2(radius * 0.64, -radius * 0.32), center + Vector2(radius * 0.40, -radius * 0.56), color, 2.4, true)
+
+
+func _draw_focus_transit_route(art_rect: Rect2, color: Color, soft: Color) -> void:
+	var y0 := art_rect.position.y + art_rect.size.y * 0.68
+	var p0 := Vector2(art_rect.position.x + art_rect.size.x * 0.12, y0)
+	var p1 := Vector2(art_rect.position.x + art_rect.size.x * 0.42, art_rect.position.y + art_rect.size.y * 0.36)
+	var p2 := Vector2(art_rect.position.x + art_rect.size.x * 0.86, art_rect.position.y + art_rect.size.y * 0.46)
+	draw_line(p0, p1, soft, 8.0, true)
+	draw_line(p1, p2, soft, 8.0, true)
+	draw_line(p0, p1, color, 2.4, true)
+	draw_line(p1, p2, color, 2.4, true)
+	for p in [p0, p1, p2]:
+		draw_circle(p, 4.2, color)
+
+
+func _draw_focus_broadcast(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center, radius * 0.12, color)
+	for i in range(3):
+		draw_arc(center, radius * (0.30 + float(i) * 0.20), -PI * 0.35, PI * 0.35, 24, color if i == 0 else soft, 2.2, true)
+	draw_line(center + Vector2(-radius * 0.54, radius * 0.46), center + Vector2(radius * 0.52, radius * 0.46), color, 2.0, true)
+
+
+func _draw_focus_lure_beacon(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center, radius * 0.18, color)
+	for i in range(3):
+		draw_arc(center, radius * (0.34 + float(i) * 0.20), 0.0, TAU, 48, soft if i > 0 else color, 2.0, true)
+	draw_line(center + Vector2(0.0, radius * 0.16), center + Vector2(0.0, radius * 0.72), color, 2.2, true)
+
+
+func _draw_focus_supply_cache(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	for i in range(3):
+		var r := Rect2(center + Vector2((float(i) - 1.0) * radius * 0.36 - radius * 0.20, -radius * 0.16 + float(i % 2) * radius * 0.18), Vector2(radius * 0.40, radius * 0.34))
+		draw_rect(r, soft, true)
+		draw_rect(r, color, false, 1.6)
+	draw_line(center + Vector2(-radius * 0.66, -radius * 0.48), center + Vector2(radius * 0.66, -radius * 0.48), color, 2.0, true)
+
+
+func _draw_focus_movement_arrow(art_rect: Rect2, color: Color, soft: Color) -> void:
+	var start := art_rect.position + Vector2(art_rect.size.x * 0.18, art_rect.size.y * 0.72)
+	var end := art_rect.position + Vector2(art_rect.size.x * 0.78, art_rect.size.y * 0.26)
+	draw_line(start, end, soft, 7.0, true)
+	draw_line(start, end, color, 2.8, true)
+	draw_line(end, end + Vector2(-art_rect.size.x * 0.18, art_rect.size.y * 0.02), color, 2.8, true)
+	draw_line(end, end + Vector2(-art_rect.size.x * 0.04, art_rect.size.y * 0.16), color, 2.8, true)
+
+
+func _draw_focus_impact_attack(center: Vector2, radius: float, color: Color, soft: Color, seed: int) -> void:
+	draw_circle(center, radius * 0.16, color)
+	for i in range(6):
+		var a := float(i) / 6.0 * TAU + float(seed % 7) * 0.03
+		var p0 := center + Vector2(cos(a), sin(a)) * radius * 0.24
+		var p1 := center + Vector2(cos(a), sin(a)) * radius * (0.66 + float(i % 2) * 0.12)
+		draw_line(p0, p1, color if i % 2 == 0 else soft, 2.4, true)
+
+
+func _draw_focus_shield_guard(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var shield := PackedVector2Array([
+		center + Vector2(0.0, -radius * 0.70),
+		center + Vector2(radius * 0.56, -radius * 0.42),
+		center + Vector2(radius * 0.44, radius * 0.28),
+		center + Vector2(0.0, radius * 0.72),
+		center + Vector2(-radius * 0.44, radius * 0.28),
+		center + Vector2(-radius * 0.56, -radius * 0.42),
+	])
+	draw_colored_polygon(shield, soft)
+	draw_polyline(shield, color, 2.0, true)
+
+
+func _draw_focus_district_crack(art_rect: Rect2, color: Color, soft: Color) -> void:
+	var base := art_rect.position + Vector2(art_rect.size.x * 0.14, art_rect.size.y * 0.70)
+	var step := art_rect.size.x * 0.14
+	for i in range(5):
+		var p0 := base + Vector2(step * float(i), float((i % 2) - 1) * art_rect.size.y * 0.05)
+		var p1 := p0 + Vector2(step * 0.72, float((1 - i % 2)) * art_rect.size.y * 0.10 - art_rect.size.y * 0.05)
+		draw_line(p0, p1, color if i % 2 == 0 else soft, 2.4, true)
+
+
+func _draw_focus_contract_link(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center + Vector2(-radius * 0.36, 0.0), radius * 0.28, soft)
+	draw_circle(center + Vector2(radius * 0.36, 0.0), radius * 0.28, soft)
+	draw_arc(center + Vector2(-radius * 0.36, 0.0), radius * 0.28, -PI * 0.45, PI * 0.45, 20, color, 2.0, true)
+	draw_arc(center + Vector2(radius * 0.36, 0.0), radius * 0.28, PI * 0.55, PI * 1.45, 20, color, 2.0, true)
+	draw_line(center + Vector2(-radius * 0.12, 0.0), center + Vector2(radius * 0.12, 0.0), color, 2.2, true)
+
+
+func _draw_focus_intel_lens(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center + Vector2(-radius * 0.10, -radius * 0.08), radius * 0.36, soft)
+	draw_arc(center + Vector2(-radius * 0.10, -radius * 0.08), radius * 0.36, 0.0, TAU, 48, color, 2.0, true)
+	draw_line(center + Vector2(radius * 0.16, radius * 0.18), center + Vector2(radius * 0.58, radius * 0.58), color, 3.0, true)
+
+
+func _draw_focus_market_curve(art_rect: Rect2, color: Color, soft: Color) -> void:
+	var left := art_rect.position.x + art_rect.size.x * 0.16
+	var bottom := art_rect.position.y + art_rect.size.y * 0.74
+	var last := Vector2(left, bottom)
+	for i in range(1, 7):
+		var t := float(i) / 6.0
+		var p := Vector2(left + art_rect.size.x * 0.66 * t, bottom - art_rect.size.y * (0.18 + 0.28 * sin(t * PI * 0.85)))
+		draw_line(last, p, color if i % 2 == 0 else soft, 2.5, true)
+		last = p
+
+
+func _draw_focus_monster_anchor(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center, radius * 0.44, soft)
+	draw_arc(center, radius * 0.58, -PI * 0.15, PI * 1.15, 36, color, 2.0, true)
+	draw_line(center + Vector2(-radius * 0.22, -radius * 0.34), center + Vector2(-radius * 0.52, -radius * 0.68), color, 2.0, true)
+	draw_line(center + Vector2(radius * 0.22, -radius * 0.34), center + Vector2(radius * 0.52, -radius * 0.68), color, 2.0, true)
+
+
+func _draw_focus_route_mark(art_rect: Rect2, color: Color, soft: Color) -> void:
+	var center := art_rect.get_center()
+	draw_arc(center, min(art_rect.size.x, art_rect.size.y) * 0.24, -PI * 0.25, PI * 1.25, 36, soft, 2.0, true)
 
 
 func _moth_kaijuice_card_sprite_key() -> String:
@@ -898,15 +1113,25 @@ func _draw_border(rect: Rect2) -> void:
 func _draw_glyph(rect: Rect2) -> void:
 	var font := get_theme_default_font()
 	var tiny_compact := compact and rect.size.y <= 50.0
-	var font_size := 18 if tiny_compact else (27 if compact else 34)
+	var font_size := 12 if tiny_compact else (17 if compact else 21)
 	var glyph := _glyph_for_kind()
+	var badge_radius: float = min(rect.size.x, rect.size.y) * (0.105 if compact else 0.095)
+	var badge_center := Vector2(rect.size.x * 0.74, rect.size.y * (0.33 if tiny_compact else 0.35))
+	var badge := Color("#020617").lerp(accent, 0.24)
+	badge.a = 0.74
+	draw_circle(badge_center, badge_radius, badge)
+	var ring := accent.lightened(0.36)
+	ring.a = 0.70
+	draw_arc(badge_center, badge_radius, 0.0, TAU, 36, ring, 1.4, true)
 	var shadow := Color("#020617")
 	shadow.a = 0.74
-	var baseline_y := rect.size.y * (0.48 if tiny_compact else (0.55 if compact else 0.56))
+	var baseline_y: float = badge_center.y + badge_radius * 0.38
+	var text_rect_x: float = badge_center.x - badge_radius
+	var text_width: float = badge_radius * 2.0
 	var ink := Color("#f8fafc")
 	ink.a = 0.86
-	draw_string(font, Vector2(2.0, baseline_y + 2.0), glyph, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, shadow)
-	draw_string(font, Vector2(0.0, baseline_y), glyph, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, ink)
+	draw_string(font, Vector2(text_rect_x + 1.0, baseline_y + 1.0), glyph, HORIZONTAL_ALIGNMENT_CENTER, text_width, font_size, shadow)
+	draw_string(font, Vector2(text_rect_x, baseline_y), glyph, HORIZONTAL_ALIGNMENT_CENTER, text_width, font_size, ink)
 
 
 func _draw_caption(rect: Rect2) -> void:

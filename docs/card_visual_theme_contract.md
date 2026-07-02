@@ -29,12 +29,13 @@
 - 怪兽、军队、金融、商品、合约、情报、天气、商路、直接互动等牌型要有不同 sprite family / sprite cell / glyph / motif。
 - 不允许只靠文字区分卡牌类别。
 - 同一类别的不同路线至少要通过 sprite cell、构图、颜色、纹样、关键词或统计行形成第二层差异。
+- 高频首局牌必须有 `first_run_art_focus` 图形焦点；路线 glyph 只作为小徽章，不能压住卡牌插画主体。
 - 每张卡必须能生成唯一 visual profile；详见 `docs/art_production_contract.md` 和 `tests/art_identity_gate_test.gd`。
 
 ## 4. 开源素材边界
 
 - 当前原型可使用 `assets/third_party/night_patrol/ui/` 下的 frame、sigil、panel、button strip 作为非商业参考素材。
-- 当前原型可使用 `assets/third_party/moth_kaijuice/` 下的 MIT sprite，以及 `assets/third_party/monster_battler/`、`assets/third_party/kenney_cc0/` 下的 CC0 sprite，作为卡牌插画/怪兽造型临时素材。
+- 当前原型可使用 `assets/third_party/moth_kaijuice/` 下的 MIT sprite，以及 `assets/third_party/monster_battler/`、`assets/third_party/kenney_cc0/`、`assets/third_party/superpowers_cc0/` 下的 CC0 sprite，作为卡牌插画/怪兽造型临时素材。
 - 代码必须把这些素材当作 optional reference layer：缺失时回退程序美术，不让游戏崩溃。
 - 商业发布前必须替换为自有素材或获得明确授权；详见 `docs/third_party_assets.md`。
 

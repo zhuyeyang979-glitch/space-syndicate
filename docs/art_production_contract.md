@@ -28,6 +28,7 @@ Each card illustration profile must include:
 - `effect_variant`: overlay/effect treatment such as beam, shield, route, crack, market pulse, or weather wave.
 - `composition_variant`: a secondary composition differentiator for cards that share sprite family and type.
 - `motif_family`: monster, military, finance, route, contract, intel, product, weather, or utility.
+- `first_run_art_focus`: a readable first-play icon layer for high-frequency starter cards such as money, production, transit, lure, supply, movement, attack, guard, and district damage.
 
 Acceptance:
 
@@ -36,6 +37,7 @@ Acceptance:
 - The key may be generated from the card name as a seed, but the key itself must be composed from visual dimensions, not the card name string.
 - Every card illustration profile must declare `visual_source_id`.
 - At least ten sprite/illustration families and ten visual source families must be used across the current catalog.
+- High-frequency first-run cards must have authored `first_run_art_focus` overlays; do not let them collapse into the same generic route mark.
 - Card art must be visible in hand, region supply, card codex thumbnail, and card detail contexts because these all share `CardArtView`.
 
 ## Monster art hard standard
@@ -59,6 +61,7 @@ Acceptance:
 - Every current monster family must have a distinct silhouette/motif assignment.
 - Every current monster family must use a distinct body sprite key and a distinct `visual_source_id`; it is not acceptable to reuse one monster body with different action overlays.
 - Moth Kaijuice/MOS kaiju body art can be assigned to at most one current monster family. Other monsters must come from different open-source body-art families or a clearly different authored/procedural body.
+- The current monster roster must draw body art from at least four upstream/open-source packs, and no single upstream pack may provide more than half of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
 - Monster art must be visible in the bestiary/detail contexts and reusable by later map tokens/card faces.
 
 ## Monster action hard standard
@@ -95,6 +98,7 @@ Current imported sources:
 - Moth Kaijuice city/kaiju sprites: `assets/third_party/moth_kaijuice/`, MIT, temporary prototype illustration source. MOS/Moth kaiju body art is limited to one monster family in the current roster.
 - Monster Battler monster sprites: `assets/third_party/monster_battler/`, CC0, temporary monster body-art and card-illustration source.
 - Kenney CC0 sprites: `assets/third_party/kenney_cc0/`, CC0, temporary monster body-art and card-illustration source.
+- Superpowers Asset Packs sprites: `assets/third_party/superpowers_cc0/`, CC0, temporary monster body-art source for body shapes that should not resemble the MOS kaiju sheet.
 
 Before any new copied asset becomes player-facing:
 
@@ -120,6 +124,7 @@ The gate fails if:
 - a card lacks multi-axis visual fields;
 - two cards share the same visual profile key;
 - fewer than ten card sprite or visual source families are used;
+- starter/high-frequency cards lose their authored `first_run_art_focus` overlays;
 - a monster lacks a concrete sprite key/cell;
 - a monster lacks a concrete `visual_source_id`;
 - a monster lacks multi-axis visual fields;
@@ -127,6 +132,8 @@ The gate fails if:
 - any current monster shares another monster's silhouette/motif;
 - any current monster shares another monster's body sprite key or `visual_source_id`;
 - more than one current monster uses Moth Kaijuice/MOS kaiju body art;
+- fewer than four upstream/open-source monster art packs are represented in the current roster;
+- one upstream/open-source pack supplies more than half of the current monster roster;
 - a monster action duplicates another action name, pose key, or animation profile inside the same monster;
 - a damage action uses a generic utility pose;
 - knockback/throw impact takes more than 0.60 seconds;

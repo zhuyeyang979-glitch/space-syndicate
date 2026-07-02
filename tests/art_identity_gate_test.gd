@@ -52,6 +52,19 @@ func _verify_card_art_identity(main: Node) -> void:
 	var seen_keys := {}
 	var sprite_keys := {}
 	var visual_sources := {}
+	var required_focus_cards := {
+		"城市融资1": "city_money",
+		"产业升级1": "factory_upgrade",
+		"交通升级1": "transit_route",
+		"星际广告1": "broadcast",
+		"诱导电波1": "lure_beacon",
+		"过载补给1": "supply_cache",
+		"移动1": "movement_arrow",
+		"普攻1": "impact_attack",
+		"格挡1": "shield_guard",
+		"区域破坏1": "district_crack",
+	}
+	var verified_focus_cards := {}
 	for source_variant in card_sources:
 		if not (source_variant is Dictionary):
 			_failures.append("card art source entry is not a Dictionary")
@@ -73,7 +86,11 @@ func _verify_card_art_identity(main: Node) -> void:
 		_expect(String(profile.get("theme", "")) == "multi-source-open-card-illustrations-v2", "card %s uses the multi-source open card illustration theme" % card_name)
 		_expect(String(profile.get("visual_source_id", "")) != "", "card %s declares a concrete visual source id" % card_name)
 		_expect(String(profile.get("sprite_key", "")) != "" and String(profile.get("sprite_cell", "")) != "", "card %s has a concrete sprite key and region/cell" % card_name)
-		_expect(profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_variant") and profile.has("composition_variant") and profile.has("motif_family"), "card %s has multi-axis illustration fields beyond text/name" % card_name)
+		_expect(profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_variant") and profile.has("composition_variant") and profile.has("motif_family") and profile.has("first_run_art_focus"), "card %s has multi-axis illustration fields beyond text/name" % card_name)
+		if required_focus_cards.has(card_name):
+			var expected_focus := String(required_focus_cards[card_name])
+			_expect(String(profile.get("first_run_art_focus", "")) == expected_focus, "first-run card %s has the authored focus overlay %s" % [card_name, expected_focus])
+			verified_focus_cards[card_name] = true
 		_expect(not seen_keys.has(profile_key), "card %s has a unique visual profile key; duplicate=%s" % [card_name, profile_key])
 		seen_keys[profile_key] = card_name
 		sprite_keys[String(profile.get("sprite_key", ""))] = true
@@ -83,6 +100,12 @@ func _verify_card_art_identity(main: Node) -> void:
 	_expect(seen_keys.size() == card_sources.size(), "every audited card has one unique card illustration profile")
 	_expect(sprite_keys.size() >= 10, "card illustrations use at least ten sprite families across the catalog")
 	_expect(visual_sources.size() >= 10, "card illustrations use at least ten visual source families across the catalog")
+	var missing_focus_cards := []
+	for required_name_variant in required_focus_cards.keys():
+		var required_name := String(required_name_variant)
+		if not verified_focus_cards.has(required_name):
+			missing_focus_cards.append(required_name)
+	_expect(verified_focus_cards.size() == required_focus_cards.size(), "starter/high-frequency card art focus overlays are present for the complete first-run card set; missing=%s" % ", ".join(missing_focus_cards))
 
 
 func _verify_monster_art_identity(main: Node) -> void:
@@ -107,6 +130,8 @@ func _verify_monster_art_identity(main: Node) -> void:
 	var silhouettes := {}
 	var sprite_keys := {}
 	var visual_sources := {}
+	var upstream_sources := {}
+	var upstream_counts := {}
 	var moth_source_count := 0
 	for source_variant in monster_sources:
 		if not (source_variant is Dictionary):
@@ -127,15 +152,19 @@ func _verify_monster_art_identity(main: Node) -> void:
 		var profile := monster_view.call("monster_visual_profile_snapshot") as Dictionary
 		var profile_key := String(monster_view.call("monster_visual_profile_key"))
 		var visual_source_id := String(profile.get("visual_source_id", ""))
+		var upstream_source_id := String(profile.get("upstream_source_id", ""))
 		_expect(String(profile.get("theme", "")) == "multi-source-open-monster-sprites-v2", "monster %s uses the multi-source open monster sprite theme" % monster_name)
+		_expect(upstream_source_id != "", "monster %s declares a concrete upstream source pack id" % monster_name)
 		_expect(visual_source_id != "", "monster %s declares a concrete visual source id" % monster_name)
 		_expect(String(profile.get("sprite_key", "")) != "" and String(profile.get("sprite_cell", "")) != "", "monster %s has a concrete sprite key and region/cell" % monster_name)
-		_expect(profile.has("silhouette") and profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_layer") and profile.has("composition_variant"), "monster %s has multi-axis visual fields beyond text/name" % monster_name)
+		_expect(profile.has("upstream_source_id") and profile.has("silhouette") and profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_layer") and profile.has("composition_variant"), "monster %s has multi-axis illustration fields beyond text/name" % monster_name)
 		_expect(not seen_keys.has(profile_key), "monster %s has a unique visual profile key; duplicate=%s" % [monster_name, profile_key])
 		seen_keys[profile_key] = monster_name
 		silhouettes[String(profile.get("silhouette", ""))] = true
 		sprite_keys[String(profile.get("sprite_key", ""))] = true
 		visual_sources[visual_source_id] = true
+		upstream_sources[upstream_source_id] = true
+		upstream_counts[upstream_source_id] = int(upstream_counts.get(upstream_source_id, 0)) + 1
 		if visual_source_id.begins_with("moth_kaijuice"):
 			moth_source_count += 1
 	monster_view.queue_free()
@@ -144,6 +173,11 @@ func _verify_monster_art_identity(main: Node) -> void:
 	_expect(silhouettes.size() == monster_sources.size(), "every current monster family has a distinct silhouette/motif assignment")
 	_expect(sprite_keys.size() == monster_sources.size(), "every current monster family uses a distinct body sprite key, not one reused sprite with cosmetic edits")
 	_expect(visual_sources.size() == monster_sources.size(), "every current monster family uses a distinct visual source family")
+	_expect(upstream_sources.size() >= 4, "current monster roster draws body art from at least four upstream/open-source packs instead of one repeated sprite sheet")
+	var largest_upstream_count := 0
+	for count_variant in upstream_counts.values():
+		largest_upstream_count = maxi(largest_upstream_count, int(count_variant))
+	_expect(largest_upstream_count <= int(ceil(float(monster_sources.size()) * 0.5)), "no single upstream monster art pack supplies more than half of the current roster")
 	_expect(moth_source_count == 1, "Moth Kaijuice/MOS kaiju art is reserved for exactly one monster family in the current roster")
 
 

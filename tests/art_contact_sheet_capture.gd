@@ -154,10 +154,37 @@ func _selected_card_sources(main: Node, limit: int) -> Array:
 			by_visual_source[visual_source_id] = true
 		deferred.append(decorated)
 	var selected: Array = []
+	var selected_names := {}
+	for priority_name in [
+		"城市融资1",
+		"产业升级1",
+		"交通升级1",
+		"星际广告1",
+		"诱导电波1",
+		"过载补给1",
+		"移动1",
+		"普攻1",
+		"格挡1",
+		"区域破坏1",
+	]:
+		for source_variant in deferred:
+			var source: Dictionary = source_variant
+			if String(source.get("name", "")) != String(priority_name):
+				continue
+			if selected_names.has(priority_name):
+				continue
+			selected.append(source.duplicate(true))
+			selected_names[String(priority_name)] = true
+			break
+		if selected.size() >= limit:
+			probe.queue_free()
+			return selected
 	var selected_sources := {}
 	for source_variant in deferred:
 		var source: Dictionary = source_variant
 		var visual_source_id := String(source.get("_visual_source_id", ""))
+		if selected_names.has(String(source.get("name", ""))):
+			continue
 		if visual_source_id != "" and not selected_sources.has(visual_source_id):
 			selected_sources[visual_source_id] = true
 			selected.append(source.duplicate(true))

@@ -6311,3 +6311,69 @@
 - `tests/layout_scene_smoke_test.gd` 单独通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜首局高频卡加入视觉焦点层
+
+- 继续把卡面从“共享皮肤 + 文字”推向“玩家一眼能分辨用途”的桌游卡面：
+  - `CardArtView` 新增 `first_run_art_focus` profile 字段。
+  - 首局高频牌获得独立程序化焦点层：
+    - `城市融资1`：城市 + 钱。
+    - `产业升级1`：工厂 + 上升箭头。
+    - `交通升级1`：路线节点。
+    - `星际广告1`：广播波。
+    - `诱导电波1`：诱导信标。
+    - `过载补给1`：补给箱。
+    - `移动1`：移动箭头。
+    - `普攻1`：冲击爆点。
+    - `格挡1`：盾牌。
+    - `区域破坏1`：地表裂纹。
+  - `tests/art_identity_gate_test.gd` 现在要求这些高频牌不能退回 generic route mark。
+  - `tests/art_contact_sheet_capture.gd` 优先把这些高频牌放进 contact sheet，方便人工看首局牌是否真的能区分。
+  - 卡面路线 glyph 改成右上小徽章，避免大字压住插画主体。
+- 这仍然是灰盒/占位美术，不是最终逐张插画；但它把“第一局能看懂卡牌用途”的视觉骨架固定住了。
+
+### 本轮验证
+
+- `tests/art_identity_gate_test.gd` 通过。
+- `tests/art_contact_sheet_capture.gd` 有头通过，更新：
+  - `reports/art/art_card_monster_contact_sheet_1600x960.png`
+  - `reports/art/art_monster_action_profiles_1600x960.png`
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 单独通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜Superpowers CC0 怪兽身体源接入
+
+- 回应“不能把 MOS kaijus 当成所有怪兽的通用美工”的要求，把怪兽美术硬门禁从“每只不同 sprite key”继续加严到“每只不同上游来源/身体家族”：
+  - 新增 `assets/third_party/superpowers_cc0/`，从 `sparklinlabs/superpowers-asset-packs` 导入 CC0 的 dragon / cyclop / snake / slim 与 upstream `LICENSE.txt`。
+  - `MonsterArtView` 新增 `upstream_source_id`，用于审计具体素材包来源，而不只是单张 sprite 名。
+  - 现有当前 8 只怪兽的身体来源重新拉开：
+    - `孢雾海皇`：Superpowers dragon。
+    - `砂铠陆行兽`：Superpowers cyclop。
+    - `流星哨兵`：Kenney UFO。
+    - `棱刃重甲`：Monster Battler dino。
+    - `绿洲修复体`：Kenney slime。
+    - `焰环幼星`：唯一 MOS/Moth kaiju。
+    - `蓝锋骑士`：Superpowers snake。
+    - `镜像猎兵`：Superpowers slim。
+  - 这轮没有新增怪兽规则，只是把当前可试玩怪兽的“缩略图区分度”和素材来源边界补硬。
+- `tests/art_identity_gate_test.gd` 新增硬门：
+  - 怪兽必须声明 `upstream_source_id`。
+  - 当前怪兽 roster 至少覆盖 4 个上游/开源素材源。
+  - 单一素材源不能供应超过当前 roster 的一半。
+  - MOS/Moth 仍然必须恰好只出现 1 次。
+- `docs/art_production_contract.md`、`docs/third_party_assets.md`、`docs/open_source_reference_notes.md`、`docs/card_visual_theme_contract.md` 同步写入这个规则，防止后续开发者又把一套怪兽素材反复换皮。
+
+### 本轮验证
+
+- `tests/art_identity_gate_test.gd` 通过。
+- `tests/art_contact_sheet_capture.gd` 有头通过，更新：
+  - `reports/art/art_card_monster_contact_sheet_1600x960.png`
+  - `reports/art/art_monster_action_profiles_1600x960.png`
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 单独通过；并行运行时曾触发同一个旧的 `PlayerMainActionDock` 时序失败，单独复跑通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。

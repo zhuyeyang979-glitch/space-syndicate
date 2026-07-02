@@ -18,6 +18,10 @@ const KENNEY_FISH_PATH := "res://assets/third_party/kenney_cc0/platformer/enemie
 const KENNEY_SLIME_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png"
 const KENNEY_ALIEN_BLUE_PATH := "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
 const KENNEY_ENEMY_UFO_PATH := "res://assets/third_party/kenney_cc0/space/enemyUFO.png"
+const SUPERPOWERS_DRAGON_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png"
+const SUPERPOWERS_CYCLOP_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png"
+const SUPERPOWERS_SNAKE_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
+const SUPERPOWERS_SLIM_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png"
 
 var monster_name := "怪兽"
 var style_text := "自动怪兽"
@@ -51,6 +55,10 @@ func _ready() -> void:
 		"kenney_slime": _load_optional_texture(KENNEY_SLIME_PATH),
 		"kenney_alien_blue": _load_optional_texture(KENNEY_ALIEN_BLUE_PATH),
 		"kenney_enemy_ufo": _load_optional_texture(KENNEY_ENEMY_UFO_PATH),
+		"superpowers_dragon": _load_optional_texture(SUPERPOWERS_DRAGON_PATH),
+		"superpowers_cyclop": _load_optional_texture(SUPERPOWERS_CYCLOP_PATH),
+		"superpowers_snake": _load_optional_texture(SUPERPOWERS_SNAKE_PATH),
+		"superpowers_slim": _load_optional_texture(SUPERPOWERS_SLIM_PATH),
 	}
 
 
@@ -271,6 +279,7 @@ func monster_visual_profile_snapshot() -> Dictionary:
 	var sprite_key := _monster_reference_sprite_key()
 	return {
 		"theme": MONSTER_ART_EXTERNAL_THEME,
+		"upstream_source_id": _monster_upstream_source_id(sprite_key),
 		"visual_source_id": _monster_visual_source_id(sprite_key),
 		"sprite_key": sprite_key,
 		"sprite_cell": _monster_reference_sprite_cell(sprite_key),
@@ -362,9 +371,9 @@ func _draw_moth_kaijuice_monster_impact(portrait_rect: Rect2, seed: int) -> void
 func _monster_reference_sprite_key() -> String:
 	match motif:
 		"miasma":
-			return "kenney_fish"
+			return "superpowers_dragon"
 		"mud":
-			return "monster_battler_rock"
+			return "superpowers_cyclop"
 		"meteor_sentinel":
 			return "kenney_enemy_ufo"
 		"prism_armor":
@@ -374,11 +383,23 @@ func _monster_reference_sprite_key() -> String:
 		"ember_ring":
 			return "moth_kaijuice_kaiju"
 		"blue_lancer":
-			return "kenney_alien_blue"
+			return "superpowers_snake"
 		"mirror_hunter":
-			return "monster_battler_salamander"
+			return "superpowers_slim"
 		_:
 			return "monster_battler_rodent"
+
+
+func _monster_upstream_source_id(sprite_key: String) -> String:
+	if sprite_key.begins_with("moth_kaijuice"):
+		return "moth_kaijuice_mit"
+	if sprite_key.begins_with("monster_battler"):
+		return "monster_battler_cc0"
+	if sprite_key.begins_with("kenney"):
+		return "kenney_cc0"
+	if sprite_key.begins_with("superpowers"):
+		return "superpowers_asset_packs_cc0"
+	return "procedural_fallback"
 
 
 func _monster_visual_source_id(sprite_key: String) -> String:
@@ -403,6 +424,14 @@ func _monster_visual_source_id(sprite_key: String) -> String:
 			return "kenney_cc0_alien_blue_family"
 		"kenney_enemy_ufo":
 			return "kenney_cc0_enemy_ufo_family"
+		"superpowers_dragon":
+			return "superpowers_cc0_dragon_family"
+		"superpowers_cyclop":
+			return "superpowers_cc0_cyclop_family"
+		"superpowers_snake":
+			return "superpowers_cc0_snake_family"
+		"superpowers_slim":
+			return "superpowers_cc0_slim_family"
 		_:
 			return "procedural_fallback_family"
 
