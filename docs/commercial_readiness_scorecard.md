@@ -18,7 +18,7 @@ Scale:
 | 城市/经济反馈 | 3 | City damage crack plus HP/GDP floats and balance-report preview are visible. | Add city-state before/after mini cards and route income deltas. |
 | 音效 hook | 3 | Silent `AudioEventBus` and `audio_event_map.json` cover required hooks. | Replace silent entries with curated CC0 clips and mix timing. |
 | 价格梯度 | 3 | Balance analyzer outputs Top 20 low/high, rank anomalies, and first-table recommendations. | Calibrate model against more real play data before changing card data. |
-| 首局可读性 | 3 | `ShowcaseDirector.scenario_snapshot("first_table")` now groups board, hover, valid/invalid target, card play, resource floats, and balance preview. | Connect Codex B ScenarioCoach copy when available. |
+| 首局可读性 | 4 | `tests/commercial_playability_gate_test.gd` now enters real `RuntimeGameScreen` at 1280×720 / 1600×960 / 1920×1080, checks thin timeline, visible hand, prominent planet, single CTA, privacy, and the first summon/card-rack path. | Add focus-order validation and stronger stuck-state auto-location. |
 | Scenario Lab 桥接 | 3 | `scenario_lab_bridge` plus scenario snapshots cover first_table, monster_pressure, public_track_intro, and bid_practice without editing Scenario Lab internals. | Replace local fixture inputs with Codex B `visual_events` when the Scenario Lab surface lands. |
 | 截图质量 | 4 | Showcase frame capture produces idle, hover, drag, play, monster, damage, public track, bid, and balance preview frames. | none |
 | 性能稳定 | 3 | VisualEventQueue caps active events at 32 and supports reduced motion. | Add long-run pooled allocation telemetry. |

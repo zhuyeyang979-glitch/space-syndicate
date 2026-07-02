@@ -54,7 +54,7 @@ func set_coach(data: Dictionary) -> void:
 	primary_button.text = str(action.get("label", "下一步"))
 	primary_button.tooltip_text = str(action.get("tooltip", ""))
 	primary_button.disabled = bool(action.get("disabled", false)) or _primary_action_id == ""
-	_render_secondary(data.get("secondary_actions", []))
+	_render_secondary([] if compact else data.get("secondary_actions", []))
 
 
 func _render_secondary(value: Variant) -> void:

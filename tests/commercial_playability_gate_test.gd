@@ -1,0 +1,245 @@
+extends SceneTree
+
+const MAIN_SCENE_PATH := "res://scenes/main.tscn"
+const VIEWPORT_SIZES := [
+	Vector2i(1280, 720),
+	Vector2i(1600, 960),
+	Vector2i(1920, 1080),
+]
+
+const FORBIDDEN_PLAYER_FACING_TOKENS := [
+	"ai_reason",
+	"ai_utility_score",
+	"route_plan_score",
+	"pressure bucket",
+	"decision_samples",
+	"learning_bonus",
+	"true_owner",
+	"hidden_owner",
+	"owner_truth",
+	"opponent cash",
+	"opponent hand",
+	"rival exact hand",
+	"private route plan",
+	"ai private plan",
+	"ai 私有计划",
+	"对手现金",
+	"对手手牌",
+	"开发原则",
+	"测试阶段优先",
+	"prototype",
+	"debug",
+]
+
+var _failures: Array[String] = []
+
+
+func _init() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
+	_check_gate_documentation()
+	for viewport_size in VIEWPORT_SIZES:
+		await _check_first_table_runtime_layout(viewport_size)
+	await _check_first_ten_minute_action_chain()
+	_finish()
+
+
+func _check_gate_documentation() -> void:
+	_expect(FileAccess.file_exists("res://docs/commercial_playability_gate.md"), "commercial playability gate document exists")
+	var source := FileAccess.get_file_as_string("res://docs/commercial_playability_gate.md")
+	for marker in ["真人首局", "真实 RuntimeGameScreen", "单主 CTA", "隐藏信息", "1280×720"]:
+		_expect(source.contains(marker), "commercial gate document explains %s" % marker)
+
+
+func _check_first_table_runtime_layout(viewport_size: Vector2i) -> void:
+	root.size = viewport_size
+	var main := await _instantiate_main()
+	if main == null:
+		return
+	main.call("_start_campaign_chapter", "01_first_table")
+	await _wait_frames(16)
+	_select_recommended_district(main)
+	await _wait_frames(8)
+	var runtime := main.find_child("RuntimeGameScreen", true, false) as Control
+	_expect(runtime != null and runtime.visible, "%s first-table chapter enters real RuntimeGameScreen" % _size_label(viewport_size))
+	if runtime != null:
+		_check_core_table_regions(main, runtime, viewport_size)
+		_check_single_primary_campaign_cta(main, viewport_size)
+		_check_player_facing_privacy(runtime, viewport_size)
+	root.remove_child(main)
+	main.queue_free()
+	await _wait_frames(1)
+
+
+func _check_first_ten_minute_action_chain() -> void:
+	root.size = Vector2i(1600, 960)
+	var main := await _instantiate_main()
+	if main == null:
+		return
+	main.call("_start_campaign_chapter", "02_market_hand")
+	await _wait_frames(16)
+	_select_recommended_district(main)
+	await _wait_frames(4)
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_first_summon")), "first ten-minute path can perform first summon from coach")
+	await _wait_frames(12)
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_open_rack")), "first ten-minute path can open district card rack from coach")
+	await _wait_frames(8)
+	var runtime := main.find_child("RuntimeGameScreen", true, false) as Control
+	var ui_text := _node_text(runtime)
+	_expect(ui_text.contains("牌架") and ui_text.contains("手牌"), "first ten-minute path keeps card rack and hand concepts visible together")
+	_check_player_facing_privacy(runtime, Vector2i(1600, 960))
+	root.remove_child(main)
+	main.queue_free()
+	await _wait_frames(1)
+
+
+func _instantiate_main() -> Node:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	_expect(packed != null, "main.tscn loads for commercial playability gate")
+	if packed == null:
+		return null
+	var main := packed.instantiate()
+	root.add_child(main)
+	await _wait_frames(8)
+	main.set("campaign_completed_chapter_ids", [])
+	main.set("selected_campaign_chapter_id", "")
+	main.set("active_campaign_chapter_id", "")
+	return main
+
+
+func _check_core_table_regions(main: Node, runtime: Control, viewport_size: Vector2i) -> void:
+	var label := _size_label(viewport_size)
+	var top_bar := _control(main, "TopBar")
+	var public_track := _control(main, "PublicTrack")
+	var planet_board := _control(main, "PlanetBoard")
+	var stage := _control(main, "PlanetStageViewport")
+	var map_host := _control(main, "MapHost")
+	var inspector := _control(main, "RightInspector")
+	var player_board := _control(main, "PlayerBoard")
+	var hand_rack := _control(main, "HandRack")
+	var action_dock := _control(main, "PlayerMainActionDock")
+	for pair in [
+		["TopBar", top_bar],
+		["PublicTrack", public_track],
+		["PlanetBoard", planet_board],
+		["PlanetStageViewport", stage],
+		["MapHost", map_host],
+		["RightInspector", inspector],
+		["PlayerBoard", player_board],
+		["HandRack", hand_rack],
+		["PlayerMainActionDock", action_dock],
+	]:
+		_expect(pair[1] != null and (pair[1] as Control).is_visible_in_tree(), "%s %s is visible on the live table" % [label, pair[0]])
+	if planet_board == null or public_track == null or player_board == null or stage == null or map_host == null:
+		return
+	var runtime_rect := runtime.get_global_rect()
+	var track_rect := public_track.get_global_rect()
+	var planet_rect := planet_board.get_global_rect()
+	var stage_rect := stage.get_global_rect()
+	var map_rect := map_host.get_global_rect()
+	var player_rect := player_board.get_global_rect()
+	_expect(_rect_inside(public_track, runtime_rect), "%s public track stays inside the table safe area" % label)
+	_expect(_rect_inside(planet_board, runtime_rect), "%s planet board stays inside the table safe area" % label)
+	_expect(_rect_inside(player_board, runtime_rect), "%s player board stays inside the table safe area" % label)
+	_expect(track_rect.size.y <= float(viewport_size.y) * 0.085, "%s card/event timeline remains a thin table rail" % label)
+	_expect(player_rect.size.y >= 168.0 and player_rect.size.y <= float(viewport_size.y) * 0.34, "%s hand/action board is visible but does not consume the table" % label)
+	_expect(planet_rect.size.y >= float(viewport_size.y) * 0.38, "%s planet board keeps the main visual weight" % label)
+	_expect(stage_rect.size.y >= float(viewport_size.y) * 0.30, "%s planet stage has playable vertical space" % label)
+	_expect(map_rect.size.x >= minf(stage_rect.size.x, stage_rect.size.y) * 0.62 and map_rect.size.y >= minf(stage_rect.size.x, stage_rect.size.y) * 0.62, "%s globe/map remains prominent inside the planet stage" % label)
+	_expect(not track_rect.intersects(player_rect), "%s timeline does not overlap the hand board" % label)
+	_expect(not planet_rect.intersects(player_rect), "%s planet board does not overlap the hand board" % label)
+	if inspector != null:
+		_expect(inspector.get_global_rect().size.x <= 330.0, "%s campaign focus keeps the right detail drawer compact" % label)
+
+
+func _check_single_primary_campaign_cta(main: Node, viewport_size: Vector2i) -> void:
+	var label := _size_label(viewport_size)
+	var coach := _control(main, "ScenarioCoach")
+	_expect(coach != null and coach.visible, "%s scenario coach is visible" % label)
+	if coach == null:
+		return
+	var visible_buttons := _visible_buttons(coach)
+	_expect(visible_buttons.size() == 1, "%s scenario coach exposes one primary CTA, not a button wall" % label)
+	var goal_label := coach.find_child("ScenarioCoachGoal", true, false) as Label
+	var primary_button := coach.find_child("ScenarioCoachPrimaryButton", true, false) as Button
+	_expect(goal_label != null and goal_label.text.length() > 0 and goal_label.text.length() <= 42, "%s current objective is short enough to read at a glance" % label)
+	_expect(primary_button != null and primary_button.text.length() > 0 and primary_button.text.length() <= 10, "%s primary CTA label is short" % label)
+
+
+func _check_player_facing_privacy(runtime: Control, viewport_size: Vector2i) -> void:
+	if runtime == null:
+		return
+	var label := _size_label(viewport_size)
+	var ui_text := _node_text(runtime).to_lower()
+	for forbidden in FORBIDDEN_PLAYER_FACING_TOKENS:
+		_expect(not ui_text.contains(forbidden.to_lower()), "%s player-facing runtime hides %s" % [label, forbidden])
+
+
+func _select_recommended_district(main: Node) -> void:
+	var district_index := int(main.call("_first_run_recommended_start_district", 0))
+	_expect(district_index >= 0, "commercial gate finds a recommended playable district")
+	if district_index >= 0:
+		main.call("_select_district", district_index)
+
+
+func _control(root_node: Node, node_name: String) -> Control:
+	return root_node.find_child(node_name, true, false) as Control
+
+
+func _rect_inside(control: Control, parent_rect: Rect2) -> bool:
+	if control == null:
+		return false
+	var rect := control.get_global_rect()
+	return rect.position.x >= parent_rect.position.x - 1.0 \
+		and rect.position.y >= parent_rect.position.y - 1.0 \
+		and rect.end.x <= parent_rect.end.x + 1.0 \
+		and rect.end.y <= parent_rect.end.y + 1.0
+
+
+func _visible_buttons(node: Node) -> Array[Button]:
+	var result: Array[Button] = []
+	if node is Button and (node as Button).is_visible_in_tree():
+		result.append(node as Button)
+	for child in node.get_children():
+		result.append_array(_visible_buttons(child))
+	return result
+
+
+func _node_text(node: Node) -> String:
+	if node == null:
+		return ""
+	var parts: Array[String] = []
+	if node is Label:
+		parts.append((node as Label).text)
+	if node is Button:
+		parts.append((node as Button).text)
+	for child in node.get_children():
+		parts.append(_node_text(child))
+	return "\n".join(parts)
+
+
+func _size_label(viewport_size: Vector2i) -> String:
+	return "%dx%d" % [viewport_size.x, viewport_size.y]
+
+
+func _wait_frames(count: int) -> void:
+	for _i in range(maxi(1, count)):
+		await process_frame
+
+
+func _expect(condition: bool, message: String) -> void:
+	if condition:
+		print("PASS: %s" % message)
+	else:
+		_failures.append(message)
+		push_error(message)
+
+
+func _finish() -> void:
+	if _failures.is_empty():
+		print("Commercial playability gate passed.")
+	else:
+		push_error("Commercial playability gate failed:\n- " + "\n- ".join(_failures))
+	quit(_failures.size())

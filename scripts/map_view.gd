@@ -280,8 +280,7 @@ func _gui_input(event: InputEvent) -> void:
 				_last_mouse_position = mouse_event.position
 				accept_event()
 				if mouse_event.double_click:
-					var double_world_position := _screen_to_world(mouse_event.position)
-					var double_index := _district_at_point(double_world_position)
+					var double_index := get_district_at_control_position(mouse_event.position)
 					if double_index >= 0:
 						district_double_clicked.emit(double_index)
 					accept_event()
@@ -289,8 +288,7 @@ func _gui_input(event: InputEvent) -> void:
 			else:
 				_dragging = false
 				if not _drag_moved:
-					var world_position := _screen_to_world(mouse_event.position)
-					var index := _district_at_point(world_position)
+					var index := get_district_at_control_position(mouse_event.position)
 					if index >= 0:
 						district_selected.emit(index)
 				_mark_interaction_detail_dirty()
@@ -1728,7 +1726,55 @@ func get_district_at_control_position(position: Vector2) -> int:
 	if position.x < 0.0 or position.y < 0.0 or position.x > size.x or position.y > size.y:
 		return -1
 	_sync_projection_metrics_for_query()
+	if _globe_blend() > 0.08:
+		return _district_at_projected_control_position(position)
 	return _district_at_point(_screen_to_world(position))
+
+
+func _district_at_projected_control_position(position: Vector2) -> int:
+	if districts.is_empty():
+		return -1
+	if _globe_blend() > 0.62 and position.distance_to(_globe_center()) > _globe_radius() + 18.0:
+		return -1
+	var best_index := -1
+	var best_distance := INF
+	var best_radius := 0.0
+	for i in range(districts.size()):
+		var district: Dictionary = districts[i]
+		var projected := _map_event_screen_position(district.get("center", Vector2.ZERO))
+		if not bool(projected.get("visible", true)):
+			continue
+		var screen_position: Vector2 = projected.get("position", Vector2.ZERO)
+		var distance := position.distance_to(screen_position)
+		var hit_radius := _district_projected_hit_radius(i)
+		if distance <= hit_radius and distance < best_distance:
+			best_distance = distance
+			best_radius = hit_radius
+			best_index = i
+	if best_index >= 0:
+		return best_index
+	var nearest_index := -1
+	var nearest_distance := INF
+	for i in range(districts.size()):
+		var district: Dictionary = districts[i]
+		var projected := _map_event_screen_position(district.get("center", Vector2.ZERO))
+		if not bool(projected.get("visible", true)):
+			continue
+		var distance := position.distance_to(projected.get("position", Vector2.ZERO))
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest_index = i
+	return nearest_index if nearest_distance <= maxf(18.0, best_radius) else -1
+
+
+func _district_projected_hit_radius(index: int) -> float:
+	if index < 0 or index >= districts.size():
+		return 18.0
+	var district: Dictionary = districts[index]
+	var radius_m := float(district.get("radius_m", 48.0))
+	if _is_globe_mode():
+		return clamp(radius_m * _globe_radius() / max(1.0, map_width_m) * 1.35, 16.0, 30.0)
+	return clamp(radius_m * _scale * 0.72, 16.0, 34.0)
 
 
 func _sync_projection_metrics_for_query() -> void:
