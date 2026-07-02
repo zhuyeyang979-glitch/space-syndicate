@@ -6207,3 +6207,25 @@
 - `tests/commercial_playability_gate_test.gd` 通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜Night Patrol 开源素材升级为全局卡面皮肤
+
+- 回应“不能只立卡牌美术骨架”的缺口，本轮把已经导入的 Night Patrol 开源素材从低透明度参考层升级为真正可见的共享卡面皮肤：
+  - `CardArtView` 新增 `night-patrol-frame-panel-sigil-v2` 主题 metadata。
+  - `panel-talisman.png` 作为卡面内板 backplate。
+  - `card-frame-attack / power / skill / status` 以更高透明度作为类型化边框。
+  - `button-red.png` / `button-blue.png` 作为上下短饰条，怪兽/军队/战斗类偏红，其它路线偏蓝。
+  - `card-sigil.svg` 的中心纹章提高可见度。
+- 因为手牌、区域牌架、卡牌图鉴缩略图和详情卡面都共享 `CardArtView`，这次不是单页美化，而是把外部素材同步到主卡面语言。
+- 更新 `docs/card_visual_theme_contract.md`、`docs/card_frame_spec.md`、`docs/third_party_assets.md`，明确当前原型的第三方素材边界和 player-facing 使用方式。
+- 下一轮素材方向：
+  - 继续从可明确归档 license 的 GitHub/CC0/MIT 资源扩充 icon、monster silhouette、commodity token、codex 背板。
+  - 把“图鉴缩略图”和“卡牌详情页”继续做得更像 TCG 牌册，而不是开发文档。
+
+### 本轮验证
+
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。

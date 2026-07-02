@@ -11,6 +11,7 @@ Imported for the current non-commercial prototype:
 - `assets/third_party/night_patrol/audio/sfx/impact-body.wav`
 - `assets/third_party/night_patrol/audio/sfx/lightning-hit.mp3`
 - `assets/third_party/night_patrol/ui/card-sigil.svg`
+- `assets/third_party/night_patrol/ui/panel-talisman.png`
 - selected UI frame/button reference files under `assets/third_party/night_patrol/ui/`
 
 Required attribution:
@@ -30,6 +31,12 @@ License boundary:
 Implementation note:
 
 The game code treats these assets as optional. If the files are removed or replaced, the prototype falls back to procedural card art and silent audio instead of failing to load.
+
+Current player-facing use:
+
+- `scripts/card_art_view.gd` theme `night-patrol-frame-panel-sigil-v2` draws the Night Patrol talisman panel as a card backplate.
+- The same component overlays Night Patrol frame variants, red/blue button strips, and the sigil over procedural sci-fi motifs.
+- Because `CardArtView` is shared by hand cards, district supply cards, card-codex thumbnails, and detail cards, this is the current prototype-wide temporary card-art skin.
 
 ## Terraforming Mars open-source reference
 

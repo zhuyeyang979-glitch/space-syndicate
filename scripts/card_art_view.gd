@@ -2,7 +2,11 @@ extends Control
 
 const STAR_COUNT_FULL := 30
 const STAR_COUNT_COMPACT := 18
+const CARD_ART_EXTERNAL_THEME := "night-patrol-frame-panel-sigil-v2"
 const NIGHT_PATROL_SIGIL_PATH := "res://assets/third_party/night_patrol/ui/card-sigil.svg"
+const NIGHT_PATROL_PANEL_PATH := "res://assets/third_party/night_patrol/ui/panel-talisman.png"
+const NIGHT_PATROL_BUTTON_RED_PATH := "res://assets/third_party/night_patrol/ui/button-red.png"
+const NIGHT_PATROL_BUTTON_BLUE_PATH := "res://assets/third_party/night_patrol/ui/button-blue.png"
 const NIGHT_PATROL_FRAME_PATHS := {
 	"monster_card": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
 	"military_force": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
@@ -24,13 +28,20 @@ var card_rank := 1
 var compact := false
 var card_stats := ""
 var night_patrol_sigil_texture: Texture2D
+var night_patrol_panel_texture: Texture2D
+var night_patrol_button_red_texture: Texture2D
+var night_patrol_button_blue_texture: Texture2D
 var night_patrol_frame_textures := {}
 var night_patrol_default_frame_texture: Texture2D
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_meta("card_art_external_asset_theme", CARD_ART_EXTERNAL_THEME)
 	night_patrol_sigil_texture = _load_optional_texture(NIGHT_PATROL_SIGIL_PATH)
+	night_patrol_panel_texture = _load_optional_texture(NIGHT_PATROL_PANEL_PATH)
+	night_patrol_button_red_texture = _load_optional_texture(NIGHT_PATROL_BUTTON_RED_PATH)
+	night_patrol_button_blue_texture = _load_optional_texture(NIGHT_PATROL_BUTTON_BLUE_PATH)
 	night_patrol_default_frame_texture = _load_optional_texture(NIGHT_PATROL_DEFAULT_FRAME_PATH)
 	for kind_variant in NIGHT_PATROL_FRAME_PATHS.keys():
 		var kind := String(kind_variant)
@@ -54,9 +65,11 @@ func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, size)
 	var base := Color("#020617").lerp(accent, 0.18)
 	draw_rect(rect, base, true)
+	_draw_night_patrol_reference_backplate(rect)
 	_draw_energy_wash(rect)
 	_draw_starfield(rect)
 	_draw_night_patrol_reference_frame(rect)
+	_draw_night_patrol_reference_strips(rect)
 	_draw_motif(rect)
 	_draw_rank_marks(rect)
 	_draw_border(rect)
@@ -178,11 +191,41 @@ func _night_patrol_frame_texture_for_kind() -> Texture2D:
 
 
 func _draw_night_patrol_reference_frame(rect: Rect2) -> void:
-	var texture := _night_patrol_frame_texture_for_kind()
+	var texture: Texture2D = _night_patrol_frame_texture_for_kind()
 	if texture == null:
 		return
-	var tint := Color(1.0, 1.0, 1.0, 0.28 if compact else 0.36)
+	var tint := Color(1.0, 1.0, 1.0, 0.56 if compact else 0.68)
 	draw_texture_rect(texture, rect.grow(-2.0), false, tint)
+
+
+func _draw_night_patrol_reference_backplate(rect: Rect2) -> void:
+	if night_patrol_panel_texture == null:
+		return
+	var inset_x: float = max(3.0, rect.size.x * 0.08)
+	var inset_y: float = max(3.0, rect.size.y * 0.06)
+	var panel_rect := Rect2(Vector2(inset_x, inset_y), Vector2(max(1.0, rect.size.x - inset_x * 2.0), max(1.0, rect.size.y - inset_y * 2.0)))
+	var tint := Color(1.0, 1.0, 1.0, 0.30 if compact else 0.38)
+	tint = tint.lerp(accent.lightened(0.12), 0.16)
+	draw_texture_rect(night_patrol_panel_texture, panel_rect, false, tint)
+
+
+func _draw_night_patrol_reference_strips(rect: Rect2) -> void:
+	var texture: Texture2D = _night_patrol_strip_texture()
+	if texture == null:
+		return
+	var strip_height: float = max(7.0, rect.size.y * (0.095 if compact else 0.085))
+	var top_rect := Rect2(Vector2(rect.size.x * 0.08, rect.size.y * 0.055), Vector2(rect.size.x * 0.84, strip_height))
+	var bottom_rect := Rect2(Vector2(rect.size.x * 0.08, rect.size.y - strip_height - rect.size.y * 0.055), Vector2(rect.size.x * 0.84, strip_height))
+	var tint := Color(1.0, 1.0, 1.0, 0.24 if compact else 0.30)
+	draw_texture_rect(texture, top_rect, false, tint)
+	draw_texture_rect(texture, bottom_rect, false, tint)
+
+
+func _night_patrol_strip_texture() -> Texture2D:
+	var label_source := "%s｜%s｜%s" % [card_kind, card_tags, card_stats]
+	if label_source.contains("怪兽") or label_source.contains("战斗") or label_source.contains("军队") or label_source.contains("attack") or label_source.contains("damage") or card_kind.contains("monster") or card_kind.contains("military"):
+		return night_patrol_button_red_texture
+	return night_patrol_button_blue_texture
 
 
 func _draw_night_patrol_sigil(center: Vector2, radius: float) -> void:
@@ -190,7 +233,7 @@ func _draw_night_patrol_sigil(center: Vector2, radius: float) -> void:
 		return
 	var icon_size := radius * (1.12 if compact else 1.28)
 	var tint := accent.lightened(0.38)
-	tint.a = 0.18 if compact else 0.24
+	tint.a = 0.26 if compact else 0.34
 	draw_texture_rect(night_patrol_sigil_texture, Rect2(center - Vector2(icon_size, icon_size) * 0.5, Vector2(icon_size, icon_size)), false, tint)
 
 

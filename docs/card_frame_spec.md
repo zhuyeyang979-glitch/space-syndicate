@@ -36,7 +36,7 @@
 - Right side: scan summary, keyword chips, three tactical-use cards, then facts.
 - Upgrade ladder: I-IV appears as four comparable panels with the same fields in the same order.
 - Hidden/internal fields, balance-budget jargon, and development history stay out of player-facing copy.
-- Art benchmark: reuse permissive/open-source card-frame references only through documented, attributed assets; current prototype baseline is the Night Patrol UI frame/sigil set plus procedural motifs.
+- Art benchmark: reuse permissive/open-source card-frame references only through documented, attributed assets; current prototype baseline is the Night Patrol UI backplate/frame/strip/sigil set plus procedural motifs.
 - Thumbnail atlas benchmark: card-codex thumbnails must render the same `CardArtView` visual language as hand/detail cards, then add scan chips and short effect text around it.
 
 ## TrackCard
