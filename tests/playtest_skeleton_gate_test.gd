@@ -81,11 +81,13 @@ func _check_table_skeleton() -> void:
 	_expect(ResourceLoader.exists("res://scenes/ui/RightInspector.tscn"), "right inspector scene exists")
 	var game_screen := FileAccess.get_file_as_string("res://scenes/ui/GameScreen.tscn")
 	var player_board := FileAccess.get_file_as_string("res://scenes/ui/PlayerBoard.tscn")
+	var player_board_script := FileAccess.get_file_as_string("res://scripts/ui/player_board.gd")
 	var overlay := FileAccess.get_file_as_string("res://scripts/ui/overlay_layer.gd")
 	var overlay_scene := FileAccess.get_file_as_string("res://scenes/ui/OverlayLayer.tscn")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(_contains_all(game_screen, ["TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen has the board-game table skeleton")
 	_expect(_contains_all(player_board, ["PlayerResourceTableau", "PlayerHandTableau", "PlayerCommandTableau", "PlayerBidBoard", "HandRack"]), "PlayerBoard has resource, hand, command, bid, and hand-rack skeletons")
+	_expect(_contains_all(player_board, ["PlayerProgressPathRail"]) and _contains_all(player_board_script, ["progress_path", "_set_progress_path", "PlayerProgressPathChip", "✓", "▶"]) and main_source.contains("\"progress_path\": _player_tableau_progress_entries(player_index)"), "PlayerBoard exposes a short runtime path chip rail instead of only one next-action sentence")
 	_expect(_contains_all(overlay_scene, ["SideDrawerLayer", "ModalLayer", "DragPreviewLayer"]) and overlay.contains("_dock_confirm_to_planet_side_lane"), "OverlayLayer owns drawer/modal/drag layers and docks temporary decisions to table edge")
 	_expect(main_source.contains("_set_planet_right_rail_resolution_suppressed") and main_source.contains("_card_resolution_side_lane_focus_active"), "runtime card-resolution focus can make lower-priority side rails yield")
 

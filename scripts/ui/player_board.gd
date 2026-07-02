@@ -20,6 +20,7 @@ signal track_link_unhovered(action_id: String)
 @onready var goal_chip: Label = %PlayerGoalChip
 @onready var selected_district_chip: Label = %PlayerSelectedDistrictChip
 @onready var primary_action_chip: Label = %PlayerPrimaryActionChip
+@onready var progress_path_rail: Container = %PlayerProgressPathRail
 @onready var hand_count_chip: Label = %PlayerHandCountChip
 @onready var goal_bar: ProgressBar = %PlayerGoalBar
 @onready var hand_rack: Control = %HandRack
@@ -35,6 +36,7 @@ signal track_link_unhovered(action_id: String)
 var hand_cards_signature: String = ""
 var status_lamps_signature: String = ""
 var readiness_chips_signature: String = ""
+var progress_path_signature: String = ""
 
 
 func _ready() -> void:
@@ -83,6 +85,7 @@ func set_player_state(data: Dictionary) -> void:
 	var quick_actions: Array = data.get("quick_actions", data.get("action_summary", [])) if data.get("quick_actions", data.get("action_summary", [])) is Array else []
 	var status_lamps: Array = _first_array(data, ["table_state_lamps", "status_lamps", "table_lamps"])
 	var readiness_chips: Array = _first_array(data, ["readiness_chips", "action_readiness", "readiness"])
+	var progress_path: Array = _first_array(data, ["progress_path", "runtime_path", "path_steps"])
 	var bid_state: Dictionary = data.get("bid_board", data.get("auction_board", {})) if data.get("bid_board", data.get("auction_board", {})) is Dictionary else {}
 	_set_chip(identity_chip, "本席", identity_text, 118, 14)
 	_set_chip(cash_chip, "现金", cash_text, 92, 12)
@@ -95,6 +98,7 @@ func set_player_state(data: Dictionary) -> void:
 	_set_main_action_dock(quick_actions, actions)
 	_set_status_lamps(status_lamps)
 	_set_readiness_chips(readiness_chips)
+	_set_progress_path(progress_path)
 	var cards_variant: Variant = data.get("hand_cards", [])
 	var hand_cards: Array = cards_variant if cards_variant is Array else []
 	var hand_limit := int(data.get("hand_limit", data.get("max_hand_size", 5)))
@@ -231,6 +235,79 @@ func _set_readiness_chips(entries: Array) -> void:
 		if added > 0:
 			return
 	_add_status_chip(readiness_chip_row, _summary_status_entry(normalized, "就绪"), "PlayerReadinessChip")
+
+
+func _set_progress_path(entries: Array) -> void:
+	var normalized := entries
+	if normalized.is_empty():
+		normalized = [
+			{"text": "点区", "state": "开始", "active": false, "accent": Color("#38bdf8"), "tip": "先点星球区域。"},
+			{"text": "首召", "state": "待", "active": false, "accent": Color("#fb7185"), "tip": "打出起始怪兽，打开附近区域牌架。"},
+			{"text": "建城", "state": "待", "active": false, "accent": Color("#22c55e"), "tip": "城市按秒产生GDP现金流。"},
+			{"text": "买牌", "state": "待", "active": false, "accent": Color("#f59e0b"), "tip": "从怪兽所在区或邻区买牌。"},
+			{"text": "出牌", "state": "待", "active": false, "accent": Color("#c084fc"), "tip": "满足条件后打出卡牌。"},
+		]
+	var next_signature := var_to_str(normalized)
+	if next_signature == progress_path_signature:
+		return
+	progress_path_signature = next_signature
+	_clear_row(progress_path_rail)
+	var current_marked := false
+	var added := 0
+	for entry_variant in normalized:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {"text": str(entry_variant)}
+		var done := bool(entry.get("done", entry.get("active", false)))
+		var current := bool(entry.get("current", false))
+		if not current_marked and not done:
+			current = true
+			current_marked = true
+		elif current:
+			current_marked = true
+		_add_progress_path_chip(progress_path_rail, entry, done, current)
+		added += 1
+		if added >= 5:
+			break
+
+
+func _add_progress_path_chip(row: Container, entry: Dictionary, done: bool, current: bool) -> void:
+	var accent := _entry_color(entry, Color("#94a3b8"))
+	var chip := PanelContainer.new()
+	chip.name = "PlayerProgressPathChip"
+	chip.tooltip_text = str(entry.get("tooltip", entry.get("tip", "")))
+	chip.custom_minimum_size = Vector2(38, 20)
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.add_theme_stylebox_override("panel", _progress_path_chip_style(accent, done, current))
+	var label := Label.new()
+	label.name = "PlayerProgressPathChipLabel"
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.add_theme_font_size_override("font_size", 8)
+	label.add_theme_color_override("font_color", Color("#f8fafc") if done or current else Color("#94a3b8"))
+	var marker := "✓" if done else ("▶" if current else "·")
+	var text := str(entry.get("text", entry.get("label", "路径"))).strip_edges()
+	if text == "":
+		text = "路径"
+	label.text = "%s%s" % [marker, _short_chip_text(text, 4)]
+	label.tooltip_text = chip.tooltip_text
+	chip.add_child(label)
+	row.add_child(chip)
+
+
+func _progress_path_chip_style(accent: Color, done: bool, current: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	var fill_weight := 0.24 if done else (0.18 if current else 0.07)
+	style.bg_color = Color("#020617").lerp(accent, fill_weight)
+	style.border_color = accent if done or current else Color("#334155")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.set_content_margin(SIDE_LEFT, 4.0)
+	style.set_content_margin(SIDE_RIGHT, 4.0)
+	style.set_content_margin(SIDE_TOP, 1.0)
+	style.set_content_margin(SIDE_BOTTOM, 1.0)
+	return style
 
 
 func _has_cluster_chips(entries: Array) -> bool:

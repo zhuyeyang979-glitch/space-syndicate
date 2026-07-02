@@ -18,6 +18,7 @@ var primary_actions: Array = []
 var quick_actions: Array = []
 var table_state_lamps: Array = []
 var readiness_chips: Array = []
+var progress_path: Array = []
 var bid_board: Dictionary = {}
 
 
@@ -36,6 +37,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	quick_actions = action_dock.get("quick_actions", []) if action_dock.get("quick_actions", []) is Array else []
 	table_state_lamps = data.get("table_state_lamps", data.get("status_lamps", [])) if data.get("table_state_lamps", data.get("status_lamps", [])) is Array else []
 	readiness_chips = data.get("readiness_chips", data.get("action_readiness", [])) if data.get("readiness_chips", data.get("action_readiness", [])) is Array else []
+	progress_path = data.get("progress_path", data.get("runtime_path", data.get("path_steps", []))) if data.get("progress_path", data.get("runtime_path", data.get("path_steps", []))) is Array else []
 	var bid_source: Dictionary = data.get("bid_board", data.get("auction_board", {})) if data.get("bid_board", data.get("auction_board", {})) is Dictionary else {}
 	bid_board = BID_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(bid_source).to_ui_dictionary()
 	primary_action_label = str(data.get("primary_action", data.get("primary_action_label", _first_action_label(primary_actions))))
@@ -58,6 +60,7 @@ func to_ui_dictionary() -> Dictionary:
 		"quick_actions": quick_actions,
 		"table_state_lamps": table_state_lamps,
 		"readiness_chips": readiness_chips,
+		"progress_path": progress_path,
 		"bid_board": bid_board,
 	}
 

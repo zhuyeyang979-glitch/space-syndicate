@@ -18795,6 +18795,7 @@ func _runtime_player_board_snapshot_source(player_index: int, action_entries: Ar
 		"quick_actions": _runtime_player_board_quick_actions(player_index),
 		"table_state_lamps": _runtime_player_board_table_state_lamps(player_index),
 		"readiness_chips": _runtime_player_board_readiness_chips(player_index),
+		"progress_path": _player_tableau_progress_entries(player_index),
 		"bid_board": _runtime_player_board_bid_board(player_index),
 		"actions": _runtime_player_board_action_entries(action_entries),
 		"hand_cards": _runtime_hand_card_snapshots(player_index),

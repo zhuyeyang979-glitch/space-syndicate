@@ -7,6 +7,7 @@
 - 主菜单进入新局、战役、教程/规则、图鉴，必须走 scene-owned 页面。
 - Campaign / Scenario 必须能进入真实 `main.tscn` RuntimeGameScreen，不停留在 demo 外壳。
 - 每条试玩路径至少有：briefing、当前目标、一个主 CTA、奖励/复盘出口。
+- 主桌玩家板必须有一条短“途径条”，用 chip 显示首召、建城、买牌、出牌、终局等当前路径；不要只给玩家一句长提示。
 - 自动测试要覆盖 path fixture、privacy、runtime screenshot。
 
 ## 2. 卡面 / Card Skeleton

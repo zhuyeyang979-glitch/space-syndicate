@@ -2529,6 +2529,7 @@ func _check_viewmodel_contracts() -> void:
 		"quick_actions": [{"id": "build", "label": "建城", "state": "ready", "active": true}],
 		"table_state_lamps": [{"text": "桌态", "state": "竞价", "active": true}],
 		"readiness_chips": [{"text": "选区就绪", "active": true}],
+		"progress_path": [{"text": "首召", "state": "已召", "active": true}, {"text": "建城", "state": "待建", "active": false}],
 		"bid_board": bid_board.to_ui_dictionary(),
 		"selected_district_summary": "雾港区",
 		"actions": [{"id": "summon", "label": "首召"}],
@@ -2673,6 +2674,7 @@ func _check_viewmodel_contracts() -> void:
 	_expect(player_first_hand_card.get("presentation") == "mini_hand" and player_first_hand_card.get("detail_policy") == "right_inspector", "PlayerBoardSnapshot normalizes bottom hand cards as MiniCards and routes full detail out of the rack")
 	_expect(player.to_ui_dictionary().get("quick_actions", []).size() == 1 and player.to_ui_dictionary().get("quick_actions", [])[0].get("state") == "就绪", "PlayerBoardSnapshot routes quick action scan chips through ActionDockSnapshot")
 	_expect(player.to_ui_dictionary().get("table_state_lamps", []).size() == 1 and player.to_ui_dictionary().get("readiness_chips", []).size() == 1, "PlayerBoardSnapshot keeps table-state and readiness chips")
+	_expect(player.to_ui_dictionary().get("progress_path", []).size() == 2 and player.to_ui_dictionary().get("progress_path", [])[0].get("text") == "首召", "PlayerBoardSnapshot keeps runtime path chips for the split PlayerBoard")
 	_expect(player.to_ui_dictionary().get("bid_board", {}).get("actions", []).size() == 1 and player.to_ui_dictionary().get("bid_board", {}).get("chips", []).size() == 1 and player.to_ui_dictionary().get("bid_board", {}).get("track_links", []).size() == 1, "PlayerBoardSnapshot routes public bid-board state and track links through BidBoardSnapshot")
 	_expect(player.to_ui_dictionary().get("identity") == "赤港财团" and player.to_ui_dictionary().get("selected_district_summary") == "雾港区", "PlayerBoardSnapshot keeps first-glance identity and selected district")
 	_expect(player.to_ui_dictionary().get("primary_action") == "首召" and player.to_ui_dictionary().get("goal_ratio") > 0.2, "PlayerBoardSnapshot keeps primary action and goal progress")

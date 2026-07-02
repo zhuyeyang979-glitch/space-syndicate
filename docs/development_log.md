@@ -3,6 +3,29 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜主桌玩家板接入真实行动途径条
+
+- 本轮继续把“真人首局能顺着桌面走”做成骨架，而不是依赖长规则说明：
+  - `PlayerBoard.tscn` 在资源板底部新增 `PlayerProgressPathRail`。
+  - `player_board.gd` 新增 `_set_progress_path()`，把首召、建城、买牌、匿名牌、终局渲染成一行短 chip。
+  - `main.gd` 把已有 `_player_tableau_progress_entries()` 接入 split runtime `player_board.progress_path`。
+  - `PlayerBoardSnapshot` 透传 `progress_path`，避免场景只显示默认占位路径。
+  - `docs/playtest_skeleton_contract.md` 明确：主桌玩家板必须有短途径条，不能只给玩家一句“下一步”。
+- 可玩性意义：
+  - 玩家第一眼能看见自己在一局里的位置：现在该首召、建城、买牌、出牌，还是冲终局。
+  - 这条路径不暴露对手私有信息；对手视角仍由 `_player_tableau_progress_entries()` 输出公开线索版本。
+  - 1280×720 实机截图确认没有挤坏中央星球、手牌和右侧竞价区。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `play_table_1280x720.png`，确认路径条显示真实局面步骤而不是默认占位。
+
 ## 2026-07-03｜主桌竞价文案去机制化
 
 ### 参考方向
