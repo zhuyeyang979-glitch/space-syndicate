@@ -69,7 +69,7 @@ autowrap_mode = 3
 
 [node name="DistrictSupplyPreviewCardFaceHost" type="CenterContainer" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 158)
+custom_minimum_size = Vector2(0, 218)
 layout_mode = 2
 size_flags_horizontal = 3
 

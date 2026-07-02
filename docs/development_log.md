@@ -5967,3 +5967,27 @@
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
 - `tests/ui_snapshot_capture.gd` 有头通过；确认 `card_codex_grid_1600x960.png` 的缩略图已经使用共享卡面美术区。
+
+## 2026-07-03｜区域牌架接入共享卡面视觉路径
+
+- 延续上一轮图鉴缩略图美术统一，把游戏中最常用的买牌入口也纳入同一套卡牌视觉语言：
+  - `DistrictSupplyMarketCard` 新增 `DistrictSupplyMarketCardArtHost` / `DistrictSupplyMarketCardArtView`，左栏市场小卡不再只是文字、价格和状态条。
+  - 区域牌架小卡现在用 `CardArtView` 显示卡种 glyph、程序纹样、等级标记和 Night Patrol optional frame/sigil 参考层。
+  - `_district_supply_market_card_snapshot()` 显式传递 `display_name`、`kind`、`rank_number`、`card_stats`、`card_art_stats`，避免 UI 侧猜卡种和美术统计行。
+  - 右侧 `DistrictSupplySelectedPreview` 的卡面预览提高到 218px 高，并使用 `inspector_full` 卡面展示，作为买牌前的更清晰读牌状态。
+- 更新 `docs/card_visual_theme_contract.md` 与 `docs/card_frame_spec.md`：
+  - 加入“购买路径一致性”：左栏 market-cell → hover/单击预览 → 右栏购买预览 → 买入后手牌 mini-card。
+  - 明确 `DistrictSupplyMarketCell` 不能退回纯文字按钮列表。
+- 可玩性意义：
+  - 玩家从区域牌架看到候选牌、点右侧预览、买入手牌时，会看到连续的卡牌视觉语言。
+  - 这降低了“每个页面都像不同系统”的认知负担，更接近桌游电子版的读牌路径。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 有头通过；确认主桌、牌轨、手牌和抽屉快照仍保持中心星球桌面比例，没有因为牌架卡面增高破坏主画面。

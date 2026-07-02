@@ -30255,6 +30255,7 @@ func _district_supply_market_card_snapshot(district_index: int, card_name: Strin
 	var selected := card_name == previewed_district_card
 	return {
 		"card_name": card_name,
+		"display_name": _card_display_name(card_name),
 		"selected": selected,
 		"actionable": bool(state.get("actionable", false)),
 		"title": "%s%s %s" % [
@@ -30265,7 +30266,11 @@ func _district_supply_market_card_snapshot(district_index: int, card_name: Strin
 		"title_color": Color("#f8fafc") if bool(state.get("actionable", false)) else Color("#cbd5e1"),
 		"title_tooltip": _card_display_name(card_name),
 		"rank": _roman_level(maxi(1, _skill_rank(card_name))),
+		"rank_number": maxi(1, _skill_rank(card_name)),
 		"rank_tooltip": "Card rank / upgrade tier.",
+		"kind": String(skill.get("kind", "")),
+		"card_stats": _card_art_stats(skill),
+		"card_art_stats": _card_art_stats(skill),
 		"chips": [
 			{
 				"text": "¥%d" % price,
@@ -30374,9 +30379,13 @@ func _district_supply_preview_card_face_snapshot(card_name: String, skill: Dicti
 		"effect": _card_face_quick_effect_text(card_name, skill, true),
 		"type": _card_face_route_text(card_name, skill, true),
 		"rank": _level_text(max(1, _skill_rank(card_name))),
+		"kind": String(skill.get("kind", "")),
+		"card_kind": String(skill.get("kind", "")),
+		"card_stats": _card_art_stats(skill),
+		"presentation": "inspector_full",
 		"accent": _card_theme_color(skill),
-		"minimum_width": 150.0,
-		"minimum_height": 158.0,
+		"minimum_width": 174.0,
+		"minimum_height": 218.0,
 	}
 
 

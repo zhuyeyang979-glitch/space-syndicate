@@ -12,6 +12,14 @@
 - Art baseline: every card face must have a visible central art/motif area, distinct type accent, frame/border treatment, and at least one non-text visual cue from card type or route.
 - Tooltip/detail policy: no long rules in hand; hover/selected/right inspector owns readable detail.
 
+## DistrictSupplyMarketCell
+
+- Size: target 168x174 inside the right-side district supply drawer.
+- Purpose: fast browse, not full rules.
+- Layout zones: short name, Roman rank, shared `CardArtView` art strip, price/status chips, route, short effect, state band.
+- Interaction: hover or single-click updates the selected preview; double-click attempts purchase.
+- Visual policy: must not become a text-only button list. It shares card art motifs with hand/codex cards while staying smaller than the selected preview.
+
 ## InspectorCard
 
 - Size: flexible right-panel/card-drawer body.

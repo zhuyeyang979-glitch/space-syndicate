@@ -7,6 +7,8 @@ signal card_activated(card_name: String)
 
 @onready var title_label: Label = %DistrictSupplyMarketCardTitle
 @onready var rank_label: Label = %DistrictSupplyMarketCardRank
+@onready var art_host: PanelContainer = %DistrictSupplyMarketCardArtHost
+@onready var art_view: Control = %DistrictSupplyMarketCardArtView
 @onready var chip_rail: HFlowContainer = %DistrictSupplyMarketCardChipRail
 @onready var micro_chip_rail: HFlowContainer = %DistrictSupplyMarketCardMicroChipRail
 @onready var route_label: Label = %DistrictSupplyMarketCardRoute
@@ -41,6 +43,7 @@ func set_card(data: Dictionary) -> void:
 	rank_label.text = str(data.get("rank", "I"))
 	rank_label.tooltip_text = str(data.get("rank_tooltip", "Card rank."))
 	rank_label.add_theme_color_override("font_color", theme_color.lightened(0.2))
+	_render_market_art(data, theme_color, accent)
 	route_label.text = str(data.get("route", ""))
 	route_label.tooltip_text = str(data.get("route_tooltip", route_label.text))
 	route_label.add_theme_color_override("font_color", theme_color.lightened(0.18))
@@ -62,6 +65,40 @@ func set_card(data: Dictionary) -> void:
 
 func get_card_name() -> String:
 	return _card_name
+
+
+func _render_market_art(data: Dictionary, theme_color: Color, accent: Color) -> void:
+	if art_host != null:
+		art_host.set_meta("district_supply_market_uses_shared_card_art", true)
+		art_host.add_theme_stylebox_override("panel", _card_style(theme_color, Color("#020617").lerp(theme_color, 0.18), 1, 8))
+	if art_view == null or not art_view.has_method("set_card"):
+		return
+	art_view.set_meta("district_supply_market_visual_theme", "shared-card-art-market-cell")
+	var rank_number := _rank_number(str(data.get("rank_number", data.get("rank", "I"))))
+	art_view.call(
+		"set_card",
+		str(data.get("display_name", data.get("title_tooltip", _card_name))),
+		str(data.get("kind", "")),
+		str(data.get("route", data.get("art_text", ""))),
+		theme_color,
+		rank_number,
+		true,
+		str(data.get("card_art_stats", data.get("card_stats", data.get("facts", ""))))
+	)
+	art_view.modulate = Color(1, 1, 1, 1) if bool(data.get("actionable", true)) else Color(0.76, 0.82, 1.0, 0.74)
+
+
+func _rank_number(rank_text: String) -> int:
+	match rank_text.strip_edges().to_upper():
+		"I":
+			return 1
+		"II":
+			return 2
+		"III":
+			return 3
+		"IV":
+			return 4
+	return maxi(1, int(rank_text))
 
 
 func _gui_input(event: InputEvent) -> void:
