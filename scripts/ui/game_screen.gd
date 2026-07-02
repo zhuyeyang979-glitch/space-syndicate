@@ -26,11 +26,14 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var player_board: Node = %PlayerBoard
 @onready var visual_event_layer: Node = get_node_or_null("%RuntimeVisualEventLayer")
 @onready var overlay_layer: Node = %OverlayLayer
+@onready var scenario_coach_host: Control = get_node_or_null("ScenarioCoachHost") as Control
+@onready var first_run_coach_host: Control = get_node_or_null("FirstRunCoachHost") as Control
 
 var current_ui_data: Dictionary = {}
 var _temporary_track_focus_active := false
 var _selected_hand_card_data: Dictionary = {}
 var _last_visual_event_key := ""
+var _campaign_focus_layout := false
 
 func _ready() -> void:
 	_configure_track_focus_ribbon()
@@ -84,6 +87,7 @@ func _ready() -> void:
 func apply_state(data: Dictionary) -> void:
 	var ui_data: Dictionary = TABLE_SNAPSHOT_SCRIPT.new().apply_dictionary(data).to_ui_dictionary()
 	current_ui_data = ui_data
+	_sync_campaign_focus_layout(bool(ui_data.get("campaign_focus_mode", false)), ui_data)
 	if top_bar.has_method("set_state"):
 		top_bar.call("set_state", ui_data.get("top_bar", {}))
 	var track_node := _public_track_node()
@@ -105,6 +109,37 @@ func apply_state(data: Dictionary) -> void:
 	if not _temporary_track_focus_active:
 		_sync_selected_track_focus_from_state()
 	_sync_temporary_decision_overlay(ui_data.get("temporary_decision", {}))
+
+
+func _sync_campaign_focus_layout(enabled: bool, ui_data: Dictionary) -> void:
+	_campaign_focus_layout = enabled
+	if right_inspector is Control:
+		var inspector := right_inspector as Control
+		inspector.custom_minimum_size = Vector2(226, 0) if enabled else Vector2(292, 0)
+	if scenario_coach_host != null:
+		scenario_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if enabled:
+			_set_overlay_anchor_rect(scenario_coach_host, 0.018, 0.142, 0.305, 0.300)
+		else:
+			_set_overlay_anchor_rect(scenario_coach_host, 0.36, 0.13, 0.82, 0.285)
+	if first_run_coach_host != null:
+		first_run_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
+	if track_focus_ribbon != null and enabled and str(scenario_data.get("focus_target", "")) != "public_track":
+		track_focus_ribbon.custom_minimum_size = Vector2(0, 18)
+	elif track_focus_ribbon != null:
+		track_focus_ribbon.custom_minimum_size = Vector2(0, 24)
+
+
+func _set_overlay_anchor_rect(control: Control, left: float, top: float, right: float, bottom: float) -> void:
+	control.anchor_left = left
+	control.anchor_top = top
+	control.anchor_right = right
+	control.anchor_bottom = bottom
+	control.offset_left = 0.0
+	control.offset_top = 0.0
+	control.offset_right = 0.0
+	control.offset_bottom = 0.0
 
 
 func attach_runtime_map(map_node: Control) -> void:

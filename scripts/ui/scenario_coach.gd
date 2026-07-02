@@ -27,6 +27,8 @@ func set_coach(data: Dictionary) -> void:
 	visible = bool(data.get("visible", true))
 	if not visible:
 		return
+	var compact := bool(data.get("campaign_focus_mode", data.get("compact", false)))
+	custom_minimum_size = Vector2(300, 0) if compact else Vector2.ZERO
 	var collapsed := bool(data.get("collapsed", false))
 	expanded_panel.visible = not collapsed
 	collapsed_panel.visible = collapsed
@@ -60,6 +62,7 @@ func _render_secondary(value: Variant) -> void:
 		secondary_row.remove_child(child)
 		child.queue_free()
 	var actions: Array = value if value is Array else []
+	secondary_row.visible = not actions.is_empty()
 	for action_variant in actions:
 		if not (action_variant is Dictionary):
 			continue

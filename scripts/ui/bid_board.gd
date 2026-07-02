@@ -228,8 +228,6 @@ func _track_link_text(entries: Array) -> String:
 		var text := _entry_status_text(entry)
 		if text.strip_edges() != "":
 			pieces.append(text)
-		if pieces.size() >= 3:
-			break
 	return "｜".join(pieces)
 
 

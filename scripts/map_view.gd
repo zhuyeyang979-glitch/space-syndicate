@@ -263,10 +263,14 @@ func _gui_input(event: InputEvent) -> void:
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
 			_target_view_zoom = clamp(_target_view_zoom * ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
+			queue_redraw()
+			accept_event()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_event.pressed:
 			_target_view_zoom = clamp(_target_view_zoom / ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
+			queue_redraw()
+			accept_event()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT:
 			if mouse_event.pressed:
@@ -274,6 +278,7 @@ func _gui_input(event: InputEvent) -> void:
 				_drag_moved = false
 				_drag_start = mouse_event.position
 				_last_mouse_position = mouse_event.position
+				accept_event()
 				if mouse_event.double_click:
 					var double_world_position := _screen_to_world(mouse_event.position)
 					var double_index := _district_at_point(double_world_position)
@@ -289,6 +294,8 @@ func _gui_input(event: InputEvent) -> void:
 					if index >= 0:
 						district_selected.emit(index)
 				_mark_interaction_detail_dirty()
+				queue_redraw()
+				accept_event()
 	if event is InputEventMouseMotion and _dragging:
 		var motion_event := event as InputEventMouseMotion
 		var delta := motion_event.position - _last_mouse_position
@@ -297,6 +304,8 @@ func _gui_input(event: InputEvent) -> void:
 		_pan_view(delta)
 		_last_mouse_position = motion_event.position
 		_mark_interaction_detail_dirty()
+		queue_redraw()
+		accept_event()
 
 
 func _is_globe_mode() -> bool:
@@ -1702,6 +1711,8 @@ func get_projection_debug_snapshot() -> Dictionary:
 	return {
 		"view_zoom": _view_zoom,
 		"target_view_zoom": _target_view_zoom,
+		"view_center_m": _view_center_m,
+		"map_size_m": Vector2(map_width_m, map_height_m),
 		"default_zoom": PLANET_PROJECTION_DEFAULT_ZOOM,
 		"globe_zoom": PLANET_PROJECTION_GLOBE_ZOOM,
 		"local_zoom": PLANET_PROJECTION_LOCAL_ZOOM,

@@ -5665,6 +5665,7 @@ func _runtime_scenario_coach_snapshot_source(player_index: int) -> Dictionary:
 	progress["visible"] = scenario_teaching_hints_enabled
 	progress["primary_action_id"] = "scenario_step_%s" % str(phase.get("id", "done"))
 	progress["font_scale_percent"] = scenario_font_scale_percent
+	progress["campaign_focus_mode"] = _runtime_campaign_focus_mode()
 	return progress
 
 
@@ -18718,6 +18719,7 @@ func _runtime_table_snapshot_source() -> Dictionary:
 	var action_entries: Array = _runtime_snapshot_action_entries(player_index)
 	var logs: Array = _runtime_public_log_snapshot()
 	return {
+		"campaign_focus_mode": _runtime_campaign_focus_mode(),
 		"top_bar": _runtime_top_bar_snapshot_source(player_index),
 		"card_track": _runtime_card_track_snapshot_source(),
 		"planet": _runtime_planet_snapshot_source(),
@@ -18732,6 +18734,10 @@ func _runtime_table_snapshot_source() -> Dictionary:
 		"visual_event_key": runtime_visual_event_key,
 		"logs": logs,
 	}
+
+
+func _runtime_campaign_focus_mode() -> bool:
+	return active_campaign_chapter_id != "" or active_scenario_id != ""
 
 
 func _runtime_snapshot_player_index() -> int:
@@ -19070,22 +19076,27 @@ func _runtime_bid_board_track_links(player_index: int) -> Array:
 	var queued_index := _queued_card_entry_index_for_player(player_index)
 	if card_resolution_auction_open and not card_resolution_queue.is_empty():
 		var leading_index := _card_resolution_leading_queue_index()
-		if leading_index >= 0:
-			links.append(_runtime_bid_board_track_link("领跑", card_resolution_queue[leading_index] as Dictionary, "竞拍%d" % (leading_index + 1), true))
-		if queued_index >= 0:
-			links.append(_runtime_bid_board_track_link("我的牌", card_resolution_queue[queued_index] as Dictionary, "竞拍%d" % (queued_index + 1), true))
-		elif card_resolution_queue.size() > 1:
-			var next_index := 0 if leading_index != 0 else 1
-			links.append(_runtime_bid_board_track_link("下张", card_resolution_queue[next_index] as Dictionary, "竞拍%d" % (next_index + 1), false))
+		for i in range(card_resolution_queue.size()):
+			var queued_entry: Dictionary = card_resolution_queue[i]
+			var label := "本批%d" % (i + 1)
+			if i == leading_index:
+				label = "领跑"
+			elif i == queued_index:
+				label = "我的牌"
+			links.append(_runtime_bid_board_track_link(label, queued_entry, "竞拍%d" % (i + 1), true))
 	elif (card_resolution_batch_locked or not active_card_resolution.is_empty()) and not card_resolution_queue.is_empty():
-		links.append(_runtime_bid_board_track_link("下张", card_resolution_queue[0] as Dictionary, "锁定1", true))
+		for i in range(card_resolution_queue.size()):
+			var locked_entry: Dictionary = card_resolution_queue[i]
+			links.append(_runtime_bid_board_track_link("本批%d" % (i + 1), locked_entry, "锁定%d" % (i + 1), i == 0))
 	elif not card_resolution_queue.is_empty():
-		links.append(_runtime_bid_board_track_link("本批", card_resolution_queue[0] as Dictionary, "待定1", true))
+		for i in range(card_resolution_queue.size()):
+			var waiting_entry: Dictionary = card_resolution_queue[i]
+			links.append(_runtime_bid_board_track_link("本批%d" % (i + 1), waiting_entry, "待定%d" % (i + 1), i == 0))
 	if links.size() < 3 and not next_card_resolution_queue.is_empty():
 		links.append(_runtime_bid_board_track_link("下批", next_card_resolution_queue[0] as Dictionary, "下批等待1", true))
 	if links.is_empty() and active_scenario_id == "bid_practice":
 		links.append(_runtime_scenario_bid_board_demo_track_link())
-	return links.slice(0, 3)
+	return links
 
 
 func _runtime_scenario_bid_board_demo_track_link() -> Dictionary:
@@ -19430,7 +19441,7 @@ func _runtime_card_track_snapshot_source() -> Array:
 				break
 	if not active_card_resolution.is_empty():
 		entries.append(_runtime_card_track_entry_snapshot(active_card_resolution, "当前展示"))
-	var queue_limit: int = mini(card_resolution_queue.size(), 4)
+	var queue_limit: int = card_resolution_queue.size()
 	for i in range(queue_limit):
 		var queue_variant: Variant = card_resolution_queue[i]
 		if queue_variant is Dictionary:
@@ -19440,7 +19451,7 @@ func _runtime_card_track_snapshot_source() -> Array:
 			elif card_resolution_batch_locked or not active_card_resolution.is_empty():
 				queue_state = "锁定%d" % (i + 1)
 			entries.append(_runtime_card_track_entry_snapshot(queue_variant as Dictionary, queue_state))
-	var next_limit: int = mini(next_card_resolution_queue.size(), 3)
+	var next_limit: int = next_card_resolution_queue.size()
 	for i in range(next_limit):
 		var next_variant: Variant = next_card_resolution_queue[i]
 		if next_variant is Dictionary:
@@ -19652,14 +19663,17 @@ func _runtime_card_track_kind(state_text: String) -> String:
 
 
 func _runtime_planet_snapshot_source() -> Dictionary:
+	var campaign_focus := _runtime_campaign_focus_mode()
 	return {
 		"title": "星球牌桌",
-		"hint": "区域 %d｜怪兽 %d｜军队 %d｜选区 %s" % [
+		"hint": "双击区域看牌架｜滚轮缩放｜拖拽旋转" if campaign_focus else "区域 %d｜怪兽 %d｜军队 %d｜选区 %s" % [
 			districts.size(),
 			auto_monsters.size(),
 			military_units.size(),
 			_runtime_selected_district_title(),
 		],
+		"campaign_focus_mode": campaign_focus,
+		"compact": campaign_focus,
 		"left_rail": {
 			"title": "地表情报",
 			"entries": _runtime_planet_surface_rail_entries(selected_player),
@@ -43088,12 +43102,37 @@ func _show_card_batch_lobby_overlay() -> void:
 	if card_resolution_body_label != null:
 		var lobby_text := "同步判定中｜%s准备公开" % card_label
 		if card_resolution_auction_open:
-			lobby_text = "竞价中｜队首：%s｜匿名" % card_label
+			lobby_text = "竞价中｜本批全牌可见｜匿名"
+			var roster_text := _card_resolution_batch_roster_text(118)
+			if roster_text != "":
+				lobby_text += "\n%s" % roster_text
 		var lobby_requirement := _card_resolution_play_requirement_text(leading)
 		if lobby_requirement != "":
 			lobby_text += "\n%s" % _short_card_text(lobby_requirement.replace("打出条件：", "条件："), 72)
 		card_resolution_body_label.text = lobby_text
 		card_resolution_body_label.tooltip_text = _card_resolution_overlay_detail_text(leading, max(0.0, card_resolution_auction_timer if card_resolution_auction_open else card_resolution_simultaneous_timer))
+
+
+func _card_resolution_batch_roster_text(max_chars: int = 120) -> String:
+	if card_resolution_queue.is_empty():
+		return ""
+	var pieces: Array[String] = []
+	for i in range(card_resolution_queue.size()):
+		var entry_variant: Variant = card_resolution_queue[i]
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		var label := _card_resolution_entry_card_label(entry)
+		if label.strip_edges() == "":
+			label = "匿名卡牌"
+		var bid := int(entry.get("tip", entry.get("winning_bid", 0)))
+		var text := "%d.%s" % [i + 1, _short_card_text(label, 10)]
+		if bid > 0:
+			text += "¥%d" % bid
+		pieces.append(text)
+	if pieces.is_empty():
+		return ""
+	return _short_card_text("本批：%s" % " / ".join(pieces), max_chars)
 
 
 func _show_card_resolution_overlay(entry: Dictionary, seconds_left: float) -> void:

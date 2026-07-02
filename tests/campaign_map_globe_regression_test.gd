@@ -31,6 +31,19 @@ func _run() -> void:
 		snapshot = map_view.call("get_projection_debug_snapshot") as Dictionary
 	_expect(str(snapshot.get("mode", "")) == "globe" and bool(snapshot.get("globe_mode", false)), "campaign runtime defaults to globe overview")
 	_expect(float(snapshot.get("globe_blend", 0.0)) >= 0.95, "campaign runtime globe blend stays near full globe")
+	_expect(_campaign_focus_ui_is_readable(main), "campaign runtime uses a low-density focus layout around the central planet")
+	if map_view != null:
+		var zoom_before := float(snapshot.get("target_view_zoom", 0.0))
+		_send_wheel(map_view, MOUSE_BUTTON_WHEEL_UP)
+		await _wait_frames(3)
+		var zoom_after: Dictionary = map_view.call("get_projection_debug_snapshot") as Dictionary
+		_expect(float(zoom_after.get("target_view_zoom", 0.0)) > zoom_before, "campaign central planet responds to mouse-wheel zoom")
+		var center_before: Vector2 = zoom_after.get("view_center_m", Vector2.ZERO)
+		_send_drag(map_view, map_view.size * 0.5, map_view.size * 0.5 + Vector2(96, 42))
+		await _wait_frames(3)
+		var drag_after: Dictionary = map_view.call("get_projection_debug_snapshot") as Dictionary
+		var center_after: Vector2 = drag_after.get("view_center_m", Vector2.ZERO)
+		_expect(center_after.distance_to(center_before) > 0.1, "campaign central planet responds to drag rotation")
 	root.remove_child(main)
 	main.queue_free()
 	await _wait_frames(1)
@@ -40,6 +53,46 @@ func _run() -> void:
 func _wait_frames(count: int) -> void:
 	for _i in range(maxi(1, count)):
 		await process_frame
+
+
+func _send_wheel(map_view: Control, button_index: int) -> void:
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = button_index
+	wheel.pressed = true
+	wheel.position = map_view.size * 0.5
+	map_view.call("_gui_input", wheel)
+
+
+func _send_drag(map_view: Control, start_position: Vector2, end_position: Vector2) -> void:
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = start_position
+	map_view.call("_gui_input", press)
+	var motion := InputEventMouseMotion.new()
+	motion.position = end_position
+	map_view.call("_gui_input", motion)
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = end_position
+	map_view.call("_gui_input", release)
+
+
+func _campaign_focus_ui_is_readable(main: Node) -> bool:
+	var source: Dictionary = main.call("_runtime_table_snapshot_source") as Dictionary
+	if not bool(source.get("campaign_focus_mode", false)):
+		return false
+	var left_rail := main.find_child("PlanetLeftSpaceRail", true, false) as Control
+	var right_rail := main.find_child("PlanetRightSpaceRail", true, false) as Control
+	var compass := main.find_child("PlaytestFlowCompass", true, false) as Control
+	var inspector := main.find_child("RightInspector", true, false) as Control
+	var secondary_row := main.find_child("ScenarioCoachSecondaryRow", true, false) as Control
+	var rails_hidden := (left_rail == null or not left_rail.visible) and (right_rail == null or not right_rail.visible)
+	var compass_hidden := compass == null or not compass.visible
+	var inspector_compact := inspector != null and inspector.custom_minimum_size.x <= 240.0
+	var secondary_count_ok := secondary_row == null or secondary_row.get_child_count() <= 2
+	return rails_hidden and compass_hidden and inspector_compact and secondary_count_ok
 
 
 func _expect(condition: bool, message: String) -> void:

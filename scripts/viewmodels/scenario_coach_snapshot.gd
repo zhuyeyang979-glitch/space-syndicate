@@ -13,6 +13,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var action_id := str(data.get("primary_action_id", "scenario_step_%s" % str(phase.get("id", "next"))))
 	var failed_attempts := maxi(0, int(data.get("failed_attempts", 0)))
 	var stuck_seconds := maxf(0.0, float(data.get("stuck_seconds", 0.0)))
+	var campaign_focus_mode := bool(data.get("campaign_focus_mode", data.get("compact", false)))
 	var focus_target := str(phase.get("focus_target", data.get("focus_target", "scenario_coach"))).strip_edges()
 	if focus_target == "":
 		focus_target = "scenario_coach"
@@ -43,12 +44,16 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 			"tooltip": help_text if help_visible else str(phase.get("detail", phase.get("goal", ""))),
 		},
 		"secondary_actions": [
+			{"id": "scenario_hint", "label": "提示"},
+			{"id": "scenario_close_coach", "label": "收起"},
+		] if campaign_focus_mode else [
 			{"id": "scenario_close_coach", "label": "收起"},
 			{"id": "scenario_hint", "label": "提示"},
 			{"id": "scenario_focus_target", "label": "定位"},
 			{"id": "scenario_restart", "label": "重开"},
 		],
-		"font_scale_percent": int(data.get("font_scale_percent", 100)),
+		"font_scale_percent": int(data.get("font_scale_percent", 92 if campaign_focus_mode else 100)),
+		"campaign_focus_mode": campaign_focus_mode,
 	}
 	return self
 

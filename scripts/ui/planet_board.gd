@@ -31,6 +31,7 @@ const SIDE_RAIL_MAX_HEIGHT := 310.0
 
 var left_rail_signature: String = ""
 var right_rail_signature: String = ""
+var campaign_focus_mode := false
 
 
 func _ready() -> void:
@@ -50,8 +51,10 @@ func _notification(what: int) -> void:
 
 
 func set_board_state(data: Dictionary) -> void:
+	campaign_focus_mode = bool(data.get("campaign_focus_mode", data.get("compact", false)))
 	title_label.text = str(data.get("title", "星球牌桌"))
 	hint_label.text = str(data.get("hint", "轨道外圈显示公开局势。"))
+	hint_label.add_theme_font_size_override("font_size", 9 if campaign_focus_mode else 10)
 	_set_space_rail(
 		left_rail_stack,
 		left_rail_title,
@@ -68,6 +71,7 @@ func set_board_state(data: Dictionary) -> void:
 	)
 	_set_weather_strip(data.get("weather", {}))
 	_set_flow_compass(data.get("flow_compass", {}))
+	call_deferred("_fit_square_stage")
 
 
 func _draw() -> void:
@@ -113,6 +117,10 @@ func _fit_square_stage() -> void:
 func _layout_flow_compass(map_rect: Rect2, available: Vector2) -> void:
 	if playtest_flow_compass == null:
 		return
+	if campaign_focus_mode:
+		playtest_flow_compass.visible = false
+		return
+	playtest_flow_compass.visible = true
 	var compass_width := clampf(map_rect.position.x - SIDE_RAIL_GAP * 2.0, 158.0, 218.0)
 	var compass_height := 42.0
 	var x := map_rect.position.x - compass_width - SIDE_RAIL_GAP
@@ -125,6 +133,9 @@ func _layout_flow_compass(map_rect: Rect2, available: Vector2) -> void:
 
 func _layout_space_rail(rail: PanelContainer, left_side: bool, map_rect: Rect2, available: Vector2) -> void:
 	if rail == null:
+		return
+	if campaign_focus_mode:
+		rail.visible = false
 		return
 	var side_space := map_rect.position.x - SIDE_RAIL_GAP if left_side else available.x - map_rect.end.x - SIDE_RAIL_GAP
 	if side_space < SIDE_RAIL_MIN_WIDTH or map_rect.size.y < 190.0:

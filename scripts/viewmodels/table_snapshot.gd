@@ -20,6 +20,7 @@ var first_run_coach: Dictionary = {}
 var scenario_coach: Dictionary = {}
 var visual_events: Array = []
 var visual_event_key := ""
+var campaign_focus_mode := false
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
@@ -46,6 +47,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	temporary_decision = _normalize_temporary_decision(data.get("temporary_decision", {}))
 	visual_events = (data.get("visual_events", []) as Array).duplicate(true) if data.get("visual_events", []) is Array else []
 	visual_event_key = str(data.get("visual_event_key", ""))
+	campaign_focus_mode = bool(data.get("campaign_focus_mode", false))
 	return self
 
 
@@ -61,6 +63,7 @@ func to_ui_dictionary() -> Dictionary:
 		"temporary_decision": temporary_decision,
 		"visual_events": visual_events,
 		"visual_event_key": visual_event_key,
+		"campaign_focus_mode": campaign_focus_mode,
 	}
 
 
