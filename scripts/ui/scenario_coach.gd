@@ -71,9 +71,9 @@ func _render_secondary(value: Variant) -> void:
 		return
 	var utility_menu := MenuButton.new()
 	utility_menu.name = "ScenarioCoachUtilityMenu"
-	utility_menu.text = "工具"
+	utility_menu.text = "⋯"
 	utility_menu.tooltip_text = "收起、提示、定位和重开等辅助操作。主要行动仍在上方按钮。"
-	utility_menu.custom_minimum_size = Vector2(56, 22)
+	utility_menu.custom_minimum_size = Vector2(28, 20)
 	utility_menu.add_theme_font_size_override("font_size", 10)
 	utility_menu.add_theme_stylebox_override("normal", _utility_button_style(false))
 	utility_menu.add_theme_stylebox_override("hover", _utility_button_style(true))

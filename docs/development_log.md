@@ -3,6 +3,27 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜剧本教练工具入口移入标题栏
+
+- 本轮继续收敛首局引导浮窗，让它更像桌游桌边提示卡：
+  - `ScenarioCoachSecondaryRow` 从卡片底部移入标题栏，保留测试可定位的节点名。
+  - `ScenarioCoachUtilityMenu` 从“工具”文字按钮压缩成标题栏里的 `⋯` 小入口。
+  - 主体区域只剩目标文字和一个主 CTA，辅助操作不再额外占一行。
+  - `tests/visual_snapshot.gd` 更新护栏，要求辅助菜单保持在标题栏的小入口里。
+- 可玩性意义：
+  - 玩家第一眼只需要读“目标 + 主按钮”，不会被收起/提示/定位/重开等次级工具干扰。
+  - 右上浮窗高度更低，中央星球和右侧行动区受到的视觉压迫更小。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `play_table_1280x720.png`，确认剧本教练辅助入口在标题栏且主体区域只保留主 CTA。
+
 ## 2026-07-03｜剧本教练收敛为一主按钮
 
 - 本轮继续降低首局主桌的信息密度，重点处理右上角 `ScenarioCoach`：

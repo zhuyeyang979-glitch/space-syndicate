@@ -36,6 +36,13 @@ layout_mode = 2
 text = "1/8"
 horizontal_alignment = 2
 
+[node name="ScenarioCoachSecondaryRow" type="HFlowContainer" parent="ScenarioCoachStack/ScenarioCoachExpanded/ScenarioCoachHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 0)
+layout_mode = 2
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+
 [node name="ScenarioCoachBody" type="HBoxContainer" parent="ScenarioCoachStack/ScenarioCoachExpanded"]
 layout_mode = 2
 theme_override_constants/separation = 5
@@ -67,12 +74,6 @@ layout_mode = 2
 text = "看高亮区域，完成当前目标。"
 clip_text = true
 text_overrun_behavior = 3
-
-[node name="ScenarioCoachSecondaryRow" type="HFlowContainer" parent="ScenarioCoachStack/ScenarioCoachExpanded"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 4
 
 [node name="ScenarioCoachCollapsed" type="HBoxContainer" parent="ScenarioCoachStack"]
 unique_name_in_owner = true
