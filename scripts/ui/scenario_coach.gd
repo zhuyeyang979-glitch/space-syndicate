@@ -15,6 +15,7 @@ signal action_requested(action_id: String)
 @onready var collapsed_button: Button = %ScenarioCoachCollapsedButton
 
 var _primary_action_id := ""
+var _secondary_action_ids: Dictionary = {}
 
 
 func _ready() -> void:
@@ -63,17 +64,43 @@ func _render_secondary(value: Variant) -> void:
 	for child in secondary_row.get_children():
 		secondary_row.remove_child(child)
 		child.queue_free()
+	_secondary_action_ids.clear()
 	var actions: Array = value if value is Array else []
 	secondary_row.visible = not actions.is_empty()
+	if actions.is_empty():
+		return
+	var utility_menu := MenuButton.new()
+	utility_menu.name = "ScenarioCoachUtilityMenu"
+	utility_menu.text = "工具"
+	utility_menu.tooltip_text = "收起、提示、定位和重开等辅助操作。主要行动仍在上方按钮。"
+	utility_menu.custom_minimum_size = Vector2(56, 22)
+	utility_menu.add_theme_font_size_override("font_size", 10)
+	utility_menu.add_theme_stylebox_override("normal", _utility_button_style(false))
+	utility_menu.add_theme_stylebox_override("hover", _utility_button_style(true))
+	utility_menu.add_theme_stylebox_override("pressed", _utility_button_style(true))
+	var popup := utility_menu.get_popup()
+	popup.clear()
+	var menu_id := 0
 	for action_variant in actions:
 		if not (action_variant is Dictionary):
 			continue
 		var action: Dictionary = action_variant
-		var button := Button.new()
-		button.text = str(action.get("label", "动作"))
-		button.custom_minimum_size = Vector2(58, 24)
-		button.pressed.connect(_emit_action.bind(str(action.get("id", ""))))
-		secondary_row.add_child(button)
+		var action_id := str(action.get("id", "")).strip_edges()
+		if action_id == "":
+			continue
+		popup.add_item(str(action.get("label", "动作")), menu_id)
+		_secondary_action_ids[menu_id] = action_id
+		menu_id += 1
+	if _secondary_action_ids.is_empty():
+		utility_menu.queue_free()
+		secondary_row.visible = false
+		return
+	popup.id_pressed.connect(_on_secondary_menu_id_pressed)
+	secondary_row.add_child(utility_menu)
+
+
+func _on_secondary_menu_id_pressed(menu_id: int) -> void:
+	_emit_action(str(_secondary_action_ids.get(menu_id, "")))
 
 
 func _emit_primary() -> void:
@@ -95,6 +122,20 @@ func _panel_style(accent: Color) -> StyleBoxFlat:
 	style.set_content_margin(SIDE_TOP, 6)
 	style.set_content_margin(SIDE_RIGHT, 8)
 	style.set_content_margin(SIDE_BOTTOM, 6)
+	return style
+
+
+func _utility_button_style(hovered: bool) -> StyleBoxFlat:
+	var accent := Color("#22d3ee")
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, 0.18 if hovered else 0.08)
+	style.border_color = Color("#334155").lerp(accent, 0.34 if hovered else 0.20)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(999)
+	style.set_content_margin(SIDE_LEFT, 8)
+	style.set_content_margin(SIDE_TOP, 2)
+	style.set_content_margin(SIDE_RIGHT, 8)
+	style.set_content_margin(SIDE_BOTTOM, 2)
 	return style
 
 

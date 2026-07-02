@@ -3,6 +3,27 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜剧本教练收敛为一主按钮
+
+- 本轮继续降低首局主桌的信息密度，重点处理右上角 `ScenarioCoach`：
+  - 剧本教练继续只突出一个主 CTA，例如“定位目标”。
+  - 原本平铺的“收起 / 提示 / 定位 / 重开”等辅助按钮，改为收进 `ScenarioCoachUtilityMenu`。
+  - `docs/playtest_skeleton_contract.md` 补充约束：运行时教练/剧本提示只能突出一个主 CTA，辅助操作进低权重工具菜单。
+  - `tests/visual_snapshot.gd` 增加护栏，防止后续又把辅助动作摊回主桌按钮排。
+- 可玩性意义：
+  - 主桌更像桌游桌边提示卡：玩家第一眼只需要处理“当前目标 + 一个按钮”。
+  - 辅助功能仍保留，但不再与主行动争夺视觉焦点，也不再压迫中央星球。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `play_table_1280x720.png`，确认剧本教练只突出主 CTA，辅助操作已收成“工具”入口。
+
 ## 2026-07-03｜主桌玩家板接入真实行动途径条
 
 - 本轮继续把“真人首局能顺着桌面走”做成骨架，而不是依赖长规则说明：
