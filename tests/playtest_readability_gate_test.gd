@@ -67,6 +67,7 @@ func _check_player_facing_source_guards() -> void:
 	_expect(snapshot_source.contains("WHY_TEXT_CHAR_LIMIT := 48") and snapshot_source.contains("DETAIL_SUMMARY_CHAR_LIMIT := 44"), "right inspector snapshot has strict scan-first limits")
 	_expect(inspector_source.contains("WHY_TEXT_CHAR_LIMIT := 48") and inspector_source.contains("SUMMARY_TEXT_CHAR_LIMIT := 44"), "right inspector UI has strict scan-first limits")
 	_expect(overlay_source.contains("TEMP_DECISION_BODY_LIMIT := 72") and overlay_source.contains("SIDE_DRAWER_SECTION_BODY_LIMIT := 132"), "overlay modals/drawers cap visible prose")
+	_expect(overlay_source.contains("TEMP_DECISION_SIDE_ANCHOR_LEFT := 0.70") and overlay_source.contains("_dock_confirm_to_planet_side_lane"), "temporary decision overlays dock to a planet side lane instead of the table center")
 	_expect(tutorial_source.contains("_short_text(body_text, 34)") and tutorial_source.contains("_short_text(meta_text, 28)"), "tutorial cards use short visible copy")
 	_expect(rules_source.contains("_short_text(body_text, 34)") and rules_source.contains("_short_text(meta_text, 28)"), "rules quick-reference cards use short visible copy")
 	_expect(not main_source.contains("当前位置：主菜单"), "menu breadcrumb prose is not shown as player-facing navigation copy")
@@ -96,6 +97,7 @@ func _check_default_scenario_coach_stays_off_planet() -> void:
 	var coach_host := main.find_child("ScenarioCoachHost", true, false) as Control
 	var first_run_coach := main.find_child("FirstRunCoach", true, false) as Control
 	var right_inspector := main.find_child("RightInspector", true, false) as Control
+	var overlay := main.find_child("OverlayLayer", true, false)
 	_expect(map_host != null and coach_host != null, "scenario coach and map host exist in runtime")
 	if map_host != null and coach_host != null:
 		var map_rect := map_host.get_global_rect()
@@ -111,6 +113,19 @@ func _check_default_scenario_coach_stays_off_planet() -> void:
 		_expect(not coach_rect.intersects(planet_core_rect), "default scenario coach does not cover the central planet body")
 		if right_inspector != null:
 			_expect(not coach_rect.intersects(right_inspector.get_global_rect()), "default scenario coach does not cover the right inspector")
+		if overlay != null and overlay.has_method("show_temporary_decision"):
+			overlay.call("show_temporary_decision", {
+				"title": "签约选择",
+				"body": "这类临时选择要在桌边处理，不遮挡星球主体。",
+				"actions": [{"id": "accept", "label": "签"}, {"id": "decline", "label": "拒"}],
+			})
+			await process_frame
+			var decision_panel := main.find_child("TemporaryDecisionModal", true, false) as Control
+			_expect(decision_panel != null, "temporary decision modal can be shown in runtime")
+			if decision_panel != null:
+				var decision_rect := decision_panel.get_global_rect()
+				_expect(decision_rect.get_center().x > map_center_x, "temporary decision modal uses the right side of the table")
+				_expect(not decision_rect.intersects(planet_core_rect), "temporary decision modal does not cover the central planet body")
 	_expect(first_run_coach != null and not first_run_coach.visible, "scenario runtime hides the generic first-run coach so only one CTA card is on the table")
 	root.remove_child(main)
 	main.queue_free()

@@ -36,12 +36,13 @@ func present_menu_shell(data: Dictionary) -> void:
 	var title_text := str(data.get("title", "Space Syndicate"))
 	var body_text := str(data.get("body", ""))
 	var root_table_menu := bool(data.get("root_table_menu", false))
+	var compact_page := bool(data.get("compact_page", false))
 	title_label.text = title_text
 	title_label.visible = bool(data.get("title_visible", not root_table_menu))
 	context_label.text = str(data.get("context", ""))
-	context_label.visible = bool(data.get("context_visible", not root_table_menu))
+	context_label.visible = bool(data.get("context_visible", not root_table_menu)) and not compact_page
 	hint_label.text = str(data.get("hint", ""))
-	hint_panel.visible = bool(data.get("hint_visible", not root_table_menu))
+	hint_panel.visible = bool(data.get("hint_visible", not root_table_menu)) and not compact_page
 	hint_panel.tooltip_text = hint_label.text
 	body_label.text = body_text
 	body_label.visible = body_text.strip_edges() != "" and not root_table_menu
@@ -56,7 +57,7 @@ func present_menu_shell(data: Dictionary) -> void:
 	run_save_label.visible = bool(data.get("run_save_visible", false))
 	set_catalog_navigation({})
 	visible = true
-	refresh_menu_layout(_dictionary_vector2(data, "viewport_size", Vector2.ZERO), root_table_menu)
+	refresh_menu_layout(_dictionary_vector2(data, "viewport_size", Vector2.ZERO), root_table_menu, compact_page)
 
 
 func clear_preview() -> void:
@@ -85,7 +86,7 @@ func set_catalog_navigation(data: Dictionary) -> void:
 	catalog_nav_row.visible = catalog_prev_button.visible or catalog_next_button.visible or catalog_back_button.visible
 
 
-func refresh_menu_layout(viewport_size: Vector2 = Vector2.ZERO, root_table_menu: bool = false) -> void:
+func refresh_menu_layout(viewport_size: Vector2 = Vector2.ZERO, root_table_menu: bool = false, compact_page: bool = false) -> void:
 	if viewport_size == Vector2.ZERO and get_viewport() != null:
 		viewport_size = get_viewport().get_visible_rect().size
 	if viewport_size == Vector2.ZERO:
@@ -98,18 +99,21 @@ func refresh_menu_layout(viewport_size: Vector2 = Vector2.ZERO, root_table_menu:
 	if root_table_menu:
 		side_anchor = 0.0
 		vertical_anchor = 0.0
+	elif compact_page:
+		side_anchor = 0.18 if wide else (0.12 if compact else 0.14)
+		vertical_anchor = 0.12 if wide else (0.06 if compact else 0.09)
 	surface_panel.anchor_left = side_anchor
 	surface_panel.anchor_right = 1.0 - side_anchor
 	surface_panel.anchor_top = vertical_anchor
-	surface_panel.anchor_bottom = 1.0 - vertical_anchor
-	surface_panel.custom_minimum_size = Vector2(760, 500) if root_table_menu or compact else Vector2(760, 520)
-	var horizontal_margin := 18 if root_table_menu and compact else (44 if root_table_menu and wide else (30 if root_table_menu else (14 if compact else (28 if wide else 22))))
-	var vertical_margin := 14 if root_table_menu and compact else (34 if root_table_menu and wide else (22 if root_table_menu else (12 if compact else (22 if wide else 18))))
+	surface_panel.anchor_bottom = (0.78 if wide else (0.90 if compact else 0.84)) if compact_page else 1.0 - vertical_anchor
+	surface_panel.custom_minimum_size = Vector2(760, 430) if compact_page else (Vector2(760, 500) if root_table_menu or compact else Vector2(760, 520))
+	var horizontal_margin := 18 if root_table_menu and compact else (44 if root_table_menu and wide else (30 if root_table_menu else (14 if compact_page else (14 if compact else (28 if wide else 22)))))
+	var vertical_margin := 14 if root_table_menu and compact else (34 if root_table_menu and wide else (22 if root_table_menu else (10 if compact_page else (12 if compact else (22 if wide else 18)))))
 	shell_margin.add_theme_constant_override("margin_left", horizontal_margin)
 	shell_margin.add_theme_constant_override("margin_right", horizontal_margin)
 	shell_margin.add_theme_constant_override("margin_top", vertical_margin)
 	shell_margin.add_theme_constant_override("margin_bottom", vertical_margin)
-	title_label.add_theme_font_size_override("font_size", 30 if root_table_menu and compact else (44 if root_table_menu and wide else (38 if root_table_menu else (24 if compact else (34 if wide else 31)))))
+	title_label.add_theme_font_size_override("font_size", 30 if root_table_menu and compact else (44 if root_table_menu and wide else (38 if root_table_menu else (22 if compact_page else (24 if compact else (34 if wide else 31))))))
 	context_label.add_theme_font_size_override("font_size", 10 if compact else 11)
 	hint_label.add_theme_font_size_override("font_size", 9 if compact else 10)
 	body_label.add_theme_font_size_override("font_size", 13 if compact else 15)

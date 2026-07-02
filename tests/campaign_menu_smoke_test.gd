@@ -28,7 +28,9 @@ func _run() -> void:
 	_expect((recommendations.get("presets", []) as Array).size() >= 3, "recommended start exposes 3 presets")
 	var menu_snapshot: Dictionary = MENU_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "progress": progress, "recommendations": recommendations}).to_ui_dictionary()
 	_expect(str(menu_snapshot.get("title", "")).contains("新手战役"), "campaign menu snapshot is player-facing")
-	_expect((menu_snapshot.get("chapters", []) as Array).size() >= 10, "campaign menu snapshot exposes 10 chapter cards")
+	var visible_chapters: Array = menu_snapshot.get("chapters", []) as Array
+	_expect(visible_chapters.size() <= 4 and visible_chapters.size() >= 1, "campaign menu snapshot keeps the first screen to four or fewer chapter cards")
+	_expect(str((visible_chapters[0] as Dictionary).get("title", "")).length() <= 18, "campaign menu chapter title stays short")
 	await _check_scene("res://scenes/ui/CampaignMenu.tscn", "set_campaign_menu", menu_snapshot)
 	var first_chapter: Dictionary = chapters[0] if chapters[0] is Dictionary else {}
 	var briefing_snapshot: Dictionary = BRIEFING_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "chapter": first_chapter}).to_ui_dictionary()

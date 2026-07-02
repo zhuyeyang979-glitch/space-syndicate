@@ -27,10 +27,10 @@ func set_campaign_menu(data: Dictionary) -> void:
 	visible = bool(data.get("visible", true))
 	if not visible:
 		return
-	title_label.text = str(data.get("title", "新手战役"))
-	subtitle_label.text = str(data.get("subtitle", data.get("summary", "")))
+	title_label.text = _short_text(str(data.get("title", "新手战役")), 18)
+	subtitle_label.text = _short_text(str(data.get("subtitle", data.get("summary", ""))), 28)
 	progress_label.text = str(data.get("progress_text", "0/10"))
-	next_label.text = "下一关｜%s" % str(data.get("next_chapter_title", ""))
+	next_label.text = _short_text("下一桌｜%s" % str(data.get("next_chapter_title", "")), 24)
 	var primary: Dictionary = data.get("primary_action", {}) if data.get("primary_action", {}) is Dictionary else {}
 	_primary_action_id = str(primary.get("id", ""))
 	primary_button.text = str(primary.get("label", "继续"))
@@ -54,20 +54,20 @@ func _render_chapters(value: Variant) -> void:
 			accent = Color("#64748b")
 		elif bool(chapter.get("current", false)):
 			accent = Color("#facc15")
-		var card := _card_panel("CampaignChapterCard", accent, Vector2(245, 108))
+		var card := _card_panel("CampaignChapterCard", accent, Vector2(232, 92))
 		card.tooltip_text = "%s\n%s" % [str(chapter.get("title", "")), str(chapter.get("subtitle", ""))]
 		chapter_grid.add_child(card)
 		var box := _card_box(card)
 		var button := Button.new()
-		button.text = "%s%s" % ["✓ " if bool(chapter.get("completed", false)) else "🔒 " if bool(chapter.get("locked", false)) else "", str(chapter.get("title", "关卡"))]
+		button.text = _short_text("%s%s" % ["✓ " if bool(chapter.get("completed", false)) else "🔒 " if bool(chapter.get("locked", false)) else "", str(chapter.get("title", "关卡"))], 18)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.disabled = bool(chapter.get("locked", false))
 		FOCUS_TOOLS.prepare_button(button, str(chapter.get("action_id", "")), "CampaignChapterButton")
 		button.pressed.connect(_emit_action.bind(str(chapter.get("action_id", ""))))
 		box.add_child(button)
-		var meta := _label(str(chapter.get("meta", "")), 10, accent.lightened(0.18))
+		var meta := _label(_short_text(str(chapter.get("meta", "")), 16), 10, accent.lightened(0.18))
 		box.add_child(meta)
-		var subtitle := _label(str(chapter.get("subtitle", "")), 11, Color("#cbd5e1"))
+		var subtitle := _label(_short_text(str(chapter.get("subtitle", "")), 20), 11, Color("#cbd5e1"))
 		subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(subtitle)
 
@@ -80,9 +80,9 @@ func _render_presets(value: Variant) -> void:
 			continue
 		var preset: Dictionary = preset_variant
 		var button := Button.new()
-		button.text = str(preset.get("title", "快速开局"))
+		button.text = _short_text(str(preset.get("title", "快速开局")), 8)
 		button.tooltip_text = "%s\n%s" % [str(preset.get("detail", "")), str(preset.get("meta", ""))]
-		button.custom_minimum_size = Vector2(146, 32)
+		button.custom_minimum_size = Vector2(116, 30)
 		FOCUS_TOOLS.prepare_button(button, str(preset.get("action_id", "")), "CampaignPresetButton")
 		button.pressed.connect(_emit_action.bind(str(preset.get("action_id", ""))))
 		preset_row.add_child(button)
@@ -121,6 +121,13 @@ func _label(text: String, size: int, color: Color) -> Label:
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
 	return label
+
+
+func _short_text(value: String, limit: int) -> String:
+	var text := value.replace("\n", " ").strip_edges()
+	if text.length() <= limit:
+		return text
+	return "%s..." % text.left(maxi(1, limit - 3))
 
 
 func _card_panel(node_name: String, accent: Color, min_size: Vector2) -> PanelContainer:

@@ -12,7 +12,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	ui = {
 		"visible": bool(data.get("visible", true)),
 		"title": str(campaign.get("title", "新手战役")),
-		"subtitle": str(campaign.get("subtitle", "从第一桌开始")),
+		"subtitle": _short_text(str(campaign.get("subtitle", "从第一桌开始")), 34),
 		"summary": _short_text(str(campaign.get("summary", "")), 84),
 		"progress_text": "%d/%d｜%d%%" % [
 			int(progress.get("completed_count", 0)),
@@ -21,7 +21,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		],
 		"next_chapter_id": current_id,
 		"next_chapter_title": _chapter_title(progress.get("chapter_statuses", []), current_id),
-		"chapters": _chapter_cards(progress.get("chapter_statuses", [])),
+		"chapters": _chapter_cards(progress.get("chapter_statuses", []), current_id),
 		"primary_action": {"id": "campaign_continue_%s" % current_id, "label": "继续新手战役", "disabled": current_id == ""},
 		"secondary_actions": [
 			{"id": "campaign_quick_start", "label": "快速开局"},
@@ -38,26 +38,59 @@ func to_ui_dictionary() -> Dictionary:
 	return ui.duplicate(true)
 
 
-func _chapter_cards(value: Variant) -> Array:
+func _chapter_cards(value: Variant, current_id: String = "") -> Array:
 	var source: Array = value if value is Array else []
 	var result: Array = []
-	for item in source:
+	var added_ids := {}
+	var ordered_source := _prioritized_chapters(source, current_id)
+	for item in ordered_source:
 		if not (item is Dictionary):
 			continue
 		var chapter: Dictionary = item
 		var id := str(chapter.get("id", "")).strip_edges()
+		if id == "" or added_ids.has(id):
+			continue
+		added_ids[id] = true
 		var locked := not bool(chapter.get("unlocked", false))
 		result.append({
 			"id": id,
-			"title": str(chapter.get("title", id)),
-			"subtitle": str(chapter.get("subtitle", "")),
+			"title": _short_text(str(chapter.get("title", id)), 18),
+			"subtitle": _short_text(str(chapter.get("subtitle", "")), 24),
 			"meta": "%s｜约%d分钟" % [str(chapter.get("difficulty", "intro")), int(chapter.get("estimated_minutes", 5))],
 			"completed": bool(chapter.get("completed", false)),
 			"locked": locked,
 			"current": bool(chapter.get("current", false)),
 			"action_id": "campaign_chapter_%s" % id,
 		})
+		if result.size() >= 4:
+			break
 	return result
+
+
+func _prioritized_chapters(source: Array, current_id: String) -> Array:
+	var current: Array = []
+	var playable: Array = []
+	var completed: Array = []
+	var locked: Array = []
+	for item in source:
+		if not (item is Dictionary):
+			continue
+		var chapter: Dictionary = item
+		var id := str(chapter.get("id", "")).strip_edges()
+		if id == current_id or bool(chapter.get("current", false)):
+			current.append(chapter)
+		elif bool(chapter.get("unlocked", false)) and not bool(chapter.get("completed", false)):
+			playable.append(chapter)
+		elif bool(chapter.get("completed", false)):
+			completed.append(chapter)
+		else:
+			locked.append(chapter)
+	var ordered: Array = []
+	ordered.append_array(current)
+	ordered.append_array(playable)
+	ordered.append_array(completed)
+	ordered.append_array(locked)
+	return ordered
 
 
 func _preset_cards(value: Variant) -> Array:
@@ -69,7 +102,7 @@ func _preset_cards(value: Variant) -> Array:
 		var preset: Dictionary = item
 		result.append({
 			"id": str(preset.get("id", "")),
-			"title": str(preset.get("title", "")),
+			"title": _short_text(str(preset.get("title", "")), 8),
 			"detail": "%s｜%s" % [str(preset.get("recommended_for", "")), str(preset.get("learns", ""))],
 			"meta": "%s｜约%d分钟" % [str(preset.get("difficulty", "intro")), int(preset.get("estimated_minutes", 10))],
 			"action_id": "quick_preset_%s" % str(preset.get("id", "")),

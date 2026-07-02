@@ -4601,27 +4601,31 @@ func _refresh_menu_layout() -> void:
 	var compact := viewport_size.x < 900.0 or viewport_size.y < 620.0
 	var wide := viewport_size.x >= 1400.0 and viewport_size.y >= 780.0
 	var root_lobby := menu_title_label != null and menu_title_label.text == "太空辛迪加｜星球赌桌"
+	var compact_page := menu_title_label != null and menu_title_label.text == "新手战役"
 	if menu_overlay != null and menu_overlay.has_method("refresh_menu_layout"):
-		menu_overlay.call("refresh_menu_layout", viewport_size, root_lobby)
+		menu_overlay.call("refresh_menu_layout", viewport_size, root_lobby, compact_page)
 	var side_anchor := 0.025 if compact else (0.10 if wide else 0.07)
 	var vertical_anchor := 0.025 if compact else (0.065 if wide else 0.055)
 	if root_lobby:
 		side_anchor = 0.0
 		vertical_anchor = 0.0
+	elif compact_page:
+		side_anchor = 0.18 if wide else (0.12 if compact else 0.14)
+		vertical_anchor = 0.12 if wide else (0.06 if compact else 0.09)
 	menu_surface_panel.anchor_left = side_anchor
 	menu_surface_panel.anchor_right = 1.0 - side_anchor
 	menu_surface_panel.anchor_top = vertical_anchor
-	menu_surface_panel.anchor_bottom = 1.0 - vertical_anchor
-	menu_surface_panel.custom_minimum_size = Vector2(760, 500) if root_lobby or compact else Vector2(760, 520)
+	menu_surface_panel.anchor_bottom = (0.78 if wide else (0.90 if compact else 0.84)) if compact_page else 1.0 - vertical_anchor
+	menu_surface_panel.custom_minimum_size = Vector2(760, 430) if compact_page else (Vector2(760, 500) if root_lobby or compact else Vector2(760, 520))
 	if menu_shell_margin != null:
-		var horizontal_margin := 18 if root_lobby and compact else (44 if root_lobby and wide else (30 if root_lobby else (14 if compact else (28 if wide else 22))))
-		var vertical_margin := 14 if root_lobby and compact else (34 if root_lobby and wide else (22 if root_lobby else (12 if compact else (22 if wide else 18))))
+		var horizontal_margin := 18 if root_lobby and compact else (44 if root_lobby and wide else (30 if root_lobby else (14 if compact_page else (14 if compact else (28 if wide else 22)))))
+		var vertical_margin := 14 if root_lobby and compact else (34 if root_lobby and wide else (22 if root_lobby else (10 if compact_page else (12 if compact else (22 if wide else 18)))))
 		menu_shell_margin.add_theme_constant_override("margin_left", horizontal_margin)
 		menu_shell_margin.add_theme_constant_override("margin_right", horizontal_margin)
 		menu_shell_margin.add_theme_constant_override("margin_top", vertical_margin)
 		menu_shell_margin.add_theme_constant_override("margin_bottom", vertical_margin)
 	if menu_title_label != null:
-		menu_title_label.add_theme_font_size_override("font_size", 30 if root_lobby and compact else (44 if root_lobby and wide else (38 if root_lobby else (24 if compact else (34 if wide else 31)))))
+		menu_title_label.add_theme_font_size_override("font_size", 30 if root_lobby and compact else (44 if root_lobby and wide else (38 if root_lobby else (22 if compact_page else (24 if compact else (34 if wide else 31))))))
 	if menu_context_label != null:
 		menu_context_label.add_theme_font_size_override("font_size", 10 if compact else 11)
 	if menu_interaction_hint_label != null:
@@ -5068,7 +5072,7 @@ func _save_campaign_progress_state() -> void:
 
 
 func _open_campaign_menu() -> void:
-	_show_menu("新手战役", "选择下一关，或用推荐配置快速开局。", not game_over, false)
+	_show_menu("新手战役", "先打一桌：点区、首召、建城。", not game_over, false, true)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -9231,7 +9235,7 @@ func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = f
 	return "只显示本页操作。"
 
 
-func _show_menu(title_text: String, body_text: String, can_continue: bool, show_main_actions: bool = false) -> void:
+func _show_menu(title_text: String, body_text: String, can_continue: bool, show_main_actions: bool = false, compact_page: bool = false) -> void:
 	if menu_overlay == null:
 		return
 	if time_scale > 0.0:
@@ -9242,11 +9246,11 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 	menu_title_label.text = title_text
 	if menu_context_label != null:
 		menu_context_label.text = _menu_context_text(title_text, show_main_actions)
-		menu_context_label.visible = not root_table_menu
+		menu_context_label.visible = not root_table_menu and not compact_page
 	if menu_interaction_hint_label != null:
 		menu_interaction_hint_label.text = _menu_interaction_hint_text(title_text, show_main_actions)
 	if menu_interaction_hint_panel != null:
-		menu_interaction_hint_panel.visible = not root_table_menu
+		menu_interaction_hint_panel.visible = not root_table_menu and not compact_page
 		menu_interaction_hint_panel.tooltip_text = _menu_interaction_hint_text(title_text, show_main_actions)
 	_refresh_menu_quick_nav(title_text, show_main_actions)
 	menu_body_label.text = body_text
@@ -9280,15 +9284,16 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 			"title": title_text,
 			"body": body_text,
 			"context": _menu_context_text(title_text, show_main_actions),
-			"context_visible": not root_table_menu,
+			"context_visible": not root_table_menu and not compact_page,
 			"hint": _menu_interaction_hint_text(title_text, show_main_actions),
-			"hint_visible": not root_table_menu,
+			"hint_visible": not root_table_menu and not compact_page,
 			"continue_disabled": not can_continue,
 			"continue_visible": can_continue and show_main_actions and not root_table_menu,
 			"back_visible": not show_main_actions,
 			"nav_visible": not root_table_menu,
 			"run_save_visible": show_main_actions,
 			"root_table_menu": root_table_menu,
+			"compact_page": compact_page,
 			"viewport_size": _menu_viewport_size(),
 		})
 		for button in menu_regular_buttons:

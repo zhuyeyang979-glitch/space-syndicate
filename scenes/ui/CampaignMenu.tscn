@@ -4,20 +4,20 @@
 [ext_resource type="Script" path="res://scripts/ui/campaign_menu.gd" id="2_script"]
 
 [node name="CampaignMenu" type="PanelContainer"]
-custom_minimum_size = Vector2(820, 560)
+custom_minimum_size = Vector2(760, 430)
 theme = ExtResource("1_theme")
 script = ExtResource("2_script")
 
 [node name="CampaignMenuMargin" type="MarginContainer" parent="."]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
 
 [node name="CampaignMenuStack" type="VBoxContainer" parent="CampaignMenuMargin"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
 [node name="CampaignMenuHeader" type="VBoxContainer" parent="CampaignMenuMargin/CampaignMenuStack"]
 layout_mode = 2
@@ -27,13 +27,14 @@ theme_override_constants/separation = 4
 unique_name_in_owner = true
 layout_mode = 2
 text = "新手战役"
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 22
 
 [node name="CampaignMenuSubtitle" type="Label" parent="CampaignMenuMargin/CampaignMenuStack/CampaignMenuHeader"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "从第一桌开始。"
 autowrap_mode = 3
+text_overrun_behavior = 3
 
 [node name="CampaignMenuStatusRow" type="HBoxContainer" parent="CampaignMenuMargin/CampaignMenuStack"]
 layout_mode = 2
@@ -41,7 +42,7 @@ theme_override_constants/separation = 10
 
 [node name="CampaignMenuProgress" type="Label" parent="CampaignMenuMargin/CampaignMenuStack/CampaignMenuStatusRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 0)
+custom_minimum_size = Vector2(92, 0)
 layout_mode = 2
 text = "0/10"
 
@@ -53,9 +54,11 @@ text = "下一关"
 text_overrun_behavior = 3
 
 [node name="CampaignMenuScroll" type="ScrollContainer" parent="CampaignMenuMargin/CampaignMenuStack"]
+custom_minimum_size = Vector2(0, 206)
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_vertical = 0
 horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
 
 [node name="CampaignMenuChapterGrid" type="GridContainer" parent="CampaignMenuMargin/CampaignMenuStack/CampaignMenuScroll"]
 unique_name_in_owner = true
@@ -71,7 +74,7 @@ theme_override_constants/separation = 4
 
 [node name="CampaignMenuPresetLabel" type="Label" parent="CampaignMenuMargin/CampaignMenuStack/CampaignMenuPresetBlock"]
 layout_mode = 2
-text = "快速开局推荐"
+text = "三种推荐开局"
 theme_override_font_sizes/font_size = 13
 
 [node name="CampaignMenuPresetRow" type="HFlowContainer" parent="CampaignMenuMargin/CampaignMenuStack/CampaignMenuPresetBlock"]
@@ -86,7 +89,7 @@ theme_override_constants/separation = 10
 
 [node name="CampaignMenuPrimaryButton" type="Button" parent="CampaignMenuMargin/CampaignMenuStack/CampaignMenuFooter"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(190, 40)
+custom_minimum_size = Vector2(178, 38)
 layout_mode = 2
 text = "继续新手战役"
 

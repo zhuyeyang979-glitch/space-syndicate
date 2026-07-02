@@ -10,6 +10,7 @@ signal temporary_decision_action_requested(action_id: String)
 @onready var confirm_label: Label = %ConfirmLabel
 @onready var confirm_chip_row: HFlowContainer = %ConfirmChipRow
 @onready var confirm_action_row: GridContainer = %ConfirmActionRow
+@onready var confirm_center: CenterContainer = $OverlayRoot/ModalLayer/ConfirmCenter
 @onready var side_drawer_panel: PanelContainer = %SideDrawerPanel
 @onready var side_drawer_title: Label = %SideDrawerTitle
 @onready var side_drawer_close_button: Button = %SideDrawerCloseButton
@@ -27,9 +28,14 @@ const DRAG_PREVIEW_SIZE := Vector2(176.0, 118.0)
 const TEMP_DECISION_BODY_LIMIT := 72
 const SIDE_DRAWER_SUMMARY_LIMIT := 96
 const SIDE_DRAWER_SECTION_BODY_LIMIT := 132
+const TEMP_DECISION_SIDE_ANCHOR_LEFT := 0.70
+const TEMP_DECISION_SIDE_ANCHOR_TOP := 0.18
+const TEMP_DECISION_SIDE_ANCHOR_RIGHT := 0.985
+const TEMP_DECISION_SIDE_ANCHOR_BOTTOM := 0.82
 
 
 func _ready() -> void:
+	_dock_confirm_to_planet_side_lane()
 	side_drawer_close_button.pressed.connect(hide_side_drawer)
 
 func show_tooltip(text: String) -> void:
@@ -42,6 +48,7 @@ func hide_tooltip() -> void:
 
 
 func show_confirm(text: String) -> void:
+	_dock_confirm_to_planet_side_lane()
 	confirm_panel.name = "ConfirmPanel"
 	confirm_label.text = _short_text(text, TEMP_DECISION_BODY_LIMIT)
 	confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -61,6 +68,7 @@ func show_temporary_decision(data: Dictionary) -> void:
 	if data.is_empty():
 		hide_confirm()
 		return
+	_dock_confirm_to_planet_side_lane()
 	var title := str(data.get("title", "临时决策")).strip_edges()
 	var body := str(data.get("body", data.get("summary", ""))).strip_edges()
 	confirm_panel.name = "TemporaryDecisionModal"
@@ -105,6 +113,19 @@ func show_drag_preview(text: String, screen_position: Vector2 = Vector2.ZERO, dr
 	_apply_drag_preview_style(drop_hint)
 	_show_drag_drop_target_hint(drop_hint)
 	drag_preview_panel.visible = text.strip_edges() != ""
+
+
+func _dock_confirm_to_planet_side_lane() -> void:
+	if confirm_center == null:
+		return
+	confirm_center.anchor_left = TEMP_DECISION_SIDE_ANCHOR_LEFT
+	confirm_center.anchor_top = TEMP_DECISION_SIDE_ANCHOR_TOP
+	confirm_center.anchor_right = TEMP_DECISION_SIDE_ANCHOR_RIGHT
+	confirm_center.anchor_bottom = TEMP_DECISION_SIDE_ANCHOR_BOTTOM
+	confirm_center.offset_left = 0.0
+	confirm_center.offset_top = 0.0
+	confirm_center.offset_right = 0.0
+	confirm_center.offset_bottom = 0.0
 
 
 func hide_drag_preview() -> void:
