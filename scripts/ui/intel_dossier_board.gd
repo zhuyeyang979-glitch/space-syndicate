@@ -1,10 +1,13 @@
 extends PanelContainer
 class_name SpaceSyndicateIntelDossierBoard
 
+signal action_requested(action_id: String)
+
 @onready var header: HBoxContainer = %IntelDossierBoardHeader
 @onready var title_label: Label = %IntelDossierBoardTitle
 @onready var chip_rail: HFlowContainer = %IntelDossierBoardChipRail
 @onready var kpi_grid: GridContainer = %IntelDossierKpiGrid
+@onready var action_row: HFlowContainer = %IntelDossierActionRow
 @onready var clue_grid: GridContainer = %IntelDossierClueGrid
 
 
@@ -22,6 +25,7 @@ func set_dossier(data: Dictionary) -> void:
 	clue_grid.columns = clampi(int(data.get("clue_columns", 3)), 1, 3)
 	_render_chips(data.get("chips", []))
 	_render_kpis(data.get("kpis", []))
+	_render_actions(data.get("actions", []))
 	_render_clues(data.get("clues", []))
 
 
@@ -33,6 +37,8 @@ func _style_shell() -> void:
 	chip_rail.add_theme_constant_override("v_separation", 3)
 	kpi_grid.add_theme_constant_override("h_separation", 8)
 	kpi_grid.add_theme_constant_override("v_separation", 8)
+	action_row.add_theme_constant_override("h_separation", 6)
+	action_row.add_theme_constant_override("v_separation", 4)
 	clue_grid.add_theme_constant_override("h_separation", 10)
 	clue_grid.add_theme_constant_override("v_separation", 10)
 
@@ -62,6 +68,18 @@ func _render_clues(entries_variant: Variant) -> void:
 	for entry_variant in entries_variant:
 		if entry_variant is Dictionary:
 			_add_clue_card(entry_variant as Dictionary)
+
+
+func _render_actions(entries_variant: Variant) -> void:
+	_clear_children(action_row)
+	if not (entries_variant is Array):
+		action_row.visible = false
+		return
+	var entries := entries_variant as Array
+	action_row.visible = not entries.is_empty()
+	for entry_variant in entries:
+		if entry_variant is Dictionary:
+			_add_action_button(entry_variant as Dictionary)
 
 
 func _add_chip(entry: Dictionary) -> void:
@@ -156,6 +174,31 @@ func _add_clue_card(entry: Dictionary) -> void:
 		box.add_child(label)
 
 
+func _add_action_button(entry: Dictionary) -> void:
+	var action_id := str(entry.get("id", entry.get("action_id", ""))).strip_edges()
+	var label_text := str(entry.get("label", action_id)).strip_edges()
+	if action_id == "" or label_text == "":
+		return
+	var disabled := bool(entry.get("disabled", false))
+	var accent := _dictionary_color(entry, "accent", Color("#c4b5fd"))
+	var button := Button.new()
+	button.name = "IntelDossierActionButton"
+	button.text = _short_text(label_text, 10)
+	button.disabled = disabled
+	button.custom_minimum_size = Vector2(92, 28)
+	button.tooltip_text = str(entry.get("tooltip", ""))
+	button.add_theme_font_size_override("font_size", 10)
+	button.add_theme_color_override("font_color", Color("#f8fafc") if not disabled else Color("#94a3b8"))
+	button.add_theme_stylebox_override("normal", _button_style(accent, false, disabled))
+	button.add_theme_stylebox_override("hover", _button_style(accent, true, disabled))
+	button.add_theme_stylebox_override("pressed", _button_style(accent.lightened(0.12), true, disabled))
+	button.add_theme_stylebox_override("disabled", _button_style(accent, false, true))
+	button.pressed.connect(func() -> void:
+		action_requested.emit(action_id)
+	)
+	action_row.add_child(button)
+
+
 func _label(text: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
@@ -179,6 +222,24 @@ func _card_style(accent: Color, fill: Color, border_width: int, radius: int) -> 
 	style.border_color = accent
 	style.set_border_width_all(border_width)
 	style.set_corner_radius_all(radius)
+	return style
+
+
+func _button_style(accent: Color, hovered: bool, disabled: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	var fill_weight := 0.12
+	if hovered:
+		fill_weight = 0.24
+	if disabled:
+		fill_weight = 0.06
+	style.bg_color = Color("#020617").lerp(accent, fill_weight)
+	style.border_color = Color("#475569") if disabled else accent.lightened(0.16 if hovered else 0.0)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.set_content_margin(SIDE_LEFT, 7.0)
+	style.set_content_margin(SIDE_RIGHT, 7.0)
+	style.set_content_margin(SIDE_TOP, 4.0)
+	style.set_content_margin(SIDE_BOTTOM, 4.0)
 	return style
 
 

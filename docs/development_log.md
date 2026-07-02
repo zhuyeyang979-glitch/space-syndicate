@@ -5686,3 +5686,25 @@
 - `tests/visual_snapshot.gd` 通过。
 - `tests/layout_scene_smoke_test.gd` 通过。
 - `tests/ui_text_smoke_test.gd` 通过。
+
+## 2026-07-02｜匿名牌对象闭环接通情报档案
+
+- Codex A 本轮只处理公开牌轨、竞价、右侧说明和匿名牌证据链，没有新增玩法/卡牌/AI，也没有改首局引导、新游戏菜单、教程、经济、怪兽或卡牌数据。
+- 继续参考 Through the Ages 式公共牌列、Terraforming Mars 桌面信息分层和 CardHouse 的 card group/gate 思路，把同一张匿名牌对象用 `resolution_id` 串起来：
+  - `PublicTrack` hover 继续高亮 `BidBoard` 指针，并临时预览到 `RightInspector`。
+  - `BidBoard` 指针 hover 现在也会反向预览对应 `PublicTrack` 牌槽到 `RightInspector`。
+  - `GameScreen` 增加短 `TrackFocusRibbon`，在 hover/选中公开牌时显示槽位、状态、匿名归属和报价，避免玩家在顶部牌轨、底部竞价和右侧说明之间迷路。
+  - `PublicTrack` / `BidBoard` 选中后保持同一 `resolution_id` 焦点，右侧说明和牌轨焦点条同步显示“已选牌轨”。
+  - `IntelDossierBoard` 增加 scene-owned action row，已选匿名牌证据链提供“回到牌轨 / 竞猜 / 卡牌详情”路径；按钮只 emit 数据化 action id，`main.gd` 只做匿名牌桥接。
+- 隐藏信息边界：
+  - 焦点条和档案按钮只展示公开槽位、公开状态、匿名归属提示、报价与卡牌公开详情入口。
+  - “竞猜”路径只是回到主桌同一 `resolution_id`，由已有归属竞猜面板继续处理；不在档案页直接结算或泄露真牌主。
+
+### 本轮验证
+
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 有头通过，并重新生成主桌、情报档案、抽屉和 Codex/仪表板快照。
