@@ -2,7 +2,7 @@ extends RefCounted
 class_name PublicTrackSnapshot
 
 const DEFAULT_LABEL := "公共牌"
-const HIDDEN_OWNER_TEXT := "匿名"
+const HIDDEN_OWNER_TEXT := "待猜"
 const DEFAULT_STATE_TEXT := "等待"
 
 var entries: Array = []
@@ -149,7 +149,10 @@ func _tooltip_text(entry: Dictionary, label: String, state: String, owner_hint: 
 	var explicit_tooltip := _first_text(entry, ["tooltip", "hint"], "")
 	if explicit_tooltip != "":
 		return explicit_tooltip
-	var pieces: Array[String] = [label, state, "归属:%s" % owner_hint]
+	var owner_label := "归属:%s" % owner_hint
+	if owner_hint == HIDDEN_OWNER_TEXT:
+		owner_label = "归属待猜"
+	var pieces: Array[String] = [label, state, owner_label]
 	if cost != "":
 		pieces.append("报价:%s" % cost)
 	return "｜".join(pieces)

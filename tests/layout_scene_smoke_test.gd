@@ -341,7 +341,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"id": "track_42",
 				"resolution_id": 42,
 				"card_name": "orbital_finance_i",
-				"label": "匿名牌",
+				"label": "公开牌",
 				"slot": 1,
 				"state": "current",
 				"cost": "¥80",
@@ -349,7 +349,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"title": "牌轨详情",
 				"summary": "当前｜轨道融资｜归属:匿名",
 				"detail": "报价、目标和余波是公开推理线索。",
-				"full_detail": "匿名牌槽保留卡面、报价、目标和余波；玩家在右侧详情中做竞猜，不在地图表面堆文字。",
+				"full_detail": "公开牌槽保留卡面、报价、目标和余波；玩家在右侧详情中做竞猜，不在地图表面堆文字。",
 				"why": "单击牌槽选中竞猜；双击打开卡牌详情。",
 				"requirements": [{"text": "当前"}, {"text": "归属:匿名"}, {"text": "报价¥80"}],
 				"actions": [{"id": "track_select_42", "label": "选中竞猜"}, {"id": "track_intel_42", "label": "线索档案"}, {"id": "track_open_orbital_finance_i", "label": "卡牌详情"}],
@@ -462,7 +462,7 @@ func _check_split_game_screen_data_binding() -> void:
 			},
 			"primary_action": {"id": "coach_first_summon", "label": "在选区首召", "tooltip": "首召后开启附近牌架。"},
 		},
-		"logs": ["有人打出匿名牌", "怪兽靠近雾港"],
+	"logs": ["有人打出公开牌", "怪兽靠近雾港"],
 	})
 	await process_frame
 	var top_bar := screen.find_child("TopBar", true, false)
@@ -553,12 +553,12 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(player_status_lamp_row != null and player_status_lamp_row.get_child_count() == 1, "split PlayerBoard binds table-state lamps from snapshot data")
 	_expect(player_readiness_chip_row != null and player_readiness_chip_row.get_child_count() == 1, "split PlayerBoard binds action-readiness chips from snapshot data")
 	_expect(player_action_row != null and player_action_row.get_child_count() == 2, "split PlayerBoard binds compact primary action buttons inside the single main action dock")
-	_expect(public_track != null and public_track.custom_minimum_size.y <= 48.0, "split PublicTrack remains a thin anonymous offer rail")
+	_expect(public_track != null and public_track.custom_minimum_size.y <= 48.0, "split PublicTrack remains a thin public offer rail")
 	_expect(first_run_coach != null and first_run_coach_button != null and first_run_coach_button.text.contains("首召"), "split GameScreen binds FirstRunCoach below the public track with a single next-step CTA")
 	_expect(public_track_slot != null and public_track_slot.custom_minimum_size.y <= 36.0, "split PublicTrack renders compact public slots instead of full cards")
 	_expect(public_track_pip != null, "split PublicTrack renders a compact state color pip")
-	_expect(public_track_label != null and public_track_label.text.contains("匿名牌"), "split PublicTrack binds the anonymous card short label")
-	_expect(public_track_meta != null and public_track_meta.text.contains("匿名"), "split PublicTrack keeps ownership as a scan-first anonymous hint")
+	_expect(public_track_label != null and public_track_label.text.contains("公开牌"), "split PublicTrack binds the public card short label")
+	_expect(public_track_meta != null and public_track_meta.text.contains("待猜"), "split PublicTrack keeps ownership as a scan-first guess hint")
 	_expect(public_track != null and public_track.find_child("CardFace", true, false) == null, "split PublicTrack does not render full CardFace nodes")
 	_expect(track_focus_ribbon != null and track_focus_label != null and not track_focus_ribbon.visible, "split GameScreen owns a hidden table-focus ribbon for temporary public-track/BidBoard context")
 	if public_track_slot != null:
@@ -566,9 +566,9 @@ func _check_split_game_screen_data_binding() -> void:
 		var pre_hover_reason := reason_label.text if reason_label != null else ""
 		public_track_slot.emit_signal("mouse_entered")
 		await process_frame
-		_expect(inspector_title != null and not inspector_title.text == pre_hover_title and district_title != null and public_track_label != null and district_title.text.contains(public_track_label.text), "split PublicTrack hover previews the anonymous card slot in RightInspector")
+		_expect(inspector_title != null and not inspector_title.text == pre_hover_title and district_title != null and public_track_label != null and district_title.text.contains(public_track_label.text), "split PublicTrack hover previews the public card slot in RightInspector")
 		_expect(reason_label != null and not reason_label.text == pre_hover_reason and reason_label.text.strip_edges() != "", "split PublicTrack hover shows public card-state reasoning instead of leaving the region explanation in place")
-		_expect(track_focus_ribbon != null and track_focus_ribbon.visible and track_focus_label != null and track_focus_label.text.contains("牌轨对照") and track_focus_label.text.contains("匿名牌") and track_focus_label.text.contains("报价"), "split PublicTrack hover opens a short table-focus ribbon that connects the anonymous slot to public bid context")
+		_expect(track_focus_ribbon != null and track_focus_ribbon.visible and track_focus_label != null and track_focus_label.text.contains("牌轨对照") and track_focus_label.text.contains("公开牌") and track_focus_label.text.contains("报价"), "split PublicTrack hover opens a short table-focus ribbon that connects the public slot to public bid context")
 		public_track_slot.emit_signal("mouse_exited")
 		await process_frame
 		_expect(inspector_title != null and inspector_title.text == pre_hover_title and reason_label != null and reason_label.text == pre_hover_reason, "split PublicTrack unhover restores the prior RightInspector context")
@@ -723,7 +723,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"id": "track_42",
 				"resolution_id": 42,
 				"card_name": "orbital_finance_i",
-				"label": "匿名牌",
+				"label": "公开牌",
 				"slot": 1,
 				"state": "current",
 				"cost": "¥80",
@@ -731,7 +731,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"title": "牌轨详情",
 				"summary": "当前｜轨道融资｜归属:匿名",
 				"detail": "报价、目标和余波是公开推理线索。",
-				"full_detail": "匿名牌槽保留卡面、报价、目标和余波；玩家在右侧详情中做竞猜，不在地图表面堆文字。",
+				"full_detail": "公开牌槽保留卡面、报价、目标和余波；玩家在右侧详情中做竞猜，不在地图表面堆文字。",
 				"why": "单击牌槽选中竞猜；双击打开卡牌详情。",
 				"requirements": [{"text": "当前"}, {"text": "归属:匿名"}, {"text": "报价¥80"}],
 				"actions": [{"id": "track_select_42", "label": "选中竞猜"}, {"id": "track_intel_42", "label": "线索档案"}, {"id": "track_open_orbital_finance_i", "label": "卡牌详情"}],
@@ -1523,7 +1523,7 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 		var menu_preview_box := main.get("menu_preview_box") as VBoxContainer
 		var dossier_text := _node_tree_text(menu_preview_box)
 		_expect(track_action_ids.has("track_intel_%d" % selected_resolution_id), "pressing the runtime track dossier action emits the focused track_intel command")
-		_expect(menu_title_label != null and menu_title_label.text == "情报档案" and dossier_text.contains("已选牌轨") and dossier_text.contains("查看卡牌线索") and dossier_text.contains("已选匿名牌证据链") and dossier_text.contains("出价记录") and dossier_text.contains("余波线索") and dossier_text.contains("私人推理") and dossier_text.contains("回到牌轨") and dossier_text.contains("竞猜") and dossier_text.contains("卡牌详情"), "runtime track dossier action opens the intel dossier with the selected anonymous card evidence chain focused and track/guess/detail paths")
+		_expect(menu_title_label != null and menu_title_label.text == "情报档案" and dossier_text.contains("已选牌轨") and dossier_text.contains("查看卡牌线索") and dossier_text.contains("已选牌轨证据链") and dossier_text.contains("出价记录") and dossier_text.contains("余波线索") and dossier_text.contains("私人推理") and dossier_text.contains("回到牌轨") and dossier_text.contains("竞猜") and dossier_text.contains("卡牌详情"), "runtime track dossier action opens the intel dossier with the selected public-track evidence chain focused and track/guess/detail paths")
 		var dossier_guess_button := _find_visible_button_containing(menu_preview_box, "竞猜")
 		_expect(dossier_guess_button != null, "runtime focused IntelDossier exposes a guess path back to the selected public-track card")
 		if dossier_guess_button != null:
@@ -2549,7 +2549,7 @@ func _check_viewmodel_contracts() -> void:
 		"deep_links": [{"id": "codex_region", "label": "区域详情"}],
 	})
 	var table: Variant = table_script.new().apply_dictionary({
-		"card_track": [{"label": "匿名牌", "slot": 1, "state": "current", "cost": "¥80"}],
+		"card_track": [{"label": "公开牌", "slot": 1, "state": "current", "cost": "¥80"}],
 		"district": district.to_ui_dictionary(),
 		"planet": {
 			"title": "星球赌桌",
@@ -2627,7 +2627,7 @@ func _check_viewmodel_contracts() -> void:
 	})
 	var public_track: Variant = public_track_script.new().apply_entries([{
 		"id": "track_42",
-		"label": "匿名牌",
+		"label": "公开牌",
 		"slot": 1,
 		"state": "current",
 		"cost": "¥80",
@@ -2692,7 +2692,7 @@ func _check_viewmodel_contracts() -> void:
 	var public_track_entry: Dictionary = public_track.to_ui_array()[0] if public_track.to_ui_array().size() > 0 and public_track.to_ui_array()[0] is Dictionary else {}
 	var public_track_actions: Array = public_track_entry.get("actions", []) if public_track_entry.get("actions", []) is Array else []
 	var public_track_deep_links: Array = public_track_entry.get("deep_links", []) if public_track_entry.get("deep_links", []) is Array else []
-	_expect(public_track.to_ui_array().size() == 1 and public_track_entry.get("owner_hint") == "匿名", "PublicTrackSnapshot keeps anonymous ownership hints")
+	_expect(public_track.to_ui_array().size() == 1 and public_track_entry.get("owner_hint") == "待猜", "PublicTrackSnapshot keeps hidden ownership as player-facing guess hints")
 	_expect(int(public_track_entry.get("resolution_id", -1)) == 42 and public_track_entry.get("card_name") == "orbital_finance_i" and public_track_entry.get("select_action") == "track_select_42" and public_track_entry.get("open_action") == "track_open_orbital_finance_i", "PublicTrackSnapshot preserves clickable card-track identity and actions")
 	_expect(_action_list_has_id(public_track_actions, "track_select_42") and _action_list_has_id(public_track_actions, "track_intel_42") and _action_list_has_id(public_track_deep_links, "track_intel_42") and _action_list_has_id(public_track_deep_links, "track_open_orbital_finance_i"), "PublicTrackSnapshot keeps track actions and intel/detail links as data-only UI commands")
 	var planet_ui: Dictionary = planet.to_ui_dictionary()
@@ -3431,7 +3431,7 @@ func _check_intel_dossier_board_component() -> void:
 		"kpis": [
 			{"title": "城市标注", "value": "2/5", "meta": "全对+300｜全错-120", "accent": Color("#38bdf8"), "tooltip": "城市归属标注"},
 			{"title": "待查城市", "value": "3", "meta": "优先看高GDP/仓储/断路", "accent": Color("#facc15"), "tooltip": "待查城市"},
-			{"title": "匿名牌", "value": "4", "meta": "牌轨归属/条件", "accent": Color("#f472b6"), "tooltip": "匿名牌轨"},
+			{"title": "牌轨牌", "value": "4", "meta": "归属/条件", "accent": Color("#f472b6"), "tooltip": "公开牌轨"},
 			{"title": "公开资金线索", "value": "2", "meta": "怪兽受伤/仓储风险1", "accent": Color("#fb7185"), "tooltip": "公开线索"},
 		],
 		"actions": [
@@ -3440,9 +3440,9 @@ func _check_intel_dossier_board_component() -> void:
 			{"id": "track_open_orbital_finance_i", "label": "卡牌详情", "accent": Color("#f472b6"), "tooltip": "打开卡牌详情"},
 		],
 		"clues": [
-			{"title": "已选匿名牌证据链", "lines": ["牌槽证据｜#42｜竞拍1｜业主透镜｜归属未知", "出牌条件｜轨迹墨水流动≥2", "目标线索｜区域：雾港", "出价记录｜锁定报价¥80", "余波线索｜金融｜T+12.0s｜GDP跳变", "私人推理｜尚未押注"], "accent": Color("#f472b6"), "tooltip": "已选匿名牌", "line_limit": 6},
+			{"title": "已选牌轨证据链", "lines": ["牌槽证据｜#42｜竞拍1｜业主透镜｜归属待猜", "出牌条件｜轨迹墨水流动≥2", "目标线索｜区域：雾港", "出价记录｜锁定报价¥80", "余波线索｜金融｜T+12.0s｜GDP跳变", "私人推理｜尚未押注"], "accent": Color("#f472b6"), "tooltip": "已选牌轨", "line_limit": 6},
 			{"title": "城市嫌疑", "lines": ["雾港｜优先88｜标P2/高｜GDP48｜仓储"], "accent": Color("#38bdf8"), "tooltip": "城市嫌疑"},
-			{"title": "匿名牌轨", "lines": ["业主透镜｜归属未知｜需轨迹墨水"], "accent": Color("#f472b6"), "tooltip": "匿名牌轨"},
+			{"title": "牌轨线索", "lines": ["业主透镜｜归属待猜｜需轨迹墨水"], "accent": Color("#f472b6"), "tooltip": "公开牌轨"},
 			{"title": "怪兽资金", "lines": ["怪1受伤，疑似牵连仓储"], "accent": Color("#fb7185"), "tooltip": "怪兽资金"},
 			{"title": "仓储/做空靶标", "lines": ["晶尘仓储绑定雾港"], "accent": Color("#fb923c"), "tooltip": "仓储风险"},
 			{"title": "城市公开线索", "lines": ["雾港出现合约收入跳变"], "accent": Color("#4ade80"), "tooltip": "公开线索"},
@@ -3457,7 +3457,7 @@ func _check_intel_dossier_board_component() -> void:
 	_expect(board.find_child("IntelDossierActionRow", true, false) != null, "IntelDossierBoard owns a focused anonymous-card action row")
 	_expect(board.find_child("IntelDossierClueGrid", true, false) != null and board.find_child("IntelDossierClueCard", true, false) != null and board.find_child("IntelDossierClueLine", true, false) != null, "IntelDossierBoard renders clue cards")
 	var board_text := _node_tree_text(board)
-	_expect(board_text.contains("已选匿名牌证据链") and board_text.contains("出价记录") and board_text.contains("余波线索") and board_text.contains("私人推理") and board_text.contains("回到牌轨") and board_text.contains("竞猜") and board_text.contains("卡牌详情"), "IntelDossierBoard can render a selected anonymous-card evidence chain with bid, aftermath, private-note lines, and track/guess/detail paths")
+	_expect(board_text.contains("已选牌轨证据链") and board_text.contains("出价记录") and board_text.contains("余波线索") and board_text.contains("私人推理") and board_text.contains("回到牌轨") and board_text.contains("竞猜") and board_text.contains("卡牌详情"), "IntelDossierBoard can render a selected public-track evidence chain with bid, aftermath, private-note lines, and track/guess/detail paths")
 	for label_text in ["回到牌轨", "竞猜", "卡牌详情"]:
 		var action_button := _find_visible_button_containing(board, label_text)
 		if action_button != null:

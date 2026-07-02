@@ -3,6 +3,70 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜运行期数值梯度与规则漏洞补洞
+
+- 追加收尾：把运行期平衡从 `main.gd` 继续拆出独立模块，避免后续把所有公式堆回主控脚本：
+  - `scripts/balance/movement_balance_model.gd`：星球尺寸、区域数量/面积、怪兽移动 m/s、军队移动 m/s。
+  - `scripts/balance/combat_balance_model.gd`：怪兽攻击压力、普通/光线/投掷/冲锋/爆炸击退距离与 0.5 秒冲击窗口。
+  - `scripts/balance/environment_balance_model.gd`：天气状态、市场刷新、天气预报、经济波动因果函数。
+  - `scripts/balance/runtime_balance_model.gd` 现在作为 dev-only hub 汇总这些模型，`main.gd` 只保留 thin wrapper。
+- 新增独立文档：
+  - `docs/campaign_chapter_settings.md`：战役章节字段、scenario/runtime fixture、visual_events、RewardPanel/MatchRecapPanel、隐私边界。
+  - `docs/global_environment_balance.md`：天气状态、市场刷新、预报窗口、商品价格因果链、经济波动函数。
+  - `docs/developer_manual.md`：当前项目方向、隐藏信息边界、文件分层、balance 模型、测试命令、Git 工作流和常见坑。
+- 新硬指标：
+  - 普通怪兽/军队约 10 秒离开一个区域，移动按米每秒线性计算。
+  - 飞行怪兽约 10x 普通速度且不造成普通践踏；海洋怪兽约 5–8x；定着怪兽可近乎不动。
+  - 普通近战击退约 0.85 个区域半径，默认 0.5 秒完成；光线/投掷/冲锋/爆炸拥有独立 profile。
+  - 市场刷新 30–60 秒；天气提前预报 60–180 秒；一次天气影响 1–5 个区域。
+- 本轮引入运行期平衡审计，不进入玩家主 UI，只给测试、开发日志和后续 AI/模拟器使用：
+  - `data/balance/runtime_balance_targets.json` 固化胜利目标金额、参考 GDP/min、价格档位和怪兽伤害资金池锚点。
+  - `docs/runtime_balance_report.md` 记录卡牌价格梯度、胜利目标金额梯度、参考游戏时长、怪兽伤害与金额比例。
+  - `scripts/main.gd` 通过 `_runtime_balance_audit_report()`、`_runtime_balance_card_feature_matrix()`、`_skill_balance_feature_vector()`、`_skill_balance_score_breakdown()` 等 wrapper 统一读取独立 balance model，方便之后做卡牌平衡和 AI 智能时统一读字段。
+- 规则漏洞修正：
+  - 深度 I 胜利现金目标上调并改为 `base + step + quadratic` 梯度，避免开局一城后过快进入终局。
+  - 卡牌购买价仍按家族 I 级锚定，但现在读取现金、GDP、期货、军队、互动、怪兽等字段做购买价修正。
+  - 怪兽受伤导致召唤者输钱时，只按实际损失 HP 结算；过量伤害不再放大赔付和赌局伤害统计。
+- 可玩性意义：
+  - 首局会留下更完整的“首召怪兽 → 建城 → 买牌 → 出牌 → 怪兽压力 → 终局冲刺”空间。
+  - 高杠杆金融、军队、拆牌、怪兽牌不再和基础移动牌价格过近。
+  - 怪兽战斗仍能暴露归属和制造逆风点，但不会因 overkill 产生不合理金钱爆炸。
+
+### 本轮验证
+
+- 新增 `tests/runtime_balance_report_test.gd`，覆盖运行期平衡报告、硬函数、现金目标、卡牌价格和怪兽过量伤害。
+- `tests/runtime_balance_report_test.gd` 已通过，覆盖 movement/combat/environment 拆分、星球区域尺度、怪兽/军队移动、击退 profile、天气/市场刷新和隐藏在 dev-only balance hub 的统计入口。
+- 本轮最终验证：
+  - `tests/runtime_balance_report_test.gd` 通过。
+  - `tests/ui_text_smoke_test.gd` 通过。
+  - `tests/visual_snapshot.gd` 通过。
+  - `tests/layout_scene_smoke_test.gd` 通过。
+  - `tests/smoke_test.gd --check-only` 通过。
+  - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜牌轨文案改为“待猜”状态
+
+- 本轮继续降低主桌信息密度，重点处理牌轨和竞价区反复强调“匿名”的问题：
+  - `PublicTrackSnapshot.HIDDEN_OWNER_TEXT` 从“匿名”改为“待猜”，tooltip 里显示“归属待猜”。
+  - 运行时顶部牌轨、空牌槽、教学牌轨、归属竞猜、线索档案证据链统一改用“公开牌 / 待猜 / 已选牌轨证据链”等玩家向短语。
+  - 当前玩家自己的牌轨标记从“我的展示中匿名牌 / 我的历史匿名牌 / 我的候补匿名牌”改为“我的展示牌 / 我的历史牌 / 我的候补牌”。
+  - FirstRunCoach 的牌轨步骤从“看这张匿名牌留下什么线索”改为“看这张牌留下什么线索”。
+  - `tests/ui_text_smoke_test.gd`、`tests/visual_snapshot.gd`、`tests/layout_scene_smoke_test.gd`、`tests/smoke_test.gd` 同步更新，保护“公开牌可猜归属 / 待猜”状态词。
+- 可玩性意义：
+  - 隐藏归属规则不变，但主桌不再像规则说明书一样反复强调“匿名”。
+  - 玩家看到的是桌面状态：这张牌公开了、归属待猜、可以竞猜、可以看线索档案。
+  - 牌轨更接近电子桌游的历史/市场轨道，而不是 debug 风格的机制标签。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/playtest_readability_gate_test.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `play_table_1600x960.png`，确认主桌牌轨/竞价区不再常驻“匿名”短标签。
+
 ## 2026-07-03｜试玩骨架与卡面识别锚点
 
 - 本轮按“能做骨架的地方都要做”的方向继续收口，但没有改规则、结算或卡牌数据：

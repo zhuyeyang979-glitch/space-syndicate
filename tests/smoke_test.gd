@@ -491,7 +491,7 @@ func _run() -> void:
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
 	_expect(_verify_area_trade_contract_card_variants(main), "area contract card families cover selected, fixed, auto, multi-product, and punitive terms")
-	_expect(String(main.call("_card_price_tier_text", premium_card_price)) == "进阶档", "card price maps into an explicit displayed price tier")
+	_expect(["高阶档", "旗舰档"].has(String(main.call("_card_price_tier_text", premium_card_price))), "high-leverage economy cards map into an explicit non-basic price tier")
 	_expect(_verify_monster_region_card_pricing(main), "monster landing regions discount card purchases while adjacent regions keep base price")
 	_expect(_verify_reacquired_card_upgrade_rules(main), "reacquiring an owned card upgrades its family and stops at rank IV")
 	_expect(_verify_private_discard_purchase_flow(main), "full-hand purchases require a private discard choice without leaking hand size, card names, or discard details")
@@ -5216,6 +5216,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 		return false
 	var upgraded_actor := after_monsters[0] as Dictionary
 	var total_after_upgrade := int(upgraded_actor.get("owner_damage_cash_total", 0))
+	var expected_total_after_upgrade := int(main.call("_owner_damage_cash_total_for_rank", 2))
 	var active_bound_after := _active_bound_skill_count_for_uid(after_players, owner, monster_uid)
 	var upgrade_ok := upgraded \
 		and after_monsters.size() == monsters.size() \
@@ -5227,7 +5228,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 		and is_equal_approx(float(upgraded_actor.get("duration", 0.0)), expected_duration) \
 		and is_equal_approx(float(upgraded_actor.get("remaining_time", 0.0)), expected_duration) \
 		and not bool(upgraded_actor.get("owner_revealed", true)) \
-		and total_after_upgrade > 1000 \
+		and total_after_upgrade == expected_total_after_upgrade \
 		and int(upgraded_actor.get("owner_damage_cash_lost", -1)) == 0 \
 		and int(upgraded_actor.get("owner_damage_cash_pool", -1)) == total_after_upgrade \
 		and int(upgraded_actor.get("last_owner_damage_cash_loss", -1)) == 0 \
@@ -8553,7 +8554,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	var overlay := main.get("card_resolution_overlay") as Control
 	result["active_overlay_badges_visible"] = not active_after_auction.is_empty() \
 		and overlay != null \
-		and _container_label_text_contains(overlay, "归属未知") \
+		and _container_label_text_contains(overlay, "归属待猜") \
 		and _container_label_text_contains(overlay, "小费") \
 		and not _container_label_text_contains(overlay, "公开归属标签｜玩家")
 	result["active_overlay_requirement_snapshot_visible"] = not active_after_auction.is_empty() \
@@ -8597,7 +8598,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		main.set("selected_player", owner_for_overlay)
 		main.call("_show_card_resolution_overlay", active_after_auction, float(main.get("card_resolution_timer")))
 		result["active_overlay_my_badge_visible"] = overlay != null \
-			and _container_label_text_contains(overlay, "我的展示中匿名牌")
+			and _container_label_text_contains(overlay, "我的展示牌")
 	main.set("selected_player", 3)
 	main.call("_show_card_resolution_overlay", active_after_auction, float(main.get("card_resolution_timer")))
 	main.call("_refresh_ui")
@@ -8696,16 +8697,16 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		and economy_aftermath_text.contains("最近卡牌余波") \
 		and economy_aftermath_text.contains("线索:") \
 		and economy_aftermath_text.contains(first_aftermath_clue) \
-		and economy_aftermath_text.contains("归属未知")
+		and economy_aftermath_text.contains("归属待猜")
 	var second_tip_clue := String(main.call("_card_resolution_tip_clue_text", history[1] as Dictionary)) if history.size() >= 2 else ""
 	result["tip_payment_clues_visible"] = history.size() >= 2 \
 		and second_tip_clue.contains("已私密支付") \
 		and second_tip_clue.contains("轨道#") \
-		and second_tip_clue.contains("身份仍匿名") \
+		and second_tip_clue.contains("身份待猜") \
 		and track != null \
 		and economy_aftermath_text.contains("竞价:") \
 		and economy_aftermath_text.contains("已私密支付") \
-		and economy_aftermath_text.contains("身份仍匿名")
+		and economy_aftermath_text.contains("身份待猜")
 	var track_scroll := _public_track_scroll(main)
 	if not history.is_empty():
 		var overflow_history := history.duplicate(true)
@@ -8767,7 +8768,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		result["inference_board_card_requirement_visible"] = inference_with_requirement.contains("卡牌条件反推") \
 			and inference_with_requirement.contains("活体芯片流动≥2") \
 			and (inference_with_requirement.contains("我方满足") or inference_with_requirement.contains("我方不足")) \
-			and inference_with_requirement.contains("归属未知") \
+			and inference_with_requirement.contains("归属待猜") \
 			and inference_with_requirement.contains("只对照我方当前流动")
 		main.set("resolved_card_history", history)
 		var wrong_guesser_before: int = int((after_correct_players[1] as Dictionary).get("cash", 0))

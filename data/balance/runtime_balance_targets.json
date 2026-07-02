@@ -1,0 +1,158 @@
+{
+  "version": "runtime_balance_v1",
+  "purpose": "Runtime-facing balance anchors for victory cash targets, card purchase prices, game-length expectations, planet/region scale, movement, knockback, global environment refreshes, and monster damage-to-cash exposure.",
+  "source_scripts": [
+    "res://scripts/balance/runtime_balance_model.gd",
+    "res://scripts/balance/movement_balance_model.gd",
+    "res://scripts/balance/combat_balance_model.gd",
+    "res://scripts/balance/environment_balance_model.gd"
+  ],
+  "starting_cash": 2000,
+  "city_build_cost": 600,
+  "city_final_value": 700,
+  "reference_city_gdp_per_minute": 88,
+  "target_game_length": {
+    "min_seconds": 1800,
+    "max_seconds": 3600,
+    "base_seconds": 1800,
+    "depth_step_seconds": 360,
+    "design_note": "Each run should land roughly between 30 and 60 minutes. Depth I anchors around 30 minutes; late roguelike depths approach 60 minutes."
+  },
+  "victory_goal": {
+    "formula": "expected_city_assets + expected_engine_gdp_per_minute * target_game_seconds / 60",
+    "goals_by_depth": [
+      {"depth": 1, "roman": "I", "cash_goal": 4740, "target_minutes": 30, "expected_city_count": 1, "expected_minutes_to_goal": 30.0},
+      {"depth": 2, "roman": "II", "cash_goal": 8720, "target_minutes": 36, "expected_city_count": 2, "expected_minutes_to_goal": 36.0},
+      {"depth": 3, "roman": "III", "cash_goal": 14060, "target_minutes": 42, "expected_city_count": 3, "expected_minutes_to_goal": 42.0},
+      {"depth": 4, "roman": "IV", "cash_goal": 20830, "target_minutes": 48, "expected_city_count": 4, "expected_minutes_to_goal": 48.0},
+      {"depth": 5, "roman": "V", "cash_goal": 29120, "target_minutes": 54, "expected_city_count": 5, "expected_minutes_to_goal": 54.0},
+      {"depth": 6, "roman": "VI", "cash_goal": 39020, "target_minutes": 60, "expected_city_count": 6, "expected_minutes_to_goal": 60.0}
+    ],
+    "design_note": "Expected minutes are conservative baseline engine estimates using reference GDP only. Cards, futures, contract leverage, and monster disruption should shorten or lengthen real games."
+  },
+  "product_price_policy": {
+    "formula": "clamp(base_price + capped_delta, min_price, max_price)",
+    "delta_drivers": ["supply_score", "demand_score", "route_damage_score", "monster_pressure", "weather_modifier", "growth_multiplier", "volatility_noise"],
+    "single_refresh_caps": {
+      "stable": "12% of base price",
+      "normal": "22% of base price",
+      "volatile": "40% of base price"
+    }
+  },
+  "product_flow_policy": {
+    "formula": "60 * transport_score * route_flow_multiplier * route_damage_multiplier * weather_multiplier",
+    "unit": "flow units per minute",
+    "route_damage_multiplier": "1.0 - 0.16 * route_damage, clamped to 0.25-1.0"
+  },
+  "planet_region_policy": {
+    "region_counts_by_depth": [
+      {"depth": 1, "roman": "I", "region_min": 6, "region_max": 9},
+      {"depth": 2, "roman": "II", "region_min": 10, "region_max": 14},
+      {"depth": 3, "roman": "III", "region_min": 15, "region_max": 21},
+      {"depth": 4, "roman": "IV", "region_min": 22, "region_max": 30},
+      {"depth": 5, "roman": "V", "region_min": 31, "region_max": 41},
+      {"depth": 6, "roman": "VI", "region_min": 40, "region_max": 54}
+    ],
+    "average_region_area_target_m2": {"min": 65000, "max": 140000},
+    "design_note": "Planet scale, region count, and region radius feed monster/military movement and knockback. Movement should be linear meters-per-second, not instant region hops."
+  },
+  "movement_policy": {
+    "normal_monster_region_exit_target_seconds": 10,
+    "normal_region_exit_soft_bounds_seconds": {"min": 7, "max": 14},
+    "flying_monster_multiplier": 10,
+    "aquatic_monster_multiplier": 6.5,
+    "tunnel_monster_multiplier": 2.4,
+    "stationary_monster_multiplier_floor": 0.03,
+    "military_region_exit_target_seconds": 10,
+    "flying_rule": "flying movement has zero normal trample movement damage"
+  },
+  "combat_knockback_policy": {
+    "normal_knockback_duration_seconds": 0.5,
+    "duration_soft_bounds_seconds": {"min": 0.35, "max": 0.65},
+    "normal_melee_radius_ratio": 0.85,
+    "minimum_radius_ratio": 0.45,
+    "heavy_radius_ratio": 1.4,
+    "profile_multipliers": {
+      "melee": 1.0,
+      "beam": 1.85,
+      "throw": 2.25,
+      "charge": 1.65,
+      "blast": 1.45
+    },
+    "attack_pressure": "damage, range, knockback, close damage, and rank multiplier combine into attack_pressure_score"
+  },
+  "global_environment_policy": {
+    "market_refresh_seconds": {"min": 30, "max": 60},
+    "weather_forecast_seconds": {"min": 60, "max": 180},
+    "weather_zone_count": {"min": 1, "max": 5},
+    "weather_duration_seconds": {"min": 75, "max": 180},
+    "price_drivers": ["supply_score", "demand_score", "route_damage_score", "contract_pressure", "monster_pressure", "weather_modifier"],
+    "design_note": "Weather and market refreshes are public global state. News is not passive; news-like events should be created by player cards."
+  },
+  "card_price_policy": {
+    "rank_prices_use_family_i": true,
+    "field_adjustment_cap": {"min": -60, "max": 190},
+    "tier_thresholds": {
+      "basic": {"max": 125},
+      "advanced": {"min": 126, "max": 210},
+      "high": {"min": 211, "max": 305},
+      "flagship": {"min": 306}
+    },
+    "priced_fields": [
+      "cash",
+      "revenue_amount",
+      "contract_income",
+      "accept_cash",
+      "decline_cash_penalty",
+      "production_delta",
+      "transport_delta",
+      "consumption_delta",
+      "market_demand_pressure",
+      "market_supply_pressure",
+      "route_damage",
+      "repair_routes",
+      "damage",
+      "draw_amount",
+      "hp",
+      "fixed_skill_count",
+      "military_hp",
+      "military_damage",
+      "military_gdp_penalty",
+      "military_strike_route_damage",
+      "product_bet_multiplier",
+      "stockpile_units",
+      "gdp_bet_multiplier",
+      "gdp_bet_destroy_bonus",
+      "hand_discard_count",
+      "hand_steal_count",
+      "global_barrage_target_count",
+      "counter_strength"
+    ],
+    "discount_fields": [
+      "requires_warehouse_city",
+      "play_product",
+      "play_flow_required",
+      "product_bet_seconds",
+      "gdp_bet_seconds",
+      "play_cash_per_monster"
+    ]
+  },
+  "monster_owner_damage_cash": {
+    "damage_basis": "actual_hp_lost_not_overkill",
+    "base_pool": 700,
+    "rank_step": 170,
+    "pools_by_rank": {
+      "I": 700,
+      "II": 870,
+      "III": 1040,
+      "IV": 1210
+    },
+    "baseline_loss_examples": [
+      {"rank": "I", "hp_damage_ratio": 0.10, "cash_loss": 70},
+      {"rank": "II", "hp_damage_ratio": 0.10, "cash_loss": 87},
+      {"rank": "III", "hp_damage_ratio": 0.10, "cash_loss": 104},
+      {"rank": "IV", "hp_damage_ratio": 0.10, "cash_loss": 121},
+      {"rank": "IV", "hp_damage_ratio": 0.25, "cash_loss": 303}
+    ]
+  }
+}

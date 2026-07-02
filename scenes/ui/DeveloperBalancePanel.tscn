@@ -1,0 +1,44 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/developer_balance_panel.gd" id="2_script"]
+
+[node name="DeveloperBalancePanel" type="PanelContainer"]
+visible = false
+custom_minimum_size = Vector2(318, 112)
+offset_left = 18.0
+offset_top = 64.0
+offset_right = 336.0
+offset_bottom = 176.0
+mouse_filter = 1
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="DeveloperBalanceMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="DeveloperBalanceRows" type="VBoxContainer" parent="DeveloperBalanceMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="DeveloperBalanceTitle" type="Label" parent="DeveloperBalanceMargin/DeveloperBalanceRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "DEV BALANCE HUB"
+text_overrun_behavior = 3
+
+[node name="DeveloperBalanceSummary" type="Label" parent="DeveloperBalanceMargin/DeveloperBalanceRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "等待统计"
+autowrap_mode = 3
+
+[node name="DeveloperBalanceIssues" type="Label" parent="DeveloperBalanceMargin/DeveloperBalanceRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "约束：等待"
+autowrap_mode = 3

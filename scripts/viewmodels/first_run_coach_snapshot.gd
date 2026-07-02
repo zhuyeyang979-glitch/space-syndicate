@@ -128,13 +128,13 @@ func _stage_definition(stage: String) -> Dictionary:
 				"phase_label": "出牌",
 				"title": "打出一张手牌",
 				"body": "打一张可用手牌。",
-				"tooltip": "牌会公开进牌轨，出牌者仍匿名。",
+				"tooltip": "牌会公开进牌轨，牌主留给全桌推理。",
 			}
 		STAGE_INSPECT_TRACK:
 			return {
 				"phase_label": "牌轨",
 				"title": "看顶部公开牌轨",
-				"body": "看这张匿名牌留下什么线索。",
+				"body": "看这张牌留下什么线索。",
 				"tooltip": "牌轨是公共时间线：牌、事件、天气、赌局。",
 			}
 		STAGE_INSPECT_CLUES:

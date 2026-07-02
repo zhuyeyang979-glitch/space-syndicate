@@ -3,6 +3,7 @@ extends Control
 const MapViewScript := preload("res://scripts/map_view.gd")
 const CardArtViewScript := preload("res://scripts/card_art_view.gd")
 const MonsterArtViewScript := preload("res://scripts/monster_art_view.gd")
+const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 const TableSnapshotScript := preload("res://scripts/viewmodels/table_snapshot.gd")
 const CardCodexBrowserSnapshotScript := preload("res://scripts/viewmodels/card_codex_browser_snapshot.gd")
 const CardCodexDetailSnapshotScript := preload("res://scripts/viewmodels/card_codex_detail_snapshot.gd")
@@ -89,8 +90,11 @@ const ROLE_RANDOM_INDEX := -1
 const ROGUELIKE_DEPTH_MIN := 1
 const ROGUELIKE_DEPTH_MAX := 6
 const DEFAULT_ROGUELIKE_DEPTH := 1
-const ROGUELIKE_CASH_GOAL_BASE := 2200
-const ROGUELIKE_CASH_GOAL_STEP := 1400
+const TARGET_GAME_LENGTH_MIN_SECONDS := 1800.0
+const TARGET_GAME_LENGTH_MAX_SECONDS := 3600.0
+const TARGET_GAME_LENGTH_BASE_SECONDS := 1800.0
+const TARGET_GAME_LENGTH_DEPTH_STEP_SECONDS := 360.0
+const BALANCE_EXPECTED_CITY_COUNT_MAX := 6
 const AI_CARD_DECISION_INTERVAL_SECONDS := 2.2
 const AI_AUCTION_REACTION_INTERVAL_SECONDS := 0.7
 const AI_INTEL_DECISION_INTERVAL_SECONDS := 5.5
@@ -273,7 +277,8 @@ const MILITARY_UNIT_HISTORY_LIMIT := 16
 const MILITARY_UNIT_COMMAND_COOLDOWN_SECONDS := 5.0
 const CARD_COUNTER_RESPONSE_SECONDS := 5.0
 const MONSTER_CARD_PLAY_CASH_PER_EXISTING := 100
-const MONSTER_OWNER_DAMAGE_CASH_POOL := 800
+const MONSTER_OWNER_DAMAGE_CASH_POOL := 700
+const MONSTER_OWNER_DAMAGE_CASH_RANK_STEP := 170
 const MONSTER_CARD_DURATION_BASE_SECONDS := 95.0
 const MONSTER_CARD_DURATION_RANK_STEP_SECONDS := 28.0
 const PRODUCT_PRICE_MIN := 26
@@ -1719,6 +1724,8 @@ var card_resolution_timer_bar: ProgressBar
 var card_resolution_timer_label: Label
 var bottom_countdown_overlay: Control
 var bottom_countdown_panel: PanelContainer
+var developer_balance_panel: Control
+var developer_balance_refresh_timer := 0.0
 var table_bgm_player: AudioStreamPlayer
 var table_sfx_players := {}
 var table_sfx_last_time := {}
@@ -1761,6 +1768,7 @@ func _ready() -> void:
 	_load_settings()
 	_load_campaign_progress_state()
 	_build_layout()
+	_build_developer_balance_greybox()
 	_build_table_audio()
 	_log("点击开局准备后确认玩家角色与起始怪兽牌；怪兽由怪兽卡匿名召唤，场上数量没有硬上限。")
 	_open_main_menu()
@@ -1898,6 +1906,11 @@ func _update_process_ui_refresh(delta: float) -> void:
 	if ui_full_refresh_timer <= 0.0:
 		_refresh_ui()
 		ui_full_refresh_timer = UI_FULL_REFRESH_SECONDS
+	if developer_balance_panel != null and developer_balance_panel.visible:
+		developer_balance_refresh_timer -= delta
+		if developer_balance_refresh_timer <= 0.0:
+			_refresh_developer_balance_greybox()
+			developer_balance_refresh_timer = UI_FULL_REFRESH_SECONDS
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1992,6 +2005,34 @@ func _runtime_overlay_parent() -> Node:
 		if host is Node:
 			return host
 	return self
+
+
+func _developer_balance_greybox_enabled() -> bool:
+	var value := OS.get_environment("SPACE_SYNDICATE_DEV_BALANCE").strip_edges().to_lower()
+	return ["1", "true", "yes", "on", "dev"].has(value)
+
+
+func _build_developer_balance_greybox() -> void:
+	if not _developer_balance_greybox_enabled() or developer_balance_panel != null:
+		return
+	var panel_scene := load("res://scenes/ui/DeveloperBalancePanel.tscn") as PackedScene
+	if panel_scene == null:
+		return
+	var panel := panel_scene.instantiate() as Control
+	if panel == null:
+		return
+	panel.name = "DeveloperBalancePanel"
+	panel.visible = true
+	developer_balance_panel = panel
+	_runtime_overlay_parent().add_child(panel)
+	_refresh_developer_balance_greybox()
+
+
+func _refresh_developer_balance_greybox() -> void:
+	if developer_balance_panel == null or not developer_balance_panel.visible:
+		return
+	if developer_balance_panel.has_method("set_report"):
+		developer_balance_panel.call("set_report", _balance_statistics_hub_report(true))
 
 
 func _uses_split_runtime_table() -> bool:
@@ -2837,12 +2878,12 @@ func _build_card_resolution_track(page: VBoxContainer) -> void:
 	var title := _plain_label("牌轨", 7, Color("#fef3c7"))
 	title.name = "CardResolutionTtaMarketTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	title.tooltip_text = "电子桌游式公共时间轴：匿名卡牌可竞猜归属，公共事件只读。"
+	title.tooltip_text = "电子桌游式公共时间轴：公开牌可猜归属，公共事件只读。"
 	legend_stack.add_child(title)
 	var hint := _plain_label("拖看｜悬停", 5, Color("#94a3b8"))
 	hint.name = "CardResolutionTtaRailHint"
 	hint.autowrap_mode = TextServer.AUTOWRAP_OFF
-	hint.tooltip_text = "发光匿名卡槽可竞猜；事件槽只显示公开结果。"
+	hint.tooltip_text = "发光牌槽可竞猜；事件槽只显示公开结果。"
 	legend_stack.add_child(hint)
 	var header := HFlowContainer.new()
 	card_resolution_track_legend_header = header
@@ -3348,7 +3389,7 @@ func _add_card_resolution_track_ghost_slot(slot_index: int, show_idle_label: boo
 	var panel := PanelContainer.new()
 	panel.name = "CardResolutionTtaGhostSlot"
 	panel.custom_minimum_size = Vector2(CARD_TRACK_SLOT_WIDTH, CARD_TRACK_EMPTY_SLOT_HEIGHT if compact_empty else CARD_TRACK_SLOT_HEIGHT)
-	panel.tooltip_text = "空牌槽：匿名牌进入后会占用这里；悬停真牌看详情，双击真牌进图鉴。"
+	panel.tooltip_text = "空牌槽：打出的牌进入后会占用这里；悬停真牌看详情，双击真牌进图鉴。"
 	_connect_card_resolution_track_hover(panel)
 	var style := StyleBoxFlat.new()
 	var accent := Color("#334155")
@@ -3778,7 +3819,7 @@ func _card_resolution_track_entry_tooltip(entry: Dictionary, state_text: String)
 	var card_name := String(skill.get("name", "卡牌"))
 	var card_label := _card_display_name(card_name)
 	if card_label == "":
-		card_label = "匿名卡牌"
+		card_label = "公开牌"
 	var lines := [
 		"%s｜%s" % [state_text, card_label],
 		"效果：%s" % _short_card_text(_skill_display_text(skill), 68),
@@ -3831,11 +3872,11 @@ func _card_resolution_track_badge_texts(entry: Dictionary, state_text: String, b
 		badges.append("最高公开报价")
 	if selected_player >= 0 and selected_player < players.size() and int(entry.get("player_index", -1)) == selected_player and not owner_revealed:
 		if state_text.begins_with("已结算"):
-			badges.append("我的历史匿名牌")
+			badges.append("我的历史牌")
 		elif state_text.begins_with("当前展示"):
-			badges.append("我的展示中匿名牌")
+			badges.append("我的展示牌")
 		else:
-			badges.append("我的候补匿名牌")
+			badges.append("我的候补牌")
 	var guessers: Array = entry.get("guessers", []) if entry.get("guessers", []) is Array else []
 	if selected_player >= 0 and guessers.has(selected_player) and not owner_revealed:
 		badges.append("已竞猜")
@@ -3945,7 +3986,7 @@ func _card_resolution_track_badge_color(text: String) -> Color:
 		return Color("#fde68a")
 	if text.contains("成交") or text.contains("小费"):
 		return Color("#fde68a")
-	if text.contains("归属未知"):
+	if text.contains("归属未知") or text.contains("归属待猜"):
 		return Color("#94a3b8")
 	if text.contains("公开归属"):
 		return Color("#fef3c7")
@@ -3978,9 +4019,9 @@ func _card_resolution_overlay_badge_texts(entry: Dictionary) -> Array:
 		var owner_label := String(entry.get("public_owner_label", "归属：已公开")).replace("归属：", "")
 		badges.append("公开归属标签｜%s" % owner_label)
 	elif selected_player >= 0 and selected_player < players.size() and owner_index == selected_player:
-		badges.append("我的展示中匿名牌")
+		badges.append("我的展示牌")
 	else:
-		badges.append("归属未知")
+		badges.append("归属待猜")
 	var requirement_badge := _card_resolution_requirement_badge_text(entry)
 	if requirement_badge != "":
 		badges.append(requirement_badge)
@@ -6848,7 +6889,7 @@ func _focused_intel_card_action_snapshots(entry: Dictionary) -> Array:
 			"id": "track_return_%d" % resolution_id,
 			"label": "回到牌轨",
 			"accent": Color("#38bdf8"),
-			"tooltip": "关闭情报档案，回到主桌并保持这张匿名牌为已选牌轨。",
+			"tooltip": "关闭情报档案，回到主桌并保持这张牌为已选牌轨。",
 		},
 		{
 			"id": "track_guess_%d" % resolution_id,
@@ -6862,7 +6903,7 @@ func _focused_intel_card_action_snapshots(entry: Dictionary) -> Array:
 			"id": "track_open_%s" % card_name,
 			"label": "卡牌详情",
 			"accent": Color("#f472b6"),
-			"tooltip": "打开这张匿名牌对应的卡牌详情，用公开条件、目标和结算演出来反推来源。",
+			"tooltip": "打开这张牌对应的卡牌详情，用公开条件、目标和结算演出来反推来源。",
 		})
 	return actions
 
@@ -6889,17 +6930,17 @@ func _focused_intel_card_evidence_card(entry: Dictionary) -> Dictionary:
 	if entry.is_empty():
 		return {}
 	return {
-		"title": "已选匿名牌证据链",
+		"title": "已选牌轨证据链",
 		"lines": _focused_intel_card_evidence_lines(entry),
 		"accent": Color("#f472b6"),
-		"tooltip": "只整理这张匿名牌的公开状态、条件、目标、出价、余波和当前玩家自己的推理状态。",
+		"tooltip": "只整理这张牌的公开状态、条件、目标、出价、余波和当前玩家自己的推理状态。",
 		"line_limit": 6,
 	}
 
 
 func _focused_intel_card_evidence_lines(entry: Dictionary) -> Array:
 	var card_text := String(entry.get("card", "匿名卡"))
-	var status_text := String(entry.get("status", "归属未知"))
+	var status_text := String(entry.get("status", "归属待猜"))
 	var track_state := String(entry.get("track_state", "牌轨"))
 	var resolution_id := int(entry.get("resolution_id", -1))
 	var id_text := "#%d" % resolution_id if resolution_id >= 0 else "#?"
@@ -6928,7 +6969,7 @@ func _intel_card_guess_time_text(time_value: float) -> String:
 
 
 func _focused_intel_card_private_note(entry: Dictionary) -> String:
-	var status_text := String(entry.get("status", "归属未知"))
+	var status_text := String(entry.get("status", "归属待猜"))
 	if status_text.contains("我已查明") or status_text.contains("我已押注") or status_text.contains("我打出的牌"):
 		return "%s；这是当前玩家自己的视角，不向其他玩家公开。" % status_text
 	if bool(entry.get("revealed", false)):
@@ -6940,8 +6981,8 @@ func _intel_dossier_kpi_snapshots(stats: Dictionary, card_entries: Array, monste
 	return [
 		{"title": "城市标注", "value": "%d/%d" % [int(stats.get("guessed", 0)), int(stats.get("total_foreign", 0))], "meta": "全对%s｜全错%s" % [_signed_int_text(int(stats.get("best_cash", 0))), _signed_int_text(int(stats.get("worst_cash", 0)))], "accent": Color("#38bdf8"), "tooltip": "陌生城市业主标注会在终局结算。"},
 		{"title": "待查城市", "value": "%d" % int(stats.get("unmarked", 0)), "meta": "优先看高GDP/仓储/断路", "accent": Color("#facc15"), "tooltip": "未标注、高价值或有公开线索的城市更值得查。"},
-		{"title": "匿名牌", "value": "%d" % card_entries.size(), "meta": "牌轨归属/条件", "accent": Color("#f472b6"), "tooltip": "匿名卡可通过商品门槛、目标、报价和结果反推。"},
-		{"title": "公开资金线索", "value": "%d" % monster_entries.size(), "meta": "怪兽受伤/仓储风险%d" % warehouse_entries.size(), "accent": Color("#fb7185"), "tooltip": "怪兽资金损失和仓储城市会暴露匿名经济压力。"},
+		{"title": "待猜牌", "value": "%d" % card_entries.size(), "meta": "牌轨归属/条件", "accent": Color("#f472b6"), "tooltip": "卡牌可通过商品门槛、目标、报价和结果反推。"},
+		{"title": "公开资金线索", "value": "%d" % monster_entries.size(), "meta": "怪兽受伤/仓储风险%d" % warehouse_entries.size(), "accent": Color("#fb7185"), "tooltip": "怪兽资金损失和仓储城市会暴露经济压力。"},
 	]
 
 
@@ -6974,12 +7015,12 @@ func _intel_board_card_lines(entries: Array) -> Array:
 		lines.append("%s%s｜%s｜%s｜%s" % [
 			focus_prefix,
 			String(entry.get("card", "匿名卡")),
-			_short_card_text(String(entry.get("status", "归属未知")), 18),
+			_short_card_text(String(entry.get("status", "归属待猜")), 18),
 			_short_card_text(String(entry.get("requirement", "条件未知")), 18),
 			_short_card_text(secondary_clue, 18),
 		])
 	if lines.is_empty():
-		lines.append("暂无匿名牌轨记录。")
+		lines.append("暂无待猜牌轨记录。")
 	return lines
 
 
@@ -7782,7 +7823,7 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 		var owner_revealed := bool(entry.get("public_owner_revealed", false))
 		var guessers: Array = entry.get("guessers", []) as Array
 		var known_owner := _private_known_card_owner_for_entry(viewer_index, entry)
-		var status := "归属未知，可押注¥%d" % _card_owner_guess_stake_for_player(viewer_index)
+		var status := "归属待猜，可押注¥%d" % _card_owner_guess_stake_for_player(viewer_index)
 		if owner_revealed:
 			status = String(entry.get("public_owner_label", "归属已公开"))
 		elif known_owner >= 0 and known_owner < players.size():
@@ -7790,7 +7831,7 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 		elif viewer_index == owner_index:
 			status = "我打出的牌｜仅当前视角可知"
 		elif viewer_index >= 0 and guessers.has(viewer_index):
-			status = "我已押注｜真实归属仍隐藏"
+			status = "我已押注｜真实归属待确认"
 		var time_value := float(entry.get("resolved_time", entry.get("queued_order", -1.0)))
 		var style_key := String(entry.get("aftermath_style", _card_resolution_effect_style(skill)))
 		entries.append({
@@ -7860,7 +7901,7 @@ func _intel_card_guess_line(entry: Dictionary) -> String:
 	var tip_text := "｜小费线索:%s" % tip if tip != "" else ""
 	return "%s｜%s｜条件:%s｜目标:%s%s" % [
 		String(entry.get("card", "匿名卡牌")),
-		String(entry.get("status", "归属未知")),
+		String(entry.get("status", "归属待猜")),
 		String(entry.get("requirement", "未知")),
 		String(entry.get("target", "目标未知")),
 		tip_text,
@@ -7985,16 +8026,16 @@ func _economy_card_aftermath_line(entry: Dictionary) -> String:
 	var resolved_time := float(entry.get("resolved_time", -1.0))
 	if resolved_time >= 0.0:
 		time_text = "T+%.1fs" % resolved_time
-	var owner_text := "归属已公开" if bool(entry.get("owner_known", false)) else "归属未知"
+	var owner_text := "归属已公开" if bool(entry.get("owner_known", false)) else "归属待猜"
 	var tip_clue := String(entry.get("tip_clue", ""))
 	var tip_text := "｜竞价:%s" % tip_clue if tip_clue != "" else ""
 	return "%s｜%s演出｜%s｜%s｜%s｜线索:%s%s" % [
 		time_text,
 		String(entry.get("style", "卡牌")),
-		String(entry.get("card", "匿名卡牌")),
+		String(entry.get("card", "卡牌")),
 		String(entry.get("target", "目标未知")),
 		owner_text,
-		String(entry.get("clue", "公开结果留下匿名推理痕迹")),
+		String(entry.get("clue", "公开结果留下推理痕迹")),
 		tip_text,
 	]
 
@@ -8272,7 +8313,7 @@ func _card_requirement_inference_text(entry: Dictionary, viewer_index: int) -> S
 	if skill.is_empty():
 		return ""
 	var card_label := _card_resolution_entry_card_label(entry)
-	var owner_text := "归属未知"
+	var owner_text := "归属待猜"
 	if bool(entry.get("public_owner_revealed", false)):
 		var owner_index := int(entry.get("player_index", -1))
 		if owner_index >= 0 and owner_index < players.size():
@@ -13940,10 +13981,14 @@ func _card_price(skill_name: String, district_index: int = -1, player_index: int
 		price_name = skill_name
 	var skill: Dictionary = _skill_definition(price_name)
 	var power_cost: int = maxi(2, int(skill.get("cost", 2)))
-	var price: int = CARD_PRICE_UNIT + (power_cost - 2) * CARD_PRICE_COST_STEP
+	var price: int = CARD_PRICE_UNIT + (power_cost - 2) * CARD_PRICE_COST_STEP + _skill_price_power_adjustment(skill)
 	if district_index >= 0:
 		price = int(round(float(price) * _district_card_price_multiplier(district_index, player_index)))
 	return int(max(CARD_MIN_PRICE, price))
+
+
+func _skill_price_power_adjustment(skill: Dictionary) -> int:
+	return int(_runtime_balance_model().call("skill_price_power_adjustment", skill))
 
 
 func _card_price_tier_text(price: int) -> String:
@@ -13954,6 +13999,330 @@ func _card_price_tier_text(price: int) -> String:
 	if price <= 305:
 		return "高阶档"
 	return "旗舰档"
+
+
+func _runtime_balance_model() -> RefCounted:
+	return RuntimeBalanceModelScript.new()
+
+
+func _runtime_balance_snapshot(sample_only: bool = true) -> Dictionary:
+	var cards := []
+	var names := _runtime_balance_sample_card_names() if sample_only else SKILL_CATALOG.keys()
+	for name_variant in names:
+		var card_name := String(name_variant)
+		if card_name == "" or not _skill_exists(card_name):
+			continue
+		var skill := _skill_definition(card_name)
+		if String(skill.get("name", "")) == "":
+			skill["name"] = card_name
+		var route_id := _card_development_route_id(skill)
+		cards.append({
+			"card_name": card_name,
+			"skill": skill,
+			"rank": _skill_rank(card_name),
+			"rank_label": _level_text(_skill_rank(card_name)),
+			"family": _skill_family(card_name),
+			"price": _card_price(card_name),
+			"price_anchor": "%s1" % _skill_family(card_name),
+			"route_id": route_id,
+			"route_label": _development_route_label(route_id),
+		})
+	var products := []
+	_ensure_product_market_catalog()
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		var profile := _product_profile(product_name)
+		var market := _product_market_entry(product_name)
+		products.append({
+			"name": product_name,
+			"category": String(profile.get("category", "未分类")),
+			"terrain": String(profile.get("terrain", "通用")),
+			"base_price": int(market.get("base_price", market.get("price", 100))),
+			"price": int(market.get("price", market.get("base_price", 100))),
+			"volatility": int(market.get("volatility", profile.get("volatility", 4))),
+		})
+	var monsters := []
+	for catalog_index in range(MONSTER_ROSTER.size()):
+		var entry := _catalog_entry(catalog_index)
+		monsters.append({
+			"name": String(entry.get("name", "怪兽%d" % catalog_index)),
+			"rank": int(entry.get("rank", 1)),
+			"move": float(entry.get("move", MONSTER_RAMPAGE_MOVE_METERS)),
+			"movement_mode": String(entry.get("movement_mode", "walk")),
+			"movement_traits": entry.get("movement_traits", []),
+			"terrain_move_multiplier": 1.0,
+			"terrain_move_multipliers": entry.get("terrain_move_multiplier", {}),
+			"move_damage": int(entry.get("move_damage", AUTO_MONSTER_DEFAULT_MOVE_DAMAGE)),
+			"actions": entry.get("actions", []),
+		})
+	var ai_routes := []
+	for route_variant in _development_route_archetypes():
+		if route_variant is Dictionary:
+			ai_routes.append(route_variant)
+	return {
+		"cards": cards,
+		"products": products,
+		"monsters": monsters,
+		"ai_routes": ai_routes,
+		"region_rows": _runtime_balance_region_rows(),
+		"sample_only": sample_only,
+		"model_version": "runtime_balance_v1",
+	}
+
+
+func _runtime_balance_region_rows() -> Dictionary:
+	var rows := {}
+	for depth in range(ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX + 1):
+		var profile := _roguelike_planet_profile(depth)
+		rows[depth] = {
+			"min": int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
+			"max": int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
+		}
+	return rows
+
+
+func _runtime_balance_reference_city_gdp_per_minute() -> int:
+	return int(_runtime_balance_model().call("reference_city_gdp_per_minute"))
+
+
+func _balance_expected_city_count_for_depth(depth: int = -1) -> int:
+	return int(_runtime_balance_model().call("expected_city_count_for_depth", configured_roguelike_depth if depth < 0 else depth))
+
+
+func _balance_target_game_seconds(depth: int = -1) -> float:
+	return float(_runtime_balance_model().call("target_game_seconds", configured_roguelike_depth if depth < 0 else depth))
+
+
+func _balance_target_game_window_seconds(depth: int = -1) -> Dictionary:
+	return _runtime_balance_model().call("target_game_window_seconds", configured_roguelike_depth if depth < 0 else depth) as Dictionary
+
+
+func _balance_expected_engine_gdp_per_minute(depth: int = -1, city_count: int = -1) -> int:
+	return int(_runtime_balance_model().call("expected_engine_gdp_per_minute", configured_roguelike_depth if depth < 0 else depth, city_count))
+
+
+func _balance_expected_city_asset_value(depth: int = -1, city_count: int = -1) -> int:
+	return int(_runtime_balance_model().call("expected_city_asset_value", configured_roguelike_depth if depth < 0 else depth, city_count))
+
+
+func _balance_victory_cash_goal_for_duration(depth: int = -1, target_seconds: float = -1.0) -> int:
+	return int(_runtime_balance_model().call("victory_cash_goal_for_duration", configured_roguelike_depth if depth < 0 else depth, target_seconds))
+
+
+func _balance_product_price_step_cap(volatility: int, base_price: int = 100) -> int:
+	return int(_runtime_balance_model().call("product_price_step_cap", volatility, base_price))
+
+
+func _balance_product_price_model(base_price: int, supply_score: int, demand_score: int, route_damage_score: int, monster_pressure: int = 0, weather_modifier: int = 0, volatility: int = 4, random_noise: float = 0.0, growth_multiplier: float = 1.0) -> Dictionary:
+	return _runtime_balance_model().call("product_price_model", base_price, supply_score, demand_score, route_damage_score, monster_pressure, weather_modifier, volatility, random_noise, growth_multiplier) as Dictionary
+
+
+func _balance_product_flow_speed_model(product_name: String = "", transport_score: float = 1.0, route_flow_multiplier: float = 1.0, route_damage: int = 0, weather_multiplier: float = 1.0) -> Dictionary:
+	return _runtime_balance_model().call("product_flow_speed_model", product_name, transport_score, route_flow_multiplier, route_damage, weather_multiplier) as Dictionary
+
+
+func _balance_monster_movement_speed_model(actor: Dictionary, target_index: int = -1, action_speed_mps: float = -1.0) -> Dictionary:
+	return _runtime_balance_model().call("monster_movement_speed_model", actor, _monster_terrain_move_multiplier(actor, target_index), action_speed_mps, _current_balance_region_radius_m(), 10.0) as Dictionary
+
+
+func _current_balance_region_size_model() -> Dictionary:
+	var region_count := districts.size()
+	if region_count <= 0:
+		var range := _balance_region_count_range_for_depth()
+		region_count = int(range.get("region_mid", maxi(MAP_REGION_COUNT_MIN, 1)))
+	return _runtime_balance_model().call("region_size_model", configured_roguelike_depth, region_count) as Dictionary
+
+
+func _current_balance_region_radius_m() -> float:
+	var model := _current_balance_region_size_model()
+	return maxf(1.0, float(model.get("avg_region_radius_m", 180.0)))
+
+
+func _auto_monster_movement_speed_mps(actor: Dictionary, target_index: int, action_speed_mps: float = -1.0) -> float:
+	var model := _balance_monster_movement_speed_model(actor, target_index, action_speed_mps)
+	return maxf(1.0, float(model.get("speed_mps", 18.0)))
+
+
+func _military_unit_movement_speed_mps(unit: Dictionary, target_index: int, command_speed_mps: float = -1.0) -> float:
+	var terrain_multiplier := _military_unit_terrain_move_multiplier(unit, target_index)
+	var model := _runtime_balance_model().call("military_movement_speed_model", unit, terrain_multiplier, command_speed_mps, _current_balance_region_radius_m()) as Dictionary
+	return maxf(0.5, float(model.get("speed_mps", 18.0)))
+
+
+func _monster_knockback_model(action_or_skill: Dictionary, actor: Dictionary = {}) -> Dictionary:
+	return _runtime_balance_model().call("monster_knockback_speed_model", action_or_skill, actor, _current_balance_region_radius_m(), 0.5) as Dictionary
+
+
+func _balance_monster_attack_model(action: Dictionary, actor: Dictionary = {}) -> Dictionary:
+	return _runtime_balance_model().call("monster_attack_model", action, actor) as Dictionary
+
+
+func _balance_system_constraint_report(depth: int = -1) -> Dictionary:
+	return _runtime_balance_model().call("balance_system_constraint_report", configured_roguelike_depth if depth < 0 else depth) as Dictionary
+
+
+func _runtime_balance_audit_report(sample_only: bool = true) -> Dictionary:
+	return _runtime_balance_model().call("runtime_balance_audit_report", _runtime_balance_snapshot(sample_only)) as Dictionary
+
+
+func _balance_statistics_hub_report(sample_only: bool = true) -> Dictionary:
+	return _runtime_balance_model().call("statistics_hub_report", _runtime_balance_snapshot(sample_only), sample_only) as Dictionary
+
+
+func _balance_card_statistics_report(sample_only: bool = true) -> Dictionary:
+	return _runtime_balance_model().call("balance_card_statistics_report", _runtime_balance_snapshot(sample_only), sample_only) as Dictionary
+
+
+func _balance_product_statistics_report() -> Dictionary:
+	return _runtime_balance_model().call("balance_product_statistics_report", _runtime_balance_snapshot(true)) as Dictionary
+
+
+func _balance_monster_statistics_report() -> Dictionary:
+	return _runtime_balance_model().call("balance_monster_statistics_report", _runtime_balance_snapshot(true)) as Dictionary
+
+
+func _balance_ai_statistics_report() -> Dictionary:
+	return _runtime_balance_model().call("balance_ai_statistics_report", _runtime_balance_snapshot(true)) as Dictionary
+
+
+func _balance_cross_system_constraint_report(game_length_rows: Array, card_report: Dictionary, product_report: Dictionary, monster_report: Dictionary, ai_report: Dictionary) -> Dictionary:
+	return _runtime_balance_model().call("balance_cross_system_constraint_report", game_length_rows, card_report, product_report, monster_report, ai_report) as Dictionary
+
+
+func _developer_balance_greybox_snapshot() -> Dictionary:
+	return _runtime_balance_model().call("developer_greybox_snapshot", _runtime_balance_snapshot(true), _developer_balance_greybox_enabled()) as Dictionary
+
+
+func _as_balance_array(value: Variant) -> Array:
+	return value as Array if value is Array else []
+
+
+func _runtime_balance_game_length_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_game_length_rows") as Array
+
+
+func _balance_region_count_range_for_depth(depth: int = -1) -> Dictionary:
+	return _runtime_balance_model().call("region_count_range_for_depth", configured_roguelike_depth if depth < 0 else depth) as Dictionary
+
+
+func _balance_planet_size_for_depth(depth: int = -1) -> Dictionary:
+	return _runtime_balance_model().call("planet_size_for_depth", configured_roguelike_depth if depth < 0 else depth) as Dictionary
+
+
+func _balance_region_size_model(depth: int = -1, region_count: int = -1) -> Dictionary:
+	return _runtime_balance_model().call("region_size_model", configured_roguelike_depth if depth < 0 else depth, region_count) as Dictionary
+
+
+func _runtime_balance_planet_geometry_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_planet_geometry_rows", _runtime_balance_snapshot(true)) as Array
+
+
+func _runtime_balance_cash_goal_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_cash_goal_rows", _runtime_balance_snapshot(true)) as Array
+
+
+func _runtime_balance_product_price_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_product_price_rows") as Array
+
+
+func _runtime_balance_flow_speed_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_flow_speed_rows") as Array
+
+
+func _runtime_balance_monster_combat_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_monster_combat_rows", _runtime_balance_snapshot(true)) as Array
+
+
+func _runtime_balance_system_constraint_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_system_constraint_rows") as Array
+
+
+func _runtime_balance_card_price_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_card_price_rows", _runtime_balance_snapshot(true)) as Array
+
+
+func _runtime_balance_sample_card_names() -> Array:
+	var candidates := [
+		"移动1",
+		"价格套利1",
+		"垄断协议1",
+		"商品看涨1",
+		"商品看跌1",
+		"港仓囤货1",
+		"城市买涨1",
+		"城市做空1",
+		"星链拆解1",
+		"影仓牵引1",
+		"轨道齐射1",
+		"相位否决1",
+		"行星防卫军1",
+		"轨道轰炸机1",
+	]
+	if MONSTER_ROSTER.size() > 0:
+		candidates.append(_monster_card_name(0, 1))
+	var unique := []
+	for raw_name in candidates:
+		var card_name := String(raw_name)
+		if card_name != "" and _skill_exists(card_name) and not unique.has(card_name):
+			unique.append(card_name)
+	return unique
+
+
+func _runtime_balance_monster_damage_cash_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_monster_damage_cash_rows") as Array
+
+
+func _runtime_balance_rule_loophole_rows() -> Array:
+	return _runtime_balance_model().call("runtime_balance_rule_loophole_rows") as Array
+
+
+func _skill_balance_numeric_field_names() -> Array:
+	return _runtime_balance_model().call("skill_balance_numeric_field_names") as Array
+
+
+func _skill_balance_feature_vector(card_name: String) -> Dictionary:
+	if card_name == "" or not _skill_exists(card_name):
+		return {}
+	var skill := _skill_definition(card_name)
+	if String(skill.get("name", "")) == "":
+		skill["name"] = card_name
+	var route_id := _card_development_route_id(skill)
+	return _runtime_balance_model().call("skill_balance_feature_vector", card_name, skill, _skill_rank(card_name), _skill_family(card_name), _card_price(card_name), route_id, _development_route_label(route_id)) as Dictionary
+
+
+func _skill_balance_score_breakdown(card_name: String) -> Dictionary:
+	if card_name == "" or not _skill_exists(card_name):
+		return {}
+	var skill := _skill_definition(card_name)
+	return _runtime_balance_model().call("skill_balance_score_breakdown", skill, _skill_rank(card_name)) as Dictionary
+
+
+func _skill_balance_route_tags(skill: Dictionary) -> Array:
+	return _runtime_balance_model().call("skill_balance_route_tags", skill) as Array
+
+
+func _skill_balance_ai_play_tags(skill: Dictionary) -> Array:
+	return _runtime_balance_model().call("skill_balance_ai_play_tags", skill) as Array
+
+
+func _skill_balance_target_type(skill: Dictionary) -> String:
+	return String(_runtime_balance_model().call("skill_balance_target_type", skill))
+
+
+func _skill_balance_play_gate(skill: Dictionary) -> Dictionary:
+	return _runtime_balance_model().call("skill_balance_play_gate", skill) as Dictionary
+
+
+func _skill_balance_public_telegraph_score(skill: Dictionary) -> int:
+	return int(_runtime_balance_model().call("skill_balance_public_telegraph_score", skill))
+
+
+func _skill_balance_complexity_score(skill: Dictionary) -> int:
+	return int(_runtime_balance_model().call("skill_balance_complexity_score", skill, _skill_rank(String(skill.get("name", "")))))
+
+
+func _runtime_balance_card_feature_matrix(sample_only: bool = true) -> Array:
+	return _runtime_balance_model().call("runtime_balance_card_feature_matrix", _runtime_balance_snapshot(sample_only), sample_only) as Array
 
 
 func _card_strength_budget_points(card_name: String) -> int:
@@ -15523,40 +15892,22 @@ func _roguelike_depth_label(depth: int = -1) -> String:
 
 func _roguelike_cash_goal(depth: int = -1) -> int:
 	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	return ROGUELIKE_CASH_GOAL_BASE + (value - 1) * ROGUELIKE_CASH_GOAL_STEP + value * value * 220
+	return _balance_victory_cash_goal_for_duration(value)
 
 
 func _roguelike_planet_profile(depth: int = -1) -> Dictionary:
 	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	var region_min := 6
-	var region_max := 9
-	match value:
-		1:
-			region_min = 6
-			region_max = 9
-		2:
-			region_min = 10
-			region_max = 14
-		3:
-			region_min = 15
-			region_max = 21
-		4:
-			region_min = 22
-			region_max = 30
-		5:
-			region_min = 31
-			region_max = 41
-		_:
-			region_min = 40
-			region_max = 54
-	var scale := 0.65 + float(value) * 0.18
+	var count_range := _balance_region_count_range_for_depth(value)
+	var planet_size := _balance_planet_size_for_depth(value)
+	var region_min := int(count_range.get("region_min", 6))
+	var region_max := int(count_range.get("region_max", 9))
 	return {
 		"depth": value,
 		"label": _roguelike_depth_label(value),
 		"region_min": region_min,
 		"region_max": region_max,
-		"width": MAP_WIDTH_METERS * scale,
-		"height": MAP_HEIGHT_METERS * scale,
+		"width": float(planet_size.get("width_m", MAP_WIDTH_METERS)),
+		"height": float(planet_size.get("height_m", MAP_HEIGHT_METERS)),
 		"cash_goal": _roguelike_cash_goal(value),
 	}
 
@@ -15921,16 +16272,15 @@ func _refresh_product_market_prices() -> void:
 		var demand_score := int(demand.get(product_name, 0)) + extra_demand
 		var supply_score := int(supply.get(product_name, 0)) + extra_supply
 		var disrupted_score := int(disrupted.get(product_name, 0))
-		var positive_pressure := float(demand_score * PRODUCT_DEMAND_PRICE_WEIGHT + disrupted_score * PRODUCT_ROUTE_DAMAGE_PRICE_WEIGHT)
 		var growth_multiplier: float = clampf(float(entry.get("growth_multiplier", 1.0)), 1.0, PRODUCT_GROWTH_MULTIPLIER_MAX)
-		var trend := int(round(
-			positive_pressure * growth_multiplier
-			- float(supply_score * PRODUCT_SUPPLY_PRICE_WEIGHT)
-			+ rng.randf_range(-float(volatility), float(volatility))
-		))
-		var price := clampi(base_price + trend, PRODUCT_PRICE_MIN, PRODUCT_PRICE_MAX)
+		var price_model := _balance_product_price_model(base_price, supply_score, demand_score, disrupted_score, 0, 0, volatility, rng.randf_range(-float(volatility), float(volatility)), growth_multiplier)
+		var trend := int(price_model.get("delta", 0))
+		var price := int(price_model.get("price", clampi(base_price + trend, PRODUCT_PRICE_MIN, PRODUCT_PRICE_MAX)))
 		entry["price"] = price
 		entry["trend"] = trend
+		entry["raw_trend"] = int(price_model.get("raw_delta", trend))
+		entry["price_step_cap"] = int(price_model.get("step_cap", _balance_product_price_step_cap(volatility, base_price)))
+		entry["driver_summary"] = String(price_model.get("driver_summary", ""))
 		entry["supply"] = supply_score
 		entry["demand"] = demand_score
 		entry["disrupted"] = disrupted_score
@@ -16490,8 +16840,8 @@ func _make_auto_monster(slot: int, catalog_index: int, start_district: int, owne
 		"owner": owner_index,
 		"owner_revealed": false,
 		"owner_clue": "",
-		"owner_damage_cash_pool": MONSTER_OWNER_DAMAGE_CASH_POOL + (rank - 1) * 220,
-		"owner_damage_cash_total": MONSTER_OWNER_DAMAGE_CASH_POOL + (rank - 1) * 220,
+		"owner_damage_cash_pool": _owner_damage_cash_total_for_rank(rank),
+		"owner_damage_cash_total": _owner_damage_cash_total_for_rank(rank),
 		"owner_damage_cash_lost": 0,
 		"last_owner_damage_cash_loss": 0,
 		"last_owner_damage_amount": 0,
@@ -16544,7 +16894,7 @@ func _auto_monster_slot_by_uid(uid: int) -> int:
 
 
 func _owner_damage_cash_total_for_rank(rank: int) -> int:
-	return MONSTER_OWNER_DAMAGE_CASH_POOL + (clampi(rank, 1, 4) - 1) * 220
+	return int(_runtime_balance_model().call("owner_damage_cash_total_for_rank", rank))
 
 
 func _reset_owner_damage_cash_meter(actor: Dictionary, force_rank_total: bool = false) -> Dictionary:
@@ -19472,7 +19822,7 @@ func _runtime_card_track_snapshot_source() -> Array:
 	if _scenario_runtime_needs_demo_track() and _runtime_real_card_track_entry_count(entries) == 0:
 		entries.append(_runtime_scenario_demo_card_track_entry())
 	if entries.is_empty():
-		entries.append({"label": "牌轨空闲", "state": "等待", "slot": "--", "owner_hint": "匿名", "tooltip": _card_resolution_status_text()})
+		entries.append({"label": "牌轨空闲", "state": "等待", "slot": "--", "owner_hint": "待猜", "tooltip": _card_resolution_status_text()})
 	return entries
 
 
@@ -19520,7 +19870,7 @@ func _runtime_scenario_demo_card_track_entry() -> Dictionary:
 			"slot": "教学",
 			"state": "教学牌轨",
 			"kind": "queue",
-			"owner_hint": "匿名",
+			"owner_hint": "待猜",
 			"active": true,
 			"selected": selected_card_resolution_id == _runtime_scenario_demo_resolution_id(),
 			"tooltip": "教学牌轨：只展示公开牌、报价和线索，不显示真实归属。",
@@ -19576,7 +19926,7 @@ func _runtime_card_track_entry_snapshot(entry: Dictionary, state_text: String) -
 	var selected := resolution_id >= 0 and resolution_id == selected_card_resolution_id
 	var owner_index: int = int(entry.get("player_index", -1))
 	var owner_revealed := bool(entry.get("public_owner_revealed", false))
-	var owner_text := "匿名"
+	var owner_text := "待猜"
 	if owner_revealed:
 		owner_text = String(entry.get("public_owner_label", _player_name(owner_index) if _runtime_player_is_valid(owner_index) else "已公开")).replace("归属：", "").replace("归属:", "")
 	var bid: int = int(entry.get("winning_bid", 0))
@@ -19595,11 +19945,11 @@ func _runtime_card_track_entry_snapshot(entry: Dictionary, state_text: String) -
 	var requirement_text := _card_resolution_play_requirement_text(entry)
 	var target_text := _card_resolution_target_text(skill, entry)
 	var requirements: Array = [
-		{"text": state_text, "tooltip": "这张匿名牌在公共牌轨中的位置。"},
+		{"text": state_text, "tooltip": "这张牌在公共牌轨中的位置。"},
 		{"text": "归属:%s" % owner_text, "tooltip": "未公开前只能从报价、目标和余波推理。"},
 	]
 	if cost_text != "":
-		requirements.append({"text": "报价%s" % cost_text, "tooltip": "公开报价/成交小费，是匿名来源推理线索。"})
+		requirements.append({"text": "报价%s" % cost_text, "tooltip": "公开报价/成交小费，是来源推理线索。"})
 	if requirement_text != "":
 		requirements.append({"text": _short_card_text(requirement_text.replace("打出条件：", ""), 18), "tooltip": requirement_text})
 	if target_text != "":
@@ -19611,17 +19961,17 @@ func _runtime_card_track_entry_snapshot(entry: Dictionary, state_text: String) -
 			"id": "track_select_%d" % resolution_id,
 			"label": "选中竞猜",
 			"disabled": owner_revealed,
-			"tooltip": "把这张匿名牌设为当前归属竞猜对象。" if not owner_revealed else "归属已公开，无需竞猜。",
+			"tooltip": "把这张牌设为当前归属竞猜对象。" if not owner_revealed else "归属已公开，无需竞猜。",
 		})
 		actions.append({
 			"id": "track_intel_%d" % resolution_id,
 			"label": "线索档案",
-			"tooltip": "打开情报档案，并把这张匿名牌的条件、目标、报价和余波线索置顶。",
+			"tooltip": "打开情报档案，并把这张牌的条件、目标、报价和余波线索置顶。",
 		})
 		deep_links.append({
 			"id": "track_intel_%d" % resolution_id,
 			"label": "线索档案",
-			"tooltip": "打开情报档案并置顶这张匿名牌。",
+			"tooltip": "打开情报档案并置顶这张牌。",
 		})
 	if card_name != "":
 		actions.append({
@@ -21655,7 +22005,7 @@ func _selected_city_owner_view_text() -> String:
 		return "己方城市"
 	var guesses: Dictionary = players[selected_player].get("city_guesses", {}) if selected_player >= 0 and selected_player < players.size() else {}
 	var guess := int(guesses.get(selected_district, -1))
-	return "归属未知" if guess < 0 else "我的推测：玩家%d" % (guess + 1)
+	return "归属待猜" if guess < 0 else "我的推测：玩家%d" % (guess + 1)
 
 
 func _selected_city_info_text() -> String:
@@ -23504,7 +23854,7 @@ func _add_selected_card_resolution_guess_panel(parent: Container) -> void:
 		avatar.text = "P%d" % (player_index + 1)
 		avatar.add_theme_color_override("font_color", _player_color(player_index))
 		avatar.custom_minimum_size = Vector2(42, 26)
-		avatar.tooltip_text = "押注¥%d，猜这张匿名牌由玩家%d打出。" % [stake, player_index + 1]
+		avatar.tooltip_text = "押注¥%d，猜这张牌由玩家%d打出。" % [stake, player_index + 1]
 		avatar.disabled = game_over or selected_player == int(entry.get("player_index", -1)) or int((players[selected_player] as Dictionary).get("cash", 0)) < stake
 		avatar.pressed.connect(Callable(self, "_guess_card_resolution_owner").bind(selected_card_resolution_id, player_index))
 		avatar_row.add_child(avatar)
@@ -23543,7 +23893,7 @@ func _selected_district_status_text(player_index: int) -> String:
 		var gdp := _city_gdp_per_minute(selected_district, int(city.get("competition_matches", 0)))
 		var owner_text := _selected_city_owner_view_text()
 		if player_index < 0 or player_index >= players.size():
-			owner_text = "归属未知"
+			owner_text = "归属待猜"
 		return "%s｜%s｜%s｜GDP %d/min" % [
 			String(district.get("name", "区域")),
 			terrain,
@@ -42215,7 +42565,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 	match kind:
 		"move", "fly", "burrow":
 			var movement_mode := "fly" if kind == "fly" else _auto_monster_movement_mode(actor)
-			var movement_speed_mps := float(skill.get("move", 0.0))
+			var movement_speed_mps := _auto_monster_movement_speed_mps(actor, target, float(skill.get("move", -1.0)))
 			moved = _start_entity_linear_motion(actor, _district_center(target), movement_speed_mps, String(skill["name"]), movement_mode, -1.0, kind)
 			if moved <= 0.5:
 				_log("%s指挥怪%d·%s移动，但它没有完成有效位移。" % [String(skill["name"]), slot + 1, String(actor.get("name", "怪兽"))])
@@ -42248,7 +42598,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 			var charge_distance := _wrapped_distance(_entity_world_position(actor), _entity_world_position(target_actor))
 			var charge_range := maxf(MELEE_RANGE_METERS, float(skill.get("range", MELEE_RANGE_METERS)))
 			if charge_distance > charge_range:
-				var charge_speed_mps := float(skill.get("move", MONSTER_COMMAND_MOVE_METERS))
+				var charge_speed_mps := _auto_monster_movement_speed_mps(actor, int(target_actor.get("position", target)), float(skill.get("move", MONSTER_COMMAND_MOVE_METERS)))
 				moved = _start_entity_linear_motion(actor, _entity_world_position(target_actor), charge_speed_mps, String(skill["name"]), _auto_monster_movement_mode(actor), -1.0, "charge_attack")
 				if moved <= 0.5:
 					return false
@@ -42304,7 +42654,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 			special_monster_timer += float(skill.get("delay", 1.0))
 			resolved = true
 		"roll_attack":
-			var roll_speed_mps := float(skill.get("move", 0.0))
+			var roll_speed_mps := _auto_monster_movement_speed_mps(actor, target, float(skill.get("move", -1.0)))
 			moved = _start_entity_linear_motion(actor, _district_center(target), roll_speed_mps, String(skill["name"]), _auto_monster_movement_mode(actor), -1.0, "roll_attack")
 			if moved <= 0.5:
 				_log("%s没有完成有效翻滚。" % skill["name"])
@@ -42367,7 +42717,7 @@ func _trigger_military_command(skill: Dictionary, target_slot: int = -1, acting_
 	var command := String(skill.get("military_command", ""))
 	var damage := maxi(1, int(unit.get("damage", skill.get("damage", 1))))
 	var command_range := maxf(80.0, float(unit.get("range", skill.get("range", 220.0))))
-	var command_move := maxf(60.0, float(unit.get("move", skill.get("move", 220.0))))
+	var command_move := maxf(1.0, float(unit.get("move", skill.get("move", 220.0))))
 	var source := "匿名%s·%s" % [unit_label, _skill_family(String(skill.get("name", "军令")))]
 	var before := _entity_world_position(unit)
 	var resolved := false
@@ -42377,7 +42727,7 @@ func _trigger_military_command(skill: Dictionary, target_slot: int = -1, acting_
 				_log("%s需要选中一个未毁区域作为前进目标。" % String(skill.get("name", "军令")))
 				return false
 			var terrain_multiplier := _military_unit_terrain_move_multiplier(unit, selected_district)
-			var move_speed_mps := command_move * terrain_multiplier
+			var move_speed_mps := _military_unit_movement_speed_mps(unit, selected_district, command_move)
 			var moved := _start_entity_linear_motion(unit, _district_center(selected_district), move_speed_mps, source, String(unit.get("military_domain", "")), -1.0, "military_move")
 			if moved <= 0.5:
 				_log("%s已经在目标附近。" % String(skill.get("name", "军令")))
@@ -42484,10 +42834,7 @@ func _trigger_bound_monster_skill(skill: Dictionary, _player: Dictionary) -> boo
 		return false
 	var before := _entity_world_position(actor)
 	var required_range: float = float(action.get("range", 0.0))
-	var move_budget: float = float(action.get("move_override", -1.0))
-	if move_budget < 0.0:
-		move_budget = float(actor.get("move", MONSTER_RAMPAGE_MOVE_METERS))
-	move_budget *= _monster_terrain_move_multiplier(actor, target)
+	var move_budget: float = _auto_monster_movement_speed_mps(actor, target, float(action.get("move_override", -1.0)))
 	if required_range <= 0.0 or _entity_distance_to_district(actor, target) > required_range:
 		var planned_distance := _start_entity_linear_motion(actor, _district_center(target), move_budget, String(action.get("name", "兽技")), _auto_monster_movement_mode(actor), -1.0, "bound_skill_move")
 		if planned_distance > 0.5:
@@ -42610,9 +42957,10 @@ func _command_auto_monster_attack(slot: int, skill: Dictionary) -> bool:
 		return false
 	_add_monster_attack_effect(_entity_world_position(actor), _entity_world_position(target), String(skill.get("name", "攻击")), range_limit, _auto_monster_color(slot), range_limit > MELEE_RANGE_METERS)
 	_auto_monster_take_damage(target_slot, int(skill.get("damage", 0)), "%s·%s" % [String(actor.get("name", "怪兽")), String(skill.get("name", "攻击"))], slot)
-	var knockback: float = float(skill.get("knockback", 0.0))
+	var knockback_model := _monster_knockback_model(skill, actor)
+	var knockback: float = float(knockback_model.get("knockback_m", skill.get("knockback", 0.0)))
 	if knockback > 0.5:
-		_knockback_auto_monster_from_actor(target_slot, slot, knockback, String(skill.get("name", "攻击")))
+		_knockback_auto_monster_from_actor(target_slot, slot, knockback, String(skill.get("name", "攻击")), float(knockback_model.get("knockback_duration_seconds", 0.5)))
 	return true
 
 
@@ -42869,17 +43217,17 @@ func _card_resolution_tip_clue_text(entry: Dictionary) -> String:
 		return ""
 	var batch_position := int(entry.get("batch_position", 0))
 	if batch_position <= 1:
-		return "本批队首报价¥%d只决定排序；没有上一张匿名牌收款。" % bid
+		return "本批队首报价¥%d只决定排序；没有上一张待猜牌收款。" % bid
 	var paid := int(entry.get("tip_paid_amount", 0))
 	if paid > 0:
 		var recipient_id := int(entry.get("tip_payment_recipient_resolution_id", -1))
-		var recipient_label := String(entry.get("tip_payment_recipient_card", "上一张匿名牌"))
-		var recipient_text := "上一张匿名牌"
+		var recipient_label := String(entry.get("tip_payment_recipient_card", "上一张待猜牌"))
+		var recipient_text := "上一张待猜牌"
 		if recipient_id >= 0:
 			recipient_text = "轨道#%d（%s）" % [recipient_id, recipient_label]
 		elif recipient_label != "":
 			recipient_text = recipient_label
-		return "本张已私密支付¥%d给%s归属方；付款者与收款者身份仍匿名。" % [paid, recipient_text]
+		return "本张已私密支付¥%d给%s归属方；付款者与收款者身份待猜。" % [paid, recipient_text]
 	return "锁定报价¥%d是公开排序线索；真实资金流只会反映在相关玩家私有账本。" % bid
 
 
@@ -42891,7 +43239,7 @@ func _transfer_card_resolution_tip(from_player: int, to_player: int, amount: int
 		return 0
 	players[from_player]["cash"] = int(players[from_player].get("cash", 0)) - paid
 	players[from_player]["total_card_spend"] = int(players[from_player].get("total_card_spend", 0)) + paid
-	_record_player_economic_event(from_player, "卡牌小费", "竞价成交", -paid, "为%s取得下一结算位支付；收款者是上一张匿名卡牌的出牌者。" % card_label)
+	_record_player_economic_event(from_player, "卡牌小费", "竞价成交", -paid, "为%s取得下一结算位支付；收款者是上一张待猜牌的出牌者。" % card_label)
 	_record_player_cash_snapshot(from_player)
 	players[to_player]["cash"] = int(players[to_player].get("cash", 0)) + paid
 	players[to_player]["total_card_income"] = int(players[to_player].get("total_card_income", 0)) + paid
@@ -43117,7 +43465,7 @@ func _lock_card_resolution_batch() -> void:
 	if card_resolution_queue.size() > 1:
 		_log("本轮匿名报价沙漏封盘：%d张牌已按报价与顺时针次序锁定，现在开始依次结算。" % card_resolution_queue.size())
 	else:
-		_log("同时短窗内没有第二张牌：这张匿名牌无需竞价，直接进入公开展示。")
+		_log("同时短窗内没有第二张牌：这张牌无需竞价，直接进入公开展示。")
 	_start_next_card_resolution()
 
 
@@ -43981,7 +44329,7 @@ func _auto_monster_movement_tick() -> void:
 			var movement_mode := _auto_monster_movement_mode(actor)
 			var movement_label := "怪%d诱导" % (slot + 1) if was_lured else "怪%d自动" % (slot + 1)
 			var movement_reason := "被%s诱导" % lure_source if was_lured else _auto_monster_target_factor_summary(actor, target)
-			var speed_mps := _auto_monster_move_budget(actor, target) * AUTO_MONSTER_MOVE_RATIO
+			var speed_mps := _auto_monster_movement_speed_mps(actor, target)
 			planned_distance = _start_entity_linear_motion(actor, _district_center(target), speed_mps, "诱导移动" if was_lured else "自动移动", movement_mode, -1.0, "auto_move")
 			if planned_distance > 0.5:
 				started_linear_move = true
@@ -44085,10 +44433,7 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 		return
 	var before := _entity_world_position(actor)
 	var required_range: float = float(action.get("range", 0.0))
-	var move_budget: float = float(action.get("move_override", -1.0))
-	if move_budget < 0.0:
-		move_budget = float(actor.get("move", MONSTER_RAMPAGE_MOVE_METERS))
-	move_budget *= _monster_terrain_move_multiplier(actor, target)
+	var move_budget: float = _auto_monster_movement_speed_mps(actor, target, float(action.get("move_override", -1.0)))
 	if required_range <= 0.0 or _entity_distance_to_district(actor, target) > required_range:
 		var planned_distance := _start_entity_linear_motion(actor, _district_center(target), move_budget, String(action.get("name", "行动")), _auto_monster_movement_mode(actor), -1.0, "special_action_move")
 		if planned_distance > 0.5:
@@ -45383,9 +45728,10 @@ func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dict
 		_maybe_announce_auto_ember_ring_energy(target_slot)
 		var counter_damage := _auto_monster_take_damage(slot, EMBER_RING_ENERGY_FLAME_DAMAGE, "%s星焰反焰" % action_name, target_slot)
 		_record_monster_wager_damage(target_slot, slot, counter_damage)
-	var knockback := float(action.get("knockback", 0.0))
+	var knockback_model := _monster_knockback_model(action, actor)
+	var knockback := float(knockback_model.get("knockback_m", action.get("knockback", 0.0)))
 	if knockback > 0.5 and target_slot < auto_monsters.size():
-		_knockback_auto_monster_from_actor(target_slot, slot, knockback, action_name)
+		_knockback_auto_monster_from_actor(target_slot, slot, knockback, action_name, float(knockback_model.get("knockback_duration_seconds", 0.5)))
 	return true
 
 
@@ -45443,23 +45789,25 @@ func _auto_monster_take_damage(slot: int, damage: int, source: String, source_sl
 		var armor_reduced: int = min(remaining, BLUE_LANCER_REACTIVE_DAMAGE_REDUCTION)
 		remaining = max(0, remaining - armor_reduced)
 		_log("复仇之铠抵消%d点%s伤害。" % [armor_reduced, source])
-	actor["hp"] = int(actor.get("hp", 0)) - remaining
+	var hp_before := maxi(0, int(actor.get("hp", 0)))
+	var hp_damage: int = mini(remaining, hp_before)
+	actor["hp"] = hp_before - hp_damage
 	_log("%s对怪%d·%s造成%d伤害。" % [
 		source,
 		slot + 1,
 		String(actor.get("name", "怪兽")),
-		remaining,
+		hp_damage,
 	])
 	auto_monsters[slot] = actor
-	if remaining > 0:
-		_apply_owner_damage_cash_loss(slot, remaining, source)
+	if hp_damage > 0:
+		_apply_owner_damage_cash_loss(slot, hp_damage, source)
 		actor = auto_monsters[slot]
 	_maybe_announce_auto_ember_ring_energy(slot)
 	actor = auto_monsters[slot]
 	if int(actor.get("hp", 0)) <= 0:
 		actor["hp"] = 0
 		if _try_start_auto_monster_revival(slot, source, actor):
-			return remaining
+			return hp_damage
 		actor["down"] = true
 		_invalidate_bound_monster_skills(int(actor.get("uid", 0)))
 		_log("怪%d·%s倒地，之后停止自动行动。" % [slot + 1, String(actor.get("name", "怪兽"))])
@@ -45471,10 +45819,10 @@ func _auto_monster_take_damage(slot: int, damage: int, source: String, source_sl
 			_entity_world_position(actor)
 		)
 	auto_monsters[slot] = actor
-	return remaining
+	return hp_damage
 
 
-func _knockback_auto_monster_from_actor(target_slot: int, source_slot: int, distance_m: float, source: String) -> void:
+func _knockback_auto_monster_from_actor(target_slot: int, source_slot: int, distance_m: float, source: String, duration_seconds: float = 0.5) -> void:
 	if target_slot < 0 or target_slot >= auto_monsters.size() or source_slot < 0 or source_slot >= auto_monsters.size():
 		return
 	var target: Dictionary = auto_monsters[target_slot]
@@ -45484,10 +45832,11 @@ func _knockback_auto_monster_from_actor(target_slot: int, source_slot: int, dist
 	if offset.length() <= 0.01:
 		offset = Vector2(1.0, 0.0).rotated(rng.randf_range(0.0, TAU))
 	var target_position := before + offset.normalized() * distance_m
+	var knockback_speed_mps := distance_m / maxf(0.05, duration_seconds)
 	var moved := _start_entity_linear_motion(
 		target,
 		target_position,
-		AUTO_MONSTER_KNOCKBACK_SPEED_MPS,
+		knockback_speed_mps,
 		source,
 		_auto_monster_movement_mode(target),
 		distance_m,
@@ -45500,7 +45849,7 @@ func _knockback_auto_monster_from_actor(target_slot: int, source_slot: int, dist
 			target_slot + 1,
 			String(target.get("name", "怪兽")),
 			_meters_text(moved),
-			_meters_text(AUTO_MONSTER_KNOCKBACK_SPEED_MPS),
+			_meters_text(knockback_speed_mps),
 		])
 		target["linear_move_arrival_damage"] = _auto_monster_collision_damage(target)
 		target["linear_move_arrival_damage_source"] = "%s击退落点冲击" % source

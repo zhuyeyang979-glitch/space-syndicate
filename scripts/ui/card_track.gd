@@ -13,7 +13,7 @@ const EMPTY_TRACK_ENTRY := {
 	"label": "牌轨空闲",
 	"slot": "--",
 	"state": "等待",
-	"owner_hint": "匿名",
+	"owner_hint": "待猜",
 	"accent": Color("#64748b"),
 	"tooltip": "当前没有正在结算的公开牌。",
 }
