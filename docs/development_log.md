@@ -3,6 +3,30 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜主桌竞价文案去机制化
+
+### 参考方向
+
+- 继续按 Terraforming Mars / Through the Ages 式桌面信息层级推进：主桌控件优先表达“我现在能做什么”，隐藏信息、匿名机制和完整规则留给 tooltip、图鉴、规则页和情报档案。
+- 保留隐藏信息边界，不公开对手现金、手牌、真实牌主或 AI 内部判断；本轮只降低主桌常驻文案的信息密度。
+
+### 本轮实现
+
+- 新增 `docs/playtest_skeleton_contract.md` 与 `tests/playtest_skeleton_gate_test.gd`：把途径、卡面、主桌 UI、星球画面、主菜单、子菜单都纳入骨架门槛，后续不能只堆功能而不立版式。
+- `BidBoard` 默认标题从“公开竞价”改为“牌桌竞价”，状态从“下一张牌可预设报价”压缩为“下一张牌可报价”。
+- 运行时 `BidBoard`、旧兼容 `BidControlCard` 和卡牌结算侧卡统一使用“牌桌竞价 / 牌桌报价 / 报价沙漏”等动作词，减少主桌上对“匿名/公开”的反复解释。
+- 卡牌结算侧卡收窄并停到星球右侧中段空档，避开上方目标提示和下方外围压力栏；底部沙漏条继续只负责短窗口时间感。
+- `PlanetBoard` 新增 `right_rail.hidden` / `right_rail_suppressed` 小状态：结算/竞价焦点活跃时右侧外围压力栏临时让位，避免同侧 UI 互相遮盖；平时仍显示右栏。
+- `tests/playtest_readability_gate_test.gd`、`tests/ui_text_smoke_test.gd`、`tests/visual_snapshot.gd` 和 `docs/commercial_playability_gate.md` 更新硬门槛，防止主桌竞价控件退回机制说明板。
+
+### 验证
+
+- `Godot 4.6.2 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot 4.6.2 --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot 4.6.2 --headless --path . --script res://tests/playtest_readability_gate_test.gd` 通过。
+- `Godot 4.6.2 --headless --path . --script res://tests/playtest_skeleton_gate_test.gd` 通过。
+- `Godot 4.6.2 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+
 ## 2026-07-03｜Scenario Lab payload audio hook 与截图验收
 
 ### 参考方向

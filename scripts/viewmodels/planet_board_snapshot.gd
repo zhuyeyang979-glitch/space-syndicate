@@ -111,6 +111,7 @@ func _normalized_rail(source: Dictionary, fallback_title: String, fallback_entri
 	return {
 		"title": _first_text(source, ["title", "heading", "label"], fallback_title),
 		"entries": entries,
+		"hidden": bool(source.get("hidden", source.get("suppressed", false))),
 	}
 
 

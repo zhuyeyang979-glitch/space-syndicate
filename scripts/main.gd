@@ -2516,7 +2516,7 @@ func _table_tempo_status() -> Dictionary:
 	if card_resolution_auction_open:
 		return {
 			"text": "◆ 竞价",
-			"tip": "匿名出牌报价沙漏中：看顶部牌轨和公开报价。",
+			"tip": "出牌报价沙漏中：看顶部牌轨和报价。",
 		}
 	if card_resolution_counter_window_active:
 		return {
@@ -2536,7 +2536,7 @@ func _table_tempo_status() -> Dictionary:
 	if not card_resolution_queue.is_empty() or not next_card_resolution_queue.is_empty():
 		return {
 			"text": "◆ 候补%d" % (card_resolution_queue.size() + next_card_resolution_queue.size()),
-			"tip": "有匿名牌在候补队列；顶部牌轨显示顺序和公开报价。",
+			"tip": "有牌在候补队列；顶部牌轨显示顺序和报价。",
 		}
 	if not weather_forecast.is_empty():
 		return {
@@ -3683,7 +3683,7 @@ func _add_card_resolution_track_entry(entry: Dictionary, state_text: String) -> 
 	var card_name := String(skill.get("name", "卡牌"))
 	var card_label := _card_display_name(card_name)
 	if card_label == "":
-		card_label = "匿名卡牌"
+		card_label = "牌桌卡牌"
 	var is_current := state_text.begins_with("当前展示")
 	var selected := resolution_id == selected_card_resolution_id
 	var panel := PanelContainer.new()
@@ -18708,7 +18708,7 @@ func _refresh_status() -> void:
 	)
 	_set_header_status_chip("seat", "◎ %s" % _short_card_text(player_name, 10), "当前查看席位；现金、手牌和弃牌只对自己可见。")
 	_set_header_status_chip("goal", "♛ ¥%d/%d" % [visible_cash, _roguelike_cash_goal()], "%s｜终局按钱最多排名。" % _roguelike_depth_label())
-	_set_header_status_chip("queue", "▤ %s" % _short_card_text(queue_status, 16), "匿名出牌列：历史、当前展示、候补和下批等待。")
+	_set_header_status_chip("queue", "▤ %s" % _short_card_text(queue_status, 16), "牌轨：历史、当前展示、候补和下批等待。")
 	_set_header_status_chip("weather", "☄ %s" % _short_card_text(weather_status.replace("天气:", "").replace("预报:", "预:"), 18), "完整天气预报看中央星球上方天气筹码。")
 	_set_header_status_chip("district", "⌖ %s" % _short_card_text(district_name, 10), "当前选区；双击区域查看牌架。")
 
@@ -18990,8 +18990,8 @@ func _runtime_player_board_bid_readiness_chips(player_index: int) -> Array:
 		elif next_queued_index >= 0:
 			raise_text = "下批"
 		return [
-			_runtime_bid_status_chip("竞价", "%ds" % int(ceil(maxf(0.0, card_resolution_auction_timer))), true, Color("#f59e0b"), "公开报价沙漏开启；同批牌按报价排序。%s" % status_text),
-			_runtime_bid_status_chip("最高", "¥%d" % _highest_card_resolution_bid(), true, Color("#fde68a"), "当前本批最高公开报价；不显示出价者身份。"),
+			_runtime_bid_status_chip("竞价", "%ds" % int(ceil(maxf(0.0, card_resolution_auction_timer))), true, Color("#f59e0b"), "报价沙漏开启；同批牌按报价排序。%s" % status_text),
+			_runtime_bid_status_chip("最高", "¥%d" % _highest_card_resolution_bid(), true, Color("#fde68a"), "当前本批最高报价。"),
 			_runtime_bid_status_chip("我的", raise_text, raise_active, Color("#22c55e") if raise_active else Color("#94a3b8"), status_text),
 			_runtime_bid_status_chip("队列", "%d+%d" % [queue_count, next_count], queue_count + next_count > 0, Color("#c084fc"), "当前批%d张｜下批等待%d张；封盘后按报价与席位顺序结算。" % [queue_count, next_count]),
 		]
@@ -19019,9 +19019,9 @@ func _runtime_player_board_bid_readiness_chips(player_index: int) -> Array:
 func _runtime_player_board_bid_board(player_index: int) -> Dictionary:
 	if not _runtime_player_is_valid(player_index):
 		return {
-			"title": "公开竞价",
+			"title": "牌桌竞价",
 			"phase": "未开局",
-			"status": "开新一桌后才能预设公开报价。",
+			"status": "开新一桌后才能报价。",
 			"active": false,
 			"accent": Color("#94a3b8"),
 			"chips": [],
@@ -19055,12 +19055,12 @@ func _runtime_player_board_bid_board(player_index: int) -> Dictionary:
 		active = true
 	var chips := [
 		{"label": "我的", "state": "¥%d" % active_tip, "active": active_tip > 0 or queued_index >= 0 or next_queued_index >= 0, "accent": Color("#fde68a"), "tooltip": status_text, "max_chars": 9},
-		{"label": "最高", "state": "¥%d" % _highest_card_resolution_bid(), "active": card_resolution_auction_open, "accent": Color("#f59e0b"), "tooltip": "当前本批最高公开报价；不显示出价者身份。", "max_chars": 9},
+		{"label": "最高", "state": "¥%d" % _highest_card_resolution_bid(), "active": card_resolution_auction_open, "accent": Color("#f59e0b"), "tooltip": "当前本批最高报价。", "max_chars": 9},
 		{"label": "本批", "state": "%d张" % queue_count, "active": queue_count > 0, "accent": Color("#c084fc"), "tooltip": "当前批等待或正在结算的牌数量。", "max_chars": 8},
 		{"label": "下批", "state": "%d张" % next_count, "active": next_count > 0, "accent": Color("#38bdf8"), "tooltip": "当前批次清空后才会统一竞价的等待牌。", "max_chars": 8},
 	]
 	return {
-		"title": "公开竞价",
+		"title": "牌桌竞价",
 		"phase": phase,
 		"phase_tooltip": _card_resolution_status_text(),
 		"status": _runtime_bid_board_status_line(status_text),
@@ -19113,7 +19113,7 @@ func _runtime_scenario_bid_board_demo_track_link() -> Dictionary:
 		"active": true,
 		"selected": selected,
 		"accent": Color("#f59e0b"),
-		"tooltip": "对应顶部公开牌轨的教学牌；竞价金额公开，出牌者不显示。",
+		"tooltip": "对应顶部牌轨的教学牌；金额公开，来源靠线索判断。",
 		"max_chars": 13,
 	}
 
@@ -19685,6 +19685,7 @@ func _runtime_planet_snapshot_source() -> Dictionary:
 		"right_rail": {
 			"title": "外围压力",
 			"entries": _runtime_planet_outer_rail_entries(),
+			"hidden": _card_resolution_side_lane_focus_active(),
 		},
 		"weather": {
 			"active": _weather_active_ui_text(),
@@ -19698,6 +19699,16 @@ func _runtime_planet_snapshot_source() -> Dictionary:
 			"tooltip": "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。",
 		},
 	}
+
+
+func _card_resolution_side_lane_focus_active() -> bool:
+	if not active_card_resolution.is_empty() or card_resolution_counter_window_active or card_resolution_auction_open:
+		return true
+	if not card_resolution_queue.is_empty() and not card_resolution_batch_locked:
+		return true
+	if card_resolution_simultaneous_timer > 0.0 and not card_resolution_queue.is_empty():
+		return true
+	return false
 
 
 func _runtime_planet_surface_rail_entries(player_index: int) -> Array:
@@ -25183,7 +25194,7 @@ func _add_bid_control_card(parent: Container, player_index: int, player: Diction
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var status_color := _card_bid_control_status_color(player_index)
 	panel.add_theme_stylebox_override("panel", _menu_card_style(status_color, Color("#020617").lerp(status_color, 0.09), 1, 12))
-	panel.tooltip_text = "公开报价：只显示金额和队列状态，不暴露出牌者。"
+	panel.tooltip_text = "报价：只显示金额和队列状态。"
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -25201,14 +25212,14 @@ func _add_bid_control_card(parent: Container, player_index: int, player: Diction
 	var queued_bid_index := _queued_card_entry_index_for_player(player_index)
 	var next_queued_bid_index := _next_batch_card_entry_index_for_player(player_index)
 	var bid_controls_locked := (queued_bid_index >= 0 and not card_resolution_auction_open) or (queued_bid_index < 0 and next_queued_bid_index >= 0)
-	var tip_mode := "候补牌公开报价" if queued_bid_index >= 0 else ("下一批等待牌" if next_queued_bid_index >= 0 else "下张牌预设报价")
+	var tip_mode := "候补牌报价" if queued_bid_index >= 0 else ("下一批等待牌" if next_queued_bid_index >= 0 else "下张牌报价")
 
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 8)
 	box.add_child(header)
-	var title := _plain_label("公开报价", 11, Color("#fde68a"))
+	var title := _plain_label("牌桌报价", 11, Color("#fde68a"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.tooltip_text = "在匿名牌展示/竞价窗口里加小费，金额公开，出牌者仍匿名。"
+	title.tooltip_text = "展示/竞价窗口里加小费；金额上桌，来源靠线索判断。"
 	header.add_child(title)
 	header.add_child(_plain_label("加价按钮像筹码", 9, Color("#94a3b8")))
 
@@ -25218,8 +25229,8 @@ func _add_bid_control_card(parent: Container, player_index: int, player: Diction
 	chip_rail.add_theme_constant_override("h_separation", 5)
 	chip_rail.add_theme_constant_override("v_separation", 3)
 	box.add_child(chip_rail)
-	_add_bid_control_chip(chip_rail, "¥%d" % active_tip, Color("#fde68a"), active_tip > 0, "当前预设或候补公开报价。")
-	_add_bid_control_chip(chip_rail, "最高¥%d" % _highest_card_resolution_bid(), Color("#f59e0b"), card_resolution_auction_open, "当前批次最高公开报价。")
+	_add_bid_control_chip(chip_rail, "¥%d" % active_tip, Color("#fde68a"), active_tip > 0, "当前预设或候补报价。")
+	_add_bid_control_chip(chip_rail, "最高¥%d" % _highest_card_resolution_bid(), Color("#f59e0b"), card_resolution_auction_open, "当前批次最高报价。")
 	_add_bid_control_chip(chip_rail, "参拍" if queued_bid_index >= 0 else ("下批" if next_queued_bid_index >= 0 else "预设"), Color("#c084fc"), queued_bid_index >= 0 or next_queued_bid_index >= 0, tip_mode)
 	_add_bid_control_chip(chip_rail, "锁定" if bid_controls_locked else "可调", Color("#86efac") if not bid_controls_locked else Color("#f87171"), true, _card_bid_control_status_text(player_index))
 
@@ -43081,6 +43092,7 @@ func _show_card_batch_lobby_overlay() -> void:
 	if card_resolution_overlay == null or card_resolution_queue.is_empty() or card_resolution_batch_locked:
 		return
 	card_resolution_overlay.visible = true
+	_set_planet_right_rail_resolution_suppressed(true)
 	_refresh_card_resolution_overlay_badges({})
 	if card_resolution_auction_open:
 		_sort_card_resolution_queue()
@@ -43111,9 +43123,9 @@ func _show_card_batch_lobby_overlay() -> void:
 			_card_art_stats(skill)
 		)
 	if card_resolution_body_label != null:
-		var lobby_text := "同步判定中｜%s准备公开" % card_label
+		var lobby_text := "同步判定｜%s准备展示" % card_label
 		if card_resolution_auction_open:
-			lobby_text = "竞价中｜本批全牌可见"
+			lobby_text = "牌桌竞价｜本批牌已入轨"
 			var roster_text := _card_resolution_batch_roster_text(76)
 			if roster_text != "":
 				lobby_text += "\n%s" % roster_text
@@ -43135,7 +43147,7 @@ func _card_resolution_batch_roster_text(max_chars: int = 120) -> String:
 		var entry: Dictionary = entry_variant
 		var label := _card_resolution_entry_card_label(entry)
 		if label.strip_edges() == "":
-			label = "匿名卡牌"
+			label = "牌桌卡牌"
 		var bid := int(entry.get("tip", entry.get("winning_bid", 0)))
 		var text := "%d.%s" % [i + 1, _short_card_text(label, 10)]
 		if bid > 0:
@@ -43153,11 +43165,13 @@ func _show_card_resolution_overlay(entry: Dictionary, seconds_left: float) -> vo
 	var card_name := String(skill.get("name", "卡牌"))
 	var card_label := _card_display_name(card_name)
 	if card_label == "":
-		card_label = "匿名卡牌"
+		card_label = "牌桌卡牌"
 	card_resolution_overlay.visible = not active_card_resolution.is_empty() and seconds_left > 0.0
 	if not card_resolution_overlay.visible:
+		_set_planet_right_rail_resolution_suppressed(false)
 		_refresh_card_resolution_overlay_badges({})
 		return
+	_set_planet_right_rail_resolution_suppressed(true)
 	if card_resolution_title_label != null:
 		card_resolution_title_label.text = card_label
 	if card_resolution_status_label != null:
@@ -43190,7 +43204,7 @@ func _card_resolution_overlay_compact_body_text(entry: Dictionary, seconds_left:
 		]
 	var animation_line := _short_card_text(_card_resolution_animation_text(card_name, skill, entry, seconds_left).replace("\n", " / "), 48)
 	if animation_line == "":
-		animation_line = "公开展示中"
+		animation_line = "展示中"
 	var effect_line := "效果：%s" % _short_card_text(_skill_display_text(skill).replace("\n", " / "), 48)
 	if _card_can_open_counter_window(entry):
 		effect_line = "%s｜可响应" % _short_card_text(effect_line, 44)
@@ -43202,7 +43216,7 @@ func _card_resolution_overlay_detail_text(entry: Dictionary, seconds_left: float
 	var card_name := String(skill.get("name", "卡牌"))
 	var card_label := _card_display_name(card_name)
 	if card_label == "":
-		card_label = "匿名卡牌"
+		card_label = "牌桌卡牌"
 	var lines := [
 		"%s｜出牌者%s" % [card_label, "已揭晓" if bool(entry.get("public_owner_revealed", false)) else "未知"],
 		_card_resolution_phase_text(entry, seconds_left),
@@ -43304,9 +43318,18 @@ func _card_resolution_contract_public_text(entry: Dictionary) -> String:
 func _hide_card_resolution_overlay() -> void:
 	if card_resolution_overlay != null:
 		card_resolution_overlay.visible = false
+	_set_planet_right_rail_resolution_suppressed(false)
 	_refresh_card_resolution_overlay_badges({})
 	card_resolution_visual_id = -1
 	card_resolution_visual_stage = -1
+
+
+func _set_planet_right_rail_resolution_suppressed(enabled: bool) -> void:
+	var rail := get_tree().get_root().find_child("PlanetRightSpaceRail", true, false) as Control
+	if rail == null:
+		return
+	rail.visible = not enabled
+	rail.set_meta("planet_side_lane_suppressed_for_resolution", enabled)
 
 
 func _is_counter_skill(skill: Dictionary) -> bool:

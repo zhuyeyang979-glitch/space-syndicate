@@ -15,10 +15,10 @@ var actions: Array = []
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
-	title = _first_text(data, ["title", "name"], "公开竞价")
-	phase = _first_text(data, ["phase", "state"], "预设")
+	title = _first_text(data, ["title", "name"], "牌桌竞价")
+	phase = _first_text(data, ["phase", "state"], "待报价")
 	phase_tooltip = _first_text(data, ["phase_tooltip", "tooltip"], "")
-	status = _first_text(data, ["status", "summary", "detail"], "下一张牌可预设报价。")
+	status = _first_text(data, ["status", "summary", "detail"], "下一张牌可报价。")
 	status_tooltip = _first_text(data, ["status_tooltip", "tooltip"], status)
 	active = bool(data.get("active", false))
 	visible = bool(data.get("visible", true))

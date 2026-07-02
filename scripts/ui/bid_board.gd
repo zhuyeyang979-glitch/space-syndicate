@@ -26,10 +26,10 @@ func set_bid_state(data: Dictionary) -> void:
 		return
 	bid_signature = next_signature
 	visible = bool(data.get("visible", true))
-	title_label.text = str(data.get("title", "公开竞价"))
-	phase_label.text = _short_text(str(data.get("phase", "预设")), 12)
+	title_label.text = str(data.get("title", "牌桌竞价"))
+	phase_label.text = _short_text(str(data.get("phase", "待报价")), 12)
 	phase_label.tooltip_text = str(data.get("phase_tooltip", data.get("status", "")))
-	var status_text := str(data.get("status", "下一张牌可预设报价。"))
+	var status_text := str(data.get("status", "下一张牌可报价。"))
 	var track_links: Array = data.get("track_links", []) if data.get("track_links", []) is Array else []
 	var track_text := _track_link_text(track_links)
 	status_label.text = _short_text(status_text if status_text != "" else track_text, 38)
@@ -57,7 +57,7 @@ func _render_chips(chips: Array) -> void:
 func _render_actions(actions: Array) -> void:
 	_clear_row(action_row)
 	if actions.is_empty():
-		_add_action({"id": "bid_none", "label": "锁定", "disabled": true, "tooltip": "当前不能修改公开报价。"})
+		_add_action({"id": "bid_none", "label": "锁定", "disabled": true, "tooltip": "当前不能改报价。"})
 		return
 	for action_variant in actions:
 		var action: Dictionary = action_variant if action_variant is Dictionary else {}

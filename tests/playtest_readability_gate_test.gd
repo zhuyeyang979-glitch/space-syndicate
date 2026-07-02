@@ -69,7 +69,7 @@ func _check_player_facing_source_guards() -> void:
 	_expect(inspector_source.contains("WHY_TEXT_CHAR_LIMIT := 48") and inspector_source.contains("SUMMARY_TEXT_CHAR_LIMIT := 44"), "right inspector UI has strict scan-first limits")
 	_expect(overlay_source.contains("TEMP_DECISION_BODY_LIMIT := 72") and overlay_source.contains("SIDE_DRAWER_SECTION_BODY_LIMIT := 132"), "overlay modals/drawers cap visible prose")
 	_expect(overlay_source.contains("TEMP_DECISION_SIDE_ANCHOR_LEFT := 0.70") and overlay_source.contains("_dock_confirm_to_planet_side_lane"), "temporary decision overlays dock to a planet side lane instead of the table center")
-	_expect(resolution_banner_source.contains("anchor_left = 0.575") and resolution_banner_source.contains("anchor_right = 0.795"), "card resolution and auction banner docks to the planet side lane")
+	_expect(resolution_banner_source.contains("anchor_left = 0.625") and resolution_banner_source.contains("anchor_top = 0.302") and resolution_banner_source.contains("anchor_right = 0.795") and resolution_banner_source.contains("anchor_bottom = 0.448") and resolution_banner_source.contains("custom_minimum_size = Vector2(292, 128)"), "card resolution and auction banner docks to a narrow middle planet side lane")
 	_expect(not resolution_banner_source.contains("Anonymous card resolution") and resolution_banner_source.contains("避免遮挡中央星球"), "card resolution banner uses player-facing side-card copy")
 	_expect(tutorial_source.contains("_short_text(body_text, 34)") and tutorial_source.contains("_short_text(meta_text, 28)"), "tutorial cards use short visible copy")
 	_expect(rules_source.contains("_short_text(body_text, 34)") and rules_source.contains("_short_text(meta_text, 28)"), "rules quick-reference cards use short visible copy")
@@ -78,7 +78,7 @@ func _check_player_facing_source_guards() -> void:
 	_expect(main_source.contains("第一局只做四件事：首召、建城、买牌、出牌。"), "tutorial menu opens with one-line first-game guidance")
 	_expect(game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_LEFT") and game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_BOTTOM"), "default scenario coach uses named planet side-lane skeleton constants instead of loose center anchors")
 	_expect(FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("PLANET_TABLE_SAFE_CORE_RATIO") and FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("SIDE_RAIL_MIN_STAGGER_PIXELS"), "planet side rails use explicit safe-core and stagger metrics")
-	_expect(not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board does not over-explain anonymity in the always-visible table text")
+	_expect(bid_board_scene.contains("牌桌竞价") and bid_board_scene.contains("下一张牌可报价。") and not bid_board_scene.contains("公开竞价") and not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board reads as a compact table-bid control instead of an anonymity rules explainer")
 	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")
 
 

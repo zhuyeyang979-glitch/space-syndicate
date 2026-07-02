@@ -36,6 +36,7 @@ const SIDE_RAIL_MIN_STAGGER_PIXELS := 34.0
 var left_rail_signature: String = ""
 var right_rail_signature: String = ""
 var campaign_focus_mode := false
+var right_rail_suppressed := false
 
 
 func _ready() -> void:
@@ -56,6 +57,8 @@ func _notification(what: int) -> void:
 
 func set_board_state(data: Dictionary) -> void:
 	campaign_focus_mode = bool(data.get("campaign_focus_mode", data.get("compact", false)))
+	var right_rail_data: Dictionary = _right_rail_source(data)
+	right_rail_suppressed = bool(right_rail_data.get("hidden", right_rail_data.get("suppressed", false)))
 	title_label.text = str(data.get("title", "星球牌桌"))
 	hint_label.text = str(data.get("hint", "轨道外圈显示公开局势。"))
 	hint_label.add_theme_font_size_override("font_size", 9 if campaign_focus_mode else 10)
@@ -70,7 +73,7 @@ func set_board_state(data: Dictionary) -> void:
 		right_rail_stack,
 		right_rail_title,
 		right_rail_fallback,
-		_right_rail_source(data),
+		right_rail_data,
 		false
 	)
 	_set_weather_strip(data.get("weather", {}))
@@ -139,6 +142,11 @@ func _layout_space_rail(rail: PanelContainer, left_side: bool, map_rect: Rect2, 
 	if rail == null:
 		return
 	if campaign_focus_mode:
+		rail.visible = false
+		return
+	if not left_side:
+		rail.set_meta("planet_side_lane_suppressed_for_resolution", right_rail_suppressed)
+	if not left_side and right_rail_suppressed:
 		rail.visible = false
 		return
 	var side_space := map_rect.position.x - SIDE_RAIL_GAP if left_side else available.x - map_rect.end.x - SIDE_RAIL_GAP

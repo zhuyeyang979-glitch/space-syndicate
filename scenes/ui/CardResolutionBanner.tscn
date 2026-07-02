@@ -28,14 +28,14 @@ color = Color(0.02, 0.03, 0.08, 0.018)
 
 [node name="CardResolutionTableBanner" type="MarginContainer" parent="."]
 layout_mode = 1
-anchor_left = 0.575
-anchor_top = 0.125
+anchor_left = 0.625
+anchor_top = 0.302
 anchor_right = 0.795
-anchor_bottom = 0.375
+anchor_bottom = 0.448
 mouse_filter = 2
 
 [node name="CardResolutionPanel" type="PanelContainer" parent="CardResolutionTableBanner"]
-custom_minimum_size = Vector2(332, 150)
+custom_minimum_size = Vector2(292, 128)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -63,7 +63,7 @@ text_overrun_behavior = 3
 [node name="CardResolutionStatusLabel" type="Label" parent="CardResolutionTableBanner/CardResolutionPanel/CardResolutionMargin/CardResolutionRows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Resolving"
+text = "展示中"
 text_overrun_behavior = 3
 
 [node name="CardResolutionBadgeCenter" type="CenterContainer" parent="CardResolutionTableBanner/CardResolutionPanel/CardResolutionMargin/CardResolutionRows"]

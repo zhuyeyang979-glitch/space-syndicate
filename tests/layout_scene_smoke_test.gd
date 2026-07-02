@@ -419,7 +419,7 @@ func _check_split_game_screen_data_binding() -> void:
 				{"text": "手牌 2/5", "active": false, "accent": Color("#c084fc")},
 			],
 			"bid_board": {
-				"title": "公开竞价",
+				"title": "牌桌竞价",
 				"phase": "竞价 4s",
 				"status": "候补牌参拍中｜当前¥40｜最高¥80",
 				"active": true,
@@ -2509,7 +2509,7 @@ func _check_viewmodel_contracts() -> void:
 		"actions": [{"id": "summon", "label": "首召", "state": "ready"}],
 	})
 	var bid_board: Variant = bid_board_script.new().apply_dictionary({
-		"title": "公开竞价",
+		"title": "牌桌竞价",
 		"phase": "竞价 4s",
 		"status": "候补牌参拍中｜当前¥40｜最高¥80",
 		"chips": [{"label": "最高", "state": "¥80", "active": true}],
