@@ -1,0 +1,76 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/region_codex_detail.gd" id="2_script"]
+
+[node name="RegionCodexTileBoardPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="RegionCodexTileMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="RegionCodexTileStack" type="VBoxContainer" parent="RegionCodexTileMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="RegionCodexTileHeader" type="HBoxContainer" parent="RegionCodexTileMargin/RegionCodexTileStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="RegionCodexTileIcon" type="Label" parent="RegionCodexTileMargin/RegionCodexTileStack/RegionCodexTileHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+text = "⬡"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RegionCodexTileTitleStack" type="VBoxContainer" parent="RegionCodexTileMargin/RegionCodexTileStack/RegionCodexTileHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="RegionCodexTileTitle" type="Label" parent="RegionCodexTileMargin/RegionCodexTileStack/RegionCodexTileHeader/RegionCodexTileTitleStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "区域地块板"
+autowrap_mode = 3
+
+[node name="RegionCodexTileSubtitle" type="Label" parent="RegionCodexTileMargin/RegionCodexTileStack/RegionCodexTileHeader/RegionCodexTileTitleStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "区域状态"
+autowrap_mode = 3
+
+[node name="RegionCodexTileChipRail" type="HFlowContainer" parent="RegionCodexTileMargin/RegionCodexTileStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="RegionCodexTileKpiGrid" type="GridContainer" parent="RegionCodexTileMargin/RegionCodexTileStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7
+
+[node name="RegionCodexActionClueGrid" type="GridContainer" parent="RegionCodexTileMargin/RegionCodexTileStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7

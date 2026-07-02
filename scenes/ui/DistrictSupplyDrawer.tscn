@@ -1,0 +1,218 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_drawer_panel"]
+bg_color = Color(0.02, 0.04, 0.1, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.219608, 0.741176, 0.972549, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shelf_panel"]
+bg_color = Color(0.0196078, 0.0470588, 0.109804, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.219608, 0.741176, 0.972549, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_market_panel"]
+bg_color = Color(0.0196078, 0.0470588, 0.109804, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.219608, 0.741176, 0.972549, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_preview_panel"]
+bg_color = Color(0.109804, 0.0705882, 0.0196078, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.960784, 0.619608, 0.0431373, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="DistrictSupplySideDrawerOverlay" type="ColorRect"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("1_theme")
+color = Color(0.01, 0.02, 0.05, 0.015)
+
+[node name="DistrictSupplySideDrawer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchor_left = 0.6
+anchor_top = 0.09
+anchor_right = 0.985
+anchor_bottom = 0.93
+mouse_filter = 0
+
+[node name="DistrictSupplyPanel" type="PanelContainer" parent="DistrictSupplySideDrawer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+tooltip_text = "Right-side card-market drawer. It is a 30-second detail layer, not a central modal."
+theme_override_styles/panel = SubResource("StyleBoxFlat_drawer_panel")
+
+[node name="DistrictSupplyInnerMargin" type="MarginContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="DistrictSupplyRootStack" type="VBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DistrictSupplyShelfBoard" type="PanelContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack"]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Shelf summary: region, market count, access state, locked price, and hand pressure."
+theme_override_styles/panel = SubResource("StyleBoxFlat_shelf_panel")
+
+[node name="DistrictSupplyShelfMargin" type="MarginContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard"]
+layout_mode = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 9
+theme_override_constants/margin_bottom = 7
+
+[node name="DistrictSupplyShelfStack" type="VBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="DistrictSupplyShelfTitleRow" type="HBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DistrictSupplyTitleLabel" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack/DistrictSupplyShelfTitleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "District shelf"
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyCloseButton" type="Button" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack/DistrictSupplyShelfTitleRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 28)
+layout_mode = 2
+text = "Close"
+
+[node name="DistrictSupplyRuleStrip" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Market shelf | hover preview | double-click buy"
+autowrap_mode = 3
+
+[node name="DistrictSupplyShelfChipRail" type="HBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="DistrictSupplyMarketStatusRail" type="HFlowContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="DistrictSupplyDrawerStack" type="HBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="DistrictSupplyMarketPanel" type="PanelContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack"]
+custom_minimum_size = Vector2(218, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_market_panel")
+
+[node name="DistrictSupplyMarketMargin" type="MarginContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 6
+
+[node name="DistrictSupplyMarketStack" type="VBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="DistrictSupplyMarketColumnTitle" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin/DistrictSupplyMarketStack"]
+layout_mode = 2
+text = "Market cells | price / state / route"
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyMarketScroll" type="ScrollContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin/DistrictSupplyMarketStack"]
+custom_minimum_size = Vector2(0, 398)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DistrictSupplyMarketGrid" type="HFlowContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin/DistrictSupplyMarketStack/DistrictSupplyMarketScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="DistrictSupplyPreviewPanel" type="PanelContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack"]
+custom_minimum_size = Vector2(238, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_preview_panel")
+
+[node name="DistrictSupplyPreviewMargin" type="MarginContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 6
+
+[node name="DistrictSupplyPreviewStack" type="VBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="DistrictSupplyPreviewColumnTitle" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin/DistrictSupplyPreviewStack"]
+layout_mode = 2
+text = "Card preview | effect / buy verdict"
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyPreviewScroll" type="ScrollContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin/DistrictSupplyPreviewStack"]
+custom_minimum_size = Vector2(0, 398)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DistrictSupplyPreviewBox" type="VBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin/DistrictSupplyPreviewStack/DistrictSupplyPreviewScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6

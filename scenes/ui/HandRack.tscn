@@ -3,7 +3,18 @@
 [ext_resource type="Script" path="res://scripts/ui/hand_rack.gd" id="1_hand_rack"]
 
 [node name="HandRack" type="Control"]
-custom_minimum_size = Vector2(0, 210)
+custom_minimum_size = Vector2(0, 124)
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_hand_rack")
+card_size = Vector2(140, 158)
+max_spread_width = 900.0
+max_fan_angle_degrees = 14.0
+arc_height = 20.0
+bottom_padding = 4.0
+hover_lift = 62.0
+hover_scale = 1.16
+hover_neighbor_push = 34.0
+seek_position_gain = 20.0
+seek_rotation_gain = 22.0
+seek_scale_gain = 18.0

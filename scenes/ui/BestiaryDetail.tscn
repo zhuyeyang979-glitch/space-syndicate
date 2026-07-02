@@ -1,0 +1,82 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/bestiary_detail.gd" id="2_script"]
+
+[node name="BestiaryMonsterBoardPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="BestiaryMonsterMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="BestiaryMonsterStack" type="VBoxContainer" parent="BestiaryMonsterMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="BestiaryMonsterHeader" type="HBoxContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="BestiaryMonsterArtSlot" type="PanelContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack/BestiaryMonsterHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(278, 218)
+layout_mode = 2
+
+[node name="BestiaryMonsterArtHost" type="CenterContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack/BestiaryMonsterHeader/BestiaryMonsterArtSlot"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BestiaryMonsterReadStack" type="VBoxContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack/BestiaryMonsterHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 7
+
+[node name="BestiaryMonsterTitle" type="Label" parent="BestiaryMonsterMargin/BestiaryMonsterStack/BestiaryMonsterHeader/BestiaryMonsterReadStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "怪兽单位档案"
+autowrap_mode = 3
+
+[node name="BestiaryMonsterSubtitle" type="Label" parent="BestiaryMonsterMargin/BestiaryMonsterStack/BestiaryMonsterHeader/BestiaryMonsterReadStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "自动怪兽。"
+autowrap_mode = 3
+
+[node name="BestiaryMonsterChipRail" type="HFlowContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack/BestiaryMonsterHeader/BestiaryMonsterReadStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="BestiaryMonsterKpiGrid" type="GridContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack/BestiaryMonsterHeader/BestiaryMonsterReadStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7
+
+[node name="BestiaryMonsterActionBoardTitle" type="Label" parent="BestiaryMonsterMargin/BestiaryMonsterStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "行动概率板｜I级/IV级｜开局/破坏后"
+
+[node name="BestiaryMonsterActionGrid" type="GridContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7

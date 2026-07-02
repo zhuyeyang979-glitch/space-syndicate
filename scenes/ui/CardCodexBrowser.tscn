@@ -1,0 +1,85 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/card_codex_browser.gd" id="2_script"]
+
+[node name="CardCodexBrowserPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="CardCodexBrowserMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="CardCodexBrowserStack" type="VBoxContainer" parent="CardCodexBrowserMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CardCodexCategoryRail" type="PanelContainer" parent="CardCodexBrowserMargin/CardCodexBrowserStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CardCodexCategoryMargin" type="MarginContainer" parent="CardCodexBrowserMargin/CardCodexBrowserStack/CardCodexCategoryRail"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 7
+
+[node name="CardCodexCategoryStack" type="VBoxContainer" parent="CardCodexBrowserMargin/CardCodexBrowserStack/CardCodexCategoryRail/CardCodexCategoryMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CardCodexCategoryLegend" type="Label" parent="CardCodexBrowserMargin/CardCodexBrowserStack/CardCodexCategoryRail/CardCodexCategoryMargin/CardCodexCategoryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "牌型筛选"
+autowrap_mode = 3
+
+[node name="CardCodexCategoryChipRow" type="HFlowContainer" parent="CardCodexBrowserMargin/CardCodexBrowserStack/CardCodexCategoryRail/CardCodexCategoryMargin/CardCodexCategoryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 4
+
+[node name="CardCodexThumbnailNavRow" type="HBoxContainer" parent="CardCodexBrowserMargin/CardCodexBrowserStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CardCodexThumbnailPreviousButton" type="Button" parent="CardCodexBrowserMargin/CardCodexBrowserStack/CardCodexThumbnailNavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "缩略图上一页"
+
+[node name="CardCodexThumbnailPageLabel" type="Label" parent="CardCodexBrowserMargin/CardCodexBrowserStack/CardCodexThumbnailNavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "第1/1页"
+
+[node name="CardCodexThumbnailNextButton" type="Button" parent="CardCodexBrowserMargin/CardCodexBrowserStack/CardCodexThumbnailNavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "缩略图下一页"
+
+[node name="CardCodexThumbnailGrid" type="GridContainer" parent="CardCodexBrowserMargin/CardCodexBrowserStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="CardCodexHoverPreviewHost" type="VBoxContainer" parent="CardCodexBrowserMargin/CardCodexBrowserStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3

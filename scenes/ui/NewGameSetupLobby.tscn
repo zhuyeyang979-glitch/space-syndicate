@@ -1,0 +1,59 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/new_game_setup_lobby.gd" id="2_script"]
+
+[node name="NewGameSetupLobbyPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="NewGameSetupLobbyMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="NewGameSetupLobbyStack" type="VBoxContainer" parent="NewGameSetupLobbyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="NewGameSetupLobbyHeader" type="HBoxContainer" parent="NewGameSetupLobbyMargin/NewGameSetupLobbyStack"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NewGameSetupLobbyTitle" type="Label" parent="NewGameSetupLobbyMargin/NewGameSetupLobbyStack/NewGameSetupLobbyHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+text = "开桌流程"
+text_overrun_behavior = 3
+
+[node name="NewGameSetupLobbyHeaderSpacer" type="Control" parent="NewGameSetupLobbyMargin/NewGameSetupLobbyStack/NewGameSetupLobbyHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NewGameSetupLobbyChipRail" type="HFlowContainer" parent="NewGameSetupLobbyMargin/NewGameSetupLobbyStack/NewGameSetupLobbyHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 4
+
+[node name="NewGameSetupFlowTrack" type="GridContainer" parent="NewGameSetupLobbyMargin/NewGameSetupLobbyStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 5
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="NewGameSetupReadinessRail" type="HFlowContainer" parent="NewGameSetupLobbyMargin/NewGameSetupLobbyStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 4

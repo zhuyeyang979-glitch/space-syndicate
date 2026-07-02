@@ -18,6 +18,7 @@ $localGodotRoots = @(
   "$workspaceRoot\tools",
   "$projectRoot\tools\godot-4.6.2",
   "$projectRoot\tools",
+  "$env:LOCALAPPDATA\Programs\Godot",
   "E:\New project\tools\godot-4.6.2",
   "E:\New project\tools"
 )

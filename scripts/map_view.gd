@@ -5,15 +5,17 @@ signal district_double_clicked(index: int)
 
 const GLOBE_MODE_ZOOM_THRESHOLD := 0.58
 const PLANET_PROJECTION_BLEND_NAME := "PlanetProjectionBlend"
-const PLANET_PROJECTION_LOCAL_ZOOM := 0.96
-const PLANET_PROJECTION_GLOBE_ZOOM := 0.58
+const PLANET_PROJECTION_LOCAL_ZOOM := 0.98
+const PLANET_PROJECTION_GLOBE_ZOOM := 0.48
 const PLANET_PROJECTION_VISIBILITY_FADE_START := 0.74
-const MIN_VIEW_ZOOM := 0.34
+const FLAT_PROJECTION_SPACE_MASK_NAME := "FlatProjectionSpaceMask"
+const LOCAL_PROJECTION_MARGIN_SCALE := 0.80
+const MIN_VIEW_ZOOM := 0.30
 const MAX_VIEW_ZOOM := 5.0
 const DRAG_THRESHOLD_PIXELS := 4.0
 const ANIMATED_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
 const ZOOM_SMOOTHING_SPEED := 12.0
-const ZOOM_WHEEL_STEP := 1.11
+const ZOOM_WHEEL_STEP := 1.08
 const LABEL_INTERACTION_ZOOM_EPSILON := 0.018
 const INTERACTION_DETAIL_SETTLE_SECONDS := 0.28
 const INTERACTION_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
@@ -24,6 +26,11 @@ const GLOBE_EDGE_INTERACTION_STEP_METERS := 90.0
 const BETTING_TABLE_THEME_NAME := "星际赌桌"
 const BETTING_TABLE_CHIP_COUNT := 18
 const BETTING_TABLE_SEAT_COUNT := 8
+const SPACE_BACKDROP_STAR_COUNT := 128
+const LABEL_DENSE_ZOOM_THRESHOLD := 1.52
+const FOCUSED_LABEL_ZOOM_THRESHOLD := 1.20
+const TABLE_TOKEN_LABEL_ZOOM_THRESHOLD := 1.36
+const CALLOUT_DENSE_ZOOM_THRESHOLD := 1.42
 
 var districts: Array = []
 var map_width_m := 1400.0
@@ -188,6 +195,7 @@ func _draw() -> void:
 	if globe_blend >= 0.985:
 		_draw_globe_projection()
 		return
+	_scale *= _local_projection_margin_scale()
 	_scale *= _view_zoom
 	_map_offset = size * 0.5
 	_draw_betting_table_background(globe_blend)
@@ -206,7 +214,7 @@ func _draw() -> void:
 		for i in range(districts.size()):
 			if _region_is_near_view(i):
 				_draw_region_effects(i)
-	var draw_dense_labels := _should_draw_dense_region_labels() or visual_layer_focus in ["product", "city", "route", "intel"]
+	var draw_dense_labels := _should_draw_dense_region_labels() or _focus_wants_dense_labels()
 	for i in range(districts.size()):
 		if _region_is_near_view(i) and (not reduced_detail or i == selected_district):
 			_draw_region_outline(i)
@@ -223,8 +231,10 @@ func _draw() -> void:
 		_draw_map_event_effects()
 	if _layer_focus_allows("monster"):
 		_draw_auto_monster_markers()
-	if not reduced_detail and _layer_focus_allows("callouts"):
+	if not reduced_detail and _layer_focus_allows("callouts") and _view_zoom >= CALLOUT_DENSE_ZOOM_THRESHOLD:
 		_draw_action_callouts()
+	if globe_blend < 0.985:
+		_draw_flat_projection_space_mask(globe_blend)
 	_draw_scale_hint()
 
 
@@ -429,9 +439,30 @@ func _should_draw_dense_region_labels() -> bool:
 		return false
 	if absf(_view_zoom - _target_view_zoom) > LABEL_INTERACTION_ZOOM_EPSILON:
 		return false
+	if _view_zoom < LABEL_DENSE_ZOOM_THRESHOLD:
+		return false
+	if districts.size() > 24 and _view_zoom < LABEL_DENSE_ZOOM_THRESHOLD + 0.18:
+		return false
 	if districts.size() > 32 and _globe_blend() > 0.05:
 		return false
 	return true
+
+
+func _focus_wants_dense_labels() -> bool:
+	return visual_layer_focus in ["product", "city", "route", "intel"] and _view_zoom >= FOCUSED_LABEL_ZOOM_THRESHOLD and not _dragging
+
+
+func _should_draw_table_token_labels() -> bool:
+	if _map_detail_reduced():
+		return false
+	if _view_zoom >= TABLE_TOKEN_LABEL_ZOOM_THRESHOLD:
+		return true
+	return _focus_wants_dense_labels()
+
+
+func _local_projection_margin_scale() -> float:
+	var zoom_in_t := clampf((_view_zoom - 1.0) / 0.72, 0.0, 1.0)
+	return lerpf(LOCAL_PROJECTION_MARGIN_SCALE, 1.0, zoom_in_t)
 
 
 func _draw_local_grid() -> void:
@@ -451,15 +482,14 @@ func _draw_local_grid() -> void:
 
 
 func _draw_betting_table_background(globe_blend: float) -> void:
-	var felt := Color("#052e24")
-	var dark_felt := Color("#021510")
-	draw_rect(Rect2(Vector2.ZERO, size), dark_felt, true)
+	_draw_space_backdrop(globe_blend)
 	var center: Vector2 = _globe_center()
-	felt.a = 0.92
-	draw_rect(Rect2(Vector2.ZERO, size), felt, true)
+	var stage_shadow := Color("#020617")
+	stage_shadow.a = 0.50
+	draw_circle(center, min(size.x, size.y) * 0.51, stage_shadow)
 	var felt_glow := Color("#064e3b")
-	felt_glow.a = 0.50
-	draw_circle(center, max(size.x, size.y) * 0.52, felt_glow)
+	felt_glow.a = 0.18 + globe_blend * 0.10
+	draw_circle(center, min(size.x, size.y) * 0.50, felt_glow)
 	var reduced_detail := _map_detail_reduced()
 	if not reduced_detail:
 		_draw_betting_table_weave(globe_blend)
@@ -476,6 +506,74 @@ func _draw_betting_table_background(globe_blend: float) -> void:
 	draw_arc(center, max(8.0, planet_radius + 8.0), 0.0, TAU, 48 if reduced_detail else 128, inner_rim, 1.6, true)
 	if not reduced_detail:
 		_draw_betting_table_edge_chips(center, rail_radius + 22.0, globe_blend)
+
+
+func _draw_space_backdrop(globe_blend: float) -> void:
+	var deep_space := Color("#020617")
+	draw_rect(Rect2(Vector2.ZERO, size), deep_space, true)
+	var center := _globe_center()
+	var nebula_a := Color("#0f172a").lerp(Color("#38bdf8"), 0.18)
+	nebula_a.a = 0.18 + globe_blend * 0.05
+	draw_circle(center - Vector2(size.x * 0.24, size.y * 0.18), min(size.x, size.y) * 0.28, nebula_a)
+	var nebula_b := Color("#1e1b4b").lerp(Color("#f59e0b"), 0.12)
+	nebula_b.a = 0.12
+	draw_circle(center + Vector2(size.x * 0.27, size.y * 0.20), min(size.x, size.y) * 0.24, nebula_b)
+	for i in range(SPACE_BACKDROP_STAR_COUNT):
+		var position := Vector2(
+			fposmod(float(i * 137 + 29) + _view_center_m.x * 0.015, maxf(1.0, size.x)),
+			fposmod(float(i * 73 + 47) + _view_center_m.y * 0.011, maxf(1.0, size.y))
+		)
+		var star := Color("#e0f2fe")
+		star.a = 0.18 + float((i * 19) % 9) * 0.045
+		draw_circle(position, 0.7 + float(i % 4) * 0.22, star)
+
+
+func _draw_flat_projection_space_mask(globe_blend: float) -> void:
+	if size.x <= 1.0 or size.y <= 1.0:
+		return
+	var projection_rect := _flat_projection_rect()
+	var mask := Color("#020617")
+	mask.a = 0.82 * (1.0 - clampf(globe_blend, 0.0, 1.0) * 0.58)
+	if mask.a > 0.02:
+		_draw_space_mask_rect(Rect2(Vector2.ZERO, Vector2(size.x, projection_rect.position.y)), mask)
+		_draw_space_mask_rect(Rect2(Vector2(0.0, projection_rect.end.y), Vector2(size.x, maxf(0.0, size.y - projection_rect.end.y))), mask)
+		_draw_space_mask_rect(Rect2(Vector2(0.0, projection_rect.position.y), Vector2(projection_rect.position.x, projection_rect.size.y)), mask)
+		_draw_space_mask_rect(Rect2(Vector2(projection_rect.end.x, projection_rect.position.y), Vector2(maxf(0.0, size.x - projection_rect.end.x), projection_rect.size.y)), mask)
+		_draw_projection_outer_stars(projection_rect, mask.a)
+	var boundary := Color("#38bdf8")
+	boundary.a = 0.22 * (1.0 - clampf(globe_blend, 0.0, 1.0) * 0.50)
+	draw_rect(projection_rect, boundary, false, 1.4)
+	var inner := Color("#f8fafc")
+	inner.a = 0.05
+	draw_rect(projection_rect.grow(-5.0), inner, false, 0.8)
+
+
+func _flat_projection_rect() -> Rect2:
+	var margin_x := maxf(24.0, size.x * 0.072)
+	var margin_y := maxf(24.0, size.y * 0.078)
+	return Rect2(
+		Vector2(margin_x, margin_y),
+		Vector2(maxf(1.0, size.x - margin_x * 2.0), maxf(1.0, size.y - margin_y * 2.0))
+	)
+
+
+func _draw_space_mask_rect(rect: Rect2, color: Color) -> void:
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return
+	draw_rect(rect, color, true)
+
+
+func _draw_projection_outer_stars(projection_rect: Rect2, alpha: float) -> void:
+	for i in range(42):
+		var position := Vector2(
+			fposmod(float(i * 149 + 17) + _view_center_m.x * 0.010, maxf(1.0, size.x)),
+			fposmod(float(i * 83 + 59) + _view_center_m.y * 0.014, maxf(1.0, size.y))
+		)
+		if projection_rect.has_point(position):
+			continue
+		var star := Color("#e0f2fe")
+		star.a = alpha * (0.18 + float((i * 11) % 6) * 0.07)
+		draw_circle(position, 0.7 + float(i % 3) * 0.25, star)
 
 
 func _draw_betting_table_weave(globe_blend: float) -> void:
@@ -557,7 +655,7 @@ func _draw_globe_projection() -> void:
 	for i in range(districts.size()):
 		if not reduced_detail or i == selected_district:
 			_draw_globe_region_outline(i)
-	var draw_dense_labels := _should_draw_dense_region_labels() or visual_layer_focus in ["product", "city", "route", "intel"]
+	var draw_dense_labels := _should_draw_dense_region_labels() or _focus_wants_dense_labels()
 	for i in range(districts.size()):
 		if draw_dense_labels or i == selected_district:
 			_draw_globe_region_label(i)
@@ -571,7 +669,7 @@ func _draw_globe_projection() -> void:
 		_draw_map_event_effects()
 	if _layer_focus_allows("monster"):
 		_draw_auto_monster_markers()
-	if not reduced_detail and _layer_focus_allows("callouts"):
+	if not reduced_detail and _layer_focus_allows("callouts") and _view_zoom >= CALLOUT_DENSE_ZOOM_THRESHOLD:
 		_draw_action_callouts()
 	_draw_scale_hint()
 
@@ -818,6 +916,8 @@ func _draw_region_label(index: int) -> void:
 		label_color = Color("#fef3c7")
 		label_color.a = maxf(0.82, label_alpha)
 	draw_string(font, pos + Vector2(-text_width * 0.5, -30), label, HORIZONTAL_ALIGNMENT_CENTER, text_width, 12, label_color)
+	if index == selected_district and not _should_draw_table_token_labels():
+		return
 	var terrain := String(district.get("terrain", "land"))
 	var sublabel := "海运"
 	if terrain != "ocean":
@@ -888,7 +988,7 @@ func _draw_trade_routes() -> void:
 				_draw_trade_segment(from_projected["position"], to_projected["position"], color, disrupted)
 			else:
 				_draw_trade_segment(_world_to_screen(from_world), _world_to_screen(to_world), color, disrupted)
-		if reduced_detail:
+		if reduced_detail or not _should_draw_table_token_labels():
 			continue
 		var label_index: int = clampi(int(points.size() / 2), 0, points.size() - 1)
 		var label_world: Vector2 = points[label_index]
@@ -991,7 +1091,8 @@ func _draw_city_cluster(pos: Vector2, marker: Dictionary) -> void:
 			product_text += " / %s" % String(products[1])
 		if products.size() > 2:
 			product_text += " +%d" % (products.size() - 2)
-	draw_string(font, pos + Vector2(-56.0, 25.0), product_text, HORIZONTAL_ALIGNMENT_CENTER, 112.0, 10, Color("#a7f3d0"))
+	if _should_draw_table_token_labels():
+		draw_string(font, pos + Vector2(-56.0, 25.0), product_text, HORIZONTAL_ALIGNMENT_CENTER, 112.0, 10, Color("#a7f3d0"))
 
 
 func _draw_ellipse_shadow(pos: Vector2) -> void:
@@ -1016,7 +1117,7 @@ func _draw_auto_monster_markers() -> void:
 				continue
 			pos = projected["position"]
 		_draw_monster_token(pos, marker, color)
-		if not _map_detail_reduced():
+		if _should_draw_table_token_labels():
 			var name := _short_action_text(String(marker.get("name", "怪兽")), 8)
 			draw_string(font, pos + Vector2(18, -14), name, HORIZONTAL_ALIGNMENT_LEFT, 92.0, 11, color)
 
@@ -1543,14 +1644,18 @@ func _short_action_text(text: String, max_characters: int) -> String:
 func _draw_scale_hint() -> void:
 	var font := get_theme_default_font()
 	var text := ""
-	var anchor := Vector2(12, 22)
+	var anchor := Vector2(12, 20)
 	if _is_globe_mode():
-		text = "星球全景｜滚轮贴近｜拖拽旋转｜圆点=在场单位"
+		text = "星球全景｜滚轮贴近"
 	elif _globe_blend() > 0.001:
-		text = "拉远中｜地表牌板正在卷成星球"
+		text = "过渡中｜地表卷成星球"
 	else:
-		text = "局部地表｜滚轮拉远看星球｜拖拽平移｜双击区域看牌"
-	draw_string(font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, min(760.0, size.x - 24.0), 12, Color("#cbd5e1"))
+		text = "局部地表｜双击看牌架"
+	var text_width := minf(260.0, maxf(112.0, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 10).x + 18.0))
+	var bg := Color("#020617")
+	bg.a = 0.62
+	draw_rect(Rect2(anchor + Vector2(-6.0, -14.0), Vector2(text_width, 24.0)), bg, true)
+	draw_string(font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, text_width - 10.0, 10, Color("#cbd5e1"))
 
 
 func _screen_polygon(world_points: Array) -> PackedVector2Array:
@@ -1564,6 +1669,32 @@ func _can_fill_polygon(points: PackedVector2Array) -> bool:
 	if points.size() < 3:
 		return false
 	return not Geometry2D.triangulate_polygon(points).is_empty()
+
+
+func get_district_control_position(index: int) -> Vector2:
+	if index < 0 or index >= districts.size() or size.x <= 1.0 or size.y <= 1.0:
+		return Vector2(-1.0, -1.0)
+	_sync_projection_metrics_for_query()
+	return _world_to_screen(districts[index].get("center", Vector2.ZERO))
+
+
+func get_district_at_control_position(position: Vector2) -> int:
+	if position.x < 0.0 or position.y < 0.0 or position.x > size.x or position.y > size.y:
+		return -1
+	_sync_projection_metrics_for_query()
+	return _district_at_point(_screen_to_world(position))
+
+
+func _sync_projection_metrics_for_query() -> void:
+	_scale = min(size.x / map_width_m, size.y / map_height_m)
+	if _scale <= 0.01:
+		return
+	if _is_globe_mode():
+		_map_offset = _globe_center()
+		return
+	_scale *= _local_projection_margin_scale()
+	_scale *= _view_zoom
+	_map_offset = size * 0.5
 
 
 func _world_to_screen(position_m: Vector2) -> Vector2:

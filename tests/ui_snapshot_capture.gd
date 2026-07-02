@@ -58,7 +58,32 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	await _pump_frames(8)
 	await _save_viewport_snapshot("main_menu_%s.png" % suffix)
 
+	main.call("_open_new_game_setup_menu")
+	await _pump_frames(8)
+	await _save_viewport_snapshot("new_game_setup_%s.png" % suffix)
+	_scroll_named_container_to_bottom(main, "MenuContentScroll")
+	await _pump_frames(2)
+	_scroll_named_container_to_bottom(main, "NewGameSetupSeatScroll")
+	await _pump_frames(4)
+	await _save_viewport_snapshot("new_game_setup_seats_%s.png" % suffix)
+
 	if capture_size == Vector2i(1600, 960):
+		main.call("_open_tutorial_menu")
+		await _pump_frames(8)
+		await _save_viewport_snapshot("tutorial_quick_start_%s.png" % suffix)
+
+		main.call("_open_rules_menu")
+		await _pump_frames(8)
+		await _save_viewport_snapshot("rules_quick_reference_%s.png" % suffix)
+
+		main.call("_open_compendium_menu")
+		await _pump_frames(8)
+		await _save_viewport_snapshot("compendium_hub_%s.png" % suffix)
+
+		main.call("_open_role_codex_menu", 0)
+		await _pump_frames(8)
+		await _save_viewport_snapshot("role_codex_detail_%s.png" % suffix)
+
 		main.call("_open_card_codex_menu")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("card_codex_grid_%s.png" % suffix)
@@ -67,14 +92,69 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		await _pump_frames(8)
 		await _save_viewport_snapshot("card_codex_detail_%s.png" % suffix)
 
+		main.call("_open_product_codex_menu", 0)
+		await _pump_frames(8)
+		await _save_viewport_snapshot("product_codex_detail_%s.png" % suffix)
+
+		main.call("_open_bestiary_menu", 0)
+		await _pump_frames(8)
+		await _save_viewport_snapshot("bestiary_detail_%s.png" % suffix)
+
 	main.set("configured_player_count", 4)
 	main.set("configured_ai_player_count", 3)
 	main.set("configured_role_indices", [0, 1, 2, 3, 4])
 	main.set("configured_starter_monster_indices", [0, 1, 2, 3])
 	main.call("_new_game")
+	if capture_size == Vector2i(1600, 960):
+		main.call("_open_standings_menu")
+		await _pump_frames(8)
+		await _save_viewport_snapshot("standings_runtime_%s.png" % suffix)
+		main.call("_open_economy_overview_menu")
+		await _pump_frames(8)
+		await _save_viewport_snapshot("economy_overview_runtime_%s.png" % suffix)
+		main.call("_open_intel_dossier_menu")
+		await _pump_frames(8)
+		await _save_viewport_snapshot("intel_dossier_runtime_%s.png" % suffix)
+		var settlement_rankings_variant: Variant = main.call("_final_score_rankings")
+		var settlement_rankings: Array = settlement_rankings_variant if settlement_rankings_variant is Array else []
+		main.call("_open_final_settlement_menu", "截图验证", settlement_rankings)
+		await _pump_frames(8)
+		await _save_viewport_snapshot("final_settlement_runtime_%s.png" % suffix)
 	main.call("_close_menu")
 	await _pump_frames(16)
 	await _save_viewport_snapshot("play_table_%s.png" % suffix)
+	if _show_runtime_drag_drop_hint(main):
+		await _pump_frames(6)
+		await _save_viewport_snapshot("play_table_drag_drop_%s.png" % suffix)
+		_hide_runtime_drag_drop_hint(main)
+		await _pump_frames(2)
+	else:
+		_capture_failures.append("runtime drag-drop hint was not available for %s" % suffix)
+	if _set_runtime_player_action_cooldown(main, 0, 2.5):
+		if main.has_method("_sync_runtime_game_screen"):
+			main.call("_sync_runtime_game_screen", true)
+		await _pump_frames(4)
+		if _show_runtime_drag_drop_hint(main):
+			await _pump_frames(6)
+			await _save_viewport_snapshot("play_table_drag_blocked_%s.png" % suffix)
+			_hide_runtime_drag_drop_hint(main)
+			await _pump_frames(2)
+		else:
+			_capture_failures.append("runtime blocked drag-drop hint was not available for %s" % suffix)
+		_set_runtime_player_action_cooldown(main, 0, 0.0)
+		if main.has_method("_sync_runtime_game_screen"):
+			main.call("_sync_runtime_game_screen", true)
+		await _pump_frames(4)
+	else:
+		_capture_failures.append("runtime cooldown state could not be staged for %s" % suffix)
+	if _open_first_runtime_detail_drawer(main):
+		await _pump_frames(8)
+		if _runtime_side_drawer_visible(main):
+			await _save_viewport_snapshot("play_table_drawer_%s.png" % suffix)
+		else:
+			_capture_failures.append("runtime detail drawer did not become visible for %s" % suffix)
+	else:
+		_capture_failures.append("runtime detail drawer link was not found for %s" % suffix)
 
 	get_root().remove_child(main)
 	main.queue_free()
@@ -106,6 +186,88 @@ func _place_capture_window(capture_size: Vector2i) -> void:
 	var screen_position := DisplayServer.screen_get_position(screen_index)
 	DisplayServer.window_set_position(screen_position + Vector2i(40, 40))
 	DisplayServer.window_set_size(capture_size)
+
+
+func _scroll_named_container_to_bottom(root_node: Node, node_name: String) -> void:
+	var scroll := root_node.find_child(node_name, true, false) as ScrollContainer
+	if scroll == null:
+		return
+	var vertical_bar := scroll.get_v_scroll_bar()
+	if vertical_bar == null:
+		return
+	scroll.scroll_vertical = int(maxf(0.0, vertical_bar.max_value))
+
+
+func _open_first_runtime_detail_drawer(root_node: Node) -> bool:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	var search_root: Node = runtime_screen if runtime_screen != null else root_node
+	var deep_link_row := search_root.find_child("InspectorDeepLinkRow", true, false)
+	if deep_link_row == null:
+		return false
+	for child in deep_link_row.get_children():
+		if child is Button and not (child as Button).disabled:
+			(child as Button).emit_signal("pressed")
+			return true
+	return false
+
+
+func _runtime_side_drawer_visible(root_node: Node) -> bool:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	var search_root: Node = runtime_screen if runtime_screen != null else root_node
+	var drawer := search_root.find_child("SideDrawerPanel", true, false) as Control
+	return drawer != null and drawer.visible and drawer.is_visible_in_tree()
+
+
+func _show_runtime_drag_drop_hint(root_node: Node) -> bool:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	if runtime_screen == null:
+		return false
+	var hand_rack := runtime_screen.find_child("HandRack", true, false)
+	var map_host := runtime_screen.find_child("MapHost", true, false) as Control
+	if hand_rack == null or map_host == null or not hand_rack.has_signal("card_drag_preview_started") or not hand_rack.has_signal("card_drag_preview_moved"):
+		return false
+	var card_data := _first_runtime_hand_card_data(hand_rack)
+	if card_data.is_empty():
+		card_data = {"id": "hand_0", "name": "手牌", "type": "行动", "cost": "?"}
+	var off_board := Vector2(-80.0, -80.0)
+	var on_board := map_host.get_global_rect().get_center()
+	hand_rack.emit_signal("card_drag_preview_started", card_data, off_board)
+	hand_rack.emit_signal("card_drag_preview_moved", card_data, on_board)
+	return true
+
+
+func _hide_runtime_drag_drop_hint(root_node: Node) -> void:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	if runtime_screen == null:
+		return
+	var hand_rack := runtime_screen.find_child("HandRack", true, false)
+	if hand_rack != null and hand_rack.has_signal("card_drag_preview_ended"):
+		hand_rack.emit_signal("card_drag_preview_ended", _first_runtime_hand_card_data(hand_rack))
+	var overlay := runtime_screen.find_child("OverlayLayer", true, false)
+	if overlay != null and overlay.has_method("hide_drag_preview"):
+		overlay.call("hide_drag_preview")
+
+
+func _first_runtime_hand_card_data(hand_rack: Node) -> Dictionary:
+	for child in hand_rack.get_children():
+		if child is Control and child.has_method("get_card_data"):
+			var data_variant: Variant = child.call("get_card_data")
+			return data_variant if data_variant is Dictionary else {}
+	return {}
+
+
+func _set_runtime_player_action_cooldown(root_node: Node, player_index: int, cooldown: float) -> bool:
+	var players_variant: Variant = root_node.get("players")
+	if not (players_variant is Array):
+		return false
+	var players: Array = (players_variant as Array).duplicate(true)
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return false
+	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
+	player["action_cooldown"] = maxf(0.0, cooldown)
+	players[player_index] = player
+	root_node.set("players", players)
+	return true
 
 
 func _save_viewport_snapshot(file_name: String) -> void:

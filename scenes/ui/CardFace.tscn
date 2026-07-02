@@ -4,4 +4,5 @@
 [ext_resource type="Script" path="res://scripts/ui/card_face.gd" id="2_card_face"]
 
 [node name="CardFace" instance=ExtResource("1_base_card")]
+custom_minimum_size = Vector2(96, 128)
 script = ExtResource("2_card_face")

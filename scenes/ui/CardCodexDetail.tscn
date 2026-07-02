@@ -1,0 +1,167 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/card_codex_detail.gd" id="2_script"]
+
+[node name="CardCodexDetailPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="CardCodexDetailMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="CardCodexDetailStack" type="VBoxContainer" parent="CardCodexDetailMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="CardCodexTcgDetailLayout" type="HBoxContainer" parent="CardCodexDetailMargin/CardCodexDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="CardCodexTcgFaceColumn" type="VBoxContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CardCodexTcgCardFaceHost" type="CenterContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgFaceColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CardCodexFaceNote" type="Label" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgFaceColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "重复入手→升级；价格看I级。"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="CardCodexTcgReadColumn" type="VBoxContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="CardCodexTcgSummaryPanel" type="PanelContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CardCodexTcgSummaryMargin" type="MarginContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="CardCodexTcgSummaryStack" type="VBoxContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="CardCodexTcgSummaryHeader" type="HBoxContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin/CardCodexTcgSummaryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CardCodexTcgSummaryTitle" type="Label" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin/CardCodexTcgSummaryStack/CardCodexTcgSummaryHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+text = "扫牌顺序"
+text_overrun_behavior = 3
+
+[node name="CardCodexTcgSummaryHeaderSpacer" type="Control" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin/CardCodexTcgSummaryStack/CardCodexTcgSummaryHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CardCodexTcgSummaryHeaderChipRail" type="HFlowContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin/CardCodexTcgSummaryStack/CardCodexTcgSummaryHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 4
+
+[node name="CardCodexTcgSummaryChipRail" type="HFlowContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin/CardCodexTcgSummaryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 4
+
+[node name="CardCodexTcgSummaryEffect" type="Label" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin/CardCodexTcgSummaryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "速读"
+autowrap_mode = 3
+
+[node name="CardCodexTcgReadOrder" type="Label" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTcgSummaryPanel/CardCodexTcgSummaryMargin/CardCodexTcgSummaryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV升级"
+autowrap_mode = 3
+
+[node name="CardCodexTacticalStrip" type="PanelContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CardCodexTacticalMargin" type="MarginContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTacticalStrip"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="CardCodexTacticalStack" type="VBoxContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTacticalStrip/CardCodexTacticalMargin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="CardCodexTacticalTitle" type="Label" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTacticalStrip/CardCodexTacticalMargin/CardCodexTacticalStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "牌桌用途｜先看这三格"
+
+[node name="CardCodexTacticalGrid" type="GridContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn/CardCodexTacticalStrip/CardCodexTacticalMargin/CardCodexTacticalStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="CardCodexTcgFactGrid" type="GridContainer" parent="CardCodexDetailMargin/CardCodexDetailStack/CardCodexTcgDetailLayout/CardCodexTcgReadColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="CardCodexUpgradeTitle" type="Label" parent="CardCodexDetailMargin/CardCodexDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "I→IV 强化"
+horizontal_alignment = 1
+
+[node name="CardCodexUpgradeLadder" type="GridContainer" parent="CardCodexDetailMargin/CardCodexDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="CardCodexResolutionInfoHost" type="VBoxContainer" parent="CardCodexDetailMargin/CardCodexDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3

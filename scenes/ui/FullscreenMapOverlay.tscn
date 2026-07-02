@@ -1,0 +1,196 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
+bg_color = Color(0.0196078, 0.0470588, 0.109804, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.219608, 0.741176, 0.972549, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_map_panel"]
+bg_color = Color(0.0117647, 0.027451, 0.0705882, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.121569, 0.411765, 0.654902, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip_panel"]
+bg_color = Color(0.0117647, 0.027451, 0.0705882, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.576471, 0.772549, 0.992157, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
+bg_color = Color(0.117647, 0.160784, 0.231373, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.576471, 0.772549, 0.992157, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="FullscreenMapOverlay" type="ColorRect"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = ExtResource("1_theme")
+color = Color(0.00784314, 0.0235294, 0.0901961, 1)
+
+[node name="FullscreenMapMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="FullscreenMapRows" type="VBoxContainer" parent="FullscreenMapMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FullscreenMapToolbar" type="HBoxContainer" parent="FullscreenMapMargin/FullscreenMapRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FullscreenMapTitleLabel" type="Label" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapToolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "全屏地图"
+text_overrun_behavior = 3
+
+[node name="FullscreenMapActionHost" type="HBoxContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapToolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="FullscreenMapCloseButton" type="Button" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapToolbar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 30)
+layout_mode = 2
+text = "退出全屏"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+
+[node name="FullscreenMapReadingHud" type="PanelContainer" parent="FullscreenMapMargin/FullscreenMapRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "全屏地图读图条: 保留当前图层, 商品, 选区和核心手势。"
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
+
+[node name="FullscreenMapHudMargin" type="MarginContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud"]
+layout_mode = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 9
+theme_override_constants/margin_bottom = 4
+
+[node name="FullscreenMapLayerHud" type="HFlowContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 2
+
+[node name="FullscreenMapLayerChip" type="PanelContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip_panel")
+
+[node name="ChipMargin" type="MarginContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapLayerChip"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 2
+
+[node name="FullscreenMapLayerHudLabel" type="Label" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapLayerChip/ChipMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "图层:全图"
+text_overrun_behavior = 3
+
+[node name="FullscreenMapProductChip" type="PanelContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip_panel")
+
+[node name="ChipMargin" type="MarginContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapProductChip"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 2
+
+[node name="FullscreenMapProductHudLabel" type="Label" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapProductChip/ChipMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "商品:未选"
+text_overrun_behavior = 3
+
+[node name="FullscreenMapDistrictChip" type="PanelContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip_panel")
+
+[node name="ChipMargin" type="MarginContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapDistrictChip"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 2
+
+[node name="FullscreenMapDistrictHudLabel" type="Label" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapDistrictChip/ChipMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "选区:未选"
+text_overrun_behavior = 3
+
+[node name="FullscreenMapHintChip" type="PanelContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip_panel")
+
+[node name="ChipMargin" type="MarginContainer" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapHintChip"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 2
+
+[node name="FullscreenMapHintHudLabel" type="Label" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapHintChip/ChipMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "滚轮缩放 | 拖拽星球 | 双击牌架"
+text_overrun_behavior = 3
+
+[node name="FullscreenMapHost" type="PanelContainer" parent="FullscreenMapMargin/FullscreenMapRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_map_panel")

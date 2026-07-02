@@ -1,0 +1,225 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/menu_overlay.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_surface"]
+bg_color = Color(0.0323529, 0.0552941, 0.142353, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.219608, 0.741176, 0.972549, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hint"]
+bg_color = Color(0.01, 0.039, 0.092, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.113725, 0.305882, 0.847059, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(0.117647, 0.160784, 0.231373, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.576471, 0.772549, 0.992157, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(0.164706, 0.217647, 0.313725, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.741176, 0.858824, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="MenuModalOverlay" type="ColorRect"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+theme = ExtResource("1_theme")
+color = Color(0.01, 0.015, 0.035, 0.92)
+script = ExtResource("2_script")
+
+[node name="MenuSurfacePanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(760, 520)
+layout_mode = 1
+anchor_left = 0.07
+anchor_top = 0.055
+anchor_right = 0.93
+anchor_bottom = 0.945
+theme_override_styles/panel = SubResource("StyleBoxFlat_surface")
+
+[node name="MenuShellMargin" type="MarginContainer" parent="MenuSurfacePanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 18
+
+[node name="MenuShell" type="VBoxContainer" parent="MenuSurfacePanel/MenuShellMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="MenuTitleLabel" type="Label" parent="MenuSurfacePanel/MenuShellMargin/MenuShell"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Space Syndicate"
+horizontal_alignment = 1
+
+[node name="MenuContextLabel" type="Label" parent="MenuSurfacePanel/MenuShellMargin/MenuShell"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Menu"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="MenuQuickNavRow" type="HBoxContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="MenuInteractionHintPanel" type="PanelContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_hint")
+
+[node name="InteractionHintMargin" type="MarginContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuInteractionHintPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 6
+
+[node name="MenuInteractionHintLabel" type="Label" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuInteractionHintPanel/InteractionHintMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Hover preview | details | return"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="MenuNavRow" type="HBoxContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="MenuContinueButton" type="Button" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuNavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Continue"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
+
+[node name="MenuBackButton" type="Button" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuNavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Back"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
+
+[node name="MenuCatalogNavRow" type="HBoxContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="MenuBestiaryPrevButton" type="Button" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuCatalogNavRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Previous"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
+
+[node name="MenuBestiaryNextButton" type="Button" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuCatalogNavRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Next"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
+
+[node name="MenuBestiaryBackButton" type="Button" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuCatalogNavRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Back"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_hover")
+
+[node name="MenuContentScroll" type="ScrollContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+follow_focus = false
+
+[node name="MenuContentMargin" type="MarginContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="MenuContentBox" type="VBoxContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="MenuBodyLabel" type="Label" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="MenuPreviewBox" type="VBoxContainer" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MenuRunSaveLabel" type="Label" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3

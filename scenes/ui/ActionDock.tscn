@@ -4,21 +4,31 @@
 [ext_resource type="Script" path="res://scripts/ui/action_dock.gd" id="2_action_dock"]
 
 [node name="ActionDock" type="PanelContainer"]
-custom_minimum_size = Vector2(280, 86)
+custom_minimum_size = Vector2(280, 38)
 theme = ExtResource("1_theme")
 script = ExtResource("2_action_dock")
 
 [node name="ActionRows" type="VBoxContainer" parent="."]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 3
 
 [node name="ActionTitle" type="Label" parent="ActionRows"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "当前行动"
+text = "桌边行动"
 horizontal_alignment = 1
 
-[node name="ActionRow" type="HBoxContainer" parent="ActionRows"]
+[node name="ActionDockQuickActionRow" type="HFlowContainer" parent="ActionRows"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="ActionRow" type="HFlowContainer" parent="ActionRows"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 6
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 5

@@ -1,0 +1,115 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/final_settlement_board.gd" id="2_script"]
+
+[node name="FinalSettlementBoardPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="FinalSettlementMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="FinalSettlementStack" type="VBoxContainer" parent="FinalSettlementMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="FinalSettlementHeader" type="HBoxContainer" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="FinalSettlementBoardTitle" type="Label" parent="FinalSettlementMargin/FinalSettlementStack/FinalSettlementHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "终局速览｜赛后记分板"
+
+[node name="FinalSettlementHeaderChipRail" type="HFlowContainer" parent="FinalSettlementMargin/FinalSettlementStack/FinalSettlementHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="FinalSettlementKpiGrid" type="GridContainer" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="FinalSettlementMoneySourceTitle" type="Label" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "胜因拆解｜资金来源"
+
+[node name="FinalSettlementMoneySourcePanel" type="GridContainer" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7
+
+[node name="FinalSettlementEventPanel" type="PanelContainer" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FinalSettlementEventMargin" type="MarginContainer" parent="FinalSettlementMargin/FinalSettlementStack/FinalSettlementEventPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="FinalSettlementEventStack" type="VBoxContainer" parent="FinalSettlementMargin/FinalSettlementStack/FinalSettlementEventPanel/FinalSettlementEventMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FinalSettlementEventTitle" type="Label" parent="FinalSettlementMargin/FinalSettlementStack/FinalSettlementEventPanel/FinalSettlementEventMargin/FinalSettlementEventStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "公开事件｜牌轨与地图"
+
+[node name="FinalSettlementEventLineBox" type="VBoxContainer" parent="FinalSettlementMargin/FinalSettlementStack/FinalSettlementEventPanel/FinalSettlementEventMargin/FinalSettlementEventStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="FinalSettlementRankTrackTitle" type="Label" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "排名轨｜结算资金"
+
+[node name="FinalSettlementRankTrack" type="GridContainer" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7
+
+[node name="FinalSettlementAfterActionTitle" type="Label" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "赛后入口｜查原因或再开一桌"
+horizontal_alignment = 1
+
+[node name="FinalSettlementAfterActionGrid" type="GridContainer" parent="FinalSettlementMargin/FinalSettlementStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8

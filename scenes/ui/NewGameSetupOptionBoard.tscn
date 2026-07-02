@@ -1,0 +1,35 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/new_game_setup_option_board.gd" id="2_script"]
+
+[node name="NewGameSetupOptionBoard" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="NewGameSetupOptionBoardMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="NewGameSetupOptionStack" type="VBoxContainer" parent="NewGameSetupOptionBoardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NewGameSetupOptionBoardTitle" type="Label" parent="NewGameSetupOptionBoardMargin/NewGameSetupOptionStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "开局参数｜先定桌面规模"
+
+[node name="NewGameSetupOptionGrid" type="GridContainer" parent="NewGameSetupOptionBoardMargin/NewGameSetupOptionStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8

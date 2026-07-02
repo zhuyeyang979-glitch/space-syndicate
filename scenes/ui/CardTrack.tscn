@@ -4,16 +4,17 @@
 [ext_resource type="Script" path="res://scripts/ui/card_track.gd" id="2_card_track"]
 
 [node name="CardTrack" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 40)
 theme = ExtResource("1_theme")
 script = ExtResource("2_card_track")
 
 [node name="CardTrackScroll" type="ScrollContainer" parent="."]
 layout_mode = 2
+horizontal_scroll_mode = 1
 vertical_scroll_mode = 0
 
 [node name="CardTrackRow" type="HBoxContainer" parent="CardTrackScroll"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
+size_flags_horizontal = 0
+theme_override_constants/separation = 4

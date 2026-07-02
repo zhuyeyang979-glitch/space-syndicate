@@ -1,0 +1,71 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/rules_quick_reference_board.gd" id="2_script"]
+
+[node name="RulesQuickReferencePanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="RulesQuickReferenceMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="RulesQuickReferenceStack" type="VBoxContainer" parent="RulesQuickReferenceMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="RulesQuickReferenceHeader" type="HBoxContainer" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="RulesQuickReferenceTitle" type="Label" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack/RulesQuickReferenceHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "规则速查板"
+
+[node name="RulesQuickReferenceHeaderSpacer" type="Control" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack/RulesQuickReferenceHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RulesQuickReferenceChipRail" type="HFlowContainer" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack/RulesQuickReferenceHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="RulesQuickReferenceKpiGrid" type="GridContainer" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="RulesQuickReferenceModuleTitle" type="Label" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "牌桌模块｜先扫卡，再读正文"
+
+[node name="RulesQuickReferenceModuleGrid" type="GridContainer" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="RulesQuickReferenceFooterHint" type="Label" parent="RulesQuickReferenceMargin/RulesQuickReferenceStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "规则正文只放在本页；主桌只保留行动短句。"
+autowrap_mode = 2

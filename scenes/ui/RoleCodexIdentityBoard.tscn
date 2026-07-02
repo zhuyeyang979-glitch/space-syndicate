@@ -1,0 +1,74 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/role_codex_identity_board.gd" id="2_script"]
+
+[node name="RoleCodexIdentityBoardPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="RoleCodexIdentityMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="RoleCodexIdentityStack" type="VBoxContainer" parent="RoleCodexIdentityMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 9
+
+[node name="RoleCodexIdentityHeader" type="HBoxContainer" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="RoleCodexIdentityFaceSlot" type="CenterContainer" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack/RoleCodexIdentityHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(250, 0)
+
+[node name="RoleCodexIdentityHeaderStack" type="VBoxContainer" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack/RoleCodexIdentityHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="RoleCodexIdentityTitle" type="Label" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack/RoleCodexIdentityHeader/RoleCodexIdentityHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "外星辛迪加｜第1/1张"
+autowrap_mode = 2
+
+[node name="RoleCodexIdentitySubtitle" type="Label" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack/RoleCodexIdentityHeader/RoleCodexIdentityHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "未知外星人｜通用经营"
+autowrap_mode = 2
+
+[node name="RoleCodexIdentityChipRail" type="HFlowContainer" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack/RoleCodexIdentityHeader/RoleCodexIdentityHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="RoleCodexAbilityKpiGrid" type="GridContainer" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack/RoleCodexIdentityHeader/RoleCodexIdentityHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7
+
+[node name="RoleCodexRouteCardGrid" type="GridContainer" parent="RoleCodexIdentityMargin/RoleCodexIdentityStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7

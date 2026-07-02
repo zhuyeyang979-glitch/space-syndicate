@@ -1,0 +1,71 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/tutorial_quick_start_board.gd" id="2_script"]
+
+[node name="TutorialQuickStartPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="TutorialQuickStartMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="TutorialQuickStartStack" type="VBoxContainer" parent="TutorialQuickStartMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="TutorialQuickStartHeader" type="HBoxContainer" parent="TutorialQuickStartMargin/TutorialQuickStartStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="TutorialQuickStartTitle" type="Label" parent="TutorialQuickStartMargin/TutorialQuickStartStack/TutorialQuickStartHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "试玩速成板"
+
+[node name="TutorialQuickStartHeaderSpacer" type="Control" parent="TutorialQuickStartMargin/TutorialQuickStartStack/TutorialQuickStartHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TutorialQuickStartChipRail" type="HFlowContainer" parent="TutorialQuickStartMargin/TutorialQuickStartStack/TutorialQuickStartHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="TutorialQuickStartStepGrid" type="GridContainer" parent="TutorialQuickStartMargin/TutorialQuickStartStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="TutorialQuickStartTrapTitle" type="Label" parent="TutorialQuickStartMargin/TutorialQuickStartStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "卡点急救｜先排这四件事"
+
+[node name="TutorialQuickStartTrapGrid" type="GridContainer" parent="TutorialQuickStartMargin/TutorialQuickStartStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="TutorialQuickStartFooterHint" type="Label" parent="TutorialQuickStartMargin/TutorialQuickStartStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "完整细则进游戏规则；这一页只帮你把第一局跑起来。"
+autowrap_mode = 2

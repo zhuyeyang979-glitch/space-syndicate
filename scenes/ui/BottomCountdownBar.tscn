@@ -1,0 +1,55 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/bottom_countdown_bar.gd" id="2_script"]
+
+[node name="BottomCountdownOverlay" type="Control"]
+layout_mode = 3
+anchor_left = 0.16
+anchor_top = 0.945
+anchor_right = 0.84
+anchor_bottom = 0.988
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="BottomCountdownPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+tooltip_text = "Table sandglass: shorter bar means the current public window is closer to ending."
+
+[node name="BottomCountdownMargin" type="MarginContainer" parent="BottomCountdownPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 5
+
+[node name="BottomCountdownRow" type="HBoxContainer" parent="BottomCountdownPanel/BottomCountdownMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CardResolutionRevealTimerLabel" type="Label" parent="BottomCountdownPanel/BottomCountdownMargin/BottomCountdownRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 0)
+layout_mode = 2
+text = "牌桌计时"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="CardResolutionRevealTimerBar" type="ProgressBar" parent="BottomCountdownPanel/BottomCountdownMargin/BottomCountdownRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+value = 100.0
+show_percentage = false

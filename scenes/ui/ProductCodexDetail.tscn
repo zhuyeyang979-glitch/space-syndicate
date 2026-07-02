@@ -1,0 +1,73 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/product_codex_detail.gd" id="2_script"]
+
+[node name="ProductCodexMarketBoardPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="ProductCodexMarketMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="ProductCodexMarketStack" type="VBoxContainer" parent="ProductCodexMarketMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 9
+
+[node name="ProductCodexMarketHeader" type="HBoxContainer" parent="ProductCodexMarketMargin/ProductCodexMarketStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ProductCodexMarketBadgeSlot" type="CenterContainer" parent="ProductCodexMarketMargin/ProductCodexMarketStack/ProductCodexMarketHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+
+[node name="ProductCodexMarketHeaderStack" type="VBoxContainer" parent="ProductCodexMarketMargin/ProductCodexMarketStack/ProductCodexMarketHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="ProductCodexMarketTitle" type="Label" parent="ProductCodexMarketMargin/ProductCodexMarketStack/ProductCodexMarketHeader/ProductCodexMarketHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "商品市场板"
+autowrap_mode = 3
+
+[node name="ProductCodexMarketSubtitle" type="Label" parent="ProductCodexMarketMargin/ProductCodexMarketStack/ProductCodexMarketHeader/ProductCodexMarketHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "价格、供需、策略和公开线索"
+autowrap_mode = 3
+
+[node name="ProductCodexMarketChipRail" type="HFlowContainer" parent="ProductCodexMarketMargin/ProductCodexMarketStack/ProductCodexMarketHeader/ProductCodexMarketHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="ProductCodexMarketKpiGrid" type="GridContainer" parent="ProductCodexMarketMargin/ProductCodexMarketStack/ProductCodexMarketHeader/ProductCodexMarketHeaderStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7
+
+[node name="ProductCodexStrategyGrid" type="GridContainer" parent="ProductCodexMarketMargin/ProductCodexMarketStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 7
+theme_override_constants/v_separation = 7

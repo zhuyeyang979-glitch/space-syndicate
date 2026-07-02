@@ -1,62 +1,207 @@
 extends PanelContainer
 class_name SpaceSyndicateRightInspector
 
+const WHY_TEXT_CHAR_LIMIT := 86
+const SUMMARY_TEXT_CHAR_LIMIT := 72
+
 signal action_requested(action_id: String)
 
 @onready var title_label: Label = %InspectorTitle
+@onready var reason_panel: Control = %InspectorReasonPanel
+@onready var reason_label: Label = %InspectorReasonLabel
+@onready var requirement_chip_row: HFlowContainer = %InspectorRequirementChipRow
 @onready var district_info_panel: Node = %DistrictInfoPanel
 @onready var current_action_panel: Node = %CurrentActionPanel
+@onready var event_log_panel: Control = %EventLogPanel
 @onready var event_log_label: Label = %EventLogLabel
+@onready var deep_link_row: HFlowContainer = %InspectorDeepLinkRow
+
+var requirements_signature: String = ""
+var deep_links_signature: String = ""
 
 
 func _ready() -> void:
+	if current_action_panel.has_method("set_dense_mode"):
+		current_action_panel.call("set_dense_mode", true)
 	if current_action_panel.has_signal("action_requested"):
 		current_action_panel.connect("action_requested", Callable(self, "_on_action_requested"))
 
 
 func set_context(data: Dictionary) -> void:
-	title_label.text = str(data.get("title", "右侧说明书"))
+	title_label.text = str(data.get("title", "右侧详情"))
+	var reason_text := str(data.get("why", data.get("explanation", ""))).strip_edges()
+	var requirement_chips: Variant = data.get("requirements", data.get("requirement_chips", []))
+	var has_requirements := _has_meaningful_requirement_chips(requirement_chips)
+	var shows_reason_panel := reason_text != "" or has_requirements
+	if reason_panel != null:
+		reason_panel.visible = shows_reason_panel
+		reason_panel.custom_minimum_size = Vector2(0, 54 if has_requirements else 42) if shows_reason_panel else Vector2.ZERO
+	reason_label.text = _short_table_text(reason_text, WHY_TEXT_CHAR_LIMIT) if shows_reason_panel else ""
+	reason_label.tooltip_text = reason_text
+	if requirement_chip_row != null:
+		requirement_chip_row.visible = has_requirements
+	_set_chip_row(requirement_chip_row, requirement_chips if has_requirements else [], false)
 	var district: Dictionary = data.get("district", {}) if data.get("district", {}) is Dictionary else {}
 	if district_info_panel.has_method("set_info"):
 		district_info_panel.call(
 			"set_info",
-			str(district.get("title", "当前区域")),
-			str(district.get("detail", "选择地图区域后显示短详情。")),
-			district.get("chips", [])
+			str(district.get("title", "当前选区")),
+			_district_table_summary(district),
+			district.get("chips", []),
+			_district_full_detail(district)
 		)
 	if current_action_panel.has_method("set_actions"):
 		var actions: Variant = data.get("actions", [])
 		current_action_panel.call("set_actions", actions if actions is Array else [])
 	_set_event_log(data.get("logs", []))
+	_set_deep_links(data.get("deep_links", data.get("details", [])))
+
+
+func _has_meaningful_requirement_chips(chips_variant: Variant) -> bool:
+	var chips: Array = chips_variant if chips_variant is Array else []
+	for chip_variant in chips:
+		var text := ""
+		if chip_variant is Dictionary:
+			var chip := chip_variant as Dictionary
+			text = str(chip.get("text", chip.get("label", chip.get("state", "")))).strip_edges()
+		else:
+			text = str(chip_variant).strip_edges()
+		if text != "" and not (text in ["条件", "暂无条件", "待选择"]):
+			return true
+	return false
 
 
 func show_card(card_data: Dictionary) -> void:
 	var chips: Array = []
 	for key in ["rank", "type", "cost", "target"]:
 		if card_data.has(key) and str(card_data[key]) != "":
-			chips.append({"text": "%s %s" % [str(key).capitalize(), str(card_data[key])]})
+			chips.append({"text": "%s %s" % [_card_chip_label(key), str(card_data[key])]})
+	var full_detail := str(card_data.get("effect", card_data.get("description", "选择卡牌查看效果。")))
+	var summary := str(card_data.get("summary", "")).strip_edges()
+	if summary == "":
+		summary = _short_table_text(full_detail, SUMMARY_TEXT_CHAR_LIMIT)
 	set_context({
 		"title": "卡牌详情",
 		"district": {
 			"title": str(card_data.get("name", "未命名卡牌")),
-			"detail": str(card_data.get("effect", card_data.get("description", "选择目标后执行。"))),
+			"summary": summary,
+			"detail": summary,
+			"full_detail": full_detail,
 			"chips": chips,
 		},
 		"actions": card_data.get("actions", []),
+		"why": str(card_data.get("why", full_detail if full_detail.strip_edges() != "" else "能否打出取决于费用、目标和当前选区。")),
+		"requirements": card_data.get("requirements", [
+			{"text": "费用 %s" % str(card_data.get("cost", "--"))},
+			{"text": "目标 %s" % str(card_data.get("target", "任意"))},
+		]),
+		"deep_links": card_data.get("deep_links", [
+			{"id": "detail_card", "label": "卡牌详情"},
+			{"id": "detail_region", "label": "区域详情"},
+		]),
 		"logs": [],
 	})
+
+
+func _set_chip_row(row: HFlowContainer, chips_variant: Variant, fallback_when_empty: bool = false) -> void:
+	var chips: Array = chips_variant if chips_variant is Array else []
+	if chips.is_empty() and fallback_when_empty:
+		chips = [{"text": "待选择"}]
+	var next_signature := var_to_str(chips)
+	if next_signature == requirements_signature:
+		return
+	requirements_signature = next_signature
+	for child in row.get_children():
+		row.remove_child(child)
+		child.queue_free()
+	for chip_variant in chips:
+		var chip: Dictionary = chip_variant if chip_variant is Dictionary else {"text": str(chip_variant)}
+		var label := Label.new()
+		label.text = str(chip.get("text", "条件"))
+		label.tooltip_text = str(chip.get("tooltip", ""))
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		row.add_child(label)
+
+
+func _set_deep_links(links_variant: Variant) -> void:
+	var links: Array = links_variant if links_variant is Array else []
+	if links.is_empty():
+		links = [{"id": "codex", "label": "打开图鉴"}]
+	var next_signature := var_to_str(links)
+	if next_signature == deep_links_signature:
+		return
+	deep_links_signature = next_signature
+	for child in deep_link_row.get_children():
+		deep_link_row.remove_child(child)
+		child.queue_free()
+	for link_variant in links:
+		var link: Dictionary = link_variant if link_variant is Dictionary else {"id": str(link_variant), "label": str(link_variant)}
+		var button := Button.new()
+		button.text = str(link.get("label", "详情"))
+		button.tooltip_text = str(link.get("tooltip", ""))
+		button.custom_minimum_size = Vector2(0, 28)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var action_id := str(link.get("id", button.text))
+		button.pressed.connect(func() -> void:
+			action_requested.emit(action_id)
+		)
+		deep_link_row.add_child(button)
 
 
 func _set_event_log(logs_variant: Variant) -> void:
 	var logs: Array = logs_variant if logs_variant is Array else []
 	if logs.is_empty():
-		event_log_label.text = "公开日志\n- 暂无公开事件"
+		if event_log_panel != null:
+			event_log_panel.visible = false
+			event_log_panel.custom_minimum_size = Vector2.ZERO
+		event_log_label.text = ""
 		return
-	var lines: Array[String] = ["公开日志"]
-	var start_index := maxi(0, logs.size() - 6)
-	for i in range(start_index, logs.size()):
-		lines.append("- %s" % str(logs[i]))
-	event_log_label.text = "\n".join(lines)
+	if event_log_panel != null:
+		event_log_panel.visible = true
+		event_log_panel.custom_minimum_size = Vector2(0, 36)
+	var latest := _short_log_line(str(logs[logs.size() - 1]), 46)
+	event_log_label.text = "最近公开日志｜%s" % latest
+
+
+func _short_log_line(value: String, max_chars: int) -> String:
+	var clean := value.replace("\n", " ").strip_edges()
+	if clean.length() <= max_chars:
+		return clean
+	return "%s..." % clean.substr(0, maxi(0, max_chars - 3))
+
+
+func _district_table_summary(district: Dictionary) -> String:
+	var summary := str(district.get("summary", district.get("short_detail", ""))).strip_edges()
+	if summary == "":
+		summary = str(district.get("detail", "区域短说明会显示在这里。"))
+	return _short_table_text(summary, SUMMARY_TEXT_CHAR_LIMIT)
+
+
+func _district_full_detail(district: Dictionary) -> String:
+	var full_detail := str(district.get("full_detail", district.get("detail", ""))).strip_edges()
+	if full_detail == "":
+		full_detail = _district_table_summary(district)
+	return full_detail
+
+
+func _short_table_text(value: String, max_chars: int) -> String:
+	var clean := value.replace("\n", " ").strip_edges()
+	if clean.length() <= max_chars:
+		return clean
+	return "%s..." % clean.substr(0, maxi(0, max_chars - 3))
+
+
+func _card_chip_label(key: String) -> String:
+	match key:
+		"rank":
+			return "等级"
+		"type":
+			return "类型"
+		"cost":
+			return "费用"
+		"target":
+			return "目标"
+	return key
 
 
 func _on_action_requested(action_id: String) -> void:

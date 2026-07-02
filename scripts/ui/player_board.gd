@@ -1,43 +1,436 @@
 extends PanelContainer
 class_name SpaceSyndicatePlayerBoard
 
-const CARD_FACE_SCENE := preload("res://scenes/ui/CardFace.tscn")
-
 signal card_selected(card_data: Dictionary)
+signal card_hovered(card_data: Dictionary)
+signal card_unhovered
+signal card_drag_preview_started(card_data: Dictionary, screen_position: Vector2)
+signal card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2)
+signal card_drag_preview_ended(card_data: Dictionary)
+signal card_drag_released(card_data: Dictionary, screen_position: Vector2)
+signal action_requested(action_id: String)
+signal track_link_hovered(action_id: String)
+signal track_link_unhovered(action_id: String)
 
 @onready var title_label: Label = %PlayerBoardTitle
+@onready var identity_chip: Label = %PlayerIdentityChip
+@onready var cash_chip: Label = %PlayerCashChip
+@onready var gdp_chip: Label = %PlayerGdpChip
+@onready var goal_chip: Label = %PlayerGoalChip
+@onready var selected_district_chip: Label = %PlayerSelectedDistrictChip
+@onready var primary_action_chip: Label = %PlayerPrimaryActionChip
+@onready var hand_count_chip: Label = %PlayerHandCountChip
+@onready var goal_bar: ProgressBar = %PlayerGoalBar
 @onready var hand_rack: Control = %HandRack
 @onready var action_hint_label: Label = %PlayerActionHint
+@onready var bid_board: Node = %PlayerBidBoard
+@onready var main_action_dock: Node = %PlayerMainActionDock
+@onready var status_lamp_row: Container = %PlayerStatusLampRow
+@onready var readiness_chip_row: Container = %PlayerReadinessChipRow
+@onready var resource_tableau: PanelContainer = %PlayerResourceTableau
+@onready var hand_tableau: PanelContainer = %PlayerHandTableau
+@onready var command_tableau: PanelContainer = %PlayerCommandTableau
+
+var hand_cards_signature: String = ""
+var status_lamps_signature: String = ""
+var readiness_chips_signature: String = ""
+
+
+func _ready() -> void:
+	_configure_chip_defaults()
+	_configure_tableau_styles()
+	if hand_rack != null and hand_rack.has_signal("card_hovered"):
+		hand_rack.connect("card_hovered", Callable(self, "_on_card_hovered"))
+	if hand_rack != null and hand_rack.has_signal("card_unhovered"):
+		hand_rack.connect("card_unhovered", Callable(self, "_on_card_unhovered"))
+	if hand_rack != null and hand_rack.has_signal("card_selected"):
+		hand_rack.connect("card_selected", Callable(self, "_on_card_clicked"))
+	if hand_rack != null and hand_rack.has_signal("card_double_selected"):
+		hand_rack.connect("card_double_selected", Callable(self, "_on_card_double_clicked"))
+	if hand_rack != null and hand_rack.has_signal("card_drag_preview_started"):
+		hand_rack.connect("card_drag_preview_started", Callable(self, "_on_card_drag_preview_started"))
+	if hand_rack != null and hand_rack.has_signal("card_drag_preview_moved"):
+		hand_rack.connect("card_drag_preview_moved", Callable(self, "_on_card_drag_preview_moved"))
+	if hand_rack != null and hand_rack.has_signal("card_drag_preview_ended"):
+		hand_rack.connect("card_drag_preview_ended", Callable(self, "_on_card_drag_preview_ended"))
+	if hand_rack != null and hand_rack.has_signal("card_drag_released"):
+		hand_rack.connect("card_drag_released", Callable(self, "_on_card_drag_released"))
+	if main_action_dock != null and main_action_dock.has_method("set_compact_mode"):
+		main_action_dock.call("set_compact_mode", true)
+	if main_action_dock != null and main_action_dock.has_signal("action_requested"):
+		main_action_dock.connect("action_requested", Callable(self, "_on_action_requested"))
+	if bid_board != null and bid_board.has_signal("action_requested"):
+		bid_board.connect("action_requested", Callable(self, "_on_action_requested"))
+	if bid_board != null and bid_board.has_signal("track_link_hovered"):
+		bid_board.connect("track_link_hovered", Callable(self, "_on_track_link_hovered"))
+	if bid_board != null and bid_board.has_signal("track_link_unhovered"):
+		bid_board.connect("track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
+
 
 func set_player_state(data: Dictionary) -> void:
 	title_label.text = str(data.get("title", "玩家板｜手牌"))
-	action_hint_label.text = str(data.get("hint", "选择一张手牌后，右侧详情会显示主操作。"))
+	action_hint_label.text = str(data.get("hint", "选择手牌或选区，右侧会解释能做什么。"))
+	var actions: Array = data.get("actions", []) if data.get("actions", []) is Array else []
+	var primary_action := _first_text(data, ["primary_action", "primary_action_label", "next_action"], _first_action_label(actions))
+	var identity_text := _first_text(data, ["identity", "player", "seat"], "未入席")
+	var cash_text := _first_text(data, ["cash_text", "cash", "money"], "¥ --")
+	var gdp_text := _first_text(data, ["gdp_text", "gdp"], "--/min")
+	var goal_text := _first_text(data, ["goal_text", "goal", "target"], "--")
+	var selected_text := _first_text(data, ["selected_district_summary", "selected_district", "selected_region"], "未选区")
+	var quick_actions: Array = data.get("quick_actions", data.get("action_summary", [])) if data.get("quick_actions", data.get("action_summary", [])) is Array else []
+	var status_lamps: Array = _first_array(data, ["table_state_lamps", "status_lamps", "table_lamps"])
+	var readiness_chips: Array = _first_array(data, ["readiness_chips", "action_readiness", "readiness"])
+	var bid_state: Dictionary = data.get("bid_board", data.get("auction_board", {})) if data.get("bid_board", data.get("auction_board", {})) is Dictionary else {}
+	_set_chip(identity_chip, "本席", identity_text, 118, 14)
+	_set_chip(cash_chip, "现金", cash_text, 92, 12)
+	_set_chip(gdp_chip, "GDP", gdp_text, 92, 12)
+	_set_chip(goal_chip, "目标", goal_text, 108, 14)
+	_set_chip(selected_district_chip, "选区", selected_text, 128, 14)
+	_set_chip(primary_action_chip, "下一步", primary_action, 122, 14)
+	goal_bar.value = clampf(float(data.get("goal_ratio", 0.0)) * 100.0, 0.0, 100.0)
+	_set_bid_board(bid_state)
+	_set_main_action_dock(quick_actions, actions)
+	_set_status_lamps(status_lamps)
+	_set_readiness_chips(readiness_chips)
 	var cards_variant: Variant = data.get("hand_cards", [])
-	set_hand_cards(cards_variant if cards_variant is Array else [])
+	var hand_cards: Array = cards_variant if cards_variant is Array else []
+	var hand_limit := int(data.get("hand_limit", data.get("max_hand_size", 5)))
+	_set_chip(hand_count_chip, "手牌", "%d/%d" % [hand_cards.size(), maxi(1, hand_limit)], 92, 12)
+	var next_hand_signature := var_to_str(hand_cards)
+	if next_hand_signature != hand_cards_signature:
+		hand_cards_signature = next_hand_signature
+		set_hand_cards(hand_cards)
 
 
 func set_hand_cards(cards: Array) -> void:
-	for child in hand_rack.get_children():
-		hand_rack.remove_child(child)
-		child.queue_free()
-	if cards.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = "暂无手牌｜双击区域查看牌架"
-		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		hand_rack.add_child(empty_label)
-	else:
-		for card_variant in cards:
-			var card_data: Dictionary = card_variant if card_variant is Dictionary else {}
-			var card := CARD_FACE_SCENE.instantiate() as Control
-			if card.has_method("set_card_data"):
-				card.call("set_card_data", card_data)
-			if card.has_signal("card_double_clicked"):
-				card.connect("card_double_clicked", Callable(self, "_on_card_double_clicked"))
-			hand_rack.add_child(card)
-	if hand_rack.has_method("relayout"):
-		hand_rack.call_deferred("relayout")
+	if hand_rack == null or not hand_rack.has_method("set_cards"):
+		return
+	hand_rack.call("set_cards", cards)
+
+
+func set_hovered_track_action(action_id: String) -> void:
+	if bid_board == null or not bid_board.has_method("set_hovered_track_action"):
+		return
+	bid_board.call("set_hovered_track_action", action_id)
+
+
+func _on_card_clicked(card_data: Dictionary) -> void:
+	card_selected.emit(card_data)
 
 
 func _on_card_double_clicked(card_data: Dictionary) -> void:
 	card_selected.emit(card_data)
+	var action_id := _first_enabled_card_action_id(card_data)
+	if action_id != "":
+		action_requested.emit(action_id)
+
+
+func _on_card_hovered(card_data: Dictionary) -> void:
+	card_hovered.emit(card_data)
+
+
+func _on_card_unhovered() -> void:
+	card_unhovered.emit()
+
+
+func _on_card_drag_preview_started(card_data: Dictionary, screen_position: Vector2) -> void:
+	card_drag_preview_started.emit(card_data, screen_position)
+
+
+func _on_card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2) -> void:
+	card_drag_preview_moved.emit(card_data, screen_position)
+
+
+func _on_card_drag_preview_ended(card_data: Dictionary) -> void:
+	card_drag_preview_ended.emit(card_data)
+
+
+func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> void:
+	card_drag_released.emit(card_data, screen_position)
+
+
+func _on_action_requested(action_id: String) -> void:
+	action_requested.emit(action_id)
+
+
+func _on_track_link_hovered(action_id: String) -> void:
+	track_link_hovered.emit(action_id)
+
+
+func _on_track_link_unhovered(action_id: String) -> void:
+	track_link_unhovered.emit(action_id)
+
+
+func _first_enabled_card_action_id(card_data: Dictionary) -> String:
+	var actions: Array = card_data.get("actions", []) if card_data.get("actions", []) is Array else []
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		if bool(action.get("disabled", false)):
+			continue
+		var action_id := str(action.get("id", "")).strip_edges()
+		if action_id != "":
+			return action_id
+	return ""
+
+
+func _set_main_action_dock(quick_actions: Array, actions: Array) -> void:
+	if main_action_dock == null or not main_action_dock.has_method("set_dock"):
+		return
+	main_action_dock.call("set_dock", {
+		"quick_actions": quick_actions,
+		"actions": actions,
+	})
+
+
+func _set_bid_board(data: Dictionary) -> void:
+	if bid_board == null or not bid_board.has_method("set_bid_state"):
+		return
+	bid_board.call("set_bid_state", data)
+
+
+func _set_status_lamps(entries: Array) -> void:
+	var normalized := entries
+	if normalized.is_empty():
+		normalized = [{"text": "桌态", "state": "空闲", "active": false, "tooltip": "当前没有紧急桌面状态。"}]
+	var next_signature := var_to_str(normalized)
+	if next_signature == status_lamps_signature:
+		return
+	status_lamps_signature = next_signature
+	_clear_row(status_lamp_row)
+	_add_status_chip(status_lamp_row, _summary_status_entry(normalized, "桌态"), "PlayerStatusLampChip")
+
+
+func _set_readiness_chips(entries: Array) -> void:
+	var normalized := entries
+	if normalized.is_empty():
+		normalized = [{"text": "先选区", "active": false, "tooltip": "先选择星球区域，再使用桌面行动。"}]
+	var next_signature := var_to_str(normalized)
+	if next_signature == readiness_chips_signature:
+		return
+	readiness_chips_signature = next_signature
+	_clear_row(readiness_chip_row)
+	if _has_cluster_chips(normalized):
+		var added := 0
+		for entry_variant in normalized:
+			var entry: Dictionary = entry_variant if entry_variant is Dictionary else {"text": str(entry_variant)}
+			if not bool(entry.get("cluster", false)):
+				continue
+			_add_status_chip(readiness_chip_row, entry, "PlayerReadinessChip")
+			added += 1
+			if added >= 4:
+				break
+		if added > 0:
+			return
+	_add_status_chip(readiness_chip_row, _summary_status_entry(normalized, "就绪"), "PlayerReadinessChip")
+
+
+func _has_cluster_chips(entries: Array) -> bool:
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {}
+		if bool(entry.get("cluster", false)):
+			return true
+	return false
+
+
+func _add_status_chip(row: Container, entry: Dictionary, node_name: String) -> void:
+	var active := bool(entry.get("active", false))
+	var accent := _entry_color(entry, Color("#94a3b8"))
+	var clustered := bool(entry.get("cluster", false))
+	var chip := PanelContainer.new()
+	chip.name = node_name
+	chip.tooltip_text = str(entry.get("tooltip", entry.get("tip", "")))
+	chip.custom_minimum_size = Vector2(26 if clustered else 0, 20)
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.add_theme_stylebox_override("panel", _status_chip_style(accent, active))
+	var label := Label.new()
+	label.name = "%sLabel" % node_name
+	label.custom_minimum_size = Vector2.ZERO
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.text = _short_chip_text(_entry_status_text(entry), int(entry.get("max_chars", 7 if clustered else 16)))
+	label.tooltip_text = chip.tooltip_text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.add_theme_font_size_override("font_size", 8 if clustered else 9)
+	label.add_theme_color_override("font_color", Color("#f8fafc") if active else Color("#cbd5e1"))
+	chip.add_child(label)
+	row.add_child(chip)
+
+
+func _summary_status_entry(entries: Array, prefix: String) -> Dictionary:
+	var parts: Array[String] = []
+	var tooltips: Array[String] = []
+	var active := false
+	var accent := Color("#94a3b8")
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {"text": str(entry_variant)}
+		if bool(entry.get("active", false)):
+			active = true
+			accent = _entry_color(entry, accent)
+		var text := _entry_status_text(entry)
+		if text.strip_edges() != "" and parts.size() < 2:
+			parts.append(text)
+		var tooltip := str(entry.get("tooltip", entry.get("tip", ""))).strip_edges()
+		if tooltip != "":
+			tooltips.append("%s: %s" % [text, tooltip])
+	if parts.is_empty():
+		parts.append("空闲")
+	var summary := " / ".join(parts)
+	var text := summary
+	if prefix.strip_edges() != "" and not summary.to_lower().begins_with(prefix.to_lower()):
+		text = "%s %s" % [prefix, summary]
+	return {
+		"text": text,
+		"active": active,
+		"accent": accent,
+		"tooltip": "\n".join(tooltips),
+	}
+
+
+func _entry_status_text(entry: Dictionary) -> String:
+	var text := str(entry.get("label", "")).strip_edges()
+	if text == "":
+		text = str(entry.get("text", "")).strip_edges()
+	var state := str(entry.get("state", "")).strip_edges()
+	if text == "":
+		text = "状态"
+	if state == "":
+		return text
+	return "%s %s" % [text, state]
+
+
+func _status_chip_style(accent: Color, active: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, 0.24 if active else 0.10)
+	style.border_color = accent if active else Color("#475569")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(5)
+	style.set_content_margin(SIDE_LEFT, 5.0)
+	style.set_content_margin(SIDE_RIGHT, 5.0)
+	style.set_content_margin(SIDE_TOP, 1.0)
+	style.set_content_margin(SIDE_BOTTOM, 1.0)
+	return style
+
+
+func _entry_color(entry: Dictionary, fallback: Color) -> Color:
+	var value: Variant = entry.get("accent", fallback)
+	if value is Color:
+		return value
+	if value is String:
+		var color_text := str(value)
+		if color_text.begins_with("#"):
+			return Color(color_text)
+	return fallback
+
+
+func _first_action_label(actions: Array) -> String:
+	for action_variant in actions:
+		var action: Dictionary = action_variant if action_variant is Dictionary else {}
+		if not bool(action.get("disabled", false)):
+			var label := str(action.get("label", ""))
+			if label.strip_edges() != "":
+				return label
+	return "查看详情"
+
+
+func _first_text(data: Dictionary, keys: Array, fallback: String) -> String:
+	for key in keys:
+		if data.has(key):
+			var value := str(data.get(key, ""))
+			if value.strip_edges() != "":
+				return value
+	return fallback
+
+
+func _first_array(data: Dictionary, keys: Array) -> Array:
+	for key in keys:
+		if data.has(key):
+			var value: Variant = data.get(key)
+			if value is Array:
+				return value
+	return []
+
+
+func _configure_chip_defaults() -> void:
+	for chip in [identity_chip, cash_chip, gdp_chip, goal_chip, selected_district_chip, primary_action_chip, hand_count_chip]:
+		chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		chip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		chip.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+
+func _configure_tableau_styles() -> void:
+	if resource_tableau != null:
+		resource_tableau.add_theme_stylebox_override("panel", _tableau_style(Color("#facc15"), 0.08))
+	if hand_tableau != null:
+		hand_tableau.add_theme_stylebox_override("panel", _tableau_style(Color("#38bdf8"), 0.06))
+	if command_tableau != null:
+		command_tableau.add_theme_stylebox_override("panel", _tableau_style(Color("#22c55e"), 0.07))
+
+
+func _clear_row(row: Container) -> void:
+	for child in row.get_children():
+		row.remove_child(child)
+		child.queue_free()
+
+
+func _set_chip(label: Label, prefix: String, value: String, width: float, max_characters: int) -> void:
+	label.custom_minimum_size = Vector2(width, 22)
+	label.text = "%s %s" % [prefix, _short_chip_text(value, max_characters)]
+	label.tooltip_text = "%s: %s" % [prefix, value]
+	var accent := _chip_accent(prefix)
+	label.add_theme_stylebox_override("normal", _chip_style(accent))
+	label.add_theme_color_override("font_color", accent.lightened(0.28))
+	label.add_theme_font_size_override("font_size", 10)
+
+
+func _short_chip_text(value: String, max_characters: int) -> String:
+	if value.length() <= max_characters:
+		return value
+	return value.left(maxi(1, max_characters - 1)) + "..."
+
+
+func _chip_accent(prefix: String) -> Color:
+	match prefix:
+		"现金":
+			return Color("#facc15")
+		"GDP":
+			return Color("#38bdf8")
+		"目标":
+			return Color("#4ade80")
+		"选区":
+			return Color("#fde68a")
+		"下一步":
+			return Color("#c084fc")
+		"手牌":
+			return Color("#f472b6")
+	return Color("#cbd5e1")
+
+
+func _chip_style(accent: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, 0.12)
+	style.border_color = Color("#334155").lerp(accent, 0.52)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(5)
+	style.set_content_margin(SIDE_LEFT, 6.0)
+	style.set_content_margin(SIDE_RIGHT, 6.0)
+	style.set_content_margin(SIDE_TOP, 2.0)
+	style.set_content_margin(SIDE_BOTTOM, 2.0)
+	return style
+
+
+func _tableau_style(accent: Color, fill_weight: float) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, fill_weight)
+	style.border_color = Color("#334155").lerp(accent, 0.36)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(7)
+	style.set_content_margin(SIDE_LEFT, 8.0)
+	style.set_content_margin(SIDE_RIGHT, 8.0)
+	style.set_content_margin(SIDE_TOP, 6.0)
+	style.set_content_margin(SIDE_BOTTOM, 6.0)
+	return style

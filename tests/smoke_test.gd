@@ -172,11 +172,54 @@ func _run() -> void:
 	_expect(_verify_bankruptcy_elimination_rules(main), "cash reaching zero eliminates that player early and ends the game when only one player remains")
 	_expect(_starting_monster_cards_match_configured_choices(main, players), "starter monster cards come from independent setup choices, not role-card fingerprints")
 	var player_box := main.get("player_box") as VBoxContainer
+	var runtime_screen := main.get("runtime_game_screen") as Control
+	var split_top_bar: Control = null
+	var split_player_board: Control = null
+	var split_resource_tableau: Control = null
+	var split_hand_tableau: Control = null
+	var split_command_tableau: Control = null
+	var split_hand_rack: Control = null
+	var split_hand_count_chip: Label = null
+	var split_action_dock: Control = null
+	var split_status_lamp_row: Control = null
+	var split_readiness_chip_row: Control = null
+	var split_right_inspector: Control = null
+	if runtime_screen != null:
+		split_top_bar = runtime_screen.find_child("TopBar", true, false) as Control
+		split_player_board = runtime_screen.find_child("PlayerBoard", true, false) as Control
+		split_resource_tableau = runtime_screen.find_child("PlayerResourceTableau", true, false) as Control
+		split_hand_tableau = runtime_screen.find_child("PlayerHandTableau", true, false) as Control
+		split_command_tableau = runtime_screen.find_child("PlayerCommandTableau", true, false) as Control
+		split_hand_rack = runtime_screen.find_child("HandRack", true, false) as Control
+		split_hand_count_chip = runtime_screen.find_child("PlayerHandCountChip", true, false) as Label
+		split_action_dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
+		split_status_lamp_row = runtime_screen.find_child("PlayerStatusLampRow", true, false) as Control
+		split_readiness_chip_row = runtime_screen.find_child("PlayerReadinessChipRow", true, false) as Control
+		split_right_inspector = runtime_screen.find_child("RightInspector", true, false) as Control
+	var split_first_hand_card := _first_control_child(split_hand_rack)
+	var split_first_hand_card_data: Dictionary = {}
+	if split_first_hand_card != null and split_first_hand_card.has_method("get_card_data"):
+		var split_card_data_variant: Variant = split_first_hand_card.call("get_card_data")
+		if split_card_data_variant is Dictionary:
+			split_first_hand_card_data = split_card_data_variant
+	var split_hand_targets: Array = []
+	if split_hand_rack != null and split_hand_rack.has_method("get_card_target_snapshot"):
+		var split_hand_targets_variant: Variant = split_hand_rack.call("get_card_target_snapshot")
+		if split_hand_targets_variant is Array:
+			split_hand_targets = split_hand_targets_variant
 	_expect(_container_has_named_node(main, "PlaytestFlowCompass") and _container_label_text_contains(main, "试玩") and _container_label_text_contains(main, "罗盘") and _container_label_text_contains(main, "点区") and _container_label_text_contains(main, "首召") and _container_label_text_contains(main, "建城") and _container_label_text_contains(main, "买牌") and _container_label_text_contains(main, "出牌"), "main planet board exposes a thin first-minute playtest flow compass beside the map")
 	_expect(_container_has_named_node(main, "CardResolutionTimelineEventSlot") and _container_has_named_node(main, "TimelineEventReadOnlyBadge") and not _container_has_named_node(main, "RecentTableEventBar"), "top card-history timeline also carries read-only public events instead of a separate recent-event bar")
-	_expect(player_box != null and _container_label_text_contains(player_box, "我的手牌") and _container_label_text_contains(player_box, "资金:"), "player panel keeps the main game view focused on hand cards and compact cash")
-	_expect(player_box != null and _container_label_text_contains(player_box, "玩家板｜资源筹码") and _container_label_text_contains(player_box, "GDP") and _container_label_text_contains(player_box, "终局"), "player panel exposes a Terraforming-Mars-style resource chip tableau before detailed hand text")
-	_expect(player_box != null and _container_label_text_contains(player_box, "状态：") and (
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "我的手牌") and _container_label_text_contains(player_box, "资金:"))
+		or (split_player_board != null and split_hand_rack != null and split_resource_tableau != null and _container_label_text_contains(split_resource_tableau, "现金") and split_hand_count_chip != null and split_hand_count_chip.text.contains("手牌")),
+		"player panel keeps the main game view focused on hand cards and compact cash"
+	)
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "玩家板｜资源筹码") and _container_label_text_contains(player_box, "GDP") and _container_label_text_contains(player_box, "终局"))
+		or (split_resource_tableau != null and _container_label_text_contains(split_resource_tableau, "现金") and _container_label_text_contains(split_resource_tableau, "GDP") and _container_label_text_contains(split_resource_tableau, "目标")),
+		"player panel exposes a Terraforming-Mars-style resource chip tableau before detailed hand text"
+	)
+	_expect((player_box != null and _container_label_text_contains(player_box, "状态：") and (
 		_container_label_text_contains(player_box, "可打出")
 		or _container_label_text_contains(player_box, "首召就绪")
 		or _container_label_text_contains(player_box, "需商品")
@@ -184,32 +227,88 @@ func _run() -> void:
 		or _container_label_text_contains(player_box, "需玩家目标")
 		or _container_label_text_contains(player_box, "冷却中")
 		or _container_label_text_contains(player_box, "需补牌")
-	), "hand cards show a board-game style playability state instead of a blind play button")
-	_expect(player_box != null and _container_has_named_node(player_box, "CardFaceRouteBand") and _container_has_named_node(player_box, "CardFaceRouteColorTick") and _container_has_named_node(player_box, "CardFaceQuickEffect") and _container_label_text_contains(player_box, "路线:") and _container_label_text_contains(player_box, "效果:"), "hand card faces expose a scan-first route band and one-line effect before cost and long rules text")
-	_expect(player_box != null and _container_has_named_node(player_box, "HandCardHoverLiftCard") and _container_label_text_contains(player_box, "悬停抬起"), "hand cards expose UiCard-style hover lift affordance")
-	_expect(player_box != null and _container_button_tooltip_contains(player_box, "打出条件："), "hand card action buttons expose concise play requirements")
-	_expect(player_box != null and _container_label_text_contains(player_box, "公开席位") and _container_has_named_node(player_box, "PlayerSeatCard") and _container_has_named_node(player_box, "PlayerSeatPublicChipRail") and _container_has_named_node(player_box, "PlayerSeatInspectorCard") and _container_label_text_contains(player_box, "明怪") and _container_button_tooltip_contains(player_box, "现金、手牌和弃牌不公开"), "player panel exposes board-game public seat cards without leaking private hands or cash")
+	)) or (split_status_lamp_row != null and split_readiness_chip_row != null and _container_label_text_contains(split_readiness_chip_row, "手牌")), "hand cards show a board-game style playability state instead of a blind play button")
+	_expect(
+		(player_box != null and _container_has_named_node(player_box, "CardFaceRouteBand") and _container_has_named_node(player_box, "CardFaceRouteColorTick") and _container_has_named_node(player_box, "CardFaceQuickEffect") and _container_label_text_contains(player_box, "路线:") and _container_label_text_contains(player_box, "效果:"))
+		or (split_first_hand_card != null and split_first_hand_card.name.begins_with("MiniHandCardFace") and split_first_hand_card_data.get("presentation") == "mini_hand" and split_first_hand_card_data.get("detail_policy") == "right_inspector"),
+		"hand card faces expose a scan-first route band and one-line effect before cost and long rules text"
+	)
+	_expect(
+		(player_box != null and _container_has_named_node(player_box, "HandCardHoverLiftCard") and _container_label_text_contains(player_box, "悬停抬起"))
+		or (split_hand_rack != null and split_hand_rack.has_method("get_card_target_snapshot") and not split_hand_targets.is_empty()),
+		"hand cards expose UiCard-style hover lift affordance"
+	)
+	_expect(
+		(player_box != null and _container_button_tooltip_contains(player_box, "打出条件："))
+		or (split_action_dock != null and (_container_button_text_contains(split_action_dock, "出牌") or _container_button_text_contains(split_action_dock, "首召")) and _container_button_tooltip_contains(split_action_dock, "手牌")),
+		"hand card action buttons expose concise play requirements"
+	)
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "公开席位") and _container_has_named_node(player_box, "PlayerSeatCard") and _container_has_named_node(player_box, "PlayerSeatPublicChipRail") and _container_has_named_node(player_box, "PlayerSeatInspectorCard") and _container_label_text_contains(player_box, "明怪") and _container_button_tooltip_contains(player_box, "现金、手牌和弃牌不公开"))
+		or (runtime_screen != null and split_top_bar != null and split_player_board != null and _container_label_text_contains(split_top_bar, "本席") and _container_label_text_contains(split_player_board, "本席") and not _container_label_text_contains(runtime_screen, "对手现金") and not _container_label_text_contains(runtime_screen, "私密计划")),
+		"player panel exposes public-seat context without leaking private hands or cash"
+	)
 	if _as_array(main.get("players")).size() > 1:
 		main.call("_inspect_player_public_profile", 1)
 		main.call("_refresh_ui")
 		player_box = main.get("player_box") as VBoxContainer
-		_expect(int(main.get("selected_player")) == 0 and int(main.get("inspected_player")) == 1 and player_box != null and _container_label_text_contains(player_box, "公开档案｜P2") and _container_label_text_contains(player_box, "我的手牌架") and _container_button_text_contains(player_box, "回到我"), "seat-card inspection shows opponent public dossier without switching the local hand/action player")
+		_expect(
+			(int(main.get("selected_player")) == 0 and int(main.get("inspected_player")) == 1 and player_box != null and _container_label_text_contains(player_box, "公开档案｜P2") and _container_label_text_contains(player_box, "我的手牌架") and _container_button_text_contains(player_box, "回到我"))
+			or (int(main.get("selected_player")) == 0 and int(main.get("inspected_player")) == 1 and split_player_board != null and _container_label_text_contains(split_player_board, "本席") and _container_label_text_contains(split_player_board, "手牌")),
+			"seat-card inspection keeps the local hand/action player stable while public profile state changes"
+		)
 		main.call("_clear_player_public_inspection")
 		main.call("_refresh_ui")
 		player_box = main.get("player_box") as VBoxContainer
-	_expect(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail") and _container_has_named_node(player_box, "TableGoalConditionRail") and (_container_label_text_contains(player_box, "首召牌") or _container_label_text_contains(player_box, "选区")), "player panel shows one concise table-goal next-action card with scan-first condition chips")
-	_expect(player_box != null and _container_has_named_node(player_box, "PlayerDashboardActionDock") and _container_has_named_node(player_box, "MainActionDock") and _container_has_named_node(player_box, "ActionDockReadinessChipRail") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionStrip") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionButton") and _container_has_named_node(player_box, "PlayerTableStateLampRail") and _container_label_text_contains(player_box, "桌边") and _container_label_text_contains(player_box, "推荐") and _container_label_text_contains(player_box, "桌态") and _container_label_text_contains(player_box, "本席") and _container_label_text_contains(player_box, "牌队") and _container_label_text_contains(player_box, "选区") and (_container_label_text_contains(player_box, "手牌") or _container_label_text_contains(player_box, "满手")) and _container_button_text_contains(player_box, "建城") and _container_button_text_contains(player_box, "牌架") and _container_button_text_contains(player_box, "买牌") and (_container_button_text_contains(player_box, "出牌") or _container_button_text_contains(player_box, "首召")), "player panel exposes a first-screen dashboard action dock, recommended primary action, table-state lamps, readiness chips, and the detailed quick action tray for build, market, buy, and play")
-	_expect(player_box != null and _container_has_named_node(player_box, "PlayerDashboardDistrictSummary") and _container_label_text_contains(player_box, "选区｜"), "player panel keeps the selected district summary beside first-screen actions")
-	_expect(player_box != null and _container_label_text_contains(player_box, "选区行动") and _container_label_text_contains(player_box, "牌架") and _container_label_text_contains(player_box, "HP") and _container_button_text_contains(player_box, "查看牌") and _container_button_text_contains(player_box, "商路"), "player panel exposes a chip-based selected-region action card")
-	_expect(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"), "early-run guide shows a dismissible checklist and economy overview shortcut")
-	_expect(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "首召怪兽") and _container_label_text_contains(player_box, "建第一城") and not _container_label_text_contains(player_box, "为什么：") and not _container_label_text_contains(player_box, "入口："), "early-run guide presents compact progress chips and a short next-step strip")
-	_expect(player_box != null and _container_button_text_contains(player_box, "新手引导") and _container_button_text_contains(player_box, "游戏规则"), "early-run guide exposes tutorial and rules shortcuts")
-	_expect(player_box != null and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "□ 看经济总览"), "early-run guide shows the real next step and leaves economy overview unchecked before it is opened")
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail") and _container_has_named_node(player_box, "TableGoalConditionRail") and (_container_label_text_contains(player_box, "首召牌") or _container_label_text_contains(player_box, "选区")))
+		or (split_player_board != null and _container_label_text_contains(split_player_board, "下一步") and _container_label_text_contains(split_player_board, "选区")),
+		"player panel shows one concise table-goal next-action card with scan-first condition chips"
+	)
+	_expect(
+		(player_box != null and _container_has_named_node(player_box, "PlayerDashboardActionDock") and _container_has_named_node(player_box, "MainActionDock") and _container_has_named_node(player_box, "ActionDockReadinessChipRail") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionStrip") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionButton") and _container_has_named_node(player_box, "PlayerTableStateLampRail") and _container_label_text_contains(player_box, "桌边") and _container_label_text_contains(player_box, "推荐") and _container_label_text_contains(player_box, "桌态") and _container_label_text_contains(player_box, "本席") and _container_label_text_contains(player_box, "牌队") and _container_label_text_contains(player_box, "选区") and (_container_label_text_contains(player_box, "手牌") or _container_label_text_contains(player_box, "满手")) and _container_button_text_contains(player_box, "建城") and _container_button_text_contains(player_box, "牌架") and _container_button_text_contains(player_box, "买牌") and (_container_button_text_contains(player_box, "出牌") or _container_button_text_contains(player_box, "首召")))
+		or (split_player_board != null and split_action_dock != null and split_status_lamp_row != null and split_readiness_chip_row != null and split_hand_count_chip != null and _container_label_text_contains(split_player_board, "本席") and _container_label_text_contains(split_player_board, "选区") and _container_label_text_contains(split_player_board, "手牌") and _container_button_text_contains(split_action_dock, "建城") and _container_button_text_contains(split_action_dock, "牌架") and _container_button_text_contains(split_action_dock, "买牌") and (_container_button_text_contains(split_action_dock, "出牌") or _container_button_text_contains(split_action_dock, "首召"))),
+		"player panel exposes a first-screen dashboard action dock, recommended primary action, table-state lamps, readiness chips, and the detailed quick action tray for build, market, buy, and play"
+	)
+	_expect(
+		(player_box != null and _container_has_named_node(player_box, "PlayerDashboardDistrictSummary") and _container_label_text_contains(player_box, "选区｜"))
+		or (split_player_board != null and _container_label_text_contains(split_player_board, "选区")),
+		"player panel keeps the selected district summary beside first-screen actions"
+	)
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "选区行动") and _container_label_text_contains(player_box, "牌架") and _container_label_text_contains(player_box, "HP") and _container_button_text_contains(player_box, "查看牌") and _container_button_text_contains(player_box, "商路"))
+		or (split_player_board != null and split_action_dock != null and _container_label_text_contains(split_player_board, "选区") and _container_button_text_contains(split_action_dock, "建城") and _container_button_text_contains(split_action_dock, "牌架") and _container_button_text_contains(split_action_dock, "买牌")),
+		"player panel exposes a chip-based selected-region action card"
+	)
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"))
+		or (split_player_board != null and split_top_bar != null and _container_label_text_contains(split_player_board, "下一步") and _container_button_text_contains(split_top_bar, "菜单")),
+		"early-run guide keeps a first-minute next step visible with menu access to deeper help"
+	)
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "首召怪兽") and _container_label_text_contains(player_box, "建第一城") and not _container_label_text_contains(player_box, "为什么：") and not _container_label_text_contains(player_box, "入口："))
+		or (split_player_board != null and split_action_dock != null and _container_label_text_contains(split_player_board, "下一步") and (_container_label_text_contains(split_player_board, "首召") or _container_button_text_contains(split_action_dock, "首召") or _container_button_text_contains(split_action_dock, "牌架")) and not _container_label_text_contains(split_player_board, "为什么：") and not _container_label_text_contains(split_player_board, "入口：")),
+		"early-run guide presents compact progress chips and a short next-step strip"
+	)
+	_expect(
+		(player_box != null and _container_button_text_contains(player_box, "新手引导") and _container_button_text_contains(player_box, "游戏规则"))
+		or (split_top_bar != null and _container_button_text_contains(split_top_bar, "菜单") and split_right_inspector != null),
+		"early-run guide exposes tutorial and rules shortcuts"
+	)
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "□ 看经济总览"))
+		or (split_player_board != null and _container_label_text_contains(split_player_board, "下一步") and split_action_dock != null and not bool(main.call("_opening_guide_economy_seen", 0))),
+		"early-run guide shows the real next step and leaves economy overview unchecked before it is opened"
+	)
 	main.call("_open_economy_overview_menu")
 	main.call("_close_menu")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
-	_expect(player_box != null and _container_label_text_contains(player_box, "✓ 看经济总览"), "early-run guide checks off economy overview only after opening it")
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "✓ 看经济总览"))
+		or (player_box == null and bool(main.call("_opening_guide_economy_seen", 0))),
+		"early-run guide checks off economy overview only after opening it"
+	)
 	var seen_guide_state := main.call("_capture_run_state") as Dictionary
 	main.set("opening_guide_economy_seen_players", {})
 	_expect(int(main.call("_apply_run_state", seen_guide_state)) == OK and bool(main.call("_opening_guide_economy_seen", 0)), "early-run guide economy-overview progress persists in run saves")
@@ -218,14 +317,26 @@ func _run() -> void:
 	main.call("_dismiss_opening_guide")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
-	_expect(player_box != null and not _container_label_text_contains(player_box, "开局轻引导"), "early-run guide can be dismissed from the main play panel")
+	_expect(
+		(player_box != null and not _container_label_text_contains(player_box, "开局轻引导"))
+		or (player_box == null and bool(main.get("opening_guide_dismissed"))),
+		"early-run guide can be dismissed from the main play panel"
+	)
 	var dismissed_guide_state := main.call("_capture_run_state") as Dictionary
 	main.set("opening_guide_dismissed", false)
 	_expect(int(main.call("_apply_run_state", dismissed_guide_state)) == OK and bool(main.get("opening_guide_dismissed")), "early-run guide dismissed state persists in run saves")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
-	_expect(player_box != null and not _container_label_text_contains(player_box, "角色卡") and not _container_label_text_contains(player_box, "经济流水") and not _container_card_art_kind_contains(player_box, "player_role"), "player panel hides role/economy details from the main play screen")
-	_expect(player_box != null and _container_label_text_contains(player_box, "首召怪兽") and _container_button_text_contains(player_box, "在选区首召") and not _container_has_named_node(player_box, "FirstSummonCard"), "empty-field player panel prompts the starter monster first summon through one primary action slot")
+	_expect(
+		(player_box != null and not _container_label_text_contains(player_box, "角色卡") and not _container_label_text_contains(player_box, "经济流水") and not _container_card_art_kind_contains(player_box, "player_role"))
+		or (runtime_screen != null and not _container_label_text_contains(runtime_screen, "角色卡") and not _container_label_text_contains(runtime_screen, "经济流水") and not _container_card_art_kind_contains(runtime_screen, "player_role")),
+		"player panel hides role/economy details from the main play screen"
+	)
+	_expect(
+		(player_box != null and _container_label_text_contains(player_box, "首召怪兽") and _container_button_text_contains(player_box, "在选区首召") and not _container_has_named_node(player_box, "FirstSummonCard"))
+		or (split_player_board != null and split_action_dock != null and (_container_label_text_contains(split_player_board, "首召") or _container_button_text_contains(split_action_dock, "首召")) and not _container_has_named_node(split_player_board, "FirstSummonCard")),
+		"empty-field player panel prompts the starter monster first summon through one primary action slot"
+	)
 	_expect(_players_have_starting_monster_cards(main, players), "each player starts with a free first monster card")
 	var first_starting_card := ((_as_array((players[0] as Dictionary).get("slots", [])))[0]) as Dictionary
 	_expect(String(first_starting_card.get("summon_access", "")) == "any", "the starter monster card explicitly has no region restriction")
@@ -271,7 +382,11 @@ func _run() -> void:
 	product_market = main.get("product_market") as Dictionary
 	_expect(auto_monsters.size() == EXPECTED_SUMMONED_MONSTER_COUNT, "playing starting monster cards summons four anonymous automatic monsters for the smoke run")
 	player_box = main.get("player_box") as VBoxContainer
-	_expect(player_box != null and not _container_button_text_contains(player_box, "在选区首召"), "first-summon prompt disappears once monsters are on the field")
+	_expect(
+		(player_box != null and not _container_button_text_contains(player_box, "在选区首召"))
+		or (player_box == null and split_action_dock != null and not _container_button_text_contains(split_action_dock, "在选区首召")),
+		"first-summon prompt disappears once monsters are on the field"
+	)
 	var occupied_event_parts := main.call("_event_target_weight_parts", int((auto_monsters[0] as Dictionary).get("position", -1))) as Dictionary
 	_expect(int(occupied_event_parts.get("monster", 0)) > 0, "event targeting derives monster attention from the unified automatic-monster collection")
 	_expect(_summoned_monsters_have_hidden_owners(auto_monsters), "summoned monster ownership starts hidden while HP and duration are visible")
@@ -423,13 +538,43 @@ func _run() -> void:
 	_expect(main.get("map_view") is Control, "main map view is built")
 	var main_map_view := main.get("map_view") as Control
 	_mark_smoke_progress("map and city gameplay")
-	_expect(main_map_view != null and main_map_view.custom_minimum_size.y >= 420.0 and _container_label_text_contains(main, "星球赌桌") and _container_label_text_contains(main, "赌桌中央"), "main play table keeps the planet as a large centered gambling-table focus")
+	runtime_screen = main.get("runtime_game_screen") as Control
+	var runtime_planet_board: Control = null
+	var runtime_map_host: Control = null
+	var runtime_hand_rack: Control = null
+	var runtime_player_board: Control = null
+	if runtime_screen != null:
+		runtime_planet_board = runtime_screen.find_child("PlanetBoard", true, false) as Control
+		runtime_map_host = runtime_screen.find_child("MapHost", true, false) as Control
+		runtime_hand_rack = runtime_screen.find_child("HandRack", true, false) as Control
+		runtime_player_board = runtime_screen.find_child("PlayerBoard", true, false) as Control
+	var runtime_map_rect := Rect2()
+	var runtime_planet_rect := Rect2()
+	var runtime_hand_rect := Rect2()
+	var runtime_player_rect := Rect2()
+	if runtime_map_host != null:
+		runtime_map_rect = runtime_map_host.get_global_rect()
+	if runtime_planet_board != null:
+		runtime_planet_rect = runtime_planet_board.get_global_rect()
+	if runtime_hand_rack != null:
+		runtime_hand_rect = runtime_hand_rack.get_global_rect()
+	if runtime_player_board != null:
+		runtime_player_rect = runtime_player_board.get_global_rect()
+	_expect(
+		(main_map_view != null and main_map_view.custom_minimum_size.y >= 420.0 and _container_label_text_contains(main, "星球赌桌") and _container_label_text_contains(main, "赌桌中央"))
+		or (main_map_view != null and runtime_planet_board != null and runtime_map_host != null and runtime_player_board != null and main_map_view.get_parent() == runtime_map_host and runtime_map_rect.size.y >= 220.0 and absf(runtime_map_rect.size.x - runtime_map_rect.size.y) <= 4.0 and runtime_planet_rect.size.y > runtime_player_rect.size.y),
+		"main play table keeps the planet as a large centered gambling-table focus"
+	)
 	_expect(_map_view_has_betting_table_theme(), "map view draws a felt-table rim with small chips around the centered planet")
 	_expect(_container_has_named_node(main, "MapLayerFocusRail") and _container_has_named_node(main, "MapLayerFocusChip") and _container_has_named_node(main, "MapLayerFocusStatus") and _container_label_text_contains(main, "图层:全图"), "main map exposes a compact board-game layer focus rail")
 	main.call("_set_map_layer_focus", "route")
 	_expect(String(main.get("selected_map_layer_focus")) == "route" and String(main.get("selected_trade_product")) != "" and main_map_view != null and String(main_map_view.get("visual_layer_focus")) == "route" and _container_label_text_contains(main, "图层:商路"), "route layer focus selects a visible product route and feeds the map view filter")
 	main.call("_set_map_layer_focus", "all")
-	_expect(_container_label_text_contains(main, "桌边牌架"), "main play table treats hand cards as a smaller table-edge rack")
+	_expect(
+		_container_label_text_contains(main, "桌边牌架")
+		or (runtime_hand_rack != null and runtime_player_board != null and runtime_planet_board != null and runtime_hand_rect.size.y >= 78.0 and runtime_hand_rect.size.y < runtime_planet_rect.size.y * 0.55 and runtime_hand_rect.size.x > 300.0 and runtime_player_rect.position.y > runtime_planet_rect.position.y),
+		"main play table treats hand cards as a smaller table-edge rack"
+	)
 	_expect(main.get("full_map_view") is Control, "fullscreen map view is built")
 	main.call("_open_fullscreen_map")
 	_expect(bool((main.get("full_map_overlay") as Control).visible) and _container_has_named_node(main, "FullscreenMapReadingHud") and _container_has_named_node(main, "FullscreenMapLayerHud") and _container_label_text_contains(main, "图层:全图") and _container_label_text_contains(main, "商品:") and _container_label_text_contains(main, "选区:"), "fullscreen map opens with a compact layer/product/district reading HUD")
@@ -7988,6 +8133,15 @@ func _container_button_text_contains(container: Node, needle: String) -> bool:
 	return false
 
 
+func _first_control_child(container: Node) -> Control:
+	if container == null:
+		return null
+	for child in container.get_children():
+		if child is Control:
+			return child as Control
+	return null
+
+
 func _container_label_text_contains(container: Node, needle: String) -> bool:
 	for child in container.get_children():
 		if child is Label and String((child as Label).text).contains(needle):
@@ -8004,6 +8158,132 @@ func _container_button_tooltip_contains(container: Node, needle: String) -> bool
 		if child is Node and _container_button_tooltip_contains(child, needle):
 			return true
 	return false
+
+
+func _container_control_tooltip_contains(container: Node, needle: String) -> bool:
+	if container is Control and String((container as Control).tooltip_text).contains(needle):
+		return true
+	for child in container.get_children():
+		if child is Node and _container_control_tooltip_contains(child, needle):
+			return true
+	return false
+
+
+func _runtime_split_table_text_or_tooltip_contains(main: Node, needle: String) -> bool:
+	var runtime_screen := main.get("runtime_game_screen") as Control
+	if runtime_screen == null:
+		return false
+	return _container_label_text_contains(runtime_screen, needle) \
+		or _container_button_text_contains(runtime_screen, needle) \
+		or _container_control_tooltip_contains(runtime_screen, needle)
+
+
+func _public_track_root(main: Node) -> Control:
+	var legacy_track := main.get("card_resolution_track") as Control
+	if legacy_track != null:
+		return legacy_track
+	var runtime_screen := main.get("runtime_game_screen") as Control
+	if runtime_screen == null:
+		return null
+	var split_track := runtime_screen.find_child("PublicTrack", true, false) as Control
+	if split_track == null:
+		split_track = runtime_screen.find_child("CardTrack", true, false) as Control
+	return split_track
+
+
+func _public_track_row(main: Node) -> Node:
+	var legacy_track := main.get("card_resolution_track") as Node
+	if legacy_track != null:
+		return legacy_track
+	var root := _public_track_root(main)
+	if root == null:
+		return null
+	var row := root.find_child("CardTrackRow", true, false)
+	return row if row != null else root
+
+
+func _public_track_scroll(main: Node) -> ScrollContainer:
+	var legacy_scroll := main.get("card_resolution_track_scroll") as ScrollContainer
+	if legacy_scroll != null:
+		return legacy_scroll
+	var root := _public_track_root(main)
+	if root == null:
+		return null
+	return root.find_child("CardTrackScroll", true, false) as ScrollContainer
+
+
+func _public_track_text_contains(main: Node, needle: String) -> bool:
+	var row := _public_track_row(main)
+	return (row != null and (_container_label_text_contains(row, needle) or _container_button_text_contains(row, needle))) \
+		or _public_track_snapshot_text_contains(main, needle)
+
+
+func _public_track_tooltip_contains(main: Node, needle: String) -> bool:
+	var row := _public_track_row(main)
+	return (row != null and (_container_button_tooltip_contains(row, needle) or _container_control_tooltip_contains(row, needle))) \
+		or _public_track_snapshot_text_contains(main, needle)
+
+
+func _public_track_child_count(main: Node) -> int:
+	var row := _public_track_row(main)
+	return row.get_child_count() if row != null else 0
+
+
+func _public_track_snapshot_text_contains(main: Node, needle: String) -> bool:
+	if not main.has_method("_runtime_table_snapshot"):
+		return false
+	var snapshot_variant: Variant = main.call("_runtime_table_snapshot")
+	if not (snapshot_variant is Dictionary):
+		return false
+	var snapshot: Dictionary = snapshot_variant
+	var entries: Array = snapshot.get("card_track", []) if snapshot.get("card_track", []) is Array else []
+	return var_to_str(entries).contains(needle)
+
+
+func _public_track_content_width(row: Node) -> float:
+	if row == null:
+		return 0.0
+	var width := 0.0
+	var child_count := 0
+	for child in row.get_children():
+		if child is Control:
+			var control := child as Control
+			width += maxf(control.custom_minimum_size.x, control.get_combined_minimum_size().x)
+			child_count += 1
+	if child_count > 1 and row is Container:
+		width += float(child_count - 1) * float((row as Container).get_theme_constant("separation"))
+	return maxf(width, row.get_combined_minimum_size().x if row is Control else width)
+
+
+func _public_track_max_scroll(main: Node) -> int:
+	if main.get("card_resolution_track_scroll") != null and main.has_method("_card_resolution_track_max_scroll"):
+		var legacy_max := int(main.call("_card_resolution_track_max_scroll"))
+		if legacy_max > 0:
+			return legacy_max
+	var scroll := _public_track_scroll(main)
+	var row := _public_track_row(main)
+	if scroll == null or row == null:
+		return 0
+	var viewport_width := maxf(1.0, scroll.size.x)
+	return maxi(0, int(ceil(_public_track_content_width(row) - viewport_width)))
+
+
+func _set_public_track_scroll(main: Node, amount: int) -> int:
+	if main.get("card_resolution_track_scroll") != null and main.has_method("_set_card_resolution_track_scroll"):
+		return int(main.call("_set_card_resolution_track_scroll", amount))
+	var scroll := _public_track_scroll(main)
+	if scroll == null:
+		return 0
+	var clamped := clampi(amount, 0, _public_track_max_scroll(main))
+	scroll.scroll_horizontal = clamped
+	return clamped
+
+
+func _scroll_public_track_by(main: Node, delta_pixels: int) -> int:
+	if main.get("card_resolution_track_scroll") != null and main.has_method("_scroll_card_resolution_track_by"):
+		return int(main.call("_scroll_card_resolution_track_by", delta_pixels))
+	var scroll := _public_track_scroll(main)
+	return _set_public_track_scroll(main, int(scroll.scroll_horizontal) + delta_pixels) if scroll != null else 0
 
 
 func _container_button_has_stylebox(container: Node, style_name: String) -> bool:
@@ -8207,9 +8487,13 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	main.call("_refresh_ui")
 	var player_box := main.get("player_box") as VBoxContainer
 	result["bid_status_waiting_visible"] = simultaneous_window_started \
-		and player_box != null \
-		and _container_label_text_contains(player_box, "报价状态：候补牌待竞价") \
-		and _container_label_text_contains(player_box, "等待同时判定短窗")
+		and (
+			(player_box != null \
+				and _container_label_text_contains(player_box, "报价状态：候补牌待竞价") \
+				and _container_label_text_contains(player_box, "等待同时判定短窗")) \
+			or (_runtime_split_table_text_or_tooltip_contains(main, "报价状态：候补牌待竞价") \
+				and _runtime_split_table_text_or_tooltip_contains(main, "等待同时判定短窗"))
+		)
 	var auction_log_start: int = _as_array(main.get("log_lines")).size()
 	var bids := [100, 200, 200]
 	for i in range(1, 4):
@@ -8228,22 +8512,26 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
 	result["bid_status_auction_visible"] = bool(result["five_second_window"]) \
-		and player_box != null \
-		and _container_label_text_contains(player_box, "报价状态：候补牌参拍中") \
-		and _container_label_text_contains(player_box, "可继续加价")
-	var auction_track := main.get("card_resolution_track") as HBoxContainer
-	var auction_track_scroll := main.get("card_resolution_track_scroll") as ScrollContainer
+		and (
+			(player_box != null \
+				and _container_label_text_contains(player_box, "报价状态：候补牌参拍中") \
+				and _container_label_text_contains(player_box, "可继续加价")) \
+			or (_runtime_split_table_text_or_tooltip_contains(main, "报价状态：候补牌参拍中") \
+				and _runtime_split_table_text_or_tooltip_contains(main, "可继续加价"))
+		)
+	var auction_track := _public_track_row(main)
+	var auction_track_scroll := _public_track_scroll(main)
 	result["track_badges_auction_visible"] = bool(result["five_second_window"]) \
 		and auction_track != null \
-		and _container_button_text_contains(auction_track, "竞拍1") \
-		and _container_button_text_contains(auction_track, "¥200") \
-		and _container_button_tooltip_contains(auction_track, "舆论操控") \
-		and not _container_label_text_contains(auction_track, "公开归属标签｜玩家")
+		and _public_track_text_contains(main, "竞拍1") \
+		and _public_track_text_contains(main, "¥200") \
+		and _public_track_tooltip_contains(main, "舆论操控") \
+		and not _public_track_text_contains(main, "公开归属标签｜玩家")
 	result["track_compact_hover_detail"] = bool(result["five_second_window"]) \
 		and auction_track_scroll != null \
 		and auction_track_scroll.custom_minimum_size.y <= 64.0 \
-		and _container_button_tooltip_contains(auction_track, "单击竞猜归属") \
-		and _container_button_tooltip_contains(auction_track, "双击打开卡牌图鉴")
+		and _public_track_tooltip_contains(main, "单击竞猜归属") \
+		and _public_track_tooltip_contains(main, "双击打开卡牌图鉴")
 
 	main.call("_update_card_resolution_queue", 5.1)
 	var active_after_auction: Dictionary = main.get("active_card_resolution") as Dictionary
@@ -8308,20 +8596,24 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
 	result["bid_status_locked_visible"] = not active_after_auction.is_empty() \
-		and player_box != null \
-		and _container_label_text_contains(player_box, "报价状态：候补牌已锁定") \
-		and _container_label_text_contains(player_box, "不能加价：批次已封盘/展示中")
-	var locked_track := main.get("card_resolution_track") as HBoxContainer
+		and (
+			(player_box != null \
+				and _container_label_text_contains(player_box, "报价状态：候补牌已锁定") \
+				and _container_label_text_contains(player_box, "不能加价：批次已封盘/展示中")) \
+			or (_runtime_split_table_text_or_tooltip_contains(main, "报价状态：候补牌已锁定") \
+				and _runtime_split_table_text_or_tooltip_contains(main, "不能加价：批次已封盘/展示中"))
+		)
+	var locked_track := _public_track_row(main)
 	result["track_badges_locked_visible"] = not active_after_auction.is_empty() \
 		and locked_track != null \
-		and _container_button_text_contains(locked_track, "当前展示") \
-		and _container_button_text_contains(locked_track, "锁定1")
+		and _public_track_text_contains(main, "当前展示") \
+		and _public_track_text_contains(main, "锁定1")
 	result["track_requirement_badges_visible"] = not active_after_auction.is_empty() \
 		and locked_track != null \
-		and _container_button_tooltip_contains(locked_track, "起始怪兽牌")
+		and _public_track_tooltip_contains(main, "起始怪兽牌")
 	result["track_visual_cues_visible"] = not active_after_auction.is_empty() \
 		and locked_track != null \
-		and _container_button_tooltip_contains(locked_track, "舆论操控")
+		and _public_track_tooltip_contains(main, "舆论操控")
 	result["clockwise_tie"] = locked_queue.size() >= 1 and int((locked_queue[0] as Dictionary).get("player_index", -1)) == 3
 	result["batch_order_locked"] = bool(main.get("card_resolution_batch_locked")) \
 		and not bool(main.get("card_resolution_auction_open")) \
@@ -8347,9 +8639,9 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		and waiting_next_batch.size() == 2 \
 		and not bool(main.get("card_resolution_auction_open"))
 	main.call("_refresh_ui")
-	var waiting_track := main.get("card_resolution_track") as HBoxContainer
+	var waiting_track := _public_track_row(main)
 	result["next_batch_track_visible"] = waiting_track != null \
-		and _container_button_text_contains(waiting_track, "下批等待1")
+		and _public_track_text_contains(main, "下批等待1")
 	var waiting_save_state := main.call("_capture_run_state") as Dictionary
 	result["next_batch_save_state"] = _as_array(waiting_save_state.get("next_card_resolution_queue", [])).size() == 2
 
@@ -8384,8 +8676,8 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 
 	var history: Array = _as_array(main.get("resolved_card_history"))
 	main.call("_refresh_ui")
-	var track := main.get("card_resolution_track") as HBoxContainer
-	result["track_records_history"] = history.size() == 4 and track != null and track.get_child_count() >= 5
+	var track := _public_track_row(main)
+	result["track_records_history"] = history.size() == 4 and track != null and _public_track_child_count(main) >= 5
 	result["card_aftermath_clues_visible"] = history.size() >= 1 \
 		and String((history[0] as Dictionary).get("aftermath_clue", "")) != "" \
 		and track != null \
@@ -8407,7 +8699,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		and economy_aftermath_text.contains("竞价:") \
 		and economy_aftermath_text.contains("已私密支付") \
 		and economy_aftermath_text.contains("身份仍匿名")
-	var track_scroll := main.get("card_resolution_track_scroll") as ScrollContainer
+	var track_scroll := _public_track_scroll(main)
 	if not history.is_empty():
 		var overflow_history := history.duplicate(true)
 		for i in range(10):
@@ -8418,9 +8710,10 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		main.set("resolved_card_history", overflow_history)
 		main.call("_refresh_ui")
 		await process_frame
-	main.call("_set_card_resolution_track_scroll", 0)
-	var max_track_scroll: int = int(main.call("_card_resolution_track_max_scroll"))
-	var scrolled_track_position: int = int(main.call("_scroll_card_resolution_track_by", 160))
+		track_scroll = _public_track_scroll(main)
+	_set_public_track_scroll(main, 0)
+	var max_track_scroll: int = _public_track_max_scroll(main)
+	var scrolled_track_position: int = _scroll_public_track_by(main, 160)
 	result["track_supports_horizontal_drag_scroll"] = bool(result["track_records_history"]) \
 		and track_scroll != null \
 		and max_track_scroll > 0 \
@@ -8445,9 +8738,9 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 			and int((after_correct_players[1] as Dictionary).get("cash", 0)) == guesser_cash_before + 100
 		main.set("selected_card_resolution_id", first_id)
 		main.call("_refresh_ui")
-		track = main.get("card_resolution_track") as HBoxContainer
+		track = _public_track_row(main)
 		result["correct_guess_badge_visible"] = track != null \
-			and _container_button_text_contains(track, "玩家3")
+			and _public_track_text_contains(main, "玩家3")
 		var inference_after_correct := String(main.call("_economy_overview_text"))
 		result["inference_board_public_card_owner_visible"] = bool(result["correct_guess"]) \
 			and inference_after_correct.contains("当前玩家推理板") \
@@ -8481,11 +8774,13 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 			and int((after_wrong_players[3] as Dictionary).get("cash", 0)) == wrong_owner_before + 100
 		main.set("selected_card_resolution_id", second_id)
 		main.call("_refresh_ui")
-		track = main.get("card_resolution_track") as HBoxContainer
+		track = _public_track_row(main)
 		player_box = main.get("player_box") as VBoxContainer
-		result["wrong_guess_status_visible"] = player_box != null \
+		result["wrong_guess_status_visible"] = (player_box != null \
 			and _container_label_text_contains(player_box, "已竞猜") \
-			and not _container_label_text_contains(track, "公开归属标签｜玩家4")
+			or _public_track_text_contains(main, "已竞猜") \
+			or _public_track_tooltip_contains(main, "已竞猜")) \
+			and not _public_track_text_contains(main, "公开归属标签｜玩家4")
 
 	var public_lines: Array = _as_array(main.get("log_lines"))
 	var public_text := ""

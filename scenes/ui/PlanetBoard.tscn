@@ -4,25 +4,173 @@
 [ext_resource type="Script" path="res://scripts/ui/planet_board.gd" id="2_planet_board"]
 
 [node name="PlanetBoard" type="PanelContainer"]
-custom_minimum_size = Vector2(620, 360)
+custom_minimum_size = Vector2(600, 300)
 theme = ExtResource("1_theme")
 script = ExtResource("2_planet_board")
 
 [node name="PlanetRows" type="VBoxContainer" parent="."]
 layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="PlanetTitle" type="Label" parent="PlanetRows"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "星球赌桌"
-horizontal_alignment = 1
-
-[node name="PlanetHint" type="Label" parent="PlanetRows"]
-unique_name_in_owner = true
-layout_mode = 2
 size_flags_vertical = 3
-text = "中央星球 / 地图占位\n滚轮缩放｜拖拽星球｜双击区域看牌架"
-horizontal_alignment = 1
+theme_override_constants/separation = 6
+
+[node name="PlanetHudRow" type="HBoxContainer" parent="PlanetRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PlanetTitle" type="Label" parent="PlanetRows/PlanetHudRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "星球牌桌"
+text_overrun_behavior = 3
+
+[node name="PlanetHint" type="Label" parent="PlanetRows/PlanetHudRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "轨道外圈显示公开局势。"
+horizontal_alignment = 2
 vertical_alignment = 1
+text_overrun_behavior = 3
+autowrap_mode = 3
+
+[node name="WeatherForecastBar" type="PanelContainer" parent="PlanetRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WeatherForecastMargin" type="MarginContainer" parent="PlanetRows/WeatherForecastBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 1
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 1
+
+[node name="WeatherForecastChipRail" type="HFlowContainer" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 2
+
+[node name="WeatherActiveLabel" type="Label" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin/WeatherForecastChipRail"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "现在：无天气"
+text_overrun_behavior = 3
+
+[node name="WeatherForecastLabel" type="Label" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin/WeatherForecastChipRail"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "预报：开局后生成"
+text_overrun_behavior = 3
+
+[node name="WeatherImpactLabel" type="Label" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin/WeatherForecastChipRail"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "影响：产/交/消"
+text_overrun_behavior = 3
+
+[node name="PlanetStageViewport" type="Control" parent="PlanetRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 252)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+clip_contents = false
+mouse_filter = 2
+
+[node name="MapHost" type="Control" parent="PlanetRows/PlanetStageViewport"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 220)
+clip_contents = false
+
+[node name="PlaytestFlowCompass" type="PanelContainer" parent="PlanetRows/PlanetStageViewport"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(168, 42)
+mouse_filter = 2
+
+[node name="PlaytestFlowCompassMargin" type="MarginContainer" parent="PlanetRows/PlanetStageViewport/PlaytestFlowCompass"]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 4
+
+[node name="PlaytestFlowCompassRows" type="VBoxContainer" parent="PlanetRows/PlanetStageViewport/PlaytestFlowCompass/PlaytestFlowCompassMargin"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PlaytestFlowCompassTitle" type="Label" parent="PlanetRows/PlanetStageViewport/PlaytestFlowCompass/PlaytestFlowCompassMargin/PlaytestFlowCompassRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "试玩 罗盘"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="PlaytestFlowCompassStepRail" type="HFlowContainer" parent="PlanetRows/PlanetStageViewport/PlaytestFlowCompass/PlaytestFlowCompassMargin/PlaytestFlowCompassRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 2
+
+[node name="PlanetLeftSpaceRail" type="PanelContainer" parent="PlanetRows/PlanetStageViewport"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 0)
+mouse_filter = 2
+
+[node name="LeftRailMargin" type="MarginContainer" parent="PlanetRows/PlanetStageViewport/PlanetLeftSpaceRail"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="LeftRailStack" type="VBoxContainer" parent="PlanetRows/PlanetStageViewport/PlanetLeftSpaceRail/LeftRailMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LeftRailTitle" type="Label" parent="PlanetRows/PlanetStageViewport/PlanetLeftSpaceRail/LeftRailMargin/LeftRailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "轨道情报"
+horizontal_alignment = 1
+
+[node name="LeftRailText" type="Label" parent="PlanetRows/PlanetStageViewport/PlanetLeftSpaceRail/LeftRailMargin/LeftRailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "星区\n商路\n事件"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="PlanetRightSpaceRail" type="PanelContainer" parent="PlanetRows/PlanetStageViewport"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 0)
+mouse_filter = 2
+
+[node name="RightRailMargin" type="MarginContainer" parent="PlanetRows/PlanetStageViewport/PlanetRightSpaceRail"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="RightRailStack" type="VBoxContainer" parent="PlanetRows/PlanetStageViewport/PlanetRightSpaceRail/RightRailMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="RightRailTitle" type="Label" parent="PlanetRows/PlanetStageViewport/PlanetRightSpaceRail/RightRailMargin/RightRailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "外围宇宙"
+horizontal_alignment = 1
+
+[node name="RightRailText" type="Label" parent="PlanetRows/PlanetStageViewport/PlanetRightSpaceRail/RightRailMargin/RightRailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "怪兽\n天气\n下注"
+horizontal_alignment = 1
 autowrap_mode = 3

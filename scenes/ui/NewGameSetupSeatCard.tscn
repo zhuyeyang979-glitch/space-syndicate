@@ -1,0 +1,115 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/new_game_setup_seat_card.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/NewGameSetupSeatIdentityBoard.tscn" id="3_identity"]
+
+[node name="NewGameSetupSeatCard" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 1
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="NewGameSetupSeatMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="NewGameSetupSeatStack" type="VBoxContainer" parent="NewGameSetupSeatMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="NewGameSetupSeatChipRail" type="HFlowContainer" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="NewGameSetupSeatIdentityBoard" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack" instance=ExtResource("3_identity")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="NewGameSetupSeatPassiveLabel" type="Label" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.992157, 0.901961, 0.541176, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="NewGameSetupRoleChoiceRow" type="HBoxContainer" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="NewGameSetupPreviousRoleButton" type="Button" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack/NewGameSetupRoleChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "上一个角色"
+
+[node name="NewGameSetupRoleNameLabel" type="Label" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack/NewGameSetupRoleChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "当前：外星辛迪加"
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.878431, 0.952941, 1, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="NewGameSetupNextRoleButton" type="Button" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack/NewGameSetupRoleChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "下一个角色"
+
+[node name="NewGameSetupRandomRoleButton" type="Button" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack/NewGameSetupRoleChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "随机角色"
+tooltip_text = "本局开始时从未被占用的角色中随机分配，仍会公开显示，且全局不重复。"
+
+[node name="NewGameSetupMonsterChoiceRow" type="HBoxContainer" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="NewGameSetupPreviousMonsterButton" type="Button" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack/NewGameSetupMonsterChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "上一个首召"
+
+[node name="NewGameSetupMonsterNameLabel" type="Label" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack/NewGameSetupMonsterChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "起始怪兽：怪兽"
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.996078, 0.792157, 0.792157, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="NewGameSetupNextMonsterButton" type="Button" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack/NewGameSetupMonsterChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "下一个首召"
+
+[node name="NewGameSetupSeatCardHost" type="HBoxContainer" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="NewGameSetupSeatStarterNote" type="Label" parent="NewGameSetupSeatMargin/NewGameSetupSeatStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.654902, 0.956863, 0.815686, 1)
+theme_override_font_sizes/font_size = 10

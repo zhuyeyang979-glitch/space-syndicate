@@ -15,6 +15,142 @@
 - 复杂规则进入 Codex、规则页、经济总览和情报档案。
 - AI 内部评分、压力桶、真实手牌、隐藏现金、私有弃牌不进玩家 UI。
 
+## 下一阶段复制策略
+
+下一阶段的开发方法改成“先抄标杆结构，再做本项目小修小改”。抄袭优先级按许可证和风险分三档：
+
+1. `A 级｜可直接移植模式`
+   - 参考：`pipeworks-studios/CardHouse`（CC0）、`mixandjam/Balatro-Feel`（MIT）、`ycarowr/UiCard`（MIT）、`chun92/card-framework`（MIT）、`twdoor/simple-cards-v-2`（MIT）、`cyanglaz/gcard_layout`（MIT）、`boardgameio/boardgame.io`（MIT）、`godotengine/godot-demo-projects`（MIT）、`Maaack/Godot-Menus-Template`（MIT）。
+   - 可抄范围：组件边界、状态机形状、layout 参数、hover/drag/seeker 手感、菜单页拆分、加载/设置页组织。
+   - 落地规则：必须改写成当前 Godot/GDScript 风格，不能直接混入 Unity/C#/JS 文件；引用来源写进 `docs/open_source_reference_notes.md` 或当前文件。
+
+2. `B 级｜只抄产品结构`
+   - 参考：`terraforming-mars/terraforming-mars`（GPL-3.0）、`vassalengine/vassal`（LGPL-2.1）、`db0/godot-card-game-framework`（AGPL-3.0）。
+   - 可抄范围：主桌信息层级、玩家 tableau、牌轨/日志/地图/菜单分区、模块化桌面思想。
+   - 禁止范围：不复制源码、素材、CSS、场景文件、具体文本和图标资源，除非项目明确接受对应许可证义务。
+
+3. `C 级｜先确认再抄`
+   - 参考：`boardgamers/gaia-project`、`GAIGResearch/TabletopGames`、本地/线上其它 deckbuilder、星球、巨兽、survivor 项目。
+   - 可抄范围：在许可证确认前只做产品读法、流程拆解和截图对标；代码/资产不得粘贴进仓库。
+
+## 下一阶段五个开发目标
+
+### 目标 1｜主桌商业化读序二次收紧
+
+参考标杆：
+
+- `terraforming-mars/terraforming-mars`：中央地图 + 玩家资源 + 行动区 + 日志分离。
+- `boardgamers/gaia-project`：资源/行动图标化和密集桌游 UI 的扫读。
+- `VASSAL`：棋盘、token、日志、模块面板分层。
+
+落地文件：
+
+- `scenes/ui/GameScreen.tscn`
+- `scenes/ui/TopBar.tscn`
+- `scenes/ui/PlanetBoard.tscn`
+- `scenes/ui/RightInspector.tscn`
+- `scenes/ui/PlayerBoard.tscn`
+- `scripts/viewmodels/table_snapshot.gd`
+
+验收：
+
+- 1280x720、1600x960、1920x1080 的 `play_table_*` 截图里，中央星球仍是最大视觉块。
+- 主屏第一眼只出现：身份、现金/GDP/目标、选区、手牌、建城/牌架/买牌/出牌、短日志。
+- `RightInspector` 不出现长规则段落；详情入口打开分节 Drawer。
+
+### 目标 2｜手牌架照着成熟卡牌 UI 重做一轮手感
+
+当前状态：
+
+- 基础二版已落地：`HandLayout` 已按 `single_focus / comfortable / compressed / pressure` 分档处理 1 张、2-5 张、6-10 张、11+ 张手牌。
+- 已有 hover 抬升/放大/置顶、邻牌让位、UI-only drop zone 元数据、拖拽预览元数据、MiniCard 速读和 RightInspector 详情路由。
+- 后续继续用截图微调卡面尺寸、拥挤手牌的重叠节奏和 hover 动画曲线，不新增玩法。
+
+参考标杆：
+
+- `CardHouse`：card groups、drag gate、position/rotation/scale seeker。
+- `Balatro-Feel`：hover 弹性、选择反馈、轻量结算手感。
+- `UiCard`：hand pivot、hover lift、drop zone、卡牌间距参数。
+- `card-framework`、`simple-cards-v-2`、`gcard_layout`：Godot Control 型卡牌/手牌组件边界。
+
+落地文件：
+
+- `scripts/HandLayout.gd`
+- `scripts/ui/hand_rack.gd`
+- `scripts/CardUI.gd`
+- `scenes/ui/HandRack.tscn`
+- `scenes/CardUI.tscn`
+
+验收：
+
+- 1-5 张手牌居中且可读，6-10 张压缩但不变成按钮列表。
+- hover 放大/抬起/置顶不被 live refresh 打断。
+- 拖拽预览只走 UI signal，不调用规则。
+- MiniCard 只显示短读信息，完整规则仍在 Inspector/Drawer/Codex。
+
+### 目标 3｜菜单/Codex 按 Godot 商业模板拆页面
+
+参考标杆：
+
+- `Maaack/Godot-Menus-Template`：主菜单、选项、暂停、credits、loading/scene flow。
+- `godotengine/godot-demo-projects`：Godot 官方 scene 组织和 demo 项目结构。
+- `boardgame.io`：规则/阶段/log/replay 与 view 层解耦。
+
+落地文件：
+
+- `scenes/ui/MenuOverlay.tscn`
+- `scenes/ui/MenuRootLobby.tscn`
+- `scenes/ui/CardCodexBrowser.tscn`
+- `scenes/ui/CardCodexDetail.tscn`
+- `scenes/ui/CompendiumHubBoard.tscn`
+- `scripts/main.gd` 中残留菜单/Codex controller 桥接函数
+
+验收：
+
+- 根菜单只显示开局、继续、资料库、规则、读档/设置/退出等入口，不显示开发说明。
+- Codex 缩略图页只负责浏览，详情页才负责完整读法。
+- 子页面不继承无关全局导航，返回/上一页/下一页是本地控件。
+
+### 目标 4｜把 Theme/样式从脚本里继续抽出来
+
+参考标杆：
+
+- Godot 官方 Theme / GUI Skinning / Container 文档。
+- `Maaack` 模板的菜单和按钮层级。
+- `godot-demo-projects` 的项目组织。
+
+落地文件：
+
+- `themes/` 或现有主题资源。
+- `scenes/ui/*.tscn`
+- `scripts/ui/*` 中重复出现的颜色、边框、字号、margin。
+
+验收：
+
+- 新增 UI 不再在 `scripts/main.gd` 里散落大量 `Color("#...")`、font size、margin 常量。
+- 常见按钮、chip、panel、card frame 至少有一套可复用样式入口。
+- 1280x720 下按钮文字不溢出，卡片/抽屉/菜单不出现嵌套卡片堆叠感。
+
+### 目标 5｜把“参考标杆 → 截图验收”固定进测试
+
+参考标杆：
+
+- Godot 官方多分辨率 UI/container 约束。
+- 当前 `tests/ui_snapshot_capture.gd`、`tests/layout_scene_smoke_test.gd`、`tests/visual_snapshot.gd`。
+
+落地文件：
+
+- `tests/ui_snapshot_capture.gd`
+- `tests/layout_scene_smoke_test.gd`
+- `tests/visual_snapshot.gd`
+- `docs/open_source_reference_notes.md`
+
+验收：
+
+- 每次 UI 大改都生成 `main_menu_*`、`play_table_*`、`play_table_drawer_*` 三档以上截图。
+- 测试明确卡住“主屏没有长规则说明 / 复杂信息只能进 Inspector、Drawer、Codex / hand hover 不被刷新打断”。
+- 新增复制来源时必须写清许可证档位和可抄范围。
+
 ## 阶段 1：真实运行 UI 迁移
 
 目标：让正在运行的 `scenes/main.tscn` 不再主要依赖 `scripts/main.gd` 动态生成 UI。
@@ -246,6 +382,11 @@
 
 下一个 Codex 任务建议只做一件事：
 
-> 把运行时底部玩家板从 `scripts/main.gd` 动态构造迁入 `scenes/ui/PlayerBoard.tscn`，使用 `PlayerBoardSnapshot` 输入，保持现有功能和测试通过。
+> 以 `CardHouse + Balatro-Feel + UiCard + simple-cards-v-2` 为标杆，把当前 `HandRack` 做成第二版商业卡牌手感：稳定压缩布局、hover 抬升/弹性、拖拽预览、MiniCard 扫读、右侧详情联动，保持不新增玩法。
 
-这一步完成后，项目会真正从“灰盒 UI 场景存在”变成“真实游戏开始使用拆分 UI 架构”。
+验收方式：
+
+- 跑 `tests/layout_scene_smoke_test.gd`，确认同 ID 手牌刷新不重建、不打断 hover。
+- 跑 `tests/visual_snapshot.gd`，确认 MiniCard/HandRack/Drawer 合同仍然存在。
+- 用可见渲染器跑 `tests/ui_snapshot_capture.gd`，目检 `play_table_1280x720.png`、`play_table_1600x960.png`、`play_table_1920x1080.png`。
+- 更新 `docs/open_source_reference_notes.md`，记录这轮实际抄了哪些 MIT/CC0 模式。

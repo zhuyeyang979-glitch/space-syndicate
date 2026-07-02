@@ -4,13 +4,13 @@
 [ext_resource type="Script" path="res://scripts/ui/district_info_panel.gd" id="2_district_info"]
 
 [node name="DistrictInfoPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(280, 132)
+custom_minimum_size = Vector2(280, 64)
 theme = ExtResource("1_theme")
 script = ExtResource("2_district_info")
 
 [node name="DistrictRows" type="VBoxContainer" parent="."]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 3
 
 [node name="DistrictTitle" type="Label" parent="DistrictRows"]
 unique_name_in_owner = true
@@ -26,7 +26,9 @@ theme_override_constants/v_separation = 3
 
 [node name="DistrictDetail" type="Label" parent="DistrictRows"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
-size_flags_vertical = 3
 text = "选择地图区域后显示短详情。"
 autowrap_mode = 3
+clip_text = true
+max_lines_visible = 1

@@ -1,32 +1,164 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HandRack.tscn" id="2_hand_rack"]
 [ext_resource type="Script" path="res://scripts/ui/player_board.gd" id="3_player_board"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ActionDock.tscn" id="4_action_dock"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BidBoard.tscn" id="5_bid_board"]
 
 [node name="PlayerBoard" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 230)
+custom_minimum_size = Vector2(0, 192)
 theme = ExtResource("1_theme")
 script = ExtResource("3_player_board")
 
 [node name="PlayerRows" type="VBoxContainer" parent="."]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 4
 
 [node name="PlayerBoardTitle" type="Label" parent="PlayerRows"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 text = "玩家板｜手牌"
 horizontal_alignment = 1
 
 [node name="PlayerActionHint" type="Label" parent="PlayerRows"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 text = "选择一张手牌后，右侧详情会显示主操作。"
 horizontal_alignment = 1
 text_overrun_behavior = 3
 
-[node name="HandRack" parent="PlayerRows" instance=ExtResource("2_hand_rack")]
+[node name="PlayerBoardBody" type="HBoxContainer" parent="PlayerRows"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PlayerResourceTableau" type="PanelContainer" parent="PlayerRows/PlayerBoardBody"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(232, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayerResourceRows" type="VBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PlayerThreeSecondRail" type="GridContainer" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 2
+
+[node name="PlayerIdentityChip" type="Label" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows/PlayerThreeSecondRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+text = "本席｜未开局"
+
+[node name="PlayerCashChip" type="Label" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows/PlayerThreeSecondRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+text = "现金｜¥ --"
+
+[node name="PlayerGdpChip" type="Label" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows/PlayerThreeSecondRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+text = "GDP｜--/s"
+
+[node name="PlayerGoalChip" type="Label" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows/PlayerThreeSecondRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+text = "目标｜--"
+
+[node name="PlayerGoalBar" type="ProgressBar" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+show_percentage = false
+
+[node name="PlayerSelectedDistrictChip" type="Label" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+text = "选区｜未选择"
+
+[node name="PlayerPrimaryActionChip" type="Label" parent="PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+text = "下一步｜查看地图"
+
+[node name="PlayerHandTableau" type="PanelContainer" parent="PlayerRows/PlayerBoardBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(430, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlayerHandRows" type="VBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerHandTableau"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="PlayerHandHeader" type="HBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="PlayerHandCountChip" type="Label" parent="PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/PlayerHandHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 22)
+layout_mode = 2
+text = "手牌｜0/5"
+
+[node name="PlayerStatusLampRow" type="HBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/PlayerHandHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(142, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PlayerReadinessChipRow" type="HBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/PlayerHandHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(154, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="HandRackColumn" type="VBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows"]
+custom_minimum_size = Vector2(0, 124)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="HandRack" parent="PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/HandRackColumn" instance=ExtResource("2_hand_rack")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 124)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayerCommandTableau" type="PanelContainer" parent="PlayerRows/PlayerBoardBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(292, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlayerCommandRows" type="VBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PlayerBidBoard" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows" instance=ExtResource("5_bid_board")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 64)
+layout_mode = 2
+
+[node name="PlayerMainActionDock" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows" instance=ExtResource("4_action_dock")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 84)
 layout_mode = 2
 size_flags_vertical = 3

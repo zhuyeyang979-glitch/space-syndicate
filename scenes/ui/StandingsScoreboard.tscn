@@ -1,0 +1,66 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/standings_scoreboard.gd" id="2_script"]
+
+[node name="StandingsScoreboardPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="StandingsScoreboardMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="StandingsScoreboardStack" type="VBoxContainer" parent="StandingsScoreboardMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="StandingsScoreboardHeader" type="HBoxContainer" parent="StandingsScoreboardMargin/StandingsScoreboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="StandingsScoreboardTitle" type="Label" parent="StandingsScoreboardMargin/StandingsScoreboardStack/StandingsScoreboardHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "局势记分板"
+
+[node name="StandingsScoreboardHeaderSpacer" type="Control" parent="StandingsScoreboardMargin/StandingsScoreboardStack/StandingsScoreboardHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StandingsScoreboardChipRail" type="HFlowContainer" parent="StandingsScoreboardMargin/StandingsScoreboardStack/StandingsScoreboardHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="StandingsRaceKpiGrid" type="GridContainer" parent="StandingsScoreboardMargin/StandingsScoreboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="StandingsPlayerScoreGrid" type="GridContainer" parent="StandingsScoreboardMargin/StandingsScoreboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="StandingsScoreboardReadHint" type="Label" parent="StandingsScoreboardMargin/StandingsScoreboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "读法：自己的牌看精确钱；对手牌看公开线索。"
+autowrap_mode = 2

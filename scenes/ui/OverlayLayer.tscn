@@ -16,7 +16,17 @@ grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("1_theme")
 
-[node name="OverlayMargin" type="MarginContainer" parent="OverlayRoot"]
+[node name="SideDrawerLayer" type="Control" parent="OverlayRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="OverlayMargin" type="MarginContainer" parent="OverlayRoot/SideDrawerLayer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -28,26 +38,76 @@ theme_override_constants/margin_top = 18
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 18
 
-[node name="OverlayColumns" type="HBoxContainer" parent="OverlayRoot/OverlayMargin"]
+[node name="OverlayColumns" type="HBoxContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin"]
 layout_mode = 2
 
-[node name="OverlaySpacer" type="Control" parent="OverlayRoot/OverlayMargin/OverlayColumns"]
+[node name="OverlaySpacer" type="Control" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="TooltipPanel" type="PanelContainer" parent="OverlayRoot/OverlayMargin/OverlayColumns"]
+[node name="SideDrawerPanel" type="PanelContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(280, 92)
+custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
+size_flags_vertical = 3
 
-[node name="TooltipLabel" type="Label" parent="OverlayRoot/OverlayMargin/OverlayColumns/TooltipPanel"]
+[node name="SideDrawerRows" type="VBoxContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SideDrawerHeader" type="HBoxContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SideDrawerTitle" type="Label" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerHeader"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Tooltip"
+size_flags_horizontal = 3
+text = "详情抽屉"
+text_overrun_behavior = 3
+
+[node name="SideDrawerCloseButton" type="Button" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(68, 28)
+layout_mode = 2
+text = "关闭"
+
+[node name="SideDrawerBodyScroll" type="ScrollContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SideDrawerBodyRows" type="VBoxContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerBodyScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SideDrawerSummary" type="Label" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerBodyScroll/SideDrawerBodyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "点击右侧详情入口，打开 30 秒层信息。"
 autowrap_mode = 3
 
-[node name="ConfirmCenter" type="CenterContainer" parent="OverlayRoot"]
+[node name="SideDrawerSectionList" type="VBoxContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerBodyScroll/SideDrawerBodyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="SideDrawerChipRow" type="HFlowContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerBodyScroll/SideDrawerBodyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+
+[node name="SideDrawerActionRow" type="HFlowContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerBodyScroll/SideDrawerBodyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+
+[node name="TooltipLayer" type="Control" parent="OverlayRoot"]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -56,16 +116,105 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="ConfirmPanel" type="PanelContainer" parent="OverlayRoot/ConfirmCenter"]
+[node name="TooltipPanel" type="PanelContainer" parent="OverlayRoot/TooltipLayer"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(280, 92)
+layout_mode = 1
+offset_left = 18.0
+offset_top = 18.0
+
+[node name="TooltipLabel" type="Label" parent="OverlayRoot/TooltipLayer/TooltipPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "提示"
+autowrap_mode = 3
+
+[node name="DragPreviewLayer" type="Control" parent="OverlayRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DragDropTargetPanel" type="PanelContainer" parent="OverlayRoot/DragPreviewLayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+mouse_filter = 2
+
+[node name="DragDropTargetLabel" type="Label" parent="OverlayRoot/DragPreviewLayer/DragDropTargetPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "拖到星球地图"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DragPreviewPanel" type="PanelContainer" parent="OverlayRoot/DragPreviewLayer"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(176, 118)
+layout_mode = 0
+mouse_filter = 2
+
+[node name="DragPreviewLabel" type="Label" parent="OverlayRoot/DragPreviewLayer/DragPreviewPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "拖拽预览"
+horizontal_alignment = 1
+vertical_alignment = 1
+text_overrun_behavior = 3
+clip_text = true
+
+[node name="ModalLayer" type="Control" parent="OverlayRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ConfirmCenter" type="CenterContainer" parent="OverlayRoot/ModalLayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ConfirmPanel" type="PanelContainer" parent="OverlayRoot/ModalLayer/ConfirmCenter"]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(360, 150)
 layout_mode = 2
 
-[node name="ConfirmLabel" type="Label" parent="OverlayRoot/ConfirmCenter/ConfirmPanel"]
+[node name="ConfirmRows" type="VBoxContainer" parent="OverlayRoot/ModalLayer/ConfirmCenter/ConfirmPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ConfirmLabel" type="Label" parent="OverlayRoot/ModalLayer/ConfirmCenter/ConfirmPanel/ConfirmRows"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "确认操作"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
+
+[node name="ConfirmChipRow" type="HFlowContainer" parent="OverlayRoot/ModalLayer/ConfirmCenter/ConfirmPanel/ConfirmRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+
+[node name="ConfirmActionRow" type="GridContainer" parent="OverlayRoot/ModalLayer/ConfirmCenter/ConfirmPanel/ConfirmRows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6

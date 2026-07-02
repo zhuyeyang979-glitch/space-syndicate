@@ -3,6 +3,35 @@ extends Control
 const MapViewScript := preload("res://scripts/map_view.gd")
 const CardArtViewScript := preload("res://scripts/card_art_view.gd")
 const MonsterArtViewScript := preload("res://scripts/monster_art_view.gd")
+const TableSnapshotScript := preload("res://scripts/viewmodels/table_snapshot.gd")
+const CardCodexBrowserSnapshotScript := preload("res://scripts/viewmodels/card_codex_browser_snapshot.gd")
+const CardCodexDetailSnapshotScript := preload("res://scripts/viewmodels/card_codex_detail_snapshot.gd")
+const RuntimeGameScreenScene := preload("res://scenes/ui/GameScreen.tscn")
+const CardResolutionBannerScene := preload("res://scenes/ui/CardResolutionBanner.tscn")
+const BottomCountdownBarScene := preload("res://scenes/ui/BottomCountdownBar.tscn")
+const DistrictSupplyDrawerScene := preload("res://scenes/ui/DistrictSupplyDrawer.tscn")
+const DistrictSupplyMarketCardScene := preload("res://scenes/ui/DistrictSupplyMarketCard.tscn")
+const DistrictSupplyPreviewCardScene := preload("res://scenes/ui/DistrictSupplyPreviewCard.tscn")
+const FullscreenMapOverlayScene := preload("res://scenes/ui/FullscreenMapOverlay.tscn")
+const MenuOverlayScene := preload("res://scenes/ui/MenuOverlay.tscn")
+const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
+const TutorialQuickStartBoardScene := preload("res://scenes/ui/TutorialQuickStartBoard.tscn")
+const RulesQuickReferenceBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
+const RoleCodexIdentityBoardScene := preload("res://scenes/ui/RoleCodexIdentityBoard.tscn")
+const CompendiumHubBoardScene := preload("res://scenes/ui/CompendiumHubBoard.tscn")
+const CardCodexBrowserScene := preload("res://scenes/ui/CardCodexBrowser.tscn")
+const CardCodexDetailScene := preload("res://scenes/ui/CardCodexDetail.tscn")
+const RegionCodexDetailScene := preload("res://scenes/ui/RegionCodexDetail.tscn")
+const ProductCodexDetailScene := preload("res://scenes/ui/ProductCodexDetail.tscn")
+const BestiaryDetailScene := preload("res://scenes/ui/BestiaryDetail.tscn")
+const EconomyDashboardScene := preload("res://scenes/ui/EconomyDashboard.tscn")
+const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
+const StandingsScoreboardScene := preload("res://scenes/ui/StandingsScoreboard.tscn")
+const FinalSettlementBoardScene := preload("res://scenes/ui/FinalSettlementBoard.tscn")
+const NewGameSetupLobbyScene := preload("res://scenes/ui/NewGameSetupLobby.tscn")
+const NewGameSetupOptionBoardScene := preload("res://scenes/ui/NewGameSetupOptionBoard.tscn")
+const NewGameSetupSeatCardScene := preload("res://scenes/ui/NewGameSetupSeatCard.tscn")
+const BUILD_LEGACY_RUNTIME_TABLE := false
 const NIGHT_PATROL_ASSET_ATTRIBUTION := "Night Patrol: Abandoned Temple, created by Guizang x Codex. CC BY-NC 4.0 non-commercial prototype assets."
 const NIGHT_PATROL_BGM_PATH := "res://assets/third_party/night_patrol/audio/bgm/bronze-snare-crown.mp3"
 const NIGHT_PATROL_SFX_PATHS := {
@@ -1520,6 +1549,10 @@ var speed_before_target_choice := 1.0
 var run_save_path := RUN_SAVE_PATH
 
 var status_label: Label
+var runtime_game_screen: Control
+var legacy_table_root: Control
+var runtime_game_screen_snapshot_signature := ""
+var selected_runtime_card_slot := -1
 var header_status_chip_rail: HFlowContainer
 var header_status_chip_labels := {}
 var header_status_chip_bars := {}
@@ -1857,11 +1890,275 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_trade_product(1)
 
 
+func _build_runtime_game_screen() -> void:
+	if runtime_game_screen != null:
+		return
+	var screen := RuntimeGameScreenScene.instantiate() as Control
+	if screen == null:
+		return
+	screen.name = "RuntimeGameScreen"
+	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	screen.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(screen)
+	runtime_game_screen = screen
+	status_label = runtime_game_screen.find_child("WeatherChip", true, false) as Label
+	weather_active_label = runtime_game_screen.find_child("WeatherActiveLabel", true, false) as Label
+	weather_forecast_label = runtime_game_screen.find_child("WeatherForecastLabel", true, false) as Label
+	weather_impact_label = runtime_game_screen.find_child("WeatherImpactLabel", true, false) as Label
+	if runtime_game_screen.has_signal("action_requested"):
+		runtime_game_screen.connect("action_requested", Callable(self, "_on_runtime_game_screen_action_requested"))
+	if runtime_game_screen.has_signal("end_turn_requested"):
+		runtime_game_screen.connect("end_turn_requested", Callable(self, "_on_runtime_game_screen_end_turn_requested"))
+	if runtime_game_screen.has_signal("card_selected"):
+		runtime_game_screen.connect("card_selected", Callable(self, "_on_runtime_game_screen_card_selected"))
+	if runtime_game_screen.has_signal("card_drop_requested"):
+		runtime_game_screen.connect("card_drop_requested", Callable(self, "_on_runtime_game_screen_card_drop_requested"))
+
+
+func _runtime_overlay_parent() -> Node:
+	if runtime_game_screen != null and runtime_game_screen.has_method("get_overlay_host"):
+		var host: Variant = runtime_game_screen.call("get_overlay_host")
+		if host is Node:
+			return host
+	return self
+
+
+func _uses_split_runtime_table() -> bool:
+	return runtime_game_screen != null and not BUILD_LEGACY_RUNTIME_TABLE
+
+
+func _sync_runtime_game_screen(force: bool = false) -> void:
+	if runtime_game_screen == null or not runtime_game_screen.has_method("apply_state"):
+		return
+	var ui_data := _runtime_table_snapshot()
+	var signature := var_to_str(ui_data)
+	if not force and signature == runtime_game_screen_snapshot_signature:
+		return
+	runtime_game_screen_snapshot_signature = signature
+	runtime_game_screen.call("apply_state", ui_data)
+
+
+func _on_runtime_game_screen_action_requested(action_id: String) -> void:
+	var handled := false
+	match action_id:
+		"primary":
+			handled = _activate_runtime_snapshot_action(_runtime_primary_action_entry(_runtime_snapshot_player_index()))
+		"codex_region":
+			_open_region_codex_menu(selected_district)
+			handled = true
+		"codex_cards":
+			_open_card_codex_menu()
+			handled = true
+		"codex_intel":
+			_open_intel_dossier_menu()
+			handled = true
+		"inspect":
+			_open_compendium_menu()
+			handled = true
+		"menu":
+			_open_pause_menu()
+			handled = true
+		"discard_purchase_cancel":
+			_cancel_discard_purchase()
+			handled = true
+		"bid_reset":
+			_reset_selected_card_bid()
+			handled = true
+		"build", "rack", "buy", "play":
+			handled = _activate_runtime_quick_action(action_id)
+		_:
+			if action_id.begins_with("bid_plus_"):
+				var increment := int(action_id.substr("bid_plus_".length()))
+				_increase_selected_card_bid(increment)
+				handled = true
+			elif action_id.begins_with("bid_set_"):
+				var target_bid := int(action_id.substr("bid_set_".length()))
+				_set_selected_card_tip(target_bid)
+				handled = true
+			elif action_id.begins_with("district_"):
+				handled = _activate_runtime_district_action(action_id)
+			elif action_id.begins_with("play_"):
+				var slot_index := int(action_id.substr("play_".length()))
+				selected_runtime_card_slot = slot_index
+				_use_skill(slot_index)
+				handled = true
+			elif action_id.begins_with("discard_purchase_"):
+				var discard_slot := int(action_id.substr("discard_purchase_".length()))
+				_confirm_discard_purchase(discard_slot)
+				handled = true
+			elif action_id.begins_with("track_select_"):
+				var resolution_id := int(action_id.substr("track_select_".length()))
+				selected_runtime_card_slot = -1
+				_select_card_resolution_track_entry(resolution_id)
+				handled = true
+			elif action_id.begins_with("track_intel_"):
+				var intel_resolution_id := int(action_id.substr("track_intel_".length()))
+				selected_runtime_card_slot = -1
+				selected_card_resolution_id = intel_resolution_id
+				_open_intel_dossier_menu()
+				handled = true
+			elif action_id.begins_with("track_open_"):
+				var card_name := action_id.substr("track_open_".length()).strip_edges()
+				if card_name != "":
+					selected_runtime_card_slot = -1
+					_open_card_codex_by_name(card_name)
+					handled = true
+	if handled:
+		_sync_runtime_game_screen(true)
+
+
+func _on_runtime_game_screen_end_turn_requested() -> void:
+	_sync_runtime_game_screen(true)
+
+
+func _on_runtime_game_screen_card_selected(card_data: Dictionary) -> void:
+	selected_runtime_card_slot = -1
+	var card_id := String(card_data.get("id", ""))
+	if card_id.begins_with("hand_"):
+		selected_runtime_card_slot = int(card_id.substr("hand_".length()))
+	_sync_runtime_game_screen(true)
+
+
+func _on_runtime_game_screen_card_drop_requested(card_data: Dictionary, screen_position: Vector2) -> void:
+	var slot_index := _runtime_hand_slot_from_card_data(card_data)
+	if slot_index < 0:
+		return
+	if not _runtime_drop_position_targets_map(screen_position):
+		return
+	selected_runtime_card_slot = slot_index
+	_use_skill(slot_index)
+	_sync_runtime_game_screen(true)
+
+
+func _runtime_hand_slot_from_card_data(card_data: Dictionary) -> int:
+	var card_id := String(card_data.get("id", ""))
+	if card_id.begins_with("hand_"):
+		return int(card_id.substr("hand_".length()))
+	var actions: Array = card_data.get("actions", []) if card_data.get("actions", []) is Array else []
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		var action_id := String(action.get("id", ""))
+		if action_id.begins_with("play_") and not bool(action.get("disabled", false)):
+			return int(action_id.substr("play_".length()))
+	return -1
+
+
+func _runtime_drop_position_targets_map(screen_position: Vector2) -> bool:
+	if map_view == null or not (map_view is Control):
+		return false
+	var map_rect := map_view.get_global_rect()
+	if not map_rect.has_point(screen_position):
+		return false
+	var local_position := screen_position - map_rect.position
+	if map_view.has_method("get_district_at_control_position"):
+		var district_index := int(map_view.call("get_district_at_control_position", local_position))
+		if district_index < 0:
+			return false
+		_select_district(district_index)
+	return true
+
+
+func _activate_runtime_district_action(action_id: String) -> bool:
+	var player_index := _runtime_snapshot_player_index()
+	if player_index < 0:
+		return false
+	var action_index := int(action_id.substr("district_".length()))
+	var entries := _selected_district_action_entries(player_index)
+	if action_index < 0 or action_index >= entries.size():
+		return false
+	var entry: Dictionary = entries[action_index] if entries[action_index] is Dictionary else {}
+	return _activate_runtime_snapshot_action(entry)
+
+
+func _activate_runtime_quick_action(action_id: String) -> bool:
+	var player_index := _runtime_snapshot_player_index()
+	if player_index < 0:
+		return false
+	var entry := _runtime_quick_action_entry(player_index, action_id)
+	if entry.is_empty() or not bool(entry.get("active", false)):
+		return false
+	match action_id:
+		"build":
+			if selected_district < 0 or selected_district >= districts.size():
+				return false
+			if _city_build_error_for(player_index, selected_district, false) != "":
+				return false
+			_build_city_in_selected_district()
+			return true
+		"rack", "buy":
+			if selected_district < 0 or selected_district >= districts.size():
+				return false
+			_open_district_supply_from_map(selected_district)
+			return true
+		"play":
+			var slot_index := _first_actionable_hand_slot(player_index)
+			if slot_index < 0:
+				return false
+			selected_runtime_card_slot = slot_index
+			_use_skill(slot_index)
+			return true
+	return false
+
+
+func _runtime_quick_action_entry(player_index: int, action_id: String) -> Dictionary:
+	for entry_variant in _runtime_player_board_quick_actions(player_index):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		if String(entry.get("id", "")) == action_id:
+			return entry
+	return {}
+
+
+func _activate_runtime_snapshot_action(entry: Dictionary) -> bool:
+	if entry.is_empty() or bool(entry.get("disabled", false)):
+		return false
+	var target: Callable = entry.get("target", Callable()) as Callable
+	if not target.is_valid():
+		return false
+	target.call()
+	return true
+
+
+func _build_runtime_map_view(fallback_parent: Node = null) -> void:
+	if map_view != null:
+		return
+	map_view = MapViewScript.new()
+	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_view.district_selected.connect(Callable(self, "_select_district"))
+	map_view.district_double_clicked.connect(Callable(self, "_open_district_supply_from_map"))
+	if runtime_game_screen != null and runtime_game_screen.has_method("attach_runtime_map"):
+		runtime_game_screen.call("attach_runtime_map", map_view)
+	elif fallback_parent != null:
+		fallback_parent.add_child(map_view)
+	map_view.custom_minimum_size = Vector2(560, 430)
+
+
 func _build_layout() -> void:
+	_build_runtime_game_screen()
+	legacy_table_root = Control.new()
+	legacy_table_root.name = "LegacyRuntimeTable"
+	legacy_table_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_configure_legacy_runtime_table_shell()
+	add_child(legacy_table_root)
+	if runtime_game_screen != null and not BUILD_LEGACY_RUNTIME_TABLE:
+		_build_runtime_map_view()
+		_build_split_compatibility_player_box()
+		_build_full_map_overlay()
+		_build_card_resolution_overlay()
+		_build_bottom_countdown_bar()
+		_build_district_supply_overlay()
+		_build_menu_overlay()
+		_sync_runtime_game_screen(true)
+		return
 	var bg := ColorRect.new()
 	bg.color = Color("#090d18")
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	legacy_table_root.add_child(bg)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1869,7 +2166,7 @@ func _build_layout() -> void:
 	margin.add_theme_constant_override("margin_top", 14)
 	margin.add_theme_constant_override("margin_right", 16)
 	margin.add_theme_constant_override("margin_bottom", 14)
-	add_child(margin)
+	legacy_table_root.add_child(margin)
 
 	var page := VBoxContainer.new()
 	page.add_theme_constant_override("separation", 9)
@@ -1935,13 +2232,7 @@ func _build_layout() -> void:
 	_build_playtest_flow_compass(board_panel)
 	_build_weather_forecast_strip(board_panel)
 
-	map_view = MapViewScript.new()
-	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_view.district_selected.connect(Callable(self, "_select_district"))
-	map_view.district_double_clicked.connect(Callable(self, "_open_district_supply_from_map"))
-	board_panel.add_child(map_view)
-	map_view.custom_minimum_size = Vector2(560, 430)
+	_build_runtime_map_view(board_panel)
 
 	player_panel_scroll = ScrollContainer.new()
 	player_panel_scroll.name = "TableEdgeHandViewport"
@@ -1963,6 +2254,40 @@ func _build_layout() -> void:
 	_build_bottom_countdown_bar()
 	_build_district_supply_overlay()
 	_build_menu_overlay()
+	_sync_runtime_game_screen(true)
+
+
+func _configure_legacy_runtime_table_shell() -> void:
+	if legacy_table_root == null:
+		return
+	var split_screen_active := runtime_game_screen != null
+	legacy_table_root.visible = not split_screen_active
+	legacy_table_root.process_mode = Node.PROCESS_MODE_DISABLED if split_screen_active else Node.PROCESS_MODE_INHERIT
+	legacy_table_root.mouse_filter = Control.MOUSE_FILTER_IGNORE if split_screen_active else Control.MOUSE_FILTER_STOP
+
+
+func _build_split_compatibility_player_box() -> void:
+	if player_box != null:
+		return
+	player_box = VBoxContainer.new()
+	player_box.name = "SplitCompatibilityPlayerBox"
+	player_box.visible = false
+	player_box.process_mode = Node.PROCESS_MODE_DISABLED
+	player_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(player_box)
+
+
+func _refresh_split_compatibility_player_panel() -> void:
+	if player_box == null:
+		_build_split_compatibility_player_box()
+	if player_box == null:
+		return
+	_clear_children(player_box)
+	if players.is_empty() or selected_player < 0 or selected_player >= players.size():
+		return
+	_add_opening_guide_panel(player_box, selected_player)
+	_add_pending_discard_purchase_panel(player_box, selected_player)
+	_add_active_contract_response_panel(player_box)
 
 
 func _build_header_status_chip_rail(parent: HBoxContainer) -> void:
@@ -3416,6 +3741,9 @@ func _card_resolution_track_badge_texts(entry: Dictionary, state_text: String, b
 			badges.append("我的展示中匿名牌")
 		else:
 			badges.append("我的候补匿名牌")
+	var guessers: Array = entry.get("guessers", []) if entry.get("guessers", []) is Array else []
+	if selected_player >= 0 and guessers.has(selected_player) and not owner_revealed:
+		badges.append("已竞猜")
 	for visual_badge in _card_resolution_track_visual_badges(entry, state_text):
 		badges.append(visual_badge)
 	var contract_badge := _card_resolution_contract_badge_text(entry)
@@ -3794,376 +4122,84 @@ func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: i
 
 
 func _build_full_map_overlay() -> void:
-	var shade := ColorRect.new()
-	shade.color = Color("#020617")
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	shade.visible = false
-	full_map_overlay = shade
-	add_child(shade)
+	var overlay := FullscreenMapOverlayScene.instantiate() as Control
+	if overlay == null:
+		return
+	overlay.visible = false
+	full_map_overlay = overlay
+	_runtime_overlay_parent().add_child(overlay)
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_right", 18)
-	margin.add_theme_constant_override("margin_bottom", 18)
-	shade.add_child(margin)
+	var action_host := overlay.find_child("FullscreenMapActionHost", true, false) as HBoxContainer
+	if action_host != null:
+		_add_map_action_controls(action_host)
+	var close_button := overlay.find_child("FullscreenMapCloseButton", true, false) as Button
+	var close_callable := Callable(self, "_close_fullscreen_map")
+	if close_button != null and not close_button.pressed.is_connected(close_callable):
+		close_button.pressed.connect(close_callable)
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
-
-	var toolbar := HBoxContainer.new()
-	toolbar.add_theme_constant_override("separation", 8)
-	box.add_child(toolbar)
-	var title := _plain_label("全屏星球地图", 20, Color("#f8fafc"))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	toolbar.add_child(title)
-	_add_map_action_controls(toolbar)
-	var close_button := Button.new()
-	close_button.text = "退出全屏"
-	close_button.pressed.connect(Callable(self, "_close_fullscreen_map"))
-	toolbar.add_child(close_button)
-
-	_add_fullscreen_map_reading_hud(box)
+	fullscreen_map_hud_labels = {
+		"layer": overlay.find_child("FullscreenMapLayerHudLabel", true, false) as Label,
+		"product": overlay.find_child("FullscreenMapProductHudLabel", true, false) as Label,
+		"district": overlay.find_child("FullscreenMapDistrictHudLabel", true, false) as Label,
+		"hint": overlay.find_child("FullscreenMapHintHudLabel", true, false) as Label,
+	}
 
 	full_map_view = MapViewScript.new()
 	full_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	full_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	full_map_view.district_selected.connect(Callable(self, "_select_district"))
 	full_map_view.district_double_clicked.connect(Callable(self, "_open_district_supply_from_map"))
-	box.add_child(full_map_view)
-
-
-func _add_fullscreen_map_reading_hud(parent: Container) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "FullscreenMapReadingHud"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "全屏地图读图条：只保留当前图层、商品、选区和手势。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.10), 1, 10))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 4)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 4)
-	panel.add_child(margin)
-	var rail := HFlowContainer.new()
-	rail.name = "FullscreenMapLayerHud"
-	rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rail.add_theme_constant_override("h_separation", 6)
-	rail.add_theme_constant_override("v_separation", 2)
-	margin.add_child(rail)
-	_add_fullscreen_map_hud_chip(rail, "layer", "图层:全图", Color("#fef3c7"), "当前全屏地图图层。")
-	_add_fullscreen_map_hud_chip(rail, "product", "商品:未选", Color("#4ade80"), "当前商路/商品读图商品。")
-	_add_fullscreen_map_hud_chip(rail, "district", "选区:未选", Color("#bfdbfe"), "当前选中的区域。")
-	_add_fullscreen_map_hud_chip(rail, "hint", "滚轮缩放｜拖拽星球｜双击牌架", Color("#c4b5fd"), "全屏地图仍可双击区域打开牌架。")
-
-
-func _add_fullscreen_map_hud_chip(parent: Container, key: String, text: String, accent: Color, tooltip: String = "") -> Label:
-	var label := _add_map_control_chip(parent, text, accent, tooltip)
-	label.name = "FullscreenMapHudChipLabel"
-	fullscreen_map_hud_labels[key] = label
-	return label
-
+	var map_host := overlay.find_child("FullscreenMapHost", true, false) as Container
+	if map_host != null:
+		map_host.add_child(full_map_view)
+	else:
+		overlay.add_child(full_map_view)
 
 func _build_card_resolution_overlay() -> void:
-	var shade := ColorRect.new()
-	shade.name = "CardResolutionTableBannerOverlay"
-	shade.color = Color(0.02, 0.03, 0.08, 0.018)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.visible = false
-	card_resolution_overlay = shade
-	add_child(shade)
-
-	var dock := MarginContainer.new()
-	dock.name = "CardResolutionTableBanner"
-	dock.anchor_left = 0.27
-	dock.anchor_top = 0.105
-	dock.anchor_right = 0.66
-	dock.anchor_bottom = 0.255
-	dock.offset_left = 0
-	dock.offset_top = 0
-	dock.offset_right = 0
-	dock.offset_bottom = 0
-	dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.add_child(dock)
-
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(420, 118)
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.tooltip_text = "全桌结算横幅：公开卡面和结算状态，但不遮住右侧牌架或底部手牌。"
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#0f172a").lerp(Color("#fb7185"), 0.14)
-	style.border_color = Color("#fb7185")
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(14)
-	panel.add_theme_stylebox_override("panel", style)
-	dock.add_child(panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	panel.add_child(margin)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-
-	card_resolution_title_label = _plain_label("匿名卡牌结算", 13, Color("#f8fafc"))
-	card_resolution_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	box.add_child(card_resolution_title_label)
-
-	card_resolution_status_label = _plain_label("结算中", 10, Color("#fde68a"))
-	card_resolution_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	box.add_child(card_resolution_status_label)
-
-	var badge_center := CenterContainer.new()
-	box.add_child(badge_center)
-	card_resolution_badge_box = HBoxContainer.new()
-	card_resolution_badge_box.add_theme_constant_override("separation", 6)
-	card_resolution_badge_box.visible = false
-	badge_center.add_child(card_resolution_badge_box)
-
-	card_resolution_art = CardArtViewScript.new()
-	card_resolution_art.custom_minimum_size = Vector2(0, 44)
-	card_resolution_art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_child(card_resolution_art)
-
-	card_resolution_body_label = _plain_label("公开卡面，出牌者匿名。", 10, Color("#e5e7eb"))
-	card_resolution_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	card_resolution_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	box.add_child(card_resolution_body_label)
+	var overlay := CardResolutionBannerScene.instantiate() as Control
+	if overlay == null:
+		return
+	overlay.visible = false
+	card_resolution_overlay = overlay
+	_runtime_overlay_parent().add_child(overlay)
+	card_resolution_title_label = overlay.find_child("CardResolutionTitleLabel", true, false) as Label
+	card_resolution_status_label = overlay.find_child("CardResolutionStatusLabel", true, false) as Label
+	card_resolution_badge_box = overlay.find_child("CardResolutionBadgeBox", true, false) as HBoxContainer
+	card_resolution_art = overlay.find_child("CardResolutionArt", true, false) as Control
+	card_resolution_body_label = overlay.find_child("CardResolutionBodyLabel", true, false) as Label
 
 
 func _build_bottom_countdown_bar() -> void:
-	var overlay := Control.new()
-	overlay.name = "BottomCountdownOverlay"
-	overlay.anchor_left = 0.16
-	overlay.anchor_top = 0.945
-	overlay.anchor_right = 0.84
-	overlay.anchor_bottom = 0.988
-	overlay.offset_left = 0
-	overlay.offset_top = 0
-	overlay.offset_right = 0
-	overlay.offset_bottom = 0
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.visible = false
+	var overlay := BottomCountdownBarScene.instantiate() as Control
+	if overlay == null:
+		return
 	bottom_countdown_overlay = overlay
-	add_child(overlay)
-
-	bottom_countdown_panel = PanelContainer.new()
-	bottom_countdown_panel.name = "BottomCountdownPanel"
-	bottom_countdown_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_countdown_panel.tooltip_text = "牌桌沙漏：条越短，当前公开窗口越接近结束。"
-	bottom_countdown_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#f59e0b"), Color("#020617").lerp(Color("#f59e0b"), 0.16), 1, 12))
-	overlay.add_child(bottom_countdown_panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 5)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 5)
-	bottom_countdown_panel.add_child(margin)
-
-	var row := HBoxContainer.new()
-	row.name = "BottomCountdownRow"
-	row.add_theme_constant_override("separation", 10)
-	margin.add_child(row)
-
-	card_resolution_timer_label = _plain_label("牌桌沙漏", 10, Color("#fde68a"))
-	card_resolution_timer_label.name = "CardResolutionRevealTimerLabel"
-	card_resolution_timer_label.custom_minimum_size = Vector2(92, 0)
-	card_resolution_timer_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	card_resolution_timer_label.clip_text = true
-	card_resolution_timer_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	card_resolution_timer_label.tooltip_text = "当前需要全桌注意的窗口。"
-	row.add_child(card_resolution_timer_label)
-
-	card_resolution_timer_bar = ProgressBar.new()
-	card_resolution_timer_bar.name = "CardResolutionRevealTimerBar"
-	card_resolution_timer_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_resolution_timer_bar.custom_minimum_size = Vector2(0, 12)
-	card_resolution_timer_bar.min_value = 0.0
-	card_resolution_timer_bar.max_value = 100.0
-	card_resolution_timer_bar.value = 100.0
-	card_resolution_timer_bar.show_percentage = false
-	card_resolution_timer_bar.tooltip_text = "条越短，窗口越接近结束；具体时长不常驻显示，避免遮挡牌桌。"
-	card_resolution_timer_bar.add_theme_stylebox_override("background", _menu_card_style(Color("#334155"), Color("#020617"), 1, 6))
-	card_resolution_timer_bar.add_theme_stylebox_override("fill", _menu_card_style(Color("#fde68a"), Color("#020617").lerp(Color("#fde68a"), 0.72), 0, 6))
-	row.add_child(card_resolution_timer_bar)
+	_runtime_overlay_parent().add_child(overlay)
+	bottom_countdown_panel = overlay.find_child("BottomCountdownPanel", true, false) as PanelContainer
+	card_resolution_timer_label = overlay.find_child("CardResolutionRevealTimerLabel", true, false) as Label
+	card_resolution_timer_bar = overlay.find_child("CardResolutionRevealTimerBar", true, false) as ProgressBar
 
 
 func _build_district_supply_overlay() -> void:
-	var shade := ColorRect.new()
-	shade.name = "DistrictSupplySideDrawerOverlay"
-	shade.color = Color(0.01, 0.02, 0.05, 0.015)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.visible = false
-	district_supply_overlay = shade
-	add_child(shade)
+	var overlay := DistrictSupplyDrawerScene.instantiate() as Control
+	if overlay == null:
+		return
+	if overlay.get_parent() != null:
+		overlay.get_parent().remove_child(overlay)
+	overlay.visible = false
+	district_supply_overlay = overlay
+	_runtime_overlay_parent().add_child(overlay)
 
-	var margin := MarginContainer.new()
-	margin.name = "DistrictSupplySideDrawer"
-	margin.anchor_left = 0.60
-	margin.anchor_top = 0.09
-	margin.anchor_right = 0.985
-	margin.anchor_bottom = 0.93
-	margin.add_theme_constant_override("margin_left", 0)
-	margin.add_theme_constant_override("margin_top", 0)
-	margin.add_theme_constant_override("margin_right", 0)
-	margin.add_theme_constant_override("margin_bottom", 0)
-	margin.mouse_filter = Control.MOUSE_FILTER_STOP
-	shade.add_child(margin)
-
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "侧边牌架：双击区域打开，不遮住中央星球；可以浏览，满足范围时购买。"
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.02, 0.04, 0.10, 0.97)
-	style.border_color = Color("#38bdf8")
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(14)
-	panel.add_theme_stylebox_override("panel", style)
-	margin.add_child(panel)
-
-	var inner := MarginContainer.new()
-	inner.add_theme_constant_override("margin_left", 12)
-	inner.add_theme_constant_override("margin_top", 10)
-	inner.add_theme_constant_override("margin_right", 12)
-	inner.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(inner)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
-	inner.add_child(box)
-
-	var shelf_board := PanelContainer.new()
-	shelf_board.name = "DistrictSupplyShelfBoard"
-	shelf_board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shelf_board.tooltip_text = "区域牌架板：先看区域、牌数、购买资格、价格锁定和手牌压力，再看具体卡面。"
-	shelf_board.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.11), 1, 12))
-	box.add_child(shelf_board)
-	var shelf_margin := MarginContainer.new()
-	shelf_margin.add_theme_constant_override("margin_left", 9)
-	shelf_margin.add_theme_constant_override("margin_top", 7)
-	shelf_margin.add_theme_constant_override("margin_right", 9)
-	shelf_margin.add_theme_constant_override("margin_bottom", 7)
-	shelf_board.add_child(shelf_margin)
-	var shelf_stack := VBoxContainer.new()
-	shelf_stack.name = "DistrictSupplyShelfStack"
-	shelf_stack.add_theme_constant_override("separation", 5)
-	shelf_margin.add_child(shelf_stack)
-	var top := HBoxContainer.new()
-	top.name = "DistrictSupplyShelfTitleRow"
-	top.add_theme_constant_override("separation", 8)
-	shelf_stack.add_child(top)
-	district_supply_title_label = _plain_label("区域牌架", 15, Color("#f8fafc"))
-	district_supply_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(district_supply_title_label)
-	var close_button := Button.new()
-	close_button.text = "关闭"
-	_style_menu_button(close_button, Color("#38bdf8"), false)
-	close_button.custom_minimum_size = Vector2(72, 28)
-	close_button.pressed.connect(Callable(self, "_close_district_supply_overlay"))
-	top.add_child(close_button)
-
-	district_supply_access_label = _plain_label("市场牌架｜悬停看｜双击买", 10, Color("#bae6fd"))
-	district_supply_access_label.name = "DistrictSupplyRuleStrip"
-	district_supply_access_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	shelf_stack.add_child(district_supply_access_label)
-
-	district_supply_chip_row = HBoxContainer.new()
-	district_supply_chip_row.name = "DistrictSupplyShelfChipRail"
-	district_supply_chip_row.add_theme_constant_override("separation", 5)
-	district_supply_chip_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shelf_stack.add_child(district_supply_chip_row)
-
-	district_supply_state_rail = HFlowContainer.new()
-	district_supply_state_rail.name = "DistrictSupplyMarketStatusRail"
-	district_supply_state_rail.add_theme_constant_override("h_separation", 5)
-	district_supply_state_rail.add_theme_constant_override("v_separation", 3)
-	district_supply_state_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shelf_stack.add_child(district_supply_state_rail)
-
-	var drawer_stack := HBoxContainer.new()
-	drawer_stack.name = "DistrictSupplyDrawerStack"
-	drawer_stack.add_theme_constant_override("separation", 8)
-	drawer_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	drawer_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(drawer_stack)
-
-	var market_panel := PanelContainer.new()
-	market_panel.name = "DistrictSupplyMarketPanel"
-	market_panel.custom_minimum_size = Vector2(218, 0)
-	market_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	market_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	market_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.10), 1, 12))
-	drawer_stack.add_child(market_panel)
-	var market_margin := MarginContainer.new()
-	market_margin.add_theme_constant_override("margin_left", 7)
-	market_margin.add_theme_constant_override("margin_top", 6)
-	market_margin.add_theme_constant_override("margin_right", 7)
-	market_margin.add_theme_constant_override("margin_bottom", 6)
-	market_panel.add_child(market_margin)
-	var market_stack := VBoxContainer.new()
-	market_stack.name = "DistrictSupplyMarketStack"
-	market_stack.add_theme_constant_override("separation", 5)
-	market_margin.add_child(market_stack)
-	var market_title := _plain_label("市场格｜价格/状态/路线", 11, Color("#bfdbfe"))
-	market_title.name = "DistrictSupplyMarketColumnTitle"
-	market_title.tooltip_text = "左侧像桌游卡牌市场：单击预览，双击或点右侧按钮购买。"
-	market_stack.add_child(market_title)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 398)
-	market_stack.add_child(scroll)
-	district_supply_list_box = HFlowContainer.new()
-	district_supply_list_box.name = "DistrictSupplyMarketGrid"
-	district_supply_list_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	district_supply_list_box.add_theme_constant_override("h_separation", 6)
-	district_supply_list_box.add_theme_constant_override("v_separation", 6)
-	scroll.add_child(district_supply_list_box)
-
-	var preview_panel := PanelContainer.new()
-	preview_panel.name = "DistrictSupplyPreviewPanel"
-	preview_panel.custom_minimum_size = Vector2(238, 0)
-	preview_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	preview_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#f59e0b"), Color("#020617").lerp(Color("#f59e0b"), 0.09), 1, 12))
-	drawer_stack.add_child(preview_panel)
-	var preview_margin := MarginContainer.new()
-	preview_margin.add_theme_constant_override("margin_left", 7)
-	preview_margin.add_theme_constant_override("margin_top", 6)
-	preview_margin.add_theme_constant_override("margin_right", 7)
-	preview_margin.add_theme_constant_override("margin_bottom", 6)
-	preview_panel.add_child(preview_margin)
-	var preview_stack := VBoxContainer.new()
-	preview_stack.name = "DistrictSupplyPreviewStack"
-	preview_stack.add_theme_constant_override("separation", 5)
-	preview_margin.add_child(preview_stack)
-	var preview_title := _plain_label("牌面预览｜效果/购买结论", 11, Color("#fde68a"))
-	preview_title.name = "DistrictSupplyPreviewColumnTitle"
-	preview_title.tooltip_text = "右侧只展示当前悬停/单击的卡牌详情，减少市场列表里的文字。"
-	preview_stack.add_child(preview_title)
-	var preview_scroll := ScrollContainer.new()
-	preview_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	preview_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	preview_scroll.custom_minimum_size = Vector2(0, 398)
-	preview_stack.add_child(preview_scroll)
-	district_supply_preview_box = VBoxContainer.new()
-	district_supply_preview_box.add_theme_constant_override("separation", 6)
-	preview_scroll.add_child(district_supply_preview_box)
-
+	district_supply_title_label = overlay.find_child("DistrictSupplyTitleLabel", true, false) as Label
+	district_supply_access_label = overlay.find_child("DistrictSupplyRuleStrip", true, false) as Label
+	district_supply_chip_row = overlay.find_child("DistrictSupplyShelfChipRail", true, false) as HBoxContainer
+	district_supply_state_rail = overlay.find_child("DistrictSupplyMarketStatusRail", true, false) as HFlowContainer
+	district_supply_list_box = overlay.find_child("DistrictSupplyMarketGrid", true, false) as HFlowContainer
+	district_supply_preview_box = overlay.find_child("DistrictSupplyPreviewBox", true, false) as VBoxContainer
+	var close_button := overlay.find_child("DistrictSupplyCloseButton", true, false) as Button
+	var close_callable := Callable(self, "_close_district_supply_overlay")
+	if close_button != null and not close_button.pressed.is_connected(close_callable):
+		close_button.pressed.connect(close_callable)
 
 func _add_map_control_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> Label:
 	var chip := PanelContainer.new()
@@ -4304,176 +4340,106 @@ func _add_map_action_controls(toolbar: HBoxContainer) -> void:
 
 
 func _build_menu_overlay() -> void:
-	var shade := ColorRect.new()
-	shade.color = Color(0.01, 0.015, 0.035, 0.92)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	shade.visible = false
-	menu_overlay = shade
-	add_child(shade)
+	var overlay := MenuOverlayScene.instantiate() as Control
+	if overlay == null:
+		return
+	overlay.visible = false
+	menu_overlay = overlay
+	_runtime_overlay_parent().add_child(overlay)
 
-	var panel := PanelContainer.new()
-	panel.anchor_left = 0.07
-	panel.anchor_top = 0.055
-	panel.anchor_right = 0.93
-	panel.anchor_bottom = 0.945
-	panel.offset_left = 0
-	panel.offset_top = 0
-	panel.offset_right = 0
-	panel.offset_bottom = 0
-	panel.custom_minimum_size = Vector2(760, 520)
-	panel.add_theme_stylebox_override("panel", _menu_surface_style())
-	menu_surface_panel = panel
-	shade.add_child(panel)
+	menu_surface_panel = overlay.find_child("MenuSurfacePanel", true, false) as PanelContainer
+	menu_shell_margin = overlay.find_child("MenuShellMargin", true, false) as MarginContainer
+	menu_title_label = overlay.find_child("MenuTitleLabel", true, false) as Label
+	menu_context_label = overlay.find_child("MenuContextLabel", true, false) as Label
+	menu_quick_nav_row = overlay.find_child("MenuQuickNavRow", true, false) as HBoxContainer
+	menu_interaction_hint_panel = overlay.find_child("MenuInteractionHintPanel", true, false) as PanelContainer
+	menu_interaction_hint_label = overlay.find_child("MenuInteractionHintLabel", true, false) as Label
+	menu_nav_row = overlay.find_child("MenuNavRow", true, false) as HBoxContainer
+	menu_continue_button = overlay.find_child("MenuContinueButton", true, false) as Button
+	menu_back_button = overlay.find_child("MenuBackButton", true, false) as Button
+	menu_catalog_nav_row = overlay.find_child("MenuCatalogNavRow", true, false) as HBoxContainer
+	menu_bestiary_prev_button = overlay.find_child("MenuBestiaryPrevButton", true, false) as Button
+	menu_bestiary_next_button = overlay.find_child("MenuBestiaryNextButton", true, false) as Button
+	menu_bestiary_back_button = overlay.find_child("MenuBestiaryBackButton", true, false) as Button
+	menu_content_scroll = overlay.find_child("MenuContentScroll", true, false) as ScrollContainer
+	menu_content_box = overlay.find_child("MenuContentBox", true, false) as VBoxContainer
+	menu_body_label = overlay.find_child("MenuBodyLabel", true, false) as Label
+	menu_preview_box = overlay.find_child("MenuPreviewBox", true, false) as VBoxContainer
+	menu_run_save_label = overlay.find_child("MenuRunSaveLabel", true, false) as Label
+	var menu_overlay_owns_shell := overlay.has_method("present_menu_shell") and overlay.has_signal("continue_requested")
+	if menu_overlay_owns_shell:
+		var overlay_continue_callable := Callable(self, "_close_menu")
+		var overlay_main_menu_callable := Callable(self, "_open_main_menu")
+		var overlay_catalog_step_callable := Callable(self, "_cycle_menu_catalog")
+		var overlay_catalog_back_callable := Callable(self, "_back_from_catalog_menu")
+		if not overlay.is_connected("continue_requested", overlay_continue_callable):
+			overlay.connect("continue_requested", overlay_continue_callable)
+		if not overlay.is_connected("main_menu_requested", overlay_main_menu_callable):
+			overlay.connect("main_menu_requested", overlay_main_menu_callable)
+		if not overlay.is_connected("catalog_step_requested", overlay_catalog_step_callable):
+			overlay.connect("catalog_step_requested", overlay_catalog_step_callable)
+		if not overlay.is_connected("catalog_back_requested", overlay_catalog_back_callable):
+			overlay.connect("catalog_back_requested", overlay_catalog_back_callable)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 22)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_bottom", 18)
-	menu_shell_margin = margin
-	panel.add_child(margin)
+	if menu_title_label != null:
+		menu_title_label.add_theme_font_size_override("font_size", 31)
+		menu_title_label.add_theme_color_override("font_color", Color("#f8fafc"))
+	if menu_context_label != null:
+		menu_context_label.add_theme_font_size_override("font_size", 11)
+		menu_context_label.add_theme_color_override("font_color", Color("#94a3b8"))
+	if menu_interaction_hint_label != null:
+		menu_interaction_hint_label.add_theme_font_size_override("font_size", 10)
+		menu_interaction_hint_label.add_theme_color_override("font_color", Color("#dbeafe"))
+	if menu_body_label != null:
+		menu_body_label.add_theme_font_size_override("font_size", 15)
+		menu_body_label.add_theme_color_override("font_color", Color("#cbd5e1"))
+	if menu_run_save_label != null:
+		menu_run_save_label.add_theme_font_size_override("font_size", 12)
+		menu_run_save_label.add_theme_color_override("font_color", Color("#94a3b8"))
 
-	var shell := VBoxContainer.new()
-	shell.add_theme_constant_override("separation", 12)
-	shell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shell.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	margin.add_child(shell)
+	if menu_continue_button != null:
+		menu_continue_button.text = "继续游戏"
+		_style_menu_button(menu_continue_button, Color("#22c55e"), true)
+		var continue_callable := Callable(self, "_close_menu")
+		if not menu_overlay_owns_shell and not menu_continue_button.pressed.is_connected(continue_callable):
+			menu_continue_button.pressed.connect(continue_callable)
+	if menu_back_button != null:
+		menu_back_button.text = "返回主菜单"
+		_style_menu_button(menu_back_button, Color("#38bdf8"))
+		var back_callable := Callable(self, "_open_main_menu")
+		if not menu_overlay_owns_shell and not menu_back_button.pressed.is_connected(back_callable):
+			menu_back_button.pressed.connect(back_callable)
+	if menu_bestiary_prev_button != null:
+		menu_bestiary_prev_button.text = "上一个"
+		_style_menu_button(menu_bestiary_prev_button, Color("#93c5fd"))
+		var prev_callable := Callable(self, "_cycle_menu_catalog").bind(-1)
+		if not menu_overlay_owns_shell and not menu_bestiary_prev_button.pressed.is_connected(prev_callable):
+			menu_bestiary_prev_button.pressed.connect(prev_callable)
+	if menu_bestiary_next_button != null:
+		menu_bestiary_next_button.text = "下一个"
+		_style_menu_button(menu_bestiary_next_button, Color("#93c5fd"))
+		var next_callable := Callable(self, "_cycle_menu_catalog").bind(1)
+		if not menu_overlay_owns_shell and not menu_bestiary_next_button.pressed.is_connected(next_callable):
+			menu_bestiary_next_button.pressed.connect(next_callable)
+	if menu_bestiary_back_button != null:
+		menu_bestiary_back_button.text = "返回主菜单"
+		_style_menu_button(menu_bestiary_back_button, Color("#facc15"))
+		var catalog_back_callable := Callable(self, "_back_from_catalog_menu")
+		if not menu_overlay_owns_shell and not menu_bestiary_back_button.pressed.is_connected(catalog_back_callable):
+			menu_bestiary_back_button.pressed.connect(catalog_back_callable)
+	if menu_content_scroll != null:
+		menu_content_scroll.follow_focus = false
 
-	menu_title_label = Label.new()
-	menu_title_label.text = "Space Syndicate"
-	menu_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	menu_title_label.add_theme_font_size_override("font_size", 31)
-	menu_title_label.add_theme_color_override("font_color", Color("#f8fafc"))
-	shell.add_child(menu_title_label)
-
-	menu_context_label = Label.new()
-	menu_context_label.text = "当前位置：主菜单｜悬停看预览，进入页面后可返回。"
-	menu_context_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	menu_context_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	menu_context_label.add_theme_font_size_override("font_size", 11)
-	menu_context_label.add_theme_color_override("font_color", Color("#94a3b8"))
-	menu_context_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shell.add_child(menu_context_label)
-
-	menu_quick_nav_row = HBoxContainer.new()
-	menu_quick_nav_row.add_theme_constant_override("separation", 8)
-	menu_quick_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	shell.add_child(menu_quick_nav_row)
-	_add_menu_quick_nav_button("setup", "开局", "进入开局准备：设置席位、电脑对手、角色和起始怪兽。", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"))
+	menu_regular_buttons = []
+	menu_main_action_grids = []
+	menu_quick_nav_buttons = {}
+	_add_menu_quick_nav_button("setup", "开局", "进入开局配置：设置席位、电脑对手、角色和起始怪兽。", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"))
 	_add_menu_quick_nav_button("standings", "局势", "查看现金目标、终局倒计时和结算估算。", Callable(self, "_open_standings_menu"), Color("#facc15"))
 	_add_menu_quick_nav_button("economy", "经济", "查看GDP、商品、商路、天气和收入拆解。", Callable(self, "_open_economy_overview_menu"), Color("#4ade80"))
 	_add_menu_quick_nav_button("intel", "情报", "整理城市归属推理、卡牌竞猜和怪兽资金线索。", Callable(self, "_open_intel_dossier_menu"), Color("#c084fc"))
 	_add_menu_quick_nav_button("rules", "规则", "查看购牌、出牌、竞价、合约、怪兽赌局、天气和终局规则。", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
 	_add_menu_quick_nav_button("compendium", "图鉴", "进入角色、怪兽、卡牌、商品和区域图鉴。", Callable(self, "_open_compendium_menu"), Color("#f472b6"))
-
-	menu_interaction_hint_panel = PanelContainer.new()
-	menu_interaction_hint_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	menu_interaction_hint_panel.tooltip_text = "当前页面可用的导航、悬停预览、缩略图、详情页或返回方式。"
-	menu_interaction_hint_panel.add_theme_stylebox_override("panel", _menu_interaction_hint_style())
-	shell.add_child(menu_interaction_hint_panel)
-	var interaction_margin := MarginContainer.new()
-	interaction_margin.add_theme_constant_override("margin_left", 12)
-	interaction_margin.add_theme_constant_override("margin_top", 6)
-	interaction_margin.add_theme_constant_override("margin_right", 12)
-	interaction_margin.add_theme_constant_override("margin_bottom", 6)
-	menu_interaction_hint_panel.add_child(interaction_margin)
-	menu_interaction_hint_label = Label.new()
-	menu_interaction_hint_label.text = "悬停预览｜缩略图选牌｜双击详情｜返回牌桌"
-	menu_interaction_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	menu_interaction_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	menu_interaction_hint_label.add_theme_font_size_override("font_size", 10)
-	menu_interaction_hint_label.add_theme_color_override("font_color", Color("#dbeafe"))
-	interaction_margin.add_child(menu_interaction_hint_label)
-
-	menu_nav_row = HBoxContainer.new()
-	menu_nav_row.add_theme_constant_override("separation", 10)
-	menu_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	shell.add_child(menu_nav_row)
-
-	menu_continue_button = Button.new()
-	menu_continue_button.text = "继续游戏"
-	_style_menu_button(menu_continue_button, Color("#22c55e"), true)
-	menu_continue_button.pressed.connect(Callable(self, "_close_menu"))
-	menu_nav_row.add_child(menu_continue_button)
-
-	menu_back_button = Button.new()
-	menu_back_button.text = "返回主菜单"
-	_style_menu_button(menu_back_button, Color("#38bdf8"))
-	menu_back_button.pressed.connect(Callable(self, "_open_main_menu"))
-	menu_nav_row.add_child(menu_back_button)
-
-	menu_catalog_nav_row = HBoxContainer.new()
-	menu_catalog_nav_row.add_theme_constant_override("separation", 8)
-	menu_catalog_nav_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	shell.add_child(menu_catalog_nav_row)
-
-	menu_bestiary_prev_button = Button.new()
-	menu_bestiary_prev_button.text = "上一个"
-	_style_menu_button(menu_bestiary_prev_button, Color("#93c5fd"))
-	menu_bestiary_prev_button.pressed.connect(Callable(self, "_cycle_menu_catalog").bind(-1))
-	menu_catalog_nav_row.add_child(menu_bestiary_prev_button)
-
-	menu_bestiary_next_button = Button.new()
-	menu_bestiary_next_button.text = "下一个"
-	_style_menu_button(menu_bestiary_next_button, Color("#93c5fd"))
-	menu_bestiary_next_button.pressed.connect(Callable(self, "_cycle_menu_catalog").bind(1))
-	menu_catalog_nav_row.add_child(menu_bestiary_next_button)
-
-	menu_bestiary_back_button = Button.new()
-	menu_bestiary_back_button.text = "返回主菜单"
-	_style_menu_button(menu_bestiary_back_button, Color("#facc15"))
-	menu_bestiary_back_button.pressed.connect(Callable(self, "_back_from_catalog_menu"))
-	menu_catalog_nav_row.add_child(menu_bestiary_back_button)
-	menu_bestiary_prev_button.visible = false
-	menu_bestiary_next_button.visible = false
-	menu_bestiary_back_button.visible = false
-
-	menu_content_scroll = ScrollContainer.new()
-	menu_content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	menu_content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	menu_content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	menu_content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	menu_content_scroll.follow_focus = false
-	shell.add_child(menu_content_scroll)
-
-	var content_margin := MarginContainer.new()
-	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content_margin.add_theme_constant_override("margin_left", 2)
-	content_margin.add_theme_constant_override("margin_top", 2)
-	content_margin.add_theme_constant_override("margin_right", 8)
-	content_margin.add_theme_constant_override("margin_bottom", 8)
-	menu_content_scroll.add_child(content_margin)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	menu_content_box = box
-	content_margin.add_child(box)
-
-	menu_body_label = Label.new()
-	menu_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	menu_body_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	menu_body_label.add_theme_font_size_override("font_size", 15)
-	menu_body_label.add_theme_color_override("font_color", Color("#cbd5e1"))
-	menu_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_child(menu_body_label)
-
-	menu_preview_box = VBoxContainer.new()
-	menu_preview_box.add_theme_constant_override("separation", 8)
-	menu_preview_box.visible = false
-	box.add_child(menu_preview_box)
-
-	menu_regular_buttons = []
-	menu_main_action_grids = []
-
-	menu_run_save_label = Label.new()
-	menu_run_save_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	menu_run_save_label.add_theme_font_size_override("font_size", 12)
-	menu_run_save_label.add_theme_color_override("font_color", Color("#94a3b8"))
-	box.add_child(menu_run_save_label)
 	_refresh_menu_layout()
-
 
 func _menu_card_style(accent: Color, fill: Color = Color("#0b1220"), border_width: int = 1, radius: int = 12) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -4532,31 +4498,38 @@ func _refresh_menu_layout() -> void:
 	var compact := viewport_size.x < 900.0 or viewport_size.y < 620.0
 	var wide := viewport_size.x >= 1400.0 and viewport_size.y >= 780.0
 	var root_lobby := menu_title_label != null and menu_title_label.text == "太空辛迪加｜星球赌桌"
+	if menu_overlay != null and menu_overlay.has_method("refresh_menu_layout"):
+		menu_overlay.call("refresh_menu_layout", viewport_size, root_lobby)
 	var side_anchor := 0.025 if compact else (0.10 if wide else 0.07)
 	var vertical_anchor := 0.025 if compact else (0.065 if wide else 0.055)
 	if root_lobby:
-		side_anchor = 0.045 if compact else (0.10 if wide else 0.08)
-		vertical_anchor = 0.055 if compact else (0.14 if wide else 0.10)
+		side_anchor = 0.0
+		vertical_anchor = 0.0
 	menu_surface_panel.anchor_left = side_anchor
 	menu_surface_panel.anchor_right = 1.0 - side_anchor
 	menu_surface_panel.anchor_top = vertical_anchor
-	menu_surface_panel.anchor_bottom = 1.0 - vertical_anchor if not root_lobby else (0.86 if compact else (0.72 if wide else 0.76))
-	menu_surface_panel.custom_minimum_size = Vector2(760, 420) if root_lobby else (Vector2(760, 500) if compact else Vector2(760, 520))
+	menu_surface_panel.anchor_bottom = 1.0 - vertical_anchor
+	menu_surface_panel.custom_minimum_size = Vector2(760, 500) if root_lobby or compact else Vector2(760, 520)
 	if menu_shell_margin != null:
-		var horizontal_margin := 14 if compact else (28 if wide else 22)
-		var vertical_margin := 12 if compact else (22 if wide else 18)
+		var horizontal_margin := 18 if root_lobby and compact else (44 if root_lobby and wide else (30 if root_lobby else (14 if compact else (28 if wide else 22))))
+		var vertical_margin := 14 if root_lobby and compact else (34 if root_lobby and wide else (22 if root_lobby else (12 if compact else (22 if wide else 18))))
 		menu_shell_margin.add_theme_constant_override("margin_left", horizontal_margin)
 		menu_shell_margin.add_theme_constant_override("margin_right", horizontal_margin)
 		menu_shell_margin.add_theme_constant_override("margin_top", vertical_margin)
 		menu_shell_margin.add_theme_constant_override("margin_bottom", vertical_margin)
 	if menu_title_label != null:
-		menu_title_label.add_theme_font_size_override("font_size", 24 if compact else (34 if wide else 31))
+		menu_title_label.add_theme_font_size_override("font_size", 30 if root_lobby and compact else (44 if root_lobby and wide else (38 if root_lobby else (24 if compact else (34 if wide else 31)))))
 	if menu_context_label != null:
 		menu_context_label.add_theme_font_size_override("font_size", 10 if compact else 11)
 	if menu_interaction_hint_label != null:
 		menu_interaction_hint_label.add_theme_font_size_override("font_size", 9 if compact else 10)
 	if menu_body_label != null:
 		menu_body_label.add_theme_font_size_override("font_size", 13 if compact else 15)
+	if menu_content_box != null:
+		menu_content_box.size_flags_vertical = Control.SIZE_EXPAND_FILL if root_lobby else Control.SIZE_FILL
+	if menu_preview_box != null:
+		menu_preview_box.size_flags_vertical = Control.SIZE_EXPAND_FILL if root_lobby else Control.SIZE_FILL
+		menu_preview_box.custom_minimum_size = Vector2(0, maxf(430.0, viewport_size.y - 210.0)) if root_lobby else Vector2.ZERO
 	if menu_nav_row != null:
 		menu_nav_row.add_theme_constant_override("separation", 6 if compact else 10)
 	if menu_quick_nav_row != null:
@@ -4782,6 +4755,10 @@ func _show_menu_summary_cards(cards: Array, heading: String = "页面速览") ->
 			)
 
 
+func _report_required_ui_scene_missing(component_name: String, required_method: String) -> void:
+	push_error("%s is a required scenes/ui component and must expose %s; refusing to rebuild this player-facing page through legacy main.gd controls." % [component_name, required_method])
+
+
 func _add_menu_info_card(parent: Container, title_text: String, body_text: String, accent: Color = Color("#38bdf8"), meta_text: String = "") -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -4845,205 +4822,90 @@ func _populate_main_menu_summary_cards() -> void:
 	_refresh_run_save_menu_state()
 
 
+func _main_menu_root_lobby_snapshot() -> Dictionary:
+	var can_continue := not players.is_empty() and not game_over
+	return {
+		"accent": Color("#f59e0b"),
+		"tooltip": "星球赌桌大厅：保存、开局、继续和资料库入口。",
+		"title": "SPACE SYNDICATE",
+		"title_tooltip": "主菜单只保留开桌、继续和资料库三个方向。",
+		"status": "星球赌桌｜最后钱最多",
+		"status_tooltip": "终局按现金排名。",
+		"planet_mark": "◎",
+		"planet_title": "星球赌桌大厅",
+		"planet_hint": "建城｜怪兽｜下注｜推理",
+		"chip_rail_tooltip": "首屏只保留开桌前必须知道的桌面身份。",
+		"table_line": "选择你的下一步",
+		"table_tooltip": "主菜单只负责返回牌桌、进入开局和资料库。",
+		"columns": 1,
+		"chips": [
+			{"text": "席位 3-8｜真人对 AI", "accent": Color("#bfdbfe"), "tooltip": "真人玩家对2-7个电脑对手。"},
+			{"text": "开局 怪兽｜先压上桌", "accent": Color("#fda4af"), "tooltip": "新局在开局准备里选择起始怪兽。"},
+			{"text": "牌轨 匿名｜亮牌不亮人", "accent": Color("#c084fc"), "tooltip": "出牌公开，牌主隐藏。"},
+		],
+		"actions": [
+			{
+				"id": "new_run",
+				"kicker": "01｜开桌",
+				"label": "开新一桌",
+				"detail": "选席位、角色、起始怪兽",
+				"accent": Color("#38bdf8"),
+				"featured": true,
+			},
+			{
+				"id": "continue",
+				"kicker": "02｜回桌",
+				"label": "继续牌桌" if can_continue else "暂无牌桌",
+				"detail": "回到当前星球" if can_continue else "先开新一桌。",
+				"tooltip": "回到当前星球" if can_continue else "先开新一桌。",
+				"accent": Color("#22c55e"),
+				"disabled": not can_continue,
+			},
+			{
+				"id": "compendium",
+				"kicker": "03｜查牌",
+				"label": "资料库",
+				"detail": "图鉴、卡牌、商品、区域",
+				"accent": Color("#f472b6"),
+			},
+		],
+		"utilities": [
+			{"id": "rules", "label": "游戏规则", "accent": Color("#93c5fd")},
+			{"id": "load_run", "label": "读取局面", "accent": Color("#94a3b8")},
+			{"id": "quit", "label": "退出游戏", "accent": Color("#fb7185")},
+		],
+	}
+
+
+func _on_menu_root_lobby_action_requested(action_id: String) -> void:
+	match action_id:
+		"new_run":
+			_start_new_run_from_menu()
+		"continue":
+			_close_menu()
+		"compendium":
+			_open_compendium_menu()
+		"rules":
+			_open_rules_menu()
+		"load_run":
+			_load_run_from_menu()
+		"quit":
+			_quit_game()
+
+
 func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "MainMenuPlanetLobbyPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "星球赌桌大厅：只保留开局、继续和资料入口。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#f59e0b"), Color("#020617").lerp(Color("#f59e0b"), 0.08), 1, 18))
-	parent.add_child(panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-
-	var stack := VBoxContainer.new()
-	stack.name = "MainMenuPlanetLobbyStack"
-	stack.add_theme_constant_override("separation", 12)
-	margin.add_child(stack)
-
-	var header := HBoxContainer.new()
-	header.name = "MainMenuPlanetLobbyHeader"
-	header.add_theme_constant_override("separation", 10)
-	stack.add_child(header)
-	var title := _plain_label("星球赌桌大厅", 18, Color("#fef3c7"))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.tooltip_text = "参考电子桌游主菜单：一个主视觉，少量明确入口，细节进入子页。"
-	header.add_child(title)
-	var status := _plain_label("最后钱最多", 13, Color("#bbf7d0"))
-	status.autowrap_mode = TextServer.AUTOWRAP_OFF
-	status.tooltip_text = "终局按钱排名。"
-	header.add_child(status)
-
-	var body := HBoxContainer.new()
-	body.name = "MainMenuPlanetLobbyBody"
-	body.add_theme_constant_override("separation", 12)
-	stack.add_child(body)
-
-	var planet := PanelContainer.new()
-	planet.name = "MainMenuPlanetMedallion"
-	planet.custom_minimum_size = Vector2(260, 232)
-	planet.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.12), 1, 18))
-	body.add_child(planet)
-	var planet_margin := MarginContainer.new()
-	planet_margin.add_theme_constant_override("margin_left", 12)
-	planet_margin.add_theme_constant_override("margin_top", 12)
-	planet_margin.add_theme_constant_override("margin_right", 12)
-	planet_margin.add_theme_constant_override("margin_bottom", 12)
-	planet.add_child(planet_margin)
-	var planet_stack := VBoxContainer.new()
-	planet_stack.add_theme_constant_override("separation", 8)
-	planet_margin.add_child(planet_stack)
-	var planet_mark := _plain_label("◎", 58, Color("#93c5fd"))
-	planet_mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	planet_mark.tooltip_text = "星球是牌桌中心。"
-	planet_stack.add_child(planet_mark)
-	var planet_title := _plain_label("中央星球", 16, Color("#e0f2fe"))
-	planet_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	planet_stack.add_child(planet_title)
-	var planet_hint := _plain_label("建城｜怪兽｜下注｜推理", 11, Color("#cbd5e1"))
-	planet_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	planet_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	planet_stack.add_child(planet_hint)
-	var chip_rail := HFlowContainer.new()
-	chip_rail.name = "MainMenuLobbyChipRail"
-	chip_rail.add_theme_constant_override("h_separation", 5)
-	chip_rail.add_theme_constant_override("v_separation", 4)
-	planet_stack.add_child(chip_rail)
-	_add_main_menu_lobby_chip(chip_rail, "3-8席", Color("#bfdbfe"), "真人玩家对2-7个电脑对手。")
-	_add_main_menu_lobby_chip(chip_rail, "怪兽开局", Color("#fda4af"), "新局在开局准备里选择起始怪兽。")
-	_add_main_menu_lobby_chip(chip_rail, "匿名牌轨", Color("#c084fc"), "出牌公开，牌主隐藏。")
-
-	var right := VBoxContainer.new()
-	right.name = "MainMenuLobbyRightColumn"
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.add_theme_constant_override("separation", 12)
-	body.add_child(right)
-
-	var table_line := _plain_label("选择入口", 13, Color("#cbd5e1"))
-	table_line.tooltip_text = "主菜单只负责进入牌桌或资料；局势、经济和情报在牌局内查看。"
-	right.add_child(table_line)
-
-	var action_grid := GridContainer.new()
-	action_grid.name = "MainMenuLobbyActionGrid"
-	action_grid.columns = clampi(int(floor(_menu_available_content_width() / 255.0)), 1, 3)
-	action_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	action_grid.add_theme_constant_override("h_separation", 10)
-	action_grid.add_theme_constant_override("v_separation", 10)
-	right.add_child(action_grid)
-	_add_main_menu_command_card(action_grid, "开新一桌", "选席位、角色、起始怪兽", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"), true)
-	var continue_button := _add_main_menu_command_card(action_grid, "继续牌桌", "回到当前星球", Callable(self, "_close_menu"), Color("#22c55e"), true)
-	if continue_button != null:
-		continue_button.disabled = players.is_empty() or game_over
-		if continue_button.disabled:
-			continue_button.text = "暂无牌桌"
-			continue_button.tooltip_text = "先开新一桌。"
-	_add_main_menu_command_card(action_grid, "资料库", "图鉴、卡牌、商品、区域", Callable(self, "_open_compendium_menu"), Color("#f472b6"), true)
-
-	var utility_rail := HFlowContainer.new()
-	utility_rail.name = "MainMenuUtilityRail"
-	utility_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	utility_rail.add_theme_constant_override("h_separation", 7)
-	utility_rail.add_theme_constant_override("v_separation", 6)
-	right.add_child(utility_rail)
-	_add_main_menu_utility_button(utility_rail, "游戏规则", Callable(self, "_open_rules_menu"), Color("#93c5fd"))
-	menu_load_run_button = _add_main_menu_utility_button(utility_rail, "读取局面", Callable(self, "_load_run_from_menu"), Color("#94a3b8"))
-	_add_main_menu_utility_button(utility_rail, "退出游戏", Callable(self, "_quit_game"), Color("#fb7185"))
-
-
-func _add_main_menu_command_card(parent: Container, button_text: String, meta_text: String, target: Callable, accent: Color, primary: bool = false) -> Button:
-	var panel := PanelContainer.new()
-	panel.name = "MainMenuCommandCard"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 112 if primary else 84)
-	panel.tooltip_text = meta_text
-	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#0b1220").lerp(accent, 0.12 if primary else 0.08), 1, 14))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 5)
-	margin.add_child(box)
-	var button := Button.new()
-	button.text = button_text
-	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.tooltip_text = meta_text
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.custom_minimum_size = Vector2(0, 42 if primary else 34)
-	_style_menu_button(button, accent, primary)
-	button.pressed.connect(target)
-	box.add_child(button)
-	var meta := _plain_label(meta_text, 10, Color("#cbd5e1"))
-	meta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(meta)
-	return button
-
-
-func _add_main_menu_utility_button(parent: Container, button_text: String, target: Callable, accent: Color) -> Button:
-	var button := Button.new()
-	button.name = "MainMenuUtilityButton"
-	button.text = button_text
-	button.custom_minimum_size = Vector2(120, 30)
-	button.tooltip_text = button_text
-	_style_menu_button(button, accent)
-	button.pressed.connect(target)
-	parent.add_child(button)
-	return button
-
-
-func _add_main_menu_lobby_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := PanelContainer.new()
-	chip.name = "MainMenuLobbyChip"
-	chip.tooltip_text = tooltip
-	chip.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
-	parent.add_child(chip)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	chip.add_child(margin)
-	var label := _plain_label(text, 9, accent.lightened(0.16))
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.tooltip_text = tooltip
-	margin.add_child(label)
-
-
-func _add_main_menu_lobby_kpi_card(parent: Container, title_text: String, body_text: String, meta_text: String, accent: Color) -> void:
-	var card := PanelContainer.new()
-	card.name = "MainMenuLobbyKpiCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 86)
-	card.tooltip_text = "%s｜%s" % [title_text, body_text]
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.09), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 12, Color("#f8fafc"))
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(title)
-	var body := _plain_label(body_text, 10, Color("#cbd5e1"))
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(body)
-	var meta := _plain_label(meta_text, 9, accent.lightened(0.18))
-	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
-	box.add_child(meta)
-
+	var lobby := MenuRootLobbyScene.instantiate() as Control
+	if lobby == null:
+		return
+	if lobby.has_signal("action_requested"):
+		lobby.connect("action_requested", Callable(self, "_on_menu_root_lobby_action_requested"))
+	parent.add_child(lobby)
+	if lobby.has_method("set_lobby"):
+		lobby.call("set_lobby", _main_menu_root_lobby_snapshot())
+	if lobby.has_method("get_load_run_button"):
+		var load_button_variant: Variant = lobby.call("get_load_run_button")
+		if load_button_variant is Button:
+			menu_load_run_button = load_button_variant as Button
 
 func _populate_pause_menu_summary_cards() -> void:
 	_show_menu_summary_cards([
@@ -5080,20 +4942,12 @@ func _open_rules_menu() -> void:
 	lines.append("")
 	lines.append("目标：最后钱最多。城市、金融、情报和终局清算都会变成现金。")
 	lines.append("")
-	lines.append("◆ 首召怪兽：开局选公开角色，再打一张I级怪兽牌；怪兽落地后，附近区域才能买牌。")
-	lines.append("▣ 建城赚钱：陆地城市化¥%d。建筑公开，业主隐藏；GDP/min按秒进账。" % CITY_BUILD_COST)
-	lines.append("◇ 商品商路：供给压价，需求抬价；交通越好，商品流得越快。")
-	lines.append("＋ 区域牌架：落地区八折，相邻区原价。打开牌架时锁定价格和购买资格；一次只开一个牌架。")
-	lines.append("▤ 手牌：普通手牌上限%d张。买超时私下弃一张；同系列牌自动升到IV级，价格按I级算。" % PLAYER_HAND_LIMIT)
-	lines.append("◎ 匿名出牌：所有牌都会公开展示，出牌者匿名。商品流动只是门槛，不会被消耗。")
-	lines.append("¥ 竞价结算：多人同时出牌时，先进入报价沙漏；数字公开，身份匿名，封盘后按报价排队。")
-	lines.append("◉ 猜牌主：顶部牌轨可拖动查看。押¥%d猜牌主；猜中贴公开标签，猜错私下赔钱。" % CARD_OWNER_GUESS_STAKE)
-	lines.append("◆ 怪兽线索：怪兽自动行动。怪兽受伤会让归属玩家掉钱，是重要身份线索。")
-	lines.append("♠ 怪兽赌局：怪兽遭遇会冻结时间；全员按本局底注百分比公开下注，押中高伤害方平分奖池。")
-	lines.append("⇄ 合约：先点供给区和需求区，再打合约牌；目标业主在独立窗口签或拒。")
-	lines.append("☄ 新闻/天气：新闻来自卡牌；天气提前预报，影响生产、交通和消费。")
-	lines.append("⌁ 现金流：GDP/min会按秒变成现金；商品、天气、商路、城市伤害会改变这个速度。")
-	lines.append("★ 终局：有人达标后进入终局沙漏；结束按总钱排名。")
+	lines.append("价格按I级算；同名牌复购升级，最高到IV级。")
+	lines.append("所有牌都会公开展示，出牌者匿名；顶部牌轨只显示公开结果、报价和归属线索。")
+	lines.append("怪兽受伤会让归属玩家掉钱，掉钱会按最大生命比例留下公开资金线索。")
+	lines.append("GDP/min会按秒变成现金；商品、商路、天气、合约和破坏会改变城市现金流。")
+	lines.append("")
+	lines.append("先看下方规则速查板：胜利、首轮、隐私、牌架、匿名出牌、赌局、合约和天气都按卡片拆开。")
 	lines.append("")
 	lines.append("常用操作：滚轮缩放星球｜拖拽地图｜双击区域看牌｜B城市化｜G切换推测对象｜M标注｜R商路｜T商品｜Space暂停。")
 	_show_menu(
@@ -5122,141 +4976,46 @@ func _populate_tutorial_quick_start_board() -> void:
 
 
 func _add_tutorial_quick_start_panel(parent: Container) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "TutorialQuickStartPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "第一局试玩任务板：先做步骤卡，再回到牌桌。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.07), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
-
-	var header := HBoxContainer.new()
-	header.name = "TutorialQuickStartHeader"
-	header.add_theme_constant_override("separation", 8)
-	box.add_child(header)
-	var title := _plain_label("试玩速成板", 15, Color("#dbeafe"))
-	title.name = "TutorialQuickStartTitle"
-	title.tooltip_text = "像电子桌游任务板一样，按步骤完成第一局的开场动作。"
-	header.add_child(title)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(spacer)
-	_add_tutorial_quick_start_chip(header, "第一局", Color("#bfdbfe"), "先完成首召、建城、买牌和一次匿名出牌。")
-	_add_tutorial_quick_start_chip(header, "目标钱最多", Color("#fef3c7"), "终局按钱排名。")
-	_add_tutorial_quick_start_chip(header, "细则进规则", Color("#c4b5fd"), "本页只放试玩动作；完整解释在游戏规则。")
-
-	var step_grid := GridContainer.new()
-	step_grid.name = "TutorialQuickStartStepGrid"
-	step_grid.columns = clampi(int(floor(_menu_available_content_width() / 250.0)), 1, 4)
-	step_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	step_grid.add_theme_constant_override("h_separation", 8)
-	step_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(step_grid)
-	_add_tutorial_quick_start_step(step_grid, "1｜首召怪兽", "选一个区域，打出起始I级怪兽。", "怪兽落地后，附近区域才是购牌锚点。", Color("#fb7185"))
-	_add_tutorial_quick_start_step(step_grid, "2｜建第一城", "找陆地，花¥%d城市化。" % CITY_BUILD_COST, "城市会产生GDP/min，业主身份隐藏。", Color("#4ade80"))
-	_add_tutorial_quick_start_step(step_grid, "3｜看区域牌架", "双击区域看卡牌；可看不等于可买。", "怪兽落地区八折，相邻区原价。", Color("#38bdf8"))
-	_add_tutorial_quick_start_step(step_grid, "4｜买第一张牌", "买牌花钱；重复牌自动升级。", "普通手牌上限%d张，满手买新牌会私下弃旧。" % PLAYER_HAND_LIMIT, Color("#facc15"))
-	_add_tutorial_quick_start_step(step_grid, "5｜打匿名牌", "看手牌状态筹码，满足门槛后打出。", "卡牌公开展示，出牌者匿名。", Color("#c084fc"))
-	_add_tutorial_quick_start_step(step_grid, "6｜读公共牌轨", "顶部牌槽记录历史、当前和候补牌。", "点牌再点头像，可押¥%d猜牌主。" % CARD_OWNER_GUESS_STAKE, Color("#f472b6"))
-	_add_tutorial_quick_start_step(step_grid, "7｜看经济/情报", "经济看钱从哪里来；情报看可疑线索。", "对手现金和手牌隐藏，靠公开结果推理。", Color("#2dd4bf"))
-	_add_tutorial_quick_start_step(step_grid, "8｜终局冲刺", "有人达标后倒计时，结束按钱排名。", "领先时护城修路；落后时压领先城市。", Color("#fb923c"))
-
-	var trap_grid := GridContainer.new()
-	trap_grid.name = "TutorialQuickStartTrapGrid"
-	trap_grid.columns = clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3)
-	trap_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	trap_grid.add_theme_constant_override("h_separation", 8)
-	trap_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(trap_grid)
-	_add_tutorial_quick_start_trap(trap_grid, "买不了牌", "先确认场上有怪兽，并且牌架是在怪兽落地区或相邻区打开。", Color("#fb7185"))
-	_add_tutorial_quick_start_trap(trap_grid, "牌打不出", "看手牌状态筹码：商品流动、目标、选区、现金和队列都会影响可打状态。", Color("#facc15"))
-	_add_tutorial_quick_start_trap(trap_grid, "看不懂谁领先", "打开局势记分板；进行中只精确显示自己，对手靠线索判断。", Color("#38bdf8"))
-	_add_tutorial_quick_start_trap(trap_grid, "不知道查哪里", "打开情报侦探板，先标高GDP、仓储、低置信城市。", Color("#c084fc"))
+	var board := TutorialQuickStartBoardScene.instantiate() as Control
+	if board == null or not board.has_method("set_board"):
+		_report_required_ui_scene_missing("TutorialQuickStartBoard", "set_board")
+		return
+	parent.add_child(board)
+	board.call("set_board", _tutorial_quick_start_snapshot())
 
 
-func _add_tutorial_quick_start_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := PanelContainer.new()
-	chip.name = "TutorialQuickStartChip"
-	chip.tooltip_text = tooltip
-	chip.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
-	parent.add_child(chip)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	chip.add_child(margin)
-	var label := _plain_label(_short_card_text(text, 18), 9, accent.lightened(0.16))
-	label.name = "TutorialQuickStartChipLabel"
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.tooltip_text = tooltip
-	margin.add_child(label)
-
-
-func _add_tutorial_quick_start_step(parent: Container, title_text: String, body_text: String, meta_text: String, accent: Color) -> void:
-	var card := PanelContainer.new()
-	card.name = "TutorialQuickStartStepCard"
-	card.custom_minimum_size = Vector2(0, 118)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = "%s\n%s" % [body_text, meta_text]
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 11, accent.lightened(0.16))
-	title.name = "TutorialQuickStartStepTitle"
-	box.add_child(title)
-	var body := _plain_label(body_text, 10, Color("#f8fafc"))
-	body.name = "TutorialQuickStartStepBody"
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(body)
-	var meta := _plain_label(meta_text, 9, Color("#94a3b8"))
-	meta.name = "TutorialQuickStartStepMeta"
-	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(meta)
-
-
-func _add_tutorial_quick_start_trap(parent: Container, title_text: String, body_text: String, accent: Color) -> void:
-	var card := PanelContainer.new()
-	card.name = "TutorialQuickStartTrapCard"
-	card.custom_minimum_size = Vector2(0, 92)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = body_text
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 11, accent.lightened(0.16))
-	title.name = "TutorialQuickStartTrapTitle"
-	box.add_child(title)
-	var body := _plain_label(body_text, 9, Color("#cbd5e1"))
-	body.name = "TutorialQuickStartTrapBody"
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(body)
+func _tutorial_quick_start_snapshot() -> Dictionary:
+	return {
+		"title": "试玩速成板",
+		"title_tooltip": "像电子桌游任务板一样，按步骤完成第一局的开场动作。",
+		"tooltip": "第一局试玩任务板：先做步骤卡，再回到牌桌。",
+		"accent": Color("#38bdf8"),
+		"step_columns": clampi(int(floor(_menu_available_content_width() / 250.0)), 1, 4),
+		"trap_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
+		"chips": [
+			{"text": "第一局", "accent": Color("#bfdbfe"), "tooltip": "先完成首召、建城、买牌和一次匿名出牌。"},
+			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "终局按钱排名。"},
+			{"text": "细则进规则", "accent": Color("#c4b5fd"), "tooltip": "本页只放试玩动作；完整解释在游戏规则。"},
+		],
+		"steps": [
+			{"title": "1｜首召怪兽", "body": "选一个区域，打出起始I级怪兽。", "meta": "怪兽落地后，附近区域才是购牌锚点。", "accent": Color("#fb7185")},
+			{"title": "2｜建第一城", "body": "找陆地，花¥%d城市化。" % CITY_BUILD_COST, "meta": "城市会产生GDP/min，业主身份隐藏。", "accent": Color("#4ade80")},
+			{"title": "3｜看区域牌架", "body": "双击区域看卡牌；可看不等于可买。", "meta": "怪兽落地区八折，相邻区原价。", "accent": Color("#38bdf8")},
+			{"title": "4｜买第一张牌", "body": "买牌花钱；重复牌自动升级。", "meta": "普通手牌上限%d张，满手买新牌会私下弃旧。" % PLAYER_HAND_LIMIT, "accent": Color("#facc15")},
+			{"title": "5｜打匿名牌", "body": "看手牌状态筹码，满足门槛后打出。", "meta": "卡牌公开展示，出牌者匿名。", "accent": Color("#c084fc")},
+			{"title": "6｜读公共牌轨", "body": "顶部牌槽记录历史、当前和候补牌。", "meta": "点牌再点头像，可押¥%d猜牌主。" % CARD_OWNER_GUESS_STAKE, "accent": Color("#f472b6")},
+			{"title": "7｜看经济/情报", "body": "经济看钱从哪里来；情报看可疑线索。", "meta": "对手现金和手牌隐藏，靠公开结果推理。", "accent": Color("#2dd4bf")},
+			{"title": "8｜终局冲刺", "body": "有人达标后倒计时，结束按钱排名。", "meta": "领先时护城修路；落后时压领先城市。", "accent": Color("#fb923c")},
+		],
+		"trap_title": "卡点急救｜先排这四件事",
+		"traps": [
+			{"title": "买不了牌", "body": "先确认场上有怪兽，并且牌架是在怪兽落地区或相邻区打开。", "accent": Color("#fb7185")},
+			{"title": "牌打不出", "body": "看手牌状态筹码：商品流动、目标、选区、现金和队列都会影响可打状态。", "accent": Color("#facc15")},
+			{"title": "看不懂谁领先", "body": "打开局势记分板；进行中只精确显示自己，对手靠线索判断。", "accent": Color("#38bdf8")},
+			{"title": "不知道查哪里", "body": "打开情报侦探板，先标高GDP、仓储、低置信城市。", "accent": Color("#c084fc")},
+		],
+		"footer": "完整细则进游戏规则；这一页只帮你把第一局跑起来。",
+	}
 
 
 func _open_standings_menu() -> void:
@@ -5271,32 +5030,54 @@ func _open_economy_overview_menu() -> void:
 
 
 func _populate_rules_summary_cards() -> void:
-	_show_menu_summary_cards([
-		{
-			"title": "1｜先召怪兽",
-			"body": "开局先打出起始I级怪兽牌；怪兽落地区和相邻区会打开购牌来源。",
-			"meta": "没有怪兽落地，就很难开始买牌。",
-			"accent": Color("#fb7185"),
-		},
-		{
-			"title": "2｜建城赚钱",
-			"body": "在陆地城市化，GDP/min 按秒流入现金；海洋主要影响商路运输。",
-			"meta": "最后按钱最多获胜。",
-			"accent": Color("#4ade80"),
-		},
-		{
-			"title": "3｜匿名出牌",
-			"body": "所有卡牌公开展示但不公开牌主；商品流动门槛、地图变化和小费会留下线索。",
-			"meta": "看结果，不看名字。",
-			"accent": Color("#c084fc"),
-		},
-		{
-			"title": "4｜手牌隐私",
-			"body": "买牌花钱，重复牌升级；普通手牌超上限时私密弃牌，别人不知道你弃了什么。",
-			"meta": "固定兽技不占普通手牌上限。",
-			"accent": Color("#facc15"),
-		},
-	], "规则速览｜先看这四张卡，再读下方细则")
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	_add_rules_quick_reference_board(menu_preview_box)
+
+
+func _add_rules_quick_reference_board(parent: Container) -> void:
+	var board := RulesQuickReferenceBoardScene.instantiate() as Control
+	if board == null or not board.has_method("set_board"):
+		_report_required_ui_scene_missing("RulesQuickReferenceBoard", "set_board")
+		return
+	parent.add_child(board)
+	board.call("set_board", _rules_quick_reference_snapshot())
+
+
+func _rules_quick_reference_snapshot() -> Dictionary:
+	return {
+		"title": "规则速览",
+		"title_tooltip": "3分钟层的规则页通道；主桌不常驻长规则，完整解释只放在规则页。",
+		"tooltip": "规则速查板：先看目标、流程、隐私边界和模块卡，再读正文细则。",
+		"accent": Color("#93c5fd"),
+		"kpi_columns": _menu_summary_grid_columns(),
+		"module_columns": clampi(int(floor(_menu_available_content_width() / 250.0)), 1, 4),
+		"chips": [
+			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "终局按总钱排名。"},
+			{"text": "主桌不背规则", "accent": Color("#93c5fd"), "tooltip": "主桌只保留能行动的短提示。"},
+			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "对手现金、手牌和身份线索不直接公开。"},
+		],
+		"kpis": [
+			{"title": "胜利目标", "body": "最后钱最多。", "meta": "现金、城市、金融、情报和终局清算都会变成钱。", "accent": Color("#fef3c7")},
+			{"title": "第一轮顺序", "body": "首召怪兽 → 建城 → 看牌架 → 买牌 → 匿名出牌。", "meta": "不会玩时先回新手引导。", "accent": Color("#38bdf8")},
+			{"title": "信息边界", "body": "建筑公开，业主隐藏；出牌公开，牌主匿名。", "meta": "看地图和牌轨推理，不扫对手私牌。", "accent": Color("#c084fc")},
+			{"title": "结算节奏", "body": "达标后进入终局沙漏。", "meta": "领先时护城修路；落后时压领先资产。", "accent": Color("#fb923c")},
+		],
+		"module_title": "牌桌模块｜先召怪兽，再读匿名出牌和现金流",
+		"modules": [
+			{"title": "◆ 先召怪兽", "body": "开局先打一张I级怪兽牌。", "meta": "怪兽落地区和相邻区会打开购牌来源。", "accent": Color("#fb7185")},
+			{"title": "▣ 建城赚钱", "body": "陆地城市化¥%d，GDP/min按秒进账。" % CITY_BUILD_COST, "meta": "城市公开，业主隐藏。", "accent": Color("#4ade80")},
+			{"title": "＋ 区域牌架", "body": "双击区域看牌；查看始终允许。", "meta": "落地区八折，相邻区原价，开架时锁定资格。", "accent": Color("#38bdf8")},
+			{"title": "◎ 匿名出牌", "body": "卡牌公开展示，出牌者匿名。", "meta": "商品流动是门槛，不会被消耗。", "accent": Color("#c084fc")},
+			{"title": "¥ 竞价/猜牌主", "body": "多人出牌先报价；公共牌轨可押钱猜牌主。", "meta": "数字公开，身份仍匿名。", "accent": Color("#facc15")},
+			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇会冻结时间，全员公开下注。", "meta": "押中高伤害方平分奖池。", "accent": Color("#fb923c")},
+			{"title": "⇄ 合约", "body": "先点供给区和需求区，再打合约牌。", "meta": "目标业主在独立窗口签或拒。", "accent": Color("#2dd4bf")},
+			{"title": "☄ 天气/现金流", "body": "天气影响生产、交通和消费。", "meta": "商品、商路、城市伤害会改变GDP/min。", "accent": Color("#93c5fd")},
+		],
+		"footer": "完整细则在本页正文；主桌只保留当前能做什么和为什么不能做。",
+	}
 
 
 func _populate_standings_summary_cards() -> void:
@@ -5331,6 +5112,15 @@ func _populate_standings_summary_cards() -> void:
 
 
 func _add_standings_scoreboard_panel(parent: Container, standings: Array) -> void:
+	var scoreboard := StandingsScoreboardScene.instantiate() as Control
+	if scoreboard == null or not scoreboard.has_method("set_scoreboard"):
+		_report_required_ui_scene_missing("StandingsScoreboard", "set_scoreboard")
+		return
+	parent.add_child(scoreboard)
+	scoreboard.call("set_scoreboard", _standings_scoreboard_snapshot(standings))
+
+
+func _standings_scoreboard_snapshot(standings: Array) -> Dictionary:
 	var selected_name := "当前玩家"
 	var selected_cash := 0
 	var selected_score := 0
@@ -5343,193 +5133,76 @@ func _add_standings_scoreboard_panel(parent: Container, standings: Array) -> voi
 		selected_score = _player_visible_settlement_estimate(selected_player)
 		selected_city_count = _player_active_city_count(selected_player)
 		selected_gdp = _player_gdp_per_minute(selected_player)
-	var panel := PanelContainer.new()
-	panel.name = "StandingsScoreboardPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "桌游式局势记分板：先看目标、倒计时、自己的可见估值和对手隐私牌。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#facc15"), Color("#020617").lerp(Color("#facc15"), 0.07), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
-
-	var header := HBoxContainer.new()
-	header.name = "StandingsScoreboardHeader"
-	header.add_theme_constant_override("separation", 8)
-	box.add_child(header)
-	var title := _plain_label("局势记分板", 15, Color("#fef3c7"))
-	title.name = "StandingsScoreboardTitle"
-	title.tooltip_text = "进行中只显示当前玩家可见资金；对手现金、手牌和真实资产仍靠推理。"
-	header.add_child(title)
-	var header_spacer := Control.new()
-	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(header_spacer)
-	_add_standings_scoreboard_chip(header, "目标¥%d" % _roguelike_cash_goal(), Color("#fef3c7"), "达到目标后进入终局倒计时。")
-	_add_standings_scoreboard_chip(header, _short_card_text(_victory_countdown_status_text(), 22), Color("#fb923c"), "倒计时结束后按钱最多排名。")
-	_add_standings_scoreboard_chip(header, "城市×%d" % CITY_FINAL_VALUE, Color("#4ade80"), "存活城市会在终局清算为现金。")
-	_add_standings_scoreboard_chip(header, "对手隐私", Color("#94a3b8"), "进行中不显示对手现金、手牌、账本或真实资产归属。")
-
-	var kpi_grid := GridContainer.new()
-	kpi_grid.name = "StandingsRaceKpiGrid"
-	kpi_grid.columns = clampi(int(floor(_menu_available_content_width() / 230.0)), 1, 4)
-	kpi_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kpi_grid.add_theme_constant_override("h_separation", 8)
-	kpi_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(kpi_grid)
+	var public_shift_count := _economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size()
 	var gap := maxi(0, _roguelike_cash_goal() - selected_score)
-	_add_standings_race_kpi(kpi_grid, "我的终局距离", "¥%d/%d" % [selected_score, _roguelike_cash_goal()], "差¥%d｜现金¥%d" % [gap, selected_cash], Color("#38bdf8"), "当前玩家可见结算估值。")
-	_add_standings_race_kpi(kpi_grid, "城市现金流", "%d座" % selected_city_count, "GDP/min %d" % selected_gdp, Color("#4ade80"), "稳定城市现金流是终局资金的主来源。")
-	_add_standings_race_kpi(kpi_grid, "公开异动", "%d条" % (_economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size()), "牌轨/怪兽/天气", Color("#c084fc"), "用公开异动判断谁可能受益。")
-	_add_standings_race_kpi(kpi_grid, "反超方向", "压领先", "做空/断路/引怪兽", Color("#fb7185"), "落后时压领先城市；领先时修路、保险、保护高GDP城市。")
+	return {
+		"title": "局势记分板",
+		"title_tooltip": "进行中只显示当前玩家可见资金；对手现金、手牌和真实资产仍靠推理。",
+		"tooltip": "桌游式局势记分板：先看目标、倒计时、自己的可见估值和对手隐私牌。",
+		"accent": Color("#facc15"),
+		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 230.0)), 1, 4),
+		"seat_columns": clampi(int(floor(_menu_available_content_width() / 260.0)), 1, 4),
+		"chips": _standings_scoreboard_chip_snapshots(),
+		"kpis": [
+			{"title": "我的终局距离", "value": "¥%d/%d" % [selected_score, _roguelike_cash_goal()], "meta": "差¥%d｜现金¥%d" % [gap, selected_cash], "accent": Color("#38bdf8"), "tooltip": "当前玩家可见结算估值。"},
+			{"title": "城市现金流", "value": "%d座" % selected_city_count, "meta": "GDP/min %d" % selected_gdp, "accent": Color("#4ade80"), "tooltip": "稳定城市现金流是终局资金的主来源。"},
+			{"title": "公开异动", "value": "%d条" % public_shift_count, "meta": "牌轨/怪兽/天气", "accent": Color("#c084fc"), "tooltip": "用公开异动判断谁可能受益。"},
+			{"title": "反超方向", "value": "压领先", "meta": "做空/断路/引怪兽", "accent": Color("#fb7185"), "tooltip": "落后时压领先城市；领先时修路、保险、保护高GDP城市。"},
+		],
+		"seats": _standings_scoreboard_seat_snapshots(standings),
+		"hint": "读法：自己的牌看精确钱；对手牌看公开线索。想知道钱从哪里来，继续看经济总览和情报档案。",
+	}
 
-	var player_grid := GridContainer.new()
-	player_grid.name = "StandingsPlayerScoreGrid"
-	player_grid.columns = clampi(int(floor(_menu_available_content_width() / 260.0)), 1, 4)
-	player_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	player_grid.add_theme_constant_override("h_separation", 8)
-	player_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(player_grid)
+
+func _standings_scoreboard_chip_snapshots() -> Array:
+	return [
+		{"text": "目标¥%d" % _roguelike_cash_goal(), "accent": Color("#fef3c7"), "tooltip": "达到目标后进入终局倒计时。"},
+		{"text": _short_card_text(_victory_countdown_status_text(), 22), "accent": Color("#fb923c"), "tooltip": "倒计时结束后按钱最多排名。"},
+		{"text": "城市×%d" % CITY_FINAL_VALUE, "accent": Color("#4ade80"), "tooltip": "存活城市会在终局清算为现金。"},
+		{"text": "对手隐私", "accent": Color("#94a3b8"), "tooltip": "进行中不显示对手现金、手牌、账本或真实资产归属。"},
+	]
+
+
+func _standings_scoreboard_seat_snapshots(standings: Array) -> Array:
+	var seats := []
 	for rank in range(standings.size()):
-		_add_standings_player_score_card(player_grid, standings[rank] as Dictionary, rank)
-
-	var hint := _plain_label("读法：自己的牌看精确钱；对手牌看公开线索。想知道钱从哪里来，继续看经济总览和情报档案。", 10, Color("#fde68a"))
-	hint.name = "StandingsScoreboardReadHint"
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(hint)
-
-
-func _add_standings_scoreboard_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := PanelContainer.new()
-	chip.name = "StandingsScoreboardChip"
-	chip.tooltip_text = tooltip
-	chip.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
-	parent.add_child(chip)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	chip.add_child(margin)
-	var label := _plain_label(_short_card_text(text, 18), 9, accent.lightened(0.16))
-	label.name = "StandingsScoreboardChipLabel"
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.tooltip_text = tooltip
-	margin.add_child(label)
-
-
-func _add_standings_race_kpi(parent: Container, title_text: String, value_text: String, meta_text: String, accent: Color, tooltip: String) -> void:
-	var card := PanelContainer.new()
-	card.name = "StandingsRaceKpiCard"
-	card.custom_minimum_size = Vector2(0, 86)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = tooltip
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 10, accent.lightened(0.16))
-	title.name = "StandingsRaceKpiTitle"
-	box.add_child(title)
-	var value := _plain_label(value_text, 17, Color("#f8fafc"))
-	value.name = "StandingsRaceKpiValue"
-	value.autowrap_mode = TextServer.AUTOWRAP_OFF
-	value.clip_text = true
-	value.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(value)
-	var meta := _plain_label(meta_text, 9, Color("#94a3b8"))
-	meta.name = "StandingsRaceKpiMeta"
-	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
-	meta.clip_text = true
-	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	meta.tooltip_text = tooltip
-	box.add_child(meta)
-
-
-func _add_standings_player_score_card(parent: Container, entry: Dictionary, rank: int) -> void:
-	var player_index := int(entry.get("player_index", rank))
-	var eliminated := bool(entry.get("eliminated", false))
-	var can_view_private := game_over or player_index == selected_player
-	var accent := Color("#64748b") if eliminated else (_player_color(player_index) if player_index >= 0 else Color("#94a3b8"))
-	var card := PanelContainer.new()
-	card.name = "StandingsPlayerScoreCard"
-	card.custom_minimum_size = Vector2(0, 126)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = "破产出局是公开状态；对手历史手牌、弃牌和私密计划仍不公开。" if eliminated else ("进行中对手现金、手牌、账本和真实城市资产保持隐私。" if not can_view_private else "当前玩家/终局可见记分。")
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var header := HBoxContainer.new()
-	header.name = "StandingsPlayerScoreHeader"
-	header.add_theme_constant_override("separation", 5)
-	box.add_child(header)
-	var name_label := _plain_label("P%d｜%s" % [player_index + 1, _short_card_text(String(entry.get("name", "玩家")), 10)], 11, Color("#f8fafc"))
-	name_label.name = "StandingsPlayerScoreName"
-	header.add_child(name_label)
-	var header_spacer := Control.new()
-	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(header_spacer)
-	var rank_label := _plain_label("#%d" % (rank + 1), 11, accent.lightened(0.18))
-	rank_label.name = "StandingsPlayerScoreRank"
-	rank_label.tooltip_text = "进行中对手名次不等于真实排名，只是座位/可见信息展示。"
-	header.add_child(rank_label)
-	var score_text := "出局" if eliminated else ("¥%d" % int(entry.get("score", 0)) if can_view_private else "资金隐私")
-	var score := _plain_label(score_text, 18, Color("#fb7185") if eliminated else (Color("#fef3c7") if can_view_private else Color("#94a3b8")))
-	score.name = "StandingsPlayerScoreValue"
-	score.autowrap_mode = TextServer.AUTOWRAP_OFF
-	score.clip_text = true
-	score.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	score.tooltip_text = "现金归零提前失败；该席位结算分为0。" if eliminated else ("%s：%d" % [String(entry.get("score_label", "可见预估")), int(entry.get("score", 0))] if can_view_private else "对手资金与结算估值不公开。")
-	box.add_child(score)
-	var rail := HFlowContainer.new()
-	rail.name = "StandingsPlayerScoreChipRail"
-	rail.add_theme_constant_override("h_separation", 4)
-	rail.add_theme_constant_override("v_separation", 3)
-	box.add_child(rail)
-	if eliminated:
-		var bankrupt_badge := _track_status_badge("破产出局", Color("#fecdd3"), Color("#7f1d1d"))
-		bankrupt_badge.name = "StandingsBankruptBadge"
-		bankrupt_badge.tooltip_text = "公开状态：现金归零，提前离桌，不能再行动。"
-		rail.add_child(bankrupt_badge)
-		rail.add_child(_track_status_badge("现金0", Color("#fef3c7"), Color("#713f12")))
-		rail.add_child(_track_status_badge("GDP停流", Color("#94a3b8"), Color("#1f2937")))
-	elif can_view_private:
-		rail.add_child(_track_status_badge("现金¥%d" % int(entry.get("cash", 0)), Color("#fef3c7"), Color("#713f12")))
-		rail.add_child(_track_status_badge("城%d" % int(entry.get("active_cities", 0)), Color("#bbf7d0"), Color("#14532d")))
-		rail.add_child(_track_status_badge("GDP%d" % int(entry.get("gdp_per_minute", 0)), Color("#bfdbfe"), Color("#1e3a8a")))
-		rail.add_child(_track_status_badge(String(entry.get("intel_summary", "情报待结算")), Color("#c4b5fd"), Color("#312e81")))
-	else:
-		rail.add_child(_track_status_badge("现金隐藏", Color("#94a3b8"), Color("#1f2937")))
-		rail.add_child(_track_status_badge("手牌隐藏", Color("#94a3b8"), Color("#1f2937")))
-		rail.add_child(_track_status_badge("资产靠推理", Color("#c4b5fd"), Color("#312e81")))
-	var goal_gap := maxi(0, _roguelike_cash_goal() - int(entry.get("score", 0)))
-	var meta_text := "现金归零，提前退出本局。" if eliminated else ("离目标¥%d" % goal_gap if can_view_private else "看城市、牌轨、怪兽和商品线索推测。")
-	var meta := _plain_label(meta_text, 9, Color("#cbd5e1"))
-	meta.name = "StandingsPlayerScoreMeta"
-	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(meta)
+		var entry := standings[rank] as Dictionary
+		var player_index := int(entry.get("player_index", rank))
+		var eliminated := bool(entry.get("eliminated", false))
+		var can_view_private := game_over or player_index == selected_player
+		var accent := Color("#64748b") if eliminated else (_player_color(player_index) if player_index >= 0 else Color("#94a3b8"))
+		var score_text := "出局" if eliminated else ("¥%d" % int(entry.get("score", 0)) if can_view_private else "资金隐私")
+		var score_color := Color("#fb7185") if eliminated else (Color("#fef3c7") if can_view_private else Color("#94a3b8"))
+		var chips := []
+		if eliminated:
+			chips.append({"name": "StandingsBankruptBadge", "text": "破产出局", "accent": Color("#fecdd3"), "tooltip": "公开状态：现金归零，提前离桌，不能再行动。"})
+			chips.append({"text": "现金0", "accent": Color("#fef3c7"), "tooltip": "公开破产资金。"})
+			chips.append({"text": "GDP停流", "accent": Color("#94a3b8"), "tooltip": "破产后城市现金流停止。"})
+		elif can_view_private:
+			chips.append({"text": "现金¥%d" % int(entry.get("cash", 0)), "accent": Color("#fef3c7"), "tooltip": "当前可见现金。"})
+			chips.append({"text": "城%d" % int(entry.get("active_cities", 0)), "accent": Color("#bbf7d0"), "tooltip": "存活城市数量。"})
+			chips.append({"text": "GDP%d" % int(entry.get("gdp_per_minute", 0)), "accent": Color("#bfdbfe"), "tooltip": "当前GDP/min。"})
+			chips.append({"text": String(entry.get("intel_summary", "情报待结算")), "accent": Color("#c4b5fd"), "tooltip": "当前玩家可见情报结算摘要。"})
+		else:
+			chips.append({"text": "现金隐藏", "accent": Color("#94a3b8"), "tooltip": "进行中不公开对手资金。"})
+			chips.append({"text": "手牌隐藏", "accent": Color("#94a3b8"), "tooltip": "进行中不公开对手手牌或弃牌。"})
+			chips.append({"text": "资产靠推理", "accent": Color("#c4b5fd"), "tooltip": "看城市、牌轨、怪兽和商品线索推测。"})
+		var goal_gap := maxi(0, _roguelike_cash_goal() - int(entry.get("score", 0)))
+		var meta_text := "现金归零，提前退出本局。" if eliminated else ("离目标¥%d" % goal_gap if can_view_private else "看城市、牌轨、怪兽和商品线索推测。")
+		seats.append({
+			"name": "P%d｜%s" % [player_index + 1, _short_card_text(String(entry.get("name", "玩家")), 10)],
+			"rank": "#%d" % (rank + 1),
+			"rank_tooltip": "进行中对手名次不等于真实排名，只是座位/可见信息展示。",
+			"score": score_text,
+			"score_color": score_color,
+			"score_tooltip": "现金归零提前失败；该席位结算分为0。" if eliminated else ("%s：%d" % [String(entry.get("score_label", "可见预估")), int(entry.get("score", 0))] if can_view_private else "对手资金与结算估值不公开。"),
+			"chips": chips,
+			"meta": meta_text,
+			"tooltip": "破产出局是公开状态；对手历史手牌、弃牌和私密计划仍不公开。" if eliminated else ("进行中对手现金、手牌、账本和真实城市资产保持隐私。" if not can_view_private else "当前玩家/终局可见记分。"),
+			"eliminated": eliminated,
+			"accent": accent,
+		})
+	return seats
 
 
 func _populate_economy_overview_summary_cards() -> void:
@@ -5567,152 +5240,120 @@ func _populate_economy_overview_summary_cards() -> void:
 
 
 func _add_economy_dashboard_panel(parent: Container, selected_name: String, product_entries: Array, city_entries: Array, clue_count: int) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "EconomyDashboardPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#4ade80"), Color("#020617").lerp(Color("#4ade80"), 0.07), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
-	var title_row := HBoxContainer.new()
-	title_row.name = "EconomyDashboardHeader"
-	title_row.add_theme_constant_override("separation", 8)
-	box.add_child(title_row)
-	var title := _plain_label("经济仪表板", 15, Color("#dcfce7"))
-	title.name = "EconomyDashboardTitle"
-	title.tooltip_text = "先看现金流、商品、城市、线索四块；细节用悬停查看。"
-	title_row.add_child(title)
-	var title_spacer := Control.new()
-	title_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_row.add_child(title_spacer)
-	_add_economy_dashboard_chip(title_row, "刷新%d" % business_cycle_count, Color("#86efac"), "公开供需、天气和市场类信息按全局刷新节奏更新。")
-	_add_economy_dashboard_chip(title_row, "怪兽%d" % auto_monsters.size(), Color("#fb7185"), "怪兽落点会影响购牌来源、破坏、赌局和资源吸引。")
-	_add_economy_dashboard_chip(title_row, _short_card_text(_weather_status_text(), 14), Color("#38bdf8"), "天气会影响受波及区域的生产、交通和消费。")
+	var dashboard := EconomyDashboardScene.instantiate() as Control
+	if dashboard == null or not dashboard.has_method("set_dashboard"):
+		_report_required_ui_scene_missing("EconomyDashboard", "set_dashboard")
+		return
+	dashboard.name = "EconomyDashboardPanel"
+	dashboard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(dashboard)
+	dashboard.call("set_dashboard", _economy_dashboard_snapshot(selected_name, product_entries, city_entries, clue_count))
 
-	var kpi_grid := GridContainer.new()
-	kpi_grid.name = "EconomyDashboardKpiGrid"
-	kpi_grid.columns = clampi(int(floor(_menu_available_content_width() / 220.0)), 1, 4)
-	kpi_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kpi_grid.add_theme_constant_override("h_separation", 8)
-	kpi_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(kpi_grid)
-	_add_economy_dashboard_kpi(kpi_grid, "GDP/min", "%d" % _player_gdp_per_minute(selected_player), selected_name, Color("#4ade80"), "当前玩家可见城市现金流，按秒进入现金。")
-	_add_economy_dashboard_kpi(kpi_grid, "商品热度", _economy_dashboard_top_product_value(product_entries), "价格/供需/趋势", Color("#facc15"), "供给压价；需求、合约和天气可能抬价。")
-	_add_economy_dashboard_kpi(kpi_grid, "城市前景", _economy_dashboard_top_city_value(city_entries), "收入/断路/业主视角", Color("#38bdf8"), "城市GDP受生产、需求、交通、损伤、竞争和商路影响。")
-	_add_economy_dashboard_kpi(kpi_grid, "公开线索", "%d" % clue_count, "卡牌/城市/怪兽", Color("#c084fc"), "只汇总公开证据，不揭示隐藏现金、手牌或真实业主。")
 
-	var lane_grid := GridContainer.new()
-	lane_grid.name = "EconomyDashboardLaneGrid"
-	lane_grid.columns = clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3)
-	lane_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lane_grid.add_theme_constant_override("h_separation", 10)
-	lane_grid.add_theme_constant_override("v_separation", 10)
-	box.add_child(lane_grid)
-	_add_economy_dashboard_list_card(lane_grid, "商品热榜", _economy_dashboard_product_lines(product_entries, false), Color("#facc15"), "哪些商品正在变贵、变热或被需求拉动。")
+func _economy_dashboard_snapshot(selected_name: String, product_entries: Array, city_entries: Array, clue_count: int) -> Dictionary:
 	var cold_entries := product_entries.duplicate(true)
 	cold_entries.sort_custom(Callable(self, "_sort_economy_product_cold_entry"))
-	_add_economy_dashboard_list_card(lane_grid, "低价机会", _economy_dashboard_product_lines(cold_entries, true), Color("#93c5fd"), "供给过剩或价格受压的商品，适合买低、改需求或布局期货。")
-	_add_economy_dashboard_list_card(lane_grid, "城市现金流", _economy_dashboard_city_lines(city_entries), Color("#4ade80"), "可见城市收入前景；真实业主仍按情报规则隐藏。")
-	_add_economy_dashboard_list_card(lane_grid, "匿名余波", _economy_dashboard_card_aftermath_lines(), Color("#f472b6"), "匿名出牌后的公开结果，是猜牌主和经济反推的素材。")
-	_add_economy_dashboard_list_card(lane_grid, "怪兽/仓储风险", _economy_dashboard_risk_lines(), Color("#fb7185"), "怪兽资金损失、仓储靶标和可被做空的经济点。")
-	_add_economy_dashboard_list_card(lane_grid, "下一步读法", _economy_dashboard_next_step_lines(), Color("#a78bfa"), "先看热商品，再看高GDP城市，最后用牌轨和地图结果找匿名线索。")
+	return {
+		"title": "经济仪表板",
+		"title_tooltip": "先看现金流、商品、城市、线索四块；细节用悬停查看。",
+		"tooltip": "经济仪表板：看三件事：钱从哪座城来、哪种商品变热、公开线索指向哪里。",
+		"accent": Color("#4ade80"),
+		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 220.0)), 1, 4),
+		"lane_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
+		"chips": _economy_dashboard_chip_snapshots(),
+		"kpis": _economy_dashboard_kpi_snapshots(selected_name, product_entries, city_entries, clue_count),
+		"lanes": [
+			{
+				"title": "商品热榜",
+				"lines": _economy_dashboard_product_lines(product_entries, false),
+				"accent": Color("#facc15"),
+				"tooltip": "哪些商品正在变贵、变热或被需求拉动。",
+			},
+			{
+				"title": "低价机会",
+				"lines": _economy_dashboard_product_lines(cold_entries, true),
+				"accent": Color("#93c5fd"),
+				"tooltip": "供给过剩或价格受压的商品，适合买低、改需求或布局期货。",
+			},
+			{
+				"title": "城市现金流",
+				"lines": _economy_dashboard_city_lines(city_entries),
+				"accent": Color("#4ade80"),
+				"tooltip": "可见城市收入前景；真实业主仍按情报规则隐藏。",
+			},
+			{
+				"title": "匿名余波",
+				"lines": _economy_dashboard_card_aftermath_lines(),
+				"accent": Color("#f472b6"),
+				"tooltip": "匿名出牌后的公开结果，是猜牌主和经济反推的素材。",
+			},
+			{
+				"title": "怪兽/仓储风险",
+				"lines": _economy_dashboard_risk_lines(),
+				"accent": Color("#fb7185"),
+				"tooltip": "怪兽资金损失、仓储靶标和可被做空的经济点。",
+			},
+			{
+				"title": "下一步读法",
+				"lines": _economy_dashboard_next_step_lines(),
+				"accent": Color("#a78bfa"),
+				"tooltip": "先看热商品，再看高GDP城市，最后用牌轨和地图结果找匿名线索。",
+			},
+		],
+	}
 
 
-func _add_economy_dashboard_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := PanelContainer.new()
-	chip.name = "EconomyDashboardChip"
-	chip.tooltip_text = tooltip
-	chip.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
-	parent.add_child(chip)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	chip.add_child(margin)
-	var label := _plain_label(text, 9, accent.lightened(0.12))
-	label.name = "EconomyDashboardChipLabel"
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.tooltip_text = tooltip
-	margin.add_child(label)
+func _economy_dashboard_chip_snapshots() -> Array:
+	return [
+		{
+			"text": "刷新%d" % business_cycle_count,
+			"accent": Color("#86efac"),
+			"tooltip": "公开供需、天气和市场类信息按全局刷新节奏更新。",
+		},
+		{
+			"text": "怪兽%d" % auto_monsters.size(),
+			"accent": Color("#fb7185"),
+			"tooltip": "怪兽落点会影响购牌来源、破坏、赌局和资源吸引。",
+		},
+		{
+			"text": _short_card_text(_weather_status_text(), 14),
+			"accent": Color("#38bdf8"),
+			"tooltip": "天气会影响受波及区域的生产、交通和消费。",
+		},
+	]
 
 
-func _add_economy_dashboard_kpi(parent: Container, title_text: String, value_text: String, meta_text: String, accent: Color, tooltip: String) -> void:
-	var card := PanelContainer.new()
-	card.name = "EconomyDashboardKpiCard"
-	card.custom_minimum_size = Vector2(0, 88)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = tooltip
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.11), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 10, accent.lightened(0.16))
-	title.name = "EconomyDashboardKpiTitle"
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	box.add_child(title)
-	var value := _plain_label(value_text, 20, Color("#f8fafc"))
-	value.name = "EconomyDashboardKpiValue"
-	value.autowrap_mode = TextServer.AUTOWRAP_OFF
-	value.clip_text = true
-	value.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(value)
-	var meta := _plain_label(meta_text, 9, Color("#94a3b8"))
-	meta.name = "EconomyDashboardKpiMeta"
-	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
-	meta.clip_text = true
-	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	meta.tooltip_text = tooltip
-	box.add_child(meta)
-
-
-func _add_economy_dashboard_list_card(parent: Container, title_text: String, lines: Array, accent: Color, tooltip: String = "") -> void:
-	var card := PanelContainer.new()
-	card.name = "EconomyDashboardListCard"
-	card.custom_minimum_size = Vector2(0, 146)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = tooltip
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 11, accent.lightened(0.18))
-	title.name = "EconomyDashboardListTitle"
-	title.tooltip_text = tooltip
-	box.add_child(title)
-	if lines.is_empty():
-		lines = ["暂无可读项"]
-	for line_variant in _first_entries(lines, 4):
-		var label := _plain_label("• %s" % _short_card_text(String(line_variant), 48), 9, Color("#cbd5e1"))
-		label.name = "EconomyDashboardListLine"
-		label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		label.clip_text = true
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		label.tooltip_text = String(line_variant)
-		box.add_child(label)
+func _economy_dashboard_kpi_snapshots(selected_name: String, product_entries: Array, city_entries: Array, clue_count: int) -> Array:
+	return [
+		{
+			"title": "GDP/min",
+			"value": "%d" % _player_gdp_per_minute(selected_player),
+			"meta": selected_name,
+			"accent": Color("#4ade80"),
+			"tooltip": "当前玩家可见城市现金流，按秒进入现金。",
+		},
+		{
+			"title": "商品热度",
+			"value": _economy_dashboard_top_product_value(product_entries),
+			"meta": "价格/供需/趋势",
+			"accent": Color("#facc15"),
+			"tooltip": "供给压价；需求、合约和天气可能抬价。",
+		},
+		{
+			"title": "城市前景",
+			"value": _economy_dashboard_top_city_value(city_entries),
+			"meta": "收入/断路/业主视角",
+			"accent": Color("#38bdf8"),
+			"tooltip": "城市GDP受生产、需求、交通、损伤、竞争和商路影响。",
+		},
+		{
+			"title": "公开线索",
+			"value": "%d" % clue_count,
+			"meta": "卡牌/城市/怪兽",
+			"accent": Color("#c084fc"),
+			"tooltip": "只汇总公开证据，不揭示隐藏现金、手牌或真实业主。",
+		},
+	]
 
 
 func _economy_dashboard_top_product_value(product_entries: Array) -> String:
@@ -5794,10 +5435,9 @@ func _open_final_settlement_menu(reason: String, rankings: Array) -> void:
 		return
 	var body_lines := []
 	body_lines.append("游戏结束：%s" % reason)
-	body_lines.append("")
-	body_lines.append(_final_run_summary_text(rankings))
-	body_lines.append("")
-	body_lines.append("接下来可以看局势排名确认每席资金来源，或打开经济总览复查 GDP、商品、商路和收入拆解；也可以直接回到开局准备再打一局。")
+	body_lines.append("终局总结已整理成赛后板：按胜者、钱源、公开事件、排名轨和赛后入口拆开。")
+	body_lines.append("复盘只使用公开/终局结算数据；隐藏手牌、私密推理和电脑对手路线不直接揭示。")
+	body_lines.append("接下来可以继续看局势排名或经济总览，也可以直接回到开局准备再打一局。")
 	_show_menu("终局结算", "\n".join(body_lines), false)
 	if menu_continue_button != null:
 		menu_continue_button.visible = false
@@ -5828,6 +5468,17 @@ func _populate_final_settlement_summary_cards(reason: String, rankings: Array) -
 
 
 func _add_final_settlement_board_panel(parent: Container, reason: String, rankings: Array) -> void:
+	var board := FinalSettlementBoardScene.instantiate() as Control
+	if board == null or not board.has_method("set_board"):
+		_report_required_ui_scene_missing("FinalSettlementBoard", "set_board")
+		return
+	if board.has_signal("action_requested"):
+		board.connect("action_requested", Callable(self, "_on_final_settlement_action_requested"))
+	parent.add_child(board)
+	board.call("set_board", _final_settlement_board_snapshot(reason, rankings))
+
+
+func _final_settlement_board_snapshot(reason: String, rankings: Array) -> Dictionary:
 	var ordered := rankings
 	if ordered.is_empty():
 		ordered = _final_score_rankings()
@@ -5854,124 +5505,141 @@ func _add_final_settlement_board_panel(parent: Container, reason: String, rankin
 			_player_name(int(top_city.get("owner", -1))),
 			maxi(0, int(top_city.get("last_income", 0))),
 		]
-	var panel := PanelContainer.new()
-	panel.name = "FinalSettlementBoardPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "终局复盘板：先看胜者、钱源、地图和关键影响，再打开详细排名或经济总览。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#facc15"), Color("#020617").lerp(Color("#facc15"), 0.08), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
+	return {
+		"title": "终局速览｜赛后记分板",
+		"title_tooltip": "像桌游电子版的赛后板：先扫最终排名，再决定查经济或再开一桌。",
+		"tooltip": "终局复盘板：先看胜者、钱源、地图和关键影响，再打开详细排名或经济总览。",
+		"accent": Color("#facc15"),
+		"kpi_columns": _menu_summary_grid_columns(),
+		"money_columns": clampi(int(floor(_menu_available_content_width() / 240.0)), 1, 4),
+		"rank_columns": clampi(int(floor(_menu_available_content_width() / 210.0)), 1, 4),
+		"action_columns": 3,
+		"chips": [
+			{"text": "胜者:%s" % _short_card_text(_player_name(winner_index), 10), "accent": Color("#facc15"), "tooltip": "最终结算资金最高者。"},
+			{"text": "目标¥%d" % _roguelike_cash_goal(), "accent": Color("#fef3c7"), "tooltip": "本层现金目标。"},
+			{"text": "城值¥%d" % CITY_FINAL_VALUE, "accent": Color("#4ade80"), "tooltip": "存活城市终局清算价值。"},
+		],
+		"kpis": [
+			{"title": "胜者", "body": "%s｜结算资金¥%d" % [_player_name(winner_index), winner_score], "meta": "游戏结束：%s" % reason, "accent": Color("#facc15")},
+			{
+				"title": "钱从哪里来",
+				"body": "城收:%s ¥%d｜卡牌:%s ¥%d｜角色:%s ¥%d" % [
+					_player_name(int(city_income.get("player_index", 0))),
+					maxi(0, int(city_income.get("amount", 0))),
+					_player_name(int(card_income.get("player_index", 0))),
+					maxi(0, int(card_income.get("amount", 0))),
+					_player_name(int(role_income.get("player_index", 0))),
+					maxi(0, int(role_income.get("amount", 0))),
+				],
+				"meta": "情报现金和存活城市清算也进入最终排名。",
+				"accent": Color("#4ade80"),
+			},
+			{"title": "关键地图", "body": city_body, "meta": "破坏、商路损伤和天气最终都会落到GDP变化。", "accent": Color("#38bdf8")},
+			{
+				"title": "关键影响",
+				"body": "%s｜%s" % [
+					_short_card_text(_top_card_impact_summary(2).replace("关键卡牌：", ""), 44),
+					_short_card_text(_monster_impact_summary().replace("怪兽影响：", ""), 44),
+				],
+				"meta": "只复盘公开卡牌、怪兽和地图影响；隐藏身份与私密手牌仍靠推理。",
+				"accent": Color("#c084fc"),
+			},
+		],
+		"money_title": "胜因拆解｜资金来源",
+		"money_sources": _final_settlement_money_source_snapshots(ordered),
+		"event_title": "公开事件｜牌轨与地图",
+		"event_lines": _final_settlement_event_lines(5),
+		"rank_title": "排名轨｜结算资金",
+		"ranks": _final_settlement_rank_snapshots(ordered),
+		"action_title": "赛后入口｜查原因或再开一桌",
+		"actions": [
+			{"id": "standings", "title": "查看局势排名", "body": "逐席查看结算资金、现金/城市/情报拆解和终局玩家概览。", "accent": Color("#facc15")},
+			{"id": "economy", "title": "打开经济总览", "body": "复查商品热榜、商路收入前景、城市 GDP 拆解和经济流水。", "accent": Color("#4ade80")},
+			{"id": "new_run", "title": "开局准备", "body": "重新选择席位、电脑对手、挑战层级和外星角色，开始下一局。", "accent": Color("#67e8f9")},
+		],
+	}
 
-	var header := HBoxContainer.new()
-	header.name = "FinalSettlementHeader"
-	header.add_theme_constant_override("separation", 8)
-	box.add_child(header)
-	var title := _plain_label("终局速览｜赛后记分板", 16, Color("#fef3c7"))
-	title.name = "FinalSettlementBoardTitle"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.tooltip_text = "像桌游电子版的赛后板：先扫最终排名，再决定查经济或再开一桌。"
-	header.add_child(title)
-	_add_final_settlement_chip(header, "胜者:%s" % _short_card_text(_player_name(winner_index), 10), Color("#facc15"), "最终结算资金最高者。")
-	_add_final_settlement_chip(header, "目标¥%d" % _roguelike_cash_goal(), Color("#fef3c7"), "本层现金目标。")
-	_add_final_settlement_chip(header, "城值¥%d" % CITY_FINAL_VALUE, Color("#4ade80"), "存活城市终局清算价值。")
 
-	var kpi_grid := GridContainer.new()
-	kpi_grid.name = "FinalSettlementKpiGrid"
-	kpi_grid.columns = _menu_summary_grid_columns()
-	kpi_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kpi_grid.add_theme_constant_override("h_separation", 8)
-	kpi_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(kpi_grid)
-	_add_final_settlement_kpi(
-		kpi_grid,
-		"胜者",
-		"%s｜结算资金¥%d" % [_player_name(winner_index), winner_score],
-		"游戏结束：%s" % reason,
-		Color("#facc15")
-	)
-	_add_final_settlement_kpi(
-		kpi_grid,
-		"钱从哪里来",
-		"城收:%s ¥%d｜卡牌:%s ¥%d｜角色:%s ¥%d" % [
-				_player_name(int(city_income.get("player_index", 0))),
-				maxi(0, int(city_income.get("amount", 0))),
-				_player_name(int(card_income.get("player_index", 0))),
-				maxi(0, int(card_income.get("amount", 0))),
-				_player_name(int(role_income.get("player_index", 0))),
-				maxi(0, int(role_income.get("amount", 0))),
+func _final_settlement_money_source_snapshots(rankings: Array) -> Array:
+	var snapshots := []
+	for entry_variant in _final_settlement_money_source_entries(rankings, 4):
+		var entry := entry_variant as Dictionary
+		var player_index := int(entry.get("player_index", -1))
+		if player_index < 0 or player_index >= players.size():
+			continue
+		var rank := int(entry.get("rank", 0))
+		var accent := Color("#facc15") if rank == 0 else _player_color(player_index)
+		var spend_total := int(entry.get("card_spend", 0)) + int(entry.get("build_spend", 0)) + int(entry.get("business_spend", 0))
+		var status := "出局" if bool(entry.get("eliminated", false)) else "在局"
+		snapshots.append({
+			"title": "#%d %s｜¥%d" % [rank + 1, _player_name(player_index), int(entry.get("score", 0))],
+			"start_line": "起手:基础¥%d + 角色%s = ¥%d" % [
+				int(entry.get("base_start_cash", STARTING_CASH)),
+				_signed_int_text(int(entry.get("role_start_bonus", 0))),
+				int(entry.get("start_cash", STARTING_CASH)),
 			],
-		"情报现金和存活城市清算也进入最终排名。",
-		Color("#4ade80")
-	)
-	_add_final_settlement_kpi(
-		kpi_grid,
-		"关键地图",
-		city_body,
-		"破坏、商路损伤和天气最终都会落到GDP变化。",
-		Color("#38bdf8")
-	)
-	_add_final_settlement_kpi(
-		kpi_grid,
-		"关键影响",
-		"%s｜%s" % [
-				_short_card_text(_top_card_impact_summary(2).replace("关键卡牌：", ""), 44),
-				_short_card_text(_monster_impact_summary().replace("怪兽影响：", ""), 44),
+			"settlement_line": "现金¥%d｜城值¥%d｜情报%s" % [
+				int(entry.get("cash", 0)),
+				int(entry.get("city_clearance", 0)),
+				_signed_int_text(int(entry.get("intel_cash", 0))),
 			],
-		"只复盘公开卡牌、怪兽和地图影响；隐藏身份与私密手牌仍靠推理。",
-		Color("#c084fc")
-	)
+			"income_line": "城收¥%d｜卡牌¥%d｜角色¥%d" % [
+				int(entry.get("city_income", 0)),
+				int(entry.get("card_income", 0)),
+				int(entry.get("role_income", 0)),
+			],
+			"status_line": "支出¥%d｜城%d｜GDP/min %d｜%s" % [
+				spend_total,
+				int(entry.get("active_cities", 0)),
+				int(entry.get("gdp_per_minute", 0)),
+				status,
+			],
+			"tooltip": "资金来源只使用公开/终局结算数据：基础资金、公开角色加成、现金、存活城市、情报结算和累计收支。",
+			"accent": accent,
+		})
+	return snapshots
 
-	_add_final_settlement_money_source_panel(box, ordered)
-	_add_final_settlement_event_panel(box)
 
-	var rank_title := _plain_label("排名轨｜结算资金", 13, Color("#dbeafe"))
-	rank_title.name = "FinalSettlementRankTrackTitle"
-	box.add_child(rank_title)
-	var rank_track := GridContainer.new()
-	rank_track.name = "FinalSettlementRankTrack"
-	rank_track.columns = clampi(int(floor(_menu_available_content_width() / 210.0)), 1, 4)
-	rank_track.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rank_track.add_theme_constant_override("h_separation", 7)
-	rank_track.add_theme_constant_override("v_separation", 7)
-	box.add_child(rank_track)
+func _final_settlement_rank_snapshots(rankings: Array) -> Array:
+	var ordered := rankings
+	if ordered.is_empty():
+		ordered = _final_score_rankings()
+	var snapshots := []
 	for rank in range(mini(ordered.size(), players.size())):
-		_add_final_settlement_rank_card(rank_track, rank, ordered[rank] as Dictionary)
+		var entry := ordered[rank] as Dictionary
+		var player_index := int(entry.get("player_index", rank))
+		if player_index < 0 or player_index >= players.size():
+			continue
+		var player: Dictionary = players[player_index]
+		var accent := Color("#facc15") if rank == 0 else _player_color(player_index)
+		snapshots.append({
+			"title": "#%d｜%s" % [rank + 1, _player_name(player_index)],
+			"score": "¥%d" % int(entry.get("score", _player_final_score(player_index))),
+			"stats": "现金¥%d｜城%d｜GDP/min %d" % [
+				int(player.get("cash", 0)),
+				_player_active_city_count(player_index),
+				_player_gdp_per_minute(player_index),
+			],
+			"income": "城收¥%d｜卡牌¥%d｜情报%s" % [
+				maxi(0, int(player.get("total_city_income", 0))),
+				maxi(0, int(player.get("total_card_income", 0))),
+				_signed_int_text(_player_intel_cash(player_index)),
+			],
+			"identity": _player_final_playstyle_summary(player_index),
+			"tooltip": "终局排名：现金 + 存活城市清算 + 情报现金。",
+			"accent": accent,
+		})
+	return snapshots
 
-	var actions_label := _plain_label("赛后入口｜查原因或再开一桌", 13, Color("#fde68a"))
-	actions_label.name = "FinalSettlementAfterActionTitle"
-	actions_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(actions_label)
-	var action_grid := GridContainer.new()
-	action_grid.name = "FinalSettlementAfterActionGrid"
-	action_grid.columns = 3
-	action_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	action_grid.add_theme_constant_override("h_separation", 8)
-	action_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(action_grid)
-	_add_menu_action_card(action_grid, "查看局势排名", "逐席查看结算资金、现金/城市/情报拆解和终局玩家概览。", Callable(self, "_open_standings_menu"), Color("#facc15"))
-	_add_menu_action_card(action_grid, "打开经济总览", "复查商品热榜、商路收入前景、城市 GDP 拆解和经济流水。", Callable(self, "_open_economy_overview_menu"), Color("#4ade80"))
-	_add_menu_action_card(action_grid, "开局准备", "重新选择席位、电脑对手、挑战层级和外星角色，开始下一局。", Callable(self, "_start_new_run_from_menu"), Color("#67e8f9"))
 
-
-func _add_final_settlement_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := _track_status_badge(text, accent.lightened(0.12), Color("#020617").lerp(accent, 0.20))
-	chip.name = "FinalSettlementHeaderChip"
-	chip.tooltip_text = tooltip
-	parent.add_child(chip)
-
-
-func _add_final_settlement_kpi(parent: Container, title_text: String, body_text: String, meta_text: String, accent: Color) -> void:
-	var card := _add_menu_info_card(parent, title_text, body_text, accent, meta_text)
-	card.name = "FinalSettlementKpiCard"
-	card.custom_minimum_size = Vector2(0, 118)
+func _on_final_settlement_action_requested(action_id: String) -> void:
+	match action_id:
+		"standings":
+			_open_standings_menu()
+		"economy":
+			_open_economy_overview_menu()
+		"new_run":
+			_start_new_run_from_menu()
 
 
 func _final_settlement_money_source_entries(rankings: Array, limit: int = 4) -> Array:
@@ -6011,89 +5679,6 @@ func _final_settlement_money_source_entries(rankings: Array, limit: int = 4) -> 
 	return entries
 
 
-func _add_final_settlement_money_source_panel(parent: Container, rankings: Array) -> void:
-	var entries := _final_settlement_money_source_entries(rankings, 4)
-	if entries.is_empty():
-		return
-	var title := _plain_label("胜因拆解｜资金来源", 13, Color("#bbf7d0"))
-	title.name = "FinalSettlementMoneySourceTitle"
-	title.tooltip_text = "起手资金分成共同基础资金和公开角色加成；后续胜负来自现金、城市清算、情报和经营收益。"
-	parent.add_child(title)
-	var grid := GridContainer.new()
-	grid.name = "FinalSettlementMoneySourcePanel"
-	grid.columns = clampi(int(floor(_menu_available_content_width() / 240.0)), 1, 4)
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 7)
-	grid.add_theme_constant_override("v_separation", 7)
-	parent.add_child(grid)
-	for entry_variant in entries:
-		_add_final_settlement_money_source_card(grid, entry_variant as Dictionary)
-
-
-func _add_final_settlement_money_source_card(parent: Container, entry: Dictionary) -> void:
-	var player_index := int(entry.get("player_index", -1))
-	if player_index < 0 or player_index >= players.size():
-		return
-	var rank := int(entry.get("rank", 0))
-	var accent := Color("#facc15") if rank == 0 else _player_color(player_index)
-	var card := PanelContainer.new()
-	card.name = "FinalSettlementMoneySourceCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 132)
-	card.tooltip_text = "资金来源只使用公开/终局结算数据：基础资金、公开角色加成、现金、存活城市、情报结算和累计收支。"
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.09), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var header := _plain_label("#%d %s｜¥%d" % [
-		rank + 1,
-		_player_name(player_index),
-		int(entry.get("score", 0)),
-	], 11, accent.lightened(0.14))
-	header.name = "FinalSettlementMoneySourceCardTitle"
-	header.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(header)
-	var start_line := _plain_label("起手:基础¥%d + 角色%s = ¥%d" % [
-		int(entry.get("base_start_cash", STARTING_CASH)),
-		_signed_int_text(int(entry.get("role_start_bonus", 0))),
-		int(entry.get("start_cash", STARTING_CASH)),
-	], 8, Color("#fde68a"))
-	start_line.name = "FinalSettlementStartingCashLine"
-	start_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(start_line)
-	var settlement_line := _plain_label("现金¥%d｜城值¥%d｜情报%s" % [
-		int(entry.get("cash", 0)),
-		int(entry.get("city_clearance", 0)),
-		_signed_int_text(int(entry.get("intel_cash", 0))),
-	], 9, Color("#e5e7eb"))
-	settlement_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(settlement_line)
-	var income_line := _plain_label("城收¥%d｜卡牌¥%d｜角色¥%d" % [
-		int(entry.get("city_income", 0)),
-		int(entry.get("card_income", 0)),
-		int(entry.get("role_income", 0)),
-	], 8, Color("#bae6fd"))
-	income_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(income_line)
-	var spend_total := int(entry.get("card_spend", 0)) + int(entry.get("build_spend", 0)) + int(entry.get("business_spend", 0))
-	var status := "出局" if bool(entry.get("eliminated", false)) else "在局"
-	var status_line := _plain_label("支出¥%d｜城%d｜GDP/min %d｜%s" % [
-		spend_total,
-		int(entry.get("active_cities", 0)),
-		int(entry.get("gdp_per_minute", 0)),
-		status,
-	], 8, Color("#94a3b8"))
-	status_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(status_line)
-
-
 func _final_settlement_event_lines(limit: int = 5) -> Array:
 	var lines := []
 	var card_summary := _top_card_impact_summary(3)
@@ -6121,82 +5706,6 @@ func _final_settlement_event_lines(limit: int = 5) -> Array:
 	if lines.is_empty():
 		lines.append("本局没有可复盘的公开事件。")
 	return lines.slice(0, mini(limit, lines.size()))
-
-
-func _add_final_settlement_event_panel(parent: Container) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "FinalSettlementEventPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "公开事件板：把历史牌轨、地图破坏、怪兽影响合成一条可复盘的时间线摘要。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.08), 1, 12))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label("公开事件｜牌轨与地图", 12, Color("#bfdbfe"))
-	title.name = "FinalSettlementEventTitle"
-	title.tooltip_text = "这里不揭示未公开的手牌、弃牌、AI路线或隐藏资金。"
-	box.add_child(title)
-	for line_variant in _final_settlement_event_lines(5):
-		var label := _plain_label("• %s" % String(line_variant), 9, Color("#cbd5e1"))
-		label.name = "FinalSettlementEventLine"
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(label)
-
-
-func _add_final_settlement_rank_card(parent: Container, rank: int, entry: Dictionary) -> void:
-	var player_index := int(entry.get("player_index", rank))
-	if player_index < 0 or player_index >= players.size():
-		return
-	var player: Dictionary = players[player_index]
-	var accent := Color("#facc15") if rank == 0 else _player_color(player_index)
-	var card := PanelContainer.new()
-	card.name = "FinalSettlementRankCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 118)
-	card.tooltip_text = "终局排名：现金 + 存活城市清算 + 情报现金。"
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 7)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label("#%d｜%s" % [rank + 1, _player_name(player_index)], 11, accent.lightened(0.16))
-	title.name = "FinalSettlementRankCardTitle"
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(title)
-	var score := _plain_label("¥%d" % int(entry.get("score", _player_final_score(player_index))), 18, Color("#f8fafc"))
-	score.name = "FinalSettlementRankScore"
-	box.add_child(score)
-	var stats := _plain_label("现金¥%d｜城%d｜GDP/min %d" % [
-		int(player.get("cash", 0)),
-		_player_active_city_count(player_index),
-		_player_gdp_per_minute(player_index),
-	], 9, Color("#cbd5e1"))
-	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(stats)
-	var income := _plain_label("城收¥%d｜卡牌¥%d｜情报%s" % [
-		maxi(0, int(player.get("total_city_income", 0))),
-		maxi(0, int(player.get("total_card_income", 0))),
-		_signed_int_text(_player_intel_cash(player_index)),
-	], 9, Color("#bae6fd"))
-	income.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(income)
-	var identity := _plain_label(_player_final_playstyle_summary(player_index), 8, Color("#94a3b8"))
-	identity.name = "FinalSettlementRankPrivacyLine"
-	identity.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(identity)
 
 
 func _open_intel_dossier_menu() -> void:
@@ -6244,8 +5753,9 @@ func _populate_intel_dossier_links(viewer_index: int) -> void:
 		var card_name := String(entry.get("card_name", ""))
 		if card_name == "":
 			continue
+		var link_label := "查看卡牌线索｜已选牌轨" if bool(entry.get("focused", false)) else "查看卡牌线索"
 		_add_intel_dossier_link_button(
-			"查看卡牌线索：%s" % String(entry.get("card", card_name)),
+			"%s：%s" % [link_label, String(entry.get("card", card_name))],
 			"跳到卡牌图鉴查看该匿名卡的目标、出牌条件、价格带和结算演出，帮助反推出牌者。",
 			Callable(self, "_open_intel_card_codex_link").bind(card_name)
 		)
@@ -6287,158 +5797,131 @@ func _populate_intel_dossier_links(viewer_index: int) -> void:
 
 
 func _add_intel_dossier_board_panel(parent: Container, viewer_index: int) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "IntelDossierBoardPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "桌游式情报板：先看已标城市、匿名卡、怪兽资金和仓储风险，再用下方按钮跳转查证。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#c084fc"), Color("#020617").lerp(Color("#c084fc"), 0.08), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
+	var board := IntelDossierBoardScene.instantiate() as Control
+	if board == null or not board.has_method("set_dossier"):
+		_report_required_ui_scene_missing("IntelDossierBoard", "set_dossier")
+		return
+	parent.add_child(board)
+	board.call("set_dossier", _intel_dossier_board_snapshot(viewer_index))
 
-	var header := HBoxContainer.new()
-	header.name = "IntelDossierBoardHeader"
-	header.add_theme_constant_override("separation", 8)
-	box.add_child(header)
-	var title := _plain_label("情报侦探板", 15, Color("#ede9fe"))
-	title.name = "IntelDossierBoardTitle"
-	title.tooltip_text = "先扫线索类别，再决定标注城市、猜卡牌归属或跳到图鉴查证。"
-	header.add_child(title)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(spacer)
-	_add_intel_dossier_board_chip(header, "终局揭晓", Color("#fef3c7"), "城市业主标注只在终局结算正误。")
-	_add_intel_dossier_board_chip(header, "即时竞猜¥%d" % CARD_OWNER_GUESS_STAKE, Color("#c4b5fd"), "卡牌归属竞猜猜中会公开该牌牌主标签。")
-	_add_intel_dossier_board_chip(header, "不看对手现金", Color("#94a3b8"), "情报页只整理可见证据，不扫描对手现金、手牌或真实资产。")
 
+func _intel_dossier_board_snapshot(viewer_index: int) -> Dictionary:
 	var stats := _player_intel_exposure_stats(viewer_index)
 	var city_entries := _intel_city_guess_entries(viewer_index, 5)
 	var card_entries := _intel_card_guess_entries(viewer_index, 5)
 	var monster_entries := _economy_monster_cash_clue_entries(5)
 	var warehouse_entries := _economy_warehouse_risk_entries(5, viewer_index)
 	var public_city_clues := _economy_city_public_clue_entries(5)
-
-	var kpi_grid := GridContainer.new()
-	kpi_grid.name = "IntelDossierKpiGrid"
-	kpi_grid.columns = clampi(int(floor(_menu_available_content_width() / 220.0)), 1, 4)
-	kpi_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kpi_grid.add_theme_constant_override("h_separation", 8)
-	kpi_grid.add_theme_constant_override("v_separation", 8)
-	box.add_child(kpi_grid)
-	_add_intel_dossier_kpi(kpi_grid, "城市标注", "%d/%d" % [int(stats.get("guessed", 0)), int(stats.get("total_foreign", 0))], "全对%s｜全错%s" % [_signed_int_text(int(stats.get("best_cash", 0))), _signed_int_text(int(stats.get("worst_cash", 0)))], Color("#38bdf8"), "陌生城市业主标注会在终局结算。")
-	_add_intel_dossier_kpi(kpi_grid, "待查城市", "%d" % int(stats.get("unmarked", 0)), "优先看高GDP/仓储/断路", Color("#facc15"), "未标注、高价值或有公开线索的城市更值得查。")
-	_add_intel_dossier_kpi(kpi_grid, "匿名牌", "%d" % card_entries.size(), "牌轨归属/条件", Color("#f472b6"), "匿名卡可通过商品门槛、目标、报价和结果反推。")
-	_add_intel_dossier_kpi(kpi_grid, "公开资金线索", "%d" % monster_entries.size(), "怪兽受伤/仓储风险%d" % warehouse_entries.size(), Color("#fb7185"), "怪兽资金损失和仓储城市会暴露匿名经济压力。")
-
-	var list_grid := GridContainer.new()
-	list_grid.name = "IntelDossierClueGrid"
-	list_grid.columns = clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3)
-	list_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list_grid.add_theme_constant_override("h_separation", 10)
-	list_grid.add_theme_constant_override("v_separation", 10)
-	box.add_child(list_grid)
-	_add_intel_dossier_list_card(list_grid, "城市嫌疑", _intel_board_city_lines(city_entries), Color("#38bdf8"), "优先标注高GDP、低置信、仓储或有公开线索的城市。")
-	_add_intel_dossier_list_card(list_grid, "匿名牌轨", _intel_board_card_lines(card_entries), Color("#f472b6"), "看匿名牌条件、目标和小费线索，再去猜牌主。")
-	_add_intel_dossier_list_card(list_grid, "怪兽资金", _intel_board_monster_lines(monster_entries), Color("#fb7185"), "怪兽受伤会暴露归属者资金损失，是强线索。")
-	_add_intel_dossier_list_card(list_grid, "仓储/做空靶标", _intel_board_warehouse_lines(warehouse_entries), Color("#fb923c"), "匿名仓储会把期货收益绑定到可被攻击的城市。")
-	_add_intel_dossier_list_card(list_grid, "城市公开线索", _intel_board_public_city_clue_lines(public_city_clues), Color("#4ade80"), "合约、经营改造、供需变化和新闻都会留下城市线索。")
-	_add_intel_dossier_list_card(list_grid, "下一步查证", _intel_board_next_step_lines(), Color("#a78bfa"), "先标高价值城市，再看牌轨和商品条件，最后用怪兽资金验证。")
-
-
-func _add_intel_dossier_board_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := PanelContainer.new()
-	chip.name = "IntelDossierBoardChip"
-	chip.tooltip_text = tooltip
-	chip.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
-	parent.add_child(chip)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	chip.add_child(margin)
-	var label := _plain_label(_short_card_text(text, 18), 9, accent.lightened(0.16))
-	label.name = "IntelDossierBoardChipLabel"
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.tooltip_text = tooltip
-	margin.add_child(label)
+	var chips := _intel_dossier_chip_snapshots()
+	var focused_card := _focused_intel_card_guess_entry(card_entries)
+	if not focused_card.is_empty():
+		chips.insert(0, {
+			"text": "已选牌轨:%s" % _short_card_text(String(focused_card.get("card", "匿名牌")), 8),
+			"accent": Color("#f472b6"),
+			"tooltip": "从主桌公开牌轨带入的当前匿名牌；优先看它的条件、目标、报价和余波。",
+		})
+	var clue_cards: Array = []
+	if not focused_card.is_empty():
+		var evidence_card := _focused_intel_card_evidence_card(focused_card)
+		if not evidence_card.is_empty():
+			clue_cards.append(evidence_card)
+	clue_cards.append_array([
+		{"title": "城市嫌疑", "lines": _intel_board_city_lines(city_entries), "accent": Color("#38bdf8"), "tooltip": "优先标注高GDP、低置信、仓储或有公开线索的城市。"},
+		{"title": "匿名牌轨", "lines": _intel_board_card_lines(card_entries), "accent": Color("#f472b6"), "tooltip": "看匿名牌条件、目标和小费线索，再去猜牌主。"},
+		{"title": "怪兽资金", "lines": _intel_board_monster_lines(monster_entries), "accent": Color("#fb7185"), "tooltip": "怪兽受伤会暴露归属者资金损失，是强线索。"},
+		{"title": "仓储/做空靶标", "lines": _intel_board_warehouse_lines(warehouse_entries), "accent": Color("#fb923c"), "tooltip": "匿名仓储会把期货收益绑定到可被攻击的城市。"},
+		{"title": "城市公开线索", "lines": _intel_board_public_city_clue_lines(public_city_clues), "accent": Color("#4ade80"), "tooltip": "合约、经营改造、供需变化和新闻都会留下城市线索。"},
+		{"title": "下一步查证", "lines": _intel_board_next_step_lines(), "accent": Color("#a78bfa"), "tooltip": "先标高价值城市，再看牌轨和商品条件，最后用怪兽资金验证。"},
+	])
+	return {
+		"title": "情报侦探板",
+		"title_tooltip": "先扫线索类别，再决定标注城市、猜卡牌归属或跳到图鉴查证。",
+		"tooltip": "桌游式情报板：先看已标城市、匿名卡、怪兽资金和仓储风险，再用下方按钮跳转查证。",
+		"accent": Color("#c084fc"),
+		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 220.0)), 1, 4),
+		"clue_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
+		"chips": chips,
+		"kpis": _intel_dossier_kpi_snapshots(stats, card_entries, monster_entries, warehouse_entries),
+		"clues": clue_cards,
+	}
 
 
-func _add_intel_dossier_kpi(parent: Container, title_text: String, value_text: String, meta_text: String, accent: Color, tooltip: String) -> void:
-	var card := PanelContainer.new()
-	card.name = "IntelDossierKpiCard"
-	card.custom_minimum_size = Vector2(0, 86)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = tooltip
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 10, accent.lightened(0.16))
-	title.name = "IntelDossierKpiTitle"
-	box.add_child(title)
-	var value := _plain_label(value_text, 18, Color("#f8fafc"))
-	value.name = "IntelDossierKpiValue"
-	value.autowrap_mode = TextServer.AUTOWRAP_OFF
-	value.clip_text = true
-	value.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(value)
-	var meta := _plain_label(meta_text, 9, Color("#94a3b8"))
-	meta.name = "IntelDossierKpiMeta"
-	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
-	meta.clip_text = true
-	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	meta.tooltip_text = tooltip
-	box.add_child(meta)
+func _intel_dossier_chip_snapshots() -> Array:
+	return [
+		{"text": "终局揭晓", "accent": Color("#fef3c7"), "tooltip": "城市业主标注只在终局结算正误。"},
+		{"text": "即时竞猜¥%d" % CARD_OWNER_GUESS_STAKE, "accent": Color("#c4b5fd"), "tooltip": "卡牌归属竞猜猜中会公开该牌牌主标签。"},
+		{"text": "不看对手现金", "accent": Color("#94a3b8"), "tooltip": "情报页只整理可见证据，不扫描对手现金、手牌或真实资产。"},
+	]
 
 
-func _add_intel_dossier_list_card(parent: Container, title_text: String, lines: Array, accent: Color, tooltip: String = "") -> void:
-	var card := PanelContainer.new()
-	card.name = "IntelDossierClueCard"
-	card.custom_minimum_size = Vector2(0, 146)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = tooltip
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 11, accent.lightened(0.18))
-	title.name = "IntelDossierClueTitle"
-	title.tooltip_text = tooltip
-	box.add_child(title)
-	if lines.is_empty():
-		lines = ["暂无可读线索"]
-	for line_variant in _first_entries(lines, 4):
-		var label := _plain_label("• %s" % _short_card_text(String(line_variant), 48), 9, Color("#cbd5e1"))
-		label.name = "IntelDossierClueLine"
-		label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		label.clip_text = true
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		label.tooltip_text = String(line_variant)
-		box.add_child(label)
+func _focused_intel_card_guess_entry(entries: Array) -> Dictionary:
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if bool(entry.get("focused", false)):
+			return entry
+	return {}
+
+
+func _focused_intel_card_evidence_card(entry: Dictionary) -> Dictionary:
+	if entry.is_empty():
+		return {}
+	return {
+		"title": "已选匿名牌证据链",
+		"lines": _focused_intel_card_evidence_lines(entry),
+		"accent": Color("#f472b6"),
+		"tooltip": "只整理这张匿名牌的公开状态、条件、目标、出价、余波和当前玩家自己的推理状态。",
+		"line_limit": 6,
+	}
+
+
+func _focused_intel_card_evidence_lines(entry: Dictionary) -> Array:
+	var card_text := String(entry.get("card", "匿名卡"))
+	var status_text := String(entry.get("status", "归属未知"))
+	var track_state := String(entry.get("track_state", "牌轨"))
+	var resolution_id := int(entry.get("resolution_id", -1))
+	var id_text := "#%d" % resolution_id if resolution_id >= 0 else "#?"
+	var tip_text := String(entry.get("tip", "")).strip_edges()
+	if tip_text == "":
+		tip_text = "暂无公开报价/小费线索。"
+	var aftermath_text := String(entry.get("aftermath", "")).strip_edges()
+	if aftermath_text == "":
+		aftermath_text = "尚未留下结算余波。"
+	var style_text := String(entry.get("style", "卡牌")).strip_edges()
+	var time_text := _intel_card_guess_time_text(float(entry.get("time", -1.0)))
+	return [
+		"牌槽证据｜%s｜%s｜%s｜%s" % [id_text, track_state, card_text, _short_card_text(status_text, 22)],
+		"出牌条件｜%s" % String(entry.get("requirement", "条件未知")),
+		"目标线索｜%s" % String(entry.get("target", "目标未知")),
+		"出价记录｜%s" % tip_text,
+		"余波线索｜%s｜%s｜%s" % [style_text, time_text, aftermath_text],
+		"私人推理｜%s" % _focused_intel_card_private_note(entry),
+	]
+
+
+func _intel_card_guess_time_text(time_value: float) -> String:
+	if time_value < 0.0:
+		return "时间未知"
+	return "T+%.1fs" % time_value
+
+
+func _focused_intel_card_private_note(entry: Dictionary) -> String:
+	var status_text := String(entry.get("status", "归属未知"))
+	if status_text.contains("我已查明") or status_text.contains("我已押注") or status_text.contains("我打出的牌"):
+		return "%s；这是当前玩家自己的视角，不向其他玩家公开。" % status_text
+	if bool(entry.get("revealed", false)):
+		return "归属已经通过竞猜公开；继续用余波和目标复盘来源。"
+	return "尚未押注或查明；可结合条件、目标、报价和地图余波决定是否竞猜。"
+
+
+func _intel_dossier_kpi_snapshots(stats: Dictionary, card_entries: Array, monster_entries: Array, warehouse_entries: Array) -> Array:
+	return [
+		{"title": "城市标注", "value": "%d/%d" % [int(stats.get("guessed", 0)), int(stats.get("total_foreign", 0))], "meta": "全对%s｜全错%s" % [_signed_int_text(int(stats.get("best_cash", 0))), _signed_int_text(int(stats.get("worst_cash", 0)))], "accent": Color("#38bdf8"), "tooltip": "陌生城市业主标注会在终局结算。"},
+		{"title": "待查城市", "value": "%d" % int(stats.get("unmarked", 0)), "meta": "优先看高GDP/仓储/断路", "accent": Color("#facc15"), "tooltip": "未标注、高价值或有公开线索的城市更值得查。"},
+		{"title": "匿名牌", "value": "%d" % card_entries.size(), "meta": "牌轨归属/条件", "accent": Color("#f472b6"), "tooltip": "匿名卡可通过商品门槛、目标、报价和结果反推。"},
+		{"title": "公开资金线索", "value": "%d" % monster_entries.size(), "meta": "怪兽受伤/仓储风险%d" % warehouse_entries.size(), "accent": Color("#fb7185"), "tooltip": "怪兽资金损失和仓储城市会暴露匿名经济压力。"},
+	]
 
 
 func _intel_board_city_lines(entries: Array) -> Array:
@@ -6463,10 +5946,16 @@ func _intel_board_card_lines(entries: Array) -> Array:
 	var lines := []
 	for entry_variant in _first_entries(entries, 4):
 		var entry := entry_variant as Dictionary
-		lines.append("%s｜%s｜%s" % [
+		var focus_prefix := "已选牌轨｜" if bool(entry.get("focused", false)) else ""
+		var secondary_clue := String(entry.get("tip", "")).strip_edges()
+		if secondary_clue == "":
+			secondary_clue = String(entry.get("target", "目标未知")).strip_edges()
+		lines.append("%s%s｜%s｜%s｜%s" % [
+			focus_prefix,
 			String(entry.get("card", "匿名卡")),
 			_short_card_text(String(entry.get("status", "归属未知")), 18),
 			_short_card_text(String(entry.get("requirement", "条件未知")), 18),
+			_short_card_text(secondary_clue, 18),
 		])
 	if lines.is_empty():
 		lines.append("暂无匿名牌轨记录。")
@@ -6617,32 +6106,59 @@ func _intel_dossier_text(viewer_index: int) -> String:
 	var viewer_name := String(players[viewer_index].get("name", "玩家%d" % (viewer_index + 1))) if viewer_index >= 0 and viewer_index < players.size() else "无当前玩家"
 	var lines := []
 	lines.append("情报档案")
-	lines.append("当前玩家：%s｜刷新%d｜不揭示正误，不扫描对手现金/手牌。" % [
+	lines.append("城市标注、匿名牌轨、怪兽资金和仓储风险集中管理；当前玩家：%s｜刷新%d｜不揭示正误，不扫描对手现金/手牌。" % [
 		viewer_name,
 		business_cycle_count,
 	])
-	lines.append("情报换钱：城市标注在终局范围内结算；当前不揭示正误。")
 	lines.append("城市标注终局结算：猜对+¥%d，猜错-¥%d；卡牌归属竞猜即时押¥%d，猜中才公开牌主。" % [
 		INTEL_CORRECT_GUESS_CASH,
 		INTEL_WRONG_GUESS_COST,
 		CARD_OWNER_GUESS_STAKE,
 	])
-	lines.append("城市业主情报：私密标注只给自己看，终局范围按外部存活城市计算。")
-	lines.append("卡牌归属档案：匿名牌轨可押注，猜中才贴公开归属标签。")
-	lines.append("怪兽资金档案：怪兽受伤会让归属玩家掉钱；城市公开线索档案记录建城、破坏和商品变化。")
-	lines.append("仓储风险线索：匿名仓储会把商品期货收益绑定到某座城市；仓储风险越高，越像做空、齐射、军队或怪兽的靶标。")
-	lines.append("调查优先级：优先级高的城市通常是高GDP、同商品竞争、怪兽靠近或被匿名牌频繁影响的区域。")
-	lines.append(_player_city_guess_confidence_summary(viewer_index))
-	lines.append(_player_city_guess_reason_summary(viewer_index))
-	var marked_lines := []
+	lines.append("情报换钱｜城市私标只在终局范围结算；卡牌押注即时转账；当前不揭示正误，也不扫描对手现金/手牌。")
+	var city_guess_lines := []
 	for entry_variant in _intel_city_guess_entries(viewer_index, 4):
-		var entry := entry_variant as Dictionary
-		if bool(entry.get("marked", false)):
-			marked_lines.append(_intel_city_guess_line(entry))
-	lines.append("城市业主情报明细：%s" % ("；".join(marked_lines) if not marked_lines.is_empty() else "暂无私人标注"))
+		city_guess_lines.append(_intel_city_guess_line(entry_variant as Dictionary))
+	if city_guess_lines.is_empty():
+		city_guess_lines.append("暂无陌生城市；先城市化或观察公开线索。")
+	lines.append("城市业主情报｜终局范围：猜对+¥%d/猜错-¥%d｜%s" % [
+		INTEL_CORRECT_GUESS_CASH,
+		INTEL_WRONG_GUESS_COST,
+		"；".join(city_guess_lines),
+	])
+	var card_guess_lines := []
+	for entry_variant in _intel_card_guess_entries(viewer_index, 4):
+		card_guess_lines.append(_intel_card_guess_line(entry_variant as Dictionary))
+	if card_guess_lines.is_empty():
+		card_guess_lines.append("暂无可押注匿名牌；等待牌轨出现已结算或候补匿名牌。")
+	lines.append("卡牌归属档案｜押注¥%d｜猜中才公开牌主，猜错只私下转账｜%s" % [
+		CARD_OWNER_GUESS_STAKE,
+		"；".join(card_guess_lines),
+	])
+	var monster_lines := []
+	for entry_variant in _economy_monster_cash_clue_entries(3):
+		monster_lines.append(_economy_monster_cash_clue_line(entry_variant as Dictionary))
+	if monster_lines.is_empty():
+		monster_lines.append("暂无怪兽受伤资金线索。")
+	lines.append("怪兽资金档案｜受伤按最大生命比例掉钱，累计损失会形成公开归属线索｜%s" % "；".join(monster_lines))
+	var warehouse_lines := []
+	for entry_variant in _economy_warehouse_risk_entries(4, viewer_index):
+		warehouse_lines.append(_economy_warehouse_risk_line(entry_variant as Dictionary))
+	if warehouse_lines.is_empty():
+		warehouse_lines.append("暂无仓储风险线索。")
+	lines.append("仓储风险线索｜匿名仓储会暴露可被做空、齐射、驻军或引怪的城市压力｜%s" % "；".join(warehouse_lines))
+	var city_clue_lines := []
+	for entry_variant in _economy_city_public_clue_entries(3):
+		city_clue_lines.append(_economy_city_public_clue_line(entry_variant as Dictionary))
+	if city_clue_lines.is_empty():
+		city_clue_lines.append("暂无城市公开线索。")
+	lines.append("城市公开线索档案｜类型/商品/收入变化可辅助城市业主判断｜%s" % "；".join(city_clue_lines))
+	lines.append("调查优先级｜优先级越高越值得先标注或押注；先看高GDP、仓储风险、怪兽冲突和匿名牌轨。")
 	lines.append("下方侦探板把城市嫌疑、匿名牌轨、怪兽资金、仓储风险和公开线索拆成短卡。")
 	lines.append("交叉读法：城市商品/需求 → 卡牌门槛/目标 → 怪兽偏好/资金损失 → 标注或押注。")
-	lines.append("终局资金仍按：现金 + 存活城市×%d + 情报现金。" % [
+	lines.append("置信:%s｜理由:%s｜终局资金 = 现金 + 存活城市×%d + 情报现金。" % [
+		_short_card_text(_player_city_guess_confidence_summary(viewer_index), 28),
+		_short_card_text(_player_city_guess_reason_summary(viewer_index), 28),
 		CITY_FINAL_VALUE,
 	])
 	return "\n".join(lines)
@@ -6654,36 +6170,72 @@ func _economy_overview_text() -> String:
 	_ensure_product_market_catalog()
 	_refresh_city_networks()
 	var lines := []
+	var product_entries := _economy_product_entries()
+	var cold_entries := product_entries.duplicate(true)
+	cold_entries.sort_custom(Callable(self, "_sort_economy_product_cold_entry"))
+	var city_entries := _economy_city_income_entries()
 	lines.append("经济总览")
 	lines.append("看三件事：钱从哪座城来，哪个商品在变贵，哪些公开动作留下线索。")
-	lines.append("城市现金按秒进账；商品供需、天气和商路会改变GDP/min。")
-	lines.append("情报现金只在终局兑现；进行中只显示公开线索和当前玩家自己的流水。")
-	lines.append("商品热榜：高价/需求拉动；低价/供给压制可用来买低、改需求、做期货或诱导怪兽。")
-	lines.append("商路收入前景：看生产、需求、交通速度和断路；玩家经济隐私仍保留。")
-	lines.append("公开异动：城市GDP、怪兽资金损失、匿名牌轨、合约和天气；对手现金、手牌和私密推理保持隐藏。")
-	lines.append("经济天气：%s｜最近卡牌余波：%d条｜最近城市公开线索：类型:建城/破坏/商品，线索商品:%s。" % [
+	lines.append("城市现金按秒进账；商品供需、天气和商路会改变GDP/min；对手现金、手牌和私密推理保持隐藏。")
+	lines.append("情报现金只在终局兑现；当前页只整理公开证据和当前玩家自己的经济流水，不验证隐藏真相。")
+	lines.append("经济天气:%s｜卡牌余波:%d条｜城市线索商品:%s｜怪兽资金线索:%d条。" % [
 		_short_card_text(_weather_status_text(), 28),
 		_economy_card_aftermath_entries(5).size(),
 		_limited_name_list(_current_run_product_names(), 3, "暂无"),
+		_economy_monster_cash_clue_entries(5).size(),
 	])
-	lines.append("最近怪兽资金线索：%d条，最大生命比例用于估算谁因怪兽受伤掉钱。" % _economy_monster_cash_clue_entries(5).size())
-	lines.append("当前玩家推理板：城市私标、公开卡牌归属、卡牌条件反推、公开怪兽归属都会分区显示，不替玩家揭示真相。")
-	lines.append("仓储靶标：匿名仓储城市会暴露可攻击的商品囤积点；用做空、齐射、军队或引怪兽去破坏它。")
-	lines.append("公开状态[价格/供需/天气/断路]；流水只显示当前玩家收支；收入拆解会列生产、消费、交通、伤害与合约；GDP趋势记录最近变化。")
+	var hot_lines := []
+	for entry_variant in _first_entries(product_entries, 3):
+		hot_lines.append(_economy_product_line(entry_variant as Dictionary))
+	if hot_lines.is_empty():
+		hot_lines.append("暂无商品价格；先等待市场刷新或建城生产。")
+	lines.append("商品热榜｜%s" % "；".join(hot_lines))
+	var cold_lines := []
+	for entry_variant in _first_entries(cold_entries, 2):
+		cold_lines.append(_economy_product_line(entry_variant as Dictionary))
+	if cold_lines.is_empty():
+		cold_lines.append("暂无低价商品。")
+	lines.append("低价/供给压制｜%s" % "；".join(cold_lines))
+	var city_lines := []
+	for entry_variant in _first_entries(city_entries, 3):
+		city_lines.append(_economy_city_income_line(entry_variant as Dictionary))
+	if city_lines.is_empty():
+		city_lines.append("暂无城市；先城市化陆地。")
+	lines.append("商路收入前景｜玩家经济隐私：对手现金、手牌和私密流水不公开｜%s" % "；".join(city_lines))
+	lines.append(_public_situation_summary_text())
 	var aftermath_lines := []
-	for entry_variant in _economy_card_aftermath_entries(3):
+	for entry_variant in _economy_card_aftermath_entries(5):
 		aftermath_lines.append(_economy_card_aftermath_line(entry_variant as Dictionary))
-	lines.append("最近卡牌余波：%s" % ("；".join(aftermath_lines) if not aftermath_lines.is_empty() else "暂无｜归属未知｜线索:等待匿名出牌"))
+	if aftermath_lines.is_empty():
+		aftermath_lines.append("暂无匿名卡余波；看顶部牌轨等待公开结果。")
+	lines.append("最近卡牌余波｜%s" % "；".join(aftermath_lines))
 	var city_clue_lines := []
-	for clue_variant in _economy_city_public_clue_entries(3):
-		city_clue_lines.append(_economy_city_public_clue_line(clue_variant as Dictionary))
-	lines.append("最近城市公开线索：%s" % ("；".join(city_clue_lines) if not city_clue_lines.is_empty() else "暂无｜类型:等待｜线索商品:无"))
+	for entry_variant in _economy_city_public_clue_entries(4):
+		city_clue_lines.append(_economy_city_public_clue_line(entry_variant as Dictionary))
+	if city_clue_lines.is_empty():
+		city_clue_lines.append("类型:暂无｜线索商品:暂无｜等待城市公开线索。")
+	lines.append("最近城市公开线索｜%s" % "；".join(city_clue_lines))
 	var monster_clue_lines := []
-	for monster_variant in _economy_monster_cash_clue_entries(3):
-		monster_clue_lines.append(_economy_monster_cash_clue_line(monster_variant as Dictionary))
-	lines.append("最近怪兽资金线索：%s｜最大生命比例按怪兽最大生命折算现金损失。" % ("；".join(monster_clue_lines) if not monster_clue_lines.is_empty() else "暂无"))
-	var inference_lines := _economy_inference_board_lines(selected_player)
-	lines.append("当前玩家推理板：%s" % "；".join(inference_lines))
+	for entry_variant in _economy_monster_cash_clue_entries(4):
+		monster_clue_lines.append(_economy_monster_cash_clue_line(entry_variant as Dictionary))
+	if monster_clue_lines.is_empty():
+		monster_clue_lines.append("暂无伤害资金线索。")
+	lines.append("最近怪兽资金线索｜最大生命比例决定归属方掉钱幅度｜%s" % "；".join(monster_clue_lines))
+	var warehouse_lines := []
+	for entry_variant in _economy_warehouse_risk_entries(3, selected_player):
+		warehouse_lines.append(_economy_warehouse_risk_line(entry_variant as Dictionary))
+	if warehouse_lines.is_empty():
+		warehouse_lines.append("暂无匿名仓储靶标。")
+	lines.append("仓储靶标｜匿名仓储会把期货收益绑定到可被攻击的城市｜%s" % "；".join(warehouse_lines))
+	lines.append("当前玩家推理板")
+	for line_variant in _economy_inference_board_lines(selected_player):
+		lines.append(String(line_variant))
+	var cash_lines := []
+	for entry_variant in _first_entries(_economy_player_cash_entries(), players.size()):
+		cash_lines.append(_economy_player_cash_line(entry_variant as Dictionary))
+	if cash_lines.is_empty():
+		cash_lines.append("暂无玩家经济流水。")
+	lines.append("玩家经济流水｜%s" % "；".join(cash_lines))
 	lines.append("下方仪表板只显示可扫读信息；悬停每一行可看完整证据。")
 	lines.append("刷新%d｜当前玩家：%s｜怪兽%d只｜%s" % [
 		business_cycle_count,
@@ -7204,6 +6756,7 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 		if skill.is_empty():
 			continue
 		var card_name := String(skill.get("name", ""))
+		var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
 		var owner_index := int(entry.get("player_index", -1))
 		var owner_revealed := bool(entry.get("public_owner_revealed", false))
 		var guessers: Array = entry.get("guessers", []) as Array
@@ -7218,21 +6771,62 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 		elif viewer_index >= 0 and guessers.has(viewer_index):
 			status = "我已押注｜真实归属仍隐藏"
 		var time_value := float(entry.get("resolved_time", entry.get("queued_order", -1.0)))
+		var style_key := String(entry.get("aftermath_style", _card_resolution_effect_style(skill)))
 		entries.append({
+			"resolution_id": resolution_id,
 			"card": _card_resolution_entry_card_label(entry),
 			"card_name": card_name,
+			"track_state": _intel_card_guess_track_state(entry, resolution_id),
 			"status": status,
 			"target": _card_resolution_target_text(skill, entry),
 			"requirement": _card_resolution_play_requirement_text(entry).replace("打出条件：", ""),
 			"tip": _card_resolution_tip_clue_text(entry),
+			"aftermath": String(entry.get("aftermath_clue", "")),
+			"style": _card_resolution_effect_style_label(style_key),
 			"time": time_value,
 			"revealed": owner_revealed,
+			"focused": resolution_id >= 0 and resolution_id == selected_card_resolution_id,
 		})
 	entries.sort_custom(Callable(self, "_sort_intel_card_guess_entry"))
 	return _first_entries(entries, limit)
 
 
+func _intel_card_guess_track_state(entry: Dictionary, resolution_id: int) -> String:
+	if resolution_id < 0:
+		return "牌轨"
+	if int(active_card_resolution.get("resolution_id", active_card_resolution.get("queued_order", -1))) == resolution_id:
+		return "当前展示"
+	for i in range(card_resolution_queue.size()):
+		var queue_variant: Variant = card_resolution_queue[i]
+		if not (queue_variant is Dictionary):
+			continue
+		var queue_entry := queue_variant as Dictionary
+		if int(queue_entry.get("resolution_id", queue_entry.get("queued_order", -1))) != resolution_id:
+			continue
+		if card_resolution_auction_open:
+			return "竞拍%d" % (i + 1)
+		if card_resolution_batch_locked or not active_card_resolution.is_empty():
+			return "锁定%d" % (i + 1)
+		return "待定%d" % (i + 1)
+	for i in range(next_card_resolution_queue.size()):
+		var next_variant: Variant = next_card_resolution_queue[i]
+		if next_variant is Dictionary:
+			var next_entry := next_variant as Dictionary
+			if int(next_entry.get("resolution_id", next_entry.get("queued_order", -1))) == resolution_id:
+				return "下批等待%d" % (i + 1)
+	for history_variant in resolved_card_history:
+		if history_variant is Dictionary:
+			var history_entry := history_variant as Dictionary
+			if int(history_entry.get("resolution_id", history_entry.get("queued_order", -1))) == resolution_id:
+				return "已结算"
+	return String(entry.get("track_state", "牌轨"))
+
+
 func _sort_intel_card_guess_entry(a: Dictionary, b: Dictionary) -> bool:
+	var a_focused := bool(a.get("focused", false))
+	var b_focused := bool(b.get("focused", false))
+	if a_focused != b_focused:
+		return a_focused
 	var a_time := float(a.get("time", -1.0))
 	var b_time := float(b.get("time", -1.0))
 	if not is_equal_approx(a_time, b_time):
@@ -7786,25 +7380,65 @@ func _open_compendium_menu() -> void:
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
-		var hint := _plain_label("选择要查看的子图鉴：", 13, Color("#cbd5e1"))
-		hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		menu_preview_box.add_child(hint)
-		_add_compendium_menu_button("角色图鉴", "查看外星辛迪加角色卡、公开身份和开局能力。", Callable(self, "_open_role_codex_from_compendium"))
-		_add_compendium_menu_button("怪兽生态档案", "查看场上怪兽单位的属性、自动行动表、资源偏好和破坏数据；对应召唤牌从卡牌图鉴跳转。", Callable(self, "_open_bestiary_from_compendium"))
-		_add_compendium_menu_button("卡牌图鉴", "查看卡面、目标、费用、升级效果和预览。", Callable(self, "_open_card_codex_from_compendium"))
-		_add_compendium_menu_button("商品图鉴", "查看外星商品价格带、本局供需、趋势和商路断损。", Callable(self, "_open_product_codex_menu"))
-		_add_compendium_menu_button("区域图鉴", "查看本局每个区域的地形、供需、城市公开状态和可提供卡牌。", Callable(self, "_open_region_codex_menu"))
-		var back_button := Button.new()
-		back_button.text = "返回主菜单"
-		_style_menu_button(back_button, Color("#38bdf8"))
-		back_button.pressed.connect(Callable(self, "_open_main_menu"))
-		menu_preview_box.add_child(back_button)
+		_add_compendium_hub_board(menu_preview_box)
 
 
-func _add_compendium_menu_button(button_text: String, detail_text: String, target: Callable) -> void:
-	if menu_preview_box == null:
+func _add_compendium_hub_board(parent: Container) -> void:
+	var board := CompendiumHubBoardScene.instantiate() as Control
+	if board == null or not board.has_method("set_hub"):
+		_report_required_ui_scene_missing("CompendiumHubBoard", "set_hub")
 		return
-	_add_menu_action_card(menu_preview_box, button_text, detail_text, target, _menu_action_accent_for_text(button_text))
+	if board.has_signal("action_requested"):
+		board.connect("action_requested", Callable(self, "_on_compendium_hub_action_requested"))
+	parent.add_child(board)
+	board.call("set_hub", _compendium_hub_snapshot())
+
+
+func _compendium_hub_snapshot() -> Dictionary:
+	return {
+		"title": "资料大厅",
+		"title_tooltip": "图鉴入口页：把长资料集中在 Codex，不挤主桌。",
+		"tooltip": "资料大厅：角色、卡牌、商品、区域与怪兽生态都在这里查看。怪兽牌属于卡牌图鉴。",
+		"accent": Color("#f472b6"),
+		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 310.0)), 1, 3),
+		"action_columns": clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 3),
+		"chips": [
+			{"text": "角色/卡牌/商品", "accent": Color("#fce7f3"), "tooltip": "公开身份、卡面和商品市场都进资料库。"},
+			{"text": "区域/怪兽生态", "accent": Color("#bfdbfe"), "tooltip": "区域图鉴看地图事实；生态档案看场上怪兽行为。"},
+			{"text": "主桌不放长资料", "accent": Color("#fde68a"), "tooltip": "长说明只在 Codex，主桌只保留当前行动和短解释。"},
+		],
+		"kpis": [
+			{"title": "资料边界", "body": "怪兽牌属于卡牌图鉴；怪兽生态档案看单位行为。", "meta": "卡牌/单位分开读。", "accent": Color("#fb7185")},
+			{"title": "隐私边界", "body": "角色公开，手牌、现金和怪兽归属仍靠场上线索推理。", "meta": "不扫描对手私牌。", "accent": Color("#c084fc")},
+			{"title": "返回路径", "body": "进入子图鉴后，用本页返回按钮回资料大厅。", "meta": "Codex 内部导航不影响牌桌。", "accent": Color("#38bdf8")},
+		],
+		"action_title": "图鉴分支｜选择一个资料板",
+		"actions": [
+			{"id": "role", "title": "角色图鉴", "body": "查看外星辛迪加角色卡、公开身份和开局能力。", "accent": Color("#c084fc")},
+			{"id": "monster", "title": "怪兽生态档案", "body": "查看场上怪兽单位的属性、自动行动表、资源偏好和破坏数据。", "accent": Color("#fb7185")},
+			{"id": "card", "title": "卡牌图鉴", "body": "查看卡面、目标、费用、升级效果和预览。", "accent": Color("#f472b6")},
+			{"id": "product", "title": "商品图鉴", "body": "查看外星商品价格带、本局供需、趋势和商路断损。", "accent": Color("#facc15")},
+			{"id": "region", "title": "区域图鉴", "body": "查看本局每个区域的地形、供需、城市公开状态和可提供卡牌。", "accent": Color("#38bdf8")},
+			{"id": "main", "title": "返回主菜单", "body": "回到星球赌桌大厅。", "accent": Color("#67e8f9")},
+		],
+		"footer": "资料大厅只承载长资料；主桌继续只保留当前行动、短解释和可点击入口。",
+	}
+
+
+func _on_compendium_hub_action_requested(action_id: String) -> void:
+	match action_id:
+		"role":
+			_open_role_codex_from_compendium()
+		"monster":
+			_open_bestiary_from_compendium()
+		"card":
+			_open_card_codex_from_compendium()
+		"product":
+			_open_product_codex_menu()
+		"region":
+			_open_region_codex_menu()
+		"main":
+			_open_main_menu()
 
 
 func _menu_action_accent_for_text(button_text: String) -> Color:
@@ -7831,27 +7465,23 @@ func _standings_text() -> String:
 	_refresh_city_networks()
 	var lines := []
 	lines.append("局势排名")
-	lines.append("目标：有人达到¥%d后进入倒计时，结束按钱最多排名。" % _roguelike_cash_goal())
-	lines.append("预估结算资金：当前只精确显示你的现金、城市和公开资产；对手资金靠线索推理。")
-	lines.append("计分：现金 + 存活城市×%d + 情报现金；城市业主猜对+¥%d，猜错-¥%d。" % [
+	lines.append("目标¥%d；达到后进入终局沙漏，结束按钱最多排名。" % _roguelike_cash_goal())
+	lines.append("当前只精确显示你的现金、城市和公开资产；对手资金、手牌和私密推理保持隐藏。")
+	lines.append("预估结算资金 = 当前现金 + 存活城市清算 + 情报待结算；对手现金、手牌和私密推理保持隐藏。")
+	lines.append("计分 = 现金 + 存活城市×%d + 情报现金；猜对+¥%d，猜错-¥%d。" % [
 		CITY_FINAL_VALUE,
 		INTEL_CORRECT_GUESS_CASH,
 		INTEL_WRONG_GUESS_COST,
 	])
-	lines.append("资产清单：存活城市%d×¥%d；情报待结算，终局才揭示正误。" % [
-		_active_city_district_indices().size(),
-		CITY_FINAL_VALUE,
-	])
 	if selected_player >= 0 and selected_player < players.size():
-		lines.append("我的资产：存活城市%d×¥%d｜现金¥%d｜%s。" % [
+		lines.append("我的资产：存活城市%d×¥%d｜现金¥%d｜%s｜%s。" % [
 			_player_active_city_count(selected_player),
 			CITY_FINAL_VALUE,
 			int(players[selected_player].get("cash", 0)),
 			_player_intel_display_summary(selected_player),
+			_short_card_text(_victory_countdown_status_text(), 24),
 		])
-	lines.append(_victory_countdown_status_text())
-	lines.append("公开异动：看牌轨、城市GDP、怪兽受伤、合约和商品价格；对手现金、手牌和私密推理保持隐藏。")
-	lines.append("下方记分板只精确显示当前玩家；对手真实资产仍靠牌轨、地图、怪兽与商品线索推理。")
+	lines.append("公开异动看牌轨、城市GDP、怪兽受伤、合约和商品价格；下方记分板只精确显示当前玩家，对手真实资产靠线索推理。")
 	if game_over:
 		lines.append("")
 		lines.append(_final_run_summary_text(_final_score_rankings()))
@@ -8630,11 +8260,32 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 		menu_bestiary_next_button.visible = false
 		menu_bestiary_back_button.visible = false
 	menu_overlay.visible = true
+	if menu_overlay.has_method("present_menu_shell"):
+		menu_overlay.call("present_menu_shell", {
+			"title": title_text,
+			"body": body_text,
+			"context": _menu_context_text(title_text, show_main_actions),
+			"context_visible": not root_table_menu,
+			"hint": _menu_interaction_hint_text(title_text, show_main_actions),
+			"hint_visible": not root_table_menu,
+			"continue_disabled": not can_continue,
+			"continue_visible": can_continue and show_main_actions and not root_table_menu,
+			"back_visible": not show_main_actions,
+			"nav_visible": not root_table_menu,
+			"run_save_visible": show_main_actions,
+			"root_table_menu": root_table_menu,
+			"viewport_size": _menu_viewport_size(),
+		})
+		for button in menu_regular_buttons:
+			button.visible = show_main_actions
+		_refresh_run_save_menu_state()
 	_refresh_menu_layout()
 	call_deferred("_refresh_menu_layout")
 
 
 func _hide_global_menu_navigation_for_catalog() -> void:
+	if menu_overlay != null and menu_overlay.has_method("hide_global_navigation"):
+		menu_overlay.call("hide_global_navigation")
 	if menu_continue_button != null:
 		menu_continue_button.visible = false
 	if menu_back_button != null:
@@ -8836,7 +8487,7 @@ func _update_bestiary_menu() -> void:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
 		if bestiary_show_detail:
-			_add_bestiary_monster_board_panel(menu_preview_box, bestiary_index)
+			_add_bestiary_detail(menu_preview_box, bestiary_index)
 			_add_bestiary_monster_card_link(menu_preview_box, bestiary_index)
 		else:
 			_populate_bestiary_thumbnail_page(menu_preview_box)
@@ -9127,6 +8778,157 @@ func _add_bestiary_ecology_info_cards(parent: Container, catalog_index: int, com
 			Color("#fde047"),
 			"召唤者获得的绑定技能不占手牌上限；升级会增加技能张数并提高危险行动概率。"
 		)
+
+
+func _add_bestiary_detail(parent: Container, catalog_index: int) -> void:
+	var detail := BestiaryDetailScene.instantiate() as Control
+	if detail == null:
+		_add_bestiary_monster_board_panel(parent, catalog_index)
+		return
+	detail.name = "BestiaryMonsterBoardPanel"
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(detail)
+	if detail.has_method("set_monster"):
+		detail.call("set_monster", _bestiary_detail_snapshot(catalog_index))
+	else:
+		parent.remove_child(detail)
+		detail.queue_free()
+		_add_bestiary_monster_board_panel(parent, catalog_index)
+
+
+func _bestiary_detail_snapshot(catalog_index: int) -> Dictionary:
+	var entry := _catalog_entry(catalog_index)
+	var ecology := _monster_ecology_identity_entry(catalog_index)
+	var monster_name := String(entry.get("name", "怪兽"))
+	var profile := _monster_art_profile(monster_name)
+	var accent := Color("#fb7185")
+	if profile.has("accent"):
+		accent = profile.get("accent")
+	return {
+		"title": "%s｜怪兽单位档案" % monster_name,
+		"subtitle": String(entry.get("style", "自动怪兽。")),
+		"tooltip": _bestiary_detail_tooltip(catalog_index),
+		"accent": accent,
+		"art": {
+			"name": monster_name,
+			"style": String(entry.get("style", "自动怪兽。")),
+			"hp": int(entry.get("hp", 0)),
+			"armor": int(entry.get("armor", 0)),
+			"move_text": _meters_text(float(entry.get("move", MONSTER_RAMPAGE_MOVE_METERS))),
+			"profile": profile,
+		},
+		"chips": _bestiary_detail_chip_snapshots(catalog_index, entry, ecology),
+		"kpis": _bestiary_detail_kpi_snapshots(catalog_index, entry, ecology),
+		"action_title": "行动概率板｜I级/IV级｜开局/破坏后",
+		"action_tooltip": "怪兽仍会自动行动；召唤者只能用绑定技能牌做一次性指令。",
+		"actions": _bestiary_detail_action_snapshots(catalog_index, accent),
+	}
+
+
+func _bestiary_detail_chip_snapshots(catalog_index: int, entry: Dictionary, ecology: Dictionary) -> Array:
+	return [
+		{
+			"text": "HP%d" % int(entry.get("hp", 0)),
+			"fg": Color("#fecdd3"),
+			"accent": Color("#fecdd3"),
+			"tooltip": "怪兽生命值。受伤会让召唤者按比例损失钱，并可能暴露归属。",
+		},
+		{
+			"text": "甲%d" % int(entry.get("armor", 0)),
+			"fg": Color("#bfdbfe"),
+			"accent": Color("#bfdbfe"),
+			"tooltip": "护甲越高，越不容易被军队或其他怪兽快速清掉。",
+		},
+		{
+			"text": "速%s" % _meters_text(_catalog_move_speed(catalog_index)),
+			"fg": Color("#fdba74"),
+			"accent": Color("#fdba74"),
+			"tooltip": "移动按米/秒线性推进；飞行/水栖会影响路径破坏与地形速度。",
+		},
+		{
+			"text": String(ecology.get("movement_archetype", "通用")),
+			"fg": Color("#93c5fd"),
+			"accent": Color("#93c5fd"),
+			"tooltip": _monster_mobility_summary_from_fields(ecology.get("movement_traits", []) as Array, ecology.get("terrain_move_multiplier", {}) as Dictionary),
+		},
+		{
+			"text": "偏好:%s" % _short_card_text(_bestiary_public_resource_text(entry), 12),
+			"fg": Color("#bbf7d0"),
+			"accent": Color("#bbf7d0"),
+			"tooltip": "偏好商品会影响它被哪些区域吸引。",
+		},
+		{
+			"text": "相遇%s" % _meters_text(AUTO_MONSTER_ENCOUNTER_RANGE_METERS),
+			"fg": Color("#fca5a5"),
+			"accent": Color("#fca5a5"),
+			"tooltip": "怪兽靠近到相遇范围会触发战斗与怪兽赌局。",
+		},
+	]
+
+
+func _bestiary_detail_kpi_snapshots(catalog_index: int, entry: Dictionary, ecology: Dictionary) -> Array:
+	var role_tags := "、".join(ecology.get("role_tags", []) as Array)
+	var movement_text := _monster_mobility_summary_from_fields(ecology.get("movement_traits", []) as Array, ecology.get("terrain_move_multiplier", {}) as Dictionary)
+	var boon: Dictionary = ecology.get("economy_boon", {}) as Dictionary
+	var economy_text := String(boon.get("label", "暂无经济钩子")) if not boon.is_empty() else "暂无经济钩子"
+	return [
+		{
+			"title": "生态位",
+			"value": "%s｜%s" % [String(ecology.get("movement_archetype", "通用")), movement_text],
+			"meta": "召唤:%s｜移动%s" % [String(ecology.get("summon_access", "monster_zone")), _meters_text(float(ecology.get("move", 0.0)))],
+			"accent": Color("#fb923c"),
+		},
+		{
+			"title": "资源与经济",
+			"value": _short_card_text(_bestiary_public_resource_text(entry), 34),
+			"meta": "吸取%d｜%s" % [int(ecology.get("resource_drain", 0)), economy_text],
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "行动定位",
+			"value": _short_card_text(role_tags, 34),
+			"meta": "最高伤%d｜射程%s" % [int(ecology.get("max_damage", 0)), _meters_text(float(ecology.get("max_range", 0.0)))],
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "固定技能成长",
+			"value": _bestiary_bound_ladder_text(catalog_index),
+			"meta": "IV概率:%s" % String(ecology.get("rank_iv_shift", "无变化")),
+			"accent": Color("#fde047"),
+		},
+	]
+
+
+func _bestiary_detail_action_snapshots(catalog_index: int, accent: Color) -> Array:
+	var result := []
+	var actions := _catalog_actions(catalog_index)
+	for i in range(min(actions.size(), 6)):
+		var action := actions[i] as Dictionary
+		var action_accent := accent.lerp(Color("#fde68a"), clampf(float(i) / 7.0, 0.0, 0.45))
+		var action_text := String(action.get("text", "自动行动。"))
+		var facts := _catalog_action_numeric_facts(action)
+		result.append({
+			"index": "%02d" % (i + 1),
+			"name": String(action.get("name", "行动")),
+			"tags": "、".join(_monster_action_role_tags(action)),
+			"probability": "I %s/%s｜IV %s/%s" % [
+				_bestiary_action_probability_short(catalog_index, i, false, 1),
+				_bestiary_action_probability_short(catalog_index, i, true, 1),
+				_bestiary_action_probability_short(catalog_index, i, false, 4),
+				_bestiary_action_probability_short(catalog_index, i, true, 4),
+			],
+			"probability_tooltip": _bestiary_action_probability_tooltip(catalog_index, i),
+			"facts": facts,
+			"body": _short_card_text(action_text, 72),
+			"tooltip": "%s\n%s\n%s\n%s" % [
+				String(action.get("name", "行动")),
+				_bestiary_action_probability_tooltip(catalog_index, i),
+				facts,
+				action_text,
+			],
+			"accent": action_accent,
+		})
+	return result
 
 
 func _add_bestiary_monster_board_panel(parent: Container, catalog_index: int) -> void:
@@ -9492,10 +9294,9 @@ func _update_card_codex_menu() -> void:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
 		if card_codex_show_detail:
-			_add_card_codex_detail_layout(menu_preview_box, card_name, skill)
+			_add_card_codex_detail(menu_preview_box, card_name, skill)
 		else:
-			_add_card_codex_filter_buttons(menu_preview_box)
-			_populate_card_codex_thumbnail_page(menu_preview_box, names)
+			_add_card_codex_browser(menu_preview_box, names)
 
 
 func _card_codex_grid_columns() -> int:
@@ -9607,6 +9408,128 @@ func _turn_card_codex_grid_page(step: int) -> void:
 	previewed_card_codex_card = String(names[first_index])
 	card_codex_show_detail = false
 	_update_card_codex_menu()
+
+
+func _add_card_codex_browser(parent: Container, names: Array) -> void:
+	var browser := CardCodexBrowserScene.instantiate()
+	if browser == null:
+		_add_card_codex_filter_buttons(parent)
+		_populate_card_codex_thumbnail_page(parent, names)
+		return
+	browser.name = "CardCodexBrowserPanel"
+	parent.add_child(browser)
+	if browser.has_signal("filter_selected"):
+		browser.connect("filter_selected", Callable(self, "_set_card_codex_filter"))
+	if browser.has_signal("page_step_requested"):
+		browser.connect("page_step_requested", Callable(self, "_turn_card_codex_grid_page"))
+	if browser.has_signal("card_preview_requested"):
+		browser.connect("card_preview_requested", Callable(self, "_preview_card_codex_card").bind(true))
+	if browser.has_signal("card_detail_requested"):
+		browser.connect("card_detail_requested", Callable(self, "_open_card_codex_detail"))
+	if browser.has_method("set_browser"):
+		browser.call("set_browser", _card_codex_browser_snapshot(names))
+
+
+func _card_codex_browser_snapshot(names: Array) -> Dictionary:
+	var snapshot: Dictionary = CardCodexBrowserSnapshotScript.new().apply_dictionary({
+		"names": names,
+		"columns": _card_codex_grid_columns(),
+		"rows": _card_codex_grid_rows(),
+		"page_index": card_codex_grid_page,
+		"filter_id": card_codex_filter,
+		"selected_card": previewed_card_codex_card,
+		"icon_legend": _card_icon_legend_text(),
+		"filters": _card_codex_browser_filter_sources(),
+		"cards": _card_codex_browser_card_sources(names),
+		"preview": _card_codex_browser_preview_source(),
+	}).to_ui_dictionary()
+	card_codex_grid_page = int(snapshot.get("page_index", card_codex_grid_page))
+	previewed_card_codex_card = String(snapshot.get("selected_card", previewed_card_codex_card))
+	card_codex_index = int(snapshot.get("selected_index", card_codex_index))
+	return snapshot
+
+
+func _card_codex_browser_filter_sources() -> Array:
+	var filters: Array = []
+	for option_variant in _card_codex_filter_options():
+		var option: Dictionary = option_variant
+		var filter_id := String(option.get("id", "all"))
+		var label := String(option.get("label", filter_id))
+		var count := _card_codex_names(filter_id).size()
+		filters.append({
+			"id": filter_id,
+			"label": label,
+			"short_label": _card_codex_short_filter_label(filter_id),
+			"icon": _card_category_icon(filter_id),
+			"count": count,
+			"accent": _menu_action_accent_for_text(label),
+		})
+	return filters
+
+
+func _card_codex_browser_card_sources(names: Array) -> Array:
+	var cards: Array = []
+	for i in range(names.size()):
+		cards.append(_card_codex_browser_card_source(String(names[i]), i))
+	return cards
+
+
+func _card_codex_browser_card_source(card_name: String, card_index: int) -> Dictionary:
+	var skill := _skill_definition(card_name)
+	var accent := _card_theme_color(skill)
+	var chips: Array = []
+	for entry_variant in _card_face_chip_entries(card_name, skill, selected_player, selected_district).slice(0, 4):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		chips.append({
+			"text": String(entry.get("text", "")),
+			"tooltip": String(entry.get("tip", "")),
+			"fg": entry.get("fg", Color("#e2e8f0")) as Color,
+			"accent": entry.get("fg", accent) as Color,
+		})
+	return {
+		"card_name": card_name,
+		"title": "%s %s｜%s" % [_card_icon_for_card(skill, card_name), _skill_family(card_name), _level_text(_skill_rank(card_name))],
+		"title_tooltip": _card_display_name(card_name),
+		"art_text": "%s\n%s" % [_card_display_name(card_name), _skill_tag_text(skill)],
+		"kind": String(skill.get("kind", "")),
+		"chips": chips,
+		"route": _short_card_text(_card_strategy_route_label(skill), 18),
+		"route_tooltip": _card_strategy_summary(skill, true),
+		"effect": _short_card_text(_card_face_quick_effect_text(card_name, skill, true), 30),
+		"effect_tooltip": _skill_display_text(skill),
+		"hint": "悬停预览｜双击详情",
+		"tooltip": _card_detail_tooltip(card_name),
+		"accent": accent,
+		"index": card_index,
+	}
+
+
+func _card_codex_browser_preview_source() -> Dictionary:
+	var preview_name := previewed_card_codex_card
+	var names := _card_codex_names()
+	if preview_name == "" or not names.has(preview_name):
+		if names.is_empty():
+			return {}
+		preview_name = String(names[0])
+	var preview_skill := _skill_definition(preview_name)
+	if preview_skill.is_empty():
+		return {}
+	return {
+		"title": "悬停预览：%s %s" % [_card_icon_for_card(preview_skill, preview_name), _card_display_name(preview_name)],
+		"body": "%s\nI→IV：%s" % [
+			"路线：%s｜%s" % [_card_strategy_route_label(preview_skill), _card_rules_text(preview_name, preview_skill, true).replace("\n", "｜")],
+			_card_level_gradient_text(preview_name).replace("\n", " / "),
+		],
+		"accent": _card_theme_color(preview_skill),
+	}
+
+
+func _card_codex_browser_node() -> Node:
+	if menu_preview_box == null:
+		return null
+	return menu_preview_box.find_child("CardCodexBrowserPanel", true, false)
 
 
 func _populate_card_codex_thumbnail_page(parent: Container, names: Array) -> void:
@@ -9779,6 +9702,10 @@ func _add_card_codex_hover_preview(parent: Container) -> void:
 
 func _refresh_card_codex_hover_preview_only() -> void:
 	if menu_preview_box == null:
+		return
+	var browser := _card_codex_browser_node()
+	if browser != null and browser.has_method("set_browser"):
+		browser.call("set_browser", _card_codex_browser_snapshot(_card_codex_names()))
 		return
 	for child in menu_preview_box.get_children():
 		if String(child.name) == "CardCodexHoverPreview":
@@ -9981,160 +9908,57 @@ func _role_codex_privacy_line(role_card: Dictionary) -> String:
 func _add_role_codex_identity_board_panel(parent: Container, role_card: Dictionary, index: int, total: int) -> void:
 	if role_card.is_empty():
 		return
+	var board := RoleCodexIdentityBoardScene.instantiate() as Control
+	if board == null or not board.has_method("set_role"):
+		_report_required_ui_scene_missing("RoleCodexIdentityBoard", "set_role")
+		return
+	parent.add_child(board)
+	board.call("set_role", _role_codex_identity_board_snapshot(role_card, index, total))
+
+
+func _role_codex_identity_board_snapshot(role_card: Dictionary, index: int, total: int) -> Dictionary:
 	var accent := _role_card_theme_color(role_card)
-	var panel := PanelContainer.new()
-	panel.name = "RoleCodexIdentityBoardPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "公开身份牌：先看牌路、能力、信息边界和开局打法，再决定是否选择这个角色。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 9)
-	margin.add_child(box)
-
-	var header := HBoxContainer.new()
-	header.name = "RoleCodexIdentityHeader"
-	header.add_theme_constant_override("separation", 10)
-	box.add_child(header)
-	var face_holder := CenterContainer.new()
-	face_holder.name = "RoleCodexIdentityFaceSlot"
-	face_holder.custom_minimum_size = Vector2(250, 0)
-	header.add_child(face_holder)
-	_add_role_card_face(face_holder, role_card, false)
-	var header_stack := VBoxContainer.new()
-	header_stack.name = "RoleCodexIdentityHeaderStack"
-	header_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header_stack.add_theme_constant_override("separation", 6)
-	header.add_child(header_stack)
-	var title := _plain_label("%s｜第%d/%d张" % [String(role_card.get("name", "外星辛迪加")), index + 1, total], 16, Color("#f8fafc"))
-	title.name = "RoleCodexIdentityTitle"
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	header_stack.add_child(title)
-	var subtitle := _plain_label("%s｜%s" % [String(role_card.get("species", "未知外星人")), _role_codex_route_label(role_card)], 10, accent.lightened(0.18))
-	subtitle.name = "RoleCodexIdentitySubtitle"
-	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	header_stack.add_child(subtitle)
-
-	var chip_rail := HFlowContainer.new()
-	chip_rail.name = "RoleCodexIdentityChipRail"
-	chip_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip_rail.add_theme_constant_override("h_separation", 5)
-	chip_rail.add_theme_constant_override("v_separation", 3)
-	header_stack.add_child(chip_rail)
-	_add_role_codex_chip(chip_rail, "公开角色", Color("#fde68a"), "角色身份是公开信息。")
-	_add_role_codex_chip(chip_rail, "首召独立", Color("#bfdbfe"), "首召怪兽在开局准备独立选择，不由角色绑定。")
-	for tag_variant in _first_entries(_role_codex_route_tags(role_card), 4):
-		_add_role_codex_chip(chip_rail, String(tag_variant), accent.lightened(0.10), "这个角色的主要牌路定位。")
-
-	var kpi_grid := GridContainer.new()
-	kpi_grid.name = "RoleCodexAbilityKpiGrid"
-	kpi_grid.columns = 4
-	kpi_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	kpi_grid.add_theme_constant_override("h_separation", 7)
-	kpi_grid.add_theme_constant_override("v_separation", 7)
-	header_stack.add_child(kpi_grid)
-	_add_role_codex_kpi(kpi_grid, "经济", _short_card_text(_role_codex_economy_line(role_card), 34), "现金/商品/购牌收益", Color("#bbf7d0"))
-	_add_role_codex_kpi(kpi_grid, "情报", _short_card_text(_role_codex_intel_line(role_card), 34), "侦测、追溯和竞猜优势", Color("#c4b5fd"))
-	_add_role_codex_kpi(kpi_grid, "控制", _short_card_text(_role_codex_control_line(role_card), 34), "购牌范围、合约、单位或反制", Color("#93c5fd"))
-	_add_role_codex_kpi(kpi_grid, "开局", _short_card_text(_role_codex_opening_hint(role_card), 34), "第一局建议动作", Color("#facc15"))
-
-	var card_grid := GridContainer.new()
-	card_grid.name = "RoleCodexRouteCardGrid"
-	card_grid.columns = 3
-	card_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_grid.add_theme_constant_override("h_separation", 7)
-	card_grid.add_theme_constant_override("v_separation", 7)
-	box.add_child(card_grid)
-	_add_role_codex_route_card(card_grid, "被动能力", _short_card_text(_role_passive_text(role_card), 92), Color("#fde68a"), _role_passive_text(role_card))
-	_add_role_codex_route_card(card_grid, "角色特征", _short_card_text(String(role_card.get("trait", "暂无特征")), 92), accent, String(role_card.get("trait", "暂无特征")))
-	_add_role_codex_route_card(card_grid, "信息边界", _role_codex_privacy_line(role_card), Color("#f0abfc"), _role_codex_privacy_line(role_card))
-	_add_role_codex_route_card(card_grid, "开局打法", _short_card_text(_role_codex_opening_hint(role_card), 92), Color("#4ade80"), _role_codex_opening_hint(role_card))
-	_add_role_codex_route_card(card_grid, "选择提醒", "选角色不选怪兽；怪兽归属要靠场上线索推理。", Color("#38bdf8"), "角色公开、首召怪兽独立、起始怪兽牌属性只看怪兽牌。")
-	_add_role_codex_route_card(card_grid, "风味", _short_card_text(String(role_card.get("flavor", "暂无设定")), 92), Color("#fb923c"), String(role_card.get("flavor", "暂无设定")))
+	var route_tags := _role_codex_route_tags(role_card)
+	var chips := [
+		{"text": "公开角色", "accent": Color("#fde68a"), "tooltip": "角色身份是公开信息。"},
+		{"text": "首召独立", "accent": Color("#bfdbfe"), "tooltip": "首召怪兽在开局准备独立选择，不由角色绑定。"},
+	]
+	for tag_variant in _first_entries(route_tags, 4):
+		chips.append({"text": String(tag_variant), "accent": accent.lightened(0.10), "tooltip": "这个角色的主要牌路定位。"})
+	return {
+		"title": "%s｜第%d/%d张" % [String(role_card.get("name", "外星辛迪加")), index + 1, total],
+		"title_tooltip": "公开身份牌：先看牌路、能力、信息边界和开局打法，再决定是否选择这个角色。",
+		"subtitle": "%s｜%s" % [String(role_card.get("species", "未知外星人")), _role_codex_route_label(role_card)],
+		"tooltip": "公开身份牌：先看牌路、能力、信息边界和开局打法，再决定是否选择这个角色。",
+		"accent": accent,
+		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 210.0)), 1, 4),
+		"route_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
+		"face": _role_codex_card_face_snapshot(role_card),
+		"chips": chips,
+		"kpis": [
+			{"title": "经济", "value": _short_card_text(_role_codex_economy_line(role_card), 34), "meta": "现金/商品/购牌收益", "accent": Color("#bbf7d0")},
+			{"title": "情报", "value": _short_card_text(_role_codex_intel_line(role_card), 34), "meta": "侦测、追溯和竞猜优势", "accent": Color("#c4b5fd")},
+			{"title": "控制", "value": _short_card_text(_role_codex_control_line(role_card), 34), "meta": "购牌范围、合约、单位或反制", "accent": Color("#93c5fd")},
+			{"title": "开局", "value": _short_card_text(_role_codex_opening_hint(role_card), 34), "meta": "第一局建议动作", "accent": Color("#facc15")},
+		],
+		"routes": [
+			{"title": "被动能力", "body": _short_card_text(_role_passive_text(role_card), 92), "tooltip": _role_passive_text(role_card), "accent": Color("#fde68a")},
+			{"title": "角色特征", "body": _short_card_text(String(role_card.get("trait", "暂无特征")), 92), "tooltip": String(role_card.get("trait", "暂无特征")), "accent": accent},
+			{"title": "信息边界", "body": _role_codex_privacy_line(role_card), "tooltip": _role_codex_privacy_line(role_card), "accent": Color("#f0abfc")},
+			{"title": "开局打法", "body": _short_card_text(_role_codex_opening_hint(role_card), 92), "tooltip": _role_codex_opening_hint(role_card), "accent": Color("#4ade80")},
+			{"title": "选择提醒", "body": "选角色不选怪兽；怪兽归属要靠场上线索推理。", "tooltip": "角色公开、首召怪兽独立、起始怪兽牌属性只看怪兽牌。", "accent": Color("#38bdf8")},
+			{"title": "风味", "body": _short_card_text(String(role_card.get("flavor", "暂无设定")), 92), "tooltip": String(role_card.get("flavor", "暂无设定")), "accent": Color("#fb923c")},
+		],
+	}
 
 
-func _add_role_codex_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := _track_status_badge(text, accent.lightened(0.12), Color("#020617").lerp(accent, 0.20))
-	chip.name = "RoleCodexIdentityChip"
-	chip.tooltip_text = tooltip
-	parent.add_child(chip)
-
-
-func _add_role_codex_kpi(parent: Container, title_text: String, value_text: String, meta_text: String, accent: Color) -> void:
-	var card := PanelContainer.new()
-	card.name = "RoleCodexAbilityKpiCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 82)
-	card.tooltip_text = "%s｜%s｜%s" % [title_text, value_text, meta_text]
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 7)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	margin.add_child(box)
-	box.add_child(_plain_label(title_text, 10, accent.lightened(0.18)))
-	var value := _plain_label(_short_card_text(value_text, 36), 12, Color("#f8fafc"))
-	value.name = "RoleCodexAbilityKpiValue"
-	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	value.tooltip_text = value_text
-	box.add_child(value)
-	var meta := _plain_label(_short_card_text(meta_text, 42), 9, Color("#94a3b8"))
-	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	meta.tooltip_text = meta_text
-	box.add_child(meta)
-
-
-func _add_role_codex_route_card(parent: Container, title_text: String, body_text: String, accent: Color, tooltip: String = "") -> void:
-	var card := PanelContainer.new()
-	card.name = "RoleCodexRouteCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 94)
-	card.tooltip_text = tooltip if tooltip != "" else body_text
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 9)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 9)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 11, accent.lightened(0.14))
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	box.add_child(title)
-	var body := _plain_label(_short_card_text(body_text, 90), 10, Color("#e5e7eb"))
-	body.name = "RoleCodexRouteCardBody"
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.tooltip_text = card.tooltip_text
-	box.add_child(body)
-
-
-func _add_role_card_preview(parent: Container, role_card: Dictionary) -> void:
-	var center := CenterContainer.new()
-	parent.add_child(center)
-	_add_role_card_face(center, role_card, false)
-	var note := _plain_label("角色卡公开；怪兽归属仍靠场上线索推理。", 11, Color("#94a3b8"))
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	parent.add_child(note)
-
-
-func _add_role_starter_links(parent: Container, role_card: Dictionary) -> void:
-	var note := _plain_label("首召怪兽在「开局准备」独立选择；怪兽牌看卡牌图鉴，怪兽行为看生态档案。", 12, Color("#fde68a"))
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	parent.add_child(note)
+func _role_codex_card_face_snapshot(role_card: Dictionary) -> Dictionary:
+	var face := _new_game_setup_role_card_face_snapshot(role_card)
+	face["minimum_width"] = 230.0
+	face["minimum_height"] = 270.0
+	face["effect"] = _role_card_face_text(role_card, false)
+	face["rank"] = _short_card_text(String(role_card.get("species", "角色")), 10)
+	return face
 
 
 func _open_role_starter_card_in_codex(card_name: String) -> void:
@@ -10576,7 +10400,146 @@ func _refresh_product_codex_hover_preview_only() -> void:
 
 
 func _add_product_codex_detail_preview(parent: Container, product_name: String) -> void:
-	_add_product_codex_market_board_panel(parent, product_name)
+	_add_product_codex_detail(parent, product_name)
+
+
+func _add_product_codex_detail(parent: Container, product_name: String) -> void:
+	var detail := ProductCodexDetailScene.instantiate() as Control
+	if detail == null:
+		_add_product_codex_market_board_panel(parent, product_name)
+		return
+	detail.name = "ProductCodexMarketBoardPanel"
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(detail)
+	if detail.has_method("set_product"):
+		detail.call("set_product", _product_codex_detail_snapshot(product_name))
+	else:
+		parent.remove_child(detail)
+		detail.queue_free()
+		_add_product_codex_market_board_panel(parent, product_name)
+
+
+func _product_codex_detail_snapshot(product_name: String) -> Dictionary:
+	_ensure_product_market_catalog()
+	var accent := _product_codex_color(product_name)
+	var secondary := _product_codex_secondary_color(product_name)
+	var profile := _product_profile(product_name)
+	var entry: Dictionary = product_market.get(product_name, {})
+	var current_price := _product_price(product_name)
+	var base_price := int(entry.get("base_price", current_price))
+	var category := String(profile.get("category", "商品"))
+	var route := String(profile.get("route", "商业线"))
+	var terrain := String(profile.get("terrain", "通用"))
+	var use_text := String(profile.get("use", "观察供需、合约、仓储和怪兽偏好。"))
+	return {
+		"title": "%s｜%s" % [product_name, route],
+		"subtitle": "%s｜地形:%s｜%s" % [category, terrain, use_text],
+		"tooltip": "商品市场板：先看价格、供需、路线、期货仓储、怪兽偏好和地图入口。",
+		"accent": accent,
+		"secondary": secondary,
+		"badge": {
+			"name": product_name,
+			"glyph": String(profile.get("glyph", "◇")),
+			"profile": "%s｜%s" % [category, route],
+			"terrain": "地形:%s" % terrain,
+			"price": "¥%d｜基准¥%d｜%s" % [current_price, base_price, _product_trend_text(product_name)],
+			"meter": "供%d 需%d 断%d 波%d" % [
+				int(entry.get("supply", 0)),
+				int(entry.get("demand", 0)),
+				int(entry.get("disrupted", 0)),
+				int(entry.get("volatility", 0)),
+			],
+			"weather": _short_card_text(_product_market_boon_text(product_name), 80),
+			"use": use_text,
+			"accent": accent,
+			"secondary": secondary,
+		},
+		"chips": _product_codex_detail_chip_snapshots(product_name, entry, current_price, base_price),
+		"kpis": _product_codex_detail_kpi_snapshots(product_name, entry, current_price),
+		"strategies": _product_codex_strategy_snapshots(product_name, profile),
+	}
+
+
+func _product_codex_detail_chip_snapshots(product_name: String, entry: Dictionary, current_price: int, base_price: int) -> Array:
+	return [
+		{"text": "¥%d" % current_price, "fg": Color("#bbf7d0"), "accent": Color("#bbf7d0"), "tooltip": "当前市场价。"},
+		{"text": "基准¥%d" % base_price, "fg": Color("#fde68a"), "accent": Color("#fde68a"), "tooltip": "商品基准价。"},
+		{"text": _product_trend_text(product_name), "fg": Color("#fef3c7"), "accent": Color("#fef3c7"), "tooltip": "最近价格趋势。"},
+		{"text": "供%d" % int(entry.get("supply", 0)), "fg": Color("#4ade80"), "accent": Color("#4ade80"), "tooltip": "公开供给越多，价格越容易下行。"},
+		{"text": "需%d" % int(entry.get("demand", 0)), "fg": Color("#fb7185"), "accent": Color("#fb7185"), "tooltip": "公开需求越多，价格越容易上行。"},
+		{"text": "断%d" % int(entry.get("disrupted", 0)), "fg": Color("#f97316"), "accent": Color("#f97316"), "tooltip": "商路断损会改变相关GDP和价格。"},
+		{"text": "波%d" % int(entry.get("volatility", 0)), "fg": Color("#c084fc"), "accent": Color("#c084fc"), "tooltip": "波动越高，金融/期货判断越敏感。"},
+	]
+
+
+func _product_codex_detail_kpi_snapshots(product_name: String, entry: Dictionary, current_price: int) -> Array:
+	return [
+		{
+			"title": "价格",
+			"value": "¥%d｜%s" % [current_price, _product_tier(product_name)],
+			"meta": "近期:%s" % _product_price_path_text(entry),
+			"accent": Color("#bbf7d0"),
+		},
+		{
+			"title": "主策略",
+			"value": _product_primary_strategy_tag(product_name),
+			"meta": _short_card_text(_product_strategy_summary_text(product_name), 42),
+			"accent": Color("#facc15"),
+		},
+		{
+			"title": "天气",
+			"value": _short_card_text(_product_market_boon_text(product_name), 34),
+			"meta": "天气会改写产/交/消",
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "牌路",
+			"value": _short_card_text(_product_related_card_names(product_name, 4), 34),
+			"meta": "相关卡牌会在有该商品的星球/区域出现",
+			"accent": Color("#a78bfa"),
+		},
+	]
+
+
+func _product_codex_strategy_snapshots(product_name: String, profile: Dictionary) -> Array:
+	return [
+		{
+			"title": "策略用途",
+			"body": _short_card_text(String(profile.get("hook", "当前没有额外牌路。")), 82),
+			"tooltip": _product_strategy_summary_text(product_name),
+			"accent": Color("#fde68a"),
+		},
+		{
+			"title": "期货/仓储",
+			"body": _short_card_text(_product_futures_warehouse_codex_text(product_name, true), 82),
+			"tooltip": _product_futures_warehouse_codex_text(product_name),
+			"accent": Color("#f97316"),
+		},
+		{
+			"title": "怪兽偏好",
+			"body": _short_card_text(_product_monster_focus_strategy_text(product_name, true), 82),
+			"tooltip": _product_monster_focus_strategy_text(product_name),
+			"accent": Color("#fb923c"),
+		},
+		{
+			"title": "地图供给",
+			"body": _short_card_text(_product_related_district_names(product_name, "products"), 82),
+			"tooltip": "本地供给区域：%s" % _product_related_district_names(product_name, "products"),
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "地图需求",
+			"body": _short_card_text(_product_related_district_names(product_name, "demands"), 82),
+			"tooltip": "本地需求区域：%s" % _product_related_district_names(product_name, "demands"),
+			"accent": Color("#fb7185"),
+		},
+		{
+			"title": "城市线索",
+			"body": _short_card_text(_product_codex_public_clue_summary(product_name), 82),
+			"tooltip": _product_codex_public_clue_summary(product_name, 4),
+			"accent": Color("#f0abfc"),
+		},
+	]
 
 
 func _add_product_codex_market_board_panel(parent: Container, product_name: String) -> void:
@@ -11174,7 +11137,7 @@ func _update_region_codex_menu() -> void:
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
-		_add_region_codex_tile_board_panel(menu_preview_box, region_codex_index)
+		_add_region_codex_detail(menu_preview_box, region_codex_index)
 	menu_catalog_mode = "region"
 	_hide_global_menu_navigation_for_catalog()
 	menu_bestiary_prev_button.visible = true
@@ -11994,6 +11957,155 @@ func _card_codex_tactical_entries(card_name: String, skill: Dictionary) -> Array
 			"tip": "只描述公开线索，不揭示隐藏玩家。%s" % _card_display_name(card_name),
 		},
 	]
+
+
+func _add_card_codex_detail(parent: Container, card_name: String, skill: Dictionary) -> void:
+	var detail := CardCodexDetailScene.instantiate() as Control
+	if detail == null:
+		_add_card_codex_detail_layout(parent, card_name, skill)
+		return
+	detail.name = "CardCodexDetailPanel"
+	parent.add_child(detail)
+	if detail.has_method("set_detail"):
+		detail.call("set_detail", _card_codex_detail_snapshot(card_name, skill))
+
+
+func _card_codex_detail_snapshot(card_name: String, skill: Dictionary) -> Dictionary:
+	return CardCodexDetailSnapshotScript.new().apply_dictionary(_card_codex_detail_source(card_name, skill)).to_ui_dictionary()
+
+
+func _card_codex_detail_source(card_name: String, skill: Dictionary) -> Dictionary:
+	var accent := _card_theme_color(skill)
+	return {
+		"accent": accent,
+		"tooltip": _card_detail_tooltip(card_name),
+		"face_note": "重复入手→升级；价格看I级。",
+		"face_note_tooltip": "资料库只展示公开卡面和公开规则，不展示隐藏牌主。",
+		"card_face": _card_codex_detail_card_face_snapshot(card_name, skill),
+		"summary": _card_codex_detail_summary_snapshot(card_name, skill),
+		"tactical_entries": _card_codex_tactical_entries(card_name, skill),
+		"facts": _card_codex_detail_fact_snapshots(card_name, skill),
+		"upgrades": _card_codex_detail_upgrade_snapshots(card_name),
+		"resolution": _card_codex_detail_resolution_snapshot(card_name, skill),
+	}
+
+
+func _card_codex_detail_card_face_snapshot(card_name: String, skill: Dictionary) -> Dictionary:
+	return {
+		"name": "%s %s" % [_card_icon_for_card(skill, card_name), _card_display_name(card_name)],
+		"cost": "¥%d" % _card_price(card_name),
+		"effect": _card_face_quick_effect_text(card_name, skill, false),
+		"type": _card_face_route_text(card_name, skill, false),
+		"rank": _level_text(max(1, _skill_rank(card_name))),
+		"accent": _card_theme_color(skill),
+		"minimum_width": 230.0,
+		"minimum_height": 300.0,
+	}
+
+
+func _card_codex_detail_summary_snapshot(card_name: String, skill: Dictionary) -> Dictionary:
+	var accent := _card_theme_color(skill)
+	return {
+		"header_chips": [
+			{"text": _card_icon_type_label(skill, card_name), "accent": accent, "tooltip": "卡牌类型"},
+			{"text": _card_icon_route_label(skill), "accent": Color("#c084fc"), "tooltip": "策略路线"},
+			{"text": _card_subtype_label(skill), "accent": Color("#93c5fd"), "tooltip": "子类型"},
+		],
+		"chips": _card_codex_detail_read_chips(card_name, skill),
+		"effect": "速读：%s｜%s" % [
+			_short_card_text(_card_strategy_use_text(skill), 38),
+			_short_card_text(_card_art_stats(skill), 44),
+		],
+		"effect_tooltip": _skill_display_text(skill),
+		"accent": accent,
+	}
+
+
+func _card_codex_detail_read_chips(card_name: String, skill: Dictionary) -> Array:
+	var chips: Array = []
+	for entry_variant in _card_face_chip_entries(card_name, skill, selected_player, selected_district):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		var fg := entry.get("fg", Color("#e2e8f0")) as Color
+		chips.append({
+			"text": String(entry.get("text", "")),
+			"tooltip": String(entry.get("tip", "")),
+			"fg": fg,
+			"bg": entry.get("bg", Color("#020617").lerp(fg, 0.16)) as Color,
+			"accent": fg,
+		})
+	return chips
+
+
+func _card_codex_detail_fact_snapshots(card_name: String, skill: Dictionary) -> Array:
+	var accent := _card_theme_color(skill)
+	var target_text := "怪兽目标" if _skill_requires_target_monster(skill) else "按卡面/选区结算"
+	var persistence_text := "固定技能，可重复使用" if bool(skill.get("persistent", false)) else "一次性牌，结算后离手"
+	var numeric_facts := _card_key_rule_facts(skill)
+	return [
+		{
+			"title": "◎ 牌面定位",
+			"body": _short_card_text(_card_strategy_use_text(skill), 64),
+			"meta": "%s｜%s｜%s｜%s" % [_card_icon_type_label(skill, card_name), _card_subtype_label(skill), _card_source_type_label(card_name, skill), _card_supply_layer_for_card(card_name)],
+			"accent": accent,
+		},
+		{
+			"title": "¥ 费用与门槛",
+			"body": "购买 ¥%d｜打出看商品流动、目标和选区。" % _card_price(card_name),
+			"meta": "%s｜目标:%s" % [_short_card_text(_skill_play_requirement_text(skill, selected_player), 52), target_text],
+			"accent": Color("#facc15"),
+		},
+		{
+			"title": "✦ 核心效果",
+			"body": _short_card_text(_skill_display_text(skill), 78),
+			"body_tooltip": _skill_display_text(skill),
+			"meta": persistence_text,
+			"accent": accent.lightened(0.12),
+		},
+		{
+			"title": "◈ 关键数值",
+			"body": "｜".join(numeric_facts.slice(0, 5)) if not numeric_facts.is_empty() else "按核心效果结算。",
+			"meta": "看这里判断收益、风险和目标。",
+			"accent": Color("#38bdf8"),
+		},
+	]
+
+
+func _card_codex_detail_upgrade_snapshots(card_name: String) -> Array:
+	var upgrades: Array = []
+	var family := _skill_family(card_name)
+	for level in range(1, 5):
+		var level_name := "%s%d" % [family, level]
+		if not _skill_exists(level_name):
+			continue
+		var level_skill := _skill_definition(level_name)
+		var preview := _join_first_card_facts(_card_key_rule_facts(level_skill), 4)
+		if preview == "":
+			preview = _short_card_text(_skill_display_text(level_skill), 56)
+		var level_accent := _card_theme_color(level_skill).lerp(Color("#fef3c7"), 0.08 * float(level - 1))
+		upgrades.append({
+			"roman": _level_text(level),
+			"price": "¥%d" % _card_price(level_name),
+			"price_tooltip": "购买仍按该系列I级价格体系展示；重复获得会自动合成升级。",
+			"band": _card_strength_budget_band_text(_card_strength_budget_points(level_name)),
+			"body": _short_card_text(preview, 62),
+			"body_tooltip": preview,
+			"tooltip": "%s\n%s" % [_card_display_name(level_name), _skill_display_text(level_skill)],
+			"accent": level_accent,
+			"fill_weight": 0.10 + 0.03 * float(level - 1),
+		})
+	return upgrades
+
+
+func _card_codex_detail_resolution_snapshot(card_name: String, skill: Dictionary) -> Dictionary:
+	var animation_text := _card_resolution_animation_catalog_text(card_name, skill).replace("\n", " / ")
+	return {
+		"title": "◇ 结算演出",
+		"body": _short_card_text(animation_text, 140),
+		"meta": "所有玩家看见卡面；出牌者匿名。",
+		"accent": Color("#fb7185"),
+	}
 
 
 func _add_card_codex_tactical_strip(parent: Container, card_name: String, skill: Dictionary) -> void:
@@ -13129,6 +13241,133 @@ func _region_codex_income_preview_text(index: int) -> String:
 	return " / ".join(compact)
 
 
+func _add_region_codex_detail(parent: Container, index: int) -> void:
+	var detail := RegionCodexDetailScene.instantiate() as Control
+	if detail == null:
+		_add_region_codex_tile_board_panel(parent, index)
+		return
+	detail.name = "RegionCodexTileBoardPanel"
+	parent.add_child(detail)
+	if detail.has_method("set_region"):
+		detail.call("set_region", _region_codex_detail_snapshot(index))
+
+
+func _region_codex_detail_snapshot(index: int) -> Dictionary:
+	if index < 0 or index >= districts.size():
+		return {}
+	var district: Dictionary = districts[index]
+	var accent := _region_codex_accent(index)
+	return {
+		"icon": _region_codex_terrain_icon(index),
+		"icon_tooltip": "地块符号：⬡陆地/≈海域/▣城市/✕废墟。",
+		"title": "%s｜第%d/%d区" % [String(district.get("name", "区域")), index + 1, districts.size()],
+		"subtitle": "%s｜%s｜%s" % [
+			String(district.get("terrain_label", "区域")),
+			String(district.get("economic_focus_label", _district_economy_focus_label(String(district.get("economic_focus", "balanced"))))),
+			_region_codex_city_status_text(index),
+		],
+		"chips": _region_codex_chip_snapshots(index),
+		"kpis": _region_codex_kpi_snapshots(index),
+		"clues": _region_codex_clue_snapshots(index),
+		"accent": accent,
+		"tooltip": "区域地块板：像读桌游地图板块一样，先扫HP、城市、供需、商路、牌架和公开线索。",
+	}
+
+
+func _region_codex_chip_snapshots(index: int) -> Array:
+	if index < 0 or index >= districts.size():
+		return []
+	var district: Dictionary = districts[index]
+	var hp_total := int(district.get("hp", 0))
+	var hp_now: int = maxi(0, hp_total - int(district.get("damage", 0)))
+	var chips: Array = [
+		{
+			"text": "HP %d/%d" % [hp_now, hp_total],
+			"fg": Color("#fecaca") if hp_total > 0 and hp_now <= hp_total / 2 else Color("#bbf7d0"),
+			"accent": Color("#fecaca") if hp_total > 0 and hp_now <= hp_total / 2 else Color("#bbf7d0"),
+			"bg": Color("#020617"),
+			"tooltip": "区域耐久；破坏会影响城市、商路和部分牌效。",
+		},
+		{"text": "热度 %d" % int(district.get("panic", 0)), "fg": Color("#fef3c7"), "accent": Color("#fef3c7"), "bg": Color("#020617"), "tooltip": "热度会影响怪兽、新闻和部分经济线索。"},
+		{"text": "交通×%.2f" % _district_transport_speed(index), "fg": Color("#bfdbfe"), "accent": Color("#bfdbfe"), "bg": Color("#020617"), "tooltip": "交通影响流通速度和城市收入。"},
+		{"text": "商路 %d" % _district_trade_route_load(index), "fg": Color("#c4b5fd"), "accent": Color("#c4b5fd"), "bg": Color("#020617"), "tooltip": "途经或使用该区域的商路数量。"},
+		{"text": "牌架 %d" % (district.get("card_choices", []) as Array).size(), "fg": Color("#a7f3d0"), "accent": Color("#a7f3d0"), "bg": Color("#020617"), "tooltip": "区域牌架可浏览；购买按打开瞬间资格。"},
+	]
+	if index == selected_district:
+		chips.append({"text": "当前选中", "fg": Color("#fde68a"), "accent": Color("#fde68a"), "bg": Color("#020617"), "tooltip": "这个区域也是主桌当前选区。"})
+	return chips
+
+
+func _region_codex_kpi_snapshots(index: int) -> Array:
+	return [
+		{
+			"title": "城市",
+			"value": _region_codex_city_status_text(index),
+			"meta": _region_codex_income_preview_text(index),
+			"accent": Color("#facc15"),
+		},
+		{
+			"title": "供给",
+			"value": _short_card_text(_region_codex_supply_text(index), 32),
+			"meta": "生产/商品价格线索",
+			"accent": Color("#4ade80"),
+		},
+		{
+			"title": "需求",
+			"value": _short_card_text(_region_codex_demand_text(index), 32),
+			"meta": "需求会抬高商品价格",
+			"accent": Color("#fb7185"),
+		},
+		{
+			"title": "天气",
+			"value": _short_card_text(_district_weather_summary(index), 32),
+			"meta": "影响产/交/消",
+			"accent": Color("#38bdf8"),
+		},
+	]
+
+
+func _region_codex_clue_snapshots(index: int) -> Array:
+	return [
+		{
+			"title": "商路",
+			"body": "途经/使用 %d条｜毁坏会拖累相关城市GDP" % _district_trade_route_load(index),
+			"tooltip": _district_connection_summary(index),
+			"accent": Color("#93c5fd"),
+		},
+		{
+			"title": "牌架",
+			"body": _short_card_text(_region_card_choice_summary(index, 4), 76),
+			"tooltip": "双击地图区域可打开牌架；查看不限，购买按打开瞬间资格。",
+			"accent": Color("#a78bfa"),
+		},
+		{
+			"title": "怪兽吸引",
+			"body": _short_card_text(_region_codex_monster_attraction_text(index), 76),
+			"tooltip": "怪兽会按资源、热度、城市和仓储压力自动选择目标。",
+			"accent": Color("#fb923c"),
+		},
+		{
+			"title": "公开线索",
+			"body": _short_card_text(_region_codex_public_clue_text(index), 76),
+			"tooltip": "这是可见证据，不等于真实业主。",
+			"accent": Color("#f0abfc"),
+		},
+		{
+			"title": "邻接",
+			"body": _short_card_text(_district_connection_summary(index), 76),
+			"tooltip": "购牌、怪兽移动和商路都依赖邻接关系。",
+			"accent": Color("#67e8f9"),
+		},
+		{
+			"title": "读法",
+			"body": "先看城市GDP，再看供需/商路/怪兽，最后决定建城、买牌或标注。",
+			"tooltip": "区域页只显示公开信息和当前玩家自己的标注，不提前揭示他人隐私。",
+			"accent": Color("#fde68a"),
+		},
+	]
+
+
 func _add_region_codex_tile_board_panel(parent: Container, index: int) -> void:
 	if index < 0 or index >= districts.size():
 		return
@@ -13315,6 +13554,14 @@ func _close_menu() -> void:
 	if menu_overlay == null:
 		return
 	menu_overlay.visible = false
+	if menu_body_label != null:
+		menu_body_label.text = ""
+		menu_body_label.visible = false
+	if menu_preview_box != null:
+		_clear_children(menu_preview_box)
+		menu_preview_box.visible = false
+	if menu_overlay.has_method("clear_preview"):
+		menu_overlay.call("clear_preview")
 	if not game_over:
 		time_scale = max(1.0, speed_before_menu)
 	_refresh_ui()
@@ -13348,6 +13595,7 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 	_add_new_game_setup_option_board(parent)
 	parent.add_child(_plain_label("座位卡｜公开角色 + 独立首召怪兽", 13, Color("#fde68a")))
 	var role_scroll := ScrollContainer.new()
+	role_scroll.name = "NewGameSetupSeatScroll"
 	role_scroll.custom_minimum_size = Vector2(0, 360)
 	role_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	role_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -13362,85 +13610,13 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 	role_scroll.add_child(role_grid)
 	role_grid.columns = _new_game_setup_seat_grid_columns()
 	for i in range(configured_player_count):
-		var seat_card := PanelContainer.new()
-		seat_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		seat_card.tooltip_text = "座位卡：公开角色 + 匿名首召怪兽。"
-		seat_card.set_meta("setup_seat_card", true)
-		seat_card.add_theme_stylebox_override("panel", _new_game_setup_seat_card_style(i))
-		role_grid.add_child(seat_card)
-		var seat_margin := MarginContainer.new()
-		seat_margin.add_theme_constant_override("margin_left", 10)
-		seat_margin.add_theme_constant_override("margin_top", 8)
-		seat_margin.add_theme_constant_override("margin_right", 10)
-		seat_margin.add_theme_constant_override("margin_bottom", 8)
-		seat_card.add_child(seat_margin)
-		var role_panel := VBoxContainer.new()
-		role_panel.add_theme_constant_override("separation", 4)
-		seat_margin.add_child(role_panel)
 		var role_card := _make_configured_player_role_card(i)
 		var starter_card := _make_starting_monster_card(i)
 		var starter_monster_index := _configured_starter_monster_index(i)
 		var role_selection_label := _configured_role_selection_label(i)
 		var seat_type := _player_seat_type_for_config_index(i)
 		var seat_label := "电脑对手" if seat_type == "ai" else "真人/本地"
-		_add_new_game_setup_seat_chips(role_panel, i, seat_label, role_card, starter_card, starter_monster_index)
-		_add_new_game_setup_seat_identity_board(role_panel, i, seat_type, role_card, starter_card, starter_monster_index, role_selection_label)
-		var passive_label := _plain_label("角色被动：%s" % _short_card_text(_role_passive_text(role_card), 86), 10, Color("#fde68a"))
-		passive_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		passive_label.tooltip_text = _role_passive_text(role_card)
-		role_panel.add_child(passive_label)
-		var role_choice_row := HBoxContainer.new()
-		role_choice_row.add_theme_constant_override("separation", 6)
-		role_panel.add_child(role_choice_row)
-		var previous_role_button := Button.new()
-		previous_role_button.text = "上一个角色"
-		_style_menu_button(previous_role_button, Color("#c084fc"))
-		previous_role_button.pressed.connect(Callable(self, "_cycle_configured_role_for_player_from_new_game_menu").bind(i, -1))
-		role_choice_row.add_child(previous_role_button)
-		var role_name_label := _plain_label("当前：%s" % String(role_card.get("name", "外星辛迪加")), 10, Color("#e0f2fe"))
-		role_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		role_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		role_choice_row.add_child(role_name_label)
-		var next_role_button := Button.new()
-		next_role_button.text = "下一个角色"
-		_style_menu_button(next_role_button, Color("#c084fc"))
-		next_role_button.pressed.connect(Callable(self, "_cycle_configured_role_for_player_from_new_game_menu").bind(i, 1))
-		role_choice_row.add_child(next_role_button)
-		if seat_type == "ai":
-			var random_role_button := Button.new()
-			random_role_button.text = "随机角色"
-			random_role_button.toggle_mode = true
-			random_role_button.button_pressed = _configured_role_index(i) == ROLE_RANDOM_INDEX
-			random_role_button.tooltip_text = "本局开始时从未被占用的角色中随机分配，仍会公开显示，且全局不重复。"
-			_style_menu_button(random_role_button, Color("#a78bfa"))
-			random_role_button.pressed.connect(Callable(self, "_set_configured_role_random_for_player_from_new_game_menu").bind(i))
-			role_choice_row.add_child(random_role_button)
-		role_name_label.text = "当前：%s" % role_selection_label
-		var monster_choice_row := HBoxContainer.new()
-		monster_choice_row.add_theme_constant_override("separation", 6)
-		role_panel.add_child(monster_choice_row)
-		var previous_monster_button := Button.new()
-		previous_monster_button.text = "上一个起始怪兽"
-		_style_menu_button(previous_monster_button, Color("#fb7185"))
-		previous_monster_button.pressed.connect(Callable(self, "_cycle_configured_starter_monster_for_player_from_new_game_menu").bind(i, -1))
-		monster_choice_row.add_child(previous_monster_button)
-		var monster_name_label := _plain_label("起始怪兽：%s" % String(_catalog_entry(starter_monster_index).get("name", "怪兽")), 10, Color("#fecaca"))
-		monster_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		monster_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		monster_choice_row.add_child(monster_name_label)
-		var next_monster_button := Button.new()
-		next_monster_button.text = "下一个起始怪兽"
-		_style_menu_button(next_monster_button, Color("#fb7185"))
-		next_monster_button.pressed.connect(Callable(self, "_cycle_configured_starter_monster_for_player_from_new_game_menu").bind(i, 1))
-		monster_choice_row.add_child(next_monster_button)
-		var card_row := HBoxContainer.new()
-		card_row.add_theme_constant_override("separation", 8)
-		role_panel.add_child(card_row)
-		_add_role_card_face(card_row, role_card, true)
-		_add_card_face(card_row, String(starter_card.get("name", "")), starter_card, -1, false, true, false)
-		var starter_note := _plain_label(_starter_monster_setup_summary(starter_card), 10, Color("#a7f3d0"))
-		starter_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		role_panel.add_child(starter_note)
+		_add_new_game_setup_seat_card(role_grid, i, seat_label, seat_type, role_card, starter_card, starter_monster_index, role_selection_label)
 
 	var hint := _plain_label("角色公开；首召匿名。先进桌召怪兽，再围绕怪兽附近买牌。", 12, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -13468,243 +13644,123 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		action_row.add_child(table_button)
 
 
+func _new_game_setup_lobby_snapshot() -> Dictionary:
+	return {
+		"accent": Color("#38bdf8"),
+		"title": "开桌流程",
+		"title_tooltip": "从左到右确认；不需要阅读长规则也能开始测试。",
+		"tooltip": "开局准备像电子桌游开桌大厅：先确认流程，再调整下方席位卡。",
+		"columns": clampi(int(floor(_menu_available_content_width() / 180.0)), 1, 5),
+		"chips": [
+			{"text": "PVE %d席" % configured_player_count, "accent": Color("#bfdbfe"), "tooltip": "本地真人对电脑对手。"},
+			{"text": "AI %d" % configured_ai_player_count, "accent": Color("#d8b4fe"), "tooltip": "电脑对手数量。"},
+			{"text": "目标¥%d" % _roguelike_cash_goal(configured_roguelike_depth), "accent": Color("#fef3c7"), "tooltip": "有人达标后进入终局倒计时。"},
+		],
+		"steps": [
+			{"title": "1｜席位", "body": "%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count], "accent": Color("#38bdf8"), "tooltip": "用下方席位/电脑按钮调整桌面规模。"},
+			{"title": "2｜挑战", "body": "%s｜%s" % [_roguelike_depth_label(), _short_card_text(_roguelike_planet_profile_text(), 22)], "accent": Color("#facc15"), "tooltip": "挑战层级决定星球区域规模、现金目标和开局压力。"},
+			{"title": "3｜角色", "body": "公开身份｜同局不重复", "accent": Color("#c084fc"), "tooltip": "角色牌开局公开；AI可随机，但开局时仍保证不重复。"},
+			{"title": "4｜首召", "body": "怪兽独立｜归属匿名", "accent": Color("#fb7185"), "tooltip": "角色不绑定起始怪兽；首召怪兽进桌后由玩家打出。"},
+			{"title": "5｜开局", "body": "先召怪兽 → 建城 → 买牌", "accent": Color("#22c55e"), "tooltip": "开始本局后按轻引导完成首召、建城、购牌和匿名出牌。"},
+		],
+		"readiness": [
+			{"text": "角色不重复", "accent": Color("#93c5fd"), "fill": Color("#1e3a8a")},
+			{"text": "首召独立", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
+			{"text": "进桌先首召", "accent": Color("#bbf7d0"), "fill": Color("#14532d")},
+			{"text": "AI可随机角色", "accent": Color("#d8b4fe"), "fill": Color("#312e81")},
+			{"text": "最后钱最多", "accent": Color("#fef3c7"), "fill": Color("#713f12")},
+		],
+	}
+
+
 func _add_new_game_setup_lobby_panel(parent: Container) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "NewGameSetupLobbyPanel"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "开局准备像电子桌游开桌大厅：先确认流程，再调整下方席位卡。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.07), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 9)
-	margin.add_child(box)
-	var header := HBoxContainer.new()
-	header.name = "NewGameSetupLobbyHeader"
-	header.add_theme_constant_override("separation", 8)
-	box.add_child(header)
-	var title := _plain_label("开桌流程", 15, Color("#dbeafe"))
-	title.name = "NewGameSetupLobbyTitle"
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	title.custom_minimum_size = Vector2(88, 0)
-	title.tooltip_text = "从左到右确认；不需要阅读长规则也能开始测试。"
-	header.add_child(title)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(spacer)
-	_add_new_game_setup_lobby_chip(header, "PVE %d席" % configured_player_count, Color("#bfdbfe"), "本地真人对电脑对手。")
-	_add_new_game_setup_lobby_chip(header, "AI %d" % configured_ai_player_count, Color("#d8b4fe"), "电脑对手数量。")
-	_add_new_game_setup_lobby_chip(header, "目标¥%d" % _roguelike_cash_goal(configured_roguelike_depth), Color("#fef3c7"), "有人达标后进入终局倒计时。")
-
-	var flow_track := GridContainer.new()
-	flow_track.name = "NewGameSetupFlowTrack"
-	flow_track.columns = clampi(int(floor(_menu_available_content_width() / 180.0)), 1, 5)
-	flow_track.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	flow_track.add_theme_constant_override("h_separation", 8)
-	flow_track.add_theme_constant_override("v_separation", 8)
-	box.add_child(flow_track)
-	_add_new_game_setup_flow_step(flow_track, "1｜席位", "%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count], Color("#38bdf8"), "用下方席位/电脑按钮调整桌面规模。")
-	_add_new_game_setup_flow_step(flow_track, "2｜挑战", "%s｜%s" % [_roguelike_depth_label(), _short_card_text(_roguelike_planet_profile_text(), 22)], Color("#facc15"), "挑战层级决定星球区域规模、现金目标和开局压力。")
-	_add_new_game_setup_flow_step(flow_track, "3｜角色", "公开身份｜同局不重复", Color("#c084fc"), "角色牌开局公开；AI可随机，但开局时仍保证不重复。")
-	_add_new_game_setup_flow_step(flow_track, "4｜首召", "怪兽独立｜归属匿名", Color("#fb7185"), "角色不绑定起始怪兽；首召怪兽进桌后由玩家打出。")
-	_add_new_game_setup_flow_step(flow_track, "5｜开局", "先召怪兽 → 建城 → 买牌", Color("#22c55e"), "开始本局后按轻引导完成首召、建城、购牌和匿名出牌。")
-
-	var readiness := HFlowContainer.new()
-	readiness.name = "NewGameSetupReadinessRail"
-	readiness.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	readiness.add_theme_constant_override("h_separation", 5)
-	readiness.add_theme_constant_override("v_separation", 4)
-	box.add_child(readiness)
-	readiness.add_child(_track_status_badge("角色不重复", Color("#93c5fd"), Color("#1e3a8a")))
-	readiness.add_child(_track_status_badge("首召独立", Color("#fecaca"), Color("#7f1d1d")))
-	readiness.add_child(_track_status_badge("进桌先首召", Color("#bbf7d0"), Color("#14532d")))
-	readiness.add_child(_track_status_badge("AI可随机角色", Color("#d8b4fe"), Color("#312e81")))
-	readiness.add_child(_track_status_badge("最后钱最多", Color("#fef3c7"), Color("#713f12")))
+	var lobby := NewGameSetupLobbyScene.instantiate() as Control
+	if lobby == null:
+		return
+	parent.add_child(lobby)
+	if lobby.has_method("set_lobby"):
+		lobby.call("set_lobby", _new_game_setup_lobby_snapshot())
 
 
-func _add_new_game_setup_option_board(parent: Container) -> void:
-	var panel := PanelContainer.new()
-	panel.name = "NewGameSetupOptionBoard"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.tooltip_text = "开局参数板：像桌游开局板一样集中调整席位、电脑对手和挑战层级。"
-	panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#facc15"), Color("#020617").lerp(Color("#facc15"), 0.07), 1, 16))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
-	var stack := VBoxContainer.new()
-	stack.name = "NewGameSetupOptionStack"
-	stack.add_theme_constant_override("separation", 8)
-	margin.add_child(stack)
-	var title := _plain_label("开局参数｜先定桌面规模", 13, Color("#fef3c7"))
-	title.name = "NewGameSetupOptionBoardTitle"
-	title.tooltip_text = "三个参数决定本局桌面：席位、AI数量、星球挑战。"
-	stack.add_child(title)
-	var grid := GridContainer.new()
-	grid.name = "NewGameSetupOptionGrid"
-	grid.columns = clampi(int(floor(_menu_available_content_width() / 260.0)), 1, 3)
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
-	stack.add_child(grid)
-
+func _new_game_setup_option_board_snapshot() -> Dictionary:
 	var player_entries := []
 	for count in range(MIN_PLAYER_COUNT, MAX_PLAYER_COUNT + 1):
 		player_entries.append({
+			"id": "player_count",
+			"value": count,
 			"text": "%d席" % count,
 			"pressed": count == configured_player_count,
 			"tooltip": "%d名玩家席位；至少1名真人，其余可由AI补足。" % count,
-			"method": "_set_configured_player_count_from_new_game_menu",
-			"arg": count,
 		})
-	_add_new_game_setup_option_card(
-		grid,
-		"席位",
-		"%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count],
-		Color("#38bdf8"),
-		player_entries
-	)
 
 	var ai_entries := []
 	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
 	for count in range(MIN_AI_PLAYER_COUNT, max_ai + 1):
 		ai_entries.append({
+			"id": "ai_count",
+			"value": count,
 			"text": "AI%d" % count,
 			"pressed": count == configured_ai_player_count,
 			"tooltip": "%d个电脑对手；AI内部策略不会显示给玩家。" % count,
-			"method": "_set_configured_ai_player_count_from_new_game_menu",
-			"arg": count,
 		})
-	_add_new_game_setup_option_card(
-		grid,
-		"电脑对手",
-		"本地PVE｜AI路线隐藏",
-		Color("#c084fc"),
-		ai_entries
-	)
 
 	var depth_entries := []
 	for depth in range(ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX + 1):
 		depth_entries.append({
+			"id": "challenge_depth",
+			"value": depth,
 			"text": _level_text(depth),
 			"pressed": depth == configured_roguelike_depth,
 			"tooltip": _roguelike_planet_profile_text(depth),
-			"method": "_set_configured_roguelike_depth_from_new_game_menu",
-			"arg": depth,
 		})
-	_add_new_game_setup_option_card(
-		grid,
-		"挑战层级",
-		"%s｜目标¥%d" % [_roguelike_depth_label(), _roguelike_cash_goal(configured_roguelike_depth)],
-		Color("#facc15"),
-		depth_entries
-	)
+	return {
+		"accent": Color("#facc15"),
+		"title": "开局参数｜先定桌面规模",
+		"title_tooltip": "三个参数决定本局桌面：席位、AI数量、星球挑战。",
+		"tooltip": "开局参数板：像桌游开局板一样集中调整席位、电脑对手和挑战层级。",
+		"columns": clampi(int(floor(_menu_available_content_width() / 260.0)), 1, 3),
+		"cards": [
+			{
+				"title": "席位",
+				"detail": "%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count],
+				"accent": Color("#38bdf8"),
+				"options": player_entries,
+			},
+			{
+				"title": "电脑对手",
+				"detail": "本地PVE｜AI路线隐藏",
+				"accent": Color("#c084fc"),
+				"options": ai_entries,
+			},
+			{
+				"title": "挑战层级",
+				"detail": "%s｜目标¥%d" % [_roguelike_depth_label(), _roguelike_cash_goal(configured_roguelike_depth)],
+				"accent": Color("#facc15"),
+				"options": depth_entries,
+			},
+		],
+	}
 
 
-func _add_new_game_setup_option_card(parent: Container, title_text: String, detail_text: String, accent: Color, entries: Array) -> void:
-	var card := PanelContainer.new()
-	card.name = "NewGameSetupOptionCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 112)
-	card.tooltip_text = detail_text
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 11, accent.lightened(0.16))
-	title.name = "NewGameSetupOptionCardTitle"
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(title)
-	var detail := _plain_label(_short_card_text(detail_text, 46), 9, Color("#e5e7eb"))
-	detail.name = "NewGameSetupOptionCardDetail"
-	detail.autowrap_mode = TextServer.AUTOWRAP_OFF
-	detail.clip_text = true
-	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	detail.tooltip_text = detail_text
-	box.add_child(detail)
-	var rail := HFlowContainer.new()
-	rail.name = "NewGameSetupOptionButtonRail"
-	rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rail.add_theme_constant_override("h_separation", 5)
-	rail.add_theme_constant_override("v_separation", 4)
-	box.add_child(rail)
-	for entry_variant in entries:
-		var entry := entry_variant as Dictionary
-		var button := Button.new()
-		button.name = "NewGameSetupOptionButton"
-		button.text = String(entry.get("text", ""))
-		button.toggle_mode = true
-		button.button_pressed = bool(entry.get("pressed", false))
-		button.tooltip_text = String(entry.get("tooltip", ""))
-		_style_menu_button(button, accent, bool(entry.get("pressed", false)))
-		button.pressed.connect(Callable(self, String(entry.get("method", ""))).bind(int(entry.get("arg", 0))))
-		rail.add_child(button)
+func _on_new_game_setup_option_selected(option_id: String, value: int) -> void:
+	match option_id:
+		"player_count":
+			_set_configured_player_count_from_new_game_menu(value)
+		"ai_count":
+			_set_configured_ai_player_count_from_new_game_menu(value)
+		"challenge_depth":
+			_set_configured_roguelike_depth_from_new_game_menu(value)
 
 
-func _add_new_game_setup_lobby_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := PanelContainer.new()
-	chip.name = "NewGameSetupLobbyChip"
-	chip.custom_minimum_size = Vector2(84, 0)
-	chip.tooltip_text = tooltip
-	chip.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
-	parent.add_child(chip)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	chip.add_child(margin)
-	var label := _plain_label(text, 9, accent.lightened(0.16))
-	label.name = "NewGameSetupLobbyChipLabel"
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.tooltip_text = tooltip
-	margin.add_child(label)
-
-
-func _add_new_game_setup_flow_step(parent: Container, title_text: String, body_text: String, accent: Color, tooltip: String = "") -> void:
-	var card := PanelContainer.new()
-	card.name = "NewGameSetupFlowStepCard"
-	card.custom_minimum_size = Vector2(0, 88)
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = tooltip
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 12))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 11, accent.lightened(0.16))
-	title.name = "NewGameSetupFlowStepTitle"
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	box.add_child(title)
-	var body := _plain_label(body_text, 10, Color("#e5e7eb"))
-	body.name = "NewGameSetupFlowStepBody"
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.tooltip_text = tooltip
-	box.add_child(body)
+func _add_new_game_setup_option_board(parent: Container) -> void:
+	var board := NewGameSetupOptionBoardScene.instantiate() as Control
+	if board == null:
+		return
+	if board.has_signal("option_selected"):
+		board.connect("option_selected", Callable(self, "_on_new_game_setup_option_selected"))
+	parent.add_child(board)
+	if board.has_method("set_options"):
+		board.call("set_options", _new_game_setup_option_board_snapshot())
 
 
 func _add_new_game_setup_summary_chips(parent: Container) -> void:
@@ -13726,99 +13782,111 @@ func _new_game_setup_seat_grid_columns() -> int:
 	return clampi(int(floor(_menu_available_content_width() / 520.0)), 1, 2)
 
 
-func _new_game_setup_seat_card_style(player_index: int) -> StyleBoxFlat:
-	var color := _player_color(player_index)
-	return _menu_card_style(color, Color("#020617").lerp(color, 0.10), 1, 14)
-
-
-func _add_new_game_setup_seat_chips(parent: Container, player_index: int, seat_label: String, role_card: Dictionary, starter_card: Dictionary, starter_monster_index: int) -> void:
-	var chip_row := HFlowContainer.new()
-	chip_row.add_theme_constant_override("separation", 5)
-	chip_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip_row.set_meta("setup_seat_chips", true)
-	parent.add_child(chip_row)
-	chip_row.add_child(_track_status_badge("P%d" % (player_index + 1), Color("#f8fafc"), Color("#0f172a").lerp(_player_color(player_index), 0.28)))
-	chip_row.add_child(_track_status_badge(seat_label, Color("#bfdbfe"), Color("#0f172a")))
-	chip_row.add_child(_track_status_badge(String(role_card.get("species", "未知外星人")), Color("#d8b4fe"), Color("#312e81")))
-	chip_row.add_child(_track_status_badge("角色:%s" % _short_card_text(String(role_card.get("name", "外星辛迪加")), 14), Color("#e0f2fe"), Color("#0c4a6e")))
-	chip_row.add_child(_track_status_badge("◆ %s" % _short_card_text(String(_catalog_entry(starter_monster_index).get("name", String(starter_card.get("monster_name", "怪兽")))), 14), Color("#fecaca"), Color("#7f1d1d")))
-
-
-func _add_new_game_setup_seat_identity_board(parent: Container, player_index: int, seat_type: String, role_card: Dictionary, starter_card: Dictionary, starter_monster_index: int, role_selection_label: String) -> void:
+func _new_game_setup_seat_card_snapshot(player_index: int, seat_label: String, seat_type: String, role_card: Dictionary, starter_card: Dictionary, starter_monster_index: int, role_selection_label: String) -> Dictionary:
 	var accent := _player_color(player_index)
-	var board := PanelContainer.new()
-	board.name = "NewGameSetupSeatIdentityBoard"
-	board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	board.tooltip_text = "座位公开信息板：只显示公开角色、首召怪兽和第一步提示；AI内部路线不公开。"
-	board.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 12))
-	parent.add_child(board)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 7)
-	board.add_child(margin)
-	var stack := VBoxContainer.new()
-	stack.name = "NewGameSetupSeatIdentityStack"
-	stack.add_theme_constant_override("separation", 5)
-	margin.add_child(stack)
-	var chip_rail := HFlowContainer.new()
-	chip_rail.name = "NewGameSetupSeatPublicChipRail"
-	chip_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip_rail.add_theme_constant_override("h_separation", 4)
-	chip_rail.add_theme_constant_override("v_separation", 3)
-	stack.add_child(chip_rail)
-	var role_label := "随机角色" if _configured_role_index(player_index) == ROLE_RANDOM_INDEX else _short_card_text(String(role_card.get("name", role_selection_label)), 12)
-	chip_rail.add_child(_track_status_badge("公开角色:%s" % role_label, Color("#e0f2fe"), Color("#0c4a6e")))
-	chip_rail.add_child(_track_status_badge("首召:%s" % _short_card_text(String(_catalog_entry(starter_monster_index).get("name", "怪兽")), 12), Color("#fecaca"), Color("#7f1d1d")))
-	chip_rail.add_child(_track_status_badge("怪兽归属匿名", Color("#fde68a"), Color("#713f12")))
-	if seat_type == "ai":
-		chip_rail.add_child(_track_status_badge("AI策略隐藏", Color("#cbd5e1"), Color("#334155")))
-	else:
-		chip_rail.add_child(_track_status_badge("本地玩家", Color("#bbf7d0"), Color("#14532d")))
+	var role_name := String(role_card.get("name", "外星辛迪加"))
+	var monster_name := String(_catalog_entry(starter_monster_index).get("name", String(starter_card.get("monster_name", "怪兽"))))
+	return {
+		"player_index": player_index,
+		"accent": accent,
+		"tooltip": "座位卡：公开角色 + 匿名首召怪兽。",
+		"chips": [
+			{"text": "P%d" % (player_index + 1), "accent": Color("#f8fafc"), "fill": Color("#0f172a").lerp(accent, 0.28)},
+			{"text": seat_label, "accent": Color("#bfdbfe"), "fill": Color("#0f172a")},
+			{"text": String(role_card.get("species", "未知外星人")), "accent": Color("#d8b4fe"), "fill": Color("#312e81")},
+			{"text": "角色:%s" % _short_card_text(role_name, 14), "accent": Color("#e0f2fe"), "fill": Color("#0c4a6e")},
+			{"text": "◆ %s" % _short_card_text(monster_name, 14), "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
+		],
+		"identity": _new_game_setup_seat_identity_snapshot(player_index, seat_type, role_card, starter_card, starter_monster_index, role_selection_label),
+		"passive_text": "角色被动：%s" % _short_card_text(_role_passive_text(role_card), 86),
+		"passive_tooltip": _role_passive_text(role_card),
+		"role_label": role_selection_label,
+		"role_random": _configured_role_index(player_index) == ROLE_RANDOM_INDEX,
+		"show_random_role": seat_type == "ai",
+		"monster_label": monster_name,
+		"starter_note": _starter_monster_setup_summary(starter_card),
+		"card_faces": [
+			_new_game_setup_role_card_face_snapshot(role_card),
+			_new_game_setup_starter_card_face_snapshot(starter_card, starter_monster_index),
+		],
+	}
 
-	var card_grid := GridContainer.new()
-	card_grid.name = "NewGameSetupSeatInfoGrid"
-	card_grid.columns = 2
-	card_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_grid.add_theme_constant_override("h_separation", 6)
-	card_grid.add_theme_constant_override("v_separation", 6)
-	stack.add_child(card_grid)
+
+func _new_game_setup_role_card_face_snapshot(role_card: Dictionary) -> Dictionary:
+	return {
+		"name": String(role_card.get("name", "外星辛迪加")),
+		"cost": "R",
+		"effect": _role_card_face_text(role_card, true),
+		"type": _role_card_tag_text(role_card),
+		"rank": _short_card_text(String(role_card.get("species", "角色")), 8),
+		"card_kind": "player_role",
+		"card_stats": "公开身份｜%s" % _short_card_text(_role_codex_route_label(role_card), 18),
+		"accent": _role_card_theme_color(role_card),
+		"minimum_width": 142.0,
+		"minimum_height": 140.0,
+	}
+
+
+func _new_game_setup_starter_card_face_snapshot(starter_card: Dictionary, starter_monster_index: int) -> Dictionary:
+	var starter_name := String(_catalog_entry(starter_monster_index).get("name", String(starter_card.get("name", starter_card.get("monster_name", "怪兽")))))
+	return {
+		"name": starter_name,
+		"cost": "◆",
+		"effect": _starter_monster_setup_summary(starter_card),
+		"type": "怪兽",
+		"rank": _level_text(max(1, _skill_rank(starter_name))),
+		"card_kind": "monster_card",
+		"card_stats": "不限区｜首召怪兽｜%s" % _short_card_text(_monster_card_region_text(starter_card, true), 16),
+		"accent": _card_theme_color(starter_card),
+		"minimum_width": 142.0,
+		"minimum_height": 140.0,
+	}
+
+
+func _new_game_setup_seat_identity_snapshot(player_index: int, seat_type: String, role_card: Dictionary, starter_card: Dictionary, starter_monster_index: int, role_selection_label: String) -> Dictionary:
+	var accent := _player_color(player_index)
+	var role_label := "随机角色" if _configured_role_index(player_index) == ROLE_RANDOM_INDEX else _short_card_text(String(role_card.get("name", role_selection_label)), 12)
+	var chips := [
+		{"text": "公开角色:%s" % role_label, "accent": Color("#e0f2fe"), "fill": Color("#0c4a6e")},
+		{"text": "首召:%s" % _short_card_text(String(_catalog_entry(starter_monster_index).get("name", "怪兽")), 12), "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
+		{"text": "怪兽归属匿名", "accent": Color("#fde68a"), "fill": Color("#713f12")},
+	]
+	if seat_type == "ai":
+		chips.append({"text": "AI策略隐藏", "accent": Color("#cbd5e1"), "fill": Color("#334155")})
+	else:
+		chips.append({"text": "本地玩家", "accent": Color("#bbf7d0"), "fill": Color("#14532d")})
+
 	var role_body := "开局公开；%s" % _short_card_text(_role_codex_route_label(role_card), 20)
 	if _configured_role_index(player_index) == ROLE_RANDOM_INDEX:
 		role_body = "开局随机分配，结果公开且不重复。"
-	_add_new_game_setup_seat_info_card(card_grid, "公开身份", role_body, Color("#93c5fd"), "角色是公开信息；不会绑定首召怪兽归属。")
-	_add_new_game_setup_seat_info_card(card_grid, "首召怪兽", _short_card_text(_starter_monster_setup_summary(starter_card), 54), Color("#fb7185"), "首召怪兽进桌后由该席位打出；召唤者仍保持匿名。")
-	_add_new_game_setup_seat_info_card(card_grid, "第一步", "选落点 → 在选区首召 → 附近开牌架", Color("#22c55e"), "进入牌桌后的第一件事是首召怪兽，随后才能围绕怪兽附近买牌。")
 	var privacy_text := "AI路线与出牌思路隐藏；只读公开动作。" if seat_type == "ai" else "现金/手牌只自己看；对手靠线索推理。"
-	_add_new_game_setup_seat_info_card(card_grid, "信息边界", privacy_text, Color("#c4b5fd"), privacy_text)
+	return {
+		"accent": accent,
+		"tooltip": "座位公开信息板：只显示公开角色、首召怪兽和第一步提示；AI内部路线不公开。",
+		"columns": 2,
+		"chips": chips,
+		"cards": [
+			{"title": "公开身份", "body": role_body, "accent": Color("#93c5fd"), "tooltip": "角色是公开信息；不会绑定首召怪兽归属。"},
+			{"title": "首召怪兽", "body": _short_card_text(_starter_monster_setup_summary(starter_card), 54), "accent": Color("#fb7185"), "tooltip": "首召怪兽进桌后由该席位打出；召唤者仍保持匿名。"},
+			{"title": "第一步", "body": "选落点 → 在选区首召 → 附近开牌架", "accent": Color("#22c55e"), "tooltip": "进入牌桌后的第一件事是首召怪兽，随后才能围绕怪兽附近买牌。"},
+			{"title": "信息边界", "body": privacy_text, "accent": Color("#c4b5fd"), "tooltip": privacy_text},
+		],
+	}
 
 
-func _add_new_game_setup_seat_info_card(parent: Container, title_text: String, body_text: String, accent: Color, tooltip: String = "") -> void:
-	var card := PanelContainer.new()
-	card.name = "NewGameSetupSeatInfoCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 58)
-	card.tooltip_text = tooltip if tooltip != "" else body_text
-	card.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 10))
-	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 7)
-	margin.add_theme_constant_override("margin_top", 5)
-	margin.add_theme_constant_override("margin_right", 7)
-	margin.add_theme_constant_override("margin_bottom", 5)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 2)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 9, accent.lightened(0.16))
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	box.add_child(title)
-	var body := _plain_label(_short_card_text(body_text, 54), 9, Color("#e5e7eb"))
-	body.name = "NewGameSetupSeatInfoBody"
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.tooltip_text = card.tooltip_text
-	box.add_child(body)
+func _add_new_game_setup_seat_card(parent: Container, player_index: int, seat_label: String, seat_type: String, role_card: Dictionary, starter_card: Dictionary, starter_monster_index: int, role_selection_label: String) -> void:
+	var seat_card := NewGameSetupSeatCardScene.instantiate() as Control
+	if seat_card == null:
+		return
+	if seat_card.has_signal("role_step_requested"):
+		seat_card.connect("role_step_requested", Callable(self, "_cycle_configured_role_for_player_from_new_game_menu"))
+	if seat_card.has_signal("role_random_requested"):
+		seat_card.connect("role_random_requested", Callable(self, "_set_configured_role_random_for_player_from_new_game_menu"))
+	if seat_card.has_signal("monster_step_requested"):
+		seat_card.connect("monster_step_requested", Callable(self, "_cycle_configured_starter_monster_for_player_from_new_game_menu"))
+	parent.add_child(seat_card)
+	if seat_card.has_method("set_seat"):
+		seat_card.call("set_seat", _new_game_setup_seat_card_snapshot(player_index, seat_label, seat_type, role_card, starter_card, starter_monster_index, role_selection_label))
 
 
 func _set_configured_player_count_from_new_game_menu(count: int) -> void:
@@ -15111,6 +15179,7 @@ func _new_game() -> void:
 	time_scale = 1.0
 	selected_player = 0
 	inspected_player = 0
+	selected_runtime_card_slot = -1
 	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
 	previewed_district_card = selected_market_skill
 	pending_discard_purchase = {}
@@ -17469,8 +17538,12 @@ func _refresh_ui() -> void:
 	_refresh_board()
 	_refresh_map_controls()
 	_refresh_district_supply_overlay()
-	_refresh_player_panel(false)
+	if _uses_split_runtime_table():
+		_refresh_split_compatibility_player_panel()
+	else:
+		_refresh_player_panel(false)
 	_refresh_bottom_countdown_bar()
+	_sync_runtime_game_screen()
 
 
 func _refresh_live_ui() -> void:
@@ -17480,6 +17553,7 @@ func _refresh_live_ui() -> void:
 	_refresh_weather_forecast_strip()
 	_refresh_card_resolution_track()
 	_refresh_bottom_countdown_bar()
+	_sync_runtime_game_screen()
 
 
 func _refresh_status() -> void:
@@ -17519,6 +17593,1201 @@ func _refresh_status() -> void:
 	_set_header_status_chip("queue", "▤ %s" % _short_card_text(queue_status, 16), "匿名出牌列：历史、当前展示、候补和下批等待。")
 	_set_header_status_chip("weather", "☄ %s" % _short_card_text(weather_status.replace("天气:", "").replace("预报:", "预:"), 18), "完整天气预报看中央星球上方天气筹码。")
 	_set_header_status_chip("district", "⌖ %s" % _short_card_text(district_name, 10), "当前选区；双击区域查看牌架。")
+
+
+func _runtime_table_snapshot() -> Dictionary:
+	var snapshot: Variant = TableSnapshotScript.new().apply_dictionary(_runtime_table_snapshot_source())
+	return snapshot.to_ui_dictionary()
+
+
+func _runtime_table_snapshot_source() -> Dictionary:
+	var player_index: int = _runtime_snapshot_player_index()
+	var district_snapshot: Dictionary = _runtime_selected_district_snapshot_source(player_index)
+	var action_entries: Array = _runtime_snapshot_action_entries(player_index)
+	var logs: Array = _runtime_public_log_snapshot()
+	return {
+		"top_bar": _runtime_top_bar_snapshot_source(player_index),
+		"card_track": _runtime_card_track_snapshot_source(),
+		"planet": _runtime_planet_snapshot_source(),
+		"district": district_snapshot,
+		"actions": action_entries,
+		"right_inspector": _runtime_right_inspector_snapshot_source(player_index, district_snapshot, action_entries, logs),
+		"player_board": _runtime_player_board_snapshot_source(player_index, action_entries),
+		"temporary_decision": _runtime_temporary_decision_snapshot_source(player_index),
+		"logs": logs,
+	}
+
+
+func _runtime_snapshot_player_index() -> int:
+	if selected_player >= 0 and selected_player < players.size():
+		return selected_player
+	if inspected_player >= 0 and inspected_player < players.size():
+		return inspected_player
+	if not players.is_empty():
+		return 0
+	return -1
+
+
+func _runtime_top_bar_snapshot_source(player_index: int) -> Dictionary:
+	var visible_cash: int = _runtime_player_visible_cash(player_index)
+	var cash_goal: int = _roguelike_cash_goal()
+	return {
+		"phase": _roguelike_depth_label() if not players.is_empty() else "主菜单",
+		"turn": _format_time(game_time) if game_time > 0.0 else "00:00",
+		"identity": _player_name(player_index) if _runtime_player_is_valid(player_index) else "未入席",
+		"cash_text": _runtime_player_cash_text(player_index),
+		"gdp_text": _runtime_player_gdp_text(player_index),
+		"goal_text": "%d/%d" % [visible_cash, cash_goal],
+		"selected_district": _runtime_selected_district_title(),
+		"primary_action": _runtime_primary_action_label(player_index),
+		"weather_status": _weather_status_text(),
+	}
+
+
+func _runtime_player_board_snapshot_source(player_index: int, action_entries: Array) -> Dictionary:
+	var visible_cash: int = _runtime_player_visible_cash(player_index)
+	var cash_goal: int = _roguelike_cash_goal()
+	var goal_ratio := 0.0
+	if cash_goal > 0:
+		goal_ratio = clampf(float(visible_cash) / float(cash_goal), 0.0, 1.0)
+	return {
+		"title": "玩家板｜手牌",
+		"hint": _runtime_player_board_hint(player_index),
+		"identity": _player_name(player_index) if _runtime_player_is_valid(player_index) else "未开局",
+		"cash_text": _runtime_player_cash_text(player_index),
+		"gdp_text": _runtime_player_gdp_text(player_index),
+		"goal_text": "%d/%d" % [visible_cash, cash_goal],
+		"goal_ratio": goal_ratio,
+		"selected_district_summary": _runtime_selected_district_summary(player_index),
+		"primary_action": _runtime_primary_action_label(player_index),
+		"quick_actions": _runtime_player_board_quick_actions(player_index),
+		"table_state_lamps": _runtime_player_board_table_state_lamps(player_index),
+		"readiness_chips": _runtime_player_board_readiness_chips(player_index),
+		"bid_board": _runtime_player_board_bid_board(player_index),
+		"actions": _runtime_player_board_action_entries(action_entries),
+		"hand_cards": _runtime_hand_card_snapshots(player_index),
+	}
+
+
+func _runtime_temporary_decision_snapshot_source(player_index: int) -> Dictionary:
+	var pending := _pending_discard_purchase_for_player(player_index)
+	if pending.is_empty() or not _can_view_player_private_hand(player_index):
+		return {}
+	var skill_name := String(pending.get("skill_name", ""))
+	var district_index := int(pending.get("district_index", -1))
+	var price := int(pending.get("price", _card_price(skill_name, district_index, player_index)))
+	var player: Dictionary = players[player_index]
+	var actions: Array = []
+	for slot_variant in _discardable_hand_slots_for_purchase(player):
+		var slot_index := int(slot_variant)
+		var skill: Dictionary = player["slots"][slot_index]
+		var old_name := String(skill.get("name", "旧牌"))
+		actions.append({
+			"id": "discard_purchase_%d" % slot_index,
+			"label": "弃掉 %s" % _short_card_text(_card_display_name(old_name), 10),
+			"tooltip": "私密弃掉这张旧普通牌，然后完成换购。",
+		})
+	actions.append({
+		"id": "discard_purchase_cancel",
+		"label": "取消换购",
+		"tooltip": "取消本次购牌，不公开弃牌信息。",
+	})
+	return {
+		"id": "discard_purchase",
+		"kind": TEMP_DECISION_DISCARD,
+		"title": "私密弃牌确认",
+		"body": "购买%s（约¥%d）会超过%d张普通手牌上限。\n请选择一张旧普通牌弃掉；手牌数量和弃牌内容不会公开。" % [
+			_card_display_name(skill_name),
+			price,
+			PLAYER_HAND_LIMIT,
+		],
+		"tooltip": "这是购牌窗口锁定后的私密选择，不会进入匿名卡牌轨道。",
+		"chips": [
+			{"text": "私密", "tooltip": "只有当前玩家自己的手牌和弃牌选择可见。", "accent": Color("#bfdbfe")},
+			{"text": "不公开", "tooltip": "公开日志不会写出手牌数量、卡名或弃牌内容。", "accent": Color("#facc15")},
+			{"text": "换购", "tooltip": "弃一张旧普通牌后接收新牌。", "accent": Color("#22c55e")},
+		],
+		"actions": actions,
+		"accent": Color("#facc15"),
+	}
+
+
+func _runtime_player_board_action_entries(action_entries: Array) -> Array:
+	var compact: Array = []
+	for action_variant in action_entries:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		compact.append(action)
+		break
+	return compact
+
+
+func _runtime_player_board_quick_actions(player_index: int) -> Array:
+	var selected_ok := selected_district >= 0 and selected_district < districts.size()
+	var build_error := "先选择区域。"
+	var choices_count := 0
+	var can_buy := false
+	if selected_ok:
+		var district: Dictionary = districts[selected_district]
+		var choices_variant: Variant = district.get("card_choices", [])
+		var choices: Array = choices_variant if choices_variant is Array else []
+		choices_count = choices.size()
+		build_error = _city_build_error_for(player_index, selected_district, false)
+		can_buy = _can_buy_card_from_district(selected_district, player_index) and choices_count > 0
+	var build_active := selected_ok and build_error == ""
+	var rack_active := selected_ok and choices_count > 0
+	var play_slot := _first_actionable_hand_slot(player_index)
+	return [
+		_runtime_quick_action_snapshot(
+			"build",
+			"建城",
+			build_active,
+			"ready" if build_active else "blocked",
+			"在当前选区建城。" if build_active else build_error
+		),
+		_runtime_quick_action_snapshot(
+			"rack",
+			"牌架",
+			rack_active,
+			"%d张" % choices_count if rack_active else ("空" if selected_ok else "未选"),
+			"当前选区有 %d 张市场牌。" % choices_count if rack_active else "先选择有牌架的区域。"
+		),
+		_runtime_quick_action_snapshot(
+			"buy",
+			"买牌",
+			can_buy,
+			"ready" if can_buy else ("browse" if rack_active else "locked"),
+			"你的怪兽网络可以从此牌架买牌。" if can_buy else "先移动或延伸访问范围，再从这里买牌。"
+		),
+		_runtime_quick_action_snapshot(
+			"play",
+			"出牌",
+			play_slot >= 0,
+			"ready" if play_slot >= 0 else "waiting",
+			"第 %d 张手牌可打出。" % (play_slot + 1) if play_slot >= 0 else "当前没有可直接打出的手牌。"
+		),
+	]
+
+
+func _runtime_quick_action_snapshot(action_id: String, label: String, active: bool, state: String, tooltip: String) -> Dictionary:
+	return {
+		"id": action_id,
+		"label": label,
+		"active": active,
+		"state": state,
+		"tooltip": tooltip,
+	}
+
+
+func _runtime_player_board_table_state_lamps(player_index: int) -> Array:
+	var queue_count := card_resolution_queue.size() + next_card_resolution_queue.size()
+	var table_state := "空闲"
+	var table_active := false
+	var table_accent := Color("#93c5fd")
+	if card_resolution_auction_open:
+		table_state = "竞价%d" % queue_count
+		table_active = true
+		table_accent = Color("#f59e0b")
+	elif not active_card_resolution.is_empty():
+		table_state = "揭示"
+		table_active = true
+		table_accent = Color("#c084fc")
+	elif queue_count > 0:
+		table_state = "队列%d" % queue_count
+		table_active = true
+		table_accent = Color("#f59e0b")
+	elif victory_countdown_active:
+		table_state = "目标"
+		table_active = true
+		table_accent = Color("#fb923c")
+	var selected_ok := selected_district >= 0 and selected_district < districts.size()
+	var rack_state := "关闭"
+	var rack_active := false
+	if _district_supply_is_open():
+		rack_state = "打开"
+		rack_active = true
+	elif selected_ok:
+		var choices := _selected_district_card_choices()
+		rack_state = "%d张" % choices.size()
+		rack_active = not choices.is_empty()
+	return [
+		{"label": "桌态", "state": table_state, "active": table_active, "accent": table_accent, "tooltip": "公共牌轨和牌桌节奏。"},
+		{"label": "选区", "state": _short_card_text(_runtime_selected_district_title(), 9) if selected_ok else "未选", "active": selected_ok, "accent": Color("#38bdf8"), "tooltip": "当前选中的星球区域。"},
+		{"label": "牌架", "state": rack_state, "active": rack_active, "accent": Color("#facc15") if rack_active else Color("#94a3b8"), "tooltip": "当前选区的市场牌架状态。"},
+	]
+
+
+func _runtime_player_board_readiness_chips(player_index: int) -> Array:
+	if not _runtime_player_is_valid(player_index):
+		return [{"label": "本席", "state": "未开局", "active": false, "accent": Color("#94a3b8"), "tooltip": "开新一桌后才能使用牌桌行动。"}]
+	var selected_ok := selected_district >= 0 and selected_district < districts.size()
+	var hand_count := _player_counted_hand_size(players[player_index] as Dictionary)
+	var can_buy := selected_ok and _can_buy_card_from_district(selected_district, player_index)
+	var playable_slot := _first_actionable_hand_slot(player_index)
+	var chips := [
+		{"label": "选区", "state": "就绪" if selected_ok else "未选", "active": selected_ok, "accent": Color("#38bdf8"), "tooltip": "建城、看牌架或买牌前先选区域。"},
+		{"label": "手牌", "state": "%d/%d" % [hand_count, PLAYER_HAND_LIMIT], "active": hand_count > 0, "accent": Color("#c084fc"), "tooltip": "当前私密手牌数量。"},
+		{"label": "买牌", "state": "就绪" if can_buy else "--", "active": can_buy, "accent": Color("#22c55e") if can_buy else Color("#94a3b8"), "tooltip": "当前选区牌架是否可购买。"},
+		{"label": "出牌", "state": "就绪" if playable_slot >= 0 else "--", "active": playable_slot >= 0, "accent": Color("#c084fc") if playable_slot >= 0 else Color("#64748b"), "tooltip": "当前是否有可打出的手牌。"},
+	]
+	return chips
+
+
+func _runtime_player_board_bid_readiness_chip() -> Dictionary:
+	var chips := _runtime_player_board_bid_readiness_chips(_runtime_snapshot_player_index())
+	if chips.is_empty():
+		return {}
+	if chips[0] is Dictionary:
+		return chips[0] as Dictionary
+	return {}
+
+
+func _runtime_player_board_bid_readiness_chips(player_index: int) -> Array:
+	if not _runtime_player_is_valid(player_index):
+		return []
+	var active_tip := _selected_card_tip_amount(player_index)
+	var queued_index := _queued_card_entry_index_for_player(player_index)
+	var next_queued_index := _next_batch_card_entry_index_for_player(player_index)
+	var queue_count := card_resolution_queue.size()
+	var next_count := next_card_resolution_queue.size()
+	var status_text := _card_bid_control_status_text(player_index)
+	if card_resolution_auction_open:
+		var raise_text := "未入"
+		var raise_active := false
+		if queued_index >= 0:
+			var queued_entry: Dictionary = card_resolution_queue[queued_index]
+			var queued_skill := _queued_skill_from_entry(queued_entry)
+			var spare_cash := int((players[player_index] as Dictionary).get("cash", 0)) - _skill_play_cash_cost(queued_skill) - active_tip
+			raise_text = "加¥%d" % maxi(0, spare_cash) if spare_cash > 0 else "锁资"
+			raise_active = spare_cash > 0
+		elif next_queued_index >= 0:
+			raise_text = "下批"
+		return [
+			_runtime_bid_status_chip("竞价", "%ds" % int(ceil(maxf(0.0, card_resolution_auction_timer))), true, Color("#f59e0b"), "匿名报价沙漏开启；同批牌按公开报价排序。%s" % status_text),
+			_runtime_bid_status_chip("最高", "¥%d" % _highest_card_resolution_bid(), true, Color("#fde68a"), "当前本批最高公开报价；不显示出价者身份。"),
+			_runtime_bid_status_chip("我的", raise_text, raise_active, Color("#22c55e") if raise_active else Color("#94a3b8"), status_text),
+			_runtime_bid_status_chip("队列", "%d+%d" % [queue_count, next_count], queue_count + next_count > 0, Color("#c084fc"), "当前批%d张｜下批等待%d张；封盘后按报价与席位顺序结算。" % [queue_count, next_count]),
+		]
+	if card_resolution_simultaneous_timer > 0.0 and not card_resolution_queue.is_empty():
+		return [
+			_runtime_bid_status_chip("短窗", "%ds" % int(ceil(maxf(0.0, card_resolution_simultaneous_timer))), true, Color("#facc15"), "同时出牌短窗；若出现第二张牌会进入公开报价沙漏。"),
+			_runtime_bid_status_chip("本批", "%d张" % queue_count, true, Color("#f59e0b"), status_text),
+			_runtime_bid_status_chip("我的", "¥%d" % active_tip if queued_index >= 0 else "预¥%d" % active_tip, queued_index >= 0, Color("#c084fc"), status_text),
+		]
+	if (card_resolution_batch_locked or not active_card_resolution.is_empty()) and not card_resolution_queue.is_empty():
+		return [
+			_runtime_bid_status_chip("封盘", "锁定", true, Color("#94a3b8"), "本批报价已锁定；不能再改价。"),
+			_runtime_bid_status_chip("候补", "%d张" % queue_count, true, Color("#c084fc"), status_text),
+			_runtime_bid_status_chip("我的", "¥%d" % active_tip if queued_index >= 0 else ("下批" if next_queued_index >= 0 else "旁观"), queued_index >= 0 or next_queued_index >= 0, Color("#f59e0b"), status_text),
+			_runtime_bid_status_chip("下批", "%d张" % next_count, next_count > 0, Color("#38bdf8") if next_count > 0 else Color("#64748b"), "当前批次清空后，下批等待牌会统一竞价一次。"),
+		]
+	if next_count > 0:
+		return [
+			_runtime_bid_status_chip("下批", "%d张" % next_count, true, Color("#38bdf8"), "等待当前批次清空后统一进入竞价。"),
+			_runtime_bid_status_chip("预设", "¥%d" % active_tip, active_tip > 0, Color("#f59e0b") if active_tip > 0 else Color("#94a3b8"), status_text),
+		]
+	return []
+
+
+func _runtime_player_board_bid_board(player_index: int) -> Dictionary:
+	if not _runtime_player_is_valid(player_index):
+		return {
+			"title": "公开竞价",
+			"phase": "未开局",
+			"status": "开新一桌后才能预设匿名牌公开报价。",
+			"active": false,
+			"accent": Color("#94a3b8"),
+			"chips": [],
+			"track_links": [],
+			"actions": _runtime_bid_board_actions(player_index, true),
+		}
+	var active_tip := _selected_card_tip_amount(player_index)
+	var queued_index := _queued_card_entry_index_for_player(player_index)
+	var next_queued_index := _next_batch_card_entry_index_for_player(player_index)
+	var queue_count := card_resolution_queue.size()
+	var next_count := next_card_resolution_queue.size()
+	var status_text := _card_bid_control_status_text(player_index)
+	var phase := "预设"
+	var accent := Color("#fde68a")
+	var active := active_tip > 0
+	if card_resolution_auction_open:
+		phase = "竞价 %ds" % int(ceil(maxf(0.0, card_resolution_auction_timer)))
+		accent = Color("#f59e0b")
+		active = true
+	elif card_resolution_simultaneous_timer > 0.0 and not card_resolution_queue.is_empty():
+		phase = "短窗 %ds" % int(ceil(maxf(0.0, card_resolution_simultaneous_timer)))
+		accent = Color("#facc15")
+		active = true
+	elif card_resolution_batch_locked or not active_card_resolution.is_empty():
+		phase = "封盘"
+		accent = Color("#94a3b8")
+		active = not card_resolution_queue.is_empty()
+	elif next_count > 0:
+		phase = "下批等待"
+		accent = Color("#38bdf8")
+		active = true
+	var chips := [
+		{"label": "我的", "state": "¥%d" % active_tip, "active": active_tip > 0 or queued_index >= 0 or next_queued_index >= 0, "accent": Color("#fde68a"), "tooltip": status_text, "max_chars": 9},
+		{"label": "最高", "state": "¥%d" % _highest_card_resolution_bid(), "active": card_resolution_auction_open, "accent": Color("#f59e0b"), "tooltip": "当前本批最高公开报价；不显示出价者身份。", "max_chars": 9},
+		{"label": "本批", "state": "%d张" % queue_count, "active": queue_count > 0, "accent": Color("#c084fc"), "tooltip": "当前批等待或正在结算的匿名牌数量。", "max_chars": 8},
+		{"label": "下批", "state": "%d张" % next_count, "active": next_count > 0, "accent": Color("#38bdf8"), "tooltip": "当前批次清空后才会统一竞价的等待牌。", "max_chars": 8},
+	]
+	return {
+		"title": "公开竞价",
+		"phase": phase,
+		"phase_tooltip": _card_resolution_status_text(),
+		"status": _runtime_bid_board_status_line(status_text),
+		"status_tooltip": status_text,
+		"active": active,
+		"accent": accent,
+		"chips": chips,
+		"track_links": _runtime_bid_board_track_links(player_index),
+		"actions": _runtime_bid_board_actions(player_index, false),
+	}
+
+
+func _runtime_bid_board_track_links(player_index: int) -> Array:
+	var links: Array = []
+	if not active_card_resolution.is_empty():
+		links.append(_runtime_bid_board_track_link("展示", active_card_resolution, "当前展示", true))
+	var queued_index := _queued_card_entry_index_for_player(player_index)
+	if card_resolution_auction_open and not card_resolution_queue.is_empty():
+		var leading_index := _card_resolution_leading_queue_index()
+		if leading_index >= 0:
+			links.append(_runtime_bid_board_track_link("领跑", card_resolution_queue[leading_index] as Dictionary, "竞拍%d" % (leading_index + 1), true))
+		if queued_index >= 0:
+			links.append(_runtime_bid_board_track_link("我的牌", card_resolution_queue[queued_index] as Dictionary, "竞拍%d" % (queued_index + 1), true))
+		elif card_resolution_queue.size() > 1:
+			var next_index := 0 if leading_index != 0 else 1
+			links.append(_runtime_bid_board_track_link("下张", card_resolution_queue[next_index] as Dictionary, "竞拍%d" % (next_index + 1), false))
+	elif (card_resolution_batch_locked or not active_card_resolution.is_empty()) and not card_resolution_queue.is_empty():
+		links.append(_runtime_bid_board_track_link("下张", card_resolution_queue[0] as Dictionary, "锁定1", true))
+	elif not card_resolution_queue.is_empty():
+		links.append(_runtime_bid_board_track_link("本批", card_resolution_queue[0] as Dictionary, "待定1", true))
+	if links.size() < 3 and not next_card_resolution_queue.is_empty():
+		links.append(_runtime_bid_board_track_link("下批", next_card_resolution_queue[0] as Dictionary, "下批等待1", true))
+	return links.slice(0, 3)
+
+
+func _runtime_bid_board_track_link(label: String, entry: Dictionary, state_text: String, active: bool) -> Dictionary:
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var selected := resolution_id >= 0 and resolution_id == selected_card_resolution_id
+	var bid := int(entry.get("winning_bid", 0))
+	if bid <= 0:
+		bid = int(entry.get("tip", 0))
+	var card_label := _short_card_text(_card_resolution_entry_card_label(entry), 7)
+	var state := state_text
+	if bid > 0:
+		state = "%s ¥%d" % [state_text, bid]
+	elif card_label != "":
+		state = "%s %s" % [state_text, card_label]
+	return {
+		"id": "track_select_%d" % resolution_id if resolution_id >= 0 else "",
+		"label": label,
+		"state": state,
+		"active": active or selected,
+		"selected": selected,
+		"accent": _card_theme_color(_queued_skill_from_entry(entry)),
+		"tooltip": "对应顶部公开牌轨：%s｜%s｜%s。单击这里或顶部牌槽可选中竞猜/详情。" % [label, state_text, card_label],
+		"max_chars": 13,
+	}
+
+
+func _runtime_bid_board_status_line(status_text: String) -> String:
+	var text := status_text.replace("报价状态：", "").strip_edges()
+	var first_break := text.find("｜")
+	if first_break >= 0:
+		var second_break := text.find("｜", first_break + 1)
+		if second_break >= 0:
+			return text.substr(0, second_break)
+	return text
+
+
+func _runtime_bid_board_actions(player_index: int, force_disabled: bool) -> Array:
+	var actions: Array = []
+	var active_tip := _selected_card_tip_amount(player_index)
+	if card_resolution_auction_open and _queued_card_entry_index_for_player(player_index) >= 0:
+		actions.append_array(_runtime_bid_board_recommended_actions(player_index, active_tip, force_disabled))
+		actions.append({
+			"id": "bid_reset",
+			"label": "清零",
+			"disabled": force_disabled or active_tip <= 0 or not _runtime_bid_board_can_set_tip(player_index, 0),
+			"accent": Color("#94a3b8"),
+			"tooltip": _card_bid_button_tooltip(player_index, 0),
+		})
+		return actions
+	for increment_variant in [10, 50, 100]:
+		var increment := int(increment_variant)
+		var target_tip := active_tip + increment
+		actions.append({
+			"id": "bid_plus_%d" % increment,
+			"label": "+%d" % increment,
+			"disabled": force_disabled or not _runtime_bid_board_can_set_tip(player_index, target_tip),
+			"accent": Color("#fde68a"),
+			"tooltip": _card_bid_button_tooltip(player_index, target_tip),
+		})
+	actions.append({
+		"id": "bid_reset",
+		"label": "清零",
+		"disabled": force_disabled or active_tip <= 0 or not _runtime_bid_board_can_set_tip(player_index, 0),
+		"accent": Color("#94a3b8"),
+		"tooltip": _card_bid_button_tooltip(player_index, 0),
+	})
+	return actions
+
+
+func _runtime_bid_board_recommended_actions(player_index: int, active_tip: int, force_disabled: bool) -> Array:
+	var highest_bid := _highest_card_resolution_bid()
+	var conservative_target := active_tip + 10
+	var match_target: int = max(active_tip, highest_bid)
+	var overtake_target: int = max(active_tip + 10, highest_bid + 10)
+	var entries: Array = [
+		{
+			"id": "bid_plus_10",
+			"label": "保守+10",
+			"target": conservative_target,
+			"accent": Color("#fde68a"),
+			"tooltip_prefix": "小步加价，不急着领跑；适合只想留下报价线索。",
+		},
+		{
+			"id": "bid_set_%d" % match_target,
+			"label": "追平",
+			"target": match_target,
+			"accent": Color("#f59e0b"),
+			"tooltip_prefix": "追到当前公开最高价；同价仍按顺时针席位结算。",
+		},
+		{
+			"id": "bid_set_%d" % overtake_target,
+			"label": "压过",
+			"target": overtake_target,
+			"accent": Color("#22c55e"),
+			"tooltip_prefix": "比当前公开最高价多出¥10，争取下一张先结算。",
+		},
+	]
+	var result: Array = []
+	for entry_variant in entries:
+		var entry: Dictionary = entry_variant
+		var target := int(entry.get("target", active_tip))
+		var disabled := force_disabled or target == active_tip or not _runtime_bid_board_can_set_tip(player_index, target)
+		result.append({
+			"id": String(entry.get("id", "bid_set_%d" % target)),
+			"label": String(entry.get("label", "竞价")),
+			"disabled": disabled,
+			"active": not disabled,
+			"accent": entry.get("accent", Color("#fde68a")),
+			"tooltip": "%s\n%s" % [String(entry.get("tooltip_prefix", "")), _card_bid_button_tooltip(player_index, target)],
+		})
+	return result
+
+
+func _runtime_bid_board_can_set_tip(player_index: int, target_tip: int) -> bool:
+	if game_over or not _runtime_player_is_valid(player_index):
+		return false
+	var clamped := maxi(0, target_tip)
+	var queued_index := _queued_card_entry_index_for_player(player_index)
+	if queued_index >= 0:
+		if not card_resolution_auction_open:
+			return false
+		var queued_entry: Dictionary = card_resolution_queue[queued_index]
+		var queued_skill := _queued_skill_from_entry(queued_entry)
+		var cash_needed := _skill_play_cash_cost(queued_skill) + clamped
+		return int((players[player_index] as Dictionary).get("cash", 0)) >= cash_needed
+	if _next_batch_card_entry_index_for_player(player_index) >= 0:
+		return false
+	return int((players[player_index] as Dictionary).get("cash", 0)) >= clamped
+
+
+func _runtime_bid_status_chip(label: String, state: String, active: bool, accent: Color, tooltip: String) -> Dictionary:
+	return {
+		"label": label,
+		"state": state,
+		"active": active,
+		"accent": accent,
+		"tooltip": tooltip,
+		"cluster": true,
+		"max_chars": 8,
+	}
+
+
+func _runtime_right_inspector_snapshot_source(player_index: int, district_snapshot: Dictionary, action_entries: Array, logs: Array) -> Dictionary:
+	var selected_card: Dictionary = _runtime_selected_hand_card_snapshot(player_index)
+	if not selected_card.is_empty():
+		return _runtime_hand_card_inspector_snapshot_source(selected_card, logs)
+	var selected_track_entry := _runtime_selected_card_track_entry_snapshot()
+	if not selected_track_entry.is_empty():
+		return _runtime_card_track_inspector_snapshot_source(selected_track_entry, logs)
+	return {
+		"title": "右侧详情",
+		"why": _runtime_selected_context_why(player_index),
+		"district": district_snapshot,
+		"requirements": _runtime_requirement_chip_snapshots(player_index),
+		"actions": action_entries,
+		"deep_links": _runtime_deep_link_snapshots(),
+		"logs": logs,
+	}
+
+
+func _runtime_selected_card_track_entry_snapshot() -> Dictionary:
+	if selected_card_resolution_id < 0:
+		return {}
+	for entry_variant in _runtime_card_track_snapshot_source():
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		if int(entry.get("resolution_id", -1)) == selected_card_resolution_id:
+			return entry
+	return {}
+
+
+func _runtime_selected_hand_card_snapshot(player_index: int) -> Dictionary:
+	if selected_runtime_card_slot < 0:
+		return {}
+	for card_variant in _runtime_hand_card_snapshots(player_index):
+		if not (card_variant is Dictionary):
+			continue
+		var card: Dictionary = card_variant
+		if String(card.get("id", "")) == "hand_%d" % selected_runtime_card_slot:
+			return card
+	return {}
+
+
+func _runtime_hand_card_inspector_snapshot_source(card: Dictionary, logs: Array) -> Dictionary:
+	var chips: Array = []
+	for key in ["rank", "type", "cost", "target"]:
+		var value := String(card.get(key, ""))
+		if value.strip_edges() != "":
+			chips.append({"text": "%s %s" % [_runtime_card_fact_label(key), value]})
+	var effect_text := String(card.get("effect", ""))
+	var summary_text := String(card.get("summary", "")).strip_edges()
+	if summary_text == "":
+		summary_text = _short_card_text(effect_text, 56) if effect_text.strip_edges() != "" else "看费用、目标和当前选区条件。"
+	var why_text := String(card.get("why", effect_text))
+	if why_text.strip_edges() == "":
+		why_text = "先看费用、目标和当前选区条件，再决定是否打出。"
+	var requirements: Array = card.get("requirements", []) if card.get("requirements", []) is Array else []
+	var actions: Array = card.get("actions", []) if card.get("actions", []) is Array else []
+	return {
+		"title": "卡牌详情",
+		"why": why_text,
+		"district": {
+			"id": String(card.get("id", "")),
+			"title": String(card.get("name", "卡牌")),
+			"summary": summary_text,
+			"detail": summary_text,
+			"full_detail": effect_text,
+			"chips": chips,
+		},
+		"requirements": requirements,
+		"actions": actions,
+		"deep_links": [
+			{"id": "detail_cards", "label": "卡牌详情"},
+			{"id": "detail_region", "label": "区域详情"},
+		],
+		"logs": logs,
+	}
+
+
+func _runtime_card_track_inspector_snapshot_source(entry: Dictionary, logs: Array) -> Dictionary:
+	var requirements: Array = entry.get("requirements", []) if entry.get("requirements", []) is Array else []
+	var actions: Array = entry.get("actions", []) if entry.get("actions", []) is Array else []
+	var deep_links: Array = entry.get("deep_links", []) if entry.get("deep_links", []) is Array else []
+	var badges: Array = entry.get("badges", []) if entry.get("badges", []) is Array else []
+	var chips: Array = [
+		{"text": "槽 %s" % String(entry.get("slot", "--"))},
+		{"text": String(entry.get("state", "等待"))},
+		{"text": "归属:%s" % String(entry.get("owner_hint", "匿名"))},
+	]
+	var cost_text := String(entry.get("cost", "")).strip_edges()
+	if cost_text != "":
+		chips.append({"text": "报价%s" % cost_text})
+	for badge_variant in badges:
+		var badge_text := String(badge_variant).strip_edges()
+		if badge_text != "":
+			chips.append({"text": badge_text})
+		if chips.size() >= 6:
+			break
+	var tooltip_text := String(entry.get("tooltip", ""))
+	return {
+		"title": String(entry.get("title", "牌轨详情")),
+		"why": String(entry.get("why", tooltip_text)),
+		"district": {
+			"id": String(entry.get("id", "")),
+			"title": String(entry.get("label", "公共牌槽")),
+			"summary": String(entry.get("summary", tooltip_text)),
+			"detail": String(entry.get("detail", tooltip_text)),
+			"full_detail": String(entry.get("full_detail", tooltip_text)),
+			"chips": chips,
+		},
+		"requirements": requirements,
+		"actions": actions,
+		"deep_links": deep_links,
+		"logs": logs,
+	}
+
+
+func _runtime_card_fact_label(key: String) -> String:
+	match key:
+		"rank":
+			return "等级"
+		"type":
+			return "类型"
+		"cost":
+			return "费用"
+		"target":
+			return "目标"
+	return key
+
+
+func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary:
+	if selected_district < 0 or selected_district >= districts.size():
+		return {
+			"id": "",
+			"title": "未选区",
+			"summary": "先点星球区域。",
+			"detail": "先点星球区域。",
+			"full_detail": "选择中央星球区域，查看城市、牌架和行动条件。",
+			"chips": [{"text": "未选择"}],
+		}
+	var district: Dictionary = districts[selected_district]
+	var chips: Array = [{"text": "区域 %d" % (selected_district + 1)}]
+	for lamp_variant in _selected_district_action_lamp_entries(player_index):
+		if not (lamp_variant is Dictionary):
+			continue
+		var lamp: Dictionary = lamp_variant
+		chips.append({"text": "%s:%s" % [String(lamp.get("text", "")), String(lamp.get("state", ""))]})
+		if chips.size() >= 5:
+			break
+	var district_summary := _runtime_selected_district_summary(player_index)
+	var supply_summary := _selected_district_supply_text(player_index)
+	var full_detail := "%s\n%s" % [
+		district_summary,
+		supply_summary,
+	]
+	var table_summary := _short_card_text("%s｜%s" % [district_summary, supply_summary], 56)
+	return {
+		"id": str(selected_district),
+		"title": String(district.get("name", "区域")),
+		"summary": table_summary,
+		"detail": table_summary,
+		"full_detail": full_detail,
+		"chips": chips,
+	}
+
+
+func _runtime_card_track_snapshot_source() -> Array:
+	var entries: Array = []
+	var included_resolution_ids := {}
+	var history_window := 10
+	var history_start: int = maxi(0, resolved_card_history.size() - history_window)
+	for i in range(history_start, resolved_card_history.size()):
+		var history_variant: Variant = resolved_card_history[i]
+		if history_variant is Dictionary:
+			var history_entry: Dictionary = history_variant
+			entries.append(_runtime_card_track_entry_snapshot(history_entry, "已结算"))
+			included_resolution_ids[int(history_entry.get("resolution_id", history_entry.get("queued_order", -1)))] = true
+	if selected_card_resolution_id >= 0 and not bool(included_resolution_ids.get(selected_card_resolution_id, false)):
+		for history_variant in resolved_card_history:
+			if not (history_variant is Dictionary):
+				continue
+			var selected_history_entry: Dictionary = history_variant
+			if int(selected_history_entry.get("resolution_id", selected_history_entry.get("queued_order", -1))) == selected_card_resolution_id:
+				entries.insert(0, _runtime_card_track_entry_snapshot(selected_history_entry, "已结算"))
+				included_resolution_ids[selected_card_resolution_id] = true
+				break
+	if not active_card_resolution.is_empty():
+		entries.append(_runtime_card_track_entry_snapshot(active_card_resolution, "当前展示"))
+	var queue_limit: int = mini(card_resolution_queue.size(), 4)
+	for i in range(queue_limit):
+		var queue_variant: Variant = card_resolution_queue[i]
+		if queue_variant is Dictionary:
+			var queue_state := "待定%d" % (i + 1)
+			if card_resolution_auction_open:
+				queue_state = "竞拍%d" % (i + 1)
+			elif card_resolution_batch_locked or not active_card_resolution.is_empty():
+				queue_state = "锁定%d" % (i + 1)
+			entries.append(_runtime_card_track_entry_snapshot(queue_variant as Dictionary, queue_state))
+	var next_limit: int = mini(next_card_resolution_queue.size(), 3)
+	for i in range(next_limit):
+		var next_variant: Variant = next_card_resolution_queue[i]
+		if next_variant is Dictionary:
+			entries.append(_runtime_card_track_entry_snapshot(next_variant as Dictionary, "下批等待%d" % (i + 1)))
+	for event_variant in _runtime_card_track_event_snapshots():
+		if event_variant is Dictionary:
+			entries.append(event_variant as Dictionary)
+	if entries.is_empty():
+		entries.append({"label": "牌轨空闲", "state": "等待", "slot": "--", "owner_hint": "匿名", "tooltip": _card_resolution_status_text()})
+	return entries
+
+
+func _runtime_card_track_event_snapshots() -> Array:
+	var events: Array = []
+	for entry_variant in _recent_table_event_entries():
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		events.append({
+			"id": "event_%d" % events.size(),
+			"label": _short_card_text(String(entry.get("text", "公共事件")), 12),
+			"slot": "事件",
+			"state": "公共事件",
+			"kind": "event",
+			"owner_hint": "只读",
+			"badges": ["只读"],
+			"active": false,
+			"accent": entry.get("accent", Color("#a78bfa")),
+			"tooltip": "公共事件：只读，不可竞猜｜%s" % String(entry.get("tooltip", entry.get("text", ""))),
+			"title": "牌轨事件",
+			"summary": _short_card_text(String(entry.get("text", "公共事件")), 58),
+			"detail": String(entry.get("tooltip", entry.get("text", ""))),
+			"why": "这是公共时间轴上的只读事件；不会暴露匿名出牌者。",
+			"requirements": [{"text": "只读"}, {"text": "公共事件"}],
+			"deep_links": [{"id": "detail_intel", "label": "情报详情"}],
+		})
+		if events.size() >= 3:
+			break
+	return events
+
+
+func _runtime_card_track_entry_snapshot(entry: Dictionary, state_text: String) -> Dictionary:
+	var resolution_id: int = int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var selected := resolution_id >= 0 and resolution_id == selected_card_resolution_id
+	var owner_index: int = int(entry.get("player_index", -1))
+	var owner_revealed := bool(entry.get("public_owner_revealed", false))
+	var owner_text := "匿名"
+	if owner_revealed:
+		owner_text = String(entry.get("public_owner_label", _player_name(owner_index) if _runtime_player_is_valid(owner_index) else "已公开")).replace("归属：", "").replace("归属:", "")
+	var bid: int = int(entry.get("winning_bid", 0))
+	if bid <= 0:
+		bid = int(entry.get("tip", 0))
+	var cost_text := ""
+	if bid > 0:
+		cost_text = "¥%d" % bid
+	var card_label := _card_resolution_entry_card_label(entry)
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	var card_name := String(skill.get("name", card_label))
+	var visible_badges := _card_resolution_track_visible_badge_texts(entry, state_text, bid)
+	if selected:
+		visible_badges.insert(0, "已选")
+	var tooltip := _card_resolution_track_entry_tooltip(entry, state_text)
+	var requirement_text := _card_resolution_play_requirement_text(entry)
+	var target_text := _card_resolution_target_text(skill, entry)
+	var requirements: Array = [
+		{"text": state_text, "tooltip": "这张匿名牌在公共牌轨中的位置。"},
+		{"text": "归属:%s" % owner_text, "tooltip": "未公开前只能从报价、目标和余波推理。"},
+	]
+	if cost_text != "":
+		requirements.append({"text": "报价%s" % cost_text, "tooltip": "公开报价/成交小费，是匿名来源推理线索。"})
+	if requirement_text != "":
+		requirements.append({"text": _short_card_text(requirement_text.replace("打出条件：", ""), 18), "tooltip": requirement_text})
+	if target_text != "":
+		requirements.append({"text": "目标:%s" % _short_card_text(target_text, 12), "tooltip": target_text})
+	var actions: Array = []
+	var deep_links: Array = []
+	if resolution_id >= 0:
+		actions.append({
+			"id": "track_select_%d" % resolution_id,
+			"label": "选中竞猜",
+			"disabled": owner_revealed,
+			"tooltip": "把这张匿名牌设为当前归属竞猜对象。" if not owner_revealed else "归属已公开，无需竞猜。",
+		})
+		actions.append({
+			"id": "track_intel_%d" % resolution_id,
+			"label": "线索档案",
+			"tooltip": "打开情报档案，并把这张匿名牌的条件、目标、报价和余波线索置顶。",
+		})
+		deep_links.append({
+			"id": "track_intel_%d" % resolution_id,
+			"label": "线索档案",
+			"tooltip": "打开情报档案并置顶这张匿名牌。",
+		})
+	if card_name != "":
+		actions.append({
+			"id": "track_open_%s" % card_name,
+			"label": "卡牌详情",
+			"tooltip": "打开这张牌的图鉴详情。",
+		})
+		deep_links.append({"id": "track_open_%s" % card_name, "label": "卡牌详情"})
+	return {
+		"id": "track_%d" % resolution_id,
+		"resolution_id": resolution_id,
+		"card_name": card_name,
+		"label": "%s %s" % [state_text, _short_card_text(card_label, 8)],
+		"slot": _card_resolution_track_slot_index_text(state_text),
+		"state": state_text,
+		"kind": _runtime_card_track_kind(state_text),
+		"cost": cost_text,
+		"owner_hint": owner_text,
+		"badges": visible_badges,
+		"active": selected or state_text.begins_with("当前展示") or state_text.begins_with("竞拍1") or state_text.begins_with("锁定1"),
+		"selected": selected,
+		"accent": _card_theme_color(skill),
+		"tooltip": tooltip,
+		"title": "牌轨详情",
+		"summary": "%s｜%s｜%s" % [state_text, _short_card_text(card_label, 14), "归属:%s" % owner_text],
+		"detail": _short_card_text(tooltip, 120),
+		"full_detail": tooltip,
+		"why": "单击牌槽选中竞猜；看报价、目标、余波和归属标记推理来源。",
+		"requirements": requirements,
+		"actions": actions,
+		"deep_links": deep_links,
+		"select_action": "track_select_%d" % resolution_id if resolution_id >= 0 else "",
+		"open_action": "track_open_%s" % card_name if card_name != "" else "",
+	}
+
+
+func _runtime_card_track_kind(state_text: String) -> String:
+	if state_text.begins_with("已结算"):
+		return "history"
+	if state_text.begins_with("当前展示"):
+		return "active"
+	if state_text.begins_with("下批等待"):
+		return "next"
+	if state_text.begins_with("竞拍"):
+		return "auction"
+	if state_text.begins_with("锁定"):
+		return "locked"
+	return "queue"
+
+
+func _runtime_planet_snapshot_source() -> Dictionary:
+	return {
+		"title": "星球牌桌",
+		"hint": "区域 %d｜怪兽 %d｜军队 %d｜选区 %s" % [
+			districts.size(),
+			auto_monsters.size(),
+			military_units.size(),
+			_runtime_selected_district_title(),
+		],
+		"left_rail": {
+			"title": "地表情报",
+			"entries": _runtime_planet_surface_rail_entries(selected_player),
+		},
+		"right_rail": {
+			"title": "外围压力",
+			"entries": _runtime_planet_outer_rail_entries(),
+		},
+		"weather": {
+			"active": _weather_active_ui_text(),
+			"forecast": _weather_forecast_ui_text(),
+			"impact": _weather_impact_ui_text(),
+			"tooltip": _weather_status_text(),
+		},
+		"flow_compass": {
+			"title": "试玩 罗盘",
+			"steps": ["点区", "首召", "建城", "买牌", "出牌"],
+			"tooltip": "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。",
+		},
+	}
+
+
+func _runtime_planet_surface_rail_entries(player_index: int) -> Array:
+	var selected_ok := selected_district >= 0 and selected_district < districts.size()
+	var choices_count := 0
+	var supply_text := "补给：未选区"
+	if selected_ok:
+		choices_count = _selected_district_card_choices().size()
+		supply_text = _selected_district_supply_text(player_index)
+	return [
+		{
+			"label": "星区",
+			"value": "%d区" % districts.size(),
+			"active": districts.size() > 0,
+			"accent": Color("#38bdf8"),
+			"tooltip": "公开星区数量；完整区域事实进入区域图鉴。",
+		},
+		{
+			"label": "选区",
+			"value": _short_card_text(_runtime_selected_district_title(), 12),
+			"active": selected_ok,
+			"accent": Color("#facc15"),
+			"tooltip": "当前选中的星球区域。",
+		},
+		{
+			"label": "牌架",
+			"value": "%d张" % choices_count if selected_ok else "未选",
+			"active": selected_ok and choices_count > 0,
+			"accent": Color("#c084fc"),
+			"tooltip": "当前选区可查看的公开牌架数量。",
+		},
+		{
+			"label": "补给",
+			"value": _short_card_text(supply_text.replace("补给 ", ""), 12),
+			"active": selected_ok,
+			"accent": Color("#4ade80"),
+			"tooltip": supply_text,
+		},
+	]
+
+
+func _runtime_planet_outer_rail_entries() -> Array:
+	var queue_count := card_resolution_queue.size() + next_card_resolution_queue.size()
+	return [
+		{
+			"label": "怪兽",
+			"value": "%d只" % auto_monsters.size(),
+			"active": auto_monsters.size() > 0,
+			"accent": Color("#fb7185"),
+			"tooltip": "公开怪兽数量；完整怪兽档案进入图鉴。",
+		},
+		{
+			"label": "天气",
+			"value": _runtime_planet_weather_short_text(),
+			"active": not active_weather_zones.is_empty() or not weather_forecast.is_empty(),
+			"accent": Color("#38bdf8"),
+			"tooltip": _weather_status_text(),
+		},
+		{
+			"label": "牌轨",
+			"value": _runtime_planet_card_track_short_text(queue_count),
+			"active": queue_count > 0 or card_resolution_auction_open or not active_card_resolution.is_empty(),
+			"accent": Color("#f59e0b"),
+			"tooltip": _card_resolution_status_text(),
+		},
+		{
+			"label": "终局",
+			"value": "沙漏" if victory_countdown_active else "未触发",
+			"active": victory_countdown_active,
+			"accent": Color("#facc15"),
+			"tooltip": "有人达到目标现金后开启终局沙漏。",
+		},
+	]
+
+
+func _runtime_planet_weather_short_text() -> String:
+	if not active_weather_zones.is_empty():
+		return "活跃%d" % active_weather_zones.size()
+	if not weather_forecast.is_empty():
+		return "预报"
+	return "平稳"
+
+
+func _runtime_planet_card_track_short_text(queue_count: int) -> String:
+	if card_resolution_auction_open:
+		return "竞价%d" % queue_count
+	if not active_card_resolution.is_empty():
+		return "展示"
+	if queue_count > 0:
+		return "队列%d" % queue_count
+	return "空闲"
+
+
+func _runtime_requirement_chip_snapshots(player_index: int) -> Array:
+	var chips: Array = []
+	for entry_variant in _selected_district_action_lamp_entries(player_index):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		chips.append({
+			"text": "%s:%s" % [String(entry.get("text", "")), String(entry.get("state", ""))],
+			"tooltip": String(entry.get("tip", "")),
+		})
+	if chips.is_empty():
+		chips.append({"text": "暂无条件"})
+	return chips
+
+
+func _runtime_snapshot_action_entries(player_index: int) -> Array:
+	var actions: Array = []
+	var primary: Dictionary = _runtime_primary_action_entry(player_index)
+	actions.append({
+		"id": "primary",
+		"label": String(primary.get("label", "看星球")),
+		"disabled": bool(primary.get("disabled", true)),
+		"tooltip": String(primary.get("detail", "")),
+	})
+	if player_index >= 0 and selected_district >= 0 and selected_district < districts.size():
+		var district_actions: Array = _selected_district_action_entries(player_index)
+		for i in range(district_actions.size()):
+			var entry_variant: Variant = district_actions[i]
+			if not (entry_variant is Dictionary):
+				continue
+			var entry: Dictionary = entry_variant
+			actions.append({
+				"id": "district_%d" % i,
+				"label": String(entry.get("label", entry.get("text", "行动"))),
+				"disabled": bool(entry.get("disabled", false)),
+				"tooltip": String(entry.get("tooltip", "")),
+			})
+			if actions.size() >= 5:
+				break
+	if actions.is_empty():
+		actions.append({"id": "inspect", "label": "看星球", "disabled": false, "tooltip": "选择区域，或打开图鉴深读。"})
+	return actions
+
+
+func _runtime_primary_action_entry(player_index: int) -> Dictionary:
+	var body: String = "%s %s" % [
+		_runtime_selected_district_summary(player_index),
+		_selected_district_supply_text(player_index) if selected_district >= 0 and selected_district < districts.size() else "",
+	]
+	var primary: Dictionary = _table_goal_primary_action(player_index, body)
+	if primary.is_empty():
+		return {"label": "看星球", "detail": "选择区域后显示下一步具体行动。", "disabled": false}
+	return primary
+
+
+func _runtime_primary_action_label(player_index: int) -> String:
+	return String(_runtime_primary_action_entry(player_index).get("label", "看星球"))
+
+
+func _runtime_hand_card_snapshots(player_index: int) -> Array:
+	var cards: Array = []
+	if not _runtime_player_is_valid(player_index) or not _can_view_player_private_hand(player_index):
+		return cards
+	var player: Dictionary = players[player_index]
+	var slots: Array = player.get("slots", [])
+	for i in range(slots.size()):
+		var slot_variant: Variant = slots[i]
+		if not (slot_variant is Dictionary):
+			continue
+		var skill: Dictionary = slot_variant
+		var skill_name: String = String(skill.get("name", ""))
+		var card_label: String = _card_display_name(skill_name)
+		if card_label == "":
+			card_label = skill_name if skill_name != "" else "卡牌"
+		var play_state: Dictionary = _hand_card_play_state(player_index, skill)
+		var effect_text: String = _card_face_quick_effect_text(skill_name, skill, true)
+		if effect_text.strip_edges() == "":
+			effect_text = _short_card_text(_skill_display_text(skill), 44)
+		cards.append({
+			"id": "hand_%d" % i,
+			"slot": i,
+			"name": card_label,
+			"rank": _runtime_rank_label(_skill_rank(skill_name)),
+			"type": _card_strategy_route_label(skill),
+			"cost": str(skill.get("cost", skill.get("play_cash", ""))),
+			"target": String(play_state.get("label", "")),
+			"play_state": _hand_card_state_primary_text(play_state),
+			"action_state": _hand_card_action_text(play_state, skill),
+			"actionable": bool(play_state.get("actionable", false)),
+			"drop_enabled": bool(play_state.get("actionable", false)),
+			"drop_label": _runtime_hand_card_drop_label(play_state, skill),
+			"block_reason": String(play_state.get("detail", "")) if not bool(play_state.get("actionable", false)) else "",
+			"effect": effect_text,
+			"why": String(play_state.get("detail", "")),
+			"accent": _card_theme_color(skill),
+			"requirements": [
+				{"text": String(play_state.get("label", "")), "tooltip": String(play_state.get("detail", ""))},
+				{"text": _skill_play_requirement_text(skill, player_index)},
+			],
+			"actions": [{
+				"id": "play_%d" % i,
+				"label": "出牌",
+				"disabled": not bool(play_state.get("actionable", false)),
+				"tooltip": String(play_state.get("detail", "")),
+			}],
+		})
+	return cards
+
+
+func _runtime_hand_card_drop_label(play_state: Dictionary, skill: Dictionary) -> String:
+	if not bool(play_state.get("actionable", false)):
+		return "不能出：%s" % _short_card_text(String(play_state.get("label", "不可打")), 8)
+	if _skill_requires_target_monster(skill):
+		return "松开选怪兽"
+	if _skill_requires_target_player(skill):
+		return "松开选玩家"
+	if bool(skill.get("starter_play_free", false)):
+		return "松开首召"
+	return "松开出牌"
+
+
+func _runtime_selected_context_why(player_index: int) -> String:
+	if players.is_empty():
+		return "开新一桌或读取牌桌后，这里会显示当前能做什么。"
+	if selected_district < 0 or selected_district >= districts.size():
+		return "先点中央星球上的区域，再查看城市、牌架和卡牌选择。"
+	var active_labels: Array[String] = []
+	for entry_variant in _selected_district_action_lamp_entries(player_index):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		if bool(entry.get("active", false)):
+			active_labels.append("%s:%s" % [String(entry.get("text", "")), String(entry.get("state", ""))])
+	if not active_labels.is_empty():
+		return "现在可做：%s。" % "、".join(active_labels)
+	var build_error: String = _city_build_error_for(player_index, selected_district, false)
+	if build_error != "":
+		return "主要阻碍：%s" % build_error
+	return "暂无紧急阻碍。需要深读时打开牌架、路线或图鉴详情。"
+
+
+func _runtime_deep_link_snapshots() -> Array:
+	return [
+		{"id": "detail_region", "label": "区域详情"},
+		{"id": "detail_cards", "label": "卡牌/牌架"},
+		{"id": "detail_intel", "label": "情报详情"},
+	]
+
+
+func _runtime_public_log_snapshot() -> Array:
+	var logs: Array = []
+	var start_index: int = maxi(0, log_lines.size() - 6)
+	for i in range(start_index, log_lines.size()):
+		logs.append(String(log_lines[i]))
+	if logs.is_empty():
+		logs.append(_card_resolution_status_text())
+	return logs
+
+
+func _runtime_player_board_hint(player_index: int) -> String:
+	if not _runtime_player_is_valid(player_index):
+		return "还没有可行动席位。"
+	if _can_view_player_private_hand(player_index):
+		return "私密手牌和当前行动都固定在底部玩家板。"
+	return "只看公开席位：私密现金和手牌保持隐藏。"
+
+
+func _runtime_selected_district_summary(player_index: int) -> String:
+	if selected_district < 0 or selected_district >= districts.size():
+		return "未选区"
+	return _selected_district_status_text(player_index)
+
+
+func _runtime_selected_district_title() -> String:
+	if selected_district < 0 or selected_district >= districts.size():
+		return "未选区"
+	return String(districts[selected_district].get("name", "区域"))
+
+
+func _runtime_player_cash_text(player_index: int) -> String:
+	if not _runtime_player_is_valid(player_index):
+		return "--"
+	if _can_view_player_private_hand(player_index):
+		return "¥ %d" % int((players[player_index] as Dictionary).get("cash", 0))
+	return "公开估算 %d" % _player_visible_settlement_estimate(player_index)
+
+
+func _runtime_player_gdp_text(player_index: int) -> String:
+	if not _runtime_player_is_valid(player_index):
+		return "--/min"
+	if _can_view_player_private_hand(player_index):
+		return "%d/min" % _player_gdp_per_minute(player_index)
+	return "公开"
+
+
+func _runtime_player_visible_cash(player_index: int) -> int:
+	if not _runtime_player_is_valid(player_index):
+		return 0
+	return _player_visible_settlement_estimate(player_index)
+
+
+func _runtime_player_is_valid(player_index: int) -> bool:
+	return player_index >= 0 and player_index < players.size()
+
+
+func _runtime_rank_label(rank: int) -> String:
+	match clampi(rank, 1, 4):
+		1:
+			return "I"
+		2:
+			return "II"
+		3:
+			return "III"
+		4:
+			return "IV"
+	return ""
 
 
 func _refresh_weather_forecast_strip() -> void:
@@ -17636,32 +18905,18 @@ func _active_bottom_countdown_state() -> Dictionary:
 			"total": maxf(1.0, VICTORY_COUNTDOWN_SECONDS),
 			"accent": Color("#f97316"),
 		}
-	if not weather_forecast.is_empty():
-		var created_at := float(weather_forecast.get("created_at", game_time))
-		var starts_at := float(weather_forecast.get("starts_at", game_time))
-		return {
-			"visible": true,
-			"label": "天气预报",
-			"remaining": maxf(0.0, starts_at - game_time),
-			"total": maxf(1.0, starts_at - created_at),
-			"accent": Color("#38bdf8"),
-		}
-	if not active_weather_zones.is_empty():
-		var weather_entry: Dictionary = active_weather_zones[0]
-		return {
-			"visible": true,
-			"label": "天气影响",
-			"remaining": maxf(0.0, float(weather_entry.get("ends_at", game_time)) - game_time),
-			"total": maxf(1.0, float(weather_entry.get("duration", WEATHER_DURATION_MIN_SECONDS))),
-			"accent": Color("#22d3ee"),
-		}
 	return {"visible": false}
 
 
 func _refresh_bottom_countdown_bar() -> void:
-	if bottom_countdown_overlay == null or card_resolution_timer_bar == null or card_resolution_timer_label == null:
+	if bottom_countdown_overlay == null:
 		return
 	var state := _active_bottom_countdown_state()
+	if bottom_countdown_overlay.has_method("set_state"):
+		bottom_countdown_overlay.call("set_state", state)
+		return
+	if card_resolution_timer_bar == null or card_resolution_timer_label == null:
+		return
 	if not bool(state.get("visible", false)):
 		bottom_countdown_overlay.visible = false
 		return
@@ -21442,6 +22697,8 @@ func _add_player_seat_strip(parent: HBoxContainer, viewer_index: int) -> void:
 
 
 func _refresh_player_panel(force_rebuild: bool = true) -> void:
+	if player_box == null:
+		return
 	var signature := _player_panel_structure_signature()
 	if not force_rebuild and signature == player_panel_signature:
 		_refresh_player_panel_live_values()
@@ -27093,6 +28350,7 @@ func _open_district_supply_from_map(district_index: int) -> void:
 	if district_index < 0 or district_index >= districts.size() or selected_player < 0 or selected_player >= players.size():
 		return
 	selected_district = district_index
+	selected_runtime_card_slot = -1
 	district_supply_open_district = district_index
 	district_supply_open_player = selected_player
 	_open_district_card_purchase_window(district_index, selected_player)
@@ -27354,65 +28612,6 @@ func _district_supply_purchase_verdict_entries(district_index: int, card_name: S
 	return entries
 
 
-func _add_district_supply_purchase_verdict_lamp(parent: Container, entry: Dictionary) -> void:
-	var accent: Color = entry.get("accent", Color("#94a3b8")) as Color
-	var active := bool(entry.get("active", false))
-	var lamp := PanelContainer.new()
-	lamp.name = "DistrictSupplyPurchaseVerdictLamp"
-	lamp.tooltip_text = String(entry.get("tip", ""))
-	lamp.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.20 if active else 0.08), 1, 8))
-	parent.add_child(lamp)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 5)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_right", 5)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	lamp.add_child(margin)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	margin.add_child(row)
-	var signal_bar := ColorRect.new()
-	signal_bar.name = "DistrictSupplyPurchaseVerdictSignal"
-	signal_bar.color = accent.lightened(0.16) if active else Color("#334155")
-	signal_bar.custom_minimum_size = Vector2(5, 16)
-	row.add_child(signal_bar)
-	var label := _plain_label(String(entry.get("text", "")), 8, accent.lightened(0.18) if active else Color("#94a3b8"))
-	label.name = "DistrictSupplyPurchaseVerdictLabel"
-	label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(label)
-
-
-func _add_district_supply_purchase_verdict_rail(parent: Container, district_index: int, card_name: String, player_index: int, state: Dictionary) -> void:
-	var rail := HFlowContainer.new()
-	rail.name = "DistrictSupplyPurchaseVerdictRail"
-	rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rail.add_theme_constant_override("h_separation", 5)
-	rail.add_theme_constant_override("v_separation", 3)
-	parent.add_child(rail)
-	for entry_variant in _district_supply_purchase_verdict_entries(district_index, card_name, player_index, state):
-		_add_district_supply_purchase_verdict_lamp(rail, entry_variant as Dictionary)
-
-
-func _on_district_supply_market_card_gui_input(event: InputEvent, card_name: String) -> void:
-	if not (event is InputEventMouseButton):
-		return
-	var mouse_event := event as InputEventMouseButton
-	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
-		return
-	_preview_district_card(card_name, true)
-	if mouse_event.double_click:
-		_claim_district_card(card_name)
-		accept_event()
-
-
-func _add_district_supply_market_chip(parent: Container, text: String, accent: Color, tooltip: String = "") -> void:
-	var chip := _track_status_badge(text, accent.lightened(0.12), Color("#020617").lerp(accent, 0.22))
-	chip.name = "DistrictSupplyMarketCardChip"
-	chip.tooltip_text = tooltip
-	parent.add_child(chip)
-
-
 func _district_supply_micro_card_chip_entries(card_name: String, skill: Dictionary, player_index: int) -> Array:
 	var entries := []
 	var flow_required := _skill_play_flow_required(skill, player_index)
@@ -27491,126 +28690,145 @@ func _district_supply_micro_card_chip_entries(card_name: String, skill: Dictiona
 	return entries
 
 
-func _add_district_supply_micro_card_chip(parent: Container, entry: Dictionary) -> void:
-	var chip := _track_status_badge(
-		String(entry.get("text", "")),
-		entry.get("fg", Color("#e2e8f0")) as Color,
-		entry.get("bg", Color("#1f2937")) as Color
-	)
-	chip.name = "DistrictSupplyMarketCardMicroChip"
-	chip.tooltip_text = String(entry.get("tip", ""))
-	parent.add_child(chip)
-
-
-func _add_district_supply_micro_card_chip_rail(parent: Container, card_name: String, skill: Dictionary, player_index: int, rail_name: String = "DistrictSupplyMarketCardMicroChipRail", max_chips: int = 3) -> void:
-	var micro_rail := HFlowContainer.new()
-	micro_rail.name = rail_name
-	micro_rail.add_theme_constant_override("h_separation", 3)
-	micro_rail.add_theme_constant_override("v_separation", 2)
-	micro_rail.tooltip_text = "微卡面读法：打出门槛、目标和去向先看这里；完整效果看右侧预览。"
-	parent.add_child(micro_rail)
-	var entries := _district_supply_micro_card_chip_entries(card_name, skill, player_index)
-	for i in range(mini(max_chips, entries.size())):
-		_add_district_supply_micro_card_chip(micro_rail, entries[i] as Dictionary)
-
-
-func _add_district_supply_card_button(parent: Container, district_index: int, card_name: String) -> void:
+func _district_supply_market_card_snapshot(district_index: int, card_name: String) -> Dictionary:
 	var skill := _skill_definition(card_name)
 	if skill.is_empty():
-		return
+		return {}
 	var state := _district_supply_purchase_state(district_index, card_name, selected_player)
 	var price := int(state.get("price", _card_price(card_name, district_index, selected_player)))
-	var status_label := String(state.get("label", "仅浏览"))
+	var status_label := String(state.get("label", "Browse"))
 	var route_label := _card_strategy_route_label(skill)
 	var facts := _join_first_card_facts(_card_key_rule_facts(skill), 2)
 	if facts == "":
 		facts = _short_card_text(_skill_display_text(skill), 26)
 	var theme_color := _card_theme_color(skill)
+	var accent: Color = state.get("accent", theme_color) as Color
 	var selected := card_name == previewed_district_card
-	var card := PanelContainer.new()
-	card.name = "DistrictSupplyMarketCardPanel"
-	card.custom_minimum_size = Vector2(164, 110)
-	card.tooltip_text = "%s\n%s" % [_card_detail_tooltip(card_name, district_index), String(state.get("detail", ""))]
-	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	card.add_theme_stylebox_override("panel", _menu_card_style(theme_color.lightened(0.12) if selected else theme_color, Color("#020617").lerp(theme_color, 0.15 if selected else 0.08), 2 if selected else 1, 12))
-	card.mouse_entered.connect(Callable(self, "_preview_district_card").bind(card_name, true))
-	card.gui_input.connect(Callable(self, "_on_district_supply_market_card_gui_input").bind(card_name))
+	return {
+		"card_name": card_name,
+		"selected": selected,
+		"actionable": bool(state.get("actionable", false)),
+		"title": "%s%s %s" % [
+			"> " if selected else "",
+			_card_icon_for_card(skill, card_name),
+			_short_card_text(_card_display_name(card_name), 11),
+		],
+		"title_color": Color("#f8fafc") if bool(state.get("actionable", false)) else Color("#cbd5e1"),
+		"title_tooltip": _card_display_name(card_name),
+		"rank": _roman_level(maxi(1, _skill_rank(card_name))),
+		"rank_tooltip": "Card rank / upgrade tier.",
+		"chips": [
+			{
+				"text": "¥%d" % price,
+				"accent": Color("#fde68a"),
+				"fg": Color("#fde68a").lightened(0.12),
+				"bg": Color("#020617").lerp(Color("#fde68a"), 0.22),
+				"tooltip": "Locked market price.",
+			},
+			{
+				"text": status_label,
+				"accent": accent,
+				"fg": accent.lightened(0.12),
+				"bg": Color("#020617").lerp(accent, 0.22),
+				"tooltip": String(state.get("detail", "")),
+			},
+		],
+		"micro_chips": _district_supply_micro_card_chip_entries(card_name, skill, selected_player),
+		"route": _short_card_text(route_label, 18),
+		"route_tooltip": "Strategy route: %s" % route_label,
+		"facts": _short_card_text(facts, 32),
+		"facts_tooltip": facts,
+		"state_text": _short_card_text(status_label, 12),
+		"state_tooltip": String(state.get("detail", "")),
+		"accent": accent,
+		"theme_color": theme_color,
+		"tooltip": "%s\n%s" % [_card_detail_tooltip(card_name, district_index), String(state.get("detail", ""))],
+	}
+
+
+func _add_district_supply_card_button(parent: Container, district_index: int, card_name: String) -> void:
+	var snapshot := _district_supply_market_card_snapshot(district_index, card_name)
+	if snapshot.is_empty():
+		return
+	var card := DistrictSupplyMarketCardScene.instantiate() as Control
+	if card == null:
+		return
+	if card.has_signal("card_hovered"):
+		card.connect("card_hovered", Callable(self, "_preview_district_card").bind(true))
+	if card.has_signal("card_preview_requested"):
+		card.connect("card_preview_requested", Callable(self, "_preview_district_card").bind(true))
+	if card.has_signal("card_activated"):
+		card.connect("card_activated", Callable(self, "_claim_district_card"))
 	parent.add_child(card)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 7)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.name = "DistrictSupplyMarketCardStack"
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var top_row := HBoxContainer.new()
-	top_row.name = "DistrictSupplyMarketCardTopRow"
-	top_row.add_theme_constant_override("separation", 5)
-	box.add_child(top_row)
-	var title := _plain_label("%s%s %s" % [
-		"▶ " if selected else "",
-		_card_icon_for_card(skill, card_name),
-		_short_card_text(_card_display_name(card_name), 11),
-	], 10, Color("#f8fafc") if bool(state.get("actionable", false)) else Color("#cbd5e1"))
-	title.name = "DistrictSupplyMarketCardTitle"
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	title.clip_text = true
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top_row.add_child(title)
-	var level := _roman_level(maxi(1, _skill_rank(card_name)))
-	var rank := _plain_label(level, 9, theme_color.lightened(0.20))
-	rank.name = "DistrictSupplyMarketCardRank"
-	rank.tooltip_text = "卡牌等级；购买价仍按I级基准。"
-	top_row.add_child(rank)
-	var chip_row := HFlowContainer.new()
-	chip_row.name = "DistrictSupplyMarketCardChipRail"
-	chip_row.add_theme_constant_override("h_separation", 3)
-	chip_row.add_theme_constant_override("v_separation", 2)
-	box.add_child(chip_row)
-	_add_district_supply_market_chip(chip_row, "¥%d" % price, Color("#fde68a"), "购买价格；本窗口打开时已锁定。")
-	_add_district_supply_market_chip(chip_row, status_label, state.get("accent", Color("#94a3b8")) as Color, String(state.get("detail", "")))
-	_add_district_supply_micro_card_chip_rail(box, card_name, skill, selected_player)
-	var route := _plain_label(_short_card_text(route_label, 18), 9, theme_color.lightened(0.18))
-	route.name = "DistrictSupplyMarketCardRoute"
-	route.autowrap_mode = TextServer.AUTOWRAP_OFF
-	route.clip_text = true
-	route.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	route.tooltip_text = "策略路线：%s" % route_label
-	box.add_child(route)
-	var body := _plain_label(_short_card_text(facts, 32), 8, Color("#94a3b8"))
-	body.name = "DistrictSupplyMarketCardFactLine"
-	body.autowrap_mode = TextServer.AUTOWRAP_OFF
-	body.clip_text = true
-	body.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	body.tooltip_text = facts
-	box.add_child(body)
-	var state_band := HBoxContainer.new()
-	state_band.name = "DistrictSupplyMarketCardStateBand"
-	state_band.add_theme_constant_override("separation", 4)
-	state_band.tooltip_text = String(state.get("detail", ""))
-	box.add_child(state_band)
-	var state_signal := ColorRect.new()
-	state_signal.name = "DistrictSupplyMarketCardStateSignal"
-	state_signal.color = state.get("accent", theme_color) as Color
-	state_signal.custom_minimum_size = Vector2(7, 12)
-	state_band.add_child(state_signal)
-	var state_text := _plain_label(_short_card_text(status_label, 12), 8, state.get("accent", Color("#94a3b8")) as Color)
-	state_text.name = "DistrictSupplyMarketCardStateLabel"
-	state_text.autowrap_mode = TextServer.AUTOWRAP_OFF
-	state_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	state_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	state_band.add_child(state_text)
-	var tick := ColorRect.new()
-	tick.name = "DistrictSupplyMarketCardColorTick"
-	tick.color = state.get("accent", theme_color) as Color
-	tick.custom_minimum_size = Vector2(0, 3)
-	box.add_child(tick)
-	if not bool(state.get("actionable", false)):
-		card.modulate = Color(0.82, 0.88, 1.0, 0.82)
+	if card.has_method("set_card"):
+		card.call("set_card", snapshot)
+
+
+func _district_supply_preview_snapshot(district_index: int, preview_name: String) -> Dictionary:
+	var skill := _skill_definition(preview_name)
+	if skill.is_empty():
+		return {}
+	var state := _district_supply_purchase_state(district_index, preview_name, selected_player)
+	var status_color: Color = state.get("accent", Color("#94a3b8")) as Color
+	var theme_color := _card_theme_color(skill)
+	var price := int(state.get("price", _card_price(preview_name, district_index, selected_player)))
+	var facts := _join_first_card_facts(_card_key_rule_facts(skill), 4)
+	var detail := String(state.get("detail", ""))
+	return {
+		"card_name": preview_name,
+		"title": "%s | %s" % [_card_display_name(preview_name), _card_primary_type_label(skill)],
+		"title_tooltip": _card_detail_tooltip(preview_name, district_index),
+		"chips": [
+			{
+				"text": String(state.get("label", "Browse")),
+				"accent": status_color,
+				"fg": status_color.lightened(0.14),
+				"bg": Color("#020617").lerp(status_color, 0.25),
+				"tooltip": detail,
+			},
+			{
+				"text": "¥%d" % price,
+				"accent": Color("#fde68a"),
+				"fg": Color("#fde68a").lightened(0.12),
+				"bg": Color("#713f12"),
+				"tooltip": "Locked market price.",
+			},
+			{
+				"text": _short_card_text(_card_strategy_route_label(skill), 14),
+				"accent": theme_color.lightened(0.12),
+				"fg": theme_color.lightened(0.18),
+				"bg": Color("#020617").lerp(theme_color, 0.20),
+				"tooltip": _card_strategy_route_label(skill),
+			},
+		],
+		"micro_chips": _district_supply_micro_card_chip_entries(preview_name, skill, selected_player),
+		"verdicts": _district_supply_purchase_verdict_entries(district_index, preview_name, selected_player, state),
+		"body": _short_card_text(_skill_display_text(skill), 72),
+		"body_tooltip": _skill_display_text(skill),
+		"facts": _short_card_text(facts, 86),
+		"status_text": "%s｜¥%d｜%s" % [String(state.get("label", "仅浏览")), price, _short_card_text(detail, 54)],
+		"status_tooltip": detail,
+		"buy_text": "%s ¥%d" % ["弃牌后购买" if bool(state.get("requires_discard", false)) else "购买", price],
+		"buy_enabled": bool(state.get("actionable", false)),
+		"buy_tooltip": "查看总是允许；%s" % detail,
+		"card_face": _district_supply_preview_card_face_snapshot(preview_name, skill, price),
+		"accent": status_color,
+		"theme_color": theme_color,
+		"tooltip": _card_detail_tooltip(preview_name, district_index),
+	}
+
+
+func _district_supply_preview_card_face_snapshot(card_name: String, skill: Dictionary, price: int) -> Dictionary:
+	return {
+		"name": "%s %s" % [_card_icon_for_card(skill, card_name), _card_display_name(card_name)],
+		"cost": "$%d" % price,
+		"effect": _card_face_quick_effect_text(card_name, skill, true),
+		"type": _card_face_route_text(card_name, skill, true),
+		"rank": _level_text(max(1, _skill_rank(card_name))),
+		"accent": _card_theme_color(skill),
+		"minimum_width": 150.0,
+		"minimum_height": 158.0,
+	}
 
 
 func _add_district_supply_preview(parent: Container, district_index: int) -> void:
@@ -27621,62 +28839,19 @@ func _add_district_supply_preview(parent: Container, district_index: int) -> voi
 		previewed_district_card = preview_name
 		selected_market_skill = preview_name
 	if preview_name == "" or not _skill_exists(preview_name):
-		parent.add_child(_plain_label("悬停卡牌查看。", 12, Color("#64748b")))
+		parent.add_child(_plain_label("No available card.", 12, Color("#64748b")))
 		return
-	var skill := _skill_definition(preview_name)
-	var panel := PanelContainer.new()
-	panel.name = "DistrictSupplySelectedPreview"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _menu_card_style(_card_theme_color(skill), Color("#020617").lerp(_card_theme_color(skill), 0.11), 1, 12))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_top", 7)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_bottom", 7)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.name = "DistrictSupplySelectedPreviewStack"
-	box.add_theme_constant_override("separation", 6)
-	margin.add_child(box)
-	var title := _plain_label("%s｜%s" % [_card_display_name(preview_name), _card_primary_type_label(skill)], 13, Color("#f8fafc"))
-	title.name = "DistrictSupplyPreviewTitle"
-	box.add_child(title)
-	var preview_chip_rail := HFlowContainer.new()
-	preview_chip_rail.name = "DistrictSupplyPreviewChipRail"
-	preview_chip_rail.add_theme_constant_override("h_separation", 4)
-	preview_chip_rail.add_theme_constant_override("v_separation", 2)
-	box.add_child(preview_chip_rail)
-	var state := _district_supply_purchase_state(district_index, preview_name, selected_player)
-	var status_color: Color = state.get("accent", Color("#94a3b8"))
-	preview_chip_rail.add_child(_track_status_badge(String(state.get("label", "仅浏览")), status_color, Color("#020617").lerp(status_color, 0.25)))
-	preview_chip_rail.add_child(_track_status_badge("¥%d" % int(state.get("price", _card_price(preview_name, district_index, selected_player))), Color("#fde68a"), Color("#713f12")))
-	preview_chip_rail.add_child(_track_status_badge(_card_strategy_route_label(skill), _card_theme_color(skill).lightened(0.12), Color("#020617").lerp(_card_theme_color(skill), 0.20)))
-	_add_district_supply_micro_card_chip_rail(box, preview_name, skill, selected_player, "DistrictSupplyPreviewMicroChipRail", 5)
-	_add_district_supply_purchase_verdict_rail(box, district_index, preview_name, selected_player, state)
-	box.add_child(_plain_label(_short_card_text(_skill_display_text(skill), 72), 10, Color("#e5e7eb")))
-	var facts := _join_first_card_facts(_card_key_rule_facts(skill), 4)
-	if facts != "":
-		box.add_child(_plain_label(_short_card_text(facts, 86), 9, Color("#bae6fd")))
-	var status_label := _plain_label("%s｜¥%d｜%s" % [
-		String(state.get("label", "仅浏览")),
-		int(state.get("price", _card_price(preview_name, district_index, selected_player))),
-		_short_card_text(String(state.get("detail", "")), 54),
-	], 9, status_color)
-	status_label.tooltip_text = "查看总是允许；购买资格按打开区域市场的一刻锁定。"
-	box.add_child(status_label)
-	var center := CenterContainer.new()
-	box.add_child(center)
-	_add_card_face(center, preview_name, skill, -1, false, true, false)
-	var buy_button := Button.new()
-	var price := int(state.get("price", _card_price(preview_name, district_index, selected_player)))
-	buy_button.text = "%s ¥%d" % ["弃牌后购买" if bool(state.get("requires_discard", false)) else "购买", price]
-	buy_button.disabled = not bool(state.get("actionable", false))
-	buy_button.tooltip_text = String(state.get("detail", "")) + "\n查看总是允许；购买只看本窗口打开瞬间锁定的范围资格。"
-	var buy_accent: Color = state.get("accent", Color("#22c55e"))
-	_style_menu_button(buy_button, buy_accent, bool(state.get("actionable", false)))
-	buy_button.pressed.connect(Callable(self, "_claim_district_card").bind(preview_name))
-	box.add_child(buy_button)
+	var snapshot := _district_supply_preview_snapshot(district_index, preview_name)
+	if snapshot.is_empty():
+		return
+	var preview := DistrictSupplyPreviewCardScene.instantiate() as Control
+	if preview == null:
+		return
+	if preview.has_signal("buy_requested"):
+		preview.connect("buy_requested", Callable(self, "_claim_district_card"))
+	parent.add_child(preview)
+	if preview.has_method("set_preview"):
+		preview.call("set_preview", snapshot)
 
 
 func _resolved_card_access_player_index(player_index: int = -1) -> int:
@@ -27723,6 +28898,7 @@ func _select_player(index: int) -> void:
 		return
 	selected_player = index
 	inspected_player = index
+	selected_runtime_card_slot = -1
 	if district_supply_overlay != null and district_supply_overlay.visible and district_supply_open_district >= 0:
 		_open_district_card_purchase_window(district_supply_open_district, selected_player)
 	_load_selected_district_guess()
@@ -27731,6 +28907,7 @@ func _select_player(index: int) -> void:
 
 func _select_district(index: int) -> void:
 	selected_district = index
+	selected_runtime_card_slot = -1
 	_sync_selected_district_card()
 	_load_selected_district_guess()
 	_refresh_ui()
@@ -28087,6 +29264,7 @@ func _cycle_district(step: int) -> void:
 	if districts.is_empty():
 		return
 	selected_district = wrapi(selected_district + step, 0, districts.size())
+	selected_runtime_card_slot = -1
 	_sync_selected_district_card()
 	_load_selected_district_guess()
 	_refresh_ui()
@@ -37445,7 +38623,7 @@ func _refresh_warehouse_stockpile_city_markers() -> void:
 		if city.is_empty():
 			continue
 		districts[district_index]["city"] = _reset_city_warehouse_stockpile_marker(city)
-	for product_variant in PRODUCT_CATALOG:
+	for product_variant in product_market.keys():
 		var product_name := String(product_variant)
 		var entry := _product_market_entry(product_name)
 		if entry.is_empty():
@@ -37771,7 +38949,7 @@ func _clear_product_futures_for_destroyed_warehouse(district_index: int, source:
 	if district_index < 0:
 		return 0
 	var cleared := 0
-	for product_variant in PRODUCT_CATALOG:
+	for product_variant in product_market.keys():
 		var product_name := String(product_variant)
 		var entry := _product_market_entry(product_name)
 		if entry.is_empty():
@@ -39976,6 +41154,25 @@ func _highest_card_resolution_bid() -> int:
 	return highest
 
 
+func _card_resolution_leading_queue_index() -> int:
+	var best_index := -1
+	var previous_reference := card_resolution_priority_reference_player
+	card_resolution_priority_reference_player = card_resolution_batch_reference_player
+	for i in range(card_resolution_queue.size()):
+		var entry_variant: Variant = card_resolution_queue[i]
+		if not (entry_variant is Dictionary):
+			continue
+		if best_index < 0:
+			best_index = i
+			continue
+		var entry: Dictionary = entry_variant
+		var best: Dictionary = card_resolution_queue[best_index]
+		if _sort_card_resolution_entry_priority(entry, best):
+			best_index = i
+	card_resolution_priority_reference_player = previous_reference
+	return best_index
+
+
 func _normalize_card_resolution_queue_bids(_reference_player: int) -> void:
 	for i in range(card_resolution_queue.size()):
 		var entry: Dictionary = card_resolution_queue[i]
@@ -40485,6 +41682,17 @@ func _update_card_resolution_timer_bar(stage: String, seconds_left: float, entry
 		"reveal":
 			label = "展示"
 			accent = Color("#fde68a")
+	if bottom_countdown_overlay != null and bottom_countdown_overlay.has_method("set_state") and bottom_countdown_overlay.visible:
+		bottom_countdown_overlay.call("set_state", {
+			"visible": true,
+			"label": label,
+			"remaining": remaining,
+			"total": total,
+			"accent": accent,
+			"label_tooltip": "Current timed table stage: %s." % label,
+			"bar_tooltip": "Shorter bar means the %s stage is closer to ending." % label,
+		})
+		return
 	if card_resolution_timer_label != null:
 		card_resolution_timer_label.text = label
 		card_resolution_timer_label.add_theme_color_override("font_color", accent.lightened(0.12))

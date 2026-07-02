@@ -1,0 +1,95 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/district_supply_market_card.gd" id="2_script"]
+
+[node name="DistrictSupplyMarketCardPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(164, 110)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+focus_mode = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="DistrictSupplyMarketCardMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 7
+
+[node name="DistrictSupplyMarketCardStack" type="VBoxContainer" parent="DistrictSupplyMarketCardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DistrictSupplyMarketCardTopRow" type="HBoxContainer" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="DistrictSupplyMarketCardTitle" type="Label" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack/DistrictSupplyMarketCardTopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Market card"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyMarketCardRank" type="Label" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack/DistrictSupplyMarketCardTopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "I"
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyMarketCardChipRail" type="HFlowContainer" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="DistrictSupplyMarketCardMicroChipRail" type="HFlowContainer" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Compact card facts: prerequisite, target, extra cost, and persistence."
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 2
+
+[node name="DistrictSupplyMarketCardRoute" type="Label" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Route"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyMarketCardFactLine" type="Label" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Key effect"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyMarketCardStateBand" type="HBoxContainer" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="DistrictSupplyMarketCardStateSignal" type="ColorRect" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack/DistrictSupplyMarketCardStateBand"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(7, 12)
+layout_mode = 2
+color = Color(0.580392, 0.639216, 0.721569, 1)
+
+[node name="DistrictSupplyMarketCardStateLabel" type="Label" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack/DistrictSupplyMarketCardStateBand"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "State"
+text_overrun_behavior = 3
+
+[node name="DistrictSupplyMarketCardColorTick" type="ColorRect" parent="DistrictSupplyMarketCardMargin/DistrictSupplyMarketCardStack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 3)
+layout_mode = 2
+color = Color(0.580392, 0.639216, 0.721569, 1)

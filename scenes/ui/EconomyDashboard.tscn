@@ -1,0 +1,60 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/economy_dashboard.gd" id="2_script"]
+
+[node name="EconomyDashboardPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="EconomyDashboardMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="EconomyDashboardStack" type="VBoxContainer" parent="EconomyDashboardMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="EconomyDashboardHeader" type="HBoxContainer" parent="EconomyDashboardMargin/EconomyDashboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="EconomyDashboardTitle" type="Label" parent="EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "经济仪表板"
+
+[node name="EconomyDashboardHeaderSpacer" type="Control" parent="EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EconomyDashboardChipRail" type="HFlowContainer" parent="EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
+
+[node name="EconomyDashboardKpiGrid" type="GridContainer" parent="EconomyDashboardMargin/EconomyDashboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="EconomyDashboardLaneGrid" type="GridContainer" parent="EconomyDashboardMargin/EconomyDashboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10

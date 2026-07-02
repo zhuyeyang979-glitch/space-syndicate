@@ -3,6 +3,1087 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-02。
 
+## 2026-07-02｜BidBoard 指针 Hover 同步公开牌轨
+
+### 参考方向
+
+- 继续参考商业桌游数字化桌面的“扫读即对应”交互：鼠标扫过底部竞价指针时，顶部公开牌轨应立刻临时发光，玩家不用靠记忆匹配“领跑/我的牌”和牌槽位置。
+- 这轮只做 UI 交互层高亮，不改变真实选中状态、不触发竞猜、不泄露隐藏信息；点击仍然负责正式选中。
+- 保持页面分层：BidBoard 只发 hover 信号，PlayerBoard/GameScreen 转发，CardTrack 只负责渲染临时 hover marker。
+
+### 本轮实现
+
+- `scripts/ui/bid_board.gd` 新增 `track_link_hovered` / `track_link_unhovered` 信号，`BidBoardTrackLinkButton` 在 mouse/focus enter/exit 时发出对应 `track_select_*`。
+- `scripts/ui/player_board.gd` 转发 BidBoard 的公开轨 hover 信号，保持底部玩家板作为桌边控件聚合层。
+- `scripts/ui/game_screen.gd` 新增 `_set_public_track_hover()`，把 BidBoard hover action 转给当前公开牌轨组件。
+- `scripts/ui/card_track.gd` 新增 `set_hovered_track_action()`、`PublicTrackSlotHover` marker 和 hover 样式；hover 高亮与 `PublicTrackSlotSelected` 并存，但不会修改真实 selected 数据。
+- `tests/layout_scene_smoke_test.gd` 增加运行时鼠标扫过 BidBoard “领跑”指针的护栏，验证顶部公开牌轨出现临时 hover marker，离开后清除。
+- `tests/visual_snapshot.gd` 锁定 BidBoard -> PlayerBoard -> GameScreen -> CardTrack 的 hover 信号链和 CardTrack 临时高亮契约。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 退出码 0；仅有 Windows 工作区既有 LF/CRLF 转换提示。
+
+### 剩余缺口
+
+- Hover 现在只同步 BidBoard -> 公开牌轨；后续可以补反向同步，让鼠标扫过顶部牌槽时 BidBoard 对应指针也临时发光。
+- Hover 暂不驱动右侧详情预览；若后续桌面读法仍不够快，可以让 hover 只预览公开摘要，不触发正式竞猜选择。
+- 竞价推荐仍只按公开最高价/当前报价生成，尚未纳入收益预估或现金余量排序。
+
+## 2026-07-02｜BidBoard 可点击牌轨指针与推荐竞价
+
+### 参考方向
+
+- 继续参考商业桌游/牌桌 UI 的“同一对象多处高亮”读法：底部竞价区、顶部公开牌轨和右侧详情必须指向同一张匿名牌，不能让玩家靠记忆比对文字。
+- 竞价按钮从纯数值加价推进到“保守+10 / 追平 / 压过”的意图按钮；固定金额仍保留在数据路径里，但桌面优先显示玩家可理解的决策语言。
+- 保持隐藏信息边界：推荐按钮只使用公开最高价、当前玩家自己的报价和可用资金，不暴露对手现金、AI 预算或真实牌主。
+
+### 本轮实现
+
+- `BidBoard.tscn` 新增 `BidBoardTrackLinkRow`，`scripts/ui/bid_board.gd` 将 `track_links` 渲染成可点击的 `BidBoardTrackLinkButton`，点击后沿既有 `action_requested` 通道触发 `track_select_*`。
+- `BidBoardSnapshot` 保留 `track_links` 的 `id` 与 `selected` 字段，避免 ViewModel 归一化时丢掉可点击目标和选中态。
+- `scripts/main.gd` 新增 `_card_resolution_leading_queue_index()`，BidBoard 的“领跑”不再盲取队首，而是按公开报价和现有顺时针 tie-break 找真正领跑牌。
+- `scripts/main.gd` 新增 `_runtime_bid_board_recommended_actions()` 与 `bid_set_*` action，竞价中输出“保守+10 / 追平 / 压过 / 清零”。
+- `CardTrack` 与 `PublicTrackSnapshot` 保留并渲染 `selected` 状态；从 BidBoard 点击领跑牌后，顶部公开牌轨会出现 `PublicTrackSlotSelected` 高亮。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过，包含点击 BidBoard 领跑指针后公开牌轨高亮、`保守+10` 加价路径、追平/压过 action 输出。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 退出码 0；仅有 Windows 工作区既有 LF/CRLF 转换提示。
+
+### 剩余缺口
+
+- 现在是点击后同步高亮；下一步可以做 hover 同步，让鼠标扫过 BidBoard 指针时顶部牌轨临时发光。
+- 推荐按钮已经有“追平/压过/保守”意图，但还没有根据现金余量、结算收益和 AI 竞价压力动态排序推荐。
+- BidBoard 仍在右侧命令台内；如果后续牌轨交互继续增加，可以把它提升到公开牌轨旁的横向桌边控件。
+
+## 2026-07-02｜BidBoard 与公开牌轨指针联动
+
+### 参考方向
+
+- 继续参考商业桌游数字化桌面的公开轨读法：竞价控件不能只显示金额，还要告诉玩家这些金额对应公开牌轨里的哪张牌、哪个队列位置。
+- 采用“桌面短指针 + tooltip 细节”的方式，让 BidBoard 在一眼内显示“领跑 / 我的牌 / 下张 / 下批”，避免把公开牌轨、竞价区和行动区割裂成三块孤岛。
+- 保持隐藏信息边界：指针只来自公开匿名牌轨、当前玩家自己的队列位置和公开出价，不暴露对手现金、手牌或 AI 预算。
+
+### 本轮实现
+
+- `scripts/main.gd` 新增 `_runtime_bid_board_track_links()` 与 `_runtime_bid_board_track_link()`，把当前展示、公开竞拍领跑、我的 queued 牌、下张/下批等待牌整理成最多 3 个短指针。
+- `BidBoardSnapshot` 新增 `track_links` 归一化字段，`PlayerBoardSnapshot` 继续把它作为 `bid_board` 的数据-only 输出传给 UI。
+- `scripts/ui/bid_board.gd` 将状态短句优先替换为公开轨指针摘要，例如“领跑 竞拍1 ¥80｜我的牌 竞拍2 ¥40”，长解释继续放在 tooltip。
+- `tests/layout_scene_smoke_test.gd` 增加静态与运行时护栏：确认 BidBoard 样例和真实公开竞价 fixture 都能渲染“领跑 / 我的牌”，并保留 `+10` 实际加价路径。
+- `tests/visual_snapshot.gd` 锁定 runtime、ViewModel 和 renderer 都必须认识 `track_links`，防止后续又退回只显示金额、不显示牌轨位置。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 退出码 0；仅有 Windows 工作区既有 LF/CRLF 转换提示。
+
+### 剩余缺口
+
+- BidBoard 现在已经能把竞价读法指向公开牌轨，但还没有画出视觉连线或高亮同步；下一步可以让公开轨 hovered/selected entry 与 BidBoard 指针互相点亮。
+- 竞价按钮仍是固定 `+10/+50/+100/清零`，后续应按当前最高价和现金余量生成“追平/压过/保守”推荐按钮。
+- 如果桌面信息继续增加，可以把 BidBoard 从右侧命令台提升为公开牌轨旁的横向桌边控件。
+
+## 2026-07-02｜独立桌边 BidBoard 接管公开竞价
+
+### 参考方向
+
+- 继续参考商业桌游/牌桌界面的信息分层：竞价是独立桌边控件，不应该继续藏在手牌行头部的 readiness chip 里。
+- 桌面第一眼只显示“我的报价、最高价、本批、下批”和少量筹码按钮；锁资、封盘、队列规则仍放在 tooltip 和详情文案里。
+- 保持隐藏信息边界：BidBoard 只使用公开批次、公开最高价和当前玩家自己的报价/资金可用性，不显示对手现金、手牌或 AI 出价预算。
+
+### 本轮实现
+
+- 新增 `scenes/ui/BidBoard.tscn` 与 `scripts/ui/bid_board.gd`：独立渲染公开竞价标题、阶段、四个短筹码、`+10/+50/+100/清零` 操作按钮和一行短状态。
+- 新增 `scripts/viewmodels/bid_board_snapshot.gd`，并让 `PlayerBoardSnapshot` 通过 `BID_BOARD_SNAPSHOT_SCRIPT` 归一化 `bid_board` 数据。
+- `PlayerBoard.tscn` 右侧 `PlayerCommandTableau` 现在是 `PlayerBidBoard + PlayerMainActionDock`，ActionDock compact 高度收紧，保留建城/牌架/买牌/出牌和主行动按钮。
+- `scripts/main.gd` 新增 `_runtime_player_board_bid_board()`、`_runtime_bid_board_actions()`、`_runtime_bid_board_can_set_tip()`，把竞价阶段、最高价、本批/下批、按钮禁用原因作为数据输出。
+- Split action 分发新增 `bid_plus_*` 与 `bid_reset`，BidBoard 按钮沿 `BidBoard -> PlayerBoard -> GameScreen -> main.gd` 修改公开报价。
+- `readiness_chips` 回到普通行动就绪层，不再混入竞价 cluster；竞价读法由独立 BidBoard 承接。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过，包含 live RuntimeGameScreen 点击 `+10` 后公开报价增加的护栏。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+
+### 剩余缺口
+
+- BidBoard 已经能操作公开报价，但还没有和顶部公开牌轨做视觉联动；下一步应把当前领跑牌、下一个结算牌和 BidBoard 的最高价/队列状态连成统一读法。
+- `+10/+50/+100` 是第一版筹码按钮；后续可以根据最高价、现金余量和 AI 竞价压力动态推荐“追平/压过/保守”按钮。
+- BidBoard 现在位于右侧命令台内；如果后续牌桌状态继续增加，需要评估是否把它提升到公共牌轨旁的横向小面板。
+
+## 2026-07-02｜竞价状态拆成桌边短筹码
+
+### 参考方向
+
+- 继续参考 Terraforming Mars / Gaia Project / Through the Ages 这类商业桌游数字化界面的桌边信息层：玩家第一眼看到状态短标签，长解释留给 tooltip、侧栏和档案。
+- 这轮承接上一条“竞价区需要更商业桌游化桌面控件”的缺口，不再把竞价、最高价、我的报价、候补队列压成一句长状态，而是拆成 3-4 个可扫读筹码。
+- 保持隐藏信息边界：显示公开报价、公开队列规模和当前玩家自己的参拍/预设状态，不显示对手手牌、现金、AI 评分或真实身份。
+
+### 本轮实现
+
+- `scripts/main.gd` 新增 `_runtime_player_board_bid_readiness_chips()` / `_runtime_bid_status_chip()`，按竞价中、同时短窗、封盘候补、下批等待四类局面输出结构化短筹码。
+- `PlayerBoard` 的 readiness 渲染遇到 `cluster=true` 时不再压缩为单个摘要 chip，而是最多渲染 4 个短筹码：竞价、最高、我的、队列。
+- 短筹码降低最小宽度、字体和字符上限，长状态仍保留在 tooltip，避免继续挤爆底部玩家板。
+- 保留旧的 `_runtime_player_board_bid_readiness_chip()` 单 chip 兼容入口，但现在从新数组函数安全取第一个字典。
+- `tests/layout_scene_smoke_test.gd` 增加真实运行时竞价 fixture：构造两张匿名牌公开竞价，验证快照含 `cluster` chip，Split `GameScreen` 实际渲染出四个桌边短筹码。
+- `tests/visual_snapshot.gd` 锁定新 ViewModel/Renderer 契约，防止后续又把竞价状态压回长句。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+
+### 剩余缺口
+
+- 竞价状态现在能在玩家板扫读，但还不是完整的商业桌游竞价控件；后续应把加价按钮、锁资原因、候补顺序和下批等待做成同一块明确的桌边 bid board。
+- 当前 `PlayerReadinessChipRow` 仍在右侧命令台的狭窄区域内；如果继续增加桌面状态，应该把竞价控件提升到独立小面板，而不是继续塞入 readiness 行。
+- 下批等待、封盘、短窗三种状态已有数据输出，但视觉强调还比较克制，后续需要结合公开牌轨和倒计时条形成统一竞价读法。
+
+## 2026-07-02｜已选匿名牌证据链卡片
+
+### 参考方向
+
+- 继续参考商业数字桌游的侦探板/日志板读法：桌面只保留薄牌轨和短状态，进入档案后把同一对象的公开事实按“条件 → 目标 → 出价 → 余波 → 私人推理”排成证据链。
+- 这轮不扩大主桌文字密度，而是把上一轮“牌轨直达情报档案”的落点做实：玩家点进来后能马上知道该匿名牌为什么值得猜、该看哪些证据。
+- 保持隐藏信息边界：证据链只显示公开条件、公开目标、公开报价/小费、公开余波，以及当前玩家自己的押注/查明状态；不扫描对手现金、手牌或 AI 私有计划。
+
+### 本轮实现
+
+- `scripts/main.gd` 的 `_intel_card_guess_entries()` 扩展 `track_state / aftermath / style` 等字段，单张匿名牌线索不再只是一行摘要。
+- 新增 `_focused_intel_card_evidence_card()` / `_focused_intel_card_evidence_lines()`：当 `selected_card_resolution_id` 来自公开牌轨时，`IntelDossierBoard` 会把“已选匿名牌证据链”插到线索卡第一位。
+- 证据链行固定覆盖：牌槽证据、出牌条件、目标线索、出价记录、余波线索、私人推理。
+- `scripts/ui/intel_dossier_board.gd` 支持每张线索卡自带 `line_limit`，普通 clue card 仍默认 4 行，证据链可显示 6 行。
+- `tests/layout_scene_smoke_test.gd` 增加组件和运行时护栏：侦探板能渲染“出价记录/余波线索/私人推理”，真实牌轨进入情报档案后也必须出现该证据链。
+- `tests/visual_snapshot.gd` 锁定“已选匿名牌证据链”和 `line_limit` 静态契约。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；只有既有 LF/CRLF 提示，没有空白错误。
+
+### 剩余缺口
+
+- 证据链现在能读，但还不是可交互子面板；下一步可以把“出价记录”“余波线索”“私人推理”拆成可展开/可标注的短卡。
+- 竞价区仍需要更商业桌游化的桌面控件：最高价、可加价、锁定原因、候补队列和下批等待应该在主桌第一眼更明确。
+- 情报档案还缺“回到牌轨槽位/竞猜按钮”的反向路径。
+
+## 2026-07-02｜牌轨直达情报档案证据链
+
+### 参考方向
+
+- 继续参考 Through the Ages 的公共牌轨、Terraforming Mars 的桌面信息分层，以及商业数字桌游常见的“桌面薄信息 + 侧栏详情 + 档案查证”路径。
+- 这轮不再扩大地图表面文字，而是把已经可点击的匿名牌轨接到情报档案：玩家从公共牌槽看到报价/条件/目标后，可以直接进入侦探板看证据链。
+- 保持分层：`CardTrack` / `GameScreen` 只转发数据化 action；`main.gd` 作为运行时控制器处理 `track_intel_`，情报档案仍通过 `IntelDossierBoard` 快照渲染，不把新页面逻辑塞进牌轨组件。
+
+### 本轮实现
+
+- `scripts/main.gd` 为公开牌轨条目新增 `track_intel_<resolution_id>` 操作与“线索档案”deep-link，右侧详情现在同时提供选中竞猜、线索档案和卡牌详情三条玩家路径。
+- 运行时动作分发新增 `track_intel_`：清掉手牌选中态、设置 `selected_card_resolution_id`，并打开“情报档案”。
+- 情报档案卡牌线索条目新增 `resolution_id / focused` 字段；当前从牌轨带入的匿名牌会排序置顶。
+- `IntelDossierBoard` 顶部新增“已选牌轨”chip，匿名牌轨线索卡片也会在对应行标注“已选牌轨”，按钮文案保留“查看卡牌线索”并追加已选语义，兼容原有导航。
+- `tests/layout_scene_smoke_test.gd` 增加组件和运行时护栏：公开牌槽右侧详情必须显示“线索档案”，真实拖牌入轨后可从右侧按钮打开情报档案并聚焦当前匿名牌。
+- `tests/visual_snapshot.gd` 锁定 `track_intel_`、`已选牌轨` 和 `_focused_intel_card_guess_entry` 静态契约。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；只有既有 LF/CRLF 提示，没有空白错误。
+
+### 剩余缺口
+
+- 牌轨现在能直达情报档案，但“出价/加价/封盘/候补队列”仍主要靠既有牌轨和手牌按钮表达，下一步应把竞价区做成更明确的桌面控件。
+- 情报档案已能聚焦单张匿名牌，但还没有把该牌的出价记录、余波事件、私人推理备注做成独立证据链子面板。
+- 当前焦点从右侧详情进入档案是通顺的；后续可继续补“从情报档案反向返回牌轨槽位/竞猜面板”的路径。
+
+## 2026-07-02｜公开牌轨可点击详情与竞猜入口
+
+### 参考方向
+
+- 继续参考 Through the Ages / Terraforming Mars / 商业数字桌游的公共牌轨：主桌上只放薄轨、槽位、状态、报价和少量徽章，完整阅读进入侧栏或详情层。
+- 这轮不继续堆地图文字，而是把公开牌轨变成可操作桌面区域：单击选中竞猜对象，双击进入卡牌详情，右侧详情承接公开线索。
+- 保持分层：`CardTrack` 只发 UI 信号，`PublicTrackSnapshot` 保留数据化 action/deep-link，`main.gd` 只在运行时控制器层处理 `track_select_` / `track_open_`。
+
+### 本轮实现
+
+- `scripts/ui/card_track.gd` 新增 `track_entry_selected` / `track_entry_opened` 信号，薄轨槽位可接收单击和双击，不再只是静态文本条。
+- `scripts/viewmodels/public_track_snapshot.gd` 保留 `resolution_id / card_name / select_action / open_action / actions / requirements / deep_links`，让牌轨详情能通过 ViewModel 传到页面层。
+- `scripts/ui/game_screen.gd` 将牌轨单击路由到右侧详情：展示牌轨标题、状态、归属、报价、推理原因、操作按钮和详情链接；双击继续发出卡牌详情动作。
+- `scripts/main.gd` 运行时接入 `track_select_` 与 `track_open_`，单击会清掉手牌选中态、选中公开竞猜对象，并让 `_runtime_right_inspector_snapshot_source()` 稳定返回牌轨详情，避免被下一帧默认区域详情覆盖。
+- `tests/layout_scene_smoke_test.gd` 补了组件层和运行时层护栏：样介牌轨单击/双击发正确 action，真实拖牌进公共牌轨后单击能更新 `selected_card_resolution_id` 并保持右侧详情。
+- `tests/visual_snapshot.gd` 锁定公开牌轨的点击信号、ViewModel action 字段、主控运行时回路和右侧详情快照契约。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；只有既有 LF/CRLF 提示，没有空白错误。
+
+### 剩余缺口
+
+- 公开牌轨现在能选中竞猜和打开卡牌详情，但竞价加价、批次锁定、候补队列的直接桌面操作还没有完全组件化。
+- 下一轮应继续把“公开牌轨 + 竞价区 + 情报档案”打通：从牌轨槽位直接进入对应的匿名归属证据、出价记录、余波线索和私人推理档案。
+- 地图落点仍只有通用阻塞原因；后续可把“该牌对当前区域是否有效”做成逐区 hover/拖拽提示。
+
+## 2026-07-02｜拖拽出牌规则态提示与阻塞释放护栏
+
+### 参考方向
+
+- 继续参考 Tabletop Simulator / UiCard / 商业数字桌游的直接操控：拖牌时不仅要看到可放区域，也要立刻知道“为什么现在不能放”。
+- 这轮聚焦真人可玩性，不做装饰 UI：把按钮上的出牌规则态同步到拖拽路径，避免玩家通过拖拽绕过冷却、费用或目标限制。
+- 保持分层：`main.gd` 的 `_hand_card_play_state()` 仍是规则态来源；split `GameScreen` 只消费 ViewModel 字段，不直接读取玩家数组或规则函数。
+
+### 本轮实现
+
+- `scripts/main.gd` 的 split 手牌 snapshot 新增 `play_state / action_state / actionable / drop_enabled / drop_label / block_reason`，让 `CardFace`、右侧详情、按钮和拖拽反馈共用同一套出牌状态。
+- `scripts/ui/game_screen.gd` 的拖拽反馈改为：
+  - 不在地图上：提示“拖到星球地图”；
+  - 在地图且可打：按卡牌目标显示“松开出牌 / 松开首召 / 松开选怪兽 / 松开选玩家”；
+  - 在地图但不可打：显示“不能出：冷却中 / 资金不足 / 需商品”等规则态原因，并阻止 `card_drop_requested`。
+- `tests/layout_scene_smoke_test.gd` 新增两层护栏：
+  - 组件层：阻塞卡拖到 `MapHost` 时显示冷却原因，释放不会发 drop intent；
+  - 运行时层：真实开局后强制玩家行动冷却，确认 CardFace 标记不可拖放，真实拖到地图不会进入公共牌轨。
+- `tests/ui_snapshot_capture.gd` 新增 `play_table_drag_blocked_%s.png`，在多分辨率截图中保存“冷却中不可释放”的主桌状态。
+- `tests/visual_snapshot.gd` 锁定规则态拖拽字段和阻塞态截图契约。
+
+### 验证
+
+- `Godot --path . --windowed --script res://tests/ui_snapshot_capture.gd` 通过，并重新生成 `play_table_drag_drop_%s.png` 与 `play_table_drag_blocked_%s.png`。
+- 肉眼复查 `play_table_drag_blocked_1280x720.png`、`play_table_drag_blocked_1600x960.png`、`play_table_drag_drop_1600x960.png`：阻塞态红框、冷却原因、小卡浮层和底部出牌禁用状态一致。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过。
+
+### 剩余缺口
+
+- 当前阻塞原因已覆盖冷却、费用、商品流动、目标选择等状态，但还没有把“指定区域不适合该牌”的地图落点差异做成逐区域提示。
+- 下一轮应继续把公开牌轨/竞价区做成更强的可点击桌面区域：当前信息已经在主桌上，但玩家对竞价、候补批次和归属推理的操作入口还可以更像商业桌游。
+
+## 2026-07-02｜拖拽落点有头截图 QA 与浮层尺寸护栏
+
+### 参考方向
+
+- 接着上一轮的手牌拖拽闭环，按 Tabletop Simulator / 现代数字桌游的真实操作手感复查：拖牌反馈必须在真实窗口里看起来像桌面小卡提示，而不是只在信号测试里通过。
+- 参考商业卡牌桌的浮层原则：合法地图区域用大范围高亮；跟手卡片只显示短摘要，不能压住底部手牌、行动区和右侧详情。
+- 保持分层：`OverlayLayer` 控制视觉尺寸和裁剪，`GameScreen` 继续只提供落点状态，截图脚本只负责复现页面状态。
+
+### 本轮实现
+
+- `tests/ui_snapshot_capture.gd` 扩展有头截图采集：
+  - 各分辨率主桌新增 `play_table_drag_drop_%s.png`；
+  - 1600x960 继续覆盖教程、规则、资料大厅、角色/卡牌/商品/怪兽、经济、情报、排行榜、结算等页面；
+  - 截图脚本通过 `HandRack` 的拖拽 preview 信号复现真实地图接受态，而不是直接打开浮层节点。
+- `scripts/ui/overlay_layer.gd` / `scenes/ui/OverlayLayer.tscn` 将 `DragPreviewPanel` 收紧为稳定小卡尺寸 `176x118`，关闭自动换行并启用截断，避免 headless 布局把拖拽预览撑成半屏高遮挡层。
+- `tests/layout_scene_smoke_test.gd` 新增拖拽预览尺寸护栏，要求运行时浮层保持小型卡片级尺寸，同时继续验证地图目标框、合法/非法落点和隐藏行为。
+- `tests/visual_snapshot.gd` 新增源码契约，锁住 `play_table_drag_drop_%s.png`、拖拽截图 helper、固定浮层尺寸和文本裁剪设置。
+
+### 验证
+
+- `Godot --path . --windowed --script res://tests/ui_snapshot_capture.gd` 通过，并重新生成 1280x720、1366x768、1600x960、1920x1080、2560x1440 的主菜单、主桌、拖拽落点、详情抽屉和页面分层截图。
+- 肉眼复查 `play_table_drag_drop_1280x720.png`、`play_table_drag_drop_1600x960.png`、`play_table_drawer_1600x960.png`、`main_menu_1600x960.png`：拖拽小卡不再压住底部牌桌，地图接受区清楚，主菜单仍保持商业游戏入口结构。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过。
+
+### 剩余缺口
+
+- 拖拽落点现在只区分“地图可接收/非地图不可接收”；下一步应把规则态拆得更细：费用不足、冷却中、卡牌目标不匹配、当前阶段不可出牌。
+- 继续按“能抄就抄”的方向推进下一块：把竞价、公开牌轨和情报档案做成更像商业桌游的可点击牌桌区域，而不是主要靠文字说明。
+
+## 2026-07-02｜手牌拖拽落点反馈与非法落点提示
+
+### 参考方向
+
+- 继续按商业卡牌桌/桌游电子版的拖拽手感推进：拖牌时不能只显示一张跟手浮层，还要告诉玩家哪里能放、哪里不能放。
+- 参考 UiCard / Tabletop Simulator / 现代数字桌游的 drop-zone 反馈：合法目标用明确边框和短语提示，非法区域给出拒绝状态，但不把规则细节塞到主桌。
+- 保持分层：`OverlayLayer` 只画反馈，`GameScreen` 只判断当前鼠标是否在真实地图控件上，`main.gd` 仍负责最终出牌和区域命中。
+
+### 本轮实现
+
+- `scenes/ui/OverlayLayer.tscn` 新增 `DragDropTargetPanel / DragDropTargetLabel`，放在现有 `DragPreviewLayer` 下，用于高亮当前可接收地图区域。
+- `scripts/ui/overlay_layer.gd` 扩展 `show_drag_preview(text, screen_position, drop_hint)`：
+  - 拖到地图外时，预览和目标框使用拒绝色，并提示“拖到星球地图”；
+  - 拖到真实地图控件上时，目标框切换为接受色，并提示“松开出牌”；
+  - 拖拽结束时同时隐藏浮层和目标框。
+- `scripts/ui/game_screen.gd` 将 drop-zone 判断对齐到 `MapHost` 中真实挂载的地图控件；找不到运行时地图时才退回 `MapHost`，避免预览接受区与 `main.gd` 的地图命中区不一致。
+- `tests/layout_scene_smoke_test.gd` 增加组件层验收：拖在屏幕外显示非法落点提示，移动到 `MapHost` 后切换为接受状态，释放在无效区域不会发 `card_drop_requested`。
+- 同时修正运行时 quick-action 测试的状态污染：建城后可能有行动冷却，测试在验证出牌入口前显式清理当前玩家冷却，避免把冷却规则误判成出牌入口坏了。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮应补 headed screenshot 视觉复查：拖拽浮层、地图高亮、手牌和右侧面板在 1200x680 / 窄屏下是否重叠。
+- 还可以继续把非法落点从“只能拖到地图”升级为更细的规则提示，例如冷却中、费用不足、当前卡不能以该区域为目标。
+
+## 2026-07-02｜手牌拖拽到地图出牌闭环
+
+### 参考方向
+
+- 继续按商业卡牌桌/桌游电子版的直接操控推进：玩家应能把手牌拖到主桌或地图区域来行动，而不是只依赖底部按钮和双击。
+- 参考 UiCard / CardHouse 式对象手感，同时保留当前分层：手牌、玩家板、GameScreen 只发 UI intent；地图命中和出牌规则仍由 `MapView` / `main.gd` 处理。
+- 拖拽落点应改变选区上下文：把牌拖到地图区域时，先选中落点区域，再按同一张手牌走现有匿名出牌流程。
+
+### 本轮实现
+
+- `scripts/ui/hand_rack.gd` 在现有拖拽预览基础上新增 `card_drag_released(card_data, screen_position)`，并改为从真实鼠标事件读取释放坐标；原有 preview started/moved/ended 信号继续保留。
+- `scripts/ui/player_board.gd` / `scripts/ui/game_screen.gd` 逐层转发拖拽释放。`GameScreen` 只判断释放点是否落在 `MapHost/PlanetBoard`，然后发 `card_drop_requested`，不读取玩家数组或规则函数。
+- `scripts/map_view.gd` 新增 `get_district_at_control_position(position)`，复用自身投影与命中测试，把地图本地释放点反查为区域编号。
+- `scripts/main.gd` 接入 `card_drop_requested`：落点在当前 `MapView` 上时，先 `_select_district()` 到落点区域，再按手牌 `hand_N/play_N` 走现有 `_use_skill(slot_index)`，继续进入匿名公共牌轨。
+- `tests/layout_scene_smoke_test.gd` 新增两层验收：
+  - 组件层：`HandRack -> PlayerBoard -> GameScreen` 能把 MapHost 上的释放变成 `card_drop_requested`；
+  - 运行时层：真实拖拽 live `CardFace` 到目标地图区域，验证选区变成落点、手牌 slot 被选中、公共 resolution track 增加。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮应补拖拽中的落点高亮/非法落点提示，让玩家拖牌时知道地图是否会接收这张牌。
+- 还需要更强的视觉 QA：尤其是缩放态、平面投影边界外宇宙空间、不同窗口尺寸下 MapHost 与手牌拖拽预览是否稳定。
+
+## 2026-07-02｜地图真实鼠标选区与双击牌架闭环
+
+### 参考方向
+
+- 继续按商业 4X/桌游电子化的主桌交互推进：中央星球不是背景图，而是玩家第一分钟内最常用的可点击棋盘。
+- 参考 VASSAL / Tabletop Simulator / Gaia Project 数字版的输入契约：测试应尽量触发真实 UI 控件和鼠标事件，而不是直接改控制器状态。
+- 保持当前分层：`MapView` 只负责地表投影和输入事件；选区、牌架打开和规则刷新仍回到 `main.gd` 控制器。
+
+### 本轮实现
+
+- `scripts/map_view.gd` 新增 `get_district_control_position(index)`，复用地图自身投影参数，把区域中心转换成当前 `MapView` 的本地输入坐标，供真实鼠标流和后续自动化验收使用。
+- `MapView` 新增查询前的投影参数同步，避免 headless/layout 测试在未重绘或缩放态下取到旧 `_scale/_map_offset`。
+- `tests/layout_scene_smoke_test.gd` 新增 live runtime 地图鼠标流：
+  - 新开一桌并关闭菜单，定位分屏 `MapHost` 中真实挂载的 `MapView`；
+  - 对目标区域坐标发送真实 `InputEventMouseButton` press/release；
+  - 验证单击会通过 `district_selected` 刷新 `selected_district` 和 split TopBar 选区文字；
+  - 再发送真实双击事件，验证 `district_double_clicked` 打开同一区域的牌架抽屉。
+- 新增测试 helper 用于寻找有牌架/存活区域，并统一构造地图点击事件，为下一步拖拽出牌和地图落点交互补证铺路。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮应优先补“拖拽手牌到桌面/地图区域触发出牌”的真实输入流，让玩家不只靠按钮和双击完成卡牌行动。
+- 地图缩放/拖拽的视觉 QA 仍可继续加强：尤其是平面投影边界外宇宙空间、远近缩放时标签密度和选中态可读性。
+
+## 2026-07-02｜满手换购私密弃牌 split modal 闭环
+
+### 参考方向
+
+- 继续按商业卡牌/桌游电子版的“当前桌边决策”模式推进：当玩家满手买牌时，决策应出现在当前可见牌桌层，而不是藏在旧兼容面板里。
+- 参考 VASSAL/桌游模块式 overlay 分层和 CardHouse 式手牌私密操作：公共牌桌只显示“有私密处理”，具体旧牌名和弃牌选择只在当前玩家自己的 modal 中出现。
+
+### 本轮实现
+
+- `main.gd` 新增 split runtime 的 `temporary_decision` snapshot：当当前人类玩家存在 `pending_discard_purchase` 时，产出 data-only 私密弃牌决策，包括隐私 chip、说明文本和 `discard_purchase_*` action id。
+- `scripts/viewmodels/table_snapshot.gd` 透传并规范化 `temporary_decision`，继续禁止 Callable 进入 split UI snapshot。
+- `scripts/ui/game_screen.gd` 将 `temporary_decision` 转给 `OverlayLayer`，并把 modal action 继续发回 `main.gd`。
+- `scripts/ui/overlay_layer.gd` / `scenes/ui/OverlayLayer.tscn` 在现有 `ModalLayer` 上补出可复用临时决策 modal：标题、隐私 chip、说明、按钮都由 snapshot 驱动。
+- `main.gd` 处理 `discard_purchase_cancel` 和 `discard_purchase_N` action id，最终仍走 `_cancel_discard_purchase()` / `_confirm_discard_purchase()`，不在 UI 层写规则。
+- `tests/layout_scene_smoke_test.gd` 新增 live runtime 点击流：
+  - 构造满手人类玩家、可购区域和怪兽访问范围；
+  - 点击真实 `买牌` quick button 打开牌架；
+  - 双击真实市场卡触发 `pending_discard_purchase`；
+  - 确认 split `OverlayLayer` 显示“私密弃牌确认” modal；
+  - 点击真实“弃掉”按钮，验证 pending 清空、现金扣除、手牌保持上限、旧牌移除、新牌入手，且公共日志不泄露卡名或弃牌内容。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮最值得补地图真实鼠标选区：目前地图选择规则存在，但还需要 live mouse/input 级别的主流程验收。
+- 拖拽出牌仍只是 UI-only preview，还没有真人式“拖到桌面/区域触发出牌”的完整路径。
+
+## 2026-07-02｜区域牌架双击购买闭环补证
+
+### 参考方向
+
+- 继续按成熟卡牌/桌游电子版的市场交互推进：牌架里的卡不应只是一组说明面板，玩家应该能预览、双击购买，并马上看到现金和手牌结果。
+- 参考 CardHouse / UiCard 的卡片对象手感，同时保持当前 Space Syndicate 分层：`DistrictSupplyMarketCard` 只发 hover/preview/activated 信号，不直接读玩家、区域或购买规则。
+
+### 本轮实现
+
+- `scripts/ui/district_supply_market_card.gd` 增加只读 `get_card_name()`，便于测试和外层工具定位真实市场卡节点，不改变购买规则。
+- `tests/layout_scene_smoke_test.gd` 新增 live runtime flow：
+  - 新开一桌并通过真实 `出牌` quick button 完成首召，建立怪兽访问范围；
+  - 从运行态牌架中找一个可直接购买、不触发满手弃牌、不重复卡族的市场卡；
+  - 点击真实底部 `买牌` quick button 打开对应区域牌架抽屉；
+  - 在抽屉里定位真实 `DistrictSupplyMarketCard`，触发双击事件；
+  - 验证玩家现金减少，并且目标卡族进入当前玩家私密手牌。
+- 这轮补的是真人手感路径，不新增规则：双击只触发 `card_activated`，最终仍走 `_claim_district_card()` 的访问、价格、满手和重复卡族判定。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮应继续补满手买牌时的私密弃牌窗口真实点击流，确保满手换购不会泄露手牌。
+- 还缺地图真实鼠标选区和拖拽出牌落点验收；这些会决定第一分钟试玩是否真正顺手。
+
+## 2026-07-02｜手牌双击出牌闭环补证
+
+### 参考方向
+
+- 继续参考 CardHouse / Balatro Feel / UiCard 的成熟卡牌桌手感：手牌应当能直接被点选、预览、双击行动，而不是只靠底部快捷按钮间接操作。
+- 保持当前分层规则：`CardFace / HandRack / PlayerBoard` 只消费 snapshot 和发 UI intent，不读取玩家数组、地图区域或 `_use_skill()` 等规则函数；真正出牌仍由 `main.gd` 控制器执行。
+
+### 本轮实现
+
+- `scripts/ui/player_board.gd` 中，双击手牌现在会先保持普通选中/右侧详情，再读取卡牌 snapshot 里的首个可用 `actions`，将 `play_N` 通过 `action_requested` 发回 `GameScreen -> main.gd`。
+- 不把规则判断塞进 UI：可不可打仍由 `_runtime_hand_card_snapshots()` 里已有的 `disabled/actionable` 结果决定，PlayerBoard 只负责把“双击可用手牌”翻译成既有动作 id。
+- `tests/layout_scene_smoke_test.gd` 新增两层验收：
+  - 组件层确认 `PlayerBoard` 双击 enabled hand card 会发出 `play_0`；
+  - live runtime 层重开一桌，从真实 `HandRack/CardFace` 触发双击事件，确认匹配手牌槽被选中，并且卡牌进入匿名公开结算轨。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮继续补拖拽出牌落点、地图真实鼠标选区、市场卡双击购买，以及满手购牌时的私密弃牌窗口。
+- 还需要 headed 截图复查双击/hover/drag 过程中手牌视觉是否足够像商业卡牌桌，而不只是信号链可用。
+
+## 2026-07-02｜买牌快捷行动端到端点击流补证
+
+### 参考方向
+
+- 继续按商业桌游式玩家板推进：底部 `买牌` 不只是“打开一个面板”，玩家应能顺着同一条 UI 路径完成一次实际购牌。
+- 参考 Terraforming Mars / Gaia Project 的主桌节奏：先在主桌做大动作，再进入局部抽屉完成具体选择；主屏保持短读，细节和购买判定进入抽屉。
+
+### 本轮实现
+
+- `tests/layout_scene_smoke_test.gd` 的 live runtime click flow 继续扩展：
+  - 点击真实 `出牌` quick button 后推进匿名结算轨，确认首召怪兽真正落地；
+  - 从运行态 district/card supply 中寻找一个怪兽可达、可直接购买、不会触发满手弃牌的卡；
+  - 点击真实 `PlayerMainActionDock` 里的 `买牌` quick button，确认打开对应区域牌架抽屉；
+  - 点击抽屉中的 `DistrictSupplyPreviewBuyButton`，确认玩家现金减少，并且购买卡族进入玩家私密手牌。
+- 新增测试 helper 只读取运行态 `players / districts / auto_monsters / card_resolution_queue` 等事实，并调用现有规则 helper 判定可购卡；不伪造 UI snapshot、不绕过抽屉购买按钮。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮应补满手买牌时的私密弃牌窗口真实点击流，确认不泄露手牌和弃牌信息。
+- 仍需补地图真实鼠标点击选区、市场卡双击购买、手牌双击/拖拽出牌等更接近真人手感的路径。
+
+## 2026-07-02｜底部玩家板真实点击流补证
+
+### 参考方向
+
+- 继续按商业桌游/4X 主桌的第一分钟读序推进：玩家不应只看到“行动状态”，还要能从底部玩家板直接完成下一步。
+- 本轮参考 Terraforming Mars / Gaia Project 类桌面逻辑：资源板、手牌架和行动按钮必须落到同一条可操作主流程，而不是分散在调试面板或只存在于测试调用里。
+
+### 本轮实现
+
+- `tests/layout_scene_smoke_test.gd` 新增 live runtime 点击流：
+  - 从真实 `RuntimeGameScreen` 找到 `PlayerMainActionDock`；
+  - 选取真实有区域牌架的 district，点击 `牌架` 按钮，验证 `district_supply_overlay` 打开并绑定当前选区；
+  - 选取真实可城市化 district，点击 `建城` 按钮，验证玩家城市数增加且新城市归属当前玩家；
+  - 选取真实可首召/出牌落点，点击 `出牌` 按钮，验证匿名牌进入公开结算/牌轨队列。
+- 测试 helper 只读取运行态 `districts / card_resolution_queue / active_card_resolution` 等事实，不伪造 snapshot；按钮本身来自 live `PlayerMainActionDock`，更接近真人试玩路径。
+- 这轮不扩展新规则，只把上轮 quick action 桥接从“源代码合同”推进到“真实 UI 按钮能驱动玩法结果”的验收证据。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 下一轮应继续补更像真人鼠标路径的主桌交互：地图点击选区、抽屉内买牌按钮、手牌双击/拖拽出牌，以及买牌满手时的私密弃牌窗口。
+- `buy` 快捷按钮目前仍受怪兽落地区/相邻区规则约束，真实点击流还缺“首召结算后买牌按钮直接打开并完成购牌”的端到端测试。
+
+## 2026-07-02｜底部快捷行动接通真人试玩主流程
+
+### 参考方向
+
+- 继续按商业桌游和 4X 管理游戏的底部玩家板模式推进：主屏快捷行动不只是状态灯，而应当是玩家第一分钟能直接点的入口。
+- 参考方向是“玩家板给出少量高置信操作，细节进入侧栏/抽屉”：Build/Rack/Buy/Play 保持短标签，合法性和完整说明仍由右侧详情、牌架抽屉和卡牌详情承担。
+
+### 本轮实现
+
+- 修正 split `PlayerBoard -> ActionDock -> GameScreen` 已经显示 `建城 / 牌架 / 买牌 / 出牌`，但 `main.gd` 只处理 `primary`、Codex、district 和 `play_*` 信号的问题。
+- `main.gd` 新增 `_activate_runtime_quick_action()` 和 `_runtime_quick_action_entry()`，将四个底部快捷行动接回现有控制器：
+  - `build` 复用 `_city_build_error_for()` 检查，再调用 `_build_city_in_selected_district()`。
+  - `rack` 和 `buy` 复用当前选区，打开 `_open_district_supply_from_map(selected_district)`。
+  - `play` 复用 `_first_actionable_hand_slot()`，选中首张可打手牌并调用 `_use_skill(slot_index)`。
+- `tests/layout_scene_smoke_test.gd` 增加静态合同，锁住 split ActionDock 的 quick action 必须回到主控制器，避免后续继续拆 UI 时又变成“看得见但点不了”。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `git diff --check` 通过；仍只有当前仓库已有的 LF/CRLF 提示。
+
+### 剩余缺口
+
+- 真人可玩目标仍需要继续做可见点击流复验：下一轮优先补从底部 `PlayerMainActionDock` 真实按钮点击到建城/牌架/买牌/出牌结果的交互 smoke，而不是只靠源代码合同。
+- 页面和代码分层仍要继续把更多菜单、Codex、经济/情报页面构造从 `main.gd` 迁到专门 Presenter/ViewModel；本轮只处理了底部快捷行动桥接，不扩大规则面。
+
+## 2026-07-02｜产品/页面/代码分层推进与 Full Smoke 清零
+
+### 本轮实现
+
+- 继续按商业化策略游戏/桌游式 4X 的读序推进：主菜单走“星球大厅 + 纵向命令塔”，主桌走“顶部公开轨 + 中央正方形星球 + 底部玩家板 + 右侧 10 秒详情”的页面边界。
+- 主游戏 split runtime 保持 `GameScreen -> TableSnapshot -> TopBar/PublicTrack/PlanetBoard/PlayerBoard/RightInspector` 数据流；旧 `player_box` 不再承载完整玩家板，只保留开局引导、弃牌购买、合同响应等临时决策兼容面板，避免 full smoke 为了旧节点名拖回大块 legacy UI。
+- 右侧 Inspector 与 ActionDock 改成更紧的 dense 形态：隐藏重复标题/快捷行、降低日志和条件面板高度、把选区和卡牌长说明继续拆到 drawer/Codex。
+- 星球主桌补齐天气/预报、公开事件轨、星球流向罗盘和更短的区域摘要；地图和卡面第一屏减少长文字，完整信息进入 hover、侧栏、抽屉或图鉴。
+- 牌桌经济/情报链补了仓储靶标与仓储风险线索入口，终局结算菜单补齐赛后读序；同时修正市场预览价格、公开事件 slot、CardFace 元数据和 split 兼容决策面板，完整 smoke 中的终局倒计时、仓储期货、破产、满手购买、合同窗口等主流程红灯已清零。
+- `tests/visual_snapshot.gd` 与 `tests/layout_scene_smoke_test.gd` 的静态合同更新为当前 split 事实：默认运行态同步 snapshot，并只维护窄兼容决策 host；完整旧 PlayerBoard 仍只作为 fallback 受签名缓存保护。
+
+### 验证
+
+- `Godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `Godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+- `Godot --path . --windowed --script res://tests/ui_snapshot_capture.gd` 通过，重新生成 `play_table_1280x720.png`、`play_table_1600x960.png`、`play_table_1920x1080.png` 等多分辨率截图。
+- 目检三张主桌截图：核心按钮和底部手牌均未出屏；中央星球/地图仍是最大视觉块；主屏只保留短读信息，完整规则没有挤进 MiniCard 或常驻主桌。
+- 剩余产品缺口：还需要继续用可见截图复验主菜单、主桌、抽屉和 Codex 的商业化视觉密度；下一轮优先把更多样式 token 和页面构造从 `main.gd` 迁出，而不是继续在巨型脚本里加 UI。
+
+## 2026-07-02｜HandRack 截图复验与牌架加厚
+
+### 本轮实现
+
+- 复跑 `tests/ui_snapshot_capture.gd` 后目检 `play_table_1280x720.png`、`play_table_1600x960.png`、`play_table_1920x1080.png`，发现单张手牌在底部大牌架中仍偏瘦小，商业卡牌物件感不足。
+- `PlayerBoard.tscn` 将底部玩家板从 178px 收紧上调到 192px，仍低于 720p 的 30%，同时 `PlayerBoardBody` 与 `HandRack` 高度改成 150px / 124px，给 MiniCard 留出更像牌架的垂直空间。
+- `HandRack.tscn` 将基准卡面改成更宽的 `140x158`，保留 `compressed / pressure` 压缩曲线，让 10/15 张压力手牌继续守在边界内。
+- `CardUI.gd` 将 `mini_hand` 字号提升到 10，MiniCard 的费用、短名、路线/类型、等级、一行用途和状态灯更可读；完整规则仍只进入 RightInspector、Drawer 或 Codex。
+- `tests/ui_text_smoke_test.gd` 的运行态中文合同从旧 `main.gd` 独占检查改成 `main.gd + split UI/ViewModel` 综合检查，符合当前 split scene 架构，避免为了测试把 fallback 字符串塞回巨型脚本。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 通过，确认 1280x720 下 `TopBar / PublicTrack / TableArea / PlayerBoard / HandRack` 仍在视口内，中央 `PlanetBoard` 仍是最大视觉块。
+- `tests/visual_snapshot.gd` 通过，锁住 192px 玩家板、124px HandRack、14 度 fan、62px hover lift 和 1.16 hover scale。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 有头通过；三张主桌截图目检通过：核心按钮和手牌不出屏，主屏无长规则说明，星球仍是最大视觉区域，MiniCard 比上一版更像卡牌物件。
+
+## 2026-07-02｜Smoke 主桌 split 合同对齐
+
+### 本轮实现
+
+- `tests/smoke_test.gd` 的玩家板早段合同从旧 `player_box` 专属节点名改成兼容 split `RuntimeGameScreen`：`TopBar / PlayerBoard / PlayerResourceTableau / PlayerHandTableau / PlayerMainActionDock / HandRack / RightInspector` 都作为主桌第一屏证据参与验证。
+- 开局引导、公开席位、目标提示、选区行动、首召按钮等旧动态面板断言保留 legacy 对照，但默认 split 路径改查“下一步 + 菜单入口 + 行动 dock + 状态/readiness chips”，符合当前产品分层。
+- 主桌星球/手牌布局断言从旧文案“星球赌桌 / 赌桌中央 / 桌边牌架”切换为几何合同：`MapView` 必须挂到 `PlanetBoard/MapHost`，`MapHost` 保持近似正方形，`HandRack` 位于底部玩家板且小于中央星球主舞台。
+
+### 验证
+
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `git diff --check` 通过；仅有 Windows LF/CRLF 提示。
+- 完整 `tests/smoke_test.gd` 仍失败，但玩家板/HandRack/主桌星球布局相关断言已经通过；剩余失败集中在牌轨竞价/历史状态、经济总览/规则/情报/角色 Codex 页面合同、以及终局倒计时、仓储期货、破产淘汰等非本轮主桌 UI 范围。
+
+## 2026-07-02｜HandRack 二版商业卡牌手感落地
+
+### 本轮实现
+
+- 按 `CardHouse + Balatro-Feel + UiCard + simple-cards-v-2` 的参考方向，把 `HandLayout` 改成 profile 驱动：`single_focus / comfortable / compressed / pressure` 分别处理单卡、常规手牌、拥挤手牌和 11+ 张压力态。
+- `HandLayout` 现在输出可测试的 motion target snapshot：目标位置、旋转、缩放、z-index、profile、slot ratio、gap 和 UI-only drop zone，方便后续继续对标商业卡牌手感。
+- `HandRack` 保留 same-id 节点复用与 RightInspector 联动，同时给拖拽预览补上 `hand_drag_preview_active/origin/screen_position` 元数据和 `get_drag_preview_card()`，仍然只走 UI signal，不调用规则。
+- `CardUI` 的 MiniCard 继续只做速读：短名、一行效果、路线/类型短标签、等级短标签、状态短标签；完整规则继续进入 RightInspector、Drawer、Codex。
+- `HandRack.tscn` 的扇形、hover lift、hover scale 和邻牌让位参数上调，避免底部手牌看起来像一排低矮按钮。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 通过，覆盖 1/5/10/15 张手牌布局、hover 抬升、邻牌推开、drop zone 元数据和 live refresh 后 hover 保持。
+- `tests/visual_snapshot.gd` 通过，锁住 HandRack profile、拖拽预览元数据、MiniCard 速读函数和场景参数。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 有头通过，已生成 1280x720、1600x960、1920x1080、2560x1440 等主菜单/主桌/抽屉截图并肉眼检查。
+- `git diff --check` 通过；仅有 Windows LF/CRLF 提示。
+
+### 追加审计
+
+- 为回应“直到人类能玩”的更宽目标，额外跑了一次完整 `tests/smoke_test.gd`。
+- 完整 smoke 仍失败，失败范围已经超出 HandRack：终局倒计时、仓储期货清算、破产淘汰、顶部牌轨历史/横向滚动、菜单/Codex/经济总览/情报档案的旧合同，以及若干主桌旧命名合同仍需单独清理。
+- 因此本轮可以证明 HandRack 二版目标通过指定验收，但不能把“整局完整人类可玩”宣称为已完成；下一阶段应单独做完整 smoke 失败分组和旧合同更新/修复。
+
+## 2026-07-02｜订立下一阶段“先抄标杆”开发目标
+
+### 本轮实现
+
+- `docs/next_development_goals.md` 增加“下一阶段复制策略”：把参考项目按 `A 级可直接移植模式 / B 级只抄产品结构 / C 级先确认再抄` 分档。
+- 下一阶段目标改成五条可执行任务：主桌商业化读序、HandRack 二版卡牌手感、菜单/Codex 页面产品化、Theme/样式抽离、参考标杆到截图验收的测试固定。
+- `docs/open_source_reference_notes.md` 增加 Next-Stage Copy Targets，明确每个参考标杆落到哪些本地 scene/script/test。
+- 下一次最推荐任务从“迁移 PlayerBoard”更新为“按 CardHouse / Balatro-Feel / UiCard / simple-cards-v-2 标杆重做 HandRack 二版手感”。
+
+### 验证
+
+- 后续测试合同将检查 `next_development_goals.md` 和 `open_source_reference_notes.md` 保留这些复制分档、参考标杆和下一阶段 HandRack 目标。
+
+## 2026-07-02｜SideDrawer 改成分节化 30 秒详情层
+
+### 本轮实现
+
+- `OverlayLayer.tscn` 的侧边抽屉正文区改成 `SideDrawerBodyScroll + SideDrawerSectionList`，30 秒信息不再只塞进一段长正文。
+- `OverlayLayerSnapshot` 从当前 `RightInspectorSnapshot` 生成稳定读序：对象、原因、桌面摘要、完整详情、最近公开日志；完整区域/卡牌说明继续留在抽屉/Codex，不回到常驻右侧栏。
+- `OverlayLayer.gd` 渲染分节卡片、chips 和 Codex 后续按钮；动态卡片使用稳定 `SideDrawerSectionCard1/2/...` 命名，方便布局测试和截图 QA。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增真实点击详情入口后的分节抽屉合同，确认 `完整详情` 和全文只在抽屉 section body 中出现。
+- `tests/visual_snapshot.gd` 新增静态合同，要求 OverlayLayer 保留滚动分节抽屉和 `OverlayLayerSnapshot.sections`。
+
+## 2026-07-02｜菜单、星球舞台、手牌密度收紧
+
+### 本轮实现
+
+- `MenuRootLobby` 继续按商业游戏入口节奏推进：全屏程序化星球背景增加大陆、云带、夜侧城市灯和轨道刻度；右侧主命令塔改为编号命令卡、加高主 CTA，并扩大命令列稳定宽度。
+- `PlanetBoard` 保持中央 `MapHost` 为正方形主视野，但把左右剩余空间改成轨道线、边缘刻度和更高的公开信息 rail，避免两侧看起来像未使用空白。
+- `MapView` 默认平面投影留出更多宇宙边界，密集标签、桌面 token 标签和 callout 需要更高 zoom/focus 才出现，避免星球表面第一眼过密。
+- `PlayerBoardSnapshot` 和 `HandRack` 现在把底部手牌默认规范为 `presentation = "mini_hand"`、`detail_policy = "right_inspector"`；`CardUI` 按 MiniCard 模式只显示短名、费用、类型、等级、一行用途和状态，完整规则继续进右侧详情/抽屉/Codex。
+- 开源参考继续按 `docs/open_source_reference_notes.md` 执行：复制结构、交互节奏和 permissive-license pattern；GPL/AGPL/LGPL 项目只做产品层级和行为参考，除非明确接受许可证义务。
+
+### 验证
+
+- `tests/visual_snapshot.gd` 通过，新增菜单命令塔、程序化星球细节、地图低密度阈值、星球轨道空间和 MiniCard 展示合同。
+- `tests/layout_scene_smoke_test.gd` 通过，确认运行态手牌默认 MiniCard、PlayerBoard 直接输入也不会回到完整长文本卡面。
+
+## 2026-07-02｜PlayerBoard 改成三栏玩家 tableau
+
+### 本轮实现
+
+- `PlayerBoard.tscn` 从横向 chip 流改成桌游玩家板三栏：
+  - 左侧 `PlayerResourceTableau`：本席、现金、GDP、目标、目标进度、选区、下一步；
+  - 中间 `PlayerHandTableau`：手牌数、桌态/就绪短 chip、`HandRack`；
+  - 右侧 `PlayerCommandTableau`：唯一 `PlayerMainActionDock`，继续承载建城/牌架/买牌/出牌和当前主行动。
+- `PlayerBoard.gd` 只补渲染样式和 chip 色彩，不读取规则状态、不创建玩法动作。
+- `HandRack.tscn` 的卡牌规格和 hover 手感略上调，底部仍保持 1280x720 安全高度。
+- `ActionDock.gd` 的 compact mode 更像桌边命令板：四个快捷行动按类型着色，当前主行动按钮更像 CTA。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 通过，确认 1280x720 下 TopBar / PlayerBoard / HandRack / ActionDock 不出屏。
+- `tests/visual_snapshot.gd` 通过，新增 PlayerBoard 三栏 tableau 静态合同。
+- `tests/ui_text_smoke_test.gd` 与 `tests/smoke_test.gd --check-only` 通过。
+
+## 2026-07-02｜Scene 化页面取消 legacy fallback
+
+### 本轮实现
+
+- `main.gd` 的玩家可见页面桥接继续收紧为 scene 硬依赖：
+  - 新手引导、规则速查、局势记分板、经济仪表板、终局记分板、情报侦探板、资料大厅、角色身份板必须实例化对应 `scenes/ui/*` 组件；
+  - 如果组件缺失或不暴露 `set_*` 方法，统一通过 `_report_required_ui_scene_missing()` 报错并停止渲染该页；
+  - 不再悄悄调用 `_legacy` 动态 UI 生成器重建玩家可见页面。
+- 本轮不新增玩法，只把已迁移页面从“软迁移”改成“硬分层合同”。
+- 继续删除已经没有调用路径的旧生成器：
+  - `_add_tutorial_quick_start_panel_legacy()` 以及专用 chip/step/trap helper；
+  - `_populate_rules_summary_cards_legacy()`；
+  - `_add_compendium_hub_board_legacy()` 与 `_add_compendium_menu_button()`；
+  - `_add_standings_scoreboard_panel_legacy()` 以及专用 chip/KPI/score-card helper；
+  - `_add_economy_dashboard_panel_legacy()` 以及专用 chip/KPI/list-card helper；
+  - `_add_final_settlement_board_panel_legacy()` 以及专用 chip/KPI/money/event/rank helper；
+  - `_add_intel_dossier_board_panel_legacy()` 以及专用 chip/KPI/list-card helper；
+  - `_add_role_codex_identity_board_panel_legacy()` 以及专用 chip/KPI/route-card helper，并移除未使用的旧角色预览 helper。
+
+### 验证
+
+- `tests/visual_snapshot.gd` 新增静态合同，禁止这些 scene-owned 页面调用 legacy fallback，并确认已迁移页面的旧生成器保持删除状态。
+- 已运行 `tests/visual_snapshot.gd`、`tests/ui_text_smoke_test.gd`、`tests/layout_scene_smoke_test.gd`、`tests/smoke_test.gd --check-only`。
+
+## 2026-07-02｜主菜单首屏商业入口化
+
+### 本轮实现
+
+- 根主菜单继续沿用 `MenuOverlay + MenuRootLobby` 分层，但 root 大厅隐藏外层弹窗标题，由内层首屏承担品牌、星球和主行动层级。
+- `MenuRootLobby` 的左侧速览从横向小标签改为纵向桌面状态牌，保留席位、怪兽开局、匿名牌轨三条开桌前核心信息。
+- 右侧主行动卡加入 `featured` 主卡层级和 `01/02/03` 读序，`开新一桌` 比继续/资料库更明确，底部规则/读档/退出仍保持辅助动作。
+- 主菜单继续只提供开桌、继续、资料库、规则、读档、退出，不新增玩法分支。
+
+### 验证
+
+- 更新 `tests/visual_snapshot.gd`，静态约束主菜单使用 featured 纵向命令卡，而不是回退到旧分支列表。
+- 可见截图重新生成并目检 `main_menu_1280x720.png`、`main_menu_1600x960.png`：中心星球保留第一视觉，右侧行动塔更清楚，外层重复标题已消失。
+
+## 2026-07-02｜PlanetBoard 星球主视野继续压缩空白
+
+### 本轮实现
+
+- `PlanetBoard` 的 `MapHost` 改为优先吃满舞台高度，中央星球继续保持最大正方形主视野。
+- 左右公开读数从贯穿全高的大面板改为贴近星球边缘的紧凑轨道读数，避免把左右宇宙空间做成空调试栏。
+- `MapView` 常驻提示从长操作说明缩短为小读数；具体操作继续通过选区徽章、Inspector、Drawer 承接。
+- `RightInspector` 的 why/条件区和公开日志区改为有内容才显示；`条件/暂无条件/待选择` 这类占位 chip 不再撑开 10 秒层，避免右侧详情栏出现空白占位面板。
+- 右侧原因、日志和区域短说明 Label 补稳定最小高度，避免 VBox 把文字压到 1px 后看起来像空面板。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增主桌运行态合同：`MapHost` 必须吃满方形舞台高度，侧轨必须贴近星球且高度不超过星球的一半。
+- `tests/visual_snapshot.gd` 更新地图提示合同，约束主屏只显示短玩家读数。
+- `tests/layout_scene_smoke_test.gd` 新增 RightInspector 空面板检查：可见的 why/log 面板必须有真实文本或条件 chip。
+
+## 2026-07-02｜CardCodexDetail 详情页数据接入 ViewModel
+
+### 本轮实现
+
+- 新增 `scripts/viewmodels/card_codex_detail_snapshot.gd`：
+  - 只输出 data-only 卡牌详情页 snapshot；
+  - 统一处理公开卡面、扫牌顺序、牌桌用途三格、事实卡、I-IV 升级梯、结算演出说明；
+  - 不创建 UI 节点，不绑定 signal，不读取规则状态。
+- `main.gd` 保留从技能定义推导费用、效果、目标、升级和规则事实的 source 职责，再交给 `CardCodexDetailSnapshot` 归一化成 `CardCodexDetail.set_detail()` 所需 UI 数据。
+- `CardCodexDetail` 继续只负责渲染 scene-owned TCG 详情布局，不解释规则状态。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增 `CardCodexDetailSnapshot` 载入、扫牌顺序、用途条、升级、结算说明和 data-only 合同。
+- `tests/visual_snapshot.gd` 新增静态合同，确认卡牌详情页通过 `CardCodexDetailSnapshotScript` 生成 UI snapshot。
+- `tests/ui_text_smoke_test.gd` 纳入 `card_codex_detail_snapshot.gd`，继续约束详情页 fallback 文案为玩家可读中文。
+
+## 2026-07-02｜CardCodexBrowser 缩略页数据接入 ViewModel
+
+### 本轮实现
+
+- 新增 `scripts/viewmodels/card_codex_browser_snapshot.gd`：
+  - 只输出 data-only 卡牌图鉴缩略页 snapshot；
+  - 统一处理缩略页分页、当前预览卡 fallback、筛选 chip 文案、卡片选中态和 hover 预览数据；
+  - 不创建 UI 节点，不绑定 signal，不读取规则状态。
+- `main.gd` 保留从牌库、技能定义、筛选器中取 source data 的职责，但不再直接拼完整 `CardCodexBrowser` UI 字典。
+- `CardCodexBrowser` 继续只渲染 `set_browser(data)` 并发出筛选、翻页、预览和详情 signal。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增 `CardCodexBrowserSnapshot` 载入、分页、选中卡 fallback、筛选 chip 和 data-only 合同。
+- `tests/visual_snapshot.gd` 新增静态合同，确认卡牌图鉴缩略页通过 `CardCodexBrowserSnapshotScript` 生成 UI snapshot。
+- `tests/ui_text_smoke_test.gd` 纳入 `card_codex_browser_snapshot.gd`，继续约束缩略页 fallback 文案为玩家可读中文。
+
+## 2026-07-02｜OverlayLayer 抽屉数据接入 ViewModel
+
+### 本轮实现
+
+- 新增 `scripts/viewmodels/overlay_layer_snapshot.gd`：
+  - 只输出 data-only `side_drawer` 字典；
+  - 从当前 `RightInspectorSnapshot` 读取 `full_detail/logs/chips/requirements`；
+  - 通过 `ActionDockSnapshot` 归一化抽屉里的 Codex 后续动作。
+- `GameScreen` 不再内联组装 30 秒抽屉的标题、正文、chips 和 Codex 链接，只负责从右侧详情入口路由打开 `OverlayLayer`。
+- 本轮没有新增玩法，只继续收紧 UI Scene / ViewModel 分层。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增 `OverlayLayerSnapshot` 载入、全文抽屉正文、chips 和 Codex 后续动作合同。
+- `tests/visual_snapshot.gd` 新增静态合同，确认 `GameScreen` 预加载 `OVERLAY_LAYER_SNAPSHOT_SCRIPT` 且不再保留旧 drawer helper。
+- `tests/ui_text_smoke_test.gd` 纳入 `overlay_layer_snapshot.gd`，避免抽屉 fallback 文案回退成英文或调试文案。
+- 已重新运行布局、视觉、文本、主逻辑 check-only 和可见渲染截图。
+
+## 2026-07-02｜ActionDock 行动数据接入 ViewModel
+
+### 本轮实现
+
+- 新增 `scripts/viewmodels/action_dock_snapshot.gd`：
+  - 只输出 data-only `quick_actions/actions`；
+  - 固定缺省四个 3 秒层快捷行动：`建城 / 牌架 / 买牌 / 出牌`；
+  - 把 `ready/waiting/blocked/browse` 等控制器状态归一成玩家可读短状态。
+- `PlayerBoardSnapshot` 改为通过 `ActionDockSnapshot` 输出底部行动 dock 数据。
+- `RightInspectorSnapshot` 改为通过 `ActionDockSnapshot` 输出右侧行动按钮和详情链接。
+- `ActionDock` 仍只渲染按钮并发出 `action_requested` signal，不读规则、不判断行动合法性。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增 `ActionDockSnapshot` 存在性、四快捷行动缺省、行动状态归一化、PlayerBoard/RightInspector 路由合同。
+- `tests/visual_snapshot.gd` 新增静态合同，确认 `PlayerBoardSnapshot` 与 `RightInspectorSnapshot` 必须预加载 `ACTION_DOCK_SNAPSHOT_SCRIPT`。
+- `tests/ui_text_smoke_test.gd` 纳入 `action_dock_snapshot.gd`，避免行动 fallback 回退成英文或调试文案。
+- 已重新运行布局、视觉、文本、主逻辑 check-only 和可见渲染截图。
+
+## 2026-07-02｜PlanetBoard 接入独立 ViewModel
+
+### 本轮实现
+
+- 新增 `scripts/viewmodels/planet_board_snapshot.gd`：
+  - 只输出 data-only `title/hint/left_rail/right_rail`；
+  - 把 `left_entries/right_entries`、`surface_rail/outer_pressure_rail` 等输入归一成统一星球棋盘 snapshot；
+  - 默认读法固定为 `地表情报` 与 `外围压力`，避免 UI 场景继续靠静态占位文案兜底。
+- `TableSnapshot` 现在通过 `PlanetBoardSnapshot` 处理 `planet` 字段，不再原样透传控制器字典。
+- `PlanetBoard` 仍只负责渲染 snapshot 和运行时挂载 `MapView`，不读规则状态、不创建规则动作。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增 `PlanetBoardSnapshot` 存在性、左右轨归一化、`TableSnapshot` 路由合同。
+- `tests/visual_snapshot.gd` 新增静态合同，确认 `TableSnapshot` 必须预加载并使用 `PLANET_BOARD_SNAPSHOT_SCRIPT`。
+- `tests/ui_text_smoke_test.gd` 纳入 `planet_board_snapshot.gd`，让默认文案继续受中文主桌合同约束。
+- 已重新运行布局、视觉、文本、主逻辑 check-only 和可见渲染截图。
+
+## 2026-07-02｜PlanetBoard 左右侧栏改为数据化公共情报轨
+
+### 本轮实现
+
+- `PlanetBoard` 左右空白侧栏不再渲染静态占位标签，而是由 `set_board_state()` 读取 `left_rail/right_rail` 数据。
+- 运行时 `_runtime_planet_snapshot_source()` 新增两组只读情报：
+  - 左侧 `地表情报`：星区、选区、牌架、补给；
+  - 右侧 `外围压力`：怪兽、天气、牌轨、终局。
+- 侧栏条目运行时创建为 `PlanetLeftRailEntry*` / `PlanetRightRailEntry*`，snapshot 绑定后隐藏旧 fallback 文案。
+- 星球主舞台继续保持正方形优先，`MapHost` 外仍保留可见宇宙空间，左右侧栏吸收横向余量而不是挤满地图。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增左右轨标题、条目数量、fallback 隐藏、运行时文字合同。
+- `tests/visual_snapshot.gd` 新增静态合同，确认 `PlanetBoard` 脚本和 `main.gd` runtime snapshot 都参与侧栏渲染。
+- `tests/ui_text_smoke_test.gd` 同步纳入 `PlanetBoard` 脚本来源，避免界面文案回退。
+- 已用可见 Vulkan renderer 重新生成 `play_table_*` 主桌截图，抽查 1280x720 与 1600x960。
+
+## 2026-07-02｜HandRack 稳定渲染同一批手牌
+
+### 本轮实现
+
+- `PlayerBoard` 不再直接清空 `HandRack` 子节点，也不再自己实例化 `CardFace`。
+- `HandRack` 新增 `set_cards(cards)`：
+  - 按 `id/card_id/instance_id/slot_id` 生成手牌身份；
+  - 同一身份、同一顺序的手牌只更新卡面数据，不替换节点；
+  - 只有手牌增删或身份变化时才同步节点；
+  - 空手牌占位继续保留 `PlayerHandEmptySlot`。
+- 手牌选择、双击、hover、拖拽预览信号都由 `HandRack` 发出，`PlayerBoard` 只负责转发 snapshot 和信号。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增同 id 卡牌说明变化测试，确认 CardFace 数据更新但节点 id 不变。
+- 同一测试继续确认 live value refresh 不会打断 hover 抬起。
+- `tests/visual_snapshot.gd` 和 `tests/ui_text_smoke_test.gd` 已同步 HandRack 源码合同。
+
+## 2026-07-02｜OverlayLayer 显式分成四层
+
+### 本轮实现
+
+- `OverlayLayer.tscn` 现在不再只是散放若干 overlay 面板，而是显式拆成：
+  - `TooltipLayer`：短 hover/提示；
+  - `SideDrawerLayer`：30 秒层详情抽屉；
+  - `ModalLayer`：确认/模态；
+  - `DragPreviewLayer`：手牌拖拽预览。
+- 保留原有 `%TooltipPanel`、`%SideDrawerPanel`、`%ConfirmPanel`、`%DragPreviewPanel` 唯一名，脚本 API 不变。
+- `SideDrawerPanel` 继续承接 RightInspector 的详情入口，`DragPreviewPanel` 继续承接 HandRack 的 UI-only 拖拽链路。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增 OverlayLayer 层级合同，确认四个 layer 节点存在，且核心面板挂在对应 layer 下。
+- `tests/visual_snapshot.gd` 新增静态合同，防止 OverlayLayer 回退成未分层面板堆。
+
+## 2026-07-02｜RightInspector 摘要/全文分层
+
+### 本轮实现
+
+- `RightInspectorSnapshot` 开始把右侧上下文拆成两层：
+  - `summary/detail`：主桌常驻 10 秒层，只显示短摘要；
+  - `full_detail`：30 秒层全文，交给 Drawer / Codex；
+  - `detail_level = summary` 作为显式合同，避免组件误把长说明常驻主桌。
+- `RightInspector` 和 `DistrictInfoPanel` 只渲染摘要：
+  - 区域/卡牌详情在主桌右侧最多显示短句；
+  - 完整说明进入 tooltip 和 `OverlayLayer` side drawer；
+  - 公开日志标题统一为 `最近公开日志`，保持短扫读。
+- `GameScreen` 打开详情抽屉时优先读取 `full_detail`，不会只展示右侧短摘要。
+- 运行时 `_runtime_selected_district_snapshot_source()` 与 `_runtime_hand_card_inspector_snapshot_source()` 同步输出 `summary/detail/full_detail`，让选区和手牌都遵守同一产品层级。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增合同：RightInspector 常驻区域只显示短摘要，点击详情后 Drawer 能看到完整区域说明。
+- ViewModel 合同新增 `RightInspectorSnapshot separates table summary from full drawer detail`。
+
+## 2026-07-02｜PublicTrack 固化为薄匿名牌轨
+
+### 本轮实现
+
+- 新增 `PublicTrackSnapshot`：
+  - 把原始 `card_track` 条目归一成短标题、槽号、状态、报价/费用、匿名归属提示和强调色；
+  - 默认隐藏归属为 `匿名`，避免主桌泄露隐藏出牌者；
+  - 不创建 UI 节点，只输出 data-only snapshot。
+- `TableSnapshot` 不再直接透传原始 `card_track`，而是统一走 `PublicTrackSnapshot`。
+- `CardTrack` 渲染改成薄槽位：
+  - 每格只显示状态色点、槽号、短标题和 `报价/匿名` 扫读信息；
+  - 空状态仍是 `牌轨空闲`，但保持薄轨高度；
+  - 相同条目签名不重建节点，避免实时刷新破坏轨道滚动/hover 手感；
+  - 不实例化完整 `CardFace`，完整卡面继续进入右侧详情、Drawer 或 Codex。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 新增 PublicTrack 运行时合同：薄轨高度、状态点、匿名提示、无完整 CardFace、相同数据不重建。
+- `tests/visual_snapshot.gd` 新增静态合同：`TableSnapshot` 必须接 `PublicTrackSnapshot`，`CardTrack` 必须渲染 `PublicTrackSlot` / `PublicTrackStatePip` / `PublicTrackSlotMeta`。
+
+## 2026-07-02｜商业主菜单与星球棋盘空间修正
+
+### 本轮实现
+
+- 主菜单继续向商业游戏入口收敛：
+  - `MenuRootLobby` 使用更大的 `SPACE SYNDICATE` 标题、全屏程序化星球背景和单列主命令；
+  - `开新一桌 / 继续牌桌 / 资料库` 保持为主按钮，规则、读档、退出降为底部辅助按钮；
+  - 背景星球放大并偏向主视觉区，减少“设置弹窗”感。
+- 主桌星球展示改为更强的正方形棋盘舞台：
+  - `PlanetBoard` 背后直接绘制星空和微弱星云；
+  - `MapHost` 继续由可用高度约束为正方形；
+  - 左右多余横向空间扩成 `轨道情报 / 外围宇宙` 两侧轨道栏，避免宽屏下出现空白边。
+- `MapView` 默认信息密度下调：
+  - 默认平面图保留外层宇宙遮罩和投影边界；
+  - 区域密集标签、商路文字、城市商品文字、怪兽名和行动 callout 都需要更高缩放或对应关注层才显示；
+  - 投影过渡起点调回默认缩放之后，开局先是稳定平面图，滚轮拉远后再卷成星球。
+- 底部 `PlayerBoard` 继续给手牌让位：
+  - 玩家栏高度和 `HandRack` 卡面尺寸上调；
+  - `PlayerThreeSecondRail` 新增 `手牌 x/5` 筹码；
+  - `PlayerMainActionDock` 压缩到 280px 级别，让手牌架拥有更宽的桌边空间。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 通过，新增运行时守卫：`MapHost` 必须保持正方形，宽屏剩余空间必须由左右轨道栏承接。
+- `tests/visual_snapshot.gd` 通过，新增合同：平面投影边界外保留宇宙空间，默认地图标签密度降低，主菜单是全屏商业入口。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 有头通过，并重新生成 1280x720、1366x768、1600x960、1920x1080、2560x1440 截图。
+
+## 2026-07-02｜默认 split 主桌跳过旧 PlayerPanel 刷新
+
+### 本轮实现
+
+- 新增 `_uses_split_runtime_table()`：
+  - 默认 `BUILD_LEGACY_RUNTIME_TABLE := false` 且 `RuntimeGameScreen` 已挂载时返回 true；
+  - 作为旧生成式主桌和 split scene 主桌的运行时边界。
+- `_refresh_ui()` 不再在默认 split runtime 下调用 `_refresh_player_panel(false)`。
+- 旧 `_refresh_player_panel()`、`_player_panel_structure_signature()`、`_refresh_player_panel_live_values()` 保留为 legacy fallback，但不再驱动默认可见主桌。
+- `layout_scene_smoke_test` 现在实例化 `scenes/main.tscn` 并断言：
+  - `RuntimeGameScreen` 是可见产品层；
+  - `LegacyRuntimeTable` 隐藏、禁用、无子节点；
+  - `_uses_split_runtime_table()` 返回 true。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+
+## 2026-07-02｜PlayerBoard 行动区合并为单一 ActionDock
+
+### 本轮实现
+
+- `PlayerBoard` 不再自己维护独立的 `PlayerQuickActionRow` 和 `PlayerActionRow`。
+- 底部玩家板改为挂载一个 `PlayerMainActionDock`：
+  - 四个快捷动作 `建城 / 牌架 / 买牌 / 出牌`；
+  - 当前可执行主动作；
+  - 都通过同一个 `ActionDock` 组件渲染和发出 `action_requested` signal。
+- `ActionDock` 增加 compact mode：
+  - 底部玩家板隐藏标题并降低按钮高度；
+  - 右侧 Inspector 仍保留普通标题和说明式动作行。
+- 测试契约改为验收“一个 main action dock 内有快捷动作和主动作”，避免继续鼓励重复行动区。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+
+## 2026-07-02｜全屏大厅与方形宇宙星球舞台
+
+### 本轮实现
+
+- Root 主菜单从居中弹窗改成全屏大厅路径：
+  - `MenuOverlay` 在 `root_table_menu` 下使用全屏 surface；
+  - `MenuRootLobby` 改成左侧大型程序化星球视觉、右侧纵向主命令；
+  - 普通规则、图鉴、经济、情报页面继续走原来的菜单/Codex 壳。
+- 主桌星球区改成方形舞台：
+  - `PlanetBoard` 新增 `PlanetStageViewport`，脚本根据可用空间把 `MapHost` 居中成正方形；
+  - 左右空余区变成窄 HUD 轨道，不再撑成长说明板；
+  - `MapHost` 和运行时 `MapView` 不再裁剪，平面投影边界外能看到星空。
+- 地图默认低缩放信息密度降低：
+  - 加入外层星空背景；
+  - 稠密区域标签需要更高缩放才显示；
+  - 行动 callout 在默认缩放下收起，选中区域仍保留核心标签。
+- 修复 `ActionDock` 内部节点命名污染：右侧 Inspector 的 action dock 不再抢占 `PlayerBoard` 的 `PlayerQuickActionRow` / `PlayerActionRow` 查找。
+- 压缩右侧 Inspector 的固定高度，避免 1280x720 下主桌被顶出屏幕。
+
+### 验证
+
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 有头通过，并重新生成 1280x720、1366x768、1600x960、1920x1080、2560x1440 主菜单和主桌快照。
+
 ## 2026-07-02｜根主菜单收敛为星球赌桌大厅
 
 ### 本轮实现
@@ -4522,3 +5603,50 @@
 - `tests/ui_text_smoke_test.gd` 通过。
 - `tests/visual_snapshot.gd` 通过。
 - `tests/ui_snapshot_capture.gd` 二号屏有头通过，并重新生成 4 张 UI 快照。
+
+## 2026-07-02｜手牌 hover 接入右侧 10 秒详情层
+
+- 继续按电子桌游的“手牌扫读 + hover 详情 + 右侧上下文”结构收敛主界面：
+  - `HandRack` 的 `card_unhovered` 现在通过 `PlayerBoard` 转发到 `GameScreen`。
+  - 手牌 hover 会临时调用 `RightInspector.show_card()`，把卡名、类型、费用、效果和条件显示到右侧详情层。
+  - 手牌 unhover 会恢复最近一次 `apply_state()` 的 `right_inspector` 上下文，避免右侧说明被悬停卡牌永久粘住。
+- 守卫同步：
+  - `tests/layout_scene_smoke_test.gd` 验证 hover 显示卡牌详情、unhover 恢复“当前说明”，并确认 hover 不重建手牌节点。
+  - `tests/visual_snapshot.gd` 增加 `HandRack -> PlayerBoard -> GameScreen -> RightInspector` hover/unhover 链路合同。
+- 快照暴露出的版面问题同步修正：
+  - 主菜单 `MenuRootLobby` 新增 `MainMenuPlanetBackdrop` 全屏星球背景层，旧左侧星球预览隐藏，入口按钮和短标签浮在背景上，减少面板套面板的工具感。
+  - `BottomCountdownBar` 不再被长期天气预报/天气影响占用；天气继续留在状态筹码和经济页，底部计时条只服务竞价、响应、怪兽赌局、合约和终局这类短窗口，避免盖住手牌。
+
+### 本轮验证
+
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 有头通过，并重新生成主菜单、开局准备、主牌桌、详情抽屉和图鉴/仪表板快照。
+
+## 2026-07-02｜公开牌轨与 BidBoard 建立双向 Hover 对应
+
+- 继续按商业桌游式 4X 的“公共桌面线索可互相指认”方向推进，而不是继续堆装饰：
+  - 参考公开牌轨/竞价条/行动提示之间的双向高亮模式，让顶部匿名牌轨和底部 BidBoard 不再只是两块分离信息。
+  - `CardTrack` 增加牌槽 hover/unhover 信号，牌轨槽位可把自己的公开行动 id 暴露给页面层。
+  - `GameScreen` 负责把公开牌轨 hover 转成玩家板 hover 状态，保持 UI 层只传 ViewModel/信号，不直接碰规则。
+  - `PlayerBoard` 继续做转发层，`BidBoard` 增加 `set_hovered_track_action()`，临时高亮匹配的“领跑/我的牌/下张/下批”指针。
+  - 之前已有的 BidBoard 指针 hover 顶部牌轨也保留；现在形成 `BidBoard -> PublicTrack` 与 `PublicTrack -> BidBoard` 的双向对应。
+- 守卫同步：
+  - `tests/layout_scene_smoke_test.gd` 增加公开牌轨槽位 hover 后点亮 BidBoard 指针、离开后清除的运行时断言。
+  - `tests/visual_snapshot.gd` 增加 `CardTrack` hover 信号、`GameScreen` 桥接、`PlayerBoard/BidBoard` hover API 和 `BidBoardTrackLinkHover` 标记合同。
+
+### 本轮验证
+
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `git diff --check` 通过；仅有 Git 提示 LF 将在下次触碰时转为 CRLF。
+- `tests/smoke_test.gd` 完整运行到末尾但仍有 1 个红灯：`AI opponents form multi-step product-route plans that bias build, card, contract, and business choices`。当前失败集中在 AI 多步商品路线规划 smoke，不在本轮公开牌轨/BidBoard UI 桥接路径。
+
+### 剩余缺口
+
+- 继续优先修完整 smoke 的 AI product-route 规划断言，尤其是首路线 `gap_score=false` 导致的多步路线评分未达标。
+- 双向 hover 目前是瞬时描边/标记，下一步可继续加右侧 inspector 预览和轻量连线，让竞价、公开牌和私有推理更像同一张桌面。
