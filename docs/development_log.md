@@ -5668,3 +5668,39 @@
 - `tests/visual_snapshot.gd` 通过。
 - `tests/ui_text_smoke_test.gd` 通过。
 - `tests/layout_scene_smoke_test.gd` 通过。
+
+## 2026-07-02｜Codex B：Hearthstone-grade Player Journey v1
+
+- 把 Scenario Lab 升级为“新手战役”产品闭环：
+  - 新增 Campaign 数据层：战役定义、关卡、进度、存档、奖励、解锁、复盘服务。
+  - 新增 10 关 `tutorial_campaign.json`，覆盖序章、第一桌、牌架、匿名牌轨、竞价、怪兽压力、商品合约、情报、终局、毕业挑战。
+  - 新增推荐开局数据和 helper：4 席 / 3 AI，以及“新手稳定经济 / 怪兽压力 / 匿名牌推理”三个 preset。
+- 主菜单改为商业入口结构：
+  - 三个主入口：新手战役、快速开局、资料库。
+  - 继续牌桌、剧本库、规则、设置、读取局面、退出移动到辅助入口。
+  - 暂停菜单在战役中显示“重开本关 / 返回战役 / 查看复盘”。
+- 新增战役 UI：
+  - `CampaignMenu`、`CampaignBriefing`、`CampaignProgressMap`、`CampaignRewardPanel`、`MatchRecapPanel`。
+  - 继续复用 `ScenarioCoach`，但战役中标题显示为“新手战役｜关卡名”，主桌仍保持一步一目标。
+- 隐私与验收：
+  - 新增 campaign 菜单、进度、奖励、隐私、30 分钟玩家旅程测试。
+  - 新增 `campaign_snapshot_capture.gd`，可生成 12 张 Campaign QA 截图；有头截图已在二号屏运行确认。
+  - 玩家可见 Campaign 快照不暴露对手现金、对手手牌、AI 私有计划、真实匿名归属或内部评分字段。
+
+### 本轮验证
+
+- `tests/campaign_menu_smoke_test.gd` 通过。
+- `tests/campaign_progress_test.gd` 通过。
+- `tests/campaign_reward_test.gd` 通过。
+- `tests/campaign_privacy_test.gd` 通过。
+- `tests/campaign_runtime_flow_test.gd` 通过。
+- `tests/player_journey_30min_test.gd` 通过。
+- `tests/campaign_snapshot_capture.gd` 通过，并生成 12 张截图到 `user://campaign_snapshots`。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/scenario_smoke_test.gd` 通过。
+- `tests/scenario_progress_test.gd` 通过。
+- `tests/scenario_privacy_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。

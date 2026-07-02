@@ -67,6 +67,13 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	await _pump_frames(4)
 	await _save_viewport_snapshot("new_game_setup_seats_%s.png" % suffix)
 
+	if main.has_method("_open_scenario_browser_menu"):
+		main.call("_open_scenario_browser_menu")
+		await _pump_frames(8)
+		await _save_viewport_snapshot("scenario_browser_%s.png" % suffix)
+	else:
+		_capture_failures.append("scenario browser menu was not available for %s" % suffix)
+
 	if capture_size == Vector2i(1600, 960):
 		main.call("_open_tutorial_menu")
 		await _pump_frames(8)
@@ -100,10 +107,19 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		await _pump_frames(8)
 		await _save_viewport_snapshot("bestiary_detail_%s.png" % suffix)
 
+		for scenario_id in ["first_table", "market_hand", "public_track_intro", "bid_practice", "monster_pressure", "contract_goods", "intel_guess", "final_countdown"]:
+			if main.has_method("_start_scenario_from_menu"):
+				main.call("_start_scenario_from_menu", scenario_id)
+				await _pump_frames(14)
+				await _save_viewport_snapshot("scenario_%s_%s.png" % [scenario_id, suffix])
+			else:
+				_capture_failures.append("scenario start helper was not available for %s" % scenario_id)
+
 	main.set("configured_player_count", 4)
 	main.set("configured_ai_player_count", 3)
 	main.set("configured_role_indices", [0, 1, 2, 3, 4])
 	main.set("configured_starter_monster_indices", [0, 1, 2, 3])
+	_clear_active_scenario_state(main)
 	main.call("_new_game")
 	if capture_size == Vector2i(1600, 960):
 		main.call("_open_standings_menu")
@@ -122,6 +138,10 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		await _save_viewport_snapshot("final_settlement_runtime_%s.png" % suffix)
 	main.call("_close_menu")
 	await _pump_frames(16)
+	if _runtime_first_run_coach_visible(main):
+		await _save_viewport_snapshot("first_run_coach_%s.png" % suffix)
+	else:
+		_capture_failures.append("runtime first-run coach was not visible for %s" % suffix)
 	await _save_viewport_snapshot("play_table_%s.png" % suffix)
 	if _show_runtime_drag_drop_hint(main):
 		await _pump_frames(6)
@@ -167,6 +187,29 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	get_root().remove_child(layout_demo)
 	layout_demo.queue_free()
 	await _pump_frames(4)
+
+
+func _clear_active_scenario_state(main: Node) -> void:
+	if _node_has_property(main, "active_scenario_id"):
+		main.set("active_scenario_id", "")
+	if _node_has_property(main, "selected_scenario_id"):
+		main.set("selected_scenario_id", "first_table")
+	if _node_has_property(main, "active_scenario_snapshot_key"):
+		main.set("active_scenario_snapshot_key", "start")
+	if _node_has_property(main, "scenario_completed_signals"):
+		main.set("scenario_completed_signals", {})
+	if _node_has_property(main, "scenario_action_log_entries"):
+		main.set("scenario_action_log_entries", [])
+	if _node_has_property(main, "scenario_coach_closed"):
+		main.set("scenario_coach_closed", false)
+
+
+func _node_has_property(node: Object, property_name: String) -> bool:
+	for property_variant in node.get_property_list():
+		var property: Dictionary = property_variant if property_variant is Dictionary else {}
+		if str(property.get("name", "")) == property_name:
+			return true
+	return false
 
 
 func _pump_frames(count: int) -> void:
@@ -216,6 +259,15 @@ func _runtime_side_drawer_visible(root_node: Node) -> bool:
 	var search_root: Node = runtime_screen if runtime_screen != null else root_node
 	var drawer := search_root.find_child("SideDrawerPanel", true, false) as Control
 	return drawer != null and drawer.visible and drawer.is_visible_in_tree()
+
+
+func _runtime_first_run_coach_visible(root_node: Node) -> bool:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	if runtime_screen == null:
+		return false
+	var coach := runtime_screen.find_child("FirstRunCoach", true, false) as Control
+	var button := runtime_screen.find_child("CoachPrimaryButton", true, false) as Button
+	return coach != null and coach.visible and coach.is_visible_in_tree() and button != null
 
 
 func _show_runtime_drag_drop_hint(root_node: Node) -> bool:

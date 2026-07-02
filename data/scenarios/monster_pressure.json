@@ -1,0 +1,24 @@
+{
+  "id": "monster_pressure",
+  "title": "05 怪兽压力",
+  "category": "地图与经济",
+  "difficulty": "practice",
+  "duration_label": "6-10分钟",
+  "player_count": 4,
+  "ai_count": 3,
+  "summary": "观察怪兽接近城市、城市受损和 GDP 下滑如何显示。",
+  "recommended_for": "想理解怪兽经济压力的人",
+  "core_system": "怪兽与城市损伤",
+  "allowed_private_information": "current_player_only",
+  "fixture": {"focus": "monster_pressure", "public_summary": "怪兽正在接近一座公开城市。", "has_monster_pressure": true},
+  "replay_snapshots": [
+    {"key": "start", "label": "开始"},
+    {"key": "monster_near", "label": "怪兽接近"},
+    {"key": "city_damaged", "label": "城市受损"}
+  ],
+  "phases": [
+    {"id": "inspect_monster", "label": "看怪兽", "goal": "选中接近城市的怪兽。", "primary_action_hint": "选中怪兽", "success_signal": "monster_inspected", "snapshot_key": "monster_near"},
+    {"id": "inspect_city_gdp", "label": "看GDP", "goal": "查看城市 GDP 为什么降低。", "primary_action_hint": "查看城市详情", "success_signal": "gdp_reason_read", "snapshot_key": "city_damaged"},
+    {"id": "open_economy", "label": "经济", "goal": "打开经济总览，确认损伤如何折算成现金流。", "primary_action_hint": "打开经济总览", "success_signal": "economy_opened", "snapshot_key": "city_damaged"}
+  ]
+}

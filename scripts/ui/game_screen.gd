@@ -16,6 +16,8 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var top_bar: Node = %TopBar
 @onready var public_track: Node = get_node_or_null("%PublicTrack")
 @onready var card_track: Node = get_node_or_null("%CardTrack")
+@onready var first_run_coach: Node = get_node_or_null("%FirstRunCoach")
+@onready var scenario_coach: Node = get_node_or_null("%ScenarioCoach")
 @onready var planet_board: Node = %PlanetBoard
 @onready var right_inspector: Node = %RightInspector
 @onready var player_board: Node = %PlayerBoard
@@ -37,6 +39,10 @@ func _ready() -> void:
 		track_node.connect("track_entry_hovered", Callable(self, "_on_track_entry_hovered"))
 	if track_node != null and track_node.has_signal("track_entry_unhovered"):
 		track_node.connect("track_entry_unhovered", Callable(self, "_on_track_entry_unhovered"))
+	if first_run_coach != null and first_run_coach.has_signal("primary_action_requested"):
+		first_run_coach.connect("primary_action_requested", Callable(self, "_on_action_requested"))
+	if scenario_coach != null and scenario_coach.has_signal("action_requested"):
+		scenario_coach.connect("action_requested", Callable(self, "_on_action_requested"))
 	if right_inspector.has_signal("action_requested"):
 		right_inspector.connect("action_requested", Callable(self, "_on_action_requested"))
 	if player_board.has_signal("card_selected"):
@@ -74,6 +80,10 @@ func apply_state(data: Dictionary) -> void:
 	if track_node != null and track_node.has_method("set_entries"):
 		var track_entries: Variant = ui_data.get("card_track", [])
 		track_node.call("set_entries", track_entries if track_entries is Array else [])
+	if first_run_coach != null and first_run_coach.has_method("set_coach"):
+		first_run_coach.call("set_coach", ui_data.get("first_run_coach", {}) if ui_data.get("first_run_coach", {}) is Dictionary else {})
+	if scenario_coach != null and scenario_coach.has_method("set_coach"):
+		scenario_coach.call("set_coach", ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {})
 	if planet_board.has_method("set_board_state"):
 		planet_board.call("set_board_state", ui_data.get("planet", {}))
 	if right_inspector.has_method("set_context"):

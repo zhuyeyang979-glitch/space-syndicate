@@ -31,6 +31,30 @@ const FinalSettlementBoardScene := preload("res://scenes/ui/FinalSettlementBoard
 const NewGameSetupLobbyScene := preload("res://scenes/ui/NewGameSetupLobby.tscn")
 const NewGameSetupOptionBoardScene := preload("res://scenes/ui/NewGameSetupOptionBoard.tscn")
 const NewGameSetupSeatCardScene := preload("res://scenes/ui/NewGameSetupSeatCard.tscn")
+const ScenarioLoaderScript := preload("res://scripts/scenarios/scenario_loader.gd")
+const ScenarioProgressScript := preload("res://scripts/scenarios/scenario_progress.gd")
+const ScenarioFixtureFactoryScript := preload("res://scripts/scenarios/scenario_fixture_factory.gd")
+const ScenarioBrowserScene := preload("res://scenes/ui/ScenarioBrowser.tscn")
+const ScenarioActionLogScene := preload("res://scenes/ui/ScenarioActionLog.tscn")
+const ScenarioReplayPanelScene := preload("res://scenes/ui/ScenarioReplayPanel.tscn")
+const ScenarioBrowserSnapshotScript := preload("res://scripts/viewmodels/scenario_browser_snapshot.gd")
+const ScenarioActionLogSnapshotScript := preload("res://scripts/viewmodels/scenario_action_log_snapshot.gd")
+const ScenarioReplayPanelSnapshotScript := preload("res://scripts/viewmodels/scenario_replay_panel_snapshot.gd")
+const CampaignDefinitionScript := preload("res://scripts/campaign/campaign_definition.gd")
+const CampaignProgressScript := preload("res://scripts/campaign/campaign_progress.gd")
+const CampaignSaveScript := preload("res://scripts/campaign/campaign_save.gd")
+const CampaignRewardServiceScript := preload("res://scripts/campaign/campaign_reward_service.gd")
+const RecommendedStartServiceScript := preload("res://scripts/recommendations/recommended_start_service.gd")
+const CampaignMenuScene := preload("res://scenes/ui/CampaignMenu.tscn")
+const CampaignBriefingScene := preload("res://scenes/ui/CampaignBriefing.tscn")
+const CampaignProgressMapScene := preload("res://scenes/ui/CampaignProgressMap.tscn")
+const CampaignRewardPanelScene := preload("res://scenes/ui/CampaignRewardPanel.tscn")
+const MatchRecapPanelScene := preload("res://scenes/ui/MatchRecapPanel.tscn")
+const CampaignMenuSnapshotScript := preload("res://scripts/viewmodels/campaign_menu_snapshot.gd")
+const CampaignBriefingSnapshotScript := preload("res://scripts/viewmodels/campaign_briefing_snapshot.gd")
+const CampaignProgressMapSnapshotScript := preload("res://scripts/viewmodels/campaign_progress_map_snapshot.gd")
+const CampaignRewardSnapshotScript := preload("res://scripts/viewmodels/campaign_reward_snapshot.gd")
+const MatchRecapSnapshotScript := preload("res://scripts/viewmodels/match_recap_snapshot.gd")
 const BUILD_LEGACY_RUNTIME_TABLE := false
 const NIGHT_PATROL_ASSET_ATTRIBUTION := "Night Patrol: Abandoned Temple, created by Guizang x Codex. CC BY-NC 4.0 non-commercial prototype assets."
 const NIGHT_PATROL_BGM_PATH := "res://assets/third_party/night_patrol/audio/bgm/bronze-snare-crown.mp3"
@@ -46,6 +70,10 @@ const DEFAULT_PLAYER_COUNT := 4
 const MIN_AI_PLAYER_COUNT := 2
 const MAX_AI_PLAYER_COUNT := 7
 const DEFAULT_AI_PLAYER_COUNT := 3
+const FIRST_RUN_RECOMMENDED_PLAYER_COUNT := 4
+const FIRST_RUN_RECOMMENDED_AI_COUNT := 3
+const FIRST_RUN_RECOMMENDED_ROLE_INDICES := [0, 1, 2, 3]
+const FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES := [7, 6, 2, 4]
 const ROLE_RANDOM_INDEX := -1
 const ROGUELIKE_DEPTH_MIN := 1
 const ROGUELIKE_DEPTH_MAX := 6
@@ -1685,11 +1713,36 @@ var table_sfx_players := {}
 var table_sfx_last_time := {}
 var opening_guide_dismissed := false
 var opening_guide_economy_seen_players := {}
+var first_run_coach_district_seen_players := {}
+var first_run_coach_supply_seen_players := {}
+var first_run_coach_public_track_seen_players := {}
+var first_run_coach_clues_seen_players := {}
+var selected_scenario_id := "first_table"
+var active_scenario_id := ""
+var active_scenario_snapshot_key := "start"
+var scenario_completed_signals := {}
+var scenario_coach_closed := false
+var scenario_teaching_hints_enabled := true
+var scenario_auto_pause_prompts_enabled := true
+var scenario_font_scale_percent := 100
+var scenario_action_log_entries: Array = []
+var active_campaign_id := "tutorial_campaign"
+var selected_campaign_chapter_id := ""
+var active_campaign_chapter_id := ""
+var campaign_completed_chapter_ids: Array = []
+var campaign_last_reward: Dictionary = {}
+var campaign_last_recap: Dictionary = {}
+var campaign_animation_intensity := "完整"
+var campaign_font_scale_label := "中"
+var campaign_colorblind_assist_enabled := false
+var campaign_ui_volume := 80
+var campaign_bgm_volume := 60
 
 
 func _ready() -> void:
 	rng.randomize()
 	_load_settings()
+	_load_campaign_progress_state()
 	_build_layout()
 	_build_table_audio()
 	_log("点击开局准备后确认玩家角色与起始怪兽牌；怪兽由怪兽卡匿名召唤，场上数量没有硬上限。")
@@ -1965,6 +2018,8 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 		"bid_reset":
 			_reset_selected_card_bid()
 			handled = true
+		"coach_select_district", "coach_first_summon", "coach_build_city", "coach_open_rack", "coach_buy_card", "coach_play_card", "coach_inspect_track", "coach_inspect_clues":
+			handled = _activate_first_run_coach_action(action_id)
 		"build", "rack", "buy", "play":
 			handled = _activate_runtime_quick_action(action_id)
 		_:
@@ -1972,6 +2027,8 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				var increment := int(action_id.substr("bid_plus_".length()))
 				_increase_selected_card_bid(increment)
 				handled = true
+			elif action_id.begins_with("scenario_"):
+				handled = _activate_scenario_action(action_id)
 			elif action_id.begins_with("bid_set_"):
 				var target_bid := int(action_id.substr("bid_set_".length()))
 				_set_selected_card_tip(target_bid)
@@ -1991,11 +2048,14 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				var resolution_id := int(action_id.substr("track_select_".length()))
 				selected_runtime_card_slot = -1
 				_select_card_resolution_track_entry(resolution_id)
+				_mark_first_run_coach_public_track_seen(_runtime_snapshot_player_index())
 				handled = true
 			elif action_id.begins_with("track_intel_"):
 				var intel_resolution_id := int(action_id.substr("track_intel_".length()))
 				selected_runtime_card_slot = -1
 				selected_card_resolution_id = intel_resolution_id
+				_mark_first_run_coach_public_track_seen(_runtime_snapshot_player_index())
+				_mark_first_run_coach_clues_seen(_runtime_snapshot_player_index())
 				_open_intel_dossier_menu()
 				handled = true
 			elif action_id.begins_with("track_open_"):
@@ -4434,6 +4494,7 @@ func _build_menu_overlay() -> void:
 	menu_main_action_grids = []
 	menu_quick_nav_buttons = {}
 	_add_menu_quick_nav_button("setup", "开局", "进入开局配置：设置席位、电脑对手、角色和起始怪兽。", Callable(self, "_start_new_run_from_menu"), Color("#38bdf8"))
+	_add_menu_quick_nav_button("scenario", "剧本", "进入固定试玩剧本：练核心系统、看日志、做复盘。", Callable(self, "_open_scenario_browser_menu"), Color("#facc15"))
 	_add_menu_quick_nav_button("standings", "局势", "查看现金目标、终局倒计时和结算估算。", Callable(self, "_open_standings_menu"), Color("#facc15"))
 	_add_menu_quick_nav_button("economy", "经济", "查看GDP、商品、商路、天气和收入拆解。", Callable(self, "_open_economy_overview_menu"), Color("#4ade80"))
 	_add_menu_quick_nav_button("intel", "情报", "整理城市归属推理、卡牌竞猜和怪兽资金线索。", Callable(self, "_open_intel_dossier_menu"), Color("#c084fc"))
@@ -4828,7 +4889,7 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 		"accent": Color("#f59e0b"),
 		"tooltip": "星球赌桌大厅：保存、开局、继续和资料库入口。",
 		"title": "SPACE SYNDICATE",
-		"title_tooltip": "主菜单只保留开桌、继续和资料库三个方向。",
+		"title_tooltip": "主菜单保留战役、快速开局和资料库三个主方向。",
 		"status": "星球赌桌｜最后钱最多",
 		"status_tooltip": "终局按现金排名。",
 		"planet_mark": "◎",
@@ -4836,7 +4897,7 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 		"planet_hint": "建城｜怪兽｜下注｜推理",
 		"chip_rail_tooltip": "首屏只保留开桌前必须知道的桌面身份。",
 		"table_line": "选择你的下一步",
-		"table_tooltip": "主菜单只负责返回牌桌、进入开局和资料库。",
+		"table_tooltip": "主菜单只负责新手战役、快速开局、资料库和少量辅助入口。",
 		"columns": 1,
 		"chips": [
 			{"text": "席位 3-8｜真人对 AI", "accent": Color("#bfdbfe"), "tooltip": "真人玩家对2-7个电脑对手。"},
@@ -4845,32 +4906,39 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 		],
 		"actions": [
 			{
-				"id": "new_run",
-				"kicker": "01｜开桌",
-				"label": "开新一桌",
-				"detail": "选席位、角色、起始怪兽",
-				"accent": Color("#38bdf8"),
+				"id": "campaign",
+				"kicker": "01｜战役",
+				"label": "新手战役",
+				"detail": "目标、奖励、复盘、下一关",
+				"accent": Color("#facc15"),
 				"featured": true,
 			},
 			{
-				"id": "continue",
-				"kicker": "02｜回桌",
-				"label": "继续牌桌" if can_continue else "暂无牌桌",
-				"detail": "回到当前星球" if can_continue else "先开新一桌。",
-				"tooltip": "回到当前星球" if can_continue else "先开新一桌。",
-				"accent": Color("#22c55e"),
-				"disabled": not can_continue,
+				"id": "quick_start",
+				"kicker": "02｜快局",
+				"label": "快速开局",
+				"detail": "推荐配置直接开桌",
+				"accent": Color("#38bdf8"),
 			},
 			{
 				"id": "compendium",
-				"kicker": "03｜查牌",
+				"kicker": "03｜资料",
 				"label": "资料库",
 				"detail": "图鉴、卡牌、商品、区域",
 				"accent": Color("#f472b6"),
 			},
 		],
 		"utilities": [
+			{
+				"id": "continue",
+				"label": "继续牌桌" if can_continue else "暂无牌桌",
+				"tooltip": "回到当前星球" if can_continue else "先开新一桌。",
+				"accent": Color("#22c55e"),
+				"disabled": not can_continue,
+			},
+			{"id": "scenario_lab", "label": "剧本库", "accent": Color("#facc15")},
 			{"id": "rules", "label": "游戏规则", "accent": Color("#93c5fd")},
+			{"id": "campaign_settings", "label": "设置", "accent": Color("#a78bfa")},
 			{"id": "load_run", "label": "读取局面", "accent": Color("#94a3b8")},
 			{"id": "quit", "label": "退出游戏", "accent": Color("#fb7185")},
 		],
@@ -4879,14 +4947,22 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 
 func _on_menu_root_lobby_action_requested(action_id: String) -> void:
 	match action_id:
+		"campaign":
+			_open_campaign_menu()
+		"quick_start":
+			_start_recommended_quick_run("stable_economy")
 		"new_run":
 			_start_new_run_from_menu()
+		"scenario_lab":
+			_open_scenario_browser_menu()
 		"continue":
 			_close_menu()
 		"compendium":
 			_open_compendium_menu()
 		"rules":
 			_open_rules_menu()
+		"campaign_settings":
+			_open_campaign_settings_menu()
 		"load_run":
 			_load_run_from_menu()
 		"quit":
@@ -4906,6 +4982,645 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 		var load_button_variant: Variant = lobby.call("get_load_run_button")
 		if load_button_variant is Button:
 			menu_load_run_button = load_button_variant as Button
+
+
+func _campaign_definition() -> Dictionary:
+	var campaign: Dictionary = CampaignDefinitionScript.new().load_by_id(active_campaign_id)
+	return campaign
+
+
+func _campaign_chapter_by_id(chapter_id: String) -> Dictionary:
+	var campaign := _campaign_definition()
+	var chapters: Array = campaign.get("chapters", []) if campaign.get("chapters", []) is Array else []
+	for chapter_variant in chapters:
+		if chapter_variant is Dictionary and str((chapter_variant as Dictionary).get("id", "")) == chapter_id:
+			return (chapter_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _campaign_progress_dictionary(selected_id: String = "") -> Dictionary:
+	var campaign := _campaign_definition()
+	return CampaignProgressScript.new().apply_state(campaign, campaign_completed_chapter_ids, selected_id if selected_id != "" else selected_campaign_chapter_id).to_dictionary()
+
+
+func _load_campaign_progress_state() -> void:
+	var saved: Dictionary = CampaignSaveScript.new().load_progress()
+	if saved.is_empty():
+		campaign_completed_chapter_ids = []
+		selected_campaign_chapter_id = ""
+		return
+	active_campaign_id = str(saved.get("campaign_id", "tutorial_campaign"))
+	campaign_completed_chapter_ids = (saved.get("completed_chapter_ids", []) as Array).duplicate(true) if saved.get("completed_chapter_ids", []) is Array else []
+	selected_campaign_chapter_id = str(saved.get("selected_chapter_id", ""))
+
+
+func _save_campaign_progress_state() -> void:
+	CampaignSaveScript.new().save_progress({
+		"campaign_id": active_campaign_id,
+		"completed_chapter_ids": campaign_completed_chapter_ids.duplicate(true),
+		"selected_chapter_id": selected_campaign_chapter_id,
+		"last_completed_chapter_id": active_campaign_chapter_id,
+	})
+
+
+func _open_campaign_menu() -> void:
+	_show_menu("新手战役", "选择下一关，或用推荐配置快速开局。", not game_over, false)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	_add_campaign_menu_panel(menu_preview_box)
+
+
+func _add_campaign_menu_panel(parent: Container) -> void:
+	var panel := CampaignMenuScene.instantiate() as Control
+	if panel == null:
+		return
+	if panel.has_signal("action_requested"):
+		panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
+	parent.add_child(panel)
+	if panel.has_method("set_campaign_menu"):
+		panel.call("set_campaign_menu", _campaign_menu_snapshot())
+
+
+func _campaign_menu_snapshot() -> Dictionary:
+	var campaign := _campaign_definition()
+	var progress := _campaign_progress_dictionary()
+	var recommendations: Dictionary = RecommendedStartServiceScript.new().load_recommendations()
+	return CampaignMenuSnapshotScript.new().apply_dictionary({
+		"campaign": campaign,
+		"progress": progress,
+		"recommendations": recommendations,
+	}).to_ui_dictionary()
+
+
+func _open_campaign_briefing_menu(chapter_id: String = "") -> void:
+	var progress := _campaign_progress_dictionary(chapter_id)
+	var resolved_id := chapter_id.strip_edges()
+	if resolved_id == "":
+		resolved_id = str(progress.get("current_chapter_id", progress.get("next_chapter_id", "")))
+	var unlocked: Array = progress.get("unlocked_chapter_ids", []) if progress.get("unlocked_chapter_ids", []) is Array else []
+	if resolved_id == "" or not unlocked.has(resolved_id):
+		_log("战役关卡尚未解锁：%s。" % resolved_id)
+		_open_campaign_menu()
+		return
+	selected_campaign_chapter_id = resolved_id
+	_save_campaign_progress_state()
+	_show_menu("关卡说明", "读完目标后开始。本页只显示本关需要的信息。", not game_over, false)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var map_panel := CampaignProgressMapScene.instantiate() as Control
+	if map_panel != null:
+		if map_panel.has_signal("action_requested"):
+			map_panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
+		menu_preview_box.add_child(map_panel)
+		if map_panel.has_method("set_progress_map"):
+			map_panel.call("set_progress_map", CampaignProgressMapSnapshotScript.new().apply_dictionary({"progress": progress}).to_ui_dictionary())
+	var briefing := CampaignBriefingScene.instantiate() as Control
+	if briefing == null:
+		return
+	if briefing.has_signal("action_requested"):
+		briefing.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
+	menu_preview_box.add_child(briefing)
+	if briefing.has_method("set_briefing"):
+		briefing.call("set_briefing", _campaign_briefing_snapshot(resolved_id))
+
+
+func _campaign_briefing_snapshot(chapter_id: String) -> Dictionary:
+	return CampaignBriefingSnapshotScript.new().apply_dictionary({
+		"campaign": _campaign_definition(),
+		"chapter": _campaign_chapter_by_id(chapter_id),
+	}).to_ui_dictionary()
+
+
+func _on_campaign_action_requested(action_id: String) -> void:
+	if action_id.begins_with("campaign_continue_"):
+		_open_campaign_briefing_menu(action_id.substr("campaign_continue_".length()).strip_edges())
+	elif action_id.begins_with("campaign_chapter_"):
+		_open_campaign_briefing_menu(action_id.substr("campaign_chapter_".length()).strip_edges())
+	elif action_id.begins_with("campaign_start_"):
+		_start_campaign_chapter(action_id.substr("campaign_start_".length()).strip_edges())
+	elif action_id.begins_with("campaign_next_"):
+		var next_id := action_id.substr("campaign_next_".length()).strip_edges()
+		if next_id == "":
+			_open_campaign_menu()
+		else:
+			_open_campaign_briefing_menu(next_id)
+	elif action_id.begins_with("quick_preset_"):
+		_start_recommended_quick_run(action_id.substr("quick_preset_".length()).strip_edges())
+	elif action_id == "campaign_quick_start":
+		_start_recommended_quick_run("stable_economy")
+	elif action_id == "campaign_settings":
+		_open_campaign_settings_menu()
+	elif action_id == "campaign_reset_progress":
+		_reset_campaign_progress()
+	elif action_id == "campaign_recap":
+		_open_campaign_recap_menu()
+	elif action_id == "campaign_reward":
+		_open_campaign_reward_menu()
+	elif action_id == "campaign_menu":
+		_open_campaign_menu()
+	elif action_id == "campaign_back":
+		_open_main_menu()
+
+
+func _start_campaign_chapter(chapter_id: String) -> void:
+	var chapter := _campaign_chapter_by_id(chapter_id)
+	if chapter.is_empty():
+		_log("战役关卡无法加载：%s。" % chapter_id)
+		return
+	_apply_recommended_start("stable_economy")
+	selected_campaign_chapter_id = chapter_id
+	active_campaign_chapter_id = chapter_id
+	_save_campaign_progress_state()
+	_start_scenario_from_menu(str(chapter.get("scenario_id", "first_table")))
+	active_campaign_chapter_id = chapter_id
+	_record_scenario_action("campaign", "开始战役关卡：%s" % str(chapter.get("title", chapter_id)), "", "campaign:%s" % chapter_id, "start", "scenario_coach")
+	_sync_runtime_game_screen(true)
+
+
+func _start_recommended_quick_run(preset_id: String) -> void:
+	active_campaign_chapter_id = ""
+	active_scenario_id = ""
+	_apply_recommended_start(preset_id)
+	_new_game()
+	_log("快速开局：已应用推荐配置「%s」。" % preset_id)
+	_close_menu()
+	_sync_runtime_game_screen(true)
+
+
+func _apply_recommended_start(preset_id: String = "") -> void:
+	var service: Variant = RecommendedStartServiceScript.new()
+	var data: Dictionary = service.load_recommendations()
+	var preset: Dictionary = service.preset_by_id(preset_id) if preset_id != "" else {}
+	configured_player_count = clampi(int(preset.get("player_count", data.get("player_count", 4))), 3, 8)
+	configured_ai_player_count = clampi(int(preset.get("ai_count", data.get("ai_count", 3))), 2, 7)
+	configured_roguelike_depth = clampi(int(preset.get("roguelike_depth", data.get("roguelike_depth", 1))), ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
+	var role_value: Variant = preset.get("role_indices", data.get("role_indices", FIRST_RUN_RECOMMENDED_ROLE_INDICES))
+	configured_role_indices = (role_value as Array).duplicate(true) if role_value is Array else FIRST_RUN_RECOMMENDED_ROLE_INDICES.duplicate(true)
+	var starter_value: Variant = preset.get("starter_monster_indices", data.get("starter_monster_indices", FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES))
+	configured_starter_monster_indices = (starter_value as Array).duplicate(true) if starter_value is Array else FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES.duplicate(true)
+	_ensure_configured_ai_player_count()
+	_ensure_configured_roguelike_depth()
+	_ensure_configured_role_indices()
+	_ensure_configured_starter_monster_indices()
+
+
+func _maybe_finish_campaign_chapter_from_signals() -> void:
+	if active_campaign_chapter_id == "":
+		return
+	var chapter := _campaign_chapter_by_id(active_campaign_chapter_id)
+	if chapter.is_empty():
+		return
+	var conditions: Array = chapter.get("success_conditions", []) if chapter.get("success_conditions", []) is Array else []
+	if conditions.is_empty():
+		return
+	for condition_variant in conditions:
+		if not bool(scenario_completed_signals.get(str(condition_variant), false)):
+			return
+	_finish_campaign_chapter(chapter)
+
+
+func _finish_campaign_chapter(chapter: Dictionary) -> void:
+	var chapter_id := str(chapter.get("id", active_campaign_chapter_id)).strip_edges()
+	if chapter_id == "":
+		return
+	if not campaign_completed_chapter_ids.has(chapter_id):
+		campaign_completed_chapter_ids.append(chapter_id)
+	selected_campaign_chapter_id = CampaignProgressScript.new().apply_state(_campaign_definition(), campaign_completed_chapter_ids, chapter_id).next_chapter_id()
+	var progress := _campaign_progress_dictionary(selected_campaign_chapter_id)
+	var stats := _campaign_completion_stats(chapter)
+	campaign_last_reward = CampaignRewardServiceScript.new().build_reward(_campaign_definition(), chapter, progress, stats)
+	campaign_last_recap = CampaignRewardServiceScript.new().build_recap(_campaign_definition(), chapter, scenario_action_log_entries, stats)
+	_save_campaign_progress_state()
+	active_campaign_chapter_id = ""
+	_open_campaign_reward_menu()
+
+
+func _campaign_completion_stats(chapter: Dictionary) -> Dictionary:
+	var conditions: Array = chapter.get("success_conditions", []) if chapter.get("success_conditions", []) is Array else []
+	var hint_count := 0
+	for entry_variant in scenario_action_log_entries:
+		if entry_variant is Dictionary and str((entry_variant as Dictionary).get("phase_id", "")) == "hint":
+			hint_count += 1
+	return {
+		"time_text": _format_time(game_time),
+		"objectives_completed": conditions.size(),
+		"objectives_total": maxi(1, conditions.size()),
+		"errors": 0,
+		"hints": hint_count,
+	}
+
+
+func _open_campaign_reward_menu() -> void:
+	if campaign_last_reward.is_empty():
+		_open_campaign_menu()
+		return
+	_show_menu("关卡奖励", "关卡完成。看奖励、复盘，或继续下一关。", not game_over, false)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var panel := CampaignRewardPanelScene.instantiate() as Control
+	if panel == null:
+		return
+	if panel.has_signal("action_requested"):
+		panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
+	menu_preview_box.add_child(panel)
+	if panel.has_method("set_reward"):
+		panel.call("set_reward", CampaignRewardSnapshotScript.new().apply_dictionary(campaign_last_reward).to_ui_dictionary())
+
+
+func _open_campaign_recap_menu() -> void:
+	if campaign_last_recap.is_empty():
+		_open_scenario_replay_menu()
+		return
+	_show_menu("战役复盘", "只显示公开行动、你自己的记录和下一步建议。", not game_over, false)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var panel := MatchRecapPanelScene.instantiate() as Control
+	if panel == null:
+		return
+	if panel.has_signal("action_requested"):
+		panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
+	menu_preview_box.add_child(panel)
+	if panel.has_method("set_recap"):
+		panel.call("set_recap", MatchRecapSnapshotScript.new().apply_dictionary(campaign_last_recap).to_ui_dictionary())
+
+
+func _open_campaign_settings_menu() -> void:
+	_show_menu("设置", "调整教学、动画、字体和声音。设置只影响呈现，不改变牌局规则。", not game_over, false)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var panel := _add_panel(menu_preview_box, "可访问性与教学")
+	panel.add_child(_plain_label("教学提示%s｜动画%s｜字体%s｜色盲辅助%s｜UI音效%d｜BGM%d" % [
+		"开" if scenario_teaching_hints_enabled else "关",
+		campaign_animation_intensity,
+		campaign_font_scale_label,
+		"开" if campaign_colorblind_assist_enabled else "关",
+		campaign_ui_volume,
+		campaign_bgm_volume,
+	], 12, Color("#cbd5e1")))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 8)
+	row.add_theme_constant_override("v_separation", 6)
+	panel.add_child(row)
+	_add_campaign_settings_button(row, "教学提示：%s" % ("开" if scenario_teaching_hints_enabled else "关"), Callable(self, "_toggle_campaign_teaching_hints"))
+	_add_campaign_settings_button(row, "动画：%s" % campaign_animation_intensity, Callable(self, "_cycle_campaign_animation_intensity"))
+	_add_campaign_settings_button(row, "字体：%s" % campaign_font_scale_label, Callable(self, "_cycle_campaign_font_scale"))
+	_add_campaign_settings_button(row, "色盲：%s" % ("开" if campaign_colorblind_assist_enabled else "关"), Callable(self, "_toggle_campaign_colorblind_assist"))
+	_add_campaign_settings_button(row, "UI音效：%d" % campaign_ui_volume, Callable(self, "_cycle_campaign_ui_volume"))
+	_add_campaign_settings_button(row, "BGM：%d" % campaign_bgm_volume, Callable(self, "_cycle_campaign_bgm_volume"))
+	_add_campaign_settings_button(row, "重置教程进度", Callable(self, "_reset_campaign_progress"))
+	_add_campaign_settings_button(row, "返回战役", Callable(self, "_open_campaign_menu"))
+
+
+func _add_campaign_settings_button(parent: Container, text: String, target: Callable) -> void:
+	var button := Button.new()
+	button.text = text
+	_style_menu_button(button, Color("#a78bfa"))
+	button.pressed.connect(target)
+	parent.add_child(button)
+
+
+func _toggle_campaign_teaching_hints() -> void:
+	scenario_teaching_hints_enabled = not scenario_teaching_hints_enabled
+	if not scenario_teaching_hints_enabled:
+		scenario_coach_closed = true
+	_save_settings(false)
+	_open_campaign_settings_menu()
+	_sync_runtime_game_screen(true)
+
+
+func _cycle_campaign_animation_intensity() -> void:
+	var values := ["完整", "简化", "关闭"]
+	var idx := values.find(campaign_animation_intensity)
+	campaign_animation_intensity = values[(idx + 1) % values.size()] if idx >= 0 else "完整"
+	_save_settings(false)
+	_open_campaign_settings_menu()
+
+
+func _cycle_campaign_font_scale() -> void:
+	var values := ["小", "中", "大"]
+	var idx := values.find(campaign_font_scale_label)
+	campaign_font_scale_label = values[(idx + 1) % values.size()] if idx >= 0 else "中"
+	_save_settings(false)
+	_open_campaign_settings_menu()
+
+
+func _toggle_campaign_colorblind_assist() -> void:
+	campaign_colorblind_assist_enabled = not campaign_colorblind_assist_enabled
+	_save_settings(false)
+	_open_campaign_settings_menu()
+
+
+func _cycle_campaign_ui_volume() -> void:
+	campaign_ui_volume = (campaign_ui_volume + 20) % 120
+	_save_settings(false)
+	_open_campaign_settings_menu()
+
+
+func _cycle_campaign_bgm_volume() -> void:
+	campaign_bgm_volume = (campaign_bgm_volume + 20) % 120
+	_save_settings(false)
+	_open_campaign_settings_menu()
+
+
+func _reset_campaign_progress() -> void:
+	campaign_completed_chapter_ids = []
+	selected_campaign_chapter_id = ""
+	CampaignSaveScript.new().reset()
+	_open_campaign_menu()
+
+
+func _open_scenario_browser_menu() -> void:
+	_show_menu(
+		"试玩剧本",
+		"选择一个固定局面：练步骤、看日志、复盘关键状态。这里不泄露对手私有信息。",
+		not game_over,
+		false
+	)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	_add_scenario_browser_panel(menu_preview_box)
+
+
+func _add_scenario_browser_panel(parent: Container) -> void:
+	var browser := ScenarioBrowserScene.instantiate() as Control
+	if browser == null:
+		return
+	if browser.has_signal("action_requested"):
+		browser.connect("action_requested", Callable(self, "_on_scenario_browser_action_requested"))
+	parent.add_child(browser)
+	if browser.has_method("set_browser"):
+		browser.call("set_browser", _scenario_browser_snapshot())
+
+
+func _scenario_browser_snapshot() -> Dictionary:
+	var scenarios: Array = ScenarioLoaderScript.new().load_all()
+	return ScenarioBrowserSnapshotScript.new().apply_dictionary({
+		"scenarios": scenarios,
+		"selected_id": selected_scenario_id,
+		"title": "试玩剧本",
+		"subtitle": "固定局面像桌游练习包：进入、完成目标、看日志、复盘。"
+	}).to_ui_dictionary()
+
+
+func _on_scenario_browser_action_requested(action_id: String) -> void:
+	if action_id.begins_with("scenario_select_"):
+		selected_scenario_id = action_id.substr("scenario_select_".length()).strip_edges()
+		_open_scenario_browser_menu()
+	elif action_id.begins_with("scenario_start_"):
+		var scenario_id := action_id.substr("scenario_start_".length()).strip_edges()
+		if scenario_id == "":
+			scenario_id = selected_scenario_id
+		active_campaign_chapter_id = ""
+		_start_scenario_from_menu(scenario_id)
+	elif action_id == "scenario_restart_last":
+		active_campaign_chapter_id = ""
+		_start_scenario_from_menu(active_scenario_id if active_scenario_id != "" else selected_scenario_id)
+	elif action_id == "scenario_settings":
+		_open_scenario_settings_menu()
+	elif action_id == "scenario_back":
+		_open_main_menu()
+
+
+func _open_scenario_settings_menu() -> void:
+	_show_menu(
+		"剧本教学设置",
+		"只调整试玩剧本的提示层，不改变牌局规则。",
+		not game_over,
+		false
+	)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var panel := _add_panel(menu_preview_box, "试玩剧本辅助")
+	panel.add_child(_plain_label(_scenario_settings_summary_text(), 12, Color("#cbd5e1")))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 8)
+	row.add_theme_constant_override("v_separation", 6)
+	panel.add_child(row)
+	var hints_button := Button.new()
+	hints_button.text = "教学提示：%s" % ("开" if scenario_teaching_hints_enabled else "关")
+	hints_button.tooltip_text = "关闭后，牌桌上的剧本目标教练不再自动出现；可以从剧本页重新打开。"
+	_style_menu_button(hints_button, Color("#38bdf8"))
+	hints_button.pressed.connect(Callable(self, "_toggle_scenario_teaching_hints"))
+	row.add_child(hints_button)
+	var pause_button := Button.new()
+	pause_button.text = "自动暂停提示：%s" % ("开" if scenario_auto_pause_prompts_enabled else "关")
+	pause_button.tooltip_text = "打开时，关键教学节点可短暂停住桌面；当前先保存你的偏好。"
+	_style_menu_button(pause_button, Color("#facc15"))
+	pause_button.pressed.connect(Callable(self, "_toggle_scenario_auto_pause_prompts"))
+	row.add_child(pause_button)
+	var font_button := Button.new()
+	font_button.text = "提示字号：%d%%" % scenario_font_scale_percent
+	font_button.tooltip_text = "循环 90/100/110/125%，只放大剧本提示文字。"
+	_style_menu_button(font_button, Color("#a78bfa"))
+	font_button.pressed.connect(Callable(self, "_cycle_scenario_font_scale_percent"))
+	row.add_child(font_button)
+	var back_button := Button.new()
+	back_button.text = "返回剧本库"
+	back_button.tooltip_text = "回到固定试玩剧本选择。"
+	_style_menu_button(back_button, Color("#94a3b8"))
+	back_button.pressed.connect(Callable(self, "_open_scenario_browser_menu"))
+	row.add_child(back_button)
+
+
+func _scenario_settings_summary_text() -> String:
+	return "当前：教学提示%s｜自动暂停%s｜提示字号%d%%。这里只显示桌面提示，不显示对手私密计划、评分或私有手牌。" % [
+		"开启" if scenario_teaching_hints_enabled else "关闭",
+		"开启" if scenario_auto_pause_prompts_enabled else "关闭",
+		scenario_font_scale_percent,
+	]
+
+
+func _toggle_scenario_teaching_hints() -> void:
+	scenario_teaching_hints_enabled = not scenario_teaching_hints_enabled
+	if not scenario_teaching_hints_enabled:
+		scenario_coach_closed = true
+	_save_settings(false)
+	_open_scenario_settings_menu()
+	_sync_runtime_game_screen(true)
+
+
+func _toggle_scenario_auto_pause_prompts() -> void:
+	scenario_auto_pause_prompts_enabled = not scenario_auto_pause_prompts_enabled
+	_save_settings(false)
+	_open_scenario_settings_menu()
+
+
+func _cycle_scenario_font_scale_percent() -> void:
+	var values := [90, 100, 110, 125]
+	var current_index := values.find(scenario_font_scale_percent)
+	scenario_font_scale_percent = int(values[(current_index + 1) % values.size()]) if current_index >= 0 else 100
+	_save_settings(false)
+	_open_scenario_settings_menu()
+	_sync_runtime_game_screen(true)
+
+
+func _start_scenario_from_menu(scenario_id: String) -> void:
+	var scenario: Dictionary = ScenarioLoaderScript.new().load_by_id(scenario_id)
+	if scenario.is_empty():
+		_log("试玩剧本无法加载：%s。" % scenario_id)
+		return
+	selected_scenario_id = scenario_id
+	active_scenario_id = scenario_id
+	active_scenario_snapshot_key = "start"
+	scenario_completed_signals = {}
+	scenario_coach_closed = false
+	scenario_action_log_entries = []
+	configured_player_count = clampi(int(scenario.get("player_count", 4)), 3, 8)
+	configured_ai_player_count = clampi(int(scenario.get("ai_count", 3)), 2, 7)
+	_ensure_configured_ai_player_count()
+	_ensure_configured_role_indices()
+	_ensure_configured_starter_monster_indices()
+	_new_game()
+	_record_scenario_action("start", "开始剧本：%s" % str(scenario.get("title", scenario_id)), "", "scenario:%s" % scenario_id, "start", "scenario_coach")
+	_close_menu()
+	_sync_runtime_game_screen(true)
+
+
+func _record_scenario_action(phase_id: String, public_text: String, private_text: String = "", developer_text: String = "", snapshot_key: String = "", focus_target: String = "") -> void:
+	if active_scenario_id == "":
+		return
+	scenario_action_log_entries.append({
+		"time": _format_time(game_time),
+		"phase_id": phase_id,
+		"public_text": public_text,
+		"private_text": private_text,
+		"developer_text": developer_text,
+		"viewer_index": selected_player,
+		"snapshot_key": snapshot_key,
+		"focus_target": focus_target,
+	})
+
+
+func _complete_scenario_signal(signal_id: String, public_text: String, snapshot_key: String = "", focus_target: String = "") -> bool:
+	signal_id = signal_id.strip_edges()
+	if active_scenario_id == "" or signal_id == "" or bool(scenario_completed_signals.get(signal_id, false)):
+		return false
+	var scenario: Dictionary = ScenarioLoaderScript.new().load_by_id(active_scenario_id)
+	if scenario.is_empty():
+		return false
+	var progress: Variant = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed)
+	var phase: Dictionary = progress.current_phase()
+	var expected_signal := str(phase.get("success_signal", phase.get("id", ""))).strip_edges()
+	if expected_signal != signal_id:
+		return false
+	scenario_completed_signals[signal_id] = true
+	active_scenario_snapshot_key = snapshot_key if snapshot_key.strip_edges() != "" else str(phase.get("snapshot_key", active_scenario_snapshot_key))
+	_record_scenario_action(
+		str(phase.get("id", signal_id)),
+		public_text if public_text.strip_edges() != "" else "完成剧本目标：%s" % str(phase.get("label", "目标")),
+		"",
+		"signal:%s" % signal_id,
+		active_scenario_snapshot_key,
+		focus_target
+	)
+	_sync_runtime_game_screen(true)
+	_maybe_finish_campaign_chapter_from_signals()
+	return true
+
+
+func _runtime_scenario_coach_snapshot_source(player_index: int) -> Dictionary:
+	if active_scenario_id == "" or player_index < 0 or player_index >= players.size():
+		return {}
+	var scenario: Dictionary = ScenarioLoaderScript.new().load_by_id(active_scenario_id)
+	if scenario.is_empty():
+		return {}
+	var progress: Dictionary = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed).to_dictionary()
+	var phase: Dictionary = progress.get("current_phase", {}) if progress.get("current_phase", {}) is Dictionary else {}
+	if active_campaign_chapter_id != "":
+		var chapter := _campaign_chapter_by_id(active_campaign_chapter_id)
+		progress["campaign_id"] = active_campaign_id
+		progress["chapter_id"] = active_campaign_chapter_id
+		progress["title"] = "新手战役｜%s" % str(chapter.get("title", progress.get("title", "当前关卡")))
+	progress["visible"] = scenario_teaching_hints_enabled
+	progress["primary_action_id"] = "scenario_step_%s" % str(phase.get("id", "done"))
+	progress["font_scale_percent"] = scenario_font_scale_percent
+	return progress
+
+
+func _activate_scenario_action(action_id: String) -> bool:
+	if active_scenario_id == "":
+		return false
+	var scenario: Dictionary = ScenarioLoaderScript.new().load_by_id(active_scenario_id)
+	var progress: Variant = ScenarioProgressScript.new().apply_state(scenario, scenario_completed_signals, false, scenario_coach_closed)
+	var phase: Dictionary = progress.current_phase()
+	if action_id == "scenario_reopen_coach":
+		scenario_coach_closed = false
+		_sync_runtime_game_screen(true)
+		return true
+	if action_id == "scenario_close_coach":
+		scenario_coach_closed = true
+		_sync_runtime_game_screen(true)
+		return true
+	if action_id == "scenario_hint":
+		_record_scenario_action(str(phase.get("id", "hint")), "查看剧本提示", str(phase.get("detail", phase.get("goal", ""))), "", str(phase.get("snapshot_key", "")), "scenario_coach")
+		return true
+	if action_id == "scenario_restart":
+		_start_scenario_from_menu(active_scenario_id)
+		return true
+	if action_id == "scenario_skip_step" or action_id.begins_with("scenario_step_"):
+		var signal_id := str(phase.get("success_signal", phase.get("id", ""))).strip_edges()
+		if signal_id != "":
+			scenario_completed_signals[signal_id] = true
+		active_scenario_snapshot_key = str(phase.get("snapshot_key", active_scenario_snapshot_key))
+		_record_scenario_action(str(phase.get("id", "")), "完成剧本目标：%s" % str(phase.get("label", "目标")), "", "signal:%s" % signal_id, active_scenario_snapshot_key, "scenario_coach")
+		_sync_runtime_game_screen(true)
+		_maybe_finish_campaign_chapter_from_signals()
+		return true
+	return false
+
+
+func _open_scenario_action_log_menu() -> void:
+	_show_menu("剧本行动日志", "只显示公开记录和当前玩家自己的私密记录；隐藏资料不会出现在这里。", not game_over, false)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var panel := ScenarioActionLogScene.instantiate() as Control
+	menu_preview_box.add_child(panel)
+	if panel.has_method("set_log"):
+		panel.call("set_log", ScenarioActionLogSnapshotScript.new().apply_dictionary({
+			"scenario_id": active_scenario_id,
+			"title": "剧本行动日志",
+			"viewer_index": selected_player,
+			"entries": scenario_action_log_entries,
+			"include_developer": false,
+		}).to_ui_dictionary())
+
+
+func _open_scenario_replay_menu() -> void:
+	_show_menu("剧本复盘", "轻量复盘：点击关键节点会重新打开该剧本局面。", not game_over, false)
+	if menu_preview_box == null:
+		return
+	menu_preview_box.visible = true
+	_clear_children(menu_preview_box)
+	var fixture: Dictionary = ScenarioFixtureFactoryScript.new().make_fixture(active_scenario_id, active_scenario_snapshot_key)
+	var panel := ScenarioReplayPanelScene.instantiate() as Control
+	if panel.has_signal("action_requested"):
+		panel.connect("action_requested", Callable(self, "_on_scenario_replay_action_requested"))
+	menu_preview_box.add_child(panel)
+	if panel.has_method("set_replay"):
+		panel.call("set_replay", ScenarioReplayPanelSnapshotScript.new().apply_dictionary(fixture.get("replay", {}) as Dictionary).to_ui_dictionary())
+
+
+func _on_scenario_replay_action_requested(action_id: String) -> void:
+	if action_id.begins_with("scenario_replay_"):
+		active_scenario_snapshot_key = action_id.substr("scenario_replay_".length()).strip_edges()
+		_record_scenario_action("replay", "复盘跳到关键节点：%s" % active_scenario_snapshot_key, "", "fixture_reload", active_scenario_snapshot_key, "scenario_replay")
+		_open_scenario_replay_menu()
 
 func _populate_pause_menu_summary_cards() -> void:
 	_show_menu_summary_cards([
@@ -4934,6 +5649,54 @@ func _populate_pause_menu_summary_cards() -> void:
 			"accent": Color("#94a3b8"),
 		},
 	], "暂停速览｜先决定继续、复查、查资料还是重开")
+	if active_scenario_id != "" and menu_preview_box != null:
+		_add_scenario_pause_actions(menu_preview_box)
+
+
+func _add_scenario_pause_actions(parent: Container) -> void:
+	var in_campaign := active_campaign_chapter_id != "" or not campaign_last_recap.is_empty()
+	_add_main_menu_section(parent, "新手战役" if in_campaign else "试玩剧本", "当前关卡可重开、返回战役、查看日志或复盘。" if in_campaign else "当前剧本可重开、返回选择页或查看行动日志。")
+	var row := HFlowContainer.new()
+	row.name = "ScenarioPauseActionRow"
+	row.add_theme_constant_override("h_separation", 8)
+	row.add_theme_constant_override("v_separation", 6)
+	parent.add_child(row)
+	menu_regular_buttons.append(row)
+	var restart_button := Button.new()
+	restart_button.text = "重开本关" if in_campaign else "重开本剧本"
+	restart_button.tooltip_text = "重新进入当前剧本的起点局面。"
+	_style_menu_button(restart_button, Color("#facc15"), true)
+	restart_button.pressed.connect(Callable(self, "_restart_active_scenario_from_pause"))
+	row.add_child(restart_button)
+	var choose_button := Button.new()
+	choose_button.text = "返回战役" if in_campaign else "返回剧本选择"
+	choose_button.tooltip_text = "回到新手战役地图。" if in_campaign else "回到试玩剧本库。"
+	_style_menu_button(choose_button, Color("#38bdf8"))
+	choose_button.pressed.connect(Callable(self, "_open_campaign_menu" if in_campaign else "_open_scenario_browser_menu"))
+	row.add_child(choose_button)
+	var log_button := Button.new()
+	log_button.text = "查看行动日志"
+	log_button.tooltip_text = "只显示公开记录和当前玩家私密记录。"
+	_style_menu_button(log_button, Color("#a78bfa"))
+	log_button.pressed.connect(Callable(self, "_open_scenario_action_log_menu"))
+	row.add_child(log_button)
+	var replay_button := Button.new()
+	replay_button.text = "查看复盘" if in_campaign else "复盘快照"
+	replay_button.tooltip_text = "打开战役复盘。" if in_campaign else "打开关键节点快照，不做完整时间回滚。"
+	_style_menu_button(replay_button, Color("#f59e0b"))
+	replay_button.pressed.connect(Callable(self, "_open_campaign_recap_menu" if in_campaign else "_open_scenario_replay_menu"))
+	row.add_child(replay_button)
+	var settings_button := Button.new()
+	settings_button.text = "教学设置"
+	settings_button.tooltip_text = "开关剧本提示、自动暂停偏好和提示字号。"
+	_style_menu_button(settings_button, Color("#22d3ee"))
+	settings_button.pressed.connect(Callable(self, "_open_scenario_settings_menu"))
+	row.add_child(settings_button)
+
+
+func _restart_active_scenario_from_pause() -> void:
+	if active_scenario_id != "":
+		_start_scenario_from_menu(active_scenario_id)
 
 
 func _open_rules_menu() -> void:
@@ -13625,6 +14388,13 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 	var action_row := HBoxContainer.new()
 	action_row.add_theme_constant_override("separation", 8)
 	parent.add_child(action_row)
+	var recommended_button := Button.new()
+	recommended_button.name = "FirstRunRecommendedSetupButton"
+	recommended_button.text = "推荐首局设置"
+	recommended_button.tooltip_text = "自动设为4席、3个AI、推荐角色和推荐起始怪兽；适合第一次试玩。"
+	_style_menu_button(recommended_button, Color("#facc15"), true)
+	recommended_button.pressed.connect(Callable(self, "_apply_recommended_first_run_setup_from_menu"))
+	action_row.add_child(recommended_button)
 	var start_button := Button.new()
 	start_button.text = "开始本局"
 	_style_menu_button(start_button, Color("#22c55e"), true)
@@ -13642,6 +14412,11 @@ func _add_new_game_setup_controls(parent: Container) -> void:
 		_style_menu_button(table_button, Color("#22c55e"))
 		table_button.pressed.connect(Callable(self, "_close_menu"))
 		action_row.add_child(table_button)
+
+
+func _apply_recommended_first_run_setup_from_menu() -> void:
+	_apply_recommended_first_run_setup()
+	_open_new_game_setup_menu()
 
 
 func _new_game_setup_lobby_snapshot() -> Dictionary:
@@ -14159,6 +14934,10 @@ func _capture_run_state() -> Dictionary:
 		"selected_card_resolution_id": selected_card_resolution_id,
 		"opening_guide_dismissed": opening_guide_dismissed,
 		"opening_guide_economy_seen_players": opening_guide_economy_seen_players.duplicate(true),
+		"first_run_coach_district_seen_players": first_run_coach_district_seen_players.duplicate(true),
+		"first_run_coach_supply_seen_players": first_run_coach_supply_seen_players.duplicate(true),
+		"first_run_coach_public_track_seen_players": first_run_coach_public_track_seen_players.duplicate(true),
+		"first_run_coach_clues_seen_players": first_run_coach_clues_seen_players.duplicate(true),
 		"business_cycle_count": business_cycle_count,
 		"configured_player_count": configured_player_count,
 		"configured_ai_player_count": configured_ai_player_count,
@@ -14282,6 +15061,10 @@ func _apply_run_state(state: Dictionary) -> int:
 	selected_card_resolution_id = int(state.get("selected_card_resolution_id", -1))
 	opening_guide_dismissed = bool(state.get("opening_guide_dismissed", false))
 	opening_guide_economy_seen_players = (state.get("opening_guide_economy_seen_players", {}) as Dictionary).duplicate(true)
+	first_run_coach_district_seen_players = (state.get("first_run_coach_district_seen_players", {}) as Dictionary).duplicate(true)
+	first_run_coach_supply_seen_players = (state.get("first_run_coach_supply_seen_players", {}) as Dictionary).duplicate(true)
+	first_run_coach_public_track_seen_players = (state.get("first_run_coach_public_track_seen_players", {}) as Dictionary).duplicate(true)
+	first_run_coach_clues_seen_players = (state.get("first_run_coach_clues_seen_players", {}) as Dictionary).duplicate(true)
 	business_cycle_count = int(state.get("business_cycle_count", 0))
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
@@ -14373,6 +15156,14 @@ func _save_settings(show_log: bool) -> void:
 	config.set_value("setup", "roguelike_depth", configured_roguelike_depth)
 	config.set_value("setup", "role_indices", configured_role_indices)
 	config.set_value("setup", "starter_monster_indices", configured_starter_monster_indices)
+	config.set_value("scenario", "teaching_hints_enabled", scenario_teaching_hints_enabled)
+	config.set_value("scenario", "auto_pause_prompts_enabled", scenario_auto_pause_prompts_enabled)
+	config.set_value("scenario", "font_scale_percent", scenario_font_scale_percent)
+	config.set_value("campaign", "animation_intensity", campaign_animation_intensity)
+	config.set_value("campaign", "font_scale_label", campaign_font_scale_label)
+	config.set_value("campaign", "colorblind_assist_enabled", campaign_colorblind_assist_enabled)
+	config.set_value("campaign", "ui_volume", campaign_ui_volume)
+	config.set_value("campaign", "bgm_volume", campaign_bgm_volume)
 	var err: int = config.save(SETTINGS_PATH)
 	if not show_log:
 		return
@@ -14403,6 +15194,14 @@ func _load_settings() -> void:
 	var saved_starter_monster_indices: Variant = config.get_value("setup", "starter_monster_indices", [])
 	configured_starter_monster_indices = (saved_starter_monster_indices as Array).duplicate(true) if saved_starter_monster_indices is Array else []
 	_ensure_configured_starter_monster_indices()
+	scenario_teaching_hints_enabled = bool(config.get_value("scenario", "teaching_hints_enabled", true))
+	scenario_auto_pause_prompts_enabled = bool(config.get_value("scenario", "auto_pause_prompts_enabled", true))
+	scenario_font_scale_percent = clampi(int(config.get_value("scenario", "font_scale_percent", 100)), 90, 125)
+	campaign_animation_intensity = str(config.get_value("campaign", "animation_intensity", "完整"))
+	campaign_font_scale_label = str(config.get_value("campaign", "font_scale_label", "中"))
+	campaign_colorblind_assist_enabled = bool(config.get_value("campaign", "colorblind_assist_enabled", false))
+	campaign_ui_volume = clampi(int(config.get_value("campaign", "ui_volume", 80)), 0, 100)
+	campaign_bgm_volume = clampi(int(config.get_value("campaign", "bgm_volume", 60)), 0, 100)
 
 
 func _load_settings_from_menu() -> void:
@@ -15033,7 +15832,7 @@ func _assign_district_card_choices() -> void:
 			placed = true
 			break
 		if not placed:
-			break
+			continue
 
 	for i in range(districts.size()):
 		var choices: Array = districts[i]["card_choices"]
@@ -15050,6 +15849,7 @@ func _assign_district_card_choices() -> void:
 				_set_district_card_source(i, skill_name, _district_card_supply_source_label(i, skill_name))
 			attempts += 1
 		districts[i]["card_choices"] = choices
+	_ensure_featured_monster_card_supply(featured_cards)
 
 
 func _normalize_card_supply_state() -> void:
@@ -15086,6 +15886,57 @@ func _normalize_card_supply_state() -> void:
 		district["card_choices"] = choices
 		district["card_sources"] = sources
 		districts[district_index] = district
+
+
+func _ensure_featured_monster_card_supply(featured_cards: Array) -> void:
+	if _district_supply_has_monster_card():
+		return
+	for card_variant in featured_cards:
+		var skill_name := _canonical_card_supply_name(String(card_variant))
+		if skill_name == "" or not _is_monster_card_name(skill_name):
+			continue
+		for district_index in range(districts.size()):
+			if not _district_card_is_valid_for_district(district_index, skill_name):
+				continue
+			var district: Dictionary = districts[district_index]
+			var choices: Array = district.get("card_choices", [])
+			if choices.has(skill_name):
+				_set_district_card_source(district_index, skill_name, _district_card_supply_source_label(district_index, skill_name))
+				return
+			if choices.size() >= DISTRICT_CARD_CHOICE_MAX:
+				var replace_index := _last_non_monster_supply_choice_index(choices)
+				if replace_index < 0:
+					continue
+				var removed_name := String(choices[replace_index])
+				choices[replace_index] = skill_name
+				var sources: Dictionary = district.get("card_sources", {})
+				sources.erase(removed_name)
+				district["card_sources"] = sources
+			else:
+				choices.append(skill_name)
+			district["card_choices"] = choices
+			districts[district_index] = district
+			_set_district_card_source(district_index, skill_name, _district_card_supply_source_label(district_index, skill_name))
+			return
+
+
+func _district_supply_has_monster_card() -> bool:
+	for district_variant in districts:
+		if not (district_variant is Dictionary):
+			continue
+		var district: Dictionary = district_variant
+		for choice_variant in district.get("card_choices", []):
+			if _is_monster_card_name(_canonical_card_supply_name(String(choice_variant))):
+				return true
+	return false
+
+
+func _last_non_monster_supply_choice_index(choices: Array) -> int:
+	for offset in range(choices.size()):
+		var index := choices.size() - 1 - offset
+		if not _is_monster_card_name(_canonical_card_supply_name(String(choices[index]))):
+			return index
+	return -1
 
 
 func _set_district_card_source(district_index: int, skill_name: String, source: String) -> void:
@@ -15169,6 +16020,10 @@ func _new_game() -> void:
 	selected_card_resolution_id = -1
 	opening_guide_dismissed = false
 	opening_guide_economy_seen_players = {}
+	first_run_coach_district_seen_players = {}
+	first_run_coach_supply_seen_players = {}
+	first_run_coach_public_track_seen_players = {}
+	first_run_coach_clues_seen_players = {}
 	product_market = _generate_product_market()
 	skill_market = _monster_market_skills()
 	log_lines = []
@@ -16846,6 +17701,8 @@ func _summon_monster_from_card(player: Dictionary, skill: Dictionary) -> bool:
 		districts[selected_district]["name"],
 		_limited_name_list(granted, 4, "无"),
 	])
+	if selected_player >= 0 and selected_player < players.size():
+		_complete_scenario_signal("monster_summoned", "首召怪兽：%s降落在%s。" % [String(actor.get("name", "怪兽")), String(districts[selected_district].get("name", "区域"))], "after_summon", "scenario_coach")
 	_refresh_ui()
 	return true
 
@@ -17613,6 +18470,8 @@ func _runtime_table_snapshot_source() -> Dictionary:
 		"actions": action_entries,
 		"right_inspector": _runtime_right_inspector_snapshot_source(player_index, district_snapshot, action_entries, logs),
 		"player_board": _runtime_player_board_snapshot_source(player_index, action_entries),
+		"first_run_coach": _runtime_first_run_coach_snapshot_source(player_index),
+		"scenario_coach": _runtime_scenario_coach_snapshot_source(player_index),
 		"temporary_decision": _runtime_temporary_decision_snapshot_source(player_index),
 		"logs": logs,
 	}
@@ -19251,7 +20110,8 @@ func _build_city_in_selected_district() -> void:
 		_log("无法在选区城市化：%s。" % error)
 		_refresh_ui()
 		return
-	_create_city_at_district_for_player(selected_player, selected_district, "玩家城市化", true)
+	if _create_city_at_district_for_player(selected_player, selected_district, "玩家城市化", true):
+		_complete_scenario_signal("city_built", "完成城市化：%s冒出匿名城市群。" % String(districts[selected_district].get("name", "区域")), "after_build", "scenario_coach")
 	_refresh_ui()
 
 
@@ -20973,6 +21833,309 @@ func _opening_guide_economy_seen(player_index: int) -> bool:
 		return false
 	return bool(opening_guide_economy_seen_players.get(_opening_guide_player_key(player_index), false)) \
 		or bool(opening_guide_economy_seen_players.get(player_index, false))
+
+
+func _first_run_coach_player_key(player_index: int) -> String:
+	return str(player_index)
+
+
+func _mark_first_run_coach_district_seen(player_index: int) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	first_run_coach_district_seen_players[_first_run_coach_player_key(player_index)] = true
+
+
+func _mark_first_run_coach_supply_seen(player_index: int) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	first_run_coach_supply_seen_players[_first_run_coach_player_key(player_index)] = true
+
+
+func _mark_first_run_coach_public_track_seen(player_index: int) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	first_run_coach_public_track_seen_players[_first_run_coach_player_key(player_index)] = true
+
+
+func _mark_first_run_coach_clues_seen(player_index: int) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	first_run_coach_clues_seen_players[_first_run_coach_player_key(player_index)] = true
+
+
+func _first_run_coach_seen(map: Dictionary, player_index: int) -> bool:
+	return bool(map.get(_first_run_coach_player_key(player_index), false)) or bool(map.get(player_index, false))
+
+
+func _first_run_recommended_setup() -> Dictionary:
+	return {
+		"player_count": FIRST_RUN_RECOMMENDED_PLAYER_COUNT,
+		"ai_count": FIRST_RUN_RECOMMENDED_AI_COUNT,
+		"role_indices": FIRST_RUN_RECOMMENDED_ROLE_INDICES.duplicate(true),
+		"starter_monster_indices": FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES.duplicate(true),
+		"label": "推荐首局：4席 / 3 AI / 简单角色 / 易读怪兽",
+	}
+
+
+func _apply_recommended_first_run_setup() -> void:
+	configured_player_count = FIRST_RUN_RECOMMENDED_PLAYER_COUNT
+	configured_ai_player_count = FIRST_RUN_RECOMMENDED_AI_COUNT
+	configured_roguelike_depth = DEFAULT_ROGUELIKE_DEPTH
+	configured_role_indices = FIRST_RUN_RECOMMENDED_ROLE_INDICES.duplicate(true)
+	configured_starter_monster_indices = FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES.duplicate(true)
+	_ensure_configured_ai_player_count()
+	_ensure_configured_role_indices()
+	_ensure_configured_starter_monster_indices()
+	_log("已套用推荐首局设置：4席、3个AI、推荐角色、推荐起始怪兽。")
+	_save_settings(false)
+	_refresh_ui()
+
+
+func _first_run_recommended_start_district(player_index: int) -> int:
+	if districts.is_empty():
+		return -1
+	if player_index < 0 or player_index >= players.size():
+		player_index = 0
+	if selected_district >= 0 \
+			and selected_district < districts.size() \
+			and not bool(districts[selected_district].get("destroyed", false)) \
+			and _city_build_error_for(player_index, selected_district, false) == "":
+		return selected_district
+	var first_alive := -1
+	for i in range(districts.size()):
+		var district: Dictionary = districts[i]
+		if bool(district.get("destroyed", false)):
+			continue
+		if first_alive < 0:
+			first_alive = i
+		if _city_build_error_for(player_index, i, false) == "":
+			return i
+	return first_alive
+
+
+func _first_run_coach_progress(player_index: int) -> Dictionary:
+	var progress := _opening_guide_progress(player_index)
+	if progress.is_empty():
+		return {}
+	progress["selected_district"] = _first_run_coach_seen(first_run_coach_district_seen_players, player_index)
+	progress["has_opened_supply"] = _first_run_coach_seen(first_run_coach_supply_seen_players, player_index) \
+		or (district_supply_open_player == player_index and district_supply_open_district >= 0) \
+		or bool(progress.get("has_bought_card", false))
+	progress["has_seen_public_track"] = _first_run_coach_seen(first_run_coach_public_track_seen_players, player_index) \
+		or selected_card_resolution_id >= 0
+	progress["has_seen_clues"] = _first_run_coach_seen(first_run_coach_clues_seen_players, player_index)
+	return progress
+
+
+func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
+	if active_scenario_id != "":
+		return {}
+	if player_index < 0 or player_index >= players.size() or game_over:
+		return {}
+	var progress := _first_run_coach_progress(player_index)
+	var primary_action := _runtime_first_run_coach_primary_action(player_index, progress)
+	return {
+		"visible": not opening_guide_dismissed,
+		"dismissed": opening_guide_dismissed,
+		"progress": progress,
+		"primary_action": primary_action,
+		"recommended_setup": _first_run_recommended_setup(),
+		"auto_fold_when_track_seen": true,
+	}
+
+
+func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictionary) -> Dictionary:
+	if progress.is_empty():
+		return {"id": "", "label": "选择席位", "disabled": true, "tooltip": "先选择有效席位。"}
+	var stage := _first_run_coach_stage(progress)
+	match stage:
+		"select_district":
+			var recommended_district := _first_run_recommended_start_district(player_index)
+			var recommended_name := String(districts[recommended_district].get("name", "区域")) if recommended_district >= 0 and recommended_district < districts.size() else "可用区域"
+			return {
+				"id": "coach_select_district",
+				"label": "确认选区",
+				"disabled": recommended_district < 0,
+				"tooltip": "把地图焦点放到%s；右侧会显示能否建城、牌架和商品线索。" % recommended_name,
+				"accent": Color("#38bdf8"),
+			}
+		"first_summon":
+			var starter_slot := _first_starter_monster_slot(players[player_index])
+			var disabled := starter_slot < 0 or not _selected_district_can_receive_first_summon()
+			if starter_slot >= 0:
+				var slots: Array = players[player_index].get("slots", [])
+				if starter_slot < slots.size() and slots[starter_slot] is Dictionary:
+					disabled = disabled or not _can_play_skill_now(player_index, slots[starter_slot] as Dictionary, false)
+			return {
+				"id": "coach_first_summon",
+				"label": "在选区首召",
+				"disabled": disabled,
+				"tooltip": "打出起始怪兽；首召后，怪兽附近区域会成为第一批买牌地点。",
+				"accent": Color("#fb7185"),
+			}
+		"build_city":
+			var build_error := _city_build_error_for(player_index, selected_district, false) if selected_district >= 0 and selected_district < districts.size() else "先选择区域。"
+			return {
+				"id": "coach_build_city",
+				"label": "城市化",
+				"disabled": build_error != "",
+				"tooltip": build_error if build_error != "" else "建第一座城市，开始产生实时现金流。",
+				"accent": Color("#4ade80"),
+			}
+		"open_rack":
+			return {
+				"id": "coach_open_rack",
+				"label": "查看牌架",
+				"disabled": selected_district < 0 or selected_district >= districts.size(),
+				"tooltip": "打开当前区域牌架；不能购买时也能先查看卡牌。",
+				"accent": Color("#facc15"),
+			}
+		"buy_card":
+			var buyable_card := _first_buyable_district_card(selected_district, player_index)
+			return {
+				"id": "coach_buy_card",
+				"label": "买第一牌",
+				"disabled": buyable_card == "",
+				"tooltip": "从当前牌架购买一张牌；如果手牌满了，会进入私密弃牌确认。" if buyable_card != "" else "当前区域暂时没有可买牌，先换到怪兽所在区或邻区。",
+				"accent": Color("#fde68a"),
+			}
+		"play_card":
+			var slot := _first_actionable_hand_slot(player_index)
+			return {
+				"id": "coach_play_card",
+				"label": "打出手牌",
+				"disabled": slot < 0,
+				"tooltip": "打出当前可用手牌；需要目标的牌会先打开目标选择。",
+				"accent": Color("#c084fc"),
+			}
+		"inspect_track":
+			var track_id := _first_public_track_resolution_id()
+			return {
+				"id": "coach_inspect_track",
+				"label": "看牌轨",
+				"disabled": track_id < 0,
+				"tooltip": "聚焦顶部公开牌轨，确认匿名牌如何展示和留下线索。",
+				"accent": Color("#f59e0b"),
+			}
+		"inspect_clues":
+			return {
+				"id": "coach_inspect_clues",
+				"label": "看线索",
+				"disabled": false,
+				"tooltip": "打开线索档案，查看公开证据和自己的推测入口。",
+				"accent": Color("#93c5fd"),
+			}
+	return {"id": "", "label": "已完成", "disabled": true, "tooltip": "首轮引导已折叠。", "accent": Color("#22c55e")}
+
+
+func _first_run_coach_stage(progress: Dictionary) -> String:
+	if bool(progress.get("has_played_card", false)) and bool(progress.get("has_seen_public_track", false)):
+		return "done"
+	if not bool(progress.get("selected_district", false)):
+		return "select_district"
+	if not bool(progress.get("has_monster", false)):
+		return "first_summon"
+	if not bool(progress.get("has_city", false)):
+		return "build_city"
+	if not bool(progress.get("has_opened_supply", false)):
+		return "open_rack"
+	if not bool(progress.get("has_bought_card", false)):
+		return "buy_card"
+	if not bool(progress.get("has_played_card", false)):
+		return "play_card"
+	if not bool(progress.get("has_seen_public_track", false)):
+		return "inspect_track"
+	if not bool(progress.get("has_seen_clues", false)):
+		return "inspect_clues"
+	return "done"
+
+
+func _activate_first_run_coach_action(action_id: String) -> bool:
+	var player_index := _runtime_snapshot_player_index()
+	if player_index < 0 or player_index >= players.size():
+		return false
+	match action_id:
+		"coach_select_district":
+			var recommended_district := _first_run_recommended_start_district(player_index)
+			if recommended_district >= 0:
+				selected_district = recommended_district
+			elif selected_district < 0 or selected_district >= districts.size():
+				selected_district = 0 if not districts.is_empty() else -1
+			_mark_first_run_coach_district_seen(player_index)
+			_sync_selected_district_card()
+			_load_selected_district_guess()
+			_refresh_ui()
+			return true
+		"coach_first_summon":
+			var starter_slot := _first_starter_monster_slot(players[player_index])
+			if starter_slot < 0:
+				return false
+			selected_player = player_index
+			_use_skill(starter_slot)
+			return true
+		"coach_build_city":
+			selected_player = player_index
+			_build_city_in_selected_district()
+			return true
+		"coach_open_rack":
+			if selected_district < 0 or selected_district >= districts.size():
+				return false
+			selected_player = player_index
+			_open_district_supply_from_map(selected_district)
+			return true
+		"coach_buy_card":
+			if selected_district < 0 or selected_district >= districts.size():
+				return false
+			selected_player = player_index
+			if not _district_supply_is_open():
+				_open_district_supply_from_map(selected_district)
+			var buyable_card := _first_buyable_district_card(selected_district, player_index)
+			if buyable_card == "":
+				return true
+			selected_market_skill = buyable_card
+			previewed_district_card = buyable_card
+			_claim_district_card(buyable_card)
+			return true
+		"coach_play_card":
+			selected_player = player_index
+			return _activate_runtime_quick_action("play")
+		"coach_inspect_track":
+			var resolution_id := _first_public_track_resolution_id()
+			if resolution_id < 0:
+				return false
+			selected_runtime_card_slot = -1
+			_select_card_resolution_track_entry(resolution_id)
+			_mark_first_run_coach_public_track_seen(player_index)
+			return true
+		"coach_inspect_clues":
+			_mark_first_run_coach_clues_seen(player_index)
+			_open_intel_dossier_menu()
+			return true
+	return false
+
+
+func _first_buyable_district_card(district_index: int, player_index: int) -> String:
+	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size():
+		return ""
+	var choices: Array = districts[district_index].get("card_choices", [])
+	for card_variant in choices:
+		var card_name := String(card_variant)
+		var state := _district_supply_purchase_state(district_index, card_name, player_index)
+		if bool(state.get("actionable", false)):
+			return card_name
+	return ""
+
+
+func _first_public_track_resolution_id() -> int:
+	var entries := _runtime_card_track_snapshot_source()
+	for entry_variant in entries:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		var resolution_id := int(entry.get("resolution_id", -1))
+		if resolution_id >= 0 and String(entry.get("kind", "")) != "event":
+			return resolution_id
+	return -1
 
 
 func _opening_guide_progress(player_index: int) -> Dictionary:
@@ -28353,11 +29516,13 @@ func _open_district_supply_from_map(district_index: int) -> void:
 	selected_runtime_card_slot = -1
 	district_supply_open_district = district_index
 	district_supply_open_player = selected_player
+	_mark_first_run_coach_supply_seen(selected_player)
 	_open_district_card_purchase_window(district_index, selected_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
 	if district_supply_overlay != null:
 		district_supply_overlay.visible = true
+	_complete_scenario_signal("rack_opened", "打开区域牌架：%s。" % String(districts[district_index].get("name", "区域")), "after_rack", "district_supply")
 	_refresh_ui()
 
 
@@ -28908,8 +30073,11 @@ func _select_player(index: int) -> void:
 func _select_district(index: int) -> void:
 	selected_district = index
 	selected_runtime_card_slot = -1
+	_mark_first_run_coach_district_seen(selected_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
+	if selected_district >= 0 and selected_district < districts.size():
+		_complete_scenario_signal("district_selected", "选择区域：%s。" % String(districts[selected_district].get("name", "区域")), "after_select", "planet")
 	_refresh_ui()
 
 
@@ -40341,6 +41509,8 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if int(pending_discard_purchase.get("player_index", -1)) == player_index and String(pending_discard_purchase.get("skill_name", "")) == skill_name:
 		pending_discard_purchase = {}
 	_log("一次匿名购牌在%s完成；买家、具体卡牌、手牌数量和弃牌情况不公开。" % districts[district_index]["name"])
+	if not anonymous and player_index == selected_player:
+		_complete_scenario_signal("card_bought", "完成购牌：%s的一张牌进入你的手牌。" % String(districts[district_index].get("name", "区域")), "after_buy", "player_hand")
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
 	_check_bankruptcy_eliminations("购牌后现金归零")
 	return true
@@ -41432,6 +42602,8 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 	if queue_to_next_batch:
 		next_card_resolution_queue.append(entry)
 		_log("匿名卡牌已提交到下一批等待区：%s；当前批次继续结算且不会重开竞价，清空后等待牌只统一竞价一次。" % card_label)
+		if player_index == selected_player:
+			_complete_scenario_signal("card_played", "提交匿名出牌：%s进入等待区。" % card_label, "after_play", "public_track")
 		_refresh_ui()
 		return true
 	card_resolution_queue.append(entry)
@@ -41448,6 +42620,8 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 	_show_card_batch_lobby_overlay()
 	if card_resolution_simultaneous_timer <= 0.0 and not card_resolution_auction_open:
 		_lock_card_resolution_batch()
+	if player_index == selected_player:
+		_complete_scenario_signal("card_played", "提交匿名出牌：%s进入公开牌轨。" % card_label, "after_play", "public_track")
 	return true
 
 

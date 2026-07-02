@@ -1,0 +1,61 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/match_recap_panel.gd" id="2_script"]
+
+[node name="MatchRecapPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(760, 500)
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="MatchRecapMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="MatchRecapStack" type="VBoxContainer" parent="MatchRecapMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MatchRecapTitle" type="Label" parent="MatchRecapMargin/MatchRecapStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "本关复盘"
+theme_override_font_sizes/font_size = 24
+
+[node name="MatchRecapColumns" type="HBoxContainer" parent="MatchRecapMargin/MatchRecapStack"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="MatchRecapLearned" type="VBoxContainer" parent="MatchRecapMargin/MatchRecapStack/MatchRecapColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="MatchRecapActions" type="VBoxContainer" parent="MatchRecapMargin/MatchRecapStack/MatchRecapColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="MatchRecapSuggestions" type="VBoxContainer" parent="MatchRecapMargin/MatchRecapStack/MatchRecapColumns"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="MatchRecapCheckpointRow" type="HFlowContainer" parent="MatchRecapMargin/MatchRecapStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+
+[node name="MatchRecapSecondaryRow" type="HFlowContainer" parent="MatchRecapMargin/MatchRecapStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6

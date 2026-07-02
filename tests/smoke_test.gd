@@ -60,8 +60,16 @@ func _run() -> void:
 	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
 	main.set("configured_role_indices", [0, 1, 2, 3, 4])
 	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
+	if main.has_method("_apply_recommended_first_run_setup"):
+		main.set("configured_player_count", 8)
+		main.set("configured_ai_player_count", 7)
+		main.call("_apply_recommended_first_run_setup")
+		_expect(int(main.get("configured_player_count")) == EXPECTED_PLAYER_COUNT and int(main.get("configured_ai_player_count")) == EXPECTED_AI_PLAYER_COUNT, "recommended first-run setup resets to 4 seats with 3 AI opponents")
+		_expect(_as_array(main.get("configured_role_indices")).slice(0, 4) == [0, 1, 2, 3], "recommended first-run setup chooses non-duplicate starter role indices")
+		_expect(_as_array(main.get("configured_starter_monster_indices")).slice(0, 4) == [7, 6, 2, 4], "recommended first-run setup chooses readable starter monsters")
 	_mark_smoke_progress("new game setup")
 	main.call("_new_game")
+	_expect(_verify_first_run_coach_runtime_snapshot(main), "first-run coach snapshot exposes a single next-step phase and advances from region confirmation to first summon")
 	main.set("ai_card_decision_enabled", false)
 	main.call("_open_main_menu")
 	await process_frame
@@ -707,9 +715,9 @@ func _run() -> void:
 	_expect(menu_content_scroll != null and not menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column without focus-jumping on hover")
 	_expect(menu_overlay != null and _container_has_named_node(menu_overlay, "MainMenuPlanetLobbyPanel") and _container_has_named_node(menu_overlay, "MainMenuCommandCard") and _container_has_named_node(menu_overlay, "MainMenuUtilityRail"), "main menu arranges only the planet lobby and compact command buttons")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最后钱最多") and not menu_body_label.text.contains("游戏规则"), "main menu keeps only a short objective line")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "星球赌桌大厅") and _container_button_text_contains(menu_preview_box, "开新一桌") and _container_button_text_contains(menu_preview_box, "继续牌桌") and _container_button_text_contains(menu_preview_box, "资料库"), "main menu exposes three table-lobby primary actions")
-	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "开新一桌"), "main menu routes new games through the table-lobby start button")
-	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "选席位") and _container_label_text_contains(menu_overlay, "建城｜怪兽｜下注｜推理"), "main menu uses short player-facing command labels")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "星球赌桌大厅") and _container_button_text_contains(menu_preview_box, "新手战役") and _container_button_text_contains(menu_preview_box, "快速开局") and _container_button_text_contains(menu_preview_box, "资料库"), "main menu exposes the three commercial table-lobby primary actions")
+	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "新手战役") and not _container_button_text_contains(menu_overlay, "开新一桌"), "main menu routes first play through the campaign entry instead of a raw new-game button")
+	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "目标、奖励、复盘") and _container_label_text_contains(menu_overlay, "建城｜怪兽｜下注｜推理"), "main menu uses short player-facing command labels")
 	_expect(menu_overlay != null and _container_button_has_stylebox(menu_overlay, "hover") and _container_button_has_stylebox(menu_overlay, "pressed"), "menu buttons expose reusable hover and pressed visual states")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "情报档案") and not _container_button_text_contains(menu_overlay, "经济总览") and not _container_button_text_contains(menu_overlay, "局势排名"), "main menu keeps in-game analysis pages out of the root lobby")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "选择四怪兽"), "main menu no longer exposes a separate monster-selection branch")
@@ -9657,6 +9665,35 @@ func _first_buildable_land_district(districts: Array) -> int:
 		if String(district.get("terrain", "")) == "land" and city.is_empty() and not bool(district.get("destroyed", false)):
 			return i
 	return -1
+
+
+func _verify_first_run_coach_runtime_snapshot(main: Node) -> bool:
+	if not main.has_method("_runtime_table_snapshot") or not main.has_method("_activate_first_run_coach_action"):
+		return false
+	var snapshot_variant: Variant = main.call("_runtime_table_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var coach: Dictionary = snapshot.get("first_run_coach", {}) if snapshot.get("first_run_coach", {}) is Dictionary else {}
+	if coach.is_empty() or not bool(coach.get("visible", false)):
+		return false
+	if str(coach.get("stage", "")) != "select_district":
+		return false
+	var action: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
+	if str(action.get("id", "")) != "coach_select_district" or bool(action.get("disabled", false)):
+		return false
+	var recommended: Dictionary = coach.get("recommended_setup", {}) if coach.get("recommended_setup", {}) is Dictionary else {}
+	if int(recommended.get("player_count", 0)) != EXPECTED_PLAYER_COUNT or int(recommended.get("ai_count", 0)) != EXPECTED_AI_PLAYER_COUNT:
+		return false
+	if not bool(main.call("_activate_first_run_coach_action", "coach_select_district")):
+		return false
+	var selected_district := int(main.get("selected_district"))
+	var build_error := str(main.call("_city_build_error_for", 0, selected_district, false))
+	if build_error != "":
+		return false
+	var next_snapshot_variant: Variant = main.call("_runtime_table_snapshot")
+	var next_snapshot: Dictionary = next_snapshot_variant if next_snapshot_variant is Dictionary else {}
+	var next_coach: Dictionary = next_snapshot.get("first_run_coach", {}) if next_snapshot.get("first_run_coach", {}) is Dictionary else {}
+	var next_action: Dictionary = next_coach.get("primary_action", {}) if next_coach.get("primary_action", {}) is Dictionary else {}
+	return str(next_coach.get("stage", "")) == "first_summon" and str(next_action.get("id", "")) == "coach_first_summon"
 
 
 func _as_array(value: Variant) -> Array:

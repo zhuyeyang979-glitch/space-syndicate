@@ -1,0 +1,59 @@
+extends RefCounted
+class_name ScenarioProgress
+
+var scenario: Dictionary = {}
+var completed_signals := {}
+var dismissed := false
+var closed_to_chip := false
+
+
+func apply_state(definition: Dictionary, signals: Dictionary = {}, is_dismissed: bool = false, is_closed_to_chip: bool = false) -> RefCounted:
+	scenario = definition.duplicate(true)
+	completed_signals = signals.duplicate(true)
+	dismissed = is_dismissed
+	closed_to_chip = is_closed_to_chip
+	return self
+
+
+func mark_signal(signal_id: String) -> void:
+	var key := signal_id.strip_edges()
+	if key != "":
+		completed_signals[key] = true
+
+
+func current_phase_index() -> int:
+	var phases: Array = scenario.get("phases", []) if scenario.get("phases", []) is Array else []
+	for i in range(phases.size()):
+		var phase: Dictionary = phases[i] if phases[i] is Dictionary else {}
+		var signal_id := str(phase.get("success_signal", phase.get("id", ""))).strip_edges()
+		if signal_id == "" or not bool(completed_signals.get(signal_id, false)):
+			return i
+	return phases.size()
+
+
+func is_complete() -> bool:
+	var phases: Array = scenario.get("phases", []) if scenario.get("phases", []) is Array else []
+	return not phases.is_empty() and current_phase_index() >= phases.size()
+
+
+func current_phase() -> Dictionary:
+	var phases: Array = scenario.get("phases", []) if scenario.get("phases", []) is Array else []
+	var index := current_phase_index()
+	if index >= 0 and index < phases.size() and phases[index] is Dictionary:
+		return phases[index]
+	return {}
+
+
+func to_dictionary() -> Dictionary:
+	return {
+		"scenario_id": str(scenario.get("id", "")),
+		"title": str(scenario.get("title", "")),
+		"summary": str(scenario.get("summary", "")),
+		"current_index": current_phase_index(),
+		"total": (scenario.get("phases", []) as Array).size() if scenario.get("phases", []) is Array else 0,
+		"current_phase": current_phase(),
+		"completed": is_complete(),
+		"dismissed": dismissed,
+		"closed_to_chip": closed_to_chip,
+		"completed_signals": completed_signals.duplicate(true),
+	}

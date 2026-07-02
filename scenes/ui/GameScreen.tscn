@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/game_screen.gd" id="2_game_screen"]
@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/RightInspector.tscn" id="6_right_inspector"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlayerBoard.tscn" id="7_player_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/OverlayLayer.tscn" id="8_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/FirstRunCoach.tscn" id="9_first_run_coach"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ScenarioCoach.tscn" id="10_scenario_coach"]
 
 [node name="GameScreen" type="Control"]
 layout_mode = 3
@@ -70,6 +72,40 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="PlayerBoard" parent="SafeArea/MainRows" instance=ExtResource("7_player_board")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="FirstRunCoachHost" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.56
+anchor_top = 0.13
+anchor_right = 0.985
+anchor_bottom = 0.30
+grow_horizontal = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="FirstRunCoach" parent="FirstRunCoachHost" instance=ExtResource("9_first_run_coach")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ScenarioCoachHost" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.36
+anchor_top = 0.13
+anchor_right = 0.82
+anchor_bottom = 0.285
+grow_horizontal = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="ScenarioCoach" parent="ScenarioCoachHost" instance=ExtResource("10_scenario_coach")]
 unique_name_in_owner = true
 layout_mode = 2
 

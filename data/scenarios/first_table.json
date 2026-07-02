@@ -1,0 +1,30 @@
+{
+  "id": "first_table",
+  "title": "01 首局入门",
+  "category": "推荐",
+  "difficulty": "intro",
+  "duration_label": "8-12分钟",
+  "player_count": 4,
+  "ai_count": 3,
+  "summary": "按顺序完成点区、首召、建城、牌架、买牌、出牌。",
+  "recommended_for": "第一次坐上牌桌的玩家",
+  "core_system": "首轮核心动作",
+  "allowed_private_information": "current_player_only",
+  "fixture": {"focus": "first_run_path", "public_summary": "从空桌开始练习第一轮。"},
+  "replay_snapshots": [
+    {"key": "start", "label": "开始"},
+    {"key": "after_select", "label": "选区后"},
+    {"key": "after_build", "label": "建城后"},
+    {"key": "after_buy", "label": "买牌后"},
+    {"key": "after_play", "label": "出牌后"},
+    {"key": "after_track", "label": "牌轨出现后"}
+  ],
+  "phases": [
+    {"id": "select_district", "label": "点区", "goal": "在中央星球选择一个陆地区域。", "primary_action_hint": "点击推荐区域", "success_signal": "district_selected", "snapshot_key": "after_select"},
+    {"id": "first_summon", "label": "首召", "goal": "打出起始怪兽，让附近区域开放购牌。", "primary_action_hint": "在选区首召", "success_signal": "monster_summoned", "snapshot_key": "after_summon"},
+    {"id": "build_city", "label": "建城", "goal": "建第一座城市，开始获得现金流。", "primary_action_hint": "点击城市化", "success_signal": "city_built", "snapshot_key": "after_build"},
+    {"id": "open_rack", "label": "牌架", "goal": "打开当前区域牌架，看这里能买什么。", "primary_action_hint": "查看牌架", "success_signal": "rack_opened", "snapshot_key": "after_rack"},
+    {"id": "buy_card", "label": "买牌", "goal": "买一张容易理解的牌。", "primary_action_hint": "买第一牌", "success_signal": "card_bought", "snapshot_key": "after_buy"},
+    {"id": "play_card", "label": "出牌", "goal": "打出一张手牌，观察匿名公开。", "primary_action_hint": "打出手牌", "success_signal": "card_played", "snapshot_key": "after_play"}
+  ]
+}

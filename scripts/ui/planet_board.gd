@@ -133,7 +133,9 @@ func _layout_space_rail(rail: PanelContainer, left_side: bool, map_rect: Rect2, 
 	rail.visible = true
 	var rail_width := clampf(side_space, SIDE_RAIL_MIN_WIDTH, SIDE_RAIL_MAX_WIDTH)
 	var entry_count := _visible_rail_entry_count(left_side)
-	var rail_height := clampf(64.0 + float(entry_count) * 44.0, 154.0, minf(SIDE_RAIL_MAX_HEIGHT, map_rect.size.y * 0.58))
+	var rail_max_height := minf(SIDE_RAIL_MAX_HEIGHT, map_rect.size.y * 0.56)
+	var rail_min_height := minf(154.0, rail_max_height)
+	var rail_height := clampf(64.0 + float(entry_count) * 44.0, rail_min_height, rail_max_height)
 	var x := map_rect.position.x - SIDE_RAIL_GAP - rail_width if left_side else map_rect.end.x + SIDE_RAIL_GAP
 	var y := map_rect.position.y + maxf(SIDE_RAIL_GAP, (map_rect.size.y - rail_height) * 0.24)
 	rail.position = Vector2(x, y)
@@ -171,6 +173,15 @@ func _style_board() -> void:
 		if label != null:
 			label.add_theme_font_size_override("font_size", 11)
 			label.add_theme_color_override("font_color", Color("#f8fafc"))
+	for stack in [left_rail_stack, right_rail_stack]:
+		if stack != null:
+			stack.add_theme_constant_override("separation", 3)
+			var margin := stack.get_parent() as MarginContainer
+			if margin != null:
+				margin.add_theme_constant_override("margin_left", 6)
+				margin.add_theme_constant_override("margin_top", 5)
+				margin.add_theme_constant_override("margin_right", 6)
+				margin.add_theme_constant_override("margin_bottom", 5)
 	for label in [left_rail_fallback, right_rail_fallback]:
 		if label != null:
 			label.add_theme_font_size_override("font_size", 10)
@@ -306,14 +317,14 @@ func _add_rail_entry(stack: VBoxContainer, entry: Dictionary, left_side: bool, i
 	var active := bool(entry.get("active", false))
 	var panel := PanelContainer.new()
 	panel.name = ("PlanetLeftRailEntry%d" if left_side else "PlanetRightRailEntry%d") % index
-	panel.custom_minimum_size = Vector2(0, 34)
+	panel.custom_minimum_size = Vector2(0, 26)
 	panel.tooltip_text = str(entry.get("tooltip", entry.get("tip", "")))
 	panel.add_theme_stylebox_override("panel", _rail_entry_style(accent, active))
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 6)
-	margin.add_theme_constant_override("margin_top", 3)
+	margin.add_theme_constant_override("margin_top", 1)
 	margin.add_theme_constant_override("margin_right", 6)
-	margin.add_theme_constant_override("margin_bottom", 3)
+	margin.add_theme_constant_override("margin_bottom", 1)
 	panel.add_child(margin)
 	var rows := VBoxContainer.new()
 	rows.name = "PlanetRailEntryRows"
