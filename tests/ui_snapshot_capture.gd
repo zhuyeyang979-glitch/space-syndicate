@@ -160,6 +160,7 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		else:
 			_capture_failures.append("runtime MapView return-to-globe was not available for %s" % suffix)
 	if capture_size == Vector2i(1600, 960):
+		await _ensure_runtime_hand_for_capture(main)
 		if _stage_runtime_hand_hover(main):
 			await _pump_frames(6)
 			await _save_viewport_snapshot("play_table_hand_hover_%s.png" % suffix)
@@ -303,10 +304,14 @@ func _runtime_first_run_coach_visible(root_node: Node) -> bool:
 
 func _stage_runtime_hand_hover(root_node: Node) -> bool:
 	var hand_rack := _runtime_hand_rack(root_node)
-	if hand_rack == null or not hand_rack.has_method("set_hovered_card"):
-		return false
 	var card := _runtime_hand_card_at(hand_rack, 0)
 	if card == null:
+		card = _runtime_visible_hand_card(root_node, 0)
+	if card == null:
+		return false
+	if hand_rack == null or not hand_rack.has_method("set_hovered_card"):
+		hand_rack = card.get_parent()
+	if hand_rack == null or not hand_rack.has_method("set_hovered_card"):
 		return false
 	hand_rack.call("set_hovered_card", card)
 	if card.has_method("get_card_data"):
@@ -326,10 +331,14 @@ func _clear_runtime_hand_hover(root_node: Node) -> void:
 
 func _stage_runtime_hand_selected(root_node: Node) -> bool:
 	var hand_rack := _runtime_hand_rack(root_node)
-	if hand_rack == null or not hand_rack.has_method("set_selected_card"):
-		return false
 	var card := _runtime_hand_card_at(hand_rack, 0)
 	if card == null:
+		card = _runtime_visible_hand_card(root_node, 0)
+	if card == null:
+		return false
+	if hand_rack == null or not hand_rack.has_method("set_selected_card"):
+		hand_rack = card.get_parent()
+	if hand_rack == null or not hand_rack.has_method("set_selected_card"):
 		return false
 	hand_rack.call("set_selected_card", card)
 	if card.has_method("get_card_data") and hand_rack.has_signal("card_selected"):
@@ -342,10 +351,34 @@ func _runtime_hand_rack(root_node: Node) -> Node:
 	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
 	if runtime_screen == null:
 		return null
-	return runtime_screen.find_child("HandRack", true, false)
+	var candidates := _runtime_hand_rack_candidates(runtime_screen)
+	for candidate in candidates:
+		if candidate is Control and (candidate as Control).is_visible_in_tree() and _runtime_hand_card_at(candidate, 0) != null:
+			return candidate
+	for candidate in candidates:
+		if candidate is Control and (candidate as Control).is_visible_in_tree():
+			return candidate
+	return candidates[0] if not candidates.is_empty() else null
+
+
+func _runtime_hand_rack_candidates(root_node: Node) -> Array:
+	var result: Array = []
+	_collect_runtime_hand_racks(root_node, result)
+	return result
+
+
+func _collect_runtime_hand_racks(node: Node, result: Array) -> void:
+	if node == null:
+		return
+	if node.name == "HandRack" and node.has_method("set_cards"):
+		result.append(node)
+	for child in node.get_children():
+		_collect_runtime_hand_racks(child, result)
 
 
 func _runtime_hand_card_at(hand_rack: Node, index: int) -> Control:
+	if hand_rack == null:
+		return null
 	var card_index := 0
 	for child in hand_rack.get_children():
 		if child is Control and child.has_method("get_card_data"):
@@ -353,6 +386,113 @@ func _runtime_hand_card_at(hand_rack: Node, index: int) -> Control:
 				return child as Control
 			card_index += 1
 	return null
+
+
+func _runtime_visible_hand_card(root_node: Node, index: int) -> Control:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	if runtime_screen == null:
+		return null
+	var cards: Array = []
+	_collect_runtime_hand_cards(runtime_screen, cards)
+	return cards[index] if index >= 0 and index < cards.size() else null
+
+
+func _collect_runtime_hand_cards(node: Node, result: Array) -> void:
+	if node == null:
+		return
+	if node is Control and node.name.begins_with("MiniHandCardFace") and node.has_method("get_card_data") and (node as Control).is_visible_in_tree():
+		result.append(node)
+	for child in node.get_children():
+		_collect_runtime_hand_cards(child, result)
+
+
+func _ensure_runtime_hand_for_capture(root_node: Node) -> void:
+	if _runtime_visible_hand_card(root_node, 0) != null:
+		return
+	var players_variant: Variant = root_node.get("players")
+	if not (players_variant is Array):
+		return
+	var players: Array = (players_variant as Array).duplicate(true)
+	if players.is_empty():
+		return
+	var selected_index := clampi(int(root_node.get("selected_player")), 0, players.size() - 1)
+	if not (players[selected_index] is Dictionary):
+		return
+	var player: Dictionary = (players[selected_index] as Dictionary).duplicate(true)
+	var slots_variant: Variant = player.get("slots", [])
+	var slots: Array = (slots_variant as Array).duplicate(true) if slots_variant is Array else []
+	var skill_name := _capture_sample_skill_name(root_node)
+	var skill := _capture_sample_skill(root_node, skill_name)
+	if skill.is_empty():
+		return
+	if not _slots_have_card(slots):
+		if slots.is_empty():
+			slots.append(skill)
+		else:
+			slots[0] = skill
+		player["slots"] = slots
+		players[selected_index] = player
+		root_node.set("players", players)
+	if root_node.has_method("_sync_runtime_game_screen"):
+		root_node.call("_sync_runtime_game_screen", true)
+	await _pump_frames(8)
+	if _runtime_visible_hand_card(root_node, 0) == null:
+		var hand_rack := _runtime_hand_rack(root_node)
+		if hand_rack != null and hand_rack.has_method("set_cards"):
+			hand_rack.call("set_cards", [_capture_hand_card_ui_data(skill)])
+			await _pump_frames(4)
+
+
+func _slots_have_card(slots: Array) -> bool:
+	for slot_variant in slots:
+		if slot_variant is Dictionary and not (slot_variant as Dictionary).is_empty():
+			return true
+	return false
+
+
+func _capture_sample_skill_name(root_node: Node) -> String:
+	var market_variant: Variant = root_node.get("skill_market")
+	if market_variant is Array:
+		for entry_variant in market_variant:
+			if entry_variant is Dictionary:
+				var name := str((entry_variant as Dictionary).get("name", "")).strip_edges()
+				if name != "":
+					return name
+			elif entry_variant is String:
+				var string_name := str(entry_variant).strip_edges()
+				if string_name != "":
+					return string_name
+	return "轨道融资1"
+
+
+func _capture_sample_skill(root_node: Node, skill_name: String) -> Dictionary:
+	if skill_name != "" and root_node.has_method("_make_skill"):
+		var skill_variant: Variant = root_node.call("_make_skill", skill_name)
+		if skill_variant is Dictionary and not (skill_variant as Dictionary).is_empty():
+			return skill_variant as Dictionary
+	return {
+		"name": "轨道融资1",
+		"kind": "cash_gain",
+		"cost": 3,
+		"cash": 300,
+		"text": "立即获得300资金，用于城市化或补给。",
+		"tags": ["经济", "续航"],
+	}
+
+
+func _capture_hand_card_ui_data(skill: Dictionary) -> Dictionary:
+	var card := skill.duplicate(true)
+	card["id"] = "capture_sample_hand_card"
+	card["presentation"] = "mini_hand"
+	card["detail_policy"] = "right_inspector"
+	card["type"] = str(card.get("type", card.get("kind", "行动")))
+	card["effect"] = str(card.get("effect", card.get("text", "用于截图验证的真实卡面。")))
+	card["rank"] = str(card.get("rank", "I"))
+	card["actionable"] = true
+	card["drop_enabled"] = true
+	card["drop_label"] = "松开出牌"
+	card["actions"] = [{"id": "play_capture_sample", "label": "出牌"}]
+	return card
 
 
 func _stage_runtime_planet_globe(root_node: Node) -> bool:
@@ -406,7 +546,7 @@ func _show_runtime_drag_drop_hint(root_node: Node) -> bool:
 	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
 	if runtime_screen == null:
 		return false
-	var hand_rack := runtime_screen.find_child("HandRack", true, false)
+	var hand_rack := _runtime_hand_rack(root_node)
 	var map_host := runtime_screen.find_child("MapHost", true, false) as Control
 	if hand_rack == null or map_host == null or not hand_rack.has_signal("card_drag_preview_started") or not hand_rack.has_signal("card_drag_preview_moved"):
 		return false
@@ -424,7 +564,7 @@ func _hide_runtime_drag_drop_hint(root_node: Node) -> void:
 	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
 	if runtime_screen == null:
 		return
-	var hand_rack := runtime_screen.find_child("HandRack", true, false)
+	var hand_rack := _runtime_hand_rack(root_node)
 	if hand_rack != null and hand_rack.has_signal("card_drag_preview_ended"):
 		hand_rack.emit_signal("card_drag_preview_ended", _first_runtime_hand_card_data(hand_rack))
 	var overlay := runtime_screen.find_child("OverlayLayer", true, false)

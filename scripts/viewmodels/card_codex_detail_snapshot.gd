@@ -40,8 +40,9 @@ func _normalize_card_face(entry_variant: Variant, fallback_accent: Color) -> Dic
 		"type": _first_text(entry, ["type", "route"], ""),
 		"rank": _first_text(entry, ["rank", "level"], ""),
 		"accent": accent,
-		"minimum_width": float(entry.get("minimum_width", 230.0)),
-		"minimum_height": float(entry.get("minimum_height", 300.0)),
+		"presentation": _first_text(entry, ["presentation", "display_mode"], "codex_full"),
+		"minimum_width": float(entry.get("minimum_width", 292.0)),
+		"minimum_height": float(entry.get("minimum_height", 390.0)),
 	}
 
 

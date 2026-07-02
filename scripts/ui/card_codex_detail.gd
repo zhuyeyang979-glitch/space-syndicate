@@ -219,6 +219,11 @@ func _add_tactical_card(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 3)
 	margin.add_child(box)
+	var tick := ColorRect.new()
+	tick.name = "CardCodexTacticalColorTick"
+	tick.color = accent.lightened(0.12)
+	tick.custom_minimum_size = Vector2(0, 3)
+	box.add_child(tick)
 	var title := _label(str(entry.get("title", "")), 9, accent.lightened(0.18))
 	title.name = "CardCodexTacticalCardTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -238,6 +243,7 @@ func _add_info_card(parent: Container, entry: Dictionary, node_name: String) -> 
 	card.name = node_name
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.tooltip_text = str(entry.get("tooltip", entry.get("meta", "")))
+	card.set_meta("card_codex_patterned_attribute", true)
 	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 8))
 	parent.add_child(card)
 	var margin := _margin(10, 8, 10, 8)
@@ -245,6 +251,11 @@ func _add_info_card(parent: Container, entry: Dictionary, node_name: String) -> 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 5)
 	margin.add_child(box)
+	var tick := ColorRect.new()
+	tick.name = "CardCodexAttributeColorTick"
+	tick.color = accent.lightened(0.12)
+	tick.custom_minimum_size = Vector2(0, 3)
+	box.add_child(tick)
 	var title := _label(str(entry.get("title", "")), 11, accent.lightened(0.18))
 	title.name = "%sTitle" % node_name
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -269,6 +280,7 @@ func _add_upgrade_card(entry: Dictionary) -> void:
 	panel.custom_minimum_size = Vector2(0, 116)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.tooltip_text = str(entry.get("tooltip", ""))
+	panel.set_meta("card_codex_upgrade_ladder_step", true)
 	panel.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, float(entry.get("fill_weight", 0.10))), 1, 8))
 	upgrade_ladder.add_child(panel)
 	var margin := _margin(9, 8, 9, 8)
@@ -336,6 +348,8 @@ func _card_style(accent: Color, fill: Color, border_width: int, radius: int) -> 
 	style.border_color = accent
 	style.set_border_width_all(border_width)
 	style.set_corner_radius_all(radius)
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
+	style.shadow_size = 4
 	return style
 
 

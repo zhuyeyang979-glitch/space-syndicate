@@ -28,6 +28,10 @@ const SIDE_RAIL_GAP := 8.0
 const SIDE_RAIL_MIN_WIDTH := 120.0
 const SIDE_RAIL_MAX_WIDTH := 216.0
 const SIDE_RAIL_MAX_HEIGHT := 310.0
+const PLANET_TABLE_SAFE_CORE_RATIO := 0.64
+const SIDE_RAIL_LEFT_Y_RATIO := 0.10
+const SIDE_RAIL_RIGHT_Y_RATIO := 0.46
+const SIDE_RAIL_MIN_STAGGER_PIXELS := 34.0
 
 var left_rail_signature: String = ""
 var right_rail_signature: String = ""
@@ -148,10 +152,23 @@ func _layout_space_rail(rail: PanelContainer, left_side: bool, map_rect: Rect2, 
 	var rail_min_height := minf(154.0, rail_max_height)
 	var rail_height := clampf(64.0 + float(entry_count) * 44.0, rail_min_height, rail_max_height)
 	var x := map_rect.position.x - SIDE_RAIL_GAP - rail_width if left_side else map_rect.end.x + SIDE_RAIL_GAP
-	var y := map_rect.position.y + maxf(SIDE_RAIL_GAP, (map_rect.size.y - rail_height) * 0.24)
+	var lane_ratio := SIDE_RAIL_LEFT_Y_RATIO if left_side else SIDE_RAIL_RIGHT_Y_RATIO
+	var y := map_rect.position.y + clampf(
+		map_rect.size.y * lane_ratio,
+		SIDE_RAIL_GAP,
+		maxf(SIDE_RAIL_GAP, map_rect.size.y - rail_height - SIDE_RAIL_GAP)
+	)
+	if not left_side:
+		var left_bottom := map_rect.position.y + map_rect.size.y * SIDE_RAIL_LEFT_Y_RATIO + SIDE_RAIL_MIN_STAGGER_PIXELS
+		y = maxf(y, left_bottom)
 	rail.position = Vector2(x, y)
 	rail.size = Vector2(rail_width, rail_height)
 	rail.custom_minimum_size = Vector2(SIDE_RAIL_MIN_WIDTH, 0)
+	rail.set_meta("planet_side_lane_skeleton", {
+		"side": "left" if left_side else "right",
+		"safe_core_ratio": PLANET_TABLE_SAFE_CORE_RATIO,
+		"stagger_pixels": SIDE_RAIL_MIN_STAGGER_PIXELS,
+	})
 
 
 func _visible_rail_entry_count(left_side: bool) -> int:

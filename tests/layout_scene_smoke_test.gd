@@ -3766,7 +3766,9 @@ func _check_card_face_presentation_specs() -> void:
 	})
 	await process_frame
 	var mini_effect := mini.find_child("EffectLabel", true, false) as Label
-	_expect(str(mini.get_meta("card_presentation_spec", "")) == "MiniCard" and mini_effect != null and mini_effect.max_lines_visible == 1 and mini_effect.text.length() < 32, "MiniCard presentation keeps one-line scan text instead of long rules")
+	var keyword_rail := mini.find_child("KeywordChipRail", true, false)
+	var art_view := mini.find_child("ArtView", true, false)
+	_expect(str(mini.get_meta("card_presentation_spec", "")) == "MiniCard" and mini_effect != null and mini_effect.max_lines_visible <= 3 and mini_effect.autowrap_mode != TextServer.AUTOWRAP_OFF and mini_effect.text.length() < 56 and keyword_rail != null and keyword_rail.get_child_count() >= 2 and art_view != null and bool(art_view.get_meta("card_face_visual_anchor", false)), "MiniCard presentation keeps a visual art anchor, 2-3 line scan effect, and keyword chips instead of long rules")
 	root.remove_child(mini)
 	mini.queue_free()
 

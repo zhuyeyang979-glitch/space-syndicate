@@ -29,7 +29,9 @@ var _interaction_state: Dictionary = {
 @onready var cost_label: Label = %CostLabel
 @onready var name_label: Label = %NameLabel
 @onready var art_panel: PanelContainer = %ArtPanel
+@onready var art_view: Control = get_node_or_null("%ArtView") as Control
 @onready var art_label: Label = %ArtLabel
+@onready var keyword_chip_rail: HFlowContainer = %KeywordChipRail
 @onready var effect_label: Label = %EffectLabel
 @onready var type_label: Label = %TypeLabel
 @onready var stat_label: Label = %StatLabel
@@ -96,6 +98,7 @@ func _apply_data() -> void:
 	var display_type := _player_facing_type_label(card_type)
 	var hand_mini := _is_mini_hand_card()
 	var inspector_full := _is_inspector_full_card()
+	var codex_full := _is_codex_full_card()
 	cost_label.text = cost_text
 	name_label.text = _short_card_text(card_name, 12) if hand_mini else card_name
 	effect_label.text = _mini_effect_line() if hand_mini else (_inspector_full_effect_text() if inspector_full else effect_text)
@@ -103,6 +106,10 @@ func _apply_data() -> void:
 	stat_label.text = _mini_rank_text() if hand_mini else stats_text
 	tooltip_text = "%s\n%s\n%s" % [card_name, display_type, effect_text]
 	art_label.text = _mini_status_text() if hand_mini else (_inspector_status_text() if inspector_full else _art_hint_for_type(card_type))
+	_apply_card_art(display_type, hand_mini)
+	if art_view != null:
+		art_label.text = _short_card_text(_mini_status_text(), 10) if hand_mini else ""
+	_render_keyword_chips(hand_mini, inspector_full)
 	set_meta("card_presentation_spec", _presentation_spec())
 	set_meta("card_primary_action_label", _primary_action_label())
 	_apply_density_for_size()
@@ -149,31 +156,38 @@ func _apply_density_for_size() -> void:
 		return
 	var hand_mini := _is_mini_hand_card()
 	var inspector_full := _is_inspector_full_card()
-	var mini := hand_mini or (not inspector_full and (size.x <= 94.0 or size.y <= 118.0))
-	var compact := mini or size.x <= 122.0 or size.y <= 150.0
+	var codex_full := _is_codex_full_card()
+	var spacious_full := inspector_full or codex_full
+	var mini := hand_mini or (not spacious_full and (size.x <= 94.0 or size.y <= 118.0))
+	var compact := mini or (not spacious_full and (size.x <= 122.0 or size.y <= 150.0))
 	var frame := get_node_or_null("CardFrame") as Control
 	if frame != null:
 		frame.clip_contents = true
 	var margin := get_node_or_null("CardFrame/CardMargin") as MarginContainer
 	if margin != null:
-		var margin_value := 3 if mini else (8 if inspector_full else (5 if compact else 8))
+		var margin_value := 3 if mini else (9 if codex_full else (8 if inspector_full else (5 if compact else 8)))
 		margin.add_theme_constant_override("margin_left", margin_value)
 		margin.add_theme_constant_override("margin_top", margin_value)
 		margin.add_theme_constant_override("margin_right", margin_value)
 		margin.add_theme_constant_override("margin_bottom", margin_value)
 	var rows := get_node_or_null("CardFrame/CardMargin/CardRows") as VBoxContainer
 	if rows != null:
-		rows.add_theme_constant_override("separation", 2 if mini else (6 if inspector_full else (3 if compact else 6)))
+		rows.add_theme_constant_override("separation", 2 if mini else (7 if codex_full else (6 if inspector_full else (3 if compact else 6))))
 	var cost_badge := get_node_or_null("CardFrame/CardMargin/CardRows/Header/CostBadge") as Control
 	if cost_badge != null:
 		cost_badge.custom_minimum_size = Vector2(20, 18) if mini else (Vector2(22, 20) if compact else Vector2(28, 26))
-	art_panel.custom_minimum_size = Vector2(0, 14 if hand_mini else (58 if inspector_full else (18 if mini else (30 if compact else 70))))
-	effect_label.custom_minimum_size = Vector2(0, 20 if hand_mini else (92 if inspector_full else (26 if mini else (34 if compact else 58))))
-	effect_label.max_lines_visible = 1 if hand_mini else (7 if inspector_full else (2 if mini else (3 if compact else 4)))
-	effect_label.autowrap_mode = TextServer.AUTOWRAP_OFF if hand_mini else TextServer.AUTOWRAP_WORD_SMART
+	art_panel.custom_minimum_size = Vector2(0, 30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if mini else (42 if compact else 70)))))
+	if keyword_chip_rail != null:
+		keyword_chip_rail.visible = true
+		keyword_chip_rail.custom_minimum_size = Vector2(0, 18 if hand_mini else (22 if compact else 24))
+		keyword_chip_rail.add_theme_constant_override("h_separation", 3 if hand_mini else 4)
+		keyword_chip_rail.add_theme_constant_override("v_separation", 1 if hand_mini else 2)
+	effect_label.custom_minimum_size = Vector2(0, 34 if hand_mini else (96 if codex_full else (92 if inspector_full else (34 if mini else (42 if compact else 58)))))
+	effect_label.max_lines_visible = 3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if mini else (3 if compact else 4))))
+	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	effect_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stat_label.custom_minimum_size = Vector2(22, 0) if mini else (Vector2(26, 0) if compact else Vector2(36, 0))
-	var font_size := 10 if hand_mini else (12 if inspector_full else (10 if mini else (11 if compact else 15)))
+	var font_size := 10 if hand_mini else (12 if spacious_full else (10 if mini else (11 if compact else 15)))
 	cost_label.add_theme_font_size_override("font_size", font_size)
 	name_label.add_theme_font_size_override("font_size", font_size + (1 if hand_mini else 0))
 	art_label.add_theme_font_size_override("font_size", 8 if hand_mini else font_size)
@@ -184,6 +198,45 @@ func _apply_density_for_size() -> void:
 
 func _art_hint_for_type(value: String) -> String:
 	return _player_facing_type_label(value)
+
+
+func _apply_card_art(display_type: String, hand_mini: bool) -> void:
+	if art_view == null or not art_view.has_method("set_card"):
+		return
+	var kind := str(_card_data.get("kind", _card_data.get("card_kind", card_type))).strip_edges()
+	if kind == "":
+		kind = card_type
+	var route := str(_card_data.get("route", _card_data.get("family", display_type))).strip_edges()
+	art_view.call("set_card", card_name, kind, route, accent_color, _rank_number(), hand_mini, _art_stats_text(display_type))
+	art_view.set_meta("card_face_visual_anchor", true)
+
+
+func _rank_number() -> int:
+	var rank := stats_text.strip_edges().to_upper()
+	match rank:
+		"I":
+			return 1
+		"II":
+			return 2
+		"III":
+			return 3
+		"IV":
+			return 4
+	var parsed := int(rank)
+	return maxi(1, parsed)
+
+
+func _art_stats_text(display_type: String) -> String:
+	var chips := _card_keyword_entries()
+	var parts: Array[String] = [display_type]
+	for entry_variant in chips:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {}
+		var text := str(entry.get("text", "")).strip_edges()
+		if text != "":
+			parts.append(text)
+		if parts.size() >= 4:
+			break
+	return "｜".join(parts)
 
 
 func _player_facing_type_label(value: String) -> String:
@@ -278,11 +331,129 @@ func _presentation_spec() -> String:
 func _mini_effect_line() -> String:
 	var explicit := str(_card_data.get("summary", _card_data.get("short_effect", ""))).strip_edges()
 	if explicit != "":
-		return _short_card_text(explicit, 24)
+		return _short_card_text(explicit, 48)
 	var effect := effect_text.replace("\n", " ").strip_edges()
 	if effect == "":
 		return "点选查看详情"
-	return _short_card_text(effect, 24)
+	return _short_card_text(effect, 48)
+
+
+func _render_keyword_chips(hand_mini: bool, inspector_full: bool) -> void:
+	if keyword_chip_rail == null:
+		return
+	_clear_children(keyword_chip_rail)
+	var entries := _card_keyword_entries()
+	var limit := 4 if hand_mini else (8 if inspector_full else 6)
+	for index in range(mini(limit, entries.size())):
+		var entry := entries[index] as Dictionary
+		_add_keyword_chip(entry, hand_mini)
+	set_meta("card_keyword_chip_count", mini(limit, entries.size()))
+
+
+func _card_keyword_entries() -> Array:
+	var entries: Array = []
+	var provided: Variant = _card_data.get("keywords", _card_data.get("keyword_chips", _card_data.get("chips", [])))
+	if provided is Array:
+		for entry_variant in provided:
+			var entry := _normalize_keyword_entry(entry_variant)
+			if not entry.is_empty():
+				entries.append(entry)
+	if entries.size() >= 4:
+		return entries
+	var target := str(_card_data.get("target", _card_data.get("target_type", ""))).strip_edges()
+	if target != "":
+		entries.append({"text": _keyword_target_text(target), "tooltip": "目标：%s" % target, "accent": Color("#bfdbfe")})
+	var flow_required := int(_card_data.get("required_city_flow", _card_data.get("flow_required", _card_data.get("required_flow", 0))))
+	var product := str(_card_data.get("required_product", _card_data.get("product", ""))).strip_edges()
+	if flow_required > 0:
+		entries.append({"text": "◇%s %d" % [_short_card_text(product if product != "" else "流动", 4), flow_required], "tooltip": "打出门槛：需要对应商品流动，商品不消耗。", "accent": Color("#86efac")})
+	else:
+		entries.append({"text": "免门槛", "tooltip": "打出时不需要商品流动。", "accent": Color("#cbd5e1")})
+	var duration := int(_card_data.get("seconds", _card_data.get("duration_seconds", _card_data.get("gdp_bet_turns", 0))))
+	if duration > 0:
+		entries.append({"text": "%ds" % duration, "tooltip": "按秒生效或观察，不按回合结算。", "accent": Color("#fde68a")})
+	var persistent := bool(_card_data.get("persistent", _card_data.get("reusable", false)))
+	entries.append({"text": "固定" if persistent else "一次", "tooltip": "固定技能可重复使用；一次性牌结算后离手。", "accent": Color("#fef3c7") if persistent else Color("#94a3b8")})
+	return entries
+
+
+func _normalize_keyword_entry(entry_variant: Variant) -> Dictionary:
+	if entry_variant is Dictionary:
+		var entry: Dictionary = entry_variant
+		var text := str(entry.get("text", entry.get("label", ""))).strip_edges()
+		if text == "":
+			return {}
+		return {
+			"text": text,
+			"tooltip": str(entry.get("tooltip", entry.get("tip", ""))),
+			"accent": _variant_color(entry.get("accent", entry.get("fg", Color("#cbd5e1"))), Color("#cbd5e1")),
+		}
+	var text := str(entry_variant).strip_edges()
+	if text == "":
+		return {}
+	return {"text": text, "tooltip": "", "accent": Color("#cbd5e1")}
+
+
+func _keyword_target_text(target: String) -> String:
+	if target.contains("怪兽"):
+		return "◆怪兽"
+	if target.contains("玩家"):
+		return "◎玩家"
+	if target.contains("区") or target.contains("城市"):
+		return "▣区域"
+	return _short_card_text(target, 5)
+
+
+func _add_keyword_chip(entry: Dictionary, hand_mini: bool) -> void:
+	var text := str(entry.get("text", "")).strip_edges()
+	if text == "":
+		return
+	var accent := _variant_color(entry.get("accent", Color("#cbd5e1")), Color("#cbd5e1"))
+	var chip := PanelContainer.new()
+	chip.name = "CardFaceKeywordChip"
+	chip.custom_minimum_size = Vector2(clampf(float(text.length()) * (8.0 if hand_mini else 9.0) + 14.0, 28.0, 82.0), 16 if hand_mini else 18)
+	chip.tooltip_text = str(entry.get("tooltip", ""))
+	chip.add_theme_stylebox_override("panel", _keyword_chip_style(accent))
+	keyword_chip_rail.add_child(chip)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 5)
+	margin.add_theme_constant_override("margin_top", 1)
+	margin.add_theme_constant_override("margin_right", 5)
+	margin.add_theme_constant_override("margin_bottom", 1)
+	chip.add_child(margin)
+	var label := Label.new()
+	label.name = "CardFaceKeywordChipLabel"
+	label.text = _short_card_text(text, 8 if hand_mini else 10)
+	label.tooltip_text = chip.tooltip_text
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.add_theme_font_size_override("font_size", 7 if hand_mini else 8)
+	label.add_theme_color_override("font_color", accent.lightened(0.18))
+	margin.add_child(label)
+
+
+func _keyword_chip_style(accent: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, 0.18)
+	style.border_color = accent.darkened(0.08)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(5)
+	return style
+
+
+func _variant_color(value: Variant, fallback: Color) -> Color:
+	if value is Color:
+		return value as Color
+	if value is String and str(value).begins_with("#"):
+		return Color(str(value))
+	return fallback
+
+
+func _clear_children(node: Node) -> void:
+	for child in node.get_children():
+		node.remove_child(child)
+		child.queue_free()
 
 
 func _mini_status_text() -> String:

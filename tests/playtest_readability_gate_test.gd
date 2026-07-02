@@ -76,7 +76,8 @@ func _check_player_facing_source_guards() -> void:
 	_expect(not main_source.contains("当前位置：主菜单"), "menu breadcrumb prose is not shown as player-facing navigation copy")
 	_expect(not main_source.contains("所有牌都会公开展示，出牌者匿名"), "rules menu no longer repeats long prose in the page body")
 	_expect(main_source.contains("第一局只做四件事：首召、建城、买牌、出牌。"), "tutorial menu opens with one-line first-game guidance")
-	_expect(game_screen_source.contains("0.635, 0.145, 0.790, 0.285"), "default scenario coach uses the planet side lane instead of the table center")
+	_expect(game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_LEFT") and game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_BOTTOM"), "default scenario coach uses named planet side-lane skeleton constants instead of loose center anchors")
+	_expect(FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("PLANET_TABLE_SAFE_CORE_RATIO") and FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("SIDE_RAIL_MIN_STAGGER_PIXELS"), "planet side rails use explicit safe-core and stagger metrics")
 	_expect(not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board does not over-explain anonymity in the always-visible table text")
 	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")
 

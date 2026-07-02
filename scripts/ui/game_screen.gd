@@ -3,6 +3,11 @@ class_name SpaceSyndicateGameScreen
 
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
 const OVERLAY_LAYER_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/overlay_layer_snapshot.gd")
+const PLANET_RIGHT_SIDE_LANE_LEFT := 0.635
+const PLANET_RIGHT_SIDE_LANE_TOP := 0.145
+const PLANET_RIGHT_SIDE_LANE_RIGHT := 0.790
+const PLANET_RIGHT_SIDE_LANE_BOTTOM := 0.285
+const PLANET_RIGHT_SIDE_LANE_FOCUS_BOTTOM := 0.270
 
 signal end_turn_requested
 signal action_requested(action_id: String)
@@ -119,9 +124,9 @@ func _sync_campaign_focus_layout(enabled: bool, ui_data: Dictionary) -> void:
 	if scenario_coach_host != null:
 		scenario_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if enabled:
-			_set_overlay_anchor_rect(scenario_coach_host, 0.635, 0.145, 0.790, 0.270)
+			_set_overlay_anchor_rect(scenario_coach_host, PLANET_RIGHT_SIDE_LANE_LEFT, PLANET_RIGHT_SIDE_LANE_TOP, PLANET_RIGHT_SIDE_LANE_RIGHT, PLANET_RIGHT_SIDE_LANE_FOCUS_BOTTOM)
 		else:
-			_set_overlay_anchor_rect(scenario_coach_host, 0.635, 0.145, 0.790, 0.285)
+			_set_overlay_anchor_rect(scenario_coach_host, PLANET_RIGHT_SIDE_LANE_LEFT, PLANET_RIGHT_SIDE_LANE_TOP, PLANET_RIGHT_SIDE_LANE_RIGHT, PLANET_RIGHT_SIDE_LANE_BOTTOM)
 	if first_run_coach_host != null:
 		first_run_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}

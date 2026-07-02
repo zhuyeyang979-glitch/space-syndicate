@@ -157,9 +157,9 @@ const CARD_TRACK_SEGMENT_WIDTH := 9
 const UI_LIVE_REFRESH_SECONDS := 0.18
 const UI_MAP_REFRESH_SECONDS := 0.16
 const UI_FULL_REFRESH_SECONDS := 1.80
-const HAND_CARD_HOVER_SCALE := 1.08
-const HAND_CARD_HOVER_LIFT_PIXELS := 13.0
-const HAND_CARD_HOVER_TWEEN_SECONDS := 0.10
+const HAND_CARD_HOVER_SCALE := 1.44
+const HAND_CARD_HOVER_LIFT_PIXELS := 54.0
+const HAND_CARD_HOVER_TWEEN_SECONDS := 0.14
 const HAND_CARD_HOVER_Z_INDEX := 80
 const AUTO_MONSTER_MOVE_RATIO := 0.72
 const AUTO_MONSTER_MIN_SPECIAL_DAMAGE := 1
@@ -6013,6 +6013,7 @@ func _rules_quick_reference_snapshot() -> Dictionary:
 			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "终局按总钱排名。"},
 			{"text": "主桌不背规则", "accent": Color("#93c5fd"), "tooltip": "主桌只保留能行动的短提示。"},
 			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "对手现金、手牌和身份线索不直接公开。"},
+			{"text": "卡面关键词", "accent": Color("#38bdf8"), "tooltip": "卡牌用符号筹码承载常见规则；本页附录解释这些关键词。"},
 		],
 		"kpis": [
 			{"title": "胜利目标", "body": "最后钱最多。", "meta": "都落到现金。", "accent": Color("#fef3c7")},
@@ -6027,6 +6028,7 @@ func _rules_quick_reference_snapshot() -> Dictionary:
 			{"title": "＋ 牌架", "body": "双击区域看牌。", "meta": "开架锁资格。", "accent": Color("#38bdf8")},
 			{"title": "◎ 匿名牌", "body": "亮牌不亮人。", "meta": "条件会留线索。", "accent": Color("#c084fc")},
 			{"title": "¥ 报价", "body": "多人出牌先竞价。", "meta": "金额公开。", "accent": Color("#facc15")},
+			{"title": "卡面关键词", "body": "¥价格｜◇流动｜◆怪兽｜◎玩家｜⇄合约。", "meta": "一次/固定看结算。", "accent": Color("#38bdf8")},
 			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇会停表下注。", "meta": "押中分奖池。", "accent": Color("#fb923c")},
 			{"title": "⇄ 合约", "body": "连接供给和需求。", "meta": "签拒都留线索。", "accent": Color("#2dd4bf")},
 			{"title": "☄ 天气/GDP", "body": "天气改现金流。", "meta": "看预报筹码。", "accent": Color("#93c5fd")},
@@ -26394,7 +26396,7 @@ func _add_card_face_chip_rail(parent: Container, skill_name: String, skill: Dict
 	parent.add_child(chip_row)
 	var district_index := -1 if is_hand_card else selected_district
 	var player_index := selected_player
-	var max_chips := 3 if compact and is_hand_card else (4 if compact else 6)
+	var max_chips := 4 if compact and is_hand_card else (5 if compact else 6)
 	var entries := _card_face_chip_entries(skill_name, skill, player_index, district_index)
 	for i in range(mini(max_chips, entries.size())):
 		var entry := entries[i] as Dictionary
@@ -26422,9 +26424,10 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	var accent := _card_theme_color(skill)
 	var panel := PanelContainer.new()
 	panel.name = "HandCardHoverLiftCard" if is_hand_card else "CardFacePanel"
-	var card_minimum_size := Vector2(170, 198) if compact else Vector2(218, 268)
+	var compact_hand_card := compact and is_hand_card
+	var card_minimum_size := Vector2(174, 208) if compact else Vector2(218, 268)
 	if compact and is_hand_card:
-		card_minimum_size = Vector2(148, 148)
+		card_minimum_size = Vector2(154, 168)
 	panel.custom_minimum_size = card_minimum_size
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -26434,6 +26437,8 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	style.border_color = accent
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(12)
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.34)
+	style.shadow_size = 4 if compact_hand_card else 7
 	panel.add_theme_stylebox_override("panel", style)
 	if is_hand_card:
 		panel.set_meta("hand_card_hover_lift", true)
@@ -26442,7 +26447,6 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	parent.add_child(panel)
 
 	var margin := MarginContainer.new()
-	var compact_hand_card := compact and is_hand_card
 	margin.add_theme_constant_override("margin_left", 5 if compact_hand_card else (7 if compact else 10))
 	margin.add_theme_constant_override("margin_top", 5 if compact_hand_card else (7 if compact else 10))
 	margin.add_theme_constant_override("margin_right", 5 if compact_hand_card else (7 if compact else 10))
@@ -26474,9 +26478,11 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 	box.add_child(route_tick)
 
 	var art_view = CardArtViewScript.new()
-	var art_height := 34 if compact_hand_card else (62 if compact else 112)
+	var art_height := 50 if compact_hand_card else (76 if compact else 112)
 	art_view.custom_minimum_size = Vector2(0, art_height)
 	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art_view.name = "CardFaceArtAnchor"
+	art_view.set_meta("card_face_visual_anchor", true)
 	art_view.set_card(
 		_card_display_name(skill_name),
 		String(skill.get("kind", "")),
@@ -26490,12 +26496,15 @@ func _add_card_face(parent: Container, skill_name: String, skill: Dictionary, sl
 
 	_add_card_face_chip_rail(box, skill_name, skill, compact, is_hand_card)
 
-	var quick_effect := _plain_label("效果:%s" % _card_face_quick_effect_text(skill_name, skill, compact_hand_card), 6 if compact_hand_card else (8 if compact else 9), Color("#dbeafe"))
+	var quick_effect := _plain_label("效果｜%s" % _card_face_quick_effect_text(skill_name, skill, compact_hand_card), 7 if compact_hand_card else (8 if compact else 9), Color("#dbeafe"))
 	quick_effect.name = "CardFaceQuickEffect"
-	quick_effect.autowrap_mode = TextServer.AUTOWRAP_OFF if compact_hand_card else TextServer.AUTOWRAP_WORD_SMART
+	quick_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	quick_effect.custom_minimum_size = Vector2(0, 32 if compact_hand_card else (38 if compact else 46))
+	quick_effect.max_lines_visible = 3 if compact_hand_card else (3 if compact else 4)
 	quick_effect.clip_text = true
 	quick_effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	quick_effect.tooltip_text = _skill_display_text(skill)
+	quick_effect.set_meta("card_face_multiline_effect", true)
 	box.add_child(quick_effect)
 
 	var hand_play_state := {}
