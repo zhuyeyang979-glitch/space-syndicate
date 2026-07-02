@@ -74,7 +74,7 @@ mouse_filter = 0
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-tooltip_text = "Right-side card-market drawer. It is a 30-second detail layer, not a central modal."
+tooltip_text = "右侧区域牌架：查看该区域可提供的卡牌，单击预览，双击购买。"
 theme_override_styles/panel = SubResource("StyleBoxFlat_drawer_panel")
 
 [node name="DistrictSupplyInnerMargin" type="MarginContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel"]
@@ -113,19 +113,19 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "District shelf"
+text = "区域牌架"
 text_overrun_behavior = 3
 
 [node name="DistrictSupplyCloseButton" type="Button" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack/DistrictSupplyShelfTitleRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(72, 28)
 layout_mode = 2
-text = "Close"
+text = "关闭"
 
 [node name="DistrictSupplyRuleStrip" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Market shelf | hover preview | double-click buy"
+text = "单击预览｜双击购买｜可先查看，购买资格按开窗瞬间锁定"
 autowrap_mode = 3
 
 [node name="DistrictSupplyShelfChipRail" type="HBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
@@ -167,7 +167,7 @@ theme_override_constants/separation = 5
 
 [node name="DistrictSupplyMarketColumnTitle" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin/DistrictSupplyMarketStack"]
 layout_mode = 2
-text = "Market cells | price / state / route"
+text = "区域供牌"
 text_overrun_behavior = 3
 
 [node name="DistrictSupplyMarketScroll" type="ScrollContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin/DistrictSupplyMarketStack"]
@@ -203,7 +203,7 @@ theme_override_constants/separation = 5
 
 [node name="DistrictSupplyPreviewColumnTitle" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin/DistrictSupplyPreviewStack"]
 layout_mode = 2
-text = "Card preview | effect / buy verdict"
+text = "卡牌预览"
 text_overrun_behavior = 3
 
 [node name="DistrictSupplyPreviewScroll" type="ScrollContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin/DistrictSupplyPreviewStack"]

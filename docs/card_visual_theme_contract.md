@@ -57,3 +57,9 @@
 4. 买入后：手牌架仍显示同一张卡的 mini-hand 卡面。
 
 玩家应能从颜色、glyph 和关键词判断“这是同一路线的同一张牌”，而不是在不同页面看到三种无关 UI。
+
+### 运行截图守门
+
+- `tests/ui_snapshot_capture.gd` 必须保留真实主桌区域牌架截图：`play_table_supply_drawer_<分辨率>.png`。
+- 该截图必须通过 `_open_district_supply_from_map()` 打开真实运行时牌架，而不是摆拍一个假抽屉。
+- 抽屉默认文案应为中文短标签：区域牌架、区域供牌、卡牌预览、关闭。

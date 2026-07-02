@@ -143,6 +143,16 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	else:
 		_capture_failures.append("runtime first-run coach was not visible for %s" % suffix)
 	await _save_viewport_snapshot("play_table_%s.png" % suffix)
+	if _open_runtime_supply_drawer_for_capture(main):
+		await _pump_frames(8)
+		if _runtime_supply_drawer_visible(main):
+			await _save_viewport_snapshot("play_table_supply_drawer_%s.png" % suffix)
+			_close_runtime_supply_drawer_for_capture(main)
+			await _pump_frames(3)
+		else:
+			_capture_failures.append("runtime district supply drawer did not become visible for %s" % suffix)
+	else:
+		_capture_failures.append("runtime district supply drawer could not be opened for %s" % suffix)
 	if capture_size == Vector2i(1600, 960):
 		if _stage_runtime_planet_globe(main):
 			await _pump_frames(8)
@@ -291,6 +301,56 @@ func _runtime_side_drawer_visible(root_node: Node) -> bool:
 	var search_root: Node = runtime_screen if runtime_screen != null else root_node
 	var drawer := search_root.find_child("SideDrawerPanel", true, false) as Control
 	return drawer != null and drawer.visible and drawer.is_visible_in_tree()
+
+
+func _open_runtime_supply_drawer_for_capture(root_node: Node) -> bool:
+	if root_node == null or not root_node.has_method("_open_district_supply_from_map"):
+		return false
+	var district_index := _capture_district_with_cards(root_node)
+	if district_index < 0:
+		return false
+	root_node.call("_open_district_supply_from_map", district_index)
+	return true
+
+
+func _close_runtime_supply_drawer_for_capture(root_node: Node) -> void:
+	if root_node != null and root_node.has_method("_close_district_supply_overlay"):
+		root_node.call("_close_district_supply_overlay")
+
+
+func _runtime_supply_drawer_visible(root_node: Node) -> bool:
+	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
+	var search_root: Node = runtime_screen if runtime_screen != null else root_node
+	var drawer := search_root.find_child("DistrictSupplySideDrawerOverlay", true, false) as Control
+	var market_grid := search_root.find_child("DistrictSupplyMarketGrid", true, false) as Control
+	var preview_panel := search_root.find_child("DistrictSupplyPreviewPanel", true, false) as Control
+	return drawer != null and drawer.visible and drawer.is_visible_in_tree() \
+		and market_grid != null and market_grid.is_visible_in_tree() \
+		and preview_panel != null and preview_panel.is_visible_in_tree()
+
+
+func _capture_district_with_cards(root_node: Node) -> int:
+	var districts_variant: Variant = root_node.get("districts")
+	if not (districts_variant is Array):
+		return int(root_node.get("selected_district")) if _node_has_property(root_node, "selected_district") else -1
+	var districts: Array = districts_variant as Array
+	var selected := int(root_node.get("selected_district")) if _node_has_property(root_node, "selected_district") else -1
+	if _district_has_capture_cards(districts, selected):
+		return selected
+	for i in range(districts.size()):
+		if _district_has_capture_cards(districts, i):
+			return i
+	return selected if selected >= 0 and selected < districts.size() else -1
+
+
+func _district_has_capture_cards(districts: Array, index: int) -> bool:
+	if index < 0 or index >= districts.size() or not (districts[index] is Dictionary):
+		return false
+	var district: Dictionary = districts[index] as Dictionary
+	if bool(district.get("destroyed", false)):
+		return false
+	var choices_variant: Variant = district.get("card_choices", [])
+	return choices_variant is Array and not (choices_variant as Array).is_empty()
 
 
 func _runtime_first_run_coach_visible(root_node: Node) -> bool:

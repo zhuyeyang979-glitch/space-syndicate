@@ -5991,3 +5991,24 @@
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
 - `tests/ui_snapshot_capture.gd` 有头通过；确认主桌、牌轨、手牌和抽屉快照仍保持中心星球桌面比例，没有因为牌架卡面增高破坏主画面。
+
+## 2026-07-03｜区域牌架主桌路径加入截图守门
+
+- 本轮继续围绕“真人能简单上手测试”的路径骨架，而不是新增规则：
+  - `tests/ui_snapshot_capture.gd` 新增真实运行时牌架截图路径：新局主桌 → 选择有卡区域 → 调用 `_open_district_supply_from_map()` → 保存 `play_table_supply_drawer_<分辨率>.png` → 关闭牌架继续后续截图。
+  - 新增 `_open_runtime_supply_drawer_for_capture()`、`_runtime_supply_drawer_visible()`、`_capture_district_with_cards()`，截图守门检查真实 `DistrictSupplySideDrawerOverlay`、`DistrictSupplyMarketGrid`、`DistrictSupplyPreviewPanel` 都在树上可见。
+  - `DistrictSupplyDrawer.tscn` 默认文案改为中文短标签：区域牌架、区域供牌、卡牌预览、关闭，避免编辑器默认态和截图默认态露出英文原型文本。
+  - `docs/card_visual_theme_contract.md` 增加“运行截图守门”：区域牌架必须有真实主桌截图，不允许以后只保留组件级存在证明。
+- 可玩性意义：
+  - 这保护了玩家最关键的一条早期路径：双击/打开区域 → 看该区提供什么牌 → 单击预览 → 决定是否购买。
+  - 后续每轮 UI 改动都会生成一个主桌牌架截图，能更早发现牌架遮挡星球、文字溢出、卡面退化或抽屉路径断裂。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 有头通过；新增 `play_table_supply_drawer_1600x960.png` 等多分辨率主桌牌架快照，并人工查看 1600x960 图确认牌架在右侧打开、星球仍保持中央视觉焦点。
