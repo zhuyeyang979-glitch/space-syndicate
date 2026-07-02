@@ -3590,10 +3590,10 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 				continue
 			var candidate := candidate_variant as Dictionary
 			if String(candidate.get("card_name", "")) == "消费刺激1":
-				demand_gap_score = int(candidate.get("score", 0))
+				demand_gap_score = maxi(demand_gap_score, int(candidate.get("score", 0)))
 				saw_route_gap_buy = int(candidate.get("route_gap_bonus", 0)) > int(candidate.get("route_gap_penalty", 0)) and String(candidate.get("route_gap_reason", "")).contains("补需求") and int(candidate.get("route_gap_field_match", 0)) >= 2
 			elif String(candidate.get("card_name", "")) == "生产扩张1":
-				supply_gap_score = int(candidate.get("score", 0))
+				supply_gap_score = maxi(supply_gap_score, int(candidate.get("score", 0)))
 		var contract_skill := main.call("_make_skill", "环晶电池专供1") as Dictionary
 		var contract_entry := {
 			"skill": contract_skill,

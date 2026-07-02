@@ -5650,3 +5650,21 @@
 
 - 继续优先修完整 smoke 的 AI product-route 规划断言，尤其是首路线 `gap_score=false` 导致的多步路线评分未达标。
 - 双向 hover 目前是瞬时描边/标记，下一步可继续加右侧 inspector 预览和轻量连线，让竞价、公开牌和私有推理更像同一张桌面。
+
+## 2026-07-02｜AI 商品路线 smoke 恢复全绿
+
+- 继续沿“人类可演示局必须有稳定对手”的方向收束红灯：
+  - 复查完整 smoke 里剩余的 AI 多步商品路线失败，定位到 `tests/smoke_test.gd` 的断言取值方式。
+  - AI 实际买牌候选里，“消费刺激1”已有最高分需求补口候选，且高于“生产扩张1”；旧断言按遍历顺序取同名牌最后一个候选，误把低分备用区域当成 AI 最终比较值。
+  - 断言改为比较同名候选的最高分，更贴近 `_ai_card_buy_candidates()` 的真实决策排序语义，也继续要求补需求候选具备 `route_gap_bonus`、`route_gap_reason` 和 field match。
+- 可玩性意义：
+  - AI 在 `create_demand` 商品路线阶段会优先识别“补需求”牌，而不是被同名备用供应区域或无关供给牌误判。
+  - 完整 smoke 重新覆盖新局、AI 进展、牌桌 UI、匿名牌轨、地图/城市、菜单/图鉴等主流程，当前没有剩余红灯。
+
+### 本轮验证
+
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
