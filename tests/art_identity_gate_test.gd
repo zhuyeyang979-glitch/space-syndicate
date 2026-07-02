@@ -51,6 +51,7 @@ func _verify_card_art_identity(main: Node) -> void:
 
 	var seen_keys := {}
 	var sprite_keys := {}
+	var visual_sources := {}
 	for source_variant in card_sources:
 		if not (source_variant is Dictionary):
 			_failures.append("card art source entry is not a Dictionary")
@@ -69,16 +70,19 @@ func _verify_card_art_identity(main: Node) -> void:
 		)
 		var profile := card_view.call("card_visual_profile_snapshot") as Dictionary
 		var profile_key := String(card_view.call("card_visual_profile_key"))
-		_expect(String(profile.get("theme", "")) == "moth-kaijuice-mit-sprite-illustrations-v1", "card %s uses the imported Moth Kaijuice sprite illustration theme" % card_name)
+		_expect(String(profile.get("theme", "")) == "multi-source-open-card-illustrations-v2", "card %s uses the multi-source open card illustration theme" % card_name)
+		_expect(String(profile.get("visual_source_id", "")) != "", "card %s declares a concrete visual source id" % card_name)
 		_expect(String(profile.get("sprite_key", "")) != "" and String(profile.get("sprite_cell", "")) != "", "card %s has a concrete sprite key and region/cell" % card_name)
 		_expect(profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_variant") and profile.has("composition_variant") and profile.has("motif_family"), "card %s has multi-axis illustration fields beyond text/name" % card_name)
 		_expect(not seen_keys.has(profile_key), "card %s has a unique visual profile key; duplicate=%s" % [card_name, profile_key])
 		seen_keys[profile_key] = card_name
 		sprite_keys[String(profile.get("sprite_key", ""))] = true
+		visual_sources[String(profile.get("visual_source_id", ""))] = true
 	card_view.queue_free()
 
 	_expect(seen_keys.size() == card_sources.size(), "every audited card has one unique card illustration profile")
-	_expect(sprite_keys.size() >= 6, "card illustrations use at least six sprite families across the catalog")
+	_expect(sprite_keys.size() >= 10, "card illustrations use at least ten sprite families across the catalog")
+	_expect(visual_sources.size() >= 10, "card illustrations use at least ten visual source families across the catalog")
 
 
 func _verify_monster_art_identity(main: Node) -> void:

@@ -58,9 +58,9 @@ Imported for the current prototype:
 
 Current player-facing use:
 
-- `scripts/card_art_view.gd` theme `moth-kaijuice-mit-sprite-illustrations-v1` uses these sprites as the central card illustration layer.
+- `scripts/card_art_view.gd` theme `multi-source-open-card-illustrations-v2` uses these sprites as one of several central card illustration source families.
 - `scripts/monster_art_view.gd` theme `multi-source-open-monster-sprites-v2` may use the Moth Kaijuice kaiju body art for exactly one current monster family. The art identity gate rejects broad reuse of the MOS/Moth kaiju body across the roster.
-- The sprites are combined with card-specific sprite cells, composition variants, color variants, effects, and procedural motifs so the art gate can require one visual identity per card.
+- The sprites are combined with card-specific `visual_source_id`, sprite cells, composition variants, color variants, effects, and procedural motifs so the art gate can require one visual identity per card.
 
 Implementation note:
 
@@ -85,6 +85,7 @@ Imported for the current prototype:
 Current player-facing use:
 
 - `scripts/monster_art_view.gd` uses these sprites as distinct current monster body-art families, with one body family per assigned monster.
+- `scripts/card_art_view.gd` uses selected Monster Battler sprites as route-specific temporary card illustrations, especially monster-pressure and creature-linked card faces.
 - These CC0 sprites are temporary prototype monster anchors; later passes should replace them with owned or more coherent sci-fi kaiju art while preserving the one-monster-one-body-family gate.
 
 ## Kenney CC0 sprite reference pack
@@ -104,6 +105,7 @@ Imported for the current prototype:
 Current player-facing use:
 
 - `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for ocean, alien, ooze/support, and orbital/flying silhouettes.
+- `scripts/card_art_view.gd` uses selected Kenney sprites as route-specific temporary card illustrations for ocean, alien, and orbital/air cards.
 - The Kenney assets are CC0 placeholders; keep source attribution in this document for traceability even though attribution is not required by the license.
 
 ## Terraforming Mars open-source reference

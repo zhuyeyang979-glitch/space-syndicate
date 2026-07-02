@@ -70,7 +70,7 @@ func _capture_card_monster_sheet(card_sources: Array, monster_sources: Array) ->
 		)
 		board.add_child(card)
 		_add_label(board, _short(String(source.get("name", "")), 10), card.position + Vector2(0, 170), Vector2(160, 20), 12, Color("#e2e8f0"))
-		_add_label(board, _short(String(source.get("_profile_key", "")), 24), card.position + Vector2(0, 188), Vector2(170, 28), 8, Color("#94a3b8"))
+		_add_label(board, _short(String(source.get("_visual_source_id", "")), 22), card.position + Vector2(0, 188), Vector2(170, 28), 8, Color("#94a3b8"))
 
 	_add_section_label(board, "怪兽造型｜每只独立 body source / silhouette / effect layer", Vector2(34, 590))
 	var monster_script := load(MONSTER_ART_SCRIPT_PATH)
@@ -144,31 +144,57 @@ func _selected_card_sources(main: Node, limit: int) -> Array:
 	var script := load(CARD_ART_SCRIPT_PATH)
 	var probe := script.new() as Control
 	get_root().add_child(probe)
-	var by_sprite := {}
-	var selected := []
+	var deferred: Array = []
+	var by_visual_source := {}
 	for source_variant in sources:
 		var source: Dictionary = source_variant
-		probe.call(
-			"set_card",
-			String(source.get("name", "")),
-			String(source.get("kind", "")),
-			String(source.get("tags", "")),
-			source.get("accent", Color("#94a3b8")) as Color,
-			int(source.get("rank", 1)),
-			false,
-			String(source.get("stats", ""))
-		)
-		var profile := probe.call("card_visual_profile_snapshot") as Dictionary
-		var sprite_key := String(profile.get("sprite_key", ""))
+		var decorated := _decorated_card_source(probe, source)
+		var visual_source_id := String(decorated.get("_visual_source_id", ""))
+		if visual_source_id != "" and not by_visual_source.has(visual_source_id) and deferred.size() + by_visual_source.size() < sources.size():
+			by_visual_source[visual_source_id] = true
+		deferred.append(decorated)
+	var selected: Array = []
+	var selected_sources := {}
+	for source_variant in deferred:
+		var source: Dictionary = source_variant
+		var visual_source_id := String(source.get("_visual_source_id", ""))
+		if visual_source_id != "" and not selected_sources.has(visual_source_id):
+			selected_sources[visual_source_id] = true
+			selected.append(source.duplicate(true))
+		if selected.size() >= limit:
+			probe.queue_free()
+			return selected
+	var by_sprite := {}
+	for source_variant in deferred:
+		var source: Dictionary = source_variant
+		var sprite_key := String(source.get("_sprite_key", ""))
 		var count := int(by_sprite.get(sprite_key, 0))
-		if count < 3 and selected.size() < limit:
-			source["_profile_key"] = String(probe.call("card_visual_profile_key"))
+		if count < 2 and selected.size() < limit:
 			selected.append(source.duplicate(true))
 			by_sprite[sprite_key] = count + 1
 		if selected.size() >= limit:
 			break
 	probe.queue_free()
 	return selected
+
+
+func _decorated_card_source(probe: Control, source: Dictionary) -> Dictionary:
+	probe.call(
+		"set_card",
+		String(source.get("name", "")),
+		String(source.get("kind", "")),
+		String(source.get("tags", "")),
+		source.get("accent", Color("#94a3b8")) as Color,
+		int(source.get("rank", 1)),
+		false,
+		String(source.get("stats", ""))
+	)
+	var profile := probe.call("card_visual_profile_snapshot") as Dictionary
+	var decorated := source.duplicate(true)
+	decorated["_profile_key"] = String(probe.call("card_visual_profile_key"))
+	decorated["_visual_source_id"] = String(profile.get("visual_source_id", ""))
+	decorated["_sprite_key"] = String(profile.get("sprite_key", ""))
+	return decorated
 
 
 func _add_action_card(parent: Control, source: Dictionary, profile: Dictionary, pos: Vector2) -> void:

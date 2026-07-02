@@ -6288,3 +6288,26 @@
 - `tests/layout_scene_smoke_test.gd` 通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜卡牌插画层改为多来源路线骨架
+
+- 继续推进“真人能一眼区分卡牌”的目标，不新增玩法规则：
+  - `CardArtView` 的中央插画层从单一 Moth Kaijuice sprite theme 升级为 `multi-source-open-card-illustrations-v2`。
+  - 每张卡牌 profile 现在输出 `visual_source_id`，和 `sprite_key / sprite_cell / layout / palette / effect / composition / motif` 一起组成唯一美术身份。
+  - 怪兽牌会优先匹配对应怪兽家族的占位美术来源：孢雾海皇用鱼类海洋身体、砂铠用岩石怪、流星用 UFO、棱刃用 dino、绿洲用 slime、焰环用 MOS/Moth、蓝锋用 alienBlue、镜像用 salamander。
+  - 军队、城市、合约、金融、情报、直接互动等卡继续按路线分配建筑、士兵、机甲、坦克、护盾、光线等来源。
+  - 卡面中央 glyph 缩小为路线标记，不再压住插画主体。
+- `tests/art_identity_gate_test.gd` 加严卡牌门槛：
+  - 全卡池每张卡必须有 `visual_source_id`。
+  - 全卡池至少覆盖 10 个 sprite family 和 10 个 visual source family。
+- `tests/art_contact_sheet_capture.gd` 的卡牌 contact sheet 改为优先挑选不同 `visual_source_id` 的样本，方便人工检查是否真的多来源，而不是只看同一类牌。
+
+### 本轮验证
+
+- `tests/art_identity_gate_test.gd` 通过。
+- `tests/art_contact_sheet_capture.gd` 有头通过，更新 `reports/art/art_card_monster_contact_sheet_1600x960.png` 和 `reports/art/art_monster_action_profiles_1600x960.png`。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 单独通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。

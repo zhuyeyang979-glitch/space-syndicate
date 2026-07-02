@@ -20,6 +20,7 @@ Every player-facing card must have a unique visual identity. It is not enough to
 
 Each card illustration profile must include:
 
+- `visual_source_id`: the exact illustration source family used by this card face.
 - `sprite_key`: which imported/procedural illustration family is used.
 - `sprite_cell`: which sprite-sheet cell or texture region is used.
 - `layout_variant`: where the visual weight sits inside the card art area.
@@ -33,7 +34,8 @@ Acceptance:
 - The full card catalog must be audited, not only the cards that appear in one run.
 - Every audited card must have one unique visual profile key.
 - The key may be generated from the card name as a seed, but the key itself must be composed from visual dimensions, not the card name string.
-- At least six sprite/illustration families must be used across the current catalog.
+- Every card illustration profile must declare `visual_source_id`.
+- At least ten sprite/illustration families and ten visual source families must be used across the current catalog.
 - Card art must be visible in hand, region supply, card codex thumbnail, and card detail contexts because these all share `CardArtView`.
 
 ## Monster art hard standard
@@ -91,8 +93,8 @@ Current imported sources:
 
 - Night Patrol UI skin: `assets/third_party/night_patrol/`, CC BY-NC 4.0, temporary non-commercial prototype use.
 - Moth Kaijuice city/kaiju sprites: `assets/third_party/moth_kaijuice/`, MIT, temporary prototype illustration source. MOS/Moth kaiju body art is limited to one monster family in the current roster.
-- Monster Battler monster sprites: `assets/third_party/monster_battler/`, CC0, temporary monster body-art source.
-- Kenney CC0 sprites: `assets/third_party/kenney_cc0/`, CC0, temporary monster body-art source.
+- Monster Battler monster sprites: `assets/third_party/monster_battler/`, CC0, temporary monster body-art and card-illustration source.
+- Kenney CC0 sprites: `assets/third_party/kenney_cc0/`, CC0, temporary monster body-art and card-illustration source.
 
 Before any new copied asset becomes player-facing:
 
@@ -114,9 +116,10 @@ This test is allowed to read dev-only art audit helpers. It must not expose priv
 The gate fails if:
 
 - a card lacks a concrete sprite key/cell;
+- a card lacks a concrete `visual_source_id`;
 - a card lacks multi-axis visual fields;
 - two cards share the same visual profile key;
-- fewer than six card sprite families are used;
+- fewer than ten card sprite or visual source families are used;
 - a monster lacks a concrete sprite key/cell;
 - a monster lacks a concrete `visual_source_id`;
 - a monster lacks multi-axis visual fields;

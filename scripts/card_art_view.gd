@@ -7,7 +7,7 @@ const NIGHT_PATROL_SIGIL_PATH := "res://assets/third_party/night_patrol/ui/card-
 const NIGHT_PATROL_PANEL_PATH := "res://assets/third_party/night_patrol/ui/panel-talisman.png"
 const NIGHT_PATROL_BUTTON_RED_PATH := "res://assets/third_party/night_patrol/ui/button-red.png"
 const NIGHT_PATROL_BUTTON_BLUE_PATH := "res://assets/third_party/night_patrol/ui/button-blue.png"
-const MOTH_KAIJUICE_SPRITE_THEME := "moth-kaijuice-mit-sprite-illustrations-v1"
+const MOTH_KAIJUICE_SPRITE_THEME := "multi-source-open-card-illustrations-v2"
 const MOTH_KAIJUICE_KAIJU_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png"
 const MOTH_KAIJUICE_ATFIELD_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_atfield.png"
 const MOTH_KAIJUICE_LASER_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc_laser.png"
@@ -17,6 +17,15 @@ const MOTH_KAIJUICE_SOLDIER_PATH := "res://assets/third_party/moth_kaijuice/city
 const MOTH_KAIJUICE_BUILDING_M_PATH := "res://assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_m.png"
 const MOTH_KAIJUICE_BUILDING_S_PATH := "res://assets/third_party/moth_kaijuice/city/buildings/mothkaiju_bldg_s.png"
 const MOTH_KAIJUICE_CELL_SIZE := Vector2(93.0, 93.0)
+const MONSTER_BATTLER_DINO_PATH := "res://assets/third_party/monster_battler/monsters/dino.png"
+const MONSTER_BATTLER_ROCK_PATH := "res://assets/third_party/monster_battler/monsters/rock.png"
+const MONSTER_BATTLER_RODENT_PATH := "res://assets/third_party/monster_battler/monsters/rodent.png"
+const MONSTER_BATTLER_SALAMANDER_PATH := "res://assets/third_party/monster_battler/monsters/salamander.png"
+const MONSTER_BATTLER_TURTLE_PATH := "res://assets/third_party/monster_battler/monsters/turtle.png"
+const KENNEY_FISH_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png"
+const KENNEY_SLIME_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png"
+const KENNEY_ALIEN_BLUE_PATH := "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
+const KENNEY_ENEMY_UFO_PATH := "res://assets/third_party/kenney_cc0/space/enemyUFO.png"
 const NIGHT_PATROL_FRAME_PATHS := {
 	"monster_card": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
 	"military_force": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
@@ -67,6 +76,15 @@ func _ready() -> void:
 		"soldier": _load_optional_texture(MOTH_KAIJUICE_SOLDIER_PATH),
 		"building_m": _load_optional_texture(MOTH_KAIJUICE_BUILDING_M_PATH),
 		"building_s": _load_optional_texture(MOTH_KAIJUICE_BUILDING_S_PATH),
+		"monster_battler_dino": _load_optional_texture(MONSTER_BATTLER_DINO_PATH),
+		"monster_battler_rock": _load_optional_texture(MONSTER_BATTLER_ROCK_PATH),
+		"monster_battler_rodent": _load_optional_texture(MONSTER_BATTLER_RODENT_PATH),
+		"monster_battler_salamander": _load_optional_texture(MONSTER_BATTLER_SALAMANDER_PATH),
+		"monster_battler_turtle": _load_optional_texture(MONSTER_BATTLER_TURTLE_PATH),
+		"kenney_fish": _load_optional_texture(KENNEY_FISH_PATH),
+		"kenney_slime": _load_optional_texture(KENNEY_SLIME_PATH),
+		"kenney_alien_blue": _load_optional_texture(KENNEY_ALIEN_BLUE_PATH),
+		"kenney_enemy_ufo": _load_optional_texture(KENNEY_ENEMY_UFO_PATH),
 	}
 
 
@@ -270,6 +288,7 @@ func card_visual_profile_snapshot() -> Dictionary:
 	var sprite_key := _moth_kaijuice_card_sprite_key()
 	return {
 		"theme": MOTH_KAIJUICE_SPRITE_THEME,
+		"visual_source_id": _card_visual_source_id(sprite_key),
 		"sprite_key": sprite_key,
 		"sprite_cell": _moth_kaijuice_card_sprite_cell(sprite_key),
 		"layout_variant": seed % 9,
@@ -282,7 +301,8 @@ func card_visual_profile_snapshot() -> Dictionary:
 
 func card_visual_profile_key() -> String:
 	var profile := card_visual_profile_snapshot()
-	return "%s|%s|%s|%s|%s|%s|%s" % [
+	return "%s|%s|%s|%s|%s|%s|%s|%s" % [
+		str(profile.get("visual_source_id", "")),
 		str(profile.get("sprite_key", "")),
 		str(profile.get("sprite_cell", "")),
 		str(profile.get("layout_variant", "")),
@@ -318,6 +338,8 @@ func _draw_moth_kaijuice_reference_illustration(rect: Rect2) -> void:
 	var tint := Color(1.0, 1.0, 1.0, 0.74 if compact else 0.86)
 	tint = tint.lerp(accent.lightened(0.18), 0.08 + float(seed % 3) * 0.035)
 	var src_rect := _moth_kaijuice_card_sprite_region(sprite_key)
+	sprite_rect.size = _fit_size_inside(sprite_rect.size, src_rect.size)
+	sprite_rect.position = art_rect.position + (art_rect.size - sprite_rect.size) * 0.5 + offset
 	draw_texture_rect_region(texture, sprite_rect, src_rect, tint)
 
 	if str(profile.get("effect_variant", "")) in ["2", "5", "8"] or _contains_any("%s｜%s" % [card_kind, card_tags], ["光线", "攻击", "破坏", "齐射"]):
@@ -351,10 +373,28 @@ func _draw_moth_kaijuice_field_accent(art_rect: Rect2, seed: int) -> void:
 
 func _moth_kaijuice_card_sprite_key() -> String:
 	var identity := "%s｜%s｜%s｜%s" % [card_name, card_kind, card_tags, card_stats]
-	if card_kind == "monster_card" or _contains_any(identity, ["怪兽", "星兽", "诱导", "夺取"]):
+	if card_kind == "monster_card":
+		if identity.contains("孢雾"):
+			return "kenney_fish"
+		if identity.contains("砂铠"):
+			return "monster_battler_rock"
+		if identity.contains("流星"):
+			return "kenney_enemy_ufo"
+		if identity.contains("棱刃"):
+			return "monster_battler_dino"
+		if identity.contains("绿洲"):
+			return "kenney_slime"
+		if identity.contains("焰环"):
+			return "kaiju"
+		if identity.contains("蓝锋"):
+			return "kenney_alien_blue"
+		if identity.contains("镜像"):
+			return "monster_battler_salamander"
 		return "kaiju"
+	if _contains_any(identity, ["怪兽", "星兽", "诱导", "夺取"]):
+		return "monster_battler_turtle" if _name_seed() % 2 == 0 else "monster_battler_rodent"
 	if _contains_any(identity, ["机甲", "战斗机", "轰炸", "防卫军"]):
-		return "mech"
+		return "kenney_enemy_ufo" if _contains_any(identity, ["战斗机", "轰炸", "空军"]) else "mech"
 	if _contains_any(identity, ["坦克", "导弹", "舰队", "战舰", "潜航"]):
 		return "tank"
 	if _contains_any(identity, ["士兵", "军队", "齐射", "拆解", "牵引", "冻结"]):
@@ -366,6 +406,46 @@ func _moth_kaijuice_card_sprite_key() -> String:
 	if _contains_any(identity, ["城市", "融资", "合约", "商品", "需求", "生产", "交通", "GDP", "期货", "仓", "港"]):
 		return "building_m" if _name_seed() % 2 == 0 else "building_s"
 	return "building_s" if _name_seed() % 3 == 0 else "building_m"
+
+
+func _card_visual_source_id(sprite_key: String) -> String:
+	match sprite_key:
+		"kaiju":
+			return "moth_kaijuice_mit_kaiju_sheet"
+		"atfield":
+			return "moth_kaijuice_mit_field_effect"
+		"laser":
+			return "moth_kaijuice_mit_laser_effect"
+		"mech":
+			return "moth_kaijuice_mit_mech_sheet"
+		"tank":
+			return "moth_kaijuice_mit_tank_sprite"
+		"soldier":
+			return "moth_kaijuice_mit_soldier_sprite"
+		"building_m":
+			return "moth_kaijuice_mit_medium_city"
+		"building_s":
+			return "moth_kaijuice_mit_small_city"
+		"monster_battler_dino":
+			return "monster_battler_cc0_dino"
+		"monster_battler_rock":
+			return "monster_battler_cc0_rock"
+		"monster_battler_rodent":
+			return "monster_battler_cc0_rodent"
+		"monster_battler_salamander":
+			return "monster_battler_cc0_salamander"
+		"monster_battler_turtle":
+			return "monster_battler_cc0_turtle"
+		"kenney_fish":
+			return "kenney_cc0_fish"
+		"kenney_slime":
+			return "kenney_cc0_slime"
+		"kenney_alien_blue":
+			return "kenney_cc0_alien_blue"
+		"kenney_enemy_ufo":
+			return "kenney_cc0_enemy_ufo"
+		_:
+			return "procedural_card_art_fallback"
 
 
 func _moth_kaijuice_card_sprite_cell(sprite_key: String) -> String:
@@ -389,6 +469,18 @@ func _moth_kaijuice_card_sprite_region(sprite_key: String) -> Rect2:
 		var cell_y := int(parts[1]) if parts.size() > 1 else 0
 		return Rect2(Vector2(float(cell_x) * MOTH_KAIJUICE_CELL_SIZE.x, float(cell_y) * MOTH_KAIJUICE_CELL_SIZE.y), MOTH_KAIJUICE_CELL_SIZE)
 	return Rect2(Vector2.ZERO, texture.get_size())
+
+
+func _fit_size_inside(bounds: Vector2, source_size: Vector2) -> Vector2:
+	if source_size.x <= 0.0 or source_size.y <= 0.0:
+		return bounds
+	var aspect := source_size.x / source_size.y
+	var fitted := bounds
+	if fitted.x / max(1.0, fitted.y) > aspect:
+		fitted.x = fitted.y * aspect
+	else:
+		fitted.y = fitted.x / aspect
+	return fitted
 
 
 func _card_motif_family_key() -> String:
@@ -806,13 +898,15 @@ func _draw_border(rect: Rect2) -> void:
 func _draw_glyph(rect: Rect2) -> void:
 	var font := get_theme_default_font()
 	var tiny_compact := compact and rect.size.y <= 50.0
-	var font_size := 24 if tiny_compact else (34 if compact else 46)
+	var font_size := 18 if tiny_compact else (27 if compact else 34)
 	var glyph := _glyph_for_kind()
 	var shadow := Color("#020617")
-	shadow.a = 0.82
-	var baseline_y := rect.size.y * (0.47 if tiny_compact else (0.55 if compact else 0.57))
+	shadow.a = 0.74
+	var baseline_y := rect.size.y * (0.48 if tiny_compact else (0.55 if compact else 0.56))
+	var ink := Color("#f8fafc")
+	ink.a = 0.86
 	draw_string(font, Vector2(2.0, baseline_y + 2.0), glyph, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, shadow)
-	draw_string(font, Vector2(0.0, baseline_y), glyph, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, Color("#f8fafc"))
+	draw_string(font, Vector2(0.0, baseline_y), glyph, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, font_size, ink)
 
 
 func _draw_caption(rect: Rect2) -> void:
