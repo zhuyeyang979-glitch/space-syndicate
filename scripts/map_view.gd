@@ -33,6 +33,21 @@ const FOCUSED_LABEL_ZOOM_THRESHOLD := 1.20
 const TABLE_TOKEN_LABEL_ZOOM_THRESHOLD := 1.36
 const CALLOUT_DENSE_ZOOM_THRESHOLD := 1.42
 const PROGRAMMATIC_CLICK_ANCHOR_RADIUS := 1
+const MOTH_KAIJUICE_KAIJU_PATH := "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png"
+const MOTH_KAIJUICE_CELL_SIZE := Vector2(93.0, 93.0)
+const MONSTER_BATTLER_DINO_PATH := "res://assets/third_party/monster_battler/monsters/dino.png"
+const MONSTER_BATTLER_ROCK_PATH := "res://assets/third_party/monster_battler/monsters/rock.png"
+const MONSTER_BATTLER_RODENT_PATH := "res://assets/third_party/monster_battler/monsters/rodent.png"
+const MONSTER_BATTLER_SALAMANDER_PATH := "res://assets/third_party/monster_battler/monsters/salamander.png"
+const MONSTER_BATTLER_TURTLE_PATH := "res://assets/third_party/monster_battler/monsters/turtle.png"
+const KENNEY_FISH_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png"
+const KENNEY_SLIME_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png"
+const KENNEY_ALIEN_BLUE_PATH := "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
+const KENNEY_ENEMY_UFO_PATH := "res://assets/third_party/kenney_cc0/space/enemyUFO.png"
+const SUPERPOWERS_DRAGON_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png"
+const SUPERPOWERS_CYCLOP_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png"
+const SUPERPOWERS_SNAKE_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
+const SUPERPOWERS_SLIM_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png"
 
 var districts: Array = []
 var map_width_m := 1400.0
@@ -65,13 +80,46 @@ var _animated_redraw_timer := 0.0
 var _interaction_detail_timer := 0.0
 var _interaction_redraw_timer := 0.0
 var _interaction_redraw_requested := false
+var monster_marker_textures := {}
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	custom_minimum_size = Vector2(720, 720)
+	_load_monster_marker_textures()
 	reset_to_planet_overview()
 	set_process(true)
+
+
+func _load_monster_marker_textures() -> void:
+	monster_marker_textures = {
+		"moth_kaijuice_kaiju": _load_optional_texture(MOTH_KAIJUICE_KAIJU_PATH),
+		"monster_battler_dino": _load_optional_texture(MONSTER_BATTLER_DINO_PATH),
+		"monster_battler_rock": _load_optional_texture(MONSTER_BATTLER_ROCK_PATH),
+		"monster_battler_rodent": _load_optional_texture(MONSTER_BATTLER_RODENT_PATH),
+		"monster_battler_salamander": _load_optional_texture(MONSTER_BATTLER_SALAMANDER_PATH),
+		"monster_battler_turtle": _load_optional_texture(MONSTER_BATTLER_TURTLE_PATH),
+		"kenney_fish": _load_optional_texture(KENNEY_FISH_PATH),
+		"kenney_slime": _load_optional_texture(KENNEY_SLIME_PATH),
+		"kenney_alien_blue": _load_optional_texture(KENNEY_ALIEN_BLUE_PATH),
+		"kenney_enemy_ufo": _load_optional_texture(KENNEY_ENEMY_UFO_PATH),
+		"superpowers_dragon": _load_optional_texture(SUPERPOWERS_DRAGON_PATH),
+		"superpowers_cyclop": _load_optional_texture(SUPERPOWERS_CYCLOP_PATH),
+		"superpowers_snake": _load_optional_texture(SUPERPOWERS_SNAKE_PATH),
+		"superpowers_slim": _load_optional_texture(SUPERPOWERS_SLIM_PATH),
+	}
+
+
+func _load_optional_texture(path: String) -> Texture2D:
+	if path == "":
+		return null
+	if ResourceLoader.exists(path):
+		var resource := load(path)
+		return resource as Texture2D
+	var image := Image.new()
+	if image.load(path) == OK:
+		return ImageTexture.create_from_image(image)
+	return null
 
 
 func betting_table_theme_report() -> Dictionary:
@@ -1138,11 +1186,12 @@ func _draw_auto_monster_markers() -> void:
 
 
 func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void:
-	var radius: float = clamp(13.0 * _scale * 2.0, 13.0, 21.0)
+	var radius: float = clamp(17.0 * _scale * 2.0, 16.0, 27.0)
 	var secondary: Color = marker.get("secondary", Color("#e2e8f0"))
 	var slot_color: Color = marker.get("slot_color", color)
 	var motif := String(marker.get("motif", "beast"))
 	var glyph := String(marker.get("glyph", String(marker.get("label", "?"))))
+	var sprite_key := String(marker.get("sprite_key", ""))
 	var base := color.darkened(0.08)
 	var glow := secondary.lightened(0.12)
 	glow.a = 0.24
@@ -1156,15 +1205,25 @@ func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void
 	draw_circle(pos, radius + 6.0, glow)
 	draw_circle(pos, radius + 2.5, Color("#020617"))
 	draw_circle(pos, radius, base)
-	_draw_monster_token_motif(pos, radius, motif, color, secondary)
+	var sprite_drawn := _draw_monster_token_sprite(pos, radius, marker, sprite_key, color)
+	if not sprite_drawn:
+		_draw_monster_token_motif(pos, radius, motif, color, secondary)
 	var border := color.lightened(0.25)
 	draw_arc(pos, radius + 1.0, 0.0, TAU, 32, border, 2.0, true)
 	draw_arc(pos, radius + 4.0, -PI * 0.35, PI * 0.88, 28, slot_color, 2.0, true)
 
 	var font := get_theme_default_font()
-	var glyph_size: int = int(clamp(radius * 1.22, 14.0, 22.0))
-	draw_string(font, pos + Vector2(-radius, radius * 0.35 + 1.5), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#020617"))
-	draw_string(font, pos + Vector2(-radius, radius * 0.35), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#f8fafc"))
+	if sprite_drawn:
+		var glyph_badge_pos := pos + Vector2(-radius * 0.64, radius * 0.64)
+		var glyph_badge_radius: float = maxf(5.8, radius * 0.28)
+		draw_circle(glyph_badge_pos, glyph_badge_radius + 1.6, Color("#020617"))
+		draw_circle(glyph_badge_pos, glyph_badge_radius, color.darkened(0.16))
+		var small_glyph_size: int = int(clamp(radius * 0.48, 8.0, 11.0))
+		draw_string(font, glyph_badge_pos + Vector2(-glyph_badge_radius, glyph_badge_radius * 0.38), glyph, HORIZONTAL_ALIGNMENT_CENTER, glyph_badge_radius * 2.0, small_glyph_size, Color("#f8fafc"))
+	else:
+		var glyph_size: int = int(clamp(radius * 1.22, 14.0, 22.0))
+		draw_string(font, pos + Vector2(-radius, radius * 0.35 + 1.5), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#020617"))
+		draw_string(font, pos + Vector2(-radius, radius * 0.35), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#f8fafc"))
 
 	var slot_label := String(marker.get("label", "?"))
 	var label_pos := pos + Vector2(radius * 0.72, -radius * 0.72)
@@ -1176,6 +1235,45 @@ func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void
 		var slash := Color("#f8fafc")
 		slash.a = 0.82
 		draw_line(pos + Vector2(-radius * 0.70, radius * 0.70), pos + Vector2(radius * 0.70, -radius * 0.70), slash, 3.0, true)
+
+
+func _draw_monster_token_sprite(pos: Vector2, radius: float, marker: Dictionary, sprite_key: String, color: Color) -> bool:
+	if sprite_key == "":
+		return false
+	var texture := monster_marker_textures.get(sprite_key, null) as Texture2D
+	if texture == null:
+		return false
+	var source_region := _monster_marker_sprite_region(texture, sprite_key, String(marker.get("sprite_cell", "")))
+	if source_region.size.x <= 0.0 or source_region.size.y <= 0.0:
+		return false
+	var sprite_bounds := Vector2(radius * 1.66, radius * 1.66)
+	var sprite_size := _fit_size_inside(sprite_bounds, source_region.size)
+	var sprite_rect := Rect2(pos - sprite_size * 0.5 + Vector2(0.0, -radius * 0.03), sprite_size)
+	var tint := Color(1.0, 1.0, 1.0, 0.90).lerp(color.lightened(0.20), 0.10)
+	draw_texture_rect_region(texture, sprite_rect, source_region, tint)
+	return true
+
+
+func _monster_marker_sprite_region(texture: Texture2D, sprite_key: String, sprite_cell: String) -> Rect2:
+	if sprite_key == "moth_kaijuice_kaiju":
+		var cell_text := sprite_cell if sprite_cell != "" else "0,0"
+		var parts := cell_text.split(",")
+		var cell_x := int(parts[0]) if parts.size() > 0 else 0
+		var cell_y := int(parts[1]) if parts.size() > 1 else 0
+		return Rect2(Vector2(float(cell_x) * MOTH_KAIJUICE_CELL_SIZE.x, float(cell_y) * MOTH_KAIJUICE_CELL_SIZE.y), MOTH_KAIJUICE_CELL_SIZE)
+	return Rect2(Vector2.ZERO, texture.get_size())
+
+
+func _fit_size_inside(bounds: Vector2, source_size: Vector2) -> Vector2:
+	if source_size.x <= 0.0 or source_size.y <= 0.0:
+		return bounds
+	var aspect := source_size.x / source_size.y
+	var fitted := bounds
+	if fitted.x / max(1.0, fitted.y) > aspect:
+		fitted.x = fitted.y * aspect
+	else:
+		fitted.y = fitted.x / aspect
+	return fitted
 
 
 func _draw_monster_token_motif(pos: Vector2, radius: float, motif: String, color: Color, secondary: Color) -> void:
@@ -1947,7 +2045,7 @@ func _build_visual_payload_signature(
 		"trail:%s" % _marker_array_signature(trails, ["from", "to", "color", "label", "style", "duration", "remaining"]),
 		"call:%s" % _marker_array_signature(callouts, ["position", "actor", "action", "detail", "color", "duration", "remaining"]),
 		"effect:%s" % _marker_array_signature(event_effects, ["position", "kind", "label", "color", "duration", "remaining", "radius"]),
-		"monster:%s" % _marker_array_signature(monster_markers, ["position", "label", "name", "glyph", "motif", "down"]),
+		"monster:%s" % _marker_array_signature(monster_markers, ["position", "label", "name", "glyph", "motif", "sprite_key", "sprite_cell", "visual_source_id", "upstream_source_id", "down"]),
 		"city:%s" % _marker_array_signature(new_city_markers, ["district", "position", "level", "active", "tag", "products", "competition", "rise"]),
 		"route:%s" % _marker_array_signature(new_trade_route_markers, ["product", "from", "to", "points", "disrupted", "flow_multiplier"]),
 	]

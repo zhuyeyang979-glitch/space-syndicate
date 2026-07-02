@@ -35,6 +35,10 @@ var motif := "beast"
 var subtitle := "星兽档案"
 var compact := false
 var moth_kaijuice_textures := {}
+var source_sprite_key := ""
+var source_sprite_cell := ""
+var source_visual_id := ""
+var source_upstream_id := ""
 
 
 func _ready() -> void:
@@ -73,6 +77,10 @@ func set_monster(name: String, style: String, hp_value: int, armor_value: int, m
 	glyph = String(profile.get("glyph", "怪"))
 	motif = String(profile.get("motif", "beast"))
 	subtitle = String(profile.get("subtitle", "星兽档案"))
+	source_sprite_key = String(profile.get("sprite_key", ""))
+	source_sprite_cell = String(profile.get("sprite_cell", ""))
+	source_visual_id = String(profile.get("visual_source_id", ""))
+	source_upstream_id = String(profile.get("upstream_source_id", ""))
 	compact = is_compact
 	queue_redraw()
 
@@ -369,6 +377,8 @@ func _draw_moth_kaijuice_monster_impact(portrait_rect: Rect2, seed: int) -> void
 
 
 func _monster_reference_sprite_key() -> String:
+	if source_sprite_key != "":
+		return source_sprite_key
 	match motif:
 		"miasma":
 			return "superpowers_dragon"
@@ -391,6 +401,8 @@ func _monster_reference_sprite_key() -> String:
 
 
 func _monster_upstream_source_id(sprite_key: String) -> String:
+	if source_upstream_id != "":
+		return source_upstream_id
 	if sprite_key.begins_with("moth_kaijuice"):
 		return "moth_kaijuice_mit"
 	if sprite_key.begins_with("monster_battler"):
@@ -403,6 +415,8 @@ func _monster_upstream_source_id(sprite_key: String) -> String:
 
 
 func _monster_visual_source_id(sprite_key: String) -> String:
+	if source_visual_id != "":
+		return source_visual_id
 	match sprite_key:
 		"moth_kaijuice_kaiju":
 			return "moth_kaijuice_mit_kaiju_family"
@@ -437,6 +451,8 @@ func _monster_visual_source_id(sprite_key: String) -> String:
 
 
 func _monster_reference_sprite_cell(sprite_key: String) -> String:
+	if source_sprite_cell != "":
+		return source_sprite_cell
 	if sprite_key == "moth_kaijuice_kaiju":
 		var cell_index := _name_seed() % 32
 		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]

@@ -62,7 +62,7 @@ Acceptance:
 - Every current monster family must use a distinct body sprite key and a distinct `visual_source_id`; it is not acceptable to reuse one monster body with different action overlays.
 - Moth Kaijuice/MOS kaiju body art can be assigned to at most one current monster family. Other monsters must come from different open-source body-art families or a clearly different authored/procedural body.
 - The current monster roster must draw body art from at least four upstream/open-source packs, and no single upstream pack may provide more than half of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
-- Monster art must be visible in the bestiary/detail contexts and reusable by later map tokens/card faces.
+- Monster art must be visible in the bestiary/detail contexts, monster cards, and runtime map tokens. The map token may be compact, but it must consume the same `sprite_key`, `visual_source_id`, and `upstream_source_id` contract instead of falling back to only number/color/glyph.
 
 ## Monster action hard standard
 
@@ -151,8 +151,10 @@ It writes:
 
 - `reports/art/art_card_monster_contact_sheet_1600x960.png`
 - `reports/art/art_monster_action_profiles_1600x960.png`
+- `reports/art/art_monster_map_tokens_1600x960.png`
 
 Use these images for human review after each art pass. The first sheet checks whether cards and monsters are visually distinguishable at a glance. The second sheet checks whether each monster action has a distinct motion/effect/timing/meter profile before full animation work starts.
+The third sheet checks whether the real `MapView` renders source-specific monster body sprites at tabletop-token scale, so the in-game planet is not reduced to numbered colored dots.
 
 ## Human review checklist
 

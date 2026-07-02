@@ -6377,3 +6377,27 @@
 - `tests/layout_scene_smoke_test.gd` 单独通过；并行运行时曾触发同一个旧的 `PlayerMainActionDock` 时序失败，单独复跑通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-03｜怪兽视觉身份接入运行态地图 Token
+
+- 继续解决“图鉴变好了，但游戏中仍然只像编号点”的问题：
+  - `MONSTER_ART_PROFILES` 现在显式保存每只怪兽的 `upstream_source_id / visual_source_id / sprite_key / sprite_cell`，不再只把来源映射藏在 `MonsterArtView`。
+  - `MonsterArtView` 优先消费 profile 中的显式来源字段；如果旧 profile 没填，才使用 motif fallback。
+  - `_auto_monster_markers()` 把同一套来源字段传给运行态地图 marker。
+  - `MapView` 新增轻量怪兽 token sprite 渲染：地图稳定时显示对应身体 sprite；拖拽/缩放的 reduced-detail 过程中仍退回 glyph 以避免卡顿。
+  - 怪兽 token 半径从 13-21 调整为 16-27，让怪兽作为核心玩法在星球桌面上更有存在感，但仍保持小图标，不压住星球主体。
+- 新增 `tests/monster_map_token_capture.gd`：
+  - 使用真实 `MapView` 控件和当前怪兽 profile 生成地图 token 验收图。
+  - 输出 `reports/art/art_monster_map_tokens_1600x960.png`。
+  - 这张图只用于开发/验收，会显示 source id；玩家正式 UI 不展示这些开发字段。
+- `docs/art_production_contract.md` 写入第三张视觉验收图：卡面/怪兽图鉴之外，运行态地图 token 也必须消费同一套怪兽美术身份。
+
+### 本轮验证
+
+- `tests/monster_map_token_capture.gd` 有头通过，输出 `reports/art/art_monster_map_tokens_1600x960.png`。
+- `tests/visual_snapshot.gd` 通过，保护 `MapView` 已消费 `sprite_key / sprite_cell / visual_source_id / upstream_source_id`。
+- `tests/art_identity_gate_test.gd` 通过，保护怪兽视觉来源不能用同一套 MOS/Moth kaiju 反复糊弄。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。

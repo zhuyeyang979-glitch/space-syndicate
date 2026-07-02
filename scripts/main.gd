@@ -1380,6 +1380,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "瘴",
 		"motif": "miasma",
 		"subtitle": "瘴气古龙｜海雾巢",
+		"upstream_source_id": "superpowers_asset_packs_cc0",
+		"visual_source_id": "superpowers_cc0_dragon_family",
+		"sprite_key": "superpowers_dragon",
+		"sprite_cell": "full",
 	},
 	"砂铠陆行兽": {
 		"accent": Color("#d97706"),
@@ -1387,6 +1391,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "砂",
 		"motif": "mud",
 		"subtitle": "冲撞泥甲｜荒漠线",
+		"upstream_source_id": "superpowers_asset_packs_cc0",
+		"visual_source_id": "superpowers_cc0_cyclop_family",
+		"sprite_key": "superpowers_cyclop",
+		"sprite_cell": "full",
 	},
 	"流星哨兵": {
 		"accent": Color("#38bdf8"),
@@ -1394,6 +1402,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "杰",
 		"motif": "meteor_sentinel",
 		"subtitle": "高速机兵｜轨道坠星",
+		"upstream_source_id": "kenney_cc0",
+		"visual_source_id": "kenney_cc0_enemy_ufo_family",
+		"sprite_key": "kenney_enemy_ufo",
+		"sprite_cell": "full",
 	},
 	"棱刃重甲": {
 		"accent": Color("#60a5fa"),
@@ -1401,6 +1413,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "断",
 		"motif": "prism_armor",
 		"subtitle": "重装裂刃｜晶体壳",
+		"upstream_source_id": "monster_battler_cc0",
+		"visual_source_id": "monster_battler_cc0_dino_family",
+		"sprite_key": "monster_battler_dino",
+		"sprite_cell": "full",
 	},
 	"绿洲修复体": {
 		"accent": Color("#22c55e"),
@@ -1408,6 +1424,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "修",
 		"motif": "oasis_support",
 		"subtitle": "防守救援｜绿洲核",
+		"upstream_source_id": "kenney_cc0",
+		"visual_source_id": "kenney_cc0_slime_family",
+		"sprite_key": "kenney_slime",
+		"sprite_cell": "full",
 	},
 	"焰环幼星": {
 		"accent": Color("#fb7185"),
@@ -1415,6 +1435,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "炎",
 		"motif": "ember_ring",
 		"subtitle": "星焰幼体｜熔环",
+		"upstream_source_id": "moth_kaijuice_mit",
+		"visual_source_id": "moth_kaijuice_mit_kaiju_family",
+		"sprite_key": "moth_kaijuice_kaiju",
+		"sprite_cell": "0,0",
 	},
 	"蓝锋骑士": {
 		"accent": Color("#06b6d4"),
@@ -1422,6 +1446,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "刃",
 		"motif": "blue_lancer",
 		"subtitle": "蓝锋光刃｜复仇铠",
+		"upstream_source_id": "superpowers_asset_packs_cc0",
+		"visual_source_id": "superpowers_cc0_snake_family",
+		"sprite_key": "superpowers_snake",
+		"sprite_cell": "full",
 	},
 	"镜像猎兵": {
 		"accent": Color("#ef4444"),
@@ -1429,6 +1457,10 @@ const MONSTER_ART_PROFILES := {
 		"glyph": "杀",
 		"motif": "mirror_hunter",
 		"subtitle": "远程猎兵｜镜像眼",
+		"upstream_source_id": "superpowers_asset_packs_cc0",
+		"visual_source_id": "superpowers_cc0_slim_family",
+		"sprite_key": "superpowers_slim",
+		"sprite_cell": "full",
 	},
 }
 
@@ -47125,6 +47157,10 @@ func _auto_monster_markers() -> Array:
 			"secondary": profile.get("secondary", Color("#e2e8f0")),
 			"glyph": String(profile.get("glyph", "怪")),
 			"motif": String(profile.get("motif", "beast")),
+			"upstream_source_id": String(profile.get("upstream_source_id", "")),
+			"visual_source_id": String(profile.get("visual_source_id", "")),
+			"sprite_key": String(profile.get("sprite_key", "")),
+			"sprite_cell": String(profile.get("sprite_cell", "")),
 			"down": bool(actor.get("down", false)),
 		})
 	for i in range(military_units.size()):
