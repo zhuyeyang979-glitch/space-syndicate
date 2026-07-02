@@ -8513,9 +8513,9 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		and bool(main.get("card_resolution_auction_open")) \
 		and is_equal_approx(float(main.get("card_resolution_auction_timer")), 5.0)
 	result["auction_overlay_status"] = bool(result["five_second_window"]) \
-		and auction_status.contains("阶段：匿名竞价") \
-		and auction_status.contains("最高公开报价¥200") \
-		and auction_status.contains("可加价：是")
+		and auction_status.contains("阶段：竞价") \
+		and auction_status.contains("最高¥200") \
+		and auction_status.contains("可加价")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
 	result["bid_status_auction_visible"] = bool(result["five_second_window"]) \

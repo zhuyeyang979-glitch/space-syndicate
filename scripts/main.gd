@@ -18988,7 +18988,7 @@ func _runtime_player_board_bid_readiness_chips(player_index: int) -> Array:
 		elif next_queued_index >= 0:
 			raise_text = "下批"
 		return [
-			_runtime_bid_status_chip("竞价", "%ds" % int(ceil(maxf(0.0, card_resolution_auction_timer))), true, Color("#f59e0b"), "匿名报价沙漏开启；同批牌按公开报价排序。%s" % status_text),
+			_runtime_bid_status_chip("竞价", "%ds" % int(ceil(maxf(0.0, card_resolution_auction_timer))), true, Color("#f59e0b"), "公开报价沙漏开启；同批牌按报价排序。%s" % status_text),
 			_runtime_bid_status_chip("最高", "¥%d" % _highest_card_resolution_bid(), true, Color("#fde68a"), "当前本批最高公开报价；不显示出价者身份。"),
 			_runtime_bid_status_chip("我的", raise_text, raise_active, Color("#22c55e") if raise_active else Color("#94a3b8"), status_text),
 			_runtime_bid_status_chip("队列", "%d+%d" % [queue_count, next_count], queue_count + next_count > 0, Color("#c084fc"), "当前批%d张｜下批等待%d张；封盘后按报价与席位顺序结算。" % [queue_count, next_count]),
@@ -39052,7 +39052,7 @@ func _card_resolution_phase_text(entry: Dictionary = {}, seconds_left: float = -
 	var queued := card_resolution_queue.size()
 	if card_resolution_auction_open:
 		var auction_intake := "短窗内可加入" if card_resolution_simultaneous_timer > 0.0 else "进入下一批等待"
-		return "阶段：匿名竞价｜参拍%d｜最高公开报价¥%d｜可加价：是｜新牌：%s" % [
+		return "阶段：竞价｜参拍%d｜最高¥%d｜可加价｜新牌：%s" % [
 			queued,
 			_highest_card_resolution_bid(),
 			auction_intake,
@@ -43077,7 +43077,7 @@ func _show_card_batch_lobby_overlay() -> void:
 		_sort_card_resolution_queue()
 	var leading: Dictionary = card_resolution_queue[0]
 	if card_resolution_title_label != null:
-		card_resolution_title_label.text = "匿名卡牌批次竞价" if card_resolution_auction_open else "同时出牌判定"
+		card_resolution_title_label.text = "批次竞价" if card_resolution_auction_open else "同时出牌判定"
 	if card_resolution_status_label != null:
 		card_resolution_status_label.text = _card_resolution_phase_text()
 	_update_card_resolution_timer_bar(
@@ -43104,13 +43104,13 @@ func _show_card_batch_lobby_overlay() -> void:
 	if card_resolution_body_label != null:
 		var lobby_text := "同步判定中｜%s准备公开" % card_label
 		if card_resolution_auction_open:
-			lobby_text = "竞价中｜本批全牌可见｜匿名"
-			var roster_text := _card_resolution_batch_roster_text(118)
+			lobby_text = "竞价中｜本批全牌可见"
+			var roster_text := _card_resolution_batch_roster_text(76)
 			if roster_text != "":
 				lobby_text += "\n%s" % roster_text
 		var lobby_requirement := _card_resolution_play_requirement_text(leading)
 		if lobby_requirement != "":
-			lobby_text += "\n%s" % _short_card_text(lobby_requirement.replace("打出条件：", "条件："), 72)
+			lobby_text += "\n%s" % _short_card_text(lobby_requirement.replace("打出条件：", "条件："), 54)
 		card_resolution_body_label.text = lobby_text
 		card_resolution_body_label.tooltip_text = _card_resolution_overlay_detail_text(leading, max(0.0, card_resolution_auction_timer if card_resolution_auction_open else card_resolution_simultaneous_timer))
 
@@ -43176,15 +43176,15 @@ func _card_resolution_overlay_compact_body_text(entry: Dictionary, seconds_left:
 	var skill: Dictionary = entry.get("skill", {}) as Dictionary
 	var card_name := String(skill.get("name", "卡牌"))
 	if card_resolution_counter_window_active:
-		return "响应窗口｜可匿名相位否决\n效果：%s" % [
-			_short_card_text(_skill_display_text(skill).replace("\n", " / "), 54),
+		return "响应窗口｜可相位否决\n效果：%s" % [
+			_short_card_text(_skill_display_text(skill).replace("\n", " / "), 48),
 		]
-	var animation_line := _short_card_text(_card_resolution_animation_text(card_name, skill, entry, seconds_left).replace("\n", " / "), 54)
+	var animation_line := _short_card_text(_card_resolution_animation_text(card_name, skill, entry, seconds_left).replace("\n", " / "), 48)
 	if animation_line == "":
-		animation_line = "公开展示中｜出牌者匿名"
-	var effect_line := "效果：%s" % _short_card_text(_skill_display_text(skill).replace("\n", " / "), 54)
+		animation_line = "公开展示中"
+	var effect_line := "效果：%s" % _short_card_text(_skill_display_text(skill).replace("\n", " / "), 48)
 	if _card_can_open_counter_window(entry):
-		effect_line = "%s｜随后可响应" % _short_card_text(effect_line, 48)
+		effect_line = "%s｜可响应" % _short_card_text(effect_line, 44)
 	return "%s\n%s" % [animation_line, effect_line]
 
 
