@@ -121,6 +121,8 @@ func _check_briefing_runtime_reward_recap(campaign: Dictionary) -> void:
 	var completed: Variant = main.call("_complete_scenario_signal", "district_selected", "选择区域：运行路径验收。", "after_select", "planet")
 	await _wait_frames(4)
 	_expect(bool(completed), "real success condition completes the campaign chapter")
+	await create_timer(1.15).timeout
+	await _wait_frames(2)
 	_expect((main.get("campaign_completed_chapter_ids") as Array).has("00_tavern_entry"), "completed campaign chapter is recorded")
 	_expect(_has_named_node(main, "CampaignRewardPanel"), "success_conditions completion enters CampaignRewardPanel")
 	main.call("_open_campaign_recap_menu")

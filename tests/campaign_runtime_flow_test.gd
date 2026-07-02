@@ -81,6 +81,8 @@ func _check_first_chapter_reward_and_recap(main: Node, chapters: Array) -> void:
 	await process_frame
 	await process_frame
 	_expect(bool(completed), "real scenario signal completes the prologue objective")
+	await create_timer(1.15).timeout
+	await process_frame
 	_expect((main.get("campaign_completed_chapter_ids") as Array).has(chapter_id), "completed campaign chapter is recorded on runtime state")
 	var reward: Dictionary = main.get("campaign_last_reward") as Dictionary
 	var recap: Dictionary = main.get("campaign_last_recap") as Dictionary

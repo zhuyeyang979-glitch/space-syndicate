@@ -5809,6 +5809,43 @@
 - `tests/ui_text_smoke_test.gd` 通过。
 - `tests/layout_scene_smoke_test.gd` 通过。
 
+## 2026-07-03｜Codex B：Campaign Runtime Playable Slice v2
+
+- 把新手战役从“菜单/fixture 外壳”推进到前 5 关真实运行切片：
+  - `00_tavern_entry`、`01_first_table`、`02_market_hand`、`03_public_track`、`04_bid_practice` 都能从 `main.tscn` 进入真实 `RuntimeGameScreen` 并完成真实目标。
+  - 完成目标后先保留约 1 秒成功反馈/演出，再打开奖励面板，避免一瞬间跳页。
+  - 每关开始清空上一关 reward/recap 残影，防止战役连续游玩时 UI 误读。
+- 接通真实主桌演出：
+  - `GameScreen.tscn` 新增 `RuntimeVisualEventLayer`，但不改 `VisualEventLayer` 主逻辑。
+  - `TableSnapshot` 增加 `visual_events` / `visual_event_key`，由 `main.gd` 在 scenario signal 完成时注入安全 payload。
+  - visual event payload 会过滤 `true_owner`、`hidden_owner`、`private_cash`、`opponent_hand`、`ai_score` 等隐藏字段。
+  - `market_hand` 补充牌架/购牌演出 fixture。
+- 补齐教学运行态信号：
+  - 牌架打开、卡牌悬停、购牌、公开牌轨选中、右侧详情阅读、卡牌详情打开、竞价阅读/加价/清零都能推进对应 scenario objective。
+  - `public_track_intro` / `bid_practice` 在没有真实匿名牌时会显示一张教学匿名牌快照，BidBoard 与 PublicTrack 通过同一个 track id 对齐，仍不暴露真实归属。
+- MapView 保护：
+  - 新增 `map_view_globe_default_test.gd` 与 `campaign_map_globe_regression_test.gd`，确保 campaign runtime 中央仍是可缩放 globe，不退化为 ColorRect/placeholder。
+- 截图验收：
+  - `campaign_snapshot_capture.gd` 现在能从 `main.tscn` 真实路径生成 campaign menu、briefing、第一桌 globe/成功、牌架、牌轨、竞价、奖励、复盘、设置等截图。
+  - 有头截图已定位到二号屏运行，并把关键 PNG 复制到 `reports/campaign_snapshots/` 供 GitHub 查看。
+
+### 本轮验证
+
+- `tests/map_view_globe_default_test.gd` 通过。
+- `tests/campaign_map_globe_regression_test.gd` 通过。
+- `tests/campaign_visual_event_bridge_test.gd` 通过。
+- `tests/campaign_first_five_runtime_test.gd` 通过。
+- `tests/campaign_privacy_runtime_test.gd` 通过。
+- `tests/player_journey_30min_test.gd` 通过。
+- `tests/campaign_runtime_flow_test.gd` 通过。
+- `tests/campaign_runtime_path_v2_test.gd` 通过。
+- `tests/campaign_snapshot_capture.gd` headless 和有头均通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+
 ## 2026-07-02｜Codex B：Hearthstone-grade Player Journey v1
 
 - 把 Scenario Lab 升级为“新手战役”产品闭环：

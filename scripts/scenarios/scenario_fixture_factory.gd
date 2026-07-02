@@ -97,6 +97,13 @@ func _visual_events_fixture(scenario_id: String, snapshot_key: String) -> Array:
 				{"type": "target_arrow", "from": [640, 120], "to": [905, 245], "label": "查看右侧详情", "reason": "公开线索进入右侧面板", "duration": 0.6},
 				{"type": "route_damage_spark", "from": [500, 480], "to": [760, 430], "label": "商路受扰", "reason": "结果公开，但出牌者匿名", "duration": 0.9},
 			]
+		"market_hand":
+			return [
+				{"type": "target_arrow", "from": [700, 420], "to": [1120, 450], "label": "区域牌架", "reason": "双击区域后可以浏览这里提供的卡牌", "duration": 0.7},
+				{"type": "card_hover_glow", "at": [1130, 520], "label": "悬停预览", "reason": "先看用途，再决定是否购买", "duration": 0.8},
+				{"type": "card_pickup", "from": [1130, 520], "to": [650, 830], "label": "卡牌入手", "reason": "购买进入私密手牌，数量仍不公开", "duration": 0.9},
+				{"type": "cash_gain_float", "at": [270, 135], "label": "现金 -价格", "reason": "买牌花钱；弃牌选择仍是私密信息", "duration": 0.8},
+			]
 		"bid_practice":
 			return [
 				{"type": "target_arrow", "from": [770, 720], "to": [930, 640], "label": "最高报价", "reason": "公开金额用于竞价判断", "duration": 0.6},

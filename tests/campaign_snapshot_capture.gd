@@ -38,8 +38,10 @@ func _run() -> void:
 	], {})
 	await _capture_scene("res://scenes/ui/CampaignMenu.tscn", "set_campaign_menu", MENU_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "progress": progress_empty, "recommendations": recommendations}).to_ui_dictionary(), Vector2i(1280, 720), "campaign_main_menu_1280x720.png")
 	await _capture_scene("res://scenes/ui/CampaignMenu.tscn", "set_campaign_menu", MENU_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "progress": progress_empty, "recommendations": recommendations}).to_ui_dictionary(), Vector2i(1600, 960), "campaign_main_menu_1600x960.png")
+	await _capture_campaign_menu_runtime("campaign_menu_1600x960.png")
 	await _capture_scene("res://scenes/ui/CampaignProgressMap.tscn", "set_progress_map", PROGRESS_MAP_SNAPSHOT_SCRIPT.new().apply_dictionary({"progress": progress_mid}).to_ui_dictionary(), Vector2i(1600, 960), "campaign_map_1600x960.png")
 	await _capture_scene("res://scenes/ui/CampaignBriefing.tscn", "set_briefing", BRIEFING_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "chapter": chapter_01}).to_ui_dictionary(), Vector2i(1600, 960), "campaign_briefing_01_1600x960.png")
+	await _capture_campaign_briefing_runtime("00_tavern_entry", "campaign_briefing_00_1600x960.png")
 	await _capture_scene("res://scenes/ui/ScenarioCoach.tscn", "set_coach", _coach_snapshot("新手战役｜第一桌：星球赌桌", "点区", "先点一个区域", "1/3"), Vector2i(1600, 960), "campaign_coach_step_01_1600x960.png")
 	await _capture_scene("res://scenes/ui/ScenarioCoach.tscn", "set_coach", _coach_snapshot("新手战役｜第一桌：星球赌桌", "卡住", "如果不知道点哪里，点中央星球上的陆地区域。", "1/3"), Vector2i(1600, 960), "campaign_coach_blocked_1600x960.png")
 	await _capture_scene("res://scenes/ui/CampaignRewardPanel.tscn", "set_reward", REWARD_SNAPSHOT_SCRIPT.new().apply_dictionary(reward).to_ui_dictionary(), Vector2i(1600, 960), "campaign_reward_1600x960.png")
@@ -49,9 +51,16 @@ func _run() -> void:
 	await _capture_scene("res://scenes/ui/CampaignBriefing.tscn", "set_briefing", BRIEFING_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "chapter": chapter_final}).to_ui_dictionary(), Vector2i(1600, 960), "graduation_match_start_1600x960.png")
 	await _capture_scene("res://scenes/ui/CampaignRewardPanel.tscn", "set_reward", REWARD_SNAPSHOT_SCRIPT.new().apply_dictionary(REWARD_SERVICE_SCRIPT.new().build_reward(campaign, chapter_final, progress_mid, {"time_text": "11:40", "objectives_completed": 4, "objectives_total": 4, "errors": 2, "hints": 1})).to_ui_dictionary(), Vector2i(1600, 960), "graduation_match_result_1600x960.png")
 	await _capture_campaign_runtime("01_first_table", "campaign_first_table_runtime_1600x960.png")
+	await _capture_campaign_runtime_stage("01_first_table", "globe", "campaign_first_table_globe_1600x960.png")
+	await _capture_campaign_runtime_stage("01_first_table", "success", "campaign_first_table_success_1600x960.png")
+	await _capture_campaign_runtime_stage("02_market_hand", "drawer", "campaign_market_hand_drawer_1600x960.png")
+	await _capture_campaign_runtime_stage("03_public_track", "reveal", "campaign_public_track_reveal_1600x960.png")
 	await _capture_campaign_runtime("05_monster_pressure", "campaign_monster_pressure_runtime_1600x960.png")
+	await _capture_campaign_runtime_stage("05_monster_pressure", "globe", "campaign_monster_pressure_globe_1600x960.png")
 	await _capture_campaign_runtime("03_public_track", "campaign_public_track_runtime_1600x960.png")
+	await _capture_campaign_runtime_stage("03_public_track", "globe", "campaign_public_track_globe_1600x960.png")
 	await _capture_campaign_runtime("04_bid_practice", "campaign_bid_practice_runtime_1600x960.png")
+	await _capture_campaign_runtime_stage("04_bid_practice", "bid", "campaign_bid_practice_1600x960.png")
 	if _failures.is_empty():
 		print("Campaign snapshots written to %s" % ProjectSettings.globalize_path(OUTPUT_DIR))
 	else:
@@ -106,6 +115,48 @@ func _capture_control(node: Control, size: Vector2i, filename: String, method: S
 
 
 func _capture_campaign_runtime(chapter_id: String, filename: String) -> void:
+	await _capture_campaign_runtime_stage(chapter_id, "start", filename)
+
+
+func _capture_campaign_menu_runtime(filename: String) -> void:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		_failures.append("%s loads" % MAIN_SCENE_PATH)
+		return
+	var size := Vector2i(1600, 960)
+	root.size = size
+	var main := packed.instantiate()
+	root.add_child(main)
+	await process_frame
+	await process_frame
+	main.call("_open_campaign_menu")
+	await process_frame
+	await _save_current_viewport(size, filename)
+	root.remove_child(main)
+	main.queue_free()
+	await process_frame
+
+
+func _capture_campaign_briefing_runtime(chapter_id: String, filename: String) -> void:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		_failures.append("%s loads" % MAIN_SCENE_PATH)
+		return
+	var size := Vector2i(1600, 960)
+	root.size = size
+	var main := packed.instantiate()
+	root.add_child(main)
+	await process_frame
+	await process_frame
+	main.call("_open_campaign_briefing_menu", chapter_id)
+	await process_frame
+	await _save_current_viewport(size, filename)
+	root.remove_child(main)
+	main.queue_free()
+	await process_frame
+
+
+func _capture_campaign_runtime_stage(chapter_id: String, stage: String, filename: String) -> void:
 	var packed := load(MAIN_SCENE_PATH) as PackedScene
 	if packed == null:
 		_failures.append("%s loads" % MAIN_SCENE_PATH)
@@ -119,16 +170,58 @@ func _capture_campaign_runtime(chapter_id: String, filename: String) -> void:
 	main.set("campaign_completed_chapter_ids", [])
 	main.set("selected_campaign_chapter_id", chapter_id)
 	main.call("_start_campaign_chapter", chapter_id)
-	await process_frame
-	await process_frame
-	await process_frame
-	await process_frame
+	await _wait_frames(8)
+	await _stage_campaign_runtime_capture(main, chapter_id, stage)
 	var runtime_screen := main.find_child("RuntimeGameScreen", true, false) as Control
 	_expect(runtime_screen != null and runtime_screen.visible, "%s runtime screenshot uses live RuntimeGameScreen" % chapter_id)
 	await _save_current_viewport(size, filename)
 	root.remove_child(main)
 	main.queue_free()
 	await process_frame
+
+
+func _stage_campaign_runtime_capture(main: Node, chapter_id: String, stage: String) -> void:
+	match stage:
+		"success":
+			_select_runtime_capture_district(main)
+			await _wait_frames(3)
+			main.call("_activate_first_run_coach_action", "coach_first_summon")
+			await _wait_frames(10)
+			main.call("_activate_first_run_coach_action", "coach_build_city")
+			await _wait_frames(4)
+		"drawer":
+			_select_runtime_capture_district(main)
+			await _wait_frames(3)
+			main.call("_activate_first_run_coach_action", "coach_first_summon")
+			await _wait_frames(10)
+			main.call("_activate_first_run_coach_action", "coach_open_rack")
+			await _wait_frames(4)
+		"reveal":
+			main.call("_activate_scenario_action", "scenario_step_select_track_card")
+			await _wait_frames(4)
+		"bid":
+			main.call("_activate_scenario_action", "scenario_step_read_bid_board")
+			await _wait_frames(2)
+			main.call("_activate_scenario_action", "scenario_step_raise_bid")
+			await _wait_frames(4)
+		"globe":
+			var map_view := main.get("map_view") as Control
+			if map_view != null and map_view.has_method("reset_to_planet_overview"):
+				map_view.call("reset_to_planet_overview")
+			await _wait_frames(3)
+		_:
+			await _wait_frames(2)
+
+
+func _select_runtime_capture_district(main: Node) -> void:
+	var district_index := int(main.call("_first_run_recommended_start_district", 0))
+	if district_index >= 0:
+		main.call("_select_district", district_index)
+
+
+func _wait_frames(count: int) -> void:
+	for _i in range(maxi(1, count)):
+		await process_frame
 
 
 func _save_current_viewport(size: Vector2i, filename: String) -> void:

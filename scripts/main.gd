@@ -63,6 +63,17 @@ const NIGHT_PATROL_SFX_PATHS := {
 	"impact": "res://assets/third_party/night_patrol/audio/sfx/impact-body.wav",
 	"storm": "res://assets/third_party/night_patrol/audio/sfx/lightning-hit.mp3",
 }
+const CAMPAIGN_SUCCESS_FEEDBACK_SECONDS := 1.0
+const SCENARIO_VISUAL_EVENT_FORBIDDEN_KEYS := [
+	"true_owner",
+	"hidden_owner",
+	"owner_truth",
+	"private_cash",
+	"opponent_hand",
+	"opponent_discard",
+	"ai_score",
+	"ai_reason",
+]
 
 const MIN_PLAYER_COUNT := 3
 const MAX_PLAYER_COUNT := 8
@@ -1734,6 +1745,10 @@ var active_campaign_chapter_id := ""
 var campaign_completed_chapter_ids: Array = []
 var campaign_last_reward: Dictionary = {}
 var campaign_last_recap: Dictionary = {}
+var campaign_completion_pending_chapter_id := ""
+var runtime_visual_events: Array = []
+var runtime_visual_event_key := ""
+var runtime_visual_event_counter := 0
 var campaign_animation_intensity := "完整"
 var campaign_font_scale_label := "中"
 var campaign_colorblind_assist_enabled := false
@@ -4060,6 +4075,8 @@ func _track_status_badge(text: String, text_color: Color, bg_color: Color) -> Pa
 
 func _select_card_resolution_track_entry(resolution_id: int) -> void:
 	selected_card_resolution_id = -1 if selected_card_resolution_id == resolution_id else resolution_id
+	if selected_card_resolution_id >= 0:
+		_complete_scenario_signal("track_selected", "选中公开牌轨上的匿名牌。", "after_track", "public_track")
 	_refresh_card_resolution_track()
 
 
@@ -5155,6 +5172,8 @@ func _start_campaign_chapter(chapter_id: String) -> void:
 	_apply_recommended_start("stable_economy")
 	selected_campaign_chapter_id = chapter_id
 	active_campaign_chapter_id = chapter_id
+	campaign_last_reward = {}
+	campaign_last_recap = {}
 	_save_campaign_progress_state()
 	_start_scenario_from_menu(str(chapter.get("scenario_id", "first_table")))
 	active_campaign_chapter_id = chapter_id
@@ -5192,6 +5211,8 @@ func _apply_recommended_start(preset_id: String = "") -> void:
 func _maybe_finish_campaign_chapter_from_signals() -> void:
 	if active_campaign_chapter_id == "":
 		return
+	if campaign_completion_pending_chapter_id != "":
+		return
 	var chapter := _campaign_chapter_by_id(active_campaign_chapter_id)
 	if chapter.is_empty():
 		return
@@ -5201,13 +5222,27 @@ func _maybe_finish_campaign_chapter_from_signals() -> void:
 	for condition_variant in conditions:
 		if not bool(scenario_completed_signals.get(str(condition_variant), false)):
 			return
-	_finish_campaign_chapter(chapter)
+	_schedule_campaign_chapter_completion(chapter)
+
+
+func _schedule_campaign_chapter_completion(chapter: Dictionary) -> void:
+	var chapter_id := str(chapter.get("id", active_campaign_chapter_id)).strip_edges()
+	if chapter_id == "":
+		return
+	campaign_completion_pending_chapter_id = chapter_id
+	_record_scenario_action("chapter_success", "目标完成：演出结算后进入奖励。", "", "campaign_success_feedback", active_scenario_snapshot_key, "scenario_coach")
+	_queue_scenario_visual_events(active_scenario_id, active_scenario_snapshot_key, "chapter_success")
+	_sync_runtime_game_screen(true)
+	await get_tree().create_timer(CAMPAIGN_SUCCESS_FEEDBACK_SECONDS).timeout
+	if active_campaign_chapter_id == chapter_id and campaign_completion_pending_chapter_id == chapter_id:
+		_finish_campaign_chapter(chapter)
 
 
 func _finish_campaign_chapter(chapter: Dictionary) -> void:
 	var chapter_id := str(chapter.get("id", active_campaign_chapter_id)).strip_edges()
 	if chapter_id == "":
 		return
+	campaign_completion_pending_chapter_id = ""
 	if not campaign_completed_chapter_ids.has(chapter_id):
 		campaign_completed_chapter_ids.append(chapter_id)
 	selected_campaign_chapter_id = CampaignProgressScript.new().apply_state(_campaign_definition(), campaign_completed_chapter_ids, chapter_id).next_chapter_id()
@@ -5502,6 +5537,9 @@ func _start_scenario_from_menu(scenario_id: String) -> void:
 	scenario_phase_started_at = game_time
 	scenario_coach_closed = false
 	scenario_action_log_entries = []
+	campaign_completion_pending_chapter_id = ""
+	runtime_visual_events = []
+	runtime_visual_event_key = ""
 	configured_player_count = clampi(int(scenario.get("player_count", 4)), 3, 8)
 	configured_ai_player_count = clampi(int(scenario.get("ai_count", 3)), 2, 7)
 	_ensure_configured_ai_player_count()
@@ -5552,9 +5590,63 @@ func _complete_scenario_signal(signal_id: String, public_text: String, snapshot_
 		active_scenario_snapshot_key,
 		focus_target
 	)
+	_queue_scenario_visual_events(active_scenario_id, active_scenario_snapshot_key, signal_id)
 	_sync_runtime_game_screen(true)
 	_maybe_finish_campaign_chapter_from_signals()
 	return true
+
+
+func _queue_scenario_visual_events(scenario_id: String, snapshot_key: String, trigger_id: String = "") -> void:
+	if scenario_id.strip_edges() == "":
+		return
+	var key := snapshot_key.strip_edges()
+	if key == "":
+		key = active_scenario_snapshot_key
+	var fixture: Dictionary = ScenarioFixtureFactoryScript.new().make_fixture(scenario_id, key)
+	var events: Array = fixture.get("visual_events", []) if fixture.get("visual_events", []) is Array else []
+	if events.is_empty():
+		var start_fixture: Dictionary = ScenarioFixtureFactoryScript.new().make_fixture(scenario_id, "start")
+		events = start_fixture.get("visual_events", []) if start_fixture.get("visual_events", []) is Array else []
+	var safe_events := _scenario_visual_events_safe(events)
+	if safe_events.is_empty():
+		return
+	runtime_visual_event_counter += 1
+	runtime_visual_events = safe_events
+	runtime_visual_event_key = "%s:%s:%s:%d" % [scenario_id, key, trigger_id, runtime_visual_event_counter]
+
+
+func _scenario_visual_events_safe(events: Array) -> Array:
+	var safe_events: Array = []
+	for event_variant in events:
+		if not (event_variant is Dictionary):
+			continue
+		var event: Dictionary = (event_variant as Dictionary).duplicate(true)
+		if _dictionary_contains_forbidden_visual_event_key(event):
+			continue
+		safe_events.append(event)
+	return safe_events
+
+
+func _dictionary_contains_forbidden_visual_event_key(value: Dictionary) -> bool:
+	for key_variant in value.keys():
+		var key_text := str(key_variant).strip_edges().to_lower()
+		if SCENARIO_VISUAL_EVENT_FORBIDDEN_KEYS.has(key_text):
+			return true
+		var nested: Variant = value[key_variant]
+		if nested is Dictionary and _dictionary_contains_forbidden_visual_event_key(nested as Dictionary):
+			return true
+		if nested is Array and _array_contains_forbidden_visual_event_key(nested as Array):
+			return true
+	return false
+
+
+func _array_contains_forbidden_visual_event_key(value: Array) -> bool:
+	for item_variant in value:
+		if item_variant is Dictionary and _dictionary_contains_forbidden_visual_event_key(item_variant as Dictionary):
+			return true
+		if item_variant is Array and _array_contains_forbidden_visual_event_key(item_variant as Array):
+			return true
+	return false
 
 
 func _runtime_scenario_coach_snapshot_source(player_index: int) -> Dictionary:
@@ -5597,11 +5689,71 @@ func _activate_scenario_action(action_id: String) -> bool:
 	if action_id == "scenario_restart":
 		_start_scenario_from_menu(active_scenario_id)
 		return true
-	if action_id == "scenario_focus_target" or action_id.begins_with("scenario_step_"):
+	if action_id == "scenario_focus_target":
 		_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
 		_sync_runtime_game_screen(true)
 		return true
+	if action_id.begins_with("scenario_step_"):
+		return _activate_scenario_step_action(phase, action_id)
 	return false
+
+
+func _activate_scenario_step_action(phase: Dictionary, action_id: String) -> bool:
+	var phase_id := str(phase.get("id", action_id.replace("scenario_step_", ""))).strip_edges()
+	match phase_id:
+		"open_rack":
+			var district_index := selected_district
+			if district_index < 0 or district_index >= districts.size():
+				district_index = _first_run_recommended_start_district(_runtime_snapshot_player_index())
+			if district_index >= 0:
+				_open_district_supply_from_map(district_index)
+				return true
+		"compare_cards":
+			if not _district_supply_is_open():
+				_activate_scenario_step_action({"id": "open_rack"}, "scenario_step_open_rack")
+			var context_district := _active_district_card_context()
+			var choices: Array = districts[context_district].get("card_choices", []) if context_district >= 0 and context_district < districts.size() and districts[context_district].get("card_choices", []) is Array else []
+			for card_variant in choices:
+				var card_name := str(card_variant)
+				if _skill_exists(card_name):
+					_preview_district_card(card_name, true)
+					return true
+		"buy_pressure", "buy_card":
+			return _activate_first_run_coach_action("coach_buy_card")
+		"select_track_card":
+			var resolution_id := _first_public_track_resolution_id()
+			if resolution_id >= 0:
+				_select_card_resolution_track_entry(resolution_id)
+				_mark_first_run_coach_public_track_seen(_runtime_snapshot_player_index())
+				return true
+		"read_inspector":
+			if selected_card_resolution_id < 0:
+				var track_resolution_id := _first_public_track_resolution_id()
+				if track_resolution_id >= 0:
+					_select_card_resolution_track_entry(track_resolution_id)
+			return _complete_scenario_signal("inspector_read", "查看右侧详情：只读公开条件和线索。", "after_track", "right_inspector")
+		"open_card_detail":
+			var selected_entry := _runtime_selected_card_track_entry_snapshot()
+			var card_name := str(selected_entry.get("card_name", "")).strip_edges()
+			if card_name == "":
+				var entries := _runtime_card_track_snapshot_source()
+				for entry_variant in entries:
+					if entry_variant is Dictionary:
+						card_name = str((entry_variant as Dictionary).get("card_name", "")).strip_edges()
+						if card_name != "":
+							break
+			if card_name != "":
+				_open_card_codex_by_name(card_name)
+				return true
+		"read_bid_board":
+			return _complete_scenario_signal("bid_board_read", "查看竞价板：我的报价、最高价、本批和下批都在底部。", "batch_ready", "bid_board")
+		"raise_bid":
+			return _increase_selected_card_bid(10)
+		"reset_bid":
+			return _reset_selected_card_bid()
+	_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
+	_sync_runtime_game_screen(true)
+	return true
 
 
 func _record_scenario_help_request(phase: Dictionary, public_text: String) -> void:
@@ -9263,12 +9415,14 @@ func _open_card_codex_by_name(card_name: String) -> void:
 		index = names.find(card_name)
 		if index < 0:
 			index = names.find("%s1" % _skill_family(card_name))
-		if index >= 0:
-			card_codex_index = index
-			card_codex_show_detail = true
-			card_codex_grid_page = _card_codex_grid_page_for_index(card_codex_index)
-			previewed_card_codex_card = String(names[card_codex_index])
+	if index >= 0:
+		card_codex_index = index
+		card_codex_show_detail = true
+		card_codex_grid_page = _card_codex_grid_page_for_index(card_codex_index)
+		previewed_card_codex_card = String(names[card_codex_index])
 	_update_card_codex_menu()
+	if card_codex_show_detail:
+		_complete_scenario_signal("card_detail_opened", "打开卡牌详情：%s。" % _card_display_name(previewed_card_codex_card), "after_track", "right_inspector")
 
 
 func _open_role_codex_menu(index: int = -1) -> void:
@@ -18574,6 +18728,8 @@ func _runtime_table_snapshot_source() -> Dictionary:
 		"first_run_coach": _runtime_first_run_coach_snapshot_source(player_index),
 		"scenario_coach": _runtime_scenario_coach_snapshot_source(player_index),
 		"temporary_decision": _runtime_temporary_decision_snapshot_source(player_index),
+		"visual_events": runtime_visual_events,
+		"visual_event_key": runtime_visual_event_key,
 		"logs": logs,
 	}
 
@@ -18927,7 +19083,24 @@ func _runtime_bid_board_track_links(player_index: int) -> Array:
 		links.append(_runtime_bid_board_track_link("本批", card_resolution_queue[0] as Dictionary, "待定1", true))
 	if links.size() < 3 and not next_card_resolution_queue.is_empty():
 		links.append(_runtime_bid_board_track_link("下批", next_card_resolution_queue[0] as Dictionary, "下批等待1", true))
+	if links.is_empty() and active_scenario_id == "bid_practice":
+		links.append(_runtime_scenario_bid_board_demo_track_link())
 	return links.slice(0, 3)
+
+
+func _runtime_scenario_bid_board_demo_track_link() -> Dictionary:
+	var resolution_id := _runtime_scenario_demo_resolution_id()
+	var selected := selected_card_resolution_id == resolution_id
+	return {
+		"id": "track_select_%d" % resolution_id,
+		"label": "教学牌",
+		"state": "竞拍1 ¥40",
+		"active": true,
+		"selected": selected,
+		"accent": Color("#f59e0b"),
+		"tooltip": "对应顶部公开牌轨的教学匿名牌；竞价金额公开，出牌者仍匿名。",
+		"max_chars": 13,
+	}
 
 
 func _runtime_bid_board_track_link(label: String, entry: Dictionary, state_text: String, active: bool) -> Dictionary:
@@ -19275,9 +19448,77 @@ func _runtime_card_track_snapshot_source() -> Array:
 	for event_variant in _runtime_card_track_event_snapshots():
 		if event_variant is Dictionary:
 			entries.append(event_variant as Dictionary)
+	if _scenario_runtime_needs_demo_track() and _runtime_real_card_track_entry_count(entries) == 0:
+		entries.append(_runtime_scenario_demo_card_track_entry())
 	if entries.is_empty():
 		entries.append({"label": "牌轨空闲", "state": "等待", "slot": "--", "owner_hint": "匿名", "tooltip": _card_resolution_status_text()})
 	return entries
+
+
+func _runtime_real_card_track_entry_count(entries: Array) -> int:
+	var count := 0
+	for entry_variant in entries:
+		if entry_variant is Dictionary and str((entry_variant as Dictionary).get("kind", "")) != "event":
+			count += 1
+	return count
+
+
+func _scenario_runtime_needs_demo_track() -> bool:
+	return active_scenario_id in ["public_track_intro", "bid_practice", "intel_guess"]
+
+
+func _runtime_scenario_demo_resolution_id() -> int:
+	match active_scenario_id:
+		"public_track_intro":
+			return 930301
+		"bid_practice":
+			return 930401
+		"intel_guess":
+			return 930701
+	return 930000
+
+
+func _runtime_scenario_demo_card_name() -> String:
+	for candidate in ["城市融资1", "交通升级1", "区域宣传1", "商路黑客1"]:
+		if _skill_exists(candidate):
+			return candidate
+	for skill_name_variant in SKILL_CATALOG.keys():
+		return str(skill_name_variant)
+	return ""
+
+
+func _runtime_scenario_demo_card_track_entry() -> Dictionary:
+	var card_name := _runtime_scenario_demo_card_name()
+	var skill: Dictionary = _make_skill(card_name) if card_name != "" else {}
+	if skill.is_empty():
+		return {
+			"id": "scenario_demo_track",
+			"resolution_id": _runtime_scenario_demo_resolution_id(),
+			"card_name": card_name,
+			"label": "教学匿名牌",
+			"slot": "教学",
+			"state": "教学牌轨",
+			"kind": "queue",
+			"owner_hint": "匿名",
+			"active": true,
+			"selected": selected_card_resolution_id == _runtime_scenario_demo_resolution_id(),
+			"tooltip": "教学牌轨：只展示公开牌、报价和线索，不显示真实归属。",
+			"select_action": "track_select_%d" % _runtime_scenario_demo_resolution_id(),
+			"open_action": "",
+			"actions": [{"id": "track_select_%d" % _runtime_scenario_demo_resolution_id(), "label": "选中竞猜"}],
+			"deep_links": [],
+		}
+	var entry := {
+		"resolution_id": _runtime_scenario_demo_resolution_id(),
+		"queued_order": _runtime_scenario_demo_resolution_id(),
+		"player_index": -1,
+		"skill": skill,
+		"tip": 40,
+		"public_owner_revealed": false,
+		"selected_trade_product": selected_trade_product,
+	}
+	var state := "竞拍1" if active_scenario_id == "bid_practice" else "已公开"
+	return _runtime_card_track_entry_snapshot(entry, state)
 
 
 func _runtime_card_track_event_snapshots() -> Array:
@@ -29550,6 +29791,7 @@ func _preview_district_card(card_name: String, refresh: bool = true) -> void:
 		return
 	selected_market_skill = card_name
 	previewed_district_card = card_name
+	_complete_scenario_signal("card_previewed", "查看卡牌：%s。" % _card_display_name(card_name), "rack_open", "district_supply")
 	if refresh:
 		_refresh_ui()
 
@@ -38706,22 +38948,37 @@ func _next_batch_card_entry_index_for_player(player_index: int) -> int:
 	return -1
 
 
-func _set_selected_card_tip(amount: int) -> void:
-	_set_selected_card_bid_absolute(max(0, amount))
+func _set_selected_card_tip(amount: int) -> bool:
+	var old_amount := _selected_card_tip_amount(selected_player)
+	var changed := _set_selected_card_bid_absolute(max(0, amount))
+	if changed and amount > old_amount:
+		_complete_scenario_signal("bid_raised", "公开报价提高到¥%d。" % max(0, amount), "after_bid", "bid_board")
+	elif changed and amount == 0 and old_amount > 0:
+		_complete_scenario_signal("bid_reset", "公开报价已清零。", "after_bid", "bid_board")
+	return changed
 
 
-func _increase_selected_card_bid(increment: int) -> void:
+func _increase_selected_card_bid(increment: int) -> bool:
 	if increment <= 0:
-		return
-	_set_selected_card_bid_absolute(_selected_card_tip_amount(selected_player) + increment)
+		return false
+	var old_amount := _selected_card_tip_amount(selected_player)
+	var target_amount := old_amount + increment
+	var changed := _set_selected_card_bid_absolute(target_amount)
+	if changed and target_amount > old_amount:
+		_complete_scenario_signal("bid_raised", "公开报价提高到¥%d。" % target_amount, "after_bid", "bid_board")
+	return changed
 
 
-func _reset_selected_card_bid() -> void:
-	_set_selected_card_bid_absolute(0)
+func _reset_selected_card_bid() -> bool:
+	var old_amount := _selected_card_tip_amount(selected_player)
+	var changed := _set_selected_card_bid_absolute(0)
+	if changed and old_amount > 0:
+		_complete_scenario_signal("bid_reset", "公开报价已清零。", "after_bid", "bid_board")
+	return changed
 
 
-func _set_selected_card_bid_absolute(amount: int) -> void:
-	_set_card_bid_for_player(selected_player, amount, true)
+func _set_selected_card_bid_absolute(amount: int) -> bool:
+	return _set_card_bid_for_player(selected_player, amount, true)
 
 
 func _set_card_bid_for_player(player_index: int, amount: int, announce: bool = true) -> bool:

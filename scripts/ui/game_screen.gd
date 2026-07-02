@@ -24,11 +24,13 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var planet_board: Node = %PlanetBoard
 @onready var right_inspector: Node = %RightInspector
 @onready var player_board: Node = %PlayerBoard
+@onready var visual_event_layer: Node = get_node_or_null("%RuntimeVisualEventLayer")
 @onready var overlay_layer: Node = %OverlayLayer
 
 var current_ui_data: Dictionary = {}
 var _temporary_track_focus_active := false
 var _selected_hand_card_data: Dictionary = {}
+var _last_visual_event_key := ""
 
 func _ready() -> void:
 	_configure_track_focus_ribbon()
@@ -99,6 +101,7 @@ func apply_state(data: Dictionary) -> void:
 		right_inspector.call("set_context", inspector)
 	if player_board.has_method("set_player_state"):
 		player_board.call("set_player_state", ui_data.get("player_board", {}))
+	_sync_visual_events(ui_data)
 	if not _temporary_track_focus_active:
 		_sync_selected_track_focus_from_state()
 	_sync_temporary_decision_overlay(ui_data.get("temporary_decision", {}))
@@ -111,6 +114,25 @@ func attach_runtime_map(map_node: Control) -> void:
 
 func get_overlay_host() -> Node:
 	return overlay_layer
+
+
+func get_visual_event_snapshot() -> Dictionary:
+	if visual_event_layer != null and visual_event_layer.has_method("get_visual_event_snapshot"):
+		return visual_event_layer.call("get_visual_event_snapshot") as Dictionary
+	return {}
+
+
+func _sync_visual_events(ui_data: Dictionary) -> void:
+	if visual_event_layer == null or not visual_event_layer.has_method("set_visual_events"):
+		return
+	var key := str(ui_data.get("visual_event_key", ""))
+	var events: Array = ui_data.get("visual_events", []) if ui_data.get("visual_events", []) is Array else []
+	if key == "" or events.is_empty():
+		return
+	if key == _last_visual_event_key:
+		return
+	_last_visual_event_key = key
+	visual_event_layer.call("set_visual_events", events, false)
 
 
 func _public_track_node() -> Node:

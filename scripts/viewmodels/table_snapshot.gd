@@ -18,6 +18,8 @@ var player_board: Dictionary = {}
 var temporary_decision: Dictionary = {}
 var first_run_coach: Dictionary = {}
 var scenario_coach: Dictionary = {}
+var visual_events: Array = []
+var visual_event_key := ""
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
@@ -42,6 +44,8 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	first_run_coach = FIRST_RUN_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("first_run_coach", {}) if data.get("first_run_coach", {}) is Dictionary else {}).to_ui_dictionary()
 	scenario_coach = SCENARIO_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("scenario_coach", {}) if data.get("scenario_coach", {}) is Dictionary else {}).to_ui_dictionary()
 	temporary_decision = _normalize_temporary_decision(data.get("temporary_decision", {}))
+	visual_events = (data.get("visual_events", []) as Array).duplicate(true) if data.get("visual_events", []) is Array else []
+	visual_event_key = str(data.get("visual_event_key", ""))
 	return self
 
 
@@ -55,6 +59,8 @@ func to_ui_dictionary() -> Dictionary:
 		"first_run_coach": first_run_coach,
 		"scenario_coach": scenario_coach,
 		"temporary_decision": temporary_decision,
+		"visual_events": visual_events,
+		"visual_event_key": visual_event_key,
 	}
 
 
