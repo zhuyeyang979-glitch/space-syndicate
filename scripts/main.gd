@@ -24976,6 +24976,8 @@ func _main_action_dock_entries(player_index: int) -> Array:
 	var build_ready := can_operate and build_error == ""
 	var entries := [
 		{
+			"id": "build",
+			"shortcut": "1",
 			"label": "建城",
 			"status": "可建" if build_ready else "待选",
 			"accent": Color("#22c55e"),
@@ -24986,6 +24988,8 @@ func _main_action_dock_entries(player_index: int) -> Array:
 	]
 	var choices := _selected_district_card_choices()
 	entries.append({
+		"id": "rack",
+		"shortcut": "2",
 		"label": "牌架",
 		"status": "%d张" % choices.size() if has_selection else "选区",
 		"accent": Color("#38bdf8"),
@@ -25002,6 +25006,8 @@ func _main_action_dock_entries(player_index: int) -> Array:
 	if buy_ready:
 		buy_status = "¥%d" % int(buy_state.get("price", _card_price(buy_card, selected_district, player_index)))
 	entries.append({
+		"id": "buy",
+		"shortcut": "3",
 		"label": "买牌",
 		"status": buy_status,
 		"accent": Color("#f59e0b"),
@@ -25022,6 +25028,8 @@ func _main_action_dock_entries(player_index: int) -> Array:
 		play_status = _short_card_text(_card_display_name(String(skill.get("name", "卡牌"))), 5)
 		play_tooltip = _skill_play_requirement_text(skill, player_index)
 	entries.append({
+		"id": "play",
+		"shortcut": "4",
 		"label": play_label,
 		"status": play_status,
 		"accent": play_accent,
@@ -25042,10 +25050,14 @@ func _main_action_dock_entries(player_index: int) -> Array:
 func _add_main_action_dock_button(parent: Container, entry: Dictionary) -> void:
 	var accent: Color = entry.get("accent", Color("#94a3b8")) as Color
 	var disabled := bool(entry.get("disabled", false))
+	var shortcut := String(entry.get("shortcut", "")).strip_edges()
+	var label := String(entry.get("label", "行动"))
 	var button := Button.new()
 	button.name = "MainActionDockButton"
-	button.text = "%s\n%s" % [String(entry.get("label", "行动")), String(entry.get("status", ""))]
-	button.tooltip_text = String(entry.get("tooltip", ""))
+	button.text = "%s%s\n%s" % ["%s " % shortcut if shortcut != "" else "", label, String(entry.get("status", ""))]
+	button.tooltip_text = "%s｜%s" % ["快捷键 %s" % shortcut, String(entry.get("tooltip", ""))] if shortcut != "" else String(entry.get("tooltip", ""))
+	button.set_meta("quick_action_id", String(entry.get("id", label)))
+	button.set_meta("quick_action_shortcut", shortcut)
 	button.disabled = disabled
 	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.add_theme_font_size_override("font_size", 8)

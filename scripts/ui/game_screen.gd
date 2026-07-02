@@ -252,6 +252,52 @@ func _on_temporary_decision_action_requested(action_id: String) -> void:
 	action_requested.emit(action_id)
 
 
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not visible or event == null:
+		return
+	var key_event := event as InputEventKey
+	if key_event == null or not key_event.pressed or key_event.echo:
+		return
+	if _should_ignore_quick_action_hotkey():
+		return
+	var quick_index := _quick_action_index_for_key(key_event)
+	if quick_index < 0:
+		return
+	var action_id := _quick_action_id_at(quick_index)
+	if action_id == "":
+		return
+	accept_event()
+	_on_action_requested(action_id)
+
+
+func _should_ignore_quick_action_hotkey() -> bool:
+	if not is_visible_in_tree():
+		return true
+	var focused := get_viewport().gui_get_focus_owner() if get_viewport() != null else null
+	if focused is LineEdit or focused is TextEdit:
+		return true
+	var decision: Dictionary = current_ui_data.get("temporary_decision", {}) if current_ui_data.get("temporary_decision", {}) is Dictionary else {}
+	return not decision.is_empty()
+
+
+func _quick_action_index_for_key(event: InputEventKey) -> int:
+	var code := int(event.unicode)
+	if code >= 49 and code <= 52:
+		return code - 49
+	return -1
+
+
+func _quick_action_id_at(index: int) -> String:
+	var player_data: Dictionary = current_ui_data.get("player_board", {}) if current_ui_data.get("player_board", {}) is Dictionary else {}
+	var quick_actions: Array = player_data.get("quick_actions", []) if player_data.get("quick_actions", []) is Array else []
+	if index < 0 or index >= quick_actions.size():
+		return ""
+	var action: Dictionary = quick_actions[index] if quick_actions[index] is Dictionary else {}
+	if bool(action.get("disabled", false)) or not bool(action.get("active", false)):
+		return ""
+	return str(action.get("id", "")).strip_edges()
+
+
 func _on_card_selected(card_data: Dictionary) -> void:
 	_selected_hand_card_data = card_data.duplicate(true)
 	if right_inspector.has_method("show_card"):

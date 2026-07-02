@@ -2,10 +2,10 @@ extends RefCounted
 class_name ActionDockSnapshot
 
 const DEFAULT_QUICK_ACTIONS := [
-	{"id": "build", "label": "建城", "state": "未选", "disabled": true, "tooltip": "先选择可建城区域。"},
-	{"id": "rack", "label": "牌架", "state": "未选", "disabled": true, "tooltip": "先选择区域查看牌架。"},
-	{"id": "buy", "label": "买牌", "state": "--", "disabled": true, "tooltip": "进入可购买窗口后再买牌。"},
-	{"id": "play", "label": "出牌", "state": "--", "disabled": true, "tooltip": "当前没有可直接打出的手牌。"},
+	{"id": "build", "label": "建城", "state": "未选", "disabled": true, "shortcut": "1", "tooltip": "先选择可建城区域。"},
+	{"id": "rack", "label": "牌架", "state": "未选", "disabled": true, "shortcut": "2", "tooltip": "先选择区域查看牌架。"},
+	{"id": "buy", "label": "买牌", "state": "--", "disabled": true, "shortcut": "3", "tooltip": "进入可购买窗口后再买牌。"},
+	{"id": "play", "label": "出牌", "state": "--", "disabled": true, "shortcut": "4", "tooltip": "当前没有可直接打出的手牌。"},
 ]
 
 var quick_actions: Array = []
@@ -78,14 +78,27 @@ func _normalize_action(entry_variant: Variant, index: int, fallback_label: Strin
 	var disabled := bool(entry.get("disabled", false)) or bool(entry.get("locked", false))
 	var active := bool(entry.get("active", not disabled))
 	var state := _state_text(_first_text(entry, ["state", "status", "phase"], "ready" if active else "waiting"), active, disabled)
+	var shortcut := _quick_action_shortcut(entry, index, quick_action)
 	return {
 		"id": _short_text(action_id, 32),
 		"label": _short_text(raw_label, 8 if quick_action else 16),
 		"state": state,
 		"active": active and not disabled,
 		"disabled": disabled,
+		"shortcut": shortcut,
 		"tooltip": _first_text(entry, ["tooltip", "hint", "why"], ""),
 	}
+
+
+func _quick_action_shortcut(entry: Dictionary, index: int, quick_action: bool) -> String:
+	if not quick_action:
+		return ""
+	var explicit := _first_text(entry, ["shortcut", "hotkey", "key_hint"], "")
+	if explicit != "":
+		return _short_text(explicit, 3)
+	if index >= 1 and index <= 4:
+		return str(index)
+	return ""
 
 
 func _state_text(raw_state: String, active: bool, disabled: bool) -> String:

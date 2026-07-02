@@ -54,10 +54,10 @@ func set_quick_actions(actions: Array) -> void:
 	quick_action_row.visible = true
 	_clear_row(quick_action_row)
 	if actions.is_empty():
-		_add_quick_action_button("build", "建城", "未选", false, "先选择可建城区域。")
-		_add_quick_action_button("rack", "牌架", "未选", false, "先选择区域查看牌架。")
-		_add_quick_action_button("buy", "买牌", "--", false, "进入可购买窗口后再买牌。")
-		_add_quick_action_button("play", "出牌", "--", false, "当前没有可直接打出的手牌。")
+		_add_quick_action_button("build", "建城", "未选", false, "先选择可建城区域。", "1")
+		_add_quick_action_button("rack", "牌架", "未选", false, "先选择区域查看牌架。", "2")
+		_add_quick_action_button("buy", "买牌", "--", false, "进入可购买窗口后再买牌。", "3")
+		_add_quick_action_button("play", "出牌", "--", false, "当前没有可直接打出的手牌。", "4")
 		return
 	for action_variant in actions:
 		var action: Dictionary = action_variant if action_variant is Dictionary else {}
@@ -67,7 +67,8 @@ func set_quick_actions(actions: Array) -> void:
 			str(action.get("label", action.get("id", "行动"))),
 			str(action.get("state", "ready" if active else "waiting")),
 			active,
-			str(action.get("tooltip", ""))
+			str(action.get("tooltip", "")),
+			str(action.get("shortcut", action.get("hotkey", "")))
 		)
 
 
@@ -96,12 +97,17 @@ func _clear_row(row: Container) -> void:
 		child.queue_free()
 
 
-func _add_quick_action_button(action_id: String, label_text: String, state_text: String, active: bool, tooltip: String) -> void:
+func _add_quick_action_button(action_id: String, label_text: String, state_text: String, active: bool, tooltip: String, shortcut_text: String = "") -> void:
 	var button := Button.new()
 	button.name = "MainActionDockButton"
-	button.text = "%s\n%s" % [_short_text(label_text, 6), _quick_action_state_text(state_text)]
+	var shortcut := _short_text(shortcut_text.strip_edges(), 3)
+	var label_limit := 5 if shortcut != "" else 6
+	var label_prefix := "%s " % shortcut if shortcut != "" else ""
+	button.text = "%s%s\n%s" % [label_prefix, _short_text(label_text, label_limit), _quick_action_state_text(state_text)]
 	button.disabled = not active
-	button.tooltip_text = tooltip
+	button.tooltip_text = _quick_action_tooltip(tooltip, shortcut)
+	button.set_meta("quick_action_id", action_id)
+	button.set_meta("quick_action_shortcut", shortcut)
 	button.custom_minimum_size = Vector2(60 if compact_mode else 64, 34 if compact_mode else 34)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_stylebox_override("normal", _quick_action_style(active, action_id))
@@ -114,6 +120,16 @@ func _add_quick_action_button(action_id: String, label_text: String, state_text:
 		action_requested.emit(action_id)
 	)
 	quick_action_row.add_child(button)
+
+
+func _quick_action_tooltip(tooltip: String, shortcut: String) -> String:
+	var text := tooltip.strip_edges()
+	if shortcut == "":
+		return text
+	var prefix := "快捷键 %s" % shortcut
+	if text == "":
+		return prefix
+	return "%s｜%s" % [prefix, text]
 
 
 func _add_action_button(action_id: String, label_text: String, disabled: bool, tooltip: String) -> void:

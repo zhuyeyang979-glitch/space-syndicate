@@ -6187,3 +6187,23 @@
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
 - `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `play_table_supply_drawer_1280x720.png` 与 `play_table_supply_drawer_1600x960.png`，确认牌架在右侧、星球仍是主视觉、预览决策 chip 可见且长文本不再溢出卡框。
+
+## 2026-07-03｜主桌快捷行动加入 1-4 热键骨架
+
+- 本轮按桌游电子版的第一层操作习惯继续降低真人测试摩擦，不新增规则：
+  - `ActionDockSnapshot` 为四个主桌快捷行动输出数据字段 `shortcut`：1 建城、2 牌架、3 买牌、4 出牌。
+  - `ActionDock` 只负责渲染短按钮、tooltip 和可测试 metadata，不读取玩法规则。
+  - `GameScreen` 新增 1-4 键盘入口，按当前 snapshot 的可用状态触发行动；临时决策弹窗和文本输入聚焦时不会误触。
+  - 测试合同锁住“快捷键来自数据层、组件层显示、主桌输入层触发”三段路径。
+- 可玩性意义：
+  - 测试者可以像桌游电子版/策略游戏一样用 1-4 快速执行最常见行动，减少在高信息密度主桌上找按钮的负担。
+  - 快捷键仍跟随 snapshot 数据，后续把按钮换成更图标化或更精美的卡桌 UI 时，不会丢失操作骨架。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/commercial_playability_gate_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。

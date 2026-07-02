@@ -1113,6 +1113,15 @@ func _check_player_board_first_glance_actions(screen: Control) -> void:
 	var text := " ".join(_visible_text_under(dock))
 	for keyword in ["建城", "牌架", "买牌", "出牌"]:
 		_expect(text.contains(keyword), "runtime PlayerBoard main action dock shows %s at first glance" % keyword)
+	for shortcut in ["1", "2", "3", "4"]:
+		_expect(text.contains(shortcut), "runtime PlayerBoard main action dock shows keyboard shortcut %s at first glance" % shortcut)
+	var shortcut_buttons := dock.find_children("*", "Button", true, false)
+	var shortcuts := []
+	for button_variant in shortcut_buttons:
+		var button := button_variant as Button
+		if button != null and button.has_meta("quick_action_shortcut"):
+			shortcuts.append(str(button.get_meta("quick_action_shortcut", "")))
+	_expect(shortcuts.has("1") and shortcuts.has("2") and shortcuts.has("3") and shortcuts.has("4"), "runtime ActionDock stores data-backed quick-action shortcuts for tests and accessibility")
 
 
 func _check_player_board_hand_rack_priority(screen: Control) -> void:
@@ -2664,7 +2673,8 @@ func _check_viewmodel_contracts() -> void:
 	var card_detail_tactical_entries: Array = card_detail_tactical.get("entries", []) if card_detail_tactical.get("entries", []) is Array else []
 	var card_detail_upgrades: Array = card_detail_ui.get("upgrades", []) if card_detail_ui.get("upgrades", []) is Array else []
 	_expect(action_quick.size() == 1 and action_quick[0].get("state") == "就绪" and action_primary.size() == 1 and action_primary[0].get("disabled") == false, "ActionDockSnapshot normalizes quick and primary action states for UI rendering")
-	_expect(default_quick.size() == 4 and default_quick[0].get("label") == "建城" and default_quick[3].get("label") == "出牌", "ActionDockSnapshot supplies the four first-glance quick actions when source data is absent")
+	_expect(action_quick.size() == 1 and action_quick[0].get("shortcut") == "1", "ActionDockSnapshot assigns numeric shortcuts to supplied quick actions")
+	_expect(default_quick.size() == 4 and default_quick[0].get("label") == "建城" and default_quick[0].get("shortcut") == "1" and default_quick[3].get("label") == "出牌" and default_quick[3].get("shortcut") == "4", "ActionDockSnapshot supplies the four first-glance quick actions and numeric shortcuts when source data is absent")
 	_expect(bid_board_ui.get("chips", []).size() == 1 and bid_track_links.size() == 1 and str((bid_track_links[0] as Dictionary).get("id", "")) == "track_select_9002" and bool((bid_track_links[0] as Dictionary).get("selected", false)) and bid_board_ui.get("actions", []).size() == 1 and bid_board_ui.get("phase") == "竞价 4s", "BidBoardSnapshot normalizes public bid chips, clickable track links, selected state, and bid actions before PlayerBoard renders them")
 	_expect(card.to_ui_dictionary().get("name") == "相位否决", "CardViewSnapshot emits card UI dictionaries")
 	_expect(district.to_ui_dictionary().get("title") == "雾港区", "DistrictViewSnapshot emits district UI dictionaries")
@@ -3868,6 +3878,8 @@ func _check_main_player_panel_refresh_contract() -> void:
 	_expect(main_source.contains("func _refresh_player_panel_live_values"), "main UI updates live resource values without destroy/recreate")
 	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("\"build\", \"rack\", \"buy\", \"play\"") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)"), "main runtime routes split ActionDock quick actions back into the existing controller")
 	_expect(main_source.contains("_build_city_in_selected_district()") and main_source.contains("_open_district_supply_from_map(selected_district)") and main_source.contains("_first_actionable_hand_slot(player_index)") and main_source.contains("_use_skill(slot_index)"), "main runtime quick actions drive build, rack/buy, and play through existing gameplay entry points")
+	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
+	_expect(game_screen_source.contains("func _unhandled_key_input") and game_screen_source.contains("_quick_action_index_for_key") and game_screen_source.contains("_quick_action_id_at") and game_screen_source.contains("_should_ignore_quick_action_hotkey"), "split GameScreen maps 1-4 keyboard shortcuts onto the current data-backed quick actions without reading gameplay rules")
 	_expect(main_source.contains("_on_runtime_game_screen_card_drop_requested") and main_source.contains("_runtime_drop_position_targets_map(screen_position)") and main_source.contains("get_district_at_control_position"), "main runtime maps split hand-card drops onto MapView districts before using existing play-card controller flow")
 	_expect(player_board_source.contains("hand_rack.call(\"set_cards\", cards)") and not player_board_source.contains("hand_rack.remove_child"), "split PlayerBoard delegates hand rendering to HandRack instead of clearing card nodes")
 	_expect(player_board_source.contains("func _first_enabled_card_action_id") and player_board_source.contains("card_double_selected") and player_board_source.contains("action_requested.emit(action_id)"), "split PlayerBoard turns a double-clicked enabled hand card into its snapshot action instead of reading gameplay rules")
