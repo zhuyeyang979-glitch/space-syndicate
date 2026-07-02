@@ -3,6 +3,30 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜试玩骨架与卡面识别锚点
+
+- 本轮按“能做骨架的地方都要做”的方向继续收口，但没有改规则、结算或卡牌数据：
+  - `CardUI.tscn` 在卡牌 header 增加 `RouteGlyphBadge / RouteGlyphLabel`，让手牌、区域牌架、图鉴详情共用一个可见牌型符号锚点。
+  - `CardUI.gd` 新增 `_card_type_glyph()`，为怪兽、军队、金融、经济、情报、合约、商品、天气、商路和直接互动牌提供短符号；同时把 `card_type_glyph` 写入 meta，方便后续测试和视觉 QA。
+  - 主菜单 `MenuRootLobby` 的默认占位文案改成玩家可读中文：`星球赌桌｜最后钱最多 / 星球赌桌大厅 / 选择你的下一步`，避免 editor fallback 或未注入数据时露出英文临时模板。
+  - `docs/card_frame_spec.md` 和 `docs/card_visual_theme_contract.md` 补充“类型符号锚点”硬指标，明确卡牌不能只靠文字区分类别。
+  - `tests/playtest_skeleton_gate_test.gd` 升级骨架门槛：卡面必须有符号锚点，主菜单 fallback 文案必须是玩家向中文。
+- 可玩性意义：
+  - 真人看手牌时，第一眼更容易分辨“这是怪兽 / 军队 / 金融 / 商品 / 情报”等路线，不必先读完整句子。
+  - 主菜单继续朝 Terraforming Mars 式“中心星球 + 右侧命令卡 + 左侧状态 chip”的桌游大厅靠近。
+  - 这些改动是骨架级护栏；后续批量接开源美术素材、重做大卡面、强化图鉴详情时不会再退回纯文字块。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/playtest_readability_gate_test.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `main_menu_1280x720.png` 与 `play_table_hand_hover_1600x960.png`，确认主菜单中文赌桌大厅和手牌类型符号锚点已显示。
+- `tests/smoke_test.gd` 完整通过。
+
 ## 2026-07-03｜剧本教练工具入口移入标题栏
 
 - 本轮继续收敛首局引导浮窗，让它更像桌游桌边提示卡：

@@ -37,6 +37,18 @@ theme_override_constants/separation = 6
 layout_mode = 2
 theme_override_constants/separation = 6
 
+[node name="RouteGlyphBadge" type="PanelContainer" parent="CardFrame/CardMargin/CardRows/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(24, 26)
+layout_mode = 2
+
+[node name="RouteGlyphLabel" type="Label" parent="CardFrame/CardMargin/CardRows/Header/RouteGlyphBadge"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "行"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="CostBadge" type="PanelContainer" parent="CardFrame/CardMargin/CardRows/Header"]
 custom_minimum_size = Vector2(28, 26)
 layout_mode = 2

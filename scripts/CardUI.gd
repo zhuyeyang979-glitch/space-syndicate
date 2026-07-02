@@ -28,6 +28,8 @@ var _interaction_state: Dictionary = {
 
 @onready var cost_label: Label = %CostLabel
 @onready var name_label: Label = %NameLabel
+@onready var route_glyph_badge: PanelContainer = get_node_or_null("%RouteGlyphBadge") as PanelContainer
+@onready var route_glyph_label: Label = get_node_or_null("%RouteGlyphLabel") as Label
 @onready var art_panel: PanelContainer = %ArtPanel
 @onready var art_view: Control = get_node_or_null("%ArtView") as Control
 @onready var art_label: Label = %ArtLabel
@@ -99,11 +101,17 @@ func _apply_data() -> void:
 	var hand_mini := _is_mini_hand_card()
 	var inspector_full := _is_inspector_full_card()
 	var codex_full := _is_codex_full_card()
+	var type_glyph := _card_type_glyph(display_type)
 	cost_label.text = cost_text
 	name_label.text = _short_card_text(card_name, 12) if hand_mini else card_name
 	effect_label.text = _mini_effect_line() if hand_mini else (_inspector_full_effect_text() if inspector_full else effect_text)
 	type_label.text = _mini_route_text(display_type) if hand_mini else (_inspector_full_route_text(display_type) if inspector_full else display_type)
 	stat_label.text = _mini_rank_text() if hand_mini else stats_text
+	if route_glyph_label != null:
+		route_glyph_label.text = type_glyph
+		route_glyph_label.tooltip_text = "牌型：%s" % display_type
+	if route_glyph_badge != null:
+		route_glyph_badge.tooltip_text = "牌型：%s" % display_type
 	tooltip_text = "%s\n%s\n%s" % [card_name, display_type, effect_text]
 	art_label.text = _mini_status_text() if hand_mini else (_inspector_status_text() if inspector_full else _art_hint_for_type(card_type))
 	_apply_card_art(display_type, hand_mini)
@@ -112,6 +120,7 @@ func _apply_data() -> void:
 	_render_keyword_chips(hand_mini, inspector_full)
 	set_meta("card_presentation_spec", _presentation_spec())
 	set_meta("card_primary_action_label", _primary_action_label())
+	set_meta("card_type_glyph", type_glyph)
 	_apply_density_for_size()
 	_apply_frame_style()
 
@@ -149,6 +158,13 @@ func _apply_frame_style() -> void:
 		cost_style.set_border_width_all(1)
 		cost_style.set_corner_radius_all(5)
 		cost_badge.add_theme_stylebox_override("panel", cost_style)
+	if route_glyph_badge != null:
+		var glyph_style := StyleBoxFlat.new()
+		glyph_style.bg_color = Color("#020617").lerp(state_accent, 0.34)
+		glyph_style.border_color = state_accent.lightened(0.12)
+		glyph_style.set_border_width_all(1)
+		glyph_style.set_corner_radius_all(6)
+		route_glyph_badge.add_theme_stylebox_override("panel", glyph_style)
 
 
 func _apply_density_for_size() -> void:
@@ -176,6 +192,8 @@ func _apply_density_for_size() -> void:
 	var cost_badge := get_node_or_null("CardFrame/CardMargin/CardRows/Header/CostBadge") as Control
 	if cost_badge != null:
 		cost_badge.custom_minimum_size = Vector2(20, 18) if mini else (Vector2(22, 20) if compact else Vector2(28, 26))
+	if route_glyph_badge != null:
+		route_glyph_badge.custom_minimum_size = Vector2(18, 18) if mini else (Vector2(21, 20) if compact else Vector2(24, 26))
 	art_panel.custom_minimum_size = Vector2(0, 30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if mini else (42 if compact else 70)))))
 	if keyword_chip_rail != null:
 		keyword_chip_rail.visible = true
@@ -189,6 +207,8 @@ func _apply_density_for_size() -> void:
 	stat_label.custom_minimum_size = Vector2(22, 0) if mini else (Vector2(26, 0) if compact else Vector2(36, 0))
 	var font_size := 10 if hand_mini else (12 if spacious_full else (10 if mini else (11 if compact else 15)))
 	cost_label.add_theme_font_size_override("font_size", font_size)
+	if route_glyph_label != null:
+		route_glyph_label.add_theme_font_size_override("font_size", font_size)
 	name_label.add_theme_font_size_override("font_size", font_size + (1 if hand_mini else 0))
 	art_label.add_theme_font_size_override("font_size", 8 if hand_mini else font_size)
 	effect_label.add_theme_font_size_override("font_size", font_size)
@@ -293,6 +313,31 @@ func _player_facing_type_label(value: String) -> String:
 	if _contains_cjk(trimmed):
 		return trimmed
 	return "行动"
+
+
+func _card_type_glyph(display_type: String) -> String:
+	match display_type:
+		"怪兽":
+			return "兽"
+		"金融":
+			return "¥"
+		"经济":
+			return "城"
+		"情报":
+			return "讯"
+		"军队":
+			return "军"
+		"合约":
+			return "约"
+		"商品":
+			return "货"
+		"天气":
+			return "气"
+		"商路":
+			return "路"
+		"互动":
+			return "拆"
+	return "行"
 
 
 func _contains_cjk(value: String) -> bool:

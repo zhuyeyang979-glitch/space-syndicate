@@ -50,7 +50,7 @@ text_overrun_behavior = 3
 [node name="MainMenuLobbyStatus" type="Label" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack/MainMenuPlanetLobbyHeader"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Last money wins"
+text = "星球赌桌｜最后钱最多"
 text_overrun_behavior = 3
 
 [node name="MainMenuPlanetLobbyBody" type="HBoxContainer" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack"]
@@ -97,7 +97,7 @@ horizontal_alignment = 1
 [node name="MainMenuPlanetTitle" type="Label" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack/MainMenuPlanetLobbyBody/MainMenuPlanetMedallion/MainMenuPlanetMedallionMargin/MainMenuPlanetMedallionStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Central planet"
+text = "星球赌桌大厅"
 horizontal_alignment = 1
 
 [node name="MainMenuPlanetHint" type="Label" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack/MainMenuPlanetLobbyBody/MainMenuPlanetMedallion/MainMenuPlanetMedallionMargin/MainMenuPlanetMedallionStack"]
@@ -126,7 +126,7 @@ theme_override_constants/separation = 11
 [node name="MainMenuLobbyTableLine" type="Label" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack/MainMenuPlanetLobbyBody/MainMenuLobbyRightColumn"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Choose an entry"
+text = "选择你的下一步"
 
 [node name="MainMenuLobbyActionGrid" type="GridContainer" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack/MainMenuPlanetLobbyBody/MainMenuLobbyRightColumn"]
 unique_name_in_owner = true

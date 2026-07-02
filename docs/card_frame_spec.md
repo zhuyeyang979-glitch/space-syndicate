@@ -6,7 +6,7 @@
 - Hover read state: scale at least 1.40x with a visible upward lift so low-resolution players can read the card without opening a modal.
 - Font sizes: 7-11 for hand scan text; hover is allowed to enlarge the whole card instead of adding always-visible prose.
 - Color token: type accent plus state border for hovered, selected, dragging, invalid.
-- Layout zones: cost badge, short name, route/type band, large art anchor, keyword chip rail, 2-3 line short effect, status lamp.
+- Layout zones: type glyph badge, cost badge, short name, route/type band, large art anchor, keyword chip rail, 2-3 line short effect, status lamp.
 - Max text length: short name 12 CJK-ish characters; short effect wraps up to 3 lines and then ellipsizes.
 - Keyword chips: use symbols for repeated rules (`¥`, `◇商品流`, `◆怪兽`, `◎玩家`, `⇄合约`, `一次/固定`) and explain them in the rules appendix.
 - Art baseline: every card face must have a visible central art/motif area, distinct type accent, frame/border treatment, and at least one non-text visual cue from card type or route.

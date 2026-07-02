@@ -52,6 +52,7 @@ func _check_card_skeleton() -> void:
 	_expect(ResourceLoader.exists("res://scenes/ui/CardCodexBrowser.tscn"), "card codex browser scene exists")
 	_expect(ResourceLoader.exists("res://scenes/ui/CardCodexDetail.tscn"), "card codex detail scene exists")
 	var card_ui := FileAccess.get_file_as_string("res://scripts/CardUI.gd")
+	var card_ui_scene := FileAccess.get_file_as_string("res://scenes/CardUI.tscn")
 	var card_face := FileAccess.get_file_as_string("res://scripts/ui/card_face.gd")
 	var card_art := FileAccess.get_file_as_string("res://scripts/card_art_view.gd")
 	var card_browser := FileAccess.get_file_as_string("res://scripts/ui/card_codex_browser.gd")
@@ -64,6 +65,7 @@ func _check_card_skeleton() -> void:
 	var card_spec := FileAccess.get_file_as_string("res://docs/card_frame_spec.md")
 	var visual_contract := FileAccess.get_file_as_string("res://docs/card_visual_theme_contract.md")
 	_expect(_contains_all(card_ui, ["PRESENTATION_MINI_HAND", "PRESENTATION_INSPECTOR_FULL", "_render_keyword_chips", "_apply_card_art"]), "CardUI owns mini hand, inspector, keyword, and art skeletons")
+	_expect(_contains_all(card_ui_scene, ["RouteGlyphBadge", "RouteGlyphLabel"]) and _contains_all(card_ui, ["_card_type_glyph", "card_type_glyph"]), "CardUI exposes a visible type-glyph anchor so cards are not separated only by text")
 	_expect(_contains_all(card_face, ["card_presentation_spec", "CardFace"]) and _contains_all(card_ui, ["mini_hand", "inspector_full", "KeywordChipRail", "CardFaceKeywordChip"]), "CardFace/CardUI keep presentation identity, mini/inspector states, and keyword chips")
 	_expect(_contains_all(card_art, ["NIGHT_PATROL_SIGIL_PATH", "NIGHT_PATROL_FRAME_PATHS", "_draw_night_patrol_reference_frame", "_draw_motif"]) and _contains_all(card_browser, ["CardArtViewScript", "CardCodexThumbnailArtView", "shared-card-art-night-patrol-frame"]), "card codex thumbnails share the card-art layer and optional Night Patrol frame/sigil visual theme")
 	_expect(_contains_all(district_market_scene, ["DistrictSupplyMarketCardArtHost", "DistrictSupplyMarketCardArtView", "res://scripts/card_art_view.gd"]) and _contains_all(district_market_script, ["_render_market_art", "district_supply_market_uses_shared_card_art", "shared-card-art-market-cell"]), "district supply market cells share the same card-art layer before purchase preview")
@@ -110,6 +112,7 @@ func _check_main_menu_skeleton() -> void:
 	var menu_script := FileAccess.get_file_as_string("res://scripts/ui/menu_root_lobby.gd")
 	var setup_scene := FileAccess.get_file_as_string("res://scenes/ui/NewGameSetupLobby.tscn")
 	_expect(_contains_all(menu_scene, ["MainMenuPlanetLobbyPanel", "MainMenuPlanetBackdrop", "MainMenuLobbyActionGrid", "MainMenuUtilityRail"]), "main menu is a planet-lobby skeleton, not a raw button list")
+	_expect(_contains_all(menu_scene, ["星球赌桌｜最后钱最多", "星球赌桌大厅", "选择你的下一步"]) and _contains_all(menu_script, ["星球赌桌大厅", "选择你的下一步"]), "main menu fallback text is player-facing Chinese, not temporary editor English")
 	_expect(_contains_all(menu_script, ["MainMenuCommandCard", "MAIN_MENU_FEATURED_CARD_HEIGHT", "action_requested"]), "main menu command cards are scene-rendered and signal-driven")
 	_expect(_contains_all(setup_scene, ["NewGameSetupFlowTrack", "NewGameSetupReadinessRail", "NewGameSetupLobbyChipRail"]), "new-game setup owns flow, readiness, and chip skeletons")
 

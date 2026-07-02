@@ -52,7 +52,7 @@ func set_lobby(data: Dictionary) -> void:
 	planet_mark_label.text = str(data.get("planet_mark", "◎"))
 	planet_mark_label.add_theme_font_size_override("font_size", 58)
 	planet_mark_label.add_theme_color_override("font_color", accent.lightened(0.08))
-	planet_title_label.text = str(data.get("planet_title", "Central planet"))
+	planet_title_label.text = str(data.get("planet_title", "星球赌桌大厅"))
 	planet_title_label.add_theme_font_size_override("font_size", 22)
 	planet_title_label.add_theme_color_override("font_color", Color("#f8fafc"))
 	planet_hint_label.text = str(data.get("planet_hint", ""))
@@ -60,7 +60,7 @@ func set_lobby(data: Dictionary) -> void:
 	planet_hint_label.add_theme_color_override("font_color", Color("#cbd5e1"))
 	if chip_rail != null:
 		chip_rail.tooltip_text = str(data.get("chip_rail_tooltip", "牌桌状态速览。"))
-	table_line_label.text = str(data.get("table_line", "Choose a table entry"))
+	table_line_label.text = str(data.get("table_line", "选择你的下一步"))
 	table_line_label.tooltip_text = str(data.get("table_tooltip", table_line_label.text))
 	table_line_label.add_theme_font_size_override("font_size", 16)
 	table_line_label.add_theme_color_override("font_color", Color("#e2e8f0"))
