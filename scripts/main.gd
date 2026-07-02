@@ -30239,6 +30239,70 @@ func _district_supply_micro_card_chip_entries(card_name: String, skill: Dictiona
 	return entries
 
 
+func _district_supply_decision_chip_entries(card_name: String, skill: Dictionary, state: Dictionary, player_index: int) -> Array:
+	var entries := []
+	var route_label := _short_card_text(_card_strategy_route_label(skill), 10)
+	entries.append({
+		"text": "用途:%s" % route_label,
+		"fg": Color("#dbeafe"),
+		"bg": Color("#1e3a8a"),
+		"tip": "这张牌主要属于：%s。" % _card_strategy_route_label(skill),
+	})
+	var status_label := String(state.get("label", "仅浏览"))
+	var status_accent: Color = state.get("accent", Color("#94a3b8")) as Color
+	entries.append({
+		"text": "买入:%s" % _short_card_text(status_label, 5),
+		"fg": status_accent.lightened(0.16),
+		"bg": Color("#020617").lerp(status_accent, 0.32),
+		"tip": String(state.get("detail", "")),
+	})
+	var flow_required := _skill_play_flow_required(skill, player_index)
+	if flow_required > 0:
+		var flow_product := _skill_play_product(skill, player_index)
+		entries.append({
+			"text": "打出:◇%s%d" % [_short_card_text(flow_product if flow_product != "" else "商品", 4), flow_required],
+			"fg": Color("#bbf7d0"),
+			"bg": Color("#14532d"),
+			"tip": "打出时需要对应商品流动达标；商品不被消耗。",
+		})
+	else:
+		entries.append({
+			"text": "打出:免门槛",
+			"fg": Color("#e2e8f0"),
+			"bg": Color("#334155"),
+			"tip": "打出时不要求商品流动。",
+		})
+	if _skill_targets_monster(skill):
+		entries.append({
+			"text": "目标:怪兽",
+			"fg": Color("#fecaca"),
+			"bg": Color("#7f1d1d"),
+			"tip": "打出时需要指定一只在场怪兽。",
+		})
+	elif _skill_targets_player(skill):
+		entries.append({
+			"text": "目标:玩家",
+			"fg": Color("#bfdbfe"),
+			"bg": Color("#1e3a8a"),
+			"tip": "打出时需要指定一名玩家。",
+		})
+	elif String(skill.get("kind", "")) == "area_trade_contract":
+		entries.append({
+			"text": "目标:两区",
+			"fg": Color("#fde68a"),
+			"bg": Color("#713f12"),
+			"tip": "合约牌需要选择供给区和需求区。",
+		})
+	else:
+		entries.append({
+			"text": "目标:按牌面",
+			"fg": Color("#c4b5fd"),
+			"bg": Color("#312e81"),
+			"tip": "按当前选区、当前商品或卡面文字结算。",
+		})
+	return entries
+
+
 func _district_supply_market_card_snapshot(district_index: int, card_name: String) -> Dictionary:
 	var skill := _skill_definition(card_name)
 	if skill.is_empty():
@@ -30356,6 +30420,7 @@ func _district_supply_preview_snapshot(district_index: int, preview_name: String
 			},
 		],
 		"micro_chips": _district_supply_micro_card_chip_entries(preview_name, skill, selected_player),
+		"decision_chips": _district_supply_decision_chip_entries(preview_name, skill, state, selected_player),
 		"verdicts": _district_supply_purchase_verdict_entries(district_index, preview_name, selected_player, state),
 		"body": _short_card_text(_skill_display_text(skill), 72),
 		"body_tooltip": _skill_display_text(skill),

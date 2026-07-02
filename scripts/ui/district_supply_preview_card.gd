@@ -8,6 +8,7 @@ signal buy_requested(card_name: String)
 @onready var title_label: Label = %DistrictSupplyPreviewTitle
 @onready var preview_chip_rail: HFlowContainer = %DistrictSupplyPreviewChipRail
 @onready var micro_chip_rail: HFlowContainer = %DistrictSupplyPreviewMicroChipRail
+@onready var decision_strip: HFlowContainer = %DistrictSupplyDecisionStrip
 @onready var verdict_rail: HFlowContainer = %DistrictSupplyPurchaseVerdictRail
 @onready var body_label: Label = %DistrictSupplyPreviewBodyLabel
 @onready var facts_label: Label = %DistrictSupplyPreviewFactsLabel
@@ -33,6 +34,7 @@ func set_preview(data: Dictionary) -> void:
 	title_label.add_theme_color_override("font_color", Color("#f8fafc"))
 	_render_chips(preview_chip_rail, data.get("chips", []), "DistrictSupplyPreviewChip", 8)
 	_render_chips(micro_chip_rail, data.get("micro_chips", []), "DistrictSupplyPreviewMicroChip", 7)
+	_render_chips(decision_strip, data.get("decision_chips", []), "DistrictSupplyDecisionChip", 8)
 	_render_verdicts(data.get("verdicts", []))
 	body_label.text = str(data.get("body", ""))
 	body_label.tooltip_text = str(data.get("body_tooltip", body_label.text))

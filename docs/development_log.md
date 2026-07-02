@@ -6012,3 +6012,25 @@
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
 - `tests/ui_snapshot_capture.gd` 有头通过；新增 `play_table_supply_drawer_1600x960.png` 等多分辨率主桌牌架快照，并人工查看 1600x960 图确认牌架在右侧打开、星球仍保持中央视觉焦点。
+
+## 2026-07-03｜区域牌架预览加入决策条
+
+- 本轮继续压低真人首局的信息密度，重点处理“打开区域牌架后如何一眼判断要不要买”：
+  - `DistrictSupplyPreviewCard` 新增 `DistrictSupplyDecisionStrip`。
+  - 右侧预览现在从同一套卡牌字段生成 3-4 个短决策 chip：用途、买入状态、打出门槛、目标类型。
+  - 长效果、关键事实、购买状态说明限制可见行数，完整文字留在 tooltip / 详情页。
+  - Scene 默认文案也改为中文：卡牌预览、选中卡牌效果、关键事实、购买状态。
+  - `docs/card_visual_theme_contract.md` 增补区域牌架右栏阅读顺序：先扫决策条，再看购买判定和卡面。
+- 可玩性意义：
+  - 玩家不用先读一整段规则，就能判断“这张牌属于什么路线、现在能不能买、打出需要什么、要指定什么目标”。
+  - 这更接近桌游电子版的卡牌市场阅读方式：先扫 icon/chip，再决定是否打开完整细节。
+
+### 本轮验证
+
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/playtest_skeleton_gate_test.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+- `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `play_table_supply_drawer_1280x720.png` 与 `play_table_supply_drawer_1600x960.png`，确认牌架在右侧、星球仍是主视觉、预览决策 chip 可见且长文本不再溢出卡框。

@@ -24,7 +24,7 @@ theme_override_constants/separation = 6
 [node name="DistrictSupplyPreviewTitle" type="Label" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Card preview"
+text = "卡牌预览"
 text_overrun_behavior = 3
 
 [node name="DistrictSupplyPreviewChipRail" type="HFlowContainer" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
@@ -38,9 +38,17 @@ theme_override_constants/v_separation = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-tooltip_text = "Compact card facts for the selected market card."
+tooltip_text = "选中卡牌的速读关键词。"
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 2
+
+[node name="DistrictSupplyDecisionStrip" type="HFlowContainer" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "先看用途、购买状态和打出门槛。"
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 3
 
 [node name="DistrictSupplyPurchaseVerdictRail" type="HFlowContainer" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
@@ -52,20 +60,29 @@ theme_override_constants/v_separation = 3
 [node name="DistrictSupplyPreviewBodyLabel" type="Label" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Selected card effect"
+text = "选中卡牌效果"
 autowrap_mode = 3
+clip_text = true
+text_overrun_behavior = 3
+max_lines_visible = 3
 
 [node name="DistrictSupplyPreviewFactsLabel" type="Label" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Key facts"
+text = "关键事实"
 autowrap_mode = 3
+clip_text = true
+text_overrun_behavior = 3
+max_lines_visible = 2
 
 [node name="DistrictSupplyPreviewStatusLabel" type="Label" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Status"
+text = "购买状态"
 autowrap_mode = 3
+clip_text = true
+text_overrun_behavior = 3
+max_lines_visible = 2
 
 [node name="DistrictSupplyPreviewCardFaceHost" type="CenterContainer" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
