@@ -13,6 +13,7 @@ Codex A owns the commercial presentation surface. Codex B owns Scenario Lab fixt
 - `VerticalSliceShowcase.play_scenario(id)` starts the first stage of that segment, so future Scenario Browser entries can launch the same presentation layer without changing rules.
 - `ScenarioLabShowcaseAdapter.normalize_payload(payload)` accepts Codex B payloads with `scenario_id`, `stage_id`, `coach_copy`, `visual_events`, `audio_hooks`, and optional public `targeting`.
 - `VerticalSliceShowcase.play_scenario_payload(payload)` renders that payload through the same table, hand rack, target overlay, visual layer, and inspector used by local showcase stages.
+- `VerticalSliceShowcase` owns a silent `ShowcaseAudioEventBus`; accepted payloads record public audio hooks such as `monster_attack` and `city_damage`, while rejected payloads emit no hooks.
 - Hidden truth, opponent hand contents, true anonymous-card ownership, AI scoring, and private cash remain outside the bridge.
 - Payloads containing keys such as `true_owner`, `opponent_private`, `private_cash`, `ai_score`, or `decision_sample` are marked unsafe and their visual events are not shown.
 
@@ -54,6 +55,7 @@ Codex A owns the commercial presentation surface. Codex B owns Scenario Lab fixt
 - `AudioEventBus` must record silent audio hooks.
 - `balance_report.md` must contain price-low Top 20, price-high Top 20, rank-gradient anomalies, and first-table recommendations.
 - `showcase_frame_capture.gd` must save the required frame sequence.
+- `scenario_lab_payload_capture.gd` must save payload-driven proof frames for `first_table`, `monster_pressure`, `public_track_intro`, `bid_practice`, and unsafe payload rejection.
 
 ## Hidden Information
 

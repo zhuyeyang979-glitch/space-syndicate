@@ -2,6 +2,7 @@ extends Control
 class_name VerticalSliceShowcase
 
 const DIRECTOR_SCRIPT := preload("res://scripts/ui/showcase_director.gd")
+const AUDIO_EVENT_BUS_SCRIPT := preload("res://scripts/audio/audio_event_bus.gd")
 const HAND_RACK_SCENE := preload("res://scenes/ui/HandRack.tscn")
 const VISUAL_EVENT_LAYER_SCENE := preload("res://scenes/ui/VisualEventLayer.tscn")
 const TARGETING_OVERLAY_SCENE := preload("res://scenes/ui/TargetingOverlay.tscn")
@@ -18,6 +19,7 @@ var _bid_label: Label
 var _balance_panel: PanelContainer
 var _balance_body: Label
 var _public_track_slots: Array[PanelContainer] = []
+var _audio_bus: Node
 var _hand_rack: Control
 var _visual_layer: Control
 var _targeting_overlay: Control
@@ -28,6 +30,9 @@ func _ready() -> void:
 	_director = DIRECTOR_SCRIPT.new()
 	_director.name = "ShowcaseDirector"
 	add_child(_director)
+	_audio_bus = AUDIO_EVENT_BUS_SCRIPT.new()
+	_audio_bus.name = "ShowcaseAudioEventBus"
+	add_child(_audio_bus)
 	_director.call("load_sequence")
 	_build_showcase_ui()
 	play_stage("board_idle")
@@ -79,6 +84,10 @@ func _apply_stage_snapshot(snapshot: Dictionary) -> void:
 	if not bool(snapshot.get("hidden_info_safe", true)):
 		events = []
 	_visual_layer.call("set_visual_events", events, reduced_motion)
+	if not bool(snapshot.get("hidden_info_safe", true)):
+		clear_audio_events()
+	else:
+		_emit_audio_hooks(snapshot)
 	_stage_targeting(snapshot)
 
 
@@ -111,7 +120,45 @@ func get_showcase_contract() -> Dictionary:
 		"has_visual_layer": _visual_layer != null,
 		"has_targeting_overlay": _targeting_overlay != null,
 		"has_hand_rack": _hand_rack != null,
+		"has_audio_bus": _audio_bus != null,
+		"audio_events": _audio_bus.get("emitted_events") if _audio_bus != null else [],
 	}
+
+
+func clear_audio_events() -> void:
+	if _audio_bus != null and _audio_bus.has_method("clear_events"):
+		_audio_bus.call("clear_events")
+
+
+func get_audio_event_snapshot() -> Dictionary:
+	var events: Array = _audio_bus.get("emitted_events") if _audio_bus != null else []
+	var ids: Array[String] = []
+	for event_variant in events:
+		if event_variant is Dictionary:
+			var event: Dictionary = event_variant
+			var event_id := str(event.get("id", ""))
+			if event_id != "" and not ids.has(event_id):
+				ids.append(event_id)
+	return {
+		"events": events.duplicate(true),
+		"event_ids": ids,
+		"silent_mode": bool(_audio_bus.get("silent_mode")) if _audio_bus != null else true,
+	}
+
+
+func _emit_audio_hooks(snapshot: Dictionary) -> void:
+	if _audio_bus == null:
+		return
+	var hooks_variant: Variant = snapshot.get("audio_hooks", [])
+	var hooks: Array = hooks_variant if hooks_variant is Array else []
+	for hook_variant in hooks:
+		var hook := str(hook_variant)
+		if hook != "" and _audio_bus.has_method("emit_audio_event"):
+			_audio_bus.call("emit_audio_event", hook, {
+				"stage_id": str(snapshot.get("id", "")),
+				"scenario_ids": snapshot.get("scenario_ids", []),
+				"source": str(snapshot.get("source", "showcase_sequence")),
+			})
 
 
 func _scenario_label(snapshot: Dictionary) -> String:
@@ -127,7 +174,7 @@ func _scenario_label(snapshot: Dictionary) -> String:
 
 func _build_showcase_ui() -> void:
 	for child in get_children():
-		if child != _director:
+		if child != _director and child != _audio_bus:
 			child.queue_free()
 	_public_track_slots.clear()
 	var background := ColorRect.new()

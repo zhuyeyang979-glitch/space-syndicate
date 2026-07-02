@@ -53,17 +53,25 @@ func _run() -> void:
 		await process_frame
 		await process_frame
 		var monster_payload := _payload_for(payloads, "monster_pressure")
+		showcase.call("clear_audio_events")
 		showcase.call("play_scenario_payload", monster_payload)
 		await process_frame
 		var visual_layer := showcase.find_child("ShowcaseVisualEventLayer", true, false)
 		var visual_snapshot: Dictionary = visual_layer.call("get_visual_event_snapshot") if visual_layer != null and visual_layer.has_method("get_visual_event_snapshot") else {}
 		var visual_classes: Array = visual_snapshot.get("event_classes", []) if visual_snapshot.get("event_classes", []) is Array else []
 		_expect(visual_classes.has("monster_attack") and visual_classes.has("city_damage"), "VerticalSliceShowcase renders Scenario Lab monster_pressure payload")
+		var audio_snapshot: Dictionary = showcase.call("get_audio_event_snapshot")
+		var audio_ids: Array = audio_snapshot.get("event_ids", []) if audio_snapshot.get("event_ids", []) is Array else []
+		_expect(audio_ids.has("monster_attack") and audio_ids.has("city_damage"), "VerticalSliceShowcase emits silent audio hooks for Scenario Lab monster_pressure payload")
+		showcase.call("clear_audio_events")
 		showcase.call("play_scenario_payload", unsafe)
 		await process_frame
 		visual_snapshot = visual_layer.call("get_visual_event_snapshot") if visual_layer != null and visual_layer.has_method("get_visual_event_snapshot") else {}
 		var events: Array = visual_snapshot.get("events", []) if visual_snapshot.get("events", []) is Array else []
 		_expect(events.is_empty(), "VerticalSliceShowcase clears events for unsafe Scenario Lab payloads")
+		audio_snapshot = showcase.call("get_audio_event_snapshot")
+		audio_ids = audio_snapshot.get("event_ids", []) if audio_snapshot.get("event_ids", []) is Array else []
+		_expect(audio_ids.is_empty(), "VerticalSliceShowcase does not emit audio hooks for unsafe Scenario Lab payloads")
 		var inspector := showcase.find_child("ShowcaseRightInspectorRows", true, false)
 		_expect(inspector != null, "showcase keeps inspector visible after rejecting unsafe payload")
 		get_root().remove_child(showcase)

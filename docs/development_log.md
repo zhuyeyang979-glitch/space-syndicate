@@ -3,6 +3,40 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜Scenario Lab payload audio hook 与截图验收
+
+### 参考方向
+
+- 继续推进 Hearthstone-grade vertical slice，但本轮只补 Codex A 展示层：消费 Codex B 暴露的公开 `visual_events/audio_hooks` payload，不改 Scenario/Campaign 推进逻辑。
+- 音效先保持 silent hook，记录 `card_play`、`monster_attack`、`city_damage`、`bid_update` 等公开事件，后续可替换为 CC0 临时音效或正式音频资产。
+- 隐藏信息边界优先：payload 如果包含 `true_owner`、`private_cash`、AI score 等私有字段，showcase 必须拒绝 visual/audio 演出。
+
+### 本轮实现
+
+- `VerticalSliceShowcase` 接入 `ShowcaseAudioEventBus`，本地 stage 与 Scenario Lab payload 都能记录公开 silent audio hook。
+- `play_scenario_payload()` 继续通过 `ScenarioLabShowcaseAdapter` 消费 B 侧 payload；accepted payload 渲染同一桌面、手牌、目标 overlay、VisualEventLayer 和右侧解释。
+- unsafe payload 会清空 visual event 与 audio hook，并在右侧 Inspector 显示被拒绝字段，避免演出层绕过隐藏信息边界。
+- 新增 `tests/scenario_lab_payload_capture.gd`，为 `first_table`、`monster_pressure`、`public_track_intro`、`bid_practice` 和 unsafe rejection 生成 payload 驱动证明截图。
+- `tests/scenario_lab_showcase_bridge_test.gd` 增加 payload audio hook 断言；`tests/visual_snapshot.gd` 锁住 `ShowcaseAudioEventBus`、`get_audio_event_snapshot()`、`_emit_audio_hooks()` 和 payload capture 文件名。
+- `docs/vertical_slice_showcase_spec.md` 补充 Scenario Lab payload audio hook 和截图验收要求。
+
+### 验证
+
+- `Godot 4.7 --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/scenario_lab_showcase_bridge_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/vertical_slice_showcase_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/visual_event_smoke_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/balance_report_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/scenario_lab_payload_capture.gd` 通过，并生成 5 张 Scenario Lab payload 桥接截图。
+- `Godot 4.7 --path . --windowed --resolution 1600x960 --script res://tests/showcase_frame_capture.gd` 通过，原 45 秒展示帧序列仍可生成。
+- 目检 `scenario_lab_monster_pressure_payload_1600x960.png`、`scenario_lab_bid_practice_payload_1600x960.png`、`scenario_lab_unsafe_payload_rejected_1600x960.png`：payload 演出可见，unsafe 截图显示拒绝说明且无 visual event。
+
+### 剩余缺口
+
+- 仍是 silent audio hook，没有接入真实音频文件。
+- 当前 payload fixture 是 A/B 桥接样例；等 Codex B 输出真实 Scenario Lab 事件流后，可直接替换数据源。
+
 ## 2026-07-03｜MapView 默认球体回归修复
 
 ### 参考方向
