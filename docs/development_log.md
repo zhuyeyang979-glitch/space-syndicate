@@ -24,6 +24,7 @@
 - 继续补强 `data/showcase/hearthstone_grade_sequence.json` 的 `scenario_lab_bridge` 与 `scenario_segments`，把 `first_table`、`monster_pressure`、`public_track_intro`、`bid_practice` 显式映射到 stage、VFX event class 和 silent audio hook。
 - `ShowcaseDirector` 新增 `get_scenario_ids()`、`stage_ids_for_scenario()`、`scenario_snapshot()`；`VerticalSliceShowcase` 新增 `play_scenario()` / `get_scenario_contract()`，给未来 Codex B Scenario Browser/Scenario Lab 入口消费。
 - `docs/balance_report.md` 和 balance analyzer/reporter 增加“剧本价格/强度曲线”，并输出怪兽压迫、公开牌轨、竞价练习各自的推荐卡组。
+- 新增 `ScenarioLabShowcaseAdapter`、`data/showcase/scenario_lab_bridge_fixture.json` 和 `tests/scenario_lab_showcase_bridge_test.gd`，可直接消费 Codex B 风格 `visual_events` payload；包含隐藏信息字段的 payload 会被标记 unsafe 并拒绝展示事件。
 
 ### 验证
 
@@ -31,6 +32,7 @@
 - `Godot 4.7 --headless --path . --script res://tests/vertical_slice_showcase_test.gd` 通过。
 - `Godot 4.7 --headless --path . --script res://tests/visual_event_smoke_test.gd` 通过。
 - `Godot 4.7 --headless --path . --script res://tests/balance_report_test.gd` 通过。
+- `Godot 4.7 --headless --path . --script res://tests/scenario_lab_showcase_bridge_test.gd` 通过。
 - `Godot 4.7 --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
 - `Godot 4.7 --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
 - `Godot 4.7 --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。

@@ -11,7 +11,10 @@ Codex A owns the commercial presentation surface. Codex B owns Scenario Lab fixt
 - Scenario Lab may provide `visual_events: Array[Dictionary]` with the same event vocabulary used by `VisualEventLayer`.
 - `ShowcaseDirector.scenario_snapshot(id)` groups stages, event classes, and silent audio hooks for `first_table`, `monster_pressure`, `public_track_intro`, and `bid_practice`.
 - `VerticalSliceShowcase.play_scenario(id)` starts the first stage of that segment, so future Scenario Browser entries can launch the same presentation layer without changing rules.
+- `ScenarioLabShowcaseAdapter.normalize_payload(payload)` accepts Codex B payloads with `scenario_id`, `stage_id`, `coach_copy`, `visual_events`, `audio_hooks`, and optional public `targeting`.
+- `VerticalSliceShowcase.play_scenario_payload(payload)` renders that payload through the same table, hand rack, target overlay, visual layer, and inspector used by local showcase stages.
 - Hidden truth, opponent hand contents, true anonymous-card ownership, AI scoring, and private cash remain outside the bridge.
+- Payloads containing keys such as `true_owner`, `opponent_private`, `private_cash`, `ai_score`, or `decision_sample` are marked unsafe and their visual events are not shown.
 
 ## Scenario Coverage
 

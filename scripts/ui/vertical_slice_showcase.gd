@@ -50,17 +50,34 @@ func play_stage(stage_id: String) -> void:
 	if _director == null:
 		return
 	var snapshot: Dictionary = _director.call("stage_snapshot", stage_id)
+	_apply_stage_snapshot(snapshot)
+
+
+func play_scenario_payload(payload: Dictionary) -> void:
+	if _director == null:
+		return
+	var snapshot: Dictionary = _director.call("stage_snapshot_from_scenario_lab", payload)
+	_apply_stage_snapshot(snapshot)
+
+
+func _apply_stage_snapshot(snapshot: Dictionary) -> void:
 	var title := str(snapshot.get("title", ""))
 	var scenario_label := _scenario_label(snapshot)
 	_stage_label.text = title
 	_phase_label.text = "%s｜%s｜%s" % [scenario_label, str(snapshot.get("id", "")), "45 秒商业垂直切片"]
 	_inspector_title.text = "当前解释｜%s" % title
 	_inspector_body.text = str(snapshot.get("inspector", ""))
+	if not bool(snapshot.get("hidden_info_safe", true)):
+		var rejected: Array = snapshot.get("rejected_private_fields", []) if snapshot.get("rejected_private_fields", []) is Array else []
+		_inspector_body.text = "Scenario Lab payload 含隐藏信息字段，已拒绝展示：%s" % ", ".join(rejected)
+	var stage_id := str(snapshot.get("id", ""))
 	_stage_hand_state(stage_id)
 	_stage_track_state(stage_id)
 	_stage_balance_preview(stage_id)
 	var events_variant: Variant = snapshot.get("events", [])
 	var events: Array = events_variant if events_variant is Array else []
+	if not bool(snapshot.get("hidden_info_safe", true)):
+		events = []
 	_visual_layer.call("set_visual_events", events, reduced_motion)
 	_stage_targeting(snapshot)
 

@@ -2,6 +2,7 @@ extends Node
 class_name ShowcaseDirector
 
 const SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/visual_event_snapshot.gd")
+const SCENARIO_LAB_ADAPTER_SCRIPT := preload("res://scripts/ui/scenario_lab_showcase_adapter.gd")
 const DEFAULT_SEQUENCE_PATH := "res://data/showcase/hearthstone_grade_sequence.json"
 
 var sequence: Dictionary = {}
@@ -129,6 +130,19 @@ func scenario_snapshot(scenario_id: String) -> Dictionary:
 	}
 
 
+func stage_snapshot_from_scenario_lab(payload: Dictionary) -> Dictionary:
+	var adapter: Variant = SCENARIO_LAB_ADAPTER_SCRIPT.new()
+	var scenario_id := str(payload.get("scenario_id", payload.get("id", "first_table")))
+	var stage_id := str(payload.get("stage_id", ""))
+	var fallback := stage_by_id(stage_id) if stage_id != "" else _fallback_stage_for_scenario(scenario_id)
+	return adapter.call("normalize_payload", payload, fallback)
+
+
+func scenario_contract_from_scenario_lab(payload: Dictionary) -> Dictionary:
+	var adapter: Variant = SCENARIO_LAB_ADAPTER_SCRIPT.new()
+	return adapter.call("scenario_contract_from_payload", payload)
+
+
 func stage_snapshot(stage_id: String) -> Dictionary:
 	var stage := stage_by_id(stage_id)
 	var events := visual_events_for_stage(stage_id)
@@ -151,6 +165,13 @@ func _stage_belongs_to_scenario(stage: Dictionary, scenario_id: String) -> bool:
 		if str(scenario_id_variant) == scenario_id:
 			return true
 	return false
+
+
+func _fallback_stage_for_scenario(scenario_id: String) -> Dictionary:
+	var ids := stage_ids_for_scenario(scenario_id)
+	if ids.is_empty():
+		return stage_by_id("board_idle")
+	return stage_by_id(str(ids[0]))
 
 
 func _append_unique_string(target: Array[String], value: String) -> void:
