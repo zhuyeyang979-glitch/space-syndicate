@@ -22826,6 +22826,8 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			_refresh_ui()
 			return true
 		"coach_first_summon":
+			if not _ensure_first_run_coach_action_district(player_index):
+				return false
 			var starter_slot := _first_starter_monster_slot(players[player_index])
 			if starter_slot < 0:
 				return false
@@ -22833,16 +22835,22 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			_use_skill(starter_slot)
 			return true
 		"coach_build_city":
+			if not _ensure_first_run_coach_action_district(player_index):
+				return false
 			selected_player = player_index
 			_build_city_in_selected_district()
 			return true
 		"coach_open_rack":
+			if not _ensure_first_run_coach_action_district(player_index):
+				return false
 			if selected_district < 0 or selected_district >= districts.size():
 				return false
 			selected_player = player_index
 			_open_district_supply_from_map(selected_district)
 			return true
 		"coach_buy_card":
+			if not _ensure_first_run_coach_action_district(player_index):
+				return false
 			if selected_district < 0 or selected_district >= districts.size():
 				return false
 			selected_player = player_index
@@ -22871,6 +22879,19 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			_open_intel_dossier_menu()
 			return true
 	return false
+
+
+func _ensure_first_run_coach_action_district(player_index: int) -> bool:
+	if selected_district >= 0 and selected_district < districts.size() and not bool(districts[selected_district].get("destroyed", false)):
+		return true
+	var recommended_district := _first_run_recommended_start_district(player_index)
+	if recommended_district < 0 or recommended_district >= districts.size():
+		return false
+	selected_district = recommended_district
+	_mark_first_run_coach_district_seen(player_index)
+	_sync_selected_district_card()
+	_load_selected_district_guess()
+	return true
 
 
 func _first_buyable_district_card(district_index: int, player_index: int) -> String:

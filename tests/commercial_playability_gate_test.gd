@@ -42,6 +42,7 @@ func _run() -> void:
 	_check_gate_documentation()
 	for viewport_size in VIEWPORT_SIZES:
 		await _check_first_table_runtime_layout(viewport_size)
+	await _check_first_run_cta_forgives_missing_region()
 	await _check_first_ten_minute_action_chain()
 	_finish()
 
@@ -90,6 +91,31 @@ func _check_first_ten_minute_action_chain() -> void:
 	var ui_text := _node_text(runtime)
 	_expect(ui_text.contains("牌架") and ui_text.contains("手牌"), "first ten-minute path keeps card rack and hand concepts visible together")
 	_check_player_facing_privacy(runtime, Vector2i(1600, 960))
+	root.remove_child(main)
+	main.queue_free()
+	await _wait_frames(1)
+
+
+func _check_first_run_cta_forgives_missing_region() -> void:
+	root.size = Vector2i(1600, 960)
+	var main := await _instantiate_main()
+	if main == null:
+		return
+	main.call("_new_game")
+	await _wait_frames(12)
+	main.set("selected_district", -1)
+	main.set("district_supply_open_district", -1)
+	main.set("district_supply_open_player", -1)
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_open_rack")), "first-run CTA can auto-select a recommended region before opening the rack")
+	await _wait_frames(8)
+	var selected := int(main.get("selected_district"))
+	var open_district := int(main.get("district_supply_open_district"))
+	var open_player := int(main.get("district_supply_open_player"))
+	_expect(selected >= 0 and open_district == selected and open_player == 0, "first-run rack CTA lands on the selected recommended region for the local player")
+	var snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var coach: Dictionary = snapshot.get("first_run_coach", {}) if snapshot.get("first_run_coach", {}) is Dictionary else {}
+	_expect(str(coach.get("focus_target", "")).strip_edges() != "", "first-run coach keeps a focus target after auto-positioning")
 	root.remove_child(main)
 	main.queue_free()
 	await _wait_frames(1)
