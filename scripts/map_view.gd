@@ -44,6 +44,9 @@ const KENNEY_FISH_PATH := "res://assets/third_party/kenney_cc0/platformer/enemie
 const KENNEY_SLIME_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png"
 const KENNEY_ALIEN_BLUE_PATH := "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
 const KENNEY_ENEMY_UFO_PATH := "res://assets/third_party/kenney_cc0/space/enemyUFO.png"
+const PIXELMOB_SLIME_PATH := "res://assets/third_party/pixelmob_cc0/sprites/SlimeA.png"
+const PIXELMOB_SLIME_SQUARE_PATH := "res://assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png"
+const PIXELMOB_FRAME_COUNT := 5
 const SUPERPOWERS_DRAGON_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png"
 const SUPERPOWERS_CYCLOP_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png"
 const SUPERPOWERS_SNAKE_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
@@ -103,6 +106,8 @@ func _load_monster_marker_textures() -> void:
 		"kenney_slime": _load_optional_texture(KENNEY_SLIME_PATH),
 		"kenney_alien_blue": _load_optional_texture(KENNEY_ALIEN_BLUE_PATH),
 		"kenney_enemy_ufo": _load_optional_texture(KENNEY_ENEMY_UFO_PATH),
+		"pixelmob_slime": _load_optional_texture(PIXELMOB_SLIME_PATH),
+		"pixelmob_slime_square": _load_optional_texture(PIXELMOB_SLIME_SQUARE_PATH),
 		"superpowers_dragon": _load_optional_texture(SUPERPOWERS_DRAGON_PATH),
 		"superpowers_cyclop": _load_optional_texture(SUPERPOWERS_CYCLOP_PATH),
 		"superpowers_snake": _load_optional_texture(SUPERPOWERS_SNAKE_PATH),
@@ -1261,6 +1266,10 @@ func _monster_marker_sprite_region(texture: Texture2D, sprite_key: String, sprit
 		var cell_x := int(parts[0]) if parts.size() > 0 else 0
 		var cell_y := int(parts[1]) if parts.size() > 1 else 0
 		return Rect2(Vector2(float(cell_x) * MOTH_KAIJUICE_CELL_SIZE.x, float(cell_y) * MOTH_KAIJUICE_CELL_SIZE.y), MOTH_KAIJUICE_CELL_SIZE)
+	if sprite_key.begins_with("pixelmob"):
+		var frame_width := texture.get_size().x / float(PIXELMOB_FRAME_COUNT)
+		var frame_index := clampi(int(sprite_cell if sprite_cell != "" else "0"), 0, PIXELMOB_FRAME_COUNT - 1)
+		return Rect2(Vector2(frame_width * float(frame_index), 0.0), Vector2(frame_width, texture.get_size().y))
 	return Rect2(Vector2.ZERO, texture.get_size())
 
 

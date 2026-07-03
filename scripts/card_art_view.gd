@@ -26,6 +26,9 @@ const KENNEY_FISH_PATH := "res://assets/third_party/kenney_cc0/platformer/enemie
 const KENNEY_SLIME_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png"
 const KENNEY_ALIEN_BLUE_PATH := "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
 const KENNEY_ENEMY_UFO_PATH := "res://assets/third_party/kenney_cc0/space/enemyUFO.png"
+const PIXELMOB_SLIME_PATH := "res://assets/third_party/pixelmob_cc0/sprites/SlimeA.png"
+const PIXELMOB_SLIME_SQUARE_PATH := "res://assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png"
+const PIXELMOB_FRAME_COUNT := 5
 const SUPERPOWERS_DRAGON_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png"
 const SUPERPOWERS_CYCLOP_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png"
 const SUPERPOWERS_SNAKE_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
@@ -90,6 +93,8 @@ func _ready() -> void:
 		"kenney_slime": _load_optional_texture(KENNEY_SLIME_PATH),
 		"kenney_alien_blue": _load_optional_texture(KENNEY_ALIEN_BLUE_PATH),
 		"kenney_enemy_ufo": _load_optional_texture(KENNEY_ENEMY_UFO_PATH),
+		"pixelmob_slime": _load_optional_texture(PIXELMOB_SLIME_PATH),
+		"pixelmob_slime_square": _load_optional_texture(PIXELMOB_SLIME_SQUARE_PATH),
 		"superpowers_dragon": _load_optional_texture(SUPERPOWERS_DRAGON_PATH),
 		"superpowers_cyclop": _load_optional_texture(SUPERPOWERS_CYCLOP_PATH),
 		"superpowers_snake": _load_optional_texture(SUPERPOWERS_SNAKE_PATH),
@@ -601,19 +606,19 @@ func _moth_kaijuice_card_sprite_key() -> String:
 		if identity.contains("孢雾"):
 			return "superpowers_dragon"
 		if identity.contains("砂铠"):
-			return "superpowers_cyclop"
+			return "monster_battler_rock"
 		if identity.contains("流星"):
 			return "kenney_enemy_ufo"
 		if identity.contains("棱刃"):
 			return "monster_battler_dino"
 		if identity.contains("绿洲"):
-			return "kenney_slime"
+			return "pixelmob_slime_square"
 		if identity.contains("焰环"):
 			return "moth_kaijuice_kaiju"
 		if identity.contains("蓝锋"):
 			return "superpowers_snake"
 		if identity.contains("镜像"):
-			return "superpowers_slim"
+			return "kenney_alien_blue"
 		return "kaiju"
 	if _contains_any(identity, ["怪兽", "星兽", "诱导", "夺取"]):
 		return "monster_battler_turtle" if _name_seed() % 2 == 0 else "monster_battler_rodent"
@@ -670,6 +675,10 @@ func _card_visual_source_id(sprite_key: String) -> String:
 			return "kenney_cc0_alien_blue"
 		"kenney_enemy_ufo":
 			return "kenney_cc0_enemy_ufo"
+		"pixelmob_slime":
+			return "pixelmob_cc0_slime"
+		"pixelmob_slime_square":
+			return "pixelmob_cc0_slime_square"
 		"superpowers_dragon":
 			return "superpowers_cc0_dragon_card"
 		"superpowers_cyclop":
@@ -689,6 +698,8 @@ func _moth_kaijuice_card_sprite_cell(sprite_key: String) -> String:
 	if sprite_key == "mech":
 		var cell_index := _name_seed() % 24
 		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+	if sprite_key.begins_with("pixelmob"):
+		return str(_name_seed() % PIXELMOB_FRAME_COUNT)
 	return "full"
 
 
@@ -702,6 +713,10 @@ func _moth_kaijuice_card_sprite_region(sprite_key: String) -> Rect2:
 		var cell_x := int(parts[0]) if parts.size() > 0 else 0
 		var cell_y := int(parts[1]) if parts.size() > 1 else 0
 		return Rect2(Vector2(float(cell_x) * MOTH_KAIJUICE_CELL_SIZE.x, float(cell_y) * MOTH_KAIJUICE_CELL_SIZE.y), MOTH_KAIJUICE_CELL_SIZE)
+	if sprite_key.begins_with("pixelmob"):
+		var frame_width := texture.get_size().x / float(PIXELMOB_FRAME_COUNT)
+		var frame_index := clampi(int(_moth_kaijuice_card_sprite_cell(sprite_key)), 0, PIXELMOB_FRAME_COUNT - 1)
+		return Rect2(Vector2(frame_width * float(frame_index), 0.0), Vector2(frame_width, texture.get_size().y))
 	return Rect2(Vector2.ZERO, texture.get_size())
 
 

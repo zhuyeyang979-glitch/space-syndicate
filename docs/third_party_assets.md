@@ -84,7 +84,7 @@ Imported for the current prototype:
 
 Current player-facing use:
 
-- `scripts/monster_art_view.gd` uses these sprites as distinct current monster body-art families, with one body family per assigned monster.
+- `scripts/monster_art_view.gd` uses these sprites as distinct current monster body-art families, with one body family per assigned monster. Current assignments include the rocky land bruiser and crystal heavy-armor body families.
 - `scripts/card_art_view.gd` uses selected Monster Battler sprites as route-specific temporary card illustrations, especially monster-pressure and creature-linked card faces.
 - These CC0 sprites are temporary prototype monster anchors; later passes should replace them with owned or more coherent sci-fi kaiju art while preserving the one-monster-one-body-family gate.
 
@@ -104,9 +104,29 @@ Imported for the current prototype:
 
 Current player-facing use:
 
-- `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for ocean, alien, ooze/support, and orbital/flying silhouettes.
+- `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for alien and orbital/flying silhouettes.
 - `scripts/card_art_view.gd` uses selected Kenney sprites as route-specific temporary card illustrations for ocean, alien, and orbital/air cards.
 - The Kenney assets are CC0 placeholders; keep source attribution in this document for traceability even though attribution is not required by the license.
+
+## PixelMob CC0 sprite reference pack
+
+Source: <https://github.com/rakkarage/PixelMob>
+
+License observed from upstream `LICENSE-ART.txt`: CC0 1.0 Universal.
+
+Imported for the current prototype:
+
+- `assets/third_party/pixelmob_cc0/LICENSE-ART.txt`
+- `assets/third_party/pixelmob_cc0/README.md`
+- `assets/third_party/pixelmob_cc0/sprites/SlimeA.png`
+- `assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png`
+
+Current player-facing use:
+
+- `scripts/monster_art_view.gd` uses the square slime strip as the current distinct body-art family for `绿洲修复体`.
+- `scripts/card_art_view.gd` uses the same PixelMob body sprite for the matching rank-I monster card face, preserving the body/card identity gate.
+- `scripts/map_view.gd` can render the same frame-selected PixelMob body on runtime map monster tokens.
+- This source was added specifically to avoid overusing the MOS/Moth kaiju sheet or a single fantasy monster pack. It is a temporary CC0 prototype anchor and should later be replaced or overpainted into owned sci-fi kaiju art without losing the distinct body-family contract.
 
 ## Superpowers Asset Packs CC0 monster reference
 
@@ -124,9 +144,9 @@ Imported for the current prototype:
 
 Current player-facing use:
 
-- `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for miasma dragon, land bruiser, blade serpent, and mirror/slime hunter profiles.
-- `scripts/card_art_view.gd` uses the same dragon/cyclop/snake/slim body sprites for the matching rank-I monster card faces, so those monster cards no longer drift into unrelated temporary creature art.
-- This pack is intentionally used to reduce visual dependence on the MOS/Moth kaiju sheet. The art identity gate now requires at least four upstream monster body-art packs and rejects any one pack supplying more than half of the current roster.
+- `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for the miasma dragon and blade-serpent profiles.
+- `scripts/card_art_view.gd` uses the same dragon/snake body sprites for the matching rank-I monster card faces, so those monster cards no longer drift into unrelated temporary creature art.
+- This pack is intentionally used to reduce visual dependence on the MOS/Moth kaiju sheet, but it may not become the new default body source. The art identity gate now requires at least five upstream monster body-art packs and rejects any one pack supplying more than 35% of the current roster.
 - These CC0 sprites are temporary prototype anchors. Later owned art should preserve the same per-monster silhouette/source-family diversity.
 
 ## Terraforming Mars open-source reference

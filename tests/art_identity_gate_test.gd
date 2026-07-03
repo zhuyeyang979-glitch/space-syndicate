@@ -141,6 +141,13 @@ func _verify_monster_art_identity(main: Node) -> void:
 	var visual_sources := {}
 	var upstream_sources := {}
 	var upstream_counts := {}
+	var required_upstream_sources := {
+		"moth_kaijuice_mit": false,
+		"monster_battler_cc0": false,
+		"kenney_cc0": false,
+		"pixelmob_cc0": false,
+		"superpowers_asset_packs_cc0": false,
+	}
 	var moth_source_count := 0
 	var monster_index := -1
 	for source_variant in monster_sources:
@@ -195,6 +202,8 @@ func _verify_monster_art_identity(main: Node) -> void:
 		visual_sources[visual_source_id] = true
 		upstream_sources[upstream_source_id] = true
 		upstream_counts[upstream_source_id] = int(upstream_counts.get(upstream_source_id, 0)) + 1
+		if required_upstream_sources.has(upstream_source_id):
+			required_upstream_sources[upstream_source_id] = true
 		if visual_source_id.begins_with("moth_kaijuice"):
 			moth_source_count += 1
 	monster_view.queue_free()
@@ -204,11 +213,16 @@ func _verify_monster_art_identity(main: Node) -> void:
 	_expect(silhouettes.size() == monster_sources.size(), "every current monster family has a distinct silhouette/motif assignment")
 	_expect(sprite_keys.size() == monster_sources.size(), "every current monster family uses a distinct body sprite key, not one reused sprite with cosmetic edits")
 	_expect(visual_sources.size() == monster_sources.size(), "every current monster family uses a distinct visual source family")
-	_expect(upstream_sources.size() >= 4, "current monster roster draws body art from at least four upstream/open-source packs instead of one repeated sprite sheet")
+	_expect(upstream_sources.size() >= 5, "current monster roster draws body art from at least five upstream/open-source packs instead of one repeated sprite sheet")
+	var missing_upstream_sources: Array[String] = []
+	for source_id in required_upstream_sources.keys():
+		if not bool(required_upstream_sources[source_id]):
+			missing_upstream_sources.append(String(source_id))
+	_expect(missing_upstream_sources.is_empty(), "current monster roster includes every required open monster body source; missing=%s" % ", ".join(missing_upstream_sources))
 	var largest_upstream_count := 0
 	for count_variant in upstream_counts.values():
 		largest_upstream_count = maxi(largest_upstream_count, int(count_variant))
-	_expect(largest_upstream_count <= int(ceil(float(monster_sources.size()) * 0.5)), "no single upstream monster art pack supplies more than half of the current roster")
+	_expect(largest_upstream_count <= int(ceil(float(monster_sources.size()) * 0.35)), "no single upstream monster art pack supplies more than 35% of the current roster")
 	_expect(moth_source_count == 1, "Moth Kaijuice/MOS kaiju art is reserved for exactly one monster family in the current roster")
 
 

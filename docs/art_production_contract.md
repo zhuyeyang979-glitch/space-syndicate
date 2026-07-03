@@ -61,7 +61,8 @@ Acceptance:
 - Every current monster family must have a distinct silhouette/motif assignment.
 - Every current monster family must use a distinct body sprite key and a distinct `visual_source_id`; it is not acceptable to reuse one monster body with different action overlays.
 - Moth Kaijuice/MOS kaiju body art can be assigned to at most one current monster family. Other monsters must come from different open-source body-art families or a clearly different authored/procedural body.
-- The current monster roster must draw body art from at least four upstream/open-source packs, and no single upstream pack may provide more than half of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
+- The current monster roster must draw body art from at least five upstream/open-source packs, and no single upstream pack may provide more than 35% of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
+- A newly imported monster body source must be tied to a specific monster family before it counts. Documentation-only references do not satisfy the gate.
 - Monster art must be visible in the bestiary/detail contexts, monster cards, and runtime map tokens. The map token may be compact, but it must consume the same `sprite_key`, `visual_source_id`, and `upstream_source_id` contract instead of falling back to only number/color/glyph.
 - Each rank-I monster card must use the same body `sprite_key` as its corresponding monster art profile. The card frame may add overlays, but it cannot represent the monster with an unrelated creature sprite.
 - Runtime monster actions must consume the same action animation profile used by the art audit. A beam, projectile, dash, miasma, repair, roar/wave, throw, and melee action may still be greybox, but they must not all collapse into one generic map line or circle.
@@ -101,6 +102,7 @@ Current imported sources:
 - Moth Kaijuice city/kaiju sprites: `assets/third_party/moth_kaijuice/`, MIT, temporary prototype illustration source. MOS/Moth kaiju body art is limited to one monster family in the current roster.
 - Monster Battler monster sprites: `assets/third_party/monster_battler/`, CC0, temporary monster body-art and card-illustration source.
 - Kenney CC0 sprites: `assets/third_party/kenney_cc0/`, CC0, temporary monster body-art and card-illustration source.
+- PixelMob sprites: `assets/third_party/pixelmob_cc0/`, CC0, temporary monster body-art source for the support/slime body family.
 - Superpowers Asset Packs sprites: `assets/third_party/superpowers_cc0/`, CC0, temporary monster body-art source for body shapes that should not resemble the MOS kaiju sheet.
 
 Before any new copied asset becomes player-facing:
@@ -136,8 +138,8 @@ The gate fails if:
 - any current monster shares another monster's body sprite key or `visual_source_id`;
 - any rank-I monster card uses a different body sprite key from its matching monster profile;
 - more than one current monster uses Moth Kaijuice/MOS kaiju body art;
-- fewer than four upstream/open-source monster art packs are represented in the current roster;
-- one upstream/open-source pack supplies more than half of the current monster roster;
+- fewer than five upstream/open-source monster art packs are represented in the current roster;
+- one upstream/open-source pack supplies more than 35% of the current monster roster;
 - a monster action duplicates another action name, pose key, or animation profile inside the same monster;
 - a damage action uses a generic utility pose;
 - knockback/throw impact takes more than 0.60 seconds;

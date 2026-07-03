@@ -3,6 +3,28 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜怪兽身体来源再加严：MOS 不复用，新增 PixelMob CC0
+
+- 回应“MOS kaijus 只能用于做一个怪兽，不能反复换动作当成多只怪兽”的审片要求，这轮把门槛从“sprite key 不同”继续提高到“上游来源分布必须健康”：
+  - `assets/third_party/pixelmob_cc0/` 新增 `rakkarage/PixelMob` 的 CC0 `SlimeA.png`、`SlimeSquareA.png` 和 `LICENSE-ART.txt`。
+  - `绿洲修复体` 改用 `pixelmob_slime_square`，不再和 Kenney 史莱姆或 MOS 发生视觉混淆。
+  - `砂铠陆行兽` 改用 `monster_battler_rock`，更像岩石/砂铠冲撞体。
+  - `镜像猎兵` 改用 `kenney_alien_blue`，减少 Superpowers 素材在怪兽 roster 里的占比。
+  - `焰环幼星` 继续是唯一使用 `moth_kaijuice_kaiju` 的怪兽。
+- `MonsterArtView`、`CardArtView`、`MapView` 同步支持 PixelMob 帧条取帧；图鉴、本体、怪兽牌和地图 token 使用同一 `sprite_key / sprite_cell / visual_source_id / upstream_source_id` 合约。
+- `tests/art_identity_gate_test.gd` 加严：
+  - 当前 roster 必须覆盖至少五个上游/open-source 怪兽身体来源。
+  - 当前 roster 必须包含 `moth_kaijuice_mit / monster_battler_cc0 / kenney_cc0 / pixelmob_cc0 / superpowers_asset_packs_cc0`。
+  - 单一上游来源不能供应超过当前 roster 的 35%。
+  - MOS/Moth kaiju 仍然必须恰好只出现 1 次。
+
+### 本轮验证
+
+- `tests/art_identity_gate_test.gd` 通过，保护 MOS/Moth kaiju 只服务一只怪兽、五个上游来源同时出现、单一来源不超过 35%。
+- `tests/visual_snapshot.gd`、`tests/ui_text_smoke_test.gd` 通过，保护新 PixelMob 资产、文档契约和玩家 UI 文本边界。
+- `tests/smoke_test.gd --check-only`、完整 `tests/smoke_test.gd` 通过，确认这轮只替换美术来源，没有破坏 PVE roguelike 主闭环。
+- 已刷新 `reports/art/monster_reviews/art_monster_review_02.png`、`art_monster_review_05.png`、`art_monster_review_08.png` 和 contact sheet，确认砂铠/绿洲/镜像的身体来源已实际变更；焰环幼星仍是唯一 MOS/Moth kaiju。
+
 ## 2026-07-03｜逐只怪兽审片图 + 怪兽牌卡面与本体对齐
 
 - 继续执行“接下来的任务先一只一只做怪兽美术/卡牌插画”的硬约束，这轮不新增玩法，只补美术审片和自动门禁：
