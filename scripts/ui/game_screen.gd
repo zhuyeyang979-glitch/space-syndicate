@@ -8,6 +8,11 @@ const PLANET_RIGHT_SIDE_LANE_TOP := 0.145
 const PLANET_RIGHT_SIDE_LANE_RIGHT := 0.790
 const PLANET_RIGHT_SIDE_LANE_BOTTOM := 0.285
 const PLANET_RIGHT_SIDE_LANE_FOCUS_BOTTOM := 0.270
+const HAND_HOVER_PREVIEW_LEFT := 0.020
+const HAND_HOVER_PREVIEW_TOP := 0.350
+const HAND_HOVER_PREVIEW_RIGHT := 0.190
+const HAND_HOVER_PREVIEW_BOTTOM := 0.880
+const HAND_HOVER_PREVIEW_CARD_MIN_SIZE := Vector2(216, 292)
 
 signal end_turn_requested
 signal action_requested(action_id: String)
@@ -34,6 +39,10 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var scenario_coach_host: Control = get_node_or_null("ScenarioCoachHost") as Control
 @onready var first_run_coach_host: Control = get_node_or_null("FirstRunCoachHost") as Control
 @onready var focus_guide_layer: Node = get_node_or_null("%FocusGuideLayer")
+@onready var hand_hover_preview_host: Control = get_node_or_null("%HandHoverPreviewHost") as Control
+@onready var hand_hover_preview_panel: PanelContainer = get_node_or_null("%HandHoverPreviewPanel") as PanelContainer
+@onready var hand_hover_preview_title: Label = get_node_or_null("%HandHoverPreviewTitle") as Label
+@onready var hand_hover_preview_card: Control = get_node_or_null("%HandHoverPreviewCard") as Control
 
 var current_ui_data: Dictionary = {}
 var _temporary_track_focus_active := false
@@ -45,6 +54,7 @@ var _last_focus_guide_data: Dictionary = {}
 func _ready() -> void:
 	_configure_track_focus_ribbon()
 	_configure_focus_guide()
+	_configure_hand_hover_preview()
 	if top_bar.has_signal("end_turn_requested"):
 		top_bar.connect("end_turn_requested", Callable(self, "_on_end_turn_requested"))
 	if top_bar.has_signal("menu_requested"):
@@ -377,12 +387,14 @@ func _on_card_selected(card_data: Dictionary) -> void:
 
 
 func _on_card_hovered(card_data: Dictionary) -> void:
+	_show_hand_hover_preview(card_data)
 	if right_inspector.has_method("show_card") and not card_data.is_empty():
 		right_inspector.call("show_card", card_data)
 	card_hovered.emit(card_data)
 
 
 func _on_card_unhovered() -> void:
+	_hide_hand_hover_preview()
 	if not _selected_hand_card_data.is_empty() and right_inspector.has_method("show_card"):
 		right_inspector.call("show_card", _selected_hand_card_data)
 	else:
@@ -415,6 +427,7 @@ func _on_track_entry_opened(entry: Dictionary) -> void:
 
 
 func _on_card_drag_preview_started(card_data: Dictionary, screen_position: Vector2) -> void:
+	_hide_hand_hover_preview()
 	_show_card_drag_feedback(card_data, screen_position)
 	card_drag_preview_started.emit(card_data)
 
@@ -532,6 +545,124 @@ func _configure_focus_guide() -> void:
 			(focus_guide_layer as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if focus_guide_layer.has_method("hide_focus"):
 			focus_guide_layer.call("hide_focus")
+
+
+func _configure_hand_hover_preview() -> void:
+	if hand_hover_preview_host == null:
+		return
+	_set_overlay_anchor_rect(
+		hand_hover_preview_host,
+		HAND_HOVER_PREVIEW_LEFT,
+		HAND_HOVER_PREVIEW_TOP,
+		HAND_HOVER_PREVIEW_RIGHT,
+		HAND_HOVER_PREVIEW_BOTTOM
+	)
+	_set_mouse_filter_recursive(hand_hover_preview_host, Control.MOUSE_FILTER_IGNORE)
+	hand_hover_preview_host.visible = false
+	if hand_hover_preview_panel != null:
+		hand_hover_preview_panel.add_theme_stylebox_override("panel", _hand_hover_preview_style())
+	if hand_hover_preview_title != null:
+		hand_hover_preview_title.add_theme_font_size_override("font_size", 11)
+		hand_hover_preview_title.add_theme_color_override("font_color", Color("#fde68a"))
+	if hand_hover_preview_card != null:
+		hand_hover_preview_card.custom_minimum_size = HAND_HOVER_PREVIEW_CARD_MIN_SIZE
+		hand_hover_preview_card.set_meta("hand_hover_readable_preview", true)
+
+
+func _set_mouse_filter_recursive(node: Node, filter: int) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = filter
+	for child in node.get_children():
+		_set_mouse_filter_recursive(child, filter)
+
+
+func _show_hand_hover_preview(card_data: Dictionary) -> void:
+	if hand_hover_preview_host == null or hand_hover_preview_card == null or card_data.is_empty():
+		_hide_hand_hover_preview()
+		return
+	var display_data := card_data.duplicate(true)
+	display_data["presentation"] = "inspector_full"
+	display_data["detail_policy"] = "hover_readable_preview"
+	display_data["summary"] = _hand_hover_preview_effect_text(card_data)
+	if hand_hover_preview_card.has_method("set_card_data"):
+		hand_hover_preview_card.call("set_card_data", display_data)
+	if hand_hover_preview_title != null:
+		hand_hover_preview_title.text = _hand_hover_preview_title(card_data)
+		hand_hover_preview_title.tooltip_text = _hand_hover_preview_detail(card_data)
+	hand_hover_preview_host.visible = true
+	hand_hover_preview_host.set_meta("runtime_focus_kind", "hand_hover_readable_preview")
+	hand_hover_preview_host.set_meta("hand_hover_card_name", str(card_data.get("name", "")))
+	hand_hover_preview_host.set_meta("hand_hover_preview_policy", "left-side-readable-card")
+
+
+func _hide_hand_hover_preview() -> void:
+	if hand_hover_preview_host == null:
+		return
+	hand_hover_preview_host.visible = false
+	hand_hover_preview_host.set_meta("hand_hover_card_name", "")
+
+
+func get_hand_hover_preview_snapshot() -> Dictionary:
+	if hand_hover_preview_host == null:
+		return {"visible": false}
+	var rect := hand_hover_preview_host.get_global_rect()
+	return {
+		"visible": hand_hover_preview_host.visible,
+		"card_name": str(hand_hover_preview_host.get_meta("hand_hover_card_name", "")),
+		"policy": str(hand_hover_preview_host.get_meta("hand_hover_preview_policy", "")),
+		"rect": rect,
+		"anchor_left": HAND_HOVER_PREVIEW_LEFT,
+		"anchor_right": HAND_HOVER_PREVIEW_RIGHT,
+		"card_min_size": HAND_HOVER_PREVIEW_CARD_MIN_SIZE,
+	}
+
+
+func _hand_hover_preview_title(card_data: Dictionary) -> String:
+	var name_text := str(card_data.get("name", "手牌")).strip_edges()
+	var type_text := str(card_data.get("type", card_data.get("category", ""))).strip_edges()
+	var rank_text := str(card_data.get("rank", card_data.get("stats", ""))).strip_edges()
+	var pieces: Array[String] = []
+	if type_text != "":
+		pieces.append(type_text)
+	if rank_text != "":
+		pieces.append(rank_text)
+	pieces.append(name_text if name_text != "" else "手牌")
+	var text := "｜".join(pieces)
+	return text if text.length() <= 24 else "%s..." % text.left(21)
+
+
+func _hand_hover_preview_effect_text(card_data: Dictionary) -> String:
+	for key in ["summary", "short_effect", "effect", "text", "description"]:
+		var value := str(card_data.get(key, "")).replace("\n", " ").strip_edges()
+		if value != "":
+			return value
+	return "查看右侧详情或双击使用。"
+
+
+func _hand_hover_preview_detail(card_data: Dictionary) -> String:
+	var effect := _hand_hover_preview_effect_text(card_data)
+	var target := str(card_data.get("target", card_data.get("target_type", ""))).strip_edges()
+	var requirement := str(card_data.get("requirement", card_data.get("play_requirement", card_data.get("condition", "")))).strip_edges()
+	var lines: Array[String] = [effect]
+	if target != "":
+		lines.append("目标：%s" % target)
+	if requirement != "":
+		lines.append("条件：%s" % requirement)
+	return "\n".join(lines)
+
+
+func _hand_hover_preview_style() -> StyleBoxFlat:
+	var accent := Color("#f59e0b")
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#020617").lerp(accent, 0.10)
+	style.border_color = Color("#334155").lerp(accent, 0.58)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(10)
+	style.set_content_margin(SIDE_LEFT, 0.0)
+	style.set_content_margin(SIDE_RIGHT, 0.0)
+	style.set_content_margin(SIDE_TOP, 0.0)
+	style.set_content_margin(SIDE_BOTTOM, 0.0)
+	return style
 
 
 func _sync_focus_guide_from_current_state() -> void:

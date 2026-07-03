@@ -84,6 +84,7 @@ func _check_scenario_coach_empty_state() -> void:
 func _check_player_facing_source_guards() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
+	var game_screen_scene := FileAccess.get_file_as_string("res://scenes/ui/GameScreen.tscn")
 	var inspector_source := FileAccess.get_file_as_string("res://scripts/ui/right_inspector.gd")
 	var overlay_source := FileAccess.get_file_as_string("res://scripts/ui/overlay_layer.gd")
 	var resolution_banner_source := FileAccess.get_file_as_string("res://scenes/ui/CardResolutionBanner.tscn")
@@ -108,6 +109,7 @@ func _check_player_facing_source_guards() -> void:
 	_expect(not main_source.contains("所有牌都会公开展示，出牌者匿名"), "rules menu no longer repeats long prose in the page body")
 	_expect(main_source.contains("第一局只做四件事：首召、建城、买牌、出牌。"), "tutorial menu opens with one-line first-game guidance")
 	_expect(game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_LEFT") and game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_BOTTOM"), "default scenario coach uses named planet side-lane skeleton constants instead of loose center anchors")
+	_expect(game_screen_scene.contains("HandHoverPreviewHost") and game_screen_scene.contains("HandHoverPreviewCard") and game_screen_source.contains("HAND_HOVER_PREVIEW_LEFT") and game_screen_source.contains("get_hand_hover_preview_snapshot") and game_screen_source.contains("left-side-readable-card") and game_screen_source.contains("hover_readable_preview"), "hand hover opens a readable left-side CardFace preview instead of forcing tiny hand text or covering the planet center")
 	_expect(FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("PLANET_TABLE_SAFE_CORE_RATIO") and FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("SIDE_RAIL_MIN_STAGGER_PIXELS"), "planet side rails use explicit safe-core and stagger metrics")
 	_expect(bid_board_scene.contains("牌桌竞价") and bid_board_scene.contains("下一张牌可报价。") and not bid_board_scene.contains("公开竞价") and not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board reads as a compact table-bid control instead of an anonymity rules explainer")
 	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")

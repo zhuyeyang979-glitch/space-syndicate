@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/game_screen.gd" id="2_game_screen"]
@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/ScenarioCoach.tscn" id="10_scenario_coach"]
 [ext_resource type="PackedScene" path="res://scenes/ui/VisualEventLayer.tscn" id="11_visual_event_layer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/FocusGuideLayer.tscn" id="12_focus_guide"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardFace.tscn" id="13_card_face"]
 
 [node name="GameScreen" type="Control"]
 layout_mode = 3
@@ -131,6 +132,53 @@ theme_override_constants/margin_bottom = 0
 [node name="ScenarioCoach" parent="ScenarioCoachHost" instance=ExtResource("10_scenario_coach")]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="HandHoverPreviewHost" type="MarginContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.02
+anchor_top = 0.35
+anchor_right = 0.19
+anchor_bottom = 0.88
+mouse_filter = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="HandHoverPreviewPanel" type="PanelContainer" parent="HandHoverPreviewHost"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+
+[node name="HandHoverPreviewMargin" type="MarginContainer" parent="HandHoverPreviewHost/HandHoverPreviewPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="HandHoverPreviewRows" type="VBoxContainer" parent="HandHoverPreviewHost/HandHoverPreviewPanel/HandHoverPreviewMargin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 5
+
+[node name="HandHoverPreviewTitle" type="Label" parent="HandHoverPreviewHost/HandHoverPreviewPanel/HandHoverPreviewMargin/HandHoverPreviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "读牌预览"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="HandHoverPreviewCard" parent="HandHoverPreviewHost/HandHoverPreviewPanel/HandHoverPreviewMargin/HandHoverPreviewRows" instance=ExtResource("13_card_face")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(216, 292)
+layout_mode = 2
+mouse_filter = 2
 
 [node name="FocusGuideLayer" parent="." instance=ExtResource("12_focus_guide")]
 unique_name_in_owner = true

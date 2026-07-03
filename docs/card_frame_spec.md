@@ -11,6 +11,7 @@
 - Keyword chips: use symbols for repeated rules (`¥`, `◇商品流`, `◆怪兽`, `◎玩家`, `⇄合约`, `一次/固定`) and explain them in the rules appendix.
 - Art baseline: every card face must have a visible central art/motif area, distinct type accent, frame/border treatment, and at least one non-text visual cue from card type or route.
 - Tooltip/detail policy: no long rules in hand; hover/selected/right inspector owns readable detail.
+- Runtime hover preview: hand hover/focus must also open a left-side readable `CardFace` preview using `inspector_full` presentation. It may overlap the table edge, but it must stay out of the central planet body and must be mouse-through so drag/play gestures are not stolen.
 
 ## DistrictSupplyMarketCell
 

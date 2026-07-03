@@ -71,12 +71,17 @@ func _run() -> void:
 		_expect(hand_card.focus_mode == Control.FOCUS_ALL, "runtime hand card is reachable by keyboard/gamepad focus")
 		_expect(str(hand_card.get_meta("runtime_focus_kind", "")) == "hand_card", "runtime hand card carries a table-focus marker")
 		_expect(str(hand_card.focus_next) != "" and str(hand_card.focus_previous) != "", "runtime hand card links to neighboring hand cards when available")
+		hand_card.emit_signal("mouse_entered")
+		await _wait_frames(2)
+		_check_hand_hover_readable_preview(screen, "starter_monster")
 		var hand_accept := InputEventAction.new()
 		hand_accept.action = "ui_accept"
 		hand_accept.pressed = true
 		hand_card.emit_signal("gui_input", hand_accept)
 		await _wait_frames(1)
 		hand_card.emit_signal("gui_input", hand_accept)
+		await _wait_frames(1)
+		hand_card.emit_signal("mouse_exited")
 		await _wait_frames(1)
 	_expect(selected_cards.size() >= 1 and str((selected_cards[0] as Dictionary).get("id", "")) == "starter_monster", "runtime hand card first confirm selects the card")
 	_expect(action_ids.has("play_starter"), "runtime hand card second confirm requests the card play action")
@@ -133,6 +138,33 @@ func _check_district_supply_market_card_component() -> void:
 	_expect(activated == ["城市融资1"], "district supply market card confirm activates the purchase/open action")
 	root.remove_child(card)
 	card.queue_free()
+
+
+func _check_hand_hover_readable_preview(screen: Control, expected_card_id: String) -> void:
+	_expect(screen.has_method("get_hand_hover_preview_snapshot"), "runtime screen exposes a hand-hover readable-preview snapshot")
+	if not screen.has_method("get_hand_hover_preview_snapshot"):
+		return
+	var snapshot: Dictionary = screen.call("get_hand_hover_preview_snapshot")
+	_expect(bool(snapshot.get("visible", false)), "hand hover opens a large readable side-card preview")
+	_expect(str(snapshot.get("policy", "")) == "left-side-readable-card", "hand hover preview uses the left-side table lane instead of the planet center")
+	_expect(str(snapshot.get("card_name", "")).contains("孢雾海皇"), "hand hover preview shows the hovered card name")
+	var preview_rect: Rect2 = snapshot.get("rect", Rect2())
+	var planet_board := screen.find_child("PlanetBoard", true, false) as Control
+	_expect(planet_board != null, "hand hover preview can compare against the planet board")
+	if planet_board != null:
+		var planet_rect := planet_board.get_global_rect()
+		var planet_core_rect := Rect2(
+			planet_rect.position + Vector2(planet_rect.size.x * 0.26, planet_rect.size.y * 0.10),
+			Vector2(planet_rect.size.x * 0.48, planet_rect.size.y * 0.80)
+		)
+		_expect(not preview_rect.intersects(planet_core_rect), "hand hover preview stays out of the central planet body")
+	var hover_card := screen.find_child("HandHoverPreviewCard", true, false) as Control
+	_expect(hover_card != null, "hand hover preview renders a real CardFace")
+	if hover_card != null:
+		_expect(str(hover_card.get_meta("card_presentation_spec", "")) == "inspector_full", "hand hover preview uses the readable inspector_full card presentation")
+		_expect(bool(hover_card.get_meta("hand_hover_readable_preview", false)), "hand hover preview card carries a readable-preview contract marker")
+		var card_data: Dictionary = hover_card.call("get_card_data") if hover_card.has_method("get_card_data") else {}
+		_expect(str(card_data.get("id", "")) == expected_card_id, "hand hover preview keeps the hovered hand-card data")
 
 
 func _table_state() -> Dictionary:
