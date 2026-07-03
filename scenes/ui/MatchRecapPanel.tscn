@@ -25,6 +25,12 @@ layout_mode = 2
 text = "本关复盘"
 theme_override_font_sizes/font_size = 24
 
+[node name="MatchRecapSummaryCardRow" type="HFlowContainer" parent="MatchRecapMargin/MatchRecapStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+
 [node name="MatchRecapColumns" type="HBoxContainer" parent="MatchRecapMargin/MatchRecapStack"]
 layout_mode = 2
 size_flags_vertical = 3

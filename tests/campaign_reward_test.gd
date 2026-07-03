@@ -37,6 +37,11 @@ func _run() -> void:
 	], stats)
 	var recap_snapshot: Dictionary = RECAP_SNAPSHOT_SCRIPT.new().apply_dictionary(recap).to_ui_dictionary()
 	_expect(str(var_to_str(recap_snapshot)).contains("选择区域"), "recap keeps public key actions")
+	var recap_summary_cards: Array = recap_snapshot.get("summary_cards", []) as Array
+	_expect(recap_summary_cards.size() == 4, "recap snapshot exposes four board-game recap summary cards")
+	if recap_summary_cards.size() >= 4:
+		var recap_summary_text := var_to_str(recap_summary_cards)
+		_expect(recap_summary_text.contains("关键行动") and recap_summary_text.contains("学到") and recap_summary_text.contains("下次建议") and recap_summary_text.contains("回看"), "recap summary cards separate action, learning, next step, and replay")
 	await _check_scene("res://scenes/ui/MatchRecapPanel.tscn", "set_recap", recap_snapshot)
 	_finish()
 
@@ -58,6 +63,11 @@ func _check_scene(path: String, method: String, snapshot: Dictionary) -> void:
 		_expect(summary_row != null and summary_row.visible and summary_row.get_child_count() == 4, "CampaignRewardPanel renders four settlement summary cards")
 		var summary_text := _node_text(summary_row)
 		_expect(summary_text.contains("表现") and summary_text.contains("目标") and summary_text.contains("解锁") and summary_text.contains("下一步"), "CampaignRewardPanel settlement cards keep a board-game read order")
+	if path.ends_with("MatchRecapPanel.tscn"):
+		var recap_summary_row := node.find_child("MatchRecapSummaryCardRow", true, false)
+		_expect(recap_summary_row != null and recap_summary_row.visible and recap_summary_row.get_child_count() == 4, "MatchRecapPanel renders four recap summary cards")
+		var recap_summary_text := _node_text(recap_summary_row)
+		_expect(recap_summary_text.contains("关键行动") and recap_summary_text.contains("学到") and recap_summary_text.contains("下次建议") and recap_summary_text.contains("回看"), "MatchRecapPanel cards keep a board-game recap read order")
 	root.remove_child(node)
 	node.queue_free()
 
