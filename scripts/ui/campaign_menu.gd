@@ -9,6 +9,7 @@ signal action_requested(action_id: String)
 @onready var subtitle_label: Label = %CampaignMenuSubtitle
 @onready var progress_label: Label = %CampaignMenuProgress
 @onready var next_label: Label = %CampaignMenuNext
+@onready var path_rail: HFlowContainer = %CampaignMenuPathRail
 @onready var chapter_grid: GridContainer = %CampaignMenuChapterGrid
 @onready var preset_row: HFlowContainer = %CampaignMenuPresetRow
 @onready var primary_button: Button = %CampaignMenuPrimaryButton
@@ -31,6 +32,7 @@ func set_campaign_menu(data: Dictionary) -> void:
 	subtitle_label.text = _short_text(str(data.get("subtitle", data.get("summary", ""))), 28)
 	progress_label.text = str(data.get("progress_text", "0/10"))
 	next_label.text = _short_text("下一桌｜%s" % str(data.get("next_chapter_title", "")), 24)
+	_render_path_steps(data.get("path_steps", []))
 	var primary: Dictionary = data.get("primary_action", {}) if data.get("primary_action", {}) is Dictionary else {}
 	_primary_action_id = str(primary.get("id", ""))
 	primary_button.text = str(primary.get("label", "继续"))
@@ -70,6 +72,52 @@ func _render_chapters(value: Variant) -> void:
 		var subtitle := _label(_short_text(str(chapter.get("subtitle", "")), 20), 11, Color("#cbd5e1"))
 		subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(subtitle)
+
+
+func _render_path_steps(value: Variant) -> void:
+	_clear_children(path_rail)
+	var steps: Array = value if value is Array else []
+	path_rail.visible = not steps.is_empty()
+	for step_variant in steps:
+		if step_variant is Dictionary:
+			_add_path_step(step_variant as Dictionary)
+
+
+func _add_path_step(step: Dictionary) -> void:
+	var completed := bool(step.get("completed", false))
+	var current := bool(step.get("current", false))
+	var accent := Color("#64748b")
+	if completed:
+		accent = Color("#22c55e")
+	elif current:
+		accent = Color("#facc15")
+	var chip := PanelContainer.new()
+	chip.name = "CampaignMenuPathStep"
+	chip.custom_minimum_size = Vector2(152, 34)
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.tooltip_text = str(step.get("tooltip", ""))
+	chip.add_theme_stylebox_override("panel", _panel_style(accent, 0.16 if current else 0.10))
+	path_rail.add_child(chip)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 4)
+	chip.add_child(margin)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	margin.add_child(row)
+	var index := _label(str(step.get("index", "•")), 10, accent.lightened(0.20))
+	index.custom_minimum_size = Vector2(22, 0)
+	index.tooltip_text = chip.tooltip_text
+	row.add_child(index)
+	var label := _label(_short_text(str(step.get("label", "路径")), 8), 12, Color("#f8fafc") if current else Color("#cbd5e1"))
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.tooltip_text = chip.tooltip_text
+	row.add_child(label)
+	var state := _label(_short_text(str(step.get("state", "")), 4), 10, accent.lightened(0.18))
+	state.tooltip_text = chip.tooltip_text
+	row.add_child(state)
 
 
 func _render_presets(value: Variant) -> void:

@@ -21,6 +21,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		],
 		"next_chapter_id": current_id,
 		"next_chapter_title": _chapter_title(progress.get("chapter_statuses", []), current_id),
+		"path_steps": _path_steps(progress),
 		"chapters": _chapter_cards(progress.get("chapter_statuses", []), current_id),
 		"primary_action": {"id": "campaign_continue_%s" % current_id, "label": "继续新手战役", "disabled": current_id == ""},
 		"secondary_actions": [
@@ -91,6 +92,39 @@ func _prioritized_chapters(source: Array, current_id: String) -> Array:
 	ordered.append_array(completed)
 	ordered.append_array(locked)
 	return ordered
+
+
+func _path_steps(progress: Dictionary) -> Array:
+	var completed_count := int(progress.get("completed_count", 0))
+	var total := maxi(1, int(progress.get("total_chapters", 10)))
+	var completion_percent := int(progress.get("completion_percent", 0))
+	var halfway := maxi(2, int(ceil(float(total) * 0.5)))
+	return [
+		{
+			"index": "01",
+			"label": "开桌",
+			"state": "完成" if completed_count > 0 else "现在",
+			"current": completed_count == 0,
+			"completed": completed_count > 0,
+			"tooltip": "进入第一桌，知道该看哪里。",
+		},
+		{
+			"index": "02",
+			"label": "练四步",
+			"state": "完成" if completed_count >= halfway else ("现在" if completed_count > 0 else "稍后"),
+			"current": completed_count > 0 and completed_count < halfway,
+			"completed": completed_count >= halfway,
+			"tooltip": "点区、首召、建城、买牌、出牌。",
+		},
+		{
+			"index": "03",
+			"label": "完整局",
+			"state": "完成" if completion_percent >= 100 else ("%d%%" % completion_percent if completed_count >= halfway else "稍后"),
+			"current": completed_count >= halfway and completion_percent < 100,
+			"completed": completion_percent >= 100,
+			"tooltip": "跑到结算复盘，知道为什么赢或输。",
+		},
+	]
 
 
 func _preset_cards(value: Variant) -> Array:

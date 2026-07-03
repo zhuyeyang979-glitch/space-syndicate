@@ -28,6 +28,10 @@ func _run() -> void:
 	_expect((recommendations.get("presets", []) as Array).size() >= 3, "recommended start exposes 3 presets")
 	var menu_snapshot: Dictionary = MENU_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "progress": progress, "recommendations": recommendations}).to_ui_dictionary()
 	_expect(str(menu_snapshot.get("title", "")).contains("新手战役"), "campaign menu snapshot is player-facing")
+	var path_steps: Array = menu_snapshot.get("path_steps", []) as Array
+	_expect(path_steps.size() == 3, "campaign menu snapshot exposes a three-step visual play path")
+	if path_steps.size() >= 3:
+		_expect(str((path_steps[0] as Dictionary).get("label", "")).length() <= 8 and str((path_steps[1] as Dictionary).get("label", "")).length() <= 8 and str((path_steps[2] as Dictionary).get("label", "")).length() <= 8, "campaign play-path chips stay short instead of becoming rules prose")
 	var visible_chapters: Array = menu_snapshot.get("chapters", []) as Array
 	_expect(visible_chapters.size() <= 4 and visible_chapters.size() >= 1, "campaign menu snapshot keeps the first screen to four or fewer chapter cards")
 	_expect(str((visible_chapters[0] as Dictionary).get("title", "")).length() <= 18, "campaign menu chapter title stays short")
@@ -53,9 +57,27 @@ func _check_scene(path: String, method: String, snapshot: Dictionary) -> void:
 	if node.has_method(method):
 		node.call(method, snapshot)
 		await process_frame
+	if path.ends_with("CampaignMenu.tscn"):
+		var path_rail := node.find_child("CampaignMenuPathRail", true, false)
+		_expect(path_rail != null and path_rail.visible and path_rail.get_child_count() == 3, "CampaignMenu renders the three-step visual play path")
+		var path_text := _node_text(path_rail)
+		_expect(path_text.contains("开桌") and path_text.contains("练四步") and path_text.contains("完整局"), "CampaignMenu play path uses compact board-game route chips")
 	_expect(node.get_combined_minimum_size().x <= 1280 and node.get_combined_minimum_size().y <= 720, "%s fits 1280x720 minimum" % path)
 	root.remove_child(node)
 	node.queue_free()
+
+
+func _node_text(node: Node) -> String:
+	if node == null:
+		return ""
+	var pieces: Array[String] = []
+	if node is Label:
+		pieces.append((node as Label).text)
+	elif node is Button:
+		pieces.append((node as Button).text)
+	for child in node.get_children():
+		pieces.append(_node_text(child))
+	return " ".join(pieces)
 
 
 func _expect(condition: bool, message: String) -> void:
