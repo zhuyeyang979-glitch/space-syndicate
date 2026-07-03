@@ -5933,8 +5933,7 @@ func _focus_scenario_right_inspector(player_index: int) -> bool:
 	if district_index < 0 or district_index >= districts.size():
 		district_index = _first_run_recommended_start_district(player_index)
 	if district_index >= 0 and district_index < districts.size():
-		selected_district = district_index
-		_focus_runtime_map_on_district(district_index)
+		_jump_to_district_on_table(district_index)
 		return true
 	return false
 
@@ -5949,8 +5948,7 @@ func _focus_scenario_map_layer(layer_id: String, player_index: int) -> bool:
 	if district_index < 0 or district_index >= districts.size():
 		district_index = _first_run_recommended_start_district(player_index)
 	if district_index >= 0 and district_index < districts.size():
-		selected_district = district_index
-		_focus_runtime_map_on_district(district_index)
+		_jump_to_district_on_table(district_index)
 	_set_map_layer_focus(layer_id)
 	return true
 
@@ -7273,23 +7271,20 @@ func _add_intel_city_guess_buttons(entry: Dictionary, viewer_index: int) -> void
 
 func _mark_city_guess_from_intel(city_index: int, guessed_player: int) -> void:
 	if _mark_city_guess_for_player(selected_player, city_index, guessed_player):
-		selected_district = city_index
+		_jump_to_district_on_table(city_index)
 		selected_guess_player = guessed_player
-		_focus_runtime_map_on_district(city_index)
 		_open_intel_dossier_menu()
 
 
 func _set_city_guess_confidence_from_intel(city_index: int, confidence: int) -> void:
 	if _set_city_guess_confidence_for_player(selected_player, city_index, confidence):
-		selected_district = city_index
-		_focus_runtime_map_on_district(city_index)
+		_jump_to_district_on_table(city_index)
 		_open_intel_dossier_menu()
 
 
 func _set_city_guess_reason_from_intel(city_index: int, reason: String) -> void:
 	if _set_city_guess_reason_for_player(selected_player, city_index, reason):
-		selected_district = city_index
-		_focus_runtime_map_on_district(city_index)
+		_jump_to_district_on_table(city_index)
 		_open_intel_dossier_menu()
 
 
@@ -7297,8 +7292,7 @@ func _open_intel_region_codex_link(index: int) -> void:
 	catalog_return_menu = "intel"
 	if index >= 0 and index < districts.size():
 		region_codex_index = index
-		selected_district = index
-		_focus_runtime_map_on_district(index)
+		_jump_to_district_on_table(index)
 	_update_region_codex_menu()
 
 
@@ -12349,8 +12343,7 @@ func _open_region_codex_menu(index: int = -1) -> void:
 	catalog_return_menu = "compendium"
 	if index >= 0 and index < districts.size():
 		region_codex_index = index
-		selected_district = index
-		_focus_runtime_map_on_district(index)
+		_jump_to_district_on_table(index)
 	_update_region_codex_menu()
 
 
@@ -12358,8 +12351,7 @@ func _cycle_region_codex(step: int) -> void:
 	if districts.is_empty():
 		return
 	region_codex_index = wrapi(region_codex_index + step, 0, districts.size())
-	selected_district = region_codex_index
-	_focus_runtime_map_on_district(region_codex_index)
+	_jump_to_district_on_table(region_codex_index)
 	_update_region_codex_menu()
 
 
@@ -20748,6 +20740,16 @@ func _focus_runtime_map_on_district(district_index: int) -> void:
 		full_map_view.call("focus_district", district_index)
 
 
+func _jump_to_district_on_table(district_index: int, clear_card_selection: bool = true) -> bool:
+	if district_index < 0 or district_index >= districts.size():
+		return false
+	selected_district = district_index
+	if clear_card_selection:
+		selected_runtime_card_slot = -1
+	_focus_runtime_map_on_district(district_index)
+	return true
+
+
 func _player_color(player_index: int) -> Color:
 	if PLAYER_COLORS.is_empty():
 		return Color("#38bdf8")
@@ -22987,10 +22989,11 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 		"coach_select_district":
 			var recommended_district := _first_run_recommended_start_district(player_index)
 			if recommended_district >= 0:
-				selected_district = recommended_district
+				_jump_to_district_on_table(recommended_district)
 			elif selected_district < 0 or selected_district >= districts.size():
 				selected_district = 0 if not districts.is_empty() else -1
-			_focus_runtime_map_on_district(selected_district)
+				if selected_district >= 0:
+					_jump_to_district_on_table(selected_district)
 			_mark_first_run_coach_district_seen(player_index)
 			_sync_selected_district_card()
 			_load_selected_district_guess()
@@ -23026,7 +23029,7 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			if _first_buyable_district_card(target_buy_district, player_index) == "":
 				target_buy_district = _first_buyable_district_for_player(player_index)
 				if target_buy_district >= 0:
-					selected_district = target_buy_district
+					_jump_to_district_on_table(target_buy_district)
 			if selected_district < 0 or selected_district >= districts.size():
 				return false
 			selected_player = player_index
@@ -23065,8 +23068,7 @@ func _ensure_first_run_coach_action_district(player_index: int) -> bool:
 	var recommended_district := _first_run_recommended_start_district(player_index)
 	if recommended_district < 0 or recommended_district >= districts.size():
 		return false
-	selected_district = recommended_district
-	_focus_runtime_map_on_district(selected_district)
+	_jump_to_district_on_table(recommended_district)
 	_mark_first_run_coach_district_seen(player_index)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
@@ -30519,9 +30521,7 @@ func _active_district_card_context() -> int:
 func _open_district_supply_from_map(district_index: int) -> void:
 	if district_index < 0 or district_index >= districts.size() or selected_player < 0 or selected_player >= players.size():
 		return
-	selected_district = district_index
-	selected_runtime_card_slot = -1
-	_focus_runtime_map_on_district(district_index)
+	_jump_to_district_on_table(district_index)
 	district_supply_open_district = district_index
 	district_supply_open_player = selected_player
 	_mark_first_run_coach_supply_seen(selected_player)
@@ -31259,9 +31259,8 @@ func _select_player(index: int) -> void:
 
 
 func _select_district(index: int) -> void:
-	selected_district = index
-	selected_runtime_card_slot = -1
-	_focus_runtime_map_on_district(index)
+	if not _jump_to_district_on_table(index):
+		return
 	_mark_first_run_coach_district_seen(selected_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
@@ -31620,9 +31619,7 @@ func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot:
 func _cycle_district(step: int) -> void:
 	if districts.is_empty():
 		return
-	selected_district = wrapi(selected_district + step, 0, districts.size())
-	selected_runtime_card_slot = -1
-	_focus_runtime_map_on_district(selected_district)
+	_jump_to_district_on_table(wrapi(selected_district + step, 0, districts.size()))
 	_sync_selected_district_card()
 	_load_selected_district_guess()
 	_refresh_ui()

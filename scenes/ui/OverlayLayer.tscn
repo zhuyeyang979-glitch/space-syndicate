@@ -86,7 +86,7 @@ theme_override_constants/separation = 8
 [node name="SideDrawerSummary" type="Label" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerBodyScroll/SideDrawerBodyRows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "点击右侧详情入口，打开 30 秒层信息。"
+text = "点击详情入口，展开完整桌边详情。"
 autowrap_mode = 3
 
 [node name="SideDrawerSectionList" type="VBoxContainer" parent="OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/SideDrawerPanel/SideDrawerRows/SideDrawerBodyScroll/SideDrawerBodyRows"]

@@ -1139,7 +1139,37 @@ func _verify_globe_projection_interaction(main: Node, district_index: int) -> vo
 	_expect(globe_polygon.size() >= 3, "zoomed-out globe keeps the selected region's surface boundary")
 	var world_again := map_view.call("_screen_to_globe_world", projected.get("position", Vector2.ZERO)) as Vector2
 	_expect(int(map_view.call("_district_at_point", world_again)) == district_index, "click conversion selects the same globe-surface region")
+	var focus_target := -1
+	var farthest_distance := -1.0
+	for i in range(districts.size()):
+		if i == district_index:
+			continue
+		var other_district := districts[i] as Dictionary
+		var other_center: Vector2 = other_district.get("center", center) as Vector2
+		var distance := float(map_view.call("_surface_distance", center, other_center))
+		if distance > farthest_distance:
+			farthest_distance = distance
+			focus_target = i
+	if focus_target >= 0:
+		map_view.set("_view_center_m", center)
+		map_view.set("_view_zoom", 0.34)
+		map_view.set("_target_view_zoom", 0.34)
+		main.call("_select_district", focus_target)
+		var focus_debug := map_view.call("get_projection_debug_snapshot") as Dictionary
+		_expect(int(focus_debug.get("focus_target_district", -1)) == focus_target, "table district jump records the target district for planet rotation")
+		_expect(bool(focus_debug.get("focus_rotation_active", false)) or farthest_distance <= 1.0, "table district jump starts a smooth planet rotation when the target is elsewhere")
+		map_view.call("_process", 1.0)
+		focus_debug = map_view.call("get_projection_debug_snapshot") as Dictionary
+		var focused_center: Vector2 = focus_debug.get("view_center_m", center) as Vector2
+		var target_district := districts[focus_target] as Dictionary
+		var target_center: Vector2 = target_district.get("center", center) as Vector2
+		var remaining_distance := float(map_view.call("_surface_distance", focused_center, target_center))
+		_expect(remaining_distance <= 2.0, "table district jump rotates the planet center onto the target district")
+		var projected_focus := map_view.call("_project_globe", target_center) as Dictionary
+		_expect(bool(projected_focus.get("visible", false)), "jumped target district is visible on the front of the globe")
+		main.call("_select_district", district_index)
 	map_view.set("_view_zoom", 1.0)
+	map_view.set("_target_view_zoom", 1.0)
 	map_view.queue_redraw()
 
 
