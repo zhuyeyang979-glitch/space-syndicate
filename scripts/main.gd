@@ -44335,6 +44335,10 @@ func _set_planet_right_rail_resolution_suppressed(enabled: bool) -> void:
 	var rail := get_tree().get_root().find_child("PlanetRightSpaceRail", true, false) as Control
 	if rail == null:
 		return
+	if _runtime_campaign_focus_mode():
+		rail.visible = false
+		rail.set_meta("planet_side_lane_suppressed_for_resolution", true)
+		return
 	rail.visible = not enabled
 	rail.set_meta("planet_side_lane_suppressed_for_resolution", enabled)
 

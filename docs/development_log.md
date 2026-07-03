@@ -3,6 +3,39 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜区域跳转改为可见星球旋转
+
+- 继续修真人桌面导航的理解成本：
+  - `MapView.focus_district()` 不再只把视角中心瞬时写成目标区域中心，而是启动一段短促的程序化星球旋转。
+  - 新增 `focus_target_district / focus_target_center_m / focus_rotation_active / focus_rotation_progress` 调试快照字段，方便测试证明“正在旋转到哪个区域”。
+  - 玩家拖拽地图时会取消程序化旋转，避免自动定位和手动观察互相抢控制权。
+  - 剧本定位、首局查看牌架、买牌恢复到合法区域等所有走 `_focus_runtime_map_on_district()` 的入口都会复用同一套旋转骨架。
+  - 顺手修正战役聚焦桌面状态：`PlanetBoard` 收到 `campaign_focus_mode` 后会立即隐藏两侧星球边栏和试玩罗盘；旧的右栏遮挡 helper 也不会在战役/剧本模式下把右栏重新打开。
+- 新增 `tests/map_view_focus_rotation_test.gd`：
+  - 验证远距离 `focus_district()` 第一帧不会瞬移。
+  - 验证旋转会记录目标区域和目标中心。
+  - 验证动画结束后中央星球确实对准目标区域。
+- 扩展 `tests/scenario_focus_navigation_test.gd` 和 `tests/commercial_playability_gate_test.gd`：
+  - 区域牌架定位现在不仅要打开真实牌架，还要记录并完成目标区域旋转。
+
+### 本轮验证
+
+- 目标验证：玩家点击“定位/跳转区域”时，中央星球会用可见旋转解释“系统把你带到了哪里”，而不是让地图和牌架突然变换。
+
+## 2026-07-03｜卡住态主按钮语义收紧
+
+- 继续细化 ScenarioCoach 的真人操作语义：
+  - 之前卡住/求助后，主按钮文案会变成“定位下一步”，但底层 action 仍可能是原来的 `scenario_step_*`。
+  - 现在 `ScenarioCoachSnapshot` 在 `help_visible=true` 时会把主 CTA 的 `id` 改为 `scenario_focus_target`，确保按钮写“定位”就真的执行定位。
+  - 这不会伪造剧本成功条件；公开牌轨等目标仍只聚焦/选中，完成条件仍需真实 signal。
+- 扩展 `tests/scenario_smoke_test.gd` 和 `tests/scenario_focus_navigation_test.gd`：
+  - 验证卡住态主 CTA 是 `scenario_focus_target`。
+  - 验证点击卡住态主 CTA 会聚焦目标，但不假完成 `track_selected`。
+
+### 本轮验证
+
+- 目标验证：玩家卡住后只需要看一个主按钮；主按钮文字、行为和真实桌面导航一致。
+
 ## 2026-07-03｜剧本“定位”变成真实桌面导航
 
 - 继续把真人试玩从“读提示”推进到“桌面带你过去”：

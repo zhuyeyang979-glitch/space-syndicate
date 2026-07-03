@@ -54,6 +54,8 @@ func _run() -> void:
 	_expect(_actions_include_id(coach_snapshot.get("secondary_actions", []), "scenario_focus_target"), "scenario coach offers focus instead of fake completion")
 	_expect(not _actions_include_id(coach_snapshot.get("secondary_actions", []), "scenario_skip_step"), "scenario coach does not expose a visible skip-step button")
 	_expect(bool(coach_snapshot.get("help_visible", false)) and str(coach_snapshot.get("help_text", "")).strip_edges() != "", "scenario coach shows a short stuck hint after help requests")
+	var stuck_primary: Dictionary = coach_snapshot.get("primary_action", {}) if coach_snapshot.get("primary_action", {}) is Dictionary else {}
+	_expect(str(stuck_primary.get("id", "")) == "scenario_focus_target" and str(stuck_primary.get("label", "")) == "定位下一步", "scenario coach routes the stuck primary CTA to real focus navigation")
 	_expect(int(coach_snapshot.get("font_scale_percent", 0)) == 110, "scenario coach carries a readable font-scale setting")
 	await _check_component("res://scenes/ui/ScenarioCoach.tscn", "set_coach", coach_snapshot)
 	await _check_component("res://scenes/ui/ScenarioActionLog.tscn", "set_log", LOG_SNAPSHOT_SCRIPT.new().apply_dictionary(first_fixture.get("action_log", {}) as Dictionary).to_ui_dictionary())

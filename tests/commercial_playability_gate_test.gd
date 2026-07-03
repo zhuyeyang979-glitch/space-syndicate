@@ -112,7 +112,7 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 	var open_district := int(main.get("district_supply_open_district"))
 	var open_player := int(main.get("district_supply_open_player"))
 	_expect(selected >= 0 and open_district == selected and open_player == 0, "first-run rack CTA lands on the selected recommended region for the local player")
-	_expect_runtime_map_centered_on_district(main, open_district, "first-run rack CTA rotates the central planet to the opened region")
+	await _expect_runtime_map_centered_on_district(main, open_district, "first-run rack CTA rotates the central planet to the opened region")
 	var snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	var coach: Dictionary = snapshot.get("first_run_coach", {}) if snapshot.get("first_run_coach", {}) is Dictionary else {}
@@ -138,7 +138,7 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 		await _wait_frames(12)
 		var recovered_district := int(buy_main.get("district_supply_open_district"))
 		_expect(recovered_district >= 0 and bool(buy_main.call("_can_buy_card_from_district", recovered_district, 0)), "first-run Buy CTA reopens a legal monster-accessible card rack")
-		_expect_runtime_map_centered_on_district(buy_main, recovered_district, "first-run Buy CTA rotates the central planet to the recovered legal rack")
+		await _expect_runtime_map_centered_on_district(buy_main, recovered_district, "first-run Buy CTA rotates the central planet to the recovered legal rack")
 		_expect(_local_hand_size(buy_main) >= hand_before, "first-run Buy CTA does not lose local hand cards while recovering from the wrong region")
 	root.remove_child(buy_main)
 	buy_main.queue_free()
@@ -189,7 +189,18 @@ func _expect_runtime_map_centered_on_district(main: Node, district_index: int, m
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	var center: Vector2 = snapshot.get("view_center_m", Vector2(-999999.0, -999999.0))
 	var target: Vector2 = (districts[district_index] as Dictionary).get("center", Vector2.ZERO)
+	var focus_target: Vector2 = snapshot.get("focus_target_center_m", Vector2(-999999.0, -999999.0))
+	_expect(int(snapshot.get("focus_target_district", -1)) == district_index, "%s records the target district for a visible planet rotation" % message)
+	_expect(focus_target.distance_to(target) <= 1.0, "%s records the target region center before the rotation finishes" % message)
+	if center.distance_to(target) > 1.0:
+		_expect(bool(snapshot.get("focus_rotation_active", false)), "%s starts an animated planet rotation instead of silently jumping" % message)
+	for _frame in range(42):
+		await process_frame
+	snapshot_variant = map_node.call("get_projection_debug_snapshot")
+	snapshot = snapshot_variant if snapshot_variant is Dictionary else {}
+	center = snapshot.get("view_center_m", Vector2(-999999.0, -999999.0))
 	_expect(center.distance_to(target) <= 1.0, message)
+	_expect(not bool(snapshot.get("focus_rotation_active", false)), "%s finishes the region rotation" % message)
 
 
 func _find_node_with_method(node: Node, method_name: String) -> Node:

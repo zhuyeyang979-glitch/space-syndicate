@@ -50,6 +50,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var goal_text := _compact_phase_goal(phase, fallback_goal) if campaign_focus_mode else str(phase.get("goal", fallback_goal))
 	if help_visible:
 		primary_label = "定位下一步"
+		action_id = "scenario_focus_target"
 	ui = {
 		"visible": bool(data.get("visible", true)),
 		"collapsed": closed_to_chip or completed,

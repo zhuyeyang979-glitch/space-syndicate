@@ -1,6 +1,7 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
+const COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/scenario_coach_snapshot.gd")
 
 var _failures: Array[String] = []
 
@@ -11,6 +12,7 @@ func _init() -> void:
 
 func _run() -> void:
 	await _check_public_track_focus_selects_without_fake_completion()
+	await _check_stuck_primary_cta_uses_focus_navigation()
 	await _check_market_focus_opens_real_rack_and_rotates_planet()
 	_finish()
 
@@ -31,6 +33,29 @@ func _check_public_track_focus_selects_without_fake_completion() -> void:
 	await _wait_frames(1)
 
 
+func _check_stuck_primary_cta_uses_focus_navigation() -> void:
+	var main := await _instantiate_main()
+	if main == null:
+		return
+	main.call("_start_campaign_chapter", "03_public_track")
+	await _wait_frames(10)
+	_expect(bool(main.call("_activate_scenario_action", "scenario_hint")), "scenario hint records a stuck/help request")
+	await _wait_frames(4)
+	var source: Dictionary = main.call("_runtime_scenario_coach_snapshot_source", 0) as Dictionary
+	var ui: Dictionary = COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(source).to_ui_dictionary()
+	var primary: Dictionary = ui.get("primary_action", {}) if ui.get("primary_action", {}) is Dictionary else {}
+	_expect(bool(ui.get("help_visible", false)), "stuck scenario coach shows help after a hint request")
+	_expect(str(primary.get("id", "")) == "scenario_focus_target" and str(primary.get("label", "")) == "定位下一步", "stuck scenario primary CTA is the real focus action")
+	_expect(bool(main.call("_activate_scenario_action", str(primary.get("id", "")))), "stuck primary focus action is accepted")
+	await _wait_frames(6)
+	_expect(int(main.get("selected_card_resolution_id")) >= 0, "stuck primary focus action selects a visible track card")
+	var completed: Dictionary = main.get("scenario_completed_signals") as Dictionary
+	_expect(not bool(completed.get("track_selected", false)), "stuck primary focus action does not fake-complete the success signal")
+	root.remove_child(main)
+	main.queue_free()
+	await _wait_frames(1)
+
+
 func _check_market_focus_opens_real_rack_and_rotates_planet() -> void:
 	var main := await _instantiate_main()
 	if main == null:
@@ -45,7 +70,7 @@ func _check_market_focus_opens_real_rack_and_rotates_planet() -> void:
 	var open_district := int(main.get("district_supply_open_district"))
 	var open_player := int(main.get("district_supply_open_player"))
 	_expect(open_district >= 0 and open_player == 0, "market focus opens a real local-player district supply rack")
-	_expect_runtime_map_centered_on_district(main, open_district, "market focus rotates the central planet to the opened rack")
+	await _expect_runtime_map_centered_on_district(main, open_district, "market focus rotates the central planet to the opened rack")
 	root.remove_child(main)
 	main.queue_free()
 	await _wait_frames(1)
@@ -78,7 +103,18 @@ func _expect_runtime_map_centered_on_district(main: Node, district_index: int, m
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	var center: Vector2 = snapshot.get("view_center_m", Vector2(-999999.0, -999999.0))
 	var target: Vector2 = (districts[district_index] as Dictionary).get("center", Vector2.ZERO)
+	var focus_target: Vector2 = snapshot.get("focus_target_center_m", Vector2(-999999.0, -999999.0))
+	_expect(int(snapshot.get("focus_target_district", -1)) == district_index, "%s records the target district for a visible planet rotation" % message)
+	_expect(focus_target.distance_to(target) <= 1.0, "%s records the target region center before the rotation finishes" % message)
+	if center.distance_to(target) > 1.0:
+		_expect(bool(snapshot.get("focus_rotation_active", false)), "%s starts an animated planet rotation instead of silently jumping" % message)
+	for _frame in range(42):
+		await process_frame
+	snapshot_variant = map_node.call("get_projection_debug_snapshot")
+	snapshot = snapshot_variant if snapshot_variant is Dictionary else {}
+	center = snapshot.get("view_center_m", Vector2(-999999.0, -999999.0))
 	_expect(center.distance_to(target) <= 1.0, message)
+	_expect(not bool(snapshot.get("focus_rotation_active", false)), "%s finishes the region rotation" % message)
 
 
 func _find_node_with_method(node: Node, method_name: String) -> Node:

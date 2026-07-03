@@ -20,6 +20,8 @@ const ZOOM_WHEEL_STEP := 1.08
 const LABEL_INTERACTION_ZOOM_EPSILON := 0.018
 const INTERACTION_DETAIL_SETTLE_SECONDS := 0.28
 const INTERACTION_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
+const PROGRAMMATIC_FOCUS_ROTATE_MIN_SECONDS := 0.18
+const PROGRAMMATIC_FOCUS_ROTATE_MAX_SECONDS := 0.42
 const GLOBE_POLYGON_DETAIL_STEP_METERS := 45.0
 const GLOBE_POLYGON_INTERACTION_STEP_METERS := 120.0
 const GLOBE_EDGE_DETAIL_STEP_METERS := 28.0
@@ -83,6 +85,11 @@ var _animated_redraw_timer := 0.0
 var _interaction_detail_timer := 0.0
 var _interaction_redraw_timer := 0.0
 var _interaction_redraw_requested := false
+var _focus_start_center_m := Vector2.ZERO
+var _focus_target_center_m := Vector2.ZERO
+var _focus_target_district := -1
+var _focus_rotation_elapsed := 0.0
+var _focus_rotation_duration := 0.0
 var monster_marker_textures := {}
 
 
@@ -157,6 +164,50 @@ func _update_smooth_zoom(delta: float) -> bool:
 	return not is_equal_approx(before, _view_zoom)
 
 
+func _focus_rotation_active() -> bool:
+	return _focus_target_district >= 0 and _focus_rotation_duration > 0.0 and _focus_rotation_elapsed < _focus_rotation_duration
+
+
+func _update_focus_rotation(delta: float) -> bool:
+	if not _focus_rotation_active():
+		return false
+	var before := _view_center_m
+	_focus_rotation_elapsed = minf(_focus_rotation_duration, _focus_rotation_elapsed + maxf(0.0, delta))
+	var t := clampf(_focus_rotation_elapsed / maxf(0.001, _focus_rotation_duration), 0.0, 1.0)
+	var eased := _projection_smoothstep(t)
+	var delta_m := _surface_delta(_focus_start_center_m, _focus_target_center_m)
+	_view_center_m = _wrap_world_position(_focus_start_center_m + delta_m * eased)
+	if t >= 1.0:
+		_view_center_m = _focus_target_center_m
+		_focus_rotation_elapsed = _focus_rotation_duration
+	return before.distance_to(_view_center_m) > 0.001
+
+
+func _cancel_focus_rotation() -> void:
+	_focus_rotation_duration = 0.0
+	_focus_rotation_elapsed = 0.0
+	_focus_target_district = -1
+	_focus_start_center_m = _view_center_m
+	_focus_target_center_m = _view_center_m
+
+
+func _start_focus_rotation(target_center_m: Vector2, district_index: int) -> void:
+	var wrapped_target := _wrap_world_position(target_center_m)
+	_focus_start_center_m = _view_center_m
+	_focus_target_center_m = wrapped_target
+	_focus_target_district = district_index
+	_focus_rotation_elapsed = 0.0
+	var distance_m := _surface_distance(_focus_start_center_m, wrapped_target)
+	if distance_m <= 1.0:
+		_view_center_m = wrapped_target
+		_focus_rotation_duration = 0.0
+		return
+	var distance_ratio := clampf(distance_m / maxf(1.0, map_width_m * 0.32), 0.0, 1.0)
+	_focus_rotation_duration = lerpf(PROGRAMMATIC_FOCUS_ROTATE_MIN_SECONDS, PROGRAMMATIC_FOCUS_ROTATE_MAX_SECONDS, distance_ratio)
+	_mark_interaction_detail_dirty()
+	queue_redraw()
+
+
 func _mark_interaction_detail_dirty() -> void:
 	_interaction_detail_timer = INTERACTION_DETAIL_SETTLE_SECONDS
 	_interaction_redraw_requested = true
@@ -164,23 +215,25 @@ func _mark_interaction_detail_dirty() -> void:
 
 func _map_detail_reduced() -> bool:
 	return _dragging \
+		or _focus_rotation_active() \
 		or _interaction_detail_timer > 0.0 \
 		or absf(_view_zoom - _target_view_zoom) > LABEL_INTERACTION_ZOOM_EPSILON
 
 
 func _process(delta: float) -> void:
 	var zoom_changed := _update_smooth_zoom(delta)
-	if zoom_changed:
+	var focus_changed := _update_focus_rotation(delta)
+	if zoom_changed or focus_changed:
 		_mark_interaction_detail_dirty()
 	var was_interacting := _interaction_detail_timer > 0.0
 	if _interaction_detail_timer > 0.0:
 		_interaction_detail_timer = maxf(0.0, _interaction_detail_timer - delta)
-	var interaction_settled := was_interacting and _interaction_detail_timer <= 0.0 and not _dragging and not zoom_changed
+	var interaction_settled := was_interacting and _interaction_detail_timer <= 0.0 and not _dragging and not zoom_changed and not focus_changed
 	_interaction_redraw_timer -= delta
 	var has_animated_layers := _has_active_animation_layers()
 	if has_animated_layers:
 		_animated_redraw_timer -= delta
-	var interaction_redraw_due := (zoom_changed or _interaction_redraw_requested) and _interaction_redraw_timer <= 0.0
+	var interaction_redraw_due := (zoom_changed or focus_changed or _interaction_redraw_requested) and _interaction_redraw_timer <= 0.0
 	if interaction_redraw_due or interaction_settled or (has_animated_layers and _animated_redraw_timer <= 0.0):
 		queue_redraw()
 		if interaction_redraw_due:
@@ -487,6 +540,8 @@ func _screen_to_globe_world(screen_position: Vector2) -> Vector2:
 
 
 func _pan_view(delta_screen: Vector2) -> void:
+	if _focus_rotation_active():
+		_cancel_focus_rotation()
 	if _globe_blend() > 0.62:
 		var radius: float = max(1.0, _globe_radius())
 		var lon_lat: Vector2 = _world_to_lon_lat(_view_center_m)
@@ -2038,6 +2093,7 @@ func reset_to_planet_overview() -> void:
 	_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
 	_target_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
 	_view_center_m = Vector2(map_width_m * 0.5, map_height_m * 0.5)
+	_cancel_focus_rotation()
 	_mark_interaction_detail_dirty()
 	queue_redraw()
 
@@ -2049,11 +2105,11 @@ func focus_district(index: int, keep_zoom: bool = true) -> void:
 	var center := _view_center_m
 	if center_variant is Vector2:
 		center = center_variant
-	_view_center_m = _wrap_world_position(center)
 	selected_district = index
 	if not keep_zoom:
 		_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
 		_target_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
+	_start_focus_rotation(center, index)
 	_mark_interaction_detail_dirty()
 	queue_redraw()
 
@@ -2076,6 +2132,11 @@ func get_projection_debug_snapshot() -> Dictionary:
 		"view_zoom": _view_zoom,
 		"target_view_zoom": _target_view_zoom,
 		"view_center_m": _view_center_m,
+		"focus_rotation_active": _focus_rotation_active(),
+		"focus_target_district": _focus_target_district,
+		"focus_target_center_m": _focus_target_center_m,
+		"focus_start_center_m": _focus_start_center_m,
+		"focus_rotation_progress": 1.0 if _focus_rotation_duration <= 0.0 else clampf(_focus_rotation_elapsed / maxf(0.001, _focus_rotation_duration), 0.0, 1.0),
 		"map_size_m": Vector2(map_width_m, map_height_m),
 		"default_zoom": PLANET_PROJECTION_DEFAULT_ZOOM,
 		"globe_zoom": PLANET_PROJECTION_GLOBE_ZOOM,

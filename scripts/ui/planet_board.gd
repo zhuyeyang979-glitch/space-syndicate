@@ -59,6 +59,13 @@ func set_board_state(data: Dictionary) -> void:
 	campaign_focus_mode = bool(data.get("campaign_focus_mode", data.get("compact", false)))
 	var right_rail_data: Dictionary = _right_rail_source(data)
 	right_rail_suppressed = bool(right_rail_data.get("hidden", right_rail_data.get("suppressed", false)))
+	if campaign_focus_mode:
+		if playtest_flow_compass != null:
+			playtest_flow_compass.visible = false
+		if left_space_rail != null:
+			left_space_rail.visible = false
+		if right_space_rail != null:
+			right_space_rail.visible = false
 	title_label.text = str(data.get("title", "星球牌桌"))
 	hint_label.text = str(data.get("hint", "轨道外圈显示公开局势。"))
 	hint_label.add_theme_font_size_override("font_size", 9 if campaign_focus_mode else 10)
