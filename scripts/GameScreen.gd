@@ -37,8 +37,8 @@ func apply_state(state: Dictionary) -> void:
 	var resources_variant: Variant = state.get("resources", {})
 	var resources: Dictionary = resources_variant if resources_variant is Dictionary else {}
 	set_top_bar(
-		str(state.get("phase", "阶段｜开局")),
-		str(state.get("turn", "席位｜1/4")),
+		str(state.get("table_state", state.get("phase", "桌态｜待开桌"))),
+		str(state.get("tempo", state.get("turn", "计时｜00:00"))),
 		resources
 	)
 

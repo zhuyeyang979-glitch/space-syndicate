@@ -362,7 +362,7 @@ func _check_split_game_screen_data_binding() -> void:
 	await process_frame
 	_expect(screen.has_method("apply_state"), "split GameScreen exposes apply_state")
 	screen.call("apply_state", {
-		"top_bar": {"phase": "阶段｜竞价", "turn": "席位｜2/4", "identity": "赤港财团", "cash_text": "¥ 1300", "gdp_text": "+22/s", "goal_text": "5000", "selected_district": "雾港区", "primary_action": "首召"},
+		"top_bar": {"table_state": "竞价中", "tempo": "00:42", "identity": "赤港财团", "cash_text": "¥ 1300", "gdp_text": "+22/s", "goal_text": "5000", "selected_district": "雾港区", "primary_action": "首召"},
 		"card_track": [
 			{
 				"id": "track_42",
@@ -514,6 +514,8 @@ func _check_split_game_screen_data_binding() -> void:
 	var right_rail_entries := screen.find_children("PlanetRightRailEntry*", "", true, false)
 	var inspector_title := screen.find_child("InspectorTitle", true, false) as Label
 	var identity_chip := screen.find_child("IdentityChip", true, false) as Label
+	var phase_label := screen.find_child("PhaseLabel", true, false) as Label
+	var turn_label := screen.find_child("TurnLabel", true, false) as Label
 	var end_turn_button := screen.find_child("EndTurnButton", true, false) as Button
 	var menu_button := screen.find_child("MenuButton", true, false) as Button
 	var reason_panel := screen.find_child("InspectorReasonPanel", true, false) as Control
@@ -550,6 +552,8 @@ func _check_split_game_screen_data_binding() -> void:
 	var player_readiness_chip_row := screen.find_child("PlayerReadinessChipRow", true, false)
 	var player_action_row := player_main_action_dock.find_child("ActionRow", true, false) if player_main_action_dock != null else null
 	_expect(top_bar != null, "split GameScreen top bar survives data binding")
+	_expect(phase_label != null and phase_label.text.contains("桌态") and phase_label.text.contains("竞价") and not phase_label.text.contains("阶段"), "split TopBar uses realtime table-state wording instead of turn-cycle phase wording")
+	_expect(turn_label != null and turn_label.text.contains("计时") and turn_label.text.contains("00:42") and not turn_label.text.contains("席位"), "split TopBar uses clock wording instead of seat/turn wording")
 	_expect(identity_chip != null and identity_chip.text.contains("赤港财团"), "split TopBar binds first-glance player identity")
 	_expect(menu_button != null, "split TopBar exposes a first-screen menu button")
 	_expect(end_turn_button != null and not end_turn_button.visible, "split TopBar keeps end-turn controls hidden by default so PlayerBoard remains the single main-action dock")

@@ -13,8 +13,8 @@ var weather_status_text: String = ""
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
-	phase_text = str(data.get("phase", "阶段｜开局"))
-	turn_text = str(data.get("turn", data.get("seat", "席位｜1/4")))
+	phase_text = _strip_known_prefix(_first_text(data, ["table_state", "table_status", "status", "phase"], "待开桌"), ["桌态", "阶段"])
+	turn_text = _strip_known_prefix(_first_text(data, ["tempo", "time_text", "clock", "elapsed", "turn"], "00:00"), ["计时", "时间", "回合", "席位"])
 	identity_text = _first_text(data, ["identity", "player", "player_name"], "未开局")
 	cash_text = _first_text(data, ["cash_text", "cash", "money"], "¥ --")
 	gdp_text = _first_text(data, ["gdp_text", "gdp"], "--/s")
@@ -27,6 +27,8 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 
 func to_ui_dictionary() -> Dictionary:
 	return {
+		"table_state": phase_text,
+		"tempo": turn_text,
 		"phase": phase_text,
 		"turn": turn_text,
 		"identity": identity_text,
@@ -47,3 +49,16 @@ func _first_text(data: Dictionary, keys: Array, fallback: String) -> String:
 			if value.strip_edges() != "":
 				return value
 	return fallback
+
+
+func _strip_known_prefix(value: String, prefixes: Array) -> String:
+	var result := value.strip_edges()
+	for prefix_variant in prefixes:
+		var prefix := str(prefix_variant)
+		for separator in ["｜", ":", "：", " "]:
+			var marker := "%s%s" % [prefix, separator]
+			if result.begins_with(marker):
+				return result.substr(marker.length()).strip_edges()
+		if result == prefix:
+			return ""
+	return result

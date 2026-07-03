@@ -28,8 +28,8 @@ func _ready() -> void:
 
 
 func set_state(data: Dictionary) -> void:
-	var phase_text := str(data.get("phase", "开局"))
-	var turn_text := str(data.get("turn", "席位 --"))
+	var table_state_text := _first_text(data, ["table_state", "table_status", "status", "phase"], "待开桌")
+	var tempo_text := _first_text(data, ["tempo", "time_text", "clock", "elapsed", "turn"], "00:00")
 	var identity_text := _first_text(data, ["identity", "player", "seat"], "未入席")
 	var cash_text := _first_text(data, ["cash_text", "cash", "money"], "¥ --")
 	var gdp_text := _first_text(data, ["gdp_text", "gdp"], "--/min")
@@ -38,10 +38,8 @@ func set_state(data: Dictionary) -> void:
 	var action_text := _first_text(data, ["primary_action", "next_action", "action"], "看星球")
 	var weather_text := _first_text(data, ["weather_status", "weather", "forecast"], "天气:无影响｜预报:暂无")
 
-	phase_label.text = _short_chip_text(phase_text, 12)
-	phase_label.tooltip_text = phase_text
-	turn_label.text = _short_chip_text(turn_text, 10)
-	turn_label.tooltip_text = turn_text
+	_set_status_label(phase_label, "桌态", table_state_text, 118, 12, ["桌态", "阶段"])
+	_set_status_label(turn_label, "计时", tempo_text, 96, 10, ["计时", "时间", "回合", "席位"])
 	_set_chip(identity_chip, "本席", identity_text, 112, 14)
 	_set_chip(cash_chip, "现金", cash_text, 96, 12)
 	_set_chip(gdp_chip, "GDP", gdp_text, 92, 12)
@@ -69,11 +67,18 @@ func _first_text(data: Dictionary, keys: Array, fallback: String) -> String:
 
 
 func _configure_chip_defaults() -> void:
-	phase_label.custom_minimum_size = Vector2(104, 0)
-	turn_label.custom_minimum_size = Vector2(78, 0)
+	phase_label.custom_minimum_size = Vector2(118, 0)
+	turn_label.custom_minimum_size = Vector2(96, 0)
 	for chip in [identity_chip, cash_chip, gdp_chip, goal_chip, selected_district_chip, primary_action_chip, weather_chip]:
 		chip.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+
+func _set_status_label(label: Label, prefix: String, value: String, width: float, max_characters: int, old_prefixes: Array) -> void:
+	var clean_value := _strip_known_prefix(value, old_prefixes)
+	label.custom_minimum_size = Vector2(width, 0)
+	label.text = "%s %s" % [prefix, _short_chip_text(clean_value, max_characters)]
+	label.tooltip_text = "%s: %s" % [prefix, clean_value]
 
 
 func _set_chip(label: Label, prefix: String, value: String, width: float, max_characters: int) -> void:
@@ -81,6 +86,19 @@ func _set_chip(label: Label, prefix: String, value: String, width: float, max_ch
 	label.text = "%s %s" % [prefix, _short_chip_text(value, max_characters)]
 	label.tooltip_text = "%s: %s" % [prefix, value]
 	label.visible = true
+
+
+func _strip_known_prefix(value: String, prefixes: Array) -> String:
+	var result := value.strip_edges()
+	for prefix_variant in prefixes:
+		var prefix := str(prefix_variant)
+		for separator in ["｜", ":", "：", " "]:
+			var marker := "%s%s" % [prefix, separator]
+			if result.begins_with(marker):
+				return result.substr(marker.length()).strip_edges()
+		if result == prefix:
+			return ""
+	return result
 
 
 func _short_chip_text(value: String, max_characters: int) -> String:

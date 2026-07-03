@@ -14,16 +14,16 @@ theme_override_constants/separation = 10
 
 [node name="PhaseLabel" type="Label" parent="TopBarRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(140, 0)
+custom_minimum_size = Vector2(118, 0)
 layout_mode = 2
-text = "阶段｜开局"
+text = "桌态｜待开桌"
 vertical_alignment = 1
 
 [node name="TurnLabel" type="Label" parent="TopBarRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(118, 0)
+custom_minimum_size = Vector2(96, 0)
 layout_mode = 2
-text = "席位｜1/4"
+text = "计时｜00:00"
 vertical_alignment = 1
 
 [node name="FirstGlanceRail" type="HFlowContainer" parent="TopBarRow"]

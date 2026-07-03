@@ -75,7 +75,7 @@ The main remaining product/UI debt is not Node2D-based UI. The debt is that `mai
 
 The editor-visible `scenes/ui/GameScreen.tscn` now carries the product information layers described in the continuation brief:
 
-- `TopBar` owns a `FirstGlanceRail` with identity, cash, GDP, goal, selected-district, and next-action chips.
+- `TopBar` owns realtime table-state and clock labels plus a `FirstGlanceRail` with identity, cash, GDP, goal, selected-district, and next-action chips. Player-facing text should read as `桌态 / 计时`, not turn-cycle `阶段 / 回合 / 席位` language.
 - `TopBar` also owns the first-screen menu entry. Its `MenuButton` emits through `GameScreen.action_requested("menu")` and `scripts/main.gd` opens the existing pause/menu overlay.
 - Optional end-turn/top-bar resolution controls stay hidden by default; the always-visible primary command remains in `PlayerBoard`, preserving the "one main action dock" rule.
 - `PublicTrack` owns the thin anonymous/public card rail. `PublicTrackSnapshot` normalizes raw track entries into slot, state, price/cost, accent, and anonymous ownership hints, while `CardTrack` renders only compact `PublicTrackSlot` cells with state pips. Complete card faces stay out of the always-visible main table.

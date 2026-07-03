@@ -51,14 +51,14 @@ theme_override_constants/separation = 10
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-text = "阶段｜开局"
+text = "桌态｜待开桌"
 vertical_alignment = 1
 
 [node name="TurnLabel" type="Label" parent="SafeArea/MainRows/TopBar/TopBarRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
-text = "席位｜1/4"
+text = "计时｜00:00"
 vertical_alignment = 1
 
 [node name="ResourceBar" type="HBoxContainer" parent="SafeArea/MainRows/TopBar/TopBarRow"]

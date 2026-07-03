@@ -19278,9 +19278,13 @@ func _runtime_snapshot_player_index() -> int:
 func _runtime_top_bar_snapshot_source(player_index: int) -> Dictionary:
 	var visible_cash: int = _runtime_player_visible_cash(player_index)
 	var cash_goal: int = _roguelike_cash_goal()
+	var table_state := _runtime_top_bar_table_state_text()
+	var table_clock := _format_time(game_time) if game_time > 0.0 else "00:00"
 	return {
-		"phase": _roguelike_depth_label() if not players.is_empty() else "主菜单",
-		"turn": _format_time(game_time) if game_time > 0.0 else "00:00",
+		"table_state": table_state,
+		"tempo": table_clock,
+		"phase": table_state,
+		"turn": table_clock,
 		"identity": _player_name(player_index) if _runtime_player_is_valid(player_index) else "未入席",
 		"cash_text": _runtime_player_cash_text(player_index),
 		"gdp_text": _runtime_player_gdp_text(player_index),
@@ -19289,6 +19293,27 @@ func _runtime_top_bar_snapshot_source(player_index: int) -> Dictionary:
 		"primary_action": _runtime_primary_action_label(player_index),
 		"weather_status": _weather_status_text(),
 	}
+
+
+func _runtime_top_bar_table_state_text() -> String:
+	if players.is_empty():
+		return "主菜单"
+	var queue_count := card_resolution_queue.size() + next_card_resolution_queue.size()
+	if card_resolution_auction_open:
+		return "竞价中"
+	if card_resolution_simultaneous_timer > 0.0:
+		return "短窗"
+	if card_resolution_counter_window_active:
+		return "响应中"
+	if not active_card_resolution.is_empty():
+		return "揭示中"
+	if queue_count > 0:
+		return "牌队%d" % queue_count
+	if victory_countdown_active:
+		return "终局"
+	if _district_supply_is_open():
+		return "牌架"
+	return "经营中"
 
 
 func _runtime_player_board_snapshot_source(player_index: int, action_entries: Array) -> Dictionary:
