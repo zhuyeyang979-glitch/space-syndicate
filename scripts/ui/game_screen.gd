@@ -206,13 +206,21 @@ func _runtime_table_focus_controls() -> Array[Control]:
 	var result: Array[Control] = []
 	_append_runtime_focus_control(result, top_bar as Control, "顶部状态")
 	_append_runtime_focus_control(result, _public_track_node() as Control, "牌轨")
-	_append_runtime_focus_control(result, _first_visible_control(["MapHost", "PlanetStageViewport", "PlanetBoard"]), "星球地图")
+	_append_runtime_focus_control(result, _runtime_map_focus_control(), "星球地图")
 	_append_runtime_focus_control(result, right_inspector as Control, "右侧详情")
 	_append_runtime_focus_control(result, _first_visible_control(["DistrictSupplyDrawer", "SideDrawerPanel"]), "区域牌架")
 	_append_runtime_focus_control(result, _first_visible_control(["HandRack", "PlayerHandTableau", "PlayerBoard"]), "手牌")
 	_append_runtime_focus_control(result, _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"]), "当前行动")
 	_append_runtime_focus_control(result, _first_visible_control(["PlayerBidBoard", "PlayerCommandTableau"]), "竞价")
 	return result
+
+
+func _runtime_map_focus_control() -> Control:
+	if planet_board != null and planet_board.has_method("get_runtime_map_focus_control"):
+		var runtime_map: Variant = planet_board.call("get_runtime_map_focus_control")
+		if runtime_map is Control and (runtime_map as Control).is_visible_in_tree():
+			return runtime_map as Control
+	return _first_visible_control(["MapHost", "PlanetStageViewport", "PlanetBoard"])
 
 
 func _append_runtime_focus_control(result: Array[Control], control: Control, label: String) -> void:
@@ -592,7 +600,7 @@ func _hide_focus_guide() -> void:
 func _focus_target_control(focus_target: String) -> Control:
 	match focus_target:
 		"planet", "route_layer":
-			return _first_visible_control(["MapHost", "PlanetStageViewport", "PlanetBoard"])
+			return _runtime_map_focus_control()
 		"player_hand":
 			return _first_visible_control(["HandRack", "PlayerHandTableau", "PlayerBoard"])
 		"action_dock":

@@ -98,13 +98,26 @@ func attach_runtime_map(map_node: Control) -> void:
 	var current_parent := map_node.get_parent()
 	if current_parent != null:
 		current_parent.remove_child(map_node)
+	if map_node.name == "" or map_node.name == "Control":
+		map_node.name = "RuntimeMapView"
 	map_node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_node.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_node.focus_mode = Control.FOCUS_ALL
+	map_node.set_meta("runtime_focus_kind", "planet_map")
 	map_node.clip_contents = false
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_host.add_child(map_node)
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fit_square_stage()
+
+
+func get_runtime_map_focus_control() -> Control:
+	if map_host == null:
+		return null
+	for child in map_host.get_children():
+		if child is Control and (child as Control).has_method("focus_district"):
+			return child as Control
+	return map_host
 
 
 func _fit_square_stage() -> void:

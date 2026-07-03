@@ -14,6 +14,9 @@ const LOCAL_PROJECTION_MARGIN_SCALE := 0.80
 const MIN_VIEW_ZOOM := 0.30
 const MAX_VIEW_ZOOM := 5.0
 const DRAG_THRESHOLD_PIXELS := 4.0
+const KEYBOARD_NAV_MIN_ALIGNMENT := -0.18
+const KEYBOARD_NAV_DISTANCE_WEIGHT := 0.22
+const KEYBOARD_NAV_VISIBILITY_WEIGHT := 24.0
 const ANIMATED_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
 const ZOOM_SMOOTHING_SPEED := 12.0
 const ZOOM_WHEEL_STEP := 1.08
@@ -95,6 +98,8 @@ var monster_marker_textures := {}
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	focus_mode = Control.FOCUS_ALL
+	set_meta("runtime_focus_kind", "planet_map")
 	custom_minimum_size = Vector2(720, 720)
 	_load_monster_marker_textures()
 	reset_to_planet_overview()
@@ -377,6 +382,9 @@ func _layer_focus_allows(layer_id: String) -> bool:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if _handle_keyboard_region_navigation(event):
+		accept_event()
+		return
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
@@ -427,6 +435,98 @@ func _gui_input(event: InputEvent) -> void:
 		_mark_interaction_detail_dirty()
 		queue_redraw()
 		accept_event()
+
+
+func _handle_keyboard_region_navigation(event: InputEvent) -> bool:
+	if event == null or districts.is_empty():
+		return false
+	if event is InputEventKey and (event as InputEventKey).echo:
+		return false
+	if event.is_action_pressed("ui_accept"):
+		var current := _keyboard_current_district()
+		if current < 0:
+			return false
+		focus_district(current)
+		district_double_clicked.emit(current)
+		return true
+	var direction := Vector2.ZERO
+	if event.is_action_pressed("ui_left"):
+		direction = Vector2.LEFT
+	elif event.is_action_pressed("ui_right"):
+		direction = Vector2.RIGHT
+	elif event.is_action_pressed("ui_up"):
+		direction = Vector2.UP
+	elif event.is_action_pressed("ui_down"):
+		direction = Vector2.DOWN
+	if direction == Vector2.ZERO:
+		return false
+	var target := _district_in_navigation_direction(direction)
+	if target < 0:
+		return false
+	focus_district(target)
+	district_selected.emit(target)
+	return true
+
+
+func _keyboard_current_district() -> int:
+	if selected_district >= 0 and selected_district < districts.size():
+		return selected_district
+	return 0 if not districts.is_empty() else -1
+
+
+func _district_in_navigation_direction(direction: Vector2) -> int:
+	var current := _keyboard_current_district()
+	if current < 0 or current >= districts.size():
+		return -1
+	var candidates := _keyboard_navigation_candidate_indices(current)
+	if candidates.is_empty():
+		return -1
+	_sync_projection_metrics_for_query()
+	var origin_projected := _map_event_screen_position(districts[current].get("center", _view_center_m))
+	var origin: Vector2 = origin_projected.get("position", size * 0.5)
+	var normalized_direction := direction.normalized()
+	var best_index := -1
+	var best_score := -INF
+	var fallback_index := -1
+	var fallback_score := INF
+	for candidate_variant in candidates:
+		var candidate := int(candidate_variant)
+		if candidate < 0 or candidate >= districts.size() or candidate == current:
+			continue
+		var projected := _map_event_screen_position(districts[candidate].get("center", _view_center_m))
+		var position: Vector2 = projected.get("position", origin)
+		var offset := position - origin
+		var distance := offset.length()
+		if distance <= 0.5:
+			continue
+		var alignment := offset.normalized().dot(normalized_direction)
+		var z := float(projected.get("z", 0.0))
+		var score := alignment * 1000.0 - distance * KEYBOARD_NAV_DISTANCE_WEIGHT + z * KEYBOARD_NAV_VISIBILITY_WEIGHT
+		if alignment >= KEYBOARD_NAV_MIN_ALIGNMENT and score > best_score:
+			best_score = score
+			best_index = candidate
+		var fallback_value := distance - alignment * 160.0 - z * 12.0
+		if fallback_value < fallback_score:
+			fallback_score = fallback_value
+			fallback_index = candidate
+	return best_index if best_index >= 0 else fallback_index
+
+
+func _keyboard_navigation_candidate_indices(current: int) -> Array:
+	var result := []
+	if current >= 0 and current < districts.size():
+		var district: Dictionary = districts[current]
+		var neighbors_variant: Variant = district.get("neighbors", [])
+		if neighbors_variant is Array:
+			for neighbor_variant in neighbors_variant:
+				var neighbor := int(neighbor_variant)
+				if neighbor >= 0 and neighbor < districts.size() and neighbor != current and not result.has(neighbor):
+					result.append(neighbor)
+	if result.is_empty():
+		for index in range(districts.size()):
+			if index != current:
+				result.append(index)
+	return result
 
 
 func _is_globe_mode() -> bool:
