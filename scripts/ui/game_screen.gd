@@ -181,6 +181,7 @@ func get_visual_event_snapshot() -> Dictionary:
 
 
 func runtime_focus_order_snapshot() -> Array:
+	_sync_runtime_table_focus_order()
 	var controls := _runtime_table_focus_controls()
 	var result: Array = []
 	for index in range(controls.size()):
@@ -192,9 +193,13 @@ func runtime_focus_order_snapshot() -> Array:
 			"focus_mode": control.focus_mode,
 			"focus_next": str(control.focus_next),
 			"focus_previous": str(control.focus_previous),
-			"visible": control.is_visible_in_tree(),
+		"visible": control.is_visible_in_tree(),
 		})
 	return result
+
+
+func refresh_runtime_focus_order() -> void:
+	_sync_runtime_table_focus_order()
 
 
 func _sync_runtime_table_focus_order() -> void:
@@ -218,7 +223,7 @@ func _runtime_table_focus_controls() -> Array[Control]:
 	_append_runtime_focus_control(result, _public_track_node() as Control, "牌轨")
 	_append_runtime_focus_control(result, _runtime_map_focus_control(), "星球地图")
 	_append_runtime_focus_control(result, right_inspector as Control, "右侧详情")
-	_append_runtime_focus_control(result, _first_visible_control(["DistrictSupplyDrawer", "SideDrawerPanel"]), "区域牌架")
+	_append_runtime_focus_control(result, _first_visible_control(["DistrictSupplySideDrawer", "DistrictSupplyPanel", "DistrictSupplySideDrawerOverlay", "DistrictSupplyDrawer", "SideDrawerPanel"]), "区域牌架")
 	_append_runtime_focus_control(result, _first_visible_control(["HandRack", "PlayerHandTableau", "PlayerBoard"]), "手牌")
 	_append_runtime_focus_control(result, _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"]), "当前行动")
 	_append_runtime_focus_control(result, _first_visible_control(["PlayerBidBoard", "PlayerCommandTableau"]), "竞价")
@@ -753,7 +758,7 @@ func _focus_target_control(focus_target: String) -> Control:
 		"right_inspector", "economy_overview", "intel_dossier", "standings", "settlement":
 			return right_inspector as Control
 		"district_supply":
-			return _first_visible_control(["DistrictSupplyDrawer", "SideDrawerPanel", "RightInspector", "PlanetStageViewport"])
+			return _first_visible_control(["DistrictSupplySideDrawer", "DistrictSupplyPanel", "DistrictSupplySideDrawerOverlay", "DistrictSupplyDrawer", "SideDrawerPanel", "RightInspector", "PlanetStageViewport"])
 		"private_decision", "contract_prompt":
 			return _first_visible_control(["TemporaryDecisionPanel", "ConfirmPanel", "ModalLayer", "OverlayLayer"])
 		"top_bar":

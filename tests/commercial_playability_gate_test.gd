@@ -67,6 +67,7 @@ func _check_first_table_runtime_layout(viewport_size: Vector2i) -> void:
 	_expect(runtime != null and runtime.visible, "%s first-table chapter enters real RuntimeGameScreen" % _size_label(viewport_size))
 	if runtime != null:
 		_check_core_table_regions(main, runtime, viewport_size)
+		_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "手牌", "当前行动", "竞价"], "%s closed-rack table" % _size_label(viewport_size))
 		_check_single_primary_campaign_cta(main, viewport_size)
 		_check_player_facing_privacy(runtime, viewport_size)
 	root.remove_child(main)
@@ -90,6 +91,7 @@ func _check_first_ten_minute_action_chain() -> void:
 	var runtime := main.find_child("RuntimeGameScreen", true, false) as Control
 	var ui_text := _node_text(runtime)
 	_expect(ui_text.contains("牌架") and ui_text.contains("手牌"), "first ten-minute path keeps card rack and hand concepts visible together")
+	_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "区域牌架", "手牌", "当前行动", "竞价"], "first ten-minute opened-rack table")
 	_check_player_facing_privacy(runtime, Vector2i(1600, 960))
 	root.remove_child(main)
 	main.queue_free()
@@ -281,6 +283,25 @@ func _check_core_table_regions(main: Node, runtime: Control, viewport_size: Vect
 	_expect(not planet_rect.intersects(player_rect), "%s planet board does not overlap the hand board" % label)
 	if inspector != null:
 		_expect(inspector.get_global_rect().size.x <= 330.0, "%s campaign focus keeps the right detail drawer compact" % label)
+
+
+func _check_runtime_focus_order(runtime: Control, expected_labels: Array[String], message: String) -> void:
+	_expect(runtime != null and runtime.has_method("runtime_focus_order_snapshot"), "%s exposes runtime focus-order snapshot" % message)
+	if runtime == null or not runtime.has_method("runtime_focus_order_snapshot"):
+		return
+	var snapshot: Array = runtime.call("runtime_focus_order_snapshot")
+	_expect(snapshot.size() == expected_labels.size(), "%s has exactly the expected table focus regions" % message)
+	var seen := {}
+	for index in range(expected_labels.size()):
+		var item: Dictionary = snapshot[index] if index < snapshot.size() and snapshot[index] is Dictionary else {}
+		var label := str(item.get("label", ""))
+		_expect(label == expected_labels[index], "%s focus slot %d is %s" % [message, index + 1, expected_labels[index]])
+		_expect(not seen.has(label), "%s focus slot %d is not duplicated" % [message, index + 1])
+		seen[label] = true
+		_expect(int(item.get("index", -1)) == index, "%s focus slot %d keeps a stable index" % [message, index + 1])
+		_expect(int(item.get("focus_mode", Control.FOCUS_NONE)) == Control.FOCUS_ALL, "%s focus slot %d is keyboard/gamepad reachable" % [message, index + 1])
+		_expect(str(item.get("focus_next", "")) != "" and str(item.get("focus_previous", "")) != "", "%s focus slot %d links next/previous focus" % [message, index + 1])
+		_expect(bool(item.get("visible", false)), "%s focus slot %d is visible" % [message, index + 1])
 
 
 func _check_single_primary_campaign_cta(main: Node, viewport_size: Vector2i) -> void:
