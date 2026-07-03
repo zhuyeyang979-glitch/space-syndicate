@@ -6,11 +6,17 @@ class_name SpaceSyndicateFocusGuideLayer
 @onready var guide_label: Label = %FocusGuideLabel
 
 var _last_signature := ""
+var _pulse_focus := false
+var _pulse_time := 0.0
+var _current_accent := Color("#facc15")
+var _current_focus_target := ""
+var _current_fill_alpha := 0.05
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
+	set_process(false)
 	if guide_panel != null:
 		guide_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		guide_panel.add_theme_stylebox_override("panel", _focus_guide_panel_style(Color("#facc15"), 0.05))
@@ -35,7 +41,8 @@ func show_focus(target_global_rect: Rect2, focus_target: String, scenario_data: 
 	local_rect.position.x = clampf(local_rect.position.x, 4.0, maxf(4.0, size.x - local_rect.size.x - 4.0))
 	local_rect.position.y = clampf(local_rect.position.y, 4.0, maxf(4.0, size.y - local_rect.size.y - 4.0))
 	var label_text := _focus_guide_label_text(focus_target, scenario_data)
-	var signature := var_to_str([focus_target, label_text, local_rect.position.round(), local_rect.size.round()])
+	var pulse_focus := _focus_guide_pulse_enabled(scenario_data)
+	var signature := var_to_str([focus_target, label_text, local_rect.position.round(), local_rect.size.round(), pulse_focus])
 	if signature == _last_signature:
 		return
 	_last_signature = signature
@@ -49,25 +56,63 @@ func show_focus(target_global_rect: Rect2, focus_target: String, scenario_data: 
 	guide_label.text = label_text
 	guide_label.tooltip_text = guide_panel.tooltip_text
 	var accent := _focus_guide_accent(focus_target)
-	guide_panel.add_theme_stylebox_override("panel", _focus_guide_panel_style(accent, _focus_guide_fill_alpha(focus_target)))
+	_current_accent = accent
+	_current_focus_target = focus_target
+	_current_fill_alpha = _focus_guide_fill_alpha(focus_target)
+	_pulse_focus = pulse_focus
+	_pulse_time = 0.0
+	guide_panel.add_theme_stylebox_override("panel", _focus_guide_panel_style(accent, _current_fill_alpha, _pulse_focus))
 	if guide_chip != null:
 		var chip_size := _focus_guide_chip_size(label_text, local_rect)
 		guide_chip.position = _focus_guide_chip_position(local_rect, chip_size)
 		guide_chip.size = chip_size
 		guide_chip.tooltip_text = guide_panel.tooltip_text
-		guide_chip.add_theme_stylebox_override("panel", _focus_guide_chip_style(accent))
+		guide_chip.scale = Vector2.ONE
+		guide_chip.pivot_offset = chip_size * 0.5
+		guide_chip.add_theme_stylebox_override("panel", _focus_guide_chip_style(accent, _pulse_focus))
 	guide_label.add_theme_color_override("font_color", accent.lightened(0.42))
+	set_process(_pulse_focus)
+
+
+func _process(delta: float) -> void:
+	if not _pulse_focus or not visible:
+		set_process(false)
+		return
+	_pulse_time += maxf(0.0, delta)
+	var wave := 0.5 + 0.5 * sin(_pulse_time * TAU * 1.45)
+	var accent := _current_accent.lightened(0.08 + wave * 0.18)
+	var fill_alpha := _current_fill_alpha + wave * 0.055
+	if guide_panel != null:
+		guide_panel.add_theme_stylebox_override("panel", _focus_guide_panel_style(accent, fill_alpha, true))
+	if guide_chip != null:
+		guide_chip.scale = Vector2.ONE * (1.0 + wave * 0.035)
+		guide_chip.add_theme_stylebox_override("panel", _focus_guide_chip_style(accent, true))
+	if guide_label != null:
+		guide_label.add_theme_color_override("font_color", accent.lightened(0.46))
 
 
 func hide_focus() -> void:
 	_last_signature = ""
 	visible = false
+	_pulse_focus = false
+	_pulse_time = 0.0
+	set_process(false)
 	if guide_panel != null:
 		guide_panel.visible = false
 	if guide_chip != null:
 		guide_chip.visible = false
+		guide_chip.scale = Vector2.ONE
 	if guide_label != null:
 		guide_label.text = ""
+
+
+func get_focus_debug_snapshot() -> Dictionary:
+	return {
+		"visible": visible,
+		"pulse_focus": _pulse_focus,
+		"focus_target": _current_focus_target,
+		"label": guide_label.text if guide_label != null else "",
+	}
 
 
 func _global_rect_to_local(global_rect: Rect2) -> Rect2:
@@ -94,6 +139,9 @@ func _focus_guide_label_text(focus_target: String, scenario_data: Dictionary) ->
 	var primary: Dictionary = scenario_data.get("primary_action", {}) if scenario_data.get("primary_action", {}) is Dictionary else {}
 	var action_label := str(primary.get("label", "")).strip_edges()
 	var target_label := _focus_target_short_label(focus_target)
+	var shortest := str(scenario_data.get("shortest_action_text", "")).strip_edges()
+	if _focus_guide_pulse_enabled(scenario_data) and shortest != "":
+		return _short_focus_guide_text("｜".join(["最短", target_label, shortest]))
 	var pieces: Array[String] = ["看这里"]
 	if target_label != "":
 		pieces.append(target_label)
@@ -177,6 +225,10 @@ func _focus_guide_fill_alpha(focus_target: String) -> float:
 			return 0.09
 
 
+func _focus_guide_pulse_enabled(scenario_data: Dictionary) -> bool:
+	return bool(scenario_data.get("pulse_focus", false)) or str(scenario_data.get("stuck_state", "")).strip_edges() == "strong"
+
+
 func _focus_guide_chip_size(label_text: String, local_rect: Rect2) -> Vector2:
 	var width := clampf(118.0 + float(label_text.length()) * 8.2, 154.0, minf(292.0, maxf(160.0, local_rect.size.x)))
 	return Vector2(width, 26.0)
@@ -190,16 +242,16 @@ func _focus_guide_chip_position(local_rect: Rect2, chip_size: Vector2) -> Vector
 	return Vector2(x, clampf(y, 4.0, maxf(4.0, size.y - chip_size.y - 4.0)))
 
 
-func _focus_guide_panel_style(accent: Color, fill_alpha: float) -> StyleBoxFlat:
+func _focus_guide_panel_style(accent: Color, fill_alpha: float, urgent: bool = false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	var fill := Color("#020617").lerp(accent, 0.11)
 	fill.a = fill_alpha
 	style.bg_color = fill
 	style.border_color = accent.lightened(0.24)
-	style.set_border_width_all(2)
+	style.set_border_width_all(3 if urgent else 2)
 	style.set_corner_radius_all(8)
-	style.shadow_color = Color(accent.r, accent.g, accent.b, 0.28)
-	style.shadow_size = 8
+	style.shadow_color = Color(accent.r, accent.g, accent.b, 0.40 if urgent else 0.28)
+	style.shadow_size = 13 if urgent else 8
 	style.shadow_offset = Vector2.ZERO
 	style.set_content_margin(SIDE_LEFT, 8.0)
 	style.set_content_margin(SIDE_RIGHT, 8.0)
@@ -208,15 +260,15 @@ func _focus_guide_panel_style(accent: Color, fill_alpha: float) -> StyleBoxFlat:
 	return style
 
 
-func _focus_guide_chip_style(accent: Color) -> StyleBoxFlat:
+func _focus_guide_chip_style(accent: Color, urgent: bool = false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	var fill := Color("#020617").lerp(accent, 0.20)
 	fill.a = 0.92
 	style.bg_color = fill
 	style.border_color = accent.lightened(0.18)
-	style.set_border_width_all(1)
+	style.set_border_width_all(2 if urgent else 1)
 	style.set_corner_radius_all(7)
-	style.shadow_color = Color(0, 0, 0, 0.30)
-	style.shadow_size = 4
+	style.shadow_color = Color(accent.r, accent.g, accent.b, 0.30) if urgent else Color(0, 0, 0, 0.30)
+	style.shadow_size = 7 if urgent else 4
 	style.shadow_offset = Vector2.ZERO
 	return style

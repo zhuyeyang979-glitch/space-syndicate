@@ -46,6 +46,22 @@ func _check_stuck_primary_cta_uses_focus_navigation() -> void:
 	var primary: Dictionary = ui.get("primary_action", {}) if ui.get("primary_action", {}) is Dictionary else {}
 	_expect(bool(ui.get("help_visible", false)), "stuck scenario coach shows help after a hint request")
 	_expect(str(primary.get("id", "")) == "scenario_focus_target" and str(primary.get("label", "")) == "定位下一步", "stuck scenario primary CTA is the real focus action")
+	_expect(bool(main.call("_activate_scenario_action", "scenario_hint")), "a repeated scenario hint records a stronger stuck request")
+	await _wait_frames(4)
+	source = main.call("_runtime_scenario_coach_snapshot_source", 0) as Dictionary
+	ui = COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(source).to_ui_dictionary()
+	primary = ui.get("primary_action", {}) if ui.get("primary_action", {}) is Dictionary else {}
+	_expect(str(ui.get("stuck_state", "")) == "strong", "repeated stuck scenario enters strong stuck state")
+	_expect(bool(ui.get("pulse_focus", false)), "strong stuck scenario requests a pulsing focus guide")
+	_expect(str(ui.get("shortest_action_text", "")).strip_edges() != "", "strong stuck scenario exposes a shortest next action")
+	var focus_guide := _find_node_with_method(main, "get_focus_debug_snapshot")
+	if focus_guide != null:
+		var focus_snapshot: Dictionary = focus_guide.call("get_focus_debug_snapshot") as Dictionary
+		_expect(bool(focus_snapshot.get("pulse_focus", false)), "strong stuck focus guide pulses the target region")
+		_expect(str(focus_snapshot.get("label", "")).contains("最短"), "strong stuck focus guide label uses shortest-action wording")
+	else:
+		_expect(false, "strong stuck focus guide exposes a debug snapshot")
+	_expect(str(primary.get("id", "")) == "scenario_focus_target" and str(primary.get("label", "")) == "定位下一步", "strong stuck scenario primary CTA remains the real focus action")
 	_expect(bool(main.call("_activate_scenario_action", str(primary.get("id", "")))), "stuck primary focus action is accepted")
 	await _wait_frames(6)
 	_expect(int(main.get("selected_card_resolution_id")) >= 0, "stuck primary focus action selects a visible track card")

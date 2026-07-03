@@ -43,7 +43,7 @@ func set_coach(data: Dictionary) -> void:
 	goal_label.text = _short_text(str(data.get("goal", "按桌边提示完成下一步。")), 16 if compact else 34)
 	goal_label.tooltip_text = str(data.get("detail", goal_label.text))
 	help_label.visible = bool(data.get("help_visible", false)) and not compact
-	help_label.text = "卡住了吗？%s" % str(data.get("help_text", "看高亮区域或底部行动条。"))
+	help_label.text = _stuck_help_text(data)
 	help_label.tooltip_text = str(data.get("help_text", ""))
 	var font_scale := clampf(float(data.get("font_scale_percent", 100)) / 100.0, 0.85, 1.30)
 	title_label.add_theme_font_size_override("font_size", int(round(13.0 * font_scale)))
@@ -144,3 +144,12 @@ func _short_text(value: String, limit: int) -> String:
 	if text.length() <= limit:
 		return text
 	return "%s..." % text.left(maxi(1, limit - 3))
+
+
+func _stuck_help_text(data: Dictionary) -> String:
+	var state := str(data.get("stuck_state", "none")).strip_edges()
+	var shortest := str(data.get("shortest_action_text", "")).strip_edges()
+	if state == "strong" and shortest != "":
+		return _short_text("最短：%s" % shortest, 34)
+	var help := str(data.get("help_text", "看高亮区域或底部行动条。")).strip_edges()
+	return _short_text("卡住了吗？%s" % help, 42)

@@ -584,7 +584,15 @@ func _focus_guide_source_is_active(data: Dictionary) -> bool:
 func _show_focus_guide(target_global_rect: Rect2, focus_target: String, scenario_data: Dictionary) -> void:
 	if focus_guide_layer == null or not focus_guide_layer.has_method("show_focus"):
 		return
-	var next_signature := var_to_str([focus_target, target_global_rect.position.round(), target_global_rect.size.round(), scenario_data.get("phase_id", "")])
+	var next_signature := var_to_str([
+		focus_target,
+		target_global_rect.position.round(),
+		target_global_rect.size.round(),
+		scenario_data.get("phase_id", ""),
+		scenario_data.get("stuck_state", ""),
+		scenario_data.get("pulse_focus", false),
+		scenario_data.get("shortest_action_text", ""),
+	])
 	if next_signature == str(_last_focus_guide_data.get("signature", "")):
 		return
 	_last_focus_guide_data = {"signature": next_signature, "target": focus_target}

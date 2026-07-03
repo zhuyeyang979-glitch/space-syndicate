@@ -50,6 +50,9 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		"body": str(source.get("body", definition.get("body", ""))),
 		"tooltip": str(source.get("tooltip", definition.get("tooltip", definition.get("body", "")))),
 		"focus_target": str(source.get("focus_target", _focus_target_for_stage(stage))).strip_edges(),
+		"stuck_state": str(source.get("stuck_state", "none")),
+		"pulse_focus": bool(source.get("pulse_focus", false)),
+		"shortest_action_text": str(source.get("shortest_action_text", _shortest_action_for_stage(stage))),
 		"progress_text": _progress_text(progress, stage),
 		"chips": _normalized_chips(source.get("chips", _stage_chips(progress, stage))),
 		"primary_action": _normalize_action(primary_action, stage),
@@ -196,6 +199,27 @@ func _focus_target_for_stage(stage: String) -> String:
 			return "right_inspector"
 		_:
 			return ""
+
+
+func _shortest_action_for_stage(stage: String) -> String:
+	match stage:
+		STAGE_SELECT_DISTRICT:
+			return "按确认选区。"
+		STAGE_FIRST_SUMMON:
+			return "看手牌，首召怪兽。"
+		STAGE_BUILD_CITY:
+			return "看行动区，点城市化。"
+		STAGE_OPEN_RACK:
+			return "打开当前区域牌架。"
+		STAGE_BUY_CARD:
+			return "买一张可购买牌。"
+		STAGE_PLAY_CARD:
+			return "打出一张可用手牌。"
+		STAGE_INSPECT_TRACK:
+			return "看顶部牌轨。"
+		STAGE_INSPECT_CLUES:
+			return "打开线索档案。"
+	return "继续下一步。"
 
 
 func _normalize_action(action: Dictionary, stage: String) -> Dictionary:

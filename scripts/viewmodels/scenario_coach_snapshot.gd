@@ -38,6 +38,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var action_id := str(data.get("primary_action_id", "scenario_step_%s" % str(phase.get("id", "next"))))
 	var failed_attempts := maxi(0, int(data.get("failed_attempts", 0)))
 	var stuck_seconds := maxf(0.0, float(data.get("stuck_seconds", 0.0)))
+	var strong_stuck := failed_attempts >= 2 or stuck_seconds >= 30.0
 	var campaign_focus_mode := bool(data.get("campaign_focus_mode", data.get("compact", false)))
 	var focus_target := str(phase.get("focus_target", data.get("focus_target", "scenario_coach"))).strip_edges()
 	if focus_target == "":
@@ -46,6 +47,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var fallback_detail := "看高亮区域或底部行动条，完成当前桌边动作。"
 	var help_text := str(phase.get("stuck_hint", phase.get("detail", phase.get("goal", fallback_detail)))).strip_edges()
 	var help_visible := not completed and (failed_attempts >= 1 or stuck_seconds >= 20.0)
+	var shortest_action_text := _shortest_action_text(phase, focus_target)
 	var primary_label := str(phase.get("primary_action_hint", "定位下一步")) if not completed else "已完成"
 	var goal_text := _compact_phase_goal(phase, fallback_goal) if campaign_focus_mode else str(phase.get("goal", fallback_goal))
 	if help_visible:
@@ -63,6 +65,9 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		"progress_text": "%d/%d" % [mini(index + 1, total), total] if not completed else "%d/%d" % [total, total],
 		"help_visible": help_visible,
 		"help_text": help_text,
+		"stuck_state": "strong" if strong_stuck and help_visible else ("hint" if help_visible else "none"),
+		"pulse_focus": strong_stuck and help_visible,
+		"shortest_action_text": shortest_action_text,
 		"focus_target": focus_target,
 		"failed_attempts": failed_attempts,
 		"stuck_seconds": stuck_seconds,
@@ -148,3 +153,76 @@ func _compact_phase_goal(phase: Dictionary, fallback: String) -> String:
 	if str(phase.get("label", "")).strip_edges() != "":
 		return "%s：下一步。" % str(phase.get("label", "")).strip_edges()
 	return fallback
+
+
+func _shortest_action_text(phase: Dictionary, focus_target: String) -> String:
+	var phase_id := str(phase.get("id", "")).strip_edges()
+	match phase_id:
+		"select_district":
+			return "按定位，让星球转到推荐区。"
+		"first_summon":
+			return "看手牌，打出起始怪兽。"
+		"build_city":
+			return "看行动区，点城市化。"
+		"open_rack":
+			return "定位到区域，打开牌架。"
+		"compare_cards":
+			return "看牌架，悬停一张牌。"
+		"buy_pressure", "buy_card":
+			return "看牌架，买可购买的牌。"
+		"discard_private":
+			return "在私密窗口选一张旧牌。"
+		"play_card":
+			return "看手牌，打出可用牌。"
+		"select_track_card", "select_anonymous_card":
+			return "看顶部牌轨，选一张牌。"
+		"read_inspector":
+			return "看右侧详情。"
+		"open_card_detail":
+			return "在右侧打开卡牌详情。"
+		"read_bid_board":
+			return "看底部竞价板。"
+		"raise_bid":
+			return "在竞价板加价一次。"
+		"reset_bid":
+			return "在竞价板清空报价。"
+		"inspect_monster":
+			return "看星球上的怪兽标记。"
+		"inspect_city_gdp":
+			return "看右侧 GDP 变化。"
+		"open_economy":
+			return "打开经济总览。"
+		"inspect_goods":
+			return "看商品路线信息。"
+		"offer_contract":
+			return "看商路，发起合约。"
+		"route_delta":
+			return "看商路高亮变化。"
+		"open_intel":
+			return "打开情报档案。"
+		"mark_guess":
+			return "在情报档案做一次标记。"
+		"read_goal":
+			return "看顶部现金目标。"
+		"open_standings":
+			return "打开排名面板。"
+		"open_settlement":
+			return "打开结算复盘。"
+	match focus_target:
+		"planet", "route_layer":
+			return "看中央星球高亮。"
+		"district_supply":
+			return "看区域牌架。"
+		"player_hand":
+			return "看底部手牌。"
+		"public_track":
+			return "看顶部牌轨。"
+		"right_inspector":
+			return "看右侧详情。"
+		"bid_board":
+			return "看底部竞价板。"
+		"economy_overview":
+			return "打开经济总览。"
+		"intel_dossier":
+			return "打开情报档案。"
+	return "按定位下一步。"

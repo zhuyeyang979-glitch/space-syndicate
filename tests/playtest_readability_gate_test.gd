@@ -69,6 +69,16 @@ func _check_scenario_coach_empty_state() -> void:
 		"current_phase": {"id": "select_district", "label": "点区", "goal": "在中央星球选择一个陆地区域。", "primary_action_hint": "点击推荐区域", "focus_target": "planet"},
 	}).to_ui_dictionary()
 	_expect(bool(active_snapshot.get("visible", false)) and str(active_snapshot.get("goal", "")).contains("选择一个陆地"), "active scenario coach still shows real scenario copy")
+	var stuck_snapshot: Dictionary = SCENARIO_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({
+		"scenario_id": "first_table",
+		"title": "01 首局入门",
+		"current_index": 0,
+		"total": 6,
+		"failed_attempts": 2,
+		"current_phase": {"id": "select_district", "label": "点区", "goal": "在中央星球选择一个陆地区域。", "primary_action_hint": "点击推荐区域", "focus_target": "planet", "stuck_hint": "看中央星球，点击被推荐的陆地区域。"},
+	}).to_ui_dictionary()
+	_expect(str(stuck_snapshot.get("stuck_state", "")) == "strong" and bool(stuck_snapshot.get("pulse_focus", false)), "repeated stuck scenario enters a pulsing strong-stuck state")
+	_expect(str(stuck_snapshot.get("shortest_action_text", "")).length() <= 18 and str(stuck_snapshot.get("shortest_action_text", "")).strip_edges() != "", "strong stuck scenario keeps shortest-action copy compact")
 
 
 func _check_player_facing_source_guards() -> void:
@@ -102,7 +112,7 @@ func _check_player_facing_source_guards() -> void:
 	_expect(bid_board_scene.contains("牌桌竞价") and bid_board_scene.contains("下一张牌可报价。") and not bid_board_scene.contains("公开竞价") and not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board reads as a compact table-bid control instead of an anonymity rules explainer")
 	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")
 	_expect(district_supply_preview_scene.contains("DistrictSupplyPreviewScanGrid") and district_supply_preview_script.contains("SCAN_SECTION_BODY_LIMIT := 34") and district_supply_preview_script.contains("_render_scan_sections") and district_supply_preview_script.contains("body_label.visible = body_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("facts_label.visible = facts_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("status_label.visible = status_label.text != \"\" and not has_scan_sections") and main_source.contains("_district_supply_preview_scan_sections") and main_source.contains("\"title\": \"用途\"") and main_source.contains("\"title\": \"买入\"") and main_source.contains("\"title\": \"打出\"") and main_source.contains("\"title\": \"目标\""), "district supply preview uses four compact scan sections instead of always-visible dense prose")
-	_expect(scenario_snapshot_source.contains("has_scenario") and scenario_snapshot_source.contains("\"visible\": false") and scenario_snapshot_source.contains("按桌边提示完成下一步。") and not _contains_any("\n".join([scenario_snapshot_source, scenario_coach_scene, scenario_coach_script]), ["完成当前目标。", "看高亮区域，完成当前目标。"]), "scenario coach hides empty/default state and avoids placeholder objective copy")
+	_expect(scenario_snapshot_source.contains("has_scenario") and scenario_snapshot_source.contains("\"visible\": false") and scenario_snapshot_source.contains("按桌边提示完成下一步。") and scenario_snapshot_source.contains("pulse_focus") and scenario_snapshot_source.contains("_shortest_action_text") and scenario_coach_script.contains("_stuck_help_text") and not _contains_any("\n".join([scenario_snapshot_source, scenario_coach_scene, scenario_coach_script]), ["完成当前目标。", "看高亮区域，完成当前目标。"]), "scenario coach hides empty/default state, supports strong-stuck shortest-action guidance, and avoids placeholder objective copy")
 
 
 func _check_default_scenario_coach_stays_off_planet() -> void:
