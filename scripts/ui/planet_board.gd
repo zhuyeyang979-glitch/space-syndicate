@@ -12,6 +12,7 @@ class_name SpaceSyndicatePlanetBoard
 @onready var playtest_flow_compass: PanelContainer = %PlaytestFlowCompass
 @onready var playtest_flow_compass_title: Label = %PlaytestFlowCompassTitle
 @onready var playtest_flow_compass_step_rail: HFlowContainer = %PlaytestFlowCompassStepRail
+@onready var playtest_flow_compass_next_label: Label = %PlaytestFlowCompassNextLabel
 @onready var left_space_rail: PanelContainer = %PlanetLeftSpaceRail
 @onready var right_space_rail: PanelContainer = %PlanetRightSpaceRail
 @onready var left_rail_stack: VBoxContainer = %LeftRailStack
@@ -149,7 +150,7 @@ func _layout_flow_compass(map_rect: Rect2, available: Vector2) -> void:
 		return
 	playtest_flow_compass.visible = true
 	var compass_width := clampf(map_rect.position.x - SIDE_RAIL_GAP * 2.0, 158.0, 218.0)
-	var compass_height := 42.0
+	var compass_height := 60.0
 	var x := map_rect.position.x - compass_width - SIDE_RAIL_GAP
 	if x < 8.0:
 		x = map_rect.position.x + 10.0
@@ -254,6 +255,10 @@ func _style_board() -> void:
 	if playtest_flow_compass_title != null:
 		playtest_flow_compass_title.add_theme_font_size_override("font_size", 10)
 		playtest_flow_compass_title.add_theme_color_override("font_color", Color("#fde68a"))
+	if playtest_flow_compass_next_label != null:
+		playtest_flow_compass_next_label.add_theme_font_size_override("font_size", 9)
+		playtest_flow_compass_next_label.add_theme_color_override("font_color", Color("#fde68a"))
+		playtest_flow_compass_next_label.clip_text = true
 
 
 func _left_rail_source(data: Dictionary) -> Dictionary:
@@ -343,16 +348,108 @@ func _set_weather_strip(data_variant: Variant) -> void:
 func _set_flow_compass(data_variant: Variant) -> void:
 	var data: Dictionary = data_variant if data_variant is Dictionary else {}
 	playtest_flow_compass_title.text = str(data.get("title", "试玩 罗盘"))
-	var steps: Array = data.get("steps", ["点区", "首召", "建城", "买牌", "出牌"]) if data.get("steps", []) is Array else ["点区", "首召", "建城", "买牌", "出牌"]
+	var steps := _flow_compass_entries(data)
 	_clear_compass_steps()
 	for step_variant in steps:
-		var label := Label.new()
-		label.name = "PlaytestFlowCompassStepChip"
-		label.text = _short_text(str(step_variant), 4)
-		label.tooltip_text = str(data.get("tooltip", "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。"))
-		label.add_theme_font_size_override("font_size", 9)
-		label.add_theme_color_override("font_color", Color("#f8fafc"))
-		playtest_flow_compass_step_rail.add_child(label)
+		if step_variant is Dictionary:
+			_add_flow_compass_chip(playtest_flow_compass_step_rail, step_variant as Dictionary, data)
+	if playtest_flow_compass_next_label != null:
+		playtest_flow_compass_next_label.text = _flow_compass_next_text(data, steps)
+		playtest_flow_compass_next_label.tooltip_text = str(data.get("tooltip", "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。"))
+
+
+func _flow_compass_entries(data: Dictionary) -> Array:
+	var raw_steps: Array = data.get("steps", ["点区", "首召", "建城", "买牌", "出牌"]) if data.get("steps", []) is Array else ["点区", "首召", "建城", "买牌", "出牌"]
+	var entries: Array = []
+	var first_unfinished := -1
+	for index in range(raw_steps.size()):
+		var entry := _flow_compass_entry(raw_steps[index], index)
+		if first_unfinished < 0 and not bool(entry.get("done", false)):
+			first_unfinished = index
+		entries.append(entry)
+	var explicit_current := int(data.get("current_index", -1))
+	var has_current := false
+	for index in range(entries.size()):
+		var entry: Dictionary = entries[index]
+		if explicit_current == index:
+			entry["current"] = true
+		has_current = has_current or bool(entry.get("current", false))
+		entries[index] = entry
+	if not has_current and first_unfinished >= 0 and first_unfinished < entries.size():
+		var current_entry: Dictionary = entries[first_unfinished]
+		current_entry["current"] = true
+		entries[first_unfinished] = current_entry
+	return entries
+
+
+func _flow_compass_entry(value: Variant, index: int) -> Dictionary:
+	var entry: Dictionary = value.duplicate(true) if value is Dictionary else {"label": str(value)}
+	var fallback_labels := ["点区", "首召", "建城", "买牌", "出牌"]
+	var label := str(entry.get("label", entry.get("text", fallback_labels[index] if index < fallback_labels.size() else "步骤"))).strip_edges()
+	if label == "":
+		label = fallback_labels[index] if index < fallback_labels.size() else "步骤"
+	entry["label"] = _short_text(label, 4)
+	entry["done"] = bool(entry.get("done", entry.get("active", false)))
+	entry["current"] = bool(entry.get("current", false)) and not bool(entry.get("done", false))
+	entry["accent"] = _entry_color(entry, _flow_step_fallback_accent(index))
+	entry["tooltip"] = str(entry.get("tooltip", entry.get("tip", "试玩步骤：%s" % label)))
+	return entry
+
+
+func _add_flow_compass_chip(parent: Container, entry: Dictionary, data: Dictionary) -> void:
+	var accent: Color = entry.get("accent", Color("#facc15")) as Color
+	var done := bool(entry.get("done", false))
+	var current := bool(entry.get("current", false))
+	var prefix := "✓" if done else ("▶" if current else "□")
+	var fg := Color("#e0f2fe") if done else (accent.lightened(0.20) if current else Color("#94a3b8"))
+	var bg := Color("#064e3b") if done else Color("#020617").lerp(accent, 0.28 if current else 0.10)
+	var chip := PanelContainer.new()
+	chip.name = "PlaytestFlowCompassStepChip"
+	chip.tooltip_text = str(entry.get("tooltip", data.get("tooltip", "试玩步骤")))
+	chip.add_theme_stylebox_override("panel", _panel_style(accent if current or done else Color("#334155"), bg, 1, 5))
+	parent.add_child(chip)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 4)
+	margin.add_theme_constant_override("margin_top", 1)
+	margin.add_theme_constant_override("margin_right", 4)
+	margin.add_theme_constant_override("margin_bottom", 1)
+	chip.add_child(margin)
+	var label := Label.new()
+	label.text = "%s%s" % [prefix, str(entry.get("label", "步骤"))]
+	label.tooltip_text = chip.tooltip_text
+	label.add_theme_font_size_override("font_size", 9)
+	label.add_theme_color_override("font_color", fg)
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	margin.add_child(label)
+
+
+func _flow_compass_next_text(data: Dictionary, steps: Array) -> String:
+	var explicit := str(data.get("next_text", data.get("next", ""))).strip_edges()
+	if explicit != "":
+		return _short_text(explicit, 18)
+	for step_variant in steps:
+		if not (step_variant is Dictionary):
+			continue
+		var entry: Dictionary = step_variant
+		if bool(entry.get("current", false)) or not bool(entry.get("done", false)):
+			return "下一步：%s" % str(entry.get("label", "行动"))
+	return "下一步：冲终局"
+
+
+func _flow_step_fallback_accent(index: int) -> Color:
+	match index:
+		0:
+			return Color("#38bdf8")
+		1:
+			return Color("#fb7185")
+		2:
+			return Color("#4ade80")
+		3:
+			return Color("#facc15")
+		4:
+			return Color("#c084fc")
+		_:
+			return Color("#94a3b8")
 
 
 func _clear_compass_steps() -> void:

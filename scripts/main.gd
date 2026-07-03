@@ -20284,11 +20284,27 @@ func _runtime_planet_snapshot_source() -> Dictionary:
 			"impact": _weather_impact_ui_text(),
 			"tooltip": _weather_status_text(),
 		},
-		"flow_compass": {
-			"title": "试玩 罗盘",
-			"steps": ["点区", "首召", "建城", "买牌", "出牌"],
-			"tooltip": "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。",
-		},
+		"flow_compass": _runtime_planet_flow_compass_source(),
+	}
+
+
+func _runtime_planet_flow_compass_source() -> Dictionary:
+	var steps: Array = []
+	var next_text := "下一步：开局准备"
+	if selected_player >= 0 and selected_player < players.size():
+		steps = _playtest_flow_compass_entries(selected_player)
+		next_text = _playtest_flow_next_text(selected_player)
+	else:
+		steps = [
+			{"label": "开局", "done": false, "current": true, "accent": Color("#fef3c7"), "tip": "先从开局准备进入一桌测试局。"},
+			{"label": "点区", "done": false, "current": false, "accent": Color("#38bdf8"), "tip": "进局后先点中央星球区域。"},
+			{"label": "首召", "done": false, "current": false, "accent": Color("#fb7185"), "tip": "再打出起始怪兽。"},
+		]
+	return {
+		"title": "试玩 罗盘",
+		"steps": steps,
+		"next_text": next_text,
+		"tooltip": "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。具体按钮在底部快捷行动和手牌架。",
 	}
 
 
@@ -39696,6 +39712,7 @@ func _claim_district_card(skill_name: String) -> void:
 	selected_market_skill = skill_name
 	_buy_card_for_player_from_district(selected_player, context_district, selected_market_skill, false, true)
 	_refresh_ui()
+	_focus_runtime_map_on_district(context_district)
 
 
 func _sync_selected_market_skill() -> void:

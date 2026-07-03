@@ -347,7 +347,7 @@ func _check_split_game_screen_structure() -> void:
 	var screen: Node = packed.instantiate()
 	root.add_child(screen)
 	await process_frame
-	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragDropTargetLabel", "DragPreviewPanel"]:
+	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlaytestFlowCompass", "PlaytestFlowCompassStepRail", "PlaytestFlowCompassNextLabel", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragPreviewPanel"]:
 		_expect(screen.find_child(node_name, true, false) != null, "split GameScreen contains %s" % node_name)
 	root.remove_child(screen)
 	screen.queue_free()
@@ -404,6 +404,17 @@ func _check_split_game_screen_data_binding() -> void:
 					{"label": "天气", "value": "预报", "active": true, "accent": Color("#38bdf8")},
 					{"label": "牌轨", "value": "竞价2", "active": true, "accent": Color("#f59e0b")},
 				],
+			},
+			"flow_compass": {
+				"title": "试玩 罗盘",
+				"steps": [
+					{"label": "点区", "done": true, "accent": Color("#38bdf8")},
+					{"label": "首召", "current": true, "accent": Color("#fb7185")},
+					{"label": "建城", "done": false, "accent": Color("#4ade80")},
+					{"label": "买牌", "done": false, "accent": Color("#facc15")},
+					{"label": "出牌", "done": false, "accent": Color("#c084fc")},
+				],
+				"next_text": "下一步：在选区首召",
 			},
 		},
 		"district": {"title": "雾港区", "detail": "生产海雾果，需求轨迹墨水。", "chips": [{"text": "可看牌架"}]},
@@ -512,6 +523,9 @@ func _check_split_game_screen_data_binding() -> void:
 	var right_rail_text := screen.find_child("RightRailText", true, false) as Label
 	var left_rail_entries := screen.find_children("PlanetLeftRailEntry*", "", true, false)
 	var right_rail_entries := screen.find_children("PlanetRightRailEntry*", "", true, false)
+	var flow_compass := screen.find_child("PlaytestFlowCompass", true, false) as Control
+	var flow_compass_step_rail := screen.find_child("PlaytestFlowCompassStepRail", true, false)
+	var flow_compass_next_label := screen.find_child("PlaytestFlowCompassNextLabel", true, false) as Label
 	var inspector_title := screen.find_child("InspectorTitle", true, false) as Label
 	var identity_chip := screen.find_child("IdentityChip", true, false) as Label
 	var phase_label := screen.find_child("PhaseLabel", true, false) as Label
@@ -609,6 +623,8 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(left_rail_text != null and not left_rail_text.visible and right_rail_text != null and not right_rail_text.visible, "split PlanetBoard hides static side-rail fallback labels after snapshot binding")
 	_expect(_node_tree_text(left_rail_entries[0]).contains("星区") and _node_tree_text(left_rail_entries[0]).contains("8区"), "split PlanetBoard left rail shows scan-first district count")
 	_expect(_node_tree_text(right_rail_entries[0]).contains("怪兽") and _node_tree_text(right_rail_entries[2]).contains("牌轨"), "split PlanetBoard right rail shows scan-first outer pressure and public track state")
+	_expect(flow_compass != null and flow_compass.visible and flow_compass_step_rail != null and flow_compass_step_rail.get_child_count() == 5, "split PlanetBoard renders a stateful first-minute flow compass beside the planet")
+	_expect(_node_tree_text(flow_compass).contains("✓点区") and _node_tree_text(flow_compass).contains("▶首召") and flow_compass_next_label != null and flow_compass_next_label.text.contains("下一步"), "split PlanetBoard flow compass separates done, current, and next-step text")
 	_expect(hand_rack != null and hand_rack.get_child_count() == 2, "split HandRack receives card data")
 	if hand_rack != null and hand_rack.get_child_count() > 0:
 		var first_hand_card := hand_rack.get_child(0)
@@ -2689,6 +2705,16 @@ func _check_viewmodel_contracts() -> void:
 		"hint": "中央地图保留最大视觉中心",
 		"left_entries": [{"label": "星区", "value": "8区", "active": true}],
 		"right_entries": [{"label": "怪兽", "value": "1只", "active": true}],
+		"flow_compass": {
+			"steps": [
+				{"label": "点区", "done": true},
+				{"label": "首召", "current": true},
+				{"label": "建城"},
+				{"label": "买牌"},
+				{"label": "出牌"},
+			],
+			"next_text": "下一步：首召",
+		},
 	})
 	var action_dock_ui: Dictionary = action_dock.to_ui_dictionary()
 	var action_quick: Array = action_dock_ui.get("quick_actions", []) if action_dock_ui.get("quick_actions", []) is Array else []
@@ -2744,10 +2770,13 @@ func _check_viewmodel_contracts() -> void:
 	var planet_ui: Dictionary = planet.to_ui_dictionary()
 	var planet_left: Dictionary = planet_ui.get("left_rail", {}) if planet_ui.get("left_rail", {}) is Dictionary else {}
 	var planet_right: Dictionary = planet_ui.get("right_rail", {}) if planet_ui.get("right_rail", {}) is Dictionary else {}
+	var planet_flow: Dictionary = planet_ui.get("flow_compass", {}) if planet_ui.get("flow_compass", {}) is Dictionary else {}
 	var planet_left_entries: Array = planet_left.get("entries", []) if planet_left.get("entries", []) is Array else []
 	var planet_right_entries: Array = planet_right.get("entries", []) if planet_right.get("entries", []) is Array else []
+	var planet_flow_steps: Array = planet_flow.get("steps", []) if planet_flow.get("steps", []) is Array else []
 	_expect(planet_left.get("title") == "地表情报" and planet_left_entries.size() == 1 and planet_left_entries[0].get("label") == "星区", "PlanetBoardSnapshot normalizes public surface rail entries")
 	_expect(planet_right.get("title") == "外围压力" and planet_right_entries.size() == 1 and planet_right_entries[0].get("label") == "怪兽", "PlanetBoardSnapshot normalizes outer-pressure rail entries")
+	_expect(planet_flow_steps.size() == 5 and bool(planet_flow_steps[0].get("done", false)) and bool(planet_flow_steps[1].get("current", false)) and str(planet_flow.get("next_text", "")).contains("首召"), "PlanetBoardSnapshot keeps first-minute flow compass state data")
 	_expect(table.to_ui_dictionary().has("right_inspector"), "TableSnapshot creates right-inspector UI context")
 	_expect(table.to_ui_dictionary().get("card_track", []).size() == 1 and table.to_ui_dictionary().get("card_track", [])[0].get("state") == "当前", "TableSnapshot routes public track entries through PublicTrackSnapshot")
 	var table_planet: Dictionary = table.to_ui_dictionary().get("planet", {}) if table.to_ui_dictionary().get("planet", {}) is Dictionary else {}
