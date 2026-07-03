@@ -21,7 +21,7 @@ const LABEL_INTERACTION_ZOOM_EPSILON := 0.018
 const INTERACTION_DETAIL_SETTLE_SECONDS := 0.28
 const INTERACTION_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
 const PROGRAMMATIC_FOCUS_ROTATE_MIN_SECONDS := 0.18
-const PROGRAMMATIC_FOCUS_ROTATE_MAX_SECONDS := 0.42
+const PROGRAMMATIC_FOCUS_ROTATE_MAX_SECONDS := 0.32
 const GLOBE_POLYGON_DETAIL_STEP_METERS := 45.0
 const GLOBE_POLYGON_INTERACTION_STEP_METERS := 120.0
 const GLOBE_EDGE_DETAIL_STEP_METERS := 28.0
@@ -177,7 +177,7 @@ func _update_focus_rotation(delta: float) -> bool:
 	var eased := _projection_smoothstep(t)
 	var delta_m := _surface_delta(_focus_start_center_m, _focus_target_center_m)
 	_view_center_m = _wrap_world_position(_focus_start_center_m + delta_m * eased)
-	if t >= 1.0:
+	if t >= 1.0 or _surface_delta(_view_center_m, _focus_target_center_m).length() <= 1.0:
 		_view_center_m = _focus_target_center_m
 		_focus_rotation_elapsed = _focus_rotation_duration
 	return before.distance_to(_view_center_m) > 0.001
@@ -275,6 +275,7 @@ func set_map(
 		new_visual_layer_focus
 	)
 	var should_redraw := should_center_view or next_payload_signature != _visual_payload_signature
+	var previous_selected_district := selected_district
 	districts = new_districts
 	map_width_m = max(1.0, width_m)
 	map_height_m = max(1.0, height_m)
@@ -290,6 +291,13 @@ func set_map(
 	trade_route_markers = new_trade_route_markers
 	trade_product = new_trade_product
 	visual_layer_focus = new_visual_layer_focus
+	if not should_center_view and selected_district != previous_selected_district:
+		if selected_district >= 0 and selected_district < districts.size():
+			var selected_center_variant: Variant = districts[selected_district].get("center", _view_center_m)
+			if selected_center_variant is Vector2:
+				_start_focus_rotation(selected_center_variant, selected_district)
+		else:
+			_cancel_focus_rotation()
 	if should_center_view:
 		_map_signature = next_signature
 	_visual_payload_signature = next_payload_signature

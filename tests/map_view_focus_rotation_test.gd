@@ -39,6 +39,17 @@ func _run() -> void:
 	var finished := _snapshot(map_view)
 	_expect(not bool(finished.get("focus_rotation_active", false)), "focus_district finishes the planet rotation")
 	_expect((finished.get("view_center_m", Vector2.ZERO) as Vector2).distance_to(target) <= 1.0, "focus_district ends with the target region facing the player")
+	map_view.call("set_map", _rotation_test_districts(), 1400.0, 950.0, 0, [Color("#0ea5e9"), Color("#f59e0b")])
+	await process_frame
+	var data_jump_started := _snapshot(map_view)
+	_expect(bool(data_jump_started.get("focus_rotation_active", false)), "set_map selected-district jump starts a visible planet rotation")
+	_expect(int(data_jump_started.get("focus_target_district", -1)) == 0, "set_map selected-district jump records the target region")
+	_expect((data_jump_started.get("view_center_m", Vector2.ZERO) as Vector2).distance_to(Vector2(700.0, 475.0)) > 50.0, "set_map selected-district jump does not silently snap to the new region")
+	for _frame in range(60):
+		await process_frame
+	var data_jump_finished := _snapshot(map_view)
+	_expect(not bool(data_jump_finished.get("focus_rotation_active", false)), "set_map selected-district jump finishes the planet rotation")
+	_expect((data_jump_finished.get("view_center_m", Vector2.ZERO) as Vector2).distance_to(Vector2(700.0, 475.0)) <= 1.0, "set_map selected-district jump ends with the new region facing the player")
 	viewport.remove_child(map_view)
 	map_view.queue_free()
 	root.remove_child(viewport)
