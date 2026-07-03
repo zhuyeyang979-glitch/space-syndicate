@@ -40,6 +40,12 @@ layout_mode = 2
 text = "约5分钟｜intro"
 theme_override_font_sizes/font_size = 12
 
+[node name="CampaignBriefingQuickCardRow" type="HFlowContainer" parent="CampaignBriefingMargin/CampaignBriefingStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 6
+
 [node name="CampaignBriefingText" type="Label" parent="CampaignBriefingMargin/CampaignBriefingStack"]
 unique_name_in_owner = true
 layout_mode = 2

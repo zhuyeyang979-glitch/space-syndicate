@@ -38,6 +38,11 @@ func _run() -> void:
 	await _check_scene("res://scenes/ui/CampaignMenu.tscn", "set_campaign_menu", menu_snapshot)
 	var first_chapter: Dictionary = chapters[0] if chapters[0] is Dictionary else {}
 	var briefing_snapshot: Dictionary = BRIEFING_SNAPSHOT_SCRIPT.new().apply_dictionary({"campaign": campaign, "chapter": first_chapter}).to_ui_dictionary()
+	var quick_cards: Array = briefing_snapshot.get("quick_cards", []) as Array
+	_expect(quick_cards.size() == 3, "campaign briefing snapshot exposes three first-glance summary cards")
+	if quick_cards.size() >= 3:
+		_expect(str((quick_cards[0] as Dictionary).get("kicker", "")).contains("目标") and str((quick_cards[1] as Dictionary).get("kicker", "")).contains("能做") and str((quick_cards[2] as Dictionary).get("kicker", "")).contains("收获"), "campaign briefing summary cards separate goal, action, and reward")
+		_expect(str((quick_cards[0] as Dictionary).get("title", "")).length() <= 18 and str((quick_cards[1] as Dictionary).get("title", "")).length() <= 18 and str((quick_cards[2] as Dictionary).get("title", "")).length() <= 18, "campaign briefing summary card titles stay scan-first")
 	await _check_scene("res://scenes/ui/CampaignBriefing.tscn", "set_briefing", briefing_snapshot)
 	var progress_map_snapshot: Dictionary = PROGRESS_MAP_SNAPSHOT_SCRIPT.new().apply_dictionary({"progress": progress}).to_ui_dictionary()
 	await _check_scene("res://scenes/ui/CampaignProgressMap.tscn", "set_progress_map", progress_map_snapshot)
@@ -62,6 +67,11 @@ func _check_scene(path: String, method: String, snapshot: Dictionary) -> void:
 		_expect(path_rail != null and path_rail.visible and path_rail.get_child_count() == 3, "CampaignMenu renders the three-step visual play path")
 		var path_text := _node_text(path_rail)
 		_expect(path_text.contains("开桌") and path_text.contains("练四步") and path_text.contains("完整局"), "CampaignMenu play path uses compact board-game route chips")
+	if path.ends_with("CampaignBriefing.tscn"):
+		var quick_card_row := node.find_child("CampaignBriefingQuickCardRow", true, false)
+		_expect(quick_card_row != null and quick_card_row.visible and quick_card_row.get_child_count() == 3, "CampaignBriefing renders three first-glance summary cards")
+		var quick_card_text := _node_text(quick_card_row)
+		_expect(quick_card_text.contains("目标") and quick_card_text.contains("能做") and quick_card_text.contains("收获"), "CampaignBriefing summary cards keep a board-game read order")
 	_expect(node.get_combined_minimum_size().x <= 1280 and node.get_combined_minimum_size().y <= 720, "%s fits 1280x720 minimum" % path)
 	root.remove_child(node)
 	node.queue_free()

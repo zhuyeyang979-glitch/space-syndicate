@@ -19,6 +19,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		"allowed_actions": _string_array(chapter.get("allowed_actions", []), 5),
 		"teaches": _string_array(chapter.get("teaches", []), 5),
 		"reward_text": _reward_text(chapter.get("reward", {})),
+		"quick_cards": _quick_cards(chapter),
 		"primary_action": {"id": "campaign_start_%s" % chapter_id, "label": "开始本关", "disabled": chapter_id == ""},
 		"secondary_actions": [
 			{"id": "campaign_menu", "label": "返回战役"},
@@ -30,6 +31,32 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 
 func to_ui_dictionary() -> Dictionary:
 	return ui.duplicate(true)
+
+
+func _quick_cards(chapter: Dictionary) -> Array:
+	var objectives := _string_array(chapter.get("objectives", []), 1)
+	var allowed := _string_array(chapter.get("allowed_actions", []), 1)
+	var teaches := _string_array(chapter.get("teaches", []), 1)
+	return [
+		{
+			"kind": "goal",
+			"kicker": "目标",
+			"title": _short_text(str(objectives[0]) if not objectives.is_empty() else str(chapter.get("subtitle", "完成本关")), 18),
+			"detail": "只盯一个主目标",
+		},
+		{
+			"kind": "action",
+			"kicker": "能做",
+			"title": _short_text(str(allowed[0]) if not allowed.is_empty() else "跟随桌面提示", 18),
+			"detail": "按钮会带你进桌",
+		},
+		{
+			"kind": "reward",
+			"kicker": "收获",
+			"title": _short_text(_reward_text(chapter.get("reward", {})), 18),
+			"detail": _short_text(str(teaches[0]) if not teaches.is_empty() else "解锁下一步", 18),
+		},
+	]
 
 
 func _reward_text(value: Variant) -> String:
@@ -49,3 +76,10 @@ func _string_array(value: Variant, limit: int) -> Array:
 			if result.size() >= limit:
 				break
 	return result
+
+
+func _short_text(value: String, limit: int) -> String:
+	var text := value.replace("\n", " ").strip_edges()
+	if text.length() <= limit:
+		return text
+	return "%s…" % text.left(maxi(1, limit - 1))
