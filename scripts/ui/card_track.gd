@@ -53,21 +53,29 @@ func _add_track_slot(entry: Dictionary, index: int) -> void:
 	var hovered := hover_action != "" and hover_action == _hovered_track_action
 	var active := bool(entry.get("active", false)) or selected or hovered
 	var slot_panel := PanelContainer.new()
-	slot_panel.name = "PublicTrackSlot"
+	slot_panel.name = "PublicTrackSlot" if index == 0 else "PublicTrackSlot_%02d" % (index + 1)
 	slot_panel.custom_minimum_size = Vector2(_slot_width(entry), SLOT_HEIGHT)
 	slot_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slot_panel.focus_mode = Control.FOCUS_ALL
 	slot_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	slot_panel.tooltip_text = str(entry.get("tooltip", ""))
 	slot_panel.set_meta("accent", accent)
 	slot_panel.set_meta("base_active", bool(entry.get("active", false)))
 	slot_panel.set_meta("selected", selected)
 	slot_panel.set_meta("hover_action", hover_action)
+	slot_panel.set_meta("runtime_focus_kind", "public_track_slot")
 	slot_panel.add_theme_stylebox_override("panel", _slot_style(accent, active, selected, hovered))
 	slot_panel.gui_input.connect(Callable(self, "_on_track_slot_gui_input").bind(entry.duplicate(true)))
 	slot_panel.mouse_entered.connect(func() -> void:
 		track_entry_hovered.emit(entry.duplicate(true))
 	)
 	slot_panel.mouse_exited.connect(func() -> void:
+		track_entry_unhovered.emit(entry.duplicate(true))
+	)
+	slot_panel.focus_entered.connect(func() -> void:
+		track_entry_hovered.emit(entry.duplicate(true))
+	)
+	slot_panel.focus_exited.connect(func() -> void:
 		track_entry_unhovered.emit(entry.duplicate(true))
 	)
 	card_track_row.add_child(slot_panel)
@@ -161,6 +169,10 @@ func _add_track_slot(entry: Dictionary, index: int) -> void:
 
 
 func _on_track_slot_gui_input(event: InputEvent, entry: Dictionary) -> void:
+	if event != null and event.is_action_pressed("ui_accept"):
+		track_entry_selected.emit(entry.duplicate(true))
+		accept_event()
+		return
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:

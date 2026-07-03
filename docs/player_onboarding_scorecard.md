@@ -14,11 +14,11 @@
 | 复盘质量 | 4 | MatchRecapPanel + key logs | 后续增加更多经济解释 |
 | 继续游玩动机 | 4 | 推荐继续/下一关 | 增加毕业挑战后循环 |
 | 多分辨率 | 4 | layout/campaign screenshot tests | 手柄焦点仍需人工测 |
-| 键盘/手柄可用性 | 4 | `tests/campaign_focus_navigation_test.gd` verifies CampaignMenu、Briefing、Reward、Recap、ProgressMap default focus, stable dynamic button names, and keyboard/gamepad reachable action buttons. | 下一轮补运行牌桌内手牌/牌轨/地图的完整焦点顺序 |
+| 键盘/手柄可用性 | 4 | `tests/campaign_focus_navigation_test.gd` verifies CampaignMenu、Briefing、Reward、Recap、ProgressMap default focus；`tests/runtime_table_focus_order_test.gd` verifies RuntimeGameScreen 的顶部状态、牌轨、星球地图、右侧详情、手牌、当前行动、竞价焦点顺序，以及牌轨槽位可用 `ui_accept` 选择。 | 下一轮补逐张手牌、逐区域/牌架卡的键盘确认动作 |
 | 隐藏信息安全 | 5 | scenario/campaign privacy tests | 持续维护禁词护栏 |
 
 ## 当前最低分修复计划
 
-1. 运行牌桌焦点：补手牌、牌轨、地图、牌架抽屉之间的完整键盘/手柄焦点顺序。
+1. 运行牌桌细焦点：分区焦点链已覆盖顶部、牌轨、星球、详情、手牌、行动、竞价；下一步补逐张手牌、逐区域/牌架卡的键盘确认动作。
 2. 自动定位：首局 CTA 已支持推荐区域兜底、买牌合法牌架恢复和星球视角聚焦；剧本“定位”已能打开牌轨/牌架/经济/情报等真实目标；卡住态主按钮会直接执行定位；下一步处理连续失败后的闪烁节奏和最短操作推荐。
 3. 焦点高亮后续：让连续失败自动闪烁目标控件，并在必要时自动打开对应区域/牌架/详情。

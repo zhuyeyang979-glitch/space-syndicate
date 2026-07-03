@@ -90,6 +90,7 @@ func _ready() -> void:
 		overlay_layer.connect("side_drawer_action_requested", Callable(self, "_on_side_drawer_action_requested"))
 	if overlay_layer.has_signal("temporary_decision_action_requested"):
 		overlay_layer.connect("temporary_decision_action_requested", Callable(self, "_on_temporary_decision_action_requested"))
+	call_deferred("_sync_runtime_table_focus_order")
 
 
 func apply_state(data: Dictionary) -> void:
@@ -119,6 +120,7 @@ func apply_state(data: Dictionary) -> void:
 	_sync_temporary_decision_overlay(ui_data.get("temporary_decision", {}))
 	_sync_focus_guide(ui_data)
 	call_deferred("_sync_focus_guide_from_current_state")
+	call_deferred("_sync_runtime_table_focus_order")
 
 
 func _sync_campaign_focus_layout(enabled: bool, ui_data: Dictionary) -> void:
@@ -155,6 +157,7 @@ func _set_overlay_anchor_rect(control: Control, left: float, top: float, right: 
 func attach_runtime_map(map_node: Control) -> void:
 	if planet_board != null and planet_board.has_method("attach_runtime_map"):
 		planet_board.call("attach_runtime_map", map_node)
+	call_deferred("_sync_runtime_table_focus_order")
 
 
 func get_overlay_host() -> Node:
@@ -165,6 +168,61 @@ func get_visual_event_snapshot() -> Dictionary:
 	if visual_event_layer != null and visual_event_layer.has_method("get_visual_event_snapshot"):
 		return visual_event_layer.call("get_visual_event_snapshot") as Dictionary
 	return {}
+
+
+func runtime_focus_order_snapshot() -> Array:
+	var controls := _runtime_table_focus_controls()
+	var result: Array = []
+	for index in range(controls.size()):
+		var control: Control = controls[index]
+		result.append({
+			"name": control.name,
+			"label": str(control.get_meta("runtime_focus_label", "")),
+			"index": int(control.get_meta("runtime_focus_order_index", index)),
+			"focus_mode": control.focus_mode,
+			"focus_next": str(control.focus_next),
+			"focus_previous": str(control.focus_previous),
+			"visible": control.is_visible_in_tree(),
+		})
+	return result
+
+
+func _sync_runtime_table_focus_order() -> void:
+	var controls := _runtime_table_focus_controls()
+	if controls.is_empty():
+		return
+	for index in range(controls.size()):
+		var control: Control = controls[index]
+		var next_control: Control = controls[wrapi(index + 1, 0, controls.size())]
+		var previous_control: Control = controls[wrapi(index - 1, 0, controls.size())]
+		control.focus_mode = Control.FOCUS_ALL
+		control.focus_next = control.get_path_to(next_control)
+		control.focus_previous = control.get_path_to(previous_control)
+		control.set_meta("runtime_focus_order_index", index)
+		control.set_meta("runtime_focus_kind", "table_focus_ring")
+
+
+func _runtime_table_focus_controls() -> Array[Control]:
+	var result: Array[Control] = []
+	_append_runtime_focus_control(result, top_bar as Control, "顶部状态")
+	_append_runtime_focus_control(result, _public_track_node() as Control, "牌轨")
+	_append_runtime_focus_control(result, _first_visible_control(["MapHost", "PlanetStageViewport", "PlanetBoard"]), "星球地图")
+	_append_runtime_focus_control(result, right_inspector as Control, "右侧详情")
+	_append_runtime_focus_control(result, _first_visible_control(["DistrictSupplyDrawer", "SideDrawerPanel"]), "区域牌架")
+	_append_runtime_focus_control(result, _first_visible_control(["HandRack", "PlayerHandTableau", "PlayerBoard"]), "手牌")
+	_append_runtime_focus_control(result, _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"]), "当前行动")
+	_append_runtime_focus_control(result, _first_visible_control(["PlayerBidBoard", "PlayerCommandTableau"]), "竞价")
+	return result
+
+
+func _append_runtime_focus_control(result: Array[Control], control: Control, label: String) -> void:
+	if control == null or not control.is_visible_in_tree():
+		return
+	for existing in result:
+		if existing == control:
+			return
+	control.set_meta("runtime_focus_label", label)
+	result.append(control)
 
 
 func _sync_visual_events(ui_data: Dictionary) -> void:
