@@ -476,11 +476,11 @@ func _sync_focus_guide_from_current_state() -> void:
 
 
 func _sync_focus_guide(ui_data: Dictionary) -> void:
-	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
-	if scenario_data.is_empty() or not bool(scenario_data.get("visible", false)) or bool(scenario_data.get("collapsed", false)):
+	var focus_data := _focus_guide_source_data(ui_data)
+	if focus_data.is_empty():
 		_hide_focus_guide()
 		return
-	var focus_target := str(scenario_data.get("focus_target", "")).strip_edges()
+	var focus_target := str(focus_data.get("focus_target", "")).strip_edges()
 	if focus_target == "":
 		_hide_focus_guide()
 		return
@@ -492,7 +492,27 @@ func _sync_focus_guide(ui_data: Dictionary) -> void:
 	if target_rect.size.x <= 4.0 or target_rect.size.y <= 4.0:
 		_hide_focus_guide()
 		return
-	_show_focus_guide(target_rect, focus_target, scenario_data)
+	_show_focus_guide(target_rect, focus_target, focus_data)
+
+
+func _focus_guide_source_data(ui_data: Dictionary) -> Dictionary:
+	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
+	if _focus_guide_source_is_active(scenario_data):
+		return scenario_data
+	var first_run_data: Dictionary = ui_data.get("first_run_coach", {}) if ui_data.get("first_run_coach", {}) is Dictionary else {}
+	if _focus_guide_source_is_active(first_run_data):
+		return first_run_data
+	return {}
+
+
+func _focus_guide_source_is_active(data: Dictionary) -> bool:
+	if data.is_empty():
+		return false
+	if not bool(data.get("visible", false)):
+		return false
+	if bool(data.get("collapsed", false)):
+		return false
+	return str(data.get("focus_target", "")).strip_edges() != ""
 
 
 func _show_focus_guide(target_global_rect: Rect2, focus_target: String, scenario_data: Dictionary) -> void:

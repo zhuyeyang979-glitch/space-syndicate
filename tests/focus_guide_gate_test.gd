@@ -26,6 +26,11 @@ func _run() -> void:
 	await _apply_and_expect_focus(screen, "public_track", "牌轨", "select_track_card")
 	await _apply_and_expect_focus(screen, "right_inspector", "右侧详情", "read_inspector")
 	await _apply_and_expect_focus(screen, "bid_board", "竞价", "read_bid_board")
+	await _apply_first_run_and_expect_focus(screen, "select_district", "星球", "planet")
+	await _apply_first_run_and_expect_focus(screen, "first_summon", "手牌", "player_hand")
+	await _apply_first_run_and_expect_focus(screen, "build_city", "行动区", "action_dock")
+	await _apply_first_run_and_expect_focus(screen, "buy_card", "牌架", "district_supply")
+	await _apply_first_run_and_expect_focus(screen, "inspect_track", "牌轨", "public_track")
 	screen.call("apply_state", _table_state(""))
 	await process_frame
 	await process_frame
@@ -55,10 +60,31 @@ func _apply_and_expect_focus(screen: Control, focus_target: String, expected_lab
 		_expect(panel.get_global_rect().intersects(target.get_global_rect()), "focus guide panel overlaps the intended target control for %s" % focus_target)
 
 
+func _apply_first_run_and_expect_focus(screen: Control, stage: String, expected_label: String, expected_target: String) -> void:
+	screen.call("apply_state", _first_run_table_state(stage))
+	await process_frame
+	await process_frame
+	var layer := screen.find_child("FocusGuideLayer", true, false) as Control
+	var panel := screen.find_child("FocusGuidePanel", true, false) as Control
+	var label := screen.find_child("FocusGuideLabel", true, false) as Label
+	_expect(layer != null and layer.visible, "first-run focus guide layer is visible for stage %s" % stage)
+	_expect(panel != null and panel.visible, "first-run focus guide panel is visible for stage %s" % stage)
+	_expect(label != null and label.text.contains(expected_label), "first-run stage %s points players to %s" % [stage, expected_label])
+	var target := _target_control(screen, expected_target)
+	if panel != null and target != null:
+		_expect(panel.get_global_rect().intersects(target.get_global_rect()), "first-run focus guide panel overlaps the intended target control for %s" % stage)
+
+
 func _target_control(screen: Control, focus_target: String) -> Control:
 	match focus_target:
+		"planet":
+			return screen.find_child("MapHost", true, false) as Control
 		"player_hand":
 			return screen.find_child("HandRack", true, false) as Control
+		"action_dock":
+			return screen.find_child("PlayerMainActionDock", true, false) as Control
+		"district_supply":
+			return screen.find_child("RightInspector", true, false) as Control
 		"public_track":
 			return screen.find_child("PublicTrack", true, false) as Control
 		"right_inspector":
@@ -135,6 +161,22 @@ func _table_state(focus_target: String, phase_id: String = "first_summon") -> Di
 	}
 
 
+func _first_run_table_state(stage: String) -> Dictionary:
+	var state := _table_state("")
+	state["campaign_focus_mode"] = false
+	state["first_run_coach"] = {
+		"visible": true,
+		"stage": stage,
+		"progress": {},
+		"primary_action": {
+			"id": "coach_%s" % stage,
+			"label": _first_run_action_label(stage),
+			"tooltip": "测试首局引导阶段会把桌面光框放到正确位置。",
+		},
+	}
+	return state
+
+
 func _phase_label(phase_id: String) -> String:
 	match phase_id:
 		"first_summon":
@@ -147,6 +189,22 @@ func _phase_label(phase_id: String) -> String:
 			return "读竞价"
 		_:
 			return "下一步"
+
+
+func _first_run_action_label(stage: String) -> String:
+	match stage:
+		"select_district":
+			return "点选区域"
+		"first_summon":
+			return "在选区首召"
+		"build_city":
+			return "城市化"
+		"buy_card":
+			return "买第一牌"
+		"inspect_track":
+			return "看牌轨"
+		_:
+			return "定位下一步"
 
 
 func _primary_action_label(phase_id: String) -> String:

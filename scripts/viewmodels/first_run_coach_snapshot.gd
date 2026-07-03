@@ -49,6 +49,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		"title": str(source.get("title", definition.get("title", "下一步"))),
 		"body": str(source.get("body", definition.get("body", ""))),
 		"tooltip": str(source.get("tooltip", definition.get("tooltip", definition.get("body", "")))),
+		"focus_target": str(source.get("focus_target", _focus_target_for_stage(stage))).strip_edges(),
 		"progress_text": _progress_text(progress, stage),
 		"chips": _normalized_chips(source.get("chips", _stage_chips(progress, stage))),
 		"primary_action": _normalize_action(primary_action, stage),
@@ -173,6 +174,28 @@ func _default_primary_action(stage: String) -> Dictionary:
 			return {"id": "coach_inspect_clues", "label": "看线索", "tooltip": "打开线索档案。"}
 		_:
 			return {"id": "", "label": "已完成", "disabled": true, "tooltip": "首局引导已折叠。"}
+
+
+func _focus_target_for_stage(stage: String) -> String:
+	match stage:
+		STAGE_SELECT_DISTRICT:
+			return "planet"
+		STAGE_FIRST_SUMMON:
+			return "player_hand"
+		STAGE_BUILD_CITY:
+			return "action_dock"
+		STAGE_OPEN_RACK:
+			return "planet"
+		STAGE_BUY_CARD:
+			return "district_supply"
+		STAGE_PLAY_CARD:
+			return "player_hand"
+		STAGE_INSPECT_TRACK:
+			return "public_track"
+		STAGE_INSPECT_CLUES:
+			return "right_inspector"
+		_:
+			return ""
 
 
 func _normalize_action(action: Dictionary, stage: String) -> Dictionary:

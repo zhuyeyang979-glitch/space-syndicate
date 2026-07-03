@@ -3,6 +3,23 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜首局引导接入 FocusGuide 数据骨架
+
+- 继续推进“真人玩家进入主桌后不用读长规则也知道下一步看哪里”：
+  - `scripts/viewmodels/first_run_coach_snapshot.gd` 现在为首局 8 个阶段输出 `focus_target`，例如点区指向 `planet`、首召/出牌指向 `player_hand`、建城指向 `action_dock`、买牌指向 `district_supply`、看牌轨指向 `public_track`。
+  - `scripts/ui/game_screen.gd` 的 FocusGuide 数据源改为“战役/剧本目标优先，普通首局引导兜底”，所以非战役开局也能使用同一套独立光框层。
+  - 没有活动目标、Coach 折叠或目标为空时仍然隐藏，避免主桌回到提示噪音。
+- 扩展 `tests/focus_guide_gate_test.gd`：
+  - 除战役目标外，现在验证首局 `select_district / first_summon / build_city / buy_card / inspect_track` 会高亮对应桌面区。
+  - 继续验证光框不吃鼠标、目标为空时隐藏。
+- `tests/visual_snapshot.gd` 增加护栏，防止后续把 FirstRunCoach 的 `focus_target` 映射或 GameScreen 的首局兜底删掉。
+
+### 本轮验证
+
+- `tests/focus_guide_gate_test.gd`
+- `tests/visual_snapshot.gd`
+- `tests/smoke_test.gd --check-only`
+
 ## 2026-07-03｜运行桌面接入 FocusGuide 目标光框
 
 - 继续推进“真人能简单上手测试”，本轮处理战役/剧本目标虽然写了 `focus_target`，但玩家仍需要自己猜该看哪块 UI 的问题：
