@@ -3,6 +3,26 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜首局金融/合约/互动牌接入 Game-icons 语义图标
+
+- 继续沿着“每张卡牌插画一张一张做，不要用同一套临时美术糊过去”的要求推进；这轮不改规则、价格或结算，只替换高频卡牌的视觉锚点：
+  - 新增 `assets/third_party/game_icons_ccby/`，只导入少量 `game-icons/icons` SVG，而不是整库。
+  - `城市融资1` 改为 `game_icon_bank`，不再只是 Moth 楼房。
+  - `城市买涨1` 改为 `game_icon_profit`，`城市做空1` 改为 `game_icon_fall_down`。
+  - `区域供需合约1` 改为 `game_icon_contract`。
+  - `星链拆解1` 改为 `game_icon_breaking_chain`，`影仓牵引1` 改为 `game_icon_robber_hand`，`相位否决1` 改为 `game_icon_cancel`。
+  - `港仓囤货1` 改为 `game_icon_warehouse`。
+- `tests/card_runtime_review_capture.gd` 的 `REQUIRED_REVIEW_SPRITES` 同步改为这些语义图标；如果后续又退回楼房、士兵或激光图，审片脚本会失败。
+- `docs/third_party_assets.md`、`docs/art_production_contract.md`、`docs/card_visual_theme_contract.md` 记录 CC BY attribution 边界：当前可用于原型，商业化前要保留完整署名或替换为自有素材。
+- 设计意图：这些牌属于玩家第一局经常遇到的“读牌疲劳高风险区”。换成钱、涨跌、签约、断链、抢牌、取消、仓储这类桌游语义图标后，测试者不用读长句也能判断大概用途。
+
+### 本轮验证
+
+- `tests/card_runtime_review_capture.gd` 有头通过，刷新 3 页首局高频牌审片图；人工抽看第 1/3 页，确认融资、买涨、做空、合约、拆链、牵牌、否决、仓储牌已使用新 SVG 语义图标。
+- `tests/art_contact_sheet_capture.gd` 有头通过，刷新卡牌/怪兽总览 contact sheet。
+- `tests/visual_snapshot.gd`、`tests/ui_text_smoke_test.gd`、`tests/art_identity_gate_test.gd` 通过，保护新资产、玩家 UI 文本边界和怪兽/卡牌美术身份门禁。
+- `tests/smoke_test.gd --check-only` 和完整 `tests/smoke_test.gd` 通过，确认这轮只替换卡面美术，不影响主玩法闭环。
+
 ## 2026-07-03｜首局牌插画锚点拆分：经济牌不再只靠楼和文字区分
 
 - 继续沿着“真人能一眼看懂手牌”的方向推进，这轮不改规则、价格或结算，只改卡面视觉语言和审片门槛：

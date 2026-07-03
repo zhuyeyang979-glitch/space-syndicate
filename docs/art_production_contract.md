@@ -109,6 +109,7 @@ Current imported sources:
 - Kenney CC0 sprites: `assets/third_party/kenney_cc0/`, CC0, temporary monster body-art and card-illustration source.
 - PixelMob sprites: `assets/third_party/pixelmob_cc0/`, CC0, temporary monster body-art source for the support/slime body family.
 - Superpowers Asset Packs sprites: `assets/third_party/superpowers_cc0/`, CC0, temporary monster body-art source for body shapes that should not resemble the MOS kaiju sheet.
+- Game-icons SVG subset: `assets/third_party/game_icons_ccby/`, CC BY 3.0 / some CC0, temporary semantic card-art icons for finance, contract, warehouse, direct-interaction, and counter cards. Keep attribution or replace before commercial release.
 
 Before any new copied asset becomes player-facing:
 
@@ -136,6 +137,7 @@ The gate fails if:
 - fewer than ten card sprite or visual source families are used;
 - starter/high-frequency cards lose their authored `first_run_art_focus` overlays;
 - review cards lose their authored `illustration_anchor` composition centers;
+- review cards lose their authored `game_icon_*` semantic sprites for finance, GDP derivative, contract, warehouse, direct-interaction, or counter cards;
 - a monster lacks a concrete sprite key/cell;
 - a monster lacks a concrete `visual_source_id`;
 - a monster lacks multi-axis visual fields;

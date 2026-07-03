@@ -74,7 +74,7 @@ const REQUIRED_REVIEW_ANCHORS := {
 }
 
 const REQUIRED_REVIEW_SPRITES := {
-	"城市融资1": "building_m",
+	"城市融资1": "game_icon_bank",
 	"产业升级1": "mech",
 	"交通升级1": "kenney_enemy_ufo",
 	"星际广告1": "laser",
@@ -89,13 +89,13 @@ const REQUIRED_REVIEW_SPRITES := {
 	"供应链保险1": "atfield",
 	"商品看涨1": "kenney_fish",
 	"商品看跌1": "kenney_slime",
-	"港仓囤货1": "building_s",
-	"城市买涨1": "building_m",
-	"城市做空1": "building_s",
-	"区域供需合约1": "building_m",
-	"星链拆解1": "laser",
-	"影仓牵引1": "soldier",
-	"相位否决1": "atfield",
+	"港仓囤货1": "game_icon_warehouse",
+	"城市买涨1": "game_icon_profit",
+	"城市做空1": "game_icon_fall_down",
+	"区域供需合约1": "game_icon_contract",
+	"星链拆解1": "game_icon_breaking_chain",
+	"影仓牵引1": "game_icon_robber_hand",
+	"相位否决1": "game_icon_cancel",
 	"制空战斗机1": "kenney_enemy_ufo",
 	"星海战舰1": "tank",
 }

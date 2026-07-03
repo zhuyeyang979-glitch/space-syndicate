@@ -33,6 +33,16 @@ const SUPERPOWERS_DRAGON_PATH := "res://assets/third_party/superpowers_cc0/medie
 const SUPERPOWERS_CYCLOP_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png"
 const SUPERPOWERS_SNAKE_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
 const SUPERPOWERS_SLIM_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png"
+const GAME_ICON_BANK_PATH := "res://assets/third_party/game_icons_ccby/bank.svg"
+const GAME_ICON_PROFIT_PATH := "res://assets/third_party/game_icons_ccby/profit.svg"
+const GAME_ICON_FALL_DOWN_PATH := "res://assets/third_party/game_icons_ccby/fall_down.svg"
+const GAME_ICON_CONTRACT_PATH := "res://assets/third_party/game_icons_ccby/contract.svg"
+const GAME_ICON_BREAKING_CHAIN_PATH := "res://assets/third_party/game_icons_ccby/breaking_chain.svg"
+const GAME_ICON_ROBBER_HAND_PATH := "res://assets/third_party/game_icons_ccby/robber_hand.svg"
+const GAME_ICON_CANCEL_PATH := "res://assets/third_party/game_icons_ccby/cancel.svg"
+const GAME_ICON_WAREHOUSE_PATH := "res://assets/third_party/game_icons_ccby/warehouse.svg"
+const GAME_ICON_SHAKING_HANDS_PATH := "res://assets/third_party/game_icons_ccby/shaking_hands.svg"
+const GAME_ICON_COINS_PILE_PATH := "res://assets/third_party/game_icons_ccby/coins_pile.svg"
 const NIGHT_PATROL_FRAME_PATHS := {
 	"monster_card": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
 	"military_force": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
@@ -99,6 +109,16 @@ func _ready() -> void:
 		"superpowers_cyclop": _load_optional_texture(SUPERPOWERS_CYCLOP_PATH),
 		"superpowers_snake": _load_optional_texture(SUPERPOWERS_SNAKE_PATH),
 		"superpowers_slim": _load_optional_texture(SUPERPOWERS_SLIM_PATH),
+		"game_icon_bank": _load_optional_texture(GAME_ICON_BANK_PATH),
+		"game_icon_profit": _load_optional_texture(GAME_ICON_PROFIT_PATH),
+		"game_icon_fall_down": _load_optional_texture(GAME_ICON_FALL_DOWN_PATH),
+		"game_icon_contract": _load_optional_texture(GAME_ICON_CONTRACT_PATH),
+		"game_icon_breaking_chain": _load_optional_texture(GAME_ICON_BREAKING_CHAIN_PATH),
+		"game_icon_robber_hand": _load_optional_texture(GAME_ICON_ROBBER_HAND_PATH),
+		"game_icon_cancel": _load_optional_texture(GAME_ICON_CANCEL_PATH),
+		"game_icon_warehouse": _load_optional_texture(GAME_ICON_WAREHOUSE_PATH),
+		"game_icon_shaking_hands": _load_optional_texture(GAME_ICON_SHAKING_HANDS_PATH),
+		"game_icon_coins_pile": _load_optional_texture(GAME_ICON_COINS_PILE_PATH),
 	}
 
 
@@ -933,7 +953,7 @@ func _moth_kaijuice_card_sprite_key() -> String:
 		return "kaiju"
 	match _card_illustration_anchor_key():
 		"finance_tower":
-			return "building_m"
+			return "game_icon_bank"
 		"factory_core":
 			return "mech"
 		"transit_grid":
@@ -957,19 +977,19 @@ func _moth_kaijuice_card_sprite_key() -> String:
 		"intel_lens":
 			return "kenney_alien_blue"
 		"market_up":
-			return "kenney_fish" if identity.contains("商品") else "building_m"
+			return "kenney_fish" if identity.contains("商品") else "game_icon_profit"
 		"market_down":
-			return "kenney_slime" if identity.contains("商品") else "building_s"
+			return "kenney_slime" if identity.contains("商品") else "game_icon_fall_down"
 		"warehouse_stack":
-			return "building_s"
+			return "game_icon_warehouse"
 		"contract_bridge":
-			return "building_m"
+			return "game_icon_contract"
 		"link_breaker":
-			return "laser"
+			return "game_icon_breaking_chain"
 		"hand_pull":
-			return "soldier"
+			return "game_icon_robber_hand"
 		"phase_null":
-			return "atfield"
+			return "game_icon_cancel"
 		"air_wing":
 			return "kenney_enemy_ufo"
 		"naval_fleet":
@@ -1049,6 +1069,26 @@ func _card_visual_source_id(sprite_key: String) -> String:
 			return "superpowers_cc0_snake_card"
 		"superpowers_slim":
 			return "superpowers_cc0_slim_card"
+		"game_icon_bank":
+			return "game_icons_ccby_bank_finance"
+		"game_icon_profit":
+			return "game_icons_ccby_profit_curve"
+		"game_icon_fall_down":
+			return "game_icons_ccby_fall_down_short"
+		"game_icon_contract":
+			return "game_icons_ccby_contract_scroll"
+		"game_icon_breaking_chain":
+			return "game_icons_ccby_breaking_chain"
+		"game_icon_robber_hand":
+			return "game_icons_ccby_robber_hand"
+		"game_icon_cancel":
+			return "game_icons_ccby_cancel_null"
+		"game_icon_warehouse":
+			return "game_icons_ccby_warehouse_stockpile"
+		"game_icon_shaking_hands":
+			return "game_icons_ccby_shaking_hands_deal"
+		"game_icon_coins_pile":
+			return "game_icons_ccby_coins_pile"
 		_:
 			return "procedural_card_art_fallback"
 

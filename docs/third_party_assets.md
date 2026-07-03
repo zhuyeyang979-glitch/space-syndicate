@@ -150,6 +150,33 @@ Current player-facing use:
 - This pack is intentionally used to reduce visual dependence on the MOS/Moth kaiju sheet, but it may not become the new default body source. The art identity gate now requires at least five upstream monster body-art packs and rejects any one pack supplying more than 35% of the current roster.
 - These CC0 sprites are temporary prototype anchors. Later owned art should preserve the same per-monster silhouette/source-family diversity.
 
+## Game-icons card semantic SVG subset
+
+Source: <https://github.com/game-icons/icons>
+
+License observed from upstream `license.txt`: Creative Commons 3.0 BY, with some icons CC0 where individually noted. The imported subset must keep attribution.
+
+Imported for the current prototype:
+
+- `assets/third_party/game_icons_ccby/license.txt`
+- `assets/third_party/game_icons_ccby/README.md`
+- `assets/third_party/game_icons_ccby/bank.svg`
+- `assets/third_party/game_icons_ccby/profit.svg`
+- `assets/third_party/game_icons_ccby/fall_down.svg`
+- `assets/third_party/game_icons_ccby/contract.svg`
+- `assets/third_party/game_icons_ccby/breaking_chain.svg`
+- `assets/third_party/game_icons_ccby/robber_hand.svg`
+- `assets/third_party/game_icons_ccby/cancel.svg`
+- `assets/third_party/game_icons_ccby/warehouse.svg`
+- `assets/third_party/game_icons_ccby/shaking_hands.svg`
+- `assets/third_party/game_icons_ccby/coins_pile.svg`
+
+Current player-facing use:
+
+- `scripts/card_art_view.gd` uses these SVGs as semantic card illustration anchors for finance, GDP derivatives, contracts, warehouse stockpile, direct player interaction, and counter/nullification cards.
+- This subset was imported specifically to stop high-frequency economic cards from all reading as "Moth building plus text." The first-run review gate now expects these card families to use distinct `game_icon_*` sprite keys.
+- Commercial builds must either keep complete CC BY attribution in credits or replace these SVGs with owned artwork.
+
 ## Terraforming Mars open-source reference
 
 Source: <https://github.com/terraforming-mars/terraforming-mars>

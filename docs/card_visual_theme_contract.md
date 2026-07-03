@@ -32,6 +32,7 @@
 - 高频首局牌必须有 `first_run_art_focus` 图形焦点；路线 glyph 只作为小徽章，不能压住卡牌插画主体。
 - 高频审片牌必须有 `illustration_anchor`，明确玩家第一眼应该看到的是金融塔、工厂核心、交通网、广播阵列、市场涨跌、仓储、相位否决、空军或舰队等哪一种画面重心。
 - 高频审片牌还必须有显式 `sprite_key` 分布约束：首批 24 张不能继续大面积共用同一 Moth building/mech/kaijuice sprite；至少 12 个 sprite family，单一 sprite family 最多出现 3 次。
+- 金融、GDP 买涨/做空、合约、仓储、直接互动和相位否决牌优先使用 `game_icon_*` 语义图标；这些图标比临时建筑 sprite 更接近桌游卡牌的读牌方式。
 - 怪兽牌可以使用对应怪兽的 body sprite，但 MOS/Moth kaiju body 只允许出现在 `焰环幼星` 对应怪兽牌/怪兽本体/地图 token 上；其它怪兽牌必须使用自己的来源。
 - 每张卡必须能生成唯一 visual profile；详见 `docs/art_production_contract.md` 和 `tests/art_identity_gate_test.gd`。
 
@@ -39,6 +40,7 @@
 
 - 当前原型可使用 `assets/third_party/night_patrol/ui/` 下的 frame、sigil、panel、button strip 作为非商业参考素材。
 - 当前原型可使用 `assets/third_party/moth_kaijuice/` 下的 MIT sprite，以及 `assets/third_party/monster_battler/`、`assets/third_party/kenney_cc0/`、`assets/third_party/pixelmob_cc0/`、`assets/third_party/superpowers_cc0/` 下的 CC0 sprite，作为卡牌插画/怪兽造型临时素材。
+- 当前原型可使用 `assets/third_party/game_icons_ccby/` 下的少量 Game-icons SVG 作为卡牌语义图标；这套素材需要 CC BY 署名，商业化前必须保留 credits 或替换。
 - 代码必须把这些素材当作 optional reference layer：缺失时回退程序美术，不让游戏崩溃。
 - 商业发布前必须替换为自有素材或获得明确授权；详见 `docs/third_party_assets.md`。
 
