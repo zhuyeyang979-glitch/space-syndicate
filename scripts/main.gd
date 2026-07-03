@@ -4155,13 +4155,57 @@ func _track_status_badge(text: String, text_color: Color, bg_color: Color) -> Pa
 func _select_card_resolution_track_entry(resolution_id: int) -> void:
 	selected_card_resolution_id = -1 if selected_card_resolution_id == resolution_id else resolution_id
 	if selected_card_resolution_id >= 0:
+		_focus_card_resolution_target_region(selected_card_resolution_id)
 		_complete_scenario_signal("track_selected", "选中公开牌轨上的匿名牌。", "after_track", "public_track")
 	_refresh_card_resolution_track()
 
 
 func _focus_card_resolution_track_entry(resolution_id: int) -> void:
 	selected_card_resolution_id = resolution_id
+	_focus_card_resolution_target_region(resolution_id)
 	_refresh_card_resolution_track()
+
+
+func _focus_card_resolution_target_region(resolution_id: int) -> bool:
+	var entry := _card_resolution_entry_by_id(resolution_id)
+	var district_index := _card_resolution_public_target_district(entry)
+	if district_index < 0:
+		return false
+	return _jump_to_district_on_table(district_index, false)
+
+
+func _card_resolution_public_target_district(entry: Dictionary) -> int:
+	if entry.is_empty():
+		return -1
+	var skill: Dictionary = entry.get("skill", {}) as Dictionary
+	if String(skill.get("kind", "")) == "area_trade_contract":
+		var contract_target := int(entry.get("contract_target_district", -1))
+		if contract_target >= 0 and contract_target < districts.size():
+			return contract_target
+		var contract_source := int(entry.get("contract_source_district", -1))
+		if contract_source >= 0 and contract_source < districts.size():
+			return contract_source
+	var selected_index := int(entry.get("selected_district", -1))
+	if selected_index >= 0 and selected_index < districts.size():
+		return selected_index
+	var target_slot := int(entry.get("target_slot", -1))
+	if target_slot >= 0 and target_slot < auto_monsters.size():
+		var actor: Dictionary = auto_monsters[target_slot]
+		var actor_district := int(actor.get("position", -1))
+		if actor_district >= 0 and actor_district < districts.size():
+			return actor_district
+		var world_position: Variant = actor.get("world_position", Vector2.ZERO)
+		if world_position is Vector2:
+			var nearest := _nearest_district_to(world_position)
+			if nearest >= 0 and nearest < districts.size():
+				return nearest
+	var fallback_contract_target := int(entry.get("contract_target_district", -1))
+	if fallback_contract_target >= 0 and fallback_contract_target < districts.size():
+		return fallback_contract_target
+	var fallback_contract_source := int(entry.get("contract_source_district", -1))
+	if fallback_contract_source >= 0 and fallback_contract_source < districts.size():
+		return fallback_contract_source
+	return -1
 
 
 func _on_card_resolution_track_entry_button_gui_input(event: InputEvent, resolution_id: int, card_name: String) -> void:
@@ -19228,6 +19272,15 @@ func _refresh_status() -> void:
 func _runtime_table_snapshot() -> Dictionary:
 	var snapshot: Variant = TableSnapshotScript.new().apply_dictionary(_runtime_table_snapshot_source())
 	return snapshot.to_ui_dictionary()
+
+
+func _runtime_player_board_snapshot(player_index: int = -1) -> Dictionary:
+	var resolved_player := player_index
+	if resolved_player < 0 or resolved_player >= players.size():
+		resolved_player = _runtime_snapshot_player_index()
+	if resolved_player < 0 or resolved_player >= players.size():
+		return {}
+	return _runtime_player_board_snapshot_source(resolved_player, _runtime_snapshot_action_entries(resolved_player))
 
 
 func _runtime_table_snapshot_source() -> Dictionary:

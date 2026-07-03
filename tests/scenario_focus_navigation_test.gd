@@ -14,6 +14,7 @@ func _run() -> void:
 	await _check_public_track_focus_selects_without_fake_completion()
 	await _check_stuck_primary_cta_uses_focus_navigation()
 	await _check_market_focus_opens_real_rack_and_rotates_planet()
+	await _check_track_card_selection_rotates_to_public_target_region()
 	_finish()
 
 
@@ -92,6 +93,65 @@ func _check_market_focus_opens_real_rack_and_rotates_planet() -> void:
 	await _wait_frames(1)
 
 
+func _check_track_card_selection_rotates_to_public_target_region() -> void:
+	var main := await _instantiate_main()
+	if main == null:
+		return
+	main.call("_start_campaign_chapter", "02_market_hand")
+	await _wait_frames(10)
+	var districts: Array = main.get("districts") as Array
+	if districts.size() < 2:
+		_expect(false, "card-track target rotation needs at least two districts")
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
+	var map_node := _find_node_with_method(main, "get_projection_debug_snapshot")
+	_expect(map_node != null, "card-track target rotation has a runtime MapView")
+	if map_node == null:
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
+	var origin := 0
+	var target := _farthest_district_from(main, origin, map_node)
+	if target < 0:
+		_expect(false, "card-track target rotation found a different target district")
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
+	var origin_center: Vector2 = (districts[origin] as Dictionary).get("center", Vector2.ZERO)
+	map_node.call("reset_to_planet_overview")
+	map_node.set("_view_center_m", origin_center)
+	map_node.set("_view_zoom", 0.34)
+	map_node.set("_target_view_zoom", 0.34)
+	main.set("selected_district", origin)
+	main.set("selected_card_resolution_id", -1)
+	var skill_variant: Variant = main.call("_make_skill", "生产扩张1")
+	var skill: Dictionary = skill_variant if skill_variant is Dictionary else {"name": "生产扩张1", "kind": "region_economy_shift"}
+	var resolution_id := 987321
+	var entry := {
+		"resolution_id": resolution_id,
+		"queued_order": resolution_id,
+		"player_index": 1,
+		"selected_district": target,
+		"selected_trade_product": "",
+		"tip": 30,
+		"winning_bid": 30,
+		"public_owner_revealed": false,
+		"skill": skill,
+	}
+	main.set("resolved_card_history", [entry])
+	main.call("_select_card_resolution_track_entry", resolution_id)
+	await _wait_frames(2)
+	_expect(int(main.get("selected_card_resolution_id")) == resolution_id, "card-track target rotation keeps the public card selected")
+	await _expect_runtime_map_centered_on_district(main, target, "selecting a public card rotates the central planet to its target region")
+	root.remove_child(main)
+	main.queue_free()
+	await _wait_frames(1)
+
+
 func _instantiate_main() -> Node:
 	var packed := load(MAIN_SCENE_PATH) as PackedScene
 	_expect(packed != null, "main.tscn loads for scenario focus navigation")
@@ -104,6 +164,24 @@ func _instantiate_main() -> Node:
 	main.set("selected_campaign_chapter_id", "")
 	main.set("active_campaign_chapter_id", "")
 	return main
+
+
+func _farthest_district_from(main: Node, origin: int, map_node: Node) -> int:
+	var districts: Array = main.get("districts") as Array
+	if origin < 0 or origin >= districts.size():
+		return -1
+	var origin_center: Vector2 = (districts[origin] as Dictionary).get("center", Vector2.ZERO)
+	var best_index := -1
+	var best_distance := -1.0
+	for i in range(districts.size()):
+		if i == origin or not (districts[i] is Dictionary):
+			continue
+		var center: Vector2 = (districts[i] as Dictionary).get("center", origin_center)
+		var distance := float(map_node.call("_surface_distance", origin_center, center))
+		if distance > best_distance:
+			best_distance = distance
+			best_index = i
+	return best_index
 
 
 func _expect_runtime_map_centered_on_district(main: Node, district_index: int, message: String) -> void:

@@ -7,6 +7,7 @@ signal action_requested(action_id: String)
 
 @onready var title_label: Label = %CampaignRewardTitle
 @onready var badge_label: Label = %CampaignRewardBadge
+@onready var summary_card_row: HFlowContainer = %CampaignRewardSummaryCardRow
 @onready var stats_row: HFlowContainer = %CampaignRewardStatsRow
 @onready var unlock_box: VBoxContainer = %CampaignRewardUnlockBox
 @onready var primary_button: Button = %CampaignRewardPrimaryButton
@@ -24,6 +25,7 @@ func _ready() -> void:
 func set_reward(data: Dictionary) -> void:
 	title_label.text = str(data.get("title", "关卡完成"))
 	badge_label.text = "徽章｜%s" % str(data.get("badge", "完成"))
+	_render_summary_cards(data.get("summary_cards", []))
 	_render_stats([
 		str(data.get("score_text", "")),
 		str(data.get("time_text", "")),
@@ -55,6 +57,45 @@ func _render_stats(entries: Array) -> void:
 		stats_row.add_child(label)
 
 
+func _render_summary_cards(value: Variant) -> void:
+	_clear_children(summary_card_row)
+	var cards: Array = value if value is Array else []
+	summary_card_row.visible = not cards.is_empty()
+	for card_variant in cards:
+		if card_variant is Dictionary:
+			_add_summary_card(card_variant as Dictionary)
+
+
+func _add_summary_card(card: Dictionary) -> void:
+	var accent := _summary_card_accent(str(card.get("kind", "")))
+	var panel := PanelContainer.new()
+	panel.name = "CampaignRewardSummaryCard"
+	panel.custom_minimum_size = Vector2(156, 76)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.tooltip_text = "%s｜%s" % [str(card.get("title", "")), str(card.get("detail", ""))]
+	panel.add_theme_stylebox_override("panel", _panel_style(accent))
+	summary_card_row.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 9)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 9)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	panel.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	margin.add_child(box)
+	var kicker := _label(str(card.get("kicker", "结算")), 10, accent.lightened(0.18))
+	kicker.tooltip_text = panel.tooltip_text
+	box.add_child(kicker)
+	var title := _label(_short_text(str(card.get("title", "")), 14), 13, Color("#f8fafc"))
+	title.tooltip_text = panel.tooltip_text
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(title)
+	var detail := _label(_short_text(str(card.get("detail", "")), 14), 10, Color("#d1fae5"))
+	detail.tooltip_text = panel.tooltip_text
+	box.add_child(detail)
+
+
 func _render_unlocks(value: Variant) -> void:
 	_clear_children(unlock_box)
 	var unlocks: Array = value if value is Array else []
@@ -80,6 +121,19 @@ func _render_secondary(value: Variant) -> void:
 			secondary_row.add_child(button)
 
 
+func _summary_card_accent(kind: String) -> Color:
+	match kind:
+		"score":
+			return Color("#facc15")
+		"objective":
+			return Color("#38bdf8")
+		"unlock":
+			return Color("#22c55e")
+		"next":
+			return Color("#c084fc")
+	return Color("#94a3b8")
+
+
 func _focus_default_action() -> void:
 	FOCUS_TOOLS.focus_first_enabled(self, primary_button)
 
@@ -100,6 +154,21 @@ func _panel_style(accent: Color) -> StyleBoxFlat:
 	style.set_border_width_all(1)
 	style.set_corner_radius_all(10)
 	return style
+
+
+func _label(text: String, size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
+	return label
+
+
+func _short_text(value: String, limit: int) -> String:
+	var text := value.replace("\n", " ").strip_edges()
+	if text.length() <= limit:
+		return text
+	return "%s..." % text.left(maxi(1, limit - 3))
 
 
 func _clear_children(node: Node) -> void:
