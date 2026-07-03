@@ -488,8 +488,10 @@ func _track_entry_inspector_context(entry: Dictionary) -> Dictionary:
 	var chips: Array = [
 		{"text": "槽 %s" % str(entry.get("slot", "--"))},
 		{"text": str(entry.get("state", "等待"))},
-		{"text": "归属:%s" % str(entry.get("owner_hint", "匿名"))},
 	]
+	var owner_hint := _track_owner_hint_text(entry)
+	if owner_hint != "":
+		chips.append({"text": "来源%s" % owner_hint})
 	var cost_text := str(entry.get("cost", "")).strip_edges()
 	if cost_text != "":
 		chips.append({"text": "报价%s" % cost_text})
@@ -864,15 +866,25 @@ func _track_focus_text(entry: Dictionary, prefix: String) -> String:
 	var state := str(entry.get("state", "")).strip_edges()
 	if state != "":
 		pieces.append(state)
-	var owner_hint := str(entry.get("owner_hint", "")).strip_edges()
+	var owner_hint := _track_owner_hint_text(entry)
 	if owner_hint != "":
-		pieces.append("归属:%s" % owner_hint)
+		pieces.append("来源%s" % owner_hint)
 	var cost := str(entry.get("cost", "")).strip_edges()
 	if cost != "":
 		pieces.append("报价%s" % cost)
 	if pieces.is_empty():
 		pieces.append("公共牌槽")
 	return _short_track_focus_text("%s｜%s" % [prefix, "｜".join(pieces)])
+
+
+func _track_owner_hint_text(entry: Dictionary) -> String:
+	var owner_hint := str(entry.get("owner_hint", "")).strip_edges()
+	if owner_hint == "":
+		return ""
+	match owner_hint:
+		"匿名", "unknown", "Unknown", "UNKNOWN", "未公开":
+			return "未知"
+	return owner_hint
 
 
 func _short_track_focus_text(text: String) -> String:

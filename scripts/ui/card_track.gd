@@ -246,7 +246,7 @@ func _entry_text(entry: Dictionary) -> String:
 
 func _entry_meta(entry: Dictionary) -> String:
 	var cost := str(entry.get("cost", "")).strip_edges()
-	var owner_hint := str(entry.get("owner_hint", "")).strip_edges()
+	var owner_hint := _public_owner_hint(entry)
 	var state := str(entry.get("state", "等待")).strip_edges()
 	var pieces: Array[String] = []
 	if cost != "":
@@ -256,6 +256,16 @@ func _entry_meta(entry: Dictionary) -> String:
 	if pieces.is_empty():
 		pieces.append(state)
 	return _short_text("｜".join(pieces), 8)
+
+
+func _public_owner_hint(entry: Dictionary) -> String:
+	var owner_hint := str(entry.get("owner_hint", "")).strip_edges()
+	if owner_hint == "":
+		return ""
+	match owner_hint:
+		"匿名", "unknown", "Unknown", "UNKNOWN", "未公开":
+			return "未知"
+	return owner_hint
 
 
 func _entry_badges(entry: Dictionary) -> Array:

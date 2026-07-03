@@ -42,6 +42,8 @@ func _run() -> void:
 	if public_track_slot != null:
 		_expect(public_track_slot.focus_mode == Control.FOCUS_ALL, "runtime public track slot is reachable by keyboard/gamepad focus")
 		_expect(str(public_track_slot.get_meta("runtime_focus_kind", "")) == "public_track_slot", "runtime public track slot carries a table-focus marker")
+		var meta_label := public_track_slot.find_child("PublicTrackSlotMeta", true, false) as Label
+		_expect(meta_label != null and meta_label.text.contains("未知") and not meta_label.text.contains("匿名"), "runtime public track summarizes hidden source as 未知 instead of repeatedly saying 匿名")
 	var selected_entries: Array = []
 	if public_track != null and public_track.has_signal("track_entry_selected"):
 		public_track.connect("track_entry_selected", func(entry: Dictionary) -> void:
@@ -184,6 +186,7 @@ func _table_state() -> Dictionary:
 				"state": "竞价",
 				"slot": "1",
 				"cost": "¥20",
+				"owner_hint": "匿名",
 				"select_action": "track_select_focus_sample",
 				"open_action": "track_open_focus_sample",
 				"tooltip": "测试牌轨槽位可用键盘选择。",
