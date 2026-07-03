@@ -5394,6 +5394,44 @@ func _campaign_completion_stats(chapter: Dictionary) -> Dictionary:
 		"objectives_total": maxi(1, conditions.size()),
 		"errors": 0,
 		"hints": hint_count,
+		"economy": _campaign_recap_economy_stats(0),
+	}
+
+
+func _campaign_recap_economy_stats(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var player: Dictionary = players[player_index]
+	var starting_cash := int(player.get("starting_cash_total", player.get("base_starting_cash", STARTING_CASH)))
+	var final_cash := int(player.get("cash", starting_cash))
+	var city_count := 0
+	var gdp_per_min := 0
+	var pressure := 0
+	var top_city := ""
+	var top_city_gdp := -999999
+	for district_index in range(districts.size()):
+		var city := _district_city(district_index)
+		if city.is_empty() or not _city_is_active(city) or int(city.get("owner", -1)) != player_index:
+			continue
+		city_count += 1
+		var city_gdp := _city_gdp_per_minute(district_index, _city_competition_matches(district_index))
+		gdp_per_min += city_gdp
+		pressure += int(districts[district_index].get("damage", 0))
+		pressure += int(city.get("route_damage", 0))
+		pressure += int(int(districts[district_index].get("panic", 0)) / 10)
+		if city_gdp > top_city_gdp:
+			top_city_gdp = city_gdp
+			top_city = "%s｜GDP/min %d" % [String(districts[district_index].get("name", "城市")), city_gdp]
+	return {
+		"starting_cash": starting_cash,
+		"final_cash": final_cash,
+		"cash_delta": final_cash - starting_cash,
+		"city_count": city_count,
+		"gdp_per_min": gdp_per_min,
+		"total_income": int(player.get("total_city_income", 0)) + int(player.get("total_card_income", 0)) + int(player.get("total_role_income", 0)),
+		"total_spend": int(player.get("total_card_spend", 0)) + int(player.get("total_build_spend", 0)) + int(player.get("total_business_spend", 0)),
+		"pressure": max(0, pressure),
+		"top_city": top_city,
 	}
 
 

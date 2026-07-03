@@ -7,6 +7,7 @@ signal action_requested(action_id: String)
 
 @onready var title_label: Label = %MatchRecapTitle
 @onready var summary_card_row: HFlowContainer = %MatchRecapSummaryCardRow
+@onready var economy_card_row: HFlowContainer = %MatchRecapEconomyCardRow
 @onready var learned_box: VBoxContainer = %MatchRecapLearned
 @onready var action_box: VBoxContainer = %MatchRecapActions
 @onready var suggestion_box: VBoxContainer = %MatchRecapSuggestions
@@ -21,6 +22,7 @@ func _ready() -> void:
 func set_recap(data: Dictionary) -> void:
 	title_label.text = str(data.get("title", "本关复盘"))
 	_render_summary_cards(data.get("summary_cards", []))
+	_render_economy_cards(data.get("economy_cards", []))
 	_render_list(learned_box, data.get("learned", []), "学到")
 	_render_list(action_box, data.get("key_actions", []), "行动")
 	_render_list(suggestion_box, data.get("suggestions", []), "建议")
@@ -35,6 +37,40 @@ func _render_summary_cards(value: Variant) -> void:
 	for card_variant in entries:
 		if card_variant is Dictionary:
 			_add_summary_card(summary_card_row, card_variant as Dictionary)
+
+
+func _render_economy_cards(value: Variant) -> void:
+	_clear_children(economy_card_row)
+	var entries: Array = value if value is Array else []
+	for card_variant in entries:
+		if card_variant is Dictionary:
+			_add_economy_card(economy_card_row, card_variant as Dictionary)
+
+
+func _add_economy_card(parent: HFlowContainer, card: Dictionary) -> void:
+	var kind := str(card.get("kind", "economy"))
+	var accent := _economy_card_accent(kind)
+	var panel := PanelContainer.new()
+	panel.name = "MatchRecapEconomyCard"
+	panel.custom_minimum_size = Vector2(154, 82)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _panel_style(accent))
+	parent.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 9)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 9)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	panel.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 3)
+	margin.add_child(stack)
+
+	_add_label(stack, str(card.get("kicker", "经济")), 9, accent, 1)
+	_add_label(stack, str(card.get("title", "看现金流")), 12, Color("#f8fafc"), 2)
+	_add_label(stack, str(card.get("detail", "复盘收益与风险。")), 9, Color("#cbd5e1"), 2)
 
 
 func _add_summary_card(parent: HFlowContainer, card: Dictionary) -> void:
@@ -132,6 +168,20 @@ func _summary_card_accent(kind: String) -> Color:
 			return Color("#4ade80")
 		_:
 			return Color("#cbd5e1")
+
+
+func _economy_card_accent(kind: String) -> Color:
+	match kind:
+		"cash":
+			return Color("#facc15")
+		"gdp":
+			return Color("#4ade80")
+		"spend":
+			return Color("#38bdf8")
+		"pressure":
+			return Color("#fb7185")
+		_:
+			return Color("#a78bfa")
 
 
 func _clear_children(node: Node) -> void:

@@ -8,10 +8,12 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var learned := _string_array(data.get("learned", []), 6)
 	var key_actions := _string_array(data.get("key_actions", []), 8)
 	var suggestions := _string_array(data.get("suggestions", []), 5)
+	var economy_cards := _card_array(data.get("economy_cards", []), 4)
 	var checkpoint_actions := _action_array(data.get("checkpoint_actions", []))
 	ui = {
 		"title": str(data.get("title", "本关复盘")),
 		"summary_cards": _summary_cards(key_actions, learned, suggestions, checkpoint_actions),
+		"economy_cards": economy_cards,
 		"learned": learned,
 		"key_actions": key_actions,
 		"suggestions": suggestions,
@@ -104,4 +106,27 @@ func _action_array(value: Variant) -> Array:
 		for item in value:
 			if item is Dictionary:
 				result.append((item as Dictionary).duplicate(true))
+	return result
+
+
+func _card_array(value: Variant, limit: int) -> Array:
+	var result: Array = []
+	if value is Array:
+		for item in value:
+			if item is Dictionary:
+				var card := (item as Dictionary).duplicate(true)
+				card["kind"] = str(card.get("kind", "economy"))
+				card["kicker"] = _short_text(str(card.get("kicker", "经济")), 10)
+				card["title"] = _short_text(str(card.get("title", "看现金流")), 18)
+				card["detail"] = _short_text(str(card.get("detail", "复盘收益与风险。")), 34)
+				result.append(card)
+			if result.size() >= limit:
+				break
+	if result.is_empty():
+		result = [
+			{"kind": "cash", "kicker": "现金", "title": "看最终现金", "detail": "最后按钱排名。"},
+			{"kind": "gdp", "kicker": "城市/GDP", "title": "看城市现金流", "detail": "生产、需求、运输决定收入。"},
+			{"kind": "spend", "kicker": "投入", "title": "留现金缓冲", "detail": "买牌和建城都要花钱。"},
+			{"kind": "pressure", "kicker": "风险", "title": "看怪兽与断路", "detail": "破坏会压低GDP。"},
+		]
 	return result

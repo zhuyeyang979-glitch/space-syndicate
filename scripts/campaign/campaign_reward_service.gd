@@ -37,6 +37,7 @@ func build_recap(campaign: Dictionary, chapter: Dictionary, action_entries: Arra
 		"title": "复盘｜%s" % str(chapter.get("title", "关卡")),
 		"learned": _short_array(teaches, 5),
 		"key_actions": _public_action_summaries(action_entries, 8),
+		"economy_cards": _economy_cards(stats),
 		"suggestions": _suggestions_for(chapter, stats, objectives),
 		"checkpoint_actions": [
 			{"id": "scenario_replay_start", "label": "起点"},
@@ -70,6 +71,50 @@ func _public_action_summaries(entries: Array, limit: int) -> Array:
 	return result
 
 
+func _economy_cards(stats: Dictionary) -> Array:
+	var economy: Dictionary = stats.get("economy", {}) if stats.get("economy", {}) is Dictionary else {}
+	var cash_delta := int(economy.get("cash_delta", stats.get("cash_delta", 0)))
+	var final_cash := int(economy.get("final_cash", stats.get("final_cash", 0)))
+	var gdp_per_min := int(economy.get("gdp_per_min", stats.get("gdp_per_min", 0)))
+	var city_count := int(economy.get("city_count", stats.get("city_count", 0)))
+	var total_income := int(economy.get("total_income", stats.get("total_income", 0)))
+	var total_spend := int(economy.get("total_spend", stats.get("total_spend", 0)))
+	var top_city := str(economy.get("top_city", stats.get("top_city", ""))).strip_edges()
+	var pressure := int(economy.get("pressure", stats.get("pressure", 0)))
+	var cash_title := "现金 %s" % _signed_cash_text(cash_delta) if cash_delta != 0 else "现金 ¥%d" % final_cash
+	var gdp_title := "%d城｜GDP/min %d" % [city_count, gdp_per_min]
+	var spend_title := "投入 ¥%d" % total_spend
+	var pressure_title := "压力 %d" % pressure if pressure > 0 else "压力低"
+	if top_city == "":
+		top_city = "先让一座城市跑起来"
+	return [
+		{
+			"kind": "cash",
+			"kicker": "现金",
+			"title": _short_text(cash_title, 18),
+			"detail": "本席最终¥%d；最后仍按现金排名。" % final_cash,
+		},
+		{
+			"kind": "gdp",
+			"kicker": "城市/GDP",
+			"title": _short_text(gdp_title, 18),
+			"detail": "主要看生产、需求、运输和损伤。",
+		},
+		{
+			"kind": "spend",
+			"kicker": "投入",
+			"title": _short_text(spend_title, 18),
+			"detail": "收入¥%d；买牌/建城要留缓冲。" % total_income,
+		},
+		{
+			"kind": "pressure",
+			"kicker": "下局抓手",
+			"title": _short_text(top_city, 18),
+			"detail": "%s；看怪兽、断路和商品竞争。" % pressure_title,
+		},
+	]
+
+
 func _suggestions_for(chapter: Dictionary, stats: Dictionary, objectives: Array) -> Array:
 	var suggestions: Array = []
 	if int(stats.get("hints", 0)) > 1:
@@ -81,6 +126,21 @@ func _suggestions_for(chapter: Dictionary, stats: Dictionary, objectives: Array)
 		suggestions.append("继续练习：%s。" % objective_text)
 		suggestions.append("尝试更早建立城市，保留现金缓冲。")
 	return suggestions
+
+
+func _signed_cash_text(amount: int) -> String:
+	if amount > 0:
+		return "+¥%d" % amount
+	if amount < 0:
+		return "-¥%d" % abs(amount)
+	return "¥0"
+
+
+func _short_text(value: String, limit: int) -> String:
+	var text := value.strip_edges()
+	if text.length() <= limit:
+		return text
+	return "%s…" % text.left(maxi(1, limit - 1))
 
 
 func _short_array(value: Array, limit: int) -> Array:

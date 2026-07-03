@@ -19,7 +19,24 @@ func _run() -> void:
 	var chapter: Dictionary = chapters[1] if chapters.size() > 1 and chapters[1] is Dictionary else {}
 	var progress: Variant = PROGRESS_SCRIPT.new().apply_state(campaign, ["00_tavern_entry"])
 	progress.mark_completed(str(chapter.get("id", "")))
-	var stats := {"time_text": "03:20", "objectives_completed": 3, "objectives_total": 3, "errors": 1, "hints": 1}
+	var stats := {
+		"time_text": "03:20",
+		"objectives_completed": 3,
+		"objectives_total": 3,
+		"errors": 1,
+		"hints": 1,
+		"economy": {
+			"starting_cash": 1000,
+			"final_cash": 1240,
+			"cash_delta": 240,
+			"city_count": 2,
+			"gdp_per_min": 86,
+			"total_income": 420,
+			"total_spend": 180,
+			"pressure": 7,
+			"top_city": "雾港区｜GDP/min 56",
+		},
+	}
 	var service := REWARD_SERVICE_SCRIPT.new()
 	var reward: Dictionary = service.build_reward(campaign, chapter, progress.to_dictionary(), stats)
 	_expect(str(reward.get("badge", "")) != "", "reward includes badge")
@@ -42,6 +59,11 @@ func _run() -> void:
 	if recap_summary_cards.size() >= 4:
 		var recap_summary_text := var_to_str(recap_summary_cards)
 		_expect(recap_summary_text.contains("关键行动") and recap_summary_text.contains("学到") and recap_summary_text.contains("下次建议") and recap_summary_text.contains("回看"), "recap summary cards separate action, learning, next step, and replay")
+	var economy_cards: Array = recap_snapshot.get("economy_cards", []) as Array
+	_expect(economy_cards.size() == 4, "recap snapshot exposes four compact economy explanation cards")
+	var economy_text := var_to_str(economy_cards)
+	_expect(economy_text.contains("现金") and economy_text.contains("城市/GDP") and economy_text.contains("投入") and economy_text.contains("下局抓手"), "recap economy cards explain cash, city GDP, spend, and next economic handle")
+	_expect(not economy_text.contains("对手现金") and not economy_text.contains("true_owner") and not economy_text.contains("ai_route_plan"), "recap economy cards stay player-facing without hidden/developer fields")
 	await _check_scene("res://scenes/ui/MatchRecapPanel.tscn", "set_recap", recap_snapshot)
 	_finish()
 
@@ -68,6 +90,10 @@ func _check_scene(path: String, method: String, snapshot: Dictionary) -> void:
 		_expect(recap_summary_row != null and recap_summary_row.visible and recap_summary_row.get_child_count() == 4, "MatchRecapPanel renders four recap summary cards")
 		var recap_summary_text := _node_text(recap_summary_row)
 		_expect(recap_summary_text.contains("关键行动") and recap_summary_text.contains("学到") and recap_summary_text.contains("下次建议") and recap_summary_text.contains("回看"), "MatchRecapPanel cards keep a board-game recap read order")
+		var recap_economy_row := node.find_child("MatchRecapEconomyCardRow", true, false)
+		_expect(recap_economy_row != null and recap_economy_row.visible and recap_economy_row.get_child_count() == 4, "MatchRecapPanel renders four compact economy explanation cards")
+		var recap_economy_text := _node_text(recap_economy_row)
+		_expect(recap_economy_text.contains("现金") and recap_economy_text.contains("城市/GDP") and recap_economy_text.contains("投入") and recap_economy_text.contains("下局抓手"), "MatchRecapPanel economy cards keep a scan-first money read order")
 	root.remove_child(node)
 	node.queue_free()
 
