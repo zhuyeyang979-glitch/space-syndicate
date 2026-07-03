@@ -64,11 +64,13 @@ Acceptance:
 - Every current monster family must have a distinct silhouette/motif assignment.
 - Every current monster family must use a distinct body sprite key and a distinct `visual_source_id`; it is not acceptable to reuse one monster body with different action overlays.
 - Moth Kaijuice/MOS kaiju body art can be assigned to at most one current monster family. Other monsters must come from different open-source body-art families or a clearly different authored/procedural body.
+- In the current roster, that single MOS/Moth Kaijuice body slot is explicitly reserved for `焰环幼星`. If any other current monster declares a `moth_kaijuice_*` sprite, `moth_kaijuice_mit` upstream source, or Moth visual family, the art gate must fail.
 - The current monster roster must draw body art from at least five upstream/open-source packs, and no single upstream pack may provide more than 35% of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
 - A newly imported monster body source must be tied to a specific monster family before it counts. Documentation-only references do not satisfy the gate.
 - Monster art must be visible in the bestiary/detail contexts, monster cards, and runtime map tokens. The map token may be compact, but it must consume the same `sprite_key`, `visual_source_id`, and `upstream_source_id` contract instead of falling back to only number/color/glyph.
 - Each rank-I monster card must use the same body `sprite_key` as its corresponding monster art profile. The card frame may add overlays, but it cannot represent the monster with an unrelated creature sprite.
 - Runtime monster actions must consume the same action animation profile used by the art audit. A beam, projectile, dash, miasma, repair, roar/wave, throw, and melee action may still be greybox, but they must not all collapse into one generic map line or circle.
+- The active roster must be backed by an explicit one-monster-one-body list in `tests/art_identity_gate_test.gd`. This is intentional friction: future Codex passes must choose or import a genuinely different monster body before changing a roster slot.
 
 ## Monster action hard standard
 
@@ -142,6 +144,7 @@ The gate fails if:
 - any current monster shares another monster's body sprite key or `visual_source_id`;
 - any rank-I monster card uses a different body sprite key from its matching monster profile;
 - more than one current monster uses Moth Kaijuice/MOS kaiju body art;
+- any current monster other than `焰环幼星` uses a Moth Kaijuice/MOS upstream source, visual family, or `moth_kaijuice_*` body sprite;
 - fewer than five upstream/open-source monster art packs are represented in the current roster;
 - one upstream/open-source pack supplies more than 35% of the current monster roster;
 - a monster action duplicates another action name, pose key, or animation profile inside the same monster;
@@ -171,6 +174,7 @@ It writes:
 Use these images for human review after each art pass. The first sheet checks whether cards and monsters are visually distinguishable at a glance. The second sheet checks whether each monster action has a distinct motion/effect/timing/meter profile before full animation work starts.
 The third sheet checks whether the real `MapView` renders source-specific monster body sprites at tabletop-token scale, so the in-game planet is not reduced to numbered colored dots.
 The fourth sheet checks whether the real `MapView` renders distinct greybox action grammars for beams, projectiles, dash/roll/burrow, miasma, repair, roar/wave, throw, and melee before final frame-by-frame monster animation work.
+The first-run card review sheets now also enforce sprite spread: the 24 high-frequency cards must use at least 12 sprite families, no sprite family may appear more than 3 times in that review set, and each review card has an authored expected `sprite_key` plus `illustration_anchor`.
 
 Run this per-monster review pass when a monster body, monster card face, map token, or monster action grammar changes:
 

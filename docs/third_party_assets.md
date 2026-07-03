@@ -60,6 +60,7 @@ Current player-facing use:
 
 - `scripts/card_art_view.gd` theme `multi-source-open-card-illustrations-v2` uses these sprites as one of several central card illustration source families.
 - `scripts/monster_art_view.gd` theme `multi-source-open-monster-sprites-v2` may use the Moth Kaijuice kaiju body art for exactly one current monster family. The art identity gate rejects broad reuse of the MOS/Moth kaiju body across the roster.
+- Current roster assignment is intentionally narrow: `焰环幼星` is the only monster allowed to use the MOS/Moth Kaijuice kaiju body. Other monsters must use a different body sprite family from another open-source pack or a clearly authored/procedural replacement.
 - The sprites are combined with card-specific `visual_source_id`, sprite cells, composition variants, color variants, effects, and procedural motifs so the art gate can require one visual identity per card.
 
 Implementation note:

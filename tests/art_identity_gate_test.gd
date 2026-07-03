@@ -4,6 +4,19 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const CARD_ART_SCRIPT_PATH := "res://scripts/card_art_view.gd"
 const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
 
+const EXPECTED_MONSTER_BODY_SPRITES := {
+	"孢雾海皇": {"upstream": "superpowers_asset_packs_cc0", "visual": "superpowers_cc0_dragon_family", "sprite": "superpowers_dragon"},
+	"砂铠陆行兽": {"upstream": "monster_battler_cc0", "visual": "monster_battler_cc0_rock_family", "sprite": "monster_battler_rock"},
+	"流星哨兵": {"upstream": "kenney_cc0", "visual": "kenney_cc0_enemy_ufo_family", "sprite": "kenney_enemy_ufo"},
+	"棱刃重甲": {"upstream": "monster_battler_cc0", "visual": "monster_battler_cc0_dino_family", "sprite": "monster_battler_dino"},
+	"绿洲修复体": {"upstream": "pixelmob_cc0", "visual": "pixelmob_cc0_slime_square_family", "sprite": "pixelmob_slime_square"},
+	"焰环幼星": {"upstream": "moth_kaijuice_mit", "visual": "moth_kaijuice_mit_kaiju_family", "sprite": "moth_kaijuice_kaiju"},
+	"蓝锋骑士": {"upstream": "superpowers_asset_packs_cc0", "visual": "superpowers_cc0_snake_family", "sprite": "superpowers_snake"},
+	"镜像猎兵": {"upstream": "kenney_cc0", "visual": "kenney_cc0_alien_blue_family", "sprite": "kenney_alien_blue"},
+}
+
+const ONLY_MOTH_KAIJUICE_MONSTER := "焰环幼星"
+
 var _failures: Array[String] = []
 
 
@@ -149,6 +162,9 @@ func _verify_monster_art_identity(main: Node) -> void:
 		"superpowers_asset_packs_cc0": false,
 	}
 	var moth_source_count := 0
+	var moth_upstream_count := 0
+	var moth_sprite_count := 0
+	var moth_monster_names: Array[String] = []
 	var monster_index := -1
 	for source_variant in monster_sources:
 		monster_index += 1
@@ -171,11 +187,26 @@ func _verify_monster_art_identity(main: Node) -> void:
 		var profile_key := String(monster_view.call("monster_visual_profile_key"))
 		var visual_source_id := String(profile.get("visual_source_id", ""))
 		var upstream_source_id := String(profile.get("upstream_source_id", ""))
+		var sprite_key := String(profile.get("sprite_key", ""))
 		_expect(String(profile.get("theme", "")) == "multi-source-open-monster-sprites-v2", "monster %s uses the multi-source open monster sprite theme" % monster_name)
 		_expect(upstream_source_id != "", "monster %s declares a concrete upstream source pack id" % monster_name)
 		_expect(visual_source_id != "", "monster %s declares a concrete visual source id" % monster_name)
-		_expect(String(profile.get("sprite_key", "")) != "" and String(profile.get("sprite_cell", "")) != "", "monster %s has a concrete sprite key and region/cell" % monster_name)
+		_expect(sprite_key != "" and String(profile.get("sprite_cell", "")) != "", "monster %s has a concrete sprite key and region/cell" % monster_name)
 		_expect(profile.has("upstream_source_id") and profile.has("silhouette") and profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_layer") and profile.has("composition_variant"), "monster %s has multi-axis illustration fields beyond text/name" % monster_name)
+		_expect(EXPECTED_MONSTER_BODY_SPRITES.has(monster_name), "monster %s is listed in the explicit one-monster-one-body art roster" % monster_name)
+		if EXPECTED_MONSTER_BODY_SPRITES.has(monster_name):
+			var expected_profile := EXPECTED_MONSTER_BODY_SPRITES[monster_name] as Dictionary
+			_expect(upstream_source_id == String(expected_profile.get("upstream", "")), "monster %s keeps its authored upstream art pack; expected=%s got=%s" % [monster_name, String(expected_profile.get("upstream", "")), upstream_source_id])
+			_expect(visual_source_id == String(expected_profile.get("visual", "")), "monster %s keeps its authored visual body family; expected=%s got=%s" % [monster_name, String(expected_profile.get("visual", "")), visual_source_id])
+			_expect(sprite_key == String(expected_profile.get("sprite", "")), "monster %s keeps its authored body sprite; expected=%s got=%s" % [monster_name, String(expected_profile.get("sprite", "")), sprite_key])
+		if upstream_source_id == "moth_kaijuice_mit" or visual_source_id.begins_with("moth_kaijuice") or sprite_key.begins_with("moth_kaijuice"):
+			moth_monster_names.append(monster_name)
+		if upstream_source_id == "moth_kaijuice_mit":
+			moth_upstream_count += 1
+		if sprite_key.begins_with("moth_kaijuice"):
+			moth_sprite_count += 1
+		if monster_name != ONLY_MOTH_KAIJUICE_MONSTER:
+			_expect(upstream_source_id != "moth_kaijuice_mit" and not visual_source_id.begins_with("moth_kaijuice") and not sprite_key.begins_with("moth_kaijuice"), "monster %s must not reuse MOS/Moth Kaijuice body art; it is reserved for %s" % [monster_name, ONLY_MOTH_KAIJUICE_MONSTER])
 		_expect(not seen_keys.has(profile_key), "monster %s has a unique visual profile key; duplicate=%s" % [monster_name, profile_key])
 		var monster_card_name := String(main.call("_monster_card_name", monster_index, 1)) if main.has_method("_monster_card_name") else ""
 		var monster_card_skill: Dictionary = main.call("_skill_definition", monster_card_name) as Dictionary if monster_card_name != "" and main.has_method("_skill_definition") else {}
@@ -190,15 +221,15 @@ func _verify_monster_art_identity(main: Node) -> void:
 			String(main.call("_art_identity_card_stats", monster_card_name, monster_card_skill)) if main.has_method("_art_identity_card_stats") else ""
 		)
 		var card_profile := card_view.call("card_visual_profile_snapshot") as Dictionary
-		_expect(String(card_profile.get("sprite_key", "")) == String(profile.get("sprite_key", "")), "monster card %s uses the same body sprite key as %s; card=%s body=%s" % [
+		_expect(String(card_profile.get("sprite_key", "")) == sprite_key, "monster card %s uses the same body sprite key as %s; card=%s body=%s" % [
 			monster_card_name,
 			monster_name,
 			String(card_profile.get("sprite_key", "")),
-			String(profile.get("sprite_key", "")),
+			sprite_key,
 		])
 		seen_keys[profile_key] = monster_name
 		silhouettes[String(profile.get("silhouette", ""))] = true
-		sprite_keys[String(profile.get("sprite_key", ""))] = true
+		sprite_keys[sprite_key] = true
 		visual_sources[visual_source_id] = true
 		upstream_sources[upstream_source_id] = true
 		upstream_counts[upstream_source_id] = int(upstream_counts.get(upstream_source_id, 0)) + 1
@@ -224,6 +255,7 @@ func _verify_monster_art_identity(main: Node) -> void:
 		largest_upstream_count = maxi(largest_upstream_count, int(count_variant))
 	_expect(largest_upstream_count <= int(ceil(float(monster_sources.size()) * 0.35)), "no single upstream monster art pack supplies more than 35% of the current roster")
 	_expect(moth_source_count == 1, "Moth Kaijuice/MOS kaiju art is reserved for exactly one monster family in the current roster")
+	_expect(moth_upstream_count == 1 and moth_sprite_count == 1 and moth_monster_names == [ONLY_MOTH_KAIJUICE_MONSTER], "MOS/Moth Kaijuice body art must appear on %s only; found=%s upstream=%d sprites=%d" % [ONLY_MOTH_KAIJUICE_MONSTER, ", ".join(moth_monster_names), moth_upstream_count, moth_sprite_count])
 
 
 func _verify_monster_action_art_identity(main: Node) -> void:

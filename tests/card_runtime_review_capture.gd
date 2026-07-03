@@ -73,6 +73,33 @@ const REQUIRED_REVIEW_ANCHORS := {
 	"星海战舰1": "naval_fleet",
 }
 
+const REQUIRED_REVIEW_SPRITES := {
+	"城市融资1": "building_m",
+	"产业升级1": "mech",
+	"交通升级1": "kenney_enemy_ufo",
+	"星际广告1": "laser",
+	"诱导电波1": "monster_battler_rodent",
+	"过载补给1": "tank",
+	"移动1": "kenney_fish",
+	"普攻1": "monster_battler_salamander",
+	"格挡1": "atfield",
+	"区域破坏1": "monster_battler_rock",
+	"业主透镜1": "kenney_alien_blue",
+	"出牌追帧1": "kenney_alien_blue",
+	"供应链保险1": "atfield",
+	"商品看涨1": "kenney_fish",
+	"商品看跌1": "kenney_slime",
+	"港仓囤货1": "building_s",
+	"城市买涨1": "building_m",
+	"城市做空1": "building_s",
+	"区域供需合约1": "building_m",
+	"星链拆解1": "laser",
+	"影仓牵引1": "soldier",
+	"相位否决1": "atfield",
+	"制空战斗机1": "kenney_enemy_ufo",
+	"星海战舰1": "tank",
+}
+
 var _saved_paths: Array[String] = []
 var _failures: Array[String] = []
 
@@ -123,6 +150,7 @@ func _review_card_sources(main: Node) -> Array:
 
 	var selected: Array = []
 	var profile_keys := {}
+	var sprite_counts := {}
 	for card_name_variant in REVIEW_CARD_NAMES:
 		var card_name := String(card_name_variant)
 		if not by_name.has(card_name):
@@ -151,10 +179,27 @@ func _review_card_sources(main: Node) -> Array:
 					expected_anchor,
 					String(decorated.get("_illustration_anchor", "")),
 				])
+		if REQUIRED_REVIEW_SPRITES.has(card_name):
+			var expected_sprite := String(REQUIRED_REVIEW_SPRITES[card_name])
+			if String(decorated.get("_sprite_key", "")) != expected_sprite:
+				_failures.append("review card %s expected sprite %s, got %s" % [
+					card_name,
+					expected_sprite,
+					String(decorated.get("_sprite_key", "")),
+				])
+		var sprite_key := String(decorated.get("_sprite_key", ""))
+		sprite_counts[sprite_key] = int(sprite_counts.get(sprite_key, 0)) + 1
 		selected.append(decorated)
 	probe.queue_free()
 	if selected.size() != REVIEW_CARD_NAMES.size():
 		_failures.append("expected %d review cards, got %d" % [REVIEW_CARD_NAMES.size(), selected.size()])
+	if sprite_counts.size() < 12:
+		_failures.append("expected at least 12 sprite families across review cards, got %d" % sprite_counts.size())
+	for sprite_key_variant in sprite_counts.keys():
+		var sprite_key := String(sprite_key_variant)
+		var count := int(sprite_counts[sprite_key])
+		if count > 3:
+			_failures.append("review sprite %s appears %d times; max allowed is 3 for first-run review cards" % [sprite_key, count])
 	return selected
 
 

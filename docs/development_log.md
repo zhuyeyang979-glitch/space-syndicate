@@ -12,10 +12,18 @@
   - `交通升级1` 改用轨道/飞行交通锚点。
   - `星际广告1` 改用广播/光束锚点。
   - 直接互动牌优先级修正：`星链拆解1` 和 `影仓牵引1` 不再因为带“情报”标签而被泛化成情报镜头。
+- 继续回应“MOS kaijus 只能用于做一个怪兽，不能把每个怪兽都用这个美工”的要求：
+  - `tests/art_identity_gate_test.gd` 新增显式 `EXPECTED_MONSTER_BODY_SPRITES` 名单，逐只锁定当前怪兽的上游包、视觉家族和 body sprite。
+  - MOS/Moth Kaijuice 的当前唯一合法怪兽写死为 `焰环幼星`；其它怪兽只要声明 `moth_kaijuice_mit`、`moth_kaijuice_*` sprite 或 Moth visual family，测试就失败。
+  - 这让“换动作、换颜色、换名字但继续用 MOS 身体”无法通过自动验收。
+- 首局高频卡牌也加了 sprite 分布门槛：
+  - `tests/card_runtime_review_capture.gd` 新增 `REQUIRED_REVIEW_SPRITES`，24 张审片牌逐张锁定预期 sprite。
+  - 审片集至少要有 12 个 sprite family，单一 sprite family 最多出现 3 次，防止金融/合约/互动牌继续大面积共用同一栋楼或同一套 Moth 小图。
 - `tests/card_runtime_review_capture.gd` 加硬门：
   - 首批 24 张审片牌必须拥有指定 `illustration_anchor`。
+  - 首批 24 张审片牌必须拥有指定 `sprite_key`，并通过 sprite family 分布检查。
   - 如果某张牌视觉 profile 唯一但锚点错了、太泛化，审片脚本会失败。
-- `tests/art_identity_gate_test.gd` 加入 `illustration_anchor` 字段检查，防止之后卡牌 profile 退回只有 hash、颜色或名字差异。
+- `tests/art_identity_gate_test.gd` 加入 `illustration_anchor` 字段检查和显式怪兽 body roster 检查，防止之后卡牌/怪兽 profile 退回只有 hash、颜色或名字差异。
 
 ### 本轮验证
 

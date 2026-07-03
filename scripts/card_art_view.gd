@@ -931,6 +931,51 @@ func _moth_kaijuice_card_sprite_key() -> String:
 		if identity.contains("镜像"):
 			return "kenney_alien_blue"
 		return "kaiju"
+	match _card_illustration_anchor_key():
+		"finance_tower":
+			return "building_m"
+		"factory_core":
+			return "mech"
+		"transit_grid":
+			return "kenney_enemy_ufo"
+		"broadcast_array":
+			return "laser"
+		"lure_beacon":
+			return "monster_battler_rodent"
+		"supply_cache":
+			return "tank"
+		"motion_vector":
+			return "kenney_fish"
+		"impact_core":
+			return "monster_battler_salamander"
+		"shield_gate":
+			return "atfield"
+		"shield_route":
+			return "atfield"
+		"fracture_map":
+			return "monster_battler_rock"
+		"intel_lens":
+			return "kenney_alien_blue"
+		"market_up":
+			return "kenney_fish" if identity.contains("商品") else "building_m"
+		"market_down":
+			return "kenney_slime" if identity.contains("商品") else "building_s"
+		"warehouse_stack":
+			return "building_s"
+		"contract_bridge":
+			return "building_m"
+		"link_breaker":
+			return "laser"
+		"hand_pull":
+			return "soldier"
+		"phase_null":
+			return "atfield"
+		"air_wing":
+			return "kenney_enemy_ufo"
+		"naval_fleet":
+			return "tank"
+		"ground_force":
+			return "tank"
 	if _contains_any(identity, ["产业升级", "生产扩张", "产能封锁", "产品线", "产业", "生产"]):
 		return "mech"
 	if _contains_any(identity, ["交通升级", "交通瘫痪", "星港快线", "航线", "运输", "流通", "航路"]):

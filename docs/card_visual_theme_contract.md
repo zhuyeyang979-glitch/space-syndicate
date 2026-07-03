@@ -31,6 +31,8 @@
 - 同一类别的不同路线至少要通过 sprite cell、构图、颜色、纹样、关键词或统计行形成第二层差异。
 - 高频首局牌必须有 `first_run_art_focus` 图形焦点；路线 glyph 只作为小徽章，不能压住卡牌插画主体。
 - 高频审片牌必须有 `illustration_anchor`，明确玩家第一眼应该看到的是金融塔、工厂核心、交通网、广播阵列、市场涨跌、仓储、相位否决、空军或舰队等哪一种画面重心。
+- 高频审片牌还必须有显式 `sprite_key` 分布约束：首批 24 张不能继续大面积共用同一 Moth building/mech/kaijuice sprite；至少 12 个 sprite family，单一 sprite family 最多出现 3 次。
+- 怪兽牌可以使用对应怪兽的 body sprite，但 MOS/Moth kaiju body 只允许出现在 `焰环幼星` 对应怪兽牌/怪兽本体/地图 token 上；其它怪兽牌必须使用自己的来源。
 - 每张卡必须能生成唯一 visual profile；详见 `docs/art_production_contract.md` 和 `tests/art_identity_gate_test.gd`。
 
 ## 4. 开源素材边界
