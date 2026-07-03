@@ -5,6 +5,7 @@ class_name SpaceSyndicateEconomyDashboard
 @onready var title_label: Label = %EconomyDashboardTitle
 @onready var chip_rail: HFlowContainer = %EconomyDashboardChipRail
 @onready var kpi_grid: GridContainer = %EconomyDashboardKpiGrid
+@onready var decision_rail: HFlowContainer = %EconomyDashboardDecisionRail
 @onready var lane_grid: GridContainer = %EconomyDashboardLaneGrid
 
 
@@ -22,6 +23,7 @@ func set_dashboard(data: Dictionary) -> void:
 	lane_grid.columns = clampi(int(data.get("lane_columns", 3)), 1, 3)
 	_render_chips(data.get("chips", []))
 	_render_kpis(data.get("kpis", []))
+	_render_decisions(data.get("decisions", []))
 	_render_lanes(data.get("lanes", []))
 
 
@@ -33,6 +35,8 @@ func _style_shell() -> void:
 	chip_rail.add_theme_constant_override("v_separation", 3)
 	kpi_grid.add_theme_constant_override("h_separation", 8)
 	kpi_grid.add_theme_constant_override("v_separation", 8)
+	decision_rail.add_theme_constant_override("h_separation", 10)
+	decision_rail.add_theme_constant_override("v_separation", 8)
 	lane_grid.add_theme_constant_override("h_separation", 10)
 	lane_grid.add_theme_constant_override("v_separation", 10)
 
@@ -53,6 +57,15 @@ func _render_kpis(entries_variant: Variant) -> void:
 	for entry_variant in entries_variant:
 		if entry_variant is Dictionary:
 			_add_kpi(entry_variant as Dictionary)
+
+
+func _render_decisions(entries_variant: Variant) -> void:
+	_clear_children(decision_rail)
+	if not (entries_variant is Array):
+		return
+	for entry_variant in entries_variant:
+		if entry_variant is Dictionary:
+			_add_decision(entry_variant as Dictionary)
 
 
 func _render_lanes(entries_variant: Variant) -> void:
@@ -120,6 +133,45 @@ func _add_kpi(entry: Dictionary) -> void:
 	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	meta.tooltip_text = str(entry.get("tooltip", meta_text))
 	box.add_child(meta)
+
+
+func _add_decision(entry: Dictionary) -> void:
+	var accent := _dictionary_color(entry, "accent", Color("#a78bfa"))
+	var card := PanelContainer.new()
+	card.name = "EconomyDashboardDecisionCard"
+	card.custom_minimum_size = Vector2(220, 74)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.tooltip_text = str(entry.get("tooltip", "下一步经济决策：从公开信息选择一条路线。"))
+	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.13), 1, 10))
+	decision_rail.add_child(card)
+	var margin := _margin(10, 7, 10, 7)
+	card.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	margin.add_child(box)
+	var title := _label(str(entry.get("title", "")), 12, accent.lightened(0.18))
+	title.name = "EconomyDashboardDecisionTitle"
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.tooltip_text = card.tooltip_text
+	box.add_child(title)
+	var body_text := str(entry.get("body", ""))
+	var body := _label(_short_text(body_text, 48), 10, Color("#e2e8f0"))
+	body.name = "EconomyDashboardDecisionBody"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.clip_text = true
+	body.tooltip_text = body_text
+	box.add_child(body)
+	var keyword_text := str(entry.get("keyword", ""))
+	if keyword_text.strip_edges() != "":
+		var keyword := _label(_short_text(keyword_text, 42), 9, Color("#94a3b8"))
+		keyword.name = "EconomyDashboardDecisionKeyword"
+		keyword.autowrap_mode = TextServer.AUTOWRAP_OFF
+		keyword.clip_text = true
+		keyword.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		keyword.tooltip_text = keyword_text
+		box.add_child(keyword)
 
 
 func _add_lane(entry: Dictionary) -> void:

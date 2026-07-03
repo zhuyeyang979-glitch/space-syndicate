@@ -3471,6 +3471,11 @@ func _check_economy_dashboard_component() -> void:
 			{"title": "城市前景", "value": "雾港 +48", "meta": "收入/断路/业主视角", "accent": Color("#38bdf8"), "tooltip": "城市前景"},
 			{"title": "公开线索", "value": "6", "meta": "卡牌/城市/怪兽", "accent": Color("#c084fc"), "tooltip": "公开证据"},
 		],
+		"decisions": [
+			{"title": "扩GDP", "body": "围绕活体芯片补生产/需求/交通。", "keyword": "建城｜产业｜合约", "accent": Color("#4ade80"), "tooltip": "赚钱路线"},
+			{"title": "护商路", "body": "保护雾港，修断路或买保险。", "keyword": "修复｜保险｜防卫", "accent": Color("#38bdf8"), "tooltip": "防守路线"},
+			{"title": "压竞争", "body": "用6条公开线索找目标，做空或引怪。", "keyword": "情报｜做空｜怪兽", "accent": Color("#f472b6"), "tooltip": "进攻路线"},
+		],
 		"lanes": [
 			{"title": "商品热榜", "lines": ["活体芯片 ¥180｜供2/需5｜趋势+12"], "accent": Color("#facc15"), "tooltip": "热商品"},
 			{"title": "低价机会", "lines": ["星露莓 ¥90｜供6/需1｜受压-8"], "accent": Color("#93c5fd"), "tooltip": "冷商品"},
@@ -3485,6 +3490,7 @@ func _check_economy_dashboard_component() -> void:
 	_expect(String(dashboard.name) == "EconomyDashboardPanel", "EconomyDashboard keeps the dashboard panel root")
 	_expect(dashboard.find_child("EconomyDashboardHeader", true, false) != null and dashboard.find_child("EconomyDashboardChip", true, false) != null, "EconomyDashboard renders header chips")
 	_expect(dashboard.find_child("EconomyDashboardKpiGrid", true, false) != null and dashboard.find_child("EconomyDashboardKpiCard", true, false) != null and dashboard.find_child("EconomyDashboardKpiValue", true, false) != null, "EconomyDashboard renders KPI cards")
+	_expect(dashboard.find_child("EconomyDashboardDecisionRail", true, false) != null and dashboard.find_child("EconomyDashboardDecisionCard", true, false) != null and dashboard.find_child("EconomyDashboardDecisionKeyword", true, false) != null, "EconomyDashboard renders a three-route next decision strip")
 	_expect(dashboard.find_child("EconomyDashboardLaneGrid", true, false) != null and dashboard.find_child("EconomyDashboardListCard", true, false) != null and dashboard.find_child("EconomyDashboardListLine", true, false) != null, "EconomyDashboard renders economy lane list cards")
 	root.remove_child(dashboard)
 	dashboard.queue_free()

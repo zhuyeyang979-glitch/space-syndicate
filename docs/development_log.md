@@ -949,6 +949,33 @@
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
 
+## 2026-07-03｜经济总览三路线决策条
+
+- 把“首局出牌后打开经济总览”从纯信息阅读推进到桌游式下一步决策：
+  - `EconomyDashboard.tscn` 新增 `EconomyDashboardDecisionRail`，位于 KPI 与详细列表之间。
+  - `economy_dashboard.gd` 新增 `EconomyDashboardDecisionCard / DecisionTitle / DecisionBody / DecisionKeyword` 渲染骨架。
+  - `main.gd` 新增 `_economy_dashboard_decision_snapshots()`，只用公开/当前玩家可见信息生成三条路线：
+    - `扩GDP`：围绕热商品补生产、需求、交通。
+    - `护商路`：保护高收入城市、修断路或买保险。
+    - `压竞争`：用公开线索找目标，做空或引怪。
+- 这轮的硬标准同步写入 `docs/commercial_playability_gate.md`：经济总览首屏必须回答“钱从哪来”和“下一步选哪条路线”，不得展示 AI 内部计划、对手真实现金、真实手牌或隐藏业主。
+- 自动验收同步更新：
+  - `tests/layout_scene_smoke_test.gd` 要求经济总览真实渲染决策条节点。
+  - `tests/ui_text_smoke_test.gd` 要求 main/scene/script 同时保留三路线骨架。
+- 顺手修复首局 Coach 买牌恢复路径：
+  - 新增 `_first_card_accessible_district_for_player()`，买牌 CTA 先找怪兽网络可访问牌架，而不是只接受“非毁选区”。
+  - 错区点击“买牌”时先跳到合法牌架并高亮牌架；已经在合法牌架时才自动购买教学牌。
+  - 教学补给的“买入后可教”判断拆出 `_first_run_skill_has_direct_teaching_profile()`，避免被瞬时行动冷却误判。
+
+### 本轮验证
+
+- `tests/commercial_playability_gate_test.gd` 通过。
+- `tests/ui_text_smoke_test.gd` 通过。
+- `tests/visual_snapshot.gd` 通过。
+- `tests/layout_scene_smoke_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- `tests/smoke_test.gd` 完整通过。
+
 ## 2026-07-03｜卡牌/怪兽逐张逐只美术硬门禁
 
 - 回应“接下来所有任务先做一张一张插画、一个一个怪兽美术”的约束，本轮把美术生产从口头要求改成可测试闸门：
