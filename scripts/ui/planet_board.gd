@@ -33,6 +33,7 @@ const PLANET_TABLE_SAFE_CORE_RATIO := 0.64
 const SIDE_RAIL_LEFT_Y_RATIO := 0.10
 const SIDE_RAIL_RIGHT_Y_RATIO := 0.46
 const SIDE_RAIL_MIN_STAGGER_PIXELS := 34.0
+const DEFAULT_FLOW_STEPS := ["点区", "首召", "建城", "买牌", "出牌", "牌轨", "经济", "路线"]
 
 var left_rail_signature: String = ""
 var right_rail_signature: String = ""
@@ -355,11 +356,11 @@ func _set_flow_compass(data_variant: Variant) -> void:
 			_add_flow_compass_chip(playtest_flow_compass_step_rail, step_variant as Dictionary, data)
 	if playtest_flow_compass_next_label != null:
 		playtest_flow_compass_next_label.text = _flow_compass_next_text(data, steps)
-		playtest_flow_compass_next_label.tooltip_text = str(data.get("tooltip", "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。"))
+		playtest_flow_compass_next_label.tooltip_text = str(data.get("tooltip", "第一局只要顺着这条小轨走到“选路线”。"))
 
 
 func _flow_compass_entries(data: Dictionary) -> Array:
-	var raw_steps: Array = data.get("steps", ["点区", "首召", "建城", "买牌", "出牌"]) if data.get("steps", []) is Array else ["点区", "首召", "建城", "买牌", "出牌"]
+	var raw_steps: Array = data.get("steps", DEFAULT_FLOW_STEPS) if data.get("steps", []) is Array else DEFAULT_FLOW_STEPS
 	var entries: Array = []
 	var first_unfinished := -1
 	for index in range(raw_steps.size()):
@@ -384,7 +385,7 @@ func _flow_compass_entries(data: Dictionary) -> Array:
 
 func _flow_compass_entry(value: Variant, index: int) -> Dictionary:
 	var entry: Dictionary = value.duplicate(true) if value is Dictionary else {"label": str(value)}
-	var fallback_labels := ["点区", "首召", "建城", "买牌", "出牌"]
+	var fallback_labels := DEFAULT_FLOW_STEPS
 	var label := str(entry.get("label", entry.get("text", fallback_labels[index] if index < fallback_labels.size() else "步骤"))).strip_edges()
 	if label == "":
 		label = fallback_labels[index] if index < fallback_labels.size() else "步骤"
@@ -448,6 +449,12 @@ func _flow_step_fallback_accent(index: int) -> Color:
 			return Color("#facc15")
 		4:
 			return Color("#c084fc")
+		5:
+			return Color("#f59e0b")
+		6:
+			return Color("#38bdf8")
+		7:
+			return Color("#22c55e")
 		_:
 			return Color("#94a3b8")
 

@@ -433,6 +433,9 @@ func _check_split_game_screen_data_binding() -> void:
 					{"label": "建城", "done": false, "accent": Color("#4ade80")},
 					{"label": "买牌", "done": false, "accent": Color("#facc15")},
 					{"label": "出牌", "done": false, "accent": Color("#c084fc")},
+					{"label": "牌轨", "done": false, "accent": Color("#f59e0b")},
+					{"label": "经济", "done": false, "accent": Color("#38bdf8")},
+					{"label": "路线", "done": false, "accent": Color("#22c55e")},
 				],
 				"next_text": "下一步：在选区首召",
 			},
@@ -643,8 +646,8 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(left_rail_text != null and not left_rail_text.visible and right_rail_text != null and not right_rail_text.visible, "split PlanetBoard hides static side-rail fallback labels after snapshot binding")
 	_expect(_node_tree_text(left_rail_entries[0]).contains("星区") and _node_tree_text(left_rail_entries[0]).contains("8区"), "split PlanetBoard left rail shows scan-first district count")
 	_expect(_node_tree_text(right_rail_entries[0]).contains("怪兽") and _node_tree_text(right_rail_entries[2]).contains("牌轨"), "split PlanetBoard right rail shows scan-first outer pressure and public track state")
-	_expect(flow_compass != null and flow_compass.visible and flow_compass_step_rail != null and flow_compass_step_rail.get_child_count() == 5, "split PlanetBoard renders a stateful first-minute flow compass beside the planet")
-	_expect(_node_tree_text(flow_compass).contains("✓点区") and _node_tree_text(flow_compass).contains("▶首召") and flow_compass_next_label != null and flow_compass_next_label.text.contains("下一步"), "split PlanetBoard flow compass separates done, current, and next-step text")
+	_expect(flow_compass != null and flow_compass.visible and flow_compass_step_rail != null and flow_compass_step_rail.get_child_count() == 8, "split PlanetBoard renders the full first-run flow compass through route choice beside the planet")
+	_expect(_node_tree_text(flow_compass).contains("✓点区") and _node_tree_text(flow_compass).contains("▶首召") and _node_tree_text(flow_compass).contains("牌轨") and _node_tree_text(flow_compass).contains("经济") and _node_tree_text(flow_compass).contains("路线") and flow_compass_next_label != null and flow_compass_next_label.text.contains("下一步"), "split PlanetBoard flow compass separates done/current/next-step text and includes track/economy/route stages")
 	_expect(hand_rack != null and hand_rack.get_child_count() == 2, "split HandRack receives card data")
 	if hand_rack != null and hand_rack.get_child_count() > 0:
 		var first_hand_card := hand_rack.get_child(0)
@@ -2733,6 +2736,9 @@ func _check_viewmodel_contracts() -> void:
 				{"label": "建城"},
 				{"label": "买牌"},
 				{"label": "出牌"},
+				{"label": "牌轨"},
+				{"label": "经济"},
+				{"label": "路线"},
 			],
 			"next_text": "下一步：首召",
 		},
@@ -2797,7 +2803,7 @@ func _check_viewmodel_contracts() -> void:
 	var planet_flow_steps: Array = planet_flow.get("steps", []) if planet_flow.get("steps", []) is Array else []
 	_expect(planet_left.get("title") == "地表情报" and planet_left_entries.size() == 1 and planet_left_entries[0].get("label") == "星区", "PlanetBoardSnapshot normalizes public surface rail entries")
 	_expect(planet_right.get("title") == "外围压力" and planet_right_entries.size() == 1 and planet_right_entries[0].get("label") == "怪兽", "PlanetBoardSnapshot normalizes outer-pressure rail entries")
-	_expect(planet_flow_steps.size() == 5 and bool(planet_flow_steps[0].get("done", false)) and bool(planet_flow_steps[1].get("current", false)) and str(planet_flow.get("next_text", "")).contains("首召"), "PlanetBoardSnapshot keeps first-minute flow compass state data")
+	_expect(planet_flow_steps.size() == 8 and bool(planet_flow_steps[0].get("done", false)) and bool(planet_flow_steps[1].get("current", false)) and str(planet_flow.get("next_text", "")).contains("首召") and str(planet_flow_steps[5].get("label", "")).contains("牌轨") and str(planet_flow_steps[6].get("label", "")).contains("经济") and str(planet_flow_steps[7].get("label", "")).contains("路线"), "PlanetBoardSnapshot keeps the full first-run flow compass through route choice")
 	_expect(table.to_ui_dictionary().has("right_inspector"), "TableSnapshot creates right-inspector UI context")
 	_expect(table.to_ui_dictionary().get("card_track", []).size() == 1 and table.to_ui_dictionary().get("card_track", [])[0].get("state") == "当前", "TableSnapshot routes public track entries through PublicTrackSnapshot")
 	var table_planet: Dictionary = table.to_ui_dictionary().get("planet", {}) if table.to_ui_dictionary().get("planet", {}) is Dictionary else {}

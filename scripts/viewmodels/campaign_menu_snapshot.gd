@@ -110,11 +110,11 @@ func _path_steps(progress: Dictionary) -> Array:
 		},
 		{
 			"index": "02",
-			"label": "练四步",
+			"label": "练流程",
 			"state": "完成" if completed_count >= halfway else ("现在" if completed_count > 0 else "稍后"),
 			"current": completed_count > 0 and completed_count < halfway,
 			"completed": completed_count >= halfway,
-			"tooltip": "点区、首召、建城、买牌、出牌。",
+			"tooltip": "点区、首召、建城、买牌、出牌、牌轨、经济、路线。",
 		},
 		{
 			"index": "03",

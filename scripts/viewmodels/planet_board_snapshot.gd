@@ -16,6 +16,8 @@ const DEFAULT_RIGHT_ENTRIES := [
 	{"label": "牌轨", "value": "空闲", "active": false, "accent": Color("#f59e0b"), "tooltip": "公共牌轨和竞价节奏。"},
 ]
 
+const DEFAULT_FLOW_STEPS := ["点区", "首召", "建城", "买牌", "出牌", "牌轨", "经济", "路线"]
+
 var title: String = ""
 var hint: String = ""
 var left_rail: Dictionary = {}
@@ -71,13 +73,13 @@ func _weather_source(data: Dictionary) -> Dictionary:
 
 func _flow_compass_source(data: Dictionary) -> Dictionary:
 	var source: Dictionary = data.get("flow_compass", {}) if data.get("flow_compass", {}) is Dictionary else {}
-	var steps: Array = source.get("steps", ["点区", "首召", "建城", "买牌", "出牌"]) if source.get("steps", []) is Array else ["点区", "首召", "建城", "买牌", "出牌"]
+	var steps: Array = source.get("steps", DEFAULT_FLOW_STEPS) if source.get("steps", []) is Array else DEFAULT_FLOW_STEPS
 	var normalized_steps := _normalized_flow_steps(steps, int(source.get("current_index", -1)))
 	return {
 		"title": _first_text(source, ["title", "label"], "试玩 罗盘"),
 		"steps": normalized_steps,
 		"next_text": _flow_next_text(source, normalized_steps),
-		"tooltip": _first_text(source, ["tooltip", "hint"], "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。"),
+		"tooltip": _first_text(source, ["tooltip", "hint"], "第一局只要顺着这条小轨走到“选路线”。"),
 	}
 
 
@@ -157,7 +159,7 @@ func _normalized_flow_steps(source_steps: Array, explicit_current_index: int) ->
 
 func _normalized_flow_step(step_variant: Variant, index: int) -> Dictionary:
 	var source: Dictionary = step_variant if step_variant is Dictionary else {}
-	var fallback_labels := ["点区", "首召", "建城", "买牌", "出牌"]
+	var fallback_labels := DEFAULT_FLOW_STEPS
 	var fallback_label := "步骤"
 	if step_variant is Dictionary:
 		if index < fallback_labels.size():
@@ -200,6 +202,12 @@ func _flow_step_fallback_accent(index: int) -> Color:
 			return Color("#f59e0b")
 		4:
 			return Color("#c084fc")
+		5:
+			return Color("#f59e0b")
+		6:
+			return Color("#38bdf8")
+		7:
+			return Color("#22c55e")
 		_:
 			return Color("#94a3b8")
 

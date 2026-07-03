@@ -2638,7 +2638,7 @@ func _build_playtest_flow_compass(parent: Container) -> void:
 	playtest_flow_compass_panel.name = "PlaytestFlowCompass"
 	playtest_flow_compass_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	playtest_flow_compass_panel.custom_minimum_size = Vector2(0, 34)
-	playtest_flow_compass_panel.tooltip_text = "中央星球试玩罗盘：先扫五步，再回到底部手牌和快捷行动。"
+	playtest_flow_compass_panel.tooltip_text = "中央星球试玩罗盘：点区、首召、建城、买牌、出牌、牌轨、经济、路线。"
 	playtest_flow_compass_panel.add_theme_stylebox_override("panel", _menu_card_style(Color("#fef3c7"), Color("#020617").lerp(Color("#f59e0b"), 0.10), 1, 11))
 	parent.add_child(playtest_flow_compass_panel)
 	var margin := MarginContainer.new()
@@ -2656,7 +2656,7 @@ func _build_playtest_flow_compass(parent: Container) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.custom_minimum_size = Vector2(44, 0)
-	title.tooltip_text = "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。"
+	title.tooltip_text = "第一局只要顺着这条小轨走到“选路线”；详细解释进经济总览和规则页。"
 	row.add_child(title)
 	playtest_flow_compass_row = HFlowContainer.new()
 	playtest_flow_compass_row.name = "PlaytestFlowCompassStepRail"
@@ -2675,13 +2675,18 @@ func _build_playtest_flow_compass(parent: Container) -> void:
 
 func _playtest_flow_compass_entries(player_index: int) -> Array:
 	var has_selection := selected_district >= 0 and selected_district < districts.size()
-	var progress := _opening_guide_progress(player_index)
+	var progress := _first_run_coach_progress(player_index)
+	if progress.is_empty():
+		progress = _opening_guide_progress(player_index)
 	var steps := [
 		{"label": "点区", "done": has_selection, "accent": Color("#38bdf8"), "tip": "在中央星球点一个区域；双击可查看区域牌架。"},
 		{"label": "首召", "done": bool(progress.get("has_monster", false)), "accent": Color("#fb7185"), "tip": "打出起始怪兽，解锁怪兽落地区/邻区购牌。"},
 		{"label": "建城", "done": bool(progress.get("has_city", false)), "accent": Color("#4ade80"), "tip": "在陆地城市化，开始获得实时GDP现金流。"},
 		{"label": "买牌", "done": bool(progress.get("has_bought_card", false)), "accent": Color("#facc15"), "tip": "从怪兽所在区或相邻区买牌；重复牌自动升级。"},
 		{"label": "出牌", "done": bool(progress.get("has_played_card", false)), "accent": Color("#c084fc"), "tip": "满足商品流动后匿名出牌；需要目标的牌会先询问。"},
+		{"label": "牌轨", "done": bool(progress.get("has_seen_public_track", false)), "accent": Color("#f59e0b"), "tip": "看顶部公共时间线，确认已打出的牌留下什么线索。"},
+		{"label": "经济", "done": bool(progress.get("has_checked_economy", false)), "accent": Color("#38bdf8"), "tip": "打开经济总览，看GDP、商品和商路如何变成钱。"},
+		{"label": "路线", "done": bool(progress.get("has_chosen_route", false)), "accent": Color("#22c55e"), "tip": "首局先选一条继续路线：扩GDP、护商路或压竞争。"},
 	]
 	var current_index := -1
 	for i in range(steps.size()):
@@ -2716,7 +2721,24 @@ func _playtest_flow_next_text(player_index: int) -> String:
 		return "下一步：开局准备"
 	if selected_district < 0 or selected_district >= districts.size():
 		return "下一步：点星球区域"
-	return "下一步：%s" % _short_card_text(_goal_hint_body(_player_quick_goal_hint(player_index)), 18)
+	var progress := _first_run_coach_progress(player_index)
+	if progress.is_empty():
+		progress = _opening_guide_progress(player_index)
+	if not bool(progress.get("has_monster", false)):
+		return "下一步：首召怪兽"
+	if not bool(progress.get("has_city", false)):
+		return "下一步：城市化"
+	if not bool(progress.get("has_bought_card", false)):
+		return "下一步：买第一牌"
+	if not bool(progress.get("has_played_card", false)):
+		return "下一步：打出手牌"
+	if not bool(progress.get("has_seen_public_track", false)):
+		return "下一步：看牌轨"
+	if not bool(progress.get("has_checked_economy", false)):
+		return "下一步：看经济"
+	if not bool(progress.get("has_chosen_route", false)):
+		return "下一步：选路线"
+	return "下一步：看线索"
 
 
 func _refresh_playtest_flow_compass() -> void:
@@ -2739,20 +2761,25 @@ func _refresh_playtest_flow_compass() -> void:
 	for entry_variant in _playtest_flow_compass_entries(selected_player):
 		_add_playtest_flow_compass_chip(playtest_flow_compass_row, entry_variant as Dictionary)
 	playtest_flow_compass_next_label.text = _playtest_flow_next_text(selected_player)
-	playtest_flow_compass_next_label.tooltip_text = "这是中央星球旁的短提示；具体按钮在底部快捷行动和手牌架。"
+	playtest_flow_compass_next_label.tooltip_text = "这是中央星球旁的短提示；具体按钮在底部快捷行动、手牌架和经济总览。"
 
 
 func _playtest_flow_compass_signature() -> String:
 	if players.is_empty() or selected_player < 0 or selected_player >= players.size():
 		return "empty:%d:%d" % [selected_player, selected_district]
-	var progress := _opening_guide_progress(selected_player)
-	return "%d:%d:%d:%d:%d:%d:%s" % [
+	var progress := _first_run_coach_progress(selected_player)
+	if progress.is_empty():
+		progress = _opening_guide_progress(selected_player)
+	return "%d:%d:%d:%d:%d:%d:%d:%d:%d:%s" % [
 		selected_player,
 		selected_district,
 		1 if bool(progress.get("has_monster", false)) else 0,
 		1 if bool(progress.get("has_city", false)) else 0,
 		1 if bool(progress.get("has_bought_card", false)) else 0,
 		1 if bool(progress.get("has_played_card", false)) else 0,
+		1 if bool(progress.get("has_seen_public_track", false)) else 0,
+		1 if bool(progress.get("has_checked_economy", false)) else 0,
+		1 if bool(progress.get("has_chosen_route", false)) else 0,
 		_playtest_flow_next_text(selected_player),
 	]
 
@@ -20402,7 +20429,7 @@ func _runtime_planet_flow_compass_source() -> Dictionary:
 		"title": "试玩 罗盘",
 		"steps": steps,
 		"next_text": next_text,
-		"tooltip": "第一局只要顺着这条小轨走：点区、首召、建城、买牌、出牌。具体按钮在底部快捷行动和手牌架。",
+		"tooltip": "第一局只要顺着这条小轨走到“选路线”；具体按钮在底部快捷行动、手牌架和经济总览。",
 	}
 
 
