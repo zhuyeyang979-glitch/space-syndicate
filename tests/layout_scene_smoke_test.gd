@@ -260,6 +260,8 @@ func _check_first_run_coach_component() -> void:
 	var visible_buttons := _visible_button_count(coach)
 	_expect(button != null and button.visible and not button.disabled and (button.text.contains("点") or button.text.contains("确认")), "FirstRunCoach renders a single visible next-step CTA for the current phase")
 	_expect(visible_buttons == 1, "FirstRunCoach keeps exactly one visible CTA in expanded mode")
+	var first_chip_text := _coach_chip_text(first_snapshot)
+	_expect(first_chip_text.contains("看星球") and first_chip_text.contains("选定区") and not first_chip_text.contains("0/8"), "FirstRunCoach chips explain where to look and what changes instead of duplicating progress")
 	if button != null:
 		button.emit_signal("pressed")
 		await process_frame
@@ -300,8 +302,33 @@ func _check_first_run_coach_component() -> void:
 		"auto_fold_when_track_seen": false,
 	}).to_ui_dictionary()
 	_expect(str(clue_snapshot.get("stage", "")) == "inspect_clues" and str(clue_snapshot.get("title", "")).contains("线索"), "FirstRunCoach stage model still includes the clue-inspection phase for non-folded/tutorial variants")
+	var buy_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
+		"progress": {
+			"selected_district": true,
+			"has_monster": true,
+			"has_city": true,
+			"has_opened_supply": true,
+			"has_bought_card": false,
+			"has_played_card": false,
+			"has_seen_public_track": false,
+			"has_seen_clues": false,
+		},
+	}).to_ui_dictionary()
+	var buy_chip_text := _coach_chip_text(buy_snapshot)
+	_expect(buy_chip_text.contains("看牌架") and buy_chip_text.contains("入手牌"), "FirstRunCoach buy step uses table-target and result chips")
 	root.remove_child(coach)
 	coach.queue_free()
+
+
+func _coach_chip_text(snapshot: Dictionary) -> String:
+	var texts: Array[String] = []
+	var chips: Array = snapshot.get("chips", []) if snapshot.get("chips", []) is Array else []
+	for chip_variant in chips:
+		if chip_variant is Dictionary:
+			texts.append(str((chip_variant as Dictionary).get("text", "")))
+		else:
+			texts.append(str(chip_variant))
+	return "｜".join(texts)
 
 
 func _visible_button_count(node: Node) -> int:

@@ -236,8 +236,53 @@ func _normalized_chips(value: Variant) -> Array:
 func _stage_chips(progress: Dictionary, stage: String) -> Array:
 	return [
 		{"text": _stage_definition(stage).get("phase_label", "首局"), "accent": _stage_accent(stage)},
-		{"text": "%d/8" % _completed_count(progress), "tooltip": "首轮核心动作进度。", "accent": Color("#bfdbfe")},
+		{"text": _stage_focus_chip_text(stage), "tooltip": "下一眼先看这块桌面区域。", "accent": Color("#bfdbfe")},
+		{"text": _stage_result_chip_text(stage), "tooltip": "完成这步后，牌局会发生的最直接变化。", "accent": Color("#bbf7d0")},
 	]
+
+
+func _stage_focus_chip_text(stage: String) -> String:
+	match stage:
+		STAGE_SELECT_DISTRICT:
+			return "看星球"
+		STAGE_FIRST_SUMMON:
+			return "看手牌"
+		STAGE_BUILD_CITY:
+			return "看行动"
+		STAGE_OPEN_RACK:
+			return "双击区"
+		STAGE_BUY_CARD:
+			return "看牌架"
+		STAGE_PLAY_CARD:
+			return "看手牌"
+		STAGE_INSPECT_TRACK:
+			return "看牌轨"
+		STAGE_INSPECT_CLUES:
+			return "看右侧"
+		_:
+			return "继续玩"
+
+
+func _stage_result_chip_text(stage: String) -> String:
+	match stage:
+		STAGE_SELECT_DISTRICT:
+			return "选定区"
+		STAGE_FIRST_SUMMON:
+			return "怪兽落地"
+		STAGE_BUILD_CITY:
+			return "现金流"
+		STAGE_OPEN_RACK:
+			return "只查看"
+		STAGE_BUY_CARD:
+			return "入手牌"
+		STAGE_PLAY_CARD:
+			return "进牌轨"
+		STAGE_INSPECT_TRACK:
+			return "找线索"
+		STAGE_INSPECT_CLUES:
+			return "猜归属"
+		_:
+			return "自由决策"
 
 
 func _step_summaries(progress: Dictionary, stage: String) -> Array:
