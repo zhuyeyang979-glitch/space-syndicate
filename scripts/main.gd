@@ -13825,6 +13825,12 @@ func _record_player_card_spend(player_index: int, amount: int, label: String = "
 	_record_player_cash_snapshot(player_index)
 
 
+func _record_player_card_purchase(player_index: int) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	players[player_index]["card_purchase_count"] = int(players[player_index].get("card_purchase_count", 0)) + 1
+
+
 func _record_player_card_income(player_index: int, amount: int, label: String = "卡牌收入", detail: String = "") -> void:
 	if player_index < 0 or player_index >= players.size() or amount <= 0:
 		return
@@ -16965,6 +16971,7 @@ func _new_game() -> void:
 			"last_cashflow_income": 0,
 			"cashflow_remainder": 0.0,
 			"total_card_spend": 0,
+			"card_purchase_count": 0,
 			"total_build_spend": 0,
 			"total_card_income": 0,
 			"total_role_income": 0,
@@ -22631,6 +22638,38 @@ func _first_actionable_hand_slot(player_index: int) -> int:
 	return -1
 
 
+func _first_actionable_nonstarter_hand_slot(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return -1
+	var player: Dictionary = players[player_index]
+	var slots: Array = player.get("slots", [])
+	for i in range(slots.size()):
+		if not (slots[i] is Dictionary):
+			continue
+		var skill: Dictionary = slots[i]
+		if bool(skill.get("starter_play_free", false)):
+			continue
+		var state := _hand_card_play_state(player_index, skill)
+		if bool(state.get("actionable", false)):
+			return i
+	return -1
+
+
+func _first_actionable_teachable_hand_slot(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return -1
+	var player: Dictionary = players[player_index]
+	var slots: Array = player.get("slots", [])
+	for i in range(slots.size()):
+		if not (slots[i] is Dictionary):
+			continue
+		var skill: Dictionary = slots[i]
+		if not _first_run_skill_is_direct_teachable(player_index, skill):
+			continue
+		return i
+	return -1
+
+
 func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 	var empty := {
 		"label": "看星球",
@@ -23193,8 +23232,8 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"accent": Color("#facc15"),
 			}
 		"buy_card":
-			var buyable_district := _first_buyable_district_for_player(player_index)
-			var buyable_card := _first_buyable_district_card(buyable_district, player_index)
+			var buyable_district := _first_teachable_buyable_district_for_player(player_index)
+			var buyable_card := _first_teachable_buyable_district_card(buyable_district, player_index)
 			return {
 				"id": "coach_buy_card",
 				"label": "买第一牌",
@@ -23203,7 +23242,7 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"accent": Color("#fde68a"),
 			}
 		"play_card":
-			var slot := _first_actionable_hand_slot(player_index)
+			var slot := _first_actionable_teachable_hand_slot(player_index)
 			return {
 				"id": "coach_play_card",
 				"label": "打出手牌",
@@ -23300,8 +23339,8 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			if not _ensure_first_run_coach_action_district(player_index):
 				return false
 			var target_buy_district := selected_district
-			if _first_buyable_district_card(target_buy_district, player_index) == "":
-				target_buy_district = _first_buyable_district_for_player(player_index)
+			if _first_teachable_buyable_district_card(target_buy_district, player_index) == "":
+				target_buy_district = _first_teachable_buyable_district_for_player(player_index)
 				if target_buy_district >= 0:
 					_jump_to_district_on_table(target_buy_district)
 			if selected_district < 0 or selected_district >= districts.size():
@@ -23309,7 +23348,7 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			selected_player = player_index
 			if not _district_supply_is_open() or district_supply_open_district != selected_district:
 				_open_first_run_coach_district_supply(selected_district, player_index)
-			var buyable_card := _first_buyable_district_card(selected_district, player_index)
+			var buyable_card := _first_teachable_buyable_district_card(selected_district, player_index)
 			if buyable_card == "":
 				_log("首局买牌：当前没有合法可买牌架；先保持牌架打开，查看怪兽所在区或相邻区。")
 				_finish_first_run_coach_action_feedback(player_index, action_id)
@@ -23321,7 +23360,14 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			return true
 		"coach_play_card":
 			selected_player = player_index
-			var play_handled := _activate_runtime_quick_action("play")
+			if _first_actionable_teachable_hand_slot(player_index) < 0:
+				_ensure_first_run_teachable_hand_card(player_index)
+			var slot_index := _first_actionable_teachable_hand_slot(player_index)
+			if slot_index < 0:
+				return false
+			selected_runtime_card_slot = slot_index
+			_use_skill(slot_index)
+			var play_handled := _player_has_committed_or_resolved_card(player_index)
 			if play_handled:
 				_finish_first_run_coach_action_feedback(player_index, action_id)
 			return play_handled
@@ -23367,6 +23413,78 @@ func _first_buyable_district_card(district_index: int, player_index: int) -> Str
 	return ""
 
 
+func _first_teachable_buyable_district_card(district_index: int, player_index: int) -> String:
+	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size():
+		return ""
+	var fallback := _first_buyable_district_card(district_index, player_index)
+	var choices: Array = districts[district_index].get("card_choices", [])
+	for card_variant in choices:
+		var card_name := String(card_variant)
+		var state := _district_supply_purchase_state(district_index, card_name, player_index)
+		if not bool(state.get("actionable", false)):
+			continue
+		if _first_run_card_is_teachable_after_purchase(player_index, card_name):
+			return card_name
+	return fallback
+
+
+func _first_run_card_is_teachable_after_purchase(player_index: int, card_name: String) -> bool:
+	if player_index < 0 or player_index >= players.size() or card_name == "" or not _skill_exists(card_name):
+		return false
+	var skill := _make_skill(card_name)
+	return _first_run_skill_is_direct_teachable(player_index, skill)
+
+
+func _first_run_skill_is_direct_teachable(player_index: int, skill: Dictionary) -> bool:
+	if player_index < 0 or player_index >= players.size() or skill.is_empty():
+		return false
+	if bool(skill.get("starter_play_free", false)):
+		return false
+	if _is_counter_skill(skill) or _skill_requires_target_monster(skill) or _skill_requires_target_player(skill):
+		return false
+	if String(skill.get("kind", "")) == "area_trade_contract":
+		return false
+	var state := _hand_card_play_state(player_index, skill)
+	return bool(state.get("actionable", false))
+
+
+func _ensure_first_run_teachable_hand_card(player_index: int) -> bool:
+	if _first_actionable_teachable_hand_slot(player_index) >= 0:
+		return true
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var previous_selected_player := selected_player
+	var previous_selected_district := selected_district
+	var previous_market_skill := selected_market_skill
+	var previous_previewed_card := previewed_district_card
+	for access_kind in ["landed", "adjacent", "extended", "global"]:
+		for district_index in range(districts.size()):
+			if bool(districts[district_index].get("destroyed", false)):
+				continue
+			if _district_card_access_kind_live(district_index, player_index) != access_kind:
+				continue
+			for card_variant in districts[district_index].get("card_choices", []):
+				var card_name := String(card_variant)
+				if not _first_run_card_is_teachable_after_purchase(player_index, card_name):
+					continue
+				var state := _district_supply_purchase_state(district_index, card_name, player_index)
+				if not bool(state.get("actionable", false)):
+					continue
+				selected_player = player_index
+				_jump_to_district_on_table(district_index)
+				_open_first_run_coach_district_supply(district_index, player_index)
+				selected_market_skill = card_name
+				previewed_district_card = card_name
+				_claim_district_card(card_name)
+				if _first_actionable_teachable_hand_slot(player_index) >= 0:
+					return true
+	selected_player = previous_selected_player
+	selected_district = previous_selected_district
+	selected_market_skill = previous_market_skill
+	previewed_district_card = previous_previewed_card
+	return _first_actionable_teachable_hand_slot(player_index) >= 0
+
+
 func _first_buyable_district_for_player(player_index: int) -> int:
 	if player_index < 0 or player_index >= players.size():
 		return -1
@@ -23383,6 +23501,30 @@ func _first_buyable_district_for_player(player_index: int) -> int:
 			if _first_buyable_district_card(district_index, player_index) != "":
 				return district_index
 	return -1
+
+
+func _first_teachable_buyable_district_for_player(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return -1
+	if selected_district >= 0 and selected_district < districts.size() and _first_teachable_buyable_district_card(selected_district, player_index) != "":
+		return selected_district
+	if _district_supply_is_open() and _first_teachable_buyable_district_card(district_supply_open_district, player_index) != "":
+		return district_supply_open_district
+	var fallback := -1
+	for access_kind in ["landed", "adjacent", "extended", "global"]:
+		for district_index in range(districts.size()):
+			if bool(districts[district_index].get("destroyed", false)):
+				continue
+			if _district_card_access_kind_live(district_index, player_index) != access_kind:
+				continue
+			var card_name := _first_teachable_buyable_district_card(district_index, player_index)
+			if card_name == "":
+				continue
+			if _first_run_card_is_teachable_after_purchase(player_index, card_name):
+				return district_index
+			if fallback < 0:
+				fallback = district_index
+	return fallback if fallback >= 0 else _first_buyable_district_for_player(player_index)
 
 
 func _first_run_buy_card_tooltip(buyable_district: int, buyable_card: String) -> String:
@@ -23413,22 +23555,22 @@ func _opening_guide_progress(player_index: int) -> Dictionary:
 	var player: Dictionary = players[player_index]
 	var has_monster := _ai_owned_active_monster_count(player_index) > 0
 	var has_city := _player_active_city_count(player_index) > 0
-	var has_bought_card := int(player.get("total_card_spend", 0)) > 0 or _player_counted_hand_size(player) > 1
+	var has_bought_card := int(player.get("card_purchase_count", 0)) > 0
 	var has_played_card := false
 	for entry_variant in resolved_card_history:
 		if not (entry_variant is Dictionary):
 			continue
 		var entry := entry_variant as Dictionary
-		if int(entry.get("player_index", -1)) == player_index:
+		if int(entry.get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry):
 			has_played_card = true
 			break
 	for entry_variant in card_resolution_queue:
-		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index:
+		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry_variant as Dictionary):
 			has_played_card = true
 	for entry_variant in next_card_resolution_queue:
-		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index:
+		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry_variant as Dictionary):
 			has_played_card = true
-	if int(active_card_resolution.get("player_index", -1)) == player_index:
+	if int(active_card_resolution.get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(active_card_resolution):
 		has_played_card = true
 	var has_checked_economy := _opening_guide_economy_seen(player_index)
 	return {
@@ -41149,13 +41291,18 @@ func _local_human_player_index() -> int:
 func _player_has_committed_or_resolved_card(player_index: int) -> bool:
 	if player_index < 0 or player_index >= players.size():
 		return false
-	if int(active_card_resolution.get("player_index", -1)) == player_index:
+	if int(active_card_resolution.get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(active_card_resolution):
 		return true
 	for queue_variant in [card_resolution_queue, next_card_resolution_queue, resolved_card_history]:
 		for entry_variant in queue_variant:
-			if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index:
+			if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry_variant as Dictionary):
 				return true
 	return false
+
+
+func _opening_guide_card_entry_counts(entry: Dictionary) -> bool:
+	var skill: Dictionary = entry.get("skill", {}) if entry.get("skill", {}) is Dictionary else {}
+	return not bool(skill.get("starter_play_free", false))
 
 
 func _player_tableau_progress_entries(player_index: int) -> Array:
@@ -41174,7 +41321,7 @@ func _player_tableau_progress_entries(player_index: int) -> Array:
 	var player: Dictionary = players[player_index]
 	var has_monster := _ai_owned_active_monster_count(player_index) > 0
 	var city_count := _player_active_city_count(player_index)
-	var bought_card := int(player.get("total_card_spend", 0)) > 0 or _player_counted_hand_size(player) > 1
+	var bought_card := int(player.get("card_purchase_count", 0)) > 0
 	var committed_card := _player_has_committed_or_resolved_card(player_index)
 	var score := _player_visible_settlement_estimate(player_index)
 	var goal := _roguelike_cash_goal()
@@ -43525,6 +43672,7 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		return false
 	player["cash"] = int(player.get("cash", 0)) - price
 	players[player_index] = player
+	_record_player_card_purchase(player_index)
 	_record_player_card_spend(player_index, price, "购买%s" % _card_display_name(skill_name), districts[district_index]["name"])
 	if int(pending_discard_purchase.get("player_index", -1)) == player_index and String(pending_discard_purchase.get("skill_name", "")) == skill_name:
 		pending_discard_purchase = {}
@@ -43553,6 +43701,7 @@ func _upgrade_skill_slot(slot_index: int) -> void:
 		return
 	player["cash"] = int(player.get("cash", 0)) - price
 	_record_player_card_spend(selected_player, price, "升级%s" % _card_display_name(upgrade_name), districts[selected_district]["name"] if selected_district >= 0 and selected_district < districts.size() else "")
+	_record_player_card_purchase(selected_player)
 	player["slots"][slot_index] = _make_skill(upgrade_name)
 	_sync_selected_market_skill()
 	_log("%s支付¥%d从区域补给获得%s，将%s升级为%s；区域补给不会消失。" % [
@@ -43588,6 +43737,7 @@ func _replace_skill_slot(slot_index: int) -> void:
 		return
 	player["cash"] = int(player.get("cash", 0)) - price
 	_record_player_card_spend(selected_player, price, "购买%s" % _card_display_name(replacement_name), districts[selected_district]["name"] if selected_district >= 0 and selected_district < districts.size() else "")
+	_record_player_card_purchase(selected_player)
 	_log("%s支付¥%d购买%s。" % [player["name"], price, _card_display_name(replacement_name)])
 	_sync_selected_market_skill()
 	_start_player_cooldown(MARKET_COOLDOWN)

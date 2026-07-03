@@ -700,10 +700,12 @@ func _sync_focus_guide(ui_data: Dictionary) -> void:
 
 
 func _focus_guide_source_data(ui_data: Dictionary) -> Dictionary:
+	var first_run_data: Dictionary = ui_data.get("first_run_coach", {}) if ui_data.get("first_run_coach", {}) is Dictionary else {}
+	if _focus_guide_source_is_active(first_run_data) and _focus_guide_source_is_strong(first_run_data):
+		return first_run_data
 	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
 	if _focus_guide_source_is_active(scenario_data):
 		return scenario_data
-	var first_run_data: Dictionary = ui_data.get("first_run_coach", {}) if ui_data.get("first_run_coach", {}) is Dictionary else {}
 	if _focus_guide_source_is_active(first_run_data):
 		return first_run_data
 	return {}
@@ -717,6 +719,10 @@ func _focus_guide_source_is_active(data: Dictionary) -> bool:
 	if bool(data.get("collapsed", false)):
 		return false
 	return str(data.get("focus_target", "")).strip_edges() != ""
+
+
+func _focus_guide_source_is_strong(data: Dictionary) -> bool:
+	return bool(data.get("pulse_focus", false)) or str(data.get("stuck_state", "")).strip_edges() == "strong"
 
 
 func _show_focus_guide(target_global_rect: Rect2, focus_target: String, scenario_data: Dictionary) -> void:

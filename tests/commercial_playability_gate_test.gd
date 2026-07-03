@@ -80,18 +80,42 @@ func _check_first_ten_minute_action_chain() -> void:
 	var main := await _instantiate_main()
 	if main == null:
 		return
-	main.call("_start_campaign_chapter", "02_market_hand")
+	main.call("_new_game")
 	await _wait_frames(16)
 	_select_recommended_district(main)
 	await _wait_frames(4)
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_first_summon")), "first ten-minute path can perform first summon from coach")
 	await _wait_frames(12)
+	var progress_after_summon: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_summon.get("has_monster", false)), "first ten-minute path records starter monster separately")
+	_expect(not bool(progress_after_summon.get("has_bought_card", false)), "first ten-minute path does not treat starter cards as purchased cards")
+	_expect(not bool(progress_after_summon.get("has_played_card", false)), "first ten-minute path does not treat first summon as the first normal card play")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_build_city")), "first ten-minute path can build the first city from coach")
+	await _wait_frames(12)
+	var progress_after_city: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_city.get("has_city", false)), "first ten-minute path records the first income city")
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_open_rack")), "first ten-minute path can open district card rack from coach")
 	await _wait_frames(8)
 	var runtime := main.find_child("RuntimeGameScreen", true, false) as Control
 	var ui_text := _node_text(runtime)
 	_expect(ui_text.contains("牌架") and ui_text.contains("手牌"), "first ten-minute path keeps card rack and hand concepts visible together")
 	_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "区域牌架", "手牌", "当前行动", "竞价"], "first ten-minute opened-rack table")
+	var purchase_count_before := _local_card_purchase_count(main)
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_buy_card")), "first ten-minute path can buy the first regional card from coach")
+	await _wait_frames(12)
+	var progress_after_buy: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(_local_card_purchase_count(main) > purchase_count_before, "first ten-minute path records a real regional card purchase")
+	_expect(bool(progress_after_buy.get("has_bought_card", false)), "first ten-minute path marks first purchase only after a real regional card enters hand")
+	_expect_first_run_focus_pulse(main, "player_hand", "手牌", "first ten-minute first purchase pulses the hand")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_play_card")), "first ten-minute path can play the first non-starter card from coach")
+	await _wait_frames(12)
+	var progress_after_play: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_play.get("has_played_card", false)), "first ten-minute path marks the first non-starter card play")
+	_expect_first_run_focus_pulse(main, "public_track", "牌轨", "first ten-minute first card play pulses the public track")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_inspect_track")), "first ten-minute path can inspect the public card track after playing")
+	await _wait_frames(8)
+	var progress_after_track: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_track.get("has_seen_public_track", false)), "first ten-minute path records public-track inspection")
 	_check_player_facing_privacy(runtime, Vector2i(1600, 960))
 	root.remove_child(main)
 	main.queue_free()
@@ -194,6 +218,13 @@ func _local_hand_size(main: Node) -> int:
 	if players.is_empty() or not (players[0] is Dictionary):
 		return 0
 	return ((players[0] as Dictionary).get("slots", []) as Array).size()
+
+
+func _local_card_purchase_count(main: Node) -> int:
+	var players: Array = main.get("players") as Array
+	if players.is_empty() or not (players[0] is Dictionary):
+		return 0
+	return int((players[0] as Dictionary).get("card_purchase_count", 0))
 
 
 func _expect_runtime_map_centered_on_district(main: Node, district_index: int, message: String) -> void:
