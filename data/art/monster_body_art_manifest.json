@@ -1,0 +1,178 @@
+{
+  "version": "monster-body-art-manifest-v1",
+  "intent": "One monster family must map to one clearly different body-art family. MOS/Moth Kaijuice is a single reserved monster slot, not a reusable default skin.",
+  "rules": {
+    "moth_kaijuice_reserved_monster": "焰环幼星",
+    "moth_kaijuice_max_active_body_monsters": 1,
+    "minimum_active_upstream_sources": 5,
+    "maximum_single_upstream_active_share": 0.35,
+    "minimum_future_non_mos_candidates": 8,
+    "candidate_visual_family_must_be_unused_by_active_roster": true,
+    "candidate_moth_kaijuice_usage_allowed": false
+  },
+  "active_roster": {
+    "孢雾海皇": {
+      "upstream_source_id": "superpowers_asset_packs_cc0",
+      "visual_source_id": "superpowers_cc0_dragon_family",
+      "sprite_key": "superpowers_dragon",
+      "asset_path": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png",
+      "license": "CC0-1.0",
+      "silhouette_intent": "瘴气古龙：大翼、云雾、海雾污染"
+    },
+    "砂铠陆行兽": {
+      "upstream_source_id": "monster_battler_cc0",
+      "visual_source_id": "monster_battler_cc0_rock_family",
+      "sprite_key": "monster_battler_rock",
+      "asset_path": "res://assets/third_party/monster_battler/monsters/rock.png",
+      "license": "CC0-1.0",
+      "silhouette_intent": "陆地重壳：低重心、岩甲、冲撞"
+    },
+    "流星哨兵": {
+      "upstream_source_id": "kenney_cc0",
+      "visual_source_id": "kenney_cc0_enemy_ufo_family",
+      "sprite_key": "kenney_enemy_ufo",
+      "asset_path": "res://assets/third_party/kenney_cc0/space/enemyUFO.png",
+      "license": "CC0-1.0",
+      "silhouette_intent": "轨道飞行体：圆盘、火线、快速俯冲"
+    },
+    "棱刃重甲": {
+      "upstream_source_id": "monster_battler_cc0",
+      "visual_source_id": "monster_battler_cc0_dino_family",
+      "sprite_key": "monster_battler_dino",
+      "asset_path": "res://assets/third_party/monster_battler/monsters/dino.png",
+      "license": "CC0-1.0",
+      "silhouette_intent": "晶体甲兽：厚甲、棱刃、短距爆发"
+    },
+    "绿洲修复体": {
+      "upstream_source_id": "pixelmob_cc0",
+      "visual_source_id": "pixelmob_cc0_slime_square_family",
+      "sprite_key": "pixelmob_slime_square",
+      "asset_path": "res://assets/third_party/pixelmob_cc0/sprites/SlimeSquareA.png",
+      "license": "CC0-1.0",
+      "silhouette_intent": "修复核心：方形凝胶、十字修复、支援光环"
+    },
+    "焰环幼星": {
+      "upstream_source_id": "moth_kaijuice_mit",
+      "visual_source_id": "moth_kaijuice_mit_kaiju_family",
+      "sprite_key": "moth_kaijuice_kaiju",
+      "asset_path": "res://assets/third_party/moth_kaijuice/city/kaiju/mothkaiju_pc.png",
+      "license": "MIT",
+      "silhouette_intent": "唯一 MOS slot：星焰幼体、熔环、光线"
+    },
+    "蓝锋骑士": {
+      "upstream_source_id": "superpowers_asset_packs_cc0",
+      "visual_source_id": "superpowers_cc0_snake_family",
+      "sprite_key": "superpowers_snake",
+      "asset_path": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png",
+      "license": "CC0-1.0",
+      "silhouette_intent": "长身刃兽：蛇形、光刃、复仇铠"
+    },
+    "镜像猎兵": {
+      "upstream_source_id": "kenney_cc0",
+      "visual_source_id": "kenney_cc0_alien_blue_family",
+      "sprite_key": "kenney_alien_blue",
+      "asset_path": "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png",
+      "license": "CC0-1.0",
+      "silhouette_intent": "镜像猎兵：小型异星头、远程眼、迂回射击"
+    }
+  },
+  "future_candidate_bank": [
+    {
+      "candidate_id": "volcanic_salamander",
+      "upstream_source_id": "monster_battler_cc0",
+      "visual_source_id": "monster_battler_cc0_salamander_family",
+      "sprite_key": "monster_battler_salamander",
+      "asset_path": "res://assets/third_party/monster_battler/monsters/salamander.png",
+      "license": "CC0-1.0",
+      "best_fit": "火山、岩浆、热液裂隙或陆海两栖怪兽",
+      "status": "imported_unused"
+    },
+    {
+      "candidate_id": "armored_turtle_sea_fort",
+      "upstream_source_id": "monster_battler_cc0",
+      "visual_source_id": "monster_battler_cc0_turtle_family",
+      "sprite_key": "monster_battler_turtle",
+      "asset_path": "res://assets/third_party/monster_battler/monsters/turtle.png",
+      "license": "CC0-1.0",
+      "best_fit": "海防、港口堵塞、慢速高护甲怪兽",
+      "status": "imported_unused"
+    },
+    {
+      "candidate_id": "burrowing_rodent_colossus",
+      "upstream_source_id": "monster_battler_cc0",
+      "visual_source_id": "monster_battler_cc0_rodent_family",
+      "sprite_key": "monster_battler_rodent",
+      "asset_path": "res://assets/third_party/monster_battler/monsters/rodent.png",
+      "license": "CC0-1.0",
+      "best_fit": "地下、仓储掠夺、路线挖断怪兽",
+      "status": "imported_unused"
+    },
+    {
+      "candidate_id": "abyssal_fish_runner",
+      "upstream_source_id": "kenney_cc0",
+      "visual_source_id": "kenney_cc0_fish_family",
+      "sprite_key": "kenney_fish",
+      "asset_path": "res://assets/third_party/kenney_cc0/platformer/enemies/fishSwim1.png",
+      "license": "CC0-1.0",
+      "best_fit": "深海高速、洋流、海运商路压力怪兽",
+      "status": "imported_unused"
+    },
+    {
+      "candidate_id": "soft_slime_swarm",
+      "upstream_source_id": "kenney_cc0",
+      "visual_source_id": "kenney_cc0_slime_family",
+      "sprite_key": "kenney_slime",
+      "asset_path": "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png",
+      "license": "CC0-1.0",
+      "best_fit": "低速分裂、污染、商品吞噬怪兽",
+      "status": "imported_unused"
+    },
+    {
+      "candidate_id": "pixelmob_amoeba_core",
+      "upstream_source_id": "pixelmob_cc0",
+      "visual_source_id": "pixelmob_cc0_slime_family",
+      "sprite_key": "pixelmob_slime",
+      "asset_path": "res://assets/third_party/pixelmob_cc0/sprites/SlimeA.png",
+      "license": "CC0-1.0",
+      "best_fit": "复制、孢子、商品储存/仓库寄生怪兽",
+      "status": "imported_unused"
+    },
+    {
+      "candidate_id": "cyclops_siege_behemoth",
+      "upstream_source_id": "superpowers_asset_packs_cc0",
+      "visual_source_id": "superpowers_cc0_cyclop_family",
+      "sprite_key": "superpowers_cyclop",
+      "asset_path": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png",
+      "license": "CC0-1.0",
+      "best_fit": "城市攻城、单眼光炮、低速高破坏怪兽",
+      "status": "imported_unused"
+    },
+    {
+      "candidate_id": "thin_slime_tide",
+      "upstream_source_id": "superpowers_asset_packs_cc0",
+      "visual_source_id": "superpowers_cc0_slim_family",
+      "sprite_key": "superpowers_slim",
+      "asset_path": "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png",
+      "license": "CC0-1.0",
+      "best_fit": "海岸、酸雾、低轮廓区域封锁怪兽",
+      "status": "imported_unused"
+    }
+  ],
+  "reference_only_sources": [
+    {
+      "source_id": "binary_machinery_disastercity",
+      "url": "https://github.com/binary-machinery/DisasterCity",
+      "usage": "城市被巨兽压迫、RTS 态势与建筑破坏感参考；未导入玩家-facing素材"
+    },
+    {
+      "source_id": "amnexistence_destroyable_buildings_generation",
+      "url": "https://github.com/Amnexistence/Destroyable_Buildings_Generation",
+      "usage": "建筑破坏技术和碎裂反馈参考；未导入怪兽 body"
+    },
+    {
+      "source_id": "zylann_solar_system_demo",
+      "url": "https://github.com/Zylann/solar_system_demo",
+      "usage": "星球模型和太空镜头参考；不作为怪兽 body 来源"
+    }
+  ]
+}

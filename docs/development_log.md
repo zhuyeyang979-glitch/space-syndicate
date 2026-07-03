@@ -3,6 +3,22 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜怪兽美术来源多样性清单
+
+- 回应“MOS kaijus 只能用于一个怪兽，不能把每个怪兽都套同一张皮”的要求，本轮把怪兽 body 来源从口头约束推进成数据合同：
+  - 新增 `data/art/monster_body_art_manifest.json`，逐一列出当前 8 只怪兽的 upstream、visual family、sprite key、asset path、license 和 silhouette intent。
+  - `焰环幼星` 继续是唯一允许使用 MOS/Moth Kaijuice kaiju body 的怪兽；其他怪兽不得使用 `moth_kaijuice_*` body、Moth visual family 或 `moth_kaijuice_mit` upstream。
+  - manifest 增加 8 个已经导入但未分配的非 MOS 候选 body：salamander、turtle、rodent、fish、Kenney slime、PixelMob amoeba、cyclops、thin slime，给后续新增怪兽一只一只做，而不是回到同一皮套换动作。
+  - `tests/art_identity_gate_test.gd` 现在读取该 manifest，检查当前 roster 与代码一致、候选池足够、候选素材文件存在、候选 visual family 不复用当前怪兽、MOS 不进入未来候选池。
+  - `tests/visual_snapshot.gd` 增加工程护栏，防止后续删除 manifest 或把候选池清空。
+- 文档同步：
+  - `docs/art_production_contract.md` 明确 manifest 是怪兽美术生产门禁。
+  - `docs/third_party_assets.md` 新增 source-diversity manifest 说明和候选池边界。
+
+### 本轮验证
+
+- 目标验证：MOS/Moth Kaijuice body 只服务 `焰环幼星`；未来新增怪兽必须使用非 MOS 候选或新导入来源。
+
 ## 2026-07-03｜ScenarioCoach 空状态不再显示占位目标
 
 - 继续推进首局真人可读性，本轮修正主桌上一个容易误导测试者的默认态：

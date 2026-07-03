@@ -150,6 +150,18 @@ Current player-facing use:
 - This pack is intentionally used to reduce visual dependence on the MOS/Moth kaiju sheet, but it may not become the new default body source. The art identity gate now requires at least five upstream monster body-art packs and rejects any one pack supplying more than 35% of the current roster.
 - These CC0 sprites are temporary prototype anchors. Later owned art should preserve the same per-monster silhouette/source-family diversity.
 
+## Monster body source-diversity manifest
+
+Authoritative manifest: `data/art/monster_body_art_manifest.json`
+
+Current production rule:
+
+- `焰环幼星` is the only active monster allowed to use the MOS/Moth Kaijuice kaiju body.
+- Every active monster body is listed one by one with upstream source, visual family, sprite key, asset path, license, and silhouette intent.
+- The manifest also keeps a ready non-MOS candidate bank for the next monster pass, currently including imported but unused salamander, turtle, rodent, fish, slime, amoeba, cyclops, and thin-slime body families.
+- These candidates are not “automatic new monsters”; they are approved body starting points that still need authored mechanics, action profiles, card faces, map-token review, and human visual QA before entering the roster.
+- The art identity gate reads this manifest and fails if MOS/Moth Kaijuice leaks into the candidate bank or if the candidate bank stops providing enough distinct non-MOS body families.
+
 ## Game-icons card semantic SVG subset
 
 Source: <https://github.com/game-icons/icons>

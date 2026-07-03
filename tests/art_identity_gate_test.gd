@@ -3,6 +3,7 @@ extends SceneTree
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const CARD_ART_SCRIPT_PATH := "res://scripts/card_art_view.gd"
 const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
+const MONSTER_BODY_ART_MANIFEST_PATH := "res://data/art/monster_body_art_manifest.json"
 
 const EXPECTED_MONSTER_BODY_SPRITES := {
 	"孢雾海皇": {"upstream": "superpowers_asset_packs_cc0", "visual": "superpowers_cc0_dragon_family", "sprite": "superpowers_dragon"},
@@ -38,6 +39,7 @@ func _run() -> void:
 
 	await _verify_card_art_identity(main)
 	await _verify_monster_art_identity(main)
+	_verify_monster_body_art_manifest()
 	_verify_monster_action_art_identity(main)
 
 	main.queue_free()
@@ -256,6 +258,94 @@ func _verify_monster_art_identity(main: Node) -> void:
 	_expect(largest_upstream_count <= int(ceil(float(monster_sources.size()) * 0.35)), "no single upstream monster art pack supplies more than 35% of the current roster")
 	_expect(moth_source_count == 1, "Moth Kaijuice/MOS kaiju art is reserved for exactly one monster family in the current roster")
 	_expect(moth_upstream_count == 1 and moth_sprite_count == 1 and moth_monster_names == [ONLY_MOTH_KAIJUICE_MONSTER], "MOS/Moth Kaijuice body art must appear on %s only; found=%s upstream=%d sprites=%d" % [ONLY_MOTH_KAIJUICE_MONSTER, ", ".join(moth_monster_names), moth_upstream_count, moth_sprite_count])
+
+
+func _verify_monster_body_art_manifest() -> void:
+	_expect(FileAccess.file_exists(MONSTER_BODY_ART_MANIFEST_PATH), "monster body art manifest exists as the source-diversity contract")
+	if not FileAccess.file_exists(MONSTER_BODY_ART_MANIFEST_PATH):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(MONSTER_BODY_ART_MANIFEST_PATH))
+	_expect(parsed is Dictionary, "monster body art manifest parses as JSON object")
+	if not (parsed is Dictionary):
+		return
+	var manifest := parsed as Dictionary
+	_expect(String(manifest.get("version", "")) == "monster-body-art-manifest-v1", "monster body art manifest has the expected version")
+	var rules := manifest.get("rules", {}) as Dictionary
+	_expect(String(rules.get("moth_kaijuice_reserved_monster", "")) == ONLY_MOTH_KAIJUICE_MONSTER, "manifest reserves the MOS/Moth slot for the same single monster as the audit gate")
+	_expect(int(rules.get("moth_kaijuice_max_active_body_monsters", 0)) == 1, "manifest caps active MOS/Moth body usage at exactly one monster")
+	_expect(int(rules.get("minimum_active_upstream_sources", 0)) >= 5, "manifest requires at least five active upstream monster art packs")
+	_expect(float(rules.get("maximum_single_upstream_active_share", 1.0)) <= 0.35, "manifest caps any one upstream pack at 35% or less of active roster")
+	_expect(int(rules.get("minimum_future_non_mos_candidates", 0)) >= 8, "manifest requires at least eight non-MOS future body candidates")
+	_expect(not bool(rules.get("candidate_moth_kaijuice_usage_allowed", true)), "manifest forbids MOS/Moth candidates for future generic monster expansion")
+
+	var active_roster := manifest.get("active_roster", {}) as Dictionary
+	_expect(active_roster.size() == EXPECTED_MONSTER_BODY_SPRITES.size(), "manifest active roster covers the explicit current monster list one-for-one")
+	var active_visuals := {}
+	var active_sprites := {}
+	var moth_active_names: Array[String] = []
+	for monster_name_variant in EXPECTED_MONSTER_BODY_SPRITES.keys():
+		var monster_name := String(monster_name_variant)
+		_expect(active_roster.has(monster_name), "manifest active roster lists %s" % monster_name)
+		if not active_roster.has(monster_name):
+			continue
+		var entry := active_roster[monster_name] as Dictionary
+		var expected := EXPECTED_MONSTER_BODY_SPRITES[monster_name] as Dictionary
+		var upstream_source_id := String(entry.get("upstream_source_id", ""))
+		var visual_source_id := String(entry.get("visual_source_id", ""))
+		var sprite_key := String(entry.get("sprite_key", ""))
+		var asset_path := String(entry.get("asset_path", ""))
+		_expect(upstream_source_id == String(expected.get("upstream", "")), "manifest %s upstream matches code/test art profile" % monster_name)
+		_expect(visual_source_id == String(expected.get("visual", "")), "manifest %s visual family matches code/test art profile" % monster_name)
+		_expect(sprite_key == String(expected.get("sprite", "")), "manifest %s sprite key matches code/test art profile" % monster_name)
+		_expect(asset_path.begins_with("res://") and FileAccess.file_exists(asset_path), "manifest %s points at an existing imported body asset" % monster_name)
+		_expect(String(entry.get("silhouette_intent", "")).length() >= 8, "manifest %s explains the silhouette intent for human art review" % monster_name)
+		_expect(not active_visuals.has(visual_source_id), "manifest active visual family is unique for %s" % monster_name)
+		_expect(not active_sprites.has(sprite_key), "manifest active sprite key is unique for %s" % monster_name)
+		active_visuals[visual_source_id] = monster_name
+		active_sprites[sprite_key] = monster_name
+		if upstream_source_id == "moth_kaijuice_mit" or visual_source_id.begins_with("moth_kaijuice") or sprite_key.begins_with("moth_kaijuice"):
+			moth_active_names.append(monster_name)
+	_expect(moth_active_names == [ONLY_MOTH_KAIJUICE_MONSTER], "manifest active MOS/Moth body appears only on %s; found=%s" % [ONLY_MOTH_KAIJUICE_MONSTER, ", ".join(moth_active_names)])
+
+	var candidates := manifest.get("future_candidate_bank", []) as Array
+	var min_candidates := int(rules.get("minimum_future_non_mos_candidates", 8))
+	_expect(candidates.size() >= min_candidates, "manifest keeps a future non-MOS monster body candidate bank with at least %d entries" % min_candidates)
+	var candidate_visuals := {}
+	var candidate_sprites := {}
+	var candidate_upstreams := {}
+	for candidate_variant in candidates:
+		if not (candidate_variant is Dictionary):
+			_failures.append("monster body art manifest candidate is not a Dictionary")
+			continue
+		var candidate := candidate_variant as Dictionary
+		var candidate_id := String(candidate.get("candidate_id", ""))
+		var candidate_upstream := String(candidate.get("upstream_source_id", ""))
+		var candidate_visual := String(candidate.get("visual_source_id", ""))
+		var candidate_sprite := String(candidate.get("sprite_key", ""))
+		var candidate_path := String(candidate.get("asset_path", ""))
+		_expect(candidate_id != "" and candidate_visual != "" and candidate_sprite != "", "future monster art candidate declares id, visual family, and sprite key")
+		_expect(candidate_upstream != "moth_kaijuice_mit" and not candidate_visual.begins_with("moth_kaijuice") and not candidate_sprite.begins_with("moth_kaijuice"), "future monster art candidate %s is not a hidden reuse of MOS/Moth body art" % candidate_id)
+		_expect(not active_visuals.has(candidate_visual), "future monster art candidate %s uses a visual family not already consumed by the active roster" % candidate_id)
+		_expect(not active_sprites.has(candidate_sprite), "future monster art candidate %s uses a body sprite not already consumed by the active roster" % candidate_id)
+		_expect(not candidate_visuals.has(candidate_visual), "future monster art candidate %s has a unique candidate visual family" % candidate_id)
+		_expect(not candidate_sprites.has(candidate_sprite), "future monster art candidate %s has a unique candidate sprite key" % candidate_id)
+		_expect(candidate_path.begins_with("res://") and FileAccess.file_exists(candidate_path), "future monster art candidate %s points at an existing imported asset" % candidate_id)
+		_expect(String(candidate.get("best_fit", "")).length() >= 8, "future monster art candidate %s states a gameplay/ecology fit, not only a file path" % candidate_id)
+		candidate_visuals[candidate_visual] = candidate_id
+		candidate_sprites[candidate_sprite] = candidate_id
+		candidate_upstreams[candidate_upstream] = true
+	_expect(candidate_visuals.size() >= min_candidates, "future monster art candidate bank has enough distinct visual families")
+	_expect(candidate_upstreams.size() >= 4, "future monster art candidate bank draws from several upstream packs, not one backup sheet")
+
+	var reference_sources := manifest.get("reference_only_sources", []) as Array
+	_expect(reference_sources.size() >= 3, "manifest tracks non-imported kaiju/city/planet references separately from copied body assets")
+	for reference_variant in reference_sources:
+		if not (reference_variant is Dictionary):
+			_failures.append("monster art reference-only source is not a Dictionary")
+			continue
+		var reference := reference_variant as Dictionary
+		_expect(String(reference.get("url", "")).begins_with("https://github.com/"), "reference-only monster art source keeps a GitHub URL for follow-up review")
+		_expect(String(reference.get("usage", "")).length() >= 12, "reference-only monster art source states what it is useful for")
 
 
 func _verify_monster_action_art_identity(main: Node) -> void:

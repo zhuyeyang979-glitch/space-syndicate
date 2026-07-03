@@ -47,6 +47,18 @@ Acceptance:
 
 Every monster family must have a distinct silhouette and portrait profile.
 
+The authoritative source-diversity manifest is:
+
+- `data/art/monster_body_art_manifest.json`
+
+This manifest is not flavor text. It is a production gate:
+
+- The active roster section must list every current monster one by one.
+- The MOS/Moth Kaijuice body slot must remain reserved for `焰环幼星` only.
+- Future monster expansion must draw from the non-MOS candidate bank or add a newly licensed/imported source before a new monster is accepted.
+- A candidate body family does not count if it is only a color swap, action overlay, or alternate frame of an already assigned monster body.
+- A candidate body family must state its gameplay/ecology fit so art choices follow monster mechanics instead of filling empty slots.
+
 Each monster art profile must include:
 
 - `visual_source_id`: the exact body-art source family. This is stricter than a palette or pose variant.
@@ -67,6 +79,7 @@ Acceptance:
 - In the current roster, that single MOS/Moth Kaijuice body slot is explicitly reserved for `焰环幼星`. If any other current monster declares a `moth_kaijuice_*` sprite, `moth_kaijuice_mit` upstream source, or Moth visual family, the art gate must fail.
 - The current monster roster must draw body art from at least five upstream/open-source packs, and no single upstream pack may provide more than 35% of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
 - A newly imported monster body source must be tied to a specific monster family before it counts. Documentation-only references do not satisfy the gate.
+- The active source-diversity manifest must also keep at least eight non-MOS future body candidates ready for expansion. This prevents the next monster pass from defaulting back to the MOS/Moth Kaijuice sheet.
 - Monster art must be visible in the bestiary/detail contexts, monster cards, and runtime map tokens. The map token may be compact, but it must consume the same `sprite_key`, `visual_source_id`, and `upstream_source_id` contract instead of falling back to only number/color/glyph.
 - Each rank-I monster card must use the same body `sprite_key` as its corresponding monster art profile. The card frame may add overlays, but it cannot represent the monster with an unrelated creature sprite.
 - Runtime monster actions must consume the same action animation profile used by the art audit. A beam, projectile, dash, miasma, repair, roar/wave, throw, and melee action may still be greybox, but they must not all collapse into one generic map line or circle.
@@ -149,6 +162,7 @@ The gate fails if:
 - any current monster other than `焰环幼星` uses a Moth Kaijuice/MOS upstream source, visual family, or `moth_kaijuice_*` body sprite;
 - fewer than five upstream/open-source monster art packs are represented in the current roster;
 - one upstream/open-source pack supplies more than 35% of the current monster roster;
+- the monster body manifest is missing, disagrees with the active roster, lacks eight non-MOS future candidates, points to missing asset files, or lets MOS/Moth Kaijuice appear outside the single reserved monster;
 - a monster action duplicates another action name, pose key, or animation profile inside the same monster;
 - a damage action uses a generic utility pose;
 - knockback/throw impact takes more than 0.60 seconds;
