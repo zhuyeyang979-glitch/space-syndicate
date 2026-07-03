@@ -54,6 +54,32 @@ func _run() -> void:
 		await _wait_frames(1)
 	_expect(selected_entries.size() == 1 and str((selected_entries[0] as Dictionary).get("id", "")) == "track_focus_sample", "runtime public track accepts keyboard/gamepad selection")
 
+	var selected_cards: Array = []
+	var action_ids: Array[String] = []
+	if screen.has_signal("card_selected"):
+		screen.connect("card_selected", func(card_data: Dictionary) -> void:
+			selected_cards.append(card_data)
+		)
+	if screen.has_signal("action_requested"):
+		screen.connect("action_requested", func(action_id: String) -> void:
+			action_ids.append(action_id)
+		)
+	var hand_card := screen.find_child("MiniHandCardFace0", true, false) as Control
+	_expect(hand_card != null, "runtime hand renders a focusable hand card")
+	if hand_card != null:
+		_expect(hand_card.focus_mode == Control.FOCUS_ALL, "runtime hand card is reachable by keyboard/gamepad focus")
+		_expect(str(hand_card.get_meta("runtime_focus_kind", "")) == "hand_card", "runtime hand card carries a table-focus marker")
+		_expect(str(hand_card.focus_next) != "" and str(hand_card.focus_previous) != "", "runtime hand card links to neighboring hand cards when available")
+		var hand_accept := InputEventAction.new()
+		hand_accept.action = "ui_accept"
+		hand_accept.pressed = true
+		hand_card.emit_signal("gui_input", hand_accept)
+		await _wait_frames(1)
+		hand_card.emit_signal("gui_input", hand_accept)
+		await _wait_frames(1)
+	_expect(selected_cards.size() >= 1 and str((selected_cards[0] as Dictionary).get("id", "")) == "starter_monster", "runtime hand card first confirm selects the card")
+	_expect(action_ids.has("play_starter"), "runtime hand card second confirm requests the card play action")
+
 	root.remove_child(screen)
 	screen.queue_free()
 	_finish()
@@ -113,6 +139,16 @@ func _table_state() -> Dictionary:
 					"effect": "召唤怪兽，开放附近买牌。",
 					"actionable": true,
 					"actions": [{"id": "play_starter", "label": "打出"}],
+				},
+				{
+					"id": "starter_route",
+					"name": "城市融资",
+					"type": "经济",
+					"rank": "I",
+					"cost": "¥120",
+					"effect": "提升城市现金流。",
+					"actionable": true,
+					"actions": [{"id": "play_route", "label": "打出"}],
 				},
 			],
 			"quick_actions": [

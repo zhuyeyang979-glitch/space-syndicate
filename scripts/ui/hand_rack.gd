@@ -151,6 +151,7 @@ func _sync_card_nodes(cards: Array) -> void:
 			child.queue_free()
 	for index in range(wanted_nodes.size()):
 		move_child(wanted_nodes[index], index)
+	_sync_card_focus_links()
 	if selected_node != null:
 		set_selected_card(selected_node)
 	elif _selected_identity != "":
@@ -165,9 +166,11 @@ func _update_card_data(cards: Array) -> void:
 		var card_data: Dictionary = cards[index] if cards[index] is Dictionary else {}
 		var identity := str(card_data.get("_hand_identity", _card_identity_key(card_data, index)))
 		_render_card_data(nodes[index], card_data)
+		_connect_card_node_signals(nodes[index])
 		if _card_data_marks_selected(card_data) or (_selected_identity != "" and identity == _selected_identity):
 			selected_node = nodes[index]
 			_selected_identity = identity
+	_sync_card_focus_links()
 	if selected_node != null:
 		set_selected_card(selected_node)
 	elif _selected_identity != "" and get_selected_card() == null:
@@ -197,6 +200,8 @@ func _render_card_data(card: Control, card_data: Dictionary) -> void:
 
 
 func _connect_card_node_signals(card: Control) -> void:
+	card.focus_mode = Control.FOCUS_ALL
+	card.set_meta("runtime_focus_kind", "hand_card")
 	if card.has_signal("card_clicked"):
 		var clicked := Callable(self, "_on_card_clicked").bind(card)
 		if not card.is_connected("card_clicked", clicked):
@@ -205,6 +210,12 @@ func _connect_card_node_signals(card: Control) -> void:
 		var double_clicked := Callable(self, "_on_card_double_clicked").bind(card)
 		if not card.is_connected("card_double_clicked", double_clicked):
 			card.connect("card_double_clicked", double_clicked)
+	var focus_entered := Callable(self, "_on_card_focus_entered").bind(card)
+	if not card.focus_entered.is_connected(focus_entered):
+		card.focus_entered.connect(focus_entered)
+	var focus_exited := Callable(self, "_on_card_focus_exited").bind(card)
+	if not card.focus_exited.is_connected(focus_exited):
+		card.focus_exited.connect(focus_exited)
 
 
 func _clear_hand_children() -> void:
@@ -235,6 +246,21 @@ func _on_card_mouse_exited(card: Control) -> void:
 	card_unhovered.emit()
 
 
+func _on_card_focus_entered(card: Control) -> void:
+	if card == null or card.get_parent() != self:
+		return
+	set_hovered_card(card)
+	card_hovered.emit(_card_data_for(card))
+
+
+func _on_card_focus_exited(card: Control) -> void:
+	if card == null or card.get_parent() != self:
+		return
+	if _hovered_card == card:
+		set_hovered_card(null)
+	card_unhovered.emit()
+
+
 func _on_card_clicked(card_data: Dictionary, card: Control) -> void:
 	_select_card_node(card)
 	card_selected.emit(card_data)
@@ -246,6 +272,10 @@ func _on_card_double_clicked(card_data: Dictionary, card: Control) -> void:
 
 
 func _on_card_gui_input(event: InputEvent, card: Control) -> void:
+	if event != null and event.is_action_pressed("ui_accept"):
+		_activate_focused_card(card)
+		accept_event()
+		return
 	if event is InputEventMouseButton:
 		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
 		if mouse_button.button_index != MOUSE_BUTTON_LEFT:
@@ -311,6 +341,33 @@ func _card_data_for(card: Control) -> Dictionary:
 		var data_variant: Variant = card.call("get_card_data")
 		return data_variant if data_variant is Dictionary else {}
 	return {}
+
+
+func _activate_focused_card(card: Control) -> void:
+	if card == null or card.get_parent() != self:
+		return
+	var card_data := _card_data_for(card)
+	if get_selected_card() == card:
+		card_double_selected.emit(card_data)
+		return
+	_select_card_node(card)
+	card_selected.emit(card_data)
+
+
+func _sync_card_focus_links() -> void:
+	var nodes := _card_children()
+	for index in range(nodes.size()):
+		var card := nodes[index]
+		if card == null:
+			continue
+		card.focus_mode = Control.FOCUS_ALL
+		card.set_meta("runtime_focus_kind", "hand_card")
+		if nodes.size() <= 1:
+			card.focus_next = NodePath("")
+			card.focus_previous = NodePath("")
+			continue
+		card.focus_previous = card.get_path_to(nodes[wrapi(index - 1, 0, nodes.size())])
+		card.focus_next = card.get_path_to(nodes[wrapi(index + 1, 0, nodes.size())])
 
 
 func _event_screen_position(event: InputEvent, card: Control) -> Vector2:
