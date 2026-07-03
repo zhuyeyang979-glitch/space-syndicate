@@ -1,6 +1,7 @@
 extends SceneTree
 
 const GAME_SCREEN_SCENE := preload("res://scenes/ui/GameScreen.tscn")
+const DISTRICT_SUPPLY_MARKET_CARD_SCENE := preload("res://scenes/ui/DistrictSupplyMarketCard.tscn")
 
 var _failures: Array[String] = []
 
@@ -80,9 +81,58 @@ func _run() -> void:
 	_expect(selected_cards.size() >= 1 and str((selected_cards[0] as Dictionary).get("id", "")) == "starter_monster", "runtime hand card first confirm selects the card")
 	_expect(action_ids.has("play_starter"), "runtime hand card second confirm requests the card play action")
 
+	await _check_district_supply_market_card_component()
+
 	root.remove_child(screen)
 	screen.queue_free()
 	_finish()
+
+
+func _check_district_supply_market_card_component() -> void:
+	var card := DISTRICT_SUPPLY_MARKET_CARD_SCENE.instantiate() as Control
+	_expect(card != null, "district supply market card scene instantiates")
+	if card == null:
+		return
+	root.add_child(card)
+	await _wait_frames(2)
+	if card.has_method("set_card"):
+		card.call("set_card", {
+			"card_name": "城市融资1",
+			"title": "城市融资",
+			"display_name": "城市融资",
+			"kind": "city",
+			"rank": "I",
+			"rank_number": 1,
+			"route": "城市成长",
+			"facts": "GDP+70｜无门槛",
+			"state_text": "可购买",
+			"actionable": true,
+			"accent": Color("#22c55e"),
+			"theme_color": Color("#38bdf8"),
+			"chips": [{"text": "经济", "accent": Color("#38bdf8")}],
+			"micro_chips": [{"text": "¥120", "accent": Color("#fde68a")}],
+		})
+	var previewed: Array[String] = []
+	var activated: Array[String] = []
+	if card.has_signal("card_preview_requested"):
+		card.connect("card_preview_requested", func(card_name: String) -> void:
+			previewed.append(card_name)
+		)
+	if card.has_signal("card_activated"):
+		card.connect("card_activated", func(card_name: String) -> void:
+			activated.append(card_name)
+		)
+	_expect(card.focus_mode == Control.FOCUS_ALL, "district supply market card is keyboard/gamepad focusable")
+	_expect(str(card.get_meta("runtime_focus_kind", "")) == "district_supply_market_card", "district supply market card carries a table-focus marker")
+	var accept_event := InputEventAction.new()
+	accept_event.action = "ui_accept"
+	accept_event.pressed = true
+	card.call("_gui_input", accept_event)
+	await _wait_frames(1)
+	_expect(previewed == ["城市融资1"], "district supply market card confirm first previews the card")
+	_expect(activated == ["城市融资1"], "district supply market card confirm activates the purchase/open action")
+	root.remove_child(card)
+	card.queue_free()
 
 
 func _table_state() -> Dictionary:

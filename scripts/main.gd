@@ -30540,9 +30540,32 @@ func _refresh_district_supply_overlay() -> void:
 			var card_name := String(card_name_variant)
 			if _skill_exists(card_name):
 				_add_district_supply_card_button(district_supply_list_box, district_supply_open_district, card_name)
+		_sync_district_supply_market_focus_links()
 	if district_supply_preview_box != null:
 		_clear_children(district_supply_preview_box)
 		_add_district_supply_preview(district_supply_preview_box, district_supply_open_district)
+
+
+func _sync_district_supply_market_focus_links() -> void:
+	if district_supply_list_box == null:
+		return
+	var market_cards := []
+	for child in district_supply_list_box.get_children():
+		if child is Control and child.has_method("get_card_name"):
+			var control := child as Control
+			control.focus_mode = Control.FOCUS_ALL
+			control.set_meta("runtime_focus_kind", "district_supply_market_card")
+			market_cards.append(control)
+	for i in range(market_cards.size()):
+		var control := market_cards[i] as Control
+		if market_cards.size() <= 1:
+			control.focus_next = NodePath("")
+			control.focus_previous = NodePath("")
+			continue
+		var previous_control := market_cards[wrapi(i - 1, 0, market_cards.size())] as Control
+		var next_control := market_cards[wrapi(i + 1, 0, market_cards.size())] as Control
+		control.focus_previous = control.get_path_to(previous_control)
+		control.focus_next = control.get_path_to(next_control)
 
 
 func _district_supply_purchase_state(district_index: int, card_name: String, player_index: int) -> Dictionary:

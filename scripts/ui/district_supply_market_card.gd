@@ -25,6 +25,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	focus_mode = Control.FOCUS_ALL
+	set_meta("runtime_focus_kind", "district_supply_market_card")
 	mouse_entered.connect(_emit_hover)
 	focus_entered.connect(_emit_hover)
 	set_card({})
@@ -104,6 +105,10 @@ func _rank_number(rank_text: String) -> int:
 func _gui_input(event: InputEvent) -> void:
 	if _card_name == "":
 		return
+	if event != null and event.is_action_pressed("ui_accept"):
+		_activate_from_confirm()
+		accept_event()
+		return
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
@@ -115,8 +120,13 @@ func _gui_input(event: InputEvent) -> void:
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
 		if key_event.pressed and not key_event.echo and (key_event.keycode == KEY_ENTER or key_event.keycode == KEY_SPACE):
-			card_activated.emit(_card_name)
+			_activate_from_confirm()
 			accept_event()
+
+
+func _activate_from_confirm() -> void:
+	card_preview_requested.emit(_card_name)
+	card_activated.emit(_card_name)
 
 
 func _emit_hover() -> void:

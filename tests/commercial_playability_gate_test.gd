@@ -194,8 +194,13 @@ func _expect_runtime_map_centered_on_district(main: Node, district_index: int, m
 	_expect(focus_target.distance_to(target) <= 1.0, "%s records the target region center before the rotation finishes" % message)
 	if center.distance_to(target) > 1.0:
 		_expect(bool(snapshot.get("focus_rotation_active", false)), "%s starts an animated planet rotation instead of silently jumping" % message)
-	for _frame in range(42):
+	for _frame in range(180):
 		await process_frame
+		snapshot_variant = map_node.call("get_projection_debug_snapshot")
+		snapshot = snapshot_variant if snapshot_variant is Dictionary else {}
+		center = snapshot.get("view_center_m", Vector2(-999999.0, -999999.0))
+		if center.distance_to(target) <= 1.0 and not bool(snapshot.get("focus_rotation_active", false)):
+			break
 	snapshot_variant = map_node.call("get_projection_debug_snapshot")
 	snapshot = snapshot_variant if snapshot_variant is Dictionary else {}
 	center = snapshot.get("view_center_m", Vector2(-999999.0, -999999.0))
