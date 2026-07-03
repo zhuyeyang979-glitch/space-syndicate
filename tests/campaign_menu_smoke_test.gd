@@ -66,7 +66,7 @@ func _check_scene(path: String, method: String, snapshot: Dictionary) -> void:
 		var path_rail := node.find_child("CampaignMenuPathRail", true, false)
 		_expect(path_rail != null and path_rail.visible and path_rail.get_child_count() == 3, "CampaignMenu renders the three-step visual play path")
 		var path_text := _node_text(path_rail)
-		_expect(path_text.contains("开桌") and path_text.contains("练四步") and path_text.contains("完整局"), "CampaignMenu play path uses compact board-game route chips")
+		_expect(path_text.contains("开桌") and path_text.contains("练流程") and path_text.contains("完整局"), "CampaignMenu play path uses compact board-game route chips")
 	if path.ends_with("CampaignBriefing.tscn"):
 		var quick_card_row := node.find_child("CampaignBriefingQuickCardRow", true, false)
 		_expect(quick_card_row != null and quick_card_row.visible and quick_card_row.get_child_count() == 3, "CampaignBriefing renders three first-glance summary cards")

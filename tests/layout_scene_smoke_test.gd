@@ -279,15 +279,34 @@ func _check_first_run_coach_component() -> void:
 			"has_bought_card": true,
 			"has_played_card": true,
 			"has_seen_public_track": true,
+			"has_checked_economy": true,
+			"has_chosen_route": true,
 			"has_seen_clues": false,
 		},
-		"auto_fold_when_track_seen": true,
+		"auto_fold_after_route_choice": true,
 	}).to_ui_dictionary()
 	coach.call("set_coach", folded_snapshot)
 	await process_frame
 	var collapsed := coach.find_child("CoachCollapsed", true, false) as Control
-	_expect(collapsed != null and collapsed.visible and _node_tree_text(coach).contains("首局引导完成"), "FirstRunCoach auto-folds after the player has played a card and inspected the public track")
+	_expect(collapsed != null and collapsed.visible and _node_tree_text(coach).contains("首局引导完成"), "FirstRunCoach auto-folds after route choice, not before the economy/route steps")
 	_expect(_visible_button_count(coach) == 0, "FirstRunCoach collapsed mode removes primary CTA clutter")
+	var track_only_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
+		"visible": true,
+		"progress": {
+			"selected_district": true,
+			"has_monster": true,
+			"has_city": true,
+			"has_opened_supply": true,
+			"has_bought_card": true,
+			"has_played_card": true,
+			"has_seen_public_track": true,
+			"has_checked_economy": false,
+			"has_chosen_route": false,
+			"has_seen_clues": false,
+		},
+		"auto_fold_after_route_choice": true,
+	}).to_ui_dictionary()
+	_expect(str(track_only_snapshot.get("stage", "")) == "check_economy" and not bool(track_only_snapshot.get("collapsed", false)), "FirstRunCoach keeps teaching after public-track inspection until the player opens economy overview")
 	var clue_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
 		"progress": {
 			"selected_district": true,
@@ -301,7 +320,7 @@ func _check_first_run_coach_component() -> void:
 			"has_chosen_route": true,
 			"has_seen_clues": false,
 		},
-		"auto_fold_when_track_seen": false,
+		"auto_fold_after_route_choice": false,
 	}).to_ui_dictionary()
 	_expect(str(clue_snapshot.get("stage", "")) == "inspect_clues" and str(clue_snapshot.get("title", "")).contains("线索"), "FirstRunCoach stage model still includes the clue-inspection phase for non-folded/tutorial variants")
 	var route_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
@@ -317,7 +336,7 @@ func _check_first_run_coach_component() -> void:
 			"has_chosen_route": false,
 			"has_seen_clues": false,
 		},
-		"auto_fold_when_track_seen": false,
+		"auto_fold_after_route_choice": false,
 	}).to_ui_dictionary()
 	var route_chips := _coach_chip_text(route_snapshot)
 	_expect(str(route_snapshot.get("stage", "")) == "choose_route" and str((route_snapshot.get("primary_action", {}) as Dictionary).get("id", "")) == "coach_choose_route_growth", "FirstRunCoach requires a post-economy route choice before it completes")

@@ -55,6 +55,38 @@ func _check_first_run_coach_density() -> void:
 		}).to_ui_dictionary()
 		_expect(str(snapshot.get("body", "")).length() <= 18, "first-run coach stage %s uses a short action sentence" % stage)
 		_expect(str(snapshot.get("title", "")).length() <= 14, "first-run coach stage %s title is compact" % stage)
+	var track_seen_snapshot: Dictionary = FIRST_RUN_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({
+		"visible": true,
+		"progress": {
+			"selected_district": true,
+			"has_monster": true,
+			"has_city": true,
+			"has_opened_supply": true,
+			"has_bought_card": true,
+			"has_played_card": true,
+			"has_seen_public_track": true,
+			"has_checked_economy": false,
+			"has_chosen_route": false,
+		},
+		"auto_fold_after_route_choice": true,
+	}).to_ui_dictionary()
+	_expect(str(track_seen_snapshot.get("stage", "")) == "check_economy" and not bool(track_seen_snapshot.get("collapsed", false)), "first-run coach does not disappear after public-track inspection; it continues to economy overview")
+	var route_done_snapshot: Dictionary = FIRST_RUN_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({
+		"visible": true,
+		"progress": {
+			"selected_district": true,
+			"has_monster": true,
+			"has_city": true,
+			"has_opened_supply": true,
+			"has_bought_card": true,
+			"has_played_card": true,
+			"has_seen_public_track": true,
+			"has_checked_economy": true,
+			"has_chosen_route": true,
+		},
+		"auto_fold_after_route_choice": true,
+	}).to_ui_dictionary()
+	_expect(bool(route_done_snapshot.get("collapsed", false)) and str(route_done_snapshot.get("body", "")).length() <= 18, "first-run coach folds only after route choice and leaves compact completion copy")
 
 
 func _check_scenario_coach_empty_state() -> void:

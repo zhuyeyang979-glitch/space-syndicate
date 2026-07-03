@@ -36,7 +36,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var dismissed := bool(source.get("dismissed", false))
 	var stage := str(source.get("stage", "")).strip_edges()
 	if stage == "":
-		stage = _stage_from_progress(progress, bool(source.get("auto_fold_when_track_seen", true)))
+		stage = _stage_from_progress(progress, bool(source.get("auto_fold_after_route_choice", true)))
 	var collapsed := bool(source.get("collapsed", false)) or stage == STAGE_DONE
 	if dismissed:
 		visible = false
@@ -70,10 +70,10 @@ func to_ui_dictionary() -> Dictionary:
 	return ui.duplicate(true)
 
 
-func _stage_from_progress(progress: Dictionary, auto_fold_when_track_seen: bool) -> String:
+func _stage_from_progress(progress: Dictionary, auto_fold_after_route_choice: bool) -> String:
 	if _bool(progress, "completed"):
 		return STAGE_DONE
-	if auto_fold_when_track_seen and _bool(progress, "has_played_card") and _bool(progress, "has_seen_public_track"):
+	if auto_fold_after_route_choice and _bool(progress, "has_chosen_route"):
 		return STAGE_DONE
 	if not _bool(progress, "selected_district"):
 		return STAGE_SELECT_DISTRICT
@@ -174,8 +174,8 @@ func _stage_definition(stage: String) -> Dictionary:
 			return {
 				"phase_label": "完成",
 				"title": "首轮路径完成",
-				"body": "首召、建城、买牌、出牌已跑通。",
-				"tooltip": "继续围绕现金流、怪兽压力和匿名线索决策。",
+				"body": "钱、牌、路线已跑通。",
+				"tooltip": "继续围绕现金流、怪兽压力和公开线索决策。",
 			}
 
 

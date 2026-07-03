@@ -23120,7 +23120,7 @@ func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
 		"progress": progress,
 		"primary_action": primary_action,
 		"recommended_setup": _first_run_recommended_setup(),
-		"auto_fold_when_track_seen": false,
+		"auto_fold_after_route_choice": false,
 	}
 	if stage == "choose_route":
 		source["chips"] = _first_run_coach_route_choice_chips()
