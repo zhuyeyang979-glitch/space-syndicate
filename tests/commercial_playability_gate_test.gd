@@ -111,12 +111,14 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 	var selected := int(main.get("selected_district"))
 	var open_district := int(main.get("district_supply_open_district"))
 	var open_player := int(main.get("district_supply_open_player"))
-	_expect(selected >= 0 and open_district == selected and open_player == 0, "first-run rack CTA lands on the selected recommended region for the local player")
-	await _expect_runtime_map_centered_on_district(main, open_district, "first-run rack CTA rotates the central planet to the opened region")
+	_expect(selected >= 0 and open_district == selected and open_player == 0, "first-run rack CTA lands on the selected recommended region for the local player selected=%d open=%d player=%d" % [selected, open_district, open_player])
+	_expect_first_run_focus_pulse(main, "district_supply", "牌架", "first-run rack CTA enters a strong focus state on the opened card rack")
 	var snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	var coach: Dictionary = snapshot.get("first_run_coach", {}) if snapshot.get("first_run_coach", {}) is Dictionary else {}
 	_expect(str(coach.get("focus_target", "")).strip_edges() != "", "first-run coach keeps a focus target after auto-positioning")
+	_expect(str(coach.get("stuck_state", "")).strip_edges() == "strong" and bool(coach.get("pulse_focus", false)), "first-run coach data exposes a temporary strong focus state after CTA auto-positioning")
+	await _expect_runtime_map_centered_on_district(main, open_district, "first-run rack CTA rotates the central planet to the opened region")
 	root.remove_child(main)
 	main.queue_free()
 	await _wait_frames(1)
@@ -128,6 +130,7 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 	await _wait_frames(12)
 	_expect(bool(buy_main.call("_activate_first_run_coach_action", "coach_first_summon")), "first-run buy recovery setup can summon the starter monster")
 	await _wait_frames(12)
+	_expect_first_run_focus_pulse(buy_main, "action_dock", "行动", "first-run first-summon CTA pulses the next city/action area")
 	var wrong_district := _first_non_buyable_district(buy_main)
 	if wrong_district >= 0:
 		buy_main.set("selected_district", wrong_district)
@@ -139,10 +142,25 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 		var recovered_district := int(buy_main.get("district_supply_open_district"))
 		_expect(recovered_district >= 0 and bool(buy_main.call("_can_buy_card_from_district", recovered_district, 0)), "first-run Buy CTA reopens a legal monster-accessible card rack")
 		await _expect_runtime_map_centered_on_district(buy_main, recovered_district, "first-run Buy CTA rotates the central planet to the recovered legal rack")
+		_expect_first_run_focus_pulse(buy_main, "district_supply", "牌架", "first-run Buy CTA pulses the recovered legal card rack")
 		_expect(_local_hand_size(buy_main) >= hand_before, "first-run Buy CTA does not lose local hand cards while recovering from the wrong region")
 	root.remove_child(buy_main)
 	buy_main.queue_free()
 	await _wait_frames(1)
+
+
+func _expect_first_run_focus_pulse(main: Node, expected_target: String, label_hint: String, message: String) -> void:
+	var focus_layer := _find_node_with_method(main, "get_focus_debug_snapshot")
+	_expect(focus_layer != null, "%s has a FocusGuideLayer debug snapshot" % message)
+	if focus_layer == null:
+		return
+	var snapshot_variant: Variant = focus_layer.call("get_focus_debug_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var label := str(snapshot.get("label", ""))
+	_expect(bool(snapshot.get("visible", false)), "%s is visible" % message)
+	_expect(bool(snapshot.get("pulse_focus", false)), "%s pulses the target frame" % message)
+	_expect(str(snapshot.get("focus_target", "")) == expected_target, "%s targets %s" % [message, expected_target])
+	_expect(label.contains("最短") and label.contains(label_hint), "%s uses shortest-action copy instead of long help text" % message)
 
 
 func _instantiate_main() -> Node:

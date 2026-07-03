@@ -1767,6 +1767,9 @@ var first_run_coach_district_seen_players := {}
 var first_run_coach_supply_seen_players := {}
 var first_run_coach_public_track_seen_players := {}
 var first_run_coach_clues_seen_players := {}
+var first_run_coach_strong_focus_until_seconds := 0.0
+var first_run_coach_strong_focus_player_index := -1
+var first_run_coach_strong_focus_action_id := ""
 var selected_scenario_id := "first_table"
 var active_scenario_id := ""
 var active_scenario_snapshot_key := "start"
@@ -22978,11 +22981,12 @@ func _first_run_coach_progress(player_index: int) -> Dictionary:
 func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
 	if _runtime_campaign_focus_mode():
 		return {}
+	player_index = _first_run_coach_player_index()
 	if player_index < 0 or player_index >= players.size() or game_over:
 		return {}
 	var progress := _first_run_coach_progress(player_index)
 	var primary_action := _runtime_first_run_coach_primary_action(player_index, progress)
-	return {
+	var source := {
 		"visible": not opening_guide_dismissed,
 		"dismissed": opening_guide_dismissed,
 		"progress": progress,
@@ -22990,6 +22994,156 @@ func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
 		"recommended_setup": _first_run_recommended_setup(),
 		"auto_fold_when_track_seen": true,
 	}
+	if _first_run_coach_strong_focus_active(player_index):
+		var stage := _first_run_coach_stage(progress)
+		source.merge(_first_run_coach_strong_focus_copy(stage, first_run_coach_strong_focus_action_id), true)
+	return source
+
+
+func _first_run_coach_player_index() -> int:
+	for i in range(players.size()):
+		if not _player_is_ai(i) and not _player_is_eliminated(i):
+			return i
+	if selected_player >= 0 and selected_player < players.size() and not _player_is_eliminated(selected_player):
+		return selected_player
+	return 0 if not players.is_empty() else -1
+
+
+func _first_run_coach_strong_focus_active(player_index: int) -> bool:
+	if first_run_coach_strong_focus_until_seconds <= 0.0:
+		return false
+	if first_run_coach_strong_focus_player_index != player_index:
+		return false
+	return game_time <= first_run_coach_strong_focus_until_seconds
+
+
+func _arm_first_run_coach_strong_focus(player_index: int, action_id: String) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	first_run_coach_strong_focus_player_index = player_index
+	first_run_coach_strong_focus_action_id = action_id
+	first_run_coach_strong_focus_until_seconds = game_time + 5.0
+
+
+func _finish_first_run_coach_action_feedback(player_index: int, action_id: String) -> void:
+	_arm_first_run_coach_strong_focus(player_index, action_id)
+	_refresh_ui()
+
+
+func _open_first_run_coach_district_supply(district_index: int, player_index: int) -> void:
+	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size():
+		return
+	selected_player = player_index
+	_open_district_supply_from_map(district_index)
+	selected_player = player_index
+	district_supply_open_district = district_index
+	district_supply_open_player = player_index
+	if district_supply_overlay != null:
+		district_supply_overlay.visible = true
+	_open_district_card_purchase_window(district_index, player_index)
+
+
+func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -> Dictionary:
+	var copy := {
+		"stuck_state": "strong",
+		"pulse_focus": true,
+	}
+	match action_id:
+		"coach_select_district":
+			copy["focus_target"] = "player_hand"
+			copy["shortest_action_text"] = "看手牌，首召怪兽。"
+		"coach_first_summon":
+			copy["focus_target"] = "action_dock"
+			copy["shortest_action_text"] = "看行动区，点城市化。"
+		"coach_build_city":
+			copy["focus_target"] = "planet"
+			copy["shortest_action_text"] = "看当前区域，打开牌架。"
+		"coach_open_rack":
+			copy["focus_target"] = "district_supply"
+			copy["shortest_action_text"] = "看牌架，读卡或买牌。"
+		"coach_buy_card":
+			copy["focus_target"] = "player_hand"
+			copy["shortest_action_text"] = "看手牌，准备出牌。"
+		"coach_play_card":
+			copy["focus_target"] = "public_track"
+			copy["shortest_action_text"] = "看牌轨，读公开线索。"
+		"coach_inspect_track":
+			copy["focus_target"] = "public_track"
+			copy["shortest_action_text"] = "看牌轨，双击看详情。"
+		"coach_inspect_clues":
+			copy["focus_target"] = "right_inspector"
+			copy["shortest_action_text"] = "看右侧，整理线索。"
+	match stage:
+		"select_district":
+			copy["title"] = "看中央星球"
+			copy["body"] = "按确认选区。"
+			copy["tooltip"] = "最短操作：看中央星球，确认一个可建城区域。"
+		"first_summon":
+			copy["title"] = "看手牌"
+			copy["body"] = "首召怪兽。"
+			copy["tooltip"] = "最短操作：看底部手牌，打出起始怪兽。"
+		"build_city":
+			copy["title"] = "看行动区"
+			copy["body"] = "点城市化。"
+			copy["tooltip"] = "最短操作：看底部行动区，建第一座城市。"
+		"open_rack":
+			copy["title"] = "看星球区域"
+			copy["body"] = "打开牌架。"
+			copy["tooltip"] = "最短操作：打开当前区域牌架；不能买也能先看。"
+		"buy_card":
+			copy["title"] = "看区域牌架"
+			copy["body"] = "买一张可购买牌。"
+			copy["tooltip"] = "最短操作：在牌架里买一张可购买牌。"
+		"play_card":
+			copy["title"] = "看手牌"
+			copy["body"] = "打出可用手牌。"
+			copy["tooltip"] = "最短操作：选一张可用手牌；需要目标会再询问。"
+		"inspect_track":
+			copy["title"] = "看顶部牌轨"
+			copy["body"] = "读公开线索。"
+			copy["tooltip"] = "最短操作：看顶部公共时间线。"
+		"inspect_clues":
+			copy["title"] = "看右侧线索"
+			copy["body"] = "打开线索档案。"
+			copy["tooltip"] = "最短操作：从右侧详情进入线索档案。"
+		_:
+			copy["title"] = "继续牌桌"
+			copy["body"] = "围绕现金流和线索行动。"
+			copy["tooltip"] = "首轮路径已完成，继续做赚钱或压制决策。"
+	match action_id:
+		"coach_select_district":
+			copy["title"] = "看手牌"
+			copy["body"] = "首召怪兽。"
+			copy["tooltip"] = "最短操作：选区已确定，看底部手牌首召怪兽。"
+		"coach_first_summon":
+			copy["title"] = "看行动区"
+			copy["body"] = "点城市化。"
+			copy["tooltip"] = "最短操作：怪兽已落地，看行动区建第一座城市。"
+		"coach_build_city":
+			copy["title"] = "看星球区域"
+			copy["body"] = "打开牌架。"
+			copy["tooltip"] = "最短操作：城市已建立，打开当前区域牌架。"
+		"coach_open_rack":
+			copy["title"] = "看区域牌架"
+			copy["body"] = "读卡或买牌。"
+			copy["tooltip"] = "最短操作：牌架已打开，先看用途，再买一张可购买牌。"
+		"coach_buy_card":
+			copy["title"] = "看手牌"
+			copy["body"] = "准备出牌。"
+			copy["tooltip"] = "最短操作：新牌已进入手牌，hover 看用途后打出可用牌。"
+		"coach_play_card":
+			copy["title"] = "看顶部牌轨"
+			copy["body"] = "读公开线索。"
+			copy["tooltip"] = "最短操作：牌已进公共时间线，看它留下什么线索。"
+		"coach_inspect_track":
+			copy["title"] = "看顶部牌轨"
+			copy["body"] = "双击看详情。"
+			copy["tooltip"] = "最短操作：在牌轨上双击卡牌，查看详情和猜测入口。"
+		"coach_inspect_clues":
+			copy["title"] = "看右侧线索"
+			copy["body"] = "整理嫌疑。"
+			copy["tooltip"] = "最短操作：查看线索档案，只整理公开事实和你的推理。"
+	return copy
 
 
 func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictionary) -> Dictionary:
@@ -23100,7 +23254,7 @@ func _first_run_coach_stage(progress: Dictionary) -> String:
 
 
 func _activate_first_run_coach_action(action_id: String) -> bool:
-	var player_index := _runtime_snapshot_player_index()
+	var player_index := _first_run_coach_player_index()
 	if player_index < 0 or player_index >= players.size():
 		return false
 	match action_id:
@@ -23115,7 +23269,7 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			_mark_first_run_coach_district_seen(player_index)
 			_sync_selected_district_card()
 			_load_selected_district_guess()
-			_refresh_ui()
+			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_first_summon":
 			if not _ensure_first_run_coach_action_district(player_index):
@@ -23125,20 +23279,22 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 				return false
 			selected_player = player_index
 			_use_skill(starter_slot)
+			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_build_city":
 			if not _ensure_first_run_coach_action_district(player_index):
 				return false
 			selected_player = player_index
 			_build_city_in_selected_district()
+			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_open_rack":
 			if not _ensure_first_run_coach_action_district(player_index):
 				return false
 			if selected_district < 0 or selected_district >= districts.size():
 				return false
-			selected_player = player_index
-			_open_district_supply_from_map(selected_district)
+			_open_first_run_coach_district_supply(selected_district, player_index)
+			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_buy_card":
 			if not _ensure_first_run_coach_action_district(player_index):
@@ -23152,19 +23308,23 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 				return false
 			selected_player = player_index
 			if not _district_supply_is_open() or district_supply_open_district != selected_district:
-				_open_district_supply_from_map(selected_district)
+				_open_first_run_coach_district_supply(selected_district, player_index)
 			var buyable_card := _first_buyable_district_card(selected_district, player_index)
 			if buyable_card == "":
 				_log("首局买牌：当前没有合法可买牌架；先保持牌架打开，查看怪兽所在区或相邻区。")
-				_refresh_ui()
+				_finish_first_run_coach_action_feedback(player_index, action_id)
 				return true
 			selected_market_skill = buyable_card
 			previewed_district_card = buyable_card
 			_claim_district_card(buyable_card)
+			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_play_card":
 			selected_player = player_index
-			return _activate_runtime_quick_action("play")
+			var play_handled := _activate_runtime_quick_action("play")
+			if play_handled:
+				_finish_first_run_coach_action_feedback(player_index, action_id)
+			return play_handled
 		"coach_inspect_track":
 			var resolution_id := _first_public_track_resolution_id()
 			if resolution_id < 0:
@@ -23172,10 +23332,12 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			selected_runtime_card_slot = -1
 			_select_card_resolution_track_entry(resolution_id)
 			_mark_first_run_coach_public_track_seen(player_index)
+			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_inspect_clues":
 			_mark_first_run_coach_clues_seen(player_index)
 			_open_intel_dossier_menu()
+			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 	return false
 
@@ -30915,31 +31077,34 @@ func _refresh_district_supply_overlay() -> void:
 	if district_supply_open_district < 0 or district_supply_open_district >= districts.size():
 		district_supply_overlay.visible = false
 		return
-	if selected_player < 0 or selected_player >= players.size():
+	var supply_player := district_supply_open_player
+	if supply_player < 0 or supply_player >= players.size():
+		supply_player = _first_run_coach_player_index()
+	if supply_player < 0 or supply_player >= players.size():
 		return
-	if district_supply_open_player != selected_player:
-		district_supply_open_player = selected_player
-		_open_district_card_purchase_window(district_supply_open_district, selected_player)
+	if district_supply_open_player != supply_player:
+		district_supply_open_player = supply_player
+		_open_district_card_purchase_window(district_supply_open_district, supply_player)
 	var district: Dictionary = districts[district_supply_open_district]
 	var district_name := String(district.get("name", "区域"))
 	if district_supply_title_label != null:
 		district_supply_title_label.text = "区域牌架｜%s" % district_name
 	if district_supply_access_label != null:
-		var access_kind := _district_card_access_kind(district_supply_open_district, selected_player)
-		var can_buy := _can_buy_card_from_district(district_supply_open_district, selected_player)
+		var access_kind := _district_card_access_kind(district_supply_open_district, supply_player)
+		var can_buy := _can_buy_card_from_district(district_supply_open_district, supply_player)
 		var choices: Array = district.get("card_choices", [])
 		district_supply_access_label.text = "市场牌架｜悬停看｜双击买"
 		district_supply_access_label.tooltip_text = "区域牌架 %d张｜%s｜%s\n打开时锁定价格和购买资格；怪兽之后离开不影响这次市场。单击地图不会关闭，双击其他区域会切换牌架。" % [
 			choices.size(),
 			"可购买" if can_buy else "仅浏览",
-			_district_card_access_text_for_kind(access_kind, district_supply_open_district, selected_player),
+			_district_card_access_text_for_kind(access_kind, district_supply_open_district, supply_player),
 		]
 	if district_supply_chip_row != null:
 		_clear_children(district_supply_chip_row)
-		_add_district_supply_header_chips(district_supply_chip_row, district_supply_open_district, selected_player)
+		_add_district_supply_header_chips(district_supply_chip_row, district_supply_open_district, supply_player)
 	if district_supply_state_rail != null:
 		_clear_children(district_supply_state_rail)
-		_add_district_supply_market_status_rail(district_supply_state_rail, district_supply_open_district, selected_player)
+		_add_district_supply_market_status_rail(district_supply_state_rail, district_supply_open_district, supply_player)
 	if district_supply_list_box != null:
 		_clear_children(district_supply_list_box)
 		var choices: Array = district.get("card_choices", [])
@@ -30948,11 +31113,11 @@ func _refresh_district_supply_overlay() -> void:
 		for card_name_variant in choices:
 			var card_name := String(card_name_variant)
 			if _skill_exists(card_name):
-				_add_district_supply_card_button(district_supply_list_box, district_supply_open_district, card_name)
+				_add_district_supply_card_button(district_supply_list_box, district_supply_open_district, card_name, supply_player)
 		_sync_district_supply_market_focus_links()
 	if district_supply_preview_box != null:
 		_clear_children(district_supply_preview_box)
-		_add_district_supply_preview(district_supply_preview_box, district_supply_open_district)
+		_add_district_supply_preview(district_supply_preview_box, district_supply_open_district, supply_player)
 
 
 func _sync_district_supply_market_focus_links() -> void:
@@ -31407,12 +31572,13 @@ func _district_supply_target_scan_tooltip(skill: Dictionary) -> String:
 	return "多数经济牌按当前选区或卡面说明结算。"
 
 
-func _district_supply_market_card_snapshot(district_index: int, card_name: String) -> Dictionary:
+func _district_supply_market_card_snapshot(district_index: int, card_name: String, player_index: int = -1) -> Dictionary:
 	var skill := _skill_definition(card_name)
 	if skill.is_empty():
 		return {}
-	var state := _district_supply_purchase_state(district_index, card_name, selected_player)
-	var price := int(state.get("price", _card_price(card_name, district_index, selected_player)))
+	var resolved_player := _resolved_card_access_player_index(player_index)
+	var state := _district_supply_purchase_state(district_index, card_name, resolved_player)
+	var price := int(state.get("price", _card_price(card_name, district_index, resolved_player)))
 	var status_label := String(state.get("label", "Browse"))
 	var route_label := _card_strategy_route_label(skill)
 	var facts := _join_first_card_facts(_card_key_rule_facts(skill), 2)
@@ -31455,7 +31621,7 @@ func _district_supply_market_card_snapshot(district_index: int, card_name: Strin
 				"tooltip": String(state.get("detail", "")),
 			},
 		],
-		"micro_chips": _district_supply_micro_card_chip_entries(card_name, skill, selected_player),
+		"micro_chips": _district_supply_micro_card_chip_entries(card_name, skill, resolved_player),
 		"route": _short_card_text(route_label, 18),
 		"route_tooltip": "Strategy route: %s" % route_label,
 		"facts": _short_card_text(facts, 32),
@@ -31468,8 +31634,8 @@ func _district_supply_market_card_snapshot(district_index: int, card_name: Strin
 	}
 
 
-func _add_district_supply_card_button(parent: Container, district_index: int, card_name: String) -> void:
-	var snapshot := _district_supply_market_card_snapshot(district_index, card_name)
+func _add_district_supply_card_button(parent: Container, district_index: int, card_name: String, player_index: int = -1) -> void:
+	var snapshot := _district_supply_market_card_snapshot(district_index, card_name, player_index)
 	if snapshot.is_empty():
 		return
 	var card := DistrictSupplyMarketCardScene.instantiate() as Control
@@ -31486,14 +31652,15 @@ func _add_district_supply_card_button(parent: Container, district_index: int, ca
 		card.call("set_card", snapshot)
 
 
-func _district_supply_preview_snapshot(district_index: int, preview_name: String) -> Dictionary:
+func _district_supply_preview_snapshot(district_index: int, preview_name: String, player_index: int = -1) -> Dictionary:
 	var skill := _skill_definition(preview_name)
 	if skill.is_empty():
 		return {}
-	var state := _district_supply_purchase_state(district_index, preview_name, selected_player)
+	var resolved_player := _resolved_card_access_player_index(player_index)
+	var state := _district_supply_purchase_state(district_index, preview_name, resolved_player)
 	var status_color: Color = state.get("accent", Color("#94a3b8")) as Color
 	var theme_color := _card_theme_color(skill)
-	var price := int(state.get("price", _card_price(preview_name, district_index, selected_player)))
+	var price := int(state.get("price", _card_price(preview_name, district_index, resolved_player)))
 	var facts := _join_first_card_facts(_card_key_rule_facts(skill), 4)
 	var detail := String(state.get("detail", ""))
 	return {
@@ -31523,10 +31690,10 @@ func _district_supply_preview_snapshot(district_index: int, preview_name: String
 				"tooltip": _card_strategy_route_label(skill),
 			},
 		],
-		"micro_chips": _district_supply_micro_card_chip_entries(preview_name, skill, selected_player),
-		"decision_chips": _district_supply_decision_chip_entries(preview_name, skill, state, selected_player),
-		"verdicts": _district_supply_purchase_verdict_entries(district_index, preview_name, selected_player, state),
-		"scan_sections": _district_supply_preview_scan_sections(preview_name, skill, state, price, selected_player),
+		"micro_chips": _district_supply_micro_card_chip_entries(preview_name, skill, resolved_player),
+		"decision_chips": _district_supply_decision_chip_entries(preview_name, skill, state, resolved_player),
+		"verdicts": _district_supply_purchase_verdict_entries(district_index, preview_name, resolved_player, state),
+		"scan_sections": _district_supply_preview_scan_sections(preview_name, skill, state, price, resolved_player),
 		"body": _short_card_text(_skill_display_text(skill), 48),
 		"body_tooltip": _skill_display_text(skill),
 		"facts": _short_card_text(facts, 42),
@@ -31562,7 +31729,7 @@ func _district_supply_preview_card_face_snapshot(card_name: String, skill: Dicti
 	}
 
 
-func _add_district_supply_preview(parent: Container, district_index: int) -> void:
+func _add_district_supply_preview(parent: Container, district_index: int, player_index: int = -1) -> void:
 	var choices: Array = districts[district_index].get("card_choices", [])
 	var preview_name := previewed_district_card
 	if not choices.has(preview_name):
@@ -31572,7 +31739,7 @@ func _add_district_supply_preview(parent: Container, district_index: int) -> voi
 	if preview_name == "" or not _skill_exists(preview_name):
 		parent.add_child(_plain_label("No available card.", 12, Color("#64748b")))
 		return
-	var snapshot := _district_supply_preview_snapshot(district_index, preview_name)
+	var snapshot := _district_supply_preview_snapshot(district_index, preview_name, player_index)
 	if snapshot.is_empty():
 		return
 	var preview := DistrictSupplyPreviewCardScene.instantiate() as Control
@@ -40004,13 +40171,18 @@ func _select_district_card(skill_name: String) -> void:
 
 func _claim_district_card(skill_name: String) -> void:
 	var context_district := _active_district_card_context()
+	var purchase_player := district_supply_open_player if _district_supply_is_open() else selected_player
+	if purchase_player < 0 or purchase_player >= players.size():
+		purchase_player = _first_run_coach_player_index()
+	if purchase_player < 0 or purchase_player >= players.size():
+		return
 	if context_district < 0 or context_district >= districts.size():
 		return
 	if districts[context_district]["destroyed"]:
 		_log("%s已被破坏，不能从这里获取卡牌。" % districts[context_district]["name"])
 		_refresh_ui()
 		return
-	if not _can_buy_card_from_district(context_district, selected_player):
+	if not _can_buy_card_from_district(context_district, purchase_player):
 		_log("%s暂不能购买卡牌：需要怪兽落地区/相邻区，或补给范围扩张能力。" % districts[context_district]["name"])
 		_refresh_ui()
 		return
@@ -40019,7 +40191,9 @@ func _claim_district_card(skill_name: String) -> void:
 		_refresh_ui()
 		return
 	selected_market_skill = skill_name
-	_buy_card_for_player_from_district(selected_player, context_district, selected_market_skill, false, true)
+	selected_player = purchase_player
+	district_supply_open_player = purchase_player
+	_buy_card_for_player_from_district(purchase_player, context_district, selected_market_skill, false, true)
 	_refresh_ui()
 	_focus_runtime_map_on_district(context_district)
 
