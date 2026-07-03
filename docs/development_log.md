@@ -3,6 +3,24 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜右侧卡牌详情改为用途优先
+
+- 继续降低主桌信息密度：
+  - `RightInspector.show_card()` 不再直接把长效果塞进右栏，而是先从 `use_case / table_use / purpose / when_to_use` 读取牌桌用途。
+  - 没有显式用途字段时，按怪兽、情报、互动、金融、经济、合约、天气、军队/战斗等类型推导短用途。
+  - 卡牌 hover / 选中详情的固定读序改成：用途、费用、目标、状态、等级、类型；长效果进入完整详情。
+  - requirements/why/full detail 都会优先显示用途，避免玩家在低分辨率下先读到一大段规则才知道这张牌干嘛。
+- 骨架与硬标准：
+  - 新增 RightInspector 侧的用途派生 helper、summary helper、requirements helper，后续卡牌详情页/购买预览可以复用同一读序。
+  - 视觉契约补充：右侧详情也必须“用途优先”，不能退回开发说明面板。
+- 验证：
+  - `tests/layout_scene_smoke_test.gd` 验证手牌 hover 时 RightInspector 展示用途与目标。
+  - `tests/visual_snapshot.gd` 验证 RightInspector 保留用途优先 helper。
+
+### 本轮验证目标
+
+- 真人玩家 hover 手牌时，右侧第一屏就能看到“这张牌拿来干嘛、打给谁、现在能不能用”，而不是被长规则文本挡住。
+
 ## 2026-07-03｜全卡用途语义接入数据源
 
 - 继续推进“真人一眼知道卡牌干嘛用”：

@@ -641,14 +641,15 @@ func _check_split_game_screen_data_binding() -> void:
 		var hover_first_child_id := -1
 		if hand_rack.get_child_count() > 0:
 			hover_first_child_id = hand_rack.get_child(0).get_instance_id()
-		var hover_data: Dictionary = {"name": "轨道融资", "type": "经济", "cost": "2", "rank": "I", "effect": "现金流上升。"}
+		var hover_data: Dictionary = {"name": "轨道融资", "type": "经济", "cost": "2", "rank": "I", "use_case": "扩张现金流", "target": "己方城市", "effect": "现金流上升。"}
 		hand_rack.emit_signal("card_hovered", hover_data)
 		await process_frame
 		var hover_after_child_id := -2
 		if hand_rack.get_child_count() > 0:
 			hover_after_child_id = hand_rack.get_child(0).get_instance_id()
 		_expect(inspector_title != null and inspector_title.text.contains("卡牌"), "split HandRack hover previews card detail in RightInspector")
-		_expect(district_title != null and district_title.text.contains("轨道融资") and reason_label != null and reason_label.text.contains("现金流"), "split RightInspector card hover shows the hovered card effect")
+		var hover_inspector_text := _node_tree_text(right_inspector)
+		_expect(district_title != null and district_title.text.contains("轨道融资") and reason_label != null and reason_label.text.contains("扩张现金流") and hover_inspector_text.contains("用途 扩张现金流") and hover_inspector_text.contains("目标 己方城市"), "split RightInspector card hover shows use-case and target before the long effect")
 		_expect(hover_first_child_id == hover_after_child_id, "split HandRack hover updates RightInspector without rebuilding hand cards")
 		hand_rack.emit_signal("card_unhovered")
 		await process_frame

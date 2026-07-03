@@ -72,6 +72,8 @@
 
 数据侧也必须过关：`main.gd` 的 `_card_use_case_text_for_skill()` 是统一用途派生骨架，手牌、区域牌架、卡牌图鉴缩略图和详情卡面都必须把 `use_case / table_use` 传给 `CardFace`。`_card_one_glance_audit_report()` 是开发者验收入口，要求每张卡都有用途、短效果、路线、视觉/数值锚点、价格、等级、门槛和目标/结算 chip；不得退回“临场改局势”这类泛化用途。
 
+右侧详情面板也必须遵守同一读序。`RightInspector.show_card()` 的卡牌详情第一屏必须先显示用途、费用、目标、当前状态、等级和类型；长规则只作为完整详情补充。hover 手牌、选中手牌、区域牌架预览和图鉴跳转都不能把右栏退回“长段说明书”。对应验收由 `tests/layout_scene_smoke_test.gd` 和 `tests/visual_snapshot.gd` 保护。
+
 ## 6. 购买路径一致性
 
 区域牌架的阅读路径固定为：

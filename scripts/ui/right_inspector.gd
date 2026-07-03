@@ -74,14 +74,12 @@ func _has_meaningful_requirement_chips(chips_variant: Variant) -> bool:
 func show_card(card_data: Dictionary) -> void:
 	var inspector_card := card_data.duplicate(true)
 	inspector_card["presentation"] = "inspector_full"
-	var chips: Array = []
-	for key in ["rank", "type", "cost", "target", "play_state"]:
-		if inspector_card.has(key) and str(inspector_card[key]) != "":
-			chips.append({"text": "%s %s" % [_card_chip_label(key), str(inspector_card[key])]})
+	var use_case := _card_use_case_text(inspector_card)
+	var chips := _card_inspector_chip_entries(inspector_card, use_case)
 	var full_detail := _card_inspector_full_detail(inspector_card)
 	var summary := str(inspector_card.get("summary", "")).strip_edges()
 	if summary == "":
-		summary = _short_table_text(full_detail, SUMMARY_TEXT_CHAR_LIMIT)
+		summary = _card_inspector_summary(inspector_card, use_case)
 	set_context({
 		"title": "卡牌详情",
 		"district": {
@@ -92,8 +90,8 @@ func show_card(card_data: Dictionary) -> void:
 			"chips": chips,
 		},
 		"actions": inspector_card.get("actions", []),
-		"why": str(inspector_card.get("why", full_detail if full_detail.strip_edges() != "" else "看费用、目标、选区。")),
-		"requirements": inspector_card.get("requirements", [
+		"why": _card_inspector_why(inspector_card, use_case, full_detail),
+		"requirements": _card_inspector_requirements(inspector_card, use_case, [
 			{"text": "费用 %s" % str(inspector_card.get("cost", "--"))},
 			{"text": "目标 %s" % str(inspector_card.get("target", "任意"))},
 		]),
@@ -107,11 +105,14 @@ func show_card(card_data: Dictionary) -> void:
 
 func _card_inspector_full_detail(card_data: Dictionary) -> String:
 	var lines: Array[String] = []
+	var use_case := _card_use_case_text(card_data)
 	var target := str(card_data.get("target", card_data.get("target_type", ""))).strip_edges()
 	var requirement := str(card_data.get("requirement", card_data.get("play_requirement", card_data.get("condition", "")))).strip_edges()
 	var effect := str(card_data.get("effect", card_data.get("description", "选择卡牌查看效果。"))).strip_edges()
 	var disabled_reason := str(card_data.get("disabled_reason", card_data.get("block_reason", ""))).strip_edges()
 	var primary_action := _first_enabled_action_label(card_data)
+	if use_case != "":
+		lines.append("用途｜%s" % use_case)
 	if target != "":
 		lines.append("目标｜%s" % target)
 	if requirement != "":
@@ -123,6 +124,89 @@ func _card_inspector_full_detail(card_data: Dictionary) -> String:
 	if disabled_reason != "":
 		lines.append("暂不可用｜%s" % disabled_reason)
 	return "\n".join(lines) if not lines.is_empty() else "选择卡牌查看效果。"
+
+
+func _card_use_case_text(card_data: Dictionary) -> String:
+	for key in ["use_case", "table_use", "purpose", "when_to_use"]:
+		var value := str(card_data.get(key, "")).strip_edges()
+		if value != "":
+			return _short_table_text(value, 14)
+	var type_text := str(card_data.get("type", card_data.get("category", ""))).strip_edges()
+	var effect := str(card_data.get("effect", card_data.get("description", ""))).strip_edges()
+	if type_text.contains("怪兽"):
+		return "制造怪兽压力"
+	if type_text.contains("情报"):
+		return "获取线索"
+	if type_text.contains("互动"):
+		return "干扰对手"
+	if type_text.contains("金融") or effect.contains("押") or effect.contains("涨") or effect.contains("跌"):
+		return "把波动变现金"
+	if type_text.contains("经济") or effect.contains("GDP") or effect.contains("现金流"):
+		return "提升现金流"
+	if type_text.contains("合约"):
+		return "连接供需"
+	if type_text.contains("天气"):
+		return "改变天气"
+	if type_text.contains("军") or type_text.contains("战斗"):
+		return "制造战斗压力"
+	return _short_table_text(type_text, 14) if type_text != "" else "看卡面效果"
+
+
+func _card_inspector_chip_entries(card_data: Dictionary, use_case: String) -> Array:
+	var chips: Array = []
+	if use_case != "":
+		chips.append({"text": "用途 %s" % use_case, "tooltip": "先看这张牌拿来做什么。"})
+	for key in ["cost", "target", "play_state", "rank", "type"]:
+		if card_data.has(key) and str(card_data[key]).strip_edges() != "":
+			chips.append({"text": "%s %s" % [_card_chip_label(key), str(card_data[key])], "tooltip": _card_chip_tooltip(key)})
+	return chips
+
+
+func _card_inspector_summary(card_data: Dictionary, use_case: String) -> String:
+	var target := str(card_data.get("target", card_data.get("target_type", ""))).strip_edges()
+	var action := _first_enabled_action_label(card_data)
+	var pieces: Array[String] = []
+	if use_case != "":
+		pieces.append("用途:%s" % use_case)
+	if target != "":
+		pieces.append("目标:%s" % target)
+	if action != "":
+		pieces.append("下一步:%s" % action)
+	var effect := str(card_data.get("effect", card_data.get("description", ""))).strip_edges()
+	if pieces.is_empty():
+		return _short_table_text(effect, SUMMARY_TEXT_CHAR_LIMIT) if effect != "" else "看费用、目标和下一步。"
+	return _short_table_text("｜".join(pieces), SUMMARY_TEXT_CHAR_LIMIT)
+
+
+func _card_inspector_why(card_data: Dictionary, use_case: String, full_detail: String) -> String:
+	var explicit_why := str(card_data.get("why", "")).strip_edges()
+	var action_state := str(card_data.get("action_state", card_data.get("play_state", ""))).strip_edges()
+	var disabled_reason := str(card_data.get("disabled_reason", card_data.get("block_reason", ""))).strip_edges()
+	var pieces: Array[String] = []
+	if use_case != "":
+		pieces.append("用途：%s" % use_case)
+	if action_state != "":
+		pieces.append("状态：%s" % action_state)
+	if disabled_reason != "":
+		pieces.append("阻碍：%s" % disabled_reason)
+	elif explicit_why != "":
+		pieces.append(explicit_why)
+	if pieces.is_empty():
+		return full_detail if full_detail.strip_edges() != "" else "看用途、目标和选区。"
+	return _short_table_text("｜".join(pieces), WHY_TEXT_CHAR_LIMIT)
+
+
+func _card_inspector_requirements(card_data: Dictionary, use_case: String, fallback: Array) -> Array:
+	var source: Array = card_data.get("requirements", []) if card_data.get("requirements", []) is Array else fallback
+	var result: Array = []
+	if use_case != "":
+		result.append({"text": "用途 %s" % use_case, "tooltip": "这张牌在牌桌上的主要用途。"})
+	for entry_variant in source:
+		if entry_variant is Dictionary:
+			result.append(entry_variant)
+		else:
+			result.append({"text": str(entry_variant)})
+	return result
 
 
 func _first_enabled_action_label(card_data: Dictionary) -> String:
@@ -240,6 +324,21 @@ func _card_chip_label(key: String) -> String:
 		"play_state":
 			return "状态"
 	return key
+
+
+func _card_chip_tooltip(key: String) -> String:
+	match key:
+		"cost":
+			return "购买/费用信息；具体打出门槛看条件筹码。"
+		"target":
+			return "这张牌需要或默认影响的对象。"
+		"play_state":
+			return "当前能否打出，以及打出前要做什么。"
+		"rank":
+			return "卡牌等级；重复获得同系列会升级。"
+		"type":
+			return "策略路线或卡牌类别。"
+	return ""
 
 
 func _on_action_requested(action_id: String) -> void:
