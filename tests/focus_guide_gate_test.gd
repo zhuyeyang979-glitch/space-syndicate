@@ -49,10 +49,14 @@ func _apply_and_expect_focus(screen: Control, focus_target: String, expected_lab
 	var panel := screen.find_child("FocusGuidePanel", true, false) as Control
 	var chip := screen.find_child("FocusGuideChip", true, false) as Control
 	var label := screen.find_child("FocusGuideLabel", true, false) as Label
+	var debug := {}
+	if layer != null and layer.has_method("get_focus_debug_snapshot"):
+		debug = layer.call("get_focus_debug_snapshot") as Dictionary
 	_expect(layer != null and layer.visible, "focus guide layer is visible for target %s" % focus_target)
 	_expect(panel != null and panel.visible, "focus guide panel is visible for target %s" % focus_target)
 	_expect(chip != null and chip.visible, "focus guide chip is visible for target %s" % focus_target)
 	_expect(label != null and label.text.contains(expected_label), "focus guide label for %s points players to %s" % [focus_target, expected_label])
+	_expect(str(debug.get("motion_profile", "")).strip_edges() == _expected_motion_profile(focus_target), "focus guide target %s uses the %s motion profile" % [focus_target, _expected_motion_profile(focus_target)])
 	_expect(panel != null and panel.mouse_filter == Control.MOUSE_FILTER_IGNORE, "focus guide panel does not intercept mouse input for %s" % focus_target)
 	_expect(chip != null and chip.mouse_filter == Control.MOUSE_FILTER_IGNORE, "focus guide chip does not intercept mouse input for %s" % focus_target)
 	var target := _target_control(screen, focus_target)
@@ -67,9 +71,13 @@ func _apply_first_run_and_expect_focus(screen: Control, stage: String, expected_
 	var layer := screen.find_child("FocusGuideLayer", true, false) as Control
 	var panel := screen.find_child("FocusGuidePanel", true, false) as Control
 	var label := screen.find_child("FocusGuideLabel", true, false) as Label
+	var debug := {}
+	if layer != null and layer.has_method("get_focus_debug_snapshot"):
+		debug = layer.call("get_focus_debug_snapshot") as Dictionary
 	_expect(layer != null and layer.visible, "first-run focus guide layer is visible for stage %s" % stage)
 	_expect(panel != null and panel.visible, "first-run focus guide panel is visible for stage %s" % stage)
 	_expect(label != null and label.text.contains(expected_label), "first-run stage %s points players to %s" % [stage, expected_label])
+	_expect(str(debug.get("motion_profile", "")).strip_edges() == _expected_motion_profile(expected_target), "first-run stage %s uses %s target motion" % [stage, _expected_motion_profile(expected_target)])
 	var target := _target_control(screen, expected_target)
 	if panel != null and target != null:
 		_expect(panel.get_global_rect().intersects(target.get_global_rect()), "first-run focus guide panel overlaps the intended target control for %s" % stage)
@@ -93,6 +101,21 @@ func _target_control(screen: Control, focus_target: String) -> Control:
 			return screen.find_child("PlayerBidBoard", true, false) as Control
 		_:
 			return null
+
+
+func _expected_motion_profile(focus_target: String) -> String:
+	match focus_target:
+		"planet", "route_layer":
+			return "orbit"
+		"player_hand":
+			return "lift"
+		"public_track":
+			return "scan"
+		"action_dock", "bid_board", "right_inspector", "economy_overview", "intel_dossier", "standings", "settlement":
+			return "tap"
+		"district_supply", "private_decision", "contract_prompt":
+			return "double_tap"
+	return "static"
 
 
 func _table_state(focus_target: String, phase_id: String = "first_summon") -> Dictionary:

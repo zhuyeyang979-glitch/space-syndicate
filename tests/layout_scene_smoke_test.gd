@@ -1394,8 +1394,13 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 	await process_frame
 	dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
 	var play_button := _find_enabled_visible_button_containing(dock, "出牌")
+	var player_board_snapshot: Dictionary = {}
+	if main.has_method("_runtime_player_board_snapshot"):
+		var player_board_variant: Variant = main.call("_runtime_player_board_snapshot", 0)
+		player_board_snapshot = player_board_variant if player_board_variant is Dictionary else {}
+	var play_debug := var_to_str(player_board_snapshot.get("quick_actions", []))
 	var queue_before := _runtime_card_resolution_entry_count(main)
-	_expect(actionable_slot >= 0 and play_button != null and not play_button.disabled, "runtime PlayerMainActionDock renders an enabled Play quick button when a hand card is actionable")
+	_expect(actionable_slot >= 0 and play_button != null and not play_button.disabled, "runtime PlayerMainActionDock renders an enabled Play quick button when a hand card is actionable｜quick=%s" % play_debug)
 	if actionable_slot >= 0 and play_button != null and not play_button.disabled:
 		play_button.emit_signal("pressed")
 		await process_frame

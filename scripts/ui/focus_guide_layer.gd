@@ -10,7 +10,10 @@ var _pulse_focus := false
 var _pulse_time := 0.0
 var _current_accent := Color("#facc15")
 var _current_focus_target := ""
+var _current_motion_profile := "static"
 var _current_fill_alpha := 0.05
+var _chip_base_position := Vector2.ZERO
+var _chip_base_scale := Vector2.ONE
 
 
 func _ready() -> void:
@@ -42,7 +45,8 @@ func show_focus(target_global_rect: Rect2, focus_target: String, scenario_data: 
 	local_rect.position.y = clampf(local_rect.position.y, 4.0, maxf(4.0, size.y - local_rect.size.y - 4.0))
 	var label_text := _focus_guide_label_text(focus_target, scenario_data)
 	var pulse_focus := _focus_guide_pulse_enabled(scenario_data)
-	var signature := var_to_str([focus_target, label_text, local_rect.position.round(), local_rect.size.round(), pulse_focus])
+	var motion_profile := _focus_guide_motion_profile(focus_target, scenario_data)
+	var signature := var_to_str([focus_target, label_text, local_rect.position.round(), local_rect.size.round(), pulse_focus, motion_profile])
 	if signature == _last_signature:
 		return
 	_last_signature = signature
@@ -58,6 +62,7 @@ func show_focus(target_global_rect: Rect2, focus_target: String, scenario_data: 
 	var accent := _focus_guide_accent(focus_target)
 	_current_accent = accent
 	_current_focus_target = focus_target
+	_current_motion_profile = motion_profile
 	_current_fill_alpha = _focus_guide_fill_alpha(focus_target)
 	_pulse_focus = pulse_focus
 	_pulse_time = 0.0
@@ -68,25 +73,33 @@ func show_focus(target_global_rect: Rect2, focus_target: String, scenario_data: 
 		guide_chip.size = chip_size
 		guide_chip.tooltip_text = guide_panel.tooltip_text
 		guide_chip.scale = Vector2.ONE
+		guide_chip.rotation = 0.0
 		guide_chip.pivot_offset = chip_size * 0.5
+		_chip_base_position = guide_chip.position
+		_chip_base_scale = guide_chip.scale
 		guide_chip.add_theme_stylebox_override("panel", _focus_guide_chip_style(accent, _pulse_focus))
 	guide_label.add_theme_color_override("font_color", accent.lightened(0.42))
-	set_process(_pulse_focus)
+	set_process(_pulse_focus or _current_motion_profile != "static")
 
 
 func _process(delta: float) -> void:
-	if not _pulse_focus or not visible:
+	if not visible:
+		set_process(false)
+		return
+	if not _pulse_focus and _current_motion_profile == "static":
 		set_process(false)
 		return
 	_pulse_time += maxf(0.0, delta)
 	var wave := 0.5 + 0.5 * sin(_pulse_time * TAU * 1.45)
-	var accent := _current_accent.lightened(0.08 + wave * 0.18)
-	var fill_alpha := _current_fill_alpha + wave * 0.055
+	var accent := _current_accent.lightened(0.08 + wave * 0.18) if _pulse_focus else _current_accent
+	var fill_alpha := _current_fill_alpha + (wave * 0.055 if _pulse_focus else 0.0)
 	if guide_panel != null:
-		guide_panel.add_theme_stylebox_override("panel", _focus_guide_panel_style(accent, fill_alpha, true))
+		var panel_style := _focus_guide_panel_style(accent, fill_alpha, _pulse_focus)
+		panel_style.shadow_offset = _focus_guide_shadow_motion_offset(_current_motion_profile, _pulse_time, wave)
+		guide_panel.add_theme_stylebox_override("panel", panel_style)
 	if guide_chip != null:
-		guide_chip.scale = Vector2.ONE * (1.0 + wave * 0.035)
-		guide_chip.add_theme_stylebox_override("panel", _focus_guide_chip_style(accent, true))
+		_apply_chip_motion(_current_motion_profile, wave)
+		guide_chip.add_theme_stylebox_override("panel", _focus_guide_chip_style(accent, _pulse_focus))
 	if guide_label != null:
 		guide_label.add_theme_color_override("font_color", accent.lightened(0.46))
 
@@ -96,12 +109,14 @@ func hide_focus() -> void:
 	visible = false
 	_pulse_focus = false
 	_pulse_time = 0.0
+	_current_motion_profile = "static"
 	set_process(false)
 	if guide_panel != null:
 		guide_panel.visible = false
 	if guide_chip != null:
 		guide_chip.visible = false
 		guide_chip.scale = Vector2.ONE
+		guide_chip.rotation = 0.0
 	if guide_label != null:
 		guide_label.text = ""
 
@@ -111,6 +126,7 @@ func get_focus_debug_snapshot() -> Dictionary:
 		"visible": visible,
 		"pulse_focus": _pulse_focus,
 		"focus_target": _current_focus_target,
+		"motion_profile": _current_motion_profile,
 		"label": guide_label.text if guide_label != null else "",
 	}
 
@@ -227,6 +243,60 @@ func _focus_guide_fill_alpha(focus_target: String) -> float:
 
 func _focus_guide_pulse_enabled(scenario_data: Dictionary) -> bool:
 	return bool(scenario_data.get("pulse_focus", false)) or str(scenario_data.get("stuck_state", "")).strip_edges() == "strong"
+
+
+func _focus_guide_motion_profile(focus_target: String, scenario_data: Dictionary) -> String:
+	var explicit := str(scenario_data.get("motion_profile", "")).strip_edges()
+	if explicit != "":
+		return explicit
+	match focus_target:
+		"planet", "route_layer":
+			return "orbit"
+		"player_hand":
+			return "lift"
+		"public_track":
+			return "scan"
+		"action_dock", "bid_board", "right_inspector", "economy_overview", "intel_dossier", "standings", "settlement":
+			return "tap"
+		"district_supply", "private_decision", "contract_prompt":
+			return "double_tap"
+	return "static"
+
+
+func _focus_guide_shadow_motion_offset(motion_profile: String, elapsed: float, wave: float) -> Vector2:
+	match motion_profile:
+		"orbit":
+			return Vector2(cos(elapsed * TAU * 0.72), sin(elapsed * TAU * 0.72)) * 2.4
+		"lift":
+			return Vector2(0.0, -2.0 - wave * 2.2)
+		"scan":
+			return Vector2((wave - 0.5) * 7.0, 0.0)
+		"tap", "double_tap":
+			return Vector2.ZERO
+	return Vector2.ZERO
+
+
+func _apply_chip_motion(motion_profile: String, wave: float) -> void:
+	if guide_chip == null:
+		return
+	guide_chip.position = _chip_base_position
+	guide_chip.scale = _chip_base_scale
+	guide_chip.rotation = 0.0
+	match motion_profile:
+		"orbit":
+			var angle := _pulse_time * TAU * 0.72
+			guide_chip.position = _chip_base_position + Vector2(cos(angle), sin(angle)) * 3.0
+			guide_chip.scale = _chip_base_scale * (1.0 + wave * 0.018)
+		"lift":
+			guide_chip.position = _chip_base_position + Vector2(0.0, -5.0 * wave)
+			guide_chip.scale = _chip_base_scale * (1.0 + wave * 0.025)
+		"scan":
+			guide_chip.position = _chip_base_position + Vector2((wave - 0.5) * 12.0, 0.0)
+		"tap":
+			guide_chip.scale = _chip_base_scale * (1.0 + wave * 0.045)
+		"double_tap":
+			var double_wave := 0.5 + 0.5 * sin(_pulse_time * TAU * 2.90)
+			guide_chip.scale = _chip_base_scale * (1.0 + double_wave * 0.055)
 
 
 func _focus_guide_chip_size(label_text: String, local_rect: Rect2) -> Vector2:
