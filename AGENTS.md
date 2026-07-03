@@ -22,6 +22,7 @@ Default development habit:
 - Build a reusable skeleton or data contract when the feature is likely to recur; avoid one-off UI or rule patches that cannot scale.
 - Add an acceptance gate, smoke test, visual contract, or documented manual check so the standard does not depend on memory.
 - If a feature is still temporary, say exactly which hard standard it does not meet yet and what the next gate should protect.
+- A change without a hard standard, reusable skeleton, and acceptance gate is not considered finished, even if the visible feature appears to work.
 
 ## Current High-Level Game Loop
 

@@ -1768,6 +1768,7 @@ var opening_guide_economy_seen_players := {}
 var first_run_coach_district_seen_players := {}
 var first_run_coach_supply_seen_players := {}
 var first_run_coach_public_track_seen_players := {}
+var first_run_coach_route_choice_players := {}
 var first_run_coach_clues_seen_players := {}
 var first_run_coach_strong_focus_until_seconds := 0.0
 var first_run_coach_strong_focus_player_index := -1
@@ -15864,6 +15865,7 @@ func _capture_run_state() -> Dictionary:
 		"first_run_coach_district_seen_players": first_run_coach_district_seen_players.duplicate(true),
 		"first_run_coach_supply_seen_players": first_run_coach_supply_seen_players.duplicate(true),
 		"first_run_coach_public_track_seen_players": first_run_coach_public_track_seen_players.duplicate(true),
+		"first_run_coach_route_choice_players": first_run_coach_route_choice_players.duplicate(true),
 		"first_run_coach_clues_seen_players": first_run_coach_clues_seen_players.duplicate(true),
 		"business_cycle_count": business_cycle_count,
 		"configured_player_count": configured_player_count,
@@ -15991,6 +15993,7 @@ func _apply_run_state(state: Dictionary) -> int:
 	first_run_coach_district_seen_players = (state.get("first_run_coach_district_seen_players", {}) as Dictionary).duplicate(true)
 	first_run_coach_supply_seen_players = (state.get("first_run_coach_supply_seen_players", {}) as Dictionary).duplicate(true)
 	first_run_coach_public_track_seen_players = (state.get("first_run_coach_public_track_seen_players", {}) as Dictionary).duplicate(true)
+	first_run_coach_route_choice_players = (state.get("first_run_coach_route_choice_players", {}) as Dictionary).duplicate(true)
 	first_run_coach_clues_seen_players = (state.get("first_run_coach_clues_seen_players", {}) as Dictionary).duplicate(true)
 	business_cycle_count = int(state.get("business_cycle_count", 0))
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
@@ -16931,6 +16934,7 @@ func _new_game() -> void:
 	first_run_coach_district_seen_players = {}
 	first_run_coach_supply_seen_players = {}
 	first_run_coach_public_track_seen_players = {}
+	first_run_coach_route_choice_players = {}
 	first_run_coach_clues_seen_players = {}
 	product_market = _generate_product_market()
 	skill_market = _monster_market_skills()
@@ -22985,6 +22989,21 @@ func _mark_first_run_coach_public_track_seen(player_index: int) -> void:
 	first_run_coach_public_track_seen_players[_first_run_coach_player_key(player_index)] = true
 
 
+func _mark_first_run_coach_route_choice(player_index: int, route_id: String) -> void:
+	if player_index < 0 or player_index >= players.size():
+		return
+	var normalized := str(route_id).strip_edges()
+	if normalized == "":
+		normalized = "grow_gdp"
+	first_run_coach_route_choice_players[_first_run_coach_player_key(player_index)] = normalized
+
+
+func _first_run_coach_route_choice(player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size():
+		return ""
+	return str(first_run_coach_route_choice_players.get(_first_run_coach_player_key(player_index), first_run_coach_route_choice_players.get(player_index, ""))).strip_edges()
+
+
 func _mark_first_run_coach_clues_seen(player_index: int) -> void:
 	if player_index < 0 or player_index >= players.size():
 		return
@@ -23051,6 +23070,9 @@ func _first_run_coach_progress(player_index: int) -> Dictionary:
 		or bool(progress.get("has_bought_card", false))
 	progress["has_seen_public_track"] = _first_run_coach_seen(first_run_coach_public_track_seen_players, player_index) \
 		or selected_card_resolution_id >= 0
+	var route_choice := _first_run_coach_route_choice(player_index)
+	progress["has_chosen_route"] = route_choice != ""
+	progress["route_choice"] = route_choice
 	progress["has_seen_clues"] = _first_run_coach_seen(first_run_coach_clues_seen_players, player_index)
 	return progress
 
@@ -23062,19 +23084,30 @@ func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
 	if player_index < 0 or player_index >= players.size() or game_over:
 		return {}
 	var progress := _first_run_coach_progress(player_index)
+	var stage := _first_run_coach_stage(progress)
 	var primary_action := _runtime_first_run_coach_primary_action(player_index, progress)
 	var source := {
 		"visible": not opening_guide_dismissed,
 		"dismissed": opening_guide_dismissed,
+		"stage": stage,
 		"progress": progress,
 		"primary_action": primary_action,
 		"recommended_setup": _first_run_recommended_setup(),
-		"auto_fold_when_track_seen": true,
+		"auto_fold_when_track_seen": false,
 	}
+	if stage == "choose_route":
+		source["chips"] = _first_run_coach_route_choice_chips()
 	if _first_run_coach_strong_focus_active(player_index):
-		var stage := _first_run_coach_stage(progress)
 		source.merge(_first_run_coach_strong_focus_copy(stage, first_run_coach_strong_focus_action_id), true)
 	return source
+
+
+func _first_run_coach_route_choice_chips() -> Array:
+	return [
+		{"text": "扩GDP", "tooltip": "优先强化城市收入、商品供需和商路。", "accent": Color("#4ade80")},
+		{"text": "护商路", "tooltip": "优先保护高收入城市、修复路线和降低风险。", "accent": Color("#38bdf8")},
+		{"text": "压竞争", "tooltip": "优先读公开线索，攻击疑似竞争城市。", "accent": Color("#fb7185")},
+	]
 
 
 func _first_run_coach_player_index() -> int:
@@ -23150,6 +23183,9 @@ func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -
 		"coach_check_economy":
 			copy["focus_target"] = "economy_overview"
 			copy["shortest_action_text"] = "看经济，理解钱从哪里来。"
+		"coach_choose_route_growth":
+			copy["focus_target"] = "action_dock"
+			copy["shortest_action_text"] = "先走扩GDP路线。"
 		"coach_inspect_clues":
 			copy["focus_target"] = "right_inspector"
 			copy["shortest_action_text"] = "看右侧，整理线索。"
@@ -23186,6 +23222,10 @@ func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -
 			copy["title"] = "看经济总览"
 			copy["body"] = "理解钱源。"
 			copy["tooltip"] = "最短操作：打开经济总览，看GDP、商品和商路。"
+		"choose_route":
+			copy["title"] = "选继续路线"
+			copy["body"] = "扩GDP、护商路、压竞争。"
+			copy["tooltip"] = "最短操作：先选一条能理解的路线继续玩。"
 		"inspect_clues":
 			copy["title"] = "看右侧线索"
 			copy["body"] = "打开线索档案。"
@@ -23227,6 +23267,10 @@ func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -
 			copy["title"] = "看经济总览"
 			copy["body"] = "看GDP来源。"
 			copy["tooltip"] = "最短操作：打开经济总览，确认城市、商品和商路如何变成钱。"
+		"coach_choose_route_growth":
+			copy["title"] = "路线已选"
+			copy["body"] = "先扩GDP。"
+			copy["tooltip"] = "最短操作：回到牌桌，围绕城市收入、商品和商路继续行动。"
 		"coach_inspect_clues":
 			copy["title"] = "看右侧线索"
 			copy["body"] = "整理嫌疑。"
@@ -23319,6 +23363,14 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"tooltip": "打开经济总览，确认GDP、商品、商路和城市收入如何变成钱。",
 				"accent": Color("#4ade80"),
 			}
+		"choose_route":
+			return {
+				"id": "coach_choose_route_growth",
+				"label": "走扩GDP",
+				"disabled": false,
+				"tooltip": "首局推荐先围绕城市收入、商品供需和商路扩张；旁边短签给出其他可读路线。",
+				"accent": Color("#22c55e"),
+			}
 		"inspect_clues":
 			return {
 				"id": "coach_inspect_clues",
@@ -23331,7 +23383,11 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 
 
 func _first_run_coach_stage(progress: Dictionary) -> String:
-	if bool(progress.get("has_played_card", false)) and bool(progress.get("has_seen_public_track", false)) and bool(progress.get("has_checked_economy", false)):
+	if bool(progress.get("has_played_card", false)) \
+		and bool(progress.get("has_seen_public_track", false)) \
+		and bool(progress.get("has_checked_economy", false)) \
+		and bool(progress.get("has_chosen_route", false)) \
+		and bool(progress.get("has_seen_clues", false)):
 		return "done"
 	if not bool(progress.get("selected_district", false)):
 		return "select_district"
@@ -23349,6 +23405,8 @@ func _first_run_coach_stage(progress: Dictionary) -> String:
 		return "inspect_track"
 	if not bool(progress.get("has_checked_economy", false)):
 		return "check_economy"
+	if not bool(progress.get("has_chosen_route", false)):
+		return "choose_route"
 	if not bool(progress.get("has_seen_clues", false)):
 		return "inspect_clues"
 	return "done"
@@ -23460,6 +23518,12 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 		"coach_check_economy":
 			selected_player = player_index
 			_open_economy_overview_menu()
+			_finish_first_run_coach_action_feedback(player_index, action_id)
+			return true
+		"coach_choose_route_growth":
+			selected_player = player_index
+			_mark_first_run_coach_route_choice(player_index, "grow_gdp")
+			_close_menu()
 			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_inspect_clues":
@@ -23776,12 +23840,15 @@ func _opening_guide_progress(player_index: int) -> Dictionary:
 	if int(active_card_resolution.get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(active_card_resolution):
 		has_played_card = true
 	var has_checked_economy := _opening_guide_economy_seen(player_index)
+	var route_choice := _first_run_coach_route_choice(player_index)
 	return {
 		"has_monster": has_monster,
 		"has_city": has_city,
 		"has_bought_card": has_bought_card,
 		"has_played_card": has_played_card,
 		"has_checked_economy": has_checked_economy,
+		"has_chosen_route": route_choice != "",
+		"route_choice": route_choice,
 	}
 
 
@@ -23805,6 +23872,7 @@ func _opening_guide_lines(player_index: int) -> Array:
 		_opening_guide_step(bool(progress.get("has_bought_card", false)), "＋ 买第一牌｜重复升级"),
 		_opening_guide_step(bool(progress.get("has_played_card", false)), "◎ 匿名出牌｜目标另选"),
 		_opening_guide_step(bool(progress.get("has_checked_economy", false)), "◇ 经济总览｜看GDP"),
+		_opening_guide_step(bool(progress.get("has_chosen_route", false)), "▤ 选择路线｜继续玩"),
 	]
 
 
@@ -23816,6 +23884,7 @@ func _opening_guide_step_entries(player_index: int) -> Array:
 		{"done": bool(progress.get("has_bought_card", false)), "title": "买第一牌", "body": "怪兽区/邻区买牌。", "accent": Color("#facc15")},
 		{"done": bool(progress.get("has_played_card", false)), "title": "匿名出牌", "body": "满足商品流动后出牌。", "accent": Color("#c084fc")},
 		{"done": bool(progress.get("has_checked_economy", false)), "title": "看经济总览", "body": "看GDP、商品、商路。", "accent": Color("#38bdf8")},
+		{"done": bool(progress.get("has_chosen_route", false)), "title": "选择路线", "body": "扩GDP、护商路、压竞争。", "accent": Color("#22c55e")},
 	]
 
 
@@ -23892,6 +23961,13 @@ func _opening_guide_next_step_card(player_index: int) -> Dictionary:
 			"reason": "收入拆解决定扩张、保护或攻击。",
 			"entry": "轻引导顶部 → 经济总览。",
 			"accent": Color("#38bdf8"),
+		}
+	if not bool(progress.get("has_chosen_route", false)):
+		return {
+			"action": "先选扩GDP路线，再回到牌桌继续行动。",
+			"reason": "首局先追一条赚钱路线，后面再判断保护或压制。",
+			"entry": "首局引导 → 走扩GDP。",
+			"accent": Color("#22c55e"),
 		}
 	return {
 		"action": "扩 GDP、护商路，或压制疑似竞争城市。",
@@ -23972,6 +24048,14 @@ func _opening_guide_primary_action(player_index: int) -> Dictionary:
 			"accent": Color("#38bdf8"),
 			"disabled": false,
 			"target": Callable(self, "_open_economy_overview_menu"),
+		}
+	if not bool(progress.get("has_chosen_route", false)):
+		return {
+			"label": "走扩GDP",
+			"detail": "首局推荐先围绕城市收入、商品供需和商路扩张。",
+			"accent": Color("#22c55e"),
+			"disabled": false,
+			"target": Callable(self, "_activate_first_run_coach_action").bind("coach_choose_route_growth"),
 		}
 	return {
 		"label": "看经济",

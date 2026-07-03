@@ -126,6 +126,18 @@ func _check_first_ten_minute_action_chain() -> void:
 	var economy_title := main.find_child("MenuTitleLabel", true, false) as Label
 	_expect(bool(progress_after_economy.get("has_checked_economy", false)), "first ten-minute path records economy overview inspection")
 	_expect(economy_title != null and economy_title.text == "经济总览", "first ten-minute path opens the economy overview dashboard")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_economy)) == "choose_route", "first ten-minute path does not end at economy overview; it asks for a compact continuation route")
+	var route_snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
+	var route_snapshot: Dictionary = route_snapshot_variant if route_snapshot_variant is Dictionary else {}
+	var route_coach: Dictionary = route_snapshot.get("first_run_coach", {}) if route_snapshot.get("first_run_coach", {}) is Dictionary else {}
+	var route_primary: Dictionary = route_coach.get("primary_action", {}) if route_coach.get("primary_action", {}) is Dictionary else {}
+	_expect(str(route_coach.get("stage", "")) == "choose_route" and str(route_primary.get("id", "")) == "coach_choose_route_growth", "first ten-minute route coach exposes one recommended continuation CTA after economy overview")
+	_expect(_coach_chip_text(route_coach).contains("扩GDP") and _coach_chip_text(route_coach).contains("护商路") and _coach_chip_text(route_coach).contains("压竞争"), "first ten-minute route coach exposes three compact route chips instead of prose rules")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_choose_route_growth")), "first ten-minute path can choose the recommended GDP-growth route from coach")
+	await _wait_frames(8)
+	var progress_after_route: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_route.get("has_chosen_route", false)) and str(progress_after_route.get("route_choice", "")) == "grow_gdp", "first ten-minute path records the chosen route as runtime state")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_route)) == "inspect_clues", "first ten-minute path continues from route choice into clue review instead of stopping")
 	root.remove_child(main)
 	main.queue_free()
 	await _wait_frames(1)
@@ -395,6 +407,17 @@ func _visible_buttons(node: Node) -> Array[Button]:
 	for child in node.get_children():
 		result.append_array(_visible_buttons(child))
 	return result
+
+
+func _coach_chip_text(snapshot: Dictionary) -> String:
+	var texts: Array[String] = []
+	var chips: Array = snapshot.get("chips", []) if snapshot.get("chips", []) is Array else []
+	for chip_variant in chips:
+		if chip_variant is Dictionary:
+			texts.append(str((chip_variant as Dictionary).get("text", "")))
+		else:
+			texts.append(str(chip_variant))
+	return "｜".join(texts)
 
 
 func _node_text(node: Node) -> String:

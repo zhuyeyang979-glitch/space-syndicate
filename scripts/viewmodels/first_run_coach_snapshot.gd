@@ -8,6 +8,8 @@ const STAGE_OPEN_RACK := "open_rack"
 const STAGE_BUY_CARD := "buy_card"
 const STAGE_PLAY_CARD := "play_card"
 const STAGE_INSPECT_TRACK := "inspect_track"
+const STAGE_CHECK_ECONOMY := "check_economy"
+const STAGE_CHOOSE_ROUTE := "choose_route"
 const STAGE_INSPECT_CLUES := "inspect_clues"
 const STAGE_DONE := "done"
 
@@ -19,6 +21,8 @@ const STEP_ORDER := [
 	STAGE_BUY_CARD,
 	STAGE_PLAY_CARD,
 	STAGE_INSPECT_TRACK,
+	STAGE_CHECK_ECONOMY,
+	STAGE_CHOOSE_ROUTE,
 	STAGE_INSPECT_CLUES,
 ]
 
@@ -85,6 +89,10 @@ func _stage_from_progress(progress: Dictionary, auto_fold_when_track_seen: bool)
 		return STAGE_PLAY_CARD
 	if not _bool(progress, "has_seen_public_track"):
 		return STAGE_INSPECT_TRACK
+	if not _bool(progress, "has_checked_economy"):
+		return STAGE_CHECK_ECONOMY
+	if not _bool(progress, "has_chosen_route"):
+		return STAGE_CHOOSE_ROUTE
 	if not _bool(progress, "has_seen_clues"):
 		return STAGE_INSPECT_CLUES
 	return STAGE_DONE
@@ -141,6 +149,20 @@ func _stage_definition(stage: String) -> Dictionary:
 				"body": "看这张牌留下什么线索。",
 				"tooltip": "牌轨是公共时间线：牌、事件、天气、赌局。",
 			}
+		STAGE_CHECK_ECONOMY:
+			return {
+				"phase_label": "经济",
+				"title": "看经济总览",
+				"body": "看钱从哪里来。",
+				"tooltip": "经济总览把GDP、商品、商路和城市收入拆成可读线索。",
+			}
+		STAGE_CHOOSE_ROUTE:
+			return {
+				"phase_label": "路线",
+				"title": "选一条路线继续",
+				"body": "首局推荐先扩GDP。",
+				"tooltip": "路线只给接下来几分钟的方向：扩GDP、护商路、压竞争。",
+			}
 		STAGE_INSPECT_CLUES:
 			return {
 				"phase_label": "线索",
@@ -173,6 +195,10 @@ func _default_primary_action(stage: String) -> Dictionary:
 			return {"id": "coach_play_card", "label": "打出手牌", "tooltip": "打出当前可用手牌。"}
 		STAGE_INSPECT_TRACK:
 			return {"id": "coach_inspect_track", "label": "看牌轨", "tooltip": "聚焦顶部公开牌轨。"}
+		STAGE_CHECK_ECONOMY:
+			return {"id": "coach_check_economy", "label": "看经济", "tooltip": "打开经济总览。"}
+		STAGE_CHOOSE_ROUTE:
+			return {"id": "coach_choose_route_growth", "label": "走扩GDP", "tooltip": "先围绕城市收入、商品和商路继续玩。"}
 		STAGE_INSPECT_CLUES:
 			return {"id": "coach_inspect_clues", "label": "看线索", "tooltip": "打开线索档案。"}
 		_:
@@ -195,6 +221,10 @@ func _focus_target_for_stage(stage: String) -> String:
 			return "player_hand"
 		STAGE_INSPECT_TRACK:
 			return "public_track"
+		STAGE_CHECK_ECONOMY:
+			return "economy_overview"
+		STAGE_CHOOSE_ROUTE:
+			return "action_dock"
 		STAGE_INSPECT_CLUES:
 			return "right_inspector"
 		_:
@@ -217,6 +247,10 @@ func _shortest_action_for_stage(stage: String) -> String:
 			return "打出一张可用手牌。"
 		STAGE_INSPECT_TRACK:
 			return "看顶部牌轨。"
+		STAGE_CHECK_ECONOMY:
+			return "看经济总览。"
+		STAGE_CHOOSE_ROUTE:
+			return "走扩GDP路线。"
 		STAGE_INSPECT_CLUES:
 			return "打开线索档案。"
 	return "继续下一步。"
@@ -258,6 +292,12 @@ func _normalized_chips(value: Variant) -> Array:
 
 
 func _stage_chips(progress: Dictionary, stage: String) -> Array:
+	if stage == STAGE_CHOOSE_ROUTE:
+		return [
+			{"text": "扩GDP", "tooltip": "强化城市收入、商品供需和商路。", "accent": Color("#4ade80")},
+			{"text": "护商路", "tooltip": "保护高收入城市，修复路线。", "accent": Color("#38bdf8")},
+			{"text": "压竞争", "tooltip": "读公开线索，攻击竞争城市。", "accent": Color("#fb7185")},
+		]
 	return [
 		{"text": _stage_definition(stage).get("phase_label", "首局"), "accent": _stage_accent(stage)},
 		{"text": _stage_focus_chip_text(stage), "tooltip": "下一眼先看这块桌面区域。", "accent": Color("#bfdbfe")},
@@ -281,6 +321,10 @@ func _stage_focus_chip_text(stage: String) -> String:
 			return "看手牌"
 		STAGE_INSPECT_TRACK:
 			return "看牌轨"
+		STAGE_CHECK_ECONOMY:
+			return "看经济"
+		STAGE_CHOOSE_ROUTE:
+			return "看路线"
 		STAGE_INSPECT_CLUES:
 			return "看右侧"
 		_:
@@ -303,6 +347,10 @@ func _stage_result_chip_text(stage: String) -> String:
 			return "进牌轨"
 		STAGE_INSPECT_TRACK:
 			return "找线索"
+		STAGE_CHECK_ECONOMY:
+			return "懂钱源"
+		STAGE_CHOOSE_ROUTE:
+			return "定方向"
 		STAGE_INSPECT_CLUES:
 			return "猜归属"
 		_:
@@ -339,6 +387,10 @@ func _stage_done(progress: Dictionary, stage: String) -> bool:
 			return _bool(progress, "has_played_card")
 		STAGE_INSPECT_TRACK:
 			return _bool(progress, "has_seen_public_track")
+		STAGE_CHECK_ECONOMY:
+			return _bool(progress, "has_checked_economy")
+		STAGE_CHOOSE_ROUTE:
+			return _bool(progress, "has_chosen_route")
 		STAGE_INSPECT_CLUES:
 			return _bool(progress, "has_seen_clues")
 	return false
@@ -355,7 +407,7 @@ func _completed_count(progress: Dictionary) -> int:
 func _progress_text(progress: Dictionary, stage: String) -> String:
 	if stage == STAGE_DONE:
 		return "已完成"
-	return "%d/8｜%s" % [_completed_count(progress), str(_stage_definition(stage).get("phase_label", "下一步"))]
+	return "%d/10｜%s" % [_completed_count(progress), str(_stage_definition(stage).get("phase_label", "下一步"))]
 
 
 func _recommended_setup(value: Variant) -> Dictionary:
@@ -385,6 +437,10 @@ func _stage_accent(stage: String) -> Color:
 			return Color("#c084fc")
 		STAGE_INSPECT_TRACK:
 			return Color("#f59e0b")
+		STAGE_CHECK_ECONOMY:
+			return Color("#38bdf8")
+		STAGE_CHOOSE_ROUTE:
+			return Color("#22c55e")
 		STAGE_INSPECT_CLUES:
 			return Color("#93c5fd")
 	return Color("#22c55e")

@@ -297,11 +297,31 @@ func _check_first_run_coach_component() -> void:
 			"has_bought_card": true,
 			"has_played_card": true,
 			"has_seen_public_track": true,
+			"has_checked_economy": true,
+			"has_chosen_route": true,
 			"has_seen_clues": false,
 		},
 		"auto_fold_when_track_seen": false,
 	}).to_ui_dictionary()
 	_expect(str(clue_snapshot.get("stage", "")) == "inspect_clues" and str(clue_snapshot.get("title", "")).contains("线索"), "FirstRunCoach stage model still includes the clue-inspection phase for non-folded/tutorial variants")
+	var route_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
+		"progress": {
+			"selected_district": true,
+			"has_monster": true,
+			"has_city": true,
+			"has_opened_supply": true,
+			"has_bought_card": true,
+			"has_played_card": true,
+			"has_seen_public_track": true,
+			"has_checked_economy": true,
+			"has_chosen_route": false,
+			"has_seen_clues": false,
+		},
+		"auto_fold_when_track_seen": false,
+	}).to_ui_dictionary()
+	var route_chips := _coach_chip_text(route_snapshot)
+	_expect(str(route_snapshot.get("stage", "")) == "choose_route" and str((route_snapshot.get("primary_action", {}) as Dictionary).get("id", "")) == "coach_choose_route_growth", "FirstRunCoach requires a post-economy route choice before it completes")
+	_expect(route_chips.contains("扩GDP") and route_chips.contains("护商路") and route_chips.contains("压竞争"), "FirstRunCoach route-choice chips expose the three compact continuation routes")
 	var buy_snapshot: Dictionary = snapshot_script.new().apply_dictionary({
 		"progress": {
 			"selected_district": true,
