@@ -3,6 +3,28 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜首局高频卡牌逐张审片台
+
+- 继续执行“卡牌插画要一张一张做、不能看起来都差不多”的硬约束，这轮不改规则与数值，只补卡牌美术验收面：
+  - 新增 `tests/card_runtime_review_capture.gd`。
+  - 首批锁定 24 张首局/高频/关键交互牌：经济、交通、怪兽诱导、补给、基础行动、情报、金融、合约、直接互动和军队。
+  - 每张审片 tile 同时展示完整卡面、手牌缩略图、简短玩家速读、`visual_source_id / sprite_key / sprite_cell / first_run_art_focus / motif_family` 等开发字段。
+  - 脚本会检查首局 10 张关键牌的 `first_run_art_focus` 是否正确，并检查 24 张审片牌视觉 profile 不重复。
+- 新增输出：
+  - `reports/art/card_reviews/art_card_review_first_run_01.png`
+  - `reports/art/card_reviews/art_card_review_first_run_02.png`
+  - `reports/art/card_reviews/art_card_review_first_run_03.png`
+- `tests/visual_snapshot.gd` 加入硬契约：逐张卡牌审片脚本、24 张名单、首局焦点检查、手牌缩略图和 dev-only profile 边界都不能丢。
+
+### 本轮验证
+
+- `tests/card_runtime_review_capture.gd` 有头通过，输出 3 页首局高频卡牌逐张审片图。
+- `tests/visual_snapshot.gd` 通过，保护逐张卡牌审片脚本和 dev-only profile 边界。
+- `tests/ui_text_smoke_test.gd` 通过，确认玩家 UI 文本边界未被开发字段污染。
+- `tests/art_identity_gate_test.gd` 通过，继续保护卡牌/怪兽/动作 profile 唯一性。
+- `tests/smoke_test.gd --check-only`、完整 `tests/smoke_test.gd` 通过，确认审片台不破坏主玩法闭环。
+- 人工抽看 `art_card_review_first_run_01.png`：标题、完整卡面、手牌缩略图、玩家速读和 profile 芯片可见；也暴露出经济类卡牌仍偏同构，下一轮应逐张替换这些卡的插画锚点。
+
 ## 2026-07-03｜怪兽身体来源再加严：MOS 不复用，新增 PixelMob CC0
 
 - 回应“MOS kaijus 只能用于做一个怪兽，不能反复换动作当成多只怪兽”的审片要求，这轮把门槛从“sprite key 不同”继续提高到“上游来源分布必须健康”：

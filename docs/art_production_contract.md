@@ -39,6 +39,7 @@ Acceptance:
 - At least ten sprite/illustration families and ten visual source families must be used across the current catalog.
 - High-frequency first-run cards must have authored `first_run_art_focus` overlays; do not let them collapse into the same generic route mark.
 - Card art must be visible in hand, region supply, card codex thumbnail, and card detail contexts because these all share `CardArtView`.
+- First-run/high-frequency cards must also have per-card review sheets that show the full card, hand thumbnail, player scan text, and dev-only visual profile. This is the human art-review gate for catching cards that are technically unique but still feel like visual clones.
 
 ## Monster art hard standard
 
@@ -151,6 +152,7 @@ Run this as a visible Godot process, not `--headless`, because the headless dumm
 
 ```powershell
 & "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --script res://tests/art_contact_sheet_capture.gd
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --script res://tests/card_runtime_review_capture.gd
 ```
 
 It writes:
@@ -159,6 +161,9 @@ It writes:
 - `reports/art/art_monster_action_profiles_1600x960.png`
 - `reports/art/art_monster_map_tokens_1600x960.png`
 - `reports/art/art_monster_action_map_effects_1600x960.png`
+- `reports/art/card_reviews/art_card_review_first_run_01.png`
+- `reports/art/card_reviews/art_card_review_first_run_02.png`
+- `reports/art/card_reviews/art_card_review_first_run_03.png`
 
 Use these images for human review after each art pass. The first sheet checks whether cards and monsters are visually distinguishable at a glance. The second sheet checks whether each monster action has a distinct motion/effect/timing/meter profile before full animation work starts.
 The third sheet checks whether the real `MapView` renders source-specific monster body sprites at tabletop-token scale, so the in-game planet is not reduced to numbered colored dots.
