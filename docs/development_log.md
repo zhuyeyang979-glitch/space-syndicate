@@ -3,6 +3,22 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜ScenarioCoach 空状态不再显示占位目标
+
+- 继续推进首局真人可读性，本轮修正主桌上一个容易误导测试者的默认态：
+  - 没有活动剧本/战役时，`ScenarioCoachSnapshot` 现在输出 `visible=false`，不再在主桌上显示“试玩脚本 / 完成当前目标”的幽灵提示卡。
+  - 真正有活动剧本时，仍然显示原 `first_table.json` 等数据里的当前目标和单一主 CTA。
+  - `ScenarioCoach.tscn` 与 `scenario_coach.gd` 的 fallback 文案改成“按桌边提示完成下一步”，避免未注入数据时出现像开发占位的句子。
+  - 截图样例里的主按钮从“定位目标”改为“定位下一步”。
+  - 修正 `_sync_runtime_game_screen()`：主控制器现在把 raw table state 交给 `GameScreen.apply_state()`，由 `TableSnapshot` 只归一化一次；之前双归一化会让 ScenarioCoach 丢掉 `current_phase`，回退成泛化目标。
+- 设计意图：主桌上每张提示卡都必须代表一个真实可执行目标；如果没有目标，就不要占据星球侧边空间。
+
+### 本轮验证
+
+- `tests/playtest_readability_gate_test.gd` 新增空状态检查：ScenarioCoach 无活动剧本时必须隐藏，有真实剧本时必须显示真实目标。
+- `tests/scenario_smoke_test.gd` 新增组件级检查：空 Coach 快照不能带占位 goal。
+- 运行态人工验证：`first_table` 现在显示 `1/6 / 点区 / 选择一个陆地区域。 / 点击推荐区域`。
+
 ## 2026-07-03｜区域牌架预览改成四段速读卡
 
 - 继续回应“真人玩家信息密度太高、像开发说明书”的问题，本轮只改区域牌架 UI，不改买牌规则、卡牌数据或结算：

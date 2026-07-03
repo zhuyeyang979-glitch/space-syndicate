@@ -2,6 +2,7 @@ extends SceneTree
 
 const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right_inspector_snapshot.gd")
 const FIRST_RUN_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/first_run_coach_snapshot.gd")
+const SCENARIO_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/scenario_coach_snapshot.gd")
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 
 var _failures: Array[String] = []
@@ -14,6 +15,7 @@ func _init() -> void:
 func _run() -> void:
 	_check_right_inspector_snapshot_density()
 	_check_first_run_coach_density()
+	_check_scenario_coach_empty_state()
 	_check_player_facing_source_guards()
 	await _check_default_scenario_coach_stays_off_planet()
 	_finish()
@@ -55,6 +57,20 @@ func _check_first_run_coach_density() -> void:
 		_expect(str(snapshot.get("title", "")).length() <= 14, "first-run coach stage %s title is compact" % stage)
 
 
+func _check_scenario_coach_empty_state() -> void:
+	var empty_snapshot: Dictionary = SCENARIO_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({}).to_ui_dictionary()
+	_expect(not bool(empty_snapshot.get("visible", true)), "scenario coach hides itself when no scenario is active")
+	_expect(str(empty_snapshot.get("goal", "")) == "", "empty scenario coach does not show placeholder goal text")
+	var active_snapshot: Dictionary = SCENARIO_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({
+		"scenario_id": "first_table",
+		"title": "01 首局入门",
+		"current_index": 0,
+		"total": 6,
+		"current_phase": {"id": "select_district", "label": "点区", "goal": "在中央星球选择一个陆地区域。", "primary_action_hint": "点击推荐区域", "focus_target": "planet"},
+	}).to_ui_dictionary()
+	_expect(bool(active_snapshot.get("visible", false)) and str(active_snapshot.get("goal", "")).contains("选择一个陆地"), "active scenario coach still shows real scenario copy")
+
+
 func _check_player_facing_source_guards() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
@@ -64,6 +80,9 @@ func _check_player_facing_source_guards() -> void:
 	var tutorial_source := FileAccess.get_file_as_string("res://scripts/ui/tutorial_quick_start_board.gd")
 	var rules_source := FileAccess.get_file_as_string("res://scripts/ui/rules_quick_reference_board.gd")
 	var snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/right_inspector_snapshot.gd")
+	var scenario_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/scenario_coach_snapshot.gd")
+	var scenario_coach_scene := FileAccess.get_file_as_string("res://scenes/ui/ScenarioCoach.tscn")
+	var scenario_coach_script := FileAccess.get_file_as_string("res://scripts/ui/scenario_coach.gd")
 	var bid_board_scene := FileAccess.get_file_as_string("res://scenes/ui/BidBoard.tscn")
 	var district_supply_preview_scene := FileAccess.get_file_as_string("res://scenes/ui/DistrictSupplyPreviewCard.tscn")
 	var district_supply_preview_script := FileAccess.get_file_as_string("res://scripts/ui/district_supply_preview_card.gd")
@@ -83,6 +102,7 @@ func _check_player_facing_source_guards() -> void:
 	_expect(bid_board_scene.contains("牌桌竞价") and bid_board_scene.contains("下一张牌可报价。") and not bid_board_scene.contains("公开竞价") and not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board reads as a compact table-bid control instead of an anonymity rules explainer")
 	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")
 	_expect(district_supply_preview_scene.contains("DistrictSupplyPreviewScanGrid") and district_supply_preview_script.contains("SCAN_SECTION_BODY_LIMIT := 34") and district_supply_preview_script.contains("_render_scan_sections") and district_supply_preview_script.contains("body_label.visible = body_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("facts_label.visible = facts_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("status_label.visible = status_label.text != \"\" and not has_scan_sections") and main_source.contains("_district_supply_preview_scan_sections") and main_source.contains("\"title\": \"用途\"") and main_source.contains("\"title\": \"买入\"") and main_source.contains("\"title\": \"打出\"") and main_source.contains("\"title\": \"目标\""), "district supply preview uses four compact scan sections instead of always-visible dense prose")
+	_expect(scenario_snapshot_source.contains("has_scenario") and scenario_snapshot_source.contains("\"visible\": false") and scenario_snapshot_source.contains("按桌边提示完成下一步。") and not _contains_any("\n".join([scenario_snapshot_source, scenario_coach_scene, scenario_coach_script]), ["完成当前目标。", "看高亮区域，完成当前目标。"]), "scenario coach hides empty/default state and avoids placeholder objective copy")
 
 
 func _check_default_scenario_coach_stays_off_planet() -> void:
@@ -144,6 +164,13 @@ func _expect(condition: bool, message: String) -> void:
 		return
 	_failures.append(message)
 	push_error("Playtest readability gate failure: %s" % message)
+
+
+func _contains_any(haystack: String, needles: Array) -> bool:
+	for needle_variant in needles:
+		if haystack.contains(str(needle_variant)):
+			return true
+	return false
 
 
 func _finish() -> void:

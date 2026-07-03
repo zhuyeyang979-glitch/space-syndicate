@@ -259,7 +259,7 @@ func _coach_snapshot(title: String, phase_label: String, goal: String, progress_
 		"progress_text": progress_text,
 		"goal": goal,
 		"detail": goal,
-		"primary_action": {"id": "scenario_step_demo", "label": "定位目标", "tooltip": goal},
+		"primary_action": {"id": "scenario_step_demo", "label": "定位下一步", "tooltip": goal},
 		"secondary_actions": [{"id": "scenario_hint", "label": "提示"}, {"id": "scenario_restart", "label": "重开"}],
 		"font_scale_percent": 100,
 	}

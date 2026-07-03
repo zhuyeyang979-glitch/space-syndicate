@@ -2074,12 +2074,12 @@ func _uses_split_runtime_table() -> bool:
 func _sync_runtime_game_screen(force: bool = false) -> void:
 	if runtime_game_screen == null or not runtime_game_screen.has_method("apply_state"):
 		return
-	var ui_data := _runtime_table_snapshot()
-	var signature := var_to_str(ui_data)
+	var table_state := _runtime_table_snapshot_source()
+	var signature := var_to_str(table_state)
 	if not force and signature == runtime_game_screen_snapshot_signature:
 		return
 	runtime_game_screen_snapshot_signature = signature
-	runtime_game_screen.call("apply_state", ui_data)
+	runtime_game_screen.call("apply_state", table_state)
 
 
 func _on_runtime_game_screen_action_requested(action_id: String) -> void:

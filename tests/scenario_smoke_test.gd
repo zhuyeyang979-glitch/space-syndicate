@@ -43,6 +43,9 @@ func _run() -> void:
 	_expect(_actions_include_id(browser_snapshot.get("secondary_actions", []), "scenario_settings"), "scenario browser exposes teaching settings")
 	await _check_component("res://scenes/ui/ScenarioBrowser.tscn", "set_browser", browser_snapshot)
 	var first_fixture: Dictionary = FIXTURE_FACTORY_SCRIPT.new().make_fixture("first_table", "start")
+	var empty_coach_snapshot: Dictionary = COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({}).to_ui_dictionary()
+	_expect(not bool(empty_coach_snapshot.get("visible", true)), "scenario coach hides empty default state instead of showing placeholder objective text")
+	_expect(str(empty_coach_snapshot.get("goal", "")).strip_edges() == "", "empty scenario coach has no placeholder goal")
 	var coach_source: Dictionary = first_fixture.get("coach", {}) as Dictionary
 	coach_source["font_scale_percent"] = 110
 	coach_source["failed_attempts"] = 1

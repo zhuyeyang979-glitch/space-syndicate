@@ -40,10 +40,10 @@ func set_coach(data: Dictionary) -> void:
 	phase_label.visible = not compact
 	phase_label.text = str(data.get("phase_label", "目标"))
 	progress_label.text = str(data.get("progress_text", "1/1"))
-	goal_label.text = _short_text(str(data.get("goal", "完成当前目标。")), 16 if compact else 34)
+	goal_label.text = _short_text(str(data.get("goal", "按桌边提示完成下一步。")), 16 if compact else 34)
 	goal_label.tooltip_text = str(data.get("detail", goal_label.text))
 	help_label.visible = bool(data.get("help_visible", false)) and not compact
-	help_label.text = "卡住了吗？%s" % str(data.get("help_text", "看高亮区域，完成当前目标。"))
+	help_label.text = "卡住了吗？%s" % str(data.get("help_text", "看高亮区域或底部行动条。"))
 	help_label.tooltip_text = str(data.get("help_text", ""))
 	var font_scale := clampf(float(data.get("font_scale_percent", 100)) / 100.0, 0.85, 1.30)
 	title_label.add_theme_font_size_override("font_size", int(round(13.0 * font_scale)))
