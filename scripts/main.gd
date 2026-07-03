@@ -10779,6 +10779,7 @@ func _card_codex_browser_card_sources(names: Array) -> Array:
 func _card_codex_browser_card_source(card_name: String, card_index: int) -> Dictionary:
 	var skill := _skill_definition(card_name)
 	var accent := _card_theme_color(skill)
+	var use_case := _card_use_case_text_for_skill(card_name, skill)
 	var chips: Array = []
 	for entry_variant in _card_face_chip_entries(card_name, skill, selected_player, selected_district).slice(0, 4):
 		if not (entry_variant is Dictionary):
@@ -10802,6 +10803,8 @@ func _card_codex_browser_card_source(card_name: String, card_index: int) -> Dict
 		"card_stats": _card_art_stats(skill),
 		"card_art_stats": _card_art_stats(skill),
 		"chips": chips,
+		"use_case": use_case,
+		"table_use": use_case,
 		"route": _short_card_text(_card_strategy_route_label(skill), 18),
 		"route_tooltip": _card_strategy_summary(skill, true),
 		"effect": _short_card_text(_card_face_quick_effect_text(card_name, skill, true), 30),
@@ -13300,10 +13303,13 @@ func _card_codex_detail_source(card_name: String, skill: Dictionary) -> Dictiona
 
 
 func _card_codex_detail_card_face_snapshot(card_name: String, skill: Dictionary) -> Dictionary:
+	var use_case := _card_use_case_text_for_skill(card_name, skill)
 	return {
 		"name": "%s %s" % [_card_icon_for_card(skill, card_name), _card_display_name(card_name)],
 		"cost": "¥%d" % _card_price(card_name),
 		"effect": _card_face_quick_effect_text(card_name, skill, false),
+		"use_case": use_case,
+		"table_use": use_case,
 		"type": _card_face_route_text(card_name, skill, false),
 		"rank": _level_text(max(1, _skill_rank(card_name))),
 		"accent": _card_theme_color(skill),
@@ -18566,6 +18572,8 @@ func _make_skill(skill_name: String) -> Dictionary:
 	var base: Dictionary = _skill_definition(skill_name)
 	var skill := base.duplicate(true)
 	skill["name"] = skill_name
+	if String(skill.get("use_case", "")).strip_edges() == "":
+		skill["use_case"] = _card_use_case_text_for_skill(skill_name, skill)
 	skill["cooldown"] = float(skill.get("cooldown", 0.0))
 	skill["cooldown_left"] = 0.0
 	skill["lock_left"] = 0.0
@@ -20523,6 +20531,7 @@ func _runtime_hand_card_snapshots(player_index: int) -> Array:
 			card_label = skill_name if skill_name != "" else "卡牌"
 		var play_state: Dictionary = _hand_card_play_state(player_index, skill)
 		var effect_text: String = _card_face_quick_effect_text(skill_name, skill, true)
+		var use_case := _card_use_case_text_for_skill(skill_name, skill)
 		if effect_text.strip_edges() == "":
 			effect_text = _short_card_text(_skill_display_text(skill), 44)
 		cards.append({
@@ -20532,6 +20541,8 @@ func _runtime_hand_card_snapshots(player_index: int) -> Array:
 			"rank": _runtime_rank_label(_skill_rank(skill_name)),
 			"type": _card_strategy_route_label(skill),
 			"cost": str(skill.get("cost", skill.get("play_cash", ""))),
+			"use_case": use_case,
+			"table_use": use_case,
 			"target": String(play_state.get("label", "")),
 			"play_state": _hand_card_state_primary_text(play_state),
 			"action_state": _hand_card_action_text(play_state, skill),
@@ -27384,11 +27395,17 @@ func _card_face_quick_effect_text(skill_name: String, skill: Dictionary, compact
 	if effect_text == "":
 		effect_text = _card_art_stats(skill)
 	var key_text := _join_first_card_facts(_card_key_rule_facts(skill), 1)
+	var use_case := _card_use_case_text_for_skill(skill_name, skill)
 	var combined := effect_text
 	if key_text != "" and not effect_text.contains(key_text):
 		combined = "%s｜%s" % [
 			_short_card_text(effect_text, 22 if compact else 36),
 			_short_card_text(key_text, 14 if compact else 24),
+		]
+	if use_case != "" and not combined.begins_with(use_case):
+		combined = "%s｜%s" % [
+			_short_card_text(use_case, 8 if compact else 12),
+			combined,
 		]
 	return _short_card_text(combined, 34 if compact else 58)
 
@@ -27431,6 +27448,257 @@ func _card_strategy_route_label(skill: Dictionary) -> String:
 	if int(skill.get("panic", 0)) > 0 or kind == "panic_shift":
 		return "怪兽诱导"
 	return "即时战术"
+
+
+func _card_use_case_text_for_skill(skill_name: String, skill: Dictionary) -> String:
+	for key in ["use_case", "table_use", "purpose", "when_to_use"]:
+		var explicit := String(skill.get(key, "")).strip_edges()
+		if explicit != "":
+			return _short_card_text(explicit, 12)
+	var kind := String(skill.get("kind", ""))
+	var direction := String(skill.get("product_bet_direction", skill.get("gdp_bet_direction", "")))
+	if _is_monster_card_name(skill_name) or kind == "monster_card":
+		return "召唤/升级怪兽"
+	if kind == "monster_bound_action":
+		return "释放怪兽技能"
+	if kind == "monster_lure":
+		return "诱导怪兽转向"
+	if kind == "monster_takeover":
+		return "夺取怪兽归属"
+	if kind == "military_force":
+		return "部署军队"
+	if kind == "military_command":
+		return "指挥军队"
+	if kind == "card_counter":
+		return "反制互动牌"
+	if kind == "player_hand_disrupt":
+		return "拆对手手牌"
+	if kind == "player_hand_steal":
+		return "偷取对手手牌"
+	if kind == "city_control_dispute":
+		return "冻结城市归属"
+	if kind == "global_barrage":
+		return "全场齐射压制"
+	if kind == "city_revenue_boost":
+		return "加城市GDP"
+	if kind == "cash_gain":
+		return "补现金"
+	if kind == "city_product_upgrade":
+		return "升级城市商品"
+	if kind == "city_product_shift":
+		return "换城市商品"
+	if kind == "city_demand_shift":
+		return "改城市需求"
+	if kind == "route_insurance":
+		return "修复商路"
+	if kind == "route_sabotage":
+		return "破坏商路"
+	if kind == "route_flow_boon":
+		return "加速商路"
+	if kind == "city_contract_boon":
+		return "临时订单增收"
+	if kind == "area_trade_contract":
+		return "连接两区供需"
+	if kind == "product_contract_boon":
+		return "强化商品合约"
+	if kind == "product_growth_boon":
+		return "推高商品增长"
+	if kind == "region_economy_shift":
+		return "改区域经济"
+	if kind == "product_speculation":
+		return "炒商品价格"
+	if kind == "price_pump":
+		return "炒商品价格"
+	if kind == "product_futures":
+		if bool(skill.get("requires_warehouse_city", false)) or int(skill.get("stockpile_units", 0)) > 0:
+			return "囤货赌涨"
+		return "押商品上涨" if direction == "up" else ("押商品下跌" if direction == "down" else "押商品涨跌")
+	if kind == "city_gdp_derivative":
+		return "押城市GDP涨" if direction == "up" else ("押城市GDP跌" if direction == "down" else "押城市GDP")
+	if kind == "disaster_insurance":
+		return "保险防跌"
+	if kind == "intel_city_reveal":
+		return "查城市业主"
+	if kind == "intel_card_trace":
+		return "追溯出牌者"
+	if kind == "intel_contract_trace":
+		return "追溯合约方"
+	if kind == "news_event":
+		return "制造新闻热度"
+	if kind == "weather_control":
+		return "改写天气预报"
+	if kind == "card_access_boon":
+		return "扩大购牌范围"
+	if kind == "supply_draw":
+		return "补手牌"
+	if kind == "market_stabilize":
+		return "稳定市场价格"
+	if kind == "panic_shift":
+		return "引怪到目标"
+	if kind == "area_damage":
+		return "破坏区域"
+	if kind == "move":
+		return "移动怪兽"
+	if kind == "fly":
+		return "飞行位移"
+	if kind == "burrow":
+		return "潜行位移"
+	if kind == "guard":
+		return "怪兽格挡"
+	if kind == "armor_gain":
+		return "给怪兽护甲"
+	if kind == "special_monster_delay":
+		return "延后怪兽行动"
+	if kind == "roar":
+		return "吼退怪兽"
+	if kind == "miasma_bloom":
+		return "布置瘴气"
+	if kind == "miasma_reclaim":
+		return "回收瘴气"
+	if kind == "card_owner_guess":
+		return "猜卡牌归属"
+	if kind == "city_owner_guess":
+		return "猜城市业主"
+	if kind == "queue":
+		return "排队结算"
+	if kind == "event":
+		return "制造公开事件"
+	if ["attack", "charge_attack", "roll_attack", "mudslide", "miasma_shot", "corrosive_breath"].has(kind):
+		return "造成战斗伤害"
+	match _card_strategy_route_label(skill):
+		"城市成长":
+			return "提高长期收入"
+		"城市压制":
+			return "压低对手GDP"
+		"金融投机":
+			return "把波动变现金"
+		"合约博弈":
+			return "改写供需关系"
+		"情报推理":
+			return "获取隐藏线索"
+		"新闻信息战":
+			return "制造公开事件"
+		"天气博弈":
+			return "改变区域天气"
+		"直接互动":
+			return "干扰对手"
+		"怪兽路线":
+			return "制造怪兽压力"
+		"补给构筑":
+			return "加速拿牌升级"
+		"战斗破坏":
+			return "制造破坏"
+		"怪兽诱导":
+			return "引怪到目标"
+	return "临场改局势"
+
+
+func _card_one_glance_source(card_name: String) -> Dictionary:
+	var skill := _skill_definition(card_name)
+	if skill.is_empty():
+		return {}
+	var use_case := _card_use_case_text_for_skill(card_name, skill)
+	return {
+		"card_name": card_name,
+		"use_case": use_case,
+		"route": _card_strategy_route_label(skill),
+		"quick_effect": _card_face_quick_effect_text(card_name, skill, true),
+		"chips": _card_face_chip_entries(card_name, skill, selected_player, selected_district),
+		"art_stats": _card_art_stats(skill),
+	}
+
+
+func _card_one_glance_audit_report() -> Dictionary:
+	var names := _card_codex_names("all")
+	var failures: Array = []
+	var generic: Array = []
+	var route_counts := {}
+	var use_case_counts := {}
+	for name_variant in names:
+		var card_name := String(name_variant)
+		var entry := _card_one_glance_audit_entry(card_name)
+		if entry.is_empty():
+			failures.append({"card_name": card_name, "failures": ["无卡牌定义"]})
+			continue
+		var route := String(entry.get("route", ""))
+		var use_case := String(entry.get("use_case", ""))
+		route_counts[route] = int(route_counts.get(route, 0)) + 1
+		use_case_counts[use_case] = int(use_case_counts.get(use_case, 0)) + 1
+		if bool(entry.get("generic_use_case", false)):
+			generic.append({"card_name": card_name, "use_case": use_case, "route": route})
+		if not bool(entry.get("passed", false)):
+			failures.append(entry)
+	return {
+		"checked_count": names.size(),
+		"passed": failures.is_empty() and generic.is_empty(),
+		"failure_count": failures.size(),
+		"generic_use_case_count": generic.size(),
+		"failures": failures.slice(0, 16),
+		"generic_examples": generic.slice(0, 16),
+		"route_counts": route_counts,
+		"use_case_counts": use_case_counts,
+	}
+
+
+func _card_one_glance_audit_entry(card_name: String) -> Dictionary:
+	var source := _card_one_glance_source(card_name)
+	if source.is_empty():
+		return {}
+	var use_case := String(source.get("use_case", "")).strip_edges()
+	var quick_effect := String(source.get("quick_effect", "")).strip_edges()
+	var route := String(source.get("route", "")).strip_edges()
+	var art_stats := String(source.get("art_stats", "")).strip_edges()
+	var chip_texts: Array[String] = []
+	for chip_variant in source.get("chips", []):
+		if chip_variant is Dictionary:
+			chip_texts.append(String((chip_variant as Dictionary).get("text", "")))
+	var joined_chips := "｜".join(chip_texts)
+	var failures: Array[String] = []
+	if use_case == "":
+		failures.append("缺用途")
+	if use_case.length() > 14:
+		failures.append("用途过长")
+	if quick_effect == "" or not quick_effect.begins_with(use_case):
+		failures.append("短效果未以用途开头")
+	if route == "":
+		failures.append("缺路线")
+	if art_stats == "":
+		failures.append("缺视觉/数值锚点")
+	if not _chip_texts_have_prefix(chip_texts, "¥"):
+		failures.append("缺购买价格chip")
+	if not _chip_texts_have_any(chip_texts, [_level_text(_skill_rank(card_name)), "I", "II", "III", "IV"]):
+		failures.append("缺等级chip")
+	if not (_chip_texts_have_prefix(chip_texts, "◇") or joined_chips.contains("免门槛")):
+		failures.append("缺门槛chip")
+	if not (joined_chips.contains("◆目标") or joined_chips.contains("◎玩家") or joined_chips.contains("⇄两区") or joined_chips.contains("按选区")):
+		failures.append("缺目标/结算chip")
+	var generic_use_case := ["临场改局势", "即时改变局势", "即时战术"].has(use_case)
+	return {
+		"card_name": card_name,
+		"use_case": use_case,
+		"quick_effect": quick_effect,
+		"route": route,
+		"chips": chip_texts,
+		"generic_use_case": generic_use_case,
+		"passed": failures.is_empty() and not generic_use_case,
+		"failures": failures,
+	}
+
+
+func _chip_texts_have_prefix(chip_texts: Array[String], prefix: String) -> bool:
+	for text in chip_texts:
+		if text.begins_with(prefix):
+			return true
+	return false
+
+
+func _chip_texts_have_any(chip_texts: Array[String], needles: Array) -> bool:
+	for text in chip_texts:
+		for needle_variant in needles:
+			var needle := String(needle_variant)
+			if needle != "" and text == needle:
+				return true
+	return false
 
 
 func _card_strategy_use_text(skill: Dictionary) -> String:
@@ -31275,10 +31543,13 @@ func _district_supply_preview_snapshot(district_index: int, preview_name: String
 
 
 func _district_supply_preview_card_face_snapshot(card_name: String, skill: Dictionary, price: int) -> Dictionary:
+	var use_case := _card_use_case_text_for_skill(card_name, skill)
 	return {
 		"name": "%s %s" % [_card_icon_for_card(skill, card_name), _card_display_name(card_name)],
 		"cost": "$%d" % price,
 		"effect": _card_face_quick_effect_text(card_name, skill, true),
+		"use_case": use_case,
+		"table_use": use_case,
 		"type": _card_face_route_text(card_name, skill, true),
 		"rank": _level_text(max(1, _skill_rank(card_name))),
 		"kind": String(skill.get("kind", "")),
