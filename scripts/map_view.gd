@@ -183,8 +183,7 @@ func _update_focus_rotation(delta: float) -> bool:
 	_focus_rotation_elapsed = minf(_focus_rotation_duration, _focus_rotation_elapsed + maxf(0.0, delta))
 	var t := clampf(_focus_rotation_elapsed / maxf(0.001, _focus_rotation_duration), 0.0, 1.0)
 	var eased := _projection_smoothstep(t)
-	var delta_m := _surface_delta(_focus_start_center_m, _focus_target_center_m)
-	_view_center_m = _wrap_world_position(_focus_start_center_m + delta_m * eased)
+	_view_center_m = _slerp_world_position_on_sphere(_focus_start_center_m, _focus_target_center_m, eased)
 	if t >= 1.0 or _surface_delta(_view_center_m, _focus_target_center_m).length() <= 1.0:
 		_view_center_m = _focus_target_center_m
 		_focus_rotation_elapsed = _focus_rotation_duration
@@ -627,6 +626,35 @@ func _sphere_unit(position: Vector2) -> Vector3:
 	var lon := lon_lat.x
 	var lat := lon_lat.y
 	return Vector3(cos(lat) * cos(lon), sin(lat), cos(lat) * sin(lon)).normalized()
+
+
+func _world_from_sphere_unit(unit: Vector3) -> Vector2:
+	var safe := unit.normalized()
+	var lat := asin(clamp(safe.y, -1.0, 1.0))
+	var lon := atan2(safe.z, safe.x)
+	return _lon_lat_to_world(lon, lat)
+
+
+func _slerp_world_position_on_sphere(from_position: Vector2, to_position: Vector2, weight: float) -> Vector2:
+	var t := clampf(weight, 0.0, 1.0)
+	if t <= 0.0:
+		return _wrap_world_position(from_position)
+	if t >= 1.0:
+		return _wrap_world_position(to_position)
+	var from_unit := _sphere_unit(from_position)
+	var to_unit := _sphere_unit(to_position)
+	var dot := clampf(from_unit.dot(to_unit), -1.0, 1.0)
+	if dot > 0.9995:
+		var delta_m := _surface_delta(from_position, to_position)
+		return _wrap_world_position(from_position + delta_m * t)
+	if dot < -0.9995:
+		var delta_m := _surface_delta(from_position, to_position)
+		return _wrap_world_position(from_position + delta_m * t)
+	var theta := acos(dot)
+	var sin_theta := maxf(0.0001, sin(theta))
+	var a := sin((1.0 - t) * theta) / sin_theta
+	var b := sin(t * theta) / sin_theta
+	return _world_from_sphere_unit(from_unit * a + to_unit * b)
 
 
 func _globe_radius() -> float:
