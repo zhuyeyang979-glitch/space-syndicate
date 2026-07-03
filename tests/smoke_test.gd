@@ -865,6 +865,7 @@ func _run() -> void:
 	await process_frame
 	var intel_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier region links return to the dossier")
+	_expect_runtime_map_focus_target(main, buildable_district, "intel dossier region link rotates the central planet to the target region")
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "region codex returns to the intel dossier")
@@ -1045,6 +1046,7 @@ func _run() -> void:
 	main.call("_open_region_codex_menu", buildable_district)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴", "region codex opens from the compendium")
+	_expect_runtime_map_focus_target(main, buildable_district, "region codex jump rotates the central planet to the opened region")
 	_expect(menu_body_label != null and menu_body_label.text.contains("区域可提供卡牌"), "region codex lists the cards available from a region")
 	_expect(menu_body_label != null and menu_body_label.text.contains("真实业主不公开"), "region codex preserves hidden city ownership")
 	_expect(menu_body_label != null and menu_body_label.text.contains("流通加速"), "region codex shows city route-flow acceleration status")
@@ -8184,6 +8186,23 @@ func _runtime_split_table_text_or_tooltip_contains(main: Node, needle: String) -
 	return _container_label_text_contains(runtime_screen, needle) \
 		or _container_button_text_contains(runtime_screen, needle) \
 		or _container_control_tooltip_contains(runtime_screen, needle)
+
+
+func _expect_runtime_map_focus_target(main: Node, district_index: int, label: String) -> void:
+	var map_node := main.get("map_view") as Node
+	if map_node == null or not map_node.has_method("get_projection_debug_snapshot"):
+		_expect(false, "%s has a runtime MapView snapshot" % label)
+		return
+	var districts := _as_array(main.get("districts"))
+	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		_expect(false, "%s has a valid target district" % label)
+		return
+	var snapshot_variant: Variant = map_node.call("get_projection_debug_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var target: Vector2 = (districts[district_index] as Dictionary).get("center", Vector2.ZERO)
+	var focus_target: Vector2 = snapshot.get("focus_target_center_m", Vector2(-999999.0, -999999.0))
+	_expect(int(snapshot.get("focus_target_district", -1)) == district_index, "%s records the target region" % label)
+	_expect(focus_target.distance_to(target) <= 1.0, "%s records the region center for planet rotation" % label)
 
 
 func _public_track_root(main: Node) -> Control:

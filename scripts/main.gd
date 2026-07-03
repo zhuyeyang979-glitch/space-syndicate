@@ -7266,25 +7266,30 @@ func _mark_city_guess_from_intel(city_index: int, guessed_player: int) -> void:
 	if _mark_city_guess_for_player(selected_player, city_index, guessed_player):
 		selected_district = city_index
 		selected_guess_player = guessed_player
+		_focus_runtime_map_on_district(city_index)
 		_open_intel_dossier_menu()
 
 
 func _set_city_guess_confidence_from_intel(city_index: int, confidence: int) -> void:
 	if _set_city_guess_confidence_for_player(selected_player, city_index, confidence):
 		selected_district = city_index
+		_focus_runtime_map_on_district(city_index)
 		_open_intel_dossier_menu()
 
 
 func _set_city_guess_reason_from_intel(city_index: int, reason: String) -> void:
 	if _set_city_guess_reason_for_player(selected_player, city_index, reason):
 		selected_district = city_index
+		_focus_runtime_map_on_district(city_index)
 		_open_intel_dossier_menu()
 
 
 func _open_intel_region_codex_link(index: int) -> void:
 	catalog_return_menu = "intel"
-	if index >= 0:
+	if index >= 0 and index < districts.size():
 		region_codex_index = index
+		selected_district = index
+		_focus_runtime_map_on_district(index)
 	_update_region_codex_menu()
 
 
@@ -12333,8 +12338,10 @@ func _on_product_codex_thumbnail_gui_input(event: InputEvent, catalog_index: int
 
 func _open_region_codex_menu(index: int = -1) -> void:
 	catalog_return_menu = "compendium"
-	if index >= 0:
+	if index >= 0 and index < districts.size():
 		region_codex_index = index
+		selected_district = index
+		_focus_runtime_map_on_district(index)
 	_update_region_codex_menu()
 
 
@@ -12342,6 +12349,8 @@ func _cycle_region_codex(step: int) -> void:
 	if districts.is_empty():
 		return
 	region_codex_index = wrapi(region_codex_index + step, 0, districts.size())
+	selected_district = region_codex_index
+	_focus_runtime_map_on_district(region_codex_index)
 	_update_region_codex_menu()
 
 
@@ -31556,6 +31565,7 @@ func _cycle_district(step: int) -> void:
 		return
 	selected_district = wrapi(selected_district + step, 0, districts.size())
 	selected_runtime_card_slot = -1
+	_focus_runtime_map_on_district(selected_district)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
 	_refresh_ui()
