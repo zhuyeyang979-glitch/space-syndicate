@@ -3,6 +3,53 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜桌面快捷方式切换到最新版 Godot
+
+- 修正 `tools/launch_space_syndicate.ps1` 的 Godot 搜索顺序：
+  - 现在优先使用系统可用的最新版 Godot，最低接受 Godot 4.7。
+  - 支持 `GODOT_LATEST_EXE`、`GODOT_EXE`、系统 PATH 中的 `godot`/`godot4`、WinGet 安装目录和项目/工作区内的 `tools/godot-latest` / `tools/godot-4.7`。
+  - 已删除本地 `C:\Users\Administrator\Documents\New project\tools\godot-4.6.2`，不再把 Godot 4.6.2 作为启动、测试或 fallback 标准。
+  - 启动方式改为前台直接调用 `& <Godot> --path <projectRoot>`；实测 Godot 4.7 的 PATH/console 前台启动能保持游戏运行，`Start-Process` 和 GUI exe 路径在当前机器上会快速返回，容易表现成“快捷方式打不开”。
+- 增加本地启动日志：
+  - 写入 `%LOCALAPPDATA%\SpaceSyndicate\launcher.log`。
+  - 记录实际使用的 Godot 路径和项目路径，便于排查“快捷方式打不开/打开旧版本/闪退”。
+- 项目配置：
+  - `project.godot` 的 `config/features` 更新为 `4.7`。
+- 验证：
+  - 桌面快捷方式继续指向 `space-syndicate-sync\Launch Space Syndicate.cmd`。
+  - 启动脚本会从 `space-syndicate-sync` 推导项目根目录，不会跑到旧仓库。
+  - `godot --version` 返回 `4.7.stable.official.5b4e0cb0f`。
+  - `powershell.exe -File .\tools\launch_space_syndicate.ps1` 前台启动会保持运行，不再快速返回；测试后已手动清理验证进程。
+  - `godot --headless --path . --script res://tests/playtest_readability_gate_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+  - `godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/commercial_playability_gate_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+  - `godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+
+### 本轮验证目标
+
+- 桌面快捷方式打开的必须是当前 GitHub 对应的本地同步仓库，并统一进入最新版 Godot 运行路径；当前验证版本为 `4.7.stable.official.5b4e0cb0f`。
+
+## 2026-07-03｜首局教练改为星球左侧窄卡
+
+- 把 `FirstRunCoach` 从右上宽横幅改成星球左侧窄侧卡：
+  - `GameScreen` 新增 `PLANET_LEFT_SIDE_LANE_*` 命名锚点，运行时统一把 `FirstRunCoachHost` 放入左侧桌边区域。
+  - `FirstRunCoach.tscn` 把正文和主 CTA 从横向行改为竖向堆叠，默认宽度收束为 220px。
+  - 正文可见长度从 30 字压到 24 字，长解释仍走 tooltip/规则页。
+- 硬标准：
+  - 首局教练必须像桌边提示卡，不得横跨星球上方。
+  - 1600×960 下宽度不超过 340px，不能遮挡中央星球核心，也不能覆盖右侧详情。
+  - 仍只能有一个主 CTA，不能变成按钮墙。
+- 验证：
+  - `tests/playtest_readability_gate_test.gd` 新增真实运行桌面检查，启动普通新局后验证首局教练在左侧窄栏、不碰中央星球核心、不碰右侧详情。
+  - `tests/visual_snapshot.gd` 增加 source guard，要求 `GameScreen` 使用命名左侧栏常量和统一锚点函数。
+
+### 本轮验证目标
+
+- 真人第一次进桌时，中央星球继续是视觉主角；首局教练像桌游边上的提示牌，而不是挡住桌面的说明横幅。
+
 ## 2026-07-03｜首局教练折叠点延后到路线选择
 
 - 修正 `FirstRunCoachSnapshot` 的默认折叠语义：

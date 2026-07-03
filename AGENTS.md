@@ -205,32 +205,32 @@ The codebase is still prototype-heavy. Prefer improving stability and readabilit
 
 ## Godot Commands
 
-Godot executable usually lives at:
+Use the latest stable Godot available on the machine. The current minimum accepted version is Godot 4.7. Prefer the `godot` command from PATH, and verify it reports `4.7.*` or newer:
 
 ```powershell
-..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe
+godot --version
 ```
 
 From repository root:
 
 ```powershell
 # Fast source/UI text guard
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/ui_text_smoke_test.gd
+godot --headless --path . --script res://tests/ui_text_smoke_test.gd
 
 # Visual/layout source contract
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/visual_snapshot.gd
+godot --headless --path . --script res://tests/visual_snapshot.gd
 
 # Fast script/load check
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd --check-only
+godot --headless --path . --script res://tests/smoke_test.gd --check-only
 
 # Full smoke test
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd
+godot --headless --path . --script res://tests/smoke_test.gd
 ```
 
 Headed UI snapshots should usually run on the second monitor when available:
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --windowed --position -1247,-2140 --resolution 1200x680 --script res://tests/ui_snapshot_capture.gd
+godot --path . --windowed --position -1247,-2140 --resolution 1200x680 --script res://tests/ui_snapshot_capture.gd
 ```
 
 If monitor layout changes, detect screens with:

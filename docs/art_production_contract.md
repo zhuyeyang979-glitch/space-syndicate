@@ -136,7 +136,7 @@ Before any new copied asset becomes player-facing:
 Run:
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/art_identity_gate_test.gd
+godot --headless --path . --script res://tests/art_identity_gate_test.gd
 ```
 
 This test is allowed to read dev-only art audit helpers. It must not expose private gameplay information to player UI.
@@ -173,8 +173,8 @@ The gate fails if:
 Run this as a visible Godot process, not `--headless`, because the headless dummy renderer cannot capture viewport textures:
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --script res://tests/art_contact_sheet_capture.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --script res://tests/card_runtime_review_capture.gd
+godot --path . --script res://tests/art_contact_sheet_capture.gd
+godot --path . --script res://tests/card_runtime_review_capture.gd
 ```
 
 It writes:
@@ -195,7 +195,7 @@ The first-run card review sheets now also enforce sprite spread: the 24 high-fre
 Run this per-monster review pass when a monster body, monster card face, map token, or monster action grammar changes:
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --script res://tests/monster_runtime_review_capture.gd
+godot --path . --script res://tests/monster_runtime_review_capture.gd
 ```
 
 It writes one review image per current monster:

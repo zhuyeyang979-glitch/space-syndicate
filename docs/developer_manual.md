@@ -236,12 +236,13 @@ AI 和 balance 统计应优先读字段，不靠卡名写特殊逻辑。
 PowerShell：
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/runtime_balance_report_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/ui_text_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/visual_snapshot.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/layout_scene_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd --check-only
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd
+godot --version
+godot --headless --path . --script res://tests/runtime_balance_report_test.gd
+godot --headless --path . --script res://tests/ui_text_smoke_test.gd
+godot --headless --path . --script res://tests/visual_snapshot.gd
+godot --headless --path . --script res://tests/layout_scene_smoke_test.gd
+godot --headless --path . --script res://tests/smoke_test.gd --check-only
+godot --headless --path . --script res://tests/smoke_test.gd
 ```
 
 有 UI/布局相关改动时，还应跑截图测试，并尽量在二号屏做有头测试，避免占用主屏。

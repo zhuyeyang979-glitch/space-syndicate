@@ -31,7 +31,7 @@ func set_coach(data: Dictionary) -> void:
 	_current_accent = data.get("primary_action", {}).get("accent", _stage_color(str(data.get("stage", "")))) if data.get("primary_action", {}) is Dictionary else _stage_color(str(data.get("stage", "")))
 	add_theme_stylebox_override("panel", _coach_panel_style(_current_accent, collapsed))
 	tooltip_text = str(data.get("tooltip", data.get("body", "")))
-	custom_minimum_size = Vector2(0, 30 if collapsed else 50)
+	custom_minimum_size = Vector2(220, 32 if collapsed else 98)
 	if expanded_panel != null:
 		expanded_panel.visible = not collapsed
 	if collapsed_panel != null:
@@ -50,7 +50,7 @@ func set_coach(data: Dictionary) -> void:
 	if title_label != null:
 		title_label.text = _short_text(str(data.get("title", "下一步")), 14)
 	if body_label != null:
-		body_label.text = _short_text(str(data.get("body", "")), 30)
+		body_label.text = _short_text(str(data.get("body", "")), 24)
 		body_label.tooltip_text = tooltip_text
 	_render_chips(data.get("chips", []))
 	var action: Dictionary = data.get("primary_action", {}) if data.get("primary_action", {}) is Dictionary else {}

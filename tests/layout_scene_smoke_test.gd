@@ -1453,13 +1453,20 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 	await process_frame
 	dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
 	var play_button := _find_enabled_visible_button_containing(dock, "出牌")
+	if actionable_slot >= 0 and play_button == null:
+		_force_runtime_screen_sync(main)
+		await process_frame
+		await process_frame
+		dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
+		play_button = _find_enabled_visible_button_containing(dock, "出牌")
 	var player_board_snapshot: Dictionary = {}
 	if main.has_method("_runtime_player_board_snapshot"):
 		var player_board_variant: Variant = main.call("_runtime_player_board_snapshot", 0)
 		player_board_snapshot = player_board_variant if player_board_variant is Dictionary else {}
 	var play_debug := var_to_str(player_board_snapshot.get("quick_actions", []))
+	var dock_debug := _button_debug_under(dock)
 	var queue_before := _runtime_card_resolution_entry_count(main)
-	_expect(actionable_slot >= 0 and play_button != null and not play_button.disabled, "runtime PlayerMainActionDock renders an enabled Play quick button when a hand card is actionable｜quick=%s" % play_debug)
+	_expect(actionable_slot >= 0 and play_button != null and not play_button.disabled, "runtime PlayerMainActionDock renders an enabled Play quick button when a hand card is actionable｜slot=%d quick=%s buttons=%s" % [actionable_slot, play_debug, dock_debug])
 	if actionable_slot >= 0 and play_button != null and not play_button.disabled:
 		play_button.emit_signal("pressed")
 		await process_frame
@@ -1882,6 +1889,23 @@ func _find_enabled_visible_button_containing(node: Node, text: String) -> Button
 		if found != null:
 			return found
 	return null
+
+
+func _button_debug_under(node: Node) -> String:
+	if node == null:
+		return "<null>"
+	var entries: Array[String] = []
+	for child in node.find_children("*", "Button", true, false):
+		var button := child as Button
+		if button == null:
+			continue
+		entries.append("%s disabled=%s visible=%s tree=%s" % [
+			button.text.replace("\n", "/"),
+			str(button.disabled),
+			str(button.visible),
+			str(button.is_visible_in_tree()),
+		])
+	return "; ".join(entries)
 
 
 func _runtime_districts(main: Node) -> Array:

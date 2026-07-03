@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://scripts/ui/first_run_coach.gd" id="2_first_run_coach"]
 
 [node name="FirstRunCoach" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 58)
+custom_minimum_size = Vector2(220, 98)
 theme = ExtResource("1_theme")
 script = ExtResource("2_first_run_coach")
 
@@ -43,9 +43,9 @@ layout_mode = 2
 text = "0/8"
 horizontal_alignment = 2
 
-[node name="CoachBodyRow" type="HBoxContainer" parent="CoachStack/CoachExpanded"]
+[node name="CoachBodyRow" type="VBoxContainer" parent="CoachStack/CoachExpanded"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
 [node name="CoachBody" type="Label" parent="CoachStack/CoachExpanded/CoachBodyRow"]
 unique_name_in_owner = true
@@ -54,11 +54,13 @@ size_flags_horizontal = 3
 text = "只显示当前要做的一件事。"
 clip_text = true
 text_overrun_behavior = 3
+autowrap_mode = 3
 
 [node name="CoachPrimaryButton" type="Button" parent="CoachStack/CoachExpanded/CoachBodyRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(116, 28)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
+size_flags_horizontal = 3
 text = "下一步"
 
 [node name="CoachChipRow" type="HFlowContainer" parent="CoachStack/CoachExpanded"]

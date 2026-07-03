@@ -46,7 +46,7 @@
 运行：
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/playtest_skeleton_gate_test.gd
+godot --headless --path . --script res://tests/playtest_skeleton_gate_test.gd
 ```
 
 该测试不是最终商业化验收，但它保护“能立骨架的地方都要有骨架”。

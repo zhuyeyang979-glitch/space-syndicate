@@ -42,7 +42,7 @@
 运行：
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/commercial_playability_gate_test.gd
+godot --headless --path . --script res://tests/commercial_playability_gate_test.gd
 ```
 
 这个测试会实例化真实主场景，进入战役运行路径，并检查布局、CTA、隐藏信息禁词和首局动作链。

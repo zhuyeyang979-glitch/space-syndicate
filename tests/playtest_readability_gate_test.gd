@@ -17,6 +17,7 @@ func _run() -> void:
 	_check_first_run_coach_density()
 	_check_scenario_coach_empty_state()
 	_check_player_facing_source_guards()
+	await _check_first_run_coach_stays_off_planet()
 	await _check_default_scenario_coach_stays_off_planet()
 	_finish()
 
@@ -119,6 +120,8 @@ func _check_player_facing_source_guards() -> void:
 	var game_screen_scene := FileAccess.get_file_as_string("res://scenes/ui/GameScreen.tscn")
 	var inspector_source := FileAccess.get_file_as_string("res://scripts/ui/right_inspector.gd")
 	var overlay_source := FileAccess.get_file_as_string("res://scripts/ui/overlay_layer.gd")
+	var first_run_coach_scene := FileAccess.get_file_as_string("res://scenes/ui/FirstRunCoach.tscn")
+	var first_run_coach_script := FileAccess.get_file_as_string("res://scripts/ui/first_run_coach.gd")
 	var resolution_banner_source := FileAccess.get_file_as_string("res://scenes/ui/CardResolutionBanner.tscn")
 	var tutorial_source := FileAccess.get_file_as_string("res://scripts/ui/tutorial_quick_start_board.gd")
 	var rules_source := FileAccess.get_file_as_string("res://scripts/ui/rules_quick_reference_board.gd")
@@ -140,6 +143,8 @@ func _check_player_facing_source_guards() -> void:
 	_expect(not main_source.contains("当前位置：主菜单"), "menu breadcrumb prose is not shown as player-facing navigation copy")
 	_expect(not main_source.contains("所有牌都会公开展示，出牌者匿名"), "rules menu no longer repeats long prose in the page body")
 	_expect(main_source.contains("第一局只做四件事：首召、建城、买牌、出牌。"), "tutorial menu opens with one-line first-game guidance")
+	_expect(game_screen_source.contains("PLANET_LEFT_SIDE_LANE_LEFT") and game_screen_source.contains("PLANET_LEFT_SIDE_LANE_BOTTOM") and game_screen_source.contains("_set_overlay_anchor_rect(first_run_coach_host"), "default first-run coach uses named planet left side-lane skeleton constants instead of a loose top banner")
+	_expect(first_run_coach_scene.contains("custom_minimum_size = Vector2(220, 98)") and first_run_coach_scene.contains("CoachBodyRow\" type=\"VBoxContainer") and first_run_coach_script.contains("custom_minimum_size = Vector2(220, 32 if collapsed else 98)") and first_run_coach_script.contains("_short_text(str(data.get(\"body\", \"\")), 24)"), "FirstRunCoach is a narrow side-card layout with stacked body/CTA and short body copy")
 	_expect(game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_LEFT") and game_screen_source.contains("PLANET_RIGHT_SIDE_LANE_BOTTOM"), "default scenario coach uses named planet side-lane skeleton constants instead of loose center anchors")
 	_expect(game_screen_scene.contains("HandHoverPreviewHost") and game_screen_scene.contains("HandHoverPreviewCard") and game_screen_source.contains("HAND_HOVER_PREVIEW_LEFT") and game_screen_source.contains("get_hand_hover_preview_snapshot") and game_screen_source.contains("left-side-readable-card") and game_screen_source.contains("hover_readable_preview"), "hand hover opens a readable left-side CardFace preview instead of forcing tiny hand text or covering the planet center")
 	_expect(FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("PLANET_TABLE_SAFE_CORE_RATIO") and FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("SIDE_RAIL_MIN_STAGGER_PIXELS"), "planet side rails use explicit safe-core and stagger metrics")
@@ -147,6 +152,44 @@ func _check_player_facing_source_guards() -> void:
 	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")
 	_expect(district_supply_preview_scene.contains("DistrictSupplyPreviewScanGrid") and district_supply_preview_script.contains("SCAN_SECTION_BODY_LIMIT := 34") and district_supply_preview_script.contains("_render_scan_sections") and district_supply_preview_script.contains("body_label.visible = body_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("facts_label.visible = facts_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("status_label.visible = status_label.text != \"\" and not has_scan_sections") and main_source.contains("_district_supply_preview_scan_sections") and main_source.contains("\"title\": \"用途\"") and main_source.contains("\"title\": \"买入\"") and main_source.contains("\"title\": \"打出\"") and main_source.contains("\"title\": \"目标\""), "district supply preview uses four compact scan sections instead of always-visible dense prose")
 	_expect(scenario_snapshot_source.contains("has_scenario") and scenario_snapshot_source.contains("\"visible\": false") and scenario_snapshot_source.contains("按桌边提示完成下一步。") and scenario_snapshot_source.contains("pulse_focus") and scenario_snapshot_source.contains("_shortest_action_text") and scenario_coach_script.contains("_stuck_help_text") and not _contains_any("\n".join([scenario_snapshot_source, scenario_coach_scene, scenario_coach_script]), ["完成当前目标。", "看高亮区域，完成当前目标。"]), "scenario coach hides empty/default state, supports strong-stuck shortest-action guidance, and avoids placeholder objective copy")
+
+
+func _check_first_run_coach_stays_off_planet() -> void:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	_expect(packed != null, "main scene loads for first-run coach readability check")
+	if packed == null:
+		return
+	root.size = Vector2i(1600, 960)
+	var main := packed.instantiate()
+	root.add_child(main)
+	await process_frame
+	await process_frame
+	if main.has_method("_new_game"):
+		main.call("_new_game")
+	await process_frame
+	await process_frame
+	await process_frame
+	var map_host := main.find_child("MapHost", true, false) as Control
+	var coach_host := main.find_child("FirstRunCoachHost", true, false) as Control
+	var coach := main.find_child("FirstRunCoach", true, false) as Control
+	var right_inspector := main.find_child("RightInspector", true, false) as Control
+	_expect(map_host != null and coach_host != null and coach != null, "first-run coach and map host exist in runtime")
+	if map_host != null and coach_host != null and coach != null:
+		var map_rect := map_host.get_global_rect()
+		var coach_rect := coach_host.get_global_rect()
+		var planet_core_rect := Rect2(
+			map_rect.position + Vector2(map_rect.size.x * 0.24, map_rect.size.y * 0.08),
+			Vector2(map_rect.size.x * 0.52, map_rect.size.y * 0.84)
+		)
+		_expect(coach.visible, "first-run coach is visible during a normal first table")
+		_expect(coach_rect.size.x <= 340.0, "first-run coach is a narrow side card instead of a wide top banner")
+		_expect(coach_rect.end.x <= planet_core_rect.position.x + 2.0, "first-run coach sits in the left side lane before the planet core")
+		_expect(not coach_rect.intersects(planet_core_rect), "first-run coach does not cover the central planet body")
+		if right_inspector != null:
+			_expect(not coach_rect.intersects(right_inspector.get_global_rect()), "first-run coach does not cover the right inspector")
+	root.remove_child(main)
+	main.queue_free()
+	await process_frame
 
 
 func _check_default_scenario_coach_stays_off_planet() -> void:

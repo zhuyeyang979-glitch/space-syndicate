@@ -56,16 +56,16 @@ Godot 4 project for **太空辛迪加 / Space Syndicate**, based on the local ru
 
 ## Run
 
-Open this folder in Godot 4.x and run `scenes/main.tscn`.
+Open this folder in the latest stable Godot. The current minimum accepted version is Godot 4.7.
 
-On Windows, `Launch Space Syndicate.cmd` tries to find Godot from PATH, `GODOT_EXE`, the sibling workspace `tools/godot-*` folder, or common install locations, then opens this project. `Launch Space Syndicate Prototype.cmd` is kept as a compatibility alias. If Godot is not installed yet, the launcher opens the project folder instead.
+On Windows, `Launch Space Syndicate.cmd` tries to find the latest installed Godot from `GODOT_LATEST_EXE`, `GODOT_EXE`, PATH, WinGet install locations, or a sibling workspace `tools/godot-latest` / `tools/godot-4.7` folder, then opens this project. `Launch Space Syndicate Prototype.cmd` is kept as a compatibility alias. If Godot 4.7 or newer is not installed yet, the launcher opens the project folder instead.
 
 ## Smoke Test
 
 The prototype includes a headless smoke test that loads the main scene, starts a four-seat run with three AI opponents, verifies roguelike depth scaling and cash-goal final countdown persistence, alien role-card uniqueness/random AI role resolution, starter monster independence from public roles, plays four starter monster cards for battle coverage, verifies public compulsory monster wagers with frozen time, visible bettor/side/amount clues, saved active wager state, pooled payout settlement, and AI monster-wager side/stake scoring metadata, verifies starter/later-summon restrictions plus timed monster departure, verifies remote card-supply range without relaxing summon range, verifies private discard-on-purchase behavior at the hand limit, verifies field-derived card strength budgets and non-regressing I-IV budget ladders, verifies the ten-hour route pack for 应急修复/竞争封锁/线索悬赏/航线预报, verifies direct player-interaction cards plus their balance gates/public clues/counter windows, phase counters, field-driven AI phase-counter responses, field-driven AI weather-control targeting, military command cards, reusable AI military-command target planning, field-driven AI military-force deployment planning, military family balance identities, and the shared temporary decision UI base, verifies the generated land/ocean map with terrain-appropriate products, builds a city, checks AI anonymous auto-expansion, commercial clues, hand-card scoring/play/bidding, contract responses, city-owner inference, card-owner wagering, monster-lure target planning, economic-focus planning, strategic-intent switching, product-route planning, field-driven defense/suppression/finance/intel/direct-interaction route candidates, generic card-field scoring metadata, online and terminal reward learning isolation/persistence, and decision samples, exercises realtime cashflow, global market refreshes, a controlled realtime GDP directionality sandbox for production/consumption/transport/route-flow/route-damage/region-damage/ownership-dispute/military-pressure breakdowns, audits temporary economy cards for real-second duration fields, economy-card price/product-line/demand/industry/route/product-growth/route-flow/temporary-contract/GDP-derivative effects plus public city GDP trend visibility, checks flying and aquatic movement traits, saves and reloads the run from a test-only slot, and instantiates the temporary card and monster art views:
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd
+godot --headless --path . --script res://tests/smoke_test.gd
 ```
 
 ## Keyboard Shortcuts

@@ -30,10 +30,10 @@ Goal pattern:
 Required checks:
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/ui_text_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/visual_snapshot.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/layout_scene_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd --check-only
+godot --headless --path . --script res://tests/ui_text_smoke_test.gd
+godot --headless --path . --script res://tests/visual_snapshot.gd
+godot --headless --path . --script res://tests/layout_scene_smoke_test.gd
+godot --headless --path . --script res://tests/smoke_test.gd --check-only
 ```
 
 ## Codex B: Playable Scenario Lab
@@ -76,11 +76,11 @@ Goal pattern:
 Required checks:
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/scenario_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/scenario_progress_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/scenario_privacy_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/layout_scene_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd --check-only
+godot --headless --path . --script res://tests/scenario_smoke_test.gd
+godot --headless --path . --script res://tests/scenario_progress_test.gd
+godot --headless --path . --script res://tests/scenario_privacy_test.gd
+godot --headless --path . --script res://tests/layout_scene_smoke_test.gd
+godot --headless --path . --script res://tests/smoke_test.gd --check-only
 ```
 
 ## Human review packet

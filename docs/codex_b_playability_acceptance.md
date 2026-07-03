@@ -30,15 +30,15 @@ Codex B 的目标不是继续堆剧本外壳，而是让人类玩家能从主菜
 ## 必跑测试
 
 ```powershell
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/scenario_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/scenario_focus_navigation_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/scenario_progress_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/scenario_privacy_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/campaign_runtime_flow_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/player_journey_30min_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/layout_scene_smoke_test.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/visual_snapshot.gd
-& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --headless --path . --script res://tests/smoke_test.gd --check-only
+godot --headless --path . --script res://tests/scenario_smoke_test.gd
+godot --headless --path . --script res://tests/scenario_focus_navigation_test.gd
+godot --headless --path . --script res://tests/scenario_progress_test.gd
+godot --headless --path . --script res://tests/scenario_privacy_test.gd
+godot --headless --path . --script res://tests/campaign_runtime_flow_test.gd
+godot --headless --path . --script res://tests/player_journey_30min_test.gd
+godot --headless --path . --script res://tests/layout_scene_smoke_test.gd
+godot --headless --path . --script res://tests/visual_snapshot.gd
+godot --headless --path . --script res://tests/smoke_test.gd --check-only
 ```
 
 完整发布到 `main` 前还要跑完整 `tests/smoke_test.gd`。

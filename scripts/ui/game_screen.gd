@@ -8,6 +8,10 @@ const PLANET_RIGHT_SIDE_LANE_TOP := 0.145
 const PLANET_RIGHT_SIDE_LANE_RIGHT := 0.790
 const PLANET_RIGHT_SIDE_LANE_BOTTOM := 0.285
 const PLANET_RIGHT_SIDE_LANE_FOCUS_BOTTOM := 0.270
+const PLANET_LEFT_SIDE_LANE_LEFT := 0.020
+const PLANET_LEFT_SIDE_LANE_TOP := 0.150
+const PLANET_LEFT_SIDE_LANE_RIGHT := 0.225
+const PLANET_LEFT_SIDE_LANE_BOTTOM := 0.335
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
@@ -146,6 +150,7 @@ func _sync_campaign_focus_layout(enabled: bool, ui_data: Dictionary) -> void:
 			_set_overlay_anchor_rect(scenario_coach_host, PLANET_RIGHT_SIDE_LANE_LEFT, PLANET_RIGHT_SIDE_LANE_TOP, PLANET_RIGHT_SIDE_LANE_RIGHT, PLANET_RIGHT_SIDE_LANE_BOTTOM)
 	if first_run_coach_host != null:
 		first_run_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_set_overlay_anchor_rect(first_run_coach_host, PLANET_LEFT_SIDE_LANE_LEFT, PLANET_LEFT_SIDE_LANE_TOP, PLANET_LEFT_SIDE_LANE_RIGHT, PLANET_LEFT_SIDE_LANE_BOTTOM)
 	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
 	if track_focus_ribbon != null and enabled and str(scenario_data.get("focus_target", "")) != "public_track":
 		track_focus_ribbon.custom_minimum_size = Vector2(0, 18)
