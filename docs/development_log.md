@@ -3,6 +3,24 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜运行桌面接入 FocusGuide 目标光框
+
+- 继续推进“真人能简单上手测试”，本轮处理战役/剧本目标虽然写了 `focus_target`，但玩家仍需要自己猜该看哪块 UI 的问题：
+  - 新增独立骨架 `scenes/ui/FocusGuideLayer.tscn` + `scripts/ui/focus_guide_layer.gd`，专门负责焦点光框的渲染、短标签、颜色和不吃鼠标行为。
+  - `GameScreen.tscn` 只实例化该层；`scripts/ui/game_screen.gd` 只消费 `scenario_coach.focus_target` 并把 `planet / player_hand / action_dock / public_track / right_inspector / district_supply / bid_board / private_decision / contract_prompt / top_bar` 映射到实际 Control 区域。
+  - 这样后续如果继续做教学高亮、卡住闪烁、手柄焦点、自动打开抽屉，不需要继续把渲染细节堆回 `main.gd` 或 `GameScreen.gd`。
+  - 光框只显示“看这里｜区域｜动作”这类短标签，不写长规则，不遮住操作，不暴露任何隐藏信息。
+  - 目标为空、剧本未激活、Coach 折叠时自动隐藏，避免主桌出现无意义 UI。
+- 新增 `tests/focus_guide_gate_test.gd`：
+  - 验证 `player_hand`、`public_track`、`right_inspector`、`bid_board` 都能显示正确光框和短标签。
+  - 验证光框不拦截鼠标。
+  - 验证无活动剧本时 FocusGuide 自动隐藏。
+- `tests/visual_snapshot.gd` 增加护栏，防止后续 UI 重构把 FocusGuide 层删掉。
+
+### 本轮验证
+
+- 目标验证：战役/剧本的 `focus_target` 不再只是数据字段，而是实际出现在运行桌面的可见焦点提示。
+
 ## 2026-07-03｜怪兽美术来源多样性清单
 
 - 回应“MOS kaijus 只能用于一个怪兽，不能把每个怪兽都套同一张皮”的要求，本轮把怪兽 body 来源从口头约束推进成数据合同：

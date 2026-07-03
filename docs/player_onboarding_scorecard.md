@@ -8,7 +8,7 @@
 | 新手战役入口 | 4 | CampaignMenu/ProgressMap | 增加更强视觉路径 |
 | 关卡目标清晰度 | 4 | CampaignBriefing + Coach | 为每关补更多真实动作定位 |
 | 一步一目标 | 4 | ScenarioCoach 单主 CTA | 卡住状态需要更多自动定位 |
-| 错误反馈 | 4 | Scenario 阶段已要求 `stuck_hint` / `focus_target`；Coach 求助会显示短卡住提示 | 下一轮接真实焦点高亮 |
+| 错误反馈 | 4 | Scenario 阶段已要求 `stuck_hint` / `focus_target`；Coach 求助会显示短卡住提示；运行桌面现在有独立 `FocusGuideLayer` 光框 | 下一轮把连续失败直接转成自动打开对应页面/抽屉 |
 | 成功反馈 | 4 | RewardPanel + action log | 增加声音/动效 |
 | 奖励动机 | 4 | 解锁、徽章、推荐角色 | 后续接更多图鉴解锁 |
 | 复盘质量 | 4 | MatchRecapPanel + key logs | 后续增加更多经济解释 |
@@ -21,4 +21,4 @@
 
 1. 运行牌桌焦点：补手牌、牌轨、地图、牌架抽屉之间的完整键盘/手柄焦点顺序。
 2. 自动定位：连续失败后打开对应区域/牌架/详情。
-3. 焦点高亮：让 `focus_target` 驱动地图/手牌/牌架/牌轨的可见高亮。
+3. 焦点高亮后续：把首局非战役 `FirstRunCoach` 也接入同一 FocusGuide，并让连续失败自动闪烁目标控件。

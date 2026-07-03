@@ -33,15 +33,18 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var overlay_layer: Node = %OverlayLayer
 @onready var scenario_coach_host: Control = get_node_or_null("ScenarioCoachHost") as Control
 @onready var first_run_coach_host: Control = get_node_or_null("FirstRunCoachHost") as Control
+@onready var focus_guide_layer: Node = get_node_or_null("%FocusGuideLayer")
 
 var current_ui_data: Dictionary = {}
 var _temporary_track_focus_active := false
 var _selected_hand_card_data: Dictionary = {}
 var _last_visual_event_key := ""
 var _campaign_focus_layout := false
+var _last_focus_guide_data: Dictionary = {}
 
 func _ready() -> void:
 	_configure_track_focus_ribbon()
+	_configure_focus_guide()
 	if top_bar.has_signal("end_turn_requested"):
 		top_bar.connect("end_turn_requested", Callable(self, "_on_end_turn_requested"))
 	if top_bar.has_signal("menu_requested"):
@@ -114,6 +117,8 @@ func apply_state(data: Dictionary) -> void:
 	if not _temporary_track_focus_active:
 		_sync_selected_track_focus_from_state()
 	_sync_temporary_decision_overlay(ui_data.get("temporary_decision", {}))
+	_sync_focus_guide(ui_data)
+	call_deferred("_sync_focus_guide_from_current_state")
 
 
 func _sync_campaign_focus_layout(enabled: bool, ui_data: Dictionary) -> void:
@@ -453,6 +458,104 @@ func _configure_track_focus_ribbon() -> void:
 	if track_focus_label != null:
 		track_focus_label.add_theme_font_size_override("font_size", 10)
 		track_focus_label.add_theme_color_override("font_color", Color("#fde68a"))
+
+
+func _configure_focus_guide() -> void:
+	if focus_guide_layer != null:
+		if focus_guide_layer is Control:
+			(focus_guide_layer as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if focus_guide_layer.has_method("hide_focus"):
+			focus_guide_layer.call("hide_focus")
+
+
+func _sync_focus_guide_from_current_state() -> void:
+	if current_ui_data.is_empty():
+		_hide_focus_guide()
+		return
+	_sync_focus_guide(current_ui_data)
+
+
+func _sync_focus_guide(ui_data: Dictionary) -> void:
+	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
+	if scenario_data.is_empty() or not bool(scenario_data.get("visible", false)) or bool(scenario_data.get("collapsed", false)):
+		_hide_focus_guide()
+		return
+	var focus_target := str(scenario_data.get("focus_target", "")).strip_edges()
+	if focus_target == "":
+		_hide_focus_guide()
+		return
+	var target_control := _focus_target_control(focus_target)
+	if target_control == null or not target_control.is_visible_in_tree():
+		_hide_focus_guide()
+		return
+	var target_rect := _focus_target_rect(target_control, focus_target)
+	if target_rect.size.x <= 4.0 or target_rect.size.y <= 4.0:
+		_hide_focus_guide()
+		return
+	_show_focus_guide(target_rect, focus_target, scenario_data)
+
+
+func _show_focus_guide(target_global_rect: Rect2, focus_target: String, scenario_data: Dictionary) -> void:
+	if focus_guide_layer == null or not focus_guide_layer.has_method("show_focus"):
+		return
+	var next_signature := var_to_str([focus_target, target_global_rect.position.round(), target_global_rect.size.round(), scenario_data.get("phase_id", "")])
+	if next_signature == str(_last_focus_guide_data.get("signature", "")):
+		return
+	_last_focus_guide_data = {"signature": next_signature, "target": focus_target}
+	focus_guide_layer.call("show_focus", target_global_rect, focus_target, scenario_data)
+
+
+func _hide_focus_guide() -> void:
+	_last_focus_guide_data = {}
+	if focus_guide_layer != null and focus_guide_layer.has_method("hide_focus"):
+		focus_guide_layer.call("hide_focus")
+
+
+func _focus_target_control(focus_target: String) -> Control:
+	match focus_target:
+		"planet", "route_layer":
+			return _first_visible_control(["MapHost", "PlanetStageViewport", "PlanetBoard"])
+		"player_hand":
+			return _first_visible_control(["HandRack", "PlayerHandTableau", "PlayerBoard"])
+		"action_dock":
+			return _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"])
+		"bid_board":
+			return _first_visible_control(["PlayerBidBoard", "PlayerCommandTableau"])
+		"public_track":
+			return _public_track_node() as Control
+		"right_inspector", "economy_overview", "intel_dossier", "standings", "settlement":
+			return right_inspector as Control
+		"district_supply":
+			return _first_visible_control(["DistrictSupplyDrawer", "SideDrawerPanel", "RightInspector", "PlanetStageViewport"])
+		"private_decision", "contract_prompt":
+			return _first_visible_control(["TemporaryDecisionPanel", "ConfirmPanel", "ModalLayer", "OverlayLayer"])
+		"top_bar":
+			return top_bar as Control
+		"scenario_coach":
+			return scenario_coach_host if scenario_coach_host != null else scenario_coach as Control
+		_:
+			return _first_visible_control(["RightInspector", "PlanetBoard"])
+
+
+func _first_visible_control(names: Array[String]) -> Control:
+	for node_name in names:
+		var node := find_child(node_name, true, false)
+		if node is Control and (node as Control).is_visible_in_tree():
+			return node as Control
+	return null
+
+
+func _focus_target_rect(control: Control, focus_target: String) -> Rect2:
+	var rect := control.get_global_rect()
+	if focus_target == "planet" or focus_target == "route_layer":
+		var map_control := _first_visible_control(["MapHost"])
+		if map_control != null:
+			rect = map_control.get_global_rect()
+	if focus_target == "player_hand":
+		var hand_control := _first_visible_control(["HandRack"])
+		if hand_control != null:
+			rect = hand_control.get_global_rect()
+	return rect
 
 
 func _sync_selected_track_focus_from_state() -> void:
