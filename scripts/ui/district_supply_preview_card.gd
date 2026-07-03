@@ -2,6 +2,7 @@ extends PanelContainer
 class_name SpaceSyndicateDistrictSupplyPreviewCard
 
 const CardFaceScene := preload("res://scenes/ui/CardFace.tscn")
+const SCAN_SECTION_BODY_LIMIT := 34
 
 signal buy_requested(card_name: String)
 
@@ -10,6 +11,7 @@ signal buy_requested(card_name: String)
 @onready var micro_chip_rail: HFlowContainer = %DistrictSupplyPreviewMicroChipRail
 @onready var decision_strip: HFlowContainer = %DistrictSupplyDecisionStrip
 @onready var verdict_rail: HFlowContainer = %DistrictSupplyPurchaseVerdictRail
+@onready var scan_grid: GridContainer = %DistrictSupplyPreviewScanGrid
 @onready var body_label: Label = %DistrictSupplyPreviewBodyLabel
 @onready var facts_label: Label = %DistrictSupplyPreviewFactsLabel
 @onready var status_label: Label = %DistrictSupplyPreviewStatusLabel
@@ -36,12 +38,15 @@ func set_preview(data: Dictionary) -> void:
 	_render_chips(micro_chip_rail, data.get("micro_chips", []), "DistrictSupplyPreviewMicroChip", 7)
 	_render_chips(decision_strip, data.get("decision_chips", []), "DistrictSupplyDecisionChip", 8)
 	_render_verdicts(data.get("verdicts", []))
+	var has_scan_sections := _render_scan_sections(data.get("scan_sections", []), theme_color)
 	body_label.text = str(data.get("body", ""))
+	body_label.visible = body_label.text != "" and not has_scan_sections
 	body_label.tooltip_text = str(data.get("body_tooltip", body_label.text))
 	facts_label.text = str(data.get("facts", ""))
-	facts_label.visible = facts_label.text != ""
+	facts_label.visible = facts_label.text != "" and not has_scan_sections
 	facts_label.tooltip_text = facts_label.text
 	status_label.text = str(data.get("status_text", ""))
+	status_label.visible = status_label.text != "" and not has_scan_sections
 	status_label.tooltip_text = str(data.get("status_tooltip", ""))
 	status_label.add_theme_color_override("font_color", accent.lightened(0.14))
 	buy_button.text = str(data.get("buy_text", "买牌"))
@@ -75,6 +80,20 @@ func _render_verdicts(entries_variant: Variant) -> void:
 			_add_verdict_lamp(entry_variant as Dictionary)
 
 
+func _render_scan_sections(entries_variant: Variant, fallback_accent: Color) -> bool:
+	_clear_children(scan_grid)
+	scan_grid.visible = false
+	if not (entries_variant is Array):
+		return false
+	var count := 0
+	for entry_variant in entries_variant:
+		if entry_variant is Dictionary:
+			_add_scan_section(entry_variant as Dictionary, fallback_accent)
+			count += 1
+	scan_grid.visible = count > 0
+	return count > 0
+
+
 func _render_card_face(entry_variant: Variant) -> void:
 	_clear_children(card_face_host)
 	if not (entry_variant is Dictionary):
@@ -97,6 +116,43 @@ func _render_card_face(entry_variant: Variant) -> void:
 	card_face_host.add_child(face)
 	if face.has_method("set_card_data"):
 		face.call("set_card_data", entry)
+
+
+func _add_scan_section(entry: Dictionary, fallback_accent: Color) -> void:
+	var accent := _dictionary_color(entry, "accent", fallback_accent)
+	var panel := PanelContainer.new()
+	panel.name = "DistrictSupplyPreviewScanSection"
+	panel.custom_minimum_size = Vector2(98, 50)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.tooltip_text = str(entry.get("tooltip", entry.get("tip", "")))
+	panel.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.14), 1, 7))
+	scan_grid.add_child(panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_bottom", 4)
+	panel.add_child(margin)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 1)
+	margin.add_child(stack)
+	var title := Label.new()
+	title.name = "DistrictSupplyPreviewScanTitle"
+	title.text = str(entry.get("title", "速读"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_theme_font_size_override("font_size", 8)
+	title.add_theme_color_override("font_color", accent.lightened(0.18))
+	stack.add_child(title)
+	var body := Label.new()
+	body.name = "DistrictSupplyPreviewScanBody"
+	body.text = _short_text(str(entry.get("body", entry.get("text", ""))), SCAN_SECTION_BODY_LIMIT)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	body.max_lines_visible = 2
+	body.add_theme_font_size_override("font_size", 9)
+	body.add_theme_color_override("font_color", Color("#f8fafc"))
+	stack.add_child(body)
 
 
 func _add_chip(parent: Container, entry: Dictionary, chip_name: String, font_size: int) -> void:
@@ -174,6 +230,15 @@ func _dictionary_color(data: Dictionary, key: String, fallback: Color) -> Color:
 	if value is Color:
 		return value as Color
 	return fallback
+
+
+func _short_text(text: String, limit: int) -> String:
+	var clean := text.replace("\n", " ").strip_edges()
+	while clean.contains("  "):
+		clean = clean.replace("  ", " ")
+	if limit <= 0 or clean.length() <= limit:
+		return clean
+	return "%s…" % clean.substr(0, max(0, limit - 1))
 
 
 func _card_style(accent: Color, fill: Color, border_width: int, radius: int) -> StyleBoxFlat:

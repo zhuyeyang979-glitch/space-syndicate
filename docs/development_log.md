@@ -3,6 +3,20 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜区域牌架预览改成四段速读卡
+
+- 继续回应“真人玩家信息密度太高、像开发说明书”的问题，本轮只改区域牌架 UI，不改买牌规则、卡牌数据或结算：
+  - `DistrictSupplySelectedPreview` 新增 `DistrictSupplyPreviewScanGrid`，固定渲染四个小信息卡：`用途 / 买入 / 打出 / 目标`。
+  - `scripts/main.gd` 新增 `_district_supply_preview_scan_sections()`，把选中卡牌的路线、价格/购买状态、商品流动门槛和目标类型提前整理成短字段。
+  - 有速读区时，旧的 `body / facts / status_text` 自由长文默认隐藏，只保留给 tooltip 和兼容 fallback。
+  - 牌架顶部残留的英文 tooltip 改成中文玩家语言。
+- 设计意图：买牌窗口是首局最高频路径，玩家不应该先读一段规则再判断要不要买；先扫四格，再看卡面，完整规则藏到悬停与规则页。
+
+### 本轮验证
+
+- `tests/playtest_readability_gate_test.gd` 新增护栏：区域牌架预览必须有四段速读，且旧长文不能在有速读区时常驻显示。
+- `tests/ui_text_smoke_test.gd` 与 `tests/visual_snapshot.gd` 同步守住 `scan_sections`、`DistrictSupplyPreviewScanGrid` 和四个固定栏目，防止回退成规则块。
+
 ## 2026-07-03｜首局金融/合约/互动牌接入 Game-icons 语义图标
 
 - 继续沿着“每张卡牌插画一张一张做，不要用同一套临时美术糊过去”的要求推进；这轮不改规则、价格或结算，只替换高频卡牌的视觉锚点：

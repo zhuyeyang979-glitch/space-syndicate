@@ -91,7 +91,7 @@ theme_override_constants/separation = 8
 [node name="DistrictSupplyShelfBoard" type="PanelContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack"]
 layout_mode = 2
 size_flags_horizontal = 3
-tooltip_text = "Shelf summary: region, market count, access state, locked price, and hand pressure."
+tooltip_text = "牌架摘要：区域、供牌数量、购买状态、锁定价格和手牌压力。"
 theme_override_styles/panel = SubResource("StyleBoxFlat_shelf_panel")
 
 [node name="DistrictSupplyShelfMargin" type="MarginContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard"]

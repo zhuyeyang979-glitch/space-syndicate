@@ -30698,6 +30698,88 @@ func _district_supply_decision_chip_entries(card_name: String, skill: Dictionary
 	return entries
 
 
+func _district_supply_preview_scan_sections(card_name: String, skill: Dictionary, state: Dictionary, price: int, player_index: int) -> Array:
+	var theme_color := _card_theme_color(skill)
+	var status_color: Color = state.get("accent", Color("#94a3b8")) as Color
+	var detail := String(state.get("detail", ""))
+	return [
+		{
+			"title": "用途",
+			"body": _short_card_text(_card_strategy_route_label(skill), 30),
+			"accent": theme_color.lightened(0.12),
+			"tooltip": "主要路线：%s\n%s" % [_card_strategy_route_label(skill), _card_face_quick_effect_text(card_name, skill, true)],
+		},
+		{
+			"title": "买入",
+			"body": _short_card_text(_district_supply_buy_scan_text(state, price), 30),
+			"accent": status_color,
+			"tooltip": detail,
+		},
+		{
+			"title": "打出",
+			"body": _short_card_text(_district_supply_play_scan_text(skill, player_index), 30),
+			"accent": Color("#86efac"),
+			"tooltip": "打出门槛只检查商品流动，不消耗商品；现金打出费用另算。",
+		},
+		{
+			"title": "目标",
+			"body": _short_card_text(_district_supply_target_scan_text(skill), 30),
+			"accent": Color("#c4b5fd"),
+			"tooltip": _district_supply_target_scan_tooltip(skill),
+		},
+	]
+
+
+func _district_supply_buy_scan_text(state: Dictionary, price: int) -> String:
+	var parts := [String(state.get("label", "仅浏览")), "¥%d" % price]
+	if bool(state.get("requires_discard", false)):
+		parts.append("需弃牌")
+	return "｜".join(parts)
+
+
+func _district_supply_play_scan_text(skill: Dictionary, player_index: int) -> String:
+	var parts := []
+	var flow_required := _skill_play_flow_required(skill, player_index)
+	if flow_required > 0:
+		var flow_product := _skill_play_product(skill, player_index)
+		parts.append("◇%s×%d" % [_short_card_text(flow_product if flow_product != "" else "商品", 5), flow_required])
+	else:
+		parts.append("免门槛")
+	var cash_cost := _skill_play_cash_cost(skill)
+	if cash_cost > 0:
+		parts.append("打出¥%d" % cash_cost)
+	parts.append("固定" if bool(skill.get("persistent", false)) else "一次")
+	return "｜".join(parts)
+
+
+func _district_supply_target_scan_text(skill: Dictionary) -> String:
+	if _skill_targets_monster(skill):
+		return "指定怪兽"
+	if _skill_targets_player(skill):
+		return "指定玩家"
+	if String(skill.get("kind", "")) == "area_trade_contract":
+		return "供给区+需求区"
+	if String(skill.get("kind", "")) == "monster_card":
+		return "落点/同名怪兽"
+	if String(skill.get("kind", "")) == "military_force":
+		return "部署区域"
+	return "当前选区"
+
+
+func _district_supply_target_scan_tooltip(skill: Dictionary) -> String:
+	if _skill_targets_monster(skill):
+		return "打出时要选择一只场上怪兽。"
+	if _skill_targets_player(skill):
+		return "打出时要选择一名玩家；结果会变成公开推理线索。"
+	if String(skill.get("kind", "")) == "area_trade_contract":
+		return "合约牌先选供给区和需求区，再进入签约流程。"
+	if String(skill.get("kind", "")) == "monster_card":
+		return "一级怪兽通常选择落点；同名在场时可升级并刷新生命/持续时间。"
+	if String(skill.get("kind", "")) == "military_force":
+		return "军队牌部署短期受控单位，后续用命令牌行动。"
+	return "多数经济牌按当前选区或卡面说明结算。"
+
+
 func _district_supply_market_card_snapshot(district_index: int, card_name: String) -> Dictionary:
 	var skill := _skill_definition(card_name)
 	if skill.is_empty():
@@ -30817,10 +30899,11 @@ func _district_supply_preview_snapshot(district_index: int, preview_name: String
 		"micro_chips": _district_supply_micro_card_chip_entries(preview_name, skill, selected_player),
 		"decision_chips": _district_supply_decision_chip_entries(preview_name, skill, state, selected_player),
 		"verdicts": _district_supply_purchase_verdict_entries(district_index, preview_name, selected_player, state),
-		"body": _short_card_text(_skill_display_text(skill), 72),
+		"scan_sections": _district_supply_preview_scan_sections(preview_name, skill, state, price, selected_player),
+		"body": _short_card_text(_skill_display_text(skill), 48),
 		"body_tooltip": _skill_display_text(skill),
-		"facts": _short_card_text(facts, 86),
-		"status_text": "%s｜¥%d｜%s" % [String(state.get("label", "仅浏览")), price, _short_card_text(detail, 54)],
+		"facts": _short_card_text(facts, 42),
+		"status_text": "%s｜¥%d｜%s" % [String(state.get("label", "仅浏览")), price, _short_card_text(detail, 36)],
 		"status_tooltip": detail,
 		"buy_text": "%s ¥%d" % ["弃牌后购买" if bool(state.get("requires_discard", false)) else "购买", price],
 		"buy_enabled": bool(state.get("actionable", false)),

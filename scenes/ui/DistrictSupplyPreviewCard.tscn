@@ -57,6 +57,15 @@ size_flags_horizontal = 3
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 3
 
+[node name="DistrictSupplyPreviewScanGrid" type="GridContainer" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "速读区：用途、买入、打出、目标。完整细节看卡面或悬停。"
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 5
+columns = 2
+
 [node name="DistrictSupplyPreviewBodyLabel" type="Label" parent="DistrictSupplySelectedPreviewMargin/DistrictSupplySelectedPreviewStack"]
 unique_name_in_owner = true
 layout_mode = 2

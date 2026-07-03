@@ -65,6 +65,8 @@ func _check_player_facing_source_guards() -> void:
 	var rules_source := FileAccess.get_file_as_string("res://scripts/ui/rules_quick_reference_board.gd")
 	var snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/right_inspector_snapshot.gd")
 	var bid_board_scene := FileAccess.get_file_as_string("res://scenes/ui/BidBoard.tscn")
+	var district_supply_preview_scene := FileAccess.get_file_as_string("res://scenes/ui/DistrictSupplyPreviewCard.tscn")
+	var district_supply_preview_script := FileAccess.get_file_as_string("res://scripts/ui/district_supply_preview_card.gd")
 	_expect(snapshot_source.contains("WHY_TEXT_CHAR_LIMIT := 48") and snapshot_source.contains("DETAIL_SUMMARY_CHAR_LIMIT := 44"), "right inspector snapshot has strict scan-first limits")
 	_expect(inspector_source.contains("WHY_TEXT_CHAR_LIMIT := 48") and inspector_source.contains("SUMMARY_TEXT_CHAR_LIMIT := 44"), "right inspector UI has strict scan-first limits")
 	_expect(overlay_source.contains("TEMP_DECISION_BODY_LIMIT := 72") and overlay_source.contains("SIDE_DRAWER_SECTION_BODY_LIMIT := 132"), "overlay modals/drawers cap visible prose")
@@ -80,6 +82,7 @@ func _check_player_facing_source_guards() -> void:
 	_expect(FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("PLANET_TABLE_SAFE_CORE_RATIO") and FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd").contains("SIDE_RAIL_MIN_STAGGER_PIXELS"), "planet side rails use explicit safe-core and stagger metrics")
 	_expect(bid_board_scene.contains("牌桌竞价") and bid_board_scene.contains("下一张牌可报价。") and not bid_board_scene.contains("公开竞价") and not bid_board_scene.contains("下一张匿名牌可预设公开报价"), "bid board reads as a compact table-bid control instead of an anonymity rules explainer")
 	_expect(not main_source.contains("预设匿名报价"), "bid tooltips use compact public-bid wording")
+	_expect(district_supply_preview_scene.contains("DistrictSupplyPreviewScanGrid") and district_supply_preview_script.contains("SCAN_SECTION_BODY_LIMIT := 34") and district_supply_preview_script.contains("_render_scan_sections") and district_supply_preview_script.contains("body_label.visible = body_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("facts_label.visible = facts_label.text != \"\" and not has_scan_sections") and district_supply_preview_script.contains("status_label.visible = status_label.text != \"\" and not has_scan_sections") and main_source.contains("_district_supply_preview_scan_sections") and main_source.contains("\"title\": \"用途\"") and main_source.contains("\"title\": \"买入\"") and main_source.contains("\"title\": \"打出\"") and main_source.contains("\"title\": \"目标\""), "district supply preview uses four compact scan sections instead of always-visible dense prose")
 
 
 func _check_default_scenario_coach_stays_off_planet() -> void:
