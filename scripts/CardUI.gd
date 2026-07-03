@@ -375,12 +375,13 @@ func _presentation_spec() -> String:
 
 func _mini_effect_line() -> String:
 	var explicit := str(_card_data.get("summary", _card_data.get("short_effect", ""))).strip_edges()
+	var use_case := _card_use_case_text()
 	if explicit != "":
-		return _short_card_text(explicit, 48)
+		return _short_card_text(_effect_with_use_case_prefix(use_case, explicit), 48)
 	var effect := effect_text.replace("\n", " ").strip_edges()
 	if effect == "":
-		return "点选查看详情"
-	return _short_card_text(effect, 48)
+		return _short_card_text("%s｜点选查看详情" % use_case, 48) if use_case != "" else "点选查看详情"
+	return _short_card_text(_effect_with_use_case_prefix(use_case, effect), 48)
 
 
 func _render_keyword_chips(hand_mini: bool, inspector_full: bool) -> void:
@@ -397,29 +398,40 @@ func _render_keyword_chips(hand_mini: bool, inspector_full: bool) -> void:
 
 func _card_keyword_entries() -> Array:
 	var entries: Array = []
+	var use_case := _card_use_case_text()
+	if use_case != "":
+		_append_keyword_entry_if_new(entries, {"text": "◎%s" % _short_card_text(use_case, 4), "tooltip": "用途：%s" % use_case, "accent": Color("#fde68a")})
+	var target := str(_card_data.get("target", _card_data.get("target_type", ""))).strip_edges()
+	if target != "":
+		_append_keyword_entry_if_new(entries, {"text": _keyword_target_text(target), "tooltip": "目标：%s" % target, "accent": Color("#bfdbfe")})
+	var flow_required := int(_card_data.get("required_city_flow", _card_data.get("flow_required", _card_data.get("required_flow", 0))))
+	var product := str(_card_data.get("required_product", _card_data.get("product", ""))).strip_edges()
+	if flow_required > 0:
+		_append_keyword_entry_if_new(entries, {"text": "◇%s %d" % [_short_card_text(product if product != "" else "流动", 4), flow_required], "tooltip": "打出门槛：需要对应商品流动，商品不消耗。", "accent": Color("#86efac")})
+	else:
+		_append_keyword_entry_if_new(entries, {"text": "免门槛", "tooltip": "打出时不需要商品流动。", "accent": Color("#cbd5e1")})
+	var duration := int(_card_data.get("seconds", _card_data.get("duration_seconds", _card_data.get("gdp_bet_turns", 0))))
+	if duration > 0:
+		_append_keyword_entry_if_new(entries, {"text": "%ds" % duration, "tooltip": "按秒生效或观察，不按回合结算。", "accent": Color("#fde68a")})
+	var persistent := bool(_card_data.get("persistent", _card_data.get("reusable", false)))
+	_append_keyword_entry_if_new(entries, {"text": "固定" if persistent else "一次", "tooltip": "固定技能可重复使用；一次性牌结算后离手。", "accent": Color("#fef3c7") if persistent else Color("#94a3b8")})
 	var provided: Variant = _card_data.get("keywords", _card_data.get("keyword_chips", _card_data.get("chips", [])))
 	if provided is Array:
 		for entry_variant in provided:
 			var entry := _normalize_keyword_entry(entry_variant)
 			if not entry.is_empty():
-				entries.append(entry)
-	if entries.size() >= 4:
-		return entries
-	var target := str(_card_data.get("target", _card_data.get("target_type", ""))).strip_edges()
-	if target != "":
-		entries.append({"text": _keyword_target_text(target), "tooltip": "目标：%s" % target, "accent": Color("#bfdbfe")})
-	var flow_required := int(_card_data.get("required_city_flow", _card_data.get("flow_required", _card_data.get("required_flow", 0))))
-	var product := str(_card_data.get("required_product", _card_data.get("product", ""))).strip_edges()
-	if flow_required > 0:
-		entries.append({"text": "◇%s %d" % [_short_card_text(product if product != "" else "流动", 4), flow_required], "tooltip": "打出门槛：需要对应商品流动，商品不消耗。", "accent": Color("#86efac")})
-	else:
-		entries.append({"text": "免门槛", "tooltip": "打出时不需要商品流动。", "accent": Color("#cbd5e1")})
-	var duration := int(_card_data.get("seconds", _card_data.get("duration_seconds", _card_data.get("gdp_bet_turns", 0))))
-	if duration > 0:
-		entries.append({"text": "%ds" % duration, "tooltip": "按秒生效或观察，不按回合结算。", "accent": Color("#fde68a")})
-	var persistent := bool(_card_data.get("persistent", _card_data.get("reusable", false)))
-	entries.append({"text": "固定" if persistent else "一次", "tooltip": "固定技能可重复使用；一次性牌结算后离手。", "accent": Color("#fef3c7") if persistent else Color("#94a3b8")})
+				_append_keyword_entry_if_new(entries, entry)
 	return entries
+
+
+func _append_keyword_entry_if_new(entries: Array, entry: Dictionary) -> void:
+	var text := str(entry.get("text", "")).strip_edges()
+	if text == "":
+		return
+	for existing in entries:
+		if existing is Dictionary and str((existing as Dictionary).get("text", "")).strip_edges() == text:
+			return
+	entries.append(entry)
 
 
 func _normalize_keyword_entry(entry_variant: Variant) -> Dictionary:
@@ -529,10 +541,13 @@ func _mini_rank_text() -> String:
 
 func _inspector_full_effect_text() -> String:
 	var lines: Array[String] = []
+	var use_case := _card_use_case_text()
 	var target := str(_card_data.get("target", _card_data.get("target_type", ""))).strip_edges()
 	var requirement := str(_card_data.get("requirement", _card_data.get("play_requirement", _card_data.get("condition", "")))).strip_edges()
 	var disabled_reason := str(_card_data.get("disabled_reason", _card_data.get("block_reason", ""))).strip_edges()
 	var primary_action := _primary_action_label()
+	if use_case != "":
+		lines.append("用途｜%s" % use_case)
 	if target != "":
 		lines.append("目标｜%s" % target)
 	if requirement != "":
@@ -546,6 +561,44 @@ func _inspector_full_effect_text() -> String:
 	if lines.is_empty():
 		lines.append("点选手牌后在这里查看完整说明。")
 	return "\n".join(lines)
+
+
+func _card_use_case_text() -> String:
+	for key in ["use_case", "table_use", "when_to_use", "purpose", "route", "lane", "family"]:
+		var value := str(_card_data.get(key, "")).strip_edges()
+		if value != "":
+			return _short_card_text(value, 10)
+	var lower_type := "%s %s" % [card_type.to_lower(), str(_card_data.get("kind", "")).to_lower()]
+	if lower_type.contains("monster") or card_type.contains("怪兽"):
+		return "制造地图压力"
+	if lower_type.contains("military") or card_type.contains("军"):
+		return "指挥军队"
+	if lower_type.contains("contract") or card_type.contains("合约"):
+		return "连接供需"
+	if lower_type.contains("intel") or card_type.contains("情报"):
+		return "获取线索"
+	if lower_type.contains("weather") or card_type.contains("天气"):
+		return "改变天气"
+	if lower_type.contains("finance") or lower_type.contains("gdp") or card_type.contains("金融"):
+		return "押注涨跌"
+	if lower_type.contains("product") or card_type.contains("商品"):
+		return "操盘商品"
+	if lower_type.contains("route") or card_type.contains("商路"):
+		return "改写商路"
+	if lower_type.contains("direct") or card_type.contains("互动"):
+		return "干扰对手"
+	if card_type.contains("经济"):
+		return "提升现金流"
+	return _short_card_text(_player_facing_type_label(card_type), 10)
+
+
+func _effect_with_use_case_prefix(use_case: String, effect: String) -> String:
+	var clean_effect := effect.strip_edges()
+	if use_case == "" or clean_effect == "":
+		return clean_effect
+	if clean_effect.begins_with(use_case) or clean_effect.begins_with("用途｜"):
+		return clean_effect
+	return "%s｜%s" % [_short_card_text(use_case, 6), clean_effect]
 
 
 func _inspector_full_route_text(display_type: String) -> String:

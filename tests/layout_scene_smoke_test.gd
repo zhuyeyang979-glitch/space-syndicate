@@ -3849,6 +3849,7 @@ func _check_card_face_presentation_specs() -> void:
 		"cost": "2",
 		"type": "经济",
 		"rank": "I",
+		"use_case": "赚钱",
 		"effect": "这是一段很长的规则说明，MiniCard 不应该把它完整塞进底部手牌。",
 		"presentation": "mini_hand",
 	})
@@ -3857,6 +3858,7 @@ func _check_card_face_presentation_specs() -> void:
 	var keyword_rail := mini.find_child("KeywordChipRail", true, false)
 	var art_view := mini.find_child("ArtView", true, false)
 	_expect(str(mini.get_meta("card_presentation_spec", "")) == "MiniCard" and mini_effect != null and mini_effect.max_lines_visible <= 3 and mini_effect.autowrap_mode != TextServer.AUTOWRAP_OFF and mini_effect.text.length() < 56 and keyword_rail != null and keyword_rail.get_child_count() >= 2 and art_view != null and bool(art_view.get_meta("card_face_visual_anchor", false)), "MiniCard presentation keeps a visual art anchor, 2-3 line scan effect, and keyword chips instead of long rules")
+	_expect(mini_effect != null and mini_effect.text.begins_with("赚钱｜") and _node_tree_text(keyword_rail).contains("◎赚钱"), "MiniCard presentation exposes a first-glance use-case prefix and chip")
 	root.remove_child(mini)
 	mini.queue_free()
 
@@ -3869,6 +3871,7 @@ func _check_card_face_presentation_specs() -> void:
 		"cost": "2",
 		"type": "经济",
 		"rank": "II",
+		"use_case": "扩张现金流",
 		"target": "己方城市",
 		"requirement": "选区有城市",
 		"effect": "现金流上升并留下公开线索。",
@@ -3879,7 +3882,7 @@ func _check_card_face_presentation_specs() -> void:
 	await process_frame
 	var inspector_effect := inspector.find_child("EffectLabel", true, false) as Label
 	var inspector_text := inspector_effect.text if inspector_effect != null else ""
-	_expect(str(inspector.get_meta("card_presentation_spec", "")) == "inspector_full" and inspector_text.contains("目标｜己方城市") and inspector_text.contains("条件｜选区有城市") and inspector_text.contains("主动作｜出牌") and inspector_text.contains("暂不可用｜当前未选城市"), "inspector_full presentation carries target, requirement, full effect, action, and disabled reason")
+	_expect(str(inspector.get_meta("card_presentation_spec", "")) == "inspector_full" and inspector_text.contains("用途｜扩张现金流") and inspector_text.contains("目标｜己方城市") and inspector_text.contains("条件｜选区有城市") and inspector_text.contains("主动作｜出牌") and inspector_text.contains("暂不可用｜当前未选城市"), "inspector_full presentation carries use-case, target, requirement, full effect, action, and disabled reason")
 	inspector.call("set_interaction_state", {"selected": true, "hovered": false, "dragging": false, "drop_valid": true, "drop_invalid": false})
 	_expect(str(inspector.get_meta("card_visual_state", "")) == "selected", "CardFace exposes selected visual state metadata")
 	root.remove_child(inspector)

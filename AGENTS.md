@@ -16,6 +16,13 @@ When continuing work, optimize for:
 4. Rules, economy, cards, monsters, and AI behavior remain data-driven and testable.
 5. AI gets smarter without exposing hidden reasoning to the player.
 
+Default development habit:
+
+- Before or while implementing a feature, define the player-facing hard standard that proves the feature is good enough.
+- Build a reusable skeleton or data contract when the feature is likely to recur; avoid one-off UI or rule patches that cannot scale.
+- Add an acceptance gate, smoke test, visual contract, or documented manual check so the standard does not depend on memory.
+- If a feature is still temporary, say exactly which hard standard it does not meet yet and what the next gate should protect.
+
 ## Current High-Level Game Loop
 
 Preserve this loop unless the user explicitly changes it:
