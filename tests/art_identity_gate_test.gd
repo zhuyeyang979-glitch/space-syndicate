@@ -119,11 +119,20 @@ func _verify_monster_art_identity(main: Node) -> void:
 	_expect(script != null, "monster art script loads for identity audit")
 	if script == null:
 		return
+	var card_script := load(CARD_ART_SCRIPT_PATH)
+	_expect(card_script != null, "card art script loads for monster-card body matching audit")
+	if card_script == null:
+		return
 	var monster_view := script.new() as Control
 	_expect(monster_view != null, "monster art identity audit can instantiate the shared MonsterArtView")
 	if monster_view == null:
 		return
+	var card_view := card_script.new() as Control
+	_expect(card_view != null, "monster-card body matching audit can instantiate the shared CardArtView")
+	if card_view == null:
+		return
 	get_root().add_child(monster_view)
+	get_root().add_child(card_view)
 	await process_frame
 
 	var seen_keys := {}
@@ -133,7 +142,9 @@ func _verify_monster_art_identity(main: Node) -> void:
 	var upstream_sources := {}
 	var upstream_counts := {}
 	var moth_source_count := 0
+	var monster_index := -1
 	for source_variant in monster_sources:
+		monster_index += 1
 		if not (source_variant is Dictionary):
 			_failures.append("monster art source entry is not a Dictionary")
 			continue
@@ -159,6 +170,25 @@ func _verify_monster_art_identity(main: Node) -> void:
 		_expect(String(profile.get("sprite_key", "")) != "" and String(profile.get("sprite_cell", "")) != "", "monster %s has a concrete sprite key and region/cell" % monster_name)
 		_expect(profile.has("upstream_source_id") and profile.has("silhouette") and profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_layer") and profile.has("composition_variant"), "monster %s has multi-axis illustration fields beyond text/name" % monster_name)
 		_expect(not seen_keys.has(profile_key), "monster %s has a unique visual profile key; duplicate=%s" % [monster_name, profile_key])
+		var monster_card_name := String(main.call("_monster_card_name", monster_index, 1)) if main.has_method("_monster_card_name") else ""
+		var monster_card_skill: Dictionary = main.call("_skill_definition", monster_card_name) as Dictionary if monster_card_name != "" and main.has_method("_skill_definition") else {}
+		card_view.call(
+			"set_card",
+			monster_card_name,
+			String(monster_card_skill.get("kind", "monster_card")),
+			String(main.call("_skill_tag_text", monster_card_skill)) if main.has_method("_skill_tag_text") else "怪兽卡",
+			main.call("_card_theme_color", monster_card_skill) as Color if main.has_method("_card_theme_color") else Color("#ef4444"),
+			1,
+			false,
+			String(main.call("_art_identity_card_stats", monster_card_name, monster_card_skill)) if main.has_method("_art_identity_card_stats") else ""
+		)
+		var card_profile := card_view.call("card_visual_profile_snapshot") as Dictionary
+		_expect(String(card_profile.get("sprite_key", "")) == String(profile.get("sprite_key", "")), "monster card %s uses the same body sprite key as %s; card=%s body=%s" % [
+			monster_card_name,
+			monster_name,
+			String(card_profile.get("sprite_key", "")),
+			String(profile.get("sprite_key", "")),
+		])
 		seen_keys[profile_key] = monster_name
 		silhouettes[String(profile.get("silhouette", ""))] = true
 		sprite_keys[String(profile.get("sprite_key", ""))] = true
@@ -168,6 +198,7 @@ func _verify_monster_art_identity(main: Node) -> void:
 		if visual_source_id.begins_with("moth_kaijuice"):
 			moth_source_count += 1
 	monster_view.queue_free()
+	card_view.queue_free()
 
 	_expect(seen_keys.size() == monster_sources.size(), "every monster has one unique monster art profile")
 	_expect(silhouettes.size() == monster_sources.size(), "every current monster family has a distinct silhouette/motif assignment")

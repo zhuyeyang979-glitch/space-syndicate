@@ -26,6 +26,10 @@ const KENNEY_FISH_PATH := "res://assets/third_party/kenney_cc0/platformer/enemie
 const KENNEY_SLIME_PATH := "res://assets/third_party/kenney_cc0/platformer/enemies/slimeWalk1.png"
 const KENNEY_ALIEN_BLUE_PATH := "res://assets/third_party/kenney_cc0/hexagon/alienBlue.png"
 const KENNEY_ENEMY_UFO_PATH := "res://assets/third_party/kenney_cc0/space/enemyUFO.png"
+const SUPERPOWERS_DRAGON_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/dragon.png"
+const SUPERPOWERS_CYCLOP_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/cyclop.png"
+const SUPERPOWERS_SNAKE_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/snake.png"
+const SUPERPOWERS_SLIM_PATH := "res://assets/third_party/superpowers_cc0/medieval-fantasy/monsters/slim.png"
 const NIGHT_PATROL_FRAME_PATHS := {
 	"monster_card": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
 	"military_force": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
@@ -76,6 +80,7 @@ func _ready() -> void:
 		"soldier": _load_optional_texture(MOTH_KAIJUICE_SOLDIER_PATH),
 		"building_m": _load_optional_texture(MOTH_KAIJUICE_BUILDING_M_PATH),
 		"building_s": _load_optional_texture(MOTH_KAIJUICE_BUILDING_S_PATH),
+		"moth_kaijuice_kaiju": _load_optional_texture(MOTH_KAIJUICE_KAIJU_PATH),
 		"monster_battler_dino": _load_optional_texture(MONSTER_BATTLER_DINO_PATH),
 		"monster_battler_rock": _load_optional_texture(MONSTER_BATTLER_ROCK_PATH),
 		"monster_battler_rodent": _load_optional_texture(MONSTER_BATTLER_RODENT_PATH),
@@ -85,6 +90,10 @@ func _ready() -> void:
 		"kenney_slime": _load_optional_texture(KENNEY_SLIME_PATH),
 		"kenney_alien_blue": _load_optional_texture(KENNEY_ALIEN_BLUE_PATH),
 		"kenney_enemy_ufo": _load_optional_texture(KENNEY_ENEMY_UFO_PATH),
+		"superpowers_dragon": _load_optional_texture(SUPERPOWERS_DRAGON_PATH),
+		"superpowers_cyclop": _load_optional_texture(SUPERPOWERS_CYCLOP_PATH),
+		"superpowers_snake": _load_optional_texture(SUPERPOWERS_SNAKE_PATH),
+		"superpowers_slim": _load_optional_texture(SUPERPOWERS_SLIM_PATH),
 	}
 
 
@@ -590,9 +599,9 @@ func _moth_kaijuice_card_sprite_key() -> String:
 	var identity := "%s｜%s｜%s｜%s" % [card_name, card_kind, card_tags, card_stats]
 	if card_kind == "monster_card":
 		if identity.contains("孢雾"):
-			return "kenney_fish"
+			return "superpowers_dragon"
 		if identity.contains("砂铠"):
-			return "monster_battler_rock"
+			return "superpowers_cyclop"
 		if identity.contains("流星"):
 			return "kenney_enemy_ufo"
 		if identity.contains("棱刃"):
@@ -600,11 +609,11 @@ func _moth_kaijuice_card_sprite_key() -> String:
 		if identity.contains("绿洲"):
 			return "kenney_slime"
 		if identity.contains("焰环"):
-			return "kaiju"
+			return "moth_kaijuice_kaiju"
 		if identity.contains("蓝锋"):
-			return "kenney_alien_blue"
+			return "superpowers_snake"
 		if identity.contains("镜像"):
-			return "monster_battler_salamander"
+			return "superpowers_slim"
 		return "kaiju"
 	if _contains_any(identity, ["怪兽", "星兽", "诱导", "夺取"]):
 		return "monster_battler_turtle" if _name_seed() % 2 == 0 else "monster_battler_rodent"
@@ -627,6 +636,8 @@ func _card_visual_source_id(sprite_key: String) -> String:
 	match sprite_key:
 		"kaiju":
 			return "moth_kaijuice_mit_kaiju_sheet"
+		"moth_kaijuice_kaiju":
+			return "moth_kaijuice_mit_kaiju_family"
 		"atfield":
 			return "moth_kaijuice_mit_field_effect"
 		"laser":
@@ -659,12 +670,20 @@ func _card_visual_source_id(sprite_key: String) -> String:
 			return "kenney_cc0_alien_blue"
 		"kenney_enemy_ufo":
 			return "kenney_cc0_enemy_ufo"
+		"superpowers_dragon":
+			return "superpowers_cc0_dragon_card"
+		"superpowers_cyclop":
+			return "superpowers_cc0_cyclop_card"
+		"superpowers_snake":
+			return "superpowers_cc0_snake_card"
+		"superpowers_slim":
+			return "superpowers_cc0_slim_card"
 		_:
 			return "procedural_card_art_fallback"
 
 
 func _moth_kaijuice_card_sprite_cell(sprite_key: String) -> String:
-	if sprite_key == "kaiju":
+	if sprite_key == "kaiju" or sprite_key == "moth_kaijuice_kaiju":
 		var cell_index := _name_seed() % 32
 		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
 	if sprite_key == "mech":
@@ -677,7 +696,7 @@ func _moth_kaijuice_card_sprite_region(sprite_key: String) -> Rect2:
 	var texture := moth_kaijuice_textures.get(sprite_key, null) as Texture2D
 	if texture == null:
 		return Rect2()
-	if sprite_key == "kaiju" or sprite_key == "mech":
+	if sprite_key == "kaiju" or sprite_key == "moth_kaijuice_kaiju" or sprite_key == "mech":
 		var cell_text := _moth_kaijuice_card_sprite_cell(sprite_key)
 		var parts := cell_text.split(",")
 		var cell_x := int(parts[0]) if parts.size() > 0 else 0

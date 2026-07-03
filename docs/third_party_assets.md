@@ -125,6 +125,7 @@ Imported for the current prototype:
 Current player-facing use:
 
 - `scripts/monster_art_view.gd` uses these sprites as distinct monster body-art families for miasma dragon, land bruiser, blade serpent, and mirror/slime hunter profiles.
+- `scripts/card_art_view.gd` uses the same dragon/cyclop/snake/slim body sprites for the matching rank-I monster card faces, so those monster cards no longer drift into unrelated temporary creature art.
 - This pack is intentionally used to reduce visual dependence on the MOS/Moth kaiju sheet. The art identity gate now requires at least four upstream monster body-art packs and rejects any one pack supplying more than half of the current roster.
 - These CC0 sprites are temporary prototype anchors. Later owned art should preserve the same per-monster silhouette/source-family diversity.
 

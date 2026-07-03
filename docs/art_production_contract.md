@@ -63,6 +63,7 @@ Acceptance:
 - Moth Kaijuice/MOS kaiju body art can be assigned to at most one current monster family. Other monsters must come from different open-source body-art families or a clearly different authored/procedural body.
 - The current monster roster must draw body art from at least four upstream/open-source packs, and no single upstream pack may provide more than half of the active roster. This prevents "one sprite sheet, many color swaps" from passing review.
 - Monster art must be visible in the bestiary/detail contexts, monster cards, and runtime map tokens. The map token may be compact, but it must consume the same `sprite_key`, `visual_source_id`, and `upstream_source_id` contract instead of falling back to only number/color/glyph.
+- Each rank-I monster card must use the same body `sprite_key` as its corresponding monster art profile. The card frame may add overlays, but it cannot represent the monster with an unrelated creature sprite.
 - Runtime monster actions must consume the same action animation profile used by the art audit. A beam, projectile, dash, miasma, repair, roar/wave, throw, and melee action may still be greybox, but they must not all collapse into one generic map line or circle.
 
 ## Monster action hard standard
@@ -133,6 +134,7 @@ The gate fails if:
 - two monsters share the same visual profile key;
 - any current monster shares another monster's silhouette/motif;
 - any current monster shares another monster's body sprite key or `visual_source_id`;
+- any rank-I monster card uses a different body sprite key from its matching monster profile;
 - more than one current monster uses Moth Kaijuice/MOS kaiju body art;
 - fewer than four upstream/open-source monster art packs are represented in the current roster;
 - one upstream/open-source pack supplies more than half of the current monster roster;
@@ -159,6 +161,18 @@ It writes:
 Use these images for human review after each art pass. The first sheet checks whether cards and monsters are visually distinguishable at a glance. The second sheet checks whether each monster action has a distinct motion/effect/timing/meter profile before full animation work starts.
 The third sheet checks whether the real `MapView` renders source-specific monster body sprites at tabletop-token scale, so the in-game planet is not reduced to numbered colored dots.
 The fourth sheet checks whether the real `MapView` renders distinct greybox action grammars for beams, projectiles, dash/roll/burrow, miasma, repair, roar/wave, throw, and melee before final frame-by-frame monster animation work.
+
+Run this per-monster review pass when a monster body, monster card face, map token, or monster action grammar changes:
+
+```powershell
+& "..\tools\godot-4.6.2\Godot_v4.6.2-stable_win64_console.exe" --path . --script res://tests/monster_runtime_review_capture.gd
+```
+
+It writes one review image per current monster:
+
+- `reports/art/monster_reviews/art_monster_review_01.png` through `art_monster_review_08.png`
+
+Each review image must show the monster bestiary art, the matching rank-I monster card face, the real map token, and representative runtime action map effects on one page. Use these single-monster images for the "one by one" human art pass before replacing temporary assets.
 
 ## Human review checklist
 

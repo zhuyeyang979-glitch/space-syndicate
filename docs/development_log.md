@@ -3,6 +3,25 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜逐只怪兽审片图 + 怪兽牌卡面与本体对齐
+
+- 继续执行“接下来的任务先一只一只做怪兽美术/卡牌插画”的硬约束，这轮不新增玩法，只补美术审片和自动门禁：
+  - `CardArtView` 现在为孢雾海皇/砂铠陆行兽/蓝锋骑士/镜像猎兵加载并使用 Superpowers 的 dragon/cyclop/snake/slim sprite，怪兽牌卡面不再退回不相关的鱼/小怪临时图。
+  - 焰环幼星的怪兽牌卡面改成 `moth_kaijuice_kaiju`，继续保证 MOS/Moth kaiju 只服务这一只当前怪兽。
+  - `tests/art_identity_gate_test.gd` 新增硬门：每张 I 级怪兽牌必须使用和对应怪兽本体相同的 `sprite_key`；否则直接失败。
+- 新增 `tests/monster_runtime_review_capture.gd`：
+  - 为当前 8 只怪兽逐只生成 `reports/art/monster_reviews/art_monster_review_01.png` 到 `art_monster_review_08.png`。
+  - 每张图同屏展示图鉴/本体美术、怪兽牌卡面、主地图 token、动作 profile、代表性运行态动作演出。
+  - 这批图用于人工逐只审片，后续替换单只怪兽美术时必须重新生成。
+- `docs/art_production_contract.md` 和 `docs/third_party_assets.md` 更新：记录逐只审片命令、怪兽卡面与本体 `sprite_key` 对齐规则，以及 Superpowers 素材现在也用于对应怪兽牌卡面。
+
+### 本轮验证
+
+- `tests/monster_runtime_review_capture.gd` 有头通过，输出 8 张逐怪兽审片图。
+- `tests/art_contact_sheet_capture.gd` 有头通过，刷新卡牌/怪兽总览 contact sheet。
+- `tests/art_identity_gate_test.gd` 通过，包含新门禁：怪兽牌 I 与本体 `sprite_key` 必须对齐。
+- `tests/ui_text_smoke_test.gd`、`tests/visual_snapshot.gd`、`tests/smoke_test.gd --check-only`、完整 `tests/smoke_test.gd` 通过，保护逐怪兽审片脚本、visual contract 和主玩法闭环。
+
 ## 2026-07-03｜怪兽动作 Profile 接入运行态地图演出
 
 - 继续推进“每只怪兽、每种攻击都要有独立动作”的硬约束，这轮不改规则、伤害、概率或经济，只把已经存在的动作 profile 真正接进主地图演出：
