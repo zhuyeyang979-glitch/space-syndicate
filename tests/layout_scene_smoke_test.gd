@@ -2922,6 +2922,16 @@ func _check_rules_quick_reference_board_component() -> void:
 			{"title": "信息边界", "body": "出牌公开，牌主匿名。", "meta": "靠公开线索推理。", "accent": Color("#c084fc")},
 			{"title": "结算节奏", "body": "达标后终局沙漏。", "meta": "领先护城，落后压制。", "accent": Color("#fb923c")},
 		],
+		"keyword_title": "卡面符号｜看手牌先认这些",
+		"keyword_legend": [
+			{"symbol": "¥", "label": "价格/资金", "body": "买牌、报价或现金效果。", "accent": Color("#facc15")},
+			{"symbol": "◇", "label": "商品流动", "body": "打出门槛，不消耗商品。", "accent": Color("#38bdf8")},
+			{"symbol": "◆", "label": "怪兽", "body": "召唤、诱导或指定怪兽。", "accent": Color("#fb7185")},
+			{"symbol": "◎", "label": "玩家/目标", "body": "需要指定玩家或对象。", "accent": Color("#c084fc")},
+			{"symbol": "⇄", "label": "合约/商路", "body": "连接供给、需求和运输。", "accent": Color("#2dd4bf")},
+			{"symbol": "一次", "label": "一次性牌", "body": "进入牌轨后结算离手。", "accent": Color("#94a3b8")},
+			{"symbol": "固定", "label": "固定技能", "body": "可重复用，有冷却。", "accent": Color("#fde68a")},
+		],
 		"modules": [
 			{"title": "◆ 首召怪兽", "body": "先打一张I级怪兽牌。", "meta": "附近打开购牌来源。", "accent": Color("#fb7185")},
 			{"title": "▣ 建城赚钱", "body": "陆地城市化。", "meta": "GDP/min按秒进账。", "accent": Color("#4ade80")},
@@ -2939,6 +2949,7 @@ func _check_rules_quick_reference_board_component() -> void:
 	_expect(String(board.name) == "RulesQuickReferencePanel", "RulesQuickReferenceBoard keeps the rules panel root")
 	_expect(board.find_child("RulesQuickReferenceHeader", true, false) != null and board.find_child("RulesQuickReferenceChip", true, false) != null, "RulesQuickReferenceBoard renders header chips")
 	_expect(board.find_child("RulesQuickReferenceKpiGrid", true, false) != null and board.find_child("RulesQuickReferenceKpiCard", true, false) != null and board.find_child("RulesQuickReferenceKpiMeta", true, false) != null, "RulesQuickReferenceBoard renders KPI cards")
+	_expect(board.find_child("RulesQuickReferenceKeywordRail", true, false) != null and board.find_child("RulesQuickReferenceKeywordChip", true, false) != null and board.find_child("RulesQuickReferenceKeywordSymbol", true, false) != null and board.find_child("RulesQuickReferenceKeywordBody", true, false) != null, "RulesQuickReferenceBoard renders a dedicated card-keyword legend rail")
 	_expect(board.find_child("RulesQuickReferenceModuleGrid", true, false) != null and board.find_child("RulesQuickReferenceModuleCard", true, false) != null and board.find_child("RulesQuickReferenceModuleMeta", true, false) != null, "RulesQuickReferenceBoard renders module cards")
 	_expect(board.find_child("RulesQuickReferenceFooterHint", true, false) != null, "RulesQuickReferenceBoard points long rules back to the rules page instead of the main table")
 	root.remove_child(board)

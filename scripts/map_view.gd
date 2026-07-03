@@ -23,8 +23,9 @@ const ZOOM_WHEEL_STEP := 1.08
 const LABEL_INTERACTION_ZOOM_EPSILON := 0.018
 const INTERACTION_DETAIL_SETTLE_SECONDS := 0.28
 const INTERACTION_REDRAW_INTERVAL_SECONDS := 1.0 / 24.0
-const PROGRAMMATIC_FOCUS_ROTATE_MIN_SECONDS := 0.18
-const PROGRAMMATIC_FOCUS_ROTATE_MAX_SECONDS := 0.32
+const PROGRAMMATIC_FOCUS_ROTATE_MIN_SECONDS := 0.34
+const PROGRAMMATIC_FOCUS_ROTATE_MAX_SECONDS := 0.72
+const PROGRAMMATIC_FOCUS_BEACON_SECONDS := 0.82
 const GLOBE_POLYGON_DETAIL_STEP_METERS := 45.0
 const GLOBE_POLYGON_INTERACTION_STEP_METERS := 120.0
 const GLOBE_EDGE_DETAIL_STEP_METERS := 28.0
@@ -70,6 +71,7 @@ var city_markers: Array = []
 var trade_route_markers: Array = []
 var trade_product := ""
 var visual_layer_focus := "all"
+var programmatic_focus_animation_enabled := true
 
 var _scale := 1.0
 var _map_offset := Vector2.ZERO
@@ -93,6 +95,7 @@ var _focus_target_center_m := Vector2.ZERO
 var _focus_target_district := -1
 var _focus_rotation_elapsed := 0.0
 var _focus_rotation_duration := 0.0
+var _focus_beacon_elapsed := 0.0
 var monster_marker_textures := {}
 
 
@@ -188,12 +191,23 @@ func _update_focus_rotation(delta: float) -> bool:
 	return before.distance_to(_view_center_m) > 0.001
 
 
+func _update_focus_beacon(delta: float) -> bool:
+	if _focus_target_district < 0:
+		return false
+	var total_seconds := maxf(0.0, _focus_rotation_duration) + PROGRAMMATIC_FOCUS_BEACON_SECONDS
+	if _focus_beacon_elapsed >= total_seconds:
+		return false
+	_focus_beacon_elapsed = minf(total_seconds, _focus_beacon_elapsed + maxf(0.0, delta))
+	return true
+
+
 func _cancel_focus_rotation() -> void:
 	_focus_rotation_duration = 0.0
 	_focus_rotation_elapsed = 0.0
 	_focus_target_district = -1
 	_focus_start_center_m = _view_center_m
 	_focus_target_center_m = _view_center_m
+	_focus_beacon_elapsed = PROGRAMMATIC_FOCUS_BEACON_SECONDS
 
 
 func _start_focus_rotation(target_center_m: Vector2, district_index: int) -> void:
@@ -202,7 +216,15 @@ func _start_focus_rotation(target_center_m: Vector2, district_index: int) -> voi
 	_focus_target_center_m = wrapped_target
 	_focus_target_district = district_index
 	_focus_rotation_elapsed = 0.0
+	_focus_beacon_elapsed = 0.0
 	var distance_m := _surface_distance(_focus_start_center_m, wrapped_target)
+	if not programmatic_focus_animation_enabled:
+		_view_center_m = wrapped_target
+		_focus_rotation_duration = 0.0
+		_focus_beacon_elapsed = PROGRAMMATIC_FOCUS_BEACON_SECONDS
+		_mark_interaction_detail_dirty()
+		queue_redraw()
+		return
 	if distance_m <= 1.0:
 		_view_center_m = wrapped_target
 		_focus_rotation_duration = 0.0
@@ -228,6 +250,7 @@ func _map_detail_reduced() -> bool:
 func _process(delta: float) -> void:
 	var zoom_changed := _update_smooth_zoom(delta)
 	var focus_changed := _update_focus_rotation(delta)
+	var beacon_changed := _update_focus_beacon(delta)
 	if zoom_changed or focus_changed:
 		_mark_interaction_detail_dirty()
 	var was_interacting := _interaction_detail_timer > 0.0
@@ -238,7 +261,7 @@ func _process(delta: float) -> void:
 	var has_animated_layers := _has_active_animation_layers()
 	if has_animated_layers:
 		_animated_redraw_timer -= delta
-	var interaction_redraw_due := (zoom_changed or focus_changed or _interaction_redraw_requested) and _interaction_redraw_timer <= 0.0
+	var interaction_redraw_due := (zoom_changed or focus_changed or beacon_changed or _interaction_redraw_requested) and _interaction_redraw_timer <= 0.0
 	if interaction_redraw_due or interaction_settled or (has_animated_layers and _animated_redraw_timer <= 0.0):
 		queue_redraw()
 		if interaction_redraw_due:
@@ -361,6 +384,7 @@ func _draw() -> void:
 		_draw_action_callouts()
 	if globe_blend < 0.985:
 		_draw_flat_projection_space_mask(globe_blend)
+	_draw_focus_target_beacon()
 	_draw_scale_hint()
 
 
@@ -902,6 +926,7 @@ func _draw_globe_projection() -> void:
 		_draw_auto_monster_markers()
 	if not reduced_detail and _layer_focus_allows("callouts") and _view_zoom >= CALLOUT_DENSE_ZOOM_THRESHOLD:
 		_draw_action_callouts()
+	_draw_focus_target_beacon()
 	_draw_scale_hint()
 
 
@@ -1166,6 +1191,54 @@ func _draw_region_label(index: int) -> void:
 	draw_string(font, pos + Vector2(-text_width * 0.5, -4), "HP %d/%d" % [hp_left, hp_total], HORIZONTAL_ALIGNMENT_CENTER, text_width, 9, hp_color)
 	if index == selected_district:
 		_draw_selected_region_card_badges(index, pos + Vector2(20.0, 18.0))
+
+
+func _focus_beacon_alpha() -> float:
+	if _focus_target_district < 0:
+		return 0.0
+	var total_seconds := maxf(0.0, _focus_rotation_duration) + PROGRAMMATIC_FOCUS_BEACON_SECONDS
+	if total_seconds <= 0.0:
+		return 0.0
+	if _focus_rotation_active():
+		return 0.94
+	var fade_elapsed := maxf(0.0, _focus_beacon_elapsed - maxf(0.0, _focus_rotation_duration))
+	return clampf(1.0 - fade_elapsed / maxf(0.001, PROGRAMMATIC_FOCUS_BEACON_SECONDS), 0.0, 0.94)
+
+
+func _draw_focus_target_beacon() -> void:
+	if _focus_target_district < 0 or _focus_target_district >= districts.size():
+		return
+	var alpha := _focus_beacon_alpha()
+	if alpha <= 0.02:
+		return
+	var district: Dictionary = districts[_focus_target_district]
+	var target_center: Vector2 = district.get("center", _focus_target_center_m)
+	var projected := _project_globe(target_center) if _is_globe_mode() else {"position": _world_to_screen(target_center), "visible": true}
+	var pos: Vector2 = projected.get("position", size * 0.5)
+	var visible := bool(projected.get("visible", true))
+	var accent := Color("#facc15")
+	accent.a = alpha
+	var soft := Color("#facc15")
+	soft.a = alpha * 0.20
+	var pulse := 0.5 + 0.5 * sin(_focus_beacon_elapsed * TAU * 1.65)
+	if _is_globe_mode() and not visible:
+		var direction := pos - _globe_center()
+		if direction.length() <= 0.001:
+			direction = Vector2.RIGHT
+		pos = _globe_center() + direction.normalized() * _globe_radius() * 0.82
+		var guide := Color("#facc15")
+		guide.a = alpha * 0.42
+		draw_line(_globe_center(), pos, guide, 1.6, true)
+		draw_arc(pos, 14.0 + pulse * 3.0, -0.75, 0.75, 18, accent, 2.2, true)
+	else:
+		draw_circle(pos, 18.0 + pulse * 5.0, soft)
+		draw_arc(pos, 17.0 + pulse * 4.0, 0.0, TAU, 44, accent, 2.4, true)
+		draw_arc(pos, 7.0, 0.0, TAU, 24, accent.lightened(0.16), 1.4, true)
+	var font := get_theme_default_font()
+	var label := "转向 %s" % _short_action_text(String(district.get("name", "区域")), 8)
+	var label_color := Color("#fef3c7")
+	label_color.a = alpha
+	draw_string(font, pos + Vector2(-42.0, -24.0), label, HORIZONTAL_ALIGNMENT_CENTER, 84.0, 10, label_color)
 
 
 func _draw_selected_region_card_badges(index: int, anchor: Vector2) -> void:
@@ -2222,6 +2295,16 @@ func focus_district(index: int, keep_zoom: bool = true) -> void:
 	queue_redraw()
 
 
+func set_programmatic_focus_animation_enabled(enabled: bool) -> void:
+	programmatic_focus_animation_enabled = enabled
+	if not programmatic_focus_animation_enabled:
+		_focus_rotation_duration = 0.0
+		_focus_rotation_elapsed = 0.0
+		_focus_beacon_elapsed = PROGRAMMATIC_FOCUS_BEACON_SECONDS
+		_mark_interaction_detail_dirty()
+		queue_redraw()
+
+
 func zoom_to_local_projection() -> void:
 	_view_zoom = PLANET_PROJECTION_LOCAL_ZOOM
 	_target_view_zoom = PLANET_PROJECTION_LOCAL_ZOOM
@@ -2245,6 +2328,9 @@ func get_projection_debug_snapshot() -> Dictionary:
 		"focus_target_center_m": _focus_target_center_m,
 		"focus_start_center_m": _focus_start_center_m,
 		"focus_rotation_progress": 1.0 if _focus_rotation_duration <= 0.0 else clampf(_focus_rotation_elapsed / maxf(0.001, _focus_rotation_duration), 0.0, 1.0),
+		"focus_beacon_active": _focus_beacon_alpha() > 0.02,
+		"focus_beacon_alpha": _focus_beacon_alpha(),
+		"programmatic_focus_animation_enabled": programmatic_focus_animation_enabled,
 		"map_size_m": Vector2(map_width_m, map_height_m),
 		"default_zoom": PLANET_PROJECTION_DEFAULT_ZOOM,
 		"globe_zoom": PLANET_PROJECTION_GLOBE_ZOOM,

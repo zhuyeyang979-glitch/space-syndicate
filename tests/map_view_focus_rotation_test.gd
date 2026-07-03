@@ -31,21 +31,24 @@ func _run() -> void:
 	var started := _snapshot(map_view)
 	var target := Vector2(1200.0, 475.0)
 	_expect(bool(started.get("focus_rotation_active", false)), "focus_district starts a visible planet rotation for a distant region")
+	_expect(bool(started.get("focus_beacon_active", false)) and float(started.get("focus_beacon_alpha", 0.0)) > 0.5, "focus_district shows a visible target beacon while the planet rotates")
 	_expect(int(started.get("focus_target_district", -1)) == 1, "focus_district records which region the planet is rotating toward")
 	_expect((started.get("focus_target_center_m", Vector2.ZERO) as Vector2).distance_to(target) <= 1.0, "focus_district records the target region center")
 	_expect((started.get("view_center_m", Vector2.ZERO) as Vector2).distance_to(target) > 50.0, "focus_district does not silently snap to the target on the same frame")
-	for _frame in range(60):
+	for _frame in range(180):
 		await process_frame
 	var finished := _snapshot(map_view)
 	_expect(not bool(finished.get("focus_rotation_active", false)), "focus_district finishes the planet rotation")
 	_expect((finished.get("view_center_m", Vector2.ZERO) as Vector2).distance_to(target) <= 1.0, "focus_district ends with the target region facing the player")
+	_expect(bool(finished.get("focus_beacon_active", false)), "focus_district keeps a short target beacon after rotation so humans can see the landed region")
 	map_view.call("set_map", _rotation_test_districts(), 1400.0, 950.0, 0, [Color("#0ea5e9"), Color("#f59e0b")])
 	await process_frame
 	var data_jump_started := _snapshot(map_view)
 	_expect(bool(data_jump_started.get("focus_rotation_active", false)), "set_map selected-district jump starts a visible planet rotation")
+	_expect(bool(data_jump_started.get("focus_beacon_active", false)), "set_map selected-district jump shows the target beacon")
 	_expect(int(data_jump_started.get("focus_target_district", -1)) == 0, "set_map selected-district jump records the target region")
 	_expect((data_jump_started.get("view_center_m", Vector2.ZERO) as Vector2).distance_to(Vector2(700.0, 475.0)) > 50.0, "set_map selected-district jump does not silently snap to the new region")
-	for _frame in range(60):
+	for _frame in range(180):
 		await process_frame
 	var data_jump_finished := _snapshot(map_view)
 	_expect(not bool(data_jump_finished.get("focus_rotation_active", false)), "set_map selected-district jump finishes the planet rotation")
@@ -75,6 +78,12 @@ func _run() -> void:
 	map_view.call("_gui_input", _action("ui_accept"))
 	await process_frame
 	_expect(keyboard_opened == [1], "MapView ui_accept opens the currently focused district rack")
+	map_view.call("set_programmatic_focus_animation_enabled", false)
+	map_view.call("focus_district", 0)
+	var fast_focus := _snapshot(map_view)
+	_expect(not bool(fast_focus.get("programmatic_focus_animation_enabled", true)), "MapView exposes a test-only way to disable programmatic focus animation")
+	_expect(not bool(fast_focus.get("focus_rotation_active", false)) and (fast_focus.get("view_center_m", Vector2.ZERO) as Vector2).distance_to(Vector2(700.0, 475.0)) <= 1.0, "disabled programmatic focus snaps only for background smoke tests")
+	map_view.call("set_programmatic_focus_animation_enabled", true)
 	viewport.remove_child(map_view)
 	map_view.queue_free()
 	root.remove_child(viewport)

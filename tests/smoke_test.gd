@@ -4593,6 +4593,8 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	main.set("configured_role_indices", role_indices)
 	main.set("configured_starter_monster_indices", starter_indices)
 	main.call("_new_game")
+	_set_map_focus_animation_for_smoke(main, false)
+	_mark_smoke_progress("max ai setup ready")
 	main.set("ai_card_decision_enabled", true)
 	main.set("game_over", false)
 	main.set("victory_countdown_active", false)
@@ -4640,6 +4642,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 			first_summon_plays += 1
 	main.call("_auto_ai_auction_bids", true)
 	_drain_card_resolution_queue_for_test(main, 160)
+	_mark_smoke_progress("max ai first summons drained")
 	if first_summon_plays != max_ai:
 		failures.append("first summons %d" % first_summon_plays)
 		ok = false
@@ -4650,6 +4653,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	_seed_supply_cards_near_ai_monsters_for_test(main)
 	var built := int(main.call("_auto_expand_rival_syndicates", true))
 	_force_ai_cities_to_shared_goods(main)
+	_mark_smoke_progress("max ai cities seeded")
 	if built < max_ai:
 		failures.append("built %d" % built)
 		ok = false
@@ -4673,7 +4677,9 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		business_actions += int(main.call("_auto_rival_business_actions", true))
 		main.call("_market_tick")
 		main.call("_settle_city_cashflow_seconds", 60.0)
+	_mark_smoke_progress("max ai cycles complete")
 	var primary_route_failures := _exercise_ai_primary_route_cards_for_test(main)
+	_mark_smoke_progress("max ai primary routes exercised")
 	if not primary_route_failures.is_empty():
 		failures.append_array(primary_route_failures)
 		ok = false
@@ -4703,6 +4709,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		ok = false
 	var route_report := main.call("_ai_profile_route_action_report") as Dictionary
 	var route_summary := String(main.call("_ai_profile_route_action_summary", route_report))
+	_mark_smoke_progress("max ai route report")
 	if int(route_report.get("profile_count", 0)) < 6:
 		failures.append("route profiles %d" % int(route_report.get("profile_count", 0)))
 		ok = false
@@ -4717,6 +4724,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		ok = false
 	var live_route_report := main.call("_ai_live_route_balance_report") as Dictionary
 	var live_route_summary := String(main.call("_ai_live_route_balance_summary", live_route_report))
+	_mark_smoke_progress("max ai live route report")
 	if not bool(live_route_report.get("ok", false)):
 		failures.append("live route audit %s" % live_route_summary)
 		ok = false
@@ -4737,6 +4745,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		ok = false
 	var route_viability_report := main.call("_ai_route_viability_report") as Dictionary
 	var route_viability_summary := String(main.call("_ai_route_viability_summary", route_viability_report))
+	_mark_smoke_progress("max ai route viability report")
 	if not bool(route_viability_report.get("ok", false)):
 		failures.append("route viability audit %s" % route_viability_summary)
 		ok = false
@@ -4755,6 +4764,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		ok = false
 	var product_bridge_report := main.call("_ai_product_route_bridge_report") as Dictionary
 	var product_bridge_summary := String(main.call("_ai_product_route_bridge_summary", product_bridge_report))
+	_mark_smoke_progress("max ai product bridge report")
 	if not bool(product_bridge_report.get("ok", false)):
 		failures.append("product route bridge audit %s" % product_bridge_summary)
 		ok = false
@@ -4775,6 +4785,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		ok = false
 	var profile_identity_report := main.call("_ai_profile_strategy_identity_report") as Dictionary
 	var profile_identity_summary := String(main.call("_ai_profile_strategy_identity_summary", profile_identity_report))
+	_mark_smoke_progress("max ai profile identity report")
 	if not bool(profile_identity_report.get("ok", false)):
 		failures.append("profile identity audit %s" % profile_identity_summary)
 		ok = false
@@ -4811,6 +4822,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		players[player_index] = player
 	main.set("players", players)
 	main.call("_update_victory_countdown", 0.1)
+	_mark_smoke_progress("max ai countdown started")
 	if not bool(main.get("victory_countdown_active")):
 		failures.append("countdown inactive")
 		ok = false
@@ -4824,6 +4836,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		failures.append("countdown restore")
 		ok = false
 	main.call("_update_victory_countdown", 61.0)
+	_mark_smoke_progress("max ai countdown settled")
 	if not bool(main.get("game_over")):
 		failures.append("not game over")
 		ok = false
@@ -4852,12 +4865,23 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		failures.append("finalized ai %d" % finalized_ai)
 		ok = false
 	var restore_result := int(main.call("_apply_run_state", saved))
+	_set_map_focus_animation_for_smoke(main, true)
+	_mark_smoke_progress("max ai restored")
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	main.set("card_resolution_force_duration", saved_force_duration)
 	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
 	if not failures.is_empty():
 		print("Max AI seat smoke failures: %s" % " / ".join(failures))
 	return ok and restore_result == OK
+
+
+func _set_map_focus_animation_for_smoke(main: Node, enabled: bool) -> void:
+	var map_view := main.get("map_view") as Control
+	if map_view != null and map_view.has_method("set_programmatic_focus_animation_enabled"):
+		map_view.call("set_programmatic_focus_animation_enabled", enabled)
+	var full_map_view := main.get("full_map_view") as Control
+	if full_map_view != null and full_map_view.has_method("set_programmatic_focus_animation_enabled"):
+		full_map_view.call("set_programmatic_focus_animation_enabled", enabled)
 
 
 func _verify_remote_supply_access(main: Node) -> bool:
