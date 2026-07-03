@@ -17,7 +17,7 @@ theme_override_constants/separation = 5
 [node name="InspectorTitle" type="Label" parent="InspectorRows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "右侧说明书"
+text = "桌边详情"
 horizontal_alignment = 1
 text_overrun_behavior = 3
 
@@ -34,7 +34,7 @@ theme_override_constants/separation = 3
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
-text = "选择区域、卡牌或行动后，这里解释为什么可用。"
+text = "选择区域、卡牌或行动后，看用途、条件和下一步。"
 autowrap_mode = 3
 clip_text = true
 max_lines_visible = 2

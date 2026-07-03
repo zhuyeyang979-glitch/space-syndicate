@@ -15,8 +15,8 @@ var deep_links: Array = []
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
-	title = str(data.get("title", data.get("mode", "右侧说明书")))
-	why_text = _summary_line(str(data.get("why", data.get("explanation", "选区后看下一步。"))), WHY_TEXT_CHAR_LIMIT)
+	title = str(data.get("title", data.get("mode", "桌边详情")))
+	why_text = _summary_line(str(data.get("why", data.get("explanation", "选区后看用途、条件和下一步。"))), WHY_TEXT_CHAR_LIMIT)
 	district = _normalize_context_panel(data.get("district", {}))
 	requirements = _normalize_label_array(data.get("requirements", data.get("requirement_chips", [])), "条件")
 	actions = ACTION_DOCK_SNAPSHOT_SCRIPT.new().apply_actions(data.get("actions", []), "行动").to_action_array()
