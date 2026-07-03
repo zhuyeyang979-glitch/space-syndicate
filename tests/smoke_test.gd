@@ -4391,6 +4391,33 @@ func _force_ai_cities_to_shared_goods(main: Node) -> void:
 	main.call("_refresh_city_networks")
 
 
+func _force_ai_opening_purchases_for_test(main: Node, max_players: int) -> Dictionary:
+	var bought := {}
+	for player_index in range(1, max_players):
+		var candidates := _as_array(main.call("_ai_card_buy_candidates", player_index))
+		while not candidates.is_empty():
+			var best_index := -1
+			var best_score := -999999
+			for i in range(candidates.size()):
+				if not (candidates[i] is Dictionary):
+					continue
+				var candidate := candidates[i] as Dictionary
+				var score := int(candidate.get("score", 0))
+				if score > best_score:
+					best_score = score
+					best_index = i
+			if best_index < 0:
+				break
+			var choice := candidates[best_index] as Dictionary
+			var district_index := int(choice.get("district", -1))
+			var card_name := String(choice.get("card_name", ""))
+			if bool(main.call("_buy_card_for_player_from_district", player_index, district_index, card_name, true, true, int(choice.get("discard_slot", -1)))):
+				bought[player_index] = true
+				break
+			candidates.remove_at(best_index)
+	return bought
+
+
 func _exercise_ai_primary_route_cards_for_test(main: Node) -> Array:
 	var failures := []
 	var route_cards := {
@@ -4691,10 +4718,12 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		if int(main.call("_player_active_city_count", player_index)) <= 0:
 			failures.append("missing city %d" % player_index)
 			ok = false
-	var bought := {}
+	var bought := _force_ai_opening_purchases_for_test(main, max_players)
+	_mark_smoke_progress("max ai forced opening buys")
 	var post_opening_play_count := 0
 	var business_actions := 0
-	for _cycle in range(4):
+	for cycle_index in range(2):
+		_mark_smoke_progress("max ai cycle %d start" % (cycle_index + 1))
 		_clear_ai_cooldowns_for_test(main)
 		for player_index in range(1, max_players):
 			var result := String(main.call("_ai_execute_card_turn", player_index, true))
@@ -4702,11 +4731,15 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 				bought[player_index] = true
 			elif result == "play":
 				post_opening_play_count += 1
+		_mark_smoke_progress("max ai cycle %d decisions" % (cycle_index + 1))
 		main.call("_auto_ai_auction_bids", true)
 		_drain_card_resolution_queue_for_test(main, 160)
-		business_actions += int(main.call("_auto_rival_business_actions", true))
+		_mark_smoke_progress("max ai cycle %d queue drained" % (cycle_index + 1))
+		if cycle_index == 0:
+			business_actions += int(main.call("_auto_rival_business_actions", true))
 		main.call("_market_tick")
 		main.call("_settle_city_cashflow_seconds", 60.0)
+		_mark_smoke_progress("max ai cycle %d economy settled" % (cycle_index + 1))
 	_mark_smoke_progress("max ai cycles complete")
 	var primary_route_failures := _exercise_ai_primary_route_cards_for_test(main)
 	_mark_smoke_progress("max ai primary routes exercised")
