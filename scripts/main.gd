@@ -20579,6 +20579,17 @@ func _set_map_view_data(target_view: Control) -> void:
 	)
 
 
+func _focus_runtime_map_on_district(district_index: int) -> void:
+	if district_index < 0 or district_index >= districts.size():
+		return
+	if map_view != null and map_view.has_method("focus_district"):
+		_set_map_view_data(map_view)
+		map_view.call("focus_district", district_index)
+	if full_map_view != null and full_map_view.has_method("focus_district"):
+		_set_map_view_data(full_map_view)
+		full_map_view.call("focus_district", district_index)
+
+
 func _player_color(player_index: int) -> Color:
 	if PLAYER_COLORS.is_empty():
 		return Color("#38bdf8")
@@ -22750,12 +22761,13 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"accent": Color("#facc15"),
 			}
 		"buy_card":
-			var buyable_card := _first_buyable_district_card(selected_district, player_index)
+			var buyable_district := _first_buyable_district_for_player(player_index)
+			var buyable_card := _first_buyable_district_card(buyable_district, player_index)
 			return {
 				"id": "coach_buy_card",
 				"label": "买第一牌",
-				"disabled": buyable_card == "",
-				"tooltip": "从当前牌架购买一张牌；如果手牌满了，会进入私密弃牌确认。" if buyable_card != "" else "当前区域暂时没有可买牌，先换到怪兽所在区或邻区。",
+				"disabled": buyable_district < 0 or buyable_card == "",
+				"tooltip": _first_run_buy_card_tooltip(buyable_district, buyable_card),
 				"accent": Color("#fde68a"),
 			}
 		"play_card":
@@ -22820,6 +22832,7 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 				selected_district = recommended_district
 			elif selected_district < 0 or selected_district >= districts.size():
 				selected_district = 0 if not districts.is_empty() else -1
+			_focus_runtime_map_on_district(selected_district)
 			_mark_first_run_coach_district_seen(player_index)
 			_sync_selected_district_card()
 			_load_selected_district_guess()
@@ -22851,13 +22864,20 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 		"coach_buy_card":
 			if not _ensure_first_run_coach_action_district(player_index):
 				return false
+			var target_buy_district := selected_district
+			if _first_buyable_district_card(target_buy_district, player_index) == "":
+				target_buy_district = _first_buyable_district_for_player(player_index)
+				if target_buy_district >= 0:
+					selected_district = target_buy_district
 			if selected_district < 0 or selected_district >= districts.size():
 				return false
 			selected_player = player_index
-			if not _district_supply_is_open():
+			if not _district_supply_is_open() or district_supply_open_district != selected_district:
 				_open_district_supply_from_map(selected_district)
 			var buyable_card := _first_buyable_district_card(selected_district, player_index)
 			if buyable_card == "":
+				_log("首局买牌：当前没有合法可买牌架；先保持牌架打开，查看怪兽所在区或相邻区。")
+				_refresh_ui()
 				return true
 			selected_market_skill = buyable_card
 			previewed_district_card = buyable_card
@@ -22888,6 +22908,7 @@ func _ensure_first_run_coach_action_district(player_index: int) -> bool:
 	if recommended_district < 0 or recommended_district >= districts.size():
 		return false
 	selected_district = recommended_district
+	_focus_runtime_map_on_district(selected_district)
 	_mark_first_run_coach_district_seen(player_index)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
@@ -22904,6 +22925,34 @@ func _first_buyable_district_card(district_index: int, player_index: int) -> Str
 		if bool(state.get("actionable", false)):
 			return card_name
 	return ""
+
+
+func _first_buyable_district_for_player(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return -1
+	if selected_district >= 0 and selected_district < districts.size() and _first_buyable_district_card(selected_district, player_index) != "":
+		return selected_district
+	if _district_supply_is_open() and _first_buyable_district_card(district_supply_open_district, player_index) != "":
+		return district_supply_open_district
+	for access_kind in ["landed", "adjacent", "extended", "global"]:
+		for district_index in range(districts.size()):
+			if bool(districts[district_index].get("destroyed", false)):
+				continue
+			if _district_card_access_kind_live(district_index, player_index) != access_kind:
+				continue
+			if _first_buyable_district_card(district_index, player_index) != "":
+				return district_index
+	return -1
+
+
+func _first_run_buy_card_tooltip(buyable_district: int, buyable_card: String) -> String:
+	if buyable_district < 0 or buyable_card == "":
+		return "当前没有合法可买牌；先让怪兽落地或查看怪兽所在区/相邻区。"
+	var district_name := String(districts[buyable_district].get("name", "区域")) if buyable_district >= 0 and buyable_district < districts.size() else "可买区域"
+	var card_label := _card_display_name(buyable_card)
+	if buyable_district == selected_district:
+		return "从当前牌架购买%s；满手时会进入私密弃牌确认。" % card_label
+	return "会先切到%s的合法牌架，再购买%s；满手时会进入私密弃牌确认。" % [district_name, card_label]
 
 
 func _first_public_track_resolution_id() -> int:
@@ -30314,6 +30363,7 @@ func _open_district_supply_from_map(district_index: int) -> void:
 		return
 	selected_district = district_index
 	selected_runtime_card_slot = -1
+	_focus_runtime_map_on_district(district_index)
 	district_supply_open_district = district_index
 	district_supply_open_player = selected_player
 	_mark_first_run_coach_supply_seen(selected_player)
@@ -31030,6 +31080,7 @@ func _select_player(index: int) -> void:
 func _select_district(index: int) -> void:
 	selected_district = index
 	selected_runtime_card_slot = -1
+	_focus_runtime_map_on_district(index)
 	_mark_first_run_coach_district_seen(selected_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()

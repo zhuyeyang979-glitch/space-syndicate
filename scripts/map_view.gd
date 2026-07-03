@@ -2042,6 +2042,22 @@ func reset_to_planet_overview() -> void:
 	queue_redraw()
 
 
+func focus_district(index: int, keep_zoom: bool = true) -> void:
+	if index < 0 or index >= districts.size():
+		return
+	var center_variant: Variant = districts[index].get("center", _view_center_m)
+	var center := _view_center_m
+	if center_variant is Vector2:
+		center = center_variant
+	_view_center_m = _wrap_world_position(center)
+	selected_district = index
+	if not keep_zoom:
+		_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
+		_target_view_zoom = PLANET_PROJECTION_DEFAULT_ZOOM
+	_mark_interaction_detail_dirty()
+	queue_redraw()
+
+
 func zoom_to_local_projection() -> void:
 	_view_zoom = PLANET_PROJECTION_LOCAL_ZOOM
 	_target_view_zoom = PLANET_PROJECTION_LOCAL_ZOOM
