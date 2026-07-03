@@ -5775,6 +5775,7 @@ func _activate_scenario_action(action_id: String) -> bool:
 		return true
 	if action_id == "scenario_focus_target":
 		_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
+		_focus_scenario_phase_target(phase)
 		_sync_runtime_game_screen(true)
 		return true
 	if action_id.begins_with("scenario_step_"):
@@ -5836,7 +5837,121 @@ func _activate_scenario_step_action(phase: Dictionary, action_id: String) -> boo
 		"reset_bid":
 			return _reset_selected_card_bid()
 	_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
+	_focus_scenario_phase_target(phase)
 	_sync_runtime_game_screen(true)
+	return true
+
+
+func _focus_scenario_phase_target(phase: Dictionary) -> bool:
+	var focus_target := str(phase.get("focus_target", "scenario_coach")).strip_edges()
+	var phase_id := str(phase.get("id", "")).strip_edges()
+	var player_index := _runtime_snapshot_player_index()
+	var handled := false
+	match phase_id:
+		"open_rack", "compare_cards", "buy_pressure", "buy_card", "discard_private":
+			handled = _focus_scenario_district_supply(player_index)
+		"select_track_card", "select_anonymous_card":
+			handled = _focus_scenario_public_track()
+		"read_inspector", "open_card_detail":
+			handled = _focus_scenario_right_inspector(player_index)
+		"read_bid_board", "raise_bid", "reset_bid":
+			handled = _focus_scenario_bid_board()
+		"open_intel", "mark_guess":
+			_open_intel_dossier_menu()
+			handled = true
+		"inspect_city_gdp", "inspect_goods":
+			handled = _focus_scenario_right_inspector(player_index)
+		"open_economy":
+			_open_economy_overview_menu()
+			handled = true
+		"open_standings":
+			_open_standings_menu()
+			handled = true
+		"route_delta":
+			handled = _focus_scenario_map_layer("route", player_index)
+		"offer_contract":
+			handled = _focus_scenario_map_layer("route", player_index)
+	if handled:
+		return true
+	match focus_target:
+		"planet":
+			return _focus_scenario_map_layer("monster" if phase_id == "inspect_monster" else "all", player_index)
+		"district_supply", "private_decision":
+			return _focus_scenario_district_supply(player_index)
+		"public_track":
+			return _focus_scenario_public_track()
+		"right_inspector":
+			return _focus_scenario_right_inspector(player_index)
+		"bid_board":
+			return _focus_scenario_bid_board()
+		"intel_dossier":
+			_open_intel_dossier_menu()
+			return true
+		"economy_overview":
+			_open_economy_overview_menu()
+			return true
+		"standings":
+			_open_standings_menu()
+			return true
+		"route_layer":
+			return _focus_scenario_map_layer("route", player_index)
+		"contract_prompt":
+			return _focus_scenario_map_layer("route", player_index)
+		"top_bar", "player_hand", "action_dock", "scenario_coach":
+			return true
+	return false
+
+
+func _focus_scenario_district_supply(player_index: int) -> bool:
+	var district_index := _first_buyable_district_for_player(player_index)
+	if district_index < 0 and _district_supply_is_open():
+		district_index = district_supply_open_district
+	if district_index < 0 and selected_district >= 0 and selected_district < districts.size():
+		district_index = selected_district
+	if district_index < 0:
+		district_index = _first_run_recommended_start_district(player_index)
+	if district_index < 0 or district_index >= districts.size():
+		return false
+	selected_player = player_index
+	_open_district_supply_from_map(district_index)
+	return true
+
+
+func _focus_scenario_public_track() -> bool:
+	var resolution_id := _first_public_track_resolution_id()
+	if resolution_id < 0:
+		return false
+	_focus_card_resolution_track_entry(resolution_id)
+	return true
+
+
+func _focus_scenario_right_inspector(player_index: int) -> bool:
+	var handled := _focus_scenario_public_track()
+	if handled:
+		return true
+	var district_index := selected_district
+	if district_index < 0 or district_index >= districts.size():
+		district_index = _first_run_recommended_start_district(player_index)
+	if district_index >= 0 and district_index < districts.size():
+		selected_district = district_index
+		_focus_runtime_map_on_district(district_index)
+		return true
+	return false
+
+
+func _focus_scenario_bid_board() -> bool:
+	_focus_scenario_public_track()
+	return true
+
+
+func _focus_scenario_map_layer(layer_id: String, player_index: int) -> bool:
+	var district_index := selected_district
+	if district_index < 0 or district_index >= districts.size():
+		district_index = _first_run_recommended_start_district(player_index)
+	if district_index >= 0 and district_index < districts.size():
+		selected_district = district_index
+		_focus_runtime_map_on_district(district_index)
+	_set_map_layer_focus(layer_id)
 	return true
 
 
