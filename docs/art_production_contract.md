@@ -29,6 +29,7 @@ Each card illustration profile must include:
 - `composition_variant`: a secondary composition differentiator for cards that share sprite family and type.
 - `motif_family`: monster, military, finance, route, contract, intel, product, weather, or utility.
 - `first_run_art_focus`: a readable first-play icon layer for high-frequency starter cards such as money, production, transit, lure, supply, movement, attack, guard, and district damage.
+- `illustration_anchor`: the human-readable composition center, such as `finance_tower`, `factory_core`, `transit_grid`, `broadcast_array`, `market_up`, `phase_null`, or `naval_fleet`. This is stricter than a unique hash; it says what the player should see first.
 
 Acceptance:
 
@@ -38,6 +39,7 @@ Acceptance:
 - Every card illustration profile must declare `visual_source_id`.
 - At least ten sprite/illustration families and ten visual source families must be used across the current catalog.
 - High-frequency first-run cards must have authored `first_run_art_focus` overlays; do not let them collapse into the same generic route mark.
+- High-frequency review cards must have authored `illustration_anchor` values. A card can fail review even if its profile key is unique when the anchor is wrong or too generic.
 - Card art must be visible in hand, region supply, card codex thumbnail, and card detail contexts because these all share `CardArtView`.
 - First-run/high-frequency cards must also have per-card review sheets that show the full card, hand thumbnail, player scan text, and dev-only visual profile. This is the human art-review gate for catching cards that are technically unique but still feel like visual clones.
 
@@ -131,6 +133,7 @@ The gate fails if:
 - two cards share the same visual profile key;
 - fewer than ten card sprite or visual source families are used;
 - starter/high-frequency cards lose their authored `first_run_art_focus` overlays;
+- review cards lose their authored `illustration_anchor` composition centers;
 - a monster lacks a concrete sprite key/cell;
 - a monster lacks a concrete `visual_source_id`;
 - a monster lacks multi-axis visual fields;

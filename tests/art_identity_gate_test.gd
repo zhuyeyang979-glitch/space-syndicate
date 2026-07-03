@@ -86,7 +86,7 @@ func _verify_card_art_identity(main: Node) -> void:
 		_expect(String(profile.get("theme", "")) == "multi-source-open-card-illustrations-v2", "card %s uses the multi-source open card illustration theme" % card_name)
 		_expect(String(profile.get("visual_source_id", "")) != "", "card %s declares a concrete visual source id" % card_name)
 		_expect(String(profile.get("sprite_key", "")) != "" and String(profile.get("sprite_cell", "")) != "", "card %s has a concrete sprite key and region/cell" % card_name)
-		_expect(profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_variant") and profile.has("composition_variant") and profile.has("motif_family") and profile.has("first_run_art_focus"), "card %s has multi-axis illustration fields beyond text/name" % card_name)
+		_expect(profile.has("layout_variant") and profile.has("palette_variant") and profile.has("effect_variant") and profile.has("composition_variant") and profile.has("motif_family") and profile.has("first_run_art_focus") and profile.has("illustration_anchor"), "card %s has multi-axis illustration fields beyond text/name" % card_name)
 		if required_focus_cards.has(card_name):
 			var expected_focus := String(required_focus_cards[card_name])
 			_expect(String(profile.get("first_run_art_focus", "")) == expected_focus, "first-run card %s has the authored focus overlay %s" % [card_name, expected_focus])

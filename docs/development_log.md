@@ -3,6 +3,29 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-03。
 
+## 2026-07-03｜首局牌插画锚点拆分：经济牌不再只靠楼和文字区分
+
+- 继续沿着“真人能一眼看懂手牌”的方向推进，这轮不改规则、价格或结算，只改卡面视觉语言和审片门槛：
+  - `CardArtView.card_visual_profile_snapshot()` 新增 `illustration_anchor` 字段。
+  - 首局/高频牌现在有显式构图锚点，例如 `finance_tower / factory_core / transit_grid / broadcast_array / market_up / market_down / warehouse_stack / phase_null / air_wing / naval_fleet`。
+  - `产业升级1` 不再和融资牌共用普通楼房观感，改用机具/工厂机械锚点。
+  - `交通升级1` 改用轨道/飞行交通锚点。
+  - `星际广告1` 改用广播/光束锚点。
+  - 直接互动牌优先级修正：`星链拆解1` 和 `影仓牵引1` 不再因为带“情报”标签而被泛化成情报镜头。
+- `tests/card_runtime_review_capture.gd` 加硬门：
+  - 首批 24 张审片牌必须拥有指定 `illustration_anchor`。
+  - 如果某张牌视觉 profile 唯一但锚点错了、太泛化，审片脚本会失败。
+- `tests/art_identity_gate_test.gd` 加入 `illustration_anchor` 字段检查，防止之后卡牌 profile 退回只有 hash、颜色或名字差异。
+
+### 本轮验证
+
+- `tests/card_runtime_review_capture.gd` 有头通过，刷新 3 页首局高频卡牌逐张审片图。
+- `tests/visual_snapshot.gd` 通过，保护审片脚本里的 `REQUIRED_REVIEW_ANCHORS`、`illustration_anchor` 和 dev-only 字段边界。
+- `tests/ui_text_smoke_test.gd` 通过，确认玩家 UI 没有新增开发字段泄露。
+- `tests/art_identity_gate_test.gd` 通过，确认卡牌 profile 现在必须包含 `illustration_anchor`。
+- `tests/smoke_test.gd --check-only`、完整 `tests/smoke_test.gd` 通过，确认美术锚点拆分没有破坏主玩法闭环。
+- 人工抽看 `art_card_review_first_run_01.png`：融资、产业、交通、广告四张经济牌已经从“同一类楼房+不同文字”拆成金融塔、工厂核心、交通网和广播阵列四种画面重心。
+
 ## 2026-07-03｜首局高频卡牌逐张审片台
 
 - 继续执行“卡牌插画要一张一张做、不能看起来都差不多”的硬约束，这轮不改规则与数值，只补卡牌美术验收面：

@@ -311,12 +311,13 @@ func card_visual_profile_snapshot() -> Dictionary:
 		"composition_variant": int(seed / 17) % 37,
 		"motif_family": _card_motif_family_key(),
 		"first_run_art_focus": _first_run_art_focus_key(),
+		"illustration_anchor": _card_illustration_anchor_key(),
 	}
 
 
 func card_visual_profile_key() -> String:
 	var profile := card_visual_profile_snapshot()
-	return "%s|%s|%s|%s|%s|%s|%s|%s|%s" % [
+	return "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s" % [
 		str(profile.get("visual_source_id", "")),
 		str(profile.get("sprite_key", "")),
 		str(profile.get("sprite_cell", "")),
@@ -326,6 +327,7 @@ func card_visual_profile_key() -> String:
 		str(profile.get("composition_variant", "")),
 		str(profile.get("motif_family", "")),
 		str(profile.get("first_run_art_focus", "")),
+		str(profile.get("illustration_anchor", "")),
 	]
 
 
@@ -357,6 +359,7 @@ func _draw_moth_kaijuice_reference_illustration(rect: Rect2) -> void:
 	sprite_rect.size = _fit_size_inside(sprite_rect.size, src_rect.size)
 	sprite_rect.position = art_rect.position + (art_rect.size - sprite_rect.size) * 0.5 + offset
 	draw_texture_rect_region(texture, sprite_rect, src_rect, tint)
+	_draw_card_illustration_anchor(art_rect, String(profile.get("illustration_anchor", "")), seed)
 	_draw_first_run_focus_overlay(art_rect, String(profile.get("first_run_art_focus", "")), seed)
 
 	if str(profile.get("effect_variant", "")) in ["2", "5", "8"] or _contains_any("%s｜%s" % [card_kind, card_tags], ["光线", "攻击", "破坏", "齐射"]):
@@ -419,6 +422,314 @@ func _first_run_art_focus_key() -> String:
 	if _contains_any(identity, ["期货", "买涨", "做空", "GDP", "套利"]):
 		return "market_curve"
 	return "route_mark"
+
+
+func _card_illustration_anchor_key() -> String:
+	var identity := "%s｜%s｜%s｜%s" % [card_name, card_kind, card_tags, card_stats]
+	if card_kind == "monster_card":
+		return "monster_body"
+	if _contains_any(identity, ["城市融资", "轨道融资", "地下融资", "红利"]):
+		return "finance_tower"
+	if _contains_any(identity, ["产业升级", "产业", "生产扩张", "产能", "产品线"]):
+		return "factory_core"
+	if _contains_any(identity, ["交通升级", "星港快线", "航线", "运输", "流通", "航路"]):
+		return "transit_grid"
+	if _contains_any(identity, ["星际广告", "舆论", "广告", "新闻", "热搜", "快讯", "传闻", "播报"]):
+		return "broadcast_array"
+	if _contains_any(identity, ["诱导电波", "挑衅", "诱导"]):
+		return "lure_beacon"
+	if _contains_any(identity, ["过载补给", "连锁过载", "补给", "抽牌", "牌架"]):
+		return "supply_cache"
+	if _contains_any(identity, ["移动", "飞行", "潜行", "前进"]):
+		return "motion_vector"
+	if _contains_any(identity, ["普攻", "冲锋", "甩尾", "攻击", "光线", "射线", "炮", "齐射"]):
+		return "impact_core"
+	if _contains_any(identity, ["格挡", "护", "保险", "修复", "稳定"]):
+		if _contains_any(identity, ["航线", "供应链", "商路", "路线"]):
+			return "shield_route"
+		return "shield_gate"
+	if _contains_any(identity, ["区域破坏", "破碎地脉", "破坏", "泥石流"]):
+		return "fracture_map"
+	if _contains_any(identity, ["星链拆解", "拆解", "黑客"]):
+		return "link_breaker"
+	if _contains_any(identity, ["影仓牵引", "牵引", "牵牌"]):
+		return "hand_pull"
+	if _contains_any(identity, ["业主透镜", "出牌追帧", "回溯", "情报", "追溯", "查", "线索"]):
+		return "intel_lens"
+	if _contains_any(identity, ["商品看涨", "城市买涨", "买涨"]):
+		return "market_up"
+	if _contains_any(identity, ["商品看跌", "商品做空", "城市做空", "做空"]):
+		return "market_down"
+	if _contains_any(identity, ["港仓囤货", "仓", "囤货"]):
+		return "warehouse_stack"
+	if _contains_any(identity, ["合约", "契约", "专供", "撮合"]):
+		return "contract_bridge"
+	if _contains_any(identity, ["相位否决", "否决", "反制"]):
+		return "phase_null"
+	if _contains_any(identity, ["制空战斗机", "战斗机", "轰炸机", "空军"]):
+		return "air_wing"
+	if _contains_any(identity, ["星海战舰", "潜航舰队", "军舰", "舰队", "战舰", "潜航"]):
+		return "naval_fleet"
+	if _contains_any(identity, ["坦克", "导弹", "防卫军", "军队"]):
+		return "ground_force"
+	return _first_run_art_focus_key()
+
+
+func _draw_card_illustration_anchor(art_rect: Rect2, anchor_key: String, seed: int) -> void:
+	if anchor_key == "":
+		return
+	var color := accent.lightened(0.48)
+	color.a = 0.48 if compact else 0.64
+	var soft := accent.lightened(0.18)
+	soft.a = 0.12 if compact else 0.20
+	var center := art_rect.get_center()
+	var radius: float = min(art_rect.size.x, art_rect.size.y) * 0.34
+	match anchor_key:
+		"finance_tower":
+			_draw_anchor_finance_tower(center, radius, color, soft)
+		"factory_core":
+			_draw_anchor_factory_core(center, radius, color, soft)
+		"transit_grid":
+			_draw_anchor_transit_grid(art_rect, color, soft)
+		"broadcast_array":
+			_draw_anchor_broadcast_array(center, radius, color, soft)
+		"lure_beacon":
+			_draw_anchor_lure_beacon(center, radius, color, soft, seed)
+		"supply_cache":
+			_draw_anchor_supply_cache(center, radius, color, soft)
+		"motion_vector":
+			_draw_anchor_motion_vector(art_rect, color, soft)
+		"impact_core":
+			_draw_anchor_impact_core(center, radius, color, soft, seed)
+		"shield_gate", "shield_route":
+			_draw_anchor_shield_gate(center, radius, color, soft)
+			if anchor_key == "shield_route":
+				_draw_anchor_transit_grid(art_rect, color, soft)
+		"fracture_map":
+			_draw_anchor_fracture_map(art_rect, color, soft, seed)
+		"intel_lens":
+			_draw_anchor_intel_lens(center, radius, color, soft)
+		"market_up":
+			_draw_anchor_market_curve(art_rect, color, soft, true)
+		"market_down":
+			_draw_anchor_market_curve(art_rect, color, soft, false)
+		"warehouse_stack":
+			_draw_anchor_warehouse_stack(center, radius, color, soft)
+		"contract_bridge":
+			_draw_anchor_contract_bridge(center, radius, color, soft)
+		"link_breaker":
+			_draw_anchor_link_breaker(center, radius, color, soft)
+		"hand_pull":
+			_draw_anchor_hand_pull(center, radius, color, soft)
+		"phase_null":
+			_draw_anchor_phase_null(center, radius, color, soft)
+		"air_wing":
+			_draw_anchor_air_wing(center, radius, color, soft)
+		"naval_fleet":
+			_draw_anchor_naval_fleet(center, radius, color, soft)
+		"ground_force":
+			_draw_anchor_ground_force(center, radius, color, soft)
+		"monster_body":
+			_draw_focus_monster_anchor(center, radius, color, soft)
+		_:
+			_draw_focus_route_mark(art_rect, color, soft)
+
+
+func _draw_anchor_finance_tower(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	for i in range(4):
+		var h := radius * (0.42 + float(i) * 0.18)
+		var w := radius * 0.22
+		var x := center.x - radius * 0.56 + float(i) * radius * 0.30
+		var r := Rect2(Vector2(x, center.y + radius * 0.42 - h), Vector2(w, h))
+		draw_rect(r, soft, true)
+		draw_rect(r, color, false, 1.6)
+	draw_circle(center + Vector2(radius * 0.62, -radius * 0.46), radius * 0.18, color)
+	draw_string(get_theme_default_font(), center + Vector2(radius * 0.51, -radius * 0.36), "¥", HORIZONTAL_ALIGNMENT_CENTER, radius * 0.22, 12 if compact else 16, Color("#020617"))
+
+
+func _draw_anchor_factory_core(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var body := Rect2(center + Vector2(-radius * 0.70, -radius * 0.12), Vector2(radius * 1.40, radius * 0.64))
+	draw_rect(body, soft, true)
+	draw_rect(body, color, false, 1.8)
+	for i in range(3):
+		var x := body.position.x + radius * (0.18 + float(i) * 0.38)
+		draw_line(Vector2(x, body.position.y), Vector2(x + radius * 0.18, body.position.y - radius * 0.38), color, 2.2, true)
+	draw_arc(center + Vector2(radius * 0.42, -radius * 0.08), radius * 0.28, 0.0, TAU, 32, color, 2.0, true)
+	draw_circle(center + Vector2(radius * 0.42, -radius * 0.08), radius * 0.08, color)
+
+
+func _draw_anchor_transit_grid(art_rect: Rect2, color: Color, soft: Color) -> void:
+	var points := [
+		art_rect.position + Vector2(art_rect.size.x * 0.16, art_rect.size.y * 0.70),
+		art_rect.position + Vector2(art_rect.size.x * 0.38, art_rect.size.y * 0.36),
+		art_rect.position + Vector2(art_rect.size.x * 0.64, art_rect.size.y * 0.58),
+		art_rect.position + Vector2(art_rect.size.x * 0.86, art_rect.size.y * 0.28),
+	]
+	for i in range(points.size() - 1):
+		draw_line(points[i], points[i + 1], soft, 8.0, true)
+		draw_line(points[i], points[i + 1], color, 2.4, true)
+	for p in points:
+		draw_circle(p, 4.4, color)
+
+
+func _draw_anchor_broadcast_array(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_line(center + Vector2(0.0, radius * 0.54), center + Vector2(0.0, -radius * 0.34), color, 2.6, true)
+	draw_line(center + Vector2(-radius * 0.36, radius * 0.54), center + Vector2(radius * 0.36, radius * 0.54), color, 2.0, true)
+	for i in range(4):
+		draw_arc(center + Vector2(0.0, -radius * 0.34), radius * (0.20 + float(i) * 0.18), -PI * 0.82, -PI * 0.18, 28, color if i < 2 else soft, 2.0, true)
+
+
+func _draw_anchor_lure_beacon(center: Vector2, radius: float, color: Color, soft: Color, seed: int) -> void:
+	draw_circle(center, radius * 0.16, color)
+	for i in range(4):
+		draw_arc(center, radius * (0.28 + float(i) * 0.16), 0.0, TAU, 48, color if i == seed % 4 else soft, 1.8, true)
+
+
+func _draw_anchor_supply_cache(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	for i in range(4):
+		var x := center.x + (float(i % 2) - 0.5) * radius * 0.56
+		var y := center.y + (float(int(i / 2)) - 0.5) * radius * 0.42
+		var box := Rect2(Vector2(x - radius * 0.18, y - radius * 0.14), Vector2(radius * 0.36, radius * 0.28))
+		draw_rect(box, soft, true)
+		draw_rect(box, color, false, 1.4)
+	draw_line(center + Vector2(-radius * 0.08, -radius * 0.54), center + Vector2(-radius * 0.08, radius * 0.54), color, 2.0, true)
+	draw_line(center + Vector2(-radius * 0.34, 0.0), center + Vector2(radius * 0.18, 0.0), color, 2.0, true)
+
+
+func _draw_anchor_motion_vector(art_rect: Rect2, color: Color, soft: Color) -> void:
+	var start := art_rect.position + Vector2(art_rect.size.x * 0.18, art_rect.size.y * 0.74)
+	var end := art_rect.position + Vector2(art_rect.size.x * 0.78, art_rect.size.y * 0.24)
+	draw_line(start, end, soft, 10.0, true)
+	draw_line(start, end, color, 3.2, true)
+	draw_line(end, end + Vector2(-art_rect.size.x * 0.18, art_rect.size.y * 0.02), color, 3.2, true)
+	draw_line(end, end + Vector2(-art_rect.size.x * 0.05, art_rect.size.y * 0.17), color, 3.2, true)
+
+
+func _draw_anchor_impact_core(center: Vector2, radius: float, color: Color, soft: Color, seed: int) -> void:
+	draw_circle(center, radius * 0.18, color)
+	for i in range(8):
+		var angle := float(i) / 8.0 * TAU + float(seed % 9) * 0.02
+		draw_line(center + Vector2(cos(angle), sin(angle)) * radius * 0.25, center + Vector2(cos(angle), sin(angle)) * radius * 0.76, color if i % 2 == 0 else soft, 2.4, true)
+
+
+func _draw_anchor_shield_gate(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var shield := PackedVector2Array([
+		center + Vector2(0.0, -radius * 0.72),
+		center + Vector2(radius * 0.58, -radius * 0.42),
+		center + Vector2(radius * 0.42, radius * 0.32),
+		center + Vector2(0.0, radius * 0.74),
+		center + Vector2(-radius * 0.42, radius * 0.32),
+		center + Vector2(-radius * 0.58, -radius * 0.42),
+	])
+	draw_colored_polygon(shield, soft)
+	draw_polyline(shield, color, 2.0, true)
+
+
+func _draw_anchor_fracture_map(art_rect: Rect2, color: Color, soft: Color, seed: int) -> void:
+	var start := art_rect.position + Vector2(art_rect.size.x * 0.18, art_rect.size.y * 0.22)
+	var p := start
+	for i in range(6):
+		var next := p + Vector2(art_rect.size.x * 0.10, art_rect.size.y * (0.08 + float((seed + i) % 3) * 0.04))
+		draw_line(p, next, color if i % 2 == 0 else soft, 2.8, true)
+		p = next + Vector2(art_rect.size.x * 0.02, -art_rect.size.y * 0.03)
+
+
+func _draw_anchor_intel_lens(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center + Vector2(-radius * 0.08, -radius * 0.10), radius * 0.34, soft)
+	draw_arc(center + Vector2(-radius * 0.08, -radius * 0.10), radius * 0.34, 0.0, TAU, 48, color, 2.2, true)
+	draw_line(center + Vector2(radius * 0.16, radius * 0.16), center + Vector2(radius * 0.62, radius * 0.62), color, 3.0, true)
+	for i in range(3):
+		draw_circle(center + Vector2(-radius * 0.28 + float(i) * radius * 0.20, -radius * 0.10), 2.2, color)
+
+
+func _draw_anchor_market_curve(art_rect: Rect2, color: Color, soft: Color, upward: bool) -> void:
+	var left := art_rect.position.x + art_rect.size.x * 0.14
+	var bottom := art_rect.position.y + art_rect.size.y * (0.70 if upward else 0.36)
+	var last := Vector2(left, bottom)
+	for i in range(1, 7):
+		var t := float(i) / 6.0
+		var direction := -1.0 if upward else 1.0
+		var y := bottom + direction * art_rect.size.y * (0.10 + 0.34 * t + 0.05 * sin(t * TAU))
+		var p := Vector2(left + art_rect.size.x * 0.70 * t, y)
+		draw_line(last, p, color if i % 2 == 1 else soft, 2.8, true)
+		last = p
+	var arrow_dir := -1.0 if upward else 1.0
+	draw_line(last, last + Vector2(-art_rect.size.x * 0.10, art_rect.size.y * 0.03 * arrow_dir), color, 2.8, true)
+	draw_line(last, last + Vector2(-art_rect.size.x * 0.03, art_rect.size.y * 0.12 * arrow_dir), color, 2.8, true)
+
+
+func _draw_anchor_warehouse_stack(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	for i in range(3):
+		var r := Rect2(center + Vector2(-radius * 0.54 + float(i) * radius * 0.28, radius * 0.22 - float(i) * radius * 0.22), Vector2(radius * 0.54, radius * 0.30))
+		draw_rect(r, soft, true)
+		draw_rect(r, color, false, 1.6)
+	draw_line(center + Vector2(-radius * 0.62, radius * 0.58), center + Vector2(radius * 0.70, radius * 0.58), color, 2.0, true)
+
+
+func _draw_anchor_contract_bridge(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center + Vector2(-radius * 0.46, 0.0), radius * 0.22, soft)
+	draw_circle(center + Vector2(radius * 0.46, 0.0), radius * 0.22, soft)
+	draw_arc(center, radius * 0.42, -PI * 0.85, -PI * 0.15, 36, color, 2.4, true)
+	draw_line(center + Vector2(-radius * 0.24, 0.0), center + Vector2(radius * 0.24, 0.0), color, 2.4, true)
+
+
+func _draw_anchor_link_breaker(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	_draw_anchor_contract_bridge(center, radius, color, soft)
+	draw_line(center + Vector2(-radius * 0.12, -radius * 0.36), center + Vector2(radius * 0.12, radius * 0.36), color, 3.0, true)
+	draw_line(center + Vector2(radius * 0.12, -radius * 0.36), center + Vector2(-radius * 0.12, radius * 0.36), color, 3.0, true)
+
+
+func _draw_anchor_hand_pull(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var card := Rect2(center + Vector2(-radius * 0.18, -radius * 0.48), Vector2(radius * 0.46, radius * 0.66))
+	draw_rect(card, soft, true)
+	draw_rect(card, color, false, 1.8)
+	draw_line(center + Vector2(-radius * 0.70, radius * 0.34), center + Vector2(-radius * 0.18, -radius * 0.10), color, 3.0, true)
+	draw_line(center + Vector2(-radius * 0.36, -radius * 0.18), center + Vector2(-radius * 0.18, -radius * 0.10), color, 3.0, true)
+
+
+func _draw_anchor_phase_null(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	draw_circle(center, radius * 0.48, soft)
+	draw_arc(center, radius * 0.48, 0.0, TAU, 56, color, 2.2, true)
+	draw_line(center + Vector2(-radius * 0.54, -radius * 0.54), center + Vector2(radius * 0.54, radius * 0.54), color, 3.0, true)
+
+
+func _draw_anchor_air_wing(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var wing := PackedVector2Array([
+		center + Vector2(0.0, -radius * 0.74),
+		center + Vector2(radius * 0.18, radius * 0.08),
+		center + Vector2(radius * 0.82, radius * 0.34),
+		center + Vector2(radius * 0.12, radius * 0.28),
+		center + Vector2(0.0, radius * 0.72),
+		center + Vector2(-radius * 0.12, radius * 0.28),
+		center + Vector2(-radius * 0.82, radius * 0.34),
+		center + Vector2(-radius * 0.18, radius * 0.08),
+	])
+	draw_colored_polygon(wing, soft)
+	draw_polyline(wing, color, 2.0, true)
+
+
+func _draw_anchor_naval_fleet(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var hull := PackedVector2Array([
+		center + Vector2(-radius * 0.74, radius * 0.10),
+		center + Vector2(radius * 0.64, radius * 0.10),
+		center + Vector2(radius * 0.34, radius * 0.48),
+		center + Vector2(-radius * 0.58, radius * 0.48),
+	])
+	draw_colored_polygon(hull, soft)
+	draw_polyline(hull, color, 2.0, true)
+	draw_line(center + Vector2(-radius * 0.22, radius * 0.10), center + Vector2(-radius * 0.02, -radius * 0.44), color, 2.2, true)
+	draw_line(center + Vector2(-radius * 0.02, -radius * 0.44), center + Vector2(radius * 0.26, radius * 0.08), color, 2.2, true)
+	for i in range(2):
+		draw_arc(center + Vector2(0.0, radius * (0.54 + float(i) * 0.16)), radius * 0.72, -PI * 0.92, -PI * 0.08, 36, soft, 2.0, true)
+
+
+func _draw_anchor_ground_force(center: Vector2, radius: float, color: Color, soft: Color) -> void:
+	var body := Rect2(center + Vector2(-radius * 0.54, -radius * 0.16), Vector2(radius * 1.08, radius * 0.38))
+	draw_rect(body, soft, true)
+	draw_rect(body, color, false, 1.8)
+	draw_line(center + Vector2(radius * 0.06, -radius * 0.20), center + Vector2(radius * 0.74, -radius * 0.48), color, 3.0, true)
+	draw_circle(center + Vector2(-radius * 0.34, radius * 0.30), radius * 0.12, color)
+	draw_circle(center + Vector2(radius * 0.34, radius * 0.30), radius * 0.12, color)
 
 
 func _draw_first_run_focus_overlay(art_rect: Rect2, focus_key: String, seed: int) -> void:
@@ -620,6 +931,12 @@ func _moth_kaijuice_card_sprite_key() -> String:
 		if identity.contains("镜像"):
 			return "kenney_alien_blue"
 		return "kaiju"
+	if _contains_any(identity, ["产业升级", "生产扩张", "产能封锁", "产品线", "产业", "生产"]):
+		return "mech"
+	if _contains_any(identity, ["交通升级", "交通瘫痪", "星港快线", "航线", "运输", "流通", "航路"]):
+		return "kenney_enemy_ufo"
+	if _contains_any(identity, ["星际广告", "舆论", "广告", "新闻", "热搜", "快讯", "传闻", "播报"]):
+		return "laser"
 	if _contains_any(identity, ["怪兽", "星兽", "诱导", "夺取"]):
 		return "monster_battler_turtle" if _name_seed() % 2 == 0 else "monster_battler_rodent"
 	if _contains_any(identity, ["机甲", "战斗机", "轰炸", "防卫军"]):

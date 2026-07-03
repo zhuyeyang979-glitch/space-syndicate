@@ -46,6 +46,33 @@ const REQUIRED_FIRST_RUN_FOCUS := {
 	"区域破坏1": "district_crack",
 }
 
+const REQUIRED_REVIEW_ANCHORS := {
+	"城市融资1": "finance_tower",
+	"产业升级1": "factory_core",
+	"交通升级1": "transit_grid",
+	"星际广告1": "broadcast_array",
+	"诱导电波1": "lure_beacon",
+	"过载补给1": "supply_cache",
+	"移动1": "motion_vector",
+	"普攻1": "impact_core",
+	"格挡1": "shield_gate",
+	"区域破坏1": "fracture_map",
+	"业主透镜1": "intel_lens",
+	"出牌追帧1": "intel_lens",
+	"供应链保险1": "shield_route",
+	"商品看涨1": "market_up",
+	"商品看跌1": "market_down",
+	"港仓囤货1": "warehouse_stack",
+	"城市买涨1": "market_up",
+	"城市做空1": "market_down",
+	"区域供需合约1": "contract_bridge",
+	"星链拆解1": "link_breaker",
+	"影仓牵引1": "hand_pull",
+	"相位否决1": "phase_null",
+	"制空战斗机1": "air_wing",
+	"星海战舰1": "naval_fleet",
+}
+
 var _saved_paths: Array[String] = []
 var _failures: Array[String] = []
 
@@ -116,6 +143,14 @@ func _review_card_sources(main: Node) -> Array:
 					expected_focus,
 					String(decorated.get("_first_run_art_focus", "")),
 				])
+		if REQUIRED_REVIEW_ANCHORS.has(card_name):
+			var expected_anchor := String(REQUIRED_REVIEW_ANCHORS[card_name])
+			if String(decorated.get("_illustration_anchor", "")) != expected_anchor:
+				_failures.append("review card %s expected illustration anchor %s, got %s" % [
+					card_name,
+					expected_anchor,
+					String(decorated.get("_illustration_anchor", "")),
+				])
 		selected.append(decorated)
 	probe.queue_free()
 	if selected.size() != REVIEW_CARD_NAMES.size():
@@ -146,6 +181,7 @@ func _decorated_card_source(probe: Control, source: Dictionary) -> Dictionary:
 	decorated["_composition_variant"] = str(profile.get("composition_variant", ""))
 	decorated["_motif_family"] = String(profile.get("motif_family", ""))
 	decorated["_first_run_art_focus"] = String(profile.get("first_run_art_focus", ""))
+	decorated["_illustration_anchor"] = String(profile.get("illustration_anchor", ""))
 	return decorated
 
 
@@ -220,7 +256,7 @@ func _add_card_review_tile(parent: Control, source: Dictionary, pos: Vector2, se
 	var quick_text := _player_scan_text(source)
 	_add_label(parent, quick_text, pos + Vector2(166, 216), Vector2(176, 54), 11, Color("#e2e8f0"))
 	_add_chip(parent, pos + Vector2(166, 278), "美术:%s" % _short(String(source.get("_visual_source_id", "")), 20), accent)
-	_add_chip(parent, pos + Vector2(166, 306), "重心:%s" % String(source.get("_first_run_art_focus", "")), accent)
+	_add_chip(parent, pos + Vector2(166, 306), "重心:%s" % String(source.get("_illustration_anchor", "")), accent)
 	_add_chip(parent, pos + Vector2(166, 334), "纹样:%s" % String(source.get("_motif_family", "")), accent)
 
 	_add_label(parent, "profile", pos + Vector2(14, 260), Vector2(80, 18), 12, Color("#fde68a"))
