@@ -85,6 +85,7 @@ mouse_filter = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 220)
 clip_contents = false
+mouse_filter = 1
 
 [node name="PlaytestFlowCompass" type="PanelContainer" parent="PlanetRows/PlanetStageViewport"]
 unique_name_in_owner = true

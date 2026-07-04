@@ -936,8 +936,7 @@ func _draw_globe_projection() -> void:
 	if not reduced_detail:
 		_draw_globe_graticule(center, radius)
 	for i in range(districts.size()):
-		if not reduced_detail or i == selected_district:
-			_draw_globe_region_outline(i)
+		_draw_globe_region_outline(i, reduced_detail)
 	var draw_dense_labels := _should_draw_dense_region_labels() or _focus_wants_dense_labels()
 	for i in range(districts.size()):
 		if draw_dense_labels or i == selected_district:
@@ -1026,12 +1025,12 @@ func _draw_globe_region_fill_fast(index: int) -> void:
 	draw_circle(pos, marker_radius, color)
 
 
-func _draw_globe_region_outline(index: int) -> void:
+func _draw_globe_region_outline(index: int, reduced_detail: bool = false) -> void:
 	var district: Dictionary = districts[index]
 	var selected := index == selected_district
 	var line_color := Color("#facc15") if selected else Color("#7dd3fc")
-	line_color.a = 0.98 if selected else 0.62
-	var line_width := 2.6 if selected else 1.45
+	line_color.a = 0.98 if selected else (0.40 if reduced_detail else 0.62)
+	var line_width := 2.6 if selected else (0.95 if reduced_detail else 1.45)
 	_draw_globe_polygon_outline(district.get("polygon", []), line_color, line_width)
 
 
@@ -2366,7 +2365,10 @@ func get_projection_debug_snapshot() -> Dictionary:
 		"globe_blend": blend,
 		"mode": mode,
 		"globe_mode": _is_globe_mode(),
+		"district_count": districts.size(),
 		"complex_polygon_fill_in_globe": false,
+		"globe_region_fill_policy": "fast_markers_to_avoid_edge_color_blocks",
+		"globe_region_outline_policy": "always_lightweight_during_interaction",
 		"flat_projection_mask": FLAT_PROJECTION_SPACE_MASK_NAME,
 	}
 

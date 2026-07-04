@@ -1,7 +1,40 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-03。
+> 最新记录日期：2026-07-04。
+
+## 2026-07-04｜运行桌面鼠标输入层修复
+
+- 修复真人试玩桌面里星球无法拖拽、滚轮缩放、旋转和手牌点击无反应的问题：
+  - 根因不是 AI 决策骨架，而是多个 `Control` 灰盒/overlay 容器默认拦截鼠标事件。
+  - `OverlayLayer` 的空白骨架、`GameScreen` 的提示层、`PlanetBoard` 的侧边装饰和天气条、`PlayerBoard` 的背景容器改为明确透传。
+  - `CardUI` 动态生成的关键词 chips/子控件全部透传，避免卡面文字/图标吃掉卡牌点击。
+  - `HandRack` 增加真实 viewport 鼠标事件 fallback，让点击 hover 中的卡面也能稳定选中。
+- 修复星球全局视图的区域划分可见性：
+  - 保持项目既有性能合同：全局星球不启用复杂多边形面填充，避免边缘巨大色块。
+  - 改为全局球体始终绘制轻量区域边界；拖拽/缩放时边界变细变淡，但不会消失。
+- 增加 `tests/runtime_pointer_input_layer_test.gd`：
+  - 验证真实 viewport 鼠标滚轮能到达 `RuntimeMapView`。
+  - 验证真实鼠标拖拽能改变星球视角中心。
+  - 验证地图仍有已生成区域、全局球体保持轻量区域边界。
+  - 验证手牌卡面根节点接收点击，内部标签/美术子控件不偷鼠标。
+- 本轮继续统一使用 Godot 4.7：
+  - `godot --version` 为 `4.7.stable.official.5b4e0cb0f`。
+  - 本地 4.6.2 目录已移除；旧 4.6.2 只保留在历史开发日志中作为过往记录。
+- 验证：
+  - `godot --headless --path . --script res://tests/runtime_pointer_input_layer_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/campaign_map_globe_regression_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/map_view_focus_rotation_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/focus_guide_gate_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+  - `godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+  - `godot --headless --path . --script res://tests/smoke_test.gd` 通过。
+
+### 本轮验证目标
+
+- 运行桌面必须允许玩家直接操作中央星球和底部手牌；左/右信息骨架、天气条、引导层、overlay 空白区域都不能成为隐形玻璃板。
 
 ## 2026-07-03｜桌面快捷方式切换到最新版 Godot
 

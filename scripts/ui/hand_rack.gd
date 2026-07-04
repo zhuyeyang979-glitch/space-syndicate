@@ -37,7 +37,50 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
 		if mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
+			var card := _card_at_screen_position(_event_screen_position(event, self))
+			if card != null:
+				if mouse_button.double_click:
+					_activate_focused_card(card)
+				else:
+					_select_card_node(card)
+					card_selected.emit(_card_data_for(card))
+				accept_event()
+				return
 			_unselect_current_card()
+
+
+func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree() or not (event is InputEventMouseButton):
+		return
+	var mouse_button: InputEventMouseButton = event as InputEventMouseButton
+	if mouse_button.button_index != MOUSE_BUTTON_LEFT or not mouse_button.pressed:
+		return
+	var card := _hovered_card_from_viewport()
+	if card == null:
+		return
+	if mouse_button.double_click:
+		_activate_focused_card(card)
+	else:
+		_select_card_node(card)
+		card_selected.emit(_card_data_for(card))
+	get_viewport().set_input_as_handled()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_visible_in_tree() or not (event is InputEventMouseButton):
+		return
+	var mouse_button: InputEventMouseButton = event as InputEventMouseButton
+	if mouse_button.button_index != MOUSE_BUTTON_LEFT or not mouse_button.pressed:
+		return
+	var card := _card_at_screen_position(_event_screen_position(event, self))
+	if card == null:
+		return
+	if mouse_button.double_click:
+		_activate_focused_card(card)
+	else:
+		_select_card_node(card)
+		card_selected.emit(_card_data_for(card))
+	get_viewport().set_input_as_handled()
 
 
 func set_cards(cards: Array) -> void:
@@ -341,6 +384,43 @@ func _card_data_for(card: Control) -> Dictionary:
 		var data_variant: Variant = card.call("get_card_data")
 		return data_variant if data_variant is Dictionary else {}
 	return {}
+
+
+func _card_at_screen_position(screen_position: Vector2) -> Control:
+	var best_card: Control = null
+	var best_z := -999999
+	var best_index := -1
+	for child in _card_children():
+		if child == null or not child.is_visible_in_tree():
+			continue
+		if not _control_contains_screen_point(child, screen_position):
+			continue
+		var child_z := child.z_index
+		var child_index := child.get_index()
+		if best_card == null or child_z > best_z or (child_z == best_z and child_index > best_index):
+			best_card = child
+			best_z = child_z
+			best_index = child_index
+	return best_card
+
+
+func _hovered_card_from_viewport() -> Control:
+	var hovered := get_viewport().gui_get_hovered_control()
+	if hovered == null:
+		return null
+	for card in _card_children():
+		if card == null or not card.is_visible_in_tree():
+			continue
+		if hovered == card or card.is_ancestor_of(hovered):
+			return card
+	return null
+
+
+func _control_contains_screen_point(control: Control, screen_position: Vector2) -> bool:
+	if control == null:
+		return false
+	var local_position := control.get_global_transform().affine_inverse() * screen_position
+	return Rect2(Vector2.ZERO, control.size).has_point(local_position)
 
 
 func _activate_focused_card(card: Control) -> void:

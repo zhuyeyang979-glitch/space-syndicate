@@ -36,8 +36,26 @@ const TEMP_DECISION_SIDE_ANCHOR_BOTTOM := 0.82
 
 
 func _ready() -> void:
+	_configure_pointer_passthrough_skeleton()
 	_dock_confirm_to_planet_side_lane()
 	side_drawer_close_button.pressed.connect(hide_side_drawer)
+
+
+func _configure_pointer_passthrough_skeleton() -> void:
+	for path in [
+		"OverlayRoot",
+		"OverlayRoot/SideDrawerLayer",
+		"OverlayRoot/SideDrawerLayer/OverlayMargin",
+		"OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns",
+		"OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns/OverlaySpacer",
+		"OverlayRoot/TooltipLayer",
+		"OverlayRoot/DragPreviewLayer",
+		"OverlayRoot/ModalLayer",
+		"OverlayRoot/ModalLayer/ConfirmCenter",
+	]:
+		var node := get_node_or_null(path)
+		if node is Control:
+			(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func show_tooltip(text: String) -> void:
 	tooltip_label.text = text

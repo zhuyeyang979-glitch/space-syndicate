@@ -43,10 +43,13 @@ var right_rail_suppressed := false
 
 func _ready() -> void:
 	_style_board()
+	_configure_pointer_passthrough_layers()
 	if map_host != null:
 		map_host.clip_contents = false
+		map_host.mouse_filter = Control.MOUSE_FILTER_PASS
 	if stage_viewport != null:
 		stage_viewport.clip_contents = false
+		stage_viewport.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	call_deferred("_fit_square_stage")
 	queue_redraw()
 
@@ -87,6 +90,7 @@ func set_board_state(data: Dictionary) -> void:
 	)
 	_set_weather_strip(data.get("weather", {}))
 	_set_flow_compass(data.get("flow_compass", {}))
+	_configure_pointer_passthrough_layers()
 	call_deferred("_fit_square_stage")
 
 
@@ -105,12 +109,32 @@ func attach_runtime_map(map_node: Control) -> void:
 	map_node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_node.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_node.focus_mode = Control.FOCUS_ALL
+	map_node.mouse_filter = Control.MOUSE_FILTER_STOP
 	map_node.set_meta("runtime_focus_kind", "planet_map")
 	map_node.clip_contents = false
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_host.add_child(map_node)
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fit_square_stage()
+
+
+func _configure_pointer_passthrough_layers() -> void:
+	for node in [
+		playtest_flow_compass,
+		weather_forecast_bar,
+		left_space_rail,
+		right_space_rail,
+	]:
+		_set_mouse_filter_recursive(node, Control.MOUSE_FILTER_IGNORE)
+
+
+func _set_mouse_filter_recursive(node: Node, filter: int) -> void:
+	if node == null:
+		return
+	if node is Control:
+		(node as Control).mouse_filter = filter
+	for child in node.get_children():
+		_set_mouse_filter_recursive(child, filter)
 
 
 func get_runtime_map_focus_control() -> Control:
@@ -406,16 +430,19 @@ func _add_flow_compass_chip(parent: Container, entry: Dictionary, data: Dictiona
 	var bg := Color("#064e3b") if done else Color("#020617").lerp(accent, 0.28 if current else 0.10)
 	var chip := PanelContainer.new()
 	chip.name = "PlaytestFlowCompassStepChip"
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.tooltip_text = str(entry.get("tooltip", data.get("tooltip", "试玩步骤")))
 	chip.add_theme_stylebox_override("panel", _panel_style(accent if current or done else Color("#334155"), bg, 1, 5))
 	parent.add_child(chip)
 	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_theme_constant_override("margin_left", 4)
 	margin.add_theme_constant_override("margin_top", 1)
 	margin.add_theme_constant_override("margin_right", 4)
 	margin.add_theme_constant_override("margin_bottom", 1)
 	chip.add_child(margin)
 	var label := Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = "%s%s" % [prefix, str(entry.get("label", "步骤"))]
 	label.tooltip_text = chip.tooltip_text
 	label.add_theme_font_size_override("font_size", 9)
@@ -477,10 +504,12 @@ func _add_rail_entry(stack: VBoxContainer, entry: Dictionary, left_side: bool, i
 	var active := bool(entry.get("active", false))
 	var panel := PanelContainer.new()
 	panel.name = ("PlanetLeftRailEntry%d" if left_side else "PlanetRightRailEntry%d") % index
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.custom_minimum_size = Vector2(0, 26)
 	panel.tooltip_text = str(entry.get("tooltip", entry.get("tip", "")))
 	panel.add_theme_stylebox_override("panel", _rail_entry_style(accent, active))
 	var margin := MarginContainer.new()
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_theme_constant_override("margin_left", 6)
 	margin.add_theme_constant_override("margin_top", 1)
 	margin.add_theme_constant_override("margin_right", 6)
@@ -488,10 +517,12 @@ func _add_rail_entry(stack: VBoxContainer, entry: Dictionary, left_side: bool, i
 	panel.add_child(margin)
 	var rows := VBoxContainer.new()
 	rows.name = "PlanetRailEntryRows"
+	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rows.add_theme_constant_override("separation", 0)
 	margin.add_child(rows)
 	var label := Label.new()
 	label.name = "PlanetRailEntryLabel"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = _short_text(str(entry.get("label", entry.get("text", "情报"))), 8)
 	label.tooltip_text = panel.tooltip_text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -501,6 +532,7 @@ func _add_rail_entry(stack: VBoxContainer, entry: Dictionary, left_side: bool, i
 	rows.add_child(label)
 	var value := Label.new()
 	value.name = "PlanetRailEntryValue"
+	value.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	value.text = _short_text(_entry_value_text(entry), 12)
 	value.tooltip_text = panel.tooltip_text
 	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

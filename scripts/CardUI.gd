@@ -40,6 +40,8 @@ var _interaction_state: Dictionary = {
 
 func _ready() -> void:
 	clip_contents = true
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	_make_descendants_mouse_transparent()
 	_apply_data()
 
 
@@ -63,6 +65,18 @@ func set_card_data(data: Dictionary) -> void:
 	else:
 		accent_color = _accent_for_type(card_type)
 	_apply_data()
+
+
+func _make_descendants_mouse_transparent() -> void:
+	for child in get_children():
+		_set_descendant_mouse_filter_recursive(child)
+
+
+func _set_descendant_mouse_filter_recursive(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_set_descendant_mouse_filter_recursive(child)
 
 
 func get_card_data() -> Dictionary:
@@ -118,6 +132,7 @@ func _apply_data() -> void:
 	if art_view != null:
 		art_label.text = _short_card_text(_mini_status_text(), 10) if hand_mini else ""
 	_render_keyword_chips(hand_mini, inspector_full)
+	_make_descendants_mouse_transparent()
 	set_meta("card_presentation_spec", _presentation_spec())
 	set_meta("card_primary_action_label", _primary_action_label())
 	set_meta("card_type_glyph", type_glyph)

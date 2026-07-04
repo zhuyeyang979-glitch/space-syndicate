@@ -40,6 +40,7 @@ var progress_path_signature: String = ""
 
 
 func _ready() -> void:
+	_configure_pointer_filter_skeleton()
 	_configure_chip_defaults()
 	_configure_tableau_styles()
 	if hand_rack != null and hand_rack.has_signal("card_hovered"):
@@ -70,6 +71,35 @@ func _ready() -> void:
 		bid_board.connect("track_link_hovered", Callable(self, "_on_track_link_hovered"))
 	if bid_board != null and bid_board.has_signal("track_link_unhovered"):
 		bid_board.connect("track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
+
+
+func _configure_pointer_filter_skeleton() -> void:
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	for path in [
+		"PlayerRows",
+		"PlayerRows/PlayerBoardTitle",
+		"PlayerRows/PlayerActionHint",
+		"PlayerRows/PlayerBoardBody",
+		"PlayerRows/PlayerBoardBody/PlayerResourceTableau",
+		"PlayerRows/PlayerBoardBody/PlayerResourceTableau/PlayerResourceRows",
+		"PlayerRows/PlayerBoardBody/PlayerHandTableau",
+		"PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows",
+		"PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/PlayerHandHeader",
+		"PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/HandRackColumn",
+		"PlayerRows/PlayerBoardBody/PlayerCommandTableau",
+		"PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows",
+	]:
+		var node := get_node_or_null(path)
+		if node is Control:
+			(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if resource_tableau != null:
+		resource_tableau.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if hand_tableau != null:
+		hand_tableau.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if command_tableau != null:
+		command_tableau.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if hand_rack != null:
+		hand_rack.mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func set_player_state(data: Dictionary) -> void:

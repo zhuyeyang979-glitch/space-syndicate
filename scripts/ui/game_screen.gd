@@ -56,6 +56,8 @@ var _campaign_focus_layout := false
 var _last_focus_guide_data: Dictionary = {}
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	_configure_pointer_passthrough_hosts()
 	_configure_track_focus_ribbon()
 	_configure_focus_guide()
 	_configure_hand_hover_preview()
@@ -105,6 +107,19 @@ func _ready() -> void:
 	if overlay_layer.has_signal("temporary_decision_action_requested"):
 		overlay_layer.connect("temporary_decision_action_requested", Callable(self, "_on_temporary_decision_action_requested"))
 	call_deferred("_sync_runtime_table_focus_order")
+
+
+func _configure_pointer_passthrough_hosts() -> void:
+	for node in [
+		get_node_or_null("Background"),
+		first_run_coach_host,
+		scenario_coach_host,
+		hand_hover_preview_host,
+		focus_guide_layer,
+		visual_event_layer,
+	]:
+		if node is Control:
+			(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func apply_state(data: Dictionary) -> void:

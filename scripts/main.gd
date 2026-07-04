@@ -1802,6 +1802,7 @@ var campaign_bgm_volume := 60
 
 
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	rng.randomize()
 	_load_settings()
 	_load_campaign_progress_state()
