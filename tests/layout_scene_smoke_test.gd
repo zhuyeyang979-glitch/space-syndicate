@@ -2910,11 +2910,13 @@ func _check_menu_overlay_shell_component() -> void:
 	await process_frame
 	var body_label := overlay.find_child("MenuBodyLabel", true, false) as Label
 	_expect(context_label != null and context_label.visible and hint_panel != null and hint_panel.visible and body_label != null and body_label.text == "Scan the card.", "MenuOverlay presents catalog shell context and body")
+	_expect(body_label != null and body_label.get_theme_font_size("font_size") >= 16, "MenuOverlay catalog body text keeps a readable minimum font size")
 	overlay.call("set_catalog_navigation", {"prev_visible": true, "next_visible": true, "back_visible": true, "back_text": "Back to thumbnails"})
 	await process_frame
 	var catalog_nav_row := overlay.find_child("MenuCatalogNavRow", true, false) as HBoxContainer
 	var catalog_back_button := overlay.find_child("MenuBestiaryBackButton", true, false) as Button
 	_expect(catalog_nav_row != null and catalog_nav_row.visible and catalog_back_button != null and catalog_back_button.text == "Back to thumbnails", "MenuOverlay owns local catalog navigation buttons")
+	_expect(catalog_back_button != null and catalog_back_button.custom_minimum_size.y >= 40.0 and catalog_back_button.get_theme_font_size("font_size") >= 14, "MenuOverlay catalog back button stays large enough to read and tap")
 	var continue_button := overlay.find_child("MenuContinueButton", true, false) as Button
 	var back_button := overlay.find_child("MenuBackButton", true, false) as Button
 	var signal_flags := {
@@ -3225,6 +3227,10 @@ func _check_card_codex_browser_component() -> void:
 	_expect(browser.find_child("CardCodexThumbnailGrid", true, false) != null and browser.find_child("CardCodexThumbnailChipRail", true, false) != null, "CardCodexBrowser renders thumbnail grid and chip rails")
 	_expect(browser.find_child("CardCodexThumbnailRouteBand", true, false) != null and browser.find_child("CardCodexThumbnailEffectLine", true, false) != null, "CardCodexBrowser renders route and effect scan lines")
 	_expect(browser.find_child("CardCodexHoverPreview", true, false) != null, "CardCodexBrowser renders the hover preview host")
+	var thumbnail_panel := browser.find_child("CardCodexThumbnailCard", true, false) as Control
+	var thumbnail_effect := browser.find_child("CardCodexThumbnailEffectLine", true, false) as Label
+	_expect(thumbnail_panel != null and thumbnail_panel.custom_minimum_size.x >= 160.0 and thumbnail_panel.custom_minimum_size.y >= 230.0, "CardCodexBrowser thumbnails keep enough card-face area for readable scan text")
+	_expect(thumbnail_effect != null and thumbnail_effect.get_theme_font_size("font_size") >= 10 and thumbnail_effect.autowrap_mode != TextServer.AUTOWRAP_OFF, "CardCodexBrowser thumbnail effects wrap at a readable size")
 	var signal_flags := {
 		"filter": "",
 		"preview": "",
@@ -3246,7 +3252,7 @@ func _check_card_codex_browser_component() -> void:
 	var filter_chip := browser.find_child("CardCodexCategoryChip", true, false) as Button
 	var previous_button := browser.find_child("CardCodexThumbnailPreviousButton", true, false) as Button
 	var next_button := browser.find_child("CardCodexThumbnailNextButton", true, false) as Button
-	var card_panel := browser.find_child("CardCodexThumbnailCard", true, false) as Control
+	var card_panel := thumbnail_panel
 	if filter_chip != null:
 		filter_chip.emit_signal("pressed")
 	if previous_button != null:
@@ -3337,6 +3343,9 @@ func _check_card_codex_detail_component() -> void:
 	_expect(detail.find_child("CardCodexTcgDetailLayout", true, false) != null, "CardCodexDetail keeps the TCG detail layout")
 	_expect(detail.find_child("CardCodexTcgFaceColumn", true, false) != null and detail.find_child("CardCodexSceneCardFace", true, false) != null, "CardCodexDetail renders a scene-owned CardFace")
 	_expect(detail.find_child("CardCodexTcgReadColumn", true, false) != null and detail.find_child("CardCodexTcgSummaryPanel", true, false) != null, "CardCodexDetail renders the scan-first summary panel")
+	var summary_effect := detail.find_child("CardCodexTcgSummaryEffect", true, false) as Label
+	var tactical_title := detail.find_child("CardCodexTacticalTitle", true, false) as Label
+	_expect(summary_effect != null and summary_effect.get_theme_font_size("font_size") >= 13 and tactical_title != null and tactical_title.get_theme_font_size("font_size") >= 14, "CardCodexDetail keeps summary and tactical text readable")
 	_expect(detail.find_child("CardCodexTcgSummaryChipRail", true, false) != null and detail.find_child("CardCodexTcgSummaryChip", true, false) != null, "CardCodexDetail renders summary chips")
 	_expect(detail.find_child("CardCodexTacticalStrip", true, false) != null and detail.find_child("CardCodexTacticalGrid", true, false) != null and detail.find_child("CardCodexTacticalCard", true, false) != null, "CardCodexDetail renders tactical table-use cards")
 	_expect(detail.find_child("CardCodexTcgFactGrid", true, false) != null and detail.find_child("CardCodexTcgFactCard", true, false) != null, "CardCodexDetail renders fact cards")

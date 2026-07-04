@@ -40,16 +40,16 @@ func _style_shell() -> void:
 	art_slot.custom_minimum_size = Vector2(278, 218)
 	art_slot.clip_contents = true
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title_label.add_theme_font_size_override("font_size", 18)
+	title_label.add_theme_font_size_override("font_size", 20)
 	title_label.add_theme_color_override("font_color", Color("#f8fafc"))
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	subtitle_label.add_theme_font_size_override("font_size", 11)
+	subtitle_label.add_theme_font_size_override("font_size", 13)
 	chip_rail.add_theme_constant_override("h_separation", 4)
 	chip_rail.add_theme_constant_override("v_separation", 4)
 	kpi_grid.columns = 4
 	kpi_grid.add_theme_constant_override("h_separation", 7)
 	kpi_grid.add_theme_constant_override("v_separation", 7)
-	action_title_label.add_theme_font_size_override("font_size", 13)
+	action_title_label.add_theme_font_size_override("font_size", 15)
 	action_title_label.add_theme_color_override("font_color", Color("#fef3c7"))
 	action_grid.columns = 2
 	action_grid.add_theme_constant_override("h_separation", 7)
@@ -118,13 +118,13 @@ func _add_chip(entry: Dictionary) -> void:
 	var chip_width := clampf(float(text.length()) * 7.2 + 18.0, 36.0, 170.0)
 	var chip := PanelContainer.new()
 	chip.name = "BestiaryMonsterChip"
-	chip.custom_minimum_size = Vector2(chip_width, 22)
+	chip.custom_minimum_size = Vector2(chip_width, 26)
 	chip.tooltip_text = str(entry.get("tooltip", ""))
 	chip.add_theme_stylebox_override("panel", _card_style(accent, bg, 1, 8))
 	chip_rail.add_child(chip)
 	var margin := _margin(7, 2, 7, 2)
 	chip.add_child(margin)
-	var label := _label(_short_text(text, 20), 9, fg)
+	var label := _label(_short_text(text, 20), 11, fg)
 	label.name = "BestiaryMonsterChipLabel"
 	label.clip_text = true
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -146,7 +146,7 @@ func _add_kpi(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 3)
 	margin.add_child(box)
-	box.add_child(_label(str(entry.get("title", "")), 10, accent.lightened(0.18)))
+	box.add_child(_label(str(entry.get("title", "")), 12, accent.lightened(0.18)))
 	var value_text := str(entry.get("value", ""))
 	var value := _label(_short_text(value_text, 38), 12, Color("#f8fafc"))
 	value.name = "BestiaryMonsterKpiValue"
@@ -154,7 +154,7 @@ func _add_kpi(entry: Dictionary) -> void:
 	value.tooltip_text = value_text
 	box.add_child(value)
 	var meta_text := str(entry.get("meta", ""))
-	var meta := _label(_short_text(meta_text, 42), 9, Color("#94a3b8"))
+	var meta := _label(_short_text(meta_text, 42), 11, Color("#94a3b8"))
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.tooltip_text = meta_text
 	box.add_child(meta)
@@ -177,34 +177,34 @@ func _add_action(entry: Dictionary, action_index: int, fallback_accent: Color) -
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 5)
 	box.add_child(row)
-	var index_label := _label(str(entry.get("index", "%02d" % (action_index + 1))), 10, accent.lightened(0.18))
+	var index_label := _label(str(entry.get("index", "%02d" % (action_index + 1))), 12, accent.lightened(0.18))
 	index_label.name = "BestiaryMonsterActionIndex"
 	row.add_child(index_label)
 	var name_text := str(entry.get("name", "行动"))
-	var name_label := _label(_short_text(name_text, 24), 11, Color("#f8fafc"))
+	var name_label := _label(_short_text(name_text, 24), 13, Color("#f8fafc"))
 	name_label.name = "BestiaryMonsterActionName"
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.tooltip_text = name_text
 	row.add_child(name_label)
 	var tags_text := str(entry.get("tags", "基础"))
-	var tags := _label(_short_text(tags_text, 18), 8, accent.lightened(0.14))
+	var tags := _label(_short_text(tags_text, 18), 10, accent.lightened(0.14))
 	tags.tooltip_text = tags_text
 	row.add_child(tags)
 	var probability_text := str(entry.get("probability", "I --/--｜IV --/--"))
-	var probability := _label(probability_text, 10, Color("#fde68a"))
+	var probability := _label(probability_text, 12, Color("#fde68a"))
 	probability.name = "BestiaryMonsterActionProbability"
 	probability.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	probability.tooltip_text = str(entry.get("probability_tooltip", probability_text))
 	box.add_child(probability)
 	var facts_text := str(entry.get("facts", "贴近/移动"))
-	var facts := _label(_short_text(facts_text, 72), 9, Color("#cbd5e1"))
+	var facts := _label(_short_text(facts_text, 72), 11, Color("#cbd5e1"))
 	facts.name = "BestiaryMonsterActionFacts"
 	facts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	facts.tooltip_text = facts_text
 	box.add_child(facts)
 	var body_text := str(entry.get("body", ""))
 	if body_text != "":
-		var body := _label(_short_text(body_text, 72), 9, Color("#e5e7eb"))
+		var body := _label(_short_text(body_text, 72), 11, Color("#e5e7eb"))
 		body.name = "BestiaryMonsterActionBody"
 		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		body.tooltip_text = body_text

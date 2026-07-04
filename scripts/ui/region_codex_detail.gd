@@ -36,10 +36,10 @@ func _style_shell() -> void:
 	icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	icon_label.add_theme_font_size_override("font_size", 24)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title_label.add_theme_font_size_override("font_size", 15)
+	title_label.add_theme_font_size_override("font_size", 18)
 	title_label.add_theme_color_override("font_color", Color("#f8fafc"))
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	subtitle_label.add_theme_font_size_override("font_size", 10)
+	subtitle_label.add_theme_font_size_override("font_size", 12)
 	chip_rail.add_theme_constant_override("h_separation", 5)
 	chip_rail.add_theme_constant_override("v_separation", 3)
 	kpi_grid.columns = 4
@@ -87,13 +87,13 @@ func _add_chip(entry: Dictionary) -> void:
 	var chip_width := clampf(float(text.length()) * 7.2 + 18.0, 34.0, 150.0)
 	var chip := PanelContainer.new()
 	chip.name = "RegionCodexTileChip"
-	chip.custom_minimum_size = Vector2(chip_width, 22)
+	chip.custom_minimum_size = Vector2(chip_width, 26)
 	chip.tooltip_text = str(entry.get("tooltip", ""))
 	chip.add_theme_stylebox_override("panel", _card_style(accent, bg, 1, 8))
 	chip_rail.add_child(chip)
 	var margin := _margin(7, 2, 7, 2)
 	chip.add_child(margin)
-	var label := _label(_short_text(text, 18), 9, fg)
+	var label := _label(_short_text(text, 18), 11, fg)
 	label.name = "RegionCodexTileChipLabel"
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.clip_text = true
@@ -116,7 +116,7 @@ func _add_kpi(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 3)
 	margin.add_child(box)
-	box.add_child(_label(str(entry.get("title", "")), 10, accent.lightened(0.18)))
+	box.add_child(_label(str(entry.get("title", "")), 12, accent.lightened(0.18)))
 	var value_text := str(entry.get("value", ""))
 	var value := _label(_short_text(value_text, 34), 12, Color("#f8fafc"))
 	value.name = "RegionCodexTileKpiValue"
@@ -124,7 +124,7 @@ func _add_kpi(entry: Dictionary) -> void:
 	value.tooltip_text = value_text
 	box.add_child(value)
 	var meta_text := str(entry.get("meta", ""))
-	var meta := _label(_short_text(meta_text, 42), 9, Color("#94a3b8"))
+	var meta := _label(_short_text(meta_text, 42), 11, Color("#94a3b8"))
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.tooltip_text = meta_text
 	box.add_child(meta)
@@ -144,12 +144,12 @@ func _add_clue(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
-	var title := _label(str(entry.get("title", "")), 11, accent.lightened(0.14))
+	var title := _label(str(entry.get("title", "")), 13, accent.lightened(0.14))
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(title)
 	var body_text := str(entry.get("body", ""))
-	var body := _label(_short_text(body_text, 82), 10, Color("#e5e7eb"))
+	var body := _label(_short_text(body_text, 82), 12, Color("#e5e7eb"))
 	body.name = "RegionCodexClueBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = card.tooltip_text

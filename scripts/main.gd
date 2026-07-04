@@ -2095,9 +2095,11 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 		"primary":
 			handled = _activate_runtime_snapshot_action(_runtime_primary_action_entry(_runtime_snapshot_player_index()))
 		"codex_region":
+			catalog_return_menu = "game"
 			_open_region_codex_menu(selected_district)
 			handled = true
 		"codex_cards":
+			catalog_return_menu = "game"
 			_open_card_codex_menu()
 			handled = true
 		"codex_intel":
@@ -4776,13 +4778,13 @@ func _refresh_menu_layout() -> void:
 		menu_shell_margin.add_theme_constant_override("margin_top", vertical_margin)
 		menu_shell_margin.add_theme_constant_override("margin_bottom", vertical_margin)
 	if menu_title_label != null:
-		menu_title_label.add_theme_font_size_override("font_size", 30 if root_lobby and compact else (44 if root_lobby and wide else (38 if root_lobby else (22 if compact_page else (24 if compact else (34 if wide else 31))))))
+		menu_title_label.add_theme_font_size_override("font_size", 30 if root_lobby and compact else (44 if root_lobby and wide else (38 if root_lobby else (28 if compact_page else (29 if compact else (36 if wide else 33))))))
 	if menu_context_label != null:
-		menu_context_label.add_theme_font_size_override("font_size", 10 if compact else 11)
+		menu_context_label.add_theme_font_size_override("font_size", 12 if compact else 13)
 	if menu_interaction_hint_label != null:
-		menu_interaction_hint_label.add_theme_font_size_override("font_size", 9 if compact else 10)
+		menu_interaction_hint_label.add_theme_font_size_override("font_size", 12 if compact else 13)
 	if menu_body_label != null:
-		menu_body_label.add_theme_font_size_override("font_size", 13 if compact else 15)
+		menu_body_label.add_theme_font_size_override("font_size", 16 if compact else 17)
 	if menu_content_box != null:
 		menu_content_box.size_flags_vertical = Control.SIZE_EXPAND_FILL if root_lobby else Control.SIZE_FILL
 	if menu_preview_box != null:
@@ -4797,7 +4799,8 @@ func _refresh_menu_layout() -> void:
 	for button_variant in [menu_continue_button, menu_back_button, menu_bestiary_prev_button, menu_bestiary_next_button, menu_bestiary_back_button]:
 		if button_variant is Button:
 			var button := button_variant as Button
-			button.custom_minimum_size = Vector2(108 if compact else 124, 32 if compact else 34)
+			button.custom_minimum_size = Vector2(136 if compact else 152, 40 if compact else 44)
+			button.add_theme_font_size_override("font_size", 14 if compact else 16)
 	for button_variant in menu_quick_nav_buttons.values():
 		if button_variant is Button:
 			var button := button_variant as Button
@@ -4820,6 +4823,7 @@ func _style_menu_button(button: Button, accent: Color = Color("#38bdf8"), primar
 	button.add_theme_color_override("font_hover_color", Color("#ffffff"))
 	button.add_theme_color_override("font_pressed_color", Color("#ffffff"))
 	button.add_theme_color_override("font_disabled_color", Color("#64748b"))
+	button.add_theme_font_size_override("font_size", 15)
 
 
 func _add_menu_quick_nav_button(key: String, button_text: String, detail_text: String, target: Callable, accent: Color = Color("#38bdf8")) -> Button:
@@ -8746,6 +8750,7 @@ func _open_compendium_menu() -> void:
 	)
 	menu_catalog_mode = "compendium"
 	_hide_global_menu_navigation_for_catalog()
+	_set_catalog_local_navigation(false, false, _catalog_back_button_text(), true)
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -8803,9 +8808,9 @@ func _on_compendium_hub_action_requested(action_id: String) -> void:
 		"card":
 			_open_card_codex_from_compendium()
 		"product":
-			_open_product_codex_menu()
+			_open_product_codex_from_compendium()
 		"region":
-			_open_region_codex_menu()
+			_open_region_codex_from_compendium()
 		"main":
 			_open_main_menu()
 
@@ -9666,6 +9671,30 @@ func _hide_global_menu_navigation_for_catalog() -> void:
 		menu_run_save_label.visible = false
 
 
+func _set_catalog_local_navigation(prev_visible: bool, next_visible: bool, back_text: String, back_visible: bool = true) -> void:
+	var nav_data := {
+		"prev_text": "上一个",
+		"next_text": "下一个",
+		"back_text": back_text,
+		"prev_visible": prev_visible,
+		"next_visible": next_visible,
+		"back_visible": back_visible,
+	}
+	if menu_overlay != null and menu_overlay.has_method("set_catalog_navigation"):
+		menu_overlay.call("set_catalog_navigation", nav_data)
+	if menu_bestiary_prev_button != null:
+		menu_bestiary_prev_button.text = "上一个"
+		menu_bestiary_prev_button.visible = prev_visible
+	if menu_bestiary_next_button != null:
+		menu_bestiary_next_button.text = "下一个"
+		menu_bestiary_next_button.visible = next_visible
+	if menu_bestiary_back_button != null:
+		menu_bestiary_back_button.text = back_text
+		menu_bestiary_back_button.visible = back_visible
+	if menu_catalog_nav_row != null:
+		menu_catalog_nav_row.visible = prev_visible or next_visible or back_visible
+
+
 func _open_bestiary_from_compendium() -> void:
 	catalog_return_menu = "compendium"
 	bestiary_show_detail = false
@@ -9686,6 +9715,16 @@ func _open_card_codex_from_compendium() -> void:
 func _open_role_codex_from_compendium() -> void:
 	catalog_return_menu = "compendium"
 	_open_role_codex_menu()
+
+
+func _open_product_codex_from_compendium() -> void:
+	catalog_return_menu = "compendium"
+	_open_product_codex_menu()
+
+
+func _open_region_codex_from_compendium() -> void:
+	catalog_return_menu = "compendium"
+	_open_region_codex_menu()
 
 
 func _back_from_catalog_menu() -> void:
@@ -9710,6 +9749,8 @@ func _back_from_catalog_menu() -> void:
 			_open_economy_overview_menu()
 		"standings":
 			_open_standings_menu()
+		"game":
+			_close_menu()
 		_:
 			_open_main_menu()
 
@@ -9724,6 +9765,8 @@ func _catalog_back_button_text() -> String:
 			return "返回经济总览"
 		"standings":
 			return "返回局势排名"
+		"game":
+			return "返回牌桌"
 		_:
 			return "返回主菜单"
 
@@ -9801,10 +9844,7 @@ func _update_role_codex_menu() -> void:
 	_show_menu("角色图鉴", _role_codex_text(role_card, role_codex_index, PLAYER_ROLE_CATALOG.size()), false)
 	menu_catalog_mode = "role"
 	_hide_global_menu_navigation_for_catalog()
-	menu_bestiary_prev_button.visible = true
-	menu_bestiary_next_button.visible = true
-	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = _catalog_back_button_text()
+	_set_catalog_local_navigation(true, true, _catalog_back_button_text(), true)
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -9851,10 +9891,7 @@ func _update_bestiary_menu() -> void:
 	_show_menu("怪兽生态档案", body_text, false)
 	menu_catalog_mode = "monster"
 	_hide_global_menu_navigation_for_catalog()
-	menu_bestiary_prev_button.visible = bestiary_show_detail
-	menu_bestiary_next_button.visible = bestiary_show_detail
-	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回缩略图" if bestiary_show_detail else _catalog_back_button_text()
+	_set_catalog_local_navigation(bestiary_show_detail, bestiary_show_detail, "返回缩略图" if bestiary_show_detail else _catalog_back_button_text(), true)
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -10658,10 +10695,7 @@ func _update_card_codex_menu() -> void:
 	_show_menu("卡牌图鉴", body_text, false)
 	menu_catalog_mode = "card"
 	_hide_global_menu_navigation_for_catalog()
-	menu_bestiary_prev_button.visible = card_codex_show_detail
-	menu_bestiary_next_button.visible = card_codex_show_detail
-	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回缩略图" if card_codex_show_detail else _catalog_back_button_text()
+	_set_catalog_local_navigation(card_codex_show_detail, card_codex_show_detail, "返回缩略图" if card_codex_show_detail else _catalog_back_button_text(), true)
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -10672,11 +10706,11 @@ func _update_card_codex_menu() -> void:
 
 
 func _card_codex_grid_columns() -> int:
-	return clampi(int(floor(_menu_available_content_width() / 155.0)), 2, 5)
+	return clampi(int(floor(_menu_available_content_width() / 185.0)), 2, 5)
 
 
 func _card_codex_grid_rows() -> int:
-	return clampi(int(floor(_menu_available_content_height() / 180.0)), 1, 4)
+	return clampi(int(floor(_menu_available_content_height() / 230.0)), 1, 4)
 
 
 func _card_codex_cards_per_page() -> int:
@@ -10969,7 +11003,7 @@ func _add_card_codex_thumbnail(parent: Container, card_name: String, card_index:
 		return
 	var accent := _card_theme_color(skill)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(142, 184)
+	panel.custom_minimum_size = Vector2(168, 236)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.tooltip_text = _card_detail_tooltip(card_name)
@@ -10992,32 +11026,34 @@ func _add_card_codex_thumbnail(parent: Container, card_name: String, card_index:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
-	var title := _plain_label("%s %s｜%s" % [_card_icon_for_card(skill, card_name), _skill_family(card_name), _level_text(_skill_rank(card_name))], 10, Color("#f8fafc"))
+	var title := _plain_label("%s %s｜%s" % [_card_icon_for_card(skill, card_name), _skill_family(card_name), _level_text(_skill_rank(card_name))], 12, Color("#f8fafc"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
 	var art_view = CardArtViewScript.new()
-	art_view.custom_minimum_size = Vector2(0, 68)
+	art_view.custom_minimum_size = Vector2(0, 78)
 	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art_view.set_card(_card_display_name(card_name), String(skill.get("kind", "")), _skill_tag_text(skill), accent, max(1, _skill_rank(card_name)), true, _card_art_stats(skill))
 	box.add_child(art_view)
 	_add_card_codex_thumbnail_chip_rail(box, card_name, skill)
-	var route := _plain_label(_short_card_text(_card_strategy_route_label(skill), 18), 8, accent.lightened(0.18))
+	var route := _plain_label(_short_card_text(_card_strategy_route_label(skill), 28), 10, accent.lightened(0.18))
 	route.name = "CardCodexThumbnailRouteBand"
 	route.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	route.autowrap_mode = TextServer.AUTOWRAP_OFF
-	route.clip_text = true
+	route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	route.clip_text = false
 	route.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	route.tooltip_text = _card_strategy_summary(skill, true)
 	box.add_child(route)
-	var effect := _plain_label(_short_card_text(_card_face_quick_effect_text(card_name, skill, true), 30), 8, Color("#dbeafe"))
+	var effect := _plain_label(_short_card_text(_card_face_quick_effect_text(card_name, skill, true), 48), 10, Color("#dbeafe"))
 	effect.name = "CardCodexThumbnailEffectLine"
 	effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	effect.autowrap_mode = TextServer.AUTOWRAP_OFF
-	effect.clip_text = true
+	effect.custom_minimum_size = Vector2(0, 34)
+	effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	effect.clip_text = false
 	effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	effect.tooltip_text = _skill_display_text(skill)
 	box.add_child(effect)
-	var hint := _plain_label("悬停预览｜双击详情", 8, Color("#94a3b8"))
+	var hint := _plain_label("悬停预览｜双击详情", 10, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(hint)
 
@@ -11352,7 +11388,8 @@ func _open_role_starter_monster_in_bestiary(monster_index: int) -> void:
 
 
 func _open_product_codex_menu(index: int = -1) -> void:
-	catalog_return_menu = "compendium"
+	if catalog_return_menu == "":
+		catalog_return_menu = "compendium"
 	product_codex_show_detail = index >= 0
 	if index >= 0:
 		product_codex_index = index
@@ -11394,10 +11431,7 @@ func _update_product_codex_menu() -> void:
 	_show_menu("商品图鉴", body_text, false)
 	menu_catalog_mode = "product"
 	_hide_global_menu_navigation_for_catalog()
-	menu_bestiary_prev_button.visible = product_codex_show_detail
-	menu_bestiary_next_button.visible = product_codex_show_detail
-	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = "返回缩略图" if product_codex_show_detail else _catalog_back_button_text()
+	_set_catalog_local_navigation(product_codex_show_detail, product_codex_show_detail, "返回缩略图" if product_codex_show_detail else _catalog_back_button_text(), true)
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
 		_clear_children(menu_preview_box)
@@ -12495,7 +12529,8 @@ func _on_product_codex_thumbnail_gui_input(event: InputEvent, catalog_index: int
 
 
 func _open_region_codex_menu(index: int = -1) -> void:
-	catalog_return_menu = "compendium"
+	if catalog_return_menu == "":
+		catalog_return_menu = "compendium"
 	if index >= 0 and index < districts.size():
 		region_codex_index = index
 		_jump_to_district_on_table(index)
@@ -12522,10 +12557,7 @@ func _update_region_codex_menu() -> void:
 		_add_region_codex_detail(menu_preview_box, region_codex_index)
 	menu_catalog_mode = "region"
 	_hide_global_menu_navigation_for_catalog()
-	menu_bestiary_prev_button.visible = true
-	menu_bestiary_next_button.visible = true
-	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = _catalog_back_button_text()
+	_set_catalog_local_navigation(true, true, _catalog_back_button_text(), true)
 
 
 func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
@@ -12542,10 +12574,7 @@ func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
 		_:
 			menu_catalog_mode = "product"
 	_hide_global_menu_navigation_for_catalog()
-	menu_bestiary_prev_button.visible = false
-	menu_bestiary_next_button.visible = false
-	menu_bestiary_back_button.visible = true
-	menu_bestiary_back_button.text = _catalog_back_button_text()
+	_set_catalog_local_navigation(false, false, _catalog_back_button_text(), true)
 
 
 func _card_codex_filter_options() -> Array:

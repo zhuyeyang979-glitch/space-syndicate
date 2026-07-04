@@ -32,9 +32,9 @@ func set_role(data: Dictionary) -> void:
 
 
 func _style_shell() -> void:
-	title_label.add_theme_font_size_override("font_size", 16)
+	title_label.add_theme_font_size_override("font_size", 18)
 	title_label.add_theme_color_override("font_color", Color("#f8fafc"))
-	subtitle_label.add_theme_font_size_override("font_size", 10)
+	subtitle_label.add_theme_font_size_override("font_size", 12)
 	chip_rail.add_theme_constant_override("h_separation", 5)
 	chip_rail.add_theme_constant_override("v_separation", 3)
 	kpi_grid.add_theme_constant_override("h_separation", 7)
@@ -100,13 +100,13 @@ func _add_chip(entry: Dictionary) -> void:
 	var fill := _dictionary_color(entry, "fill", Color("#020617").lerp(accent, 0.20))
 	var chip := PanelContainer.new()
 	chip.name = "RoleCodexIdentityChip"
-	chip.custom_minimum_size = Vector2(clampf(float(text.length()) * 12.0 + 22.0, 54.0, 190.0), 22)
+	chip.custom_minimum_size = Vector2(clampf(float(text.length()) * 12.0 + 22.0, 58.0, 200.0), 26)
 	chip.tooltip_text = str(entry.get("tooltip", ""))
 	chip.add_theme_stylebox_override("panel", _card_style(accent, fill, 1, 8))
 	chip_rail.add_child(chip)
 	var margin := _margin(7, 2, 7, 2)
 	chip.add_child(margin)
-	var label := _label(_short_text(text, 18), 9, accent.lightened(0.16))
+	var label := _label(_short_text(text, 18), 11, accent.lightened(0.16))
 	label.name = "RoleCodexIdentityChipLabel"
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.clip_text = true
@@ -131,7 +131,7 @@ func _add_kpi(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 3)
 	margin.add_child(box)
-	var title := _label(str(entry.get("title", "")), 10, accent.lightened(0.18))
+	var title := _label(str(entry.get("title", "")), 12, accent.lightened(0.18))
 	title.name = "RoleCodexAbilityKpiTitle"
 	box.add_child(title)
 	var value := _label(_short_text(value_text, 36), 12, Color("#f8fafc"))
@@ -139,7 +139,7 @@ func _add_kpi(entry: Dictionary) -> void:
 	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	value.tooltip_text = value_text
 	box.add_child(value)
-	var meta := _label(_short_text(meta_text, 42), 9, Color("#94a3b8"))
+	var meta := _label(_short_text(meta_text, 42), 11, Color("#94a3b8"))
 	meta.name = "RoleCodexAbilityKpiMeta"
 	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	meta.tooltip_text = meta_text
@@ -161,11 +161,11 @@ func _add_route_card(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
-	var title := _label(str(entry.get("title", "")), 11, accent.lightened(0.14))
+	var title := _label(str(entry.get("title", "")), 13, accent.lightened(0.14))
 	title.name = "RoleCodexRouteCardTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(title)
-	var body := _label(_short_text(body_text, 90), 10, Color("#e5e7eb"))
+	var body := _label(_short_text(body_text, 90), 12, Color("#e5e7eb"))
 	body.name = "RoleCodexRouteCardBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = card.tooltip_text

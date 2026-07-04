@@ -905,6 +905,9 @@ func _run() -> void:
 	main.call("_open_compendium_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "图鉴", "unified compendium opens from the main scene")
+	var menu_catalog_nav_row := main.get("menu_catalog_nav_row") as HBoxContainer
+	var compendium_back_button := main.get("menu_bestiary_back_button") as Button
+	_expect(menu_catalog_nav_row != null and menu_catalog_nav_row.visible and compendium_back_button != null and compendium_back_button.visible and compendium_back_button.text == "返回主菜单", "compendium exposes a visible local exit button back to the main menu")
 	_expect(menu_body_label != null and menu_body_label.text.contains("角色图鉴") and menu_body_label.text.contains("商品图鉴") and menu_body_label.text.contains("区域图鉴"), "compendium introduces all sub-codex sections")
 	menu_preview_box = main.get("menu_preview_box") as VBoxContainer
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "角色图鉴"), "compendium exposes role codex")
@@ -918,7 +921,7 @@ func _run() -> void:
 	await process_frame
 	var menu_bestiary_back_button := main.get("menu_bestiary_back_button") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "角色图鉴", "role codex opens from the compendium")
-	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回图鉴", "role codex returns to the compendium")
+	_expect(menu_catalog_nav_row != null and menu_catalog_nav_row.visible and menu_bestiary_back_button != null and menu_bestiary_back_button.visible and menu_bestiary_back_button.text == "返回图鉴", "role codex returns to the compendium with visible local navigation")
 	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("特征") and menu_body_label.text.contains("被动") and menu_body_label.text.contains("首召怪兽"), "role codex explains role traits, passives, and independent starter monster choice")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "player_role"), "role codex displays role cards with the shared card-art component")
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "公开身份") and not _container_card_art_stats_contains(menu_preview_box, "起始:"), "role codex card art presents public identity without starter-monster fingerprints")
@@ -974,6 +977,9 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
 	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and not menu_back_button.visible, "card codex hides global continue/back buttons and keeps only codex-local navigation")
+	menu_catalog_nav_row = main.get("menu_catalog_nav_row") as HBoxContainer
+	var card_thumbnail_back_button := main.get("menu_bestiary_back_button") as Button
+	_expect(menu_catalog_nav_row != null and menu_catalog_nav_row.visible and card_thumbnail_back_button != null and card_thumbnail_back_button.visible and card_thumbnail_back_button.text == "返回图鉴", "card codex thumbnail page exposes a visible local back button")
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("悬停") and menu_interaction_hint_label.text.contains("双击详情") and menu_interaction_hint_label.text.length() <= 12, "card codex thumbnail page exposes a compact shared hover/detail interaction hint")
 	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌图鉴") and menu_body_label.text.contains("本局牌池") and menu_body_label.text.contains("区域补给") and menu_body_label.text.contains("双击看详情"), "card codex opens as a concise responsive thumbnail grid")
 	_expect(menu_preview_box != null and _container_has_named_node(menu_preview_box, "CardCodexCategoryRail") and _container_button_text_contains(menu_preview_box, "怪兽") and _container_button_text_contains(menu_preview_box, "期货") and _container_button_text_contains(menu_preview_box, "互动") and _container_button_text_contains(menu_preview_box, "军队"), "card codex thumbnail page keeps strict card categories in a visible top chip rail")

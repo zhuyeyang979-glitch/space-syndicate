@@ -3,6 +3,34 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-04。
 
+## 2026-07-04｜图鉴退出路径与可读性修复
+
+- 修复图鉴页“看得到子页面但退不出来”的 UI 架构问题：
+  - 根因是 `MenuOverlay.present_menu_shell()` 每次打开菜单都会把 `MenuCatalogNavRow` 隐藏，旧代码只把返回按钮本身设为可见，没有重新打开父级本页导航条。
+  - 新增 `_set_catalog_local_navigation()`，统一控制图鉴上一页/下一页/返回按钮和父级导航条可见性。
+  - 图鉴大厅现在也显示本页“返回主菜单”按钮；卡牌/怪兽/商品详情仍先返回缩略图，再回来源页面。
+  - 从主桌快捷入口打开区域/卡牌图鉴时，返回目标改为“返回牌桌”，不再绕去主菜单。
+- 提高图鉴文字清晰度：
+  - `MenuOverlay` 和旧兼容刷新路径的标题、正文、提示、按钮字号整体上调。
+  - 卡牌图鉴缩略图从小字单行改为更大的卡面区域，路线/效果允许换行，效果区保留至少两行扫描空间。
+  - 卡牌详情页摘要、用途三格、属性卡、I-IV 梯度卡文字上调，减少密密麻麻的开发说明感。
+  - 角色、商品、区域、怪兽详情组件同步去除明显 8/9px 小字，抬高到更适合真人测试的字号。
+- 增加测试保护：
+  - `layout_scene_smoke_test.gd` 新增图鉴正文最低字号、本页返回按钮尺寸、卡牌缩略图尺寸、效果文本换行、卡牌详情可读字号断言。
+  - `smoke_test.gd` 新增图鉴大厅和卡牌缩略图页的本地返回按钮可见性断言。
+  - `ui_text_smoke_test.gd` 更新为检查统一本页导航 helper，而不是旧的散落按钮赋值源码片段。
+- 本轮继续统一使用 Godot 4.7：
+  - `godot --version` 为 `4.7.stable.official.5b4e0cb0f`。
+  - 本地没有发现仍存在的 `tools\godot-4.6.2` 目录；项目测试命令全部走 Godot 4.7。
+  - 已删除桌面残留的 `Godot 4.6.2.lnk` 快捷方式，避免误点旧版本。
+- 验证：
+  - `godot --headless --path . --script res://tests/layout_scene_smoke_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+  - `godot --headless --path . --script res://tests/playtest_readability_gate_test.gd` 通过。
+  - `godot --headless --path . --script res://tests/smoke_test.gd --check-only` 通过。
+  - 完整 `smoke_test.gd` 首次出现一次 AI route-plan 模拟断言波动；重跑完整 smoke 到 `finish`，未再出现 failure 输出。
+
 ## 2026-07-04｜运行桌面鼠标输入层修复
 
 - 修复真人试玩桌面里星球无法拖拽、滚轮缩放、旋转和手牌点击无反应的问题：

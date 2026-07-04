@@ -47,15 +47,15 @@ func _style_shell() -> void:
 	layout_row.add_theme_constant_override("separation", 14)
 	face_column.add_theme_constant_override("separation", 8)
 	read_column.add_theme_constant_override("separation", 10)
-	summary_title.custom_minimum_size = Vector2(92, 0)
+	summary_title.custom_minimum_size = Vector2(122, 0)
 	summary_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	summary_title.clip_text = true
 	summary_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	summary_title.add_theme_font_size_override("font_size", 13)
+	summary_title.add_theme_font_size_override("font_size", 16)
 	summary_title.add_theme_color_override("font_color", Color("#f8fafc"))
 	face_note_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	face_note_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	face_note_label.add_theme_font_size_override("font_size", 10)
+	face_note_label.add_theme_font_size_override("font_size", 12)
 	face_note_label.add_theme_color_override("font_color", Color("#94a3b8"))
 	summary_header.add_theme_constant_override("separation", 8)
 	summary_header_chip_rail.add_theme_constant_override("h_separation", 5)
@@ -63,11 +63,11 @@ func _style_shell() -> void:
 	summary_chip_rail.add_theme_constant_override("h_separation", 5)
 	summary_chip_rail.add_theme_constant_override("v_separation", 4)
 	summary_effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	summary_effect_label.add_theme_font_size_override("font_size", 10)
+	summary_effect_label.add_theme_font_size_override("font_size", 13)
 	summary_effect_label.add_theme_color_override("font_color", Color("#e5e7eb"))
 	read_order_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	read_order_label.add_theme_font_size_override("font_size", 9)
-	tactical_title.add_theme_font_size_override("font_size", 11)
+	read_order_label.add_theme_font_size_override("font_size", 12)
+	tactical_title.add_theme_font_size_override("font_size", 14)
 	tactical_title.add_theme_color_override("font_color", Color("#fef3c7"))
 	tactical_grid.columns = 3
 	tactical_grid.add_theme_constant_override("h_separation", 6)
@@ -76,7 +76,7 @@ func _style_shell() -> void:
 	fact_grid.add_theme_constant_override("h_separation", 10)
 	fact_grid.add_theme_constant_override("v_separation", 10)
 	upgrade_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	upgrade_title.add_theme_font_size_override("font_size", 13)
+	upgrade_title.add_theme_font_size_override("font_size", 16)
 	upgrade_title.add_theme_color_override("font_color", Color("#fde68a"))
 	upgrade_ladder.columns = 4
 	upgrade_ladder.add_theme_constant_override("h_separation", 8)
@@ -116,8 +116,8 @@ func _render_summary(entry_variant: Variant, fallback_accent: Color) -> void:
 	summary_panel.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 8))
 	summary_title.text = str(entry.get("title", "扫牌顺序"))
 	summary_title.tooltip_text = str(entry.get("title_tooltip", "卡牌详情页先扫摘要，不需要先读完整规则。"))
-	_render_chips(summary_header_chip_rail, entry.get("header_chips", []), "CardCodexTcgSummaryChip", 9)
-	_render_chips(summary_chip_rail, entry.get("chips", []), "CardCodexTcgSummaryChip", 9)
+	_render_chips(summary_header_chip_rail, entry.get("header_chips", []), "CardCodexTcgSummaryChip", 11)
+	_render_chips(summary_chip_rail, entry.get("chips", []), "CardCodexTcgSummaryChip", 11)
 	summary_effect_label.text = str(entry.get("effect", ""))
 	summary_effect_label.tooltip_text = str(entry.get("effect_tooltip", ""))
 	read_order_label.text = str(entry.get("read_order", "读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV升级"))
@@ -186,10 +186,10 @@ func _add_chip(parent: Container, entry: Dictionary, chip_name: String, font_siz
 	var accent := _dictionary_color(entry, "accent", Color("#94a3b8"))
 	var fg := _dictionary_color(entry, "fg", accent.lightened(0.16))
 	var bg := _dictionary_color(entry, "bg", Color("#020617").lerp(accent, 0.16))
-	var chip_width := clampf(float(text.length()) * float(font_size) * 0.70 + 16.0, 28.0, 146.0)
+	var chip_width := clampf(float(text.length()) * float(font_size) * 0.70 + 18.0, 34.0, 178.0)
 	var chip := PanelContainer.new()
 	chip.name = chip_name
-	chip.custom_minimum_size = Vector2(chip_width, 22)
+	chip.custom_minimum_size = Vector2(chip_width, 26)
 	chip.tooltip_text = str(entry.get("tooltip", entry.get("tip", "")))
 	chip.add_theme_stylebox_override("panel", _card_style(accent, bg, 1, 8))
 	parent.add_child(chip)
@@ -209,7 +209,7 @@ func _add_tactical_card(entry: Dictionary) -> void:
 	var accent := _dictionary_color(entry, "accent", Color("#94a3b8"))
 	var card := PanelContainer.new()
 	card.name = "CardCodexTacticalCard"
-	card.custom_minimum_size = Vector2(0, 72)
+	card.custom_minimum_size = Vector2(0, 88)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.tooltip_text = str(entry.get("tooltip", entry.get("tip", "")))
 	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.12), 1, 8))
@@ -224,13 +224,13 @@ func _add_tactical_card(entry: Dictionary) -> void:
 	tick.color = accent.lightened(0.12)
 	tick.custom_minimum_size = Vector2(0, 3)
 	box.add_child(tick)
-	var title := _label(str(entry.get("title", "")), 9, accent.lightened(0.18))
+	var title := _label(str(entry.get("title", "")), 11, accent.lightened(0.18))
 	title.name = "CardCodexTacticalCardTitle"
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(title)
 	var body_text := str(entry.get("body", ""))
-	var body := _label(_short_text(body_text, 46), 8, Color("#e5e7eb"))
+	var body := _label(_short_text(body_text, 56), 10, Color("#e5e7eb"))
 	body.name = "CardCodexTacticalCardBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = body_text
@@ -256,18 +256,18 @@ func _add_info_card(parent: Container, entry: Dictionary, node_name: String) -> 
 	tick.color = accent.lightened(0.12)
 	tick.custom_minimum_size = Vector2(0, 3)
 	box.add_child(tick)
-	var title := _label(str(entry.get("title", "")), 11, accent.lightened(0.18))
+	var title := _label(str(entry.get("title", "")), 13, accent.lightened(0.18))
 	title.name = "%sTitle" % node_name
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(title)
-	var body := _label(str(entry.get("body", "")), 10, Color("#e5e7eb"))
+	var body := _label(str(entry.get("body", "")), 12, Color("#e5e7eb"))
 	body.name = "%sBody" % node_name
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = str(entry.get("body_tooltip", body.text))
 	box.add_child(body)
 	var meta_text := str(entry.get("meta", ""))
 	if meta_text != "":
-		var meta := _label(meta_text, 8, Color("#94a3b8"))
+		var meta := _label(meta_text, 10, Color("#94a3b8"))
 		meta.name = "%sMeta" % node_name
 		meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(meta)
@@ -277,7 +277,7 @@ func _add_upgrade_card(entry: Dictionary) -> void:
 	var accent := _dictionary_color(entry, "accent", Color("#facc15"))
 	var panel := PanelContainer.new()
 	panel.name = "CardCodexUpgradeStepCard"
-	panel.custom_minimum_size = Vector2(0, 116)
+	panel.custom_minimum_size = Vector2(0, 136)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.tooltip_text = str(entry.get("tooltip", ""))
 	panel.set_meta("card_codex_upgrade_ladder_step", true)
@@ -303,7 +303,7 @@ func _add_upgrade_card(entry: Dictionary) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(spacer)
-	var price := _label(str(entry.get("price", "")), 10, Color("#fef3c7"))
+	var price := _label(str(entry.get("price", "")), 12, Color("#fef3c7"))
 	price.name = "CardCodexUpgradePrice"
 	price.custom_minimum_size = Vector2(46, 0)
 	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -312,13 +312,13 @@ func _add_upgrade_card(entry: Dictionary) -> void:
 	price.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	price.tooltip_text = str(entry.get("price_tooltip", "购买仍按该系列I级价格体系展示；重复获得会自动合成升级。"))
 	header.add_child(price)
-	var band := _label(str(entry.get("band", "")), 9, accent.lightened(0.18))
+	var band := _label(str(entry.get("band", "")), 11, accent.lightened(0.18))
 	band.name = "CardCodexUpgradeBudgetBand"
 	band.autowrap_mode = TextServer.AUTOWRAP_OFF
 	band.clip_text = true
 	band.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(band)
-	var body := _label(_short_text(str(entry.get("body", "")), 62), 9, Color("#e5e7eb"))
+	var body := _label(_short_text(str(entry.get("body", "")), 72), 11, Color("#e5e7eb"))
 	body.name = "CardCodexUpgradeStepBody"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.tooltip_text = str(entry.get("body_tooltip", entry.get("body", "")))

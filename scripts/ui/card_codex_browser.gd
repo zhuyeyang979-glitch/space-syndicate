@@ -67,11 +67,11 @@ func set_preview(data_variant: Variant) -> void:
 	margin.add_child(row)
 	var title := Label.new()
 	title.name = "CardCodexHoverPreviewTitle"
-	title.custom_minimum_size = Vector2(176, 0)
+	title.custom_minimum_size = Vector2(210, 0)
 	title.text = title_text
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_font_size_override("font_size", 15)
 	title.add_theme_color_override("font_color", accent.lightened(0.2))
 	row.add_child(title)
 	var body := Label.new()
@@ -79,7 +79,7 @@ func set_preview(data_variant: Variant) -> void:
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.text = body_text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_theme_font_size_override("font_size", 11)
+	body.add_theme_font_size_override("font_size", 14)
 	body.add_theme_color_override("font_color", Color("#dbeafe"))
 	row.add_child(body)
 
@@ -102,7 +102,7 @@ func _add_filter(entry: Dictionary) -> void:
 	button.toggle_mode = true
 	button.button_pressed = bool(entry.get("active", false))
 	button.disabled = bool(entry.get("disabled", false))
-	button.custom_minimum_size = Vector2(86, 28)
+	button.custom_minimum_size = Vector2(104, 34)
 	_style_button(button, _dictionary_color(entry, "accent", Color("#93c5fd")))
 	if filter_id != "":
 		button.pressed.connect(func() -> void:
@@ -126,7 +126,7 @@ func _add_card(entry: Dictionary) -> void:
 	var selected := bool(entry.get("selected", false))
 	var panel := PanelContainer.new()
 	panel.name = "CardCodexThumbnailCard"
-	panel.custom_minimum_size = Vector2(146, 204)
+	panel.custom_minimum_size = Vector2(168, 236)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -145,13 +145,14 @@ func _add_card(entry: Dictionary) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	margin.add_child(box)
-	var title := _label(str(entry.get("title", card_name)), 10, Color("#f8fafc"))
+	var title := _label(str(entry.get("title", card_name)), 12, Color("#f8fafc"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.tooltip_text = str(entry.get("title_tooltip", title.text))
 	box.add_child(title)
 	var art := PanelContainer.new()
 	art.name = "CardCodexThumbnailArt"
-	art.custom_minimum_size = Vector2(0, 76)
+	art.custom_minimum_size = Vector2(0, 88)
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art.set_meta("card_codex_thumbnail_uses_shared_art_view", true)
 	art.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.20), 1, 8))
@@ -160,7 +161,7 @@ func _add_card(entry: Dictionary) -> void:
 	art.add_child(art_margin)
 	var art_view := CardArtViewScript.new() as Control
 	art_view.name = "CardCodexThumbnailArtView"
-	art_view.custom_minimum_size = Vector2(0, 66)
+	art_view.custom_minimum_size = Vector2(0, 78)
 	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	art_view.set_meta("card_codex_thumbnail_visual_theme", "shared-card-art-night-patrol-frame")
@@ -177,23 +178,24 @@ func _add_card(entry: Dictionary) -> void:
 			str(entry.get("card_art_stats", entry.get("card_stats", "")))
 		)
 	_render_chips(box, entry.get("chips", []))
-	var route := _label(str(entry.get("route", "")), 8, accent.lightened(0.18))
+	var route := _label(str(entry.get("route", "")), 10, accent.lightened(0.18))
 	route.name = "CardCodexThumbnailRouteBand"
 	route.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	route.autowrap_mode = TextServer.AUTOWRAP_OFF
-	route.clip_text = true
+	route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	route.clip_text = false
 	route.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	route.tooltip_text = str(entry.get("route_tooltip", ""))
 	box.add_child(route)
-	var effect := _label(str(entry.get("effect", "")), 8, Color("#dbeafe"))
+	var effect := _label(str(entry.get("effect", "")), 10, Color("#dbeafe"))
 	effect.name = "CardCodexThumbnailEffectLine"
 	effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	effect.autowrap_mode = TextServer.AUTOWRAP_OFF
-	effect.clip_text = true
+	effect.custom_minimum_size = Vector2(0, 34)
+	effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	effect.clip_text = false
 	effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	effect.tooltip_text = str(entry.get("effect_tooltip", ""))
 	box.add_child(effect)
-	var hint := _label(str(entry.get("hint", "悬停预览｜双击详情")), 8, Color("#94a3b8"))
+	var hint := _label(str(entry.get("hint", "悬停预览｜双击详情")), 10, Color("#94a3b8"))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(hint)
 
@@ -223,9 +225,9 @@ func _add_chip(parent: Container, entry: Dictionary) -> void:
 	chip.tooltip_text = str(entry.get("tooltip", ""))
 	chip.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 8))
 	parent.add_child(chip)
-	var margin := _margin(5, 1, 5, 1)
+	var margin := _margin(6, 2, 6, 2)
 	chip.add_child(margin)
-	var label := _label(text, 8, _dictionary_color(entry, "fg", accent.lightened(0.18)))
+	var label := _label(text, 10, _dictionary_color(entry, "fg", accent.lightened(0.18)))
 	label.tooltip_text = chip.tooltip_text
 	margin.add_child(label)
 
@@ -244,9 +246,9 @@ func _on_card_input(event: InputEvent, card_name: String) -> void:
 
 
 func _style_shell() -> void:
-	category_legend.add_theme_font_size_override("font_size", 10)
+	category_legend.add_theme_font_size_override("font_size", 13)
 	category_legend.add_theme_color_override("font_color", Color("#fde68a"))
-	page_label.add_theme_font_size_override("font_size", 12)
+	page_label.add_theme_font_size_override("font_size", 14)
 	page_label.add_theme_color_override("font_color", Color("#bfdbfe"))
 	page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_style_button(previous_button, Color("#93c5fd"))
@@ -260,6 +262,7 @@ func _style_button(button: Button, accent: Color) -> void:
 	button.add_theme_stylebox_override("disabled", _card_style(Color("#334155"), Color("#020617"), 1, 8))
 	button.add_theme_color_override("font_color", Color("#f8fafc"))
 	button.add_theme_color_override("font_disabled_color", Color("#64748b"))
+	button.add_theme_font_size_override("font_size", 13)
 
 
 func _label(text: String, font_size: int, color: Color) -> Label:

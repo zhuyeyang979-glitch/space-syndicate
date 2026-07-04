@@ -113,10 +113,10 @@ func refresh_menu_layout(viewport_size: Vector2 = Vector2.ZERO, root_table_menu:
 	shell_margin.add_theme_constant_override("margin_right", horizontal_margin)
 	shell_margin.add_theme_constant_override("margin_top", vertical_margin)
 	shell_margin.add_theme_constant_override("margin_bottom", vertical_margin)
-	title_label.add_theme_font_size_override("font_size", 30 if root_table_menu and compact else (44 if root_table_menu and wide else (38 if root_table_menu else (22 if compact_page else (24 if compact else (34 if wide else 31))))))
-	context_label.add_theme_font_size_override("font_size", 10 if compact else 11)
-	hint_label.add_theme_font_size_override("font_size", 9 if compact else 10)
-	body_label.add_theme_font_size_override("font_size", 13 if compact else 15)
+	title_label.add_theme_font_size_override("font_size", 30 if root_table_menu and compact else (44 if root_table_menu and wide else (38 if root_table_menu else (28 if compact_page else (29 if compact else (36 if wide else 33))))))
+	context_label.add_theme_font_size_override("font_size", 12 if compact else 13)
+	hint_label.add_theme_font_size_override("font_size", 12 if compact else 13)
+	body_label.add_theme_font_size_override("font_size", 16 if compact else 17)
 	content_box.size_flags_vertical = Control.SIZE_EXPAND_FILL if root_table_menu else Control.SIZE_FILL
 	preview_box.size_flags_vertical = Control.SIZE_EXPAND_FILL if root_table_menu else Control.SIZE_FILL
 	preview_box.custom_minimum_size = Vector2(0, maxf(430.0, viewport_size.y - 210.0)) if root_table_menu else Vector2.ZERO
@@ -124,7 +124,8 @@ func refresh_menu_layout(viewport_size: Vector2 = Vector2.ZERO, root_table_menu:
 	quick_nav_row.add_theme_constant_override("separation", 4 if compact else 8)
 	catalog_nav_row.add_theme_constant_override("separation", 6 if compact else 8)
 	for button in [continue_button, back_button, catalog_prev_button, catalog_next_button, catalog_back_button]:
-		button.custom_minimum_size = Vector2(108 if compact else 124, 32 if compact else 34)
+		button.custom_minimum_size = Vector2(136 if compact else 152, 40 if compact else 44)
+		button.add_theme_font_size_override("font_size", 14 if compact else 16)
 
 
 func _connect_buttons() -> void:
@@ -168,6 +169,7 @@ func _style_button(button: Button, accent: Color, primary: bool = false) -> void
 	button.add_theme_stylebox_override("disabled", _card_style(Color("#334155"), Color("#020617"), 1, 8))
 	button.add_theme_color_override("font_color", Color("#f8fafc"))
 	button.add_theme_color_override("font_disabled_color", Color("#64748b"))
+	button.add_theme_font_size_override("font_size", 15)
 
 
 func _card_style(accent: Color, fill: Color, border_width: int, radius: int) -> StyleBoxFlat:
