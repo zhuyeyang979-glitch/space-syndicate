@@ -106,7 +106,13 @@ func _compact_phase_goal(phase: Dictionary, fallback: String) -> String:
 		"build_city":
 			return "建第一座城市。"
 		"open_rack":
-			return "打开区域牌架。"
+			return "双击亮起区域。"
+		"compare_cards":
+			return "悬停牌看用途。"
+		"buy_pressure":
+			return "点右下可买牌。"
+		"discard_private":
+			return "私密选旧牌。"
 		"buy_card":
 			return "买一张牌。"
 		"play_card":
@@ -165,13 +171,13 @@ func _shortest_action_text(phase: Dictionary, focus_target: String) -> String:
 		"build_city":
 			return "看行动区，点城市化。"
 		"open_rack":
-			return "定位到区域，打开牌架。"
+			return "双击亮起区域。"
 		"compare_cards":
-			return "看牌架，悬停一张牌。"
+			return "悬停牌看用途。"
 		"buy_pressure", "buy_card":
-			return "看牌架，买可购买的牌。"
+			return "点右下可买牌。"
 		"discard_private":
-			return "在私密窗口选一张旧牌。"
+			return "私密选旧牌。"
 		"play_card":
 			return "看手牌，打出可用牌。"
 		"select_track_card", "select_anonymous_card":

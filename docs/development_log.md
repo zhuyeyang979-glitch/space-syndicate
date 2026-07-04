@@ -3,6 +3,25 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-04。
 
+## 2026-07-04｜牌架课程指引改成真人动作句
+
+- 修复新手战役“牌架课程：补给与手牌”第 3 步过于抽象的问题：
+  - 四个阶段从概念句改为短动作句：`双击亮起区域。`、`悬停牌看用途。`、`点右下可买牌。`、`私密选旧牌。`
+  - 每步增加 `detail`，把“为什么/在哪里/按钮不可用时怎么办”放进 tooltip，而不是挤在主桌卡片里。
+  - `ScenarioCoachSnapshot` 的紧凑模式补齐 `compare_cards / buy_pressure / discard_private`，并把区域牌架的通用短句改成真实动作。
+  - 强卡住态的最短动作文案同步使用这些动作句，避免“定位下一步”只把玩家带到一块发光区域却不告诉怎么操作。
+- 新增 `tests/scenario_smoke_test.gd` 护栏：
+  - 校验 `market_hand` 四个阶段在战役紧凑卡片里必须输出具体短动作。
+  - 校验普通 tooltip 必须保留“点/双击/鼠标/选择/右下/私密”等可操作提示。
+
+### 本轮验证
+
+- `godot --headless --path . --script res://tests/scenario_smoke_test.gd` 先按预期失败，改动后通过。
+- `godot --headless --path . --script res://tests/ui_text_smoke_test.gd` 通过。
+- `godot --headless --path . --script res://tests/playtest_readability_gate_test.gd` 通过。
+- `godot --headless --path . --script res://tests/visual_snapshot.gd` 通过。
+- `godot --headless --path . --script res://tests/smoke_test.gd --check-only` exit 0。
+
 ## 2026-07-04｜图鉴退出路径与可读性修复
 
 - 修复图鉴页“看得到子页面但退不出来”的 UI 架构问题：

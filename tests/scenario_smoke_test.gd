@@ -46,6 +46,7 @@ func _run() -> void:
 	var empty_coach_snapshot: Dictionary = COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({}).to_ui_dictionary()
 	_expect(not bool(empty_coach_snapshot.get("visible", true)), "scenario coach hides empty default state instead of showing placeholder objective text")
 	_expect(str(empty_coach_snapshot.get("goal", "")).strip_edges() == "", "empty scenario coach has no placeholder goal")
+	_check_market_hand_coach_actions(scenarios)
 	var coach_source: Dictionary = first_fixture.get("coach", {}) as Dictionary
 	coach_source["font_scale_percent"] = 110
 	coach_source["failed_attempts"] = 1
@@ -92,6 +93,53 @@ func _actions_include_id(value: Variant, action_id: String) -> bool:
 			continue
 		var action: Dictionary = action_variant
 		if str(action.get("id", "")) == action_id:
+			return true
+	return false
+
+
+func _check_market_hand_coach_actions(scenarios: Array) -> void:
+	var market_hand := _scenario_by_id(scenarios, "market_hand")
+	_expect(not market_hand.is_empty(), "market-hand tutorial scenario exists for coach action-copy checks")
+	var expected_compact_goals := {
+		"open_rack": "双击亮起区域。",
+		"compare_cards": "悬停牌看用途。",
+		"buy_pressure": "点右下可买牌。",
+		"discard_private": "私密选旧牌。",
+	}
+	var phases: Array = market_hand.get("phases", []) if market_hand.get("phases", []) is Array else []
+	for phase_variant in phases:
+		if not (phase_variant is Dictionary):
+			continue
+		var phase: Dictionary = phase_variant
+		var phase_id := str(phase.get("id", "")).strip_edges()
+		if not expected_compact_goals.has(phase_id):
+			continue
+		var snapshot: Dictionary = COACH_SNAPSHOT_SCRIPT.new().apply_dictionary({
+			"scenario_id": "market_hand",
+			"title": "新手战役｜牌架课程：补给与手牌",
+			"current_phase": phase,
+			"current_index": expected_compact_goals.keys().find(phase_id),
+			"total": expected_compact_goals.size(),
+			"campaign_focus_mode": true,
+		}).to_ui_dictionary()
+		_expect(str(snapshot.get("goal", "")) == str(expected_compact_goals[phase_id]), "market-hand compact coach step %s is a concrete short action" % phase_id)
+		var tooltip := str((snapshot.get("primary_action", {}) as Dictionary).get("tooltip", ""))
+		_expect(_contains_any(tooltip, ["双击", "鼠标", "点", "选择", "右下", "私密"]), "market-hand compact coach step %s keeps concrete help in tooltip" % phase_id)
+
+
+func _scenario_by_id(scenarios: Array, scenario_id: String) -> Dictionary:
+	for scenario_variant in scenarios:
+		if not (scenario_variant is Dictionary):
+			continue
+		var scenario: Dictionary = scenario_variant
+		if str(scenario.get("id", "")).strip_edges() == scenario_id:
+			return scenario
+	return {}
+
+
+func _contains_any(text: String, needles: Array) -> bool:
+	for needle in needles:
+		if text.contains(str(needle)):
 			return true
 	return false
 
