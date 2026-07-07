@@ -7,6 +7,8 @@
 # Export output
 exports/
 builds/
+output/
+tmp/
 
 # OS/editor noise
 .DS_Store
