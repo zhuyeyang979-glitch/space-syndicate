@@ -6207,10 +6207,10 @@ func _restart_active_scenario_from_pause() -> void:
 
 func _open_rules_menu() -> void:
 	var lines := []
-	lines.append("目标：最后钱最多。")
-	lines.append("开局：公开角色，匿名首召怪兽。")
-	lines.append("循环：建城赚钱，买牌扩张，匿名出牌，读线索。")
-	lines.append("操作：滚轮缩放｜拖拽地图｜双击区域看牌｜Space暂停。")
+	lines.append("读桌顺序：钱 → 城 → 牌 → 怪兽 → 线索。")
+	lines.append("开局：公开角色，选起始怪兽，先把怪兽压到星球。")
+	lines.append("赚钱：城市化份额吃GDP；商品、商路和破坏会改现金流。")
+	lines.append("出牌：买牌花钱，打牌看商品流动；公开牌轨留下线索。")
 	_show_menu(
 		"游戏规则",
 		"\n".join(lines),
@@ -6263,8 +6263,8 @@ func _tutorial_quick_start_snapshot() -> Dictionary:
 			{"title": "2｜建第一城", "body": "找陆地，花¥%d城市化。" % CITY_BUILD_COST, "meta": "城市产现金流。", "accent": Color("#4ade80")},
 			{"title": "3｜看区域牌架", "body": "双击区域看卡牌。", "meta": "能看不等于能买。", "accent": Color("#38bdf8")},
 			{"title": "4｜买第一张牌", "body": "花钱买一张能用的牌。", "meta": "重复牌升级。", "accent": Color("#facc15")},
-			{"title": "5｜打匿名牌", "body": "满足筹码条件后打出。", "meta": "亮牌不亮人。", "accent": Color("#c084fc")},
-			{"title": "6｜读公共牌轨", "body": "看顶部牌槽。", "meta": "可猜牌主。", "accent": Color("#f472b6")},
+			{"title": "5｜打第一牌", "body": "满足条件后打出。", "meta": "进公开牌轨。", "accent": Color("#c084fc")},
+			{"title": "6｜读牌轨", "body": "看顶部牌槽。", "meta": "猜谁打的。", "accent": Color("#f472b6")},
 			{"title": "7｜看经济/情报", "body": "查钱从哪来。", "meta": "用公开结果推理。", "accent": Color("#2dd4bf")},
 			{"title": "8｜终局冲刺", "body": "达标后沙漏结算。", "meta": "按钱排名。", "accent": Color("#fb923c")},
 		],
@@ -6309,23 +6309,27 @@ func _add_rules_quick_reference_board(parent: Container) -> void:
 
 func _rules_quick_reference_snapshot() -> Dictionary:
 	return {
-		"title": "规则速览",
-		"title_tooltip": "3分钟层的规则页通道；主桌不常驻长规则，完整解释只放在规则页。",
-		"tooltip": "规则速查板：先看目标、流程、隐私边界和模块卡，再读正文细则。",
+		"title": "牌桌规则速览",
+		"title_tooltip": "游戏内规则页：按桌游读桌顺序解释本局怎么行动，不显示开发说明。",
+		"tooltip": "规则速查板：先看怎么赢、开局做什么、钱怎么来、牌怎么用和线索怎么读。",
 		"accent": Color("#93c5fd"),
 		"kpi_columns": _menu_summary_grid_columns(),
 		"module_columns": clampi(int(floor(_menu_available_content_width() / 250.0)), 1, 4),
 		"chips": [
-			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "终局按总钱排名。"},
-			{"text": "主桌不背规则", "accent": Color("#93c5fd"), "tooltip": "主桌只保留能行动的短提示。"},
-			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "对手现金、手牌和身份线索不直接公开。"},
-			{"text": "卡面关键词", "accent": Color("#38bdf8"), "tooltip": "卡牌用符号筹码承载常见规则；本页附录解释这些关键词。"},
+			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "达到现金目标后开终局沙漏，结束按钱排名。"},
+			{"text": "先看钱城牌怪", "accent": Color("#93c5fd"), "tooltip": "读桌顺序：钱、城市、手牌/牌轨、怪兽/军队、公开线索。"},
+			{"text": "主桌不背规则", "accent": Color("#38bdf8"), "tooltip": "主桌只保留当下能点的短提示；细则进规则页。"},
+			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "对手现金、手牌、弃牌和计划不直接显示。"},
 		],
 		"kpis": [
-			{"title": "胜利目标", "body": "最后钱最多。", "meta": "都落到现金。", "accent": Color("#fef3c7")},
-			{"title": "第一轮", "body": "首召 → 建城 → 买牌 → 出牌。", "meta": "卡住看引导。", "accent": Color("#38bdf8")},
-			{"title": "信息边界", "body": "公开结果，隐藏归属。", "meta": "靠牌轨推理。", "accent": Color("#c084fc")},
-			{"title": "终局", "body": "达标后开沙漏。", "meta": "沙漏完按钱排。", "accent": Color("#fb923c")},
+			{"title": "我怎么赢？", "body": "终局沙漏后钱最多。", "meta": "现金归零出局。", "accent": Color("#fef3c7")},
+			{"title": "开局先做？", "body": "首召怪兽，建第一城。", "meta": "再看区域牌架。", "accent": Color("#38bdf8")},
+			{"title": "为什么建城？", "body": "城市化份额产GDP。", "meta": "GDP按秒变钱。", "accent": Color("#4ade80")},
+			{"title": "怎么买/出牌？", "body": "买牌花钱，出牌看流动。", "meta": "重复牌升级。", "accent": Color("#facc15")},
+			{"title": "怪兽为何重要？", "body": "它决定哪里能买牌。", "meta": "也会破坏GDP。", "accent": Color("#fb7185")},
+			{"title": "怎么读线索？", "body": "看牌轨、竞价、损伤。", "meta": "猜城市和牌主。", "accent": Color("#c084fc")},
+			{"title": "GDP怎么变？", "body": "生产、需求、运输相乘。", "meta": "破坏会拖慢。", "accent": Color("#2dd4bf")},
+			{"title": "何时结束？", "body": "有人达标开沙漏。", "meta": "沙漏完结算。", "accent": Color("#fb923c")},
 		],
 		"keyword_title": "卡面符号｜看手牌先认这些",
 		"keyword_legend": [
@@ -6334,21 +6338,27 @@ func _rules_quick_reference_snapshot() -> Dictionary:
 			{"symbol": "◆", "label": "怪兽", "body": "召唤、诱导或指定怪兽。", "accent": Color("#fb7185")},
 			{"symbol": "◎", "label": "玩家/目标", "body": "需要指定玩家或对象。", "accent": Color("#c084fc")},
 			{"symbol": "⇄", "label": "合约/商路", "body": "连接供给、需求和运输。", "accent": Color("#2dd4bf")},
+			{"symbol": "⏳", "label": "持续/沙漏", "body": "按秒生效或进入倒计时。", "accent": Color("#fb923c")},
+			{"symbol": "％", "label": "份额/下注", "body": "城市份额或按现金比例下注。", "accent": Color("#fef08a")},
 			{"symbol": "一次", "label": "一次性牌", "body": "进入牌轨后结算离手。", "accent": Color("#94a3b8")},
 			{"symbol": "固定", "label": "固定技能", "body": "可重复用，有冷却。", "accent": Color("#fde68a")},
 		],
-		"module_title": "牌桌模块｜先看图标，再查细节",
+		"module_title": "牌桌模块｜像桌游一样按区读",
 		"modules": [
 			{"title": "◆ 怪兽", "body": "开局先首召。", "meta": "附近可买牌。", "accent": Color("#fb7185")},
-			{"title": "▣ 城市", "body": "陆地花¥%d城市化。" % CITY_BUILD_COST, "meta": "GDP按秒进账。", "accent": Color("#4ade80")},
-			{"title": "＋ 牌架", "body": "双击区域看牌。", "meta": "开架锁资格。", "accent": Color("#38bdf8")},
-			{"title": "◎ 匿名牌", "body": "亮牌不亮人。", "meta": "条件会留线索。", "accent": Color("#c084fc")},
+			{"title": "▣ 城市化", "body": "花¥%d建份额。" % CITY_BUILD_COST, "meta": "按GDP分钱。", "accent": Color("#4ade80")},
+			{"title": "＋ 牌架", "body": "双击区域看牌。", "meta": "怪兽在旁才能买。", "accent": Color("#38bdf8")},
+			{"title": "◎ 公开牌轨", "body": "亮牌，不亮玩家。", "meta": "条件会留线索。", "accent": Color("#c084fc")},
 			{"title": "¥ 报价", "body": "多人出牌先竞价。", "meta": "金额公开。", "accent": Color("#facc15")},
-			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇会停表下注。", "meta": "押中分奖池。", "accent": Color("#fb923c")},
+			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇停表下注。", "meta": "按现金比例押。", "accent": Color("#fb923c")},
 			{"title": "⇄ 合约", "body": "连接供给和需求。", "meta": "签拒都留线索。", "accent": Color("#2dd4bf")},
-			{"title": "☄ 天气/GDP", "body": "天气改现金流。", "meta": "看预报筹码。", "accent": Color("#93c5fd")},
+			{"title": "⚔ 军队", "body": "短期受控战力。", "meta": "能守城或压制。", "accent": Color("#a3e635")},
+			{"title": "☄ 天气", "body": "预报后影响区域。", "meta": "提前调整路线。", "accent": Color("#93c5fd")},
+			{"title": "📈 金融", "body": "买涨/做空GDP。", "meta": "看一段时间变化。", "accent": Color("#f472b6")},
+			{"title": "🕵 情报", "body": "查归属或缩嫌疑。", "meta": "错猜要付钱。", "accent": Color("#c084fc")},
+			{"title": "🌊 商品/商路", "body": "供需和运输定价。", "meta": "路线坏会减收。", "accent": Color("#2dd4bf")},
 		],
-		"footer": "主桌只显示当前能做什么。",
+		"footer": "这页解释怎么玩；主桌只显示当前能点什么。",
 	}
 
 
