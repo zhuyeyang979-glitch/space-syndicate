@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="SpaceSyndicateRulesetProfileV05" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/rules/space_syndicate_ruleset_profile_v05.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+ruleset_id = "v0.5"
+profile_schema_version = 1
+currency_scale = 100
+region_control_threshold_bp = 3000
+victory_depth_table = {
+"I": {"depth": 90, "regions": 3},
+"II": {"depth": 130, "regions": 4},
+"III": {"depth": 180, "regions": 5},
+"IV": {"depth": 230, "regions": 6},
+"V": {"depth": 290, "regions": 7},
+"VI": {"depth": 360, "regions": 8}
+}
+qualification_seconds = 10
+audit_seconds = 120
+audit_failure_cooldown_seconds = 30
+industry_capacity_thresholds = Array[int]([15, 40, 80, 140])
+card_group_seconds = 8
+organize_seconds = 6
+lock_seconds = 2
+tutorial_group_card_limit = 1
+standard_group_card_limit = 2
+priority_bid_options_cents = Array[int]([0, 5000, 10000])
+ordinary_hand_limit = 5
+maximum_card_rank = 4
+purchase_window_seconds = 12
+local_purchase_price_bp = 8000
+adjacent_purchase_price_bp = 10000
+contract_response_seconds = 8
+monster_warning_seconds = 5
+monster_wager_seconds = 8
+monster_wager_min_rate_bp = 500
+monster_wager_max_rate_bp = 1000
+battle_limit_quick = 30
+battle_limit_standard = 45
+battle_limit_expert = 60
+intel_stake_cents = 10000
+intel_correct_net_reward_cents = 10000
+intel_tracking_seconds = 60
+weather_forecast_seconds = 90
+weather_duration_seconds = 90
+financial_distress_seconds = 20
+project_slot_counts = {"commerce": 1, "demand": 2, "production": 2}
+maximum_project_rank = 4
+realtime_income_enabled = true
+direct_city_build_allowed = false
+private_plan_enabled = false
+end_turn_enabled = false
+player_pipeline_building_enabled = false
+standard_market_noise_enabled = false

@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="CardRuntimeCatalogV05Resource" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_catalog_v05_resource.gd" id="1_catalog"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_rank_v05_resource.gd" id="2_rank"]
+
+[sub_resource type="Resource" id="Card_city_financing_1"]
+script = ExtResource("2_rank")
+schema_version = "v0.5"
+card_id = "城市融资1"
+family_id = "城市融资"
+rank = 1
+source_v04_card_id = "城市融资1"
+migration_status = "blocked"
+blocking_reason = "v0.5 产业费用与项目槽目标尚未完成内容审定。"
+release_ready = false
+public_pool = false
+
+[sub_resource type="Resource" id="Card_product_reroute_1"]
+script = ExtResource("2_rank")
+schema_version = "v0.5"
+card_id = "商品换线1"
+family_id = "商品换线"
+rank = 1
+source_v04_card_id = "商品换线1"
+migration_status = "blocked"
+blocking_reason = "v0.5 航运产能与具名商品条件尚未完成内容审定。"
+release_ready = false
+public_pool = false
+
+[sub_resource type="Resource" id="Card_lure_signal_1"]
+script = ExtResource("2_rank")
+schema_version = "v0.5"
+card_id = "诱导电波1"
+family_id = "诱导电波"
+rank = 1
+source_v04_card_id = "诱导电波1"
+migration_status = "blocked"
+blocking_reason = "v0.5 能源或科技产能费用尚未由产品规则确认。"
+release_ready = false
+public_pool = false
+
+[sub_resource type="Resource" id="Card_owner_lens_1"]
+script = ExtResource("2_rank")
+schema_version = "v0.5"
+card_id = "业主透镜1"
+family_id = "业主透镜"
+rank = 1
+source_v04_card_id = "业主透镜1"
+migration_status = "blocked"
+blocking_reason = "旧城市 owner 竞猜语义必须重写为具体商品项目控制者情报后才能迁移。"
+release_ready = false
+public_pool = false
+
+[sub_resource type="Resource" id="Card_emergency_repair_1"]
+script = ExtResource("2_rank")
+schema_version = "v0.5"
+card_id = "应急修复1"
+family_id = "应急修复"
+rank = 1
+source_v04_card_id = "应急修复1"
+migration_status = "blocked"
+blocking_reason = "普通修复与 v0.5 区域复兴的作用边界尚未完成内容审定。"
+release_ready = false
+public_pool = false
+
+[resource]
+script = ExtResource("1_catalog")
+schema_version = "v0.5"
+cards = Array[Resource]([SubResource("Card_city_financing_1"), SubResource("Card_product_reroute_1"), SubResource("Card_lure_signal_1"), SubResource("Card_owner_lens_1"), SubResource("Card_emergency_repair_1")])
+release_ready_card_ids = Array[String]([])
+public_pool_card_ids = Array[String]([])

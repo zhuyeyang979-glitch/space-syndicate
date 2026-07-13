@@ -1,0 +1,77 @@
+[gd_scene format=3 uid="uid://5rc6ytj7m4ra"]
+
+[ext_resource type="Script" path="res://scripts/tools/ruleset_v05_foundation_bench.gd" id="1_fpss4"]
+
+[node name="RulesetV05FoundationBench" type="Control" unique_id=1707005925]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_fpss4")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1626983733]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.035, 0.047, 0.066, 1)
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1565645816]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 24.0
+offset_right = -28.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Layout" type="VBoxContainer" parent="Margin" unique_id=126878167]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleLabel" type="Label" parent="Margin/Layout" unique_id=1677294068]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.94, 1, 1)
+theme_override_font_sizes/font_size = 26
+text = "Ruleset v0.5 Foundation"
+
+[node name="SubtitleLabel" type="Label" parent="Margin/Layout" unique_id=702000132]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.52, 0.65, 0.76, 1)
+theme_override_font_sizes/font_size = 14
+text = "Inactive authoring and migration contracts. Production remains v0.4."
+
+[node name="SummaryLabel" type="Label" parent="Margin/Layout" unique_id=1000099889]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.82, 0.95, 1)
+theme_override_font_sizes/font_size = 20
+text = "SS05-01 Foundation"
+
+[node name="StatusLabel" type="Label" parent="Margin/Layout" unique_id=1563833038]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "READY"
+
+[node name="Separator" type="HSeparator" parent="Margin/Layout" unique_id=1456841679]
+layout_mode = 2
+
+[node name="CaseList" type="RichTextLabel" parent="Margin/Layout" unique_id=311083725]
+custom_minimum_size = Vector2(0, 420)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.78, 0.84, 0.9, 1)
+theme_override_font_sizes/normal_font_size = 13
+bbcode_enabled = true
+
+[node name="OutputLabel" type="Label" parent="Margin/Layout" unique_id=1068110417]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "user://space_syndicate_design_qa/ruleset_v05_foundation/"
+text_overrun_behavior = 3

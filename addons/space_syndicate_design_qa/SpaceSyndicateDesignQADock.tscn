@@ -534,6 +534,30 @@ layout_mode = 2
 text = "Open Ruleset v0.4 Output"
 tooltip_text = "Open user://space_syndicate_design_qa/ruleset_v04_conformance/"
 
+[node name="RulesetV05FoundationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenRulesetV05FoundationButton" type="Button" parent="DockMargin/DockRows/RulesetV05FoundationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open v0.5 Foundation"
+tooltip_text = "Open res://resources/rules/space_syndicate_ruleset_v05.tres"
+
+[node name="RunRulesetV05FoundationBenchButton" type="Button" parent="DockMargin/DockRows/RulesetV05FoundationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run v0.5 Foundation QA"
+tooltip_text = "Run res://scenes/tools/RulesetV05FoundationBench.tscn"
+
+[node name="OpenRulesetV05FoundationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open v0.5 Foundation Output"
+tooltip_text = "Open user://space_syndicate_design_qa/ruleset_v05_foundation/"
+
 [node name="OpenCityDevelopmentRuntimeControllerButton" type="Button" parent="DockMargin/DockRows"]
 unique_name_in_owner = true
 layout_mode = 2

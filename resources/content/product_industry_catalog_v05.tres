@@ -1,0 +1,433 @@
+[gd_resource type="Resource" script_class="ProductIndustryCatalogResource" load_steps=56 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/product_industry_catalog_resource.gd" id="1_catalog"]
+[ext_resource type="Script" path="res://scripts/content/product_industry_definition_resource.gd" id="2_industry"]
+[ext_resource type="Script" path="res://scripts/content/product_industry_entry_resource.gd" id="3_product"]
+
+[sub_resource type="Resource" id="Industry_life"]
+script = ExtResource("2_industry")
+industry_id = "life"
+display_name = "生命"
+icon_key = "industry.life"
+color_key = "industry_life_green"
+gameplay_summary = "生长、治疗、复兴与稳定收入。"
+capacity_thresholds = Array[int]([15, 40, 80, 140])
+
+[sub_resource type="Resource" id="Industry_energy"]
+script = ExtResource("2_industry")
+industry_id = "energy"
+display_name = "能源"
+icon_key = "industry.energy"
+color_key = "industry_energy_orange"
+gameplay_summary = "爆发 GDP、天气、怪兽强化与攻击。"
+capacity_thresholds = Array[int]([15, 40, 80, 140])
+
+[sub_resource type="Resource" id="Industry_industry"]
+script = ExtResource("2_industry")
+industry_id = "industry"
+display_name = "工业"
+icon_key = "industry.industry"
+color_key = "industry_industry_gray"
+gameplay_summary = "建筑、军队、护甲与项目升级。"
+capacity_thresholds = Array[int]([15, 40, 80, 140])
+
+[sub_resource type="Resource" id="Industry_technology"]
+script = ExtResource("2_industry")
+industry_id = "technology"
+display_name = "科技"
+icon_key = "industry.technology"
+color_key = "industry_technology_blue"
+gameplay_summary = "情报、反制、顺序与目标控制。"
+capacity_thresholds = Array[int]([15, 40, 80, 140])
+
+[sub_resource type="Resource" id="Industry_commerce"]
+script = ExtResource("2_industry")
+industry_id = "commerce"
+display_name = "商贸"
+icon_key = "industry.commerce"
+color_key = "industry_commerce_purple"
+gameplay_summary = "需求、合约、拍卖与金融。"
+capacity_thresholds = Array[int]([15, 40, 80, 140])
+
+[sub_resource type="Resource" id="Industry_shipping"]
+script = ExtResource("2_industry")
+industry_id = "shipping"
+display_name = "航运"
+icon_key = "industry.shipping"
+color_key = "industry_shipping_cyan"
+gameplay_summary = "通商、路线、远程购买与转换。"
+capacity_thresholds = Array[int]([15, 40, 80, 140])
+
+[sub_resource type="Resource" id="Product_001"]
+script = ExtResource("3_product")
+product_id = "星露莓"
+industry_id = "life"
+display_name = "星露莓"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_002"]
+script = ExtResource("3_product")
+product_id = "月壤葡萄"
+industry_id = "life"
+display_name = "月壤葡萄"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_003"]
+script = ExtResource("3_product")
+product_id = "孢子丝绸"
+industry_id = "life"
+display_name = "孢子丝绸"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_004"]
+script = ExtResource("3_product")
+product_id = "光合凝胶"
+industry_id = "life"
+display_name = "光合凝胶"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_005"]
+script = ExtResource("3_product")
+product_id = "轨道盆栽"
+industry_id = "life"
+display_name = "轨道盆栽"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_006"]
+script = ExtResource("3_product")
+product_id = "寒冠冰糖"
+industry_id = "life"
+display_name = "寒冠冰糖"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_007"]
+script = ExtResource("3_product")
+product_id = "深海菌毯"
+industry_id = "life"
+display_name = "深海菌毯"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_008"]
+script = ExtResource("3_product")
+product_id = "晨昏奶酪"
+industry_id = "life"
+display_name = "晨昏奶酪"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_009"]
+script = ExtResource("3_product")
+product_id = "北极薄荷"
+industry_id = "life"
+display_name = "北极薄荷"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_010"]
+script = ExtResource("3_product")
+product_id = "星尘面包"
+industry_id = "life"
+display_name = "星尘面包"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_011"]
+script = ExtResource("3_product")
+product_id = "梦游蘑菇"
+industry_id = "life"
+display_name = "梦游蘑菇"
+icon_key = "product.life"
+optional_tags = Array[String](["runtime_product", "industry_life"])
+
+[sub_resource type="Resource" id="Product_012"]
+script = ExtResource("3_product")
+product_id = "磁核榴莲"
+industry_id = "energy"
+display_name = "磁核榴莲"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_013"]
+script = ExtResource("3_product")
+product_id = "彗尾柑"
+industry_id = "energy"
+display_name = "彗尾柑"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_014"]
+script = ExtResource("3_product")
+product_id = "环晶电池"
+industry_id = "energy"
+display_name = "环晶电池"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_015"]
+script = ExtResource("3_product")
+product_id = "太阳鳞片"
+industry_id = "energy"
+display_name = "太阳鳞片"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_016"]
+script = ExtResource("3_product")
+product_id = "海底黑油"
+industry_id = "energy"
+display_name = "海底黑油"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_017"]
+script = ExtResource("3_product")
+product_id = "反物质茶"
+industry_id = "energy"
+display_name = "反物质茶"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_018"]
+script = ExtResource("3_product")
+product_id = "静电蜂蜜"
+industry_id = "energy"
+display_name = "静电蜂蜜"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_019"]
+script = ExtResource("3_product")
+product_id = "等离子米"
+industry_id = "energy"
+display_name = "等离子米"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_020"]
+script = ExtResource("3_product")
+product_id = "火山番茄"
+industry_id = "energy"
+display_name = "火山番茄"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_021"]
+script = ExtResource("3_product")
+product_id = "潮汐电浆"
+industry_id = "energy"
+display_name = "潮汐电浆"
+icon_key = "product.energy"
+optional_tags = Array[String](["runtime_product", "industry_energy"])
+
+[sub_resource type="Resource" id="Product_022"]
+script = ExtResource("3_product")
+product_id = "重力陶瓷"
+industry_id = "industry"
+display_name = "重力陶瓷"
+icon_key = "product.industry"
+optional_tags = Array[String](["runtime_product", "industry_industry"])
+
+[sub_resource type="Resource" id="Product_023"]
+script = ExtResource("3_product")
+product_id = "虹膜矿粉"
+industry_id = "industry"
+display_name = "虹膜矿粉"
+icon_key = "product.industry"
+optional_tags = Array[String](["runtime_product", "industry_industry"])
+
+[sub_resource type="Resource" id="Product_024"]
+script = ExtResource("3_product")
+product_id = "引力棉"
+industry_id = "industry"
+display_name = "引力棉"
+icon_key = "product.industry"
+optional_tags = Array[String](["runtime_product", "industry_industry"])
+
+[sub_resource type="Resource" id="Product_025"]
+script = ExtResource("3_product")
+product_id = "钛壳贝"
+industry_id = "industry"
+display_name = "钛壳贝"
+icon_key = "product.industry"
+optional_tags = Array[String](["runtime_product", "industry_industry"])
+
+[sub_resource type="Resource" id="Product_026"]
+script = ExtResource("3_product")
+product_id = "陨铁酱料"
+industry_id = "industry"
+display_name = "陨铁酱料"
+icon_key = "product.industry"
+optional_tags = Array[String](["runtime_product", "industry_industry"])
+
+[sub_resource type="Resource" id="Product_027"]
+script = ExtResource("3_product")
+product_id = "暗礁珊瑚"
+industry_id = "industry"
+display_name = "暗礁珊瑚"
+icon_key = "product.industry"
+optional_tags = Array[String](["runtime_product", "industry_industry"])
+
+[sub_resource type="Resource" id="Product_028"]
+script = ExtResource("3_product")
+product_id = "活体芯片"
+industry_id = "technology"
+display_name = "活体芯片"
+icon_key = "product.technology"
+optional_tags = Array[String](["runtime_product", "industry_technology"])
+
+[sub_resource type="Resource" id="Product_029"]
+script = ExtResource("3_product")
+product_id = "极光盐"
+industry_id = "technology"
+display_name = "极光盐"
+icon_key = "product.technology"
+optional_tags = Array[String](["runtime_product", "industry_technology"])
+
+[sub_resource type="Resource" id="Product_030"]
+script = ExtResource("3_product")
+product_id = "轨迹墨水"
+industry_id = "technology"
+display_name = "轨迹墨水"
+icon_key = "product.technology"
+optional_tags = Array[String](["runtime_product", "industry_technology"])
+
+[sub_resource type="Resource" id="Product_031"]
+script = ExtResource("3_product")
+product_id = "离岸水晶"
+industry_id = "technology"
+display_name = "离岸水晶"
+icon_key = "product.technology"
+optional_tags = Array[String](["runtime_product", "industry_technology"])
+
+[sub_resource type="Resource" id="Product_032"]
+script = ExtResource("3_product")
+product_id = "量子蜜瓜"
+industry_id = "commerce"
+display_name = "量子蜜瓜"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_033"]
+script = ExtResource("3_product")
+product_id = "脉冲咖啡"
+industry_id = "commerce"
+display_name = "脉冲咖啡"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_034"]
+script = ExtResource("3_product")
+product_id = "真空可可"
+industry_id = "commerce"
+display_name = "真空可可"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_035"]
+script = ExtResource("3_product")
+product_id = "离子香料"
+industry_id = "commerce"
+display_name = "离子香料"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_036"]
+script = ExtResource("3_product")
+product_id = "梦境香氛"
+industry_id = "commerce"
+display_name = "梦境香氛"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_037"]
+script = ExtResource("3_product")
+product_id = "零点饮料"
+industry_id = "commerce"
+display_name = "零点饮料"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_038"]
+script = ExtResource("3_product")
+product_id = "云母玩具"
+industry_id = "commerce"
+display_name = "云母玩具"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_039"]
+script = ExtResource("3_product")
+product_id = "风暴珍珠"
+industry_id = "commerce"
+display_name = "风暴珍珠"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_040"]
+script = ExtResource("3_product")
+product_id = "赤道香草"
+industry_id = "commerce"
+display_name = "赤道香草"
+icon_key = "product.commerce"
+optional_tags = Array[String](["runtime_product", "industry_commerce"])
+
+[sub_resource type="Resource" id="Product_041"]
+script = ExtResource("3_product")
+product_id = "星鲸罐头"
+industry_id = "shipping"
+display_name = "星鲸罐头"
+icon_key = "product.shipping"
+optional_tags = Array[String](["runtime_product", "industry_shipping"])
+
+[sub_resource type="Resource" id="Product_042"]
+script = ExtResource("3_product")
+product_id = "星鳍鱼群"
+industry_id = "shipping"
+display_name = "星鳍鱼群"
+icon_key = "product.shipping"
+optional_tags = Array[String](["runtime_product", "industry_shipping"])
+
+[sub_resource type="Resource" id="Product_043"]
+script = ExtResource("3_product")
+product_id = "蓝潮藻"
+industry_id = "shipping"
+display_name = "蓝潮藻"
+icon_key = "product.shipping"
+optional_tags = Array[String](["runtime_product", "industry_shipping"])
+
+[sub_resource type="Resource" id="Product_044"]
+script = ExtResource("3_product")
+product_id = "巨藻纤维"
+industry_id = "shipping"
+display_name = "巨藻纤维"
+icon_key = "product.shipping"
+optional_tags = Array[String](["runtime_product", "industry_shipping"])
+
+[sub_resource type="Resource" id="Product_045"]
+script = ExtResource("3_product")
+product_id = "夜航香蕉"
+industry_id = "shipping"
+display_name = "夜航香蕉"
+icon_key = "product.shipping"
+optional_tags = Array[String](["runtime_product", "industry_shipping"])
+
+[sub_resource type="Resource" id="Product_046"]
+script = ExtResource("3_product")
+product_id = "卫星坚果"
+industry_id = "shipping"
+display_name = "卫星坚果"
+icon_key = "product.shipping"
+optional_tags = Array[String](["runtime_product", "industry_shipping"])
+
+[resource]
+script = ExtResource("1_catalog")
+schema_version = "v0.5"
+industries = Array[Resource]([SubResource("Industry_life"), SubResource("Industry_energy"), SubResource("Industry_industry"), SubResource("Industry_technology"), SubResource("Industry_commerce"), SubResource("Industry_shipping")])
+products = Array[Resource]([SubResource("Product_001"), SubResource("Product_002"), SubResource("Product_003"), SubResource("Product_004"), SubResource("Product_005"), SubResource("Product_006"), SubResource("Product_007"), SubResource("Product_008"), SubResource("Product_009"), SubResource("Product_010"), SubResource("Product_011"), SubResource("Product_012"), SubResource("Product_013"), SubResource("Product_014"), SubResource("Product_015"), SubResource("Product_016"), SubResource("Product_017"), SubResource("Product_018"), SubResource("Product_019"), SubResource("Product_020"), SubResource("Product_021"), SubResource("Product_022"), SubResource("Product_023"), SubResource("Product_024"), SubResource("Product_025"), SubResource("Product_026"), SubResource("Product_027"), SubResource("Product_028"), SubResource("Product_029"), SubResource("Product_030"), SubResource("Product_031"), SubResource("Product_032"), SubResource("Product_033"), SubResource("Product_034"), SubResource("Product_035"), SubResource("Product_036"), SubResource("Product_037"), SubResource("Product_038"), SubResource("Product_039"), SubResource("Product_040"), SubResource("Product_041"), SubResource("Product_042"), SubResource("Product_043"), SubResource("Product_044"), SubResource("Product_045"), SubResource("Product_046")])

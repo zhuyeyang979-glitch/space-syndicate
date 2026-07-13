@@ -74,6 +74,8 @@ signal open_gameplay_balance_diagnostics_service_requested(scene_path: String)
 signal open_gameplay_balance_diagnostics_world_bridge_requested(scene_path: String)
 signal open_ruleset_runtime_bridge_requested(scene_path: String)
 signal run_ruleset_v04_conformance_bench_requested(scene_path: String)
+signal open_ruleset_v05_foundation_requested(resource_path: String)
+signal run_ruleset_v05_foundation_bench_requested(scene_path: String)
 signal open_city_development_runtime_controller_requested(scene_path: String)
 signal open_city_development_world_bridge_requested(scene_path: String)
 signal open_game_runtime_coordinator_requested(scene_path: String)
@@ -237,6 +239,8 @@ const GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCENE_PATH := "res://scenes/runtime/G
 const GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/GameplayBalanceDiagnosticsWorldBridge.tscn"
 const RULESET_RUNTIME_BRIDGE_SCENE_PATH := "res://scenes/runtime/RulesetRuntimeBridge.tscn"
 const RULESET_V04_CONFORMANCE_BENCH_SCENE_PATH := "res://scenes/tools/RulesetV04ConformanceBench.tscn"
+const RULESET_V05_PROFILE_RESOURCE_PATH := "res://resources/rules/space_syndicate_ruleset_v05.tres"
+const RULESET_V05_FOUNDATION_BENCH_SCENE_PATH := "res://scenes/tools/RulesetV05FoundationBench.tscn"
 const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
 const CITY_DEVELOPMENT_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/CityDevelopmentWorldBridge.tscn"
 const GAME_RUNTIME_COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
@@ -351,6 +355,7 @@ const BALANCE_PARAMETER_RESOURCE_QA_OUTPUT_DIR := "user://space_syndicate_design
 const BALANCE_MODEL_RESOURCE_SANDBOX_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/balance_model_resource_sandbox/"
 const BALANCE_RUNTIME_BRIDGE_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/gameplay_balance_diagnostics/"
 const RULESET_V04_CONFORMANCE_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v04_conformance/"
+const RULESET_V05_FOUNDATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v05_foundation/"
 const FORCED_DECISION_RUNTIME_SCHEDULER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/forced_decision_scheduler/"
 const GAME_SESSION_SAVE_OWNERSHIP_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/game_session_save_ownership/"
 const DISTRICT_PURCHASE_RUNTIME_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/district_purchase_runtime_cutover/"
@@ -491,6 +496,9 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_ruleset_runtime_bridge_button: Button = %OpenRulesetRuntimeBridgeButton
 @onready var run_ruleset_v04_conformance_bench_button: Button = %RunRulesetV04ConformanceBenchButton
 @onready var open_ruleset_v04_conformance_output_folder_button: Button = %OpenRulesetV04ConformanceOutputFolderButton
+@onready var open_ruleset_v05_foundation_button: Button = %OpenRulesetV05FoundationButton
+@onready var run_ruleset_v05_foundation_bench_button: Button = %RunRulesetV05FoundationBenchButton
+@onready var open_ruleset_v05_foundation_output_folder_button: Button = %OpenRulesetV05FoundationOutputFolderButton
 @onready var open_city_development_runtime_controller_button: Button = %OpenCityDevelopmentRuntimeControllerButton
 @onready var open_city_development_world_bridge_button: Button = %OpenCityDevelopmentWorldBridgeButton
 @onready var open_game_runtime_coordinator_button: Button = %OpenGameRuntimeCoordinatorButton
@@ -865,6 +873,10 @@ func ruleset_runtime_bridge_scene_path() -> String:
 
 func ruleset_v04_conformance_bench_scene_path() -> String:
 	return RULESET_V04_CONFORMANCE_BENCH_SCENE_PATH
+
+
+func ruleset_v05_foundation_bench_scene_path() -> String:
+	return RULESET_V05_FOUNDATION_BENCH_SCENE_PATH
 
 
 func city_development_runtime_controller_scene_path() -> String:
@@ -1313,6 +1325,10 @@ func balance_runtime_bridge_qa_output_dir() -> String:
 
 func ruleset_v04_conformance_qa_output_dir() -> String:
 	return RULESET_V04_CONFORMANCE_QA_OUTPUT_DIR
+
+
+func ruleset_v05_foundation_qa_output_dir() -> String:
+	return RULESET_V05_FOUNDATION_QA_OUTPUT_DIR
 
 
 func forced_decision_runtime_scheduler_qa_output_dir() -> String:
@@ -2087,6 +2103,22 @@ func run_ruleset_v04_conformance_bench_scene() -> void:
 	else:
 		run_ruleset_v04_conformance_bench_requested.emit(RULESET_V04_CONFORMANCE_BENCH_SCENE_PATH)
 	_set_status("Run Ruleset v0.4 Conformance bench: %s" % RULESET_V04_CONFORMANCE_BENCH_SCENE_PATH)
+
+
+func open_ruleset_v05_foundation() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_resource"):
+		_editor_plugin.call("open_resource", RULESET_V05_PROFILE_RESOURCE_PATH)
+	else:
+		open_ruleset_v05_foundation_requested.emit(RULESET_V05_PROFILE_RESOURCE_PATH)
+	_set_status("Open Ruleset v0.5 Foundation profile: %s" % RULESET_V05_PROFILE_RESOURCE_PATH)
+
+
+func run_ruleset_v05_foundation_bench_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
+		_editor_plugin.call("run_scene", RULESET_V05_FOUNDATION_BENCH_SCENE_PATH)
+	else:
+		run_ruleset_v05_foundation_bench_requested.emit(RULESET_V05_FOUNDATION_BENCH_SCENE_PATH)
+	_set_status("Run Ruleset v0.5 Foundation bench: %s" % RULESET_V05_FOUNDATION_BENCH_SCENE_PATH)
 
 
 func open_city_development_runtime_controller_scene() -> void:
@@ -3148,6 +3180,15 @@ func open_ruleset_v04_conformance_qa_output_folder() -> void:
 		_set_status("Ruleset v0.4 Conformance output folder: %s" % RULESET_V04_CONFORMANCE_QA_OUTPUT_DIR)
 
 
+func open_ruleset_v05_foundation_qa_output_folder() -> void:
+	var absolute_path := ProjectSettings.globalize_path(RULESET_V05_FOUNDATION_QA_OUTPUT_DIR)
+	var error := OS.shell_open(absolute_path)
+	if error == OK:
+		_set_status("Open Ruleset v0.5 Foundation output folder: %s" % RULESET_V05_FOUNDATION_QA_OUTPUT_DIR)
+	else:
+		_set_status("Ruleset v0.5 Foundation output folder: %s" % RULESET_V05_FOUNDATION_QA_OUTPUT_DIR)
+
+
 func open_forced_decision_runtime_scheduler_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(FORCED_DECISION_RUNTIME_SCHEDULER_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3594,6 +3635,9 @@ func _connect_buttons() -> void:
 	_connect_button(open_ruleset_runtime_bridge_button, "open_ruleset_runtime_bridge_scene")
 	_connect_button(run_ruleset_v04_conformance_bench_button, "run_ruleset_v04_conformance_bench_scene")
 	_connect_button(open_ruleset_v04_conformance_output_folder_button, "open_ruleset_v04_conformance_qa_output_folder")
+	_connect_button(open_ruleset_v05_foundation_button, "open_ruleset_v05_foundation")
+	_connect_button(run_ruleset_v05_foundation_bench_button, "run_ruleset_v05_foundation_bench_scene")
+	_connect_button(open_ruleset_v05_foundation_output_folder_button, "open_ruleset_v05_foundation_qa_output_folder")
 	_connect_button(open_city_development_runtime_controller_button, "open_city_development_runtime_controller_scene")
 	_connect_button(open_city_development_world_bridge_button, "open_city_development_world_bridge_scene")
 	_connect_button(open_game_runtime_coordinator_button, "open_game_runtime_coordinator_scene")

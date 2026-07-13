@@ -1,6 +1,6 @@
 # 《太空辛迪加》v0.5 规则实现开发计划
 
-> 状态：规则基线已批准；本实施计划待开发审阅，尚未实现。
+> 状态：SS05-00 与 SS05-01 已完成；v0.5 数据基础 ready、生产运行时仍为 v0.4。
 > 编写日期：2026-07-14。
 > 玩家规则权威：`docs/tabletop_rulebook_v05.md`。
 > 运行时迁移合同：`docs/rules_v05_runtime_migration.md`。
@@ -336,6 +336,16 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 退出门：全部商品唯一归类；非法卡牌条件被作者校验拒绝；v1/v0.5 可正确区分且不误写。
 
+实际完成证据（2026-07-14）：
+
+- `space_syndicate_ruleset_v05.tres` 已保存 v0.5 稳定参数；`RulesetRuntimeBridge` 仍只加载 v0.4。
+- 六产业目录显式登记当前 46 个真实商品，每个 `product_id` 恰好归类一次，不使用名称、颜色或文案推断。
+- 独立 v0.5 卡牌 schema 已支持无色、单产业、双产业、二选一和具名商品条件；尚未审定费用的真实牌保持 `blocked`，不会进入 release-ready 或 public pool。
+- `CurrencyAmountWireV05` 已冻结整数分、`*_cents`、混合单位失败关闭、守恒、exact-once 与 midpoint away-from-zero。
+- Clock Domain Registry 已登记 14 个计时器；UI 不拥有或递减任何计时。
+- 被动 `RulesetSaveHandshakeService` 已能识别 legacy v1、验证 v0.5 save v2 并阻止跨规则集覆盖；生产 `GameSaveRuntimeCoordinator` 仍保持 v1。
+- `RulesetV05FoundationBench` 为单一综合门，56/56 通过；composition 与 layout smoke 同时检查没有 selector、fallback 或第二个 active owner。
+
 ### 阶段 2｜项目身份、五槽与世代
 
 工作：生产 2、需求 2、通商 1；项目最高 IV；精确平局无人控制；项目 ID 固定为区域 + 槽类型 + 槽序号 + 世代并支持 tombstone；停止以 `city.owner` 作为权威。
@@ -407,7 +417,7 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 | 工单 | 内容 | 依赖 | 结果类型 |
 | --- | --- | --- | --- |
 | SS05-00 | 安全基线、快照、v0.4 测试记录 | 无 | 硬门 |
-| SS05-01 | v0.5 Profile、产业目录、卡牌 schema、CurrencyAmount 与存档握手 | 00 | 推进 |
+| SS05-01 | v0.5 Profile、产业目录、卡牌 schema、CurrencyAmount 与存档握手（完成，runtime inactive） | 00 | 推进 |
 | SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制 | 01 | 替换 + 删除 D-06 部分 |
 | SS05-03 | 结构化 GDP 行、归属、守恒与零 GDP | 02 | 替换 + 删除 D-06 剩余 |
 | SS05-04 | VictoryControl、审计名单、终局与隐私 | 03 | 推进 + 删除 D-02 |
@@ -506,4 +516,4 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 ## 14. 下一步执行建议
 
-下一开发批次只完成 SS05-00：形成可从空目录恢复的 commit/tag，冻结 Git 分支拓扑、CurrencyAmount、clock domains、跨领域 receipt 和 hard-cutover 删除门。基线验证通过后再进入 SS05-01，建立 v0.5 Profile、产业目录、卡牌 schema、存档握手和作者校验。不要先写胜利 UI 或六产业颜色聚合，因为它们必须等待 SS05-02/03 的项目身份与结构化 GDP 真相层。
+下一开发批次进入 SS05-02：建立生产 2／需求 2／通商 1 的五项目位、稳定 slot ID、项目最高 IV、generation/tombstone，以及精确平局无人控制。该批次仍不得先写胜利 UI、六产业聚合或结构化 GDP 公式；这些消费者必须等待项目身份成为唯一真相层后再接入。SS05-02 应继续采用同一提交内新 owner、调用方、存档协议、测试和旧写路径删除的 hard-cutover 纪律。

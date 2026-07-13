@@ -435,6 +435,18 @@ const RECORDS := [
 		"mcp_notes": "Open RulesetRuntimeBridge in main.tscn and run RulesetV04ConformanceBench after any ruleset profile change.",
 	},
 	{
+		"id": "ruleset_v05_foundation_gate",
+		"display_name": "Ruleset v0.5 Foundation Gate",
+		"category": "Systems",
+		"current_scene_path": "res://scenes/tools/RulesetV05FoundationBench.tscn",
+		"source_script_path": "res://scripts/tools/ruleset_v05_foundation_bench.gd",
+		"sceneization_status": STATUS_PARTIAL,
+		"priority": 1,
+		"next_step": "Proceed to SS05-02 project slots and generation only after the 56-case foundation gate remains green.",
+		"risk_notes": "High; the v0.5 data layer is ready but deliberately runtime-inactive, and production must remain v0.4 during this sprint.",
+		"mcp_notes": "Open the v0.5 Profile, product industry catalog, passive save handshake, and Foundation Bench. A runtime selector or fallback is a failure.",
+	},
+	{
 		"id": "city_development_runtime_cutover_gate",
 		"display_name": "City Development Runtime Cutover Gate",
 		"category": "Systems",

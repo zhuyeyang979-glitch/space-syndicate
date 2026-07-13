@@ -77,6 +77,12 @@ const RUNTIME_CARD_AUTHORING_WORKFLOW_DOC := "res://docs/runtime_card_authoring_
 const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY := "res://scripts/tools/global_ui_navigation_characterization_registry.gd"
 const GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT := "res://docs/global_ui_navigation_runtime_contract.md"
 const MENU_SHELL_RUNTIME_CUTOVER_BENCH := "res://scenes/tools/MenuShellRuntimeCutoverBench.tscn"
+const RULESET_V05_PROFILE := "res://resources/rules/space_syndicate_ruleset_v05.tres"
+const PRODUCT_INDUSTRY_CATALOG_V05 := "res://resources/content/product_industry_catalog_v05.tres"
+const CARD_RUNTIME_CATALOG_V05 := "res://resources/cards/runtime/card_runtime_catalog_v05.tres"
+const CLOCK_DOMAIN_REGISTRY_V05 := "res://resources/rules/clock_domain_registry_v05.tres"
+const RULESET_SAVE_HANDSHAKE_V05 := "res://scenes/runtime/RulesetSaveHandshakeService.tscn"
+const RULESET_V05_FOUNDATION_BENCH := "res://scenes/tools/RulesetV05FoundationBench.tscn"
 
 var failures: Array[String] = []
 
@@ -104,6 +110,7 @@ func _run() -> void:
 	_check_runtime_card_catalog_resource_assets()
 	_check_runtime_card_authoring_assets()
 	_check_global_ui_navigation_characterization_assets()
+	_check_ruleset_v05_foundation_assets()
 	var test_bgm := main.get_node_or_null("RuntimeServices/TableAudioHost/NightPatrolTableBgm") as AudioStreamPlayer
 	if test_bgm != null:
 		test_bgm.stream = null
@@ -713,6 +720,57 @@ func _check_global_ui_navigation_characterization_assets() -> void:
 	var contract := FileAccess.get_file_as_string(GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT)
 	ready = ready and contract.contains("32/32 cases observed") and contract.contains("19/32 cases already aligned") and contract.contains("Sprint 68 deletion gate")
 	_expect(ready, "Sprint 67 characterizes 32 real global navigation cases without adding a parallel runtime owner or changing main.gd behavior")
+
+
+func _check_ruleset_v05_foundation_assets() -> void:
+	var required_assets := [
+		RULESET_V05_PROFILE,
+		PRODUCT_INDUSTRY_CATALOG_V05,
+		CARD_RUNTIME_CATALOG_V05,
+		CLOCK_DOMAIN_REGISTRY_V05,
+		RULESET_SAVE_HANDSHAKE_V05,
+		RULESET_V05_FOUNDATION_BENCH,
+	]
+	var ready := true
+	for path in required_assets:
+		ready = ready and ResourceLoader.exists(path)
+	var profile := load(RULESET_V05_PROFILE)
+	var product_catalog := load(PRODUCT_INDUSTRY_CATALOG_V05)
+	var card_catalog := load(CARD_RUNTIME_CATALOG_V05)
+	var clock_registry := load(CLOCK_DOMAIN_REGISTRY_V05)
+	var profile_snapshot: Dictionary = profile.call("debug_snapshot") if profile != null and profile.has_method("debug_snapshot") else {}
+	var product_snapshot: Dictionary = product_catalog.call("debug_snapshot") if product_catalog != null and product_catalog.has_method("debug_snapshot") else {}
+	var card_snapshot: Dictionary = card_catalog.call("debug_snapshot") if card_catalog != null and card_catalog.has_method("debug_snapshot") else {}
+	var clock_snapshot: Dictionary = clock_registry.call("debug_snapshot") if clock_registry != null and clock_registry.has_method("debug_snapshot") else {}
+	ready = ready and str((profile_snapshot.get("identity", {}) as Dictionary).get("ruleset_id", "")) == "v0.5"
+	ready = ready and int((profile_snapshot.get("identity", {}) as Dictionary).get("currency_scale", 0)) == 100
+	ready = ready and (product_snapshot.get("industries", []) as Array).size() == 6 and (product_snapshot.get("products", []) as Array).size() == 46
+	ready = ready and str(card_snapshot.get("schema_version", "")) == "v0.5" and (card_snapshot.get("release_ready_card_ids", []) as Array).is_empty()
+	ready = ready and (clock_snapshot.get("timers", []) as Array).size() == 14
+	ready = ready and _is_pure_data(profile_snapshot) and _is_pure_data(product_snapshot) and _is_pure_data(card_snapshot) and _is_pure_data(clock_snapshot)
+	var handshake_packed := load(RULESET_SAVE_HANDSHAKE_V05) as PackedScene
+	var handshake := handshake_packed.instantiate() if handshake_packed != null else null
+	var handshake_snapshot: Dictionary = handshake.call("debug_snapshot") if handshake != null and handshake.has_method("debug_snapshot") else {}
+	ready = ready and handshake != null and handshake.has_method("inspect_envelope") and handshake.has_method("validate_v05_envelope") and handshake.has_method("compose_v05_envelope") and handshake.has_method("write_authorization")
+	ready = ready and bool(handshake_snapshot.get("passive_only", false)) and not bool(handshake_snapshot.get("production_save_path_owned", true)) and _is_pure_data(handshake_snapshot)
+	if handshake != null:
+		handshake.free()
+	var bench_packed := load(RULESET_V05_FOUNDATION_BENCH) as PackedScene
+	var bench := bench_packed.instantiate() if bench_packed != null else null
+	var manifest: Dictionary = bench.call("build_foundation_manifest_preview") if bench != null and bench.has_method("build_foundation_manifest_preview") else {}
+	ready = ready and bench != null and bench.has_method("foundation_cases") and bench.has_method("run_foundation_suite")
+	ready = ready and int(manifest.get("record_count", 0)) == 56 and (manifest.get("records", []) as Array).size() == 56 and _is_pure_data(manifest)
+	if bench != null:
+		bench.free()
+	var bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/ruleset_runtime_bridge.gd")
+	var save_source := FileAccess.get_file_as_string("res://scripts/runtime/game_save_runtime_coordinator.gd")
+	var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/card_runtime_catalog_service.gd") + FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	ready = ready and bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("space_syndicate_ruleset_v05.tres")
+	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("RulesetSaveHandshakeService")
+	ready = ready and catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("card_runtime_catalog_v05.tres")
+	ready = ready and not main_source.contains("space_syndicate_ruleset_v05") and not main_source.contains("RulesetSaveHandshakeService")
+	_expect(ready, "SS05-01 provides a pure-data v0.5 foundation while production ruleset, save, and card-catalog owners remain v0.4")
 
 
 func _function_source(source: String, function_name: String) -> String:

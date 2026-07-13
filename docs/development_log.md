@@ -1327,6 +1327,17 @@
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
 
+## 2026-07-14｜SS05-01 v0.5 数据与存档握手基础
+
+- 新增 Inspector 可编辑的 `space_syndicate_ruleset_v05.tres`，冻结 v0.5 Profile、六产业目录、14 个 clock domain、整数分 CurrencyAmount wire 与 controller state versions。
+- 完成 46 个真实商品的显式产业归类；运行时不得通过名称、颜色或 UI 文案反推产业。
+- 建立独立 v0.5 卡牌作者 schema；五张真实迁移候选因产业费用或目标语义未审定而保持 `blocked`，未进入 release-ready/public pool。
+- 新增被动 `RulesetSaveHandshakeService`：识别 legacy v1，生成和验证 v0.5 save v2 envelope，并拒绝 v0.4/v0.5 相互覆盖；它不拥有生产存档路径。
+- 新增综合 `RulesetV05FoundationBench`，56/56 通过；MCP Editability Hub、Design QA Dock、Sceneization Audit 与 System Resourceization Audit 已登记该基础层。
+- 生产 `RulesetRuntimeBridge`、`GameSaveRuntimeCoordinator` 与 `CardRuntimeCatalogService` 仍分别保持 v0.4 Profile、save v1 和 v0.4 Catalog；没有 selector、fallback 或第二个 active owner。
+- `main.gd` 保持 22,867 总行、20,209 非空行、1,285 函数，SHA-256 保持 `6BD3F293EC2E92AEB81A39C80266314BE6A308D2C03ECD58FD8DB22958CAE699`。
+- Foundation 56/56、Authoring 36/36、Catalog 80/80、Save Ownership 24/24、Menu 24/24、Global Navigation 32/32 observed／19/32 aligned、composition、focus-order 与 layout smoke 均通过；项目内 Godot MCP 可见运行确认生产 bridge=v0.4、save version=1、get_errors=0。
+
 ## 2026-07-03｜经济总览三路线决策条
 
 - 把“首局出牌后打开经济总览”从纯信息阅读推进到桌游式下一步决策：

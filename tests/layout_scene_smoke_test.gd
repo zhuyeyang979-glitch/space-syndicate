@@ -376,6 +376,20 @@ const RULESET_PROFILE_SCRIPT := "res://scripts/rules/space_syndicate_ruleset_pro
 const RULESET_V04_RESOURCE := "res://resources/rules/space_syndicate_ruleset_v04.tres"
 const RULESET_RUNTIME_BRIDGE_SCRIPT := "res://scripts/runtime/ruleset_runtime_bridge.gd"
 const RULESET_RUNTIME_BRIDGE_SCENE := "res://scenes/runtime/RulesetRuntimeBridge.tscn"
+const RULESET_V05_PROFILE_SCRIPT := "res://scripts/rules/space_syndicate_ruleset_profile_v05.gd"
+const RULESET_V05_VALIDATOR_SCRIPT := "res://scripts/rules/ruleset_v05_validator.gd"
+const RULESET_V05_RESOURCE := "res://resources/rules/space_syndicate_ruleset_v05.tres"
+const PRODUCT_INDUSTRY_CATALOG_V05 := "res://resources/content/product_industry_catalog_v05.tres"
+const CARD_RUNTIME_CATALOG_V05 := "res://resources/cards/runtime/card_runtime_catalog_v05.tres"
+const CURRENCY_AMOUNT_WIRE_V05_SCRIPT := "res://scripts/economy/currency_amount_wire_v05.gd"
+const CLOCK_DOMAIN_REGISTRY_V05 := "res://resources/rules/clock_domain_registry_v05.tres"
+const CONTROLLER_STATE_VERSION_REGISTRY_V05 := "res://resources/rules/controller_state_version_registry_v05.tres"
+const RULESET_SAVE_HANDSHAKE_V05_SCRIPT := "res://scripts/runtime/ruleset_save_handshake_service.gd"
+const RULESET_SAVE_HANDSHAKE_V05_SCENE := "res://scenes/runtime/RulesetSaveHandshakeService.tscn"
+const RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT := "res://scripts/tools/ruleset_v05_conformance_registry.gd"
+const RULESET_V05_FOUNDATION_BENCH_SCRIPT := "res://scripts/tools/ruleset_v05_foundation_bench.gd"
+const RULESET_V05_FOUNDATION_BENCH_SCENE := "res://scenes/tools/RulesetV05FoundationBench.tscn"
+const RULESET_V05_FOUNDATION_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v05_foundation/"
 const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/city_development_runtime_controller.gd"
 const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
 const CITY_DEVELOPMENT_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/city_development_world_bridge.gd"
@@ -801,6 +815,7 @@ func _run() -> void:
 	await _check_balance_model_resource_sandbox_component()
 	await _check_balance_runtime_bridge_component()
 	await _check_ruleset_v04_source_of_truth_component()
+	await _check_ruleset_v05_foundation_component()
 	await _check_main_runtime_replacement_foundation_component()
 	await _check_game_session_save_ownership_component()
 	await _check_district_purchase_runtime_cutover_component()
@@ -8168,6 +8183,123 @@ func _check_ruleset_v04_source_of_truth_component() -> void:
 		dock.queue_free()
 		root.remove_child(viewport)
 		viewport.queue_free()
+
+
+func _check_ruleset_v05_foundation_component() -> void:
+	for path in [
+		RULESET_V05_PROFILE_SCRIPT,
+		RULESET_V05_VALIDATOR_SCRIPT,
+		RULESET_V05_RESOURCE,
+		PRODUCT_INDUSTRY_CATALOG_V05,
+		CARD_RUNTIME_CATALOG_V05,
+		CURRENCY_AMOUNT_WIRE_V05_SCRIPT,
+		CLOCK_DOMAIN_REGISTRY_V05,
+		CONTROLLER_STATE_VERSION_REGISTRY_V05,
+		RULESET_SAVE_HANDSHAKE_V05_SCRIPT,
+		RULESET_SAVE_HANDSHAKE_V05_SCENE,
+		RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT,
+		RULESET_V05_FOUNDATION_BENCH_SCRIPT,
+		RULESET_V05_FOUNDATION_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path), "SS05-01 asset loads: %s" % path)
+	var profile := load(RULESET_V05_RESOURCE)
+	var profile_snapshot: Dictionary = profile.call("debug_snapshot") if profile != null and profile.has_method("debug_snapshot") else {}
+	_expect(
+		str((profile_snapshot.get("identity", {}) as Dictionary).get("ruleset_id", "")) == "v0.5"
+		and int((profile_snapshot.get("identity", {}) as Dictionary).get("currency_scale", 0)) == 100
+		and int((profile_snapshot.get("timing", {}) as Dictionary).get("card_group_seconds", 0)) == 8
+		and int((profile_snapshot.get("timing", {}) as Dictionary).get("organize_seconds", 0)) == 6
+		and int((profile_snapshot.get("timing", {}) as Dictionary).get("lock_seconds", 0)) == 2,
+		"v0.5 Profile exposes the approved identity, cents scale, and 8/6/2 card timing",
+	)
+	_expect(not _variant_contains_callable(profile_snapshot) and not _variant_contains_object(profile_snapshot), "v0.5 Profile snapshot stays pure data")
+	var product_catalog := load(PRODUCT_INDUSTRY_CATALOG_V05)
+	var product_validation: Dictionary = product_catalog.call("validation_snapshot") if product_catalog != null and product_catalog.has_method("validation_snapshot") else {}
+	var product_snapshot: Dictionary = product_catalog.call("debug_snapshot") if product_catalog != null and product_catalog.has_method("debug_snapshot") else {}
+	_expect(bool(product_validation.get("valid", false)) and int(product_validation.get("industry_count", 0)) == 6 and int(product_validation.get("product_count", 0)) == 46, "v0.5 product industry catalog maps 46 real products exactly once across six industries")
+	_expect(not _variant_contains_callable(product_snapshot) and not _variant_contains_object(product_snapshot), "v0.5 product industry catalog snapshot stays pure data")
+	var card_catalog := load(CARD_RUNTIME_CATALOG_V05)
+	var card_snapshot: Dictionary = card_catalog.call("debug_snapshot") if card_catalog != null and card_catalog.has_method("debug_snapshot") else {}
+	_expect(str(card_snapshot.get("schema_version", "")) == "v0.5" and (card_snapshot.get("release_ready_card_ids", []) as Array).is_empty() and (card_snapshot.get("public_pool_card_ids", []) as Array).is_empty(), "unreviewed v0.5 cards remain blocked outside release-ready and public pools")
+	_expect(not _variant_contains_callable(card_snapshot) and not _variant_contains_object(card_snapshot), "v0.5 card authoring snapshot stays pure data")
+	var clock_registry := load(CLOCK_DOMAIN_REGISTRY_V05)
+	var clock_validation: Dictionary = clock_registry.call("validation_snapshot") if clock_registry != null and clock_registry.has_method("validation_snapshot") else {}
+	var clock_snapshot: Dictionary = clock_registry.call("debug_snapshot") if clock_registry != null and clock_registry.has_method("debug_snapshot") else {}
+	_expect(bool(clock_validation.get("valid", false)) and int(clock_validation.get("timer_count", 0)) == 14, "v0.5 clock-domain registry validates all fourteen approved timers")
+	_expect(not _variant_contains_callable(clock_snapshot) and not _variant_contains_object(clock_snapshot), "clock-domain registry snapshot stays pure data")
+	var handshake_packed := load(RULESET_SAVE_HANDSHAKE_V05_SCENE) as PackedScene
+	var handshake := handshake_packed.instantiate() if handshake_packed != null else null
+	_expect(handshake != null and handshake.has_method("inspect_envelope") and handshake.has_method("validate_v05_envelope") and handshake.has_method("compose_v05_envelope") and handshake.has_method("write_authorization") and handshake.has_method("debug_snapshot"), "RulesetSaveHandshakeService exposes the passive v0.5 envelope API")
+	if handshake != null:
+		var handshake_snapshot: Dictionary = handshake.call("debug_snapshot")
+		var legacy_inspection: Dictionary = handshake.call("inspect_envelope", {"save_version": 1}, "v0.5")
+		var v05_envelope: Dictionary = handshake.call("compose_v05_envelope", {"session_id": "layout_smoke"}, {"foundation": {"ready": true}})
+		var v05_validation: Dictionary = handshake.call("validate_v05_envelope", v05_envelope)
+		var no_downgrade: Dictionary = handshake.call("write_authorization", v05_envelope, {"save_version": 1})
+		_expect(bool(handshake_snapshot.get("passive_only", false)) and not bool(handshake_snapshot.get("production_save_path_owned", true)), "v0.5 save handshake is passive and owns no production save path")
+		_expect(str(legacy_inspection.get("classification", "")) == "legacy_v04" and not bool(legacy_inspection.get("can_resume", true)) and bool(v05_validation.get("valid", false)) and not bool(no_downgrade.get("allowed", true)), "save handshake recognizes v1, validates v0.5, and blocks cross-ruleset overwrite")
+		_expect(not _variant_contains_callable(v05_envelope) and not _variant_contains_object(v05_envelope), "v0.5 save envelope stays pure data")
+		handshake.free()
+	var bench_packed := load(RULESET_V05_FOUNDATION_BENCH_SCENE) as PackedScene
+	var bench := bench_packed.instantiate() if bench_packed != null else null
+	if bench != null:
+		bench.set("auto_run", false)
+	var cases: Array = bench.call("foundation_cases") if bench != null and bench.has_method("foundation_cases") else []
+	var manifest: Dictionary = bench.call("build_foundation_manifest_preview") if bench != null and bench.has_method("build_foundation_manifest_preview") else {}
+	_expect(bench != null and bench.has_method("output_dir") and bench.has_method("run_foundation_suite") and cases.size() == 56 and int(manifest.get("record_count", 0)) == 56 and (manifest.get("records", []) as Array).size() == 56, "RulesetV05FoundationBench exposes one 56-case integrated gate")
+	_expect(bench != null and str(bench.call("output_dir")) == RULESET_V05_FOUNDATION_OUTPUT_DIR and str(bench.call("output_dir")).begins_with("user://") and not str(bench.call("output_dir")).contains("res://reports"), "v0.5 Foundation QA output is isolated under user://")
+	_expect(not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "v0.5 Foundation manifest preview stays pure data")
+	if bench != null:
+		bench.free()
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var registered_paths: Array[String] = mcp_registry.call("scene_paths")
+		for required_path in [RULESET_V05_RESOURCE, PRODUCT_INDUSTRY_CATALOG_V05, RULESET_SAVE_HANDSHAKE_V05_SCENE, RULESET_V05_FOUNDATION_BENCH_SCENE]:
+			_expect(registered_paths.has(required_path), "MCP Editability Hub registers %s" % required_path)
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	var scene_audit_record: Dictionary = scene_audit.call("record_for_id", "ruleset_v05_foundation_gate") if scene_audit != null else {}
+	_expect(str(scene_audit_record.get("current_scene_path", "")) == RULESET_V05_FOUNDATION_BENCH_SCENE and str(scene_audit_record.get("sceneization_status", "")) == "partial", "Sceneization Audit marks the v0.5 foundation ready but runtime inactive")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	var system_audit_record: Dictionary = system_audit.call("record_for_id", "ruleset_v05_data_foundation") if system_audit != null else {}
+	_expect(str(system_audit_record.get("current_path", "")) == RULESET_V05_RESOURCE and str(system_audit_record.get("current_status", "")) == "resource_asset" and str(system_audit_record.get("runtime_owner", "")) == "inactive_until_v05_hard_cutover", "System Resourceization Audit records v0.5 data ready and runtime inactive")
+	var conformance_script := load(RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	var conformance_records: Array = conformance.call("records") if conformance != null else []
+	_expect(conformance_records.size() >= 7 and not _variant_contains_callable(conformance_records) and not _variant_contains_object(conformance_records), "Ruleset v0.5 Conformance Registry records foundation readiness and blockers as pure data")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenRulesetV05FoundationButton", "RunRulesetV05FoundationBenchButton", "OpenRulesetV05FoundationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("ruleset_v05_foundation_bench_scene_path") and dock.has_method("ruleset_v05_foundation_qa_output_dir"), "Design QA Dock exposes v0.5 Foundation path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_ruleset_v05_foundation_requested", func(resource_path: String) -> void: open_paths.append(resource_path))
+		dock.connect("run_ruleset_v05_foundation_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenRulesetV05FoundationButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunRulesetV05FoundationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [RULESET_V05_RESOURCE] and run_paths == [RULESET_V05_FOUNDATION_BENCH_SCENE], "Design QA Dock fallback signals target the v0.5 Profile and integrated Foundation Bench")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+	var bridge_source := FileAccess.get_file_as_string(RULESET_RUNTIME_BRIDGE_SCRIPT)
+	var save_source := FileAccess.get_file_as_string(GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT)
+	var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/card_runtime_catalog_service.gd") + FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("space_syndicate_ruleset_v05.tres"), "production RulesetRuntimeBridge remains pinned to v0.4")
+	_expect(save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("RulesetSaveHandshakeService"), "production GameSaveRuntimeCoordinator retains v1 behavior")
+	_expect(catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("card_runtime_catalog_v05.tres"), "production CardRuntimeCatalogService remains pinned to v0.4")
+	_expect(not main_source.contains("space_syndicate_ruleset_v05") and not main_source.contains("RulesetSaveHandshakeService"), "main.gd has no v0.5 selector, fallback, or handshake owner")
 
 
 func _check_main_runtime_replacement_foundation_component() -> void:
