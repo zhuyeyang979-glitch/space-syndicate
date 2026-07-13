@@ -21,16 +21,16 @@ func _run() -> void:
 	service.call("configure", {})
 	var source := _source()
 	var snapshot: Dictionary = service.call("compose", source)
-	_expect(str(snapshot.get("summary_text", "")).contains("局势排名") and str(snapshot.get("summary_text", "")).contains("预估结算资金"), "summary preserves the public standings read order")
+	_expect(str(snapshot.get("summary_text", "")).contains("局势排名") and str(snapshot.get("summary_text", "")).contains("Top-N个人归属GDP") and str(snapshot.get("summary_text", "")).contains("120秒公开审计"), "summary preserves the v0.5 victory-control read order")
 	_expect((snapshot.get("overview_cards", []) as Array).size() == 3, "three overview cards are composed")
 	var scoreboard := snapshot.get("scoreboard", {}) as Dictionary
 	_expect((scoreboard.get("chips", []) as Array).size() == 4 and (scoreboard.get("kpis", []) as Array).size() == 4 and (scoreboard.get("seats", []) as Array).size() == 3, "scoreboard contract is complete")
 	var seats := scoreboard.get("seats", []) as Array
-	_expect(str((seats[0] as Dictionary).get("score", "")) == "¥860", "selected player receives the supplied visible score")
-	_expect(str((seats[1] as Dictionary).get("score", "")) == "资金隐私" and not JSON.stringify(seats[1]).contains("730"), "opponent cash and score stay private")
-	_expect(str((seats[2] as Dictionary).get("score", "")) == "出局" and JSON.stringify(seats[2]).contains("破产出局"), "public bankruptcy remains visible")
+	_expect(str((seats[0] as Dictionary).get("score", "")) == "Top-N 145", "selected player receives the supplied VictoryControl progress")
+	_expect(str((seats[1] as Dictionary).get("score", "")) == "进度隐藏" and not JSON.stringify(seats[1]).contains("73000"), "opponent progress and assets stay private outside the audit roster")
+	_expect(str((seats[2] as Dictionary).get("rank", "")) == "出局" and JSON.stringify(seats[2]).contains("已淘汰"), "public elimination remains visible")
 	var debug: Dictionary = service.call("debug_snapshot")
-	_expect(not bool(debug.get("calculates_settlement_score", true)) and not bool(debug.get("calculates_city_income", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)), "service owns no scoring or economy rules")
+	_expect(bool(debug.get("consumes_victory_snapshot", false)) and not bool(debug.get("calculates_region_control", true)) and not bool(debug.get("calculates_top_n_gdp", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)), "service owns no VictoryControl rules")
 	_expect(_is_pure_data(snapshot) and not _contains_private_key(snapshot), "snapshot is viewer-safe pure data")
 	var injected := source.duplicate(true)
 	injected["hidden_owner"] = 2
@@ -49,22 +49,22 @@ func _source() -> Dictionary:
 		"valid": true,
 		"game_over": false,
 		"selected_available": true,
-		"selected_score": 860,
+		"selected_top_n_gdp_per_minute": 145,
+		"selected_controlled_region_count": 4,
 		"selected_cash": 610,
 		"selected_city_count": 2,
 		"selected_gdp_per_minute": 145,
 		"selected_intel_summary": "情报待结算",
-		"cash_goal": 1200,
-		"city_final_value": 100,
-		"intel_correct_reward": 120,
-		"intel_wrong_cost": 40,
-		"countdown_text": "距离终局沙漏还差¥340",
+		"required_top_n_gdp_per_minute": 130,
+		"required_controlled_region_count": 4,
+		"victory_control": {"state": "audit", "audit_remaining_seconds": 90.0, "audit_roster": [0], "audit_entries": [{"player_index": 0, "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000, "economic_assets": {"project_positions": [], "contracts": [], "warehouses": [], "financial_positions": []}}]},
+		"countdown_text": "公开审计剩余90.0秒",
 		"public_shift_count": 5,
 		"overview_columns": 3,
 		"kpi_columns": 4,
 		"seat_columns": 3,
 		"seat_entries": [
-			{"player_index": 0, "name": "测试玩家", "eliminated": false, "can_view_private": true, "cash": 610, "active_cities": 2, "score": 860, "score_label": "可见预估", "intel_summary": "情报待结算", "gdp_per_minute": 145},
+			{"player_index": 0, "name": "测试玩家", "eliminated": false, "can_view_private": true, "cash": 610, "active_cities": 2, "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "intel_summary": "情报待结算", "gdp_per_minute": 180},
 			{"player_index": 1, "name": "对手", "eliminated": false, "can_view_private": false},
 			{"player_index": 2, "name": "破产席位", "eliminated": true, "can_view_private": false},
 		],

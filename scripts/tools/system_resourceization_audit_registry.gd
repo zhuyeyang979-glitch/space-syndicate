@@ -938,6 +938,21 @@ const RECORDS := [
 		"recommended_next_step": "Keep the authoritative settlement boundary stable and continue the next main.gd ownership cutover.",
 		"mcp_notes": "Sprint 66 reports 64/64 observed and aligned. main.gd has no parallel city-development settlement body or reflected test wrapper.",
 	},
+	{
+		"id": "victory_control_v05_runtime_gate",
+		"display_name": "Victory Control v0.5 Runtime Ownership",
+		"category": CATEGORY_RUNTIME_FALLBACKS,
+		"current_status": STATUS_SCENEIZED,
+		"current_path": "res://scenes/runtime/VictoryControlRuntimeController.tscn",
+		"runtime_owner": "res://scripts/runtime/victory_control_runtime_controller.gd",
+		"related_paths": ["res://scenes/runtime/VictoryControlWorldBridge.tscn", "res://scenes/tools/VictoryControlRuntimeBench.tscn", "res://docs/victory_control_runtime_contract.md", "res://scenes/runtime/StandingsPublicSnapshotService.tscn", "res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn", "res://scenes/runtime/GameSessionRuntimeController.tscn"],
+		"function_count": 0,
+		"key_functions": ["evaluate_region_control", "evaluate_candidates", "advance_world_effective", "resolve_special_outcome", "to_save_data", "apply_save_data"],
+		"editor_visibility": "controller_world_bridge_56_case_v05_runtime_gate_and_contract",
+		"risk_level": "high",
+		"recommended_next_step": "Treat the outcome receipt as the only terminal result source and keep legacy cash-goal symbols absent.",
+		"mcp_notes": "SS05-04 is cutover complete. Standings, Final Settlement, AI, save summary, and main consume Controller snapshots or its immutable receipt.",
+	},
 ]
 
 

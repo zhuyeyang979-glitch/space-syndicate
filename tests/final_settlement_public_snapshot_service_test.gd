@@ -21,13 +21,13 @@ func _run() -> void:
 	service.call("configure", {})
 	var source := _source()
 	var snapshot: Dictionary = service.call("compose", source)
-	_expect(str(snapshot.get("summary_text", "")).contains("游戏结束") and str(snapshot.get("summary_text", "")).contains("赛后板"), "summary preserves the public postgame read order")
+	_expect(str(snapshot.get("summary_text", "")).contains("游戏结束") and str(snapshot.get("summary_text", "")).contains("胜者：测试玩家") and str(snapshot.get("summary_text", "")).contains("Top-N个人归属GDP"), "summary preserves the v0.5 outcome-receipt read order")
 	var board := snapshot.get("board", {}) as Dictionary
 	_expect((board.get("chips", []) as Array).size() == 3 and (board.get("kpis", []) as Array).size() == 4 and (board.get("money_sources", []) as Array).size() == 2 and (board.get("ranks", []) as Array).size() == 2 and (board.get("actions", []) as Array).size() == 3, "postgame board contract is complete")
-	_expect(JSON.stringify(board).contains("测试玩家｜结算资金¥980") and JSON.stringify(board).contains("起手:基础¥500"), "supplied winner and money facts are rendered without recalculation")
-	_expect(JSON.stringify(board).contains("关键城市") and JSON.stringify(board).contains("已结算3张匿名牌"), "map and public track events remain visible")
+	_expect(JSON.stringify(board).contains("Top-N归属GDP 145/min") and JSON.stringify(board).contains("现金总账¥610.00"), "supplied VictoryControl comparisons are rendered without recalculation")
+	_expect(JSON.stringify(board).contains("存活城市3座") and JSON.stringify(board).contains("已结算3张匿名牌"), "map and public track events remain visible")
 	var debug: Dictionary = service.call("debug_snapshot")
-	_expect(not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)), "service owns no settlement rules")
+	_expect(bool(debug.get("consumes_outcome_receipt", false)) and not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)), "service consumes a receipt and owns no settlement rules")
 	_expect(_is_pure_data(snapshot) and not _contains_private_key(snapshot), "snapshot is public pure data")
 	var injected := source.duplicate(true)
 	injected["private_hand"] = ["secret-card"]
@@ -43,20 +43,21 @@ func _run() -> void:
 
 func _source() -> Dictionary:
 	return {
-		"valid": true, "reason": "终局倒计时结束", "winner_name": "测试玩家", "winner_score": 980,
-		"cash_goal": 1200, "city_final_value": 100,
+		"valid": true, "reason": "公开审计完成", "winner_names": ["测试玩家"], "co_victory": false,
+		"required_top_n_gdp_per_minute": 130, "required_controlled_region_count": 4,
+		"outcome_receipt": {"outcome_id": "victory.v05.fixture.1", "reason_code": "public_audit_complete", "winner_player_indices": [0], "co_victory": false, "comparison_order": ["top_n_gdp_per_minute", "controlled_region_count", "cash_ledger_cents"]},
 		"top_city_income_name": "测试玩家", "top_city_income_amount": 260,
 		"top_card_income_name": "对手", "top_card_income_amount": 140,
 		"top_role_income_name": "测试玩家", "top_role_income_amount": 90,
 		"top_card_impact": "关键卡牌：轨道融资改变GDP", "monster_impact": "怪兽影响：岩甲兽破坏商路", "resolved_card_count": 3,
 		"map_facts": {"active_city_count": 3, "destroyed_district_count": 1, "active_monster_count": 1, "monster_count": 2, "key_city": {"valid": true, "name": "关键城市", "owner_name": "测试玩家", "last_income": 88}},
 		"money_source_entries": [
-			{"rank": 0, "player_index": 0, "name": "测试玩家", "score": 980, "cash": 720, "base_start_cash": 500, "role_start_bonus": 20, "start_cash": 520, "city_income": 260, "card_income": 80, "role_income": 90, "card_spend": 120, "build_spend": 100, "business_spend": 40, "city_clearance": 200, "active_cities": 2, "gdp_per_minute": 180, "intel_cash": 60, "eliminated": false},
-			{"rank": 1, "player_index": 1, "name": "对手", "score": 830, "cash": 630, "base_start_cash": 500, "role_start_bonus": 0, "start_cash": 500, "city_income": 180, "card_income": 140, "role_income": 40, "card_spend": 90, "build_spend": 100, "business_spend": 30, "city_clearance": 100, "active_cities": 1, "gdp_per_minute": 90, "intel_cash": 100, "eliminated": false},
+			{"rank": 0, "player_index": 0, "name": "测试玩家", "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000, "winner": true, "cash": 610, "city_income": 260, "card_income": 80, "role_income": 90, "gdp_per_minute": 180, "eliminated": false},
+			{"rank": 1, "player_index": 1, "name": "对手", "top_n_gdp_per_minute": 120, "controlled_region_count": 3, "cash_ledger_cents": 73000, "winner": false, "cash": 730, "city_income": 180, "card_income": 140, "role_income": 40, "gdp_per_minute": 150, "eliminated": false},
 		],
 		"rank_entries": [
-			{"player_index": 0, "name": "测试玩家", "score": 980, "cash": 720, "active_cities": 2, "gdp_per_minute": 180, "city_income": 260, "card_income": 80, "intel_cash": 60, "identity": "城市经营"},
-			{"player_index": 1, "name": "对手", "score": 830, "cash": 630, "active_cities": 1, "gdp_per_minute": 90, "city_income": 180, "card_income": 140, "intel_cash": 100, "identity": "卡牌控制"},
+			{"player_index": 0, "name": "测试玩家", "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000, "winner": true, "cash": 610, "gdp_per_minute": 180, "identity": "城市经营"},
+			{"player_index": 1, "name": "对手", "top_n_gdp_per_minute": 120, "controlled_region_count": 3, "cash_ledger_cents": 73000, "winner": false, "cash": 730, "gdp_per_minute": 150, "identity": "卡牌控制"},
 		],
 		"kpi_columns": 4, "money_columns": 2, "rank_columns": 2,
 	}

@@ -3,6 +3,15 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-14。
 
+## 2026-07-14｜SS05-04 Victory Control And Public Audit
+
+- 新增 `VictoryControlRuntimeController.tscn` 与非所有权 `VictoryControlWorldBridge.tscn`，静态接入 `GameRuntimeCoordinator`。区域控制只消费 SS05-03 的结构化归属 GDP，不复制 GDP 或项目份额公式。
+- 迁移 3000bp 唯一最高控制、深度 I-VI Top-N、10 秒资格、120 秒粘性公开审计、30 秒失败冷却、终点比较、共同胜利、最后幸存、星球毁灭现金总账、存档与 exact-once outcome receipt。
+- Standings、Final Settlement、AI、GameSession 和存档摘要改为消费 Controller snapshot/receipt；删除 `main.gd` 的现金目标、城市清算值、短倒计时和旧终局排名算法。
+- 旧 `tests/smoke_test.gd` 中仍直接反射现金目标、倒计时、`game_over` 与旧 AI 终局奖励的断言已迁为 Controller/Coordinator、GameSession 和版本化 outcome receipt；Victory、composition 与 layout 门会阻止这些旧符号重新进入活动测试。
+- 该 monolithic smoke 另以 300 秒上限实跑，仍停在既有 `new game setup` 性能点，尚未进入胜利断言；仅终止其专属 headless 进程。聚焦 Victory 56/56、composition 与完整 layout smoke 均已通过，未为遗留测试恢复旧算法。
+- 新增长期 `VictoryControlRuntimeBench`，56/56 通过；合同见 `docs/victory_control_runtime_contract.md`。生产全局 Ruleset bridge 仍保持 v0.4，下一领域为 SS05-05 六产业产能与卡牌组占用。
+
 ## 2026-07-14｜SS05-03 Structured Project GDP
 
 - 新增 Inspector 可编辑的 `space_syndicate_gdp_formula_v05.tres`。`GdpFormulaRuntimeController` 现在按稳定 region/project/slot/generation 生成生产、需求、通商及显式中性 GDP receipt；v0.4 Profile 只保留为历史证据，不参与 fallback。

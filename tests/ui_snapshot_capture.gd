@@ -131,11 +131,16 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		main.call("_open_intel_dossier_menu")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("intel_dossier_runtime_%s.png" % suffix)
-		var settlement_rankings_variant: Variant = main.call("_final_score_rankings")
+		var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+		if coordinator != null and coordinator.has_method("resolve_victory_outcome"):
+			coordinator.call("resolve_victory_outcome", "planet_destroyed", {})
+		var settlement_rankings_variant: Variant = main.call("_victory_control_rankings")
 		var settlement_rankings: Array = settlement_rankings_variant if settlement_rankings_variant is Array else []
 		main.call("_open_final_settlement_menu", "截图验证", settlement_rankings)
 		await _pump_frames(8)
 		await _save_viewport_snapshot("final_settlement_runtime_%s.png" % suffix)
+		main.call("_new_game")
+		await _pump_frames(8)
 	main.call("_close_menu")
 	await _pump_frames(16)
 	if _runtime_first_run_coach_visible(main):

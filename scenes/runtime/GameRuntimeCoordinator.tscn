@@ -1,4 +1,4 @@
-[gd_scene load_steps=54 format=3]
+[gd_scene load_steps=56 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -53,6 +53,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CityTradeNetworkWorldBridge.tscn" id="51_city_trade_network_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentRuntimeController.tscn" id="52_city_development"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentWorldBridge.tscn" id="53_city_development_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/VictoryControlRuntimeController.tscn" id="54_victory_control"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/VictoryControlWorldBridge.tscn" id="55_victory_control_bridge"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -92,6 +94,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CityDevelopmentWorldBridge" parent="." instance=ExtResource("53_city_development_bridge")]
+unique_name_in_owner = true
+
+[node name="VictoryControlRuntimeController" parent="." instance=ExtResource("54_victory_control")]
+unique_name_in_owner = true
+
+[node name="VictoryControlWorldBridge" parent="." instance=ExtResource("55_victory_control_bridge")]
 unique_name_in_owner = true
 
 [node name="AiRuntimeController" parent="." instance=ExtResource("28_ai_runtime")]

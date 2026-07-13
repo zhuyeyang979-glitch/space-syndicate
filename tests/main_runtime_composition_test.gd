@@ -88,6 +88,10 @@ const PLAYER_TEXT_V05_UNIT_CATALOG := "res://resources/localization/unit_display
 const PLAYER_TEXT_V05_TRANSLATION := "res://localization/v05/player_text_zh_Hans.po"
 const PLAYER_TEXT_V05_MIGRATION_REGISTRY := "res://resources/migrations/card_text_v04_to_v05_registry.tres"
 const PLAYER_TEXT_V05_FOUNDATION_BENCH := "res://scenes/tools/PlayerTextV05FoundationBench.tscn"
+const VICTORY_CONTROL_RUNTIME_CONTROLLER := "res://scenes/runtime/VictoryControlRuntimeController.tscn"
+const VICTORY_CONTROL_WORLD_BRIDGE := "res://scenes/runtime/VictoryControlWorldBridge.tscn"
+const VICTORY_CONTROL_RUNTIME_BENCH := "res://scenes/tools/VictoryControlRuntimeBench.tscn"
+const VICTORY_CONTROL_RUNTIME_CONTRACT := "res://docs/victory_control_runtime_contract.md"
 
 var failures: Array[String] = []
 
@@ -117,6 +121,7 @@ func _run() -> void:
 	_check_global_ui_navigation_characterization_assets()
 	_check_ruleset_v05_foundation_assets()
 	_check_player_text_v05_foundation_assets()
+	_check_victory_control_runtime_assets()
 	var test_bgm := main.get_node_or_null("RuntimeServices/TableAudioHost/NightPatrolTableBgm") as AudioStreamPlayer
 	if test_bgm != null:
 		test_bgm.stream = null
@@ -183,6 +188,8 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyCashflowRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GdpFormulaRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService",
@@ -442,7 +449,7 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	_expect(bool(product_codex_public_snapshot.get("service_ready", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and not bool(product_codex_public_snapshot.get("calculates_market_price", true)) and not bool(product_codex_public_snapshot.get("calculates_strategy_scores", true)), "%s configures scene-owned Product public snapshot authority without moving market or strategy algorithms" % phase)
 	_expect(bool(card_codex_public_snapshot.get("service_ready", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("uses_existing_browser_viewmodel", false)) and bool(card_codex_public_snapshot.get("uses_existing_detail_viewmodel", false)) and not bool(card_codex_public_snapshot.get("calculates_card_price", true)) and not bool(card_codex_public_snapshot.get("calculates_card_effects", true)) and not bool(card_codex_public_snapshot.get("calculates_play_requirements", true)), "%s configures scene-owned Card public snapshot authority while preserving rule ownership" % phase)
 	_expect(bool(economy_dashboard_public_snapshot.get("service_ready", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and not bool(economy_dashboard_public_snapshot.get("calculates_product_prices", true)) and not bool(economy_dashboard_public_snapshot.get("calculates_city_income", true)) and not bool(economy_dashboard_public_snapshot.get("calculates_cashflow", true)) and not bool(economy_dashboard_public_snapshot.get("evaluates_private_truth", true)), "%s configures scene-owned Economy Dashboard presentation without moving economy rules" % phase)
-	_expect(bool(standings_public_snapshot.get("service_ready", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and not bool(standings_public_snapshot.get("calculates_settlement_score", true)) and not bool(standings_public_snapshot.get("calculates_city_income", true)) and not bool(standings_public_snapshot.get("sorts_final_rankings", true)) and not bool(standings_public_snapshot.get("evaluates_private_truth", true)), "%s configures scene-owned Standings presentation without moving scoring or economy rules" % phase)
+	_expect(bool(standings_public_snapshot.get("service_ready", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("consumes_victory_snapshot", false)) and not bool(standings_public_snapshot.get("calculates_region_control", true)) and not bool(standings_public_snapshot.get("calculates_top_n_gdp", true)) and not bool(standings_public_snapshot.get("sorts_final_rankings", true)) and not bool(standings_public_snapshot.get("evaluates_private_truth", true)) and not bool(standings_public_snapshot.get("legacy_cash_goal_presentation_active", true)), "%s configures scene-owned Standings presentation as a VictoryControl snapshot consumer" % phase)
 	_expect(bool(final_settlement_public_snapshot.get("service_ready", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and not bool(final_settlement_public_snapshot.get("calculates_final_score", true)) and not bool(final_settlement_public_snapshot.get("sorts_final_rankings", true)) and not bool(final_settlement_public_snapshot.get("calculates_city_clearance", true)) and not bool(final_settlement_public_snapshot.get("calculates_intel_cash", true)) and not bool(final_settlement_public_snapshot.get("reads_private_hands", true)), "%s configures scene-owned Final Settlement presentation without moving scoring or private history" % phase)
 	_expect(bool(intel_dossier_public_snapshot.get("service_ready", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and not bool(intel_dossier_public_snapshot.get("mutates_city_guesses", true)) and not bool(intel_dossier_public_snapshot.get("settles_intel_cash", true)) and not bool(intel_dossier_public_snapshot.get("reveals_city_owner_truth", true)) and not bool(intel_dossier_public_snapshot.get("reveals_card_owner_truth", true)) and not bool(intel_dossier_public_snapshot.get("reads_private_hands", true)) and bool(intel_dossier_public_snapshot.get("action_id_controls", false)), "%s configures scene-owned Intel Dossier presentation and action intents without moving hidden truth or settlement" % phase)
 	_expect(bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("owns_card_use_case", false)) and bool(card_presentation_snapshot.get("owns_hand_card_viewmodel", false)) and not bool(card_presentation_snapshot.get("calculates_card_price", true)) and not bool(card_presentation_snapshot.get("calculates_play_legality", true)) and not bool(card_presentation_snapshot.get("mutates_game_state", true)), "%s configures scene-owned card presentation without moving price, legality, or mutation rules" % phase)
@@ -817,6 +824,30 @@ func _check_player_text_v05_foundation_assets() -> void:
 	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("PlayerText")
 	ready = ready and not main_source.contains("PlayerTextV05") and not main_source.contains("player_text_schema_v05")
 	_expect(ready, "SS05-01A provides a pure-data player-text foundation and 239-card migration registry without cutting production v0.4 text ownership")
+
+
+func _check_victory_control_runtime_assets() -> void:
+	var ready := ResourceLoader.exists(VICTORY_CONTROL_RUNTIME_CONTROLLER) and ResourceLoader.exists(VICTORY_CONTROL_WORLD_BRIDGE) and ResourceLoader.exists(VICTORY_CONTROL_RUNTIME_BENCH) and FileAccess.file_exists(VICTORY_CONTROL_RUNTIME_CONTRACT)
+	var controller_packed := load(VICTORY_CONTROL_RUNTIME_CONTROLLER) as PackedScene
+	var controller := controller_packed.instantiate() if controller_packed != null else null
+	var configured: Dictionary = controller.call("configure") if controller != null else {}
+	ready = ready and bool(configured.get("configured", false)) and str(configured.get("ruleset_id", "")) == "v0.5"
+	ready = ready and controller != null and controller.has_method("evaluate_region_control") and controller.has_method("evaluate_candidates") and controller.has_method("advance_world_effective") and controller.has_method("resolve_special_outcome") and controller.has_method("to_save_data") and controller.has_method("apply_save_data")
+	if controller != null:
+		controller.free()
+	var bench_packed := load(VICTORY_CONTROL_RUNTIME_BENCH) as PackedScene
+	var bench := bench_packed.instantiate() if bench_packed != null else null
+	var manifest: Dictionary = bench.call("build_victory_manifest_preview") if bench != null and bench.has_method("build_victory_manifest_preview") else {}
+	ready = ready and bench != null and bench.has_method("victory_cases") and bench.has_method("run_victory_suite") and int(manifest.get("record_count", 0)) == 56 and _is_pure_data(manifest)
+	if bench != null:
+		bench.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var smoke_source := FileAccess.get_file_as_string("res://tests/smoke_test.gd")
+	for forbidden in ["var game_over", "victory_countdown", "_roguelike_cash_goal", "_player_visible_settlement_estimate", "_player_final_score", "_final_score_rankings", "CITY_FINAL_VALUE"]:
+		ready = ready and not main_source.contains(str(forbidden)) and not smoke_source.contains(str(forbidden))
+	var contract := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTRACT)
+	ready = ready and contract.contains("SS05-04 is a hard cutover") and contract.contains("56 cases") and contract.contains("There is no cash-goal or legacy countdown fallback")
+	_expect(ready, "SS05-04 composes one VictoryControlRuntimeController, a non-owning WorldBridge, and a 56-case gate with no cash-goal or countdown fallback")
 
 
 func _function_source(source: String, function_name: String) -> String:

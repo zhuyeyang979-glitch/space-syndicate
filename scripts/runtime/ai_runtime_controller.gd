@@ -18,6 +18,7 @@ var _city_development_runtime_controller: CityDevelopmentRuntimeController
 var _city_development_world_bridge: CityDevelopmentWorldBridge
 var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
 var _gameplay_balance_diagnostics_service: GameplayBalanceDiagnosticsRuntimeService
+var _victory_control_runtime_controller: VictoryControlRuntimeController
 var _ruleset_snapshot: Dictionary = {}
 var _policy_main_payload: Dictionary = {}
 var _configured := false
@@ -67,6 +68,10 @@ func set_card_definition_bridge(bridge: CardRuntimeDefinitionWorldBridge) -> voi
 
 func set_gameplay_balance_diagnostics_service(service: GameplayBalanceDiagnosticsRuntimeService) -> void:
 	_gameplay_balance_diagnostics_service = service
+
+
+func set_victory_control_runtime_controller(controller: VictoryControlRuntimeController) -> void:
+	_victory_control_runtime_controller = controller
 
 
 func configure(ruleset_snapshot: Dictionary, supplied_profile: Resource = null) -> void:
@@ -264,6 +269,7 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"shared_rng": _world_ready() and rng != null,
 		"weather_controller_bound": _weather_runtime_controller != null,
 		"contract_controller_bound": _contract_runtime_controller != null,
+		"victory_control_controller_bound": _victory_control_runtime_controller != null,
 		"private_plan_exposed": false,
 	}
 
@@ -364,11 +370,9 @@ var districts:
 	set(value):
 		_write_world_value(&"districts", value)
 
-var game_over:
+var session_finished:
 	get:
-		return _world_value(&"game_over", false)
-	set(value):
-		_write_world_value(&"game_over", value)
+		return bool(_call_world(&"_runtime_session_finished"))
 
 var game_time:
 	get:
@@ -451,17 +455,18 @@ var selected_trade_product:
 	set(value):
 		_write_world_value(&"selected_trade_product", value)
 
-var victory_countdown_active:
+var victory_control_active:
 	get:
-		return _world_value(&"victory_countdown_active", false)
-	set(value):
-		_write_world_value(&"victory_countdown_active", value)
+		return str(_victory_public_snapshot().get("state", "idle")) in ["qualification", "audit"]
 
-var victory_countdown_timer:
+var victory_control_remaining_seconds:
 	get:
-		return _world_value(&"victory_countdown_timer", null)
-	set(value):
-		_write_world_value(&"victory_countdown_timer", value)
+		var snapshot := _victory_public_snapshot()
+		match str(snapshot.get("state", "idle")):
+			"qualification": return float(snapshot.get("qualification_remaining_seconds", 0.0))
+			"audit": return float(snapshot.get("audit_remaining_seconds", 0.0))
+			"cooldown": return float(snapshot.get("cooldown_remaining_seconds", 0.0))
+		return 0.0
 
 var AI_CARD_DECISION_INTERVAL_SECONDS:
 	get:
@@ -762,8 +767,90 @@ func _normalized_city_guess_confidence(confidence: int) -> int:
 func _public_card_resolution_owner_entries() -> Array:
 	return _call_world(&"_public_card_resolution_owner_entries")
 
-func _player_visible_settlement_estimate(player_index: int) -> int:
-	return _call_world(&"_player_visible_settlement_estimate", [player_index])
+func _victory_public_snapshot() -> Dictionary:
+	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("public_snapshot"):
+		return {}
+	var value: Variant = _victory_control_runtime_controller.call("public_snapshot")
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+func _victory_private_snapshot(player_index: int) -> Dictionary:
+	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("private_snapshot"):
+		return {}
+	var value: Variant = _victory_control_runtime_controller.call("private_snapshot", player_index)
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+func _victory_candidate(player_index: int) -> Dictionary:
+	var value: Variant = _victory_private_snapshot(player_index).get("own_candidate", {})
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+func _victory_top_n_gdp(player_index: int) -> int:
+	return maxi(0, int(_victory_candidate(player_index).get("top_n_gdp_per_minute", 0)))
+
+func _victory_controlled_regions(player_index: int) -> int:
+	return maxi(0, int(_victory_candidate(player_index).get("controlled_region_count", 0)))
+
+func _victory_depth_rule() -> Dictionary:
+	var public_rule: Variant = _victory_public_snapshot().get("depth_rule", {})
+	if public_rule is Dictionary and not (public_rule as Dictionary).is_empty():
+		return (public_rule as Dictionary).duplicate(true)
+	if _victory_control_runtime_controller != null and _victory_control_runtime_controller.has_method("depth_rule_for_tier"):
+		var value: Variant = _victory_control_runtime_controller.call("depth_rule_for_tier", int(_world_value(&"configured_roguelike_depth", 3)))
+		return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	return {}
+
+func _victory_required_gdp() -> int:
+	return maxi(1, int(_victory_depth_rule().get("depth", 1)))
+
+func _victory_required_regions() -> int:
+	return maxi(1, int(_victory_depth_rule().get("regions", 1)))
+
+func _victory_timer_total_seconds() -> float:
+	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("timer_duration"):
+		return 1.0
+	var state := str(_victory_public_snapshot().get("state", "idle"))
+	var timer_id := "public_audit" if state == "audit" else ("audit_failure_cooldown" if state == "cooldown" else "victory_qualification")
+	return maxf(1.0, float(_victory_control_runtime_controller.call("timer_duration", timer_id)))
+
+func _victory_visible_rankings(viewer_index: int) -> Array:
+	var by_player := {}
+	for entry_variant in _victory_public_snapshot().get("audit_entries", []):
+		if entry_variant is Dictionary:
+			by_player[str(int((entry_variant as Dictionary).get("player_index", -1)))] = (entry_variant as Dictionary).duplicate(true)
+	var own_candidate := _victory_candidate(viewer_index)
+	if not own_candidate.is_empty():
+		by_player[str(viewer_index)] = own_candidate
+	var result: Array = []
+	for entry_variant in by_player.values():
+		if entry_variant is Dictionary:
+			result.append((entry_variant as Dictionary).duplicate(true))
+	result.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		for key in ["top_n_gdp_per_minute", "controlled_region_count", "cash_ledger_cents"]:
+			if int(left.get(key, 0)) != int(right.get(key, 0)):
+				return int(left.get(key, 0)) > int(right.get(key, 0))
+		return int(left.get("player_index", -1)) < int(right.get("player_index", -1))
+	)
+	return result
+
+func _visible_score_leader_entry(viewer_index: int) -> Dictionary:
+	var rankings := _victory_visible_rankings(viewer_index)
+	if rankings.is_empty():
+		return {"player_index": viewer_index, "score": _victory_top_n_gdp(viewer_index)}
+	var leader := (rankings[0] as Dictionary).duplicate(true)
+	leader["score"] = int(leader.get("top_n_gdp_per_minute", 0))
+	return leader
+
+func _victory_outcome_rankings() -> Array:
+	var receipt_variant: Variant = _victory_public_snapshot().get("outcome_receipt", {})
+	if not (receipt_variant is Dictionary):
+		return []
+	var rankings_variant: Variant = (receipt_variant as Dictionary).get("rankings", [])
+	return (rankings_variant as Array).duplicate(true) if rankings_variant is Array else []
+
+func _victory_rank_for_player(rankings: Array, player_index: int) -> int:
+	for rank in range(rankings.size()):
+		if rankings[rank] is Dictionary and int((rankings[rank] as Dictionary).get("player_index", -1)) == player_index:
+			return rank
+	return rankings.size()
 
 func _player_is_eliminated(player_index: int) -> bool:
 	return _call_world(&"_player_is_eliminated", [player_index])
@@ -824,9 +911,6 @@ func _card_price(skill_name: String, district_index: int = -1, player_index: int
 
 func _card_strength_budget_points(card_name: String) -> int:
 	return _gameplay_balance_diagnostics_service.card_budget_points_for_id(card_name) if _gameplay_balance_diagnostics_service != null else 0
-
-func _roguelike_cash_goal(depth: int = -1) -> int:
-	return _call_world(&"_roguelike_cash_goal", [depth])
 
 func _product_price(product_name: String) -> int:
 	return _product_market_runtime_controller.product_price(product_name) if _product_market_runtime_controller != null else 0
@@ -979,17 +1063,8 @@ func _configured_human_player_count() -> int:
 func _player_is_ai(player_index: int) -> bool:
 	return _call_world(&"_player_is_ai", [player_index])
 
-func _visible_score_leader_entry() -> Dictionary:
-	return _call_world(&"_visible_score_leader_entry")
-
 func _player_facing_text_snapshot() -> Array:
 	return _call_world(&"_player_facing_text_snapshot")
-
-func _final_score_rankings() -> Array:
-	return _call_world(&"_final_score_rankings")
-
-func _final_score_rank_for_player(rankings: Array, player_index: int) -> int:
-	return _call_world(&"_final_score_rank_for_player", [rankings, player_index])
 
 func _counter_skill_for_ai_candidate(player_index: int, source_skill: Dictionary) -> Dictionary:
 	if _is_counter_skill(source_skill):
@@ -1175,9 +1250,6 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 
 func _add_action_callout(actor: String, action: String, detail: String, color: Color, world_position: Vector2, duration: float = ACTION_CALLOUT_DURATION) -> void:
 	return _call_monster(&"_add_action_callout", [actor, action, detail, color, world_position, duration])
-
-func _player_final_score(player_index: int) -> int:
-	return _call_world(&"_player_final_score", [player_index])
 
 func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Dictionary:
 	return _call_monster(&"_auto_monster_target_weight_parts", [actor, index])
@@ -1580,7 +1652,7 @@ func _pick_rival_business_action(player_index: int) -> Dictionary:
 		return {}
 	return candidates[picked] as Dictionary
 func _auto_rival_business_actions(force: bool = false) -> int:
-	if game_over or players.size() <= 1:
+	if session_finished or players.size() <= 1:
 		return 0
 	var acted := 0
 	var limit: int = int(players.size()) - 1 if force else int(RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE)
@@ -1921,7 +1993,7 @@ func _ai_live_route_balance_report() -> Dictionary:
 		var board_progress := int(player.get("cities_built", 0)) \
 			+ _player_active_city_count(player_index) \
 			+ _ai_owned_active_monster_count(player_index)
-		var settlement_estimate := _player_visible_settlement_estimate(player_index)
+		var victory_top_n_gdp := _victory_top_n_gdp(player_index)
 		var spent_pressure := maxi(0, int(player.get("total_card_spend", 0))) \
 			+ maxi(0, int(player.get("total_build_spend", 0))) \
 			+ maxi(0, int(player.get("total_business_spend", 0)))
@@ -1942,7 +2014,8 @@ func _ai_live_route_balance_report() -> Dictionary:
 			"route_counts": player_route_counts,
 			"action_counts": player_action_counts,
 			"money_progress": money_progress,
-			"settlement_estimate": settlement_estimate,
+			"victory_top_n_gdp_per_minute": victory_top_n_gdp,
+			"victory_controlled_region_count": _victory_controlled_regions(player_index),
 			"spent_pressure": spent_pressure,
 			"board_progress": board_progress,
 			"has_money_progress": has_money_progress,
@@ -2852,11 +2925,11 @@ func _empty_ai_memory() -> Dictionary:
 		"learning_last_tags": [],
 		"episode_learning_updates": 0,
 		"episode_last_reward": 0,
-		"episode_last_final_score": 0,
+		"episode_last_top_n_gdp": 0,
+		"episode_last_controlled_regions": 0,
 		"episode_last_rank": -1,
-		"episode_last_cash_goal": 0,
 		"episode_last_result": "",
-		"training_note": "记录状态向量、候选评分、实时现金流/全局刷新收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。",
+		"training_note": "记录状态向量、候选评分、Top-N归属GDP、区域控制和公开审计结果，并把版本化胜负结果回写到行动/策略/路线偏好。",
 	}
 func _ensure_player_ai_state() -> void:
 	if players.is_empty():
@@ -2951,16 +3024,16 @@ func _ensure_player_ai_state() -> void:
 					memory["episode_learning_updates"] = 0
 				if not memory.has("episode_last_reward"):
 					memory["episode_last_reward"] = 0
-				if not memory.has("episode_last_final_score"):
-					memory["episode_last_final_score"] = 0
+				if not memory.has("episode_last_top_n_gdp"):
+					memory["episode_last_top_n_gdp"] = 0
+				if not memory.has("episode_last_controlled_regions"):
+					memory["episode_last_controlled_regions"] = 0
 				if not memory.has("episode_last_rank"):
 					memory["episode_last_rank"] = -1
-				if not memory.has("episode_last_cash_goal"):
-					memory["episode_last_cash_goal"] = 0
 				if not memory.has("episode_last_result"):
 					memory["episode_last_result"] = ""
 				if String(memory.get("training_note", "")) == "":
-					memory["training_note"] = "记录状态向量、候选评分、实时现金流/全局刷新收益与终局资金，并把金钱结果在线回写到行动/策略/路线偏好。"
+					memory["training_note"] = "记录状态向量、候选评分、Top-N归属GDP、区域控制和公开审计结果，并把版本化胜负结果回写到行动/策略/路线偏好。"
 				player["ai_memory"] = memory
 		else:
 			player["ai_profile"] = {}
@@ -2974,45 +3047,47 @@ func _ai_owned_active_monster_count(player_index: int) -> int:
 			count += 1
 	return count
 func _ai_score_gap_to_leader(player_index: int) -> int:
-	var leader := _visible_score_leader_entry()
+	var leader := _visible_score_leader_entry(player_index)
 	if int(leader.get("player_index", -1)) < 0:
 		return 0
-	return _player_visible_settlement_estimate(player_index) - int(leader.get("score", 0))
+	return _victory_top_n_gdp(player_index) - int(leader.get("score", 0))
 func _ai_game_phase(player_index: int) -> String:
-	var score := _player_visible_settlement_estimate(player_index)
-	var cash_goal := maxi(1, _roguelike_cash_goal())
-	if victory_countdown_active or score >= int(round(float(cash_goal) * AI_ENDGAME_GOAL_RATIO)) or business_cycle_count >= AI_ENDGAME_CYCLE:
+	var score := _victory_top_n_gdp(player_index)
+	var gdp_goal := _victory_required_gdp()
+	if victory_control_active or score >= int(round(float(gdp_goal) * AI_ENDGAME_GOAL_RATIO)) or business_cycle_count >= AI_ENDGAME_CYCLE:
 		return "endgame"
 	if business_cycle_count <= AI_OPENING_CYCLE_MAX or _ai_owned_active_monster_count(player_index) <= 0 or _player_active_city_count(player_index) <= 0:
 		return "opening"
 	return "midgame"
 func _ai_competitive_posture(player_index: int) -> String:
-	var leader := _visible_score_leader_entry()
+	var leader := _visible_score_leader_entry(player_index)
 	var leader_index := int(leader.get("player_index", -1))
 	var gap := _ai_score_gap_to_leader(player_index)
 	if leader_index == player_index and abs(gap) <= AI_LEAD_MARGIN:
 		return "leader"
 	if leader_index == player_index:
 		return "leader"
-	if gap <= -AI_TRAILING_MARGIN:
+	if gap <= -maxi(1, int(round(float(_victory_required_gdp()) * 0.15))):
 		return "trailing"
 	return "contesting"
 func _ai_endgame_urgency_score(player_index: int) -> int:
 	if player_index < 0 or player_index >= players.size():
 		return 0
 	var score := 0
-	var settlement_estimate := _player_visible_settlement_estimate(player_index)
-	var cash_goal := maxi(1, _roguelike_cash_goal())
-	var cash_gap := maxi(0, cash_goal - settlement_estimate)
+	var own_gdp := _victory_top_n_gdp(player_index)
+	var gdp_goal := _victory_required_gdp()
+	var gdp_gap := maxi(0, gdp_goal - own_gdp)
+	var region_gap := maxi(0, _victory_required_regions() - _victory_controlled_regions(player_index))
 	var leader_gap := _ai_score_gap_to_leader(player_index)
-	if cash_gap > 0:
-		score += mini(95, int(round(float(cash_gap) / 80.0)))
+	if gdp_gap > 0:
+		score += mini(95, int(round(float(gdp_gap) * 95.0 / float(gdp_goal))))
+	score += region_gap * 35
 	if leader_gap < 0:
-		score += mini(115, int(round(float(abs(leader_gap)) / 55.0)))
-	if victory_countdown_active:
-		var elapsed_ratio := clampf(1.0 - (victory_countdown_timer / maxf(1.0, _ruleset_timing_seconds(&"final_countdown_seconds"))), 0.0, 1.0)
+		score += mini(115, int(round(float(abs(leader_gap)) * 115.0 / float(gdp_goal))))
+	if victory_control_active:
+		var elapsed_ratio := clampf(1.0 - (victory_control_remaining_seconds / _victory_timer_total_seconds()), 0.0, 1.0)
 		score += 55 + int(round(elapsed_ratio * 120.0))
-		if victory_countdown_timer <= 20.0:
+		if victory_control_remaining_seconds <= 20.0:
 			score += 45
 	return clampi(score, 0, 260)
 func _ai_game_phase_reason(_player_index: int, phase: String, posture: String, gap: int) -> String:
@@ -3020,7 +3095,7 @@ func _ai_game_phase_reason(_player_index: int, phase: String, posture: String, g
 		"opening":
 			return "开局：优先首召、通过发展牌建立商品项目，再买基础经营牌。"
 		"endgame":
-			return "后期：%s，距离领先者%s；围绕现金目标冲刺、防守或压制。" % [
+			return "后期：%s，Top-N GDP距离领先者%s；围绕区域控制和公开审计冲刺、防守或压制。" % [
 				_ai_competitive_posture_label(posture),
 				_signed_int_text(gap),
 			]
@@ -3036,7 +3111,7 @@ func _ai_refresh_game_phase(player_index: int, force: bool = false) -> Dictionar
 		}
 	var player: Dictionary = players[player_index]
 	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
-	var leader := _visible_score_leader_entry()
+	var leader := _visible_score_leader_entry(player_index)
 	var leader_index := int(leader.get("player_index", -1))
 	var gap := _ai_score_gap_to_leader(player_index)
 	var phase := _ai_game_phase(player_index)
@@ -3103,7 +3178,7 @@ func _ai_best_city_for_owner(owner_index: int, prefer_damaged: bool = false) -> 
 			best_index = city_index
 	return best_index
 func _ai_best_pressure_target_city(player_index: int) -> int:
-	var leader := _visible_score_leader_entry()
+	var leader := _visible_score_leader_entry(player_index)
 	var leader_index := int(leader.get("player_index", -1))
 	if leader_index >= 0 and leader_index != player_index:
 		var leader_city := _ai_best_city_for_owner(leader_index, _ai_competitive_posture(player_index) == "trailing")
@@ -3146,7 +3221,7 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var leader_index := int(phase_info.get("leader_index", -1))
 	var posture := String(phase_info.get("posture", "contesting"))
-	var self_estimate := _player_visible_settlement_estimate(player_index)
+	var self_estimate := _victory_top_n_gdp(player_index)
 	var hand_effect_pressure := int(skill.get("hand_discard_count", 0)) * 118 \
 		+ int(skill.get("hand_steal_count", 0)) * 154 \
 		+ int(round(float(skill.get("hand_lock_seconds", 0.0)) * 4.0)) \
@@ -3165,7 +3240,7 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 	for i in range(players.size()):
 		if i == player_index:
 			continue
-		var settlement := _player_visible_settlement_estimate(i)
+		var settlement := _victory_top_n_gdp(i)
 		var settlement_gap := settlement - self_estimate
 		var city_pressure := _player_active_city_count(i) * 74
 		var monster_pressure := _ai_owned_active_monster_count(i) * 42
@@ -3393,13 +3468,13 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 	var phase := String(phase_info.get("phase", "midgame"))
 	var posture := String(phase_info.get("posture", "contesting"))
 	var leader_index := int(phase_info.get("leader_index", -1))
-	var leader_score := int(_visible_score_leader_entry().get("score", 0))
-	var own_score := _player_visible_settlement_estimate(player_index)
-	var cash_goal := maxi(1, _roguelike_cash_goal())
-	var cash_gap := cash_goal - own_score
-	var leader_goal_gap := cash_goal - leader_score
+	var leader_score := int(_visible_score_leader_entry(player_index).get("score", 0))
+	var own_score := _victory_top_n_gdp(player_index)
+	var gdp_goal := _victory_required_gdp()
+	var gdp_gap := gdp_goal - own_score
+	var leader_goal_gap := gdp_goal - leader_score
 	var urgency := _ai_endgame_urgency_score(player_index)
-	var is_endgame_pressure: bool = phase == "endgame" or bool(victory_countdown_active) or own_score >= int(round(float(cash_goal) * 0.82)) or leader_score >= int(round(float(cash_goal) * 0.86))
+	var is_endgame_pressure: bool = phase == "endgame" or bool(victory_control_active) or own_score >= int(round(float(gdp_goal) * 0.82)) or leader_score >= int(round(float(gdp_goal) * 0.86))
 	if not is_endgame_pressure:
 		return result
 	var resolved_owner := target_owner
@@ -3415,20 +3490,20 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 	var pressure := _ai_pressure_kind(kind, skill)
 	var defense := _ai_defense_kind(kind, skill)
 	var bonus := 0
-	var role := "race_to_goal"
+	var role := "race_to_audit"
 	var reasons := []
-	if victory_countdown_active and leader_index >= 0 and leader_index != player_index:
-		role = "break_countdown"
+	if victory_control_active and leader_index >= 0 and leader_index != player_index:
+		role = "break_audit_lead"
 		if pressure and (targets_leader or harmful_target):
 			bonus += 160 + urgency
-			reasons.append("阻断倒计时+%d" % (160 + urgency))
+			reasons.append("阻断审计领先+%d" % (160 + urgency))
 		if kind == "city_gdp_derivative" and String(_city_gdp_derivative_terms(skill).get("direction", "")) == "down":
 			bonus += 95 + int(round(float(urgency) / 2.0))
 			reasons.append("做空领先GDP")
 		if route_id == "finance_speculation":
 			bonus += 46
 			reasons.append("终局金融反扑")
-	elif posture == "leader" or cash_gap <= 0 or own_score >= int(round(float(cash_goal) * 0.9)):
+	elif posture == "leader" or gdp_gap <= 0 or own_score >= int(round(float(gdp_goal) * 0.9)):
 		role = "protect_lead"
 		if defense and (helpful_target or resolved_owner == -999):
 			bonus += 125 + int(round(float(urgency) / 2.0))
@@ -3442,7 +3517,7 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 		if pressure and harmful_target:
 			bonus += 28
 			reasons.append("低风险牵制")
-	elif posture == "trailing" or cash_gap > 0 and leader_goal_gap <= 0:
+	elif posture == "trailing" or gdp_gap > 0 and leader_goal_gap <= 0:
 		role = "last_push"
 		if pressure and (targets_leader or harmful_target):
 			bonus += 115 + urgency
@@ -3452,9 +3527,9 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 			reasons.append("高杠杆追分")
 		if ["cash_gain", "product_speculation"].has(kind):
 			bonus += 54
-			reasons.append("补现金缺口")
+			reasons.append("补审计末级现金比较")
 	else:
-		role = "race_to_goal"
+		role = "race_to_audit"
 		if defense and helpful_target:
 			bonus += 58 + int(round(float(urgency) / 3.0))
 			reasons.append("护住收益")
@@ -3469,7 +3544,7 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 		reasons.append("商品路线吻合")
 	result["bonus"] = clampi(bonus, 0, 260)
 	result["role"] = role
-	result["reason"] = "、".join(reasons) if not reasons.is_empty() else "终局竞速观察"
+	result["reason"] = "、".join(reasons) if not reasons.is_empty() else "审计竞速观察"
 	return result
 func _ai_observation_vector(player_index: int) -> Dictionary:
 	if player_index < 0 or player_index >= players.size():
@@ -3483,7 +3558,8 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		total_flow += _player_product_flow(player_index, String(product_variant))
 	return {
 		"cash": int(player.get("cash", 0)),
-		"settlement_estimate": _player_visible_settlement_estimate(player_index),
+		"victory_top_n_gdp_per_minute": _victory_top_n_gdp(player_index),
+		"victory_controlled_region_count": _victory_controlled_regions(player_index),
 		"counted_hand": _player_counted_hand_size(player),
 		"cities": _player_active_city_count(player_index),
 		"owned_monsters": _ai_owned_active_monster_count(player_index),
@@ -3505,7 +3581,8 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"learning_updates": int(memory.get("learning_updates", 0)),
 		"episode_learning_updates": int(memory.get("episode_learning_updates", 0)),
 		"learned_policy_count": (memory.get("learned_policy_values", {}) as Dictionary).size(),
-		"cash_goal_gap": maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index)),
+		"victory_gdp_gap": maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index)),
+		"victory_region_gap": maxi(0, _victory_required_regions() - _victory_controlled_regions(player_index)),
 		"queue_current": _card_resolution_current_queue().size(),
 		"queue_next": _card_resolution_next_queue().size(),
 		"auction_open": card_resolution_auction_open,
@@ -3870,9 +3947,10 @@ func _ai_learning_tags_for_sample(sample: Dictionary) -> Array:
 			tags.append(development_tag)
 	return tags
 func _ai_learning_reward_for_sample(sample: Dictionary) -> int:
-	var settlement_reward := int(sample.get("reward_settlement", 0))
+	var gdp_reward := int(sample.get("reward_victory_gdp", 0)) * 5
+	var region_reward := int(sample.get("reward_victory_regions", 0)) * 60
 	var cash_reward := int(sample.get("reward_cash", 0))
-	return clampi(settlement_reward + int(round(float(cash_reward) * 0.25)), -AI_LEARNING_REWARD_CLAMP, AI_LEARNING_REWARD_CLAMP)
+	return clampi(gdp_reward + region_reward + int(round(float(cash_reward) * 0.05)), -AI_LEARNING_REWARD_CLAMP, AI_LEARNING_REWARD_CLAMP)
 func _ai_learning_rate_for_player(player_index: int) -> float:
 	var exploration := float(_ai_profile_for_player(player_index).get("exploration", 0.15))
 	return clampf(AI_LEARNING_BASE_RATE + exploration * 0.35, 0.18, 0.38)
@@ -3957,9 +4035,11 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"phase_reason": String(phase_info.get("reason", "")),
 		"endgame_urgency": _ai_endgame_urgency_score(player_index),
 		"baseline_cash": int(player.get("cash", 0)),
-		"baseline_settlement": int(observation.get("settlement_estimate", 0)),
+		"baseline_victory_gdp": int(observation.get("victory_top_n_gdp_per_minute", 0)),
+		"baseline_victory_regions": int(observation.get("victory_controlled_region_count", 0)),
 		"reward_cash": 0,
-		"reward_settlement": 0,
+		"reward_victory_gdp": 0,
+		"reward_victory_regions": 0,
 		"reward_score": 0,
 		"reward_finalized": false,
 		"learning_applied": false,
@@ -3967,7 +4047,7 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 	# Candidate metadata may contain its own card `kind`; it must never replace
 	# the decision envelope kind (for example `匿名出牌`). Training and audits
 	# depend on both levels remaining distinct.
-	var reserved_sample_fields := ["time", "cycle", "kind", "target", "state", "candidates", "reward_cash", "reward_settlement", "reward_score", "reward_finalized", "learning_applied"]
+	var reserved_sample_fields := ["time", "cycle", "kind", "target", "state", "candidates", "reward_cash", "reward_victory_gdp", "reward_victory_regions", "reward_score", "reward_finalized", "learning_applied"]
 	for key_variant in metadata.keys():
 		if reserved_sample_fields.has(String(key_variant)):
 			continue
@@ -3997,7 +4077,8 @@ func _finalize_ai_decision_rewards() -> int:
 			if bool(sample.get("reward_finalized", false)) or int(sample.get("cycle", business_cycle_count)) >= business_cycle_count:
 				continue
 			sample["reward_cash"] = int(player.get("cash", 0)) - int(sample.get("baseline_cash", int(player.get("cash", 0))))
-			sample["reward_settlement"] = _player_visible_settlement_estimate(player_index) - int(sample.get("baseline_settlement", 0))
+			sample["reward_victory_gdp"] = _victory_top_n_gdp(player_index) - int(sample.get("baseline_victory_gdp", 0))
+			sample["reward_victory_regions"] = _victory_controlled_regions(player_index) - int(sample.get("baseline_victory_regions", 0))
 			sample["reward_score"] = _ai_learning_reward_for_sample(sample)
 			sample["reward_finalized"] = true
 			sample["reward_cycle"] = business_cycle_count
@@ -4012,55 +4093,49 @@ func _finalize_ai_decision_rewards() -> int:
 			player["ai_memory"] = memory
 			players[player_index] = player
 	return finalized
-func _ai_episode_reward_for_player(player_index: int, rankings: Array, cash_goal: int) -> Dictionary:
-	var final_score := _player_final_score(player_index)
-	var rank := _final_score_rank_for_player(rankings, player_index)
-	var winner_score := final_score
-	var winner_index := player_index
-	if not rankings.is_empty():
-		var winner := rankings[0] as Dictionary
-		winner_score = int(winner.get("score", final_score))
-		winner_index = int(winner.get("player_index", player_index))
-	var score_vs_goal := final_score - cash_goal
-	var reward := clampi(int(round(float(score_vs_goal) / 6.0)), -680, 680)
-	if final_score >= cash_goal:
-		reward += AI_EPISODE_GOAL_BONUS
-	else:
-		reward -= int(round(float(cash_goal - final_score) / 14.0))
-	if player_index == winner_index:
-		reward += AI_EPISODE_WIN_BONUS
+func _ai_episode_reward_for_player(player_index: int, rankings: Array, winner_indices: Array) -> Dictionary:
+	var rank := _victory_rank_for_player(rankings, player_index)
+	var entry := {}
+	if rank >= 0 and rank < rankings.size() and rankings[rank] is Dictionary:
+		entry = (rankings[rank] as Dictionary).duplicate(true)
+	var top_n_gdp := int(entry.get("top_n_gdp_per_minute", 0))
+	var controlled_regions := int(entry.get("controlled_region_count", 0))
+	var winner := winner_indices.has(player_index)
+	var reward := top_n_gdp * 4 + controlled_regions * 80
+	if winner:
+		reward += AI_EPISODE_WIN_BONUS + AI_EPISODE_GOAL_BONUS
 	else:
 		reward -= 95 * maxi(1, rank)
-		reward += clampi(int(round(float(final_score - winner_score) / 10.0)), -360, 0)
 	var seat_span := maxi(1, players.size() - 1)
-	reward += int(round((float(seat_span - rank) / float(seat_span)) * 220.0)) - 90
-	var result_label := "胜利" if player_index == winner_index else ("达标" if final_score >= cash_goal else "未达标")
+	reward += int(round((float(maxi(0, seat_span - rank)) / float(seat_span)) * 220.0)) - 90
 	return {
 		"reward": clampi(reward, -AI_EPISODE_REWARD_CLAMP, AI_EPISODE_REWARD_CLAMP),
-		"final_score": final_score,
+		"top_n_gdp_per_minute": top_n_gdp,
+		"controlled_region_count": controlled_regions,
+		"cash_ledger_cents": int(entry.get("cash_ledger_cents", 0)),
 		"rank": rank,
-		"winner_index": winner_index,
-		"winner_score": winner_score,
-		"cash_goal": cash_goal,
-		"result": result_label,
+		"winner": winner,
+		"co_victory": winner and winner_indices.size() > 1,
+		"result": "共同胜利" if winner and winner_indices.size() > 1 else ("胜利" if winner else "未获胜"),
 	}
 func _ai_episode_sample_reward(base_reward: int, sample: Dictionary) -> int:
 	var sample_cycle := int(sample.get("cycle", business_cycle_count))
 	var age := maxi(0, business_cycle_count - sample_cycle)
 	var decayed := int(round(float(base_reward) * pow(AI_EPISODE_SAMPLE_DECAY, float(age))))
 	return clampi(decayed, -AI_EPISODE_REWARD_CLAMP, AI_EPISODE_REWARD_CLAMP)
-func _finalize_ai_episode_rewards(reason: String = "") -> int:
-	if players.is_empty():
+func finalize_victory_outcome_learning(receipt: Dictionary) -> int:
+	if players.is_empty() or receipt.is_empty() or not (receipt.get("rankings", []) is Array) or not (receipt.get("winner_player_indices", []) is Array):
 		return 0
-	var rankings := _final_score_rankings()
-	var cash_goal := _roguelike_cash_goal()
+	var rankings := (receipt.get("rankings", []) as Array).duplicate(true)
+	var winner_indices := (receipt.get("winner_player_indices", []) as Array).duplicate()
+	var reason := str(receipt.get("reason_code", "victory_resolved"))
 	var updated := 0
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
 		var player: Dictionary = players[player_index]
 		var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
 		var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
-		var episode := _ai_episode_reward_for_player(player_index, rankings, cash_goal)
+		var episode := _ai_episode_reward_for_player(player_index, rankings, winner_indices)
 		var base_reward := int(episode.get("reward", 0))
 		var sample_updates := 0
 		for i in range(samples.size()):
@@ -4072,9 +4147,12 @@ func _finalize_ai_episode_rewards(reason: String = "") -> int:
 			var sample_reward := _ai_episode_sample_reward(base_reward, sample)
 			sample["episode_reward_score"] = sample_reward
 			sample["episode_base_reward"] = base_reward
-			sample["episode_final_score"] = int(episode.get("final_score", 0))
+			sample["episode_top_n_gdp_per_minute"] = int(episode.get("top_n_gdp_per_minute", 0))
+			sample["episode_controlled_region_count"] = int(episode.get("controlled_region_count", 0))
+			sample["episode_cash_ledger_cents"] = int(episode.get("cash_ledger_cents", 0))
 			sample["episode_rank"] = int(episode.get("rank", -1))
-			sample["episode_cash_goal"] = cash_goal
+			sample["episode_winner"] = bool(episode.get("winner", false))
+			sample["episode_co_victory"] = bool(episode.get("co_victory", false))
 			sample["episode_result"] = String(episode.get("result", ""))
 			sample["episode_reason"] = reason
 			sample["episode_reward_cycle"] = business_cycle_count
@@ -4090,9 +4168,9 @@ func _finalize_ai_episode_rewards(reason: String = "") -> int:
 		memory["decision_samples"] = samples
 		memory["episode_learning_updates"] = int(memory.get("episode_learning_updates", 0)) + sample_updates
 		memory["episode_last_reward"] = base_reward
-		memory["episode_last_final_score"] = int(episode.get("final_score", 0))
+		memory["episode_last_top_n_gdp"] = int(episode.get("top_n_gdp_per_minute", 0))
+		memory["episode_last_controlled_regions"] = int(episode.get("controlled_region_count", 0))
 		memory["episode_last_rank"] = int(episode.get("rank", -1))
-		memory["episode_last_cash_goal"] = cash_goal
 		memory["episode_last_result"] = String(episode.get("result", ""))
 		player["ai_memory"] = memory
 		players[player_index] = player
@@ -4190,22 +4268,22 @@ func _ai_product_focus_score(player_index: int, product_name: String) -> int:
 		score += 120
 	var rival_count := _ai_product_rival_city_count(player_index, product_name)
 	score += rival_count * (32 + (_player_product_flow(player_index, product_name) * 8))
-	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
-	if cash_gap > 0:
-		score += int(round(float(cash_gap) / 900.0)) * (8 + int(round(float(_product_price(product_name)) / 35.0)))
+	var gdp_gap := maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index))
+	if gdp_gap > 0:
+		score += int(round(float(gdp_gap) / 15.0)) * (8 + int(round(float(_product_price(product_name)) / 35.0)))
 	if _player_product_flow(player_index, product_name) <= 0 and String(role.get("resource_cash_product", "")) != product_name and String(role.get("bonus_card_product", "")) != product_name:
 		score -= 45
 	return score
 func _ai_focus_reason(player_index: int, product_name: String, score: int) -> String:
 	if product_name == "":
 		return "尚未形成商品焦点"
-	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
-	return "%s｜流动%d｜市价¥%d｜竞品城%d｜通关缺口¥%d｜评分%d" % [
+	var gdp_gap := maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index))
+	return "%s｜流动%d｜市价¥%d｜竞品城%d｜审计GDP缺口%d/min｜评分%d" % [
 		product_name,
 		_player_product_flow(player_index, product_name),
 		_product_price(product_name),
 		_ai_product_rival_city_count(player_index, product_name),
-		cash_gap,
+		gdp_gap,
 		score,
 	]
 func _ai_refresh_economic_focus(player_index: int, force: bool = false) -> String:
@@ -4302,8 +4380,8 @@ func _ai_focus_rival_pressure_score(player_index: int) -> int:
 	return score
 func _ai_growth_need_score(player_index: int) -> int:
 	var focus := _ai_focus_product(player_index)
-	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
-	var score := 58 + int(float(cash_gap) / 22.0)
+	var gdp_gap := maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index))
+	var score := 58 + int(float(gdp_gap) / 4.0)
 	score += maxi(0, 2 - _player_active_city_count(player_index)) * 115
 	if focus != "":
 		score += maxi(0, 3 - _player_product_flow(player_index, focus)) * 64
@@ -4316,7 +4394,7 @@ func _ai_strategy_candidates(player_index: int) -> Array:
 	var posture := String(phase_info.get("posture", "contesting"))
 	var phase_label := _ai_game_phase_label(phase)
 	var posture_label := _ai_competitive_posture_label(posture)
-	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
+	var gdp_gap := maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index))
 	var route_threat := _ai_own_route_threat_score(player_index)
 	var rival_pressure := _ai_focus_rival_pressure_score(player_index)
 	var growth_need := _ai_growth_need_score(player_index)
@@ -4358,12 +4436,12 @@ func _ai_strategy_candidates(player_index: int) -> Array:
 	return [
 		{
 			"intent": "defend_routes",
-			"score": 42 + route_threat + int(float(route_threat) / 2.0) + int(round(float(cash_gap) / 80.0)) + defend_phase_bonus + defend_learning,
+			"score": 42 + route_threat + int(float(route_threat) / 2.0) + int(round(float(gdp_gap) / 8.0)) + defend_phase_bonus + defend_learning,
 			"game_phase": phase,
 			"competitive_posture": posture,
 			"phase_bonus": defend_phase_bonus,
 			"learning_bonus": defend_learning,
-			"reason": "保卫商路｜%s/%s｜威胁%d｜通关缺口¥%d｜阶段%d｜学习%d" % [phase_label, posture_label, route_threat, cash_gap, defend_phase_bonus, defend_learning],
+			"reason": "保卫商路｜%s/%s｜威胁%d｜审计GDP缺口%d/min｜阶段%d｜学习%d" % [phase_label, posture_label, route_threat, gdp_gap, defend_phase_bonus, defend_learning],
 		},
 		{
 			"intent": "disrupt_competitors",
@@ -4679,7 +4757,7 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 	_ensure_product_market_catalog()
 	var focus := _ai_focus_product(player_index)
 	var strategy := _ai_strategy_intent(player_index)
-	var cash_gap := maxi(0, _roguelike_cash_goal() - _player_visible_settlement_estimate(player_index))
+	var gdp_gap := maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index))
 	for product_variant in PRODUCT_CATALOG:
 		var product_name := String(product_variant)
 		if product_name == "":
@@ -4705,7 +4783,7 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 		var target_city := _ai_best_owned_route_city_for_product(player_index, product_name, stage == "defend_route")
 		var score := 70 + int(float(_ai_product_market_signal_score(product_name)) / 2.0) + int(round(float(_product_price(product_name)) / 8.0))
 		score += flow * 46 + supply_count * 34 + demand_count * 28
-		score += int(round(float(cash_gap) / 95.0))
+		score += int(round(float(gdp_gap) / 10.0))
 		if product_name == focus:
 			score += AI_ROUTE_PLAN_MATCH_BONUS + int(float(_ai_focus_score(player_index)) / 4.0)
 		match stage:
@@ -7413,7 +7491,7 @@ func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 		return "buy"
 	return "wait"
 func _auto_ai_card_decisions(force: bool = false) -> int:
-	if game_over or not ai_card_decision_enabled:
+	if session_finished or not ai_card_decision_enabled:
 		return 0
 	var acted := 0
 	for player_index_variant in _ai_player_indices():
@@ -8056,7 +8134,7 @@ func _ai_apply_card_guess_candidate(player_index: int, candidate: Dictionary, al
 	)
 	return _guess_card_resolution_owner_for_player(player_index, int(candidate.get("resolution_id", -1)), int(candidate.get("guessed_player", -1)), true)
 func _auto_ai_intel_decisions(force: bool = false) -> int:
-	if game_over or not ai_card_decision_enabled:
+	if session_finished or not ai_card_decision_enabled:
 		return 0
 	var acted := 0
 	for player_index_variant in _ai_player_indices():

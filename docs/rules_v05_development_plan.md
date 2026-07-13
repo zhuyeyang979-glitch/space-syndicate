@@ -1,6 +1,6 @@
 # 《太空辛迪加》v0.5 规则实现开发计划
 
-> 状态：SS05-00、SS05-01、SS05-01A、SS05-02 与 SS05-03 已完成；项目身份与结构化 GDP 领域已切到 v0.5，生产全局 Ruleset bridge 仍为 v0.4；下一步为 SS05-04。
+> 状态：SS05-00、SS05-01、SS05-01A、SS05-02、SS05-03 与 SS05-04 已完成；项目身份、结构化 GDP、区域控制与公开审计领域已切到 v0.5，生产全局 Ruleset bridge 仍为 v0.4；下一步为 SS05-05。
 > 编写日期：2026-07-14。
 > 玩家规则权威：`docs/tabletop_rulebook_v05.md`。
 > 运行时迁移合同：`docs/rules_v05_runtime_migration.md`。
@@ -461,7 +461,7 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 | SS05-01A | 玩家文字基础：稳定 ASCII ID、可见性消息协议、默认目录、typed args、单位和伪本地化 fixture（完成，runtime inactive） | 01 | 推进；runtime inactive |
 | SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制（完成，88/88） | 01/01A | 替换 + 删除 D-06 部分 |
 | SS05-03 | 结构化 GDP 行、归属、守恒与零 GDP（完成，GDP 40/40、CityTrade 108/108） | 02 | 替换 + 删除 D-06 剩余 |
-| SS05-04 | VictoryControl、审计名单、终局与隐私 | 03 | 推进 + 删除 D-02 |
+| SS05-04 | VictoryControl、审计名单、终局与隐私（完成，56/56） | 03 | 替换 + 删除 D-02 |
 | SS05-05 | 六产业产能、卡牌条件和批次占用 | 03 | 推进 + 删除 D-05 |
 | SS05-06 | 项目合约与 exact product | 03 | 替换 + 删除 D-08 |
 | SS05-07 | 项目控制竞猜与私密 60 秒跟踪 | 03 | 替换 + 删除 D-07 |
@@ -571,6 +571,6 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 ## 14. 下一步执行建议
 
-SS05-03 已完成。`GdpFormulaRuntimeController` 以稳定 `project_id` 生成生产、需求、通商或显式中性的 GDP receipt；`CityTradeNetworkRuntimeController` 唯一编排世界事实、刷新顺序、项目／玩家／中性归属和按 receipt+player 标识的现金流来源。区域、项目与玩家+中性三层守恒均有门禁，整数下取整余数明确归入 neutral，区域允许降到 0 GDP，不再存在最低 40、整城分摊、city owner 派息或同 owner 竞争豁免。
+SS05-04 已完成。`VictoryControlRuntimeController` 只消费 SS05-03 的结构化 private attribution receipt，唯一拥有 3000bp 且唯一最高的区域控制、深度 Top-N GDP、10 秒资格、120 秒粘性公开审计、30 秒冷却、终点排序、特殊结局、存档和 outcome receipt。`VictoryControlWorldBridge` 只收集世界事实并 exact-once 转发结果，不复制 GDP、项目份额或结算算法。
 
-现有 GDP 门扩展为 40/40，City/Trade 长期门扩展为 108/108 observed/aligned，City Development 保持 64/64。下一开发批次进入 SS05-04：VictoryControl、10 秒资格、120 秒审计、名单、冷却与终局隐私必须只消费现有结构化 private attribution receipt，不得复制 GDP 或项目归属公式。六产业、合约、情报与 239 条卡牌语义仍按既定后续工单推进。
+Victory Gate 为 56/56。Standings、Final Settlement、AI、save summary 和 GameSession 现在只消费 public/private snapshot 或不可变 receipt；旧现金目标、城市清算值、短倒计时和第二套终局评分已经从生产路径删除。旧 monolithic smoke 中相同的现金胜利、倒计时和 `game_over` 反射断言也已迁到 Controller/Coordinator receipt，并由 Victory、composition 与 layout 静态删除门持续检查。下一开发批次进入 SS05-05：六产业产能、卡牌条件与同组占用必须消费唯一商品产业目录和现有结构化 GDP，不得把产业要求或容量聚合写回 UI、Queue 或 main.gd。

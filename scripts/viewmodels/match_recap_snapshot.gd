@@ -124,7 +124,7 @@ func _card_array(value: Variant, limit: int) -> Array:
 				break
 	if result.is_empty():
 		result = [
-			{"kind": "cash", "kicker": "现金", "title": "看最终现金", "detail": "最后按钱排名。"},
+			{"kind": "victory", "kicker": "审计", "title": "查看胜利比较", "detail": "依次查看Top-N GDP、控制区域和现金总账。"},
 			{"kind": "gdp", "kicker": "城市/GDP", "title": "看城市现金流", "detail": "生产、需求、运输决定收入。"},
 			{"kind": "spend", "kicker": "投入", "title": "留现金缓冲", "detail": "买牌和建城都要花钱。"},
 			{"kind": "pressure", "kicker": "风险", "title": "看怪兽与断路", "detail": "破坏会压低GDP。"},

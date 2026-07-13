@@ -2141,6 +2141,39 @@ const RECORDS := [
 		"smoke_check_enabled": true,
 		"previewable": true,
 	},
+	{
+		"id": "victory_control_runtime_controller",
+		"display_name": "Victory Control Runtime Controller",
+		"scene_path": "res://scenes/runtime/VictoryControlRuntimeController.tscn",
+		"category": CATEGORY_MAIN,
+		"expected_root_type": "Node",
+		"purpose": "Single v0.5 owner for region control, Top-N qualification, audit lifecycle, endpoint ordering, and outcome receipts.",
+		"mcp_notes": "Inspect with the adjacent WorldBridge. This controller consumes structured GDP attribution and never recalculates GDP or project ownership.",
+		"smoke_check_enabled": true,
+		"previewable": false,
+	},
+	{
+		"id": "victory_control_world_bridge",
+		"display_name": "Victory Control World Bridge",
+		"scene_path": "res://scenes/runtime/VictoryControlWorldBridge.tscn",
+		"category": CATEGORY_MAIN,
+		"expected_root_type": "Node",
+		"purpose": "Non-owning pure-fact adapter for GDP attribution, audit assets, clock pauses, and exact-once outcome forwarding.",
+		"mcp_notes": "The bridge has no scoring, timing, or mutation rules. Public/private authorization remains in VictoryControlRuntimeController.",
+		"smoke_check_enabled": true,
+		"previewable": false,
+	},
+	{
+		"id": "victory_control_runtime_bench",
+		"display_name": "Victory Control Runtime Gate",
+		"scene_path": "res://scenes/tools/VictoryControlRuntimeBench.tscn",
+		"category": CATEGORY_QA_BENCHES,
+		"expected_root_type": "Control",
+		"purpose": "56-case SS05-04 gate for control thresholds, Top-N GDP, audit timing, roster privacy, save/load, endpoint order, and legacy deletion.",
+		"mcp_notes": "Run after changes to structured GDP attribution, victory clocks, standings, final settlement, AI rewards, save envelopes, or session completion.",
+		"smoke_check_enabled": true,
+		"previewable": true,
+	},
 ]
 
 
@@ -2267,6 +2300,9 @@ func required_scene_paths() -> Array[String]:
 		"res://scenes/runtime/CityTradeNetworkWorldBridge.tscn",
 		"res://scenes/tools/CityTradeNetworkRuntimeCharacterizationBench.tscn",
 		"res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn",
+		"res://scenes/runtime/VictoryControlRuntimeController.tscn",
+		"res://scenes/runtime/VictoryControlWorldBridge.tscn",
+		"res://scenes/tools/VictoryControlRuntimeBench.tscn",
 	]
 
 

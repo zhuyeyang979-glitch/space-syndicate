@@ -96,7 +96,7 @@ func route_counterplay(route_id: String) -> String:
 
 
 func route_ai_plan_hint(route_id: String) -> String:
-	return str(route_profile(route_id).get("ai_plan_hint", "按阶段和现金目标调整权重。"))
+	return str(route_profile(route_id).get("ai_plan_hint", "按阶段和胜利资格调整权重。"))
 
 
 func card_budget_points_for_id(card_id: String, world_snapshot: Dictionary = {}) -> int:

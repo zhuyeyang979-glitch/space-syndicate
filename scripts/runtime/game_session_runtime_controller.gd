@@ -19,6 +19,7 @@ var _seed := 0
 var _setup_summary: Dictionary = {}
 var _save_state := "clean"
 var _dirty_reason := ""
+var _outcome_receipt: Dictionary = {}
 
 
 func configure(ruleset_snapshot: Dictionary, save_config: Dictionary = {}) -> void:
@@ -45,6 +46,7 @@ func begin_session(setup_snapshot: Dictionary) -> Dictionary:
 	_scenario_id = str(setup_snapshot.get("scenario_id", ""))
 	_seed = int(setup_snapshot.get("seed", 0))
 	_setup_summary = _safe_setup_summary(setup_snapshot)
+	_outcome_receipt = {}
 	_save_state = "dirty"
 	_dirty_reason = "new_session"
 	_session_state = STATE_RUNNING
@@ -65,6 +67,7 @@ func session_summary() -> Dictionary:
 		"setup": _setup_summary.duplicate(true),
 		"save_state": _save_state,
 		"dirty": _save_state == "dirty",
+		"outcome_receipt": _outcome_receipt.duplicate(true),
 	}
 
 
@@ -85,9 +88,54 @@ func resume_session() -> void:
 		_session_state = STATE_RUNNING
 
 
-func finish_session(_result_summary: Dictionary = {}) -> void:
-	if _session_state != STATE_IDLE:
-		_session_state = STATE_FINISHED
+func finish_session(result_summary: Dictionary = {}) -> void:
+	if _session_state == STATE_IDLE or not _is_data_only(result_summary):
+		return
+	if _session_state == STATE_FINISHED and not _outcome_receipt.is_empty():
+		return
+	_outcome_receipt = result_summary.duplicate(true)
+	_session_state = STATE_FINISHED
+	_save_state = "dirty"
+	_dirty_reason = "session_finished"
+
+
+func is_finished() -> bool:
+	return _session_state == STATE_FINISHED
+
+
+func to_save_data() -> Dictionary:
+	return {
+		"game_session_runtime": {
+			"schema_version": 1,
+			"ruleset_id": _ruleset_id,
+			"session_state": _session_state,
+			"session_id": _session_id,
+			"scenario_id": _scenario_id,
+			"seed": _seed,
+			"setup": _setup_summary.duplicate(true),
+			"outcome_receipt": _outcome_receipt.duplicate(true),
+		}
+	}
+
+
+func apply_save_data(data: Dictionary) -> Dictionary:
+	var payload: Dictionary = data.get("game_session_runtime", data) if data.get("game_session_runtime", data) is Dictionary else {}
+	if payload.is_empty():
+		return {"applied": true, "legacy_default": true, "session_state": _session_state}
+	if not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 1:
+		return {"applied": false, "reason": "session_save_invalid"}
+	var restored_state := str(payload.get("session_state", STATE_RUNNING))
+	if restored_state not in [STATE_IDLE, STATE_STARTING, STATE_RUNNING, STATE_PAUSED, STATE_LOADING, STATE_FINISHED, STATE_ERROR]:
+		return {"applied": false, "reason": "session_state_invalid"}
+	_session_state = restored_state
+	_session_id = str(payload.get("session_id", _session_id))
+	_scenario_id = str(payload.get("scenario_id", _scenario_id))
+	_seed = int(payload.get("seed", _seed))
+	_setup_summary = (payload.get("setup", {}) as Dictionary).duplicate(true) if payload.get("setup", {}) is Dictionary else {}
+	_outcome_receipt = (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true) if payload.get("outcome_receipt", {}) is Dictionary else {}
+	_save_state = "clean"
+	_dirty_reason = ""
+	return {"applied": true, "legacy_default": false, "session_state": _session_state}
 
 
 func request_save(path: String, domain_sections: Dictionary) -> Dictionary:
@@ -129,7 +177,8 @@ func request_load(path: String = "") -> Dictionary:
 
 func complete_load(error_code: int) -> void:
 	if error_code == OK:
-		_session_state = STATE_RUNNING
+		if _session_state != STATE_FINISHED:
+			_session_state = STATE_RUNNING
 		_save_state = "clean"
 		_dirty_reason = ""
 		return
@@ -195,6 +244,7 @@ func reset_state() -> void:
 	_scenario_id = ""
 	_seed = 0
 	_setup_summary = {}
+	_outcome_receipt = {}
 	_save_state = "clean"
 	_dirty_reason = ""
 

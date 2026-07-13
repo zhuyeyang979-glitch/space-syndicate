@@ -161,6 +161,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var contract_world_bridge := _contract_runtime_world_bridge_node()
 	var ai_controller := _ai_runtime_controller_node()
 	var ai_world_bridge := _ai_runtime_world_bridge_node()
+	var victory_controller := _victory_control_runtime_controller_node()
+	var victory_world_bridge := _victory_control_world_bridge_node()
 	if economy_product_route_effect != null and economy_product_route_effect.has_method("set_product_market_runtime_controller"):
 		economy_product_route_effect.call("set_product_market_runtime_controller", product_market_controller)
 	var economy_product_route_bridge := _card_economy_product_route_effect_world_bridge_node()
@@ -198,6 +200,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		ai_controller.call("set_gameplay_balance_diagnostics_service", balance_diagnostics)
 	if ai_controller != null and ai_controller.has_method("set_city_development_runtime"):
 		ai_controller.call("set_city_development_runtime", city_development_controller, city_development_bridge)
+	if ai_controller != null and ai_controller.has_method("set_victory_control_runtime_controller"):
+		ai_controller.call("set_victory_control_runtime_controller", victory_controller)
 	if ai_controller != null and ai_controller.has_method("configure"):
 		ai_controller.call("configure", ruleset_snapshot, ai_controller.get("policy_profile"))
 	if monster_controller != null and monster_controller.has_method("set_world_bridge"):
@@ -222,6 +226,12 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		military_controller.call("configure", ruleset_snapshot)
 	if weather_controller != null and weather_controller.has_method("set_product_market_runtime_controller"):
 		weather_controller.call("set_product_market_runtime_controller", product_market_controller)
+	if victory_world_bridge != null and victory_world_bridge.has_method("set_runtime_dependencies"):
+		victory_world_bridge.call("set_runtime_dependencies", city_trade_network_controller, contract_controller, product_market_controller, city_gdp_derivative_controller, military_controller)
+	if victory_controller != null and victory_controller.has_method("set_world_bridge"):
+		victory_controller.call("set_world_bridge", victory_world_bridge)
+	if victory_controller != null and victory_controller.has_method("configure"):
+		victory_controller.call("configure")
 	var session_snapshot := _session_debug_snapshot()
 	var purchase_snapshot := _purchase_debug_snapshot()
 	var card_inventory_snapshot := _card_inventory_debug_snapshot()
@@ -262,7 +272,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var military_snapshot := _military_runtime_debug_snapshot()
 	var weather_snapshot := _weather_runtime_debug_snapshot()
 	var contract_snapshot := _contract_runtime_debug_snapshot()
-	_configured = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(city_trade_network_snapshot.get("controller_ready", false)) and bool(city_development_snapshot.get("controller_ready", false)) and bool(city_development_bridge_snapshot.get("bridge_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(economy_snapshot.get("controller_ready", false)) and bool(gdp_formula_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false))
+	var victory_snapshot := _victory_control_runtime_debug_snapshot()
+	_configured = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(city_trade_network_snapshot.get("controller_ready", false)) and bool(city_development_snapshot.get("controller_ready", false)) and bool(city_development_bridge_snapshot.get("bridge_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(economy_snapshot.get("controller_ready", false)) and bool(gdp_formula_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
 
 
 func bind_ai_world(world: Node) -> void:
@@ -354,6 +365,130 @@ func bind_ai_world(world: Node) -> void:
 		effect_bridge.call("set_product_market_runtime_controller", product_market_controller)
 	if effect_bridge != null and effect_bridge.has_method("set_city_gdp_derivative_runtime_controller"):
 		effect_bridge.call("set_city_gdp_derivative_runtime_controller", city_gdp_derivative_controller)
+	var victory_bridge := _victory_control_world_bridge_node()
+	if victory_bridge != null and victory_bridge.has_method("bind_world"):
+		victory_bridge.call("bind_world", world)
+	if victory_bridge != null and victory_bridge.has_method("set_runtime_dependencies"):
+		victory_bridge.call("set_runtime_dependencies", city_trade_network_controller, contract_controller, product_market_controller, city_gdp_derivative_controller, military_controller)
+	var victory_controller := _victory_control_runtime_controller_node()
+	if victory_controller != null and victory_controller.has_method("set_world_bridge"):
+		victory_controller.call("set_world_bridge", victory_bridge)
+	if controller != null and controller.has_method("set_victory_control_runtime_controller"):
+		controller.call("set_victory_control_runtime_controller", victory_controller)
+
+
+func victory_control_runtime_controller() -> VictoryControlRuntimeController:
+	return _victory_control_runtime_controller_node() as VictoryControlRuntimeController
+
+
+func victory_control_world_bridge() -> VictoryControlWorldBridge:
+	return _victory_control_world_bridge_node() as VictoryControlWorldBridge
+
+
+func victory_control_world_snapshot(clock_pause: Dictionary = {}) -> Dictionary:
+	var bridge := _victory_control_world_bridge_node()
+	var value: Variant = bridge.call("capture_world_snapshot", clock_pause) if bridge != null and bridge.has_method("capture_world_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func advance_victory_control(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	if controller == null or not controller.has_method("advance_world_effective"):
+		return {"valid": false, "reason": "victory_controller_unavailable"}
+	var world_snapshot := victory_control_world_snapshot(clock_pause)
+	var value: Variant = controller.call("advance_world_effective", delta_seconds, world_snapshot)
+	var result: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	_apply_victory_outcome_receipt(result.get("outcome_receipt", {}) as Dictionary if result.get("outcome_receipt", {}) is Dictionary else {})
+	return result
+
+
+func resolve_victory_outcome(reason_code: String, clock_pause: Dictionary = {}) -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	if controller == null or not controller.has_method("resolve_special_outcome"):
+		return {}
+	var world_snapshot := victory_control_world_snapshot(clock_pause)
+	var value: Variant = controller.call("resolve_special_outcome", reason_code, world_snapshot)
+	var receipt: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	_apply_victory_outcome_receipt(receipt)
+	return receipt
+
+
+func victory_control_public_snapshot(viewer_index := -1) -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	var value: Variant = controller.call("public_snapshot", viewer_index) if controller != null and controller.has_method("public_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func victory_control_private_snapshot(viewer_index: int) -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	var value: Variant = controller.call("private_snapshot", viewer_index) if controller != null and controller.has_method("private_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func victory_control_outcome_receipt() -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	var value: Variant = controller.call("outcome_receipt") if controller != null and controller.has_method("outcome_receipt") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func victory_control_rankings(eligible_only := false) -> Array:
+	var controller := _victory_control_runtime_controller_node()
+	if controller == null or not controller.has_method("preview_rankings"):
+		return []
+	var value: Variant = controller.call("preview_rankings", victory_control_world_snapshot(), eligible_only)
+	return (value as Array).duplicate(true) if value is Array else []
+
+
+func victory_control_to_save_data() -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	var value: Variant = controller.call("to_save_data") if controller != null and controller.has_method("to_save_data") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func apply_victory_control_save_data(data: Dictionary) -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	var value: Variant = controller.call("apply_save_data", data) if controller != null and controller.has_method("apply_save_data") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func reset_victory_control_runtime() -> void:
+	var controller := _victory_control_runtime_controller_node()
+	if controller != null and controller.has_method("reset_state"):
+		controller.call("reset_state")
+
+
+func session_is_finished() -> bool:
+	var session := _session_node()
+	return bool(session.call("is_finished")) if session != null and session.has_method("is_finished") else false
+
+
+func session_to_save_data() -> Dictionary:
+	var session := _session_node()
+	var value: Variant = session.call("to_save_data") if session != null and session.has_method("to_save_data") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func apply_session_save_data(data: Dictionary) -> Dictionary:
+	var session := _session_node()
+	var value: Variant = session.call("apply_save_data", data) if session != null and session.has_method("apply_save_data") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func reset_runtime_session() -> void:
+	var session := _session_node()
+	if session != null and session.has_method("reset_state"):
+		session.call("reset_state")
+
+
+func _apply_victory_outcome_receipt(receipt: Dictionary) -> void:
+	if receipt.is_empty():
+		return
+	var session := _session_node()
+	if session != null and session.has_method("finish_session"):
+		session.call("finish_session", receipt)
+	var bridge := _victory_control_world_bridge_node()
+	if bridge != null and bridge.has_method("apply_outcome_receipt"):
+		bridge.call("apply_outcome_receipt", receipt)
 
 
 func card_runtime_catalog_service() -> CardRuntimeCatalogService:
@@ -863,6 +998,12 @@ func reset_state() -> void:
 	var city_development_bridge := _city_development_world_bridge_node()
 	if city_development_bridge != null and city_development_bridge.has_method("reset_state"):
 		city_development_bridge.call("reset_state")
+	var victory_controller := _victory_control_runtime_controller_node()
+	if victory_controller != null and victory_controller.has_method("reset_state"):
+		victory_controller.call("reset_state")
+	var victory_bridge := _victory_control_world_bridge_node()
+	if victory_bridge != null and victory_bridge.has_method("reset_state"):
+		victory_bridge.call("reset_state")
 	var session := _session_node()
 	if session != null and session.has_method("reset_state"):
 		session.call("reset_state")
@@ -1855,6 +1996,8 @@ func debug_snapshot() -> Dictionary:
 	var military_runtime_snapshot := _military_runtime_debug_snapshot()
 	var weather_runtime_snapshot := _weather_runtime_debug_snapshot()
 	var contract_runtime_snapshot := _contract_runtime_debug_snapshot()
+	var victory_control_runtime_snapshot := _victory_control_runtime_debug_snapshot()
+	var victory_control_world_bridge_snapshot := _victory_control_world_bridge_debug_snapshot()
 	return {
 		"coordinator_ready": _configured and bool(scheduler_snapshot.get("scheduler_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_runtime_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_runtime_snapshot.get("controller_ready", false)) and bool(city_trade_network_runtime_snapshot.get("controller_ready", false)) and bool(city_development_runtime_snapshot.get("controller_ready", false)) and bool(city_development_world_bridge_snapshot.get("bridge_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(economy_snapshot.get("controller_ready", false)) and bool(gdp_formula_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot.get("service_ready", false)) and bool(monster_codex_public_snapshot.get("service_ready", false)) and bool(product_codex_public_snapshot.get("service_ready", false)) and bool(card_codex_public_snapshot.get("service_ready", false)) and bool(economy_dashboard_public_snapshot.get("service_ready", false)) and bool(standings_public_snapshot.get("service_ready", false)) and bool(final_settlement_public_snapshot.get("service_ready", false)) and bool(intel_dossier_public_snapshot.get("service_ready", false)) and bool(district_supply_snapshot.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_runtime_snapshot.get("controller_ready", false)) and bool(monster_runtime_snapshot.get("controller_ready", false)) and bool(military_runtime_snapshot.get("controller_ready", false)) and bool(weather_runtime_snapshot.get("controller_ready", false)) and bool(contract_runtime_snapshot.get("controller_ready", false)),
 		"coordinator_authoritative": _configured and bool(scheduler_snapshot.get("scheduler_authoritative", false)) and bool(card_runtime_catalog_snapshot.get("service_authoritative", false)) and bool(session_snapshot.get("session_authoritative", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and bool(card_resolution_execution_snapshot.get("service_authoritative", false)) and bool(economy_product_route_effect_snapshot.get("service_authoritative", false)) and bool(economy_product_route_formula_snapshot.get("service_authoritative", false)) and bool(product_market_runtime_snapshot.get("controller_authoritative", false)) and bool(city_gdp_derivative_runtime_snapshot.get("controller_authoritative", false)) and bool(city_trade_network_runtime_snapshot.get("controller_authoritative", false)) and bool(city_development_runtime_snapshot.get("controller_authoritative", false)) and bool(hand_interaction_snapshot.get("service_authoritative", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and bool(economy_snapshot.get("controller_authoritative", false)) and bool(gdp_formula_snapshot.get("controller_authoritative", false)) and bool(scenario_snapshot.get("controller_authoritative", false)) and bool(first_table_authored_snapshot.get("service_authoritative", false)) and bool(codex_navigation_snapshot.get("controller_authoritative", false)) and bool(codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_snapshot.get("service_authoritative", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_play_eligibility_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(monster_runtime_snapshot.get("controller_authoritative", false)) and bool(military_runtime_snapshot.get("controller_authoritative", false)) and bool(weather_runtime_snapshot.get("controller_authoritative", false)) and bool(contract_runtime_snapshot.get("controller_authoritative", false)),
@@ -1900,6 +2043,8 @@ func debug_snapshot() -> Dictionary:
 		"military_runtime": military_runtime_snapshot,
 		"weather_runtime": weather_runtime_snapshot,
 		"contract_runtime": contract_runtime_snapshot,
+		"victory_control_runtime": victory_control_runtime_snapshot,
+		"victory_control_world_bridge": victory_control_world_bridge_snapshot,
 	}
 
 
@@ -1953,6 +2098,14 @@ func _city_development_runtime_controller_node() -> Node:
 
 func _city_development_world_bridge_node() -> Node:
 	return get_node_or_null("CityDevelopmentWorldBridge")
+
+
+func _victory_control_runtime_controller_node() -> Node:
+	return get_node_or_null("VictoryControlRuntimeController")
+
+
+func _victory_control_world_bridge_node() -> Node:
+	return get_node_or_null("VictoryControlWorldBridge")
 
 
 func _ai_runtime_controller_node() -> Node:
@@ -2280,6 +2433,24 @@ func _city_development_runtime_debug_snapshot() -> Dictionary:
 
 func _city_development_world_bridge_debug_snapshot() -> Dictionary:
 	var bridge := _city_development_world_bridge_node()
+	if bridge != null and bridge.has_method("debug_snapshot"):
+		var snapshot_variant: Variant = bridge.call("debug_snapshot")
+		if snapshot_variant is Dictionary:
+			return (snapshot_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _victory_control_runtime_debug_snapshot() -> Dictionary:
+	var controller := _victory_control_runtime_controller_node()
+	if controller != null and controller.has_method("debug_snapshot"):
+		var snapshot_variant: Variant = controller.call("debug_snapshot")
+		if snapshot_variant is Dictionary:
+			return (snapshot_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _victory_control_world_bridge_debug_snapshot() -> Dictionary:
+	var bridge := _victory_control_world_bridge_node()
 	if bridge != null and bridge.has_method("debug_snapshot"):
 		var snapshot_variant: Variant = bridge.call("debug_snapshot")
 		if snapshot_variant is Dictionary:

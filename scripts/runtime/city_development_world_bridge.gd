@@ -82,7 +82,7 @@ func capture_settlement_facts(request: Dictionary) -> Dictionary:
 		"district_index": district_index,
 		"player_count": players.size(),
 		"district_count": districts.size(),
-		"game_over": bool(_world.get("game_over")),
+		"game_over": bool(_world.call("_runtime_session_finished")) if _world.has_method("_runtime_session_finished") else false,
 		"player_eliminated": bool(_world.call("_player_is_eliminated", player_index)) if player_index >= 0 and player_index < players.size() and _world.has_method("_player_is_eliminated") else false,
 		"action_cooldown": float(player.get("action_cooldown", 0.0)),
 		"district_destroyed": bool(district.get("destroyed", false)),

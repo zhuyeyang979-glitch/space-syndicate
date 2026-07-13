@@ -158,6 +158,10 @@ signal open_city_trade_network_runtime_controller_requested(scene_path: String)
 signal open_city_trade_network_world_bridge_requested(scene_path: String)
 signal open_city_trade_network_runtime_characterization_bench_requested(scene_path: String)
 signal run_city_trade_network_runtime_characterization_bench_requested(scene_path: String)
+signal open_victory_control_runtime_controller_requested(scene_path: String)
+signal open_victory_control_world_bridge_requested(scene_path: String)
+signal open_victory_control_runtime_bench_requested(scene_path: String)
+signal run_victory_control_runtime_bench_requested(scene_path: String)
 signal open_city_development_settlement_characterization_bench_requested(scene_path: String)
 signal run_city_development_settlement_characterization_bench_requested(scene_path: String)
 signal open_city_gdp_derivative_runtime_controller_requested(scene_path: String)
@@ -310,6 +314,9 @@ const PRODUCT_FUTURES_TERMS_CATALOG_PATH := "res://resources/finance/product_fut
 const CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityTradeNetworkRuntimeController.tscn"
 const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/CityTradeNetworkWorldBridge.tscn"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/CityTradeNetworkRuntimeCharacterizationBench.tscn"
+const VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/VictoryControlRuntimeController.tscn"
+const VICTORY_CONTROL_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/VictoryControlWorldBridge.tscn"
+const VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH := "res://scenes/tools/VictoryControlRuntimeBench.tscn"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
 const CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityGdpDerivativeRuntimeController.tscn"
 const CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/CityGdpDerivativeRuntimeWorldBridge.tscn"
@@ -387,6 +394,7 @@ const WEATHER_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_
 const CONTRACT_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/contract_runtime_characterization/"
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/product_futures_v04_hard_alignment/"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
+const VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/victory_control_runtime/"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/city_development_settlement_characterization/"
 const CITY_GDP_DERIVATIVE_RUNTIME_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/city_gdp_derivative_v04/"
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/product_codex_public_snapshot_cutover/"
@@ -613,6 +621,11 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_city_trade_network_runtime_characterization_bench_button: Button = %OpenCityTradeNetworkRuntimeCharacterizationBenchButton
 @onready var run_city_trade_network_runtime_characterization_bench_button: Button = %RunCityTradeNetworkRuntimeCharacterizationBenchButton
 @onready var open_city_trade_network_runtime_characterization_output_folder_button: Button = %OpenCityTradeNetworkRuntimeCharacterizationOutputFolderButton
+@onready var open_victory_control_runtime_controller_button: Button = %OpenVictoryControlRuntimeControllerButton
+@onready var open_victory_control_world_bridge_button: Button = %OpenVictoryControlWorldBridgeButton
+@onready var open_victory_control_runtime_bench_button: Button = %OpenVictoryControlRuntimeBenchButton
+@onready var run_victory_control_runtime_bench_button: Button = %RunVictoryControlRuntimeBenchButton
+@onready var open_victory_control_runtime_output_folder_button: Button = %OpenVictoryControlRuntimeOutputFolderButton
 @onready var open_city_development_settlement_characterization_bench_button: Button = %OpenCityDevelopmentSettlementCharacterizationBenchButton
 @onready var run_city_development_settlement_characterization_bench_button: Button = %RunCityDevelopmentSettlementCharacterizationBenchButton
 @onready var open_city_development_settlement_characterization_output_folder_button: Button = %OpenCityDevelopmentSettlementCharacterizationOutputFolderButton
@@ -1151,6 +1164,18 @@ func city_trade_network_runtime_characterization_bench_scene_path() -> String:
 	return CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH
 
 
+func victory_control_runtime_controller_scene_path() -> String:
+	return VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE_PATH
+
+
+func victory_control_world_bridge_scene_path() -> String:
+	return VICTORY_CONTROL_WORLD_BRIDGE_SCENE_PATH
+
+
+func victory_control_runtime_bench_scene_path() -> String:
+	return VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH
+
+
 func city_development_settlement_characterization_bench_scene_path() -> String:
 	return CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE_PATH
 
@@ -1449,6 +1474,10 @@ func product_market_runtime_characterization_qa_output_dir() -> String:
 
 func city_trade_network_runtime_characterization_qa_output_dir() -> String:
 	return CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR
+
+
+func victory_control_runtime_qa_output_dir() -> String:
+	return VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR
 
 
 func city_development_settlement_characterization_qa_output_dir() -> String:
@@ -2793,6 +2822,38 @@ func run_city_trade_network_runtime_characterization_bench_scene() -> void:
 	_set_status("Run City / Trade Network Characterization bench: %s" % CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
 
 
+func open_victory_control_runtime_controller_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
+		_editor_plugin.call("open_scene", VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE_PATH)
+	else:
+		open_victory_control_runtime_controller_requested.emit(VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE_PATH)
+	_set_status("Open Victory Control runtime controller: %s" % VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE_PATH)
+
+
+func open_victory_control_world_bridge_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
+		_editor_plugin.call("open_scene", VICTORY_CONTROL_WORLD_BRIDGE_SCENE_PATH)
+	else:
+		open_victory_control_world_bridge_requested.emit(VICTORY_CONTROL_WORLD_BRIDGE_SCENE_PATH)
+	_set_status("Open Victory Control world bridge: %s" % VICTORY_CONTROL_WORLD_BRIDGE_SCENE_PATH)
+
+
+func open_victory_control_runtime_bench_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
+		_editor_plugin.call("open_scene", VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH)
+	else:
+		open_victory_control_runtime_bench_requested.emit(VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH)
+	_set_status("Open Victory Control runtime bench: %s" % VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH)
+
+
+func run_victory_control_runtime_bench_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
+		_editor_plugin.call("run_scene", VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH)
+	else:
+		run_victory_control_runtime_bench_requested.emit(VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH)
+	_set_status("Run Victory Control runtime bench: %s" % VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH)
+
+
 func open_city_development_settlement_characterization_bench_scene() -> void:
 	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
 		_editor_plugin.call("open_scene", CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE_PATH)
@@ -3464,6 +3525,15 @@ func open_city_trade_network_runtime_characterization_output_folder() -> void:
 		_set_status("City / Trade Network Characterization output folder: %s" % CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR)
 
 
+func open_victory_control_runtime_output_folder() -> void:
+	var absolute_path := ProjectSettings.globalize_path(VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR)
+	var error := OS.shell_open(absolute_path)
+	if error == OK:
+		_set_status("Open Victory Control output folder: %s" % VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR)
+	else:
+		_set_status("Victory Control output folder: %s" % VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR)
+
+
 func open_city_development_settlement_characterization_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3788,6 +3858,11 @@ func _connect_buttons() -> void:
 	_connect_button(open_city_trade_network_runtime_characterization_bench_button, "open_city_trade_network_runtime_characterization_bench_scene")
 	_connect_button(run_city_trade_network_runtime_characterization_bench_button, "run_city_trade_network_runtime_characterization_bench_scene")
 	_connect_button(open_city_trade_network_runtime_characterization_output_folder_button, "open_city_trade_network_runtime_characterization_output_folder")
+	_connect_button(open_victory_control_runtime_controller_button, "open_victory_control_runtime_controller_scene")
+	_connect_button(open_victory_control_world_bridge_button, "open_victory_control_world_bridge_scene")
+	_connect_button(open_victory_control_runtime_bench_button, "open_victory_control_runtime_bench_scene")
+	_connect_button(run_victory_control_runtime_bench_button, "run_victory_control_runtime_bench_scene")
+	_connect_button(open_victory_control_runtime_output_folder_button, "open_victory_control_runtime_output_folder")
 	_connect_button(open_city_development_settlement_characterization_bench_button, "open_city_development_settlement_characterization_bench_scene")
 	_connect_button(run_city_development_settlement_characterization_bench_button, "run_city_development_settlement_characterization_bench_scene")
 	_connect_button(open_city_development_settlement_characterization_output_folder_button, "open_city_development_settlement_characterization_output_folder")

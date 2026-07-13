@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/victory_control_world_bridge.gd" id="1_bridge"]
+
+[node name="VictoryControlWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Non-owning v0.5 fact bridge. It collects structured private GDP attribution, ledger, and audit assets, then forwards an exact-once outcome receipt without scoring or mutating rules."

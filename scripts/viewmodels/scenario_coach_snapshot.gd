@@ -158,7 +158,7 @@ func _compact_phase_goal(phase: Dictionary, fallback: String) -> String:
 		"mark_guess":
 			return "标记一次推测。"
 		"read_goal":
-			return "查看现金目标。"
+			return "查看控区与Top-N GDP目标。"
 		"open_standings":
 			return "打开排名面板。"
 		"open_settlement":
@@ -229,7 +229,7 @@ func _shortest_action_text(phase: Dictionary, focus_target: String) -> String:
 		"mark_guess":
 			return "在情报档案做一次标记。"
 		"read_goal":
-			return "看顶部现金目标。"
+			return "看顶部胜利资格进度。"
 		"open_standings":
 			return "打开排名面板。"
 		"open_settlement":

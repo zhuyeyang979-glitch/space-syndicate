@@ -141,8 +141,8 @@ func _run() -> void:
 	_expect(((players[1] as Dictionary).get("ai_profile", {}) as Dictionary).has("style") and ((players[1] as Dictionary).get("ai_memory", {}) as Dictionary).has("decision_samples"), "AI seats carry a personality profile and training-memory log")
 	var planet_profile := main.call("_roguelike_planet_profile") as Dictionary
 	_expect(districts.size() >= int(planet_profile.get("region_min", MIN_REGION_COUNT)) and districts.size() <= int(planet_profile.get("region_max", MAX_REGION_COUNT)), "new game creates the expected roguelike region count")
-	_expect(_verify_roguelike_depth_scaling(main), "roguelike challenge depth scales planet size, region count, and cash victory goal")
-	_expect(_verify_victory_countdown_rule(main), "hitting the roguelike cash goal starts a saved final countdown before settlement")
+	_expect(_verify_roguelike_depth_scaling(main), "roguelike challenge depth scales planet size, region count, and v0.5 public-audit requirements")
+	_expect(_verify_victory_control_rule(main), "holding the v0.5 region/GDP thresholds starts a saved qualification and public-audit lifecycle")
 	_expect(_regions_start_with_terrain_goods(main), "land and ocean regions start with one terrain-appropriate produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	var empty_field_event_parts := main.call("_event_target_weight_parts", int(main.get("selected_district"))) as Dictionary
@@ -169,7 +169,7 @@ func _run() -> void:
 	_expect(_verify_ai_card_policy(main), "AI opponents can score cards, anonymously play monster cards, bid in a simultaneous batch, and record candidate training data")
 	_expect(_verify_ai_counter_response_policy(main), "AI opponents can evaluate a phase-response window, queue a field-driven counter, and record hidden counter metadata")
 	_expect(_verify_ai_online_learning_policy(main), "AI opponents apply finalized money rewards as per-seat learned policy bonuses for future business, card, contract, and intel choices")
-	_expect(_verify_ai_episode_learning_policy(main), "AI opponents backpropagate final roguelike money results into per-seat long-horizon policy learning")
+	_expect(_verify_ai_episode_learning_policy(main), "AI opponents backpropagate the versioned v0.5 victory receipt into per-seat long-horizon policy learning")
 	_expect(_verify_role_intel_and_trace_tools(main), "identity roles and intel cards reveal private city, card-owner, and contract-party clues")
 	_expect(_verify_ai_intel_policy(main), "AI opponents can use product clues to mark city owners and wager on anonymous card ownership")
 	_expect(_verify_ai_monster_lure_strategy(main), "AI opponents can steer monster-lure cards toward high-value competing cities and record trainable target metadata")
@@ -180,9 +180,9 @@ func _run() -> void:
 	_expect(_verify_ai_weather_control_policy(main), "AI opponents choose weather-control targets from route, terrain, GDP, and disruption value")
 	_expect(_verify_ai_strategy_route_diversification_policy(main), "AI opponents generate field-driven defense, suppression, finance, and intel route candidates")
 	_mark_smoke_progress("ai progress smoke")
-	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and hand an AI leader into finale countdown")
+	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and produce controller-readable victory progress")
 	_mark_smoke_progress("max ai complete smoke")
-	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, report profile route actions, settle, and restore cleanly")
+	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, report profile route actions, consume one victory receipt, and restore cleanly")
 	_mark_smoke_progress("player table ui checks")
 	_expect(_starting_cash_matches_role_bonuses(players), "role passives can modify the shared starting-cash baseline without touching starter monsters")
 	_expect(int(main.call("_role_starting_cash_delta", {"starting_cash_delta": -150})) == -150 and int(main.call("_player_starting_cash_for_role", {"starting_cash_delta": -150})) == 1850, "role starting-cash modifiers can be positive or negative while the shared baseline remains intact")
@@ -648,14 +648,15 @@ func _run() -> void:
 			var districts_for_guess := _as_array(main.get("districts"))
 			var rival_city := (districts_for_guess[rival_city_index] as Dictionary).get("city", {}) as Dictionary
 			var real_owner := int(rival_city.get("owner", -1))
-			var money_before_guess := int(main.call("_player_final_score", 0))
+			var cash_before_guess := _player_cash(_as_array(main.get("players")), 0)
+			var intel_cash_before_guess := int(main.call("_player_intel_cash", 0))
 			main.set("selected_player", 0)
 			main.set("selected_district", rival_city_index)
 			main.set("selected_guess_player", real_owner)
 			main.call("_mark_selected_city_guess")
 			await process_frame
-			_expect(int(main.call("_player_intel_cash", 0)) == 120, "correct private city-owner guess creates intelligence cash reward")
-			_expect(int(main.call("_player_final_score", 0)) == money_before_guess + 120, "final settlement money includes intelligence reward")
+			_expect(int(main.call("_player_intel_cash", 0)) == intel_cash_before_guess + 120, "correct private city-owner guess creates intelligence cash reward")
+			_expect(_player_cash(_as_array(main.get("players")), 0) == cash_before_guess, "intelligence rewards remain separate from available cash and v0.5 qualification")
 		var rival_cash_before_business := _rival_cash_total(players_after_auto_expand, 0)
 		var business_actions := int(_ai_controller(main).call("_auto_rival_business_actions", true))
 		await process_frame
@@ -676,7 +677,10 @@ func _run() -> void:
 		_expect(_player_ledger_contains(players_after_market, 0, "城市收入") or _player_ledger_contains(players_after_market, 0, "项目分红"), "realtime cashflow records city or project-share income in the economy ledger")
 		_expect(_verify_realtime_gdp_directionality_pack(main, buildable_district), "realtime GDP breakdown responds to production, consumption, transport, route-flow, route damage, and region damage")
 		_verify_economy_card_effects(main, buildable_district)
-		var score_after_build := int(main.call("_player_final_score", 0))
+		var ledger_components_after_build := {
+			"available_cash": _player_cash(_as_array(main.get("players")), 0),
+			"intel_cash": int(main.call("_player_intel_cash", 0)),
+		}
 		_expect(int(main.call("_save_run")) == OK, "current run can be saved")
 		main.call("_open_main_menu")
 		await process_frame
@@ -687,13 +691,16 @@ func _run() -> void:
 		await process_frame
 		_expect(int(main.call("_player_active_city_count", 0)) == 0, "new game clears saved-run city state before load")
 		var load_result := int(main.call("_load_run"))
-		var loaded_score_immediately := int(main.call("_player_final_score", 0))
+		var loaded_ledger_components := {
+			"available_cash": _player_cash(_as_array(main.get("players")), 0),
+			"intel_cash": int(main.call("_player_intel_cash", 0)),
+		}
 		_expect(load_result == OK, "current run can be loaded")
 		await process_frame
 		_expect(_players_have_role_cards(main, _as_array(main.get("players"))), "loaded run restores player role cards")
 		_expect(_as_array(main.get("auto_monsters")).size() == EXPECTED_SUMMONED_MONSTER_COUNT, "loaded run restores summoned field monsters")
 		_expect(int(main.call("_player_active_city_count", 0)) == 1, "loaded run restores built city assets")
-		_expect(loaded_score_immediately == score_after_build, "loaded run restores the saved player score")
+		_expect(loaded_ledger_components == ledger_components_after_build, "loaded run restores available and intelligence cash without a legacy aggregate score")
 
 	var menu_overlay := main.get("menu_overlay") as Control
 	_expect(menu_overlay != null and menu_overlay.visible, "main menu overlay opens after setup")
@@ -1435,7 +1442,6 @@ func _verify_bankruptcy_elimination_rules(main: Node) -> bool:
 	bankrupt_ai["cash"] = 0
 	players[bankrupt_ai_index] = bankrupt_ai
 	main.set("players", players)
-	main.set("game_over", false)
 	var first_eliminated := int(main.call("_check_bankruptcy_eliminations", "烟测破产"))
 	var after_first := _as_array(main.get("players"))
 	var ai_indices := _as_array(_ai_controller(main).call("_ai_player_indices"))
@@ -1450,12 +1456,11 @@ func _verify_bankruptcy_elimination_rules(main: Node) -> bool:
 		and first_eliminated == 1 \
 		and bool((after_first[bankrupt_ai_index] as Dictionary).get("eliminated", false)) \
 		and int((after_first[bankrupt_ai_index] as Dictionary).get("cash", -1)) == 0 \
-		and int(main.call("_player_visible_settlement_estimate", bankrupt_ai_index)) == 0 \
 		and not ai_indices.has(bankrupt_ai_index) \
 		and build_error.contains("破产") \
 		and var_to_str(bankrupt_player_snapshot).contains("破产") \
 		and _container_has_named_node(main, "StandingsBankruptBadge") \
-		and not bool(main.get("game_over"))
+		and not bool(main.call("_runtime_session_finished"))
 	var sudden_death_players := _as_array(main.get("players")).duplicate(true)
 	for i in range(1, sudden_death_players.size()):
 		var player := (sudden_death_players[i] as Dictionary).duplicate(true)
@@ -1464,7 +1469,11 @@ func _verify_bankruptcy_elimination_rules(main: Node) -> bool:
 		sudden_death_players[i] = player
 	main.set("players", sudden_death_players)
 	var remaining_eliminated := int(main.call("_check_bankruptcy_eliminations", "烟测只剩一席"))
-	ok = ok and remaining_eliminated >= sudden_death_players.size() - 1 and bool(main.get("game_over"))
+	var survivor_receipt := _runtime_coordinator(main).call("victory_control_outcome_receipt") as Dictionary
+	ok = ok \
+		and remaining_eliminated >= sudden_death_players.size() - 1 \
+		and bool(main.call("_runtime_session_finished")) \
+		and String(survivor_receipt.get("reason_code", "")) == "last_survivor"
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -2859,6 +2868,8 @@ func _verify_roguelike_depth_scaling(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var profile_i := main.call("_roguelike_planet_profile", 1) as Dictionary
 	var profile_vi := main.call("_roguelike_planet_profile", 6) as Dictionary
+	var victory_i := main.call("_victory_depth_rule", 1) as Dictionary
+	var victory_vi := main.call("_victory_depth_rule", 6) as Dictionary
 	var ok := true
 	ok = ok and int(profile_i.get("region_min", 0)) <= 6
 	ok = ok and int(profile_i.get("region_max", 99)) < 10
@@ -2867,10 +2878,10 @@ func _verify_roguelike_depth_scaling(main: Node) -> bool:
 	ok = ok and int(profile_vi.get("region_min", 0)) >= 40
 	ok = ok and int(profile_vi.get("region_max", 0)) >= 50
 	ok = ok and float(profile_i.get("width", 0.0)) < float(profile_vi.get("width", 0.0))
-	ok = ok and int(profile_i.get("cash_goal", 0)) < int(profile_vi.get("cash_goal", 0))
+	ok = ok and int(victory_i.get("regions", 0)) == 3 and int(victory_i.get("depth", 0)) == 90
+	ok = ok and int(victory_vi.get("regions", 0)) == 8 and int(victory_vi.get("depth", 0)) == 360
 	ok = ok and String(main.call("_roguelike_planet_profile_text", 1)).contains("区域6-9")
 	ok = ok and String(main.call("_roguelike_planet_profile_text", 6)).contains("深度VI")
-	ok = ok and String(main.call("_roguelike_planet_profile_text", 6)).contains("目标现金")
 	main.call("_set_configured_roguelike_depth", 6)
 	main.call("_generate_roguelike_districts")
 	var large_districts := _as_array(main.get("districts"))
@@ -2881,97 +2892,87 @@ func _verify_roguelike_depth_scaling(main: Node) -> bool:
 	return ok and restore_result == OK
 
 
-func _verify_victory_countdown_rule(main: Node) -> bool:
+func _verify_victory_control_rule(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
+	var coordinator := _runtime_coordinator(main)
+	var controller := _victory_controller(main)
+	if coordinator == null or controller == null:
+		return false
 	var ok := true
-	main.set("game_over", false)
-	main.set("victory_countdown_active", false)
-	main.set("victory_countdown_timer", 0.0)
-	main.set("victory_countdown_trigger_player", -1)
-	main.set("victory_countdown_trigger_score", 0)
-	var cash_goal := int(main.call("_roguelike_cash_goal"))
+	coordinator.call("reset_victory_control_runtime")
+	var audit_world := _victory_test_world([30, 30, 30], [], 500000, 100000)
+	controller.call("advance_world_effective", 9.99, audit_world)
+	var qualification_snapshot := controller.call("public_snapshot") as Dictionary
+	ok = ok and String(qualification_snapshot.get("state", "")) == "qualification"
+	ok = ok and float(qualification_snapshot.get("qualification_remaining_seconds", 0.0)) > 0.0
+	controller.call("advance_world_effective", 0.01, audit_world)
+	var audit_snapshot := controller.call("public_snapshot") as Dictionary
+	ok = ok and String(audit_snapshot.get("state", "")) == "audit"
+	ok = ok and is_equal_approx(float(audit_snapshot.get("audit_remaining_seconds", 0.0)), 120.0)
+	var audit_state := main.call("_capture_run_state") as Dictionary
+	coordinator.call("reset_victory_control_runtime")
+	ok = ok and int(main.call("_apply_run_state", audit_state)) == OK
+	audit_snapshot = controller.call("public_snapshot") as Dictionary
+	ok = ok and String(audit_snapshot.get("state", "")) == "audit"
+	ok = ok and is_equal_approx(float(audit_snapshot.get("audit_remaining_seconds", 0.0)), 120.0)
+	controller.call("advance_world_effective", 120.0, audit_world)
+	var audit_receipt := controller.call("outcome_receipt") as Dictionary
+	ok = ok and String(audit_receipt.get("reason_code", "")) == "public_audit_complete"
+	ok = ok and (audit_receipt.get("winner_player_indices", []) as Array) == [0]
+	coordinator.call("reset_victory_control_runtime")
+
+	var history := _as_array(main.get("resolved_card_history")).duplicate(true)
+	history.append({
+		"resolution_id": 99001,
+		"queued_order": 99001,
+		"player_index": 1,
+		"skill": main.call("_make_skill", "城市融资1"),
+		"winning_bid": 120,
+		"resolved_time": float(main.get("game_time")),
+	})
+	main.set("resolved_card_history", history)
+	var monsters := _as_array(main.get("auto_monsters")).duplicate(true)
+	var actor := _monster_controller(main).call("_make_auto_monster", monsters.size(), 0, clampi(int(main.get("selected_district")), 0, max(0, _as_array(main.get("districts")).size() - 1)), 1, 2) as Dictionary
+	actor["owner_damage_cash_lost"] = 240
+	actor["last_owner_damage_source"] = "烟测终局复盘"
+	actor["last_owner_damage_cash_loss"] = 120
+	monsters.append(actor)
+	main.set("auto_monsters", monsters)
 	var players := _as_array(main.get("players")).duplicate(true)
-	if players.is_empty():
-		ok = false
-	else:
-		var player := players[0] as Dictionary
-		player["cash"] = cash_goal + 25
-		players[0] = player
-		main.set("players", players)
-		main.call("_update_victory_countdown", 0.1)
-		ok = ok and bool(main.get("victory_countdown_active"))
-		ok = ok and int(main.get("victory_countdown_trigger_player")) == 0
-		ok = ok and int(main.get("victory_countdown_trigger_score")) >= cash_goal
-		var timer_after_start := float(main.get("victory_countdown_timer"))
-		ok = ok and timer_after_start > 59.0 and timer_after_start <= 60.0
-		var history := _as_array(main.get("resolved_card_history")).duplicate(true)
-		history.append({
-			"resolution_id": 99001,
-			"queued_order": 99001,
-			"player_index": 1,
-			"skill": main.call("_make_skill", "城市融资1"),
-			"winning_bid": 120,
-			"resolved_time": float(main.get("game_time")),
-		})
-		main.set("resolved_card_history", history)
-		var monsters := _as_array(main.get("auto_monsters")).duplicate(true)
-		var actor := _monster_controller(main).call("_make_auto_monster", monsters.size(), 0, clampi(int(main.get("selected_district")), 0, max(0, _as_array(main.get("districts")).size() - 1)), 1, 2) as Dictionary
-		actor["owner_damage_cash_lost"] = 240
-		actor["last_owner_damage_source"] = "烟测终局复盘"
-		actor["last_owner_damage_cash_loss"] = 120
-		monsters.append(actor)
-		main.set("auto_monsters", monsters)
-		players = _as_array(main.get("players")).duplicate(true)
-		if players.size() > 1:
-			var ai_player := players[1] as Dictionary
-			var memory := (ai_player.get("ai_memory", {}) as Dictionary).duplicate(true)
+	for player_index in range(players.size()):
+		var player := (players[player_index] as Dictionary).duplicate(true)
+		player["cash"] = 5200 if player_index == 0 else 400
+		player["eliminated"] = false
+		if player_index == 1:
+			var memory := (player.get("ai_memory", {}) as Dictionary).duplicate(true)
 			memory["route_plan_product"] = "环晶电池"
 			memory["route_plan_stage"] = "attack_rival"
 			memory["strategic_intent"] = "disrupt_competitors"
-			ai_player["ai_memory"] = memory
-			players[1] = ai_player
-			main.set("players", players)
-		var countdown_state := main.call("_capture_run_state") as Dictionary
-		main.set("victory_countdown_active", false)
-		main.set("victory_countdown_timer", 0.0)
-		ok = ok and int(main.call("_apply_run_state", countdown_state)) == OK
-		ok = ok and bool(main.get("victory_countdown_active"))
-		ok = ok and float(main.get("victory_countdown_timer")) > 59.0
-		main.call("_update_victory_countdown", 61.0)
-		ok = ok and bool(main.get("game_over"))
-		var saw_finish_log := false
-		var saw_summary_log := false
-		var saw_card_summary := false
-		var saw_monster_summary := false
-		var saw_public_clue_summary := false
-		var saw_player_breakdown := false
-		for line_variant in _as_array(main.get("log_lines")):
-			var line := String(line_variant)
-			if line.contains("终局倒计时结束"):
-				saw_finish_log = true
-			if line.contains("终局总结"):
-				saw_summary_log = true
-			if line.contains("关键卡牌"):
-				saw_card_summary = true
-			if line.contains("怪兽影响"):
-				saw_monster_summary = true
-			if line.contains("公开线索"):
-				saw_public_clue_summary = true
-			if line.contains("玩家概览"):
-				saw_player_breakdown = true
-		var standings_text := String((main.call("_standings_public_snapshot") as Dictionary).get("summary_text", ""))
-		ok = ok and saw_finish_log and saw_summary_log and saw_card_summary and saw_monster_summary and saw_public_clue_summary and saw_player_breakdown
-		ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("公开线索") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报") and not standings_text.contains("对手计划") and not standings_text.contains("内部决策") and not standings_text.contains("AI路线") and not standings_text.contains("发展路线")
-		var final_menu_title := _menu_overlay_node(main, "MenuTitleLabel") as Label
-		var final_menu_body := _menu_overlay_node(main, "MenuBodyLabel") as Label
-		var final_menu_preview := _menu_overlay_node(main, "MenuPreviewBox") as VBoxContainer
-		var final_continue_button := _menu_overlay_node(main, "MenuContinueButton") as Button
-		ok = ok and final_menu_title != null and final_menu_title.text == "终局结算"
-		ok = ok and final_menu_body != null and final_menu_body.text.contains("游戏结束") and final_menu_body.text.contains("终局总结") and final_menu_body.text.contains("接下来")
-		ok = ok and final_continue_button != null and not final_continue_button.visible
-		ok = ok and final_menu_preview != null and _container_button_text_contains(final_menu_preview, "查看局势排名") and _container_button_text_contains(final_menu_preview, "打开经济总览") and _container_button_text_contains(final_menu_preview, "开局准备")
-		ok = ok and final_menu_preview != null and _container_label_text_contains(final_menu_preview, "终局速览") and _container_label_text_contains(final_menu_preview, "胜者") and _container_label_text_contains(final_menu_preview, "钱从哪里来") and _container_label_text_contains(final_menu_preview, "关键影响")
-		ok = ok and final_menu_preview != null and _container_label_text_contains(final_menu_preview, "胜因拆解") and _container_label_text_contains(final_menu_preview, "起手:基础") and _container_label_text_contains(final_menu_preview, "角色+") and _container_label_text_contains(final_menu_preview, "公开事件")
+			player["ai_memory"] = memory
+		players[player_index] = player
+	main.set("players", players)
+	var routed_receipt := coordinator.call("resolve_victory_outcome", "planet_destroyed") as Dictionary
+	ok = ok and String(routed_receipt.get("reason_code", "")) == "planet_destroyed"
+	ok = ok and (routed_receipt.get("winner_player_indices", []) as Array) == [0]
+	ok = ok and bool(main.call("_runtime_session_finished"))
+	var saw_finish_log := false
+	for line_variant in _as_array(main.get("log_lines")):
+		if String(line_variant).contains("游戏结束：星球毁灭结算"):
+			saw_finish_log = true
+			break
+	var standings_text := String((main.call("_standings_public_snapshot") as Dictionary).get("summary_text", ""))
+	ok = ok and saw_finish_log
+	ok = ok and standings_text.contains("终局总结") and standings_text.contains("关键卡牌") and standings_text.contains("怪兽影响") and standings_text.contains("公开线索") and standings_text.contains("玩家概览") and standings_text.contains("城收") and standings_text.contains("情报") and not standings_text.contains("对手计划") and not standings_text.contains("内部决策") and not standings_text.contains("AI路线") and not standings_text.contains("发展路线")
+	var final_menu_title := _menu_overlay_node(main, "MenuTitleLabel") as Label
+	var final_menu_body := _menu_overlay_node(main, "MenuBodyLabel") as Label
+	var final_menu_preview := _menu_overlay_node(main, "MenuPreviewBox") as VBoxContainer
+	var final_continue_button := _menu_overlay_node(main, "MenuContinueButton") as Button
+	ok = ok and final_menu_title != null and final_menu_title.text == "终局结算"
+	ok = ok and final_menu_body != null and final_menu_body.text.contains("游戏结束") and final_menu_body.text.contains("终局总结") and final_menu_body.text.contains("接下来")
+	ok = ok and final_continue_button != null and not final_continue_button.visible
+	ok = ok and final_menu_preview != null and _container_button_text_contains(final_menu_preview, "查看局势排名") and _container_button_text_contains(final_menu_preview, "打开经济总览") and _container_button_text_contains(final_menu_preview, "开局准备")
+	ok = ok and final_menu_preview != null and _container_label_text_contains(final_menu_preview, "终局速览") and _container_label_text_contains(final_menu_preview, "胜者") and _container_label_text_contains(final_menu_preview, "钱从哪里来") and _container_label_text_contains(final_menu_preview, "关键影响")
+	ok = ok and final_menu_preview != null and _container_label_text_contains(final_menu_preview, "胜因拆解") and _container_label_text_contains(final_menu_preview, "起手:基础") and _container_label_text_contains(final_menu_preview, "角色+") and _container_label_text_contains(final_menu_preview, "公开事件")
 	var restore_result := int(main.call("_apply_run_state", saved))
 	return ok and restore_result == OK
 
@@ -3381,9 +3382,9 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 	if own_index < 0:
 		ok = false
 	else:
-		var defend_cash_goal := int(main.call("_roguelike_cash_goal"))
-		var defend_leader_cash := maxi(5000, int(round(float(defend_cash_goal) * 0.84)))
-		var defend_other_cash := maxi(1800, int(round(float(defend_cash_goal) * 0.38)))
+		var defend_fixture_cash_scale := 10000
+		var defend_leader_cash := maxi(5000, int(round(float(defend_fixture_cash_scale) * 0.84)))
+		var defend_other_cash := maxi(1800, int(round(float(defend_fixture_cash_scale) * 0.38)))
 		var defend_players := _as_array(main.get("players")).duplicate(true)
 		for player_index in range(defend_players.size()):
 			var player := defend_players[player_index] as Dictionary
@@ -3461,10 +3462,10 @@ func _verify_ai_strategy_intent_policy(main: Node) -> bool:
 	if own_index < 0 or rival_index < 0:
 		ok = false
 	else:
-		var disrupt_cash_goal := int(main.call("_roguelike_cash_goal"))
-		var disrupt_ai_cash := maxi(2600, int(round(float(disrupt_cash_goal) * 0.36)))
-		var disrupt_rival_cash := maxi(5200, int(round(float(disrupt_cash_goal) * 0.82)))
-		var disrupt_neutral_cash := maxi(2400, int(round(float(disrupt_cash_goal) * 0.42)))
+		var disrupt_fixture_cash_scale := 10000
+		var disrupt_ai_cash := maxi(2600, int(round(float(disrupt_fixture_cash_scale) * 0.36)))
+		var disrupt_rival_cash := maxi(5200, int(round(float(disrupt_fixture_cash_scale) * 0.82)))
+		var disrupt_neutral_cash := maxi(2400, int(round(float(disrupt_fixture_cash_scale) * 0.42)))
 		var disrupt_players := _as_array(main.get("players")).duplicate(true)
 		for player_index in range(disrupt_players.size()):
 			var player := disrupt_players[player_index] as Dictionary
@@ -3853,11 +3854,12 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
 	var ok := true
 	main.set("ai_card_decision_enabled", true)
-	main.set("game_over", false)
-	main.set("victory_countdown_active", false)
-	main.set("victory_countdown_timer", 0.0)
 	main.set("business_cycle_count", 0)
 	main.set("auto_monsters", [])
+	var victory_controller := _victory_controller(main)
+	if victory_controller == null:
+		return false
+	victory_controller.call("reset_state")
 	var players := _as_array(main.get("players")).duplicate(true)
 	if players.size() < 3:
 		ok = false
@@ -3884,14 +3886,9 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 			main.set("business_cycle_count", 3)
 			var midgame := _ai_controller(main).call("_ai_refresh_game_phase", 1, true) as Dictionary
 			ok = ok and String(midgame.get("phase", "")) == "midgame"
-			players = _as_array(main.get("players")).duplicate(true)
-			var ai_player := players[1] as Dictionary
-			ai_player["cash"] = 800
-			players[1] = ai_player
-			var leader_player := players[2] as Dictionary
-			leader_player["cash"] = int(main.call("_roguelike_cash_goal")) + 800
-			players[2] = leader_player
-			main.set("players", players)
+			victory_controller.call("reset_state")
+			var trailing_world := _victory_three_player_world([], [20, 20, 20], [45, 40, 35], [50000, 80000, 120000])
+			victory_controller.call("advance_world_effective", 0.0, trailing_world)
 			main.set("business_cycle_count", 8)
 			var trailing := _ai_controller(main).call("_ai_refresh_game_phase", 1, true) as Dictionary
 			ok = ok and String(trailing.get("phase", "")) == "endgame"
@@ -3910,31 +3907,24 @@ func _verify_ai_game_phase_policy(main: Node) -> bool:
 					break
 			var sabotage_bonus := int(_ai_controller(main).call("_ai_phase_bonus_for_candidate", 1, "route_sabotage", rival_index, "环晶电池", 2, {}))
 			ok = ok and saw_trailing_disrupt and sabotage_bonus > 0
-			main.set("victory_countdown_active", true)
-			main.set("victory_countdown_timer", 12.0)
-			var countdown_urgency := int(_ai_controller(main).call("_ai_endgame_urgency_score", 1))
+			victory_controller.call("advance_world_effective", 10.0, trailing_world)
+			var audit_urgency := int(_ai_controller(main).call("_ai_endgame_urgency_score", 1))
 			var urgent_sabotage_bonus := int(_ai_controller(main).call("_ai_phase_bonus_for_candidate", 1, "route_sabotage", rival_index, "环晶电池", 2, {}))
 			var sabotage_skill := main.call("_make_skill", "商路黑客1") as Dictionary
 			var sabotage_victory := _ai_controller(main).call("_ai_victory_race_bonus_for_candidate", 1, "route_sabotage", rival_index, "环晶电池", 2, sabotage_skill) as Dictionary
 			var sabotage_context := _ai_controller(main).call("_ai_card_play_context", 1, 0, sabotage_skill) as Dictionary
 			ok = ok \
-				and countdown_urgency > 0 \
+				and audit_urgency > 0 \
 				and urgent_sabotage_bonus > sabotage_bonus \
 				and int(sabotage_victory.get("bonus", 0)) > 0 \
-				and String(sabotage_victory.get("role", "")) == "break_countdown" \
+				and String(sabotage_victory.get("role", "")) == "break_audit_lead" \
 				and not sabotage_context.is_empty() \
-				and int(sabotage_context.get("endgame_urgency", 0)) == countdown_urgency \
+				and int(sabotage_context.get("endgame_urgency", 0)) == audit_urgency \
 				and int(sabotage_context.get("phase_bonus", 0)) >= urgent_sabotage_bonus \
 				and int(sabotage_context.get("victory_race_bonus", 0)) >= int(sabotage_victory.get("bonus", 0)) \
-				and String(sabotage_context.get("victory_race_role", "")) == "break_countdown"
-			players = _as_array(main.get("players")).duplicate(true)
-			ai_player = players[1] as Dictionary
-			ai_player["cash"] = int(main.call("_roguelike_cash_goal")) + 1200
-			players[1] = ai_player
-			leader_player = players[2] as Dictionary
-			leader_player["cash"] = 600
-			players[2] = leader_player
-			main.set("players", players)
+				and String(sabotage_context.get("victory_race_role", "")) == "break_audit_lead"
+			victory_controller.call("reset_state")
+			victory_controller.call("advance_world_effective", 10.0, _victory_three_player_world([], [50, 40, 35], [20, 20, 20], [50000, 150000, 60000]))
 			var leader_phase := _ai_controller(main).call("_ai_refresh_game_phase", 1, true) as Dictionary
 			var defense_bonus := int(_ai_controller(main).call("_ai_phase_bonus_for_candidate", 1, "route_insurance", own_index, "环晶电池", 1, {}))
 			var defense_districts := _as_array(main.get("districts")).duplicate(true)
@@ -4153,7 +4143,6 @@ func _verify_ai_strategy_route_diversification_policy(main: Node) -> bool:
 			ok = false
 			continue
 		main.set("ai_card_decision_enabled", true)
-		main.set("game_over", false)
 		main.set("active_card_resolution", {})
 		main.set("card_resolution_queue", [])
 		main.set("next_card_resolution_queue", [])
@@ -4173,7 +4162,7 @@ func _verify_ai_strategy_route_diversification_policy(main: Node) -> bool:
 		var players := _as_array(main.get("players")).duplicate(true)
 		for player_index in range(players.size()):
 			var player := players[player_index] as Dictionary
-			player["cash"] = 6600 if player_index == 1 else (int(main.call("_roguelike_cash_goal")) + 700 if player_index == 2 else 1000)
+			player["cash"] = 6600 if player_index == 1 else (10700 if player_index == 2 else 1000)
 			player["action_cooldown"] = 0.0
 			if player_index == 1:
 				var memory := _ai_controller(main).call("_empty_ai_memory") as Dictionary
@@ -4496,9 +4485,6 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 	var ok := true
 	var failures := []
 	main.set("ai_card_decision_enabled", true)
-	main.set("game_over", false)
-	main.set("victory_countdown_active", false)
-	main.set("victory_countdown_timer", 0.0)
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
@@ -4585,28 +4571,15 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 		if not saw_samples_for_all:
 			failures.append("missing samples")
 			ok = false
-		var leader_index := 1
-		var leader_score := -999999
-		for player_index in range(1, EXPECTED_PLAYER_COUNT):
-			var score := int(main.call("_player_visible_settlement_estimate", player_index))
-			if score > leader_score:
-				leader_score = score
-				leader_index = player_index
-		players = _as_array(main.get("players")).duplicate(true)
-		for player_index in range(players.size()):
-			var player := players[player_index] as Dictionary
-			if player_index == leader_index:
-				player["cash"] = int(main.call("_roguelike_cash_goal")) + 150
-			else:
-				player["cash"] = 300
-			players[player_index] = player
-		main.set("players", players)
-		main.call("_update_victory_countdown", 0.1)
-		if not bool(main.get("victory_countdown_active")):
-			failures.append("countdown inactive")
-			ok = false
-		if int(main.get("victory_countdown_trigger_player")) != leader_index:
-			failures.append("countdown trigger %d expected %d" % [int(main.get("victory_countdown_trigger_player")), leader_index])
+		var coordinator := _runtime_coordinator(main)
+		coordinator.call("advance_victory_control", 0.0, {})
+		var victory_rankings := coordinator.call("victory_control_rankings", false) as Array
+		var ai_progress_rows := 0
+		for ranking_variant in victory_rankings:
+			if ranking_variant is Dictionary and int((ranking_variant as Dictionary).get("player_index", -1)) > 0:
+				ai_progress_rows += 1
+		if ai_progress_rows < EXPECTED_AI_PLAYER_COUNT:
+			failures.append("victory progress rows %d/%d" % [ai_progress_rows, EXPECTED_AI_PLAYER_COUNT])
 			ok = false
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
@@ -4641,9 +4614,6 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	_set_map_focus_animation_for_smoke(main, false)
 	_mark_smoke_progress("max ai setup ready")
 	main.set("ai_card_decision_enabled", true)
-	main.set("game_over", false)
-	main.set("victory_countdown_active", false)
-	main.set("victory_countdown_timer", 0.0)
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
@@ -4859,37 +4829,21 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		failures.append("profile identity signature bonus %d %s" % [int(profile_identity_report.get("signature_bonus_profile_count", 0)), profile_identity_summary])
 		ok = false
 	var leader_index := 1
-	var leader_score := -999999
-	for player_index in range(1, max_players):
-		var score := int(main.call("_player_visible_settlement_estimate", player_index))
-		if score > leader_score:
-			leader_score = score
-			leader_index = player_index
 	players = _as_array(main.get("players")).duplicate(true)
-	var cash_goal := int(main.call("_roguelike_cash_goal"))
 	for player_index in range(players.size()):
 		var player := players[player_index] as Dictionary
-		player["cash"] = cash_goal + 1200 if player_index == leader_index else 400
+		player["cash"] = 120000 if player_index == leader_index else 400
+		player["eliminated"] = false
 		players[player_index] = player
 	main.set("players", players)
-	main.call("_update_victory_countdown", 0.1)
-	_mark_smoke_progress("max ai countdown started")
-	if not bool(main.get("victory_countdown_active")):
-		failures.append("countdown inactive")
-		ok = false
-	if int(main.get("victory_countdown_trigger_player")) != leader_index:
-		failures.append("countdown trigger %d expected %d" % [int(main.get("victory_countdown_trigger_player")), leader_index])
-		ok = false
-	var countdown_state := main.call("_capture_run_state") as Dictionary
-	main.set("victory_countdown_active", false)
-	main.set("victory_countdown_timer", 0.0)
-	if int(main.call("_apply_run_state", countdown_state)) != OK or not bool(main.get("victory_countdown_active")):
-		failures.append("countdown restore")
-		ok = false
-	main.call("_update_victory_countdown", 61.0)
-	_mark_smoke_progress("max ai countdown settled")
-	if not bool(main.get("game_over")):
-		failures.append("not game over")
+	var coordinator := _runtime_coordinator(main)
+	coordinator.call("reset_victory_control_runtime")
+	var outcome_receipt := coordinator.call("resolve_victory_outcome", "planet_destroyed") as Dictionary
+	_mark_smoke_progress("max ai victory receipt settled")
+	if String(outcome_receipt.get("reason_code", "")) != "planet_destroyed" \
+		or (outcome_receipt.get("winner_player_indices", []) as Array) != [leader_index] \
+		or not bool(main.call("_runtime_session_finished")):
+		failures.append("victory receipt mismatch %s" % str(outcome_receipt))
 		ok = false
 	var standings_text := String((main.call("_standings_public_snapshot") as Dictionary).get("summary_text", ""))
 	if not standings_text.contains("终局总结") or not standings_text.contains("公开线索") or standings_text.contains("对手计划") or standings_text.contains("内部决策") or standings_text.contains("AI路线") or standings_text.contains("发展路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
@@ -5483,7 +5437,6 @@ func _verify_monster_takeover_resets_owner_clues(main: Node) -> bool:
 
 func _verify_monster_region_card_pricing(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
-	main.set("game_over", false)
 	var purchase_coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var purchase_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseRuntimeController")
 	if purchase_controller != null and purchase_controller.has_method("reset_state"):
@@ -7791,7 +7744,6 @@ func _verify_ai_counter_response_policy(main: Node) -> bool:
 	var ok := true
 	var failures := []
 	main.set("ai_card_decision_enabled", true)
-	main.set("game_over", false)
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
@@ -8039,7 +7991,6 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
 	var ok := true
 	main.set("ai_card_decision_enabled", true)
-	main.set("game_over", false)
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
@@ -8051,7 +8002,6 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 	if own_index < 0 or rival_index < 0:
 		ok = false
 	else:
-		var cash_goal := int(main.call("_roguelike_cash_goal"))
 		var players := _as_array(main.get("players")).duplicate(true)
 		for player_index in range(players.size()):
 			var player := players[player_index] as Dictionary
@@ -8066,9 +8016,9 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 				memory["learning_last_tags"] = []
 				memory["episode_learning_updates"] = 0
 				memory["episode_last_reward"] = 0
-				memory["episode_last_final_score"] = 0
+				memory["episode_last_top_n_gdp"] = 0
+				memory["episode_last_controlled_regions"] = 0
 				memory["episode_last_rank"] = -1
-				memory["episode_last_cash_goal"] = 0
 				memory["episode_last_result"] = ""
 				player["ai_memory"] = memory
 			players[player_index] = player
@@ -8076,14 +8026,6 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 			var human_player := players[0] as Dictionary
 			human_player["cash"] = 500
 			players[0] = human_player
-		if players.size() > 1:
-			var winning_ai := players[1] as Dictionary
-			winning_ai["cash"] = cash_goal + 2200
-			players[1] = winning_ai
-		if players.size() > 2:
-			var losing_ai := players[2] as Dictionary
-			losing_ai["cash"] = 120
-			players[2] = losing_ai
 		main.set("players", players)
 		_ai_controller(main).call("_record_ai_decision", 1, "匿名商业", own_index, 180, "终局学习测试：成长路线赚到钱", [], {
 			"policy_kind": "price_pump",
@@ -8099,25 +8041,43 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 			"route_plan_product": "星尘香料",
 			"route_plan_stage": "attack_rival",
 		})
-		main.call("_finish_game", "AI终局学习测试")
+		var receipt := {
+			"outcome_id": "smoke.victory.learning.1",
+			"schema_version": 1,
+			"ruleset_id": "v0.5",
+			"reason_code": "public_audit_complete",
+			"winner_player_indices": [1],
+			"co_victory": false,
+			"comparison_order": ["top_n_gdp_per_minute", "controlled_region_count", "cash_ledger_cents"],
+			"rankings": [
+				{"player_index": 1, "top_n_gdp_per_minute": 180, "controlled_region_count": 5, "cash_ledger_cents": 1200000, "winner": true},
+				{"player_index": 0, "top_n_gdp_per_minute": 90, "controlled_region_count": 3, "cash_ledger_cents": 50000, "winner": false},
+				{"player_index": 2, "top_n_gdp_per_minute": 0, "controlled_region_count": 0, "cash_ledger_cents": 12000, "winner": false},
+			],
+			"visibility_scope": "public",
+		}
+		var finalized_updates := int(_ai_controller(main).call("finalize_victory_outcome_learning", receipt))
 		var players_after_finish := _as_array(main.get("players"))
 		var win_memory := (players_after_finish[1] as Dictionary).get("ai_memory", {}) as Dictionary
 		var lose_memory := (players_after_finish[2] as Dictionary).get("ai_memory", {}) as Dictionary
-		var duplicate_updates := int(_ai_controller(main).call("_finalize_ai_episode_rewards", "AI终局学习重复调用测试"))
+		var duplicate_updates := int(_ai_controller(main).call("finalize_victory_outcome_learning", receipt))
 		var win_bonus := int(_ai_controller(main).call("_ai_learning_bonus", 1, "price_pump", "grow_focus", "strengthen_route", "环晶电池", "匿名商业"))
 		var lose_bonus := int(_ai_controller(main).call("_ai_learning_bonus", 2, "route_sabotage", "disrupt_competitors", "attack_rival", "星尘香料", "匿名商业"))
-		ok = ok and bool(main.get("game_over"))
+		ok = ok and finalized_updates == 2
 		ok = ok and int(win_memory.get("episode_learning_updates", 0)) > 0
 		ok = ok and int(win_memory.get("episode_last_rank", -1)) == 0
-		ok = ok and int(win_memory.get("episode_last_final_score", 0)) >= cash_goal
-		ok = ok and int(win_memory.get("episode_last_cash_goal", 0)) == cash_goal
+		ok = ok and int(win_memory.get("episode_last_top_n_gdp", 0)) == 180
+		ok = ok and int(win_memory.get("episode_last_controlled_regions", 0)) == 5
+		ok = ok and String(win_memory.get("episode_last_result", "")) == "胜利"
 		ok = ok and _ai_memory_has_episode_sample(win_memory, "price_pump", true)
 		ok = ok and _ai_memory_has_positive_learning(win_memory, "policy:price_pump")
 		ok = ok and _ai_memory_has_positive_learning(win_memory, "strategy:grow_focus")
 		ok = ok and win_bonus > 0
 		ok = ok and int(lose_memory.get("episode_learning_updates", 0)) > 0
 		ok = ok and int(lose_memory.get("episode_last_rank", -1)) > 0
-		ok = ok and int(lose_memory.get("episode_last_final_score", 0)) < cash_goal
+		ok = ok and int(lose_memory.get("episode_last_top_n_gdp", -1)) == 0
+		ok = ok and int(lose_memory.get("episode_last_controlled_regions", -1)) == 0
+		ok = ok and String(lose_memory.get("episode_last_result", "")) == "未获胜"
 		ok = ok and _ai_memory_has_episode_sample(lose_memory, "route_sabotage", false)
 		ok = ok and _ai_memory_has_negative_learning(lose_memory, "policy:route_sabotage")
 		ok = ok and lose_bonus < 0
@@ -9000,7 +8960,6 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	var previous_selected_player := int(main.get("selected_player"))
 	var previous_selected_district := int(main.get("selected_district"))
 	var previous_selected_trade_product := String(main.get("selected_trade_product"))
-	var previous_game_over := bool(main.get("game_over"))
 	if district_index < 0 or district_index >= previous_districts.size() or previous_players.is_empty():
 		return false
 	var district := previous_districts[district_index] as Dictionary
@@ -9033,7 +8992,6 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	main.set("selected_player", 0)
 	main.set("selected_district", district_index)
 	main.set("selected_trade_product", product_name)
-	main.set("game_over", false)
 	_clear_player_cooldown(main, 0)
 	var cash_before := _player_cash(_as_array(main.get("players")), 0)
 	var playable_evaluation := main.call("_card_play_eligibility_snapshot", 0, playable_skill, "rule", {}) as Dictionary
@@ -9092,7 +9050,6 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	main.set("selected_player", previous_selected_player)
 	main.set("selected_district", previous_selected_district)
 	main.set("selected_trade_product", previous_selected_trade_product)
-	main.set("game_over", previous_game_over)
 	main.call("_refresh_ui")
 	return play_ok and blocked_ok
 
@@ -9676,13 +9633,11 @@ func _settle_all_active_monster_wagers(main: Node, reason: String) -> void:
 
 func _verify_special_monster_passives(main: Node) -> void:
 	var saved_auto_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
-	var saved_game_over := bool(main.get("game_over"))
 	var saved_special_monster_timer := float(main.get("special_monster_timer"))
 	var saved_log_lines := _as_array(main.get("log_lines")).duplicate(true)
 	var saved_action_callouts := _as_array(main.get("action_callouts")).duplicate(true)
 	var start_district := maxi(0, int(main.get("selected_district")))
 
-	main.set("game_over", false)
 	var ember_ring_index := int(main.call("_monster_catalog_index_by_name", "焰环幼星"))
 	_expect(ember_ring_index >= 0, "monster catalog contains 焰环幼星")
 	if ember_ring_index >= 0:
@@ -9711,7 +9666,6 @@ func _verify_special_monster_passives(main: Node) -> void:
 		_expect(blue_lancer_hp_before - int(blue_lancer_after.get("hp", 0)) == 2, "蓝锋反应甲 reduces incoming damage by 1")
 
 	main.set("auto_monsters", saved_auto_monsters)
-	main.set("game_over", saved_game_over)
 	main.set("special_monster_timer", saved_special_monster_timer)
 	main.set("log_lines", saved_log_lines)
 	main.set("action_callouts", saved_action_callouts)
@@ -9830,6 +9784,67 @@ func _ai_controller(main: Node) -> Node:
 	if controller == null:
 		push_error("Smoke test requires scene-owned AiRuntimeController.")
 	return controller
+
+
+func _runtime_coordinator(main: Node) -> Node:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	if coordinator == null:
+		push_error("Smoke test requires scene-owned GameRuntimeCoordinator.")
+	return coordinator
+
+
+func _victory_controller(main: Node) -> Node:
+	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController")
+	if controller == null:
+		push_error("Smoke test requires scene-owned VictoryControlRuntimeController.")
+	return controller
+
+
+func _victory_test_world(player_zero_regions: Array, player_one_regions: Array, player_zero_cash_cents: int, player_one_cash_cents: int) -> Dictionary:
+	return _victory_world_for_players([player_zero_regions, player_one_regions], [player_zero_cash_cents, player_one_cash_cents])
+
+
+func _victory_three_player_world(player_zero_regions: Array, player_one_regions: Array, player_two_regions: Array, cash_values: Array) -> Dictionary:
+	return _victory_world_for_players([player_zero_regions, player_one_regions, player_two_regions], cash_values)
+
+
+func _victory_world_for_players(region_sets: Array, cash_values: Array) -> Dictionary:
+	var players: Array = []
+	var regions: Array = []
+	for player_index in range(region_sets.size()):
+		players.append({
+			"player_index": player_index,
+			"eliminated": false,
+			"cash_ledger_cents": int(cash_values[player_index]) if player_index < cash_values.size() else 0,
+			"audit_assets": {
+				"project_slot_count": 0,
+				"ordinary_hand_count": 0,
+				"military_unit_count": 0,
+			},
+		})
+	var district_index := 0
+	for owner_index in range(region_sets.size()):
+		var amounts: Array = region_sets[owner_index] if region_sets[owner_index] is Array else []
+		for amount_variant in amounts:
+			var amount := maxi(0, int(amount_variant))
+			var player_gdp_by_index := {}
+			for player_index in range(region_sets.size()):
+				player_gdp_by_index[str(player_index)] = amount if player_index == owner_index else 0
+			regions.append({
+				"region_id": "smoke_region_%d" % district_index,
+				"district_index": district_index,
+				"destroyed": false,
+				"region_gdp_per_minute": amount * 2,
+				"player_gdp_by_index": player_gdp_by_index,
+			})
+			district_index += 1
+	return {
+		"schema_version": "v0.5.victory-world.1",
+		"depth_tier": "I",
+		"players": players,
+		"regions": regions,
+		"clock_pause": {},
+	}
 
 
 func _diagnostics(main: Node) -> GameplayBalanceDiagnosticsRuntimeService:

@@ -1166,6 +1166,18 @@ const RECORDS := [
 		"risk_notes": "Medium; settlement ownership is cut over, while Network, Market, GDP, and project-share arithmetic remain deliberately separate owners.",
 		"mcp_notes": "Sprint 66 is fully sceneized. GameRuntimeCoordinator composes one authoritative Controller and one non-owning WorldBridge with an explicit rollback envelope.",
 	},
+	{
+		"id": "victory_control_v05_runtime_gate",
+		"display_name": "Victory Control v0.5 Runtime Hard Cutover",
+		"category": "Systems",
+		"current_scene_path": "res://scenes/runtime/VictoryControlRuntimeController.tscn",
+		"source_script_path": "res://scripts/runtime/victory_control_runtime_controller.gd",
+		"sceneization_status": STATUS_FULL,
+		"priority": 1,
+		"next_step": "Keep the 56-case gate green while downstream industry, contract, intel, wager, distress, and end-state domains adopt v0.5.",
+		"risk_notes": "High; qualification clocks, sticky audit privacy, endpoint ordering, special outcomes, session completion, and save/load are one exact-once chain.",
+		"mcp_notes": "SS05-04 is sceneized under GameRuntimeCoordinator. VictoryControl consumes structured GDP attribution, and its WorldBridge is explicitly non-owning.",
+	},
 ]
 
 

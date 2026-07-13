@@ -123,7 +123,6 @@ const ACE_KILLER_EVASIVE_MOVE_METERS := 220.0
 const ACE_KILLER_RAY_PATH_WIDTH_METERS := 70.0
 const STARTING_CASH := 2000
 const CITY_PRODUCT_LEVEL_MAX := 5
-const CITY_FINAL_VALUE := 700
 const CITY_GDP_HISTORY_LIMIT := 8
 const ECONOMY_LEGACY_TURN_SECONDS := 30.0
 const INTEL_CORRECT_GUESS_CASH := 120
@@ -793,12 +792,7 @@ var configured_ai_player_count := DEFAULT_AI_PLAYER_COUNT
 var configured_roguelike_depth := DEFAULT_ROGUELIKE_DEPTH
 var configured_role_indices := []
 var configured_starter_monster_indices := []
-var game_over := false
 var bankruptcy_check_in_progress := false
-var victory_countdown_active := false
-var victory_countdown_timer := 0.0
-var victory_countdown_trigger_player := -1
-var victory_countdown_trigger_score := 0
 var map_width_m := MAP_WIDTH_METERS
 var map_height_m := MAP_HEIGHT_METERS
 var district_lookup := {}
@@ -1057,7 +1051,7 @@ func _sfx_key_for_action_callout(actor: String, action: String, detail: String) 
 
 
 func _process(delta: float) -> void:
-	if game_over:
+	if _runtime_session_finished():
 		return
 	_sync_forced_decision_runtime()
 	var coordinator := _game_runtime_coordinator_node()
@@ -1101,15 +1095,15 @@ func _process(delta: float) -> void:
 	if coordinator != null and coordinator.has_method("tick_military"):
 		coordinator.call("tick_military", scaled_delta)
 	_check_bankruptcy_eliminations("现金归零")
-	if game_over:
+	if _runtime_session_finished():
 		return
 	if coordinator != null and coordinator.has_method("tick_monster_durations"):
 		coordinator.call("tick_monster_durations", scaled_delta)
 	_update_visual_cues(scaled_delta)
 	if coordinator != null and coordinator.has_method("tick_monster_revivals"):
 		coordinator.call("tick_monster_revivals", scaled_delta)
-	_update_victory_countdown(scaled_delta)
-	if game_over:
+	_update_victory_control(scaled_delta)
+	if _runtime_session_finished():
 		return
 
 	if coordinator != null and coordinator.has_method("tick_monster_actions"):
@@ -1684,8 +1678,8 @@ func _ai_runtime_world_snapshot(player_index: int) -> Dictionary:
 		"player_count": players.size(),
 		"district_count": districts.size(),
 		"business_cycle_count": _product_market_cycle(),
-		"game_over": game_over,
-		"victory_countdown_active": victory_countdown_active,
+		"session_finished": _runtime_session_finished(),
+		"victory_control": _victory_control_private_snapshot(player_index),
 		"active_resolution_present": not _card_resolution_active_entry().is_empty(),
 	}
 
@@ -2860,10 +2854,10 @@ func _table_tempo_status() -> Dictionary:
 			"text": "◆ 展示",
 			"tip": "全桌正在展示一张匿名牌；效果公开，出牌者仍靠线索推理。",
 		}
-	if victory_countdown_active:
+	if _victory_control_is_active():
 		return {
-			"text": "◆ 终局",
-			"tip": "终局倒计时已触发；倒计时结束后按钱最多排名。",
+			"text": "◆ 胜利审计",
+			"tip": _victory_control_status_text(),
 		}
 	if not _card_resolution_current_queue().is_empty() or not _card_resolution_next_queue().is_empty():
 		return {
@@ -3195,7 +3189,7 @@ func _guess_card_resolution_owner(resolution_id: int, guessed_player: int) -> vo
 
 
 func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: int, guessed_player: int, announce: bool = true) -> bool:
-	if game_over or viewer_index < 0 or viewer_index >= players.size() or guessed_player < 0 or guessed_player >= players.size():
+	if _runtime_session_finished() or viewer_index < 0 or viewer_index >= players.size() or guessed_player < 0 or guessed_player >= players.size():
 		return false
 	var entry := _card_resolution_entry_by_id(resolution_id)
 	if entry.is_empty() or bool(entry.get("public_owner_revealed", false)):
@@ -3559,7 +3553,7 @@ func _menu_quick_nav_entries() -> Array:
 	return [
 		{"id": "setup", "label": "开局", "tooltip": "进入开局配置：设置席位、电脑对手、角色和起始怪兽。", "accent": "#38bdf8"},
 		{"id": "scenario", "label": "剧本", "tooltip": "进入固定试玩剧本：练核心系统、看日志、做复盘。", "accent": "#facc15"},
-		{"id": "standings", "label": "局势", "tooltip": "查看现金目标、终局倒计时和结算估算。", "accent": "#facc15"},
+		{"id": "standings", "label": "局势", "tooltip": "查看区域控制、Top-N GDP、资格进度和公开审计。", "accent": "#facc15"},
 		{"id": "economy", "label": "经济", "tooltip": "查看GDP、商品、商路、天气和收入拆解。", "accent": "#4ade80"},
 		{"id": "intel", "label": "情报", "tooltip": "整理城市归属推理、卡牌竞猜和怪兽资金线索。", "accent": "#c084fc"},
 		{"id": "rules", "label": "规则", "tooltip": "查看购牌、出牌、竞价、合约、怪兽赌局、天气和终局规则。", "accent": "#93c5fd"},
@@ -3675,8 +3669,8 @@ func _add_menu_info_card(parent: Container, title_text: String, body_text: Strin
 func _open_main_menu() -> void:
 	_show_menu(
 		"太空辛迪加｜星球赌桌",
-		"秘密建城 · 匿名出牌 · 怪兽赌局\n最后钱最多。",
-		not players.is_empty() and not game_over,
+		"秘密建城 · 匿名出牌 · 怪兽赌局\n控制区域，推进GDP，接受公开审计。",
+		not players.is_empty() and not _runtime_session_finished(),
 		true
 	)
 	_populate_main_menu_summary_cards()
@@ -3686,7 +3680,7 @@ func _open_pause_menu() -> void:
 	_show_menu(
 		"暂停菜单",
 		"游戏已暂停。继续游戏，或查看局势、经济、情报、图鉴和规则。",
-		not game_over,
+		not _runtime_session_finished(),
 		true
 	)
 	_populate_pause_menu_summary_cards()
@@ -3706,13 +3700,13 @@ func _populate_main_menu_summary_cards() -> void:
 
 
 func _main_menu_root_lobby_snapshot() -> Dictionary:
-	var can_continue := not players.is_empty() and not game_over
+	var can_continue := not players.is_empty() and not _runtime_session_finished()
 	return {
 		"accent": Color("#f59e0b"),
 		"tooltip": "星球赌桌大厅：保存、开局、继续和资料库入口。",
 		"title": "SPACE SYNDICATE",
 		"title_tooltip": "主菜单保留战役、快速开局和资料库三个主方向。",
-		"status": "星球赌桌｜最后钱最多",
+		"status": "星球赌桌｜控区、GDP与公开审计",
 		"status_tooltip": "终局按现金排名。",
 		"planet_mark": "◎",
 		"planet_title": "星球赌桌大厅",
@@ -3851,7 +3845,7 @@ func _save_campaign_progress_state() -> void:
 
 
 func _open_campaign_menu() -> void:
-	_show_menu("新手战役", "先打一桌：点区、首召、用发展牌建立商品项目。", not game_over, false, true)
+	_show_menu("新手战役", "先打一桌：点区、首召、用发展牌建立商品项目。", not _runtime_session_finished(), false, true)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -3893,7 +3887,7 @@ func _open_campaign_briefing_menu(chapter_id: String = "") -> void:
 		return
 	selected_campaign_chapter_id = resolved_id
 	_save_campaign_progress_state()
-	_show_menu("关卡说明", "读完目标后开始。本页只显示本关需要的信息。", not game_over, false)
+	_show_menu("关卡说明", "读完目标后开始。本页只显示本关需要的信息。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -4109,7 +4103,7 @@ func _open_campaign_reward_menu() -> void:
 	if campaign_last_reward.is_empty():
 		_open_campaign_menu()
 		return
-	_show_menu("关卡奖励", "关卡完成。看奖励、复盘，或继续下一关。", not game_over, false)
+	_show_menu("关卡奖励", "关卡完成。看奖励、复盘，或继续下一关。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -4128,7 +4122,7 @@ func _open_campaign_recap_menu() -> void:
 	if campaign_last_recap.is_empty():
 		_open_scenario_replay_menu()
 		return
-	_show_menu("战役复盘", "只显示公开行动、你自己的记录和下一步建议。", not game_over, false)
+	_show_menu("战役复盘", "只显示公开行动、你自己的记录和下一步建议。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -4144,7 +4138,7 @@ func _open_campaign_recap_menu() -> void:
 
 
 func _open_campaign_settings_menu() -> void:
-	_show_menu("设置", "调整教学、动画、字体和声音。设置只影响呈现，不改变牌局规则。", not game_over, false)
+	_show_menu("设置", "调整教学、动画、字体和声音。设置只影响呈现，不改变牌局规则。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -4215,7 +4209,7 @@ func _open_scenario_browser_menu() -> void:
 	_show_menu(
 		"试玩剧本",
 		"选择一个固定局面：练步骤、看日志、复盘关键状态。这里不泄露对手私有信息。",
-		not game_over,
+		not _runtime_session_finished(),
 		false
 	)
 	if menu_preview_box == null:
@@ -4271,7 +4265,7 @@ func _open_scenario_settings_menu() -> void:
 	_show_menu(
 		"剧本教学设置",
 		"只调整试玩剧本的提示层，不改变牌局规则。",
-		not game_over,
+		not _runtime_session_finished(),
 		false
 	)
 	if menu_preview_box == null:
@@ -4772,7 +4766,7 @@ func _record_scenario_help_request(phase: Dictionary, public_text: String) -> vo
 
 
 func _open_scenario_action_log_menu() -> void:
-	_show_menu("剧本行动日志", "只显示公开记录和当前玩家自己的私密记录；隐藏资料不会出现在这里。", not game_over, false)
+	_show_menu("剧本行动日志", "只显示公开记录和当前玩家自己的私密记录；隐藏资料不会出现在这里。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -4791,7 +4785,7 @@ func _open_scenario_action_log_menu() -> void:
 
 
 func _open_scenario_replay_menu() -> void:
-	_show_menu("剧本复盘", "轻量复盘：点击关键节点会重新打开该剧本局面。", not game_over, false)
+	_show_menu("剧本复盘", "轻量复盘：点击关键节点会重新打开该剧本局面。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
 	menu_preview_box.visible = true
@@ -4886,7 +4880,7 @@ func _open_rules_menu() -> void:
 	_show_menu(
 		"游戏规则",
 		"\n".join(lines),
-		not game_over
+		not _runtime_session_finished()
 	)
 	_populate_rules_summary_cards()
 
@@ -4895,7 +4889,7 @@ func _open_tutorial_menu() -> void:
 	_show_menu(
 		"新手引导",
 		"第一局：首召、开牌架、发展项目、读结算。",
-		not game_over
+		not _runtime_session_finished()
 	)
 	_populate_tutorial_quick_start_board()
 
@@ -4927,7 +4921,7 @@ func _tutorial_quick_start_snapshot() -> Dictionary:
 		"trap_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
 		"chips": [
 			{"text": "第一局", "accent": Color("#bfdbfe"), "tooltip": "先完成首召、发展牌购买和一次商品项目结算。"},
-			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "终局按钱排名。"},
+			{"text": "控区与GDP", "accent": Color("#fef3c7"), "tooltip": "控制区域并达到本局Top-N归属GDP门槛。"},
 			{"text": "细则进规则", "accent": Color("#c4b5fd"), "tooltip": "本页只放试玩动作；完整解释在游戏规则。"},
 		],
 		"steps": [
@@ -4938,7 +4932,7 @@ func _tutorial_quick_start_snapshot() -> Dictionary:
 			{"title": "5｜打经营牌", "body": "满足条件后继续经营。", "meta": "进入公开牌轨。", "accent": Color("#c084fc")},
 			{"title": "6｜读牌轨", "body": "看顶部牌槽。", "meta": "猜谁打的。", "accent": Color("#f472b6")},
 			{"title": "7｜看经济/情报", "body": "查钱从哪来。", "meta": "用公开结果推理。", "accent": Color("#2dd4bf")},
-			{"title": "8｜终局冲刺", "body": "达标后沙漏结算。", "meta": "按钱排名。", "accent": Color("#fb923c")},
+			{"title": "8｜公开审计", "body": "资格保持后进入审计。", "meta": "终点比较GDP、控区与账本。", "accent": Color("#fb923c")},
 		],
 		"trap_title": "卡点急救｜先排这四件事",
 		"traps": [
@@ -4953,14 +4947,14 @@ func _tutorial_quick_start_snapshot() -> Dictionary:
 
 func _open_standings_menu() -> void:
 	var snapshot := _standings_public_snapshot()
-	_show_menu("局势排名", String(snapshot.get("summary_text", "还没有可用玩家数据。")), not game_over)
+	_show_menu("局势排名", String(snapshot.get("summary_text", "还没有可用玩家数据。")), not _runtime_session_finished())
 	_populate_standings_summary_cards(snapshot)
 
 
 func _open_economy_overview_menu() -> void:
 	_mark_opening_guide_economy_seen(selected_player)
 	var snapshot := _economy_dashboard_public_snapshot()
-	_show_menu("经济总览", String(snapshot.get("summary_text", "还没有当前局经济数据。")), not game_over)
+	_show_menu("经济总览", String(snapshot.get("summary_text", "还没有当前局经济数据。")), not _runtime_session_finished())
 	_populate_economy_overview_summary_cards(snapshot)
 
 
@@ -4990,20 +4984,20 @@ func _rules_quick_reference_snapshot() -> Dictionary:
 		"kpi_columns": _menu_summary_grid_columns(),
 		"module_columns": clampi(int(floor(_menu_available_content_width() / 250.0)), 1, 4),
 		"chips": [
-			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "达到现金目标后开终局沙漏，结束按钱排名。"},
+			{"text": "控制区与GDP", "accent": Color("#fef3c7"), "tooltip": "唯一控制足够区域，并让这些区域的Top-N归属GDP达到层级目标。"},
 			{"text": "先看钱城牌怪", "accent": Color("#93c5fd"), "tooltip": "读桌顺序：钱、城市、手牌/牌轨、怪兽/军队、公开线索。"},
 			{"text": "主桌不背规则", "accent": Color("#38bdf8"), "tooltip": "主桌只保留当下能点的短提示；细则进规则页。"},
 			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "对手现金、手牌、弃牌和计划不直接显示。"},
 		],
 		"kpis": [
-			{"title": "我怎么赢？", "body": "终局沙漏后钱最多。", "meta": "现金归零出局。", "accent": Color("#fef3c7")},
+			{"title": "我怎么赢？", "body": "控制区域并达成GDP深度。", "meta": "资格10秒后进入120秒公开审计。", "accent": Color("#fef3c7")},
 			{"title": "开局先做？", "body": "首召怪兽，建第一城。", "meta": "再看区域牌架。", "accent": Color("#38bdf8")},
 			{"title": "为什么建城？", "body": "城市化份额产GDP。", "meta": "GDP按秒变钱。", "accent": Color("#4ade80")},
 			{"title": "怎么买/出牌？", "body": "买牌花钱，高阶看GDP份额。", "meta": "重复牌升级。", "accent": Color("#facc15")},
 			{"title": "怪兽为何重要？", "body": "它决定哪里能买牌。", "meta": "也会破坏GDP。", "accent": Color("#fb7185")},
 			{"title": "怎么读线索？", "body": "看牌轨、竞价、损伤。", "meta": "猜城市和牌主。", "accent": Color("#c084fc")},
 			{"title": "GDP怎么变？", "body": "生产、需求、运输相乘。", "meta": "破坏会拖慢。", "accent": Color("#2dd4bf")},
-			{"title": "何时结束？", "body": "有人达标开沙漏。", "meta": "沙漏完结算。", "accent": Color("#fb923c")},
+			{"title": "何时结束？", "body": "公开审计完成。", "meta": "按Top-N GDP、控制区数和账本资金比较。", "accent": Color("#fb923c")},
 		],
 		"keyword_title": "卡面符号｜看手牌先认这些",
 		"keyword_legend": [
@@ -5059,6 +5053,9 @@ func _standings_public_source_snapshot() -> Dictionary:
 	if players.is_empty():
 		return {"valid": false}
 	_refresh_city_networks()
+	var victory_snapshot := _victory_control_public_snapshot()
+	var depth_rule: Dictionary = victory_snapshot.get("depth_rule", {}) if victory_snapshot.get("depth_rule", {}) is Dictionary else _victory_depth_rule()
+	var selected_candidate := _victory_player_candidate(selected_player)
 	var selected_available := selected_player >= 0 and selected_player < players.size()
 	var safe_seats: Array = []
 	for entry_variant: Variant in _standing_entries():
@@ -5066,7 +5063,7 @@ func _standings_public_source_snapshot() -> Dictionary:
 			continue
 		var entry := entry_variant as Dictionary
 		var player_index := int(entry.get("player_index", safe_seats.size()))
-		var can_view_private := game_over or player_index == selected_player
+		var can_view_private := _runtime_session_finished() or player_index == selected_player
 		var safe_entry := {
 			"player_index": player_index,
 			"name": String(entry.get("name", "玩家")),
@@ -5074,35 +5071,38 @@ func _standings_public_source_snapshot() -> Dictionary:
 			"can_view_private": can_view_private,
 		}
 		if can_view_private:
+			var candidate := _victory_player_candidate(player_index)
 			safe_entry.merge({
 				"cash": int(entry.get("cash", 0)),
 				"active_cities": int(entry.get("active_cities", 0)),
-				"score": int(entry.get("score", 0)),
-				"score_label": String(entry.get("score_label", "可见预估")),
+				"top_n_gdp_per_minute": int(candidate.get("top_n_gdp_per_minute", entry.get("score", 0))),
+				"controlled_region_count": int(candidate.get("controlled_region_count", 0)),
 				"intel_summary": String(entry.get("intel_summary", "情报待结算")),
 				"gdp_per_minute": int(entry.get("gdp_per_minute", 0)),
 			}, true)
 		safe_seats.append(safe_entry)
 	return {
 		"valid": true,
-		"game_over": game_over,
+		"game_over": _runtime_session_finished(),
 		"selected_available": selected_available,
-		"selected_score": _player_visible_settlement_estimate(selected_player) if selected_available else 0,
+		"selected_top_n_gdp_per_minute": int(selected_candidate.get("top_n_gdp_per_minute", 0)) if selected_available else 0,
+		"selected_controlled_region_count": int(selected_candidate.get("controlled_region_count", 0)) if selected_available else 0,
 		"selected_cash": int(players[selected_player].get("cash", 0)) if selected_available else 0,
 		"selected_city_count": _player_active_city_count(selected_player) if selected_available else 0,
 		"selected_gdp_per_minute": _player_gdp_per_minute(selected_player) if selected_available else 0,
 		"selected_intel_summary": _player_intel_display_summary(selected_player) if selected_available else "情报待结算",
-		"cash_goal": _roguelike_cash_goal(),
-		"city_final_value": CITY_FINAL_VALUE,
+		"required_top_n_gdp_per_minute": int(depth_rule.get("depth", 0)),
+		"required_controlled_region_count": int(depth_rule.get("regions", 0)),
 		"intel_correct_reward": INTEL_CORRECT_GUESS_CASH,
 		"intel_wrong_cost": INTEL_WRONG_GUESS_COST,
-		"countdown_text": _victory_countdown_status_text(),
+		"victory_control": victory_snapshot,
+		"countdown_text": _victory_control_status_text(),
 		"public_shift_count": _economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size(),
 		"overview_columns": clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 3),
 		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 230.0)), 1, 4),
 		"seat_columns": clampi(int(floor(_menu_available_content_width() / 260.0)), 1, 4),
 		"seat_entries": safe_seats,
-		"final_summary_text": _final_run_summary_text(_final_score_rankings()) if game_over else "",
+		"final_summary_text": _final_run_summary_text(_victory_control_rankings()) if _runtime_session_finished() else "",
 	}
 
 
@@ -5233,13 +5233,16 @@ func _final_settlement_public_source_snapshot(reason: String, rankings: Array) -
 		return {"valid": false, "reason": reason}
 	var ordered := rankings.duplicate(true)
 	if ordered.is_empty():
-		ordered = _final_score_rankings()
-	var winner_index := 0
-	var winner_score := _player_final_score(0)
-	if not ordered.is_empty():
-		var winner := ordered[0] as Dictionary
-		winner_index = int(winner.get("player_index", 0))
-		winner_score = int(winner.get("score", winner_score))
+		ordered = _victory_control_rankings()
+	var coordinator := _game_runtime_coordinator_node()
+	var outcome_receipt: Dictionary = coordinator.call("victory_control_outcome_receipt") if coordinator != null and coordinator.has_method("victory_control_outcome_receipt") else {}
+	var winner_indices: Array = (outcome_receipt.get("winner_player_indices", []) as Array).duplicate() if outcome_receipt.get("winner_player_indices", []) is Array else []
+	var winner_names: Array[String] = []
+	for winner_variant in winner_indices:
+		var winner_index := int(winner_variant)
+		if winner_index >= 0 and winner_index < players.size():
+			winner_names.append(_player_name(winner_index))
+	var depth_rule := _victory_depth_rule()
 	var city_income := _top_player_by_stat("total_city_income")
 	var card_income := _top_player_by_stat("total_card_income")
 	var role_income := _top_player_by_stat("total_role_income")
@@ -5258,7 +5261,10 @@ func _final_settlement_public_source_snapshot(reason: String, rankings: Array) -
 		rank_entries.append({
 			"player_index": player_index,
 			"name": _player_name(player_index),
-			"score": int(rank_entry.get("score", _player_final_score(player_index))),
+			"top_n_gdp_per_minute": int(rank_entry.get("top_n_gdp_per_minute", _victory_player_progress_metric(player_index))),
+			"controlled_region_count": int(rank_entry.get("controlled_region_count", 0)),
+			"cash_ledger_cents": int(rank_entry.get("cash_ledger_cents", int(player.get("cash", 0)) * 100)),
+			"winner": bool(rank_entry.get("winner", winner_indices.has(player_index))),
 			"cash": int(player.get("cash", 0)),
 			"active_cities": _player_active_city_count(player_index),
 			"gdp_per_minute": _player_gdp_per_minute(player_index),
@@ -5270,10 +5276,12 @@ func _final_settlement_public_source_snapshot(reason: String, rankings: Array) -
 	return {
 		"valid": true,
 		"reason": reason,
-		"winner_name": _player_name(winner_index),
-		"winner_score": winner_score,
-		"cash_goal": _roguelike_cash_goal(),
-		"city_final_value": CITY_FINAL_VALUE,
+		"winner_names": winner_names,
+		"co_victory": bool(outcome_receipt.get("co_victory", winner_names.size() > 1)),
+		"required_top_n_gdp_per_minute": int(depth_rule.get("depth", 0)),
+		"required_controlled_region_count": int(depth_rule.get("regions", 0)),
+		"comparison_order": (outcome_receipt.get("comparison_order", []) as Array).duplicate() if outcome_receipt.get("comparison_order", []) is Array else [],
+		"outcome_receipt": outcome_receipt,
 		"top_city_income_name": _player_name(int(city_income.get("player_index", 0))),
 		"top_city_income_amount": maxi(0, int(city_income.get("amount", 0))),
 		"top_card_income_name": _player_name(int(card_income.get("player_index", 0))),
@@ -5311,7 +5319,7 @@ func _on_final_settlement_action_requested(action_id: String) -> void:
 func _final_settlement_money_source_entries(rankings: Array, limit: int = 4) -> Array:
 	var ordered := rankings
 	if ordered.is_empty():
-		ordered = _final_score_rankings()
+		ordered = _victory_control_rankings()
 	var entries := []
 	for rank in range(mini(limit, ordered.size())):
 		var entry := ordered[rank] as Dictionary
@@ -5326,7 +5334,10 @@ func _final_settlement_money_source_entries(rankings: Array, limit: int = 4) -> 
 			"rank": rank,
 			"player_index": player_index,
 			"name": _player_name(player_index),
-			"score": int(entry.get("score", _player_final_score(player_index))),
+			"top_n_gdp_per_minute": int(entry.get("top_n_gdp_per_minute", _victory_player_progress_metric(player_index))),
+			"controlled_region_count": int(entry.get("controlled_region_count", 0)),
+			"cash_ledger_cents": int(entry.get("cash_ledger_cents", int(player.get("cash", 0)) * 100)),
+			"winner": bool(entry.get("winner", rank == 0)),
 			"cash": int(player.get("cash", 0)),
 			"base_start_cash": int(player.get("base_starting_cash", STARTING_CASH)),
 			"role_start_bonus": role_start_bonus,
@@ -5337,7 +5348,6 @@ func _final_settlement_money_source_entries(rankings: Array, limit: int = 4) -> 
 			"card_spend": maxi(0, int(player.get("total_card_spend", 0))),
 			"build_spend": maxi(0, int(player.get("total_build_spend", 0))),
 			"business_spend": maxi(0, int(player.get("total_business_spend", 0))),
-			"city_clearance": active_cities * CITY_FINAL_VALUE,
 			"active_cities": active_cities,
 			"gdp_per_minute": _player_gdp_per_minute(player_index),
 			"intel_cash": _player_intel_cash(player_index),
@@ -5348,7 +5358,7 @@ func _final_settlement_money_source_entries(rankings: Array, limit: int = 4) -> 
 
 func _open_intel_dossier_menu() -> void:
 	var snapshot := _intel_dossier_public_snapshot(selected_player)
-	_show_menu("情报档案", str(snapshot.get("summary_text", "暂无当前局情报。")), not game_over)
+	_show_menu("情报档案", str(snapshot.get("summary_text", "暂无当前局情报。")), not _runtime_session_finished())
 	_populate_intel_dossier_snapshot(snapshot)
 
 
@@ -5481,11 +5491,11 @@ func _intel_dossier_public_source_snapshot(viewer_index: int) -> Dictionary:
 		"viewer_index": viewer_index,
 		"viewer_name": String((players[viewer_index] as Dictionary).get("name", "玩家%d" % (viewer_index + 1))),
 		"business_cycle_count": _product_market_cycle(),
-		"game_over": game_over,
+		"game_over": _runtime_session_finished(),
 		"correct_guess_cash": INTEL_CORRECT_GUESS_CASH,
 		"wrong_guess_cost": INTEL_WRONG_GUESS_COST,
 		"card_guess_stake": CARD_OWNER_GUESS_STAKE,
-		"city_final_value": CITY_FINAL_VALUE,
+		"victory_control": _victory_control_public_snapshot(),
 		"stats": _player_intel_exposure_stats(viewer_index),
 		"city_entries": city_entries,
 		"card_entries": _intel_card_guess_entries(viewer_index, 8),
@@ -5769,7 +5779,7 @@ func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
 		var competition := _city_competition_matches(city_index)
 		var breakdown := _city_cycle_income_breakdown(city_index, competition)
 		var result_text := "终局待判"
-		if game_over and guess >= 0:
+		if _runtime_session_finished() and guess >= 0:
 			result_text = "命中+¥%d" % INTEL_CORRECT_GUESS_CASH if guess == city_owner else "错标-¥%d" % INTEL_WRONG_GUESS_COST
 		var entry := {
 			"district_index": city_index,
@@ -6442,8 +6452,8 @@ func _economy_player_cash_entries() -> Array:
 			"player_index": i,
 			"name": String(player.get("name", "玩家%d" % (i + 1))),
 			"cash": int(player.get("cash", 0)),
-			"score": _player_visible_settlement_estimate(i),
-			"score_label": "结算资金" if game_over else "可见预估",
+			"score": _victory_player_progress_metric(i),
+			"score_label": "Top-N归属GDP/min",
 			"intel_summary": _player_intel_display_summary(i),
 			"last_cycle": int(player.get("last_cycle_income", 0)),
 			"role_income": int(player.get("total_role_income", 0)),
@@ -6453,20 +6463,10 @@ func _economy_player_cash_entries() -> Array:
 			"path": _player_cash_path_text(player, 6),
 			"ledger": _player_economic_ledger_text(player, 2) if i == selected_player else "私人账本（不公开）",
 			"city_count": _player_active_city_count(i),
-			"private": not game_over and i != selected_player,
+			"private": not _runtime_session_finished() and i != selected_player,
 			"eliminated": _player_is_eliminated(i),
 		})
-	if game_over:
-		entries.sort_custom(Callable(self, "_sort_economy_player_cash_entry"))
-	return entries
-
-
-func _sort_economy_player_cash_entry(a: Dictionary, b: Dictionary) -> bool:
-	var score_a := int(a.get("score", 0))
-	var score_b := int(b.get("score", 0))
-	if score_a != score_b:
-		return score_a > score_b
-	return String(a.get("name", "")) < String(b.get("name", ""))
+	return _order_entries_by_victory_rank(entries) if _runtime_session_finished() else entries
 
 
 func _economy_player_cash_line(entry: Dictionary) -> String:
@@ -6596,34 +6596,37 @@ func _standing_entries() -> Array:
 			"name": String(player.get("name", "玩家%d" % (i + 1))),
 			"cash": int(player.get("cash", 0)),
 			"active_cities": active_city_count,
-			"score": _player_visible_settlement_estimate(i),
-			"score_label": "结算资金" if game_over else "可见预估",
-			"intel_cash": intel_cash if game_over else 0,
+			"score": _victory_player_progress_metric(i),
+			"score_label": "Top-N归属GDP/min",
+			"intel_cash": intel_cash if _runtime_session_finished() else 0,
 			"intel_summary": _player_intel_display_summary(i),
 			"gdp_per_minute": gdp_per_minute,
 			"total_income": int(player.get("total_city_income", 0)),
 			"cities_built": int(player.get("cities_built", 0)),
 			"eliminated": _player_is_eliminated(i),
 		})
-	if game_over:
-		entries.sort_custom(Callable(self, "_sort_standing_entry"))
-	return entries
+	return _order_entries_by_victory_rank(entries) if _runtime_session_finished() else entries
 
 
-func _sort_standing_entry(a: Dictionary, b: Dictionary) -> bool:
-	var score_a := int(a.get("score", 0))
-	var score_b := int(b.get("score", 0))
-	if score_a != score_b:
-		return score_a > score_b
-	var cash_a := int(a.get("cash", 0))
-	var cash_b := int(b.get("cash", 0))
-	if cash_a != cash_b:
-		return cash_a > cash_b
-	var cities_a := int(a.get("active_cities", 0))
-	var cities_b := int(b.get("active_cities", 0))
-	if cities_a != cities_b:
-		return cities_a > cities_b
-	return int(a.get("player_index", 0)) < int(b.get("player_index", 0))
+func _order_entries_by_victory_rank(entries: Array) -> Array:
+	var by_player := {}
+	for entry_variant in entries:
+		if entry_variant is Dictionary:
+			by_player[str(int((entry_variant as Dictionary).get("player_index", -1)))] = (entry_variant as Dictionary).duplicate(true)
+	var ordered: Array = []
+	for ranking_variant in _victory_control_rankings():
+		if not (ranking_variant is Dictionary):
+			continue
+		var key := str(int((ranking_variant as Dictionary).get("player_index", -1)))
+		if by_player.has(key):
+			ordered.append(by_player[key])
+			by_player.erase(key)
+	for entry_variant in entries:
+		var key := str(int((entry_variant as Dictionary).get("player_index", -1))) if entry_variant is Dictionary else ""
+		if by_player.has(key):
+			ordered.append(by_player[key])
+			by_player.erase(key)
+	return ordered
 
 
 func _top_player_by_stat(stat_name: String) -> Dictionary:
@@ -6647,8 +6650,6 @@ func _top_city_snapshot_entry() -> Dictionary:
 			continue
 		var income := int(city.get("last_income", 0))
 		var score := income
-		if bool(city.get("active", true)):
-			score += int(float(CITY_FINAL_VALUE) / 2.0)
 		score += (city.get("products", []) as Array).size() * 12
 		score += (city.get("demands", []) as Array).size() * 8
 		if score > best_score:
@@ -6764,7 +6765,7 @@ func _final_player_breakdown_summary(rankings: Array, limit: int = 8) -> String:
 		return "玩家概览：没有可用玩家。"
 	var ordered := rankings
 	if ordered.is_empty():
-		ordered = _final_score_rankings()
+		ordered = _victory_control_rankings()
 	var pieces := []
 	for rank in range(mini(limit, ordered.size())):
 		var entry := ordered[rank] as Dictionary
@@ -6772,15 +6773,14 @@ func _final_player_breakdown_summary(rankings: Array, limit: int = 8) -> String:
 		if player_index < 0 or player_index >= players.size():
 			continue
 		var player: Dictionary = players[player_index]
-		pieces.append("#%d %s ¥%d｜城收¥%d｜卡牌¥%d｜情报%s｜角色¥%d｜城%d｜%s" % [
+		pieces.append("#%d %s｜Top-N GDP %d/min｜控区%d｜账本¥%.2f｜城收¥%d｜卡牌¥%d｜%s" % [
 			rank + 1,
 			_player_name(player_index),
-			int(entry.get("score", _player_final_score(player_index))),
+			int(entry.get("top_n_gdp_per_minute", _victory_player_progress_metric(player_index))),
+			int(entry.get("controlled_region_count", 0)),
+			float(int(entry.get("cash_ledger_cents", 0))) / 100.0,
 			maxi(0, int(player.get("total_city_income", 0))),
 			maxi(0, int(player.get("total_card_income", 0))),
-			_signed_int_text(_player_intel_cash(player_index)),
-			maxi(0, int(player.get("total_role_income", 0))),
-			_player_active_city_count(player_index),
 			_player_final_playstyle_summary(player_index),
 		])
 	if pieces.is_empty():
@@ -6793,22 +6793,19 @@ func _final_run_summary_text(rankings: Array) -> String:
 		return "终局总结：没有可用玩家数据。"
 	var ordered := rankings
 	if ordered.is_empty():
-		ordered = _final_score_rankings()
-	var winner_index := 0
-	var winner_score := _player_final_score(0)
-	if not ordered.is_empty():
-		var winner := ordered[0] as Dictionary
-		winner_index = int(winner.get("player_index", 0))
-		winner_score = int(winner.get("score", winner_score))
+		ordered = _victory_control_rankings()
+	var winner_names: Array[String] = []
+	for entry_variant in ordered:
+		if entry_variant is Dictionary and bool((entry_variant as Dictionary).get("winner", false)):
+			winner_names.append(_player_name(int((entry_variant as Dictionary).get("player_index", -1))))
+	if winner_names.is_empty() and not ordered.is_empty():
+		winner_names.append(_player_name(int((ordered[0] as Dictionary).get("player_index", 0))))
 	var city_income := _top_player_by_stat("total_city_income")
 	var card_income := _top_player_by_stat("total_card_income")
 	var role_income := _top_player_by_stat("total_role_income")
 	var top_city := _top_city_snapshot_entry()
 	var lines := []
-	lines.append("终局总结：%s获胜，结算资金¥%d；胜负按现金 + 存活城市清算 + 情报现金。" % [
-		_player_name(winner_index),
-		winner_score,
-	])
+	lines.append("终局总结：%s获胜；比较顺序为Top-N归属GDP、控制区域数、可用现金加托管资金，完全相同则共同获胜。" % "、".join(winner_names))
 	lines.append("钱从哪里来：城市经营最高%s累计¥%d；卡牌/情报收益最高%s累计¥%d；角色收益最高%s累计¥%d。" % [
 		_player_name(int(city_income.get("player_index", 0))),
 		maxi(0, int(city_income.get("amount", 0))),
@@ -6952,11 +6949,11 @@ func _player_intel_pending_summary(player_index: int) -> String:
 
 
 func _player_intel_display_summary(player_index: int) -> String:
-	return _player_intel_summary(player_index) if game_over else _player_intel_pending_summary(player_index)
+	return _player_intel_summary(player_index) if _runtime_session_finished() else _player_intel_pending_summary(player_index)
 
 
 func _player_intel_hud_text(player_index: int) -> String:
-	if game_over:
+	if _runtime_session_finished():
 		return "情报现金:%s" % _signed_int_text(_player_intel_cash(player_index))
 	var stats := _player_intel_exposure_stats(player_index)
 	return "情报待结算:%d/%d" % [
@@ -6992,15 +6989,6 @@ func _city_intel_hint_for_player(city_index: int, viewer_index: int) -> String:
 	]
 
 
-func _player_visible_settlement_estimate(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return 0
-	if _player_is_eliminated(player_index):
-		return 0
-	var intel_cash := _player_intel_cash(player_index) if game_over else 0
-	return int(players[player_index].get("cash", 0)) + _player_active_city_count(player_index) * CITY_FINAL_VALUE + intel_cash
-
-
 func _player_name(player_index: int) -> String:
 	if player_index < 0 or player_index >= players.size():
 		return "未知玩家"
@@ -7030,7 +7018,7 @@ func _active_player_count() -> int:
 
 
 func _check_bankruptcy_eliminations(reason: String = "现金归零") -> int:
-	if game_over or players.is_empty() or bankruptcy_check_in_progress:
+	if _runtime_session_finished() or players.is_empty() or bankruptcy_check_in_progress:
 		return 0
 	bankruptcy_check_in_progress = true
 	var eliminated_now := []
@@ -7057,66 +7045,141 @@ func _check_bankruptcy_eliminations(reason: String = "现金归零") -> int:
 				_district_center(selected_district)
 			)
 	if not eliminated_now.is_empty() and _active_player_count() <= 1:
-		var active := _active_player_indices()
-		var survivor_text := _player_name(int(active[0])) if not active.is_empty() else "无人"
 		bankruptcy_check_in_progress = false
-		_finish_game("破产淘汰后只剩%s仍在牌桌。" % survivor_text)
+		var coordinator := _game_runtime_coordinator_node()
+		if coordinator != null and coordinator.has_method("resolve_victory_outcome"):
+			coordinator.call("resolve_victory_outcome", "last_survivor")
 		return eliminated_now.size()
 	bankruptcy_check_in_progress = false
 	return eliminated_now.size()
 
 
-func _victory_countdown_status_text() -> String:
-	if not victory_countdown_active:
-		return "终局沙漏：未触发｜目标现金¥%d" % _roguelike_cash_goal()
-	return "终局沙漏：进行中｜触发者匿名｜目标¥%d" % _roguelike_cash_goal()
+func _runtime_session_finished() -> bool:
+	var coordinator := _game_runtime_coordinator_node()
+	return bool(coordinator.call("session_is_finished")) if coordinator != null and coordinator.has_method("session_is_finished") else false
 
 
-func _victory_countdown_trigger_candidate() -> Dictionary:
-	var cash_goal := _roguelike_cash_goal()
-	var best := {"player_index": -1, "score": cash_goal - 1}
-	for i in range(players.size()):
-		if _player_is_eliminated(i):
+func _victory_control_public_snapshot() -> Dictionary:
+	var coordinator := _game_runtime_coordinator_node()
+	var value: Variant = coordinator.call("victory_control_public_snapshot", selected_player) if coordinator != null and coordinator.has_method("victory_control_public_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _victory_control_private_snapshot(player_index: int) -> Dictionary:
+	var coordinator := _game_runtime_coordinator_node()
+	var value: Variant = coordinator.call("victory_control_private_snapshot", player_index) if coordinator != null and coordinator.has_method("victory_control_private_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _victory_control_is_active() -> bool:
+	return str(_victory_control_public_snapshot().get("state", "idle")) in ["qualification", "audit"]
+
+
+func _victory_control_timer_visible() -> bool:
+	return str(_victory_control_public_snapshot().get("state", "idle")) in ["qualification", "audit", "cooldown"]
+
+
+func _victory_control_remaining_seconds() -> float:
+	var snapshot := _victory_control_public_snapshot()
+	match str(snapshot.get("state", "idle")):
+		"qualification":
+			return maxf(0.0, float(snapshot.get("qualification_remaining_seconds", 0.0)))
+		"audit":
+			return maxf(0.0, float(snapshot.get("audit_remaining_seconds", 0.0)))
+		"cooldown":
+			return maxf(0.0, float(snapshot.get("cooldown_remaining_seconds", 0.0)))
+	return 0.0
+
+
+func _victory_control_total_seconds() -> float:
+	var coordinator := _game_runtime_coordinator_node()
+	var controller: Node = coordinator.call("victory_control_runtime_controller") if coordinator != null and coordinator.has_method("victory_control_runtime_controller") else null
+	if controller == null or not controller.has_method("timer_duration"):
+		return 1.0
+	var state := str(_victory_control_public_snapshot().get("state", "idle"))
+	var timer_id := "public_audit" if state == "audit" else ("audit_failure_cooldown" if state == "cooldown" else "victory_qualification")
+	return maxf(1.0, float(controller.call("timer_duration", timer_id)))
+
+
+func _victory_depth_rule(depth: int = -1) -> Dictionary:
+	var coordinator := _game_runtime_coordinator_node()
+	var controller: Node = coordinator.call("victory_control_runtime_controller") if coordinator != null and coordinator.has_method("victory_control_runtime_controller") else null
+	var resolved_depth := configured_roguelike_depth if depth < 0 else depth
+	var value: Variant = controller.call("depth_rule_for_tier", resolved_depth) if controller != null and controller.has_method("depth_rule_for_tier") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _victory_depth_requirement_gdp(depth: int = -1) -> int:
+	return int(_victory_depth_rule(depth).get("depth", 0))
+
+
+func _victory_depth_requirement_regions(depth: int = -1) -> int:
+	return int(_victory_depth_rule(depth).get("regions", 0))
+
+
+func _victory_player_candidate(player_index: int) -> Dictionary:
+	var snapshot := _victory_control_private_snapshot(player_index)
+	var candidate_variant: Variant = snapshot.get("own_candidate", {})
+	return (candidate_variant as Dictionary).duplicate(true) if candidate_variant is Dictionary else {}
+
+
+func _victory_player_progress_metric(player_index: int) -> int:
+	return int(_victory_player_candidate(player_index).get("top_n_gdp_per_minute", 0))
+
+
+func _victory_control_escrow_cents(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size():
+		return 0
+	var escrow_cash := 0
+	for wager_variant in monster_runtime_controller.active_monster_wagers:
+		if not (wager_variant is Dictionary):
 			continue
-		var score := _player_visible_settlement_estimate(i)
-		if score >= cash_goal and score > int(best.get("score", cash_goal - 1)):
-			best = {"player_index": i, "score": score}
-	return best
+		var bets: Dictionary = (wager_variant as Dictionary).get("bets", {}) if (wager_variant as Dictionary).get("bets", {}) is Dictionary else {}
+		var bet_variant: Variant = bets.get(str(player_index), bets.get(player_index, {}))
+		if bet_variant is Dictionary:
+			escrow_cash += maxi(0, int((bet_variant as Dictionary).get("stake", 0)))
+	return escrow_cash * 100
 
 
-func _start_victory_countdown(player_index: int, score: int) -> void:
-	if victory_countdown_active or game_over:
+func _victory_control_rankings() -> Array:
+	var coordinator := _game_runtime_coordinator_node()
+	var receipt: Dictionary = coordinator.call("victory_control_outcome_receipt") if coordinator != null and coordinator.has_method("victory_control_outcome_receipt") else {}
+	if receipt.get("rankings", []) is Array and not (receipt.get("rankings", []) as Array).is_empty():
+		return (receipt.get("rankings", []) as Array).duplicate(true)
+	var value: Variant = coordinator.call("victory_control_rankings", false) if coordinator != null and coordinator.has_method("victory_control_rankings") else []
+	return (value as Array).duplicate(true) if value is Array else []
+
+
+func _victory_control_status_text() -> String:
+	var snapshot := _victory_control_public_snapshot()
+	var rule: Dictionary = snapshot.get("depth_rule", {}) if snapshot.get("depth_rule", {}) is Dictionary else _victory_depth_rule()
+	var target := "控制%d区且Top-N GDP/min达到%d" % [int(rule.get("regions", 0)), int(rule.get("depth", 0))]
+	match str(snapshot.get("state", "idle")):
+		"qualification":
+			return "胜利资格：确认中 %.1fs｜%s" % [_victory_control_remaining_seconds(), target]
+		"audit":
+			return "公开审计：%.1fs｜经济资产公开核验" % _victory_control_remaining_seconds()
+		"cooldown":
+			return "审计冷却：%.1fs｜%s" % [_victory_control_remaining_seconds(), target]
+		"resolved":
+			return "胜利审计：已完成"
+	return "胜利资格：%s" % target
+
+
+func _update_victory_control(delta: float) -> void:
+	if _runtime_session_finished() or players.is_empty():
 		return
-	victory_countdown_active = true
-	victory_countdown_timer = _ruleset_timing_seconds(&"final_countdown_seconds")
-	victory_countdown_trigger_player = player_index
-	victory_countdown_trigger_score = score
-	_log("有玩家达到本层目标现金线：可见预估结算已不低于目标¥%d。终局沙漏开始，触发者保持匿名；沙漏结束按结算资金最高者定胜负。" % [
-		_roguelike_cash_goal(),
-	])
-	if player_index >= 0 and player_index < players.size():
-		_add_action_callout(
-			"终局警报",
-			"目标现金达成",
-			"有玩家触发终局沙漏；所有玩家仍可反超或破坏。",
-			Color("#facc15"),
-			_district_center(selected_district)
-		)
-	_refresh_ui()
-
-
-func _update_victory_countdown(delta: float) -> void:
-	if game_over or players.is_empty():
+	var coordinator := _game_runtime_coordinator_node()
+	if coordinator == null or not coordinator.has_method("advance_victory_control"):
 		return
-	if not victory_countdown_active:
-		var trigger := _victory_countdown_trigger_candidate()
-		var trigger_player := int(trigger.get("player_index", -1))
-		if trigger_player >= 0:
-			_start_victory_countdown(trigger_player, int(trigger.get("score", 0)))
-		return
-	victory_countdown_timer = maxf(0.0, victory_countdown_timer - delta)
-	if victory_countdown_timer <= 0.0:
-		_finish_game("%s触发的终局倒计时结束。" % _player_name(victory_countdown_trigger_player))
+	var before_state := str(_victory_control_public_snapshot().get("state", "idle"))
+	var result_variant: Variant = coordinator.call("advance_victory_control", delta, {})
+	var result: Dictionary = result_variant if result_variant is Dictionary else {}
+	var public_snapshot: Dictionary = result.get("public_snapshot", {}) if result.get("public_snapshot", {}) is Dictionary else {}
+	var after_state := str(public_snapshot.get("state", before_state))
+	if after_state != before_state:
+		_log("胜利控制状态：%s。" % _victory_control_status_text())
+		_refresh_ui()
 
 
 func _open_fullscreen_map() -> void:
@@ -9202,10 +9265,6 @@ func _runtime_balance_model() -> RefCounted:
 	return RuntimeBalanceModelScript.new()
 
 
-func _balance_victory_cash_goal_for_duration(depth: int = -1, target_seconds: float = -1.0) -> int:
-	return int(_runtime_balance_model().call("victory_cash_goal_for_duration", configured_roguelike_depth if depth < 0 else depth, target_seconds))
-
-
 func _balance_product_price_step_cap(volatility: int, base_price: int = 100) -> int:
 	return int(_runtime_balance_model().call("product_price_step_cap", volatility, base_price))
 
@@ -9369,7 +9428,7 @@ func _close_menu() -> void:
 		menu_preview_box.visible = false
 	if menu_overlay.has_method("clear_preview"):
 		menu_overlay.call("clear_preview")
-	if not game_over:
+	if not _runtime_session_finished():
 		time_scale = max(1.0, speed_before_menu)
 		var runtime_coordinator := _game_runtime_coordinator_node()
 		if runtime_coordinator != null and runtime_coordinator.has_method("resume_session"):
@@ -9386,7 +9445,7 @@ func _open_new_game_setup_menu() -> void:
 	_show_menu(
 		"开局准备",
 		"开桌前确认席位、电脑对手、挑战层级、公开角色和独立首召怪兽。进桌后先召怪兽，再建城、买牌、下注。",
-		not players.is_empty() and not game_over
+		not players.is_empty() and not _runtime_session_finished()
 	)
 	if menu_preview_box != null:
 		menu_preview_box.visible = true
@@ -9427,7 +9486,7 @@ func _new_game_setup_page_snapshot() -> Dictionary:
 		"seat_scroll_height": 360.0,
 		"seats": seats,
 		"hint": "角色公开；首召匿名。先进桌召怪兽，再围绕怪兽附近买牌。",
-		"can_return_table": not players.is_empty() and not game_over,
+		"can_return_table": not players.is_empty() and not _runtime_session_finished(),
 		"start_disabled": false,
 		"start_tooltip": "按当前%d席、AI%d和%s配置开始本局。" % [configured_player_count, configured_ai_player_count, _roguelike_depth_label()],
 	}
@@ -9439,7 +9498,7 @@ func _new_game_setup_summary_chip_snapshots() -> Array:
 		{"text": "真人 %d" % _configured_human_player_count(), "accent": Color("#bbf7d0"), "fill": Color("#064e3b")},
 		{"text": "电脑对手%d" % configured_ai_player_count, "accent": Color("#d8b4fe"), "fill": Color("#2e1065")},
 		{"text": _roguelike_depth_label(), "accent": Color("#fde68a"), "fill": Color("#713f12")},
-		{"text": "目标¥%d" % _roguelike_cash_goal(configured_roguelike_depth), "accent": Color("#fef3c7"), "fill": Color("#422006")},
+		{"text": "控%d区 / GDP%d" % [_victory_depth_requirement_regions(configured_roguelike_depth), _victory_depth_requirement_gdp(configured_roguelike_depth)], "accent": Color("#fef3c7"), "fill": Color("#422006")},
 		{"text": "角色不重复", "accent": Color("#93c5fd"), "fill": Color("#1e3a8a")},
 		{"text": "首召独立", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
 	]
@@ -9488,11 +9547,11 @@ func _new_game_setup_lobby_snapshot() -> Dictionary:
 		"chips": [
 			{"text": "PVE %d席" % configured_player_count, "accent": Color("#bfdbfe"), "tooltip": "本地真人对电脑对手。"},
 			{"text": "AI %d" % configured_ai_player_count, "accent": Color("#d8b4fe"), "tooltip": "电脑对手数量。"},
-			{"text": "目标¥%d" % _roguelike_cash_goal(configured_roguelike_depth), "accent": Color("#fef3c7"), "tooltip": "有人达标后进入终局倒计时。"},
+			{"text": "控%d区 / GDP%d" % [_victory_depth_requirement_regions(configured_roguelike_depth), _victory_depth_requirement_gdp(configured_roguelike_depth)], "accent": Color("#fef3c7"), "tooltip": "达标并持续10秒后进入120秒公开审计。"},
 		],
 		"steps": [
 			{"title": "1｜席位", "body": "%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count], "accent": Color("#38bdf8"), "tooltip": "用下方席位/电脑按钮调整桌面规模。"},
-			{"title": "2｜挑战", "body": "%s｜%s" % [_roguelike_depth_label(), _short_card_text(_roguelike_planet_profile_text(), 22)], "accent": Color("#facc15"), "tooltip": "挑战层级决定星球区域规模、现金目标和开局压力。"},
+			{"title": "2｜挑战", "body": "%s｜%s" % [_roguelike_depth_label(), _short_card_text(_roguelike_planet_profile_text(), 30)], "accent": Color("#facc15"), "tooltip": "挑战层级决定星球区域规模、控制区域数与Top-N GDP目标。"},
 			{"title": "3｜角色", "body": "公开身份｜同局不重复", "accent": Color("#c084fc"), "tooltip": "角色牌开局公开；AI可随机，但开局时仍保证不重复。"},
 			{"title": "4｜首召", "body": "怪兽独立｜归属匿名", "accent": Color("#fb7185"), "tooltip": "角色不绑定起始怪兽；首召怪兽进桌后由玩家打出。"},
 			{"title": "5｜开局", "body": "首召 → 发展牌 → 商品项目", "accent": Color("#22c55e"), "tooltip": "开始本局后按轻引导完成首召、购买发展牌、建立商品项目和匿名出牌。"},
@@ -9502,7 +9561,7 @@ func _new_game_setup_lobby_snapshot() -> Dictionary:
 			{"text": "首召独立", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
 			{"text": "进桌先首召", "accent": Color("#bbf7d0"), "fill": Color("#14532d")},
 			{"text": "AI可随机角色", "accent": Color("#d8b4fe"), "fill": Color("#312e81")},
-			{"text": "最后钱最多", "accent": Color("#fef3c7"), "fill": Color("#713f12")},
+			{"text": "区域控制审计", "accent": Color("#fef3c7"), "fill": Color("#713f12")},
 		],
 	}
 
@@ -9559,7 +9618,7 @@ func _new_game_setup_option_board_snapshot() -> Dictionary:
 			},
 			{
 				"title": "挑战层级",
-				"detail": "%s｜目标¥%d" % [_roguelike_depth_label(), _roguelike_cash_goal(configured_roguelike_depth)],
+				"detail": "%s｜控制%d区｜Top-N GDP %d/min" % [_roguelike_depth_label(), _victory_depth_requirement_regions(), _victory_depth_requirement_gdp()],
 				"accent": Color("#facc15"),
 				"options": depth_entries,
 			},
@@ -9780,11 +9839,7 @@ func _run_save_summary_text(path: String = "") -> String:
 		if bool(result.get("exists", false)):
 			return "存档：存在局面文件，但版本或内容无法读取。请重新保存当前局面。"
 		return "存档：暂无已保存局面。保存局面后，可从这里继续。"
-	var summary_variant: Variant = coordinator.call("build_run_save_summary", state, {
-		"city_final_value": CITY_FINAL_VALUE,
-		"intel_correct_guess_cash": INTEL_CORRECT_GUESS_CASH,
-		"intel_wrong_guess_cost": INTEL_WRONG_GUESS_COST,
-	})
+	var summary_variant: Variant = coordinator.call("build_run_save_summary", state, {})
 	var summary: Dictionary = summary_variant if summary_variant is Dictionary else {}
 	return "存档：可读取｜时间%s｜市场刷新%d｜玩家%d｜存活城市%d｜领先 %s" % [
 		_format_time(float(summary.get("game_time", 0.0))),
@@ -9819,6 +9874,8 @@ func _capture_run_domain_state_compatibility_adapter() -> Dictionary:
 	var contract_runtime_state: Dictionary = runtime_coordinator.call("contract_to_save_data") as Dictionary if runtime_coordinator != null and runtime_coordinator.has_method("contract_to_save_data") else {}
 	var product_market_runtime_state: Dictionary = runtime_coordinator.call("product_market_to_save_data") as Dictionary if runtime_coordinator != null and runtime_coordinator.has_method("product_market_to_save_data") else {}
 	var city_gdp_derivative_runtime_state: Dictionary = runtime_coordinator.call("city_gdp_derivative_to_save_data") as Dictionary if runtime_coordinator != null and runtime_coordinator.has_method("city_gdp_derivative_to_save_data") else {}
+	var victory_control_runtime_state: Dictionary = runtime_coordinator.call("victory_control_to_save_data") as Dictionary if runtime_coordinator != null and runtime_coordinator.has_method("victory_control_to_save_data") else {}
+	var game_session_runtime_state: Dictionary = runtime_coordinator.call("session_to_save_data") as Dictionary if runtime_coordinator != null and runtime_coordinator.has_method("session_to_save_data") else {}
 	var state := {
 		"rng_state": rng.state,
 		"players": players.duplicate(true),
@@ -9826,6 +9883,8 @@ func _capture_run_domain_state_compatibility_adapter() -> Dictionary:
 		"skill_market": skill_market.duplicate(true),
 		"product_market": (product_market_runtime_state.get("product_market", {}) as Dictionary).duplicate(true),
 		"city_gdp_derivative_runtime": city_gdp_derivative_runtime_state.duplicate(true),
+		"victory_control_runtime": victory_control_runtime_state.duplicate(true),
+		"game_session_runtime": game_session_runtime_state.duplicate(true),
 		"log_lines": log_lines.duplicate(true),
 		"movement_trails": movement_trails.duplicate(true),
 		"action_callouts": action_callouts.duplicate(true),
@@ -9873,11 +9932,6 @@ func _capture_run_domain_state_compatibility_adapter() -> Dictionary:
 		"configured_roguelike_depth": configured_roguelike_depth,
 		"configured_role_indices": configured_role_indices.duplicate(true),
 		"configured_starter_monster_indices": configured_starter_monster_indices.duplicate(true),
-		"game_over": game_over,
-		"victory_countdown_active": victory_countdown_active,
-		"victory_countdown_timer": victory_countdown_timer,
-		"victory_countdown_trigger_player": victory_countdown_trigger_player,
-		"victory_countdown_trigger_score": victory_countdown_trigger_score,
 		"map_width_m": map_width_m,
 		"map_height_m": map_height_m,
 		"weather_forecast": (weather_runtime_state.get("weather_forecast", {}) as Dictionary).duplicate(true),
@@ -10029,12 +10083,11 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	configured_starter_monster_indices = (saved_starter_monster_indices as Array).duplicate(true) if saved_starter_monster_indices is Array else []
 	_ensure_configured_starter_monster_indices()
 	_ai_runtime_call("_ensure_player_ai_state")
-	game_over = bool(state.get("game_over", false))
 	bankruptcy_check_in_progress = false
-	victory_countdown_active = bool(state.get("victory_countdown_active", false))
-	victory_countdown_timer = maxf(0.0, float(state.get("victory_countdown_timer", 0.0)))
-	victory_countdown_trigger_player = int(state.get("victory_countdown_trigger_player", -1))
-	victory_countdown_trigger_score = int(state.get("victory_countdown_trigger_score", 0))
+	if runtime_coordinator != null and runtime_coordinator.has_method("apply_victory_control_save_data"):
+		runtime_coordinator.call("apply_victory_control_save_data", state.get("victory_control_runtime", {}) as Dictionary)
+	if runtime_coordinator != null and runtime_coordinator.has_method("apply_session_save_data"):
+		runtime_coordinator.call("apply_session_save_data", state.get("game_session_runtime", {}) as Dictionary)
 	map_width_m = float(state.get("map_width_m", MAP_WIDTH_METERS))
 	map_height_m = float(state.get("map_height_m", MAP_HEIGHT_METERS))
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_weather_save_data"):
@@ -10208,11 +10261,6 @@ func _roguelike_depth_label(depth: int = -1) -> String:
 	return "深度%s" % _level_text(clampi(value, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX))
 
 
-func _roguelike_cash_goal(depth: int = -1) -> int:
-	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	return _balance_victory_cash_goal_for_duration(value)
-
-
 func _roguelike_planet_profile(depth: int = -1) -> Dictionary:
 	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
 	var count_range := _balance_region_count_range_for_depth(value)
@@ -10226,19 +10274,21 @@ func _roguelike_planet_profile(depth: int = -1) -> Dictionary:
 		"region_max": region_max,
 		"width": float(planet_size.get("width_m", MAP_WIDTH_METERS)),
 		"height": float(planet_size.get("height_m", MAP_HEIGHT_METERS)),
-		"cash_goal": _roguelike_cash_goal(value),
+		"victory_rule": _victory_depth_rule(value),
 	}
 
 
 func _roguelike_planet_profile_text(depth: int = -1) -> String:
 	var profile := _roguelike_planet_profile(depth)
-	return "%s｜星球%.0fm×%.0fm｜区域%d-%d｜目标现金¥%d" % [
+	var victory_rule: Dictionary = profile.get("victory_rule", {}) if profile.get("victory_rule", {}) is Dictionary else _victory_depth_rule()
+	return "%s｜星球%.0fm×%.0fm｜区域%d-%d｜控制%d区 / Top-N GDP %d/min" % [
 		String(profile.get("label", "深度I")),
 		float(profile.get("width", MAP_WIDTH_METERS)),
 		float(profile.get("height", MAP_HEIGHT_METERS)),
 		int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
 		int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
-		int(profile.get("cash_goal", _roguelike_cash_goal())),
+		int(victory_rule.get("regions", 0)),
+		int(victory_rule.get("depth", 0)),
 	]
 
 
@@ -11093,12 +11143,9 @@ func _new_game() -> void:
 	selected_guess_player = -1
 	selected_trade_product = ""
 	selected_map_layer_focus = "all"
-	game_over = false
 	bankruptcy_check_in_progress = false
-	victory_countdown_active = false
-	victory_countdown_timer = 0.0
-	victory_countdown_trigger_player = -1
-	victory_countdown_trigger_score = 0
+	if coordinator != null and coordinator.has_method("reset_victory_control_runtime"):
+		coordinator.call("reset_victory_control_runtime")
 	_prime_timers_for_new_game()
 
 	_ensure_configured_ai_player_count()
@@ -11176,7 +11223,7 @@ func _new_game() -> void:
 		_ai_runtime_call("_ai_player_count"),
 	])
 	_log("电脑对手已入局：会围绕城市GDP、商品竞争、商路价值、怪兽风险与匿名情报做出行动。")
-	_log("星球牌局开始：%s；有人先达到目标现金¥%d时，开启终局沙漏；结束按钱最多排名。" % [_roguelike_planet_profile_text(), _roguelike_cash_goal()])
+	_log("星球牌局开始：%s；达到区域控制与Top-N GDP门槛并持续10秒后，进入120秒公开审计。" % _roguelike_planet_profile_text())
 	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
 	_log("星球随机生成陆地与海洋：陆地和海洋都会出现本地商品；海洋偏向鱼群、巨藻、海底能源和潮汐电力，并继续承担高价值商路运输；合约牌可继续改写供需。")
 	_log("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
@@ -11679,8 +11726,8 @@ func _runtime_snapshot_player_index() -> int:
 
 
 func _runtime_top_bar_snapshot_source(player_index: int) -> Dictionary:
-	var visible_cash: int = _runtime_player_visible_cash(player_index)
-	var cash_goal: int = _roguelike_cash_goal()
+	var progress_gdp := _victory_player_progress_metric(player_index)
+	var target_gdp := _victory_depth_requirement_gdp()
 	var table_state := _runtime_top_bar_table_state_text()
 	var table_clock := _format_time(game_time) if game_time > 0.0 else "00:00"
 	return {
@@ -11691,7 +11738,7 @@ func _runtime_top_bar_snapshot_source(player_index: int) -> Dictionary:
 		"identity": _player_name(player_index) if _runtime_player_is_valid(player_index) else "未入席",
 		"cash_text": _runtime_player_cash_text(player_index),
 		"gdp_text": _runtime_player_gdp_text(player_index),
-		"goal_text": "%d/%d" % [visible_cash, cash_goal],
+		"goal_text": "Top-N %d/%d" % [progress_gdp, target_gdp],
 		"selected_district": _runtime_selected_district_title(),
 		"primary_action": _runtime_primary_action_label(player_index),
 		"weather_status": weather_runtime_controller.status_text(),
@@ -11712,7 +11759,7 @@ func _runtime_top_bar_table_state_text() -> String:
 		return "揭示中"
 	if queue_count > 0:
 		return "牌队%d" % queue_count
-	if victory_countdown_active:
+	if _victory_control_is_active():
 		return "终局"
 	if _district_supply_is_open():
 		return "牌架"
@@ -11720,21 +11767,21 @@ func _runtime_top_bar_table_state_text() -> String:
 
 
 func _runtime_player_board_snapshot_source(player_index: int, action_entries: Array) -> Dictionary:
-	var visible_cash: int = _runtime_player_visible_cash(player_index)
-	var cash_goal: int = _roguelike_cash_goal()
+	var progress_gdp := _victory_player_progress_metric(player_index)
+	var target_gdp := _victory_depth_requirement_gdp()
 	var private_project_shares := []
 	if _can_view_player_private_hand(player_index) and selected_district >= 0 and selected_district < districts.size():
 		private_project_shares = _city_private_project_snapshots(selected_district, player_index)
 	var goal_ratio := 0.0
-	if cash_goal > 0:
-		goal_ratio = clampf(float(visible_cash) / float(cash_goal), 0.0, 1.0)
+	if target_gdp > 0:
+		goal_ratio = clampf(float(progress_gdp) / float(target_gdp), 0.0, 1.0)
 	return {
 		"title": "玩家板｜手牌",
 		"hint": _runtime_player_board_hint(player_index),
 		"identity": _player_name(player_index) if _runtime_player_is_valid(player_index) else "未开局",
 		"cash_text": _runtime_player_cash_text(player_index),
 		"gdp_text": _runtime_player_gdp_text(player_index),
-		"goal_text": "%d/%d" % [visible_cash, cash_goal],
+		"goal_text": "Top-N %d/%d" % [progress_gdp, target_gdp],
 		"goal_ratio": goal_ratio,
 		"selected_district_summary": _runtime_selected_district_summary(player_index),
 		"project_shares": private_project_shares,
@@ -12175,8 +12222,8 @@ func _runtime_player_board_table_state_lamps(_player_index: int) -> Array:
 		table_state = "队列%d" % queue_count
 		table_active = true
 		table_accent = Color("#f59e0b")
-	elif victory_countdown_active:
-		table_state = "目标"
+	elif _victory_control_timer_visible():
+		table_state = "审计"
 		table_active = true
 		table_accent = Color("#fb923c")
 	var selected_ok := selected_district >= 0 and selected_district < districts.size()
@@ -12480,7 +12527,7 @@ func _runtime_bid_board_recommended_actions(player_index: int, active_tip: int, 
 
 
 func _runtime_bid_board_can_set_tip(player_index: int, target_tip: int) -> bool:
-	if game_over or not _runtime_player_is_valid(player_index):
+	if _runtime_session_finished() or not _runtime_player_is_valid(player_index):
 		return false
 	var clamped := maxi(0, target_tip)
 	var queued_index := _queued_card_entry_index_for_player(player_index)
@@ -12994,10 +13041,10 @@ func _runtime_planet_outer_rail_entries() -> Array:
 		},
 		{
 			"label": "终局",
-			"value": "沙漏" if victory_countdown_active else "未触发",
-			"active": victory_countdown_active,
+			"value": str(_victory_control_public_snapshot().get("state", "idle")),
+			"active": _victory_control_timer_visible(),
 			"accent": Color("#facc15"),
-			"tooltip": "有人达到目标现金后开启终局沙漏。",
+			"tooltip": _victory_control_status_text(),
 		},
 	]
 
@@ -13154,7 +13201,7 @@ func _runtime_player_cash_text(player_index: int) -> String:
 		return "--"
 	if _can_view_player_private_hand(player_index):
 		return "¥ %d" % int((players[player_index] as Dictionary).get("cash", 0))
-	return "公开估算 %d" % _player_visible_settlement_estimate(player_index)
+	return "公开估算 %d" % _victory_player_progress_metric(player_index)
 
 
 func _runtime_player_gdp_text(player_index: int) -> String:
@@ -13168,7 +13215,7 @@ func _runtime_player_gdp_text(player_index: int) -> String:
 func _runtime_player_visible_cash(player_index: int) -> int:
 	if not _runtime_player_is_valid(player_index):
 		return 0
-	return _player_visible_settlement_estimate(player_index)
+	return int((players[player_index] as Dictionary).get("cash", 0)) if _can_view_player_private_hand(player_index) else 0
 
 
 func _runtime_player_is_valid(player_index: int) -> bool:
@@ -13242,12 +13289,13 @@ func _active_bottom_countdown_state() -> Dictionary:
 			"total": maxf(1.0, _card_resolution_timer_total_for_stage("reveal", _card_resolution_active_entry())),
 			"accent": Color("#fde68a"),
 		}
-	if victory_countdown_active:
+	if _victory_control_timer_visible():
+		var victory_state := str(_victory_control_public_snapshot().get("state", "idle"))
 		return {
 			"visible": true,
-			"label": "终局沙漏",
-			"remaining": maxf(0.0, victory_countdown_timer),
-			"total": maxf(1.0, _ruleset_timing_seconds(&"final_countdown_seconds")),
+			"label": {"qualification": "胜利资格", "audit": "公开审计", "cooldown": "审计冷却"}.get(victory_state, "胜利审计"),
+			"remaining": maxf(0.0, _victory_control_remaining_seconds()),
+			"total": _victory_control_total_seconds(),
 			"accent": Color("#f97316"),
 		}
 	return {"visible": false}
@@ -13837,7 +13885,7 @@ func _use_selected_role_city_reveal() -> void:
 
 
 func _use_role_city_reveal_for_player(player_index: int, city_index: int, source: String = "身份侦测") -> bool:
-	if game_over or player_index < 0 or player_index >= players.size():
+	if _runtime_session_finished() or player_index < 0 or player_index >= players.size():
 		return false
 	if city_index < 0 or city_index >= districts.size():
 		return false
@@ -14170,7 +14218,7 @@ func _district_button_text(index: int) -> String:
 func _player_quick_goal_hint(player_index: int) -> String:
 	if player_index < 0 or player_index >= players.size():
 		return "目标提示｜选择玩家后开始操作。"
-	if game_over:
+	if _runtime_session_finished():
 		return "目标提示｜查看终局总结，看钱从哪里来。"
 	var forced_decision := _active_forced_decision(player_index)
 	if not forced_decision.is_empty():
@@ -14189,8 +14237,8 @@ func _player_quick_goal_hint(player_index: int) -> String:
 				return "目标提示｜指定目标怪兽。"
 			TEMP_DECISION_PLAYER_TARGET:
 				return "目标提示｜指定目标玩家。"
-	if victory_countdown_active:
-		return "目标提示｜终局倒计时：保钱、护城、压领先者。"
+	if _victory_control_is_active():
+		return "目标提示｜公开审计进行中：守住控制区与Top-N GDP资格。"
 	if _ai_runtime_call("_ai_owned_active_monster_count", [player_index]) <= 0:
 		return "目标提示｜先首召怪兽，开启落地区/邻区牌架。"
 	if _player_active_city_count(player_index) <= 0:
@@ -14276,7 +14324,7 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 	var starter_slot := _first_starter_monster_slot(player)
 	if starter_slot >= 0:
 		var starter_card: Dictionary = player["slots"][starter_slot]
-		var can_summon := not game_over \
+		var can_summon := not _runtime_session_finished() \
 			and _selected_district_can_receive_first_summon() \
 			and float(player.get("action_cooldown", 0.0)) <= 0.0 \
 			and not bool(starter_card.get("queued_for_resolution", false)) \
@@ -14293,7 +14341,7 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 			"label": "打开发展牌架",
 			"detail": "v0.4 城市发展必须购买并打出绑定本地商品的城市发展牌。",
 			"accent": Color("#22c55e"),
-			"disabled": game_over,
+			"disabled": _runtime_session_finished(),
 			"target": Callable(self, "_open_district_supply_from_map").bind(selected_district),
 		}
 	if body.contains("购牌") or body.contains("买牌") or body.contains("牌架") or _player_counted_hand_size(player) <= 0:
@@ -14324,7 +14372,7 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 
 
 func _opening_guide_visible(player_index: int) -> bool:
-	if opening_guide_dismissed or game_over:
+	if opening_guide_dismissed or _runtime_session_finished():
 		return false
 	if player_index < 0 or player_index >= players.size():
 		return false
@@ -14777,7 +14825,7 @@ func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
 	if _runtime_campaign_focus_mode():
 		return {}
 	player_index = _first_run_coach_player_index()
-	if player_index < 0 or player_index >= players.size() or game_over:
+	if player_index < 0 or player_index >= players.size() or _runtime_session_finished():
 		return {}
 	var progress := _first_run_coach_progress(player_index)
 	var stage := _first_run_coach_stage(progress)
@@ -15837,7 +15885,7 @@ func _opening_guide_progress(player_index: int) -> Dictionary:
 
 
 func _first_run_should_defer_monster_wager() -> bool:
-	if opening_guide_dismissed or game_over:
+	if opening_guide_dismissed or _runtime_session_finished():
 		return false
 	var completed_signals: Dictionary = _runtime_scenario_state().get("completed_signals", {})
 	if _active_runtime_scenario_id() == "first_table" and not bool(completed_signals.get("route_chosen", false)):
@@ -15984,7 +16032,7 @@ func _opening_guide_primary_action(player_index: int) -> Dictionary:
 			var slots: Array = player.get("slots", [])
 			if starter_slot < slots.size() and slots[starter_slot] is Dictionary:
 				var starter_card: Dictionary = slots[starter_slot]
-				disabled = game_over \
+				disabled = _runtime_session_finished() \
 					or bool(starter_card.get("queued_for_resolution", false)) \
 					or not _selected_district_can_receive_first_summon() \
 					or float(player.get("action_cooldown", 0.0)) > 0.0 \
@@ -16002,7 +16050,7 @@ func _opening_guide_primary_action(player_index: int) -> Dictionary:
 			"label": "打开发展牌架",
 			"detail": "购买绑定本地商品的城市发展牌，再通过公开牌轨建立项目。",
 			"accent": Color("#4ade80"),
-			"disabled": game_over or not can_open_development_rack,
+			"disabled": _runtime_session_finished() or not can_open_development_rack,
 			"target": Callable(self, "_open_district_supply_from_map").bind(selected_district),
 		}
 	if not bool(progress.get("has_bought_card", false)):
@@ -16695,7 +16743,7 @@ func _district_supply_purchase_state(district_index: int, card_name: String, pla
 		"price": _card_price(card_name, district_index, player_index),
 		"accent": Color("#94a3b8"),
 	}
-	if game_over:
+	if _runtime_session_finished():
 		state["label"] = "已结束"
 		state["detail"] = "本局已结束，不能购买。"
 		return state
@@ -16875,7 +16923,7 @@ func _begin_target_player_choice(slot_index: int) -> void:
 func _clear_pending_target_choice(resume_time := true) -> void:
 	pending_target_player_index = -1
 	pending_target_slot_index = -1
-	if resume_time and pending_target_paused_time and not game_over and (menu_overlay == null or not menu_overlay.visible):
+	if resume_time and pending_target_paused_time and not _runtime_session_finished() and (menu_overlay == null or not menu_overlay.visible):
 		time_scale = max(1.0, speed_before_target_choice)
 	pending_target_paused_time = false
 
@@ -17051,11 +17099,12 @@ func _set_configured_roguelike_depth(depth: int) -> void:
 	configured_roguelike_depth = clampi(depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
 	_save_settings(false)
 	var profile := _roguelike_planet_profile(configured_roguelike_depth)
-	_log("下次开局挑战层级设为%s：约%d-%d区，目标现金¥%d。" % [
+	_log("下次开局挑战层级设为%s：约%d-%d区，胜利需控制%d区且Top-N GDP达到%d/min。" % [
 		_roguelike_depth_label(configured_roguelike_depth),
 		int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
 		int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
-		_roguelike_cash_goal(configured_roguelike_depth),
+		_victory_depth_requirement_regions(configured_roguelike_depth),
+		_victory_depth_requirement_gdp(configured_roguelike_depth),
 	])
 	_refresh_ui()
 
@@ -17080,15 +17129,6 @@ func _player_is_ai(player_index: int) -> bool:
 
 func _human_player_count() -> int:
 	return max(0, players.size() - _ai_runtime_call("_ai_player_count"))
-
-
-func _visible_score_leader_entry() -> Dictionary:
-	var best := {"player_index": -1, "score": -999999}
-	for i in range(players.size()):
-		var score := _player_visible_settlement_estimate(i)
-		if score > int(best.get("score", -999999)):
-			best = {"player_index": i, "score": score}
-	return best
 
 
 func _sort_candidate_score_desc(a: Dictionary, b: Dictionary) -> bool:
@@ -17120,34 +17160,6 @@ func _collect_player_facing_text(node: Node, result: Array) -> void:
 			result.append(tooltip)
 	for child in node.get_children():
 		_collect_player_facing_text(child, result)
-
-
-func _sort_final_score_rank_desc(a: Dictionary, b: Dictionary) -> bool:
-	var a_score := int(a.get("score", 0))
-	var b_score := int(b.get("score", 0))
-	if a_score == b_score:
-		return int(a.get("player_index", 0)) < int(b.get("player_index", 0))
-	return a_score > b_score
-
-
-func _final_score_rankings() -> Array:
-	var rankings := []
-	for i in range(players.size()):
-		rankings.append({
-			"player_index": i,
-			"score": _player_final_score(i),
-			"eliminated": _player_is_eliminated(i),
-		})
-	rankings.sort_custom(Callable(self, "_sort_final_score_rank_desc"))
-	return rankings
-
-
-func _final_score_rank_for_player(rankings: Array, player_index: int) -> int:
-	for i in range(rankings.size()):
-		var entry := rankings[i] as Dictionary
-		if int(entry.get("player_index", -1)) == player_index:
-			return i
-	return rankings.size()
 
 
 func _ensure_configured_role_indices() -> void:
@@ -18904,7 +18916,7 @@ func _is_upgrade_card(skill_name: String) -> bool:
 
 
 func _can_selected_player_act() -> bool:
-	if game_over:
+	if _runtime_session_finished():
 		return false
 	if selected_player < 0 or selected_player >= players.size() or _player_is_eliminated(selected_player):
 		_log("当前席位已经破产出局，不能继续操作。")
@@ -18960,7 +18972,7 @@ func _card_bid_button_tooltip(player_index: int, target_tip: int) -> String:
 	if player_index < 0 or player_index >= players.size():
 		return "没有当前玩家，无法设置报价。"
 	var active_tip := _selected_card_tip_amount(player_index)
-	if game_over:
+	if _runtime_session_finished():
 		return "游戏已经结束，不能修改报价。"
 	var queued_index := _queued_card_entry_index_for_player(player_index)
 	var next_queued_index := _next_batch_card_entry_index_for_player(player_index)
@@ -19398,14 +19410,14 @@ func _player_tableau_progress_entries(player_index: int) -> Array:
 	var city_count := _player_active_city_count(player_index)
 	var bought_card := int(player.get("card_purchase_count", 0)) > 0
 	var committed_card := _player_has_committed_or_resolved_card(player_index)
-	var score := _player_visible_settlement_estimate(player_index)
-	var goal := _roguelike_cash_goal()
+	var score := _victory_player_progress_metric(player_index)
+	var goal := _victory_depth_requirement_gdp()
 	return [
 		{"text": "首召", "state": "已召" if has_monster else "待首召", "accent": Color("#fb7185"), "active": has_monster, "tip": "第一步：打出一张I级起始怪兽牌，之后才能围绕怪兽区域买牌。"},
-		{"text": "建城", "state": "城%d" % city_count if city_count > 0 else "待建", "accent": Color("#22c55e"), "active": city_count > 0, "tip": "城市提供按秒GDP，是终局钱的主要来源。"},
+		{"text": "建城", "state": "城%d" % city_count if city_count > 0 else "待建", "accent": Color("#22c55e"), "active": city_count > 0, "tip": "项目归属GDP决定收入、区域控制和审计资格。"},
 		{"text": "买牌", "state": "已买" if bought_card else "看牌架", "accent": Color("#f59e0b"), "active": bought_card, "tip": "双击区域可看牌架；有怪兽落点/邻区资格时才能购买。"},
 		{"text": "匿名牌", "state": "已入轨" if committed_card else "待出牌", "accent": Color("#c084fc"), "active": committed_card, "tip": "打出的牌进入公开匿名牌轨；条件和结果会给其他玩家推理线索。"},
-		{"text": "终局", "state": "沙漏" if victory_countdown_active else "差¥%d" % maxi(0, goal - score), "accent": Color("#f97316"), "active": victory_countdown_active or score >= goal, "tip": "达到现金目标后进入终局沙漏，结束时按钱最多排名。"},
+		{"text": "审计", "state": _victory_control_status_text(), "accent": Color("#f97316"), "active": _victory_control_is_active() or score >= goal, "tip": "控制足够区域并达到Top-N归属GDP后，先保持10秒，再进入120秒公开审计。"},
 	]
 
 
@@ -20614,7 +20626,7 @@ func _district_purchase_settlement_request(player_index: int, district_index: in
 
 
 func _buy_selected_skill() -> void:
-	if game_over:
+	if _runtime_session_finished():
 		return
 	if _has_pending_target_choice():
 		_log("请先完成当前卡牌的目标怪兽选择。")
@@ -20628,7 +20640,7 @@ func _buy_selected_skill() -> void:
 
 
 func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false, discard_slot: int = -1) -> bool:
-	if game_over or player_index < 0 or player_index >= players.size():
+	if _runtime_session_finished() or player_index < 0 or player_index >= players.size():
 		return false
 	if _player_is_eliminated(player_index):
 		if not anonymous:
@@ -22189,12 +22201,12 @@ func _apply_trade_disruption_from_destroyed_district(district_index: int, source
 
 
 func _update_realtime_economy_cashflow(delta_seconds: float) -> void:
-	if game_over or delta_seconds <= 0.0:
+	if _runtime_session_finished() or delta_seconds <= 0.0:
 		return
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if runtime_coordinator == null or not runtime_coordinator.has_method("advance_economy_cashflow"):
 		return
-	var due_ticks: Array = runtime_coordinator.call("advance_economy_cashflow", delta_seconds, {"game_over": game_over, "time_paused": time_scale <= 0.0})
+	var due_ticks: Array = runtime_coordinator.call("advance_economy_cashflow", delta_seconds, {"game_over": _runtime_session_finished(), "time_paused": time_scale <= 0.0})
 	for tick_seconds_variant in due_ticks:
 		_settle_city_cashflow_seconds(float(tick_seconds_variant))
 
@@ -22422,50 +22434,41 @@ func _repair_district(index: int, amount: int, source: String) -> int:
 	return repaired
 
 
-func _finish_game(reason: String) -> void:
-	if game_over:
+func _on_victory_outcome_applied(receipt: Dictionary) -> void:
+	if receipt.is_empty():
 		return
-	game_over = true
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("finish_session"):
-		coordinator.call("finish_session", {"reason": reason, "game_time": game_time})
-	_log("游戏结束：%s" % reason)
-	var cash_goal := _roguelike_cash_goal()
-	var rankings := _final_score_rankings()
-	var winner_index := int((rankings[0] as Dictionary).get("player_index", 0)) if not rankings.is_empty() else 0
-	var winner_score := int((rankings[0] as Dictionary).get("score", 0)) if not rankings.is_empty() else 0
-	for i in range(players.size()):
-		var score := _player_final_score(i)
-		_log("%s终局资金：现金%d + 存活城市%d×%d + 情报现金%s = %d（%s）。" % [
-			players[i]["name"],
-			players[i]["cash"],
-			_player_active_city_count(i),
-			CITY_FINAL_VALUE,
-			_signed_int_text(_player_intel_cash(i)),
-			score,
-			_player_intel_summary(i),
+	var reason_code := str(receipt.get("reason_code", "victory_resolved"))
+	var reason := {
+		"public_audit_complete": "公开审计完成",
+		"last_survivor": "仅剩一名未淘汰玩家",
+		"planet_destroyed": "星球毁灭结算",
+	}.get(reason_code, "胜利条件已结算") as String
+	var rankings: Array = (receipt.get("rankings", []) as Array).duplicate(true) if receipt.get("rankings", []) is Array else []
+	var winner_indices: Array = (receipt.get("winner_player_indices", []) as Array).duplicate() if receipt.get("winner_player_indices", []) is Array else []
+	var winner_names: Array[String] = []
+	for winner_variant in winner_indices:
+		var winner_index := int(winner_variant)
+		if winner_index >= 0 and winner_index < players.size():
+			winner_names.append(_player_name(winner_index))
+	_log("游戏结束：%s。" % reason)
+	_log("胜者：%s。比较顺序为 Top-N GDP/min、控制区域数、可用现金加托管资金。" % ("、".join(winner_names) if not winner_names.is_empty() else "无人"))
+	for ranking_variant in rankings:
+		if not (ranking_variant is Dictionary):
+			continue
+		var ranking: Dictionary = ranking_variant
+		var player_index := int(ranking.get("player_index", -1))
+		if player_index < 0 or player_index >= players.size():
+			continue
+		_log("%s：Top-N GDP/min %d｜控制区域 %d｜账本资金 %.2f。" % [
+			_player_name(player_index),
+			int(ranking.get("top_n_gdp_per_minute", 0)),
+			int(ranking.get("controlled_region_count", 0)),
+			float(int(ranking.get("cash_ledger_cents", 0))) / 100.0,
 		])
-	_log("胜者：%s，结算资金最高：%d。" % [players[winner_index]["name"], winner_score])
-	_log(_final_run_summary_text(rankings))
-	var learned_samples := int(_ai_runtime_call("_finalize_ai_episode_rewards", [reason]))
+	var learned_samples := int(_ai_runtime_call("finalize_victory_outcome_learning", [receipt]))
 	if learned_samples > 0:
-		_log("AI终局训练：已用本局最终资金回写%d条决策样本。" % learned_samples)
-	var local_score := _player_final_score(0) if not players.is_empty() else 0
-	_log("%s通关判定：本层目标¥%d，玩家1结算¥%d，%s。" % [
-		_roguelike_depth_label(),
-		cash_goal,
-		local_score,
-		"达标，可进入更大星球" if local_score >= cash_goal else "未达标，需要赚更多钱",
-	])
+		_log("AI终局训练：已使用版本化 outcome receipt 回写%d条决策样本。" % learned_samples)
 	_open_final_settlement_menu(reason, rankings)
-
-
-func _player_final_score(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return 0
-	if _player_is_eliminated(player_index):
-		return 0
-	return int(players[player_index].get("cash", 0)) + _player_active_city_count(player_index) * CITY_FINAL_VALUE + _player_intel_cash(player_index)
 
 
 func _auto_monster_color(slot: int) -> Color:

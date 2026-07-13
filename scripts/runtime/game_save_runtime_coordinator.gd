@@ -126,7 +126,7 @@ func extract_section(payload: Dictionary, section_id: String) -> Variant:
 	return value
 
 
-func build_save_summary(payload: Dictionary, scoring_rules: Dictionary) -> Dictionary:
+func build_save_summary(payload: Dictionary, _scoring_rules: Dictionary) -> Dictionary:
 	var saved_players: Array = payload.get("players", []) if payload.get("players", []) is Array else []
 	var saved_districts: Array = payload.get("districts", []) if payload.get("districts", []) is Array else []
 	return {
@@ -134,7 +134,7 @@ func build_save_summary(payload: Dictionary, scoring_rules: Dictionary) -> Dicti
 		"business_cycle_count": int(payload.get("business_cycle_count", 0)),
 		"player_count": saved_players.size(),
 		"active_city_total": _saved_active_city_total_count(saved_districts),
-		"leader_text": _saved_leader_text(saved_players, saved_districts, scoring_rules),
+		"leader_text": _saved_victory_status_text(payload, saved_players),
 	}
 
 
@@ -199,55 +199,25 @@ func _strip_legacy_card_runtime_fields(value: Variant) -> Variant:
 	return value
 
 
-func _saved_leader_text(saved_players: Array, saved_districts: Array, scoring_rules: Dictionary) -> String:
-	if saved_players.is_empty():
-		return "暂无"
-	var best_index := 0
-	var best_score := _saved_player_score(saved_players, saved_districts, 0, scoring_rules)
-	for player_index in range(1, saved_players.size()):
-		var score := _saved_player_score(saved_players, saved_districts, player_index, scoring_rules)
-		if score > best_score:
-			best_index = player_index
-			best_score = score
-	var player := saved_players[best_index] as Dictionary
-	return "%s %d" % [str(player.get("name", "玩家%d" % (best_index + 1))), best_score]
-
-
-func _saved_player_score(saved_players: Array, saved_districts: Array, player_index: int, scoring_rules: Dictionary) -> int:
-	if player_index < 0 or player_index >= saved_players.size():
-		return 0
-	var player := saved_players[player_index] as Dictionary
-	var city_final_value := int(scoring_rules.get("city_final_value", 0))
-	return int(player.get("cash", 0)) + _saved_active_city_count(saved_districts, player_index) * city_final_value + _saved_player_intel_cash(saved_players, saved_districts, player_index, scoring_rules)
-
-
-func _saved_player_intel_cash(saved_players: Array, saved_districts: Array, player_index: int, scoring_rules: Dictionary) -> int:
-	if player_index < 0 or player_index >= saved_players.size():
-		return 0
-	var player := saved_players[player_index] as Dictionary
-	var guesses: Dictionary = player.get("city_guesses", {}) if player.get("city_guesses", {}) is Dictionary else {}
-	var correct := 0
-	var wrong := 0
-	for district_index in range(saved_districts.size()):
-		var district_variant: Variant = saved_districts[district_index]
-		if not (district_variant is Dictionary):
-			continue
-		var city: Dictionary = (district_variant as Dictionary).get("city", {}) if (district_variant as Dictionary).get("city", {}) is Dictionary else {}
-		if not _saved_city_is_active(city):
-			continue
-		var city_owner := int(city.get("owner", -1))
-		if city_owner < 0 or city_owner == player_index or not guesses.has(district_index):
-			continue
-		var guessed_owner := int(guesses.get(district_index, -1))
-		if guessed_owner < 0:
-			continue
-		if guessed_owner == city_owner:
-			correct += 1
-		else:
-			wrong += 1
-	var role: Dictionary = player.get("role_card", {}) if player.get("role_card", {}) is Dictionary else {}
-	var correct_reward := int(scoring_rules.get("intel_correct_guess_cash", 0)) + maxi(0, int(role.get("city_guess_reward_bonus", 0)))
-	return correct * correct_reward - wrong * int(scoring_rules.get("intel_wrong_guess_cost", 0))
+func _saved_victory_status_text(payload: Dictionary, saved_players: Array) -> String:
+	var wrapped: Dictionary = payload.get("victory_control_runtime", {}) if payload.get("victory_control_runtime", {}) is Dictionary else {}
+	var victory: Dictionary = wrapped.get("victory_control_runtime", wrapped) if wrapped.get("victory_control_runtime", wrapped) is Dictionary else {}
+	var receipt: Dictionary = victory.get("outcome_receipt", {}) if victory.get("outcome_receipt", {}) is Dictionary else {}
+	var winners: Array = receipt.get("winner_player_indices", []) if receipt.get("winner_player_indices", []) is Array else []
+	if not winners.is_empty():
+		var names: Array[String] = []
+		for winner_variant in winners:
+			var player_index := int(winner_variant)
+			if player_index >= 0 and player_index < saved_players.size() and saved_players[player_index] is Dictionary:
+				names.append(str((saved_players[player_index] as Dictionary).get("name", "玩家%d" % (player_index + 1))))
+		return "胜者 %s" % "、".join(names)
+	var state := str(victory.get("state", "idle"))
+	return {
+		"qualification": "胜利资格确认中",
+		"audit": "公开审计进行中",
+		"cooldown": "审计冷却中",
+		"resolved": "审计已结算",
+	}.get(state, "尚未进入胜利审计") as String
 
 
 func _saved_active_city_total_count(saved_districts: Array) -> int:

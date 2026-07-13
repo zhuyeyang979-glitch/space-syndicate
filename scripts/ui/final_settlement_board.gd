@@ -33,7 +33,7 @@ func set_board(data: Dictionary) -> void:
 	action_grid.columns = clampi(int(data.get("action_columns", 3)), 1, 3)
 	money_title.text = str(data.get("money_title", "胜因拆解｜资金来源"))
 	event_title.text = str(data.get("event_title", "公开事件｜牌轨与地图"))
-	rank_title.text = str(data.get("rank_title", "排名轨｜结算资金"))
+	rank_title.text = str(data.get("rank_title", "排名轨｜Top-N GDP → 控区 → 现金总账"))
 	action_title.text = str(data.get("action_title", "赛后入口｜查原因或再开一桌"))
 	_render_chips(data.get("chips", []))
 	_render_kpis(data.get("kpis", []))

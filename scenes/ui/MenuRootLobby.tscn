@@ -50,7 +50,7 @@ text_overrun_behavior = 3
 [node name="MainMenuLobbyStatus" type="Label" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack/MainMenuPlanetLobbyHeader"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "星球赌桌｜最后钱最多"
+text = "星球赌桌｜控区、GDP与公开审计"
 text_overrun_behavior = 3
 
 [node name="MainMenuPlanetLobbyBody" type="HBoxContainer" parent="MainMenuPlanetLobbyMargin/MainMenuPlanetLobbyStack"]

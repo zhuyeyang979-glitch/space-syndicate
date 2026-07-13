@@ -70,5 +70,5 @@ theme_override_constants/v_separation = 8
 [node name="StandingsScoreboardReadHint" type="Label" parent="StandingsScoreboardMargin/StandingsScoreboardStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "读法：自己的牌看精确钱；对手牌看公开线索。"
+text = "读法：先看控区和Top-N GDP，再看资格、审计名单与剩余时间。"
 autowrap_mode = 2

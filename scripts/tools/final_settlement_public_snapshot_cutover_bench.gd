@@ -113,7 +113,10 @@ func _prepare_runtime() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if _main != null:
-		var rankings := _main.call("_final_score_rankings") as Array
+		var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+		if coordinator != null and coordinator.has_method("resolve_victory_outcome"):
+			coordinator.call("resolve_victory_outcome", "planet_destroyed", {})
+		var rankings := _main.call("_victory_control_rankings") as Array
 		_real_source = _main.call("_final_settlement_public_source_snapshot", "QA终局", rankings) as Dictionary
 		_real_snapshot = _main.call("_final_settlement_public_snapshot", "QA终局", rankings) as Dictionary
 		var started := Time.get_ticks_msec()
@@ -137,7 +140,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"service_scene_contract":
 			var debug := _debug_snapshot()
 			passed = _service != null and _service.has_method("configure") and _service.has_method("compose") and _service.has_method("debug_snapshot")
-			passed = passed and not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("reads_runtime_nodes", true))
+			passed = passed and bool(debug.get("consumes_outcome_receipt", false)) and not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("reads_runtime_nodes", true)) and not bool(debug.get("legacy_cash_goal_presentation_active", true))
 			flags["service_checked"] = true
 			flags["domain_boundary_checked"] = true
 			notes = "service owns presentation only; final scoring and economy facts remain domain-owned"
@@ -154,44 +157,44 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "empty postgame state remains readable and actionable"
 		"summary_read_order_contract":
 			var text := str(fixture.get("summary_text", ""))
-			passed = text.contains("游戏结束") and text.contains("赛后板") and text.contains("公开/终局结算数据") and text.contains("开局准备")
+			passed = text.contains("游戏结束") and text.contains("胜者：测试玩家") and text.contains("Top-N个人归属GDP") and text.contains("准确现金总账") and text.contains("复盘只展示已授权")
 			flags["summary_checked"] = true
 			notes = "one scene service composes the full public postgame read order"
 		"header_chip_contract":
 			var chips := board.get("chips", []) as Array
-			passed = chips.size() == 3 and str((chips[0] as Dictionary).get("text", "")) == "胜者:测试玩家" and str((chips[1] as Dictionary).get("text", "")) == "目标¥1200" and str((chips[2] as Dictionary).get("text", "")) == "城值¥100"
+			passed = chips.size() == 3 and str((chips[0] as Dictionary).get("text", "")) == "胜者:测试玩家" and str((chips[1] as Dictionary).get("text", "")) == "控区4" and str((chips[2] as Dictionary).get("text", "")) == "Top-N 130/min"
 			flags["board_checked"] = true
 			notes = "winner, goal, and city-clearance chips follow supplied facts"
 		"winner_kpi_contract":
 			var kpis := board.get("kpis", []) as Array
-			passed = kpis.size() == 4 and str((kpis[0] as Dictionary).get("body", "")).contains("结算资金¥980")
+			passed = kpis.size() == 4 and str((kpis[0] as Dictionary).get("body", "")) == "测试玩家胜利" and str((kpis[0] as Dictionary).get("meta", "")) == "120秒公开审计完成"
 			flags["board_checked"] = true
 			flags["domain_boundary_checked"] = true
 			notes = "winner KPI displays the supplied final score without recalculation"
 		"money_leader_kpi_contract":
 			var kpis := board.get("kpis", []) as Array
-			passed = str((kpis[1] as Dictionary).get("body", "")).contains("城收:测试玩家 ¥260") and str((kpis[1] as Dictionary).get("body", "")).contains("卡牌:对手 ¥140")
+			passed = kpis.size() == 4 and str((kpis[1] as Dictionary).get("body", "")) == "145 GDP/min" and str((kpis[1] as Dictionary).get("meta", "")) == "第一比较项"
 			flags["board_checked"] = true
-			notes = "income-leader KPI preserves supplied city, card, and role totals"
+			notes = "the first VictoryControl comparison value is rendered from the receipt ordering"
 		"key_map_contract":
 			var kpis := board.get("kpis", []) as Array
-			passed = str((kpis[2] as Dictionary).get("body", "")).contains("关键城市") and str((kpis[2] as Dictionary).get("body", "")).contains("末期GDP¥88")
+			passed = kpis.size() == 4 and str((kpis[2] as Dictionary).get("body", "")) == "4区" and str((kpis[3] as Dictionary).get("body", "")) == "¥610.00"
 			flags["board_checked"] = true
-			notes = "key-map KPI renders supplied public city identity and final GDP"
+			notes = "controlled-region and exact cash-ledger tie-break values remain receipt-owned"
 		"money_source_contract":
 			var entries := board.get("money_sources", []) as Array
-			passed = entries.size() == 2 and JSON.stringify(entries[0]).contains("起手:基础¥500") and JSON.stringify(entries[0]).contains("现金¥720") and JSON.stringify(entries[0]).contains("支出¥260")
+			passed = entries.size() == 2 and JSON.stringify(entries[0]).contains("Top-N归属GDP 145/min") and JSON.stringify(entries[0]).contains("控制区域4") and JSON.stringify(entries[0]).contains("现金总账¥610.00")
 			flags["board_checked"] = true
-			notes = "money cards preserve supplied starting, settlement, income, and spend facts"
+			notes = "comparison cards preserve the supplied GDP, region, and ledger facts"
 		"rank_track_contract":
 			var ranks := board.get("ranks", []) as Array
-			passed = ranks.size() == 2 and str((ranks[0] as Dictionary).get("score", "")) == "¥980" and str((ranks[1] as Dictionary).get("score", "")) == "¥830"
+			passed = ranks.size() == 2 and str((ranks[0] as Dictionary).get("score", "")) == "145 GDP/min" and str((ranks[1] as Dictionary).get("score", "")) == "120 GDP/min" and str((ranks[0] as Dictionary).get("stats", "")).contains("账本¥610.00")
 			flags["board_checked"] = true
 			flags["domain_boundary_checked"] = true
 			notes = "service preserves domain-supplied final ordering instead of sorting"
 		"public_event_contract":
 			var lines := board.get("event_lines", []) as Array
-			passed = "｜".join(lines).contains("轨道融资") and "｜".join(lines).contains("岩甲兽") and "｜".join(lines).contains("关键城市") and "｜".join(lines).contains("已结算3张匿名牌")
+			passed = "｜".join(lines).contains("轨道融资") and "｜".join(lines).contains("岩甲兽") and "｜".join(lines).contains("存活城市3座") and "｜".join(lines).contains("已结算3张匿名牌")
 			flags["board_checked"] = true
 			notes = "public card, monster, map, and track events remain readable"
 		"after_action_contract":
@@ -203,7 +206,7 @@ func _run_case(case_id: String) -> Dictionary:
 			var crowded_source := _source()
 			var crowded_ranks := crowded_source.get("rank_entries", []) as Array
 			for index in range(2, 12):
-				crowded_ranks.append({"player_index": index, "name": "席位%d" % (index + 1), "score": 100 - index, "cash": 100, "active_cities": 0, "gdp_per_minute": 0, "city_income": 0, "card_income": 0, "intel_cash": 0, "identity": "公开路线"})
+				crowded_ranks.append({"player_index": index, "name": "席位%d" % (index + 1), "top_n_gdp_per_minute": 100 - index, "controlled_region_count": 1, "cash_ledger_cents": 10000, "cash": 100, "gdp_per_minute": 0, "winner": false, "identity": "公开路线"})
 			var crowded_snapshot: Dictionary = _service.call("compose", crowded_source) if _service != null else {}
 			passed = ((((crowded_snapshot.get("board", {}) as Dictionary).get("ranks", []) as Array).size() == 8))
 			flags["pure_data_checked"] = true
@@ -257,12 +260,14 @@ func _compose_fixture() -> Dictionary:
 
 func _source() -> Dictionary:
 	return {
-		"valid": true, "reason": "终局倒计时结束", "winner_name": "测试玩家", "winner_score": 980, "cash_goal": 1200, "city_final_value": 100,
+		"valid": true, "reason": "公开审计完成", "winner_names": ["测试玩家"], "co_victory": false,
+		"required_top_n_gdp_per_minute": 130, "required_controlled_region_count": 4,
+		"outcome_receipt": {"outcome_id": "victory.v05.fixture.1", "reason_code": "public_audit_complete", "winner_player_indices": [0], "co_victory": false, "comparison_order": ["top_n_gdp_per_minute", "controlled_region_count", "cash_ledger_cents"]},
 		"top_city_income_name": "测试玩家", "top_city_income_amount": 260, "top_card_income_name": "对手", "top_card_income_amount": 140, "top_role_income_name": "测试玩家", "top_role_income_amount": 90,
 		"top_card_impact": "关键卡牌：轨道融资改变GDP", "monster_impact": "怪兽影响：岩甲兽破坏商路", "resolved_card_count": 3,
 		"map_facts": {"active_city_count": 3, "destroyed_district_count": 1, "active_monster_count": 1, "monster_count": 2, "key_city": {"valid": true, "name": "关键城市", "owner_name": "测试玩家", "last_income": 88}},
-		"money_source_entries": [{"rank": 0, "player_index": 0, "name": "测试玩家", "score": 980, "cash": 720, "base_start_cash": 500, "role_start_bonus": 20, "start_cash": 520, "city_income": 260, "card_income": 80, "role_income": 90, "card_spend": 120, "build_spend": 100, "business_spend": 40, "city_clearance": 200, "active_cities": 2, "gdp_per_minute": 180, "intel_cash": 60, "eliminated": false}, {"rank": 1, "player_index": 1, "name": "对手", "score": 830, "cash": 630, "base_start_cash": 500, "role_start_bonus": 0, "start_cash": 500, "city_income": 180, "card_income": 140, "role_income": 40, "card_spend": 90, "build_spend": 100, "business_spend": 30, "city_clearance": 100, "active_cities": 1, "gdp_per_minute": 90, "intel_cash": 100, "eliminated": false}],
-		"rank_entries": [{"player_index": 0, "name": "测试玩家", "score": 980, "cash": 720, "active_cities": 2, "gdp_per_minute": 180, "city_income": 260, "card_income": 80, "intel_cash": 60, "identity": "城市经营"}, {"player_index": 1, "name": "对手", "score": 830, "cash": 630, "active_cities": 1, "gdp_per_minute": 90, "city_income": 180, "card_income": 140, "intel_cash": 100, "identity": "卡牌控制"}],
+		"money_source_entries": [{"rank": 0, "player_index": 0, "name": "测试玩家", "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000, "winner": true, "cash": 610, "city_income": 260, "card_income": 80, "role_income": 90, "gdp_per_minute": 180, "eliminated": false}, {"rank": 1, "player_index": 1, "name": "对手", "top_n_gdp_per_minute": 120, "controlled_region_count": 3, "cash_ledger_cents": 73000, "winner": false, "cash": 730, "city_income": 180, "card_income": 140, "role_income": 40, "gdp_per_minute": 150, "eliminated": false}],
+		"rank_entries": [{"player_index": 0, "name": "测试玩家", "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000, "winner": true, "cash": 610, "gdp_per_minute": 180, "identity": "城市经营"}, {"player_index": 1, "name": "对手", "top_n_gdp_per_minute": 120, "controlled_region_count": 3, "cash_ledger_cents": 73000, "winner": false, "cash": 730, "gdp_per_minute": 150, "identity": "卡牌控制"}],
 		"kpi_columns": 4, "money_columns": 2, "rank_columns": 2,
 	}
 

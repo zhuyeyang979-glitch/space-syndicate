@@ -137,7 +137,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"service_scene_contract":
 			var debug := _debug_snapshot()
 			passed = _service != null and _service.has_method("configure") and _service.has_method("compose") and _service.has_method("debug_snapshot")
-			passed = passed and not bool(debug.get("calculates_settlement_score", true)) and not bool(debug.get("calculates_city_income", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)) and not bool(debug.get("reads_runtime_nodes", true))
+			passed = passed and bool(debug.get("consumes_victory_snapshot", false)) and not bool(debug.get("calculates_region_control", true)) and not bool(debug.get("calculates_top_n_gdp", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)) and not bool(debug.get("reads_runtime_nodes", true)) and not bool(debug.get("legacy_cash_goal_presentation_active", true))
 			flags["service_checked"] = true
 			flags["domain_boundary_checked"] = true
 			notes = "service owns presentation only; scoring, GDP, cash, and final ranking remain domain-owned"
@@ -156,39 +156,39 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "empty standings state stays readable and safe"
 		"summary_read_order_contract":
 			var text := str(fixture.get("summary_text", ""))
-			passed = text.contains("局势排名") and text.contains("预估结算资金") and text.contains("我的资产") and text.contains("公开异动") and text.contains("对手资金、手牌和私密推理保持隐藏")
+			passed = text.contains("局势排名") and text.contains("控制4个区域") and text.contains("Top-N个人归属GDP达到130/min") and text.contains("120秒公开审计") and text.contains("我的进度") and text.contains("未进入审计名单的对手资产继续保密")
 			flags["summary_checked"] = true
 			notes = "one scene service composes the full public standings read order"
 		"overview_card_contract":
 			var cards := fixture.get("overview_cards", []) as Array
-			passed = cards.size() == 3 and _array_has_title(cards, "局势速览") and _array_has_title(cards, "终局条件") and _array_has_title(cards, "我的可见资金")
+			passed = cards.size() == 3 and _array_has_title(cards, "区域控制") and _array_has_title(cards, "胜利门槛") and _array_has_title(cards, "审计状态")
 			flags["scoreboard_checked"] = true
 			notes = "three former main-generated cards now belong to StandingsScoreboard"
 		"scoreboard_chip_contract":
 			var chips := scoreboard.get("chips", []) as Array
-			passed = chips.size() == 4 and str((chips[0] as Dictionary).get("text", "")) == "目标¥1200" and str((chips[2] as Dictionary).get("text", "")) == "城市×100"
+			passed = chips.size() == 4 and str((chips[0] as Dictionary).get("text", "")) == "控区4" and str((chips[1] as Dictionary).get("text", "")) == "Top-N 130/min" and str((chips[2] as Dictionary).get("text", "")).contains("公开审计") and str((chips[3] as Dictionary).get("text", "")) == "名单明牌"
 			flags["scoreboard_checked"] = true
 			notes = "goal, countdown, city value, and privacy chips remain stable"
 		"scoreboard_kpi_contract":
 			var kpis := scoreboard.get("kpis", []) as Array
-			passed = kpis.size() == 4 and str((kpis[0] as Dictionary).get("value", "")) == "¥860/1200" and _array_has_title(kpis, "城市现金流") and _array_has_title(kpis, "公开异动") and _array_has_title(kpis, "反超方向")
+			passed = kpis.size() == 4 and str((kpis[0] as Dictionary).get("value", "")) == "145/130" and str((kpis[1] as Dictionary).get("value", "")) == "4/4区" and str((kpis[2] as Dictionary).get("value", "")) == "1席" and _array_has_title(kpis, "公开异动")
 			flags["scoreboard_checked"] = true
 			flags["domain_boundary_checked"] = true
 			notes = "supplied score, city, GDP, and public-shift facts are displayed without recalculation"
 		"selected_seat_visibility":
-			passed = seats.size() == 3 and str((seats[0] as Dictionary).get("score", "")) == "¥860" and JSON.stringify(seats[0]).contains("现金¥610") and JSON.stringify(seats[0]).contains("GDP145")
+			passed = seats.size() == 3 and str((seats[0] as Dictionary).get("score", "")) == "Top-N 145" and JSON.stringify(seats[0]).contains("账本¥610.00") and JSON.stringify(seats[0]).contains("控区4")
 			flags["privacy_checked"] = true
 			flags["scoreboard_checked"] = true
 			notes = "current player receives precise viewer-owned score, cash, city, and GDP facts"
 		"opponent_privacy_contract":
 			var opponent_text := JSON.stringify(seats[1]) if seats.size() > 1 else ""
-			passed = opponent_text.contains("资金隐私") and opponent_text.contains("现金隐藏") and opponent_text.contains("手牌隐藏") and not opponent_text.contains("730") and not opponent_text.contains("secret")
+			passed = opponent_text.contains("进度隐藏") and opponent_text.contains("未入审计") and opponent_text.contains("经济资产保密") and not opponent_text.contains("73000") and not opponent_text.contains("secret")
 			flags["privacy_checked"] = true
 			flags["scoreboard_checked"] = true
 			notes = "opponent score, cash, hand, and private reasoning never enter the output"
 		"bankrupt_public_contract":
 			var bankrupt_text := JSON.stringify(seats[2]) if seats.size() > 2 else ""
-			passed = bankrupt_text.contains("出局") and bankrupt_text.contains("破产出局") and bankrupt_text.contains("现金0") and bankrupt_text.contains("GDP停流")
+			passed = bankrupt_text.contains("出局") and bankrupt_text.contains("已淘汰") and bankrupt_text.contains("不能进入审计终点排名") and not bankrupt_text.contains("现金")
 			flags["privacy_checked"] = true
 			flags["scoreboard_checked"] = true
 			notes = "bankruptcy remains a public state without revealing historical private data"
@@ -196,12 +196,13 @@ func _run_case(case_id: String) -> Dictionary:
 			var final_source := _source()
 			final_source["game_over"] = true
 			final_source["final_summary_text"] = "终局总结｜公开结算完成"
-			var final_seats := final_source.get("seat_entries", []) as Array
-			(final_seats[1] as Dictionary).merge({"can_view_private": true, "cash": 730, "active_cities": 1, "score": 830, "score_label": "结算资金", "intel_summary": "情报+0", "gdp_per_minute": 90}, true)
+			var final_victory := final_source.get("victory_control", {}) as Dictionary
+			final_victory["audit_roster"] = [0, 1]
+			(final_victory.get("audit_entries", []) as Array).append({"player_index": 1, "top_n_gdp_per_minute": 120, "controlled_region_count": 3, "cash_ledger_cents": 73000, "economic_assets": {"project_positions": [], "contracts": [], "warehouses": [], "financial_positions": []}})
 			var final_snapshot: Dictionary = _service.call("compose", final_source) if _service != null else {}
 			var final_board := final_snapshot.get("scoreboard", {}) as Dictionary
 			var final_output_seats := final_board.get("seats", []) as Array
-			passed = str(final_snapshot.get("summary_text", "")).contains("终局总结") and str((final_output_seats[1] as Dictionary).get("score", "")) == "¥830"
+			passed = str(final_snapshot.get("summary_text", "")).contains("终局总结") and str((final_output_seats[1] as Dictionary).get("score", "")) == "Top-N 120" and JSON.stringify(final_output_seats[1]).contains("账本¥730.00")
 			flags["scoreboard_checked"] = true
 			flags["domain_boundary_checked"] = true
 			notes = "domain-supplied final visibility is rendered without service-owned ranking logic"
@@ -262,12 +263,14 @@ func _compose_fixture() -> Dictionary:
 
 func _source() -> Dictionary:
 	return {
-		"valid": true, "game_over": false, "selected_available": true, "selected_score": 860, "selected_cash": 610,
-		"selected_city_count": 2, "selected_gdp_per_minute": 145, "selected_intel_summary": "情报待结算",
-		"cash_goal": 1200, "city_final_value": 100, "intel_correct_reward": 120, "intel_wrong_cost": 40,
-		"countdown_text": "距离终局沙漏还差¥340", "public_shift_count": 5, "overview_columns": 3, "kpi_columns": 4, "seat_columns": 3,
+		"valid": true, "game_over": false, "selected_available": true, "selected_top_n_gdp_per_minute": 145,
+		"selected_controlled_region_count": 4, "selected_cash": 610, "selected_city_count": 2,
+		"selected_gdp_per_minute": 180, "selected_intel_summary": "情报待结算",
+		"required_top_n_gdp_per_minute": 130, "required_controlled_region_count": 4,
+		"victory_control": {"state": "audit", "audit_remaining_seconds": 90.0, "audit_roster": [0], "audit_entries": [{"player_index": 0, "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000, "economic_assets": {"project_positions": [{"slot_id": "production:0"}], "contracts": [], "warehouses": [], "financial_positions": []}}]},
+		"countdown_text": "公开审计剩余90.0秒", "public_shift_count": 5, "overview_columns": 3, "kpi_columns": 4, "seat_columns": 3,
 		"seat_entries": [
-			{"player_index": 0, "name": "测试玩家", "eliminated": false, "can_view_private": true, "cash": 610, "active_cities": 2, "score": 860, "score_label": "可见预估", "intel_summary": "情报待结算", "gdp_per_minute": 145},
+			{"player_index": 0, "name": "测试玩家", "eliminated": false, "can_view_private": true, "cash": 610, "active_cities": 2, "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "intel_summary": "情报待结算", "gdp_per_minute": 180},
 			{"player_index": 1, "name": "对手", "eliminated": false, "can_view_private": false},
 			{"player_index": 2, "name": "破产席位", "eliminated": true, "can_view_private": false},
 		],

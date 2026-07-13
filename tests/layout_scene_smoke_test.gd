@@ -631,6 +631,15 @@ const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/Cit
 const CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/city_trade_network_runtime_ownership_contract.md"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/structured_project_gdp_v05_sprint_3.png"
+const VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/victory_control_runtime_controller.gd"
+const VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/VictoryControlRuntimeController.tscn"
+const VICTORY_CONTROL_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/victory_control_world_bridge.gd"
+const VICTORY_CONTROL_WORLD_BRIDGE_SCENE := "res://scenes/runtime/VictoryControlWorldBridge.tscn"
+const VICTORY_CONTROL_RUNTIME_BENCH_SCRIPT := "res://scripts/tools/victory_control_runtime_bench.gd"
+const VICTORY_CONTROL_RUNTIME_BENCH_SCENE := "res://scenes/tools/VictoryControlRuntimeBench.tscn"
+const VICTORY_CONTROL_RUNTIME_CONTRACT := "res://docs/victory_control_runtime_contract.md"
+const VICTORY_CONTROL_RUNTIME_OUTPUT_DIR := "user://space_syndicate_design_qa/victory_control_runtime/"
+const VICTORY_CONTROL_RUNTIME_SCREENSHOT_PATH := "user://space_syndicate_design_qa/victory_control_runtime_sprint_4.png"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/city_development_settlement_runtime_characterization_bench.gd"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
 const CITY_DEVELOPMENT_SETTLEMENT_CONTRACT := "res://docs/city_development_settlement_runtime_contract.md"
@@ -856,6 +865,7 @@ func _run() -> void:
 	await _check_product_market_runtime_characterization_component()
 	await _check_city_trade_network_runtime_characterization_component()
 	await _check_city_development_settlement_runtime_characterization_component()
+	await _check_victory_control_runtime_component()
 	await _check_city_gdp_derivative_runtime_component()
 	await _check_runtime_card_catalog_resource_component()
 	await _check_runtime_card_authoring_workflow_component()
@@ -8110,7 +8120,8 @@ func _check_ruleset_v04_source_of_truth_component() -> void:
 		if main != null:
 			main.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("_ruleset_timing_seconds(&\"final_countdown_seconds\")") and main_source.contains("_ruleset_timing_seconds(&\"monster_wager_default_seconds\")"), "main.gd reads final countdown and monster wager timing through RulesetRuntimeBridge")
+	var victory_source := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT)
+	_expect(not main_source.contains("_ruleset_timing_seconds(&\"final_countdown_seconds\")") and main_source.contains("_ruleset_timing_seconds(&\"monster_wager_default_seconds\")") and victory_source.contains("victory_qualification") and victory_source.contains("public_audit") and victory_source.contains("audit_failure_cooldown"), "main.gd keeps the v0.4 monster-wager bridge while v0.5 VictoryControl owns qualification, audit, and cooldown timing")
 	_expect(not main_source.contains("const VICTORY_COUNTDOWN_SECONDS") and not main_source.contains("const MONSTER_WAGER_SECONDS") and not main_source.contains("const CARD_GROUP_WINDOW_SECONDS") and not main_source.contains("const CARD_GROUP_LOCK_SECONDS"), "main.gd no longer keeps duplicate cutover timing constants")
 	_expect(main_source.contains("func _bind_city_development_runtime_controller") and main_source.contains("func _evaluate_city_development_request") and main_source.contains("func _reject_legacy_direct_city_build"), "main.gd routes city-entry legality through the scene-owned controller")
 	var ai_controller_source := FileAccess.get_file_as_string(AI_RUNTIME_CONTROLLER_SCRIPT)
@@ -11751,6 +11762,103 @@ func _check_city_development_settlement_runtime_characterization_component() -> 
 		viewport.queue_free()
 
 
+func _check_victory_control_runtime_component() -> void:
+	for path in [VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT, VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, VICTORY_CONTROL_WORLD_BRIDGE_SCRIPT, VICTORY_CONTROL_WORLD_BRIDGE_SCENE, VICTORY_CONTROL_RUNTIME_BENCH_SCRIPT, VICTORY_CONTROL_RUNTIME_BENCH_SCENE, VICTORY_CONTROL_RUNTIME_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "Victory Control v0.5 asset exists: %s" % path)
+	var controller_packed := load(VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var controller := controller_packed.instantiate() if controller_packed != null else null
+	_expect(controller != null and controller.scene_file_path == VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, "VictoryControlRuntimeController scene loads")
+	if controller != null:
+		var configured: Dictionary = controller.call("configure")
+		var debug: Dictionary = controller.call("debug_snapshot")
+		_expect(bool(configured.get("configured", false)) and str(configured.get("ruleset_id", "")) == "v0.5" and bool(debug.get("owns_victory_state", false)) and not bool(debug.get("legacy_cash_goal_fallback_used", true)), "VictoryControlRuntimeController owns one v0.5 state machine with no cash-goal fallback")
+		_expect(controller.has_method("evaluate_region_control") and controller.has_method("evaluate_candidates") and controller.has_method("advance_world_effective") and controller.has_method("resolve_special_outcome") and controller.has_method("public_snapshot") and controller.has_method("private_snapshot") and controller.has_method("to_save_data") and controller.has_method("apply_save_data"), "VictoryControlRuntimeController exposes control, audit, outcome, privacy, and save APIs")
+		controller.free()
+	var bridge_packed := load(VICTORY_CONTROL_WORLD_BRIDGE_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	_expect(bridge != null and bridge.scene_file_path == VICTORY_CONTROL_WORLD_BRIDGE_SCENE, "VictoryControlWorldBridge scene loads")
+	if bridge != null:
+		var debug: Dictionary = bridge.call("debug_snapshot")
+		_expect(not bool(debug.get("owns_gdp_formula", true)) and not bool(debug.get("owns_project_attribution", true)) and not bool(debug.get("owns_victory_state", true)) and not bool(debug.get("owns_session_state", true)), "VictoryControlWorldBridge is explicitly non-owning")
+		bridge.free()
+	var packed := load(VICTORY_CONTROL_RUNTIME_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "VictoryControlRuntimeBench scene loads")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RulesetRuntimeBridge", "GameRuntimeCoordinator", "ControllerHost", "SummaryLabel", "StatusLabel", "RulesText", "ResultsText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "VictoryControlRuntimeBench statically owns %s" % node_name)
+		var cases: Array = bench.call("victory_cases")
+		var manifest: Dictionary = bench.call("build_victory_manifest_preview")
+		var required_cases := ["share_2999bp_fails", "share_3000bp_unique_controls", "share_3000bp_tie_no_control", "qualification_999_not_triggered", "qualification_10_starts_audit", "audit_does_not_cancel_midway", "endpoint_same_tick_leader_joins", "exact_tie_is_co_victory", "menu_pause_freezes_clock", "save_restores_audit_roster_and_time", "public_snapshot_hides_private_contents", "planet_destroyed_uses_cash_only", "main_legacy_cash_victory_absent", "real_main_static_composition"]
+		var cases_ok := cases.size() == 56
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var fields_ok := true
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in ["case_id", "state", "control_checked", "qualification_checked", "audit_checked", "ordering_checked", "save_checked", "privacy_checked", "session_checked", "pure_data_checked", "legacy_fallback_used", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(field_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("victory_cases") and bench.has_method("build_victory_manifest_preview") and bench.has_method("run_victory_suite") and cases_ok and fields_ok and int(manifest.get("record_count", 0)) == 56 and str(bench.call("output_dir")) == VICTORY_CONTROL_RUNTIME_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == VICTORY_CONTROL_RUNTIME_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "VictoryControlRuntimeBench defines the 56-case pure-data SS05-04 gate and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var contract_text := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTRACT)
+	_expect(contract_text.contains("SS05-04 is a hard cutover") and contract_text.contains("56 cases") and contract_text.contains("There is no cash-goal or legacy countdown fallback"), "Victory Control contract records ownership, privacy, endpoint order, and deletion gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		for scene_path in [VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, VICTORY_CONTROL_WORLD_BRIDGE_SCENE, VICTORY_CONTROL_RUNTIME_BENCH_SCENE]:
+			var record: Dictionary = registry.call("record_for_path", scene_path)
+			_expect(str(record.get("scene_path", "")) == scene_path and bool(record.get("smoke_check_enabled", false)), "MCP registry includes %s" % scene_path)
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var record: Dictionary = scene_audit.call("record_for_id", "victory_control_v05_runtime_gate")
+		_expect(str(record.get("sceneization_status", "")) == "full" and str(record.get("source_script_path", "")) == VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT, "Sceneization Audit records the full Victory Control hard cutover")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "victory_control_v05_runtime_gate")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("runtime_owner", "")) == VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT, "System Resourceization Audit records VictoryControlRuntimeController as owner")
+	var ruleset_script := load(RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "victory_control_runtime")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")) == "VictoryControlRuntimeController", "Ruleset v0.5 registry records Victory Control as cutover complete")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var legacy_smoke_source := FileAccess.get_file_as_string("res://tests/smoke_test.gd")
+	for forbidden in ["var game_over", "victory_countdown", "_roguelike_cash_goal", "_player_visible_settlement_estimate", "_player_final_score", "_final_score_rankings", "CITY_FINAL_VALUE"]:
+		_expect(not main_source.contains(str(forbidden)) and not legacy_smoke_source.contains(str(forbidden)), "main.gd and the active smoke gate no longer contain legacy victory symbol %s" % forbidden)
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenVictoryControlRuntimeControllerButton", "OpenVictoryControlWorldBridgeButton", "OpenVictoryControlRuntimeBenchButton", "RunVictoryControlRuntimeBenchButton", "OpenVictoryControlRuntimeOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_victory_control_runtime_controller_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("open_victory_control_world_bridge_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("open_victory_control_runtime_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_victory_control_runtime_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenVictoryControlRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenVictoryControlWorldBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenVictoryControlRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunVictoryControlRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, VICTORY_CONTROL_WORLD_BRIDGE_SCENE, VICTORY_CONTROL_RUNTIME_BENCH_SCENE] and run_paths == [VICTORY_CONTROL_RUNTIME_BENCH_SCENE], "Design QA Dock fallback signals emit Victory Control owner, bridge, and gate paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
 func _check_city_gdp_derivative_runtime_component() -> void:
 	for path in [CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCRIPT, CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE, CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER_SCENE, CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE_SCENE, CITY_GDP_DERIVATIVE_TERMS_RESOURCE_SCRIPT, CITY_GDP_DERIVATIVE_TERMS_CATALOG_SCRIPT, CITY_GDP_DERIVATIVE_TERMS_CATALOG, CITY_GDP_DERIVATIVE_TERMS_CONTRACT]:
 		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "City GDP derivative v0.4 asset exists: %s" % path)
@@ -12396,10 +12504,10 @@ func _check_standings_public_snapshot_cutover_component() -> void:
 	if service != null:
 		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "StandingsPublicSnapshotService exposes required pure-data APIs")
 		service.call("configure", {})
-		var snapshot: Dictionary = service.call("compose", {"valid": true, "selected_available": true, "selected_score": 100, "selected_cash": 80, "selected_city_count": 1, "selected_gdp_per_minute": 10, "selected_intel_summary": "情报待结算", "cash_goal": 1200, "city_final_value": 100, "intel_correct_reward": 120, "intel_wrong_cost": 40, "countdown_text": "等待终局", "public_shift_count": 0, "seat_entries": [{"player_index": 0, "name": "玩家", "eliminated": false, "can_view_private": true, "cash": 80, "active_cities": 1, "score": 100, "score_label": "可见预估", "intel_summary": "情报待结算", "gdp_per_minute": 10}]})
+		var snapshot: Dictionary = service.call("compose", {"valid": true, "selected_available": true, "selected_top_n_gdp_per_minute": 100, "selected_controlled_region_count": 3, "selected_cash": 80, "selected_city_count": 1, "selected_gdp_per_minute": 110, "selected_intel_summary": "情报待结算", "required_top_n_gdp_per_minute": 90, "required_controlled_region_count": 3, "victory_control": {"state": "audit", "audit_remaining_seconds": 90.0, "audit_roster": [0], "audit_entries": [{"player_index": 0, "top_n_gdp_per_minute": 100, "controlled_region_count": 3, "cash_ledger_cents": 8000, "economic_assets": {"project_positions": [], "contracts": [], "warehouses": [], "financial_positions": []}}]}, "countdown_text": "公开审计剩余90.0秒", "public_shift_count": 0, "seat_entries": [{"player_index": 0, "name": "玩家", "eliminated": false, "can_view_private": true, "cash": 80, "active_cities": 1, "top_n_gdp_per_minute": 100, "controlled_region_count": 3, "intel_summary": "情报待结算", "gdp_per_minute": 110}]})
 		_expect(snapshot.get("summary_text", "") is String and snapshot.get("overview_cards", []) is Array and snapshot.get("scoreboard", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "StandingsPublicSnapshotService returns pure summary, overview-card, and scoreboard payloads")
 		var debug: Dictionary = service.call("debug_snapshot")
-		_expect(not bool(debug.get("calculates_settlement_score", true)) and not bool(debug.get("calculates_city_income", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Standings formatter owns no score, economy, ranking, private-truth, or runtime-Node rules")
+		_expect(bool(debug.get("consumes_victory_snapshot", false)) and not bool(debug.get("calculates_region_control", true)) and not bool(debug.get("calculates_top_n_gdp", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Standings formatter consumes VictoryControl facts and owns no victory, ranking, private-truth, or runtime-Node rules")
 		service.free()
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
@@ -12495,10 +12603,10 @@ func _check_final_settlement_public_snapshot_cutover_component() -> void:
 	if service != null:
 		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "FinalSettlementPublicSnapshotService exposes required pure-data APIs")
 		service.call("configure", {})
-		var snapshot: Dictionary = service.call("compose", {"valid": true, "reason": "测试终局", "winner_name": "玩家", "winner_score": 100, "cash_goal": 1200, "city_final_value": 100, "top_city_income_name": "玩家", "top_city_income_amount": 10, "top_card_income_name": "玩家", "top_card_income_amount": 5, "top_role_income_name": "玩家", "top_role_income_amount": 2, "top_card_impact": "关键卡牌", "monster_impact": "怪兽影响", "resolved_card_count": 0, "map_facts": {"active_city_count": 1, "destroyed_district_count": 0, "active_monster_count": 0, "monster_count": 0, "key_city": {"valid": false}}, "money_source_entries": [], "rank_entries": []})
+		var snapshot: Dictionary = service.call("compose", {"valid": true, "reason": "测试终局", "winner_names": ["玩家"], "required_top_n_gdp_per_minute": 90, "required_controlled_region_count": 3, "outcome_receipt": {"outcome_id": "victory.v05.smoke.1", "reason_code": "public_audit_complete", "winner_player_indices": [0], "co_victory": false, "comparison_order": ["top_n_gdp_per_minute", "controlled_region_count", "cash_ledger_cents"]}, "top_city_income_name": "玩家", "top_city_income_amount": 10, "top_card_income_name": "玩家", "top_card_income_amount": 5, "top_role_income_name": "玩家", "top_role_income_amount": 2, "top_card_impact": "关键卡牌", "monster_impact": "怪兽影响", "resolved_card_count": 0, "map_facts": {"active_city_count": 1, "destroyed_district_count": 0, "active_monster_count": 0, "monster_count": 0, "key_city": {"valid": false}}, "money_source_entries": [], "rank_entries": []})
 		_expect(snapshot.get("summary_text", "") is String and snapshot.get("board", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "FinalSettlementPublicSnapshotService returns pure summary and postgame-board payloads")
 		var debug: Dictionary = service.call("debug_snapshot")
-		_expect(not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Final Settlement formatter owns no score, ranking, clearance, intel, private-hand, or runtime-Node rules")
+		_expect(bool(debug.get("consumes_outcome_receipt", false)) and not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Final Settlement formatter consumes a receipt and owns no score, ranking, clearance, intel, private-hand, or runtime-Node rules")
 		service.free()
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null

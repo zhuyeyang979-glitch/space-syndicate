@@ -76,7 +76,7 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"player_eliminated": bool(_world.call("_player_is_eliminated", player_index)) if player_valid and _world.has_method("_player_is_eliminated") else false,
 		"player_cash": int(player.get("cash", 0)),
 		"player_action_cooldown": float(player.get("action_cooldown", 0.0)),
-		"game_over": bool(_world.get("game_over")),
+		"game_over": bool(_world.call("_runtime_session_finished")) if _world.has_method("_runtime_session_finished") else false,
 		"selected_district": selected_district,
 		"selected_district_valid": selected_district_valid,
 		"selected_district_destroyed": bool(selected_district_data.get("destroyed", false)),

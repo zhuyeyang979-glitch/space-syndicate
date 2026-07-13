@@ -130,7 +130,7 @@ func _summary_text(source: Dictionary, city_entries: Array, card_entries: Array,
 		"仓储风险线索｜匿名仓储会暴露可被做空、齐射、驻军或引怪的城市压力｜%s" % _joined_or(warehouse_lines, "暂无仓储风险线索。"),
 		"城市公开线索档案｜类型、商品和收入变化可辅助城市业主判断｜%s" % _joined_or(public_city_lines, "暂无城市公开线索。"),
 		"调查优先级｜优先级越高越值得先标注；先看高GDP、仓储风险、怪兽冲突和匿名牌轨。",
-		"置信分布：高%d / 中%d / 低%d｜理由分布：%s｜终局资金 = 现金 + 存活城市×%d + 情报现金。" % [_confidence_count(city_entries, 3), _confidence_count(city_entries, 2), _confidence_count(city_entries, 1), _reason_summary(city_entries, source.get("reason_options", []) as Array if source.get("reason_options", []) is Array else []), int(source.get("city_final_value", 0))],
+		"置信分布：高%d / 中%d / 低%d｜理由分布：%s｜胜利由区域控制、Top-N归属GDP和公开审计决定；情报不会建立第二套终局分数。" % [_confidence_count(city_entries, 3), _confidence_count(city_entries, 2), _confidence_count(city_entries, 1), _reason_summary(city_entries, source.get("reason_options", []) as Array if source.get("reason_options", []) is Array else [])],
 		"城市标注：%d/%d｜待查%d｜全对%s｜全错%s" % [int(stats.get("guessed", 0)), int(stats.get("total_foreign", 0)), int(stats.get("unmarked", 0)), _signed_int(int(stats.get("best_cash", 0))), _signed_int(int(stats.get("worst_cash", 0)))],
 	])
 

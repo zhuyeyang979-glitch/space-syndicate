@@ -69,7 +69,15 @@ const RECORDS := [
 		"current_owner": "CityTradeNetworkRuntimeController",
 		"current_status": STATUS_CUTOVER_COMPLETE,
 		"runtime_evidence": ["GdpFormulaRuntimeCutoverBench 40/40", "CityTradeNetworkRuntimeCharacterizationBench 108/108 observed and aligned", "CityDevelopmentSettlementRuntimeCharacterizationBench 64/64", "No whole-city allocation or city-owner payout fallback"],
-		"next_step": "SS05-04 must consume the existing private attribution receipts for qualification and victory without recomputing GDP or ownership.",
+		"next_step": "Keep the 108-case structured GDP gate green for all later consumers.",
+	},
+	{
+		"rule_id": "victory_control_runtime",
+		"expected_behavior": "Unique 3000bp control, depth Top-N GDP, 10-second qualification, sticky 120-second public audit, 30-second cooldown, ordered endpoint receipt, and authorized audit privacy have one owner.",
+		"current_owner": "VictoryControlRuntimeController",
+		"current_status": STATUS_CUTOVER_COMPLETE,
+		"runtime_evidence": ["VictoryControlRuntimeBench 56/56", "Standings consumes public snapshot", "Final Settlement and GameSession consume one outcome receipt", "Legacy cash goal and countdown absent"],
+		"next_step": "Use the same public/private victory snapshots in SS05-05 through SS05-14 without duplicating GDP, control, or endpoint comparisons.",
 	},
 	{
 		"rule_id": "emergency_sale_cost_basis",

@@ -2176,6 +2176,54 @@ layout_mode = 2
 text = "kind: -"
 autowrap_mode = 3
 
+[node name="VictoryControlRuntimeSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Victory Control v0.5"
+text_overrun_behavior = 3
+
+[node name="VictoryControlRuntimeOwnerRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenVictoryControlRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/VictoryControlRuntimeOwnerRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Open Controller"
+tooltip_text = "Open res://scenes/runtime/VictoryControlRuntimeController.tscn"
+
+[node name="OpenVictoryControlWorldBridgeButton" type="Button" parent="DockMargin/DockRows/VictoryControlRuntimeOwnerRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Open World Bridge"
+tooltip_text = "Open res://scenes/runtime/VictoryControlWorldBridge.tscn"
+
+[node name="VictoryControlRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenVictoryControlRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/VictoryControlRuntimeActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Open Victory Gate"
+tooltip_text = "Open res://scenes/tools/VictoryControlRuntimeBench.tscn"
+
+[node name="RunVictoryControlRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/VictoryControlRuntimeActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Run Victory Gate"
+tooltip_text = "Run the 56-case v0.5 victory and audit gate"
+
+[node name="OpenVictoryControlRuntimeOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Open Victory Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/victory_control_runtime/"
+
 [node name="DesignQAStatusLabel" type="Label" parent="DockMargin/DockRows"]
 unique_name_in_owner = true
 layout_mode = 2
