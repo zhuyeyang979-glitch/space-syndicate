@@ -391,8 +391,10 @@ static func normalize_city_runtime_fields_data(city_value: Dictionary, legacy_tu
 		city["route_flow_seconds"] = float(maxi(0, int(city.get("route_flow_turns", 0)))) * safe_legacy_seconds
 	city["route_flow_seconds"] = maxf(0.0, float(city.get("route_flow_seconds", 0.0)))
 	city["route_flow_turns"] = int(ceil(float(city["route_flow_seconds"]) / safe_legacy_seconds)) if float(city["route_flow_seconds"]) > 0.0 else 0
+	city.erase("cashflow_remainder")
+	city.erase("project_cashflow_remainder_by_player")
 	var defaults := {
-		"cashflow_remainder": 0.0,
+		"gdp_cashflow_remainder_by_source_id": {},
 		"last_cashflow_rate": int(city.get("last_income", 0)),
 		"cashflow_paid_total": 0,
 		"military_gdp_penalty": 0,
@@ -433,7 +435,7 @@ func _new_city_surface(player_index: int, district: Dictionary, facts: Dictionar
 		"project_slots": PROJECT_STATE.create_project_slots(district_index, stable_region_id),
 		"project_tombstones": [],
 		"legacy_owner_is_project_authority": false,
-		# Transitional projection for v0.4 consumers outside SS05-02. Project state never reads it.
+		# Transitional display/legacy-domain projection. Project identity, GDP, and cashflow never read it.
 		"owner": player_index,
 		"active": true,
 		"level": 1,
@@ -443,8 +445,8 @@ func _new_city_surface(player_index: int, district: Dictionary, facts: Dictionar
 		"revenue_bonus": 0,
 		"contract_income_bonus": 0, "contract_seconds": 0.0, "contract_turns": 0, "contract_source": "",
 		"route_flow_multiplier": 1.0, "route_flow_seconds": 0.0, "route_flow_turns": 0, "route_flow_source": "",
-		"last_income": 0, "last_cashflow_rate": 0, "cashflow_remainder": 0.0,
-		"project_cashflow_remainder_by_player": {}, "cashflow_paid_total": 0,
+		"last_income": 0, "last_cashflow_rate": 0,
+		"gdp_cashflow_remainder_by_source_id": {}, "cashflow_paid_total": 0,
 		"last_gdp": 0, "last_gdp_delta": 0, "last_gdp_cycle": -1, "last_gdp_source": "",
 		"last_gdp_reason": "城市发展项目刚刚建立", "gdp_history": [],
 		"competition_matches": 0, "trade_routes": [], "trade_disrupted_routes": 0, "trade_route_damage": 0,

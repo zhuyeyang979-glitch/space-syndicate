@@ -52,13 +52,13 @@ theme_override_constants/separation = 12
 [node name="Title" type="Label" parent="Margin/Rows"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "City Project Identity - SS05-02"
+text = "Structured Project GDP - SS05-03"
 
 [node name="SummaryLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
-text = "Preparing 88 project identity, network, and ownership checks..."
+text = "Preparing 108 project, network, and GDP ownership checks..."
 
 [node name="StatusLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true
@@ -83,7 +83,7 @@ theme_override_constants/margin_bottom = 16
 
 [node name="BoundaryText" type="Label" parent="Margin/Rows/Body/BoundaryPanel/BoundaryMargin"]
 layout_mode = 2
-text = "Runtime ownership\n\nCityTradeNetworkRuntimeController\n- project sequence\n- derived city network\n- route graph and path selection\n- refresh ordering\n- payout-source orchestration\n- city-network save envelope\n\nPreserved owners\n- CityProductProjectState: share math\n- GdpFormulaRuntimeController: GDP formula\n- EconomyCashflowRuntimeController: cadence and payout arithmetic\n- ProductMarketRuntimeController: market"
+text = "Runtime ownership\n\nGdpFormulaRuntimeController\n- project-keyed GDP receipt rows\n- deterministic pressure allocation\n- zero-GDP semantics\n\nCityTradeNetworkRuntimeController\n- project attribution orchestration\n- routes and receipt+player cashflow sources\n\nCityProductProjectState\n- per-player floors and neutral remainder"
 autowrap_mode = 2
 
 [node name="OwnershipPanel" type="PanelContainer" parent="Margin/Rows/Body"]

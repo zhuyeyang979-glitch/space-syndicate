@@ -597,7 +597,7 @@ func _check_city_trade_network_characterization_assets() -> void:
 	var packed := load(CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH) as PackedScene
 	var bench := packed.instantiate() if packed != null else null
 	var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench != null and bench.has_method("build_characterization_manifest_preview") else {}
-	ready = ready and int(manifest.get("case_count", 0)) == 88 and str(manifest.get("ruleset_id", "")) == "v0.5" and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and bool(manifest.get("runtime_cutover_enabled", false)) and _is_pure_data(manifest)
+	ready = ready and int(manifest.get("case_count", 0)) == 108 and str(manifest.get("ruleset_id", "")) == "v0.5" and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and bool(manifest.get("runtime_cutover_enabled", false)) and _is_pure_data(manifest)
 	if bench != null:
 		bench.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
@@ -610,10 +610,10 @@ func _check_city_trade_network_characterization_assets() -> void:
 	var project_state_source := FileAccess.get_file_as_string("res://scripts/economy/city_product_project_state.gd")
 	var project_bridge_source := FileAccess.get_file_as_string("res://scripts/economy/city_product_project_bridge.gd")
 	ready = ready and controller_source.contains("func refresh_networks(") and controller_source.contains("func shortest_trade_path(") and controller_source.contains("func settle_cashflow_seconds(") and controller_source.contains("func tombstone_project(") and controller_source.contains("func to_save_data(") and controller_source.contains("func apply_save_data(")
-	ready = ready and controller_source.contains("project_rules_profile") and controller_source.contains("v0.5.project-slots.1") and not controller_source.contains('"source_kind": "city_owner"') and not project_state_source.contains("%d:%s:%s") and not project_bridge_source.contains("func migrate_legacy_city(") and not project_bridge_source.contains("func apply_development(")
+	ready = ready and controller_source.contains("project_rules_profile") and controller_source.contains("v0.5.structured-project-gdp.1") and controller_source.contains("player_gdp_attribution_rows") and controller_source.contains("gdp_cashflow_remainder_by_source_id") and not controller_source.contains('"source_kind": "city_owner"') and not controller_source.contains("project_cashflow_remainder_by_player") and not project_state_source.contains("func assign_city_gdp(") and not project_state_source.contains("func player_gdp(") and not project_bridge_source.contains("func migrate_legacy_city(") and not project_bridge_source.contains("func apply_development(") and not project_bridge_source.contains("func assign_city_gdp(")
 	ready = ready and bridge_source.contains("func capture_world_snapshot(") and bridge_source.contains("func apply_network_receipt(") and bridge_source.contains('"owns_runtime_state": false') and bridge_source.contains('"owns_rules": false')
-	ready = ready and coordinator_scene.contains("CityTradeNetworkRuntimeController") and coordinator_scene.contains("CityTradeNetworkWorldBridge") and contract.contains("SS05-02 completed the project identity hard cutover") and contract.contains("88/88") and contract.contains("There is no parallel route engine")
-	_expect(ready, "SS05-02 composes one CityTradeNetworkRuntimeController, a non-owning WorldBridge, and an 88-case five-slot identity gate with no parallel project or route engine")
+	ready = ready and coordinator_scene.contains("CityTradeNetworkRuntimeController") and coordinator_scene.contains("CityTradeNetworkWorldBridge") and contract.contains("SS05-03 completed the structured project GDP hard cutover") and contract.contains("108/108") and contract.contains("neutral remainder") and contract.contains("There is no parallel route engine")
+	_expect(ready, "SS05-03 composes one CityTradeNetworkRuntimeController, a non-owning WorldBridge, and a 108-case structured project GDP gate with no parallel project, route, or whole-city allocation engine")
 
 
 func _check_city_development_settlement_characterization_assets() -> void:

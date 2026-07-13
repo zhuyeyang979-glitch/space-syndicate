@@ -488,14 +488,14 @@ const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/econ
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/EconomyCashflowRuntimeCutoverBench.tscn"
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover/"
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover_sprint_4.png"
-const GDP_FORMULA_PROFILE_SCRIPT := "res://scripts/economy/gdp_formula_profile_resource.gd"
-const GDP_FORMULA_PROFILE_RESOURCE := "res://resources/economy/space_syndicate_gdp_formula_v04.tres"
+const GDP_FORMULA_PROFILE_SCRIPT := "res://scripts/economy/gdp_formula_profile_v05_resource.gd"
+const GDP_FORMULA_PROFILE_RESOURCE := "res://resources/economy/space_syndicate_gdp_formula_v05.tres"
 const GDP_FORMULA_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
 const GDP_FORMULA_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
 const GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/gdp_formula_runtime_cutover_bench.gd"
 const GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/GdpFormulaRuntimeCutoverBench.tscn"
 const GDP_FORMULA_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/gdp_formula_runtime_cutover/"
-const GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/gdp_formula_runtime_cutover_sprint_6.png"
+const GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/structured_project_gdp_v05_sprint_3.png"
 const SCENARIO_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/scenario_runtime_controller.gd"
 const SCENARIO_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/ScenarioRuntimeController.tscn"
 const SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/scenario_runtime_glue_cutover_bench.gd"
@@ -630,7 +630,7 @@ const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/c
 const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CityTradeNetworkWorldBridge.tscn"
 const CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/city_trade_network_runtime_ownership_contract.md"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
-const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_project_identity_v05_sprint_2.png"
+const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/structured_project_gdp_v05_sprint_3.png"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/city_development_settlement_runtime_characterization_bench.gd"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
 const CITY_DEVELOPMENT_SETTLEMENT_CONTRACT := "res://docs/city_development_settlement_runtime_contract.md"
@@ -9685,7 +9685,7 @@ func _check_economy_cashflow_runtime_cutover_component() -> void:
 		if controller != null:
 			controller.call("reset_state")
 			var ticks: Array = controller.call("advance_clock", 2.25, {"overlay_visible": true})
-			var result: Dictionary = controller.call("settle_sources", 1.0, {"sources": [{"source_id": "city:smoke", "source_kind": "city_owner", "district_index": 0, "player_index": 0, "gdp_per_minute": 40, "remainder": 0.0, "role_bonus_gdp_per_minute": 0, "role_bonus_basis_gdp_per_minute": 40, "eligible": true}]})
+			var result: Dictionary = controller.call("settle_sources", 1.0, {"sources": [{"source_id": "gdp:smoke:player:0", "source_kind": "project_share", "district_index": 0, "player_index": 0, "gdp_per_minute": 40, "remainder": 0.0, "role_bonus_gdp_per_minute": 0, "role_bonus_basis_gdp_per_minute": 40, "eligible": true}]})
 			var event: Dictionary = ((result.get("payout_events", []) as Array)[0] as Dictionary) if not (result.get("payout_events", []) as Array).is_empty() else {}
 			_expect(ticks == [1.0, 1.0] and is_equal_approx(float(controller.call("accumulator_seconds")), 0.25), "controller emits deterministic active-time ticks and retains sub-tick time")
 			_expect(int(event.get("paid_amount", -1)) == 0 and is_equal_approx(float(event.get("remainder_after", -1.0)), 2.0 / 3.0), "controller plans explicit floor and fractional remainder arithmetic")
@@ -9784,7 +9784,7 @@ func _check_gdp_formula_runtime_cutover_component() -> void:
 	_expect(profile != null and profile.has_method("to_dictionary") and profile.has_method("validate_profile"), "GDP Formula Profile is Inspector-editable and exposes pure parameter/validation APIs")
 	if profile != null:
 		var parameters: Dictionary = profile.call("to_dictionary")
-		_expect(int(parameters.get("product_base_revenue", 0)) == 42 and int(parameters.get("product_level_revenue", 0)) == 12 and int(parameters.get("demand_supply_revenue", 0)) == 28 and int(parameters.get("transit_gdp_base", 0)) == 18 and int(parameters.get("competition_penalty", 0)) == 16 and int(parameters.get("trade_disruption_penalty", 0)) == 55 and int(parameters.get("district_damage_penalty", 0)) == 18 and int(parameters.get("minimum_city_gdp", 0)) == 40, "GDP Formula Profile preserves the characterized main.gd parameter values")
+		_expect(str(parameters.get("profile_id", "")) == "gdp_formula_v05" and int(parameters.get("product_base_revenue", 0)) == 42 and int(parameters.get("product_rank_revenue", 0)) == 12 and int(parameters.get("demand_supply_revenue", 0)) == 28 and int(parameters.get("transit_gdp_base", 0)) == 18 and int(parameters.get("competition_penalty", 0)) == 16 and int(parameters.get("trade_disruption_penalty", 0)) == 55 and int(parameters.get("district_damage_penalty", 0)) == 18 and bool(parameters.get("zero_gdp_allowed", false)) and not parameters.has("minimum_city_gdp"), "GDP Formula Profile preserves characterized arithmetic while enabling v0.5 zero-GDP structured rows")
 		_expect(not _variant_contains_callable(parameters) and not _variant_contains_object(parameters), "GDP Formula Profile emits pure parameter data")
 	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
@@ -9798,13 +9798,25 @@ func _check_gdp_formula_runtime_cutover_component() -> void:
 		for method_name in required_methods:
 			methods_ok = methods_ok and controller != null and controller.has_method(method_name)
 		_expect(methods_ok, "GdpFormulaRuntimeController is an editable scene owner with formula, transit, summary, and debug APIs")
-		var production: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "products": [{"product_id": "测试生产", "price": 100, "level": 1, "production_factor": 1.0, "supply_demand_ratio": 1.0, "transport_speed": 1.0}]})
-		var demand: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "routes": [{"product_id": "测试需求", "price": 80, "flow_amount": 1.0, "consumption_factor": 1.0, "supply_availability_ratio": 1.0, "flow_speed": 1.0, "disrupted": false}]})
-		var transit: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "transit_routes": [{"product_id": "测试过境", "price": 100, "flow_amount": 1.0, "transport_speed": 1.0, "disrupted": false, "destination_is_district": false, "path_contains_district": true}]})
-		var pressure: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "revenue_bonus": 100, "competition_matches": 2, "disrupted_route_count": 1, "district_damage": 1})
-		_expect(int(production.get("product", 0)) == 36 and int(production.get("net", 0)) == 40, "controller preserves production arithmetic, rounding, and active-city floor")
+		var production_project := {"active": true, "project_id": "region.0001.slot.production.0.project.g1", "slot_id": "region.0001.slot.production.0", "generation": 1, "product_id": "星露莓", "direction": "production", "price": 100, "rank": 1, "production_factor": 1.0, "supply_demand_ratio": 1.0, "transport_speed": 1.0}
+		var demand_project := {"active": true, "project_id": "region.0001.slot.demand.0.project.g1", "slot_id": "region.0001.slot.demand.0", "generation": 1, "product_id": "月壤葡萄", "direction": "demand", "price": 80, "flow_amount": 1.0, "consumption_factor": 1.0, "supply_availability_ratio": 1.0, "flow_speed": 1.0, "route_available": true, "disrupted": false}
+		var commerce_project := {"active": true, "project_id": "region.0001.slot.commerce.0.project.g1", "slot_id": "region.0001.slot.commerce.0", "generation": 1, "product_id": "星露莓", "direction": "commerce", "transit_routes": [{"price": 100, "flow_amount": 1.0, "transport_speed": 1.0, "disrupted": false, "destination_is_district": false, "path_contains_district": true}]}
+		var base_input := {"active": true, "destroyed": false, "region_id": "region.0001", "production_projects": [], "demand_projects": [], "commerce_projects": [], "adjustments": []}
+		var production_input: Dictionary = base_input.duplicate(true)
+		production_input["production_projects"] = [production_project]
+		var demand_input: Dictionary = base_input.duplicate(true)
+		demand_input["demand_projects"] = [demand_project]
+		var transit_input: Dictionary = base_input.duplicate(true)
+		transit_input["commerce_projects"] = [commerce_project]
+		var pressure_input: Dictionary = base_input.duplicate(true)
+		pressure_input.merge({"adjustments": [{"source_kind": "legacy_revenue_bonus", "amount_gdp_per_minute": 100}], "competition_matches": 2, "disrupted_route_count": 1, "district_damage": 1}, true)
+		var production: Dictionary = coordinator.call("calculate_city_gdp", production_input)
+		var demand: Dictionary = coordinator.call("calculate_city_gdp", demand_input)
+		var transit: Dictionary = coordinator.call("calculate_city_gdp", transit_input)
+		var pressure: Dictionary = coordinator.call("calculate_city_gdp", pressure_input)
+		_expect(int(production.get("product", 0)) == 36 and int(production.get("net", 0)) == 36 and (production.get("gdp_rows", []) as Array).size() == 1, "controller emits one stable production-project GDP row without an active-city floor")
 		_expect(int(demand.get("route", 0)) == 27 and int(transit.get("transit", 0)) == 23, "controller preserves demand and transit arithmetic")
-		_expect(int(pressure.get("penalty", 0)) == 105 and int(pressure.get("net_before_floor", 0)) == -5 and int(pressure.get("net", 0)) == 40, "controller preserves competition, disruption, damage, and floor semantics")
+		_expect(int(pressure.get("penalty", 0)) == 100 and int(pressure.get("unabsorbed_penalty", 0)) == 5 and int(pressure.get("net", -1)) == 0, "controller allocates pressure deterministically and permits zero regional GDP")
 		var debug: Dictionary = controller.call("debug_snapshot") if controller != null else {}
 		_expect(bool(debug.get("controller_authoritative", false)) and not bool(debug.get("legacy_formula_fallback_used", true)), "GDP formula controller is authoritative with legacy fallback inactive")
 		_expect(not _variant_contains_callable(production) and not _variant_contains_object(production) and not _variant_contains_callable(pressure) and not _variant_contains_object(pressure), "GDP formula inputs and outputs remain pure data")
@@ -9843,16 +9855,16 @@ func _check_gdp_formula_runtime_cutover_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "GdpFormulaRuntimeCutoverBench exposes required QA APIs")
-		var expected_cases := ["profile_scene_composition", "profile_parameter_parity", "inactive_city_zero", "bonus_contract_composition", "production_baseline_exact", "production_price_direction", "production_level_direction", "production_factor_direction", "production_transport_direction", "demand_baseline_exact", "demand_price_direction", "demand_amount_direction", "demand_speed_direction", "transit_exact", "competition_penalty_exact", "route_disruption_penalty_exact", "damage_penalty_exact", "temporary_pressure_exact", "minimum_floor_exact", "real_main_delegates_legacy_inactive"]
+		var expected_cases := ["profile_scene_composition", "profile_v05_identity", "profile_schema_version", "no_minimum_floor_parameter", "product_catalog_ready", "inactive_city_zero", "destroyed_city_zero", "neutral_adjustment_row", "production_project_row", "demand_project_row", "commerce_project_row", "production_baseline_exact", "production_rank_direction", "production_factor_direction", "production_transport_direction", "demand_baseline_exact", "demand_missing_route_zero", "demand_flow_direction", "demand_speed_direction", "commerce_baseline_exact", "commerce_destination_excluded", "commerce_path_excluded", "competition_penalty_exact", "route_disruption_penalty_exact", "damage_penalty_exact", "control_pressure_exact", "military_pressure_exact", "zero_gdp_no_floor", "unabsorbed_penalty_reported", "row_conservation", "deterministic_pressure_allocation", "stable_receipt_identity", "product_industry_mapping", "unknown_product_fails_closed", "missing_project_identity_fails_closed", "duplicate_receipt_rejected", "project_attribution_conservation", "share_rounding_remainder_is_neutral", "public_private_attribution_boundary", "runtime_owner_and_legacy_absence"]
 		var cases: Array = bench.call("cutover_cases")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
 		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 20
+		var fields_ok := records.size() == 40
 		for record_variant in records:
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
-			for key in ["case_id", "expected_net", "actual_net", "product_gdp", "demand_gdp", "transit_gdp", "penalty", "parameter_checked", "main_delegation_checked", "pure_data_checked", "controller_ready", "legacy_fallback_used", "passed", "notes"]:
+			for key in ["case_id", "region_id", "row_count", "region_gdp_per_minute", "project_gdp_per_minute", "player_gdp_per_minute", "neutral_gdp_per_minute", "conservation_checked", "receipt_checked", "privacy_checked", "main_delegation_checked", "pure_data_checked", "controller_ready", "legacy_fallback_used", "passed", "notes"]:
 				fields_ok = fields_ok and record.has(key)
-		_expect(cases == expected_cases and str(bench.call("output_dir")) == GDP_FORMULA_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "GdpFormulaRuntimeCutoverBench defines 20 pure-data cases and user:// outputs")
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == GDP_FORMULA_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "GdpFormulaRuntimeCutoverBench defines 40 pure-data SS05-03 cases and user:// outputs")
 		root.remove_child(bench)
 		bench.queue_free()
 	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
@@ -9866,7 +9878,7 @@ func _check_gdp_formula_runtime_cutover_component() -> void:
 		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
 		_expect(scene_paths.has(GDP_FORMULA_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes GDP Formula Controller and Cutover Bench")
 	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
-	_expect(doc_source.contains("GDP Formula Characterization and Runtime Ownership Cutover") and doc_source.contains("GdpFormulaRuntimeController"), "main runtime replacement document records the Sprint 6 GDP formula boundary")
+	_expect(doc_source.contains("SS05-03: Structured Project GDP Hard Cutover") and doc_source.contains("GdpFormulaRuntimeController") and doc_source.contains("108/108"), "main runtime replacement document records the SS05-03 structured GDP boundary")
 	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
 	if dock_packed != null:
 		var viewport := SubViewport.new()
@@ -11593,12 +11605,12 @@ func _check_city_trade_network_runtime_characterization_component() -> void:
 			_expect(bench.find_child(node_name, true, false) != null, "CityTradeNetworkRuntimeCharacterizationBench statically owns %s" % node_name)
 		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "CityTradeNetworkRuntimeCharacterizationBench exposes the long-lived characterization API")
 		var cases: Array = bench.call("characterization_cases")
-		var required_cases := ["city_trade_call_graph_complete", "stable_slot_project_identity", "tie_has_no_controller", "first_contribution_full_share", "city_gdp_weighted_by_project_level", "competition_matches_other_owner", "production_district_source_type", "shortest_path_connected", "demand_order_damage_application", "refresh_order_competition_routes_gdp_shares_supply", "gdp_formula_controller_boundary", "cashflow_controller_cadence_boundary", "project_share_cashflow_route", "owner_only_city_has_no_project_payout", "current_save_shape", "public_city_route_privacy", "sprint64_deletion_candidates_complete", "controller_scene_composition", "world_bridge_scene_composition", "project_sequence_controller_owned", "route_algorithm_controller_owned", "refresh_orchestration_controller_owned", "save_envelope_controller_owned", "main_route_algorithms_absent", "controller_debug_pure_data", "no_parallel_network_owner", "v05_profile_project_contract", "exactly_five_project_slots", "slot_order_stable", "stable_ascii_region_and_slot_ids", "product_not_part_of_project_identity", "same_product_two_production_slots_distinct", "same_product_two_demand_slots_distinct", "commerce_single_slot", "sixth_project_rejected_atomically", "maximum_project_rank_iv", "contribution_at_iv_preserves_rank", "unique_highest_controls", "exact_tie_has_no_controller", "shares_total_10000_with_remainder", "tombstone_clears_active_project", "reopen_increments_generation", "old_project_id_never_reused", "save_roundtrip_generation_and_tombstones", "public_private_snapshot_visibility", "old_product_identity_and_owner_authority_absent"]
-		var cases_ok := cases.size() == 88
+		var required_cases := ["city_trade_call_graph_complete", "stable_slot_project_identity", "tie_has_no_controller", "first_contribution_full_share", "city_gdp_weighted_by_project_level", "competition_matches_other_owner", "production_district_source_type", "shortest_path_connected", "demand_order_damage_application", "refresh_order_competition_routes_gdp_shares_supply", "gdp_formula_controller_boundary", "cashflow_controller_cadence_boundary", "project_share_cashflow_route", "owner_only_city_has_no_project_payout", "current_save_shape", "public_city_route_privacy", "sprint64_deletion_candidates_complete", "controller_scene_composition", "world_bridge_scene_composition", "project_sequence_controller_owned", "route_algorithm_controller_owned", "refresh_orchestration_controller_owned", "save_envelope_controller_owned", "main_route_algorithms_absent", "controller_debug_pure_data", "no_parallel_network_owner", "v05_profile_project_contract", "exactly_five_project_slots", "slot_order_stable", "stable_ascii_region_and_slot_ids", "product_not_part_of_project_identity", "same_product_two_production_slots_distinct", "same_product_two_demand_slots_distinct", "commerce_single_slot", "sixth_project_rejected_atomically", "maximum_project_rank_iv", "contribution_at_iv_preserves_rank", "unique_highest_controls", "exact_tie_has_no_controller", "shares_total_10000_with_remainder", "tombstone_clears_active_project", "reopen_increments_generation", "old_project_id_never_reused", "save_roundtrip_generation_and_tombstones", "public_private_snapshot_visibility", "old_product_identity_and_owner_authority_absent", "structured_gdp_profile_v05", "structured_gdp_row_schema", "production_receipt_maps_project", "demand_receipt_maps_project", "commerce_receipt_maps_project", "region_gdp_equals_row_sum", "project_gdp_equals_project_rows", "player_plus_neutral_conservation", "share_floor_remainder_neutral", "destroyed_region_rows_empty", "zero_gdp_allowed", "legacy_adjustment_explicit_neutral", "city_owner_not_attribution_authority", "same_owner_competition_not_exempt", "receipt_id_stable", "industry_catalog_mapping", "cashflow_source_uses_receipt_player", "cashflow_remainder_keyed_by_source", "public_gdp_snapshot_privacy", "legacy_gdp_split_symbols_absent"]
+		var cases_ok := cases.size() == 108
 		for case_id in required_cases:
 			cases_ok = cases_ok and cases.has(case_id)
 		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
-		var required_fields := ["case_id", "district_index", "project_id", "slot_id", "generation", "product_id", "direction", "route_count", "path_length", "city_gdp", "player_gdp_total", "share_total_basis_points", "refresh_order_checked", "formula_owner_checked", "cashflow_owner_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]
+		var required_fields := ["case_id", "district_index", "project_id", "slot_id", "generation", "product_id", "direction", "route_count", "path_length", "city_gdp", "player_gdp_total", "receipt_id", "row_count", "project_gdp_total", "neutral_gdp_total", "conservation_checked", "share_total_basis_points", "refresh_order_checked", "formula_owner_checked", "cashflow_owner_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]
 		var fields_ok := true
 		for record_variant in manifest.get("records", []):
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -11606,11 +11618,11 @@ func _check_city_trade_network_runtime_characterization_component() -> void:
 				fields_ok = fields_ok and record.has(field_name)
 		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 		var legacy_absent := not main_source.contains("func _shortest_trade_path(") and not main_source.contains("func _trade_path_cost(") and not main_source.contains("func _refresh_city_trade_routes(") and not main_source.contains("func _route_base_flow_amount(") and not main_source.contains("var city_product_project_sequence")
-		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 88 and str(bench.call("output_dir")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and legacy_absent and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CityTradeNetworkRuntimeCharacterizationBench defines the 88-case pure-data SS05-02 gate with no parallel project or route engine")
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 108 and str(bench.call("output_dir")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and legacy_absent and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CityTradeNetworkRuntimeCharacterizationBench defines the 108-case pure-data SS05-03 gate with structured project GDP and no parallel project or route engine")
 		root.remove_child(bench)
 		bench.queue_free()
 	var contract_text := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT)
-	_expect(contract_text.contains("SS05-02 completed the project identity hard cutover") and contract_text.contains("five canonical slots") and contract_text.contains("controller=-1") and contract_text.contains("generation") and contract_text.contains("tombstone") and contract_text.contains("88/88") and contract_text.contains("There is no parallel route engine"), "City / Trade Network contract records five slots, stable identity, tie-without-control, generations/tombstones, and the preserved unique owner")
+	_expect(contract_text.contains("SS05-03 completed the structured project GDP hard cutover") and contract_text.contains("five canonical slots") and contract_text.contains("controller=-1") and contract_text.contains("generation") and contract_text.contains("tombstone") and contract_text.contains("108/108") and contract_text.contains("There is no parallel route engine") and contract_text.contains("neutral remainder"), "City / Trade Network contract records stable project identity plus structured GDP, conservation, neutral remainder, and the preserved unique owner")
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:

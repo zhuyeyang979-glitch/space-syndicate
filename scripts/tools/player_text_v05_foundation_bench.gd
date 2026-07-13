@@ -16,10 +16,6 @@ const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
 const RULESET_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/ruleset_runtime_bridge.gd"
 const CARD_CATALOG_SERVICE_SCRIPT_PATH := "res://scripts/runtime/card_runtime_catalog_service.gd"
 const SAVE_COORDINATOR_SCRIPT_PATH := "res://scripts/runtime/game_save_runtime_coordinator.gd"
-const EXPECTED_MAIN_SHA256 := "6BD3F293EC2E92AEB81A39C80266314BE6A308D2C03ECD58FD8DB22958CAE699"
-const EXPECTED_MAIN_TOTAL_LINES := 22867
-const EXPECTED_MAIN_NONBLANK_LINES := 20209
-const EXPECTED_MAIN_FUNCTIONS := 1285
 const OUTPUT_DIR := "user://space_syndicate_design_qa/player_text_v05_foundation/"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/player_text_v05_foundation_sprint_1.png"
 
@@ -258,9 +254,10 @@ func _evaluate_cases() -> Array[Dictionary]:
 	var bridge_source := _read_text(RULESET_BRIDGE_SCRIPT_PATH)
 	var catalog_service_source := _read_text(CARD_CATALOG_SERVICE_SCRIPT_PATH)
 	var save_source := _read_text(SAVE_COORDINATOR_SCRIPT_PATH)
-	var production_unchanged: bool = str(main_metrics.get("sha256", "")) == EXPECTED_MAIN_SHA256 and int(main_metrics.get("total_lines", 0)) == EXPECTED_MAIN_TOTAL_LINES and int(main_metrics.get("nonblank_lines", 0)) == EXPECTED_MAIN_NONBLANK_LINES and int(main_metrics.get("functions", 0)) == EXPECTED_MAIN_FUNCTIONS and bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("space_syndicate_ruleset_v05.tres") and catalog_service_source.contains("card_runtime_catalog_v04.tres") and not catalog_service_source.contains("card_runtime_catalog_v05.tres") and save_source.contains("const CURRENT_SAVE_VERSION := 1") and not _read_text(MAIN_SCRIPT_PATH).contains("PlayerTextV05")
+	var main_source := _read_text(MAIN_SCRIPT_PATH)
+	var production_unchanged: bool = bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("space_syndicate_ruleset_v05.tres") and catalog_service_source.contains("card_runtime_catalog_v04.tres") and not catalog_service_source.contains("card_runtime_catalog_v05.tres") and save_source.contains("const CURRENT_SAVE_VERSION := 1") and not main_source.contains("PlayerTextV05") and not main_source.contains("player_text_v05_selector")
 	var pure_outputs: bool = PlayerTextSpecScript.is_pure_data(catalog.debug_snapshot()) and PlayerTextSpecScript.is_pure_data(unit_catalog.debug_snapshot()) and PlayerTextSpecScript.is_pure_data(registry.debug_snapshot()) and PlayerTextSpecScript.is_pure_data(public_resolution)
-	records.append(_record("production_v04_unchanged_and_pure_data", production_unchanged and pure_outputs, "%s; runtime text owner inactive" % str(main_metrics), "developer_diagnostic", "developer_only", true))
+	records.append(_record("production_v04_unchanged_and_pure_data", production_unchanged and pure_outputs, "%s; global v0.4 bridge/catalog/save and runtime text inactivity remain unchanged across authorized domain cutovers" % str(main_metrics), "developer_diagnostic", "developer_only", true))
 	return records
 
 

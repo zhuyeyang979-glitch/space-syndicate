@@ -1,4 +1,6 @@
-# GDP Formula Runtime Cutover
+# GDP Formula Runtime Cutover (v0.4 Historical Evidence)
+
+> This document records the characterized v0.4 formula and its original cutover. SS05-03 replaced the active profile, minimum-city floor, and whole-city allocation path with `docs/structured_project_gdp_v05_contract.md`. Do not use the values below as a v0.5 runtime fallback.
 
 ## Rules boundary
 

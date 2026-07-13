@@ -182,15 +182,15 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "game-over state freezes cadence without losing the pre-existing remainder"
 		"exact_one_minute_owner_payout":
 			_reset_controller()
-			var result := _settle([_source("city:a", "city_owner", 0, 0, 73, 0.0)], 60.0)
+			var result := _settle([_source("gdp:city:a:player:0", "project_share", 0, 0, 73, 0.0)], 60.0)
 			passed = bool(result.get("valid", false)) and int(result.get("payout_total", 0)) == 73 and int(result.get("payout_event_count", 0)) == 1
 			flags.merge(_settlement_flags(result, 60.0), true)
 			notes = "one full GDP basis pays the exact owner GDP/min value"
 		"fractional_remainder_carries":
 			_reset_controller()
-			var first := _settle([_source("city:f", "city_owner", 0, 0, 40, 0.0)], 1.0)
+			var first := _settle([_source("gdp:city:f:player:0", "project_share", 0, 0, 40, 0.0)], 1.0)
 			var first_event := _first_event(first)
-			var second := _settle([_source("city:f", "city_owner", 0, 0, 40, float(first_event.get("remainder_after", 0.0)))], 1.0)
+			var second := _settle([_source("gdp:city:f:player:0", "project_share", 0, 0, 40, float(first_event.get("remainder_after", 0.0)))], 1.0)
 			var second_event := _first_event(second)
 			passed = int(first_event.get("paid_amount", -1)) == 0 and int(second_event.get("paid_amount", -1)) == 1 and is_equal_approx(float(second_event.get("remainder_after", -1.0)), 1.0 / 3.0)
 			flags.merge(_settlement_flags(second, 2.0), true)
@@ -216,13 +216,13 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "paid integers plus both project remainders conserve the accrued value"
 		"eliminated_player_no_payout":
 			_reset_controller()
-			var result := _settle([_source("city:eliminated", "city_owner", 0, 1, 500, 0.0, false)], 60.0)
+			var result := _settle([_source("gdp:city:eliminated:player:1", "project_share", 0, 1, 500, 0.0, false)], 60.0)
 			passed = int(result.get("payout_total", -1)) == 0 and int(result.get("payout_event_count", -1)) == 0
 			flags.merge(_settlement_flags(result, 60.0), true)
 			notes = "main marks eliminated-player sources ineligible before payout planning"
 		"destroyed_city_source_excluded":
 			_reset_controller()
-			var result := _settle([_source("city:destroyed", "city_owner", 3, 0, 500, 0.0, false)], 60.0)
+			var result := _settle([_source("gdp:city:destroyed:player:0", "project_share", 3, 0, 500, 0.0, false)], 60.0)
 			passed = int(result.get("payout_total", -1)) == 0 and int(result.get("payout_event_count", -1)) == 0
 			flags.merge(_settlement_flags(result, 60.0), true)
 			notes = "destroyed cities are excluded by the main compatibility adapter"
@@ -239,7 +239,7 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["payout_total"] = int(result.get("payout_total", 0))
 			flags["payout_event_count"] = 1 if bool(result.get("paid", false)) else 0
 			flags["main_delegation_checked"] = true
-			notes = "real main computes owner GDP and delegates payout arithmetic to the scene-owned controller"
+			notes = "historical case id retained: real main derives the sole contributor's receipt attribution and delegates payout arithmetic to the scene-owned controller"
 		"real_main_project_share_delegates":
 			var result := _exercise_real_main_project_cashflow()
 			passed = bool(result.get("paid", false)) and bool(result.get("both_players_paid", false)) and bool(result.get("controller_recorded", false)) and int(result.get("cash_delta_total", 0)) == int(result.get("payout_total", -1))
@@ -247,7 +247,7 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["payout_event_count"] = int(result.get("payout_event_count", 0))
 			flags["main_delegation_checked"] = true
 			flags["remainder_checked"] = true
-			notes = "real project shares use existing allocation rules before controller payout planning"
+			notes = "real project GDP rows are attributed to both contributors and routed as receipt+player sources before controller payout planning"
 		"legacy_save_timer_restores":
 			_reset_controller()
 			controller.call("apply_legacy_save_snapshot", {"economy_cashflow_timer": 0.625})
@@ -268,7 +268,7 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "real main captures and reapplies the unchanged v1 top-level timer key through controller authority"
 		"privacy_pure_data_and_main_legacy_authority_inactive":
 			_reset_controller()
-			_settle([_source("city:private", "city_owner", 4, 2, 60, 0.0).merged({"hidden_owner": "secret-owner", "private_target": 991}, true)], 1.0)
+			_settle([_source("gdp:city:private:player:2", "project_share", 4, 2, 60, 0.0).merged({"hidden_owner": "secret-owner", "private_target": 991}, true)], 1.0)
 			var debug: Dictionary = controller.call("debug_snapshot")
 			var private_ui: Dictionary = controller.call("private_ui_snapshot", 2)
 			var encoded := JSON.stringify({"debug": debug, "private_ui": private_ui})
@@ -405,13 +405,21 @@ func _exercise_real_main_project_cashflow() -> Dictionary:
 		return {}
 	var district_index := int(prepared.get("district_index", -1))
 	var city: Dictionary = prepared.get("city", {}) if prepared.get("city", {}) is Dictionary else {}
-	var first_contribution := PROJECT_BRIDGE.apply_project_contribution(city, district_index, 0, {"product_id": "test_product", "project_direction": "production", "contribution_units": 1}, 100)
-	city = (first_contribution.get("city", {}) as Dictionary).duplicate(true)
-	var second_contribution := PROJECT_BRIDGE.apply_project_contribution(city, district_index, 1, {"product_id": "test_product", "project_direction": "production", "contribution_units": 1}, 101)
+	var active_projects: Array = PROJECT_BRIDGE.active_projects(city)
+	if active_projects.is_empty() or not (active_projects[0] is Dictionary):
+		return {}
+	var project: Dictionary = active_projects[0]
+	var second_contribution := PROJECT_BRIDGE.apply_project_contribution(city, district_index, 1, {
+		"product_id": str(project.get("product_id", "")),
+		"project_direction": str(project.get("direction", "production")),
+		"slot_index": int(project.get("slot_index", 0)),
+		"contribution_units": int((project.get("contribution_by_player", {}) as Dictionary).get("0", 1)),
+	}, 101)
 	city = (second_contribution.get("city", {}) as Dictionary).duplicate(true)
 	var districts: Array = _real_main.get("districts") as Array
 	(districts[district_index] as Dictionary)["city"] = city
 	_real_main.set("districts", districts)
+	_real_main.call("_refresh_city_networks")
 	var players: Array = _real_main.get("players") as Array
 	var before_zero := int((players[0] as Dictionary).get("cash", 0))
 	var before_one := int((players[1] as Dictionary).get("cash", 0))

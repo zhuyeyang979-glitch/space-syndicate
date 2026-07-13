@@ -320,7 +320,7 @@ func _run_case(case_id: String) -> Dictionary:
 
 func _case_call_graph() -> Dictionary:
 	var settlement := str(_sources.get("city_controller", "")) + str(_sources.get("city_world_bridge", "")) + _function_source(str(_sources.get("coordinator", "")), "execute_city_development")
-	var required := ["plan_settlement", "preflight_settlement", "claim_project_sequence_if", "apply_project_contribution", "refresh_networks", "refresh_prices", "city_gdp_breakdown", "assign_city_gdp", "finalize_settlement", "apply_post_commit_intents"]
+	var required := ["plan_settlement", "preflight_settlement", "claim_project_sequence_if", "apply_project_contribution", "refresh_networks", "refresh_prices", "city_gdp_breakdown", "private_projects", "finalize_settlement", "apply_post_commit_intents"]
 	var missing: Array = []
 	for token in required:
 		if not settlement.contains(str(token)):
@@ -339,8 +339,8 @@ func _case_legality_boundary() -> Dictionary:
 func _case_project_bridge_boundary() -> Dictionary:
 	var state_source := str(_sources.get("project_state", ""))
 	var bridge_source := str(_sources.get("project_bridge", ""))
-	var observed := state_source.contains("func contribute(") and state_source.contains("func recalculate_shares(") and bridge_source.contains("func apply_project_contribution(") and bridge_source.contains("func assign_city_gdp(") and not bridge_source.contains("Node")
-	return _record("project_bridge_boundary", observed, observed, "CityProductProjectState/Bridge remain pure-data project, contribution, share, and GDP-allocation owners.")
+	var observed := state_source.contains("func contribute(") and state_source.contains("func recalculate_shares(") and state_source.contains("func attribute_gdp_rows(") and bridge_source.contains("func apply_project_contribution(") and bridge_source.contains("func apply_gdp_rows(") and not bridge_source.contains("Node")
+	return _record("project_bridge_boundary", observed, observed, "CityProductProjectState/Bridge remain pure-data project, contribution, share, and structured GDP attribution owners.")
 
 
 func _case_network_boundary() -> Dictionary:
@@ -422,7 +422,7 @@ func _case_first_city_shape() -> Dictionary:
 		return _record("first_city_surface_shape", false, false, "Real development failed.")
 	var district_index := int(fixture.get("district_index", -1))
 	var city: Dictionary = _runtime_main.call("_district_city", district_index)
-	var required := ["owner", "active", "level", "products", "demands", "projects", "last_gdp", "gdp_history", "trade_routes", "cashflow_remainder", "project_cashflow_remainder_by_player", "built_at", "public_clues"]
+	var required := ["owner", "active", "level", "products", "demands", "projects", "last_gdp", "gdp_history", "trade_routes", "gdp_cashflow_remainder_by_source_id", "built_at", "public_clues"]
 	var missing: Array = []
 	for key in required:
 		if not city.has(key): missing.append(key)
@@ -541,11 +541,13 @@ func _case_contribution_order() -> Dictionary:
 func _case_gdp_remainder() -> Dictionary:
 	var first := PROJECT_STATE.create_project(1, "活体芯片", "production", 0, 1, 1)
 	var second := PROJECT_STATE.create_project(1, "真空可可", "demand", 1, 1, 2)
-	var assigned: Array = PROJECT_STATE.assign_city_gdp([first, second], 101)
+	var rows := [_gdp_row(first, 51, "production_output"), _gdp_row(second, 50, "demand_delivery")]
+	var attribution := PROJECT_STATE.attribute_gdp_rows([first, second], rows)
+	var assigned: Array = attribution.get("projects", []) as Array
 	var first_gdp := int((assigned[0] as Dictionary).get("current_gdp", 0))
 	var second_gdp := int((assigned[1] as Dictionary).get("current_gdp", 0))
 	var observed := first_gdp == 51 and second_gdp == 50
-	return _record("gdp_remainder_controller", observed, observed, "Project-level GDP flooring remainder is assigned to the first active project, preserving 101 total.", {"gdp_assignment_checked": true})
+	return _record("gdp_remainder_controller", observed, observed, "Structured rows preserve their explicit 51/50 project totals; no whole-city remainder allocator remains.", {"gdp_assignment_checked": true})
 
 
 func _case_legacy_sync(direction: String) -> Dictionary:
@@ -574,12 +576,12 @@ func _case_commerce_transport() -> Dictionary:
 
 func _case_refresh_order() -> Dictionary:
 	var settlement := _function_source(str(_sources.get("city_world_bridge", "")), "apply_settlement_plan")
-	var source_order := _tokens_in_order(settlement, ["refresh_networks", "refresh_prices", "competition_matches", "city_gdp_breakdown", "assign_city_gdp"])
+	var source_order := _tokens_in_order(settlement, ["refresh_networks", "refresh_prices", "competition_matches", "city_gdp_breakdown", "private_projects"])
 	var fixture := _development_fixture("demand")
 	var applied := _apply_fixture(fixture, 0)
 	var project := _fixture_project(fixture, "demand")
 	var observed := source_order and applied and project.has("current_gdp")
-	return _record("refresh_order_network_market_gdp", observed, observed, "Observed order is network refresh -> market refresh -> GDP facts -> project GDP assignment -> resolved lifecycle.", _project_flags(fixture, project, {"network_refresh_checked": true, "market_refresh_checked": true, "gdp_assignment_checked": true}))
+	return _record("refresh_order_network_market_gdp", observed, observed, "Observed order is network refresh with structured GDP rows -> market refresh -> GDP facts -> project lookup -> resolved lifecycle.", _project_flags(fixture, project, {"network_refresh_checked": true, "market_refresh_checked": true, "gdp_assignment_checked": true}))
 
 
 func _case_lifecycle() -> Dictionary:
@@ -648,8 +650,8 @@ func _case_save_shape() -> Dictionary:
 	var saved_city: Dictionary = ((saved_districts[district_index] as Dictionary).get("city", {}) as Dictionary) if district_index >= 0 and district_index < saved_districts.size() else {}
 	var runtime_state: Dictionary = state.get("city_trade_network_runtime", {}) if state.get("city_trade_network_runtime", {}) is Dictionary else {}
 	var legacy := PROJECT_BRIDGE.normalize_city({"owner": 2, "active": true, "products": [{"name": str(fixture.get("product_id", "")), "level": 1}], "demands": []}, district_index, 9)
-	var observed := applied and not (saved_city.get("projects", []) as Array).is_empty() and str(runtime_state.get("terms_version", "")) == "v0.5.project-slots.1" and int(runtime_state.get("project_sequence", 0)) > 0 and not state.has("city_product_project_sequence") and (legacy.get("projects", []) as Array).is_empty() and (legacy.get("project_slots", []) as Array).size() == 5
-	return _record("current_and_migration_save_shape", observed, observed, "Current saves embed stable slots/generations in one domain envelope; legacy owner fields do not synthesize project shares.", {"district_index": district_index, "save_checked": true})
+	var observed := applied and not (saved_city.get("projects", []) as Array).is_empty() and str(runtime_state.get("terms_version", "")) == "v0.5.structured-project-gdp.1" and int(runtime_state.get("project_sequence", 0)) > 0 and not state.has("city_product_project_sequence") and (legacy.get("projects", []) as Array).is_empty() and (legacy.get("project_slots", []) as Array).size() == 5
+	return _record("current_and_migration_save_shape", observed, observed, "Current saves embed stable slots/generations and the structured GDP source version in one domain envelope; legacy owner fields do not synthesize project shares.", {"district_index": district_index, "save_checked": true})
 
 
 func _case_downstream_atomicity() -> Dictionary:
@@ -986,6 +988,25 @@ func _project_flags(fixture: Dictionary, project: Dictionary, extra: Dictionary 
 	}
 	for key in extra.keys(): result[key] = extra[key]
 	return result
+
+
+func _gdp_row(project: Dictionary, amount: int, source_kind: String) -> Dictionary:
+	return {
+		"receipt_id": "gdp.%s.%s.%s" % [str(project.get("region_id", "")), str(project.get("project_id", "")), source_kind],
+		"region_id": str(project.get("region_id", "")),
+		"project_id": str(project.get("project_id", "")),
+		"project_generation": int(project.get("generation", 0)),
+		"slot_id": str(project.get("slot_id", "")),
+		"product_id": str(project.get("product_id", "")),
+		"industry_id": "technology",
+		"direction": str(project.get("direction", "")),
+		"source_kind": source_kind,
+		"gross_gdp_per_minute": amount,
+		"penalty_gdp_per_minute": 0,
+		"net_gdp_per_minute": amount,
+		"neutral": false,
+		"visibility_scope": "public",
+	}
 
 
 func _mutation_signature() -> String:

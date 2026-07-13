@@ -24,9 +24,9 @@ const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.g
 const OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
-const SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_project_identity_v05_sprint_2.png"
+const SCREENSHOT_PATH := "user://space_syndicate_design_qa/structured_project_gdp_v05_sprint_3.png"
 const RULESET_ID := "v0.5"
-const CASE_COUNT := 88
+const CASE_COUNT := 108
 const FIXED_SEED := 630063
 const TEST_PRODUCT := "活体芯片"
 const SECOND_PRODUCT := "真空可可"
@@ -136,6 +136,29 @@ const CUTOVER_CASE_IDS := [
 	"no_parallel_network_owner",
 ]
 
+const STRUCTURED_GDP_CASE_IDS := [
+	"structured_gdp_profile_v05",
+	"structured_gdp_row_schema",
+	"production_receipt_maps_project",
+	"demand_receipt_maps_project",
+	"commerce_receipt_maps_project",
+	"region_gdp_equals_row_sum",
+	"project_gdp_equals_project_rows",
+	"player_plus_neutral_conservation",
+	"share_floor_remainder_neutral",
+	"destroyed_region_rows_empty",
+	"zero_gdp_allowed",
+	"legacy_adjustment_explicit_neutral",
+	"city_owner_not_attribution_authority",
+	"same_owner_competition_not_exempt",
+	"receipt_id_stable",
+	"industry_catalog_mapping",
+	"cashflow_source_uses_receipt_player",
+	"cashflow_remainder_keyed_by_source",
+	"public_gdp_snapshot_privacy",
+	"legacy_gdp_split_symbols_absent",
+]
+
 const REMOVED_MAIN_ALGORITHMS := [
 	"_route_base_flow_amount",
 	"_city_gdp_formula_snapshot",
@@ -192,7 +215,7 @@ var _sources: Dictionary = {}
 
 
 func _ready() -> void:
-	print("CityTradeNetworkRuntimeCharacterizationBench SS05-02 ready: auto_run=%s editor_hint=%s" % [auto_run, Engine.is_editor_hint()])
+	print("CityTradeNetworkRuntimeCharacterizationBench SS05-03 ready: auto_run=%s editor_hint=%s" % [auto_run, Engine.is_editor_hint()])
 	if auto_run and not Engine.is_editor_hint():
 		call_deferred("run_characterization_suite")
 
@@ -209,6 +232,7 @@ func characterization_cases() -> Array:
 	var cases := CASE_IDS.duplicate()
 	cases.append_array(CUTOVER_CASE_IDS)
 	cases.append_array(V05_PROJECT_CASE_IDS)
+	cases.append_array(STRUCTURED_GDP_CASE_IDS)
 	return cases
 
 
@@ -217,7 +241,7 @@ func build_characterization_manifest_preview() -> Dictionary:
 	for case_id_variant in characterization_cases():
 		records.append(_record(str(case_id_variant), false, false, "preview"))
 	return {
-		"suite": "city-project-identity-v05-ss05-02",
+		"suite": "city-trade-structured-project-gdp-v05-ss05-03",
 		"ruleset_id": RULESET_ID,
 		"runtime_owner": CONTROLLER_SCRIPT_PATH,
 		"runtime_cutover_enabled": true,
@@ -231,7 +255,7 @@ func build_characterization_manifest_preview() -> Dictionary:
 		"needs_design_decision_count": 0,
 		"baseline_main_sha256": BASELINE_MAIN_SHA256,
 		"baseline_main_metrics": BASELINE_MAIN_METRICS.duplicate(true),
-		"next_cutover_recommendation": "SS05-03 structured GDP rows",
+		"next_cutover_recommendation": "SS05-04 qualification and victory runtime characterization",
 		"records": records,
 	}
 
@@ -263,7 +287,7 @@ func run_characterization_suite() -> void:
 	if not main_reduced:
 		_failures.append("main.gd deletion gate missed: baseline=%s current=%s" % [str(BASELINE_MAIN_METRICS), str(metrics)])
 	var manifest := {
-		"suite": "city-project-identity-v05-ss05-02",
+		"suite": "city-trade-structured-project-gdp-v05-ss05-03",
 		"ruleset_id": RULESET_ID,
 		"runtime_owner": CONTROLLER_SCRIPT_PATH,
 		"runtime_cutover_enabled": true,
@@ -281,7 +305,7 @@ func run_characterization_suite() -> void:
 		"main_metrics": metrics,
 		"production_main_unchanged": false,
 		"main_reduction_gate_passed": main_reduced,
-		"next_cutover_recommendation": "SS05-03 structured GDP rows",
+		"next_cutover_recommendation": "SS05-04 qualification and victory runtime characterization",
 		"records": _records.duplicate(true),
 	}
 	_write_text(MANIFEST_PATH, JSON.stringify(manifest, "\t"))
@@ -293,7 +317,7 @@ func run_characterization_suite() -> void:
 	print("CityTradeNetworkRuntimeCharacterizationBench manifest: %s" % MANIFEST_PATH)
 	print("CityTradeNetworkRuntimeCharacterizationBench report: %s" % REPORT_PATH)
 	print("CityTradeNetworkRuntimeCharacterizationBench screenshot: %s" % SCREENSHOT_PATH)
-	print("CityTradeNetworkRuntimeCharacterizationBench SS05-02 passed: %d/%d" % [_count_flag("passed"), CASE_COUNT])
+	print("CityTradeNetworkRuntimeCharacterizationBench SS05-03 passed: %d/%d" % [_count_flag("passed"), CASE_COUNT])
 	print("CityTradeNetworkRuntimeCharacterizationBench observed: %d/%d; aligned=%d/%d; design_decisions=%d" % [_count_flag("observed"), CASE_COUNT, _count_flag("contract_aligned"), CASE_COUNT, _count_flag("needs_design_decision")])
 	if not _failures.is_empty():
 		push_error("CityTradeNetworkRuntimeCharacterizationBench failed:\n- %s" % "\n- ".join(_failures))
@@ -309,6 +333,8 @@ func run_suite() -> void:
 
 
 func _run_case(case_id: String) -> Dictionary:
+	if STRUCTURED_GDP_CASE_IDS.has(case_id):
+		return _case_structured_gdp(case_id)
 	if CUTOVER_CASE_IDS.has(case_id):
 		return _case_cutover(case_id)
 	if V05_PROJECT_CASE_IDS.has(case_id):
@@ -378,7 +404,7 @@ func _case_call_graph() -> Dictionary:
 
 func _case_city_shape() -> Dictionary:
 	var city := _base_city(0)
-	var required := ["owner", "active", "products", "demands", "projects", "competition_matches", "trade_routes", "trade_disrupted_routes", "supplied_demands", "cashflow_remainder", "project_cashflow_remainder_by_player"]
+	var required := ["owner", "active", "products", "demands", "projects", "competition_matches", "trade_routes", "trade_disrupted_routes", "supplied_demands", "gdp_cashflow_remainder_by_source_id"]
 	var missing: Array = []
 	for key in required:
 		if not city.has(key): missing.append(key)
@@ -451,27 +477,28 @@ func _case_gdp_weight() -> Dictionary:
 	var second := CITY_PROJECT_STATE.create_project(1, SECOND_PRODUCT, "demand", 1, 1, 2)
 	second["level"] = 3
 	second["rank"] = 3
-	var assigned: Array = CITY_PROJECT_STATE.assign_city_gdp([first, second], 100)
-	var observed := int((assigned[0] as Dictionary).get("current_gdp", 0)) == 25 and int((assigned[1] as Dictionary).get("current_gdp", 0)) == 75
-	return _record("city_gdp_weighted_by_project_level", observed, observed, "City GDP is distributed by active project level weight.", {"city_gdp": 100})
+	var attribution := CITY_PROJECT_STATE.attribute_gdp_rows([first, second], [_gdp_row(first, 25, "production"), _gdp_row(second, 75, "demand")])
+	var projects: Array = attribution.get("projects", []) as Array
+	var observed := bool(attribution.get("valid", false)) and int((projects[0] as Dictionary).get("current_gdp", 0)) == 25 and int((projects[1] as Dictionary).get("current_gdp", 0)) == 75
+	return _record("city_gdp_weighted_by_project_level", observed, observed, "Historical case ID now proves GDP comes from project-keyed rows, not rank-weighted whole-city splitting.", {"city_gdp": 100})
 
 
 func _case_city_gdp_total() -> Dictionary:
 	var first := CITY_PROJECT_STATE.create_project(1, TEST_PRODUCT, "production", 0, 1, 1)
 	var second := CITY_PROJECT_STATE.create_project(1, SECOND_PRODUCT, "demand", 1, 1, 2)
-	var assigned: Array = CITY_PROJECT_STATE.assign_city_gdp([first, second], 101)
-	var total := 0
-	for project_variant in assigned: total += int((project_variant as Dictionary).get("current_gdp", 0))
+	var attribution := CITY_PROJECT_STATE.attribute_gdp_rows([first, second], [_gdp_row(first, 50, "production"), _gdp_row(second, 51, "demand")])
+	var total := int(attribution.get("project_gdp_per_minute", 0))
 	return _record("city_gdp_allocation_exact", total == 101, total == 101, "Project GDP allocations preserve the exact city total after flooring.", {"city_gdp": total})
 
 
 func _case_player_gdp_total() -> Dictionary:
 	var project := CITY_PROJECT_STATE.create_project(1, TEST_PRODUCT, "production", 0, 1, 1)
 	project = CITY_PROJECT_STATE.contribute(project, 1, 2, 2)
-	var assigned: Array = CITY_PROJECT_STATE.assign_city_gdp([project], 101)
-	var by_player: Dictionary = CITY_PROJECT_STATE.gdp_by_player(assigned)
-	var total := _int_total(by_player)
-	return _record("player_gdp_allocation_exact", total == 101, total == 101, "Project-share GDP allocations preserve the exact project total.", {"city_gdp": 101, "player_gdp_total": total})
+	var attribution := CITY_PROJECT_STATE.attribute_gdp_rows([project], [_gdp_row(project, 101, "production")])
+	var player_total := int(attribution.get("player_gdp_per_minute", 0))
+	var neutral_total := int(attribution.get("neutral_gdp_per_minute", 0))
+	var observed := player_total + neutral_total == 101 and neutral_total == 1
+	return _record("player_gdp_allocation_exact", observed, observed, "Player floors plus neutral remainder preserve the exact project GDP total.", {"city_gdp": 101, "player_gdp_total": player_total})
 
 
 func _case_public_project_privacy() -> Dictionary:
@@ -571,14 +598,14 @@ func _case_competition_other_owner() -> Dictionary:
 	var fixture := _competition_fixture(false)
 	var first := int(fixture.get("first", -1))
 	var matches := int(_runtime_main.call("_city_competition_matches", first)) if first >= 0 else -1
-	return _record("competition_matches_other_owner", matches == 1, matches == 1, "Matching products in another owner's active city count once.", {"district_index": first})
+	return _record("competition_matches_other_owner", matches == 1, matches == 1, "Matching production projects in another region count once without reading city owner.", {"district_index": first})
 
 
 func _case_competition_same_owner() -> Dictionary:
 	var fixture := _competition_fixture(true)
 	var first := int(fixture.get("first", -1))
 	var matches := int(_runtime_main.call("_city_competition_matches", first)) if first >= 0 else -1
-	return _record("same_owner_not_competition", matches == 0, matches == 0, "The same owner's matching city is excluded from competition.", {"district_index": first})
+	return _record("same_owner_not_competition", matches == 1, matches == 1, "Historical case ID now proves v0.5 has no same-owner competition exemption.", {"district_index": first})
 
 
 func _case_route_source(city_source: bool) -> Dictionary:
@@ -702,14 +729,14 @@ func _case_product_route_filter() -> Dictionary:
 
 func _case_refresh_order() -> Dictionary:
 	var source := _function_source(str(_sources.get("controller", "")), "refresh_networks")
-	var source_order := _tokens_in_order(source, ["_competition_matches(", "_trade_route_for_product(", "_city_gdp_breakdown_from_snapshot(", "assign_city_gdp(", "ensure_city_development_supply"])
+	var source_order := _tokens_in_order(source, ["_competition_matches(", "_trade_route_for_product(", "_city_with_gdp_rows(", "ensure_city_development_supply"])
 	var fixture := _network_fixture(false, true)
 	var destination := int(fixture.get("destination", -1))
 	var city: Dictionary = _runtime_main.call("_district_city", destination) if destination >= 0 else {}
 	var projects: Array = city.get("projects", [])
 	var runtime_effect := int(city.get("supplied_demands", 0)) == 1 and not projects.is_empty() and int((projects[0] as Dictionary).get("current_gdp", -1)) >= 0
 	var observed := source_order and runtime_effect
-	return _record("refresh_order_competition_routes_gdp_shares_supply", observed, observed, "Refresh order is competition -> routes -> GDP -> project allocation -> development supply guarantee.", {"district_index": destination, "refresh_order_checked": source_order})
+	return _record("refresh_order_competition_routes_gdp_shares_supply", observed, observed, "Refresh order is competition -> routes -> structured GDP rows -> project attribution -> supply guarantee.", {"district_index": destination, "refresh_order_checked": source_order})
 
 
 func _case_gdp_formula_boundary() -> Dictionary:
@@ -747,13 +774,15 @@ func _case_legacy_cashflow() -> Dictionary:
 func _case_fractional_remainder() -> Dictionary:
 	var fixture := _cashflow_fixture(true, false, 1)
 	var destination := int(fixture.get("destination", -1))
+	var city_before: Dictionary = _runtime_main.call("_district_city", destination)
+	city_before["gdp_cashflow_remainder_by_source_id"] = {"retired.project.receipt.player.0": 0.75}
 	_runtime_main.call("_settle_city_cashflow_seconds", 1.0)
 	var city: Dictionary = _runtime_main.call("_district_city", destination)
-	var remainders: Dictionary = city.get("project_cashflow_remainder_by_player", {})
+	var remainders: Dictionary = city.get("gdp_cashflow_remainder_by_source_id", {})
 	var total := 0.0
 	for value in remainders.values(): total += float(value)
-	var observed := total > 0.0 and total < 2.0
-	return _record("fractional_remainder_preserved", observed, observed, "Sub-unit project payouts persist fractional remainder per player.", {"district_index": destination, "cashflow_owner_checked": true})
+	var observed := total > 0.0 and total < 2.0 and not remainders.has("retired.project.receipt.player.0")
+	return _record("fractional_remainder_preserved", observed, observed, "Sub-unit payouts persist only for active receipt+player source IDs; retired generation keys are discarded.", {"district_index": destination, "cashflow_owner_checked": true})
 
 
 func _case_destroyed_cashflow() -> Dictionary:
@@ -786,13 +815,13 @@ func _case_market_refresh_separate() -> Dictionary:
 
 func _case_current_save_shape() -> Dictionary:
 	var fixture := _network_fixture(false, true)
-	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.project-slots.1", "project_sequence": 77, "generation_by_slot_id": {}, "project_tombstones": []}})
+	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.structured-project-gdp.1", "project_sequence": 77, "generation_by_slot_id": {}, "project_tombstones": []}})
 	var state: Dictionary = _runtime_main.call("_capture_run_domain_state_compatibility_adapter")
 	var saved_districts: Array = state.get("districts", [])
 	var destination := int(fixture.get("destination", -1))
 	var city: Dictionary = ((saved_districts[destination] as Dictionary).get("city", {}) as Dictionary) if destination >= 0 and destination < saved_districts.size() else {}
 	var runtime_state: Dictionary = state.get("city_trade_network_runtime", {}) if state.get("city_trade_network_runtime", {}) is Dictionary else {}
-	var observed := not state.has("city_product_project_sequence") and str(runtime_state.get("terms_version", "")) == "v0.5.project-slots.1" and int(runtime_state.get("project_sequence", 0)) == 77 and runtime_state.has("generation_by_slot_id") and runtime_state.has("project_tombstones") and not (city.get("projects", []) as Array).is_empty() and not (city.get("trade_routes", []) as Array).is_empty()
+	var observed := not state.has("city_product_project_sequence") and str(runtime_state.get("terms_version", "")) == "v0.5.structured-project-gdp.1" and int(runtime_state.get("project_sequence", 0)) == 77 and runtime_state.has("generation_by_slot_id") and runtime_state.has("project_tombstones") and not (city.get("projects", []) as Array).is_empty() and not (city.get("trade_routes", []) as Array).is_empty()
 	return _record("current_save_shape", observed, observed, "The domain save owns one v0.5 project-slot envelope with sequence, generations, and tombstones; no flat duplicate is written.", {"district_index": destination, "save_checked": true})
 
 
@@ -964,6 +993,143 @@ func _case_v05_project(case_id: String) -> Dictionary:
 	return _record(case_id, observed, observed, notes, flags)
 
 
+func _case_structured_gdp(case_id: String) -> Dictionary:
+	var observed := false
+	var notes := ""
+	var flags := {"formula_owner_checked": true}
+	match case_id:
+		"structured_gdp_profile_v05":
+			var debug: Dictionary = _gdp_formula.call("debug_snapshot")
+			observed = str(debug.get("profile_id", "")) == "gdp_formula_v05" and str(debug.get("schema_version", "")) == "v0.5.structured-project-gdp.1" and bool(debug.get("zero_gdp_allowed", false))
+			notes = "The live GDP owner uses the Inspector-editable v0.5 structured-project profile."
+		"structured_gdp_row_schema":
+			var breakdown := _structured_breakdown()
+			var rows: Array = breakdown.get("gdp_rows", []) as Array
+			var required := ["receipt_id", "region_id", "project_id", "project_generation", "slot_id", "product_id", "industry_id", "direction", "source_kind", "gross_gdp_per_minute", "penalty_gdp_per_minute", "net_gdp_per_minute", "visibility_scope"]
+			observed = rows.size() == 3
+			for row_variant in rows:
+				for key in required:
+					observed = observed and (row_variant as Dictionary).has(key)
+			flags["row_count"] = rows.size()
+			notes = "Every project GDP receipt carries stable identity, direction, amounts, and visibility."
+		"production_receipt_maps_project":
+			var project := _structured_project("production")
+			var breakdown := _structured_breakdown(["production"])
+			var row: Dictionary = (breakdown.get("gdp_rows", []) as Array)[0]
+			observed = str(row.get("project_id", "")) == str(project.get("project_id", "")) and str(row.get("direction", "")) == "production"
+			flags["receipt_id"] = str(row.get("receipt_id", ""))
+			notes = "Production output is attributed to the exact production project generation."
+		"demand_receipt_maps_project":
+			var project := _structured_project("demand")
+			var breakdown := _structured_breakdown(["demand"])
+			var row: Dictionary = (breakdown.get("gdp_rows", []) as Array)[0]
+			observed = str(row.get("project_id", "")) == str(project.get("project_id", "")) and str(row.get("direction", "")) == "demand"
+			flags["receipt_id"] = str(row.get("receipt_id", ""))
+			notes = "Delivered demand GDP is attributed to the exact demand project generation."
+		"commerce_receipt_maps_project":
+			var project := _structured_project("commerce")
+			var breakdown := _structured_breakdown(["commerce"])
+			var row: Dictionary = (breakdown.get("gdp_rows", []) as Array)[0]
+			observed = str(row.get("project_id", "")) == str(project.get("project_id", "")) and str(row.get("direction", "")) == "commerce"
+			flags["receipt_id"] = str(row.get("receipt_id", ""))
+			notes = "Transit GDP is attributed to the exact commerce project generation."
+		"region_gdp_equals_row_sum":
+			var breakdown := _structured_breakdown()
+			observed = _gdp_row_total(breakdown.get("gdp_rows", []) as Array, "net_gdp_per_minute") == int(breakdown.get("region_gdp_per_minute", -1))
+			flags["conservation_checked"] = observed
+			notes = "Region GDP is exactly the sum of public net GDP rows."
+		"project_gdp_equals_project_rows":
+			var project := _shared_project()
+			var attribution := CITY_PROJECT_STATE.attribute_gdp_rows([project], [_gdp_row(project, 37, "production")])
+			observed = bool(attribution.get("valid", false)) and int(attribution.get("project_gdp_per_minute", 0)) == 37 and int(((attribution.get("projects", []) as Array)[0] as Dictionary).get("current_gdp", 0)) == 37
+			flags["project_gdp_total"] = int(attribution.get("project_gdp_per_minute", 0))
+			notes = "Project current GDP equals the sum of rows bearing its project ID."
+		"player_plus_neutral_conservation":
+			var project := _shared_project()
+			var attribution := CITY_PROJECT_STATE.attribute_gdp_rows([project], [_gdp_row(project, 35, "production")])
+			observed = int(attribution.get("player_gdp_per_minute", 0)) + int(attribution.get("neutral_gdp_per_minute", 0)) == int(attribution.get("region_gdp_per_minute", -1))
+			flags["conservation_checked"] = observed
+			notes = "Player-attributable GDP plus neutral GDP conserves the region total."
+		"share_floor_remainder_neutral":
+			var project := _shared_project()
+			var attribution := CITY_PROJECT_STATE.attribute_gdp_rows([project], [_gdp_row(project, 35, "production")])
+			observed = int(attribution.get("player_gdp_per_minute", 0)) == 34 and int(attribution.get("neutral_gdp_per_minute", 0)) == 1
+			flags["neutral_gdp_total"] = int(attribution.get("neutral_gdp_per_minute", 0))
+			notes = "Each player share floors independently; the leftover unit is neutral."
+		"destroyed_region_rows_empty":
+			var breakdown: Dictionary = _gdp_formula.call("calculate_city_gdp", _structured_formula_input(["production"]).merged({"destroyed": true}, true))
+			observed = int(breakdown.get("region_gdp_per_minute", -1)) == 0 and (breakdown.get("gdp_rows", []) as Array).is_empty()
+			notes = "Destroyed regions clear derived GDP rows without deleting project identity."
+		"zero_gdp_allowed":
+			var input := _structured_formula_input([])
+			input["adjustments"] = [{"source_kind": "test", "amount_gdp_per_minute": 20}]
+			input["district_damage"] = 2
+			var breakdown: Dictionary = _gdp_formula.call("calculate_city_gdp", input)
+			observed = int(breakdown.get("region_gdp_per_minute", -1)) == 0 and int(breakdown.get("unabsorbed_penalty", 0)) == 16
+			notes = "v0.5 has no minimum-city GDP floor."
+		"legacy_adjustment_explicit_neutral":
+			var input := _structured_formula_input([])
+			input["adjustments"] = [{"source_kind": "legacy_role_bonus", "amount_gdp_per_minute": 19}]
+			var breakdown: Dictionary = _gdp_formula.call("calculate_city_gdp", input)
+			var row: Dictionary = (breakdown.get("gdp_rows", []) as Array)[0]
+			observed = bool(row.get("neutral", false)) and str(row.get("project_id", "")) == "" and int(row.get("net_gdp_per_minute", 0)) == 19
+			notes = "Unassigned legacy bonus GDP is explicit neutral GDP, never founder/controller income."
+		"city_owner_not_attribution_authority":
+			var fixture := _cashflow_fixture(false, false)
+			var before := _player_cash_values()
+			var paid := int(_runtime_main.call("_settle_city_cashflow_seconds", 60.0))
+			observed = paid == 0 and before == _player_cash_values() and int(fixture.get("destination", -1)) >= 0
+			notes = "A legacy city.owner field cannot create GDP attribution or cash payout."
+		"same_owner_competition_not_exempt":
+			var fixture := _competition_fixture(true)
+			var first := int(fixture.get("first", -1))
+			observed = first >= 0 and int(_runtime_main.call("_city_competition_matches", first)) == 1
+			notes = "Competition follows matching production projects and has no city-owner exemption."
+		"receipt_id_stable":
+			var first := _structured_breakdown(["production"])
+			var second := _structured_breakdown(["production"])
+			var first_id := str((((first.get("gdp_rows", []) as Array)[0]) as Dictionary).get("receipt_id", ""))
+			var second_id := str((((second.get("gdp_rows", []) as Array)[0]) as Dictionary).get("receipt_id", ""))
+			observed = first_id != "" and first_id == second_id and first_id.contains("project.g1")
+			flags["receipt_id"] = first_id
+			notes = "Receipt identity is deterministic for identical project facts."
+		"industry_catalog_mapping":
+			var breakdown := _structured_breakdown(["production"])
+			var row: Dictionary = (breakdown.get("gdp_rows", []) as Array)[0]
+			observed = str(row.get("product_id", "")) == TEST_PRODUCT and str(row.get("industry_id", "")) != ""
+			notes = "Product industry comes from the v0.5 catalog and is copied into the receipt."
+		"cashflow_source_uses_receipt_player":
+			var source := _function_source(str(_sources.get("controller", "")), "settle_cashflow_seconds")
+			observed = source.contains("attribution_id") and source.contains("\"source_id\": source_id") and source.contains("\"source_kind\": \"project_share\"") and not source.contains("\"source_kind\": \"city_owner\"")
+			notes = "Cashflow source identity is the GDP receipt plus viewer-private player attribution."
+		"cashflow_remainder_keyed_by_source":
+			var fixture := _cashflow_fixture(true, false, 1)
+			var destination := int(fixture.get("destination", -1))
+			_runtime_main.call("_settle_city_cashflow_seconds", 1.0)
+			var city: Dictionary = _runtime_main.call("_district_city", destination)
+			var remainders: Dictionary = city.get("gdp_cashflow_remainder_by_source_id", {})
+			observed = not remainders.is_empty()
+			for key in remainders.keys():
+				observed = observed and str(key).contains(".player.")
+			notes = "Fractional cash is retained per receipt+player source, not per city or aggregate player."
+		"public_gdp_snapshot_privacy":
+			var fixture := _network_fixture(false, true)
+			var destination := int(fixture.get("destination", -1))
+			var public_snapshot: Dictionary = _controller.call("public_region_gdp_snapshot", destination)
+			var private_snapshot: Dictionary = _controller.call("private_region_gdp_snapshot", destination, 0)
+			observed = str(public_snapshot.get("visibility_scope", "")) == "public" and not JSON.stringify(public_snapshot).contains("player_index") and str(private_snapshot.get("visibility_scope", "")) == "viewer_private" and private_snapshot.has("own_attribution_rows")
+			flags["privacy_checked"] = observed
+			notes = "Public GDP exposes project rows but never player attribution; private output exposes only the viewer."
+		"legacy_gdp_split_symbols_absent":
+			var combined := str(_sources.get("main", "")) + str(_sources.get("controller", "")) + str(_sources.get("project_state", "")) + str(_sources.get("project_bridge", "")) + str(_sources.get("cashflow", ""))
+			var forbidden := ["assign_city_gdp", "gdp_by_player", "player_gdp(", "project_gdp_by_player", "project_cashflow_remainder_by_player", "minimum_city_gdp", "\"source_kind\": \"city_owner\""]
+			observed = true
+			for token in forbidden:
+				observed = observed and not combined.contains(token)
+			notes = "Whole-city splitting, owner payout, old remainder maps, and the minimum floor are absent."
+	return _record(case_id, observed, observed, notes, flags)
+
+
 func _case_cutover(case_id: String) -> Dictionary:
 	var main_source := str(_sources.get("main", ""))
 	var controller_source := str(_sources.get("controller", ""))
@@ -1004,7 +1170,7 @@ func _case_cutover(case_id: String) -> Dictionary:
 		"save_envelope_controller_owned":
 			var save_data: Dictionary = _controller.call("to_save_data")
 			var runtime_save: Dictionary = save_data.get("city_trade_network_runtime", {}) if save_data.get("city_trade_network_runtime", {}) is Dictionary else {}
-			observed = save_data.has("city_trade_network_runtime") and not save_data.has("city_product_project_sequence") and str(runtime_save.get("terms_version", "")) == "v0.5.project-slots.1" and runtime_save.has("generation_by_slot_id") and runtime_save.has("project_tombstones") and coordinator_source.contains("city_trade_network_to_save_data")
+			observed = save_data.has("city_trade_network_runtime") and not save_data.has("city_product_project_sequence") and str(runtime_save.get("terms_version", "")) == "v0.5.structured-project-gdp.1" and runtime_save.has("generation_by_slot_id") and runtime_save.has("project_tombstones") and coordinator_source.contains("city_trade_network_to_save_data")
 			notes = "Controller owns the single v0.5 city-project save envelope without a duplicate writer."
 		"legacy_save_normalized_once":
 			_controller.call("reset_state")
@@ -1083,8 +1249,10 @@ func _competition_fixture(same_owner: bool) -> Dictionary:
 	if pair.is_empty(): return {}
 	var first := int(pair[0])
 	var second := int(pair[1])
-	_set_city(first, _base_city(0, [{"name": TEST_PRODUCT, "level": 1}], [], []))
-	_set_city(second, _base_city(0 if same_owner else 1, [{"name": TEST_PRODUCT, "level": 1}], [], []))
+	var first_city := CITY_PROJECT_BRIDGE.normalize_city(_base_city(0, [{"name": TEST_PRODUCT, "level": 1}], [], [CITY_PROJECT_STATE.create_project(first, TEST_PRODUCT, "production", 0, 1, 1)]), first)
+	var second_city := CITY_PROJECT_BRIDGE.normalize_city(_base_city(0 if same_owner else 1, [{"name": TEST_PRODUCT, "level": 1}], [], [CITY_PROJECT_STATE.create_project(second, TEST_PRODUCT, "production", 1, 1, 2)]), second)
+	_set_city(first, first_city)
+	_set_city(second, second_city)
 	return {"first": first, "second": second}
 
 
@@ -1138,12 +1306,49 @@ func _base_city(owner_index: int, products: Array = [], demands: Array = [], pro
 		"products": products.duplicate(true), "demands": demands.duplicate(true), "projects": projects.duplicate(true),
 		"revenue_bonus": 0, "contract_income_bonus": 0, "contract_seconds": 0.0,
 		"route_flow_multiplier": 1.0, "route_flow_seconds": 0.0,
-		"last_income": 0, "last_cashflow_rate": 0, "cashflow_remainder": 0.0,
-		"project_cashflow_remainder_by_player": {}, "cashflow_paid_total": 0,
+		"last_income": 0, "last_cashflow_rate": 0,
+		"gdp_cashflow_remainder_by_source_id": {}, "cashflow_paid_total": 0,
 		"competition_matches": 0, "trade_routes": [], "trade_disrupted_routes": 0,
 		"trade_route_damage": 0, "supplied_demands": 0,
 		"military_gdp_penalty": 0, "military_pressure_until": 0.0,
 	}
+
+
+func _structured_project(direction: String) -> Dictionary:
+	return CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, direction, 0, 1, 1)
+
+
+func _structured_formula_input(directions: Array = ["production", "demand", "commerce"]) -> Dictionary:
+	var input := {"active": true, "destroyed": false, "region_id": "region.0005", "production_projects": [], "demand_projects": [], "commerce_projects": [], "adjustments": []}
+	if directions.has("production"):
+		input["production_projects"] = [_structured_project("production").merged({"price": 100, "rank": 1, "production_factor": 1.0, "supply_demand_ratio": 1.0, "transport_speed": 1.0}, true)]
+	if directions.has("demand"):
+		input["demand_projects"] = [_structured_project("demand").merged({"price": 80, "flow_amount": 1.0, "consumption_factor": 1.0, "supply_availability_ratio": 1.0, "flow_speed": 1.0, "route_available": true, "disrupted": false}, true)]
+	if directions.has("commerce"):
+		input["commerce_projects"] = [_structured_project("commerce").merged({"transit_routes": [{"price": 100, "flow_amount": 1.0, "transport_speed": 1.0, "disrupted": false, "destination_is_district": false, "path_contains_district": true}]}, true)]
+	return input
+
+
+func _structured_breakdown(directions: Array = ["production", "demand", "commerce"]) -> Dictionary:
+	var value: Variant = _gdp_formula.call("calculate_city_gdp", _structured_formula_input(directions))
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _shared_project() -> Dictionary:
+	var project := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 1, 1)
+	return CITY_PROJECT_STATE.contribute(project, 1, 1, 2)
+
+
+func _gdp_row(project: Dictionary, amount: int, source_kind: String) -> Dictionary:
+	return {"receipt_id": "gdp.%s.%s.%s" % [str(project.get("region_id", "")), str(project.get("project_id", "")), source_kind], "region_id": str(project.get("region_id", "")), "project_id": str(project.get("project_id", "")), "project_generation": int(project.get("generation", 0)), "slot_id": str(project.get("slot_id", "")), "product_id": str(project.get("product_id", "")), "industry_id": "technology", "direction": str(project.get("direction", "")), "source_kind": source_kind, "gross_gdp_per_minute": amount, "penalty_gdp_per_minute": 0, "net_gdp_per_minute": amount, "neutral": false, "visibility_scope": "public"}
+
+
+func _gdp_row_total(rows: Array, key: String) -> int:
+	var total := 0
+	for row_variant in rows:
+		if row_variant is Dictionary:
+			total += int((row_variant as Dictionary).get(key, 0))
+	return total
 
 
 func _v05_empty_city(district_index: int) -> Dictionary:
@@ -1293,7 +1498,7 @@ func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
 	_runtime_main.set("players", _baseline_players.duplicate(true))
 	_runtime_main.set("districts", _baseline_districts.duplicate(true))
-	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.project-slots.1", "project_sequence": _baseline_project_sequence, "generation_by_slot_id": {}, "project_tombstones": []}})
+	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.structured-project-gdp.1", "project_sequence": _baseline_project_sequence, "generation_by_slot_id": {}, "project_tombstones": []}})
 	_runtime_main.set("game_time", 100.0)
 	_runtime_main.set("game_over", false)
 	_runtime_main.set("log_lines", [])
@@ -1325,6 +1530,11 @@ func _record(case_id: String, observed: bool, aligned: bool, notes: String, flag
 		"path_length": int(flags.get("path_length", 0)),
 		"city_gdp": int(flags.get("city_gdp", 0)),
 		"player_gdp_total": int(flags.get("player_gdp_total", 0)),
+		"receipt_id": str(flags.get("receipt_id", "")),
+		"row_count": int(flags.get("row_count", 0)),
+		"project_gdp_total": int(flags.get("project_gdp_total", 0)),
+		"neutral_gdp_total": int(flags.get("neutral_gdp_total", 0)),
+		"conservation_checked": bool(flags.get("conservation_checked", false)),
 		"share_total_basis_points": int(flags.get("share_total_basis_points", 0)),
 		"refresh_order_checked": bool(flags.get("refresh_order_checked", false)),
 		"formula_owner_checked": bool(flags.get("formula_owner_checked", false)),
@@ -1381,7 +1591,7 @@ func _update_ui(manifest: Dictionary) -> void:
 
 func _markdown_report(manifest: Dictionary) -> String:
 	var lines: Array[String] = [
-		"# City Project Identity Hard Cutover - SS05-02", "",
+		"# Structured Project GDP Hard Cutover - SS05-03", "",
 		"Project domain: `v0.5`", "Current runtime owner: `res://scripts/runtime/city_trade_network_runtime_controller.gd`", "Runtime cutover enabled: `true`",
 		"Observed: %d/%d" % [int(manifest.get("observed_count", 0)), CASE_COUNT],
 		"Contract aligned: %d/%d" % [int(manifest.get("aligned_count", 0)), CASE_COUNT],
@@ -1403,7 +1613,7 @@ func _markdown_report(manifest: Dictionary) -> String:
 		"- `EconomyCashflowRuntimeController`: realtime cadence, payout planning, and fractional arithmetic only.",
 		"- `ProductMarketRuntimeController`: product market state/prices; not route ownership.",
 		"- Contract, military, weather, and product-market systems request one refresh hook and do not own the graph.", "",
-		"## SS05-02 result", "",
+		"## SS05-03 result", "",
 		"The prior 68 City/Trade behavior and ownership cases pass with 20 v0.5 project identity cases. Five slots, stable IDs, rank IV, generation/tombstones, and exact-tie no-control now share one runtime owner and one save envelope.", "",
 		"## Cases", "", "| Case | District | Project | Product | Observed | Aligned | Decision | Notes |", "| --- | ---: | --- | --- | --- | --- | --- | --- |",
 	]

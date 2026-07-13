@@ -19,26 +19,28 @@ func _run() -> void:
 	root.add_child(controller)
 	controller.call("configure", {})
 	var debug: Dictionary = controller.call("debug_snapshot")
-	_expect(bool(debug.get("controller_ready", false)) and bool(debug.get("controller_authoritative", false)), "GDP formula controller is authoritative after configuration")
+	_expect(bool(debug.get("controller_ready", false)) and str(debug.get("profile_id", "")) == "gdp_formula_v05", "v0.5 GDP formula controller is authoritative")
 	var parameters: Dictionary = controller.call("parameters_snapshot")
-	_expect(int(parameters.get("product_base_revenue", 0)) == 42 and int(parameters.get("minimum_city_gdp", 0)) == 40, "GDP formula profile preserves characterized production and floor parameters")
+	_expect(int(parameters.get("product_base_revenue", 0)) == 42 and bool(parameters.get("zero_gdp_allowed", false)) and not parameters.has("minimum_city_gdp"), "v0.5 profile removes the legacy minimum-city floor")
 
-	var inactive: Dictionary = controller.call("calculate_city_gdp", {"active": false})
-	_expect(int(inactive.get("net", -1)) == 0, "inactive city produces zero GDP")
-	var composition: Dictionary = controller.call("calculate_city_gdp", {"active": true, "revenue_bonus": 30, "role_bonus": 10, "contract_income": 20})
-	_expect(int(composition.get("gross", 0)) == 60 and int(composition.get("net", 0)) == 60, "bonus, role, and contract GDP compose exactly")
-	var production: Dictionary = controller.call("calculate_city_gdp", {"active": true, "products": [_product(100, 1, 1.0, 1.0, 1.0)]})
-	_expect(int(production.get("product", 0)) == 36 and int(production.get("net", 0)) == 40, "production formula and minimum floor preserve legacy rounding")
-	var demand: Dictionary = controller.call("calculate_city_gdp", {"active": true, "routes": [_route(80, 1.0, 1.0, 1.0, 1.0)]})
-	_expect(int(demand.get("route", 0)) == 27 and int(demand.get("net", 0)) == 40, "demand formula preserves legacy rounding")
-	var transit: Dictionary = controller.call("calculate_city_gdp", {"active": true, "transit_routes": [_transit(100, 1.0, 1.0)]})
-	_expect(int(transit.get("transit", 0)) == 23, "transit formula preserves legacy unit calculation")
-	var pressure: Dictionary = controller.call("calculate_city_gdp", {"active": true, "revenue_bonus": 100, "competition_matches": 2, "disrupted_route_count": 1, "district_damage": 1})
-	_expect(int(pressure.get("penalty", 0)) == 105 and int(pressure.get("net_before_floor", 0)) == -5 and int(pressure.get("net", 0)) == 40, "competition, disruption, damage, and floor semantics remain exact")
+	var inactive: Dictionary = controller.call("calculate_city_gdp", {"active": false, "region_id": "region.0001"})
+	_expect(int(inactive.get("net", -1)) == 0 and (inactive.get("gdp_rows", []) as Array).is_empty(), "inactive city produces no GDP rows")
+	var composition: Dictionary = controller.call("calculate_city_gdp", _input({"adjustments": [_adjustment("legacy_revenue_bonus", 30), _adjustment("legacy_role_bonus", 10), _adjustment("legacy_contract_income", 20)]}))
+	_expect(int(composition.get("gross", 0)) == 60 and int(composition.get("net", 0)) == 60 and int(composition.get("explicit_neutral_gdp_per_minute", 0)) == 60, "unassigned legacy adjustments become explicit neutral GDP")
+	var production: Dictionary = controller.call("calculate_city_gdp", _input({"production_projects": [_project("production", "星露莓", 0, 1).merged({"price": 100, "rank": 1, "production_factor": 1.0, "supply_demand_ratio": 1.0, "transport_speed": 1.0}, true)]}))
+	_expect(int(production.get("product", 0)) == 36 and int(production.get("net", 0)) == 36 and (production.get("gdp_rows", []) as Array).size() == 1, "production GDP maps to its stable production project without a floor")
+	var demand: Dictionary = controller.call("calculate_city_gdp", _input({"demand_projects": [_project("demand", "月壤葡萄", 0, 1).merged({"price": 80, "flow_amount": 1.0, "consumption_factor": 1.0, "supply_availability_ratio": 1.0, "flow_speed": 1.0, "route_available": true, "disrupted": false}, true)]}))
+	_expect(int(demand.get("route", 0)) == 27 and str(((demand.get("gdp_rows", []) as Array)[0] as Dictionary).get("direction", "")) == "demand", "demand delivery GDP maps to its stable demand project")
+	var commerce: Dictionary = controller.call("calculate_city_gdp", _input({"commerce_projects": [_project("commerce", "星露莓", 0, 1).merged({"transit_routes": [_transit(100, 1.0, 1.0)]}, true)]}))
+	_expect(int(commerce.get("transit", 0)) == 23 and str(((commerce.get("gdp_rows", []) as Array)[0] as Dictionary).get("direction", "")) == "commerce", "transit GDP maps to its stable commerce project")
+	var pressure: Dictionary = controller.call("calculate_city_gdp", _input({"adjustments": [_adjustment("legacy_revenue_bonus", 100)], "competition_matches": 2, "disrupted_route_count": 1, "district_damage": 1}))
+	_expect(int(pressure.get("penalty", 0)) == 100 and int(pressure.get("unabsorbed_penalty", 0)) == 5 and int(pressure.get("net", -1)) == 0, "pressure can reduce region GDP to zero without recreating a floor")
+	var row_validation: Dictionary = controller.call("validate_gdp_rows", pressure.get("gdp_rows", []) as Array)
+	_expect(bool(row_validation.get("valid", false)) and int(row_validation.get("row_count", 0)) == 1, "GDP receipt rows conserve gross, penalty, and net")
 	var summary := str(controller.call("breakdown_summary", pressure))
 	var reason := str(controller.call("change_reason_text", pressure))
-	_expect(summary.contains("生产GDP") and summary.contains("断路") and reason.contains("驱动") and reason.contains("压力"), "GDP summary and change reason remain available through the controller")
-	_expect(_is_data_only(parameters) and _is_data_only(pressure) and not bool(debug.get("legacy_formula_fallback_used", true)), "GDP controller outputs pure data and never uses a legacy formula fallback")
+	_expect(summary.contains("GDP/min") and reason.contains("断路") and reason.contains("压力"), "GDP/min summary and pressure explanation remain available")
+	_expect(_is_data_only(parameters) and _is_data_only(pressure) and not bool(debug.get("legacy_formula_fallback_used", true)), "GDP controller outputs pure data and never uses a legacy fallback")
 
 	controller.queue_free()
 	await process_frame
@@ -50,16 +52,38 @@ func _run() -> void:
 	quit(_failures.size())
 
 
-func _product(price: int, level: int, production_factor: float, ratio: float, speed: float) -> Dictionary:
-	return {"product_id": "测试商品", "price": price, "level": level, "production_factor": production_factor, "supply_demand_ratio": ratio, "transport_speed": speed}
+func _input(overrides: Dictionary) -> Dictionary:
+	var result := {
+		"active": true,
+		"destroyed": false,
+		"region_id": "region.0001",
+		"production_projects": [],
+		"demand_projects": [],
+		"commerce_projects": [],
+		"adjustments": [],
+	}
+	result.merge(overrides, true)
+	return result
 
 
-func _route(price: int, amount: float, consumption_factor: float, ratio: float, speed: float) -> Dictionary:
-	return {"product_id": "测试需求", "price": price, "flow_amount": amount, "consumption_factor": consumption_factor, "supply_availability_ratio": ratio, "flow_speed": speed, "disrupted": false}
+func _project(direction: String, product_id: String, slot_index: int, generation: int) -> Dictionary:
+	var slot_id := "region.0001.slot.%s.%d" % [direction, slot_index]
+	return {
+		"active": true,
+		"project_id": "%s.project.g%d" % [slot_id, generation],
+		"slot_id": slot_id,
+		"generation": generation,
+		"product_id": product_id,
+		"direction": direction,
+	}
+
+
+func _adjustment(source_kind: String, amount: int) -> Dictionary:
+	return {"source_kind": source_kind, "amount_gdp_per_minute": amount}
 
 
 func _transit(price: int, amount: float, speed: float) -> Dictionary:
-	return {"product_id": "测试过境", "price": price, "flow_amount": amount, "transport_speed": speed, "disrupted": false, "destination_is_district": false, "path_contains_district": true}
+	return {"price": price, "flow_amount": amount, "transport_speed": speed, "disrupted": false, "destination_is_district": false, "path_contains_district": true}
 
 
 func _expect(condition: bool, message: String) -> void:

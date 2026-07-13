@@ -6845,13 +6845,9 @@ func _player_gdp_per_minute(player_index: int) -> int:
 	var total := 0
 	for index_variant in _active_city_district_indices():
 		var index := int(index_variant)
-		var city := _district_city(index)
-		var city_gdp := _city_gdp_per_minute(index, int(city.get("competition_matches", _city_competition_matches(index))))
-		if _city_has_project_shares(city):
-			city = CityProductProjectBridgeScript.assign_city_gdp(city, city_gdp)
-			total += CityProductProjectStateScript.player_gdp(city.get("projects", []) as Array, player_index)
-		elif int(city.get("owner", -1)) == player_index:
-			total += city_gdp
+		var private_gdp_variant: Variant = _city_trade_network_runtime_call("private_region_gdp_snapshot", [index, player_index])
+		if private_gdp_variant is Dictionary:
+			total += maxi(0, int((private_gdp_variant as Dictionary).get("own_gdp_per_minute", 0)))
 	return total
 
 
@@ -14572,9 +14568,8 @@ func _first_table_runtime_content_snapshot(player_index: int) -> Dictionary:
 			city_products.append(str(product_variant))
 		for demand_variant in _city_demand_names(city):
 			city_demands.append(str(demand_variant))
-		var city_gdp := _city_gdp_per_minute(district_index, _city_competition_matches(district_index))
-		var assigned_city := CityProductProjectBridgeScript.assign_city_gdp(city, city_gdp)
-		gdp_per_minute = CityProductProjectStateScript.player_gdp(assigned_city.get("projects", []) as Array, player_index)
+		var private_gdp_variant: Variant = _city_trade_network_runtime_call("private_region_gdp_snapshot", [district_index, player_index])
+		gdp_per_minute = maxi(0, int((private_gdp_variant as Dictionary).get("own_gdp_per_minute", 0))) if private_gdp_variant is Dictionary else 0
 		cashflow_paid_total = maxi(0, int((players[player_index] as Dictionary).get("total_city_income", 0))) if player_index >= 0 and player_index < players.size() else 0
 	var starter_monster_ids: Array = resolved_catalog.get("starter_monster_ids", []) if resolved_catalog.get("starter_monster_ids", []) is Array else []
 	var coordinator := _game_runtime_coordinator_node()

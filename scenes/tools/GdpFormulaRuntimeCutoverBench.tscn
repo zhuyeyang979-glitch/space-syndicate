@@ -49,13 +49,13 @@ theme_override_constants/separation = 12
 [node name="Title" type="Label" parent="Margin/Rows"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "GDP Formula Characterization & Runtime Cutover"
+text = "Structured Project GDP v0.5 Runtime Gate"
 
 [node name="SummaryLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
-text = "Preparing 20 formula cases..."
+text = "Preparing 40 structured GDP cases..."
 
 [node name="StatusLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true

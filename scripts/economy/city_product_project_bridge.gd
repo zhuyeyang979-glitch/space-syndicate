@@ -187,12 +187,59 @@ static func sync_legacy_fields(city_value: Dictionary) -> Dictionary:
 	return city
 
 
-static func assign_city_gdp(city_value: Dictionary, city_gdp: int) -> Dictionary:
+static func apply_gdp_rows(city_value: Dictionary, gdp_rows: Array) -> Dictionary:
 	var city := city_value.duplicate(true)
-	var assigned_projects := PROJECT_STATE.assign_city_gdp(active_projects(city), maxi(0, city_gdp))
-	city = _write_projects_to_slots(city, assigned_projects)
-	city["project_gdp_by_player"] = PROJECT_STATE.gdp_by_player(assigned_projects)
-	return city
+	var attribution := PROJECT_STATE.attribute_gdp_rows(active_projects(city), gdp_rows)
+	if not bool(attribution.get("valid", false)):
+		return {
+			"valid": false,
+			"errors": (attribution.get("errors", []) as Array).duplicate(true),
+			"city": city,
+		}
+	city = _write_projects_to_slots(city, attribution.get("projects", []) as Array)
+	city["gdp_rows"] = (attribution.get("gdp_rows", []) as Array).duplicate(true)
+	city["player_gdp_attribution_rows"] = (attribution.get("player_attribution_rows", []) as Array).duplicate(true)
+	city["player_gdp_by_index"] = (attribution.get("player_gdp_by_index", {}) as Dictionary).duplicate(true)
+	city["neutral_gdp_rows"] = (attribution.get("neutral_rows", []) as Array).duplicate(true)
+	city["project_gdp_per_minute"] = int(attribution.get("project_gdp_per_minute", 0))
+	city["explicit_neutral_gdp_per_minute"] = int(attribution.get("explicit_neutral_gdp_per_minute", 0))
+	city["player_gdp_per_minute"] = int(attribution.get("player_gdp_per_minute", 0))
+	city["neutral_gdp_per_minute"] = int(attribution.get("neutral_gdp_per_minute", 0))
+	city["region_gdp_per_minute"] = int(attribution.get("region_gdp_per_minute", 0))
+	city["gdp_conservation_passed"] = bool(attribution.get("conservation_passed", false))
+	return {"valid": true, "errors": [], "city": city}
+
+
+static func public_gdp_snapshot(city: Dictionary) -> Dictionary:
+	return {
+		"region_id": str(city.get("region_id", "")),
+		"region_gdp_per_minute": int(city.get("region_gdp_per_minute", 0)),
+		"project_gdp_per_minute": int(city.get("project_gdp_per_minute", 0)),
+		"explicit_neutral_gdp_per_minute": int(city.get("explicit_neutral_gdp_per_minute", 0)),
+		"neutral_gdp_per_minute": int(city.get("neutral_gdp_per_minute", 0)),
+		"gdp_rows": (city.get("gdp_rows", []) as Array).duplicate(true) if city.get("gdp_rows", []) is Array else [],
+		"neutral_rows": (city.get("neutral_gdp_rows", []) as Array).duplicate(true) if city.get("neutral_gdp_rows", []) is Array else [],
+		"conservation_passed": bool(city.get("gdp_conservation_passed", false)),
+		"visibility_scope": "public",
+	}
+
+
+static func private_gdp_snapshot(city: Dictionary, viewer_player_index: int) -> Dictionary:
+	var result := public_gdp_snapshot(city)
+	var own_rows: Array = []
+	for row_variant in city.get("player_gdp_attribution_rows", []):
+		if row_variant is Dictionary and int((row_variant as Dictionary).get("player_index", -1)) == viewer_player_index:
+			own_rows.append((row_variant as Dictionary).duplicate(true))
+	var by_player: Dictionary = city.get("player_gdp_by_index", {}) if city.get("player_gdp_by_index", {}) is Dictionary else {}
+	result["own_attribution_rows"] = own_rows
+	result["own_gdp_per_minute"] = int(by_player.get(str(viewer_player_index), 0))
+	result["own_region_share_basis_points"] = clampi(
+		int(round(float(int(result["own_gdp_per_minute"]) * PROJECT_STATE.SHARE_BASIS_POINTS) / float(maxi(1, int(result["region_gdp_per_minute"]))))),
+		0,
+		PROJECT_STATE.SHARE_BASIS_POINTS
+	) if int(result["region_gdp_per_minute"]) > 0 else 0
+	result["visibility_scope"] = "viewer_private"
+	return result
 
 
 static func public_projects(city: Dictionary) -> Array:

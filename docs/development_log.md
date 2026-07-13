@@ -3,6 +3,15 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-14。
 
+## 2026-07-14｜SS05-03 Structured Project GDP
+
+- 新增 Inspector 可编辑的 `space_syndicate_gdp_formula_v05.tres`。`GdpFormulaRuntimeController` 现在按稳定 region/project/slot/generation 生成生产、需求、通商及显式中性 GDP receipt；v0.4 Profile 只保留为历史证据，不参与 fallback。
+- `CityTradeNetworkRuntimeController` 以“竞争 -> 路线 -> GDP 行 -> 项目/玩家/中性归属 -> 供应保证”的顺序刷新，并保存 `v0.5.structured-project-gdp.1` envelope。区域允许降到 0 GDP，最低 40 和整城分摊语义已删除。
+- 玩家归属只来自具体项目份额。逐玩家下取整后的整数余数进入 neutral；区域、项目以及玩家+中性三层守恒均由 receipt 校验。无项目奖金和旧调整被明确标成 neutral，不再由 founder、controller 或 `city.owner` 领取。
+- 实时现金流只消费 `receipt_id + player_index` 的 `project_share` 来源，余数按 source ID 保存。同 owner 竞争豁免、owner-only payout、`assign_city_gdp`、`gdp_by_player`、`project_gdp_by_player` 和旧 remainder map 均退出活动路径。
+- GDP Formula Gate 为 40/40，CityTrade 长期门为 108/108 observed/aligned，City Development 为 64/64。公开 GDP 快照不包含 controller、贡献/份额表、隐藏 owner、私密目标、私密弃牌或 AI 计划。
+- 全局 Ruleset bridge、Card Catalog 与生产存档版本仍为 v0.4/v1；本轮仅对项目/GDP 领域做 v0.5 hard cutover。下一步 SS05-04 必须以现有 private attribution receipts 实现 VictoryControl，不得重算 GDP 或项目归属。
+
 ## 2026-07-14｜SS05-02 Five Project Slots & Stable Identity
 
 - `CityTradeNetworkRuntimeController` 成为五项目位身份和生命周期的唯一可变 owner：每区固定生产 2、需求 2、通商 1，项目最高 IV；`CityProductProjectState/Bridge` 只保留纯数据状态与变换。

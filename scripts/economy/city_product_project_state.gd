@@ -128,8 +128,6 @@ static func create_project(
 		"controller_player_index": -1,
 		"current_gdp": 0,
 		"public_summary": "",
-		"cashflow_remainder_by_player": {},
-		"cashflow_paid_by_player": {},
 	}
 	return contribute(project, player_index, contribution_units, created_order)
 
@@ -168,8 +166,6 @@ static func normalize_project(
 	project["created_order"] = maxi(0, int(project.get("created_order", 0)))
 	project["founder_player_index"] = int(project.get("founder_player_index", -1))
 	project["current_gdp"] = maxi(0, int(project.get("current_gdp", 0))) if bool(project["active"]) else 0
-	project["cashflow_remainder_by_player"] = _numeric_dictionary(project.get("cashflow_remainder_by_player", {}), false)
-	project["cashflow_paid_by_player"] = _numeric_dictionary(project.get("cashflow_paid_by_player", {}), true)
 	return recalculate_shares(project)
 
 
@@ -220,46 +216,155 @@ static func recalculate_shares(value: Dictionary) -> Dictionary:
 	return project
 
 
-static func assign_city_gdp(project_values: Array, city_gdp: int) -> Array:
+static func attribute_gdp_rows(project_values: Array, row_values: Array) -> Dictionary:
 	var projects: Array = []
-	var weights := {}
-	for value_variant in project_values:
-		var project := normalize_project(value_variant as Dictionary) if value_variant is Dictionary else {}
-		if project.is_empty():
+	var project_index_by_id := {}
+	for project_variant in project_values:
+		if not (project_variant is Dictionary):
 			continue
+		var project := normalize_project(project_variant as Dictionary)
 		project["current_gdp"] = 0
+		project_index_by_id[str(project.get("project_id", ""))] = projects.size()
 		projects.append(project)
-		if bool(project.get("active", true)):
-			weights[str(projects.size() - 1)] = maxi(1, int(project.get("rank", project.get("level", 1))))
-	var allocation := _allocate_integer_total(weights, maxi(0, city_gdp))
-	for index_key_variant in allocation.keys():
-		var index := int(str(index_key_variant))
-		if index >= 0 and index < projects.size():
-			projects[index]["current_gdp"] = int(allocation[index_key_variant])
+	var rows: Array = []
+	for row_variant in row_values:
+		if row_variant is Dictionary:
+			rows.append((row_variant as Dictionary).duplicate(true))
+	rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("receipt_id", "")) < str(right.get("receipt_id", ""))
+	)
+	var errors: Array = []
+	var seen_receipts := {}
+	for row_variant in rows:
+		var row: Dictionary = row_variant
+		var receipt_id := str(row.get("receipt_id", ""))
+		if receipt_id.is_empty() or seen_receipts.has(receipt_id):
+			errors.append("receipt_id_missing_or_duplicate")
+			continue
+		seen_receipts[receipt_id] = true
+		if int(row.get("net_gdp_per_minute", -1)) < 0:
+			errors.append("row_net_negative:%s" % receipt_id)
+			continue
+		if bool(row.get("neutral", false)):
+			continue
+		var project_id_value := str(row.get("project_id", ""))
+		if not project_index_by_id.has(project_id_value):
+			errors.append("project_missing:%s" % receipt_id)
+			continue
+		var project: Dictionary = projects[int(project_index_by_id[project_id_value])]
+		if not bool(project.get("active", false)) \
+			or int(project.get("generation", 0)) != int(row.get("project_generation", -1)) \
+			or str(project.get("slot_id", "")) != str(row.get("slot_id", "")) \
+			or str(project.get("product_id", "")) != str(row.get("product_id", "")) \
+			or str(project.get("direction", "")) != str(row.get("direction", "")):
+			errors.append("project_identity_mismatch:%s" % receipt_id)
+	if not errors.is_empty():
+		return {
+			"valid": false,
+			"errors": errors,
+			"projects": projects,
+			"gdp_rows": [],
+			"player_attribution_rows": [],
+			"player_gdp_by_index": {},
+			"neutral_rows": [],
+			"project_gdp_per_minute": 0,
+			"player_gdp_per_minute": 0,
+			"neutral_gdp_per_minute": 0,
+			"region_gdp_per_minute": 0,
+			"conservation_passed": false,
+		}
+	var player_rows: Array = []
+	var neutral_rows: Array = []
+	var player_totals := {}
+	var region_total := 0
+	var project_total := 0
+	var player_total := 0
+	var neutral_total := 0
+	var explicit_neutral_total := 0
+	for row_variant in rows:
+		var row: Dictionary = row_variant
+		var row_gdp := maxi(0, int(row.get("net_gdp_per_minute", 0)))
+		region_total += row_gdp
+		if bool(row.get("neutral", false)):
+			neutral_total += row_gdp
+			explicit_neutral_total += row_gdp
+			neutral_rows.append(_neutral_attribution_row(row, row_gdp, "explicit_neutral"))
+			continue
+		var project_id_value := str(row.get("project_id", ""))
+		var project_index := int(project_index_by_id[project_id_value])
+		var project: Dictionary = projects[project_index]
+		project["current_gdp"] = int(project.get("current_gdp", 0)) + row_gdp
+		projects[project_index] = project
+		project_total += row_gdp
+		var shares: Dictionary = project.get("share_basis_points_by_player", {}) if project.get("share_basis_points_by_player", {}) is Dictionary else {}
+		var player_keys: Array = shares.keys()
+		player_keys.sort_custom(func(left: Variant, right: Variant) -> bool:
+			return int(str(left)) < int(str(right))
+		)
+		var row_assigned := 0
+		for player_key_variant in player_keys:
+			var player_key := str(player_key_variant)
+			var share_basis_points := clampi(int(shares.get(player_key_variant, 0)), 0, SHARE_BASIS_POINTS)
+			var attributable := floori(float(row_gdp * share_basis_points) / float(SHARE_BASIS_POINTS))
+			row_assigned += attributable
+			player_total += attributable
+			player_totals[player_key] = int(player_totals.get(player_key, 0)) + attributable
+			player_rows.append({
+				"attribution_id": "%s.player.%s" % [str(row.get("receipt_id", "")), player_key],
+				"source_receipt_id": str(row.get("receipt_id", "")),
+				"region_id": str(row.get("region_id", "")),
+				"project_id": project_id_value,
+				"project_generation": int(row.get("project_generation", 0)),
+				"slot_id": str(row.get("slot_id", "")),
+				"product_id": str(row.get("product_id", "")),
+				"industry_id": str(row.get("industry_id", "")),
+				"direction": str(row.get("direction", "")),
+				"source_kind": str(row.get("source_kind", "")),
+				"player_index": int(player_key),
+				"share_basis_points": share_basis_points,
+				"attributable_gdp_per_minute": attributable,
+				"rounding_order": player_keys.find(player_key_variant),
+				"visibility_scope": "viewer_private",
+			})
+		var neutral_remainder := maxi(0, row_gdp - row_assigned)
+		if neutral_remainder > 0:
+			neutral_total += neutral_remainder
+			neutral_rows.append(_neutral_attribution_row(row, neutral_remainder, "share_rounding_remainder"))
 	for index in range(projects.size()):
 		projects[index] = recalculate_shares(projects[index] as Dictionary)
-	return projects
+	var project_conservation := project_total + explicit_neutral_total == region_total
+	var attribution_conservation := player_total + neutral_total == region_total
+	return {
+		"valid": project_conservation and attribution_conservation,
+		"errors": [],
+		"projects": projects,
+		"gdp_rows": rows,
+		"player_attribution_rows": player_rows,
+		"player_gdp_by_index": player_totals,
+		"neutral_rows": neutral_rows,
+		"project_gdp_per_minute": project_total,
+		"explicit_neutral_gdp_per_minute": explicit_neutral_total,
+		"player_gdp_per_minute": player_total,
+		"neutral_gdp_per_minute": neutral_total,
+		"region_gdp_per_minute": region_total,
+		"project_conservation_passed": project_conservation,
+		"attribution_conservation_passed": attribution_conservation,
+		"conservation_passed": project_conservation and attribution_conservation,
+	}
 
 
-static func gdp_by_player(project_values: Array) -> Dictionary:
-	var result := {}
-	for value_variant in project_values:
-		if not (value_variant is Dictionary):
-			continue
-		var project := normalize_project(value_variant as Dictionary)
-		if not bool(project.get("active", true)):
-			continue
-		var project_gdp := maxi(0, int(project.get("current_gdp", 0)))
-		var shares: Dictionary = project.get("share_basis_points_by_player", {})
-		var allocation := _allocate_weighted_total(shares, project_gdp, SHARE_BASIS_POINTS)
-		for player_key_variant in allocation.keys():
-			var player_key := str(player_key_variant)
-			result[player_key] = int(result.get(player_key, 0)) + int(allocation[player_key_variant])
-	return result
-
-
-static func player_gdp(project_values: Array, player_index: int) -> int:
-	return int(gdp_by_player(project_values).get(str(player_index), 0))
+static func _neutral_attribution_row(row: Dictionary, amount: int, reason: String) -> Dictionary:
+	return {
+		"source_receipt_id": str(row.get("receipt_id", "")),
+		"region_id": str(row.get("region_id", "")),
+		"project_id": str(row.get("project_id", "")),
+		"product_id": str(row.get("product_id", "")),
+		"industry_id": str(row.get("industry_id", "")),
+		"direction": str(row.get("direction", "")),
+		"neutral_gdp_per_minute": maxi(0, amount),
+		"reason_code": reason,
+		"visibility_scope": "public",
+	}
 
 
 static func public_snapshot(value: Dictionary) -> Dictionary:

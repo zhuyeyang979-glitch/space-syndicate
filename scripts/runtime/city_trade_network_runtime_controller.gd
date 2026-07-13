@@ -5,7 +5,7 @@ class_name CityTradeNetworkRuntimeController
 const PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
 const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
 
-const SAVE_TERMS_VERSION := "v0.5.project-slots.1"
+const SAVE_TERMS_VERSION := "v0.5.structured-project-gdp.1"
 const OCEAN_ROUTE_COST_MULTIPLIER := 0.88
 const DESTROYED_ROUTE_COST_PENALTY := 4.0
 const MIASMA_ROUTE_COST_PENALTY := 0.35
@@ -58,9 +58,11 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_project_slot_counts = (project_rules.get("project_slot_counts", {}) as Dictionary).duplicate(true) if project_rules.get("project_slot_counts", {}) is Dictionary else {}
 	_maximum_project_rank = int(project_rules.get("maximum_project_rank", 0))
 	var project_contract_valid := _project_ruleset_id == "v0.5" and _project_slot_counts == PROJECT_STATE.SLOT_COUNTS and _maximum_project_rank == PROJECT_STATE.MAX_PROJECT_RANK
-	_configured = _ruleset_id in ["v0.4", "v0.5"] and project_contract_valid and _world_bridge != null and _gdp_formula_controller != null and _cashflow_controller != null and _formula_service != null
+	var gdp_debug: Dictionary = _gdp_formula_controller.call("debug_snapshot") if _gdp_formula_controller != null and _gdp_formula_controller.has_method("debug_snapshot") else {}
+	var gdp_contract_valid := str(gdp_debug.get("profile_id", "")) == "gdp_formula_v05" and bool(gdp_debug.get("controller_ready", false))
+	_configured = _ruleset_id in ["v0.4", "v0.5"] and project_contract_valid and gdp_contract_valid and _world_bridge != null and _cashflow_controller != null and _formula_service != null
 	if not _configured:
-		push_error("CityTradeNetworkRuntimeController requires the v0.5 project contract plus WorldBridge, GDP, Cashflow, and Formula services.")
+		push_error("CityTradeNetworkRuntimeController requires the v0.5 project/GDP contracts plus WorldBridge, Cashflow, and Formula services.")
 
 
 func reset_state() -> void:
@@ -165,7 +167,40 @@ func public_project_snapshots(district_index: int) -> Array:
 func private_project_snapshots(district_index: int, viewer_player_index: int) -> Array:
 	var snapshot := _city_state_snapshot()
 	var city := _district_city(snapshot.get("districts", []), district_index)
-	return PROJECT_BRIDGE.private_projects(city, viewer_player_index) if not city.is_empty() else []
+	if city.is_empty():
+		return []
+	var result := PROJECT_BRIDGE.private_projects(city, viewer_player_index)
+	var own_gdp_by_project := {}
+	for row_variant in city.get("player_gdp_attribution_rows", []):
+		if not (row_variant is Dictionary) or int((row_variant as Dictionary).get("player_index", -1)) != viewer_player_index:
+			continue
+		var project_id := str((row_variant as Dictionary).get("project_id", ""))
+		own_gdp_by_project[project_id] = int(own_gdp_by_project.get(project_id, 0)) + int((row_variant as Dictionary).get("attributable_gdp_per_minute", 0))
+	for index in range(result.size()):
+		var project: Dictionary = result[index]
+		project["own_gdp_per_minute"] = int(own_gdp_by_project.get(str(project.get("project_id", "")), 0))
+		result[index] = project
+	return result
+
+
+func public_region_gdp_snapshot(district_index: int) -> Dictionary:
+	var snapshot := _economy_snapshot()
+	var districts := _districts_from_snapshot(snapshot)
+	var city := _district_city(districts, district_index)
+	if city.is_empty():
+		return {}
+	var attributed := _city_with_gdp_rows(district_index, _competition_matches(districts, district_index), snapshot, city)
+	return PROJECT_BRIDGE.public_gdp_snapshot(attributed.get("city", {}) as Dictionary) if bool(attributed.get("valid", false)) else {}
+
+
+func private_region_gdp_snapshot(district_index: int, viewer_player_index: int) -> Dictionary:
+	var snapshot := _economy_snapshot()
+	var districts := _districts_from_snapshot(snapshot)
+	var city := _district_city(districts, district_index)
+	if city.is_empty():
+		return {}
+	var attributed := _city_with_gdp_rows(district_index, _competition_matches(districts, district_index), snapshot, city)
+	return PROJECT_BRIDGE.private_gdp_snapshot(attributed.get("city", {}) as Dictionary, viewer_player_index) if bool(attributed.get("valid", false)) else {}
 
 
 func active_city_district_indices() -> Array:
@@ -208,16 +243,14 @@ func player_region_gdp_share_basis_points(player_index: int, district_index: int
 	var city := _district_city(districts, district_index)
 	if not _city_is_active(city):
 		return 0
-	var competition := int(city.get("competition_matches", _competition_matches(districts, district_index)))
-	var breakdown := _city_gdp_breakdown_from_snapshot(district_index, competition, snapshot)
-	var city_gdp := int(breakdown.get("net", 0))
-	if city_gdp <= 0:
+	var attributed := _city_with_gdp_rows(district_index, int(city.get("competition_matches", _competition_matches(districts, district_index))), snapshot, city)
+	if not bool(attributed.get("valid", false)):
 		return 0
-	if city_has_project_shares(city):
-		city = PROJECT_BRIDGE.assign_city_gdp(city, city_gdp)
-		var player_gdp := PROJECT_STATE.player_gdp(city.get("projects", []) as Array, player_index)
-		return clampi(int(round(float(player_gdp * PROJECT_STATE.SHARE_BASIS_POINTS) / float(city_gdp))), 0, PROJECT_STATE.SHARE_BASIS_POINTS)
-	return 0
+	var attributed_city: Dictionary = attributed.get("city", {}) if attributed.get("city", {}) is Dictionary else {}
+	var region_gdp := int(attributed_city.get("region_gdp_per_minute", 0))
+	var player_gdp_by_index: Dictionary = attributed_city.get("player_gdp_by_index", {}) if attributed_city.get("player_gdp_by_index", {}) is Dictionary else {}
+	var player_gdp := int(player_gdp_by_index.get(str(player_index), 0))
+	return clampi(int(round(float(player_gdp * PROJECT_STATE.SHARE_BASIS_POINTS) / float(region_gdp))), 0, PROJECT_STATE.SHARE_BASIS_POINTS) if region_gdp > 0 else 0
 
 
 func gdp_formula_snapshot(district_index: int, competition_matches_value: int) -> Dictionary:
@@ -235,7 +268,7 @@ func refresh_networks() -> Dictionary:
 	var districts := _districts_from_snapshot(snapshot)
 	if districts.is_empty():
 		return _failure("districts_empty")
-	var refresh_order := ["competition", "routes", "gdp", "project_allocation", "supply_guarantee"]
+	var refresh_order := ["competition", "routes", "structured_gdp_rows", "project_attribution", "supply_guarantee"]
 	for district_index_variant in _active_city_indices(districts):
 		var district_index := int(district_index_variant)
 		var district: Dictionary = districts[district_index]
@@ -281,11 +314,10 @@ func refresh_networks() -> Dictionary:
 		var district_index := int(district_index_variant)
 		var district: Dictionary = districts[district_index]
 		var city := _district_city(districts, district_index)
-		var city_gdp := 0
-		if not bool(district.get("destroyed", false)):
-			var breakdown := _city_gdp_breakdown_from_snapshot(district_index, int(city.get("competition_matches", 0)), gdp_snapshot)
-			city_gdp = int(breakdown.get("net", 0))
-		city = PROJECT_BRIDGE.assign_city_gdp(city, city_gdp)
+		var attributed := _city_with_gdp_rows(district_index, int(city.get("competition_matches", 0)), gdp_snapshot, city)
+		if not bool(attributed.get("valid", false)):
+			return _failure("gdp_attribution_failed:%s" % ",".join(attributed.get("errors", []) as Array))
+		city = (attributed.get("city", {}) as Dictionary).duplicate(true)
 		district["city"] = city
 		districts[district_index] = district
 		gdp_snapshot["districts"] = districts
@@ -386,38 +418,50 @@ func settle_cashflow_seconds(seconds: float) -> int:
 		var district_index := int(district_index_variant)
 		var district: Dictionary = districts[district_index]
 		var city := _district_city(districts, district_index)
-		if bool(district.get("destroyed", false)):
-			city["last_cashflow_rate"] = 0
-			city["last_income"] = 0
-			city["last_gdp_reason"] = "区域已毁，城市现金流停止结算"
-			district["city"] = city
-			districts[district_index] = district
-			continue
 		var competition := _competition_matches(districts, district_index)
 		var cash_snapshot := snapshot.duplicate(true)
 		cash_snapshot["districts"] = districts
-		var breakdown := _city_gdp_breakdown_from_snapshot(district_index, competition, cash_snapshot)
-		var gdp_per_minute := int(breakdown.get("net", 0))
-		var uses_projects := city_has_project_shares(city)
-		var context := {"city": city, "competition": competition, "gdp_per_minute": gdp_per_minute, "project_remainders": {}, "uses_projects": uses_projects}
-		if uses_projects:
-			city = PROJECT_BRIDGE.assign_city_gdp(city, gdp_per_minute)
-			var allocations: Dictionary = city.get("project_gdp_by_player", {}) if city.get("project_gdp_by_player", {}) is Dictionary else {}
-			var remainders: Dictionary = (city.get("project_cashflow_remainder_by_player", {}) as Dictionary).duplicate(true) if city.get("project_cashflow_remainder_by_player", {}) is Dictionary else {}
-			context["city"] = city
-			context["project_remainders"] = remainders
-			contexts[str(district_index)] = context
-			for player_key_variant in allocations.keys():
-				var player_index := int(str(player_key_variant))
-				if player_index < 0 or player_index >= players.size() or bool(eliminated.get(str(player_index), false)):
-					continue
-				sources.append({"source_id": "project:%d:%d" % [district_index, player_index], "source_kind": "project_share", "district_index": district_index, "player_index": player_index, "gdp_per_minute": maxi(0, int(allocations.get(player_key_variant, 0))), "remainder": float(remainders.get(str(player_index), 0.0)), "role_bonus_gdp_per_minute": int(breakdown.get("role_bonus", 0)), "role_bonus_basis_gdp_per_minute": gdp_per_minute, "eligible": true})
-			continue
-		city["last_cashflow_rate"] = 0
-		city["last_income"] = 0
-		city["last_gdp_reason"] = "共享城市尚无项目份额，不能按城市 owner 派息"
-		district["city"] = city
-		districts[district_index] = district
+		var attributed := _city_with_gdp_rows(district_index, competition, cash_snapshot, city)
+		if not bool(attributed.get("valid", false)):
+			return 0
+		city = (attributed.get("city", {}) as Dictionary).duplicate(true)
+		var breakdown: Dictionary = (attributed.get("breakdown", {}) as Dictionary).duplicate(true)
+		var previous_remainders: Dictionary = (city.get("gdp_cashflow_remainder_by_source_id", {}) as Dictionary).duplicate(true) if city.get("gdp_cashflow_remainder_by_source_id", {}) is Dictionary else {}
+		var remainders := {}
+		var source_facts := {}
+		for attribution_variant in city.get("player_gdp_attribution_rows", []):
+			if not (attribution_variant is Dictionary):
+				continue
+			var attribution: Dictionary = attribution_variant
+			var player_index := int(attribution.get("player_index", -1))
+			var source_id := str(attribution.get("attribution_id", ""))
+			var attributable_gdp := maxi(0, int(attribution.get("attributable_gdp_per_minute", 0)))
+			if source_id.is_empty() or attributable_gdp <= 0 or player_index < 0 or player_index >= players.size() or bool(eliminated.get(str(player_index), false)):
+				continue
+			var source_remainder := maxf(0.0, float(previous_remainders.get(source_id, 0.0)))
+			remainders[source_id] = source_remainder
+			sources.append({
+				"source_id": source_id,
+				"source_kind": "project_share",
+				"district_index": district_index,
+				"player_index": player_index,
+				"gdp_per_minute": attributable_gdp,
+				"remainder": source_remainder,
+				"role_bonus_gdp_per_minute": 0,
+				"role_bonus_basis_gdp_per_minute": maxi(1, attributable_gdp),
+				"eligible": true,
+			})
+			source_facts[source_id] = attribution.duplicate(true)
+		city["last_cashflow_rate"] = int(breakdown.get("region_gdp_per_minute", 0))
+		city["last_income"] = int(breakdown.get("region_gdp_per_minute", 0))
+		city["last_gdp_reason"] = "区域已毁，城市现金流停止结算" if bool(district.get("destroyed", false)) else "GDP按项目 receipt 与玩家份额实时归属"
+		contexts[str(district_index)] = {
+			"city": city,
+			"competition": competition,
+			"gdp_per_minute": int(breakdown.get("region_gdp_per_minute", 0)),
+			"source_remainders": remainders,
+			"source_facts": source_facts,
+		}
 	var settlement_variant: Variant = _cashflow_controller.call("settle_sources", safe_seconds, {"sources": sources})
 	var settlement: Dictionary = settlement_variant if settlement_variant is Dictionary else {}
 	if not bool(settlement.get("valid", false)):
@@ -435,14 +479,11 @@ func settle_cashflow_seconds(seconds: float) -> int:
 			continue
 		var context: Dictionary = contexts[context_key]
 		var city: Dictionary = context.get("city", {}) if context.get("city", {}) is Dictionary else {}
-		var source_kind := str(event.get("source_kind", ""))
+		var source_id := str(event.get("source_id", ""))
 		var paid := int(event.get("paid_amount", 0))
-		if source_kind == "project_share":
-			var remainders: Dictionary = context.get("project_remainders", {}) if context.get("project_remainders", {}) is Dictionary else {}
-			remainders[str(player_index)] = float(event.get("remainder_after", 0.0))
-			context["project_remainders"] = remainders
-		else:
-			city["cashflow_remainder"] = float(event.get("remainder_after", 0.0))
+		var remainders: Dictionary = context.get("source_remainders", {}) if context.get("source_remainders", {}) is Dictionary else {}
+		remainders[source_id] = float(event.get("remainder_after", 0.0))
+		context["source_remainders"] = remainders
 		if paid > 0:
 			var player: Dictionary = players[player_index] if players[player_index] is Dictionary else {}
 			player["cash"] = int(player.get("cash", 0)) + paid
@@ -453,20 +494,22 @@ func settle_cashflow_seconds(seconds: float) -> int:
 			players[player_index] = player
 			city["cashflow_paid_total"] = int(city.get("cashflow_paid_total", 0)) + paid
 			paid_players[str(player_index)] = true
-			economic_event_intents.append({"player_index": player_index, "category": "项目分红" if source_kind == "project_share" else "城市收入", "source": "实时现金流", "amount": paid, "detail": "%s｜%sGDP/min %d" % [_district_name(districts, district_index), "我的项目" if source_kind == "project_share" else "", int(event.get("gdp_per_minute", 0))]})
+			var source_facts: Dictionary = context.get("source_facts", {}) if context.get("source_facts", {}) is Dictionary else {}
+			var source_fact: Dictionary = source_facts.get(source_id, {}) if source_facts.get(source_id, {}) is Dictionary else {}
+			economic_event_intents.append({
+				"player_index": player_index,
+				"category": "项目分红",
+				"source": "实时现金流",
+				"amount": paid,
+				"detail": "%s｜%s项目 GDP/min %d" % [_district_name(districts, district_index), str(source_fact.get("product_id", "")), int(event.get("gdp_per_minute", 0))],
+			})
 		context["city"] = city
 		contexts[context_key] = context
 	for context_key_variant in contexts.keys():
 		var district_index := int(str(context_key_variant))
 		var context: Dictionary = contexts[context_key_variant]
 		var city: Dictionary = context.get("city", {}) if context.get("city", {}) is Dictionary else {}
-		if bool(context.get("uses_projects", false)):
-			var remainders: Dictionary = context.get("project_remainders", {}) if context.get("project_remainders", {}) is Dictionary else {}
-			city["project_cashflow_remainder_by_player"] = remainders
-			var remainder_total := 0.0
-			for remainder_variant in remainders.values():
-				remainder_total += float(remainder_variant)
-			city["cashflow_remainder"] = remainder_total
+		city["gdp_cashflow_remainder_by_source_id"] = (context.get("source_remainders", {}) as Dictionary).duplicate(true) if context.get("source_remainders", {}) is Dictionary else {}
 		city["last_cashflow_rate"] = int(context.get("gdp_per_minute", 0))
 		city["last_income"] = int(context.get("gdp_per_minute", 0))
 		city["competition_matches"] = int(context.get("competition", 0))
@@ -716,29 +759,112 @@ func _city_gdp_breakdown_from_snapshot(district_index: int, competition_matches_
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func _city_with_gdp_rows(district_index: int, competition_matches_value: int, snapshot: Dictionary, city_override: Dictionary = {}) -> Dictionary:
+	var districts := _districts_from_snapshot(snapshot).duplicate(true)
+	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		return {"valid": false, "errors": ["district_invalid"], "city": {}, "breakdown": {}}
+	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
+	var source_city := city_override if not city_override.is_empty() else _district_city(districts, district_index)
+	var city := normalize_city(source_city, district_index)
+	district["city"] = city
+	districts[district_index] = district
+	var local_snapshot := snapshot.duplicate(true)
+	local_snapshot["districts"] = districts
+	var breakdown := _city_gdp_breakdown_from_snapshot(district_index, competition_matches_value, local_snapshot)
+	if not bool(breakdown.get("valid", false)):
+		return {
+			"valid": false,
+			"errors": (breakdown.get("errors", ["gdp_formula_failed"]) as Array).duplicate(true),
+			"city": city,
+			"breakdown": breakdown,
+		}
+	var applied := PROJECT_BRIDGE.apply_gdp_rows(city, breakdown.get("gdp_rows", []) as Array)
+	if not bool(applied.get("valid", false)):
+		return {
+			"valid": false,
+			"errors": (applied.get("errors", ["gdp_attribution_failed"]) as Array).duplicate(true),
+			"city": city,
+			"breakdown": breakdown,
+		}
+	city = (applied.get("city", {}) as Dictionary).duplicate(true)
+	city["last_gdp_breakdown"] = breakdown.duplicate(true)
+	return {"valid": true, "errors": [], "city": city, "breakdown": breakdown}
+
+
 func _city_gdp_formula_snapshot_from_snapshot(district_index: int, competition_matches_value: int, snapshot: Dictionary) -> Dictionary:
 	var districts := _districts_from_snapshot(snapshot)
 	if district_index < 0 or district_index >= districts.size():
-		return {"active": false}
+		return {"active": false, "destroyed": false, "region_id": ""}
 	var city := _district_city(districts, district_index)
 	if not _city_is_active(city):
-		return {"active": false}
-	var products: Array = []
-	for product_variant in city.get("products", []):
-		if not (product_variant is Dictionary):
+		return {"active": false, "destroyed": false, "region_id": str(city.get("region_id", ""))}
+	var production_projects: Array = []
+	var demand_projects: Array = []
+	var commerce_projects: Array = []
+	for project_variant in PROJECT_BRIDGE.active_projects(city):
+		if not (project_variant is Dictionary):
 			continue
-		var product: Dictionary = product_variant
-		var product_id := str(product.get("name", ""))
+		var project: Dictionary = (project_variant as Dictionary).duplicate(true)
+		var product_id := str(project.get("product_id", ""))
 		var market_fact := _market_fact(snapshot, product_id)
-		products.append({"product_id": product_id, "price": int(market_fact.get("price", 0)), "level": int(product.get("level", 1)), "production_factor": _district_factor(snapshot, "production_factor_by_district", district_index), "supply_demand_ratio": float(market_fact.get("supply_demand_ratio", 1.0)), "transport_speed": _district_factor(snapshot, "transport_speed_by_district", district_index)})
-	var routes: Array = []
+		match str(project.get("direction", "")):
+			"production":
+				project.merge({
+					"price": int(market_fact.get("price", 0)),
+					"rank": int(project.get("rank", project.get("level", 1))),
+					"production_factor": _district_factor(snapshot, "production_factor_by_district", district_index),
+					"supply_demand_ratio": float(market_fact.get("supply_demand_ratio", 1.0)),
+					"transport_speed": _district_factor(snapshot, "transport_speed_by_district", district_index),
+				}, true)
+				production_projects.append(project)
+			"demand":
+				var route := _city_route_for_product(city, product_id)
+				project.merge({
+					"price": int(market_fact.get("price", 0)),
+					"flow_amount": float(route.get("flow_amount", 0.0)),
+					"consumption_factor": _district_factor(snapshot, "consumption_factor_by_district", district_index),
+					"supply_availability_ratio": float(market_fact.get("supply_availability_ratio", 1.0)),
+					"flow_speed": float(route.get("flow_speed", 0.0)),
+					"route_available": not route.is_empty(),
+					"disrupted": route.is_empty() or bool(route.get("disrupted", false)),
+				}, true)
+				demand_projects.append(project)
+			"commerce":
+				project["transit_routes"] = _transit_routes_for_project(product_id, district_index, snapshot, districts)
+				commerce_projects.append(project)
+	var adjustments: Array = []
+	_append_neutral_adjustment(adjustments, "legacy_revenue_bonus", int(city.get("revenue_bonus", 0)))
+	var role_bonus_map: Dictionary = snapshot.get("role_bonus_by_district", {}) if snapshot.get("role_bonus_by_district", {}) is Dictionary else {}
+	_append_neutral_adjustment(adjustments, "legacy_role_bonus", int(role_bonus_map.get(str(district_index), 0)))
+	_append_neutral_adjustment(adjustments, "legacy_contract_income", int(city.get("contract_income_bonus", 0)))
+	var game_time := float(snapshot.get("game_time", 0.0))
+	var district: Dictionary = districts[district_index]
+	return {
+		"active": true,
+		"destroyed": bool(district.get("destroyed", false)),
+		"region_id": str(city.get("region_id", PROJECT_STATE.region_id(district_index))),
+		"production_projects": production_projects,
+		"demand_projects": demand_projects,
+		"commerce_projects": commerce_projects,
+		"adjustments": adjustments,
+		"competition_matches": competition_matches_value,
+		"disrupted_route_count": int(city.get("trade_disrupted_routes", 0)),
+		"district_damage": int(district.get("damage", 0)),
+		"control_gdp_penalty": int(city.get("control_gdp_penalty", 0)),
+		"control_pressure_active": float(city.get("control_dispute_until", 0.0)) > game_time,
+		"military_gdp_penalty": int(city.get("military_gdp_penalty", 0)),
+		"military_pressure_active": float(city.get("military_pressure_until", 0.0)) > game_time,
+	}
+
+
+func _city_route_for_product(city: Dictionary, product_id: String) -> Dictionary:
 	for route_variant in city.get("trade_routes", []):
-		if not (route_variant is Dictionary):
-			continue
-		var route: Dictionary = route_variant
-		var product_id := str(route.get("product", ""))
-		var market_fact := _market_fact(snapshot, product_id)
-		routes.append({"product_id": product_id, "price": int(market_fact.get("price", 0)), "flow_amount": float(route.get("flow_amount", 1.0)), "consumption_factor": _district_factor(snapshot, "consumption_factor_by_district", district_index), "supply_availability_ratio": float(market_fact.get("supply_availability_ratio", 1.0)), "flow_speed": float(route.get("flow_speed", 1.0)), "disrupted": bool(route.get("disrupted", false))})
+		if route_variant is Dictionary and str((route_variant as Dictionary).get("product", "")) == product_id:
+			return (route_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _transit_routes_for_project(product_id: String, district_index: int, snapshot: Dictionary, districts: Array) -> Array:
 	var transit_routes: Array = []
 	var public_speed := _district_factor(snapshot, "transport_speed_by_district", district_index)
 	for city_index_variant in _active_city_indices(districts):
@@ -747,13 +873,23 @@ func _city_gdp_formula_snapshot_from_snapshot(district_index: int, competition_m
 			if not (route_variant is Dictionary):
 				continue
 			var route: Dictionary = route_variant
-			var product_id := str(route.get("product", ""))
+			if str(route.get("product", "")) != product_id:
+				continue
 			var path: Array = route.get("path", []) if route.get("path", []) is Array else []
-			transit_routes.append({"product_id": product_id, "price": int(_market_fact(snapshot, product_id).get("price", 0)), "flow_amount": float(route.get("flow_amount", 1.0)), "transport_speed": public_speed, "disrupted": bool(route.get("disrupted", false)), "destination_is_district": int(route.get("to", -1)) == district_index, "path_contains_district": path.has(district_index)})
-	var role_bonus_map: Dictionary = snapshot.get("role_bonus_by_district", {}) if snapshot.get("role_bonus_by_district", {}) is Dictionary else {}
-	var game_time := float(snapshot.get("game_time", 0.0))
-	var district: Dictionary = districts[district_index]
-	return {"active": true, "revenue_bonus": int(city.get("revenue_bonus", 0)), "role_bonus": int(role_bonus_map.get(str(district_index), 0)), "contract_income": int(city.get("contract_income_bonus", 0)), "products": products, "routes": routes, "transit_routes": transit_routes, "competition_matches": competition_matches_value, "disrupted_route_count": int(city.get("trade_disrupted_routes", 0)), "district_damage": int(district.get("damage", 0)), "control_gdp_penalty": int(city.get("control_gdp_penalty", 0)), "control_pressure_active": float(city.get("control_dispute_until", 0.0)) > game_time, "military_gdp_penalty": int(city.get("military_gdp_penalty", 0)), "military_pressure_active": float(city.get("military_pressure_until", 0.0)) > game_time}
+			transit_routes.append({
+				"price": int(_market_fact(snapshot, product_id).get("price", 0)),
+				"flow_amount": float(route.get("flow_amount", 1.0)),
+				"transport_speed": public_speed,
+				"disrupted": bool(route.get("disrupted", false)),
+				"destination_is_district": int(route.get("to", -1)) == district_index,
+				"path_contains_district": path.has(district_index),
+			})
+	return transit_routes
+
+
+func _append_neutral_adjustment(adjustments: Array, source_kind: String, amount: int) -> void:
+	if amount > 0:
+		adjustments.append({"source_kind": source_kind, "amount_gdp_per_minute": amount})
 
 
 func _active_city_indices(districts: Array) -> Array:
@@ -768,21 +904,30 @@ func _competition_matches(districts: Array, district_index: int) -> int:
 	var city := _district_city(districts, district_index)
 	if not _city_is_active(city):
 		return 0
-	var city_owner := int(city.get("owner", -1))
-	var own_products := _city_product_names(city)
+	var own_products := _production_project_products(city)
 	var matches := 0
 	for other_index_variant in _active_city_indices(districts):
 		var other_index := int(other_index_variant)
 		if other_index == district_index:
 			continue
 		var other_city := _district_city(districts, other_index)
-		if int(other_city.get("owner", -1)) == city_owner:
-			continue
-		var other_products := _city_product_names(other_city)
+		var other_products := _production_project_products(other_city)
 		for product_variant in own_products:
 			if other_products.has(product_variant):
 				matches += 1
 	return matches
+
+
+func _production_project_products(city: Dictionary) -> Array:
+	var result: Array = []
+	for project_variant in PROJECT_BRIDGE.active_projects(city):
+		if not (project_variant is Dictionary):
+			continue
+		var project: Dictionary = project_variant
+		var product_id := str(project.get("product_id", ""))
+		if str(project.get("direction", "")) == "production" and product_id != "" and not result.has(product_id):
+			result.append(product_id)
+	return result
 
 
 func _district_city(districts: Array, district_index: int) -> Dictionary:

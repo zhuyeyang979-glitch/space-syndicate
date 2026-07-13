@@ -207,11 +207,6 @@ func apply_settlement_plan(plan: Dictionary) -> Dictionary:
 	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 	var city_variant: Variant = district.get("city", {})
 	var city: Dictionary = (city_variant as Dictionary).duplicate(true) if city_variant is Dictionary else {}
-	city = PROJECT_BRIDGE.assign_city_gdp(city, int(breakdown.get("net", 0)))
-	district["city"] = city
-	districts[district_index] = district
-	_world.set("districts", districts)
-	_invalidate_network_cache()
 	var own_share := 0.0
 	var project_gdp := 0
 	for project_variant in PROJECT_BRIDGE.private_projects(city, player_index):

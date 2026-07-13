@@ -166,14 +166,22 @@ func _check_gdp_allocation_and_privacy() -> void:
 	city = (second_result.get("city", {}) as Dictionary).duplicate(true)
 	var shared_result := PROJECT_BRIDGE.apply_project_contribution(city, 1, 0, {"product_id": "等离子米", "project_direction": "demand", "slot_index": 0}, 3)
 	city = (shared_result.get("city", {}) as Dictionary).duplicate(true)
-	var assigned_city: Dictionary = PROJECT_BRIDGE.assign_city_gdp(city, 101)
+	var source_projects: Array = PROJECT_BRIDGE.active_projects(city)
+	var assigned_result := PROJECT_BRIDGE.apply_gdp_rows(city, [
+		_gdp_row(source_projects[0] as Dictionary, 60, "production"),
+		_gdp_row(source_projects[1] as Dictionary, 41, "demand"),
+	])
+	var assigned_city: Dictionary = assigned_result.get("city", {}) as Dictionary
 	var assigned: Array = assigned_city.get("projects", []) as Array
-	var by_player: Dictionary = PROJECT_STATE.gdp_by_player(assigned)
 	var city_project_gdp := 0
 	for project_variant in assigned:
 		city_project_gdp += int((project_variant as Dictionary).get("current_gdp", 0))
 	_expect(city_project_gdp == 101, "city total GDP is the exact sum of its active product projects")
-	_expect(_dictionary_int_total(by_player) == 101, "urbanization shares and realtime income allocation preserve the exact city GDP total")
+	_expect(int(assigned_city.get("player_gdp_per_minute", 0)) == 100 and int(assigned_city.get("neutral_gdp_per_minute", 0)) == 1 and bool(assigned_city.get("gdp_conservation_passed", false)), "per-player floors preserve one neutral GDP remainder instead of assigning it to a controller")
+	var unknown_project_row := _gdp_row(source_projects[0] as Dictionary, 10, "invalid_project")
+	unknown_project_row["project_id"] = "region.0001.project.unknown"
+	var invalid_attribution := PROJECT_BRIDGE.apply_gdp_rows(city, [unknown_project_row])
+	_expect(not bool(invalid_attribution.get("valid", true)) and str(invalid_attribution.get("errors", [])).contains("project_missing"), "GDP attribution fails closed when a receipt references an unknown project identity")
 	var public_snapshot: Dictionary = PROJECT_STATE.public_snapshot(assigned[1] as Dictionary)
 	_expect(not public_snapshot.has("controller_player_index") and not public_snapshot.has("contribution_by_player") and not public_snapshot.has("share_basis_points_by_player"), "public project snapshot hides controller and all contribution shares")
 	var private_snapshot: Dictionary = PROJECT_STATE.private_snapshot(assigned[1] as Dictionary, 0)
@@ -185,12 +193,16 @@ func _check_gdp_allocation_and_privacy() -> void:
 func _check_destroyed_district_stops_project_gdp() -> void:
 	var city := PROJECT_BRIDGE.normalize_city({"active": true, "products": [], "demands": []}, 7)
 	var contribution := PROJECT_BRIDGE.apply_project_contribution(city, 7, 0, {"product_id": "轨迹墨水", "project_direction": "commerce", "slot_index": 0}, 40)
-	var active_city := PROJECT_BRIDGE.assign_city_gdp(contribution.get("city", {}) as Dictionary, 37)
+	var contributed_city: Dictionary = contribution.get("city", {}) as Dictionary
+	var active_project: Dictionary = (PROJECT_BRIDGE.active_projects(contributed_city)[0] as Dictionary)
+	var active_result := PROJECT_BRIDGE.apply_gdp_rows(contributed_city, [_gdp_row(active_project, 37, "commerce")])
+	var active_city: Dictionary = active_result.get("city", {}) as Dictionary
 	_expect(int(((active_city.get("projects", []) as Array)[0] as Dictionary).get("current_gdp", 0)) == 37, "an active district project receives city GDP")
-	var destroyed_city := PROJECT_BRIDGE.assign_city_gdp(active_city, 0)
+	var destroyed_result := PROJECT_BRIDGE.apply_gdp_rows(active_city, [])
+	var destroyed_city: Dictionary = destroyed_result.get("city", {}) as Dictionary
 	var destroyed_projects: Array = destroyed_city.get("projects", []) as Array
 	_expect(not destroyed_projects.is_empty() and int((destroyed_projects[0] as Dictionary).get("current_gdp", -1)) == 0, "a destroyed district zeroes project GDP and stops project income")
-	_expect(_dictionary_int_total(destroyed_city.get("project_gdp_by_player", {}) as Dictionary) == 0, "a destroyed district allocates no project GDP to players")
+	_expect(int(destroyed_city.get("player_gdp_per_minute", -1)) == 0 and (destroyed_city.get("player_gdp_attribution_rows", []) as Array).is_empty(), "a destroyed district emits no player GDP attribution rows")
 
 
 func _check_save_load_roundtrip() -> void:
@@ -215,10 +227,12 @@ func _check_save_load_roundtrip() -> void:
 		"contribution_units": 1,
 	}, 52)
 	city = (second_result.get("city", {}) as Dictionary).duplicate(true)
-	city = PROJECT_BRIDGE.assign_city_gdp(city, 73)
+	var project: Dictionary = (PROJECT_BRIDGE.active_projects(city)[0] as Dictionary)
+	var gdp_result := PROJECT_BRIDGE.apply_gdp_rows(city, [_gdp_row(project, 73, "roundtrip")])
+	city = (gdp_result.get("city", {}) as Dictionary).duplicate(true)
 	var state := {
 		"city_trade_network_runtime": {
-			"terms_version": "v0.5.project-slots.1",
+			"terms_version": "v0.5.structured-project-gdp.1",
 			"project_sequence": 53,
 		},
 		"districts": [{"destroyed": false, "city": city}],
@@ -256,6 +270,25 @@ func _find_project(projects: Array, product_id: String, direction: String) -> Di
 		if str(project.get("product_id", "")) == product_id and str(project.get("direction", "")) == direction:
 			return project
 	return {}
+
+
+func _gdp_row(project: Dictionary, amount: int, source_kind: String) -> Dictionary:
+	return {
+		"receipt_id": "gdp.%s.%s.%s" % [str(project.get("region_id", "")), str(project.get("project_id", "")), source_kind],
+		"region_id": str(project.get("region_id", "")),
+		"project_id": str(project.get("project_id", "")),
+		"project_generation": int(project.get("generation", 0)),
+		"slot_id": str(project.get("slot_id", "")),
+		"product_id": str(project.get("product_id", "")),
+		"industry_id": "technology",
+		"direction": str(project.get("direction", "")),
+		"source_kind": source_kind,
+		"gross_gdp_per_minute": amount,
+		"penalty_gdp_per_minute": 0,
+		"net_gdp_per_minute": amount,
+		"neutral": false,
+		"visibility_scope": "public",
+	}
 
 
 func _dictionary_int_total(values: Dictionary) -> int:

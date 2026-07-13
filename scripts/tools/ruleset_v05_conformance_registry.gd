@@ -65,11 +65,11 @@ const RECORDS := [
 	},
 	{
 		"rule_id": "city_project_identity_runtime",
-		"expected_behavior": "Each buildable region has two production, two demand, and one commerce slot with stable ASCII identity, rank I-IV, monotonic generation, tombstones, and no controller on an exact highest-share tie.",
+		"expected_behavior": "Each buildable region has five stable project slots; each project produces structured GDP receipts whose project/player/neutral attribution conserves regional GDP and permits zero GDP.",
 		"current_owner": "CityTradeNetworkRuntimeController",
 		"current_status": STATUS_CUTOVER_COMPLETE,
-		"runtime_evidence": ["CityTradeNetworkRuntimeCharacterizationBench 88/88 observed", "88/88 aligned", "CityDevelopmentSettlementRuntimeCharacterizationBench 64/64"],
-		"next_step": "SS05-03 consumes these stable project identities when replacing whole-city GDP allocation with structured GDP rows and conservation checks.",
+		"runtime_evidence": ["GdpFormulaRuntimeCutoverBench 40/40", "CityTradeNetworkRuntimeCharacterizationBench 108/108 observed and aligned", "CityDevelopmentSettlementRuntimeCharacterizationBench 64/64", "No whole-city allocation or city-owner payout fallback"],
+		"next_step": "SS05-04 must consume the existing private attribution receipts for qualification and victory without recomputing GDP or ownership.",
 	},
 	{
 		"rule_id": "emergency_sale_cost_basis",

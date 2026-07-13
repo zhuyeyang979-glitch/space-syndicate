@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="GdpFormulaProfileV05Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/economy/gdp_formula_profile_v05_resource.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = "gdp_formula_v05"
+schema_version = "v0.5.structured-project-gdp.1"
+display_name = "Space Syndicate Structured Project GDP v0.5"
+design_notes = "Project-keyed production, demand, commerce, and explicit adjustment rows. Pressure is allocated by gross GDP and stable receipt_id. Region GDP may reach zero."
+product_base_revenue = 42
+product_rank_revenue = 12
+product_price_revenue_divisor = 5
+production_gdp_scale = 0.58
+demand_supply_revenue = 28
+demand_price_revenue_divisor = 8
+consumption_gdp_scale = 0.72
+transit_gdp_base = 18
+transit_price_divisor = 20
+competition_penalty = 16
+trade_disruption_penalty = 55
+district_damage_penalty = 18
+minimum_flow_amount = 0.25
+zero_gdp_allowed = true
+pressure_allocation_mode = "proportional_gross_receipt_id"

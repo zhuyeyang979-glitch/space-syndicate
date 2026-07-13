@@ -68,8 +68,8 @@ func _run() -> void:
 
 func _source(gdp_per_minute: int, remainder: float) -> Dictionary:
 	return {
-		"source_id": "city:test",
-		"source_kind": "city_owner",
+		"source_id": "gdp.region.0000.project.g1.player.0",
+		"source_kind": "project_share",
 		"district_index": 0,
 		"player_index": 0,
 		"gdp_per_minute": gdp_per_minute,

@@ -1,6 +1,6 @@
 # 《太空辛迪加》v0.5 规则实现开发计划
 
-> 状态：SS05-00、SS05-01、SS05-01A 与 SS05-02 已完成；项目身份领域已切到 v0.5，生产全局 Ruleset bridge 仍为 v0.4；下一步为 SS05-03。
+> 状态：SS05-00、SS05-01、SS05-01A、SS05-02 与 SS05-03 已完成；项目身份与结构化 GDP 领域已切到 v0.5，生产全局 Ruleset bridge 仍为 v0.4；下一步为 SS05-04。
 > 编写日期：2026-07-14。
 > 玩家规则权威：`docs/tabletop_rulebook_v05.md`。
 > 运行时迁移合同：`docs/rules_v05_runtime_migration.md`。
@@ -332,7 +332,7 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 - 推荐链路固定为 `rule/effect receipt -> visibility sanitizer -> PlayerTextSpec(message_key + typed args + audience + scope) -> locale resolver -> visible/assistive text`。本地化服务只解析 key、参数、locale 和格式，不计算合法性、规则、owner 或可见性。
 - 新 v0.5 `card_id`、`effect_id`、`reason_code`、action 和 save key 使用无语言含义的稳定 ASCII 标识；旧中文 ID 只能在明确的迁移边界作为 legacy alias，不能继续兼任玩家名称。
 - 发布 UI 禁止回退显示 raw `card_id`、`action_id`、`reason_code`、`args.error`、节点路径、堆栈或未替换 placeholder。缺少 key 时显示已本地化的安全通用提示，并把原始诊断只写入开发日志。
-- GDP 玩家单位在 SS05-03 结构化 GDP hard cutover 时统一为 `GDP/min`。SS05-01A 只建立单位 ID 和格式化合同，不得提前把当前 v0.4 `GDP/s` 表面改成一半迁移状态。
+- GDP 玩家单位已在 SS05-03 结构化 GDP hard cutover 中统一为 `GDP/min`；单位目录仍是唯一格式合同，UI 不得自行换算秒／分钟。
 - 当前 239 条 v0.4 等级卡牌先建立逐条迁移清单和 effect/text parity 状态；只有对应 v0.5 effect、requirement 和 terms 已成为权威后，才在 SS05-12A 改写玩家文字，避免把旧规则文案本地化后再次返工。
 
 ## 8. 分阶段实施顺序
@@ -384,7 +384,7 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 - 239 条现有等级卡牌 `rules_text` 已逐条登记 SHA-256、来源、rank、owner 和 blocking reason。当前 `release_ready=0`、`blocked=239`；只有 v0.5 候选目录中已经明确的 5 项保存 proposed stable ID，未审定语义没有被猜测。
 - v0.5 rank schema 已能独立保存 `name_key`、`rules_key`、`short_effect_key` 和 `assistive_name_key`；blocked 项不会进入 release-ready/public pool。
 - `PlayerTextV05FoundationBench` 为唯一综合门，48/48 通过；Ruleset Foundation 56/56、Authoring 36/36、Catalog 80/80、Save 24/24、Menu 24/24、Navigation 32/32 observed／19/32 aligned、composition、focus-order 与 layout smoke 全部通过，Godot MCP `get_errors=0`。
-- 生产 Ruleset Bridge、Card Catalog、save v1、现有 v0.4 UI 与 `main.gd` 没有接入新文字基础；`GDP/min` 只作为 v0.5 单位合同存在，实际 UI 切换仍留给 SS05-03。
+- 生产 Ruleset Bridge、Card Catalog、save v1 与通用文字 resolver 仍未切换；SS05-03 已让 GDP 领域统一输出 `GDP/min`，但没有提前激活其余 v0.5 玩家文字。
 
 ### 阶段 2｜项目身份、五槽与世代
 
@@ -460,7 +460,7 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 | SS05-01 | v0.5 Profile、产业目录、卡牌 schema、CurrencyAmount 与存档握手（完成，runtime inactive） | 00 | 推进 |
 | SS05-01A | 玩家文字基础：稳定 ASCII ID、可见性消息协议、默认目录、typed args、单位和伪本地化 fixture（完成，runtime inactive） | 01 | 推进；runtime inactive |
 | SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制（完成，88/88） | 01/01A | 替换 + 删除 D-06 部分 |
-| SS05-03 | 结构化 GDP 行、归属、守恒与零 GDP | 02 | 替换 + 删除 D-06 剩余 |
+| SS05-03 | 结构化 GDP 行、归属、守恒与零 GDP（完成，GDP 40/40、CityTrade 108/108） | 02 | 替换 + 删除 D-06 剩余 |
 | SS05-04 | VictoryControl、审计名单、终局与隐私 | 03 | 推进 + 删除 D-02 |
 | SS05-05 | 六产业产能、卡牌条件和批次占用 | 03 | 推进 + 删除 D-05 |
 | SS05-06 | 项目合约与 exact product | 03 | 替换 + 删除 D-08 |
@@ -571,6 +571,6 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 ## 14. 下一步执行建议
 
-SS05-02 已完成。`CityTradeNetworkRuntimeController` 现在唯一拥有生产 2／需求 2／通商 1 的五项目位、稳定 ASCII `region_id`／`slot_id`／`project_id`、项目最高 IV、generation/tombstone、项目份额及精确平局无人控制。现有 City/Trade 长期门由 68 项扩展为 88/88 observed、88/88 aligned，City Development 仍为 64/64；项目公开快照只发布经过可见性标记的稳定 presentation key，不公开 controller、贡献表或份额表。
+SS05-03 已完成。`GdpFormulaRuntimeController` 以稳定 `project_id` 生成生产、需求、通商或显式中性的 GDP receipt；`CityTradeNetworkRuntimeController` 唯一编排世界事实、刷新顺序、项目／玩家／中性归属和按 receipt+player 标识的现金流来源。区域、项目与玩家+中性三层守恒均有门禁，整数下取整余数明确归入 neutral，区域允许降到 0 GDP，不再存在最低 40、整城分摊、city owner 派息或同 owner 竞争豁免。
 
-下一开发批次进入 SS05-03：以稳定 `project_id` 为唯一关联键生成结构化 GDP 行，明确行级归属、总量守恒、余数分配和零 GDP 语义，并删除“按项目等级瓜分整城 GDP”的剩余 D-06 路径。仍不得提前实现胜利 UI、六产业聚合或批量改写 239 条卡牌语义；这些消费者必须等待 SS05-03 的 GDP receipt 成为唯一真相层。
+现有 GDP 门扩展为 40/40，City/Trade 长期门扩展为 108/108 observed/aligned，City Development 保持 64/64。下一开发批次进入 SS05-04：VictoryControl、10 秒资格、120 秒审计、名单、冷却与终局隐私必须只消费现有结构化 private attribution receipt，不得复制 GDP 或项目归属公式。六产业、合约、情报与 239 条卡牌语义仍按既定后续工单推进。

@@ -74,7 +74,7 @@ func settle_sources(seconds: float, income_source_snapshot: Dictionary) -> Dicti
 		var source_kind := str(source.get("source_kind", ""))
 		var district_index := int(source.get("district_index", -1))
 		var player_index := int(source.get("player_index", -1))
-		if source_id.is_empty() or district_index < 0 or player_index < 0 or not ["city_owner", "project_share"].has(source_kind):
+		if source_id.is_empty() or district_index < 0 or player_index < 0 or source_kind != "project_share":
 			continue
 		var gdp_per_minute := maxi(0, int(source.get("gdp_per_minute", 0)))
 		var remainder_before := maxf(0.0, float(source.get("remainder", 0.0)))
