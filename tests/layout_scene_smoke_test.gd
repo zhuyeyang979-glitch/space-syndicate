@@ -390,6 +390,18 @@ const RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT := "res://scripts/tools/ruleset_v0
 const RULESET_V05_FOUNDATION_BENCH_SCRIPT := "res://scripts/tools/ruleset_v05_foundation_bench.gd"
 const RULESET_V05_FOUNDATION_BENCH_SCENE := "res://scenes/tools/RulesetV05FoundationBench.tscn"
 const RULESET_V05_FOUNDATION_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v05_foundation/"
+const PLAYER_TEXT_SPEC_V05_SCRIPT := "res://scripts/presentation/player_text_spec_v05.gd"
+const PLAYER_TEXT_VISIBILITY_V05_SCRIPT := "res://scripts/presentation/player_text_visibility_contract_v05.gd"
+const PLAYER_TEXT_RESOLVER_V05_SCRIPT := "res://scripts/presentation/player_text_locale_resolver_v05.gd"
+const PLAYER_TEXT_CATALOG_VALIDATOR_V05_SCRIPT := "res://scripts/presentation/player_text_catalog_validator_v05.gd"
+const PLAYER_GENERATED_TEXT_SANITIZER_V05_SCRIPT := "res://scripts/presentation/player_generated_text_sanitizer_v05.gd"
+const PLAYER_TEXT_SCHEMA_V05 := "res://resources/localization/player_text_schema_v05.tres"
+const PLAYER_TEXT_UNIT_CATALOG_V05 := "res://resources/localization/unit_display_catalog_v05.tres"
+const PLAYER_TEXT_TRANSLATION_ZH_HANS_V05 := "res://localization/v05/player_text_zh_Hans.po"
+const CARD_TEXT_MIGRATION_REGISTRY_V05 := "res://resources/migrations/card_text_v04_to_v05_registry.tres"
+const PLAYER_TEXT_V05_FOUNDATION_BENCH_SCRIPT := "res://scripts/tools/player_text_v05_foundation_bench.gd"
+const PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE := "res://scenes/tools/PlayerTextV05FoundationBench.tscn"
+const PLAYER_TEXT_V05_FOUNDATION_OUTPUT_DIR := "user://space_syndicate_design_qa/player_text_v05_foundation/"
 const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/city_development_runtime_controller.gd"
 const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
 const CITY_DEVELOPMENT_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/city_development_world_bridge.gd"
@@ -816,6 +828,7 @@ func _run() -> void:
 	await _check_balance_runtime_bridge_component()
 	await _check_ruleset_v04_source_of_truth_component()
 	await _check_ruleset_v05_foundation_component()
+	await _check_player_text_v05_foundation_component()
 	await _check_main_runtime_replacement_foundation_component()
 	await _check_game_session_save_ownership_component()
 	await _check_district_purchase_runtime_cutover_component()
@@ -8300,6 +8313,100 @@ func _check_ruleset_v05_foundation_component() -> void:
 	_expect(save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("RulesetSaveHandshakeService"), "production GameSaveRuntimeCoordinator retains v1 behavior")
 	_expect(catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("card_runtime_catalog_v05.tres"), "production CardRuntimeCatalogService remains pinned to v0.4")
 	_expect(not main_source.contains("space_syndicate_ruleset_v05") and not main_source.contains("RulesetSaveHandshakeService"), "main.gd has no v0.5 selector, fallback, or handshake owner")
+
+
+func _check_player_text_v05_foundation_component() -> void:
+	for path in [
+		PLAYER_TEXT_SPEC_V05_SCRIPT,
+		PLAYER_TEXT_VISIBILITY_V05_SCRIPT,
+		PLAYER_TEXT_RESOLVER_V05_SCRIPT,
+		PLAYER_TEXT_CATALOG_VALIDATOR_V05_SCRIPT,
+		PLAYER_GENERATED_TEXT_SANITIZER_V05_SCRIPT,
+		PLAYER_TEXT_SCHEMA_V05,
+		PLAYER_TEXT_UNIT_CATALOG_V05,
+		PLAYER_TEXT_TRANSLATION_ZH_HANS_V05,
+		CARD_TEXT_MIGRATION_REGISTRY_V05,
+		PLAYER_TEXT_V05_FOUNDATION_BENCH_SCRIPT,
+		PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path), "SS05-01A asset loads: %s" % path)
+	var text_catalog := load(PLAYER_TEXT_SCHEMA_V05)
+	var unit_catalog := load(PLAYER_TEXT_UNIT_CATALOG_V05)
+	var migration_registry := load(CARD_TEXT_MIGRATION_REGISTRY_V05)
+	var text_snapshot: Dictionary = text_catalog.call("debug_snapshot") if text_catalog != null and text_catalog.has_method("debug_snapshot") else {}
+	var unit_snapshot: Dictionary = unit_catalog.call("debug_snapshot") if unit_catalog != null and unit_catalog.has_method("debug_snapshot") else {}
+	var migration_validation: Dictionary = migration_registry.call("validation_snapshot") if migration_registry != null and migration_registry.has_method("validation_snapshot") else {}
+	_expect(text_catalog != null and str(text_snapshot.get("schema_version", "")) == "v0.5" and not _variant_contains_callable(text_snapshot) and not _variant_contains_object(text_snapshot), "Player Text schema exposes a pure-data v0.5 message catalog")
+	_expect(unit_catalog != null and (unit_snapshot.get("entries", []) as Array).size() == 4 and not _variant_contains_callable(unit_snapshot) and not _variant_contains_object(unit_snapshot), "Player Text unit catalog owns cents, basis points, seconds, and GDP/min formatting")
+	_expect(bool(migration_validation.get("valid", false)) and int(migration_validation.get("entry_count", 0)) == 239 and int(migration_validation.get("blocked_count", 0)) == 239 and int(migration_validation.get("release_ready_count", -1)) == 0, "Card text migration registry inventories all 239 legacy rules_text records without guessing release-ready semantics")
+	var registry_snapshot: Dictionary = migration_registry.call("debug_snapshot") if migration_registry != null and migration_registry.has_method("debug_snapshot") else {}
+	_expect(not _variant_contains_callable(registry_snapshot) and not _variant_contains_object(registry_snapshot), "Card text migration registry stays pure data")
+	var bench_packed := load(PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE) as PackedScene
+	var bench := bench_packed.instantiate() if bench_packed != null else null
+	if bench != null:
+		bench.set("auto_run", false)
+	var cases: Array = bench.call("foundation_cases") if bench != null and bench.has_method("foundation_cases") else []
+	var manifest: Dictionary = bench.call("build_foundation_manifest_preview") if bench != null and bench.has_method("build_foundation_manifest_preview") else {}
+	_expect(bench != null and bench.has_method("output_dir") and bench.has_method("run_foundation_suite") and cases.size() == 48 and int(manifest.get("record_count", 0)) == 48 and (manifest.get("records", []) as Array).size() == 48, "PlayerTextV05FoundationBench exposes one 48-case integrated gate")
+	_expect(bench != null and str(bench.call("output_dir")) == PLAYER_TEXT_V05_FOUNDATION_OUTPUT_DIR and str(bench.call("output_dir")).begins_with("user://") and not str(bench.call("output_dir")).contains("res://reports"), "Player Text v0.5 QA output is isolated under user://")
+	_expect(not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Player Text v0.5 manifest preview stays pure data")
+	if bench != null:
+		bench.free()
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var registered_paths: Array[String] = mcp_registry.call("scene_paths")
+		for required_path in [PLAYER_TEXT_SCHEMA_V05, CARD_TEXT_MIGRATION_REGISTRY_V05, PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE]:
+			_expect(registered_paths.has(required_path), "MCP Editability Hub registers %s" % required_path)
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	var scene_audit_record: Dictionary = scene_audit.call("record_for_id", "player_text_v05_foundation_gate") if scene_audit != null else {}
+	_expect(str(scene_audit_record.get("current_scene_path", "")) == PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE and str(scene_audit_record.get("sceneization_status", "")) == "partial", "Sceneization Audit marks Player Text v0.5 ready but runtime inactive")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	var system_audit_record: Dictionary = system_audit.call("record_for_id", "player_text_v05_foundation") if system_audit != null else {}
+	_expect(str(system_audit_record.get("current_path", "")) == PLAYER_TEXT_SCHEMA_V05 and str(system_audit_record.get("current_status", "")) == "resource_asset" and str(system_audit_record.get("runtime_owner", "")) == "inactive_until_v05_domain_text_cutovers", "System Resourceization Audit records Player Text foundation ready and runtime inactive")
+	var conformance_script := load(RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	var text_conformance_record: Dictionary = {}
+	var conformance_records: Array = conformance.call("records") if conformance != null else []
+	for record_variant in conformance_records:
+		var record: Dictionary = record_variant as Dictionary
+		if str(record.get("rule_id", "")) == "player_facing_text_foundation":
+			text_conformance_record = record
+			break
+	_expect(str(text_conformance_record.get("current_status", "")) == "runtime_inactive", "Ruleset v0.5 Conformance Registry keeps Player Text foundation runtime inactive")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenPlayerTextV05FoundationButton", "RunPlayerTextV05FoundationBenchButton", "OpenPlayerTextV05FoundationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("player_text_v05_foundation_bench_scene_path") and dock.has_method("player_text_v05_foundation_qa_output_dir"), "Design QA Dock exposes Player Text v0.5 path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_player_text_v05_foundation_requested", func(resource_path: String) -> void: open_paths.append(resource_path))
+		dock.connect("run_player_text_v05_foundation_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenPlayerTextV05FoundationButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunPlayerTextV05FoundationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [PLAYER_TEXT_SCHEMA_V05] and run_paths == [PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE], "Design QA Dock fallback signals target the Player Text schema and integrated Foundation Bench")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+	var bridge_source := FileAccess.get_file_as_string(RULESET_RUNTIME_BRIDGE_SCRIPT)
+	var save_source := FileAccess.get_file_as_string(GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT)
+	var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/card_runtime_catalog_service.gd") + FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("player_text_v05"), "production RulesetRuntimeBridge does not consume Player Text v0.5")
+	_expect(save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("PlayerText"), "production GameSaveRuntimeCoordinator stores no localized text")
+	_expect(catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("player_text_v05"), "production CardRuntimeCatalogService remains on v0.4 without a text fallback")
+	_expect(not main_source.contains("PlayerTextV05") and not main_source.contains("player_text_schema_v05"), "main.gd has no Player Text v0.5 selector or active owner")
 
 
 func _check_main_runtime_replacement_foundation_component() -> void:

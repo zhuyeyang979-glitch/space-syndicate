@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="PlayerTextUnitCatalogResource" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/player_text_unit_catalog_resource.gd" id="1_catalog"]
+[ext_resource type="Script" path="res://scripts/presentation/player_text_unit_entry_resource.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="Unit_currency_cents"]
+script = ExtResource("2_entry")
+unit_id = "currency_cents"
+value_kind = "integer_cents"
+scale = 100
+decimal_places = 2
+suffix_message_key = "unit.currency"
+accessible_suffix_message_key = "unit.currency"
+join_with_space = true
+
+[sub_resource type="Resource" id="Unit_basis_points"]
+script = ExtResource("2_entry")
+unit_id = "basis_points"
+value_kind = "integer_basis_points"
+scale = 100
+decimal_places = 2
+suffix_message_key = "unit.percent"
+accessible_suffix_message_key = "unit.percent"
+
+[sub_resource type="Resource" id="Unit_seconds"]
+script = ExtResource("2_entry")
+unit_id = "seconds"
+value_kind = "integer_seconds"
+scale = 1
+suffix_message_key = "unit.seconds"
+accessible_suffix_message_key = "unit.seconds"
+
+[sub_resource type="Resource" id="Unit_gdp_per_minute"]
+script = ExtResource("2_entry")
+unit_id = "gdp_per_minute"
+value_kind = "integer_gdp_rate"
+scale = 1
+suffix_message_key = "unit.gdp_per_minute"
+accessible_suffix_message_key = "unit.gdp_per_minute"
+
+[resource]
+script = ExtResource("1_catalog")
+schema_version = "v0.5"
+entries = Array[Resource]([SubResource("Unit_currency_cents"), SubResource("Unit_basis_points"), SubResource("Unit_seconds"), SubResource("Unit_gdp_per_minute")])

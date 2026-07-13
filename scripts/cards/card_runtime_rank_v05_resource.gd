@@ -6,6 +6,10 @@ class_name CardRuntimeRankV05Resource
 @export var family_id: String = ""
 @export_range(1, 4, 1) var rank: int = 1
 @export var source_v04_card_id: String = ""
+@export var name_key: String = ""
+@export var rules_key: String = ""
+@export var short_effect_key: String = ""
+@export var assistive_name_key: String = ""
 @export var requirements: Array[CardPlayRequirementV05Resource] = []
 @export_enum("blocked", "draft", "release_ready") var migration_status: String = "blocked"
 @export_multiline var blocking_reason: String = ""
@@ -24,6 +28,10 @@ func to_snapshot() -> Dictionary:
 		"family_id": family_id,
 		"rank": rank,
 		"source_v04_card_id": source_v04_card_id,
+		"name_key": name_key,
+		"rules_key": rules_key,
+		"short_effect_key": short_effect_key,
+		"assistive_name_key": assistive_name_key,
 		"requirements": requirement_snapshots,
 		"migration_status": migration_status,
 		"blocking_reason": blocking_reason,

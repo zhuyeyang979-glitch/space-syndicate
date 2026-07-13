@@ -83,6 +83,11 @@ const CARD_RUNTIME_CATALOG_V05 := "res://resources/cards/runtime/card_runtime_ca
 const CLOCK_DOMAIN_REGISTRY_V05 := "res://resources/rules/clock_domain_registry_v05.tres"
 const RULESET_SAVE_HANDSHAKE_V05 := "res://scenes/runtime/RulesetSaveHandshakeService.tscn"
 const RULESET_V05_FOUNDATION_BENCH := "res://scenes/tools/RulesetV05FoundationBench.tscn"
+const PLAYER_TEXT_V05_SCHEMA := "res://resources/localization/player_text_schema_v05.tres"
+const PLAYER_TEXT_V05_UNIT_CATALOG := "res://resources/localization/unit_display_catalog_v05.tres"
+const PLAYER_TEXT_V05_TRANSLATION := "res://localization/v05/player_text_zh_Hans.po"
+const PLAYER_TEXT_V05_MIGRATION_REGISTRY := "res://resources/migrations/card_text_v04_to_v05_registry.tres"
+const PLAYER_TEXT_V05_FOUNDATION_BENCH := "res://scenes/tools/PlayerTextV05FoundationBench.tscn"
 
 var failures: Array[String] = []
 
@@ -111,6 +116,7 @@ func _run() -> void:
 	_check_runtime_card_authoring_assets()
 	_check_global_ui_navigation_characterization_assets()
 	_check_ruleset_v05_foundation_assets()
+	_check_player_text_v05_foundation_assets()
 	var test_bgm := main.get_node_or_null("RuntimeServices/TableAudioHost/NightPatrolTableBgm") as AudioStreamPlayer
 	if test_bgm != null:
 		test_bgm.stream = null
@@ -771,6 +777,43 @@ func _check_ruleset_v05_foundation_assets() -> void:
 	ready = ready and catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("card_runtime_catalog_v05.tres")
 	ready = ready and not main_source.contains("space_syndicate_ruleset_v05") and not main_source.contains("RulesetSaveHandshakeService")
 	_expect(ready, "SS05-01 provides a pure-data v0.5 foundation while production ruleset, save, and card-catalog owners remain v0.4")
+
+
+func _check_player_text_v05_foundation_assets() -> void:
+	var required_assets := [
+		PLAYER_TEXT_V05_SCHEMA,
+		PLAYER_TEXT_V05_UNIT_CATALOG,
+		PLAYER_TEXT_V05_TRANSLATION,
+		PLAYER_TEXT_V05_MIGRATION_REGISTRY,
+		PLAYER_TEXT_V05_FOUNDATION_BENCH,
+	]
+	var ready := true
+	for path in required_assets:
+		ready = ready and ResourceLoader.exists(path)
+	var text_catalog := load(PLAYER_TEXT_V05_SCHEMA)
+	var unit_catalog := load(PLAYER_TEXT_V05_UNIT_CATALOG)
+	var migration_registry := load(PLAYER_TEXT_V05_MIGRATION_REGISTRY)
+	var text_snapshot: Dictionary = text_catalog.call("debug_snapshot") if text_catalog != null and text_catalog.has_method("debug_snapshot") else {}
+	var unit_snapshot: Dictionary = unit_catalog.call("debug_snapshot") if unit_catalog != null and unit_catalog.has_method("debug_snapshot") else {}
+	var migration_validation: Dictionary = migration_registry.call("validation_snapshot") if migration_registry != null and migration_registry.has_method("validation_snapshot") else {}
+	ready = ready and _is_pure_data(text_snapshot) and (unit_snapshot.get("entries", []) as Array).size() == 4 and _is_pure_data(unit_snapshot)
+	ready = ready and bool(migration_validation.get("valid", false)) and int(migration_validation.get("entry_count", 0)) == 239 and int(migration_validation.get("release_ready_count", -1)) == 0 and int(migration_validation.get("blocked_count", 0)) == 239
+	var bench_packed := load(PLAYER_TEXT_V05_FOUNDATION_BENCH) as PackedScene
+	var bench := bench_packed.instantiate() if bench_packed != null else null
+	var manifest: Dictionary = bench.call("build_foundation_manifest_preview") if bench != null and bench.has_method("build_foundation_manifest_preview") else {}
+	ready = ready and bench != null and bench.has_method("foundation_cases") and bench.has_method("run_foundation_suite")
+	ready = ready and int(manifest.get("record_count", 0)) == 48 and (manifest.get("records", []) as Array).size() == 48 and _is_pure_data(manifest)
+	if bench != null:
+		bench.free()
+	var bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/ruleset_runtime_bridge.gd")
+	var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/card_runtime_catalog_service.gd") + FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
+	var save_source := FileAccess.get_file_as_string("res://scripts/runtime/game_save_runtime_coordinator.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	ready = ready and bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("player_text_v05")
+	ready = ready and catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("player_text_v05")
+	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("PlayerText")
+	ready = ready and not main_source.contains("PlayerTextV05") and not main_source.contains("player_text_schema_v05")
+	_expect(ready, "SS05-01A provides a pure-data player-text foundation and 239-card migration registry without cutting production v0.4 text ownership")
 
 
 func _function_source(source: String, function_name: String) -> String:

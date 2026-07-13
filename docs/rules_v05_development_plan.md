@@ -1,10 +1,11 @@
 # 《太空辛迪加》v0.5 规则实现开发计划
 
-> 状态：SS05-00 与 SS05-01 已完成；v0.5 数据基础 ready、生产运行时仍为 v0.4。
+> 状态：SS05-00、SS05-01 与 SS05-01A 已完成；v0.5 数据和玩家文字基础 ready、生产运行时仍为 v0.4；下一步为 SS05-02。
 > 编写日期：2026-07-14。
 > 玩家规则权威：`docs/tabletop_rulebook_v05.md`。
 > 运行时迁移合同：`docs/rules_v05_runtime_migration.md`。
 > 迁移基础合同：`docs/rules_v05_migration_foundation_contract.md`。
+> 玩家文字合同：`docs/player_facing_text_and_rules_presentation_contract.md`。
 > 当前生产运行版：v0.4。
 
 ## 1. 结论
@@ -19,6 +20,7 @@ v0.5 不应通过“在 v0.4 上改几个数字”实现。现金胜利、城市
 4. 每个领域以原子切换完成：新 owner、调用方、测试和旧写路径删除必须在同一切换批次完成。
 5. v0.5 在非发布集成分支推进；首个语义切换后不再承诺该分支维持完整 v0.4。v0.4 由不可变 tag 和发布分支恢复，不由运行时 fallback 恢复。
 6. 全部门禁通过后只执行发布入口提升；不得把旧算法集中积压到最后一次大删除。
+7. 玩家文字采用稳定机器 ID、可见性过滤和本地化三层分离；领域 owner 必须先净化事实，再由 presentation 层生成文字消息，locale resolver 不得拥有规则或隐私判断。
 
 本计划中的“直接删除”不是要求现在就在脏工作树里删文件，而是指：对应替代项接管时，旧语义不得继续以 feature flag、缺省值或兼容 fallback 留在生产链中。
 
@@ -322,6 +324,17 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 - 保留 Weather、Military、Market、Finance controller、公共／私密 snapshot service 和 `GameRuntimeCoordinator` 组合框架；按 v0.5 schema 收束，不把规则计算移到 UI。
 - 保留现有导航、返回优先级、卡牌轨、地图和资料库场景；只替换旧规则字段与文案。卡牌美术、音频和第三方素材清理属于独立发布计划，不混入规则切换。
 
+### A-10｜玩家文字、稳定 ID 与可见性
+
+- `docs/player_facing_text_and_rules_presentation_contract.md` 是 v0.5 玩家文字、卡牌呈现、本地化和辅助文字的权威合同。
+- 文字受众与信息可见性是两条独立轴。`MACHINE_IDENTIFIER`、`DEVELOPER_DIAGNOSTIC` 和 `TRANSLATOR_METADATA` 不得进入正式玩家 UI；`PLAYER_VISIBLE` 与 `PLAYER_ASSISTIVE` 必须本地化；`PLAYER_GENERATED` 必须转义、限长并按权限过滤。
+- 领域 owner 或 public/private snapshot owner 必须先把事实过滤为 `public`、`viewer_private`、`revealed_at_endgame`、`spectator_sanitized` 或 `developer_only`，再交给 presentation 层。不得先拼装含私密信息的完整句子，再在 UI 里删字段。
+- 推荐链路固定为 `rule/effect receipt -> visibility sanitizer -> PlayerTextSpec(message_key + typed args + audience + scope) -> locale resolver -> visible/assistive text`。本地化服务只解析 key、参数、locale 和格式，不计算合法性、规则、owner 或可见性。
+- 新 v0.5 `card_id`、`effect_id`、`reason_code`、action 和 save key 使用无语言含义的稳定 ASCII 标识；旧中文 ID 只能在明确的迁移边界作为 legacy alias，不能继续兼任玩家名称。
+- 发布 UI 禁止回退显示 raw `card_id`、`action_id`、`reason_code`、`args.error`、节点路径、堆栈或未替换 placeholder。缺少 key 时显示已本地化的安全通用提示，并把原始诊断只写入开发日志。
+- GDP 玩家单位在 SS05-03 结构化 GDP hard cutover 时统一为 `GDP/min`。SS05-01A 只建立单位 ID 和格式化合同，不得提前把当前 v0.4 `GDP/s` 表面改成一半迁移状态。
+- 当前 239 条 v0.4 等级卡牌先建立逐条迁移清单和 effect/text parity 状态；只有对应 v0.5 effect、requirement 和 terms 已成为权威后，才在 SS05-12A 改写玩家文字，避免把旧规则文案本地化后再次返工。
+
 ## 8. 分阶段实施顺序
 
 ### 阶段 0｜安全基线与 v0.5 合同冻结
@@ -346,6 +359,33 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 - 被动 `RulesetSaveHandshakeService` 已能识别 legacy v1、验证 v0.5 save v2 并阻止跨规则集覆盖；生产 `GameSaveRuntimeCoordinator` 仍保持 v1。
 - `RulesetV05FoundationBench` 为单一综合门，56/56 通过；composition 与 layout smoke 同时检查没有 selector、fallback 或第二个 active owner。
 
+### 阶段 1A｜玩家文字基础、稳定 ID 和隐私消息协议
+
+工作：实现 v0.5 `PlayerTextSpec` 纯数据协议、稳定 ASCII ID/legacy alias registry、默认 `zh_Hans` 文字目录、typed placeholder schema、translator metadata、单位目录、可见性 sanitizer 合同和伪本地化 fixture。盘点 239 条 v0.4 等级卡牌并记录 migration status，但不在本阶段重写尚未完成规则迁移的卡牌语义。
+
+建议实现：
+
+- `scripts/presentation/player_text_spec_v05.gd`：验证 audience、scope、surface、typed args 和纯数据边界。
+- `scripts/presentation/player_text_visibility_contract_v05.gd`：只验证领域已经净化的 envelope，不自行推断 owner、viewer 或规则可见性。
+- `scripts/presentation/player_text_locale_resolver_v05.gd`：调用 Godot TranslationServer 解析 key、context、复数和单位；缺失 key 使用安全 fallback，并把诊断送往开发日志。
+- `scripts/presentation/player_text_catalog_validator_v05.gd` 与 `resources/localization/player_text_schema_v05.tres`：保存参数类型、字符预算、surface、owner、translator note 和 assistive key，不重复保存规则事实。
+- `localization/v05/player_text_zh_Hans.po`：默认简体中文单一翻译源；后续语言沿用相同 key，不把翻译句子存入 save、receipt 或 replay。
+- `resources/migrations/card_text_v04_to_v05_registry.tres`：登记 239 条卡牌的 legacy ID、稳定 ID、effect owner、text status、blocking reason 和 parity evidence。
+- `scenes/tools/PlayerTextV05FoundationBench.tscn` 与配套脚本：唯一综合 Foundation gate，不新增孤立 Preview。
+
+所有权：领域和 snapshot owner 继续决定谁能看什么；presentation owner 只把已净化事实映射为 `message_key + args`；共享 locale resolver 只负责翻译、复数、单位和格式。三者不得合并为拥有规则与隐私的全能文字服务。
+
+退出门：`PlayerTextV05FoundationBench` 至少 48/48，覆盖六类 audience、五类 visibility scope、先过滤后本地化、typed placeholder、缺失 key 安全回退、raw ID/error/path 泄漏拒绝、默认简体中文、50% 膨胀伪本地化、`GDP/min` 单位 key、239 条迁移清单完整性和纯数据；`PLAYER_ASSISTIVE` 与可见文字有一致语义；v0.5 卡牌 schema 已能保存独立 name/rules/assistive keys；当前 v0.4 bridge、catalog、存档、UI、`main.gd` SHA 和玩家存档哈希保持不变。
+
+实际完成证据（2026-07-14）：
+
+- `PlayerTextSpecV05`、可见性授权、locale resolver、玩家生成文字净化器、typed message schema 和四单位目录已经建立；visibility 在翻译前失败关闭，resolver 不拥有规则或隐私判断。
+- 默认 `zh_Hans` PO 已注册；缺失 key 在发行路径只显示安全通用提示，原始 key 与诊断码不会进入 visible/assistive text；伪本地化保持 `{placeholder}` 原样并提供 50% 膨胀。
+- 239 条现有等级卡牌 `rules_text` 已逐条登记 SHA-256、来源、rank、owner 和 blocking reason。当前 `release_ready=0`、`blocked=239`；只有 v0.5 候选目录中已经明确的 5 项保存 proposed stable ID，未审定语义没有被猜测。
+- v0.5 rank schema 已能独立保存 `name_key`、`rules_key`、`short_effect_key` 和 `assistive_name_key`；blocked 项不会进入 release-ready/public pool。
+- `PlayerTextV05FoundationBench` 为唯一综合门，48/48 通过；Ruleset Foundation 56/56、Authoring 36/36、Catalog 80/80、Save 24/24、Menu 24/24、Navigation 32/32 observed／19/32 aligned、composition、focus-order 与 layout smoke 全部通过，Godot MCP `get_errors=0`。
+- 生产 Ruleset Bridge、Card Catalog、save v1、现有 v0.4 UI 与 `main.gd` 没有接入新文字基础；`GDP/min` 只作为 v0.5 单位合同存在，实际 UI 切换仍留给 SS05-03。
+
 ### 阶段 2｜项目身份、五槽与世代
 
 工作：生产 2、需求 2、通商 1；项目最高 IV；精确平局无人控制；项目 ID 固定为区域 + 槽类型 + 槽序号 + 世代并支持 tombstone；停止以 `city.owner` 作为权威。
@@ -354,9 +394,9 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 ### 阶段 3｜结构化 GDP 主干
 
-工作：GDP controller 输出结构化行；删除最低 GDP 与整城等级摊分；现金流、控制权、产能、合约和情报统一读取新行。
+工作：GDP controller 输出结构化行；删除最低 GDP 与整城等级摊分；现金流、控制权、产能、合约和情报统一读取新行；玩家 presentation 统一通过单位目录显示 `GDP/min`，不在 UI 中自行按秒／分钟换算。
 
-退出门：`sum(project net) == region GDP`；`sum(player attributable) + neutral == region GDP`；相同输入、舍入和行 ID 完全确定；毁灭区域为 0。
+退出门：`sum(project net) == region GDP`；`sum(player attributable) + neutral == region GDP`；相同输入、舍入和行 ID 完全确定；毁灭区域为 0；v0.5 玩家表面不存在 `GDP/s` 与 `GDP/min` 混用。
 
 ### 阶段 4｜四条规则线并行
 
@@ -377,9 +417,9 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 ### 阶段 6｜UI、AI、教程和内容包
 
-工作：冻结 public/private snapshots 后更新所有 UI 和 AI；重写教程、场景、角色被动和受影响卡族；首局内容裁剪。
+工作：冻结 public/private snapshots 后按 SS05-12A/B/C 依次完成卡牌文字、UI/辅助文字、AI/教程/角色内容和本地化质量门；重写受影响卡族并裁剪首局内容。不得以翻译模板替代规则事实，也不得让 UI 或 locale resolver 决定可见性。
 
-退出门：不打开开发面板即可完成一局；AI 无越权事实；玩家界面不存在 v0.4 规则文本；headed screenshot、键鼠／手柄导航和隐私门通过。
+退出门：不打开开发面板即可完成一局；AI 无越权事实；玩家界面不存在 v0.4 规则文本、raw ID、raw error、英文占位或开发者理由；239 条卡牌达到 effect/text parity；简体中文、伪本地化、长文本、RTL、200% 缩放、键鼠／手柄导航、辅助名称和隐私门通过。
 
 ### 阶段 7｜发布入口提升与历史归档
 
@@ -418,7 +458,8 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 | --- | --- | --- | --- |
 | SS05-00 | 安全基线、快照、v0.4 测试记录 | 无 | 硬门 |
 | SS05-01 | v0.5 Profile、产业目录、卡牌 schema、CurrencyAmount 与存档握手（完成，runtime inactive） | 00 | 推进 |
-| SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制 | 01 | 替换 + 删除 D-06 部分 |
+| SS05-01A | 玩家文字基础：稳定 ASCII ID、可见性消息协议、默认目录、typed args、单位和伪本地化 fixture（完成，runtime inactive） | 01 | 推进；runtime inactive |
+| SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制 | 01/01A | 替换 + 删除 D-06 部分 |
 | SS05-03 | 结构化 GDP 行、归属、守恒与零 GDP | 02 | 替换 + 删除 D-06 剩余 |
 | SS05-04 | VictoryControl、审计名单、终局与隐私 | 03 | 推进 + 删除 D-02 |
 | SS05-05 | 六产业产能、卡牌条件和批次占用 | 03 | 推进 + 删除 D-05 |
@@ -431,9 +472,11 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 | SS05-11B | 天气 90/90、同区不重叠与存档 | 03 | 替换 |
 | SS05-11C | Military Guard/Strike/Intercept 参数与协议收束 | 03 | 替换 |
 | SS05-11D | Finance 10 秒移动平均与公开价格输入 | 03/11A | 替换 |
-| SS05-12 | UI snapshots、AI、教程、角色与内容迁移 | 04–10/11A–11D | 替换 + 删除 D-09/D-12 |
+| SS05-12A | 239 条卡牌、规则速读和术语的 v0.5 authored text 迁移；逐条 effect/text parity | 04–10/11A–11D | 替换 + 删除 D-09 文案 |
+| SS05-12B | UI snapshots、菜单、按钮、错误、tooltip、日志和辅助文字 hard cutover | 04–10/11A–11D/12A | 替换 + 删除 raw fallback |
+| SS05-12C | AI、教程、角色和场景内容迁移；伪本地化、无障碍与隐私发布门 | 12A/12B | 替换 + 删除 D-12 |
 | SS05-13 | 原子 EndStateSettlement：Queue／复兴／退款／淘汰／Victory／Session | 04–10/11A–11D | 跨系统集成 |
-| SS05-14 | v0.5 存档、生产桥切换和旧双读删除 | 12/13 | 删除 D-01/D-11，归档 D-13 |
+| SS05-14 | v0.5 存档、生产桥切换和旧双读删除 | 12C/13 | 删除 D-01/D-11，归档 D-13 |
 | SS05-15 | 固定种子长局、真人试玩、平衡 Resource | 14 | 推进 |
 
 ## 11. 测试与验收矩阵
@@ -484,6 +527,17 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 - 3、4、8 席以及 2–7 个 AI 的 setup、行动循环、公共牌轨、隐私、保存和布局通过；8 席不会产生越权快照或不可用操作区。
 - 每个 hard cutover 报告 `main.gd` 前后 SHA、行数、函数、变量、常量、禁止符号和 adapter LOC 上限，不允许以一行 wrapper 保留旧 owner。
 
+### 玩家文字、本地化与辅助呈现
+
+- audience 与 visibility scope 分别校验；任何私密事实必须在文字拼装和本地化之前过滤，旁观者只接收 `spectator_sanitized` 参数。
+- 所有 `PLAYER_VISIBLE` 和 `PLAYER_ASSISTIVE` 项都有默认简体中文 key、surface、context、字符预算、owner、typed placeholders 和 translator metadata。
+- 发行表面扫描不得出现 raw `card_id`、`action_id`、`reason_code`、`args.error`、节点路径、堆栈、`null`、未替换 placeholder、开发者设计理由或无上下文英文占位。
+- 禁用原因和错误必须说明发生了什么、为什么发生、下一步能做什么；不可逆操作确认框明确写出后果；按钮使用“动词 + 对象”。
+- 239 条等级卡牌逐条比较 effect、requirements、terms、短效果、完整规则、tooltip 和辅助名称；未达到 parity 的条目不得进入 v0.5 release-ready/public pool。
+- v0.5 GDP 流量只显示 `GDP/min`；单位换算由统一 formatter 完成，UI 不做规则运算。
+- 伪本地化至少覆盖 50% 膨胀、重音字符和 placeholder 保留；同时验证长英文、CJK 字体回退、RTL、200% UI 缩放、窄屏、键鼠／手柄焦点和非颜色状态表达。
+- key 缺失在测试中失败；发行运行时只显示安全本地化 fallback，原始 key 与错误仅进入开发日志。
+
 ### 保留规则回归
 
 - 常规卡影响力门槛 0/15/25/35，全局／敌对效果 10/20/30/40；免门槛只由明确卡面授予。
@@ -511,9 +565,12 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 - GDP、控制权、产业、合约和情报共享同一结构化归属数据。
 - 直接删除项 D-01 至 D-12 在生产入口不可触发；D-13 已脱离生产和 CI。
 - 新存档、AI、教程、角色、卡牌、UI、公共／私密快照全部使用 v0.5 字段。
+- 玩家可见与辅助文字全部来自版本化目录；机器标识、开发诊断和译者元数据不会泄漏到发行 UI；隐私过滤发生在文本解析之前。
 - 全部 conformance、守恒、隐私、保存、视觉、clean-clone 和固定种子长局通过。
 - `docs/development_log.md` 记录切换提交、验证结果、仍保留的历史档案和已知限制。
 
 ## 14. 下一步执行建议
 
-下一开发批次进入 SS05-02：建立生产 2／需求 2／通商 1 的五项目位、稳定 slot ID、项目最高 IV、generation/tombstone，以及精确平局无人控制。该批次仍不得先写胜利 UI、六产业聚合或结构化 GDP 公式；这些消费者必须等待项目身份成为唯一真相层后再接入。SS05-02 应继续采用同一提交内新 owner、调用方、存档协议、测试和旧写路径删除的 hard-cutover 纪律。
+SS05-01A 已完成且保持 runtime inactive。下一开发批次进入 SS05-02：建立生产 2／需求 2／通商 1 的五项目位、稳定 slot ID、项目最高 IV、generation/tombstone，以及精确平局无人控制。新项目 ID、presentation key 和辅助文字 key 从第一天就遵守 SS05-01A，不再产生需要二次迁移的语言化标识。
+
+该批次仍不得先写胜利 UI、六产业聚合、结构化 GDP 公式或批量改写 239 条卡牌语义；这些消费者必须等待项目身份成为唯一真相层后再接入。SS05-02 应继续采用同一提交内新 owner、调用方、存档协议、测试和旧写路径删除的 hard-cutover 纪律，并让领域 snapshot 先标记 visibility scope，再生成 PlayerTextSpec。

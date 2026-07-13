@@ -3,6 +3,40 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-14。
 
+## 2026-07-14｜SS05-01A Player-Facing Text Foundation
+
+- 新增 `PlayerTextSpecV05`、可见性授权合同、locale resolver、玩家生成文字净化器、typed message catalog 和单位目录；固定数据流为“领域 receipt/snapshot 先授权净化，再生成 message key + typed args，最后本地化”。
+- 默认 `zh_Hans` PO 已接入 Godot TranslationServer。发行路径遇到缺失 key、未知参数或非法 payload 时只显示安全通用提示；raw card/action/reason ID、`args.error`、NodePath 和 stack trace 只留在开发诊断。
+- 单位目录集中管理 `currency_cents`、`basis_points`、`seconds` 与 `gdp_per_minute`；当前生产 UI 仍使用 v0.4，本轮没有提前切换 GDP 表面。
+- 对现有 120 个卡牌家族、239 个等级资源建立逐条迁移 registry。每条保存 legacy ID、来源、rank、rules_text SHA-256、owner 和 blocking reason；当前 239 条全部 blocked、0 条 release-ready，只有已有 v0.5 候选明确的 5 条保存 proposed stable ID。
+- v0.5 卡牌 rank schema 新增独立 `name_key`、`rules_key`、`short_effect_key` 和 `assistive_name_key`；validator 要求 release-ready 卡牌使用稳定 ASCII ID 与完整文字 key，但没有修改 v0.4 card_id 或存档引用。
+- 新增唯一综合 `PlayerTextV05FoundationBench`，48/48 通过。Ruleset Foundation 56/56、Runtime Card Authoring 36/36、Runtime Card Catalog 80/80、Save Ownership 24/24、Menu Shell 24/24、Global Navigation 32/32 observed／19/32 aligned、composition、focus-order 与 layout smoke 均通过；Godot MCP `get_errors=0`。
+- MCP Editability Hub、Space QA Dock、Sceneization Audit、System Resourceization Audit 与 v0.5 Conformance Registry 已登记本基础，状态均明确为 runtime inactive。
+- `main.gd`、生产 v0.4 Ruleset/Card Catalog/save v1/UI 和玩家真实存档保持冻结；下一步进入 SS05-02 五项目位与稳定项目身份，卡牌语义改写继续等待对应 v0.5 rule owner。
+
+## 2026-07-14｜玩家文字、卡牌规则与本地化呈现合同
+
+- 新增 `docs/player_facing_text_and_rules_presentation_contract.md`，建立机器标识、开发诊断、译者元数据、玩家可见、玩家辅助和玩家生成内容六类文字合同；公开/私人/终局揭示/旁观者/开发范围作为独立可见性轴。
+- 搜索并登记 18F、USWDS、GitLab Pajamas、PatternFly、KDE、GNOME、W3C、Unicode/CLDR、Godot 国际化，以及 OpenDuelyst、OpenTTD、FreeOrion、Unciv、Wesnoth、0 A.D.、Cataclysm: DDA 的官方资料、许可和采用边界。
+- 开放资料只用于文字目录结构、卡牌数据/文案分离、占位符、本地化、错误写作和无障碍规则；不复制 GPL/MPL/CC-BY-SA 游戏的卡牌、剧情、百科或世界观原文。18F/OpenDuelyst 的 CC0 也只作为结构和原则来源，不复用品牌身份。
+- 只读审计确认当前有三个冲突的玩家规则源：v0.5 玩家规则书、`main.gd` 中仍为 v0.4 的局内速查、以及 239 条仍夹带旧规则的等级卡牌文本。它们被列为 v0.5 P0，不得只做表面换词。
+- 当前没有 `tr()`、`tr_n()`、`TranslationServer` 或翻译资源；场景与脚本同时含中文硬编码、英文占位、raw action/card id fallback、底层 error、开发理由 tooltip 和 `GDP /s`/`GDP/min` 单位冲突。
+- 合同冻结文字数据流：Ruleset/effect/receipt 是规则真相；domain owner 输出稳定 code 与类型化参数；先做隐私过滤，再由现有 presentation/public snapshot owner 生成 `message_key + args`；本地化解析器不拥有规则，UI 不解析可见句子。
+
+### 开发者应该如何参考
+
+- 卡牌必须分开 `card_id`、`name_key`、`rules_key`、`short_effect_key`、`reminder_keys`、`flavor_key`、`use_case_key` 和机器 effect；中文显示名不能继续兼任存档/网络 ID。
+- 卡牌固定按“名称/等级 → 类型/产业 → 费用/门槛 → 时机 → 目标 → 结算效果 → 持续/终止 → 例外/公开范围 → 关键词”呈现；模糊策略建议进入图鉴，不进入规则正文。
+- 按钮用具体“动词 + 对象”，tooltip 只补充非关键帮助，禁用原因写解锁办法，错误写“发生了什么—原因—下一步”，确认框点名对象和不可逆后果。
+- accessible name/description 属于最终玩家文字，必须本地化；可见标签优先，颜色和图标不能成为唯一含义来源。
+- 先删除/替换 v0.4 速查、raw-id/raw-error fallback、英文占位、开发说明泄漏和错误单位；再建立默认 `zh_Hans` 目录；最后接入伪本地化、长文本、RTL、200% 缩放、键盘/手柄焦点与隐私截图门。
+- 详细的当前文件位置、替换目标、v0.5 初始术语锁、QA 门禁和三阶段实施顺序只查新合同；`REFERENCE_LINKS.md` 与 `docs/open_source_reference_notes.md` 保存上游链接和许可边界。
+
+### 本轮验证范围
+
+- 本轮只新增/更新参考资料、文字合同和开发日志，没有修改 Godot 运行时、场景、卡牌 Resource、Ruleset、存档、action id、signal 或玩家行为。
+- 链接和关键标题已做静态复核；后续真正迁移文字时必须新增 key 完整性、raw-id 泄漏、卡牌语义一致性、隐私 scope 和伪本地化布局测试。
+
 ## 2026-07-14｜SS05-00 可恢复 v0.4 基线与 v0.5 迁移基础合同
 
 - 重新运行 Repository Safety Baseline：忽略规则调整前测得 `85` 个 tracked changes、`1211` 个 untracked paths；精确忽略 MCP 截图缓存与 tracked QA 图片的生成型 `.import` 后，待纳入快照为 `86` 个 tracked changes、`1154` 个 untracked paths，另有 `979` 个 ignored paths。

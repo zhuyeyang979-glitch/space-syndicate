@@ -447,6 +447,18 @@ const RECORDS := [
 		"mcp_notes": "Open the v0.5 Profile, product industry catalog, passive save handshake, and Foundation Bench. A runtime selector or fallback is a failure.",
 	},
 	{
+		"id": "player_text_v05_foundation_gate",
+		"display_name": "Player-Facing Text v0.5 Foundation Gate",
+		"category": "Systems",
+		"current_scene_path": "res://scenes/tools/PlayerTextV05FoundationBench.tscn",
+		"source_script_path": "res://scripts/tools/player_text_v05_foundation_bench.gd",
+		"sceneization_status": STATUS_PARTIAL,
+		"priority": 1,
+		"next_step": "Keep runtime inactive through SS05-02, then migrate player-visible copy per rule domain only after stable receipts and visibility scopes exist.",
+		"risk_notes": "High; localization must never become an authorization layer, and the 239 legacy card texts remain blocked until their v0.5 semantics are reviewed.",
+		"mcp_notes": "Open the PlayerText schema, unit catalog, migration registry, zh_Hans PO, and 48-case bench. Production v0.4 UI must not consume this foundation yet.",
+	},
+	{
 		"id": "city_development_runtime_cutover_gate",
 		"display_name": "City Development Runtime Cutover Gate",
 		"category": "Systems",

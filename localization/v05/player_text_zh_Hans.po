@@ -1,0 +1,82 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Space Syndicate v0.5\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Safe release fallback. Never expose internal identifiers.
+msgctxt "player_text_v05"
+msgid "ui.error.generic_safe"
+msgstr "暂时无法显示这项信息。请返回后重试。"
+
+msgctxt "player_text_v05"
+msgid "ui.error.generic_safe.a11y"
+msgstr "这项信息暂时无法显示。请返回上一界面后重试。"
+
+#. Private hand-card disabled reason. Keep both values.
+msgctxt "player_text_v05"
+msgid "ui.card.play.blocked.industry_capacity"
+msgstr "无法打出这张牌。{industry_name}产能需达到 {required_capacity}，当前为 {current_capacity}。"
+
+msgctxt "player_text_v05"
+msgid "ui.card.play.blocked.industry_capacity.a11y"
+msgstr "这张牌当前不可打出。{industry_name}产能要求为 {required_capacity}，当前产能为 {current_capacity}。"
+
+msgctxt "player_text_v05"
+msgid "ui.qa.status"
+msgstr "状态：{status}"
+
+msgctxt "player_text_v05"
+msgid "ui.qa.currency_amount"
+msgstr "可用资金：{amount}"
+
+msgctxt "player_text_v05"
+msgid "ui.qa.influence"
+msgstr "影响力：{influence}"
+
+msgctxt "player_text_v05"
+msgid "ui.qa.duration"
+msgstr "持续时间：{duration}"
+
+msgctxt "player_text_v05"
+msgid "ui.qa.gdp_rate"
+msgstr "GDP 流量：{rate}"
+
+msgctxt "player_text_v05"
+msgid "ui.player_generated.value"
+msgstr "{text}"
+
+msgctxt "player_text_v05"
+msgid "term.industry.industry"
+msgstr "工业产业"
+
+msgctxt "player_text_v05"
+msgid "unit.currency"
+msgstr "资金"
+
+msgctxt "player_text_v05"
+msgid "unit.percent"
+msgstr "%"
+
+msgctxt "player_text_v05"
+msgid "unit.seconds"
+msgstr "秒"
+
+msgctxt "player_text_v05"
+msgid "unit.gdp_per_minute"
+msgstr " GDP/min"
+
+#. The following three entries are QA-only and cannot be consumed by release UI.
+msgctxt "player_text_v05"
+msgid "internal.card.identifier"
+msgstr "内部卡牌标识"
+
+msgctxt "player_text_v05"
+msgid "debug.raw.error"
+msgstr "开发诊断"
+
+msgctxt "player_text_v05"
+msgid "translator.note.placeholder"
+msgstr "译者元数据"

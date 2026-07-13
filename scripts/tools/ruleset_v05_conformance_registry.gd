@@ -55,6 +55,14 @@ const RECORDS := [
 		"next_step": "Connect only when the v0.5 production save owner is cut over.",
 	},
 	{
+		"rule_id": "player_facing_text_foundation",
+		"expected_behavior": "Player copy uses stable ASCII message IDs, visibility-filtered PlayerTextSpec payloads, typed placeholders, authored units, safe fallback, assistive text, and locale resources.",
+		"current_owner": "player_text_schema_v05.tres",
+		"current_status": STATUS_RUNTIME_INACTIVE,
+		"runtime_evidence": ["PlayerTextV05FoundationBench 48/48", "239 legacy card rules_text records inventoried", "Production v0.4 UI unchanged"],
+		"next_step": "Keep inactive through SS05-02; migrate each domain's player copy only after its v0.5 receipt and visibility owner are stable.",
+	},
+	{
 		"rule_id": "emergency_sale_cost_basis",
 		"expected_behavior": "Merged/upgraded card emergency-sale basis must be explicitly approved.",
 		"current_owner": "product decision",

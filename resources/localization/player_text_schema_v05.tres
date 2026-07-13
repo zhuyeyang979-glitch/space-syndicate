@@ -1,0 +1,191 @@
+[gd_resource type="Resource" script_class="PlayerTextCatalogResource" load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/player_text_catalog_resource.gd" id="1_catalog"]
+[ext_resource type="Script" path="res://scripts/presentation/player_text_catalog_entry_resource.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="Entry_safe_fallback"]
+script = ExtResource("2_entry")
+message_key = "ui.error.generic_safe"
+surface = "error"
+owner = "player_text_foundation"
+translator_note = "Safe release fallback. Never include internal identifiers or diagnostics."
+character_budget = 32
+assistive_message_key = "ui.error.generic_safe.a11y"
+
+[sub_resource type="Resource" id="Entry_safe_fallback_a11y"]
+script = ExtResource("2_entry")
+message_key = "ui.error.generic_safe.a11y"
+audience = "player_assistive"
+surface = "error"
+owner = "player_text_foundation"
+translator_note = "Screen-reader form of the safe release fallback."
+character_budget = 48
+
+[sub_resource type="Resource" id="Entry_blocked_industry"]
+script = ExtResource("2_entry")
+message_key = "ui.card.play.blocked.industry_capacity"
+surface = "disabled_reason"
+owner = "card_play_eligibility"
+translator_note = "Private hand-card disabled reason. Keep both required and current values."
+character_budget = 56
+argument_types = {
+"current_capacity": "integer",
+"industry_name": "localized_key",
+"required_capacity": "integer"
+}
+assistive_message_key = "ui.card.play.blocked.industry_capacity.a11y"
+
+[sub_resource type="Resource" id="Entry_blocked_industry_a11y"]
+script = ExtResource("2_entry")
+message_key = "ui.card.play.blocked.industry_capacity.a11y"
+audience = "player_assistive"
+surface = "disabled_reason"
+owner = "card_play_eligibility"
+translator_note = "Accessible equivalent of the industry-capacity disabled reason."
+character_budget = 72
+argument_types = {
+"current_capacity": "integer",
+"industry_name": "localized_key",
+"required_capacity": "integer"
+}
+
+[sub_resource type="Resource" id="Entry_qa_status"]
+script = ExtResource("2_entry")
+message_key = "ui.qa.status"
+surface = "status"
+owner = "player_text_foundation"
+translator_note = "QA fixture used to verify visibility scopes before localization."
+character_budget = 32
+argument_types = {
+"status": "string"
+}
+
+[sub_resource type="Resource" id="Entry_qa_currency"]
+script = ExtResource("2_entry")
+message_key = "ui.qa.currency_amount"
+surface = "status"
+owner = "player_text_foundation"
+translator_note = "QA fixture; amount arrives as integer cents."
+character_budget = 32
+argument_types = {
+"amount": "currency_cents"
+}
+
+[sub_resource type="Resource" id="Entry_qa_influence"]
+script = ExtResource("2_entry")
+message_key = "ui.qa.influence"
+surface = "status"
+owner = "player_text_foundation"
+translator_note = "QA fixture; influence arrives as integer basis points."
+character_budget = 32
+argument_types = {
+"influence": "basis_points"
+}
+
+[sub_resource type="Resource" id="Entry_qa_duration"]
+script = ExtResource("2_entry")
+message_key = "ui.qa.duration"
+surface = "status"
+owner = "player_text_foundation"
+translator_note = "QA fixture; duration arrives as integer seconds."
+character_budget = 32
+argument_types = {
+"duration": "seconds"
+}
+
+[sub_resource type="Resource" id="Entry_qa_gdp_rate"]
+script = ExtResource("2_entry")
+message_key = "ui.qa.gdp_rate"
+surface = "status"
+owner = "player_text_foundation"
+translator_note = "QA-only v0.5 unit contract. Do not use to switch the production v0.4 HUD."
+character_budget = 32
+argument_types = {
+"rate": "gdp_per_minute"
+}
+
+[sub_resource type="Resource" id="Entry_player_generated"]
+script = ExtResource("2_entry")
+message_key = "ui.player_generated.value"
+audience = "player_generated"
+surface = "player_name"
+owner = "player_generated_text_sanitizer"
+translator_note = "The player-authored value is sanitized and inserted unchanged."
+character_budget = 40
+argument_types = {
+"text": "string"
+}
+
+[sub_resource type="Resource" id="Entry_term_industry"]
+script = ExtResource("2_entry")
+message_key = "term.industry.industry"
+surface = "term"
+owner = "product_industry_catalog"
+translator_note = "Generic v0.5 industry term used by QA fixtures."
+character_budget = 12
+
+[sub_resource type="Resource" id="Entry_unit_currency"]
+script = ExtResource("2_entry")
+message_key = "unit.currency"
+surface = "unit"
+owner = "player_text_foundation"
+translator_note = "Suffix for a currency amount formatted from integer cents."
+character_budget = 8
+
+[sub_resource type="Resource" id="Entry_unit_percent"]
+script = ExtResource("2_entry")
+message_key = "unit.percent"
+surface = "unit"
+owner = "player_text_foundation"
+translator_note = "Percent suffix for a basis-point value."
+character_budget = 4
+
+[sub_resource type="Resource" id="Entry_unit_seconds"]
+script = ExtResource("2_entry")
+message_key = "unit.seconds"
+surface = "unit"
+owner = "clock_domain_registry"
+translator_note = "Short seconds suffix."
+character_budget = 4
+
+[sub_resource type="Resource" id="Entry_unit_gdp_minute"]
+script = ExtResource("2_entry")
+message_key = "unit.gdp_per_minute"
+surface = "unit"
+owner = "structured_gdp_presentation"
+translator_note = "Canonical v0.5 player-facing GDP flow unit."
+character_budget = 10
+
+[sub_resource type="Resource" id="Entry_machine_identifier"]
+script = ExtResource("2_entry")
+message_key = "internal.card.identifier"
+audience = "machine_identifier"
+surface = "internal"
+owner = "player_text_foundation"
+translator_note = "QA fixture. Must never appear in release UI."
+character_budget = 32
+
+[sub_resource type="Resource" id="Entry_developer_diagnostic"]
+script = ExtResource("2_entry")
+message_key = "debug.raw.error"
+audience = "developer_diagnostic"
+surface = "debug"
+owner = "player_text_foundation"
+translator_note = "QA fixture. Developer mode only."
+character_budget = 48
+
+[sub_resource type="Resource" id="Entry_translator_metadata"]
+script = ExtResource("2_entry")
+message_key = "translator.note.placeholder"
+audience = "translator_metadata"
+surface = "metadata"
+owner = "player_text_foundation"
+translator_note = "QA fixture. Translator tooling only."
+character_budget = 48
+
+[resource]
+script = ExtResource("1_catalog")
+schema_version = "v0.5"
+default_locale = "zh_Hans"
+safe_fallback_key = "ui.error.generic_safe"
+entries = Array[Resource]([SubResource("Entry_safe_fallback"), SubResource("Entry_safe_fallback_a11y"), SubResource("Entry_blocked_industry"), SubResource("Entry_blocked_industry_a11y"), SubResource("Entry_qa_status"), SubResource("Entry_qa_currency"), SubResource("Entry_qa_influence"), SubResource("Entry_qa_duration"), SubResource("Entry_qa_gdp_rate"), SubResource("Entry_player_generated"), SubResource("Entry_term_industry"), SubResource("Entry_unit_currency"), SubResource("Entry_unit_percent"), SubResource("Entry_unit_seconds"), SubResource("Entry_unit_gdp_minute"), SubResource("Entry_machine_identifier"), SubResource("Entry_developer_diagnostic"), SubResource("Entry_translator_metadata")])

@@ -1,6 +1,8 @@
 extends RefCounted
 class_name CardRuntimeCatalogV05Validator
 
+const PlayerTextSpecScript := preload("res://scripts/presentation/player_text_spec_v05.gd")
+
 const ALLOWED_KINDS := [
 	"colorless",
 	"single_industry",
@@ -66,6 +68,12 @@ static func validate_card(card: Resource, industry_catalog: Resource) -> Diction
 		errors.append("schema_version_invalid")
 	if str(card.card_id).is_empty() or str(card.family_id).is_empty():
 		errors.append("identity_missing")
+	elif not PlayerTextSpecScript.is_stable_ascii_id(str(card.card_id)) or not PlayerTextSpecScript.is_stable_ascii_id(str(card.family_id)):
+		errors.append("identity_not_stable_ascii")
+	for text_key_variant in [card.name_key, card.rules_key, card.short_effect_key, card.assistive_name_key]:
+		var text_key := str(text_key_variant)
+		if not text_key.is_empty() and not PlayerTextSpecScript.is_stable_ascii_id(text_key):
+			errors.append("text_key_not_stable_ascii:%s" % text_key)
 	if int(card.rank) < 1 or int(card.rank) > 4:
 		errors.append("rank_out_of_range")
 	var migration_status := str(card.migration_status)
@@ -85,6 +93,8 @@ static func validate_card(card: Resource, industry_catalog: Resource) -> Diction
 			errors.append_array(requirement_result.get("errors", []))
 	if migration_status == "release_ready" and not bool(card.release_ready):
 		errors.append("release_ready_flag_missing")
+	if migration_status == "release_ready" and (str(card.name_key).is_empty() or str(card.rules_key).is_empty() or str(card.assistive_name_key).is_empty()):
+		errors.append("release_ready_text_keys_missing")
 	return {"valid": errors.is_empty(), "card_id": str(card.card_id), "blocked": false, "errors": errors}
 
 

@@ -33,3 +33,7 @@ window/stretch/aspect="expand"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/space_syndicate_design_qa/plugin.cfg", "res://addons/codex_mcp_companion/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://localization/v05/player_text_zh_Hans.po")

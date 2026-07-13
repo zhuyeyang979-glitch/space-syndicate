@@ -187,6 +187,41 @@ The desired consequence chain is `monster intent -> explicit world damage/disrup
 
 The full adoption and retirement plan is `docs/runtime_rule_reference_adoption_plan.md`.
 
+## Player-Facing Text, Card Rules, And Localization Reference Pack
+
+### Product boundary
+
+These references are not a source of ready-made lore, card rules, or interface sentences. They are used to define how Space Syndicate separates stable machine identifiers, developer diagnostics, translator metadata, final player copy, assistive player copy, and player-generated names. The game's rules, card effects, terminology, voice, and fiction remain original.
+
+The structure to preserve is `rule/effect fact -> reason or event code + typed args -> visibility filter -> localized player text`. Game logic never parses visible strings, and `card_id`, `action_id`, raw errors, debug fields, resource paths, or translator notes never become player-facing fallbacks.
+
+### Reference and license matrix
+
+| Reference | License / boundary | What to learn | Do not do |
+| --- | --- | --- | --- |
+| [18F Technical and interface writing](https://guides.18f.org/content-guide/our-style/technical-and-interface-writing/) / [License](https://guides.18f.org/content-guide/license/) | US public domain and worldwide CC0 dedication. | Short everyday sentences, active verbs, positive phrasing, and tutorials that quote real UI labels exactly. | Do not imply government endorsement. |
+| [USWDS Button](https://designsystem.digital.gov/components/button/) / [Tooltip](https://designsystem.digital.gov/components/tooltip/) | Most project work is CC0; check third-party exceptions before copying assets or code. | Buttons describe actions/results; links navigate; tooltips remain short, supplemental, focus-accessible, and dismissible. | Do not put essential rules or disabled reasons only in a hover tooltip. |
+| [OpenDuelyst card factory](https://github.com/open-duelyst/duelyst/tree/main/app/sdk/cards/factory) / [locales](https://github.com/open-duelyst/duelyst/tree/main/app/localization/locales) | CC0-1.0. | Separate card mechanics/effect objects from localized names and descriptions. | Do not copy its brand, characters, or visual identity. |
+| [GitLab UI text](https://design.gitlab.com/content/ui-text/) / [Destructive actions](https://design.gitlab.com/patterns/destructive-actions/) and [PatternFly errors](https://www.patternfly.org/ux-writing/error-messages/) | MIT; preserve notice for substantive copying. | Scan-friendly UI text, destructive actions that name the object, and errors that state what happened, why, and what to do next. | Do not expose HTTP codes, internal enums, or raw exceptions to players. |
+| [OpenTTD language table](https://github.com/OpenTTD/OpenTTD/blob/master/src/lang/english.txt) | GPL-2.0. | Semantic string sections, plural/unit formatting, placeholders, and separate button/tooltip labels. | Do not copy its strings into a differently licensed product. |
+| [FreeOrion string tables](https://github.com/freeorion/freeorion/tree/master/default/stringtables) | Code GPLv2, assets CC-BY-SA-3.0, content scripts dual-licensed. | Stable keys, a reference-language fallback, placeholder comments, reusable terminology, and short-label/tooltip/encyclopedia layers. | Do not copy lore, species, technology, or encyclopedia prose. |
+| [Unciv translation template](https://github.com/yairm210/Unciv/blob/master/android/assets/jsons/translations/template.properties) | MPL-2.0. | Named placeholders, menu/button/message sections, translator warnings, and text-budget awareness. | Do not copy Civilization-derived names or descriptions. |
+| [Wesnoth translation domains](https://github.com/wesnoth/wesnoth/tree/master/po), [0 A.D. localization](https://github.com/0ad/0ad/tree/master/binaries/data/mods/public/l10n), and [Cataclysm: DDA translation guide](https://docs.cataclysmdda.org/TRANSLATING.html) | GPL/CC-BY-SA and project-specific exceptions. Observation only unless files are individually cleared. | Split core UI, help, tutorial, units/content, campaigns, manuals, player messages, waiting messages, diagnostics, and translator context. | Do not merge all text into one `text` field or copy story/content descriptions. |
+| [Godot i18n](https://docs.godotengine.org/en/stable/tutorials/i18n/internationalizing_games.html), [gettext](https://docs.godotengine.org/en/stable/tutorials/i18n/localization_using_gettext.html), and [pseudolocalization](https://docs.godotengine.org/en/4.7/tutorials/i18n/pseudolocalization.html) | Documentation CC BY 3.0; engine code MIT. | `tr()` / `tr_n()`, contexts, translator notes, runtime locale changes, pseudolocalization, RTL, and localized formatting. | Do not translate player names, save names, dynamic IDs, or arbitrary code strings. |
+| [KDE text and labels](https://develop.kde.org/hig/text_and_labels/), [GNOME writing](https://developer.gnome.org/hig/guidelines/writing-style.html), [W3C accessible names](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/), and [Unicode MessageFormat](https://messageformat.unicode.org/) | Guideline/specification references with their own document licenses. | Front-load important words, prefer visible labels, give every focusable control an accessible name, and use locale-aware typed messages. | Cite the standards; do not paste long guideline passages or treat assistive text as machine-only. |
+
+### Current Space Syndicate adoption decision
+
+- `PLAYER_VISIBLE` and `PLAYER_ASSISTIVE` are both final, localized player copy. Tooltips and accessible names are not developer or machine strings.
+- `MACHINE_IDENTIFIER`, `DEVELOPER_DIAGNOSTIC`, and `TRANSLATOR_METADATA` never render in a release UI.
+- Player-generated names are escaped and permission-filtered but never auto-translated.
+- Public, viewer-private, endgame-revealed, spectator-sanitized, and developer-only visibility is evaluated before localization.
+- Card effect/requirement/terms data remains authoritative. Card face, inspector, tooltip, and Codex copy are validated explanations, not independent rule sources.
+- `CardPresentationRuntimeService` remains the single card semantic presentation owner. `CardUI` and `RightInspector` should stop deriving use cases from kind/text once the ViewModel cutover is complete.
+- The in-game v0.4 quick reference, 239 rank-level card texts, raw-id/raw-error fallbacks, English scene placeholders, `GDP /s`, and developer rationale inside tooltips are P0/P1 cleanup items.
+
+The full local audit, field contract, card grammar, menu/button/tooltip/error rules, terminology lock, deletion/replacement list, and QA gates are in `docs/player_facing_text_and_rules_presentation_contract.md`.
+
 ## Giant Monster Combat Reference Pack / 巨兽战斗参考包
 
 ### Product boundary

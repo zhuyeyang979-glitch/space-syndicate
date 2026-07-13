@@ -28,6 +28,34 @@
 - [GBALATRO/balatro-gba](https://github.com/GBALATRO/balatro-gba) — 参考像素风小丑牌式布局和小屏幕信息压缩；不要直接使用同人视觉素材。
 - [GitHub topics: slaythespire](https://github.com/topics/slaythespire) — 作为 Slay the Spire-like / roguelike deckbuilder 的项目发现入口。
 
+## 游戏文字 / 卡牌规则 / 本地化 / 无障碍
+
+### 可直接改写的开放文案原则
+
+- [18F Technical and interface writing](https://guides.18f.org/content-guide/our-style/technical-and-interface-writing/) / [License](https://guides.18f.org/content-guide/license/) — 美国公有领域并以 CC0 全球放弃权利。优先采用短句、主动动词、正向措辞，以及教程必须逐字匹配真实按钮/菜单名的原则。
+- [USWDS Button](https://designsystem.digital.gov/components/button/) / [Tooltip](https://designsystem.digital.gov/components/tooltip/) — 主体 CC0，第三方素材另核。参考“按钮说明动作结果、链接负责导航”和“tooltip 不承载关键内容”的规则。
+- [OpenDuelyst card factory](https://github.com/open-duelyst/duelyst/tree/main/app/sdk/cards/factory) / [locales](https://github.com/open-duelyst/duelyst/tree/main/app/localization/locales) / [License](https://github.com/open-duelyst/duelyst/blob/main/LICENSE) — CC0-1.0。重点研究卡牌数值/效果对象与名称/描述本地化分离；不复制品牌、角色或整体视觉身份。
+
+### 开源游戏文字结构参考
+
+- [OpenTTD English string table](https://github.com/OpenTTD/OpenTTD/blob/master/src/lang/english.txt) / [License](https://github.com/OpenTTD/OpenTTD/blob/master/COPYING.md) — GPL-2.0。研究 BUTTON、TOOLTIP、标题、单位、复数和占位符分区；不复制现成字符串。
+- [FreeOrion string tables](https://github.com/freeorion/freeorion/tree/master/default/stringtables) / [License](https://github.com/freeorion/freeorion#license) — 代码 GPLv2、资产 CC-BY-SA-3.0、脚本双许可。研究稳定 key、英文 fallback、占位符注释和“短标签—提示—百科”分层。
+- [Unciv translation template](https://github.com/yairm210/Unciv/blob/master/android/assets/jsons/translations/template.properties) / [License](https://github.com/yairm210/Unciv/blob/master/LICENSE) — MPL-2.0。研究命名占位符、菜单/按钮/消息分区和译者警告；不复制文明系列文本。
+- [Battle for Wesnoth translation domains](https://github.com/wesnoth/wesnoth/tree/master/po) / [InterfaceActionsWML](https://wiki.wesnoth.org/InterfaceActionsWML) — GPLv2+，部分新资产 CC-BY-SA-4.0。研究核心、帮助、教程、单位、战役文本域，以及玩家/等待/调试信息分离。
+- [0 A.D. localization](https://github.com/0ad/0ad/tree/master/binaries/data/mods/public/l10n) / [License](https://github.com/0ad/0ad/blob/master/LICENSE.txt) — GPLv2+、CC-BY-SA-3.0 和第三方例外。研究大厅、设置、局内、手册、教程分目录；逐目录核验许可。
+- [Cataclysm: DDA translation guide](https://docs.cataclysmdda.org/TRANSLATING.html) / [JSON text rules](https://docs.cataclysmdda.org/JSON/JSON_INFO.html) — CC-BY-SA-3.0，含第三方例外。研究 `NO_I18N`/`I18N`、上下文、复数和译者注释；不复制内容文本。
+
+### 写作、本地化与无障碍规范
+
+- [GitLab UI text](https://design.gitlab.com/content/ui-text/) / [Destructive actions](https://design.gitlab.com/patterns/destructive-actions/) — MIT。参考扫读优先、破坏操作点名对象、错误说明下一步；实质复制保留 notice。
+- [PatternFly Error messages](https://www.patternfly.org/ux-writing/error-messages/) — MIT。采用“发生了什么—原因—解决办法”结构。
+- [Godot Internationalizing games](https://docs.godotengine.org/en/stable/tutorials/i18n/internationalizing_games.html) / [gettext](https://docs.godotengine.org/en/stable/tutorials/i18n/localization_using_gettext.html) / [Pseudolocalization](https://docs.godotengine.org/en/4.7/tutorials/i18n/pseudolocalization.html) — 参考 `tr()`、`tr_n()`、context、译者注释、伪本地化、RTL 和动态切语言；文档改编需遵守 CC BY 3.0。
+- [KDE Text and labels](https://develop.kde.org/hig/text_and_labels/) / [GNOME Writing Style](https://developer.gnome.org/hig/guidelines/writing-style.html) / [GNOME Tooltips](https://developer.gnome.org/hig/patterns/feedback/tooltips.html) — 只吸收短而精确、祈使动词、图标按钮文字、tooltip 非关键等原则，不复制 ShareAlike 文段。
+- [W3C Accessible names and descriptions](https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/) / [WCAG 2.2](https://www.w3.org/TR/WCAG22/) — 作为合规规范引用：所有可聚焦元素有可访问名称，可见标签优先且重要词前置。
+- [Unicode CLDR Plural Rules](https://cldr.unicode.org/index/cldr-spec/plural-rules) / [MessageFormat](https://messageformat.unicode.org/) — 复数、选择、数字和命名占位符按 locale 处理，不拼接半句话。
+
+完整的受众分层、卡牌语法、菜单/按钮/tooltip/错误规则、当前泄漏清单与迁移门见 `docs/player_facing_text_and_rules_presentation_contract.md`。
+
 ## 经济、卡牌规则与离线仿真参考
 
 ### 经济运行与 GDP

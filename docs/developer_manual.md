@@ -1,8 +1,10 @@
 # Space Syndicate Developer Manual
 
-最后更新：2026-07-03
+最后更新：2026-07-14
 适用仓库：`zhuyeyang979-glitch/space-syndicate`
 当前主线：Godot 4.x 实时 PVE roguelike 隐藏信息数字桌游原型。
+
+> 版本边界：本手册第 1–6 节仍主要刻画当前可运行的 v0.4 生产路径。已批准的 v0.5 玩家规则以 `docs/tabletop_rulebook_v05.md` 为准，迁移边界以 `docs/rules_v05_runtime_migration.md` 为准；不要把本手册中的旧现金胜利、城市业主或猜牌归属描述重新写进新玩家文案。
 
 ## 1. 项目一句话
 
@@ -177,6 +179,8 @@ AI 和 balance 统计应优先读字段，不靠卡名写特殊逻辑。
 
 项目是桌游数字化，信息必须像桌面组件，而不是 debug 面板。
 
+所有菜单、按钮、tooltip、错误、日志、卡牌、规则和 accessible text 必须遵守 `docs/player_facing_text_and_rules_presentation_contract.md`。机器 ID、开发诊断、译者元数据、玩家可见文字、玩家辅助文字和玩家生成内容不得共用一个无类型 `text` 字段；公开/私人/终局揭示范围必须先过滤，再做本地化。
+
 主桌优先展示：
 
 - 中央星球。
@@ -199,6 +203,9 @@ AI 和 balance 统计应优先读字段，不靠卡名写特殊逻辑。
 - 允许使用关键词和图标。
 - 详情页再解释完整字段。
 - hover 放大手牌，低分辨率也要看清。
+- effect/requirement/terms 数据是规则真相；短效果、完整规则、tooltip 和图鉴说明必须经过一致性校验。
+- `card_id`、`action_id`、`reason_code`、raw error、资源路径和 debug 字段不得作为玩家文字 fallback。
+- tooltip 与 accessible name 都是正式玩家文字，必须本地化；颜色和图标不能成为唯一语义。
 
 ## 8. 战役与剧本
 
