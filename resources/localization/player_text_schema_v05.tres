@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PlayerTextCatalogResource" load_steps=19 format=3]
+[gd_resource type="Resource" script_class="PlayerTextCatalogResource" load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/player_text_catalog_resource.gd" id="1_catalog"]
 [ext_resource type="Script" path="res://scripts/presentation/player_text_catalog_entry_resource.gd" id="2_entry"]
@@ -156,6 +156,36 @@ owner = "structured_gdp_presentation"
 translator_note = "Canonical v0.5 player-facing GDP flow unit."
 character_budget = 10
 
+[sub_resource type="Resource" id="Entry_city_project_summary"]
+script = ExtResource("2_entry")
+message_key = "ui.city.project.summary"
+surface = "project_summary"
+owner = "city_trade_network_runtime"
+translator_note = "Public v0.5 project summary. Arguments must be visibility-authorized before localization; never include controller or contribution identities."
+character_budget = 64
+argument_types = {
+"direction_name": "localized_key",
+"gdp_rate": "gdp_per_minute",
+"product_name": "localized_key",
+"rank": "integer"
+}
+assistive_message_key = "ui.city.project.summary.a11y"
+
+[sub_resource type="Resource" id="Entry_city_project_summary_a11y"]
+script = ExtResource("2_entry")
+message_key = "ui.city.project.summary.a11y"
+audience = "player_assistive"
+surface = "project_summary"
+owner = "city_trade_network_runtime"
+translator_note = "Accessible equivalent of the public v0.5 project summary."
+character_budget = 88
+argument_types = {
+"direction_name": "localized_key",
+"gdp_rate": "gdp_per_minute",
+"product_name": "localized_key",
+"rank": "integer"
+}
+
 [sub_resource type="Resource" id="Entry_machine_identifier"]
 script = ExtResource("2_entry")
 message_key = "internal.card.identifier"
@@ -188,4 +218,4 @@ script = ExtResource("1_catalog")
 schema_version = "v0.5"
 default_locale = "zh_Hans"
 safe_fallback_key = "ui.error.generic_safe"
-entries = Array[Resource]([SubResource("Entry_safe_fallback"), SubResource("Entry_safe_fallback_a11y"), SubResource("Entry_blocked_industry"), SubResource("Entry_blocked_industry_a11y"), SubResource("Entry_qa_status"), SubResource("Entry_qa_currency"), SubResource("Entry_qa_influence"), SubResource("Entry_qa_duration"), SubResource("Entry_qa_gdp_rate"), SubResource("Entry_player_generated"), SubResource("Entry_term_industry"), SubResource("Entry_unit_currency"), SubResource("Entry_unit_percent"), SubResource("Entry_unit_seconds"), SubResource("Entry_unit_gdp_minute"), SubResource("Entry_machine_identifier"), SubResource("Entry_developer_diagnostic"), SubResource("Entry_translator_metadata")])
+entries = Array[Resource]([SubResource("Entry_safe_fallback"), SubResource("Entry_safe_fallback_a11y"), SubResource("Entry_blocked_industry"), SubResource("Entry_blocked_industry_a11y"), SubResource("Entry_qa_status"), SubResource("Entry_qa_currency"), SubResource("Entry_qa_influence"), SubResource("Entry_qa_duration"), SubResource("Entry_qa_gdp_rate"), SubResource("Entry_player_generated"), SubResource("Entry_term_industry"), SubResource("Entry_unit_currency"), SubResource("Entry_unit_percent"), SubResource("Entry_unit_seconds"), SubResource("Entry_unit_gdp_minute"), SubResource("Entry_city_project_summary"), SubResource("Entry_city_project_summary_a11y"), SubResource("Entry_machine_identifier"), SubResource("Entry_developer_diagnostic"), SubResource("Entry_translator_metadata")])

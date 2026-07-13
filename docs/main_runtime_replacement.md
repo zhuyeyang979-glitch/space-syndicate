@@ -957,3 +957,11 @@ Sprint 67 extends the existing `MenuShellRuntimeCutoverBench` instead of adding 
 The current Esc route only owns fullscreen-map close, generic MenuOverlay close, and pause open. It does not own confirmation or forced-decision precedence, side/district drawer dismissal, root exit confirmation, exact parent focus, freed-focus fallback, or controller `ui_cancel`. Scenario action log/replay generic Back also returns to the root menu rather than the pause opener.
 
 `scripts/tools/global_ui_navigation_characterization_registry.gd` records the surface schema, current/expected action pairs, and Sprint 68 deletion candidates. `docs/global_ui_navigation_runtime_contract.md` is the hard-cutover contract. Production `main.gd` is intentionally unchanged at 20,209 nonblank lines, 1,285 functions, 141 top-level variables, 204 constants, and SHA-256 `6BD3F293EC2E92AEB81A39C80266314BE6A308D2C03ECD58FD8DB22958CAE699`.
+
+## SS05-02: Five Project Slots And Stable Identity
+
+SS05-02 reuses the existing scene-owned `CityTradeNetworkRuntimeController` instead of creating a parallel project engine. It now uniquely owns five canonical project slots per buildable region (production 2, demand 2, commerce 1), stable ASCII region/slot/project IDs, rank I-IV, project shares, monotonic generations, tombstones, and the domain save envelope. `CityProductProjectState` and `CityProductProjectBridge` remain pure-data helpers; `CityDevelopmentRuntimeController` consumes the same slot transaction.
+
+The legacy product-derived project ID, exact-tie seat/order tiebreak, owner-derived synthetic project, owner-only no-project payout, duplicate flat save writer, and runtime `migrate_legacy_city`/`apply_development` paths are absent. A one-time `CityProjectStateMigrationV04ToV05` boundary may normalize explicit old projects, but it never invents projects from `city.owner`, products, or demands.
+
+The long-lived City/Trade gate expands from 68 to **88/88 observed and aligned**, while City Development remains **64/64**. `main.gd` is byte-identical to its SS05-01A baseline because this cutover replaces already-module-owned project semantics rather than moving a new `main.gd` block. SS05-03 should next replace whole-city GDP splitting with structured, project-keyed GDP rows and conservation receipts.

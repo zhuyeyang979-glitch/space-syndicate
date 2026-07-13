@@ -6,9 +6,9 @@ Sprint 66 completes the hard cutover. `CityDevelopmentRuntimeController` is the 
 
 ## Ownership
 
-- `CityDevelopmentRuntimeController`: v0.4 legality, stable reason codes, pure planning, city/project/commerce staged mutation, validation precedence, opened/resolved lifecycle, and event intents.
+- `CityDevelopmentRuntimeController`: stable reason codes, pure planning, v0.5 slot selection, city/project/commerce staged mutation, validation precedence, opened/resolved lifecycle, and event intents.
 - `CityDevelopmentWorldBridge`: pure world-fact capture, fingerprint preflight, exact sequence claim, atomic world commit/rollback, downstream refresh calls, and idempotent event application. It owns no rules or long-lived game state.
-- `CityProductProjectState` / `CityProductProjectBridge`: project identity, contribution, shares, controller tie-break, legacy field synchronization, GDP allocation, and public/private projections.
+- `CityProductProjectState` / `CityProductProjectBridge`: stable slot/generation identity, contribution, rank IV clamp, shares, exact-tie no-control, compatibility field projection, GDP allocation, and public/private projections.
 - `CityTradeNetworkRuntimeController`: project sequence and network derivation.
 - `ProductMarketRuntimeController`: product prices and market lifecycle.
 - `GdpFormulaRuntimeController`: GDP arithmetic.
@@ -20,8 +20,8 @@ Both runtime nodes are static children of `GameRuntimeCoordinator.tscn`. `main.t
 
 1. Coordinator collects the real card-bound request.
 2. WorldBridge captures pure facts plus a world fingerprint and downstream-owner readiness.
-3. Controller validates player, district, terrain, local product, direction, source, and v0.4 direct-build prohibition.
-4. Controller produces a pure staged plan; no player, district, network, market, RNG, ledger, or event state changes.
+3. Controller validates player, district, terrain, local product, direction, source, slot availability, and the direct-build prohibition.
+4. Controller resolves a stable `slot_id`, `generation`, and `project_id`, then produces a pure staged plan; no player, district, network, market, RNG, ledger, or event state changes.
 5. WorldBridge preflights the current fingerprint and project sequence.
 6. Controller revalidates the plan against current facts.
 7. Controller records `opened`; WorldBridge atomically claims one project sequence and applies the staged player/district deltas.
@@ -37,14 +37,16 @@ The pure plan never replaces complete runtime world records. Commit applies only
 
 ## Preserved behavior
 
-- Project identity remains `district_index:product_id:direction`.
+- Project identity is `region + slot kind + slot index + generation`; product content is not identity.
+- Each city has production 2, demand 2, and commerce 1 canonical slots.
+- Project rank is clamped to IV.
 - First contribution receives 10,000 basis points and control.
 - Repeated contribution strengthens the same project without incrementing `cities_built` again.
-- Equal contribution splits 50/50; earliest contribution order retains control.
+- Equal highest contribution splits 50/50 and leaves `controller=-1`.
 - First city adds 8 HP, repairs 2 damage, and records `built_at`.
 - Commerce raises transport level by contribution units and recalculates transport score once.
 - Production, demand, and commerce keep their legacy city projections synchronized.
-- Current and legacy save shapes remain compatible without a save-version bump.
+- Current saves use the versioned project-slot domain envelope; legacy sequence data is accepted only at the explicit one-time migration boundary.
 - Direct build action IDs remain rejection-only compatibility surfaces under v0.4.
 
 ## Privacy

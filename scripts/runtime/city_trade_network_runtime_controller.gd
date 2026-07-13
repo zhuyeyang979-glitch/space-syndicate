@@ -5,7 +5,7 @@ class_name CityTradeNetworkRuntimeController
 const PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
 const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
 
-const SAVE_TERMS_VERSION := "v0.4"
+const SAVE_TERMS_VERSION := "v0.5.project-slots.1"
 const OCEAN_ROUTE_COST_MULTIPLIER := 0.88
 const DESTROYED_ROUTE_COST_PENALTY := 4.0
 const MIASMA_ROUTE_COST_PENALTY := 0.35
@@ -14,9 +14,16 @@ const TRANSPORT_SCORE_MIN := 0.55
 const TRANSPORT_SCORE_MAX := 2.4
 const ROUTE_FLOW_MULTIPLIER_MAX := 2.8
 
+@export var project_rules_profile: Resource
+
 var _ruleset_id := ""
+var _project_ruleset_id := ""
+var _project_slot_counts: Dictionary = {}
+var _maximum_project_rank := 0
 var _configured := false
 var _project_sequence := 1
+var _generation_by_slot_id: Dictionary = {}
+var _project_tombstones: Dictionary = {}
 var _refresh_count := 0
 var _cashflow_settlement_count := 0
 var _disruption_count := 0
@@ -46,13 +53,20 @@ func set_formula_service(service: Node) -> void:
 
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
-	_configured = _ruleset_id == "v0.4" and _world_bridge != null and _gdp_formula_controller != null and _cashflow_controller != null and _formula_service != null
+	var project_rules := _project_rules_snapshot()
+	_project_ruleset_id = str(project_rules.get("ruleset_id", ""))
+	_project_slot_counts = (project_rules.get("project_slot_counts", {}) as Dictionary).duplicate(true) if project_rules.get("project_slot_counts", {}) is Dictionary else {}
+	_maximum_project_rank = int(project_rules.get("maximum_project_rank", 0))
+	var project_contract_valid := _project_ruleset_id == "v0.5" and _project_slot_counts == PROJECT_STATE.SLOT_COUNTS and _maximum_project_rank == PROJECT_STATE.MAX_PROJECT_RANK
+	_configured = _ruleset_id in ["v0.4", "v0.5"] and project_contract_valid and _world_bridge != null and _gdp_formula_controller != null and _cashflow_controller != null and _formula_service != null
 	if not _configured:
-		push_error("CityTradeNetworkRuntimeController requires the v0.4 ruleset, WorldBridge, GDP, Cashflow, and Formula services.")
+		push_error("CityTradeNetworkRuntimeController requires the v0.5 project contract plus WorldBridge, GDP, Cashflow, and Formula services.")
 
 
 func reset_state() -> void:
 	_project_sequence = 1
+	_generation_by_slot_id.clear()
+	_project_tombstones.clear()
 	_refresh_count = 0
 	_cashflow_settlement_count = 0
 	_disruption_count = 0
@@ -90,16 +104,56 @@ func claim_project_sequence_if(expected_sequence: int) -> Dictionary:
 func normalize_city(city_value: Dictionary, district_index: int) -> Dictionary:
 	if city_value.is_empty():
 		return {}
-	var migrated: Dictionary = PROJECT_BRIDGE.migrate_legacy_city(city_value, district_index, _project_sequence)
-	for project_variant in migrated.get("projects", []):
+	var normalized: Dictionary = PROJECT_BRIDGE.normalize_city(city_value, district_index, _project_sequence, _generation_by_slot_id)
+	_register_city_identity(normalized)
+	for project_variant in normalized.get("projects", []):
 		if project_variant is Dictionary:
 			_project_sequence = maxi(_project_sequence, int((project_variant as Dictionary).get("created_order", 0)) + 1)
-	_project_sequence = maxi(_project_sequence, int(migrated.get("project_sequence", 0)))
-	return migrated
+	_project_sequence = maxi(_project_sequence, int(normalized.get("project_sequence", 0)))
+	return normalized
 
 
 func city_has_project_shares(city: Dictionary) -> bool:
-	return city.get("projects", []) is Array and not (city.get("projects", []) as Array).is_empty()
+	return not PROJECT_BRIDGE.active_projects(city).is_empty()
+
+
+func public_project_slot_snapshots(district_index: int) -> Array:
+	var snapshot := _city_state_snapshot()
+	var city := _district_city(snapshot.get("districts", []), district_index)
+	return PROJECT_BRIDGE.public_slots(normalize_city(city, district_index)) if not city.is_empty() else []
+
+
+func project_generation(stable_slot_id: String) -> int:
+	return maxi(0, int(_generation_by_slot_id.get(stable_slot_id, 0)))
+
+
+func tombstone_project(district_index: int, stable_slot_id: String, reason: String) -> Dictionary:
+	if not _runtime_ready():
+		return {"applied": false, "reason_code": "controller_not_ready"}
+	var snapshot := _city_state_snapshot()
+	var districts := _districts_from_snapshot(snapshot).duplicate(true)
+	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		return {"applied": false, "reason_code": "district_invalid"}
+	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
+	var city_variant: Variant = district.get("city", {})
+	if not (city_variant is Dictionary) or (city_variant as Dictionary).is_empty():
+		return {"applied": false, "reason_code": "city_missing"}
+	var result := PROJECT_BRIDGE.tombstone_project(city_variant as Dictionary, district_index, stable_slot_id, reason, _generation_by_slot_id)
+	if not bool(result.get("applied", false)):
+		return result
+	var city: Dictionary = (result.get("city", {}) as Dictionary).duplicate(true)
+	district["city"] = city
+	districts[district_index] = district
+	var apply_result: Dictionary = _world_bridge.call("apply_network_receipt", {"valid": true, "districts": districts, "ensure_city_development_supply": false})
+	if not bool(apply_result.get("applied", false)):
+		return {"applied": false, "reason_code": str(apply_result.get("reason", "apply_failed"))}
+	_register_city_identity(city)
+	return {
+		"applied": true,
+		"reason_code": "",
+		"slot_id": stable_slot_id,
+		"tombstone": (result.get("tombstone", {}) as Dictionary).duplicate(true),
+	}
 
 
 func public_project_snapshots(district_index: int) -> Array:
@@ -163,7 +217,7 @@ func player_region_gdp_share_basis_points(player_index: int, district_index: int
 		city = PROJECT_BRIDGE.assign_city_gdp(city, city_gdp)
 		var player_gdp := PROJECT_STATE.player_gdp(city.get("projects", []) as Array, player_index)
 		return clampi(int(round(float(player_gdp * PROJECT_STATE.SHARE_BASIS_POINTS) / float(city_gdp))), 0, PROJECT_STATE.SHARE_BASIS_POINTS)
-	return PROJECT_STATE.SHARE_BASIS_POINTS if int(city.get("owner", -1)) == player_index else 0
+	return 0
 
 
 func gdp_formula_snapshot(district_index: int, competition_matches_value: int) -> Dictionary:
@@ -185,7 +239,7 @@ func refresh_networks() -> Dictionary:
 	for district_index_variant in _active_city_indices(districts):
 		var district_index := int(district_index_variant)
 		var district: Dictionary = districts[district_index]
-		var city := _district_city(districts, district_index)
+		var city := normalize_city(_district_city(districts, district_index), district_index)
 		city["competition_matches"] = _competition_matches(districts, district_index)
 		district["city"] = city
 		districts[district_index] = district
@@ -359,20 +413,11 @@ func settle_cashflow_seconds(seconds: float) -> int:
 					continue
 				sources.append({"source_id": "project:%d:%d" % [district_index, player_index], "source_kind": "project_share", "district_index": district_index, "player_index": player_index, "gdp_per_minute": maxi(0, int(allocations.get(player_key_variant, 0))), "remainder": float(remainders.get(str(player_index), 0.0)), "role_bonus_gdp_per_minute": int(breakdown.get("role_bonus", 0)), "role_bonus_basis_gdp_per_minute": gdp_per_minute, "eligible": true})
 			continue
-		var city_owner := int(city.get("owner", -1))
-		if city_owner < 0 or city_owner >= players.size():
-			district["city"] = city
-			districts[district_index] = district
-			continue
-		if bool(eliminated.get(str(city_owner), false)):
-			city["last_cashflow_rate"] = 0
-			city["last_income"] = 0
-			city["last_gdp_reason"] = "业主破产出局，城市现金流停止结算"
-			district["city"] = city
-			districts[district_index] = district
-			continue
-		contexts[str(district_index)] = context
-		sources.append({"source_id": "city:%d" % district_index, "source_kind": "city_owner", "district_index": district_index, "player_index": city_owner, "gdp_per_minute": gdp_per_minute, "remainder": float(city.get("cashflow_remainder", 0.0)), "role_bonus_gdp_per_minute": int(breakdown.get("role_bonus", 0)), "role_bonus_basis_gdp_per_minute": gdp_per_minute, "eligible": true})
+		city["last_cashflow_rate"] = 0
+		city["last_income"] = 0
+		city["last_gdp_reason"] = "共享城市尚无项目份额，不能按城市 owner 派息"
+		district["city"] = city
+		districts[district_index] = district
 	var settlement_variant: Variant = _cashflow_controller.call("settle_sources", safe_seconds, {"sources": sources})
 	var settlement: Dictionary = settlement_variant if settlement_variant is Dictionary else {}
 	if not bool(settlement.get("valid", false)):
@@ -438,15 +483,32 @@ func settle_cashflow_seconds(seconds: float) -> int:
 
 func to_save_data() -> Dictionary:
 	return {
-		"city_product_project_sequence": _project_sequence,
-		"city_trade_network_runtime": {"terms_version": SAVE_TERMS_VERSION, "project_sequence": _project_sequence},
+		"city_trade_network_runtime": {
+			"terms_version": SAVE_TERMS_VERSION,
+			"project_schema_version": PROJECT_STATE.PROJECT_SCHEMA_VERSION,
+			"project_sequence": _project_sequence,
+			"generation_by_slot_id": _generation_by_slot_id.duplicate(true),
+			"project_tombstones": _project_tombstones.values(),
+			"project_slot_counts": _project_slot_counts.duplicate(true),
+			"maximum_project_rank": _maximum_project_rank,
+		},
 	}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
 	var runtime_variant: Variant = data.get("city_trade_network_runtime", {})
 	var runtime_data: Dictionary = runtime_variant if runtime_variant is Dictionary else {}
+	var legacy_migration := runtime_data.is_empty() or str(runtime_data.get("terms_version", "")) != SAVE_TERMS_VERSION
 	_project_sequence = maxi(1, int(runtime_data.get("project_sequence", data.get("city_product_project_sequence", _project_sequence))))
+	_generation_by_slot_id = (runtime_data.get("generation_by_slot_id", {}) as Dictionary).duplicate(true) if runtime_data.get("generation_by_slot_id", {}) is Dictionary else {}
+	_project_tombstones.clear()
+	var saved_tombstones: Array = runtime_data.get("project_tombstones", []) if runtime_data.get("project_tombstones", []) is Array else []
+	for tombstone_variant in saved_tombstones:
+		if tombstone_variant is Dictionary:
+			var tombstone: Dictionary = tombstone_variant
+			var stable_project_id := str(tombstone.get("project_id", ""))
+			if stable_project_id != "":
+				_project_tombstones[stable_project_id] = tombstone.duplicate(true)
 	var snapshot: Dictionary = _city_state_snapshot().duplicate(true)
 	var districts := _districts_from_snapshot(snapshot)
 	for district_index in range(districts.size()):
@@ -458,7 +520,14 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 		districts[district_index] = district
 	if _world_bridge != null and _world_bridge.has_method("apply_network_receipt"):
 		_world_bridge.call("apply_network_receipt", {"valid": true, "districts": districts, "ensure_city_development_supply": false})
-	return {"applied": true, "project_sequence": _project_sequence, "legacy_flat_key_used": runtime_data.is_empty() and data.has("city_product_project_sequence")}
+	return {
+		"applied": true,
+		"project_sequence": _project_sequence,
+		"migration_applied": legacy_migration,
+		"legacy_flat_key_used": runtime_data.is_empty() and data.has("city_product_project_sequence"),
+		"generation_count": _generation_by_slot_id.size(),
+		"tombstone_count": _project_tombstones.size(),
+	}
 
 
 func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
@@ -468,12 +537,20 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"runtime_owner": "CityTradeNetworkRuntimeController",
 		"runtime_cutover_enabled": true,
 		"ruleset_id": _ruleset_id,
+		"project_ruleset_id": _project_ruleset_id,
+		"project_schema_version": PROJECT_STATE.PROJECT_SCHEMA_VERSION,
+		"project_slot_counts": _project_slot_counts.duplicate(true),
+		"maximum_project_rank": _maximum_project_rank,
 		"project_sequence": _project_sequence,
+		"generation_count": _generation_by_slot_id.size(),
+		"tombstone_count": _project_tombstones.size(),
 		"refresh_count": _refresh_count,
 		"cashflow_settlement_count": _cashflow_settlement_count,
 		"disruption_count": _disruption_count,
 		"last_refresh": _last_refresh_receipt.duplicate(true),
 		"legacy_route_engine_active": false,
+		"legacy_product_identity_active": false,
+		"legacy_city_owner_project_authority": false,
 	}
 
 
@@ -775,6 +852,33 @@ func _formula_value(formula_id: String, input_snapshot: Dictionary, fallback: fl
 		push_error("CityTradeNetworkRuntimeController formula failed: %s / %s" % [formula_id, str(result.get("reason", "unknown"))])
 		return fallback
 	return float(result.get("value", fallback))
+
+
+func _project_rules_snapshot() -> Dictionary:
+	if project_rules_profile == null or not project_rules_profile.has_method("validation_snapshot"):
+		return {}
+	var value: Variant = project_rules_profile.call("validation_snapshot")
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _register_city_identity(city: Dictionary) -> void:
+	for slot_variant in city.get("project_slots", []):
+		if not (slot_variant is Dictionary):
+			continue
+		var slot: Dictionary = slot_variant
+		var stable_slot_id := str(slot.get("slot_id", ""))
+		if stable_slot_id != "":
+			_generation_by_slot_id[stable_slot_id] = maxi(
+				int(_generation_by_slot_id.get(stable_slot_id, 0)),
+				int(slot.get("generation", 0))
+			)
+	for tombstone_variant in city.get("project_tombstones", []):
+		if not (tombstone_variant is Dictionary):
+			continue
+		var tombstone: Dictionary = tombstone_variant
+		var stable_project_id := str(tombstone.get("project_id", ""))
+		if stable_project_id != "":
+			_project_tombstones[stable_project_id] = tombstone.duplicate(true)
 
 
 func _center_data(snapshot: Dictionary, district_index: int) -> Dictionary:

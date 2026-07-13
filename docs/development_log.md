@@ -3,6 +3,16 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-14。
 
+## 2026-07-14｜SS05-02 Five Project Slots & Stable Identity
+
+- `CityTradeNetworkRuntimeController` 成为五项目位身份和生命周期的唯一可变 owner：每区固定生产 2、需求 2、通商 1，项目最高 IV；`CityProductProjectState/Bridge` 只保留纯数据状态与变换。
+- 稳定身份采用 ASCII `region_id -> slot_id -> project_id`，项目 ID 不再包含商品；同一商品可以占据两个独立生产位或两个独立需求位。
+- 每个 slot 保存单调递增 generation；tombstone 保留旧项目 ID、原因和 generation，重开后生成新 ID，绝不复用已结束项目身份。
+- 份额使用确定性最大余数分配并精确合计 10,000bp；唯一最高者控制项目，最高份额精确并列时 `controller_player_index=-1`，不再以创建顺序或座次破平。
+- 新增显式 `CityProjectStateMigrationV04ToV05` 边界。旧显式项目可一次归一化到五槽位，但不得从 `city.owner`、旧 products 或 demands 猜造项目；Controller 只写一个 `city_trade_network_runtime` v0.5 envelope。
+- City Development 通过稳定 slot/generation 执行同一原子 settlement；玩家、AI 与 fixture 不建立第二条项目写路径。项目公开 snapshot 不包含 controller、贡献表、份额表、隐藏 owner 或 AI 计划。
+- 现有 CityTrade 长期 Bench 从 68 项扩展为 88/88 observed、88/88 aligned、0 design decisions；CityDevelopment 保持 64/64。下一步进入 SS05-03 结构化 GDP 行与守恒，删除剩余整城 GDP 分配语义。
+
 ## 2026-07-14｜SS05-01A Player-Facing Text Foundation
 
 - 新增 `PlayerTextSpecV05`、可见性授权合同、locale resolver、玩家生成文字净化器、typed message catalog 和单位目录；固定数据流为“领域 receipt/snapshot 先授权净化，再生成 message key + typed args，最后本地化”。

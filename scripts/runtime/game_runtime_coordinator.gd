@@ -584,6 +584,8 @@ func execute_city_development(runtime_request: Dictionary) -> Dictionary:
 		"district_index": district_index,
 		"product_id": str(skill.get("product_id", "")),
 		"project_direction": str(skill.get("project_direction", "production")),
+		"slot_id": str(runtime_request.get("slot_id", skill.get("slot_id", ""))),
+		"slot_index": int(runtime_request.get("slot_index", skill.get("slot_index", -1))),
 		"allowed_terrains": (skill.get("allowed_terrains", []) as Array).duplicate(true) if skill.get("allowed_terrains", []) is Array else [],
 		"skill": skill.duplicate(true),
 	}
@@ -604,6 +606,9 @@ func execute_city_development(runtime_request: Dictionary) -> Dictionary:
 		return controller.call("finalize_settlement", {"applied": false, "reason": failure_reason, "reason_code": failure_reason, "project_id": str(plan.get("project_id", ""))}) as Dictionary
 	controller.call("record_project_opened", {
 		"project_id": str(plan.get("project_id", "")),
+		"slot_id": str(plan.get("slot_id", "")),
+		"slot_index": int(plan.get("slot_index", -1)),
+		"generation": int(plan.get("generation", 0)),
 		"district_index": district_index,
 		"product_id": str(plan.get("product_id", "")),
 		"project_direction": str(plan.get("project_direction", "")),

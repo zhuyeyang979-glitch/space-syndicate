@@ -119,19 +119,16 @@ func plan_settlement(request: Dictionary, current_facts: Dictionary) -> Dictiona
 	var district_index := int(normalized_request.get("district_index", -1))
 	var product_id := str(normalized_request.get("product_id", "")).strip_edges()
 	var direction := PROJECT_STATE.normalize_direction(str(normalized_request.get("project_direction", "production")))
-	var project_id := PROJECT_STATE.project_id(district_index, product_id, direction)
 	normalized_request["project_direction"] = direction
-	normalized_request["project_id"] = project_id
-	var evaluation := evaluate_development_request(normalized_request)
 	var site_facts := current_facts.duplicate(true)
 	site_facts["require_empty_city"] = false
 	var site_status := evaluate_development_site(site_facts)
 	var target_reason := _target_error(normalized_request, current_facts)
 	var downstream_readiness: Dictionary = current_facts.get("downstream_owner_readiness", {}) as Dictionary if current_facts.get("downstream_owner_readiness", {}) is Dictionary else {}
 	var downstream_ready := bool(downstream_readiness.get("network", false)) and bool(downstream_readiness.get("gdp", false)) and bool(downstream_readiness.get("market", false))
-	if not bool(evaluation.get("allowed", false)) or not bool(site_status.get("allowed", false)) or target_reason != "" or not downstream_ready:
+	if not bool(site_status.get("allowed", false)) or target_reason != "" or not downstream_ready:
 		_failed_settlement_count += 1
-		return _failed_plan(str(evaluation.get("disabled_reason", "")) if not bool(evaluation.get("allowed", false)) else (str(site_status.get("reason", "")) if not bool(site_status.get("allowed", false)) else (target_reason if target_reason != "" else "downstream_owner_unavailable")), normalized_request)
+		return _failed_plan(str(site_status.get("reason", "")) if not bool(site_status.get("allowed", false)) else (target_reason if target_reason != "" else "downstream_owner_unavailable"), normalized_request)
 	var player: Dictionary = (current_facts.get("player", {}) as Dictionary).duplicate(true) if current_facts.get("player", {}) is Dictionary else {}
 	var district: Dictionary = (current_facts.get("district", {}) as Dictionary).duplicate(true) if current_facts.get("district", {}) is Dictionary else {}
 	if player.is_empty() or district.is_empty():
@@ -146,12 +143,35 @@ func plan_settlement(request: Dictionary, current_facts: Dictionary) -> Dictiona
 		district["damage"] = maxi(0, int(district.get("damage", 0)) - CITY_DAMAGE_REPAIR)
 		city = _new_city_surface(int(normalized_request.get("player_index", -1)), district, current_facts)
 	else:
-		city = PROJECT_BRIDGE.migrate_legacy_city(city, district_index, int(current_facts.get("project_sequence", 1)))
+		city = PROJECT_BRIDGE.normalize_city(city, district_index, int(current_facts.get("project_sequence", 1)))
 	var contribution_order := int(current_facts.get("project_sequence", 1))
 	var skill: Dictionary = (normalized_request.get("skill", {}) as Dictionary).duplicate(true) if normalized_request.get("skill", {}) is Dictionary else {}
 	skill["product_id"] = product_id
 	skill["project_direction"] = direction
-	city = PROJECT_BRIDGE.apply_development(city, district_index, int(normalized_request.get("player_index", -1)), skill, contribution_order)
+	if normalized_request.has("slot_id"):
+		skill["slot_id"] = str(normalized_request.get("slot_id", ""))
+	if normalized_request.has("slot_index"):
+		skill["slot_index"] = int(normalized_request.get("slot_index", -1))
+	var slot_resolution := PROJECT_BRIDGE.resolve_development_slot(city, district_index, skill)
+	if not bool(slot_resolution.get("valid", false)):
+		_failed_settlement_count += 1
+		return _failed_plan(str(slot_resolution.get("reason_code", "project_slot_unavailable")), normalized_request)
+	normalized_request["slot_id"] = str(slot_resolution.get("slot_id", ""))
+	normalized_request["slot_index"] = int(slot_resolution.get("slot_index", -1))
+	normalized_request["generation"] = int(slot_resolution.get("generation", 1))
+	normalized_request["project_id"] = str(slot_resolution.get("project_id", ""))
+	var evaluation := evaluate_development_request(normalized_request)
+	if not bool(evaluation.get("allowed", false)):
+		_failed_settlement_count += 1
+		return _failed_plan(str(evaluation.get("disabled_reason", "settlement_rejected")), normalized_request)
+	var development := PROJECT_BRIDGE.apply_project_contribution(city, district_index, int(normalized_request.get("player_index", -1)), skill, contribution_order)
+	if not bool(development.get("applied", false)):
+		_failed_settlement_count += 1
+		return _failed_plan(str(development.get("reason_code", "project_contribution_failed")), normalized_request)
+	city = (development.get("city", {}) as Dictionary).duplicate(true)
+	var project: Dictionary = (development.get("project", {}) as Dictionary).duplicate(true)
+	var stable_project_id := str(project.get("project_id", normalized_request.get("project_id", "")))
+	normalized_request["project_id"] = stable_project_id
 	if direction == "commerce":
 		district["transport_level"] = clampi(int(current_facts.get("next_transport_level", district.get("transport_level", 2))), ECONOMY_LEVEL_MIN, ECONOMY_LEVEL_MAX)
 		district["transport_score"] = float(current_facts.get("next_transport_score", district.get("transport_score", 1.0)))
@@ -168,7 +188,11 @@ func plan_settlement(request: Dictionary, current_facts: Dictionary) -> Dictiona
 		"district_index": district_index,
 		"product_id": product_id,
 		"project_direction": direction,
-		"project_id": project_id,
+		"project_id": stable_project_id,
+		"slot_id": str(project.get("slot_id", normalized_request.get("slot_id", ""))),
+		"slot_index": int(project.get("slot_index", normalized_request.get("slot_index", -1))),
+		"generation": int(project.get("generation", normalized_request.get("generation", 1))),
+		"project_rank": int(project.get("rank", project.get("level", 1))),
 		"created_city_surface": created_city,
 		"staged_player": player,
 		"staged_district": district,
@@ -401,7 +425,15 @@ func _target_error(request: Dictionary, facts: Dictionary) -> String:
 
 
 func _new_city_surface(player_index: int, district: Dictionary, facts: Dictionary) -> Dictionary:
+	var district_index := int(facts.get("district_index", -1))
+	var stable_region_id := PROJECT_STATE.region_id(district_index, str(district.get("region_id", "")))
 	return {
+		"project_schema_version": PROJECT_STATE.PROJECT_SCHEMA_VERSION,
+		"region_id": stable_region_id,
+		"project_slots": PROJECT_STATE.create_project_slots(district_index, stable_region_id),
+		"project_tombstones": [],
+		"legacy_owner_is_project_authority": false,
+		# Transitional projection for v0.4 consumers outside SS05-02. Project state never reads it.
 		"owner": player_index,
 		"active": true,
 		"level": 1,
@@ -445,6 +477,9 @@ func _sanitize_settlement_receipt(source: Dictionary) -> Dictionary:
 		"reason": str(source.get("reason", "")),
 		"reason_code": str(source.get("reason_code", _reason_code_for(str(source.get("reason", ""))))),
 		"project_id": str(source.get("project_id", "")),
+		"slot_id": str(source.get("slot_id", "")),
+		"slot_index": int(source.get("slot_index", -1)),
+		"generation": int(source.get("generation", 0)),
 		"district_index": int(source.get("district_index", -1)),
 		"product_id": str(source.get("product_id", "")),
 		"project_direction": str(source.get("project_direction", "")),
@@ -476,6 +511,9 @@ func _reason_code_for(reason: String) -> String:
 func _sanitize_project_lifecycle(source: Dictionary, state: String) -> Dictionary:
 	return {
 		"project_id": str(source.get("project_id", "")).strip_edges(),
+		"slot_id": str(source.get("slot_id", "")).strip_edges(),
+		"slot_index": int(source.get("slot_index", -1)),
+		"generation": int(source.get("generation", 0)),
 		"district_index": int(source.get("district_index", -1)),
 		"product_id": str(source.get("product_id", "")).strip_edges(),
 		"project_direction": str(source.get("project_direction", source.get("direction", ""))).strip_edges(),

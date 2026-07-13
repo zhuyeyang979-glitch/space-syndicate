@@ -3,6 +3,7 @@ class_name RulesetV05ConformanceRegistry
 
 const STATUS_FOUNDATION_READY := "foundation_ready"
 const STATUS_RUNTIME_INACTIVE := "runtime_inactive"
+const STATUS_CUTOVER_COMPLETE := "cutover_complete"
 const STATUS_BLOCKED := "blocked"
 
 const RECORDS := [
@@ -60,7 +61,15 @@ const RECORDS := [
 		"current_owner": "player_text_schema_v05.tres",
 		"current_status": STATUS_RUNTIME_INACTIVE,
 		"runtime_evidence": ["PlayerTextV05FoundationBench 48/48", "239 legacy card rules_text records inventoried", "Production v0.4 UI unchanged"],
-		"next_step": "Keep inactive through SS05-02; migrate each domain's player copy only after its v0.5 receipt and visibility owner are stable.",
+		"next_step": "Keep the shared resolver inactive; project snapshots may publish authorized message keys, while locale resolution remains outside the runtime rule owner.",
+	},
+	{
+		"rule_id": "city_project_identity_runtime",
+		"expected_behavior": "Each buildable region has two production, two demand, and one commerce slot with stable ASCII identity, rank I-IV, monotonic generation, tombstones, and no controller on an exact highest-share tie.",
+		"current_owner": "CityTradeNetworkRuntimeController",
+		"current_status": STATUS_CUTOVER_COMPLETE,
+		"runtime_evidence": ["CityTradeNetworkRuntimeCharacterizationBench 88/88 observed", "88/88 aligned", "CityDevelopmentSettlementRuntimeCharacterizationBench 64/64"],
+		"next_step": "SS05-03 consumes these stable project identities when replacing whole-city GDP allocation with structured GDP rows and conservation checks.",
 	},
 	{
 		"rule_id": "emergency_sale_cost_basis",
@@ -75,3 +84,10 @@ const RECORDS := [
 
 static func records() -> Array:
 	return RECORDS.duplicate(true)
+
+
+func record_for_id(rule_id: String) -> Dictionary:
+	for record in RECORDS:
+		if str(record.get("rule_id", "")) == rule_id:
+			return (record as Dictionary).duplicate(true)
+	return {}

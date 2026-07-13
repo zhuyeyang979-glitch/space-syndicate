@@ -57,7 +57,7 @@ const CASE_IDS := [
 	"first_contribution_full_share",
 	"repeated_contribution_strengthens",
 	"second_player_share_split",
-	"tie_controller_earliest_order",
+	"tie_has_no_controller",
 	"contribution_order_stable",
 	"gdp_remainder_controller",
 	"production_legacy_sync",
@@ -69,7 +69,7 @@ const CASE_IDS := [
 	"public_callout_anonymous",
 	"player_ai_first_table_same_route",
 	"public_private_project_privacy",
-	"current_and_legacy_save_shape",
+	"current_and_migration_save_shape",
 	"downstream_refresh_atomicity_characterized",
 	"sprint66_deletion_candidates_complete",
 	"controller_bridge_scene_composition",
@@ -81,7 +81,7 @@ const CASE_IDS := [
 	"commerce_cutover_parity",
 	"city_creation_exact_once",
 	"sequence_claim_exact_once",
-	"share_and_tie_break_parity",
+	"share_and_no_controller_parity",
 	"commerce_transport_parity",
 	"stale_fingerprint_rejected",
 	"downstream_owner_missing_rejected",
@@ -276,7 +276,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"first_contribution_full_share": return _case_first_share()
 		"repeated_contribution_strengthens": return _case_repeat_contribution()
 		"second_player_share_split": return _case_second_player_share()
-		"tie_controller_earliest_order": return _case_tie_controller()
+		"tie_has_no_controller": return _case_tie_controller()
 		"contribution_order_stable": return _case_contribution_order()
 		"gdp_remainder_controller": return _case_gdp_remainder()
 		"production_legacy_sync": return _case_legacy_sync("production")
@@ -288,7 +288,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"public_callout_anonymous": return _case_public_callout()
 		"player_ai_first_table_same_route": return _case_shared_route()
 		"public_private_project_privacy": return _case_privacy()
-		"current_and_legacy_save_shape": return _case_save_shape()
+		"current_and_migration_save_shape": return _case_save_shape()
 		"downstream_refresh_atomicity_characterized": return _case_downstream_atomicity()
 		"sprint66_deletion_candidates_complete": return _case_deletion_map()
 		"controller_bridge_scene_composition": return _case_cutover_composition()
@@ -300,7 +300,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"commerce_cutover_parity": return _case_cutover_parity("commerce")
 		"city_creation_exact_once": return _rename_record("city_creation_exact_once", _case_cities_built_once())
 		"sequence_claim_exact_once": return _rename_record("sequence_claim_exact_once", _case_sequence_once())
-		"share_and_tie_break_parity": return _case_share_tie_parity()
+		"share_and_no_controller_parity": return _case_share_tie_parity()
 		"commerce_transport_parity": return _rename_record("commerce_transport_parity", _case_commerce_transport())
 		"stale_fingerprint_rejected": return _case_stale_fingerprint()
 		"downstream_owner_missing_rejected": return _case_downstream_missing()
@@ -320,7 +320,7 @@ func _run_case(case_id: String) -> Dictionary:
 
 func _case_call_graph() -> Dictionary:
 	var settlement := str(_sources.get("city_controller", "")) + str(_sources.get("city_world_bridge", "")) + _function_source(str(_sources.get("coordinator", "")), "execute_city_development")
-	var required := ["plan_settlement", "preflight_settlement", "claim_project_sequence_if", "apply_development", "refresh_networks", "refresh_prices", "city_gdp_breakdown", "assign_city_gdp", "finalize_settlement", "apply_post_commit_intents"]
+	var required := ["plan_settlement", "preflight_settlement", "claim_project_sequence_if", "apply_project_contribution", "refresh_networks", "refresh_prices", "city_gdp_breakdown", "assign_city_gdp", "finalize_settlement", "apply_post_commit_intents"]
 	var missing: Array = []
 	for token in required:
 		if not settlement.contains(str(token)):
@@ -339,7 +339,7 @@ func _case_legality_boundary() -> Dictionary:
 func _case_project_bridge_boundary() -> Dictionary:
 	var state_source := str(_sources.get("project_state", ""))
 	var bridge_source := str(_sources.get("project_bridge", ""))
-	var observed := state_source.contains("func contribute(") and state_source.contains("func recalculate_shares(") and bridge_source.contains("func apply_development(") and bridge_source.contains("func assign_city_gdp(") and not bridge_source.contains("Node")
+	var observed := state_source.contains("func contribute(") and state_source.contains("func recalculate_shares(") and bridge_source.contains("func apply_project_contribution(") and bridge_source.contains("func assign_city_gdp(") and not bridge_source.contains("Node")
 	return _record("project_bridge_boundary", observed, observed, "CityProductProjectState/Bridge remain pure-data project, contribution, share, and GDP-allocation owners.")
 
 
@@ -470,7 +470,7 @@ func _case_built_at_visual() -> Dictionary:
 
 func _case_stable_project_id() -> Dictionary:
 	var fixture := _development_fixture("production")
-	var expected := PROJECT_STATE.project_id(int(fixture.get("district_index", -1)), str(fixture.get("product_id", "")), "production")
+	var expected := PROJECT_STATE.project_id(int(fixture.get("district_index", -1)), "production", 0, 1)
 	var applied := _apply_fixture(fixture, 0)
 	var city: Dictionary = _runtime_main.call("_district_city", int(fixture.get("district_index", -1)))
 	var project := _project_for(city, str(fixture.get("product_id", "")), "production")
@@ -523,8 +523,8 @@ func _case_tie_controller() -> Dictionary:
 	var first := _apply_fixture(fixture, 0)
 	var second := _apply_fixture(fixture, 1)
 	var project := _fixture_project(fixture, "production")
-	var observed := first and second and int(project.get("controller_player_index", -1)) == 0
-	return _record("tie_controller_earliest_order", observed, observed, "Equal contributions retain control with the earliest contribution order.", _project_flags(fixture, project, {"controller_changed": false}))
+	var observed := first and second and int(project.get("controller_player_index", 99)) == -1
+	return _record("tie_has_no_controller", observed, observed, "Equal highest contributions leave the project without a controller.", _project_flags(fixture, project, {"controller_changed": false}))
 
 
 func _case_contribution_order() -> Dictionary:
@@ -647,9 +647,9 @@ func _case_save_shape() -> Dictionary:
 	var district_index := int(fixture.get("district_index", -1))
 	var saved_city: Dictionary = ((saved_districts[district_index] as Dictionary).get("city", {}) as Dictionary) if district_index >= 0 and district_index < saved_districts.size() else {}
 	var runtime_state: Dictionary = state.get("city_trade_network_runtime", {}) if state.get("city_trade_network_runtime", {}) is Dictionary else {}
-	var legacy := PROJECT_BRIDGE.migrate_legacy_city({"owner": 2, "active": true, "products": [{"name": str(fixture.get("product_id", "")), "level": 1}], "demands": []}, district_index, 9)
-	var observed := applied and not (saved_city.get("projects", []) as Array).is_empty() and int(runtime_state.get("project_sequence", 0)) > 0 and (legacy.get("projects", []) as Array).size() == 1 and int(((legacy.get("projects", []) as Array)[0] as Dictionary).get("controller_player_index", -1)) == 2
-	return _record("current_and_legacy_save_shape", observed, observed, "Current saves embed project data and network sequence; legacy owner/product cities normalize once into owner-held projects.", {"district_index": district_index, "save_checked": true})
+	var legacy := PROJECT_BRIDGE.normalize_city({"owner": 2, "active": true, "products": [{"name": str(fixture.get("product_id", "")), "level": 1}], "demands": []}, district_index, 9)
+	var observed := applied and not (saved_city.get("projects", []) as Array).is_empty() and str(runtime_state.get("terms_version", "")) == "v0.5.project-slots.1" and int(runtime_state.get("project_sequence", 0)) > 0 and not state.has("city_product_project_sequence") and (legacy.get("projects", []) as Array).is_empty() and (legacy.get("project_slots", []) as Array).size() == 5
+	return _record("current_and_migration_save_shape", observed, observed, "Current saves embed stable slots/generations in one domain envelope; legacy owner fields do not synthesize project shares.", {"district_index": district_index, "save_checked": true})
 
 
 func _case_downstream_atomicity() -> Dictionary:
@@ -714,8 +714,8 @@ func _case_share_tie_parity() -> Dictionary:
 	var second := _apply_fixture(fixture, 1)
 	var project := _fixture_project(fixture, "production")
 	var shares: Dictionary = project.get("share_basis_points_by_player", {})
-	var observed := first and second and int(shares.get("0", 0)) == 5000 and int(shares.get("1", 0)) == 5000 and int(project.get("controller_player_index", -1)) == 0
-	return _record("share_and_tie_break_parity", observed, observed, "Equal contributions preserve the 50/50 split and earliest-contributor control tie-break.", _project_flags(fixture, project, {"share_delta": 5000}))
+	var observed := first and second and int(shares.get("0", 0)) == 5000 and int(shares.get("1", 0)) == 5000 and int(project.get("controller_player_index", 99)) == -1
+	return _record("share_and_no_controller_parity", observed, observed, "Equal contributions preserve the 50/50 split and produce no controller.", _project_flags(fixture, project, {"share_delta": 5000}))
 
 
 func _case_stale_fingerprint() -> Dictionary:

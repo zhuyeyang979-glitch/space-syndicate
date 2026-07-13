@@ -405,8 +405,10 @@ func _exercise_real_main_project_cashflow() -> Dictionary:
 		return {}
 	var district_index := int(prepared.get("district_index", -1))
 	var city: Dictionary = prepared.get("city", {}) if prepared.get("city", {}) is Dictionary else {}
-	city = PROJECT_BRIDGE.apply_development(city, district_index, 0, {"product_id": "test_product", "project_direction": "production", "contribution_units": 1}, 100)
-	city = PROJECT_BRIDGE.apply_development(city, district_index, 1, {"product_id": "test_product", "project_direction": "production", "contribution_units": 1}, 101)
+	var first_contribution := PROJECT_BRIDGE.apply_project_contribution(city, district_index, 0, {"product_id": "test_product", "project_direction": "production", "contribution_units": 1}, 100)
+	city = (first_contribution.get("city", {}) as Dictionary).duplicate(true)
+	var second_contribution := PROJECT_BRIDGE.apply_project_contribution(city, district_index, 1, {"product_id": "test_product", "project_direction": "production", "contribution_units": 1}, 101)
+	city = (second_contribution.get("city", {}) as Dictionary).duplicate(true)
 	var districts: Array = _real_main.get("districts") as Array
 	(districts[district_index] as Dictionary)["city"] = city
 	_real_main.set("districts", districts)

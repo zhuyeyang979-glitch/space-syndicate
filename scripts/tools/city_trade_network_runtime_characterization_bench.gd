@@ -24,9 +24,9 @@ const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.g
 const OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
-const SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_trade_network_runtime_hard_cutover_sprint_64.png"
-const RULESET_ID := "v0.4"
-const CASE_COUNT := 68
+const SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_project_identity_v05_sprint_2.png"
+const RULESET_ID := "v0.5"
+const CASE_COUNT := 88
 const FIXED_SEED := 630063
 const TEST_PRODUCT := "活体芯片"
 const SECOND_PRODUCT := "真空可可"
@@ -42,20 +42,20 @@ const BASELINE_MAIN_METRICS := {
 const CASE_IDS := [
 	"city_trade_call_graph_complete",
 	"city_runtime_shape",
-	"product_project_identity",
+	"stable_slot_project_identity",
 	"production_demand_commerce_directions",
 	"first_contribution_full_share",
 	"repeated_contribution_same_player",
 	"second_player_share_split",
 	"highest_share_controls_project",
-	"tie_uses_earliest_contribution",
+	"tie_has_no_controller",
 	"project_share_total_exact",
 	"city_gdp_weighted_by_project_level",
 	"city_gdp_allocation_exact",
 	"player_gdp_allocation_exact",
 	"public_project_snapshot_privacy",
 	"private_project_snapshot_own_only",
-	"legacy_city_migration",
+	"legacy_owner_not_project_authority",
 	"city_surface_creation_order",
 	"development_sequence_increments_once",
 	"legacy_product_demand_sync",
@@ -79,15 +79,38 @@ const CASE_IDS := [
 	"gdp_formula_controller_boundary",
 	"cashflow_controller_cadence_boundary",
 	"project_share_cashflow_route",
-	"legacy_owner_cashflow_route",
+	"owner_only_city_has_no_project_payout",
 	"fractional_remainder_preserved",
 	"destroyed_city_no_cashflow",
 	"cross_system_refresh_single_hook",
 	"product_market_refresh_separate",
 	"current_save_shape",
-	"legacy_save_defaults",
+	"legacy_save_migrates_once",
 	"public_city_route_privacy",
 	"sprint64_deletion_candidates_complete",
+]
+
+const V05_PROJECT_CASE_IDS := [
+	"v05_profile_project_contract",
+	"exactly_five_project_slots",
+	"slot_order_stable",
+	"stable_ascii_region_and_slot_ids",
+	"product_not_part_of_project_identity",
+	"same_product_two_production_slots_distinct",
+	"same_product_two_demand_slots_distinct",
+	"commerce_single_slot",
+	"sixth_project_rejected_atomically",
+	"maximum_project_rank_iv",
+	"contribution_at_iv_preserves_rank",
+	"unique_highest_controls",
+	"exact_tie_has_no_controller",
+	"shares_total_10000_with_remainder",
+	"tombstone_clears_active_project",
+	"reopen_increments_generation",
+	"old_project_id_never_reused",
+	"save_roundtrip_generation_and_tombstones",
+	"public_private_snapshot_visibility",
+	"old_product_identity_and_owner_authority_absent",
 ]
 
 const CUTOVER_CASE_IDS := [
@@ -169,7 +192,7 @@ var _sources: Dictionary = {}
 
 
 func _ready() -> void:
-	print("CityTradeNetworkRuntimeCharacterizationBench Sprint 64 ready: auto_run=%s editor_hint=%s" % [auto_run, Engine.is_editor_hint()])
+	print("CityTradeNetworkRuntimeCharacterizationBench SS05-02 ready: auto_run=%s editor_hint=%s" % [auto_run, Engine.is_editor_hint()])
 	if auto_run and not Engine.is_editor_hint():
 		call_deferred("run_characterization_suite")
 
@@ -185,6 +208,7 @@ func screenshot_path() -> String:
 func characterization_cases() -> Array:
 	var cases := CASE_IDS.duplicate()
 	cases.append_array(CUTOVER_CASE_IDS)
+	cases.append_array(V05_PROJECT_CASE_IDS)
 	return cases
 
 
@@ -193,7 +217,7 @@ func build_characterization_manifest_preview() -> Dictionary:
 	for case_id_variant in characterization_cases():
 		records.append(_record(str(case_id_variant), false, false, "preview"))
 	return {
-		"suite": "city-trade-network-runtime-hard-cutover-v04",
+		"suite": "city-project-identity-v05-ss05-02",
 		"ruleset_id": RULESET_ID,
 		"runtime_owner": CONTROLLER_SCRIPT_PATH,
 		"runtime_cutover_enabled": true,
@@ -207,7 +231,7 @@ func build_characterization_manifest_preview() -> Dictionary:
 		"needs_design_decision_count": 0,
 		"baseline_main_sha256": BASELINE_MAIN_SHA256,
 		"baseline_main_metrics": BASELINE_MAIN_METRICS.duplicate(true),
-		"next_cutover_recommendation": "City / Trade Network runtime ownership complete",
+		"next_cutover_recommendation": "SS05-03 structured GDP rows",
 		"records": records,
 	}
 
@@ -239,7 +263,7 @@ func run_characterization_suite() -> void:
 	if not main_reduced:
 		_failures.append("main.gd deletion gate missed: baseline=%s current=%s" % [str(BASELINE_MAIN_METRICS), str(metrics)])
 	var manifest := {
-		"suite": "city-trade-network-runtime-hard-cutover-v04",
+		"suite": "city-project-identity-v05-ss05-02",
 		"ruleset_id": RULESET_ID,
 		"runtime_owner": CONTROLLER_SCRIPT_PATH,
 		"runtime_cutover_enabled": true,
@@ -257,7 +281,7 @@ func run_characterization_suite() -> void:
 		"main_metrics": metrics,
 		"production_main_unchanged": false,
 		"main_reduction_gate_passed": main_reduced,
-		"next_cutover_recommendation": "City / Trade Network runtime ownership complete",
+		"next_cutover_recommendation": "SS05-03 structured GDP rows",
 		"records": _records.duplicate(true),
 	}
 	_write_text(MANIFEST_PATH, JSON.stringify(manifest, "\t"))
@@ -269,7 +293,7 @@ func run_characterization_suite() -> void:
 	print("CityTradeNetworkRuntimeCharacterizationBench manifest: %s" % MANIFEST_PATH)
 	print("CityTradeNetworkRuntimeCharacterizationBench report: %s" % REPORT_PATH)
 	print("CityTradeNetworkRuntimeCharacterizationBench screenshot: %s" % SCREENSHOT_PATH)
-	print("CityTradeNetworkRuntimeCharacterizationBench Sprint 64 passed: %d/%d" % [_count_flag("passed"), CASE_COUNT])
+	print("CityTradeNetworkRuntimeCharacterizationBench SS05-02 passed: %d/%d" % [_count_flag("passed"), CASE_COUNT])
 	print("CityTradeNetworkRuntimeCharacterizationBench observed: %d/%d; aligned=%d/%d; design_decisions=%d" % [_count_flag("observed"), CASE_COUNT, _count_flag("contract_aligned"), CASE_COUNT, _count_flag("needs_design_decision")])
 	if not _failures.is_empty():
 		push_error("CityTradeNetworkRuntimeCharacterizationBench failed:\n- %s" % "\n- ".join(_failures))
@@ -287,23 +311,25 @@ func run_suite() -> void:
 func _run_case(case_id: String) -> Dictionary:
 	if CUTOVER_CASE_IDS.has(case_id):
 		return _case_cutover(case_id)
+	if V05_PROJECT_CASE_IDS.has(case_id):
+		return _case_v05_project(case_id)
 	match case_id:
 		"city_trade_call_graph_complete": return _case_call_graph()
 		"city_runtime_shape": return _case_city_shape()
-		"product_project_identity": return _case_project_identity()
+		"stable_slot_project_identity": return _case_project_identity()
 		"production_demand_commerce_directions": return _case_directions()
 		"first_contribution_full_share": return _case_first_share()
 		"repeated_contribution_same_player": return _case_repeat_share()
 		"second_player_share_split": return _case_second_player_share()
 		"highest_share_controls_project": return _case_highest_controller()
-		"tie_uses_earliest_contribution": return _case_tie_controller()
+		"tie_has_no_controller": return _case_tie_controller()
 		"project_share_total_exact": return _case_share_total()
 		"city_gdp_weighted_by_project_level": return _case_gdp_weight()
 		"city_gdp_allocation_exact": return _case_city_gdp_total()
 		"player_gdp_allocation_exact": return _case_player_gdp_total()
 		"public_project_snapshot_privacy": return _case_public_project_privacy()
 		"private_project_snapshot_own_only": return _case_private_project_privacy()
-		"legacy_city_migration": return _case_legacy_migration()
+		"legacy_owner_not_project_authority": return _case_legacy_migration()
 		"city_surface_creation_order": return _case_city_surface_creation()
 		"development_sequence_increments_once": return _case_development_sequence()
 		"legacy_product_demand_sync": return _case_legacy_sync()
@@ -327,13 +353,13 @@ func _run_case(case_id: String) -> Dictionary:
 		"gdp_formula_controller_boundary": return _case_gdp_formula_boundary()
 		"cashflow_controller_cadence_boundary": return _case_cashflow_boundary()
 		"project_share_cashflow_route": return _case_project_cashflow()
-		"legacy_owner_cashflow_route": return _case_legacy_cashflow()
+		"owner_only_city_has_no_project_payout": return _case_legacy_cashflow()
 		"fractional_remainder_preserved": return _case_fractional_remainder()
 		"destroyed_city_no_cashflow": return _case_destroyed_cashflow()
 		"cross_system_refresh_single_hook": return _case_cross_system_refresh()
 		"product_market_refresh_separate": return _case_market_refresh_separate()
 		"current_save_shape": return _case_current_save_shape()
-		"legacy_save_defaults": return _case_legacy_save_defaults()
+		"legacy_save_migrates_once": return _case_legacy_save_defaults()
 		"public_city_route_privacy": return _case_public_privacy()
 		"sprint64_deletion_candidates_complete": return _case_deletion_candidates()
 	return _record(case_id, false, false, "Unknown case.")
@@ -362,8 +388,9 @@ func _case_city_shape() -> Dictionary:
 
 func _case_project_identity() -> Dictionary:
 	var project := CITY_PROJECT_STATE.create_project(3, TEST_PRODUCT, "production", 0, 1, 7)
-	var observed := str(project.get("project_id", "")) == "3:%s:production" % TEST_PRODUCT and int(project.get("district_index", -1)) == 3
-	return _record("product_project_identity", observed, observed, "Project identity is district:product:direction.", {"project_id": str(project.get("project_id", "")), "product_id": TEST_PRODUCT, "direction": "production"})
+	var expected := CITY_PROJECT_STATE.project_id(3, "production", 0, 1)
+	var observed := str(project.get("project_id", "")) == expected and str(project.get("slot_id", "")) == CITY_PROJECT_STATE.slot_id(3, "production", 0) and not expected.contains(TEST_PRODUCT)
+	return _record("stable_slot_project_identity", observed, observed, "Project identity is region + slot kind + slot index + generation; product remains content.", {"project_id": str(project.get("project_id", "")), "product_id": TEST_PRODUCT, "direction": "production", "slot_id": str(project.get("slot_id", "")), "generation": 1})
 
 
 func _case_directions() -> Dictionary:
@@ -371,7 +398,7 @@ func _case_directions() -> Dictionary:
 	for direction in ["production", "demand", "commerce"]:
 		directions.append(str(CITY_PROJECT_STATE.create_project(1, TEST_PRODUCT, direction, 0, 1, directions.size()).get("direction", "")))
 	var observed := directions == ["production", "demand", "commerce"]
-	return _record("production_demand_commerce_directions", observed, observed, "All three v0.4 product-project directions retain stable IDs.")
+	return _record("production_demand_commerce_directions", observed, observed, "All three v0.5 project-slot kinds are stable.")
 
 
 func _case_first_share() -> Dictionary:
@@ -407,8 +434,8 @@ func _case_highest_controller() -> Dictionary:
 func _case_tie_controller() -> Dictionary:
 	var project := CITY_PROJECT_STATE.create_project(1, TEST_PRODUCT, "production", 1, 1, 4)
 	project = CITY_PROJECT_STATE.contribute(project, 0, 1, 5)
-	var observed := int(project.get("controller_player_index", -1)) == 1
-	return _record("tie_uses_earliest_contribution", observed, observed, "Equal contributions keep control with the earliest contributor.")
+	var observed := int(project.get("controller_player_index", 99)) == -1
+	return _record("tie_has_no_controller", observed, observed, "Exact highest-share ties have no project controller; contribution order is not a tie-break.")
 
 
 func _case_share_total() -> Dictionary:
@@ -416,13 +443,14 @@ func _case_share_total() -> Dictionary:
 	project = CITY_PROJECT_STATE.contribute(project, 1, 2, 2)
 	project = CITY_PROJECT_STATE.contribute(project, 2, 4, 3)
 	var total := _int_total(project.get("share_basis_points_by_player", {}))
-	return _record("project_share_total_exact", total == 10000, total == 10000, "Flooring remainder is assigned to the controller, preserving exactly 10000 basis points.", {"share_total_basis_points": total})
+	return _record("project_share_total_exact", total == 10000, total == 10000, "Largest-remainder allocation preserves exactly 10000 basis points without depending on controller identity.", {"share_total_basis_points": total})
 
 
 func _case_gdp_weight() -> Dictionary:
 	var first := CITY_PROJECT_STATE.create_project(1, TEST_PRODUCT, "production", 0, 1, 1)
 	var second := CITY_PROJECT_STATE.create_project(1, SECOND_PRODUCT, "demand", 1, 1, 2)
 	second["level"] = 3
+	second["rank"] = 3
 	var assigned: Array = CITY_PROJECT_STATE.assign_city_gdp([first, second], 100)
 	var observed := int((assigned[0] as Dictionary).get("current_gdp", 0)) == 25 and int((assigned[1] as Dictionary).get("current_gdp", 0)) == 75
 	return _record("city_gdp_weighted_by_project_level", observed, observed, "City GDP is distributed by active project level weight.", {"city_gdp": 100})
@@ -463,12 +491,10 @@ func _case_private_project_privacy() -> Dictionary:
 
 
 func _case_legacy_migration() -> Dictionary:
-	var migrated := CITY_PROJECT_BRIDGE.migrate_legacy_city({"owner": 2, "active": true, "products": [{"name": TEST_PRODUCT, "level": 2}], "demands": [SECOND_PRODUCT]}, 4, 10)
+	var migrated := CITY_PROJECT_BRIDGE.normalize_city({"owner": 2, "active": true, "products": [{"name": TEST_PRODUCT, "level": 2}], "demands": [SECOND_PRODUCT]}, 4, 10)
 	var projects: Array = migrated.get("projects", [])
-	var observed := projects.size() == 2 and int(migrated.get("project_sequence", 0)) == 12
-	for project_variant in projects:
-		observed = observed and int(((project_variant as Dictionary).get("share_basis_points_by_player", {}) as Dictionary).get("2", 0)) == 10000
-	return _record("legacy_city_migration", observed, observed, "Legacy owner/products/demands migrate once into owner-held product projects without a save-version bump.", {"save_checked": true})
+	var observed := projects.is_empty() and (migrated.get("project_slots", []) as Array).size() == 5 and not bool(migrated.get("legacy_owner_is_project_authority", true))
+	return _record("legacy_owner_not_project_authority", observed, observed, "Legacy owner/products/demands remain display compatibility fields but never synthesize v0.5 shares or project control.", {"save_checked": true})
 
 
 func _case_city_surface_creation() -> Dictionary:
@@ -506,8 +532,10 @@ func _case_development_sequence() -> Dictionary:
 
 func _case_legacy_sync() -> Dictionary:
 	var city := _base_city(0)
-	city = CITY_PROJECT_BRIDGE.apply_development(city, 1, 0, {"product_id": TEST_PRODUCT, "project_direction": "production", "contribution_units": 1}, 1)
-	city = CITY_PROJECT_BRIDGE.apply_development(city, 1, 0, {"product_id": SECOND_PRODUCT, "project_direction": "demand", "contribution_units": 1}, 2)
+	var production_result := CITY_PROJECT_BRIDGE.apply_project_contribution(city, 1, 0, {"product_id": TEST_PRODUCT, "project_direction": "production", "contribution_units": 1}, 1)
+	city = (production_result.get("city", {}) as Dictionary).duplicate(true)
+	var demand_result := CITY_PROJECT_BRIDGE.apply_project_contribution(city, 1, 0, {"product_id": SECOND_PRODUCT, "project_direction": "demand", "contribution_units": 1}, 2)
+	city = (demand_result.get("city", {}) as Dictionary).duplicate(true)
 	var observed := _city_product_names(city).has(TEST_PRODUCT) and (city.get("demands", []) as Array).has(SECOND_PRODUCT)
 	return _record("legacy_product_demand_sync", observed, observed, "Project changes keep legacy products/demands synchronized for existing consumers.")
 
@@ -712,8 +740,8 @@ func _case_legacy_cashflow() -> Dictionary:
 	var cash_before: Array = _player_cash_values()
 	var paid := int(_runtime_main.call("_settle_city_cashflow_seconds", 60.0))
 	var cash_after: Array = _player_cash_values()
-	var observed := paid > 0 and int(cash_after[0]) > int(cash_before[0]) and int(cash_after[1]) == int(cash_before[1])
-	return _record("legacy_owner_cashflow_route", observed, observed, "A legacy city without projects retains owner-only payout compatibility.", {"district_index": int(fixture.get("destination", -1)), "cashflow_owner_checked": true})
+	var observed := paid == 0 and cash_after == cash_before
+	return _record("owner_only_city_has_no_project_payout", observed, observed, "A shared city without project shares pays nobody; the transitional owner field is not economic authority.", {"district_index": int(fixture.get("destination", -1)), "cashflow_owner_checked": true})
 
 
 func _case_fractional_remainder() -> Dictionary:
@@ -758,22 +786,23 @@ func _case_market_refresh_separate() -> Dictionary:
 
 func _case_current_save_shape() -> Dictionary:
 	var fixture := _network_fixture(false, true)
-	_controller.call("apply_save_data", {"city_trade_network_runtime": {"project_sequence": 77}})
+	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.project-slots.1", "project_sequence": 77, "generation_by_slot_id": {}, "project_tombstones": []}})
 	var state: Dictionary = _runtime_main.call("_capture_run_domain_state_compatibility_adapter")
 	var saved_districts: Array = state.get("districts", [])
 	var destination := int(fixture.get("destination", -1))
 	var city: Dictionary = ((saved_districts[destination] as Dictionary).get("city", {}) as Dictionary) if destination >= 0 and destination < saved_districts.size() else {}
 	var runtime_state: Dictionary = state.get("city_trade_network_runtime", {}) if state.get("city_trade_network_runtime", {}) is Dictionary else {}
-	var observed := int(state.get("city_product_project_sequence", 0)) == 77 and int(runtime_state.get("project_sequence", 0)) == 77 and not (city.get("projects", []) as Array).is_empty() and not (city.get("trade_routes", []) as Array).is_empty()
-	return _record("current_save_shape", observed, observed, "v1 save embeds city projects/routes in districts plus the global project sequence.", {"district_index": destination, "save_checked": true})
+	var observed := not state.has("city_product_project_sequence") and str(runtime_state.get("terms_version", "")) == "v0.5.project-slots.1" and int(runtime_state.get("project_sequence", 0)) == 77 and runtime_state.has("generation_by_slot_id") and runtime_state.has("project_tombstones") and not (city.get("projects", []) as Array).is_empty() and not (city.get("trade_routes", []) as Array).is_empty()
+	return _record("current_save_shape", observed, observed, "The domain save owns one v0.5 project-slot envelope with sequence, generations, and tombstones; no flat duplicate is written.", {"district_index": destination, "save_checked": true})
 
 
 func _case_legacy_save_defaults() -> Dictionary:
 	var controller_source := str(_sources.get("controller", ""))
 	var apply_source := _function_source(controller_source, "apply_save_data")
-	var migrated := CITY_PROJECT_BRIDGE.migrate_legacy_city({"owner": 0, "active": true, "products": [{"name": TEST_PRODUCT, "level": 1}], "demands": []}, 2, 1)
-	var observed := apply_source.contains("data.get(\"city_product_project_sequence\"") and (migrated.get("projects", []) as Array).size() == 1
-	return _record("legacy_save_defaults", observed, observed, "Missing sequence preserves the current compatibility default; legacy city goods normalize into projects on read.", {"save_checked": true})
+	var migrated := CITY_PROJECT_BRIDGE.normalize_city({"owner": 0, "active": true, "products": [{"name": TEST_PRODUCT, "level": 1}], "demands": []}, 2, 1)
+	var receipt: Dictionary = _controller.call("apply_save_data", {"city_product_project_sequence": 19})
+	var observed := apply_source.contains("data.get(\"city_product_project_sequence\"") and bool(receipt.get("migration_applied", false)) and int(_controller.call("project_sequence")) == 19 and (migrated.get("projects", []) as Array).is_empty()
+	return _record("legacy_save_migrates_once", observed, observed, "The legacy flat sequence is read only at the explicit migration boundary; owner/product display fields do not create projects.", {"save_checked": true})
 
 
 func _case_public_privacy() -> Dictionary:
@@ -797,6 +826,142 @@ func _case_deletion_candidates() -> Dictionary:
 	var controller_present := ResourceLoader.exists(CONTROLLER_SCENE_PATH) and ResourceLoader.exists(CONTROLLER_SCRIPT_PATH)
 	var observed := remaining.is_empty() and not main_source.contains("var city_product_project_sequence") and controller_present and adapters_present
 	return _record("sprint64_deletion_candidates_complete", observed, observed, "Old algorithms absent=%s; Controller present=%s; stable adapters=%s." % [str(remaining.is_empty()), str(controller_present), str(adapters_present)], {"refresh_order_checked": true})
+
+
+func _case_v05_project(case_id: String) -> Dictionary:
+	var observed := false
+	var notes := ""
+	var flags := {"privacy_checked": case_id.contains("visibility") or case_id.contains("authority"), "save_checked": case_id.contains("save")}
+	match case_id:
+		"v05_profile_project_contract":
+			var debug: Dictionary = _controller.call("debug_snapshot", -1)
+			observed = str(debug.get("project_ruleset_id", "")) == "v0.5" and debug.get("project_slot_counts", {}) == CITY_PROJECT_STATE.SLOT_COUNTS and int(debug.get("maximum_project_rank", 0)) == 4
+			notes = "The Controller reads the Inspector-editable v0.5 profile for 2/2/1 slots and rank IV."
+		"exactly_five_project_slots":
+			var city := _v05_empty_city(5)
+			observed = (city.get("project_slots", []) as Array).size() == 5
+			notes = "Every buildable region has exactly five canonical project slots."
+		"slot_order_stable":
+			var city := _v05_empty_city(5)
+			var order: Array[String] = []
+			for slot_variant in city.get("project_slots", []):
+				var slot: Dictionary = slot_variant
+				order.append("%s:%d" % [str(slot.get("slot_kind", "")), int(slot.get("slot_index", -1))])
+			observed = order == ["production:0", "production:1", "demand:0", "demand:1", "commerce:0"]
+			notes = "Slot order is production 0/1, demand 0/1, commerce 0."
+		"stable_ascii_region_and_slot_ids":
+			var city := _v05_empty_city(5)
+			observed = _ascii_stable_id(str(city.get("region_id", "")))
+			for slot_variant in city.get("project_slots", []):
+				observed = observed and _ascii_stable_id(str((slot_variant as Dictionary).get("slot_id", "")))
+			notes = "Region and slot IDs are stable ASCII identifiers independent of localized content."
+		"product_not_part_of_project_identity":
+			var first := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 1, 1, 0, 1)
+			var second := CITY_PROJECT_STATE.create_project(5, SECOND_PRODUCT, "production", 0, 1, 1, 0, 1)
+			observed = str(first.get("project_id", "")) == str(second.get("project_id", "")) and not str(first.get("project_id", "")).contains(TEST_PRODUCT)
+			notes = "Changing slot content never changes project identity inputs."
+		"same_product_two_production_slots_distinct":
+			var city := _v05_empty_city(5)
+			var first := _apply_slot_project(city, 5, 0, TEST_PRODUCT, "production", 0, 1)
+			var second := _apply_slot_project(first.get("city", {}) as Dictionary, 5, 0, TEST_PRODUCT, "production", 1, 2)
+			observed = bool(first.get("applied", false)) and bool(second.get("applied", false)) and str(first.get("project_id", "")) != str(second.get("project_id", ""))
+			notes = "Two production slots may contain the same product without ID collision."
+		"same_product_two_demand_slots_distinct":
+			var city := _v05_empty_city(5)
+			var first := _apply_slot_project(city, 5, 0, TEST_PRODUCT, "demand", 0, 1)
+			var second := _apply_slot_project(first.get("city", {}) as Dictionary, 5, 0, TEST_PRODUCT, "demand", 1, 2)
+			observed = bool(first.get("applied", false)) and bool(second.get("applied", false)) and str(first.get("project_id", "")) != str(second.get("project_id", ""))
+			notes = "Two demand slots may contain the same product without ID collision."
+		"commerce_single_slot":
+			var city := _v05_empty_city(5)
+			var first := _apply_slot_project(city, 5, 0, TEST_PRODUCT, "commerce", 0, 1)
+			var second := _apply_slot_project(first.get("city", {}) as Dictionary, 5, 0, SECOND_PRODUCT, "commerce", 1, 2)
+			observed = bool(first.get("applied", false)) and not bool(second.get("applied", true))
+			notes = "Commerce exposes one slot and rejects a second slot without mutation."
+		"sixth_project_rejected_atomically":
+			var city := _v05_empty_city(5)
+			var order := 1
+			for entry in [["p0", "production", 0], ["p1", "production", 1], ["d0", "demand", 0], ["d1", "demand", 1], ["c0", "commerce", 0]]:
+				var receipt := _apply_slot_project(city, 5, 0, str(entry[0]), str(entry[1]), int(entry[2]), order)
+				city = (receipt.get("city", {}) as Dictionary).duplicate(true)
+				order += 1
+			var before := JSON.stringify(city)
+			var rejected := CITY_PROJECT_BRIDGE.apply_project_contribution(city, 5, 0, {"product_id": "overflow", "project_direction": "production"}, order)
+			observed = not bool(rejected.get("applied", true)) and str(rejected.get("reason_code", "")) == "project_slot_unavailable" and JSON.stringify(rejected.get("city", {})) == before
+			notes = "A sixth active project is rejected atomically."
+		"maximum_project_rank_iv":
+			var project := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 1, 1)
+			for order in range(2, 10): project = CITY_PROJECT_STATE.contribute(project, 0, 1, order)
+			observed = int(project.get("rank", 0)) == 4 and int(project.get("level", 0)) == 4
+			notes = "Ordinary project upgrades clamp at rank IV."
+		"contribution_at_iv_preserves_rank":
+			var project := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 4, 1)
+			project["rank"] = 4
+			project["level"] = 4
+			var updated := CITY_PROJECT_STATE.contribute(project, 1, 2, 2)
+			observed = int(updated.get("rank", 0)) == 4 and int((updated.get("contribution_by_player", {}) as Dictionary).get("1", 0)) == 2
+			notes = "Rank IV still accepts share contributions while refusing rank V."
+		"unique_highest_controls":
+			var project := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 2, 1)
+			project = CITY_PROJECT_STATE.contribute(project, 1, 1, 2)
+			observed = int(project.get("controller_player_index", -1)) == 0
+			notes = "Only the unique highest contributor controls a project."
+		"exact_tie_has_no_controller":
+			var project := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 1, 1)
+			project = CITY_PROJECT_STATE.contribute(project, 1, 1, 2)
+			observed = int(project.get("controller_player_index", 99)) == -1
+			notes = "Exact top-share ties resolve to controller=-1."
+		"shares_total_10000_with_remainder":
+			var project := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 1, 1)
+			project = CITY_PROJECT_STATE.contribute(project, 1, 1, 2)
+			project = CITY_PROJECT_STATE.contribute(project, 2, 1, 3)
+			var shares: Dictionary = project.get("share_basis_points_by_player", {})
+			observed = _int_total(shares) == 10000 and shares.values().has(3334)
+			flags["share_total_basis_points"] = _int_total(shares)
+			notes = "Largest-remainder allocation is deterministic and totals exactly 10,000bp."
+		"tombstone_clears_active_project":
+			var opened := _apply_slot_project(_v05_empty_city(5), 5, 0, TEST_PRODUCT, "production", 0, 1)
+			var tombstoned := CITY_PROJECT_BRIDGE.tombstone_project(opened.get("city", {}) as Dictionary, 5, str(opened.get("slot_id", "")), "district_destroyed")
+			var tombstone_city: Dictionary = tombstoned.get("city", {}) as Dictionary
+			observed = bool(tombstoned.get("applied", false)) and CITY_PROJECT_BRIDGE.active_projects(tombstone_city).is_empty() and (tombstone_city.get("project_tombstones", []) as Array).size() == 1
+			notes = "Tombstoning clears active GDP identity and retains immutable lifecycle evidence."
+		"reopen_increments_generation":
+			var opened := _apply_slot_project(_v05_empty_city(5), 5, 0, TEST_PRODUCT, "production", 0, 1)
+			var tombstoned := CITY_PROJECT_BRIDGE.tombstone_project(opened.get("city", {}) as Dictionary, 5, str(opened.get("slot_id", "")), "district_destroyed")
+			var reopened := _apply_slot_project(tombstoned.get("city", {}) as Dictionary, 5, 0, SECOND_PRODUCT, "production", 0, 2)
+			observed = bool(reopened.get("applied", false)) and int(reopened.get("generation", 0)) == 2
+			notes = "Rebuilding an emptied slot increments generation."
+		"old_project_id_never_reused":
+			var opened := _apply_slot_project(_v05_empty_city(5), 5, 0, TEST_PRODUCT, "production", 0, 1)
+			var tombstoned := CITY_PROJECT_BRIDGE.tombstone_project(opened.get("city", {}) as Dictionary, 5, str(opened.get("slot_id", "")), "district_destroyed")
+			var reopened := _apply_slot_project(tombstoned.get("city", {}) as Dictionary, 5, 0, TEST_PRODUCT, "production", 0, 2)
+			observed = str(opened.get("project_id", "")) != str(reopened.get("project_id", "")) and str(reopened.get("project_id", "")).ends_with(".g2")
+			notes = "A tombstoned project ID is never reused, even for the same product."
+		"save_roundtrip_generation_and_tombstones":
+			var opened := _apply_slot_project(_v05_empty_city(5), 5, 0, TEST_PRODUCT, "production", 0, 1)
+			var tombstoned := CITY_PROJECT_BRIDGE.tombstone_project(opened.get("city", {}) as Dictionary, 5, str(opened.get("slot_id", "")), "district_destroyed")
+			_controller.call("normalize_city", tombstoned.get("city", {}) as Dictionary, 5)
+			var save_data: Dictionary = _controller.call("to_save_data")
+			_controller.call("reset_state")
+			var load_receipt: Dictionary = _controller.call("apply_save_data", save_data)
+			var debug: Dictionary = _controller.call("debug_snapshot", -1)
+			observed = bool(load_receipt.get("applied", false)) and not bool(load_receipt.get("migration_applied", true)) and int(debug.get("generation_count", 0)) >= 1 and int(debug.get("tombstone_count", 0)) >= 1
+			notes = "Generation registry and tombstones round-trip in the single domain save envelope."
+		"public_private_snapshot_visibility":
+			var project := CITY_PROJECT_STATE.create_project(5, TEST_PRODUCT, "production", 0, 1, 1)
+			project = CITY_PROJECT_STATE.contribute(project, 1, 1, 2)
+			var public_snapshot := CITY_PROJECT_STATE.public_snapshot(project)
+			var private_snapshot := CITY_PROJECT_STATE.private_snapshot(project, 0)
+			var public_text := JSON.stringify(public_snapshot)
+			observed = str(public_snapshot.get("visibility_scope", "")) == "public" and str(private_snapshot.get("visibility_scope", "")) == "viewer_private" and not public_text.contains("controller_player_index") and not public_text.contains("contribution_by_player") and _is_data_only(private_snapshot)
+			notes = "Visibility scope is attached before presentation; public output omits control/share truth."
+		"old_product_identity_and_owner_authority_absent":
+			var state_source := str(_sources.get("project_state", ""))
+			var bridge_source := str(_sources.get("project_bridge", ""))
+			var controller_source := str(_sources.get("controller", ""))
+			observed = not bridge_source.contains("func migrate_legacy_city(") and not bridge_source.contains("func apply_development(") and not state_source.contains("%d:%s:%s") and not controller_source.contains("\"source_kind\": \"city_owner\"") and not controller_source.contains("SHARE_BASIS_POINTS if int(city.get(\"owner\"")
+			notes = "Product-derived IDs, owner-synthesized projects, owner-only payout, and old mutable writer APIs are absent."
+	return _record(case_id, observed, observed, notes, flags)
 
 
 func _case_cutover(case_id: String) -> Dictionary:
@@ -838,13 +1003,14 @@ func _case_cutover(case_id: String) -> Dictionary:
 			notes = "Controller plans city/project payout sources while EconomyCashflow retains arithmetic."
 		"save_envelope_controller_owned":
 			var save_data: Dictionary = _controller.call("to_save_data")
-			observed = save_data.has("city_trade_network_runtime") and save_data.has("city_product_project_sequence") and coordinator_source.contains("city_trade_network_to_save_data")
-			notes = "Controller owns the v1-compatible city-network save envelope."
+			var runtime_save: Dictionary = save_data.get("city_trade_network_runtime", {}) if save_data.get("city_trade_network_runtime", {}) is Dictionary else {}
+			observed = save_data.has("city_trade_network_runtime") and not save_data.has("city_product_project_sequence") and str(runtime_save.get("terms_version", "")) == "v0.5.project-slots.1" and runtime_save.has("generation_by_slot_id") and runtime_save.has("project_tombstones") and coordinator_source.contains("city_trade_network_to_save_data")
+			notes = "Controller owns the single v0.5 city-project save envelope without a duplicate writer."
 		"legacy_save_normalized_once":
 			_controller.call("reset_state")
 			var receipt: Dictionary = _controller.call("apply_save_data", {"city_product_project_sequence": 23})
 			observed = bool(receipt.get("applied", false)) and bool(receipt.get("legacy_flat_key_used", false)) and int(_controller.call("project_sequence")) == 23
-			notes = "The legacy flat sequence key normalizes directly into the v0.4 Controller state."
+			notes = "The legacy flat sequence key is consumed once by the explicit v0.4-to-v0.5 project-state migration boundary."
 		"main_route_algorithms_absent":
 			observed = true
 			for function_name in REMOVED_MAIN_ALGORITHMS:
@@ -954,12 +1120,15 @@ func _cashflow_fixture(with_projects: bool, destroyed: bool, revenue_bonus: int 
 	if with_projects:
 		var project := CITY_PROJECT_STATE.create_project(destination, TEST_PRODUCT, "demand", 0, 1, 2)
 		project = CITY_PROJECT_STATE.contribute(project, 1, 1, 3)
+		city["project_slots"] = []
 		city["projects"] = [project]
 	else:
+		city["project_slots"] = []
 		city["projects"] = []
 	districts[destination]["city"] = city
 	districts[destination]["destroyed"] = destroyed
 	_runtime_main.set("districts", districts)
+	_runtime_main.call("_refresh_city_networks")
 	return {"destination": destination}
 
 
@@ -975,6 +1144,34 @@ func _base_city(owner_index: int, products: Array = [], demands: Array = [], pro
 		"trade_route_damage": 0, "supplied_demands": 0,
 		"military_gdp_penalty": 0, "military_pressure_until": 0.0,
 	}
+
+
+func _v05_empty_city(district_index: int) -> Dictionary:
+	return CITY_PROJECT_BRIDGE.normalize_city({
+		"owner": -1,
+		"active": true,
+		"products": [],
+		"demands": [],
+		"projects": [],
+	}, district_index)
+
+
+func _apply_slot_project(city: Dictionary, district_index: int, player_index: int, product_id: String, slot_kind: String, slot_index: int, order: int) -> Dictionary:
+	return CITY_PROJECT_BRIDGE.apply_project_contribution(city, district_index, player_index, {
+		"product_id": product_id,
+		"project_direction": slot_kind,
+		"slot_index": slot_index,
+		"contribution_units": 1,
+	}, order)
+
+
+func _ascii_stable_id(value: String) -> bool:
+	if value == "":
+		return false
+	for character in value:
+		if not (character >= "a" and character <= "z") and not (character >= "0" and character <= "9") and character not in [".", "_", "-"]:
+			return false
+	return true
 
 
 func _isolate_map() -> void:
@@ -1096,7 +1293,7 @@ func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
 	_runtime_main.set("players", _baseline_players.duplicate(true))
 	_runtime_main.set("districts", _baseline_districts.duplicate(true))
-	_controller.call("apply_save_data", {"city_trade_network_runtime": {"project_sequence": _baseline_project_sequence}})
+	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.project-slots.1", "project_sequence": _baseline_project_sequence, "generation_by_slot_id": {}, "project_tombstones": []}})
 	_runtime_main.set("game_time", 100.0)
 	_runtime_main.set("game_over", false)
 	_runtime_main.set("log_lines", [])
@@ -1120,6 +1317,8 @@ func _record(case_id: String, observed: bool, aligned: bool, notes: String, flag
 		"case_id": case_id,
 		"district_index": int(flags.get("district_index", -1)),
 		"project_id": str(flags.get("project_id", "")),
+		"slot_id": str(flags.get("slot_id", "")),
+		"generation": int(flags.get("generation", 0)),
 		"product_id": str(flags.get("product_id", "")),
 		"direction": str(flags.get("direction", "")),
 		"route_count": int(flags.get("route_count", 0)),
@@ -1136,7 +1335,7 @@ func _record(case_id: String, observed: bool, aligned: bool, notes: String, flag
 		"observed": observed,
 		"contract_aligned": aligned,
 		"needs_design_decision": bool(flags.get("needs_design_decision", not aligned)),
-		"risk": str(flags.get("risk", "" if aligned else "Observed behavior differs from or is underspecified by v0.4.")),
+		"risk": str(flags.get("risk", "" if aligned else "Observed behavior differs from the v0.5 project contract.")),
 		"passed": observed,
 		"notes": notes,
 	}
@@ -1172,7 +1371,7 @@ func _update_ui(manifest: Dictionary) -> void:
 	var decisions := int(manifest.get("needs_design_decision_count", 0))
 	summary_label.text = "Observed %d/%d | Aligned %d/%d | Design decisions %d" % [observed, CASE_COUNT, aligned, CASE_COUNT, decisions]
 	status_label.text = "CUTOVER VERIFIED" if _failures.is_empty() else "CUTOVER FAILURE"
-	ownership_text.text = "[b]Runtime owner[/b]\nCityTradeNetworkRuntimeController: project sequence, derived routes, refresh order, payout-source composition, save envelope\n\n[b]Non-owning adapter[/b]\nCityTradeNetworkWorldBridge: captures facts and applies receipts only\n\n[b]Preserved owners[/b]\nCityProductProjectState/Bridge: shares and project allocation\nGdpFormulaRuntimeController: GDP arithmetic\nEconomyCashflowRuntimeController: cadence and payout arithmetic\nProductMarketRuntimeController: prices and market lifecycle\n\n[b]Deletion gate[/b]\nmain.gd keeps narrow callers only; no route engine or fallback remains."
+	ownership_text.text = "[b]Runtime owner[/b]\nCityTradeNetworkRuntimeController: five slots, generation/tombstones, project sequence, derived routes, payout sources, save envelope\n\n[b]Pure project model[/b]\nCityProductProjectState/Bridge: stable IDs, rank IV, shares, tie-without-control, privacy snapshots\n\n[b]Non-owning adapter[/b]\nCityTradeNetworkWorldBridge: captures facts and applies receipts only\n\n[b]Preserved owners[/b]\nGdpFormulaRuntimeController: current GDP arithmetic (SS05-03 next)\nEconomyCashflowRuntimeController: cadence and payout arithmetic\nProductMarketRuntimeController: prices and market lifecycle\n\n[b]Deletion gate[/b]\nNo product-derived ID, owner-synthesized project, or owner-only project payout remains."
 	var lines: Array[String] = []
 	for record_variant in _records:
 		var record: Dictionary = record_variant
@@ -1182,8 +1381,8 @@ func _update_ui(manifest: Dictionary) -> void:
 
 func _markdown_report(manifest: Dictionary) -> String:
 	var lines: Array[String] = [
-		"# City / Trade Network Runtime Hard Cutover - Sprint 64", "",
-		"Ruleset: `v0.4`", "Current runtime owner: `res://scripts/runtime/city_trade_network_runtime_controller.gd`", "Runtime cutover enabled: `true`",
+		"# City Project Identity Hard Cutover - SS05-02", "",
+		"Project domain: `v0.5`", "Current runtime owner: `res://scripts/runtime/city_trade_network_runtime_controller.gd`", "Runtime cutover enabled: `true`",
 		"Observed: %d/%d" % [int(manifest.get("observed_count", 0)), CASE_COUNT],
 		"Contract aligned: %d/%d" % [int(manifest.get("aligned_count", 0)), CASE_COUNT],
 		"Design decisions: %d" % int(manifest.get("needs_design_decision_count", 0)),
@@ -1204,8 +1403,8 @@ func _markdown_report(manifest: Dictionary) -> String:
 		"- `EconomyCashflowRuntimeController`: realtime cadence, payout planning, and fractional arithmetic only.",
 		"- `ProductMarketRuntimeController`: product market state/prices; not route ownership.",
 		"- Contract, military, weather, and product-market systems request one refresh hook and do not own the graph.", "",
-		"## Sprint 64 result", "",
-		"The characterized 48 behavior cases and 20 ownership/deletion cases pass together. The mapped main.gd algorithms and project-sequence state are absent, and no source-level fallback remains.", "",
+		"## SS05-02 result", "",
+		"The prior 68 City/Trade behavior and ownership cases pass with 20 v0.5 project identity cases. Five slots, stable IDs, rank IV, generation/tombstones, and exact-tie no-control now share one runtime owner and one save envelope.", "",
 		"## Cases", "", "| Case | District | Project | Product | Observed | Aligned | Decision | Notes |", "| --- | ---: | --- | --- | --- | --- | --- | --- |",
 	]
 	for record_variant in manifest.get("records", []):

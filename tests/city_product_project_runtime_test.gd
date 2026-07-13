@@ -20,7 +20,7 @@ func _run() -> void:
 	_check_template_pack()
 	_check_runtime_controller_cutover()
 	_check_share_math_and_control()
-	_check_legacy_migration()
+	_check_slot_identity_and_migration()
 	_check_gdp_allocation_and_privacy()
 	_check_destroyed_district_stops_project_gdp()
 	_check_save_load_roundtrip()
@@ -83,7 +83,10 @@ func _check_runtime_controller_cutover() -> void:
 		"district_index": 2,
 		"product_id": "活体芯片",
 		"project_direction": "production",
-		"project_id": "2:活体芯片:production",
+		"project_id": PROJECT_STATE.project_id(2, "production", 0, 1),
+		"slot_id": PROJECT_STATE.slot_id(2, "production", 0),
+		"slot_index": 0,
+		"generation": 1,
 	}
 	var legal_result: Dictionary = controller.call("evaluate_development_request", legal_request)
 	_expect(bool(legal_result.get("allowed", false)), "a real development card with district, product, direction, and project identity is accepted")
@@ -118,42 +121,52 @@ func _check_share_math_and_control() -> void:
 	project = PROJECT_STATE.contribute(project, 1, 1, 11)
 	var shares: Dictionary = project.get("share_basis_points_by_player", {})
 	_expect(int(shares.get("0", 0)) == 5000 and int(shares.get("1", 0)) == 5000, "equal contributions create equal hidden shares")
-	_expect(int(project.get("controller_player_index", -1)) == 0, "earliest contributor controls an equal-share project")
+	_expect(int(project.get("controller_player_index", 99)) == -1, "an exact highest-share tie has no project controller")
 	project = PROJECT_STATE.contribute(project, 1, 1, 12)
 	shares = project.get("share_basis_points_by_player", {})
 	_expect(_dictionary_int_total(shares) == 10000, "project shares always total exactly 10000 basis points")
 	_expect(int(shares.get("1", 0)) > int(shares.get("0", 0)) and int(project.get("controller_player_index", -1)) == 1, "highest contributor becomes project controller")
 
 
-func _check_legacy_migration() -> void:
+func _check_slot_identity_and_migration() -> void:
 	var legacy_city := {
 		"owner": 2,
 		"active": true,
 		"products": [{"name": "轨迹墨水", "level": 2}],
 		"demands": ["等离子米"],
 	}
-	var migrated: Dictionary = PROJECT_BRIDGE.migrate_legacy_city(legacy_city, 4, 20)
-	var projects: Array = migrated.get("projects", [])
-	_expect(projects.size() == 2, "legacy products and demands migrate to project records")
-	for project_variant in projects:
-		var project: Dictionary = project_variant as Dictionary
-		var shares: Dictionary = project.get("share_basis_points_by_player", {})
-		_expect(int(shares.get("2", 0)) == 10000, "legacy city preserves 100 percent of each project for its old owner")
-	var development := {
+	var migrated: Dictionary = PROJECT_BRIDGE.normalize_city(legacy_city, 4, 20)
+	_expect((migrated.get("project_slots", []) as Array).size() == 5, "every buildable city normalizes to exactly five project slots")
+	_expect((migrated.get("projects", []) as Array).is_empty(), "legacy city owner and product display fields do not synthesize v0.5 project ownership")
+	var first_development := {
 		"product_id": "轨迹墨水",
 		"project_direction": "production",
-		"contribution_units": 2,
+		"slot_index": 0,
+		"contribution_units": 1,
 	}
-	migrated = PROJECT_BRIDGE.apply_development(migrated, 4, 1, development, 30)
-	var matched_project := _find_project(migrated.get("projects", []) as Array, "轨迹墨水", "production")
-	_expect(not matched_project.is_empty() and int((matched_project.get("contribution_by_player", {}) as Dictionary).get("1", 0)) == 2, "development contribution strengthens the matching real project")
+	var first_result := PROJECT_BRIDGE.apply_project_contribution(migrated, 4, 1, first_development, 30)
+	migrated = (first_result.get("city", {}) as Dictionary).duplicate(true)
+	var second_result := PROJECT_BRIDGE.apply_project_contribution(migrated, 4, 0, first_development.merged({"slot_index": 1}, true), 31)
+	migrated = (second_result.get("city", {}) as Dictionary).duplicate(true)
+	var projects: Array = migrated.get("projects", []) as Array
+	_expect(projects.size() == 2 and str((projects[0] as Dictionary).get("project_id", "")) != str((projects[1] as Dictionary).get("project_id", "")), "two same-product production slots have distinct stable project identities")
+	_expect(not str((projects[0] as Dictionary).get("project_id", "")).contains("轨迹墨水"), "product content is absent from stable project identity")
+	var first_slot_id := str(first_result.get("slot_id", ""))
+	var tombstone_result := PROJECT_BRIDGE.tombstone_project(migrated, 4, first_slot_id, "test_rebuild")
+	_expect(bool(tombstone_result.get("applied", false)) and ((tombstone_result.get("city", {}) as Dictionary).get("project_tombstones", []) as Array).size() == 1, "tombstoning removes the active project and preserves a lifecycle record")
+	var reopened := PROJECT_BRIDGE.apply_project_contribution(tombstone_result.get("city", {}) as Dictionary, 4, 1, first_development, 32)
+	_expect(bool(reopened.get("applied", false)) and int(reopened.get("generation", 0)) == 2 and str(reopened.get("project_id", "")) != str(first_result.get("project_id", "")), "reopening a tombstoned slot increments generation and never reuses project identity")
 
 
 func _check_gdp_allocation_and_privacy() -> void:
-	var first := PROJECT_STATE.create_project(1, "活体芯片", "production", 0, 1, 1)
-	var second := PROJECT_STATE.create_project(1, "等离子米", "demand", 1, 1, 2)
-	second = PROJECT_STATE.contribute(second, 0, 1, 3)
-	var assigned_city: Dictionary = PROJECT_BRIDGE.assign_city_gdp({"projects": [first, second]}, 101)
+	var city := PROJECT_BRIDGE.normalize_city({"active": true, "products": [], "demands": []}, 1)
+	var first_result := PROJECT_BRIDGE.apply_project_contribution(city, 1, 0, {"product_id": "活体芯片", "project_direction": "production", "slot_index": 0}, 1)
+	city = (first_result.get("city", {}) as Dictionary).duplicate(true)
+	var second_result := PROJECT_BRIDGE.apply_project_contribution(city, 1, 1, {"product_id": "等离子米", "project_direction": "demand", "slot_index": 0}, 2)
+	city = (second_result.get("city", {}) as Dictionary).duplicate(true)
+	var shared_result := PROJECT_BRIDGE.apply_project_contribution(city, 1, 0, {"product_id": "等离子米", "project_direction": "demand", "slot_index": 0}, 3)
+	city = (shared_result.get("city", {}) as Dictionary).duplicate(true)
+	var assigned_city: Dictionary = PROJECT_BRIDGE.assign_city_gdp(city, 101)
 	var assigned: Array = assigned_city.get("projects", []) as Array
 	var by_player: Dictionary = PROJECT_STATE.gdp_by_player(assigned)
 	var city_project_gdp := 0
@@ -170,8 +183,9 @@ func _check_gdp_allocation_and_privacy() -> void:
 
 
 func _check_destroyed_district_stops_project_gdp() -> void:
-	var project := PROJECT_STATE.create_project(7, "轨迹墨水", "commerce", 0, 1, 40)
-	var active_city := PROJECT_BRIDGE.assign_city_gdp({"projects": [project]}, 37)
+	var city := PROJECT_BRIDGE.normalize_city({"active": true, "products": [], "demands": []}, 7)
+	var contribution := PROJECT_BRIDGE.apply_project_contribution(city, 7, 0, {"product_id": "轨迹墨水", "project_direction": "commerce", "slot_index": 0}, 40)
+	var active_city := PROJECT_BRIDGE.assign_city_gdp(contribution.get("city", {}) as Dictionary, 37)
 	_expect(int(((active_city.get("projects", []) as Array)[0] as Dictionary).get("current_gdp", 0)) == 37, "an active district project receives city GDP")
 	var destroyed_city := PROJECT_BRIDGE.assign_city_gdp(active_city, 0)
 	var destroyed_projects: Array = destroyed_city.get("projects", []) as Array
@@ -187,19 +201,26 @@ func _check_save_load_roundtrip() -> void:
 		"demands": [],
 		"projects": [],
 	}
-	city = PROJECT_BRIDGE.apply_development(city, 3, 0, {
+	var first_result := PROJECT_BRIDGE.apply_project_contribution(city, 3, 0, {
 		"product_id": "等离子米",
 		"project_direction": "demand",
+		"slot_index": 0,
 		"contribution_units": 2,
 	}, 51)
-	city = PROJECT_BRIDGE.apply_development(city, 3, 1, {
+	city = (first_result.get("city", {}) as Dictionary).duplicate(true)
+	var second_result := PROJECT_BRIDGE.apply_project_contribution(city, 3, 1, {
 		"product_id": "等离子米",
 		"project_direction": "demand",
+		"slot_index": 0,
 		"contribution_units": 1,
 	}, 52)
+	city = (second_result.get("city", {}) as Dictionary).duplicate(true)
 	city = PROJECT_BRIDGE.assign_city_gdp(city, 73)
 	var state := {
-		"city_product_project_sequence": 53,
+		"city_trade_network_runtime": {
+			"terms_version": "v0.5.project-slots.1",
+			"project_sequence": 53,
+		},
 		"districts": [{"destroyed": false, "city": city}],
 	}
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://space_syndicate_design_qa"))
@@ -220,8 +241,8 @@ func _check_save_load_roundtrip() -> void:
 	var loaded_city: Dictionary = ((loaded_districts[0] as Dictionary).get("city", {}) as Dictionary) if not loaded_districts.is_empty() else {}
 	var loaded_projects: Array = loaded_city.get("projects", []) if loaded_city.get("projects", []) is Array else []
 	var loaded_project: Dictionary = loaded_projects[0] as Dictionary if not loaded_projects.is_empty() else {}
-	_expect(int(loaded.get("city_product_project_sequence", 0)) == 53, "old save compatibility preserves the global project creation sequence without a version bump")
-	_expect(str(loaded_project.get("project_id", "")) == "3:等离子米:demand" and int(loaded_project.get("created_order", -1)) == 51, "save/load roundtrip preserves project identity and creation order")
+	_expect(int((loaded.get("city_trade_network_runtime", {}) as Dictionary).get("project_sequence", 0)) == 53, "v0.5 domain save preserves the project creation sequence")
+	_expect(str(loaded_project.get("project_id", "")) == PROJECT_STATE.project_id(3, "demand", 0, 1) and int(loaded_project.get("created_order", -1)) == 51, "save/load roundtrip preserves stable slot identity and creation order")
 	_expect(int((loaded_project.get("contribution_by_player", {}) as Dictionary).get("0", 0)) == 2 and int((loaded_project.get("contribution_by_player", {}) as Dictionary).get("1", 0)) == 1, "save/load roundtrip preserves project contributions")
 	_expect(_dictionary_int_total(loaded_project.get("share_basis_points_by_player", {}) as Dictionary) == 10000 and int(loaded_project.get("current_gdp", 0)) == 73, "save/load roundtrip preserves hidden shares and current project GDP")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(ROUNDTRIP_PATH))

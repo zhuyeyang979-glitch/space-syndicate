@@ -630,7 +630,7 @@ const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/c
 const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CityTradeNetworkWorldBridge.tscn"
 const CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/city_trade_network_runtime_ownership_contract.md"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
-const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_trade_network_runtime_hard_cutover_sprint_64.png"
+const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_project_identity_v05_sprint_2.png"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/city_development_settlement_runtime_characterization_bench.gd"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
 const CITY_DEVELOPMENT_SETTLEMENT_CONTRACT := "res://docs/city_development_settlement_runtime_contract.md"
@@ -8337,6 +8337,10 @@ func _check_player_text_v05_foundation_component() -> void:
 	var unit_snapshot: Dictionary = unit_catalog.call("debug_snapshot") if unit_catalog != null and unit_catalog.has_method("debug_snapshot") else {}
 	var migration_validation: Dictionary = migration_registry.call("validation_snapshot") if migration_registry != null and migration_registry.has_method("validation_snapshot") else {}
 	_expect(text_catalog != null and str(text_snapshot.get("schema_version", "")) == "v0.5" and not _variant_contains_callable(text_snapshot) and not _variant_contains_object(text_snapshot), "Player Text schema exposes a pure-data v0.5 message catalog")
+	var text_keys: Array[String] = []
+	if text_catalog != null and text_catalog.has_method("message_keys"):
+		text_keys.assign(text_catalog.call("message_keys"))
+	_expect(text_keys.has("ui.city.project.summary") and text_keys.has("ui.city.project.summary.a11y"), "SS05-02 registers public and assistive project-summary message keys without activating the production locale resolver")
 	_expect(unit_catalog != null and (unit_snapshot.get("entries", []) as Array).size() == 4 and not _variant_contains_callable(unit_snapshot) and not _variant_contains_object(unit_snapshot), "Player Text unit catalog owns cents, basis points, seconds, and GDP/min formatting")
 	_expect(bool(migration_validation.get("valid", false)) and int(migration_validation.get("entry_count", 0)) == 239 and int(migration_validation.get("blocked_count", 0)) == 239 and int(migration_validation.get("release_ready_count", -1)) == 0, "Card text migration registry inventories all 239 legacy rules_text records without guessing release-ready semantics")
 	var registry_snapshot: Dictionary = migration_registry.call("debug_snapshot") if migration_registry != null and migration_registry.has_method("debug_snapshot") else {}
@@ -11573,7 +11577,7 @@ func _check_city_trade_network_runtime_characterization_component() -> void:
 		var bridge := bridge_packed.instantiate()
 		var controller_debug: Dictionary = controller.call("debug_snapshot") if controller.has_method("debug_snapshot") else {}
 		var bridge_debug: Dictionary = bridge.call("debug_snapshot") if bridge.has_method("debug_snapshot") else {}
-		_expect(controller.has_method("refresh_networks") and controller.has_method("shortest_trade_path") and controller.has_method("settle_cashflow_seconds") and controller.has_method("to_save_data") and controller.has_method("apply_save_data"), "CityTradeNetworkRuntimeController exposes network, route, cashflow-orchestration, and save APIs")
+		_expect(controller.has_method("refresh_networks") and controller.has_method("shortest_trade_path") and controller.has_method("settle_cashflow_seconds") and controller.has_method("public_project_slot_snapshots") and controller.has_method("tombstone_project") and controller.has_method("to_save_data") and controller.has_method("apply_save_data"), "CityTradeNetworkRuntimeController exposes project-slot, generation/tombstone, network, cashflow-orchestration, and save APIs")
 		_expect(not bool(bridge_debug.get("owns_runtime_state", true)) and not bool(bridge_debug.get("owns_rules", true)) and bridge.has_method("capture_world_snapshot") and bridge.has_method("apply_network_receipt"), "CityTradeNetworkWorldBridge is explicitly non-owning")
 		_expect(not _variant_contains_callable(controller_debug) and not _variant_contains_object(controller_debug) and not _variant_contains_callable(bridge_debug) and not _variant_contains_object(bridge_debug), "City / Trade Network debug snapshots are pure data")
 		controller.free()
@@ -11589,12 +11593,12 @@ func _check_city_trade_network_runtime_characterization_component() -> void:
 			_expect(bench.find_child(node_name, true, false) != null, "CityTradeNetworkRuntimeCharacterizationBench statically owns %s" % node_name)
 		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "CityTradeNetworkRuntimeCharacterizationBench exposes the long-lived characterization API")
 		var cases: Array = bench.call("characterization_cases")
-		var required_cases := ["city_trade_call_graph_complete", "first_contribution_full_share", "city_gdp_weighted_by_project_level", "competition_matches_other_owner", "production_district_source_type", "shortest_path_connected", "demand_order_damage_application", "refresh_order_competition_routes_gdp_shares_supply", "gdp_formula_controller_boundary", "cashflow_controller_cadence_boundary", "project_share_cashflow_route", "current_save_shape", "public_city_route_privacy", "sprint64_deletion_candidates_complete", "controller_scene_composition", "world_bridge_scene_composition", "project_sequence_controller_owned", "route_algorithm_controller_owned", "refresh_orchestration_controller_owned", "save_envelope_controller_owned", "main_route_algorithms_absent", "controller_debug_pure_data", "no_parallel_network_owner"]
-		var cases_ok := cases.size() == 68
+		var required_cases := ["city_trade_call_graph_complete", "stable_slot_project_identity", "tie_has_no_controller", "first_contribution_full_share", "city_gdp_weighted_by_project_level", "competition_matches_other_owner", "production_district_source_type", "shortest_path_connected", "demand_order_damage_application", "refresh_order_competition_routes_gdp_shares_supply", "gdp_formula_controller_boundary", "cashflow_controller_cadence_boundary", "project_share_cashflow_route", "owner_only_city_has_no_project_payout", "current_save_shape", "public_city_route_privacy", "sprint64_deletion_candidates_complete", "controller_scene_composition", "world_bridge_scene_composition", "project_sequence_controller_owned", "route_algorithm_controller_owned", "refresh_orchestration_controller_owned", "save_envelope_controller_owned", "main_route_algorithms_absent", "controller_debug_pure_data", "no_parallel_network_owner", "v05_profile_project_contract", "exactly_five_project_slots", "slot_order_stable", "stable_ascii_region_and_slot_ids", "product_not_part_of_project_identity", "same_product_two_production_slots_distinct", "same_product_two_demand_slots_distinct", "commerce_single_slot", "sixth_project_rejected_atomically", "maximum_project_rank_iv", "contribution_at_iv_preserves_rank", "unique_highest_controls", "exact_tie_has_no_controller", "shares_total_10000_with_remainder", "tombstone_clears_active_project", "reopen_increments_generation", "old_project_id_never_reused", "save_roundtrip_generation_and_tombstones", "public_private_snapshot_visibility", "old_product_identity_and_owner_authority_absent"]
+		var cases_ok := cases.size() == 88
 		for case_id in required_cases:
 			cases_ok = cases_ok and cases.has(case_id)
 		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
-		var required_fields := ["case_id", "district_index", "project_id", "product_id", "direction", "route_count", "path_length", "city_gdp", "player_gdp_total", "share_total_basis_points", "refresh_order_checked", "formula_owner_checked", "cashflow_owner_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]
+		var required_fields := ["case_id", "district_index", "project_id", "slot_id", "generation", "product_id", "direction", "route_count", "path_length", "city_gdp", "player_gdp_total", "share_total_basis_points", "refresh_order_checked", "formula_owner_checked", "cashflow_owner_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]
 		var fields_ok := true
 		for record_variant in manifest.get("records", []):
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -11602,11 +11606,11 @@ func _check_city_trade_network_runtime_characterization_component() -> void:
 				fields_ok = fields_ok and record.has(field_name)
 		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 		var legacy_absent := not main_source.contains("func _shortest_trade_path(") and not main_source.contains("func _trade_path_cost(") and not main_source.contains("func _refresh_city_trade_routes(") and not main_source.contains("func _route_base_flow_amount(") and not main_source.contains("var city_product_project_sequence")
-		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 68 and str(bench.call("output_dir")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and legacy_absent and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CityTradeNetworkRuntimeCharacterizationBench defines the 68-case pure-data hard-cutover gate with no parallel main.gd route engine")
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 88 and str(bench.call("output_dir")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and legacy_absent and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CityTradeNetworkRuntimeCharacterizationBench defines the 88-case pure-data SS05-02 gate with no parallel project or route engine")
 		root.remove_child(bench)
 		bench.queue_free()
 	var contract_text := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT)
-	_expect(contract_text.contains("Sprint 64 completed the hard cutover") and contract_text.contains("Observed refresh order") and contract_text.contains("Sprint 64 deletion gate result") and contract_text.contains("68/68 observed and 68/68 aligned") and contract_text.contains("GdpFormulaRuntimeController") and contract_text.contains("EconomyCashflowRuntimeController") and contract_text.contains("There is no parallel route engine"), "City / Trade Network ownership contract records the unique owner, non-owning bridge, preserved formula owners, and completed deletion gate")
+	_expect(contract_text.contains("SS05-02 completed the project identity hard cutover") and contract_text.contains("five canonical slots") and contract_text.contains("controller=-1") and contract_text.contains("generation") and contract_text.contains("tombstone") and contract_text.contains("88/88") and contract_text.contains("There is no parallel route engine"), "City / Trade Network contract records five slots, stable identity, tie-without-control, generations/tombstones, and the preserved unique owner")
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:
@@ -11624,11 +11628,11 @@ func _check_city_trade_network_runtime_characterization_component() -> void:
 	if system_audit != null:
 		var system_record: Dictionary = system_audit.call("record_for_id", "city_trade_network_characterization_gate")
 		_expect(str(system_record.get("current_status", "")) == "script_module" and str(system_record.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT, "System Resourceization Audit records CityTradeNetworkRuntimeController as the runtime owner")
-	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset_script := load(RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT) as Script
 	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
 	if ruleset != null:
-		var rule: Dictionary = ruleset.call("record_for_id", "city_trade_network_runtime_ownership")
-		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("CityTradeNetworkRuntimeController"), "Ruleset registry records City / Trade Network runtime ownership as cutover complete")
+		var rule: Dictionary = ruleset.call("record_for_id", "city_project_identity_runtime")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("CityTradeNetworkRuntimeController"), "Ruleset v0.5 registry records project identity runtime ownership as cutover complete")
 	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
 	if dock_packed != null:
 		var viewport := SubViewport.new()

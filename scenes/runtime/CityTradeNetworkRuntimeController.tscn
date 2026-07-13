@@ -1,7 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/city_trade_network_runtime_controller.gd" id="1_script"]
+[ext_resource type="Resource" path="res://resources/rules/space_syndicate_ruleset_v05.tres" id="2_project_rules"]
 
 [node name="CityTradeNetworkRuntimeController" type="Node"]
 script = ExtResource("1_script")
-editor_description = "Single v0.4 owner for city project sequence, derived trade-network state, route graph/path calculations, refresh ordering, payout-source orchestration, and city-network save normalization."
+project_rules_profile = ExtResource("2_project_rules")
+editor_description = "Single owner for v0.5 five-slot project identity, generation/tombstones, shares/control, derived trade-network state, refresh ordering, payout-source orchestration, and domain save normalization."

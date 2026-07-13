@@ -68,6 +68,15 @@ msgctxt "player_text_v05"
 msgid "unit.gdp_per_minute"
 msgstr " GDP/min"
 
+#. Public project summary. Controller identity and contributions are deliberately absent.
+msgctxt "player_text_v05"
+msgid "ui.city.project.summary"
+msgstr "{product_name} · {direction_name}项目 · 等级 {rank} · {gdp_rate}"
+
+msgctxt "player_text_v05"
+msgid "ui.city.project.summary.a11y"
+msgstr "{product_name}，{direction_name}项目，等级 {rank}，当前 GDP 流量 {gdp_rate}。"
+
 #. The following three entries are QA-only and cannot be consumed by release UI.
 msgctxt "player_text_v05"
 msgid "internal.card.identifier"

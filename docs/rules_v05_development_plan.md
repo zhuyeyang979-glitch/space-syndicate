@@ -1,6 +1,6 @@
 # 《太空辛迪加》v0.5 规则实现开发计划
 
-> 状态：SS05-00、SS05-01 与 SS05-01A 已完成；v0.5 数据和玩家文字基础 ready、生产运行时仍为 v0.4；下一步为 SS05-02。
+> 状态：SS05-00、SS05-01、SS05-01A 与 SS05-02 已完成；项目身份领域已切到 v0.5，生产全局 Ruleset bridge 仍为 v0.4；下一步为 SS05-03。
 > 编写日期：2026-07-14。
 > 玩家规则权威：`docs/tabletop_rulebook_v05.md`。
 > 运行时迁移合同：`docs/rules_v05_runtime_migration.md`。
@@ -459,7 +459,7 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 | SS05-00 | 安全基线、快照、v0.4 测试记录 | 无 | 硬门 |
 | SS05-01 | v0.5 Profile、产业目录、卡牌 schema、CurrencyAmount 与存档握手（完成，runtime inactive） | 00 | 推进 |
 | SS05-01A | 玩家文字基础：稳定 ASCII ID、可见性消息协议、默认目录、typed args、单位和伪本地化 fixture（完成，runtime inactive） | 01 | 推进；runtime inactive |
-| SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制 | 01/01A | 替换 + 删除 D-06 部分 |
+| SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制（完成，88/88） | 01/01A | 替换 + 删除 D-06 部分 |
 | SS05-03 | 结构化 GDP 行、归属、守恒与零 GDP | 02 | 替换 + 删除 D-06 剩余 |
 | SS05-04 | VictoryControl、审计名单、终局与隐私 | 03 | 推进 + 删除 D-02 |
 | SS05-05 | 六产业产能、卡牌条件和批次占用 | 03 | 推进 + 删除 D-05 |
@@ -571,6 +571,6 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 ## 14. 下一步执行建议
 
-SS05-01A 已完成且保持 runtime inactive。下一开发批次进入 SS05-02：建立生产 2／需求 2／通商 1 的五项目位、稳定 slot ID、项目最高 IV、generation/tombstone，以及精确平局无人控制。新项目 ID、presentation key 和辅助文字 key 从第一天就遵守 SS05-01A，不再产生需要二次迁移的语言化标识。
+SS05-02 已完成。`CityTradeNetworkRuntimeController` 现在唯一拥有生产 2／需求 2／通商 1 的五项目位、稳定 ASCII `region_id`／`slot_id`／`project_id`、项目最高 IV、generation/tombstone、项目份额及精确平局无人控制。现有 City/Trade 长期门由 68 项扩展为 88/88 observed、88/88 aligned，City Development 仍为 64/64；项目公开快照只发布经过可见性标记的稳定 presentation key，不公开 controller、贡献表或份额表。
 
-该批次仍不得先写胜利 UI、六产业聚合、结构化 GDP 公式或批量改写 239 条卡牌语义；这些消费者必须等待项目身份成为唯一真相层后再接入。SS05-02 应继续采用同一提交内新 owner、调用方、存档协议、测试和旧写路径删除的 hard-cutover 纪律，并让领域 snapshot 先标记 visibility scope，再生成 PlayerTextSpec。
+下一开发批次进入 SS05-03：以稳定 `project_id` 为唯一关联键生成结构化 GDP 行，明确行级归属、总量守恒、余数分配和零 GDP 语义，并删除“按项目等级瓜分整城 GDP”的剩余 D-06 路径。仍不得提前实现胜利 UI、六产业聚合或批量改写 239 条卡牌语义；这些消费者必须等待 SS05-03 的 GDP receipt 成为唯一真相层。
