@@ -1,7 +1,9 @@
 extends SceneTree
 
 const GAME_SCREEN_SCENE := preload("res://scenes/ui/GameScreen.tscn")
+const DISTRICT_SUPPLY_DRAWER_SCENE := preload("res://scenes/ui/DistrictSupplyDrawer.tscn")
 const DISTRICT_SUPPLY_MARKET_CARD_SCENE := preload("res://scenes/ui/DistrictSupplyMarketCard.tscn")
+const GlobalNavigationRegistryScript := preload("res://scripts/tools/global_ui_navigation_characterization_registry.gd")
 
 var _failures: Array[String] = []
 
@@ -89,10 +91,30 @@ func _run() -> void:
 	_expect(action_ids.has("play_starter"), "runtime hand card second confirm requests the card play action")
 
 	await _check_district_supply_market_card_component()
+	await _check_district_supply_drawer_focus_chain()
+	_check_global_navigation_focus_characterization()
 
 	root.remove_child(screen)
 	screen.queue_free()
 	_finish()
+
+
+func _check_global_navigation_focus_characterization() -> void:
+	var records: Array = GlobalNavigationRegistryScript.characterization_cases()
+	var surfaces: Array = GlobalNavigationRegistryScript.surface_registry()
+	var focus_record: Dictionary = {}
+	var fallback_record: Dictionary = {}
+	var input_record: Dictionary = {}
+	for record_variant: Variant in records:
+		var record := record_variant as Dictionary
+		match str(record.get("case_id", "")):
+			"focus_restores_to_opener": focus_record = record
+			"freed_focus_uses_safe_fallback": fallback_record = record
+			"keyboard_controller_pointer_parity": input_record = record
+	_expect(records.size() == 32 and surfaces.size() >= 15, "Sprint 67 registers the complete global Back/focus characterization matrix")
+	_expect(bool(focus_record.get("focus_restore_checked", false)) and str(focus_record.get("resolved_action", "")) == "focus_untracked" and not bool(focus_record.get("contract_aligned", true)), "Sprint 67 explicitly records missing exact-opener focus restoration")
+	_expect(bool(fallback_record.get("focus_restore_checked", false)) and str(fallback_record.get("resolved_action", "")) == "no_global_focus_fallback" and not bool(fallback_record.get("contract_aligned", true)), "Sprint 67 explicitly records the missing freed-opener fallback")
+	_expect(str(input_record.get("resolved_action", "")) == "key_escape_only" and not bool(input_record.get("contract_aligned", true)), "Sprint 67 keeps keyboard/controller/pointer parity as an open hard-cutover gate")
 
 
 func _check_district_supply_market_card_component() -> void:
@@ -140,6 +162,43 @@ func _check_district_supply_market_card_component() -> void:
 	_expect(activated == ["城市融资1"], "district supply market card confirm activates the purchase/open action")
 	root.remove_child(card)
 	card.queue_free()
+
+
+func _check_district_supply_drawer_focus_chain() -> void:
+	var drawer := DISTRICT_SUPPLY_DRAWER_SCENE.instantiate() as Control
+	_expect(drawer != null, "district supply drawer scene instantiates for focus ownership")
+	if drawer == null:
+		return
+	root.add_child(drawer)
+	await _wait_frames(2)
+	drawer.call("set_supply", {
+		"cards": [
+			{"card_name": "城市融资1", "title": "城市融资", "rank": "I", "state_text": "可购买", "accent": "#34d399ff", "theme_color": "#38bdf8ff", "actionable": true},
+			{"card_name": "轨道融资1", "title": "轨道融资", "rank": "I", "state_text": "可购买", "accent": "#fbbf24ff", "theme_color": "#fb923cff", "actionable": true},
+		],
+		"preview": {},
+	})
+	await _wait_frames(2)
+	var market_grid := drawer.find_child("DistrictSupplyMarketGrid", true, false) as Container
+	var first_card := market_grid.get_child(0) as Control if market_grid != null and market_grid.get_child_count() > 0 else null
+	var second_card := market_grid.get_child(1) as Control if market_grid != null and market_grid.get_child_count() > 1 else null
+	_expect(first_card != null and second_card != null, "district supply drawer renders multiple focusable market cards")
+	_expect(first_card != null and second_card != null and first_card.get_node_or_null(first_card.focus_next) == second_card and second_card.get_node_or_null(second_card.focus_next) == first_card, "district supply drawer owns a wraparound next-focus chain")
+	_expect(first_card != null and second_card != null and first_card.get_node_or_null(first_card.focus_previous) == second_card and second_card.get_node_or_null(second_card.focus_previous) == first_card, "district supply drawer owns a wraparound previous-focus chain")
+	var action_ids: Array[String] = []
+	if drawer.has_signal("supply_action_requested"):
+		drawer.connect("supply_action_requested", func(action_id: String, _payload: Dictionary) -> void:
+			action_ids.append(action_id)
+		)
+	if first_card != null:
+		var accept_event := InputEventAction.new()
+		accept_event.action = "ui_accept"
+		accept_event.pressed = true
+		first_card.call("_gui_input", accept_event)
+	await _wait_frames(1)
+	_expect(action_ids == ["district_supply_preview_card", "district_supply_purchase_card"], "district supply drawer aggregates focused card preview and purchase intents")
+	root.remove_child(drawer)
+	drawer.queue_free()
 
 
 func _check_hand_hover_readable_preview(screen: Control, expected_card_id: String) -> void:

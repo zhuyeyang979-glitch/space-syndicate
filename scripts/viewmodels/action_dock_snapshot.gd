@@ -2,10 +2,9 @@ extends RefCounted
 class_name ActionDockSnapshot
 
 const DEFAULT_QUICK_ACTIONS := [
-	{"id": "build", "label": "建城", "state": "未选", "disabled": true, "shortcut": "1", "tooltip": "先选择可建城区域。"},
-	{"id": "rack", "label": "牌架", "state": "未选", "disabled": true, "shortcut": "2", "tooltip": "先选择区域查看牌架。"},
-	{"id": "buy", "label": "买牌", "state": "--", "disabled": true, "shortcut": "3", "tooltip": "进入可购买窗口后再买牌。"},
-	{"id": "play", "label": "出牌", "state": "--", "disabled": true, "shortcut": "4", "tooltip": "当前没有可直接打出的手牌。"},
+	{"id": "rack", "label": "牌架", "state": "未选", "disabled": true, "shortcut": "1", "tooltip": "先选择区域查看发展牌架。"},
+	{"id": "buy", "label": "买牌", "state": "--", "disabled": true, "shortcut": "2", "tooltip": "进入可购买窗口后再买牌。"},
+	{"id": "play", "label": "出牌", "state": "--", "disabled": true, "shortcut": "3", "tooltip": "当前没有可直接打出的手牌。"},
 ]
 
 var quick_actions: Array = []

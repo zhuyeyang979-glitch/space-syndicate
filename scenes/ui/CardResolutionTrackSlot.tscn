@@ -1,0 +1,83 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/card_resolution_track_slot.gd" id="2_script"]
+
+[node name="CardResolutionTrackSlot" type="PanelContainer"]
+custom_minimum_size = Vector2(146, 34)
+theme = ExtResource("1_theme")
+focus_mode = 2
+mouse_filter = 0
+script = ExtResource("2_script")
+
+[node name="PublicTrackSlotSelected" type="Control" parent="."]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PublicTrackSlotHover" type="Control" parent="."]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+
+[node name="CardResolutionTimelineEventSlot" type="Control" parent="."]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PublicTrackSlotMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 2
+
+[node name="PublicTrackSlotStack" type="VBoxContainer" parent="PublicTrackSlotMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="PublicTrackSlotRow" type="HBoxContainer" parent="PublicTrackSlotMargin/PublicTrackSlotStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="PublicTrackStatePip" type="ColorRect" parent="PublicTrackSlotMargin/PublicTrackSlotStack/PublicTrackSlotRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(4, 18)
+layout_mode = 2
+color = Color(0.219608, 0.827451, 0.976471, 1)
+
+[node name="PublicTrackSlotIndex" type="Label" parent="PublicTrackSlotMargin/PublicTrackSlotStack/PublicTrackSlotRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+text = "#1"
+horizontal_alignment = 1
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="PublicTrackSlotLabel" type="Label" parent="PublicTrackSlotMargin/PublicTrackSlotStack/PublicTrackSlotRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "公共牌"
+horizontal_alignment = 1
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="PublicTrackSlotMeta" type="Label" parent="PublicTrackSlotMargin/PublicTrackSlotStack/PublicTrackSlotRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 0)
+layout_mode = 2
+text = "待猜"
+horizontal_alignment = 2
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="PublicTrackBadgeRow" type="HBoxContainer" parent="PublicTrackSlotMargin/PublicTrackSlotStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 3

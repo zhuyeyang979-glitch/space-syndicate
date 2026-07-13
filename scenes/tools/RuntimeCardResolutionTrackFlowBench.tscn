@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/runtime_card_resolution_track_flow_bench.gd" id="2_script"]
+
+[node name="RuntimeCardResolutionTrackFlowBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="RuntimeCardResolutionTrackFlowBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.017, 0.024, 0.04, 1)
+
+[node name="RuntimeCardResolutionTrackFlowMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="RuntimeCardResolutionTrackFlowRows" type="VBoxContainer" parent="RuntimeCardResolutionTrackFlowMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RuntimeCardResolutionTrackFlowHeader" type="HBoxContainer" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RuntimeCardResolutionTrackFlowTitleLabel" type="Label" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Runtime Card Resolution Track Flow Bench"
+text_overrun_behavior = 3
+
+[node name="RuntimeCardResolutionTrackFlowScopeLabel" type="Label" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowHeader"]
+layout_mode = 2
+text = "真实 GameScreen / PublicTrack / RightInspector / PlayerBoard"
+text_overrun_behavior = 3
+
+[node name="RuntimeCardResolutionTrackFlowStatusPanel" type="PanelContainer" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows"]
+layout_mode = 2
+
+[node name="RuntimeCardResolutionTrackFlowStatusMargin" type="MarginContainer" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowStatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="RuntimeCardResolutionTrackFlowStatusRows" type="VBoxContainer" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowStatusPanel/RuntimeCardResolutionTrackFlowStatusMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RuntimeCardResolutionTrackFlowStatusLabel" type="Label" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowStatusPanel/RuntimeCardResolutionTrackFlowStatusMargin/RuntimeCardResolutionTrackFlowStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="RuntimeCardResolutionTrackFlowSummaryLabel" type="Label" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowStatusPanel/RuntimeCardResolutionTrackFlowStatusMargin/RuntimeCardResolutionTrackFlowStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Runtime card-resolution flow results will appear here."
+autowrap_mode = 3
+
+[node name="RuntimeCardResolutionTrackFlowPreviewHost" type="PanelContainer" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RuntimeCardResolutionTrackFlowPreviewMargin" type="MarginContainer" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowPreviewHost"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="RuntimeCardResolutionTrackFlowViewportContainer" type="SubViewportContainer" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowPreviewHost/RuntimeCardResolutionTrackFlowPreviewMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 640)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RuntimeCardResolutionTrackFlowPreviewViewport" type="SubViewport" parent="RuntimeCardResolutionTrackFlowMargin/RuntimeCardResolutionTrackFlowRows/RuntimeCardResolutionTrackFlowPreviewHost/RuntimeCardResolutionTrackFlowPreviewMargin/RuntimeCardResolutionTrackFlowViewportContainer"]
+unique_name_in_owner = true
+size = Vector2i(1600, 960)
+transparent_bg = true
+render_target_update_mode = 4

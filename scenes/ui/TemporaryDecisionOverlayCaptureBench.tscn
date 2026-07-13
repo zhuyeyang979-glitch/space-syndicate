@@ -1,0 +1,65 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/temporary_decision_overlay_capture_bench.gd" id="2_script"]
+
+[node name="TemporaryDecisionOverlayCaptureBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+auto_run_on_ready = true
+quit_when_complete = true
+quit_delay_seconds = 5.0
+
+[node name="CaptureBenchBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.020, 0.028, 0.047, 1)
+
+[node name="CaptureBenchPanel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(520, 170)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -85.0
+offset_right = 260.0
+offset_bottom = 85.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CaptureBenchMargin" type="MarginContainer" parent="CaptureBenchPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="CaptureBenchRows" type="VBoxContainer" parent="CaptureBenchPanel/CaptureBenchMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CaptureBenchTitleLabel" type="Label" parent="CaptureBenchPanel/CaptureBenchMargin/CaptureBenchRows"]
+layout_mode = 2
+text = "Temporary Decision Overlay Capture Bench"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="CaptureBenchStatusLabel" type="Label" parent="CaptureBenchPanel/CaptureBenchMargin/CaptureBenchRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready to capture visual QA screenshots into user://space_syndicate_design_qa/temporary_decision_overlay/"
+horizontal_alignment = 1
+autowrap_mode = 3

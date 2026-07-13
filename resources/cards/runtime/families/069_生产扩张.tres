@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dapmuedr7bllc"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_d35wn"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_lt30k"]
+
+[sub_resource type="Resource" id="Resource_cdx8q"]
+script = ExtResource("1_d35wn")
+card_id = "生产扩张1"
+family_id = "生产扩张"
+kind = &"region_economy_shift"
+purchase_cost = 4
+rules_text = "选中区域商品生产水平+1。生产型GDP会按可外运商品流动量提高。"
+tags = PackedStringArray("区域", "生产")
+authored_keys = PackedStringArray("cost", "kind", "production_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"production_delta": 1
+}
+
+[resource]
+script = ExtResource("2_lt30k")
+family_id = "生产扩张"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_cdx8q")])
+public_pool_eligible = true

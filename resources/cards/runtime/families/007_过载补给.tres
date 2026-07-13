@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://b636h4etj2sxy"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_k3j8u"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_560ws"]
+
+[sub_resource type="Resource" id="Resource_pmmje"]
+script = ExtResource("1_k3j8u")
+card_id = "过载补给1"
+family_id = "过载补给"
+kind = &"supply_draw"
+purchase_cost = 4
+rules_text = "从当前区域额外获取1张候选卡。"
+tags = PackedStringArray("构筑", "补给")
+authored_keys = PackedStringArray("cost", "kind", "draw_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"draw_amount": 1
+}
+
+[sub_resource type="Resource" id="Resource_kq02y"]
+script = ExtResource("1_k3j8u")
+card_id = "过载补给2"
+family_id = "过载补给"
+rank = 2
+kind = &"supply_draw"
+purchase_cost = 6
+rules_text = "从当前区域额外获取2张候选卡，是补给连锁的升级核心。"
+tags = PackedStringArray("构筑", "升级")
+authored_keys = PackedStringArray("cost", "kind", "draw_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"draw_amount": 2
+}
+
+[resource]
+script = ExtResource("2_560ws")
+family_id = "过载补给"
+pack_id = &"special_cross_system"
+authored_ranks = Array[Resource]([SubResource("Resource_pmmje"), SubResource("Resource_kq02y")])
+public_pool_eligible = true
+upgradeable_family = true

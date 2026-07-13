@@ -1,5 +1,7 @@
 extends PanelContainer
 
+var _diagnostics_service: GameplayBalanceDiagnosticsRuntimeService
+
 @onready var title_label: Label = %DeveloperBalanceTitle
 @onready var summary_label: Label = %DeveloperBalanceSummary
 @onready var issue_label: Label = %DeveloperBalanceIssues
@@ -31,3 +33,13 @@ func set_report(report: Dictionary) -> void:
 			for issue_variant in constraints.get("issues", []):
 				issue_lines.append(String(issue_variant))
 		issue_label.tooltip_text = "\n".join(issue_lines)
+
+
+func set_diagnostics_service(service: GameplayBalanceDiagnosticsRuntimeService) -> void:
+	_diagnostics_service = service
+
+
+func refresh_report(sample_only := true) -> void:
+	if _diagnostics_service == null:
+		return
+	set_report(_diagnostics_service.build_developer_panel_snapshot({}, sample_only))

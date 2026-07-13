@@ -9,6 +9,10 @@ signal action_requested(action_id: String)
 @onready var kpi_grid: GridContainer = %IntelDossierKpiGrid
 @onready var action_row: HFlowContainer = %IntelDossierActionRow
 @onready var clue_grid: GridContainer = %IntelDossierClueGrid
+@onready var control_title: Label = %IntelDossierControlTitle
+@onready var control_grid: GridContainer = %IntelDossierControlGrid
+@onready var link_title: Label = %IntelDossierLinkTitle
+@onready var link_grid: GridContainer = %IntelDossierLinkGrid
 
 
 func _ready() -> void:
@@ -23,10 +27,16 @@ func set_dossier(data: Dictionary) -> void:
 	title_label.tooltip_text = str(data.get("title_tooltip", "先扫线索类别，再决定标注城市、猜卡牌归属或跳到图鉴查证。"))
 	kpi_grid.columns = clampi(int(data.get("kpi_columns", 4)), 1, 4)
 	clue_grid.columns = clampi(int(data.get("clue_columns", 3)), 1, 3)
+	control_grid.columns = clampi(int(data.get("control_columns", 1)), 1, 2)
+	link_grid.columns = clampi(int(data.get("link_columns", 2)), 1, 3)
+	control_title.text = str(data.get("control_title", "私人推理控制｜只修改当前玩家自己的标注"))
+	link_title.text = str(data.get("link_title", "公开资料跳转｜只打开可见线索"))
 	_render_chips(data.get("chips", []))
 	_render_kpis(data.get("kpis", []))
 	_render_actions(data.get("actions", []))
 	_render_clues(data.get("clues", []))
+	_render_control_groups(data.get("control_groups", []))
+	_render_links(data.get("links", []))
 
 
 func _style_shell() -> void:
@@ -41,6 +51,14 @@ func _style_shell() -> void:
 	action_row.add_theme_constant_override("v_separation", 4)
 	clue_grid.add_theme_constant_override("h_separation", 10)
 	clue_grid.add_theme_constant_override("v_separation", 10)
+	control_title.add_theme_font_size_override("font_size", 12)
+	control_title.add_theme_color_override("font_color", Color("#ddd6fe"))
+	control_grid.add_theme_constant_override("h_separation", 8)
+	control_grid.add_theme_constant_override("v_separation", 8)
+	link_title.add_theme_font_size_override("font_size", 12)
+	link_title.add_theme_color_override("font_color", Color("#bfdbfe"))
+	link_grid.add_theme_constant_override("h_separation", 8)
+	link_grid.add_theme_constant_override("v_separation", 8)
 
 
 func _render_chips(entries_variant: Variant) -> void:
@@ -80,6 +98,26 @@ func _render_actions(entries_variant: Variant) -> void:
 	for entry_variant in entries:
 		if entry_variant is Dictionary:
 			_add_action_button(entry_variant as Dictionary)
+
+
+func _render_control_groups(entries_variant: Variant) -> void:
+	_clear_children(control_grid)
+	var entries := entries_variant as Array if entries_variant is Array else []
+	control_title.visible = not entries.is_empty()
+	control_grid.visible = not entries.is_empty()
+	for entry_variant in entries:
+		if entry_variant is Dictionary:
+			_add_control_group(entry_variant as Dictionary)
+
+
+func _render_links(entries_variant: Variant) -> void:
+	_clear_children(link_grid)
+	var entries := entries_variant as Array if entries_variant is Array else []
+	link_title.visible = not entries.is_empty()
+	link_grid.visible = not entries.is_empty()
+	for entry_variant in entries:
+		if entry_variant is Dictionary:
+			_add_link_button(entry_variant as Dictionary)
 
 
 func _add_chip(entry: Dictionary) -> void:
@@ -197,6 +235,73 @@ func _add_action_button(entry: Dictionary) -> void:
 		action_requested.emit(action_id)
 	)
 	action_row.add_child(button)
+
+
+func _add_control_group(entry: Dictionary) -> void:
+	var accent := _dictionary_color(entry, "accent", Color("#c084fc"))
+	var card := PanelContainer.new()
+	card.name = "IntelDossierControlGroup"
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.tooltip_text = str(entry.get("meta", ""))
+	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 8))
+	control_grid.add_child(card)
+	var margin := _margin(10, 8, 10, 8)
+	card.add_child(margin)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 5)
+	margin.add_child(stack)
+	var title := _label(str(entry.get("title", "城市标注")), 11, accent.lightened(0.16))
+	title.name = "IntelDossierControlGroupTitle"
+	stack.add_child(title)
+	var meta := _label(_short_text(str(entry.get("meta", "")), 72), 9, Color("#94a3b8"))
+	meta.name = "IntelDossierControlGroupMeta"
+	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	meta.tooltip_text = str(entry.get("meta", ""))
+	stack.add_child(meta)
+	var action_flow := HFlowContainer.new()
+	action_flow.name = "IntelDossierControlActionFlow"
+	action_flow.add_theme_constant_override("h_separation", 5)
+	action_flow.add_theme_constant_override("v_separation", 4)
+	stack.add_child(action_flow)
+	var actions_variant: Variant = entry.get("actions", [])
+	if actions_variant is Array:
+		for action_variant in actions_variant:
+			if action_variant is Dictionary:
+				_add_data_action_button(action_flow, action_variant as Dictionary, "IntelDossierControlActionButton", 86)
+
+
+func _add_link_button(entry: Dictionary) -> void:
+	_add_data_action_button(link_grid, entry, "IntelDossierLinkActionButton", 0)
+
+
+func _add_data_action_button(parent: Container, entry: Dictionary, node_name: String, minimum_width: float) -> void:
+	var action_id := str(entry.get("id", entry.get("action_id", ""))).strip_edges()
+	var label_text := str(entry.get("label", action_id)).strip_edges()
+	if action_id == "" or label_text == "":
+		return
+	var disabled := bool(entry.get("disabled", false))
+	var accent := _dictionary_color(entry, "accent", Color("#c4b5fd"))
+	var button := Button.new()
+	button.name = node_name
+	button.text = _short_text(label_text, 28 if node_name == "IntelDossierLinkActionButton" else 14)
+	button.disabled = disabled
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT if node_name == "IntelDossierLinkActionButton" else HORIZONTAL_ALIGNMENT_CENTER
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL if node_name == "IntelDossierLinkActionButton" else Control.SIZE_SHRINK_BEGIN
+	button.custom_minimum_size = Vector2(minimum_width, 34 if node_name == "IntelDossierLinkActionButton" else 28)
+	button.tooltip_text = str(entry.get("tooltip", ""))
+	button.add_theme_font_size_override("font_size", 10)
+	button.add_theme_color_override("font_color", Color("#f8fafc") if not disabled else Color("#94a3b8"))
+	button.add_theme_stylebox_override("normal", _button_style(accent, false, disabled))
+	button.add_theme_stylebox_override("hover", _button_style(accent, true, disabled))
+	button.add_theme_stylebox_override("pressed", _button_style(accent.lightened(0.12), true, disabled))
+	button.add_theme_stylebox_override("disabled", _button_style(accent, false, true))
+	button.pressed.connect(Callable(self, "_on_action_pressed").bind(action_id))
+	parent.add_child(button)
+
+
+func _on_action_pressed(action_id: String) -> void:
+	if action_id.strip_edges() != "":
+		action_requested.emit(action_id)
 
 
 func _label(text: String, font_size: int, color: Color) -> Label:

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_resolution_runtime_controller.gd" id="1_controller"]
+
+[node name="CardResolutionRuntimeController" type="Node"]
+unique_name_in_owner = true
+editor_description = "Scene-owned timing and phase controller for the shared card-resolution window. Settlement and card effects remain in main.gd."
+script = ExtResource("1_controller")

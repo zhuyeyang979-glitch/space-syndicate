@@ -1,0 +1,183 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/map/planet_map_control_toolbar.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_chip"]
+bg_color = Color(0.012, 0.027, 0.071, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.361, 0.58, 0.78, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 6.0
+content_margin_top = 2.0
+content_margin_right = 6.0
+content_margin_bottom = 2.0
+
+[node name="PlanetMapControlToolbar" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 4
+script = ExtResource("2_script")
+
+[node name="MapReadingHintRail" type="HFlowContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 3
+
+[node name="MapCenterHintLabel" type="Label" parent="MapReadingHintRail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.992, 0.906, 0.541, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "◎ 赌桌中央"
+
+[node name="MapZoomHintLabel" type="Label" parent="MapReadingHintRail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.749, 0.843, 0.957, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "滚轮缩放"
+
+[node name="MapDragHintLabel" type="Label" parent="MapReadingHintRail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.749, 0.843, 0.957, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "拖拽地图"
+
+[node name="MapOpenSupplyHintLabel" type="Label" parent="MapReadingHintRail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576, 0.773, 0.992, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "双击看牌"
+
+[node name="MapDistrictStatusLabel" type="Label" parent="MapReadingHintRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.796, 0.835, 0.882, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "⌖ 未选区"
+text_overrun_behavior = 3
+
+[node name="MapToolbarCommandRow" type="HFlowContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 5
+theme_override_constants/v_separation = 4
+
+[node name="MapLayerFocusRail" type="HFlowContainer" parent="MapToolbarCommandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(238, 29)
+layout_mode = 2
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+
+[node name="MapLayerAllButton" type="Button" parent="MapToolbarCommandRow/MapLayerFocusRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "全"
+
+[node name="MapLayerProductButton" type="Button" parent="MapToolbarCommandRow/MapLayerFocusRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "◇"
+
+[node name="MapLayerRouteButton" type="Button" parent="MapToolbarCommandRow/MapLayerFocusRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "⇄"
+
+[node name="MapLayerIntelButton" type="Button" parent="MapToolbarCommandRow/MapLayerFocusRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "?"
+
+[node name="MapLayerWeatherButton" type="Button" parent="MapToolbarCommandRow/MapLayerFocusRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "☄"
+
+[node name="MapLayerMonsterButton" type="Button" parent="MapToolbarCommandRow/MapLayerFocusRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "◆"
+
+[node name="MapLayerCityButton" type="Button" parent="MapToolbarCommandRow/MapLayerFocusRail"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 28)
+layout_mode = 2
+text = "▣"
+
+[node name="MapLayerStatusLabel" type="Label" parent="MapToolbarCommandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(82, 27)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.992, 0.953, 0.78, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "图层:全图"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="MapTradeProductSelector" type="OptionButton" parent="MapToolbarCommandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(118, 29)
+layout_mode = 2
+tooltip_text = "选择要在地图上显示运输路径的商品。"
+item_count = 1
+popup/item_0/text = "商路关闭"
+popup/item_0/id = 0
+
+[node name="MapTradeStatusLabel" type="Label" parent="MapToolbarCommandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 27)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576, 0.773, 0.992, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "⇄ 商路关"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="MapContractSourceButton" type="Button" parent="MapToolbarCommandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "供给端"
+
+[node name="MapContractTargetButton" type="Button" parent="MapToolbarCommandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "需求端"
+
+[node name="MapContractStatusLabel" type="Label" parent="MapToolbarCommandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(126, 27)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.992, 0.953, 0.78, 1)
+theme_override_font_sizes/font_size = 9
+theme_override_styles/normal = SubResource("StyleBox_chip")
+text = "⇄ 合约未设"
+vertical_alignment = 1
+text_overrun_behavior = 3

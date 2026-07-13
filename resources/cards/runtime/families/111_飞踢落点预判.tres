@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c4tl5lawdfcr2"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_hrlmw"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_pccrk"]
+
+[sub_resource type="Resource" id="Resource_x641b"]
+script = ExtResource("1_hrlmw")
+card_id = "飞踢落点预判1"
+family_id = "飞踢落点预判"
+kind = &"mudslide"
+purchase_cost = 4
+rules_text = "预判飞踢落点，220米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"
+tags = PackedStringArray("焰环幼星", "破坏")
+range = 220.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "panic", "delay", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 1.2,
+"panic": 20
+}
+
+[resource]
+script = ExtResource("2_pccrk")
+family_id = "飞踢落点预判"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_x641b")])

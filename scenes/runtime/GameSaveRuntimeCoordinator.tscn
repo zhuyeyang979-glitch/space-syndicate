@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/game_save_runtime_coordinator.gd" id="1_save"]
+
+[node name="GameSaveRuntimeCoordinator" type="Node"]
+script = ExtResource("1_save")
+editor_description = "Single owner for current-run save version, default path, Variant-binary envelope validation, normalization, and file I/O."

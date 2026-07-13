@@ -1,0 +1,54 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/district_purchase_window_status.gd" id="2_script"]
+
+[node name="DistrictPurchaseWindowStatus" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="StatusMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 5
+
+[node name="StatusRows" type="VBoxContainer" parent="StatusMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="StatusHeader" type="HBoxContainer" parent="StatusMargin/StatusRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DistrictPurchaseWindowModeLabel" type="Label" parent="StatusMargin/StatusRows/StatusHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "购买资格已锁定"
+text_overrun_behavior = 3
+
+[node name="DistrictPurchaseWindowTimerLabel" type="Label" parent="StatusMargin/StatusRows/StatusHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+text = "等待快照"
+horizontal_alignment = 2
+
+[node name="DistrictPurchaseWindowTimerBar" type="ProgressBar" parent="StatusMargin/StatusRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="DistrictPurchaseWindowDetailLabel" type="Label" parent="StatusMargin/StatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "怪兽落地区｜渠道优惠｜锁定倍率 ×0.64"
+autowrap_mode = 3
+text_overrun_behavior = 3

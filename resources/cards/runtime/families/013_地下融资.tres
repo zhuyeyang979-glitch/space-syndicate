@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://vj1rsqe7862e"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_1v3cm"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_mcmp6"]
+
+[sub_resource type="Resource" id="Resource_2aikf"]
+script = ExtResource("1_1v3cm")
+card_id = "地下融资1"
+family_id = "地下融资"
+kind = &"cash_gain"
+purchase_cost = 3
+rules_text = "立即获得450资金，适合扩张或高费卡组提前转动。"
+tags = PackedStringArray("经济", "续航")
+authored_keys = PackedStringArray("cost", "kind", "cash", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 450
+}
+
+[resource]
+script = ExtResource("2_mcmp6")
+family_id = "地下融资"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_2aikf")])
+public_pool_eligible = true

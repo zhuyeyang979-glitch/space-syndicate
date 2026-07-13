@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/game_session_runtime_controller.gd" id="1_session"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameSaveRuntimeCoordinator.tscn" id="2_save"]
+
+[node name="GameSessionRuntimeController" type="Node"]
+script = ExtResource("1_session")
+editor_description = "Owns session lifecycle, safe session identity, and save-operation state without duplicating gameplay domain state."
+
+[node name="GameSaveRuntimeCoordinator" parent="." instance=ExtResource("2_save")]
+unique_name_in_owner = true

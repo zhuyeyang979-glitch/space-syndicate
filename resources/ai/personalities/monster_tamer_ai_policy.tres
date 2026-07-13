@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AiPersonalityPolicyResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_personality_policy_resource.gd" id="1_personality"]
+
+[resource]
+script = ExtResource("1_personality")
+policy_id = "monster_tamer"
+display_name = "驯怪型AI"
+style = "更重视怪兽落点、资源偏好和购牌半径，适合后续训练召唤/诱导策略。"
+build_bias = 0.95
+business_bias = 1.0
+monster_bias = 1.35
+economy_bias = 0.9
+bid_aggression = 0.95
+exploration = 0.16
+route_preferences = {
+"contract_route": 1.04,
+"direct_interaction": 1.1,
+"intel_supply": 1.08,
+"monster_pressure": 1.42
+}

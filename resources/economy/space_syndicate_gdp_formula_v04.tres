@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="GdpFormulaProfileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/economy/gdp_formula_profile_resource.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = "gdp_formula_v04"
+display_name = "Space Syndicate GDP Formula v0.4"
+design_notes = "Characterized runtime parameters for production, demand, transit, pressure, and floor semantics. Edit in Inspector and verify with GdpFormulaRuntimeCutoverBench before changing live balance."
+product_base_revenue = 42
+product_level_revenue = 12
+product_price_revenue_divisor = 5
+production_gdp_scale = 0.58
+demand_supply_revenue = 28
+demand_price_revenue_divisor = 8
+consumption_gdp_scale = 0.72
+transit_gdp_base = 18
+transit_price_divisor = 20
+competition_penalty = 16
+trade_disruption_penalty = 55
+district_damage_penalty = 18
+minimum_city_gdp = 40
+minimum_flow_amount = 0.25

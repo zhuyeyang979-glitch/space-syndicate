@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dfqu0vy7fu8q6"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_16830"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_4h0y3"]
+
+[sub_resource type="Resource" id="Resource_k8c05"]
+script = ExtResource("1_16830")
+card_id = "太阳风暴预报1"
+family_id = "太阳风暴预报"
+kind = &"weather_control"
+purchase_cost = 4
+rules_text = "主动改写星球天气预报：约60秒后，在选中区域及邻近区域生成太阳风暴，持续90秒；所有玩家提前看到预报。"
+tags = PackedStringArray("天气", "交通")
+play_product = "轨迹墨水"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 90.0,
+"weather_forecast_lead_seconds": 60.0,
+"weather_type": "solar_storm",
+"weather_zone_count": 2
+}
+
+[resource]
+script = ExtResource("2_4h0y3")
+family_id = "太阳风暴预报"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_k8c05")])
+public_pool_eligible = true
+upgradeable_family = true

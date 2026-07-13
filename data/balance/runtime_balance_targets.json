@@ -119,8 +119,6 @@
       "military_damage",
       "military_gdp_penalty",
       "military_strike_route_damage",
-      "product_bet_multiplier",
-      "stockpile_units",
       "gdp_bet_multiplier",
       "gdp_bet_destroy_bonus",
       "hand_discard_count",
@@ -129,10 +127,8 @@
       "counter_strength"
     ],
     "discount_fields": [
-      "requires_warehouse_city",
       "play_product",
       "play_flow_required",
-      "product_bet_seconds",
       "gdp_bet_seconds",
       "play_cash_per_monster"
     ]

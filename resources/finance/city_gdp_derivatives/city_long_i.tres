@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CityGdpDerivativeTermsResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/finance/city_gdp_derivative_terms_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "城市买涨1"
+rank = 1
+direction = "up"
+duration_seconds = 60.0
+multiplier = 1.0
+margin_cash = 120
+maximum_gain = 260
+maximum_loss = 120

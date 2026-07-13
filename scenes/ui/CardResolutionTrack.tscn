@@ -1,0 +1,201 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/card_resolution_track.gd" id="2_script"]
+
+[node name="CardResolutionTrack" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 96)
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="TrackRows" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="TrackHeader" type="PanelContainer" parent="TrackRows"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="TrackHeaderMargin" type="MarginContainer" parent="TrackRows/TrackHeader"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 3
+
+[node name="TrackHeaderRow" type="HBoxContainer" parent="TrackRows/TrackHeader/TrackHeaderMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TrackTitleLabel" type="Label" parent="TrackRows/TrackHeader/TrackHeaderMargin/TrackHeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+text = "公共牌轨"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="TrackPhaseLabel" type="Label" parent="TrackRows/TrackHeader/TrackHeaderMargin/TrackHeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(74, 0)
+layout_mode = 2
+text = "等待"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="TrackSummaryLabel" type="Label" parent="TrackRows/TrackHeader/TrackHeaderMargin/TrackHeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "匿名出牌、竞价和结算历史。"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="TrackBody" type="HBoxContainer" parent="TrackRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="HistoryPanel" type="PanelContainer" parent="TrackRows/TrackBody"]
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+
+[node name="HistoryRows" type="VBoxContainer" parent="TrackRows/TrackBody/HistoryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="HistoryLabel" type="Label" parent="TrackRows/TrackBody/HistoryPanel/HistoryRows"]
+layout_mode = 2
+text = "History"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="HistoryScroll" type="ScrollContainer" parent="TrackRows/TrackBody/HistoryPanel/HistoryRows"]
+layout_mode = 2
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 0
+
+[node name="HistoryRail" type="HBoxContainer" parent="TrackRows/TrackBody/HistoryPanel/HistoryRows/HistoryScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ActivePanel" type="PanelContainer" parent="TrackRows/TrackBody"]
+custom_minimum_size = Vector2(208, 0)
+layout_mode = 2
+
+[node name="ActiveRows" type="VBoxContainer" parent="TrackRows/TrackBody/ActivePanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ActiveLabel" type="Label" parent="TrackRows/TrackBody/ActivePanel/ActiveRows"]
+layout_mode = 2
+text = "Active"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="ActiveResolutionSlot" type="HBoxContainer" parent="TrackRows/TrackBody/ActivePanel/ActiveRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="QueuePanel" type="PanelContainer" parent="TrackRows/TrackBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="QueueRows" type="VBoxContainer" parent="TrackRows/TrackBody/QueuePanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="QueueLabel" type="Label" parent="TrackRows/TrackBody/QueuePanel/QueueRows"]
+layout_mode = 2
+text = "Queue / Auction"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="QueueScroll" type="ScrollContainer" parent="TrackRows/TrackBody/QueuePanel/QueueRows"]
+layout_mode = 2
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 0
+
+[node name="QueueRail" type="HBoxContainer" parent="TrackRows/TrackBody/QueuePanel/QueueRows/QueueScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="NextPanel" type="PanelContainer" parent="TrackRows/TrackBody"]
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+
+[node name="NextRows" type="VBoxContainer" parent="TrackRows/TrackBody/NextPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="NextLabel" type="Label" parent="TrackRows/TrackBody/NextPanel/NextRows"]
+layout_mode = 2
+text = "Next"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="NextScroll" type="ScrollContainer" parent="TrackRows/TrackBody/NextPanel/NextRows"]
+layout_mode = 2
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 0
+
+[node name="NextQueueRail" type="HBoxContainer" parent="TrackRows/TrackBody/NextPanel/NextRows/NextScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AuctionResponseLayer" type="PanelContainer" parent="TrackRows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="AuctionResponseRows" type="VBoxContainer" parent="TrackRows/AuctionResponseLayer"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AuctionResponseLabel" type="Label" parent="TrackRows/AuctionResponseLayer/AuctionResponseRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "竞价/响应窗口"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="AuctionResponseActionRow" type="HBoxContainer" parent="TrackRows/AuctionResponseLayer/AuctionResponseRows"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="AuctionResponseDisabledReasonLabel" type="Label" parent="TrackRows/AuctionResponseLayer/AuctionResponseRows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Action unavailable"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="PrivacyHintLayer" type="PanelContainer" parent="TrackRows"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PrivacyHintLabel" type="Label" parent="TrackRows/PrivacyHintLayer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "归属未公开前只显示待猜线索。"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="EmptyStateLayer" type="PanelContainer" parent="TrackRows"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="EmptyStateLabel" type="Label" parent="TrackRows/EmptyStateLayer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "牌轨空闲，等待玩家出牌。"
+horizontal_alignment = 1
+text_overrun_behavior = 3

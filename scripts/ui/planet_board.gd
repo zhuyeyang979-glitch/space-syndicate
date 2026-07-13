@@ -9,6 +9,7 @@ class_name SpaceSyndicatePlanetBoard
 @onready var weather_impact_label: Label = %WeatherImpactLabel
 @onready var stage_viewport: Control = %PlanetStageViewport
 @onready var map_host: Control = %MapHost
+@onready var embedded_map_view: Control = get_node_or_null("%PlanetMapView") as Control
 @onready var playtest_flow_compass: PanelContainer = %PlaytestFlowCompass
 @onready var playtest_flow_compass_title: Label = %PlaytestFlowCompassTitle
 @onready var playtest_flow_compass_step_rail: HFlowContainer = %PlaytestFlowCompassStepRail
@@ -101,6 +102,9 @@ func _draw() -> void:
 func attach_runtime_map(map_node: Control) -> void:
 	if map_node == null or map_host == null:
 		return
+	for child in map_host.get_children():
+		if child is Control and child != map_node and (child.name == "PlanetMapView" or (child as Control).has_method("set_map")):
+			(child as Control).visible = false
 	var current_parent := map_node.get_parent()
 	if current_parent != null:
 		current_parent.remove_child(map_node)
@@ -112,6 +116,7 @@ func attach_runtime_map(map_node: Control) -> void:
 	map_node.mouse_filter = Control.MOUSE_FILTER_STOP
 	map_node.set_meta("runtime_focus_kind", "planet_map")
 	map_node.clip_contents = false
+	map_node.visible = true
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_host.add_child(map_node)
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -128,7 +133,7 @@ func _configure_pointer_passthrough_layers() -> void:
 		_set_mouse_filter_recursive(node, Control.MOUSE_FILTER_IGNORE)
 
 
-func _set_mouse_filter_recursive(node: Node, filter: int) -> void:
+func _set_mouse_filter_recursive(node: Node, filter: Control.MouseFilter) -> void:
 	if node == null:
 		return
 	if node is Control:
@@ -144,6 +149,18 @@ func get_runtime_map_focus_control() -> Control:
 		if child is Control and (child as Control).has_method("focus_district"):
 			return child as Control
 	return map_host
+
+
+func get_embedded_map_view() -> Control:
+	if embedded_map_view != null:
+		return embedded_map_view
+	if map_host == null:
+		return null
+	for child in map_host.get_children():
+		if child is Control and child.name == "PlanetMapView":
+			embedded_map_view = child as Control
+			return embedded_map_view
+	return null
 
 
 func _fit_square_stage() -> void:
@@ -167,7 +184,7 @@ func _fit_square_stage() -> void:
 	_layout_space_rail(right_space_rail, false, map_rect, available)
 
 
-func _layout_flow_compass(map_rect: Rect2, available: Vector2) -> void:
+func _layout_flow_compass(map_rect: Rect2, _available: Vector2) -> void:
 	if playtest_flow_compass == null:
 		return
 	if campaign_focus_mode:
@@ -587,13 +604,13 @@ func _draw_stage_space() -> void:
 	draw_rect(rect, Color("#020617"), true)
 	_draw_stage_orbit_lanes(rect)
 	for i in range(STAGE_STAR_COUNT):
-		var position := rect.position + Vector2(
+		var star_position := rect.position + Vector2(
 			fposmod(float(i * 113 + 31), maxf(1.0, rect.size.x)),
 			fposmod(float(i * 67 + 19), maxf(1.0, rect.size.y))
 		)
 		var star := Color("#e0f2fe")
 		star.a = 0.16 + float((i * 7) % 6) * 0.05
-		draw_circle(position, 0.7 + float(i % 3) * 0.24, star)
+		draw_circle(star_position, 0.7 + float(i % 3) * 0.24, star)
 
 
 func _draw_stage_orbit_lanes(rect: Rect2) -> void:

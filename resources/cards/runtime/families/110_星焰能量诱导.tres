@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://3st186wl0sn1"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_buwi7"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_x1mb7"]
+
+[sub_resource type="Resource" id="Resource_0rgxh"]
+script = ExtResource("1_buwi7")
+card_id = "星焰能量诱导1"
+family_id = "星焰能量诱导"
+kind = &"special_monster_delay"
+purchase_cost = 4
+rules_text = "诱导星焰能量过早爆发，指定怪兽的特殊行动节奏延后1.8秒。"
+tags = PackedStringArray("焰环幼星", "控场")
+authored_keys = PackedStringArray("cost", "kind", "delay", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 1.8
+}
+
+[resource]
+script = ExtResource("2_x1mb7")
+family_id = "星焰能量诱导"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_0rgxh")])

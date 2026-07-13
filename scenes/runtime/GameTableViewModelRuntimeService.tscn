@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/game_table_viewmodel_runtime_service.gd" id="1_service"]
+
+[node name="GameTableViewModelRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Authoritative pure-data table ViewModel composer. It owns hand-card, public-track, resolution-overlay badge, RightInspector, and TableSnapshot assembly while gameplay legality and mutations remain in domain services."

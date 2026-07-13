@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://h6jsiciss4ku"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_bbuoh"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_46n1u"]
+
+[sub_resource type="Resource" id="Resource_7jap8"]
+script = ExtResource("1_bbuoh")
+card_id = "星际会展1"
+family_id = "星际会展"
+kind = &"city_contract_boon"
+purchase_cost = 5
+rules_text = "选中己方城市举办会展：临时合约GDP/min +80，并使商路流通收入×1.25，持续90秒；区域热度+12。"
+tags = PackedStringArray("经营", "会展")
+authored_keys = PackedStringArray("cost", "kind", "contract_income", "contract_seconds", "contract_turns", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"contract_income": 80,
+"contract_seconds": 90.0,
+"contract_turns": 3,
+"panic": 12,
+"route_flow_multiplier": 1.25,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[sub_resource type="Resource" id="Resource_jlqws"]
+script = ExtResource("1_bbuoh")
+card_id = "星际会展2"
+family_id = "星际会展"
+rank = 2
+kind = &"city_contract_boon"
+purchase_cost = 7
+rules_text = "选中己方城市举办大型星际会展：临时合约GDP/min +135，并使商路流通收入×1.45，持续120秒；区域热度+20。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "contract_income", "contract_seconds", "contract_turns", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"contract_income": 135,
+"contract_seconds": 120.0,
+"contract_turns": 4,
+"panic": 20,
+"route_flow_multiplier": 1.45,
+"route_flow_seconds": 120.0,
+"route_flow_turns": 4
+}
+
+[resource]
+script = ExtResource("2_46n1u")
+family_id = "星际会展"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_7jap8"), SubResource("Resource_jlqws")])
+public_pool_eligible = true
+upgradeable_family = true

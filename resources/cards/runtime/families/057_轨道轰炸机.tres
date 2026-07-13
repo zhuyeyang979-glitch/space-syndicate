@@ -1,0 +1,143 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dct7evkmr30ea"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_xpyfh"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_nissb"]
+
+[sub_resource type="Resource" id="Resource_vhpik"]
+script = ExtResource("1_xpyfh")
+card_id = "轨道轰炸机1"
+family_id = "轨道轰炸机"
+kind = &"military_force"
+purchase_cost = 6
+rules_text = "部署轨道轰炸机：跨地形飞行，区域轰击会压低城市GDP并可能制造商路压力；生命低、在场短，适合配合城市做空。"
+tags = PackedStringArray("军队", "空军", "轰炸")
+range = 520.0
+play_product = "太阳鳞片"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 2,
+"military_damage": 2,
+"military_domain": "air",
+"military_duration_seconds": 18.0,
+"military_gdp_penalty": 16,
+"military_gdp_pressure_seconds": 18.0,
+"military_hp": 4,
+"military_move": 430.0,
+"military_range": 520.0,
+"military_strike_route_damage": 1,
+"military_type": "bomber",
+"movement_traits": ["air", "bombard"],
+"terrain_move_multiplier": {
+"land": 1.1,
+"ocean": 1.1
+}
+}
+
+[sub_resource type="Resource" id="Resource_0o5fa"]
+script = ExtResource("1_xpyfh")
+card_id = "轨道轰炸机2"
+family_id = "轨道轰炸机"
+rank = 2
+kind = &"military_force"
+purchase_cost = 8
+rules_text = "升级轰炸机：火力和半径提高，打城市GDP更明显；仍怕被集中攻击，适合短窗口压制。"
+tags = PackedStringArray("军队", "空军", "升级")
+range = 620.0
+play_product = "太阳鳞片"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 3,
+"military_damage": 3,
+"military_domain": "air",
+"military_duration_seconds": 24.0,
+"military_gdp_penalty": 24,
+"military_gdp_pressure_seconds": 22.0,
+"military_hp": 6,
+"military_move": 500.0,
+"military_range": 620.0,
+"military_strike_route_damage": 1,
+"military_type": "bomber",
+"movement_traits": ["air", "bombard"],
+"terrain_move_multiplier": {
+"land": 1.14,
+"ocean": 1.14
+}
+}
+
+[sub_resource type="Resource" id="Resource_dbjxu"]
+script = ExtResource("1_xpyfh")
+card_id = "轨道轰炸机3"
+family_id = "轨道轰炸机"
+rank = 3
+kind = &"military_force"
+purchase_cost = 10
+rules_text = "核心轰炸机：区域摧毁军令会形成明显GDP压力和断路风险，是金融做空与城市压制路线的核心资产。"
+tags = PackedStringArray("军队", "空军", "核心")
+range = 740.0
+play_product = "太阳鳞片"
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 4,
+"military_domain": "air",
+"military_duration_seconds": 30.0,
+"military_gdp_penalty": 34,
+"military_gdp_pressure_seconds": 26.0,
+"military_hp": 8,
+"military_move": 580.0,
+"military_range": 740.0,
+"military_strike_route_damage": 2,
+"military_type": "bomber",
+"movement_traits": ["air", "bombard"],
+"terrain_move_multiplier": {
+"land": 1.18,
+"ocean": 1.18
+}
+}
+
+[sub_resource type="Resource" id="Resource_gwy2n"]
+script = ExtResource("1_xpyfh")
+card_id = "轨道轰炸机4"
+family_id = "轨道轰炸机"
+rank = 4
+kind = &"military_force"
+purchase_cost = 12
+rules_text = "终端轰炸机IV：远距高压空袭，能把城市GDP窗口打出剧烈下跌；代价高且目标线索非常明显。"
+tags = PackedStringArray("军队", "空军", "IV")
+range = 860.0
+play_product = "太阳鳞片"
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 5,
+"military_domain": "air",
+"military_duration_seconds": 36.0,
+"military_gdp_penalty": 46,
+"military_gdp_pressure_seconds": 30.0,
+"military_hp": 10,
+"military_move": 660.0,
+"military_range": 860.0,
+"military_strike_route_damage": 2,
+"military_type": "bomber",
+"movement_traits": ["air", "bombard"],
+"terrain_move_multiplier": {
+"land": 1.22,
+"ocean": 1.22
+}
+}
+
+[resource]
+script = ExtResource("2_nissb")
+family_id = "轨道轰炸机"
+pack_id = &"military"
+authored_ranks = Array[Resource]([SubResource("Resource_vhpik"), SubResource("Resource_0o5fa"), SubResource("Resource_dbjxu"), SubResource("Resource_gwy2n")])
+public_pool_eligible = true
+upgradeable_family = true

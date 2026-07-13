@@ -1,0 +1,221 @@
+[gd_resource type="Resource" script_class="CardRuntimeCatalogResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/01_city_economy.tres" id="1_cluij"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/02_product_logistics.tres" id="2_q1bcl"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/03_finance.tres" id="3_v48vs"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/04_contracts.tres" id="4_ergoo"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/05_intel_counter.tres" id="5_cfscr"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/06_player_interaction.tres" id="6_e7rsk"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/07_military.tres" id="7_7m33l"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/08_weather_news.tres" id="8_3f2nq"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/09_monster_actions.tres" id="9_5n2k5"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/packs/10_special_cross_system.tres" id="10_n7061"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_catalog_resource.gd" id="11_3vvew"]
+
+[resource]
+script = ExtResource("11_3vvew")
+packs = Array[Resource]([ExtResource("1_cluij"), ExtResource("2_q1bcl"), ExtResource("3_v48vs"), ExtResource("4_ergoo"), ExtResource("5_cfscr"), ExtResource("6_e7rsk"), ExtResource("7_7m33l"), ExtResource("8_3f2nq"), ExtResource("9_5n2k5"), ExtResource("10_n7061")])
+authored_card_order = PackedStringArray("城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "轨道融资2", "舆论操控1", "舆论操控2", "诱导电波1", "诱导电波2", "夺取怪兽1", "过载补给1", "过载补给2", "业主透镜1", "业主透镜2", "出牌追帧1", "出牌追帧2", "密约回溯1", "密约回溯2", "远程补给链1", "星门采购权1", "地下融资1", "热搜推送1", "危机快讯1", "金融传闻1", "监管风暴1", "太阳风暴预报1", "酸雨云团播种1", "引力潮汐播报1", "电磁雾干涉1", "商业诱饵1", "商业诱饵2", "价格套利1", "价格套利2", "供应链保险1", "供应链保险2", "垄断协议1", "需求创造1", "短期订单1", "短期订单2", "军需临单1", "军需临单2", "星际会展1", "星际会展2", "商品做空1", "商品做空2", "商品看涨1", "商品看涨2", "商品看涨3", "商品看涨4", "商品看跌1", "商品看跌2", "商品看跌3", "商品看跌4", "港仓囤货1", "港仓囤货2", "港仓囤货3", "港仓囤货4", "城市买涨1", "城市买涨2", "城市买涨3", "城市买涨4", "城市做空1", "城市做空2", "城市做空3", "城市做空4", "灾害保单1", "灾害保单2", "灾害保单3", "灾害保单4", "应急修复1", "应急修复2", "应急修复3", "应急修复4", "竞争封锁1", "竞争封锁2", "竞争封锁3", "竞争封锁4", "线索悬赏1", "线索悬赏2", "线索悬赏3", "线索悬赏4", "航线预报1", "航线预报2", "航线预报3", "航线预报4", "远期采购1", "远期采购2", "期货套保1", "期货套保2", "包销协议1", "包销协议2", "区域供需合约1", "区域供需合约2", "组合供需合约1", "自动撮合合约1", "环晶电池专供1", "双边对冲合约1", "惩罚性拒签条款1", "星链拆解1", "星链拆解2", "星链拆解3", "星链拆解4", "影仓牵引1", "影仓牵引2", "影仓牵引3", "影仓牵引4", "产权冻结1", "产权冻结2", "产权冻结3", "产权冻结4", "轨道齐射1", "轨道齐射2", "轨道齐射3", "轨道齐射4", "相位否决1", "相位否决2", "相位否决3", "相位否决4", "行星防卫军1", "行星防卫军2", "行星防卫军3", "行星防卫军4", "制空战斗机1", "制空战斗机2", "制空战斗机3", "制空战斗机4", "轨道轰炸机1", "轨道轰炸机2", "轨道轰炸机3", "轨道轰炸机4", "重装坦克1", "重装坦克2", "重装坦克3", "重装坦克4", "导弹阵地1", "导弹阵地2", "导弹阵地3", "导弹阵地4", "潜航舰队1", "潜航舰队2", "潜航舰队3", "潜航舰队4", "星海战舰1", "星海战舰2", "星海战舰3", "星海战舰4", "商品换线1", "商品换线2", "需求改造1", "需求改造2", "产业升级1", "产业升级2", "市场稳定1", "商路黑客1", "商路黑客2", "商品催化1", "商品催化2", "星港快线1", "星港快线2", "生产扩张1", "产能封锁1", "交通升级1", "交通瘫痪1", "消费刺激1", "消费冷却1", "共生红利1", "共生红利2", "远程挑衅1", "连锁过载1", "移动1", "移动2", "移动3", "普攻1", "普攻2", "普攻3", "格挡1", "格挡2", "格挡3", "区域破坏1", "区域破坏2", "区域破坏3", "破碎地脉1", "破碎地脉2", "远距破坏1", "飞行1", "飞行2", "重壳冲锋1", "重壳冲锋2", "重壳冲锋3", "甩尾1", "甩尾2", "装甲再生1", "装甲再生2", "瘴气炮1", "瘴气炮2", "瘴气结界1", "瘴气结界2", "瘴气爆发1", "瘴气爆发2", "瘴气回收1", "瘴气回收2", "瘴气回收3", "腐蚀吐息1", "咆哮1", "咆哮2", "地底潜行1", "地底潜行2", "地底潜行3", "打滚1", "打滚2", "狂奔1", "狂奔2", "泥甲1", "泥石流1", "火花反制1", "白谱锁定1", "轨降擒投诱导1", "流星航线加速1", "裂刃预判1", "电击踢破绽1", "垂直裂刃窗口1", "修复光线干扰1", "定身闪光余波1", "修正铁拳读秒1", "修复光线招商1", "星焰能量诱导1", "飞踢落点预判1", "星焰火焰护甲1", "星焰能源热潮1", "复仇之铠过载1", "热负荷射线诱导1", "蓝锋光刃窗口1", "蓝锋专利授权1", "完美格挡破绽1", "混乱光线诱导1", "迂回路线封锁1")
+common_pool_card_ids = PackedStringArray("城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "轨道融资2", "地下融资1", "舆论操控1", "舆论操控2", "热搜推送1", "危机快讯1", "金融传闻1", "监管风暴1", "太阳风暴预报1", "酸雨云团播种1", "引力潮汐播报1", "电磁雾干涉1", "诱导电波1", "诱导电波2", "远程挑衅1", "夺取怪兽1", "过载补给1", "过载补给2", "连锁过载1", "业主透镜1", "业主透镜2", "出牌追帧1", "出牌追帧2", "密约回溯1", "密约回溯2", "远程补给链1", "星门采购权1", "商业诱饵1", "商业诱饵2", "价格套利1", "价格套利2", "供应链保险1", "供应链保险2", "垄断协议1", "需求创造1", "短期订单1", "短期订单2", "军需临单1", "军需临单2", "星际会展1", "星际会展2", "商品做空1", "商品做空2", "商品看涨1", "商品看跌1", "港仓囤货1", "城市买涨1", "城市买涨2", "城市做空1", "城市做空2", "灾害保单1", "灾害保单2", "应急修复1", "竞争封锁1", "线索悬赏1", "航线预报1", "远期采购1", "远期采购2", "期货套保1", "期货套保2", "包销协议1", "包销协议2", "区域供需合约1", "区域供需合约2", "组合供需合约1", "自动撮合合约1", "环晶电池专供1", "双边对冲合约1", "惩罚性拒签条款1", "星链拆解1", "影仓牵引1", "产权冻结1", "轨道齐射1", "相位否决1", "行星防卫军1", "制空战斗机1", "轨道轰炸机1", "重装坦克1", "导弹阵地1", "潜航舰队1", "星海战舰1", "商品换线1", "商品换线2", "需求改造1", "需求改造2", "产业升级1", "产业升级2", "市场稳定1", "商路黑客1", "商路黑客2", "商品催化1", "商品催化2", "星港快线1", "星港快线2", "生产扩张1", "产能封锁1", "交通升级1", "交通瘫痪1", "消费刺激1", "消费冷却1", "共生红利1", "共生红利2", "移动2", "移动3", "普攻2", "普攻3", "格挡1", "格挡2", "格挡3", "区域破坏1", "区域破坏2", "区域破坏3", "破碎地脉1", "破碎地脉2", "远距破坏1", "飞行1", "装甲再生1", "装甲再生2")
+upgradeable_family_order = PackedStringArray("城市融资", "星际广告", "轨道融资", "舆论操控", "热搜推送", "危机快讯", "金融传闻", "监管风暴", "太阳风暴预报", "酸雨云团播种", "引力潮汐播报", "电磁雾干涉", "诱导电波", "过载补给", "商业诱饵", "价格套利", "商品做空", "商品看涨", "商品看跌", "港仓囤货", "城市买涨", "城市做空", "灾害保单", "应急修复", "竞争封锁", "线索悬赏", "航线预报", "商品换线", "需求改造", "供应链保险", "产业升级", "商路黑客", "短期订单", "军需临单", "星际会展", "远期采购", "期货套保", "包销协议", "区域供需合约", "组合供需合约", "自动撮合合约", "环晶电池专供", "双边对冲合约", "惩罚性拒签条款", "星链拆解", "影仓牵引", "产权冻结", "轨道齐射", "相位否决", "行星防卫军", "制空战斗机", "轨道轰炸机", "重装坦克", "导弹阵地", "潜航舰队", "星海战舰", "商品催化", "星港快线", "共生红利", "移动", "普攻", "格挡", "区域破坏", "破碎地脉", "飞行", "重壳冲锋", "甩尾", "装甲再生", "瘴气炮", "瘴气结界", "瘴气爆发", "瘴气回收", "咆哮", "地底潜行", "打滚", "狂奔")
+kind_field_rules = {
+"area_damage": {
+"allowed": ["cost", "damage", "kind", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "text"]
+},
+"area_trade_contract": {
+"allowed": ["accept_cash", "accept_consumption_delta", "accept_production_delta", "accept_route_flow_multiplier", "accept_transport_delta", "contract_add_demands", "contract_add_products", "contract_product_mode", "contract_products", "contract_remove_demands", "contract_remove_products", "cost", "damage", "decline_cash_penalty", "decline_consumption_delta", "decline_production_delta", "decline_route_damage", "decline_transport_delta", "kind", "move", "range", "route_flow_seconds", "route_flow_turns", "tags", "text"],
+"required": ["accept_cash", "accept_route_flow_multiplier", "contract_add_demands", "contract_add_products", "contract_product_mode", "cost", "damage", "decline_cash_penalty", "kind", "move", "range", "route_flow_seconds", "route_flow_turns", "tags", "text"]
+},
+"armor_gain": {
+"allowed": ["armor", "cost", "damage", "kind", "move", "range", "tags", "text"],
+"required": ["armor", "cost", "damage", "kind", "move", "range", "tags", "text"]
+},
+"attack": {
+"allowed": ["cost", "damage", "kind", "knockback", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "knockback", "move", "range", "tags", "text"]
+},
+"burrow": {
+"allowed": ["armor", "cost", "damage", "kind", "move", "range", "text"],
+"required": ["armor", "cost", "damage", "kind", "move", "range", "text"]
+},
+"card_access_boon": {
+"allowed": ["card_access_extra_hops", "card_access_global", "card_access_seconds", "cost", "damage", "extended_card_price_multiplier", "global_card_price_multiplier", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"],
+"required": ["card_access_seconds", "cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"]
+},
+"card_counter": {
+"allowed": ["cost", "counter_refund", "counter_strength", "counter_trace", "counter_window_seconds", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"],
+"required": ["cost", "counter_strength", "counter_window_seconds", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"]
+},
+"cash_gain": {
+"allowed": ["cash", "cost", "damage", "kind", "move", "range", "tags", "text"],
+"required": ["cash", "cost", "damage", "kind", "move", "range", "tags", "text"]
+},
+"charge_attack": {
+"allowed": ["cost", "damage", "delay", "kind", "knockback", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "knockback", "move", "range", "tags", "text"]
+},
+"city_contract_boon": {
+"allowed": ["contract_income", "contract_seconds", "contract_turns", "cost", "damage", "kind", "move", "panic", "range", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "tags", "text"],
+"required": ["contract_income", "contract_seconds", "contract_turns", "cost", "damage", "kind", "move", "panic", "range", "tags", "text"]
+},
+"city_control_dispute": {
+"allowed": ["control_block_seconds", "control_gdp_penalty", "cost", "damage", "kind", "move", "panic", "play_flow_required", "play_product", "range", "tags", "text"],
+"required": ["control_block_seconds", "control_gdp_penalty", "cost", "damage", "kind", "move", "panic", "play_flow_required", "play_product", "range", "tags", "text"]
+},
+"city_demand_shift": {
+"allowed": ["cost", "damage", "demand_shift", "kind", "move", "panic", "range", "repair_routes", "revenue_amount", "tags", "text"],
+"required": ["cost", "damage", "demand_shift", "kind", "move", "range", "repair_routes", "revenue_amount", "tags", "text"]
+},
+"city_gdp_derivative": {
+"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "tags", "text"]
+},
+"city_product_shift": {
+"allowed": ["cost", "damage", "kind", "move", "panic", "product_shift", "range", "revenue_amount", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "panic", "product_shift", "range", "revenue_amount", "tags", "text"]
+},
+"city_product_upgrade": {
+"allowed": ["cost", "damage", "kind", "move", "panic", "product_level", "range", "revenue_amount", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "panic", "product_level", "range", "revenue_amount", "tags", "text"]
+},
+"city_revenue_boost": {
+"allowed": ["cost", "damage", "kind", "move", "panic", "range", "revenue_amount", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "revenue_amount", "tags", "text"]
+},
+"corrosive_breath": {
+"allowed": ["cost", "damage", "kind", "miasma_count", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "miasma_count", "move", "range", "tags", "text"]
+},
+"fly": {
+"allowed": ["cost", "damage", "kind", "move", "range", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "text"]
+},
+"global_barrage": {
+"allowed": ["cost", "damage", "global_barrage_damage", "global_barrage_route_damage", "global_barrage_target_count", "kind", "move", "panic", "play_flow_required", "range", "tags", "text"],
+"required": ["cost", "damage", "global_barrage_damage", "global_barrage_route_damage", "global_barrage_target_count", "kind", "move", "panic", "play_flow_required", "range", "tags", "text"]
+},
+"guard": {
+"allowed": ["cost", "damage", "guard", "kind", "move", "range", "ranged_guard", "tags", "text"],
+"required": ["cost", "damage", "guard", "kind", "move", "range", "tags", "text"]
+},
+"intel_card_trace": {
+"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "reveal_city_count", "tags", "text", "trace_card_count", "trace_contract_count"],
+"required": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text", "trace_card_count"]
+},
+"intel_city_reveal": {
+"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "reveal_city_count", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "reveal_city_count", "tags", "text"]
+},
+"intel_contract_trace": {
+"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text", "trace_contract_count"],
+"required": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text", "trace_contract_count"]
+},
+"market_stabilize": {
+"allowed": ["cost", "damage", "kind", "move", "range", "stabilize_amount", "tags", "text", "volatility_delta"],
+"required": ["cost", "damage", "kind", "move", "range", "stabilize_amount", "tags", "text", "volatility_delta"]
+},
+"miasma_bloom": {
+"allowed": ["cost", "damage", "kind", "miasma_count", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "miasma_count", "move", "range", "text"]
+},
+"miasma_reclaim": {
+"allowed": ["cost", "damage", "kind", "move", "range", "reclaim_count", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "reclaim_count", "text"]
+},
+"miasma_shot": {
+"allowed": ["cost", "damage", "kind", "miasma_count", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "miasma_count", "move", "range", "text"]
+},
+"military_force": {
+"allowed": ["cost", "damage", "fixed_skill_count", "kind", "military_damage", "military_deploy_terrain", "military_domain", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_hp", "military_move", "military_range", "military_strike_route_damage", "military_type", "move", "movement_traits", "play_flow_required", "play_product", "range", "tags", "terrain_move_multiplier", "text"],
+"required": ["cost", "damage", "fixed_skill_count", "kind", "military_damage", "military_duration_seconds", "military_hp", "military_move", "military_range", "move", "play_flow_required", "play_product", "range", "tags", "text"]
+},
+"monster_lure": {
+"allowed": ["cost", "damage", "kind", "lure_speedup", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "lure_speedup", "move", "range", "tags", "text"]
+},
+"monster_takeover": {
+"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"]
+},
+"move": {
+"allowed": ["cost", "damage", "kind", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "text"]
+},
+"mudslide": {
+"allowed": ["cost", "damage", "delay", "kind", "move", "panic", "range", "tags", "text"],
+"required": ["cost", "damage", "delay", "kind", "move", "panic", "range", "tags", "text"]
+},
+"news_event": {
+"allowed": ["consumption_delta", "cost", "damage", "kind", "market_demand_pressure", "move", "news_category", "panic", "production_delta", "range", "route_damage", "tags", "text", "volatility_delta"],
+"required": ["cost", "damage", "kind", "move", "news_category", "panic", "range", "tags", "text"]
+},
+"panic_shift": {
+"allowed": ["cost", "damage", "kind", "move", "panic", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "panic", "range", "tags", "text"]
+},
+"player_hand_disrupt": {
+"allowed": ["cost", "damage", "hand_discard_count", "hand_lock_seconds", "kind", "move", "play_flow_required", "play_product", "range", "tags", "target_cash_penalty", "target_player_required", "text"],
+"required": ["cost", "damage", "hand_discard_count", "hand_lock_seconds", "kind", "move", "play_flow_required", "play_product", "range", "tags", "target_player_required", "text"]
+},
+"player_hand_steal": {
+"allowed": ["cost", "damage", "hand_lock_seconds", "hand_steal_count", "kind", "move", "play_flow_required", "play_product", "range", "steal_fail_cash", "tags", "target_player_required", "text"],
+"required": ["cost", "damage", "hand_steal_count", "kind", "move", "play_flow_required", "play_product", "range", "steal_fail_cash", "tags", "target_player_required", "text"]
+},
+"product_contract_boon": {
+"allowed": ["cash", "cost", "damage", "kind", "market_contract_seconds", "market_contract_turns", "market_demand_pressure", "market_supply_pressure", "move", "range", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "tags", "text", "volatility_delta"],
+"required": ["cost", "damage", "kind", "market_contract_seconds", "market_contract_turns", "move", "range", "tags", "text"]
+},
+"product_futures": {
+"allowed": ["cost", "damage", "kind", "market_demand_pressure", "market_supply_pressure", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "tags", "text"]
+},
+"product_growth_boon": {
+"allowed": ["cost", "damage", "growth_multiplier", "growth_seconds", "growth_turns", "kind", "move", "range", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "tags", "text"],
+"required": ["cost", "damage", "growth_multiplier", "growth_seconds", "growth_turns", "kind", "move", "range", "tags", "text"]
+},
+"product_speculation": {
+"allowed": ["cash", "cost", "damage", "kind", "move", "panic", "price_delta", "range", "tags", "text"],
+"required": ["cash", "cost", "damage", "kind", "move", "panic", "price_delta", "range", "tags", "text"]
+},
+"region_economy_shift": {
+"allowed": ["consumption_delta", "cost", "damage", "kind", "market_demand_pressure", "market_supply_pressure", "move", "panic", "play_flow_required", "play_product", "production_delta", "range", "repair_routes", "route_damage", "tags", "text", "transport_delta"],
+"required": ["cost", "damage", "kind", "move", "range", "tags", "text"]
+},
+"roar": {
+"allowed": ["cost", "damage", "delay", "kind", "move", "range", "text"],
+"required": ["cost", "damage", "delay", "kind", "move", "range", "text"]
+},
+"roll_attack": {
+"allowed": ["cost", "damage", "kind", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "text"]
+},
+"route_flow_boon": {
+"allowed": ["cost", "damage", "kind", "move", "range", "repair_routes", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "repair_routes", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "tags", "text"]
+},
+"route_insurance": {
+"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "repair_routes", "revenue_amount", "route_flow_multiplier", "route_flow_seconds", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "range", "repair_routes", "revenue_amount", "tags", "text"]
+},
+"route_sabotage": {
+"allowed": ["cost", "damage", "kind", "move", "panic", "range", "route_damage", "tags", "text"],
+"required": ["cost", "damage", "kind", "move", "panic", "range", "route_damage", "tags", "text"]
+},
+"special_monster_delay": {
+"allowed": ["cost", "damage", "delay", "kind", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "delay", "kind", "move", "range", "tags", "text"]
+},
+"supply_draw": {
+"allowed": ["cost", "damage", "draw_amount", "kind", "move", "range", "tags", "text"],
+"required": ["cost", "damage", "draw_amount", "kind", "move", "range", "tags", "text"]
+},
+"weather_control": {
+"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text", "weather_duration_seconds", "weather_forecast_lead_seconds", "weather_type", "weather_zone_count"],
+"required": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text", "weather_duration_seconds", "weather_forecast_lead_seconds", "weather_type", "weather_zone_count"]
+}
+}
+source_catalog_order_sha256 = "6c21095845aa21553fff89ba3760e16e9658c3db6a495f278f69145c4e130bd9"
+source_upgradeable_order_sha256 = "9a3e88aad3980b4b48fa1ec49311aee377fe2401656f469f40370a501ad1d29a"
+source_common_pool_order_sha256 = "273723e2f345a975a3d8174cbf30c0b3a75012835c22543b0b1b02f44af7ea20"

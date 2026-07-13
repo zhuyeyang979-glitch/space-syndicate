@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://5damlg16ppss"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_h4bts"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_herxl"]
+
+[sub_resource type="Resource" id="Resource_fyb4k"]
+script = ExtResource("1_h4bts")
+card_id = "惩罚性拒签条款1"
+family_id = "惩罚性拒签条款"
+kind = &"area_trade_contract"
+purchase_cost = 6
+rules_text = "强压式匿名条款：签约收益较低但可接通自动撮合商品；拒签会触发高额罚款，并同时拖慢生产、交通、消费和商路。"
+tags = PackedStringArray("合约", "惩罚")
+contract_product_mode = &"auto"
+authored_keys = PackedStringArray("cost", "kind", "contract_product_mode", "contract_add_products", "contract_add_demands", "accept_cash", "accept_transport_delta", "accept_route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "decline_cash_penalty", "decline_production_delta", "decline_transport_delta", "decline_consumption_delta", "decline_route_damage", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"accept_cash": 70,
+"accept_route_flow_multiplier": 1.16,
+"accept_transport_delta": 1,
+"contract_add_demands": 1,
+"contract_add_products": 1,
+"decline_cash_penalty": 180,
+"decline_consumption_delta": -1,
+"decline_production_delta": -1,
+"decline_route_damage": 2,
+"decline_transport_delta": -1,
+"route_flow_seconds": 60.0,
+"route_flow_turns": 2
+}
+
+[resource]
+script = ExtResource("2_herxl")
+family_id = "惩罚性拒签条款"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_fyb4k")])
+public_pool_eligible = true
+upgradeable_family = true

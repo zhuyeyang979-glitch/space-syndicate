@@ -1,0 +1,87 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://ckb34pmhyh1sr"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_avu5p"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_jisl5"]
+
+[sub_resource type="Resource" id="Resource_j70a6"]
+script = ExtResource("1_avu5p")
+card_id = "轨道齐射1"
+family_id = "轨道齐射"
+kind = &"global_barrage"
+purchase_cost = 5
+rules_text = "匿名轨道齐射：优先打击最多2座非己方高GDP公开城市，每座区域/城市受到1点伤害。目标城市公开，出牌者匿名。"
+tags = PackedStringArray("互动", "齐射", "全场")
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_flow_required", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"global_barrage_damage": 1,
+"global_barrage_route_damage": 0,
+"global_barrage_target_count": 2,
+"panic": 8
+}
+
+[sub_resource type="Resource" id="Resource_4rca1"]
+script = ExtResource("1_avu5p")
+card_id = "轨道齐射2"
+family_id = "轨道齐射"
+rank = 2
+kind = &"global_barrage"
+purchase_cost = 7
+rules_text = "升级齐射：优先打击最多3座非己方高GDP城市，每座受1点伤害，并追加少量商路损伤。"
+tags = PackedStringArray("互动", "齐射", "升级")
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "play_flow_required", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"global_barrage_damage": 1,
+"global_barrage_route_damage": 1,
+"global_barrage_target_count": 3,
+"panic": 12
+}
+
+[sub_resource type="Resource" id="Resource_7nina"]
+script = ExtResource("1_avu5p")
+card_id = "轨道齐射3"
+family_id = "轨道齐射"
+rank = 3
+kind = &"global_barrage"
+purchase_cost = 9
+rules_text = "核心齐射：优先打击最多4座非己方高GDP城市，每座受2点伤害并追加商路损伤，适合终局压制领先者。"
+tags = PackedStringArray("互动", "齐射", "核心")
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "play_flow_required", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"global_barrage_damage": 2,
+"global_barrage_route_damage": 1,
+"global_barrage_target_count": 4,
+"panic": 16
+}
+
+[sub_resource type="Resource" id="Resource_3c424"]
+script = ExtResource("1_avu5p")
+card_id = "轨道齐射4"
+family_id = "轨道齐射"
+rank = 4
+kind = &"global_barrage"
+purchase_cost = 11
+rules_text = "终端齐射IV：优先打击最多6座非己方高GDP城市，每座受2点伤害并追加2点商路损伤；影响巨大但公开目标非常多。"
+tags = PackedStringArray("互动", "齐射", "IV")
+play_flow_required = 5
+authored_keys = PackedStringArray("cost", "kind", "play_flow_required", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"global_barrage_damage": 2,
+"global_barrage_route_damage": 2,
+"global_barrage_target_count": 6,
+"panic": 22
+}
+
+[resource]
+script = ExtResource("2_jisl5")
+family_id = "轨道齐射"
+pack_id = &"player_interaction"
+authored_ranks = Array[Resource]([SubResource("Resource_j70a6"), SubResource("Resource_4rca1"), SubResource("Resource_7nina"), SubResource("Resource_3c424")])
+public_pool_eligible = true
+upgradeable_family = true

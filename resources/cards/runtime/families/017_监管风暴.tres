@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c5oog7s4mpewj"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_13747"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_ng5ht"]
+
+[sub_resource type="Resource" id="Resource_ijqr0"]
+script = ExtResource("1_13747")
+card_id = "监管风暴1"
+family_id = "监管风暴"
+kind = &"news_event"
+purchase_cost = 5
+rules_text = "匿名引爆监管风暴：选中区域生产-1、消费-1、热度+18，用来打击高增长城市或做空目标。"
+tags = PackedStringArray("新闻", "压制")
+authored_keys = PackedStringArray("cost", "kind", "news_category", "panic", "production_delta", "consumption_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"consumption_delta": -1,
+"news_category": "regulation",
+"panic": 18,
+"production_delta": -1
+}
+
+[resource]
+script = ExtResource("2_ng5ht")
+family_id = "监管风暴"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_ijqr0")])
+public_pool_eligible = true
+upgradeable_family = true

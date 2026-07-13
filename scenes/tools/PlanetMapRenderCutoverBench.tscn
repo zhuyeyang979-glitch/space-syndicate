@@ -1,0 +1,63 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/planet_map_render_cutover_bench.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/tools/PlanetMapMcpPreview.tscn" id="3_preview"]
+
+[node name="PlanetMapRenderCutoverBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.027, 0.039, 1)
+
+[node name="BenchMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="BenchRows" type="VBoxContainer" parent="BenchMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CutoverBenchTitleLabel" type="Label" parent="BenchMargin/BenchRows"]
+layout_mode = 2
+text = "Planet Map Render Cutover QA"
+text_overrun_behavior = 3
+
+[node name="CutoverBenchStatusLabel" type="Label" parent="BenchMargin/BenchRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Waiting"
+autowrap_mode = 3
+
+[node name="CutoverBenchPreviewHost" type="PanelContainer" parent="BenchMargin/BenchRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlanetMapMcpPreview" parent="BenchMargin/BenchRows/CutoverBenchPreviewHost" instance=ExtResource("3_preview")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

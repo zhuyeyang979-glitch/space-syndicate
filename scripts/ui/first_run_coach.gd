@@ -23,9 +23,9 @@ func _ready() -> void:
 
 
 func set_coach(data: Dictionary) -> void:
-	var is_visible := bool(data.get("visible", not data.is_empty()))
-	visible = is_visible
-	if not is_visible:
+	var should_show := bool(data.get("visible", not data.is_empty()))
+	visible = should_show
+	if not should_show:
 		return
 	var collapsed := bool(data.get("collapsed", false))
 	_current_accent = data.get("primary_action", {}).get("accent", _stage_color(str(data.get("stage", "")))) if data.get("primary_action", {}) is Dictionary else _stage_color(str(data.get("stage", "")))

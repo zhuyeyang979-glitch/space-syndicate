@@ -25,7 +25,7 @@
 - 玩家现金、手牌、弃牌、AI 私有计划是隐藏信息。
 - 打出的卡牌公开展示，但打牌者默认未知，玩家通过线索猜测。
 - 卡牌购买只在怪兽所在区域或相邻区域可买；打开购买窗口时检查资格。
-- 买牌花现金；打牌通常检查商品流动条件，不直接消耗商品。
+- 买牌花现金；多数 I 级牌与所有城市发展牌免出牌门槛，高阶牌按区域 GDP 份额检查资格。
 - 重复获得同名牌会自动升级到更高 rank；rank 用罗马数字显示。
 
 ## 3. 隐藏信息边界
@@ -150,8 +150,10 @@
 - `cost`
 - `tags`
 - `route_tags`
-- `play_product`
-- `play_flow_required`
+- `supply_product`
+- `play_requirement_kind`
+- `play_region_scope`
+- `play_region_gdp_share_required`
 - `target_player_required`
 - `target_monster_required`
 - `cash`
@@ -163,7 +165,7 @@
 - `route_damage`
 - `repair_routes`
 - `product_bet_*`
-- `gdp_bet_*`
+- `gdp_derivative_terms` (injected from the v0.4 Inspector Resource catalog)
 - `weather_*`
 - `military_*`
 - `hp`

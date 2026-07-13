@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MonsterCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/monster_codex_entry_resource.gd" id="1_manta"]
+
+[resource]
+script = ExtResource("1_manta")
+entry_id = "mirror_manta"
+display_name = "Mirror Manta"
+subtitle = "Fast evasive monster. It teaches public tells, evasion, and target ambiguity."
+summary = "A quick monster profile used to show how public clues stay useful without private target data."
+accent = "#c084fc"
+chips = PackedStringArray("Fast", "Evasive", "Public tell")
+source_note = "Codex content resource only. Movement and targeting rules are unchanged."
+hp = 9
+armor = 1
+move_text = "Move 3 | evasive"
+style = "Reflective manta silhouette that bends route attention."
+profile = "evasive pressure"
+public_tells = PackedStringArray("Mirror trail is public, ownership is not.")
+action_names = PackedStringArray("Mirror Slip", "Signal Bend")
+action_tags = PackedStringArray("move", "control")
+action_probabilities = PackedStringArray("I 3/6 | IV 4/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Moves through the most exposed public route.", "Adds a public callout near a contested lane.")
+action_bodies = PackedStringArray("Fast movement remains visible to all players.", "Control hint never stores private target data.")

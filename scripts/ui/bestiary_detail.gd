@@ -2,6 +2,8 @@ extends PanelContainer
 class_name SpaceSyndicateBestiaryDetail
 
 const MonsterArtViewScript := preload("res://scripts/monster_art_view.gd")
+const BestiaryMonsterKpiCardScene := preload("res://scenes/ui/codex/BestiaryMonsterKpiCard.tscn")
+const BestiaryMonsterActionCardScene := preload("res://scenes/ui/codex/BestiaryMonsterActionCard.tscn")
 
 @onready var header: HBoxContainer = %BestiaryMonsterHeader
 @onready var art_slot: PanelContainer = %BestiaryMonsterArtSlot
@@ -133,82 +135,23 @@ func _add_chip(entry: Dictionary) -> void:
 
 
 func _add_kpi(entry: Dictionary) -> void:
-	var accent := _dictionary_color(entry, "accent", Color("#fb923c"))
-	var card := PanelContainer.new()
+	var card := BestiaryMonsterKpiCardScene.instantiate() as PanelContainer
+	if card == null:
+		return
 	card.name = "BestiaryMonsterKpiCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 82)
-	card.tooltip_text = str(entry.get("tooltip", "%s｜%s｜%s" % [entry.get("title", ""), entry.get("value", ""), entry.get("meta", "")]))
-	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 8))
 	kpi_grid.add_child(card)
-	var margin := _margin(9, 7, 9, 7)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	margin.add_child(box)
-	box.add_child(_label(str(entry.get("title", "")), 12, accent.lightened(0.18)))
-	var value_text := str(entry.get("value", ""))
-	var value := _label(_short_text(value_text, 38), 12, Color("#f8fafc"))
-	value.name = "BestiaryMonsterKpiValue"
-	value.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	value.tooltip_text = value_text
-	box.add_child(value)
-	var meta_text := str(entry.get("meta", ""))
-	var meta := _label(_short_text(meta_text, 42), 11, Color("#94a3b8"))
-	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	meta.tooltip_text = meta_text
-	box.add_child(meta)
+	if card.has_method("set_kpi"):
+		card.call("set_kpi", entry)
 
 
 func _add_action(entry: Dictionary, action_index: int, fallback_accent: Color) -> void:
-	var accent := _dictionary_color(entry, "accent", fallback_accent.lerp(Color("#fde68a"), clampf(float(action_index) / 7.0, 0.0, 0.45)))
-	var card := PanelContainer.new()
+	var card := BestiaryMonsterActionCardScene.instantiate() as PanelContainer
+	if card == null:
+		return
 	card.name = "BestiaryMonsterActionCard"
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.custom_minimum_size = Vector2(0, 108)
-	card.tooltip_text = str(entry.get("tooltip", entry.get("body", "")))
-	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 8))
 	action_grid.add_child(card)
-	var margin := _margin(9, 7, 9, 7)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 3)
-	margin.add_child(box)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 5)
-	box.add_child(row)
-	var index_label := _label(str(entry.get("index", "%02d" % (action_index + 1))), 12, accent.lightened(0.18))
-	index_label.name = "BestiaryMonsterActionIndex"
-	row.add_child(index_label)
-	var name_text := str(entry.get("name", "行动"))
-	var name_label := _label(_short_text(name_text, 24), 13, Color("#f8fafc"))
-	name_label.name = "BestiaryMonsterActionName"
-	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_label.tooltip_text = name_text
-	row.add_child(name_label)
-	var tags_text := str(entry.get("tags", "基础"))
-	var tags := _label(_short_text(tags_text, 18), 10, accent.lightened(0.14))
-	tags.tooltip_text = tags_text
-	row.add_child(tags)
-	var probability_text := str(entry.get("probability", "I --/--｜IV --/--"))
-	var probability := _label(probability_text, 12, Color("#fde68a"))
-	probability.name = "BestiaryMonsterActionProbability"
-	probability.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	probability.tooltip_text = str(entry.get("probability_tooltip", probability_text))
-	box.add_child(probability)
-	var facts_text := str(entry.get("facts", "贴近/移动"))
-	var facts := _label(_short_text(facts_text, 72), 11, Color("#cbd5e1"))
-	facts.name = "BestiaryMonsterActionFacts"
-	facts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	facts.tooltip_text = facts_text
-	box.add_child(facts)
-	var body_text := str(entry.get("body", ""))
-	if body_text != "":
-		var body := _label(_short_text(body_text, 72), 11, Color("#e5e7eb"))
-		body.name = "BestiaryMonsterActionBody"
-		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		body.tooltip_text = body_text
-		box.add_child(body)
+	if card.has_method("set_action"):
+		card.call("set_action", entry, action_index, fallback_accent)
 
 
 func _label(text: String, font_size: int, color: Color) -> Label:
@@ -241,6 +184,10 @@ func _dictionary_color(data: Dictionary, key: String, fallback: Color) -> Color:
 	var value: Variant = data.get(key, fallback)
 	if value is Color:
 		return value as Color
+	if value is String:
+		var text_value := str(value)
+		if text_value.begins_with("#"):
+			return Color(text_value)
 	return fallback
 
 

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://qd0hy8c13pi2"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_jnhc3"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_bbn6p"]
+
+[sub_resource type="Resource" id="Resource_fn2oa"]
+script = ExtResource("1_jnhc3")
+card_id = "消费刺激1"
+family_id = "消费刺激"
+kind = &"region_economy_shift"
+purchase_cost = 4
+rules_text = "选中区域商品消费水平+1，并为当前商品制造少量需求压力。消费型GDP会提高。"
+tags = PackedStringArray("区域", "消费")
+authored_keys = PackedStringArray("cost", "kind", "consumption_delta", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"consumption_delta": 1,
+"market_demand_pressure": 1
+}
+
+[resource]
+script = ExtResource("2_bbn6p")
+family_id = "消费刺激"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_fn2oa")])
+public_pool_eligible = true

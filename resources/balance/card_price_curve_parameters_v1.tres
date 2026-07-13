@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="CardPriceCurveParametersResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/card_price_curve_parameters_resource.gd" id="1_curve"]
+
+[resource]
+script = ExtResource("1_curve")

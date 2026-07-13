@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://xfoeh0li2gt6"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_3pdn6"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_txyy7"]
+
+[sub_resource type="Resource" id="Resource_3eljr"]
+script = ExtResource("1_3pdn6")
+card_id = "打滚1"
+family_id = "打滚"
+kind = &"roll_attack"
+purchase_cost = 3
+rules_text = "向选中区域翻滚260米，落点造成区域伤害；若120米内贴近其他怪兽则造成2点伤害。"
+tags = PackedStringArray()
+move = 260.0
+range = 120.0
+damage = 2
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_8sceh"]
+script = ExtResource("1_3pdn6")
+card_id = "打滚2"
+family_id = "打滚"
+rank = 2
+kind = &"roll_attack"
+purchase_cost = 6
+rules_text = "高阶打滚，向选中区域翻滚380米；落点造成区域伤害，130米内命中其他怪兽造成3点伤害。"
+tags = PackedStringArray("冲撞", "升级")
+move = 380.0
+range = 130.0
+damage = 3
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_txyy7")
+family_id = "打滚"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_3eljr"), SubResource("Resource_8sceh")])
+upgradeable_family = true

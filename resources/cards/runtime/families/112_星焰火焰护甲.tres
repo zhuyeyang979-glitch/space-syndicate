@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://evehhgsd0fim"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_n5q80"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_nhn5g"]
+
+[sub_resource type="Resource" id="Resource_k7g87"]
+script = ExtResource("1_n5q80")
+card_id = "星焰火焰护甲1"
+family_id = "星焰火焰护甲"
+kind = &"armor_gain"
+purchase_cost = 4
+rules_text = "利用星焰火焰前摇缩身防御，怪兽立即获得5点护甲。"
+tags = PackedStringArray("焰环幼星", "防御")
+authored_keys = PackedStringArray("cost", "kind", "armor", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"armor": 5
+}
+
+[resource]
+script = ExtResource("2_nhn5g")
+family_id = "星焰火焰护甲"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_k7g87")])

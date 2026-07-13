@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AiPersonalityPolicyResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_personality_policy_resource.gd" id="1_personality"]
+
+[resource]
+script = ExtResource("1_personality")
+policy_id = "intelligence"
+display_name = "情报型AI"
+style = "用线索、购牌范围和追溯卡牌减少匿名迷雾，再选择低风险收益路线。"
+build_bias = 0.98
+business_bias = 1.02
+monster_bias = 0.9
+economy_bias = 1.12
+bid_aggression = 0.82
+exploration = 0.2
+route_preferences = {
+"city_growth": 1.05,
+"finance_speculation": 1.08,
+"intel_supply": 1.42
+}

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cbj13owirr27c"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_40ki5"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_76rr7"]
+
+[sub_resource type="Resource" id="Resource_ak3t1"]
+script = ExtResource("1_40ki5")
+card_id = "金融传闻1"
+family_id = "金融传闻"
+kind = &"news_event"
+purchase_cost = 4
+rules_text = "匿名散布金融传闻：围绕当前商品制造持续到下次供需重算的需求压力，并让目标区域热度+10。"
+tags = PackedStringArray("新闻", "商品")
+authored_keys = PackedStringArray("cost", "kind", "news_category", "panic", "market_demand_pressure", "volatility_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 2,
+"news_category": "market",
+"panic": 10,
+"volatility_delta": 1
+}
+
+[resource]
+script = ExtResource("2_76rr7")
+family_id = "金融传闻"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_ak3t1")])
+public_pool_eligible = true
+upgradeable_family = true

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CityGdpDerivativeTermsCatalogResource" load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/finance/city_gdp_derivative_terms_catalog_resource.gd" id="1_catalog"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_long_i.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_long_ii.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_long_iii.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_long_iv.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_short_i.tres" id="6"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_short_ii.tres" id="7"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_short_iii.tres" id="8"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_short_iv.tres" id="9"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/disaster_insurance_i.tres" id="10"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/disaster_insurance_ii.tres" id="11"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/disaster_insurance_iii.tres" id="12"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/disaster_insurance_iv.tres" id="13"]
+
+[resource]
+script = ExtResource("1_catalog")
+term_resources = Array[Resource]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10"), ExtResource("11"), ExtResource("12"), ExtResource("13")])

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MonsterCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/monster_codex_entry_resource.gd" id="1_leviathan"]
+
+[resource]
+script = ExtResource("1_leviathan")
+entry_id = "phase_leviathan"
+display_name = "Phase Leviathan"
+subtitle = "Autonomous monster. It pressures routes and districts through public movement."
+summary = "A medium orbital kaiju used to teach public route pressure and anonymous table effects."
+accent = "#fb7185"
+chips = PackedStringArray("Autonomous", "Route", "Pressure")
+source_note = "Codex content resource only. Monster AI and damage rules are unchanged."
+hp = 12
+armor = 2
+move_text = "Move 2 | route pressure"
+style = "Long-body orbital kaiju with market-disruption behavior."
+profile = "orbital pressure"
+public_tells = PackedStringArray("No hidden owner leak.")
+action_names = PackedStringArray("Orbit Crush", "Market Roar")
+action_tags = PackedStringArray("move", "event")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Moves toward a profitable route.", "Raises volatility on adjacent product.")
+action_bodies = PackedStringArray("Pressure appears as public route callout.", "Effect is public and anonymized.")

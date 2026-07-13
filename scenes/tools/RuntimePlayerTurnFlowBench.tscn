@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/runtime_player_turn_flow_bench.gd" id="2_script"]
+
+[node name="RuntimePlayerTurnFlowBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="RuntimePlayerFlowBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.017, 0.024, 0.04, 1)
+
+[node name="RuntimePlayerFlowMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="RuntimePlayerFlowRows" type="VBoxContainer" parent="RuntimePlayerFlowMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RuntimePlayerFlowHeader" type="HBoxContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RuntimePlayerFlowTitleLabel" type="Label" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Runtime Player Turn Flow Bench"
+text_overrun_behavior = 3
+
+[node name="RuntimePlayerFlowScopeLabel" type="Label" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowHeader"]
+layout_mode = 2
+text = "真实 GameScreen / PlayerBoard / RightInspector / OverlayLayer"
+text_overrun_behavior = 3
+
+[node name="RuntimePlayerFlowStatusPanel" type="PanelContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows"]
+layout_mode = 2
+
+[node name="RuntimePlayerFlowStatusMargin" type="MarginContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowStatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="RuntimePlayerFlowStatusRows" type="VBoxContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowStatusPanel/RuntimePlayerFlowStatusMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RuntimePlayerFlowStatusLabel" type="Label" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowStatusPanel/RuntimePlayerFlowStatusMargin/RuntimePlayerFlowStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="RuntimePlayerFlowSummaryLabel" type="Label" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowStatusPanel/RuntimePlayerFlowStatusMargin/RuntimePlayerFlowStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Runtime flow results will appear here."
+autowrap_mode = 3
+
+[node name="RuntimePlayerFlowPreviewHost" type="PanelContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RuntimePlayerFlowPreviewMargin" type="MarginContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowPreviewHost"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="RuntimePlayerFlowViewportContainer" type="SubViewportContainer" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowPreviewHost/RuntimePlayerFlowPreviewMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 640)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RuntimePlayerFlowPreviewViewport" type="SubViewport" parent="RuntimePlayerFlowMargin/RuntimePlayerFlowRows/RuntimePlayerFlowPreviewHost/RuntimePlayerFlowPreviewMargin/RuntimePlayerFlowViewportContainer"]
+unique_name_in_owner = true
+size = Vector2i(1600, 960)
+transparent_bg = true
+render_target_update_mode = 4

@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c1g41ya0b6ynq"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_aiv6p"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_umc50"]
+
+[sub_resource type="Resource" id="Resource_f0fcm"]
+script = ExtResource("1_aiv6p")
+card_id = "港仓囤货1"
+family_id = "港仓囤货"
+kind = &"product_futures"
+purchase_cost = 5
+rules_text = "选中己方存活城市作为匿名仓库；正式仓储暴露与毁灭损失见期货条款。"
+tags = PackedStringArray("经济", "仓储", "囤积")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 2
+}
+
+[sub_resource type="Resource" id="Resource_4i0ro"]
+script = ExtResource("1_aiv6p")
+card_id = "港仓囤货2"
+family_id = "港仓囤货"
+rank = 2
+kind = &"product_futures"
+purchase_cost = 7
+rules_text = "升级港仓囤货，城市会留下公开仓储经济线索。"
+tags = PackedStringArray("经济", "仓储", "升级")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 3
+}
+
+[sub_resource type="Resource" id="Resource_anu88"]
+script = ExtResource("1_aiv6p")
+card_id = "港仓囤货3"
+family_id = "港仓囤货"
+rank = 3
+kind = &"product_futures"
+purchase_cost = 9
+rules_text = "核心港仓囤货，仓库城市成为可被怪兽反制的目标。"
+tags = PackedStringArray("经济", "仓储", "核心")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 4
+}
+
+[sub_resource type="Resource" id="Resource_px4vo"]
+script = ExtResource("1_aiv6p")
+card_id = "港仓囤货4"
+family_id = "港仓囤货"
+rank = 4
+kind = &"product_futures"
+purchase_cost = 11
+rules_text = "终端港仓囤货 IV，利润强但城市仓库风险极高。"
+tags = PackedStringArray("经济", "仓储", "IV")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 5
+}
+
+[resource]
+script = ExtResource("2_umc50")
+family_id = "港仓囤货"
+pack_id = &"finance"
+authored_ranks = Array[Resource]([SubResource("Resource_f0fcm"), SubResource("Resource_4i0ro"), SubResource("Resource_anu88"), SubResource("Resource_px4vo")])
+public_pool_eligible = true
+upgradeable_family = true

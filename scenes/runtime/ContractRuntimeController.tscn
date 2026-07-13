@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/contract_runtime_controller.gd" id="1_controller"]
+
+[node name="ContractRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Authoritative v0.4 owner of contract endpoint selection, project-controller authority, pending offers, visible response timing, settlement receipts, privacy snapshots, and save data."

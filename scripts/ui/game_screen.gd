@@ -51,6 +51,9 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 var current_ui_data: Dictionary = {}
 var _temporary_track_focus_active := false
 var _selected_hand_card_data: Dictionary = {}
+var _last_runtime_player_feedback: Dictionary = {}
+var _last_track_action_bridge_id := ""
+var _last_track_action_bridge_frame := -1
 var _last_visual_event_key := ""
 var _campaign_focus_layout := false
 var _last_focus_guide_data: Dictionary = {}
@@ -70,6 +73,8 @@ func _ready() -> void:
 		track_node.connect("track_entry_selected", Callable(self, "_on_track_entry_selected"))
 	if track_node != null and track_node.has_signal("track_entry_opened"):
 		track_node.connect("track_entry_opened", Callable(self, "_on_track_entry_opened"))
+	if track_node != null and track_node.has_signal("track_action_requested"):
+		track_node.connect("track_action_requested", Callable(self, "_on_track_action_requested"))
 	if track_node != null and track_node.has_signal("track_entry_hovered"):
 		track_node.connect("track_entry_hovered", Callable(self, "_on_track_entry_hovered"))
 	if track_node != null and track_node.has_signal("track_entry_unhovered"):
@@ -129,7 +134,13 @@ func apply_state(data: Dictionary) -> void:
 	if top_bar.has_method("set_state"):
 		top_bar.call("set_state", ui_data.get("top_bar", {}))
 	var track_node := _public_track_node()
-	if track_node != null and track_node.has_method("set_entries"):
+	if track_node != null and track_node.has_method("set_track_state"):
+		var track_state: Dictionary = ui_data.get("card_resolution_track", {}) if ui_data.get("card_resolution_track", {}) is Dictionary else {}
+		if track_state.is_empty():
+			var fallback_entries: Variant = ui_data.get("card_track", [])
+			track_state = {"entries": fallback_entries if fallback_entries is Array else []}
+		track_node.call("set_track_state", track_state)
+	elif track_node != null and track_node.has_method("set_entries"):
 		var track_entries: Variant = ui_data.get("card_track", [])
 		track_node.call("set_entries", track_entries if track_entries is Array else [])
 	if first_run_coach != null and first_run_coach.has_method("set_coach"):
@@ -190,6 +201,15 @@ func attach_runtime_map(map_node: Control) -> void:
 	call_deferred("_sync_runtime_table_focus_order")
 
 
+func get_embedded_map_view() -> Control:
+	if planet_board != null and planet_board.has_method("get_embedded_map_view"):
+		var embedded: Variant = planet_board.call("get_embedded_map_view")
+		if embedded is Control:
+			return embedded as Control
+	var found := find_child("PlanetMapView", true, false) as Control
+	return found
+
+
 func get_overlay_host() -> Node:
 	return overlay_layer
 
@@ -198,6 +218,10 @@ func get_visual_event_snapshot() -> Dictionary:
 	if visual_event_layer != null and visual_event_layer.has_method("get_visual_event_snapshot"):
 		return visual_event_layer.call("get_visual_event_snapshot") as Dictionary
 	return {}
+
+
+func get_runtime_player_feedback_snapshot() -> Dictionary:
+	return _last_runtime_player_feedback.duplicate(true)
 
 
 func runtime_focus_order_snapshot() -> Array:
@@ -286,16 +310,18 @@ func _public_track_node() -> Node:
 
 
 func _on_end_turn_requested() -> void:
+	_show_player_action_feedback("end_turn", "pending", "结束回合已提交，等待桌面进入下一阶段。")
 	end_turn_requested.emit()
 
 
 func _on_menu_requested() -> void:
-	action_requested.emit("menu")
+	_on_action_requested("menu")
 
 
 func _on_action_requested(action_id: String) -> void:
 	if _should_open_detail_drawer(action_id):
 		_open_detail_drawer(action_id)
+	_show_player_action_feedback(action_id)
 	action_requested.emit(action_id)
 
 
@@ -351,10 +377,12 @@ func _show_track_action_hover_preview(action_id: String) -> void:
 
 
 func _on_side_drawer_action_requested(action_id: String) -> void:
+	_show_player_action_feedback(action_id, "resolved", "侧栏动作已提交。")
 	action_requested.emit(action_id)
 
 
 func _on_temporary_decision_action_requested(action_id: String) -> void:
+	_show_player_action_feedback(action_id, "resolved", "临时决策已提交，等待规则结算。")
 	action_requested.emit(action_id)
 
 
@@ -439,7 +467,7 @@ func _on_track_entry_selected(entry: Dictionary) -> void:
 	_show_track_focus_for_entry(entry, "已选牌轨", false)
 	var action_id := str(entry.get("select_action", "")).strip_edges()
 	if action_id != "":
-		action_requested.emit(action_id)
+		_emit_track_action_request(action_id, "已选择公共轨道线索。")
 
 
 func _on_track_entry_opened(entry: Dictionary) -> void:
@@ -448,7 +476,24 @@ func _on_track_entry_opened(entry: Dictionary) -> void:
 	_show_track_focus_for_entry(entry, "打开牌轨", false)
 	var action_id := str(entry.get("open_action", "")).strip_edges()
 	if action_id != "":
-		action_requested.emit(action_id)
+		_emit_track_action_request(action_id, "已打开公共轨道线索。")
+
+
+func _on_track_action_requested(action_id: String) -> void:
+	_emit_track_action_request(action_id, "公共牌轨响应已提交。")
+
+
+func _emit_track_action_request(action_id: String, detail: String) -> void:
+	var normalized_action_id := action_id.strip_edges()
+	if normalized_action_id == "":
+		return
+	var current_frame := Engine.get_process_frames()
+	if _last_track_action_bridge_id == normalized_action_id and _last_track_action_bridge_frame == current_frame:
+		return
+	_last_track_action_bridge_id = normalized_action_id
+	_last_track_action_bridge_frame = current_frame
+	_show_player_action_feedback(normalized_action_id, "pending", detail)
+	action_requested.emit(normalized_action_id)
 
 
 func _on_card_drag_preview_started(card_data: Dictionary, screen_position: Vector2) -> void:
@@ -596,7 +641,7 @@ func _configure_hand_hover_preview() -> void:
 		hand_hover_preview_card.set_meta("hand_hover_readable_preview", true)
 
 
-func _set_mouse_filter_recursive(node: Node, filter: int) -> void:
+func _set_mouse_filter_recursive(node: Node, filter: Control.MouseFilter) -> void:
 	if node is Control:
 		(node as Control).mouse_filter = filter
 	for child in node.get_children():
@@ -786,7 +831,7 @@ func _focus_target_control(focus_target: String) -> Control:
 		"district_supply":
 			return _first_visible_control(["DistrictSupplySideDrawer", "DistrictSupplyPanel", "DistrictSupplySideDrawerOverlay", "DistrictSupplyDrawer", "SideDrawerPanel", "RightInspector", "PlanetStageViewport"])
 		"private_decision", "contract_prompt":
-			return _first_visible_control(["TemporaryDecisionPanel", "ConfirmPanel", "ModalLayer", "OverlayLayer"])
+			return _first_visible_control(["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionPanel", "ConfirmPanel", "ModalLayer", "OverlayLayer"])
 		"top_bar":
 			return top_bar as Control
 		"scenario_coach":
@@ -958,9 +1003,124 @@ func _sync_temporary_decision_overlay(value: Variant) -> void:
 	if decision.is_empty():
 		if overlay_layer.has_method("hide_confirm"):
 			overlay_layer.call("hide_confirm")
+		if str(_last_runtime_player_feedback.get("kind", "")) == "temporary_decision":
+			_clear_player_runtime_feedback()
 		return
 	if overlay_layer.has_method("show_temporary_decision"):
 		overlay_layer.call("show_temporary_decision", decision)
+	_show_temporary_decision_player_feedback(decision)
+
+
+func _show_player_action_feedback(action_id: String, state: String = "pending", detail: String = "") -> void:
+	var normalized_action_id := action_id.strip_edges()
+	if normalized_action_id == "":
+		return
+	var label := _action_feedback_label(normalized_action_id, state)
+	var resolved_detail := detail.strip_edges()
+	if resolved_detail == "":
+		resolved_detail = _mission_action_feedback_detail(normalized_action_id, state)
+	if resolved_detail == "":
+		resolved_detail = "动作 id: %s" % normalized_action_id
+	_last_runtime_player_feedback = {
+		"kind": "action",
+		"state": state,
+		"action_id": normalized_action_id,
+		"label": label,
+		"detail": resolved_detail,
+	}
+	_send_player_runtime_feedback(_last_runtime_player_feedback)
+
+
+func _show_temporary_decision_player_feedback(decision: Dictionary) -> void:
+	var title := str(decision.get("title", "临时决策")).strip_edges()
+	if title == "":
+		title = "临时决策"
+	var kind := str(decision.get("kind", "")).strip_edges()
+	var action_count := 0
+	var actions: Array = decision.get("actions", []) if decision.get("actions", []) is Array else []
+	for action_variant in actions:
+		if action_variant is Dictionary and not bool((action_variant as Dictionary).get("disabled", false)):
+			action_count += 1
+	_last_runtime_player_feedback = {
+		"kind": "temporary_decision",
+		"state": "temporary_decision",
+		"action_id": str(decision.get("id", kind)),
+		"label": "等待决策｜%s" % _short_feedback_text(title, 18),
+		"detail": "Overlay 正在等待 %s；可用选择 %d 个。" % [kind if kind != "" else title, action_count],
+	}
+	_send_player_runtime_feedback(_last_runtime_player_feedback)
+
+
+func _clear_player_runtime_feedback() -> void:
+	_last_runtime_player_feedback = {}
+	if player_board != null and player_board.has_method("set_runtime_feedback"):
+		player_board.call("set_runtime_feedback", {})
+
+
+func _send_player_runtime_feedback(feedback: Dictionary) -> void:
+	if player_board != null and player_board.has_method("set_runtime_feedback"):
+		player_board.call("set_runtime_feedback", feedback)
+
+
+func _action_feedback_label(action_id: String, state: String) -> String:
+	var label := _action_label_for_id(action_id)
+	if label == "":
+		label = action_id
+	match state:
+		"resolved":
+			return "已提交｜%s" % _short_feedback_text(label, 22)
+		"blocked":
+			return "未执行｜%s" % _short_feedback_text(label, 22)
+	return "处理中｜%s" % _short_feedback_text(label, 22)
+
+
+func _action_label_for_id(action_id: String) -> String:
+	var candidates: Array = []
+	var player_data: Dictionary = current_ui_data.get("player_board", {}) if current_ui_data.get("player_board", {}) is Dictionary else {}
+	for key in ["actions", "quick_actions"]:
+		if player_data.get(key, []) is Array:
+			candidates.append_array(player_data.get(key, []))
+	if not _selected_hand_card_data.is_empty() and _selected_hand_card_data.get("actions", []) is Array:
+		candidates.append_array(_selected_hand_card_data.get("actions", []))
+	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}
+	if inspector.get("actions", []) is Array:
+		candidates.append_array(inspector.get("actions", []))
+	for coach_key in ["first_run_coach", "scenario_coach"]:
+		var coach: Dictionary = current_ui_data.get(coach_key, {}) if current_ui_data.get(coach_key, {}) is Dictionary else {}
+		var primary_action: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
+		if not primary_action.is_empty():
+			candidates.append(primary_action)
+		if coach.get("secondary_actions", []) is Array:
+			candidates.append_array(coach.get("secondary_actions", []))
+	for entry_variant in candidates:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		if str(entry.get("id", entry.get("action_id", ""))).strip_edges() == action_id:
+			return str(entry.get("label", entry.get("text", action_id))).strip_edges()
+	return ""
+
+
+func _mission_action_feedback_detail(action_id: String, state: String) -> String:
+	if not action_id.begins_with("mission:"):
+		return ""
+	match action_id:
+		"mission:first_goal_complete":
+			return "第一目标已完成：选牌、看详情并提交核心行动。"
+		"mission:next_step":
+			return "任务指引已推进；继续读取公共线索或结束回合。"
+		"mission:show_hint":
+			return "任务提示已打开；当前只显示公开信息。"
+	if state == "resolved":
+		return "任务步骤已提交。"
+	return "任务步骤已记录，等待桌面反馈。"
+
+
+func _short_feedback_text(value: String, max_characters: int) -> String:
+	var text := value.replace("\n", " ").strip_edges()
+	if text.length() <= max_characters:
+		return text
+	return "%s..." % text.substr(0, maxi(0, max_characters - 3))
 
 
 func _card_drop_zone_contains(screen_position: Vector2) -> bool:

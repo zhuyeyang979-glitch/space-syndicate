@@ -1,6 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DistrictPurchaseWindowStatus.tscn" id="2_purchase_status"]
+[ext_resource type="Script" path="res://scripts/ui/district_supply_drawer.gd" id="3_drawer_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_drawer_panel"]
 bg_color = Color(0.02, 0.04, 0.1, 0.97)
@@ -61,6 +63,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("1_theme")
 color = Color(0.01, 0.02, 0.05, 0.015)
+script = ExtResource("3_drawer_script")
 
 [node name="DistrictSupplySideDrawer" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -128,6 +131,10 @@ layout_mode = 2
 text = "单击预览｜双击购买｜可先查看，购买资格按开窗瞬间锁定"
 autowrap_mode = 3
 
+[node name="DistrictPurchaseWindowStatus" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack" instance=ExtResource("2_purchase_status")]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="DistrictSupplyShelfChipRail" type="HBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -140,6 +147,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 3
+
+[node name="DistrictSupplyPrivacyHint" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.647, 0.725, 0.82, 1)
+theme_override_font_sizes/font_size = 9
+text = "只显示当前玩家可见的购买状态。"
+autowrap_mode = 3
 
 [node name="DistrictSupplyDrawerStack" type="HBoxContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack"]
 layout_mode = 2
@@ -169,6 +184,13 @@ theme_override_constants/separation = 5
 layout_mode = 2
 text = "区域供牌"
 text_overrun_behavior = 3
+
+[node name="DistrictSupplyMarketEmptyState" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin/DistrictSupplyMarketStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.65, 0.75, 1)
+text = "当前区域暂无卡牌。"
+autowrap_mode = 3
 
 [node name="DistrictSupplyMarketScroll" type="ScrollContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyMarketPanel/DistrictSupplyMarketMargin/DistrictSupplyMarketStack"]
 custom_minimum_size = Vector2(0, 398)
@@ -205,6 +227,13 @@ theme_override_constants/separation = 5
 layout_mode = 2
 text = "卡牌预览"
 text_overrun_behavior = 3
+
+[node name="DistrictSupplyPreviewEmptyState" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin/DistrictSupplyPreviewStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.65, 0.75, 1)
+text = "选择一张区域供牌查看详情。"
+autowrap_mode = 3
 
 [node name="DistrictSupplyPreviewScroll" type="ScrollContainer" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyDrawerStack/DistrictSupplyPreviewPanel/DistrictSupplyPreviewMargin/DistrictSupplyPreviewStack"]
 custom_minimum_size = Vector2(0, 398)

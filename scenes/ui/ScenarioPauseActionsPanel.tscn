@@ -1,0 +1,102 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/scenario_pause_actions_panel.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
+bg_color = Color(0.012, 0.025, 0.04, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.125, 0.365, 0.506, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="ScenarioPauseActionsPanel" type="PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+theme_override_styles/panel = SubResource("StyleBox_panel")
+script = ExtResource("2_script")
+
+[node name="ScenarioPauseMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="ScenarioPauseRows" type="VBoxContainer" parent="ScenarioPauseMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ScenarioPauseHeader" type="HBoxContainer" parent="ScenarioPauseMargin/ScenarioPauseRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ScenarioPauseModeLabel" type="Label" parent="ScenarioPauseMargin/ScenarioPauseRows/ScenarioPauseHeader"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(82, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.251, 0.839, 0.945, 1)
+theme_override_font_sizes/font_size = 11
+text = "试玩剧本"
+vertical_alignment = 1
+
+[node name="ScenarioPauseTitleLabel" type="Label" parent="ScenarioPauseMargin/ScenarioPauseRows/ScenarioPauseHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.941, 0.961, 0.976, 1)
+theme_override_font_sizes/font_size = 16
+text = "试玩剧本"
+
+[node name="ScenarioPauseDetailLabel" type="Label" parent="ScenarioPauseMargin/ScenarioPauseRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.647, 0.714, 0.796, 1)
+theme_override_font_sizes/font_size = 11
+text = "当前剧本可重开、返回选择页、查看行动日志或复盘。"
+autowrap_mode = 2
+
+[node name="ScenarioPauseActionRow" type="HFlowContainer" parent="ScenarioPauseMargin/ScenarioPauseRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 7
+
+[node name="ScenarioPauseRestartButton" type="Button" parent="ScenarioPauseMargin/ScenarioPauseRows/ScenarioPauseActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "重开本剧本"
+tooltip_text = "重新进入当前剧本的起点局面。"
+
+[node name="ScenarioPauseChooseButton" type="Button" parent="ScenarioPauseMargin/ScenarioPauseRows/ScenarioPauseActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "返回剧本选择"
+tooltip_text = "回到试玩剧本库。"
+
+[node name="ScenarioPauseLogButton" type="Button" parent="ScenarioPauseMargin/ScenarioPauseRows/ScenarioPauseActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "查看行动日志"
+tooltip_text = "只显示公开记录和当前玩家私密记录。"
+
+[node name="ScenarioPauseReplayButton" type="Button" parent="ScenarioPauseMargin/ScenarioPauseRows/ScenarioPauseActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "复盘快照"
+tooltip_text = "打开关键节点快照，不做完整时间回滚。"
+
+[node name="ScenarioPauseSettingsButton" type="Button" parent="ScenarioPauseMargin/ScenarioPauseRows/ScenarioPauseActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "教学设置"
+tooltip_text = "开关剧本提示、自动暂停偏好和提示字号。"

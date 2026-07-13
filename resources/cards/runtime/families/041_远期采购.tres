@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dxp46evry0oic"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_v2a1p"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_6tsrc"]
+
+[sub_resource type="Resource" id="Resource_xscts"]
+script = ExtResource("1_v2a1p")
+card_id = "远期采购1"
+family_id = "远期采购"
+kind = &"product_contract_boon"
+purchase_cost = 4
+rules_text = "围绕当前商品签远期采购：获得120资金，并为该商品追加持续90秒的需求压力+3；波动+1。"
+tags = PackedStringArray("经济", "合约")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "market_contract_seconds", "market_contract_turns", "cash", "volatility_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 120,
+"market_contract_seconds": 90.0,
+"market_contract_turns": 3,
+"market_demand_pressure": 3,
+"volatility_delta": 1
+}
+
+[sub_resource type="Resource" id="Resource_6wjoj"]
+script = ExtResource("1_v2a1p")
+card_id = "远期采购2"
+family_id = "远期采购"
+rank = 2
+kind = &"product_contract_boon"
+purchase_cost = 6
+rules_text = "签更大远期采购：获得260资金，并为当前商品追加持续120秒的需求压力+5；波动+1。"
+tags = PackedStringArray("经济", "升级")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "market_contract_seconds", "market_contract_turns", "cash", "volatility_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 260,
+"market_contract_seconds": 120.0,
+"market_contract_turns": 4,
+"market_demand_pressure": 5,
+"volatility_delta": 1
+}
+
+[resource]
+script = ExtResource("2_6tsrc")
+family_id = "远期采购"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_xscts"), SubResource("Resource_6wjoj")])
+public_pool_eligible = true
+upgradeable_family = true

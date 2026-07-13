@@ -1,0 +1,164 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/system_resourceization_audit_mcp_preview.gd" id="1_preview"]
+
+[node name="SystemResourceizationAuditMcpPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_preview")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0156863, 0.0235294, 0.0431373, 1)
+
+[node name="AuditMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="AuditRows" type="VBoxContainer" parent="AuditMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SystemResourceizationTitle" type="Label" parent="AuditMargin/AuditRows"]
+layout_mode = 2
+text = "System Resourceization Audit"
+theme_override_colors/font_color = Color(0.972549, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 22
+
+[node name="SystemResourceizationSummaryLabel" type="Label" parent="AuditMargin/AuditRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Total 0 | Menu 0 | Balance 0 | AI 0"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.713726, 0.780392, 0.870588, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="SystemResourceizationStatusLabel" type="Label" parent="AuditMargin/AuditRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status: ready"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.741176, 0.941176, 0.784314, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="AuditSplit" type="HSplitContainer" parent="AuditMargin/AuditRows"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 300
+
+[node name="AuditNavigationPanel" type="PanelContainer" parent="AuditMargin/AuditRows/AuditSplit"]
+layout_mode = 2
+custom_minimum_size = Vector2(320, 0)
+
+[node name="AuditNavigationMargin" type="MarginContainer" parent="AuditMargin/AuditRows/AuditSplit/AuditNavigationPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="AuditNavigationRows" type="VBoxContainer" parent="AuditMargin/AuditRows/AuditSplit/AuditNavigationPanel/AuditNavigationMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CategoryLabel" type="Label" parent="AuditMargin/AuditRows/AuditSplit/AuditNavigationPanel/AuditNavigationMargin/AuditNavigationRows"]
+layout_mode = 2
+text = "Categories"
+theme_override_colors/font_color = Color(0.858824, 0.909804, 1, 1)
+
+[node name="SystemResourceizationCategoryList" type="ItemList" parent="AuditMargin/AuditRows/AuditSplit/AuditNavigationPanel/AuditNavigationMargin/AuditNavigationRows"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 132)
+
+[node name="RecordLabel" type="Label" parent="AuditMargin/AuditRows/AuditSplit/AuditNavigationPanel/AuditNavigationMargin/AuditNavigationRows"]
+layout_mode = 2
+text = "Records"
+theme_override_colors/font_color = Color(0.858824, 0.909804, 1, 1)
+
+[node name="SystemResourceizationRecordList" type="ItemList" parent="AuditMargin/AuditRows/AuditSplit/AuditNavigationPanel/AuditNavigationMargin/AuditNavigationRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AuditDetailPanel" type="PanelContainer" parent="AuditMargin/AuditRows/AuditSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AuditDetailMargin" type="MarginContainer" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="AuditDetailRows" type="VBoxContainer" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SystemResourceizationDetailTitle" type="Label" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin/AuditDetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No system selected"
+theme_override_colors/font_color = Color(0.972549, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 19
+
+[node name="SystemResourceizationDetailBody" type="Label" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin/AuditDetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "Select a system audit record."
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.74902, 0.815686, 0.905882, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="AuditActionGrid" type="GridContainer" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin/AuditDetailRows"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="SystemResourceizationOpenCurrentButton" type="Button" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin/AuditDetailRows/AuditActionGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Current Scene / Script"
+
+[node name="SystemResourceizationRunRelatedBenchButton" type="Button" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin/AuditDetailRows/AuditActionGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Related Bench"
+
+[node name="SystemResourceizationPrintRecordButton" type="Button" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin/AuditDetailRows/AuditActionGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Print Audit Record"
+
+[node name="SystemResourceizationOpenExistingGateButton" type="Button" parent="AuditMargin/AuditRows/AuditSplit/AuditDetailPanel/AuditDetailMargin/AuditDetailRows/AuditActionGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Existing QA Gate"

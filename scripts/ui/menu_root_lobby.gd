@@ -103,7 +103,9 @@ func _render_chips(entries_variant: Variant) -> void:
 
 
 func _render_actions(entries_variant: Variant, primary: bool) -> void:
-	var parent: Node = action_grid if primary else utility_rail
+	var parent: Node = action_grid
+	if not primary:
+		parent = utility_rail
 	_clear_children(parent)
 	if not (entries_variant is Array):
 		return

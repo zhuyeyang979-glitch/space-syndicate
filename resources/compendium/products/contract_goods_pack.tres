@@ -1,0 +1,143 @@
+[gd_resource type="Resource" script_class="CompendiumContentPackResource" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/compendium_content_pack_resource.gd" id="1_pack"]
+[ext_resource type="Script" path="res://scripts/content/product_codex_entry_resource.gd" id="2_product"]
+
+[sub_resource type="Resource" id="Product_cold_crown_goods"]
+script = ExtResource("2_product")
+entry_id = "cold_crown_goods"
+display_name = "寒冠合约货"
+subtitle = "Contract goods practice line"
+summary = "A cold-chain product line used by the contract_goods scenario to explain supply, demand, and route pressure."
+accent = "#22c55e"
+chips = PackedStringArray("Contract", "Cold chain", "contract_goods")
+source_note = "Migrated as public codex content from the contract_goods scenario theme. Market math remains in the existing rules layer."
+glyph = "CG"
+profile = "Contract | cold-chain goods"
+terrain = "Terrain: polar port / orbital depot"
+price = "$110 | base $90 | contract-sensitive"
+demand = "High"
+supply = "Medium"
+risk = "3 / 5"
+volatility = "3"
+weather = "Low-orbit weather can delay delivery windows and make route pressure public."
+use_case = "Use to teach a simple supply-demand gap before asking players to sign or reject a contract."
+kpi_notes = PackedStringArray("Demand spikes when nearby cities lack cold-chain supply.", "Medium supply keeps auctions readable.", "Weather and route changes can move this line.", "Watch visible route pressure before committing.")
+strategy_notes = PackedStringArray("Pair with a stable route and clear city demand.", "Use contract windows to compare guaranteed value against route risk.", "Keep all owner-specific reads out of this public entry.")
+
+[sub_resource type="Resource" id="Product_harbor_mist_fruit"]
+script = ExtResource("2_product")
+entry_id = "harbor_mist_fruit"
+display_name = "海雾果"
+subtitle = "Harbor commodity reference"
+summary = "A soft luxury commodity for teaching visible harbor demand, weather pressure, and spoilage risk."
+accent = "#86efac"
+chips = PackedStringArray("Luxury", "Harbor", "Weather")
+source_note = "Public codex reference for product teaching. Gameplay values remain in the existing market and scenario code."
+glyph = "HF"
+profile = "Luxury | harbor fruit"
+terrain = "Terrain: harbor / mist coast"
+price = "$95 | base $80 | weather-sensitive"
+demand = "Medium"
+supply = "Low"
+risk = "2 / 5"
+volatility = "4"
+weather = "Mist windows can raise public delivery risk."
+use_case = "Use when teaching why a visible route can make a modest product become valuable."
+kpi_notes = PackedStringArray("Demand is readable from harbor city needs.", "Low supply makes timing matter.", "Weather pressure moves this quickly.", "Risk is public and route-facing.")
+strategy_notes = PackedStringArray("Buy when route control is stable.", "Avoid if weather and monster pressure stack.", "Use as a gentle product volatility example.")
+
+[sub_resource type="Resource" id="Product_orbital_credit"]
+script = ExtResource("2_product")
+entry_id = "orbital_credit"
+display_name = "轨道信用券"
+subtitle = "Finance product reference"
+summary = "A finance-like product line used to connect economy cards with public market tempo."
+accent = "#38bdf8"
+chips = PackedStringArray("Finance", "Economy", "first_table")
+source_note = "Public codex reference for the first-table economy line. Rules and payouts remain authoritative elsewhere."
+glyph = "OC"
+profile = "Finance | credit instrument"
+terrain = "Terrain: orbital exchange"
+price = "$75 | base $60 | stable"
+demand = "Medium"
+supply = "Medium"
+risk = "1 / 5"
+volatility = "2"
+weather = "Weather pressure is indirect; public financing demand is the clearer read."
+use_case = "Use alongside opening economy cards to explain why players care about market timing."
+kpi_notes = PackedStringArray("Demand tracks public economy pressure.", "Supply is usually stable.", "Low volatility makes it a starter reference.", "Risk comes mostly from timing.")
+strategy_notes = PackedStringArray("Use as a safe first-table benchmark.", "Compare to volatile goods before auctions.", "Keep it as public market context, not a payout rule source.")
+
+[sub_resource type="Resource" id="Product_solar_wind_cells"]
+script = ExtResource("2_product")
+entry_id = "solar_wind_cells"
+display_name = "太阳风电池"
+subtitle = "Weather-driven product reference"
+summary = "A weather-sensitive energy product for explaining route windows and public price movement."
+accent = "#facc15"
+chips = PackedStringArray("Energy", "Weather", "Route")
+source_note = "Public codex reference for weather and route teaching. Gameplay values remain in the existing systems."
+glyph = "SW"
+profile = "Energy | weather line"
+terrain = "Terrain: orbital array / desert city"
+price = "$130 | base $100 | swingy"
+demand = "High"
+supply = "Medium"
+risk = "3 / 5"
+volatility = "4"
+weather = "Solar wind raises both public opportunity and route risk."
+use_case = "Use when weather_lane cards or route changes need a concrete market example."
+kpi_notes = PackedStringArray("Demand rises during energy shortages.", "Medium supply makes route timing important.", "Weather shifts are visible and fast.", "Risk is mostly route-window dependent.")
+strategy_notes = PackedStringArray("Pair with weather timing cards.", "Avoid if monster tokens threaten the main route.", "Use for teaching public volatility without secret data.")
+
+[sub_resource type="Resource" id="Product_colony_parts"]
+script = ExtResource("2_product")
+entry_id = "colony_parts"
+display_name = "殖民地构件"
+subtitle = "City-building product reference"
+summary = "A sturdy construction line for explaining city repair, build pressure, and stable public demand."
+accent = "#93c5fd"
+chips = PackedStringArray("Construction", "City", "Repair")
+source_note = "Public codex reference for city repair and build-city teaching. Settlement values remain in the existing rules layer."
+glyph = "CP"
+profile = "Construction | city line"
+terrain = "Terrain: colony yard / industrial port"
+price = "$105 | base $100 | stable"
+demand = "Medium"
+supply = "High"
+risk = "2 / 5"
+volatility = "2"
+weather = "Weather pressure matters less than public city damage and route access."
+use_case = "Use with city repair cards to explain why public board damage changes demand."
+kpi_notes = PackedStringArray("Demand follows city build and repair pressure.", "High supply makes this readable.", "Volatility is low unless route access breaks.", "Risk rises around monster-damaged cities.")
+strategy_notes = PackedStringArray("Good for conservative city strategies.", "Use after visible monster pressure.", "Keep construction math outside the codex resource.")
+
+[sub_resource type="Resource" id="Product_route_insurance"]
+script = ExtResource("2_product")
+entry_id = "route_insurance"
+display_name = "商路保险单"
+subtitle = "Risk product reference"
+summary = "A contract-adjacent service product for explaining why players hedge visible route and monster pressure."
+accent = "#c084fc"
+chips = PackedStringArray("Insurance", "Route", "Risk")
+source_note = "Public codex reference for route-risk teaching. Gameplay rules and contract actions remain authoritative elsewhere."
+glyph = "RI"
+profile = "Service | risk hedge"
+terrain = "Terrain: route office / auction desk"
+price = "$65 | base $50 | risk-linked"
+demand = "Medium"
+supply = "Medium"
+risk = "1 / 5"
+volatility = "3"
+weather = "Weather and monster pressure can make insurance demand jump in public."
+use_case = "Use to teach that a player can respond to visible route danger without revealing intent."
+kpi_notes = PackedStringArray("Demand rises after route danger becomes public.", "Supply is stable enough for teaching.", "Volatility follows visible pressure.", "Risk is low but timing matters.")
+strategy_notes = PackedStringArray("Buy before routes become obviously dangerous.", "Use as a public explanation for hedging.", "Do not store sensitive contract details in this resource.")
+
+[resource]
+script = ExtResource("1_pack")
+pack_id = "contract_goods_pack"
+display_name = "Contract Goods Product Pack"
+source_note = "Batch public product references for contract_goods, first_table, and route-risk teaching. Gameplay market rules remain authoritative."
+entries = Array[Resource]([SubResource("Product_cold_crown_goods"), SubResource("Product_harbor_mist_fruit"), SubResource("Product_orbital_credit"), SubResource("Product_solar_wind_cells"), SubResource("Product_colony_parts"), SubResource("Product_route_insurance")])

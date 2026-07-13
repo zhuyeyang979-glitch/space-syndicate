@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/map/planet_city_marker.gd" id="1_script"]
+
+[node name="PlanetCityMarker" type="PanelContainer"]
+custom_minimum_size = Vector2(92, 48)
+offset_right = 92.0
+offset_bottom = 48.0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="CityMarkerRows" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="CityMarkerTagLabel" type="Label" parent="CityMarkerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "C"
+text_overrun_behavior = 3
+
+[node name="CityMarkerLevelLabel" type="Label" parent="CityMarkerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Lv 1"
+text_overrun_behavior = 3
+
+[node name="CityMarkerProductLabel" type="Label" parent="CityMarkerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "product"
+text_overrun_behavior = 3

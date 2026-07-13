@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://d0ecrs7ghnr1a"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_7b7hs"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_0qo2n"]
+
+[sub_resource type="Resource" id="Resource_jbcqg"]
+script = ExtResource("1_7b7hs")
+card_id = "修正铁拳读秒1"
+family_id = "修正铁拳读秒"
+kind = &"monster_lure"
+purchase_cost = 4
+rules_text = "读出修正铁拳冲线时间，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4秒触发。"
+tags = PackedStringArray("绿洲修复体", "诱导")
+authored_keys = PackedStringArray("cost", "kind", "lure_speedup", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"lure_speedup": 4.0
+}
+
+[resource]
+script = ExtResource("2_0qo2n")
+family_id = "修正铁拳读秒"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_jbcqg")])

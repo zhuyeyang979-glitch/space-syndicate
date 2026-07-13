@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cyffl1i6q0rf"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_g31ng"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_cp04x"]
+
+[sub_resource type="Resource" id="Resource_2ioe5"]
+script = ExtResource("1_g31ng")
+card_id = "期货套保1"
+family_id = "期货套保"
+kind = &"product_contract_boon"
+purchase_cost = 3
+rules_text = "围绕当前商品做期货套保：获得90资金，追加持续90秒的供给压力+3，并降低波动1。"
+tags = PackedStringArray("经济", "套保")
+authored_keys = PackedStringArray("cost", "kind", "market_supply_pressure", "market_contract_seconds", "market_contract_turns", "cash", "volatility_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 90,
+"market_contract_seconds": 90.0,
+"market_contract_turns": 3,
+"market_supply_pressure": 3,
+"volatility_delta": -1
+}
+
+[sub_resource type="Resource" id="Resource_edhbh"]
+script = ExtResource("1_g31ng")
+card_id = "期货套保2"
+family_id = "期货套保"
+rank = 2
+kind = &"product_contract_boon"
+purchase_cost = 5
+rules_text = "高阶套保：获得180资金，追加持续120秒的供给压力+5，并降低波动2。"
+tags = PackedStringArray("经济", "升级")
+authored_keys = PackedStringArray("cost", "kind", "market_supply_pressure", "market_contract_seconds", "market_contract_turns", "cash", "volatility_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 180,
+"market_contract_seconds": 120.0,
+"market_contract_turns": 4,
+"market_supply_pressure": 5,
+"volatility_delta": -2
+}
+
+[resource]
+script = ExtResource("2_cp04x")
+family_id = "期货套保"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_2ioe5"), SubResource("Resource_edhbh")])
+public_pool_eligible = true
+upgradeable_family = true

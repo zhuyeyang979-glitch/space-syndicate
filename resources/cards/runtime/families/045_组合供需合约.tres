@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dyjswrs25q0n5"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_xqbmf"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_4m1su"]
+
+[sub_resource type="Resource" id="Resource_lswcv"]
+script = ExtResource("1_xqbmf")
+card_id = "组合供需合约1"
+family_id = "组合供需合约"
+kind = &"area_trade_contract"
+purchase_cost = 7
+rules_text = "打出前必须先点选供给区与需求区。展示沙漏公开要接通的两端、多商品条款和奖惩；随后目标业主签/拒。签约奖励现金、生产和商路速度，拒签会拖慢生产/需求并追加商路压力。"
+tags = PackedStringArray("合约", "多商品")
+contract_product_mode = &"multi"
+authored_keys = PackedStringArray("cost", "kind", "contract_product_mode", "contract_add_products", "contract_add_demands", "accept_cash", "accept_production_delta", "accept_transport_delta", "accept_route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "decline_cash_penalty", "decline_production_delta", "decline_consumption_delta", "decline_route_damage", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"accept_cash": 210,
+"accept_production_delta": 1,
+"accept_route_flow_multiplier": 1.45,
+"accept_transport_delta": 1,
+"contract_add_demands": 2,
+"contract_add_products": 2,
+"decline_cash_penalty": 160,
+"decline_consumption_delta": -1,
+"decline_production_delta": -1,
+"decline_route_damage": 1,
+"route_flow_seconds": 120.0,
+"route_flow_turns": 4
+}
+
+[resource]
+script = ExtResource("2_4m1su")
+family_id = "组合供需合约"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_lswcv")])
+public_pool_eligible = true
+upgradeable_family = true

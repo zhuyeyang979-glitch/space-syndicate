@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://b7dup7antyjpc"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_oyq4p"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_oa0pa"]
+
+[sub_resource type="Resource" id="Resource_v6erh"]
+script = ExtResource("1_oyq4p")
+card_id = "远程补给链1"
+family_id = "远程补给链"
+kind = &"card_access_boon"
+purchase_cost = 3
+rules_text = "接下来45秒，你可以从怪兽落地区二跳内的区域购买卡牌；二跳购牌价格×1.10。"
+tags = PackedStringArray("补给", "范围")
+play_product = "轨道盆栽"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "card_access_extra_hops", "extended_card_price_multiplier", "card_access_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"card_access_extra_hops": 1,
+"card_access_seconds": 45.0,
+"extended_card_price_multiplier": 1.1
+}
+
+[resource]
+script = ExtResource("2_oa0pa")
+family_id = "远程补给链"
+pack_id = &"special_cross_system"
+authored_ranks = Array[Resource]([SubResource("Resource_v6erh")])
+public_pool_eligible = true

@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bykl115h46i3u"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_wl2rx"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_7mqpe"]
+
+[sub_resource type="Resource" id="Resource_tltgr"]
+script = ExtResource("1_wl2rx")
+card_id = "星链拆解1"
+family_id = "星链拆解"
+kind = &"player_hand_disrupt"
+purchase_cost = 4
+rules_text = "指定一名对手，匿名拆掉其1张可弃普通手牌。公开层只显示目标玩家被拆牌，具体牌名只写入受害者私人流水。"
+tags = PackedStringArray("互动", "拆牌", "情报")
+play_product = "轨迹墨水"
+play_flow_required = 1
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_discard_count", "hand_lock_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_discard_count": 1,
+"hand_lock_seconds": 0.0
+}
+
+[sub_resource type="Resource" id="Resource_jnni8"]
+script = ExtResource("1_wl2rx")
+card_id = "星链拆解2"
+family_id = "星链拆解"
+rank = 2
+kind = &"player_hand_disrupt"
+purchase_cost = 6
+rules_text = "指定一名对手，拆掉1张可弃普通手牌；若目标还有可行动普通牌，再随机封锁1张10秒。目标公开、出牌者匿名。"
+tags = PackedStringArray("互动", "拆牌", "升级")
+play_product = "轨迹墨水"
+play_flow_required = 2
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_discard_count", "hand_lock_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_discard_count": 1,
+"hand_lock_seconds": 10.0
+}
+
+[sub_resource type="Resource" id="Resource_uam62"]
+script = ExtResource("1_wl2rx")
+card_id = "星链拆解3"
+family_id = "星链拆解"
+rank = 3
+kind = &"player_hand_disrupt"
+purchase_cost = 8
+rules_text = "核心拆牌：拆掉1张可弃普通手牌，随机封锁1张18秒，并让目标支付少量应急重组成本。"
+tags = PackedStringArray("互动", "拆牌", "核心")
+play_product = "轨迹墨水"
+play_flow_required = 3
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_discard_count", "hand_lock_seconds", "target_cash_penalty", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_discard_count": 1,
+"hand_lock_seconds": 18.0,
+"target_cash_penalty": 80
+}
+
+[sub_resource type="Resource" id="Resource_p4ym3"]
+script = ExtResource("1_wl2rx")
+card_id = "星链拆解4"
+family_id = "星链拆解"
+rank = 4
+kind = &"player_hand_disrupt"
+purchase_cost = 10
+rules_text = "终端拆牌IV：最多拆掉2张可弃普通手牌，再封锁1张20秒并追加重组成本；强效果会留下明显目标线索。"
+tags = PackedStringArray("互动", "拆牌", "IV")
+play_product = "轨迹墨水"
+play_flow_required = 4
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_discard_count", "hand_lock_seconds", "target_cash_penalty", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_discard_count": 2,
+"hand_lock_seconds": 20.0,
+"target_cash_penalty": 120
+}
+
+[resource]
+script = ExtResource("2_7mqpe")
+family_id = "星链拆解"
+pack_id = &"player_interaction"
+authored_ranks = Array[Resource]([SubResource("Resource_tltgr"), SubResource("Resource_jnni8"), SubResource("Resource_uam62"), SubResource("Resource_p4ym3")])
+public_pool_eligible = true
+upgradeable_family = true

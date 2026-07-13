@@ -122,8 +122,8 @@ func _ready() -> void:
 	}
 
 
-func set_card(name: String, kind: String, tags: String, color: Color, rank: int, is_compact: bool, stats: String = "") -> void:
-	card_name = name
+func set_card(card_title: String, kind: String, tags: String, color: Color, rank: int, is_compact: bool, stats: String = "") -> void:
+	card_name = card_title
 	card_kind = kind
 	card_tags = tags
 	accent = color
@@ -168,14 +168,14 @@ func _draw_energy_wash(rect: Rect2) -> void:
 
 
 func _draw_starfield(rect: Rect2) -> void:
-	var seed := _name_seed()
+	var art_seed := _name_seed()
 	var star_count := STAR_COUNT_COMPACT if compact else STAR_COUNT_FULL
 	for i in range(star_count):
-		var x := fposmod(float(seed + i * 73 + i * i * 11), max(1.0, rect.size.x))
-		var y := fposmod(float(seed / max(1, i + 1) + i * 47 + card_rank * 31), max(1.0, rect.size.y))
-		var radius := 0.8 + float((seed + i * 5) % 4) * 0.22
+		var x := fposmod(float(art_seed + i * 73 + i * i * 11), max(1.0, rect.size.x))
+		var y := fposmod(float(art_seed / max(1, i + 1) + i * 47 + card_rank * 31), max(1.0, rect.size.y))
+		var radius := 0.8 + float((art_seed + i * 5) % 4) * 0.22
 		var star_color := Color("#ffffff").lerp(accent, 0.28)
-		star_color.a = 0.22 + float((seed + i) % 5) * 0.05
+		star_color.a = 0.22 + float((art_seed + i) % 5) * 0.05
 		draw_circle(Vector2(x, y), radius, star_color)
 
 
@@ -318,17 +318,17 @@ func _draw_night_patrol_sigil(center: Vector2, radius: float) -> void:
 
 
 func card_visual_profile_snapshot() -> Dictionary:
-	var seed := _name_seed()
+	var art_seed := _name_seed()
 	var sprite_key := _moth_kaijuice_card_sprite_key()
 	return {
 		"theme": MOTH_KAIJUICE_SPRITE_THEME,
 		"visual_source_id": _card_visual_source_id(sprite_key),
 		"sprite_key": sprite_key,
 		"sprite_cell": _moth_kaijuice_card_sprite_cell(sprite_key),
-		"layout_variant": seed % 9,
-		"palette_variant": int(seed / 7) % 11,
-		"effect_variant": int(seed / 13) % 9,
-		"composition_variant": int(seed / 17) % 37,
+		"layout_variant": art_seed % 9,
+		"palette_variant": int(float(art_seed) / 7.0) % 11,
+		"effect_variant": int(float(art_seed) / 13.0) % 9,
+		"composition_variant": int(float(art_seed) / 17.0) % 37,
 		"motif_family": _card_motif_family_key(),
 		"first_run_art_focus": _first_run_art_focus_key(),
 		"illustration_anchor": _card_illustration_anchor_key(),
@@ -357,7 +357,7 @@ func _draw_moth_kaijuice_reference_illustration(rect: Rect2) -> void:
 	var texture := moth_kaijuice_textures.get(sprite_key, null) as Texture2D
 	if texture == null:
 		return
-	var seed := _name_seed()
+	var art_seed := _name_seed()
 	var art_rect := Rect2(
 		Vector2(rect.size.x * 0.18, rect.size.y * (0.22 if compact else 0.20)),
 		Vector2(rect.size.x * 0.64, rect.size.y * (0.44 if compact else 0.48))
@@ -369,42 +369,42 @@ func _draw_moth_kaijuice_reference_illustration(rect: Rect2) -> void:
 	rim.a = 0.34 if compact else 0.46
 	draw_rect(art_rect.grow(2.0), rim, false, 1.4)
 
-	var scale := 0.78 + float(seed % 5) * 0.045
-	var offset := Vector2(float((seed % 7) - 3) * art_rect.size.x * 0.025, float((int(seed / 11) % 5) - 2) * art_rect.size.y * 0.025)
-	var sprite_rect := Rect2(Vector2.ZERO, art_rect.size * scale)
+	var sprite_scale := 0.78 + float(art_seed % 5) * 0.045
+	var offset := Vector2(float((art_seed % 7) - 3) * art_rect.size.x * 0.025, float((int(float(art_seed) / 11.0) % 5) - 2) * art_rect.size.y * 0.025)
+	var sprite_rect := Rect2(Vector2.ZERO, art_rect.size * sprite_scale)
 	sprite_rect.position = art_rect.position + (art_rect.size - sprite_rect.size) * 0.5 + offset
 	var tint := Color(1.0, 1.0, 1.0, 0.74 if compact else 0.86)
-	tint = tint.lerp(accent.lightened(0.18), 0.08 + float(seed % 3) * 0.035)
+	tint = tint.lerp(accent.lightened(0.18), 0.08 + float(art_seed % 3) * 0.035)
 	var src_rect := _moth_kaijuice_card_sprite_region(sprite_key)
 	sprite_rect.size = _fit_size_inside(sprite_rect.size, src_rect.size)
 	sprite_rect.position = art_rect.position + (art_rect.size - sprite_rect.size) * 0.5 + offset
 	draw_texture_rect_region(texture, sprite_rect, src_rect, tint)
-	_draw_card_illustration_anchor(art_rect, String(profile.get("illustration_anchor", "")), seed)
-	_draw_first_run_focus_overlay(art_rect, String(profile.get("first_run_art_focus", "")), seed)
+	_draw_card_illustration_anchor(art_rect, String(profile.get("illustration_anchor", "")), art_seed)
+	_draw_first_run_focus_overlay(art_rect, String(profile.get("first_run_art_focus", "")), art_seed)
 
 	if str(profile.get("effect_variant", "")) in ["2", "5", "8"] or _contains_any("%s｜%s" % [card_kind, card_tags], ["光线", "攻击", "破坏", "齐射"]):
-		_draw_moth_kaijuice_laser_accent(art_rect, seed)
+		_draw_moth_kaijuice_laser_accent(art_rect, art_seed)
 	if _contains_any("%s｜%s" % [card_kind, card_tags], ["格挡", "防御", "保险", "修复", "否决"]):
-		_draw_moth_kaijuice_field_accent(art_rect, seed)
+		_draw_moth_kaijuice_field_accent(art_rect, art_seed)
 
 
-func _draw_moth_kaijuice_laser_accent(art_rect: Rect2, seed: int) -> void:
+func _draw_moth_kaijuice_laser_accent(art_rect: Rect2, art_seed: int) -> void:
 	var texture := moth_kaijuice_textures.get("laser", null) as Texture2D
 	if texture == null:
 		return
 	var h: float = max(3.0, art_rect.size.y * 0.07)
-	var y: float = art_rect.position.y + art_rect.size.y * (0.30 + float(seed % 5) * 0.09)
+	var y: float = art_rect.position.y + art_rect.size.y * (0.30 + float(art_seed % 5) * 0.09)
 	var src := Rect2(Vector2.ZERO, texture.get_size())
 	var tint := accent.lightened(0.34)
 	tint.a = 0.52 if compact else 0.66
 	draw_texture_rect_region(texture, Rect2(Vector2(art_rect.position.x, y), Vector2(art_rect.size.x, h)), src, tint)
 
 
-func _draw_moth_kaijuice_field_accent(art_rect: Rect2, seed: int) -> void:
+func _draw_moth_kaijuice_field_accent(art_rect: Rect2, art_seed: int) -> void:
 	var texture := moth_kaijuice_textures.get("atfield", null) as Texture2D
 	if texture == null:
 		return
-	var size_factor: float = 0.46 + float(seed % 4) * 0.04
+	var size_factor: float = 0.46 + float(art_seed % 4) * 0.04
 	var field_size := Vector2(art_rect.size.x * size_factor, art_rect.size.y * size_factor)
 	var field_rect := Rect2(art_rect.position + (art_rect.size - field_size) * 0.5, field_size)
 	var tint := Color(1.0, 1.0, 1.0, 0.30 if compact else 0.42)
@@ -495,7 +495,7 @@ func _card_illustration_anchor_key() -> String:
 	return _first_run_art_focus_key()
 
 
-func _draw_card_illustration_anchor(art_rect: Rect2, anchor_key: String, seed: int) -> void:
+func _draw_card_illustration_anchor(art_rect: Rect2, anchor_key: String, art_seed: int) -> void:
 	if anchor_key == "":
 		return
 	var color := accent.lightened(0.48)
@@ -514,19 +514,19 @@ func _draw_card_illustration_anchor(art_rect: Rect2, anchor_key: String, seed: i
 		"broadcast_array":
 			_draw_anchor_broadcast_array(center, radius, color, soft)
 		"lure_beacon":
-			_draw_anchor_lure_beacon(center, radius, color, soft, seed)
+			_draw_anchor_lure_beacon(center, radius, color, soft, art_seed)
 		"supply_cache":
 			_draw_anchor_supply_cache(center, radius, color, soft)
 		"motion_vector":
 			_draw_anchor_motion_vector(art_rect, color, soft)
 		"impact_core":
-			_draw_anchor_impact_core(center, radius, color, soft, seed)
+			_draw_anchor_impact_core(center, radius, color, soft, art_seed)
 		"shield_gate", "shield_route":
 			_draw_anchor_shield_gate(center, radius, color, soft)
 			if anchor_key == "shield_route":
 				_draw_anchor_transit_grid(art_rect, color, soft)
 		"fracture_map":
-			_draw_anchor_fracture_map(art_rect, color, soft, seed)
+			_draw_anchor_fracture_map(art_rect, color, soft, art_seed)
 		"intel_lens":
 			_draw_anchor_intel_lens(center, radius, color, soft)
 		"market_up":
@@ -599,16 +599,16 @@ func _draw_anchor_broadcast_array(center: Vector2, radius: float, color: Color, 
 		draw_arc(center + Vector2(0.0, -radius * 0.34), radius * (0.20 + float(i) * 0.18), -PI * 0.82, -PI * 0.18, 28, color if i < 2 else soft, 2.0, true)
 
 
-func _draw_anchor_lure_beacon(center: Vector2, radius: float, color: Color, soft: Color, seed: int) -> void:
+func _draw_anchor_lure_beacon(center: Vector2, radius: float, color: Color, soft: Color, art_seed: int) -> void:
 	draw_circle(center, radius * 0.16, color)
 	for i in range(4):
-		draw_arc(center, radius * (0.28 + float(i) * 0.16), 0.0, TAU, 48, color if i == seed % 4 else soft, 1.8, true)
+		draw_arc(center, radius * (0.28 + float(i) * 0.16), 0.0, TAU, 48, color if i == art_seed % 4 else soft, 1.8, true)
 
 
 func _draw_anchor_supply_cache(center: Vector2, radius: float, color: Color, soft: Color) -> void:
 	for i in range(4):
 		var x := center.x + (float(i % 2) - 0.5) * radius * 0.56
-		var y := center.y + (float(int(i / 2)) - 0.5) * radius * 0.42
+		var y := center.y + (float(int(float(i) / 2.0)) - 0.5) * radius * 0.42
 		var box := Rect2(Vector2(x - radius * 0.18, y - radius * 0.14), Vector2(radius * 0.36, radius * 0.28))
 		draw_rect(box, soft, true)
 		draw_rect(box, color, false, 1.4)
@@ -625,10 +625,10 @@ func _draw_anchor_motion_vector(art_rect: Rect2, color: Color, soft: Color) -> v
 	draw_line(end, end + Vector2(-art_rect.size.x * 0.05, art_rect.size.y * 0.17), color, 3.2, true)
 
 
-func _draw_anchor_impact_core(center: Vector2, radius: float, color: Color, soft: Color, seed: int) -> void:
+func _draw_anchor_impact_core(center: Vector2, radius: float, color: Color, soft: Color, art_seed: int) -> void:
 	draw_circle(center, radius * 0.18, color)
 	for i in range(8):
-		var angle := float(i) / 8.0 * TAU + float(seed % 9) * 0.02
+		var angle := float(i) / 8.0 * TAU + float(art_seed % 9) * 0.02
 		draw_line(center + Vector2(cos(angle), sin(angle)) * radius * 0.25, center + Vector2(cos(angle), sin(angle)) * radius * 0.76, color if i % 2 == 0 else soft, 2.4, true)
 
 
@@ -645,11 +645,11 @@ func _draw_anchor_shield_gate(center: Vector2, radius: float, color: Color, soft
 	draw_polyline(shield, color, 2.0, true)
 
 
-func _draw_anchor_fracture_map(art_rect: Rect2, color: Color, soft: Color, seed: int) -> void:
+func _draw_anchor_fracture_map(art_rect: Rect2, color: Color, soft: Color, art_seed: int) -> void:
 	var start := art_rect.position + Vector2(art_rect.size.x * 0.18, art_rect.size.y * 0.22)
 	var p := start
 	for i in range(6):
-		var next := p + Vector2(art_rect.size.x * 0.10, art_rect.size.y * (0.08 + float((seed + i) % 3) * 0.04))
+		var next := p + Vector2(art_rect.size.x * 0.10, art_rect.size.y * (0.08 + float((art_seed + i) % 3) * 0.04))
 		draw_line(p, next, color if i % 2 == 0 else soft, 2.8, true)
 		p = next + Vector2(art_rect.size.x * 0.02, -art_rect.size.y * 0.03)
 
@@ -752,7 +752,7 @@ func _draw_anchor_ground_force(center: Vector2, radius: float, color: Color, sof
 	draw_circle(center + Vector2(radius * 0.34, radius * 0.30), radius * 0.12, color)
 
 
-func _draw_first_run_focus_overlay(art_rect: Rect2, focus_key: String, seed: int) -> void:
+func _draw_first_run_focus_overlay(art_rect: Rect2, focus_key: String, art_seed: int) -> void:
 	if focus_key == "":
 		return
 	var c := accent.lightened(0.42)
@@ -777,7 +777,7 @@ func _draw_first_run_focus_overlay(art_rect: Rect2, focus_key: String, seed: int
 		"movement_arrow":
 			_draw_focus_movement_arrow(art_rect, c, soft)
 		"impact_attack":
-			_draw_focus_impact_attack(center, radius, c, soft, seed)
+			_draw_focus_impact_attack(center, radius, c, soft, art_seed)
 		"shield_guard":
 			_draw_focus_shield_guard(center, radius, c, soft)
 		"district_crack":
@@ -863,10 +863,10 @@ func _draw_focus_movement_arrow(art_rect: Rect2, color: Color, soft: Color) -> v
 	draw_line(end, end + Vector2(-art_rect.size.x * 0.04, art_rect.size.y * 0.16), color, 2.8, true)
 
 
-func _draw_focus_impact_attack(center: Vector2, radius: float, color: Color, soft: Color, seed: int) -> void:
+func _draw_focus_impact_attack(center: Vector2, radius: float, color: Color, soft: Color, art_seed: int) -> void:
 	draw_circle(center, radius * 0.16, color)
 	for i in range(6):
-		var a := float(i) / 6.0 * TAU + float(seed % 7) * 0.03
+		var a := float(i) / 6.0 * TAU + float(art_seed % 7) * 0.03
 		var p0 := center + Vector2(cos(a), sin(a)) * radius * 0.24
 		var p1 := center + Vector2(cos(a), sin(a)) * radius * (0.66 + float(i % 2) * 0.12)
 		draw_line(p0, p1, color if i % 2 == 0 else soft, 2.4, true)
@@ -926,7 +926,7 @@ func _draw_focus_monster_anchor(center: Vector2, radius: float, color: Color, so
 	draw_line(center + Vector2(radius * 0.22, -radius * 0.34), center + Vector2(radius * 0.52, -radius * 0.68), color, 2.0, true)
 
 
-func _draw_focus_route_mark(art_rect: Rect2, color: Color, soft: Color) -> void:
+func _draw_focus_route_mark(art_rect: Rect2, _color: Color, soft: Color) -> void:
 	var center := art_rect.get_center()
 	draw_arc(center, min(art_rect.size.x, art_rect.size.y) * 0.24, -PI * 0.25, PI * 1.25, 36, soft, 2.0, true)
 
@@ -1096,10 +1096,10 @@ func _card_visual_source_id(sprite_key: String) -> String:
 func _moth_kaijuice_card_sprite_cell(sprite_key: String) -> String:
 	if sprite_key == "kaiju" or sprite_key == "moth_kaijuice_kaiju":
 		var cell_index := _name_seed() % 32
-		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+		return "%d,%d" % [cell_index % 8, int(float(cell_index) / 8.0)]
 	if sprite_key == "mech":
 		var cell_index := _name_seed() % 24
-		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+		return "%d,%d" % [cell_index % 8, int(float(cell_index) / 8.0)]
 	if sprite_key.begins_with("pixelmob"):
 		return str(_name_seed() % PIXELMOB_FRAME_COUNT)
 	return "full"
@@ -1730,7 +1730,7 @@ func _contains_any(text: String, needles: Array) -> bool:
 
 
 func _name_seed() -> int:
-	var seed := 131 + card_rank * 97 + card_kind.length() * 53
+	var art_seed := 131 + card_rank * 97 + card_kind.length() * 53
 	for i in range(card_name.length()):
-		seed = (seed * 33 + card_name.unicode_at(i)) % 1000003
-	return max(1, seed)
+		art_seed = (art_seed * 33 + card_name.unicode_at(i)) % 1000003
+	return max(1, art_seed)

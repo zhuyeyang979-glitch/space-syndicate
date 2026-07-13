@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://lseaegompnsy"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_s4011"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_77751"]
+
+[sub_resource type="Resource" id="Resource_preni"]
+script = ExtResource("1_s4011")
+card_id = "远距破坏1"
+family_id = "远距破坏"
+kind = &"area_damage"
+purchase_cost = 5
+rules_text = "对420米内区域造成1点伤害，适合不想贴近目标的路线。"
+tags = PackedStringArray("破坏", "远程")
+range = 420.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_77751")
+family_id = "远距破坏"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_preni")])
+public_pool_eligible = true

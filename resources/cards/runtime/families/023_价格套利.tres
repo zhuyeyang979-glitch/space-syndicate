@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dkfbu1iyuydja"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_d10vs"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_7gjar"]
+
+[sub_resource type="Resource" id="Resource_hkay3"]
+script = ExtResource("1_d10vs")
+card_id = "价格套利1"
+family_id = "价格套利"
+kind = &"product_speculation"
+purchase_cost = 3
+rules_text = "围绕当前商品做短线套利：获得220资金，并制造临时需求压力；价格由下一次供需重算体现。"
+tags = PackedStringArray("经济", "商品")
+authored_keys = PackedStringArray("cost", "kind", "cash", "price_delta", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 220,
+"panic": 4,
+"price_delta": 18
+}
+
+[sub_resource type="Resource" id="Resource_103tu"]
+script = ExtResource("1_d10vs")
+card_id = "价格套利2"
+family_id = "价格套利"
+rank = 2
+kind = &"product_speculation"
+purchase_cost = 5
+rules_text = "高阶套利：获得480资金，并制造更强临时需求压力；价格仍由供需关系结算。"
+tags = PackedStringArray("经济", "升级")
+authored_keys = PackedStringArray("cost", "kind", "cash", "price_delta", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 480,
+"panic": 8,
+"price_delta": 34
+}
+
+[resource]
+script = ExtResource("2_7gjar")
+family_id = "价格套利"
+pack_id = &"finance"
+authored_ranks = Array[Resource]([SubResource("Resource_hkay3"), SubResource("Resource_103tu")])
+public_pool_eligible = true
+upgradeable_family = true

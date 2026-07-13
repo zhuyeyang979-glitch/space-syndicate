@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dff4pjqw1vkpk"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_hp7vk"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_bgoe4"]
+
+[sub_resource type="Resource" id="Resource_dejm3"]
+script = ExtResource("1_hp7vk")
+card_id = "诱导电波1"
+family_id = "诱导电波"
+kind = &"monster_lure"
+purchase_cost = 3
+rules_text = "指定一只怪兽与一个区域：它下一次自动移动优先朝该区推进，并提前最多3秒触发；之后恢复自身概率行动。"
+tags = PackedStringArray("诱导", "节奏")
+authored_keys = PackedStringArray("cost", "kind", "lure_speedup", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"lure_speedup": 3.0
+}
+
+[sub_resource type="Resource" id="Resource_t3v8p"]
+script = ExtResource("1_hp7vk")
+card_id = "诱导电波2"
+family_id = "诱导电波"
+rank = 2
+kind = &"monster_lure"
+purchase_cost = 5
+rules_text = "指定一只怪兽：它下一次自动移动优先朝当前选区推进，并提前最多5.5秒触发；这是一次性诱导，结算后失效。"
+tags = PackedStringArray("诱导", "升级")
+authored_keys = PackedStringArray("cost", "kind", "lure_speedup", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"lure_speedup": 5.5
+}
+
+[resource]
+script = ExtResource("2_bgoe4")
+family_id = "诱导电波"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_dejm3"), SubResource("Resource_t3v8p")])
+public_pool_eligible = true
+upgradeable_family = true

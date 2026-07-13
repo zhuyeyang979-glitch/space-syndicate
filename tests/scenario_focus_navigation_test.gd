@@ -27,7 +27,7 @@ func _check_public_track_focus_selects_without_fake_completion() -> void:
 	_expect(bool(main.call("_activate_scenario_action", "scenario_focus_target")), "public-track focus action is accepted")
 	await _wait_frames(6)
 	_expect(int(main.get("selected_card_resolution_id")) >= 0, "public-track focus selects a visible track card for the player")
-	var completed: Dictionary = main.get("scenario_completed_signals") as Dictionary
+	var completed: Dictionary = _runtime_scenario_state(main).get("completed_signals", {})
 	_expect(not bool(completed.get("track_selected", false)), "public-track focus does not fake-complete the track-selected success signal")
 	root.remove_child(main)
 	main.queue_free()
@@ -66,7 +66,7 @@ func _check_stuck_primary_cta_uses_focus_navigation() -> void:
 	_expect(bool(main.call("_activate_scenario_action", str(primary.get("id", "")))), "stuck primary focus action is accepted")
 	await _wait_frames(6)
 	_expect(int(main.get("selected_card_resolution_id")) >= 0, "stuck primary focus action selects a visible track card")
-	var completed: Dictionary = main.get("scenario_completed_signals") as Dictionary
+	var completed: Dictionary = _runtime_scenario_state(main).get("completed_signals", {})
 	_expect(not bool(completed.get("track_selected", false)), "stuck primary focus action does not fake-complete the success signal")
 	root.remove_child(main)
 	main.queue_free()
@@ -164,6 +164,12 @@ func _instantiate_main() -> Node:
 	main.set("selected_campaign_chapter_id", "")
 	main.set("active_campaign_chapter_id", "")
 	return main
+
+
+func _runtime_scenario_state(main: Node) -> Dictionary:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
+	var value: Variant = coordinator.call("runtime_scenario_state", float(main.get("game_time"))) if coordinator != null else {}
+	return value as Dictionary if value is Dictionary else {}
 
 
 func _farthest_district_from(main: Node, origin: int, map_node: Node) -> int:

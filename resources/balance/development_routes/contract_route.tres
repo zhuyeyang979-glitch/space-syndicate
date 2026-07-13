@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DevelopmentRouteProfileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/development_route_profile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+route_id = "contract_route"
+display_name = "合约供需"
+goal = "用匿名合约改写两地供需，让商路和拒签惩罚都能产生收益。"
+play_pattern = "把生产区和需求城接成新商路，用奖惩条款迫使对方签或吃罚。"
+counterplay = "识别谁最受益、拒签诱饵、破坏运输区，或抢先替换供需。"
+ai_plan_hint = "优先接自己能吃GDP的供需；拒签惩罚足够强时才施压敌城。"
+strategy_labels = Array[String](["合约博弈"])
+required_for_ai_baseline = true
+sort_order = 1

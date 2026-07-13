@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c8jv2wr58pxwb"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_p2vxd"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_p41j5"]
+
+[sub_resource type="Resource" id="Resource_dlcg7"]
+script = ExtResource("1_p2vxd")
+card_id = "流星航线加速1"
+family_id = "流星航线加速"
+kind = &"route_flow_boon"
+purchase_cost = 5
+rules_text = "借流星哨兵高速巡航开通流星航线：选中己方城市商路流通收入×1.65，持续90秒，并修复1条断路压力。"
+tags = PackedStringArray("流星哨兵", "物流")
+authored_keys = PackedStringArray("cost", "kind", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "repair_routes", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 1,
+"route_flow_multiplier": 1.65,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[resource]
+script = ExtResource("2_p41j5")
+family_id = "流星航线加速"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_dlcg7")])

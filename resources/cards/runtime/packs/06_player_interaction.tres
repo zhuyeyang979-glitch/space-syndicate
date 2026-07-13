@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/050_星链拆解.tres" id="1_xo28w"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/051_影仓牵引.tres" id="2_mv1tr"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/052_产权冻结.tres" id="3_d5ass"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/053_轨道齐射.tres" id="4_02qct"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="5_ru2e1"]
+
+[resource]
+script = ExtResource("5_ru2e1")
+pack_id = &"player_interaction"
+display_name = "Player Interaction"
+families = Array[Resource]([ExtResource("1_xo28w"), ExtResource("2_mv1tr"), ExtResource("3_d5ass"), ExtResource("4_02qct")])

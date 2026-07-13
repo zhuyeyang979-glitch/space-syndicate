@@ -1,7 +1,15 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/overlay_layer.gd" id="2_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MonsterWagerDecisionPanel.tscn" id="3_wager"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ContractResponseDecisionPanel.tscn" id="4_contract"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TemporaryChoiceDecisionPanel.tscn" id="5_choice"]
+[ext_resource type="PackedScene" path="res://scenes/ui/FullscreenMapOverlay.tscn" id="6_fullscreen_map"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardResolutionBanner.tscn" id="7_resolution_banner"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BottomCountdownBar.tscn" id="8_countdown"]
+[ext_resource type="PackedScene" path="res://scenes/ui/DistrictSupplyDrawer.tscn" id="9_supply_drawer"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MenuOverlay.tscn" id="10_menu"]
 
 [node name="OverlayLayer" type="CanvasLayer"]
 script = ExtResource("2_overlay")
@@ -223,3 +231,49 @@ layout_mode = 2
 columns = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 6
+
+[node name="MonsterWagerDecisionPanel" parent="OverlayRoot/ModalLayer/ConfirmCenter" instance=ExtResource("3_wager")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ContractResponseDecisionPanel" parent="OverlayRoot/ModalLayer/ConfirmCenter" instance=ExtResource("4_contract")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="TemporaryChoiceDecisionPanel" parent="OverlayRoot/ModalLayer/ConfirmCenter" instance=ExtResource("5_choice")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="RuntimeSurfaceLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+editor_description = "Scene-owned runtime overlays. main.gd binds these instances and only creates compatibility fallbacks when one is missing."
+
+[node name="FullscreenMapOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("6_fullscreen_map")]
+unique_name_in_owner = true
+visible = false
+
+[node name="CardResolutionTableBannerOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("7_resolution_banner")]
+unique_name_in_owner = true
+visible = false
+
+[node name="BottomCountdownOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("8_countdown")]
+unique_name_in_owner = true
+visible = false
+
+[node name="DistrictSupplySideDrawerOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("9_supply_drawer")]
+unique_name_in_owner = true
+visible = false
+
+[node name="MenuModalOverlay" parent="RuntimeSurfaceLayer" instance=ExtResource("10_menu")]
+unique_name_in_owner = true
+visible = false

@@ -187,8 +187,15 @@ func _stage_campaign_runtime_capture(main: Node, chapter_id: String, stage: Stri
 			await _wait_frames(3)
 			main.call("_activate_first_run_coach_action", "coach_first_summon")
 			await _wait_frames(10)
-			main.call("_activate_first_run_coach_action", "coach_build_city")
-			await _wait_frames(4)
+			main.call("_activate_first_run_coach_action", "coach_open_rack")
+			await _wait_frames(3)
+			main.call("_activate_first_run_coach_action", "coach_buy_card")
+			await _wait_frames(3)
+			main.call("_activate_first_run_coach_action", "coach_play_card")
+			for _frame in range(90):
+				if main.has_method("_update_card_resolution_queue"):
+					main.call("_update_card_resolution_queue", 0.5)
+				await process_frame
 		"drawer":
 			_select_runtime_capture_district(main)
 			await _wait_frames(3)

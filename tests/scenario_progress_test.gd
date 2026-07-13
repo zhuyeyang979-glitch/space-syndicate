@@ -18,18 +18,26 @@ func _run() -> void:
 	_expect(str(progress.current_phase().get("id", "")) == "select_district", "first_table starts at select_district")
 	var expected := [
 		["district_selected", "first_summon"],
-		["monster_summoned", "build_city"],
-		["city_built", "open_rack"],
-		["rack_opened", "buy_card"],
-		["card_bought", "play_card"],
+		["monster_summoned", "open_rack"],
+		["rack_opened", "buy_development"],
+		["card_bought", "play_development"],
+		["card_played", "establish_project"],
+		["city_development_resolved", "check_economy"],
+		["economy_checked", "buy_followup"],
+		["followup_card_bought", "play_followup"],
+		["followup_card_played", "select_track_card"],
+		["track_selected", "observe_ai_public_action"],
+		["ai_public_action_observed", "inspect_clues"],
+		["public_clue_read", "inspect_monster_pressure"],
+		["monster_pressure_observed", "choose_route"],
 	]
 	for pair in expected:
 		progress.mark_signal(str(pair[0]))
 		_expect(str(progress.current_phase().get("id", "")) == str(pair[1]), "after %s first_table advances to %s" % [str(pair[0]), str(pair[1])])
-	progress.mark_signal("card_played")
-	_expect(progress.is_complete(), "first_table completes after card_played")
+	progress.mark_signal("route_chosen")
+	_expect(progress.is_complete(), "first_table completes after the player chooses a route from real income, clue, and monster-pressure feedback")
 	var snapshot: Dictionary = progress.to_dictionary()
-	_expect(int(snapshot.get("current_index", -1)) == 6 and bool(snapshot.get("completed", false)), "progress snapshot records completed first_table")
+	_expect(int(snapshot.get("current_index", -1)) == 14 and bool(snapshot.get("completed", false)), "progress snapshot records completed authored first_table")
 	await _check_runtime_auto_signal_progression()
 	if _failures.is_empty():
 		print("Scenario progress test passed.")
@@ -51,15 +59,24 @@ func _check_runtime_auto_signal_progression() -> void:
 		await process_frame
 		main.call("_select_district", 0)
 		await process_frame
-		var signals: Dictionary = main.get("scenario_completed_signals") as Dictionary
+		var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+		var scenario_state: Dictionary = coordinator.call("runtime_scenario_state", float(main.get("game_time"))) if coordinator != null else {}
+		var signals: Dictionary = scenario_state.get("completed_signals", {}) if scenario_state.get("completed_signals", {}) is Dictionary else {}
 		var coach: Dictionary = main.call("_runtime_scenario_coach_snapshot_source", 0) as Dictionary
 		var phase: Dictionary = coach.get("current_phase", {}) if coach.get("current_phase", {}) is Dictionary else {}
-		_expect(bool(signals.get("district_selected", false)), "runtime district selection auto-completes the current scenario signal")
+		_expect(coordinator != null and bool(signals.get("district_selected", false)), "runtime district selection auto-completes through ScenarioRuntimeController")
 		_expect(str(phase.get("id", "")) == "first_summon", "runtime coach advances after the real district-selection action")
 	else:
 		_expect(false, "main scene exposes scenario start and district selection hooks")
+	for player_variant in main.find_children("*", "AudioStreamPlayer", true, false):
+		var player := player_variant as AudioStreamPlayer
+		if player != null:
+			player.stop()
+			player.stream = null
 	get_root().remove_child(main)
 	main.queue_free()
+	await process_frame
+	await process_frame
 	await process_frame
 
 

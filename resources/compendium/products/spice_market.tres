@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ProductCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/product_codex_entry_resource.gd" id="1_spice"]
+
+[resource]
+script = ExtResource("1_spice")
+entry_id = "spice_market"
+display_name = "Volatile Spice Market"
+subtitle = "Price, demand, route pressure, storage, and monster preference."
+summary = "Spice is a luxury contract line with strong tempo and visible route risk."
+accent = "#22c55e"
+chips = PackedStringArray("Luxury", "Route risk", "Monster bait")
+source_note = "Codex content resource only. Market math still comes from the existing rules."
+glyph = "SP"
+profile = "Luxury | contract line"
+terrain = "Terrain: harbor / market"
+price = "$120 | base $90 | rising"
+demand = "High"
+supply = "Low"
+risk = "3 / 5"
+volatility = "4"
+weather = "Solar wind creates delivery delays and public auction pressure."
+use_case = "Great for contract tempo, but route disruption can erase profit."
+kpi_notes = PackedStringArray("Buy early, sell after a public shortage.", "Low supply makes auctions readable.", "Route effects can move this quickly.", "Track monster pressure before investing.")
+strategy_notes = PackedStringArray("Pair with harbor control and public route watch.", "Force auction tempo while a monster threatens a rival route.", "Use this to explain product pressure without private leakage.")

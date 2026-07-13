@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cxebq5a2d38i6"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_by5fg"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_vgtde"]
+
+[sub_resource type="Resource" id="Resource_ke26s"]
+script = ExtResource("1_by5fg")
+card_id = "轨降擒投诱导1"
+family_id = "轨降擒投诱导"
+kind = &"mudslide"
+purchase_cost = 5
+rules_text = "诱导轨降擒投落点，180米AOE内区域受1点伤害；若其他怪兽靠近则延后行动。"
+tags = PackedStringArray("流星哨兵", "破坏")
+range = 180.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "panic", "delay", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 2.0,
+"panic": 18
+}
+
+[resource]
+script = ExtResource("2_vgtde")
+family_id = "轨降擒投诱导"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_ke26s")])

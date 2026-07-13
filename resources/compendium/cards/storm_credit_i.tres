@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/card_codex_entry_resource.gd" id="1_storm_credit"]
+
+[resource]
+script = ExtResource("1_storm_credit")
+entry_id = "storm_credit_i"
+display_name = "Storm Credit I"
+subtitle = "Finance teaching card"
+summary = "A public finance card used to teach timing, cost bands, and response windows."
+accent = "#38bdf8"
+chips = PackedStringArray("Finance", "Response window", "Public tempo")
+source_note = "Codex content resource only. It does not change cashflow or payout rules."
+rank = "I"
+card_kind = "Finance"
+cost = "$60"
+target = "player board"
+route = "Public auction window"
+requirement = "Requires an open response window or a visible market event."
+effect = "Create a public credit tempo note for the current round."
+read_order = "Cost -> window -> target -> public response -> effect"
+face_note = "Shown as reference copy; action ids stay in the existing game flow."
+timing_note = "Use when public auction pressure is visible."
+risk_note = "Credit tempo can be countered if opponents read the window."
+public_resolution_note = "Resolution appears as public finance feedback only."
+upgrade_i_note = "Small timing advantage and a readable table cue."
+upgrade_iv_note = "Wider response window, still using existing rules."
+tactical_notes = PackedStringArray("Use after a revealed market event.", "Pairs with visible supply pressure.", "Keep the response line public-safe.")
+fact_notes = PackedStringArray("No rule callback is stored on this resource.", "The codex payload remains pure data.")

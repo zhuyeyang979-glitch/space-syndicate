@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://7iitt875vnod"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_qj1ak"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_6xsnn"]
+
+[sub_resource type="Resource" id="Resource_nonq3"]
+script = ExtResource("1_qj1ak")
+card_id = "线索悬赏1"
+family_id = "线索悬赏"
+kind = &"intel_card_trace"
+purchase_cost = 3
+rules_text = "私下追溯1张匿名牌，并尝试查明1座高价值陌生城市业主；答案只进入当前玩家的私人情报。"
+tags = PackedStringArray("情报", "悬赏")
+play_product = "活体芯片"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reveal_city_count": 1,
+"trace_card_count": 1
+}
+
+[sub_resource type="Resource" id="Resource_vd06q"]
+script = ExtResource("1_qj1ak")
+card_id = "线索悬赏2"
+family_id = "线索悬赏"
+rank = 2
+kind = &"intel_card_trace"
+purchase_cost = 5
+rules_text = "追溯2张匿名牌，尝试查明1座陌生城市业主，并回溯1份合约；适合把轨道信息转成押注依据。"
+tags = PackedStringArray("情报", "悬赏", "升级")
+play_product = "活体芯片"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "trace_contract_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reveal_city_count": 1,
+"trace_card_count": 2,
+"trace_contract_count": 1
+}
+
+[sub_resource type="Resource" id="Resource_nrs0k"]
+script = ExtResource("1_qj1ak")
+card_id = "线索悬赏3"
+family_id = "线索悬赏"
+rank = 3
+kind = &"intel_card_trace"
+purchase_cost = 7
+rules_text = "核心情报牌：追溯3张匿名牌，查明最多2座陌生城市业主，并补一条合约回溯线索。"
+tags = PackedStringArray("情报", "悬赏", "核心")
+play_product = "活体芯片"
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "trace_contract_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reveal_city_count": 2,
+"trace_card_count": 3,
+"trace_contract_count": 1
+}
+
+[sub_resource type="Resource" id="Resource_n53xa"]
+script = ExtResource("1_qj1ak")
+card_id = "线索悬赏4"
+family_id = "线索悬赏"
+rank = 4
+kind = &"intel_card_trace"
+purchase_cost = 9
+rules_text = "终端线索悬赏IV：追溯4张牌、2座陌生城市和2份合约；强力破局，但高GDP份额门槛会缩小嫌疑范围。"
+tags = PackedStringArray("情报", "悬赏", "IV")
+play_product = "活体芯片"
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "trace_contract_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reveal_city_count": 2,
+"trace_card_count": 4,
+"trace_contract_count": 2
+}
+
+[resource]
+script = ExtResource("2_6xsnn")
+family_id = "线索悬赏"
+pack_id = &"intel_counter"
+authored_ranks = Array[Resource]([SubResource("Resource_nonq3"), SubResource("Resource_vd06q"), SubResource("Resource_nrs0k"), SubResource("Resource_n53xa")])
+public_pool_eligible = true
+upgradeable_family = true

@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://x2tijvusdf5t"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_mrepa"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_f8oqq"]
+
+[sub_resource type="Resource" id="Resource_8tvu7"]
+script = ExtResource("1_mrepa")
+card_id = "密约回溯1"
+family_id = "密约回溯"
+kind = &"intel_contract_trace"
+purchase_cost = 4
+rules_text = "私下查明最近一份匿名合约的出牌方与目标城市业主；若当前轨道选中合约，则优先追溯该合约。"
+tags = PackedStringArray("情报", "合约")
+play_product = "轨迹墨水"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_contract_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"trace_contract_count": 1
+}
+
+[sub_resource type="Resource" id="Resource_1eqnv"]
+script = ExtResource("1_mrepa")
+card_id = "密约回溯2"
+family_id = "密约回溯"
+rank = 2
+kind = &"intel_contract_trace"
+purchase_cost = 7
+rules_text = "私下查明最多两份匿名合约的出牌方与目标城市业主；适合在多合约轨道里拆穿双边结构。"
+tags = PackedStringArray("情报", "升级")
+play_product = "轨迹墨水"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_contract_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"trace_contract_count": 2
+}
+
+[resource]
+script = ExtResource("2_f8oqq")
+family_id = "密约回溯"
+pack_id = &"intel_counter"
+authored_ranks = Array[Resource]([SubResource("Resource_8tvu7"), SubResource("Resource_1eqnv")])
+public_pool_eligible = true

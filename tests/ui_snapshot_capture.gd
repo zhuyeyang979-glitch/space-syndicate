@@ -232,18 +232,11 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 
 
 func _clear_active_scenario_state(main: Node) -> void:
-	if _node_has_property(main, "active_scenario_id"):
-		main.set("active_scenario_id", "")
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
+	if coordinator != null and coordinator.has_method("clear_runtime_scenario"):
+		coordinator.call("clear_runtime_scenario")
 	if _node_has_property(main, "selected_scenario_id"):
 		main.set("selected_scenario_id", "first_table")
-	if _node_has_property(main, "active_scenario_snapshot_key"):
-		main.set("active_scenario_snapshot_key", "start")
-	if _node_has_property(main, "scenario_completed_signals"):
-		main.set("scenario_completed_signals", {})
-	if _node_has_property(main, "scenario_action_log_entries"):
-		main.set("scenario_action_log_entries", [])
-	if _node_has_property(main, "scenario_coach_closed"):
-		main.set("scenario_coach_closed", false)
 
 
 func _node_has_property(node: Object, property_name: String) -> bool:

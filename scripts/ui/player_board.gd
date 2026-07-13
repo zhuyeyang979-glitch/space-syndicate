@@ -37,6 +37,7 @@ var hand_cards_signature: String = ""
 var status_lamps_signature: String = ""
 var readiness_chips_signature: String = ""
 var progress_path_signature: String = ""
+var runtime_feedback: Dictionary = {}
 
 
 func _ready() -> void:
@@ -105,6 +106,10 @@ func _configure_pointer_filter_skeleton() -> void:
 func set_player_state(data: Dictionary) -> void:
 	title_label.text = str(data.get("title", "玩家板｜手牌"))
 	action_hint_label.text = str(data.get("hint", "选择手牌或选区，右侧会解释能做什么。"))
+	action_hint_label.tooltip_text = action_hint_label.text
+	action_hint_label.remove_theme_color_override("font_color")
+	runtime_feedback = {}
+	set_meta("runtime_feedback", {})
 	var actions: Array = data.get("actions", []) if data.get("actions", []) is Array else []
 	var primary_action := _first_text(data, ["primary_action", "primary_action_label", "next_action"], _first_action_label(actions))
 	var identity_text := _first_text(data, ["identity", "player", "seat"], "未入席")
@@ -149,6 +154,25 @@ func set_hovered_track_action(action_id: String) -> void:
 	if bid_board == null or not bid_board.has_method("set_hovered_track_action"):
 		return
 	bid_board.call("set_hovered_track_action", action_id)
+
+
+func set_runtime_feedback(data: Dictionary) -> void:
+	runtime_feedback = data.duplicate(true)
+	set_meta("runtime_feedback", runtime_feedback.duplicate(true))
+	if runtime_feedback.is_empty():
+		return
+	var state := str(runtime_feedback.get("state", "info")).strip_edges()
+	var label := str(runtime_feedback.get("label", runtime_feedback.get("text", ""))).strip_edges()
+	var detail := str(runtime_feedback.get("detail", runtime_feedback.get("tooltip", ""))).strip_edges()
+	if label == "":
+		label = "已更新玩家行动状态"
+	action_hint_label.text = label
+	action_hint_label.tooltip_text = detail if detail != "" else label
+	action_hint_label.add_theme_color_override("font_color", _runtime_feedback_color(state))
+
+
+func get_runtime_feedback_snapshot() -> Dictionary:
+	return runtime_feedback.duplicate(true)
 
 
 func _on_card_clicked(card_data: Dictionary) -> void:
@@ -384,20 +408,20 @@ func _summary_status_entry(entries: Array, prefix: String) -> Dictionary:
 		if bool(entry.get("active", false)):
 			active = true
 			accent = _entry_color(entry, accent)
-		var text := _entry_status_text(entry)
-		if text.strip_edges() != "" and parts.size() < 2:
-			parts.append(text)
+		var entry_text := _entry_status_text(entry)
+		if entry_text.strip_edges() != "" and parts.size() < 2:
+			parts.append(entry_text)
 		var tooltip := str(entry.get("tooltip", entry.get("tip", ""))).strip_edges()
 		if tooltip != "":
-			tooltips.append("%s: %s" % [text, tooltip])
+			tooltips.append("%s: %s" % [entry_text, tooltip])
 	if parts.is_empty():
 		parts.append("空闲")
 	var summary := " / ".join(parts)
-	var text := summary
+	var summary_text := summary
 	if prefix.strip_edges() != "" and not summary.to_lower().begins_with(prefix.to_lower()):
-		text = "%s %s" % [prefix, summary]
+		summary_text = "%s %s" % [prefix, summary]
 	return {
-		"text": text,
+		"text": summary_text,
 		"active": active,
 		"accent": accent,
 		"tooltip": "\n".join(tooltips),
@@ -535,6 +559,19 @@ func _chip_style(accent: Color) -> StyleBoxFlat:
 	style.set_content_margin(SIDE_TOP, 2.0)
 	style.set_content_margin(SIDE_BOTTOM, 2.0)
 	return style
+
+
+func _runtime_feedback_color(state: String) -> Color:
+	match state:
+		"pending":
+			return Color("#fde68a")
+		"resolved":
+			return Color("#86efac")
+		"blocked":
+			return Color("#fca5a5")
+		"temporary_decision":
+			return Color("#c084fc")
+	return Color("#bfdbfe")
 
 
 func _tableau_style(accent: Color, fill_weight: float) -> StyleBoxFlat:

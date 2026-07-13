@@ -342,8 +342,8 @@ func _fitted_card_size(count: int = 1) -> Vector2:
 	if count > 1:
 		var needed_width: float = card_size.x * (1.0 + gap_ratio * float(count - 1))
 		width_scale = clampf(width_room / maxf(needed_width, 1.0), min_scale, 1.0)
-	var scale: float = minf(height_scale, width_scale)
-	return Vector2(maxf(48.0, roundf(card_size.x * scale)), maxf(64.0, roundf(card_size.y * scale)))
+	var layout_scale: float = minf(height_scale, width_scale)
+	return Vector2(maxf(48.0, roundf(card_size.x * layout_scale)), maxf(64.0, roundf(card_size.y * layout_scale)))
 
 
 func _hand_layout_profile(count: int) -> Dictionary:

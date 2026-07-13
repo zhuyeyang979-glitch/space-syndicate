@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/contract_runtime_world_bridge.gd" id="1_bridge"]
+
+[node name="ContractRuntimeWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Non-owning bridge for contract world facts, settlement mutation, history receipts, and private intel writes."

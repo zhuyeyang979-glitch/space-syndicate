@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_runtime_catalog_service.gd" id="1_service"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/card_runtime_catalog_v04.tres" id="2_catalog"]
+
+[node name="CardRuntimeCatalogService" type="Node"]
+script = ExtResource("1_service")
+catalog = ExtResource("2_catalog")
+editor_description = "Authoritative runtime source for the v0.4 authored card catalog, ordered pool, family ranks, and deterministic rank derivation."

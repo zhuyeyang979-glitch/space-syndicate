@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/001_城市融资.tres" id="1_walr1"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/002_星际广告.tres" id="2_iji5i"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/003_轨道融资.tres" id="3_0yq7g"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/013_地下融资.tres" id="4_80ttt"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/022_商业诱饵.tres" id="5_u2lnv"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/025_垄断协议.tres" id="6_emgfh"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/026_需求创造.tres" id="7_cnhiy"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/038_竞争封锁.tres" id="8_hqaxn"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/069_生产扩张.tres" id="9_ruijw"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/070_产能封锁.tres" id="10_nenvt"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/071_交通升级.tres" id="11_3jit2"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/072_交通瘫痪.tres" id="12_3dvt6"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/073_消费刺激.tres" id="13_k5kbq"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/074_消费冷却.tres" id="14_h71kt"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="15_yhhv2"]
+
+[resource]
+script = ExtResource("15_yhhv2")
+pack_id = &"city_economy"
+display_name = "City & Economy"
+families = Array[Resource]([ExtResource("1_walr1"), ExtResource("2_iji5i"), ExtResource("3_0yq7g"), ExtResource("4_80ttt"), ExtResource("5_u2lnv"), ExtResource("6_emgfh"), ExtResource("7_cnhiy"), ExtResource("8_hqaxn"), ExtResource("9_ruijw"), ExtResource("10_nenvt"), ExtResource("11_3jit2"), ExtResource("12_3dvt6"), ExtResource("13_k5kbq"), ExtResource("14_h71kt")])

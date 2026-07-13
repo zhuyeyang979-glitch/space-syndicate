@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/city_development_runtime_controller.gd" id="1_controller"]
+
+[node name="CityDevelopmentRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "v0.4 runtime owner for city-development entry legality and public-safe project lifecycle evidence. Economy and settlement remain in existing rule functions."

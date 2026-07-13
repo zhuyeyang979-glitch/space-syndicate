@@ -249,6 +249,8 @@ func owner_damage_cash_total_for_rank(rank: int):
 
 func skill_price_power_adjustment(skill: Dictionary):
 	var kind = String(skill.get("kind", ""))
+	var futures_terms: Dictionary = _dict_or_empty(skill.get("futures_terms", {}))
+	var derivative_terms: Dictionary = _dict_or_empty(skill.get("gdp_derivative_terms", {}))
 	var tags = _as_array(skill.get("tags", []))
 	var adjustment = 0
 	adjustment += mini(90, int(round(float(abs(int(skill.get("cash", 0)))) / 8.0)))
@@ -271,9 +273,9 @@ func skill_price_power_adjustment(skill: Dictionary):
 		adjustment += 32 + mini(65, int(round(float(int(skill.get("military_hp", 0))) / 4.0))) + maxi(0, int(skill.get("military_damage", 0))) * 13
 		adjustment += mini(55, int(round(float(int(skill.get("military_gdp_penalty", 0))) / 3.0))) + maxi(0, int(skill.get("military_strike_route_damage", 0))) * 22
 	if kind == "product_futures":
-		adjustment += 28 + int(round(float(skill.get("product_bet_multiplier", 1.0)) * 18.0)) + maxi(0, int(skill.get("stockpile_units", 0))) * 8
+		adjustment += 28 + int(round(float(futures_terms.get("multiplier", 1.0)) * 18.0)) + maxi(0, int(futures_terms.get("units", 0))) * 8
 	if kind == "city_gdp_derivative":
-		adjustment += 30 + int(round(float(skill.get("gdp_bet_multiplier", 1.0)) * 18.0)) + mini(60, int(round(float(maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0)))) / 8.0)))
+		adjustment += 30 + int(round(float(derivative_terms.get("multiplier", 1.0)) * 18.0)) + mini(60, int(round(float(maxi(0, int(derivative_terms.get("maximum_gain", 0)))) / 20.0)))
 	if ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"].has(kind):
 		adjustment += 34 + maxi(0, int(skill.get("hand_discard_count", 0))) * 35 + maxi(0, int(skill.get("hand_steal_count", 0))) * 52
 		adjustment += maxi(0, int(skill.get("global_barrage_target_count", 0))) * 18 + maxi(0, int(skill.get("counter_strength", 0))) * 28
@@ -281,11 +283,14 @@ func skill_price_power_adjustment(skill: Dictionary):
 		adjustment += 18
 	if tags.has("天气") or kind == "weather_control":
 		adjustment += 16 + maxi(0, int(skill.get("weather_zone_count", 0))) * 10
-	if bool(skill.get("requires_warehouse_city", false)):
+	if bool(futures_terms.get("requires_warehouse", false)):
 		adjustment -= 34
-	if String(skill.get("play_product", "")) != "":
-		adjustment -= mini(48, maxi(1, int(skill.get("play_flow_required", 1))) * 14)
-	if float(skill.get("product_bet_seconds", 0.0)) >= 90.0 or float(skill.get("gdp_bet_seconds", 0.0)) >= 90.0:
+	var region_share_required = skill_play_region_gdp_share_required(skill)
+	if region_share_required > 0:
+		# Preserve roughly the old 0-48 gate-discount band while making the
+		# public regional GDP threshold the only normal economic play gate.
+		adjustment -= mini(48, int(round(float(region_share_required) * 1.2)))
+	if float(futures_terms.get("duration_seconds", 0.0)) >= 90.0 or float(derivative_terms.get("duration_seconds", 0.0)) >= 90.0:
 		adjustment -= 12
 	if int(skill.get("play_cash_per_monster", 0)) > 0:
 		adjustment -= 12
@@ -540,8 +545,11 @@ func runtime_balance_card_price_rows(snapshot: Dictionary = {}):
 			"field_adjustment": skill_price_power_adjustment(skill),
 			"actual_price": price,
 			"tier": card_price_tier_text(price),
-			"play_product": String(skill.get("play_product", "")),
-			"play_flow_required": int(skill.get("play_flow_required", 0)),
+			"supply_product": skill_supply_product(skill),
+			"play_requirement_kind": skill_play_requirement_kind(skill),
+			"play_region_scope": skill_play_region_scope(skill),
+			"play_region_gdp_share_required": skill_play_region_gdp_share_required(skill),
+			"play_flow_required": skill_play_flow_required(skill),
 			"cash": int(skill.get("cash", 0)),
 			"revenue_amount": int(skill.get("revenue_amount", 0)),
 			"damage": int(skill.get("damage", 0)),
@@ -575,7 +583,7 @@ func runtime_balance_rule_loophole_rows():
 
 
 func skill_balance_numeric_field_names():
-	return ["cash", "revenue_amount", "contract_income", "accept_cash", "decline_cash_penalty", "production_delta", "transport_delta", "consumption_delta", "market_demand_pressure", "market_supply_pressure", "price_delta", "growth_multiplier", "route_flow_multiplier", "repair_routes", "route_damage", "damage", "panic", "draw_amount", "trace_card_count", "reveal_city_count", "trace_contract_count", "hand_discard_count", "hand_steal_count", "counter_strength", "counter_trace", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "gdp_bet_multiplier", "gdp_bet_destroy_bonus", "product_bet_multiplier", "stockpile_units", "hp", "fixed_skill_count", "military_hp", "military_damage", "military_gdp_penalty", "military_strike_route_damage", "weather_zone_count", "weather_duration_seconds"]
+	return ["cash", "revenue_amount", "contract_income", "accept_cash", "decline_cash_penalty", "production_delta", "transport_delta", "consumption_delta", "market_demand_pressure", "market_supply_pressure", "price_delta", "growth_multiplier", "route_flow_multiplier", "repair_routes", "route_damage", "damage", "panic", "draw_amount", "trace_card_count", "reveal_city_count", "trace_contract_count", "hand_discard_count", "hand_steal_count", "counter_strength", "counter_trace", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "hp", "fixed_skill_count", "military_hp", "military_damage", "military_gdp_penalty", "military_strike_route_damage", "weather_zone_count", "weather_duration_seconds"]
 
 
 func skill_balance_feature_vector(card_name: String, skill: Dictionary, rank: int = 1, family: String = "", price: int = 0, route_id: String = "", route_label: String = ""):
@@ -618,11 +626,13 @@ func skill_balance_feature_vector(card_name: String, skill: Dictionary, rank: in
 
 func skill_balance_score_breakdown(skill: Dictionary, rank: int = 1):
 	var kind = String(skill.get("kind", ""))
-	var cash_score = maxi(0, int(skill.get("cash", 0))) / 4 + maxi(0, int(skill.get("contract_income", 0))) / 5
-	var economy_score = maxi(0, int(skill.get("revenue_amount", 0))) / 2 + maxi(0, int(skill.get("production_delta", 0))) * 42 + maxi(0, int(skill.get("transport_delta", 0))) * 42 + maxi(0, int(skill.get("consumption_delta", 0))) * 42
-	var market_score = abs(int(skill.get("market_demand_pressure", 0))) * 34 + abs(int(skill.get("market_supply_pressure", 0))) * 34 + abs(int(skill.get("price_delta", 0))) / 2
-	var futures_score = 80 + int(round(maxf(0.1, float(skill.get("product_bet_multiplier", 1.0))) * 70.0)) + maxi(0, int(skill.get("stockpile_units", 0))) * 32 if kind == "product_futures" else 0
-	var gdp_score = 90 + int(round(maxf(0.1, float(skill.get("gdp_bet_multiplier", 1.0))) * 70.0)) + maxi(0, int(skill.get("gdp_bet_destroy_bonus", 0))) / 4 if kind == "city_gdp_derivative" else 0
+	var futures_terms: Dictionary = _dict_or_empty(skill.get("futures_terms", {}))
+	var derivative_terms: Dictionary = _dict_or_empty(skill.get("gdp_derivative_terms", {}))
+	var cash_score = int(float(maxi(0, int(skill.get("cash", 0)))) / 4.0) + int(float(maxi(0, int(skill.get("contract_income", 0)))) / 5.0)
+	var economy_score = int(float(maxi(0, int(skill.get("revenue_amount", 0)))) / 2.0) + maxi(0, int(skill.get("production_delta", 0))) * 42 + maxi(0, int(skill.get("transport_delta", 0))) * 42 + maxi(0, int(skill.get("consumption_delta", 0))) * 42
+	var market_score = abs(int(skill.get("market_demand_pressure", 0))) * 34 + abs(int(skill.get("market_supply_pressure", 0))) * 34 + int(float(abs(int(skill.get("price_delta", 0)))) / 2.0)
+	var futures_score = 80 + int(round(maxf(0.1, float(futures_terms.get("multiplier", 1.0))) * 70.0)) + maxi(0, int(futures_terms.get("units", 0))) * 32 + int(float(maxi(0, int(futures_terms.get("maximum_gain", 0))) - maxi(0, int(futures_terms.get("maximum_loss", 0)))) / 8.0) if kind == "product_futures" else 0
+	var gdp_score = 90 + int(round(maxf(0.1, float(derivative_terms.get("multiplier", 1.0))) * 70.0)) + int(float(maxi(0, int(derivative_terms.get("maximum_gain", 0)))) / 8.0) + int(float(maxi(0, int(derivative_terms.get("maximum_loss", 0)))) / 12.0) if kind == "city_gdp_derivative" else 0
 	var route_score = maxi(0, int(skill.get("repair_routes", 0))) * 48 + maxi(0, int(skill.get("route_damage", 0))) * 62
 	var damage_score = maxi(0, int(skill.get("damage", 0))) * 58 + maxi(0, int(skill.get("global_barrage_damage", 0))) * 74 + maxi(0, int(skill.get("global_barrage_target_count", 0))) * 32
 	var interaction_score = maxi(0, int(skill.get("hand_discard_count", 0))) * 82 + maxi(0, int(skill.get("hand_steal_count", 0))) * 112 + maxi(0, int(skill.get("global_barrage_route_damage", 0))) * 56
@@ -631,10 +641,10 @@ func skill_balance_score_breakdown(skill: Dictionary, rank: int = 1):
 	var monster_score = 140 + maxi(0, int(skill.get("hp", 0))) * 7 + maxi(0, int(skill.get("fixed_skill_count", 0))) * 36 if kind == "monster_card" else 0
 	var military_score = 70 + maxi(0, int(skill.get("military_hp", 0))) * 7 + maxi(0, int(skill.get("military_damage", 0))) * 70 if ["military_force", "military_command"].has(kind) else 0
 	var weather_score = maxi(1, int(skill.get("weather_zone_count", 1))) * 42 + int(round(float(skill.get("weather_duration_seconds", WEATHER_DURATION_MIN_SECONDS)) / 3.0)) if kind == "weather_control" else 0
-	var gate_penalty = skill_play_flow_required(skill) * 28 + skill_play_cash_cost(skill) / 20
+	var gate_penalty = skill_play_region_gdp_share_required(skill) * 2 + int(float(skill_play_cash_cost(skill)) / 20.0)
 	var complexity_score = skill_balance_complexity_score(skill, rank)
 	var power_score = cash_score + economy_score + market_score + futures_score + gdp_score + route_score + damage_score + interaction_score + defense_score + intel_score + monster_score + military_score + weather_score
-	return {"cash_score": cash_score, "economy_score": economy_score, "market_score": market_score, "futures_score": futures_score, "gdp_derivative_score": gdp_score, "route_score": route_score, "damage_score": damage_score, "interaction_score": interaction_score, "defense_score": defense_score, "intel_score": intel_score, "monster_score": monster_score, "military_score": military_score, "weather_score": weather_score, "gate_penalty": gate_penalty, "public_telegraph_score": skill_balance_public_telegraph_score(skill), "tempo_score": cash_score + damage_score + route_score / 3, "engine_score": economy_score + market_score + futures_score + gdp_score + route_score / 2, "disruption_score": interaction_score + damage_score + route_score, "complexity_score": complexity_score, "power_score": maxi(1, power_score), "net_power_score": maxi(1, power_score - gate_penalty / 2)}
+	return {"cash_score": cash_score, "economy_score": economy_score, "market_score": market_score, "futures_score": futures_score, "gdp_derivative_score": gdp_score, "route_score": route_score, "damage_score": damage_score, "interaction_score": interaction_score, "defense_score": defense_score, "intel_score": intel_score, "monster_score": monster_score, "military_score": military_score, "weather_score": weather_score, "gate_penalty": gate_penalty, "public_telegraph_score": skill_balance_public_telegraph_score(skill), "tempo_score": cash_score + damage_score + int(float(route_score) / 3.0), "engine_score": economy_score + market_score + futures_score + gdp_score + int(float(route_score) / 2.0), "disruption_score": interaction_score + damage_score + route_score, "complexity_score": complexity_score, "power_score": maxi(1, power_score), "net_power_score": maxi(1, power_score - int(float(gate_penalty) / 2.0))}
 
 
 func runtime_balance_card_feature_matrix(snapshot: Dictionary = {}, sample_only: bool = true):
@@ -787,7 +797,8 @@ func skill_balance_route_tags(skill: Dictionary):
 		_append_unique(result, "GDP衍生")
 	if kind == "weather_control":
 		_append_unique(result, "天气")
-	if bool(skill.get("requires_warehouse_city", false)) or int(skill.get("stockpile_units", 0)) > 0:
+	var futures_terms: Dictionary = _dict_or_empty(skill.get("futures_terms", {}))
+	if bool(futures_terms.get("requires_warehouse", false)) or int(futures_terms.get("units", 0)) > 1:
 		_append_unique(result, "仓储")
 	if ["monster_card", "monster_bound_action"].has(kind):
 		_append_unique(result, "怪兽")
@@ -805,8 +816,8 @@ func skill_balance_ai_play_tags(skill: Dictionary):
 		_append_unique(tags, "needs_target_player")
 	if skill_targets_monster(skill):
 		_append_unique(tags, "needs_monster_target")
-	if String(skill.get("play_product", "")) != "" or skill_play_flow_required(skill) > 0:
-		_append_unique(tags, "uses_product_flow")
+	if skill_play_region_gdp_share_required(skill) > 0:
+		_append_unique(tags, "uses_region_gdp_share")
 	if skill_play_cash_cost(skill) > 0:
 		_append_unique(tags, "uses_cash_cost")
 	if ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "region_economy_shift"].has(kind):
@@ -844,15 +855,32 @@ func skill_balance_target_type(skill: Dictionary):
 
 
 func skill_balance_play_gate(skill: Dictionary):
-	return {"play_product": String(skill.get("play_product", "")), "flow_required": skill_play_flow_required(skill), "cash_cost": skill_play_cash_cost(skill), "requires_warehouse_city": bool(skill.get("requires_warehouse_city", false)), "starter_play_free": bool(skill.get("starter_play_free", false)), "target_type": skill_balance_target_type(skill)}
+	var requirement_kind = skill_play_requirement_kind(skill)
+	var region_scope = skill_play_region_scope(skill)
+	var required_share_percent = skill_play_region_gdp_share_required(skill)
+	return {
+		"requirement_kind": requirement_kind,
+		"region_scope": region_scope,
+		"required_share_percent": required_share_percent,
+		"flow_required": skill_play_flow_required(skill),
+		# Keep the source-data names beside the normalized analyzer keys so
+		# developer reports can be traced back to the card dictionary directly.
+		"play_requirement_kind": requirement_kind,
+		"play_region_scope": region_scope,
+		"play_region_gdp_share_required": required_share_percent,
+		"cash_cost": skill_play_cash_cost(skill),
+		"requires_warehouse_city": bool(_dict_or_empty(skill.get("futures_terms", {})).get("requires_warehouse", false)),
+		"starter_play_free": bool(skill.get("starter_play_free", false)),
+		"target_type": skill_balance_target_type(skill),
+	}
 
 
 func skill_balance_public_telegraph_score(skill: Dictionary):
 	var score = 0
-	if String(skill.get("play_product", "")) != "":
-		score += 20
-	if skill_play_flow_required(skill) > 0:
-		score += skill_play_flow_required(skill) * 12
+	var region_share_required = skill_play_region_gdp_share_required(skill)
+	if region_share_required > 0:
+		# The threshold is public, but the opponent's exact share remains private.
+		score += 20 + region_share_required
 	if skill_targets_player(skill) or skill_targets_monster(skill):
 		score += 24
 	if int(skill.get("damage", 0)) > 0 or int(skill.get("route_damage", 0)) > 0:
@@ -871,11 +899,11 @@ func skill_balance_complexity_score(skill: Dictionary, rank: int = 1):
 			score += 1
 	if skill_targets_player(skill) or skill_targets_monster(skill):
 		score += 3
-	if skill_play_flow_required(skill) > 0:
+	if skill_play_region_gdp_share_required(skill) > 0:
 		score += 2
 	if skill_play_cash_cost(skill) > 0:
 		score += 1
-	if bool(skill.get("requires_warehouse_city", false)):
+	if bool(_dict_or_empty(skill.get("futures_terms", {})).get("requires_warehouse", false)):
 		score += 3
 	if ["area_trade_contract", "product_futures", "city_gdp_derivative", "weather_control", "card_counter"].has(String(skill.get("kind", ""))):
 		score += 4
@@ -904,7 +932,33 @@ func card_strength_budget_band_text(points: int):
 	return "终端"
 
 
+func skill_play_requirement_kind(skill: Dictionary):
+	var explicit_kind = String(skill.get("play_requirement_kind", ""))
+	if explicit_kind != "":
+		return explicit_kind
+	return "region_gdp_share" if skill_play_region_gdp_share_required(skill) > 0 else "none"
+
+
+func skill_play_region_scope(skill: Dictionary):
+	return String(skill.get("play_region_scope", "own_best_region"))
+
+
+func skill_play_region_gdp_share_required(skill: Dictionary):
+	if bool(skill.get("starter_play_free", false)):
+		return 0
+	return clampi(int(skill.get("play_region_gdp_share_required", 0)), 0, 100)
+
+
+func skill_supply_product(skill: Dictionary):
+	# Legacy play_product data is retained only as regional supply affinity.
+	return String(skill.get("supply_product", skill.get("play_product", "")))
+
+
 func skill_play_flow_required(skill: Dictionary):
+	# Product-flow gates are opt-in legacy fixtures only. Normal cards use the
+	# regional GDP-share policy above and therefore report zero flow demand.
+	if not bool(skill.get("legacy_flow_gate_enabled", false)):
+		return 0
 	if bool(skill.get("starter_play_free", false)):
 		return 0
 	if skill.has("play_flow_required"):

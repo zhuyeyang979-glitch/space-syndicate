@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BalanceParameterProfileResource" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/balance_parameter_profile_resource.gd" id="1_profile"]
+[ext_resource type="Resource" path="res://resources/balance/runtime_balance_parameters_v1.tres" id="2_runtime"]
+[ext_resource type="Resource" path="res://resources/balance/card_price_curve_parameters_v1.tres" id="3_curve"]
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = "runtime_balance_v1"
+display_name = "Runtime Balance Profile v1"
+design_notes = "Inspector-editable parameter wrapper for runtime balance targets and card price curve data. It does not replace settlement formulas or action ids."
+runtime_parameters = ExtResource("2_runtime")
+price_curve_parameters = ExtResource("3_curve")

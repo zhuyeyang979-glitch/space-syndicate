@@ -1,0 +1,33 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/product_codex_strategy_card.gd" id="1_script"]
+
+[node name="ProductCodexStrategyCard" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 94)
+size_flags_horizontal = 3
+script = ExtResource("1_script")
+
+[node name="ProductCodexStrategyMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 9
+theme_override_constants/margin_bottom = 8
+
+[node name="ProductCodexStrategyStack" type="VBoxContainer" parent="ProductCodexStrategyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ProductCodexStrategyTitle" type="Label" parent="ProductCodexStrategyMargin/ProductCodexStrategyStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 0
+text_overrun_behavior = 3
+theme_override_font_sizes/font_size = 13
+
+[node name="ProductCodexStrategyBody" type="Label" parent="ProductCodexStrategyMargin/ProductCodexStrategyStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.898039, 0.905882, 0.921569, 1)

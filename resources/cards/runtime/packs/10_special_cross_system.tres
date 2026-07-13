@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/007_过载补给.tres" id="1_yr8u5"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/011_远程补给链.tres" id="2_xwyht"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/012_星门采购权.tres" id="3_236w2"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/077_连锁过载.tres" id="4_5oplr"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/104_电击踢破绽.tres" id="5_ixkim"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="6_2yvao"]
+
+[resource]
+script = ExtResource("6_2yvao")
+pack_id = &"special_cross_system"
+display_name = "Special Cross-System"
+families = Array[Resource]([ExtResource("1_yr8u5"), ExtResource("2_xwyht"), ExtResource("3_236w2"), ExtResource("4_5oplr"), ExtResource("5_ixkim")])

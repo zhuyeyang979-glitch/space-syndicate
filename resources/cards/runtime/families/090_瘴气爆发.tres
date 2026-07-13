@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c7thuwle41oqj"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_xvq44"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_w2fdc"]
+
+[sub_resource type="Resource" id="Resource_i6v2w"]
+script = ExtResource("1_xvq44")
+card_id = "瘴气爆发1"
+family_id = "瘴气爆发"
+kind = &"miasma_bloom"
+purchase_cost = 4
+rules_text = "在选中区域220米AOE内散布至多3枚瘴气。"
+tags = PackedStringArray()
+range = 220.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "miasma_count", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"miasma_count": 3
+}
+
+[sub_resource type="Resource" id="Resource_u4k5k"]
+script = ExtResource("1_xvq44")
+card_id = "瘴气爆发2"
+family_id = "瘴气爆发"
+rank = 2
+kind = &"miasma_bloom"
+purchase_cost = 6
+rules_text = "在选中区域260米AOE内散布至多5枚瘴气，作为瘴气爆发升级牌。"
+tags = PackedStringArray("瘴气", "升级")
+range = 260.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "miasma_count", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"miasma_count": 5
+}
+
+[resource]
+script = ExtResource("2_w2fdc")
+family_id = "瘴气爆发"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_i6v2w"), SubResource("Resource_u4k5k")])
+upgradeable_family = true

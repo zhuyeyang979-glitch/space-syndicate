@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/map/planet_route_marker.gd" id="1_script"]
+
+[node name="PlanetRouteMarker" type="PanelContainer"]
+custom_minimum_size = Vector2(120, 50)
+offset_right = 120.0
+offset_bottom = 50.0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="RouteMarkerRows" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="RouteMarkerProductLabel" type="Label" parent="RouteMarkerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "route"
+text_overrun_behavior = 3
+
+[node name="RouteMarkerStatusLabel" type="Label" parent="RouteMarkerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "open route"
+text_overrun_behavior = 3
+
+[node name="RouteMarkerLengthLabel" type="Label" parent="RouteMarkerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0 pts"
+text_overrun_behavior = 3

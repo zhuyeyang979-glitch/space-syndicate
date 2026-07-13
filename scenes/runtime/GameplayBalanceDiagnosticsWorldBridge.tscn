@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd" id="1_bridge"]
+
+[node name="GameplayBalanceDiagnosticsWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Read-only fact bridge for gameplay balance diagnostics. It gathers public/developer-safe card, role, monster, product, district, supply and eligibility facts without scoring or mutating the world."

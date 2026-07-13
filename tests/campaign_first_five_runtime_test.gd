@@ -34,9 +34,14 @@ func _run() -> void:
 	var completed: Array = main.get("campaign_completed_chapter_ids") as Array
 	for chapter_id in ["00_tavern_entry", "01_first_table", "02_market_hand", "03_public_track", "04_bid_practice"]:
 		_expect(completed.has(chapter_id), "campaign runtime completes %s through real table actions" % chapter_id)
+	for player_variant in main.find_children("*", "AudioStreamPlayer", true, false):
+		var player := player_variant as AudioStreamPlayer
+		if player != null:
+			player.stop()
+			player.stream = null
 	root.remove_child(main)
 	main.queue_free()
-	await _wait_frames(1)
+	await _wait_frames(3)
 	_finish()
 
 
@@ -53,9 +58,22 @@ func _complete_chapter_01(main: Node) -> void:
 	await _wait_frames(8)
 	_select_recommended_district(main)
 	await _wait_frames(4)
-	main.call("_activate_first_run_coach_action", "coach_first_summon")
-	await _wait_frames(16)
-	main.call("_activate_first_run_coach_action", "coach_build_city")
+	var summon_handled := bool(main.call("_activate_first_run_coach_action", "coach_first_summon"))
+	_expect(summon_handled, "chapter 01 submits the real starter monster")
+	await _advance_card_resolution(main, 90)
+	var chapter_signals: Dictionary = _scenario_state(main).get("completed_signals", {})
+	_expect(bool(chapter_signals.get("monster_summoned", false)), "chapter 01 resolves the starter monster before opening development supply")
+	var rack_handled := bool(main.call("_activate_first_run_coach_action", "coach_open_rack"))
+	_expect(rack_handled, "chapter 01 opens a real district supply")
+	await _wait_frames(4)
+	var buy_handled := bool(main.call("_activate_first_run_coach_action", "coach_buy_card"))
+	_expect(buy_handled, "chapter 01 buys a real city development card")
+	await _wait_frames(4)
+	var play_handled := bool(main.call("_activate_first_run_coach_action", "coach_play_card"))
+	_expect(play_handled, "chapter 01 submits the real city development card")
+	await _advance_until_signal(main, "city_development_resolved", 480)
+	chapter_signals = _scenario_state(main).get("completed_signals", {})
+	_expect(bool(chapter_signals.get("city_development_resolved", false)), "chapter 01 resolves a product-bound city development project")
 	await _wait_for_reward(main, "01_first_table")
 
 
@@ -70,7 +88,21 @@ func _complete_chapter_02(main: Node) -> void:
 	await _wait_frames(6)
 	main.call("_activate_scenario_action", "scenario_step_compare_cards")
 	await _wait_frames(6)
-	main.call("_activate_first_run_coach_action", "coach_buy_card")
+	for _attempt in range(3):
+		var completed: Dictionary = _scenario_state(main).get("completed_signals", {})
+		if bool(completed.get("card_bought", false)):
+			break
+		main.call("_activate_first_run_coach_action", "coach_buy_card")
+		await _wait_frames(6)
+		var pending: Dictionary = main.get("pending_discard_purchase") as Dictionary
+		if not pending.is_empty():
+			var player_index := int(pending.get("player_index", 0))
+			var players: Array = main.get("players") as Array
+			var player: Dictionary = players[player_index] if player_index >= 0 and player_index < players.size() and players[player_index] is Dictionary else {}
+			var discardable: Array = main.call("_discardable_hand_slots_for_purchase", player)
+			if not discardable.is_empty():
+				main.call("_confirm_discard_purchase", int(discardable[0]))
+				await _wait_frames(4)
 	await _wait_for_reward(main, "02_market_hand")
 
 
@@ -121,7 +153,13 @@ func _wait_for_reward(main: Node, chapter_id: String) -> void:
 
 func _runtime_ready(main: Node, chapter_id: String, scenario_id: String) -> bool:
 	var screen := main.find_child("RuntimeGameScreen", true, false) as Control
-	return screen != null and screen.visible and str(main.get("active_campaign_chapter_id")) == chapter_id and str(main.get("active_scenario_id")) == scenario_id
+	return screen != null and screen.visible and str(main.get("active_campaign_chapter_id")) == chapter_id and str(_scenario_state(main).get("active_scenario_id", "")) == scenario_id
+
+
+func _scenario_state(main: Node) -> Dictionary:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
+	var value: Variant = coordinator.call("runtime_scenario_state", float(main.get("game_time"))) if coordinator != null else {}
+	return value as Dictionary if value is Dictionary else {}
 
 
 func _has_named_node(node: Node, node_name: String) -> bool:
@@ -130,6 +168,23 @@ func _has_named_node(node: Node, node_name: String) -> bool:
 
 func _wait_frames(count: int) -> void:
 	for _i in range(maxi(1, count)):
+		await process_frame
+
+
+func _advance_card_resolution(main: Node, frames: int) -> void:
+	for _i in range(maxi(1, frames)):
+		if main.has_method("_update_card_resolution_queue"):
+			main.call("_update_card_resolution_queue", 0.5)
+		await process_frame
+
+
+func _advance_until_signal(main: Node, signal_id: String, max_frames: int) -> void:
+	for _i in range(maxi(1, max_frames)):
+		var completed: Dictionary = _scenario_state(main).get("completed_signals", {})
+		if bool(completed.get(signal_id, false)):
+			return
+		if main.has_method("_update_card_resolution_queue"):
+			main.call("_update_card_resolution_queue", 0.5)
 		await process_frame
 
 

@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://b3mmpr8474x6s"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_typ3n"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_n8b4p"]
+
+[sub_resource type="Resource" id="Resource_sr8j1"]
+script = ExtResource("1_typ3n")
+card_id = "商路黑客1"
+family_id = "商路黑客"
+kind = &"route_sabotage"
+purchase_cost = 4
+rules_text = "选中任意公开城市群：追加1条商路损伤压力；真实业主仍不公开。"
+tags = PackedStringArray("经营", "破坏")
+authored_keys = PackedStringArray("cost", "kind", "route_damage", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"panic": 16,
+"route_damage": 1
+}
+
+[sub_resource type="Resource" id="Resource_6tv7h"]
+script = ExtResource("1_typ3n")
+card_id = "商路黑客2"
+family_id = "商路黑客"
+rank = 2
+kind = &"route_sabotage"
+purchase_cost = 7
+rules_text = "选中任意公开城市群：追加2条商路损伤压力，并显著升高当地热度。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "route_damage", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"panic": 26,
+"route_damage": 2
+}
+
+[resource]
+script = ExtResource("2_n8b4p")
+family_id = "商路黑客"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_sr8j1"), SubResource("Resource_6tv7h")])
+public_pool_eligible = true
+upgradeable_family = true

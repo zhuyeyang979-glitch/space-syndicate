@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cwppfgns64d7l"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_13g0h"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_0fgeq"]
+
+[sub_resource type="Resource" id="Resource_i8xc5"]
+script = ExtResource("1_13g0h")
+card_id = "商品做空1"
+family_id = "商品做空"
+kind = &"product_speculation"
+purchase_cost = 4
+rules_text = "围绕当前商品做空：获得260资金，并制造临时供给压力；价格由供需重算体现。"
+tags = PackedStringArray("经济", "做空")
+authored_keys = PackedStringArray("cost", "kind", "cash", "price_delta", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 260,
+"panic": 10,
+"price_delta": -24
+}
+
+[sub_resource type="Resource" id="Resource_gvg86"]
+script = ExtResource("1_13g0h")
+card_id = "商品做空2"
+family_id = "商品做空"
+rank = 2
+kind = &"product_speculation"
+purchase_cost = 6
+rules_text = "高阶做空：获得560资金，并制造更强临时供给压力；价格仍由供需关系结算。"
+tags = PackedStringArray("经济", "升级")
+authored_keys = PackedStringArray("cost", "kind", "cash", "price_delta", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 560,
+"panic": 18,
+"price_delta": -42
+}
+
+[resource]
+script = ExtResource("2_0fgeq")
+family_id = "商品做空"
+pack_id = &"finance"
+authored_ranks = Array[Resource]([SubResource("Resource_i8xc5"), SubResource("Resource_gvg86")])
+public_pool_eligible = true
+upgradeable_family = true

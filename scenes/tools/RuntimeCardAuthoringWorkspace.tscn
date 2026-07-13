@@ -1,0 +1,275 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/runtime_card_authoring_workspace.gd" id="1_workspace"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_surface"]
+bg_color = Color(0.047, 0.059, 0.082, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.16, 0.22, 0.29, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_primary"]
+bg_color = Color(0.055, 0.23, 0.25, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.72, 0.68, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="LabelSettings" id="LabelSettings_title"]
+font_size = 24
+font_color = Color(0.86, 0.93, 0.96, 1)
+
+[node name="RuntimeCardAuthoringWorkspace" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+custom_minimum_size = Vector2(1180, 720)
+script = ExtResource("1_workspace")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.025, 0.032, 0.047, 1)
+mouse_filter = 2
+
+[node name="WorkspaceMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
+
+[node name="WorkspaceRows" type="VBoxContainer" parent="WorkspaceMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderRow" type="HBoxContainer" parent="WorkspaceMargin/WorkspaceRows"]
+layout_mode = 2
+
+[node name="TitleBlock" type="VBoxContainer" parent="WorkspaceMargin/WorkspaceRows/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="WorkspaceMargin/WorkspaceRows/HeaderRow/TitleBlock"]
+layout_mode = 2
+text = "Runtime Card Authoring"
+label_settings = SubResource("LabelSettings_title")
+
+[node name="Subtitle" type="Label" parent="WorkspaceMargin/WorkspaceRows/HeaderRow/TitleBlock"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.56, 0.66, 0.73, 1)
+text = "Inspector assets | structural validation | user:// change review"
+
+[node name="OwnershipChip" type="Label" parent="WorkspaceMargin/WorkspaceRows/HeaderRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.43, 0.88, 0.82, 1)
+text = "RUNTIME OWNER  CardRuntimeCatalogService"
+vertical_alignment = 1
+
+[node name="Toolbar" type="HBoxContainer" parent="WorkspaceMargin/WorkspaceRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AuthoringPackOption" type="OptionButton" parent="WorkspaceMargin/WorkspaceRows/Toolbar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 38)
+layout_mode = 2
+
+[node name="ValidateWholeCatalogButton" type="Button" parent="WorkspaceMargin/WorkspaceRows/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Validate Catalog"
+
+[node name="CaptureAuthoringBaselineButton" type="Button" parent="WorkspaceMargin/WorkspaceRows/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Capture Baseline"
+
+[node name="BuildAuthoringReviewButton" type="Button" parent="WorkspaceMargin/WorkspaceRows/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBox_primary")
+text = "Build Change Review"
+
+[node name="ToolbarSpacer" type="Control" parent="WorkspaceMargin/WorkspaceRows/Toolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OpenSelectedCardResourceButton" type="Button" parent="WorkspaceMargin/WorkspaceRows/Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Resource Path"
+tooltip_text = "Print and emit the selected family Resource path for the editor or MCP"
+
+[node name="BodySplit" type="HSplitContainer" parent="WorkspaceMargin/WorkspaceRows"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 370
+
+[node name="NavigationPanel" type="PanelContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_surface")
+
+[node name="NavigationMargin" type="MarginContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/NavigationPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="NavigationRows" type="VBoxContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/NavigationPanel/NavigationMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FamilyHeader" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/NavigationPanel/NavigationMargin/NavigationRows"]
+layout_mode = 2
+text = "FAMILIES"
+
+[node name="AuthoringFamilySearch" type="LineEdit" parent="WorkspaceMargin/WorkspaceRows/BodySplit/NavigationPanel/NavigationMargin/NavigationRows"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Filter family id"
+clear_button_enabled = true
+
+[node name="AuthoringFamilyList" type="ItemList" parent="WorkspaceMargin/WorkspaceRows/BodySplit/NavigationPanel/NavigationMargin/NavigationRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+size_flags_vertical = 3
+allow_reselect = true
+
+[node name="CardHeader" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/NavigationPanel/NavigationMargin/NavigationRows"]
+layout_mode = 2
+text = "AUTHORED RANKS"
+
+[node name="AuthoringCardList" type="ItemList" parent="WorkspaceMargin/WorkspaceRows/BodySplit/NavigationPanel/NavigationMargin/NavigationRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 148)
+layout_mode = 2
+allow_reselect = true
+
+[node name="DetailRows" type="VBoxContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SelectionPanel" type="PanelContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows"]
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_surface")
+
+[node name="SelectionMargin" type="MarginContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/SelectionPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="SelectionRows" type="VBoxContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/SelectionPanel/SelectionMargin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="AuthoringSelectionLabel" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/SelectionPanel/SelectionMargin/SelectionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.93, 0.96, 1)
+theme_override_font_sizes/font_size = 18
+text = "No family selected"
+
+[node name="AuthoringResourcePathLabel" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/SelectionPanel/SelectionMargin/SelectionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.68, 0.75, 1)
+text = "res://resources/cards/runtime/card_runtime_catalog_v04.tres"
+text_overrun_behavior = 3
+
+[node name="AuthoringCardSummaryLabel" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/SelectionPanel/SelectionMargin/SelectionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Select an authored rank to inspect its typed definition."
+autowrap_mode = 2
+
+[node name="AuthoringRulesTextLabel" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/SelectionPanel/SelectionMargin/SelectionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.78, 0.82, 1)
+autowrap_mode = 2
+
+[node name="ReviewSplit" type="HSplitContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offset = 430
+
+[node name="ValidationPanel" type="PanelContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit"]
+custom_minimum_size = Vector2(410, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_surface")
+
+[node name="ValidationRows" type="VBoxContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit/ValidationPanel"]
+layout_mode = 2
+
+[node name="ValidationHeader" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit/ValidationPanel/ValidationRows"]
+layout_mode = 2
+text = "  VALIDATION"
+
+[node name="AuthoringValidationOutput" type="RichTextLabel" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit/ValidationPanel/ValidationRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "Select a card or family, then validate."
+fit_content = false
+
+[node name="ValidateSelectedCardButton" type="Button" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit/ValidationPanel/ValidationRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Validate Selection"
+
+[node name="ChangeReviewPanel" type="PanelContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_surface")
+
+[node name="ReviewRows" type="VBoxContainer" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit/ChangeReviewPanel"]
+layout_mode = 2
+
+[node name="ReviewHeader" type="Label" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit/ChangeReviewPanel/ReviewRows"]
+layout_mode = 2
+text = "  CHANGE REVIEW"
+
+[node name="AuthoringReviewOutput" type="RichTextLabel" parent="WorkspaceMargin/WorkspaceRows/BodySplit/DetailRows/ReviewSplit/ChangeReviewPanel/ReviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "Capture a baseline before editing, then build the review package."
+fit_content = false
+
+[node name="AuthoringWorkspaceStatusLabel" type="Label" parent="WorkspaceMargin/WorkspaceRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.48, 0.69, 0.73, 1)
+text = "Loading Runtime Card Catalog..."
+text_overrun_behavior = 3

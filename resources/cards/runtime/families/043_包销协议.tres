@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://143ci4fwak1d"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_yt8u7"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_mxfeg"]
+
+[sub_resource type="Resource" id="Resource_o2ytr"]
+script = ExtResource("1_yt8u7")
+card_id = "包销协议1"
+family_id = "包销协议"
+kind = &"product_contract_boon"
+purchase_cost = 5
+rules_text = "选择当前商品：建立90秒包销，需求压力+4，相关商路流通×1.20。"
+tags = PackedStringArray("经济", "包销")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "market_contract_seconds", "market_contract_turns", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_contract_seconds": 90.0,
+"market_contract_turns": 3,
+"market_demand_pressure": 4,
+"route_flow_multiplier": 1.2,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[sub_resource type="Resource" id="Resource_5iqbv"]
+script = ExtResource("1_yt8u7")
+card_id = "包销协议2"
+family_id = "包销协议"
+rank = 2
+kind = &"product_contract_boon"
+purchase_cost = 7
+rules_text = "大型包销：持续120秒需求压力+6，并使该商品相关商路流通×1.35。"
+tags = PackedStringArray("经济", "升级")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "market_contract_seconds", "market_contract_turns", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_contract_seconds": 120.0,
+"market_contract_turns": 4,
+"market_demand_pressure": 6,
+"route_flow_multiplier": 1.35,
+"route_flow_seconds": 120.0,
+"route_flow_turns": 4
+}
+
+[resource]
+script = ExtResource("2_mxfeg")
+family_id = "包销协议"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_o2ytr"), SubResource("Resource_5iqbv")])
+public_pool_eligible = true
+upgradeable_family = true

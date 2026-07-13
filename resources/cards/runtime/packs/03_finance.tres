@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/023_价格套利.tres" id="1_gp65r"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/030_商品做空.tres" id="2_xyw6d"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/031_商品看涨.tres" id="3_1wwy6"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/032_商品看跌.tres" id="4_v1l6q"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/033_港仓囤货.tres" id="5_rxuuf"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/034_城市买涨.tres" id="6_fldoh"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/035_城市做空.tres" id="7_gircw"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/036_灾害保单.tres" id="8_8osxi"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="9_msogi"]
+
+[resource]
+script = ExtResource("9_msogi")
+pack_id = &"finance"
+display_name = "Finance"
+families = Array[Resource]([ExtResource("1_gp65r"), ExtResource("2_xyw6d"), ExtResource("3_1wwy6"), ExtResource("4_v1l6q"), ExtResource("5_rxuuf"), ExtResource("6_fldoh"), ExtResource("7_gircw"), ExtResource("8_8osxi")])

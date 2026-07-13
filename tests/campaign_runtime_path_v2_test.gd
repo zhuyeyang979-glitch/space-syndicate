@@ -105,7 +105,7 @@ func _check_briefing_runtime_reward_recap(campaign: Dictionary) -> void:
 	_expect(runtime_screen != null and runtime_screen.visible, "CampaignBriefing start enters real RuntimeGameScreen")
 	_expect(menu_overlay == null or not menu_overlay.visible, "campaign start leaves briefing/menu overlay")
 	_expect(str(main.get("active_campaign_chapter_id")) == "00_tavern_entry", "runtime stores active campaign chapter")
-	_expect(str(main.get("active_scenario_id")) == "first_table", "runtime starts chapter scenario_id")
+	_expect(str(_runtime_scenario_state(main).get("active_scenario_id", "")) == "first_table", "runtime starts chapter scenario_id")
 	var scenario_coach := main.find_child("ScenarioCoach", true, false) as Control
 	_expect(scenario_coach != null and scenario_coach.visible, "CampaignCoach/ScenarioCoach is mounted on the main table")
 	var coach_source: Dictionary = main.call("_runtime_scenario_coach_snapshot_source", 0) as Dictionary
@@ -117,7 +117,8 @@ func _check_briefing_runtime_reward_recap(campaign: Dictionary) -> void:
 	var fake_completed: Variant = main.call("_activate_scenario_action", "scenario_step_select_district")
 	await _wait_frames(2)
 	_expect(bool(fake_completed), "scenario primary CTA can focus the objective")
-	_expect(not bool((main.get("scenario_completed_signals") as Dictionary).get("district_selected", false)), "scenario CTA does not fake-complete success conditions")
+	var completed_signals: Dictionary = _runtime_scenario_state(main).get("completed_signals", {})
+	_expect(not bool(completed_signals.get("district_selected", false)), "scenario CTA does not fake-complete success conditions")
 	var completed: Variant = main.call("_complete_scenario_signal", "district_selected", "选择区域：运行路径验收。", "after_select", "planet")
 	await _wait_frames(4)
 	_expect(bool(completed), "real success condition completes the campaign chapter")
@@ -153,6 +154,12 @@ func _named_node_count(node: Node, node_name: String) -> int:
 	for child in node.get_children():
 		count += _named_node_count(child, node_name)
 	return count
+
+
+func _runtime_scenario_state(main: Node) -> Dictionary:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
+	var value: Variant = coordinator.call("runtime_scenario_state", float(main.get("game_time"))) if coordinator != null else {}
+	return value as Dictionary if value is Dictionary else {}
 
 
 func _expect(condition: bool, message: String) -> void:

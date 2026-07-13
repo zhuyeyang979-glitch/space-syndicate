@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/monster_runtime_world_bridge.gd" id="1_bridge"]
+
+[node name="MonsterRuntimeWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Narrow world-fact and side-effect bridge for the scene-owned monster runtime. It owns no monster rules or state."

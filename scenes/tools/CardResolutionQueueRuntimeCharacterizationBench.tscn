@@ -1,0 +1,126 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_resolution_queue_runtime_characterization_bench.gd" id="1_bench"]
+
+[node name="CardResolutionQueueRuntimeCharacterizationBench" type="Control"]
+custom_minimum_size = Vector2(1280, 720)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.025, 0.035, 0.055, 1)
+
+[node name="RuntimeMainHost" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 24.0
+offset_right = -28.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "Card Resolution Queue Runtime Cutover"
+
+[node name="SummaryLabel" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.73, 0.78, 0.86, 1)
+text = "Preparing 28 characterization + 28 service cutover gates..."
+
+[node name="StatusLabel" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.72, 0.2, 1)
+theme_override_font_sizes/font_size = 18
+text = "PENDING"
+
+[node name="Body" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="ContractPanel" type="PanelContainer" parent="Margin/Rows/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ContractMargin" type="MarginContainer" parent="Margin/Rows/Body/ContractPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="ContractText" type="Label" parent="Margin/Rows/Body/ContractPanel/ContractMargin"]
+layout_mode = 2
+text = "v0.4 queue contract\n\n30 seconds shared window\n25 seconds organize\n5 seconds lock\n0-3 cards per player group\nCommit pays once\nGroups settle continuously\nPublic clues hide source identity"
+autowrap_mode = 2
+
+[node name="OwnershipPanel" type="PanelContainer" parent="Margin/Rows/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OwnershipMargin" type="MarginContainer" parent="Margin/Rows/Body/OwnershipPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="OwnershipText" type="RichTextLabel" parent="Margin/Rows/Body/OwnershipPanel/OwnershipMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 460)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+text = "[b]Inspecting service ownership...[/b]"
+
+[node name="CasesPanel" type="PanelContainer" parent="Margin/Rows/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CasesMargin" type="MarginContainer" parent="Margin/Rows/Body/CasesPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="CasesText" type="RichTextLabel" parent="Margin/Rows/Body/CasesPanel/CasesMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 460)
+layout_mode = 2
+bbcode_enabled = true
+scroll_active = true
+text = "[b]Waiting for 56 gates...[/b]"

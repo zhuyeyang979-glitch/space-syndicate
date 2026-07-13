@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dgv7n7ohouduh"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_fs3ma"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_sydbo"]
+
+[sub_resource type="Resource" id="Resource_ta6o6"]
+script = ExtResource("1_fs3ma")
+card_id = "星际广告1"
+family_id = "星际广告"
+kind = &"city_revenue_boost"
+purchase_cost = 2
+rules_text = "选中己方城市GDP/min +45，同时提高当地曝光与怪兽关注。"
+tags = PackedStringArray("经营", "曝光")
+authored_keys = PackedStringArray("cost", "kind", "revenue_amount", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"panic": 12,
+"revenue_amount": 45
+}
+
+[sub_resource type="Resource" id="Resource_b4c7n"]
+script = ExtResource("1_fs3ma")
+card_id = "星际广告2"
+family_id = "星际广告"
+rank = 2
+kind = &"city_revenue_boost"
+purchase_cost = 4
+rules_text = "选中己方城市GDP/min +80、区域热度+18。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "revenue_amount", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"panic": 18,
+"revenue_amount": 80
+}
+
+[sub_resource type="Resource" id="Resource_883ju"]
+script = ExtResource("1_fs3ma")
+card_id = "星际广告3"
+family_id = "星际广告"
+rank = 3
+kind = &"city_revenue_boost"
+purchase_cost = 6
+rules_text = "选中己方城市GDP/min +130、区域热度+28。"
+tags = PackedStringArray("经营", "终端")
+authored_keys = PackedStringArray("cost", "kind", "revenue_amount", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"panic": 28,
+"revenue_amount": 130
+}
+
+[resource]
+script = ExtResource("2_sydbo")
+family_id = "星际广告"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_ta6o6"), SubResource("Resource_b4c7n"), SubResource("Resource_883ju")])
+public_pool_eligible = true
+upgradeable_family = true

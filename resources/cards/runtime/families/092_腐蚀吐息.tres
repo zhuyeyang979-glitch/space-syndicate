@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cav40phhwykbj"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_ogebv"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_d24v2"]
+
+[sub_resource type="Resource" id="Resource_ymkdv"]
+script = ExtResource("1_ogebv")
+card_id = "腐蚀吐息1"
+family_id = "腐蚀吐息"
+kind = &"corrosive_breath"
+purchase_cost = 5
+rules_text = "420米内对其他怪兽造成2点伤害，并在选中区域周围留下2枚瘴气。"
+tags = PackedStringArray("瘴气", "远程")
+range = 420.0
+damage = 2
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "miasma_count", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"miasma_count": 2
+}
+
+[resource]
+script = ExtResource("2_d24v2")
+family_id = "腐蚀吐息"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_ymkdv")])

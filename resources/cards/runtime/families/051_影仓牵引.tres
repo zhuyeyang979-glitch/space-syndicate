@@ -1,0 +1,90 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://ducdfh0bsuxyt"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_lf7oy"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_jy77j"]
+
+[sub_resource type="Resource" id="Resource_ppufy"]
+script = ExtResource("1_lf7oy")
+card_id = "影仓牵引1"
+family_id = "影仓牵引"
+kind = &"player_hand_steal"
+purchase_cost = 5
+rules_text = "指定一名对手，匿名牵取其1张可弃普通手牌并加入自己手牌；若自己无法接收，则改为拆牌并获得少量情报补偿。"
+tags = PackedStringArray("互动", "牵牌", "情报")
+play_product = "活体芯片"
+play_flow_required = 2
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_steal_count", "steal_fail_cash", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_steal_count": 1,
+"steal_fail_cash": 60
+}
+
+[sub_resource type="Resource" id="Resource_7vlul"]
+script = ExtResource("1_lf7oy")
+card_id = "影仓牵引2"
+family_id = "影仓牵引"
+rank = 2
+kind = &"player_hand_steal"
+purchase_cost = 7
+rules_text = "升级牵牌：牵取1张可弃普通手牌；若成功，目标再随机封锁1张8秒，制造更明显的手牌节奏线索。"
+tags = PackedStringArray("互动", "牵牌", "升级")
+play_product = "活体芯片"
+play_flow_required = 2
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_steal_count", "hand_lock_seconds", "steal_fail_cash", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_lock_seconds": 8.0,
+"hand_steal_count": 1,
+"steal_fail_cash": 90
+}
+
+[sub_resource type="Resource" id="Resource_syl5p"]
+script = ExtResource("1_lf7oy")
+card_id = "影仓牵引3"
+family_id = "影仓牵引"
+rank = 3
+kind = &"player_hand_steal"
+purchase_cost = 9
+rules_text = "核心牵牌：牵取1张可弃普通手牌并封锁目标1张15秒；如果牵取失败，获得更高情报补偿。"
+tags = PackedStringArray("互动", "牵牌", "核心")
+play_product = "活体芯片"
+play_flow_required = 3
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_steal_count", "hand_lock_seconds", "steal_fail_cash", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_lock_seconds": 15.0,
+"hand_steal_count": 1,
+"steal_fail_cash": 140
+}
+
+[sub_resource type="Resource" id="Resource_7brfl"]
+script = ExtResource("1_lf7oy")
+card_id = "影仓牵引4"
+family_id = "影仓牵引"
+rank = 4
+kind = &"player_hand_steal"
+purchase_cost = 11
+rules_text = "终端牵牌IV：最多牵取2张可弃普通手牌，随后封锁目标1张18秒；极强但会公开目标玩家与资源门槛线索。"
+tags = PackedStringArray("互动", "牵牌", "IV")
+play_product = "活体芯片"
+play_flow_required = 4
+target_player_required = true
+authored_keys = PackedStringArray("cost", "kind", "target_player_required", "play_product", "play_flow_required", "hand_steal_count", "hand_lock_seconds", "steal_fail_cash", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"hand_lock_seconds": 18.0,
+"hand_steal_count": 2,
+"steal_fail_cash": 220
+}
+
+[resource]
+script = ExtResource("2_jy77j")
+family_id = "影仓牵引"
+pack_id = &"player_interaction"
+authored_ranks = Array[Resource]([SubResource("Resource_ppufy"), SubResource("Resource_7vlul"), SubResource("Resource_syl5p"), SubResource("Resource_7brfl")])
+public_pool_eligible = true
+upgradeable_family = true

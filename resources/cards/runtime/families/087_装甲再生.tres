@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://d2ax1wi33k0y8"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_ho2hu"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_bgia6"]
+
+[sub_resource type="Resource" id="Resource_an7b4"]
+script = ExtResource("1_ho2hu")
+card_id = "装甲再生1"
+family_id = "装甲再生"
+kind = &"armor_gain"
+purchase_cost = 3
+rules_text = "怪兽立即获得3点护甲，抵消后续其他怪兽伤害。"
+tags = PackedStringArray("防御", "续航")
+authored_keys = PackedStringArray("cost", "kind", "armor", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"armor": 3
+}
+
+[sub_resource type="Resource" id="Resource_krv3b"]
+script = ExtResource("1_ho2hu")
+card_id = "装甲再生2"
+family_id = "装甲再生"
+rank = 2
+kind = &"armor_gain"
+purchase_cost = 6
+rules_text = "怪兽立即获得7点护甲，支撑高压路线继续推进。"
+tags = PackedStringArray("防御", "升级")
+authored_keys = PackedStringArray("cost", "kind", "armor", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"armor": 7
+}
+
+[resource]
+script = ExtResource("2_bgia6")
+family_id = "装甲再生"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_an7b4"), SubResource("Resource_krv3b")])
+public_pool_eligible = true
+upgradeable_family = true

@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/player_turn_interaction_bench.gd" id="2_script"]
+
+[node name="PlayerTurnInteractionBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="PlayerTurnInteractionBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.017, 0.024, 0.04, 1)
+
+[node name="PlayerTurnInteractionMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="PlayerTurnInteractionRows" type="VBoxContainer" parent="PlayerTurnInteractionMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PlayerTurnInteractionHeader" type="HBoxContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PlayerTurnInteractionTitleLabel" type="Label" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Player Turn Interaction Bench"
+text_overrun_behavior = 3
+
+[node name="PlayerTurnInteractionScopeLabel" type="Label" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionHeader"]
+layout_mode = 2
+text = "真实 Preview / PlayerBoard / HandRack / RightInspector"
+text_overrun_behavior = 3
+
+[node name="PlayerTurnInteractionStatusPanel" type="PanelContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows"]
+layout_mode = 2
+
+[node name="PlayerTurnInteractionStatusMargin" type="MarginContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionStatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="PlayerTurnInteractionStatusRows" type="VBoxContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionStatusPanel/PlayerTurnInteractionStatusMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PlayerTurnInteractionStatusLabel" type="Label" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionStatusPanel/PlayerTurnInteractionStatusMargin/PlayerTurnInteractionStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="PlayerTurnInteractionSummaryLabel" type="Label" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionStatusPanel/PlayerTurnInteractionStatusMargin/PlayerTurnInteractionStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Interaction results will appear here."
+autowrap_mode = 3
+
+[node name="PlayerTurnInteractionPreviewHost" type="PanelContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlayerTurnInteractionPreviewMargin" type="MarginContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionPreviewHost"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="PlayerTurnInteractionViewportContainer" type="SubViewportContainer" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionPreviewHost/PlayerTurnInteractionPreviewMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 640)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlayerTurnInteractionPreviewViewport" type="SubViewport" parent="PlayerTurnInteractionMargin/PlayerTurnInteractionRows/PlayerTurnInteractionPreviewHost/PlayerTurnInteractionPreviewMargin/PlayerTurnInteractionViewportContainer"]
+unique_name_in_owner = true
+size = Vector2i(1600, 960)
+transparent_bg = true
+render_target_update_mode = 4

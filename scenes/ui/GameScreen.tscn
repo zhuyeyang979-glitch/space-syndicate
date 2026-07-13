@@ -3,7 +3,7 @@
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/game_screen.gd" id="2_game_screen"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TopBar.tscn" id="3_top_bar"]
-[ext_resource type="PackedScene" path="res://scenes/ui/PublicTrack.tscn" id="4_public_track"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardResolutionTrack.tscn" id="4_public_track"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlanetBoard.tscn" id="5_planet_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/RightInspector.tscn" id="6_right_inspector"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlayerBoard.tscn" id="7_player_board"]
@@ -57,7 +57,9 @@ layout_mode = 2
 
 [node name="PublicTrack" parent="SafeArea/MainRows" instance=ExtResource("4_public_track")]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
+compact_public_track = true
 
 [node name="TrackFocusRibbon" type="PanelContainer" parent="SafeArea/MainRows"]
 unique_name_in_owner = true

@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://brbs16cwy3wwx"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_81pex"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_oebee"]
+
+[sub_resource type="Resource" id="Resource_ns0vi"]
+script = ExtResource("1_81pex")
+card_id = "业主透镜1"
+family_id = "业主透镜"
+kind = &"intel_city_reveal"
+purchase_cost = 3
+rules_text = "指定一座陌生城市：私下查明真实业主，并写入高置信私人标注。公开牌轨只显示线索牌与目标，不公开答案。"
+tags = PackedStringArray("情报", "区域")
+play_product = "轨迹墨水"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "reveal_city_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reveal_city_count": 1
+}
+
+[sub_resource type="Resource" id="Resource_i8ww4"]
+script = ExtResource("1_81pex")
+card_id = "业主透镜2"
+family_id = "业主透镜"
+rank = 2
+kind = &"intel_city_reveal"
+purchase_cost = 5
+rules_text = "私下查明当前选中陌生城市及一个高价值陌生城市的真实业主，各写入高置信私人标注；答案不公开。"
+tags = PackedStringArray("情报", "升级")
+play_product = "轨迹墨水"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "reveal_city_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reveal_city_count": 2
+}
+
+[resource]
+script = ExtResource("2_oebee")
+family_id = "业主透镜"
+pack_id = &"intel_counter"
+authored_ranks = Array[Resource]([SubResource("Resource_ns0vi"), SubResource("Resource_i8ww4")])
+public_pool_eligible = true

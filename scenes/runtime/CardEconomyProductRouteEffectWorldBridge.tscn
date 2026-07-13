@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_economy_product_route_effect_world_bridge.gd" id="1_bridge"]
+
+[node name="CardEconomyProductRouteEffectWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Applies service-owned economy/product/route effect plans to existing world rule functions without retaining world state."

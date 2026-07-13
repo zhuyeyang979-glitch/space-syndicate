@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ruleset_runtime_bridge.gd" id="1_bridge"]
+[ext_resource type="Resource" path="res://resources/rules/space_syndicate_ruleset_v04.tres" id="2_profile"]
+
+[node name="RulesetRuntimeBridge" type="Node"]
+script = ExtResource("1_bridge")
+ruleset_profile = ExtResource("2_profile")
+editor_description = "Scene-owned runtime bridge for the Inspector-editable Space Syndicate v0.4 ruleset profile."

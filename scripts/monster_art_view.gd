@@ -71,8 +71,8 @@ func _ready() -> void:
 	}
 
 
-func set_monster(name: String, style: String, hp_value: int, armor_value: int, move_value_text: String, profile: Dictionary, is_compact: bool = false) -> void:
-	monster_name = name
+func set_monster(monster_display_name: String, style: String, hp_value: int, armor_value: int, move_value_text: String, profile: Dictionary, is_compact: bool = false) -> void:
+	monster_name = monster_display_name
 	style_text = style
 	hp = hp_value
 	armor = armor_value
@@ -120,14 +120,14 @@ func _draw_backdrop(rect: Rect2) -> void:
 
 
 func _draw_starfield(rect: Rect2) -> void:
-	var seed := _name_seed()
+	var name_seed := _name_seed()
 	var star_count := STAR_COUNT_COMPACT if compact else STAR_COUNT_FULL
 	for i in range(star_count):
-		var x := fposmod(float(seed + i * 83 + i * i * 7), max(1.0, rect.size.x))
-		var y := fposmod(float(seed / max(1, i + 1) + i * 41 + hp * 3), max(1.0, rect.size.y))
-		var radius := 0.7 + float((seed + i * 13) % 4) * 0.22
+		var x := fposmod(float(name_seed + i * 83 + i * i * 7), max(1.0, rect.size.x))
+		var y := fposmod(float(int(float(name_seed) / float(max(1, i + 1))) + i * 41 + hp * 3), max(1.0, rect.size.y))
+		var radius := 0.7 + float((name_seed + i * 13) % 4) * 0.22
 		var color := Color("#ffffff").lerp(secondary, 0.30)
-		color.a = 0.18 + float((seed + i) % 6) * 0.045
+		color.a = 0.18 + float((name_seed + i) % 6) * 0.045
 		draw_circle(Vector2(x, y), radius, color)
 
 
@@ -288,7 +288,7 @@ func _draw_glyph(center: Vector2, radius: float) -> void:
 
 
 func monster_visual_profile_snapshot() -> Dictionary:
-	var seed := _name_seed()
+	var name_seed := _name_seed()
 	var sprite_key := _monster_reference_sprite_key()
 	return {
 		"theme": MONSTER_ART_EXTERNAL_THEME,
@@ -297,10 +297,10 @@ func monster_visual_profile_snapshot() -> Dictionary:
 		"sprite_key": sprite_key,
 		"sprite_cell": _monster_reference_sprite_cell(sprite_key),
 		"silhouette": motif,
-		"layout_variant": seed % 11,
-		"palette_variant": int(seed / 7) % 13,
+		"layout_variant": name_seed % 11,
+		"palette_variant": int(float(name_seed) / 7.0) % 13,
 		"effect_layer": _monster_reference_effect_layer(),
-		"composition_variant": int(seed / 17) % 17,
+		"composition_variant": int(float(name_seed) / 17.0) % 17,
 	}
 
 
@@ -324,7 +324,7 @@ func _draw_moth_kaijuice_reference_sprite(rect: Rect2) -> void:
 	var texture := moth_kaijuice_textures.get(sprite_key, null) as Texture2D
 	if texture == null:
 		return
-	var seed := _name_seed()
+	var name_seed := _name_seed()
 	var portrait_rect := Rect2(
 		Vector2(rect.size.x * 0.18, rect.size.y * (0.22 if compact else 0.20)),
 		Vector2(rect.size.x * 0.64, rect.size.y * (0.44 if compact else 0.50))
@@ -332,10 +332,10 @@ func _draw_moth_kaijuice_reference_sprite(rect: Rect2) -> void:
 	var halo := accent.lightened(0.28)
 	halo.a = 0.20 if compact else 0.28
 	draw_circle(portrait_rect.get_center(), min(portrait_rect.size.x, portrait_rect.size.y) * 0.48, halo)
-	var scale := 0.82 + float(seed % 4) * 0.045
+	var sprite_scale := 0.82 + float(name_seed % 4) * 0.045
 	var source_region := _monster_reference_sprite_region(sprite_key)
-	var sprite_rect := Rect2(Vector2.ZERO, _fit_size_inside(portrait_rect.size * scale, source_region.size))
-	sprite_rect.position = portrait_rect.position + (portrait_rect.size - sprite_rect.size) * 0.5 + Vector2(float((seed % 5) - 2) * 2.2, float((int(seed / 17) % 5) - 2) * 2.0)
+	var sprite_rect := Rect2(Vector2.ZERO, _fit_size_inside(portrait_rect.size * sprite_scale, source_region.size))
+	sprite_rect.position = portrait_rect.position + (portrait_rect.size - sprite_rect.size) * 0.5 + Vector2(float((name_seed % 5) - 2) * 2.2, float((int(float(name_seed) / 17.0) % 5) - 2) * 2.0)
 	var tint := Color(1.0, 1.0, 1.0, 0.74 if compact else 0.88)
 	tint = tint.lerp(accent.lightened(0.14), 0.10)
 	draw_texture_rect_region(texture, sprite_rect, source_region, tint)
@@ -344,9 +344,9 @@ func _draw_moth_kaijuice_reference_sprite(rect: Rect2) -> void:
 	if effect_layer == "field":
 		_draw_moth_kaijuice_monster_field(portrait_rect)
 	elif effect_layer == "laser":
-		_draw_moth_kaijuice_monster_laser(portrait_rect, seed)
+		_draw_moth_kaijuice_monster_laser(portrait_rect, name_seed)
 	elif effect_layer == "impact":
-		_draw_moth_kaijuice_monster_impact(portrait_rect, seed)
+		_draw_moth_kaijuice_monster_impact(portrait_rect, name_seed)
 
 
 func _draw_moth_kaijuice_monster_field(portrait_rect: Rect2) -> void:
@@ -359,25 +359,25 @@ func _draw_moth_kaijuice_monster_field(portrait_rect: Rect2) -> void:
 		field.a *= 0.76
 
 
-func _draw_moth_kaijuice_monster_laser(portrait_rect: Rect2, seed: int) -> void:
-	var y := portrait_rect.position.y + portrait_rect.size.y * (0.35 + float(seed % 4) * 0.08)
+func _draw_moth_kaijuice_monster_laser(portrait_rect: Rect2, art_seed: int) -> void:
+	var y := portrait_rect.position.y + portrait_rect.size.y * (0.35 + float(art_seed % 4) * 0.08)
 	var core := accent.lightened(0.45)
 	var glow := secondary.lightened(0.35)
 	glow.a = 0.26 if compact else 0.38
 	core.a = 0.72 if compact else 0.88
 	var start := Vector2(portrait_rect.position.x + portrait_rect.size.x * 0.10, y)
-	var end := Vector2(portrait_rect.end.x - portrait_rect.size.x * 0.08, y + float((seed % 3) - 1) * 4.0)
+	var end := Vector2(portrait_rect.end.x - portrait_rect.size.x * 0.08, y + float((art_seed % 3) - 1) * 4.0)
 	draw_line(start, end, glow, max(7.0, portrait_rect.size.y * 0.055), true)
 	draw_line(start, end, core, max(2.0, portrait_rect.size.y * 0.022), true)
 
 
-func _draw_moth_kaijuice_monster_impact(portrait_rect: Rect2, seed: int) -> void:
+func _draw_moth_kaijuice_monster_impact(portrait_rect: Rect2, art_seed: int) -> void:
 	var impact := secondary.lightened(0.16)
 	impact.a = 0.40 if compact else 0.56
 	for i in range(3):
 		var t := float(i) / 2.0
 		var p0 := portrait_rect.position + Vector2(portrait_rect.size.x * (0.18 + t * 0.28), portrait_rect.size.y * 0.82)
-		var p1 := p0 + Vector2(float((seed + i) % 5 - 2) * 6.0, -portrait_rect.size.y * (0.24 + t * 0.08))
+		var p1 := p0 + Vector2(float((art_seed + i) % 5 - 2) * 6.0, -portrait_rect.size.y * (0.24 + t * 0.08))
 		draw_line(p0, p1, impact, 2.0 + t, true)
 
 
@@ -466,10 +466,10 @@ func _monster_reference_sprite_cell(sprite_key: String) -> String:
 		return source_sprite_cell
 	if sprite_key == "moth_kaijuice_kaiju":
 		var cell_index := _name_seed() % 32
-		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+		return "%d,%d" % [cell_index % 8, int(float(cell_index) / 8.0)]
 	if sprite_key == "moth_kaijuice_mech":
 		var cell_index := _name_seed() % 24
-		return "%d,%d" % [cell_index % 8, int(cell_index / 8)]
+		return "%d,%d" % [cell_index % 8, int(float(cell_index) / 8.0)]
 	if sprite_key.begins_with("pixelmob"):
 		return str(_name_seed() % PIXELMOB_FRAME_COUNT)
 	return "full"
@@ -559,7 +559,7 @@ func _short_text(text: String, max_len: int) -> String:
 
 
 func _name_seed() -> int:
-	var seed := 197 + hp * 11 + armor * 31 + motif.length() * 43
+	var name_seed := 197 + hp * 11 + armor * 31 + motif.length() * 43
 	for i in range(monster_name.length()):
-		seed = (seed * 37 + monster_name.unicode_at(i)) % 1000003
-	return max(1, seed)
+		name_seed = (name_seed * 37 + monster_name.unicode_at(i)) % 1000003
+	return max(1, name_seed)

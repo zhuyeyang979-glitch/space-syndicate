@@ -1,0 +1,63 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/codex/bestiary_codex_thumbnail_card.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/monster_art_view.gd" id="3_art"]
+
+[node name="BestiaryCodexThumbnailCard" type="PanelContainer"]
+custom_minimum_size = Vector2(158, 174)
+size_flags_horizontal = 3
+mouse_filter = 0
+mouse_default_cursor_shape = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="ThumbnailMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 7
+
+[node name="ThumbnailRows" type="VBoxContainer" parent="ThumbnailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="BestiaryThumbnailName" type="Label" parent="ThumbnailMargin/ThumbnailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.97, 0.98, 0.99, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+text = "Monster"
+
+[node name="BestiaryThumbnailArtView" type="Control" parent="ThumbnailMargin/ThumbnailRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 92)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+script = ExtResource("3_art")
+
+[node name="BestiaryThumbnailStats" type="Label" parent="ThumbnailMargin/ThumbnailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 9
+horizontal_alignment = 1
+text = "HP0 | Move0"
+
+[node name="BestiaryThumbnailIdentity" type="Label" parent="ThumbnailMargin/ThumbnailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.99, 0.9, 0.54, 1)
+theme_override_font_sizes/font_size = 9
+horizontal_alignment = 1
+text = "Ecology"
+
+[node name="BestiaryThumbnailHint" type="Label" parent="ThumbnailMargin/ThumbnailRows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.64, 0.72, 1)
+theme_override_font_sizes/font_size = 8
+horizontal_alignment = 1
+text = "悬停预览 | 双击详情"

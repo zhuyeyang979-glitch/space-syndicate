@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://jp62i2sc6oe4"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_u7mx8"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_rybgr"]
+
+[sub_resource type="Resource" id="Resource_2cd0j"]
+script = ExtResource("1_u7mx8")
+card_id = "市场稳定1"
+family_id = "市场稳定"
+kind = &"market_stabilize"
+purchase_cost = 3
+rules_text = "削减当前商品的临时供需压力，并降低后续波动；价格仍由供需重算。"
+tags = PackedStringArray("经济", "稳定")
+authored_keys = PackedStringArray("cost", "kind", "stabilize_amount", "volatility_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"stabilize_amount": 24,
+"volatility_delta": -2
+}
+
+[resource]
+script = ExtResource("2_rybgr")
+family_id = "市场稳定"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_2cd0j")])
+public_pool_eligible = true

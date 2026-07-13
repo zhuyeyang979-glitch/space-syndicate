@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dmp4hjkyax60i"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_8j4ut"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_2hdne"]
+
+[sub_resource type="Resource" id="Resource_46a8s"]
+script = ExtResource("1_8j4ut")
+card_id = "城市买涨1"
+family_id = "城市买涨"
+kind = &"city_gdp_derivative"
+purchase_cost = 4
+rules_text = "匿名买入选中城市GDP上涨，按v0.4条款锁定保证金、参考GDP、持续时间和最大盈亏。"
+tags = PackedStringArray("经济", "GDP", "买涨")
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_65kuk"]
+script = ExtResource("1_8j4ut")
+card_id = "城市买涨2"
+family_id = "城市买涨"
+rank = 2
+kind = &"city_gdp_derivative"
+purchase_cost = 6
+rules_text = "升级城市GDP买涨头寸；金融参数由v0.4条款资产统一提供。"
+tags = PackedStringArray("经济", "GDP", "升级")
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_rcujy"]
+script = ExtResource("1_8j4ut")
+card_id = "城市买涨3"
+family_id = "城市买涨"
+rank = 3
+kind = &"city_gdp_derivative"
+purchase_cost = 8
+rules_text = "高阶城市GDP买涨头寸，适合押注城市扩张、合约和商路增长。"
+tags = PackedStringArray("经济", "GDP", "终端")
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_4bdio"]
+script = ExtResource("1_8j4ut")
+card_id = "城市买涨4"
+family_id = "城市买涨"
+rank = 4
+kind = &"city_gdp_derivative"
+purchase_cost = 10
+rules_text = "终端城市GDP买涨头寸，收益与风险均受v0.4条款封顶。"
+tags = PackedStringArray("经济", "GDP", "IV")
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_2hdne")
+family_id = "城市买涨"
+pack_id = &"finance"
+authored_ranks = Array[Resource]([SubResource("Resource_46a8s"), SubResource("Resource_65kuk"), SubResource("Resource_rcujy"), SubResource("Resource_4bdio")])
+public_pool_eligible = true
+upgradeable_family = true

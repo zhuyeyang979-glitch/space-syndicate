@@ -1,0 +1,2135 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/space_syndicate_design_qa/space_syndicate_design_qa_dock.gd" id="1_script"]
+
+[node name="SpaceSyndicateDesignQADock" type="PanelContainer"]
+custom_minimum_size = Vector2(292, 0)
+script = ExtResource("1_script")
+
+[node name="DockMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="DockRows" type="VBoxContainer" parent="DockMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DesignQATitleLabel" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Space Syndicate QA"
+text_overrun_behavior = 3
+
+[node name="DesignQAScopeLabel" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Temporary Decision Overlay"
+text_overrun_behavior = 3
+
+[node name="McpEditabilityHubActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenMcpEditabilityHubButton" type="Button" parent="DockMargin/DockRows/McpEditabilityHubActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open MCP Hub"
+tooltip_text = "Open res://scenes/tools/SpaceSyndicateMcpEditabilityHub.tscn"
+
+[node name="RunMcpEditabilityHubButton" type="Button" parent="DockMargin/DockRows/McpEditabilityHubActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run MCP Hub"
+tooltip_text = "Run the Space Syndicate MCP editability hub"
+
+[node name="PlayerTurnPreviewActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlayerTurnPreviewButton" type="Button" parent="DockMargin/DockRows/PlayerTurnPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Player Turn"
+tooltip_text = "Open res://scenes/tools/PlayerTurnMcpPreview.tscn"
+
+[node name="RunPlayerTurnPreviewButton" type="Button" parent="DockMargin/DockRows/PlayerTurnPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Player Turn"
+tooltip_text = "Run the Player Turn MCP preview scene"
+
+[node name="PlayerTurnInteractionBenchActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlayerTurnInteractionBenchButton" type="Button" parent="DockMargin/DockRows/PlayerTurnInteractionBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Player QA"
+tooltip_text = "Open res://scenes/tools/PlayerTurnInteractionBench.tscn"
+
+[node name="RunPlayerTurnInteractionBenchButton" type="Button" parent="DockMargin/DockRows/PlayerTurnInteractionBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Player QA"
+tooltip_text = "Run the Player Turn Interaction QA bench"
+
+[node name="OpenPlayerTurnInteractionQAOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Player QA Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/player_turn_interactions/"
+
+[node name="RuntimePlayerFlowBenchActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenRuntimePlayerFlowBenchButton" type="Button" parent="DockMargin/DockRows/RuntimePlayerFlowBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Runtime Flow"
+tooltip_text = "Open res://scenes/tools/RuntimePlayerTurnFlowBench.tscn"
+
+[node name="RunRuntimePlayerFlowBenchButton" type="Button" parent="DockMargin/DockRows/RuntimePlayerFlowBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Runtime Flow"
+tooltip_text = "Run the Runtime Player Turn Flow QA bench"
+
+[node name="OpenRuntimePlayerFlowOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Runtime Flow Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/runtime_player_turn_flow/"
+
+[node name="FirstPlayableLoopBenchActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenFirstPlayableLoopBenchButton" type="Button" parent="DockMargin/DockRows/FirstPlayableLoopBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Playable Loop"
+tooltip_text = "Open res://scenes/tools/FirstPlayableLoopBench.tscn"
+
+[node name="RunFirstPlayableLoopBenchButton" type="Button" parent="DockMargin/DockRows/FirstPlayableLoopBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Playable Loop"
+tooltip_text = "Run the First Playable Loop QA bench"
+
+[node name="OpenFirstPlayableLoopOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Playable Loop Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/first_playable_loop/"
+
+[node name="FirstRoundRuntimePlayableLoopActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenFirstRoundRuntimePlayableLoopBenchButton" type="Button" parent="DockMargin/DockRows/FirstRoundRuntimePlayableLoopActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open First Round"
+tooltip_text = "Open res://scenes/tools/FirstRoundRuntimePlayableLoopBench.tscn"
+
+[node name="RunFirstRoundRuntimePlayableLoopBenchButton" type="Button" parent="DockMargin/DockRows/FirstRoundRuntimePlayableLoopActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run First Round"
+tooltip_text = "Run the First Round Runtime Playable Loop QA bench"
+
+[node name="OpenFirstRoundRuntimePlayableLoopOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open First Round Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/first_round_runtime_playable_loop/"
+
+[node name="FirstMissionSpineBenchActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenFirstMissionSpineBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionSpineBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Mission Spine"
+tooltip_text = "Open res://scenes/tools/FirstMissionSpineBench.tscn"
+
+[node name="RunFirstMissionSpineBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionSpineBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Mission Spine"
+tooltip_text = "Run the First Mission Spine QA bench"
+
+[node name="OpenFirstMissionSpineOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Mission Spine Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/first_mission_spine/"
+
+[node name="FirstMissionRuntimeMainActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenFirstMissionRuntimeMainBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionRuntimeMainActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Runtime Mission"
+tooltip_text = "Open res://scenes/tools/FirstMissionRuntimeMainBench.tscn"
+
+[node name="RunFirstMissionRuntimeMainBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionRuntimeMainActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Runtime Mission"
+tooltip_text = "Run the First Mission Runtime Main QA bench"
+
+[node name="OpenFirstMissionRuntimeMainOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Runtime Mission Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/first_mission_runtime_main/"
+
+[node name="PlanetMapPreviewActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlanetMapPreviewButton" type="Button" parent="DockMargin/DockRows/PlanetMapPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Planet Map"
+tooltip_text = "Open res://scenes/tools/PlanetMapMcpPreview.tscn"
+
+[node name="RunPlanetMapPreviewButton" type="Button" parent="DockMargin/DockRows/PlanetMapPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Planet Map"
+tooltip_text = "Run the Planet Map MCP preview scene"
+
+[node name="OpenPlanetMapViewButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open PlanetMapView Scene"
+tooltip_text = "Open res://scenes/ui/PlanetMapView.tscn"
+
+[node name="PlanetMapComponentActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlanetDistrictNodeButton" type="Button" parent="DockMargin/DockRows/PlanetMapComponentActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "District Node"
+tooltip_text = "Open res://scenes/ui/map/PlanetDistrictNode.tscn"
+
+[node name="OpenPlanetDistrictPolygonButton" type="Button" parent="DockMargin/DockRows/PlanetMapComponentActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "District Poly"
+tooltip_text = "Open res://scenes/ui/map/PlanetDistrictPolygon.tscn"
+
+[node name="OpenPlanetMonsterTokenButton" type="Button" parent="DockMargin/DockRows/PlanetMapComponentActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Monster Token"
+tooltip_text = "Open res://scenes/ui/map/PlanetMonsterToken.tscn"
+
+[node name="PlanetMapRouteActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlanetRouteMarkerButton" type="Button" parent="DockMargin/DockRows/PlanetMapRouteActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Planet Route Marker"
+tooltip_text = "Open res://scenes/ui/map/PlanetRouteMarker.tscn"
+
+[node name="OpenPlanetRouteSegmentButton" type="Button" parent="DockMargin/DockRows/PlanetMapRouteActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Route Segment"
+tooltip_text = "Open res://scenes/ui/map/PlanetRouteSegment.tscn"
+
+[node name="PlanetMapFeedbackActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlanetMovementTrailButton" type="Button" parent="DockMargin/DockRows/PlanetMapFeedbackActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Movement Trail"
+tooltip_text = "Open res://scenes/ui/map/PlanetMovementTrail.tscn"
+
+[node name="OpenPlanetMapEventEffectButton" type="Button" parent="DockMargin/DockRows/PlanetMapFeedbackActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Event Effect"
+tooltip_text = "Open res://scenes/ui/map/PlanetMapEventEffect.tscn"
+
+[node name="OpenPlanetActionCalloutButton" type="Button" parent="DockMargin/DockRows/PlanetMapFeedbackActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Action Callout"
+tooltip_text = "Open res://scenes/ui/map/PlanetActionCallout.tscn"
+
+[node name="PlanetMapUnderlayActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlanetGlobeBackdropButton" type="Button" parent="DockMargin/DockRows/PlanetMapUnderlayActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Globe Backdrop"
+tooltip_text = "Open res://scenes/ui/map/PlanetGlobeBackdrop.tscn"
+
+[node name="OpenPlanetOrbitGuideButton" type="Button" parent="DockMargin/DockRows/PlanetMapUnderlayActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Orbit Guide"
+tooltip_text = "Open res://scenes/ui/map/PlanetOrbitGuide.tscn"
+
+[node name="OpenPlanetFocusRangeOverlayButton" type="Button" parent="DockMargin/DockRows/PlanetMapUnderlayActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Focus Overlay"
+tooltip_text = "Open res://scenes/ui/map/PlanetFocusRangeOverlay.tscn"
+
+[node name="PlanetMapCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlanetScaleHintButton" type="Button" parent="DockMargin/DockRows/PlanetMapCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Scale Hint"
+tooltip_text = "Open res://scenes/ui/map/PlanetMapScaleHint.tscn"
+
+[node name="OpenPlanetRenderCutoverBenchButton" type="Button" parent="DockMargin/DockRows/PlanetMapCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Cutover"
+tooltip_text = "Open res://scenes/tools/PlanetMapRenderCutoverBench.tscn"
+
+[node name="RunPlanetRenderCutoverBenchButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Run Planet Render Cutover"
+tooltip_text = "Run the Planet Map render cutover QA bench"
+
+[node name="OpenPlanetRenderCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Planet Cutover Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/planet_map_render_cutover/"
+
+[node name="PlanetMapInteractionActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlanetInteractionBenchButton" type="Button" parent="DockMargin/DockRows/PlanetMapInteractionActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Planet Interaction"
+tooltip_text = "Open res://scenes/tools/PlanetMapInteractionBench.tscn"
+
+[node name="RunPlanetInteractionBenchButton" type="Button" parent="DockMargin/DockRows/PlanetMapInteractionActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Planet Interaction"
+tooltip_text = "Run the Planet Map interaction ownership QA bench"
+
+[node name="OpenPlanetInteractionOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Planet Interaction Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/planet_map_interactions/"
+
+[node name="SceneizationAuditActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenSceneizationAuditButton" type="Button" parent="DockMargin/DockRows/SceneizationAuditActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Audit"
+tooltip_text = "Open res://scenes/tools/SceneizationAuditMcpPreview.tscn"
+
+[node name="RunSceneizationAuditButton" type="Button" parent="DockMargin/DockRows/SceneizationAuditActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Audit"
+tooltip_text = "Run the Sceneization Audit MCP preview scene"
+
+[node name="SystemResourceizationAuditActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenSystemResourceizationAuditButton" type="Button" parent="DockMargin/DockRows/SystemResourceizationAuditActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open System Audit"
+tooltip_text = "Open res://scenes/tools/SystemResourceizationAuditMcpPreview.tscn"
+
+[node name="RunSystemResourceizationAuditButton" type="Button" parent="DockMargin/DockRows/SystemResourceizationAuditActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run System Audit"
+tooltip_text = "Run res://scenes/tools/SystemResourceizationAuditBench.tscn"
+
+[node name="OpenSystemResourceizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open System Audit Output"
+tooltip_text = "Open user://space_syndicate_design_qa/system_resourceization_audit/"
+
+[node name="BalanceParameterResourceActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenBalanceParameterResourcePreviewButton" type="Button" parent="DockMargin/DockRows/BalanceParameterResourceActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Balance Resources"
+tooltip_text = "Open res://scenes/tools/BalanceParameterResourceMcpPreview.tscn"
+
+[node name="RunBalanceParameterResourceBenchButton" type="Button" parent="DockMargin/DockRows/BalanceParameterResourceActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Balance Resources"
+tooltip_text = "Run res://scenes/tools/BalanceParameterResourceBench.tscn"
+
+[node name="OpenBalanceParameterResourceOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Balance Resource Output"
+tooltip_text = "Open user://space_syndicate_design_qa/balance_parameter_resourceization/"
+
+[node name="BalanceModelResourceSandboxActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenBalanceModelResourceSandboxButton" type="Button" parent="DockMargin/DockRows/BalanceModelResourceSandboxActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Balance Sandbox"
+tooltip_text = "Open res://scenes/tools/BalanceModelResourceSandbox.tscn"
+
+[node name="RunBalanceModelResourceSandboxBenchButton" type="Button" parent="DockMargin/DockRows/BalanceModelResourceSandboxActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Balance Sandbox"
+tooltip_text = "Run res://scenes/tools/BalanceModelResourceSandboxBench.tscn"
+
+[node name="OpenBalanceModelResourceSandboxOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Balance Sandbox Output"
+tooltip_text = "Open user://space_syndicate_design_qa/balance_model_resource_sandbox/"
+
+[node name="BalanceRuntimeBridgeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenBalanceRuntimeBridgeButton" type="Button" parent="DockMargin/DockRows/BalanceRuntimeBridgeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Balance Sources"
+tooltip_text = "Open res://scenes/tools/BalanceRuntimeBridgeMcpPreview.tscn"
+
+[node name="RunBalanceRuntimeBridgeBenchButton" type="Button" parent="DockMargin/DockRows/BalanceRuntimeBridgeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Balance Diagnostics"
+tooltip_text = "Run res://scenes/tools/BalanceRuntimeBridgeBench.tscn"
+
+[node name="OpenBalanceRuntimeBridgeOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Balance Diagnostics Output"
+tooltip_text = "Open user://space_syndicate_design_qa/gameplay_balance_diagnostics/"
+
+[node name="GameplayBalanceDiagnosticsOwnerRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenGameplayBalanceDiagnosticsServiceButton" type="Button" parent="DockMargin/DockRows/GameplayBalanceDiagnosticsOwnerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Diagnostics Service"
+tooltip_text = "Open res://scenes/runtime/GameplayBalanceDiagnosticsRuntimeService.tscn"
+
+[node name="OpenGameplayBalanceDiagnosticsWorldBridgeButton" type="Button" parent="DockMargin/DockRows/GameplayBalanceDiagnosticsOwnerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Diagnostics Facts"
+tooltip_text = "Open res://scenes/runtime/GameplayBalanceDiagnosticsWorldBridge.tscn"
+
+[node name="RulesetV04ActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenRulesetRuntimeBridgeButton" type="Button" parent="DockMargin/DockRows/RulesetV04ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Ruleset v0.4"
+tooltip_text = "Open res://scenes/runtime/RulesetRuntimeBridge.tscn"
+
+[node name="RunRulesetV04ConformanceBenchButton" type="Button" parent="DockMargin/DockRows/RulesetV04ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Ruleset v0.4 QA"
+tooltip_text = "Run res://scenes/tools/RulesetV04ConformanceBench.tscn"
+
+[node name="OpenRulesetV04ConformanceOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Ruleset v0.4 Output"
+tooltip_text = "Open user://space_syndicate_design_qa/ruleset_v04_conformance/"
+
+[node name="OpenCityDevelopmentRuntimeControllerButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open City Development Controller"
+tooltip_text = "Open res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
+
+[node name="OpenCityDevelopmentWorldBridgeButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open City Development World Bridge"
+tooltip_text = "Open res://scenes/runtime/CityDevelopmentWorldBridge.tscn"
+
+[node name="MainRuntimeReplacementActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenGameRuntimeCoordinatorButton" type="Button" parent="DockMargin/DockRows/MainRuntimeReplacementActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Runtime Coordinator"
+tooltip_text = "Open res://scenes/runtime/GameRuntimeCoordinator.tscn"
+
+[node name="OpenForcedDecisionRuntimeSchedulerButton" type="Button" parent="DockMargin/DockRows/MainRuntimeReplacementActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Decision Scheduler"
+tooltip_text = "Open res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn"
+
+[node name="ForcedDecisionSchedulerActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RunForcedDecisionRuntimeSchedulerBenchButton" type="Button" parent="DockMargin/DockRows/ForcedDecisionSchedulerActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Decision Scheduler QA"
+tooltip_text = "Run res://scenes/tools/ForcedDecisionRuntimeSchedulerBench.tscn"
+
+[node name="OpenForcedDecisionRuntimeSchedulerOutputFolderButton" type="Button" parent="DockMargin/DockRows/ForcedDecisionSchedulerActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Scheduler Output"
+tooltip_text = "Open user://space_syndicate_design_qa/forced_decision_scheduler/"
+
+[node name="GameSessionRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenGameSessionRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/GameSessionRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Session Controller"
+tooltip_text = "Open res://scenes/runtime/GameSessionRuntimeController.tscn"
+
+[node name="OpenGameSaveRuntimeCoordinatorButton" type="Button" parent="DockMargin/DockRows/GameSessionRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Save Coordinator"
+tooltip_text = "Open res://scenes/runtime/GameSaveRuntimeCoordinator.tscn"
+
+[node name="GameSessionSaveOwnershipActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="RunGameSessionSaveOwnershipBenchButton" type="Button" parent="DockMargin/DockRows/GameSessionSaveOwnershipActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Session/Save QA"
+tooltip_text = "Run res://scenes/tools/GameSessionSaveOwnershipBench.tscn"
+
+[node name="OpenGameSessionSaveOwnershipOutputFolderButton" type="Button" parent="DockMargin/DockRows/GameSessionSaveOwnershipActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Session/Save Output"
+tooltip_text = "Open user://space_syndicate_design_qa/game_session_save_ownership/"
+
+[node name="DistrictPurchaseRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenDistrictPurchaseRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/DistrictPurchaseRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Purchase Controller"
+tooltip_text = "Open res://scenes/runtime/DistrictPurchaseRuntimeController.tscn"
+
+[node name="OpenDistrictSupplyDrawerButton" type="Button" parent="DockMargin/DockRows/DistrictPurchaseRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Supply Drawer"
+tooltip_text = "Open res://scenes/ui/DistrictSupplyDrawer.tscn"
+
+[node name="RunDistrictPurchaseRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/DistrictPurchaseRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Purchase QA"
+tooltip_text = "Run 45 ownership gates and 17 settlement characterizations"
+
+[node name="DistrictSupplySnapshotActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenDistrictSupplySnapshotServiceButton" type="Button" parent="DockMargin/DockRows/DistrictSupplySnapshotActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Supply Snapshot Service"
+tooltip_text = "Open res://scenes/runtime/DistrictSupplySnapshotService.tscn"
+
+[node name="OpenDistrictPurchaseSettlementRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/DistrictSupplySnapshotActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Settlement Service"
+tooltip_text = "Open res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn"
+
+[node name="OpenDistrictPurchaseRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Purchase Output"
+tooltip_text = "Open user://space_syndicate_design_qa/district_purchase_runtime_cutover/"
+
+[node name="CardInventoryCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardInventoryRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/CardInventoryCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Inventory Service"
+tooltip_text = "Open res://scenes/runtime/CardInventoryRuntimeService.tscn"
+
+[node name="OpenCardInventoryRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CardInventoryCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Inventory QA"
+tooltip_text = "Open res://scenes/tools/CardInventoryRuntimeCharacterizationBench.tscn"
+
+[node name="RunCardInventoryRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CardInventoryCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Inventory QA"
+tooltip_text = "Run 20 characterization plus 20 service-cutover cases"
+
+[node name="OpenCardInventoryRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Inventory Output"
+tooltip_text = "Open user://space_syndicate_design_qa/card_inventory_runtime_cutover/"
+
+[node name="PlayerHandInteractionCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenPlayerHandInteractionRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/PlayerHandInteractionCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Hand Service"
+tooltip_text = "Open res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn"
+
+[node name="OpenPlayerHandInteractionRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/PlayerHandInteractionCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Hand QA"
+tooltip_text = "Open res://scenes/tools/PlayerHandInteractionRuntimeCharacterizationBench.tscn"
+
+[node name="RunPlayerHandInteractionRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/PlayerHandInteractionCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Hand QA"
+tooltip_text = "Run 20 characterization + 20 runtime cutover cases"
+
+[node name="OpenPlayerHandInteractionRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Hand Interaction Output"
+tooltip_text = "Open user://space_syndicate_design_qa/player_hand_interaction_characterization/"
+
+[node name="CardResolutionQueueCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardResolutionQueueRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/CardResolutionQueueCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Queue Service"
+tooltip_text = "Open res://scenes/runtime/CardResolutionQueueRuntimeService.tscn"
+
+[node name="OpenCardResolutionQueueRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CardResolutionQueueCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Queue QA"
+tooltip_text = "Open res://scenes/tools/CardResolutionQueueRuntimeCharacterizationBench.tscn"
+
+[node name="RunCardResolutionQueueRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CardResolutionQueueCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Queue QA"
+tooltip_text = "Run 28 characterization + 28 queue service cutover cases"
+
+[node name="OpenCardResolutionQueueRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Queue Output"
+tooltip_text = "Open user://space_syndicate_design_qa/card_resolution_queue_characterization/"
+
+[node name="CardResolutionExecutionCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardResolutionExecutionRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/CardResolutionExecutionCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Execution Service"
+tooltip_text = "Open res://scenes/runtime/CardResolutionExecutionRuntimeService.tscn"
+
+[node name="OpenCardResolutionExecutionRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CardResolutionExecutionCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Execution QA"
+tooltip_text = "Open res://scenes/tools/CardResolutionExecutionRuntimeCharacterizationBench.tscn"
+
+[node name="RunCardResolutionExecutionRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CardResolutionExecutionCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Execution QA"
+tooltip_text = "Run 28 preserved observations + 28 execution service cutover cases"
+
+[node name="OpenCardResolutionExecutionRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Execution Output"
+tooltip_text = "Open user://space_syndicate_design_qa/card_resolution_execution_characterization/"
+
+[node name="OpenCardEconomyProductRouteEffectRuntimeServiceButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Economy / Product / Route Effects"
+tooltip_text = "Open res://scenes/runtime/CardEconomyProductRouteEffectRuntimeService.tscn"
+
+[node name="OpenCardEconomyProductRouteFormulaRuntimeServiceButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Economy / Product / Route Formulas"
+tooltip_text = "Open res://scenes/runtime/CardEconomyProductRouteFormulaRuntimeService.tscn"
+
+[node name="EconomyCashflowRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenEconomyCashflowRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/EconomyCashflowRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Cashflow Controller"
+tooltip_text = "Open res://scenes/runtime/EconomyCashflowRuntimeController.tscn"
+
+[node name="RunEconomyCashflowRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/EconomyCashflowRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Cashflow QA"
+tooltip_text = "Run res://scenes/tools/EconomyCashflowRuntimeCutoverBench.tscn"
+
+[node name="OpenEconomyCashflowRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Cashflow Output"
+tooltip_text = "Open user://space_syndicate_design_qa/economy_cashflow_runtime_cutover/"
+
+[node name="GdpFormulaRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenGdpFormulaRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/GdpFormulaRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open GDP Formula"
+tooltip_text = "Open res://scenes/runtime/GdpFormulaRuntimeController.tscn"
+
+[node name="RunGdpFormulaRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/GdpFormulaRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run GDP Formula QA"
+tooltip_text = "Run res://scenes/tools/GdpFormulaRuntimeCutoverBench.tscn"
+
+[node name="OpenGdpFormulaRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open GDP Formula Output"
+tooltip_text = "Open user://space_syndicate_design_qa/gdp_formula_runtime_cutover/"
+
+[node name="ScenarioRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenScenarioRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/ScenarioRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Scenario Controller"
+tooltip_text = "Open res://scenes/runtime/ScenarioRuntimeController.tscn"
+
+[node name="RunScenarioRuntimeGlueCutoverBenchButton" type="Button" parent="DockMargin/DockRows/ScenarioRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Scenario QA"
+tooltip_text = "Run res://scenes/tools/ScenarioRuntimeGlueCutoverBench.tscn"
+
+[node name="OpenScenarioRuntimeGlueCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Scenario Output"
+tooltip_text = "Open user://space_syndicate_design_qa/scenario_runtime_glue_cutover/"
+
+[node name="FirstTableAuthoredRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenFirstTableAuthoredRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/FirstTableAuthoredRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open First Table Service"
+tooltip_text = "Open res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn"
+
+[node name="RunFirstTableAuthoredRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/FirstTableAuthoredRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run First Table QA"
+tooltip_text = "Run res://scenes/tools/FirstTableAuthoredRuntimeCutoverBench.tscn"
+
+[node name="OpenFirstTableAuthoredRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open First Table Output"
+tooltip_text = "Open user://space_syndicate_design_qa/first_table_authored_runtime_cutover/"
+
+[node name="LegacyRuntimeSurfaceRetirementActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenSceneizedMainButton" type="Button" parent="DockMargin/DockRows/LegacyRuntimeSurfaceRetirementActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Sceneized Main"
+tooltip_text = "Open res://scenes/main.tscn and inspect the mandatory GameScreen composition"
+
+[node name="RunLegacyRuntimeSurfaceRetirementBenchButton" type="Button" parent="DockMargin/DockRows/LegacyRuntimeSurfaceRetirementActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Surface Retirement QA"
+tooltip_text = "Run res://scenes/tools/LegacyRuntimeSurfaceRetirementBench.tscn"
+
+[node name="OpenLegacyRuntimeSurfaceRetirementOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Surface Retirement Output"
+tooltip_text = "Open user://space_syndicate_design_qa/legacy_runtime_surface_retirement/"
+
+[node name="LegacyPlayerSurfaceRetirementActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenLegacyPlayerSurfaceRetirementBenchButton" type="Button" parent="DockMargin/DockRows/LegacyPlayerSurfaceRetirementActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Player Surface QA"
+tooltip_text = "Open res://scenes/tools/LegacyPlayerSurfaceRetirementBench.tscn"
+
+[node name="RunLegacyPlayerSurfaceRetirementBenchButton" type="Button" parent="DockMargin/DockRows/LegacyPlayerSurfaceRetirementActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Player Surface QA"
+tooltip_text = "Run the 27-case Sprint 42 player/card presentation and ViewModel retirement gate"
+
+[node name="OpenLegacyPlayerSurfaceRetirementOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Player Surface Output"
+tooltip_text = "Open user://space_syndicate_design_qa/legacy_player_surface_retirement/"
+
+[node name="CardPresentationViewModelServiceRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardPresentationRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/CardPresentationViewModelServiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Card Presentation"
+tooltip_text = "Open res://scenes/runtime/CardPresentationRuntimeService.tscn"
+
+[node name="OpenGameTableViewModelRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/CardPresentationViewModelServiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Table ViewModel"
+tooltip_text = "Open res://scenes/runtime/GameTableViewModelRuntimeService.tscn"
+
+[node name="CardPlayEligibilityServiceRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardPlayEligibilityRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/CardPlayEligibilityServiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Play Eligibility"
+tooltip_text = "Open res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn"
+
+[node name="OpenCardPlayEligibilityWorldBridgeButton" type="Button" parent="DockMargin/DockRows/CardPlayEligibilityServiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Eligibility Facts"
+tooltip_text = "Open res://scenes/runtime/CardPlayEligibilityWorldBridge.tscn"
+
+[node name="CardPlayEligibilityBenchRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardPlayEligibilityRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/CardPlayEligibilityBenchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Eligibility QA"
+tooltip_text = "Open res://scenes/tools/CardPlayEligibilityRuntimeBench.tscn"
+
+[node name="RunCardPlayEligibilityRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/CardPlayEligibilityBenchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Eligibility QA"
+tooltip_text = "Run the Sprint 43 card play eligibility hard-cutover gate"
+
+[node name="OpenCardPlayEligibilityOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Eligibility Output"
+tooltip_text = "Open user://space_syndicate_design_qa/card_play_eligibility/"
+
+[node name="MenuShellRuntimeCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenMenuShellRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/MenuShellRuntimeCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Menu Shell QA"
+tooltip_text = "Open res://scenes/tools/MenuShellRuntimeCutoverBench.tscn"
+
+[node name="RunMenuShellRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/MenuShellRuntimeCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Menu Shell QA"
+tooltip_text = "Run the 24-case Menu Shell gate plus the 32-case Global Navigation characterization"
+
+[node name="OpenMenuShellRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Menu Shell Output"
+tooltip_text = "Open Menu Shell output; Global Navigation evidence is written to the sibling global_ui_navigation_characterization folder"
+
+[node name="CodexSceneHardCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCodexSceneHardCutoverBenchButton" type="Button" parent="DockMargin/DockRows/CodexSceneHardCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Cutover QA"
+tooltip_text = "Open res://scenes/tools/CodexSceneHardCutoverBench.tscn"
+
+[node name="RunCodexSceneHardCutoverBenchButton" type="Button" parent="DockMargin/DockRows/CodexSceneHardCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Codex Cutover QA"
+tooltip_text = "Run the 20-case Codex Scene Hard Cutover gate"
+
+[node name="OpenCodexSceneHardCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Cutover Output"
+tooltip_text = "Open user://space_syndicate_design_qa/codex_scene_hard_cutover/"
+
+[node name="CodexAtlasSceneCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCodexAtlasSceneCutoverBenchButton" type="Button" parent="DockMargin/DockRows/CodexAtlasSceneCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Atlas QA"
+tooltip_text = "Open res://scenes/tools/CodexAtlasSceneCutoverBench.tscn"
+
+[node name="RunCodexAtlasSceneCutoverBenchButton" type="Button" parent="DockMargin/DockRows/CodexAtlasSceneCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Codex Atlas QA"
+tooltip_text = "Run the 20-case Codex Atlas Scene Cutover gate"
+
+[node name="OpenCodexAtlasSceneCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Atlas Output"
+tooltip_text = "Open user://space_syndicate_design_qa/codex_atlas_scene_cutover/"
+
+[node name="CodexNavigationRuntimeCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCodexNavigationRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/CodexNavigationRuntimeCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Nav"
+tooltip_text = "Open res://scenes/runtime/CodexNavigationRuntimeController.tscn"
+
+[node name="RunCodexNavigationRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/CodexNavigationRuntimeCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Codex Nav QA"
+tooltip_text = "Run the 20-case Codex Navigation Runtime Cutover gate"
+
+[node name="OpenCodexNavigationRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Nav Output"
+tooltip_text = "Open user://space_syndicate_design_qa/codex_navigation_runtime_cutover/"
+
+[node name="CodexPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCodexPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/CodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Snapshots"
+tooltip_text = "Open res://scenes/runtime/CodexPublicSnapshotService.tscn"
+
+[node name="RunCodexPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/CodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Snapshot QA"
+tooltip_text = "Run the 20-case Codex Public Snapshot Cutover gate"
+
+[node name="OpenCodexPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/codex_public_snapshot_cutover/"
+
+[node name="MonsterCodexPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenMonsterCodexPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/MonsterCodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Monster Snapshots"
+tooltip_text = "Open res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn"
+
+[node name="RunMonsterCodexPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/MonsterCodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Monster Snapshot QA"
+tooltip_text = "Run the 20-case Monster Codex Public Snapshot Cutover gate"
+
+[node name="OpenMonsterCodexPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Monster Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/monster_codex_public_snapshot_cutover/"
+
+[node name="MonsterRuntimeCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenMonsterRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/MonsterRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Monster Runtime"
+tooltip_text = "Open res://scenes/runtime/MonsterRuntimeController.tscn"
+
+[node name="OpenMonsterRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/MonsterRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Monster Bridge"
+tooltip_text = "Open res://scenes/runtime/MonsterRuntimeWorldBridge.tscn"
+
+[node name="MonsterRuntimeQaActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenMonsterRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/MonsterRuntimeQaActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Monster Runtime QA"
+tooltip_text = "Open res://scenes/tools/MonsterRuntimeCharacterizationBench.tscn"
+
+[node name="RunMonsterRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/MonsterRuntimeQaActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Monster Runtime QA"
+tooltip_text = "Run the Sprint 45 50-case hard-cutover gate"
+
+[node name="OpenMonsterRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Monster Runtime Output"
+tooltip_text = "Open user://space_syndicate_design_qa/monster_runtime_characterization/"
+
+[node name="MilitaryRuntimeCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MilitaryRuntimeSceneActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenMilitaryRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/MilitaryRuntimeSceneActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Military Controller"
+tooltip_text = "Open res://scenes/runtime/MilitaryRuntimeController.tscn"
+
+[node name="OpenMilitaryRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/MilitaryRuntimeSceneActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Military Bridge"
+tooltip_text = "Open res://scenes/runtime/MilitaryRuntimeWorldBridge.tscn"
+
+[node name="OpenMilitaryRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/MilitaryRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Military Runtime QA"
+tooltip_text = "Open res://scenes/tools/MilitaryRuntimeCharacterizationBench.tscn"
+
+[node name="RunMilitaryRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/MilitaryRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Military Runtime QA"
+tooltip_text = "Run the Sprint 47 real-main hard-cutover gate"
+
+[node name="OpenMilitaryRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Military Runtime Output"
+tooltip_text = "Open user://space_syndicate_design_qa/military_runtime_characterization/"
+
+[node name="WeatherRuntimeCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="WeatherRuntimeSceneActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenWeatherRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/WeatherRuntimeSceneActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Weather Controller"
+tooltip_text = "Open res://scenes/runtime/WeatherRuntimeController.tscn"
+
+[node name="OpenWeatherRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/WeatherRuntimeSceneActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Weather Bridge"
+tooltip_text = "Open res://scenes/runtime/WeatherRuntimeWorldBridge.tscn"
+
+[node name="OpenWeatherRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/WeatherRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Weather Runtime QA"
+tooltip_text = "Open res://scenes/tools/WeatherRuntimeCharacterizationBench.tscn"
+
+[node name="RunWeatherRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/WeatherRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Weather Runtime QA"
+tooltip_text = "Run the Sprint 49 53-case hard-cutover gate"
+
+[node name="OpenWeatherRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Weather Runtime Output"
+tooltip_text = "Open user://space_syndicate_design_qa/weather_runtime_characterization/"
+
+[node name="ContractRuntimeOwnershipActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenContractRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeOwnershipActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Contract Controller"
+tooltip_text = "Open res://scenes/runtime/ContractRuntimeController.tscn"
+
+[node name="OpenContractRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeOwnershipActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Contract Bridge"
+tooltip_text = "Open res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
+
+[node name="ContractRuntimeCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenContractRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Contract Runtime QA"
+tooltip_text = "Open res://scenes/tools/ContractRuntimeCharacterizationBench.tscn"
+
+[node name="RunContractRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Contract Runtime QA"
+tooltip_text = "Run the Sprint 51 62-case real-main hard-cutover gate"
+
+[node name="OpenContractRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Contract Runtime Output"
+tooltip_text = "Open user://space_syndicate_design_qa/contract_runtime_characterization/"
+
+[node name="ProductMarketRuntimeCharacterizationSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Product Futures v0.4 Hard Alignment"
+
+[node name="ProductMarketRuntimeCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenProductMarketRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/ProductMarketRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Futures Terms QA"
+tooltip_text = "Open res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn"
+
+[node name="RunProductMarketRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/ProductMarketRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Futures Terms QA"
+tooltip_text = "Run the Sprint 55 100-record market gate with 76 live v0.4 alignment cases"
+
+[node name="OpenProductFuturesTermsCatalogButton" type="Button" parent="DockMargin/DockRows/ProductMarketRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Terms Catalog"
+tooltip_text = "Open the Inspector-editable v0.4 futures terms catalog"
+
+[node name="OpenProductMarketRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Futures Terms Output"
+tooltip_text = "Open user://space_syndicate_design_qa/product_futures_v04_hard_alignment/"
+
+[node name="CityTradeNetworkRuntimeCharacterizationSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "City / Trade Network Runtime"
+
+[node name="CityTradeNetworkRuntimeOwnerRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCityTradeNetworkRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/CityTradeNetworkRuntimeOwnerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Network Owner"
+tooltip_text = "Open res://scenes/runtime/CityTradeNetworkRuntimeController.tscn"
+
+[node name="OpenCityTradeNetworkRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/CityTradeNetworkRuntimeOwnerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open World Bridge"
+tooltip_text = "Open res://scenes/runtime/CityTradeNetworkWorldBridge.tscn"
+
+[node name="CityTradeNetworkRuntimeCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCityTradeNetworkRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CityTradeNetworkRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open City / Trade QA"
+tooltip_text = "Open res://scenes/tools/CityTradeNetworkRuntimeCharacterizationBench.tscn"
+
+[node name="RunCityTradeNetworkRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CityTradeNetworkRuntimeCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run City / Trade QA"
+tooltip_text = "Run the Sprint 64 68-case city, route, refresh, save, deletion, and ownership gate"
+
+[node name="OpenCityTradeNetworkRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open City / Trade Output"
+tooltip_text = "Open user://space_syndicate_design_qa/city_trade_network_characterization/"
+
+[node name="CityDevelopmentSettlementCharacterizationSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "City Development Settlement - Sprint 66"
+
+[node name="CityDevelopmentSettlementCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCityDevelopmentSettlementCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CityDevelopmentSettlementCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Settlement QA"
+tooltip_text = "Open res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
+
+[node name="RunCityDevelopmentSettlementCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/CityDevelopmentSettlementCharacterizationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Settlement QA"
+tooltip_text = "Run the Sprint 66 64-case city-development settlement hard-cutover gate"
+
+[node name="OpenCityDevelopmentSettlementCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Settlement Output"
+tooltip_text = "Open user://space_syndicate_design_qa/city_development_settlement_characterization/"
+
+[node name="CityGdpDerivativeRuntimeSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "City GDP Derivative v0.4 Terms Alignment"
+
+[node name="CityGdpDerivativeRuntimeOwnerRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCityGdpDerivativeRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/CityGdpDerivativeRuntimeOwnerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open GDP Derivative"
+tooltip_text = "Open res://scenes/runtime/CityGdpDerivativeRuntimeController.tscn"
+
+[node name="OpenCityGdpDerivativeRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/CityGdpDerivativeRuntimeOwnerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open World Bridge"
+tooltip_text = "Open res://scenes/runtime/CityGdpDerivativeRuntimeWorldBridge.tscn"
+
+[node name="OpenCityGdpDerivativeTermsCatalogButton" type="Button" parent="DockMargin/DockRows/CityGdpDerivativeRuntimeOwnerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open GDP Terms"
+tooltip_text = "Open the Inspector-editable city GDP derivative v0.4 terms catalog"
+
+[node name="CityGdpDerivativeRuntimeQaRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCityGdpDerivativeRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/CityGdpDerivativeRuntimeQaRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open GDP Terms QA"
+tooltip_text = "Open res://scenes/tools/CityGdpDerivativeRuntimeBench.tscn"
+
+[node name="RunCityGdpDerivativeRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/CityGdpDerivativeRuntimeQaRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run GDP Terms QA"
+tooltip_text = "Run the 40-case City GDP derivative v0.4 alignment gate"
+
+[node name="OpenCityGdpDerivativeRuntimeOutputFolderButton" type="Button" parent="DockMargin/DockRows/CityGdpDerivativeRuntimeQaRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open GDP QA Output"
+tooltip_text = "Open user://space_syndicate_design_qa/city_gdp_derivative_v04/"
+
+[node name="ProductCodexPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenProductCodexPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/ProductCodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Product Snapshots"
+tooltip_text = "Open res://scenes/runtime/ProductCodexPublicSnapshotService.tscn"
+
+[node name="RunProductCodexPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/ProductCodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Product Snapshot QA"
+tooltip_text = "Run the 20-case Product Codex Public Snapshot Cutover gate"
+
+[node name="OpenProductCodexPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Product Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/product_codex_public_snapshot_cutover/"
+
+[node name="CardCodexPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardCodexPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/CardCodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Card Snapshots"
+tooltip_text = "Open res://scenes/runtime/CardCodexPublicSnapshotService.tscn"
+
+[node name="RunCardCodexPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/CardCodexPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Card Snapshot QA"
+tooltip_text = "Run the 20-case Card Codex Public Snapshot Cutover gate"
+
+[node name="OpenCardCodexPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Card Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/card_codex_public_snapshot_cutover/"
+
+[node name="RuntimeCardCatalogResourceSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Runtime Card Catalog / Sprint 58"
+
+[node name="RuntimeCardCatalogResourceActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenRuntimeCardCatalogButton" type="Button" parent="DockMargin/DockRows/RuntimeCardCatalogResourceActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Catalog"
+tooltip_text = "Open the authoritative card_runtime_catalog_v04.tres Resource"
+
+[node name="OpenRuntimeCardCatalogServiceButton" type="Button" parent="DockMargin/DockRows/RuntimeCardCatalogResourceActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Service"
+tooltip_text = "Open res://scenes/runtime/CardRuntimeCatalogService.tscn"
+
+[node name="RunRuntimeCardCatalogResourceBenchButton" type="Button" parent="DockMargin/DockRows/RuntimeCardCatalogResourceActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Catalog QA"
+tooltip_text = "Run the 80-case Resource integrity and live-cutover gate"
+
+[node name="OpenRuntimeCardCatalogResourceOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Catalog QA Output"
+tooltip_text = "Open user://space_syndicate_design_qa/runtime_card_catalog_resource/"
+
+[node name="RuntimeCardAuthoringSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Runtime Card Authoring / Sprint 59"
+
+[node name="RuntimeCardAuthoringActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenRuntimeCardAuthoringWorkspaceButton" type="Button" parent="DockMargin/DockRows/RuntimeCardAuthoringActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Workspace"
+tooltip_text = "Open the Inspector-backed Runtime Card Authoring workspace"
+
+[node name="OpenRuntimeCardAuthoringSampleFamilyButton" type="Button" parent="DockMargin/DockRows/RuntimeCardAuthoringActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Sample Family"
+tooltip_text = "Open a real family Resource and use the custom Inspector authoring panel"
+
+[node name="RunRuntimeCardAuthoringWorkflowBenchButton" type="Button" parent="DockMargin/DockRows/RuntimeCardAuthoringActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Authoring QA"
+tooltip_text = "Run the 36-case validation, baseline and change-review workflow gate"
+
+[node name="OpenRuntimeCardAuthoringOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Authoring Review Output"
+tooltip_text = "Open user://space_syndicate_design_qa/runtime_card_authoring/"
+
+[node name="EconomyDashboardPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenEconomyDashboardPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/EconomyDashboardPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Economy Snapshots"
+tooltip_text = "Open res://scenes/runtime/EconomyDashboardPublicSnapshotService.tscn"
+
+[node name="RunEconomyDashboardPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/EconomyDashboardPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Economy Snapshot QA"
+tooltip_text = "Run the 20-case Economy Dashboard Public Snapshot Cutover gate"
+
+[node name="OpenEconomyDashboardPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Economy Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/economy_dashboard_public_snapshot_cutover/"
+
+[node name="StandingsPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenStandingsPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/StandingsPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Standings Snapshots"
+tooltip_text = "Open res://scenes/runtime/StandingsPublicSnapshotService.tscn"
+
+[node name="RunStandingsPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/StandingsPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Standings Snapshot QA"
+tooltip_text = "Run the 20-case Standings Public Snapshot Cutover gate"
+
+[node name="OpenStandingsPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Standings Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/standings_public_snapshot_cutover/"
+
+[node name="FinalSettlementPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenFinalSettlementPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/FinalSettlementPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Final Snapshots"
+tooltip_text = "Open res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn"
+
+[node name="RunFinalSettlementPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/FinalSettlementPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Final Snapshot QA"
+tooltip_text = "Run the 20-case Final Settlement Public Snapshot Cutover gate"
+
+[node name="OpenFinalSettlementPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Final Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/final_settlement_public_snapshot_cutover/"
+
+[node name="IntelDossierPublicSnapshotCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenIntelDossierPublicSnapshotServiceButton" type="Button" parent="DockMargin/DockRows/IntelDossierPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Intel Snapshots"
+tooltip_text = "Open res://scenes/runtime/IntelDossierPublicSnapshotService.tscn"
+
+[node name="RunIntelDossierPublicSnapshotCutoverBenchButton" type="Button" parent="DockMargin/DockRows/IntelDossierPublicSnapshotCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Intel Snapshot QA"
+tooltip_text = "Run the 20-case Intel Dossier Public Snapshot Cutover gate"
+
+[node name="OpenIntelDossierPublicSnapshotCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Intel Snapshot Output"
+tooltip_text = "Open user://space_syndicate_design_qa/intel_dossier_public_snapshot_cutover/"
+
+[node name="NewGameSetupPageCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenNewGameSetupPageButton" type="Button" parent="DockMargin/DockRows/NewGameSetupPageCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Setup Page"
+tooltip_text = "Open res://scenes/ui/NewGameSetupPage.tscn"
+
+[node name="RunNewGameSetupPageCutoverBenchButton" type="Button" parent="DockMargin/DockRows/NewGameSetupPageCutoverActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Setup Page QA"
+tooltip_text = "Run the 20-case New Game Setup Page Cutover gate"
+
+[node name="OpenNewGameSetupPageCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Setup Page Output"
+tooltip_text = "Open user://space_syndicate_design_qa/new_game_setup_page_cutover/"
+
+[node name="AiPolicyResourceActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenAiPolicyResourcePreviewButton" type="Button" parent="DockMargin/DockRows/AiPolicyResourceActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open AI Policy"
+tooltip_text = "Open res://scenes/tools/AiPolicyResourceMcpPreview.tscn"
+
+[node name="RunAiPolicyResourceBenchButton" type="Button" parent="DockMargin/DockRows/AiPolicyResourceActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run AI Policy QA"
+tooltip_text = "Run res://scenes/tools/AiPolicyResourceBench.tscn"
+
+[node name="OpenAiPolicyResourceOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open AI Policy Output"
+tooltip_text = "Open user://space_syndicate_design_qa/ai_policy_resourceization/"
+
+[node name="AiRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenAiRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/AiRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open AI Runtime"
+tooltip_text = "Open res://scenes/runtime/AiRuntimeController.tscn"
+
+[node name="OpenAiRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/AiRuntimeActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open AI World Bridge"
+tooltip_text = "Open res://scenes/runtime/AiRuntimeWorldBridge.tscn"
+
+[node name="CardTrackPreviewActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardTrackPreviewButton" type="Button" parent="DockMargin/DockRows/CardTrackPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Card Track"
+tooltip_text = "Open res://scenes/tools/CardTrackMcpPreview.tscn"
+
+[node name="RunCardTrackPreviewButton" type="Button" parent="DockMargin/DockRows/CardTrackPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Card Track"
+tooltip_text = "Run the Card Track MCP preview scene"
+
+[node name="OpenCardTrackSlotButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open CardTrackSlot Scene"
+tooltip_text = "Open res://scenes/ui/CardTrackSlot.tscn"
+
+[node name="CardResolutionTrackSceneActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardResolutionTrackButton" type="Button" parent="DockMargin/DockRows/CardResolutionTrackSceneActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Resolution Track"
+tooltip_text = "Open res://scenes/ui/CardResolutionTrack.tscn"
+
+[node name="OpenCardResolutionTrackSlotButton" type="Button" parent="DockMargin/DockRows/CardResolutionTrackSceneActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Resolution Slot"
+tooltip_text = "Open res://scenes/ui/CardResolutionTrackSlot.tscn"
+
+[node name="CardResolutionTrackPreviewActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardResolutionTrackPreviewButton" type="Button" parent="DockMargin/DockRows/CardResolutionTrackPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Resolution Preview"
+tooltip_text = "Open res://scenes/tools/CardResolutionTrackMcpPreview.tscn"
+
+[node name="RunCardResolutionTrackPreviewButton" type="Button" parent="DockMargin/DockRows/CardResolutionTrackPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Resolution Preview"
+tooltip_text = "Run the Card Resolution Track MCP preview scene"
+
+[node name="CardResolutionTrackInteractionActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCardResolutionTrackInteractionBenchButton" type="Button" parent="DockMargin/DockRows/CardResolutionTrackInteractionActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Resolution Interaction"
+tooltip_text = "Open res://scenes/tools/CardResolutionTrackInteractionBench.tscn"
+
+[node name="RunCardResolutionTrackInteractionBenchButton" type="Button" parent="DockMargin/DockRows/CardResolutionTrackInteractionActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Resolution Interaction"
+tooltip_text = "Run the Card Resolution Track interaction QA bench"
+
+[node name="OpenCardResolutionTrackInteractionOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Resolution Interaction Output"
+tooltip_text = "Open user://space_syndicate_design_qa/card_resolution_track_interactions/"
+
+[node name="RuntimeCardResolutionTrackFlowActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenRuntimeCardResolutionTrackFlowBenchButton" type="Button" parent="DockMargin/DockRows/RuntimeCardResolutionTrackFlowActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Runtime Resolution"
+tooltip_text = "Open res://scenes/tools/RuntimeCardResolutionTrackFlowBench.tscn"
+
+[node name="RunRuntimeCardResolutionTrackFlowBenchButton" type="Button" parent="DockMargin/DockRows/RuntimeCardResolutionTrackFlowActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Runtime Resolution"
+tooltip_text = "Run the runtime Card Resolution Track flow QA bench"
+
+[node name="OpenRuntimeCardResolutionTrackFlowOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Runtime Resolution Output"
+tooltip_text = "Open user://space_syndicate_design_qa/runtime_card_resolution_track_flow/"
+
+[node name="CompendiumCodexPreviewActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCompendiumCodexPreviewButton" type="Button" parent="DockMargin/DockRows/CompendiumCodexPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Preview"
+tooltip_text = "Open res://scenes/tools/CompendiumCodexMcpPreview.tscn"
+
+[node name="RunCompendiumCodexPreviewButton" type="Button" parent="DockMargin/DockRows/CompendiumCodexPreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Codex Preview"
+tooltip_text = "Run the Compendium Codex MCP preview scene"
+
+[node name="CompendiumCodexInteractionActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCompendiumCodexInteractionBenchButton" type="Button" parent="DockMargin/DockRows/CompendiumCodexInteractionActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Codex Interaction"
+tooltip_text = "Open res://scenes/tools/CompendiumCodexInteractionBench.tscn"
+
+[node name="RunCompendiumCodexInteractionBenchButton" type="Button" parent="DockMargin/DockRows/CompendiumCodexInteractionActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Codex Interaction"
+tooltip_text = "Run the Compendium Codex interaction QA bench"
+
+[node name="OpenCompendiumCodexOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Codex QA Output"
+tooltip_text = "Open user://space_syndicate_design_qa/compendium_codex/"
+
+[node name="CompendiumContentRegistryActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenCompendiumContentRegistryPreviewButton" type="Button" parent="DockMargin/DockRows/CompendiumContentRegistryActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Content Registry"
+tooltip_text = "Open res://scenes/tools/CompendiumContentRegistryMcpPreview.tscn"
+
+[node name="RunCompendiumContentRegistryBenchButton" type="Button" parent="DockMargin/DockRows/CompendiumContentRegistryActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Content Registry"
+tooltip_text = "Run the Compendium Content Registry QA bench"
+
+[node name="OpenCompendiumContentRegistryOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Content Registry Output"
+tooltip_text = "Open user://space_syndicate_design_qa/compendium_content_registry/"
+
+[node name="PreviewActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenTemporaryDecisionPreviewButton" type="Button" parent="DockMargin/DockRows/PreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Preview"
+tooltip_text = "Open res://scenes/ui/TemporaryDecisionOverlayPreview.tscn"
+
+[node name="RunTemporaryDecisionPreviewButton" type="Button" parent="DockMargin/DockRows/PreviewActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run"
+tooltip_text = "Run the Temporary Decision Overlay preview scene"
+
+[node name="CaptureBenchActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenTemporaryDecisionCaptureBenchButton" type="Button" parent="DockMargin/DockRows/CaptureBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Capture Bench"
+tooltip_text = "Open res://scenes/ui/TemporaryDecisionOverlayCaptureBench.tscn"
+
+[node name="RunTemporaryDecisionCaptureBenchButton" type="Button" parent="DockMargin/DockRows/CaptureBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Capture"
+tooltip_text = "Run the Temporary Decision Overlay capture bench"
+
+[node name="OpenDesignQAOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open QA Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/temporary_decision_overlay/"
+
+[node name="InteractionBenchActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenTemporaryDecisionInteractionBenchButton" type="Button" parent="DockMargin/DockRows/InteractionBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Interaction Bench"
+tooltip_text = "Open res://scenes/ui/TemporaryDecisionOverlayInteractionBench.tscn"
+
+[node name="RunTemporaryDecisionInteractionBenchButton" type="Button" parent="DockMargin/DockRows/InteractionBenchActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run Interaction"
+tooltip_text = "Run the Temporary Decision Overlay interaction bench"
+
+[node name="OpenInteractionQAOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Interaction QA Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/temporary_decision_overlay_interactions/"
+
+[node name="FixtureSectionLabel" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Fixtures"
+text_overrun_behavior = 3
+
+[node name="FixtureGrid" type="GridContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="MonsterWagerFixtureButton" type="Button" parent="DockMargin/DockRows/FixtureGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "monster_wager"
+tooltip_text = "Preview fixture: monster_wager"
+
+[node name="ContractResponseFixtureButton" type="Button" parent="DockMargin/DockRows/FixtureGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "contract_response"
+tooltip_text = "Preview fixture: contract_response"
+
+[node name="DiscardPurchaseFixtureButton" type="Button" parent="DockMargin/DockRows/FixtureGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "discard_purchase"
+tooltip_text = "Preview fixture: discard_purchase"
+
+[node name="MonsterTargetFixtureButton" type="Button" parent="DockMargin/DockRows/FixtureGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "monster_target"
+tooltip_text = "Preview fixture: monster_target_choice"
+
+[node name="PlayerTargetFixtureButton" type="Button" parent="DockMargin/DockRows/FixtureGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "player_target"
+tooltip_text = "Preview fixture: player_target_choice"
+
+[node name="QAStateSectionLabel" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "QA States"
+text_overrun_behavior = 3
+
+[node name="QAStateGrid" type="GridContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="LongTextStressHintButton" type="Button" parent="DockMargin/DockRows/QAStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Long Text"
+tooltip_text = "Fixture stress: long text"
+
+[node name="DisabledActionHintButton" type="Button" parent="DockMargin/DockRows/QAStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Disabled"
+tooltip_text = "Fixture stress: disabled action"
+
+[node name="MalformedPayloadHintButton" type="Button" parent="DockMargin/DockRows/QAStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Edge Payload"
+tooltip_text = "Fixture stress: empty or malformed payload"
+
+[node name="FixtureTitleLabel" type="Label" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Fixture"
+text_overrun_behavior = 3
+
+[node name="FixtureSummaryLabel" type="Label" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "kind: -"
+autowrap_mode = 3
+
+[node name="DesignQAStatusLabel" type="Label" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3

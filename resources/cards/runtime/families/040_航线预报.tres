@@ -1,0 +1,91 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cd50vig4wxhm0"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_d6ksc"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_k76tf"]
+
+[sub_resource type="Resource" id="Resource_2d23g"]
+script = ExtResource("1_d6ksc")
+card_id = "航线预报1"
+family_id = "航线预报"
+kind = &"weather_control"
+purchase_cost = 4
+rules_text = "主动发布引力航线预报：约90秒后影响选中区域附近2区，提高交通/商路窗口，适合买涨或保护己方运输。"
+tags = PackedStringArray("天气", "航线", "商路")
+play_product = "离岸水晶"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 90.0,
+"weather_forecast_lead_seconds": 90.0,
+"weather_type": "gravity_tide",
+"weather_zone_count": 2
+}
+
+[sub_resource type="Resource" id="Resource_7ggtu"]
+script = ExtResource("1_d6ksc")
+card_id = "航线预报2"
+family_id = "航线预报"
+rank = 2
+kind = &"weather_control"
+purchase_cost = 6
+rules_text = "升级航线预报：约85秒后覆盖3区，持续105秒，为商路型城市制造更稳定的运输窗口。"
+tags = PackedStringArray("天气", "航线", "升级")
+play_product = "离岸水晶"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 105.0,
+"weather_forecast_lead_seconds": 85.0,
+"weather_type": "gravity_tide",
+"weather_zone_count": 3
+}
+
+[sub_resource type="Resource" id="Resource_3qlcx"]
+script = ExtResource("1_d6ksc")
+card_id = "航线预报3"
+family_id = "航线预报"
+rank = 3
+kind = &"weather_control"
+purchase_cost = 8
+rules_text = "核心航线预报：约75秒后覆盖4区，持续120秒；适合围绕海洋/交通区域提前布局GDP买涨。"
+tags = PackedStringArray("天气", "航线", "核心")
+play_product = "离岸水晶"
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 120.0,
+"weather_forecast_lead_seconds": 75.0,
+"weather_type": "gravity_tide",
+"weather_zone_count": 4
+}
+
+[sub_resource type="Resource" id="Resource_1yk6p"]
+script = ExtResource("1_d6ksc")
+card_id = "航线预报4"
+family_id = "航线预报"
+rank = 4
+kind = &"weather_control"
+purchase_cost = 10
+rules_text = "终端航线预报IV：约65秒后覆盖最多5区并持续150秒；能放大整条运输线，但公开预报给所有玩家反制时间。"
+tags = PackedStringArray("天气", "航线", "IV")
+play_product = "离岸水晶"
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 150.0,
+"weather_forecast_lead_seconds": 65.0,
+"weather_type": "gravity_tide",
+"weather_zone_count": 5
+}
+
+[resource]
+script = ExtResource("2_k76tf")
+family_id = "航线预报"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_2d23g"), SubResource("Resource_7ggtu"), SubResource("Resource_3qlcx"), SubResource("Resource_1yk6p")])
+public_pool_eligible = true
+upgradeable_family = true

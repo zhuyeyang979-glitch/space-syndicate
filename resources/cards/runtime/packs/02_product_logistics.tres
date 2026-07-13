@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/024_供应链保险.tres" id="1_no3du"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/037_应急修复.tres" id="2_jw6rm"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/062_商品换线.tres" id="3_d2kof"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/063_需求改造.tres" id="4_dj3vp"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/064_产业升级.tres" id="5_0sqrc"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/065_市场稳定.tres" id="6_wk7nw"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/066_商路黑客.tres" id="7_pa1cx"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/067_商品催化.tres" id="8_q0otw"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/068_星港快线.tres" id="9_76uhr"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/075_共生红利.tres" id="10_2f1lw"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/102_流星航线加速.tres" id="11_xsdyr"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/109_修复光线招商.tres" id="12_ygy35"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/113_星焰能源热潮.tres" id="13_1v17m"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/117_蓝锋专利授权.tres" id="14_tbss7"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="15_jh45d"]
+
+[resource]
+script = ExtResource("15_jh45d")
+pack_id = &"product_logistics"
+display_name = "Product & Logistics"
+families = Array[Resource]([ExtResource("1_no3du"), ExtResource("2_jw6rm"), ExtResource("3_d2kof"), ExtResource("4_dj3vp"), ExtResource("5_0sqrc"), ExtResource("6_wk7nw"), ExtResource("7_pa1cx"), ExtResource("8_q0otw"), ExtResource("9_76uhr"), ExtResource("10_2f1lw"), ExtResource("11_xsdyr"), ExtResource("12_ygy35"), ExtResource("13_1v17m"), ExtResource("14_tbss7")])

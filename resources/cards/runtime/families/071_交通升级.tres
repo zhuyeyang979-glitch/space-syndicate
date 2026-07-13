@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://u6tqqoxa1ryh"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_xofgf"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_0npdr"]
+
+[sub_resource type="Resource" id="Resource_yqpq2"]
+script = ExtResource("1_xofgf")
+card_id = "交通升级1"
+family_id = "交通升级"
+kind = &"region_economy_shift"
+purchase_cost = 4
+rules_text = "选中区域：公共交通+1，修复至多1点商路压力；商品流速与过境GDP随之提高。"
+tags = PackedStringArray("区域", "交通")
+authored_keys = PackedStringArray("cost", "kind", "transport_delta", "repair_routes", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 1,
+"transport_delta": 1
+}
+
+[resource]
+script = ExtResource("2_0npdr")
+family_id = "交通升级"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_yqpq2")])
+public_pool_eligible = true

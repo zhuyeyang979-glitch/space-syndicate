@@ -1,6 +1,9 @@
 extends SceneTree
 
 const MODEL_SCRIPT := preload("res://scripts/balance/runtime_balance_model.gd")
+const REQUIREMENT_POLICY := preload("res://scripts/cards/card_play_requirement_policy.gd")
+const DIAGNOSTICS_SCENE := preload("res://scenes/runtime/GameplayBalanceDiagnosticsRuntimeService.tscn")
+const ROUTE_CATALOG := preload("res://resources/balance/development_route_catalog_v04.tres")
 
 var _failures: Array[String] = []
 var _model: RefCounted
@@ -32,9 +35,11 @@ func _run() -> void:
 	_verify_planet_geometry_gradient(report)
 	_verify_card_price_gradient(report)
 	_verify_skill_balance_feature_vector()
+	_verify_region_gdp_share_play_gate()
 	_verify_product_and_monster_models(report)
 	_verify_balance_statistics_hub()
 	_verify_main_bridge_is_thin()
+	_verify_diagnostics_cutover()
 	_finish()
 
 
@@ -76,8 +81,8 @@ func _verify_planet_geometry_gradient(report: Dictionary) -> void:
 func _verify_card_price_gradient(report: Dictionary) -> void:
 	var basic_price := int(_model.call("card_price_for_skill", {"cost": 2, "kind": "move", "move": 180}))
 	var arbitrage_price := int(_model.call("card_price_for_skill", {"cost": 3, "kind": "product_speculation", "cash": 260, "price_delta": 18}))
-	var futures_price := int(_model.call("card_price_for_skill", {"cost": 4, "kind": "product_futures", "product_bet_multiplier": 1.1, "product_bet_seconds": 60, "market_demand_pressure": 1}))
-	var short_price := int(_model.call("card_price_for_skill", {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.2, "gdp_bet_seconds": 60, "gdp_bet_destroy_bonus": 180}))
+	var futures_price := int(_model.call("card_price_for_skill", {"cost": 4, "kind": "product_futures", "futures_terms": {"direction": "up", "multiplier": 1.0, "duration_seconds": 60.0, "units": 1, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}, "market_demand_pressure": 1}))
+	var short_price := int(_model.call("card_price_for_skill", {"cost": 4, "kind": "city_gdp_derivative", "gdp_derivative_terms": {"direction": "down", "multiplier": 1.2, "duration_seconds": 60, "destroy_bonus": 180, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}}))
 	var disrupt_price := int(_model.call("card_price_for_skill", {"cost": 4, "kind": "player_hand_disrupt", "target_player_required": true, "hand_discard_count": 1}))
 	var military_price := int(_model.call("card_price_for_skill", {"cost": 5, "kind": "military_force", "military_hp": 8, "military_damage": 1}))
 	var monster_price := int(_model.call("card_price_for_skill", {"cost": 5, "kind": "monster_card", "hp": 48, "fixed_skill_count": 1}))
@@ -94,6 +99,8 @@ func _verify_card_price_gradient(report: Dictionary) -> void:
 	for row_variant in rows:
 		var row: Dictionary = row_variant
 		_expect(row.has("card") and row.has("actual_price") and row.has("field_adjustment") and row.has("route_tags") and row.has("ai_play_tags"), "card price rows expose price, field adjustment, route tags, and AI tags")
+		_expect(row.has("play_requirement_kind") and row.has("play_region_scope") and row.has("play_region_gdp_share_required"), "card price rows expose the regional GDP-share play gate")
+		_expect(not row.has("play_flow_required") or int(row.get("play_flow_required", 0)) == 0, "card price rows keep the retired product-flow gate disabled")
 
 
 func _verify_skill_balance_feature_vector() -> void:
@@ -111,8 +118,24 @@ func _verify_skill_balance_feature_vector() -> void:
 	_expect(not futures.is_empty(), "skill balance feature vector exists for futures cards")
 	_expect(_as_array(futures.get("route_tags", [])).has("商品金融") and _as_array(futures.get("ai_play_tags", [])).has("time_window_finance"), "futures feature vector exposes finance route and AI time-window tag")
 	_expect(String(gdp_short.get("target_type", "")) == "district_or_city" and int((gdp_short.get("score_breakdown", {}) as Dictionary).get("gdp_derivative_score", 0)) > 0, "GDP derivative vector exposes city target and derivative score")
-	_expect(_as_array(disrupt.get("ai_play_tags", [])).has("needs_target_player") and int((disrupt.get("score_breakdown", {}) as Dictionary).get("interaction_score", 0)) > 0, "direct interaction vector exposes target-player and interaction score")
+	_expect(_as_array(disrupt.get("ai_play_tags", [])).has("needs_target_player") and _as_array(disrupt.get("ai_play_tags", [])).has("uses_region_gdp_share") and int((disrupt.get("score_breakdown", {}) as Dictionary).get("interaction_score", 0)) > 0, "direct interaction vector exposes target-player, regional GDP gate, and interaction score")
+	_expect(not _as_array(disrupt.get("ai_play_tags", [])).has("uses_product_flow"), "AI balance tags no longer treat product flow as a play cost")
 	_expect(_as_array(military.get("ai_play_tags", [])).has("creates_controlled_unit") and int((military.get("score_breakdown", {}) as Dictionary).get("military_score", 0)) > 0, "military force vector exposes controlled-unit AI tag and military score")
+
+
+func _verify_region_gdp_share_play_gate() -> void:
+	var matrix: Array = _as_array(_model.call("runtime_balance_card_feature_matrix", _snapshot, true))
+	var by_name := {}
+	for vector_variant in matrix:
+		if vector_variant is Dictionary:
+			var vector: Dictionary = vector_variant
+			by_name[String(vector.get("card_name", ""))] = vector
+	var basic_gate: Dictionary = (by_name.get("商品看涨1", {}) as Dictionary).get("play_gate", {}) as Dictionary
+	var disrupt_gate: Dictionary = (by_name.get("星链拆解1", {}) as Dictionary).get("play_gate", {}) as Dictionary
+	_expect(String(basic_gate.get("play_requirement_kind", "")) == "none" and int(basic_gate.get("play_region_gdp_share_required", -1)) == 0, "ordinary rank-I cards have no GDP-share play condition")
+	_expect(String(disrupt_gate.get("play_requirement_kind", "")) == "region_gdp_share", "high-impact rank-I interaction cards use a regional GDP-share condition")
+	_expect(String(disrupt_gate.get("play_region_scope", "")) == "own_best_region" and int(disrupt_gate.get("play_region_gdp_share_required", 0)) == 10, "high-impact rank-I interaction cards require 10% in an owned staging region")
+	_expect(not disrupt_gate.has("flow_required") or int(disrupt_gate.get("flow_required", 0)) == 0, "regional GDP-share gates do not retain a product-flow cost")
 
 
 func _verify_product_and_monster_models(report: Dictionary) -> void:
@@ -170,9 +193,33 @@ func _verify_main_bridge_is_thin() -> void:
 	var main_text := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(main_text.contains("const RuntimeBalanceModelScript") and main_text.contains("func _runtime_balance_model()"), "main.gd bridges to the independent runtime balance model")
 	_expect(main_text.contains("return int(_runtime_balance_model().call(\"skill_price_power_adjustment\", skill))"), "main.gd card pricing uses the balance model wrapper")
-	_expect(main_text.contains("_auto_monster_movement_speed_mps") and main_text.contains("_military_unit_movement_speed_mps") and main_text.contains("_monster_knockback_model"), "main.gd uses balance wrappers for movement, military movement, and knockback")
-	_expect(main_text.contains("var price_name := \"%s1\" % _skill_family(skill_name)"), "runtime card purchase price remains anchored to the rank-I family card")
-	_expect(main_text.contains("hp_damage") and main_text.contains("mini(remaining, hp_before)") and main_text.contains("return hp_damage"), "monster overkill cash loss is protected by actual HP damage semantics")
+	var military_text := FileAccess.get_file_as_string("res://scripts/runtime/military_runtime_controller.gd")
+	var monster_runtime_text := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")
+	_expect(main_text.contains("_auto_monster_movement_speed_mps") and military_text.contains("func unit_movement_speed_mps(") and military_text.contains("military_movement_speed_model") and main_text.contains("_monster_knockback_model"), "monster/main and MilitaryRuntimeController use the shared balance movement models")
+	_expect(main_text.contains("var price_name := \"%s1\" % _game_runtime_coordinator_node().card_family_id(skill_name)"), "runtime card purchase price remains anchored to the rank-I family card through the authoritative Catalog Service")
+	_expect(monster_runtime_text.contains("hp_damage") and monster_runtime_text.contains("mini(remaining, hp_before)") and monster_runtime_text.contains("return hp_damage"), "MonsterRuntimeController protects owner cash loss with actual HP damage semantics")
+
+
+func _verify_diagnostics_cutover() -> void:
+	var service := DIAGNOSTICS_SCENE.instantiate() as GameplayBalanceDiagnosticsRuntimeService
+	_expect(service != null, "gameplay balance diagnostics service scene instantiates independently of main.gd")
+	if service == null:
+		return
+	root.add_child(service)
+	var configured := service.configure(ROUTE_CATALOG, _model)
+	_expect(bool(configured.get("configured", false)), "diagnostics service configures from the v0.4 development route catalog and RuntimeBalanceModel")
+	var validation := ROUTE_CATALOG.validation_report()
+	_expect(bool(validation.get("valid", false)) and int(validation.get("route_count", 0)) == 7, "development route catalog contains seven valid Inspector-editable profiles")
+	var routes := service.development_routes()
+	_expect(routes.size() == 7 and str((routes[0] as Dictionary).get("id", "")) == "city_growth" and str((routes[6] as Dictionary).get("id", "")) == "tactical_support", "diagnostics service preserves route ids and sort order")
+	var budget := service.card_budget_report(_card_entry("星链拆解1", {"cost": 4, "kind": "player_hand_disrupt", "target_player_required": true, "hand_discard_count": 1}))
+	_expect(int(budget.get("points", -1)) >= 0 and str(budget.get("band", "")) != "", "card budget diagnostics remain available through the service API")
+	var debug := service.debug_snapshot()
+	_expect(str(debug.get("runtime_balance_model_owner", "")) == "res://scripts/balance/runtime_balance_model.gd" and not bool(debug.get("formula_authority", true)) and not bool(debug.get("world_mutation_authority", true)), "RuntimeBalanceModel remains formula owner while diagnostics stays read-only")
+	var main_text := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for retired_symbol in ["_development_route_profiles", "_card_strength_budget_report", "_development_route_balance_audit", "_direct_interaction_balance_report", "_role_balance_audit", "_monster_ecology_balance_report", "_product_ecosystem_report", "_card_supply_product_filter_audit", "_card_one_glance_audit_report", "_runtime_balance_snapshot"]:
+		_expect(not main_text.contains("func %s(" % retired_symbol), "main.gd no longer owns retired diagnostic function %s" % retired_symbol)
+	service.queue_free()
 
 
 func _verify_environment_models() -> void:
@@ -193,13 +240,13 @@ func _sample_snapshot() -> Dictionary:
 			_card_entry("移动1", {"cost": 2, "kind": "move", "move": 180}),
 			_card_entry("价格套利1", {"cost": 3, "kind": "product_speculation", "cash": 260, "price_delta": 18, "tags": ["经济", "商品"]}),
 			_card_entry("垄断协议1", {"cost": 4, "kind": "area_trade_contract", "contract_income": 160, "accept_cash": 120, "market_demand_pressure": 1, "tags": ["合约", "经济"]}),
-			_card_entry("商品看涨1", {"cost": 4, "kind": "product_futures", "product_bet_direction": "up", "product_bet_multiplier": 1.1, "product_bet_seconds": 60, "market_demand_pressure": 1, "tags": ["经济", "期货"]}),
-			_card_entry("商品看跌1", {"cost": 4, "kind": "product_futures", "product_bet_direction": "down", "product_bet_multiplier": 1.1, "product_bet_seconds": 60, "market_supply_pressure": 1, "tags": ["经济", "期货"]}),
-			_card_entry("港仓囤货1", {"cost": 4, "kind": "product_futures", "requires_warehouse_city": true, "stockpile_units": 3, "product_bet_multiplier": 1.0, "tags": ["经济", "仓储"]}),
-			_card_entry("城市买涨1", {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "up", "gdp_bet_multiplier": 1.0, "gdp_bet_seconds": 60, "tags": ["经济", "GDP"]}),
-			_card_entry("城市做空1", {"cost": 4, "kind": "city_gdp_derivative", "gdp_bet_direction": "down", "gdp_bet_multiplier": 1.2, "gdp_bet_seconds": 60, "gdp_bet_destroy_bonus": 180, "tags": ["经济", "GDP"]}),
-			_card_entry("星链拆解1", {"cost": 4, "kind": "player_hand_disrupt", "target_player_required": true, "play_product": "轨迹墨水", "play_flow_required": 1, "hand_discard_count": 1, "tags": ["互动", "拆牌", "情报"]}),
-			_card_entry("影仓牵引1", {"cost": 3, "kind": "player_hand_steal", "target_player_required": true, "hand_steal_count": 1, "play_product": "阴影海藻", "play_flow_required": 1, "tags": ["互动", "情报"]}),
+			_card_entry("商品看涨1", {"cost": 4, "kind": "product_futures", "futures_terms": {"direction": "up", "multiplier": 1.0, "duration_seconds": 60.0, "units": 1, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}, "market_demand_pressure": 1, "tags": ["经济", "期货"]}),
+			_card_entry("商品看跌1", {"cost": 4, "kind": "product_futures", "futures_terms": {"direction": "down", "multiplier": 1.0, "duration_seconds": 60.0, "units": 1, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}, "market_supply_pressure": 1, "tags": ["经济", "期货"]}),
+			_card_entry("港仓囤货1", {"cost": 4, "kind": "product_futures", "futures_terms": {"direction": "up", "multiplier": 0.75, "duration_seconds": 90.0, "units": 2, "requires_warehouse": true, "margin_cash": 180, "maximum_gain": 360, "maximum_loss": 180}, "tags": ["经济", "仓储"]}),
+			_card_entry("城市买涨1", {"cost": 4, "kind": "city_gdp_derivative", "gdp_derivative_terms": {"direction": "up", "multiplier": 1.0, "duration_seconds": 60, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}, "tags": ["经济", "GDP"]}),
+			_card_entry("城市做空1", {"cost": 4, "kind": "city_gdp_derivative", "gdp_derivative_terms": {"direction": "down", "multiplier": 1.2, "duration_seconds": 60, "destroy_bonus": 180, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}, "tags": ["经济", "GDP"]}),
+			_card_entry("星链拆解1", {"cost": 4, "kind": "player_hand_disrupt", "target_player_required": true, "supply_product": "轨迹墨水", "hand_discard_count": 1, "tags": ["互动", "拆牌", "情报"]}),
+			_card_entry("影仓牵引1", {"cost": 3, "kind": "player_hand_steal", "target_player_required": true, "hand_steal_count": 1, "supply_product": "阴影海藻", "tags": ["互动", "情报"]}),
 			_card_entry("轨道齐射1", {"cost": 5, "kind": "global_barrage", "global_barrage_damage": 1, "global_barrage_target_count": 3, "global_barrage_route_damage": 1, "tags": ["战斗", "压制"]}),
 			_card_entry("相位否决1", {"cost": 3, "kind": "card_counter", "counter_strength": 1, "counter_trace": 1, "tags": ["互动", "情报"]}),
 			_card_entry("行星防卫军1", {"cost": 5, "kind": "military_force", "military_hp": 8, "military_damage": 1, "fixed_skill_count": 2, "tags": ["军队"]}),
@@ -228,6 +275,8 @@ func _card_entry(card_name: String, skill: Dictionary) -> Dictionary:
 	var safe_skill := skill.duplicate(true)
 	safe_skill["name"] = card_name
 	var rank := int(card_name.substr(card_name.length() - 1, 1)) if card_name.substr(card_name.length() - 1, 1).is_valid_int() else 1
+	safe_skill["rank"] = rank
+	safe_skill = REQUIREMENT_POLICY.apply_to_card(card_name, safe_skill)
 	return {
 		"card_name": card_name,
 		"skill": safe_skill,

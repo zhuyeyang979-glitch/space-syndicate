@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/economy_cashflow_runtime_controller.gd" id="1_controller"]
+
+[node name="EconomyCashflowRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+tick_interval_seconds = 1.0
+basis_seconds = 60.0
+editor_description = "Scene-owned v0.4 realtime cashflow cadence and payout-planning authority. It consumes and emits pure data; domain state mutation remains outside this node."

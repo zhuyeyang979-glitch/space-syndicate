@@ -6,7 +6,8 @@ signal page_step_requested(delta: int)
 signal card_preview_requested(card_name: String)
 signal card_detail_requested(card_name: String)
 
-const CardArtViewScript := preload("res://scripts/card_art_view.gd")
+const CardCodexFilterChipScene := preload("res://scenes/ui/codex/CardCodexFilterChip.tscn")
+const CardCodexThumbnailCardScene := preload("res://scenes/ui/codex/CardCodexThumbnailCard.tscn")
 
 @onready var category_rail: PanelContainer = %CardCodexCategoryRail
 @onready var category_legend: Label = %CardCodexCategoryLegend
@@ -95,20 +96,17 @@ func _render_filters(entries_variant: Variant) -> void:
 
 func _add_filter(entry: Dictionary) -> void:
 	var filter_id := str(entry.get("id", ""))
-	var button := Button.new()
+	var button := CardCodexFilterChipScene.instantiate() as Button
+	if button == null:
+		return
 	button.name = "CardCodexCategoryChip"
-	button.text = str(entry.get("text", filter_id))
-	button.tooltip_text = str(entry.get("tooltip", button.text))
-	button.toggle_mode = true
-	button.button_pressed = bool(entry.get("active", false))
-	button.disabled = bool(entry.get("disabled", false))
-	button.custom_minimum_size = Vector2(104, 34)
-	_style_button(button, _dictionary_color(entry, "accent", Color("#93c5fd")))
-	if filter_id != "":
-		button.pressed.connect(func() -> void:
-			filter_selected.emit(filter_id)
-		)
 	category_chip_row.add_child(button)
+	if button.has_method("set_filter"):
+		button.call("set_filter", entry)
+	if filter_id != "":
+		button.connect("filter_selected", func(selected_id: String) -> void:
+			filter_selected.emit(selected_id)
+		)
 
 
 func _render_cards(entries_variant: Variant) -> void:
@@ -122,82 +120,20 @@ func _render_cards(entries_variant: Variant) -> void:
 
 func _add_card(entry: Dictionary) -> void:
 	var card_name := str(entry.get("card_name", ""))
-	var accent := _dictionary_color(entry, "accent", Color("#94a3b8"))
-	var selected := bool(entry.get("selected", false))
-	var panel := PanelContainer.new()
+	var panel := CardCodexThumbnailCardScene.instantiate() as Control
+	if panel == null:
+		return
 	panel.name = "CardCodexThumbnailCard"
-	panel.custom_minimum_size = Vector2(168, 236)
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	panel.tooltip_text = str(entry.get("tooltip", ""))
-	panel.add_theme_stylebox_override("panel", _card_style(Color("#fef3c7") if selected else accent, Color("#0b1120").lerp(accent, 0.14), 2 if selected else 1, 8))
-	panel.mouse_entered.connect(func() -> void:
-		if card_name != "":
-			card_preview_requested.emit(card_name)
-	)
-	panel.gui_input.connect(func(event: InputEvent) -> void:
-		_on_card_input(event, card_name)
-	)
 	grid.add_child(panel)
-	var margin := _margin(7, 7, 7, 7)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	margin.add_child(box)
-	var title := _label(str(entry.get("title", card_name)), 12, Color("#f8fafc"))
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.tooltip_text = str(entry.get("title_tooltip", title.text))
-	box.add_child(title)
-	var art := PanelContainer.new()
-	art.name = "CardCodexThumbnailArt"
-	art.custom_minimum_size = Vector2(0, 88)
-	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	art.set_meta("card_codex_thumbnail_uses_shared_art_view", true)
-	art.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.20), 1, 8))
-	box.add_child(art)
-	var art_margin := _margin(6, 4, 6, 4)
-	art.add_child(art_margin)
-	var art_view := CardArtViewScript.new() as Control
-	art_view.name = "CardCodexThumbnailArtView"
-	art_view.custom_minimum_size = Vector2(0, 78)
-	art_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	art_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	art_view.set_meta("card_codex_thumbnail_visual_theme", "shared-card-art-night-patrol-frame")
-	art_margin.add_child(art_view)
-	if art_view.has_method("set_card"):
-		art_view.call(
-			"set_card",
-			str(entry.get("display_name", entry.get("title_tooltip", card_name))),
-			str(entry.get("kind", "")),
-			str(entry.get("route", entry.get("art_text", ""))),
-			accent,
-			maxi(1, int(entry.get("rank_number", 1))),
-			true,
-			str(entry.get("card_art_stats", entry.get("card_stats", "")))
+	if panel.has_method("set_card"):
+		panel.call("set_card", entry)
+	if card_name != "":
+		panel.connect("preview_requested", func(preview_name: String) -> void:
+			card_preview_requested.emit(preview_name)
 		)
-	_render_chips(box, entry.get("chips", []))
-	var route := _label(str(entry.get("route", "")), 10, accent.lightened(0.18))
-	route.name = "CardCodexThumbnailRouteBand"
-	route.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	route.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	route.clip_text = false
-	route.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	route.tooltip_text = str(entry.get("route_tooltip", ""))
-	box.add_child(route)
-	var effect := _label(str(entry.get("effect", "")), 10, Color("#dbeafe"))
-	effect.name = "CardCodexThumbnailEffectLine"
-	effect.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	effect.custom_minimum_size = Vector2(0, 34)
-	effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	effect.clip_text = false
-	effect.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	effect.tooltip_text = str(entry.get("effect_tooltip", ""))
-	box.add_child(effect)
-	var hint := _label(str(entry.get("hint", "悬停预览｜双击详情")), 10, Color("#94a3b8"))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(hint)
+		panel.connect("detail_requested", func(detail_name: String) -> void:
+			card_detail_requested.emit(detail_name)
+		)
 
 
 func _render_chips(parent: Container, entries_variant: Variant) -> void:
@@ -295,6 +231,10 @@ func _dictionary_color(data: Dictionary, key: String, fallback: Color) -> Color:
 	var value: Variant = data.get(key, fallback)
 	if value is Color:
 		return value as Color
+	if value is String:
+		var text_value := str(value)
+		if text_value.begins_with("#"):
+			return Color(text_value)
 	return fallback
 
 

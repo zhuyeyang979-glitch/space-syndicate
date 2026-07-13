@@ -1,0 +1,255 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/balance_model_resource_sandbox.gd" id="1_sandbox"]
+
+[node name="BalanceModelResourceSandbox" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_sandbox")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0156863, 0.0235294, 0.0431373, 1)
+
+[node name="SandboxMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="SandboxRows" type="VBoxContainer" parent="SandboxMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BalanceSandboxTitle" type="Label" parent="SandboxMargin/SandboxRows"]
+layout_mode = 2
+text = "Balance Model Resource Sandbox"
+theme_override_colors/font_color = Color(0.972549, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="BalanceSandboxStatusLabel" type="Label" parent="SandboxMargin/SandboxRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status: ready"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.741176, 0.941176, 0.784314, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="SandboxBody" type="HBoxContainer" parent="SandboxMargin/SandboxRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="CasePanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody"]
+custom_minimum_size = Vector2(330, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CaseMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CaseRows" type="VBoxContainer" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel/CaseMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CaseListLabel" type="Label" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel/CaseMargin/CaseRows"]
+layout_mode = 2
+text = "Dry-run Cases"
+theme_override_colors/font_color = Color(0.733333, 0.862745, 1, 1)
+
+[node name="BalanceSandboxCaseList" type="ItemList" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel/CaseMargin/CaseRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="BalanceSandboxButtonRows" type="VBoxContainer" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel/CaseMargin/CaseRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BalanceSandboxPrintCaseButton" type="Button" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel/CaseMargin/CaseRows/BalanceSandboxButtonRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Case"
+
+[node name="BalanceSandboxPrintRecordButton" type="Button" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel/CaseMargin/CaseRows/BalanceSandboxButtonRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Record"
+
+[node name="BalanceSandboxRunBenchButton" type="Button" parent="SandboxMargin/SandboxRows/SandboxBody/CasePanel/CaseMargin/CaseRows/BalanceSandboxButtonRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Bench Path"
+
+[node name="DetailPanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="DetailRows" type="VBoxContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SummarySplit" type="HBoxContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ResourceSummaryPanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/SummarySplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ResourceSummaryMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/SummarySplit/ResourceSummaryPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceSandboxResourceSummaryLabel" type="Label" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/SummarySplit/ResourceSummaryPanel/ResourceSummaryMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resource summary"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.815686, 0.866667, 0.941176, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="JsonSourcePanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/SummarySplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="JsonSourceMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/SummarySplit/JsonSourcePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceSandboxJsonSourceLabel" type="Label" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/SummarySplit/JsonSourcePanel/JsonSourceMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "JSON/source paths"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.815686, 0.866667, 0.941176, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="OutputSplit" type="GridContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows"]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="InputPanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="InputMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/InputPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceSandboxInputBody" type="Label" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/InputPanel/InputMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "Input"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="RuntimePanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RuntimeMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/RuntimePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceSandboxRuntimeOutputBody" type="Label" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/RuntimePanel/RuntimeMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "Runtime model output"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="ResourceOutputPanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ResourceOutputMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/ResourceOutputPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceSandboxResourceOutputBody" type="Label" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/ResourceOutputPanel/ResourceOutputMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "Resource output"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="ParityPanel" type="PanelContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ParityMargin" type="MarginContainer" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/ParityPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceSandboxParityBody" type="Label" parent="SandboxMargin/SandboxRows/SandboxBody/DetailPanel/DetailMargin/DetailRows/OutputSplit/ParityPanel/ParityMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "Parity"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12

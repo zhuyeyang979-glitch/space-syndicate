@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/district_purchase_settlement_runtime_service.gd" id="1_service"]
+
+[node name="DistrictPurchaseSettlementRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Scene-owned atomic district-purchase finance authority. It delegates card-slot planning and mutation to CardInventoryRuntimeService while committing cash, purchase counters, private ledger, and cash history; the 12-second window remains owned by DistrictPurchaseRuntimeController."

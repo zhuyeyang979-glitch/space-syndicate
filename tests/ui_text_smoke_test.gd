@@ -1,5 +1,35 @@
 extends SceneTree
 
+const SCENE_PATHS := {
+	"game_screen": "res://scenes/ui/GameScreen.tscn",
+	"top_bar": "res://scenes/ui/TopBar.tscn",
+	"planet_board": "res://scenes/ui/PlanetBoard.tscn",
+	"right_inspector": "res://scenes/ui/RightInspector.tscn",
+	"player_board": "res://scenes/ui/PlayerBoard.tscn",
+	"hand_rack": "res://scenes/ui/HandRack.tscn",
+	"action_dock": "res://scenes/ui/ActionDock.tscn",
+	"bid_board": "res://scenes/ui/BidBoard.tscn",
+	"public_track": "res://scenes/ui/PublicTrack.tscn",
+	"card_resolution_track": "res://scenes/ui/CardResolutionTrack.tscn",
+	"overlay_layer": "res://scenes/ui/OverlayLayer.tscn",
+	"district_supply": "res://scenes/ui/DistrictSupplyDrawer.tscn",
+}
+
+const RETIRED_PLAYER_SURFACE_HELPERS := [
+	"_add_player_hand_rack",
+	"_add_player_action_tray",
+	"_add_selected_district_action_panel",
+	"_add_first_summon_prompt",
+	"_add_player_resource_cubes",
+	"_add_player_tableau",
+	"_add_player_seat_cards",
+	"_inspect_player_public_profile",
+	"_clear_player_public_inspection",
+	"_dismiss_opening_guide",
+	"_role_card_art_stats",
+	"_respond_to_active_contract",
+]
+
 var _failures: Array[String] = []
 
 
@@ -8,173 +38,88 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var agents_source := FileAccess.get_file_as_string("res://AGENTS.md")
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var main_source_lf := main_source.replace("\r\n", "\n")
-	var action_dock_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/action_dock_snapshot.gd")
-	var action_dock_source := FileAccess.get_file_as_string("res://scripts/ui/action_dock.gd")
-	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
-	var top_bar_source := FileAccess.get_file_as_string("res://scenes/ui/TopBar.tscn")
-	var top_bar_script_source := FileAccess.get_file_as_string("res://scripts/ui/top_bar.gd")
-	var top_bar_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/top_bar_snapshot.gd")
-	var overlay_layer_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/overlay_layer_snapshot.gd")
-	var card_codex_browser_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/card_codex_browser_snapshot.gd")
-	var card_codex_detail_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/card_codex_detail_snapshot.gd")
-	var card_resolution_banner_source := FileAccess.get_file_as_string("res://scenes/ui/CardResolutionBanner.tscn")
-	var bottom_countdown_source := FileAccess.get_file_as_string("res://scenes/ui/BottomCountdownBar.tscn")
-	var district_supply_drawer_source := FileAccess.get_file_as_string("res://scenes/ui/DistrictSupplyDrawer.tscn")
-	var district_supply_market_card_source := FileAccess.get_file_as_string("res://scenes/ui/DistrictSupplyMarketCard.tscn")
-	var district_supply_market_card_script_source := FileAccess.get_file_as_string("res://scripts/ui/district_supply_market_card.gd")
-	var district_supply_preview_card_source := FileAccess.get_file_as_string("res://scenes/ui/DistrictSupplyPreviewCard.tscn")
-	var district_supply_preview_card_script_source := FileAccess.get_file_as_string("res://scripts/ui/district_supply_preview_card.gd")
-	var fullscreen_map_overlay_source := FileAccess.get_file_as_string("res://scenes/ui/FullscreenMapOverlay.tscn")
-	var menu_root_lobby_source := FileAccess.get_file_as_string("res://scenes/ui/MenuRootLobby.tscn")
-	var menu_root_lobby_script_source := FileAccess.get_file_as_string("res://scripts/ui/menu_root_lobby.gd")
-	var new_game_setup_lobby_source := FileAccess.get_file_as_string("res://scenes/ui/NewGameSetupLobby.tscn")
-	var new_game_setup_lobby_script_source := FileAccess.get_file_as_string("res://scripts/ui/new_game_setup_lobby.gd")
-	var new_game_setup_option_board_source := FileAccess.get_file_as_string("res://scenes/ui/NewGameSetupOptionBoard.tscn")
-	var new_game_setup_option_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/new_game_setup_option_board.gd")
-	var new_game_setup_seat_card_source := FileAccess.get_file_as_string("res://scenes/ui/NewGameSetupSeatCard.tscn")
-	var new_game_setup_seat_card_script_source := FileAccess.get_file_as_string("res://scripts/ui/new_game_setup_seat_card.gd")
-	var new_game_setup_seat_identity_source := FileAccess.get_file_as_string("res://scenes/ui/NewGameSetupSeatIdentityBoard.tscn")
-	var new_game_setup_seat_identity_script_source := FileAccess.get_file_as_string("res://scripts/ui/new_game_setup_seat_identity_board.gd")
-	var card_codex_browser_source := FileAccess.get_file_as_string("res://scenes/ui/CardCodexBrowser.tscn")
-	var card_codex_browser_script_source := FileAccess.get_file_as_string("res://scripts/ui/card_codex_browser.gd")
-	var card_codex_detail_source := FileAccess.get_file_as_string("res://scenes/ui/CardCodexDetail.tscn")
-	var card_codex_detail_script_source := FileAccess.get_file_as_string("res://scripts/ui/card_codex_detail.gd")
-	var region_codex_detail_source := FileAccess.get_file_as_string("res://scenes/ui/RegionCodexDetail.tscn")
-	var region_codex_detail_script_source := FileAccess.get_file_as_string("res://scripts/ui/region_codex_detail.gd")
-	var product_codex_detail_source := FileAccess.get_file_as_string("res://scenes/ui/ProductCodexDetail.tscn")
-	var product_codex_detail_script_source := FileAccess.get_file_as_string("res://scripts/ui/product_codex_detail.gd")
-	var bestiary_detail_source := FileAccess.get_file_as_string("res://scenes/ui/BestiaryDetail.tscn")
-	var bestiary_detail_script_source := FileAccess.get_file_as_string("res://scripts/ui/bestiary_detail.gd")
-	var economy_dashboard_source := FileAccess.get_file_as_string("res://scenes/ui/EconomyDashboard.tscn")
-	var economy_dashboard_script_source := FileAccess.get_file_as_string("res://scripts/ui/economy_dashboard.gd")
-	var intel_dossier_board_source := FileAccess.get_file_as_string("res://scenes/ui/IntelDossierBoard.tscn")
-	var intel_dossier_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/intel_dossier_board.gd")
-	var standings_scoreboard_source := FileAccess.get_file_as_string("res://scenes/ui/StandingsScoreboard.tscn")
-	var standings_scoreboard_script_source := FileAccess.get_file_as_string("res://scripts/ui/standings_scoreboard.gd")
-	var final_settlement_board_source := FileAccess.get_file_as_string("res://scenes/ui/FinalSettlementBoard.tscn")
-	var final_settlement_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/final_settlement_board.gd")
-	var tutorial_quick_start_board_source := FileAccess.get_file_as_string("res://scenes/ui/TutorialQuickStartBoard.tscn")
-	var tutorial_quick_start_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/tutorial_quick_start_board.gd")
-	var rules_quick_reference_board_source := FileAccess.get_file_as_string("res://scenes/ui/RulesQuickReferenceBoard.tscn")
-	var rules_quick_reference_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/rules_quick_reference_board.gd")
-	var role_codex_identity_board_source := FileAccess.get_file_as_string("res://scenes/ui/RoleCodexIdentityBoard.tscn")
-	var role_codex_identity_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/role_codex_identity_board.gd")
-	var compendium_hub_board_source := FileAccess.get_file_as_string("res://scenes/ui/CompendiumHubBoard.tscn")
-	var compendium_hub_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/compendium_hub_board.gd")
-	var split_game_screen_scene_source := FileAccess.get_file_as_string("res://scenes/ui/GameScreen.tscn")
-	var split_game_screen_script_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
-	var planet_board_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/planet_board_snapshot.gd")
-	var split_planet_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd")
-	var split_right_inspector_source := FileAccess.get_file_as_string("res://scenes/ui/RightInspector.tscn")
-	var split_right_inspector_script_source := FileAccess.get_file_as_string("res://scripts/ui/right_inspector.gd")
-	var split_right_inspector_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/right_inspector_snapshot.gd")
-	var split_player_board_script_source := FileAccess.get_file_as_string("res://scripts/ui/player_board.gd")
-	var split_hand_rack_script_source := FileAccess.get_file_as_string("res://scripts/ui/hand_rack.gd")
-	var split_top_bar_script_source := FileAccess.get_file_as_string("res://scripts/ui/top_bar.gd")
-	var split_overlay_source := FileAccess.get_file_as_string("res://scenes/ui/OverlayLayer.tscn")
-	var split_overlay_script_source := FileAccess.get_file_as_string("res://scripts/ui/overlay_layer.gd")
-	var split_card_track_script_source := FileAccess.get_file_as_string("res://scripts/ui/card_track.gd")
-	var split_action_dock_script_source := FileAccess.get_file_as_string("res://scripts/ui/action_dock.gd")
-	var card_ui_scene_source := FileAccess.get_file_as_string("res://scenes/CardUI.tscn")
-	var card_ui_script_source := FileAccess.get_file_as_string("res://scripts/CardUI.gd")
-	var card_ui_text_source := "\n".join([card_ui_scene_source, card_ui_script_source])
-	var split_table_text_source := "\n".join([
-		action_dock_snapshot_source,
-		overlay_layer_snapshot_source,
-		card_codex_browser_snapshot_source,
-		card_codex_detail_snapshot_source,
-		split_game_screen_script_source,
-		planet_board_snapshot_source,
-		split_planet_board_script_source,
-		split_right_inspector_script_source,
-		split_player_board_script_source,
-		split_hand_rack_script_source,
-		split_top_bar_script_source,
-		split_overlay_source,
-		split_overlay_script_source,
-		split_card_track_script_source,
-		split_action_dock_script_source,
-	])
-	var runtime_table_text_source := "\n".join([
-		main_source,
-		split_table_text_source,
-	])
-	_expect(main_source != "", "main script source can be read")
-	_expect(_contains_all(agents_source, ["Default development habit", "hard standard", "reusable skeleton", "acceptance gate", "temporary"]) and not agents_source.contains("每次提醒"), "AGENTS records the default habit of hard standards, reusable skeletons, and acceptance gates")
-	_expect(main_source.contains("太空辛迪加｜星球赌桌") and main_source.contains("最后钱最多"), "main menu speaks in player-facing objective language")
-	_expect(_contains_all(split_table_text_source, ["原因：", "公开｜", "打开区域图鉴", "公开日志", "event_log_panel.visible = false", "暂无手牌", "区域牌架", "查看详情", "牌轨空闲", "暂无行动", "详情抽屉", "完整桌边详情", "未选区", "未入席"]) and not _contains_any(split_table_text_source, ["最近公开日志", "30 秒层", "30秒层", "层信息", "Open Region Codex", "Open Card Codex", "Open Intel", "Recent public log", "Why:", "Detail Drawer", "Public log", "No public event", "Hand empty", "No action", "No region", "No seat", "Player board", "Select a hand card", "Track idle", "No public card", "Context inspector", "Current region", "Short region detail"]), "split table and detail drawer fallbacks stay player-facing Chinese while empty inspector logs collapse instead of showing placeholder copy")
-	_expect(split_right_inspector_source.contains("桌边详情") and split_right_inspector_source.contains("看用途、条件和下一步") and split_right_inspector_snapshot_source.contains("桌边详情") and split_right_inspector_snapshot_source.contains("选区后看用途、条件和下一步") and not _contains_any(split_right_inspector_source + split_right_inspector_snapshot_source, ["右侧说明书", "解释为什么可用"]), "RightInspector empty state reads as table-side detail instead of a manual/debug explanation")
-	_expect(_contains_all(runtime_table_text_source, ["牌轨空闲", "等待", "星球牌桌", "\"建城\"", "\"牌架\"", "\"买牌\"", "\"出牌\"", "右侧详情", "看星球", "暂无条件"]) and not _contains_any(runtime_table_text_source, ["Track idle | waiting", "Planet table", "Inspect map", "No active player yet.", "No region selected", "Context inspector", "No requirements", "\"Build\"", "\"Rack\"", "\"Buy\"", "\"Play\""]), "runtime table snapshots emit Chinese first-glance labels instead of English prototype labels")
-	_expect(card_ui_scene_source.contains("text = \"行动\"") and card_ui_script_source.contains("_player_facing_type_label") and _contains_all(card_ui_script_source, ["\"monster\"", "\"怪兽\"", "\"action\"", "\"行动\"", "\"military_force\"", "\"军队\""]) and not _contains_any(card_ui_text_source, ["\"ACTION\"", "\"MONSTER\"", "\"FUTURES\"", "\"INTEL\"", "\"FORCE\"", "\"PACT\"", "\"GOODS\""]), "legacy CardUI card-face hints use player-facing Chinese labels instead of English placeholder art tags")
-	_expect(_contains_all(card_ui_script_source, ["PRESENTATION_MINI_HAND", "PRESENTATION_INSPECTOR_FULL", "_inspector_full_effect_text", "_card_use_case_text", "_effect_with_use_case_prefix", "_append_keyword_entry_if_new", "用途｜%s", "目标｜%s", "条件｜%s", "主动作｜%s", "暂不可用｜%s", "CARD_FEEL_V3_STATE_KEYS"]) and split_right_inspector_script_source.contains("inspector_full") and split_right_inspector_script_source.contains("_card_inspector_full_detail"), "CardUI/CardFace exposes MiniCard use-case anchors and inspector_full presentation contracts with player-facing full-detail fields")
-	_expect(split_game_screen_scene_source.contains("HandHoverPreviewHost") and split_game_screen_scene_source.contains("HandHoverPreviewCard") and split_game_screen_script_source.contains("HAND_HOVER_PREVIEW_LEFT") and split_game_screen_script_source.contains("get_hand_hover_preview_snapshot") and split_game_screen_script_source.contains("hover_readable_preview") and split_game_screen_script_source.contains("left-side-readable-card"), "runtime hand hover uses a large readable side CardFace preview instead of relying on tiny hand text")
-	_expect(split_card_track_script_source.contains("_public_owner_hint") and split_card_track_script_source.contains("return \"未知\"") and split_game_screen_script_source.contains("_track_owner_hint_text") and split_game_screen_script_source.contains("来源%s") and not split_game_screen_script_source.contains("\"归属:%s\""), "runtime card track uses compact source clues like 未知/来源 instead of repeatedly spelling out anonymous ownership rules")
-	_expect(menu_root_lobby_source.contains("MainMenuPlanetLobbyPanel") and menu_root_lobby_source.contains("MainMenuPlanetBackdrop") and menu_root_lobby_source.contains("MainMenuPlanetMedallion") and menu_root_lobby_source.contains("MainMenuLobbyChipRail") and menu_root_lobby_source.contains("MainMenuLobbyActionGrid") and menu_root_lobby_script_source.contains("MainMenuCommandCard") and menu_root_lobby_source.contains("MainMenuUtilityRail") and main_source.contains("星球赌桌大厅") and main_source.contains("开新一桌") and main_source.contains("继续牌桌") and main_source.contains("资料库") and main_source.contains("_main_menu_root_lobby_snapshot") and not main_source.contains("MainMenuOverviewCardGrid"), "main menu opens as one fullscreen planet-table lobby scene instead of duplicated branch lists")
-	_expect(main_source.contains("root_table_menu") and main_source.contains("menu_context_label.visible = not root_table_menu") and main_source.contains("menu_interaction_hint_panel.visible = not root_table_menu") and not main_source.contains("主菜单速览"), "root main menu hides breadcrumb/help strips and summary cards")
-	_expect(main_source.contains("setup_summary_chips") and new_game_setup_seat_card_script_source.contains("setup_seat_card") and new_game_setup_lobby_source.contains("NewGameSetupLobbyPanel") and new_game_setup_lobby_source.contains("NewGameSetupFlowTrack") and new_game_setup_lobby_script_source.contains("NewGameSetupFlowStepCard") and new_game_setup_option_board_source.contains("NewGameSetupOptionBoard") and new_game_setup_option_board_script_source.contains("NewGameSetupOptionButton") and new_game_setup_seat_card_source.contains("NewGameSetupSeatCard") and new_game_setup_seat_card_script_source.contains("role_step_requested") and new_game_setup_seat_card_script_source.contains("monster_step_requested") and new_game_setup_seat_card_script_source.contains("CardFaceScene") and new_game_setup_seat_identity_source.contains("NewGameSetupSeatIdentityBoard") and new_game_setup_seat_identity_script_source.contains("NewGameSetupSeatInfoCard") and main_source.contains("AI策略隐藏") and main_source.contains("开桌流程") and main_source.contains("开局参数｜先定桌面规模") and main_source.contains("AI路线隐藏") and main_source.contains("挑战层级") and main_source.contains("角色不重复") and main_source.contains("首召独立") and main_source.contains("_new_game_setup_lobby_snapshot") and main_source.contains("_new_game_setup_option_board_snapshot") and main_source.contains("_new_game_setup_seat_card_snapshot") and main_source.contains("_new_game_setup_role_card_face_snapshot") and main_source.contains("_new_game_setup_starter_card_face_snapshot") and main_source.contains("_new_game_setup_seat_identity_snapshot") and not main_source.contains("\"AI·%s\""), "new game setup uses compact board-game lobby, option-board, seat-card, seat-identity, and CardFace scenes with public seat cards while hiding AI internal routes")
-	_expect(main_source.contains("CompendiumHubBoardScene") and main_source.contains("_compendium_hub_snapshot") and main_source.contains("资料大厅") and main_source.contains("怪兽牌属于卡牌图鉴") and compendium_hub_board_source.contains("CompendiumHubBoardPanel") and compendium_hub_board_script_source.contains("CompendiumHubActionButton") and compendium_hub_board_script_source.contains("action_requested"), "compendium uses a scene-owned player-facing catalogue hub")
-	_expect(main_source.contains("角色卡公开；怪兽归属仍靠场上线索推理。") and main_source.contains("首召怪兽独立选择") and main_source.contains("RoleCodexIdentityBoardScene") and main_source.contains("_role_codex_identity_board_snapshot") and role_codex_identity_board_source.contains("RoleCodexIdentityBoardPanel") and role_codex_identity_board_source.contains("RoleCodexAbilityKpiGrid") and role_codex_identity_board_source.contains("RoleCodexRouteCardGrid") and role_codex_identity_board_script_source.contains("RoleCodexSceneCardFace") and role_codex_identity_board_script_source.contains("RoleCodexRouteCard"), "role codex uses a scene-owned public identity board while separating public role identity from anonymous starter monster ownership")
-	_expect(main_source.contains("价格带") and main_source.contains("◎ 牌面定位") and main_source.contains("¥ 费用与门槛") and main_source.contains("✦ 核心效果") and main_source.contains("◈ 关键数值"), "card and product pages use TCG-style sections and short labels")
-	_expect(main_source.contains("图标：◆怪兽") and main_source.contains("◇商品") and main_source.contains("☄天气"), "card codex exposes a stable board-game icon legend")
-	_expect(main_source.contains("CardFaceRouteBand") and main_source.contains("CardFaceRouteColorTick") and main_source.contains("CardFaceArtAnchor") and main_source.contains("_card_face_route_text") and main_source.contains("路线:%s") and main_source.contains("CardFaceQuickEffect") and main_source.contains("_card_face_quick_effect_text") and main_source.contains("_card_use_case_text_for_skill") and main_source.contains("_card_one_glance_audit_report") and main_source.contains("_card_one_glance_source") and main_source.contains("效果｜%s") and main_source.contains("card_face_multiline_effect") and main_source.contains("CardFaceChipRail") and main_source.contains("_card_face_chip_entries") and main_source.contains("HandCardPlayLamp") and main_source.contains("HandCardPlayLampSignal") and main_source.contains("HandCardPlayLampAction") and main_source.contains("HandCardPlayStateRail") and main_source.contains("HandCardPlayStateChip") and main_source.contains("免门槛") and main_source.contains("按选区"), "card faces expose route bands, art anchors, one-glance use-case audit helpers, multi-line effects, board-game cost, requirement, target, persistence, and playability chips")
-	_expect(main_source.contains("var max_chips := 2 if compact else 5") and main_source_lf.contains("if compact:\n\t\treturn") and main_source.contains("var art_height := 50 if compact_hand_card else") and main_source.contains("HAND_CARD_HOVER_SCALE := 1.44") and main_source.contains("HAND_CARD_HOVER_LIFT_PIXELS := 54.0") and main_source.contains("_set_hand_card_hover"), "compact hand cards keep status reasons in hover and expand into a readable first-screen mini-card state")
-	_expect(main_source.contains("CardCodexDetailScene") and main_source.contains("_card_codex_detail_snapshot") and card_codex_detail_source.contains("CardCodexTcgSummaryPanel") and card_codex_detail_script_source.contains("读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV升级") and card_codex_detail_source.contains("CardCodexTacticalStrip") and card_codex_detail_source.contains("牌桌用途｜先看这三格") and card_codex_detail_script_source.contains("CardCodexTacticalCard") and main_source.contains("何时拿") and main_source.contains("怎么配") and main_source.contains("会暴露") and card_codex_detail_script_source.contains("CardCodexUpgradeStepCard") and card_codex_detail_script_source.contains("CardCodexUpgradeRomanLevel"), "card detail page exposes a scene-owned concise TCG reading order, table-use tactical strip, and roman-level upgrade ladder")
-	_expect(main_source.contains("CardCodexBrowserScene") and main_source.contains("_add_card_codex_browser(menu_preview_box, names)") and main_source.contains("_card_codex_browser_snapshot") and card_codex_browser_source.contains("CardCodexCategoryRail") and card_codex_browser_script_source.contains("CardCodexCategoryChip") and card_codex_browser_script_source.contains("filter_selected"), "card codex thumbnail page places concise scene-owned category chips before the card grid")
-	_expect(card_codex_browser_script_source.contains("CardArtViewScript") and card_codex_browser_script_source.contains("CardCodexThumbnailArtView") and card_codex_browser_script_source.contains("shared-card-art-night-patrol-frame") and card_codex_browser_snapshot_source.contains("\"rank_number\"") and card_codex_browser_script_source.contains("CardCodexThumbnailChipRail") and card_codex_browser_script_source.contains("CardCodexThumbnailChip") and card_codex_browser_script_source.contains("CardCodexThumbnailRouteBand") and card_codex_browser_script_source.contains("CardCodexThumbnailEffectLine") and card_codex_browser_script_source.contains("缩略图速读：价格、等级、门槛和目标"), "card codex thumbnails expose shared art, scan-first cost, rank, requirement, target, route, and effect cues")
-	_expect(main_source.contains("RulesQuickReferenceBoardScene") and main_source.contains("_rules_quick_reference_snapshot") and main_source.contains("规则速览") and rules_quick_reference_board_source.contains("RulesQuickReferencePanel") and rules_quick_reference_board_source.contains("RulesQuickReferenceKeywordRail") and rules_quick_reference_board_script_source.contains("规则速查板") and rules_quick_reference_board_script_source.contains("_render_keyword_legend") and rules_quick_reference_board_script_source.contains("RulesQuickReferenceKeywordChip") and rules_quick_reference_board_script_source.contains("RulesQuickReferenceModuleCard") and main_source.contains("\"keyword_legend\"") and main_source.contains("\"symbol\": \"¥\"") and main_source.contains("\"symbol\": \"◇\"") and main_source.contains("\"symbol\": \"◆\"") and main_source.contains("\"symbol\": \"◎\"") and main_source.contains("\"symbol\": \"⇄\"") and main_source.contains("◆ 怪兽") and main_source.contains("＋ 牌架") and main_source.contains("♠ 怪兽赌局"), "rules page uses a scene-owned board-game quick-reference task board with a dedicated card-keyword legend instead of prose-heavy development copy")
-	_expect(main_source.contains("TutorialQuickStartBoardScene") and main_source.contains("_tutorial_quick_start_snapshot") and tutorial_quick_start_board_source.contains("TutorialQuickStartPanel") and tutorial_quick_start_board_script_source.contains("试玩速成板") and tutorial_quick_start_board_script_source.contains("TutorialQuickStartStepCard") and tutorial_quick_start_board_script_source.contains("TutorialQuickStartTrapCard"), "tutorial page uses a scene-owned board-game quick-start task board instead of a long rule page")
-	_expect(main_source.contains("商品目录｜") and main_source.contains("牌路连接") and main_source.contains("画像、速度、偏好、行动概率"), "catalog pages use player-facing atlas/card language")
-	_expect(main_source.contains("BestiaryDetailScene") and main_source.contains("_bestiary_detail_snapshot") and bestiary_detail_source.contains("BestiaryMonsterBoardPanel") and bestiary_detail_source.contains("BestiaryMonsterKpiGrid") and bestiary_detail_source.contains("BestiaryMonsterActionGrid") and bestiary_detail_script_source.contains("怪兽档案板") and main_source.contains("看下方怪兽档案板"), "monster detail uses a scene-owned scan-first monster board with action probability cards")
-	_expect(main_source.contains("ProductCodexDetailScene") and main_source.contains("_product_codex_detail_snapshot") and product_codex_detail_source.contains("ProductCodexMarketBoardPanel") and product_codex_detail_source.contains("ProductCodexMarketKpiGrid") and product_codex_detail_source.contains("ProductCodexStrategyGrid") and product_codex_detail_script_source.contains("商品市场板") and main_source.contains("看下方商品市场板"), "product codex detail uses a scene-owned scan-first market board instead of a long market report")
-	_expect(main_source.contains("RegionCodexDetailScene") and main_source.contains("_region_codex_detail_snapshot") and region_codex_detail_source.contains("RegionCodexTileBoardPanel") and region_codex_detail_source.contains("RegionCodexTileKpiGrid") and region_codex_detail_source.contains("RegionCodexActionClueGrid") and region_codex_detail_script_source.contains("区域地块板") and main_source.contains("看下方区域地块板"), "region codex uses a scene-owned scan-first tile board instead of a long region report")
-	_expect(main_source.contains("HeaderStatusChipRail") and main_source.contains("HeaderStatusMeterBar") and main_source.contains("◆ 空闲") and main_source.contains("⌛ 沙漏") and main_source.contains("_table_tempo_status") and main_source.contains("◎ 玩家") and main_source.contains("☄ 预报") and not main_source.contains("◷ 00:00"), "top status is split into player-facing table chips with a sandglass meter instead of a numeric clock")
-	_expect(top_bar_source.contains("桌态｜待开桌") and top_bar_source.contains("计时｜00:00") and top_bar_script_source.contains("_set_status_label") and top_bar_snapshot_source.contains("\"table_state\"") and top_bar_snapshot_source.contains("\"tempo\"") and main_source.contains("_runtime_top_bar_table_state_text") and not top_bar_source.contains("阶段｜开局") and not top_bar_source.contains("席位｜1/4"), "split TopBar uses realtime table-state/clock wording instead of turn-cycle phase/seat defaults")
-	_expect(main_source.contains("MapControlBar") and main_source.contains("MapControlChipRail") and main_source.contains("◎ 赌桌中央") and main_source.contains("双击看牌"), "map controls use compact table chips instead of a long instruction sentence")
-	_expect(main_source.contains("MapLayerFocusRail") and main_source.contains("MapLayerFocusChip") and main_source.contains("MapLayerFocusStatus") and main_source.contains("图层:%s") and main_source.contains("\"product\"") and main_source.contains("\"route\"") and main_source.contains("\"intel\"") and main_source.contains("\"weather\"") and main_source.contains("\"monster\"") and main_source.contains("\"city\""), "main map exposes board-game layer focus chips for products, routes, intel, weather, monsters, and cities")
-	_expect(fullscreen_map_overlay_source.contains("FullscreenMapReadingHud") and fullscreen_map_overlay_source.contains("FullscreenMapLayerHud") and fullscreen_map_overlay_source.contains("FullscreenMapLayerHudLabel") and fullscreen_map_overlay_source.contains("FullscreenMapProductHudLabel") and fullscreen_map_overlay_source.contains("FullscreenMapDistrictHudLabel") and fullscreen_map_overlay_source.contains("FullscreenMapHintHudLabel") and main_source.contains("FullscreenMapOverlayScene") and main_source.contains("_refresh_fullscreen_map_hud"), "fullscreen map keeps a compact reading HUD for layer, product, district, and core gestures")
-	_expect(main_source.contains("PlaytestFlowCompass") and main_source.contains("试玩\\n罗盘") and main_source.contains("第一局只要顺着这条小轨走") and main_source.contains("\"点区\"") and main_source.contains("\"首召\"") and main_source.contains("\"建城\"") and main_source.contains("\"买牌\"") and main_source.contains("\"出牌\"") and main_source.contains("\"牌轨\"") and main_source.contains("\"经济\"") and main_source.contains("\"路线\""), "central map exposes a player-facing first-run flow compass through track/economy/route choice")
-	_expect(main_source.contains("CardResolutionTimelineEventSlot") and main_source.contains("TimelineEventReadOnlyBadge") and main_source.contains("TimelineEventReadOnlyLock") and main_source.contains("CardResolutionGuessableCardGlow") and main_source.contains("_recent_table_event_entries") and main_source.contains("公共时间轴：公开牌可猜归属，公共事件只读") and not main_source.contains("_refresh_recent_table_event_strip"), "recent public events share the top card timeline while only guessable card slots glow")
-	_expect(main_source.contains("UI_LIVE_REFRESH_SECONDS") and main_source.contains("UI_MAP_REFRESH_SECONDS") and main_source.contains("UI_FULL_REFRESH_SECONDS") and main_source.contains("ui_map_refresh_timer") and main_source.contains("_update_process_ui_refresh") and main_source.contains("_refresh_live_ui"), "main play loop keeps realtime status, map refresh, and heavy layout rebuilds separated")
-	_expect(main_source.contains("_card_resolution_track_signature") and main_source.contains("_playtest_flow_compass_signature"), "main table caches stable card-track and first-minute compass layouts")
-	_expect(main_source.contains("_add_player_tableau_strip") and main_source.contains("玩家板｜资源筹码") and main_source.contains("PlayerTableauBoard") and main_source.contains("PlayerIdentityMiniCard") and main_source.contains("PlayerTableauGoalMeter") and main_source.contains("PlayerTableauGoalProgressBar") and main_source.contains("少读字，先看筹码"), "main play UI keeps a board-game resource tableau with a victory-goal meter")
-	_expect(main_source.contains("PlayerSeatCard") and main_source.contains("PlayerSeatToken") and main_source.contains("PlayerSeatPublicChipRail") and main_source.contains("PlayerSeatSelectButton") and main_source.contains("PlayerSeatInspectorCard") and main_source.contains("_inspect_player_public_profile") and main_source.contains("不会切走你的手牌和行动区") and main_source.contains("隐私") and main_source.contains("现金、手牌和弃牌不公开") and main_source.contains("PlayerSeatBankruptChip"), "public seat strip uses compact table-side player cards, public dossiers, and bankruptcy status chips without leaking private hands or cash")
-	_expect(main_source.contains("WeatherForecastChipRail") and main_source.contains("现在：无天气") and main_source.contains("影响：产/交/消"), "weather forecast strip uses player-facing chips instead of long status prose")
-	_expect(card_resolution_banner_source.contains("CardResolutionTableBanner") and card_resolution_banner_source.contains("桌边结算卡") and card_resolution_banner_source.contains("避免遮挡中央星球") and bottom_countdown_source.contains("BottomCountdownOverlay") and bottom_countdown_source.contains("CardResolutionRevealTimerBar") and bottom_countdown_source.contains("CardResolutionRevealTimerLabel") and not main_source.contains("\"label\": \"天气预报\"") and not main_source.contains("\"label\": \"天气影响\""), "card reveal UI uses a side-lane resolution card plus a short-window sandglass timer instead of covering the central planet or hand rack")
-	_expect(main_source.contains("牌轨") and main_source.contains("CardResolutionTtaMarketPanel") and main_source.contains("CardResolutionTtaOfferRailFrame") and main_source.contains("CardResolutionTtaOfferRailLegend") and main_source.contains("公共牌槽") and main_source.contains("拖看｜悬停") and main_source.contains("CardResolutionTtaSlotMarketMat") and main_source.contains("CardResolutionTtaAgeMarketRuler") and main_source.contains("CardResolutionTtaCostBandRail") and main_source.contains("CardResolutionTtaCostCell") and main_source.contains("CardResolutionTtaSlotGrooveRail") and main_source.contains("CardResolutionTtaScrollShell") and main_source.contains("CardResolutionTtaScrollCue") and main_source.contains("CardResolutionTtaGhostSlot") and main_source.contains("固定公共牌槽") and main_source.contains("CardResolutionTtaMiniCard") and main_source.contains("CARD_TRACK_SLOT_HEIGHT := 22") and main_source.contains("CARD_TRACK_EMPTY_SLOT_HEIGHT := 15") and main_source.contains("_set_card_resolution_track_compact_empty") and main_source.contains("CardResolutionCostPipRail") and main_source.contains("CARD_TRACK_MANUAL_SCROLL_HOLD_MSEC") and main_source.contains("_mark_card_resolution_track_manual_scroll") and main_source.contains("_maybe_follow_card_resolution_track") and main_source.contains("_connect_card_resolution_track_hover"), "card track uses a thin Through-the-Ages-style public offer rail with a compact empty state")
-	_expect(main_source.contains("EconomyDashboardScene") and main_source.contains("_economy_dashboard_snapshot") and main_source.contains("_economy_dashboard_decision_snapshots") and main_source.contains("扩GDP") and main_source.contains("护商路") and main_source.contains("压竞争") and economy_dashboard_source.contains("EconomyDashboardPanel") and economy_dashboard_source.contains("EconomyDashboardKpiGrid") and economy_dashboard_source.contains("EconomyDashboardDecisionRail") and economy_dashboard_source.contains("EconomyDashboardLaneGrid") and economy_dashboard_script_source.contains("经济仪表板") and economy_dashboard_script_source.contains("看三件事：钱从哪座城来") and economy_dashboard_script_source.contains("EconomyDashboardDecisionCard"), "economy overview uses a scene-owned short board-game dashboard with a player-facing next-decision strip instead of a prose-heavy report")
-	_expect(main_source.contains("StandingsScoreboardScene") and main_source.contains("_standings_scoreboard_snapshot") and standings_scoreboard_source.contains("StandingsScoreboardPanel") and standings_scoreboard_source.contains("StandingsRaceKpiGrid") and standings_scoreboard_source.contains("StandingsPlayerScoreGrid") and standings_scoreboard_script_source.contains("局势记分板") and standings_scoreboard_script_source.contains("对手隐私") and standings_scoreboard_script_source.contains("StandingsBankruptBadge") and main_source.contains("下方记分板只精确显示当前玩家"), "standings page uses a scene-owned concise scoreboard with public bankruptcy badges while preserving opponent privacy")
-	_expect(main_source.contains("FinalSettlementBoardScene") and main_source.contains("_final_settlement_board_snapshot") and main_source.contains("_final_settlement_money_source_snapshots") and final_settlement_board_source.contains("FinalSettlementBoardPanel") and final_settlement_board_source.contains("FinalSettlementMoneySourcePanel") and final_settlement_board_script_source.contains("终局速览｜赛后记分板") and final_settlement_board_script_source.contains("FinalSettlementStartingCashLine") and main_source.contains("起手:基础¥%d + 角色%s = ¥%d") and final_settlement_board_source.contains("FinalSettlementEventPanel") and final_settlement_board_script_source.contains("公开事件｜牌轨与地图") and final_settlement_board_script_source.contains("排名轨｜结算资金") and final_settlement_board_script_source.contains("赛后入口｜查原因或再开一桌") and main_source.contains("电脑对手｜身份线索保密"), "final settlement uses a scene-owned concise postgame board with starting-cash role modifiers while preserving AI hidden routes")
-	_expect(main_source.contains("IntelDossierBoardScene") and main_source.contains("_intel_dossier_board_snapshot") and main_source.contains("_focused_intel_card_action_snapshots") and main_source.contains("track_return_") and main_source.contains("track_guess_") and main_source.contains("回到牌轨") and main_source.contains("卡牌详情") and intel_dossier_board_source.contains("IntelDossierBoardPanel") and intel_dossier_board_source.contains("IntelDossierKpiGrid") and intel_dossier_board_source.contains("IntelDossierActionRow") and intel_dossier_board_source.contains("IntelDossierClueGrid") and intel_dossier_board_script_source.contains("情报侦探板") and intel_dossier_board_script_source.contains("action_requested") and intel_dossier_board_script_source.contains("不扫描对手现金") and main_source.contains("下方侦探板把城市嫌疑"), "intel dossier uses a scene-owned concise detective board, preserves hidden economy/hand privacy, and exposes focused public-card track/guess/detail paths")
-	_expect(main_source.contains("PlayerDashboardTopRail") and main_source.contains("PlayerTableRail") and main_source.contains("PlayerHandColumn") and main_source.contains("PlayerActionColumn"), "main play UI separates the bottom player board into dashboard, hand, and action areas")
-	_expect(main_source.contains("PlayerDashboardActionDock") and main_source.contains("PlayerDashboardActionButton") and main_source.contains("PlayerDashboardDistrictSummary") and main_source.contains("PlayerDashboardPrimaryActionStrip") and main_source.contains("PlayerDashboardPrimaryActionButton") and main_source.contains("推荐｜%s") and main_source.contains("PlayerTableStateLampRail") and main_source.contains("PlayerTableStateLampChip") and main_source.contains("桌态") and main_source.contains("本席") and main_source.contains("牌队") and main_source.contains("牌架") and main_source.contains("选区｜%s｜%s｜%s"), "player dashboard keeps core actions, a recommended primary action, selected-district summary, and table-state lamps visible before the scrollable detail tray")
-	_expect(main_source.contains("PlayerHandRackPanel") and main_source.contains("PlayerHandRackChipRail") and main_source.contains("我的手牌架") and main_source.contains("悬停抬起") and main_source.contains("HandCardHoverLiftCard") and main_source.contains("PlayerHandEmptySlot"), "hand cards sit in a table-edge card rack with scan-first chips and hover lift")
-	_expect(main_source.contains("首召就绪") and main_source.contains("首召/出牌") and main_source.contains("落点：%s") and main_source.contains("免流动"), "starter monster hand cards use first-summon language instead of generic play labels")
-	_expect(main_source.contains("TableGoalPrompt") and main_source.contains("TableGoalPrimaryActionRail") and main_source.contains("TableGoalPrimaryActionButton") and main_source.contains("TableGoalPromptChipRail") and main_source.contains("TableGoalConditionRail") and main_source.contains("TableGoalConditionChip") and main_source.contains("目标提示｜下一步") and main_source.contains("固定行动条") and main_source.contains("在选区首召") and main_source.contains("打开牌架"), "main play UI turns the next action into a fixed compact table-goal strip with condition chips and a primary action button")
-	_expect(not main_source.contains("_add_first_summon_prompt(action_tray"), "main play UI keeps first summon in the single primary action slot instead of duplicating a starter card in the action tray")
-	_expect(main_source.contains("SelectedDistrictBoard") and main_source.contains("SelectedDistrictTilePlate") and main_source.contains("SelectedDistrictActionGrid") and main_source.contains("SelectedDistrictChipRail") and main_source.contains("SelectedDistrictActionLampRail") and main_source.contains("SelectedDistrictActionLampSignal") and main_source.contains("OpeningGuideTimeline") and main_source.contains("OpeningGuideNextStepCard") and main_source.contains("OpeningGuidePrimaryActionRail") and main_source.contains("OpeningGuidePrimaryActionButton") and main_source.contains("下一步｜"), "main play UI uses compact tile-board and timeline guidance for selected district and opening guide")
-	_expect(main_source.contains("FirstSummonCard") and main_source.contains("FirstSummonChipRail") and main_source.contains("FirstSummonPreviewStrip") and main_source.contains("FirstSummonPreviewIcon") and main_source.contains("FirstSummonDropZone") and main_source.contains("在选区首召"), "first summon UI is a compact starter decision strip with drop-zone chips")
-	_expect(main_source.contains("ActionTrayModuleChipRail") and main_source.contains("＋竞价") and main_source.contains("◇竞猜") and main_source.contains("◎目标"), "action tray exposes scan-first module chips for secondary actions")
-	_expect(main_source.contains("MainActionDock") and main_source.contains("快捷\\n行动") and main_source.contains("建城、看牌架、买选中牌、打出第一张可用手牌") and main_source.contains("\"建城\"") and main_source.contains("\"牌架\"") and main_source.contains("\"买牌\"") and main_source.contains("\"出牌\"") and main_source.contains("ActionDockReadinessChipRail") and main_source.contains("开架锁价") and main_source.contains("满手→弃") and action_dock_snapshot_source.contains("\"shortcut\": \"1\"") and action_dock_source.contains("quick_action_shortcut") and game_screen_source.contains("_quick_action_index_for_key"), "action tray exposes player-facing quick actions, numeric hotkeys, and compact readiness chips without long development copy")
-	_expect(main_source.contains("TemporaryDecisionCard") and main_source.contains("TemporaryDecisionChipRail") and main_source.contains("桌边决策｜") and main_source.contains("ContractOfferTermsBoard") and main_source.contains("ContractOfferTermRail") and main_source.contains("ContractOfferTermLamp") and main_source.contains("ContractOfferTermSignal") and main_source.contains("ContractOfferTermLabel") and main_source.contains("ContractOfferDecisionTimerBar") and main_source.contains("_contract_offer_term_entries"), "temporary decisions share a compact table-edge decision card with scan-first contract terms")
-	_expect(main_source.contains("MonsterWagerChipRail") and main_source.contains("MonsterWagerSideChipRail") and main_source.contains("MonsterWagerPublicBetBoard") and main_source.contains("MonsterWagerPublicBetGrid") and main_source.contains("MonsterWagerPublicBetCard") and main_source.contains("公开下注板") and main_source.contains("底注%d%%") and main_source.contains("平分总奖池"), "monster wager decisions expose percentage-based betting-table chips")
-	var hand_index := main_source.find("_add_player_hand_rack(hand_column")
-	var tray_index := main_source.find("_add_player_action_tray(tray_column")
-	var district_action_index := main_source.find("_add_selected_district_action_panel(action_tray")
-	_expect(hand_index >= 0 and tray_index > hand_index and district_action_index > tray_index, "main play UI places the hand rack before a bounded action tray and keeps secondary prompts inside that tray")
-	_expect(main_source.contains("BidControlCard") and main_source.contains("BidControlChipRail") and main_source.contains("牌桌报价") and not main_source.contains("var title := _plain_label(\"公开报价\""), "bid controls are framed as a readable table-bid card without overusing public/anonymity prose")
-	_expect(main_source.contains("OwnerGuessCard") and main_source.contains("OwnerGuessChipRail") and main_source.contains("归属竞猜"), "card-owner guessing is framed as a readable table-side wager card")
-	_expect(main_source.contains("ActionTrayCurrentHeader") and main_source.contains("当前行动") and main_source.contains("筹码定位") and main_source.contains("不遮住星球和手牌"), "main play UI uses a bounded current-action tray instead of letting secondary prompts crowd the table")
-	_expect(district_supply_drawer_source.contains("DistrictSupplyShelfBoard") and district_supply_drawer_source.contains("DistrictSupplyShelfChipRail") and district_supply_drawer_source.contains("DistrictSupplyMarketStatusRail") and district_supply_drawer_source.contains("区域牌架") and district_supply_drawer_source.contains("区域供牌") and district_supply_drawer_source.contains("卡牌预览") and not _contains_any(district_supply_drawer_source, ["District shelf", "Market shelf | hover preview", "Market cells | price", "Card preview | effect", "Close\""]) and main_source.contains("district_supply_chip_row") and main_source.contains("DistrictSupplyMarketSummaryChip") and main_source.contains("_district_supply_market_summary") and main_source.contains("_district_supply_access_short_label"), "district card rack uses board-game shelf chips, Chinese player-facing defaults, and short locked-window affordances")
-	_expect(district_supply_drawer_source.contains("DistrictSupplySideDrawer") and district_supply_drawer_source.contains("DistrictSupplyMarketGrid") and district_supply_drawer_source.contains("DistrictSupplyPreviewPanel") and district_supply_market_card_source.contains("DistrictSupplyMarketCardPanel") and district_supply_market_card_source.contains("DistrictSupplyMarketCardArtHost") and district_supply_market_card_source.contains("DistrictSupplyMarketCardArtView") and district_supply_market_card_source.contains("res://scripts/card_art_view.gd") and district_supply_market_card_source.contains("DistrictSupplyMarketCardChipRail") and district_supply_market_card_source.contains("DistrictSupplyMarketCardMicroChipRail") and district_supply_market_card_script_source.contains("_render_market_art") and district_supply_market_card_script_source.contains("shared-card-art-market-cell") and district_supply_market_card_script_source.contains("DistrictSupplyMarketCardMicroChip") and district_supply_preview_card_source.contains("DistrictSupplyPreviewMicroChipRail") and district_supply_preview_card_source.contains("DistrictSupplyDecisionStrip") and district_supply_preview_card_source.contains("DistrictSupplyPreviewScanGrid") and district_supply_preview_card_script_source.contains("DistrictSupplyDecisionChip") and district_supply_preview_card_script_source.contains("DistrictSupplyPreviewScanSection") and district_supply_preview_card_script_source.contains("SCAN_SECTION_BODY_LIMIT := 34") and district_supply_preview_card_script_source.contains("not has_scan_sections") and main_source.contains("_district_supply_decision_chip_entries") and main_source.contains("_district_supply_preview_scan_sections") and main_source.contains("\"decision_chips\"") and main_source.contains("\"scan_sections\"") and main_source.contains("\"title\": \"用途\"") and main_source.contains("\"title\": \"买入\"") and main_source.contains("\"title\": \"打出\"") and main_source.contains("\"title\": \"目标\"") and main_source.contains("\"用途:%s\"") and main_source.contains("\"买入:%s\"") and main_source.contains("\"打出:免门槛\"") and district_supply_preview_card_script_source.contains("CardFaceScene") and district_supply_preview_card_script_source.contains("DistrictSupplyPreviewSceneCardFace") and district_supply_preview_card_source.contains("custom_minimum_size = Vector2(0, 218)") and district_supply_market_card_source.contains("DistrictSupplyMarketCardRank") and district_supply_market_card_source.contains("DistrictSupplyMarketCardStateBand") and district_supply_market_card_source.contains("DistrictSupplyMarketCardStateSignal") and district_supply_preview_card_source.contains("DistrictSupplySelectedPreview") and district_supply_preview_card_source.contains("DistrictSupplyPurchaseVerdictRail") and district_supply_preview_card_script_source.contains("DistrictSupplyPurchaseVerdictSignal"), "district card rack uses a compact side-drawer market presentation with shared art anchors, board-game micro card chips, scan-first decision chips, four fixed preview scan sections, and scene-rendered CardFace previews")
-	_expect(main_source.contains("menu_continue_button.visible = can_continue and show_main_actions") and main_source.contains("func _hide_global_menu_navigation_for_catalog"), "subpages do not inherit global continue/back controls by default")
-	_expect(main_source.contains("_hide_global_menu_navigation_for_catalog()") and main_source.contains("func _set_catalog_local_navigation") and main_source.contains("\"返回缩略图\""), "codex pages keep local previous/next/back navigation instead of global menu controls")
-	_expect(main_source.contains("\"资金:\"") and main_source.contains("\"GDP\"") and main_source.contains("\"终局\""), "resource tableau source includes cash, GDP, and victory target chips")
-	_expect(main_source.contains("\"手牌\"") and main_source.contains("\"怪兽\"") and main_source.contains("\"军队\""), "resource tableau source includes hand, monster, and military chips")
-	_expect(not _contains_any(main_source, ["太空辛迪加 / Space Syndicate  即时原型", "即时原型", "统一资料库", "玩家可读资料", "价格梯度", "统一决策面板", "可复用UI", "测试阶段优先快速迭代", "AI 内部路线", "当前原型规则", "关键字段", "主画面原则", "响应式卡片网格", "hover查看用途", "临时美工", "机制钩子", "当前缩略图布局", "操作提示", "为什么：", "入口："]), "player-facing source avoids obvious development wording regressions")
+	var roots: Dictionary = {}
+	for scene_id_variant: Variant in SCENE_PATHS:
+		var scene_id := str(scene_id_variant)
+		var scene_path := str(SCENE_PATHS[scene_id])
+		var packed := load(scene_path) as PackedScene
+		_expect(packed != null, "%s loads as a PackedScene" % scene_path)
+		if packed != null:
+			roots[scene_id] = packed.instantiate()
+
+	var game_screen := roots.get("game_screen") as Node
+	var player_board := roots.get("player_board") as Node
+	var card_track := roots.get("card_resolution_track") as Node
+	var overlay := roots.get("overlay_layer") as Node
+	var planet_board := roots.get("planet_board") as Node
+	var district_supply := roots.get("district_supply") as Node
+
+	_expect(_has_nodes(game_screen, ["TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen composes the real table scenes")
+	_expect(_has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach", "RuntimeVisualEventLayer"]), "GameScreen owns the coach and runtime feedback surfaces")
+	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerBidBoard", "PlayerMainActionDock"]), "PlayerBoard owns resources, hand, bids, and actions")
+	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
+	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]), "OverlayLayer owns all temporary decision panels")
+	_expect(_has_nodes(planet_board, ["WeatherForecastBar", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")
+	_expect(_has_nodes(district_supply, ["DistrictSupplyMarketGrid", "DistrictSupplyPreviewPanel"]), "DistrictSupplyDrawer owns its market and preview surfaces")
+
+	var main_source := _source("res://scripts/main.gd")
+	var main_scene_source := _source("res://scenes/main.tscn")
+	var game_screen_source := _source("res://scripts/ui/game_screen.gd")
+	var player_board_source := _source("res://scripts/ui/player_board.gd")
+	var hand_rack_source := _source("res://scripts/ui/hand_rack.gd")
+	var action_dock_source := _source("res://scripts/ui/action_dock.gd")
+	var bid_board_source := _source("res://scripts/ui/bid_board.gd")
+	var track_source := _source("res://scripts/ui/card_resolution_track.gd")
+	var overlay_source := _source("res://scripts/ui/overlay_layer.gd")
+	var table_snapshot_source := _source("res://scripts/viewmodels/table_snapshot.gd")
+
+	_expect(main_scene_source.contains("RuntimeGameScreen") and main_scene_source.contains("GameScreen.tscn"), "main.tscn embeds the sceneized GameScreen")
+	_expect(game_screen_source.contains("func apply_state(data: Dictionary)") and game_screen_source.contains("TABLE_SNAPSHOT_SCRIPT"), "GameScreen consumes the table snapshot bridge")
+	_expect(game_screen_source.contains("signal action_requested") and game_screen_source.contains("signal card_selected") and game_screen_source.contains("temporary_decision_action_requested"), "GameScreen forwards player and decision signals")
+	_expect(player_board_source.contains("func set_player_state(data: Dictionary)") and player_board_source.contains("func set_hand_cards(cards: Array)"), "PlayerBoard exposes structured state and hand APIs")
+	_expect(hand_rack_source.contains("signal card_selected") and hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("func set_cards(cards: Array)"), "HandRack owns card selection and drag interaction")
+	_expect(action_dock_source.contains("signal action_requested") and action_dock_source.contains("func set_dock(data: Dictionary)"), "ActionDock owns actionable commands")
+	_expect(bid_board_source.contains("signal action_requested") and bid_board_source.contains("func set_bid_state(data: Dictionary)"), "BidBoard owns bid presentation and actions")
+	_expect(track_source.contains("signal track_action_requested") and track_source.contains("signal track_entry_selected") and track_source.contains("signal track_entry_opened"), "CardResolutionTrack preserves its public interaction signals")
+	_expect(overlay_source.contains("signal temporary_decision_action_requested") and overlay_source.contains("func show_temporary_decision(data: Dictionary)"), "OverlayLayer owns temporary decision routing")
+	_expect(table_snapshot_source.contains("PLAYER_BOARD_SNAPSHOT_SCRIPT") and table_snapshot_source.contains("func apply_dictionary(data: Dictionary)"), "TableSnapshot remains the pure-data UI boundary")
+
+	_expect(main_source.contains("func _runtime_table_snapshot_source") and main_source.contains("func _sync_runtime_game_screen") and main_source.contains("func _on_runtime_game_screen_action_requested"), "main.gd keeps only the runtime snapshot and action bridges")
+	_expect(not main_source.contains("BUILD_LEGACY_RUNTIME_TABLE") and not main_scene_source.contains("LegacyRuntimeTable"), "legacy runtime table composition stays retired")
+	for helper_variant: Variant in RETIRED_PLAYER_SURFACE_HELPERS:
+		var helper_name := str(helper_variant)
+		_expect(not main_source.contains("func %s(" % helper_name), "%s remains retired from main.gd" % helper_name)
+
+	var player_scene_text := _source("res://scenes/ui/PlayerBoard.tscn")
+	var top_bar_text := _source("res://scenes/ui/TopBar.tscn")
+	var track_scene_text := _source("res://scenes/ui/CardResolutionTrack.tscn")
+	var overlay_scene_text := _source("res://scenes/ui/OverlayLayer.tscn")
+	_expect(_contains_all(player_scene_text, ["玩家板｜手牌", "现金｜", "GDP｜", "选区｜", "下一步｜", "手牌｜"]), "PlayerBoard keeps concise player-facing Chinese defaults")
+	_expect(_contains_all(top_bar_text, ["桌态｜待开桌", "计时｜00:00", "结束操作", "菜单"]), "TopBar keeps readable table status and commands")
+	_expect(_contains_all(track_scene_text, ["公共牌轨", "竞价/响应窗口", "归属未公开前只显示待猜线索", "牌轨空闲"]), "CardResolutionTrack explains public state without owner leakage")
+	_expect(_contains_all(overlay_scene_text, ["详情抽屉", "确认操作", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]), "OverlayLayer exposes scene-owned detail and decision surfaces")
+
+	var player_facing_sources := "\n".join([player_scene_text, top_bar_text, track_scene_text, overlay_scene_text])
+	_expect(not _contains_any(player_facing_sources, ["即时原型", "测试阶段优先快速迭代", "可复用UI", "AI 内部路线", "临时美工"]), "scene-owned player surfaces avoid developer-facing copy")
+
+	for root_variant: Variant in roots.values():
+		var root := root_variant as Node
+		if root != null:
+			root.free()
 	_finish()
+
+
+func _source(path: String) -> String:
+	return FileAccess.get_file_as_string(path)
+
+
+func _has_nodes(root: Node, node_names: Array) -> bool:
+	if root == null:
+		return false
+	for node_name_variant: Variant in node_names:
+		if root.find_child(str(node_name_variant), true, false) == null:
+			return false
+	return true
 
 
 func _expect(condition: bool, message: String) -> void:
@@ -185,15 +130,15 @@ func _expect(condition: bool, message: String) -> void:
 
 
 func _contains_any(text: String, needles: Array) -> bool:
-	for needle_variant in needles:
-		if text.contains(String(needle_variant)):
+	for needle_variant: Variant in needles:
+		if text.contains(str(needle_variant)):
 			return true
 	return false
 
 
 func _contains_all(text: String, needles: Array) -> bool:
-	for needle_variant in needles:
-		if not text.contains(String(needle_variant)):
+	for needle_variant: Variant in needles:
+		if not text.contains(str(needle_variant)):
 			return false
 	return true
 

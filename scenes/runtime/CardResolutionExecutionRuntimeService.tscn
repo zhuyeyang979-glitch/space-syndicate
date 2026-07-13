@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_resolution_execution_runtime_service.gd" id="1_service"]
+
+[node name="CardResolutionExecutionRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Owns pure active-card execution plans, ordered intents, exactly-once completion, and continuation classification. Queue, timing, inventory, and concrete card effects remain external owners."

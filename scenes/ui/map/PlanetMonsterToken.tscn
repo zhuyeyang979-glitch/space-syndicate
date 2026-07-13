@@ -1,0 +1,38 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/map/planet_monster_token.gd" id="1_script"]
+
+[node name="PlanetMonsterToken" type="PanelContainer"]
+custom_minimum_size = Vector2(112, 52)
+offset_right = 112.0
+offset_bottom = 52.0
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="MonsterTokenRows" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MonsterTokenGlyphLabel" type="Label" parent="MonsterTokenRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "M"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MonsterTokenCopyRows" type="VBoxContainer" parent="MonsterTokenRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 1
+
+[node name="MonsterTokenNameLabel" type="Label" parent="MonsterTokenRows/MonsterTokenCopyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Monster"
+text_overrun_behavior = 3
+
+[node name="MonsterTokenMotifLabel" type="Label" parent="MonsterTokenRows/MonsterTokenCopyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "threat"
+text_overrun_behavior = 3

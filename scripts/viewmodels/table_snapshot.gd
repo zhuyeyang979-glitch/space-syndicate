@@ -12,6 +12,7 @@ const SCENARIO_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/scenar
 
 var top_bar: Dictionary = {}
 var card_track: Array = []
+var card_resolution_track: Dictionary = {}
 var planet: Dictionary = {}
 var right_inspector: Dictionary = {}
 var player_board: Dictionary = {}
@@ -26,6 +27,8 @@ var campaign_focus_mode := false
 func apply_dictionary(data: Dictionary) -> RefCounted:
 	var track_source: Array = data.get("card_track", []) if data.get("card_track", []) is Array else []
 	card_track = PUBLIC_TRACK_SNAPSHOT_SCRIPT.new().apply_entries(track_source).to_ui_array()
+	var card_resolution_source: Dictionary = data.get("card_resolution_track", {}) if data.get("card_resolution_track", {}) is Dictionary else {}
+	card_resolution_track = _normalize_card_resolution_track(card_resolution_source, card_track)
 	var planet_source: Dictionary = data.get("planet", {}) if data.get("planet", {}) is Dictionary else {}
 	planet = PLANET_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(planet_source).to_ui_dictionary()
 	var district: Variant = DISTRICT_VIEW_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("district", {}) if data.get("district", {}) is Dictionary else {})
@@ -55,6 +58,7 @@ func to_ui_dictionary() -> Dictionary:
 	return {
 		"top_bar": top_bar,
 		"card_track": card_track,
+		"card_resolution_track": card_resolution_track,
 		"planet": planet,
 		"right_inspector": right_inspector,
 		"player_board": player_board,
@@ -112,7 +116,7 @@ func _normalize_temporary_decision(value: Variant) -> Dictionary:
 			var chip_text := str(chip_variant).strip_edges()
 			if chip_text != "":
 				normalized_chips.append({"text": chip_text, "tooltip": ""})
-	return {
+	var result := {
 		"id": str(source.get("id", "")),
 		"kind": str(source.get("kind", "")),
 		"title": str(source.get("title", "临时决策")),
@@ -122,3 +126,58 @@ func _normalize_temporary_decision(value: Variant) -> Dictionary:
 		"actions": normalized_actions,
 		"accent": source.get("accent", Color("#facc15")),
 	}
+	for key in ["wager", "contract", "choice", "details"]:
+		var detail_value: Variant = source.get(key, {})
+		if detail_value is Dictionary:
+			result[key] = (detail_value as Dictionary).duplicate(true)
+	var sections: Variant = source.get("sections", [])
+	if sections is Array:
+		result["sections"] = (sections as Array).duplicate(true)
+	return result
+
+
+func _normalize_card_resolution_track(source: Dictionary, fallback_entries: Array) -> Dictionary:
+	var entries_source: Variant = source.get("entries", fallback_entries)
+	var entries: Array = PUBLIC_TRACK_SNAPSHOT_SCRIPT.new().apply_entries(entries_source if entries_source is Array else fallback_entries).to_ui_array()
+	var result := {
+		"title": str(source.get("title", "公共结算轨")),
+		"phase": str(source.get("phase", "等待")),
+		"summary": str(source.get("summary", "匿名出牌、竞价、展示和历史线索。")),
+		"privacy_hint": str(source.get("privacy_hint", "未公开归属前只显示公开线索。")),
+		"empty_text": str(source.get("empty_text", "牌轨空闲，等待玩家出牌。")),
+		"auction_open": bool(source.get("auction_open", false)),
+		"entries": entries,
+	}
+	var auction_source: Dictionary = source.get("auction_response", {}) if source.get("auction_response", {}) is Dictionary else {}
+	result["auction_response"] = {
+		"active": bool(auction_source.get("active", false)),
+		"summary": str(auction_source.get("summary", "")),
+		"actions": _normalize_card_resolution_actions(auction_source.get("actions", [])),
+	}
+	for key in ["history_entries", "active_entries", "queue_entries", "next_entries"]:
+		var lane_source: Variant = source.get(key, [])
+		if lane_source is Array:
+			result[key] = PUBLIC_TRACK_SNAPSHOT_SCRIPT.new().apply_entries(lane_source).to_ui_array()
+	return result
+
+
+func _normalize_card_resolution_actions(value: Variant) -> Array:
+	var source: Array = value if value is Array else []
+	var result: Array = []
+	for action_variant in source:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		var action_id := str(action.get("id", action.get("action_id", ""))).strip_edges()
+		var label := str(action.get("label", action.get("text", action_id))).strip_edges()
+		if action_id == "" and label == "":
+			continue
+		result.append({
+			"id": action_id,
+			"label": label if label != "" else action_id,
+			"disabled": bool(action.get("disabled", false)),
+			"tooltip": str(action.get("tooltip", "")),
+			"reason": str(action.get("reason", action.get("disabled_reason", ""))),
+			"disabled_reason": str(action.get("disabled_reason", action.get("reason", ""))),
+		})
+	return result

@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://1x2yrx5ljngj"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_6q0be"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_0rsck"]
+
+[sub_resource type="Resource" id="Resource_xt60d"]
+script = ExtResource("1_6q0be")
+card_id = "商品看跌1"
+family_id = "商品看跌"
+kind = &"product_futures"
+purchase_cost = 4
+rules_text = "围绕当前商品建立匿名看跌头寸；正式持续时间、保证金和盈亏上限见期货条款。"
+tags = PackedStringArray("经济", "期货", "看跌")
+authored_keys = PackedStringArray("cost", "kind", "market_supply_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_supply_pressure": 1
+}
+
+[sub_resource type="Resource" id="Resource_o0rsg"]
+script = ExtResource("1_6q0be")
+card_id = "商品看跌2"
+family_id = "商品看跌"
+rank = 2
+kind = &"product_futures"
+purchase_cost = 6
+rules_text = "升级商品看跌，适合打击供给过剩或竞争商品。"
+tags = PackedStringArray("经济", "期货", "升级")
+authored_keys = PackedStringArray("cost", "kind", "market_supply_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_supply_pressure": 2
+}
+
+[sub_resource type="Resource" id="Resource_2jlox"]
+script = ExtResource("1_6q0be")
+card_id = "商品看跌3"
+family_id = "商品看跌"
+rank = 3
+kind = &"product_futures"
+purchase_cost = 8
+rules_text = "核心商品看跌，适合配合产能扩张、消费冷却或交通瘫痪。"
+tags = PackedStringArray("经济", "期货", "核心")
+authored_keys = PackedStringArray("cost", "kind", "market_supply_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_supply_pressure": 3
+}
+
+[sub_resource type="Resource" id="Resource_bbj2i"]
+script = ExtResource("1_6q0be")
+card_id = "商品看跌4"
+family_id = "商品看跌"
+rank = 4
+kind = &"product_futures"
+purchase_cost = 10
+rules_text = "终端商品看跌 IV，强力压制商品线并留下公开供需线索。"
+tags = PackedStringArray("经济", "期货", "IV")
+authored_keys = PackedStringArray("cost", "kind", "market_supply_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_supply_pressure": 4
+}
+
+[resource]
+script = ExtResource("2_0rsck")
+family_id = "商品看跌"
+pack_id = &"finance"
+authored_ranks = Array[Resource]([SubResource("Resource_xt60d"), SubResource("Resource_o0rsg"), SubResource("Resource_2jlox"), SubResource("Resource_bbj2i")])
+public_pool_eligible = true
+upgradeable_family = true

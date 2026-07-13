@@ -1,0 +1,143 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bl16xfgjio0yf"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_3ywrj"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_ia6yw"]
+
+[sub_resource type="Resource" id="Resource_0adrf"]
+script = ExtResource("1_3ywrj")
+card_id = "重装坦克1"
+family_id = "重装坦克"
+kind = &"military_force"
+purchase_cost = 5
+rules_text = "在陆地区域部署重装坦克：陆地守城强、生命高，跨海几乎不可用；移动不踩建筑，但军事管制会轻微压低当地GDP。"
+tags = PackedStringArray("军队", "陆军", "装甲")
+range = 220.0
+play_product = "钛壳贝"
+play_flow_required = 1
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 2,
+"military_damage": 2,
+"military_domain": "land",
+"military_duration_seconds": 36.0,
+"military_gdp_penalty": 8,
+"military_gdp_pressure_seconds": 18.0,
+"military_hp": 12,
+"military_move": 150.0,
+"military_range": 220.0,
+"military_type": "tank",
+"movement_traits": ["land", "armor"],
+"terrain_move_multiplier": {
+"land": 1.1,
+"ocean": 0.1
+}
+}
+
+[sub_resource type="Resource" id="Resource_1ibpl"]
+script = ExtResource("1_3ywrj")
+card_id = "重装坦克2"
+family_id = "重装坦克"
+rank = 2
+kind = &"military_force"
+purchase_cost = 7
+rules_text = "升级坦克：更可靠的陆地防线和城市护卫，适合保护高GDP陆城或推进近距离摧毁。"
+tags = PackedStringArray("军队", "陆军", "升级")
+range = 280.0
+play_product = "钛壳贝"
+play_flow_required = 2
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 3,
+"military_damage": 3,
+"military_domain": "land",
+"military_duration_seconds": 44.0,
+"military_gdp_penalty": 12,
+"military_gdp_pressure_seconds": 20.0,
+"military_hp": 16,
+"military_move": 180.0,
+"military_range": 280.0,
+"military_type": "tank",
+"movement_traits": ["land", "armor"],
+"terrain_move_multiplier": {
+"land": 1.14,
+"ocean": 0.1
+}
+}
+
+[sub_resource type="Resource" id="Resource_2nax7"]
+script = ExtResource("1_3ywrj")
+card_id = "重装坦克3"
+family_id = "重装坦克"
+rank = 3
+kind = &"military_force"
+purchase_cost = 9
+rules_text = "核心坦克：完整军令解锁，陆地保卫和短线压城都稳定；慢速让它难以追逐远处怪兽。"
+tags = PackedStringArray("军队", "陆军", "核心")
+range = 340.0
+play_product = "钛壳贝"
+play_flow_required = 3
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 4,
+"military_domain": "land",
+"military_duration_seconds": 52.0,
+"military_gdp_penalty": 16,
+"military_gdp_pressure_seconds": 24.0,
+"military_hp": 22,
+"military_move": 210.0,
+"military_range": 340.0,
+"military_type": "tank",
+"movement_traits": ["land", "armor"],
+"terrain_move_multiplier": {
+"land": 1.18,
+"ocean": 0.1
+}
+}
+
+[sub_resource type="Resource" id="Resource_wv16c"]
+script = ExtResource("1_3ywrj")
+card_id = "重装坦克4"
+family_id = "重装坦克"
+rank = 4
+kind = &"military_force"
+purchase_cost = 11
+rules_text = "终端坦克IV：高生命陆地堡垒，能稳住关键城市或缓慢压进；弱点是海洋与远距离应变。"
+tags = PackedStringArray("军队", "陆军", "IV")
+range = 400.0
+play_product = "钛壳贝"
+play_flow_required = 4
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 5,
+"military_domain": "land",
+"military_duration_seconds": 64.0,
+"military_gdp_penalty": 20,
+"military_gdp_pressure_seconds": 28.0,
+"military_hp": 30,
+"military_move": 240.0,
+"military_range": 400.0,
+"military_type": "tank",
+"movement_traits": ["land", "armor"],
+"terrain_move_multiplier": {
+"land": 1.22,
+"ocean": 0.1
+}
+}
+
+[resource]
+script = ExtResource("2_ia6yw")
+family_id = "重装坦克"
+pack_id = &"military"
+authored_ranks = Array[Resource]([SubResource("Resource_0adrf"), SubResource("Resource_1ibpl"), SubResource("Resource_2nax7"), SubResource("Resource_wv16c")])
+public_pool_eligible = true
+upgradeable_family = true

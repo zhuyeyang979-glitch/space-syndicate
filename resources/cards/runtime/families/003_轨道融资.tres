@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://ctkq2hk2nsffh"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_77i32"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_cumxn"]
+
+[sub_resource type="Resource" id="Resource_nqk7d"]
+script = ExtResource("1_77i32")
+card_id = "轨道融资1"
+family_id = "轨道融资"
+kind = &"cash_gain"
+purchase_cost = 3
+rules_text = "立即获得300资金；无需选择目标。"
+tags = PackedStringArray("经济", "续航")
+authored_keys = PackedStringArray("cost", "kind", "cash", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"cash": 300
+}
+
+[sub_resource type="Resource" id="Resource_83nhn"]
+script = ExtResource("1_77i32")
+card_id = "轨道融资2"
+family_id = "轨道融资"
+rank = 2
+kind = &"cash_gain"
+purchase_cost = 5
+rules_text = "立即获得700资金，支撑扩张或高费构筑。"
+tags = PackedStringArray("经济", "升级")
+authored_keys = PackedStringArray("cost", "kind", "cash", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"cash": 700
+}
+
+[resource]
+script = ExtResource("2_cumxn")
+family_id = "轨道融资"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_nqk7d"), SubResource("Resource_83nhn")])
+public_pool_eligible = true
+upgradeable_family = true

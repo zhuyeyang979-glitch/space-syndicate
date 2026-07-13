@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AiPersonalityPolicyResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_personality_policy_resource.gd" id="1_personality"]
+
+[resource]
+script = ExtResource("1_personality")
+policy_id = "arbitrage"
+display_name = "套利型AI"
+style = "追逐高价商品、供需缺口和可持续涨价窗口。"
+build_bias = 1.0
+business_bias = 1.25
+monster_bias = 0.75
+economy_bias = 1.35
+bid_aggression = 1.05
+exploration = 0.12
+route_preferences = {
+"city_growth": 1.05,
+"contract_route": 1.12,
+"finance_speculation": 1.36
+}

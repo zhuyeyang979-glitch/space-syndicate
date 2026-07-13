@@ -1,0 +1,87 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bk2sxs75rwgq5"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_bfd3v"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_egvvy"]
+
+[sub_resource type="Resource" id="Resource_igffp"]
+script = ExtResource("1_bfd3v")
+card_id = "产权冻结1"
+family_id = "产权冻结"
+kind = &"city_control_dispute"
+purchase_cost = 4
+rules_text = "选中一座公开存活城市，匿名制造产权争议20秒；城市GDP/min受到小幅归属惩罚，真实业主不公开。"
+tags = PackedStringArray("互动", "城市", "归属")
+play_product = "轨迹墨水"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "control_block_seconds", "control_gdp_penalty", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"control_block_seconds": 20.0,
+"control_gdp_penalty": 35,
+"panic": 6
+}
+
+[sub_resource type="Resource" id="Resource_kjwxs"]
+script = ExtResource("1_bfd3v")
+card_id = "产权冻结2"
+family_id = "产权冻结"
+rank = 2
+kind = &"city_control_dispute"
+purchase_cost = 6
+rules_text = "升级产权冻结：产权争议30秒，GDP/min归属惩罚提高，并给该城留下公开法律/舆论线索。"
+tags = PackedStringArray("互动", "城市", "升级")
+play_product = "轨迹墨水"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "control_block_seconds", "control_gdp_penalty", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"control_block_seconds": 30.0,
+"control_gdp_penalty": 50,
+"panic": 10
+}
+
+[sub_resource type="Resource" id="Resource_xdwiv"]
+script = ExtResource("1_bfd3v")
+card_id = "产权冻结3"
+family_id = "产权冻结"
+rank = 3
+kind = &"city_control_dispute"
+purchase_cost = 8
+rules_text = "核心产权冻结：产权争议45秒，显著压低目标城市GDP/min；适合配合城市做空、怪兽破坏或归属推理。"
+tags = PackedStringArray("互动", "城市", "核心")
+play_product = "轨迹墨水"
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "control_block_seconds", "control_gdp_penalty", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"control_block_seconds": 45.0,
+"control_gdp_penalty": 70,
+"panic": 14
+}
+
+[sub_resource type="Resource" id="Resource_rqlcl"]
+script = ExtResource("1_bfd3v")
+card_id = "产权冻结4"
+family_id = "产权冻结"
+rank = 4
+kind = &"city_control_dispute"
+purchase_cost = 10
+rules_text = "终端产权冻结IV：产权争议60秒并施加高额GDP/min归属惩罚；强力压制但目标城市和商品条件会暴露反推线索。"
+tags = PackedStringArray("互动", "城市", "IV")
+play_product = "轨迹墨水"
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "control_block_seconds", "control_gdp_penalty", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"control_block_seconds": 60.0,
+"control_gdp_penalty": 95,
+"panic": 20
+}
+
+[resource]
+script = ExtResource("2_egvvy")
+family_id = "产权冻结"
+pack_id = &"player_interaction"
+authored_ranks = Array[Resource]([SubResource("Resource_igffp"), SubResource("Resource_kjwxs"), SubResource("Resource_xdwiv"), SubResource("Resource_rqlcl")])
+public_pool_eligible = true
+upgradeable_family = true

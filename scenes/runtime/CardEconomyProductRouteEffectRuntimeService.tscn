@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_economy_product_route_effect_runtime_service.gd" id="1_service"]
+
+[node name="CardEconomyProductRouteEffectRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Owns pure economy, product, and route card-effect dispatch plans and result envelopes. It does not own queues, clocks, inventory, or concrete world mutation."

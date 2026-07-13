@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ProductCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/product_codex_entry_resource.gd" id="1_ore"]
+
+[resource]
+script = ExtResource("1_ore")
+entry_id = "ore_freight"
+display_name = "Ore Freight"
+subtitle = "Heavy supply, city building, and stable public logistics."
+summary = "Ore is a teaching product for city growth, route durability, and visible supply lanes."
+accent = "#94a3b8"
+chips = PackedStringArray("Industrial", "City build", "Stable")
+source_note = "Codex content resource only. City income and supply rules are unchanged."
+glyph = "OR"
+profile = "Industrial | build line"
+terrain = "Terrain: mine / rail"
+price = "$80 | base $80 | stable"
+demand = "Medium"
+supply = "High"
+risk = "2 / 5"
+volatility = "2"
+weather = "Asteroid dust slows heavy freight and makes route timing visible."
+use_case = "Good for explaining build tempo without needing hidden table state."
+kpi_notes = PackedStringArray("Demand rises when cities expand.", "High supply keeps price swings calmer.", "Freight remains route-sensitive.", "Risk is mostly visible on the map.")
+strategy_notes = PackedStringArray("Use ore to anchor a stable first-city plan.", "Punish broken routes before buying too much.", "Keep notes public and city-facing.")

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/card_codex_entry_resource.gd" id="1_phase_beast"]
+
+[resource]
+script = ExtResource("1_phase_beast")
+entry_id = "phase_beast_i"
+display_name = "Phase Beast I"
+subtitle = "Monster command reference"
+summary = "Move a summoned monster through public timing and visible district pressure."
+accent = "#fb7185"
+chips = PackedStringArray("Monster", "Public route", "Once")
+source_note = "Codex content resource only. Gameplay values still come from the existing card rules."
+rank = "I"
+card_kind = "Monster Command"
+cost = "$80"
+target = "district"
+route = "Public monster route"
+requirement = "Requires a summoned monster and a visible district target."
+effect = "Move a summoned monster after revealing public timing."
+read_order = "Cost -> threshold -> target -> route -> effect -> upgrade ladder"
+face_note = "Duplicates upgrade this series; purchase price reads from rank I."
+timing_note = "Best after a player commits a route."
+risk_note = "Telegraphs intent through the public track."
+public_resolution_note = "Public track records the effect as anonymous table pressure."
+upgrade_i_note = "Move one step or create a short public threat."
+upgrade_iv_note = "Longer pressure window, still public-safe."
+tactical_notes = PackedStringArray("Best after a player commits a route.", "Any public district with legal monster pressure.", "Telegraphs intent through the public track.")
+fact_notes = PackedStringArray("Requires a summoned monster and a visible district target.", "This resource stores only public codex copy.")

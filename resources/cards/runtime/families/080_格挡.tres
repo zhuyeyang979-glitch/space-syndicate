@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bycxd0ehn2msc"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_qsnxm"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_se64o"]
+
+[sub_resource type="Resource" id="Resource_lnenj"]
+script = ExtResource("1_qsnxm")
+card_id = "格挡1"
+family_id = "格挡"
+kind = &"guard"
+purchase_cost = 2
+rules_text = "进入格挡姿态，下一次其他怪兽伤害-2。"
+tags = PackedStringArray("防御", "反应")
+authored_keys = PackedStringArray("cost", "kind", "guard", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"guard": 2
+}
+
+[sub_resource type="Resource" id="Resource_vmf5e"]
+script = ExtResource("1_qsnxm")
+card_id = "格挡2"
+family_id = "格挡"
+rank = 2
+kind = &"guard"
+purchase_cost = 4
+rules_text = "强化格挡，下一次其他怪兽伤害-3。"
+tags = PackedStringArray("防御", "升级")
+authored_keys = PackedStringArray("cost", "kind", "guard", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"guard": 3
+}
+
+[sub_resource type="Resource" id="Resource_2h4os"]
+script = ExtResource("1_qsnxm")
+card_id = "格挡3"
+family_id = "格挡"
+rank = 3
+kind = &"guard"
+purchase_cost = 6
+rules_text = "终端格挡，下一次其他怪兽伤害-4，并额外形成远程抗性。"
+tags = PackedStringArray("防御", "终端")
+authored_keys = PackedStringArray("cost", "kind", "guard", "ranged_guard", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"guard": 4,
+"ranged_guard": 2
+}
+
+[resource]
+script = ExtResource("2_se64o")
+family_id = "格挡"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_lnenj"), SubResource("Resource_vmf5e"), SubResource("Resource_2h4os")])
+public_pool_eligible = true
+upgradeable_family = true

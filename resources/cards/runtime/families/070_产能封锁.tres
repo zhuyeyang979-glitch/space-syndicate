@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://brc1svu5xs6jw"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_2cayc"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_b8md8"]
+
+[sub_resource type="Resource" id="Resource_ym7h1"]
+script = ExtResource("1_2cayc")
+card_id = "产能封锁1"
+family_id = "产能封锁"
+kind = &"region_economy_shift"
+purchase_cost = 4
+rules_text = "选中区域商品生产水平-1，并提高当地热度。用于压低对手生产型GDP。"
+tags = PackedStringArray("区域", "破坏")
+authored_keys = PackedStringArray("cost", "kind", "production_delta", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"panic": 10,
+"production_delta": -1
+}
+
+[resource]
+script = ExtResource("2_b8md8")
+family_id = "产能封锁"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_ym7h1")])
+public_pool_eligible = true

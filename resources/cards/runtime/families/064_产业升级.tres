@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dmfajgxbbmymy"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_en2dn"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_xuxev"]
+
+[sub_resource type="Resource" id="Resource_m1l1e"]
+script = ExtResource("1_en2dn")
+card_id = "产业升级1"
+family_id = "产业升级"
+kind = &"city_product_upgrade"
+purchase_cost = 4
+rules_text = "选中己方城市：最低等级商品+1级，并使GDP/min +25。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "product_level", "revenue_amount", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"panic": 4,
+"product_level": 1,
+"revenue_amount": 25
+}
+
+[sub_resource type="Resource" id="Resource_q0juq"]
+script = ExtResource("1_en2dn")
+card_id = "产业升级2"
+family_id = "产业升级"
+rank = 2
+kind = &"city_product_upgrade"
+purchase_cost = 7
+rules_text = "选中己方城市：最低等级商品+2级，并使GDP/min +45。"
+tags = PackedStringArray("经营", "终端")
+authored_keys = PackedStringArray("cost", "kind", "product_level", "revenue_amount", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"panic": 8,
+"product_level": 2,
+"revenue_amount": 45
+}
+
+[resource]
+script = ExtResource("2_xuxev")
+family_id = "产业升级"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_m1l1e"), SubResource("Resource_q0juq")])
+public_pool_eligible = true
+upgradeable_family = true

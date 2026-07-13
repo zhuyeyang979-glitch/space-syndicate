@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/city_gdp_derivative_runtime_controller.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/finance/city_gdp_derivatives/city_gdp_derivative_terms_v04_catalog.tres" id="2"]
+
+[node name="CityGdpDerivativeRuntimeController" type="Node"]
+script = ExtResource("1")
+terms_catalog = ExtResource("2")
+editor_description = "Authoritative v0.4 owner for city GDP derivative positions, margin, expiry, destruction, and save normalization."

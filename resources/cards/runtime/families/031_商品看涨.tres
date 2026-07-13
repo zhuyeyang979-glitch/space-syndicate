@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://q1kadsb3vi0n"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_88m84"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_djorh"]
+
+[sub_resource type="Resource" id="Resource_52vv8"]
+script = ExtResource("1_88m84")
+card_id = "商品看涨1"
+family_id = "商品看涨"
+kind = &"product_futures"
+purchase_cost = 4
+rules_text = "围绕当前商品建立匿名看涨头寸；正式持续时间、保证金和盈亏上限见期货条款。"
+tags = PackedStringArray("经济", "期货", "看涨")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 1
+}
+
+[sub_resource type="Resource" id="Resource_td31l"]
+script = ExtResource("1_88m84")
+card_id = "商品看涨2"
+family_id = "商品看涨"
+rank = 2
+kind = &"product_futures"
+purchase_cost = 6
+rules_text = "升级商品看涨，需求压力更明显；正式金融条款由期货条款资产提供。"
+tags = PackedStringArray("经济", "期货", "升级")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 2
+}
+
+[sub_resource type="Resource" id="Resource_6fdub"]
+script = ExtResource("1_88m84")
+card_id = "商品看涨3"
+family_id = "商品看涨"
+rank = 3
+kind = &"product_futures"
+purchase_cost = 8
+rules_text = "核心商品看涨，适合配合合约、商路修复或怪兽经济天气。"
+tags = PackedStringArray("经济", "期货", "核心")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 3
+}
+
+[sub_resource type="Resource" id="Resource_xqime"]
+script = ExtResource("1_88m84")
+card_id = "商品看涨4"
+family_id = "商品看涨"
+rank = 4
+kind = &"product_futures"
+purchase_cost = 10
+rules_text = "终端商品看涨 IV，强收益同时公开暴露商品价格战窗口。"
+tags = PackedStringArray("经济", "期货", "IV")
+authored_keys = PackedStringArray("cost", "kind", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 4
+}
+
+[resource]
+script = ExtResource("2_djorh")
+family_id = "商品看涨"
+pack_id = &"finance"
+authored_ranks = Array[Resource]([SubResource("Resource_52vv8"), SubResource("Resource_td31l"), SubResource("Resource_6fdub"), SubResource("Resource_xqime")])
+public_pool_eligible = true
+upgradeable_family = true

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://w8qxeyrqqomr"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_i8j0o"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_00oxr"]
+
+[sub_resource type="Resource" id="Resource_5u750"]
+script = ExtResource("1_i8j0o")
+card_id = "自动撮合合约1"
+family_id = "自动撮合合约"
+kind = &"area_trade_contract"
+purchase_cost = 5
+rules_text = "匿名平台自动撮合供给区与需求区：不锁定当前选中商品，而是从两端现有供需中自动挑选可接通商品。签约奖励现金、交通与消费；拒签会留下断路压力。"
+tags = PackedStringArray("合约", "自动")
+contract_product_mode = &"auto"
+authored_keys = PackedStringArray("cost", "kind", "contract_product_mode", "contract_add_products", "contract_add_demands", "accept_cash", "accept_transport_delta", "accept_consumption_delta", "accept_route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "decline_cash_penalty", "decline_route_damage", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"accept_cash": 110,
+"accept_consumption_delta": 1,
+"accept_route_flow_multiplier": 1.22,
+"accept_transport_delta": 1,
+"contract_add_demands": 1,
+"contract_add_products": 1,
+"decline_cash_penalty": 80,
+"decline_route_damage": 1,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[resource]
+script = ExtResource("2_00oxr")
+family_id = "自动撮合合约"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_5u750")])
+public_pool_eligible = true
+upgradeable_family = true

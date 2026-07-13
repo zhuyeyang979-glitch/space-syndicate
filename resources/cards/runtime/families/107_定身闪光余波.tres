@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bchh0gym2v2eg"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_vncar"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_w7vja"]
+
+[sub_resource type="Resource" id="Resource_4b251"]
+script = ExtResource("1_vncar")
+card_id = "定身闪光余波1"
+family_id = "定身闪光余波"
+kind = &"special_monster_delay"
+purchase_cost = 3
+rules_text = "借定身闪光余波制造短暂空档，其他怪兽概率行动延后3秒。"
+tags = PackedStringArray("绿洲修复体", "控场")
+authored_keys = PackedStringArray("cost", "kind", "delay", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 3.0
+}
+
+[resource]
+script = ExtResource("2_w7vja")
+family_id = "定身闪光余波"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_4b251")])

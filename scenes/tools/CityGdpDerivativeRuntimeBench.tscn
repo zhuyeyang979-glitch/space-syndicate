@@ -1,0 +1,99 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/city_gdp_derivative_runtime_bench.gd" id="2_script"]
+
+[node name="CityGdpDerivativeRuntimeBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.012, 0.02, 0.034, 1)
+
+[node name="RuntimeHost" type="Node" parent="."]
+unique_name_in_owner = true
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "City GDP Derivative v0.4 Terms Alignment"
+
+[node name="SummaryLabel" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
+text = "Preparing 40 authored-terms and runtime cases..."
+
+[node name="StatusLabel" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "RUNNING"
+
+[node name="Body" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="TermsPanel" type="PanelContainer" parent="Margin/Rows/Body"]
+custom_minimum_size = Vector2(390, 0)
+layout_mode = 2
+
+[node name="TermsMargin" type="MarginContainer" parent="Margin/Rows/Body/TermsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="TermsText" type="RichTextLabel" parent="Margin/Rows/Body/TermsPanel/TermsMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+text = "[b]12 Inspector Resources[/b]\n\n城市买涨 I-IV\n城市做空 I-IV\n灾害保单 I-IV\n\nQueue 只授权资金。\nEffect open 原子锁定保证金。\nController exact-once 结算。"
+
+[node name="CasesPanel" type="PanelContainer" parent="Margin/Rows/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CasesMargin" type="MarginContainer" parent="Margin/Rows/Body/CasesPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="CasesText" type="RichTextLabel" parent="Margin/Rows/Body/CasesPanel/CasesMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+scroll_active = true
+text = "Waiting for v0.4 runtime cases..."

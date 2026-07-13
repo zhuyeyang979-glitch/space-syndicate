@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://g5btq16rjlrv"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_hmog8"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_e8ont"]
+
+[sub_resource type="Resource" id="Resource_o2qfw"]
+script = ExtResource("1_hmog8")
+card_id = "瘴气回收1"
+family_id = "瘴气回收"
+kind = &"miasma_reclaim"
+purchase_cost = 2
+rules_text = "回收怪兽180米内1枚瘴气并回复1HP；若其他怪兽靠近则追加伤害。"
+tags = PackedStringArray()
+range = 180.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "reclaim_count", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reclaim_count": 1
+}
+
+[sub_resource type="Resource" id="Resource_d2t8d"]
+script = ExtResource("1_hmog8")
+card_id = "瘴气回收2"
+family_id = "瘴气回收"
+rank = 2
+kind = &"miasma_reclaim"
+purchase_cost = 4
+rules_text = "回收怪兽240米内最多2枚瘴气，每枚回复1HP；其他怪兽靠近则追加伤害。"
+tags = PackedStringArray("瘴气", "续航")
+range = 240.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "reclaim_count", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reclaim_count": 2
+}
+
+[sub_resource type="Resource" id="Resource_5u3bu"]
+script = ExtResource("1_hmog8")
+card_id = "瘴气回收3"
+family_id = "瘴气回收"
+rank = 3
+kind = &"miasma_reclaim"
+purchase_cost = 6
+rules_text = "终端回收，移除320米内至多8枚瘴气，每枚回复1HP；其他怪兽靠近时按回收量追加伤害。"
+tags = PackedStringArray("瘴气", "终端")
+range = 320.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "reclaim_count", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"reclaim_count": 8
+}
+
+[resource]
+script = ExtResource("2_e8ont")
+family_id = "瘴气回收"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_o2qfw"), SubResource("Resource_d2t8d"), SubResource("Resource_5u3bu")])
+upgradeable_family = true

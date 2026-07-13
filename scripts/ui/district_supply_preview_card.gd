@@ -229,6 +229,8 @@ func _dictionary_color(data: Dictionary, key: String, fallback: Color) -> Color:
 	var value: Variant = data.get(key, fallback)
 	if value is Color:
 		return value as Color
+	if value is String and str(value).begins_with("#"):
+		return Color(str(value))
 	return fallback
 
 

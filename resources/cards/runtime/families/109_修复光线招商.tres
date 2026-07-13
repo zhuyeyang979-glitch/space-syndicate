@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://de8hcgbct3p1w"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_nxdu4"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_fxh1h"]
+
+[sub_resource type="Resource" id="Resource_xi7ox"]
+script = ExtResource("1_nxdu4")
+card_id = "修复光线招商1"
+family_id = "修复光线招商"
+kind = &"route_flow_boon"
+purchase_cost = 5
+rules_text = "把绿洲修复体修复光线包装成招商窗口：选中己方城市商路流通收入×1.75，持续90秒，并修复2条断路压力。"
+tags = PackedStringArray("绿洲修复体", "招商")
+authored_keys = PackedStringArray("cost", "kind", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "repair_routes", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 2,
+"route_flow_multiplier": 1.75,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[resource]
+script = ExtResource("2_fxh1h")
+family_id = "修复光线招商"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_xi7ox")])

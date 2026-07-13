@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_resolution_execution_world_bridge.gd" id="1_bridge"]
+
+[node name="CardResolutionExecutionWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Stateless executor for CardResolutionExecutionRuntimeService intents. It chooses no phase and owns no queue, timer, inventory, or concrete card rule."

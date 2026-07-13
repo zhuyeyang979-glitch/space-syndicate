@@ -1,0 +1,61 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/product_codex_browser.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ProductCodexDetail.tscn" id="3_detail"]
+
+[node name="ProductCodexBrowser" type="VBoxContainer"]
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 10
+script = ExtResource("2_script")
+
+[node name="ProductBrowserNavRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ProductBrowserPreviousButton" type="Button" parent="ProductBrowserNavRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+text = "缩略图上一页"
+
+[node name="ProductBrowserPageLabel" type="Label" parent="ProductBrowserNavRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.73, 0.97, 0.82, 1)
+theme_override_font_sizes/font_size = 12
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "第1/1页"
+
+[node name="ProductBrowserNextButton" type="Button" parent="ProductBrowserNavRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+text = "缩略图下一页"
+
+[node name="ProductBrowserOverviewHost" type="HFlowContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="ProductBrowserThumbnailGrid" type="GridContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="ProductBrowserPreviewLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.64, 0.72, 1)
+theme_override_font_sizes/font_size = 10
+text = "悬停预览 | 双击进入完整详情"
+
+[node name="ProductBrowserPreviewDetail" parent="." instance=ExtResource("3_detail")]
+unique_name_in_owner = true
+layout_mode = 2

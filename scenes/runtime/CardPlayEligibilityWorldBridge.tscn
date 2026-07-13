@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_play_eligibility_world_bridge.gd" id="1_bridge"]
+
+[node name="CardPlayEligibilityWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Read-only world-fact bridge for CardPlayEligibilityRuntimeService. It does not decide legality, mutate state, own queue phases, or format UI copy."

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DevelopmentRouteProfileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/development_route_profile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+route_id = "city_growth"
+display_name = "城市成长"
+goal = "建设、升级生产/需求/交通，把稳定GDP变成终局现金。"
+play_pattern = "先建稳定城市，再补生产、需求和交通，把GDP按秒滚成现金。"
+counterplay = "断商路、做空GDP、诱导怪兽踩城，或用合约改走需求。"
+ai_plan_hint = "领先时继续修路/保险；落后时只在安全高GDP区域扩张。"
+strategy_labels = Array[String](["城市成长"])
+required_for_ai_baseline = true
+sort_order = 0

@@ -39,10 +39,10 @@ from reportlab.platypus import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_MD = ROOT / "docs" / "tabletop_rulebook.md"
-ASSET_DIR = ROOT / "tmp" / "rulebook_assets"
-DOCX_OUT = ROOT / "output" / "documents" / "space_syndicate_tabletop_rulebook_v0.2.docx"
-PDF_OUT = ROOT / "output" / "pdf" / "space_syndicate_tabletop_rulebook_v0.2.pdf"
+SOURCE_MD = ROOT / "docs" / "tabletop_rulebook_v05.md"
+ASSET_DIR = ROOT / "tmp" / "pdfs" / "space_syndicate_rulebook_v05_assets"
+DOCX_OUT = ROOT / "output" / "documents" / "space_syndicate_tabletop_rulebook_v0.5.docx"
+PDF_OUT = ROOT / "output" / "pdf" / "space_syndicate_tabletop_rulebook_v0.5.pdf"
 
 FONT_BODY = Path("C:/Windows/Fonts/Deng.ttf")
 FONT_BOLD = Path("C:/Windows/Fonts/Dengb.ttf")
@@ -151,13 +151,13 @@ def base_canvas(title: str, subtitle: str) -> tuple[Image.Image, ImageDraw.Image
 
 
 def diagram_information() -> Path:
-    img, draw = base_canvas("信息边界", "玩家靠公开线索推理，不直接看到对手的私有资源")
+    img, draw = base_canvas("信息边界", "平时隐藏经济真相；进入120秒审计名单后公开资产负债表")
     font = load_font(FONT_BOLD, 30)
     small = load_font(FONT_BODY, 24)
     boxes = [
-        ((110, 220, 500, 640), "公开桌面", ["星球地图", "城市/破坏", "牌轨/竞价", "价格/天气", "已揭示归属"], "EAF4FF"),
-        ((605, 220, 995, 640), "你的私有区", ["准确现金", "手牌", "弃牌选择", "城市归属", "私有标注"], "FFF7E6"),
-        ((1100, 220, 1490, 640), "对手隐藏区", ["准确现金不可见", "手牌不可见", "弃牌不可见", "计划不可见", "只能推理"], "F3F4F6"),
+        ((110, 220, 500, 640), "公开桌面", ["星球地图", "项目/破坏", "牌轨/出价", "价格/天气", "赌局总注"], "EAF4FF"),
+        ((605, 220, 995, 640), "你的私有区", ["准确现金", "手牌", "项目份额", "怪兽归属", "私有标注"], "FFF7E6"),
+        ((1100, 220, 1490, 640), "对手隐藏区", ["准确现金不可见", "手牌内容不可见", "项目份额不可见", "计划不可见", "靠线索推理"], "F3F4F6"),
     ]
     for box, title, items, fill in boxes:
         rounded_box(draw, box, fill, "CAD6E3", width=4)
@@ -168,7 +168,7 @@ def diagram_information() -> Path:
             y += 56
     arrow(draw, (500, 430), (605, 430), ORANGE)
     arrow(draw, (1100, 430), (995, 430), ORANGE)
-    draw.text((660, 690), "下注、目标、损伤、商品条件会变成可读线索", font=small, fill=hex_rgb(BLUE))
+    draw.text((600, 690), "审计名单：经济资产公开；手牌内容、私人情报与AI计划仍隐藏", font=small, fill=hex_rgb(BLUE))
     path = ASSET_DIR / "diagram_01_information.png"
     img.save(path)
     return path
@@ -179,10 +179,10 @@ def diagram_core_loop() -> Path:
     font = load_font(FONT_BOLD, 26)
     steps = [
         ("首召怪兽", "进入购牌网络"),
-        ("城市化牌", "新增生产/需求/通商"),
+        ("建设项目", "新增生产/需求/通商"),
         ("购买卡牌", "从区域牌架扩张路线"),
         ("公开出牌", "结算、竞价、留下线索"),
-        ("经济变化", "GDP/商品/商路转成现金"),
+        ("经济变化", "归属GDP形成控制"),
         ("怪兽/军队压力", "破坏、保护、下注、推理"),
     ]
     centers = [(290, 300), (650, 300), (1010, 300), (1190, 575), (650, 575), (290, 575)]
@@ -196,25 +196,25 @@ def diagram_core_loop() -> Path:
         start = (int(a[0] + (b[0] - a[0]) * 0.28), int(a[1] + (b[1] - a[1]) * 0.28))
         end = (int(a[0] + (b[0] - a[0]) * 0.72), int(a[1] + (b[1] - a[1]) * 0.72))
         arrow(draw, start, end, BLUE)
-    draw.text((585, 722), "目标：终局倒计时结束时现金最多", font=load_font(FONT_BOLD, 28), fill=hex_rgb(ORANGE))
+    draw.text((505, 722), "目标：控制多个区域，并守住120秒公开经济审计", font=load_font(FONT_BOLD, 28), fill=hex_rgb(ORANGE))
     path = ASSET_DIR / "diagram_02_core_loop.png"
     img.save(path)
     return path
 
 
 def diagram_gdp() -> Path:
-    img, draw = base_canvas("城市化份额如何变成现金", "城市化牌新增商品项目，收益按隐藏份额分配")
+    img, draw = base_canvas("项目份额如何变成区域控制", "GDP先归入具体项目，再按份额分配给玩家")
     font = load_font(FONT_BOLD, 25)
     small = load_font(FONT_BODY, 21)
     left_nodes = [
         ((90, 215, 355, 310), "生产项目", "某商品产出"),
         ((90, 345, 355, 440), "需求项目", "消费/订单"),
         ((90, 475, 355, 570), "通商项目", "速度/商路"),
-        ((90, 605, 355, 700), "合约项目", "按商品连接"),
+        ((90, 605, 355, 700), "合约增益", "回到具体项目行"),
     ]
     right_nodes = [
-        ((1215, 250, 1490, 350), "份额饼图", "你 vs 对手合计"),
-        ((1215, 405, 1490, 505), "商品控制者", "决定相关合约"),
+        ((1215, 250, 1490, 350), "个人归属GDP", "项目GDP × 份额"),
+        ((1215, 405, 1490, 505), "区域控制", "至少30%且唯一最高"),
         ((1215, 560, 1490, 660), "损伤/市场", "影响项目 GDP"),
     ]
     for box, title, sub in left_nodes + right_nodes:
@@ -222,11 +222,11 @@ def diagram_gdp() -> Path:
         draw_centered_text(draw, (box[0] + 12, box[1] + 8, box[2] - 12, box[1] + 48), title, font, NAVY, 6)
         draw_centered_text(draw, (box[0] + 12, box[1] + 48, box[2] - 12, box[3] - 8), sub, small, GRAY, 8)
     rounded_box(draw, (555, 315, 1045, 500), "EAFBF0", "80B88A", width=5)
-    draw_centered_text(draw, (585, 334, 1015, 400), "城市化项目 GDP", load_font(FONT_BOLD, 38), GREEN, 10)
+    draw_centered_text(draw, (585, 334, 1015, 400), "结构化项目 GDP", load_font(FONT_BOLD, 38), GREEN, 10)
     draw_centered_text(draw, (585, 405, 1015, 480), "生产/需求/通商各自计算", load_font(FONT_BODY, 27), NAVY, 11)
     rounded_box(draw, (560, 600, 1040, 725), "FFF7E6", "E4B454", width=4)
-    draw_centered_text(draw, (580, 615, 1020, 675), "按城市化份额分钱", load_font(FONT_BOLD, 32), ORANGE, 10)
-    draw_centered_text(draw, (580, 680, 1020, 713), "金融协议也按相关份额结算", load_font(FONT_BODY, 21), NAVY, 14)
+    draw_centered_text(draw, (580, 615, 1020, 675), "按项目份额归属玩家", load_font(FONT_BOLD, 32), ORANGE, 10)
+    draw_centered_text(draw, (580, 680, 1020, 713), "区域总GDP为0时，所有控制占比归零", load_font(FONT_BODY, 21), NAVY, 16)
     for box, _, _ in left_nodes:
         arrow(draw, (box[2], (box[1] + box[3]) // 2), (555, 410), GREEN)
     for box, _, _ in right_nodes:
@@ -238,15 +238,15 @@ def diagram_gdp() -> Path:
 
 
 def diagram_card_track() -> Path:
-    img, draw = base_canvas("公开牌轨与竞价", "所有人看得到牌和结果，但默认不知道是谁打的")
+    img, draw = base_canvas("8秒卡牌组与公开牌轨", "牌和结果公开，出牌者默认隐藏；产能在整组中累计占用")
     font = load_font(FONT_BOLD, 25)
     small = load_font(FONT_BODY, 20)
     boxes = [
         ((80, 310, 300, 470), "手牌", "选择目标\n提交即承诺", "FFF7E6"),
         ((380, 310, 600, 470), "公开展示", "卡牌/目标/条件", "EAF4FF"),
-        ((680, 310, 900, 470), "竞价排序", "金额公开\n身份隐藏", "F1F0FF"),
+        ((680, 310, 900, 470), "优先排序", "0/50/100\n身份隐藏", "F1F0FF"),
         ((980, 310, 1200, 470), "结算", "效果落到地图\n经济变化", "EAFBF0"),
-        ((1280, 310, 1500, 470), "推理", "猜归属\n赢钱/贴标签", "FCECEB"),
+        ((1280, 310, 1500, 470), "情报", "猜项目控制\n私下揭示", "FCECEB"),
     ]
     for box, title, sub, fill in boxes:
         rounded_box(draw, box, fill, "B8C7D9", width=4)
@@ -254,7 +254,7 @@ def diagram_card_track() -> Path:
         draw_centered_text(draw, (box[0] + 10, box[1] + 78, box[2] - 10, box[3] - 18), sub, small, GRAY, 7)
     for box_a, box_b in zip(boxes, boxes[1:]):
         arrow(draw, (box_a[0][2] + 18, 390), (box_b[0][0] - 18, 390), BLUE)
-    draw.text((330, 610), "同一短窗内多张牌才进入竞价；单张牌直接展示并结算。", font=load_font(FONT_BODY, 27), fill=hex_rgb(NAVY))
+    draw.text((250, 610), "前6秒组织、后2秒锁牌；每人最多2张，优先出价进入下一场怪兽公共池。", font=load_font(FONT_BODY, 27), fill=hex_rgb(NAVY))
     path = ASSET_DIR / "diagram_04_card_track.png"
     img.save(path)
     return path
@@ -295,16 +295,16 @@ def diagram_monster() -> Path:
 
 
 def diagram_wager() -> Path:
-    img, draw = base_canvas("怪兽赌局", "怪兽战斗前冻结时间，全员按现金百分比公开下注")
+    img, draw = base_canvas("整场怪兽战斗赌局", "底注按现金百分比；后续加注只用绝对金额")
     font = load_font(FONT_BOLD, 24)
     small = load_font(FONT_BODY, 19)
     steps = [
         ("怪兽相遇", "准备战斗"),
-        ("时间冻结", "最多 30 秒"),
+        ("下注暂停", "固定 8 秒"),
         ("基础比例", "现金的 5%-10%"),
-        ("公开加注", "每次 +1%"),
-        ("选择阵营", "押造成最多伤害者"),
-        ("赢家分池", "逆风翻盘机会"),
+        ("连续加注", "+50/+100/+250"),
+        ("整场战斗", "可用卡牌干预"),
+        ("按注分池", "平局退款滚池"),
     ]
     x = 85
     for idx, (title, sub) in enumerate(steps):
@@ -316,7 +316,7 @@ def diagram_wager() -> Path:
         if idx < len(steps) - 1:
             arrow(draw, (x + 220, 425), (x + 270, 425), BLUE)
         x += 250
-    draw.text((180, 640), "下注金额和玩家身份公开，所以赌局也是推理线索；但胜负按战斗结果结算。", font=load_font(FONT_BODY, 27), fill=hex_rgb(NAVY))
+    draw.text((165, 640), "8秒内加注次数不设上限；窗口关闭后不能换边或追入，胜负按整场战斗结算。", font=load_font(FONT_BODY, 27), fill=hex_rgb(NAVY))
     path = ASSET_DIR / "diagram_06_wager.png"
     img.save(path)
     return path
@@ -326,10 +326,10 @@ def build_diagrams() -> dict[str, tuple[Path, str]]:
     return {
         "## 3. 玩家人数与信息边界": (diagram_information(), "图 1：公开信息、你的私有信息与对手隐藏信息的边界。"),
         "## 6. 一局游戏的基本流程": (diagram_core_loop(), "图 2：一局游戏的核心循环。"),
-        "## 7. 城市、GDP 与赚钱": (diagram_gdp(), "图 3：城市化项目、份额饼图与 GDP 分配。"),
-        "## 10. 出牌、公开牌轨与竞价": (diagram_card_track(), "图 4：卡牌从手牌到公开牌轨、竞价、结算和推理的路径。"),
+        "## 7. 区域、共享城市与 GDP": (diagram_gdp(), "图 3：GDP 从具体项目归属玩家，再形成区域控制。"),
+        "## 11. 8 秒出牌组、影响力与公开牌轨": (diagram_card_track(), "图 4：卡牌组从提交、优先排序到公开结算与项目情报。"),
         "## 12. 怪兽规则": (diagram_monster(), "图 5：怪兽自动目标、玩家一次性影响和公开线索。"),
-        "## 13. 怪兽赌局": (diagram_wager(), "图 6：怪兽赌局的冻结、百分比下注与结算。"),
+        "## 13. 整场怪兽战斗赌局": (diagram_wager(), "图 6：百分比底注、绝对金额连续加注与整场战斗结算。"),
     }
 
 
@@ -501,24 +501,27 @@ def build_docx(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> Non
     set_style(doc.styles["Heading 1"], "DengXian", 16, BLUE, True, 18, 10, 1.15)
     set_style(doc.styles["Heading 2"], "DengXian", 13, BLUE, True, 14, 7, 1.15)
     set_style(doc.styles["Heading 3"], "DengXian", 12, NAVY, True, 10, 5, 1.15)
+    doc.styles["Heading 1"].paragraph_format.keep_with_next = True
+    doc.styles["Heading 2"].paragraph_format.keep_with_next = True
+    doc.styles["Heading 3"].paragraph_format.keep_with_next = True
     set_style(doc.styles["Caption"], "DengXian", 9, GRAY, False, 0, 8, 1.15)
     set_style(doc.styles["List Bullet"], "DengXian", 10.5, INK, False, 0, 4, 1.25)
     set_style(doc.styles["List Number"], "DengXian", 10.5, INK, False, 0, 4, 1.25)
 
     header = section.header.paragraphs[0]
     header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    run = header.add_run("太空辛迪加 | 试玩规则书 v0.2")
+    run = header.add_run("太空辛迪加 | 玩家规则书 v0.5")
     set_run_font(run, "DengXian", 9, GRAY, False)
     footer = section.footer.paragraphs[0]
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    f_run = footer.add_run("玩家规则书 - 当前 Godot 4.7 原型")
+    f_run = footer.add_run("已批准的 v0.5 设计规则 | 当前运行时仍待迁移")
     set_run_font(f_run, "DengXian", 9, GRAY, False)
 
     # Editorial-cover inspired first page.
     doc.add_paragraph()
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("试玩规则书")
+    r = p.add_run("玩家规则书 v0.5")
     set_run_font(r, "DengXian", 13, ORANGE, True)
     p.paragraph_format.space_after = Pt(16)
     p = doc.add_paragraph()
@@ -533,7 +536,7 @@ def build_docx(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> Non
     p.paragraph_format.space_after = Pt(28)
     add_callout_docx(
         doc,
-        "城市化份额让你赚钱；怪兽和军队让别人少赚钱；公开线索让你猜出谁在背后操作。最后，钱最多的人赢。",
+        "让具体项目产生你的归属 GDP，控制多个区域，并在 120 秒公开经济审计中守住领先。",
         "FFF7E6",
     )
     doc.add_paragraph()
@@ -541,10 +544,10 @@ def build_docx(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> Non
     meta.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_widths(meta, [1.7, 4.55])
     meta_rows = [
-        ("版本", "v0.2 - 真人试玩规则书"),
-        ("适用", "当前 Godot 4.7 实时 PVE roguelike 原型"),
+        ("版本", "v0.5 - 已批准玩家规则"),
+        ("实现状态", "设计权威已锁定；当前 Godot 运行时仍为 v0.4"),
         ("玩家", "3-8 席；通常 1 名真人玩家对 2-7 名 AI"),
-        ("目标", "达到现金目标后进入终局倒计时；结束时现金最多获胜"),
+        ("目标", "控制本局规定的区域与归属 GDP，并赢下 120 秒审计"),
     ]
     for idx, (k, v) in enumerate(meta_rows):
         shade_cell(meta.cell(idx, 0), "E8EEF5")
@@ -553,13 +556,13 @@ def build_docx(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> Non
 
     doc.add_page_break()
     doc.add_heading("阅读路线", level=1)
-    add_callout_docx(doc, "第一次试玩：先读 1-6 章理解桌面，再读 7-13 章理解赚钱、出牌和怪兽。其余章节可在遇到对应系统时查阅。", "EAF4FF")
+    add_callout_docx(doc, "第一次试玩：先读 1-8 章理解 GDP 控制胜利，再读 9-13 章理解产业卡牌与怪兽赌局；其余系统按需查阅。", "EAF4FF")
     toc_items = [
-        "1-3 章：游戏概念、目标、信息边界",
-        "4-6 章：组件、开局、一局基本流程",
-        "7-11 章：GDP、商品、购牌、出牌和卡牌类别",
-        "12-18 章：怪兽、赌局、军队、合约、情报、天气和金融",
-        "19-22 章：结束条件、第一局建议、关键词速查",
+        "1-3 章：游戏目标与信息边界",
+        "4-8 章：开局、实时流程、项目 GDP 与终局审计",
+        "9-13 章：六类产业、购牌、出牌、怪兽与整场赌局",
+        "14-18 章：自动商路、合约、复兴、情报、军队、天气和金融",
+        "19-22 章：财务危机、第一局、完整例子与数字速查",
     ]
     for item in toc_items:
         p = doc.add_paragraph(style="List Bullet")
@@ -657,6 +660,7 @@ def build_pdf(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> None
             spaceBefore=14,
             spaceAfter=8,
             wordWrap="CJK",
+            keepWithNext=1,
         ),
         "h2": ParagraphStyle(
             "H2CN",
@@ -667,6 +671,7 @@ def build_pdf(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> None
             spaceBefore=10,
             spaceAfter=6,
             wordWrap="CJK",
+            keepWithNext=1,
         ),
         "caption": ParagraphStyle(
             "CaptionCN",
@@ -742,7 +747,7 @@ def build_pdf(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> None
         leftMargin=1 * inch,
         topMargin=0.85 * inch,
         bottomMargin=0.75 * inch,
-        title="太空辛迪加试玩规则书 v0.2",
+        title="太空辛迪加玩家规则书 v0.5",
         author="Space Syndicate",
     )
 
@@ -750,16 +755,16 @@ def build_pdf(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> None
         canvas.saveState()
         canvas.setFont("DengXian", 8)
         canvas.setFillColor(colors.HexColor("#6B7280"))
-        canvas.drawString(1 * inch, 0.45 * inch, "太空辛迪加 | 试玩规则书 v0.2")
+        canvas.drawString(1 * inch, 0.45 * inch, "太空辛迪加 | 玩家规则书 v0.5")
         canvas.drawRightString(7.5 * inch, 0.45 * inch, f"Page {document.page}")
         canvas.restoreState()
 
     story: list = []
     story.append(Spacer(1, 1.15 * inch))
-    story.append(Paragraph("试玩规则书", ParagraphStyle("Kicker", fontName=bold_font, fontSize=13, leading=18, textColor=colors.HexColor("#D9893D"), alignment=TA_CENTER, spaceAfter=14)))
+    story.append(Paragraph("玩家规则书 v0.5", ParagraphStyle("Kicker", fontName=bold_font, fontSize=13, leading=18, textColor=colors.HexColor("#D9893D"), alignment=TA_CENTER, spaceAfter=14)))
     story.append(Paragraph("《太空辛迪加》", styles["cover_title"]))
     story.append(Paragraph("实时 PVE 隐藏信息商业怪兽牌局", styles["cover_subtitle"]))
-    callout_data = [[Paragraph("城市化份额让你赚钱；怪兽和军队让别人少赚钱；公开线索让你猜出谁在背后操作。最后，钱最多的人赢。", styles["callout"])]]
+    callout_data = [[Paragraph("让具体项目产生你的归属 GDP，控制多个区域，并在 120 秒公开经济审计中守住领先。", styles["callout"])]]
     callout = Table(callout_data, colWidths=[6.1 * inch], hAlign="CENTER")
     callout.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FFF7E6")), ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#E4B454")), ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12), ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 10)]))
     story.append(callout)
@@ -767,42 +772,44 @@ def build_pdf(blocks: list[dict], diagrams: dict[str, tuple[Path, str]]) -> None
     add_pdf_table(
         story,
         [
-            ["版本", "v0.2 - 真人试玩规则书"],
-            ["适用", "当前 Godot 4.7 实时 PVE roguelike 原型"],
+            ["版本", "v0.5 - 已批准玩家规则"],
+            ["实现状态", "设计权威已锁定；当前 Godot 运行时仍为 v0.4"],
             ["玩家", "3-8 席；通常 1 名真人玩家对 2-7 名 AI"],
-            ["目标", "达到现金目标后进入终局倒计时；结束时现金最多获胜"],
+            ["目标", "控制本局规定的区域与归属 GDP，并赢下 120 秒审计"],
         ],
         styles,
     )
     story.append(PageBreak())
     story.append(Paragraph("阅读路线", styles["h1"]))
-    story.append(Paragraph("第一次试玩：先读 1-6 章理解桌面，再读 7-13 章理解赚钱、出牌和怪兽。其余章节可在遇到对应系统时查阅。", styles["body"]))
+    story.append(Paragraph("第一次试玩：先读 1-8 章理解 GDP 控制胜利，再读 9-13 章理解产业卡牌与怪兽赌局；其余系统按需查阅。", styles["body"]))
     for item in [
-        "1-3 章：游戏概念、目标、信息边界",
-        "4-6 章：组件、开局、一局基本流程",
-        "7-11 章：GDP、商品、购牌、出牌和卡牌类别",
-        "12-18 章：怪兽、赌局、军队、合约、情报、天气和金融",
-        "19-22 章：结束条件、第一局建议、关键词速查",
+        "1-3 章：游戏目标与信息边界",
+        "4-8 章：开局、实时流程、项目 GDP 与终局审计",
+        "9-13 章：六类产业、购牌、出牌、怪兽与整场赌局",
+        "14-18 章：自动商路、合约、复兴、情报、军队、天气和金融",
+        "19-22 章：财务危机、第一局、完整例子与数字速查",
     ]:
         story.append(Paragraph(ptext(item), styles["bullet"], bulletText="•"))
     story.append(Spacer(1, 10))
 
     for block in blocks[1:]:
         if block["type"] == "heading":
-            if block["level"] == 2:
-                story.append(Paragraph(ptext(block["text"]), styles["h1"]))
-            else:
-                story.append(Paragraph(ptext(block["text"]), styles["h2"]))
+            heading = Paragraph(ptext(block["text"]), styles["h1" if block["level"] == 2 else "h2"])
             if block.get("raw") in diagrams:
                 image_path, caption = diagrams[block["raw"]]
                 story.append(
                     KeepTogether(
                         [
+                            heading,
                             RLImage(str(image_path), width=6.25 * inch, height=3.32 * inch),
                             Paragraph(ptext(caption), styles["caption"]),
                         ]
                     )
                 )
+            else:
+                if block["text"].startswith("22. "):
+                    story.append(PageBreak())
+                story.append(heading)
         elif block["type"] == "para":
             story.append(Paragraph(ptext(block["text"]), styles["body"]))
         elif block["type"] == "bullets":

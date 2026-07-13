@@ -50,18 +50,24 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var shortest_action_text := _shortest_action_text(phase, focus_target)
 	var primary_label := str(phase.get("primary_action_hint", "定位下一步")) if not completed else "已完成"
 	var goal_text := _compact_phase_goal(phase, fallback_goal) if campaign_focus_mode else str(phase.get("goal", fallback_goal))
+	var completion_summary := str(data.get("completion_summary", "剧本目标完成。")).strip_edges()
+	if completion_summary == "":
+		completion_summary = "剧本目标完成。"
 	if help_visible:
 		primary_label = "定位下一步"
 		action_id = "scenario_focus_target"
 	ui = {
 		"visible": bool(data.get("visible", true)),
 		"collapsed": closed_to_chip or completed,
+		"completed": completed,
+		"completion_label": str(data.get("completion_label", "首局完成｜整局继续")),
+		"completion_summary": completion_summary,
 		"scenario_id": scenario_id,
 		"title": title_text if title_text != "" else "试玩剧本",
 		"phase_id": str(phase.get("id", "")),
 		"phase_label": str(phase.get("label", "目标")),
-		"goal": goal_text if not completed else "剧本目标完成。",
-		"detail": str(phase.get("detail", phase.get("goal", fallback_detail))),
+		"goal": goal_text if not completed else completion_summary,
+		"detail": str(phase.get("detail", phase.get("goal", fallback_detail))) if not completed else completion_summary,
 		"progress_text": "%d/%d" % [mini(index + 1, total), total] if not completed else "%d/%d" % [total, total],
 		"help_visible": help_visible,
 		"help_text": help_text,
@@ -104,13 +110,23 @@ func _compact_phase_goal(phase: Dictionary, fallback: String) -> String:
 		"first_summon":
 			return "打出起始怪兽。"
 		"build_city":
-			return "建第一座城市。"
+			return "打开发展牌架，建立商品项目。"
 		"open_rack":
 			return "打开区域牌架。"
 		"buy_card":
 			return "买一张牌。"
 		"play_card":
 			return "打出一张手牌。"
+		"check_economy":
+			return "确认首份 GDP 或现金流。"
+		"observe_ai_public_action":
+			return "观察 AI 公开行动。"
+		"inspect_clues":
+			return "读取公开线索。"
+		"inspect_monster_pressure":
+			return "查看怪兽压力。"
+		"choose_route":
+			return "选择下一步路线。"
 		"select_track_card":
 			return "点选顶部牌轨。"
 		"read_inspector":
@@ -163,7 +179,7 @@ func _shortest_action_text(phase: Dictionary, focus_target: String) -> String:
 		"first_summon":
 			return "看手牌，打出起始怪兽。"
 		"build_city":
-			return "看行动区，点城市化。"
+			return "定位到区域，打开发展牌架。"
 		"open_rack":
 			return "定位到区域，打开牌架。"
 		"compare_cards":
@@ -174,6 +190,16 @@ func _shortest_action_text(phase: Dictionary, focus_target: String) -> String:
 			return "在私密窗口选一张旧牌。"
 		"play_card":
 			return "看手牌，打出可用牌。"
+		"check_economy":
+			return "打开经济总览，确认首份收入。"
+		"observe_ai_public_action":
+			return "看公开结果，不读 AI 私有计划。"
+		"inspect_clues":
+			return "打开线索档案，整理公开事实。"
+		"inspect_monster_pressure":
+			return "看地图怪兽层与受压目标。"
+		"choose_route":
+			return "根据收入和压力选择路线。"
 		"select_track_card", "select_anonymous_card":
 			return "看顶部牌轨，选一张牌。"
 		"read_inspector":

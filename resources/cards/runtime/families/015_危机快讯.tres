@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dpcifupx8ifvc"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_bg4a7"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_i5t5i"]
+
+[sub_resource type="Resource" id="Resource_bl65b"]
+script = ExtResource("1_bg4a7")
+card_id = "危机快讯1"
+family_id = "危机快讯"
+kind = &"news_event"
+purchase_cost = 4
+rules_text = "匿名发布危机快讯：选中城市/区域热度+24；若这里有存活城市，追加1点商路断损压力。"
+tags = PackedStringArray("新闻", "压制")
+authored_keys = PackedStringArray("cost", "kind", "news_category", "panic", "route_damage", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"news_category": "crisis",
+"panic": 24,
+"route_damage": 1
+}
+
+[resource]
+script = ExtResource("2_i5t5i")
+family_id = "危机快讯"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_bl65b")])
+public_pool_eligible = true
+upgradeable_family = true

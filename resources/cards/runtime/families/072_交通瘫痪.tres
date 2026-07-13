@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dmkai50lxtldn"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_gp7ew"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_06trj"]
+
+[sub_resource type="Resource" id="Resource_40ct4"]
+script = ExtResource("1_gp7ew")
+card_id = "交通瘫痪1"
+family_id = "交通瘫痪"
+kind = &"region_economy_shift"
+purchase_cost = 4
+rules_text = "选中区域公共交通水平-1，并追加1点商路压力。商品流动速度与过境GDP会下降。"
+tags = PackedStringArray("区域", "破坏")
+authored_keys = PackedStringArray("cost", "kind", "transport_delta", "route_damage", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"panic": 12,
+"route_damage": 1,
+"transport_delta": -1
+}
+
+[resource]
+script = ExtResource("2_06trj")
+family_id = "交通瘫痪"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_40ct4")])
+public_pool_eligible = true

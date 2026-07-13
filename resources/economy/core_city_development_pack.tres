@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CityDevelopmentCardTemplatePackResource" format=3 uid="uid://c0k0xhefr0sdt"]
+
+[ext_resource type="Script" uid="uid://c22dk57w0wten" path="res://scripts/economy/city_development_card_template_pack_resource.gd" id="1_pack"]
+[ext_resource type="Script" uid="uid://vmkqwd1tqqrj" path="res://scripts/economy/city_development_card_template_resource.gd" id="2_template"]
+
+[sub_resource type="Resource" id="ProductionTemplate"]
+script = ExtResource("2_template")
+
+[sub_resource type="Resource" id="DemandTemplate"]
+script = ExtResource("2_template")
+template_id = "demand"
+card_name_pattern = "%s交易所%d"
+project_direction = "demand"
+effect_pattern = "在目标区域建立或强化%s需求项目，并获得项目贡献份额。"
+
+[sub_resource type="Resource" id="CommerceTemplate"]
+script = ExtResource("2_template")
+template_id = "commerce"
+card_name_pattern = "%s通商港%d"
+project_direction = "commerce"
+purchase_price = 4
+effect_pattern = "在目标区域建立或强化%s通商项目，并获得项目贡献份额。"
+
+[resource]
+script = ExtResource("1_pack")
+templates = Array[Resource]([SubResource("ProductionTemplate"), SubResource("DemandTemplate"), SubResource("CommerceTemplate")])

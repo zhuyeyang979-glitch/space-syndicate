@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/055_行星防卫军.tres" id="1_ipgb2"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/056_制空战斗机.tres" id="2_rvu6p"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/057_轨道轰炸机.tres" id="3_lbteo"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/058_重装坦克.tres" id="4_aege4"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/059_导弹阵地.tres" id="5_h5j6b"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/060_潜航舰队.tres" id="6_qua0t"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/061_星海战舰.tres" id="7_hg2nk"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="8_32n8a"]
+
+[resource]
+script = ExtResource("8_32n8a")
+pack_id = &"military"
+display_name = "Military"
+families = Array[Resource]([ExtResource("1_ipgb2"), ExtResource("2_rvu6p"), ExtResource("3_lbteo"), ExtResource("4_aege4"), ExtResource("5_h5j6b"), ExtResource("6_qua0t"), ExtResource("7_hg2nk")])

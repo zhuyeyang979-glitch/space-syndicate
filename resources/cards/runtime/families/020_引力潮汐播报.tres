@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dyd0ohey40dum"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_mw05m"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_3gx7f"]
+
+[sub_resource type="Resource" id="Resource_7ritd"]
+script = ExtResource("1_mw05m")
+card_id = "引力潮汐播报1"
+family_id = "引力潮汐播报"
+kind = &"weather_control"
+purchase_cost = 4
+rules_text = "主动发布引力潮汐预报：约80秒后覆盖选中区域周边，海洋与交通流速提升，适合强化商路GDP。"
+tags = PackedStringArray("天气", "商路")
+play_product = "离岸水晶"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 110.0,
+"weather_forecast_lead_seconds": 80.0,
+"weather_type": "gravity_tide",
+"weather_zone_count": 3
+}
+
+[resource]
+script = ExtResource("2_3gx7f")
+family_id = "引力潮汐播报"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_7ritd")])
+public_pool_eligible = true
+upgradeable_family = true

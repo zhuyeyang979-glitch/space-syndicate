@@ -9,6 +9,7 @@ signal track_entry_unhovered(entry: Dictionary)
 const SLOT_HEIGHT := 34.0
 const SLOT_MIN_WIDTH := 146.0
 const SLOT_MAX_WIDTH := 208.0
+const CardTrackSlotScene := preload("res://scenes/ui/CardTrackSlot.tscn")
 const EMPTY_TRACK_ENTRY := {
 	"label": "牌轨空闲",
 	"slot": "--",
@@ -46,126 +47,52 @@ func set_entries(entries: Array) -> void:
 
 
 func _add_track_slot(entry: Dictionary, index: int) -> void:
-	var accent := _entry_color(entry)
-	var is_event := str(entry.get("kind", "")).strip_edges().to_lower() == "event"
-	var selected := bool(entry.get("selected", entry.get("focused", false)))
-	var hover_action := _entry_hover_action(entry)
-	var hovered := hover_action != "" and hover_action == _hovered_track_action
-	var active := bool(entry.get("active", false)) or selected or hovered
-	var slot_panel := PanelContainer.new()
-	slot_panel.name = "PublicTrackSlot" if index == 0 else "PublicTrackSlot_%02d" % (index + 1)
-	slot_panel.custom_minimum_size = Vector2(_slot_width(entry), SLOT_HEIGHT)
-	slot_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	slot_panel.focus_mode = Control.FOCUS_ALL
-	slot_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	slot_panel.tooltip_text = str(entry.get("tooltip", ""))
-	slot_panel.set_meta("accent", accent)
-	slot_panel.set_meta("base_active", bool(entry.get("active", false)))
-	slot_panel.set_meta("selected", selected)
-	slot_panel.set_meta("hover_action", hover_action)
-	slot_panel.set_meta("runtime_focus_kind", "public_track_slot")
-	slot_panel.add_theme_stylebox_override("panel", _slot_style(accent, active, selected, hovered))
-	slot_panel.gui_input.connect(Callable(self, "_on_track_slot_gui_input").bind(entry.duplicate(true)))
-	slot_panel.mouse_entered.connect(func() -> void:
-		track_entry_hovered.emit(entry.duplicate(true))
-	)
-	slot_panel.mouse_exited.connect(func() -> void:
-		track_entry_unhovered.emit(entry.duplicate(true))
-	)
-	slot_panel.focus_entered.connect(func() -> void:
-		track_entry_hovered.emit(entry.duplicate(true))
-	)
-	slot_panel.focus_exited.connect(func() -> void:
-		track_entry_unhovered.emit(entry.duplicate(true))
-	)
+	var slot_panel := CardTrackSlotScene.instantiate() as Control
+	if slot_panel == null:
+		return
 	card_track_row.add_child(slot_panel)
-	if selected:
-		var selected_marker := Node.new()
-		selected_marker.name = "PublicTrackSlotSelected"
-		slot_panel.add_child(selected_marker)
-	if hovered:
-		var hover_marker := Node.new()
-		hover_marker.name = "PublicTrackSlotHover"
-		slot_panel.add_child(hover_marker)
-	if is_event:
-		var event_marker := Node.new()
-		event_marker.name = "CardResolutionTimelineEventSlot"
-		slot_panel.add_child(event_marker)
+	if slot_panel.has_method("configure"):
+		slot_panel.call("configure", entry, index, {
+			"hovered_action": _hovered_track_action,
+			"slot_width": _slot_width(entry),
+			"slot_height": SLOT_HEIGHT,
+		})
+	_connect_track_slot_signals(slot_panel)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 6)
-	margin.add_theme_constant_override("margin_right", 6)
-	margin.add_theme_constant_override("margin_top", 2)
-	margin.add_theme_constant_override("margin_bottom", 2)
-	slot_panel.add_child(margin)
 
-	var stack := VBoxContainer.new()
-	stack.name = "PublicTrackSlotStack"
-	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", 0)
-	margin.add_child(stack)
+func _connect_track_slot_signals(slot_panel: Node) -> void:
+	if slot_panel.has_signal("entry_selected"):
+		var selected_callback := Callable(self, "_on_track_slot_entry_selected")
+		if not slot_panel.is_connected("entry_selected", selected_callback):
+			slot_panel.connect("entry_selected", selected_callback)
+	if slot_panel.has_signal("entry_opened"):
+		var opened_callback := Callable(self, "_on_track_slot_entry_opened")
+		if not slot_panel.is_connected("entry_opened", opened_callback):
+			slot_panel.connect("entry_opened", opened_callback)
+	if slot_panel.has_signal("entry_hovered"):
+		var hovered_callback := Callable(self, "_on_track_slot_entry_hovered")
+		if not slot_panel.is_connected("entry_hovered", hovered_callback):
+			slot_panel.connect("entry_hovered", hovered_callback)
+	if slot_panel.has_signal("entry_unhovered"):
+		var unhovered_callback := Callable(self, "_on_track_slot_entry_unhovered")
+		if not slot_panel.is_connected("entry_unhovered", unhovered_callback):
+			slot_panel.connect("entry_unhovered", unhovered_callback)
 
-	var row := HBoxContainer.new()
-	row.name = "PublicTrackSlotRow"
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", 5)
-	stack.add_child(row)
 
-	var pip := ColorRect.new()
-	pip.name = "PublicTrackStatePip"
-	pip.custom_minimum_size = Vector2(4, 18)
-	pip.color = accent
-	row.add_child(pip)
+func _on_track_slot_entry_selected(entry: Dictionary) -> void:
+	track_entry_selected.emit(entry.duplicate(true))
 
-	var slot_label := Label.new()
-	slot_label.name = "PublicTrackSlotIndex"
-	slot_label.custom_minimum_size = Vector2(30, 0)
-	slot_label.text = str(entry.get("slot", "#%d" % (index + 1)))
-	slot_label.tooltip_text = slot_panel.tooltip_text
-	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	slot_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(slot_label)
 
-	var label := Label.new()
-	label.name = "PublicTrackSlotLabel"
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.text = _entry_text(entry)
-	label.tooltip_text = slot_panel.tooltip_text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(label)
+func _on_track_slot_entry_opened(entry: Dictionary) -> void:
+	track_entry_opened.emit(entry.duplicate(true))
 
-	var meta_label := Label.new()
-	meta_label.name = "PublicTrackSlotMeta"
-	meta_label.custom_minimum_size = Vector2(52, 0)
-	meta_label.text = _entry_meta(entry)
-	meta_label.tooltip_text = slot_panel.tooltip_text
-	meta_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	meta_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	meta_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	row.add_child(meta_label)
 
-	var badges := _entry_badges(entry)
-	if is_event and badges.is_empty():
-		badges.append("只读")
-	if not badges.is_empty():
-		var badge_row := HBoxContainer.new()
-		badge_row.name = "PublicTrackBadgeRow"
-		badge_row.add_theme_constant_override("separation", 3)
-		stack.add_child(badge_row)
-		for badge_text in badges.slice(0, 2):
-			var badge_label := Label.new()
-			badge_label.name = "TimelineEventReadOnlyBadge" if is_event else "PublicTrackBadge"
-			badge_label.text = _short_text(str(badge_text), 7)
-			badge_label.tooltip_text = slot_panel.tooltip_text
-			badge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			badge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			badge_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-			badge_label.add_theme_font_size_override("font_size", 7)
-			badge_label.add_theme_color_override("font_color", accent.lightened(0.32))
-			badge_row.add_child(badge_label)
+func _on_track_slot_entry_hovered(entry: Dictionary) -> void:
+	track_entry_hovered.emit(entry.duplicate(true))
+
+
+func _on_track_slot_entry_unhovered(entry: Dictionary) -> void:
+	track_entry_unhovered.emit(entry.duplicate(true))
 
 
 func _on_track_slot_gui_input(event: InputEvent, entry: Dictionary) -> void:
@@ -199,6 +126,9 @@ func _sync_hovered_track_slots() -> void:
 		var slot_panel := child as PanelContainer
 		var hover_action := str(slot_panel.get_meta("hover_action", "")).strip_edges()
 		var hovered := _hovered_track_action != "" and hover_action == _hovered_track_action
+		if slot_panel.has_method("set_hovered_visual"):
+			slot_panel.call("set_hovered_visual", hovered)
+			continue
 		var selected := bool(slot_panel.get_meta("selected", false))
 		var base_active := bool(slot_panel.get_meta("base_active", false))
 		var accent_variant: Variant = slot_panel.get_meta("accent", Color("#38bdf8"))
@@ -290,6 +220,9 @@ func _entry_color(entry: Dictionary) -> Color:
 
 
 func _entry_hover_action(entry: Dictionary) -> String:
+	var hover_action := str(entry.get("hover_action", "")).strip_edges()
+	if hover_action != "":
+		return hover_action
 	var action := str(entry.get("select_action", "")).strip_edges()
 	if action != "":
 		return action

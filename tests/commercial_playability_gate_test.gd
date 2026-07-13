@@ -80,9 +80,19 @@ func _check_first_ten_minute_action_chain() -> void:
 	var main := await _instantiate_main()
 	if main == null:
 		return
-	main.call("_new_game")
+	main.set("card_resolution_force_duration", 0.05)
+	main.set("card_resolution_force_simultaneous_window", 0.0)
+	for timer_name in ["monster_timer", "special_monster_timer"]:
+		main.set(timer_name, 3600.0)
+	var market_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController")
+	if market_controller != null:
+		var market_state: Dictionary = market_controller.call("to_save_data")
+		market_state["market_timer"] = 3600.0
+		market_controller.call("apply_save_data", market_state)
+	main.call("_start_scenario_from_menu", "first_table")
 	await _wait_frames(16)
-	_select_recommended_district(main)
+	_expect(str(_runtime_scenario_state(main).get("active_scenario_id", "")) == "first_table", "first ten-minute path starts the authored first_table scenario")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_select_district")), "first ten-minute path selects the recommended district from coach")
 	await _wait_frames(4)
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_first_summon")), "first ten-minute path can perform first summon from coach")
 	await _wait_frames(12)
@@ -90,11 +100,8 @@ func _check_first_ten_minute_action_chain() -> void:
 	_expect(bool(progress_after_summon.get("has_monster", false)), "first ten-minute path records starter monster separately")
 	_expect(not bool(progress_after_summon.get("has_bought_card", false)), "first ten-minute path does not treat starter cards as purchased cards")
 	_expect(not bool(progress_after_summon.get("has_played_card", false)), "first ten-minute path does not treat first summon as the first normal card play")
-	_expect(bool(main.call("_first_run_should_defer_monster_wager")), "first ten-minute path defers monster wager freezes before the first normal card")
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_build_city")), "first ten-minute path can build the first city from coach")
-	await _wait_frames(12)
-	var progress_after_city: Dictionary = main.call("_first_run_coach_progress", 0)
-	_expect(bool(progress_after_city.get("has_city", false)), "first ten-minute path records the first income city")
+	_expect(bool(main.call("_first_run_should_defer_monster_wager")), "first_table defers monster wager freezes while the authored mission is active")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_summon)) == "open_rack", "first_table moves from first summon directly to the real district rack, not free coach city building")
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_open_rack")), "first ten-minute path can open district card rack from coach")
 	await _wait_frames(8)
 	var runtime := main.find_child("RuntimeGameScreen", true, false) as Control
@@ -102,42 +109,67 @@ func _check_first_ten_minute_action_chain() -> void:
 	_expect(ui_text.contains("牌架") and ui_text.contains("手牌"), "first ten-minute path keeps card rack and hand concepts visible together")
 	_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "区域牌架", "手牌", "当前行动", "竞价"], "first ten-minute opened-rack table")
 	var purchase_count_before := _local_card_purchase_count(main)
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_buy_card")), "first ten-minute path can buy the first regional card from coach")
-	await _wait_frames(12)
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_buy_card")), "first ten-minute path buys a real regional city-development card from coach")
+	await _wait_for_local_card_purchase(main, purchase_count_before)
 	var progress_after_buy: Dictionary = main.call("_first_run_coach_progress", 0)
 	_expect(_local_card_purchase_count(main) > purchase_count_before, "first ten-minute path records a real regional card purchase")
-	_expect(bool(progress_after_buy.get("has_bought_card", false)), "first ten-minute path marks first purchase only after a real regional card enters hand")
-	_expect(int(main.call("_first_actionable_teachable_hand_slot", 0)) >= 0, "first ten-minute purchase leaves a directly playable non-starter teaching card")
-	_expect_first_run_focus_pulse(main, "player_hand", "手牌", "first ten-minute first purchase pulses the hand")
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_play_card")), "first ten-minute path can play the first non-starter card from coach")
-	await _wait_frames(12)
+	_expect(bool(progress_after_buy.get("has_bought_card", false)), "first ten-minute path marks first purchase only after the development card enters hand")
+	_expect(int(main.call("_first_table_city_development_hand_slot", 0)) >= 0, "first ten-minute purchase leaves a directly playable city-development card")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_play_card")), "first ten-minute path submits the city-development card through the existing card action")
+	var project_resolved := await _wait_for_first_table_project(main)
+	await _drain_card_resolution(main)
 	var progress_after_play: Dictionary = main.call("_first_run_coach_progress", 0)
-	_expect(bool(progress_after_play.get("has_played_card", false)), "first ten-minute path marks the first non-starter card play")
-	_expect(not bool(main.call("_first_run_should_defer_monster_wager")), "first ten-minute path releases monster wager freezes after the first normal card")
-	_expect_first_run_focus_pulse(main, "public_track", "牌轨", "first ten-minute first card play pulses the public track")
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_inspect_track")), "first ten-minute path can inspect the public card track after playing")
-	await _wait_frames(8)
-	var progress_after_track: Dictionary = main.call("_first_run_coach_progress", 0)
-	_expect(bool(progress_after_track.get("has_seen_public_track", false)), "first ten-minute path records public-track inspection")
-	_check_player_facing_privacy(runtime, Vector2i(1600, 960))
+	var project_content: Dictionary = main.call("_first_table_runtime_content_snapshot", 0)
+	var own_project_shares: Array = project_content.get("own_project_shares", []) if project_content.get("own_project_shares", []) is Array else []
+	_expect(bool(progress_after_play.get("has_played_card", false)), "first ten-minute path marks the real development card play")
+	_expect(project_resolved and bool(project_content.get("city_present", false)) and not own_project_shares.is_empty(), "first ten-minute path creates a real product project and the current player's private share")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_play)) == "check_economy", "first_table reaches economy review only after city-development resolution")
+	if market_controller != null:
+		market_controller.call("market_tick")
+	if main.has_method("_settle_city_cashflow_seconds"):
+		main.call("_settle_city_cashflow_seconds", 120.0)
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_check_economy")), "first ten-minute path can open economy overview from coach")
 	await _wait_frames(8)
 	var progress_after_economy: Dictionary = main.call("_first_run_coach_progress", 0)
 	var economy_title := main.find_child("MenuTitleLabel", true, false) as Label
 	_expect(bool(progress_after_economy.get("has_checked_economy", false)), "first ten-minute path records economy overview inspection")
 	_expect(economy_title != null and economy_title.text == "经济总览", "first ten-minute path opens the economy overview dashboard")
-	_expect(str(main.call("_first_run_coach_stage", progress_after_economy)) == "choose_route", "first ten-minute path does not end at economy overview; it asks for a compact continuation route")
-	var route_snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
-	var route_snapshot: Dictionary = route_snapshot_variant if route_snapshot_variant is Dictionary else {}
-	var route_coach: Dictionary = route_snapshot.get("first_run_coach", {}) if route_snapshot.get("first_run_coach", {}) is Dictionary else {}
-	var route_primary: Dictionary = route_coach.get("primary_action", {}) if route_coach.get("primary_action", {}) is Dictionary else {}
-	_expect(str(route_coach.get("stage", "")) == "choose_route" and str(route_primary.get("id", "")) == "coach_choose_route_growth", "first ten-minute route coach exposes one recommended continuation CTA after economy overview")
-	_expect(_coach_chip_text(route_coach).contains("扩GDP") and _coach_chip_text(route_coach).contains("护商路") and _coach_chip_text(route_coach).contains("压竞争"), "first ten-minute route coach exposes three compact route chips instead of prose rules")
+	project_content = main.call("_first_table_runtime_content_snapshot", 0)
+	_expect(int(project_content.get("gdp_per_minute", 0)) > 0 or int(project_content.get("cashflow_paid_total", 0)) > 0, "first ten-minute project produces positive GDP or settled cashflow")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_economy)) == "buy_followup", "first ten-minute path moves from first project income to a second low-barrier business card")
+	if main.has_method("_close_menu"):
+		main.call("_close_menu")
+	await _wait_frames(4)
+	var followup_purchase_before := _local_card_purchase_count(main)
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_buy_followup_card")), "first ten-minute path can buy the real 城市融资1 follow-up card")
+	await _wait_for_local_card_purchase(main, followup_purchase_before)
+	_expect(int(main.call("_first_table_followup_hand_slot", 0)) >= 0, "first ten-minute path keeps 城市融资1 actionable after project creation")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_play_followup_card")), "first ten-minute path can submit the follow-up business card")
+	_expect(await _wait_for_scenario_signal(main, "followup_card_played"), "first ten-minute path records the real follow-up card on the public resolution flow")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_inspect_track")), "first ten-minute path can inspect the public card track after both real card submissions")
+	await _wait_frames(8)
+	var progress_after_track: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_track.get("has_seen_public_track", false)), "first ten-minute path records public-track inspection")
+	_check_player_facing_privacy(runtime, Vector2i(1600, 960))
+	_expect(str(main.call("_first_run_coach_stage", progress_after_track)) == "observe_ai_public_action", "first ten-minute path moves from the public track into a readable AI action")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_observe_ai_public_action")), "first ten-minute path can run an existing legal AI economy action without exposing policy details")
+	await _wait_frames(8)
+	var progress_after_ai: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_ai.get("has_seen_ai_public_action", false)) and str(main.call("_first_run_coach_stage", progress_after_ai)) == "inspect_clues", "first ten-minute path records AI public action and advances to public clues")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_inspect_clues")), "first ten-minute path can inspect public clues without revealing the real owner")
+	await _wait_frames(8)
+	var progress_after_clues: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_clues.get("has_seen_clues", false)) and str(main.call("_first_run_coach_stage", progress_after_clues)) == "inspect_monster_pressure", "first ten-minute path advances from clues to monster pressure")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_inspect_monster_pressure")), "first ten-minute path can focus the real monster pressure layer")
+	await _wait_frames(8)
+	var progress_after_pressure: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(bool(progress_after_pressure.get("has_seen_monster_pressure", false)) and str(main.call("_first_run_coach_stage", progress_after_pressure)) == "choose_route", "first ten-minute path reaches route choice after reading monster pressure")
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_choose_route_growth")), "first ten-minute path can choose the recommended GDP-growth route from coach")
 	await _wait_frames(8)
 	var progress_after_route: Dictionary = main.call("_first_run_coach_progress", 0)
 	_expect(bool(progress_after_route.get("has_chosen_route", false)) and str(progress_after_route.get("route_choice", "")) == "grow_gdp", "first ten-minute path records the chosen route as runtime state")
-	_expect(str(main.call("_first_run_coach_stage", progress_after_route)) == "inspect_clues", "first ten-minute path continues from route choice into clue review instead of stopping")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_route)) == "done", "first ten-minute authored mission summarizes the route choice without ending the whole match")
+	_expect(not bool(main.call("_first_run_should_defer_monster_wager")), "first_table releases deferred monster wager flow after the authored route summary")
 	root.remove_child(main)
 	main.queue_free()
 	await _wait_frames(1)
@@ -177,7 +209,7 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 	await _wait_frames(12)
 	_expect(bool(buy_main.call("_activate_first_run_coach_action", "coach_first_summon")), "first-run buy recovery setup can summon the starter monster")
 	await _wait_frames(12)
-	_expect_first_run_focus_pulse(buy_main, "action_dock", "行动", "first-run first-summon CTA pulses the next city/action area")
+	_expect_first_run_focus_pulse(buy_main, "planet", "牌架", "first-run first-summon CTA pulses the next district-rack area")
 	var wrong_district := _first_non_buyable_district(buy_main)
 	if wrong_district >= 0:
 		buy_main.set("selected_district", wrong_district)
@@ -246,6 +278,44 @@ func _local_card_purchase_count(main: Node) -> int:
 	if players.is_empty() or not (players[0] is Dictionary):
 		return 0
 	return int((players[0] as Dictionary).get("card_purchase_count", 0))
+
+
+func _wait_for_local_card_purchase(main: Node, count_before: int, max_frames: int = 180) -> bool:
+	for _frame_index in range(maxi(1, max_frames)):
+		if _local_card_purchase_count(main) > count_before:
+			return true
+		await process_frame
+	return false
+
+
+func _wait_for_first_table_project(main: Node, max_frames: int = 480) -> bool:
+	for _frame_index in range(maxi(1, max_frames)):
+		var content_variant: Variant = main.call("_first_table_runtime_content_snapshot", 0)
+		var content: Dictionary = content_variant if content_variant is Dictionary else {}
+		var own_shares: Array = content.get("own_project_shares", []) if content.get("own_project_shares", []) is Array else []
+		var signals: Dictionary = _runtime_scenario_state(main).get("completed_signals", {})
+		if bool(content.get("city_present", false)) and not own_shares.is_empty() and bool(signals.get("city_development_resolved", false)):
+			return true
+		if main.has_method("_update_card_resolution_queue"):
+			main.call("_update_card_resolution_queue", 0.5)
+		await process_frame
+	return false
+
+
+func _wait_for_scenario_signal(main: Node, signal_id: String, max_frames: int = 180) -> bool:
+	for _frame_index in range(maxi(1, max_frames)):
+		var signals: Dictionary = _runtime_scenario_state(main).get("completed_signals", {})
+		if bool(signals.get(signal_id, false)):
+			return true
+		await process_frame
+	return false
+
+
+func _drain_card_resolution(main: Node, frame_count: int = 24) -> void:
+	for _frame_index in range(maxi(1, frame_count)):
+		if main.has_method("_update_card_resolution_queue"):
+			main.call("_update_card_resolution_queue", 0.5)
+		await process_frame
 
 
 func _expect_runtime_map_centered_on_district(main: Node, district_index: int, message: String) -> void:
@@ -409,17 +479,6 @@ func _visible_buttons(node: Node) -> Array[Button]:
 	return result
 
 
-func _coach_chip_text(snapshot: Dictionary) -> String:
-	var texts: Array[String] = []
-	var chips: Array = snapshot.get("chips", []) if snapshot.get("chips", []) is Array else []
-	for chip_variant in chips:
-		if chip_variant is Dictionary:
-			texts.append(str((chip_variant as Dictionary).get("text", "")))
-		else:
-			texts.append(str(chip_variant))
-	return "｜".join(texts)
-
-
 func _node_text(node: Node) -> String:
 	if node == null:
 		return ""
@@ -435,6 +494,12 @@ func _node_text(node: Node) -> String:
 
 func _size_label(viewport_size: Vector2i) -> String:
 	return "%dx%d" % [viewport_size.x, viewport_size.y]
+
+
+func _runtime_scenario_state(main: Node) -> Dictionary:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
+	var value: Variant = coordinator.call("runtime_scenario_state", float(main.get("game_time"))) if coordinator != null else {}
+	return value as Dictionary if value is Dictionary else {}
 
 
 func _wait_frames(count: int) -> void:

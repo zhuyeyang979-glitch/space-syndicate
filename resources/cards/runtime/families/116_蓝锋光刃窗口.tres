@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c0cbi687rw6bb"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_gxsaq"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_fcqum"]
+
+[sub_resource type="Resource" id="Resource_y8q80"]
+script = ExtResource("1_gxsaq")
+card_id = "蓝锋光刃窗口1"
+family_id = "蓝锋光刃窗口"
+kind = &"armor_gain"
+purchase_cost = 4
+rules_text = "利用蓝锋光刃收招窗口缩身防御，怪兽立即获得6点护甲。"
+tags = PackedStringArray("蓝锋骑士", "防御")
+authored_keys = PackedStringArray("cost", "kind", "armor", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"armor": 6
+}
+
+[resource]
+script = ExtResource("2_fcqum")
+family_id = "蓝锋光刃窗口"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_y8q80")])

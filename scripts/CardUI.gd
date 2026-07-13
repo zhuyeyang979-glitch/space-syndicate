@@ -114,7 +114,6 @@ func _apply_data() -> void:
 	var display_type := _player_facing_type_label(card_type)
 	var hand_mini := _is_mini_hand_card()
 	var inspector_full := _is_inspector_full_card()
-	var codex_full := _is_codex_full_card()
 	var type_glyph := _card_type_glyph(display_type)
 	cost_label.text = cost_text
 	name_label.text = _short_card_text(card_name, 12) if hand_mini else card_name
@@ -189,34 +188,34 @@ func _apply_density_for_size() -> void:
 	var inspector_full := _is_inspector_full_card()
 	var codex_full := _is_codex_full_card()
 	var spacious_full := inspector_full or codex_full
-	var mini := hand_mini or (not spacious_full and (size.x <= 94.0 or size.y <= 118.0))
-	var compact := mini or (not spacious_full and (size.x <= 122.0 or size.y <= 150.0))
+	var is_mini_card := hand_mini or (not spacious_full and (size.x <= 94.0 or size.y <= 118.0))
+	var compact := is_mini_card or (not spacious_full and (size.x <= 122.0 or size.y <= 150.0))
 	var frame := get_node_or_null("CardFrame") as Control
 	if frame != null:
 		frame.clip_contents = true
 	var margin := get_node_or_null("CardFrame/CardMargin") as MarginContainer
 	if margin != null:
-		var margin_value := 3 if mini else (9 if codex_full else (8 if inspector_full else (5 if compact else 8)))
+		var margin_value := 3 if is_mini_card else (9 if codex_full else (8 if inspector_full else (5 if compact else 8)))
 		margin.add_theme_constant_override("margin_left", margin_value)
 		margin.add_theme_constant_override("margin_top", margin_value)
 		margin.add_theme_constant_override("margin_right", margin_value)
 		margin.add_theme_constant_override("margin_bottom", margin_value)
 	var rows := get_node_or_null("CardFrame/CardMargin/CardRows") as VBoxContainer
 	if rows != null:
-		rows.add_theme_constant_override("separation", 2 if mini else (7 if codex_full else (6 if inspector_full else (3 if compact else 6))))
+		rows.add_theme_constant_override("separation", 2 if is_mini_card else (7 if codex_full else (6 if inspector_full else (3 if compact else 6))))
 	var cost_badge := get_node_or_null("CardFrame/CardMargin/CardRows/Header/CostBadge") as Control
 	if cost_badge != null:
-		cost_badge.custom_minimum_size = Vector2(20, 18) if mini else (Vector2(22, 20) if compact else Vector2(28, 26))
+		cost_badge.custom_minimum_size = Vector2(20, 18) if is_mini_card else (Vector2(22, 20) if compact else Vector2(28, 26))
 	if route_glyph_badge != null:
-		route_glyph_badge.custom_minimum_size = Vector2(18, 18) if mini else (Vector2(21, 20) if compact else Vector2(24, 26))
-	art_panel.custom_minimum_size = Vector2(0, 30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if mini else (42 if compact else 70)))))
+		route_glyph_badge.custom_minimum_size = Vector2(18, 18) if is_mini_card else (Vector2(21, 20) if compact else Vector2(24, 26))
+	art_panel.custom_minimum_size = Vector2(0, 30 if hand_mini else (104 if codex_full else (58 if inspector_full else (28 if is_mini_card else (42 if compact else 70)))))
 	if keyword_chip_rail != null:
 		keyword_chip_rail.visible = true
 		keyword_chip_rail.custom_minimum_size = Vector2(0, 18 if hand_mini else (22 if compact else 24))
 		keyword_chip_rail.add_theme_constant_override("h_separation", 3 if hand_mini else 4)
 		keyword_chip_rail.add_theme_constant_override("v_separation", 1 if hand_mini else 2)
-	effect_label.custom_minimum_size = Vector2(0, 34 if hand_mini else (96 if codex_full else (92 if inspector_full else (34 if mini else (42 if compact else 58)))))
-	effect_label.max_lines_visible = 3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if mini else (3 if compact else 4))))
+	effect_label.custom_minimum_size = Vector2(0, 34 if hand_mini else (96 if codex_full else (92 if inspector_full else (34 if is_mini_card else (42 if compact else 58)))))
+	effect_label.max_lines_visible = 3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if is_mini_card else (3 if compact else 4))))
 	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	effect_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stat_label.custom_minimum_size = Vector2(22, 0) if mini else (Vector2(26, 0) if compact else Vector2(36, 0))
@@ -425,7 +424,7 @@ func _card_keyword_entries() -> Array:
 		_append_keyword_entry_if_new(entries, {"text": "◇%s %d" % [_short_card_text(product if product != "" else "流动", 4), flow_required], "tooltip": "打出门槛：需要对应商品流动，商品不消耗。", "accent": Color("#86efac")})
 	else:
 		_append_keyword_entry_if_new(entries, {"text": "免门槛", "tooltip": "打出时不需要商品流动。", "accent": Color("#cbd5e1")})
-	var duration := int(_card_data.get("seconds", _card_data.get("duration_seconds", _card_data.get("gdp_bet_turns", 0))))
+	var duration := int(_card_data.get("seconds", _card_data.get("duration_seconds", 0)))
 	if duration > 0:
 		_append_keyword_entry_if_new(entries, {"text": "%ds" % duration, "tooltip": "按秒生效或观察，不按回合结算。", "accent": Color("#fde68a")})
 	var persistent := bool(_card_data.get("persistent", _card_data.get("reusable", false)))
@@ -452,11 +451,11 @@ func _append_keyword_entry_if_new(entries: Array, entry: Dictionary) -> void:
 func _normalize_keyword_entry(entry_variant: Variant) -> Dictionary:
 	if entry_variant is Dictionary:
 		var entry: Dictionary = entry_variant
-		var text := str(entry.get("text", entry.get("label", ""))).strip_edges()
-		if text == "":
+		var entry_text := str(entry.get("text", entry.get("label", ""))).strip_edges()
+		if entry_text == "":
 			return {}
 		return {
-			"text": text,
+			"text": entry_text,
 			"tooltip": str(entry.get("tooltip", entry.get("tip", ""))),
 			"accent": _variant_color(entry.get("accent", entry.get("fg", Color("#cbd5e1"))), Color("#cbd5e1")),
 		}

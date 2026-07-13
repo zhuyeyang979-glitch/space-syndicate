@@ -1,0 +1,131 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/sceneization_audit_mcp_preview.gd" id="2_script"]
+
+[node name="SceneizationAuditMcpPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="AuditBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.018, 0.025, 0.037, 1)
+
+[node name="AuditMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="AuditRows" type="HBoxContainer" parent="AuditMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AuditCategoryPanel" type="PanelContainer" parent="AuditMargin/AuditRows"]
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+
+[node name="AuditCategoryMargin" type="MarginContainer" parent="AuditMargin/AuditRows/AuditCategoryPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="AuditCategoryStack" type="VBoxContainer" parent="AuditMargin/AuditRows/AuditCategoryPanel/AuditCategoryMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SceneizationAuditTitle" type="Label" parent="AuditMargin/AuditRows/AuditCategoryPanel/AuditCategoryMargin/AuditCategoryStack"]
+layout_mode = 2
+text = "Sceneization Audit"
+text_overrun_behavior = 3
+
+[node name="SceneizationAuditSummaryLabel" type="Label" parent="AuditMargin/AuditRows/AuditCategoryPanel/AuditCategoryMargin/AuditCategoryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Total 0"
+autowrap_mode = 3
+
+[node name="SceneizationAuditCategoryList" type="ItemList" parent="AuditMargin/AuditRows/AuditCategoryPanel/AuditCategoryMargin/AuditCategoryStack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+
+[node name="SceneizationAuditStatusLabel" type="Label" parent="AuditMargin/AuditRows/AuditCategoryPanel/AuditCategoryMargin/AuditCategoryStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="AuditRecordPanel" type="PanelContainer" parent="AuditMargin/AuditRows"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+
+[node name="AuditRecordMargin" type="MarginContainer" parent="AuditMargin/AuditRows/AuditRecordPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="AuditRecordStack" type="VBoxContainer" parent="AuditMargin/AuditRows/AuditRecordPanel/AuditRecordMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AuditRecordTitle" type="Label" parent="AuditMargin/AuditRows/AuditRecordPanel/AuditRecordMargin/AuditRecordStack"]
+layout_mode = 2
+text = "Records"
+text_overrun_behavior = 3
+
+[node name="SceneizationAuditRecordList" type="ItemList" parent="AuditMargin/AuditRows/AuditRecordPanel/AuditRecordMargin/AuditRecordStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AuditDetailPanel" type="PanelContainer" parent="AuditMargin/AuditRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AuditDetailMargin" type="MarginContainer" parent="AuditMargin/AuditRows/AuditDetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="AuditDetailStack" type="VBoxContainer" parent="AuditMargin/AuditRows/AuditDetailPanel/AuditDetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SceneizationAuditDetailTitle" type="Label" parent="AuditMargin/AuditRows/AuditDetailPanel/AuditDetailMargin/AuditDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No audit record"
+text_overrun_behavior = 3
+
+[node name="SceneizationAuditDetailBody" type="Label" parent="AuditMargin/AuditRows/AuditDetailPanel/AuditDetailMargin/AuditDetailStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "-"
+autowrap_mode = 3

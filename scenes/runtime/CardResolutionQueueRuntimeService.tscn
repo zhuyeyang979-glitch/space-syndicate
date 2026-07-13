@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_resolution_queue_runtime_service.gd" id="1_service"]
+
+[node name="CardResolutionQueueRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Single owner for current, active, and next card-resolution queues. Timing, card effects, cash, inventory, history, and UI remain in their established owners."

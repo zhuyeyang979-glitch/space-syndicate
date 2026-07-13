@@ -11,6 +11,9 @@ signal temporary_decision_action_requested(action_id: String)
 @onready var confirm_chip_row: HFlowContainer = %ConfirmChipRow
 @onready var confirm_action_row: GridContainer = %ConfirmActionRow
 @onready var confirm_center: CenterContainer = $OverlayRoot/ModalLayer/ConfirmCenter
+@onready var monster_wager_decision_panel: Control = %MonsterWagerDecisionPanel
+@onready var contract_response_decision_panel: Control = %ContractResponseDecisionPanel
+@onready var temporary_choice_decision_panel: Control = %TemporaryChoiceDecisionPanel
 @onready var side_drawer_panel: PanelContainer = %SideDrawerPanel
 @onready var side_drawer_title: Label = %SideDrawerTitle
 @onready var side_drawer_close_button: Button = %SideDrawerCloseButton
@@ -33,17 +36,24 @@ const TEMP_DECISION_SIDE_ANCHOR_LEFT := 0.70
 const TEMP_DECISION_SIDE_ANCHOR_TOP := 0.18
 const TEMP_DECISION_SIDE_ANCHOR_RIGHT := 0.985
 const TEMP_DECISION_SIDE_ANCHOR_BOTTOM := 0.82
+const TEMP_DECISION_MONSTER_WAGER := "monster_wager"
+const TEMP_DECISION_CONTRACT_RESPONSE := "contract_response"
+const TEMP_DECISION_DISCARD := "discard_purchase"
+const TEMP_DECISION_MONSTER_TARGET := "monster_target_choice"
+const TEMP_DECISION_PLAYER_TARGET := "player_target_choice"
 
 
 func _ready() -> void:
 	_configure_pointer_passthrough_skeleton()
 	_dock_confirm_to_planet_side_lane()
 	side_drawer_close_button.pressed.connect(hide_side_drawer)
+	_connect_specialized_temporary_decision_panels()
 
 
 func _configure_pointer_passthrough_skeleton() -> void:
 	for path in [
 		"OverlayRoot",
+		"RuntimeSurfaceLayer",
 		"OverlayRoot/SideDrawerLayer",
 		"OverlayRoot/SideDrawerLayer/OverlayMargin",
 		"OverlayRoot/SideDrawerLayer/OverlayMargin/OverlayColumns",
@@ -68,6 +78,7 @@ func hide_tooltip() -> void:
 
 func show_confirm(text: String) -> void:
 	_dock_confirm_to_planet_side_lane()
+	_hide_specialized_temporary_decision_panels()
 	confirm_panel.name = "ConfirmPanel"
 	confirm_label.text = _short_text(text, TEMP_DECISION_BODY_LIMIT)
 	confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -81,6 +92,7 @@ func show_confirm(text: String) -> void:
 func hide_confirm() -> void:
 	confirm_panel.visible = false
 	confirm_panel.name = "ConfirmPanel"
+	_hide_specialized_temporary_decision_panels()
 
 
 func show_temporary_decision(data: Dictionary) -> void:
@@ -88,6 +100,17 @@ func show_temporary_decision(data: Dictionary) -> void:
 		hide_confirm()
 		return
 	_dock_confirm_to_planet_side_lane()
+	_hide_specialized_temporary_decision_panels()
+	var kind := str(data.get("kind", ""))
+	if kind == TEMP_DECISION_MONSTER_WAGER and _show_specialized_temporary_decision(monster_wager_decision_panel, data):
+		confirm_panel.visible = false
+		return
+	if kind == TEMP_DECISION_CONTRACT_RESPONSE and _show_specialized_temporary_decision(contract_response_decision_panel, data):
+		confirm_panel.visible = false
+		return
+	if [TEMP_DECISION_DISCARD, TEMP_DECISION_MONSTER_TARGET, TEMP_DECISION_PLAYER_TARGET].has(kind) and _show_specialized_temporary_decision(temporary_choice_decision_panel, data):
+		confirm_panel.visible = false
+		return
 	var title := str(data.get("title", "临时决策")).strip_edges()
 	var body := str(data.get("body", data.get("summary", ""))).strip_edges()
 	confirm_panel.name = "TemporaryDecisionModal"
@@ -101,6 +124,30 @@ func show_temporary_decision(data: Dictionary) -> void:
 	_set_temporary_decision_action_row(data.get("actions", []))
 	confirm_panel.add_theme_stylebox_override("panel", _panel_style(_entry_color(data, Color("#facc15")), Color("#020617").lerp(_entry_color(data, Color("#facc15")), 0.12), 2, 10))
 	confirm_panel.visible = true
+
+
+func _connect_specialized_temporary_decision_panels() -> void:
+	for panel in [monster_wager_decision_panel, contract_response_decision_panel, temporary_choice_decision_panel]:
+		if panel != null and panel.has_signal("action_requested"):
+			panel.connect("action_requested", Callable(self, "_on_specialized_temporary_decision_action_requested"))
+
+
+func _on_specialized_temporary_decision_action_requested(action_id: String) -> void:
+	temporary_decision_action_requested.emit(action_id)
+
+
+func _show_specialized_temporary_decision(panel: Control, data: Dictionary) -> bool:
+	if panel == null or not panel.has_method("set_decision"):
+		return false
+	panel.call("set_decision", data)
+	panel.visible = true
+	return true
+
+
+func _hide_specialized_temporary_decision_panels() -> void:
+	for panel in [monster_wager_decision_panel, contract_response_decision_panel, temporary_choice_decision_panel]:
+		if panel != null:
+			panel.visible = false
 
 
 func show_side_drawer(data: Dictionary) -> void:

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ProductCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/product_codex_entry_resource.gd" id="1_water"]
+
+[resource]
+script = ExtResource("1_water")
+entry_id = "water_ice"
+display_name = "Water-Ice Contracts"
+subtitle = "Colony survival product with route and storage pressure."
+summary = "Water-ice is a readable public product for demand spikes, disaster response, and storage."
+accent = "#38bdf8"
+chips = PackedStringArray("Survival", "Storage", "Disaster")
+source_note = "Codex content resource only. Contract payout rules are unchanged."
+glyph = "WI"
+profile = "Survival | colony line"
+terrain = "Terrain: ice / colony"
+price = "$100 | base $75 | volatile"
+demand = "High"
+supply = "Medium"
+risk = "4 / 5"
+volatility = "3"
+weather = "Heat events raise demand and stress public delivery routes."
+use_case = "Useful for teaching why visible route protection matters."
+kpi_notes = PackedStringArray("Demand spikes after public disaster cues.", "Medium supply keeps choices open.", "Volatility rewards planning ahead.", "Storage loss is a visible table risk.")
+strategy_notes = PackedStringArray("Protect routes before the demand spike.", "Buy when weather hints are public.", "Use it to teach disaster-response timing.")

@@ -1,0 +1,82 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/monster_wager_decision_panel.gd" id="2_script"]
+
+[node name="MonsterWagerDecisionPanel" type="PanelContainer"]
+visible = false
+custom_minimum_size = Vector2(360, 236)
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="MonsterWagerMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 9
+
+[node name="MonsterWagerRows" type="VBoxContainer" parent="MonsterWagerMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MonsterWagerHeader" type="HBoxContainer" parent="MonsterWagerMargin/MonsterWagerRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MonsterWagerTitleLabel" type="Label" parent="MonsterWagerMargin/MonsterWagerRows/MonsterWagerHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "怪兽赌局"
+text_overrun_behavior = 3
+
+[node name="MonsterWagerTimerLabel" type="Label" parent="MonsterWagerMargin/MonsterWagerRows/MonsterWagerHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "30s"
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="MonsterWagerMatchupLabel" type="Label" parent="MonsterWagerMargin/MonsterWagerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "怪兽A vs 怪兽B"
+text_overrun_behavior = 3
+
+[node name="MonsterWagerStatsLabel" type="Label" parent="MonsterWagerMargin/MonsterWagerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "伤害 暂无｜奖池¥0｜底注5%｜已押 0/0"
+autowrap_mode = 3
+
+[node name="MonsterWagerDecisionHintLabel" type="Label" parent="MonsterWagerMargin/MonsterWagerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "选择一个参战怪兽下注。"
+autowrap_mode = 3
+
+[node name="MonsterWagerPublicBetsLabel" type="Label" parent="MonsterWagerMargin/MonsterWagerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "公开下注｜暂无"
+autowrap_mode = 3
+
+[node name="MonsterWagerContextLabel" type="Label" parent="MonsterWagerMargin/MonsterWagerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "触发｜怪兽遭遇"
+text_overrun_behavior = 3
+
+[node name="MonsterWagerChipRow" type="HFlowContainer" parent="MonsterWagerMargin/MonsterWagerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+
+[node name="MonsterWagerActionGrid" type="GridContainer" parent="MonsterWagerMargin/MonsterWagerRows"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6

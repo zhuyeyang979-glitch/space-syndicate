@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cdqb811ixo6qt"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_wan1n"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_nys0g"]
+
+[sub_resource type="Resource" id="Resource_j5fon"]
+script = ExtResource("1_wan1n")
+card_id = "破碎地脉1"
+family_id = "破碎地脉"
+kind = &"area_damage"
+purchase_cost = 4
+rules_text = "对260米内区域造成1点伤害，兼顾范围与费用。"
+tags = PackedStringArray("破坏", "AOE")
+range = 260.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_v35fm"]
+script = ExtResource("1_wan1n")
+card_id = "破碎地脉2"
+family_id = "破碎地脉"
+rank = 2
+kind = &"area_damage"
+purchase_cost = 7
+rules_text = "对280米内区域造成2点伤害，形成中距离破坏升级路线。"
+tags = PackedStringArray("破坏", "升级")
+range = 280.0
+damage = 2
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_nys0g")
+family_id = "破碎地脉"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_j5fon"), SubResource("Resource_v35fm")])
+public_pool_eligible = true
+upgradeable_family = true

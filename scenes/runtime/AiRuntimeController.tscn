@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_runtime_controller.gd" id="1_controller"]
+[ext_resource type="Resource" path="res://resources/ai/ai_policy_profile_v1.tres" id="2_policy"]
+
+[node name="AiRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+policy_profile = ExtResource("2_policy")
+editor_description = "Authoritative AI decision owner. It reads the Inspector policy Resource and emits world intents without owning world mutations."

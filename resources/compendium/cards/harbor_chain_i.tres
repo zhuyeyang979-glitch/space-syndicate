@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/card_codex_entry_resource.gd" id="1_harbor_chain"]
+
+[resource]
+script = ExtResource("1_harbor_chain")
+entry_id = "harbor_chain_i"
+display_name = "Harbor Chain I"
+subtitle = "Trade route reference"
+summary = "A trade card reference for route control, supply pressure, and public logistics cues."
+accent = "#22c55e"
+chips = PackedStringArray("Trade", "Route", "Supply")
+source_note = "Codex content resource only. Route legality still comes from existing rules."
+rank = "I"
+card_kind = "Trade"
+cost = "$70"
+target = "route"
+route = "Harbor or market route"
+requirement = "Requires a visible harbor, route, or supply pressure state."
+effect = "Create a public logistics benefit tied to a visible route."
+read_order = "Cost -> route -> product -> logistics cue -> effect"
+face_note = "Route effects are reference copy; main gameplay routing is unchanged."
+timing_note = "Use before a high-demand product resolves."
+risk_note = "Route disruption can erase the visible benefit."
+public_resolution_note = "Resolution records the route benefit without exposing owner data."
+upgrade_i_note = "Small public route boost."
+upgrade_iv_note = "Larger route tempo signal with the same public boundary."
+tactical_notes = PackedStringArray("Pair with harbor control.", "Watch monster pressure before committing.", "Use when public demand is already high.")
+fact_notes = PackedStringArray("Requires a visible route target.", "This entry is safe for editor preview.")

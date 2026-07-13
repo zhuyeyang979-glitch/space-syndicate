@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cvq6ukp2otlpv"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_syto0"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_v8v4y"]
+
+[sub_resource type="Resource" id="Resource_m05kf"]
+script = ExtResource("1_syto0")
+card_id = "夺取怪兽1"
+family_id = "夺取怪兽"
+kind = &"monster_takeover"
+purchase_cost = 5
+rules_text = "指定一只场上怪兽，匿名夺取其归属权；不会公开是谁打出的，之后该怪兽受伤会暴露新的资金线索。"
+tags = PackedStringArray("怪兽", "归属")
+play_product = "活体芯片"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_v8v4y")
+family_id = "夺取怪兽"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_m05kf")])
+public_pool_eligible = true

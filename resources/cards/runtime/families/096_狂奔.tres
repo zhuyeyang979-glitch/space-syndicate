@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://d15qy2idcx077"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_pchy2"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_ng2gw"]
+
+[sub_resource type="Resource" id="Resource_i6pco"]
+script = ExtResource("1_pchy2")
+card_id = "狂奔1"
+family_id = "狂奔"
+kind = &"roll_attack"
+purchase_cost = 3
+rules_text = "向选中区域高速狂奔340米；120米内贴近其他怪兽则造成2点伤害。"
+tags = PackedStringArray("冲撞", "机动")
+move = 340.0
+range = 120.0
+damage = 2
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_yrjj2"]
+script = ExtResource("1_pchy2")
+card_id = "狂奔2"
+family_id = "狂奔"
+rank = 2
+kind = &"roll_attack"
+purchase_cost = 6
+rules_text = "向选中区域高速狂奔460米；130米内贴近其他怪兽则造成3点伤害。"
+tags = PackedStringArray("冲撞", "升级")
+move = 460.0
+range = 130.0
+damage = 3
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_ng2gw")
+family_id = "狂奔"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_i6pco"), SubResource("Resource_yrjj2")])
+upgradeable_family = true

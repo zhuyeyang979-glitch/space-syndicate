@@ -1,0 +1,79 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/product_codex_market_badge.gd" id="1_script"]
+
+[node name="ProductCodexMarketBadge" type="PanelContainer"]
+custom_minimum_size = Vector2(210, 206)
+size_flags_vertical = 0
+script = ExtResource("1_script")
+
+[node name="ProductCodexMarketBadgeMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ProductCodexMarketBadgeStack" type="VBoxContainer" parent="ProductCodexMarketBadgeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ProductCodexMarketGlyph" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 40
+
+[node name="ProductCodexMarketBadgeName" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.972549, 0.980392, 0.988235, 1)
+
+[node name="ProductCodexMarketProfileLine" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.992157, 0.901961, 0.541176, 1)
+
+[node name="ProductCodexMarketTerrainLine" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.74902, 0.858824, 1, 1)
+
+[node name="ProductCodexMarketPriceLine" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.733333, 0.968627, 0.815686, 1)
+
+[node name="ProductCodexMarketMeter" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.898039, 0.905882, 0.921569, 1)
+
+[node name="ProductCodexMarketWeatherLine" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.992157, 0.901961, 0.541176, 1)
+
+[node name="ProductCodexMarketUseLine" type="Label" parent="ProductCodexMarketBadgeMargin/ProductCodexMarketBadgeStack"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.862745, 0.988235, 0.905882, 1)

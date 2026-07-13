@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AiPersonalityPolicyResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_personality_policy_resource.gd" id="1_personality"]
+
+[resource]
+script = ExtResource("1_personality")
+policy_id = "pioneer"
+display_name = "拓荒型AI"
+style = "优先抢高GDP陆地与海洋邻接位，尽快形成城市收入。"
+build_bias = 1.2
+business_bias = 0.9
+monster_bias = 0.8
+economy_bias = 1.05
+bid_aggression = 0.75
+exploration = 0.18
+route_preferences = {
+"city_growth": 1.3,
+"contract_route": 1.08,
+"intel_supply": 1.04
+}

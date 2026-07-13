@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/compendium_codex_mcp_preview.gd" id="2_script"]
+
+[node name="CompendiumCodexMcpPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="CompendiumCodexPreviewBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.018, 0.025, 0.037, 1)
+
+[node name="CompendiumCodexPreviewMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="CompendiumCodexPreviewRows" type="HBoxContainer" parent="CompendiumCodexPreviewMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CompendiumCodexControlPanel" type="PanelContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows"]
+custom_minimum_size = Vector2(310, 0)
+layout_mode = 2
+
+[node name="CompendiumCodexControlMargin" type="MarginContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexControlPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="CompendiumCodexControlStack" type="VBoxContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexControlPanel/CompendiumCodexControlMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CompendiumCodexPreviewTitle" type="Label" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexControlPanel/CompendiumCodexControlMargin/CompendiumCodexControlStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Compendium Codex QA"
+text_overrun_behavior = 3
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.972549, 0.980392, 0.988235, 1)
+
+[node name="CompendiumCodexPreviewSummary" type="Label" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexControlPanel/CompendiumCodexControlMargin/CompendiumCodexControlStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.74902, 0.858824, 1, 1)
+
+[node name="CompendiumCodexPreviewComponentLabel" type="Label" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexControlPanel/CompendiumCodexControlMargin/CompendiumCodexControlStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.992157, 0.901961, 0.541176, 1)
+
+[node name="CompendiumCodexStateButtonList" type="VBoxContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexControlPanel/CompendiumCodexControlMargin/CompendiumCodexControlStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CompendiumCodexPreviewShell" type="PanelContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CompendiumCodexPreviewShellMargin" type="MarginContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexPreviewShell"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CompendiumCodexPreviewScroll" type="ScrollContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexPreviewShell/CompendiumCodexPreviewShellMargin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CompendiumCodexPreviewHost" type="VBoxContainer" parent="CompendiumCodexPreviewMargin/CompendiumCodexPreviewRows/CompendiumCodexPreviewShell/CompendiumCodexPreviewShellMargin/CompendiumCodexPreviewScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10

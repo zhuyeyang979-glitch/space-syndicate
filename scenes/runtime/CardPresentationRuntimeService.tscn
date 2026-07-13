@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_presentation_runtime_service.gd" id="1_service"]
+
+[node name="CardPresentationRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Pure-data card presentation owner. It derives card color, icon, route, use case, card-face copy, chips, and hand-card ViewModels from domain facts without owning price, legality, effects, or mutations."

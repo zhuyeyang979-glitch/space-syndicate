@@ -1,0 +1,88 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c80weqf8cnae0"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_j2ey2"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_rx3ja"]
+
+[sub_resource type="Resource" id="Resource_y4sjw"]
+script = ExtResource("1_j2ey2")
+card_id = "相位否决1"
+family_id = "相位否决"
+kind = &"card_counter"
+purchase_cost = 4
+rules_text = "仅在5秒反制窗口响应直接玩家互动牌：取消该牌本次结算。"
+tags = PackedStringArray("互动", "防御", "相位")
+play_product = "轨迹墨水"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "counter_window_seconds", "counter_strength", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"counter_strength": 1,
+"counter_window_seconds": 5.0
+}
+
+[sub_resource type="Resource" id="Resource_kavxp"]
+script = ExtResource("1_j2ey2")
+card_id = "相位否决2"
+family_id = "相位否决"
+rank = 2
+kind = &"card_counter"
+purchase_cost = 6
+rules_text = "取消一张直接玩家互动牌；若成功，反制者私下回收少量相位押金。"
+tags = PackedStringArray("互动", "防御", "升级")
+play_product = "轨迹墨水"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "counter_window_seconds", "counter_strength", "counter_refund", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"counter_refund": 40,
+"counter_strength": 2,
+"counter_window_seconds": 5.0
+}
+
+[sub_resource type="Resource" id="Resource_52ou5"]
+script = ExtResource("1_j2ey2")
+card_id = "相位否决3"
+family_id = "相位否决"
+rank = 3
+kind = &"card_counter"
+purchase_cost = 8
+rules_text = "取消一张直接玩家互动牌，并私下获得一条关于被取消牌的出牌者线索。"
+tags = PackedStringArray("互动", "防御", "核心")
+play_product = "轨迹墨水"
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "counter_window_seconds", "counter_strength", "counter_refund", "counter_trace", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"counter_refund": 90,
+"counter_strength": 3,
+"counter_trace": 1,
+"counter_window_seconds": 5.0
+}
+
+[sub_resource type="Resource" id="Resource_g7lsc"]
+script = ExtResource("1_j2ey2")
+card_id = "相位否决4"
+family_id = "相位否决"
+rank = 4
+kind = &"card_counter"
+purchase_cost = 10
+rules_text = "终端相位否决IV：取消一张直接玩家互动牌，回收更高押金，并私下追溯更多出牌线索。"
+tags = PackedStringArray("互动", "防御", "IV")
+play_product = "轨迹墨水"
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "counter_window_seconds", "counter_strength", "counter_refund", "counter_trace", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"counter_refund": 160,
+"counter_strength": 4,
+"counter_trace": 2,
+"counter_window_seconds": 5.0
+}
+
+[resource]
+script = ExtResource("2_rx3ja")
+family_id = "相位否决"
+pack_id = &"intel_counter"
+authored_ranks = Array[Resource]([SubResource("Resource_y4sjw"), SubResource("Resource_kavxp"), SubResource("Resource_52ou5"), SubResource("Resource_g7lsc")])
+public_pool_eligible = true
+upgradeable_family = true

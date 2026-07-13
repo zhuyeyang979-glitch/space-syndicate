@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CityGdpDerivativeTermsResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/finance/city_gdp_derivative_terms_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "灾害保单1"
+rank = 1
+direction = "down"
+insurance = true
+duration_seconds = 75.0
+multiplier = 0.75
+destroy_bonus = 140
+target_scope = "owned_active_city"
+margin_cash = 90
+maximum_gain = 220
+maximum_loss = 90

@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_runtime_definition_world_bridge.gd" id="1_bridge"]
+
+[node name="CardRuntimeDefinitionWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Composes catalog definitions with city-development, financial-terms, and monster definition owners without copying their state or formulas."

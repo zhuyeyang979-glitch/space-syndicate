@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DevelopmentRouteProfileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/development_route_profile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+route_id = "monster_pressure"
+display_name = "怪兽压制"
+goal = "召唤、升级、诱导怪兽，或用破坏/天气/新闻压低竞争城市GDP。"
+play_pattern = "用怪兽资源偏好、新闻热度和天气窗口，把自动怪兽推向高价值竞品城市。"
+counterplay = "分散商品、修复区域、诱导怪兽转向，或侦查怪兽资金线索。"
+ai_plan_hint = "优先盯商品重叠且GDP高的敌城；己方怪兽受伤暴露时减少乱升级。"
+strategy_labels = Array[String](["怪兽路线", "怪兽诱导", "战斗破坏", "城市压制", "天气博弈", "新闻信息战"])
+required_for_ai_baseline = true
+sort_order = 3

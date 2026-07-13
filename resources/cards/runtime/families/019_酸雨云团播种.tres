@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bs2botjbomcek"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_ao8s1"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_l87t7"]
+
+[sub_resource type="Resource" id="Resource_w3odp"]
+script = ExtResource("1_ao8s1")
+card_id = "酸雨云团播种1"
+family_id = "酸雨云团播种"
+kind = &"weather_control"
+purchase_cost = 4
+rules_text = "主动制造酸雨云团预报：约75秒后覆盖选中区域附近，压低生产与交通，适合配合城市做空。"
+tags = PackedStringArray("天气", "压制")
+play_product = "离岸水晶"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 95.0,
+"weather_forecast_lead_seconds": 75.0,
+"weather_type": "acid_rain",
+"weather_zone_count": 2
+}
+
+[resource]
+script = ExtResource("2_l87t7")
+family_id = "酸雨云团播种"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_w3odp")])
+public_pool_eligible = true
+upgradeable_family = true

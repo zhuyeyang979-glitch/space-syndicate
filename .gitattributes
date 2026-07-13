@@ -1,0 +1,6 @@
+# Keep repository text byte-stable across Windows clones. Binary assets remain
+# binary through text=auto; scripts, scenes, Resources, docs, and sidecars use LF.
+* text=auto eol=lf
+
+# Godot rewrites import sidecars with LF, so make the policy explicit.
+*.import text eol=lf

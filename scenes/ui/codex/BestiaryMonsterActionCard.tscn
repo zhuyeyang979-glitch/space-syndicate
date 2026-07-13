@@ -1,0 +1,62 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/bestiary_monster_action_card.gd" id="1_script"]
+
+[node name="BestiaryMonsterActionCard" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 108)
+size_flags_horizontal = 3
+script = ExtResource("1_script")
+
+[node name="BestiaryMonsterActionMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 9
+theme_override_constants/margin_bottom = 7
+
+[node name="BestiaryMonsterActionStack" type="VBoxContainer" parent="BestiaryMonsterActionMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="BestiaryMonsterActionHeader" type="HBoxContainer" parent="BestiaryMonsterActionMargin/BestiaryMonsterActionStack"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="BestiaryMonsterActionIndex" type="Label" parent="BestiaryMonsterActionMargin/BestiaryMonsterActionStack/BestiaryMonsterActionHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="BestiaryMonsterActionName" type="Label" parent="BestiaryMonsterActionMargin/BestiaryMonsterActionStack/BestiaryMonsterActionHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 3
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.972549, 0.980392, 0.988235, 1)
+
+[node name="BestiaryMonsterActionTags" type="Label" parent="BestiaryMonsterActionMargin/BestiaryMonsterActionStack/BestiaryMonsterActionHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+
+[node name="BestiaryMonsterActionProbability" type="Label" parent="BestiaryMonsterActionMargin/BestiaryMonsterActionStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.992157, 0.901961, 0.541176, 1)
+
+[node name="BestiaryMonsterActionFacts" type="Label" parent="BestiaryMonsterActionMargin/BestiaryMonsterActionStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.796078, 0.835294, 0.882353, 1)
+
+[node name="BestiaryMonsterActionBody" type="Label" parent="BestiaryMonsterActionMargin/BestiaryMonsterActionStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.898039, 0.905882, 0.921569, 1)

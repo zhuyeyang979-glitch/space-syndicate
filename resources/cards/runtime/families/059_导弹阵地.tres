@@ -1,0 +1,147 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cqyxt8phg33ls"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_pe5hf"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_d672o"]
+
+[sub_resource type="Resource" id="Resource_y0c3p"]
+script = ExtResource("1_pe5hf")
+card_id = "导弹阵地1"
+family_id = "导弹阵地"
+kind = &"military_force"
+purchase_cost = 6
+rules_text = "在陆地部署导弹阵地：机动很差但射程极远，适合远程攻击怪兽或城市；部署位置会暴露战略意图。"
+tags = PackedStringArray("军队", "导弹", "远程")
+range = 800.0
+play_product = "轨迹墨水"
+play_flow_required = 2
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 2,
+"military_damage": 2,
+"military_domain": "land",
+"military_duration_seconds": 30.0,
+"military_gdp_penalty": 10,
+"military_gdp_pressure_seconds": 18.0,
+"military_hp": 6,
+"military_move": 70.0,
+"military_range": 800.0,
+"military_strike_route_damage": 1,
+"military_type": "missile",
+"movement_traits": ["land", "artillery"],
+"terrain_move_multiplier": {
+"land": 0.55,
+"ocean": 0.05
+}
+}
+
+[sub_resource type="Resource" id="Resource_mbwyn"]
+script = ExtResource("1_pe5hf")
+card_id = "导弹阵地2"
+family_id = "导弹阵地"
+rank = 2
+kind = &"military_force"
+purchase_cost = 8
+rules_text = "升级导弹阵地：射程和伤害提高，可以隔区干扰海陆商路，但被贴近后转移困难。"
+tags = PackedStringArray("军队", "导弹", "升级")
+range = 960.0
+play_product = "轨迹墨水"
+play_flow_required = 3
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 3,
+"military_damage": 3,
+"military_domain": "land",
+"military_duration_seconds": 40.0,
+"military_gdp_penalty": 14,
+"military_gdp_pressure_seconds": 22.0,
+"military_hp": 8,
+"military_move": 80.0,
+"military_range": 960.0,
+"military_strike_route_damage": 1,
+"military_type": "missile",
+"movement_traits": ["land", "artillery"],
+"terrain_move_multiplier": {
+"land": 0.58,
+"ocean": 0.05
+}
+}
+
+[sub_resource type="Resource" id="Resource_bapg2"]
+script = ExtResource("1_pe5hf")
+card_id = "导弹阵地3"
+family_id = "导弹阵地"
+rank = 3
+kind = &"military_force"
+purchase_cost = 10
+rules_text = "核心导弹阵地：全军令解锁，远程火力强，适合保护领跑城市或威慑高GDP竞争城。"
+tags = PackedStringArray("军队", "导弹", "核心")
+range = 1120.0
+play_product = "轨迹墨水"
+play_flow_required = 4
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 4,
+"military_domain": "land",
+"military_duration_seconds": 50.0,
+"military_gdp_penalty": 18,
+"military_gdp_pressure_seconds": 26.0,
+"military_hp": 10,
+"military_move": 90.0,
+"military_range": 1120.0,
+"military_strike_route_damage": 2,
+"military_type": "missile",
+"movement_traits": ["land", "artillery"],
+"terrain_move_multiplier": {
+"land": 0.6,
+"ocean": 0.05
+}
+}
+
+[sub_resource type="Resource" id="Resource_5eq0x"]
+script = ExtResource("1_pe5hf")
+card_id = "导弹阵地4"
+family_id = "导弹阵地"
+rank = 4
+kind = &"military_force"
+purchase_cost = 12
+rules_text = "终端导弹阵地IV：近乎全图威慑的短时火力资产，强在射程和压制，弱在机动与公开落点。"
+tags = PackedStringArray("军队", "导弹", "IV")
+range = 1300.0
+play_product = "轨迹墨水"
+play_flow_required = 5
+military_deploy_terrain = &"land"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 5,
+"military_domain": "land",
+"military_duration_seconds": 60.0,
+"military_gdp_penalty": 24,
+"military_gdp_pressure_seconds": 30.0,
+"military_hp": 12,
+"military_move": 100.0,
+"military_range": 1300.0,
+"military_strike_route_damage": 2,
+"military_type": "missile",
+"movement_traits": ["land", "artillery"],
+"terrain_move_multiplier": {
+"land": 0.62,
+"ocean": 0.05
+}
+}
+
+[resource]
+script = ExtResource("2_d672o")
+family_id = "导弹阵地"
+pack_id = &"military"
+authored_ranks = Array[Resource]([SubResource("Resource_y0c3p"), SubResource("Resource_mbwyn"), SubResource("Resource_bapg2"), SubResource("Resource_5eq0x")])
+public_pool_eligible = true
+upgradeable_family = true

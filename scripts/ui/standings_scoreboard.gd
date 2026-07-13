@@ -6,6 +6,7 @@ const BANKRUPT_BADGE_NODE_NAME := "StandingsBankruptBadge"
 @onready var header: HBoxContainer = %StandingsScoreboardHeader
 @onready var title_label: Label = %StandingsScoreboardTitle
 @onready var chip_rail: HFlowContainer = %StandingsScoreboardChipRail
+@onready var overview_grid: GridContainer = %StandingsOverviewGrid
 @onready var kpi_grid: GridContainer = %StandingsRaceKpiGrid
 @onready var score_grid: GridContainer = %StandingsPlayerScoreGrid
 @onready var hint_label: Label = %StandingsScoreboardReadHint
@@ -21,10 +22,12 @@ func set_scoreboard(data: Dictionary) -> void:
 	add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.07), 1, 8))
 	title_label.text = str(data.get("title", "局势记分板"))
 	title_label.tooltip_text = str(data.get("title_tooltip", "进行中只显示当前玩家可见资金；对手现金、手牌和真实资产仍靠推理。"))
+	overview_grid.columns = clampi(int(data.get("overview_columns", 3)), 1, 3)
 	kpi_grid.columns = clampi(int(data.get("kpi_columns", 4)), 1, 4)
 	score_grid.columns = clampi(int(data.get("seat_columns", 4)), 1, 4)
 	hint_label.text = str(data.get("hint", "读法：自己的牌看精确钱；对手牌看公开线索。想知道钱从哪里来，继续看经济总览和情报档案。"))
 	_render_chips(data.get("chips", []))
+	_render_overview_cards(data.get("overview_cards", []))
 	_render_kpis(data.get("kpis", []))
 	_render_seats(data.get("seats", []))
 
@@ -35,6 +38,8 @@ func _style_shell() -> void:
 	title_label.add_theme_color_override("font_color", Color("#fef3c7"))
 	chip_rail.add_theme_constant_override("h_separation", 5)
 	chip_rail.add_theme_constant_override("v_separation", 3)
+	overview_grid.add_theme_constant_override("h_separation", 8)
+	overview_grid.add_theme_constant_override("v_separation", 8)
 	kpi_grid.add_theme_constant_override("h_separation", 8)
 	kpi_grid.add_theme_constant_override("v_separation", 8)
 	score_grid.add_theme_constant_override("h_separation", 8)
@@ -52,6 +57,15 @@ func _render_chips(entries_variant: Variant) -> void:
 			_add_chip(entry_variant as Dictionary)
 
 
+func _render_overview_cards(entries_variant: Variant) -> void:
+	_clear_children(overview_grid)
+	if not (entries_variant is Array):
+		return
+	for entry_variant in entries_variant:
+		if entry_variant is Dictionary:
+			_add_overview_card(entry_variant as Dictionary)
+
+
 func _render_kpis(entries_variant: Variant) -> void:
 	_clear_children(kpi_grid)
 	if not (entries_variant is Array):
@@ -59,6 +73,30 @@ func _render_kpis(entries_variant: Variant) -> void:
 	for entry_variant in entries_variant:
 		if entry_variant is Dictionary:
 			_add_kpi(entry_variant as Dictionary)
+
+
+func _add_overview_card(entry: Dictionary) -> void:
+	var accent := _dictionary_color(entry, "accent", Color("#facc15"))
+	var card := PanelContainer.new()
+	card.name = "StandingsOverviewCard"
+	card.custom_minimum_size = Vector2(0, 74)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.tooltip_text = str(entry.get("tooltip", ""))
+	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 8))
+	overview_grid.add_child(card)
+	var margin := _margin(10, 8, 10, 8)
+	card.add_child(margin)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	margin.add_child(box)
+	var title := _label(str(entry.get("title", "")), 10, accent.lightened(0.16))
+	title.name = "StandingsOverviewTitle"
+	box.add_child(title)
+	var body := _label(str(entry.get("body", "")), 10, Color("#e2e8f0"))
+	body.name = "StandingsOverviewBody"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.tooltip_text = card.tooltip_text
+	box.add_child(body)
 
 
 func _render_seats(entries_variant: Variant) -> void:

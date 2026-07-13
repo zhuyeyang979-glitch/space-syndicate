@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/district_supply_snapshot_service.gd" id="1_service"]
+
+[node name="DistrictSupplySnapshotService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Formats viewer-safe district supply facts into the pure-data DistrictSupplyDrawer snapshot. It never calculates purchase eligibility, prices, payment, upgrades, inventory, or private discard settlement."

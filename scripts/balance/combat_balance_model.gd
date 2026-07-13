@@ -26,7 +26,7 @@ const MONSTER_KNOCKBACK_PROFILE_MULTIPLIERS := {
 }
 
 
-func monster_knockback_distance_model(action: Dictionary, actor: Dictionary = {}, region_radius_m: float = -1.0) -> Dictionary:
+func monster_knockback_distance_model(action: Dictionary, _actor: Dictionary = {}, region_radius_m: float = -1.0) -> Dictionary:
 	var radius_m := region_radius_m if region_radius_m > 0.0 else _default_region_radius_m()
 	var explicit := float(action.get("knockback", -1.0))
 	var damage := maxi(1, int(action.get("damage", action.get("close_damage", 1))))

@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/card_codex_filter_chip.gd" id="1_script"]
+
+[node name="CardCodexCategoryChip" type="Button"]
+custom_minimum_size = Vector2(104, 34)
+toggle_mode = true
+text = "Filter"
+script = ExtResource("1_script")

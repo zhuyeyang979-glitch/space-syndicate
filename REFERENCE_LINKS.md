@@ -15,17 +15,112 @@
 
 ## 卡牌 UI / 手牌手感 / Deckbuilder 标杆
 
-- [ycarowr/UiCard](https://github.com/ycarowr/UiCard) — 优先参考。抽卡、拖拽、悬停放大、手牌弧形排布、弃牌区域和敌方卡牌查看。
-- [mixandjam/balatro-feel](https://github.com/mixandjam/balatro-feel) — 参考 Balatro 式卡牌反馈、抖动、弹性、拖拽、选择和结算手感。
+- [twdoor/simple-cards-v-2](https://github.com/twdoor/simple-cards-v-2) — MIT，Godot 4.5.1+。优先研究卡牌 Resource 与外观布局分离、编辑器实时预览、弧形/网格/堆叠手牌、拖放区、牌堆和 Layout 管理面板；不得在现有 `CardRuntimeCatalogService` 旁建立第二套卡牌数据所有权。
+- [phase-rs/phase](https://github.com/phase-rs/phase) — MIT / Apache-2.0。参考 battlefield、hand、stack、targeting overlay、payment、动画和隐藏信息；其 Scryfall 卡图及 MTG 内容不属于代码许可，不得导入。
+- [ycarowr/UiCard](https://github.com/ycarowr/UiCard) — MIT 代码。优先参考抽卡、拖拽、悬停放大、手牌弧形排布、邻卡让位、打出区和敌方手牌表达；仓库插画另有来源，不随 MIT 代码自动授权。
+- [mixandjam/Balatro-Feel](https://github.com/mixandjam/Balatro-Feel) — MIT。参考悬停弹性、选择反馈、邻卡位移、回弹和结算节奏；不复制 Balatro 的视觉资产、商标或界面身份。
 - [EnginKARATAS/hearthstone-clone-game](https://github.com/EnginKARATAS/hearthstone-clone-game) — 参考炉石式卡面、角色选择、响应式 UI、战斗界面和动效。
-- [Arefnue/NueDeck](https://github.com/Arefnue/NueDeck) — 参考 Slay the Spire / Roguebook 式 roguelike deckbuilder 模板、卡牌编辑器和数据架构。
-- [phase-rs/phase](https://github.com/phase-rs/phase) — 参考 MTG Arena 类 battlefield、hand、stack、targeting overlay、mana/payment 和动画分区。
-- [pipeworks-studios/CardHouse](https://github.com/pipeworks-studios/CardHouse) — 参考 deck、hand、card grid、拖拽、资源 UI 和卡牌 position/rotation/scale seeker。
+- [pipeworks-studios/CardHouse](https://github.com/pipeworks-studios/CardHouse) — CC0。参考 deck、hand、card grid、发牌、阶段和 position/rotation/scale seeker；Unity 结构要重写成项目本地 GDScript，不直接引入 C# 依赖。
+- [Arefnue/NueDeck](https://github.com/Arefnue/NueDeck) — MIT。参考 roguelike deckbuilder 的卡牌编辑器、Scriptable Object 数据结构、奖励选择和内容生产流程；当前项目已有 Resource Catalog，只用于工作流对照。
+- [db0/hypnagonia](https://github.com/db0/hypnagonia) — AGPL-3.0。研究 Godot 牌组、状态、图鉴和主题化桌面，只做行为/产品结构观察，不复制代码或素材。
+- [db0/godot-card-game-framework](https://github.com/db0/godot-card-game-framework) — AGPL-3.0。研究卡牌场景、拖放、手牌/牌库和规则脚本边界；除非项目明确接受 AGPL 义务，否则不复制实现。
 - [Cyanilux/Cards](https://github.com/Cyanilux/Cards) — 由聊天中仓库名补全链接。参考小型 Unity 手牌交互、card model 和 Shader Graph 卡牌显示。
 - [GBALATRO/balatro-gba](https://github.com/GBALATRO/balatro-gba) — 参考像素风小丑牌式布局和小屏幕信息压缩；不要直接使用同人视觉素材。
 - [GitHub topics: slaythespire](https://github.com/topics/slaythespire) — 作为 Slay the Spire-like / roguelike deckbuilder 的项目发现入口。
 
+## 经济、卡牌规则与离线仿真参考
+
+### 经济运行与 GDP
+
+- [schombert/Project-Alice](https://github.com/schombert/Project-Alice) — GPL-3.0。研究大型商品、人口、工厂和国家经济模块边界；只做结构/公式观察，不复制代码或依赖其原版游戏资产。
+- [unknown-horizons/unknown-horizons](https://github.com/unknown-horizons/unknown-horizons) — GPL-2.0。研究较易理解的居民需求、商品供应、税收、贸易和城镇升级循环；不复制 GPL 实现。
+- [freeorion/freeorion](https://github.com/freeorion/freeorion) — GPL 系列许可且素材需逐项核验。研究星球人口、工业、科研、资源分配、威胁和脚本规则分层；不导入其代码或资产。
+- [OpenVicProject/OpenVic-Simulation](https://github.com/OpenVicProject/OpenVic-Simulation) — MIT。优先参考经济数据对象、人口群体和日/月模拟更新的模块组织；在采用任何实现前仍需核对具体文件和依赖许可。
+- [BEA: Value added](https://www.bea.gov/help/glossary/value-added) — 官方经济口径参考：行业增加值是总产出减去中间投入。用于离线 GDP 诊断和重复计算检查，不自动替换当前 v0.4 游戏公式。
+
+### 卡牌状态、行动队列与平衡
+
+- [finkmoritz/csbcgf](https://github.com/finkmoritz/csbcgf) — MIT。优先研究只通过 Action 修改状态、执行前重新检查合法性、反应链和 simultaneous action 语义；对照现有 Eligibility / Queue / Execution，不建立第二套规则引擎。
+- [boardgameio/boardgame.io](https://github.com/boardgameio/boardgame.io) — MIT。研究阶段行动权限、状态/视图分离、日志、回放和 AI 测试；项目是实时 30/25/5 窗口，不能直接照搬传统回合循环。
+- [google-deepmind/open_spiel](https://github.com/google-deepmind/open_spiel) — Apache-2.0。用于离线卡组、AI、同时行动和不完全信息实验；不作为 Godot 玩家运行时依赖。
+- [Card-Forge/forge](https://github.com/Card-Forge/forge) — GPL-3.0。观察复杂触发、替代/持续效果、优先权和卡牌 AI；不复制代码、卡牌数据、规则文本或 MTG 内容。
+
+### 怪兽行动与战斗规则
+
+- [statico/godot-roguelike-example](https://github.com/statico/godot-roguelike-example) — MIT 代码，素材许可分开。研究 Godot 4 行动系统、行为树、阵营、伤害/抗性、状态和数据驱动怪兽定义；不把实时怪兽改成玩家直接控制或照搬回合循环。
+- [OpenXcom/OpenXcom](https://github.com/OpenXcom/OpenXcom) — GPL-3.0，且原版游戏资源不开放。研究敌人 AI、命中、护甲、朝向、士气、恐慌和战术任务；只做行为观察。
+- [CleverRaven/Cataclysm-DDA](https://github.com/CleverRaven/Cataclysm-DDA) — 代码与数据包含强 copyleft/署名共享条款，必须逐文件核验。研究怪物特殊攻击、抗性、状态和数据结构；巨兽保持单个逻辑实体，不用多格身体参与路径规则。
+
+这些规则参考的采用门、v0.4 保留项、可删除旧路径和离线实验路线见 `docs/runtime_rule_reference_adoption_plan.md`。
+
+## 游戏菜单 / 整体平面界面
+
+- [Maaack/Godot-Game-Template](https://github.com/Maaack/Godot-Game-Template) — MIT，当前面向 Godot 4.7（兼容 4.3+）。优先参考主菜单、暂停、设置、辅助功能、加载、教程、UI 音效、键鼠/手柄导航和场景切换边界。
+- [Maaack/Godot-Menus-Template](https://github.com/Maaack/Godot-Menus-Template) — MIT，当前面向 Godot 4.7（兼容 4.3+）。参考轻量菜单壳、设置/制作人员子页、返回栈和 Scene Loader；不在现有 `MenuOverlay` 旁建立并行菜单系统。
+- [chickensoft-games/GameDemo](https://github.com/chickensoft-games/GameDemo) — MIT。参考主菜单、游戏、暂停、存档/读档的可测试状态机和页面生命周期；项目为 Godot C#，只吸收状态边界，不引入第二套 C# 运行框架。
+- [freeorion/freeorion](https://github.com/freeorion/freeorion) — GPL 系列代码且素材许可需逐目录核验。重点研究中央星图、顶部资源、侧边情报、生产/科研窗口和回合提示的信息层级；不复制代码、素材或 FreeOrion 视觉身份。
+- [yairm210/Unciv](https://github.com/yairm210/Unciv) — MPL-2.0。参考高信息密度策略界面、地图与弹窗并存、桌面/移动响应式布局；若未来复制源文件必须逐文件遵守 MPL，本项目当前只做产品结构研究。
+- [OpenRA/OpenRA](https://github.com/OpenRA/OpenRA) — GPL-3.0。参考大厅、战役选择、设置和游戏内侧栏的一致视觉语言；不复制 GPL 代码或原游戏 IP 素材。
+- [popcar2/GodotOS](https://github.com/popcar2/GodotOS) — AGPL-3.0，且仓库还引用第三方壁纸和图标。只研究窗口层级、侧边栏、统一图标和深色界面组织，不复制代码或素材。
+
+## 页面返回 / 焦点 / 导航栈
+
+- [levinzonr/godot-ui-navigation-system](https://github.com/levinzonr/godot-ui-navigation-system) — MIT，早期项目。参考 `push()` / `pop()`、NavigationGraph、转场和返回后焦点恢复；拆解思路后接入现有 `MenuOverlay` 与 `CodexNavigationRuntimeController`，不直接安装为第二套导航权威。
+- [AppNavigation](https://godotengine.org/asset-library/asset/4813) — AGPL-3.0，Godot 4.5 路由/页面栈资产。只研究 app-like 路由、栈和页面生命周期，除非项目明确接受 AGPL 义务，否则不复制代码。
+- [supertuxkart/stk-code](https://github.com/supertuxkart/stk-code) — GPL。参考成熟多层菜单、手柄焦点、Esc 返回、确认窗口和大厅流程；只做行为研究。
+
+## 卡牌 / 牌桌 / 科幻 HUD 平面素材
+
+- [Mechanized Magic: Ultimate UI Pack](https://opengameart.org/content/mechanized-magic-2d-vector-cards-pack-0) — CC0。免费包含 60 个图标、75 个 HUD 元素及多种样式；作为卡框、机械边饰和策略 HUD 的第一视觉候选。
+- [Kenney UI Pack - Sci-Fi](https://kenney.nl/assets/ui-pack-sci-fi) — CC0，130 个文件。作为按钮、面板、滑块、状态条和弹窗的首选控件素材基线。
+- [Kenney UI Pack](https://kenney.nl/assets/ui-pack) — CC0，430 个文件。只补齐 Sci-Fi Pack 缺少的通用控件状态，不与主视觉无选择混用。
+- [Kenney Board Game Icons](https://kenney.nl/assets/board-game-icons) — CC0，250 个文件。用于现金、资源、牌堆、竞价、回合状态和桌面操作图标。
+- [Kenney Board Game Info](https://kenney.nl/assets/board-game-info) — CC0，280 个文件。用于规则、教程、关键词、状态和信息提示图标。
+- [Kenney Board Game Pack](https://kenney.nl/assets/boardgame-pack) — CC0，490 个文件。用于牌堆、弃牌堆、筹码、骰子和桌面占位原型；不直接决定最终卡面风格。
+- [Kenney Playing Cards Pack](https://kenney.nl/assets/playing-cards-pack) — CC0，270 个文件。主要研究卡面比例、角标重复、花色识别和牌背结构。
+- [SCIFI UI](https://opengameart.org/content/scifi-ui) — CC0，含按钮、面板、进度条、输入框和 PSD。只作为深色 HUD 灰盒/切片参考，避免与 Kenney/Mechanized Magic 同屏拼贴。
+- [UI Minimalism SciFi](https://opengameart.org/content/assets-ui-minimalism-scifi) — CC0，提供简洁科幻 UI 元素和源文件。与 Kenney Sci-Fi 二选一或作为缺失状态补充，不再把管线贴图/模型列为核心视觉依赖。
+- [Wenrexa White UI Kit](https://opengameart.org/content/assets-wenrexa-free-ui-kit-white-interface-5-panels-buttons) — CC0，五色 PNG 面板/按钮。优先用于高对比开发者、QA 和经济报表界面，不作为主桌默认视觉。
+- [Game-icons.net](https://game-icons.net/about.html) — CC BY 3.0。仅选择 CC0 图标库缺少的语义图标；必须按每个图标的原作者登记并在 Credits 中署名。
+
+这批卡牌、牌桌、菜单与 HUD 参考的采用顺序、旧资产退役门和 QA 路线见 `docs/card_table_menu_reference_adoption_plan.md`。
+
+## 商路 / 逻辑管线 / 图结构交互
+
+### Godot 官方能力边界
+
+- [Godot Line2D](https://docs.godotengine.org/en/stable/classes/class_line2d.html) — 只负责曲线/线段显示；不得在节点中保存商品库存、容量、费用、所有权或结算状态。
+- [Godot AStar2D](https://docs.godotengine.org/en/stable/classes/class_astar2d.html) — 只负责图上的路径搜索；是否可连、边成本、方向、容量和阻塞仍由游戏规则所有者决定。
+- [Godot GraphEdit](https://docs.godotengine.org/en/stable/classes/class_graphedit.html) — 提供节点连接编辑交互；连接是否合法以及连接后发生什么必须由项目代码实现。优先用于编辑器/QA 工具，不直接成为主桌规则引擎。
+
+### 网络与铺设产品参考
+
+- [Anuken/Mindustry](https://github.com/Anuken/Mindustry) — GPL-3.0。研究合法预览、自动朝向/转角、拖拽连续铺设、桥接和按段撤销；只观察交互，不复制代码或素材。
+- [tobspr-games/shapez.io](https://github.com/tobspr-games/shapez.io) — GPL-3.0。研究生产节点、方向、分流/合流、吞吐量、蓝图和大规模网络更新；不复制 GPL 实现。
+- [OpenLoco/OpenLoco](https://github.com/OpenLoco/OpenLoco) — MIT。优先研究拖拽施工标记、曲线/坡度、非法地形提示、拆除和蓝图旋转；运行原项目仍依赖原版游戏资产，因此不得把原资产带入本项目。
+- [widelands/widelands](https://github.com/widelands/widelands) — GPL-2.0+，素材许可需逐项核验。研究“节点/旗帜作为端点、道路作为边”的网络模型；只做结构观察。
+
+商路显示、返回栈、未来铺设交互、旧路径退役和“不得建立第二个路线引擎”的详细计划见 `docs/navigation_trade_network_reference_adoption_plan.md`。
+
 ## 巨兽 / 城市破坏 / 灾害感参考
+
+### 许可明确、可进入原型验证的素材与 Godot 模块
+
+- [Quaternius Ultimate Monsters](https://quaternius.com/packs/ultimatemonsters.html) — CC0。50 个带动画怪兽，提供 FBX、OBJ、Blend、glTF；优先用于怪兽轮廓、动作词汇、体型分级和临时动画验证，不直接照搬为最终角色设计。
+- [Quaternius Animated Mech Pack](https://quaternius.com/packs/animatedmech.html) — CC0。4 个带动画机甲；用于军队/巨型机甲与生物怪兽的轮廓对比、机械动作节奏和图鉴姿态参考。
+- [Quaternius Animated Monster Pack](https://quaternius.com/packs/animatedmonster.html) — CC0。4 个带攻击、移动、跳跃或飞行动画的怪物；用于快速验证不同运动方式和动作可读性。
+- [Kenney City Kit (Commercial)](https://kenney.nl/assets/city-kit-commercial) — CC0。50 个商业建筑模型；用于城市密度、天际线、建筑尺寸层级和完整/受损/摧毁状态原型。
+- [Kenney City Kit (Suburban)](https://kenney.nl/assets/city-kit-suburban) — CC0。40 个郊区建筑模型；用于低密度城区、住宅区和商业区的视觉区分。
+- [Jummit/godot-destruction-plugin](https://github.com/Jummit/godot-destruction-plugin) — 代码 MIT，其余项目文件 CC0。重点参考 Blender Cell Fracture 预切割、完整模型到碎块场景的替换和 `destroy()` 事件边界；不要未经性能验证直接接入主桌。
+- [ape1121/Godot4-3D-Smooth-Destructible-Terrain](https://github.com/ape1121/Godot4-3D-Smooth-Destructible-Terrain) — MIT。参考分块、脏区重建和局部地形修改；不用于替换现有球形 `MapView`。
+- [KenneyNL/Starter-Kit-3D-Platformer](https://github.com/KenneyNL/Starter-Kit-3D-Platformer) — 代码 MIT，内含素材 CC0。仅参考第三人称相机、控制器、手柄输入和代码/素材分层；Space Syndicate 怪兽仍保持自动行动。
+- [godotengine/godot-demo-projects](https://github.com/godotengine/godot-demo-projects) — MIT。用于核对 Godot 场景组织、动画、物理、输入和官方实现习惯。
+- [Kenney Particle Pack](https://kenney.nl/assets/particle-pack) — CC0。80 个粒子/VFX 文件；用于攻击落点、冲击波、建筑受损和怪兽技能的临时反馈。
+- [CC0 Deep Monster Roar](https://opengameart.org/content/cc0-deep-monster-roar) — CC0。低沉怪兽吼叫；可用于召唤、登场或高威胁动作的临时音频验证。
+
+详细的使用边界、落地位置和验收门禁见 `docs/open_source_reference_notes.md` 的“Giant Monster Combat Reference Pack / 巨兽战斗参考包”。
+
+### 结构与题材研究入口
 
 - [binary-machinery/DisasterCity](https://github.com/binary-machinery/DisasterCity) — 优先参考。Kaiju-like 巨兽攻击城市的 RTS 原型，参考城市被怪兽压迫时的全局态势表达。
 - [Moth-Fried-Games/moth-kaijuice](https://github.com/Moth-Fried-Games/moth-kaijuice) — Godot / MIT game jam 原型，参考怪兽成长、实验室/怪兽题材 UI 和 Godot 项目组织。
@@ -100,8 +195,12 @@
 
 ## 当前落地优先级
 
-1. UI 与桌游电子版：优先参考 Terraforming Mars、Gaia Project、UiCard。
-2. 卡牌手感：优先参考 UiCard、Balatro feel、Hearthstone clone、NueDeck、phase。
-3. 怪兽破坏与碰撞：优先参考 DisasterCity、Destroyable Buildings、survivors-roguelike-kit、VampireSurvivorsClone。
-4. 星球缩放与空间感：优先参考 solar_system_demo、chunked LOD planet、BlocksBeyondTheStars。
-5. 性能：优先参考 Godot Background loading、pipeline compilation、Profiler、object pooling。
+1. 卡牌组件与编辑器工作流：优先参考 Simple Cards v2；只吸收编辑器预览、布局和动画 Resource 思路，不替换现有 Runtime Catalog。
+2. 牌桌信息结构：优先参考 Phase 的战场/结算栈/目标/支付/隐藏信息边界，并保留 Space Syndicate 的中央星球、匿名牌轨和右侧检查器。
+3. 手牌手感：优先参考 CardHouse、UiCard 和 Balatro-Feel，以本地 GDScript/Resource 重写，不导入 Unity 运行时。
+4. 卡框、HUD 和图标：Mechanized Magic + Kenney Sci-Fi + Kenney Board Game Icons/Info 为主；Game-icons 只补语义缺口并保留逐作者署名。
+5. 菜单和辅助功能：用 Maaack/Chickensoft 的生命周期模式强化现有 Menu 场景，并按统一返回优先级收束 `main.gd` 的 Esc/back 分支；不建立第二套菜单壳。
+6. 商路交互：先把现有自动派生商路做成可检查、可聚焦、可读流向的场景表现。规则书未授权手动铺设时，不新增管线建造规则；`CityTradeNetworkRuntimeController` 继续是唯一网络 owner。
+7. 未来铺设原型：只有规则变更获批后，才借鉴 Mindustry/OpenLoco/Widelands 的预览、吸附、成本和撤销；`Line2D` 只显示，`AStar2D` 只寻路，`GraphEdit` 只服务编辑器工具。
+8. 巨兽演出：继续按巨兽参考包推进短时演出、城市破坏和 VFX，不改变自动行动规则。
+9. 性能：持续使用 Godot Background loading、pipeline compilation、Profiler 和 object pooling 作为验收基线。

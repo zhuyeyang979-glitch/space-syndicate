@@ -1,0 +1,157 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/balance_parameter_resource_mcp_preview.gd" id="1_preview"]
+
+[node name="BalanceParameterResourceMcpPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_preview")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0156863, 0.0235294, 0.0431373, 1)
+
+[node name="PreviewMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="PreviewRows" type="VBoxContainer" parent="PreviewMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BalanceParameterResourceTitle" type="Label" parent="PreviewMargin/PreviewRows"]
+layout_mode = 2
+text = "Balance Parameter Resources"
+theme_override_colors/font_color = Color(0.972549, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="BalanceParameterResourceSummaryLabel" type="Label" parent="PreviewMargin/PreviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Inspector-editable runtime balance target and card price curve resources."
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.713726, 0.780392, 0.870588, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="BalanceParameterResourceStatusLabel" type="Label" parent="PreviewMargin/PreviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status: ready"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.741176, 0.941176, 0.784314, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="Body" type="HBoxContainer" parent="PreviewMargin/PreviewRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="NavigationPanel" type="PanelContainer" parent="PreviewMargin/PreviewRows/Body"]
+custom_minimum_size = Vector2(330, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NavigationMargin" type="MarginContainer" parent="PreviewMargin/PreviewRows/Body/NavigationPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="NavigationRows" type="VBoxContainer" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CategoryLabel" type="Label" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows"]
+layout_mode = 2
+text = "Category"
+theme_override_colors/font_color = Color(0.733333, 0.862745, 1, 1)
+
+[node name="BalanceParameterResourceCategoryList" type="ItemList" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 116)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RecordLabel" type="Label" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows"]
+layout_mode = 2
+text = "Validation"
+theme_override_colors/font_color = Color(0.733333, 0.862745, 1, 1)
+
+[node name="BalanceParameterResourceRecordList" type="ItemList" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ButtonRows" type="VBoxContainer" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BalanceParameterOpenResourceButton" type="Button" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows/ButtonRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Resource Path"
+
+[node name="BalanceParameterPrintPayloadButton" type="Button" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows/ButtonRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Payload"
+
+[node name="BalanceParameterRunBenchButton" type="Button" parent="PreviewMargin/PreviewRows/Body/NavigationPanel/NavigationMargin/NavigationRows/ButtonRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Bench Path"
+
+[node name="DetailPanel" type="PanelContainer" parent="PreviewMargin/PreviewRows/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailMargin" type="MarginContainer" parent="PreviewMargin/PreviewRows/Body/DetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="DetailRows" type="VBoxContainer" parent="PreviewMargin/PreviewRows/Body/DetailPanel/DetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BalanceParameterResourceDetailTitle" type="Label" parent="PreviewMargin/PreviewRows/Body/DetailPanel/DetailMargin/DetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Select a balance parameter record"
+theme_override_colors/font_color = Color(0.972549, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="BalanceParameterResourceDetailBody" type="Label" parent="PreviewMargin/PreviewRows/Body/DetailPanel/DetailMargin/DetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "Resource details will appear here."
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.815686, 0.866667, 0.941176, 1)
+theme_override_font_sizes/font_size = 13

@@ -1,0 +1,143 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/planet_map_mcp_preview.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetBoard.tscn" id="3_planet_board"]
+
+[node name="PlanetMapMcpPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.027, 0.039, 1)
+
+[node name="PreviewMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="PreviewRows" type="HBoxContainer" parent="PreviewMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PlanetMapControlPanel" type="PanelContainer" parent="PreviewMargin/PreviewRows"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="ControlPanelMargin" type="MarginContainer" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ControlRows" type="VBoxContainer" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PlanetMapPreviewTitle" type="Label" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "星球地图 QA"
+text_overrun_behavior = 3
+
+[node name="PlanetMapPreviewSummary" type="Label" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "中心地图场景化预览"
+autowrap_mode = 3
+
+[node name="PlanetMapStateButtonList" type="VBoxContainer" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="GlobeOverviewButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Globe Overview"
+
+[node name="SelectedDistrictButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Selected District"
+
+[node name="LocalZoomButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Local Zoom"
+
+[node name="MonsterMarkersButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Monster Markers"
+
+[node name="TradeRoutesButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Trade Routes"
+
+[node name="UnderlayGuidesButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Underlay Guides"
+
+[node name="EventEffectsButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Event Effects"
+
+[node name="RenderCutoverButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Render Cutover"
+
+[node name="EmptyMapButton" type="Button" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows/PlanetMapStateButtonList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Empty Safe State"
+
+[node name="PlanetMapPreviewStatus" type="Label" parent="PreviewMargin/PreviewRows/PlanetMapControlPanel/ControlPanelMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="PlanetMapPreviewHost" type="PanelContainer" parent="PreviewMargin/PreviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlanetMapPreviewHostMargin" type="MarginContainer" parent="PreviewMargin/PreviewRows/PlanetMapPreviewHost"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="PlanetBoard" parent="PreviewMargin/PreviewRows/PlanetMapPreviewHost/PlanetMapPreviewHostMargin" instance=ExtResource("3_planet_board")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3

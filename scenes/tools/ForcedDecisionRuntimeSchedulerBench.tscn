@@ -1,0 +1,109 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/forced_decision_runtime_scheduler_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetRuntimeBridge.tscn" id="2_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="3_coordinator"]
+
+[node name="ForcedDecisionRuntimeSchedulerBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0156863, 0.0235294, 0.0431373, 1)
+
+[node name="RulesetRuntimeBridge" parent="." instance=ExtResource("2_bridge")]
+unique_name_in_owner = true
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("3_coordinator")]
+unique_name_in_owner = true
+
+[node name="BenchMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 24.0
+offset_right = -28.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BenchRows" type="VBoxContainer" parent="BenchMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="BenchMargin/BenchRows"]
+layout_mode = 2
+text = "Forced Decision Runtime Scheduler"
+theme_override_colors/font_color = Color(0.968627, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="SummaryLabel" type="Label" parent="BenchMargin/BenchRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ruleset profile -> coordinator -> deterministic arbitration -> existing handlers"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.690196, 0.776471, 0.890196, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="StatusLabel" type="Label" parent="BenchMargin/BenchRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status: ready"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.741176, 0.941176, 0.784314, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="BenchBody" type="HBoxContainer" parent="BenchMargin/BenchRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="PriorityPanel" type="PanelContainer" parent="BenchMargin/BenchRows/BenchBody"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+
+[node name="PriorityMargin" type="MarginContainer" parent="BenchMargin/BenchRows/BenchBody/PriorityPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="PriorityText" type="RichTextLabel" parent="BenchMargin/BenchRows/BenchBody/PriorityPanel/PriorityMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+text = "[b]v0.4 authority[/b]\nmonster_wager\n↓ counter_response\n↓ contract_response\n↓ other_choice"
+theme_override_colors/default_color = Color(0.827451, 0.870588, 0.933333, 1)
+theme_override_font_sizes/normal_font_size = 17
+
+[node name="OwnershipPanel" type="PanelContainer" parent="BenchMargin/BenchRows/BenchBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OwnershipMargin" type="MarginContainer" parent="BenchMargin/BenchRows/BenchBody/OwnershipPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="OwnershipText" type="Label" parent="BenchMargin/BenchRows/BenchBody/OwnershipPanel/OwnershipMargin"]
+layout_mode = 2
+text = "Scheduler owns\n• priority\n• deterministic ordering\n• privacy-safe active state\n• global/player/card blocking\n\nExisting systems keep\n• action ids\n• wager settlement\n• counter card effects\n• contract outcomes\n• target and discard effects"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.796078, 0.835294, 0.901961, 1)
+theme_override_font_sizes/font_size = 16

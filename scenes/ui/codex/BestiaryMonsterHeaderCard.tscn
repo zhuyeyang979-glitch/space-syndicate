@@ -1,0 +1,51 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/bestiary_monster_header_card.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/monster_art_view.gd" id="2_monster_art"]
+
+[node name="BestiaryMonsterHeaderCard" type="PanelContainer"]
+custom_minimum_size = Vector2(540, 220)
+script = ExtResource("1_script")
+
+[node name="BestiaryMonsterHeaderMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BestiaryMonsterHeaderRow" type="HBoxContainer" parent="BestiaryMonsterHeaderMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BestiaryMonsterHeaderArtSlot" type="PanelContainer" parent="BestiaryMonsterHeaderMargin/BestiaryMonsterHeaderRow"]
+custom_minimum_size = Vector2(258, 198)
+layout_mode = 2
+clip_contents = true
+
+[node name="BestiaryMonsterHeaderArtHost" type="CenterContainer" parent="BestiaryMonsterHeaderMargin/BestiaryMonsterHeaderRow/BestiaryMonsterHeaderArtSlot"]
+layout_mode = 2
+
+[node name="BestiaryMonsterHeaderArtView" type="Control" parent="BestiaryMonsterHeaderMargin/BestiaryMonsterHeaderRow/BestiaryMonsterHeaderArtSlot/BestiaryMonsterHeaderArtHost"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(238, 178)
+layout_mode = 2
+script = ExtResource("2_monster_art")
+
+[node name="BestiaryMonsterHeaderReadStack" type="VBoxContainer" parent="BestiaryMonsterHeaderMargin/BestiaryMonsterHeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="BestiaryMonsterHeaderTitle" type="Label" parent="BestiaryMonsterHeaderMargin/BestiaryMonsterHeaderRow/BestiaryMonsterHeaderReadStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.972549, 0.980392, 0.988235, 1)
+
+[node name="BestiaryMonsterHeaderSubtitle" type="Label" parent="BestiaryMonsterHeaderMargin/BestiaryMonsterHeaderRow/BestiaryMonsterHeaderReadStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 13

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bwf47p08wtnmn"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_70d1k"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_5ym2w"]
+
+[sub_resource type="Resource" id="Resource_ix6hl"]
+script = ExtResource("1_70d1k")
+card_id = "火花反制1"
+family_id = "火花反制"
+kind = &"special_monster_delay"
+purchase_cost = 4
+rules_text = "抓住火花电击前摇，指定怪兽的特殊行动节奏延后2秒。"
+tags = PackedStringArray("流星哨兵", "控场")
+authored_keys = PackedStringArray("cost", "kind", "delay", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 2.0
+}
+
+[resource]
+script = ExtResource("2_5ym2w")
+family_id = "火花反制"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_ix6hl")])

@@ -2,6 +2,7 @@ extends PanelContainer
 class_name SpaceSyndicateCardCodexDetail
 
 const CardFaceScene := preload("res://scenes/ui/CardFace.tscn")
+const CardCodexInfoCardScene := preload("res://scenes/ui/codex/CardCodexInfoCard.tscn")
 
 @onready var layout_row: HBoxContainer = %CardCodexTcgDetailLayout
 @onready var face_column: VBoxContainer = %CardCodexTcgFaceColumn
@@ -238,39 +239,13 @@ func _add_tactical_card(entry: Dictionary) -> void:
 
 
 func _add_info_card(parent: Container, entry: Dictionary, node_name: String) -> void:
-	var accent := _dictionary_color(entry, "accent", Color("#38bdf8"))
-	var card := PanelContainer.new()
+	var card := CardCodexInfoCardScene.instantiate() as PanelContainer
+	if card == null:
+		return
 	card.name = node_name
-	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.tooltip_text = str(entry.get("tooltip", entry.get("meta", "")))
-	card.set_meta("card_codex_patterned_attribute", true)
-	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 8))
 	parent.add_child(card)
-	var margin := _margin(10, 8, 10, 8)
-	card.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 5)
-	margin.add_child(box)
-	var tick := ColorRect.new()
-	tick.name = "CardCodexAttributeColorTick"
-	tick.color = accent.lightened(0.12)
-	tick.custom_minimum_size = Vector2(0, 3)
-	box.add_child(tick)
-	var title := _label(str(entry.get("title", "")), 13, accent.lightened(0.18))
-	title.name = "%sTitle" % node_name
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(title)
-	var body := _label(str(entry.get("body", "")), 12, Color("#e5e7eb"))
-	body.name = "%sBody" % node_name
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.tooltip_text = str(entry.get("body_tooltip", body.text))
-	box.add_child(body)
-	var meta_text := str(entry.get("meta", ""))
-	if meta_text != "":
-		var meta := _label(meta_text, 10, Color("#94a3b8"))
-		meta.name = "%sMeta" % node_name
-		meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(meta)
+	if card.has_method("set_info"):
+		card.call("set_info", entry, node_name)
 
 
 func _add_upgrade_card(entry: Dictionary) -> void:
@@ -357,6 +332,10 @@ func _dictionary_color(data: Dictionary, key: String, fallback: Color) -> Color:
 	var value: Variant = data.get(key, fallback)
 	if value is Color:
 		return value as Color
+	if value is String:
+		var text_value := str(value)
+		if text_value.begins_with("#"):
+			return Color(text_value)
 	return fallback
 
 

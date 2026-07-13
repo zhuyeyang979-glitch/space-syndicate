@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bmnc3al2nsjs5"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_3wsqn"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_p1t41"]
+
+[sub_resource type="Resource" id="Resource_i6psb"]
+script = ExtResource("1_3wsqn")
+card_id = "商品催化1"
+family_id = "商品催化"
+kind = &"product_growth_boon"
+purchase_cost = 4
+rules_text = "当前商品接下来90秒的正向价格增速×2。"
+tags = PackedStringArray("经济", "催化")
+authored_keys = PackedStringArray("cost", "kind", "growth_multiplier", "growth_seconds", "growth_turns", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"growth_multiplier": 2.0,
+"growth_seconds": 90.0,
+"growth_turns": 3
+}
+
+[sub_resource type="Resource" id="Resource_jw4f7"]
+script = ExtResource("1_3wsqn")
+card_id = "商品催化2"
+family_id = "商品催化"
+rank = 2
+kind = &"product_growth_boon"
+purchase_cost = 6
+rules_text = "当前商品接下来120秒的正向价格增速×2.5。"
+tags = PackedStringArray("经济", "升级")
+authored_keys = PackedStringArray("cost", "kind", "growth_multiplier", "growth_seconds", "growth_turns", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"growth_multiplier": 2.5,
+"growth_seconds": 120.0,
+"growth_turns": 4
+}
+
+[resource]
+script = ExtResource("2_p1t41")
+family_id = "商品催化"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_i6psb"), SubResource("Resource_jw4f7")])
+public_pool_eligible = true
+upgradeable_family = true

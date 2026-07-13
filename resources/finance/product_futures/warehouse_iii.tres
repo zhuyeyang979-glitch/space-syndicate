@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ProductFuturesTermsResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/finance/product_futures_terms_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "港仓囤货3"
+rank = 3
+direction = "up"
+duration_seconds = 120.0
+multiplier = 1.05
+units = 5
+requires_warehouse = true
+margin_cash = 400
+maximum_gain = 850
+maximum_loss = 400

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://c0jj6r3kohpbn"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_8w7q6"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_djcdw"]
+
+[sub_resource type="Resource" id="Resource_yu7h5"]
+script = ExtResource("1_8w7q6")
+card_id = "白谱锁定1"
+family_id = "白谱锁定"
+kind = &"panic_shift"
+purchase_cost = 4
+rules_text = "把白谱交火引向选中区域，热度+22，提高怪兽关注。"
+tags = PackedStringArray("流星哨兵", "引导")
+authored_keys = PackedStringArray("cost", "kind", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"panic": 22
+}
+
+[resource]
+script = ExtResource("2_djcdw")
+family_id = "白谱锁定"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_yu7h5")])

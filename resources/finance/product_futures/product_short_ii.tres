@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ProductFuturesTermsResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/finance/product_futures_terms_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "商品看跌2"
+rank = 2
+direction = "down"
+duration_seconds = 75.0
+multiplier = 1.45
+units = 1
+margin_cash = 180
+maximum_gain = 420
+maximum_loss = 180

@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dg58p1j2drg6f"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_epaux"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_ovb45"]
+
+[sub_resource type="Resource" id="Resource_4i3st"]
+script = ExtResource("1_epaux")
+card_id = "供应链保险1"
+family_id = "供应链保险"
+kind = &"route_insurance"
+purchase_cost = 3
+rules_text = "选中己方城市：修复至多1点商路压力，GDP/min +30。"
+tags = PackedStringArray("经营", "商路")
+authored_keys = PackedStringArray("cost", "kind", "repair_routes", "revenue_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 1,
+"revenue_amount": 30
+}
+
+[sub_resource type="Resource" id="Resource_skhx0"]
+script = ExtResource("1_epaux")
+card_id = "供应链保险2"
+family_id = "供应链保险"
+rank = 2
+kind = &"route_insurance"
+purchase_cost = 5
+rules_text = "选中己方城市：清除2条受损商路压力，并使GDP/min +55。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "repair_routes", "revenue_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 2,
+"revenue_amount": 55
+}
+
+[resource]
+script = ExtResource("2_ovb45")
+family_id = "供应链保险"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_4i3st"), SubResource("Resource_skhx0")])
+public_pool_eligible = true
+upgradeable_family = true

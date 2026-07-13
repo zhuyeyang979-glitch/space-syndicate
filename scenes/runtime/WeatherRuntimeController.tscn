@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/weather_runtime_controller.gd" id="1_controller"]
+
+[node name="WeatherRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Authoritative v0.4 weather runtime owner: forecast, active zones, shared-RNG selection, lifecycle, multipliers, card rewrites and save data."

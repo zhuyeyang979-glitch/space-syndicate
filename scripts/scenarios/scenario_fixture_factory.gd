@@ -80,7 +80,7 @@ func _replay_fixture(scenario: Dictionary, snapshot_key: String) -> Dictionary:
 	}
 
 
-func _visual_events_fixture(scenario_id: String, snapshot_key: String) -> Array:
+func _visual_events_fixture(scenario_id: String, _snapshot_key: String) -> Array:
 	match scenario_id:
 		"monster_pressure":
 			return [

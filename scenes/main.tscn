@@ -1,6 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
+[ext_resource type="AudioStream" path="res://assets/third_party/night_patrol/audio/bgm/bronze-snare-crown.mp3" id="3_bgm"]
+[ext_resource type="AudioStream" path="res://assets/third_party/night_patrol/audio/sfx/fire-burst.mp3" id="4_card_sfx"]
+[ext_resource type="AudioStream" path="res://assets/third_party/night_patrol/audio/sfx/impact-body.wav" id="5_impact_sfx"]
+[ext_resource type="AudioStream" path="res://assets/third_party/night_patrol/audio/sfx/lightning-hit.mp3" id="6_storm_sfx"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionRuntimeController.tscn" id="7_card_resolution_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetRuntimeBridge.tscn" id="8_ruleset_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="10_game_runtime_coordinator"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -10,3 +18,45 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
+
+[node name="RuntimeGameScreen" parent="." instance=ExtResource("2_game_screen")]
+unique_name_in_owner = true
+
+[node name="RuntimeServices" type="Node" parent="."]
+unique_name_in_owner = true
+editor_description = "Non-visual runtime services owned by the main table scene."
+
+[node name="RulesetRuntimeBridge" parent="RuntimeServices" instance=ExtResource("8_ruleset_bridge")]
+unique_name_in_owner = true
+
+[node name="TableAudioHost" type="Node" parent="RuntimeServices"]
+unique_name_in_owner = true
+editor_description = "Scene-owned table music and sound-effect players."
+
+[node name="NightPatrolTableBgm" type="AudioStreamPlayer" parent="RuntimeServices/TableAudioHost"]
+stream = ExtResource("3_bgm")
+volume_db = -25.0
+
+[node name="NightPatrolSfx_card" type="AudioStreamPlayer" parent="RuntimeServices/TableAudioHost"]
+stream = ExtResource("4_card_sfx")
+volume_db = -10.0
+
+[node name="NightPatrolSfx_impact" type="AudioStreamPlayer" parent="RuntimeServices/TableAudioHost"]
+stream = ExtResource("5_impact_sfx")
+volume_db = -10.0
+
+[node name="NightPatrolSfx_storm" type="AudioStreamPlayer" parent="RuntimeServices/TableAudioHost"]
+stream = ExtResource("6_storm_sfx")
+volume_db = -10.0
+
+[node name="RuntimeControllerHost" type="Node" parent="RuntimeServices"]
+unique_name_in_owner = true
+editor_description = "Scene-owned runtime controllers and bridges."
+
+[node name="CardResolutionRuntimeController" parent="RuntimeServices/RuntimeControllerHost" instance=ExtResource("7_card_resolution_controller")]
+
+[node name="GameRuntimeCoordinator" parent="RuntimeServices/RuntimeControllerHost" instance=ExtResource("10_game_runtime_coordinator")]
+
+[node name="RuntimeFallbackHost" type="Node" parent="RuntimeServices"]
+unique_name_in_owner = true
+editor_description = "Explicit host for compatibility fallbacks created only when scene-owned composition is unavailable."

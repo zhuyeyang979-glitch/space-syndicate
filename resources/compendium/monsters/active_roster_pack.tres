@@ -1,0 +1,179 @@
+[gd_resource type="Resource" script_class="CompendiumContentPackResource" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/compendium_content_pack_resource.gd" id="1_pack"]
+[ext_resource type="Script" path="res://scripts/content/monster_codex_entry_resource.gd" id="2_monster"]
+
+[sub_resource type="Resource" id="Monster_spore_fog_sea_king"]
+script = ExtResource("2_monster")
+entry_id = "spore_fog_sea_king"
+display_name = "孢雾海皇"
+subtitle = "Active roster monster | fog-dragon silhouette"
+summary = "Public ecology reference for the active-roster fog dragon. It pressures harbor routes and creates visible contamination reads."
+accent = "#60a5fa"
+chips = PackedStringArray("Active roster", "Harbor", "Fog")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 14
+armor = 2
+move_text = "Move 2 | harbor fog pressure"
+style = "瘴气古龙：大翼、云雾、海雾污染"
+profile = "A winged fog sea monster that turns harbor routes into public risk zones."
+public_tells = PackedStringArray("Large wing silhouette.", "Fog callouts near harbor routes.", "No sensitive player data is stored in this entry.")
+action_names = PackedStringArray("Fog Surge", "Harbor Roar")
+action_tags = PackedStringArray("route", "event")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Pressures visible harbor routes.", "Raises public route caution near the coast.")
+action_bodies = PackedStringArray("Creates a fog pressure callout on the map.", "Appears as public monster pressure only.")
+
+[sub_resource type="Resource" id="Monster_sand_armor_strider"]
+script = ExtResource("2_monster")
+entry_id = "sand_armor_strider"
+display_name = "砂铠陆行兽"
+subtitle = "Active roster monster | rock armor silhouette"
+summary = "Public ecology reference for the low-center armored strider. It teaches slow, obvious route-blocking pressure."
+accent = "#f59e0b"
+chips = PackedStringArray("Active roster", "Armor", "Land")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 16
+armor = 4
+move_text = "Move 1 | armored route block"
+style = "陆地重壳：低重心、岩甲、冲撞"
+profile = "A heavy ground monster that signals impact well before it reaches a city."
+public_tells = PackedStringArray("Low, armored silhouette.", "Slow approach lane.", "Public collision warning.")
+action_names = PackedStringArray("Stone Charge", "Route Brace")
+action_tags = PackedStringArray("impact", "block")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Hits a visible route or district.", "Creates a defensive-looking pressure marker.")
+action_bodies = PackedStringArray("Impact feedback stays public.", "Route block data stays in the existing rules layer.")
+
+[sub_resource type="Resource" id="Monster_meteor_sentinel"]
+script = ExtResource("2_monster")
+entry_id = "meteor_sentinel"
+display_name = "流星哨兵"
+subtitle = "Active roster monster | orbital UFO silhouette"
+summary = "Public ecology reference for the orbital sentinel. It teaches fast projection, lane threat, and visible dive timing."
+accent = "#93c5fd"
+chips = PackedStringArray("Active roster", "Orbit", "Fast")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 10
+armor = 1
+move_text = "Move 3 | orbital dive"
+style = "轨道飞行体：圆盘、火线、快速俯冲"
+profile = "A fast orbital monster that creates public lane tension before diving."
+public_tells = PackedStringArray("UFO silhouette.", "Fast projected lane.", "Dive warning is public.")
+action_names = PackedStringArray("Meteor Dive", "Signal Sweep")
+action_tags = PackedStringArray("move", "scan")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Moves quickly toward a visible route.", "Adds a public scan tell.")
+action_bodies = PackedStringArray("Dive callout appears on the map.", "Scan feedback remains public-safe.")
+
+[sub_resource type="Resource" id="Monster_prism_blade_heavy_armor"]
+script = ExtResource("2_monster")
+entry_id = "prism_blade_heavy_armor"
+display_name = "棱刃重甲"
+subtitle = "Active roster monster | crystal armor silhouette"
+summary = "Public ecology reference for a heavy crystal beast. It teaches short-range burst danger and durable board presence."
+accent = "#c084fc"
+chips = PackedStringArray("Active roster", "Crystal", "Burst")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 15
+armor = 3
+move_text = "Move 1 | short burst"
+style = "晶体甲兽：厚甲、棱刃、短距爆发"
+profile = "A crystal-armored monster that makes nearby districts feel unsafe."
+public_tells = PackedStringArray("Thick crystal silhouette.", "Short burst range.", "Adjacent warning is visible.")
+action_names = PackedStringArray("Prism Slash", "Shard Guard")
+action_tags = PackedStringArray("attack", "armor")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Threatens a nearby public district.", "Shows a visible armor stance.")
+action_bodies = PackedStringArray("Burst feedback appears as public callout.", "Armor values remain governed by existing rules.")
+
+[sub_resource type="Resource" id="Monster_oasis_repair_core"]
+script = ExtResource("2_monster")
+entry_id = "oasis_repair_core"
+display_name = "绿洲修复体"
+subtitle = "Active roster monster | support-core silhouette"
+summary = "Public ecology reference for a repair-core creature. It teaches support pressure and recovery cues."
+accent = "#22c55e"
+chips = PackedStringArray("Active roster", "Support", "Repair")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 11
+armor = 1
+move_text = "Move 1 | support aura"
+style = "修复核心：方形凝胶、十字修复、支援光环"
+profile = "A support monster whose value is public because its repair aura is visible."
+public_tells = PackedStringArray("Square gel body.", "Cross-shaped repair light.", "Support aura is public.")
+action_names = PackedStringArray("Oasis Mend", "Gel Bloom")
+action_tags = PackedStringArray("support", "event")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Creates a public repair cue.", "Adds visible support pressure.")
+action_bodies = PackedStringArray("Repair feedback remains a public map event.", "The codex does not own healing rules.")
+
+[sub_resource type="Resource" id="Monster_ember_ring_proto_star"]
+script = ExtResource("2_monster")
+entry_id = "ember_ring_proto_star"
+display_name = "焰环幼星"
+subtitle = "Active roster monster | reserved MOS body slot"
+summary = "Public ecology reference for the single MOS/Moth body slot. It teaches star-fire threat and unique silhouette identity."
+accent = "#fb7185"
+chips = PackedStringArray("Active roster", "Unique body", "Fire")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 13
+armor = 2
+move_text = "Move 2 | star-fire arc"
+style = "唯一 MOS slot：星焰幼体、熔环、光线"
+profile = "A star-fire juvenile whose silhouette is intentionally reserved as the only MOS body slot."
+public_tells = PackedStringArray("Molten ring silhouette.", "Star-fire lane.", "Unique body identity is public.")
+action_names = PackedStringArray("Ember Ring", "Solar Ray")
+action_tags = PackedStringArray("fire", "beam")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Creates a visible fire arc.", "Projects a public beam threat.")
+action_bodies = PackedStringArray("Fire feedback appears as public map effect.", "The unique visual slot is documented for art QA.")
+
+[sub_resource type="Resource" id="Monster_blue_edge_knight"]
+script = ExtResource("2_monster")
+entry_id = "blue_edge_knight"
+display_name = "蓝锋骑士"
+subtitle = "Active roster monster | blade-serpent silhouette"
+summary = "Public ecology reference for a long blade creature. It teaches pursuit pressure and revenge-like visible approach lines."
+accent = "#38bdf8"
+chips = PackedStringArray("Active roster", "Blade", "Pursuit")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 12
+armor = 2
+move_text = "Move 2 | blade pursuit"
+style = "长身刃兽：蛇形、光刃、复仇铠"
+profile = "A blade-serpent monster that makes pursuit lines readable on the map."
+public_tells = PackedStringArray("Long blade silhouette.", "Pursuit lane.", "Approach pressure is public.")
+action_names = PackedStringArray("Blue Edge Pursuit", "Revenge Coil")
+action_tags = PackedStringArray("move", "attack")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Chases along a visible lane.", "Signals an attack window publicly.")
+action_bodies = PackedStringArray("Pursuit trail is visible.", "Attack timing remains governed by existing rules.")
+
+[sub_resource type="Resource" id="Monster_mirror_hunter"]
+script = ExtResource("2_monster")
+entry_id = "mirror_hunter"
+display_name = "镜像猎兵"
+subtitle = "Active roster monster | alien hunter silhouette"
+summary = "Public ecology reference for a small alien hunter. It teaches flanking pressure, ranged tells, and safe public clue reading."
+accent = "#a78bfa"
+chips = PackedStringArray("Active roster", "Flank", "Ranged")
+source_note = "Migrated from data/art/monster_body_art_manifest.json as a public bestiary Resource. Monster AI and damage rules are unchanged."
+hp = 9
+armor = 1
+move_text = "Move 2 | flanking shot"
+style = "镜像猎兵：小型异星头、远程眼、迂回射击"
+profile = "A compact hunter that creates readable flanking and ranged pressure."
+public_tells = PackedStringArray("Small alien silhouette.", "Ranged eye-line.", "Flank lane is visible.")
+action_names = PackedStringArray("Mirror Shot", "Side Step")
+action_tags = PackedStringArray("ranged", "move")
+action_probabilities = PackedStringArray("I 2/6 | IV 3/6", "I 1/6 | IV 2/6")
+action_facts = PackedStringArray("Threatens a visible target lane.", "Repositions through a public side-step.")
+action_bodies = PackedStringArray("Ranged tell appears as public callout.", "Flank behavior stays in existing monster logic.")
+
+[resource]
+script = ExtResource("1_pack")
+pack_id = "active_roster_monsters"
+display_name = "Active Roster Monster Pack"
+source_note = "Batch migration from data/art/monster_body_art_manifest.json. These subresources are public bestiary entries only; gameplay rules remain authoritative."
+entries = Array[Resource]([SubResource("Monster_spore_fog_sea_king"), SubResource("Monster_sand_armor_strider"), SubResource("Monster_meteor_sentinel"), SubResource("Monster_prism_blade_heavy_armor"), SubResource("Monster_oasis_repair_core"), SubResource("Monster_ember_ring_proto_star"), SubResource("Monster_blue_edge_knight"), SubResource("Monster_mirror_hunter")])

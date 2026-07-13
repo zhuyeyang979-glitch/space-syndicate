@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cdp5lf4tfdo3n"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_82b3y"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_lf0hc"]
+
+[sub_resource type="Resource" id="Resource_bajx7"]
+script = ExtResource("1_82b3y")
+card_id = "区域供需合约1"
+family_id = "区域供需合约"
+kind = &"area_trade_contract"
+purchase_cost = 4
+rules_text = "打出前必须先在地图点选供给区与需求区。展示沙漏公开两端与条款；展示结束后，目标城市业主获得独立签/拒窗口，其他玩家此时仍可继续出牌。签约会添加供给/需求并获得现金与物流改善，拒绝会承受罚款和消费降级。"
+tags = PackedStringArray("合约", "匿名")
+contract_product_mode = &"selected"
+authored_keys = PackedStringArray("cost", "kind", "contract_product_mode", "contract_add_products", "contract_add_demands", "accept_cash", "accept_transport_delta", "accept_route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "decline_cash_penalty", "decline_consumption_delta", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"accept_cash": 90,
+"accept_route_flow_multiplier": 1.18,
+"accept_transport_delta": 1,
+"contract_add_demands": 1,
+"contract_add_products": 1,
+"decline_cash_penalty": 70,
+"decline_consumption_delta": -1,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[sub_resource type="Resource" id="Resource_60dkl"]
+script = ExtResource("1_82b3y")
+card_id = "区域供需合约2"
+family_id = "区域供需合约"
+rank = 2
+kind = &"area_trade_contract"
+purchase_cost = 6
+rules_text = "打出前必须先点选供给区与需求区。展示沙漏公开换线两端和条款；随后目标业主签/拒。签约时供给区/需求区各删除一项旧商品并接入当前商品；拒绝会带来罚款、交通降级和断路压力。"
+tags = PackedStringArray("合约", "换线")
+contract_product_mode = &"selected"
+authored_keys = PackedStringArray("cost", "kind", "contract_product_mode", "contract_add_products", "contract_add_demands", "contract_remove_products", "contract_remove_demands", "accept_cash", "accept_transport_delta", "accept_route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "decline_cash_penalty", "decline_transport_delta", "decline_route_damage", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"accept_cash": 160,
+"accept_route_flow_multiplier": 1.32,
+"accept_transport_delta": 1,
+"contract_add_demands": 1,
+"contract_add_products": 1,
+"contract_remove_demands": 1,
+"contract_remove_products": 1,
+"decline_cash_penalty": 120,
+"decline_route_damage": 1,
+"decline_transport_delta": -1,
+"route_flow_seconds": 120.0,
+"route_flow_turns": 4
+}
+
+[resource]
+script = ExtResource("2_lf0hc")
+family_id = "区域供需合约"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_bajx7"), SubResource("Resource_60dkl")])
+public_pool_eligible = true
+upgradeable_family = true

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bkwswmbat85uj"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_8jmfq"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_sh2y5"]
+
+[sub_resource type="Resource" id="Resource_g6p5f"]
+script = ExtResource("1_8jmfq")
+card_id = "热搜推送1"
+family_id = "热搜推送"
+kind = &"news_event"
+purchase_cost = 4
+rules_text = "匿名热搜推送：选中区域热度+45，并为当前商品制造少量需求噪声；所有新闻都来自玩家出牌。"
+tags = PackedStringArray("新闻", "引导")
+authored_keys = PackedStringArray("cost", "kind", "news_category", "panic", "market_demand_pressure", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"market_demand_pressure": 1,
+"news_category": "heat",
+"panic": 45
+}
+
+[resource]
+script = ExtResource("2_sh2y5")
+family_id = "热搜推送"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_g6p5f")])
+public_pool_eligible = true
+upgradeable_family = true

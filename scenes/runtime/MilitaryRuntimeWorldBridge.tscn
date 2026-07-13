@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/military_runtime_world_bridge.gd" id="1_bridge"]
+
+[node name="MilitaryRuntimeWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Narrow world-fact and side-effect bridge for the scene-owned military runtime. It owns no military rules or state."

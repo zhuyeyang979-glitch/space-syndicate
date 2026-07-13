@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bed3qqvh2dsv0"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_0ek0y"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_4827f"]
+
+[sub_resource type="Resource" id="Resource_1lcme"]
+script = ExtResource("1_0ek0y")
+card_id = "需求改造1"
+family_id = "需求改造"
+kind = &"city_demand_shift"
+purchase_cost = 3
+rules_text = "选中己方城市：改造1项需求商品，优先对接当前商路商品，并清除1条断路压力。"
+tags = PackedStringArray("经营", "需求")
+authored_keys = PackedStringArray("cost", "kind", "demand_shift", "repair_routes", "revenue_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"demand_shift": 1,
+"repair_routes": 1,
+"revenue_amount": 10
+}
+
+[sub_resource type="Resource" id="Resource_bqmgp"]
+script = ExtResource("1_0ek0y")
+card_id = "需求改造2"
+family_id = "需求改造"
+rank = 2
+kind = &"city_demand_shift"
+purchase_cost = 5
+rules_text = "选中己方城市：改造2项需求商品，刷新商路并清除1条断路压力，GDP/min +22。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "demand_shift", "repair_routes", "revenue_amount", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"demand_shift": 2,
+"panic": 4,
+"repair_routes": 1,
+"revenue_amount": 22
+}
+
+[resource]
+script = ExtResource("2_4827f")
+family_id = "需求改造"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_1lcme"), SubResource("Resource_bqmgp")])
+public_pool_eligible = true
+upgradeable_family = true

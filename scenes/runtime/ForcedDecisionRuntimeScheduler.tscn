@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/forced_decision_runtime_scheduler.gd" id="1_scheduler"]
+
+[node name="ForcedDecisionRuntimeScheduler" type="Node"]
+script = ExtResource("1_scheduler")
+editor_description = "v0.4 pure-data authority for forced-decision priority, visibility, and blocking. Rule effects remain in their existing domain handlers."

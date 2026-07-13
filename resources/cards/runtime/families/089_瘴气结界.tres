@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bgel1nmjyue87"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_7mt06"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_c83t4"]
+
+[sub_resource type="Resource" id="Resource_xstkr"]
+script = ExtResource("1_7mt06")
+card_id = "瘴气结界1"
+family_id = "瘴气结界"
+kind = &"miasma_bloom"
+purchase_cost = 3
+rules_text = "在怪兽周边或选中区域220米AOE内布置至多4枚瘴气。"
+tags = PackedStringArray("瘴气", "区域")
+range = 220.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "miasma_count", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"miasma_count": 4
+}
+
+[sub_resource type="Resource" id="Resource_kjh0g"]
+script = ExtResource("1_7mt06")
+card_id = "瘴气结界2"
+family_id = "瘴气结界"
+rank = 2
+kind = &"miasma_bloom"
+purchase_cost = 6
+rules_text = "高阶瘴气结界，在260米AOE内布置至多4枚瘴气。"
+tags = PackedStringArray("瘴气", "升级")
+range = 260.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "miasma_count", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"miasma_count": 4
+}
+
+[resource]
+script = ExtResource("2_c83t4")
+family_id = "瘴气结界"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_xstkr"), SubResource("Resource_kjh0g")])
+upgradeable_family = true

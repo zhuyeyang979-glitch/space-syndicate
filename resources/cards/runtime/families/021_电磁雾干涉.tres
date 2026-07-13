@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cukxpdq4teley"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_3b8wm"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_faskf"]
+
+[sub_resource type="Resource" id="Resource_8ca1t"]
+script = ExtResource("1_3b8wm")
+card_id = "电磁雾干涉1"
+family_id = "电磁雾干涉"
+kind = &"weather_control"
+purchase_cost = 5
+rules_text = "主动布置电磁雾预报：约70秒后覆盖选中区域附近，拖慢交通/消费并制造更多匿名推理噪声。"
+tags = PackedStringArray("天气", "情报")
+play_product = "轨迹墨水"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"weather_duration_seconds": 100.0,
+"weather_forecast_lead_seconds": 70.0,
+"weather_type": "magnetic_fog",
+"weather_zone_count": 2
+}
+
+[resource]
+script = ExtResource("2_faskf")
+family_id = "电磁雾干涉"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_8ca1t")])
+public_pool_eligible = true
+upgradeable_family = true

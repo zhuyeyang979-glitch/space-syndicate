@@ -1,0 +1,38 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/bestiary_monster_kpi_card.gd" id="1_script"]
+
+[node name="BestiaryMonsterKpiCard" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 82)
+size_flags_horizontal = 3
+script = ExtResource("1_script")
+
+[node name="BestiaryMonsterKpiMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 9
+theme_override_constants/margin_bottom = 7
+
+[node name="BestiaryMonsterKpiStack" type="VBoxContainer" parent="BestiaryMonsterKpiMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="BestiaryMonsterKpiTitle" type="Label" parent="BestiaryMonsterKpiMargin/BestiaryMonsterKpiStack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="BestiaryMonsterKpiValue" type="Label" parent="BestiaryMonsterKpiMargin/BestiaryMonsterKpiStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.972549, 0.980392, 0.988235, 1)
+
+[node name="BestiaryMonsterKpiMeta" type="Label" parent="BestiaryMonsterKpiMargin/BestiaryMonsterKpiStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.580392, 0.639216, 0.721569, 1)

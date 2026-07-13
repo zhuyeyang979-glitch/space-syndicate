@@ -55,6 +55,7 @@ func _run() -> void:
 
 func _monster_card_sources(main: Node, count: int) -> Array:
 	var result := []
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var card_script := load(CARD_ART_SCRIPT_PATH)
 	var probe: Control = null
 	if card_script != null:
@@ -64,12 +65,12 @@ func _monster_card_sources(main: Node, count: int) -> Array:
 		await process_frame
 	for i in range(count):
 		var card_name := String(main.call("_monster_card_name", i, 1)) if main.has_method("_monster_card_name") else ""
-		var skill: Dictionary = main.call("_skill_definition", card_name) as Dictionary if card_name != "" and main.has_method("_skill_definition") else {}
+		var skill: Dictionary = coordinator.call("card_definition", card_name) as Dictionary if card_name != "" and coordinator != null else {}
 		var source := {
 			"name": card_name,
 			"kind": String(skill.get("kind", "monster_card")),
 			"tags": String(main.call("_skill_tag_text", skill)) if main.has_method("_skill_tag_text") else "怪兽卡",
-			"rank": int(main.call("_skill_rank", card_name)) if main.has_method("_skill_rank") else 1,
+			"rank": int(coordinator.call("card_rank", card_name)) if coordinator != null else 1,
 			"accent": main.call("_card_theme_color", skill) as Color if main.has_method("_card_theme_color") else Color("#ef4444"),
 			"stats": String(main.call("_art_identity_card_stats", card_name, skill)) if main.has_method("_art_identity_card_stats") else "",
 		}

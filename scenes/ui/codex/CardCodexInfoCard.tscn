@@ -1,0 +1,43 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/codex/card_codex_info_card.gd" id="1_script"]
+
+[node name="CardCodexInfoCard" type="PanelContainer"]
+size_flags_horizontal = 3
+script = ExtResource("1_script")
+
+[node name="CardCodexInfoCardMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="CardCodexInfoCardStack" type="VBoxContainer" parent="CardCodexInfoCardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CardCodexAttributeColorTick" type="ColorRect" parent="CardCodexInfoCardMargin/CardCodexInfoCardStack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 3)
+layout_mode = 2
+
+[node name="CardCodexInfoCardTitle" type="Label" parent="CardCodexInfoCardMargin/CardCodexInfoCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 13
+
+[node name="CardCodexInfoCardBody" type="Label" parent="CardCodexInfoCardMargin/CardCodexInfoCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.898039, 0.905882, 0.921569, 1)
+
+[node name="CardCodexInfoCardMeta" type="Label" parent="CardCodexInfoCardMargin/CardCodexInfoCardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.580392, 0.639216, 0.721569, 1)

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AiPersonalityPolicyResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_personality_policy_resource.gd" id="1_personality"]
+
+[resource]
+script = ExtResource("1_personality")
+policy_id = "disruptor"
+display_name = "破坏型AI"
+style = "偏好商路黑客和竞争城市压制，让怪兽战争服务于破坏收益。"
+build_bias = 0.9
+business_bias = 1.15
+monster_bias = 1.15
+economy_bias = 0.85
+bid_aggression = 1.25
+exploration = 0.22
+route_preferences = {
+"direct_interaction": 1.34,
+"finance_speculation": 1.1,
+"intel_supply": 1.06,
+"monster_pressure": 1.18
+}

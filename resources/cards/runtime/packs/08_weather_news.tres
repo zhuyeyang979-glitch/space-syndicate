@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/004_舆论操控.tres" id="1_2gcpi"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/014_热搜推送.tres" id="2_ty4oq"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/015_危机快讯.tres" id="3_fuqtk"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/016_金融传闻.tres" id="4_4f4wx"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/017_监管风暴.tres" id="5_p378n"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/018_太阳风暴预报.tres" id="6_qpj4c"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/019_酸雨云团播种.tres" id="7_hgl8i"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/020_引力潮汐播报.tres" id="8_0rmet"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/021_电磁雾干涉.tres" id="9_e842y"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/040_航线预报.tres" id="10_j6rfx"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="11_81owf"]
+
+[resource]
+script = ExtResource("11_81owf")
+pack_id = &"weather_news"
+display_name = "Weather & News"
+families = Array[Resource]([ExtResource("1_2gcpi"), ExtResource("2_ty4oq"), ExtResource("3_fuqtk"), ExtResource("4_4f4wx"), ExtResource("5_p378n"), ExtResource("6_qpj4c"), ExtResource("7_hgl8i"), ExtResource("8_0rmet"), ExtResource("9_e842y"), ExtResource("10_j6rfx")])

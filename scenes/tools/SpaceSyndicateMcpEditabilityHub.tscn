@@ -1,0 +1,224 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/space_syndicate_mcp_editability_hub.gd" id="2_script"]
+
+[node name="SpaceSyndicateMcpEditabilityHub" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="McpHubBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.018, 0.025, 0.04, 1)
+
+[node name="McpHubMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="McpHubColumns" type="HBoxContainer" parent="McpHubMargin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="McpHubLeftPanel" type="PanelContainer" parent="McpHubMargin/McpHubColumns"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="McpHubLeftMargin" type="MarginContainer" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="McpHubLeftRows" type="VBoxContainer" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="McpHubTitleLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+layout_mode = 2
+text = "Space Syndicate MCP Hub"
+text_overrun_behavior = 3
+
+[node name="McpHubSubtitleLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+layout_mode = 2
+text = "Editor navigation, scene checks, QA run targets"
+autowrap_mode = 3
+
+[node name="McpCategorySectionLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+layout_mode = 2
+text = "Scene Categories"
+text_overrun_behavior = 3
+
+[node name="McpCategoryList" type="ItemList" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 156)
+layout_mode = 2
+size_flags_horizontal = 3
+select_mode = 0
+
+[node name="McpSceneSectionLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+layout_mode = 2
+text = "Scenes"
+text_overrun_behavior = 3
+
+[node name="McpSceneList" type="ItemList" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+select_mode = 0
+
+[node name="McpHubActionGrid" type="GridContainer" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="OpenSceneButton" type="Button" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows/McpHubActionGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+text = "Open Scene"
+tooltip_text = "Print and request the selected scene for MCP/editor opening"
+
+[node name="RunSceneButton" type="Button" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows/McpHubActionGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+text = "Run Scene"
+tooltip_text = "Print and request the selected scene for MCP/editor running"
+
+[node name="CaptureScreenshotButton" type="Button" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows/McpHubActionGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+text = "Capture Screenshot"
+tooltip_text = "Print the selected scene and user:// screenshot target"
+
+[node name="PrintScenePathButton" type="Button" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows/McpHubActionGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 32)
+layout_mode = 2
+text = "Print Scene Path"
+tooltip_text = "Copy and print the selected scene path"
+
+[node name="RefreshRegistryButton" type="Button" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Refresh Registry"
+tooltip_text = "Reload the MCP scene registry"
+
+[node name="McpHubStatusLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubLeftPanel/McpHubLeftMargin/McpHubLeftRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="McpHubDetailPanel" type="PanelContainer" parent="McpHubMargin/McpHubColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="McpHubDetailMargin" type="MarginContainer" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="McpHubDetailRows" type="VBoxContainer" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="McpSceneDisplayNameLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No scene selected"
+text_overrun_behavior = 3
+
+[node name="McpSceneMetaRows" type="VBoxContainer" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="McpScenePathLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows/McpSceneMetaRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Path: -"
+autowrap_mode = 3
+
+[node name="McpSceneCategoryLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows/McpSceneMetaRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Category: -"
+text_overrun_behavior = 3
+
+[node name="McpExpectedRootTypeLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows/McpSceneMetaRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Expected root: -"
+text_overrun_behavior = 3
+
+[node name="McpSceneSmokeLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows/McpSceneMetaRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Smoke: -"
+text_overrun_behavior = 3
+
+[node name="McpScenePurposeHeader" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows"]
+layout_mode = 2
+text = "Purpose"
+text_overrun_behavior = 3
+
+[node name="McpScenePurposeLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "-"
+autowrap_mode = 3
+
+[node name="McpSceneNotesHeader" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows"]
+layout_mode = 2
+text = "MCP Notes"
+text_overrun_behavior = 3
+
+[node name="McpSceneNotesLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "-"
+autowrap_mode = 3
+
+[node name="McpHubRuntimeHintPanel" type="PanelContainer" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="McpHubRuntimeHintMargin" type="MarginContainer" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows/McpHubRuntimeHintPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="McpHubRuntimeHintLabel" type="Label" parent="McpHubMargin/McpHubColumns/McpHubDetailPanel/McpHubDetailMargin/McpHubDetailRows/McpHubRuntimeHintPanel/McpHubRuntimeHintMargin"]
+layout_mode = 2
+text = "Run this Hub when driving Godot through the project-internal MCP addon. Button presses print stable scene paths for get_console_log readback; editor opening/running is handled by the Dock or MCP tools."
+autowrap_mode = 3

@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_economy_product_route_formula_runtime_service.gd" id="1_formula_service"]
+
+[node name="CardEconomyProductRouteFormulaRuntimeService" type="Node"]
+script = ExtResource("1_formula_service")
+editor_description = "Pure economy/product/route formula owner. It calculates market boons, speculation pressure, futures/GDP derivative payouts, and route factors without reading or mutating world Nodes."

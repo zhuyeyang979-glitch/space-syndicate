@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/product_market_runtime_controller.gd" id="1_controller"]
+[ext_resource type="Resource" path="res://resources/finance/product_futures/product_futures_terms_v04_catalog.tres" id="2_terms"]
+
+[node name="ProductMarketRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+terms_catalog = ExtResource("2_terms")
+editor_description = "Authoritative owner of product market state, market cadence, pricing lifecycle, authored v0.4 futures terms, margin settlement, boons, and save/load. Formula arithmetic remains delegated to CardEconomyProductRouteFormulaRuntimeService."

@@ -115,7 +115,7 @@ func _economy_cards(stats: Dictionary) -> Array:
 	]
 
 
-func _suggestions_for(chapter: Dictionary, stats: Dictionary, objectives: Array) -> Array:
+func _suggestions_for(_chapter: Dictionary, stats: Dictionary, objectives: Array) -> Array:
 	var suggestions: Array = []
 	if int(stats.get("hints", 0)) > 1:
 		suggestions.append("下次先看当前目标按钮，再打开详情。")

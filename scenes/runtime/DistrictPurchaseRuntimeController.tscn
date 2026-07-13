@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/district_purchase_runtime_controller.gd" id="1_controller"]
+
+[node name="DistrictPurchaseRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Authoritative v0.4 12-second district purchase qualification window. It locks access and price context without owning card settlement or economy state."

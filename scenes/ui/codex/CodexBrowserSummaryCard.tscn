@@ -1,0 +1,44 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/codex/codex_browser_summary_card.gd" id="2_script"]
+
+[node name="CodexBrowserSummaryCard" type="PanelContainer"]
+custom_minimum_size = Vector2(210, 94)
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="SummaryMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="SummaryRows" type="VBoxContainer" parent="SummaryMargin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CodexBrowserSummaryTitle" type="Label" parent="SummaryMargin/SummaryRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Overview"
+
+[node name="CodexBrowserSummaryBody" type="Label" parent="SummaryMargin/SummaryRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.91, 0.93, 0.96, 1)
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 3
+text = "Summary"
+
+[node name="CodexBrowserSummaryMeta" type="Label" parent="SummaryMargin/SummaryRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.64, 0.72, 1)
+theme_override_font_sizes/font_size = 9
+autowrap_mode = 3
+text = "Meta"

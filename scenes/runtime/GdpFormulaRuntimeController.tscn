@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/gdp_formula_runtime_controller.gd" id="1_controller"]
+[ext_resource type="Resource" path="res://resources/economy/space_syndicate_gdp_formula_v04.tres" id="2_profile"]
+
+[node name="GdpFormulaRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+formula_profile = ExtResource("2_profile")
+editor_description = "Scene-owned v0.4 city GDP formula authority. It consumes pure world snapshots, applies Inspector-editable production/demand/transit/pressure parameters, and emits pure breakdowns without retaining domain Nodes."

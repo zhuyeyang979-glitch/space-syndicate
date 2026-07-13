@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://qp2ot12gsm2u"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_yssg4"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_wk5rv"]
+
+[sub_resource type="Resource" id="Resource_268wk"]
+script = ExtResource("1_yssg4")
+card_id = "普攻1"
+family_id = "普攻"
+kind = &"attack"
+purchase_cost = 2
+rules_text = "近战AOE约110米，对其他怪兽造成1点伤害并击退约120米。"
+tags = PackedStringArray("攻击", "击退")
+range = 110.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "knockback", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"knockback": 120.0
+}
+
+[sub_resource type="Resource" id="Resource_yhfx8"]
+script = ExtResource("1_yssg4")
+card_id = "普攻2"
+family_id = "普攻"
+rank = 2
+kind = &"attack"
+purchase_cost = 4
+rules_text = "近战AOE约110米，对其他怪兽造成2点伤害并击退约120米。"
+tags = PackedStringArray("攻击", "击退")
+range = 110.0
+damage = 2
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "knockback", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"knockback": 120.0
+}
+
+[sub_resource type="Resource" id="Resource_lqxfd"]
+script = ExtResource("1_yssg4")
+card_id = "普攻3"
+family_id = "普攻"
+rank = 3
+kind = &"attack"
+purchase_cost = 6
+rules_text = "近战AOE约110米，对其他怪兽造成3点伤害并击退约220米。"
+tags = PackedStringArray("攻击", "终端", "击退")
+range = 110.0
+damage = 3
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "knockback", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"knockback": 220.0
+}
+
+[resource]
+script = ExtResource("2_wk5rv")
+family_id = "普攻"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_268wk"), SubResource("Resource_yhfx8"), SubResource("Resource_lqxfd")])
+public_pool_eligible = true
+upgradeable_family = true

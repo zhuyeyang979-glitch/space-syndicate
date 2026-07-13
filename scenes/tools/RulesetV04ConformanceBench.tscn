@@ -1,0 +1,87 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/ruleset_v04_conformance_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetRuntimeBridge.tscn" id="2_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentRuntimeController.tscn" id="3_city_controller"]
+
+[node name="RulesetV04ConformanceBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0156863, 0.0235294, 0.0431373, 1)
+
+[node name="RulesetRuntimeBridge" parent="." instance=ExtResource("2_bridge")]
+unique_name_in_owner = true
+
+[node name="CityDevelopmentRuntimeController" parent="." instance=ExtResource("3_city_controller")]
+unique_name_in_owner = true
+
+[node name="BenchMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 20.0
+offset_right = -24.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BenchRows" type="VBoxContainer" parent="BenchMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="BenchMargin/BenchRows"]
+layout_mode = 2
+text = "Ruleset v0.4 Conformance"
+theme_override_colors/font_color = Color(0.968627, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="SummaryLabel" type="Label" parent="BenchMargin/BenchRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Inspector profile -> runtime bridge -> controlled cutover -> deletion registry"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.690196, 0.776471, 0.890196, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="StatusLabel" type="Label" parent="BenchMargin/BenchRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status: ready"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.741176, 0.941176, 0.784314, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="RuleSummaryPanel" type="PanelContainer" parent="BenchMargin/BenchRows"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RuleSummaryMargin" type="MarginContainer" parent="BenchMargin/BenchRows/RuleSummaryPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="RuleSummaryText" type="RichTextLabel" parent="BenchMargin/BenchRows/RuleSummaryPanel/RuleSummaryMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+fit_content = false
+bbcode_enabled = true
+text = "[b]Runtime source[/b]  v0.4\n[b]Timing[/b]  30 shared / 25 organize / 5 lock\n[b]Wager[/b]  20 default / 30 maximum\n[b]Final countdown[/b]  75 seconds\n\nPending replacement blocks: city development, district purchase window, forced-decision scheduler, private plan, legacy End Turn."
+theme_override_colors/default_color = Color(0.827451, 0.870588, 0.933333, 1)
+theme_override_font_sizes/normal_font_size = 15

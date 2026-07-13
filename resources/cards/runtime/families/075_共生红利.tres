@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://i5vudbp8smxb"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_i6dc6"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_08ckw"]
+
+[sub_resource type="Resource" id="Resource_pr8wb"]
+script = ExtResource("1_i6dc6")
+card_id = "共生红利1"
+family_id = "共生红利"
+kind = &"product_growth_boon"
+purchase_cost = 5
+rules_text = "利用怪兽带来的异星需求：当前商品正向增速×1.7，相关商品商路流通×1.3，持续90秒。"
+tags = PackedStringArray("怪兽", "经济")
+authored_keys = PackedStringArray("cost", "kind", "growth_multiplier", "route_flow_multiplier", "growth_seconds", "growth_turns", "route_flow_seconds", "route_flow_turns", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"growth_multiplier": 1.7,
+"growth_seconds": 90.0,
+"growth_turns": 3,
+"route_flow_multiplier": 1.3,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[sub_resource type="Resource" id="Resource_ct8d6"]
+script = ExtResource("1_i6dc6")
+card_id = "共生红利2"
+family_id = "共生红利"
+rank = 2
+kind = &"product_growth_boon"
+purchase_cost = 7
+rules_text = "高阶共生经济：当前商品正向增速×2.2，相关商品商路流通×1.55，持续120秒。"
+tags = PackedStringArray("怪兽", "升级")
+authored_keys = PackedStringArray("cost", "kind", "growth_multiplier", "route_flow_multiplier", "growth_seconds", "growth_turns", "route_flow_seconds", "route_flow_turns", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"growth_multiplier": 2.2,
+"growth_seconds": 120.0,
+"growth_turns": 4,
+"route_flow_multiplier": 1.55,
+"route_flow_seconds": 120.0,
+"route_flow_turns": 4
+}
+
+[resource]
+script = ExtResource("2_08ckw")
+family_id = "共生红利"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_pr8wb"), SubResource("Resource_ct8d6")])
+public_pool_eligible = true
+upgradeable_family = true

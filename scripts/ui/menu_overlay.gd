@@ -5,12 +5,14 @@ signal continue_requested
 signal main_menu_requested
 signal catalog_step_requested(delta: int)
 signal catalog_back_requested
+signal quick_nav_action_requested(action_id: String)
 
 @onready var surface_panel: PanelContainer = %MenuSurfacePanel
 @onready var shell_margin: MarginContainer = %MenuShellMargin
 @onready var title_label: Label = %MenuTitleLabel
 @onready var context_label: Label = %MenuContextLabel
 @onready var quick_nav_row: HBoxContainer = %MenuQuickNavRow
+@onready var quick_navigation: Control = %MenuQuickNavigation
 @onready var hint_panel: PanelContainer = %MenuInteractionHintPanel
 @onready var hint_label: Label = %MenuInteractionHintLabel
 @onready var nav_row: HBoxContainer = %MenuNavRow
@@ -26,6 +28,9 @@ signal catalog_back_requested
 @onready var preview_box: VBoxContainer = %MenuPreviewBox
 @onready var run_save_label: Label = %MenuRunSaveLabel
 
+var _root_table_menu := false
+var _compact_page := false
+
 
 func _ready() -> void:
 	_style_shell()
@@ -37,6 +42,8 @@ func present_menu_shell(data: Dictionary) -> void:
 	var body_text := str(data.get("body", ""))
 	var root_table_menu := bool(data.get("root_table_menu", false))
 	var compact_page := bool(data.get("compact_page", false))
+	_root_table_menu = root_table_menu
+	_compact_page = compact_page
 	title_label.text = title_text
 	title_label.visible = bool(data.get("title_visible", not root_table_menu))
 	context_label.text = str(data.get("context", ""))
@@ -56,6 +63,11 @@ func present_menu_shell(data: Dictionary) -> void:
 	nav_row.visible = bool(data.get("nav_visible", true))
 	run_save_label.visible = bool(data.get("run_save_visible", false))
 	set_catalog_navigation({})
+	set_quick_navigation({
+		"entries": data.get("quick_nav", []),
+		"active_id": str(data.get("quick_nav_active_id", "")),
+		"visible": bool(data.get("quick_nav_visible", false)),
+	})
 	visible = true
 	refresh_menu_layout(_dictionary_vector2(data, "viewport_size", Vector2.ZERO), root_table_menu, compact_page)
 
@@ -67,6 +79,84 @@ func clear_preview() -> void:
 		preview_box.remove_child(child)
 		child.queue_free()
 	preview_box.visible = false
+
+
+func get_preview_host() -> VBoxContainer:
+	return preview_box
+
+
+func set_body_text(text: String, should_show: bool = true) -> void:
+	body_label.text = text
+	body_label.visible = should_show and text.strip_edges() != ""
+
+
+func set_run_save_summary(text: String) -> void:
+	run_save_label.text = text
+
+
+func set_global_navigation(data: Dictionary) -> void:
+	continue_button.disabled = bool(data.get("continue_disabled", continue_button.disabled))
+	continue_button.visible = bool(data.get("continue_visible", continue_button.visible))
+	back_button.visible = bool(data.get("back_visible", back_button.visible))
+	nav_row.visible = bool(data.get("nav_visible", continue_button.visible or back_button.visible))
+	run_save_label.visible = bool(data.get("run_save_visible", run_save_label.visible))
+
+
+func set_quick_navigation(data: Dictionary) -> void:
+	var should_show := bool(data.get("visible", false))
+	quick_nav_row.visible = should_show
+	if quick_navigation != null and quick_navigation.has_method("set_navigation"):
+		quick_navigation.call("set_navigation", data)
+
+
+func content_scroll_value() -> int:
+	return content_scroll.scroll_vertical if content_scroll != null else 0
+
+
+func set_content_scroll_value(value: int) -> void:
+	if content_scroll != null:
+		content_scroll.scroll_vertical = maxi(0, value)
+
+
+func available_content_width(viewport_size: Vector2 = Vector2.ZERO) -> float:
+	if viewport_size == Vector2.ZERO and get_viewport() != null:
+		viewport_size = get_viewport().get_visible_rect().size
+	if viewport_size == Vector2.ZERO:
+		viewport_size = Vector2(960, 640)
+	var panel_ratio := maxf(0.45, surface_panel.anchor_right - surface_panel.anchor_left)
+	var side_padding := float(shell_margin.get_theme_constant("margin_left") + shell_margin.get_theme_constant("margin_right") + 42)
+	return maxf(260.0, viewport_size.x * panel_ratio - side_padding)
+
+
+func available_content_height(viewport_size: Vector2 = Vector2.ZERO) -> float:
+	if viewport_size == Vector2.ZERO and get_viewport() != null:
+		viewport_size = get_viewport().get_visible_rect().size
+	if viewport_size == Vector2.ZERO:
+		viewport_size = Vector2(960, 640)
+	var panel_ratio := maxf(0.45, surface_panel.anchor_bottom - surface_panel.anchor_top)
+	return maxf(260.0, viewport_size.y * panel_ratio - 170.0)
+
+
+func refresh_current_layout(viewport_size: Vector2 = Vector2.ZERO) -> void:
+	refresh_menu_layout(viewport_size, _root_table_menu, _compact_page)
+
+
+func debug_snapshot() -> Dictionary:
+	var quick_snapshot: Dictionary = {}
+	if quick_navigation != null and quick_navigation.has_method("debug_snapshot"):
+		var value: Variant = quick_navigation.call("debug_snapshot")
+		quick_snapshot = value if value is Dictionary else {}
+	return {
+		"visible": visible,
+		"title": title_label.text,
+		"context": context_label.text,
+		"root_table_menu": _root_table_menu,
+		"compact_page": _compact_page,
+		"quick_navigation": quick_snapshot,
+		"catalog_navigation_visible": catalog_nav_row.visible,
+		"continue_visible": continue_button.visible,
+		"back_visible": back_button.visible,
+	}
 
 
 func hide_global_navigation() -> void:
@@ -122,6 +212,8 @@ func refresh_menu_layout(viewport_size: Vector2 = Vector2.ZERO, root_table_menu:
 	preview_box.custom_minimum_size = Vector2(0, maxf(430.0, viewport_size.y - 210.0)) if root_table_menu else Vector2.ZERO
 	nav_row.add_theme_constant_override("separation", 6 if compact else 10)
 	quick_nav_row.add_theme_constant_override("separation", 4 if compact else 8)
+	if quick_navigation != null and quick_navigation.has_method("set_compact"):
+		quick_navigation.call("set_compact", compact)
 	catalog_nav_row.add_theme_constant_override("separation", 6 if compact else 8)
 	for button in [continue_button, back_button, catalog_prev_button, catalog_next_button, catalog_back_button]:
 		button.custom_minimum_size = Vector2(136 if compact else 152, 40 if compact else 44)
@@ -139,6 +231,10 @@ func _connect_buttons() -> void:
 		catalog_next_button.pressed.connect(_on_next_pressed)
 	if not catalog_back_button.pressed.is_connected(_on_catalog_back_pressed):
 		catalog_back_button.pressed.connect(_on_catalog_back_pressed)
+	if quick_navigation != null and quick_navigation.has_signal("action_requested"):
+		var callback := Callable(self, "_on_quick_nav_action_requested")
+		if not quick_navigation.is_connected("action_requested", callback):
+			quick_navigation.connect("action_requested", callback)
 
 
 func _style_shell() -> void:
@@ -219,3 +315,7 @@ func _on_next_pressed() -> void:
 
 func _on_catalog_back_pressed() -> void:
 	catalog_back_requested.emit()
+
+
+func _on_quick_nav_action_requested(action_id: String) -> void:
+	quick_nav_action_requested.emit(action_id)

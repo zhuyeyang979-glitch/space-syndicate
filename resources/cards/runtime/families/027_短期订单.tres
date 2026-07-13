@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dwu486e7x6grj"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_16lvm"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_hc6lr"]
+
+[sub_resource type="Resource" id="Resource_26w8y"]
+script = ExtResource("1_16lvm")
+card_id = "短期订单1"
+family_id = "短期订单"
+kind = &"city_contract_boon"
+purchase_cost = 4
+rules_text = "选中己方城市获得临时订单：GDP/min +95，持续90秒。"
+tags = PackedStringArray("经营", "合约")
+authored_keys = PackedStringArray("cost", "kind", "contract_income", "contract_seconds", "contract_turns", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"contract_income": 95,
+"contract_seconds": 90.0,
+"contract_turns": 3,
+"panic": 4
+}
+
+[sub_resource type="Resource" id="Resource_df34q"]
+script = ExtResource("1_16lvm")
+card_id = "短期订单2"
+family_id = "短期订单"
+rank = 2
+kind = &"city_contract_boon"
+purchase_cost = 6
+rules_text = "选中己方城市获得大额临时订单：GDP/min +155，持续120秒。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "contract_income", "contract_seconds", "contract_turns", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"contract_income": 155,
+"contract_seconds": 120.0,
+"contract_turns": 4,
+"panic": 7
+}
+
+[resource]
+script = ExtResource("2_hc6lr")
+family_id = "短期订单"
+pack_id = &"contracts"
+authored_ranks = Array[Resource]([SubResource("Resource_26w8y"), SubResource("Resource_df34q")])
+public_pool_eligible = true
+upgradeable_family = true

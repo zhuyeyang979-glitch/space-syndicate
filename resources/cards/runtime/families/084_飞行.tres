@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bdlb03gv34sk8"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_j6l02"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_bgd4i"]
+
+[sub_resource type="Resource" id="Resource_vtcr5"]
+script = ExtResource("1_j6l02")
+card_id = "飞行1"
+family_id = "飞行"
+kind = &"fly"
+purchase_cost = 3
+rules_text = "飞行突进最多650米。"
+tags = PackedStringArray()
+move = 650.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_xny3s"]
+script = ExtResource("1_j6l02")
+card_id = "飞行2"
+family_id = "飞行"
+rank = 2
+kind = &"fly"
+purchase_cost = 6
+rules_text = "飞行突进最多760米，冷却更长但更适合后期牌池。"
+tags = PackedStringArray()
+move = 760.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_bgd4i")
+family_id = "飞行"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_vtcr5"), SubResource("Resource_xny3s")])
+public_pool_eligible = true
+upgradeable_family = true

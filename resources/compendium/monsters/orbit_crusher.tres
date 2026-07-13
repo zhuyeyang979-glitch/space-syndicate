@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="MonsterCodexEntryResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/content/monster_codex_entry_resource.gd" id="1_crusher"]
+
+[resource]
+script = ExtResource("1_crusher")
+entry_id = "orbit_crusher"
+display_name = "Orbit Crusher"
+subtitle = "Slow heavy monster. It teaches armor, city pressure, and public danger lanes."
+summary = "A durable public threat that makes players read map position before building."
+accent = "#f97316"
+chips = PackedStringArray("Heavy", "Armor", "City pressure")
+source_note = "Codex content resource only. Damage and city rules are unchanged."
+hp = 16
+armor = 4
+move_text = "Move 1 | city pressure"
+style = "Armored asteroid-backed monster with a slow orbital sweep."
+profile = "heavy pressure"
+public_tells = PackedStringArray("Threat lane is visible before impact.")
+action_names = PackedStringArray("Gravity Slam", "Debris Wake")
+action_tags = PackedStringArray("damage", "route")
+action_probabilities = PackedStringArray("I 1/6 | IV 2/6", "I 2/6 | IV 3/6")
+action_facts = PackedStringArray("Pressures the nearest public city lane.", "Leaves route disruption as a public cue.")
+action_bodies = PackedStringArray("Damage resolution remains in existing rules.", "Route warning appears as visible map feedback.")

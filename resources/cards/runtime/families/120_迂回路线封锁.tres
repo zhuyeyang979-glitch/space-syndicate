@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bj8my35rvecdg"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_s6q7l"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_vdd5w"]
+
+[sub_resource type="Resource" id="Resource_xr7gq"]
+script = ExtResource("1_s6q7l")
+card_id = "迂回路线封锁1"
+family_id = "迂回路线封锁"
+kind = &"monster_lure"
+purchase_cost = 4
+rules_text = "封锁镜像猎兵的迂回路线，指定怪兽下一次自动移动优先朝当前选区推进，并提前最多4.5秒触发。"
+tags = PackedStringArray("镜像猎兵", "诱导")
+authored_keys = PackedStringArray("cost", "kind", "lure_speedup", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"lure_speedup": 4.5
+}
+
+[resource]
+script = ExtResource("2_vdd5w")
+family_id = "迂回路线封锁"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_xr7gq")])

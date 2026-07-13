@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://b72jsy18ip1yj"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_630s4"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_fy02f"]
+
+[sub_resource type="Resource" id="Resource_18vc7"]
+script = ExtResource("1_630s4")
+card_id = "舆论操控1"
+family_id = "舆论操控"
+kind = &"news_event"
+purchase_cost = 3
+rules_text = "匿名制造区域舆论：选中区域热度+30，怪兽目标概率更容易向这里偏移；新闻只由玩家卡牌产生。"
+tags = PackedStringArray("新闻", "热度")
+authored_keys = PackedStringArray("cost", "kind", "news_category", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"news_category": "heat",
+"panic": 30
+}
+
+[sub_resource type="Resource" id="Resource_n1kge"]
+script = ExtResource("1_630s4")
+card_id = "舆论操控2"
+family_id = "舆论操控"
+rank = 2
+kind = &"news_event"
+purchase_cost = 6
+rules_text = "大型舆论战：选中区域热度+65，强行制造怪兽关注和公开推理线索。"
+tags = PackedStringArray("新闻", "升级")
+authored_keys = PackedStringArray("cost", "kind", "news_category", "panic", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"news_category": "heat",
+"panic": 65
+}
+
+[resource]
+script = ExtResource("2_fy02f")
+family_id = "舆论操控"
+pack_id = &"weather_news"
+authored_ranks = Array[Resource]([SubResource("Resource_18vc7"), SubResource("Resource_n1kge")])
+public_pool_eligible = true
+upgradeable_family = true

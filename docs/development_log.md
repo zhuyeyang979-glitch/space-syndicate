@@ -1,7 +1,186 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-05。
+> 最新记录日期：2026-07-14。
+
+## 2026-07-14｜SS05-00 可恢复 v0.4 基线与 v0.5 迁移基础合同
+
+- 重新运行 Repository Safety Baseline：忽略规则调整前测得 `85` 个 tracked changes、`1211` 个 untracked paths；精确忽略 MCP 截图缓存与 tracked QA 图片的生成型 `.import` 后，待纳入快照为 `86` 个 tracked changes、`1154` 个 untracked paths，另有 `979` 个 ignored paths。
+- 待纳入文件已按源码／场景／Resource／测试／文档、项目资产和已登记第三方 import metadata 分类；状态集合中没有大于等于 10 MiB 的文件，也没有发现玩家存档、凭据、私钥或新增机器绝对路径。
+- `.gitignore` 只新增 `addons/godot_mcp/cache/` 与 `reports/**/*.import`；没有忽略 `.gd`、`.tscn`、`.tres`、`.uid`、测试、规则文档或第三方来源登记。
+- clean-clone 导入复核发现 Windows `core.autocrlf` 会让 tracked 源资产 `.import` 出现仅换行不同的 dirty 状态，并改变 `main.gd` 的字节 SHA；新增 `.gitattributes` 将所有文本固定为 LF、二进制保持 binary，保留 Godot 导入设置并确保跨 clone 文件哈希一致。
+- 新增 `rules_v05_migration_foundation_contract.md`，冻结分支拓扑、`currency_scale=100`、新金额字段统一使用 `*_cents`、资金事务 receipt、时钟域、暂停／抢占／存档行为和跨领域 receipt 边界。
+- v0.4 只由不可变 `v0.4-runtime-baseline` tag 与发布分支保存；后续开发使用非发布 `rules/v05-runtime-integration` 分支，不建立运行时 v0.4/v0.5 selector、自动 fallback 或双 owner。每个领域必须在同一提交完成新 owner、调用方、测试和旧实现删除。
+- 合约临时受损统一使用 `delivery_blocked`／`effect_suspended`，不会暂停 `expires_at`；Monster Wager 只消费 Queue 的 `public_wager_pool_receipt`；FinancialDistress 只拥有危机状态，跨领域淘汰由 EndStateSettlement 编排。
+- 升级／合并卡在财务危机出售时的成本基准仍是 blocking product decision，本轮没有擅自选择算法。
+- 本轮没有修改玩法、存档、信号、action id 或 `main.gd`。`main.gd` 保持 `20209` 非空行、`1285` 个函数，SHA-256 为 `6BD3F293EC2E92AEB81A39C80266314BE6A308D2C03ECD58FD8DB22958CAE699`。
+- 本地门禁：Save Ownership `24/24`、Menu Shell `24/24`、Global Navigation `32/32 observed`／`19/32 aligned`、composition、focus-order 和 layout smoke 通过；layout smoke 额外稳定了拒绝旧建城动作前的派生城市外壳初始化，不改变生产行为。
+- 本记录对应的 Git snapshot 只有在独立 clean clone 完成 Godot import、composition 与 layout smoke 后，才允许创建 `v0.4-runtime-baseline` annotated tag。
+
+## 2026-07-14｜v0.5 删除／替换／推进开发计划
+
+- 新增 `docs/rules_v05_development_plan.md`，把已确认的 v0.5 规则拆成 16 个可执行工单、9 个实施阶段和对应退出门。
+- “直接删除”被定义为替代 owner 接管时同批移除旧生产语义，不是在当前 dirty 工作树中立即物理删除；任何删除前必须先通过 Repository Safety Baseline 并形成有意 Git 快照。
+- 原子删除范围包括：现金目标胜利、75 秒旧终局、即时破产、百分比怪兽加注与强制下注、30 秒旧卡牌组、城市 owner 回退、GDP 最低值、整城按等级摊分、城市／出牌者竞猜、区域式合约、End Turn／私人计划、标准市场随机噪声和生产旧存档双读。
+- 替换原则是保留现有单一所有权：GDP、CityTrade、Eligibility、Queue、Contract 和 Monster Controller 在原 owner 内升级；新增 VictoryControl、IndustryCapacity、Intel 与 FinancialDistress，区域生命周期事务进入现有 CityDevelopment owner，不把新规则重新塞回 `main.gd`。
+- 首要关键路径固定为“项目身份与世代 -> 结构化 GDP 行 -> 玩家归属 GDP”；胜利、六产业产能、项目合约和项目情报不得在这条主干完成前各自实现聚合公式。
+- v0.4 Ruleset、GDP profile、卡牌 catalog、characterization bench 和旧规则文档保留为历史证据，但在最终切换时必须退出生产 registry 和 v0.5 CI，不得成为自动 fallback。
+- 存档策略明确为：进行中的 v0.4 对局不静默续打成 v0.5；首次写 v0.5 前只读备份 v1，旧构建不得降级覆盖 v0.5 存档。
+- 本轮只写实施计划与开发日志，没有修改 Godot 运行时、场景、Resource、存档、AI 或游戏行为；当前可运行版本仍是 v0.4。
+
+## 2026-07-14｜Global UI Navigation Characterization Sprint 67
+
+- 保留 Menu Shell `24/24` 与 Codex Navigation `20/20` 两个既有门禁，没有新增重复 Bench。
+- 扩展 `MenuShellRuntimeCutoverBench`，额外生成 32 项全局 Back / Focus 行为记录：`32/32 observed`、`19/32 aligned`。
+- 新增纯数据表 `global_ui_navigation_characterization_registry.gd` 和合同 `global_ui_navigation_runtime_contract.md`。
+- 已确认 13 个差距：根菜单退出确认、确认框/强制决定/两类抽屉优先级、日志复盘父页、精确焦点恢复、失效焦点 fallback、手柄 `ui_cancel` 和全局纯数据栈。
+- 本轮没有修改生产 `main.gd`；其 SHA 与 20,209 非空行、1,285 函数、141 变量、204 常量保持不变。
+- 下一步 Sprint 68 应一次建立单一全局 Surface Stack owner，并同步删除已刻画的 `main.gd` Esc/Back 路径；`CodexNavigationRuntimeController` 继续只拥有 Codex 内部状态。
+
+## 2026-07-14｜v0.5 GDP 控制胜利与怪兽整场赌局规则定稿
+
+- 用户已确认 v0.5 剩余规则决定，不再保留待拍板项。
+- 新增 `docs/tabletop_rulebook_v05.md`，作为下一版玩家规则语义权威：
+  - 胜利由“现金目标”改为“多个区域的个人归属 GDP 控制”。
+  - 标准深度为 5 个受控区域、每区至少 30% 且唯一最高、前 5 区个人归属 GDP 合计至少 180/min。
+  - 条件保持 10 秒后进入 120 秒公开经济审计；终点重新验资，失败后冷却 30 秒。
+  - 城市改为五项目位共享城市，没有城市所有者；生产、需求、通商和合约 GDP 分别归入具体项目行。
+  - 商品固定归入生命、能源、工业、科技、商贸、航运六类，个人归属 GDP 生成批次型卡牌产能。
+  - 合约严格改为同一具体商品的项目对项目关系；情报改为竞猜具体商品项目的控制者。
+  - 区域可彻底摧毁至 GDP 0，并通过工业＋生命双色“区域复兴 I–IV”恢复建设资格；旧项目和份额不自动复活。
+  - 现金归零先进入 20 秒财务危机，不再当帧淘汰。
+- 怪兽战斗赌局采用用户最后确认的下注结构：
+  - 整场战斗只开一次 8 秒下注窗口。
+  - 底注按开窗时可用现金的 5%–10% 计算。
+  - 支付底注后可在该窗口内不限次数加注；每次使用绝对金额，标准单位为 50，不再重复按百分比计算。
+  - 窗口关闭后仍可用卡牌、技能和满血升级干预战斗，但不能换边、追入或重开赌盘。
+  - 奖池按获胜方各玩家的最终下注比例分配；平局退玩家资金，公共优先出价池滚存。
+- 新增 `docs/rules_summary_v05.md`，供首局和局内速查。
+- 新增 `docs/rules_v05_runtime_migration.md`，记录运行时所有权、参数、迁移次序、反套利边界和 conformance gate。
+
+### 开发者应该如何参考
+
+- 玩家行为、信息公开和胜负争议只查 `docs/tabletop_rulebook_v05.md`。
+- 时间、阈值和模式数字最终进入单一 v0.5 Ruleset Resource；不能从速读页、UI 文案或开发日志读取运行参数。
+- GDP 必须先改成带项目、商品和方向的结构化归因行；胜利、六类产能、合约和情报必须消费同一份“玩家实际归属 GDP”，不得各自复制公式。
+- 怪兽赌局必须作为独立纵向切片迁移暂停、托管、绝对加注、累计伤害、派奖、财务危机和存档，不能只替换旧百分比按钮。
+- `docs/rules_summary_v05.md` 只做玩家速查，`docs/rules_v05_runtime_migration.md` 只做实现合同，二者都不能覆盖完整玩家规则语义。
+- 当前 `docs/tabletop_rulebook.md`、`docs/rules_summary.md`、`AGENTS.md` 和生产运行时仍描述 v0.4；在 v0.5 conformance gate 全部通过前必须保留这一状态标记，禁止宣称 v0.5 已可玩。
+
+### 实现顺序与硬门
+
+1. 新建 v0.5 Profile 和存档升级外壳，但生产桥仍连接 v0.4。
+2. 先完成 GDP 项目归因和整数守恒，再做区域控制与六类产能。
+3. 完成 10 秒资格、120 秒审计、审计名单和隐私快照。
+4. 迁移 8 秒卡牌组、项目合约、项目竞猜、区域复兴和财务危机。
+5. 单独完成怪兽整场赌局并覆盖 1、10、100 次连续绝对加注的幂等测试。
+6. 更新 AI、教程、公共文案和旧现金胜利引用，全部门禁通过后一次性切换生产桥。
+
+### 本轮验证范围
+
+- 本轮完成规则定稿、玩家速读、迁移合同和可交付文档，不修改 Godot 运行时、数据、存档或 AI 行为。
+- 当前运行版仍是 v0.4；v0.5 文件属于已批准的产品目标和后续实现依据。
+- `output/pdf/space_syndicate_tabletop_rulebook_v0.5.pdf` 共 16 页，已逐页渲染检查封面、六张示意图、表格续页、标题落单、中文字体和页脚；未发现截断或溢出。
+- `output/documents/space_syndicate_tabletop_rulebook_v0.5.docx` 通过 ZIP、Word XML、页面尺寸、边距、42 个标题、9 张表格和 6 个嵌图的结构检查；关键规则与 PDF 文本一致。
+- 本机没有 LibreOffice/soffice，Documents 的 DOCX 原生分页渲染器无法启动；不能把 PDF 的视觉检查冒充为 Word 原生渲染。最终 DOCX 已保留此环境限制，并以结构与内容一致性门代替。
+- `git diff --check` 通过；底注越界取整、全押尾数、复兴状态、旧合约续接、审计候选集合和现金托管边界均已完成一致性复核。
+
+## 2026-07-14｜Repository Safety & Test Isolation Sprint 66.5
+
+- 修复旧 `smoke_test.gd` 的假隔离：测试原来设置了已经不存在的 Main 属性，实际无参数保存/读取仍会落到玩家默认存档。
+- `GameSaveRuntimeCoordinator` 新增严格受限的 QA 默认路径覆盖，只接受 `user://space_syndicate_design_qa/test_runs/*.save`；生产 v1 路径保持不变，玩家路径不能伪装成 QA 覆盖。
+- Smoke 在 Main 入树及菜单存档状态读取前完成路径注入；扩展后的 Session/Save Ownership Gate 为 24/24。
+- 新增 `tools/repository_safety_baseline.ps1` 和安全合同，清单只读记录 Git、文件哈希、Main 指标、玩家存档元数据及第三方发布阻塞，不进行 stage/commit/reset/delete。
+- 展开状态清单记录 84 个 tracked changes 与 1,205 个 untracked paths；在形成有意 Git 快照前，干净 clone/export 门保持 blocked。
+- Night Patrol 已明确为 CC BY-NC 4.0 prototype-only；当前 `main.tscn` 的四个音频直接引用及 CardArtView 皮肤必须在商业发布前替换。
+- 聚焦验证：Save Ownership 24/24、main composition、focus-order、layout smoke 均通过；Godot 4.7 解析无错误。
+- 旧 10k 行完整 smoke 在 300 秒上限停于 `new game setup` 后，已只终止对应 headless 进程。真实玩家存档的长度、时间戳和 SHA-256 前后完全一致。
+
+## 2026-07-14｜菜单返回、商路网络与规则仿真参考包入库
+
+- 菜单/策略界面加入 Chickensoft GameDemo、FreeOrion、Unciv、OpenRA；返回逻辑加入 Godot UI Navigation System、AppNavigation、SuperTuxKart。
+- 商路/管线加入 Godot `Line2D`、`AStar2D`、`GraphEdit` 官方能力边界，以及 Mindustry、shapez.io、OpenLoco、Widelands 的铺设和网络交互参考。
+- 规则/仿真加入 Project Alice、Unknown Horizons、OpenVic-Simulation、BEA value added、CSBCGF、boardgame.io、OpenSpiel、Forge、Godot Roguelike Example、OpenXcom 和 Cataclysm: DDA。
+- 新增 `docs/navigation_trade_network_reference_adoption_plan.md`，记录统一返回优先级、当前导航/路线审计、Godot 图形工具边界、可删除路径和分阶段路线。
+- 新增 `docs/runtime_rule_reference_adoption_plan.md`，记录 GDP 增加值诊断、卡牌执行前复核、同时结算、离线 AI 平衡和怪兽经济后果链的采用方式。
+- `docs/open_source_reference_notes.md`、`docs/ui_architecture_audit.md` 和 `docs/city_trade_network_runtime_ownership_contract.md` 已同步所有权与许可边界。
+
+### 当前架构判断
+
+- 不新增第二个 PipelineGraph：`CityTradeNetworkRuntimeController` 继续唯一拥有路线、流量、损伤、刷新、GDP 输入和存档。
+- Ruleset v0.4 未定义玩家自由铺管动作；当前先做商路显示、聚焦、检查器和编辑器 authoring，手动铺设必须等待版本化规则决策。
+- `Line2D` 只显示，`AStar2D` 只寻路，`GraphEdit` 只做编辑器/QA 连接工具。
+- 不新增第二个卡牌或宏观经济引擎：现有 GDP、Cashflow、Market、Eligibility、Queue、Execution、AI 和 Monster Controller 保持权威。
+- BEA 增加值公式先用于离线双重计算诊断，不直接替换 `gdp_formula_v04`。
+
+### 后续删除目标
+
+- 统一导航 Hard Cutover 后删除 `main.gd::_unhandled_input()` 中直接 Esc/full-map/menu/pause 分支和确认无调用者的页面返回状态。
+- `PlanetRouteSegment` 改成静态 `Line2D`/端点子节点并通过 parity 后，删除其自绘函数；sceneized route 成为唯一生产路径后，再删除 `map_view.gd` 的 legacy 商路 renderer。
+- 若卡牌原子性审计发现直接 mutation 或重复合法性公式，迁到现有 Service 后同轮删除；不建立通用第二 Action Engine。
+- 若怪兽后果链发现直接写派生 GDP 的旁路，改为世界损伤 receipt 与网络/市场/GDP 刷新后同轮删除。
+
+### 本轮验证范围
+
+- 当前生产目录没有 pipeline/pipe/conduit 贴图或模型，因此本轮没有旧管线素材可删。
+- 本轮只更新参考索引、所有权合同和迭代/删除计划；没有下载外部代码/素材，没有改运行时、规则、存档、action id 或 signal。
+
+## 2026-07-14｜卡牌、牌桌、菜单与科幻 HUD 参考包入库
+
+- 将新的卡牌/牌桌参考加入 `REFERENCE_LINKS.md`：Simple Cards v2、Phase、UiCard、CardHouse、Balatro-Feel、NueDeck、Hypnagonia 和 Godot Card Game Framework。
+- 将菜单/平面界面参考加入索引：Maaack Godot Game Template、Maaack Godot Menus Template 和 GodotOS。
+- 将可直接评估的平面素材加入索引：Mechanized Magic、Kenney Sci-Fi/UI/Board Game Icons/Board Game Info/Board Game Pack/Playing Cards Pack、SCIFI UI、Wenrexa White UI Kit 和 Game-icons.net。
+- 在 `docs/open_source_reference_notes.md` 中明确许可和复制边界：MIT/CC0 仍需按来源登记；Phase 的代码许可不覆盖 Scryfall 卡图和 MTG 内容；UiCard 插画需单独核对；AGPL 项目只做结构观察；Game-icons 必须逐作者署名。
+- 新增 `docs/card_table_menu_reference_adoption_plan.md`，记录当前架构、采用矩阵、视觉语言、旧资产退役清单、零引用删除门和七阶段实施路线。
+
+### 当前删除判断
+
+- 保留 Runtime Card Catalog、Eligibility、Queue、Execution、Presentation、CardResolutionTrack、RightInspector、HandRack 和现有菜单场景所有权。
+- 计划在完整切换后集中删除 Night Patrol 的八个卡牌 UI 文件、根目录 `CardUI.tscn` / `CardUI.gd` 兼容入口、大量重复 StyleBox 构造和可由 CC0 替代的 Game-icons 文件。
+- 删除必须先满足替代场景/Theme/Resource 存在、生产与测试零引用、许可证登记、截图 parity、所有运行门通过和 Godot 零错误。
+
+### 本轮审计基线
+
+- 当前 `CardFace.tscn` 仍实例化根目录 `CardUI.tscn`，因此两套路径尚不能直接删除。
+- 当前审计发现 95 处脚本 `StyleBoxFlat.new()`、269 处脚本 stylebox override 和 46 处场景 style override；后续目标是把稳定视觉状态收敛到 Theme variation/Resource。
+- Night Patrol 卡牌 UI 的生产引用集中在 `scripts/card_art_view.gd`；十个 Game-icons SVG 也主要由该脚本硬编码，并由视觉测试检查 attribution。
+- 本轮只整理参考资料和实施计划，没有下载外部素材、删除旧文件或修改运行时行为。
+
+## 2026-07-14｜巨兽战斗开源参考包入库
+
+- 将类 GigaBash 巨兽战斗所需的许可明确参考资料加入本地参考资料库：
+  - 怪兽动作与轮廓：Quaternius `Ultimate Monsters`、`Animated Monster Pack`。
+  - 机甲动作与机械重量感：Quaternius `Animated Mech Pack`。
+  - 城市体量与破坏状态：Kenney `City Kit (Commercial)`、`City Kit (Suburban)`。
+  - 建筑预切割/碎块替换：`Jummit/godot-destruction-plugin`。
+  - 分块脏区更新：`ape1121/Godot4-3D-Smooth-Destructible-Terrain`。
+  - 第三人称相机、输入和 Godot 场景组织：Kenney `Starter-Kit-3D-Platformer`、Godot 官方 demo。
+  - 冲击/破坏特效与怪兽吼叫：Kenney `Particle Pack`、OpenGameArt `CC0 Deep Monster Roar`。
+- 根索引 `REFERENCE_LINKS.md` 已加入可直接查找的链接、许可证和用途摘要；`docs/open_source_reference_notes.md` 已加入逐项使用方式、落地位置、禁止事项、导入流程和验收门禁。
+- 本次只建立参考资料和开发合同，没有下载或导入外部模型、代码、特效、音频，也没有修改运行时代码。
+
+### 开发者应该如何参考
+
+- **保持产品边界：** Space Syndicate 仍是实时 PVE 隐藏信息数字桌游。怪兽继续按数据/概率表自动行动，玩家通过卡牌、军队、城市和经济系统影响它们；不得因参考巨兽格斗游戏而改成持续直接操控。
+- **参考动作语言，不复制角色：** 从 Quaternius 素材整理重步、跳跃、飞行、蓄力、释放、受击、后退等动作词汇，再组合成本项目自己的怪兽动作 profile。不得复制哥斯拉、奥特曼、加美拉、GigaBash 角色等受保护名称、轮廓、招式、音频或 UI。
+- **参考状态机，不让物理决定规则：** 建筑破坏应按 `完整 -> 预警/命中 -> 受损或碎裂 -> GDP/商路后果` 展示。权威伤害、城市份额、所有权和经济结算仍由现有 runtime 决定；碎块仅是结算后的视觉反馈。
+- **参考分块更新，不替换星球桌面：** 可破坏地形 demo 只用于学习脏区更新、局部重建和缓存；不得替换现有可缩放球形 `MapView` 或区域信息结构。
+- **相机/输入只用于展示场景：** Kenney 3D starter kit 可服务未来怪兽图鉴或独立 showcase 的旋转、缩放、手柄浏览，不进入主规则的持续怪兽控制。
+- **VFX/SFX按事件阶段配置：** 预警、冲击、目标反应、余波/经济后果必须按顺序可读；高频粒子需要池化，关闭声音时仍要有视觉提示，同一吼叫不得成为全怪兽通用身份。
+- **任何真实导入必须登记：** 外部文件进入 `assets/third_party/<source_id>/`，保留上游 LICENSE/README，并在 `docs/third_party_assets.md` 登记作者、来源、下载日期、文件清单和用途；运行态 profile 继续声明 `visual_source_id` / `upstream_source_id`。
+
+### 后续实现的硬门禁
+
+- 每次怪兽动作必须按“行动者、预警、目标、冲击、状态改变、经济后果”顺序读懂。
+- 任何破坏演出必须有固定碎块数量、刚体寿命和性能预算，不得每帧重建主地图或大块 UI。
+- 新素材不得绕过第三方素材登记、来源字段、美术身份测试和视觉验收截图。
+- 单一外部怪兽身体包或吼叫包不得覆盖整个 roster；当前多来源怪兽身份门禁继续有效。
+
+### 本轮验证
+
+- 参考链接、许可证、用途和禁止事项已在两个资料库入口中逐项登记。
+- `git diff --check` 通过。
+- 文档链接完整性和关键门禁词扫描通过。
 
 ## 2026-07-07｜规则书 v0.2：城市化份额与城市化牌
 

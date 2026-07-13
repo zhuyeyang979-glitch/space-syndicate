@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/product_codex_public_snapshot_service.gd" id="1_service"]
+
+[node name="ProductCodexPublicSnapshotService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Pure-data public Product Codex presentation composer. Market, strategy, futures, warehouse, monster-focus, and clue facts are supplied by their existing domain owners."

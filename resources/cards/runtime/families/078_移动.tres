@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://8g4t5bw23s8y"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_irjwt"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_r02cc"]
+
+[sub_resource type="Resource" id="Resource_6424k"]
+script = ExtResource("1_irjwt")
+card_id = "移动1"
+family_id = "移动"
+kind = &"move"
+purchase_cost = 2
+rules_text = "指挥怪兽移动约180米，进入区域造成1点区域伤害。"
+tags = PackedStringArray()
+move = 180.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_pssry"]
+script = ExtResource("1_irjwt")
+card_id = "移动2"
+family_id = "移动"
+rank = 2
+kind = &"move"
+purchase_cost = 4
+rules_text = "指挥怪兽最多移动约280米。"
+tags = PackedStringArray()
+move = 280.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_0qcbs"]
+script = ExtResource("1_irjwt")
+card_id = "移动3"
+family_id = "移动"
+rank = 3
+kind = &"move"
+purchase_cost = 6
+rules_text = "高阶移动，指挥怪兽最多移动约380米。"
+tags = PackedStringArray("机动", "终端")
+move = 380.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_r02cc")
+family_id = "移动"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_6424k"), SubResource("Resource_pssry"), SubResource("Resource_0qcbs")])
+public_pool_eligible = true
+upgradeable_family = true

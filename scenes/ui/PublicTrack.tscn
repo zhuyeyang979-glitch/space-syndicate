@@ -1,5 +1,7 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/ui/CardTrack.tscn" id="1_card_track"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardResolutionTrack.tscn" id="1_card_track"]
 
 [node name="PublicTrack" instance=ExtResource("1_card_track")]
+custom_minimum_size = Vector2(0, 44)
+compact_public_track = true

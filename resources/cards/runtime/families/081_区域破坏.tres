@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://cttpw7g0g73bm"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_3nlkn"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_mxqew"]
+
+[sub_resource type="Resource" id="Resource_5iexg"]
+script = ExtResource("1_3nlkn")
+card_id = "区域破坏1"
+family_id = "区域破坏"
+kind = &"area_damage"
+purchase_cost = 2
+rules_text = "对180米内区域造成1点区域伤害。"
+tags = PackedStringArray()
+range = 180.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_xr2qs"]
+script = ExtResource("1_3nlkn")
+card_id = "区域破坏2"
+family_id = "区域破坏"
+rank = 2
+kind = &"area_damage"
+purchase_cost = 5
+rules_text = "对180米内区域造成2点伤害，作为区域破坏升级牌。"
+tags = PackedStringArray("破坏", "升级")
+range = 180.0
+damage = 2
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[sub_resource type="Resource" id="Resource_tq04x"]
+script = ExtResource("1_3nlkn")
+card_id = "区域破坏3"
+family_id = "区域破坏"
+rank = 3
+kind = &"area_damage"
+purchase_cost = 8
+rules_text = "对300米内区域造成3点伤害，适合终结高价值区域。"
+tags = PackedStringArray("破坏", "终端")
+range = 300.0
+damage = 3
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+
+[resource]
+script = ExtResource("2_mxqew")
+family_id = "区域破坏"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_5iexg"), SubResource("Resource_xr2qs"), SubResource("Resource_tq04x")])
+public_pool_eligible = true
+upgradeable_family = true

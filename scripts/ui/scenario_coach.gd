@@ -34,7 +34,12 @@ func set_coach(data: Dictionary) -> void:
 	expanded_panel.visible = not collapsed
 	collapsed_panel.visible = collapsed
 	if collapsed:
-		collapsed_button.text = "剧本目标｜%s" % str(data.get("progress_text", "完成"))
+		if bool(data.get("completed", false)):
+			collapsed_button.text = _short_text(str(data.get("completion_label", "首局完成｜整局继续")), 24)
+			collapsed_button.tooltip_text = str(data.get("completion_summary", "剧本目标完成，整局仍继续。"))
+		else:
+			collapsed_button.text = "剧本目标｜%s" % str(data.get("progress_text", "完成"))
+			collapsed_button.tooltip_text = str(data.get("goal", "点击重新展开剧本目标。"))
 		return
 	title_label.text = _short_text(str(data.get("title", "试玩剧本")), 18 if compact else 32)
 	phase_label.visible = not compact

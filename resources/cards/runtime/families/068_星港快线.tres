@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://b8630b45nsk1j"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_4xoea"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_emwp0"]
+
+[sub_resource type="Resource" id="Resource_kch7m"]
+script = ExtResource("1_4xoea")
+card_id = "星港快线1"
+family_id = "星港快线"
+kind = &"route_flow_boon"
+purchase_cost = 4
+rules_text = "选中己方城市：修复至多1点商路压力；已满足需求的商路流通收入×1.45，持续90秒。"
+tags = PackedStringArray("经营", "物流")
+authored_keys = PackedStringArray("cost", "kind", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "repair_routes", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 1,
+"route_flow_multiplier": 1.45,
+"route_flow_seconds": 90.0,
+"route_flow_turns": 3
+}
+
+[sub_resource type="Resource" id="Resource_5iqdf"]
+script = ExtResource("1_4xoea")
+card_id = "星港快线2"
+family_id = "星港快线"
+rank = 2
+kind = &"route_flow_boon"
+purchase_cost = 6
+rules_text = "选中己方城市：清除1条断路压力，并使已满足需求商路流通收入×1.8，持续120秒。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "route_flow_multiplier", "route_flow_seconds", "route_flow_turns", "repair_routes", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 1,
+"route_flow_multiplier": 1.8,
+"route_flow_seconds": 120.0,
+"route_flow_turns": 4
+}
+
+[resource]
+script = ExtResource("2_emwp0")
+family_id = "星港快线"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_kch7m"), SubResource("Resource_5iqdf")])
+public_pool_eligible = true
+upgradeable_family = true

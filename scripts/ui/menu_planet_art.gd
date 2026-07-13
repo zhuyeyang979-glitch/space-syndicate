@@ -32,13 +32,13 @@ func _draw_stars() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
 	for i in range(STAR_COUNT):
-		var position := Vector2(
+		var star_position := Vector2(
 			fposmod(float(i * 97 + 23), size.x),
 			fposmod(float(i * 53 + 41), size.y)
 		)
 		var star := Color("#e0f2fe")
 		star.a = 0.22 + float((i * 17) % 7) * 0.07
-		draw_circle(position, 0.8 + float(i % 3) * 0.35, star)
+		draw_circle(star_position, 0.8 + float(i % 3) * 0.35, star)
 
 
 func _draw_orbits() -> void:

@@ -211,7 +211,8 @@ func _verify_monster_art_identity(main: Node) -> void:
 			_expect(upstream_source_id != "moth_kaijuice_mit" and not visual_source_id.begins_with("moth_kaijuice") and not sprite_key.begins_with("moth_kaijuice"), "monster %s must not reuse MOS/Moth Kaijuice body art; it is reserved for %s" % [monster_name, ONLY_MOTH_KAIJUICE_MONSTER])
 		_expect(not seen_keys.has(profile_key), "monster %s has a unique visual profile key; duplicate=%s" % [monster_name, profile_key])
 		var monster_card_name := String(main.call("_monster_card_name", monster_index, 1)) if main.has_method("_monster_card_name") else ""
-		var monster_card_skill: Dictionary = main.call("_skill_definition", monster_card_name) as Dictionary if monster_card_name != "" and main.has_method("_skill_definition") else {}
+		var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+		var monster_card_skill: Dictionary = coordinator.call("card_definition", monster_card_name) as Dictionary if monster_card_name != "" and coordinator != null else {}
 		card_view.call(
 			"set_card",
 			monster_card_name,

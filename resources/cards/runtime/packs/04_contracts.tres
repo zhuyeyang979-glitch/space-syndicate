@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardRuntimePackResource" format=3]
+
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/027_短期订单.tres" id="1_u6f0y"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/028_军需临单.tres" id="2_fas8a"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/029_星际会展.tres" id="3_nx4l1"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/041_远期采购.tres" id="4_eq2vo"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/042_期货套保.tres" id="5_j77hx"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/043_包销协议.tres" id="6_rqy1d"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/044_区域供需合约.tres" id="7_i22wx"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/045_组合供需合约.tres" id="8_dmwq8"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/046_自动撮合合约.tres" id="9_7egu2"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/047_环晶电池专供.tres" id="10_rqybh"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/048_双边对冲合约.tres" id="11_g20np"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/families/049_惩罚性拒签条款.tres" id="12_6pcpm"]
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_pack_resource.gd" id="13_ut0pg"]
+
+[resource]
+script = ExtResource("13_ut0pg")
+pack_id = &"contracts"
+display_name = "Contracts"
+families = Array[Resource]([ExtResource("1_u6f0y"), ExtResource("2_fas8a"), ExtResource("3_nx4l1"), ExtResource("4_eq2vo"), ExtResource("5_j77hx"), ExtResource("6_rqy1d"), ExtResource("7_i22wx"), ExtResource("8_dmwq8"), ExtResource("9_7egu2"), ExtResource("10_rqybh"), ExtResource("11_g20np"), ExtResource("12_6pcpm")])

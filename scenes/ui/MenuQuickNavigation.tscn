@@ -1,0 +1,47 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/menu_quick_navigation.gd" id="1_script"]
+
+[node name="MenuQuickNavigation" type="HFlowContainer"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+script = ExtResource("1_script")
+
+[node name="MenuQuickNavSetupButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "开局"
+
+[node name="MenuQuickNavScenarioButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "剧本"
+
+[node name="MenuQuickNavStandingsButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "局势"
+
+[node name="MenuQuickNavEconomyButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "经济"
+
+[node name="MenuQuickNavIntelButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "情报"
+
+[node name="MenuQuickNavRulesButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "规则"
+
+[node name="MenuQuickNavCompendiumButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "图鉴"

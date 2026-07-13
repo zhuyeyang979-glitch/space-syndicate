@@ -43,6 +43,14 @@ size_flags_horizontal = 3
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 3
 
+[node name="StandingsOverviewGrid" type="GridContainer" parent="StandingsScoreboardMargin/StandingsScoreboardStack"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
 [node name="StandingsRaceKpiGrid" type="GridContainer" parent="StandingsScoreboardMargin/StandingsScoreboardStack"]
 unique_name_in_owner = true
 layout_mode = 2

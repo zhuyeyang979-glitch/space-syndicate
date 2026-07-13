@@ -1,3 +1,4 @@
+@tool
 extends "res://scripts/HandLayout.gd"
 class_name SpaceSyndicateHandRack
 
@@ -253,12 +254,12 @@ func _connect_card_node_signals(card: Control) -> void:
 		var double_clicked := Callable(self, "_on_card_double_clicked").bind(card)
 		if not card.is_connected("card_double_clicked", double_clicked):
 			card.connect("card_double_clicked", double_clicked)
-	var focus_entered := Callable(self, "_on_card_focus_entered").bind(card)
-	if not card.focus_entered.is_connected(focus_entered):
-		card.focus_entered.connect(focus_entered)
-	var focus_exited := Callable(self, "_on_card_focus_exited").bind(card)
-	if not card.focus_exited.is_connected(focus_exited):
-		card.focus_exited.connect(focus_exited)
+	var focus_entered_callback := Callable(self, "_on_card_focus_entered").bind(card)
+	if not card.focus_entered.is_connected(focus_entered_callback):
+		card.focus_entered.connect(focus_entered_callback)
+	var focus_exited_callback := Callable(self, "_on_card_focus_exited").bind(card)
+	if not card.focus_exited.is_connected(focus_exited_callback):
+		card.focus_exited.connect(focus_exited_callback)
 
 
 func _clear_hand_children() -> void:

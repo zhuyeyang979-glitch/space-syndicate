@@ -4,6 +4,12 @@
 *.tmp
 *.translation
 
+# Local editor/MCP capture output
+addons/godot_mcp/cache/
+
+# Tracked QA screenshots are evidence; generated import sidecars are not.
+reports/**/*.import
+
 # Export output
 exports/
 builds/

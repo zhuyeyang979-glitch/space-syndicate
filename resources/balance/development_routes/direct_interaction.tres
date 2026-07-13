@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DevelopmentRouteProfileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/development_route_profile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+route_id = "direct_interaction"
+display_name = "直接互动"
+goal = "用点名拆牌、牵牌、产权冻结和全场齐射干扰对手，同时留下可利用的公开线索。"
+play_pattern = "先判断谁最可能领先或握有关键牌，再用互动牌打断节奏、冻结高GDP城市或逼出身份倾向。"
+counterplay = "分散手牌价值、保留防御/修复牌、降低单城GDP暴露，或反向猜测谁最受益。"
+ai_plan_hint = "落后或需要阻止领先者时提高权重；领先时只少量使用，避免暴露过多意图。"
+strategy_labels = Array[String](["直接互动"])
+required_for_ai_baseline = true
+sort_order = 5

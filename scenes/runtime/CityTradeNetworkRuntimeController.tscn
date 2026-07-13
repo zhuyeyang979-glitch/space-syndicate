@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/city_trade_network_runtime_controller.gd" id="1_script"]
+
+[node name="CityTradeNetworkRuntimeController" type="Node"]
+script = ExtResource("1_script")
+editor_description = "Single v0.4 owner for city project sequence, derived trade-network state, route graph/path calculations, refresh ordering, payout-source orchestration, and city-network save normalization."

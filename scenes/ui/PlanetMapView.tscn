@@ -1,0 +1,126 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/planet_map_view.gd" id="1_planet_map_view"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetGlobeBackdrop.tscn" id="2_globe_backdrop"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetOrbitGuide.tscn" id="3_orbit_guide"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetFocusRangeOverlay.tscn" id="4_focus_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetMapScaleHint.tscn" id="5_scale_hint"]
+
+[node name="PlanetMapView" type="Control"]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+clip_contents = false
+focus_mode = 2
+script = ExtResource("1_planet_map_view")
+
+[node name="BackdropLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetGlobeBackdrop" parent="BackdropLayer" instance=ExtResource("2_globe_backdrop")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="OrbitLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetOrbitGuide" parent="OrbitLayer" instance=ExtResource("3_orbit_guide")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="DistrictLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RouteLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="MonsterLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="SelectionLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetFocusRangeOverlay" parent="SelectionLayer" instance=ExtResource("4_focus_overlay")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="EffectLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CalloutLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DebugOverlayLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetMapScaleHint" parent="DebugOverlayLayer" instance=ExtResource("5_scale_hint")]
+unique_name_in_owner = true
+layout_mode = 1

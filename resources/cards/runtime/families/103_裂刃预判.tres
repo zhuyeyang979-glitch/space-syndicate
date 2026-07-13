@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dddcb0t58pmeu"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_5ya2b"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_402p0"]
+
+[sub_resource type="Resource" id="Resource_icdmm"]
+script = ExtResource("1_5ya2b")
+card_id = "裂刃预判1"
+family_id = "裂刃预判"
+kind = &"special_monster_delay"
+purchase_cost = 4
+rules_text = "读出裂刃轨迹，指定怪兽的特殊行动节奏延后2.5秒。"
+tags = PackedStringArray("棱刃重甲", "控场")
+authored_keys = PackedStringArray("cost", "kind", "delay", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 2.5
+}
+
+[resource]
+script = ExtResource("2_402p0")
+family_id = "裂刃预判"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_icdmm")])

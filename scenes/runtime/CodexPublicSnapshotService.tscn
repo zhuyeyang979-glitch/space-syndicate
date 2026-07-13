@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/codex_public_snapshot_service.gd" id="1_service"]
+
+[node name="CodexPublicSnapshotService" type="Node"]
+unique_name_in_owner = true
+script = ExtResource("1_service")
+editor_description = "Pure-data public Codex formatter. Sprint 14 owns Role and Region presentation snapshots; gameplay facts remain in their domain owners."

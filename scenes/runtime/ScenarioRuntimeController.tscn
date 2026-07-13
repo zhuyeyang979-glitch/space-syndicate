@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/scenario_runtime_controller.gd" id="1_controller"]
+
+[node name="ScenarioRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+default_scenario_id = "first_table"
+editor_description = "Scene-owned scenario catalog, active progress, coach state, action-log, and privacy-safe visual-event request authority. Gameplay execution remains in domain handlers."

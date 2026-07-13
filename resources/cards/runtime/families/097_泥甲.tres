@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://roe3fbu3qo4c"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_wcvtg"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_n7d20"]
+
+[sub_resource type="Resource" id="Resource_77n7l"]
+script = ExtResource("1_wcvtg")
+card_id = "泥甲1"
+family_id = "泥甲"
+kind = &"armor_gain"
+purchase_cost = 3
+rules_text = "怪兽立即获得4点护甲，适合冲撞构筑续航。"
+tags = PackedStringArray("护甲", "砂铠陆行兽")
+authored_keys = PackedStringArray("cost", "kind", "armor", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"armor": 4
+}
+
+[resource]
+script = ExtResource("2_n7d20")
+family_id = "泥甲"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_77n7l")])

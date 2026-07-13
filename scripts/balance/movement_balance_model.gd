@@ -147,10 +147,10 @@ func monster_movement_speed_model(actor: Dictionary, terrain_multiplier: float =
 		speed_limited_by_region = region_speed < raw_speed * safe_terrain
 	var speed := region_speed if region_speed > 0.0 else raw_speed * safe_terrain
 	speed = clampf(speed, 0.1, 420.0)
-	var movement_mode := movement_mode(actor)
-	var move_damage := move_damage(actor, movement_mode)
+	var actor_movement_mode := movement_mode(actor)
+	var actor_move_damage := move_damage(actor, actor_movement_mode)
 	return {
-		"movement_mode": movement_mode,
+		"movement_mode": actor_movement_mode,
 		"base_speed_mps": raw_speed,
 		"terrain_multiplier": safe_terrain,
 		"individual_speed_rating": individual_rating,
@@ -161,8 +161,8 @@ func monster_movement_speed_model(actor: Dictionary, terrain_multiplier: float =
 		"speed_mps": speed,
 		"estimated_region_exit_seconds": region_radius_m / maxf(1.0, speed) if region_radius_m > 0.0 else -1.0,
 		"speed_limited_by_region": speed_limited_by_region,
-		"move_damage": move_damage,
-		"flying_no_trample": move_damage == 0 and (movement_mode == "fly" or has_trait(actor, "flying")),
+		"move_damage": actor_move_damage,
+		"flying_no_trample": actor_move_damage == 0 and (actor_movement_mode == "fly" or has_trait(actor, "flying")),
 	}
 
 

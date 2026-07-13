@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://ccdl50x6myiuk"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_y7jvh"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_hluyd"]
+
+[sub_resource type="Resource" id="Resource_0aju2"]
+script = ExtResource("1_y7jvh")
+card_id = "混乱光线诱导1"
+family_id = "混乱光线诱导"
+kind = &"mudslide"
+purchase_cost = 5
+rules_text = "诱导混乱光线扫过城区，300米AOE内区域受1点伤害并升温；其他怪兽靠近时被延后。"
+tags = PackedStringArray("镜像猎兵", "破坏")
+range = 300.0
+damage = 1
+authored_keys = PackedStringArray("cost", "kind", "damage", "panic", "delay", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 1.4,
+"panic": 28
+}
+
+[resource]
+script = ExtResource("2_hluyd")
+family_id = "混乱光线诱导"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_0aju2")])

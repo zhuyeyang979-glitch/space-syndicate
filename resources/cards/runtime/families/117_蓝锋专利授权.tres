@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bcv4xuai48m4p"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_13c1g"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_m6e6m"]
+
+[sub_resource type="Resource" id="Resource_hubo1"]
+script = ExtResource("1_13c1g")
+card_id = "蓝锋专利授权1"
+family_id = "蓝锋专利授权"
+kind = &"product_growth_boon"
+purchase_cost = 5
+rules_text = "开放蓝锋骑士科技专利：当前商品正向价格增速×2、相关商路流通×1.35，持续120秒。"
+tags = PackedStringArray("蓝锋骑士", "专利")
+authored_keys = PackedStringArray("cost", "kind", "growth_multiplier", "route_flow_multiplier", "growth_seconds", "growth_turns", "route_flow_seconds", "route_flow_turns", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"growth_multiplier": 2.0,
+"growth_seconds": 120.0,
+"growth_turns": 4,
+"route_flow_multiplier": 1.35,
+"route_flow_seconds": 120.0,
+"route_flow_turns": 4
+}
+
+[resource]
+script = ExtResource("2_m6e6m")
+family_id = "蓝锋专利授权"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_hubo1")])

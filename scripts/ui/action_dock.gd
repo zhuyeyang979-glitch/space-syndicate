@@ -54,10 +54,9 @@ func set_quick_actions(actions: Array) -> void:
 	quick_action_row.visible = true
 	_clear_row(quick_action_row)
 	if actions.is_empty():
-		_add_quick_action_button("build", "建城", "未选", false, "先选择可建城区域。", "1")
-		_add_quick_action_button("rack", "牌架", "未选", false, "先选择区域查看牌架。", "2")
-		_add_quick_action_button("buy", "买牌", "--", false, "进入可购买窗口后再买牌。", "3")
-		_add_quick_action_button("play", "出牌", "--", false, "当前没有可直接打出的手牌。", "4")
+		_add_quick_action_button("rack", "牌架", "未选", false, "先选择区域查看发展牌架。", "1")
+		_add_quick_action_button("buy", "买牌", "--", false, "进入可购买窗口后再买牌。", "2")
+		_add_quick_action_button("play", "出牌", "--", false, "当前没有可直接打出的手牌。", "3")
 		return
 	for action_variant in actions:
 		var action: Dictionary = action_variant if action_variant is Dictionary else {}

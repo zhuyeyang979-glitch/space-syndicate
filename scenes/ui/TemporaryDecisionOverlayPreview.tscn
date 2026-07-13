@@ -1,0 +1,240 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/temporary_decision_overlay_preview.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/OverlayLayer.tscn" id="3_overlay"]
+
+[node name="TemporaryDecisionOverlayPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="PreviewBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.020, 0.028, 0.047, 1)
+
+[node name="PreviewMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="PreviewColumns" type="HBoxContainer" parent="PreviewMargin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PreviewControlPanel" type="PanelContainer" parent="PreviewMargin/PreviewColumns"]
+custom_minimum_size = Vector2(344, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PreviewControlMargin" type="MarginContainer" parent="PreviewMargin/PreviewColumns/PreviewControlPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="PreviewControlRows" type="VBoxContainer" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="TemporaryDecisionPreviewTitle" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+layout_mode = 2
+text = "Temporary Decision Overlay QA"
+text_overrun_behavior = 3
+
+[node name="TemporaryDecisionPreviewSubtitle" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+layout_mode = 2
+text = "真实 OverlayLayer｜fixture 驱动｜不调用规则函数"
+autowrap_mode = 3
+
+[node name="TemporaryDecisionPreviewCurrentLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "当前：怪兽赌局"
+text_overrun_behavior = 3
+
+[node name="PreviewStateSectionLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+layout_mode = 2
+text = "状态入口"
+text_overrun_behavior = 3
+
+[node name="PreviewStateGrid" type="GridContainer" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+
+[node name="MonsterWagerPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "怪兽赌局"
+
+[node name="ContractResponsePreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "合约回应"
+
+[node name="DiscardPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "私密弃牌"
+
+[node name="MonsterTargetPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "怪兽目标"
+
+[node name="PlayerTargetPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStateGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "玩家目标"
+
+[node name="PreviewVariantSectionLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+layout_mode = 2
+text = "QA 变体"
+text_overrun_behavior = 3
+
+[node name="PreviewQaGrid" type="GridContainer" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+
+[node name="LongTextPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewQaGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "长文本"
+
+[node name="DisabledActionPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewQaGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "禁用按钮"
+
+[node name="PayloadEdgePreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewQaGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "空/异常"
+
+[node name="HideOverlayPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewQaGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 30)
+layout_mode = 2
+text = "隐藏"
+
+[node name="PreviewStatusPanel" type="PanelContainer" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows"]
+layout_mode = 2
+
+[node name="PreviewStatusMargin" type="MarginContainer" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="PreviewStatusRows" type="VBoxContainer" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="PreviewPayloadSectionLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin/PreviewStatusRows"]
+layout_mode = 2
+text = "当前 payload"
+text_overrun_behavior = 3
+
+[node name="TemporaryDecisionPreviewFixtureLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin/PreviewStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Fixture: monster_wager"
+text_overrun_behavior = 3
+
+[node name="TemporaryDecisionPreviewVariantLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin/PreviewStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Variant: base"
+text_overrun_behavior = 3
+
+[node name="TemporaryDecisionPreviewPanelLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin/PreviewStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Panel: MonsterWagerDecisionPanel"
+text_overrun_behavior = 3
+
+[node name="TemporaryDecisionPreviewActionCountLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin/PreviewStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Actions: 4 / enabled 4"
+text_overrun_behavior = 3
+
+[node name="TemporaryDecisionPreviewStatusLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin/PreviewStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Overlay visible"
+text_overrun_behavior = 3
+
+[node name="TemporaryDecisionPreviewActionLabel" type="Label" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStatusPanel/PreviewStatusMargin/PreviewStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Last action: -"
+autowrap_mode = 3
+
+[node name="PreviewStage" type="Control" parent="PreviewMargin/PreviewColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="PreviewStageRows" type="VBoxContainer" parent="PreviewMargin/PreviewColumns/PreviewStage"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -56.0
+offset_right = 180.0
+offset_bottom = 56.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="PreviewStageTitle" type="Label" parent="PreviewMargin/PreviewColumns/PreviewStage/PreviewStageRows"]
+layout_mode = 2
+text = "Live Overlay Stage"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+
+[node name="PreviewStageHint" type="Label" parent="PreviewMargin/PreviewColumns/PreviewStage/PreviewStageRows"]
+layout_mode = 2
+text = "左侧选择 fixture 与 QA 变体；右侧由真实 OverlayLayer 渲染"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="OverlayLayer" parent="." instance=ExtResource("3_overlay")]
+unique_name_in_owner = true

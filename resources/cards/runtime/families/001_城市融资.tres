@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dll8x8r3buu2t"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_urpbk"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_ncekn"]
+
+[sub_resource type="Resource" id="Resource_cwd1q"]
+script = ExtResource("1_urpbk")
+card_id = "城市融资1"
+family_id = "城市融资"
+kind = &"city_revenue_boost"
+purchase_cost = 3
+rules_text = "选中己方城市：GDP/min +60。"
+tags = PackedStringArray("经营", "收入")
+authored_keys = PackedStringArray("cost", "kind", "revenue_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"revenue_amount": 60
+}
+
+[sub_resource type="Resource" id="Resource_fmxwf"]
+script = ExtResource("1_urpbk")
+card_id = "城市融资2"
+family_id = "城市融资"
+rank = 2
+kind = &"city_revenue_boost"
+purchase_cost = 5
+rules_text = "选中己方城市的GDP/min +100。"
+tags = PackedStringArray("经营", "升级")
+authored_keys = PackedStringArray("cost", "kind", "revenue_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"revenue_amount": 100
+}
+
+[sub_resource type="Resource" id="Resource_kscby"]
+script = ExtResource("1_urpbk")
+card_id = "城市融资3"
+family_id = "城市融资"
+rank = 3
+kind = &"city_revenue_boost"
+purchase_cost = 7
+rules_text = "选中己方城市的GDP/min +160。"
+tags = PackedStringArray("经营", "终端")
+authored_keys = PackedStringArray("cost", "kind", "revenue_amount", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray("move", "range")
+effect_parameters = {
+"revenue_amount": 160
+}
+
+[resource]
+script = ExtResource("2_ncekn")
+family_id = "城市融资"
+pack_id = &"city_economy"
+authored_ranks = Array[Resource]([SubResource("Resource_cwd1q"), SubResource("Resource_fmxwf"), SubResource("Resource_kscby")])
+public_pool_eligible = true
+upgradeable_family = true

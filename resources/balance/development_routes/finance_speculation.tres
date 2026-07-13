@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DevelopmentRouteProfileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/development_route_profile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+route_id = "finance_speculation"
+display_name = "金融投机"
+goal = "围绕商品价格或城市GDP的限时涨跌下注，把波动兑现成钱。"
+play_pattern = "先读供需、天气、怪兽风险，再用买涨/做空在限定秒数内兑现波动。"
+counterplay = "稳价、修路、保险、临时拉需求，或反向打击被下注城市。"
+ai_plan_hint = "落后时更敢做空高风险领先城市；领先时用套保和稳定牌降波动。"
+strategy_labels = Array[String](["金融投机"])
+required_for_ai_baseline = true
+sort_order = 2

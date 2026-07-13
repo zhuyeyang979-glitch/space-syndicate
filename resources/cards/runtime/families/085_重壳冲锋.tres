@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://blls1vkfx55i"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_tihwa"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_jgxvy"]
+
+[sub_resource type="Resource" id="Resource_mo4n3"]
+script = ExtResource("1_tihwa")
+card_id = "重壳冲锋1"
+family_id = "重壳冲锋"
+kind = &"charge_attack"
+purchase_cost = 3
+rules_text = "向其他怪兽冲刺320米，并在110米近战圈造成3点伤害，命中后直线击退约320米。"
+tags = PackedStringArray("冲撞", "击退")
+move = 320.0
+range = 110.0
+damage = 3
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "knockback", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"knockback": 320.0
+}
+
+[sub_resource type="Resource" id="Resource_te0ir"]
+script = ExtResource("1_tihwa")
+card_id = "重壳冲锋2"
+family_id = "重壳冲锋"
+rank = 2
+kind = &"charge_attack"
+purchase_cost = 6
+rules_text = "向其他怪兽冲刺380米并造成3点近战伤害，命中后直线击退约320米。"
+tags = PackedStringArray("冲撞", "升级", "击退")
+move = 380.0
+range = 110.0
+damage = 3
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "knockback", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"knockback": 320.0
+}
+
+[sub_resource type="Resource" id="Resource_clfoq"]
+script = ExtResource("1_tihwa")
+card_id = "重壳冲锋3"
+family_id = "重壳冲锋"
+rank = 3
+kind = &"charge_attack"
+purchase_cost = 8
+rules_text = "强力重壳冲锋，冲刺440米并在120米近战圈造成5点伤害；命中后击退约420米并短暂硬直其他怪兽。"
+tags = PackedStringArray("冲撞", "终端", "击退")
+move = 440.0
+range = 120.0
+damage = 5
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "knockback", "delay", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 1.0,
+"knockback": 420.0
+}
+
+[resource]
+script = ExtResource("2_jgxvy")
+family_id = "重壳冲锋"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_mo4n3"), SubResource("Resource_te0ir"), SubResource("Resource_clfoq")])
+upgradeable_family = true

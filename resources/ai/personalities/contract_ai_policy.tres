@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AiPersonalityPolicyResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_personality_policy_resource.gd" id="1_personality"]
+
+[resource]
+script = ExtResource("1_personality")
+policy_id = "contract"
+display_name = "合约型AI"
+style = "优先用合约改写供需，再把商路和城市需求变成稳定GDP。"
+build_bias = 1.08
+business_bias = 1.18
+monster_bias = 0.78
+economy_bias = 1.18
+bid_aggression = 0.9
+exploration = 0.14
+route_preferences = {
+"city_growth": 1.12,
+"contract_route": 1.4,
+"finance_speculation": 1.06
+}

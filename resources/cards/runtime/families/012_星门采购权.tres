@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bmaa6hmut1b4j"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_w0u8q"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_i20ef"]
+
+[sub_resource type="Resource" id="Resource_4ffus"]
+script = ExtResource("1_w0u8q")
+card_id = "星门采购权1"
+family_id = "星门采购权"
+kind = &"card_access_boon"
+purchase_cost = 6
+rules_text = "接下来25秒，你可以从任意未毁区域购买候选卡；全局购牌价格×1.35。"
+tags = PackedStringArray("补给", "全局")
+play_product = "离岸水晶"
+play_flow_required = 2
+card_access_global = true
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "card_access_global", "global_card_price_multiplier", "card_access_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"card_access_seconds": 25.0,
+"global_card_price_multiplier": 1.35
+}
+
+[resource]
+script = ExtResource("2_i20ef")
+family_id = "星门采购权"
+pack_id = &"special_cross_system"
+authored_ranks = Array[Resource]([SubResource("Resource_4ffus")])
+public_pool_eligible = true

@@ -1,0 +1,109 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/card_track_mcp_preview.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardTrack.tscn" id="3_card_track"]
+
+[node name="CardTrackMcpPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="CardTrackPreviewBackground" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.018, 0.025, 0.037, 1)
+
+[node name="CardTrackPreviewMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="CardTrackPreviewRows" type="HBoxContainer" parent="CardTrackPreviewMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CardTrackControlPanel" type="PanelContainer" parent="CardTrackPreviewMargin/CardTrackPreviewRows"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+
+[node name="CardTrackControlMargin" type="MarginContainer" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackControlPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="CardTrackControlStack" type="VBoxContainer" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackControlPanel/CardTrackControlMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CardTrackPreviewTitle" type="Label" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackControlPanel/CardTrackControlMargin/CardTrackControlStack"]
+layout_mode = 2
+text = "Card Track QA"
+text_overrun_behavior = 3
+
+[node name="CardTrackFixtureList" type="ItemList" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackControlPanel/CardTrackControlMargin/CardTrackControlStack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+
+[node name="CardTrackPreviewStatusLabel" type="Label" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackControlPanel/CardTrackControlMargin/CardTrackControlStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="CardTrackPreviewActionLabel" type="Label" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackControlPanel/CardTrackControlMargin/CardTrackControlStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Selected: 0"
+autowrap_mode = 3
+
+[node name="CardTrackPreviewHost" type="PanelContainer" parent="CardTrackPreviewMargin/CardTrackPreviewRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CardTrackPreviewHostMargin" type="MarginContainer" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackPreviewHost"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="CardTrackPreviewStack" type="VBoxContainer" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackPreviewHost/CardTrackPreviewHostMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CardTrackPreviewSummaryLabel" type="Label" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackPreviewHost/CardTrackPreviewHostMargin/CardTrackPreviewStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Preview"
+autowrap_mode = 3
+
+[node name="CardTrack" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackPreviewHost/CardTrackPreviewHostMargin/CardTrackPreviewStack" instance=ExtResource("3_card_track")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CardTrackPreviewSpacer" type="Control" parent="CardTrackPreviewMargin/CardTrackPreviewRows/CardTrackPreviewHost/CardTrackPreviewHostMargin/CardTrackPreviewStack"]
+layout_mode = 2
+size_flags_vertical = 3

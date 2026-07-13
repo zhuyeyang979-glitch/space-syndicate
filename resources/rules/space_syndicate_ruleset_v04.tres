@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="SpaceSyndicateRulesetProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/rules/space_syndicate_ruleset_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+ruleset_id = "v0.4"
+design_notes = "Single Inspector-editable source of truth for stable Space Syndicate tabletop rules v0.4 parameters. Runtime cutover is deliberately limited and conformance-gated."
+shared_window_seconds = 30.0
+organize_seconds = 25.0
+lock_seconds = 5.0
+purchase_window_seconds = 12.0
+counter_window_seconds = 5.0
+contract_window_seconds = 5.0
+monster_wager_default_seconds = 20.0
+monster_wager_max_seconds = 30.0
+final_countdown_seconds = 75.0
+default_group_card_limit = 3
+maximum_group_card_limit = 4
+ordinary_hand_limit = 5
+maximum_card_rank = 4
+forced_decision_priority = Array[String](["monster_wager", "counter_response", "contract_response", "other_choice"])
+realtime_income_enabled = true
+direct_city_build_allowed = false
+city_development_requires_product_project = true
+private_plan_enabled = true

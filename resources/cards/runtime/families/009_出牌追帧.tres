@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://da1710hit2oga"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_yul4j"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_omh68"]
+
+[sub_resource type="Resource" id="Resource_v0kef"]
+script = ExtResource("1_yul4j")
+card_id = "出牌追帧1"
+family_id = "出牌追帧"
+kind = &"intel_card_trace"
+purchase_cost = 4
+rules_text = "私下追溯卡牌轨道上一张匿名牌的出牌者：优先查当前选中的轨道卡，未选则查最近未公开的历史牌。"
+tags = PackedStringArray("情报", "卡牌")
+play_product = "活体芯片"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"trace_card_count": 1
+}
+
+[sub_resource type="Resource" id="Resource_u7yd5"]
+script = ExtResource("1_yul4j")
+card_id = "出牌追帧2"
+family_id = "出牌追帧"
+rank = 2
+kind = &"intel_card_trace"
+purchase_cost = 6
+rules_text = "私下追溯最多两张匿名牌的出牌者：优先当前选中卡，再追最近未公开历史牌。"
+tags = PackedStringArray("情报", "升级")
+play_product = "活体芯片"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"trace_card_count": 2
+}
+
+[resource]
+script = ExtResource("2_omh68")
+family_id = "出牌追帧"
+pack_id = &"intel_counter"
+authored_ranks = Array[Resource]([SubResource("Resource_v0kef"), SubResource("Resource_u7yd5")])
+public_pool_eligible = true

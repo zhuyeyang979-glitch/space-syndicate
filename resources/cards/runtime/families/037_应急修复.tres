@@ -1,0 +1,91 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bmtxruwsjlccx"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_h6lb5"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_jqakv"]
+
+[sub_resource type="Resource" id="Resource_816vr"]
+script = ExtResource("1_h6lb5")
+card_id = "应急修复1"
+family_id = "应急修复"
+kind = &"route_insurance"
+purchase_cost = 3
+rules_text = "选中己方城市：修复1点商路压力，GDP/min +20，并获得45秒商路流通×1.15的应急窗口。"
+tags = PackedStringArray("经营", "修复", "防御")
+play_product = "光合凝胶"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "repair_routes", "revenue_amount", "route_flow_multiplier", "route_flow_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 1,
+"revenue_amount": 20,
+"route_flow_multiplier": 1.15,
+"route_flow_seconds": 45.0
+}
+
+[sub_resource type="Resource" id="Resource_wlsmt"]
+script = ExtResource("1_h6lb5")
+card_id = "应急修复2"
+family_id = "应急修复"
+rank = 2
+kind = &"route_insurance"
+purchase_cost = 5
+rules_text = "选中己方城市：修复2点商路压力，GDP/min +40，并获得60秒商路流通×1.25。"
+tags = PackedStringArray("经营", "修复", "升级")
+play_product = "光合凝胶"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "repair_routes", "revenue_amount", "route_flow_multiplier", "route_flow_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 2,
+"revenue_amount": 40,
+"route_flow_multiplier": 1.25,
+"route_flow_seconds": 60.0
+}
+
+[sub_resource type="Resource" id="Resource_yun2w"]
+script = ExtResource("1_h6lb5")
+card_id = "应急修复3"
+family_id = "应急修复"
+rank = 3
+kind = &"route_insurance"
+purchase_cost = 7
+rules_text = "核心修复牌：修复3点商路压力，GDP/min +70，并给己方城市90秒商路流通×1.40，用来顶住做空和怪兽破坏窗口。"
+tags = PackedStringArray("经营", "修复", "核心")
+play_product = "光合凝胶"
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "repair_routes", "revenue_amount", "route_flow_multiplier", "route_flow_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 3,
+"revenue_amount": 70,
+"route_flow_multiplier": 1.4,
+"route_flow_seconds": 90.0
+}
+
+[sub_resource type="Resource" id="Resource_h6rxd"]
+script = ExtResource("1_h6lb5")
+card_id = "应急修复4"
+family_id = "应急修复"
+rank = 4
+kind = &"route_insurance"
+purchase_cost = 9
+rules_text = "终端应急修复IV：修复4点商路压力，GDP/min +110，并让己方城市120秒商路流通×1.60；强但会暴露光合凝胶流动线索。"
+tags = PackedStringArray("经营", "修复", "IV")
+play_product = "光合凝胶"
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "repair_routes", "revenue_amount", "route_flow_multiplier", "route_flow_seconds", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"repair_routes": 4,
+"revenue_amount": 110,
+"route_flow_multiplier": 1.6,
+"route_flow_seconds": 120.0
+}
+
+[resource]
+script = ExtResource("2_jqakv")
+family_id = "应急修复"
+pack_id = &"product_logistics"
+authored_ranks = Array[Resource]([SubResource("Resource_816vr"), SubResource("Resource_wlsmt"), SubResource("Resource_yun2w"), SubResource("Resource_h6rxd")])
+public_pool_eligible = true
+upgradeable_family = true

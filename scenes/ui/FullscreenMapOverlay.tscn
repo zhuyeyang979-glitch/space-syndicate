@@ -1,6 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetMapView.tscn" id="2_planet_map"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetMapControlToolbar.tscn" id="3_map_toolbar"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
 bg_color = Color(0.0196078, 0.0470588, 0.109804, 1)
@@ -93,6 +95,11 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
+
+[node name="PlanetMapControlToolbar" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapToolbar/FullscreenMapActionHost" instance=ExtResource("3_map_toolbar")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="FullscreenMapCloseButton" type="Button" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapToolbar"]
 unique_name_in_owner = true
@@ -194,3 +201,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_map_panel")
+
+[node name="FullscreenPlanetMapView" parent="FullscreenMapMargin/FullscreenMapRows/FullscreenMapHost" instance=ExtResource("2_planet_map")]
+unique_name_in_owner = true
+layout_mode = 2

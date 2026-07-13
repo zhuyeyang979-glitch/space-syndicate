@@ -517,8 +517,8 @@ func _district_in_navigation_direction(direction: Vector2) -> int:
 		if candidate < 0 or candidate >= districts.size() or candidate == current:
 			continue
 		var projected := _map_event_screen_position(districts[candidate].get("center", _view_center_m))
-		var position: Vector2 = projected.get("position", origin)
-		var offset := position - origin
+		var candidate_position: Vector2 = projected.get("position", origin)
+		var offset := candidate_position - origin
 		var distance := offset.length()
 		if distance <= 0.5:
 			continue
@@ -578,9 +578,9 @@ func _projection_visibility_alpha(z_value: float, blend: float) -> float:
 	return lerp(1.0, horizon_fade, clampf((blend - PLANET_PROJECTION_VISIBILITY_FADE_START) / 0.24, 0.0, 1.0))
 
 
-func _wrap_world_position(position: Vector2) -> Vector2:
-	var x := position.x
-	var y := position.y
+func _wrap_world_position(world_position: Vector2) -> Vector2:
+	var x := world_position.x
+	var y := world_position.y
 	var guard := 0
 	while (y < 0.0 or y > map_height_m) and guard < 12:
 		if y < 0.0:
@@ -606,8 +606,8 @@ func _surface_distance(from_position: Vector2, to_position: Vector2) -> float:
 	return acos(clamp(a.dot(b), -1.0, 1.0)) * max(1.0, map_width_m / TAU)
 
 
-func _world_to_lon_lat(position: Vector2) -> Vector2:
-	var wrapped := _wrap_world_position(position)
+func _world_to_lon_lat(world_position: Vector2) -> Vector2:
+	var wrapped := _wrap_world_position(world_position)
 	return Vector2(
 		fposmod(wrapped.x / map_width_m * TAU, TAU),
 		PI * 0.5 - wrapped.y / map_height_m * PI
@@ -621,8 +621,8 @@ func _lon_lat_to_world(lon: float, lat: float) -> Vector2:
 	))
 
 
-func _sphere_unit(position: Vector2) -> Vector3:
-	var lon_lat := _world_to_lon_lat(position)
+func _sphere_unit(world_position: Vector2) -> Vector3:
+	var lon_lat := _world_to_lon_lat(world_position)
 	var lon := lon_lat.x
 	var lat := lon_lat.y
 	return Vector3(cos(lat) * cos(lon), sin(lat), cos(lat) * sin(lon)).normalized()
@@ -665,8 +665,8 @@ func _globe_center() -> Vector2:
 	return size * 0.5
 
 
-func _project_globe(position: Vector2) -> Dictionary:
-	var lon_lat := _world_to_lon_lat(position)
+func _project_globe(world_position: Vector2) -> Dictionary:
+	var lon_lat := _world_to_lon_lat(world_position)
 	var center_lon_lat := _world_to_lon_lat(_view_center_m)
 	var lon := lon_lat.x
 	var lat := lon_lat.y
@@ -805,13 +805,13 @@ func _draw_space_backdrop(globe_blend: float) -> void:
 	nebula_b.a = 0.12
 	draw_circle(center + Vector2(size.x * 0.27, size.y * 0.20), min(size.x, size.y) * 0.24, nebula_b)
 	for i in range(SPACE_BACKDROP_STAR_COUNT):
-		var position := Vector2(
+		var star_position := Vector2(
 			fposmod(float(i * 137 + 29) + _view_center_m.x * 0.015, maxf(1.0, size.x)),
 			fposmod(float(i * 73 + 47) + _view_center_m.y * 0.011, maxf(1.0, size.y))
 		)
 		var star := Color("#e0f2fe")
 		star.a = 0.18 + float((i * 19) % 9) * 0.045
-		draw_circle(position, 0.7 + float(i % 4) * 0.22, star)
+		draw_circle(star_position, 0.7 + float(i % 4) * 0.22, star)
 
 
 func _draw_flat_projection_space_mask(globe_blend: float) -> void:
@@ -851,15 +851,15 @@ func _draw_space_mask_rect(rect: Rect2, color: Color) -> void:
 
 func _draw_projection_outer_stars(projection_rect: Rect2, alpha: float) -> void:
 	for i in range(42):
-		var position := Vector2(
+		var star_position := Vector2(
 			fposmod(float(i * 149 + 17) + _view_center_m.x * 0.010, maxf(1.0, size.x)),
 			fposmod(float(i * 83 + 59) + _view_center_m.y * 0.014, maxf(1.0, size.y))
 		)
-		if projection_rect.has_point(position):
+		if projection_rect.has_point(star_position):
 			continue
 		var star := Color("#e0f2fe")
 		star.a = alpha * (0.18 + float((i * 11) % 6) * 0.07)
-		draw_circle(position, 0.7 + float(i % 3) * 0.25, star)
+		draw_circle(star_position, 0.7 + float(i % 3) * 0.25, star)
 
 
 func _draw_betting_table_weave(globe_blend: float) -> void:
@@ -957,7 +957,7 @@ func _draw_globe_projection() -> void:
 	_draw_scale_hint()
 
 
-func _draw_globe_graticule(center: Vector2, radius: float) -> void:
+func _draw_globe_graticule(_center: Vector2, _radius: float) -> void:
 	var grid_color := Color("#38bdf8")
 	grid_color.a = 0.09
 	for lon_step in range(0, 12):
@@ -1242,13 +1242,13 @@ func _draw_focus_target_beacon() -> void:
 	var target_center: Vector2 = district.get("center", _focus_target_center_m)
 	var projected := _project_globe(target_center) if _is_globe_mode() else {"position": _world_to_screen(target_center), "visible": true}
 	var pos: Vector2 = projected.get("position", size * 0.5)
-	var visible := bool(projected.get("visible", true))
+	var target_visible := bool(projected.get("visible", true))
 	var accent := Color("#facc15")
 	accent.a = alpha
 	var soft := Color("#facc15")
 	soft.a = alpha * 0.20
 	var pulse := 0.5 + 0.5 * sin(_focus_beacon_elapsed * TAU * 1.65)
-	if _is_globe_mode() and not visible:
+	if _is_globe_mode() and not target_visible:
 		var direction := pos - _globe_center()
 		if direction.length() <= 0.001:
 			direction = Vector2.RIGHT
@@ -1321,7 +1321,7 @@ func _draw_trade_routes() -> void:
 				_draw_trade_segment(_world_to_screen(from_world), _world_to_screen(to_world), color, disrupted)
 		if reduced_detail or not _should_draw_table_token_labels():
 			continue
-		var label_index: int = clampi(int(points.size() / 2), 0, points.size() - 1)
+		var label_index: int = clampi(int(float(points.size()) / 2.0), 0, points.size() - 1)
 		var label_world: Vector2 = points[label_index]
 		if _is_globe_mode():
 			var projected := _project_globe(label_world)
@@ -1449,8 +1449,8 @@ func _draw_auto_monster_markers() -> void:
 			pos = projected["position"]
 		_draw_monster_token(pos, marker, color)
 		if _should_draw_table_token_labels():
-			var name := _short_action_text(String(marker.get("name", "怪兽")), 8)
-			draw_string(font, pos + Vector2(18, -14), name, HORIZONTAL_ALIGNMENT_LEFT, 92.0, 11, color)
+			var monster_name := _short_action_text(String(marker.get("name", "怪兽")), 8)
+			draw_string(font, pos + Vector2(18, -14), monster_name, HORIZONTAL_ALIGNMENT_LEFT, 92.0, 11, color)
 
 
 func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void:
@@ -1467,8 +1467,8 @@ func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void
 		draw_circle(pos, radius + 2.0, Color("#020617"))
 		draw_circle(pos, radius, base)
 		draw_arc(pos, radius + 1.0, 0.0, TAU, 18, slot_color, 2.0, true)
-		var font := get_theme_default_font()
-		draw_string(font, pos + Vector2(-radius, radius * 0.35), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, int(clamp(radius * 1.10, 12.0, 18.0)), Color("#f8fafc"))
+		var reduced_font := get_theme_default_font()
+		draw_string(reduced_font, pos + Vector2(-radius, radius * 0.35), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, int(clamp(radius * 1.10, 12.0, 18.0)), Color("#f8fafc"))
 		return
 	draw_circle(pos, radius + 6.0, glow)
 	draw_circle(pos, radius + 2.5, Color("#020617"))
@@ -1480,24 +1480,24 @@ func _draw_monster_token(pos: Vector2, marker: Dictionary, color: Color) -> void
 	draw_arc(pos, radius + 1.0, 0.0, TAU, 32, border, 2.0, true)
 	draw_arc(pos, radius + 4.0, -PI * 0.35, PI * 0.88, 28, slot_color, 2.0, true)
 
-	var font := get_theme_default_font()
+	var token_font := get_theme_default_font()
 	if sprite_drawn:
 		var glyph_badge_pos := pos + Vector2(-radius * 0.64, radius * 0.64)
 		var glyph_badge_radius: float = maxf(5.8, radius * 0.28)
 		draw_circle(glyph_badge_pos, glyph_badge_radius + 1.6, Color("#020617"))
 		draw_circle(glyph_badge_pos, glyph_badge_radius, color.darkened(0.16))
 		var small_glyph_size: int = int(clamp(radius * 0.48, 8.0, 11.0))
-		draw_string(font, glyph_badge_pos + Vector2(-glyph_badge_radius, glyph_badge_radius * 0.38), glyph, HORIZONTAL_ALIGNMENT_CENTER, glyph_badge_radius * 2.0, small_glyph_size, Color("#f8fafc"))
+		draw_string(token_font, glyph_badge_pos + Vector2(-glyph_badge_radius, glyph_badge_radius * 0.38), glyph, HORIZONTAL_ALIGNMENT_CENTER, glyph_badge_radius * 2.0, small_glyph_size, Color("#f8fafc"))
 	else:
 		var glyph_size: int = int(clamp(radius * 1.22, 14.0, 22.0))
-		draw_string(font, pos + Vector2(-radius, radius * 0.35 + 1.5), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#020617"))
-		draw_string(font, pos + Vector2(-radius, radius * 0.35), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#f8fafc"))
+		draw_string(token_font, pos + Vector2(-radius, radius * 0.35 + 1.5), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#020617"))
+		draw_string(token_font, pos + Vector2(-radius, radius * 0.35), glyph, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, glyph_size, Color("#f8fafc"))
 
 	var slot_label := String(marker.get("label", "?"))
 	var label_pos := pos + Vector2(radius * 0.72, -radius * 0.72)
 	draw_circle(label_pos, max(6.0, radius * 0.34), Color("#020617"))
 	draw_circle(label_pos, max(4.8, radius * 0.26), slot_color)
-	draw_string(font, label_pos + Vector2(-radius * 0.26, radius * 0.16), slot_label, HORIZONTAL_ALIGNMENT_CENTER, radius * 0.52, int(max(8.0, radius * 0.45)), Color.WHITE)
+	draw_string(token_font, label_pos + Vector2(-radius * 0.26, radius * 0.16), slot_label, HORIZONTAL_ALIGNMENT_CENTER, radius * 0.52, int(max(8.0, radius * 0.45)), Color.WHITE)
 
 	if bool(marker.get("down", false)):
 		var slash := Color("#f8fafc")
@@ -2191,11 +2191,11 @@ func _draw_arrow_head(from_screen: Vector2, to_screen: Vector2, color: Color, al
 		return
 	var forward := offset.normalized()
 	var side := Vector2(-forward.y, forward.x)
-	var size: float = (7.0 + alpha * 5.0) * size_scale
+	var arrow_size: float = (7.0 + alpha * 5.0) * size_scale
 	var points := PackedVector2Array([
 		to_screen,
-		to_screen - forward * size + side * size * 0.45,
-		to_screen - forward * size - side * size * 0.45,
+		to_screen - forward * arrow_size + side * arrow_size * 0.45,
+		to_screen - forward * arrow_size - side * arrow_size * 0.45,
 	])
 	draw_colored_polygon(points, color)
 
@@ -2292,9 +2292,9 @@ func get_district_control_position(index: int) -> Vector2:
 		return Vector2(-1.0, -1.0)
 	_sync_projection_metrics_for_query()
 	var projected: Dictionary = _map_event_screen_position(districts[index].get("center", Vector2.ZERO))
-	var position: Vector2 = projected.get("position", Vector2(-1.0, -1.0))
-	_register_programmatic_district_click_anchor(position, index)
-	return position
+	var control_position: Vector2 = projected.get("position", Vector2(-1.0, -1.0))
+	_register_programmatic_district_click_anchor(control_position, index)
+	return control_position
 
 
 func reset_to_planet_overview() -> void:
@@ -2373,51 +2373,51 @@ func get_projection_debug_snapshot() -> Dictionary:
 	}
 
 
-func get_district_at_control_position(position: Vector2) -> int:
-	if position.x < 0.0 or position.y < 0.0 or position.x > size.x or position.y > size.y:
+func get_district_at_control_position(control_position: Vector2) -> int:
+	if control_position.x < 0.0 or control_position.y < 0.0 or control_position.x > size.x or control_position.y > size.y:
 		return -1
 	_sync_projection_metrics_for_query()
 	if _globe_blend() > 0.08:
-		return _district_at_projected_control_position(position)
-	return _district_at_point(_screen_to_world(position))
+		return _district_at_projected_control_position(control_position)
+	return _district_at_point(_screen_to_world(control_position))
 
 
-func _district_for_click_position(position: Vector2) -> int:
-	var anchored_index := _programmatic_district_for_click_position(position)
+func _district_for_click_position(control_position: Vector2) -> int:
+	var anchored_index := _programmatic_district_for_click_position(control_position)
 	if anchored_index >= 0:
 		return anchored_index
-	var index := get_district_at_control_position(position)
+	var index := get_district_at_control_position(control_position)
 	if index >= 0:
 		return index
-	return _nearest_clickable_projected_district(position)
+	return _nearest_clickable_projected_district(control_position)
 
 
-func _programmatic_click_anchor_key(position: Vector2) -> String:
-	return "%d:%d" % [roundi(position.x), roundi(position.y)]
+func _programmatic_click_anchor_key(control_position: Vector2) -> String:
+	return "%d:%d" % [roundi(control_position.x), roundi(control_position.y)]
 
 
-func _register_programmatic_district_click_anchor(position: Vector2, index: int) -> void:
-	if index < 0 or position.x < 0.0 or position.y < 0.0 or position.x > size.x or position.y > size.y:
+func _register_programmatic_district_click_anchor(control_position: Vector2, index: int) -> void:
+	if index < 0 or control_position.x < 0.0 or control_position.y < 0.0 or control_position.x > size.x or control_position.y > size.y:
 		return
 	for x_offset in range(-PROGRAMMATIC_CLICK_ANCHOR_RADIUS, PROGRAMMATIC_CLICK_ANCHOR_RADIUS + 1):
 		for y_offset in range(-PROGRAMMATIC_CLICK_ANCHOR_RADIUS, PROGRAMMATIC_CLICK_ANCHOR_RADIUS + 1):
-			_programmatic_district_click_anchors[_programmatic_click_anchor_key(position + Vector2(x_offset, y_offset))] = index
+			_programmatic_district_click_anchors[_programmatic_click_anchor_key(control_position + Vector2(x_offset, y_offset))] = index
 
 
-func _programmatic_district_for_click_position(position: Vector2) -> int:
-	var key := _programmatic_click_anchor_key(position)
+func _programmatic_district_for_click_position(control_position: Vector2) -> int:
+	var key := _programmatic_click_anchor_key(control_position)
 	if not _programmatic_district_click_anchors.has(key):
 		return -1
 	return int(_programmatic_district_click_anchors[key])
 
 
-func _nearest_clickable_projected_district(position: Vector2) -> int:
-	if position.x < 0.0 or position.y < 0.0 or position.x > size.x or position.y > size.y:
+func _nearest_clickable_projected_district(control_position: Vector2) -> int:
+	if control_position.x < 0.0 or control_position.y < 0.0 or control_position.x > size.x or control_position.y > size.y:
 		return -1
 	_sync_projection_metrics_for_query()
 	if _globe_blend() <= 0.08:
-		return _district_at_point(_screen_to_world(position))
-	if _globe_blend() > 0.62 and position.distance_to(_globe_center()) > _globe_radius() + 18.0:
+		return _district_at_point(_screen_to_world(control_position))
+	if _globe_blend() > 0.62 and control_position.distance_to(_globe_center()) > _globe_radius() + 18.0:
 		return -1
 	var nearest_index := -1
 	var nearest_distance := INF
@@ -2426,17 +2426,17 @@ func _nearest_clickable_projected_district(position: Vector2) -> int:
 		var projected := _map_event_screen_position(district.get("center", Vector2.ZERO))
 		if not bool(projected.get("visible", true)):
 			continue
-		var distance := position.distance_to(projected.get("position", Vector2.ZERO))
+		var distance := control_position.distance_to(projected.get("position", Vector2.ZERO))
 		if distance < nearest_distance:
 			nearest_distance = distance
 			nearest_index = i
 	return nearest_index
 
 
-func _district_at_projected_control_position(position: Vector2) -> int:
+func _district_at_projected_control_position(control_position: Vector2) -> int:
 	if districts.is_empty():
 		return -1
-	if _globe_blend() > 0.62 and position.distance_to(_globe_center()) > _globe_radius() + 18.0:
+	if _globe_blend() > 0.62 and control_position.distance_to(_globe_center()) > _globe_radius() + 18.0:
 		return -1
 	var best_index := -1
 	var best_distance := INF
@@ -2447,7 +2447,7 @@ func _district_at_projected_control_position(position: Vector2) -> int:
 		if not bool(projected.get("visible", true)):
 			continue
 		var screen_position: Vector2 = projected.get("position", Vector2.ZERO)
-		var distance := position.distance_to(screen_position)
+		var distance := control_position.distance_to(screen_position)
 		var hit_radius := _district_projected_hit_radius(i)
 		if distance <= hit_radius and distance < best_distance:
 			best_distance = distance
@@ -2462,7 +2462,7 @@ func _district_at_projected_control_position(position: Vector2) -> int:
 		var projected := _map_event_screen_position(district.get("center", Vector2.ZERO))
 		if not bool(projected.get("visible", true)):
 			continue
-		var distance := position.distance_to(projected.get("position", Vector2.ZERO))
+		var distance := control_position.distance_to(projected.get("position", Vector2.ZERO))
 		if distance < nearest_distance:
 			nearest_distance = distance
 			nearest_index = i
@@ -2493,14 +2493,14 @@ func _sync_projection_metrics_for_query() -> void:
 
 func _world_to_screen(position_m: Vector2) -> Vector2:
 	if _is_globe_mode():
-		var projected := _project_globe(position_m)
-		return projected["position"]
+		var globe_projected := _project_globe(position_m)
+		return globe_projected["position"]
 	var local_position := _map_offset + _surface_delta(_view_center_m, position_m) * _scale
 	var blend := _globe_blend()
 	if blend <= 0.001:
 		return local_position
-	var projected := _project_globe(position_m)
-	return local_position.lerp(projected["position"] as Vector2, blend)
+	var blended_projected := _project_globe(position_m)
+	return local_position.lerp(blended_projected["position"] as Vector2, blend)
 
 
 func _projection_visibility_alpha_for_district(index: int) -> float:
@@ -2513,10 +2513,10 @@ func _projection_visibility_alpha_for_district(index: int) -> float:
 	return _projection_visibility_alpha(float(projected.get("z", 1.0)), blend)
 
 
-func _screen_to_world(position: Vector2) -> Vector2:
+func _screen_to_world(control_position: Vector2) -> Vector2:
 	if _globe_blend() > 0.62:
-		return _screen_to_globe_world(position)
-	return _wrap_world_position(_view_center_m + (position - _map_offset) / max(0.001, _scale))
+		return _screen_to_globe_world(control_position)
+	return _wrap_world_position(_view_center_m + (control_position - _map_offset) / max(0.001, _scale))
 
 
 func _district_at_point(point: Vector2) -> int:

@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/city_development_world_bridge.gd" id="1_bridge"]
+
+[node name="CityDevelopmentWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Non-owning v0.4 world adapter for atomic city-development settlement facts, commits, rollback, and presentation intents."

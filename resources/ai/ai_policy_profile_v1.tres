@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AiPolicyProfileResource" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/ai/ai_policy_profile_resource.gd" id="1_profile"]
+[ext_resource type="Resource" path="res://resources/ai/personalities/pioneer_ai_policy.tres" id="2_pioneer"]
+[ext_resource type="Resource" path="res://resources/ai/personalities/arbitrage_ai_policy.tres" id="3_arbitrage"]
+[ext_resource type="Resource" path="res://resources/ai/personalities/disruptor_ai_policy.tres" id="4_disruptor"]
+[ext_resource type="Resource" path="res://resources/ai/personalities/monster_tamer_ai_policy.tres" id="5_tamer"]
+[ext_resource type="Resource" path="res://resources/ai/personalities/contract_ai_policy.tres" id="6_contract"]
+[ext_resource type="Resource" path="res://resources/ai/personalities/intelligence_ai_policy.tres" id="7_intelligence"]
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = "ai_policy_v1"
+display_name = "AI Policy Profile v1"
+design_notes = "Inspector-editable runtime source for player-AI timing, thresholds, strategy weights, learning controls, and personality profiles."
+runtime_owner_script = "res://scripts/runtime/ai_runtime_controller.gd"
+runtime_cutover_enabled = true
+personality_profiles = Array[Resource]([ExtResource("2_pioneer"), ExtResource("3_arbitrage"), ExtResource("4_disruptor"), ExtResource("5_tamer"), ExtResource("6_contract"), ExtResource("7_intelligence")])

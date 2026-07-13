@@ -1,0 +1,271 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/balance_runtime_bridge_mcp_preview.gd" id="1_preview"]
+
+[node name="BalanceRuntimeBridgeMcpPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_preview")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0156863, 0.0235294, 0.0431373, 1)
+
+[node name="BridgeMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="BridgeRows" type="VBoxContainer" parent="BridgeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BalanceRuntimeBridgeTitle" type="Label" parent="BridgeMargin/BridgeRows"]
+layout_mode = 2
+text = "Balance Runtime Bridge"
+theme_override_colors/font_color = Color(0.972549, 0.984314, 1, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="BalanceRuntimeBridgeSummaryLabel" type="Label" parent="BridgeMargin/BridgeRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Controlled bridge between JSON/current balance data and Inspector Resource payloads."
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.713726, 0.780392, 0.870588, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="BalanceRuntimeBridgeStatusLabel" type="Label" parent="BridgeMargin/BridgeRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Status: ready"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.741176, 0.941176, 0.784314, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="BridgeBody" type="HBoxContainer" parent="BridgeMargin/BridgeRows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="ControlPanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ControlMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="ControlRows" type="VBoxContainer" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SourceModeLabel" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin/ControlRows"]
+layout_mode = 2
+text = "Source Mode"
+theme_override_colors/font_color = Color(0.733333, 0.862745, 1, 1)
+
+[node name="BalanceRuntimeBridgeJsonModeButton" type="Button" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "json_current"
+tooltip_text = "Current default runtime source"
+
+[node name="BalanceRuntimeBridgeResourceModeButton" type="Button" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "resource_profile"
+tooltip_text = "Explicit QA/dev Resource payload source"
+
+[node name="BalanceRuntimeBridgeAutoSafeModeButton" type="Button" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "auto_safe"
+tooltip_text = "Resource when parity passes, otherwise JSON"
+
+[node name="BalanceRuntimeBridgePrintSummaryButton" type="Button" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Summary"
+
+[node name="BalanceRuntimeBridgeRunBenchButton" type="Button" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Print Bench Path"
+
+[node name="BalanceRuntimeBridgeDefaultRuntimeLabel" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/ControlPanel/ControlMargin/ControlRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+text = "Runtime default: json_current"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.815686, 0.866667, 0.941176, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="DetailPanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="DetailMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="DetailRows" type="VBoxContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PayloadGrid" type="GridContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows"]
+layout_mode = 2
+size_flags_vertical = 3
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="JsonRuntimePanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="JsonRuntimeMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/JsonRuntimePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceRuntimeBridgeJsonRuntimeTargetsLabel" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/JsonRuntimePanel/JsonRuntimeMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "JSON runtime"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="ResourceRuntimePanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ResourceRuntimeMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/ResourceRuntimePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceRuntimeBridgeResourceRuntimeTargetsLabel" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/ResourceRuntimePanel/ResourceRuntimeMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resource runtime"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="JsonPricePanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="JsonPriceMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/JsonPricePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceRuntimeBridgeJsonPriceCurveLabel" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/JsonPricePanel/JsonPriceMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "JSON price curve"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="ResourcePricePanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ResourcePriceMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/ResourcePricePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceRuntimeBridgeResourcePriceCurveLabel" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/PayloadGrid/ResourcePricePanel/ResourcePriceMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resource price curve"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.756863, 0.839216, 0.952941, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="FooterSplit" type="HBoxContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ParityPanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/FooterSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ParityMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/FooterSplit/ParityPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceRuntimeBridgeParityBody" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/FooterSplit/ParityPanel/ParityMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Parity"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.815686, 0.866667, 0.941176, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="DryRunPanel" type="PanelContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/FooterSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DryRunMargin" type="MarginContainer" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/FooterSplit/DryRunPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="BalanceRuntimeBridgeDryRunSampleLabel" type="Label" parent="BridgeMargin/BridgeRows/BridgeBody/DetailPanel/DetailMargin/DetailRows/FooterSplit/DryRunPanel/DryRunMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Dry-run sample"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.815686, 0.866667, 0.941176, 1)
+theme_override_font_sizes/font_size = 12

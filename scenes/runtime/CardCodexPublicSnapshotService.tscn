@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_codex_public_snapshot_service.gd" id="1_service"]
+
+[node name="CardCodexPublicSnapshotService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Pure-data Card Codex browser/detail composer. It reuses existing CardCodex ViewModels while card prices, effects, requirements, upgrades, and resolution facts remain domain-owned."

@@ -1,0 +1,214 @@
+[gd_scene load_steps=54 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameSessionRuntimeController.tscn" id="3_session"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/DistrictPurchaseRuntimeController.tscn" id="4_purchase"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/EconomyCashflowRuntimeController.tscn" id="5_economy"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ScenarioRuntimeController.tscn" id="6_scenario"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GdpFormulaRuntimeController.tscn" id="7_gdp_formula"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" id="8_first_table_authored"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CodexNavigationRuntimeController.tscn" id="9_codex_navigation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CodexPublicSnapshotService.tscn" id="10_codex_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" id="11_monster_codex_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ProductCodexPublicSnapshotService.tscn" id="12_product_codex_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCodexPublicSnapshotService.tscn" id="13_card_codex_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/EconomyDashboardPublicSnapshotService.tscn" id="14_economy_dashboard_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/StandingsPublicSnapshotService.tscn" id="15_standings_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn" id="16_final_settlement_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/IntelDossierPublicSnapshotService.tscn" id="17_intel_dossier_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/DistrictSupplySnapshotService.tscn" id="18_district_supply_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn" id="19_purchase_settlement"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardInventoryRuntimeService.tscn" id="20_card_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn" id="21_hand_interaction"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionQueueRuntimeService.tscn" id="22_resolution_queue"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionExecutionRuntimeService.tscn" id="23_resolution_execution"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionExecutionWorldBridge.tscn" id="24_resolution_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardEconomyProductRouteEffectRuntimeService.tscn" id="25_economy_product_route_effect"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardEconomyProductRouteEffectWorldBridge.tscn" id="26_economy_product_route_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardEconomyProductRouteFormulaRuntimeService.tscn" id="27_economy_product_route_formula"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeController.tscn" id="28_ai_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeWorldBridge.tscn" id="29_ai_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPresentationRuntimeService.tscn" id="30_card_presentation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameTableViewModelRuntimeService.tscn" id="31_table_viewmodel"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn" id="32_card_play_eligibility"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayEligibilityWorldBridge.tscn" id="33_card_play_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterRuntimeController.tscn" id="34_monster_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterRuntimeWorldBridge.tscn" id="35_monster_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryRuntimeController.tscn" id="36_military_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryRuntimeWorldBridge.tscn" id="37_military_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WeatherRuntimeController.tscn" id="38_weather_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WeatherRuntimeWorldBridge.tscn" id="39_weather_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ContractRuntimeController.tscn" id="40_contract_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ContractRuntimeWorldBridge.tscn" id="41_contract_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ProductMarketRuntimeController.tscn" id="42_product_market"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ProductMarketRuntimeWorldBridge.tscn" id="43_product_market_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CityGdpDerivativeRuntimeController.tscn" id="44_city_gdp_derivative"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CityGdpDerivativeRuntimeWorldBridge.tscn" id="45_city_gdp_derivative_world_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardRuntimeCatalogService.tscn" id="46_card_runtime_catalog"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardRuntimeDefinitionWorldBridge.tscn" id="47_card_definition_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameplayBalanceDiagnosticsRuntimeService.tscn" id="48_balance_diagnostics"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameplayBalanceDiagnosticsWorldBridge.tscn" id="49_balance_diagnostics_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CityTradeNetworkRuntimeController.tscn" id="50_city_trade_network"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CityTradeNetworkWorldBridge.tscn" id="51_city_trade_network_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentRuntimeController.tscn" id="52_city_development"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentWorldBridge.tscn" id="53_city_development_bridge"]
+
+[node name="GameRuntimeCoordinator" type="Node"]
+script = ExtResource("1_coordinator")
+editor_description = "Thin replacement-foundation coordinator. It composes runtime services without owning economy, card, monster, AI decision, or UI rules."
+
+[node name="CardRuntimeCatalogService" parent="." instance=ExtResource("46_card_runtime_catalog")]
+unique_name_in_owner = true
+
+[node name="CardRuntimeDefinitionWorldBridge" parent="." instance=ExtResource("47_card_definition_bridge")]
+unique_name_in_owner = true
+
+[node name="GameplayBalanceDiagnosticsRuntimeService" parent="." instance=ExtResource("48_balance_diagnostics")]
+unique_name_in_owner = true
+
+[node name="GameplayBalanceDiagnosticsWorldBridge" parent="." instance=ExtResource("49_balance_diagnostics_bridge")]
+unique_name_in_owner = true
+
+[node name="ProductMarketRuntimeController" parent="." instance=ExtResource("42_product_market")]
+unique_name_in_owner = true
+
+[node name="ProductMarketRuntimeWorldBridge" parent="." instance=ExtResource("43_product_market_world_bridge")]
+unique_name_in_owner = true
+
+[node name="CityGdpDerivativeRuntimeController" parent="." instance=ExtResource("44_city_gdp_derivative")]
+unique_name_in_owner = true
+
+[node name="CityGdpDerivativeRuntimeWorldBridge" parent="." instance=ExtResource("45_city_gdp_derivative_world_bridge")]
+unique_name_in_owner = true
+
+[node name="CityTradeNetworkRuntimeController" parent="." instance=ExtResource("50_city_trade_network")]
+unique_name_in_owner = true
+
+[node name="CityTradeNetworkWorldBridge" parent="." instance=ExtResource("51_city_trade_network_bridge")]
+unique_name_in_owner = true
+
+[node name="CityDevelopmentRuntimeController" parent="." instance=ExtResource("52_city_development")]
+unique_name_in_owner = true
+
+[node name="CityDevelopmentWorldBridge" parent="." instance=ExtResource("53_city_development_bridge")]
+unique_name_in_owner = true
+
+[node name="AiRuntimeController" parent="." instance=ExtResource("28_ai_runtime")]
+unique_name_in_owner = true
+
+[node name="AiRuntimeWorldBridge" parent="." instance=ExtResource("29_ai_world_bridge")]
+unique_name_in_owner = true
+
+[node name="MonsterRuntimeController" parent="." instance=ExtResource("34_monster_runtime")]
+unique_name_in_owner = true
+
+[node name="MonsterRuntimeWorldBridge" parent="." instance=ExtResource("35_monster_world_bridge")]
+unique_name_in_owner = true
+
+[node name="MilitaryRuntimeController" parent="." instance=ExtResource("36_military_runtime")]
+unique_name_in_owner = true
+
+[node name="MilitaryRuntimeWorldBridge" parent="." instance=ExtResource("37_military_world_bridge")]
+unique_name_in_owner = true
+
+[node name="WeatherRuntimeController" parent="." instance=ExtResource("38_weather_runtime")]
+unique_name_in_owner = true
+
+[node name="WeatherRuntimeWorldBridge" parent="." instance=ExtResource("39_weather_world_bridge")]
+unique_name_in_owner = true
+
+[node name="ContractRuntimeController" parent="." instance=ExtResource("40_contract_runtime")]
+unique_name_in_owner = true
+
+[node name="ContractRuntimeWorldBridge" parent="." instance=ExtResource("41_contract_world_bridge")]
+unique_name_in_owner = true
+
+[node name="CardPlayEligibilityRuntimeService" parent="." instance=ExtResource("32_card_play_eligibility")]
+unique_name_in_owner = true
+
+[node name="CardPlayEligibilityWorldBridge" parent="." instance=ExtResource("33_card_play_world_bridge")]
+unique_name_in_owner = true
+
+[node name="CardPresentationRuntimeService" parent="." instance=ExtResource("30_card_presentation")]
+unique_name_in_owner = true
+
+[node name="GameTableViewModelRuntimeService" parent="." instance=ExtResource("31_table_viewmodel")]
+unique_name_in_owner = true
+
+[node name="ForcedDecisionRuntimeScheduler" parent="." instance=ExtResource("2_scheduler")]
+unique_name_in_owner = true
+
+[node name="GameSessionRuntimeController" parent="." instance=ExtResource("3_session")]
+unique_name_in_owner = true
+
+[node name="DistrictPurchaseRuntimeController" parent="." instance=ExtResource("4_purchase")]
+unique_name_in_owner = true
+
+[node name="CardInventoryRuntimeService" parent="." instance=ExtResource("20_card_inventory")]
+unique_name_in_owner = true
+
+[node name="CardResolutionQueueRuntimeService" parent="." instance=ExtResource("22_resolution_queue")]
+unique_name_in_owner = true
+
+[node name="CardResolutionExecutionRuntimeService" parent="." instance=ExtResource("23_resolution_execution")]
+unique_name_in_owner = true
+
+[node name="CardResolutionExecutionWorldBridge" parent="." instance=ExtResource("24_resolution_world_bridge")]
+unique_name_in_owner = true
+
+[node name="CardEconomyProductRouteEffectRuntimeService" parent="." instance=ExtResource("25_economy_product_route_effect")]
+unique_name_in_owner = true
+
+[node name="CardEconomyProductRouteEffectWorldBridge" parent="." instance=ExtResource("26_economy_product_route_bridge")]
+unique_name_in_owner = true
+
+[node name="CardEconomyProductRouteFormulaRuntimeService" parent="." instance=ExtResource("27_economy_product_route_formula")]
+unique_name_in_owner = true
+
+[node name="PlayerHandInteractionRuntimeService" parent="." instance=ExtResource("21_hand_interaction")]
+unique_name_in_owner = true
+
+[node name="DistrictPurchaseSettlementRuntimeService" parent="." instance=ExtResource("19_purchase_settlement")]
+unique_name_in_owner = true
+
+[node name="EconomyCashflowRuntimeController" parent="." instance=ExtResource("5_economy")]
+unique_name_in_owner = true
+
+[node name="GdpFormulaRuntimeController" parent="." instance=ExtResource("7_gdp_formula")]
+unique_name_in_owner = true
+
+[node name="ScenarioRuntimeController" parent="." instance=ExtResource("6_scenario")]
+unique_name_in_owner = true
+
+[node name="FirstTableAuthoredRuntimeService" parent="." instance=ExtResource("8_first_table_authored")]
+unique_name_in_owner = true
+
+[node name="CodexNavigationRuntimeController" parent="." instance=ExtResource("9_codex_navigation")]
+unique_name_in_owner = true
+
+[node name="CodexPublicSnapshotService" parent="." instance=ExtResource("10_codex_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="MonsterCodexPublicSnapshotService" parent="." instance=ExtResource("11_monster_codex_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="ProductCodexPublicSnapshotService" parent="." instance=ExtResource("12_product_codex_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="CardCodexPublicSnapshotService" parent="." instance=ExtResource("13_card_codex_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="EconomyDashboardPublicSnapshotService" parent="." instance=ExtResource("14_economy_dashboard_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="StandingsPublicSnapshotService" parent="." instance=ExtResource("15_standings_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="FinalSettlementPublicSnapshotService" parent="." instance=ExtResource("16_final_settlement_public_snapshot")]
+
+[node name="IntelDossierPublicSnapshotService" parent="." instance=ExtResource("17_intel_dossier_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="DistrictSupplySnapshotService" parent="." instance=ExtResource("18_district_supply_snapshot")]
+unique_name_in_owner = true

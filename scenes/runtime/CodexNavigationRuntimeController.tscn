@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/codex_navigation_runtime_controller.gd" id="1_controller"]
+
+[node name="CodexNavigationRuntimeController" type="Node"]
+unique_name_in_owner = true
+script = ExtResource("1_controller")
+editor_description = "Scene-owned navigation state for Card, Monster, Product, Region, and Role Codex surfaces. Runtime content and gameplay rules remain in their existing owners."

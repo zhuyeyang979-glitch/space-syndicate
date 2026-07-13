@@ -1,0 +1,147 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bii6wg3evqgvo"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_lsdxg"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_rtxxr"]
+
+[sub_resource type="Resource" id="Resource_4n3rc"]
+script = ExtResource("1_lsdxg")
+card_id = "潜航舰队1"
+family_id = "潜航舰队"
+kind = &"military_force"
+purchase_cost = 5
+rules_text = "在海洋部署潜航舰队：海域移动快、陆地几乎不可达，适合伏击海路怪兽和破坏海洋商路。"
+tags = PackedStringArray("军队", "海军", "潜艇")
+range = 360.0
+play_product = "离岸水晶"
+play_flow_required = 1
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 2,
+"military_damage": 2,
+"military_domain": "sea",
+"military_duration_seconds": 34.0,
+"military_gdp_penalty": 8,
+"military_gdp_pressure_seconds": 18.0,
+"military_hp": 8,
+"military_move": 360.0,
+"military_range": 360.0,
+"military_strike_route_damage": 1,
+"military_type": "submarine",
+"movement_traits": ["sea", "submerged"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.35
+}
+}
+
+[sub_resource type="Resource" id="Resource_uex7n"]
+script = ExtResource("1_lsdxg")
+card_id = "潜航舰队2"
+family_id = "潜航舰队"
+rank = 2
+kind = &"military_force"
+purchase_cost = 7
+rules_text = "升级潜航舰队：更长海域巡航和更强猎兽能力，能稳定威胁依赖海运的城市。"
+tags = PackedStringArray("军队", "海军", "升级")
+range = 440.0
+play_product = "离岸水晶"
+play_flow_required = 2
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 3,
+"military_damage": 3,
+"military_domain": "sea",
+"military_duration_seconds": 42.0,
+"military_gdp_penalty": 12,
+"military_gdp_pressure_seconds": 22.0,
+"military_hp": 11,
+"military_move": 430.0,
+"military_range": 440.0,
+"military_strike_route_damage": 1,
+"military_type": "submarine",
+"movement_traits": ["sea", "submerged"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.4
+}
+}
+
+[sub_resource type="Resource" id="Resource_dr3gi"]
+script = ExtResource("1_lsdxg")
+card_id = "潜航舰队3"
+family_id = "潜航舰队"
+rank = 3
+kind = &"military_force"
+purchase_cost = 9
+rules_text = "核心潜航舰队：海路封锁和反海怪路线成型，适合压制依赖离岸水晶、鱼群和海底能源的GDP。"
+tags = PackedStringArray("军队", "海军", "核心")
+range = 520.0
+play_product = "离岸水晶"
+play_flow_required = 3
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 4,
+"military_domain": "sea",
+"military_duration_seconds": 50.0,
+"military_gdp_penalty": 16,
+"military_gdp_pressure_seconds": 26.0,
+"military_hp": 14,
+"military_move": 500.0,
+"military_range": 520.0,
+"military_strike_route_damage": 2,
+"military_type": "submarine",
+"movement_traits": ["sea", "submerged"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.45
+}
+}
+
+[sub_resource type="Resource" id="Resource_gkiu3"]
+script = ExtResource("1_lsdxg")
+card_id = "潜航舰队4"
+family_id = "潜航舰队"
+rank = 4
+kind = &"military_force"
+purchase_cost = 11
+rules_text = "终端潜航舰队IV：海洋路线的隐秘重锤，能长期压制关键海路；几乎不适合处理深内陆事件。"
+tags = PackedStringArray("军队", "海军", "IV")
+range = 620.0
+play_product = "离岸水晶"
+play_flow_required = 4
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 5,
+"military_domain": "sea",
+"military_duration_seconds": 62.0,
+"military_gdp_penalty": 22,
+"military_gdp_pressure_seconds": 30.0,
+"military_hp": 18,
+"military_move": 580.0,
+"military_range": 620.0,
+"military_strike_route_damage": 2,
+"military_type": "submarine",
+"movement_traits": ["sea", "submerged"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.52
+}
+}
+
+[resource]
+script = ExtResource("2_rtxxr")
+family_id = "潜航舰队"
+pack_id = &"military"
+authored_ranks = Array[Resource]([SubResource("Resource_4n3rc"), SubResource("Resource_uex7n"), SubResource("Resource_dr3gi"), SubResource("Resource_gkiu3")])
+public_pool_eligible = true
+upgradeable_family = true

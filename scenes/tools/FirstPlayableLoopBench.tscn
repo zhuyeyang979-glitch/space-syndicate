@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/first_playable_loop_bench.gd" id="2_script"]
+
+[node name="FirstPlayableLoopBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="FirstPlayableLoopBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.017, 0.024, 0.04, 1)
+
+[node name="FirstPlayableLoopMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="FirstPlayableLoopRows" type="VBoxContainer" parent="FirstPlayableLoopMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FirstPlayableLoopHeader" type="HBoxContainer" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FirstPlayableLoopTitleLabel" type="Label" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "First Playable Loop Bench"
+text_overrun_behavior = 3
+
+[node name="FirstPlayableLoopScopeLabel" type="Label" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopHeader"]
+layout_mode = 2
+text = "15-minute vertical slice / real GameScreen"
+text_overrun_behavior = 3
+
+[node name="FirstPlayableLoopStatusPanel" type="PanelContainer" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows"]
+layout_mode = 2
+
+[node name="FirstPlayableLoopStatusMargin" type="MarginContainer" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopStatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="FirstPlayableLoopStatusRows" type="VBoxContainer" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopStatusPanel/FirstPlayableLoopStatusMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FirstPlayableLoopStatusLabel" type="Label" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopStatusPanel/FirstPlayableLoopStatusMargin/FirstPlayableLoopStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="FirstPlayableLoopSummaryLabel" type="Label" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopStatusPanel/FirstPlayableLoopStatusMargin/FirstPlayableLoopStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "First playable loop results will appear here."
+autowrap_mode = 3
+
+[node name="FirstPlayableLoopPreviewHost" type="PanelContainer" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="FirstPlayableLoopPreviewMargin" type="MarginContainer" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopPreviewHost"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="FirstPlayableLoopViewportContainer" type="SubViewportContainer" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopPreviewHost/FirstPlayableLoopPreviewMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 640)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="FirstPlayableLoopPreviewViewport" type="SubViewport" parent="FirstPlayableLoopMargin/FirstPlayableLoopRows/FirstPlayableLoopPreviewHost/FirstPlayableLoopPreviewMargin/FirstPlayableLoopViewportContainer"]
+unique_name_in_owner = true
+size = Vector2i(1600, 960)
+transparent_bg = true
+render_target_update_mode = 4

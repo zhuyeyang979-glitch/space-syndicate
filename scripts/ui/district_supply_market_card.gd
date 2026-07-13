@@ -68,7 +68,7 @@ func get_card_name() -> String:
 	return _card_name
 
 
-func _render_market_art(data: Dictionary, theme_color: Color, accent: Color) -> void:
+func _render_market_art(data: Dictionary, theme_color: Color, _accent: Color) -> void:
 	if art_host != null:
 		art_host.set_meta("district_supply_market_uses_shared_card_art", true)
 		art_host.add_theme_stylebox_override("panel", _card_style(theme_color, Color("#020617").lerp(theme_color, 0.18), 1, 8))
@@ -177,6 +177,8 @@ func _dictionary_color(data: Dictionary, key: String, fallback: Color) -> Color:
 	var value: Variant = data.get(key, fallback)
 	if value is Color:
 		return value as Color
+	if value is String and str(value).begins_with("#"):
+		return Color(str(value))
 	return fallback
 
 

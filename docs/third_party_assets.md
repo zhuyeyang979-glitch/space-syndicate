@@ -12,7 +12,12 @@ Imported for the current non-commercial prototype:
 - `assets/third_party/night_patrol/audio/sfx/lightning-hit.mp3`
 - `assets/third_party/night_patrol/ui/card-sigil.svg`
 - `assets/third_party/night_patrol/ui/panel-talisman.png`
-- selected UI frame/button reference files under `assets/third_party/night_patrol/ui/`
+- `assets/third_party/night_patrol/ui/button-blue.png`
+- `assets/third_party/night_patrol/ui/button-red.png`
+- `assets/third_party/night_patrol/ui/card-frame-attack.png`
+- `assets/third_party/night_patrol/ui/card-frame-power.png`
+- `assets/third_party/night_patrol/ui/card-frame-skill.png`
+- `assets/third_party/night_patrol/ui/card-frame-status.png`
 
 Required attribution:
 
@@ -30,10 +35,19 @@ License boundary:
 
 Implementation note:
 
-The game code treats these assets as optional. If the files are removed or replaced, the prototype falls back to procedural card art and silent audio instead of failing to load.
+The procedural card-art layer can tolerate a missing optional overlay, but the
+current `scenes/main.tscn` directly references four Night Patrol audio files.
+Those audio files are therefore runtime dependencies until the scene references
+are replaced; deleting them today would cause scene/resource load errors.
+
+Commercial release status: **blocked**. Night Patrol files are prototype-only.
+The commercial asset-retirement gate must replace the four audio streams and the
+shared card-frame/sigil skin, then prove zero production references before these
+vendor files can be removed.
 
 Current player-facing use:
 
+- `scenes/main.tscn` directly uses the BGM plus card, impact, and storm SFX.
 - `scripts/card_art_view.gd` theme `night-patrol-frame-panel-sigil-v2` draws the Night Patrol talisman panel as a card backplate.
 - The same component overlays Night Patrol frame variants, red/blue button strips, and the sigil over procedural sci-fi motifs.
 - Because `CardArtView` is shared by hand cards, district supply cards, card-codex thumbnails, and detail cards, this is the current prototype-wide temporary card-art skin.

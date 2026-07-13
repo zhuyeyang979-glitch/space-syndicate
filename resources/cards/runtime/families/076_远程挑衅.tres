@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://dnf01iei5hqb2"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_1hije"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_ljot6"]
+
+[sub_resource type="Resource" id="Resource_egf6s"]
+script = ExtResource("1_1hije")
+card_id = "远程挑衅1"
+family_id = "远程挑衅"
+kind = &"monster_lure"
+purchase_cost = 2
+rules_text = "指定一只怪兽：它下一次自动移动优先朝当前选区推进，并提前最多2秒触发。"
+tags = PackedStringArray("诱导", "低费")
+authored_keys = PackedStringArray("cost", "kind", "lure_speedup", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"lure_speedup": 2.0
+}
+
+[resource]
+script = ExtResource("2_ljot6")
+family_id = "远程挑衅"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_egf6s")])
+public_pool_eligible = true

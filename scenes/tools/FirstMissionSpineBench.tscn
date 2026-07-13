@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/first_mission_spine_bench.gd" id="2_script"]
+
+[node name="FirstMissionSpineBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_script")
+
+[node name="FirstMissionSpineBackdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.017, 0.024, 0.04, 1)
+
+[node name="FirstMissionSpineMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="FirstMissionSpineRows" type="VBoxContainer" parent="FirstMissionSpineMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FirstMissionSpineHeader" type="HBoxContainer" parent="FirstMissionSpineMargin/FirstMissionSpineRows"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FirstMissionSpineTitleLabel" type="Label" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpineHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "First Mission Spine Bench"
+text_overrun_behavior = 3
+
+[node name="FirstMissionSpineScopeLabel" type="Label" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpineHeader"]
+layout_mode = 2
+text = "real GameScreen / first mission objective spine"
+text_overrun_behavior = 3
+
+[node name="FirstMissionSpineStatusPanel" type="PanelContainer" parent="FirstMissionSpineMargin/FirstMissionSpineRows"]
+layout_mode = 2
+
+[node name="FirstMissionSpineStatusMargin" type="MarginContainer" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpineStatusPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="FirstMissionSpineStatusRows" type="VBoxContainer" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpineStatusPanel/FirstMissionSpineStatusMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="FirstMissionSpineStatusLabel" type="Label" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpineStatusPanel/FirstMissionSpineStatusMargin/FirstMissionSpineStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready"
+autowrap_mode = 3
+
+[node name="FirstMissionSpineSummaryLabel" type="Label" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpineStatusPanel/FirstMissionSpineStatusMargin/FirstMissionSpineStatusRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "First mission spine results will appear here."
+autowrap_mode = 3
+
+[node name="FirstMissionSpinePreviewHost" type="PanelContainer" parent="FirstMissionSpineMargin/FirstMissionSpineRows"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="FirstMissionSpinePreviewMargin" type="MarginContainer" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpinePreviewHost"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="FirstMissionSpineViewportContainer" type="SubViewportContainer" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpinePreviewHost/FirstMissionSpinePreviewMargin"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 640)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="FirstMissionSpinePreviewViewport" type="SubViewport" parent="FirstMissionSpineMargin/FirstMissionSpineRows/FirstMissionSpinePreviewHost/FirstMissionSpinePreviewMargin/FirstMissionSpineViewportContainer"]
+unique_name_in_owner = true
+size = Vector2i(1600, 960)
+transparent_bg = true
+render_target_update_mode = 4

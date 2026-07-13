@@ -1,0 +1,139 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://vxjj08kjslc"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_jkoj8"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_1alj7"]
+
+[sub_resource type="Resource" id="Resource_ngaqv"]
+script = ExtResource("1_jkoj8")
+card_id = "制空战斗机1"
+family_id = "制空战斗机"
+kind = &"military_force"
+purchase_cost = 5
+rules_text = "部署高速制空战斗机：空中移动，陆海机动都快，适合追击怪兽或快速保卫；火力较低，军事管制只造成轻微短时GDP压力。"
+tags = PackedStringArray("军队", "空军", "高速")
+range = 420.0
+play_product = "重力陶瓷"
+play_flow_required = 1
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 2,
+"military_damage": 1,
+"military_domain": "air",
+"military_duration_seconds": 22.0,
+"military_gdp_penalty": 6,
+"military_gdp_pressure_seconds": 12.0,
+"military_hp": 5,
+"military_move": 520.0,
+"military_range": 420.0,
+"military_type": "fighter",
+"movement_traits": ["air"],
+"terrain_move_multiplier": {
+"land": 1.25,
+"ocean": 1.25
+}
+}
+
+[sub_resource type="Resource" id="Resource_joj5o"]
+script = ExtResource("1_jkoj8")
+card_id = "制空战斗机2"
+family_id = "制空战斗机"
+rank = 2
+kind = &"military_force"
+purchase_cost = 7
+rules_text = "升级战斗机：更快接近目标并解锁更多军令，仍以机动和截击为主，不擅长长期压城。"
+tags = PackedStringArray("军队", "空军", "升级")
+range = 500.0
+play_product = "重力陶瓷"
+play_flow_required = 2
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 3,
+"military_damage": 2,
+"military_domain": "air",
+"military_duration_seconds": 28.0,
+"military_gdp_penalty": 8,
+"military_gdp_pressure_seconds": 14.0,
+"military_hp": 7,
+"military_move": 640.0,
+"military_range": 500.0,
+"military_type": "fighter",
+"movement_traits": ["air"],
+"terrain_move_multiplier": {
+"land": 1.3,
+"ocean": 1.3
+}
+}
+
+[sub_resource type="Resource" id="Resource_1t5ft"]
+script = ExtResource("1_jkoj8")
+card_id = "制空战斗机3"
+family_id = "制空战斗机"
+rank = 3
+kind = &"military_force"
+purchase_cost = 9
+rules_text = "核心战斗机：全军令解锁，适合快速反怪兽、反空袭、补位防守；伤害成长克制但反应半径优秀。"
+tags = PackedStringArray("军队", "空军", "核心")
+range = 580.0
+play_product = "重力陶瓷"
+play_flow_required = 3
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 2,
+"military_domain": "air",
+"military_duration_seconds": 34.0,
+"military_gdp_penalty": 10,
+"military_gdp_pressure_seconds": 16.0,
+"military_hp": 9,
+"military_move": 760.0,
+"military_range": 580.0,
+"military_type": "fighter",
+"movement_traits": ["air"],
+"terrain_move_multiplier": {
+"land": 1.35,
+"ocean": 1.35
+}
+}
+
+[sub_resource type="Resource" id="Resource_rlcgd"]
+script = ExtResource("1_jkoj8")
+card_id = "制空战斗机4"
+family_id = "制空战斗机"
+rank = 4
+kind = &"military_force"
+purchase_cost = 11
+rules_text = "终端战斗机IV：极高速短时制空资产，适合终局抢先保卫或猎兽；火力仍低于轰炸机和导弹路线。"
+tags = PackedStringArray("军队", "空军", "IV")
+range = 680.0
+play_product = "重力陶瓷"
+play_flow_required = 4
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 3,
+"military_domain": "air",
+"military_duration_seconds": 42.0,
+"military_gdp_penalty": 12,
+"military_gdp_pressure_seconds": 18.0,
+"military_hp": 12,
+"military_move": 900.0,
+"military_range": 680.0,
+"military_type": "fighter",
+"movement_traits": ["air"],
+"terrain_move_multiplier": {
+"land": 1.42,
+"ocean": 1.42
+}
+}
+
+[resource]
+script = ExtResource("2_1alj7")
+family_id = "制空战斗机"
+pack_id = &"military"
+authored_ranks = Array[Resource]([SubResource("Resource_ngaqv"), SubResource("Resource_joj5o"), SubResource("Resource_1t5ft"), SubResource("Resource_rlcgd")])
+public_pool_eligible = true
+upgradeable_family = true

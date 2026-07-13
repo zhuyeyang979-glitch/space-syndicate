@@ -1,5 +1,7 @@
 extends SceneTree
 
+const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
+
 const SCENE_PATHS := [
 	"res://scenes/GameScreen.tscn",
 	"res://scenes/CardUI.tscn",
@@ -10,6 +12,21 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/GameScreen.tscn",
 	"res://scenes/ui/TopBar.tscn",
 	"res://scenes/ui/PlanetBoard.tscn",
+	"res://scenes/ui/PlanetMapView.tscn",
+	"res://scenes/ui/map/PlanetDistrictNode.tscn",
+	"res://scenes/ui/map/PlanetDistrictPolygon.tscn",
+	"res://scenes/ui/map/PlanetSelectionRing.tscn",
+	"res://scenes/ui/map/PlanetCityMarker.tscn",
+	"res://scenes/ui/map/PlanetMonsterToken.tscn",
+	"res://scenes/ui/map/PlanetRouteMarker.tscn",
+	"res://scenes/ui/map/PlanetRouteSegment.tscn",
+	"res://scenes/ui/map/PlanetMovementTrail.tscn",
+	"res://scenes/ui/map/PlanetMapEventEffect.tscn",
+	"res://scenes/ui/map/PlanetActionCallout.tscn",
+	"res://scenes/ui/map/PlanetGlobeBackdrop.tscn",
+	"res://scenes/ui/map/PlanetOrbitGuide.tscn",
+	"res://scenes/ui/map/PlanetFocusRangeOverlay.tscn",
+	"res://scenes/ui/map/PlanetMapScaleHint.tscn",
 	"res://scenes/ui/PlayerBoard.tscn",
 	"res://scenes/ui/HandRack.tscn",
 	"res://scenes/ui/CardFace.tscn",
@@ -19,6 +36,9 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/DistrictInfoPanel.tscn",
 	"res://scenes/ui/PublicTrack.tscn",
 	"res://scenes/ui/CardTrack.tscn",
+	"res://scenes/ui/CardTrackSlot.tscn",
+	"res://scenes/ui/CardResolutionTrack.tscn",
+	"res://scenes/ui/CardResolutionTrackSlot.tscn",
 	"res://scenes/ui/FirstRunCoach.tscn",
 	"res://scenes/ui/ScenarioBrowser.tscn",
 	"res://scenes/ui/ScenarioCoach.tscn",
@@ -30,9 +50,11 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/CampaignRewardPanel.tscn",
 	"res://scenes/ui/MatchRecapPanel.tscn",
 	"res://scenes/ui/OverlayLayer.tscn",
+	"res://scenes/ui/TemporaryDecisionOverlayPreview.tscn",
 	"res://scenes/ui/CardResolutionBanner.tscn",
 	"res://scenes/ui/BottomCountdownBar.tscn",
 	"res://scenes/ui/DistrictSupplyDrawer.tscn",
+	"res://scenes/ui/DistrictSupplyStatusChip.tscn",
 	"res://scenes/ui/DistrictSupplyMarketCard.tscn",
 	"res://scenes/ui/DistrictSupplyPreviewCard.tscn",
 	"res://scenes/ui/FullscreenMapOverlay.tscn",
@@ -43,6 +65,15 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/CompendiumHubBoard.tscn",
 	"res://scenes/ui/CardCodexBrowser.tscn",
 	"res://scenes/ui/CardCodexDetail.tscn",
+	"res://scenes/ui/codex/CardCodexFilterChip.tscn",
+	"res://scenes/ui/codex/CardCodexThumbnailCard.tscn",
+	"res://scenes/ui/codex/CardCodexInfoCard.tscn",
+	"res://scenes/ui/codex/ProductCodexMarketBadge.tscn",
+	"res://scenes/ui/codex/ProductCodexKpiCard.tscn",
+	"res://scenes/ui/codex/ProductCodexStrategyCard.tscn",
+	"res://scenes/ui/codex/BestiaryMonsterHeaderCard.tscn",
+	"res://scenes/ui/codex/BestiaryMonsterKpiCard.tscn",
+	"res://scenes/ui/codex/BestiaryMonsterActionCard.tscn",
 	"res://scenes/ui/RegionCodexDetail.tscn",
 	"res://scenes/ui/ProductCodexDetail.tscn",
 	"res://scenes/ui/BestiaryDetail.tscn",
@@ -51,6 +82,7 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/StandingsScoreboard.tscn",
 	"res://scenes/ui/FinalSettlementBoard.tscn",
 	"res://scenes/ui/MenuRootLobby.tscn",
+	"res://scenes/ui/NewGameSetupPage.tscn",
 	"res://scenes/ui/NewGameSetupLobby.tscn",
 	"res://scenes/ui/NewGameSetupOptionBoard.tscn",
 	"res://scenes/ui/NewGameSetupSeatCard.tscn",
@@ -68,6 +100,9 @@ const SPLIT_UI_SCRIPT_PATHS := [
 	"res://scripts/ui/bid_board.gd",
 	"res://scripts/ui/district_info_panel.gd",
 	"res://scripts/ui/card_track.gd",
+	"res://scripts/ui/card_track_slot.gd",
+	"res://scripts/ui/card_resolution_track.gd",
+	"res://scripts/ui/card_resolution_track_slot.gd",
 	"res://scripts/ui/first_run_coach.gd",
 	"res://scripts/ui/scenario_browser.gd",
 	"res://scripts/ui/scenario_coach.gd",
@@ -78,6 +113,13 @@ const SPLIT_UI_SCRIPT_PATHS := [
 	"res://scripts/ui/campaign_progress_map.gd",
 	"res://scripts/ui/campaign_reward_panel.gd",
 	"res://scripts/ui/match_recap_panel.gd",
+	"res://scripts/ui/monster_wager_decision_panel.gd",
+	"res://scripts/ui/contract_response_decision_panel.gd",
+	"res://scripts/ui/temporary_choice_decision_panel.gd",
+	"res://scripts/ui/temporary_decision_overlay_preview.gd",
+	"res://scripts/ui/temporary_decision_overlay_capture_bench.gd",
+	"res://scripts/ui/temporary_decision_overlay_interaction_bench.gd",
+	"res://scripts/ui/temporary_decision_preview_fixtures.gd",
 	"res://scripts/ui/bottom_countdown_bar.gd",
 	"res://scripts/ui/district_supply_market_card.gd",
 	"res://scripts/ui/district_supply_preview_card.gd",
@@ -88,6 +130,15 @@ const SPLIT_UI_SCRIPT_PATHS := [
 	"res://scripts/ui/compendium_hub_board.gd",
 	"res://scripts/ui/card_codex_browser.gd",
 	"res://scripts/ui/card_codex_detail.gd",
+	"res://scripts/ui/codex/card_codex_filter_chip.gd",
+	"res://scripts/ui/codex/card_codex_thumbnail_card.gd",
+	"res://scripts/ui/codex/card_codex_info_card.gd",
+	"res://scripts/ui/codex/product_codex_market_badge.gd",
+	"res://scripts/ui/codex/product_codex_kpi_card.gd",
+	"res://scripts/ui/codex/product_codex_strategy_card.gd",
+	"res://scripts/ui/codex/bestiary_monster_header_card.gd",
+	"res://scripts/ui/codex/bestiary_monster_kpi_card.gd",
+	"res://scripts/ui/codex/bestiary_monster_action_card.gd",
 	"res://scripts/ui/region_codex_detail.gd",
 	"res://scripts/ui/product_codex_detail.gd",
 	"res://scripts/ui/bestiary_detail.gd",
@@ -96,6 +147,7 @@ const SPLIT_UI_SCRIPT_PATHS := [
 	"res://scripts/ui/standings_scoreboard.gd",
 	"res://scripts/ui/final_settlement_board.gd",
 	"res://scripts/ui/menu_root_lobby.gd",
+	"res://scripts/ui/new_game_setup_page.gd",
 	"res://scripts/ui/new_game_setup_lobby.gd",
 	"res://scripts/ui/new_game_setup_option_board.gd",
 	"res://scripts/ui/new_game_setup_seat_card.gd",
@@ -128,6 +180,562 @@ const VIEWMODEL_SCRIPT_PATHS := [
 	"res://scripts/viewmodels/district_view_snapshot.gd",
 ]
 
+const DESIGN_QA_PLUGIN_CFG := "res://addons/space_syndicate_design_qa/plugin.cfg"
+const DESIGN_QA_PLUGIN_SCRIPT := "res://addons/space_syndicate_design_qa/space_syndicate_design_qa_plugin.gd"
+const DESIGN_QA_DOCK_SCENE := "res://addons/space_syndicate_design_qa/SpaceSyndicateDesignQADock.tscn"
+const DESIGN_QA_DOCK_SCRIPT := "res://addons/space_syndicate_design_qa/space_syndicate_design_qa_dock.gd"
+const CODEX_MCP_COMPANION_PLUGIN_CFG := "res://addons/codex_mcp_companion/plugin.cfg"
+const CODEX_MCP_COMPANION_PLUGIN_SCRIPT := "res://addons/codex_mcp_companion/plugin.gd"
+const GODOT_MCP_PLUGIN_CFG := "res://addons/godot_mcp/plugin.cfg"
+const GODOT_MCP_PLUGIN_SCRIPT := "res://addons/godot_mcp/plugin.gd"
+const GODOT_MCP_CLIENT_SCRIPT := "res://addons/godot_mcp/mcp_client.gd"
+const GODOT_MCP_TOOL_EXECUTOR_SCRIPT := "res://addons/godot_mcp/tool_executor.gd"
+const GODOT_MCP_RUNTIME_SCRIPT := "res://addons/godot_mcp/runtime/mcp_runtime.gd"
+const GODOT_MCP_PROJECT_TOOLS_SCRIPT := "res://addons/godot_mcp/tools/project_tools.gd"
+const GODOT_MCP_SOURCE_NOTE := "res://addons/godot_mcp/SOURCE.md"
+const MCP_CONFIG_PATH := "res://.mcp.json"
+const TEMPORARY_DECISION_PREVIEW_SCENE := "res://scenes/ui/TemporaryDecisionOverlayPreview.tscn"
+const TEMPORARY_DECISION_CAPTURE_BENCH_SCENE := "res://scenes/ui/TemporaryDecisionOverlayCaptureBench.tscn"
+const TEMPORARY_DECISION_CAPTURE_BENCH_SCRIPT := "res://scripts/ui/temporary_decision_overlay_capture_bench.gd"
+const TEMPORARY_DECISION_INTERACTION_BENCH_SCENE := "res://scenes/ui/TemporaryDecisionOverlayInteractionBench.tscn"
+const TEMPORARY_DECISION_INTERACTION_BENCH_SCRIPT := "res://scripts/ui/temporary_decision_overlay_interaction_bench.gd"
+const TEMPORARY_DECISION_FIXTURES_SCRIPT := "res://scripts/ui/temporary_decision_preview_fixtures.gd"
+const TEMPORARY_DECISION_CAPTURE_OUTPUT_DIR := "user://space_syndicate_design_qa/temporary_decision_overlay/"
+const TEMPORARY_DECISION_INTERACTION_OUTPUT_DIR := "user://space_syndicate_design_qa/temporary_decision_overlay_interactions/"
+const MCP_EDITABILITY_HUB_SCENE := "res://scenes/tools/SpaceSyndicateMcpEditabilityHub.tscn"
+const MCP_EDITABILITY_HUB_SCRIPT := "res://scripts/tools/space_syndicate_mcp_editability_hub.gd"
+const MCP_SCENE_REGISTRY_SCRIPT := "res://scripts/tools/space_syndicate_mcp_scene_registry.gd"
+const MCP_EDITABILITY_HUB_SCREENSHOT_PATH := "user://space_syndicate_design_qa/mcp_editability_hub_sprint_1.png"
+const PLAYER_TURN_MCP_PREVIEW_SCENE := "res://scenes/tools/PlayerTurnMcpPreview.tscn"
+const PLAYER_TURN_MCP_PREVIEW_SCRIPT := "res://scripts/tools/player_turn_mcp_preview.gd"
+const PLAYER_TURN_MCP_PREVIEW_FIXTURES_SCRIPT := "res://scripts/tools/player_turn_mcp_preview_fixtures.gd"
+const PLAYER_TURN_MCP_PREVIEW_SCREENSHOT_PATH := "user://space_syndicate_design_qa/player_turn_mcp_preview_sprint_1.png"
+const PLAYER_TURN_INTERACTION_BENCH_SCENE := "res://scenes/tools/PlayerTurnInteractionBench.tscn"
+const PLAYER_TURN_INTERACTION_BENCH_SCRIPT := "res://scripts/tools/player_turn_interaction_bench.gd"
+const PLAYER_TURN_INTERACTION_OUTPUT_DIR := "user://space_syndicate_design_qa/player_turn_interactions/"
+const PLAYER_TURN_INTERACTION_BENCH_SCREENSHOT_PATH := "user://space_syndicate_design_qa/player_turn_interaction_bench_sprint_1.png"
+const RUNTIME_PLAYER_TURN_FLOW_BENCH_SCENE := "res://scenes/tools/RuntimePlayerTurnFlowBench.tscn"
+const RUNTIME_PLAYER_TURN_FLOW_BENCH_SCRIPT := "res://scripts/tools/runtime_player_turn_flow_bench.gd"
+const RUNTIME_PLAYER_TURN_FLOW_OUTPUT_DIR := "user://space_syndicate_design_qa/runtime_player_turn_flow/"
+const RUNTIME_PLAYER_TURN_FLOW_SCREENSHOT_PATH := "user://space_syndicate_design_qa/runtime_player_turn_flow_sprint_1.png"
+const FIRST_PLAYABLE_LOOP_BENCH_SCENE := "res://scenes/tools/FirstPlayableLoopBench.tscn"
+const FIRST_PLAYABLE_LOOP_BENCH_SCRIPT := "res://scripts/tools/first_playable_loop_bench.gd"
+const FIRST_PLAYABLE_LOOP_FIXTURES_SCRIPT := "res://scripts/tools/first_playable_loop_fixtures.gd"
+const FIRST_PLAYABLE_LOOP_OUTPUT_DIR := "user://space_syndicate_design_qa/first_playable_loop/"
+const FIRST_PLAYABLE_LOOP_SCREENSHOT_PATH := "user://space_syndicate_design_qa/first_playable_loop_sprint_1.png"
+const FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE := "res://scenes/tools/FirstRoundRuntimePlayableLoopBench.tscn"
+const FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCRIPT := "res://scripts/tools/first_round_runtime_playable_loop_bench.gd"
+const FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_FIXTURES_SCRIPT := "res://scripts/tools/first_round_runtime_playable_loop_fixtures.gd"
+const FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_OUTPUT_DIR := "user://space_syndicate_design_qa/first_round_runtime_playable_loop/"
+const FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_SCREENSHOT_PATH := "user://space_syndicate_design_qa/first_round_runtime_playable_loop_sprint_1.png"
+const FIRST_MISSION_SPINE_BENCH_SCENE := "res://scenes/tools/FirstMissionSpineBench.tscn"
+const FIRST_MISSION_SPINE_BENCH_SCRIPT := "res://scripts/tools/first_mission_spine_bench.gd"
+const FIRST_MISSION_SPINE_FIXTURES_SCRIPT := "res://scripts/tools/first_mission_spine_fixtures.gd"
+const FIRST_MISSION_SPINE_OUTPUT_DIR := "user://space_syndicate_design_qa/first_mission_spine/"
+const FIRST_MISSION_SPINE_SCREENSHOT_PATH := "user://space_syndicate_design_qa/first_mission_spine_sprint_1.png"
+const FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE := "res://scenes/tools/FirstMissionRuntimeMainBench.tscn"
+const FIRST_MISSION_RUNTIME_MAIN_BENCH_SCRIPT := "res://scripts/tools/first_mission_runtime_main_bench.gd"
+const FIRST_MISSION_RUNTIME_MAIN_OUTPUT_DIR := "user://space_syndicate_design_qa/first_mission_runtime_main/"
+const FIRST_MISSION_RUNTIME_MAIN_SCREENSHOT_PATH := "user://space_syndicate_design_qa/first_playable_balance_pacing_sprint_61.png"
+const PLANET_MAP_VIEW_SCENE := "res://scenes/ui/PlanetMapView.tscn"
+const PLANET_MAP_VIEW_SCRIPT := "res://scripts/ui/planet_map_view.gd"
+const PLANET_MAP_CONTROL_TOOLBAR_SCENE := "res://scenes/ui/map/PlanetMapControlToolbar.tscn"
+const PLANET_MAP_CONTROL_TOOLBAR_SCRIPT := "res://scripts/ui/map/planet_map_control_toolbar.gd"
+const PLANET_DISTRICT_NODE_SCENE := "res://scenes/ui/map/PlanetDistrictNode.tscn"
+const PLANET_DISTRICT_NODE_SCRIPT := "res://scripts/ui/map/planet_district_node.gd"
+const PLANET_DISTRICT_POLYGON_SCENE := "res://scenes/ui/map/PlanetDistrictPolygon.tscn"
+const PLANET_DISTRICT_POLYGON_SCRIPT := "res://scripts/ui/map/planet_district_polygon.gd"
+const PLANET_SELECTION_RING_SCENE := "res://scenes/ui/map/PlanetSelectionRing.tscn"
+const PLANET_SELECTION_RING_SCRIPT := "res://scripts/ui/map/planet_selection_ring.gd"
+const PLANET_CITY_MARKER_SCENE := "res://scenes/ui/map/PlanetCityMarker.tscn"
+const PLANET_CITY_MARKER_SCRIPT := "res://scripts/ui/map/planet_city_marker.gd"
+const PLANET_MONSTER_TOKEN_SCENE := "res://scenes/ui/map/PlanetMonsterToken.tscn"
+const PLANET_MONSTER_TOKEN_SCRIPT := "res://scripts/ui/map/planet_monster_token.gd"
+const PLANET_ROUTE_MARKER_SCENE := "res://scenes/ui/map/PlanetRouteMarker.tscn"
+const PLANET_ROUTE_MARKER_SCRIPT := "res://scripts/ui/map/planet_route_marker.gd"
+const PLANET_ROUTE_SEGMENT_SCENE := "res://scenes/ui/map/PlanetRouteSegment.tscn"
+const PLANET_ROUTE_SEGMENT_SCRIPT := "res://scripts/ui/map/planet_route_segment.gd"
+const PLANET_MOVEMENT_TRAIL_SCENE := "res://scenes/ui/map/PlanetMovementTrail.tscn"
+const PLANET_MOVEMENT_TRAIL_SCRIPT := "res://scripts/ui/map/planet_movement_trail.gd"
+const PLANET_MAP_EVENT_EFFECT_SCENE := "res://scenes/ui/map/PlanetMapEventEffect.tscn"
+const PLANET_MAP_EVENT_EFFECT_SCRIPT := "res://scripts/ui/map/planet_map_event_effect.gd"
+const PLANET_ACTION_CALLOUT_SCENE := "res://scenes/ui/map/PlanetActionCallout.tscn"
+const PLANET_ACTION_CALLOUT_SCRIPT := "res://scripts/ui/map/planet_action_callout.gd"
+const PLANET_GLOBE_BACKDROP_SCENE := "res://scenes/ui/map/PlanetGlobeBackdrop.tscn"
+const PLANET_GLOBE_BACKDROP_SCRIPT := "res://scripts/ui/map/planet_globe_backdrop.gd"
+const PLANET_ORBIT_GUIDE_SCENE := "res://scenes/ui/map/PlanetOrbitGuide.tscn"
+const PLANET_ORBIT_GUIDE_SCRIPT := "res://scripts/ui/map/planet_orbit_guide.gd"
+const PLANET_FOCUS_RANGE_OVERLAY_SCENE := "res://scenes/ui/map/PlanetFocusRangeOverlay.tscn"
+const PLANET_FOCUS_RANGE_OVERLAY_SCRIPT := "res://scripts/ui/map/planet_focus_range_overlay.gd"
+const PLANET_MAP_SCALE_HINT_SCENE := "res://scenes/ui/map/PlanetMapScaleHint.tscn"
+const PLANET_MAP_SCALE_HINT_SCRIPT := "res://scripts/ui/map/planet_map_scale_hint.gd"
+const PLANET_MAP_RENDER_MODEL_SCRIPT := "res://scripts/ui/map/planet_map_render_model.gd"
+const PLANET_MAP_MCP_PREVIEW_SCENE := "res://scenes/tools/PlanetMapMcpPreview.tscn"
+const PLANET_MAP_MCP_PREVIEW_SCRIPT := "res://scripts/tools/planet_map_mcp_preview.gd"
+const PLANET_MAP_MCP_PREVIEW_FIXTURES_SCRIPT := "res://scripts/tools/planet_map_mcp_preview_fixtures.gd"
+const PLANET_MAP_MCP_PREVIEW_SCREENSHOT_PATH := "user://space_syndicate_design_qa/planet_map_sceneization_sprint_1.png"
+const PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE := "res://scenes/tools/PlanetMapRenderCutoverBench.tscn"
+const PLANET_MAP_RENDER_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/planet_map_render_cutover_bench.gd"
+const PLANET_MAP_RENDER_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/planet_map_render_cutover/"
+const PLANET_MAP_RENDER_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/planet_map_render_cutover_sprint_6.png"
+const PLANET_MAP_INTERACTION_BENCH_SCENE := "res://scenes/tools/PlanetMapInteractionBench.tscn"
+const PLANET_MAP_INTERACTION_BENCH_SCRIPT := "res://scripts/tools/planet_map_interaction_bench.gd"
+const PLANET_MAP_INTERACTION_OUTPUT_DIR := "user://space_syndicate_design_qa/planet_map_interactions/"
+const PLANET_MAP_INTERACTION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/planet_map_control_toolbar_sprint_25.png"
+const SCENEIZATION_AUDIT_REGISTRY_SCRIPT := "res://scripts/tools/sceneization_audit_registry.gd"
+const SCENEIZATION_AUDIT_PREVIEW_SCENE := "res://scenes/tools/SceneizationAuditMcpPreview.tscn"
+const SCENEIZATION_AUDIT_PREVIEW_SCRIPT := "res://scripts/tools/sceneization_audit_mcp_preview.gd"
+const CARD_TRACK_SLOT_SCENE := "res://scenes/ui/CardTrackSlot.tscn"
+const CARD_TRACK_SLOT_SCRIPT := "res://scripts/ui/card_track_slot.gd"
+const CARD_TRACK_MCP_PREVIEW_SCENE := "res://scenes/tools/CardTrackMcpPreview.tscn"
+const CARD_TRACK_MCP_PREVIEW_SCRIPT := "res://scripts/tools/card_track_mcp_preview.gd"
+const CARD_TRACK_MCP_PREVIEW_FIXTURES_SCRIPT := "res://scripts/tools/card_track_mcp_preview_fixtures.gd"
+const CARD_TRACK_MCP_PREVIEW_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_track_sceneization_sprint_1.png"
+const CARD_RESOLUTION_TRACK_SCENE := "res://scenes/ui/CardResolutionTrack.tscn"
+const CARD_RESOLUTION_TRACK_SCRIPT := "res://scripts/ui/card_resolution_track.gd"
+const CARD_RESOLUTION_TRACK_SLOT_SCENE := "res://scenes/ui/CardResolutionTrackSlot.tscn"
+const CARD_RESOLUTION_TRACK_SLOT_SCRIPT := "res://scripts/ui/card_resolution_track_slot.gd"
+const CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCENE := "res://scenes/tools/CardResolutionTrackMcpPreview.tscn"
+const CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCRIPT := "res://scripts/tools/card_resolution_track_mcp_preview.gd"
+const CARD_RESOLUTION_TRACK_MCP_PREVIEW_FIXTURES_SCRIPT := "res://scripts/tools/card_resolution_track_mcp_preview_fixtures.gd"
+const CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_resolution_track_sceneization_sprint_1.png"
+const CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE := "res://scenes/tools/CardResolutionTrackInteractionBench.tscn"
+const CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCRIPT := "res://scripts/tools/card_resolution_track_interaction_bench.gd"
+const CARD_RESOLUTION_TRACK_INTERACTION_OUTPUT_DIR := "user://space_syndicate_design_qa/card_resolution_track_interactions/"
+const CARD_RESOLUTION_TRACK_INTERACTION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_resolution_track_interaction_sprint_2.png"
+const RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE := "res://scenes/tools/RuntimeCardResolutionTrackFlowBench.tscn"
+const RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCRIPT := "res://scripts/tools/runtime_card_resolution_track_flow_bench.gd"
+const RUNTIME_CARD_RESOLUTION_TRACK_FLOW_FIXTURES_SCRIPT := "res://scripts/tools/runtime_card_resolution_track_flow_fixtures.gd"
+const RUNTIME_CARD_RESOLUTION_TRACK_FLOW_OUTPUT_DIR := "user://space_syndicate_design_qa/runtime_card_resolution_track_flow/"
+const RUNTIME_CARD_RESOLUTION_TRACK_FLOW_SCREENSHOT_PATH := "user://space_syndicate_design_qa/runtime_card_resolution_track_flow_sprint_3.png"
+const CARD_RESOLUTION_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CardResolutionRuntimeController.tscn"
+const CARD_RESOLUTION_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/card_resolution_runtime_controller.gd"
+const CARD_RESOLUTION_MAIN_TEST_HARNESS_SCRIPT := "res://tests/helpers/card_resolution_main_test_harness.gd"
+const CARD_RESOLUTION_CONTROLLER_CONSOLIDATION_TEST := "res://tests/card_resolution_controller_consolidation_test.gd"
+const SHARED_CARD_GROUP_WINDOW_SCRIPT := "res://scripts/cards/shared_card_group_window.gd"
+const COMPENDIUM_CODEX_PREVIEW_SCENE := "res://scenes/tools/CompendiumCodexMcpPreview.tscn"
+const COMPENDIUM_CODEX_PREVIEW_SCRIPT := "res://scripts/tools/compendium_codex_mcp_preview.gd"
+const COMPENDIUM_CODEX_PREVIEW_FIXTURES_SCRIPT := "res://scripts/tools/compendium_codex_mcp_preview_fixtures.gd"
+const COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE := "res://scenes/tools/CompendiumCodexInteractionBench.tscn"
+const COMPENDIUM_CODEX_INTERACTION_BENCH_SCRIPT := "res://scripts/tools/compendium_codex_interaction_bench.gd"
+const COMPENDIUM_CODEX_OUTPUT_DIR := "user://space_syndicate_design_qa/compendium_codex/"
+const COMPENDIUM_CODEX_SCREENSHOT_PATH := "user://space_syndicate_design_qa/compendium_codex_sprint_1.png"
+const COMPENDIUM_CONTENT_BASE_RESOURCE_SCRIPT := "res://scripts/content/compendium_codex_entry_resource.gd"
+const COMPENDIUM_CONTENT_CARD_RESOURCE_SCRIPT := "res://scripts/content/card_codex_entry_resource.gd"
+const COMPENDIUM_CONTENT_PRODUCT_RESOURCE_SCRIPT := "res://scripts/content/product_codex_entry_resource.gd"
+const COMPENDIUM_CONTENT_MONSTER_RESOURCE_SCRIPT := "res://scripts/content/monster_codex_entry_resource.gd"
+const COMPENDIUM_CONTENT_PACK_RESOURCE_SCRIPT := "res://scripts/content/compendium_content_pack_resource.gd"
+const COMPENDIUM_CONTENT_REGISTRY_SCRIPT := "res://scripts/content/compendium_content_registry.gd"
+const COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCENE := "res://scenes/tools/CompendiumContentRegistryMcpPreview.tscn"
+const COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCRIPT := "res://scripts/tools/compendium_content_registry_mcp_preview.gd"
+const COMPENDIUM_CONTENT_REGISTRY_BENCH_SCENE := "res://scenes/tools/CompendiumContentRegistryBench.tscn"
+const COMPENDIUM_CONTENT_REGISTRY_BENCH_SCRIPT := "res://scripts/tools/compendium_content_registry_bench.gd"
+const COMPENDIUM_CONTENT_REGISTRY_OUTPUT_DIR := "user://space_syndicate_design_qa/compendium_content_registry/"
+const COMPENDIUM_CONTENT_REGISTRY_SCREENSHOT_PATH := "user://space_syndicate_design_qa/compendium_content_registry_sprint_2.png"
+const SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT := "res://scripts/tools/system_resourceization_audit_registry.gd"
+const SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCENE := "res://scenes/tools/SystemResourceizationAuditMcpPreview.tscn"
+const SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCRIPT := "res://scripts/tools/system_resourceization_audit_mcp_preview.gd"
+const SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCENE := "res://scenes/tools/SystemResourceizationAuditBench.tscn"
+const SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCRIPT := "res://scripts/tools/system_resourceization_audit_bench.gd"
+const SYSTEM_RESOURCEIZATION_AUDIT_OUTPUT_DIR := "user://space_syndicate_design_qa/system_resourceization_audit/"
+const SYSTEM_RESOURCEIZATION_AUDIT_SCREENSHOT_PATH := "user://space_syndicate_design_qa/system_resourceization_audit_sprint_1.png"
+const BALANCE_PARAMETER_RUNTIME_RESOURCE_SCRIPT := "res://scripts/balance/runtime_balance_parameters_resource.gd"
+const BALANCE_PARAMETER_PRICE_CURVE_RESOURCE_SCRIPT := "res://scripts/balance/card_price_curve_parameters_resource.gd"
+const BALANCE_PARAMETER_PROFILE_RESOURCE_SCRIPT := "res://scripts/balance/balance_parameter_profile_resource.gd"
+const BALANCE_PARAMETER_RESOURCE_REGISTRY_SCRIPT := "res://scripts/balance/balance_parameter_resource_registry.gd"
+const BALANCE_PARAMETER_RUNTIME_RESOURCE := "res://resources/balance/runtime_balance_parameters_v1.tres"
+const BALANCE_PARAMETER_PRICE_CURVE_RESOURCE := "res://resources/balance/card_price_curve_parameters_v1.tres"
+const BALANCE_PARAMETER_PROFILE_RESOURCE := "res://resources/balance/balance_parameter_profile_v1.tres"
+const BALANCE_PARAMETER_RESOURCE_PREVIEW_SCENE := "res://scenes/tools/BalanceParameterResourceMcpPreview.tscn"
+const BALANCE_PARAMETER_RESOURCE_PREVIEW_SCRIPT := "res://scripts/tools/balance_parameter_resource_mcp_preview.gd"
+const BALANCE_PARAMETER_RESOURCE_BENCH_SCENE := "res://scenes/tools/BalanceParameterResourceBench.tscn"
+const BALANCE_PARAMETER_RESOURCE_BENCH_SCRIPT := "res://scripts/tools/balance_parameter_resource_bench.gd"
+const BALANCE_PARAMETER_RESOURCE_OUTPUT_DIR := "user://space_syndicate_design_qa/balance_parameter_resourceization/"
+const BALANCE_PARAMETER_RESOURCE_SCREENSHOT_PATH := "user://space_syndicate_design_qa/balance_parameter_resourceization_sprint_1.png"
+const BALANCE_PARAMETER_MODEL_ADAPTER_SCRIPT := "res://scripts/balance/balance_parameter_model_adapter.gd"
+const BALANCE_MODEL_RESOURCE_SANDBOX_CASES_SCRIPT := "res://scripts/tools/balance_model_resource_sandbox_cases.gd"
+const BALANCE_MODEL_RESOURCE_SANDBOX_SCENE := "res://scenes/tools/BalanceModelResourceSandbox.tscn"
+const BALANCE_MODEL_RESOURCE_SANDBOX_SCRIPT := "res://scripts/tools/balance_model_resource_sandbox.gd"
+const BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCENE := "res://scenes/tools/BalanceModelResourceSandboxBench.tscn"
+const BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCRIPT := "res://scripts/tools/balance_model_resource_sandbox_bench.gd"
+const BALANCE_MODEL_RESOURCE_SANDBOX_OUTPUT_DIR := "user://space_syndicate_design_qa/balance_model_resource_sandbox/"
+const BALANCE_MODEL_RESOURCE_SANDBOX_SCREENSHOT_PATH := "user://space_syndicate_design_qa/balance_model_resource_sandbox_sprint_2.png"
+const BALANCE_RUNTIME_PARAMETER_BRIDGE_SCRIPT := "res://scripts/balance/balance_runtime_parameter_bridge.gd"
+const BALANCE_RUNTIME_BRIDGE_PREVIEW_SCENE := "res://scenes/tools/BalanceRuntimeBridgeMcpPreview.tscn"
+const BALANCE_RUNTIME_BRIDGE_PREVIEW_SCRIPT := "res://scripts/tools/balance_runtime_bridge_mcp_preview.gd"
+const BALANCE_RUNTIME_BRIDGE_BENCH_SCENE := "res://scenes/tools/BalanceRuntimeBridgeBench.tscn"
+const BALANCE_RUNTIME_BRIDGE_BENCH_SCRIPT := "res://scripts/tools/balance_runtime_bridge_bench.gd"
+const BALANCE_RUNTIME_BRIDGE_OUTPUT_DIR := "user://space_syndicate_design_qa/gameplay_balance_diagnostics/"
+const BALANCE_RUNTIME_BRIDGE_SCREENSHOT_PATH := "user://space_syndicate_design_qa/gameplay_balance_diagnostics_sprint_62.png"
+const GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCENE := "res://scenes/runtime/GameplayBalanceDiagnosticsRuntimeService.tscn"
+const GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCRIPT := "res://scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd"
+const GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE_SCENE := "res://scenes/runtime/GameplayBalanceDiagnosticsWorldBridge.tscn"
+const GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd"
+const DEVELOPMENT_ROUTE_CATALOG_RESOURCE := "res://resources/balance/development_route_catalog_v04.tres"
+const RULESET_PROFILE_SCRIPT := "res://scripts/rules/space_syndicate_ruleset_profile.gd"
+const RULESET_V04_RESOURCE := "res://resources/rules/space_syndicate_ruleset_v04.tres"
+const RULESET_RUNTIME_BRIDGE_SCRIPT := "res://scripts/runtime/ruleset_runtime_bridge.gd"
+const RULESET_RUNTIME_BRIDGE_SCENE := "res://scenes/runtime/RulesetRuntimeBridge.tscn"
+const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/city_development_runtime_controller.gd"
+const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
+const CITY_DEVELOPMENT_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/city_development_world_bridge.gd"
+const CITY_DEVELOPMENT_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CityDevelopmentWorldBridge.tscn"
+const CITY_DEVELOPMENT_RUNTIME_CUTOVER_DOC := "res://docs/city_development_runtime_cutover.md"
+const GAME_RUNTIME_COORDINATOR_SCRIPT := "res://scripts/runtime/game_runtime_coordinator.gd"
+const GAME_RUNTIME_COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+const FORCED_DECISION_RUNTIME_SCHEDULER_SCRIPT := "res://scripts/runtime/forced_decision_runtime_scheduler.gd"
+const FORCED_DECISION_RUNTIME_SCHEDULER_SCENE := "res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn"
+const FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCRIPT := "res://scripts/tools/forced_decision_runtime_scheduler_bench.gd"
+const FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCENE := "res://scenes/tools/ForcedDecisionRuntimeSchedulerBench.tscn"
+const FORCED_DECISION_RUNTIME_SCHEDULER_OUTPUT_DIR := "user://space_syndicate_design_qa/forced_decision_scheduler/"
+const FORCED_DECISION_RUNTIME_SCHEDULER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/forced_decision_scheduler_sprint_1.png"
+const GAME_SESSION_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/game_session_runtime_controller.gd"
+const GAME_SESSION_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/GameSessionRuntimeController.tscn"
+const GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT := "res://scripts/runtime/game_save_runtime_coordinator.gd"
+const GAME_SAVE_RUNTIME_COORDINATOR_SCENE := "res://scenes/runtime/GameSaveRuntimeCoordinator.tscn"
+const GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCRIPT := "res://scripts/tools/game_session_save_ownership_bench.gd"
+const GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE := "res://scenes/tools/GameSessionSaveOwnershipBench.tscn"
+const GAME_SESSION_SAVE_OWNERSHIP_OUTPUT_DIR := "user://space_syndicate_design_qa/game_session_save_ownership/"
+const GAME_SESSION_SAVE_OWNERSHIP_SCREENSHOT_PATH := "user://space_syndicate_design_qa/game_session_save_ownership_sprint_2.png"
+const DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/district_purchase_runtime_controller.gd"
+const DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/DistrictPurchaseRuntimeController.tscn"
+const DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/district_purchase_settlement_runtime_service.gd"
+const DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn"
+const DISTRICT_PURCHASE_WINDOW_STATUS_SCRIPT := "res://scripts/ui/district_purchase_window_status.gd"
+const DISTRICT_PURCHASE_WINDOW_STATUS_SCENE := "res://scenes/ui/DistrictPurchaseWindowStatus.tscn"
+const DISTRICT_SUPPLY_DRAWER_SCRIPT := "res://scripts/ui/district_supply_drawer.gd"
+const DISTRICT_SUPPLY_DRAWER_SCENE := "res://scenes/ui/DistrictSupplyDrawer.tscn"
+const DISTRICT_SUPPLY_STATUS_CHIP_SCRIPT := "res://scripts/ui/district_supply_status_chip.gd"
+const DISTRICT_SUPPLY_STATUS_CHIP_SCENE := "res://scenes/ui/DistrictSupplyStatusChip.tscn"
+const DISTRICT_SUPPLY_MARKET_CARD_SCENE := "res://scenes/ui/DistrictSupplyMarketCard.tscn"
+const DISTRICT_SUPPLY_PREVIEW_CARD_SCENE := "res://scenes/ui/DistrictSupplyPreviewCard.tscn"
+const DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/district_supply_snapshot_service.gd"
+const DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/DistrictSupplySnapshotService.tscn"
+const DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/district_purchase_runtime_cutover_bench.gd"
+const DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/DistrictPurchaseRuntimeCutoverBench.tscn"
+const DISTRICT_PURCHASE_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/district_purchase_runtime_cutover/"
+const DISTRICT_PURCHASE_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/district_purchase_settlement_runtime_cutover_sprint_29.png"
+const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/card_inventory_runtime_characterization_bench.gd"
+const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CardInventoryRuntimeCharacterizationBench.tscn"
+const CARD_INVENTORY_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_inventory_runtime_service.gd"
+const CARD_INVENTORY_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/CardInventoryRuntimeService.tscn"
+const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/card_inventory_runtime_cutover/"
+const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_inventory_runtime_cutover_sprint_31.png"
+const CARD_INVENTORY_RUNTIME_CONTRACT_DOC := "res://docs/card_inventory_runtime_contract.md"
+const PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/player_hand_interaction_runtime_characterization_bench.gd"
+const PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/PlayerHandInteractionRuntimeCharacterizationBench.tscn"
+const PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/player_hand_interaction_runtime_service.gd"
+const PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn"
+const PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_CONTRACT_DOC := "res://docs/player_hand_interaction_runtime_contract.md"
+const PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/player_hand_interaction_characterization/"
+const PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/player_hand_interaction_runtime_cutover_sprint_33.png"
+const CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/card_resolution_queue_runtime_characterization_bench.gd"
+const CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CardResolutionQueueRuntimeCharacterizationBench.tscn"
+const CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_resolution_queue_runtime_service.gd"
+const CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/CardResolutionQueueRuntimeService.tscn"
+const CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_CONTRACT_DOC := "res://docs/card_resolution_queue_ownership_boundary.md"
+const CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/card_resolution_queue_characterization/"
+const CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_resolution_queue_runtime_cutover_sprint_35.png"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/card_resolution_execution_runtime_characterization_bench.gd"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CardResolutionExecutionRuntimeCharacterizationBench.tscn"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_resolution_execution_runtime_service.gd"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/CardResolutionExecutionRuntimeService.tscn"
+const CARD_RESOLUTION_EXECUTION_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/card_resolution_execution_world_bridge.gd"
+const CARD_RESOLUTION_EXECUTION_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CardResolutionExecutionWorldBridge.tscn"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_TEST := "res://tests/card_resolution_execution_runtime_service_test.gd"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_CONTRACT_DOC := "res://docs/card_resolution_execution_runtime_contract.md"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/card_resolution_execution_characterization/"
+const CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/contract_city_product_formula_sprint_40.png"
+const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_economy_product_route_effect_runtime_service.gd"
+const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/CardEconomyProductRouteEffectRuntimeService.tscn"
+const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/card_economy_product_route_effect_world_bridge.gd"
+const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CardEconomyProductRouteEffectWorldBridge.tscn"
+const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_TEST := "res://tests/card_economy_product_route_effect_runtime_service_test.gd"
+const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_CONTRACT_DOC := "res://docs/card_economy_product_route_effect_runtime_contract.md"
+const CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_economy_product_route_formula_runtime_service.gd"
+const CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/CardEconomyProductRouteFormulaRuntimeService.tscn"
+const CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_TEST := "res://tests/card_economy_product_route_formula_runtime_service_test.gd"
+const CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_CONTRACT_DOC := "res://docs/card_economy_product_route_formula_runtime_contract.md"
+const ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/economy_cashflow_runtime_controller.gd"
+const ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/EconomyCashflowRuntimeController.tscn"
+const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/economy_cashflow_runtime_cutover_bench.gd"
+const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/EconomyCashflowRuntimeCutoverBench.tscn"
+const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover/"
+const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover_sprint_4.png"
+const GDP_FORMULA_PROFILE_SCRIPT := "res://scripts/economy/gdp_formula_profile_resource.gd"
+const GDP_FORMULA_PROFILE_RESOURCE := "res://resources/economy/space_syndicate_gdp_formula_v04.tres"
+const GDP_FORMULA_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
+const GDP_FORMULA_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
+const GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/gdp_formula_runtime_cutover_bench.gd"
+const GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/GdpFormulaRuntimeCutoverBench.tscn"
+const GDP_FORMULA_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/gdp_formula_runtime_cutover/"
+const GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/gdp_formula_runtime_cutover_sprint_6.png"
+const SCENARIO_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/scenario_runtime_controller.gd"
+const SCENARIO_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/ScenarioRuntimeController.tscn"
+const SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/scenario_runtime_glue_cutover_bench.gd"
+const SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE := "res://scenes/tools/ScenarioRuntimeGlueCutoverBench.tscn"
+const SCENARIO_RUNTIME_GLUE_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/scenario_runtime_glue_cutover/"
+const SCENARIO_RUNTIME_GLUE_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/scenario_runtime_glue_cutover_sprint_5.png"
+const FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/first_table_authored_runtime_service.gd"
+const FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn"
+const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/first_table_authored_runtime_cutover_bench.gd"
+const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/FirstTableAuthoredRuntimeCutoverBench.tscn"
+const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/first_table_authored_runtime_cutover/"
+const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/first_table_authored_runtime_cutover_sprint_7.png"
+const LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCRIPT := "res://scripts/tools/legacy_runtime_surface_retirement_bench.gd"
+const LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE := "res://scenes/tools/LegacyRuntimeSurfaceRetirementBench.tscn"
+const LEGACY_RUNTIME_SURFACE_RETIREMENT_OUTPUT_DIR := "user://space_syndicate_design_qa/legacy_runtime_surface_retirement/"
+const LEGACY_RUNTIME_SURFACE_RETIREMENT_SCREENSHOT_PATH := "user://space_syndicate_design_qa/legacy_runtime_surface_retirement_sprint_8.png"
+const LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCRIPT := "res://scripts/tools/legacy_player_surface_retirement_bench.gd"
+const LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE := "res://scenes/tools/LegacyPlayerSurfaceRetirementBench.tscn"
+const LEGACY_PLAYER_SURFACE_RETIREMENT_OUTPUT_DIR := "user://space_syndicate_design_qa/legacy_player_surface_retirement/"
+const LEGACY_PLAYER_SURFACE_RETIREMENT_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_presentation_viewmodel_hard_cutover_sprint_42.png"
+const CARD_PRESENTATION_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_presentation_runtime_service.gd"
+const CARD_PRESENTATION_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/CardPresentationRuntimeService.tscn"
+const GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/game_table_viewmodel_runtime_service.gd"
+const GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/GameTableViewModelRuntimeService.tscn"
+const CARD_PRESENTATION_VIEWMODEL_RUNTIME_TEST := "res://tests/card_presentation_viewmodel_runtime_test.gd"
+const CARD_PRESENTATION_VIEWMODEL_RUNTIME_CONTRACT := "res://docs/card_presentation_viewmodel_runtime_contract.md"
+const CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_play_eligibility_runtime_service.gd"
+const CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn"
+const CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/card_play_eligibility_world_bridge.gd"
+const CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CardPlayEligibilityWorldBridge.tscn"
+const CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCRIPT := "res://scripts/tools/card_play_eligibility_runtime_bench.gd"
+const CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE := "res://scenes/tools/CardPlayEligibilityRuntimeBench.tscn"
+const CARD_PLAY_ELIGIBILITY_RUNTIME_CONTRACT := "res://docs/card_play_eligibility_runtime_contract.md"
+const CARD_PLAY_ELIGIBILITY_OUTPUT_DIR := "user://space_syndicate_design_qa/card_play_eligibility/"
+const CARD_PLAY_ELIGIBILITY_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_play_eligibility_sprint_43.png"
+const MENU_QUICK_NAVIGATION_SCRIPT := "res://scripts/ui/menu_quick_navigation.gd"
+const MENU_QUICK_NAVIGATION_SCENE := "res://scenes/ui/MenuQuickNavigation.tscn"
+const MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/menu_shell_runtime_cutover_bench.gd"
+const MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/MenuShellRuntimeCutoverBench.tscn"
+const PRESENTATION_SETTINGS_PANEL_SCRIPT := "res://scripts/ui/presentation_settings_panel.gd"
+const PRESENTATION_SETTINGS_PANEL_SCENE := "res://scenes/ui/PresentationSettingsPanel.tscn"
+const SCENARIO_PAUSE_ACTIONS_PANEL_SCRIPT := "res://scripts/ui/scenario_pause_actions_panel.gd"
+const SCENARIO_PAUSE_ACTIONS_PANEL_SCENE := "res://scenes/ui/ScenarioPauseActionsPanel.tscn"
+const MENU_SHELL_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/menu_shell_runtime_cutover/"
+const MENU_SHELL_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/menu_shell_runtime_cutover_sprint_24.png"
+const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY_SCRIPT := "res://scripts/tools/global_ui_navigation_characterization_registry.gd"
+const GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT := "res://docs/global_ui_navigation_runtime_contract.md"
+const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/global_ui_navigation_characterization/"
+const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/global_ui_navigation_characterization_sprint_67.png"
+const CODEX_SCENE_HARD_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/codex_scene_hard_cutover_bench.gd"
+const CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE := "res://scenes/tools/CodexSceneHardCutoverBench.tscn"
+const CODEX_SCENE_HARD_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_scene_hard_cutover/"
+const CODEX_SCENE_HARD_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/codex_scene_hard_cutover_sprint_11.png"
+const BESTIARY_CODEX_BROWSER_SCRIPT := "res://scripts/ui/bestiary_codex_browser.gd"
+const BESTIARY_CODEX_BROWSER_SCENE := "res://scenes/ui/BestiaryCodexBrowser.tscn"
+const PRODUCT_CODEX_BROWSER_SCRIPT := "res://scripts/ui/product_codex_browser.gd"
+const PRODUCT_CODEX_BROWSER_SCENE := "res://scenes/ui/ProductCodexBrowser.tscn"
+const CODEX_BROWSER_SUMMARY_CARD_SCENE := "res://scenes/ui/codex/CodexBrowserSummaryCard.tscn"
+const BESTIARY_CODEX_THUMBNAIL_SCENE := "res://scenes/ui/codex/BestiaryCodexThumbnailCard.tscn"
+const PRODUCT_CODEX_THUMBNAIL_SCENE := "res://scenes/ui/codex/ProductCodexThumbnailCard.tscn"
+const CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/codex_atlas_scene_cutover_bench.gd"
+const CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE := "res://scenes/tools/CodexAtlasSceneCutoverBench.tscn"
+const CODEX_ATLAS_SCENE_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_atlas_scene_cutover/"
+const CODEX_ATLAS_SCENE_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/codex_atlas_scene_cutover_sprint_12.png"
+const CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/codex_navigation_runtime_controller.gd"
+const CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CodexNavigationRuntimeController.tscn"
+const CODEX_NAVIGATION_RUNTIME_CONTROLLER_TEST := "res://tests/codex_navigation_runtime_controller_test.gd"
+const CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/codex_navigation_runtime_cutover_bench.gd"
+const CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/CodexNavigationRuntimeCutoverBench.tscn"
+const CODEX_NAVIGATION_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_navigation_runtime_cutover/"
+const CODEX_NAVIGATION_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/codex_navigation_runtime_cutover_sprint_13.png"
+const CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/codex_public_snapshot_service.gd"
+const CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/CodexPublicSnapshotService.tscn"
+const CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/codex_public_snapshot_service_test.gd"
+const CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/codex_public_snapshot_cutover_bench.gd"
+const CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/CodexPublicSnapshotCutoverBench.tscn"
+const CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_public_snapshot_cutover/"
+const CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/codex_public_snapshot_cutover_sprint_14.png"
+const MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/monster_codex_public_snapshot_service.gd"
+const MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn"
+const MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/monster_codex_public_snapshot_service_test.gd"
+const MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/monster_codex_public_snapshot_cutover_bench.gd"
+const MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/MonsterCodexPublicSnapshotCutoverBench.tscn"
+const MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/monster_codex_public_snapshot_cutover/"
+const MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/monster_codex_public_snapshot_cutover_sprint_15.png"
+const MONSTER_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/monster_runtime_controller.gd"
+const MONSTER_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/MonsterRuntimeController.tscn"
+const MONSTER_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/monster_runtime_world_bridge.gd"
+const MONSTER_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/MonsterRuntimeWorldBridge.tscn"
+const MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/monster_runtime_characterization_bench.gd"
+const MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/MonsterRuntimeCharacterizationBench.tscn"
+const MONSTER_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/monster_runtime_ownership_contract.md"
+const MONSTER_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/monster_runtime_characterization/"
+const MONSTER_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/monster_runtime_hard_cutover_sprint_45.png"
+const MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/military_runtime_characterization_bench.gd"
+const MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/MilitaryRuntimeCharacterizationBench.tscn"
+const MILITARY_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/military_runtime_ownership_contract.md"
+const MILITARY_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/military_runtime_controller.gd"
+const MILITARY_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/MilitaryRuntimeController.tscn"
+const MILITARY_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/military_runtime_world_bridge.gd"
+const MILITARY_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/MilitaryRuntimeWorldBridge.tscn"
+const MILITARY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/military_runtime_characterization/"
+const MILITARY_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/military_runtime_hard_cutover_sprint_47.png"
+const WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/weather_runtime_characterization_bench.gd"
+const WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/WeatherRuntimeCharacterizationBench.tscn"
+const WEATHER_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/weather_runtime_ownership_contract.md"
+const WEATHER_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/weather_runtime_controller.gd"
+const WEATHER_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/WeatherRuntimeController.tscn"
+const WEATHER_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/weather_runtime_world_bridge.gd"
+const WEATHER_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/WeatherRuntimeWorldBridge.tscn"
+const WEATHER_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/weather_runtime_characterization/"
+const WEATHER_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/weather_runtime_hard_cutover_sprint_49.png"
+const CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/contract_runtime_characterization_bench.gd"
+const CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/ContractRuntimeCharacterizationBench.tscn"
+const CONTRACT_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/ContractRuntimeController.tscn"
+const CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
+const CONTRACT_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/contract_runtime_ownership_contract.md"
+const CONTRACT_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/contract_runtime_characterization/"
+const CONTRACT_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/contract_runtime_hard_cutover_sprint_51.png"
+const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/product_market_runtime_characterization_bench.gd"
+const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn"
+const PRODUCT_MARKET_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/product_market_runtime_ownership_contract.md"
+const PRODUCT_FUTURES_V04_TERMS_CONTRACT := "res://docs/product_futures_v04_terms_contract.md"
+const PRODUCT_FUTURES_V04_DESIGN_DECISIONS := "res://docs/product_futures_v04_design_decisions.md"
+const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/product_futures_v04_hard_alignment/"
+const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/product_futures_v04_hard_alignment_sprint_55.png"
+const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/city_trade_network_runtime_characterization_bench.gd"
+const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CityTradeNetworkRuntimeCharacterizationBench.tscn"
+const CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/city_trade_network_runtime_controller.gd"
+const CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CityTradeNetworkRuntimeController.tscn"
+const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/city_trade_network_world_bridge.gd"
+const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CityTradeNetworkWorldBridge.tscn"
+const CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/city_trade_network_runtime_ownership_contract.md"
+const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
+const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_trade_network_runtime_hard_cutover_sprint_64.png"
+const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/city_development_settlement_runtime_characterization_bench.gd"
+const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
+const CITY_DEVELOPMENT_SETTLEMENT_CONTRACT := "res://docs/city_development_settlement_runtime_contract.md"
+const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/city_development_settlement_characterization/"
+const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_development_settlement_hard_cutover_sprint_66.png"
+const CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCRIPT := "res://scripts/tools/city_gdp_derivative_runtime_bench.gd"
+const CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE := "res://scenes/tools/CityGdpDerivativeRuntimeBench.tscn"
+const CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CityGdpDerivativeRuntimeController.tscn"
+const CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CityGdpDerivativeRuntimeWorldBridge.tscn"
+const CITY_GDP_DERIVATIVE_TERMS_RESOURCE_SCRIPT := "res://scripts/finance/city_gdp_derivative_terms_resource.gd"
+const CITY_GDP_DERIVATIVE_TERMS_CATALOG_SCRIPT := "res://scripts/finance/city_gdp_derivative_terms_catalog_resource.gd"
+const CITY_GDP_DERIVATIVE_TERMS_CATALOG := "res://resources/finance/city_gdp_derivatives/city_gdp_derivative_terms_v04_catalog.tres"
+const CITY_GDP_DERIVATIVE_TERMS_CONTRACT := "res://docs/city_gdp_derivative_v04_terms_contract.md"
+const CITY_GDP_DERIVATIVE_RUNTIME_OUTPUT_DIR := "user://space_syndicate_design_qa/city_gdp_derivative_v04/"
+const RUNTIME_CARD_CATALOG_RESOURCE_BENCH_SCRIPT := "res://scripts/tools/runtime_card_catalog_resource_bench.gd"
+const RUNTIME_CARD_CATALOG_RESOURCE_BENCH_SCENE := "res://scenes/tools/RuntimeCardCatalogResourceBench.tscn"
+const CARD_RUNTIME_CATALOG_SERVICE_SCRIPT := "res://scripts/runtime/card_runtime_catalog_service.gd"
+const CARD_RUNTIME_CATALOG_SERVICE_SCENE := "res://scenes/runtime/CardRuntimeCatalogService.tscn"
+const CARD_RUNTIME_DEFINITION_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/card_runtime_definition_world_bridge.gd"
+const CARD_RUNTIME_DEFINITION_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CardRuntimeDefinitionWorldBridge.tscn"
+const CARD_RUNTIME_CATALOG_RESOURCE := "res://resources/cards/runtime/card_runtime_catalog_v04.tres"
+const CARD_RUNTIME_CATALOG_INTEGRITY := "res://tests/fixtures/runtime_card_catalog_v04_integrity.json"
+const RUNTIME_CARD_CATALOG_OWNERSHIP_CONTRACT := "res://docs/runtime_card_catalog_ownership_contract.md"
+const RUNTIME_CARD_CATALOG_RESOURCE_SCHEMA := "res://docs/runtime_card_catalog_resource_schema.md"
+const RUNTIME_CARD_CATALOG_RESOURCE_OUTPUT_DIR := "user://space_syndicate_design_qa/runtime_card_catalog_resource/"
+const RUNTIME_CARD_CATALOG_RESOURCE_SCREENSHOT_PATH := "user://space_syndicate_design_qa/runtime_card_catalog_resource_hard_cutover_sprint_58.png"
+const CARD_RUNTIME_AUTHORING_VALIDATOR_SCRIPT := "res://scripts/cards/card_runtime_authoring_validator.gd"
+const CARD_RUNTIME_CHANGE_REVIEW_SCRIPT := "res://scripts/cards/card_runtime_change_review_service.gd"
+const CARD_RUNTIME_AUTHORING_SERVICE_SCRIPT := "res://scripts/cards/card_runtime_authoring_service.gd"
+const RUNTIME_CARD_AUTHORING_WORKSPACE_SCRIPT := "res://scripts/tools/runtime_card_authoring_workspace.gd"
+const RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE := "res://scenes/tools/RuntimeCardAuthoringWorkspace.tscn"
+const RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCRIPT := "res://scripts/tools/runtime_card_authoring_workflow_bench.gd"
+const RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCENE := "res://scenes/tools/RuntimeCardAuthoringWorkflowBench.tscn"
+const RUNTIME_CARD_AUTHORING_INSPECTOR_PLUGIN_SCRIPT := "res://addons/space_syndicate_design_qa/card_runtime_authoring_inspector_plugin.gd"
+const RUNTIME_CARD_AUTHORING_INSPECTOR_PANEL_SCRIPT := "res://addons/space_syndicate_design_qa/card_runtime_authoring_inspector_panel.gd"
+const RUNTIME_CARD_AUTHORING_INSPECTOR_PANEL_SCENE := "res://addons/space_syndicate_design_qa/CardRuntimeAuthoringInspectorPanel.tscn"
+const RUNTIME_CARD_AUTHORING_SAMPLE_FAMILY := "res://resources/cards/runtime/families/001_城市融资.tres"
+const RUNTIME_CARD_AUTHORING_WORKFLOW_DOC := "res://docs/runtime_card_authoring_workflow.md"
+const RUNTIME_CARD_AUTHORING_OUTPUT_DIR := "user://space_syndicate_design_qa/runtime_card_authoring/"
+const RUNTIME_CARD_AUTHORING_SCREENSHOT_PATH := "user://space_syndicate_design_qa/runtime_card_authoring_workflow_sprint_59.png"
+const PRODUCT_FUTURES_TERMS_RESOURCE_SCRIPT := "res://scripts/finance/product_futures_terms_resource.gd"
+const PRODUCT_FUTURES_TERMS_CATALOG_SCRIPT := "res://scripts/finance/product_futures_terms_catalog_resource.gd"
+const PRODUCT_FUTURES_TERMS_CATALOG := "res://resources/finance/product_futures/product_futures_terms_v04_catalog.tres"
+const PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/product_codex_public_snapshot_service.gd"
+const PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/ProductCodexPublicSnapshotService.tscn"
+const PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/product_codex_public_snapshot_service_test.gd"
+const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/product_codex_public_snapshot_cutover_bench.gd"
+const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/ProductCodexPublicSnapshotCutoverBench.tscn"
+const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/product_codex_public_snapshot_cutover/"
+const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/product_codex_public_snapshot_cutover_sprint_16.png"
+const CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/card_codex_public_snapshot_service.gd"
+const CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/CardCodexPublicSnapshotService.tscn"
+const CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/card_codex_public_snapshot_service_test.gd"
+const CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/card_codex_public_snapshot_cutover_bench.gd"
+const CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/CardCodexPublicSnapshotCutoverBench.tscn"
+const CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/card_codex_public_snapshot_cutover/"
+const CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/card_codex_public_snapshot_cutover_sprint_17.png"
+const ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/economy_dashboard_public_snapshot_service.gd"
+const ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/EconomyDashboardPublicSnapshotService.tscn"
+const ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/economy_dashboard_public_snapshot_service_test.gd"
+const ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/economy_dashboard_public_snapshot_cutover_bench.gd"
+const ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/EconomyDashboardPublicSnapshotCutoverBench.tscn"
+const ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/economy_dashboard_public_snapshot_cutover/"
+const ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/economy_dashboard_public_snapshot_cutover_sprint_18.png"
+const STANDINGS_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/standings_public_snapshot_service.gd"
+const STANDINGS_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/StandingsPublicSnapshotService.tscn"
+const STANDINGS_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/standings_public_snapshot_service_test.gd"
+const STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/standings_public_snapshot_cutover_bench.gd"
+const STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/StandingsPublicSnapshotCutoverBench.tscn"
+const STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/standings_public_snapshot_cutover/"
+const STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/standings_public_snapshot_cutover_sprint_19.png"
+const FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/final_settlement_public_snapshot_service.gd"
+const FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn"
+const FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/final_settlement_public_snapshot_service_test.gd"
+const FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/final_settlement_public_snapshot_cutover_bench.gd"
+const FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/FinalSettlementPublicSnapshotCutoverBench.tscn"
+const FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/final_settlement_public_snapshot_cutover/"
+const FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/final_settlement_public_snapshot_cutover_sprint_20.png"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/intel_dossier_public_snapshot_service.gd"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/IntelDossierPublicSnapshotService.tscn"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/intel_dossier_public_snapshot_service_test.gd"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/intel_dossier_public_snapshot_cutover_bench.gd"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/IntelDossierPublicSnapshotCutoverBench.tscn"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/intel_dossier_public_snapshot_cutover/"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/intel_dossier_public_snapshot_cutover_sprint_21.png"
+const NEW_GAME_SETUP_PAGE_SCRIPT := "res://scripts/ui/new_game_setup_page.gd"
+const NEW_GAME_SETUP_PAGE_SCENE := "res://scenes/ui/NewGameSetupPage.tscn"
+const NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/new_game_setup_page_cutover_bench.gd"
+const NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE := "res://scenes/tools/NewGameSetupPageCutoverBench.tscn"
+const NEW_GAME_SETUP_PAGE_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/new_game_setup_page_cutover/"
+const NEW_GAME_SETUP_PAGE_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/new_game_setup_page_cutover_sprint_22.png"
+const MAIN_RUNTIME_REPLACEMENT_DOC := "res://docs/main_runtime_replacement.md"
+const DISTRICT_PURCHASE_SETTLEMENT_CONTRACT_DOC := "res://docs/district_purchase_settlement_contract.md"
+const RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT := "res://scripts/tools/ruleset_v04_conformance_registry.gd"
+const RULESET_V04_CONFORMANCE_BENCH_SCRIPT := "res://scripts/tools/ruleset_v04_conformance_bench.gd"
+const RULESET_V04_CONFORMANCE_BENCH_SCENE := "res://scenes/tools/RulesetV04ConformanceBench.tscn"
+const RULESET_V04_CONFORMANCE_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v04_conformance/"
+const RULESET_V04_CONFORMANCE_SCREENSHOT_PATH := "user://space_syndicate_design_qa/ruleset_v04_source_of_truth_sprint_1.png"
+const AI_PERSONALITY_POLICY_RESOURCE_SCRIPT := "res://scripts/ai/ai_personality_policy_resource.gd"
+const AI_POLICY_PROFILE_RESOURCE_SCRIPT := "res://scripts/ai/ai_policy_profile_resource.gd"
+const AI_POLICY_RESOURCE_REGISTRY_SCRIPT := "res://scripts/ai/ai_policy_resource_registry.gd"
+const AI_POLICY_PROFILE_RESOURCE := "res://resources/ai/ai_policy_profile_v1.tres"
+const AI_POLICY_RESOURCE_PREVIEW_SCENE := "res://scenes/tools/AiPolicyResourceMcpPreview.tscn"
+const AI_POLICY_RESOURCE_PREVIEW_SCRIPT := "res://scripts/tools/ai_policy_resource_mcp_preview.gd"
+const AI_POLICY_RESOURCE_BENCH_SCENE := "res://scenes/tools/AiPolicyResourceBench.tscn"
+const AI_POLICY_RESOURCE_BENCH_SCRIPT := "res://scripts/tools/ai_policy_resource_bench.gd"
+const AI_POLICY_RESOURCE_OUTPUT_DIR := "user://space_syndicate_design_qa/ai_policy_resourceization/"
+const AI_POLICY_RESOURCE_SCREENSHOT_PATH := "user://space_syndicate_design_qa/ai_runtime_hard_cutover_sprint_41.png"
+const AI_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/AiRuntimeController.tscn"
+const AI_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/ai_runtime_controller.gd"
+const AI_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/AiRuntimeWorldBridge.tscn"
+const AI_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/ai_runtime_world_bridge.gd"
+const COMPENDIUM_CONTENT_MIN_TOTAL_ENTRIES := 42
+const COMPENDIUM_CONTENT_MIN_CARD_ENTRIES := 25
+const COMPENDIUM_CONTENT_MIN_PRODUCT_ENTRIES := 8
+const COMPENDIUM_CONTENT_MIN_MONSTER_ENTRIES := 8
+const COMPENDIUM_CONTENT_SAMPLE_RESOURCE_PATHS := [
+	"res://resources/compendium/cards/phase_beast_i.tres",
+	"res://resources/compendium/cards/storm_credit_i.tres",
+	"res://resources/compendium/cards/harbor_chain_i.tres",
+	"res://resources/compendium/cards/vertical_slice_card_set_pack.tres",
+	"res://resources/compendium/products/spice_market.tres",
+	"res://resources/compendium/products/ore_freight.tres",
+	"res://resources/compendium/products/water_ice.tres",
+	"res://resources/compendium/products/contract_goods_pack.tres",
+	"res://resources/compendium/monsters/phase_leviathan.tres",
+	"res://resources/compendium/monsters/orbit_crusher.tres",
+	"res://resources/compendium/monsters/mirror_manta.tres",
+	"res://resources/compendium/monsters/active_roster_pack.tres",
+]
+
 const VIEWPORT_SIZES := [
 	Vector2(1280, 720),
 	Vector2(1366, 768),
@@ -155,10 +763,27 @@ func _run() -> void:
 	for path in SPLIT_UI_SCENE_PATHS:
 		await _check_scene_loads(path, path.ends_with("OverlayLayer.tscn"))
 	_check_main_player_panel_refresh_contract()
+	await _check_main_runtime_composition_scene()
 	await _check_game_screen_structure()
 	await _check_first_run_coach_component()
 	await _check_split_game_screen_structure()
 	await _check_split_game_screen_data_binding()
+	await _check_planet_map_sceneization_component()
+	await _check_sceneization_audit_and_card_track_sceneization_component()
+	await _check_space_syndicate_design_qa_addon()
+	await _check_mcp_editability_hub_component()
+	await _check_player_turn_mcp_preview_component()
+	await _check_player_turn_interaction_bench_component()
+	await _check_runtime_player_turn_flow_bench_component()
+	await _check_first_playable_loop_bench_component()
+	await _check_first_round_runtime_playable_loop_bench_component()
+	await _check_first_mission_spine_bench_component()
+	await _check_first_mission_runtime_main_bench_component()
+	_check_codex_mcp_companion_addon()
+	_check_godot_mcp_editor_addon()
+	await _check_temporary_decision_overlay_capture_bench_component()
+	await _check_temporary_decision_overlay_interaction_bench_component()
+	await _check_temporary_decision_overlay_preview_component()
 	await _check_menu_overlay_shell_component()
 	await _check_tutorial_quick_start_board_component()
 	await _check_rules_quick_reference_board_component()
@@ -169,6 +794,51 @@ func _run() -> void:
 	await _check_region_codex_detail_component()
 	await _check_product_codex_detail_component()
 	await _check_bestiary_detail_component()
+	await _check_compendium_codex_sceneization_component()
+	await _check_compendium_content_resourceization_component()
+	await _check_system_resourceization_audit_component()
+	await _check_balance_parameter_resourceization_component()
+	await _check_balance_model_resource_sandbox_component()
+	await _check_balance_runtime_bridge_component()
+	await _check_ruleset_v04_source_of_truth_component()
+	await _check_main_runtime_replacement_foundation_component()
+	await _check_game_session_save_ownership_component()
+	await _check_district_purchase_runtime_cutover_component()
+	await _check_card_inventory_runtime_characterization_component()
+	await _check_player_hand_interaction_runtime_characterization_component()
+	await _check_card_resolution_queue_runtime_characterization_component()
+	await _check_card_resolution_execution_runtime_characterization_component()
+	await _check_economy_cashflow_runtime_cutover_component()
+	await _check_gdp_formula_runtime_cutover_component()
+	await _check_scenario_runtime_glue_cutover_component()
+	await _check_first_table_authored_runtime_cutover_component()
+	await _check_legacy_runtime_surface_retirement_component()
+	await _check_legacy_player_surface_retirement_component()
+	await _check_card_play_eligibility_runtime_component()
+	await _check_menu_shell_runtime_cutover_component()
+	await _check_codex_scene_hard_cutover_component()
+	await _check_codex_atlas_scene_cutover_component()
+	await _check_codex_navigation_runtime_cutover_component()
+	await _check_codex_public_snapshot_cutover_component()
+	await _check_monster_codex_public_snapshot_cutover_component()
+	await _check_monster_runtime_characterization_component()
+	await _check_military_runtime_characterization_component()
+	await _check_weather_runtime_characterization_component()
+	await _check_contract_runtime_characterization_component()
+	await _check_product_market_runtime_characterization_component()
+	await _check_city_trade_network_runtime_characterization_component()
+	await _check_city_development_settlement_runtime_characterization_component()
+	await _check_city_gdp_derivative_runtime_component()
+	await _check_runtime_card_catalog_resource_component()
+	await _check_runtime_card_authoring_workflow_component()
+	await _check_product_codex_public_snapshot_cutover_component()
+	await _check_card_codex_public_snapshot_cutover_component()
+	await _check_economy_dashboard_public_snapshot_cutover_component()
+	await _check_standings_public_snapshot_cutover_component()
+	await _check_final_settlement_public_snapshot_cutover_component()
+	await _check_intel_dossier_public_snapshot_cutover_component()
+	await _check_new_game_setup_page_cutover_component()
+	await _check_ai_policy_resourceization_component()
 	await _check_economy_dashboard_component()
 	await _check_intel_dossier_board_component()
 	await _check_standings_scoreboard_component()
@@ -251,6 +921,8 @@ func _check_first_run_coach_component() -> void:
 			"has_bought_card": false,
 			"has_played_card": false,
 			"has_seen_public_track": false,
+			"has_seen_ai_public_action": false,
+			"has_seen_monster_pressure": false,
 			"has_seen_clues": false,
 		},
 	}).to_ui_dictionary()
@@ -280,6 +952,8 @@ func _check_first_run_coach_component() -> void:
 			"has_played_card": true,
 			"has_seen_public_track": true,
 			"has_checked_economy": true,
+			"has_seen_ai_public_action": true,
+			"has_seen_monster_pressure": true,
 			"has_chosen_route": true,
 			"has_seen_clues": false,
 		},
@@ -301,6 +975,8 @@ func _check_first_run_coach_component() -> void:
 			"has_played_card": true,
 			"has_seen_public_track": true,
 			"has_checked_economy": false,
+			"has_seen_ai_public_action": false,
+			"has_seen_monster_pressure": false,
 			"has_chosen_route": false,
 			"has_seen_clues": false,
 		},
@@ -317,7 +993,9 @@ func _check_first_run_coach_component() -> void:
 			"has_played_card": true,
 			"has_seen_public_track": true,
 			"has_checked_economy": true,
-			"has_chosen_route": true,
+			"has_seen_ai_public_action": true,
+			"has_seen_monster_pressure": false,
+			"has_chosen_route": false,
 			"has_seen_clues": false,
 		},
 		"auto_fold_after_route_choice": false,
@@ -333,8 +1011,10 @@ func _check_first_run_coach_component() -> void:
 			"has_played_card": true,
 			"has_seen_public_track": true,
 			"has_checked_economy": true,
+			"has_seen_ai_public_action": true,
+			"has_seen_monster_pressure": true,
 			"has_chosen_route": false,
-			"has_seen_clues": false,
+			"has_seen_clues": true,
 		},
 		"auto_fold_after_route_choice": false,
 	}).to_ui_dictionary()
@@ -350,6 +1030,8 @@ func _check_first_run_coach_component() -> void:
 			"has_bought_card": false,
 			"has_played_card": false,
 			"has_seen_public_track": false,
+			"has_seen_ai_public_action": false,
+			"has_seen_monster_pressure": false,
 			"has_seen_clues": false,
 		},
 	}).to_ui_dictionary()
@@ -386,7 +1068,7 @@ func _check_split_game_screen_structure() -> void:
 	var screen: Node = packed.instantiate()
 	root.add_child(screen)
 	await process_frame
-	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlaytestFlowCompass", "PlaytestFlowCompassStepRail", "PlaytestFlowCompassNextLabel", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragPreviewPanel"]:
+	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlaytestFlowCompass", "PlaytestFlowCompassStepRail", "PlaytestFlowCompassNextLabel", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragPreviewPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]:
 		_expect(screen.find_child(node_name, true, false) != null, "split GameScreen contains %s" % node_name)
 	root.remove_child(screen)
 	screen.queue_free()
@@ -592,6 +1274,9 @@ func _check_split_game_screen_data_binding() -> void:
 	var drag_preview_layer := screen.find_child("DragPreviewLayer", true, false)
 	var tooltip_panel := screen.find_child("TooltipPanel", true, false)
 	var confirm_panel := screen.find_child("ConfirmPanel", true, false)
+	var monster_wager_decision_panel := screen.find_child("MonsterWagerDecisionPanel", true, false) as Control
+	var contract_response_decision_panel := screen.find_child("ContractResponseDecisionPanel", true, false) as Control
+	var temporary_choice_decision_panel := screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
 	var side_drawer_summary := screen.find_child("SideDrawerSummary", true, false) as Label
 	var side_drawer_action_row := screen.find_child("SideDrawerActionRow", true, false)
 	var drag_drop_target_panel := screen.find_child("DragDropTargetPanel", true, false) as Control
@@ -626,6 +1311,9 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(tooltip_panel != null and tooltip_panel.get_parent() == tooltip_layer, "split OverlayLayer hosts TooltipPanel under TooltipLayer")
 	_expect(side_drawer_panel != null and side_drawer_panel.get_parent().get_parent().get_parent() == side_drawer_layer, "split OverlayLayer hosts SideDrawerPanel under SideDrawerLayer")
 	_expect(confirm_panel != null and confirm_panel.get_parent().get_parent() == modal_layer, "split OverlayLayer hosts ConfirmPanel under ModalLayer")
+	_expect(monster_wager_decision_panel != null and monster_wager_decision_panel.get_parent().get_parent() == modal_layer and not monster_wager_decision_panel.visible, "split OverlayLayer hosts a hidden editable MonsterWagerDecisionPanel under ModalLayer")
+	_expect(contract_response_decision_panel != null and contract_response_decision_panel.get_parent().get_parent() == modal_layer and not contract_response_decision_panel.visible, "split OverlayLayer hosts a hidden editable ContractResponseDecisionPanel under ModalLayer")
+	_expect(temporary_choice_decision_panel != null and temporary_choice_decision_panel.get_parent().get_parent() == modal_layer and not temporary_choice_decision_panel.visible, "split OverlayLayer hosts a hidden editable TemporaryChoiceDecisionPanel under ModalLayer")
 	_expect(drag_preview_panel != null, "split OverlayLayer owns a drag-preview layer")
 	_expect(drag_drop_target_panel != null and drag_drop_target_label != null, "split OverlayLayer owns a drag-drop target hint under the preview layer")
 	_expect(player_board != null, "split GameScreen player board survives data binding")
@@ -679,6 +1367,13 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(player_board != null and player_board.has_signal("card_hovered"), "split PlayerBoard forwards hand hover without rebuilding the rack")
 	_expect(player_board != null and player_board.has_signal("card_unhovered") and screen.has_signal("card_unhovered"), "split PlayerBoard and GameScreen forward hand unhover to restore context")
 	_expect(player_board != null and player_board.has_signal("card_drag_preview_started") and player_board.has_signal("card_drag_released") and screen.has_signal("card_drag_preview_started") and screen.has_signal("card_drop_requested"), "split PlayerBoard and GameScreen forward card drag preview/drop intent without touching rules")
+	_expect(screen.has_method("get_runtime_player_feedback_snapshot") and player_board != null and player_board.has_method("set_runtime_feedback") and player_board.has_method("get_runtime_feedback_snapshot"), "split GameScreen and PlayerBoard expose pure-data runtime player feedback for MCP QA")
+	if player_board != null and player_board.has_method("set_runtime_feedback") and player_board.has_method("get_runtime_feedback_snapshot"):
+		player_board.call("set_runtime_feedback", {"kind": "action", "state": "pending", "action_id": "play:test", "label": "处理中｜测试出牌", "detail": "测试反馈"})
+		await process_frame
+		var feedback_variant: Variant = player_board.call("get_runtime_feedback_snapshot")
+		var feedback: Dictionary = feedback_variant if feedback_variant is Dictionary else {}
+		_expect(str(feedback.get("action_id", "")) == "play:test" and _node_tree_text(player_board).contains("处理中"), "split PlayerBoard renders runtime feedback without changing action id flow")
 	if hand_rack != null and hand_rack.has_signal("card_hovered") and hand_rack.has_signal("card_unhovered"):
 		var hover_first_child_id := -1
 		if hand_rack.get_child_count() > 0:
@@ -944,8 +1639,2450 @@ func _check_split_game_screen_data_binding() -> void:
 		refreshed_public_track_slot.gui_input.emit(track_double_click)
 		await process_frame
 		_expect(action_ids.has("track_open_orbital_finance_i"), "double-clicking a split PublicTrack slot emits its card-detail open action")
+	screen.call("apply_state", {
+		"temporary_decision": {
+			"id": "monster_wager_7",
+			"kind": "monster_wager",
+			"title": "怪兽赌局 #7",
+			"body": "全场冻结，公开下注。",
+			"chips": [{"text": "全场冻结"}, {"text": "底注5%"}],
+			"actions": [{"id": "monster_wager:7:a:5", "label": "押A 5%"}],
+			"wager": {
+				"matchup": "相位兽 vs 潮汐巨兽",
+				"damage": "相位兽:3 / 潮汐巨兽:1",
+				"public_decisions": "玩家1 5%/¥50→相位兽",
+				"context": "怪兽遭遇",
+				"base_percent": 5,
+				"pool": 50,
+				"decided": 1,
+				"seat_count": 4,
+				"timer": 22.0,
+				"side_hint": "你尚未下注；本局底注5%，可加码。",
+			},
+		},
+	})
+	await process_frame
+	var wager_panel := screen.find_child("MonsterWagerDecisionPanel", true, false) as Control
+	var wager_button := _find_visible_button_containing(wager_panel, "押A")
+	_expect(wager_panel != null and wager_panel.visible and _node_tree_text(wager_panel).contains("相位兽 vs 潮汐巨兽") and _node_tree_text(wager_panel).contains("公开下注"), "split OverlayLayer renders monster wager decisions through the editable MonsterWagerDecisionPanel scene")
+	_expect(confirm_panel != null and not confirm_panel.visible, "monster wager specialized panel hides the generic ConfirmPanel")
+	if wager_button != null:
+		wager_button.emit_signal("pressed")
+		await process_frame
+		_expect(action_ids.has("monster_wager:7:a:5"), "MonsterWagerDecisionPanel forwards wager action ids through GameScreen")
+	screen.call("apply_state", {
+		"temporary_decision": {
+			"id": "contract_response_42",
+			"kind": "contract_response",
+			"title": "匿名合约签署窗口",
+			"body": "目标商品控制者决定。",
+			"chips": [{"text": "私密签约权"}, {"text": "22s"}],
+			"actions": [{"id": "contract_accept_42", "label": "签约"}, {"id": "contract_reject_42", "label": "拒绝"}],
+			"contract": {
+				"card": "海雾转运合约",
+				"route": "雾港区 → 赤潮港",
+				"products": "海雾果",
+				"accept": "¥+80、流通×1.25",
+				"reject": "罚¥40",
+				"timer": 22.0,
+				"privacy": "签约选择只发给目标商品控制者；合约公开条件仍留在牌轨里。",
+			},
+		},
+	})
+	await process_frame
+	var contract_panel := screen.find_child("ContractResponseDecisionPanel", true, false) as Control
+	var contract_button := _find_visible_button_containing(contract_panel, "签约")
+	_expect(contract_panel != null and contract_panel.visible and _node_tree_text(contract_panel).contains("雾港区 → 赤潮港") and _node_tree_text(contract_panel).contains("海雾果"), "split OverlayLayer renders contract responses through the editable ContractResponseDecisionPanel scene")
+	_expect(wager_panel != null and not wager_panel.visible, "contract response specialized panel hides the monster wager panel")
+	if contract_button != null:
+		contract_button.emit_signal("pressed")
+		await process_frame
+		_expect(action_ids.has("contract_accept_42"), "ContractResponseDecisionPanel forwards contract action ids through GameScreen")
+	screen.call("apply_state", {
+		"temporary_decision": {
+			"id": "discard_purchase",
+			"kind": "discard_purchase",
+			"title": "私密弃牌确认",
+			"body": "手牌已满。弃1张旧牌，接收轨道融资（约¥20）。",
+			"chips": [{"text": "私密"}, {"text": "不公开"}, {"text": "换购"}],
+			"actions": [{"id": "discard_purchase_0", "label": "弃掉 移动"}, {"id": "discard_purchase_cancel", "label": "取消换购"}],
+			"choice": {
+				"mode": "discard",
+				"mode_label": "私密换购",
+				"card": "轨道融资",
+				"summary": "手牌已满；从1张可弃旧普通牌中选1张，再接收新牌。",
+				"context": "价格约¥20｜普通手牌上限5张",
+				"privacy": "弃牌选择只在当前玩家私有流水中记录；公开日志不会写手牌或弃掉哪张牌。",
+				"public_after": "换购完成后只体现经济结果，不公开弃牌名称。",
+				"option_count": 1,
+			},
+		},
+	})
+	await process_frame
+	var choice_panel := screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
+	var discard_choice_button := _find_visible_button_containing(choice_panel, "弃掉")
+	_expect(choice_panel != null and choice_panel.visible and _node_tree_text(choice_panel).contains("私密换购") and _node_tree_text(choice_panel).contains("轨道融资"), "split OverlayLayer renders discard decisions through the editable TemporaryChoiceDecisionPanel scene")
+	_expect(confirm_panel != null and not confirm_panel.visible and wager_panel != null and not wager_panel.visible and contract_panel != null and not contract_panel.visible, "discard choice panel hides ConfirmPanel and other specialized temporary decision panels")
+	if discard_choice_button != null:
+		discard_choice_button.emit_signal("pressed")
+		await process_frame
+		_expect(action_ids.has("discard_purchase_0"), "TemporaryChoiceDecisionPanel forwards discard action ids through GameScreen")
+	screen.call("apply_state", {
+		"temporary_decision": {
+			"id": "monster_target_choice",
+			"kind": "monster_target_choice",
+			"title": "请选择目标怪兽",
+			"body": "相位诱导需要先指定目标怪兽；进入公开牌轨后，卡面和目标会向所有人展示。",
+			"chips": [{"text": "私密"}, {"text": "阻塞出牌"}, {"text": "目标公开"}],
+			"actions": [{"id": "target_monster_0", "label": "怪1 相位兽"}, {"id": "target_monster_cancel", "label": "取消"}],
+			"choice": {
+				"mode": "monster_target",
+				"mode_label": "怪兽目标",
+				"card": "相位诱导",
+				"summary": "先选目标怪兽，再把卡牌送入公开牌轨。",
+				"context": "可选目标1/2只｜倒下目标不可选",
+				"privacy": "选择动作只给当前出牌者；卡牌进入轨道后仍隐藏出牌者。",
+				"public_after": "卡面和目标怪兽会公开，成为全场推理线索。",
+				"target_count": 2,
+				"enabled_count": 1,
+			},
+		},
+	})
+	await process_frame
+	choice_panel = screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
+	var monster_target_button := _find_visible_button_containing(choice_panel, "怪1")
+	_expect(choice_panel != null and choice_panel.visible and _node_tree_text(choice_panel).contains("怪兽目标") and _node_tree_text(choice_panel).contains("相位诱导"), "split OverlayLayer renders monster target choices through the editable TemporaryChoiceDecisionPanel scene")
+	_expect(confirm_panel != null and not confirm_panel.visible and contract_panel != null and not contract_panel.visible, "monster target choice panel keeps ConfirmPanel and contract panel hidden")
+	if monster_target_button != null:
+		monster_target_button.emit_signal("pressed")
+		await process_frame
+		_expect(action_ids.has("target_monster_0"), "TemporaryChoiceDecisionPanel forwards monster target action ids through GameScreen")
+	screen.call("apply_state", {
+		"temporary_decision": {
+			"id": "player_target_choice",
+			"kind": "player_target_choice",
+			"title": "请选择目标玩家",
+			"body": "相位否决会影响一名玩家；结算时目标和影响公开，但出牌者仍保持匿名。",
+			"chips": [{"text": "私密"}, {"text": "直接互动"}, {"text": "匿名入轨"}],
+			"actions": [{"id": "target_player_1", "label": "玩家2"}, {"id": "target_player_cancel", "label": "取消"}],
+			"choice": {
+				"mode": "player_target",
+				"mode_label": "玩家目标",
+				"card": "相位否决",
+				"summary": "选择一名其他席位作为直接互动目标。",
+				"context": "可选目标3名｜不能选择自己",
+				"privacy": "选择动作只给当前出牌者；卡牌提交后仍隐藏出牌者。",
+				"public_after": "目标玩家和影响会公开，成为后续收益变化的线索。",
+				"target_count": 3,
+			},
+		},
+	})
+	await process_frame
+	choice_panel = screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
+	var player_target_button := _find_visible_button_containing(choice_panel, "玩家2")
+	_expect(choice_panel != null and choice_panel.visible and _node_tree_text(choice_panel).contains("玩家目标") and _node_tree_text(choice_panel).contains("相位否决"), "split OverlayLayer renders player target choices through the editable TemporaryChoiceDecisionPanel scene")
+	_expect(confirm_panel != null and not confirm_panel.visible and wager_panel != null and not wager_panel.visible and contract_panel != null and not contract_panel.visible, "player target choice panel hides every other temporary decision panel")
+	if player_target_button != null:
+		player_target_button.emit_signal("pressed")
+		await process_frame
+		_expect(action_ids.has("target_player_1"), "TemporaryChoiceDecisionPanel forwards player target action ids through GameScreen")
 	root.remove_child(screen)
 	screen.queue_free()
+
+
+func _check_main_runtime_composition_scene() -> void:
+	var packed := load("res://scenes/main.tscn") as PackedScene
+	_expect(packed != null, "main.tscn loads for runtime composition sceneization")
+	if packed == null:
+		return
+	var main := packed.instantiate() as Control
+	_expect(main != null, "main.tscn instantiates for runtime composition sceneization")
+	if main == null:
+		return
+	for node_path in ["RuntimeGameScreen", "RuntimeServices", "RuntimeServices/TableAudioHost", "RuntimeServices/RuntimeControllerHost", "RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ForcedDecisionRuntimeScheduler", "RuntimeServices/RuntimeFallbackHost"]:
+		_expect(main.get_node_or_null(node_path) != null, "main.tscn owns %s before runtime" % node_path)
+	var runtime_screen := main.get_node_or_null("RuntimeGameScreen") as Control
+	for node_name in ["TopBar", "PublicTrack", "PlanetBoard", "PlanetMapView", "RightInspector", "PlayerBoard", "OverlayLayer", "RuntimeSurfaceLayer", "FullscreenMapOverlay", "FullscreenPlanetMapView", "CardResolutionTableBannerOverlay", "BottomCountdownOverlay", "DistrictSupplySideDrawerOverlay", "MenuModalOverlay"]:
+		_expect(runtime_screen != null and runtime_screen.find_child(node_name, true, false) != null, "sceneized main composition contains %s" % node_name)
+	_expect(main.get_node_or_null("LegacyRuntimeTable") == null, "main.tscn permanently retires LegacyRuntimeTable")
+	var audio_host := main.get_node_or_null("RuntimeServices/TableAudioHost")
+	for player_name in ["NightPatrolTableBgm", "NightPatrolSfx_card", "NightPatrolSfx_impact", "NightPatrolSfx_storm"]:
+		_expect(audio_host != null and audio_host.get_node_or_null(player_name) is AudioStreamPlayer, "sceneized TableAudioHost contains %s" % player_name)
+	_expect(main.has_method("_runtime_composition_snapshot"), "main.gd exposes a runtime composition QA snapshot")
+	if main.has_method("_runtime_composition_snapshot"):
+		main.call("_bind_ruleset_runtime_bridge")
+		main.call("_bind_city_development_runtime_controller")
+		var snapshot: Dictionary = main.call("_runtime_composition_snapshot")
+		_expect(bool(snapshot.get("sceneized_composition_enabled", false)) and not bool(snapshot.get("legacy_fallback_used", true)), "main runtime composition snapshot reports scene ownership with fallback inactive")
+		_expect(not bool(snapshot.get("controller_missing", true)) and bool(snapshot.get("controller_authoritative", false)) and not bool(snapshot.get("legacy_state_fallback_used", true)), "main runtime composition snapshot reports one present scene-owned card-resolution authority with state fallback inactive")
+		_expect(bool(snapshot.get("city_development_controller_found", false)) and bool(snapshot.get("city_development_controller_ready", false)) and bool(snapshot.get("city_development_controller_bound", false)) and bool(snapshot.get("city_development_controller_authoritative", false)), "main runtime composition snapshot reports a bound scene-owned city-development legality authority")
+		var city_runtime: Dictionary = snapshot.get("city_development_runtime", {}) if snapshot.get("city_development_runtime", {}) is Dictionary else {}
+		_expect(not bool(city_runtime.get("direct_build_allowed", true)) and bool(city_runtime.get("project_binding_required", false)), "main runtime composition enforces the v0.4 product-project city-development boundary")
+		_expect(int(snapshot.get("duplicate_node_count", -1)) == 0 and int(snapshot.get("duplicate_signal_count", -1)) == 0, "main runtime composition snapshot reports no duplicate nodes or signals")
+		_expect(not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "main runtime composition snapshot remains pure data")
+	main.free()
+
+
+func _check_sceneization_audit_and_card_track_sceneization_component() -> void:
+	_expect(ResourceLoader.exists(SCENEIZATION_AUDIT_REGISTRY_SCRIPT), "Sceneization audit registry script exists")
+	_expect(ResourceLoader.exists(SCENEIZATION_AUDIT_PREVIEW_SCRIPT), "Sceneization Audit MCP preview script exists")
+	_expect(ResourceLoader.exists(SCENEIZATION_AUDIT_PREVIEW_SCENE), "Sceneization Audit MCP preview scene exists")
+	_expect(ResourceLoader.exists(CARD_TRACK_SLOT_SCRIPT), "CardTrackSlot script exists")
+	_expect(ResourceLoader.exists(CARD_TRACK_SLOT_SCENE), "CardTrackSlot scene exists")
+	_expect(ResourceLoader.exists(CARD_TRACK_MCP_PREVIEW_FIXTURES_SCRIPT), "CardTrack MCP preview fixtures script exists")
+	_expect(ResourceLoader.exists(CARD_TRACK_MCP_PREVIEW_SCRIPT), "CardTrack MCP preview script exists")
+	_expect(ResourceLoader.exists(CARD_TRACK_MCP_PREVIEW_SCENE), "CardTrack MCP preview scene exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_SCRIPT), "CardResolutionTrack script exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_SCENE), "CardResolutionTrack scene exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_SLOT_SCRIPT), "CardResolutionTrackSlot script exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_SLOT_SCENE), "CardResolutionTrackSlot scene exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_MCP_PREVIEW_FIXTURES_SCRIPT), "CardResolutionTrack MCP preview fixtures script exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCRIPT), "CardResolutionTrack MCP preview script exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCENE), "CardResolutionTrack MCP preview scene exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCRIPT), "CardResolutionTrack interaction bench script exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE), "CardResolutionTrack interaction bench scene exists")
+	_expect(ResourceLoader.exists(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_FIXTURES_SCRIPT), "RuntimeCardResolutionTrackFlow fixtures script exists")
+	_expect(ResourceLoader.exists(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCRIPT), "RuntimeCardResolutionTrackFlow bench script exists")
+	_expect(ResourceLoader.exists(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE), "RuntimeCardResolutionTrackFlow bench scene exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_RUNTIME_CONTROLLER_SCRIPT), "CardResolutionRuntimeController script exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_RUNTIME_CONTROLLER_SCENE), "CardResolutionRuntimeController scene exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_MAIN_TEST_HARNESS_SCRIPT), "CardResolutionMainTestHarness script exists")
+	_expect(ResourceLoader.exists(CARD_RESOLUTION_CONTROLLER_CONSOLIDATION_TEST), "card-resolution controller consolidation test exists")
+	var runtime_controller_packed := load(CARD_RESOLUTION_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var runtime_controller := runtime_controller_packed.instantiate() if runtime_controller_packed != null else null
+	_expect(runtime_controller != null and runtime_controller.has_method("tick") and runtime_controller.has_method("current_phase") and runtime_controller.has_method("submissions_open") and runtime_controller.has_method("bidding_open") and runtime_controller.has_method("to_save_data") and runtime_controller.has_method("apply_save_data") and runtime_controller.has_method("debug_snapshot"), "CardResolutionRuntimeController exposes timing, phase, save, and debug APIs")
+	if runtime_controller != null:
+		var controller_snapshot: Dictionary = runtime_controller.call("debug_snapshot")
+		_expect(not _variant_contains_callable(controller_snapshot) and not _variant_contains_object(controller_snapshot), "CardResolutionRuntimeController debug snapshot is pure data")
+		_expect(not bool(controller_snapshot.get("controller_missing", true)) and bool(controller_snapshot.get("controller_authoritative", false)) and not bool(controller_snapshot.get("legacy_state_fallback_used", true)), "CardResolutionRuntimeController identifies itself as the sole timing authority")
+		runtime_controller.free()
+	var card_resolution_main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(not card_resolution_main_source.contains("_update_card_resolution_queue_legacy") and not card_resolution_main_source.contains("_legacy_card_resolution_") and not card_resolution_main_source.contains("_legacy_card_group_window_sequence") and not card_resolution_main_source.contains("_legacy_last_card_resolution_player_index"), "main.gd contains no duplicate card-resolution timing state machine or backing fields")
+
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	_expect(audit_script != null, "Sceneization audit registry script loads")
+	var audit_registry: RefCounted = audit_script.new() if audit_script != null else null
+	_expect(audit_registry != null and audit_registry.has_method("records") and audit_registry.has_method("summary") and audit_registry.has_method("records_for_status") and audit_registry.has_method("record_for_id"), "Sceneization audit registry exposes records, summary, status filters, and id lookup")
+	if audit_registry != null:
+		var records_variant: Variant = audit_registry.call("records")
+		var records: Array = records_variant if records_variant is Array else []
+		var statuses_variant: Variant = audit_registry.call("status_ids")
+		var statuses: Array = statuses_variant if statuses_variant is Array else []
+		_expect(records.size() >= 18, "Sceneization audit registry lists full, partial, legacy, and draw-script surfaces")
+		for status in ["full", "partial", "legacy_runtime", "draw_script"]:
+			_expect(statuses.has(status), "Sceneization audit registry includes status %s" % status)
+		var data_only_ok := true
+		var fields_ok := true
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			fields_ok = fields_ok and record.has("id") and record.has("display_name") and record.has("category") and record.has("current_scene_path") and record.has("source_script_path") and record.has("sceneization_status") and record.has("priority") and record.has("next_step") and record.has("risk_notes") and record.has("mcp_notes")
+			data_only_ok = data_only_ok and not _variant_contains_callable(record) and not _variant_contains_object(record)
+		_expect(fields_ok, "Sceneization audit records include required metadata fields")
+		_expect(data_only_ok, "Sceneization audit records stay pure data without Callable/Node/Object")
+		var planet_record: Dictionary = audit_registry.call("record_for_id", "planet_map_view_internal_draw")
+		var planet_geometry_record: Dictionary = audit_registry.call("record_for_id", "planet_map_geometry_components")
+		var planet_feedback_record: Dictionary = audit_registry.call("record_for_id", "planet_map_feedback_components")
+		var planet_underlay_record: Dictionary = audit_registry.call("record_for_id", "planet_map_underlay_components")
+		var planet_cutover_record: Dictionary = audit_registry.call("record_for_id", "planet_map_render_cutover_gate")
+		var planet_interaction_record: Dictionary = audit_registry.call("record_for_id", "planet_map_interaction_ownership_gate")
+		var card_track_record: Dictionary = audit_registry.call("record_for_id", "public_card_track_slots")
+		var card_resolution_track_record: Dictionary = audit_registry.call("record_for_id", "card_resolution_track_sceneization_gate")
+		var card_resolution_track_interaction_record: Dictionary = audit_registry.call("record_for_id", "card_resolution_track_interaction_ownership_gate")
+		var runtime_card_resolution_track_record: Dictionary = audit_registry.call("record_for_id", "runtime_card_resolution_track_flow_gate")
+		var card_resolution_runtime_controller_record: Dictionary = audit_registry.call("record_for_id", "card_resolution_runtime_controller_gate")
+		var first_round_runtime_playable_loop_record: Dictionary = audit_registry.call("record_for_id", "first_round_runtime_playable_loop_gate")
+		var first_mission_runtime_main_record: Dictionary = audit_registry.call("record_for_id", "first_mission_runtime_productization_gate")
+		var main_runtime_composition_record: Dictionary = audit_registry.call("record_for_id", "main_runtime_composition_gate")
+		var legacy_record: Dictionary = audit_registry.call("record_for_id", "main_card_resolution_track_legacy")
+		_expect(str(planet_record.get("sceneization_status", "")) == "partial" and str(planet_record.get("source_script_path", "")).contains("map_view.gd"), "Sceneization audit marks PlanetMap internals as partial sceneization")
+		_expect(str(planet_geometry_record.get("sceneization_status", "")) == "partial" and str(planet_geometry_record.get("current_scene_path", "")) == PLANET_DISTRICT_POLYGON_SCENE, "Sceneization audit tracks PlanetMap geometry sceneization components")
+		_expect(str(planet_feedback_record.get("sceneization_status", "")) == "partial" and str(planet_feedback_record.get("current_scene_path", "")) == PLANET_MOVEMENT_TRAIL_SCENE, "Sceneization audit tracks PlanetMap transient feedback sceneization components")
+		_expect(str(planet_underlay_record.get("sceneization_status", "")) == "partial" and str(planet_underlay_record.get("current_scene_path", "")) == PLANET_GLOBE_BACKDROP_SCENE, "Sceneization audit tracks PlanetMap underlay sceneization components")
+		_expect(str(planet_cutover_record.get("sceneization_status", "")) == "partial" and str(planet_cutover_record.get("current_scene_path", "")) == PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE, "Sceneization audit tracks PlanetMap render cutover gate")
+		_expect(str(planet_interaction_record.get("sceneization_status", "")) == "partial" and str(planet_interaction_record.get("current_scene_path", "")) == PLANET_MAP_INTERACTION_BENCH_SCENE and str(planet_interaction_record.get("mcp_notes", "")).contains("15/15"), "Sceneization audit tracks PlanetMap interaction and toolbar ownership gate")
+		_expect(str(card_track_record.get("sceneization_status", "")) == "partial" and str(card_track_record.get("current_scene_path", "")) == "res://scenes/ui/CardTrack.tscn", "Sceneization audit marks CardTrack slots as partial before this sprint")
+		_expect(str(card_resolution_track_record.get("sceneization_status", "")) == "full" and str(card_resolution_track_record.get("current_scene_path", "")) == CARD_RESOLUTION_TRACK_SCENE, "Sceneization audit tracks the completed CardResolutionTrack renderer cutover")
+		_expect(str(card_resolution_track_interaction_record.get("sceneization_status", "")) == "partial" and str(card_resolution_track_interaction_record.get("current_scene_path", "")) == CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE, "Sceneization audit tracks CardResolutionTrack interaction ownership gate")
+		_expect(str(runtime_card_resolution_track_record.get("sceneization_status", "")) == "partial" and str(runtime_card_resolution_track_record.get("current_scene_path", "")) == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE, "Sceneization audit tracks Runtime CardResolutionTrack flow gate")
+		_expect(str(card_resolution_runtime_controller_record.get("sceneization_status", "")) == "full" and str(card_resolution_runtime_controller_record.get("current_scene_path", "")) == CARD_RESOLUTION_RUNTIME_CONTROLLER_SCENE, "Sceneization audit tracks scene-owned CardResolutionRuntimeController authority")
+		_expect(str(card_resolution_runtime_controller_record.get("mcp_notes", "")).contains("controller_missing=false") and str(card_resolution_runtime_controller_record.get("next_step", "")).contains("queue ownership"), "Sceneization audit records consolidated timing authority while deferring queue ownership")
+		_expect(str(first_round_runtime_playable_loop_record.get("sceneization_status", "")) == "partial" and str(first_round_runtime_playable_loop_record.get("current_scene_path", "")) == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE, "Sceneization audit tracks First Round Runtime Playable Loop gate")
+		_expect(str(first_mission_runtime_main_record.get("sceneization_status", "")) == "partial" and str(first_mission_runtime_main_record.get("current_scene_path", "")) == FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE, "Sceneization audit tracks First Mission Runtime Productization gate")
+		_expect(str(main_runtime_composition_record.get("sceneization_status", "")) == "full" and str(main_runtime_composition_record.get("current_scene_path", "")) == "res://scenes/main.tscn", "Sceneization audit tracks scene-owned main runtime composition")
+		_expect(str(legacy_record.get("sceneization_status", "")) == "full" and str(legacy_record.get("current_scene_path", "")) == CARD_RESOLUTION_TRACK_SCENE and str(legacy_record.get("source_script_path", "")) == CARD_RESOLUTION_TRACK_SCRIPT, "Sceneization audit marks the old main.gd card track as fully cut over to CardResolutionTrack")
+
+	var audit_packed := load(SCENEIZATION_AUDIT_PREVIEW_SCENE) as PackedScene
+	_expect(audit_packed != null, "SceneizationAuditMcpPreview scene loads")
+	if audit_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(1280, 720)
+		root.add_child(viewport)
+		var audit_preview := audit_packed.instantiate() as Control
+		_expect(audit_preview != null, "SceneizationAuditMcpPreview root is Control")
+		if audit_preview != null:
+			viewport.add_child(audit_preview)
+			await process_frame
+			for node_name in ["SceneizationAuditCategoryList", "SceneizationAuditRecordList", "SceneizationAuditDetailTitle", "SceneizationAuditDetailBody", "SceneizationAuditStatusLabel", "SceneizationAuditSummaryLabel"]:
+				_expect(audit_preview.find_child(node_name, true, false) != null, "SceneizationAuditMcpPreview contains %s" % node_name)
+			_expect(audit_preview.has_method("audit_records") and audit_preview.has_method("audit_summary") and audit_preview.has_method("select_category") and audit_preview.has_method("select_record"), "SceneizationAuditMcpPreview exposes testable audit methods")
+			var selected_partial := bool(audit_preview.call("select_category", "partial")) if audit_preview.has_method("select_category") else false
+			var selected_planet := bool(audit_preview.call("select_record", "planet_map_view_internal_draw")) if audit_preview.has_method("select_record") else false
+			await process_frame
+			_expect(selected_partial and selected_planet and _node_tree_text(audit_preview).contains("PlanetMapView") and _node_tree_text(audit_preview).contains("map_view.gd"), "SceneizationAuditMcpPreview selects partial PlanetMap records and updates details")
+			viewport.remove_child(audit_preview)
+			audit_preview.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+	var slot_script := load(CARD_TRACK_SLOT_SCRIPT) as Script
+	_expect(slot_script != null, "CardTrackSlot script loads")
+	var slot_packed := load(CARD_TRACK_SLOT_SCENE) as PackedScene
+	_expect(slot_packed != null, "CardTrackSlot scene loads")
+	if slot_packed != null:
+		var raw_slot := slot_packed.instantiate() as Control
+		root.add_child(raw_slot)
+		await process_frame
+		for node_name in ["PublicTrackSlotStack", "PublicTrackSlotRow", "PublicTrackStatePip", "PublicTrackSlotIndex", "PublicTrackSlotLabel", "PublicTrackSlotMeta", "PublicTrackBadgeRow", "PublicTrackSlotSelected", "PublicTrackSlotHover", "CardResolutionTimelineEventSlot"]:
+			_expect(raw_slot.find_child(node_name, true, false) != null, "CardTrackSlot contains editable node %s" % node_name)
+		_expect(raw_slot.has_signal("entry_selected") and raw_slot.has_signal("entry_opened") and raw_slot.has_signal("entry_hovered") and raw_slot.has_signal("entry_unhovered"), "CardTrackSlot exposes forwarded entry signals")
+		_expect(raw_slot.has_method("configure") and raw_slot.has_method("track_entry") and raw_slot.has_method("set_hovered_visual") and raw_slot.has_method("debug_press"), "CardTrackSlot exposes testable configure and visual methods")
+		root.remove_child(raw_slot)
+		raw_slot.queue_free()
+
+	var fixture_script := load(CARD_TRACK_MCP_PREVIEW_FIXTURES_SCRIPT) as Script
+	_expect(fixture_script != null, "CardTrack MCP preview fixtures script loads")
+	var fixtures: RefCounted = fixture_script.new() if fixture_script != null else null
+	_expect(fixtures != null and fixtures.has_method("preview_ids") and fixtures.has_method("fixture"), "CardTrack MCP fixtures expose preview_ids and fixture")
+	var expected_ids := ["empty_track", "resolved_history", "active_reveal", "auction_batch", "next_batch", "public_event_readonly", "selected_guessable", "hovered_linked_action", "long_text_safe_state"]
+	if fixtures != null:
+		var ids_variant: Variant = fixtures.call("preview_ids")
+		var ids: Array = ids_variant if ids_variant is Array else []
+		var ids_ok := ids.size() == expected_ids.size()
+		for id in expected_ids:
+			ids_ok = ids_ok and ids.has(id)
+			var fixture_variant: Variant = fixtures.call("fixture", id)
+			var fixture: Dictionary = fixture_variant if fixture_variant is Dictionary else {}
+			_expect(str(fixture.get("id", "")) == id and fixture.get("entries", []) is Array and not _variant_contains_callable(fixture) and not _variant_contains_object(fixture), "CardTrack MCP fixture %s is pure data with entries" % id)
+		_expect(ids_ok, "CardTrack MCP fixtures cover all requested track states")
+
+	var track_packed := load("res://scenes/ui/CardTrack.tscn") as PackedScene
+	_expect(track_packed != null, "CardTrack scene loads for slot sceneization")
+	if track_packed != null and fixtures != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(900, 120)
+		root.add_child(viewport)
+		var track := track_packed.instantiate() as Control
+		viewport.add_child(track)
+		var selected_actions: Array[String] = []
+		var opened_actions: Array[String] = []
+		if track.has_signal("track_entry_selected"):
+			track.connect("track_entry_selected", func(entry: Dictionary) -> void:
+				selected_actions.append(str(entry.get("select_action", "")))
+			)
+		if track.has_signal("track_entry_opened"):
+			track.connect("track_entry_opened", func(entry: Dictionary) -> void:
+				opened_actions.append(str(entry.get("open_action", "")))
+			)
+		var active_fixture_variant: Variant = fixtures.call("fixture", "active_reveal")
+		var active_fixture: Dictionary = active_fixture_variant if active_fixture_variant is Dictionary else {}
+		track.call("set_entries", active_fixture.get("entries", []))
+		await process_frame
+		var first_slot := track.find_child("PublicTrackSlot", true, false) as Control
+		_expect(first_slot != null and first_slot.has_method("track_entry") and first_slot.find_child("PublicTrackSlotLabel", true, false) != null, "CardTrack instantiates editable CardTrackSlot children")
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = true
+		if first_slot != null:
+			first_slot.gui_input.emit(click)
+			await process_frame
+			var double_click := InputEventMouseButton.new()
+			double_click.button_index = MOUSE_BUTTON_LEFT
+			double_click.pressed = true
+			double_click.double_click = true
+			first_slot.gui_input.emit(double_click)
+			await process_frame
+		_expect(selected_actions.has("track_select_9010"), "clicking a sceneized CardTrackSlot forwards the original select action id")
+		_expect(opened_actions.has("track_open_active_reveal"), "double-clicking a sceneized CardTrackSlot forwards the original open action id")
+		if track.has_method("set_hovered_track_action"):
+			track.call("set_hovered_track_action", "track_select_9011")
+			await process_frame
+			_expect(track.find_child("PublicTrackSlotHover", true, false) != null, "CardTrack.set_hovered_track_action still toggles the slot hover marker")
+			track.call("set_hovered_track_action", "")
+			await process_frame
+			_expect(track.find_child("PublicTrackSlotHover", true, false) == null, "CardTrack clears the slot hover marker when linked hover ends")
+		var readonly_fixture_variant: Variant = fixtures.call("fixture", "public_event_readonly")
+		var readonly_fixture: Dictionary = readonly_fixture_variant if readonly_fixture_variant is Dictionary else {}
+		track.call("set_entries", readonly_fixture.get("entries", []))
+		await process_frame
+		var readonly_slot := track.find_child("PublicTrackSlot", true, false) as Control
+		var before_readonly_click := selected_actions.size()
+		if readonly_slot != null:
+			readonly_slot.gui_input.emit(click)
+			await process_frame
+		var no_guess_action := true
+		for index in range(before_readonly_click, selected_actions.size()):
+			no_guess_action = no_guess_action and selected_actions[index] == ""
+		_expect(readonly_slot != null and readonly_slot.find_child("CardResolutionTimelineEventSlot", false, false) != null and no_guess_action, "read-only event CardTrackSlot does not emit a guess action id")
+		viewport.remove_child(track)
+		track.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+	var preview_packed := load(CARD_TRACK_MCP_PREVIEW_SCENE) as PackedScene
+	_expect(preview_packed != null, "CardTrackMcpPreview scene loads")
+	if preview_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(1280, 720)
+		root.add_child(viewport)
+		var preview := preview_packed.instantiate() as Control
+		_expect(preview != null, "CardTrackMcpPreview root is Control")
+		if preview != null:
+			viewport.add_child(preview)
+			await process_frame
+			for node_name in ["CardTrackFixtureList", "CardTrackPreviewHost", "CardTrackPreviewSummaryLabel", "CardTrackPreviewStatusLabel", "CardTrackPreviewActionLabel", "CardTrack"]:
+				_expect(preview.find_child(node_name, true, false) != null, "CardTrackMcpPreview contains %s" % node_name)
+			_expect(preview.has_method("preview_ids") and preview.has_method("apply_fixture") and preview.has_method("selected_fixture_id") and preview.has_method("current_track_snapshot"), "CardTrackMcpPreview exposes testable fixture switching methods")
+			var all_switched := true
+			for id in expected_ids:
+				all_switched = all_switched and bool(preview.call("apply_fixture", id))
+				await process_frame
+			var snapshot_variant: Variant = preview.call("current_track_snapshot") if preview.has_method("current_track_snapshot") else []
+			var snapshot: Array = snapshot_variant if snapshot_variant is Array else []
+			_expect(all_switched and str(preview.call("selected_fixture_id")) == "long_text_safe_state" and snapshot.size() >= 1, "CardTrackMcpPreview switches all fixtures and reports slot snapshots")
+			viewport.remove_child(preview)
+			preview.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+	var resolution_slot_script := load(CARD_RESOLUTION_TRACK_SLOT_SCRIPT) as Script
+	_expect(resolution_slot_script != null, "CardResolutionTrackSlot script loads")
+	var resolution_slot_packed := load(CARD_RESOLUTION_TRACK_SLOT_SCENE) as PackedScene
+	_expect(resolution_slot_packed != null, "CardResolutionTrackSlot scene loads")
+	if resolution_slot_packed != null:
+		var raw_resolution_slot := resolution_slot_packed.instantiate() as Control
+		root.add_child(raw_resolution_slot)
+		await process_frame
+		for node_name in ["PublicTrackSlotStack", "PublicTrackSlotRow", "PublicTrackStatePip", "PublicTrackSlotIndex", "PublicTrackSlotLabel", "PublicTrackSlotMeta", "PublicTrackBadgeRow"]:
+			_expect(raw_resolution_slot.find_child(node_name, true, false) != null, "CardResolutionTrackSlot keeps editable node %s" % node_name)
+		_expect(raw_resolution_slot.has_method("configure") and raw_resolution_slot.has_method("track_entry") and raw_resolution_slot.has_method("resolution_slot_entry"), "CardResolutionTrackSlot reuses CardTrackSlot behavior and exposes resolution_slot_entry")
+		root.remove_child(raw_resolution_slot)
+		raw_resolution_slot.queue_free()
+
+	var resolution_fixture_script := load(CARD_RESOLUTION_TRACK_MCP_PREVIEW_FIXTURES_SCRIPT) as Script
+	_expect(resolution_fixture_script != null, "CardResolutionTrack MCP preview fixtures script loads")
+	var resolution_fixtures: RefCounted = resolution_fixture_script.new() if resolution_fixture_script != null else null
+	var expected_resolution_ids := ["empty_track", "queued_anonymous_cards", "active_reveal", "auction_window", "counter_response_window", "temporary_decision_pending", "resolved_history", "long_queue_overflow", "privacy_owner_hidden"]
+	if resolution_fixtures != null:
+		var resolution_ids_variant: Variant = resolution_fixtures.call("preview_ids")
+		var resolution_ids: Array = resolution_ids_variant if resolution_ids_variant is Array else []
+		var resolution_ids_ok := resolution_ids.size() == expected_resolution_ids.size()
+		for id in expected_resolution_ids:
+			resolution_ids_ok = resolution_ids_ok and resolution_ids.has(id)
+			var fixture_variant: Variant = resolution_fixtures.call("fixture", id)
+			var fixture: Dictionary = fixture_variant if fixture_variant is Dictionary else {}
+			var track_state: Dictionary = fixture.get("track_state", {}) if fixture.get("track_state", {}) is Dictionary else {}
+			_expect(str(fixture.get("id", "")) == id and track_state.has("entries") and not _variant_contains_callable(fixture) and not _variant_contains_object(fixture), "CardResolutionTrack MCP fixture %s is pure data with track_state" % id)
+		_expect(resolution_ids_ok, "CardResolutionTrack MCP fixtures cover all requested resolution states")
+
+	var resolution_track_script := load(CARD_RESOLUTION_TRACK_SCRIPT) as Script
+	_expect(resolution_track_script != null, "CardResolutionTrack script loads")
+	var resolution_track_packed := load(CARD_RESOLUTION_TRACK_SCENE) as PackedScene
+	_expect(resolution_track_packed != null, "CardResolutionTrack scene loads")
+	if resolution_track_packed != null and resolution_fixtures != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(1280, 240)
+		root.add_child(viewport)
+		var resolution_track := resolution_track_packed.instantiate() as Control
+		viewport.add_child(resolution_track)
+		await process_frame
+		for node_name in ["TrackHeader", "QueueRail", "ActiveResolutionSlot", "NextQueueRail", "HistoryRail", "AuctionResponseLayer", "AuctionResponseActionRow", "AuctionResponseDisabledReasonLabel", "PrivacyHintLayer", "EmptyStateLayer"]:
+			_expect(resolution_track.find_child(node_name, true, false) != null, "CardResolutionTrack contains editable node %s" % node_name)
+		_expect(resolution_track.has_method("set_track_state") and resolution_track.has_method("get_debug_snapshot") and resolution_track.has_method("set_entries") and resolution_track.has_method("set_hovered_track_action"), "CardResolutionTrack exposes new state API plus old compatibility methods")
+		_expect(resolution_track.has_signal("track_action_requested") and resolution_track.has_signal("card_slot_selected") and resolution_track.has_signal("track_entry_selected") and resolution_track.has_signal("track_entry_opened"), "CardResolutionTrack exposes new and compatibility signals")
+		var selected_slot_ids: Array[String] = []
+		var requested_actions: Array[String] = []
+		var compatibility_selected_actions: Array[String] = []
+		resolution_track.connect("card_slot_selected", func(slot_id: String) -> void:
+			selected_slot_ids.append(slot_id)
+		)
+		resolution_track.connect("track_action_requested", func(action_id: String) -> void:
+			requested_actions.append(action_id)
+		)
+		resolution_track.connect("track_entry_selected", func(entry: Dictionary) -> void:
+			compatibility_selected_actions.append(str(entry.get("select_action", "")))
+		)
+		var active_resolution_fixture: Dictionary = resolution_fixtures.call("fixture", "active_reveal") as Dictionary
+		resolution_track.call("set_track_state", active_resolution_fixture.get("track_state", {}))
+		await process_frame
+		var active_slot := resolution_track.find_child("CardResolutionTrackSlot_Active_01", true, false) as Control
+		_expect(active_slot != null and active_slot.find_child("PublicTrackSlotLabel", true, false) != null, "CardResolutionTrack instantiates editable active CardResolutionTrackSlot")
+		if active_slot != null:
+			var click := InputEventMouseButton.new()
+			click.button_index = MOUSE_BUTTON_LEFT
+			click.pressed = true
+			active_slot.gui_input.emit(click)
+			await process_frame
+		_expect(selected_slot_ids.has("track_9110") and requested_actions.has("track_select_9110") and compatibility_selected_actions.has("track_select_9110"), "CardResolutionTrack forwards slot selection through new and compatibility action flows")
+		var selected_snapshot: Dictionary = resolution_track.call("get_debug_snapshot") as Dictionary
+		var selected_snapshot_ids: Array = selected_snapshot.get("selected_slot_ids", []) if selected_snapshot.get("selected_slot_ids", []) is Array else []
+		_expect(selected_snapshot_ids.has("track_9110"), "CardResolutionTrack keeps selected visual state after slot click")
+		var auction_fixture: Dictionary = resolution_fixtures.call("fixture", "auction_window") as Dictionary
+		resolution_track.call("set_track_state", auction_fixture.get("track_state", {}))
+		await process_frame
+		var auction_snapshot: Dictionary = resolution_track.call("get_debug_snapshot") as Dictionary
+		var auction_button := resolution_track.find_child("CardResolutionTrackAction_track_auction_bid_9120", true, false) as Button
+		if auction_button != null:
+			auction_button.emit_signal("pressed")
+			await process_frame
+		_expect(bool(auction_snapshot.get("auction_visible", false)) and int(auction_snapshot.get("queue_count", 0)) >= 3 and int(auction_snapshot.get("response_action_count", 0)) >= 1 and requested_actions.has("track_auction_bid_9120"), "CardResolutionTrack renders auction window, queue lane, and response action")
+		var counter_fixture: Dictionary = resolution_fixtures.call("fixture", "counter_response_window") as Dictionary
+		resolution_track.call("set_track_state", counter_fixture.get("track_state", {}))
+		await process_frame
+		var disabled_button := resolution_track.find_child("CardResolutionTrackAction_track_counter_no_energy", true, false) as Button
+		var disabled_reason := resolution_track.find_child("AuctionResponseDisabledReasonLabel", true, false) as Label
+		_expect(disabled_button != null and disabled_button.disabled and disabled_reason != null and disabled_reason.visible and disabled_reason.text.contains("能量不足"), "CardResolutionTrack displays disabled response action and reason without changing action semantics")
+		var long_fixture: Dictionary = resolution_fixtures.call("fixture", "long_queue_overflow") as Dictionary
+		resolution_track.call("set_track_state", long_fixture.get("track_state", {}))
+		await process_frame
+		var long_snapshot: Dictionary = resolution_track.call("get_debug_snapshot") as Dictionary
+		_expect(int(long_snapshot.get("queue_count", 0)) >= 10, "CardResolutionTrack keeps long queue overflow in the queue rail")
+		var privacy_fixture: Dictionary = resolution_fixtures.call("fixture", "privacy_owner_hidden") as Dictionary
+		resolution_track.call("set_track_state", privacy_fixture.get("track_state", {}))
+		await process_frame
+		var privacy_snapshot: Dictionary = resolution_track.call("get_debug_snapshot") as Dictionary
+		_expect(not bool(privacy_snapshot.get("has_private_text", true)) and not _node_tree_text(resolution_track).to_lower().contains("hidden_owner"), "CardResolutionTrack sanitizes private owner fields before display")
+		viewport.remove_child(resolution_track)
+		resolution_track.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+	var public_track_packed := load("res://scenes/ui/PublicTrack.tscn") as PackedScene
+	_expect(public_track_packed != null, "PublicTrack scene loads after CardResolutionTrack replacement")
+	if public_track_packed != null:
+		var public_track := public_track_packed.instantiate() as Control
+		root.add_child(public_track)
+		await process_frame
+		_expect(public_track.has_method("set_track_state") and public_track.has_method("set_entries") and public_track.has_signal("track_entry_selected"), "PublicTrack now instances sceneized CardResolutionTrack while preserving old track API")
+		root.remove_child(public_track)
+		public_track.queue_free()
+	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(game_screen_source.contains("set_track_state") and game_screen_source.contains("card_resolution_track"), "GameScreen prefers sceneized CardResolutionTrack state before set_entries fallback")
+	_expect(game_screen_source.contains("track_action_requested") and game_screen_source.contains("func _on_track_action_requested") and game_screen_source.contains("func _emit_track_action_request") and game_screen_source.contains("_last_track_action_bridge_frame"), "GameScreen bridges CardResolutionTrack action requests through the existing action_requested flow with duplicate protection")
+	var table_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/table_snapshot.gd")
+	_expect(table_snapshot_source.contains("_normalize_card_resolution_actions") and table_snapshot_source.contains("\"actions\": _normalize_card_resolution_actions"), "TableSnapshot preserves CardResolutionTrack auction response actions as pure UI payload")
+	var table_viewmodel_source := FileAccess.get_file_as_string("res://scripts/runtime/game_table_viewmodel_runtime_service.gd")
+	_expect(table_viewmodel_source.contains("func compose_card_surfaces") and table_viewmodel_source.contains("\"card_resolution_track\"") and not main_source.contains("func _runtime_card_resolution_track_snapshot_source") and not main_source.contains("func _build_card_resolution_track") and not main_source.contains("func _refresh_card_resolution_track"), "GameTableViewModelRuntimeService supplies the sceneized track payload without a parallel main.gd renderer")
+
+	var resolution_preview_packed := load(CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCENE) as PackedScene
+	_expect(resolution_preview_packed != null, "CardResolutionTrackMcpPreview scene loads")
+	if resolution_preview_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(1280, 720)
+		root.add_child(viewport)
+		var resolution_preview := resolution_preview_packed.instantiate() as Control
+		_expect(resolution_preview != null, "CardResolutionTrackMcpPreview root is Control")
+		if resolution_preview != null:
+			viewport.add_child(resolution_preview)
+			await process_frame
+			for node_name in ["CardResolutionTrackFixtureList", "CardResolutionTrackPreviewHost", "CardResolutionTrackPreviewSummaryLabel", "CardResolutionTrackPreviewStatusLabel", "CardResolutionTrackPreviewActionLabel", "CardResolutionTrack"]:
+				_expect(resolution_preview.find_child(node_name, true, false) != null, "CardResolutionTrackMcpPreview contains %s" % node_name)
+			_expect(resolution_preview.has_method("preview_ids") and resolution_preview.has_method("apply_fixture") and resolution_preview.has_method("selected_fixture_id") and resolution_preview.has_method("current_track_debug_snapshot"), "CardResolutionTrackMcpPreview exposes testable fixture switching methods")
+			var all_switched := true
+			for id in expected_resolution_ids:
+				all_switched = all_switched and bool(resolution_preview.call("apply_fixture", id))
+				await process_frame
+			var preview_snapshot: Dictionary = resolution_preview.call("current_track_debug_snapshot") as Dictionary
+			var preview_text := str(resolution_preview.call("current_track_node_text")).to_lower()
+			_expect(all_switched and str(resolution_preview.call("selected_fixture_id")) == "privacy_owner_hidden" and not preview_text.contains("private_target") and not bool(preview_snapshot.get("has_private_text", true)), "CardResolutionTrackMcpPreview switches all fixtures and keeps private text hidden")
+			viewport.remove_child(resolution_preview)
+			resolution_preview.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+	var resolution_interaction_script := load(CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCRIPT) as Script
+	_expect(resolution_interaction_script != null, "CardResolutionTrackInteractionBench script loads")
+	var resolution_interaction_packed := load(CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE) as PackedScene
+	_expect(resolution_interaction_packed != null, "CardResolutionTrackInteractionBench scene loads")
+	if resolution_interaction_packed != null:
+		var resolution_interaction_bench := resolution_interaction_packed.instantiate() as Control
+		_expect(resolution_interaction_bench != null, "CardResolutionTrackInteractionBench root is Control")
+		if resolution_interaction_bench != null:
+			for node_name in ["CardResolutionTrackInteractionStatusLabel", "CardResolutionTrackInteractionSummaryLabel", "CardResolutionTrackInteractionPreviewHost", "CardResolutionTrackMcpPreview"]:
+				_expect(resolution_interaction_bench.find_child(node_name, true, false) != null, "CardResolutionTrackInteractionBench contains %s" % node_name)
+			_expect(resolution_interaction_bench.has_method("output_dir") and resolution_interaction_bench.has_method("interaction_cases") and resolution_interaction_bench.has_method("build_interaction_manifest_preview") and resolution_interaction_bench.has_method("run_interaction_suite"), "CardResolutionTrackInteractionBench exposes interaction QA methods")
+			var interaction_output_dir := str(resolution_interaction_bench.call("output_dir"))
+			var interaction_screenshot_path := str(resolution_interaction_bench.call("screenshot_path")) if resolution_interaction_bench.has_method("screenshot_path") else ""
+			_expect(interaction_output_dir == CARD_RESOLUTION_TRACK_INTERACTION_OUTPUT_DIR and interaction_output_dir.begins_with("user://") and not interaction_output_dir.contains("res://reports"), "CardResolutionTrackInteractionBench writes output under user://")
+			_expect(interaction_screenshot_path == CARD_RESOLUTION_TRACK_INTERACTION_SCREENSHOT_PATH and interaction_screenshot_path.begins_with("user://") and not interaction_screenshot_path.contains("res://reports"), "CardResolutionTrackInteractionBench exposes user:// screenshot target")
+			var interaction_cases: Array = resolution_interaction_bench.call("interaction_cases") as Array
+			var expected_case_ids := ["select_queued_card", "open_active_card", "auction_response_action", "disabled_response_action", "counter_response_window", "resolved_history", "long_queue_overflow", "empty_track_safe_state"]
+			var seen_case_ids := {}
+			var case_fields_ok := interaction_cases.size() == expected_case_ids.size()
+			for case_variant in interaction_cases:
+				var case: Dictionary = case_variant if case_variant is Dictionary else {}
+				seen_case_ids[str(case.get("case_id", ""))] = true
+				case_fields_ok = case_fields_ok and case.has("case_id") and case.has("fixture_id") and case.has("clicked_slot_id") and case.has("expected_action_id") and case.has("interaction")
+			for case_id in expected_case_ids:
+				case_fields_ok = case_fields_ok and seen_case_ids.has(case_id)
+			var interaction_manifest: Dictionary = resolution_interaction_bench.call("build_interaction_manifest_preview") as Dictionary
+			var interaction_records: Array = interaction_manifest.get("records", []) if interaction_manifest.get("records", []) is Array else []
+			var interaction_fields_ok := interaction_records.size() == expected_case_ids.size()
+			for record_variant in interaction_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				for field_name in ["case_id", "fixture_id", "clicked_slot_id", "emitted_signal", "emitted_action_id", "selected_checked", "disabled_checked", "privacy_checked", "layout_checked", "passed", "notes"]:
+					interaction_fields_ok = interaction_fields_ok and record.has(field_name)
+			_expect(case_fields_ok and not _variant_contains_callable(interaction_cases) and not _variant_contains_object(interaction_cases), "CardResolutionTrackInteractionBench covers fixed interaction cases as pure data")
+			_expect(str(interaction_manifest.get("output_dir", "")) == CARD_RESOLUTION_TRACK_INTERACTION_OUTPUT_DIR and str(interaction_manifest.get("screenshot_path", "")) == CARD_RESOLUTION_TRACK_INTERACTION_SCREENSHOT_PATH and interaction_fields_ok and not _variant_contains_callable(interaction_manifest) and not _variant_contains_object(interaction_manifest), "CardResolutionTrackInteractionBench manifest preview contains required pure-data records")
+			resolution_interaction_bench.queue_free()
+
+	var runtime_resolution_fixture_script := load(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_FIXTURES_SCRIPT) as Script
+	_expect(runtime_resolution_fixture_script != null, "RuntimeCardResolutionTrackFlow fixtures script loads")
+	var runtime_resolution_fixtures: RefCounted = runtime_resolution_fixture_script.new() if runtime_resolution_fixture_script != null else null
+	var expected_runtime_resolution_case_ids := ["runtime_public_track_loads", "select_runtime_queued_card", "open_runtime_active_card", "runtime_auction_response_action", "runtime_disabled_response_action", "runtime_counter_response_window", "runtime_resolved_history_readonly", "runtime_long_queue_layout", "runtime_empty_track_safe_state", "runtime_privacy_boundary", "runtime_group_organize_window", "runtime_group_lock_window", "runtime_group_contiguous_order", "runtime_group_bid_chain_privacy"]
+	if runtime_resolution_fixtures != null:
+		var runtime_cases_variant: Variant = runtime_resolution_fixtures.call("cases")
+		var runtime_cases: Array = runtime_cases_variant if runtime_cases_variant is Array else []
+		var runtime_cases_ok := runtime_cases.size() == expected_runtime_resolution_case_ids.size()
+		var runtime_seen_case_ids := {}
+		for case_variant in runtime_cases:
+			var case: Dictionary = case_variant if case_variant is Dictionary else {}
+			runtime_seen_case_ids[str(case.get("case_id", ""))] = true
+			var track_state: Dictionary = case.get("track_state", {}) if case.get("track_state", {}) is Dictionary else {}
+			runtime_cases_ok = runtime_cases_ok and case.has("case_id") and case.has("fixture_id") and case.has("interaction") and case.has("clicked_slot_id") and case.has("expected_action_id") and track_state.has("entries")
+			var table_state: Dictionary = runtime_resolution_fixtures.call("table_state_for_case", case) as Dictionary
+			runtime_cases_ok = runtime_cases_ok and table_state.has("card_resolution_track") and table_state.has("card_track")
+		for case_id in expected_runtime_resolution_case_ids:
+			runtime_cases_ok = runtime_cases_ok and runtime_seen_case_ids.has(case_id)
+		_expect(runtime_cases_ok and not _variant_contains_callable(runtime_cases) and not _variant_contains_object(runtime_cases), "RuntimeCardResolutionTrackFlow fixtures cover fourteen pure-data GameScreen cases including the shared group window")
+	var shared_group_window_script := load(SHARED_CARD_GROUP_WINDOW_SCRIPT) as Script
+	_expect(shared_group_window_script != null, "SharedCardGroupWindow pure-data rule module loads")
+	if shared_group_window_script != null:
+		var shared_group_window := shared_group_window_script.new() as RefCounted
+		_expect(shared_group_window != null and str(shared_group_window.call("phase_for_remaining", 30.0)) == "organize" and str(shared_group_window.call("phase_for_remaining", 5.0)) == "lock", "SharedCardGroupWindow exposes the 25-second organize and 5-second lock phases")
+
+	var runtime_resolution_script := load(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCRIPT) as Script
+	_expect(runtime_resolution_script != null, "RuntimeCardResolutionTrackFlowBench script loads")
+	var runtime_resolution_packed := load(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE) as PackedScene
+	_expect(runtime_resolution_packed != null, "RuntimeCardResolutionTrackFlowBench scene loads")
+	if runtime_resolution_packed != null:
+		var runtime_resolution_bench := runtime_resolution_packed.instantiate() as Control
+		_expect(runtime_resolution_bench != null, "RuntimeCardResolutionTrackFlowBench root is Control")
+		if runtime_resolution_bench != null:
+			for node_name in ["RuntimeCardResolutionTrackFlowStatusLabel", "RuntimeCardResolutionTrackFlowSummaryLabel", "RuntimeCardResolutionTrackFlowPreviewHost", "RuntimeCardResolutionTrackFlowViewportContainer", "RuntimeCardResolutionTrackFlowPreviewViewport"]:
+				_expect(runtime_resolution_bench.find_child(node_name, true, false) != null, "RuntimeCardResolutionTrackFlowBench contains %s" % node_name)
+			_expect(runtime_resolution_bench.has_method("output_dir") and runtime_resolution_bench.has_method("flow_cases") and runtime_resolution_bench.has_method("build_flow_manifest_preview") and runtime_resolution_bench.has_method("run_flow_suite"), "RuntimeCardResolutionTrackFlowBench exposes flow QA methods")
+			var runtime_output_dir := str(runtime_resolution_bench.call("output_dir"))
+			var runtime_screenshot_path := str(runtime_resolution_bench.call("screenshot_path")) if runtime_resolution_bench.has_method("screenshot_path") else ""
+			_expect(runtime_output_dir == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_OUTPUT_DIR and runtime_output_dir.begins_with("user://") and not runtime_output_dir.contains("res://reports"), "RuntimeCardResolutionTrackFlowBench writes output under user://")
+			_expect(runtime_screenshot_path == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_SCREENSHOT_PATH and runtime_screenshot_path.begins_with("user://") and not runtime_screenshot_path.contains("res://reports"), "RuntimeCardResolutionTrackFlowBench exposes user:// screenshot target")
+			var runtime_flow_cases: Array = runtime_resolution_bench.call("flow_cases") as Array
+			var flow_case_fields_ok := runtime_flow_cases.size() == expected_runtime_resolution_case_ids.size()
+			var runtime_flow_seen := {}
+			for case_variant in runtime_flow_cases:
+				var case: Dictionary = case_variant if case_variant is Dictionary else {}
+				runtime_flow_seen[str(case.get("case_id", ""))] = true
+				for field_name in ["case_id", "fixture_id", "interaction", "clicked_slot_id", "expected_action_id", "expected_inspector_text", "track_state"]:
+					flow_case_fields_ok = flow_case_fields_ok and case.has(field_name)
+			for case_id in expected_runtime_resolution_case_ids:
+				flow_case_fields_ok = flow_case_fields_ok and runtime_flow_seen.has(case_id)
+			var runtime_manifest: Dictionary = runtime_resolution_bench.call("build_flow_manifest_preview") as Dictionary
+			var runtime_records: Array = runtime_manifest.get("records", []) if runtime_manifest.get("records", []) is Array else []
+			var runtime_manifest_fields_ok := runtime_records.size() == expected_runtime_resolution_case_ids.size()
+			for record_variant in runtime_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				for field_name in ["case_id", "fixture_id", "clicked_slot_id", "clicked_action_id", "emitted_action_id", "inspector_checked", "disabled_checked", "privacy_checked", "layout_checked", "group_window_checked", "game_screen_signal_checked", "controller_checked", "controller_missing", "controller_authoritative", "legacy_state_fallback_used", "passed", "notes"]:
+					runtime_manifest_fields_ok = runtime_manifest_fields_ok and record.has(field_name)
+			_expect(flow_case_fields_ok and not _variant_contains_callable(runtime_flow_cases) and not _variant_contains_object(runtime_flow_cases), "RuntimeCardResolutionTrackFlowBench covers fixed runtime cases as pure data")
+			_expect(str(runtime_manifest.get("output_dir", "")) == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_OUTPUT_DIR and str(runtime_manifest.get("screenshot_path", "")) == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_SCREENSHOT_PATH and runtime_manifest_fields_ok and not _variant_contains_callable(runtime_manifest) and not _variant_contains_object(runtime_manifest), "RuntimeCardResolutionTrackFlowBench manifest preview contains required pure-data records")
+			runtime_resolution_bench.queue_free()
+
+
+func _check_space_syndicate_design_qa_addon() -> void:
+	_expect(FileAccess.file_exists(DESIGN_QA_PLUGIN_CFG), "Space Syndicate Design QA plugin.cfg exists")
+	_expect(ResourceLoader.exists(DESIGN_QA_PLUGIN_SCRIPT), "Space Syndicate Design QA EditorPlugin script exists")
+	_expect(ResourceLoader.exists(DESIGN_QA_DOCK_SCRIPT), "Space Syndicate Design QA dock script exists")
+	_expect(ResourceLoader.exists(DESIGN_QA_DOCK_SCENE), "Space Syndicate Design QA dock scene exists")
+	_expect(ResourceLoader.exists(TEMPORARY_DECISION_CAPTURE_BENCH_SCENE), "Temporary Decision Overlay Capture Bench scene exists")
+	_expect(ResourceLoader.exists(TEMPORARY_DECISION_CAPTURE_BENCH_SCRIPT), "Temporary Decision Overlay Capture Bench script exists")
+	var config := ConfigFile.new()
+	var config_error := config.load(DESIGN_QA_PLUGIN_CFG)
+	_expect(config_error == OK, "Space Syndicate Design QA plugin.cfg loads")
+	if config_error == OK:
+		_expect(str(config.get_value("plugin", "name", "")) == "Space Syndicate Design QA", "Space Syndicate Design QA plugin.cfg declares the expected plugin name")
+		_expect(str(config.get_value("plugin", "script", "")) == "space_syndicate_design_qa_plugin.gd", "Space Syndicate Design QA plugin.cfg points at the EditorPlugin script")
+	var enabled_variant: Variant = ProjectSettings.get_setting("editor_plugins/enabled", PackedStringArray())
+	var enabled_paths: Array[String] = []
+	if enabled_variant is PackedStringArray:
+		for path_variant in enabled_variant:
+			enabled_paths.append(str(path_variant))
+	elif enabled_variant is Array:
+		for path_variant in enabled_variant:
+			enabled_paths.append(str(path_variant))
+	_expect(enabled_paths.has(DESIGN_QA_PLUGIN_CFG), "project.godot registers the Space Syndicate Design QA editor plugin")
+	var plugin_script := load(DESIGN_QA_PLUGIN_SCRIPT) as Script
+	_expect(plugin_script != null, "Space Syndicate Design QA EditorPlugin script loads")
+	var dock_script := load(DESIGN_QA_DOCK_SCRIPT) as Script
+	_expect(dock_script != null, "Space Syndicate Design QA dock script loads")
+	var packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	_expect(packed != null, "SpaceSyndicateDesignQADock scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(360, 720)
+	root.add_child(viewport)
+	var dock := packed.instantiate() as Control
+	_expect(dock != null, "SpaceSyndicateDesignQADock root is Control")
+	if dock == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	viewport.add_child(dock)
+	await process_frame
+	for node_name in ["OpenMcpEditabilityHubButton", "RunMcpEditabilityHubButton", "OpenPlayerTurnPreviewButton", "RunPlayerTurnPreviewButton", "OpenPlayerTurnInteractionBenchButton", "RunPlayerTurnInteractionBenchButton", "OpenPlayerTurnInteractionQAOutputFolderButton", "OpenRuntimePlayerFlowBenchButton", "RunRuntimePlayerFlowBenchButton", "OpenRuntimePlayerFlowOutputFolderButton", "OpenFirstPlayableLoopBenchButton", "RunFirstPlayableLoopBenchButton", "OpenFirstPlayableLoopOutputFolderButton", "OpenFirstRoundRuntimePlayableLoopBenchButton", "RunFirstRoundRuntimePlayableLoopBenchButton", "OpenFirstRoundRuntimePlayableLoopOutputFolderButton", "OpenFirstMissionSpineBenchButton", "RunFirstMissionSpineBenchButton", "OpenFirstMissionSpineOutputFolderButton", "OpenFirstMissionRuntimeMainBenchButton", "RunFirstMissionRuntimeMainBenchButton", "OpenFirstMissionRuntimeMainOutputFolderButton", "OpenPlanetMapPreviewButton", "RunPlanetMapPreviewButton", "OpenPlanetMapViewButton", "OpenPlanetDistrictNodeButton", "OpenPlanetDistrictPolygonButton", "OpenPlanetMonsterTokenButton", "OpenPlanetRouteMarkerButton", "OpenPlanetRouteSegmentButton", "OpenPlanetMovementTrailButton", "OpenPlanetMapEventEffectButton", "OpenPlanetActionCalloutButton", "OpenPlanetGlobeBackdropButton", "OpenPlanetOrbitGuideButton", "OpenPlanetFocusRangeOverlayButton", "OpenPlanetScaleHintButton", "OpenPlanetRenderCutoverBenchButton", "RunPlanetRenderCutoverBenchButton", "OpenPlanetRenderCutoverOutputFolderButton", "OpenPlanetInteractionBenchButton", "RunPlanetInteractionBenchButton", "OpenPlanetInteractionOutputFolderButton", "OpenSceneizationAuditButton", "RunSceneizationAuditButton", "OpenCardTrackPreviewButton", "RunCardTrackPreviewButton", "OpenCardTrackSlotButton", "OpenCardResolutionTrackButton", "OpenCardResolutionTrackSlotButton", "OpenCardResolutionTrackPreviewButton", "RunCardResolutionTrackPreviewButton", "OpenCardResolutionTrackInteractionBenchButton", "RunCardResolutionTrackInteractionBenchButton", "OpenCardResolutionTrackInteractionOutputFolderButton", "OpenRuntimeCardResolutionTrackFlowBenchButton", "RunRuntimeCardResolutionTrackFlowBenchButton", "OpenRuntimeCardResolutionTrackFlowOutputFolderButton", "OpenTemporaryDecisionPreviewButton", "RunTemporaryDecisionPreviewButton", "OpenTemporaryDecisionCaptureBenchButton", "RunTemporaryDecisionCaptureBenchButton", "OpenDesignQAOutputFolderButton", "OpenTemporaryDecisionInteractionBenchButton", "RunTemporaryDecisionInteractionBenchButton", "OpenInteractionQAOutputFolderButton", "MonsterWagerFixtureButton", "ContractResponseFixtureButton", "DiscardPurchaseFixtureButton", "MonsterTargetFixtureButton", "PlayerTargetFixtureButton", "LongTextStressHintButton", "DisabledActionHintButton", "MalformedPayloadHintButton", "FixtureTitleLabel", "FixtureSummaryLabel", "DesignQAStatusLabel"]:
+		_expect(dock.find_child(node_name, true, false) != null, "SpaceSyndicateDesignQADock contains %s" % node_name)
+		_expect(dock.has_method("preview_scene_path") and dock.has_method("capture_bench_scene_path") and dock.has_method("interaction_bench_scene_path") and dock.has_method("mcp_editability_hub_scene_path") and dock.has_method("player_turn_preview_scene_path") and dock.has_method("player_turn_interaction_bench_scene_path") and dock.has_method("runtime_player_flow_bench_scene_path") and dock.has_method("first_playable_loop_bench_scene_path") and dock.has_method("first_round_runtime_playable_loop_bench_scene_path") and dock.has_method("first_mission_spine_bench_scene_path") and dock.has_method("first_mission_runtime_main_bench_scene_path") and dock.has_method("planet_map_preview_scene_path") and dock.has_method("planet_map_view_scene_path") and dock.has_method("planet_district_node_scene_path") and dock.has_method("planet_district_polygon_scene_path") and dock.has_method("planet_monster_token_scene_path") and dock.has_method("planet_route_marker_scene_path") and dock.has_method("planet_route_segment_scene_path") and dock.has_method("planet_movement_trail_scene_path") and dock.has_method("planet_map_event_effect_scene_path") and dock.has_method("planet_action_callout_scene_path") and dock.has_method("planet_globe_backdrop_scene_path") and dock.has_method("planet_orbit_guide_scene_path") and dock.has_method("planet_focus_range_overlay_scene_path") and dock.has_method("planet_scale_hint_scene_path") and dock.has_method("planet_map_render_cutover_bench_scene_path") and dock.has_method("planet_map_interaction_bench_scene_path") and dock.has_method("planet_map_render_cutover_qa_output_dir") and dock.has_method("planet_map_interaction_qa_output_dir") and dock.has_method("sceneization_audit_preview_scene_path") and dock.has_method("card_track_preview_scene_path") and dock.has_method("card_track_slot_scene_path") and dock.has_method("card_resolution_track_scene_path") and dock.has_method("card_resolution_track_slot_scene_path") and dock.has_method("card_resolution_track_preview_scene_path") and dock.has_method("card_resolution_track_interaction_bench_scene_path") and dock.has_method("card_resolution_track_interaction_qa_output_dir") and dock.has_method("runtime_card_resolution_track_flow_bench_scene_path") and dock.has_method("runtime_card_resolution_track_flow_qa_output_dir") and dock.has_method("qa_output_dir") and dock.has_method("interaction_qa_output_dir") and dock.has_method("player_turn_interaction_qa_output_dir") and dock.has_method("runtime_player_flow_qa_output_dir") and dock.has_method("first_playable_loop_qa_output_dir") and dock.has_method("first_round_runtime_playable_loop_qa_output_dir") and dock.has_method("first_mission_spine_qa_output_dir") and dock.has_method("first_mission_runtime_main_qa_output_dir") and dock.has_method("balance_runtime_bridge_preview_scene_path") and dock.has_method("balance_runtime_bridge_bench_scene_path") and dock.has_method("balance_runtime_bridge_qa_output_dir") and dock.has_method("fixture_ids") and dock.has_method("preview_fixture") and dock.has_method("select_fixture"), "SpaceSyndicateDesignQADock exposes testable design QA methods")
+	for node_name in ["OpenCompendiumCodexPreviewButton", "RunCompendiumCodexPreviewButton", "OpenCompendiumCodexInteractionBenchButton", "RunCompendiumCodexInteractionBenchButton", "OpenCompendiumCodexOutputFolderButton"]:
+		_expect(dock.find_child(node_name, true, false) != null, "SpaceSyndicateDesignQADock contains %s" % node_name)
+	_expect(dock.has_method("compendium_codex_preview_scene_path") and dock.has_method("compendium_codex_interaction_bench_scene_path") and dock.has_method("compendium_codex_qa_output_dir"), "SpaceSyndicateDesignQADock exposes Compendium Codex QA path helpers")
+	if dock.has_method("preview_scene_path"):
+		_expect(str(dock.call("preview_scene_path")) == TEMPORARY_DECISION_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets TemporaryDecisionOverlayPreview.tscn")
+	if dock.has_method("capture_bench_scene_path"):
+		_expect(str(dock.call("capture_bench_scene_path")) == TEMPORARY_DECISION_CAPTURE_BENCH_SCENE, "SpaceSyndicateDesignQADock targets TemporaryDecisionOverlayCaptureBench.tscn")
+	if dock.has_method("interaction_bench_scene_path"):
+		_expect(str(dock.call("interaction_bench_scene_path")) == TEMPORARY_DECISION_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock targets TemporaryDecisionOverlayInteractionBench.tscn")
+	if dock.has_method("mcp_editability_hub_scene_path"):
+		_expect(str(dock.call("mcp_editability_hub_scene_path")) == MCP_EDITABILITY_HUB_SCENE, "SpaceSyndicateDesignQADock targets SpaceSyndicateMcpEditabilityHub.tscn")
+	if dock.has_method("player_turn_preview_scene_path"):
+		_expect(str(dock.call("player_turn_preview_scene_path")) == PLAYER_TURN_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets PlayerTurnMcpPreview.tscn")
+	if dock.has_method("player_turn_interaction_bench_scene_path"):
+		_expect(str(dock.call("player_turn_interaction_bench_scene_path")) == PLAYER_TURN_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock targets PlayerTurnInteractionBench.tscn")
+	if dock.has_method("runtime_player_flow_bench_scene_path"):
+		_expect(str(dock.call("runtime_player_flow_bench_scene_path")) == RUNTIME_PLAYER_TURN_FLOW_BENCH_SCENE, "SpaceSyndicateDesignQADock targets RuntimePlayerTurnFlowBench.tscn")
+	if dock.has_method("first_playable_loop_bench_scene_path"):
+		_expect(str(dock.call("first_playable_loop_bench_scene_path")) == FIRST_PLAYABLE_LOOP_BENCH_SCENE, "SpaceSyndicateDesignQADock targets FirstPlayableLoopBench.tscn")
+	if dock.has_method("first_round_runtime_playable_loop_bench_scene_path"):
+		_expect(str(dock.call("first_round_runtime_playable_loop_bench_scene_path")) == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE, "SpaceSyndicateDesignQADock targets FirstRoundRuntimePlayableLoopBench.tscn")
+	if dock.has_method("first_mission_spine_bench_scene_path"):
+		_expect(str(dock.call("first_mission_spine_bench_scene_path")) == FIRST_MISSION_SPINE_BENCH_SCENE, "SpaceSyndicateDesignQADock targets FirstMissionSpineBench.tscn")
+	if dock.has_method("first_mission_runtime_main_bench_scene_path"):
+		_expect(str(dock.call("first_mission_runtime_main_bench_scene_path")) == FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE, "SpaceSyndicateDesignQADock targets FirstMissionRuntimeMainBench.tscn")
+	if dock.has_method("planet_map_preview_scene_path"):
+		_expect(str(dock.call("planet_map_preview_scene_path")) == PLANET_MAP_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets PlanetMapMcpPreview.tscn")
+	if dock.has_method("planet_map_view_scene_path"):
+		_expect(str(dock.call("planet_map_view_scene_path")) == PLANET_MAP_VIEW_SCENE, "SpaceSyndicateDesignQADock targets PlanetMapView.tscn")
+	if dock.has_method("planet_district_node_scene_path"):
+		_expect(str(dock.call("planet_district_node_scene_path")) == PLANET_DISTRICT_NODE_SCENE, "SpaceSyndicateDesignQADock targets PlanetDistrictNode.tscn")
+	if dock.has_method("planet_district_polygon_scene_path"):
+		_expect(str(dock.call("planet_district_polygon_scene_path")) == PLANET_DISTRICT_POLYGON_SCENE, "SpaceSyndicateDesignQADock targets PlanetDistrictPolygon.tscn")
+	if dock.has_method("planet_monster_token_scene_path"):
+		_expect(str(dock.call("planet_monster_token_scene_path")) == PLANET_MONSTER_TOKEN_SCENE, "SpaceSyndicateDesignQADock targets PlanetMonsterToken.tscn")
+	if dock.has_method("planet_route_marker_scene_path"):
+		_expect(str(dock.call("planet_route_marker_scene_path")) == PLANET_ROUTE_MARKER_SCENE, "SpaceSyndicateDesignQADock targets PlanetRouteMarker.tscn")
+	if dock.has_method("planet_route_segment_scene_path"):
+		_expect(str(dock.call("planet_route_segment_scene_path")) == PLANET_ROUTE_SEGMENT_SCENE, "SpaceSyndicateDesignQADock targets PlanetRouteSegment.tscn")
+	if dock.has_method("planet_movement_trail_scene_path"):
+		_expect(str(dock.call("planet_movement_trail_scene_path")) == PLANET_MOVEMENT_TRAIL_SCENE, "SpaceSyndicateDesignQADock targets PlanetMovementTrail.tscn")
+	if dock.has_method("planet_map_event_effect_scene_path"):
+		_expect(str(dock.call("planet_map_event_effect_scene_path")) == PLANET_MAP_EVENT_EFFECT_SCENE, "SpaceSyndicateDesignQADock targets PlanetMapEventEffect.tscn")
+	if dock.has_method("planet_action_callout_scene_path"):
+		_expect(str(dock.call("planet_action_callout_scene_path")) == PLANET_ACTION_CALLOUT_SCENE, "SpaceSyndicateDesignQADock targets PlanetActionCallout.tscn")
+	if dock.has_method("planet_globe_backdrop_scene_path"):
+		_expect(str(dock.call("planet_globe_backdrop_scene_path")) == PLANET_GLOBE_BACKDROP_SCENE, "SpaceSyndicateDesignQADock targets PlanetGlobeBackdrop.tscn")
+	if dock.has_method("planet_orbit_guide_scene_path"):
+		_expect(str(dock.call("planet_orbit_guide_scene_path")) == PLANET_ORBIT_GUIDE_SCENE, "SpaceSyndicateDesignQADock targets PlanetOrbitGuide.tscn")
+	if dock.has_method("planet_focus_range_overlay_scene_path"):
+		_expect(str(dock.call("planet_focus_range_overlay_scene_path")) == PLANET_FOCUS_RANGE_OVERLAY_SCENE, "SpaceSyndicateDesignQADock targets PlanetFocusRangeOverlay.tscn")
+	if dock.has_method("planet_scale_hint_scene_path"):
+		_expect(str(dock.call("planet_scale_hint_scene_path")) == PLANET_MAP_SCALE_HINT_SCENE, "SpaceSyndicateDesignQADock targets PlanetMapScaleHint.tscn")
+	if dock.has_method("planet_map_render_cutover_bench_scene_path"):
+		_expect(str(dock.call("planet_map_render_cutover_bench_scene_path")) == PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE, "SpaceSyndicateDesignQADock targets PlanetMapRenderCutoverBench.tscn")
+	if dock.has_method("planet_map_interaction_bench_scene_path"):
+		_expect(str(dock.call("planet_map_interaction_bench_scene_path")) == PLANET_MAP_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock targets PlanetMapInteractionBench.tscn")
+	if dock.has_method("sceneization_audit_preview_scene_path"):
+		_expect(str(dock.call("sceneization_audit_preview_scene_path")) == SCENEIZATION_AUDIT_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets SceneizationAuditMcpPreview.tscn")
+	if dock.has_method("card_track_preview_scene_path"):
+		_expect(str(dock.call("card_track_preview_scene_path")) == CARD_TRACK_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets CardTrackMcpPreview.tscn")
+	if dock.has_method("card_track_slot_scene_path"):
+		_expect(str(dock.call("card_track_slot_scene_path")) == CARD_TRACK_SLOT_SCENE, "SpaceSyndicateDesignQADock targets CardTrackSlot.tscn")
+	if dock.has_method("card_resolution_track_scene_path"):
+		_expect(str(dock.call("card_resolution_track_scene_path")) == CARD_RESOLUTION_TRACK_SCENE, "SpaceSyndicateDesignQADock targets CardResolutionTrack.tscn")
+	if dock.has_method("card_resolution_track_slot_scene_path"):
+		_expect(str(dock.call("card_resolution_track_slot_scene_path")) == CARD_RESOLUTION_TRACK_SLOT_SCENE, "SpaceSyndicateDesignQADock targets CardResolutionTrackSlot.tscn")
+	if dock.has_method("card_resolution_track_preview_scene_path"):
+		_expect(str(dock.call("card_resolution_track_preview_scene_path")) == CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets CardResolutionTrackMcpPreview.tscn")
+	if dock.has_method("card_resolution_track_interaction_bench_scene_path"):
+		_expect(str(dock.call("card_resolution_track_interaction_bench_scene_path")) == CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock targets CardResolutionTrackInteractionBench.tscn")
+	if dock.has_method("runtime_card_resolution_track_flow_bench_scene_path"):
+		_expect(str(dock.call("runtime_card_resolution_track_flow_bench_scene_path")) == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE, "SpaceSyndicateDesignQADock targets RuntimeCardResolutionTrackFlowBench.tscn")
+	if dock.has_method("compendium_codex_preview_scene_path"):
+		_expect(str(dock.call("compendium_codex_preview_scene_path")) == COMPENDIUM_CODEX_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets CompendiumCodexMcpPreview.tscn")
+	if dock.has_method("compendium_codex_interaction_bench_scene_path"):
+		_expect(str(dock.call("compendium_codex_interaction_bench_scene_path")) == COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock targets CompendiumCodexInteractionBench.tscn")
+	if dock.has_method("fixture_script_path"):
+		_expect(str(dock.call("fixture_script_path")) == TEMPORARY_DECISION_FIXTURES_SCRIPT, "SpaceSyndicateDesignQADock reads the shared temporary decision fixture helper")
+	if dock.has_method("qa_output_dir"):
+		var qa_output_dir := str(dock.call("qa_output_dir"))
+		_expect(qa_output_dir == TEMPORARY_DECISION_CAPTURE_OUTPUT_DIR and qa_output_dir.begins_with("user://") and not qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Design QA output folder")
+	if dock.has_method("interaction_qa_output_dir"):
+		var interaction_qa_output_dir := str(dock.call("interaction_qa_output_dir"))
+		_expect(interaction_qa_output_dir == TEMPORARY_DECISION_INTERACTION_OUTPUT_DIR and interaction_qa_output_dir.begins_with("user://") and not interaction_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Interaction QA output folder")
+	if dock.has_method("player_turn_interaction_qa_output_dir"):
+		var player_turn_interaction_qa_output_dir := str(dock.call("player_turn_interaction_qa_output_dir"))
+		_expect(player_turn_interaction_qa_output_dir == PLAYER_TURN_INTERACTION_OUTPUT_DIR and player_turn_interaction_qa_output_dir.begins_with("user://") and not player_turn_interaction_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Player Turn Interaction QA output folder")
+	if dock.has_method("card_resolution_track_interaction_qa_output_dir"):
+		var card_resolution_interaction_qa_output_dir := str(dock.call("card_resolution_track_interaction_qa_output_dir"))
+		_expect(card_resolution_interaction_qa_output_dir == CARD_RESOLUTION_TRACK_INTERACTION_OUTPUT_DIR and card_resolution_interaction_qa_output_dir.begins_with("user://") and not card_resolution_interaction_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Card Resolution Track Interaction QA output folder")
+	if dock.has_method("runtime_card_resolution_track_flow_qa_output_dir"):
+		var runtime_card_resolution_track_flow_qa_output_dir := str(dock.call("runtime_card_resolution_track_flow_qa_output_dir"))
+		_expect(runtime_card_resolution_track_flow_qa_output_dir == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_OUTPUT_DIR and runtime_card_resolution_track_flow_qa_output_dir.begins_with("user://") and not runtime_card_resolution_track_flow_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Runtime Card Resolution Track Flow QA output folder")
+	if dock.has_method("compendium_codex_qa_output_dir"):
+		var compendium_codex_qa_output_dir := str(dock.call("compendium_codex_qa_output_dir"))
+		_expect(compendium_codex_qa_output_dir == COMPENDIUM_CODEX_OUTPUT_DIR and compendium_codex_qa_output_dir.begins_with("user://") and not compendium_codex_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Compendium Codex QA output folder")
+	if dock.has_method("runtime_player_flow_qa_output_dir"):
+		var runtime_player_flow_qa_output_dir := str(dock.call("runtime_player_flow_qa_output_dir"))
+		_expect(runtime_player_flow_qa_output_dir == RUNTIME_PLAYER_TURN_FLOW_OUTPUT_DIR and runtime_player_flow_qa_output_dir.begins_with("user://") and not runtime_player_flow_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Runtime Player Flow QA output folder")
+	if dock.has_method("first_playable_loop_qa_output_dir"):
+		var first_playable_loop_qa_output_dir := str(dock.call("first_playable_loop_qa_output_dir"))
+		_expect(first_playable_loop_qa_output_dir == FIRST_PLAYABLE_LOOP_OUTPUT_DIR and first_playable_loop_qa_output_dir.begins_with("user://") and not first_playable_loop_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// First Playable Loop QA output folder")
+	if dock.has_method("first_round_runtime_playable_loop_qa_output_dir"):
+		var first_round_runtime_playable_loop_qa_output_dir := str(dock.call("first_round_runtime_playable_loop_qa_output_dir"))
+		_expect(first_round_runtime_playable_loop_qa_output_dir == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_OUTPUT_DIR and first_round_runtime_playable_loop_qa_output_dir.begins_with("user://") and not first_round_runtime_playable_loop_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// First Round Runtime Playable Loop QA output folder")
+	if dock.has_method("first_mission_spine_qa_output_dir"):
+		var first_mission_spine_qa_output_dir := str(dock.call("first_mission_spine_qa_output_dir"))
+		_expect(first_mission_spine_qa_output_dir == FIRST_MISSION_SPINE_OUTPUT_DIR and first_mission_spine_qa_output_dir.begins_with("user://") and not first_mission_spine_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// First Mission Spine QA output folder")
+	if dock.has_method("first_mission_runtime_main_qa_output_dir"):
+		var first_mission_runtime_main_qa_output_dir := str(dock.call("first_mission_runtime_main_qa_output_dir"))
+		_expect(first_mission_runtime_main_qa_output_dir == FIRST_MISSION_RUNTIME_MAIN_OUTPUT_DIR and first_mission_runtime_main_qa_output_dir.begins_with("user://") and not first_mission_runtime_main_qa_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// First Mission Runtime Main QA output folder")
+	if dock.has_method("planet_map_render_cutover_qa_output_dir"):
+		var planet_map_render_cutover_output_dir := str(dock.call("planet_map_render_cutover_qa_output_dir"))
+		_expect(planet_map_render_cutover_output_dir == PLANET_MAP_RENDER_CUTOVER_OUTPUT_DIR and planet_map_render_cutover_output_dir.begins_with("user://") and not planet_map_render_cutover_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Planet Map Render Cutover QA output folder")
+	if dock.has_method("planet_map_interaction_qa_output_dir"):
+		var planet_map_interaction_output_dir := str(dock.call("planet_map_interaction_qa_output_dir"))
+		_expect(planet_map_interaction_output_dir == PLANET_MAP_INTERACTION_OUTPUT_DIR and planet_map_interaction_output_dir.begins_with("user://") and not planet_map_interaction_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Planet Map Interaction QA output folder")
+	var fixture_ids_variant: Variant = dock.call("fixture_ids") if dock.has_method("fixture_ids") else []
+	var fixture_ids: Array = fixture_ids_variant if fixture_ids_variant is Array else []
+	var expected_ids := ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"]
+	var has_all_fixtures := fixture_ids.size() == expected_ids.size()
+	for id in expected_ids:
+		has_all_fixtures = has_all_fixtures and fixture_ids.has(id)
+		var fixture_variant: Variant = dock.call("preview_fixture", id) if dock.has_method("preview_fixture") else {}
+		var fixture: Dictionary = fixture_variant if fixture_variant is Dictionary else {}
+		_expect(str(fixture.get("kind", "")) == id and not _variant_contains_callable(fixture) and not _variant_contains_object(fixture), "SpaceSyndicateDesignQADock exposes pure-data fixture %s" % id)
+		if dock.has_method("select_fixture"):
+			dock.call("select_fixture", id)
+			await process_frame
+			_expect(str(dock.call("selected_fixture_id")) == id and _node_tree_text(dock).contains(id), "SpaceSyndicateDesignQADock selects fixture %s and updates the dock summary" % id)
+	_expect(has_all_fixtures, "SpaceSyndicateDesignQADock lists all five temporary decision fixture ids")
+	var open_paths: Array[String] = []
+	var run_paths: Array[String] = []
+	var open_capture_paths: Array[String] = []
+	var run_capture_paths: Array[String] = []
+	var open_interaction_paths: Array[String] = []
+	var run_interaction_paths: Array[String] = []
+	var open_mcp_hub_paths: Array[String] = []
+	var run_mcp_hub_paths: Array[String] = []
+	var open_player_turn_paths: Array[String] = []
+	var run_player_turn_paths: Array[String] = []
+	var open_player_turn_interaction_paths: Array[String] = []
+	var run_player_turn_interaction_paths: Array[String] = []
+	var open_runtime_player_flow_paths: Array[String] = []
+	var run_runtime_player_flow_paths: Array[String] = []
+	var open_first_playable_loop_paths: Array[String] = []
+	var run_first_playable_loop_paths: Array[String] = []
+	var open_first_round_runtime_playable_loop_paths: Array[String] = []
+	var run_first_round_runtime_playable_loop_paths: Array[String] = []
+	var open_first_mission_spine_paths: Array[String] = []
+	var run_first_mission_spine_paths: Array[String] = []
+	var open_first_mission_runtime_main_paths: Array[String] = []
+	var run_first_mission_runtime_main_paths: Array[String] = []
+	var open_planet_map_preview_paths: Array[String] = []
+	var run_planet_map_preview_paths: Array[String] = []
+	var open_planet_map_view_paths: Array[String] = []
+	var open_planet_district_node_paths: Array[String] = []
+	var open_planet_district_polygon_paths: Array[String] = []
+	var open_planet_monster_token_paths: Array[String] = []
+	var open_planet_route_marker_paths: Array[String] = []
+	var open_planet_route_segment_paths: Array[String] = []
+	var open_planet_movement_trail_paths: Array[String] = []
+	var open_planet_map_event_effect_paths: Array[String] = []
+	var open_planet_action_callout_paths: Array[String] = []
+	var open_planet_globe_backdrop_paths: Array[String] = []
+	var open_planet_orbit_guide_paths: Array[String] = []
+	var open_planet_focus_range_overlay_paths: Array[String] = []
+	var open_planet_scale_hint_paths: Array[String] = []
+	var open_planet_render_cutover_bench_paths: Array[String] = []
+	var run_planet_render_cutover_bench_paths: Array[String] = []
+	var open_planet_interaction_bench_paths: Array[String] = []
+	var run_planet_interaction_bench_paths: Array[String] = []
+	var open_sceneization_audit_paths: Array[String] = []
+	var run_sceneization_audit_paths: Array[String] = []
+	var open_card_track_preview_paths: Array[String] = []
+	var run_card_track_preview_paths: Array[String] = []
+	var open_card_track_slot_paths: Array[String] = []
+	var open_card_resolution_track_paths: Array[String] = []
+	var open_card_resolution_track_slot_paths: Array[String] = []
+	var open_card_resolution_track_preview_paths: Array[String] = []
+	var run_card_resolution_track_preview_paths: Array[String] = []
+	var open_card_resolution_track_interaction_paths: Array[String] = []
+	var run_card_resolution_track_interaction_paths: Array[String] = []
+	var open_runtime_card_resolution_track_flow_paths: Array[String] = []
+	var run_runtime_card_resolution_track_flow_paths: Array[String] = []
+	var open_compendium_codex_preview_paths: Array[String] = []
+	var run_compendium_codex_preview_paths: Array[String] = []
+	var open_compendium_codex_interaction_paths: Array[String] = []
+	var run_compendium_codex_interaction_paths: Array[String] = []
+	if dock.has_signal("open_preview_requested"):
+		dock.connect("open_preview_requested", func(scene_path: String) -> void:
+			open_paths.append(scene_path)
+		)
+	if dock.has_signal("run_preview_requested"):
+		dock.connect("run_preview_requested", func(scene_path: String) -> void:
+			run_paths.append(scene_path)
+		)
+	if dock.has_signal("open_capture_bench_requested"):
+		dock.connect("open_capture_bench_requested", func(scene_path: String) -> void:
+			open_capture_paths.append(scene_path)
+		)
+	if dock.has_signal("run_capture_bench_requested"):
+		dock.connect("run_capture_bench_requested", func(scene_path: String) -> void:
+			run_capture_paths.append(scene_path)
+		)
+	if dock.has_signal("open_interaction_bench_requested"):
+		dock.connect("open_interaction_bench_requested", func(scene_path: String) -> void:
+			open_interaction_paths.append(scene_path)
+		)
+	if dock.has_signal("run_interaction_bench_requested"):
+		dock.connect("run_interaction_bench_requested", func(scene_path: String) -> void:
+			run_interaction_paths.append(scene_path)
+		)
+	if dock.has_signal("open_mcp_editability_hub_requested"):
+		dock.connect("open_mcp_editability_hub_requested", func(scene_path: String) -> void:
+			open_mcp_hub_paths.append(scene_path)
+		)
+	if dock.has_signal("run_mcp_editability_hub_requested"):
+		dock.connect("run_mcp_editability_hub_requested", func(scene_path: String) -> void:
+			run_mcp_hub_paths.append(scene_path)
+		)
+	if dock.has_signal("open_player_turn_preview_requested"):
+		dock.connect("open_player_turn_preview_requested", func(scene_path: String) -> void:
+			open_player_turn_paths.append(scene_path)
+		)
+	if dock.has_signal("run_player_turn_preview_requested"):
+		dock.connect("run_player_turn_preview_requested", func(scene_path: String) -> void:
+			run_player_turn_paths.append(scene_path)
+		)
+	if dock.has_signal("open_player_turn_interaction_bench_requested"):
+		dock.connect("open_player_turn_interaction_bench_requested", func(scene_path: String) -> void:
+			open_player_turn_interaction_paths.append(scene_path)
+		)
+	if dock.has_signal("run_player_turn_interaction_bench_requested"):
+		dock.connect("run_player_turn_interaction_bench_requested", func(scene_path: String) -> void:
+			run_player_turn_interaction_paths.append(scene_path)
+		)
+	if dock.has_signal("open_runtime_player_flow_bench_requested"):
+		dock.connect("open_runtime_player_flow_bench_requested", func(scene_path: String) -> void:
+			open_runtime_player_flow_paths.append(scene_path)
+		)
+	if dock.has_signal("run_runtime_player_flow_bench_requested"):
+		dock.connect("run_runtime_player_flow_bench_requested", func(scene_path: String) -> void:
+			run_runtime_player_flow_paths.append(scene_path)
+		)
+	if dock.has_signal("open_first_playable_loop_bench_requested"):
+		dock.connect("open_first_playable_loop_bench_requested", func(scene_path: String) -> void:
+			open_first_playable_loop_paths.append(scene_path)
+		)
+	if dock.has_signal("run_first_playable_loop_bench_requested"):
+		dock.connect("run_first_playable_loop_bench_requested", func(scene_path: String) -> void:
+			run_first_playable_loop_paths.append(scene_path)
+		)
+	if dock.has_signal("open_first_round_runtime_playable_loop_bench_requested"):
+		dock.connect("open_first_round_runtime_playable_loop_bench_requested", func(scene_path: String) -> void:
+			open_first_round_runtime_playable_loop_paths.append(scene_path)
+		)
+	if dock.has_signal("run_first_round_runtime_playable_loop_bench_requested"):
+		dock.connect("run_first_round_runtime_playable_loop_bench_requested", func(scene_path: String) -> void:
+			run_first_round_runtime_playable_loop_paths.append(scene_path)
+		)
+	if dock.has_signal("open_first_mission_spine_bench_requested"):
+		dock.connect("open_first_mission_spine_bench_requested", func(scene_path: String) -> void:
+			open_first_mission_spine_paths.append(scene_path)
+		)
+	if dock.has_signal("run_first_mission_spine_bench_requested"):
+		dock.connect("run_first_mission_spine_bench_requested", func(scene_path: String) -> void:
+			run_first_mission_spine_paths.append(scene_path)
+		)
+	if dock.has_signal("open_first_mission_runtime_main_bench_requested"):
+		dock.connect("open_first_mission_runtime_main_bench_requested", func(scene_path: String) -> void:
+			open_first_mission_runtime_main_paths.append(scene_path)
+		)
+	if dock.has_signal("run_first_mission_runtime_main_bench_requested"):
+		dock.connect("run_first_mission_runtime_main_bench_requested", func(scene_path: String) -> void:
+			run_first_mission_runtime_main_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_map_preview_requested"):
+		dock.connect("open_planet_map_preview_requested", func(scene_path: String) -> void:
+			open_planet_map_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("run_planet_map_preview_requested"):
+		dock.connect("run_planet_map_preview_requested", func(scene_path: String) -> void:
+			run_planet_map_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_map_view_requested"):
+		dock.connect("open_planet_map_view_requested", func(scene_path: String) -> void:
+			open_planet_map_view_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_district_node_requested"):
+		dock.connect("open_planet_district_node_requested", func(scene_path: String) -> void:
+			open_planet_district_node_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_district_polygon_requested"):
+		dock.connect("open_planet_district_polygon_requested", func(scene_path: String) -> void:
+			open_planet_district_polygon_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_monster_token_requested"):
+		dock.connect("open_planet_monster_token_requested", func(scene_path: String) -> void:
+			open_planet_monster_token_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_route_marker_requested"):
+		dock.connect("open_planet_route_marker_requested", func(scene_path: String) -> void:
+			open_planet_route_marker_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_route_segment_requested"):
+		dock.connect("open_planet_route_segment_requested", func(scene_path: String) -> void:
+			open_planet_route_segment_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_movement_trail_requested"):
+		dock.connect("open_planet_movement_trail_requested", func(scene_path: String) -> void:
+			open_planet_movement_trail_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_map_event_effect_requested"):
+		dock.connect("open_planet_map_event_effect_requested", func(scene_path: String) -> void:
+			open_planet_map_event_effect_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_action_callout_requested"):
+		dock.connect("open_planet_action_callout_requested", func(scene_path: String) -> void:
+			open_planet_action_callout_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_globe_backdrop_requested"):
+		dock.connect("open_planet_globe_backdrop_requested", func(scene_path: String) -> void:
+			open_planet_globe_backdrop_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_orbit_guide_requested"):
+		dock.connect("open_planet_orbit_guide_requested", func(scene_path: String) -> void:
+			open_planet_orbit_guide_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_focus_range_overlay_requested"):
+		dock.connect("open_planet_focus_range_overlay_requested", func(scene_path: String) -> void:
+			open_planet_focus_range_overlay_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_scale_hint_requested"):
+		dock.connect("open_planet_scale_hint_requested", func(scene_path: String) -> void:
+			open_planet_scale_hint_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_render_cutover_bench_requested"):
+		dock.connect("open_planet_render_cutover_bench_requested", func(scene_path: String) -> void:
+			open_planet_render_cutover_bench_paths.append(scene_path)
+		)
+	if dock.has_signal("run_planet_render_cutover_bench_requested"):
+		dock.connect("run_planet_render_cutover_bench_requested", func(scene_path: String) -> void:
+			run_planet_render_cutover_bench_paths.append(scene_path)
+		)
+	if dock.has_signal("open_planet_interaction_bench_requested"):
+		dock.connect("open_planet_interaction_bench_requested", func(scene_path: String) -> void:
+			open_planet_interaction_bench_paths.append(scene_path)
+		)
+	if dock.has_signal("run_planet_interaction_bench_requested"):
+		dock.connect("run_planet_interaction_bench_requested", func(scene_path: String) -> void:
+			run_planet_interaction_bench_paths.append(scene_path)
+		)
+	if dock.has_signal("open_sceneization_audit_requested"):
+		dock.connect("open_sceneization_audit_requested", func(scene_path: String) -> void:
+			open_sceneization_audit_paths.append(scene_path)
+		)
+	if dock.has_signal("run_sceneization_audit_requested"):
+		dock.connect("run_sceneization_audit_requested", func(scene_path: String) -> void:
+			run_sceneization_audit_paths.append(scene_path)
+		)
+	if dock.has_signal("open_card_track_preview_requested"):
+		dock.connect("open_card_track_preview_requested", func(scene_path: String) -> void:
+			open_card_track_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("run_card_track_preview_requested"):
+		dock.connect("run_card_track_preview_requested", func(scene_path: String) -> void:
+			run_card_track_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("open_card_track_slot_requested"):
+		dock.connect("open_card_track_slot_requested", func(scene_path: String) -> void:
+			open_card_track_slot_paths.append(scene_path)
+		)
+	if dock.has_signal("open_card_resolution_track_requested"):
+		dock.connect("open_card_resolution_track_requested", func(scene_path: String) -> void:
+			open_card_resolution_track_paths.append(scene_path)
+		)
+	if dock.has_signal("open_card_resolution_track_slot_requested"):
+		dock.connect("open_card_resolution_track_slot_requested", func(scene_path: String) -> void:
+			open_card_resolution_track_slot_paths.append(scene_path)
+		)
+	if dock.has_signal("open_card_resolution_track_preview_requested"):
+		dock.connect("open_card_resolution_track_preview_requested", func(scene_path: String) -> void:
+			open_card_resolution_track_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("run_card_resolution_track_preview_requested"):
+		dock.connect("run_card_resolution_track_preview_requested", func(scene_path: String) -> void:
+			run_card_resolution_track_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("open_card_resolution_track_interaction_bench_requested"):
+		dock.connect("open_card_resolution_track_interaction_bench_requested", func(scene_path: String) -> void:
+			open_card_resolution_track_interaction_paths.append(scene_path)
+		)
+	if dock.has_signal("run_card_resolution_track_interaction_bench_requested"):
+		dock.connect("run_card_resolution_track_interaction_bench_requested", func(scene_path: String) -> void:
+			run_card_resolution_track_interaction_paths.append(scene_path)
+		)
+	if dock.has_signal("open_runtime_card_resolution_track_flow_bench_requested"):
+		dock.connect("open_runtime_card_resolution_track_flow_bench_requested", func(scene_path: String) -> void:
+			open_runtime_card_resolution_track_flow_paths.append(scene_path)
+		)
+	if dock.has_signal("run_runtime_card_resolution_track_flow_bench_requested"):
+		dock.connect("run_runtime_card_resolution_track_flow_bench_requested", func(scene_path: String) -> void:
+			run_runtime_card_resolution_track_flow_paths.append(scene_path)
+		)
+	if dock.has_signal("open_compendium_codex_preview_requested"):
+		dock.connect("open_compendium_codex_preview_requested", func(scene_path: String) -> void:
+			open_compendium_codex_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("run_compendium_codex_preview_requested"):
+		dock.connect("run_compendium_codex_preview_requested", func(scene_path: String) -> void:
+			run_compendium_codex_preview_paths.append(scene_path)
+		)
+	if dock.has_signal("open_compendium_codex_interaction_bench_requested"):
+		dock.connect("open_compendium_codex_interaction_bench_requested", func(scene_path: String) -> void:
+			open_compendium_codex_interaction_paths.append(scene_path)
+		)
+	if dock.has_signal("run_compendium_codex_interaction_bench_requested"):
+		dock.connect("run_compendium_codex_interaction_bench_requested", func(scene_path: String) -> void:
+			run_compendium_codex_interaction_paths.append(scene_path)
+		)
+	var open_mcp_hub_button := dock.find_child("OpenMcpEditabilityHubButton", true, false) as Button
+	var run_mcp_hub_button := dock.find_child("RunMcpEditabilityHubButton", true, false) as Button
+	var open_player_turn_button := dock.find_child("OpenPlayerTurnPreviewButton", true, false) as Button
+	var run_player_turn_button := dock.find_child("RunPlayerTurnPreviewButton", true, false) as Button
+	var open_player_turn_interaction_button := dock.find_child("OpenPlayerTurnInteractionBenchButton", true, false) as Button
+	var run_player_turn_interaction_button := dock.find_child("RunPlayerTurnInteractionBenchButton", true, false) as Button
+	var open_runtime_player_flow_button := dock.find_child("OpenRuntimePlayerFlowBenchButton", true, false) as Button
+	var run_runtime_player_flow_button := dock.find_child("RunRuntimePlayerFlowBenchButton", true, false) as Button
+	var open_first_playable_loop_button := dock.find_child("OpenFirstPlayableLoopBenchButton", true, false) as Button
+	var run_first_playable_loop_button := dock.find_child("RunFirstPlayableLoopBenchButton", true, false) as Button
+	var open_first_round_runtime_playable_loop_button := dock.find_child("OpenFirstRoundRuntimePlayableLoopBenchButton", true, false) as Button
+	var run_first_round_runtime_playable_loop_button := dock.find_child("RunFirstRoundRuntimePlayableLoopBenchButton", true, false) as Button
+	var open_first_mission_spine_button := dock.find_child("OpenFirstMissionSpineBenchButton", true, false) as Button
+	var run_first_mission_spine_button := dock.find_child("RunFirstMissionSpineBenchButton", true, false) as Button
+	var open_first_mission_runtime_main_button := dock.find_child("OpenFirstMissionRuntimeMainBenchButton", true, false) as Button
+	var run_first_mission_runtime_main_button := dock.find_child("RunFirstMissionRuntimeMainBenchButton", true, false) as Button
+	var open_planet_map_preview_button := dock.find_child("OpenPlanetMapPreviewButton", true, false) as Button
+	var run_planet_map_preview_button := dock.find_child("RunPlanetMapPreviewButton", true, false) as Button
+	var open_planet_map_view_button := dock.find_child("OpenPlanetMapViewButton", true, false) as Button
+	var open_planet_district_node_button := dock.find_child("OpenPlanetDistrictNodeButton", true, false) as Button
+	var open_planet_district_polygon_button := dock.find_child("OpenPlanetDistrictPolygonButton", true, false) as Button
+	var open_planet_monster_token_button := dock.find_child("OpenPlanetMonsterTokenButton", true, false) as Button
+	var open_planet_route_marker_button := dock.find_child("OpenPlanetRouteMarkerButton", true, false) as Button
+	var open_planet_route_segment_button := dock.find_child("OpenPlanetRouteSegmentButton", true, false) as Button
+	var open_planet_movement_trail_button := dock.find_child("OpenPlanetMovementTrailButton", true, false) as Button
+	var open_planet_map_event_effect_button := dock.find_child("OpenPlanetMapEventEffectButton", true, false) as Button
+	var open_planet_action_callout_button := dock.find_child("OpenPlanetActionCalloutButton", true, false) as Button
+	var open_planet_globe_backdrop_button := dock.find_child("OpenPlanetGlobeBackdropButton", true, false) as Button
+	var open_planet_orbit_guide_button := dock.find_child("OpenPlanetOrbitGuideButton", true, false) as Button
+	var open_planet_focus_range_overlay_button := dock.find_child("OpenPlanetFocusRangeOverlayButton", true, false) as Button
+	var open_planet_scale_hint_button := dock.find_child("OpenPlanetScaleHintButton", true, false) as Button
+	var open_planet_render_cutover_bench_button := dock.find_child("OpenPlanetRenderCutoverBenchButton", true, false) as Button
+	var run_planet_render_cutover_bench_button := dock.find_child("RunPlanetRenderCutoverBenchButton", true, false) as Button
+	var open_planet_interaction_bench_button := dock.find_child("OpenPlanetInteractionBenchButton", true, false) as Button
+	var run_planet_interaction_bench_button := dock.find_child("RunPlanetInteractionBenchButton", true, false) as Button
+	var open_sceneization_audit_button := dock.find_child("OpenSceneizationAuditButton", true, false) as Button
+	var run_sceneization_audit_button := dock.find_child("RunSceneizationAuditButton", true, false) as Button
+	var open_card_track_preview_button := dock.find_child("OpenCardTrackPreviewButton", true, false) as Button
+	var run_card_track_preview_button := dock.find_child("RunCardTrackPreviewButton", true, false) as Button
+	var open_card_track_slot_button := dock.find_child("OpenCardTrackSlotButton", true, false) as Button
+	var open_card_resolution_track_button := dock.find_child("OpenCardResolutionTrackButton", true, false) as Button
+	var open_card_resolution_track_slot_button := dock.find_child("OpenCardResolutionTrackSlotButton", true, false) as Button
+	var open_card_resolution_track_preview_button := dock.find_child("OpenCardResolutionTrackPreviewButton", true, false) as Button
+	var run_card_resolution_track_preview_button := dock.find_child("RunCardResolutionTrackPreviewButton", true, false) as Button
+	var open_card_resolution_track_interaction_button := dock.find_child("OpenCardResolutionTrackInteractionBenchButton", true, false) as Button
+	var run_card_resolution_track_interaction_button := dock.find_child("RunCardResolutionTrackInteractionBenchButton", true, false) as Button
+	var open_runtime_card_resolution_track_flow_button := dock.find_child("OpenRuntimeCardResolutionTrackFlowBenchButton", true, false) as Button
+	var run_runtime_card_resolution_track_flow_button := dock.find_child("RunRuntimeCardResolutionTrackFlowBenchButton", true, false) as Button
+	var open_compendium_codex_preview_button := dock.find_child("OpenCompendiumCodexPreviewButton", true, false) as Button
+	var run_compendium_codex_preview_button := dock.find_child("RunCompendiumCodexPreviewButton", true, false) as Button
+	var open_compendium_codex_interaction_button := dock.find_child("OpenCompendiumCodexInteractionBenchButton", true, false) as Button
+	var run_compendium_codex_interaction_button := dock.find_child("RunCompendiumCodexInteractionBenchButton", true, false) as Button
+	var open_button := dock.find_child("OpenTemporaryDecisionPreviewButton", true, false) as Button
+	var run_button := dock.find_child("RunTemporaryDecisionPreviewButton", true, false) as Button
+	var open_capture_button := dock.find_child("OpenTemporaryDecisionCaptureBenchButton", true, false) as Button
+	var run_capture_button := dock.find_child("RunTemporaryDecisionCaptureBenchButton", true, false) as Button
+	var open_interaction_button := dock.find_child("OpenTemporaryDecisionInteractionBenchButton", true, false) as Button
+	var run_interaction_button := dock.find_child("RunTemporaryDecisionInteractionBenchButton", true, false) as Button
+	if open_mcp_hub_button != null:
+		open_mcp_hub_button.emit_signal("pressed")
+		await process_frame
+	if run_mcp_hub_button != null:
+		run_mcp_hub_button.emit_signal("pressed")
+		await process_frame
+	if open_player_turn_button != null:
+		open_player_turn_button.emit_signal("pressed")
+		await process_frame
+	if run_player_turn_button != null:
+		run_player_turn_button.emit_signal("pressed")
+		await process_frame
+	if open_player_turn_interaction_button != null:
+		open_player_turn_interaction_button.emit_signal("pressed")
+		await process_frame
+	if run_player_turn_interaction_button != null:
+		run_player_turn_interaction_button.emit_signal("pressed")
+		await process_frame
+	if open_runtime_player_flow_button != null:
+		open_runtime_player_flow_button.emit_signal("pressed")
+		await process_frame
+	if run_runtime_player_flow_button != null:
+		run_runtime_player_flow_button.emit_signal("pressed")
+		await process_frame
+	if open_first_playable_loop_button != null:
+		open_first_playable_loop_button.emit_signal("pressed")
+		await process_frame
+	if run_first_playable_loop_button != null:
+		run_first_playable_loop_button.emit_signal("pressed")
+		await process_frame
+	if open_first_round_runtime_playable_loop_button != null:
+		open_first_round_runtime_playable_loop_button.emit_signal("pressed")
+		await process_frame
+	if run_first_round_runtime_playable_loop_button != null:
+		run_first_round_runtime_playable_loop_button.emit_signal("pressed")
+		await process_frame
+	if open_first_mission_spine_button != null:
+		open_first_mission_spine_button.emit_signal("pressed")
+		await process_frame
+	if run_first_mission_spine_button != null:
+		run_first_mission_spine_button.emit_signal("pressed")
+		await process_frame
+	if open_first_mission_runtime_main_button != null:
+		open_first_mission_runtime_main_button.emit_signal("pressed")
+		await process_frame
+	if run_first_mission_runtime_main_button != null:
+		run_first_mission_runtime_main_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_map_preview_button != null:
+		open_planet_map_preview_button.emit_signal("pressed")
+		await process_frame
+	if run_planet_map_preview_button != null:
+		run_planet_map_preview_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_map_view_button != null:
+		open_planet_map_view_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_district_node_button != null:
+		open_planet_district_node_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_district_polygon_button != null:
+		open_planet_district_polygon_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_monster_token_button != null:
+		open_planet_monster_token_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_route_marker_button != null:
+		open_planet_route_marker_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_route_segment_button != null:
+		open_planet_route_segment_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_movement_trail_button != null:
+		open_planet_movement_trail_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_map_event_effect_button != null:
+		open_planet_map_event_effect_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_action_callout_button != null:
+		open_planet_action_callout_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_globe_backdrop_button != null:
+		open_planet_globe_backdrop_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_orbit_guide_button != null:
+		open_planet_orbit_guide_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_focus_range_overlay_button != null:
+		open_planet_focus_range_overlay_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_scale_hint_button != null:
+		open_planet_scale_hint_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_render_cutover_bench_button != null:
+		open_planet_render_cutover_bench_button.emit_signal("pressed")
+		await process_frame
+	if run_planet_render_cutover_bench_button != null:
+		run_planet_render_cutover_bench_button.emit_signal("pressed")
+		await process_frame
+	if open_planet_interaction_bench_button != null:
+		open_planet_interaction_bench_button.emit_signal("pressed")
+		await process_frame
+	if run_planet_interaction_bench_button != null:
+		run_planet_interaction_bench_button.emit_signal("pressed")
+		await process_frame
+	if open_sceneization_audit_button != null:
+		open_sceneization_audit_button.emit_signal("pressed")
+		await process_frame
+	if run_sceneization_audit_button != null:
+		run_sceneization_audit_button.emit_signal("pressed")
+		await process_frame
+	if open_card_track_preview_button != null:
+		open_card_track_preview_button.emit_signal("pressed")
+		await process_frame
+	if run_card_track_preview_button != null:
+		run_card_track_preview_button.emit_signal("pressed")
+		await process_frame
+	if open_card_track_slot_button != null:
+		open_card_track_slot_button.emit_signal("pressed")
+		await process_frame
+	if open_card_resolution_track_button != null:
+		open_card_resolution_track_button.emit_signal("pressed")
+		await process_frame
+	if open_card_resolution_track_slot_button != null:
+		open_card_resolution_track_slot_button.emit_signal("pressed")
+		await process_frame
+	if open_card_resolution_track_preview_button != null:
+		open_card_resolution_track_preview_button.emit_signal("pressed")
+		await process_frame
+	if run_card_resolution_track_preview_button != null:
+		run_card_resolution_track_preview_button.emit_signal("pressed")
+		await process_frame
+	if open_card_resolution_track_interaction_button != null:
+		open_card_resolution_track_interaction_button.emit_signal("pressed")
+		await process_frame
+	if run_card_resolution_track_interaction_button != null:
+		run_card_resolution_track_interaction_button.emit_signal("pressed")
+		await process_frame
+	if open_runtime_card_resolution_track_flow_button != null:
+		open_runtime_card_resolution_track_flow_button.emit_signal("pressed")
+		await process_frame
+	if run_runtime_card_resolution_track_flow_button != null:
+		run_runtime_card_resolution_track_flow_button.emit_signal("pressed")
+		await process_frame
+	if open_compendium_codex_preview_button != null:
+		open_compendium_codex_preview_button.emit_signal("pressed")
+		await process_frame
+	if run_compendium_codex_preview_button != null:
+		run_compendium_codex_preview_button.emit_signal("pressed")
+		await process_frame
+	if open_compendium_codex_interaction_button != null:
+		open_compendium_codex_interaction_button.emit_signal("pressed")
+		await process_frame
+	if run_compendium_codex_interaction_button != null:
+		run_compendium_codex_interaction_button.emit_signal("pressed")
+		await process_frame
+	if open_button != null:
+		open_button.emit_signal("pressed")
+		await process_frame
+	if run_button != null:
+		run_button.emit_signal("pressed")
+		await process_frame
+	if open_capture_button != null:
+		open_capture_button.emit_signal("pressed")
+		await process_frame
+	if run_capture_button != null:
+		run_capture_button.emit_signal("pressed")
+		await process_frame
+	if open_interaction_button != null:
+		open_interaction_button.emit_signal("pressed")
+		await process_frame
+	if run_interaction_button != null:
+		run_interaction_button.emit_signal("pressed")
+		await process_frame
+	_expect(open_paths.size() == 1 and open_paths[0] == TEMPORARY_DECISION_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open button requests the Overlay preview scene when no EditorPlugin is attached")
+	_expect(run_paths.size() == 1 and run_paths[0] == TEMPORARY_DECISION_PREVIEW_SCENE, "SpaceSyndicateDesignQADock run button requests the Overlay preview scene when no EditorPlugin is attached")
+	_expect(open_mcp_hub_paths.size() == 1 and open_mcp_hub_paths[0] == MCP_EDITABILITY_HUB_SCENE, "SpaceSyndicateDesignQADock open MCP Hub button requests the editability hub scene when no EditorPlugin is attached")
+	_expect(run_mcp_hub_paths.size() == 1 and run_mcp_hub_paths[0] == MCP_EDITABILITY_HUB_SCENE, "SpaceSyndicateDesignQADock run MCP Hub button requests the editability hub scene when no EditorPlugin is attached")
+	_expect(open_player_turn_paths.size() == 1 and open_player_turn_paths[0] == PLAYER_TURN_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Player Turn button requests the player turn preview scene when no EditorPlugin is attached")
+	_expect(run_player_turn_paths.size() == 1 and run_player_turn_paths[0] == PLAYER_TURN_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock run Player Turn button requests the player turn preview scene when no EditorPlugin is attached")
+	_expect(open_player_turn_interaction_paths.size() == 1 and open_player_turn_interaction_paths[0] == PLAYER_TURN_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock open Player Turn Interaction button requests the player turn interaction bench when no EditorPlugin is attached")
+	_expect(run_player_turn_interaction_paths.size() == 1 and run_player_turn_interaction_paths[0] == PLAYER_TURN_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock run Player Turn Interaction button requests the player turn interaction bench when no EditorPlugin is attached")
+	_expect(open_runtime_player_flow_paths.size() == 1 and open_runtime_player_flow_paths[0] == RUNTIME_PLAYER_TURN_FLOW_BENCH_SCENE, "SpaceSyndicateDesignQADock open Runtime Player Flow button requests the runtime flow bench when no EditorPlugin is attached")
+	_expect(run_runtime_player_flow_paths.size() == 1 and run_runtime_player_flow_paths[0] == RUNTIME_PLAYER_TURN_FLOW_BENCH_SCENE, "SpaceSyndicateDesignQADock run Runtime Player Flow button requests the runtime flow bench when no EditorPlugin is attached")
+	_expect(open_first_playable_loop_paths.size() == 1 and open_first_playable_loop_paths[0] == FIRST_PLAYABLE_LOOP_BENCH_SCENE, "SpaceSyndicateDesignQADock open First Playable Loop button requests the playable loop bench when no EditorPlugin is attached")
+	_expect(run_first_playable_loop_paths.size() == 1 and run_first_playable_loop_paths[0] == FIRST_PLAYABLE_LOOP_BENCH_SCENE, "SpaceSyndicateDesignQADock run First Playable Loop button requests the playable loop bench when no EditorPlugin is attached")
+	_expect(open_first_round_runtime_playable_loop_paths.size() == 1 and open_first_round_runtime_playable_loop_paths[0] == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE, "SpaceSyndicateDesignQADock open First Round Runtime Playable Loop button requests the runtime playable loop bench when no EditorPlugin is attached")
+	_expect(run_first_round_runtime_playable_loop_paths.size() == 1 and run_first_round_runtime_playable_loop_paths[0] == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE, "SpaceSyndicateDesignQADock run First Round Runtime Playable Loop button requests the runtime playable loop bench when no EditorPlugin is attached")
+	_expect(open_first_mission_spine_paths.size() == 1 and open_first_mission_spine_paths[0] == FIRST_MISSION_SPINE_BENCH_SCENE, "SpaceSyndicateDesignQADock open First Mission Spine button requests the mission spine bench when no EditorPlugin is attached")
+	_expect(run_first_mission_spine_paths.size() == 1 and run_first_mission_spine_paths[0] == FIRST_MISSION_SPINE_BENCH_SCENE, "SpaceSyndicateDesignQADock run First Mission Spine button requests the mission spine bench when no EditorPlugin is attached")
+	_expect(open_first_mission_runtime_main_paths.size() == 1 and open_first_mission_runtime_main_paths[0] == FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE, "SpaceSyndicateDesignQADock open First Mission Runtime Main button requests the runtime main bench when no EditorPlugin is attached")
+	_expect(run_first_mission_runtime_main_paths.size() == 1 and run_first_mission_runtime_main_paths[0] == FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE, "SpaceSyndicateDesignQADock run First Mission Runtime Main button requests the runtime main bench when no EditorPlugin is attached")
+	_expect(open_planet_map_preview_paths.size() == 1 and open_planet_map_preview_paths[0] == PLANET_MAP_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Planet Map button requests the planet map preview when no EditorPlugin is attached")
+	_expect(run_planet_map_preview_paths.size() == 1 and run_planet_map_preview_paths[0] == PLANET_MAP_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock run Planet Map button requests the planet map preview when no EditorPlugin is attached")
+	_expect(open_planet_map_view_paths.size() == 1 and open_planet_map_view_paths[0] == PLANET_MAP_VIEW_SCENE, "SpaceSyndicateDesignQADock open PlanetMapView button requests the sceneized map when no EditorPlugin is attached")
+	_expect(open_planet_district_node_paths.size() == 1 and open_planet_district_node_paths[0] == PLANET_DISTRICT_NODE_SCENE, "SpaceSyndicateDesignQADock open PlanetDistrictNode button requests the district node scene when no EditorPlugin is attached")
+	_expect(open_planet_district_polygon_paths.size() == 1 and open_planet_district_polygon_paths[0] == PLANET_DISTRICT_POLYGON_SCENE, "SpaceSyndicateDesignQADock open PlanetDistrictPolygon button requests the district polygon scene when no EditorPlugin is attached")
+	_expect(open_planet_monster_token_paths.size() == 1 and open_planet_monster_token_paths[0] == PLANET_MONSTER_TOKEN_SCENE, "SpaceSyndicateDesignQADock open PlanetMonsterToken button requests the monster token scene when no EditorPlugin is attached")
+	_expect(open_planet_route_marker_paths.size() == 1 and open_planet_route_marker_paths[0] == PLANET_ROUTE_MARKER_SCENE, "SpaceSyndicateDesignQADock open PlanetRouteMarker button requests the route marker scene when no EditorPlugin is attached")
+	_expect(open_planet_route_segment_paths.size() == 1 and open_planet_route_segment_paths[0] == PLANET_ROUTE_SEGMENT_SCENE, "SpaceSyndicateDesignQADock open PlanetRouteSegment button requests the route segment scene when no EditorPlugin is attached")
+	_expect(open_planet_movement_trail_paths.size() == 1 and open_planet_movement_trail_paths[0] == PLANET_MOVEMENT_TRAIL_SCENE, "SpaceSyndicateDesignQADock open PlanetMovementTrail button requests the movement trail scene when no EditorPlugin is attached")
+	_expect(open_planet_map_event_effect_paths.size() == 1 and open_planet_map_event_effect_paths[0] == PLANET_MAP_EVENT_EFFECT_SCENE, "SpaceSyndicateDesignQADock open PlanetMapEventEffect button requests the event effect scene when no EditorPlugin is attached")
+	_expect(open_planet_action_callout_paths.size() == 1 and open_planet_action_callout_paths[0] == PLANET_ACTION_CALLOUT_SCENE, "SpaceSyndicateDesignQADock open PlanetActionCallout button requests the action callout scene when no EditorPlugin is attached")
+	_expect(open_planet_globe_backdrop_paths.size() == 1 and open_planet_globe_backdrop_paths[0] == PLANET_GLOBE_BACKDROP_SCENE, "SpaceSyndicateDesignQADock open PlanetGlobeBackdrop button requests the globe backdrop scene when no EditorPlugin is attached")
+	_expect(open_planet_orbit_guide_paths.size() == 1 and open_planet_orbit_guide_paths[0] == PLANET_ORBIT_GUIDE_SCENE, "SpaceSyndicateDesignQADock open PlanetOrbitGuide button requests the orbit guide scene when no EditorPlugin is attached")
+	_expect(open_planet_focus_range_overlay_paths.size() == 1 and open_planet_focus_range_overlay_paths[0] == PLANET_FOCUS_RANGE_OVERLAY_SCENE, "SpaceSyndicateDesignQADock open PlanetFocusRangeOverlay button requests the focus overlay scene when no EditorPlugin is attached")
+	_expect(open_planet_scale_hint_paths.size() == 1 and open_planet_scale_hint_paths[0] == PLANET_MAP_SCALE_HINT_SCENE, "SpaceSyndicateDesignQADock open PlanetMapScaleHint button requests the scale hint scene when no EditorPlugin is attached")
+	_expect(open_planet_render_cutover_bench_paths.size() == 1 and open_planet_render_cutover_bench_paths[0] == PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE, "SpaceSyndicateDesignQADock open Planet Render Cutover button requests the cutover bench when no EditorPlugin is attached")
+	_expect(run_planet_render_cutover_bench_paths.size() == 1 and run_planet_render_cutover_bench_paths[0] == PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE, "SpaceSyndicateDesignQADock run Planet Render Cutover button requests the cutover bench when no EditorPlugin is attached")
+	_expect(open_planet_interaction_bench_paths.size() == 1 and open_planet_interaction_bench_paths[0] == PLANET_MAP_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock open Planet Interaction button requests the interaction bench when no EditorPlugin is attached")
+	_expect(run_planet_interaction_bench_paths.size() == 1 and run_planet_interaction_bench_paths[0] == PLANET_MAP_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock run Planet Interaction button requests the interaction bench when no EditorPlugin is attached")
+	_expect(open_sceneization_audit_paths.size() == 1 and open_sceneization_audit_paths[0] == SCENEIZATION_AUDIT_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Sceneization Audit button requests the audit preview when no EditorPlugin is attached")
+	_expect(run_sceneization_audit_paths.size() == 1 and run_sceneization_audit_paths[0] == SCENEIZATION_AUDIT_PREVIEW_SCENE, "SpaceSyndicateDesignQADock run Sceneization Audit button requests the audit preview when no EditorPlugin is attached")
+	_expect(open_card_track_preview_paths.size() == 1 and open_card_track_preview_paths[0] == CARD_TRACK_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Card Track button requests the card track preview when no EditorPlugin is attached")
+	_expect(run_card_track_preview_paths.size() == 1 and run_card_track_preview_paths[0] == CARD_TRACK_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock run Card Track button requests the card track preview when no EditorPlugin is attached")
+	_expect(open_card_track_slot_paths.size() == 1 and open_card_track_slot_paths[0] == CARD_TRACK_SLOT_SCENE, "SpaceSyndicateDesignQADock open CardTrackSlot button requests the slot scene when no EditorPlugin is attached")
+	_expect(open_card_resolution_track_paths.size() == 1 and open_card_resolution_track_paths[0] == CARD_RESOLUTION_TRACK_SCENE, "SpaceSyndicateDesignQADock open CardResolutionTrack button requests the resolution track scene when no EditorPlugin is attached")
+	_expect(open_card_resolution_track_slot_paths.size() == 1 and open_card_resolution_track_slot_paths[0] == CARD_RESOLUTION_TRACK_SLOT_SCENE, "SpaceSyndicateDesignQADock open CardResolutionTrackSlot button requests the resolution slot scene when no EditorPlugin is attached")
+	_expect(open_card_resolution_track_preview_paths.size() == 1 and open_card_resolution_track_preview_paths[0] == CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open CardResolutionTrack preview button requests the preview scene when no EditorPlugin is attached")
+	_expect(run_card_resolution_track_preview_paths.size() == 1 and run_card_resolution_track_preview_paths[0] == CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCENE, "SpaceSyndicateDesignQADock run CardResolutionTrack preview button requests the preview scene when no EditorPlugin is attached")
+	_expect(open_card_resolution_track_interaction_paths.size() == 1 and open_card_resolution_track_interaction_paths[0] == CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock open CardResolutionTrack Interaction button requests the interaction bench when no EditorPlugin is attached")
+	_expect(run_card_resolution_track_interaction_paths.size() == 1 and run_card_resolution_track_interaction_paths[0] == CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock run CardResolutionTrack Interaction button requests the interaction bench when no EditorPlugin is attached")
+	_expect(open_runtime_card_resolution_track_flow_paths.size() == 1 and open_runtime_card_resolution_track_flow_paths[0] == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE, "SpaceSyndicateDesignQADock open Runtime CardResolutionTrack Flow button requests the runtime flow bench when no EditorPlugin is attached")
+	_expect(run_runtime_card_resolution_track_flow_paths.size() == 1 and run_runtime_card_resolution_track_flow_paths[0] == RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE, "SpaceSyndicateDesignQADock run Runtime CardResolutionTrack Flow button requests the runtime flow bench when no EditorPlugin is attached")
+	_expect(open_compendium_codex_preview_paths.size() == 1 and open_compendium_codex_preview_paths[0] == COMPENDIUM_CODEX_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Compendium Codex Preview button requests the codex preview when no EditorPlugin is attached")
+	_expect(run_compendium_codex_preview_paths.size() == 1 and run_compendium_codex_preview_paths[0] == COMPENDIUM_CODEX_PREVIEW_SCENE, "SpaceSyndicateDesignQADock run Compendium Codex Preview button requests the codex preview when no EditorPlugin is attached")
+	_expect(open_compendium_codex_interaction_paths.size() == 1 and open_compendium_codex_interaction_paths[0] == COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock open Compendium Codex Interaction button requests the interaction bench when no EditorPlugin is attached")
+	_expect(run_compendium_codex_interaction_paths.size() == 1 and run_compendium_codex_interaction_paths[0] == COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock run Compendium Codex Interaction button requests the interaction bench when no EditorPlugin is attached")
+	_expect(open_capture_paths.size() == 1 and open_capture_paths[0] == TEMPORARY_DECISION_CAPTURE_BENCH_SCENE, "SpaceSyndicateDesignQADock open capture button requests the Capture Bench scene when no EditorPlugin is attached")
+	_expect(run_capture_paths.size() == 1 and run_capture_paths[0] == TEMPORARY_DECISION_CAPTURE_BENCH_SCENE, "SpaceSyndicateDesignQADock run capture button requests the Capture Bench scene when no EditorPlugin is attached")
+	_expect(open_interaction_paths.size() == 1 and open_interaction_paths[0] == TEMPORARY_DECISION_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock open interaction button requests the Interaction Bench scene when no EditorPlugin is attached")
+	_expect(run_interaction_paths.size() == 1 and run_interaction_paths[0] == TEMPORARY_DECISION_INTERACTION_BENCH_SCENE, "SpaceSyndicateDesignQADock run interaction button requests the Interaction Bench scene when no EditorPlugin is attached")
+	var player_target_button := dock.find_child("PlayerTargetFixtureButton", true, false) as Button
+	if player_target_button != null:
+		player_target_button.emit_signal("pressed")
+		await process_frame
+		_expect(str(dock.call("selected_fixture_id")) == "player_target_choice", "SpaceSyndicateDesignQADock fixture buttons select the matching fixture")
+	var long_text_button := dock.find_child("LongTextStressHintButton", true, false) as Button
+	if long_text_button != null:
+		long_text_button.emit_signal("pressed")
+		await process_frame
+		_expect(_node_tree_text(dock).contains("Long-text") and _node_tree_text(dock).contains("player_target_choice"), "SpaceSyndicateDesignQADock exposes the long-text QA entry for the selected fixture")
+	var disabled_button := dock.find_child("DisabledActionHintButton", true, false) as Button
+	if disabled_button != null:
+		disabled_button.emit_signal("pressed")
+		await process_frame
+		_expect(_node_tree_text(dock).contains("Disabled-action"), "SpaceSyndicateDesignQADock exposes the disabled-action QA entry")
+	var malformed_button := dock.find_child("MalformedPayloadHintButton", true, false) as Button
+	if malformed_button != null:
+		malformed_button.emit_signal("pressed")
+		await process_frame
+		_expect(_node_tree_text(dock).contains("Malformed payload"), "SpaceSyndicateDesignQADock exposes the malformed payload QA entry")
+	viewport.remove_child(dock)
+	dock.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_mcp_editability_hub_component() -> void:
+	_expect(ResourceLoader.exists(MCP_SCENE_REGISTRY_SCRIPT), "MCP scene registry script exists")
+	_expect(ResourceLoader.exists(MCP_EDITABILITY_HUB_SCRIPT), "MCP Editability Hub script exists")
+	_expect(ResourceLoader.exists(MCP_EDITABILITY_HUB_SCENE), "MCP Editability Hub scene exists")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	_expect(registry_script != null, "MCP scene registry script loads")
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	_expect(registry != null and registry.has_method("records") and registry.has_method("categories") and registry.has_method("required_scene_paths"), "MCP scene registry exposes records, categories, and required paths")
+	if registry == null:
+		return
+	var records_variant: Variant = registry.call("records")
+	var records: Array = records_variant if records_variant is Array else []
+	var categories_variant: Variant = registry.call("categories")
+	var categories: Array = categories_variant if categories_variant is Array else []
+	_expect(records.size() >= 20, "MCP scene registry lists the core editable scenes")
+	for category in ["Main", "Temporary Decisions", "Player UI", "Cards", "Inspector / Tools", "QA Benches"]:
+		_expect(categories.has(category), "MCP scene registry includes category %s" % category)
+	var required_paths_variant: Variant = registry.call("required_scene_paths")
+	var required_paths: Array = required_paths_variant if required_paths_variant is Array else []
+	for required_path in [MCP_EDITABILITY_HUB_SCENE, PLAYER_TURN_MCP_PREVIEW_SCENE, PLAYER_TURN_INTERACTION_BENCH_SCENE, RUNTIME_PLAYER_TURN_FLOW_BENCH_SCENE, FIRST_PLAYABLE_LOOP_BENCH_SCENE, FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE, FIRST_MISSION_SPINE_BENCH_SCENE, FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE, PLANET_MAP_VIEW_SCENE, PLANET_DISTRICT_NODE_SCENE, PLANET_DISTRICT_POLYGON_SCENE, PLANET_SELECTION_RING_SCENE, PLANET_CITY_MARKER_SCENE, PLANET_MONSTER_TOKEN_SCENE, PLANET_ROUTE_MARKER_SCENE, PLANET_ROUTE_SEGMENT_SCENE, PLANET_MOVEMENT_TRAIL_SCENE, PLANET_MAP_EVENT_EFFECT_SCENE, PLANET_ACTION_CALLOUT_SCENE, PLANET_GLOBE_BACKDROP_SCENE, PLANET_ORBIT_GUIDE_SCENE, PLANET_FOCUS_RANGE_OVERLAY_SCENE, PLANET_MAP_SCALE_HINT_SCENE, PLANET_MAP_MCP_PREVIEW_SCENE, PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE, PLANET_MAP_INTERACTION_BENCH_SCENE, SCENEIZATION_AUDIT_PREVIEW_SCENE, CARD_TRACK_SLOT_SCENE, CARD_TRACK_MCP_PREVIEW_SCENE, CARD_RESOLUTION_TRACK_SCENE, CARD_RESOLUTION_TRACK_SLOT_SCENE, CARD_RESOLUTION_TRACK_MCP_PREVIEW_SCENE, CARD_RESOLUTION_TRACK_INTERACTION_BENCH_SCENE, RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCENE, CARD_RESOLUTION_RUNTIME_CONTROLLER_SCENE, "res://scenes/main.tscn", "res://scenes/ui/OverlayLayer.tscn", TEMPORARY_DECISION_PREVIEW_SCENE, TEMPORARY_DECISION_CAPTURE_BENCH_SCENE, TEMPORARY_DECISION_INTERACTION_BENCH_SCENE]:
+		var found := required_paths.has(required_path)
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			found = found or str(record.get("scene_path", "")) == required_path
+		_expect(found, "MCP scene registry includes required scene path %s" % required_path)
+	var required_fields_ok := true
+	var data_only_ok := true
+	var smoke_loads_ok := true
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		required_fields_ok = required_fields_ok and record.has("id") and record.has("display_name") and record.has("scene_path") and record.has("category") and record.has("expected_root_type") and record.has("purpose") and record.has("mcp_notes") and record.has("smoke_check_enabled") and record.has("previewable")
+		data_only_ok = data_only_ok and not _variant_contains_callable(record) and not _variant_contains_object(record)
+		if bool(record.get("smoke_check_enabled", false)):
+			var scene_path := str(record.get("scene_path", ""))
+			smoke_loads_ok = smoke_loads_ok and ResourceLoader.exists(scene_path) and load(scene_path) != null
+	_expect(required_fields_ok, "MCP scene registry records include all required metadata fields")
+	_expect(data_only_ok, "MCP scene registry records stay pure data without Callable/Node/Object")
+	_expect(smoke_loads_ok, "MCP scene registry smoke-enabled scenes exist and load")
+	var main_record: Dictionary = {}
+	for record_variant in records:
+		var registry_record: Dictionary = record_variant if record_variant is Dictionary else {}
+		if str(registry_record.get("id", "")) == "main_table":
+			main_record = registry_record
+			break
+	_expect(str(main_record.get("mcp_notes", "")).contains("RuntimeServices") and str(main_record.get("purpose", "")).contains("embedded GameScreen"), "MCP scene registry documents main.tscn composition ownership")
+	var hub_script := load(MCP_EDITABILITY_HUB_SCRIPT) as Script
+	_expect(hub_script != null, "MCP Editability Hub script loads")
+	var packed := load(MCP_EDITABILITY_HUB_SCENE) as PackedScene
+	_expect(packed != null, "SpaceSyndicateMcpEditabilityHub scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1280, 720)
+	root.add_child(viewport)
+	var hub := packed.instantiate() as Control
+	_expect(hub != null, "SpaceSyndicateMcpEditabilityHub root is Control")
+	if hub == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	viewport.add_child(hub)
+	await process_frame
+	for node_name in ["McpCategoryList", "McpSceneList", "OpenSceneButton", "RunSceneButton", "CaptureScreenshotButton", "PrintScenePathButton", "RefreshRegistryButton", "McpSceneDisplayNameLabel", "McpScenePathLabel", "McpHubStatusLabel"]:
+		_expect(hub.find_child(node_name, true, false) != null, "SpaceSyndicateMcpEditabilityHub contains %s" % node_name)
+	_expect(hub.has_method("registry_records") and hub.has_method("registry_categories") and hub.has_method("select_scene_by_path") and hub.has_method("selected_scene_path") and hub.has_method("screenshot_path"), "SpaceSyndicateMcpEditabilityHub exposes testable MCP navigation methods")
+	var hub_records_variant: Variant = hub.call("registry_records") if hub.has_method("registry_records") else []
+	var hub_records: Array = hub_records_variant if hub_records_variant is Array else []
+	_expect(hub_records.size() == records.size() and not _variant_contains_callable(hub_records) and not _variant_contains_object(hub_records), "SpaceSyndicateMcpEditabilityHub reads the pure-data registry")
+	var selected_ok: bool = bool(hub.call("select_scene_by_path", "res://scenes/ui/OverlayLayer.tscn")) if hub.has_method("select_scene_by_path") else false
+	await process_frame
+	_expect(selected_ok and str(hub.call("selected_scene_path")) == "res://scenes/ui/OverlayLayer.tscn" and _node_tree_text(hub).contains("Overlay Layer"), "SpaceSyndicateMcpEditabilityHub selects registry scenes and updates details")
+	_expect(str(hub.call("screenshot_path")) == MCP_EDITABILITY_HUB_SCREENSHOT_PATH and str(hub.call("screenshot_path")).begins_with("user://") and not str(hub.call("screenshot_path")).contains("res://reports"), "SpaceSyndicateMcpEditabilityHub uses a user:// screenshot output path")
+	var open_paths: Array[String] = []
+	var run_paths: Array[String] = []
+	var capture_paths: Array[String] = []
+	var screenshot_paths: Array[String] = []
+	if hub.has_signal("open_scene_requested"):
+		hub.connect("open_scene_requested", func(scene_path: String) -> void:
+			open_paths.append(scene_path)
+		)
+	if hub.has_signal("run_scene_requested"):
+		hub.connect("run_scene_requested", func(scene_path: String) -> void:
+			run_paths.append(scene_path)
+		)
+	if hub.has_signal("capture_screenshot_requested"):
+		hub.connect("capture_screenshot_requested", func(scene_path: String, screenshot_path: String) -> void:
+			capture_paths.append(scene_path)
+			screenshot_paths.append(screenshot_path)
+		)
+	var open_button := hub.find_child("OpenSceneButton", true, false) as Button
+	var run_button := hub.find_child("RunSceneButton", true, false) as Button
+	var capture_button := hub.find_child("CaptureScreenshotButton", true, false) as Button
+	if open_button != null:
+		open_button.emit_signal("pressed")
+		await process_frame
+	if run_button != null:
+		run_button.emit_signal("pressed")
+		await process_frame
+	if capture_button != null:
+		capture_button.emit_signal("pressed")
+		await process_frame
+	_expect(open_paths.size() == 1 and open_paths[0] == "res://scenes/ui/OverlayLayer.tscn", "SpaceSyndicateMcpEditabilityHub open button emits the selected scene path")
+	_expect(run_paths.size() == 1 and run_paths[0] == "res://scenes/ui/OverlayLayer.tscn", "SpaceSyndicateMcpEditabilityHub run button emits the selected scene path")
+	_expect(capture_paths.size() == 1 and capture_paths[0] == "res://scenes/ui/OverlayLayer.tscn" and screenshot_paths.size() == 1 and screenshot_paths[0] == MCP_EDITABILITY_HUB_SCREENSHOT_PATH, "SpaceSyndicateMcpEditabilityHub capture button emits selected scene and user:// screenshot path")
+	viewport.remove_child(hub)
+	hub.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_player_turn_mcp_preview_component() -> void:
+	_expect(ResourceLoader.exists(PLAYER_TURN_MCP_PREVIEW_FIXTURES_SCRIPT), "Player Turn MCP preview fixtures script exists")
+	_expect(ResourceLoader.exists(PLAYER_TURN_MCP_PREVIEW_SCRIPT), "Player Turn MCP preview script exists")
+	_expect(ResourceLoader.exists(PLAYER_TURN_MCP_PREVIEW_SCENE), "Player Turn MCP preview scene exists")
+	var fixture_script := load(PLAYER_TURN_MCP_PREVIEW_FIXTURES_SCRIPT) as Script
+	_expect(fixture_script != null, "Player Turn MCP preview fixtures script loads")
+	var fixtures: RefCounted = fixture_script.new() if fixture_script != null else null
+	_expect(fixtures != null and fixtures.has_method("preview_ids") and fixtures.has_method("fixture"), "Player Turn MCP fixtures expose preview_ids and fixture")
+	if fixtures == null:
+		return
+	var ids_variant: Variant = fixtures.call("preview_ids")
+	var ids: Array = ids_variant if ids_variant is Array else []
+	var expected_ids := ["empty_hand", "normal_hand", "selected_enabled_card", "selected_disabled_card", "hovered_card", "drag_preview", "right_inspector_card_detail", "public_track_selection", "temporary_decision_pending_hint"]
+	var has_expected_ids := ids.size() == expected_ids.size()
+	for id in expected_ids:
+		has_expected_ids = has_expected_ids and ids.has(id)
+		var fixture_variant: Variant = fixtures.call("fixture", id)
+		var fixture: Dictionary = fixture_variant if fixture_variant is Dictionary else {}
+		_expect(str(fixture.get("id", "")) == id and fixture.get("player_state", {}) is Dictionary and fixture.get("hand_cards", []) is Array and fixture.get("public_track", []) is Array, "Player Turn MCP fixture %s includes player, hand, and public-track data" % id)
+		_expect(not _variant_contains_callable(fixture) and not _variant_contains_object(fixture), "Player Turn MCP fixture %s stays pure data without Callable/Node/Object" % id)
+	_expect(has_expected_ids, "Player Turn MCP preview fixtures cover all nine requested states")
+	var preview_script := load(PLAYER_TURN_MCP_PREVIEW_SCRIPT) as Script
+	_expect(preview_script != null, "Player Turn MCP preview script loads")
+	var packed := load(PLAYER_TURN_MCP_PREVIEW_SCENE) as PackedScene
+	_expect(packed != null, "PlayerTurnMcpPreview scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600, 960)
+	root.add_child(viewport)
+	var preview := packed.instantiate() as Control
+	_expect(preview != null, "PlayerTurnMcpPreview root is Control")
+	if preview == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	viewport.add_child(preview)
+	await process_frame
+	await process_frame
+	for node_name in ["PlayerTurnStateList", "PlayerBoardPreviewHost", "CardFacePreviewHost", "RightInspectorPreviewHost", "PlayerTurnStatusLabel", "PlayerTurnSelectedCardLabel", "PlayerTurnActionSummaryLabel", "PlayerTurnDisabledReasonLabel", "PlayerBoard", "HandRack", "SelectedCardFace", "RightInspector", "PublicTrack"]:
+		_expect(preview.find_child(node_name, true, false) != null, "PlayerTurnMcpPreview contains %s" % node_name)
+	_expect(preview.has_method("preview_ids") and preview.has_method("show_preview_id") and preview.has_method("selected_preview_id") and preview.has_method("current_fixture"), "PlayerTurnMcpPreview exposes testable MCP preview methods")
+	var preview_ids_variant: Variant = preview.call("preview_ids") if preview.has_method("preview_ids") else []
+	var preview_ids: Array = preview_ids_variant if preview_ids_variant is Array else []
+	var preview_ids_ok := preview_ids.size() == expected_ids.size()
+	for id in expected_ids:
+		preview_ids_ok = preview_ids_ok and preview_ids.has(id)
+		if preview.has_method("show_preview_id"):
+			preview.call("show_preview_id", id)
+			await process_frame
+			await process_frame
+			_expect(str(preview.call("selected_preview_id")) == id, "PlayerTurnMcpPreview switches to state %s" % id)
+	_expect(preview_ids_ok, "PlayerTurnMcpPreview lists all nine player-turn states")
+	var hand_rack := preview.find_child("HandRack", true, false) as Control
+	var action_summary_label := preview.find_child("PlayerTurnActionSummaryLabel", true, false) as Label
+	var disabled_reason_label := preview.find_child("PlayerTurnDisabledReasonLabel", true, false) as Label
+	preview.call("show_preview_id", "empty_hand")
+	await process_frame
+	await process_frame
+	_expect(hand_rack != null and _node_tree_text(hand_rack).contains("暂无手牌") and hand_rack.get_global_rect().size.y >= 80.0, "PlayerTurnMcpPreview empty_hand keeps HandRack visible with empty-hand affordance")
+	preview.call("show_preview_id", "selected_enabled_card")
+	await process_frame
+	await process_frame
+	_expect(action_summary_label != null and action_summary_label.text.contains("enabled") and not action_summary_label.text.begins_with("Actions: 0 enabled"), "PlayerTurnMcpPreview selected_enabled_card shows enabled action availability")
+	preview.call("show_preview_id", "selected_disabled_card")
+	await process_frame
+	await process_frame
+	_expect(disabled_reason_label != null and disabled_reason_label.visible and disabled_reason_label.text.contains("怪兽赌局"), "PlayerTurnMcpPreview selected_disabled_card shows disabled reason")
+	preview.call("show_preview_id", "public_track_selection")
+	await process_frame
+	await process_frame
+	_expect(_node_tree_text(preview).contains("匿名合约") and _node_tree_text(preview).contains("公共轨道"), "PlayerTurnMcpPreview public_track_selection shows selected public-track context")
+	preview.call("show_preview_id", "temporary_decision_pending_hint")
+	await process_frame
+	await process_frame
+	_expect(_node_tree_text(preview).contains("Overlay") and _node_tree_text(preview).contains("等待目标"), "PlayerTurnMcpPreview temporary_decision_pending_hint shows pending overlay state")
+	_expect(PLAYER_TURN_MCP_PREVIEW_SCREENSHOT_PATH.begins_with("user://") and not PLAYER_TURN_MCP_PREVIEW_SCREENSHOT_PATH.contains("res://reports"), "Player Turn MCP preview screenshot target uses user://")
+	viewport.remove_child(preview)
+	preview.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_player_turn_interaction_bench_component() -> void:
+	_expect(ResourceLoader.exists(PLAYER_TURN_INTERACTION_BENCH_SCRIPT), "Player Turn Interaction Bench script exists")
+	_expect(ResourceLoader.exists(PLAYER_TURN_INTERACTION_BENCH_SCENE), "Player Turn Interaction Bench scene exists")
+	var bench_script := load(PLAYER_TURN_INTERACTION_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "Player Turn Interaction Bench script loads")
+	var packed := load(PLAYER_TURN_INTERACTION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "PlayerTurnInteractionBench scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600, 960)
+	root.add_child(viewport)
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "PlayerTurnInteractionBench root is Control")
+	if bench == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	bench.set("auto_run_on_ready", false)
+	viewport.add_child(bench)
+	await process_frame
+	await process_frame
+	for node_name in ["PlayerTurnInteractionStatusLabel", "PlayerTurnInteractionSummaryLabel", "PlayerTurnInteractionPreviewHost", "PlayerTurnInteractionViewportContainer", "PlayerTurnInteractionPreviewViewport"]:
+		_expect(bench.find_child(node_name, true, false) != null, "PlayerTurnInteractionBench contains %s" % node_name)
+	_expect(bench.has_method("output_dir") and bench.has_method("interaction_cases") and bench.has_method("build_interaction_manifest_preview") and bench.has_method("run_interaction_suite"), "PlayerTurnInteractionBench exposes interaction QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == PLAYER_TURN_INTERACTION_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "PlayerTurnInteractionBench writes interaction QA output under user:// instead of res://reports")
+	var cases_variant: Variant = bench.call("interaction_cases") if bench.has_method("interaction_cases") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	var expected_ids := ["empty_hand", "normal_hand", "selected_enabled_card", "selected_disabled_card", "hovered_card", "drag_preview", "right_inspector_card_detail", "public_track_selection", "temporary_decision_pending_hint"]
+	var seen_ids := {}
+	var seen_interactions := {}
+	var required_case_fields_ok := cases.size() == expected_ids.size()
+	for case_variant in cases:
+		var case: Dictionary = case_variant if case_variant is Dictionary else {}
+		seen_ids[str(case.get("fixture_id", ""))] = true
+		seen_interactions[str(case.get("interaction_name", ""))] = true
+		required_case_fields_ok = required_case_fields_ok and case.has("fixture_id") and case.has("interaction_name") and case.has("selected_card_id") and case.has("expected_action_id") and case.has("notes")
+	_expect(required_case_fields_ok, "PlayerTurnInteractionBench interaction cases include testable required fields")
+	for id in expected_ids:
+		_expect(seen_ids.has(id), "PlayerTurnInteractionBench includes interaction case for %s" % id)
+	for interaction_name in ["empty_hand_affordance", "select_first_card_and_play", "selected_enabled_action", "disabled_action_silent", "hover_keeps_focus", "invalid_drop_silent", "right_inspector_detail", "public_track_click", "temporary_decision_pending_hint"]:
+		_expect(seen_interactions.has(interaction_name), "PlayerTurnInteractionBench includes %s interaction" % interaction_name)
+	var manifest_variant: Variant = bench.call("build_interaction_manifest_preview") if bench.has_method("build_interaction_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = manifest.get("output_dir") == PLAYER_TURN_INTERACTION_OUTPUT_DIR and int(manifest.get("case_count", 0)) == expected_ids.size() and records.size() == expected_ids.size()
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("interaction_name") and record.has("selected_card_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("right_inspector_checked") and record.has("disabled_action_checked") and record.has("drag_state_checked") and record.has("passed") and record.has("notes")
+	_expect(manifest_records_ok, "PlayerTurnInteractionBench manifest preview records include required interaction fields")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "PlayerTurnInteractionBench cases and manifest preview stay data-only")
+	_expect(ResourceLoader.exists(PLAYER_TURN_MCP_PREVIEW_SCENE) and load(PLAYER_TURN_MCP_PREVIEW_SCENE) != null, "PlayerTurnInteractionBench can rely on PlayerTurnMcpPreview.tscn")
+	_expect(PLAYER_TURN_INTERACTION_BENCH_SCREENSHOT_PATH.begins_with("user://") and not PLAYER_TURN_INTERACTION_BENCH_SCREENSHOT_PATH.contains("res://reports"), "Player Turn Interaction Bench screenshot target uses user://")
+	viewport.remove_child(bench)
+	bench.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_runtime_player_turn_flow_bench_component() -> void:
+	_expect(ResourceLoader.exists(RUNTIME_PLAYER_TURN_FLOW_BENCH_SCRIPT), "Runtime Player Turn Flow Bench script exists")
+	_expect(ResourceLoader.exists(RUNTIME_PLAYER_TURN_FLOW_BENCH_SCENE), "Runtime Player Turn Flow Bench scene exists")
+	var bench_script := load(RUNTIME_PLAYER_TURN_FLOW_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "Runtime Player Turn Flow Bench script loads")
+	var packed := load(RUNTIME_PLAYER_TURN_FLOW_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "RuntimePlayerTurnFlowBench scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600, 960)
+	root.add_child(viewport)
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "RuntimePlayerTurnFlowBench root is Control")
+	if bench == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	bench.set("auto_run_on_ready", false)
+	viewport.add_child(bench)
+	await process_frame
+	await process_frame
+	for node_name in ["RuntimePlayerFlowStatusLabel", "RuntimePlayerFlowSummaryLabel", "RuntimePlayerFlowPreviewHost", "RuntimePlayerFlowViewportContainer", "RuntimePlayerFlowPreviewViewport"]:
+		_expect(bench.find_child(node_name, true, false) != null, "RuntimePlayerTurnFlowBench contains %s" % node_name)
+	_expect(bench.has_method("output_dir") and bench.has_method("flow_cases") and bench.has_method("build_flow_manifest_preview") and bench.has_method("run_flow_suite"), "RuntimePlayerTurnFlowBench exposes flow QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == RUNTIME_PLAYER_TURN_FLOW_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "RuntimePlayerTurnFlowBench writes QA output under user:// instead of res://reports")
+	var cases_variant: Variant = bench.call("flow_cases") if bench.has_method("flow_cases") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	var expected_ids := ["empty_hand", "normal_hand", "selected_enabled_card", "selected_disabled_card", "public_track_selection", "temporary_decision_pending_hint"]
+	var seen_ids := {}
+	var seen_interactions := {}
+	var required_case_fields_ok := cases.size() == expected_ids.size()
+	for case_variant in cases:
+		var case: Dictionary = case_variant if case_variant is Dictionary else {}
+		seen_ids[str(case.get("fixture_id", ""))] = true
+		seen_interactions[str(case.get("interaction_name", ""))] = true
+		required_case_fields_ok = required_case_fields_ok and case.has("fixture_id") and case.has("interaction_name") and case.has("selected_card_id") and case.has("expected_action_id") and case.has("notes")
+	_expect(required_case_fields_ok, "RuntimePlayerTurnFlowBench flow cases include testable required fields")
+	for id in expected_ids:
+		_expect(seen_ids.has(id), "RuntimePlayerTurnFlowBench includes flow case for %s" % id)
+	for interaction_name in ["empty_hand_no_card_action", "hand_card_click_updates_inspector", "enabled_action_emits", "disabled_action_stays_silent", "public_track_select_safe_hint", "temporary_decision_pending_feedback"]:
+		_expect(seen_interactions.has(interaction_name), "RuntimePlayerTurnFlowBench includes %s flow" % interaction_name)
+	var manifest_variant: Variant = bench.call("build_flow_manifest_preview") if bench.has_method("build_flow_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = manifest.get("output_dir") == RUNTIME_PLAYER_TURN_FLOW_OUTPUT_DIR and int(manifest.get("case_count", 0)) == expected_ids.size() and records.size() == expected_ids.size()
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("interaction_name") and record.has("selected_card_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("right_inspector_checked") and record.has("disabled_reason_visible") and record.has("public_hint_safe") and record.has("temporary_decision_hint_visible") and record.has("passed") and record.has("notes")
+	_expect(manifest_records_ok, "RuntimePlayerTurnFlowBench manifest preview records include required flow fields")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "RuntimePlayerTurnFlowBench cases and manifest preview stay data-only")
+	_expect(ResourceLoader.exists("res://scenes/ui/GameScreen.tscn") and load("res://scenes/ui/GameScreen.tscn") != null, "RuntimePlayerTurnFlowBench can rely on the real GameScreen.tscn")
+	_expect(ResourceLoader.exists(PLAYER_TURN_MCP_PREVIEW_FIXTURES_SCRIPT), "RuntimePlayerTurnFlowBench reuses Player Turn fixture data")
+	_expect(RUNTIME_PLAYER_TURN_FLOW_SCREENSHOT_PATH.begins_with("user://") and not RUNTIME_PLAYER_TURN_FLOW_SCREENSHOT_PATH.contains("res://reports"), "Runtime Player Turn Flow screenshot target uses user://")
+	viewport.remove_child(bench)
+	bench.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_first_playable_loop_bench_component() -> void:
+	_expect(ResourceLoader.exists(FIRST_PLAYABLE_LOOP_BENCH_SCRIPT), "First Playable Loop Bench script exists")
+	_expect(ResourceLoader.exists(FIRST_PLAYABLE_LOOP_FIXTURES_SCRIPT), "First Playable Loop fixtures script exists")
+	_expect(ResourceLoader.exists(FIRST_PLAYABLE_LOOP_BENCH_SCENE), "First Playable Loop Bench scene exists")
+	var fixture_script := load(FIRST_PLAYABLE_LOOP_FIXTURES_SCRIPT) as Script
+	_expect(fixture_script != null, "First Playable Loop fixtures script loads")
+	if fixture_script != null:
+		var fixtures: RefCounted = fixture_script.new()
+		var step_ids_variant: Variant = fixtures.call("loop_step_ids") if fixtures.has_method("loop_step_ids") else []
+		var step_ids: Array = step_ids_variant if step_ids_variant is Array else []
+		var expected_steps := ["boot_to_player_turn", "inspect_first_card", "execute_enabled_action", "disabled_action_guard", "public_track_safe_read", "temporary_decision_roundtrip", "end_turn_feedback"]
+		for step_id in expected_steps:
+			_expect(step_ids.has(step_id), "First Playable Loop fixtures include step %s" % step_id)
+			var state_variant: Variant = fixtures.call("table_state_for_step", step_id) if fixtures.has_method("table_state_for_step") else {}
+			var state: Dictionary = state_variant if state_variant is Dictionary else {}
+			_expect(not state.is_empty() and not _variant_contains_callable(state) and not _variant_contains_object(state), "First Playable Loop table state %s is pure data" % step_id)
+		var steps_variant: Variant = fixtures.call("loop_steps") if fixtures.has_method("loop_steps") else []
+		var steps: Array = steps_variant if steps_variant is Array else []
+		_expect(not _variant_contains_callable(steps) and not _variant_contains_object(steps), "First Playable Loop step fixtures stay data-only")
+	var bench_script := load(FIRST_PLAYABLE_LOOP_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "First Playable Loop Bench script loads")
+	var packed := load(FIRST_PLAYABLE_LOOP_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "FirstPlayableLoopBench scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600, 960)
+	root.add_child(viewport)
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "FirstPlayableLoopBench root is Control")
+	if bench == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	bench.set("auto_run_on_ready", false)
+	viewport.add_child(bench)
+	await process_frame
+	await process_frame
+	for node_name in ["FirstPlayableLoopStatusLabel", "FirstPlayableLoopSummaryLabel", "FirstPlayableLoopPreviewHost", "FirstPlayableLoopViewportContainer", "FirstPlayableLoopPreviewViewport"]:
+		_expect(bench.find_child(node_name, true, false) != null, "FirstPlayableLoopBench contains %s" % node_name)
+	_expect(bench.has_method("output_dir") and bench.has_method("loop_steps") and bench.has_method("build_loop_manifest_preview") and bench.has_method("run_loop_suite"), "FirstPlayableLoopBench exposes playable loop QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == FIRST_PLAYABLE_LOOP_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "FirstPlayableLoopBench writes QA output under user:// instead of res://reports")
+	var cases_variant: Variant = bench.call("loop_steps") if bench.has_method("loop_steps") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	var expected_step_ids := ["boot_to_player_turn", "inspect_first_card", "execute_enabled_action", "disabled_action_guard", "public_track_safe_read", "temporary_decision_roundtrip", "end_turn_feedback"]
+	var seen_steps := {}
+	var required_case_fields_ok := cases.size() == expected_step_ids.size()
+	for case_variant in cases:
+		var case: Dictionary = case_variant if case_variant is Dictionary else {}
+		seen_steps[str(case.get("step_id", ""))] = true
+		required_case_fields_ok = required_case_fields_ok and case.has("step_id") and case.has("fixture_id") and case.has("expected_surface") and case.has("expected_action_id") and case.has("notes")
+	_expect(required_case_fields_ok, "FirstPlayableLoopBench loop steps include testable required fields")
+	for step_id in expected_step_ids:
+		_expect(seen_steps.has(step_id), "FirstPlayableLoopBench includes playable loop step %s" % step_id)
+	var manifest_variant: Variant = bench.call("build_loop_manifest_preview") if bench.has_method("build_loop_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = manifest.get("output_dir") == FIRST_PLAYABLE_LOOP_OUTPUT_DIR and int(manifest.get("case_count", 0)) == expected_step_ids.size() and records.size() == expected_step_ids.size()
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("step_id") and record.has("fixture_id") and record.has("expected_surface") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("right_inspector_checked") and record.has("player_feedback_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("passed") and record.has("notes")
+	_expect(manifest_records_ok, "FirstPlayableLoopBench manifest preview records include required playable-loop fields")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstPlayableLoopBench cases and manifest preview stay data-only")
+	_expect(ResourceLoader.exists("res://scenes/ui/GameScreen.tscn") and load("res://scenes/ui/GameScreen.tscn") != null, "FirstPlayableLoopBench can rely on the real GameScreen.tscn")
+	_expect(ResourceLoader.exists(FIRST_PLAYABLE_LOOP_FIXTURES_SCRIPT), "FirstPlayableLoopBench uses dedicated first playable loop fixture data")
+	_expect(FIRST_PLAYABLE_LOOP_SCREENSHOT_PATH.begins_with("user://") and not FIRST_PLAYABLE_LOOP_SCREENSHOT_PATH.contains("res://reports"), "First Playable Loop screenshot target uses user://")
+	viewport.remove_child(bench)
+	bench.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_first_round_runtime_playable_loop_bench_component() -> void:
+	_expect(ResourceLoader.exists(FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCRIPT), "First Round Runtime Playable Loop Bench script exists")
+	_expect(ResourceLoader.exists(FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_FIXTURES_SCRIPT), "First Round Runtime Playable Loop fixtures script exists")
+	_expect(ResourceLoader.exists(FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE), "First Round Runtime Playable Loop Bench scene exists")
+	var fixture_script := load(FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_FIXTURES_SCRIPT) as Script
+	_expect(fixture_script != null, "First Round Runtime Playable Loop fixtures script loads")
+	var expected_case_ids := [
+		"boot_to_first_player_turn",
+		"inspect_opening_hand_card",
+		"execute_enabled_card_action",
+		"disabled_action_guard",
+		"public_track_after_action_feedback",
+		"planet_map_after_action_feedback",
+		"temporary_decision_pending_flow",
+		"end_turn_or_advance_step",
+		"privacy_boundary_runtime",
+		"recovery_after_action_sequence",
+	]
+	if fixture_script != null:
+		var fixtures: RefCounted = fixture_script.new()
+		var ids_variant: Variant = fixtures.call("case_ids") if fixtures.has_method("case_ids") else []
+		var ids: Array = ids_variant if ids_variant is Array else []
+		_expect(ids.size() == expected_case_ids.size(), "First Round Runtime Playable Loop fixtures expose ten case ids")
+		for case_id in expected_case_ids:
+			_expect(ids.has(case_id), "First Round Runtime Playable Loop fixtures include case %s" % case_id)
+			var case_variant: Variant = fixtures.call("case_data", case_id) if fixtures.has_method("case_data") else {}
+			var flow_case: Dictionary = case_variant if case_variant is Dictionary else {}
+			var state_variant: Variant = fixtures.call("table_state_for_case", flow_case) if fixtures.has_method("table_state_for_case") else {}
+			var state: Dictionary = state_variant if state_variant is Dictionary else {}
+			var map_variant: Variant = fixtures.call("map_payload_for_case", flow_case) if fixtures.has_method("map_payload_for_case") else {}
+			var map_payload: Dictionary = map_variant if map_variant is Dictionary else {}
+			_expect(not flow_case.is_empty() and flow_case.has("case_id") and flow_case.has("fixture_id") and flow_case.has("interaction") and flow_case.has("selected_card_id") and flow_case.has("expected_action_id") and flow_case.has("notes"), "First Round Runtime Playable Loop case %s has testable fields" % case_id)
+			_expect(not state.is_empty() and not _variant_contains_callable(state) and not _variant_contains_object(state), "First Round Runtime Playable Loop table state %s is pure data" % case_id)
+			_expect(not map_payload.is_empty() and map_payload.get("districts", []) is Array and not _variant_contains_callable(map_payload) and not _variant_contains_object(map_payload), "First Round Runtime Playable Loop map payload %s is pure data" % case_id)
+	var bench_script := load(FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "First Round Runtime Playable Loop Bench script loads")
+	var packed := load(FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "FirstRoundRuntimePlayableLoopBench scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600, 960)
+	root.add_child(viewport)
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "FirstRoundRuntimePlayableLoopBench root is Control")
+	if bench == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	bench.set("auto_run_on_ready", false)
+	viewport.add_child(bench)
+	await process_frame
+	await process_frame
+	for node_name in ["FirstRoundRuntimePlayableLoopStatusLabel", "FirstRoundRuntimePlayableLoopSummaryLabel", "FirstRoundRuntimePlayableLoopPreviewHost", "FirstRoundRuntimePlayableLoopViewportContainer", "FirstRoundRuntimePlayableLoopPreviewViewport"]:
+		_expect(bench.find_child(node_name, true, false) != null, "FirstRoundRuntimePlayableLoopBench contains %s" % node_name)
+	_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("flow_cases") and bench.has_method("build_flow_manifest_preview") and bench.has_method("run_flow_suite"), "FirstRoundRuntimePlayableLoopBench exposes runtime flow QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "FirstRoundRuntimePlayableLoopBench writes QA output under user://")
+	if bench.has_method("screenshot_path"):
+		var screenshot_path := str(bench.call("screenshot_path"))
+		_expect(screenshot_path == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_SCREENSHOT_PATH and screenshot_path.begins_with("user://") and not screenshot_path.contains("res://reports"), "FirstRoundRuntimePlayableLoopBench exposes user:// screenshot target")
+	var cases_variant: Variant = bench.call("flow_cases") if bench.has_method("flow_cases") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	var seen_cases := {}
+	var required_case_fields_ok := cases.size() == expected_case_ids.size()
+	for case_variant in cases:
+		var flow_case: Dictionary = case_variant if case_variant is Dictionary else {}
+		seen_cases[str(flow_case.get("case_id", ""))] = true
+		required_case_fields_ok = required_case_fields_ok and flow_case.has("case_id") and flow_case.has("fixture_id") and flow_case.has("interaction") and flow_case.has("selected_card_id") and flow_case.has("expected_action_id") and flow_case.has("expected_inspector_text") and flow_case.has("notes")
+	_expect(required_case_fields_ok, "FirstRoundRuntimePlayableLoopBench flow cases include required fields")
+	for case_id in expected_case_ids:
+		_expect(seen_cases.has(case_id), "FirstRoundRuntimePlayableLoopBench includes runtime case %s" % case_id)
+	var manifest_variant: Variant = bench.call("build_flow_manifest_preview") if bench.has_method("build_flow_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = str(manifest.get("output_dir", "")) == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_SCREENSHOT_PATH and int(manifest.get("case_count", 0)) == expected_case_ids.size() and records.size() == expected_case_ids.size()
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("case_id") and record.has("fixture_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("selected_card_checked") and record.has("inspector_checked") and record.has("player_board_feedback_checked") and record.has("public_track_checked") and record.has("planet_map_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("passed") and record.has("notes")
+	_expect(manifest_records_ok, "FirstRoundRuntimePlayableLoopBench manifest preview records include required first-round fields")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstRoundRuntimePlayableLoopBench cases and manifest preview stay data-only")
+	_expect(ResourceLoader.exists("res://scenes/ui/GameScreen.tscn") and load("res://scenes/ui/GameScreen.tscn") != null, "FirstRoundRuntimePlayableLoopBench can rely on the real GameScreen.tscn")
+	_expect(ResourceLoader.exists("res://scenes/ui/CardResolutionTrack.tscn") and ResourceLoader.exists("res://scenes/ui/PlanetMapView.tscn") and ResourceLoader.exists("res://scenes/ui/OverlayLayer.tscn"), "FirstRoundRuntimePlayableLoopBench uses real track, map, and overlay scenes")
+	viewport.remove_child(bench)
+	bench.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_first_mission_spine_bench_component() -> void:
+	_expect(ResourceLoader.exists(FIRST_MISSION_SPINE_BENCH_SCRIPT), "First Mission Spine Bench script exists")
+	_expect(ResourceLoader.exists(FIRST_MISSION_SPINE_FIXTURES_SCRIPT), "First Mission Spine fixtures script exists")
+	_expect(ResourceLoader.exists(FIRST_MISSION_SPINE_BENCH_SCENE), "First Mission Spine Bench scene exists")
+	var fixture_script := load(FIRST_MISSION_SPINE_FIXTURES_SCRIPT) as Script
+	_expect(fixture_script != null, "First Mission Spine fixtures script loads")
+	if fixture_script != null:
+		var fixtures: RefCounted = fixture_script.new()
+		var step_ids_variant: Variant = fixtures.call("mission_step_ids") if fixtures.has_method("mission_step_ids") else []
+		var step_ids: Array = step_ids_variant if step_ids_variant is Array else []
+		var expected_steps := ["boot_first_mission", "inspect_first_card", "execute_first_action", "read_public_track", "temporary_decision_if_present", "end_turn", "mission_step_feedback"]
+		for step_id in expected_steps:
+			_expect(step_ids.has(step_id), "First Mission Spine fixtures include step %s" % step_id)
+			var state_variant: Variant = fixtures.call("table_state_for_step", step_id) if fixtures.has_method("table_state_for_step") else {}
+			var state: Dictionary = state_variant if state_variant is Dictionary else {}
+			_expect(not state.is_empty() and not _variant_contains_callable(state) and not _variant_contains_object(state), "First Mission Spine table state %s is pure data" % step_id)
+		var steps_variant: Variant = fixtures.call("mission_steps") if fixtures.has_method("mission_steps") else []
+		var steps: Array = steps_variant if steps_variant is Array else []
+		_expect(not _variant_contains_callable(steps) and not _variant_contains_object(steps), "First Mission Spine step fixtures stay data-only")
+	var bench_script := load(FIRST_MISSION_SPINE_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "First Mission Spine Bench script loads")
+	var packed := load(FIRST_MISSION_SPINE_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "FirstMissionSpineBench scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600, 960)
+	root.add_child(viewport)
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "FirstMissionSpineBench root is Control")
+	if bench == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	bench.set("auto_run_on_ready", false)
+	viewport.add_child(bench)
+	await process_frame
+	await process_frame
+	for node_name in ["FirstMissionSpineStatusLabel", "FirstMissionSpineSummaryLabel", "FirstMissionSpinePreviewHost", "FirstMissionSpineViewportContainer", "FirstMissionSpinePreviewViewport"]:
+		_expect(bench.find_child(node_name, true, false) != null, "FirstMissionSpineBench contains %s" % node_name)
+	_expect(bench.has_method("output_dir") and bench.has_method("mission_steps") and bench.has_method("build_mission_manifest_preview") and bench.has_method("run_mission_suite"), "FirstMissionSpineBench exposes mission spine QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == FIRST_MISSION_SPINE_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "FirstMissionSpineBench writes QA output under user:// instead of res://reports")
+	var cases_variant: Variant = bench.call("mission_steps") if bench.has_method("mission_steps") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	var expected_step_ids := ["boot_first_mission", "inspect_first_card", "execute_first_action", "read_public_track", "temporary_decision_if_present", "end_turn", "mission_step_feedback"]
+	var seen_steps := {}
+	var required_case_fields_ok := cases.size() == expected_step_ids.size()
+	for case_variant in cases:
+		var case: Dictionary = case_variant if case_variant is Dictionary else {}
+		seen_steps[str(case.get("step_id", ""))] = true
+		required_case_fields_ok = required_case_fields_ok and case.has("step_id") and case.has("fixture_id") and case.has("expected_surface") and case.has("expected_action_id") and case.has("notes")
+	_expect(required_case_fields_ok, "FirstMissionSpineBench mission steps include testable required fields")
+	for step_id in expected_step_ids:
+		_expect(seen_steps.has(step_id), "FirstMissionSpineBench includes mission step %s" % step_id)
+	var manifest_variant: Variant = bench.call("build_mission_manifest_preview") if bench.has_method("build_mission_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = manifest.get("output_dir") == FIRST_MISSION_SPINE_OUTPUT_DIR and int(manifest.get("case_count", 0)) == expected_step_ids.size() and records.size() == expected_step_ids.size()
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("step_id") and record.has("fixture_id") and record.has("expected_surface") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("right_inspector_checked") and record.has("player_feedback_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("coach_checked") and record.has("mission_feedback_checked") and record.has("passed") and record.has("notes")
+	_expect(manifest_records_ok, "FirstMissionSpineBench manifest preview records include required mission fields")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstMissionSpineBench cases and manifest preview stay data-only")
+	_expect(ResourceLoader.exists("res://scenes/ui/GameScreen.tscn") and load("res://scenes/ui/GameScreen.tscn") != null, "FirstMissionSpineBench can rely on the real GameScreen.tscn")
+	_expect(ResourceLoader.exists(FIRST_MISSION_SPINE_FIXTURES_SCRIPT), "FirstMissionSpineBench uses dedicated first mission spine fixture data")
+	_expect(FIRST_MISSION_SPINE_SCREENSHOT_PATH.begins_with("user://") and not FIRST_MISSION_SPINE_SCREENSHOT_PATH.contains("res://reports"), "First Mission Spine screenshot target uses user://")
+	viewport.remove_child(bench)
+	bench.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_first_mission_runtime_main_bench_component() -> void:
+	_expect(ResourceLoader.exists(FIRST_MISSION_RUNTIME_MAIN_BENCH_SCRIPT), "First Mission Runtime Main Bench script exists")
+	_expect(ResourceLoader.exists(FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE), "First Mission Runtime Main Bench scene exists")
+	var bench_script := load(FIRST_MISSION_RUNTIME_MAIN_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "First Mission Runtime Main Bench script loads")
+	var packed := load(FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "FirstMissionRuntimeMainBench scene loads")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1600, 960)
+	root.add_child(viewport)
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "FirstMissionRuntimeMainBench root is Control")
+	if bench == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	bench.set("auto_run_on_ready", false)
+	viewport.add_child(bench)
+	await process_frame
+	await process_frame
+	for node_name in ["FirstMissionRuntimeMainStatusLabel", "FirstMissionRuntimeMainSummaryLabel", "FirstMissionRuntimeMainPreviewHost", "FirstMissionRuntimeMainViewportContainer", "FirstMissionRuntimeMainPreviewViewport"]:
+		_expect(bench.find_child(node_name, true, false) != null, "FirstMissionRuntimeMainBench contains %s" % node_name)
+	_expect(bench.has_method("output_dir") and bench.has_method("flow_cases") and bench.has_method("build_flow_manifest_preview") and bench.has_method("run_flow_suite"), "FirstMissionRuntimeMainBench exposes runtime main QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == FIRST_MISSION_RUNTIME_MAIN_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "FirstMissionRuntimeMainBench writes QA output under user://")
+	if bench.has_method("screenshot_path"):
+		var screenshot_path := str(bench.call("screenshot_path"))
+		_expect(screenshot_path == FIRST_MISSION_RUNTIME_MAIN_SCREENSHOT_PATH and screenshot_path.begins_with("user://") and not screenshot_path.contains("res://reports"), "FirstMissionRuntimeMainBench exposes user:// screenshot target")
+	var cases_variant: Variant = bench.call("flow_cases") if bench.has_method("flow_cases") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	var expected_case_ids := [
+		"start_first_mission",
+		"select_recommended_district",
+		"summon_starter_monster",
+		"open_real_district_supply",
+		"land_rack_guarantees_city_development",
+		"buy_city_development_card",
+		"inspect_and_play_city_development",
+		"create_first_product_project_share",
+		"receive_first_positive_gdp_or_cash_tick",
+		"buy_followup_business_card",
+		"play_followup_business_card",
+		"observe_public_resolution_track",
+		"observe_ai_public_action",
+		"read_public_clue_without_owner_leak",
+		"monster_pressure_visible",
+		"mission_completion_feedback",
+		"core_set_ids_exist",
+		"core_set_resources_validate",
+		"rank_i_entry_cards_available",
+		"teaching_supply_reachable",
+		"first_enabled_card_is_clear",
+		"disabled_reason_is_actionable",
+		"economy_route_payoff_visible",
+		"monster_response_card_visible",
+		"public_clue_privacy_preserved",
+		"ai_can_use_core_set_without_private_leak",
+		"pacing_profile_15_to_30_minutes",
+		"milestone_telemetry_records_real_game_time",
+		"first_development_card_timing",
+		"first_positive_income_timing",
+		"second_card_timing",
+		"first_public_clue_timing",
+		"first_monster_pressure_timing",
+		"mission_completion_budget",
+		"local_product_development_supply_stable",
+		"followup_supply_prepositioned",
+		"privacy_boundary_runtime",
+	]
+	var seen_cases := {}
+	var required_case_fields_ok := cases.size() == expected_case_ids.size()
+	for case_variant in cases:
+		var flow_case: Dictionary = case_variant if case_variant is Dictionary else {}
+		seen_cases[str(flow_case.get("case_id", ""))] = true
+		required_case_fields_ok = required_case_fields_ok and flow_case.has("case_id") and flow_case.has("scenario_id") and flow_case.has("interaction") and flow_case.has("expected_action_id") and flow_case.has("notes")
+		_expect(str(flow_case.get("scenario_id", "")) == "first_table", "FirstMissionRuntimeMainBench case %s targets first_table" % str(flow_case.get("case_id", "")))
+	_expect(required_case_fields_ok, "FirstMissionRuntimeMainBench flow cases include required fields")
+	for case_id in expected_case_ids:
+		_expect(seen_cases.has(case_id), "FirstMissionRuntimeMainBench includes runtime main case %s" % case_id)
+	var manifest_variant: Variant = bench.call("build_flow_manifest_preview") if bench.has_method("build_flow_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = str(manifest.get("output_dir", "")) == FIRST_MISSION_RUNTIME_MAIN_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FIRST_MISSION_RUNTIME_MAIN_SCREENSHOT_PATH and int(manifest.get("case_count", 0)) == expected_case_ids.size() and records.size() == expected_case_ids.size() and manifest.has("pacing_profile") and manifest.has("pacing_evaluation")
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("case_id") and record.has("scenario_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("coach_checked") and record.has("player_board_checked") and record.has("track_checked") and record.has("map_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("content_checked") and record.has("income_checked") and record.has("ai_public_action_checked") and record.has("monster_pressure_checked") and record.has("mission_complete_checked") and record.has("rack_guarantee_checked") and record.has("project_checked") and record.has("second_card_checked") and record.has("core_content_checked") and record.has("pacing_checked") and record.has("supply_pacing_checked") and record.has("observed_seconds") and record.has("target_seconds") and record.has("warning_seconds") and record.has("pace_status") and record.has("passed") and record.has("notes")
+	_expect(manifest_records_ok, "FirstMissionRuntimeMainBench manifest preview records include required runtime main fields")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstMissionRuntimeMainBench cases and manifest preview stay data-only")
+	_expect(ResourceLoader.exists("res://scenes/main.tscn") and load("res://scenes/main.tscn") != null, "FirstMissionRuntimeMainBench can rely on the real main.tscn")
+	_expect(ResourceLoader.exists("res://scenes/ui/GameScreen.tscn") and ResourceLoader.exists("res://scenes/ui/CardResolutionTrack.tscn") and ResourceLoader.exists("res://scenes/ui/PlanetMapView.tscn") and ResourceLoader.exists("res://scenes/ui/OverlayLayer.tscn"), "FirstMissionRuntimeMainBench uses real GameScreen, track, map, and overlay scenes")
+	var authored_main_packed := load("res://scenes/main.tscn") as PackedScene
+	var main_instance := authored_main_packed.instantiate() as Control if authored_main_packed != null else null
+	if main_instance != null:
+		main_instance.visible = false
+		viewport.add_child(main_instance)
+		await process_frame
+		main_instance.set_process(false)
+	_expect(main_instance != null and main_instance.has_method("start_first_mission_runtime"), "main.gd exposes a reusable first mission runtime start entry")
+	_expect(main_instance != null and main_instance.has_method("_first_table_runtime_content_snapshot") and main_instance.has_method("_first_table_resolved_content_catalog"), "main.gd retains only first_table world-content and runtime-catalog compatibility adapters")
+	_expect(ResourceLoader.exists("res://scripts/economy/city_product_project_state.gd") and ResourceLoader.exists("res://scripts/economy/city_product_project_bridge.gd") and ResourceLoader.exists("res://scripts/economy/city_development_card_template_resource.gd") and ResourceLoader.exists("res://scripts/economy/city_development_card_template_pack_resource.gd"), "city development project runtime scripts load")
+	_expect(ResourceLoader.exists("res://resources/economy/core_city_development_pack.tres") and load("res://resources/economy/core_city_development_pack.tres") != null, "city development Inspector template pack loads")
+	var development_coordinator := main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main_instance != null else null
+	_expect(main_instance != null and main_instance.has_method("_ensure_city_development_card_supply") and development_coordinator != null and development_coordinator.has_method("execute_city_development") and main_instance.has_method("_city_public_project_snapshots") and main_instance.has_method("_city_private_project_snapshots"), "main keeps supply/privacy adapters while Coordinator exposes the single city-development settlement entry")
+	if main_instance != null and main_instance.has_method("_first_table_resolved_content_catalog"):
+		var authored_catalog: Dictionary = main_instance.call("_first_table_resolved_content_catalog") as Dictionary
+		var authored_cards: Array = authored_catalog.get("runtime_card_ids", []) if authored_catalog.get("runtime_card_ids", []) is Array else []
+		var featured_cards: Array = authored_catalog.get("featured_card_ids", []) if authored_catalog.get("featured_card_ids", []) is Array else []
+		var authored_monsters: Array = authored_catalog.get("starter_monster_ids", []) if authored_catalog.get("starter_monster_ids", []) is Array else []
+		var authored_products: Array = authored_catalog.get("preferred_product_ids", []) if authored_catalog.get("preferred_product_ids", []) is Array else []
+		var has_development_card := false
+		var card_catalog_coordinator := main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+		for card_variant in authored_cards:
+			var definition: Dictionary = card_catalog_coordinator.call("card_definition", str(card_variant)) as Dictionary if card_catalog_coordinator != null else {}
+			if str(definition.get("kind", "")) == "city_development":
+				has_development_card = true
+				break
+		_expect(has_development_card and authored_cards.has("城市融资1") and featured_cards.size() == 20 and featured_cards.has("城市融资1") and featured_cards.has("商品换线1") and featured_cards.has("诱导电波1") and featured_cards.has("业主透镜1") and featured_cards.has("相位否决1") and featured_cards.has("供应链保险1") and authored_monsters.has("镜像猎兵") and authored_monsters.has("蓝锋骑士") and authored_monsters.has("流星哨兵") and authored_monsters.has("绿洲修复体") and authored_products.has("活体芯片") and authored_products.has("轨迹墨水") and authored_products.has("等离子米"), "first_table authored fixture references the real core card set, city-development guarantee, monsters, and products")
+	if main_instance != null:
+		viewport.remove_child(main_instance)
+		main_instance.queue_free()
+	viewport.remove_child(bench)
+	bench.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _check_codex_mcp_companion_addon() -> void:
+	_expect(FileAccess.file_exists(CODEX_MCP_COMPANION_PLUGIN_CFG), "Codex MCP Companion plugin.cfg exists")
+	_expect(ResourceLoader.exists(CODEX_MCP_COMPANION_PLUGIN_SCRIPT), "Codex MCP Companion EditorPlugin script exists")
+	var config := ConfigFile.new()
+	var config_error := config.load(CODEX_MCP_COMPANION_PLUGIN_CFG)
+	_expect(config_error == OK, "Codex MCP Companion plugin.cfg loads")
+	if config_error == OK:
+		_expect(str(config.get_value("plugin", "name", "")) == "Codex MCP Companion", "Codex MCP Companion plugin.cfg declares the expected plugin name")
+		_expect(str(config.get_value("plugin", "script", "")) == "plugin.gd", "Codex MCP Companion plugin.cfg points at plugin.gd")
+	var enabled_variant: Variant = ProjectSettings.get_setting("editor_plugins/enabled", PackedStringArray())
+	var enabled_paths: Array[String] = []
+	if enabled_variant is PackedStringArray:
+		for path_variant in enabled_variant:
+			enabled_paths.append(str(path_variant))
+	elif enabled_variant is Array:
+		for path_variant in enabled_variant:
+			enabled_paths.append(str(path_variant))
+	_expect(enabled_paths.has(CODEX_MCP_COMPANION_PLUGIN_CFG), "project.godot registers the Codex MCP Companion editor plugin")
+	var plugin_script := load(CODEX_MCP_COMPANION_PLUGIN_SCRIPT) as Script
+	_expect(plugin_script != null, "Codex MCP Companion EditorPlugin script loads")
+	_expect(FileAccess.file_exists(MCP_CONFIG_PATH), ".mcp.json exists at the Godot project root")
+	var file := FileAccess.open(MCP_CONFIG_PATH, FileAccess.READ)
+	_expect(file != null, ".mcp.json opens for MCP companion status checks")
+	if file == null:
+		return
+	var parsed_variant: Variant = JSON.parse_string(file.get_as_text())
+	var parsed: Dictionary = parsed_variant if parsed_variant is Dictionary else {}
+	var servers: Dictionary = parsed.get("mcpServers", {}) if parsed.get("mcpServers", {}) is Dictionary else {}
+	var godot_server: Dictionary = servers.get("godot", {}) if servers.get("godot", {}) is Dictionary else {}
+	var args: Array = godot_server.get("args", []) if godot_server.get("args", []) is Array else []
+	_expect(str(godot_server.get("command", "")) == "cmd", ".mcp.json uses Windows cmd to launch the Godot MCP server")
+	_expect(args.size() >= 4 and args[0] == "/c" and args[1] == "npx" and args[2] == "-y" and args[3] == "godot-mcp-server", ".mcp.json points at the selected godot-mcp-server npm package")
+	_expect(not _variant_contains_callable(parsed) and not _variant_contains_object(parsed), ".mcp.json stays pure JSON data")
+
+
+func _check_godot_mcp_editor_addon() -> void:
+	_expect(FileAccess.file_exists(GODOT_MCP_PLUGIN_CFG), "Godot MCP editor plugin.cfg exists")
+	_expect(ResourceLoader.exists(GODOT_MCP_PLUGIN_SCRIPT), "Godot MCP editor plugin script exists")
+	_expect(ResourceLoader.exists(GODOT_MCP_CLIENT_SCRIPT), "Godot MCP client script exists")
+	_expect(ResourceLoader.exists(GODOT_MCP_TOOL_EXECUTOR_SCRIPT), "Godot MCP tool executor script exists")
+	_expect(ResourceLoader.exists(GODOT_MCP_RUNTIME_SCRIPT), "Godot MCP optional runtime script exists")
+	_expect(ResourceLoader.exists(GODOT_MCP_PROJECT_TOOLS_SCRIPT), "Godot MCP project tools script exists")
+	_expect(FileAccess.file_exists(GODOT_MCP_SOURCE_NOTE), "Godot MCP vendored source note exists")
+	var config := ConfigFile.new()
+	var config_error := config.load(GODOT_MCP_PLUGIN_CFG)
+	_expect(config_error == OK, "Godot MCP plugin.cfg loads")
+	if config_error == OK:
+		_expect(str(config.get_value("plugin", "name", "")) == "Godot MCP", "Godot MCP plugin.cfg declares the expected plugin name")
+		_expect(str(config.get_value("plugin", "script", "")) == "plugin.gd", "Godot MCP plugin.cfg points at plugin.gd")
+	var enabled_variant: Variant = ProjectSettings.get_setting("editor_plugins/enabled", PackedStringArray())
+	var enabled_paths: Array[String] = []
+	if enabled_variant is PackedStringArray:
+		for path_variant in enabled_variant:
+			enabled_paths.append(str(path_variant))
+	elif enabled_variant is Array:
+		for path_variant in enabled_variant:
+			enabled_paths.append(str(path_variant))
+	_expect(enabled_paths.has(GODOT_MCP_PLUGIN_CFG), "project.godot registers the Godot MCP editor plugin")
+	var plugin_script := load(GODOT_MCP_PLUGIN_SCRIPT) as Script
+	var client_script := load(GODOT_MCP_CLIENT_SCRIPT) as Script
+	var executor_script := load(GODOT_MCP_TOOL_EXECUTOR_SCRIPT) as Script
+	var runtime_script := load(GODOT_MCP_RUNTIME_SCRIPT) as Script
+	var project_tools_script := load(GODOT_MCP_PROJECT_TOOLS_SCRIPT) as Script
+	_expect(plugin_script != null, "Godot MCP EditorPlugin script loads")
+	_expect(client_script != null, "Godot MCP client script loads")
+	_expect(executor_script != null, "Godot MCP tool executor script loads")
+	_expect(runtime_script != null, "Godot MCP runtime script loads")
+	_expect(project_tools_script != null, "Godot MCP project tools script loads")
+	var source_file := FileAccess.open(GODOT_MCP_SOURCE_NOTE, FileAccess.READ)
+	var source_text := source_file.get_as_text() if source_file != null else ""
+	_expect(source_text.contains("tomyud1/godot-mcp") and source_text.contains("godot-mcp-server") and source_text.contains("127.0.0.1:6505"), "Godot MCP source note records the selected GitHub repo, npm server, and localhost connection")
+	var mcp_client_text := FileAccess.get_file_as_string(GODOT_MCP_CLIENT_SCRIPT)
+	var runtime_text := FileAccess.get_file_as_string(GODOT_MCP_RUNTIME_SCRIPT)
+	var project_tools_text := FileAccess.get_file_as_string(GODOT_MCP_PROJECT_TOOLS_SCRIPT)
+	_expect(mcp_client_text.contains("ws://127.0.0.1:6505") and runtime_text.contains("ws://127.0.0.1:6505"), "Godot MCP editor/runtime clients connect only to localhost by default")
+	_expect(project_tools_text.contains("reload_from_disk") and project_tools_text.contains("get_unsaved_scenes") and project_tools_text.contains("reload_scene_from_path"), "Godot MCP open_in_godot supports safe external-edit reload without discarding unsaved scenes")
+
+
+func _check_temporary_decision_overlay_capture_bench_component() -> void:
+	var bench_script := load(TEMPORARY_DECISION_CAPTURE_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "TemporaryDecisionOverlayCaptureBench script loads")
+	var packed := load(TEMPORARY_DECISION_CAPTURE_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "TemporaryDecisionOverlayCaptureBench scene loads")
+	if packed == null:
+		return
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "TemporaryDecisionOverlayCaptureBench root is Control")
+	if bench == null:
+		return
+	_expect(bench.has_method("output_dir") and bench.has_method("capture_cases") and bench.has_method("build_capture_manifest_preview") and bench.has_method("run_capture_suite"), "TemporaryDecisionOverlayCaptureBench exposes capture QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == TEMPORARY_DECISION_CAPTURE_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "TemporaryDecisionOverlayCaptureBench writes visual QA output under user:// instead of res://reports")
+	var cases_variant: Variant = bench.call("capture_cases") if bench.has_method("capture_cases") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	_expect(cases.size() == 22, "TemporaryDecisionOverlayCaptureBench exposes the fixed 22-case capture matrix")
+	var base_1280 := 0
+	var base_1600 := 0
+	var long_1600 := 0
+	var disabled_1600 := 0
+	var empty_edge := 0
+	var malformed_edge := 0
+	var required_case_fields_ok := true
+	for case_variant in cases:
+		var capture_case: Dictionary = case_variant if case_variant is Dictionary else {}
+		var size: Dictionary = capture_case.get("viewport_size", {}) if capture_case.get("viewport_size", {}) is Dictionary else {}
+		var variant := str(capture_case.get("variant", ""))
+		var width := int(size.get("width", 0))
+		var height := int(size.get("height", 0))
+		required_case_fields_ok = required_case_fields_ok and capture_case.has("fixture_id") and capture_case.has("variant") and capture_case.has("viewport_size") and capture_case.has("expected_panel") and capture_case.has("action_count") and capture_case.has("notes")
+		if variant == "base" and width == 1280 and height == 720:
+			base_1280 += 1
+		elif variant == "base" and width == 1600 and height == 960:
+			base_1600 += 1
+		elif variant == "long_text" and width == 1600 and height == 960:
+			long_1600 += 1
+		elif variant == "disabled_action" and width == 1600 and height == 960:
+			disabled_1600 += 1
+		elif variant == "empty_payload" and width == 1600 and height == 960:
+			empty_edge += 1
+		elif variant == "malformed_payload" and width == 1600 and height == 960:
+			malformed_edge += 1
+	_expect(required_case_fields_ok, "TemporaryDecisionOverlayCaptureBench capture cases include manifest-ready required fields")
+	_expect(base_1280 == 5 and base_1600 == 5 and long_1600 == 5 and disabled_1600 == 5 and empty_edge == 1 and malformed_edge == 1, "TemporaryDecisionOverlayCaptureBench capture matrix covers base, long text, disabled, and edge variants at the expected sizes")
+	var manifest_variant: Variant = bench.call("build_capture_manifest_preview") if bench.has_method("build_capture_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = manifest.get("output_dir") == TEMPORARY_DECISION_CAPTURE_OUTPUT_DIR and int(manifest.get("case_count", 0)) == 22 and records.size() == 22
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("variant") and record.has("viewport_size") and record.has("expected_panel") and record.has("image_path") and record.has("action_count") and record.has("notes")
+		manifest_records_ok = manifest_records_ok and str(record.get("image_path", "")).begins_with(TEMPORARY_DECISION_CAPTURE_OUTPUT_DIR) and not str(record.get("image_path", "")).contains("res://reports")
+	_expect(manifest_records_ok, "TemporaryDecisionOverlayCaptureBench manifest preview records include required fields and user:// image paths")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "TemporaryDecisionOverlayCaptureBench capture matrix and manifest preview stay data-only")
+	bench.queue_free()
+
+
+func _check_temporary_decision_overlay_interaction_bench_component() -> void:
+	var bench_script := load(TEMPORARY_DECISION_INTERACTION_BENCH_SCRIPT) as Script
+	_expect(bench_script != null, "TemporaryDecisionOverlayInteractionBench script loads")
+	var packed := load(TEMPORARY_DECISION_INTERACTION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "TemporaryDecisionOverlayInteractionBench scene loads")
+	if packed == null:
+		return
+	var bench := packed.instantiate() as Control
+	_expect(bench != null, "TemporaryDecisionOverlayInteractionBench root is Control")
+	if bench == null:
+		return
+	_expect(bench.has_method("output_dir") and bench.has_method("interaction_cases") and bench.has_method("build_interaction_manifest_preview") and bench.has_method("run_interaction_suite"), "TemporaryDecisionOverlayInteractionBench exposes interaction QA methods")
+	if bench.has_method("output_dir"):
+		var output_path := str(bench.call("output_dir"))
+		_expect(output_path == TEMPORARY_DECISION_INTERACTION_OUTPUT_DIR and output_path.begins_with("user://") and not output_path.contains("res://reports"), "TemporaryDecisionOverlayInteractionBench writes interaction QA output under user:// instead of res://reports")
+	var cases_variant: Variant = bench.call("interaction_cases") if bench.has_method("interaction_cases") else []
+	var cases: Array = cases_variant if cases_variant is Array else []
+	_expect(cases.size() == 12, "TemporaryDecisionOverlayInteractionBench exposes five base, five disabled, and two edge interaction cases")
+	var base_cases := 0
+	var disabled_cases := 0
+	var empty_edge := 0
+	var malformed_edge := 0
+	var expected_ids := ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"]
+	var seen_base_ids: Array[String] = []
+	var seen_disabled_ids: Array[String] = []
+	var required_case_fields_ok := true
+	for case_variant in cases:
+		var interaction_case: Dictionary = case_variant if case_variant is Dictionary else {}
+		var fixture_id := str(interaction_case.get("fixture_id", ""))
+		var variant := str(interaction_case.get("variant", ""))
+		required_case_fields_ok = required_case_fields_ok and interaction_case.has("fixture_id") and interaction_case.has("variant") and interaction_case.has("expected_panel") and interaction_case.has("payload") and interaction_case.has("action_count") and interaction_case.has("notes")
+		if variant == "base":
+			base_cases += 1
+			seen_base_ids.append(fixture_id)
+		elif variant == "disabled_action":
+			disabled_cases += 1
+			seen_disabled_ids.append(fixture_id)
+		elif variant == "empty_payload":
+			empty_edge += 1
+		elif variant == "malformed_payload":
+			malformed_edge += 1
+	for id in expected_ids:
+		_expect(seen_base_ids.has(id), "TemporaryDecisionOverlayInteractionBench includes base interaction case for %s" % id)
+		_expect(seen_disabled_ids.has(id), "TemporaryDecisionOverlayInteractionBench includes disabled-action interaction case for %s" % id)
+	_expect(required_case_fields_ok, "TemporaryDecisionOverlayInteractionBench interaction cases include manifest-ready required fields")
+	_expect(base_cases == 5 and disabled_cases == 5 and empty_edge == 1 and malformed_edge == 1, "TemporaryDecisionOverlayInteractionBench interaction matrix covers base, disabled, empty, and malformed variants")
+	var manifest_variant: Variant = bench.call("build_interaction_manifest_preview") if bench.has_method("build_interaction_manifest_preview") else {}
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var manifest_records_ok: bool = manifest.get("output_dir") == TEMPORARY_DECISION_INTERACTION_OUTPUT_DIR and int(manifest.get("case_count", 0)) == 12 and records.size() == 12
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		manifest_records_ok = manifest_records_ok and record.has("fixture_id") and record.has("variant") and record.has("expected_panel") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("disabled_action_checked") and record.has("panel_exclusive") and record.has("hide_checked") and record.has("passed") and record.has("notes")
+	_expect(manifest_records_ok, "TemporaryDecisionOverlayInteractionBench manifest preview records include required interaction fields")
+	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "TemporaryDecisionOverlayInteractionBench cases and manifest preview stay data-only")
+	_expect(load(TEMPORARY_DECISION_PREVIEW_SCENE) != null and load(TEMPORARY_DECISION_CAPTURE_BENCH_SCENE) != null, "TemporaryDecisionOverlayPreview and CaptureBench scenes still load while adding InteractionBench")
+	bench.queue_free()
+
+
+func _check_temporary_decision_overlay_preview_component() -> void:
+	var fixture_script := load("res://scripts/ui/temporary_decision_preview_fixtures.gd")
+	_expect(fixture_script != null, "TemporaryDecision preview fixtures script loads")
+	if fixture_script == null:
+		return
+	var fixtures: RefCounted = fixture_script.new()
+	var preview_ids_variant: Variant = fixtures.call("preview_ids")
+	var preview_ids: Array = preview_ids_variant if preview_ids_variant is Array else []
+	_expect(preview_ids.size() == 5, "TemporaryDecision preview fixtures expose all five temporary decision states")
+	for id_variant in preview_ids:
+		var id := str(id_variant)
+		var data_variant: Variant = fixtures.call("fixture", id)
+		var data: Dictionary = data_variant if data_variant is Dictionary else {}
+		_expect(not data.is_empty() and str(data.get("kind", "")) == id, "TemporaryDecision preview fixture %s is a data Dictionary with matching kind" % id)
+		_expect(not _variant_contains_callable(data) and not _variant_contains_object(data), "TemporaryDecision preview fixture %s stays pure data without Callable/Node/Object" % id)
+	var packed := load("res://scenes/ui/TemporaryDecisionOverlayPreview.tscn") as PackedScene
+	_expect(packed != null, "TemporaryDecisionOverlayPreview scene loads for design QA")
+	if packed == null:
+		return
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1280, 720)
+	root.add_child(viewport)
+	var preview := packed.instantiate() as Control
+	_expect(preview != null, "TemporaryDecisionOverlayPreview root is Control")
+	if preview == null:
+		root.remove_child(viewport)
+		viewport.queue_free()
+		return
+	viewport.add_child(preview)
+	await process_frame
+	_expect(preview.has_method("show_preview_id") and preview.has_method("show_long_text_stress") and preview.has_method("show_disabled_action_stress"), "TemporaryDecisionOverlayPreview exposes design QA control methods")
+	for node_name in ["PreviewStateSectionLabel", "PreviewVariantSectionLabel", "PreviewQaGrid", "PreviewStatusPanel", "TemporaryDecisionPreviewFixtureLabel", "TemporaryDecisionPreviewVariantLabel", "TemporaryDecisionPreviewPanelLabel", "TemporaryDecisionPreviewActionCountLabel"]:
+		_expect(preview.find_child(node_name, true, false) != null, "TemporaryDecisionOverlayPreview exposes %s for designer QA readback" % node_name)
+	var overlay := preview.find_child("OverlayLayer", true, false) as CanvasLayer
+	_expect(overlay != null and overlay.has_method("show_temporary_decision"), "TemporaryDecisionOverlayPreview reuses the real OverlayLayer scene")
+	var action_ids: Array[String] = []
+	if overlay != null and overlay.has_signal("temporary_decision_action_requested"):
+		overlay.connect("temporary_decision_action_requested", func(action_id: String) -> void:
+			action_ids.append(action_id)
+		)
+	var expected_panel_by_id := {
+		"monster_wager": "MonsterWagerDecisionPanel",
+		"contract_response": "ContractResponseDecisionPanel",
+		"discard_purchase": "TemporaryChoiceDecisionPanel",
+		"monster_target_choice": "TemporaryChoiceDecisionPanel",
+		"player_target_choice": "TemporaryChoiceDecisionPanel",
+	}
+	for id_variant in preview_ids:
+		var id := str(id_variant)
+		var data: Dictionary = fixtures.call("fixture", id) as Dictionary
+		overlay.call("show_temporary_decision", data)
+		await process_frame
+		var visible_panels := _visible_temporary_decision_panel_names(preview)
+		_expect(visible_panels.size() == 1 and visible_panels[0] == str(expected_panel_by_id.get(id, "")), "TemporaryDecision preview fixture %s routes to exactly one specialized Overlay panel" % id)
+		var visible_panel := preview.find_child(str(expected_panel_by_id.get(id, "")), true, false) as Control
+		_expect(visible_panel != null and _node_tree_text(visible_panel).strip_edges() != "", "TemporaryDecision preview fixture %s renders visible panel text" % id)
+	preview.call("show_preview_id", "monster_wager")
+	await process_frame
+	preview.call("show_long_text_stress")
+	await process_frame
+	var variant_label := preview.find_child("TemporaryDecisionPreviewVariantLabel", true, false) as Label
+	var panel_label := preview.find_child("TemporaryDecisionPreviewPanelLabel", true, false) as Label
+	var action_count_label := preview.find_child("TemporaryDecisionPreviewActionCountLabel", true, false) as Label
+	_expect(variant_label != null and variant_label.text.contains("long_text"), "TemporaryDecisionOverlayPreview marks long-text stress in the QA status panel")
+	_expect(panel_label != null and panel_label.text.contains("Monster Wager Panel"), "TemporaryDecisionOverlayPreview shows the expected panel in the QA status panel")
+	_expect(action_count_label != null and action_count_label.text.contains("Actions:"), "TemporaryDecisionOverlayPreview shows action counts in the QA status panel")
+	var long_panel := preview.find_child("MonsterWagerDecisionPanel", true, false) as Control
+	var long_rect := long_panel.get_global_rect() if long_panel != null else Rect2()
+	_expect(long_panel != null and long_panel.visible and long_rect.size.x > 0.0 and long_rect.size.y > 0.0 and long_rect.size.x <= 1280.0 and long_rect.size.y <= 720.0 and long_rect.position.x >= -1.0 and long_rect.position.x + long_rect.size.x <= 1281.0, "TemporaryDecisionOverlayPreview long-text stress keeps the decision panel bounded")
+	preview.call("show_disabled_action_stress")
+	await process_frame
+	_expect(variant_label != null and variant_label.text.contains("disabled_action"), "TemporaryDecisionOverlayPreview marks disabled-action stress in the QA status panel")
+	var disabled_panel := preview.find_child("MonsterWagerDecisionPanel", true, false) as Control
+	var disabled_buttons := _visible_buttons_in(disabled_panel)
+	var saw_disabled := false
+	var enabled_button: Button = null
+	for button_variant in disabled_buttons:
+		var button := button_variant as Button
+		if button == null:
+			continue
+		if button.disabled:
+			saw_disabled = true
+		elif enabled_button == null:
+			enabled_button = button
+	_expect(saw_disabled and enabled_button != null, "TemporaryDecisionOverlayPreview disabled-action stress shows disabled actions while keeping at least one enabled action")
+	if enabled_button != null:
+		enabled_button.emit_signal("pressed")
+		await process_frame
+	var latest_action_id := action_ids[action_ids.size() - 1] if not action_ids.is_empty() else ""
+	_expect(latest_action_id.begins_with("monster_wager:"), "TemporaryDecisionOverlayPreview forwards enabled action ids through OverlayLayer temporary_decision_action_requested")
+	preview.call("show_empty_payload")
+	await process_frame
+	_expect(_visible_temporary_decision_panel_names(preview).is_empty(), "TemporaryDecisionOverlayPreview empty payload hides every decision panel")
+	preview.call("show_malformed_payload")
+	await process_frame
+	var fallback_panel := preview.find_child("TemporaryDecisionModal", true, false) as Control
+	_expect(fallback_panel != null and fallback_panel.visible and _node_tree_text(fallback_panel).contains("异常 payload"), "TemporaryDecisionOverlayPreview malformed payload falls back to the generic temporary decision panel")
+	preview.call("hide_overlay")
+	await process_frame
+	_expect(_visible_temporary_decision_panel_names(preview).is_empty(), "TemporaryDecisionOverlayPreview hide button clears the Overlay")
+	viewport.remove_child(preview)
+	preview.queue_free()
+	root.remove_child(viewport)
+	viewport.queue_free()
+
+
+func _visible_temporary_decision_panel_names(root_node: Node) -> Array[String]:
+	var names: Array[String] = []
+	for node_name in ["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "ConfirmPanel"]:
+		var panel := root_node.find_child(node_name, true, false) as Control
+		if panel != null and panel.visible:
+			names.append(node_name)
+	return names
+
+
+func _visible_buttons_in(node: Node) -> Array:
+	if node == null:
+		return []
+	var result: Array = []
+	for button_variant in node.find_children("*", "Button", true, false):
+		var button := button_variant as Button
+		if button != null and button.visible:
+			result.append(button)
+	return result
 
 
 func _check_core_layout_no_overlap() -> void:
@@ -1034,6 +4171,308 @@ func _check_map_view_projection_defaults() -> void:
 	map_view.queue_free()
 	root.remove_child(viewport)
 	viewport.queue_free()
+
+
+func _check_planet_map_sceneization_component() -> void:
+	_expect(ResourceLoader.exists(PLANET_MAP_VIEW_SCRIPT), "PlanetMapView script exists")
+	_expect(ResourceLoader.exists(PLANET_MAP_VIEW_SCENE), "PlanetMapView scene exists")
+	var child_scene_specs := [
+		{"scene": PLANET_DISTRICT_NODE_SCENE, "script": PLANET_DISTRICT_NODE_SCRIPT, "root": "PlanetDistrictNode", "nodes": ["DistrictNameLabel", "DistrictMetaLabel", "DistrictProductLabel", "DistrictStateLabel"]},
+		{"scene": PLANET_DISTRICT_POLYGON_SCENE, "script": PLANET_DISTRICT_POLYGON_SCRIPT, "root": "PlanetDistrictPolygon", "nodes": []},
+		{"scene": PLANET_SELECTION_RING_SCENE, "script": PLANET_SELECTION_RING_SCRIPT, "root": "PlanetSelectionRing", "nodes": ["SelectionRingTitleLabel", "SelectionRingDetailLabel"]},
+		{"scene": PLANET_CITY_MARKER_SCENE, "script": PLANET_CITY_MARKER_SCRIPT, "root": "PlanetCityMarker", "nodes": ["CityMarkerTagLabel", "CityMarkerLevelLabel", "CityMarkerProductLabel"]},
+		{"scene": PLANET_MONSTER_TOKEN_SCENE, "script": PLANET_MONSTER_TOKEN_SCRIPT, "root": "PlanetMonsterToken", "nodes": ["MonsterTokenGlyphLabel", "MonsterTokenNameLabel", "MonsterTokenMotifLabel"]},
+		{"scene": PLANET_ROUTE_MARKER_SCENE, "script": PLANET_ROUTE_MARKER_SCRIPT, "root": "PlanetRouteMarker", "nodes": ["RouteMarkerProductLabel", "RouteMarkerStatusLabel", "RouteMarkerLengthLabel"]},
+		{"scene": PLANET_ROUTE_SEGMENT_SCENE, "script": PLANET_ROUTE_SEGMENT_SCRIPT, "root": "PlanetRouteSegment", "nodes": []},
+		{"scene": PLANET_MOVEMENT_TRAIL_SCENE, "script": PLANET_MOVEMENT_TRAIL_SCRIPT, "root": "PlanetMovementTrail", "nodes": []},
+		{"scene": PLANET_MAP_EVENT_EFFECT_SCENE, "script": PLANET_MAP_EVENT_EFFECT_SCRIPT, "root": "PlanetMapEventEffect", "nodes": []},
+		{"scene": PLANET_ACTION_CALLOUT_SCENE, "script": PLANET_ACTION_CALLOUT_SCRIPT, "root": "PlanetActionCallout", "nodes": ["ActionCalloutTitleLabel", "ActionCalloutDetailLabel"]},
+		{"scene": PLANET_GLOBE_BACKDROP_SCENE, "script": PLANET_GLOBE_BACKDROP_SCRIPT, "root": "PlanetGlobeBackdrop", "nodes": []},
+		{"scene": PLANET_ORBIT_GUIDE_SCENE, "script": PLANET_ORBIT_GUIDE_SCRIPT, "root": "PlanetOrbitGuide", "nodes": []},
+		{"scene": PLANET_FOCUS_RANGE_OVERLAY_SCENE, "script": PLANET_FOCUS_RANGE_OVERLAY_SCRIPT, "root": "PlanetFocusRangeOverlay", "nodes": []},
+		{"scene": PLANET_MAP_SCALE_HINT_SCENE, "script": PLANET_MAP_SCALE_HINT_SCRIPT, "root": "PlanetMapScaleHint", "nodes": ["ScaleHintModeLabel", "ScaleHintDetailLabel"]},
+	]
+	for spec_variant in child_scene_specs:
+		var spec: Dictionary = spec_variant as Dictionary
+		_expect(ResourceLoader.exists(str(spec.get("script", ""))), "%s script exists" % str(spec.get("root", "")))
+		_expect(ResourceLoader.exists(str(spec.get("scene", ""))), "%s scene exists" % str(spec.get("root", "")))
+		var child_script := load(str(spec.get("script", ""))) as Script
+		_expect(child_script != null, "%s script loads" % str(spec.get("root", "")))
+		var child_packed := load(str(spec.get("scene", ""))) as PackedScene
+		_expect(child_packed != null, "%s scene loads" % str(spec.get("root", "")))
+		if child_packed != null:
+			var child := child_packed.instantiate() as Control
+			_expect(child != null and child.has_method("configure"), "%s root is configurable Control" % str(spec.get("root", "")))
+			if child != null:
+				for node_name in spec.get("nodes", []):
+					_expect(child.find_child(str(node_name), true, false) != null, "%s contains editable node %s" % [str(spec.get("root", "")), str(node_name)])
+				child.queue_free()
+	_expect(ResourceLoader.exists(PLANET_MAP_RENDER_MODEL_SCRIPT), "PlanetMapRenderModel script exists")
+	var render_model_script := load(PLANET_MAP_RENDER_MODEL_SCRIPT) as Script
+	_expect(render_model_script != null, "PlanetMapRenderModel script loads")
+	_expect(ResourceLoader.exists(PLANET_MAP_MCP_PREVIEW_SCRIPT), "PlanetMap MCP preview script exists")
+	_expect(ResourceLoader.exists(PLANET_MAP_MCP_PREVIEW_FIXTURES_SCRIPT), "PlanetMap MCP preview fixtures script exists")
+	_expect(ResourceLoader.exists(PLANET_MAP_MCP_PREVIEW_SCENE), "PlanetMap MCP preview scene exists")
+	_expect(ResourceLoader.exists(PLANET_MAP_RENDER_CUTOVER_BENCH_SCRIPT), "PlanetMap Render Cutover Bench script exists")
+	_expect(ResourceLoader.exists(PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE), "PlanetMap Render Cutover Bench scene exists")
+	_expect(ResourceLoader.exists(PLANET_MAP_INTERACTION_BENCH_SCRIPT), "PlanetMap Interaction Bench script exists")
+	_expect(ResourceLoader.exists(PLANET_MAP_INTERACTION_BENCH_SCENE), "PlanetMap Interaction Bench scene exists")
+	var map_script := load(PLANET_MAP_VIEW_SCRIPT) as Script
+	_expect(map_script != null, "PlanetMapView script loads")
+	var map_packed := load(PLANET_MAP_VIEW_SCENE) as PackedScene
+	_expect(map_packed != null, "PlanetMapView scene loads")
+	if map_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(720, 720)
+		root.add_child(viewport)
+		var map_view := map_packed.instantiate() as Control
+		_expect(map_view != null, "PlanetMapView root is Control")
+		if map_view != null:
+			viewport.add_child(map_view)
+			map_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			await process_frame
+			for layer_name in ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]:
+				_expect(map_view.find_child(layer_name, true, false) != null, "PlanetMapView contains editable layer %s" % layer_name)
+			_expect(map_view.get_node_or_null("BackdropLayer/PlanetGlobeBackdrop") != null, "PlanetMapView embeds PlanetGlobeBackdrop under BackdropLayer")
+			_expect(map_view.get_node_or_null("OrbitLayer/PlanetOrbitGuide") != null, "PlanetMapView embeds PlanetOrbitGuide under OrbitLayer")
+			_expect(map_view.get_node_or_null("SelectionLayer/PlanetFocusRangeOverlay") != null, "PlanetMapView embeds PlanetFocusRangeOverlay under SelectionLayer")
+			_expect(map_view.get_node_or_null("DebugOverlayLayer/PlanetMapScaleHint") != null, "PlanetMapView embeds PlanetMapScaleHint under DebugOverlayLayer")
+			_expect(map_view.has_signal("district_selected") and map_view.has_signal("district_double_clicked"), "PlanetMapView preserves MapView district signals")
+			_expect(map_view.has_method("set_map") and map_view.has_method("focus_district") and map_view.has_method("get_district_at_control_position") and map_view.has_method("get_district_control_position"), "PlanetMapView preserves MapView methods used by runtime input")
+			_expect(map_view.has_method("editable_layer_names") and map_view.has_method("get_sceneization_debug_snapshot") and map_view.has_method("get_sceneized_child_snapshot") and map_view.has_method("render_model_debug_payload"), "PlanetMapView exposes MCP sceneization debug helpers")
+			if map_view.has_method("set_map"):
+				map_view.call("set_map", _map_view_projection_test_districts(), 1400.0, 950.0, 1, [
+					Color("#0ea5e9"),
+					Color("#22c55e"),
+					Color("#f59e0b"),
+					Color("#a855f7"),
+				], [
+					{"from": Vector2(240, 660), "to": Vector2(760, 310), "label": "QA trail", "color": Color("#38bdf8"), "duration": 1.0, "life": 0.9},
+				], [
+					{"title": "QA action", "detail": "Sceneized callout", "accent": Color("#facc15"), "duration": 1.0, "life": 0.9},
+				], [
+					{"kind": "laser", "from": Vector2(240, 660), "to": Vector2(760, 310), "position": Vector2(760, 310), "label": "QA hit", "color": Color("#f97316"), "duration": 1.0, "life": 0.9, "radius_m": 80.0},
+				], [
+					{"name": "QA Monster", "position": Vector2(745, 310), "label": "A", "glyph": "M", "motif": "beast", "color": Color("#ef4444"), "secondary": Color("#fde68a")},
+				], [
+					{"position": Vector2(760, 310), "tag": "2", "level": 2, "products": ["ore"], "tag_color": Color("#38bdf8"), "active": true},
+				], [
+					{"product": "ore", "points": [Vector2(240, 660), Vector2(520, 610), Vector2(760, 310)], "disrupted": false},
+				], "ore", "all")
+			await process_frame
+			await process_frame
+			var snapshot_variant: Variant = map_view.call("get_sceneization_debug_snapshot") if map_view.has_method("get_sceneization_debug_snapshot") else {}
+			var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+			var render_payload_variant: Variant = map_view.call("render_model_debug_payload") if map_view.has_method("render_model_debug_payload") else {}
+			var render_payload: Dictionary = render_payload_variant if render_payload_variant is Dictionary else {}
+			_expect(int(snapshot.get("district_count", 0)) == 4 and bool(snapshot.get("extends_runtime_map_view", false)), "PlanetMapView wraps the live MapView renderer without rewriting map rules")
+			_expect(int(snapshot.get("district_polygon_count", 0)) == 4 and int(snapshot.get("district_node_count", 0)) == 4 and int(snapshot.get("route_segment_count", 0)) > 0 and int(snapshot.get("movement_trail_count", 0)) == 1 and int(snapshot.get("map_event_effect_count", 0)) == 1 and int(snapshot.get("action_callout_count", 0)) == 1 and int(snapshot.get("monster_token_count", 0)) == 1 and int(snapshot.get("city_marker_count", 0)) == 1 and int(snapshot.get("route_marker_count", 0)) == 1 and bool(snapshot.get("selected_marker_visible", false)), "PlanetMapView sceneizes district polygon, district label, route segment, movement trail, event effect, action callout, city, monster, route marker, and selection children after set_map")
+			_expect(bool(snapshot.get("globe_backdrop_sceneized", false)) and bool(snapshot.get("orbit_guide_sceneized", false)) and bool(snapshot.get("focus_range_overlay_sceneized", false)) and bool(snapshot.get("scale_hint_sceneized", false)), "PlanetMapView reports globe backdrop, orbit guide, focus range overlay, and scale hint as sceneized")
+			_expect(bool(snapshot.get("sceneized_visual_cutover_enabled", false)) and not bool(snapshot.get("legacy_draw_fallback_enabled", true)) and not bool(snapshot.get("legacy_draw_fallback_used", true)), "PlanetMapView defaults to sceneized render cutover with legacy draw fallback inactive")
+			_expect(not render_payload.is_empty() and str(render_payload.get("component", "")) == "PlanetMapRenderModel" and not _variant_contains_callable(render_payload) and not _variant_contains_object(render_payload), "PlanetMapRenderModel emits pure data render payloads for underlay components")
+			var draw_backed: Array = snapshot.get("draw_backed_surfaces", []) if snapshot.get("draw_backed_surfaces", []) is Array else []
+			var remaining_draw_backed: Array = snapshot.get("remaining_draw_backed_surfaces", []) if snapshot.get("remaining_draw_backed_surfaces", []) is Array else []
+			_expect(draw_backed.is_empty() and not draw_backed.has("movement_trails") and not draw_backed.has("event_effects") and not draw_backed.has("action_callouts") and not draw_backed.has("globe_backdrop") and not draw_backed.has("orbit_guide") and not draw_backed.has("focus_range") and not draw_backed.has("scale_hint"), "PlanetMapView default sceneized cutover no longer reports active draw-backed map surfaces")
+			_expect(remaining_draw_backed.has("legacy_region_fill_fallback") and remaining_draw_backed.has("legacy_region_label_fallback") and not remaining_draw_backed.has("legacy_scale_hint"), "PlanetMapView names only the remaining region fill/label legacy fallback surfaces")
+			viewport.remove_child(map_view)
+			map_view.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+	var board_packed := load("res://scenes/ui/PlanetBoard.tscn") as PackedScene
+	_expect(board_packed != null, "PlanetBoard scene loads for embedded PlanetMapView check")
+	if board_packed != null:
+		var board := board_packed.instantiate() as Control
+		root.add_child(board)
+		await process_frame
+		var map_host := board.find_child("MapHost", true, false) as Control
+		var embedded_map := board.find_child("PlanetMapView", true, false) as Control
+		_expect(map_host != null and embedded_map != null and embedded_map.get_parent() == map_host, "PlanetBoard embeds PlanetMapView under MapHost by default")
+		_expect(board.has_method("get_embedded_map_view") and board.call("get_embedded_map_view") == embedded_map, "PlanetBoard exposes the embedded map for main.gd reuse")
+		root.remove_child(board)
+		board.queue_free()
+	_expect(ResourceLoader.exists(PLANET_MAP_CONTROL_TOOLBAR_SCRIPT) and load(PLANET_MAP_CONTROL_TOOLBAR_SCRIPT) != null, "PlanetMapControlToolbar script loads")
+	var toolbar_packed := load(PLANET_MAP_CONTROL_TOOLBAR_SCENE) as PackedScene
+	_expect(toolbar_packed != null, "PlanetMapControlToolbar scene loads")
+	if toolbar_packed != null:
+		var toolbar := toolbar_packed.instantiate() as Control
+		root.add_child(toolbar)
+		await process_frame
+		_expect(toolbar.has_method("set_controls") and toolbar.has_method("debug_snapshot") and toolbar.has_signal("control_action_requested"), "PlanetMapControlToolbar exposes pure snapshot input, QA snapshot, and action payload output")
+		for node_name in ["MapReadingHintRail", "MapLayerFocusRail", "MapLayerAllButton", "MapLayerProductButton", "MapLayerRouteButton", "MapLayerIntelButton", "MapLayerWeatherButton", "MapLayerMonsterButton", "MapTradeProductSelector", "MapTradeStatusLabel", "MapContractSourceButton", "MapContractTargetButton", "MapContractStatusLabel"]:
+			_expect(toolbar.find_child(node_name, true, false) != null, "PlanetMapControlToolbar owns %s" % node_name)
+		var toolbar_actions: Array[String] = []
+		var toolbar_payloads: Array = []
+		toolbar.connect("control_action_requested", func(action_id: String, payload: Dictionary) -> void:
+			toolbar_actions.append(action_id)
+			toolbar_payloads.append(payload.duplicate(true))
+		)
+		toolbar.call("set_controls", {"layers": [{"id": "all", "label": "全", "text": "全图", "accent": "#fef3c7"}, {"id": "route", "label": "⇄", "text": "商路", "accent": "#f59e0b"}], "selected_layer_id": "all", "trade": {"options": [{"id": "", "label": "商路关闭"}, {"id": "食品", "label": "食品"}], "selected_product_id": ""}, "contract_source": {"disabled": true}, "contract_target": {"disabled": true}})
+		(toolbar.find_child("MapLayerRouteButton", true, false) as Button).emit_signal("pressed")
+		var toolbar_snapshot: Variant = toolbar.call("debug_snapshot")
+		_expect(toolbar_actions == ["map_layer_focus"] and toolbar_payloads.size() == 1 and str((toolbar_payloads[0] as Dictionary).get("layer_id", "")) == "route", "PlanetMapControlToolbar emits the stable layer action and pure layer payload")
+		_expect(toolbar_snapshot is Dictionary and not _variant_contains_callable(toolbar_snapshot) and not _variant_contains_object(toolbar_snapshot), "PlanetMapControlToolbar debug snapshot remains pure data")
+		root.remove_child(toolbar)
+		toolbar.queue_free()
+	var fullscreen_map_source := FileAccess.get_file_as_string("res://scenes/ui/FullscreenMapOverlay.tscn")
+	_expect(fullscreen_map_source.contains(PLANET_MAP_CONTROL_TOOLBAR_SCENE), "FullscreenMapOverlay embeds PlanetMapControlToolbar under its scene-owned action host")
+	var fixture_script := load(PLANET_MAP_MCP_PREVIEW_FIXTURES_SCRIPT) as Script
+	_expect(fixture_script != null, "PlanetMap MCP preview fixtures script loads")
+	var fixtures: RefCounted = fixture_script.new() if fixture_script != null else null
+	_expect(fixtures != null and fixtures.has_method("preview_ids") and fixtures.has_method("fixture"), "PlanetMap MCP fixtures expose preview_ids and fixture")
+	if fixtures != null:
+		var ids_variant: Variant = fixtures.call("preview_ids")
+		var ids: Array = ids_variant if ids_variant is Array else []
+		for id in ["globe_overview", "selected_district", "local_zoom", "monster_markers", "trade_routes", "underlay_guides", "event_effects", "render_cutover", "empty_map_safe_state"]:
+			_expect(ids.has(id), "PlanetMap MCP fixtures include %s" % id)
+			var fixture_variant: Variant = fixtures.call("fixture", id)
+			var fixture: Dictionary = fixture_variant if fixture_variant is Dictionary else {}
+			_expect(not fixture.is_empty() and not _variant_contains_callable(fixture) and not _variant_contains_object(fixture), "PlanetMap MCP fixture %s is pure data" % id)
+	var preview_packed := load(PLANET_MAP_MCP_PREVIEW_SCENE) as PackedScene
+	_expect(preview_packed != null, "PlanetMap MCP preview scene loads")
+	if preview_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(1280, 720)
+		root.add_child(viewport)
+		var preview := preview_packed.instantiate() as Control
+		_expect(preview != null, "PlanetMap MCP preview root is Control")
+		if preview != null:
+			viewport.add_child(preview)
+			await process_frame
+			for node_name in ["PlanetMapStateButtonList", "PlanetMapPreviewHost", "PlanetBoard", "PlanetMapPreviewStatus", "UnderlayGuidesButton", "EventEffectsButton", "RenderCutoverButton"]:
+				_expect(preview.find_child(node_name, true, false) != null, "PlanetMap MCP preview contains %s" % node_name)
+			_expect(preview.has_method("apply_fixture") and preview.has_method("preview_ids") and preview.has_method("current_map_debug_snapshot"), "PlanetMap MCP preview exposes testable switching methods")
+			var monster_ok := bool(preview.call("apply_fixture", "monster_markers"))
+			await process_frame
+			await process_frame
+			var monster_debug_variant: Variant = preview.call("current_map_debug_snapshot")
+			var monster_debug: Dictionary = monster_debug_variant if monster_debug_variant is Dictionary else {}
+			_expect(monster_ok and int(monster_debug.get("monster_token_count", 0)) > 0 and int(monster_debug.get("city_marker_count", 0)) > 0, "PlanetMap MCP preview sceneizes monster and city marker fixtures")
+			var route_ok := bool(preview.call("apply_fixture", "trade_routes"))
+			await process_frame
+			await process_frame
+			var route_debug_variant: Variant = preview.call("current_map_debug_snapshot")
+			var route_debug: Dictionary = route_debug_variant if route_debug_variant is Dictionary else {}
+			_expect(route_ok and int(route_debug.get("route_marker_count", 0)) > 0 and int(route_debug.get("route_segment_count", 0)) > 0 and int(route_debug.get("movement_trail_count", 0)) > 0 and int(route_debug.get("district_polygon_count", 0)) > 0, "PlanetMap MCP preview sceneizes trade route segments, movement trails, and district polygons")
+			var event_ok := bool(preview.call("apply_fixture", "event_effects"))
+			await process_frame
+			await process_frame
+			var event_debug_variant: Variant = preview.call("current_map_debug_snapshot")
+			var event_debug: Dictionary = event_debug_variant if event_debug_variant is Dictionary else {}
+			_expect(event_ok and int(event_debug.get("movement_trail_count", 0)) > 0 and int(event_debug.get("map_event_effect_count", 0)) > 0 and int(event_debug.get("action_callout_count", 0)) > 0, "PlanetMap MCP preview sceneizes movement trails, map event effects, and action callouts")
+			var underlay_ok := bool(preview.call("apply_fixture", "underlay_guides"))
+			await process_frame
+			await process_frame
+			var underlay_debug_variant: Variant = preview.call("current_map_debug_snapshot")
+			var underlay_debug: Dictionary = underlay_debug_variant if underlay_debug_variant is Dictionary else {}
+			_expect(underlay_ok and bool(underlay_debug.get("globe_backdrop_sceneized", false)) and bool(underlay_debug.get("orbit_guide_sceneized", false)) and bool(underlay_debug.get("focus_range_overlay_sceneized", false)) and int(underlay_debug.get("movement_trail_count", 0)) > 0 and int(underlay_debug.get("map_event_effect_count", 0)) > 0 and int(underlay_debug.get("action_callout_count", 0)) > 0, "PlanetMap MCP preview sceneizes underlay guides alongside existing feedback components")
+			var cutover_ok := bool(preview.call("apply_fixture", "render_cutover"))
+			await process_frame
+			await process_frame
+			var cutover_debug_variant: Variant = preview.call("current_map_debug_snapshot")
+			var cutover_debug: Dictionary = cutover_debug_variant if cutover_debug_variant is Dictionary else {}
+			_expect(cutover_ok and bool(cutover_debug.get("sceneized_visual_cutover_enabled", false)) and not bool(cutover_debug.get("legacy_draw_fallback_used", true)) and bool(cutover_debug.get("scale_hint_sceneized", false)) and int(cutover_debug.get("district_polygon_count", 0)) > 0 and int(cutover_debug.get("movement_trail_count", 0)) > 0 and int(cutover_debug.get("map_event_effect_count", 0)) > 0 and int(cutover_debug.get("action_callout_count", 0)) > 0, "PlanetMap MCP preview verifies render cutover fixture uses sceneized components without legacy draw fallback")
+			var empty_ok := bool(preview.call("apply_fixture", "empty_map_safe_state"))
+			await process_frame
+			await process_frame
+			var empty_debug_variant: Variant = preview.call("current_map_debug_snapshot")
+			var empty_debug: Dictionary = empty_debug_variant if empty_debug_variant is Dictionary else {}
+			_expect(empty_ok and int(empty_debug.get("district_polygon_count", 0)) == 0 and int(empty_debug.get("district_node_count", 0)) == 0 and int(empty_debug.get("route_segment_count", 0)) == 0 and int(empty_debug.get("movement_trail_count", 0)) == 0 and int(empty_debug.get("map_event_effect_count", 0)) == 0 and int(empty_debug.get("action_callout_count", 0)) == 0 and int(empty_debug.get("monster_token_count", 0)) == 0, "PlanetMap MCP preview keeps empty map safe state child-free")
+			var all_switched := true
+			for id in ["globe_overview", "selected_district", "local_zoom", "monster_markers", "trade_routes", "underlay_guides", "event_effects", "render_cutover", "empty_map_safe_state"]:
+				all_switched = all_switched and bool(preview.call("apply_fixture", id))
+				await process_frame
+			var debug_variant: Variant = preview.call("current_map_debug_snapshot") if preview.has_method("current_map_debug_snapshot") else {}
+			var debug: Dictionary = debug_variant if debug_variant is Dictionary else {}
+			_expect(all_switched and str(preview.call("selected_fixture_id")) == "empty_map_safe_state", "PlanetMap MCP preview switches every fixture state")
+			_expect(str(debug.get("component", "")) == "PlanetMapView" and bool(debug.get("extends_runtime_map_view", false)), "PlanetMap MCP preview uses the sceneized PlanetMapView")
+			viewport.remove_child(preview)
+			preview.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+	var cutover_script := load(PLANET_MAP_RENDER_CUTOVER_BENCH_SCRIPT) as Script
+	_expect(cutover_script != null, "PlanetMapRenderCutoverBench script loads")
+	var cutover_packed := load(PLANET_MAP_RENDER_CUTOVER_BENCH_SCENE) as PackedScene
+	_expect(cutover_packed != null, "PlanetMapRenderCutoverBench scene loads")
+	if cutover_packed != null:
+		var cutover_bench := cutover_packed.instantiate() as Control
+		_expect(cutover_bench != null, "PlanetMapRenderCutoverBench root is Control")
+		if cutover_bench != null:
+			_expect(cutover_bench.has_method("output_dir") and cutover_bench.has_method("cutover_cases") and cutover_bench.has_method("build_cutover_manifest_preview") and cutover_bench.has_method("run_cutover_suite"), "PlanetMapRenderCutoverBench exposes output_dir, cutover_cases, manifest preview, and run suite methods")
+			if cutover_bench.has_method("output_dir"):
+				var cutover_output_dir := str(cutover_bench.call("output_dir"))
+				_expect(cutover_output_dir == PLANET_MAP_RENDER_CUTOVER_OUTPUT_DIR and cutover_output_dir.begins_with("user://") and not cutover_output_dir.contains("res://reports"), "PlanetMapRenderCutoverBench writes QA output under user://")
+			var cases_variant: Variant = cutover_bench.call("cutover_cases") if cutover_bench.has_method("cutover_cases") else []
+			var cases: Array = cases_variant if cases_variant is Array else []
+			var expected_cutover_ids := ["globe_overview", "selected_district", "local_zoom", "underlay_guides", "event_effects", "render_cutover"]
+			var cutover_ids_ok := cases.size() == expected_cutover_ids.size()
+			for id in expected_cutover_ids:
+				var has_id := false
+				for case_variant in cases:
+					var case: Dictionary = case_variant if case_variant is Dictionary else {}
+					has_id = has_id or str(case.get("fixture_id", "")) == id
+				cutover_ids_ok = cutover_ids_ok and has_id
+			_expect(cutover_ids_ok and not _variant_contains_callable(cases) and not _variant_contains_object(cases), "PlanetMapRenderCutoverBench covers fixed sceneized render cutover cases as pure data")
+			var manifest_variant: Variant = cutover_bench.call("build_cutover_manifest_preview") if cutover_bench.has_method("build_cutover_manifest_preview") else {}
+			var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+			var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+			var fields_ok := records.size() == expected_cutover_ids.size()
+			for record_variant in records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				fields_ok = fields_ok and record.has("fixture_id") and record.has("variant") and record.has("sceneized_visual_cutover_enabled") and record.has("legacy_draw_fallback_used") and record.has("scale_hint_sceneized") and record.has("underlay_visible") and record.has("feedback_checked") and record.has("signals_compatible") and record.has("methods_compatible") and record.has("passed") and record.has("notes")
+			_expect(str(manifest.get("output_dir", "")) == PLANET_MAP_RENDER_CUTOVER_OUTPUT_DIR and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "PlanetMapRenderCutoverBench manifest preview contains required pure-data records")
+			cutover_bench.queue_free()
+	var interaction_script := load(PLANET_MAP_INTERACTION_BENCH_SCRIPT) as Script
+	_expect(interaction_script != null, "PlanetMapInteractionBench script loads")
+	var interaction_packed := load(PLANET_MAP_INTERACTION_BENCH_SCENE) as PackedScene
+	_expect(interaction_packed != null, "PlanetMapInteractionBench scene loads")
+	if interaction_packed != null:
+		var interaction_bench := interaction_packed.instantiate() as Control
+		_expect(interaction_bench != null, "PlanetMapInteractionBench root is Control")
+		if interaction_bench != null:
+			_expect(interaction_bench.has_method("output_dir") and interaction_bench.has_method("interaction_cases") and interaction_bench.has_method("build_interaction_manifest_preview") and interaction_bench.has_method("run_interaction_suite"), "PlanetMapInteractionBench exposes output_dir, interaction_cases, manifest preview, and run suite methods")
+			if interaction_bench.has_method("output_dir"):
+				var interaction_output_dir := str(interaction_bench.call("output_dir"))
+				_expect(interaction_output_dir == PLANET_MAP_INTERACTION_OUTPUT_DIR and interaction_output_dir.begins_with("user://") and not interaction_output_dir.contains("res://reports"), "PlanetMapInteractionBench writes QA output under user://")
+			if interaction_bench.has_method("screenshot_path"):
+				var interaction_screenshot_path := str(interaction_bench.call("screenshot_path"))
+				_expect(interaction_screenshot_path == PLANET_MAP_INTERACTION_SCREENSHOT_PATH and interaction_screenshot_path.begins_with("user://") and not interaction_screenshot_path.contains("res://reports"), "PlanetMapInteractionBench exposes the user:// MCP screenshot target")
+			var interaction_cases_variant: Variant = interaction_bench.call("interaction_cases") if interaction_bench.has_method("interaction_cases") else []
+			var interaction_cases: Array = interaction_cases_variant if interaction_cases_variant is Array else []
+			var expected_interaction_ids := ["click_selected_district", "double_click_district", "keyboard_navigation", "focus_district_programmatic", "zoom_projection_sync", "render_cutover_interaction", "empty_map_safe_interaction", "toolbar_scene_composition", "layer_focus_action_routes", "trade_product_selection_routes", "contract_source_enabled_disabled", "contract_target_enabled_disabled", "real_main_toolbar_route", "pure_toolbar_snapshot", "legacy_toolbar_builders_and_node_arrays_absent"]
+			var interaction_ids_ok := interaction_cases.size() == expected_interaction_ids.size()
+			for id in expected_interaction_ids:
+				var has_id := false
+				for case_variant in interaction_cases:
+					var case: Dictionary = case_variant if case_variant is Dictionary else {}
+					has_id = has_id or str(case.get("case_id", "")) == id
+				interaction_ids_ok = interaction_ids_ok and has_id
+			_expect(interaction_ids_ok and not _variant_contains_callable(interaction_cases) and not _variant_contains_object(interaction_cases), "PlanetMapInteractionBench covers fixed map interaction ownership cases as pure data")
+			var interaction_manifest_variant: Variant = interaction_bench.call("build_interaction_manifest_preview") if interaction_bench.has_method("build_interaction_manifest_preview") else {}
+			var interaction_manifest: Dictionary = interaction_manifest_variant if interaction_manifest_variant is Dictionary else {}
+			var interaction_records: Array = interaction_manifest.get("records", []) if interaction_manifest.get("records", []) is Array else []
+			var interaction_fields_ok := interaction_records.size() == expected_interaction_ids.size()
+			for record_variant in interaction_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				interaction_fields_ok = interaction_fields_ok and record.has("case_id") and record.has("fixture_id") and record.has("clicked_district") and record.has("selected_signal_received") and record.has("double_click_signal_received") and record.has("focus_checked") and record.has("projection_sync_checked") and record.has("cutover_enabled") and record.has("legacy_fallback_used") and record.has("toolbar_checked") and record.has("action_id") and record.has("payload_checked") and record.has("disabled_checked") and record.has("main_route_checked") and record.has("deletion_checked") and record.has("pure_data_checked") and record.has("passed") and record.has("notes")
+			_expect(str(interaction_manifest.get("output_dir", "")) == PLANET_MAP_INTERACTION_OUTPUT_DIR and str(interaction_manifest.get("screenshot_path", "")) == PLANET_MAP_INTERACTION_SCREENSHOT_PATH and interaction_fields_ok and not _variant_contains_callable(interaction_manifest) and not _variant_contains_object(interaction_manifest), "PlanetMapInteractionBench manifest preview contains required pure-data records")
+			interaction_bench.queue_free()
+	var game_screen_script := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
+	_expect(game_screen_script.contains("func get_embedded_map_view"), "GameScreen exposes embedded PlanetMapView to runtime wiring")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("PlanetMapViewScene") and main_source.contains("map_view = _embedded_runtime_planet_map_view()") and main_source.contains("func _instantiate_planet_map_view"), "main.gd prefers the sceneized PlanetMapView before legacy MapViewScript fallback")
+	for retired_token in ["func _add_map_control_chip", "func _add_map_layer_focus_rail", "func _add_map_action_controls", "func _on_trade_product_selected", "map_build_buttons", "map_guess_options", "map_guess_buttons", "map_role_intel_buttons", "map_city_info_labels", "map_trade_options", "map_trade_buttons", "map_trade_info_labels", "map_layer_buttons", "map_layer_info_labels", "map_contract_source_buttons", "map_contract_target_buttons", "map_contract_info_labels"]:
+		_expect(not main_source.contains(retired_token), "main.gd keeps retired map-toolbar ownership absent: %s" % retired_token)
+	_expect(main_source.contains("func _map_control_toolbar_snapshot") and main_source.contains("func _on_map_control_toolbar_action_requested"), "main.gd keeps one pure map-toolbar snapshot bridge and one action router")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_paths: Array[String] = registry.call("scene_paths")
+		_expect(registry_paths.has(PLANET_MAP_CONTROL_TOOLBAR_SCENE), "MCP Editability Hub registry includes PlanetMapControlToolbar")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var toolbar_record: Dictionary = system_audit.call("record_for_id", "planet_map_control_toolbar_sceneized")
+		_expect(str(toolbar_record.get("current_path", "")) == PLANET_MAP_CONTROL_TOOLBAR_SCENE and str(toolbar_record.get("current_status", "")) == "sceneized", "System Resourceization Audit records the scene-owned map toolbar")
 
 
 func _map_projection_snapshot(map_view: Node) -> Dictionary:
@@ -1197,13 +4636,14 @@ func _check_public_track_thin(screen: Control, path: String) -> void:
 
 func _check_player_board_first_glance_actions(screen: Control) -> void:
 	var dock := screen.find_child("PlayerMainActionDock", true, false)
-	_expect(dock != null, "runtime PlayerBoard exposes one main action dock for build/rack/buy/play")
+	_expect(dock != null, "runtime PlayerBoard exposes one main action dock for rack/buy/play")
 	if dock == null:
 		return
 	var text := " ".join(_visible_text_under(dock))
-	for keyword in ["建城", "牌架", "买牌", "出牌"]:
+	for keyword in ["牌架", "买牌", "出牌"]:
 		_expect(text.contains(keyword), "runtime PlayerBoard main action dock shows %s at first glance" % keyword)
-	for shortcut in ["1", "2", "3", "4"]:
+	_expect(not text.contains("直接建城") and not text.contains("城市化"), "runtime PlayerBoard does not emit a direct-build affordance")
+	for shortcut in ["1", "2", "3"]:
 		_expect(text.contains(shortcut), "runtime PlayerBoard main action dock shows keyboard shortcut %s at first glance" % shortcut)
 	var shortcut_buttons := dock.find_children("*", "Button", true, false)
 	var shortcuts := []
@@ -1211,7 +4651,7 @@ func _check_player_board_first_glance_actions(screen: Control) -> void:
 		var button := button_variant as Button
 		if button != null and button.has_meta("quick_action_shortcut"):
 			shortcuts.append(str(button.get_meta("quick_action_shortcut", "")))
-	_expect(shortcuts.has("1") and shortcuts.has("2") and shortcuts.has("3") and shortcuts.has("4"), "runtime ActionDock stores data-backed quick-action shortcuts for tests and accessibility")
+	_expect(shortcuts.has("1") and shortcuts.has("2") and shortcuts.has("3") and not shortcuts.has("4"), "runtime ActionDock stores three v0.4 data-backed quick-action shortcuts for tests and accessibility")
 
 
 func _check_player_board_hand_rack_priority(screen: Control) -> void:
@@ -1313,6 +4753,14 @@ func _action_list_has_label(actions: Array, expected_label: String) -> bool:
 	return false
 
 
+func _function_source(source_text: String, function_name: String) -> String:
+	var start := source_text.find("func %s(" % function_name)
+	if start < 0:
+		return ""
+	var next_function := source_text.find("\nfunc ", start + 5)
+	return source_text.substr(start) if next_function < 0 else source_text.substr(start, next_function - start)
+
+
 func _variant_contains_callable(value: Variant) -> bool:
 	if value is Callable:
 		return true
@@ -1325,6 +4773,22 @@ func _variant_contains_callable(value: Variant) -> bool:
 		var array: Array = value
 		for item in array:
 			if _variant_contains_callable(item):
+				return true
+	return false
+
+
+func _variant_contains_object(value: Variant) -> bool:
+	if typeof(value) == TYPE_OBJECT:
+		return true
+	if value is Dictionary:
+		var dictionary: Dictionary = value
+		for key in dictionary.keys():
+			if _variant_contains_object(key) or _variant_contains_object(dictionary[key]):
+				return true
+	elif value is Array:
+		var array: Array = value
+		for item in array:
+			if _variant_contains_object(item):
 				return true
 	return false
 
@@ -1396,6 +4860,12 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 	_expect(runtime_screen != null, "runtime quick-action click flow has the live split GameScreen")
 	if runtime_screen == null:
 		return
+	if main.has_method("_new_game"):
+		main.call("_new_game")
+		await process_frame
+	_prepare_runtime_human_player(main, 0)
+	main.set("selected_player", 0)
+	main.set("inspected_player", 0)
 	if main.has_method("_close_menu"):
 		main.call("_close_menu")
 		await process_frame
@@ -1428,21 +4898,39 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 			await process_frame
 
 	var build_district := _first_runtime_buildable_district(main)
-	_expect(build_district >= 0, "runtime quick-action click flow finds a legal city-build district")
+	_expect(build_district >= 0, "runtime quick-action click flow finds a district that the legacy path would have accepted")
 	if build_district >= 0:
+		main.set("selected_player", 0)
+		main.set("inspected_player", 0)
 		main.set("selected_district", build_district)
+		# The rejection path refreshes city cashflow shells. Stabilize those derived
+		# dictionaries before taking the no-mutation baseline.
+		if main.has_method("_refresh_ui"):
+			main.call("_refresh_ui")
+			await process_frame
 		_force_runtime_screen_sync(main)
 		await process_frame
 		dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
 		var build_button := _find_enabled_visible_button_containing(dock, "建城")
 		var cities_before := _runtime_active_city_count(main)
-		_expect(build_button != null and not build_button.disabled, "runtime PlayerMainActionDock renders an enabled Build quick button for a legal city district")
-		if build_button != null and not build_button.disabled:
-			build_button.emit_signal("pressed")
-			await process_frame
-			await process_frame
-			var built_city := _runtime_district_city(main, build_district)
-			_expect(_runtime_active_city_count(main) == cities_before + 1 and not built_city.is_empty() and int(built_city.get("owner", -1)) == 0, "clicking the live Build quick button creates a player city through the gameplay controller")
+		var city_before := _runtime_district_city(main, build_district).duplicate(true)
+		_expect(build_button == null, "runtime PlayerMainActionDock emits no enabled direct-build quick button")
+		var legacy_handled := bool(main.call("_activate_runtime_quick_action", "build"))
+		await process_frame
+		var cities_after := _runtime_active_city_count(main)
+		var city_after := _runtime_district_city(main, build_district).duplicate(true)
+		_expect(
+			not legacy_handled and cities_after == cities_before and city_after == city_before,
+			"legacy build quick action is rejected without mutating city state "
+			+ "[handled=%s, cities=%d->%d, city_equal=%s, before=%s, after=%s]" % [
+				str(legacy_handled),
+				cities_before,
+				cities_after,
+				str(city_after == city_before),
+				JSON.stringify(city_before),
+				JSON.stringify(city_after),
+			]
+		)
 
 	var action_context := _first_runtime_actionable_hand_context(main)
 	var actionable_slot := int(action_context.get("slot", -1))
@@ -1630,8 +5118,9 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 		intel_button.emit_signal("pressed")
 		await process_frame
 		await process_frame
-		var menu_title_label := main.get("menu_title_label") as Label
-		var menu_preview_box := main.get("menu_preview_box") as VBoxContainer
+		var menu_overlay := main.get("menu_overlay") as Control
+		var menu_title_label := menu_overlay.find_child("MenuTitleLabel", true, false) as Label if menu_overlay != null else null
+		var menu_preview_box := menu_overlay.call("get_preview_host") as VBoxContainer if menu_overlay != null and menu_overlay.has_method("get_preview_host") else null
 		var dossier_text := _node_tree_text(menu_preview_box)
 		_expect(track_action_ids.has("track_intel_%d" % selected_resolution_id), "pressing the runtime track dossier action emits the focused track_intel command")
 		_expect(menu_title_label != null and menu_title_label.text == "情报档案" and dossier_text.contains("已选牌轨") and dossier_text.contains("查看卡牌线索") and dossier_text.contains("已选牌轨证据链") and dossier_text.contains("出价记录") and dossier_text.contains("余波线索") and dossier_text.contains("私人推理") and dossier_text.contains("回到牌轨") and dossier_text.contains("竞猜") and dossier_text.contains("卡牌详情"), "runtime track dossier action opens the intel dossier with the selected public-track evidence chain focused and track/guess/detail paths")
@@ -1641,7 +5130,6 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 			dossier_guess_button.emit_signal("pressed")
 			await process_frame
 			await process_frame
-			var menu_overlay := main.get("menu_overlay") as Control
 			_expect(menu_overlay != null and not menu_overlay.visible, "runtime IntelDossier guess path returns to the main table instead of resolving inside the dossier")
 			_expect(int(main.get("selected_card_resolution_id")) == selected_resolution_id, "runtime IntelDossier guess path keeps the same selected public-track resolution_id")
 			_force_runtime_screen_sync(main)
@@ -1822,7 +5310,7 @@ func _check_runtime_full_hand_private_discard_purchase(main: Node, runtime_scree
 	_expect(not pending.is_empty() and String(pending.get("skill_name", "")) == incoming_card, "double-clicking a full-hand market card opens a pending private discard purchase")
 	_force_runtime_screen_sync(main)
 	await process_frame
-	var decision_panel := runtime_screen.find_child("TemporaryDecisionModal", true, false) as Control
+	var decision_panel := runtime_screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
 	var discard_button := _find_visible_button_containing(decision_panel, "弃掉")
 	_expect(decision_panel != null and decision_panel.visible, "split OverlayLayer shows the private discard decision as a visible modal")
 	_expect(_node_tree_text(decision_panel).contains("私密弃牌确认") and _node_tree_text(decision_panel).contains("不公开"), "private discard modal explains the privacy boundary before choosing")
@@ -1834,7 +5322,7 @@ func _check_runtime_full_hand_private_discard_purchase(main: Node, runtime_scree
 	await process_frame
 	var names_after := _runtime_player_card_names(main, 0)
 	var pending_after: Dictionary = main.get("pending_discard_purchase") if main.get("pending_discard_purchase") is Dictionary else {}
-	var decision_after := runtime_screen.find_child("TemporaryDecisionModal", true, false) as Control
+	var decision_after := runtime_screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
 	_expect(pending_after.is_empty(), "clicking the private discard button clears the pending discard purchase")
 	_expect(_runtime_player_counted_hand_size(main, 0) == hand_before, "private discard purchase keeps the counted hand at the limit after replacing one old card")
 	_expect(_runtime_player_cash(main, 0) < cash_before, "private discard purchase spends cash only after the discard choice resolves")
@@ -1927,11 +5415,9 @@ func _first_runtime_district_with_supply(main: Node) -> int:
 
 
 func _first_runtime_buildable_district(main: Node) -> int:
-	if not main.has_method("_city_build_error_for"):
-		return -1
 	var districts := _runtime_districts(main)
 	for i in range(districts.size()):
-		if String(main.call("_city_build_error_for", 0, i, false)) == "":
+		if CITY_FIXTURES.site_error(main, 0, i, false) == "":
 			return i
 	return -1
 
@@ -1974,6 +5460,19 @@ func _first_runtime_direct_buy_offer(main: Node) -> Dictionary:
 	return {}
 
 
+func _prepare_runtime_human_player(main: Node, player_index: int) -> void:
+	var players := _runtime_players(main).duplicate(true)
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return
+	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
+	player["is_ai"] = false
+	player["seat_type"] = "human"
+	player["action_cooldown"] = 0.0
+	player["cash"] = maxi(int(player.get("cash", 0)), 5000)
+	players[player_index] = player
+	main.set("players", players)
+
+
 func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incoming_card: String) -> void:
 	var districts := _runtime_districts(main).duplicate(true)
 	if district_index >= 0 and district_index < districts.size() and districts[district_index] is Dictionary:
@@ -1981,8 +5480,11 @@ func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incomi
 		district["card_choices"] = [incoming_card]
 		districts[district_index] = district
 		main.set("districts", districts)
-	if main.has_method("_make_auto_monster"):
-		main.set("auto_monsters", [main.call("_make_auto_monster", 0, 0, district_index, 0, 1)])
+	var monster_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterRuntimeController")
+	if monster_controller != null and monster_controller.has_method("_make_auto_monster") and monster_controller.has_method("replace_runtime_state"):
+		var actor_variant: Variant = monster_controller.call("_make_auto_monster", 0, 0, district_index, 0, 1)
+		if actor_variant is Dictionary:
+			monster_controller.call("replace_runtime_state", {"auto_monsters": [(actor_variant as Dictionary).duplicate(true)]})
 	var players := _runtime_players(main).duplicate(true)
 	if not players.is_empty() and players[0] is Dictionary:
 		var player: Dictionary = (players[0] as Dictionary).duplicate(true)
@@ -2198,6 +5700,10 @@ func _prepare_runtime_open_card_auction(main: Node) -> void:
 			"resolution_id": 9001,
 			"queued_order": 1,
 			"player_index": 0,
+			"group_id": "window_90_group_0",
+			"group_order": 1,
+			"group_size": 1,
+			"group_bid": 40,
 			"slot_index": int(first_fixture.get("slot_index", -1)),
 			"skill": first_fixture.get("skill", {}),
 			"tip": 40,
@@ -2207,6 +5713,10 @@ func _prepare_runtime_open_card_auction(main: Node) -> void:
 			"resolution_id": 9002,
 			"queued_order": 2,
 			"player_index": 1,
+			"group_id": "window_90_group_1",
+			"group_order": 1,
+			"group_size": 1,
+			"group_bid": 80,
 			"slot_index": int(second_fixture.get("slot_index", -1)),
 			"skill": second_fixture.get("skill", {}),
 			"tip": 80,
@@ -2216,7 +5726,7 @@ func _prepare_runtime_open_card_auction(main: Node) -> void:
 	main.set("next_card_resolution_queue", [])
 	main.set("card_resolution_auction_open", true)
 	main.set("card_resolution_auction_timer", 4.0)
-	main.set("card_resolution_simultaneous_timer", 0.0)
+	main.set("card_resolution_simultaneous_timer", 4.0)
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_batch_reference_player", 0)
 
@@ -2311,8 +5821,9 @@ func _runtime_public_log_slice_has_secret(main: Node, start_index: int, needles:
 func _runtime_skill_family(main: Node, card_name: String) -> String:
 	if card_name == "":
 		return ""
-	if main.has_method("_skill_family"):
-		return String(main.call("_skill_family", card_name))
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
+	if coordinator != null and coordinator.has_method("card_family_id"):
+		return String(coordinator.call("card_family_id", card_name))
 	return card_name
 
 
@@ -2345,20 +5856,17 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	await process_frame
 	_expect(main.has_method("_runtime_table_snapshot"), "main runtime exposes a TableSnapshot-compatible adapter")
 	var runtime_screen := main.find_child("RuntimeGameScreen", true, false) as Control
-	var legacy_shell := main.find_child("LegacyRuntimeTable", true, false) as Control
 	var runtime_map := main.get("map_view") as Control
 	var runtime_overlay_host: Node = null
 	var map_host: Control = null
 	if runtime_screen != null:
 		map_host = runtime_screen.find_child("MapHost", true, false) as Control
 		runtime_overlay_host = runtime_screen.find_child("OverlayLayer", true, false)
+	var runtime_surface_host := runtime_overlay_host.get_node_or_null("RuntimeSurfaceLayer") if runtime_overlay_host != null else null
 	_expect(runtime_screen != null and runtime_screen.visible, "main runtime mounts the split GameScreen as the visible product layer")
-	_expect(main.has_method("_uses_split_runtime_table") and bool(main.call("_uses_split_runtime_table")), "main runtime reports split table mode so legacy player panel refresh stays inactive by default")
-	_expect(legacy_shell != null and not legacy_shell.visible, "legacy generated table remains in-tree as a hidden rollback shell")
-	_expect(legacy_shell != null and legacy_shell.process_mode == Node.PROCESS_MODE_DISABLED and legacy_shell.mouse_filter == Control.MOUSE_FILTER_IGNORE, "hidden legacy rollback shell is disabled and cannot intercept split-table runtime input")
-	_expect(legacy_shell != null and legacy_shell.get_child_count() == 0, "default runtime skips constructing the legacy generated table tree")
+	_expect(not main.has_method("_uses_split_runtime_table") and main.find_child("LegacyRuntimeTable", true, false) == null, "main runtime has one sceneized table and no legacy mode switch or shell")
 	_expect(map_host != null and runtime_map != null and runtime_map.get_parent() == map_host, "main runtime attaches the interactive MapView into split PlanetBoard MapHost")
-	_expect(runtime_overlay_host != null, "main runtime exposes the split OverlayLayer as the host for transient table surfaces")
+	_expect(runtime_overlay_host != null and runtime_surface_host != null, "main runtime exposes the sceneized RuntimeSurfaceLayer inside split OverlayLayer")
 	var hosted_overlay_nodes := {
 		"fullscreen map overlay": main.get("full_map_overlay") as Control,
 		"card resolution banner overlay": main.get("card_resolution_overlay") as Control,
@@ -2368,7 +5876,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	}
 	for overlay_label in hosted_overlay_nodes.keys():
 		var overlay_node := hosted_overlay_nodes[overlay_label] as Control
-		_expect(overlay_node != null and overlay_node.get_parent() == runtime_overlay_host, "main runtime hosts %s inside split OverlayLayer instead of the root scene" % overlay_label)
+		_expect(overlay_node != null and overlay_node.get_parent() == runtime_surface_host and overlay_node.get_parent() != main, "main runtime hosts %s inside sceneized RuntimeSurfaceLayer instead of the root scene" % overlay_label)
 	_expect(main.has_method("_on_runtime_game_screen_action_requested"), "main runtime handles split GameScreen action signals")
 	var snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
@@ -2376,11 +5884,13 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_expect(snapshot.has("right_inspector"), "runtime snapshot contains right_inspector")
 	_expect(snapshot.has("player_board"), "runtime snapshot contains player_board")
 	_expect(snapshot.has("card_track"), "runtime snapshot contains card_track")
+	_expect(snapshot.has("card_resolution_track"), "runtime snapshot contains card_resolution_track")
 	_expect(snapshot.has("planet"), "runtime snapshot contains planet")
 	_expect(snapshot.has("first_run_coach"), "runtime snapshot contains first_run_coach")
 	_expect(not _variant_contains_callable(snapshot), "runtime TableSnapshot bridge emits data-only snapshots without Callable rule handles")
 	var snapshot_source_variant: Variant = main.call("_runtime_table_snapshot_source") if main.has_method("_runtime_table_snapshot_source") else {}
 	var snapshot_source: Dictionary = snapshot_source_variant if snapshot_source_variant is Dictionary else {}
+	_expect(snapshot_source.has("card_resolution_track"), "runtime TableSnapshot source includes sceneized card resolution track payload")
 	_expect(not _variant_contains_callable(snapshot_source), "runtime TableSnapshot source strips internal Callable action targets before split UI sync")
 	var top_bar: Dictionary = snapshot.get("top_bar", {}) if snapshot.get("top_bar", {}) is Dictionary else {}
 	var right_inspector: Dictionary = snapshot.get("right_inspector", {}) if snapshot.get("right_inspector", {}) is Dictionary else {}
@@ -2429,7 +5939,8 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	var live_first_run_coach: Dictionary = live_snapshot.get("first_run_coach", {}) if live_snapshot.get("first_run_coach", {}) is Dictionary else {}
 	var live_deep_links: Array = live_right_inspector.get("deep_links", []) if live_right_inspector.get("deep_links", []) is Array else []
 	_expect(live_player_board.get("hand_cards", []) is Array and (live_player_board.get("hand_cards", []) as Array).size() > 0, "runtime player_board snapshot includes live hand-card data after a new run starts")
-	_expect(live_player_board.get("quick_actions", []) is Array and (live_player_board.get("quick_actions", []) as Array).size() == 4, "runtime player_board snapshot includes Build/Rack/Buy/Play scan chips after a new run starts")
+	var live_quick_actions: Array = live_player_board.get("quick_actions", []) if live_player_board.get("quick_actions", []) is Array else []
+	_expect(live_quick_actions.size() == 3 and not _action_list_has_id(live_quick_actions, "build") and _action_list_has_id(live_quick_actions, "rack") and _action_list_has_id(live_quick_actions, "buy") and _action_list_has_id(live_quick_actions, "play"), "runtime player_board snapshot includes only Rack/Buy/Play scan chips after a new run starts")
 	_expect(live_player_board.get("table_state_lamps", []) is Array and (live_player_board.get("table_state_lamps", []) as Array).size() > 0, "runtime player_board snapshot includes table-state lamps after a new run starts")
 	_expect(live_player_board.get("readiness_chips", []) is Array and (live_player_board.get("readiness_chips", []) as Array).size() > 0, "runtime player_board snapshot includes action-readiness chips after a new run starts")
 	_expect(live_player_board.get("actions", []) is Array and (live_player_board.get("actions", []) as Array).size() > 0, "runtime player_board snapshot includes live compact actions after a new run starts")
@@ -2463,7 +5974,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 				leader_link = link
 			elif str(link.get("label", "")) == "我的牌":
 				player_link = link
-	_expect(str(auction_bid_board.get("phase", "")).contains("竞价") and auction_cluster_labels.has("最高") and auction_cluster_labels.has("我的") and auction_cluster_labels.has("本批") and auction_cluster_labels.has("下批"), "runtime player_board snapshot routes open card-auction state into the dedicated BidBoard")
+	_expect(str(auction_bid_board.get("phase", "")).contains("锁牌") and auction_cluster_labels.has("最高") and auction_cluster_labels.has("组报价") and auction_cluster_labels.has("我的组") and auction_cluster_labels.has("怪兽池"), "runtime player_board snapshot routes the five-second group lock state into the dedicated BidBoard")
 	_expect(auction_track_labels.has("领跑") and auction_track_labels.has("我的牌"), "runtime BidBoard snapshot links bid state back to the public card track leader and the current player's queued card")
 	_expect(str(leader_link.get("id", "")) == "track_select_9002" and str(leader_link.get("state", "")).contains("¥80") and str(player_link.get("id", "")) == "track_select_9001", "runtime BidBoard points the leader link at the actual highest public bid and keeps the current player's queued-card link separate")
 	_expect(_action_list_has_id(auction_bid_actions, "bid_plus_10") and _action_list_has_id(auction_bid_actions, "bid_set_80") and _action_list_has_id(auction_bid_actions, "bid_set_90") and _action_list_has_id(auction_bid_actions, "bid_reset"), "runtime BidBoard snapshot exposes conservative, match, overtake, and reset bid actions")
@@ -2476,7 +5987,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		var auction_bid_action_row := screen.find_child("BidBoardActionRow", true, false)
 		var auction_bid_board_text := _node_tree_text(auction_bid_board_node) if auction_bid_board_node != null else ""
 		_expect(auction_bid_chip_row != null and auction_bid_chip_row.get_child_count() >= 4, "split GameScreen renders open card-auction state inside the dedicated BidBoard instead of the readiness row")
-		_expect(auction_bid_board_text.contains("竞价") and auction_bid_board_text.contains("最高") and auction_bid_board_text.contains("我的") and auction_bid_board_text.contains("本批") and auction_bid_board_text.contains("领跑"), "split BidBoard keeps open card-auction and public-track labels visible on the table")
+		_expect(auction_bid_board_text.contains("锁牌") and auction_bid_board_text.contains("最高") and auction_bid_board_text.contains("我的组") and auction_bid_board_text.contains("组报价") and auction_bid_board_text.contains("领跑"), "split BidBoard keeps the group lock and public-track labels visible on the table")
 		_expect(auction_bid_track_link_row != null and auction_bid_track_link_row.get_child_count() >= 2, "split BidBoard renders clickable public-track pointer slots instead of burying them in the status sentence")
 		_expect(auction_bid_action_row != null and auction_bid_action_row.get_child_count() >= 4, "split BidBoard renders public bid increment and reset buttons")
 		var public_track_slot_for_hover := screen.find_child("PublicTrackSlot", true, false) as Control
@@ -2687,6 +6198,13 @@ func _check_viewmodel_contracts() -> void:
 		"player_board": player.to_ui_dictionary(),
 		"right_inspector": inspector.to_ui_dictionary(),
 	})
+	var temporary_decision_examples := [
+		{"id": "discard_purchase", "kind": "discard_purchase", "title": "私密弃牌确认", "body": "手牌已满。", "chips": [{"text": "私密"}], "actions": [{"id": "discard_purchase_0", "label": "弃掉旧牌"}], "choice": {"mode": "discard", "card": "轨道融资", "privacy": "公开日志不写弃牌。"}},
+		{"id": "monster_target_choice", "kind": "monster_target_choice", "title": "请选择目标怪兽", "body": "入轨前指定目标。", "chips": [{"text": "目标公开"}], "actions": [{"id": "target_monster_0", "label": "怪1"}, {"id": "target_monster_cancel", "label": "取消"}], "choice": {"mode": "monster_target", "card": "相位诱导", "public_after": "目标怪兽公开。"}},
+		{"id": "player_target_choice", "kind": "player_target_choice", "title": "请选择目标玩家", "body": "直接互动目标。", "chips": [{"text": "匿名入轨"}], "actions": [{"id": "target_player_1", "label": "玩家2"}], "choice": {"mode": "player_target", "card": "相位否决", "public_after": "目标玩家公开。"}},
+		{"id": "monster_wager_7", "kind": "monster_wager", "title": "怪兽赌局 #7", "body": "全场冻结公开下注。", "chips": [{"text": "全场冻结"}], "actions": [{"id": "monster_wager:7:a:5", "label": "押A 5%"}], "wager": {"matchup": "相位兽 vs 潮汐巨兽", "pool": 50}},
+		{"id": "contract_response_42", "kind": "contract_response", "title": "匿名合约签署窗口", "body": "目标商品控制者决定。", "chips": [{"text": "私密签约权"}], "actions": [{"id": "contract_accept_42", "label": "签约"}, {"id": "contract_reject_42", "label": "拒绝"}], "contract": {"route": "雾港区 → 赤潮港", "products": "海雾果"}},
+	]
 	var overlay: Variant = overlay_script.new().apply_side_drawer("detail_region", inspector.to_ui_dictionary())
 	var card_codex_browser: Variant = card_codex_browser_script.new().apply_dictionary({
 		"names": ["phase_beast_i", "orbital_finance_i", "weather_break_i"],
@@ -2806,7 +6324,7 @@ func _check_viewmodel_contracts() -> void:
 	var card_detail_upgrades: Array = card_detail_ui.get("upgrades", []) if card_detail_ui.get("upgrades", []) is Array else []
 	_expect(action_quick.size() == 1 and action_quick[0].get("state") == "就绪" and action_primary.size() == 1 and action_primary[0].get("disabled") == false, "ActionDockSnapshot normalizes quick and primary action states for UI rendering")
 	_expect(action_quick.size() == 1 and action_quick[0].get("shortcut") == "1", "ActionDockSnapshot assigns numeric shortcuts to supplied quick actions")
-	_expect(default_quick.size() == 4 and default_quick[0].get("label") == "建城" and default_quick[0].get("shortcut") == "1" and default_quick[3].get("label") == "出牌" and default_quick[3].get("shortcut") == "4", "ActionDockSnapshot supplies the four first-glance quick actions and numeric shortcuts when source data is absent")
+	_expect(default_quick.size() == 3 and default_quick[0].get("label") == "牌架" and default_quick[0].get("shortcut") == "1" and default_quick[2].get("label") == "出牌" and default_quick[2].get("shortcut") == "3", "ActionDockSnapshot supplies only the three legal v0.4 quick actions and numeric shortcuts when source data is absent")
 	_expect(bid_board_ui.get("chips", []).size() == 1 and bid_track_links.size() == 1 and str((bid_track_links[0] as Dictionary).get("id", "")) == "track_select_9002" and bool((bid_track_links[0] as Dictionary).get("selected", false)) and bid_board_ui.get("actions", []).size() == 1 and bid_board_ui.get("phase") == "竞价 4s", "BidBoardSnapshot normalizes public bid chips, clickable track links, selected state, and bid actions before PlayerBoard renders them")
 	_expect(card.to_ui_dictionary().get("name") == "相位否决", "CardViewSnapshot emits card UI dictionaries")
 	_expect(district.to_ui_dictionary().get("title") == "雾港区", "DistrictViewSnapshot emits district UI dictionaries")
@@ -2849,10 +6367,28 @@ func _check_viewmodel_contracts() -> void:
 	_expect(planet_flow_steps.size() == 8 and bool(planet_flow_steps[0].get("done", false)) and bool(planet_flow_steps[1].get("current", false)) and str(planet_flow.get("next_text", "")).contains("首召") and str(planet_flow_steps[5].get("label", "")).contains("牌轨") and str(planet_flow_steps[6].get("label", "")).contains("经济") and str(planet_flow_steps[7].get("label", "")).contains("路线"), "PlanetBoardSnapshot keeps the full first-run flow compass through route choice")
 	_expect(table.to_ui_dictionary().has("right_inspector"), "TableSnapshot creates right-inspector UI context")
 	_expect(table.to_ui_dictionary().get("card_track", []).size() == 1 and table.to_ui_dictionary().get("card_track", [])[0].get("state") == "当前", "TableSnapshot routes public track entries through PublicTrackSnapshot")
+	var table_resolution_track: Dictionary = table.to_ui_dictionary().get("card_resolution_track", {}) if table.to_ui_dictionary().get("card_resolution_track", {}) is Dictionary else {}
+	var table_resolution_entries: Array = table_resolution_track.get("entries", []) if table_resolution_track.get("entries", []) is Array else []
+	_expect(table_resolution_entries.size() == 1 and table_resolution_entries[0].get("state") == "当前" and str(table_resolution_track.get("privacy_hint", "")).contains("公开线索"), "TableSnapshot builds sceneized card_resolution_track payload from public track data")
 	var table_planet: Dictionary = table.to_ui_dictionary().get("planet", {}) if table.to_ui_dictionary().get("planet", {}) is Dictionary else {}
 	var table_left_rail: Dictionary = table_planet.get("left_rail", {}) if table_planet.get("left_rail", {}) is Dictionary else {}
 	var table_left_entries: Array = table_left_rail.get("entries", []) if table_left_rail.get("entries", []) is Array else []
 	_expect(table_left_rail.get("title") == "地表情报" and table_left_entries.size() == 1 and table_left_entries[0].get("value") == "8区", "TableSnapshot routes planet state through PlanetBoardSnapshot")
+	var temporary_decision_contract_ok := true
+	for example_variant in temporary_decision_examples:
+		var example: Dictionary = example_variant
+		var temp_table: Variant = table_script.new().apply_dictionary({"temporary_decision": example})
+		var temp_ui: Dictionary = temp_table.to_ui_dictionary()
+		var decision: Dictionary = temp_ui.get("temporary_decision", {}) if temp_ui.get("temporary_decision", {}) is Dictionary else {}
+		var decision_actions: Array = decision.get("actions", []) if decision.get("actions", []) is Array else []
+		var expected_actions: Array = example.get("actions", []) if example.get("actions", []) is Array else []
+		var first_expected_action: Dictionary = expected_actions[0] if expected_actions.size() > 0 and expected_actions[0] is Dictionary else {}
+		var first_decision_action: Dictionary = decision_actions[0] if decision_actions.size() > 0 and decision_actions[0] is Dictionary else {}
+		var preserves_choice: bool = not ["discard_purchase", "monster_target_choice", "player_target_choice"].has(str(example.get("kind", ""))) or (decision.get("choice", {}) is Dictionary and (decision.get("choice", {}) as Dictionary).get("mode") == (example.get("choice", {}) as Dictionary).get("mode"))
+		var preserves_wager: bool = str(example.get("kind", "")) != "monster_wager" or (decision.get("wager", {}) is Dictionary and (decision.get("wager", {}) as Dictionary).get("matchup") == "相位兽 vs 潮汐巨兽")
+		var preserves_contract: bool = str(example.get("kind", "")) != "contract_response" or (decision.get("contract", {}) is Dictionary and (decision.get("contract", {}) as Dictionary).get("route") == "雾港区 → 赤潮港")
+		temporary_decision_contract_ok = temporary_decision_contract_ok and decision.get("kind") == example.get("kind") and decision_actions.size() == expected_actions.size() and first_decision_action.get("id") == first_expected_action.get("id") and preserves_choice and preserves_wager and preserves_contract and not _variant_contains_callable(decision)
+	_expect(temporary_decision_contract_ok, "TableSnapshot normalizes discard, target, wager, and contract temporary decisions as data-only OverlayLayer action ids with specialized detail payloads")
 	_expect(not _variant_contains_callable(table.to_ui_dictionary()), "TableSnapshot output stays data-only without Callable rule handles")
 	_expect(not _variant_contains_callable(card_browser_ui), "CardCodexBrowserSnapshot output stays data-only without Callable rule handles")
 	_expect(not _variant_contains_callable(card_detail_ui), "CardCodexDetailSnapshot output stays data-only without Callable rule handles")
@@ -2870,7 +6406,8 @@ func _check_menu_overlay_shell_component() -> void:
 	_expect(overlay.has_method("present_menu_shell"), "MenuOverlay owns menu-shell rendering")
 	_expect(overlay.has_method("hide_global_navigation"), "MenuOverlay owns global navigation hiding")
 	_expect(overlay.has_method("set_catalog_navigation"), "MenuOverlay owns catalog navigation state")
-	_expect(overlay.has_signal("continue_requested") and overlay.has_signal("main_menu_requested") and overlay.has_signal("catalog_step_requested") and overlay.has_signal("catalog_back_requested"), "MenuOverlay exposes shell navigation signals")
+	_expect(overlay.has_method("set_quick_navigation") and overlay.has_method("available_content_width") and overlay.has_method("available_content_height") and overlay.has_method("refresh_current_layout") and overlay.has_method("debug_snapshot"), "MenuOverlay owns quick navigation, responsive sizing, and pure QA state")
+	_expect(overlay.has_signal("continue_requested") and overlay.has_signal("main_menu_requested") and overlay.has_signal("catalog_step_requested") and overlay.has_signal("catalog_back_requested") and overlay.has_signal("quick_nav_action_requested"), "MenuOverlay exposes shell navigation signals")
 	var preview_box := overlay.find_child("MenuPreviewBox", true, false) as VBoxContainer
 	var dummy := Label.new()
 	dummy.text = "stale preview"
@@ -2905,12 +6442,28 @@ func _check_menu_overlay_shell_component() -> void:
 		"continue_visible": true,
 		"back_visible": true,
 		"nav_visible": true,
+		"quick_nav_visible": true,
+		"quick_nav_active_id": "standings",
+		"quick_nav": [
+			{"id": "setup", "label": "Setup", "accent": "#38bdf8"},
+			{"id": "scenario", "label": "Scenario", "accent": "#f59e0b"},
+			{"id": "standings", "label": "Standings", "accent": "#a78bfa"},
+			{"id": "economy", "label": "Economy", "accent": "#22c55e"},
+			{"id": "intel", "label": "Intel", "accent": "#fb7185"},
+			{"id": "rules", "label": "Rules", "accent": "#facc15"},
+			{"id": "compendium", "label": "Compendium", "accent": "#2dd4bf"},
+		],
 		"viewport_size": Vector2(1600, 960),
 	})
 	await process_frame
 	var body_label := overlay.find_child("MenuBodyLabel", true, false) as Label
 	_expect(context_label != null and context_label.visible and hint_panel != null and hint_panel.visible and body_label != null and body_label.text == "Scan the card.", "MenuOverlay presents catalog shell context and body")
 	_expect(body_label != null and body_label.get_theme_font_size("font_size") >= 16, "MenuOverlay catalog body text keeps a readable minimum font size")
+	var quick_navigation := overlay.find_child("MenuQuickNavigation", true, false) as Control
+	var quick_snapshot: Dictionary = quick_navigation.call("debug_snapshot") if quick_navigation != null and quick_navigation.has_method("debug_snapshot") else {}
+	_expect(quick_navigation != null and quick_navigation.visible and (quick_snapshot.get("rendered", []) as Array).size() == 7 and str(quick_snapshot.get("active_id", "")) == "standings", "MenuOverlay renders seven scene-owned quick-navigation commands on operational subpages")
+	var standings_button := overlay.find_child("MenuQuickNavStandingsButton", true, false) as Button
+	_expect(standings_button != null and standings_button.disabled, "MenuQuickNavigation keeps the active branch visible and disabled")
 	overlay.call("set_catalog_navigation", {"prev_visible": true, "next_visible": true, "back_visible": true, "back_text": "Back to thumbnails"})
 	await process_frame
 	var catalog_nav_row := overlay.find_child("MenuCatalogNavRow", true, false) as HBoxContainer
@@ -2925,6 +6478,7 @@ func _check_menu_overlay_shell_component() -> void:
 		"catalog_back": false,
 	}
 	var catalog_steps: Array[int] = []
+	var quick_actions: Array[String] = []
 	overlay.connect("continue_requested", func() -> void:
 		signal_flags["continue"] = true
 	)
@@ -2936,6 +6490,9 @@ func _check_menu_overlay_shell_component() -> void:
 	)
 	overlay.connect("catalog_back_requested", func() -> void:
 		signal_flags["catalog_back"] = true
+	)
+	overlay.connect("quick_nav_action_requested", func(action_id: String) -> void:
+		quick_actions.append(action_id)
 	)
 	var catalog_prev_button := overlay.find_child("MenuBestiaryPrevButton", true, false) as Button
 	var catalog_next_button := overlay.find_child("MenuBestiaryNextButton", true, false) as Button
@@ -2949,11 +6506,17 @@ func _check_menu_overlay_shell_component() -> void:
 		catalog_next_button.emit_signal("pressed")
 	if catalog_back_button != null:
 		catalog_back_button.emit_signal("pressed")
+	var economy_button := overlay.find_child("MenuQuickNavEconomyButton", true, false) as Button
+	if economy_button != null:
+		economy_button.emit_signal("pressed")
 	await process_frame
 	_expect(bool(signal_flags.get("continue", false)), "MenuOverlay emits continue_requested from the continue button")
 	_expect(bool(signal_flags.get("back", false)), "MenuOverlay emits main_menu_requested from the back button")
 	_expect(bool(signal_flags.get("catalog_back", false)), "MenuOverlay emits catalog_back_requested from the local catalog back button")
 	_expect(catalog_steps.size() == 2 and catalog_steps[0] == -1 and catalog_steps[1] == 1, "MenuOverlay emits previous/next catalog step signals")
+	_expect(quick_actions == ["economy"], "MenuOverlay forwards scene-owned quick navigation as a stable action id")
+	var overlay_snapshot: Variant = overlay.call("debug_snapshot")
+	_expect(overlay_snapshot is Dictionary and not _variant_contains_callable(overlay_snapshot) and not _variant_contains_object(overlay_snapshot), "MenuOverlay debug snapshot remains pure data")
 	overlay.call("hide_global_navigation")
 	await process_frame
 	_expect(continue_button != null and not continue_button.visible and back_button != null and not back_button.visible and nav_row != null and not nav_row.visible, "MenuOverlay hides global navigation without touching local catalog navigation")
@@ -2991,7 +6554,7 @@ func _check_tutorial_quick_start_board_component() -> void:
 		],
 		"traps": [
 			{"title": "买不了牌", "body": "先确认场上有怪兽和牌架位置。", "accent": Color("#fb7185")},
-			{"title": "牌打不出", "body": "看商品流动、目标、选区、现金和队列。", "accent": Color("#facc15")},
+			{"title": "牌打不出", "body": "看GDP份额、目标、选区、现金和队列。", "accent": Color("#facc15")},
 			{"title": "看不懂谁领先", "body": "打开局势记分板。", "accent": Color("#38bdf8")},
 			{"title": "不知道查哪里", "body": "打开情报侦探板。", "accent": Color("#c084fc")},
 		],
@@ -3035,7 +6598,7 @@ func _check_rules_quick_reference_board_component() -> void:
 		"keyword_title": "卡面符号｜看手牌先认这些",
 		"keyword_legend": [
 			{"symbol": "¥", "label": "价格/资金", "body": "买牌、报价或现金效果。", "accent": Color("#facc15")},
-			{"symbol": "◇", "label": "商品流动", "body": "打出门槛，不消耗商品。", "accent": Color("#38bdf8")},
+			{"symbol": "GDP%", "label": "地区GDP份额", "body": "高阶牌的资格门槛；不会被消耗。", "accent": Color("#38bdf8")},
 			{"symbol": "◆", "label": "怪兽", "body": "召唤、诱导或指定怪兽。", "accent": Color("#fb7185")},
 			{"symbol": "◎", "label": "玩家/目标", "body": "需要指定玩家或对象。", "accent": Color("#c084fc")},
 			{"symbol": "⇄", "label": "合约/商路", "body": "连接供给、需求和运输。", "accent": Color("#2dd4bf")},
@@ -3046,7 +6609,7 @@ func _check_rules_quick_reference_board_component() -> void:
 			{"title": "◆ 首召怪兽", "body": "先打一张I级怪兽牌。", "meta": "附近打开购牌来源。", "accent": Color("#fb7185")},
 			{"title": "▣ 建城赚钱", "body": "陆地城市化。", "meta": "GDP/min按秒进账。", "accent": Color("#4ade80")},
 			{"title": "＋ 区域牌架", "body": "双击区域看牌。", "meta": "开架时锁定资格。", "accent": Color("#38bdf8")},
-			{"title": "◎ 匿名出牌", "body": "卡牌公开，牌主匿名。", "meta": "商品流动是门槛。", "accent": Color("#c084fc")},
+			{"title": "◎ 匿名出牌", "body": "卡牌公开，牌主匿名。", "meta": "高阶牌检查地区GDP份额。", "accent": Color("#c084fc")},
 			{"title": "¥ 竞价/猜牌主", "body": "多人出牌先报价。", "meta": "公共牌轨可猜牌主。", "accent": Color("#facc15")},
 			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇冻结时间。", "meta": "全员公开下注。", "accent": Color("#fb923c")},
 			{"title": "⇄ 合约", "body": "先点供给区和需求区。", "meta": "目标业主签或拒。", "accent": Color("#2dd4bf")},
@@ -3524,6 +7087,5631 @@ func _check_bestiary_detail_component() -> void:
 	detail.queue_free()
 
 
+func _check_compendium_codex_sceneization_component() -> void:
+	var component_scenes := [
+		"res://scenes/ui/codex/CardCodexFilterChip.tscn",
+		"res://scenes/ui/codex/CardCodexThumbnailCard.tscn",
+		"res://scenes/ui/codex/CardCodexInfoCard.tscn",
+		"res://scenes/ui/codex/ProductCodexMarketBadge.tscn",
+		"res://scenes/ui/codex/ProductCodexKpiCard.tscn",
+		"res://scenes/ui/codex/ProductCodexStrategyCard.tscn",
+		"res://scenes/ui/codex/BestiaryMonsterHeaderCard.tscn",
+		"res://scenes/ui/codex/BestiaryMonsterKpiCard.tscn",
+		"res://scenes/ui/codex/BestiaryMonsterActionCard.tscn",
+	]
+	var component_scripts := [
+		"res://scripts/ui/codex/card_codex_filter_chip.gd",
+		"res://scripts/ui/codex/card_codex_thumbnail_card.gd",
+		"res://scripts/ui/codex/card_codex_info_card.gd",
+		"res://scripts/ui/codex/product_codex_market_badge.gd",
+		"res://scripts/ui/codex/product_codex_kpi_card.gd",
+		"res://scripts/ui/codex/product_codex_strategy_card.gd",
+		"res://scripts/ui/codex/bestiary_monster_header_card.gd",
+		"res://scripts/ui/codex/bestiary_monster_kpi_card.gd",
+		"res://scripts/ui/codex/bestiary_monster_action_card.gd",
+	]
+	for scene_path in component_scenes:
+		_expect(ResourceLoader.exists(scene_path), "%s exists as an editable codex component scene" % scene_path)
+		var packed := load(scene_path) as PackedScene
+		_expect(packed != null, "%s loads as a codex component scene" % scene_path)
+	for script_path in component_scripts:
+		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads as a codex component script" % script_path)
+	_expect(ResourceLoader.exists(COMPENDIUM_CODEX_PREVIEW_SCENE), "CompendiumCodexMcpPreview scene exists")
+	_expect(ResourceLoader.exists(COMPENDIUM_CODEX_PREVIEW_SCRIPT), "CompendiumCodexMcpPreview script exists")
+	_expect(ResourceLoader.exists(COMPENDIUM_CODEX_PREVIEW_FIXTURES_SCRIPT), "CompendiumCodex preview fixtures script exists")
+	_expect(ResourceLoader.exists(COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE), "CompendiumCodexInteractionBench scene exists")
+	_expect(ResourceLoader.exists(COMPENDIUM_CODEX_INTERACTION_BENCH_SCRIPT), "CompendiumCodexInteractionBench script exists")
+	var fixtures_script := load(COMPENDIUM_CODEX_PREVIEW_FIXTURES_SCRIPT) as Script
+	_expect(fixtures_script != null, "CompendiumCodex preview fixtures script loads")
+	var fixtures: RefCounted = fixtures_script.new() if fixtures_script != null else null
+	_expect(fixtures != null and fixtures.has_method("fixture_ids") and fixtures.has_method("fixture") and fixtures.has_method("is_pure_data"), "CompendiumCodex fixtures expose fixture_ids, fixture, and is_pure_data")
+	var expected_fixture_ids := [
+		"card_browser_grid",
+		"card_detail_long_text",
+		"product_market_detail",
+		"monster_bestiary_detail",
+		"mixed_compendium_hub",
+		"empty_payload_safe_state",
+		"long_text_stress",
+		"missing_art_safe_state",
+	]
+	var fixture_ids: Array = fixtures.call("fixture_ids") if fixtures != null else []
+	for fixture_id in expected_fixture_ids:
+		_expect(fixture_ids.has(fixture_id), "CompendiumCodex fixtures include %s" % fixture_id)
+	var fixtures_are_data_only := true
+	if fixtures != null:
+		for fixture_id in fixture_ids:
+			var data: Dictionary = fixtures.call("fixture", str(fixture_id))
+			if _variant_contains_callable(data) or _variant_contains_object(data) or not bool(fixtures.call("is_pure_data", data)):
+				fixtures_are_data_only = false
+	_expect(fixtures_are_data_only, "CompendiumCodex fixtures stay pure data without Callable, Node, or Object values")
+	var preview_packed := load(COMPENDIUM_CODEX_PREVIEW_SCENE) as PackedScene
+	_expect(preview_packed != null, "CompendiumCodexMcpPreview scene loads")
+	if preview_packed != null:
+		var preview := preview_packed.instantiate() as Control
+		root.add_child(preview)
+		await process_frame
+		_expect(preview.has_method("apply_fixture") and preview.has_method("fixture_ids") and preview.has_method("current_fixture_id"), "CompendiumCodexMcpPreview exposes fixture switching helpers")
+		for fixture_id in expected_fixture_ids:
+			var applied := bool(preview.call("apply_fixture", fixture_id))
+			await process_frame
+			_expect(applied and str(preview.call("current_fixture_id")) == fixture_id, "CompendiumCodexMcpPreview applies fixture %s" % fixture_id)
+		_expect(preview.find_child("CompendiumCodexStateButtonList", true, false) != null and preview.find_child("CompendiumCodexPreviewHost", true, false) != null, "CompendiumCodexMcpPreview exposes state list and preview host")
+		root.remove_child(preview)
+		preview.queue_free()
+	var bench_packed := load(COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE) as PackedScene
+	_expect(bench_packed != null, "CompendiumCodexInteractionBench scene loads")
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("interaction_cases") and bench.has_method("build_interaction_manifest_preview") and bench.has_method("run_interaction_suite"), "CompendiumCodexInteractionBench exposes output_dir, interaction_cases, manifest preview, and run suite")
+		var output_dir := str(bench.call("output_dir")) if bench.has_method("output_dir") else ""
+		_expect(output_dir == COMPENDIUM_CODEX_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "CompendiumCodexInteractionBench writes QA output under user://")
+		var cases: Array = bench.call("interaction_cases") if bench.has_method("interaction_cases") else []
+		for case_id in ["filter_chip_signal", "page_previous_signal", "thumbnail_preview_signal", "thumbnail_detail_signal", "product_long_text_layout", "bestiary_action_long_text_layout", "empty_payload_safe_state", "fixtures_are_pure_data", "privacy_sanitization"]:
+			var found := false
+			for case_variant in cases:
+				var case: Dictionary = case_variant if case_variant is Dictionary else {}
+				if str(case.get("case_id", "")) == case_id:
+					found = true
+					break
+			_expect(found, "CompendiumCodexInteractionBench includes case %s" % case_id)
+		var manifest: Dictionary = bench.call("build_interaction_manifest_preview") if bench.has_method("build_interaction_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var manifest_fields_ok := records.size() == cases.size() and not records.is_empty()
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "fixture_id", "component", "interaction", "emitted_signal", "emitted_value", "layout_checked", "privacy_checked", "pure_data_checked", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		_expect(manifest_fields_ok, "CompendiumCodexInteractionBench manifest preview records include required fields")
+		root.remove_child(bench)
+		bench.queue_free()
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null and registry.has_method("records"):
+		var records: Array = registry.call("records")
+		for required_path in component_scenes + [COMPENDIUM_CODEX_PREVIEW_SCENE, COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE]:
+			var found := false
+			for record_variant in records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				if str(record.get("scene_path", "")) == required_path:
+					found = true
+					break
+			_expect(found, "MCP scene registry includes %s" % required_path)
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null and audit.has_method("record_for_id"):
+		var audit_record: Dictionary = audit.call("record_for_id", "compendium_codex_sceneization_gate")
+		_expect(not audit_record.is_empty() and str(audit_record.get("current_scene_path", "")) == COMPENDIUM_CODEX_INTERACTION_BENCH_SCENE, "Sceneization Audit includes compendium_codex_sceneization_gate")
+
+
+func _check_compendium_content_resourceization_component() -> void:
+	for script_path in [
+		COMPENDIUM_CONTENT_BASE_RESOURCE_SCRIPT,
+		COMPENDIUM_CONTENT_CARD_RESOURCE_SCRIPT,
+		COMPENDIUM_CONTENT_PRODUCT_RESOURCE_SCRIPT,
+		COMPENDIUM_CONTENT_MONSTER_RESOURCE_SCRIPT,
+		COMPENDIUM_CONTENT_PACK_RESOURCE_SCRIPT,
+		COMPENDIUM_CONTENT_REGISTRY_SCRIPT,
+		COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCRIPT,
+		COMPENDIUM_CONTENT_REGISTRY_BENCH_SCRIPT,
+	]:
+		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads for compendium content resourceization" % script_path)
+	for resource_path in COMPENDIUM_CONTENT_SAMPLE_RESOURCE_PATHS:
+		_expect(ResourceLoader.exists(resource_path), "%s exists as an editable compendium Resource" % resource_path)
+		var resource := load(resource_path)
+		_expect(resource != null and resource is Resource, "%s loads as a Godot Resource" % resource_path)
+	var registry_script := load(COMPENDIUM_CONTENT_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	_expect(registry != null and registry.has_method("entry_ids") and registry.has_method("entries_by_type") and registry.has_method("entry_payload") and registry.has_method("to_card_codex_payload") and registry.has_method("to_product_codex_payload") and registry.has_method("to_bestiary_payload") and registry.has_method("validate_entries"), "CompendiumContentRegistry exposes content lookup and UI payload helpers")
+	if registry == null:
+		return
+	var entry_ids: Array = registry.call("entry_ids")
+	_expect(entry_ids.size() >= COMPENDIUM_CONTENT_MIN_TOTAL_ENTRIES, "CompendiumContentRegistry includes the Sprint 2 batch of real content entries")
+	_expect((registry.call("entries_by_type", "card") as Array).size() >= COMPENDIUM_CONTENT_MIN_CARD_ENTRIES, "CompendiumContentRegistry includes the vertical-slice card Resource batch")
+	_expect((registry.call("entries_by_type", "product") as Array).size() >= COMPENDIUM_CONTENT_MIN_PRODUCT_ENTRIES, "CompendiumContentRegistry includes expanded product Resource entries")
+	_expect((registry.call("entries_by_type", "monster") as Array).size() >= COMPENDIUM_CONTENT_MIN_MONSTER_ENTRIES, "CompendiumContentRegistry includes expanded monster Resource entries")
+	for required_entry_id in ["orbital_finance_i", "final_countdown_i", "cold_crown_goods", "spore_fog_sea_king", "ember_ring_proto_star"]:
+		_expect(entry_ids.has(required_entry_id), "CompendiumContentRegistry includes Sprint 2 entry %s" % required_entry_id)
+	var resource_payloads_are_data_only := true
+	for entry_id_variant in entry_ids:
+		var entry_id := str(entry_id_variant)
+		var payload: Dictionary = registry.call("entry_payload", entry_id)
+		resource_payloads_are_data_only = resource_payloads_are_data_only and not payload.is_empty() and not _variant_contains_callable(payload) and not _variant_contains_object(payload)
+		var entry_type := str(payload.get("entry_type", ""))
+		if entry_type == "card":
+			var card_payload: Dictionary = registry.call("to_card_codex_payload", entry_id)
+			resource_payloads_are_data_only = resource_payloads_are_data_only and card_payload.has("card_face") and not _variant_contains_callable(card_payload) and not _variant_contains_object(card_payload)
+		elif entry_type == "product":
+			var product_payload: Dictionary = registry.call("to_product_codex_payload", entry_id)
+			resource_payloads_are_data_only = resource_payloads_are_data_only and product_payload.has("badge") and not _variant_contains_callable(product_payload) and not _variant_contains_object(product_payload)
+		elif entry_type == "monster":
+			var monster_payload: Dictionary = registry.call("to_bestiary_payload", entry_id)
+			resource_payloads_are_data_only = resource_payloads_are_data_only and monster_payload.has("art") and not _variant_contains_callable(monster_payload) and not _variant_contains_object(monster_payload)
+	_expect(resource_payloads_are_data_only, "CompendiumContentRegistry emits pure-data UI payloads for card, product, and monster resources")
+	var validation_records: Array = registry.call("validate_entries")
+	var validation_fields_ok := validation_records.size() >= entry_ids.size()
+	var validation_passed := true
+	for record_variant in validation_records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		for key in ["case_id", "entry_id", "entry_type", "resource_path", "payload_checked", "privacy_checked", "ui_payload_checked", "passed", "notes"]:
+			validation_fields_ok = validation_fields_ok and record.has(key)
+		validation_passed = validation_passed and bool(record.get("passed", false))
+	_expect(validation_fields_ok and validation_passed and not _variant_contains_callable(validation_records) and not _variant_contains_object(validation_records), "CompendiumContentRegistry validation records contain required pure-data fields and pass")
+	_expect(ResourceLoader.exists(COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCENE), "CompendiumContentRegistryMcpPreview scene exists")
+	_expect(ResourceLoader.exists(COMPENDIUM_CONTENT_REGISTRY_BENCH_SCENE), "CompendiumContentRegistryBench scene exists")
+	var preview_packed := load(COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCENE) as PackedScene
+	_expect(preview_packed != null, "CompendiumContentRegistryMcpPreview scene loads")
+	if preview_packed != null:
+		var preview := preview_packed.instantiate() as Control
+		root.add_child(preview)
+		await process_frame
+		_expect(preview.has_method("entry_ids") and preview.has_method("apply_entry") and preview.has_method("current_entry_id") and preview.has_method("entry_payload"), "CompendiumContentRegistryMcpPreview exposes entry switching helpers")
+		for entry_id_variant in entry_ids:
+			var entry_id := str(entry_id_variant)
+			var applied := bool(preview.call("apply_entry", entry_id))
+			await process_frame
+			_expect(applied and str(preview.call("current_entry_id")) == entry_id, "CompendiumContentRegistryMcpPreview applies resource entry %s" % entry_id)
+		_expect(preview.find_child("CompendiumContentEntryButtonList", true, false) != null and preview.find_child("CompendiumContentPreviewHost", true, false) != null and preview.find_child("CompendiumContentResourcePathLabel", true, false) != null, "CompendiumContentRegistryMcpPreview exposes resource list, preview host, and resource path label")
+		root.remove_child(preview)
+		preview.queue_free()
+	var bench_packed := load(COMPENDIUM_CONTENT_REGISTRY_BENCH_SCENE) as PackedScene
+	_expect(bench_packed != null, "CompendiumContentRegistryBench scene loads")
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("registry_cases") and bench.has_method("build_registry_manifest_preview") and bench.has_method("run_registry_suite"), "CompendiumContentRegistryBench exposes output_dir, registry_cases, manifest preview, and run suite")
+		var output_dir := str(bench.call("output_dir")) if bench.has_method("output_dir") else ""
+		_expect(output_dir == COMPENDIUM_CONTENT_REGISTRY_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "CompendiumContentRegistryBench writes QA output under user://")
+		var cases: Array = bench.call("registry_cases") if bench.has_method("registry_cases") else []
+		var manifest: Dictionary = bench.call("build_registry_manifest_preview") if bench.has_method("build_registry_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var manifest_fields_ok := cases.size() >= COMPENDIUM_CONTENT_MIN_TOTAL_ENTRIES and records.size() == cases.size()
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "entry_id", "entry_type", "resource_path", "payload_checked", "privacy_checked", "ui_payload_checked", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		_expect(str(manifest.get("output_dir", "")) == COMPENDIUM_CONTENT_REGISTRY_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == COMPENDIUM_CONTENT_REGISTRY_SCREENSHOT_PATH and manifest_fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CompendiumContentRegistryBench manifest preview contains required pure-data records")
+		root.remove_child(bench)
+		bench.queue_free()
+	var scene_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var scene_registry: RefCounted = scene_registry_script.new() if scene_registry_script != null else null
+	if scene_registry != null and scene_registry.has_method("records"):
+		var registry_records: Array = scene_registry.call("records")
+		for required_path in [COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCENE, COMPENDIUM_CONTENT_REGISTRY_BENCH_SCENE]:
+			var found := false
+			for record_variant in registry_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				if str(record.get("scene_path", "")) == required_path:
+					found = true
+					break
+			_expect(found, "MCP scene registry includes %s" % required_path)
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null and audit.has_method("record_for_id"):
+		var audit_record: Dictionary = audit.call("record_for_id", "compendium_content_resourceization_gate")
+		_expect(not audit_record.is_empty() and str(audit_record.get("current_scene_path", "")) == COMPENDIUM_CONTENT_REGISTRY_BENCH_SCENE, "Sceneization Audit includes compendium_content_resourceization_gate")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		_expect(dock.find_child("OpenCompendiumContentRegistryPreviewButton", true, false) != null and dock.find_child("RunCompendiumContentRegistryBenchButton", true, false) != null and dock.find_child("OpenCompendiumContentRegistryOutputFolderButton", true, false) != null, "SpaceSyndicateDesignQADock contains Compendium Content Registry controls")
+		_expect(dock.has_method("compendium_content_registry_preview_scene_path") and dock.has_method("compendium_content_registry_bench_scene_path") and dock.has_method("compendium_content_registry_qa_output_dir"), "SpaceSyndicateDesignQADock exposes Compendium Content Registry path helpers")
+		if dock.has_method("compendium_content_registry_preview_scene_path"):
+			_expect(str(dock.call("compendium_content_registry_preview_scene_path")) == COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets CompendiumContentRegistryMcpPreview.tscn")
+		if dock.has_method("compendium_content_registry_bench_scene_path"):
+			_expect(str(dock.call("compendium_content_registry_bench_scene_path")) == COMPENDIUM_CONTENT_REGISTRY_BENCH_SCENE, "SpaceSyndicateDesignQADock targets CompendiumContentRegistryBench.tscn")
+		if dock.has_method("compendium_content_registry_qa_output_dir"):
+			var content_registry_output_dir := str(dock.call("compendium_content_registry_qa_output_dir"))
+			_expect(content_registry_output_dir == COMPENDIUM_CONTENT_REGISTRY_OUTPUT_DIR and content_registry_output_dir.begins_with("user://") and not content_registry_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Compendium Content Registry output folder")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_compendium_content_registry_preview_requested"):
+			dock.connect("open_compendium_content_registry_preview_requested", func(scene_path: String) -> void:
+				open_paths.append(scene_path)
+			)
+		if dock.has_signal("run_compendium_content_registry_bench_requested"):
+			dock.connect("run_compendium_content_registry_bench_requested", func(scene_path: String) -> void:
+				run_paths.append(scene_path)
+			)
+		var open_button := dock.find_child("OpenCompendiumContentRegistryPreviewButton", true, false) as Button
+		var run_button := dock.find_child("RunCompendiumContentRegistryBenchButton", true, false) as Button
+		if open_button != null:
+			open_button.emit_signal("pressed")
+			await process_frame
+		if run_button != null:
+			run_button.emit_signal("pressed")
+			await process_frame
+		_expect(open_paths.size() == 1 and open_paths[0] == COMPENDIUM_CONTENT_REGISTRY_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Compendium Content Registry button requests the preview scene when no EditorPlugin is attached")
+		_expect(run_paths.size() == 1 and run_paths[0] == COMPENDIUM_CONTENT_REGISTRY_BENCH_SCENE, "SpaceSyndicateDesignQADock run Compendium Content Registry button requests the bench scene when no EditorPlugin is attached")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_system_resourceization_audit_component() -> void:
+	for script_path in [
+		SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT,
+		SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCRIPT,
+		SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCRIPT,
+	]:
+		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads for system resourceization audit" % script_path)
+	for scene_path in [SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCENE, SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(scene_path), "%s exists for system resourceization audit" % scene_path)
+		var packed_scene := load(scene_path) as PackedScene
+		_expect(packed_scene != null, "%s loads as a PackedScene" % scene_path)
+	var registry_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	_expect(registry != null and registry.has_method("records") and registry.has_method("categories") and registry.has_method("records_for_category") and registry.has_method("record_for_id") and registry.has_method("summary"), "SystemResourceizationAuditRegistry exposes records, categories, filters, id lookup, and summary")
+	if registry != null:
+		var categories_variant: Variant = registry.call("categories")
+		var categories: Array = categories_variant if categories_variant is Array else []
+		for category in ["Main Menu", "Balance / Gradient", "AI / Monster AI"]:
+			_expect(categories.has(category), "SystemResourceizationAuditRegistry includes category %s" % category)
+		var records_variant: Variant = registry.call("records")
+		var records: Array = records_variant if records_variant is Array else []
+		var fields_ok := records.size() >= 8
+		var data_only_ok := true
+		var seen_menu := false
+		var seen_balance := false
+		var seen_ai := false
+		var seen_ai_runtime := false
+		var seen_price_curve := false
+		var seen_menu_scene := false
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["id", "display_name", "category", "current_status", "current_path", "function_count", "key_functions", "editor_visibility", "risk_level", "recommended_next_step", "mcp_notes"]:
+				fields_ok = fields_ok and record.has(key)
+			data_only_ok = data_only_ok and not _variant_contains_callable(record) and not _variant_contains_object(record)
+			seen_menu = seen_menu or str(record.get("category", "")) == "Main Menu"
+			seen_balance = seen_balance or str(record.get("category", "")) == "Balance / Gradient"
+			seen_ai = seen_ai or str(record.get("category", "")) == "AI / Monster AI"
+			seen_ai_runtime = seen_ai_runtime or (str(record.get("current_path", "")) == AI_RUNTIME_CONTROLLER_SCENE and _node_text_from_variant(record.get("key_functions", [])).contains("_ai_"))
+			seen_price_curve = seen_price_curve or _node_text_from_variant(record.get("related_paths", [])).contains("price_curve_v1.json")
+			seen_menu_scene = seen_menu_scene or _node_text_from_variant(record.get("related_paths", [])).contains("MenuRootLobby.tscn")
+		_expect(fields_ok, "SystemResourceizationAuditRegistry records include required metadata fields")
+		_expect(data_only_ok, "SystemResourceizationAuditRegistry records stay pure data without Callable/Node/Object")
+		_expect(seen_menu and seen_balance and seen_ai and seen_ai_runtime and seen_price_curve and seen_menu_scene, "SystemResourceizationAuditRegistry identifies MenuRootLobby, price_curve_v1.json, and scene-owned AI runtime ownership")
+		var main_composition_record: Dictionary = registry.call("record_for_id", "main_runtime_composition_sceneized")
+		_expect(str(main_composition_record.get("current_status", "")) == "sceneized" and str(main_composition_record.get("current_path", "")) == "res://scenes/main.tscn", "SystemResourceizationAuditRegistry marks main runtime composition as sceneized")
+	var preview_packed := load(SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCENE) as PackedScene
+	_expect(preview_packed != null, "SystemResourceizationAuditMcpPreview scene loads")
+	if preview_packed != null:
+		var preview := preview_packed.instantiate() as Control
+		root.add_child(preview)
+		await process_frame
+		for node_name in ["SystemResourceizationCategoryList", "SystemResourceizationRecordList", "SystemResourceizationDetailTitle", "SystemResourceizationDetailBody", "SystemResourceizationStatusLabel", "SystemResourceizationSummaryLabel", "SystemResourceizationOpenCurrentButton", "SystemResourceizationRunRelatedBenchButton", "SystemResourceizationPrintRecordButton", "SystemResourceizationOpenExistingGateButton"]:
+			_expect(preview.find_child(node_name, true, false) != null, "SystemResourceizationAuditMcpPreview contains %s" % node_name)
+		_expect(preview.has_method("audit_records") and preview.has_method("audit_summary") and preview.has_method("select_category") and preview.has_method("select_record") and preview.has_method("selected_record"), "SystemResourceizationAuditMcpPreview exposes testable audit methods")
+		var selected_ai := bool(preview.call("select_category", "AI / Monster AI")) if preview.has_method("select_category") else false
+		var selected_record := bool(preview.call("select_record", "main_gd_ai_policy_runtime")) if preview.has_method("select_record") else false
+		await process_frame
+		_expect(selected_ai and selected_record and _node_tree_text(preview).contains("AI Runtime Policy") and _node_tree_text(preview).contains("_ai_"), "SystemResourceizationAuditMcpPreview selects scene-owned AI policy runtime record and updates details")
+		root.remove_child(preview)
+		preview.queue_free()
+	var bench_packed := load(SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCENE) as PackedScene
+	_expect(bench_packed != null, "SystemResourceizationAuditBench scene loads")
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("audit_cases") and bench.has_method("build_audit_manifest_preview") and bench.has_method("run_audit_suite"), "SystemResourceizationAuditBench exposes output_dir, audit_cases, manifest preview, and run suite")
+		var output_dir := str(bench.call("output_dir")) if bench.has_method("output_dir") else ""
+		_expect(output_dir == SYSTEM_RESOURCEIZATION_AUDIT_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "SystemResourceizationAuditBench writes QA output under user://")
+		var cases: Array = bench.call("audit_cases") if bench.has_method("audit_cases") else []
+		var manifest: Dictionary = bench.call("build_audit_manifest_preview") if bench.has_method("build_audit_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var manifest_fields_ok := cases.size() >= 8 and records.size() == cases.size()
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["category", "id", "status", "current_path", "function_count", "editor_visible", "recommended_next_step", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		_expect(str(manifest.get("output_dir", "")) == SYSTEM_RESOURCEIZATION_AUDIT_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == SYSTEM_RESOURCEIZATION_AUDIT_SCREENSHOT_PATH and manifest_fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "SystemResourceizationAuditBench manifest preview contains required pure-data records")
+		_expect(int(manifest.get("menu_function_count", 0)) > 0 and int(manifest.get("balance_function_count", 0)) > 0 and int(manifest.get("ai_function_count", 0)) > 0, "SystemResourceizationAuditBench scans main.gd menu, balance, and AI function ownership")
+		root.remove_child(bench)
+		bench.queue_free()
+	var scene_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var scene_registry: RefCounted = scene_registry_script.new() if scene_registry_script != null else null
+	if scene_registry != null and scene_registry.has_method("records"):
+		var registry_records: Array = scene_registry.call("records")
+		for required_path in [SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCENE, SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCENE]:
+			var found := false
+			for record_variant in registry_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				if str(record.get("scene_path", "")) == required_path:
+					found = true
+					break
+			_expect(found, "MCP scene registry includes %s" % required_path)
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null and audit.has_method("record_for_id"):
+		for audit_id in ["system_resourceization_audit_gate", "balance_parameter_resourceization_candidate", "ai_policy_resourceization_candidate", "main_menu_controller_resourceization_candidate"]:
+			var audit_record: Dictionary = audit.call("record_for_id", audit_id)
+			_expect(not audit_record.is_empty(), "Sceneization Audit includes %s" % audit_id)
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		_expect(dock.find_child("OpenSystemResourceizationAuditButton", true, false) != null and dock.find_child("RunSystemResourceizationAuditButton", true, false) != null and dock.find_child("OpenSystemResourceizationOutputFolderButton", true, false) != null, "SpaceSyndicateDesignQADock contains System Resourceization Audit controls")
+		_expect(dock.has_method("system_resourceization_audit_preview_scene_path") and dock.has_method("system_resourceization_audit_bench_scene_path") and dock.has_method("system_resourceization_audit_qa_output_dir"), "SpaceSyndicateDesignQADock exposes System Resourceization Audit path helpers")
+		if dock.has_method("system_resourceization_audit_preview_scene_path"):
+			_expect(str(dock.call("system_resourceization_audit_preview_scene_path")) == SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets SystemResourceizationAuditMcpPreview.tscn")
+		if dock.has_method("system_resourceization_audit_bench_scene_path"):
+			_expect(str(dock.call("system_resourceization_audit_bench_scene_path")) == SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCENE, "SpaceSyndicateDesignQADock targets SystemResourceizationAuditBench.tscn")
+		if dock.has_method("system_resourceization_audit_qa_output_dir"):
+			var system_output_dir := str(dock.call("system_resourceization_audit_qa_output_dir"))
+			_expect(system_output_dir == SYSTEM_RESOURCEIZATION_AUDIT_OUTPUT_DIR and system_output_dir.begins_with("user://") and not system_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// System Resourceization Audit output folder")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_system_resourceization_audit_requested"):
+			dock.connect("open_system_resourceization_audit_requested", func(scene_path: String) -> void:
+				open_paths.append(scene_path)
+			)
+		if dock.has_signal("run_system_resourceization_audit_requested"):
+			dock.connect("run_system_resourceization_audit_requested", func(scene_path: String) -> void:
+				run_paths.append(scene_path)
+			)
+		var open_button := dock.find_child("OpenSystemResourceizationAuditButton", true, false) as Button
+		var run_button := dock.find_child("RunSystemResourceizationAuditButton", true, false) as Button
+		if open_button != null:
+			open_button.emit_signal("pressed")
+			await process_frame
+		if run_button != null:
+			run_button.emit_signal("pressed")
+			await process_frame
+		_expect(open_paths.size() == 1 and open_paths[0] == SYSTEM_RESOURCEIZATION_AUDIT_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open System Resourceization Audit button requests the preview scene when no EditorPlugin is attached")
+		_expect(run_paths.size() == 1 and run_paths[0] == SYSTEM_RESOURCEIZATION_AUDIT_BENCH_SCENE, "SpaceSyndicateDesignQADock run System Resourceization Audit button requests the bench scene when no EditorPlugin is attached")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_balance_parameter_resourceization_component() -> void:
+	for script_path in [
+		BALANCE_PARAMETER_RUNTIME_RESOURCE_SCRIPT,
+		BALANCE_PARAMETER_PRICE_CURVE_RESOURCE_SCRIPT,
+		BALANCE_PARAMETER_PROFILE_RESOURCE_SCRIPT,
+		BALANCE_PARAMETER_RESOURCE_REGISTRY_SCRIPT,
+		BALANCE_PARAMETER_RESOURCE_PREVIEW_SCRIPT,
+		BALANCE_PARAMETER_RESOURCE_BENCH_SCRIPT,
+	]:
+		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads for Balance Parameter Resourceization" % script_path)
+	for resource_path in [
+		BALANCE_PARAMETER_RUNTIME_RESOURCE,
+		BALANCE_PARAMETER_PRICE_CURVE_RESOURCE,
+		BALANCE_PARAMETER_PROFILE_RESOURCE,
+	]:
+		_expect(ResourceLoader.exists(resource_path), "%s exists as a balance Resource asset" % resource_path)
+		var resource := load(resource_path) as Resource
+		_expect(resource != null, "%s loads as a Resource" % resource_path)
+	var profile := load(BALANCE_PARAMETER_PROFILE_RESOURCE) as Resource
+	if profile != null:
+		_expect(profile.has_method("to_runtime_targets_dictionary") and profile.has_method("to_price_curve_dictionary") and profile.has_method("validate_profile") and profile.has_method("resource_summary"), "BalanceParameterProfileResource exposes runtime, price curve, validation, and summary adapters")
+		var runtime_payload: Dictionary = profile.call("to_runtime_targets_dictionary") if profile.has_method("to_runtime_targets_dictionary") else {}
+		var price_payload: Dictionary = profile.call("to_price_curve_dictionary") if profile.has_method("to_price_curve_dictionary") else {}
+		var summary: Dictionary = profile.call("resource_summary") if profile.has_method("resource_summary") else {}
+		_expect(str(runtime_payload.get("version", "")) == "runtime_balance_v1" and int(runtime_payload.get("starting_cash", 0)) == 2000 and int(summary.get("price_weight_count", 0)) == 8, "BalanceParameterProfileResource emits expected runtime and price curve anchors")
+		_expect(not _variant_contains_callable(runtime_payload) and not _variant_contains_object(runtime_payload) and not _variant_contains_callable(price_payload) and not _variant_contains_object(price_payload), "BalanceParameterProfileResource emits pure data payloads")
+	var registry_script := load(BALANCE_PARAMETER_RESOURCE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	_expect(registry != null and registry.has_method("resource_cases") and registry.has_method("validation_records") and registry.has_method("build_manifest_preview") and registry.has_method("runtime_resource_payload") and registry.has_method("price_curve_resource_payload"), "BalanceParameterResourceRegistry exposes cases, validation, manifest preview, and payload adapters")
+	if registry != null:
+		var cases: Array = registry.call("resource_cases")
+		var records: Array = registry.call("validation_records")
+		var manifest: Dictionary = registry.call("build_manifest_preview")
+		var manifest_records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := cases.size() >= 10 and records.size() == cases.size() and manifest_records.size() == cases.size()
+		var all_validation_passed := records.size() > 0
+		var saw_runtime_case := false
+		var saw_price_case := false
+		var saw_model_case := false
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "resource_path", "json_path", "category", "inspector_visible", "json_parity_checked", "model_compatibility_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+			all_validation_passed = all_validation_passed and bool(record.get("passed", false))
+			saw_runtime_case = saw_runtime_case or str(record.get("case_id", "")).begins_with("runtime_")
+			saw_price_case = saw_price_case or str(record.get("case_id", "")).begins_with("price_curve_")
+			saw_model_case = saw_model_case or str(record.get("case_id", "")) == "model_script_paths_registered"
+		_expect(fields_ok and saw_runtime_case and saw_price_case and saw_model_case, "BalanceParameterResourceRegistry records cover runtime targets, price curve, and model compatibility with required fields")
+		_expect(all_validation_passed, "BalanceParameterResourceRegistry validation records pass against current JSON")
+		_expect(not _variant_contains_callable(records) and not _variant_contains_object(records) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "BalanceParameterResourceRegistry records and manifest preview stay pure data")
+	for scene_path in [BALANCE_PARAMETER_RESOURCE_PREVIEW_SCENE, BALANCE_PARAMETER_RESOURCE_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(scene_path), "%s exists for Balance Parameter Resourceization" % scene_path)
+		var packed_scene := load(scene_path) as PackedScene
+		_expect(packed_scene != null, "%s loads as a PackedScene" % scene_path)
+	var preview_packed := load(BALANCE_PARAMETER_RESOURCE_PREVIEW_SCENE) as PackedScene
+	if preview_packed != null:
+		var preview := preview_packed.instantiate() as Control
+		root.add_child(preview)
+		await process_frame
+		for node_name in ["BalanceParameterResourceCategoryList", "BalanceParameterResourceRecordList", "BalanceParameterResourceDetailTitle", "BalanceParameterResourceDetailBody", "BalanceParameterResourceStatusLabel", "BalanceParameterResourceSummaryLabel", "BalanceParameterOpenResourceButton", "BalanceParameterPrintPayloadButton", "BalanceParameterRunBenchButton"]:
+			_expect(preview.find_child(node_name, true, false) != null, "BalanceParameterResourceMcpPreview contains %s" % node_name)
+		_expect(preview.has_method("resource_records") and preview.has_method("resource_summary") and preview.has_method("select_category") and preview.has_method("select_record") and preview.has_method("selected_record"), "BalanceParameterResourceMcpPreview exposes testable resource methods")
+		var selected_category := bool(preview.call("select_category", "Runtime Targets")) if preview.has_method("select_category") else false
+		var selected_record := bool(preview.call("select_record", "runtime_movement_matches_json")) if preview.has_method("select_record") else false
+		await process_frame
+		_expect(selected_category and selected_record and _node_tree_text(preview).contains("runtime_movement_matches_json"), "BalanceParameterResourceMcpPreview selects runtime movement parity record")
+		root.remove_child(preview)
+		preview.queue_free()
+	var bench_packed := load(BALANCE_PARAMETER_RESOURCE_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("resource_cases") and bench.has_method("build_resource_manifest_preview") and bench.has_method("run_resource_suite"), "BalanceParameterResourceBench exposes output_dir, resource_cases, manifest preview, and run suite")
+		var output_dir := str(bench.call("output_dir")) if bench.has_method("output_dir") else ""
+		_expect(output_dir == BALANCE_PARAMETER_RESOURCE_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "BalanceParameterResourceBench writes QA output under user://")
+		var cases: Array = bench.call("resource_cases") if bench.has_method("resource_cases") else []
+		var manifest: Dictionary = bench.call("build_resource_manifest_preview") if bench.has_method("build_resource_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var manifest_fields_ok := cases.size() >= 10 and records.size() == cases.size()
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "resource_path", "json_path", "category", "inspector_visible", "json_parity_checked", "model_compatibility_checked", "pure_data_checked", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		_expect(str(manifest.get("output_dir", "")) == BALANCE_PARAMETER_RESOURCE_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == BALANCE_PARAMETER_RESOURCE_SCREENSHOT_PATH and manifest_fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "BalanceParameterResourceBench manifest preview contains required pure-data records")
+		root.remove_child(bench)
+		bench.queue_free()
+	var scene_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var scene_registry: RefCounted = scene_registry_script.new() if scene_registry_script != null else null
+	if scene_registry != null and scene_registry.has_method("records"):
+		var registry_records: Array = scene_registry.call("records")
+		for required_path in [BALANCE_PARAMETER_RESOURCE_PREVIEW_SCENE, BALANCE_PARAMETER_RESOURCE_BENCH_SCENE]:
+			var found := false
+			for record_variant in registry_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				if str(record.get("scene_path", "")) == required_path:
+					found = true
+					break
+			_expect(found, "MCP scene registry includes %s" % required_path)
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null and audit.has_method("record_for_id"):
+		var audit_record: Dictionary = audit.call("record_for_id", "balance_parameter_resourceization_gate")
+		_expect(not audit_record.is_empty() and str(audit_record.get("current_scene_path", "")) == BALANCE_PARAMETER_RESOURCE_BENCH_SCENE, "Sceneization Audit includes Balance Parameter Resourceization gate")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		_expect(dock.find_child("OpenBalanceParameterResourcePreviewButton", true, false) != null and dock.find_child("RunBalanceParameterResourceBenchButton", true, false) != null and dock.find_child("OpenBalanceParameterResourceOutputFolderButton", true, false) != null, "SpaceSyndicateDesignQADock contains Balance Parameter Resource controls")
+		_expect(dock.has_method("balance_parameter_resource_preview_scene_path") and dock.has_method("balance_parameter_resource_bench_scene_path") and dock.has_method("balance_parameter_resource_qa_output_dir"), "SpaceSyndicateDesignQADock exposes Balance Parameter Resource path helpers")
+		if dock.has_method("balance_parameter_resource_preview_scene_path"):
+			_expect(str(dock.call("balance_parameter_resource_preview_scene_path")) == BALANCE_PARAMETER_RESOURCE_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets BalanceParameterResourceMcpPreview.tscn")
+		if dock.has_method("balance_parameter_resource_bench_scene_path"):
+			_expect(str(dock.call("balance_parameter_resource_bench_scene_path")) == BALANCE_PARAMETER_RESOURCE_BENCH_SCENE, "SpaceSyndicateDesignQADock targets BalanceParameterResourceBench.tscn")
+		if dock.has_method("balance_parameter_resource_qa_output_dir"):
+			var balance_output_dir := str(dock.call("balance_parameter_resource_qa_output_dir"))
+			_expect(balance_output_dir == BALANCE_PARAMETER_RESOURCE_OUTPUT_DIR and balance_output_dir.begins_with("user://") and not balance_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Balance Parameter Resource output folder")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_balance_parameter_resource_preview_requested"):
+			dock.connect("open_balance_parameter_resource_preview_requested", func(scene_path: String) -> void:
+				open_paths.append(scene_path)
+			)
+		if dock.has_signal("run_balance_parameter_resource_bench_requested"):
+			dock.connect("run_balance_parameter_resource_bench_requested", func(scene_path: String) -> void:
+				run_paths.append(scene_path)
+			)
+		var open_button := dock.find_child("OpenBalanceParameterResourcePreviewButton", true, false) as Button
+		var run_button := dock.find_child("RunBalanceParameterResourceBenchButton", true, false) as Button
+		if open_button != null:
+			open_button.emit_signal("pressed")
+			await process_frame
+		if run_button != null:
+			run_button.emit_signal("pressed")
+			await process_frame
+		_expect(open_paths.size() == 1 and open_paths[0] == BALANCE_PARAMETER_RESOURCE_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Balance Parameter Resource button requests the preview scene when no EditorPlugin is attached")
+		_expect(run_paths.size() == 1 and run_paths[0] == BALANCE_PARAMETER_RESOURCE_BENCH_SCENE, "SpaceSyndicateDesignQADock run Balance Parameter Resource button requests the bench scene when no EditorPlugin is attached")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_balance_model_resource_sandbox_component() -> void:
+	for script_path in [
+		BALANCE_PARAMETER_MODEL_ADAPTER_SCRIPT,
+		BALANCE_MODEL_RESOURCE_SANDBOX_CASES_SCRIPT,
+		BALANCE_MODEL_RESOURCE_SANDBOX_SCRIPT,
+		BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCRIPT,
+	]:
+		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads for Balance Model Resource Sandbox" % script_path)
+	var cases_script := load(BALANCE_MODEL_RESOURCE_SANDBOX_CASES_SCRIPT) as Script
+	var cases_source: RefCounted = cases_script.new() if cases_script != null else null
+	var adapter_script := load(BALANCE_PARAMETER_MODEL_ADAPTER_SCRIPT) as Script
+	var adapter: RefCounted = adapter_script.new() if adapter_script != null else null
+	_expect(cases_source != null and cases_source.has_method("cases") and cases_source.has_method("case_ids") and cases_source.has_method("case") and cases_source.has_method("categories"), "BalanceModelResourceSandboxCases exposes cases, ids, lookup, and categories")
+	_expect(adapter != null and adapter.has_method("runtime_targets") and adapter.has_method("price_curve") and adapter.has_method("model_script_paths") and adapter.has_method("sample_outputs_for_case"), "BalanceParameterModelAdapter exposes runtime targets, price curve, model paths, and sample outputs")
+	var cases: Array = cases_source.call("cases") if cases_source != null else []
+	var case_ids: Array[String] = []
+	if cases_source != null and cases_source.has_method("case_ids"):
+		var ids_variant: Variant = cases_source.call("case_ids")
+		if ids_variant is Array:
+			for id_variant in ids_variant:
+				case_ids.append(str(id_variant))
+	for required_id in [
+		"card_price_basic",
+		"card_price_high_rank",
+		"product_price_stable",
+		"product_price_volatile",
+		"product_flow_damaged_route",
+		"victory_goal_depth_1",
+		"victory_goal_depth_4",
+		"monster_movement_flying",
+		"monster_movement_stationary",
+		"combat_knockback_beam",
+		"weather_refresh_depth_3",
+		"monster_owner_damage_rank_iv",
+	]:
+		_expect(case_ids.has(required_id), "BalanceModelResourceSandboxCases includes %s" % required_id)
+	_expect(cases.size() >= 12 and not _variant_contains_callable(cases) and not _variant_contains_object(cases), "BalanceModelResourceSandboxCases contains at least 12 pure-data dry-run cases")
+	if adapter != null:
+		var model_paths: Array = adapter.call("model_script_paths")
+		_expect(model_paths.has("res://scripts/balance/runtime_balance_model.gd") and model_paths.has("res://scripts/balance/card_price_curve.gd"), "BalanceParameterModelAdapter references existing runtime balance scripts")
+		var all_records_passed := cases.size() > 0
+		var fields_ok := cases.size() > 0
+		for case_variant in cases:
+			var case_data: Dictionary = case_variant if case_variant is Dictionary else {}
+			var record_variant: Variant = adapter.call("sample_outputs_for_case", case_data)
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "category", "kind", "input", "runtime_model_output", "resource_profile_output", "json_anchor", "input_checked", "runtime_model_checked", "resource_profile_checked", "json_anchor_checked", "parity_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+			all_records_passed = all_records_passed and bool(record.get("passed", false))
+		_expect(fields_ok, "BalanceParameterModelAdapter sample records include required dry-run parity fields")
+		_expect(all_records_passed, "BalanceParameterModelAdapter dry-run cases pass against current Resource and JSON anchors")
+	for scene_path in [BALANCE_MODEL_RESOURCE_SANDBOX_SCENE, BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(scene_path), "%s exists for Balance Model Resource Sandbox" % scene_path)
+		var packed_scene := load(scene_path) as PackedScene
+		_expect(packed_scene != null, "%s loads as a PackedScene" % scene_path)
+	var sandbox_packed := load(BALANCE_MODEL_RESOURCE_SANDBOX_SCENE) as PackedScene
+	if sandbox_packed != null:
+		var sandbox := sandbox_packed.instantiate() as Control
+		root.add_child(sandbox)
+		await process_frame
+		for node_name in ["BalanceSandboxCaseList", "BalanceSandboxResourceSummaryLabel", "BalanceSandboxJsonSourceLabel", "BalanceSandboxInputBody", "BalanceSandboxRuntimeOutputBody", "BalanceSandboxResourceOutputBody", "BalanceSandboxParityBody", "BalanceSandboxStatusLabel", "BalanceSandboxPrintCaseButton", "BalanceSandboxPrintRecordButton", "BalanceSandboxRunBenchButton"]:
+			_expect(sandbox.find_child(node_name, true, false) != null, "BalanceModelResourceSandbox contains %s" % node_name)
+		_expect(sandbox.has_method("sandbox_cases") and sandbox.has_method("apply_case") and sandbox.has_method("current_record") and sandbox.has_method("sandbox_summary"), "BalanceModelResourceSandbox exposes sandbox case, apply, record, and summary methods")
+		var applied_card := bool(sandbox.call("apply_case", "card_price_basic")) if sandbox.has_method("apply_case") else false
+		await process_frame
+		var card_text := _node_tree_text(sandbox)
+		var applied_damage := bool(sandbox.call("apply_case", "monster_owner_damage_rank_iv")) if sandbox.has_method("apply_case") else false
+		await process_frame
+		var damage_text := _node_tree_text(sandbox)
+		_expect(applied_card and card_text.contains("card_price_basic") and card_text.contains("passed=true"), "BalanceModelResourceSandbox renders card_price_basic parity state")
+		_expect(applied_damage and damage_text.contains("monster_owner_damage_rank_iv") and damage_text.contains("passed=true"), "BalanceModelResourceSandbox renders monster_owner_damage_rank_iv parity state")
+		root.remove_child(sandbox)
+		sandbox.queue_free()
+	var bench_packed := load(BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("sandbox_cases") and bench.has_method("build_sandbox_manifest_preview") and bench.has_method("run_sandbox_suite"), "BalanceModelResourceSandboxBench exposes output_dir, sandbox_cases, manifest preview, and run suite")
+		var output_dir := str(bench.call("output_dir")) if bench.has_method("output_dir") else ""
+		_expect(output_dir == BALANCE_MODEL_RESOURCE_SANDBOX_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "BalanceModelResourceSandboxBench writes QA output under user://")
+		var bench_cases: Array = bench.call("sandbox_cases") if bench.has_method("sandbox_cases") else []
+		var manifest: Dictionary = bench.call("build_sandbox_manifest_preview") if bench.has_method("build_sandbox_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var manifest_fields_ok := bench_cases.size() >= 12 and records.size() == bench_cases.size()
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "category", "input_checked", "runtime_model_checked", "resource_profile_checked", "json_anchor_checked", "parity_checked", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		_expect(str(manifest.get("output_dir", "")) == BALANCE_MODEL_RESOURCE_SANDBOX_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == BALANCE_MODEL_RESOURCE_SANDBOX_SCREENSHOT_PATH and manifest_fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "BalanceModelResourceSandboxBench manifest preview contains required pure-data records")
+		root.remove_child(bench)
+		bench.queue_free()
+	var scene_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var scene_registry: RefCounted = scene_registry_script.new() if scene_registry_script != null else null
+	if scene_registry != null and scene_registry.has_method("records"):
+		var registry_records: Array = scene_registry.call("records")
+		for required_path in [BALANCE_MODEL_RESOURCE_SANDBOX_SCENE, BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCENE]:
+			var found := false
+			for record_variant in registry_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				if str(record.get("scene_path", "")) == required_path:
+					found = true
+					break
+			_expect(found, "MCP scene registry includes %s" % required_path)
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null and audit.has_method("record_for_id"):
+		var audit_record: Dictionary = audit.call("record_for_id", "balance_model_resource_sandbox_gate")
+		_expect(not audit_record.is_empty() and str(audit_record.get("current_scene_path", "")) == BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCENE, "Sceneization Audit includes Balance Model Resource Sandbox gate")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		_expect(dock.find_child("OpenBalanceModelResourceSandboxButton", true, false) != null and dock.find_child("RunBalanceModelResourceSandboxBenchButton", true, false) != null and dock.find_child("OpenBalanceModelResourceSandboxOutputFolderButton", true, false) != null, "SpaceSyndicateDesignQADock contains Balance Model Resource Sandbox controls")
+		_expect(dock.has_method("balance_model_resource_sandbox_scene_path") and dock.has_method("balance_model_resource_sandbox_bench_scene_path") and dock.has_method("balance_model_resource_sandbox_qa_output_dir"), "SpaceSyndicateDesignQADock exposes Balance Model Resource Sandbox path helpers")
+		if dock.has_method("balance_model_resource_sandbox_scene_path"):
+			_expect(str(dock.call("balance_model_resource_sandbox_scene_path")) == BALANCE_MODEL_RESOURCE_SANDBOX_SCENE, "SpaceSyndicateDesignQADock targets BalanceModelResourceSandbox.tscn")
+		if dock.has_method("balance_model_resource_sandbox_bench_scene_path"):
+			_expect(str(dock.call("balance_model_resource_sandbox_bench_scene_path")) == BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCENE, "SpaceSyndicateDesignQADock targets BalanceModelResourceSandboxBench.tscn")
+		if dock.has_method("balance_model_resource_sandbox_qa_output_dir"):
+			var sandbox_output_dir := str(dock.call("balance_model_resource_sandbox_qa_output_dir"))
+			_expect(sandbox_output_dir == BALANCE_MODEL_RESOURCE_SANDBOX_OUTPUT_DIR and sandbox_output_dir.begins_with("user://") and not sandbox_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Balance Model Resource Sandbox output folder")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_balance_model_resource_sandbox_requested"):
+			dock.connect("open_balance_model_resource_sandbox_requested", func(scene_path: String) -> void:
+				open_paths.append(scene_path)
+			)
+		if dock.has_signal("run_balance_model_resource_sandbox_bench_requested"):
+			dock.connect("run_balance_model_resource_sandbox_bench_requested", func(scene_path: String) -> void:
+				run_paths.append(scene_path)
+			)
+		var open_button := dock.find_child("OpenBalanceModelResourceSandboxButton", true, false) as Button
+		var run_button := dock.find_child("RunBalanceModelResourceSandboxBenchButton", true, false) as Button
+		if open_button != null:
+			open_button.emit_signal("pressed")
+			await process_frame
+		if run_button != null:
+			run_button.emit_signal("pressed")
+			await process_frame
+		_expect(open_paths.size() == 1 and open_paths[0] == BALANCE_MODEL_RESOURCE_SANDBOX_SCENE, "SpaceSyndicateDesignQADock open Balance Model Resource Sandbox button requests the sandbox scene when no EditorPlugin is attached")
+		_expect(run_paths.size() == 1 and run_paths[0] == BALANCE_MODEL_RESOURCE_SANDBOX_BENCH_SCENE, "SpaceSyndicateDesignQADock run Balance Model Resource Sandbox button requests the bench scene when no EditorPlugin is attached")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_balance_runtime_bridge_component() -> void:
+	for script_path in [
+		BALANCE_RUNTIME_PARAMETER_BRIDGE_SCRIPT,
+		BALANCE_RUNTIME_BRIDGE_PREVIEW_SCRIPT,
+		BALANCE_RUNTIME_BRIDGE_BENCH_SCRIPT,
+		GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCRIPT,
+		GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE_SCRIPT,
+	]:
+		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads for Balance Runtime Bridge" % script_path)
+	var bridge_script := load(BALANCE_RUNTIME_PARAMETER_BRIDGE_SCRIPT) as Script
+	var bridge: RefCounted = bridge_script.new() if bridge_script != null else null
+	_expect(bridge != null and bridge.has_method("runtime_targets") and bridge.has_method("price_curve") and bridge.has_method("resource_runtime_targets") and bridge.has_method("resource_price_curve") and bridge.has_method("json_runtime_targets") and bridge.has_method("json_price_curve") and bridge.has_method("compare_sources"), "BalanceRuntimeParameterBridge exposes required source methods")
+	if bridge != null:
+		var modes_variant: Variant = bridge.call("source_modes")
+		var modes: Array = modes_variant if modes_variant is Array else []
+		var json_runtime_variant: Variant = bridge.call("json_runtime_targets")
+		var json_runtime: Dictionary = json_runtime_variant if json_runtime_variant is Dictionary else {}
+		var resource_runtime_variant: Variant = bridge.call("resource_runtime_targets")
+		var resource_runtime: Dictionary = resource_runtime_variant if resource_runtime_variant is Dictionary else {}
+		var json_curve_variant: Variant = bridge.call("json_price_curve")
+		var json_curve: Dictionary = json_curve_variant if json_curve_variant is Dictionary else {}
+		var resource_curve_variant: Variant = bridge.call("resource_price_curve")
+		var resource_curve: Dictionary = resource_curve_variant if resource_curve_variant is Dictionary else {}
+		var default_runtime_variant: Variant = bridge.call("runtime_targets")
+		var default_runtime: Dictionary = default_runtime_variant if default_runtime_variant is Dictionary else {}
+		var json_mode_runtime_variant: Variant = bridge.call("runtime_targets", "json_current")
+		var json_mode_runtime: Dictionary = json_mode_runtime_variant if json_mode_runtime_variant is Dictionary else {}
+		var resource_mode_runtime_variant: Variant = bridge.call("runtime_targets", "resource_profile")
+		var resource_mode_runtime: Dictionary = resource_mode_runtime_variant if resource_mode_runtime_variant is Dictionary else {}
+		var comparison_variant: Variant = bridge.call("compare_sources")
+		var comparison: Dictionary = comparison_variant if comparison_variant is Dictionary else {}
+		_expect(modes.has("json_current") and modes.has("resource_profile") and modes.has("auto_safe"), "BalanceRuntimeParameterBridge supports json_current, resource_profile, and auto_safe source modes")
+		_expect(str(bridge.call("default_source_mode")) == "json_current" and str(default_runtime.get("version", "")) == "runtime_balance_v1" and str(json_mode_runtime.get("version", "")) == "runtime_balance_v1", "BalanceRuntimeParameterBridge defaults to json_current runtime targets")
+		_expect(str(resource_mode_runtime.get("version", "")) == "runtime_balance_v1" and str(resource_runtime.get("version", "")) == "runtime_balance_v1", "BalanceRuntimeParameterBridge can explicitly read Resource runtime targets")
+		_expect(str(json_runtime.get("version", "")) == "runtime_balance_v1" and not json_curve.is_empty() and not resource_curve.is_empty(), "BalanceRuntimeParameterBridge loads JSON and Resource price/runtime payloads")
+		_expect(bool(comparison.get("runtime_targets_parity", false)) and bool(comparison.get("price_curve_parity", false)) and bool(comparison.get("json_current_is_default", false)) and bool(comparison.get("pure_data_checked", false)), "BalanceRuntimeParameterBridge compare_sources proves parity and json_current default")
+		_expect(not _variant_contains_callable(comparison) and not _variant_contains_object(comparison) and not _variant_contains_callable(default_runtime) and not _variant_contains_object(default_runtime), "BalanceRuntimeParameterBridge compare_sources and payloads stay pure data")
+	var route_catalog := load(DEVELOPMENT_ROUTE_CATALOG_RESOURCE)
+	var route_validation: Dictionary = route_catalog.call("validation_report") if route_catalog != null and route_catalog.has_method("validation_report") else {}
+	_expect(bool(route_validation.get("valid", false)) and int(route_validation.get("route_count", 0)) == 7 and not _variant_contains_callable(route_validation) and not _variant_contains_object(route_validation), "Development Route v0.4 catalog exposes seven pure-data Inspector profiles")
+	for route_id in ["city_growth", "contract_route", "finance_speculation", "monster_pressure", "intel_supply", "direct_interaction", "tactical_support"]:
+		var route_path := "res://resources/balance/development_routes/%s.tres" % route_id
+		var route_resource := load(route_path)
+		_expect(ResourceLoader.exists(route_path) and route_resource != null and route_resource.has_method("to_runtime_dictionary"), "%s loads as an Inspector-editable Development Route Resource" % route_path)
+	for scene_path in [BALANCE_RUNTIME_BRIDGE_PREVIEW_SCENE, BALANCE_RUNTIME_BRIDGE_BENCH_SCENE, GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCENE, GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE_SCENE]:
+		_expect(ResourceLoader.exists(scene_path), "%s exists for Balance Runtime Bridge" % scene_path)
+		var packed_scene := load(scene_path) as PackedScene
+		_expect(packed_scene != null, "%s loads as a PackedScene" % scene_path)
+	var preview_packed := load(BALANCE_RUNTIME_BRIDGE_PREVIEW_SCENE) as PackedScene
+	if preview_packed != null:
+		var preview := preview_packed.instantiate() as Control
+		root.add_child(preview)
+		await process_frame
+		for node_name in ["BalanceRuntimeBridgeStatusLabel", "BalanceRuntimeBridgeSummaryLabel", "BalanceRuntimeBridgeDefaultRuntimeLabel", "BalanceRuntimeBridgeJsonRuntimeTargetsLabel", "BalanceRuntimeBridgeResourceRuntimeTargetsLabel", "BalanceRuntimeBridgeJsonPriceCurveLabel", "BalanceRuntimeBridgeResourcePriceCurveLabel", "BalanceRuntimeBridgeParityBody", "BalanceRuntimeBridgeDryRunSampleLabel", "BalanceRuntimeBridgeJsonModeButton", "BalanceRuntimeBridgeResourceModeButton", "BalanceRuntimeBridgeAutoSafeModeButton", "BalanceRuntimeBridgePrintSummaryButton", "BalanceRuntimeBridgeRunBenchButton"]:
+			_expect(preview.find_child(node_name, true, false) != null, "BalanceRuntimeBridgeMcpPreview contains %s" % node_name)
+		_expect(preview.has_method("source_modes") and preview.has_method("selected_source_mode") and preview.has_method("current_comparison") and preview.has_method("bridge_summary") and preview.has_method("apply_source_mode"), "BalanceRuntimeBridgeMcpPreview exposes source mode and comparison helpers")
+		var selected_resource := bool(preview.call("apply_source_mode", "resource_profile")) if preview.has_method("apply_source_mode") else false
+		await process_frame
+		var resource_text := _node_tree_text(preview)
+		var selected_auto := bool(preview.call("apply_source_mode", "auto_safe")) if preview.has_method("apply_source_mode") else false
+		await process_frame
+		var auto_text := _node_tree_text(preview)
+		_expect(selected_resource and resource_text.contains("resource_profile") and resource_text.contains("Resource mode is explicit QA/dev only"), "BalanceRuntimeBridgeMcpPreview renders explicit resource_profile mode without changing default copy")
+		_expect(selected_auto and auto_text.contains("auto_safe") and auto_text.contains("runtime_targets_parity=true"), "BalanceRuntimeBridgeMcpPreview renders auto_safe parity state")
+		root.remove_child(preview)
+		preview.queue_free()
+	var bench_packed := load(BALANCE_RUNTIME_BRIDGE_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("flow_cases") and bench.has_method("build_flow_manifest_preview") and bench.has_method("run_flow_suite"), "BalanceRuntimeBridgeBench exposes output_dir, flow_cases, manifest preview, and run suite")
+		var output_dir := str(bench.call("output_dir")) if bench.has_method("output_dir") else ""
+		_expect(output_dir == BALANCE_RUNTIME_BRIDGE_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "BalanceRuntimeBridgeBench writes QA output under user://")
+		var flow_cases: Array = bench.call("flow_cases") if bench.has_method("flow_cases") else []
+		var manifest: Dictionary = bench.call("build_flow_manifest_preview") if bench.has_method("build_flow_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var required_case_ids := [
+			"json_runtime_targets_loads",
+			"resource_runtime_targets_loads",
+			"json_price_curve_loads",
+			"resource_price_curve_loads",
+			"runtime_targets_parity",
+			"price_curve_parity",
+			"source_mode_json_current",
+			"source_mode_resource_profile",
+			"first_mission_runtime_default_unchanged",
+			"no_callable_or_object_in_payloads",
+			"diagnostics_service_scene_composition",
+			"diagnostics_world_bridge_scene_composition",
+			"coordinator_static_diagnostics_composition",
+			"development_route_catalog_loads",
+			"development_route_count_seven",
+			"development_route_sort_order",
+			"city_growth_metadata_parity",
+			"contract_route_metadata_parity",
+			"finance_speculation_metadata_parity",
+			"monster_pressure_metadata_parity",
+			"intel_supply_metadata_parity",
+			"direct_interaction_metadata_parity",
+			"tactical_support_metadata_parity",
+			"development_route_card_classification",
+			"card_budget_points_report",
+			"card_budget_band_report",
+			"development_route_audit_report",
+			"development_route_pressure_report",
+			"direct_interaction_report",
+			"role_balance_report",
+			"monster_ecology_report",
+			"product_ecosystem_report",
+			"card_supply_product_filter_report",
+			"card_one_glance_report",
+			"developer_panel_service_source",
+			"codex_consumers_use_diagnostics_service",
+			"runtime_balance_model_formula_owner",
+			"diagnostics_snapshot_pure_data",
+			"diagnostics_privacy_boundary",
+			"main_legacy_diagnostics_absent",
+			"main_deletion_metrics_gate",
+			"tests_no_main_diagnostics_reflection",
+			"diagnostics_readonly_no_world_mutation",
+			"no_parallel_formula_owner",
+			"no_legacy_diagnostics_fallback",
+		]
+		var case_ids: Array[String] = []
+		for case_variant in flow_cases:
+			var flow_case: Dictionary = case_variant if case_variant is Dictionary else {}
+			case_ids.append(str(flow_case.get("case_id", "")))
+		var diagnostics_case_count := 0
+		for flow_case_variant in flow_cases:
+			if flow_case_variant is Dictionary and str((flow_case_variant as Dictionary).get("source_mode", "")) == "diagnostics":
+				diagnostics_case_count += 1
+		var manifest_fields_ok := flow_cases.size() >= 42 and diagnostics_case_count >= 32 and records.size() == flow_cases.size()
+		for required_id in required_case_ids:
+			manifest_fields_ok = manifest_fields_ok and case_ids.has(required_id)
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "source_mode", "json_checked", "resource_checked", "parity_checked", "runtime_default_checked", "pure_data_checked", "service_checked", "world_bridge_checked", "route_resource_checked", "report_checked", "formula_owner_checked", "privacy_checked", "mutation_checked", "main_absence_checked", "tests_migrated_checked", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		var main_metrics: Dictionary = manifest.get("main_metrics", {}) if manifest.get("main_metrics", {}) is Dictionary else {}
+		manifest_fields_ok = manifest_fields_ok and bool(main_metrics.get("deletion_gate_passed", false)) and int(main_metrics.get("deleted_nonblank", 0)) >= 1600 and int(main_metrics.get("deleted_functions", 0)) >= 50
+		_expect(str(manifest.get("output_dir", "")) == BALANCE_RUNTIME_BRIDGE_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == BALANCE_RUNTIME_BRIDGE_SCREENSHOT_PATH and manifest_fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "BalanceRuntimeBridgeBench manifest preview contains required pure-data records and Sprint 62 deletion metrics")
+		root.remove_child(bench)
+		bench.queue_free()
+	var scene_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var scene_registry: RefCounted = scene_registry_script.new() if scene_registry_script != null else null
+	if scene_registry != null and scene_registry.has_method("records"):
+		var registry_records: Array = scene_registry.call("records")
+		for required_path in [BALANCE_RUNTIME_BRIDGE_PREVIEW_SCENE, BALANCE_RUNTIME_BRIDGE_BENCH_SCENE, GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCENE, GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE_SCENE]:
+			var found := false
+			for record_variant in registry_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				if str(record.get("scene_path", "")) == required_path:
+					found = true
+					break
+			_expect(found, "MCP scene registry includes %s" % required_path)
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null and audit.has_method("record_for_id"):
+		var audit_record: Dictionary = audit.call("record_for_id", "balance_runtime_bridge_gate")
+		_expect(not audit_record.is_empty() and str(audit_record.get("current_scene_path", "")) == BALANCE_RUNTIME_BRIDGE_BENCH_SCENE, "Sceneization Audit includes Balance Runtime Bridge gate")
+		var diagnostics_audit_record: Dictionary = audit.call("record_for_id", "gameplay_balance_diagnostics_gate")
+		_expect(not diagnostics_audit_record.is_empty() and str(diagnostics_audit_record.get("current_scene_path", "")) == GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCENE, "Sceneization Audit includes Gameplay Balance Diagnostics ownership gate")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null and system_audit.has_method("record_for_id"):
+		var system_record: Dictionary = system_audit.call("record_for_id", "balance_runtime_bridge_controlled_candidate")
+		_expect(not system_record.is_empty() and str(system_record.get("current_path", "")) == BALANCE_RUNTIME_PARAMETER_BRIDGE_SCRIPT, "System Resourceization Audit includes Balance Runtime Bridge controlled candidate")
+		var wrappers_record: Dictionary = system_audit.call("record_for_id", "main_gd_balance_wrappers")
+		_expect(not wrappers_record.is_empty() and str(wrappers_record.get("current_status", "")) in ["sceneized", "resourceized", "cutover_complete", "retired"], "System Resourceization Audit records main.gd balance diagnostics wrappers as retired")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		_expect(dock.find_child("OpenBalanceRuntimeBridgeButton", true, false) != null and dock.find_child("RunBalanceRuntimeBridgeBenchButton", true, false) != null and dock.find_child("OpenBalanceRuntimeBridgeOutputFolderButton", true, false) != null, "SpaceSyndicateDesignQADock contains Balance Runtime Bridge controls")
+		_expect(dock.find_child("OpenGameplayBalanceDiagnosticsServiceButton", true, false) != null and dock.find_child("OpenGameplayBalanceDiagnosticsWorldBridgeButton", true, false) != null, "SpaceSyndicateDesignQADock contains direct Diagnostics Service and WorldBridge controls")
+		_expect(dock.has_method("balance_runtime_bridge_preview_scene_path") and dock.has_method("balance_runtime_bridge_bench_scene_path") and dock.has_method("balance_runtime_bridge_qa_output_dir"), "SpaceSyndicateDesignQADock exposes Balance Runtime Bridge path helpers")
+		_expect(dock.has_method("gameplay_balance_diagnostics_service_scene_path") and dock.has_method("gameplay_balance_diagnostics_world_bridge_scene_path"), "SpaceSyndicateDesignQADock exposes Gameplay Balance Diagnostics owner paths")
+		if dock.has_method("balance_runtime_bridge_preview_scene_path"):
+			_expect(str(dock.call("balance_runtime_bridge_preview_scene_path")) == BALANCE_RUNTIME_BRIDGE_PREVIEW_SCENE, "SpaceSyndicateDesignQADock targets BalanceRuntimeBridgeMcpPreview.tscn")
+		if dock.has_method("balance_runtime_bridge_bench_scene_path"):
+			_expect(str(dock.call("balance_runtime_bridge_bench_scene_path")) == BALANCE_RUNTIME_BRIDGE_BENCH_SCENE, "SpaceSyndicateDesignQADock targets BalanceRuntimeBridgeBench.tscn")
+		if dock.has_method("balance_runtime_bridge_qa_output_dir"):
+			var bridge_output_dir := str(dock.call("balance_runtime_bridge_qa_output_dir"))
+			_expect(bridge_output_dir == BALANCE_RUNTIME_BRIDGE_OUTPUT_DIR and bridge_output_dir.begins_with("user://") and not bridge_output_dir.contains("res://reports"), "SpaceSyndicateDesignQADock uses the user:// Balance Runtime Bridge output folder")
+		if dock.has_method("gameplay_balance_diagnostics_service_scene_path"):
+			_expect(str(dock.call("gameplay_balance_diagnostics_service_scene_path")) == GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE_SCENE, "SpaceSyndicateDesignQADock targets GameplayBalanceDiagnosticsRuntimeService.tscn")
+		if dock.has_method("gameplay_balance_diagnostics_world_bridge_scene_path"):
+			_expect(str(dock.call("gameplay_balance_diagnostics_world_bridge_scene_path")) == GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE_SCENE, "SpaceSyndicateDesignQADock targets GameplayBalanceDiagnosticsWorldBridge.tscn")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_balance_runtime_bridge_requested"):
+			dock.connect("open_balance_runtime_bridge_requested", func(scene_path: String) -> void:
+				open_paths.append(scene_path)
+			)
+		if dock.has_signal("run_balance_runtime_bridge_bench_requested"):
+			dock.connect("run_balance_runtime_bridge_bench_requested", func(scene_path: String) -> void:
+				run_paths.append(scene_path)
+			)
+		var open_button := dock.find_child("OpenBalanceRuntimeBridgeButton", true, false) as Button
+		var run_button := dock.find_child("RunBalanceRuntimeBridgeBenchButton", true, false) as Button
+		if open_button != null:
+			open_button.emit_signal("pressed")
+			await process_frame
+		if run_button != null:
+			run_button.emit_signal("pressed")
+			await process_frame
+		_expect(open_paths.size() == 1 and open_paths[0] == BALANCE_RUNTIME_BRIDGE_PREVIEW_SCENE, "SpaceSyndicateDesignQADock open Balance Runtime Bridge button requests the preview scene when no EditorPlugin is attached")
+		_expect(run_paths.size() == 1 and run_paths[0] == BALANCE_RUNTIME_BRIDGE_BENCH_SCENE, "SpaceSyndicateDesignQADock run Balance Runtime Bridge button requests the bench scene when no EditorPlugin is attached")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_ruleset_v04_source_of_truth_component() -> void:
+	for path in [
+		RULESET_PROFILE_SCRIPT,
+		RULESET_V04_RESOURCE,
+		RULESET_RUNTIME_BRIDGE_SCRIPT,
+		RULESET_RUNTIME_BRIDGE_SCENE,
+		CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT,
+		CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE,
+		RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT,
+		RULESET_V04_CONFORMANCE_BENCH_SCRIPT,
+		RULESET_V04_CONFORMANCE_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Ruleset v0.4 source of truth" % path)
+	_expect(FileAccess.file_exists(CITY_DEVELOPMENT_RUNTIME_CUTOVER_DOC), "city development runtime cutover documentation exists")
+	var profile := load(RULESET_V04_RESOURCE) as Resource
+	_expect(profile != null and profile.has_method("timing_rules") and profile.has_method("capability_rules") and profile.has_method("decision_priority") and profile.has_method("debug_snapshot"), "Ruleset v0.4 profile exposes Inspector-backed pure-data APIs")
+	if profile != null:
+		var profile_snapshot: Dictionary = profile.call("debug_snapshot")
+		var timing: Dictionary = profile_snapshot.get("timing", {}) if profile_snapshot.get("timing", {}) is Dictionary else {}
+		var card_group: Dictionary = profile_snapshot.get("card_group", {}) if profile_snapshot.get("card_group", {}) is Dictionary else {}
+		var capabilities: Dictionary = profile_snapshot.get("capabilities", {}) if profile_snapshot.get("capabilities", {}) is Dictionary else {}
+		_expect(str(profile_snapshot.get("ruleset_id", "")) == "v0.4" and bool((profile_snapshot.get("validation", {}) as Dictionary).get("valid", false)), "Ruleset profile identifies and validates v0.4")
+		_expect(is_equal_approx(float(timing.get("shared_window_seconds", 0.0)), 30.0) and is_equal_approx(float(timing.get("organize_seconds", 0.0)), 25.0) and is_equal_approx(float(timing.get("lock_seconds", 0.0)), 5.0), "Ruleset profile owns shared 30/25/5 timing")
+		_expect(is_equal_approx(float(timing.get("purchase_window_seconds", 0.0)), 12.0) and is_equal_approx(float(timing.get("counter_window_seconds", 0.0)), 5.0) and is_equal_approx(float(timing.get("contract_window_seconds", 0.0)), 5.0), "Ruleset profile records purchase, counter, and contract windows")
+		_expect(is_equal_approx(float(timing.get("monster_wager_default_seconds", 0.0)), 20.0) and is_equal_approx(float(timing.get("monster_wager_max_seconds", 0.0)), 30.0) and is_equal_approx(float(timing.get("final_countdown_seconds", 0.0)), 75.0), "Ruleset profile owns monster wager and final countdown timing")
+		_expect(int(card_group.get("default_group_card_limit", 0)) == 3 and int(card_group.get("maximum_group_card_limit", 0)) == 4, "Ruleset profile owns default and maximum card-group limits")
+		_expect(bool(capabilities.get("realtime_income_enabled", false)) and not bool(capabilities.get("direct_city_build_allowed", true)) and bool(capabilities.get("city_development_requires_product_project", false)) and bool(capabilities.get("private_plan_enabled", false)), "Ruleset profile records v0.4 capabilities")
+		_expect(profile_snapshot.get("forced_decision_priority", []) == ["monster_wager", "counter_response", "contract_response", "other_choice"], "Ruleset profile records v0.4 forced-decision priority")
+		_expect(not _variant_contains_callable(profile_snapshot) and not _variant_contains_object(profile_snapshot), "Ruleset profile debug snapshot stays pure data")
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	_expect(bridge != null and bridge.has_method("active_profile") and bridge.has_method("timing_rules") and bridge.has_method("capability_rules") and bridge.has_method("decision_priority") and bridge.has_method("debug_snapshot"), "RulesetRuntimeBridge exposes required runtime methods")
+	if bridge != null:
+		var bridge_snapshot: Dictionary = bridge.call("debug_snapshot")
+		_expect(str(bridge_snapshot.get("ruleset_id", "")) == "v0.4" and bool(bridge_snapshot.get("bridge_ready", false)), "RulesetRuntimeBridge serves active v0.4 profile")
+		_expect(not _variant_contains_callable(bridge_snapshot) and not _variant_contains_object(bridge_snapshot), "RulesetRuntimeBridge snapshot contains no Resource, Node, Object, or Callable")
+		var city_controller_packed := load(CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE) as PackedScene
+		var city_controller := city_controller_packed.instantiate() if city_controller_packed != null else null
+		_expect(city_controller != null and city_controller.has_method("configure") and city_controller.has_method("evaluate_development_request") and city_controller.has_method("record_project_opened") and city_controller.has_method("record_project_resolved") and city_controller.has_method("direct_build_allowed") and city_controller.has_method("debug_snapshot"), "CityDevelopmentRuntimeController exposes required legality and lifecycle APIs")
+		if city_controller != null:
+			city_controller.call("configure", bridge_snapshot)
+			var city_snapshot: Dictionary = city_controller.call("debug_snapshot")
+			var legacy_result: Dictionary = city_controller.call("evaluate_development_request", {"source_kind": "direct_city_build", "action_id": "build_city", "district_index": 0})
+			var legal_result: Dictionary = city_controller.call("evaluate_development_request", {"source_kind": "city_development_card", "action_id": "play_city_development_card", "district_index": 0, "product_id": "活体芯片", "project_direction": "production", "project_id": "0:活体芯片:production"})
+			_expect(bool(city_snapshot.get("controller_ready", false)) and not bool(city_snapshot.get("direct_build_allowed", true)) and bool(city_snapshot.get("project_binding_required", false)), "CityDevelopmentRuntimeController binds v0.4 capability rules")
+			_expect(not bool(legacy_result.get("allowed", true)) and bool(legal_result.get("allowed", false)), "CityDevelopmentRuntimeController rejects direct build and accepts a fully bound development card")
+			_expect(not _variant_contains_callable(city_snapshot) and not _variant_contains_object(city_snapshot), "CityDevelopmentRuntimeController debug snapshot stays pure data")
+			city_controller.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_bridge := main.get_node_or_null("RuntimeServices/RulesetRuntimeBridge") if main != null else null
+		var main_city_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController") if main != null else null
+		var main_city_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge") if main != null else null
+		_expect(main_bridge != null and main_bridge.scene_file_path == RULESET_RUNTIME_BRIDGE_SCENE, "main.tscn owns RulesetRuntimeBridge under RuntimeServices")
+		_expect(main_city_controller != null and main_city_controller.scene_file_path == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE and main_city_bridge != null and main_city_bridge.scene_file_path == CITY_DEVELOPMENT_WORLD_BRIDGE_SCENE, "GameRuntimeCoordinator owns the CityDevelopment Controller and non-owning WorldBridge")
+		if main != null:
+			main.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("_ruleset_timing_seconds(&\"final_countdown_seconds\")") and main_source.contains("_ruleset_timing_seconds(&\"monster_wager_default_seconds\")"), "main.gd reads final countdown and monster wager timing through RulesetRuntimeBridge")
+	_expect(not main_source.contains("const VICTORY_COUNTDOWN_SECONDS") and not main_source.contains("const MONSTER_WAGER_SECONDS") and not main_source.contains("const CARD_GROUP_WINDOW_SECONDS") and not main_source.contains("const CARD_GROUP_LOCK_SECONDS"), "main.gd no longer keeps duplicate cutover timing constants")
+	_expect(main_source.contains("func _bind_city_development_runtime_controller") and main_source.contains("func _evaluate_city_development_request") and main_source.contains("func _reject_legacy_direct_city_build"), "main.gd routes city-entry legality through the scene-owned controller")
+	var ai_controller_source := FileAccess.get_file_as_string(AI_RUNTIME_CONTROLLER_SCRIPT)
+	_expect(not main_source.contains("func _build_city_in_selected_district(") and main_source.contains("_reject_legacy_direct_city_build(\"keyboard_b\")") and main_source.contains("_reject_legacy_direct_city_build(action_id)") and ai_controller_source.contains("func _auto_expand_rival_syndicates(") and not main_source.contains("func _auto_expand_rival_syndicates("), "legacy player direct-build is rejection-only and AI city intent selection belongs to AiRuntimeController")
+	var registry_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	_expect(registry != null and registry.has_method("records") and registry.has_method("record_for_id") and registry.has_method("summary"), "RulesetV04ConformanceRegistry exposes audit APIs")
+	if registry != null:
+		var registry_records: Array = registry.call("records")
+		var required_ids := ["shared_card_window", "card_group_limit", "realtime_cashflow", "card_play_requirements", "active_card_execution", "contract_runtime_lifecycle", "economy_product_route_card_effect_dispatch", "economy_product_route_formula_ownership", "city_development_product_binding", "direct_city_build_legacy", "district_purchase_12_second_window", "forced_decision_scheduler", "ai_policy_runtime_ownership", "private_plan_slot", "monster_runtime_lifecycle", "military_runtime_lifecycle", "weather_runtime_lifecycle", "monster_wager_timing", "final_countdown_timing", "end_turn_legacy_surface", "product_market_futures_runtime_lifecycle", "product_futures_margin_and_caps", "city_gdp_derivative_margin_and_caps", "warehouse_destruction_settlement", "runtime_card_catalog_source_of_truth", "gameplay_balance_diagnostics_ownership"]
+		var ids: Array[String] = []
+		var fields_ok := registry_records.size() >= required_ids.size()
+		for record_variant in registry_records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			ids.append(str(record.get("rule_id", "")))
+			for key in ["rule_id", "rulebook_section", "expected_behavior", "current_owner", "current_status", "runtime_evidence", "cutover_action", "deletion_candidates", "risk", "next_sprint"]:
+				fields_ok = fields_ok and record.has(key)
+		for required_id in required_ids:
+			fields_ok = fields_ok and ids.has(required_id)
+		_expect(fields_ok and not _variant_contains_callable(registry_records) and not _variant_contains_object(registry_records), "Ruleset conformance registry contains all required pure-data records")
+		var city_binding_record: Dictionary = registry.call("record_for_id", "city_development_product_binding")
+		var direct_build_record: Dictionary = registry.call("record_for_id", "direct_city_build_legacy")
+		_expect(str(city_binding_record.get("current_status", "")) == "cutover_complete" and (city_binding_record.get("deletion_candidates", []) as Array).is_empty(), "Ruleset registry marks product-bound city development cutover complete")
+		_expect(str(direct_build_record.get("current_status", "")) == "cutover_complete" and (direct_build_record.get("deletion_candidates", []) as Array).is_empty() and str((registry.call("record_for_id", "forced_decision_scheduler") as Dictionary).get("current_status", "")) == "cutover_complete", "Ruleset registry marks direct-build and forced-decision cutovers complete")
+	var bench_packed := load(RULESET_V04_CONFORMANCE_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("flow_cases") and bench.has_method("build_flow_manifest_preview") and bench.has_method("run_flow_suite"), "RulesetV04ConformanceBench exposes required QA APIs")
+		var output_dir := str(bench.call("output_dir"))
+		var cases: Array = bench.call("flow_cases")
+		var manifest: Dictionary = bench.call("build_flow_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var case_ids: Array[String] = []
+		for case_variant in cases:
+			case_ids.append(str((case_variant as Dictionary).get("case_id", "")))
+		var manifest_fields_ok := cases.size() >= 14 and records.size() == cases.size() and case_ids.has("city_development_controller_ready") and case_ids.has("direct_city_build_runtime_cutover")
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "ruleset_id", "profile_checked", "runtime_checked", "registry_checked", "pure_data_checked", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		_expect(output_dir == RULESET_V04_CONFORMANCE_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "RulesetV04ConformanceBench writes only to user://")
+		_expect(str(manifest.get("screenshot_path", "")) == RULESET_V04_CONFORMANCE_SCREENSHOT_PATH and manifest_fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "RulesetV04ConformanceBench manifest preview is complete pure data")
+		root.remove_child(bench)
+		bench.queue_free()
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(RULESET_RUNTIME_BRIDGE_SCENE) and scene_paths.has(CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(RULESET_V04_CONFORMANCE_BENCH_SCENE), "MCP scene registry includes Ruleset bridge, City Development controller, and conformance bench")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var audit_record: Dictionary = audit.call("record_for_id", "ruleset_v04_runtime_source_gate")
+		var city_audit_record: Dictionary = audit.call("record_for_id", "city_development_runtime_cutover_gate")
+		_expect(str(audit_record.get("current_scene_path", "")) == RULESET_V04_CONFORMANCE_BENCH_SCENE, "Sceneization Audit includes ruleset_v04_runtime_source_gate")
+		_expect(str(city_audit_record.get("current_scene_path", "")) == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE and str(city_audit_record.get("sceneization_status", "")) == "full", "Sceneization Audit includes city_development_runtime_cutover_gate")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		_expect(dock.find_child("OpenRulesetRuntimeBridgeButton", true, false) != null and dock.find_child("RunRulesetV04ConformanceBenchButton", true, false) != null and dock.find_child("OpenRulesetV04ConformanceOutputFolderButton", true, false) != null and dock.find_child("OpenCityDevelopmentRuntimeControllerButton", true, false) != null, "Design QA Dock contains Ruleset v0.4 and City Development controls")
+		_expect(dock.has_method("ruleset_runtime_bridge_scene_path") and dock.has_method("ruleset_v04_conformance_bench_scene_path") and dock.has_method("ruleset_v04_conformance_qa_output_dir") and dock.has_method("city_development_runtime_controller_scene_path"), "Design QA Dock exposes Ruleset v0.4 and City Development path helpers")
+		_expect(str(dock.call("ruleset_runtime_bridge_scene_path")) == RULESET_RUNTIME_BRIDGE_SCENE and str(dock.call("ruleset_v04_conformance_bench_scene_path")) == RULESET_V04_CONFORMANCE_BENCH_SCENE and str(dock.call("city_development_runtime_controller_scene_path")) == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE, "Design QA Dock targets Ruleset bridge, City Development controller, and conformance bench")
+		var open_paths: Array[String] = []
+		var city_open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_ruleset_runtime_bridge_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("open_city_development_runtime_controller_requested", func(scene_path: String) -> void: city_open_paths.append(scene_path))
+		dock.connect("run_ruleset_v04_conformance_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenRulesetRuntimeBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenCityDevelopmentRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunRulesetV04ConformanceBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [RULESET_RUNTIME_BRIDGE_SCENE] and city_open_paths == [CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE] and run_paths == [RULESET_V04_CONFORMANCE_BENCH_SCENE], "Design QA Dock fallback signals emit Ruleset v0.4 and City Development paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_main_runtime_replacement_foundation_component() -> void:
+	for path in [
+		GAME_RUNTIME_COORDINATOR_SCRIPT,
+		GAME_RUNTIME_COORDINATOR_SCENE,
+		FORCED_DECISION_RUNTIME_SCHEDULER_SCRIPT,
+		FORCED_DECISION_RUNTIME_SCHEDULER_SCENE,
+		FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCRIPT,
+		FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Main Runtime Replacement Foundation" % path)
+	_expect(FileAccess.file_exists(MAIN_RUNTIME_REPLACEMENT_DOC), "main runtime replacement documentation exists")
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.has_method("configure") and coordinator.has_method("sync_forced_decision_candidates") and coordinator.has_method("active_forced_decision") and coordinator.has_method("blocks_global_time") and coordinator.has_method("blocks_player_actions") and coordinator.has_method("allows_card_resolution_progress") and coordinator.has_method("debug_snapshot"), "GameRuntimeCoordinator exposes thin replacement-foundation APIs")
+	if coordinator != null and bridge != null:
+		var ruleset_snapshot: Dictionary = bridge.call("debug_snapshot")
+		coordinator.call("configure", ruleset_snapshot)
+		var scheduler := coordinator.get_node_or_null("ForcedDecisionRuntimeScheduler")
+		_expect(scheduler != null and scheduler.scene_file_path == FORCED_DECISION_RUNTIME_SCHEDULER_SCENE and scheduler.has_method("configure") and scheduler.has_method("sync_candidates") and scheduler.has_method("active_decision") and scheduler.has_method("active_priority_group") and scheduler.has_method("blocks_global_time") and scheduler.has_method("blocks_player_actions") and scheduler.has_method("blocks_card_resolution") and scheduler.has_method("debug_snapshot"), "ForcedDecisionRuntimeScheduler is an editable child with required arbitration APIs")
+		var candidates := [
+			{"id": "choice", "kind": "monster_target_choice", "priority_group": "other_choice", "owner_player_index": 0, "visibility_scope": "private", "presentation_surface": "overlay", "opened_sequence": 1.0, "blocks_global_time": false, "blocks_player_actions": true, "blocks_card_resolution": false, "source_ref": "monster_target_choice", "notes": "test"},
+			{"id": "contract", "kind": "contract_response", "priority_group": "contract_response", "owner_player_index": 1, "visibility_scope": "private", "presentation_surface": "overlay", "opened_sequence": 2.0, "blocks_global_time": false, "blocks_player_actions": true, "blocks_card_resolution": true, "source_ref": "contract_response", "notes": "test"},
+			{"id": "counter", "kind": "counter_response", "priority_group": "counter_response", "owner_player_index": -1, "visibility_scope": "public", "presentation_surface": "card_resolution_track", "opened_sequence": 3.0, "blocks_global_time": false, "blocks_player_actions": false, "blocks_card_resolution": false, "source_ref": "card_resolution_counter", "notes": "test"},
+			{"id": "wager", "kind": "monster_wager", "priority_group": "monster_wager", "owner_player_index": -1, "visibility_scope": "public", "presentation_surface": "overlay", "opened_sequence": 4.0, "blocks_global_time": true, "blocks_player_actions": true, "blocks_card_resolution": true, "source_ref": "monster_wager", "notes": "test"},
+		]
+		coordinator.call("sync_forced_decision_candidates", candidates)
+		var active: Dictionary = coordinator.call("active_forced_decision", 0)
+		var runtime_snapshot: Dictionary = coordinator.call("debug_snapshot")
+		var scheduler_snapshot: Dictionary = runtime_snapshot.get("forced_decision_scheduler", {}) if runtime_snapshot.get("forced_decision_scheduler", {}) is Dictionary else {}
+		_expect(str(active.get("priority_group", "")) == "monster_wager" and bool(coordinator.call("blocks_global_time")) and not bool(coordinator.call("allows_card_resolution_progress")), "v0.4 scheduler selects monster wager over counter, contract, and other choices")
+		_expect(scheduler_snapshot.get("priority_order", []) == ruleset_snapshot.get("forced_decision_priority", []) and scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice"], "ForcedDecisionRuntimeScheduler priority comes from RulesetRuntimeBridge")
+		coordinator.call("sync_forced_decision_candidates", [candidates[1]])
+		var hidden: Dictionary = coordinator.call("active_forced_decision", 0)
+		var owner_visible: Dictionary = coordinator.call("active_forced_decision", 1)
+		var private_snapshot: Dictionary = coordinator.call("debug_snapshot")
+		_expect(not bool(hidden.get("visible_to_viewer", true)) and str(hidden.get("presentation_surface", "")) == "player_hint" and bool(owner_visible.get("visible_to_viewer", false)), "private forced decision is visible only to its owner")
+		_expect(not var_to_str(private_snapshot).contains("owner_player_index") and not _variant_contains_callable(private_snapshot) and not _variant_contains_object(private_snapshot), "Coordinator and Scheduler debug snapshots omit owner identity and remain pure data")
+		coordinator.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
+		var main_scheduler := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ForcedDecisionRuntimeScheduler") if main != null else null
+		_expect(main_coordinator != null and main_coordinator.scene_file_path == GAME_RUNTIME_COORDINATOR_SCENE and main_scheduler != null and main_scheduler.scene_file_path == FORCED_DECISION_RUNTIME_SCHEDULER_SCENE, "main.tscn owns GameRuntimeCoordinator and nested ForcedDecisionRuntimeScheduler")
+		if main != null:
+			main.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _forced_decision_candidates() -> Array:") and main_source.contains("func _sync_forced_decision_runtime() -> void:") and main_source.contains("coordinator.call(\"sync_forced_decision_candidates\", _forced_decision_candidates())"), "main.gd supplies only pure candidate facts to the scene-owned coordinator")
+	_expect(not main_source.contains("var sources: Array = [\n\t\t_runtime_monster_wager_decision_snapshot_source") and not main_source.contains("func _temporary_decision_blueprint") and not main_source.contains("func _add_temporary_decision_panel"), "main.gd no longer owns hard-coded decision order or dynamic temporary-decision controls")
+	var bench_packed := load(FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("flow_cases") and bench.has_method("build_flow_manifest_preview") and bench.has_method("run_flow_suite"), "ForcedDecisionRuntimeSchedulerBench exposes required QA APIs")
+		var cases: Array = bench.call("flow_cases")
+		var manifest: Dictionary = bench.call("build_flow_manifest_preview")
+		var case_ids: Array[String] = []
+		for case_variant in cases:
+			case_ids.append(str((case_variant as Dictionary).get("case_id", "")))
+		var expected_cases := ["no_decision", "other_choice_only", "contract_over_other_choice", "counter_over_contract", "monster_wager_over_counter", "stable_order_with_same_priority", "resolve_reveals_next_decision", "global_blocking_matrix", "player_specific_blocking", "card_resolution_progress_gate", "private_owner_not_exposed", "action_ids_unchanged", "recompute_after_save_state", "pure_data_snapshots"]
+		var cases_ok := cases.size() == 14 and case_ids == expected_cases
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 14
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "active_priority_group", "candidate_count", "global_blocked", "card_progress_allowed", "privacy_checked", "action_ids_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(str(bench.call("output_dir")) == FORCED_DECISION_RUNTIME_SCHEDULER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FORCED_DECISION_RUNTIME_SCHEDULER_SCREENSHOT_PATH and cases_ok and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ForcedDecisionRuntimeSchedulerBench defines fourteen pure-data cases and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var conformance_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	if conformance != null:
+		var scheduler_record: Dictionary = conformance.call("record_for_id", "forced_decision_scheduler")
+		_expect(str(scheduler_record.get("current_status", "")) == "cutover_complete" and (scheduler_record.get("deletion_candidates", []) as Array).is_empty(), "Ruleset registry marks forced-decision scheduler cutover complete")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var foundation_record: Dictionary = audit.call("record_for_id", "main_runtime_replacement_foundation_gate")
+		var scheduler_audit_record: Dictionary = audit.call("record_for_id", "forced_decision_runtime_scheduler_gate")
+		_expect(str(foundation_record.get("current_scene_path", "")) == GAME_RUNTIME_COORDINATOR_SCENE and str(scheduler_audit_record.get("current_scene_path", "")) == FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCENE, "Sceneization Audit includes main replacement and forced-decision gates")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(GAME_RUNTIME_COORDINATOR_SCENE) and scene_paths.has(FORCED_DECISION_RUNTIME_SCHEDULER_SCENE) and scene_paths.has(FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCENE), "MCP registry includes Coordinator, Scheduler, and Scheduler Bench")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenGameRuntimeCoordinatorButton", "OpenForcedDecisionRuntimeSchedulerButton", "RunForcedDecisionRuntimeSchedulerBenchButton", "OpenForcedDecisionRuntimeSchedulerOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("game_runtime_coordinator_scene_path") and dock.has_method("forced_decision_runtime_scheduler_scene_path") and dock.has_method("forced_decision_runtime_scheduler_bench_scene_path") and dock.has_method("forced_decision_runtime_scheduler_qa_output_dir"), "Design QA Dock exposes Main Runtime Replacement path helpers")
+		var coordinator_paths: Array[String] = []
+		var scheduler_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_game_runtime_coordinator_requested", func(scene_path: String) -> void: coordinator_paths.append(scene_path))
+		dock.connect("open_forced_decision_runtime_scheduler_requested", func(scene_path: String) -> void: scheduler_paths.append(scene_path))
+		dock.connect("run_forced_decision_runtime_scheduler_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenGameRuntimeCoordinatorButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenForcedDecisionRuntimeSchedulerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunForcedDecisionRuntimeSchedulerBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(coordinator_paths == [GAME_RUNTIME_COORDINATOR_SCENE] and scheduler_paths == [FORCED_DECISION_RUNTIME_SCHEDULER_SCENE] and bench_paths == [FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCENE], "Design QA Dock fallback signals emit Coordinator, Scheduler, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_game_session_save_ownership_component() -> void:
+	for path in [
+		GAME_SESSION_RUNTIME_CONTROLLER_SCRIPT,
+		GAME_SESSION_RUNTIME_CONTROLLER_SCENE,
+		GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT,
+		GAME_SAVE_RUNTIME_COORDINATOR_SCENE,
+		GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCRIPT,
+		GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Game Session & Save Ownership" % path)
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	if coordinator != null and bridge != null:
+		coordinator.call("configure", bridge.call("debug_snapshot"))
+		var session := coordinator.get_node_or_null("GameSessionRuntimeController")
+		var save := coordinator.get_node_or_null("GameSessionRuntimeController/GameSaveRuntimeCoordinator")
+		_expect(session != null and session.scene_file_path == GAME_SESSION_RUNTIME_CONTROLLER_SCENE and session.has_method("begin_session") and session.has_method("session_state") and session.has_method("session_summary") and session.has_method("mark_dirty") and session.has_method("pause_session") and session.has_method("resume_session") and session.has_method("request_save") and session.has_method("request_load") and session.has_method("debug_snapshot"), "GameSessionRuntimeController is an editable lifecycle and save-operation owner")
+		_expect(save != null and save.scene_file_path == GAME_SAVE_RUNTIME_COORDINATOR_SCENE and save.has_method("compose_save_payload") and save.has_method("validate_save_payload") and save.has_method("normalize_save_payload") and save.has_method("write_save") and save.has_method("read_save") and save.has_method("extract_section") and save.has_method("operation_snapshot") and save.has_method("set_qa_default_save_path_override") and save.has_method("clear_qa_default_save_path_override"), "GameSaveRuntimeCoordinator owns format/file I/O and exposes a bounded QA save-path override")
+		_expect(int(coordinator.call("run_save_version")) == 1 and str(coordinator.call("default_run_save_path")) == "user://space_syndicate_current_run.save", "save version 1 and default current-run path remain unchanged")
+		coordinator.call("begin_session", {"session_id": "smoke", "scenario_id": "first_table", "ruleset_id": "v0.4", "seed": 7, "player_count": 4, "ai_player_count": 3, "hidden_owner": 2, "private_hand": ["secret"]})
+		var debug_snapshot: Dictionary = coordinator.call("debug_snapshot")
+		_expect(not var_to_str(debug_snapshot).contains("hidden_owner") and not var_to_str(debug_snapshot).contains("secret") and not _variant_contains_callable(debug_snapshot) and not _variant_contains_object(debug_snapshot), "Session/save debug snapshots are privacy-safe pure data")
+		var domain := {"players": [], "districts": [], "game_time": 4.0}
+		var payload: Dictionary = coordinator.call("compose_run_save_payload", domain)
+		_expect(payload == {"players": [], "districts": [], "game_time": 4.0, "version": 1}, "Save Coordinator preserves the flat v1 payload and adds only version")
+		coordinator.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_session := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController") if main != null else null
+		var main_save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator") if main != null else null
+		_expect(main_session != null and main_session.scene_file_path == GAME_SESSION_RUNTIME_CONTROLLER_SCENE and main_save != null and main_save.scene_file_path == GAME_SAVE_RUNTIME_COORDINATOR_SCENE, "main.tscn owns nested GameSession and GameSave runtime scenes")
+		if main != null:
+			main.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(not main_source.contains("RUN_SAVE_VERSION") and not main_source.contains("RUN_SAVE_PATH") and not main_source.contains("FileAccess") and not main_source.contains("store_var(") and not main_source.contains("get_var("), "main.gd no longer owns save version, default path, or file-I/O format")
+	_expect(main_source.contains("request_run_save") and main_source.contains("request_run_load") and main_source.contains("_capture_run_domain_state_compatibility_adapter") and main_source.contains("_apply_run_domain_state_compatibility_adapter"), "main.gd keeps only explicit domain collect/apply compatibility adapters")
+	var bench_packed := load(GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("ownership_cases") and bench.has_method("build_ownership_manifest_preview") and bench.has_method("run_ownership_suite"), "GameSessionSaveOwnershipBench exposes required QA APIs")
+		var cases: Array = bench.call("ownership_cases")
+		var manifest: Dictionary = bench.call("build_ownership_manifest_preview")
+		var expected_cases := ["controller_scene_composition", "idle_session_state", "begin_first_table_session", "session_identity_preserved", "pause_resume_lifecycle", "dirty_state_after_runtime_action", "save_version_unchanged", "default_save_path_unchanged", "qa_default_path_override_accepts_test_root", "qa_default_path_override_rejects_player_path", "real_main_uses_isolated_default_path", "smoke_test_declares_isolated_save_scope", "compose_current_save_semantic_parity", "qa_save_write_read_roundtrip", "load_current_save_format", "load_legacy_compatible_fixture", "malformed_json_safe_failure", "missing_optional_fields_normalized", "real_main_save_delegates_to_controller", "real_main_load_delegates_to_controller", "controller_state_survives_save_roundtrip", "private_runtime_data_not_in_debug_snapshot", "no_node_callable_resource_in_payloads", "main_legacy_file_io_inactive"]
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 24
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "session_state", "save_version", "save_path", "payload_parity_checked", "roundtrip_checked", "legacy_compatibility_checked", "main_delegation_checked", "qa_isolation_checked", "privacy_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == GAME_SESSION_SAVE_OWNERSHIP_OUTPUT_DIR and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "GameSessionSaveOwnershipBench defines twenty-four pure-data cases including QA save isolation")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var session_record: Dictionary = audit.call("record_for_id", "game_session_runtime_ownership_gate")
+		var save_record: Dictionary = audit.call("record_for_id", "game_save_runtime_ownership_gate")
+		_expect(str(session_record.get("current_scene_path", "")) == GAME_SESSION_RUNTIME_CONTROLLER_SCENE and str(save_record.get("current_scene_path", "")) == GAME_SAVE_RUNTIME_COORDINATOR_SCENE, "Sceneization Audit includes session and save ownership gates")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(GAME_SESSION_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(GAME_SAVE_RUNTIME_COORDINATOR_SCENE) and scene_paths.has(GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE), "MCP registry includes Session Controller, Save Coordinator, and ownership Bench")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenGameSessionRuntimeControllerButton", "OpenGameSaveRuntimeCoordinatorButton", "RunGameSessionSaveOwnershipBenchButton", "OpenGameSessionSaveOwnershipOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		var session_paths: Array[String] = []
+		var save_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_game_session_runtime_controller_requested", func(scene_path: String) -> void: session_paths.append(scene_path))
+		dock.connect("open_game_save_runtime_coordinator_requested", func(scene_path: String) -> void: save_paths.append(scene_path))
+		dock.connect("run_game_session_save_ownership_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenGameSessionRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenGameSaveRuntimeCoordinatorButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunGameSessionSaveOwnershipBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(session_paths == [GAME_SESSION_RUNTIME_CONTROLLER_SCENE] and save_paths == [GAME_SAVE_RUNTIME_COORDINATOR_SCENE] and bench_paths == [GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE], "Design QA Dock fallback signals emit Session, Save, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_district_purchase_runtime_cutover_component() -> void:
+	for path in [
+		DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCRIPT,
+		DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE,
+		DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT,
+		DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE,
+		DISTRICT_PURCHASE_WINDOW_STATUS_SCRIPT,
+		DISTRICT_PURCHASE_WINDOW_STATUS_SCENE,
+		DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCRIPT,
+		DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for District Purchase Runtime Cutover" % path)
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	if coordinator != null and bridge != null:
+		coordinator.call("configure", bridge.call("debug_snapshot"))
+		var purchase := coordinator.get_node_or_null("DistrictPurchaseRuntimeController")
+		var inventory_service := coordinator.get_node_or_null("CardInventoryRuntimeService")
+		var settlement_service := coordinator.get_node_or_null("DistrictPurchaseSettlementRuntimeService")
+		var required_methods := ["configure", "open_window", "close_window", "invalidate_window", "tick_window", "active_window", "is_window_active", "remaining_seconds", "locked_access_kind", "locked_price_context", "authorize_purchase", "mark_supply_revision", "reserve_pending_discard", "resolve_pending_discard", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "private_ui_snapshot", "debug_snapshot"]
+		var methods_ok := purchase != null and purchase.scene_file_path == DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE
+		for method_name in required_methods:
+			methods_ok = methods_ok and purchase != null and purchase.has_method(method_name)
+		_expect(methods_ok, "DistrictPurchaseRuntimeController is an editable scene owner with the required timing, lock, authorization, save, and snapshot APIs")
+		var settlement_methods_ok := settlement_service != null and settlement_service.scene_file_path == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE
+		for method_name in ["configure", "set_inventory_service", "plan_purchase", "commit_purchase", "validate_discard", "debug_snapshot"]:
+			settlement_methods_ok = settlement_methods_ok and settlement_service != null and settlement_service.has_method(method_name)
+		var settlement_debug: Dictionary = settlement_service.call("debug_snapshot") if settlement_service != null else {}
+		var inventory_debug: Dictionary = inventory_service.call("debug_snapshot") if inventory_service != null else {}
+		_expect(inventory_service != null and inventory_service.scene_file_path == CARD_INVENTORY_RUNTIME_SERVICE_SCENE and bool(inventory_debug.get("service_ready", false)) and int(inventory_debug.get("ordinary_hand_limit", 0)) == 5 and int(inventory_debug.get("maximum_card_rank", 0)) == 4, "GameRuntimeCoordinator configures the scene-owned CardInventoryRuntimeService dependency")
+		_expect(settlement_methods_ok and bool(settlement_debug.get("service_ready", false)) and bool(settlement_debug.get("service_authoritative", false)) and bool(settlement_debug.get("inventory_delegate_ready", false)) and not bool(settlement_debug.get("window_authority", true)) and not bool(settlement_debug.get("presentation_authority", true)), "DistrictPurchaseSettlementRuntimeService owns atomic settlement and delegates inventory without taking window or presentation authority")
+		var timing: Dictionary = bridge.call("timing_rules")
+		var controller_debug: Dictionary = purchase.call("debug_snapshot") if purchase != null else {}
+		_expect(is_equal_approx(float(timing.get("purchase_window_seconds", 0.0)), 12.0) and is_equal_approx(float(controller_debug.get("purchase_window_seconds", 0.0)), 12.0), "RulesetRuntimeBridge is the single runtime source for the 12-second purchase window")
+		if purchase != null:
+			var qualification: Dictionary = purchase.call("build_qualification_snapshot", {"district_index": 0, "player_index": 0, "districts": [{"neighbors": [1], "destroyed": false}, {"neighbors": [0], "destroyed": false}], "monsters": [{"district_index": 0, "down": false, "owner": 0}], "access_effect": {}, "opened_at": 4.0, "supply_revision": "smoke-a"})
+			var window: Dictionary = purchase.call("open_window", 0, 0, qualification)
+			var private_snapshot: Dictionary = purchase.call("private_ui_snapshot", 0)
+			var encoded := JSON.stringify(private_snapshot)
+			_expect(str(window.get("state", "")) == "active" and is_equal_approx(float(window.get("locked_price_multiplier", 0.0)), 0.64) and not encoded.contains("owner") and not _variant_contains_callable(private_snapshot) and not _variant_contains_object(private_snapshot), "locked private channel pricing is pure data and does not expose monster owner identity")
+			purchase.call("tick_window", 12.0, {})
+			_expect(str((purchase.call("active_window", 0) as Dictionary).get("state", "")) == "expired" and not bool(purchase.call("is_window_active", 0, 0)), "Controller expires an eligible window at exactly twelve seconds")
+		coordinator.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_purchase := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseRuntimeController") if main != null else null
+		var main_inventory := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardInventoryRuntimeService") if main != null else null
+		var main_purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService") if main != null else null
+		var main_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService") if main != null else null
+		_expect(main_purchase != null and main_purchase.scene_file_path == DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE, "main.tscn composes DistrictPurchaseRuntimeController under GameRuntimeCoordinator")
+		_expect(main_inventory != null and main_inventory.scene_file_path == CARD_INVENTORY_RUNTIME_SERVICE_SCENE, "main.tscn composes CardInventoryRuntimeService under GameRuntimeCoordinator")
+		_expect(main_purchase_settlement != null and main_purchase_settlement.scene_file_path == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE, "main.tscn composes DistrictPurchaseSettlementRuntimeService under GameRuntimeCoordinator")
+		_expect(main_supply_snapshot != null and main_supply_snapshot.scene_file_path == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE, "main.tscn composes DistrictSupplySnapshotService under GameRuntimeCoordinator")
+		if main != null:
+			main.free()
+	for path in [DISTRICT_SUPPLY_DRAWER_SCRIPT, DISTRICT_SUPPLY_DRAWER_SCENE, DISTRICT_SUPPLY_STATUS_CHIP_SCRIPT, DISTRICT_SUPPLY_STATUS_CHIP_SCENE, DISTRICT_SUPPLY_MARKET_CARD_SCENE, DISTRICT_SUPPLY_PREVIEW_CARD_SCENE, DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT, DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for District Supply Drawer scene ownership" % path)
+	var supply_service_packed := load(DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	if supply_service_packed != null:
+		var supply_service := supply_service_packed.instantiate()
+		supply_service.call("configure", {})
+		var service_source := {"district_index": 0, "district_name": "测试区", "player_index": 0, "selected_card_name": "", "access_kind": "none", "access_text": "仅浏览", "can_buy": false, "player_cash": 500, "counted_hand_size": 0, "hand_limit": 10, "local_product_names": [], "purchase_window": {}, "cards": []}
+		var validation: Dictionary = supply_service.call("validate_source", service_source)
+		var service_output: Dictionary = supply_service.call("compose", service_source)
+		var service_debug: Dictionary = supply_service.call("debug_snapshot")
+		_expect(supply_service.has_method("compose") and supply_service.has_method("validate_source") and supply_service.has_method("debug_snapshot"), "DistrictSupplySnapshotService exposes compose, validation, and debug APIs")
+		_expect(bool(validation.get("valid", false)) and not _variant_contains_callable(service_output) and not _variant_contains_object(service_output), "DistrictSupplySnapshotService accepts a pure source and emits a pure Drawer snapshot")
+		_expect(bool(service_debug.get("service_ready", false)) and bool(service_debug.get("service_authoritative", false)) and not bool(service_debug.get("calculates_purchase_eligibility", true)) and not bool(service_debug.get("calculates_card_price", true)) and not bool(service_debug.get("mutates_inventory", true)), "DistrictSupplySnapshotService declares presentation ownership without purchase-rule authority")
+		supply_service.free()
+	var drawer_packed := load(DISTRICT_SUPPLY_DRAWER_SCENE) as PackedScene
+	if drawer_packed != null:
+		var drawer := drawer_packed.instantiate() as Control
+		root.add_child(drawer)
+		await process_frame
+		var status := drawer.find_child("DistrictPurchaseWindowStatus", true, false) if drawer != null else null
+		var market_grid := drawer.find_child("DistrictSupplyMarketGrid", true, false) as Container if drawer != null else null
+		var preview_box := drawer.find_child("DistrictSupplyPreviewBox", true, false) as Container if drawer != null else null
+		var pure_snapshot := {
+			"title": "区域牌架 · 布局门",
+			"rule_strip": "单击预览｜双击购买",
+			"privacy_hint": "只显示当前玩家可见状态。",
+			"purchase_window": {"state": "active", "remaining_seconds": 8.0, "duration_seconds": 12.0},
+			"header_chips": [{"text": "2 张", "accent": "#38bdf8ff"}],
+			"market_status": [{"text": "可买 1", "accent": "#34d399ff"}],
+			"cards": [{"card_name": "布局测试牌", "title": "布局测试牌", "rank": "I", "route": "生产", "facts": "测试", "state_text": "可购买", "accent": "#34d399ff", "theme_color": "#38bdf8ff", "actionable": true}],
+			"preview": {"card_name": "布局测试牌", "title": "布局测试牌", "rank": "I", "summary": "纯数据预览", "state_text": "可购买", "accent": "#34d399ff", "theme_color": "#38bdf8ff", "buy_enabled": true},
+			"empty_state": {"market_text": "暂无供牌", "preview_text": "选择供牌"},
+		}
+		drawer.call("set_supply", pure_snapshot)
+		await process_frame
+		var drawer_debug: Dictionary = drawer.call("debug_snapshot")
+		_expect(drawer.has_method("set_supply") and drawer.has_method("clear_supply") and drawer.has_method("debug_snapshot") and drawer.has_signal("supply_action_requested"), "DistrictSupplyDrawer exposes one pure snapshot and aggregate action API")
+		_expect(status != null and status.scene_file_path == DISTRICT_PURCHASE_WINDOW_STATUS_SCENE and status.has_method("set_snapshot") and status.has_method("debug_snapshot"), "DistrictSupplyDrawer embeds the editable purchase-window status component")
+		_expect(drawer.find_child("DistrictSupplyMarketEmptyState", true, false) != null and drawer.find_child("DistrictSupplyPreviewEmptyState", true, false) != null and drawer.find_child("DistrictSupplyPrivacyHint", true, false) != null, "DistrictSupplyDrawer statically owns privacy and both empty-state surfaces")
+		_expect(market_grid != null and market_grid.get_child_count() == 1 and (market_grid.get_child(0) as Node).scene_file_path == DISTRICT_SUPPLY_MARKET_CARD_SCENE and preview_box != null and preview_box.get_child_count() == 1 and (preview_box.get_child(0) as Node).scene_file_path == DISTRICT_SUPPLY_PREVIEW_CARD_SCENE, "DistrictSupplyDrawer renders reusable market and selected-preview child scenes from its snapshot")
+		_expect(int(drawer_debug.get("rendered_card_count", 0)) == 1 and not _variant_contains_callable(drawer_debug) and not _variant_contains_object(drawer_debug), "DistrictSupplyDrawer debug snapshot remains pure data")
+		if drawer != null:
+			root.remove_child(drawer)
+			drawer.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var controller_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCRIPT)
+	var settlement_service_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT)
+	var status_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_WINDOW_STATUS_SCRIPT)
+	_expect(not main_source.contains("var district_card_purchase_snapshot") and not main_source.contains("district_card_purchase_snapshot =") and main_source.contains("authorize_district_purchase") and main_source.contains("_district_purchase_qualification_compatibility_adapter"), "main.gd delegates district purchase authority while retaining only a pure-data qualification compatibility adapter")
+	var retired_drawer_tokens := ["DistrictSupplyMarketCardScene", "DistrictSupplyPreviewCardScene", "var district_supply_title_label", "var district_supply_access_label", "var district_supply_chip_row", "var district_supply_state_rail", "var district_supply_list_box", "var district_supply_preview_box", "func _add_district_supply_header_chips", "func _add_district_supply_summary_chip", "func _add_district_supply_market_status_rail", "func _sync_district_supply_market_focus_links", "func _add_district_supply_card_button", "func _add_district_supply_preview", "func _on_district_card_gui_input"]
+	var drawer_legacy_absent := main_source.contains("func _district_supply_snapshot_source") and main_source.contains("func _on_district_supply_action_requested") and main_source.contains("compose_district_supply_snapshot")
+	for retired_token in retired_drawer_tokens:
+		drawer_legacy_absent = drawer_legacy_absent and not main_source.contains(str(retired_token))
+	_expect(drawer_legacy_absent, "main.gd permanently retires Drawer child-scene preloads, child mirrors, builders, focus loop, and direct card GUI callback")
+	var retired_snapshot_formatters := ["_district_supply_drawer_snapshot", "_district_supply_pure_ui_value", "_district_supply_header_chip_entries", "_district_supply_market_summary", "_district_supply_market_status_entries", "_district_supply_market_status_entry", "_district_supply_access_short_label", "_district_supply_access_color", "_district_supply_purchase_verdict_entries", "_district_supply_micro_card_chip_entries", "_district_supply_decision_chip_entries", "_district_supply_preview_scan_sections", "_district_supply_buy_scan_text", "_district_supply_play_scan_text", "_district_supply_target_scan_text", "_district_supply_target_scan_tooltip", "_district_supply_market_card_snapshot", "_district_supply_preview_snapshot", "_district_supply_preview_card_face_snapshot"]
+	var snapshot_formatters_absent := true
+	for formatter_name in retired_snapshot_formatters:
+		snapshot_formatters_absent = snapshot_formatters_absent and not main_source.contains("func %s(" % str(formatter_name))
+	_expect(snapshot_formatters_absent and main_source.contains("func _district_supply_purchase_state"), "main.gd retires nineteen Drawer formatters while preserving purchase-state rule ownership")
+	_expect(not controller_source.contains("12.0") and not status_source.contains("12.0"), "Controller and status UI do not duplicate the Ruleset purchase duration")
+	var buy_start := main_source.find("func _buy_card_for_player_from_district(")
+	var buy_end := main_source.find("\nfunc ", buy_start + 5)
+	var buy_source := main_source.substr(buy_start, buy_end - buy_start) if buy_start >= 0 and buy_end > buy_start else ""
+	var settlement_adapters_present := buy_source.contains("plan_district_purchase_settlement") and buy_source.contains("commit_district_purchase_settlement") and main_source.contains("func _district_purchase_settlement_request(")
+	var legacy_settlement_absent := not buy_source.contains("player[\"cash\"] =") and not buy_source.contains("_record_player_card_spend(") and not buy_source.contains("card_purchase_count\"] =") and not main_source.contains("func _record_player_card_purchase(") and not main_source.contains("func _discard_card_from_player(") and not main_source.contains("func _find_previous_rank_card_slot(") and not main_source.contains("func _find_owned_card_slot(")
+	_expect(settlement_adapters_present and legacy_settlement_absent and settlement_service_source.contains("after_player[\"cash\"] =") and settlement_service_source.contains("after_player[\"card_purchase_count\"] ="), "Sprint 29 moves purchase cash/card/counter/ledger mutation to the settlement service and leaves one thin main adapter")
+	var bench_packed := load(DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "DistrictPurchaseRuntimeCutoverBench exposes required QA APIs")
+		var expected_cases := ["controller_scene_composition", "purchase_window_uses_ruleset_12_seconds", "view_only_district_has_no_timer", "eligible_window_opens", "countdown_and_exact_expiry", "close_and_switch_invalidate", "one_window_per_player", "monster_move_does_not_change_locked_access", "monster_binding_change_does_not_change_locked_discount", "landed_and_adjacent_price_context", "bound_monster_064_and_080_context", "discounts_do_not_stack", "final_price_floor", "supply_change_keeps_window_and_requires_reselection", "pending_discard_preserves_context", "expired_window_rejects_purchase", "real_main_player_purchase_delegates", "real_main_ai_purchase_delegates", "legacy_save_snapshot_restores", "privacy_and_pure_data", "main_legacy_window_authority_inactive", "drawer_scene_composition", "pure_drawer_snapshot", "market_cards_render_from_snapshot", "selected_preview_rendering", "hover_and_click_preview_routes", "purchase_activation_routes", "disabled_preview_buy_guard", "purchase_window_status_passthrough", "empty_supply_safe_state", "keyboard_focus_chain", "real_main_drawer_route", "legacy_drawer_builders_and_node_refs_absent", "snapshot_service_scene_composition", "pure_snapshot_source_contract", "source_rejects_runtime_objects", "header_chip_format_parity", "market_summary_format_parity", "market_card_format_parity", "selected_preview_format_parity", "purchase_window_service_passthrough", "viewer_private_boundary", "real_main_snapshot_service_route", "snapshot_service_has_no_rule_authority", "legacy_snapshot_formatter_closure_absent"]
+		expected_cases.append_array(["settlement_new_card_commit", "settlement_same_family_upgrade_commit", "settlement_max_rank_rejected_without_mutation", "settlement_exact_cash_debit_and_ledger", "settlement_insufficient_cash_without_mutation", "settlement_supply_remains_after_purchase", "settlement_hand_limit_opens_pending_discard_without_charge", "settlement_hand_limit_exempt_card_bypasses_discard", "settlement_discard_cancel_restores_window", "settlement_discard_confirm_commits_once", "settlement_invalid_discard_slot_without_mutation", "settlement_locked_or_queued_card_not_discardable", "settlement_pending_discard_state_drift_audit", "settlement_ai_uses_same_authorized_path", "settlement_public_private_event_boundary", "settlement_post_commit_hooks_exactly_once", "legacy_upgrade_replace_routes_classified"])
+		expected_cases.append_array(["settlement_service_scene_composition", "coordinator_composes_settlement_service", "pure_settlement_request_contract", "service_new_card_plan_and_commit", "service_duplicate_upgrade_plan_and_commit", "service_rank_iv_rejection", "service_hand_limit_requires_discard_without_commit", "service_discard_confirm_atomic_commit", "service_discard_cancel_no_commit", "service_cash_drift_rejected_without_mutation", "service_invalid_discard_rejected_without_mutation", "service_exact_once_counter_ledger_and_event_intents", "real_main_player_route_delegates_to_service", "real_main_ai_route_delegates_to_service", "real_main_resumed_discard_route_delegates_to_service", "window_and_legacy_save_ownership_unchanged", "legacy_main_settlement_mutations_absent", "service_debug_snapshot_privacy_and_pure_data"])
+		var cases: Array = bench.call("cutover_cases")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 80 and int(manifest.get("ownership_case_count", 0)) == 45 and int(manifest.get("characterization_case_count", 0)) == 17 and int(manifest.get("settlement_cutover_case_count", 0)) == 18
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "window_state", "remaining_seconds", "access_kind", "locked_multiplier", "timing_checked", "expiry_checked", "lock_checked", "price_checked", "supply_checked", "discard_checked", "main_delegation_checked", "save_compatibility_checked", "privacy_checked", "pure_data_checked", "controller_ready", "drawer_checked", "action_route_checked", "disabled_checked", "focus_checked", "snapshot_checked", "legacy_deletion_checked", "snapshot_service_checked", "source_contract_checked", "format_parity_checked", "authority_boundary_checked", "service_owner_checked", "plan_checked", "commit_checked", "main_adapter_checked", "legacy_formula_absent", "window_owner_unchanged", "event_intents_checked", "observed", "contract_aligned", "mutation_expected", "cash_delta", "hand_count_delta", "slot_change_kind", "purchase_count_delta", "ledger_delta", "window_state_before", "window_state_after", "upgrade_checked", "legacy_route_status", "risk", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == DISTRICT_PURCHASE_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == DISTRICT_PURCHASE_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "DistrictPurchaseRuntimeCutoverBench defines 45 ownership, 17 characterization, and 18 service-cutover cases with pure user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var record: Dictionary = audit.call("record_for_id", "district_purchase_runtime_ownership_gate")
+		_expect(str(record.get("current_scene_path", "")) == DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks district purchase runtime ownership complete")
+		var drawer_record: Dictionary = audit.call("record_for_id", "district_supply_drawer_scene")
+		_expect(str(drawer_record.get("current_scene_path", "")) == DISTRICT_SUPPLY_DRAWER_SCENE and str(drawer_record.get("source_script_path", "")) == DISTRICT_SUPPLY_DRAWER_SCRIPT and str(drawer_record.get("sceneization_status", "")) == "full", "Sceneization Audit marks DistrictSupplyDrawer presentation ownership complete")
+		var snapshot_service_record: Dictionary = audit.call("record_for_id", "district_supply_snapshot_service_gate")
+		_expect(str(snapshot_service_record.get("current_scene_path", "")) == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE and str(snapshot_service_record.get("source_script_path", "")) == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT and str(snapshot_service_record.get("sceneization_status", "")) == "full", "Sceneization Audit marks DistrictSupplySnapshotService formatting ownership complete")
+		var settlement_gate: Dictionary = audit.call("record_for_id", "district_purchase_settlement_characterization_gate")
+		_expect(str(settlement_gate.get("current_scene_path", "")) == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE and str(settlement_gate.get("source_script_path", "")) == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT and str(settlement_gate.get("sceneization_status", "")) == "full", "Sceneization Audit records scene-owned district purchase settlement runtime ownership")
+	var conformance_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	if conformance != null:
+		var rule: Dictionary = conformance.call("record_for_id", "district_purchase_12_second_window")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("DistrictPurchaseRuntimeController") and str(rule.get("current_owner", "")).contains("DistrictPurchaseSettlementRuntimeService"), "Ruleset Conformance records both district purchase window and settlement owners")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE) and scene_paths.has(DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE) and scene_paths.has(DISTRICT_SUPPLY_DRAWER_SCENE) and scene_paths.has(DISTRICT_SUPPLY_MARKET_CARD_SCENE) and scene_paths.has(DISTRICT_SUPPLY_PREVIEW_CARD_SCENE) and scene_paths.has(DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes District Purchase Controller, Settlement Service, Snapshot Service, Drawer components, and Cutover Bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var drawer_system_record: Dictionary = system_audit.call("record_for_id", "district_supply_drawer_scene_owned")
+		_expect(str(drawer_system_record.get("current_status", "")) == "sceneized" and str(drawer_system_record.get("current_path", "")) == DISTRICT_SUPPLY_DRAWER_SCENE, "System Resourceization Audit records scene-owned District Supply Drawer presentation")
+		var snapshot_system_record: Dictionary = system_audit.call("record_for_id", "district_supply_snapshot_service_owned")
+		_expect(str(snapshot_system_record.get("current_status", "")) == "sceneized" and str(snapshot_system_record.get("current_path", "")) == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE, "System Resourceization Audit records that District Supply snapshot formatting has left main.gd")
+		var settlement_system_record: Dictionary = system_audit.call("record_for_id", "district_purchase_settlement_characterized")
+		_expect(str(settlement_system_record.get("current_status", "")) == "sceneized" and str(settlement_system_record.get("current_path", "")) == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE, "System Resourceization Audit records settlement as scene-owned")
+	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	var settlement_contract_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_SETTLEMENT_CONTRACT_DOC)
+	_expect(FileAccess.file_exists(DISTRICT_PURCHASE_SETTLEMENT_CONTRACT_DOC) and settlement_contract_source.contains("Observed Transaction Order") and settlement_contract_source.contains("Sprint 29 Cutover Result") and settlement_contract_source.contains("80/80 total") and doc_source.contains("District Purchase Settlement Runtime Service Cutover") and doc_source.contains("18/18 service cutover"), "Sprint 29 documents the atomic service owner, preserved characterization, privacy boundary, and 80-case cutover gate")
+	_expect(not main_source.contains("func _upgrade_skill_slot(") and not main_source.contains("func _replace_skill_slot(") and not main_source.contains("func _can_upgrade_skill_slot(") and not main_source.contains("func _can_replace_skill_slot(") and main_source.contains("func _buy_card_for_player_from_district("), "main.gd removes zero-caller direct upgrade/replace routes while retaining one unified settlement path")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenDistrictPurchaseRuntimeControllerButton", "OpenDistrictPurchaseSettlementRuntimeServiceButton", "OpenDistrictSupplyDrawerButton", "OpenDistrictSupplySnapshotServiceButton", "RunDistrictPurchaseRuntimeCutoverBenchButton", "OpenDistrictPurchaseRuntimeCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		var controller_paths: Array[String] = []
+		var settlement_service_paths: Array[String] = []
+		var drawer_paths: Array[String] = []
+		var snapshot_service_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_district_purchase_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
+		dock.connect("open_district_purchase_settlement_runtime_service_requested", func(scene_path: String) -> void: settlement_service_paths.append(scene_path))
+		dock.connect("open_district_supply_drawer_requested", func(scene_path: String) -> void: drawer_paths.append(scene_path))
+		dock.connect("open_district_supply_snapshot_service_requested", func(scene_path: String) -> void: snapshot_service_paths.append(scene_path))
+		dock.connect("run_district_purchase_runtime_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenDistrictPurchaseRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenDistrictPurchaseSettlementRuntimeServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenDistrictSupplyDrawerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenDistrictSupplySnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunDistrictPurchaseRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(controller_paths == [DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE] and settlement_service_paths == [DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE] and drawer_paths == [DISTRICT_SUPPLY_DRAWER_SCENE] and snapshot_service_paths == [DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE] and bench_paths == [DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit District Purchase Controller, Settlement Service, Snapshot Service, Drawer, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_card_inventory_runtime_characterization_component() -> void:
+	for path in [
+		CARD_INVENTORY_RUNTIME_SERVICE_SCRIPT,
+		CARD_INVENTORY_RUNTIME_SERVICE_SCENE,
+		CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT,
+		CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE,
+		CARD_INVENTORY_RUNTIME_CONTRACT_DOC,
+	]:
+		_expect(ResourceLoader.exists(path) if path.ends_with(".gd") or path.ends_with(".tscn") else FileAccess.file_exists(path), "%s exists for Card Inventory Runtime Cutover" % path)
+	var service_packed := load(CARD_INVENTORY_RUNTIME_SERVICE_SCENE) as PackedScene
+	_expect(service_packed != null and load(CARD_INVENTORY_RUNTIME_SERVICE_SCRIPT) != null, "CardInventoryRuntimeService scene and script load")
+	if service_packed != null:
+		var service := service_packed.instantiate()
+		root.add_child(service)
+		service.call("configure", {"ruleset_id": "v0.4", "card_inventory": {"ordinary_hand_limit": 5, "maximum_card_rank": 4}})
+		var required_service_methods := ["configure", "plan_receive", "commit_receive", "discardable_slots", "plan_remove", "commit_remove", "plan_lock", "commit_lock", "plan_transfer", "commit_transfer", "inventory_fingerprint", "debug_snapshot"]
+		var service_methods_ok := service.scene_file_path == CARD_INVENTORY_RUNTIME_SERVICE_SCENE
+		for method_name in required_service_methods:
+			service_methods_ok = service_methods_ok and service.has_method(method_name)
+		var service_debug: Dictionary = service.call("debug_snapshot") if service.has_method("debug_snapshot") else {}
+		_expect(service_methods_ok, "CardInventoryRuntimeService exposes the complete scene-owned inventory mutation API")
+		_expect(bool(service_debug.get("service_ready", false)) and bool(service_debug.get("service_authoritative", false)) and int(service_debug.get("ordinary_hand_limit", 0)) == 5 and int(service_debug.get("maximum_card_rank", 0)) == 4, "CardInventoryRuntimeService configures v0.4 ordinary hand limit and maximum rank from Ruleset data")
+		_expect(not bool(service_debug.get("purchase_cash_authority", true)) and not bool(service_debug.get("ledger_authority", true)) and not bool(service_debug.get("event_authority", true)) and not bool(service_debug.get("legacy_inventory_fallback_used", true)) and not _variant_contains_callable(service_debug) and not _variant_contains_object(service_debug), "CardInventoryRuntimeService debug output is pure and does not claim cash, ledger, event, or fallback ownership")
+		root.remove_child(service)
+		service.queue_free()
+	if ResourceLoader.exists(CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT):
+		_expect(load(CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT) != null, "Card Inventory Runtime Characterization bench script loads")
+	var packed := load(CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "CardInventoryRuntimeCharacterizationBench loads as a PackedScene")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "ContractPanel", "OwnershipPanel", "CasesPanel"]:
+			_expect(bench.find_child(node_name, true, false) != null, "CardInventoryRuntimeCharacterizationBench statically owns %s" % node_name)
+		var runtime_host := bench.find_child("RuntimeMainHost", true, false) as Control
+		_expect(runtime_host != null and not runtime_host.visible, "CardInventoryRuntimeCharacterizationBench keeps its real-main host hidden from the QA report surface")
+		var methods_ok := true
+		for method_name in ["output_dir", "characterization_cases", "cutover_cases", "all_cases", "build_characterization_manifest_preview", "run_characterization_suite", "run_cutover_suite"]:
+			methods_ok = methods_ok and bench.has_method(method_name)
+		_expect(methods_ok, "CardInventoryRuntimeCharacterizationBench exposes characterization, cutover, manifest preview, and suite APIs")
+		var expected_characterization_cases := [
+			"shared_inventory_call_graph_complete",
+			"purchase_inventory_delegate_observed",
+			"new_family_card_receive",
+			"duplicate_family_upgrade",
+			"maximum_rank_rejection",
+			"ordinary_hand_limit_rejection",
+			"persistent_skill_hand_limit_exemption",
+			"queued_card_not_discardable",
+			"cooldown_locked_card_not_discardable",
+			"role_bonus_card_receive",
+			"extra_district_supply_receive",
+			"hand_steal_receive_success",
+			"hand_steal_receive_failure_conversion",
+			"hand_disrupt_private_removal",
+			"private_hand_lock",
+			"human_ai_inventory_policy_parity",
+			"inventory_fingerprint_drift",
+			"save_shape_unchanged",
+			"public_private_boundary",
+			"duplicate_inventory_formula_absent",
+		]
+		var expected_cutover_cases := [
+			"service_scene_composition",
+			"ruleset_config_source",
+			"pure_service_payloads",
+			"receive_add_owned",
+			"duplicate_upgrade_owned",
+			"rank_iv_reject_owned",
+			"ordinary_limit_owned",
+			"fixed_skill_exemption_owned",
+			"discardability_owned",
+			"private_remove_owned",
+			"private_lock_owned",
+			"transfer_success_owned",
+			"transfer_failure_conversion_owned",
+			"purchase_settlement_delegates",
+			"role_bonus_delegates",
+			"extra_supply_delegates",
+			"human_ai_policy_parity_cutover",
+			"fingerprint_drift_rejected_cutover",
+			"save_and_privacy_unchanged",
+			"legacy_inventory_formula_absent",
+		]
+		var characterization_cases: Array = bench.call("characterization_cases") if bench.has_method("characterization_cases") else []
+		var cutover_cases: Array = bench.call("cutover_cases") if bench.has_method("cutover_cases") else []
+		var all_cases: Array = bench.call("all_cases") if bench.has_method("all_cases") else []
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench.has_method("build_characterization_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var required_fields := [
+			"case_id",
+			"phase",
+			"source_entrypoint",
+			"mutation_kind",
+			"source_hand_delta",
+			"target_hand_delta",
+			"rank_delta",
+			"lock_delta",
+			"source_fingerprint_before",
+			"source_fingerprint_after",
+			"target_fingerprint_before",
+			"target_fingerprint_after",
+			"partial_mutation_observed",
+			"service_route_observed",
+			"service_owner_checked",
+			"settlement_delegate_checked",
+			"main_adapter_checked",
+			"exact_once_checked",
+			"legacy_formula_absent",
+			"save_shape_checked",
+			"privacy_checked",
+			"pure_data_checked",
+			"observed",
+			"contract_aligned",
+			"cutover_passed",
+			"needs_design_decision",
+			"risk",
+			"passed",
+			"notes",
+		]
+		var fields_ok := records.size() == expected_characterization_cases.size() + expected_cutover_cases.size()
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in required_fields:
+				fields_ok = fields_ok and record.has(key)
+		_expect(characterization_cases == expected_characterization_cases and cutover_cases == expected_cutover_cases and all_cases == expected_characterization_cases + expected_cutover_cases, "CardInventoryRuntimeCharacterizationBench preserves the exact twenty characterization cases and adds the exact twenty cutover cases")
+		_expect(int(manifest.get("case_count", 0)) == 40 and int(manifest.get("characterization_case_count", 0)) == 20 and int(manifest.get("cutover_case_count", 0)) == 20 and int(manifest.get("record_count", 0)) == 40, "Card Inventory manifest preview declares the 40-case ownership gate")
+		_expect(fields_ok, "Card Inventory cutover manifest records include ownership, delegation, adapter, exact-once, legacy-removal, pure-data, observation, and alignment fields")
+		_expect(str(bench.call("output_dir")) == CARD_INVENTORY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(manifest.get("output_dir", "")) == CARD_INVENTORY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CARD_INVENTORY_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH, "Card Inventory cutover writes its manifest, report, and screenshot to the expected user:// paths")
+		_expect(CARD_INVENTORY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.begins_with("user://") and not CARD_INVENTORY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.contains("res://reports") and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Card Inventory cutover preview remains pure data and never writes tracked QA output")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var settlement_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT)
+	var inventory_source := FileAccess.get_file_as_string(CARD_INVENTORY_RUNTIME_SERVICE_SCRIPT)
+	var interaction_source := FileAccess.get_file_as_string(PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCRIPT)
+	var bench_source := FileAccess.get_file_as_string(CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT)
+	var inventory_single_owned := inventory_source.contains("func plan_receive") and inventory_source.contains("func commit_receive") and inventory_source.contains("func discardable_slots") and inventory_source.contains("func plan_remove") and inventory_source.contains("func plan_lock") and inventory_source.contains("func plan_transfer") and not settlement_source.contains("func plan_inventory_receive") and not settlement_source.contains("func commit_inventory_receive") and not settlement_source.contains("func discardable_slots") and not settlement_source.contains("func _plan_inventory_receive") and not settlement_source.contains("func _apply_inventory_operation")
+	var runtime_routes_service := main_source.contains("plan_card_inventory_receive") and main_source.contains("commit_card_inventory_receive") and interaction_source.contains("_inventory_service.call(\"commit_remove\"") and interaction_source.contains("_inventory_service.call(\"commit_lock\"") and interaction_source.contains("_inventory_service.call(\"commit_transfer\"")
+	_expect(inventory_single_owned and settlement_source.contains("func set_inventory_service") and runtime_routes_service, "Card Inventory remains the single formula owner while Purchase, Hand Interaction, and main stay delegates")
+	_expect(bench_source.contains("func _hide_runtime_canvas_layers") and bench_source.contains("(node as CanvasLayer).visible = false"), "Card Inventory characterization hides embedded main CanvasLayers so the QA report owns its screenshot")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	var service_registry_found := false
+	var bench_registry_found := false
+	if registry != null and registry.has_method("records"):
+		for record_variant in registry.call("records"):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			if str(record.get("id", "")) == "card_inventory_runtime_service":
+				service_registry_found = str(record.get("scene_path", "")) == CARD_INVENTORY_RUNTIME_SERVICE_SCENE and bool(record.get("smoke_check_enabled", false))
+			if str(record.get("id", "")) == "card_inventory_runtime_characterization_bench":
+				bench_registry_found = str(record.get("scene_path", "")) == CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE and bool(record.get("smoke_check_enabled", false))
+	_expect(service_registry_found and bench_registry_found, "MCP Editability Hub registry includes the Card Inventory Service and 40-case Bench")
+	var sceneization_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var sceneization: RefCounted = sceneization_script.new() if sceneization_script != null else null
+	var sceneization_record: Dictionary = sceneization.call("record_for_id", "card_inventory_runtime_characterization_gate") if sceneization != null and sceneization.has_method("record_for_id") else {}
+	_expect(str(sceneization_record.get("current_scene_path", "")) == CARD_INVENTORY_RUNTIME_SERVICE_SCENE and str(sceneization_record.get("sceneization_status", "")) == "full", "Sceneization Audit records full Card Inventory runtime ownership")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	var system_record: Dictionary = system_audit.call("record_for_id", "shared_card_inventory_mutation_characterized") if system_audit != null and system_audit.has_method("record_for_id") else {}
+	_expect(str(system_record.get("current_path", "")) == CARD_INVENTORY_RUNTIME_SERVICE_SCENE and str(system_record.get("current_status", "")) == "sceneized" and str(system_record.get("recommended_next_step", "")).contains("CardInventoryRuntimeService"), "System Resourceization Audit records CardInventoryRuntimeService as the sceneized owner")
+	var contract_source := FileAccess.get_file_as_string(CARD_INVENTORY_RUNTIME_CONTRACT_DOC)
+	var replacement_source := FileAccess.get_file_as_string("res://docs/main_runtime_replacement.md")
+	_expect(contract_source.contains("CardInventoryRuntimeService") and contract_source.contains("converted_to_remove") and contract_source.contains("20/20") and contract_source.contains("40/40"), "Card Inventory runtime contract records the single owner, failed-steal conversion, and cutover evidence")
+	_expect(replacement_source.contains("Sprint 31: Card Inventory Runtime Service Cutover") and replacement_source.contains("40/40") and replacement_source.contains("converted_to_remove"), "main runtime replacement log records the completed Sprint 31 production cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCardInventoryRuntimeServiceButton", "OpenCardInventoryRuntimeCharacterizationBenchButton", "RunCardInventoryRuntimeCharacterizationBenchButton", "OpenCardInventoryRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "SpaceSyndicateDesignQADock contains %s" % button_name)
+		_expect(dock.has_method("card_inventory_runtime_service_scene_path") and dock.has_method("card_inventory_runtime_characterization_bench_scene_path") and dock.has_method("card_inventory_runtime_characterization_qa_output_dir") and dock.has_method("card_inventory_runtime_cutover_qa_output_dir"), "SpaceSyndicateDesignQADock exposes Card Inventory service, bench, and cutover-output path helpers")
+		_expect(str(dock.call("card_inventory_runtime_service_scene_path")) == CARD_INVENTORY_RUNTIME_SERVICE_SCENE and str(dock.call("card_inventory_runtime_characterization_bench_scene_path")) == CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE and str(dock.call("card_inventory_runtime_characterization_qa_output_dir")) == CARD_INVENTORY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(dock.call("card_inventory_runtime_cutover_qa_output_dir")) == CARD_INVENTORY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR, "SpaceSyndicateDesignQADock targets the Card Inventory service, bench, and user:// cutover output")
+		var service_paths: Array[String] = []
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_card_inventory_runtime_service_requested"):
+			dock.connect("open_card_inventory_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		if dock.has_signal("open_card_inventory_runtime_characterization_bench_requested"):
+			dock.connect("open_card_inventory_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		if dock.has_signal("run_card_inventory_runtime_characterization_bench_requested"):
+			dock.connect("run_card_inventory_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		var open_button := dock.find_child("OpenCardInventoryRuntimeCharacterizationBenchButton", true, false) as Button
+		var run_button := dock.find_child("RunCardInventoryRuntimeCharacterizationBenchButton", true, false) as Button
+		var service_button := dock.find_child("OpenCardInventoryRuntimeServiceButton", true, false) as Button
+		if service_button != null:
+			service_button.emit_signal("pressed")
+		if open_button != null:
+			open_button.emit_signal("pressed")
+		if run_button != null:
+			run_button.emit_signal("pressed")
+		await process_frame
+		_expect(service_paths == [CARD_INVENTORY_RUNTIME_SERVICE_SCENE] and open_paths == [CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit the Card Inventory service and cutover bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_player_hand_interaction_runtime_characterization_component() -> void:
+	for path in [
+		PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT,
+		PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE,
+		PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCRIPT,
+		PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Player Hand Interaction Runtime Cutover" % path)
+	_expect(FileAccess.file_exists(PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_CONTRACT_DOC), "Player Hand Interaction runtime contract exists")
+	var service_packed := load(PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	_expect(service != null and service.has_method("set_inventory_service") and service.has_method("configure") and service.has_method("plan_interaction") and service.has_method("commit_interaction") and service.has_method("debug_snapshot"), "PlayerHandInteractionRuntimeService exposes configuration, plan, atomic commit, and debug APIs")
+	if service != null:
+		service.free()
+	var packed := load(PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "PlayerHandInteractionRuntimeCharacterizationBench loads as a PackedScene")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "ContractPanel", "OwnershipPanel", "CasesPanel"]:
+			_expect(bench.find_child(node_name, true, false) != null, "PlayerHandInteractionRuntimeCharacterizationBench statically owns %s" % node_name)
+		var runtime_host := bench.find_child("RuntimeMainHost", true, false) as Control
+		_expect(runtime_host != null and not runtime_host.visible, "Player Hand Interaction Bench keeps its real-main host hidden from the report surface")
+		var methods_ok := true
+		for method_name in ["output_dir", "screenshot_path", "characterization_cases", "cutover_cases", "all_cases", "build_characterization_manifest_preview", "run_characterization_suite"]:
+			methods_ok = methods_ok and bench.has_method(method_name)
+		_expect(methods_ok, "Player Hand Interaction Bench exposes output, case, preview, and suite APIs")
+		var expected_cases := [
+			"interaction_call_graph_complete",
+			"real_interaction_card_catalog_exists",
+			"disrupt_rank_i_removes_one",
+			"disrupt_rank_ii_remove_then_lock",
+			"disrupt_rank_iii_penalty_and_lock",
+			"disrupt_rank_iv_two_remove_cap",
+			"disrupt_queued_and_locked_exclusion",
+			"disrupt_empty_target_safe_failure",
+			"disrupt_cash_penalty_caps_at_available_cash",
+			"steal_rank_i_success",
+			"steal_duplicate_family_upgrades_receiver",
+			"steal_rank_iv_receiver_converts_to_remove",
+			"steal_rank_ii_transfer_then_lock",
+			"steal_rank_iv_multi_transfer_order",
+			"steal_partial_when_target_has_fewer_cards",
+			"steal_compensation_applies_once",
+			"queued_resolution_dispatches_interaction",
+			"human_and_ai_share_resolution_route",
+			"public_private_event_boundary",
+			"save_action_and_signal_compatibility",
+		]
+		var expected_cutover_cases := [
+			"service_scene_composition",
+			"pure_service_api",
+			"interaction_owner_call_graph",
+			"disrupt_rank_i_service",
+			"disrupt_rank_ii_order_service",
+			"disrupt_rank_iii_penalty_service",
+			"disrupt_rank_iv_cap_service",
+			"exclusion_service",
+			"cash_cap_service",
+			"steal_rank_i_service",
+			"duplicate_upgrade_service",
+			"convert_remove_service",
+			"transfer_then_lock_service",
+			"multi_transfer_order_service",
+			"partial_success_service",
+			"compensation_once_service",
+			"queued_dispatch_service",
+			"human_ai_shared_service",
+			"privacy_event_intents",
+			"legacy_orchestration_absent",
+		]
+		var cases: Array = bench.call("characterization_cases") if bench.has_method("characterization_cases") else []
+		var cutover_cases: Array = bench.call("cutover_cases") if bench.has_method("cutover_cases") else []
+		var all_cases: Array = bench.call("all_cases") if bench.has_method("all_cases") else []
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench.has_method("build_characterization_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var required_fields := [
+			"phase",
+			"case_id",
+			"played_card_id",
+			"card_rank",
+			"requested_count",
+			"removed_count",
+			"transferred_count",
+			"converted_count",
+			"locked_count",
+			"actor_cash_delta",
+			"target_cash_delta",
+			"source_hand_delta",
+			"target_hand_delta",
+			"public_event_delta",
+			"private_event_delta",
+			"resolution_route_checked",
+			"inventory_service_checked",
+			"service_owner_checked",
+			"main_adapter_checked",
+			"legacy_formula_absent",
+			"exact_once_checked",
+			"privacy_checked",
+			"pure_data_checked",
+			"observed",
+			"contract_aligned",
+			"cutover_passed",
+			"needs_design_decision",
+			"risk",
+			"notes",
+		]
+		var fields_ok := records.size() == expected_cases.size() + expected_cutover_cases.size()
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in required_fields:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and cutover_cases == expected_cutover_cases and all_cases == expected_cases + expected_cutover_cases and int(manifest.get("case_count", 0)) == 40 and int(manifest.get("record_count", 0)) == 40 and int(manifest.get("characterization_case_count", 0)) == 20 and int(manifest.get("cutover_case_count", 0)) == 20, "Player Hand Interaction Bench preserves twenty characterization cases and adds the exact twenty Sprint 33 cutover cases")
+		_expect(fields_ok, "Player Hand Interaction manifest preview includes every requested aggregate, ownership, privacy, observation, and alignment field")
+		_expect(str(bench.call("output_dir")) == PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(manifest.get("output_dir", "")) == PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and str(manifest.get("screenshot_path", "")) == PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH, "Player Hand Interaction QA writes manifest, report, and screenshot to the expected user:// paths")
+		_expect(PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.begins_with("user://") and not PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.contains("res://reports") and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Player Hand Interaction manifest preview is pure data and never targets tracked reports")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var bench_source := FileAccess.get_file_as_string(PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT)
+	var inventory_source := FileAccess.get_file_as_string(CARD_INVENTORY_RUNTIME_SERVICE_SCRIPT)
+	var interaction_source := FileAccess.get_file_as_string(PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCRIPT)
+	var production_boundary_intact := main_source.contains("func _apply_player_hand_disrupt(") and main_source.contains("func _apply_player_hand_steal(") and main_source.contains("func _resolve_player_hand_interaction(") and not main_source.contains("func _take_private_hand_card_from_player(") and not main_source.contains("func _lock_private_hand_card_for_player(") and not main_source.contains("func _transfer_private_hand_card_between_players(")
+	_expect(production_boundary_intact and interaction_source.contains("func plan_interaction(") and interaction_source.contains("func commit_interaction(") and interaction_source.contains("penalty_paid = mini") and interaction_source.contains("compensation_paid") and inventory_source.contains("func plan_remove(") and inventory_source.contains("func plan_lock(") and inventory_source.contains("func plan_transfer("), "Sprint 33 moves orchestration, penalty, compensation, and event intents to the scene service while inventory keeps slot mutation")
+	var runtime_catalog: Resource = load(CARD_RUNTIME_CATALOG_RESOURCE)
+	for card_id in ["星链拆解1", "星链拆解2", "星链拆解3", "星链拆解4", "影仓牵引1", "影仓牵引2", "影仓牵引3", "影仓牵引4"]:
+		_expect(runtime_catalog != null and bool(runtime_catalog.call("has_card", card_id)) and bench_source.contains('"%s"' % card_id), "Player Hand Interaction characterization uses real runtime card %s" % card_id)
+	_expect(bench_source.contains("MAIN_SCENE_PATH") and bench_source.contains("packed.instantiate() as Control") and bench_source.contains("_runtime_main.call(\"_apply_player_hand_disrupt\"") == false, "Player Hand Interaction Bench does not hard-code an invalid direct-call pattern")
+	_expect(bench_source.contains("func _execute_interaction") and bench_source.contains("_runtime_main.call(method_name, 0, 1, skill)") and bench_source.contains("func _execute_queued_route") and bench_source.contains("queue_service.call(\"replace_active_entry\", entry)") and bench_source.contains("_runtime_main.call(\"_complete_active_card_resolution\")") and bench_source.contains("func cutover_cases"), "Player Hand Interaction Bench observes compatibility entry points, the real execution-service queue route, and service ownership cutover")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	var registry_record: Dictionary = {}
+	var service_registry_record: Dictionary = {}
+	if registry != null and registry.has_method("records"):
+		for record_variant in registry.call("records"):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			if str(record.get("id", "")) == "player_hand_interaction_runtime_characterization_bench":
+				registry_record = record
+			if str(record.get("id", "")) == "player_hand_interaction_runtime_service":
+				service_registry_record = record
+	_expect(str(registry_record.get("scene_path", "")) == PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE and bool(registry_record.get("smoke_check_enabled", false)), "MCP Editability Hub registry includes Player Hand Interaction Characterization Bench")
+	_expect(str(service_registry_record.get("scene_path", "")) == PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE and bool(service_registry_record.get("smoke_check_enabled", false)), "MCP Editability Hub registry includes PlayerHandInteractionRuntimeService")
+	var sceneization_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var sceneization: RefCounted = sceneization_script.new() if sceneization_script != null else null
+	var sceneization_record: Dictionary = sceneization.call("record_for_id", "player_hand_interaction_characterization_gate") if sceneization != null and sceneization.has_method("record_for_id") else {}
+	_expect(str(sceneization_record.get("current_scene_path", "")) == PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE and str(sceneization_record.get("sceneization_status", "")) == "full" and str(sceneization_record.get("source_script_path", "")) == PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCRIPT, "Sceneization Audit records full Player Hand Interaction runtime ownership in the service scene")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	var system_record: Dictionary = system_audit.call("record_for_id", "player_hand_interaction_orchestration_characterized") if system_audit != null and system_audit.has_method("record_for_id") else {}
+	_expect(str(system_record.get("current_path", "")) == PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE and str(system_record.get("current_status", "")) == "sceneized" and str(system_record.get("mcp_notes", "")).contains("40/40"), "System Resourceization Audit records Player Hand Interaction orchestration as sceneized")
+	var contract_source := FileAccess.get_file_as_string(PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_CONTRACT_DOC)
+	var replacement_source := FileAccess.get_file_as_string("res://docs/main_runtime_replacement.md")
+	_expect(contract_source.contains("converted_to_remove") and contract_source.contains("pay 220 once, not twice") and contract_source.contains("target_player_<index>") and contract_source.contains("Sprint 33 cutover complete"), "Player Hand Interaction runtime contract records conversion, one-time compensation, stable actions, privacy, and completed Sprint 33 ownership")
+	_expect(replacement_source.contains("Sprint 33: Player Hand Interaction Runtime Cutover") and replacement_source.contains("PlayerHandInteractionRuntimeService") and replacement_source.contains("40/40"), "main runtime replacement log records the Sprint 33 service cutover and gate")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(440, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenPlayerHandInteractionRuntimeServiceButton", "OpenPlayerHandInteractionRuntimeCharacterizationBenchButton", "RunPlayerHandInteractionRuntimeCharacterizationBenchButton", "OpenPlayerHandInteractionRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "SpaceSyndicateDesignQADock contains %s" % button_name)
+		_expect(dock.has_method("player_hand_interaction_runtime_service_scene_path") and dock.has_method("player_hand_interaction_runtime_characterization_bench_scene_path") and dock.has_method("player_hand_interaction_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Player Hand Interaction service, bench, and output path helpers")
+		_expect(str(dock.call("player_hand_interaction_runtime_service_scene_path")) == PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE, "Design QA Dock targets PlayerHandInteractionRuntimeService")
+		_expect(str(dock.call("player_hand_interaction_runtime_characterization_bench_scene_path")) == PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE and str(dock.call("player_hand_interaction_runtime_characterization_qa_output_dir")) == PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR, "Design QA Dock targets the Player Hand Interaction Bench and user:// output")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		var service_paths: Array[String] = []
+		if dock.has_signal("open_player_hand_interaction_runtime_service_requested"):
+			dock.connect("open_player_hand_interaction_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		if dock.has_signal("open_player_hand_interaction_runtime_characterization_bench_requested"):
+			dock.connect("open_player_hand_interaction_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		if dock.has_signal("run_player_hand_interaction_runtime_characterization_bench_requested"):
+			dock.connect("run_player_hand_interaction_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		var open_button := dock.find_child("OpenPlayerHandInteractionRuntimeCharacterizationBenchButton", true, false) as Button
+		var run_button := dock.find_child("RunPlayerHandInteractionRuntimeCharacterizationBenchButton", true, false) as Button
+		var service_button := dock.find_child("OpenPlayerHandInteractionRuntimeServiceButton", true, false) as Button
+		if service_button != null:
+			service_button.emit_signal("pressed")
+		if open_button != null:
+			open_button.emit_signal("pressed")
+		if run_button != null:
+			run_button.emit_signal("pressed")
+		await process_frame
+		_expect(service_paths == [PLAYER_HAND_INTERACTION_RUNTIME_SERVICE_SCENE] and open_paths == [PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [PLAYER_HAND_INTERACTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit the Player Hand Interaction Service and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_card_resolution_queue_runtime_characterization_component() -> void:
+	for path in [
+		CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCRIPT,
+		CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE,
+		CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT,
+		CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Card Resolution Queue Runtime Characterization" % path)
+	_expect(FileAccess.file_exists(CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_CONTRACT_DOC), "Card Resolution Queue ownership contract exists")
+	var service_packed := load(CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	_expect(service != null and service.scene_file_path == CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE and service.has_method("plan_submission") and service.has_method("commit_submission") and service.has_method("lock_batch") and service.has_method("start_next") and service.has_method("complete_active") and service.has_method("promote_next_batch") and service.has_method("to_legacy_save_snapshot") and service.has_method("debug_snapshot"), "CardResolutionQueueRuntimeService exposes the complete scene-owned queue lifecycle API")
+	if service != null:
+		service.free()
+	var packed := load(CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "CardResolutionQueueRuntimeCharacterizationBench loads as a PackedScene")
+	var expected_cases := [
+		"queue_call_graph_complete",
+		"timing_controller_boundary_unchanged",
+		"first_submit_starts_batch",
+		"same_player_group_order_one_to_three",
+		"fourth_card_rejected_without_mutation",
+		"duplicate_card_submit_rejected",
+		"organize_phase_accepts_submission",
+		"lock_phase_rejects_new_cards",
+		"persistent_card_stays_and_marks_queued",
+		"consumable_card_leaves_slot_on_queue",
+		"play_cost_paid_exactly_once",
+		"insufficient_cost_and_bid_rejects_atomically",
+		"positive_bid_collision_falls_back_zero",
+		"bid_normalized_to_affordable_cash",
+		"group_sort_uses_bid_descending",
+		"equal_bid_uses_clockwise_reference",
+		"player_group_remains_contiguous",
+		"lock_writes_batch_position_and_locked_bid",
+		"start_next_pops_one_active_entry",
+		"invalid_entry_skips_without_stall",
+		"active_resolution_blocks_normal_submission",
+		"counter_routes_to_next_queue",
+		"one_counter_per_player_per_window",
+		"finish_batch_promotes_next_queue",
+		"promotion_rewrites_window_group_and_order",
+		"current_queue_save_load_parity",
+		"active_and_next_queue_save_load_parity",
+		"public_snapshot_privacy_boundary",
+	]
+	var expected_cutover_cases := [
+		"service_scene_composition",
+		"coordinator_composes_service",
+		"service_configured_v04",
+		"service_owns_current_queue",
+		"service_owns_active_entry",
+		"service_owns_next_queue",
+		"service_owns_resolution_sequence",
+		"service_submission_plan_pure",
+		"service_submission_commit",
+		"inventory_service_owns_queue_slot_mutation",
+		"submission_adapter_uses_both_services",
+		"fourth_card_atomic_via_service",
+		"duplicate_submission_atomic_via_service",
+		"positive_bid_collision_service",
+		"group_sort_service",
+		"lock_metadata_service",
+		"bid_chain_receipts_service",
+		"start_next_service",
+		"invalid_skip_service",
+		"counter_route_service",
+		"active_complete_service",
+		"next_promotion_service",
+		"legacy_save_service",
+		"public_debug_privacy",
+		"timing_controller_still_sole_owner",
+		"card_effect_resolver_unchanged",
+		"main_queue_storage_absent",
+		"legacy_queue_algorithms_absent",
+	]
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "ContractPanel", "OwnershipPanel", "CasesPanel"]:
+			_expect(bench.find_child(node_name, true, false) != null, "CardResolutionQueueRuntimeCharacterizationBench statically owns %s" % node_name)
+		var runtime_host := bench.find_child("RuntimeMainHost", true, false) as Control
+		_expect(runtime_host != null and not runtime_host.visible, "Card Resolution Queue Bench keeps its real-main host hidden from the report surface")
+		var methods_ok := true
+		for method_name in ["output_dir", "screenshot_path", "characterization_cases", "cutover_cases", "all_cases", "build_characterization_manifest_preview", "run_characterization_suite"]:
+			methods_ok = methods_ok and bench.has_method(method_name)
+		_expect(methods_ok, "Card Resolution Queue Bench exposes output, cases, manifest preview, and suite APIs")
+		var cases: Array = bench.call("characterization_cases") if bench.has_method("characterization_cases") else []
+		var cutover_cases: Array = bench.call("cutover_cases") if bench.has_method("cutover_cases") else []
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench.has_method("build_characterization_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var required_fields := [
+			"case_id", "gate_kind", "fixture_id", "queue_count", "next_queue_count", "active_present",
+			"group_count", "accepted", "cash_delta", "hand_delta", "ordering_checked",
+			"timing_boundary_checked", "save_checked", "privacy_checked", "pure_data_checked",
+			"service_owner_checked", "plan_checked", "commit_checked", "main_adapter_checked", "legacy_formula_absent",
+			"observed", "contract_aligned", "needs_design_decision", "risk", "notes",
+		]
+		var fields_ok := records.size() == 56
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in required_fields:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and cutover_cases == expected_cutover_cases and int(manifest.get("characterization_case_count", 0)) == 28 and int(manifest.get("cutover_case_count", 0)) == 28 and int(manifest.get("case_count", 0)) == 56 and int(manifest.get("record_count", 0)) == 56, "Card Resolution Queue Bench preserves twenty-eight characterization cases and adds the exact twenty-eight Sprint 35 cutover cases")
+		_expect(fields_ok, "Card Resolution Queue manifest preview contains lifecycle plus service-owner, plan, commit, adapter, deletion, privacy, observation, and alignment fields")
+		_expect(str(bench.call("output_dir")) == CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(manifest.get("output_dir", "")) == CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and str(manifest.get("screenshot_path", "")) == CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH, "Card Resolution Queue QA uses the expected user:// manifest, report, and screenshot paths")
+		_expect(CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.begins_with("user://") and not CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.contains("res://reports") and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Card Resolution Queue manifest preview is pure data and never targets tracked reports")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var bench_source := FileAccess.get_file_as_string(CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT)
+	var service_source := FileAccess.get_file_as_string(CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCRIPT)
+	var contract_source := FileAccess.get_file_as_string(CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_CONTRACT_DOC)
+	var replacement_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	var production_cutover_complete := not main_source.contains("var card_resolution_queue := []") and not main_source.contains("var next_card_resolution_queue := []") and not main_source.contains("var active_card_resolution := {}") and not main_source.contains("var card_resolution_sequence := 0") and main_source.contains("func _card_resolution_current_queue()") and main_source.contains("plan_card_resolution_queue_submission") and main_source.contains("commit_card_resolution_queue_submission") and main_source.contains("service.call(\"lock_batch\"") and main_source.contains("service.call(\"start_next\"") and main_source.contains("service.call(\"promote_next_batch\"")
+	_expect(production_cutover_complete, "Sprint 35 removes main.gd queue storage and leaves stateless service adapters for submit, lock, pop, and promotion")
+	_expect(bench_source.contains("MAIN_SCENE_PATH") and bench_source.contains("packed.instantiate() as Control") and bench_source.contains("PRE_CUTOVER_MAIN_SHA256") and service_source.contains("var _current_queue: Array = []") and service_source.contains("var _active_entry: Dictionary = {}") and service_source.contains("var _next_queue: Array = []"), "Sprint 35 uses real main.tscn and one scene-owned queue authority")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	var registry_record: Dictionary = {}
+	var service_registry_record: Dictionary = {}
+	if registry != null and registry.has_method("records"):
+		for record_variant in registry.call("records"):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			if str(record.get("id", "")) == "card_resolution_queue_runtime_characterization_bench":
+				registry_record = record
+			if str(record.get("id", "")) == "card_resolution_queue_runtime_service":
+				service_registry_record = record
+	_expect(str(registry_record.get("scene_path", "")) == CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCENE and bool(registry_record.get("smoke_check_enabled", false)) and str(service_registry_record.get("scene_path", "")) == CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE and bool(service_registry_record.get("smoke_check_enabled", false)), "MCP Editability Hub registry includes Card Resolution Queue Service and Cutover Bench")
+	var sceneization_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var sceneization: RefCounted = sceneization_script.new() if sceneization_script != null else null
+	var sceneization_record: Dictionary = sceneization.call("record_for_id", "card_resolution_queue_characterization_gate") if sceneization != null and sceneization.has_method("record_for_id") else {}
+	_expect(str(sceneization_record.get("current_scene_path", "")) == CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE and str(sceneization_record.get("sceneization_status", "")) == "full" and str(sceneization_record.get("source_script_path", "")) == CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCRIPT, "Sceneization Audit marks Card Resolution Queue ownership fully scene-owned")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	var system_record: Dictionary = system_audit.call("record_for_id", "card_resolution_queue_lifecycle_characterized") if system_audit != null and system_audit.has_method("record_for_id") else {}
+	_expect(str(system_record.get("current_path", "")) == CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE and str(system_record.get("current_status", "")) == "sceneized" and str(system_record.get("recommended_next_step", "")).contains("single-owned"), "System Resourceization Audit records the scene service as current queue lifecycle owner")
+	_expect(contract_source.contains("28/28 preserved characterization") and contract_source.contains("28/28 ownership cutover") and contract_source.contains("56/56") and contract_source.contains("CardResolutionQueueRuntimeService") and contract_source.contains("_resolve_queued_skill") and replacement_source.contains("Sprint 35: Card Resolution Queue Runtime Cutover"), "Queue contract and main replacement log record the completed ownership, privacy, save compatibility, and deletion gate")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(440, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCardResolutionQueueRuntimeServiceButton", "OpenCardResolutionQueueRuntimeCharacterizationBenchButton", "RunCardResolutionQueueRuntimeCharacterizationBenchButton", "OpenCardResolutionQueueRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "SpaceSyndicateDesignQADock contains %s" % button_name)
+		_expect(dock.has_method("card_resolution_queue_runtime_service_scene_path") and dock.has_method("card_resolution_queue_runtime_characterization_bench_scene_path") and dock.has_method("card_resolution_queue_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Card Resolution Queue service, bench, and output path helpers")
+		_expect(str(dock.call("card_resolution_queue_runtime_service_scene_path")) == CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE and str(dock.call("card_resolution_queue_runtime_characterization_bench_scene_path")) == CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCENE and str(dock.call("card_resolution_queue_runtime_characterization_qa_output_dir")) == CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_OUTPUT_DIR, "Design QA Dock targets the Card Resolution Queue Service, Bench, and user:// output")
+		var service_paths: Array[String] = []
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_card_resolution_queue_runtime_service_requested"):
+			dock.connect("open_card_resolution_queue_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		if dock.has_signal("open_card_resolution_queue_runtime_characterization_bench_requested"):
+			dock.connect("open_card_resolution_queue_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		if dock.has_signal("run_card_resolution_queue_runtime_characterization_bench_requested"):
+			dock.connect("run_card_resolution_queue_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		var service_button := dock.find_child("OpenCardResolutionQueueRuntimeServiceButton", true, false) as Button
+		var open_button := dock.find_child("OpenCardResolutionQueueRuntimeCharacterizationBenchButton", true, false) as Button
+		var run_button := dock.find_child("RunCardResolutionQueueRuntimeCharacterizationBenchButton", true, false) as Button
+		if service_button != null:
+			service_button.emit_signal("pressed")
+		if open_button != null:
+			open_button.emit_signal("pressed")
+		if run_button != null:
+			run_button.emit_signal("pressed")
+		await process_frame
+		_expect(service_paths == [CARD_RESOLUTION_QUEUE_RUNTIME_SERVICE_SCENE] and open_paths == [CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit the Card Resolution Queue Service and Cutover Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_card_resolution_execution_runtime_characterization_component() -> void:
+	for path in [
+		CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCRIPT,
+		CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE,
+		CARD_RESOLUTION_EXECUTION_WORLD_BRIDGE_SCRIPT,
+		CARD_RESOLUTION_EXECUTION_WORLD_BRIDGE_SCENE,
+		CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCRIPT,
+		CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCENE,
+		CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE_SCRIPT,
+		CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE_SCENE,
+		CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCRIPT,
+		CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCENE,
+		CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT,
+		CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Card Resolution Execution Runtime Cutover" % path)
+	_expect(FileAccess.file_exists(CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_TEST), "Card Resolution Execution focused service test exists")
+	_expect(FileAccess.file_exists(CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_CONTRACT_DOC), "Card Resolution Execution runtime contract exists")
+	_expect(FileAccess.file_exists(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_TEST), "Economy/Product/Route effect-family focused service test exists")
+	_expect(FileAccess.file_exists(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_CONTRACT_DOC), "Economy/Product/Route effect-family runtime contract exists")
+	_expect(FileAccess.file_exists(CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_TEST), "Economy/Product/Route formula focused service test exists")
+	_expect(FileAccess.file_exists(CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_CONTRACT_DOC), "Economy/Product/Route formula runtime contract exists")
+	var packed := load(CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "CardResolutionExecutionRuntimeCharacterizationBench loads as a PackedScene")
+	var expected_cases := [
+		"execution_call_graph_complete",
+		"queue_service_boundary_unchanged",
+		"timing_controller_boundary_unchanged",
+		"active_entry_is_read_from_queue_service",
+		"active_entry_not_duplicated_in_main_state",
+		"valid_target_reconfirmed_before_effect",
+		"invalid_target_fails_without_partial_mutation",
+		"target_state_drift_returns_stable_reason",
+		"immediate_economy_effect_applies_once",
+		"city_or_product_effect_applies_once",
+		"route_or_district_effect_applies_once",
+		"monster_effect_routes_to_existing_rule_owner",
+		"hand_interaction_routes_to_existing_service",
+		"inventory_mutation_routes_to_inventory_service",
+		"temporary_decision_pauses_resolution",
+		"temporary_decision_resume_continues_same_resolution",
+		"temporary_decision_cancel_behavior_characterized",
+		"counter_response_preserves_active_entry",
+		"contract_response_preserves_active_entry",
+		"monster_wager_preserves_active_entry",
+		"public_event_emitted_after_success",
+		"private_event_visibility_boundary",
+		"ledger_and_action_log_exactly_once",
+		"scenario_and_coach_hooks_exactly_once",
+		"failed_resolution_does_not_emit_success_feedback",
+		"successful_resolution_completes_active_once",
+		"next_queue_item_starts_after_completion",
+		"save_load_active_resolution_parity",
+	]
+	var expected_cutover_cases := [
+		"execution_service_scene_composition", "execution_service_api_contract", "real_main_routes_completion_through_service",
+		"active_entry_request_is_pure_data", "counter_check_precedes_active_release", "active_release_precedes_effect_dispatch",
+		"failed_active_release_blocks_effect", "countered_card_skips_original_effect", "countered_card_finishes_commitment",
+		"normal_effect_dispatches_once", "stale_requirement_keeps_no_refund_semantics", "stale_target_keeps_no_refund_semantics",
+		"persistent_card_restores_and_cools_down", "consumable_card_never_returns", "paid_cost_marker_preserved",
+		"selection_context_restored", "contract_context_restored", "city_development_uses_world_adapter",
+		"product_route_economy_use_world_adapters", "monster_and_player_target_use_world_adapters", "hand_interaction_uses_existing_service",
+		"contract_offer_remains_non_blocking", "monster_wager_handoff_uses_forced_scheduler", "aftermath_and_history_order_preserved",
+		"history_appended_exactly_once", "current_queue_starts_next_entry", "empty_current_queue_promotes_next_batch",
+		"save_resume_privacy_and_legacy_absence",
+		"formula_service_scene_composition", "formula_service_api_contract", "product_price_model_owner_unchanged",
+		"city_gdp_formula_owner_unchanged", "market_boon_formula_parity", "speculation_pressure_formula_parity",
+		"futures_formula_parity", "gdp_derivative_formula_parity", "route_formula_parity",
+		"main_pure_formula_bodies_absent", "effect_family_uses_formula_service", "execution_service_remains_formula_agnostic",
+		"product_contract_boon_formula_parity", "city_contract_boon_formula_parity", "contract_accept_route_flow_formula_parity",
+		"route_insurance_formula_parity", "city_product_upgrade_formula_parity", "city_product_shift_formula_parity",
+		"city_demand_shift_formula_parity", "city_adjustment_formula_parity", "main_contract_formula_bodies_absent",
+		"main_city_product_formula_bodies_absent", "world_rng_and_mutation_boundary_preserved", "execution_service_sprint40_formula_agnostic",
+	]
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "ContractPanel", "LifecyclePanel", "CasesPanel"]:
+			_expect(bench.find_child(node_name, true, false) != null, "CardResolutionExecutionRuntimeCharacterizationBench statically owns %s" % node_name)
+		var runtime_host := bench.find_child("RuntimeMainHost", true, false) as Control
+		_expect(runtime_host != null and not runtime_host.visible, "Card Resolution Execution Bench keeps its real-main host hidden from the report surface")
+		var methods_ok := true
+		for method_name in ["output_dir", "screenshot_path", "characterization_cases", "cutover_cases", "build_characterization_manifest_preview", "run_characterization_suite"]:
+			methods_ok = methods_ok and bench.has_method(method_name)
+		_expect(methods_ok, "Card Resolution Execution Bench exposes output, cases, manifest preview, and suite APIs")
+		var cases: Array = bench.call("characterization_cases") if bench.has_method("characterization_cases") else []
+		var cutover_cases: Array = bench.call("cutover_cases") if bench.has_method("cutover_cases") else []
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench.has_method("build_characterization_manifest_preview") else {}
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var required_fields := [
+			"case_id", "fixture_id", "card_id", "effect_family", "active_resolution_id", "target_kind", "target_valid",
+			"temporary_decision_kind", "world_mutation_delta", "inventory_delta", "public_event_delta", "private_event_delta",
+			"ledger_delta", "scenario_hook_delta", "active_completed", "next_started", "queue_service_checked",
+			"timing_boundary_checked", "existing_service_route_checked", "privacy_checked", "pure_data_checked",
+			"service_owner_checked", "intent_order_checked", "active_release_checked", "effect_dispatch_checked",
+			"exact_once_checked", "world_adapter_checked", "continuation_checked", "main_adapter_checked",
+			"formula_checked", "formula_owner_checked", "legacy_orchestration_absent", "observed", "contract_aligned", "cutover_checked",
+			"needs_design_decision", "risk", "notes",
+		]
+		var fields_ok := records.size() == 80
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in required_fields:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and cutover_cases == expected_cutover_cases and int(manifest.get("case_count", 0)) == 28 and int(manifest.get("cutover_case_count", 0)) == 52 and int(manifest.get("total_case_count", 0)) == 80 and int(manifest.get("record_count", 0)) == 80, "Card Resolution Execution Bench defines the exact 28 observation + 52 cutover matrix")
+		_expect(fields_ok, "Card Resolution Execution manifest preview contains the complete execution, continuation, service, privacy, observation, alignment, and decision fields")
+		_expect(str(bench.call("output_dir")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(manifest.get("output_dir", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and str(manifest.get("screenshot_path", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH, "Card Resolution Execution QA uses the expected user:// manifest, report, and screenshot paths")
+		_expect(CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.begins_with("user://") and not CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.contains("res://reports") and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Card Resolution Execution manifest preview is pure data and never targets tracked reports")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var bench_source := FileAccess.get_file_as_string(CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT)
+	var contract_source := FileAccess.get_file_as_string(CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_CONTRACT_DOC)
+	var replacement_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(not main_source.contains("func _resolve_queued_skill("), "Sprint 41 preserves the Sprint 40 execution and formula cutover while main.gd ownership continues shrinking")
+	_expect(main_source.contains("func _complete_active_card_resolution()") and main_source.contains("plan_card_resolution_execution") and main_source.contains("advance_card_resolution_execution") and main_source.contains("finalize_card_resolution_execution") and main_source.contains("func _apply_card_resolution_effect_request(") and not main_source.contains("func _resolve_queued_skill("), "Sprint 37 routes execution through the service and removes the legacy dispatch shell")
+	var effect_adapter_source := _function_source(main_source, "_apply_card_resolution_effect_request")
+	var family_service_source := FileAccess.get_file_as_string(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCRIPT)
+	var family_bridge_source := FileAccess.get_file_as_string(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE_SCRIPT)
+	var formula_service_source := FileAccess.get_file_as_string(CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCRIPT)
+	var execution_service_source := FileAccess.get_file_as_string(CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCRIPT)
+	var family_cutover_checked := effect_adapter_source.contains("plan_card_economy_product_route_effect") and effect_adapter_source.contains("finalize_card_economy_product_route_effect") and family_service_source.contains("HANDLER_FAMILIES")
+	for method_name in ["_apply_route_insurance", "_apply_region_economy_shift"]:
+		family_cutover_checked = family_cutover_checked and not effect_adapter_source.contains(method_name) and family_bridge_source.contains(method_name) and not execution_service_source.contains(method_name)
+	family_cutover_checked = family_cutover_checked and family_bridge_source.contains("_product_market_runtime_controller.apply_speculation") and family_bridge_source.contains("_product_market_runtime_controller.apply_futures") and not execution_service_source.contains("apply_speculation")
+	var contract_controller_source := FileAccess.get_file_as_string("res://scripts/runtime/contract_runtime_controller.gd")
+	family_cutover_checked = family_cutover_checked and family_bridge_source.contains("contract_controller.open_offer") and contract_controller_source.contains("func open_offer(") and not main_source.contains("func _apply_area_trade_contract(") and not execution_service_source.contains("_apply_area_trade_contract")
+	_expect(family_cutover_checked, "Sprint 40 keeps economy/product/route family dispatch modular while Execution Service remains family-agnostic")
+	var product_market_source := FileAccess.get_file_as_string("res://scripts/runtime/product_market_runtime_controller.gd")
+	var market_boon_source := _function_source(product_market_source, "apply_product_market_boon")
+	var futures_settlement_source := _function_source(product_market_source, "settle_futures_position")
+	var city_trade_network_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
+	var route_flow_source := _function_source(city_trade_network_source, "_trade_route_for_product")
+	var product_contract_source := _function_source(product_market_source, "apply_product_contract_boon")
+	var city_contract_source := _function_source(main_source, "_apply_city_contract_boon")
+	var route_insurance_source := _function_source(main_source, "_apply_route_insurance")
+	var city_upgrade_source := _function_source(main_source, "_apply_city_product_upgrade")
+	var product_shift_source := _function_source(main_source, "_apply_city_product_shift")
+	var demand_shift_source := _function_source(main_source, "_apply_city_demand_shift")
+	var formula_cutover_checked := formula_service_source.contains("FORMULA_IDS") and formula_service_source.contains("func _product_contract_boon(") and formula_service_source.contains("func _city_contract_boon(") and formula_service_source.contains("func _route_insurance(") and formula_service_source.contains("product_futures_v04_settlement") and formula_service_source.contains("warehouse_futures_v04_loss") and not formula_service_source.contains("\"product_futures_payout\"") and market_boon_source.contains("_formula(\"product_market_boon\"") and not market_boon_source.contains("clampf(") and futures_settlement_source.contains("settlement_formula_id") and not futures_settlement_source.contains("paying_delta") and route_flow_source.contains("route_base_flow") and not route_flow_source.contains("sqrt(") and product_contract_source.contains("product_contract_boon") and not product_contract_source.contains("market_contract_demand\"] = maxi") and city_contract_source.contains("city_contract_boon") and not city_contract_source.contains("contract_income_bonus\"] = maxi") and route_insurance_source.contains("route_insurance") and city_upgrade_source.contains("city_product_upgrade") and product_shift_source.contains("city_product_shift_step") and demand_shift_source.contains("city_demand_shift_step") and not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService") and not execution_service_source.contains("city_product_upgrade")
+	_expect(formula_cutover_checked, "Sprint 40 moves both characterized formula clusters out of main while Execution Service remains formula-agnostic")
+	_expect(bench_source.contains("MAIN_SCENE_PATH") and bench_source.contains("packed.instantiate() as Control") and bench_source.contains("CUTOVER_CASE_COUNT := 52") and contract_source.contains("Observed lifecycle") and contract_source.contains("Sprint 37 cutover result") and replacement_source.contains("Sprint 40"), "Sprint 40 uses real main.tscn and documents the 80-case execution/effect/formula gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	var registry_record: Dictionary = {}
+	var service_registry_record: Dictionary = {}
+	var effect_service_registry_record: Dictionary = {}
+	var formula_service_registry_record: Dictionary = {}
+	if registry != null and registry.has_method("records"):
+		for record_variant in registry.call("records"):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			if str(record.get("id", "")) == "card_resolution_execution_runtime_characterization_bench":
+				registry_record = record
+			elif str(record.get("id", "")) == "card_resolution_execution_runtime_service":
+				service_registry_record = record
+			elif str(record.get("id", "")) == "card_economy_product_route_effect_runtime_service":
+				effect_service_registry_record = record
+			elif str(record.get("id", "")) == "card_economy_product_route_formula_runtime_service":
+				formula_service_registry_record = record
+	_expect(str(registry_record.get("scene_path", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE and bool(registry_record.get("smoke_check_enabled", false)), "MCP Editability Hub registry includes Card Resolution Execution Characterization Bench")
+	_expect(str(service_registry_record.get("scene_path", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE and bool(service_registry_record.get("smoke_check_enabled", false)), "MCP Editability Hub registry includes Card Resolution Execution Runtime Service")
+	_expect(str(effect_service_registry_record.get("scene_path", "")) == CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCENE and bool(effect_service_registry_record.get("smoke_check_enabled", false)), "MCP Editability Hub registry includes the Economy/Product/Route effect-family service")
+	_expect(str(formula_service_registry_record.get("scene_path", "")) == CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCENE and bool(formula_service_registry_record.get("smoke_check_enabled", false)), "MCP Editability Hub registry includes the Economy/Product/Route Formula Service")
+	var sceneization_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var sceneization: RefCounted = sceneization_script.new() if sceneization_script != null else null
+	var sceneization_record: Dictionary = sceneization.call("record_for_id", "card_resolution_execution_characterization_gate") if sceneization != null and sceneization.has_method("record_for_id") else {}
+	_expect(str(sceneization_record.get("current_scene_path", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE and str(sceneization_record.get("sceneization_status", "")) == "full" and str(sceneization_record.get("source_script_path", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCRIPT, "Sceneization Audit records execution orchestration as service-owned")
+	var effect_sceneization_record: Dictionary = sceneization.call("record_for_id", "card_economy_product_route_effect_family_gate") if sceneization != null and sceneization.has_method("record_for_id") else {}
+	_expect(str(effect_sceneization_record.get("current_scene_path", "")) == CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCENE and str(effect_sceneization_record.get("sceneization_status", "")) == "full", "Sceneization Audit records economy/product/route effect dispatch as service-owned")
+	var formula_sceneization_record: Dictionary = sceneization.call("record_for_id", "card_economy_product_route_formula_gate") if sceneization != null and sceneization.has_method("record_for_id") else {}
+	_expect(str(formula_sceneization_record.get("current_scene_path", "")) == CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCENE and str(formula_sceneization_record.get("sceneization_status", "")) == "full", "Sceneization Audit records economy/product/route pure formulas as service-owned")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	var system_record: Dictionary = system_audit.call("record_for_id", "card_resolution_execution_orchestration_characterized") if system_audit != null and system_audit.has_method("record_for_id") else {}
+	_expect(str(system_record.get("current_path", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE and str(system_record.get("current_status", "")) == "sceneized", "System Resourceization Audit keeps execution lifecycle in its narrow service")
+	var effect_system_record: Dictionary = system_audit.call("record_for_id", "card_economy_product_route_effect_family_sceneized") if system_audit != null and system_audit.has_method("record_for_id") else {}
+	_expect(str(effect_system_record.get("current_path", "")) == CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCENE and str(effect_system_record.get("current_status", "")) == "sceneized", "System Resourceization Audit records the sceneized effect family")
+	var formula_system_record: Dictionary = system_audit.call("record_for_id", "card_economy_product_route_formula_sceneized") if system_audit != null and system_audit.has_method("record_for_id") else {}
+	_expect(str(formula_system_record.get("current_path", "")) == CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCENE and str(formula_system_record.get("current_status", "")) == "sceneized" and str(formula_system_record.get("recommended_next_step", "")).contains("market stabilization"), "System Resourceization Audit records the expanded pure Formula Service and next characterized cluster")
+	var conformance_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	var conformance_record: Dictionary = conformance.call("record_for_id", "active_card_execution") if conformance != null and conformance.has_method("record_for_id") else {}
+	_expect(str(conformance_record.get("current_status", "")) == "cutover_complete" and str(conformance_record.get("current_owner", "")).contains("CardResolutionExecutionRuntimeService"), "Ruleset v0.4 Conformance Registry records active-card execution cutover completion")
+	var effect_conformance_record: Dictionary = conformance.call("record_for_id", "economy_product_route_card_effect_dispatch") if conformance != null and conformance.has_method("record_for_id") else {}
+	_expect(str(effect_conformance_record.get("current_status", "")) == "cutover_complete" and str(effect_conformance_record.get("current_owner", "")).contains("CardEconomyProductRouteEffectRuntimeService"), "Ruleset v0.4 Conformance Registry records effect-family dispatch cutover")
+	var formula_conformance_record: Dictionary = conformance.call("record_for_id", "economy_product_route_formula_ownership") if conformance != null and conformance.has_method("record_for_id") else {}
+	_expect(str(formula_conformance_record.get("current_status", "")) == "cutover_complete" and str(formula_conformance_record.get("current_owner", "")).contains("CardEconomyProductRouteFormulaRuntimeService"), "Ruleset v0.4 Conformance Registry records pure formula cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(440, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCardResolutionExecutionRuntimeServiceButton", "OpenCardResolutionExecutionRuntimeCharacterizationBenchButton", "RunCardResolutionExecutionRuntimeCharacterizationBenchButton", "OpenCardResolutionExecutionRuntimeCharacterizationOutputFolderButton", "OpenCardEconomyProductRouteEffectRuntimeServiceButton", "OpenCardEconomyProductRouteFormulaRuntimeServiceButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "SpaceSyndicateDesignQADock contains %s" % button_name)
+		_expect(dock.has_method("card_resolution_execution_runtime_service_scene_path") and dock.has_method("card_resolution_execution_runtime_characterization_bench_scene_path") and dock.has_method("card_resolution_execution_runtime_characterization_qa_output_dir") and dock.has_method("card_economy_product_route_effect_runtime_service_scene_path") and dock.has_method("card_economy_product_route_formula_runtime_service_scene_path"), "Design QA Dock exposes execution, effect-family, and formula service helpers")
+		_expect(str(dock.call("card_resolution_execution_runtime_service_scene_path")) == CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE and str(dock.call("card_resolution_execution_runtime_characterization_bench_scene_path")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE and str(dock.call("card_resolution_execution_runtime_characterization_qa_output_dir")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR, "Design QA Dock targets the Card Resolution Execution Service, Bench, and user:// output")
+		var service_paths: Array[String] = []
+		var effect_service_paths: Array[String] = []
+		var formula_service_paths: Array[String] = []
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_card_resolution_execution_runtime_service_requested"):
+			dock.connect("open_card_resolution_execution_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		if dock.has_signal("open_card_economy_product_route_effect_runtime_service_requested"):
+			dock.connect("open_card_economy_product_route_effect_runtime_service_requested", func(scene_path: String) -> void: effect_service_paths.append(scene_path))
+		if dock.has_signal("open_card_economy_product_route_formula_runtime_service_requested"):
+			dock.connect("open_card_economy_product_route_formula_runtime_service_requested", func(scene_path: String) -> void: formula_service_paths.append(scene_path))
+		if dock.has_signal("open_card_resolution_execution_runtime_characterization_bench_requested"):
+			dock.connect("open_card_resolution_execution_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		if dock.has_signal("run_card_resolution_execution_runtime_characterization_bench_requested"):
+			dock.connect("run_card_resolution_execution_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		var service_button := dock.find_child("OpenCardResolutionExecutionRuntimeServiceButton", true, false) as Button
+		var effect_service_button := dock.find_child("OpenCardEconomyProductRouteEffectRuntimeServiceButton", true, false) as Button
+		var formula_service_button := dock.find_child("OpenCardEconomyProductRouteFormulaRuntimeServiceButton", true, false) as Button
+		var open_button := dock.find_child("OpenCardResolutionExecutionRuntimeCharacterizationBenchButton", true, false) as Button
+		var run_button := dock.find_child("RunCardResolutionExecutionRuntimeCharacterizationBenchButton", true, false) as Button
+		if service_button != null:
+			service_button.emit_signal("pressed")
+		if effect_service_button != null:
+			effect_service_button.emit_signal("pressed")
+		if formula_service_button != null:
+			formula_service_button.emit_signal("pressed")
+		if open_button != null:
+			open_button.emit_signal("pressed")
+		if run_button != null:
+			run_button.emit_signal("pressed")
+		await process_frame
+		_expect(service_paths == [CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE] and effect_service_paths == [CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCENE] and formula_service_paths == [CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCENE] and open_paths == [CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit the execution, effect-family, formula, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_economy_cashflow_runtime_cutover_component() -> void:
+	for path in [
+		ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCRIPT,
+		ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE,
+		ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCRIPT,
+		ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Economy Cashflow Runtime Cutover" % path)
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	if coordinator != null and bridge != null:
+		coordinator.call("configure", bridge.call("debug_snapshot"))
+		var controller := coordinator.get_node_or_null("EconomyCashflowRuntimeController")
+		var required_methods := ["configure", "reset_state", "advance_clock", "settle_sources", "accumulator_seconds", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "private_ui_snapshot", "debug_snapshot"]
+		var methods_ok := controller != null and controller.scene_file_path == ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE
+		for method_name in required_methods:
+			methods_ok = methods_ok and controller != null and controller.has_method(method_name)
+		_expect(methods_ok, "EconomyCashflowRuntimeController is an editable scene owner with cadence, payout planning, save, and snapshot APIs")
+		var debug: Dictionary = controller.call("debug_snapshot") if controller != null else {}
+		_expect(bool(debug.get("controller_authoritative", false)) and bool(debug.get("realtime_income_enabled", false)), "RulesetRuntimeBridge enables the v0.4 realtime cashflow authority")
+		_expect(is_equal_approx(float(debug.get("tick_interval_seconds", 0.0)), 1.0) and is_equal_approx(float(debug.get("basis_seconds", 0.0)), 60.0), "EconomyCashflowRuntimeController scene owns the one-second cadence and sixty-second GDP basis")
+		if controller != null:
+			controller.call("reset_state")
+			var ticks: Array = controller.call("advance_clock", 2.25, {"overlay_visible": true})
+			var result: Dictionary = controller.call("settle_sources", 1.0, {"sources": [{"source_id": "city:smoke", "source_kind": "city_owner", "district_index": 0, "player_index": 0, "gdp_per_minute": 40, "remainder": 0.0, "role_bonus_gdp_per_minute": 0, "role_bonus_basis_gdp_per_minute": 40, "eligible": true}]})
+			var event: Dictionary = ((result.get("payout_events", []) as Array)[0] as Dictionary) if not (result.get("payout_events", []) as Array).is_empty() else {}
+			_expect(ticks == [1.0, 1.0] and is_equal_approx(float(controller.call("accumulator_seconds")), 0.25), "controller emits deterministic active-time ticks and retains sub-tick time")
+			_expect(int(event.get("paid_amount", -1)) == 0 and is_equal_approx(float(event.get("remainder_after", -1.0)), 2.0 / 3.0), "controller plans explicit floor and fractional remainder arithmetic")
+			controller.call("apply_legacy_save_snapshot", {"economy_cashflow_timer": 0.625})
+			var legacy: Dictionary = controller.call("to_legacy_save_snapshot")
+			var private_ui: Dictionary = controller.call("private_ui_snapshot", 0)
+			_expect(is_equal_approx(float(legacy.get("economy_cashflow_timer", 0.0)), 0.625), "legacy v1 cashflow timer restores into controller authority")
+			_expect(not _variant_contains_callable(debug) and not _variant_contains_object(debug) and not _variant_contains_callable(result) and not _variant_contains_object(result) and not _variant_contains_callable(private_ui) and not _variant_contains_object(private_ui), "cashflow debug, payout, and private UI payloads remain pure data")
+		coordinator.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyCashflowRuntimeController") if main != null else null
+		_expect(main_controller != null and main_controller.scene_file_path == ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE, "main.tscn composes EconomyCashflowRuntimeController under GameRuntimeCoordinator")
+		if main != null:
+			main.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var controller_source := FileAccess.get_file_as_string(ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCRIPT)
+	var network_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	_expect(not main_source.contains("var economy_cashflow_timer") and not main_source.contains("ECONOMY_CASHFLOW_TICK_SECONDS") and not main_source.contains("ECONOMY_CASHFLOW_BASIS_SECONDS"), "main.gd no longer owns the realtime cashflow timer or cadence constants")
+	_expect(not main_source.contains("func _settle_city_project_cashflow_seconds") and main_source.contains("advance_economy_cashflow") and main_source.contains("func _settle_city_cashflow_seconds") and main_source.contains('"settle_cashflow_seconds"') and network_source.contains('call("settle_sources"') and coordinator_source.contains("func settle_economy_sources("), "main.gd retains a narrow settlement entry while CityTradeNetworkRuntimeController composes payout sources and delegates arithmetic")
+	_expect(not controller_source.contains("_city_gdp_per_minute_breakdown") and not controller_source.contains("_district_transit_gdp") and not controller_source.contains("players") and not controller_source.contains("districts"), "cashflow controller does not absorb GDP, route, player, or district domain ownership")
+	var bench_packed := load(ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "EconomyCashflowRuntimeCutoverBench exposes required QA APIs")
+		var expected_cases := ["controller_scene_composition", "ruleset_realtime_income_enabled", "scene_owned_cadence_config", "sub_tick_accumulator", "exact_one_second_tick", "multi_tick_catchup", "session_pause_preserves_accumulator", "forced_global_block_preserves_accumulator", "game_over_blocks_cashflow", "exact_one_minute_owner_payout", "fractional_remainder_carries", "project_share_split_payout", "project_remainders_conserve_value", "eliminated_player_no_payout", "destroyed_city_source_excluded", "ledger_and_cash_history_parity", "real_main_owner_delegates", "real_main_project_share_delegates", "legacy_save_timer_restores", "privacy_pure_data_and_main_legacy_authority_inactive"]
+		var cases: Array = bench.call("cutover_cases")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "input_seconds", "emitted_tick_count", "payout_total", "payout_event_count", "remainder_checked", "blocking_checked", "main_delegation_checked", "save_compatibility_checked", "privacy_checked", "pure_data_checked", "controller_ready", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == ECONOMY_CASHFLOW_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == ECONOMY_CASHFLOW_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "EconomyCashflowRuntimeCutoverBench defines 20 pure-data cases and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var record: Dictionary = audit.call("record_for_id", "economy_cashflow_runtime_ownership_gate")
+		_expect(str(record.get("current_scene_path", "")) == ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks economy cashflow runtime ownership complete")
+	var conformance_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	if conformance != null:
+		var rule: Dictionary = conformance.call("record_for_id", "realtime_cashflow")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("EconomyCashflowRuntimeController"), "Ruleset Conformance records realtime cashflow cutover as complete")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes Economy Cashflow Controller and Cutover Bench")
+	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(doc_source.contains("Economy Cashflow Cadence and Payout Planning Cutover") and doc_source.contains("EconomyCashflowRuntimeController"), "main runtime replacement document records the Sprint 4 ownership boundary")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenEconomyCashflowRuntimeControllerButton", "RunEconomyCashflowRuntimeCutoverBenchButton", "OpenEconomyCashflowRuntimeCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		var controller_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_economy_cashflow_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
+		dock.connect("run_economy_cashflow_runtime_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenEconomyCashflowRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunEconomyCashflowRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(controller_paths == [ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE] and bench_paths == [ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Economy Cashflow Controller and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_gdp_formula_runtime_cutover_component() -> void:
+	for path in [
+		GDP_FORMULA_PROFILE_SCRIPT,
+		GDP_FORMULA_PROFILE_RESOURCE,
+		GDP_FORMULA_RUNTIME_CONTROLLER_SCRIPT,
+		GDP_FORMULA_RUNTIME_CONTROLLER_SCENE,
+		GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCRIPT,
+		GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for GDP Formula Runtime Cutover" % path)
+	var profile := load(GDP_FORMULA_PROFILE_RESOURCE) as Resource
+	_expect(profile != null and profile.has_method("to_dictionary") and profile.has_method("validate_profile"), "GDP Formula Profile is Inspector-editable and exposes pure parameter/validation APIs")
+	if profile != null:
+		var parameters: Dictionary = profile.call("to_dictionary")
+		_expect(int(parameters.get("product_base_revenue", 0)) == 42 and int(parameters.get("product_level_revenue", 0)) == 12 and int(parameters.get("demand_supply_revenue", 0)) == 28 and int(parameters.get("transit_gdp_base", 0)) == 18 and int(parameters.get("competition_penalty", 0)) == 16 and int(parameters.get("trade_disruption_penalty", 0)) == 55 and int(parameters.get("district_damage_penalty", 0)) == 18 and int(parameters.get("minimum_city_gdp", 0)) == 40, "GDP Formula Profile preserves the characterized main.gd parameter values")
+		_expect(not _variant_contains_callable(parameters) and not _variant_contains_object(parameters), "GDP Formula Profile emits pure parameter data")
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	if coordinator != null and bridge != null:
+		coordinator.call("configure", bridge.call("debug_snapshot"))
+		var controller := coordinator.get_node_or_null("GdpFormulaRuntimeController")
+		var required_methods := ["configure", "parameters_snapshot", "empty_breakdown", "calculate_city_gdp", "calculate_transit_gdp", "breakdown_summary", "change_reason_text", "debug_snapshot"]
+		var methods_ok := controller != null and controller.scene_file_path == GDP_FORMULA_RUNTIME_CONTROLLER_SCENE
+		for method_name in required_methods:
+			methods_ok = methods_ok and controller != null and controller.has_method(method_name)
+		_expect(methods_ok, "GdpFormulaRuntimeController is an editable scene owner with formula, transit, summary, and debug APIs")
+		var production: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "products": [{"product_id": "测试生产", "price": 100, "level": 1, "production_factor": 1.0, "supply_demand_ratio": 1.0, "transport_speed": 1.0}]})
+		var demand: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "routes": [{"product_id": "测试需求", "price": 80, "flow_amount": 1.0, "consumption_factor": 1.0, "supply_availability_ratio": 1.0, "flow_speed": 1.0, "disrupted": false}]})
+		var transit: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "transit_routes": [{"product_id": "测试过境", "price": 100, "flow_amount": 1.0, "transport_speed": 1.0, "disrupted": false, "destination_is_district": false, "path_contains_district": true}]})
+		var pressure: Dictionary = coordinator.call("calculate_city_gdp", {"active": true, "revenue_bonus": 100, "competition_matches": 2, "disrupted_route_count": 1, "district_damage": 1})
+		_expect(int(production.get("product", 0)) == 36 and int(production.get("net", 0)) == 40, "controller preserves production arithmetic, rounding, and active-city floor")
+		_expect(int(demand.get("route", 0)) == 27 and int(transit.get("transit", 0)) == 23, "controller preserves demand and transit arithmetic")
+		_expect(int(pressure.get("penalty", 0)) == 105 and int(pressure.get("net_before_floor", 0)) == -5 and int(pressure.get("net", 0)) == 40, "controller preserves competition, disruption, damage, and floor semantics")
+		var debug: Dictionary = controller.call("debug_snapshot") if controller != null else {}
+		_expect(bool(debug.get("controller_authoritative", false)) and not bool(debug.get("legacy_formula_fallback_used", true)), "GDP formula controller is authoritative with legacy fallback inactive")
+		_expect(not _variant_contains_callable(production) and not _variant_contains_object(production) and not _variant_contains_callable(pressure) and not _variant_contains_object(pressure), "GDP formula inputs and outputs remain pure data")
+		coordinator.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GdpFormulaRuntimeController") if main != null else null
+		_expect(main_controller != null and main_controller.scene_file_path == GDP_FORMULA_RUNTIME_CONTROLLER_SCENE, "main.tscn composes GdpFormulaRuntimeController under GameRuntimeCoordinator")
+		if main != null:
+			main.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for legacy_token in ["CITY_PRODUCT_BASE_REVENUE", "CITY_PRODUCT_LEVEL_REVENUE", "CITY_DEMAND_SUPPLY_REVENUE", "CITY_PRODUCT_PRICE_REVENUE_DIVISOR", "CITY_DEMAND_PRICE_REVENUE_DIVISOR", "CITY_PRODUCTION_GDP_SCALE", "CITY_CONSUMPTION_GDP_SCALE", "CITY_TRANSIT_GDP_BASE", "CITY_TRANSIT_PRICE_DIVISOR", "CITY_COMPETITION_PENALTY", "TRADE_DISRUPTION_PENALTY", "CITY_DAMAGE_GDP_PENALTY", "CITY_MINIMUM_INCOME", "func _district_transit_gdp"]:
+		_expect(not main_source.contains(legacy_token), "main.gd no longer owns GDP formula token %s" % legacy_token)
+	var city_trade_network_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
+	_expect(not main_source.contains("func _city_gdp_formula_snapshot") and city_trade_network_source.contains("func gdp_formula_snapshot(") and city_trade_network_source.contains("calculate_city_gdp") and main_source.contains("gdp_formula_breakdown_summary") and main_source.contains("gdp_formula_change_reason_text"), "CityTradeNetworkRuntimeController assembles GDP facts while main.gd retains only display compatibility delegation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank < 46661 and function_count <= 2219 and variable_count <= 255 and constant_count < 342, "main.gd passes Sprint 6 GDP formula deletion metrics")
+	var bench_packed := load(GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "GdpFormulaRuntimeCutoverBench exposes required QA APIs")
+		var expected_cases := ["profile_scene_composition", "profile_parameter_parity", "inactive_city_zero", "bonus_contract_composition", "production_baseline_exact", "production_price_direction", "production_level_direction", "production_factor_direction", "production_transport_direction", "demand_baseline_exact", "demand_price_direction", "demand_amount_direction", "demand_speed_direction", "transit_exact", "competition_penalty_exact", "route_disruption_penalty_exact", "damage_penalty_exact", "temporary_pressure_exact", "minimum_floor_exact", "real_main_delegates_legacy_inactive"]
+		var cases: Array = bench.call("cutover_cases")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "expected_net", "actual_net", "product_gdp", "demand_gdp", "transit_gdp", "penalty", "parameter_checked", "main_delegation_checked", "pure_data_checked", "controller_ready", "legacy_fallback_used", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == GDP_FORMULA_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "GdpFormulaRuntimeCutoverBench defines 20 pure-data cases and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var record: Dictionary = audit.call("record_for_id", "gdp_formula_runtime_ownership_gate")
+		_expect(str(record.get("current_scene_path", "")) == GDP_FORMULA_RUNTIME_CONTROLLER_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks GDP formula runtime ownership complete")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(GDP_FORMULA_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes GDP Formula Controller and Cutover Bench")
+	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(doc_source.contains("GDP Formula Characterization and Runtime Ownership Cutover") and doc_source.contains("GdpFormulaRuntimeController"), "main runtime replacement document records the Sprint 6 GDP formula boundary")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenGdpFormulaRuntimeControllerButton", "RunGdpFormulaRuntimeCutoverBenchButton", "OpenGdpFormulaRuntimeCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		var controller_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_gdp_formula_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
+		dock.connect("run_gdp_formula_runtime_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenGdpFormulaRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunGdpFormulaRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(controller_paths == [GDP_FORMULA_RUNTIME_CONTROLLER_SCENE] and bench_paths == [GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit GDP Formula Controller and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_scenario_runtime_glue_cutover_component() -> void:
+	for path in [
+		SCENARIO_RUNTIME_CONTROLLER_SCRIPT,
+		SCENARIO_RUNTIME_CONTROLLER_SCENE,
+		SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCRIPT,
+		SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Scenario Runtime Glue Cutover" % path)
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	if coordinator != null and bridge != null:
+		coordinator.call("configure", bridge.call("debug_snapshot"))
+		var controller := coordinator.get_node_or_null("ScenarioRuntimeController")
+		var required_methods := ["configure", "start_scenario", "clear_scenario", "active_scenario_id", "active_snapshot_key", "progress_snapshot", "complete_signal", "record_action", "record_failed_attempt", "set_coach_closed", "set_snapshot_key", "viewer_action_log", "state_snapshot", "debug_snapshot"]
+		var methods_ok := controller != null and controller.scene_file_path == SCENARIO_RUNTIME_CONTROLLER_SCENE
+		for method_name in required_methods:
+			methods_ok = methods_ok and controller != null and controller.has_method(method_name)
+		_expect(methods_ok, "ScenarioRuntimeController is an editable scene owner with catalog, progress, coach, log, and snapshot APIs")
+		var catalog: Array = coordinator.call("scenario_catalog")
+		var definition: Dictionary = coordinator.call("scenario_definition", "first_table")
+		_expect(catalog.size() == 8 and (definition.get("phases", []) as Array).size() == 14, "ScenarioRuntimeController reuses the real eight-scenario catalog and fourteen-phase first_table")
+		coordinator.call("start_runtime_scenario", "first_table", 10.0)
+		var before: Dictionary = coordinator.call("runtime_scenario_progress", 10.0)
+		var rejected: Dictionary = coordinator.call("complete_runtime_scenario_signal", "monster_summoned", {"time": "00:11", "public_text": "out of order", "viewer_index": 0, "snapshot_key": "after_summon"}, 11.0)
+		var accepted: Dictionary = coordinator.call("complete_runtime_scenario_signal", "district_selected", {"time": "00:12", "public_text": "selected", "viewer_index": 0, "snapshot_key": "after_select"}, 12.0)
+		var duplicate: Dictionary = coordinator.call("complete_runtime_scenario_signal", "district_selected", {"time": "00:13", "public_text": "duplicate", "viewer_index": 0, "snapshot_key": "after_select"}, 13.0)
+		var after: Dictionary = coordinator.call("runtime_scenario_progress", 13.0)
+		var before_phase: Dictionary = before.get("current_phase", {}) if before.get("current_phase", {}) is Dictionary else {}
+		var after_phase: Dictionary = after.get("current_phase", {}) if after.get("current_phase", {}) is Dictionary else {}
+		_expect(str(before_phase.get("id", "")) == "select_district" and not bool(rejected.get("accepted", true)) and bool(accepted.get("accepted", false)) and str(after_phase.get("id", "")) == "first_summon" and bool(duplicate.get("duplicate", false)), "scenario authority rejects out-of-order and duplicate signals while advancing the expected signal once")
+		coordinator.call("record_runtime_scenario_action", {"time": "00:13", "phase_id": "privacy", "public_text": "public", "private_text": "owner-only", "developer_text": "true_owner=player3", "viewer_index": 0, "snapshot_key": "after_select", "focus_target": "scenario_coach"})
+		var owner_log: Array = coordinator.call("runtime_scenario_viewer_action_log", 0, false)
+		var rival_log: Array = coordinator.call("runtime_scenario_viewer_action_log", 2, false)
+		var state: Dictionary = coordinator.call("runtime_scenario_state", 13.0)
+		var visual_request: Dictionary = coordinator.call("build_runtime_scenario_visual_event_request", "first_table", "after_select", "district_selected")
+		_expect(JSON.stringify(owner_log).contains("owner-only") and not JSON.stringify(rival_log).contains("owner-only") and not JSON.stringify(owner_log).contains("true_owner"), "scenario action-log API enforces viewer and developer privacy")
+		_expect(not _variant_contains_callable(state) and not _variant_contains_object(state) and not _variant_contains_callable(visual_request) and not _variant_contains_object(visual_request), "scenario state and visual-event request remain pure data")
+		coordinator.call("reset_state")
+		_expect(str(coordinator.call("active_runtime_scenario_id")) == "first_table", "generic coordinator reset preserves a scenario activated before _new_game")
+		coordinator.call("clear_runtime_scenario")
+		_expect(str(coordinator.call("active_runtime_scenario_id")) == "", "free-run reset uses explicit clear_runtime_scenario")
+		coordinator.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController") if main != null else null
+		_expect(main_controller != null and main_controller.scene_file_path == SCENARIO_RUNTIME_CONTROLLER_SCENE, "main.tscn composes ScenarioRuntimeController under GameRuntimeCoordinator")
+		if main != null:
+			main.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for legacy_token in ["var active_scenario_id", "var active_scenario_snapshot_key", "var scenario_completed_signals", "var scenario_phase_failed_attempts", "var scenario_phase_started_at", "var scenario_coach_closed", "var scenario_action_log_entries", "ScenarioLoaderScript", "ScenarioProgressScript", "SCENARIO_VISUAL_EVENT_FORBIDDEN_KEYS"]:
+		_expect(not main_source.contains(legacy_token), "main.gd no longer owns %s" % legacy_token)
+	_expect(main_source.contains("complete_runtime_scenario_signal") and main_source.contains("runtime_scenario_progress") and main_source.contains("build_runtime_scenario_visual_event_request"), "main.gd keeps compatibility entries while delegating scenario progress and visual-event filtering")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank < 46673 and function_count < 2220 and variable_count < 262 and constant_count < 345, "main.gd passes all four Sprint 5 deletion metrics")
+	var bench_packed := load(SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "ScenarioRuntimeGlueCutoverBench exposes required QA APIs")
+		var expected_cases := ["controller_scene_composition", "real_scenario_catalog_eight_entries", "first_table_definition_loads", "first_table_start_phase_select_district", "irrelevant_signal_rejected", "out_of_order_signal_rejected", "expected_signal_advances", "duplicate_signal_idempotent", "full_first_table_fourteen_phase_sequence", "snapshot_key_updates_from_phase", "phase_timer_and_failed_attempts", "coach_close_reopen_state", "action_log_public_entry", "action_log_private_viewer_filter", "developer_log_hidden_from_player", "visual_event_request_descriptor_only", "mission_completion_emitted_once", "restart_reset_deterministic", "current_v1_save_non_persistence_parity", "real_main_delegates_and_legacy_authority_inactive"]
+		var cases: Array = bench.call("cutover_cases")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "scenario_id", "phase_before", "submitted_signal", "phase_after", "accepted", "duplicate_checked", "log_checked", "privacy_checked", "main_delegation_checked", "persistence_parity_checked", "pure_data_checked", "controller_ready", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == SCENARIO_RUNTIME_GLUE_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == SCENARIO_RUNTIME_GLUE_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ScenarioRuntimeGlueCutoverBench defines 20 pure-data cases and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var record: Dictionary = audit.call("record_for_id", "scenario_runtime_glue_ownership_gate")
+		_expect(str(record.get("current_scene_path", "")) == SCENARIO_RUNTIME_CONTROLLER_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks scenario runtime glue ownership complete")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(SCENARIO_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE), "MCP registry includes Scenario Runtime Controller and Cutover Bench")
+	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(doc_source.contains("Scenario Runtime Glue and Progress Ownership Cutover") and doc_source.contains("Detailed scenario progress remains intentionally transient"), "main runtime replacement document records Sprint 5 ownership and v1 non-persistence")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenScenarioRuntimeControllerButton", "RunScenarioRuntimeGlueCutoverBenchButton", "OpenScenarioRuntimeGlueCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		var controller_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_scenario_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
+		dock.connect("run_scenario_runtime_glue_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenScenarioRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunScenarioRuntimeGlueCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(controller_paths == [SCENARIO_RUNTIME_CONTROLLER_SCENE] and bench_paths == [SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Scenario Runtime Controller and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_first_table_authored_runtime_cutover_component() -> void:
+	for path in [
+		FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCRIPT,
+		FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE,
+		FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCRIPT,
+		FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for First Table Authored Runtime Cutover" % path)
+	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	if coordinator != null and bridge != null:
+		coordinator.call("configure", bridge.call("debug_snapshot"))
+		var service := coordinator.get_node_or_null("FirstTableAuthoredRuntimeService")
+		var methods_ok := service != null and service.scene_file_path == FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE
+		for method_name in ["configure", "fixture_snapshot", "resolve_content_catalog", "select_teaching_product", "compose_runtime_content", "contextualize_phase", "completion_summary", "completion_label", "score_district", "pacing_profile", "evaluate_pacing", "supply_plan", "debug_snapshot"]:
+			methods_ok = methods_ok and service != null and service.has_method(method_name)
+		_expect(methods_ok, "FirstTableAuthoredRuntimeService is an editable scene owner with catalog, content, copy, score, and debug APIs")
+		var catalog: Dictionary = coordinator.call("first_table_resolve_content_catalog", {
+			"card_ids": ["活体芯片生产1", "城市融资1", "商品换线1", "诱导电波1", "业主透镜1"],
+			"city_development_cards": [{"card_id": "活体芯片生产1", "rank": 1, "product_id": "活体芯片"}],
+			"monster_ids": ["镜像猎兵", "蓝锋骑士", "流星哨兵", "绿洲修复体"],
+			"product_ids": ["活体芯片", "轨迹墨水", "等离子米"],
+		})
+		var content: Dictionary = coordinator.call("first_table_compose_runtime_content", {"district_index": 2, "district_name": "曙光港", "teaching_product_id": "活体芯片", "city_present": true, "own_project_shares": [{"product_id": "活体芯片", "direction_label": "生产", "own_share_percent": 25.0}], "public_projects": [{"product_id": "活体芯片", "hidden_owner": 2}], "gdp_per_minute": 72, "cashflow_paid_total": 18, "visible_monster_name": "镜像猎兵"}, catalog)
+		var phase: Dictionary = coordinator.call("first_table_contextualize_phase", {"id": "check_economy"}, content)
+		var debug: Dictionary = service.call("debug_snapshot") if service != null else {}
+		_expect((catalog.get("runtime_card_ids", []) as Array).has("城市融资1") and (catalog.get("starter_monster_ids", []) as Array).size() == 4 and (catalog.get("preferred_product_ids", []) as Array).size() == 3, "service filters real first_table card, monster, and product ids")
+		_expect(str(content.get("urbanization_share_text", "")).contains("25.00%") and int(content.get("gdp_per_minute", 0)) == 72 and str(phase.get("detail", "")).contains("18"), "service composes share, GDP, payout, and contextual coach data")
+		_expect(not JSON.stringify(content.get("public_projects", [])).contains("hidden_owner"), "service strips hidden ownership from public authored content")
+		_expect(bool(debug.get("service_authoritative", false)) and not bool(debug.get("legacy_authored_fallback_used", true)), "first_table authored service is authoritative with legacy fallback inactive")
+		_expect(not _variant_contains_callable(catalog) and not _variant_contains_object(catalog) and not _variant_contains_callable(content) and not _variant_contains_object(content), "first_table authored service boundary stays pure data")
+		coordinator.free()
+		bridge.free()
+	var main_packed := load("res://scenes/main.tscn") as PackedScene
+	if main_packed != null:
+		var main := main_packed.instantiate() as Control
+		var main_service := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/FirstTableAuthoredRuntimeService") if main != null else null
+		_expect(main_service != null and main_service.scene_file_path == FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE, "main.tscn composes FirstTableAuthoredRuntimeService under GameRuntimeCoordinator")
+		if main != null:
+			main.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for removed_token in ["func _first_table_scenario_fixture", "func _first_table_fixture_string_array", "func _first_table_runtime_card_ids", "func _first_table_featured_card_ids", "func _first_table_runtime_monster_ids", "func _first_table_runtime_product_ids", "func _first_table_phase_with_runtime_context", "func _first_table_completion_summary"]:
+		_expect(not main_source.contains(removed_token), "main.gd no longer owns authored token %s" % removed_token)
+	_expect(main_source.contains("func _first_table_resolved_content_catalog") and main_source.contains("func _first_table_runtime_content_snapshot") and main_source.contains("first_table_compose_runtime_content") and main_source.contains("first_table_contextualize_phase"), "main.gd retains only pure world/catalog adapters and authored service delegation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank < 46578 and function_count < 2219 and variable_count <= 255 and constant_count <= 329, "main.gd passes Sprint 7 authored runtime deletion metrics")
+	var bench_packed := load(FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		var expected_cases := ["service_scene_composition", "real_first_table_fixture_loaded", "fixture_arrays_deduplicated", "catalog_filters_real_runtime_ids", "catalog_rejects_missing_ids", "teaching_product_prefers_authored_chain", "teaching_product_uses_remote_demand_fallback", "pre_project_content_safe_state", "project_share_and_income_summary", "public_project_privacy_sanitized", "phase_context_uses_runtime_facts", "completion_copy_keeps_match_running", "district_score_characterized", "invalid_district_rejected", "pacing_profile_authored", "pacing_evaluation_ordered", "supply_plan_prepositions_followup", "local_product_development_catalog_complete", "all_outputs_data_only", "real_main_delegates_legacy_inactive"]
+		var cases: Array = bench.call("cutover_cases")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var fields_ok := (manifest.get("records", []) as Array).size() == 20
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "scenario_id", "catalog_checked", "content_checked", "context_checked", "scoring_checked", "pacing_checked", "supply_checked", "privacy_checked", "service_checked", "main_delegation_checked", "pure_data_checked", "service_ready", "legacy_fallback_used", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstTableAuthoredRuntimeCutoverBench defines 20 pure-data cases and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var record: Dictionary = audit.call("record_for_id", "first_table_authored_runtime_ownership_gate")
+		_expect(str(record.get("current_scene_path", "")) == FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks first_table authored runtime ownership complete")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	if mcp_registry != null:
+		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
+		_expect(scene_paths.has(FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE) and scene_paths.has(FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes First Table Authored Runtime Service and Cutover Bench")
+	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(doc_source.contains("First Table Authored Runtime Ownership Cutover") and doc_source.contains("FirstTableAuthoredRuntimeService"), "main runtime replacement document records Sprint 7 ownership boundary")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenFirstTableAuthoredRuntimeServiceButton", "RunFirstTableAuthoredRuntimeCutoverBenchButton", "OpenFirstTableAuthoredRuntimeCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		var service_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_first_table_authored_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		dock.connect("run_first_table_authored_runtime_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenFirstTableAuthoredRuntimeServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunFirstTableAuthoredRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(service_paths == [FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE] and bench_paths == [FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit First Table Authored Runtime Service and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_legacy_runtime_surface_retirement_component() -> void:
+	for path in [LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCRIPT, LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Legacy Runtime Surface Retirement" % path)
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var main_scene_source := FileAccess.get_file_as_string("res://scenes/main.tscn")
+	for removed_token in ["LegacyRuntimeTable", "BUILD_LEGACY_RUNTIME_TABLE", "func _uses_split_runtime_table", "func _configure_legacy_runtime_table_shell", "func _refresh_split_compatibility_player_panel", "func _build_card_resolution_track", "func _refresh_card_resolution_track", "CardResolutionAgeTrack"]:
+		_expect(not main_source.contains(removed_token) and not main_scene_source.contains(removed_token), "legacy player-facing runtime token is retired: %s" % removed_token)
+	_expect(main_source.contains("RuntimeGameScreen scene is required; legacy runtime table construction has been retired."), "main.gd treats missing GameScreen as a composition error instead of rebuilding a generated table")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank <= 45073 and function_count <= 2153 and variable_count <= 229 and constant_count <= 320, "main.gd passes Sprint 8 surface-retirement deletion metrics")
+	var bench_packed := load(LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retirement_cases") and bench.has_method("build_retirement_manifest_preview") and bench.has_method("run_retirement_suite"), "LegacyRuntimeSurfaceRetirementBench exposes required QA APIs")
+		var expected_cases := ["real_main_scene_loads", "runtime_game_screen_is_primary", "legacy_table_shell_absent", "legacy_build_flag_absent", "layout_requires_sceneized_screen", "compatibility_player_host_absent", "legacy_card_track_builder_absent", "legacy_card_track_state_absent", "sceneized_card_track_present", "sceneized_player_board_present", "sceneized_overlay_surfaces_present", "runtime_snapshot_pure_data", "fallback_missing_duplicate_zero", "track_selection_syncs_sceneized_screen"]
+		var cases: Array = bench.call("retirement_cases")
+		var manifest: Dictionary = bench.call("build_retirement_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 14
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "main_checked", "scene_checked", "retirement_checked", "snapshot_checked", "bridge_checked", "pure_data_checked", "legacy_shell_present", "legacy_builder_present", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == LEGACY_RUNTIME_SURFACE_RETIREMENT_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == LEGACY_RUNTIME_SURFACE_RETIREMENT_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "LegacyRuntimeSurfaceRetirementBench defines 14 pure-data cases and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "legacy_runtime_surface_retirement_gate")
+		var track_cutover: Dictionary = audit.call("record_for_id", "main_card_resolution_track_legacy")
+		var shell_cutover: Dictionary = audit.call("record_for_id", "main_legacy_table_shell")
+		_expect(str(gate.get("current_scene_path", "")) == LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the surface retirement gate")
+		_expect(str(track_cutover.get("sceneization_status", "")) == "full" and str(shell_cutover.get("sceneization_status", "")) == "full", "Sceneization Audit marks legacy track and table shell cutovers complete")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var runtime_surface_record: Dictionary = system_audit.call("record_for_id", "runtime_fallbacks_main_gd")
+		_expect(str(runtime_surface_record.get("current_status", "")) == "sceneized" and str(runtime_surface_record.get("current_path", "")) == "res://scenes/ui/GameScreen.tscn", "System Resourceization Audit records the player-facing runtime cutover")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var scene_paths: Array[String] = registry.call("scene_paths")
+		_expect(scene_paths.has(LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE), "MCP registry includes Legacy Runtime Surface Retirement Bench")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Legacy Runtime Surface Retirement") and docs_source.contains("LegacyRuntimeTable") and docs_source.contains("14/14"), "main runtime replacement document records Sprint 8 hard cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenSceneizedMainButton", "RunLegacyRuntimeSurfaceRetirementBenchButton", "OpenLegacyRuntimeSurfaceRetirementOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("sceneized_main_scene_path") and dock.has_method("legacy_runtime_surface_retirement_bench_scene_path") and dock.has_method("legacy_runtime_surface_retirement_qa_output_dir"), "Design QA Dock exposes surface retirement path helpers")
+		var main_paths: Array[String] = []
+		var bench_paths: Array[String] = []
+		dock.connect("open_sceneized_main_requested", func(scene_path: String) -> void: main_paths.append(scene_path))
+		dock.connect("run_legacy_runtime_surface_retirement_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
+		(dock.find_child("OpenSceneizedMainButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunLegacyRuntimeSurfaceRetirementBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(main_paths == ["res://scenes/main.tscn"] and bench_paths == [LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE], "Design QA Dock fallback signals emit sceneized main and retirement bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_legacy_player_surface_retirement_component() -> void:
+	for path in [LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCRIPT, LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE, CARD_PRESENTATION_RUNTIME_SERVICE_SCRIPT, CARD_PRESENTATION_RUNTIME_SERVICE_SCENE, GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCRIPT, GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCENE, CARD_PRESENTATION_VIEWMODEL_RUNTIME_TEST]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Legacy Player Surface Retirement" % path)
+	_expect(FileAccess.file_exists(CARD_PRESENTATION_VIEWMODEL_RUNTIME_CONTRACT), "Sprint 42 ownership contract exists")
+	var bench_packed := load(LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_function_names") and bench.has_method("retirement_cases") and bench.has_method("build_retirement_manifest_preview") and bench.has_method("run_retirement_suite"), "LegacyPlayerSurfaceRetirementBench exposes required QA APIs")
+		var expected_cases := ["real_main_scene_loads", "sceneized_player_board_present", "sceneized_hand_rack_present", "sceneized_action_dock_present", "sceneized_bid_board_present", "legacy_player_refresh_absent", "legacy_seat_renderer_absent", "legacy_hand_renderer_absent", "legacy_action_tray_absent", "legacy_district_renderer_absent", "legacy_first_summon_renderer_absent", "legacy_tableau_renderer_absent", "legacy_contract_ui_wrapper_absent", "runtime_player_snapshot_pure_data", "card_selection_bridge_present", "action_bridge_present", "privacy_boundary_preserved", "card_presentation_service_composition", "table_viewmodel_service_composition", "card_presentation_runtime_source", "hand_card_viewmodel_owned_by_service", "right_inspector_owned_by_service", "public_track_viewmodel_privacy", "coordinator_pure_data_routes", "presentation_rule_boundary_preserved", "legacy_presentation_and_snapshot_owners_absent", "retired_function_set_absent"]
+		var cases: Array = bench.call("retirement_cases")
+		var retired_names: Array = bench.call("retired_function_names")
+		var manifest: Dictionary = bench.call("build_retirement_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 27
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "main_checked", "scene_checked", "deletion_checked", "snapshot_checked", "bridge_checked", "service_checked", "rule_boundary_checked", "privacy_checked", "pure_data_checked", "retired_function_count", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_names.size() == 164
+		for function_name_variant in retired_names:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(function_name_variant))
+		var nonblank := 0
+		var function_count := 0
+		var variable_count := 0
+		var constant_count := 0
+		for line in main_source.split("\n"):
+			if line.strip_edges() != "":
+				nonblank += 1
+			if line.begins_with("func "):
+				function_count += 1
+			elif line.begins_with("var "):
+				variable_count += 1
+			elif line.begins_with("const "):
+				constant_count += 1
+		_expect(all_retired and nonblank <= 29225 and function_count <= 1656 and variable_count <= 164 and constant_count <= 276, "main.gd passes Sprint 42 cumulative presentation/ViewModel hard-cutover metrics")
+		_expect(cases == expected_cases and int(manifest.get("retired_function_count", 0)) == 164 and str(bench.call("output_dir")) == LEGACY_PLAYER_SURFACE_RETIREMENT_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == LEGACY_PLAYER_SURFACE_RETIREMENT_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "LegacyPlayerSurfaceRetirementBench defines 27 pure-data cases, 164 retired functions, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "legacy_player_surface_retirement_gate")
+		_expect(str(gate.get("current_scene_path", "")) == LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full" and str(gate.get("mcp_notes", "")).contains("164"), "Sceneization Audit includes the Sprint 42 player-surface retirement gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var scene_paths: Array[String] = registry.call("scene_paths")
+		_expect(scene_paths.has(LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE) and scene_paths.has(CARD_PRESENTATION_RUNTIME_SERVICE_SCENE) and scene_paths.has(GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCENE), "MCP registry includes the Sprint 42 services and retirement bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var surface_record: Dictionary = system_audit.call("record_for_id", "runtime_fallbacks_main_gd")
+		_expect(str(surface_record.get("current_status", "")) == "sceneized" and str(surface_record.get("mcp_notes", "")).contains("164") and str(surface_record.get("mcp_notes", "")).contains("CardPresentationRuntimeService"), "System Resourceization Audit records Sprint 42 presentation/ViewModel ownership")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Legacy Player Surface Helper Closure") and docs_source.contains("42,963") and docs_source.contains("78"), "main runtime replacement document records Sprint 9 closure deletion")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenLegacyPlayerSurfaceRetirementBenchButton", "RunLegacyPlayerSurfaceRetirementBenchButton", "OpenLegacyPlayerSurfaceRetirementOutputFolderButton", "OpenCardPresentationRuntimeServiceButton", "OpenGameTableViewModelRuntimeServiceButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("legacy_player_surface_retirement_bench_scene_path") and dock.has_method("legacy_player_surface_retirement_qa_output_dir") and dock.has_method("card_presentation_runtime_service_scene_path") and dock.has_method("game_table_viewmodel_runtime_service_scene_path"), "Design QA Dock exposes Sprint 42 service and retirement path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		var service_paths: Array[String] = []
+		dock.connect("open_legacy_player_surface_retirement_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_legacy_player_surface_retirement_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		dock.connect("open_card_presentation_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		dock.connect("open_game_table_viewmodel_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		(dock.find_child("OpenLegacyPlayerSurfaceRetirementBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunLegacyPlayerSurfaceRetirementBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenCardPresentationRuntimeServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenGameTableViewModelRuntimeServiceButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE] and run_paths == [LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE] and service_paths == [CARD_PRESENTATION_RUNTIME_SERVICE_SCENE, GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCENE], "Design QA Dock fallback signals emit Sprint 42 service and retirement paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_card_play_eligibility_runtime_component() -> void:
+	for path in [CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCRIPT, CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCENE, CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCRIPT, CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCENE, CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCRIPT, CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Card Play Eligibility Runtime Cutover" % path)
+	_expect(FileAccess.file_exists(CARD_PLAY_ELIGIBILITY_RUNTIME_CONTRACT), "Sprint 43 eligibility ownership contract exists")
+	var service_packed := load(CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCENE) as PackedScene
+	var bridge_packed := load(CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCENE) as PackedScene
+	if service_packed != null and bridge_packed != null:
+		var service := service_packed.instantiate()
+		var bridge := bridge_packed.instantiate()
+		_expect(service.has_method("evaluate_play") and service.has_method("evaluate_hand") and service.has_method("requirement_status") and service.has_method("target_status") and service.has_method("debug_snapshot"), "CardPlayEligibilityRuntimeService exposes the authoritative pure-data API")
+		_expect(bridge.has_method("build_facts") and bridge.has_method("debug_snapshot"), "CardPlayEligibilityWorldBridge exposes the read-only fact API")
+		service.queue_free()
+		bridge.queue_free()
+	var bench_packed := load(CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("eligibility_cases") and bench.has_method("build_eligibility_manifest_preview") and bench.has_method("run_eligibility_suite") and bench.has_method("run_suite"), "CardPlayEligibilityRuntimeBench exposes required QA APIs")
+		var cases: Array = bench.call("eligibility_cases")
+		var manifest: Dictionary = bench.call("build_eligibility_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := cases.size() == 46 and records.size() == 46
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "reason_code", "allowed", "requirement_checked", "target_checked", "queue_preflight_checked", "presentation_checked", "parity_checked", "service_checked", "privacy_checked", "pure_data_checked", "legacy_absent", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(fields_ok and str(bench.call("output_dir")) == CARD_PLAY_ELIGIBILITY_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CARD_PLAY_ELIGIBILITY_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CardPlayEligibilityRuntimeBench defines 46 pure-data cases and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var retired := ["_hand_card_play_state", "_can_play_skill_now", "_skill_play_requirement_profile", "_skill_play_requirement_status", "_skill_play_requirement_text", "_skill_play_requirement_chip_text", "_skill_play_region_share_required", "_skill_play_region_scope", "_skill_play_requirement_district", "_skill_play_cash_cost", "_skill_targets_monster", "_skill_targets_player", "_skill_requires_target_monster", "_skill_requires_target_player", "_is_direct_monster_skill_kind", "_is_counter_skill", "_skill_is_counterable_player_interaction", "_can_convert_monster_card_to_counter", "_card_play_requirement_audit"]
+	var old_absent := true
+	for function_name_variant in retired:
+		old_absent = old_absent and not main_source.contains("func %s(" % str(function_name_variant))
+	var nonblank := 0
+	var function_count := 0
+	for line_variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty():
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+	_expect(old_absent and nonblank <= 28525 and function_count <= 1641, "main.gd passes Sprint 43 deletion gate with no legacy eligibility wrappers")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var scene_paths: Array[String] = registry.call("scene_paths")
+		_expect(scene_paths.has(CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCENE) and scene_paths.has(CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCENE) and scene_paths.has(CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE), "MCP registry includes Eligibility Service, WorldBridge, and Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var gate: Dictionary = scene_audit.call("record_for_id", "card_play_eligibility_runtime_gate")
+		_expect(str(gate.get("current_scene_path", "")) == CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit marks Card Play Eligibility ownership complete")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "card_play_eligibility_runtime_service_owned")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("current_path", "")) == CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCENE, "System Resourceization Audit records authoritative Eligibility Service ownership")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "card_play_requirements")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("CardPlayEligibilityRuntimeService"), "Ruleset v0.4 registry marks card-play requirements cut over")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Sprint 43: Card Play Eligibility") and docs_source.contains("28,518") and docs_source.contains("707"), "main runtime replacement document records Sprint 43 ownership and deletion metrics")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCardPlayEligibilityRuntimeServiceButton", "OpenCardPlayEligibilityWorldBridgeButton", "OpenCardPlayEligibilityRuntimeBenchButton", "RunCardPlayEligibilityRuntimeBenchButton", "OpenCardPlayEligibilityOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("card_play_eligibility_runtime_service_scene_path") and dock.has_method("card_play_eligibility_world_bridge_scene_path") and dock.has_method("card_play_eligibility_runtime_bench_scene_path") and dock.has_method("card_play_eligibility_qa_output_dir"), "Design QA Dock exposes Sprint 43 path helpers")
+		var service_paths: Array[String] = []
+		var bridge_paths: Array[String] = []
+		var open_bench_paths: Array[String] = []
+		var run_bench_paths: Array[String] = []
+		dock.connect("open_card_play_eligibility_runtime_service_requested", func(scene_path: String) -> void: service_paths.append(scene_path))
+		dock.connect("open_card_play_eligibility_world_bridge_requested", func(scene_path: String) -> void: bridge_paths.append(scene_path))
+		dock.connect("open_card_play_eligibility_runtime_bench_requested", func(scene_path: String) -> void: open_bench_paths.append(scene_path))
+		dock.connect("run_card_play_eligibility_runtime_bench_requested", func(scene_path: String) -> void: run_bench_paths.append(scene_path))
+		(dock.find_child("OpenCardPlayEligibilityRuntimeServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenCardPlayEligibilityWorldBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenCardPlayEligibilityRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCardPlayEligibilityRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(service_paths == [CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCENE] and bridge_paths == [CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCENE] and open_bench_paths == [CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE] and run_bench_paths == [CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE], "Design QA Dock fallback signals emit Sprint 43 service, bridge, and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_menu_shell_runtime_cutover_component() -> void:
+	for path in [MENU_QUICK_NAVIGATION_SCRIPT, MENU_QUICK_NAVIGATION_SCENE, PRESENTATION_SETTINGS_PANEL_SCRIPT, PRESENTATION_SETTINGS_PANEL_SCENE, SCENARIO_PAUSE_ACTIONS_PANEL_SCRIPT, SCENARIO_PAUSE_ACTIONS_PANEL_SCENE, MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCRIPT, MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Menu Shell Runtime Cutover" % path)
+	var quick_packed := load(MENU_QUICK_NAVIGATION_SCENE) as PackedScene
+	if quick_packed != null:
+		var quick_navigation := quick_packed.instantiate() as Control
+		root.add_child(quick_navigation)
+		await process_frame
+		_expect(quick_navigation is HFlowContainer and quick_navigation.has_method("set_navigation") and quick_navigation.has_method("set_compact") and quick_navigation.has_method("debug_snapshot") and quick_navigation.has_signal("action_requested"), "MenuQuickNavigation is an editable HFlowContainer with a data-in/action-id-out API")
+		var button_names := ["MenuQuickNavSetupButton", "MenuQuickNavScenarioButton", "MenuQuickNavStandingsButton", "MenuQuickNavEconomyButton", "MenuQuickNavIntelButton", "MenuQuickNavRulesButton", "MenuQuickNavCompendiumButton"]
+		var buttons_exist := true
+		for button_name_variant in button_names:
+			buttons_exist = buttons_exist and quick_navigation.find_child(str(button_name_variant), true, false) is Button
+		_expect(buttons_exist, "MenuQuickNavigation exposes seven editor-visible Button nodes")
+		var entries: Array = []
+		for action_id in ["setup", "scenario", "standings", "economy", "intel", "rules", "compendium"]:
+			entries.append({"id": action_id, "label": action_id.capitalize(), "accent": "#38bdf8"})
+		quick_navigation.call("set_navigation", {"entries": entries, "active_id": "economy", "visible": true})
+		var emitted_actions: Array[String] = []
+		quick_navigation.connect("action_requested", func(action_id: String) -> void: emitted_actions.append(action_id))
+		var active_button := quick_navigation.find_child("MenuQuickNavEconomyButton", true, false) as Button
+		var enabled_button := quick_navigation.find_child("MenuQuickNavIntelButton", true, false) as Button
+		if active_button != null:
+			active_button.emit_signal("pressed")
+		if enabled_button != null:
+			enabled_button.emit_signal("pressed")
+		await process_frame
+		var quick_snapshot: Variant = quick_navigation.call("debug_snapshot")
+		_expect(active_button != null and active_button.disabled and emitted_actions == ["intel"], "MenuQuickNavigation disables the active branch and emits only enabled action ids")
+		_expect(quick_snapshot is Dictionary and not _variant_contains_callable(quick_snapshot) and not _variant_contains_object(quick_snapshot), "MenuQuickNavigation debug snapshot remains pure data")
+		root.remove_child(quick_navigation)
+		quick_navigation.queue_free()
+	var settings_packed := load(PRESENTATION_SETTINGS_PANEL_SCENE) as PackedScene
+	if settings_packed != null:
+		var settings_panel := settings_packed.instantiate() as Control
+		root.add_child(settings_panel)
+		await process_frame
+		_expect(settings_panel.has_method("set_settings") and settings_panel.has_method("debug_snapshot") and settings_panel.has_signal("action_requested"), "PresentationSettingsPanel exposes pure settings input, QA snapshot, and action-id output")
+		for node_name in ["CampaignSettingsActionGrid", "ScenarioSettingsActionGrid", "CampaignTeachingHintsButton", "CampaignAnimationButton", "CampaignFontScaleButton", "CampaignColorblindButton", "CampaignUiVolumeButton", "CampaignBgmVolumeButton", "CampaignResetProgressButton", "CampaignSettingsBackButton", "ScenarioTeachingHintsButton", "ScenarioAutoPauseButton", "ScenarioFontScaleButton", "ScenarioSettingsBackButton"]:
+			_expect(settings_panel.find_child(node_name, true, false) != null, "PresentationSettingsPanel owns %s" % node_name)
+		settings_panel.call("set_settings", {"mode": "scenario", "actions": [{"id": "scenario_settings_back", "label": "返回剧本库"}]})
+		var settings_actions: Array[String] = []
+		settings_panel.connect("action_requested", func(action_id: String) -> void: settings_actions.append(action_id))
+		(settings_panel.find_child("ScenarioSettingsBackButton", true, false) as Button).emit_signal("pressed")
+		var settings_snapshot: Variant = settings_panel.call("debug_snapshot")
+		_expect(settings_actions == ["scenario_settings_back"] and settings_snapshot is Dictionary and not _variant_contains_callable(settings_snapshot) and not _variant_contains_object(settings_snapshot), "PresentationSettingsPanel emits stable ids and keeps its QA snapshot pure")
+		root.remove_child(settings_panel)
+		settings_panel.queue_free()
+	var pause_packed := load(SCENARIO_PAUSE_ACTIONS_PANEL_SCENE) as PackedScene
+	if pause_packed != null:
+		var pause_panel := pause_packed.instantiate() as Control
+		root.add_child(pause_panel)
+		await process_frame
+		_expect(pause_panel.has_method("set_pause_actions") and pause_panel.has_method("debug_snapshot") and pause_panel.has_signal("action_requested"), "ScenarioPauseActionsPanel exposes pure settings input, QA snapshot, and action-id output")
+		for node_name in ["ScenarioPauseActionRow", "ScenarioPauseRestartButton", "ScenarioPauseChooseButton", "ScenarioPauseLogButton", "ScenarioPauseReplayButton", "ScenarioPauseSettingsButton"]:
+			_expect(pause_panel.find_child(node_name, true, false) != null, "ScenarioPauseActionsPanel owns %s" % node_name)
+		var pause_actions: Array[String] = []
+		pause_panel.connect("action_requested", func(action_id: String) -> void: pause_actions.append(action_id))
+		(pause_panel.find_child("ScenarioPauseSettingsButton", true, false) as Button).emit_signal("pressed")
+		var pause_snapshot: Variant = pause_panel.call("debug_snapshot")
+		_expect(pause_actions == ["scenario_pause_settings"] and pause_snapshot is Dictionary and not _variant_contains_callable(pause_snapshot) and not _variant_contains_object(pause_snapshot), "ScenarioPauseActionsPanel emits stable ids and keeps its QA snapshot pure")
+		root.remove_child(pause_panel)
+		pause_panel.queue_free()
+	var bench_packed := load(MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "MenuShellRuntimeCutoverBench exposes required QA APIs")
+		_expect(bench.has_method("global_navigation_output_dir") and bench.has_method("global_navigation_cases") and bench.has_method("global_navigation_surface_registry") and bench.has_method("global_navigation_deletion_candidates") and bench.has_method("build_global_navigation_manifest_preview"), "MenuShellRuntimeCutoverBench exposes the Sprint 67 characterization APIs without adding another bench")
+		var expected_cases := ["quick_navigation_scene_loads", "overlay_scene_composition", "seven_editable_buttons", "real_main_scene_loads", "real_main_uses_embedded_overlay", "menu_overlay_fallback_preload_absent", "legacy_menu_builder_absent", "legacy_shell_node_state_absent", "legacy_quick_nav_builder_absent", "pure_quick_nav_payload", "root_menu_hides_quick_navigation", "subpage_shows_quick_navigation", "active_page_is_disabled", "enabled_action_emits_id", "quick_action_routes_real_main", "responsive_layout_owned_by_overlay", "catalog_navigation_owned_by_overlay", "overlay_debug_snapshot_pure_data", "settings_scenes_load", "campaign_settings_static_actions", "scenario_settings_static_actions", "pause_actions_static_actions", "real_main_settings_routes", "legacy_settings_builders_absent"]
+		var cases: Array = bench.call("cutover_cases")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 24
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "main_checked", "scene_checked", "deletion_checked", "interaction_checked", "bridge_checked", "layout_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases == expected_cases and str(bench.call("output_dir")) == MENU_SHELL_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == MENU_SHELL_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "MenuShellRuntimeCutoverBench defines 24 pure-data cases and user:// outputs")
+		var global_expected_cases := ["navigation_call_graph_complete", "current_escape_precedence_recorded", "gameplay_escape_opens_pause", "pause_escape_returns_game", "fullscreen_map_escape_closes_map_only", "menu_root_escape_behavior", "exit_requires_confirmation", "confirm_modal_precedes_menu", "temporary_decision_not_bypassed", "side_drawer_closes_before_pause", "card_detail_closes_before_parent", "district_supply_drawer_closes_before_pause", "nested_codex_detail_returns_atlas", "codex_atlas_returns_compendium", "codex_from_intel_returns_intel", "codex_from_economy_returns_economy", "codex_from_standings_returns_standings", "codex_from_game_returns_game", "campaign_briefing_back", "campaign_settings_back", "campaign_reward_recap_back", "scenario_settings_back", "scenario_log_replay_back", "new_game_setup_back", "focus_restores_to_opener", "freed_focus_uses_safe_fallback", "keyboard_controller_pointer_parity", "repeat_escape_debounced", "no_direct_quit_from_match", "save_navigation_legacy_parity", "pure_navigation_snapshot", "sprint68_deletion_candidates_complete"]
+		var global_cases: Array = bench.call("global_navigation_cases")
+		var global_manifest: Dictionary = bench.call("build_global_navigation_manifest_preview")
+		var global_records: Array = global_manifest.get("records", []) if global_manifest.get("records", []) is Array else []
+		var global_surfaces: Array = bench.call("global_navigation_surface_registry")
+		var deletion_candidates: Array = bench.call("global_navigation_deletion_candidates")
+		var global_fields_ok := global_records.size() == 32 and global_surfaces.size() >= 15 and deletion_candidates.size() == 8
+		for record_variant: Variant in global_records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "initial_surface", "top_surface", "requested_action", "resolved_action", "stack_depth_before", "stack_depth_after", "focus_before", "focus_after", "pause_state_before", "pause_state_after", "modal_precedence_checked", "focus_restore_checked", "action_route_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]:
+				global_fields_ok = global_fields_ok and record.has(key)
+		for surface_variant: Variant in global_surfaces:
+			var surface := surface_variant as Dictionary
+			for key in ["surface_id", "surface_kind", "parent_surface_id", "dismiss_policy", "focus_restore_path", "opened_by_action_id", "context_revision"]:
+				global_fields_ok = global_fields_ok and surface.has(key)
+		_expect(global_cases == global_expected_cases and str(bench.call("global_navigation_output_dir")) == GLOBAL_UI_NAVIGATION_CHARACTERIZATION_OUTPUT_DIR and str(global_manifest.get("screenshot_path", "")) == GLOBAL_UI_NAVIGATION_CHARACTERIZATION_SCREENSHOT_PATH and global_fields_ok and not _variant_contains_callable(global_manifest) and not _variant_contains_object(global_manifest), "Global navigation characterization defines 32 pure-data cases, a surface registry, deletion map, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	_expect(ResourceLoader.exists(GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY_SCRIPT) and load(GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY_SCRIPT) is Script and FileAccess.file_exists(GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT), "Sprint 67 navigation registry and runtime contract load")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for removed_token in ["const MenuOverlayScene", "func _build_menu_overlay", "func _add_menu_quick_nav_button", "var menu_quick_nav_buttons", "var menu_surface_panel", "var menu_shell_margin", "var menu_title_label", "var menu_continue_button", "func _add_campaign_settings_button", "func _scenario_settings_summary_text", "func _add_scenario_pause_actions(", "func _add_main_menu_section", "func _menu_section_style"]:
+		_expect(not main_source.contains(removed_token), "menu-shell fallback ownership stays retired: %s" % removed_token)
+	_expect(main_source.contains("func _bind_menu_overlay_scene") and main_source.contains("func _menu_quick_nav_entries") and main_source.contains("func _on_menu_quick_nav_action_requested") and main_source.contains("PresentationSettingsPanelScene.instantiate()") and main_source.contains("ScenarioPauseActionsPanelScene.instantiate()") and main_source.contains("func _on_presentation_menu_action_requested"), "main.gd retains only required scene binding, pure descriptors, and action-id routing for menu presentation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank <= 42670 and function_count <= 2070 and variable_count <= 209 and constant_count <= 320, "main.gd passes Sprint 10 menu-shell cutover deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "menu_shell_runtime_cutover_gate")
+		_expect(str(gate.get("current_scene_path", "")) == MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Menu Shell Runtime Cutover gate")
+		var navigation_gate: Dictionary = audit.call("record_for_id", "global_ui_navigation_characterization_gate")
+		_expect(str(navigation_gate.get("current_scene_path", "")) == MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE and str(navigation_gate.get("sceneization_status", "")) == "partial", "Sceneization Audit records Sprint 67 as characterization-only partial ownership")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var scene_paths: Array[String] = registry.call("scene_paths")
+		_expect(scene_paths.has(MENU_QUICK_NAVIGATION_SCENE) and scene_paths.has(PRESENTATION_SETTINGS_PANEL_SCENE) and scene_paths.has(SCENARIO_PAUSE_ACTIONS_PANEL_SCENE) and scene_paths.has(MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes quick navigation, settings, pause actions, and the Menu Shell Runtime Cutover Bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var menu_record: Dictionary = system_audit.call("record_for_id", "main_gd_menu_controller_runtime")
+		var shell_record: Dictionary = system_audit.call("record_for_id", "main_menu_lobby_sceneized_shell")
+		var navigation_record: Dictionary = system_audit.call("record_for_id", "global_ui_navigation_characterization")
+		var menu_related: Array = menu_record.get("related_paths", []) if menu_record.get("related_paths", []) is Array else []
+		_expect(menu_related.has(PRESENTATION_SETTINGS_PANEL_SCENE) and menu_related.has(SCENARIO_PAUSE_ACTIONS_PANEL_SCENE) and str(shell_record.get("mcp_notes", "")).contains("PresentationSettingsPanel") and str(navigation_record.get("current_status", "")) == "main_gd_runtime", "System Resourceization Audit distinguishes scene-owned presentation from remaining global navigation ownership")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Campaign / Scenario Presentation Settings") and docs_source.contains("24/24") and docs_source.contains("Global UI Navigation Characterization") and docs_source.contains("32/32"), "main runtime replacement document records Sprint 24 and Sprint 67 navigation ownership")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("MenuQuickNavigation") and ui_audit_source.contains("MenuShellRuntimeCutoverBench") and ui_audit_source.contains("19/32"), "UI architecture audit records scene-owned quick navigation and the current global navigation alignment gap")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenMenuShellRuntimeCutoverBenchButton", "RunMenuShellRuntimeCutoverBenchButton", "OpenMenuShellRuntimeCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("menu_shell_runtime_cutover_bench_scene_path") and dock.has_method("menu_shell_runtime_cutover_qa_output_dir"), "Design QA Dock exposes Menu Shell Runtime Cutover path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_menu_shell_runtime_cutover_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_menu_shell_runtime_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenMenuShellRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunMenuShellRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE] and run_paths == [MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Menu Shell Runtime Cutover bench path")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_codex_scene_hard_cutover_component() -> void:
+	for path in [CODEX_SCENE_HARD_CUTOVER_BENCH_SCRIPT, CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Codex Scene Hard Cutover" % path)
+	var required_scenes := ["res://scenes/ui/CardCodexBrowser.tscn", "res://scenes/ui/CardCodexDetail.tscn", "res://scenes/ui/BestiaryDetail.tscn", "res://scenes/ui/ProductCodexDetail.tscn", "res://scenes/ui/RegionCodexDetail.tscn", "res://scenes/ui/RoleCodexIdentityBoard.tscn"]
+	var required_methods := ["set_browser", "set_detail", "set_monster", "set_product", "set_region", "set_role"]
+	for i in range(required_scenes.size()):
+		var packed := load(required_scenes[i]) as PackedScene
+		var component := packed.instantiate() if packed != null else null
+		_expect(component != null and component.has_method(required_methods[i]), "%s exposes required scene renderer %s" % [required_scenes[i], required_methods[i]])
+		if component != null:
+			component.free()
+	var bench_packed := load(CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_function_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CodexSceneHardCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_codex_scenes_load", "required_scene_contracts", "real_main_scene_loads", "single_sceneized_menu_overlay", "card_browser_scene_required", "card_browser_signal_routes_detail", "card_detail_scene_required", "bestiary_detail_scene_required", "product_detail_scene_required", "region_detail_scene_required", "role_detail_scene_required", "legacy_card_browser_renderer_absent", "legacy_card_detail_renderer_absent", "legacy_bestiary_detail_renderer_absent", "legacy_product_detail_renderer_absent", "legacy_region_detail_renderer_absent", "all_retired_functions_absent", "required_scene_error_boundary_present", "codex_snapshots_pure_data", "privacy_boundary_preserved"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_names: Array = bench.call("retired_function_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "main_checked", "scene_checked", "deletion_checked", "bridge_checked", "privacy_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_names.size() == 24
+		for function_name_variant in retired_names:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(function_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_function_count", 0)) == 24 and str(bench.call("output_dir")) == CODEX_SCENE_HARD_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CODEX_SCENE_HARD_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CodexSceneHardCutoverBench defines 20 pure-data cases, 24 retired functions, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for component_name in ["CardCodexBrowser", "CardCodexDetail", "BestiaryDetail", "ProductCodexDetail", "RegionCodexDetail", "RoleCodexIdentityBoard"]:
+		_expect(main_source.contains("_report_required_ui_scene_missing(\"%s\"" % component_name), "main.gd treats %s as a required Codex scene" % component_name)
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank <= 41691 and function_count <= 2046 and variable_count <= 209 and constant_count <= 320, "main.gd passes Sprint 11 Codex hard-cutover deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "codex_scene_hard_cutover_gate")
+		_expect(str(gate.get("current_scene_path", "")) == CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Codex Scene Hard Cutover gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		_expect((registry.call("scene_paths") as Array).has(CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE), "MCP registry includes Codex Scene Hard Cutover Bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var codex_record: Dictionary = system_audit.call("record_for_id", "codex_scene_hard_cutover")
+		_expect(str(codex_record.get("current_status", "")) == "sceneized" and str(codex_record.get("mcp_notes", "")).contains("24"), "System Resourceization Audit records the six Codex scene contracts and 24 retired renderers")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Codex Scene Hard Cutover") and docs_source.contains("41,691") and docs_source.contains("20/20"), "main runtime replacement document records Sprint 11 Codex deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("CodexSceneHardCutoverBench") and ui_audit_source.contains("Twenty-four"), "UI architecture audit records the Codex hard cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCodexSceneHardCutoverBenchButton", "RunCodexSceneHardCutoverBenchButton", "OpenCodexSceneHardCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("codex_scene_hard_cutover_bench_scene_path") and dock.has_method("codex_scene_hard_cutover_qa_output_dir"), "Design QA Dock exposes Codex Scene Hard Cutover path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_codex_scene_hard_cutover_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_codex_scene_hard_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenCodexSceneHardCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCodexSceneHardCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE] and run_paths == [CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Codex Scene Hard Cutover bench path")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_codex_atlas_scene_cutover_component() -> void:
+	var required_paths := [
+		BESTIARY_CODEX_BROWSER_SCRIPT,
+		BESTIARY_CODEX_BROWSER_SCENE,
+		PRODUCT_CODEX_BROWSER_SCRIPT,
+		PRODUCT_CODEX_BROWSER_SCENE,
+		CODEX_BROWSER_SUMMARY_CARD_SCENE,
+		BESTIARY_CODEX_THUMBNAIL_SCENE,
+		PRODUCT_CODEX_THUMBNAIL_SCENE,
+		CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCRIPT,
+		CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE,
+	]
+	for path in required_paths:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Codex Atlas Scene Cutover" % path)
+	var browser_scenes := [BESTIARY_CODEX_BROWSER_SCENE, PRODUCT_CODEX_BROWSER_SCENE]
+	var preview_names := ["BestiaryBrowserPreviewDetail", "ProductBrowserPreviewDetail"]
+	var preview_methods := ["set_monster", "set_product"]
+	for i in range(browser_scenes.size()):
+		var packed := load(browser_scenes[i]) as PackedScene
+		var browser := packed.instantiate() as Control if packed != null else null
+		var preview := browser.find_child(preview_names[i], true, false) if browser != null else null
+		_expect(browser != null and browser.has_method("set_browser") and browser.has_method("debug_snapshot") and browser.has_signal("page_step_requested") and browser.has_signal("entry_preview_requested") and browser.has_signal("entry_detail_requested"), "%s exposes the pure-data browser and index-signal contract" % browser_scenes[i])
+		_expect(preview != null and preview.has_method(preview_methods[i]), "%s embeds its real scene-owned detail preview" % browser_scenes[i])
+		if browser != null:
+			browser.free()
+	var repeated_scene_contracts := {
+		CODEX_BROWSER_SUMMARY_CARD_SCENE: "set_summary",
+		BESTIARY_CODEX_THUMBNAIL_SCENE: "set_entry",
+		PRODUCT_CODEX_THUMBNAIL_SCENE: "set_entry",
+	}
+	for scene_path_variant in repeated_scene_contracts:
+		var scene_path := str(scene_path_variant)
+		var packed := load(scene_path) as PackedScene
+		var component := packed.instantiate() as Control if packed != null else null
+		_expect(component != null and component.has_method(str(repeated_scene_contracts[scene_path_variant])), "%s exposes its scene-owned repeated-card contract" % scene_path)
+		if scene_path != CODEX_BROWSER_SUMMARY_CARD_SCENE:
+			_expect(component != null and component.has_signal("preview_requested") and component.has_signal("detail_requested"), "%s preserves preview/detail index signals" % scene_path)
+		if component != null:
+			component.free()
+	var bench_packed := load(CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_function_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CodexAtlasSceneCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_atlas_scenes_load", "browser_scene_contracts", "real_main_scene_loads", "bestiary_browser_scene_required", "product_browser_scene_required", "bestiary_thumbnail_scene_instances", "product_thumbnail_scene_instances", "summary_card_scene_instances", "product_badge_scene_reused", "bestiary_preview_signal_routes", "product_preview_signal_routes", "bestiary_detail_signal_routes", "product_detail_signal_routes", "page_step_signals_stable", "bestiary_snapshot_pure_data", "product_snapshot_pure_data", "privacy_boundary_preserved", "legacy_bestiary_atlas_absent", "legacy_product_atlas_absent", "all_retired_functions_and_metrics"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_names: Array = bench.call("retired_function_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "main_checked", "scene_checked", "deletion_checked", "interaction_checked", "bridge_checked", "privacy_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_names.size() == 14
+		for function_name_variant in retired_names:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(function_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_function_count", 0)) == 14 and str(bench.call("output_dir")) == CODEX_ATLAS_SCENE_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CODEX_ATLAS_SCENE_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CodexAtlasSceneCutoverBench defines 20 pure-data cases, 14 retired functions, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for component_name in ["BestiaryCodexBrowser", "ProductCodexBrowser"]:
+		_expect(main_source.contains("_report_required_ui_scene_missing(\"%s\"" % component_name), "main.gd treats %s as a required atlas scene" % component_name)
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank <= 41301 and function_count <= 2040 and variable_count <= 209 and constant_count <= 320, "main.gd passes Sprint 12 Codex atlas deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "codex_atlas_scene_cutover_gate")
+		_expect(str(gate.get("current_scene_path", "")) == CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Codex Atlas Scene Cutover gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(BESTIARY_CODEX_BROWSER_SCENE) and registered_paths.has(PRODUCT_CODEX_BROWSER_SCENE) and registered_paths.has(CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE), "MCP registry includes both Codex atlases and the Sprint 12 bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var atlas_record: Dictionary = system_audit.call("record_for_id", "codex_atlas_scene_cutover")
+		_expect(str(atlas_record.get("current_status", "")) == "sceneized" and str(atlas_record.get("mcp_notes", "")).contains("Fourteen"), "System Resourceization Audit records scene-owned monster/product atlases and 14 retired helpers")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Codex Atlas Scene Cutover") and docs_source.contains("41,301") and docs_source.contains("20/20"), "main runtime replacement document records Sprint 12 atlas deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("CodexAtlasSceneCutoverBench") and ui_audit_source.to_lower().contains("fourteen"), "UI architecture audit records the Codex atlas scene cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCodexAtlasSceneCutoverBenchButton", "RunCodexAtlasSceneCutoverBenchButton", "OpenCodexAtlasSceneCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("codex_atlas_scene_cutover_bench_scene_path") and dock.has_method("codex_atlas_scene_cutover_qa_output_dir"), "Design QA Dock exposes Codex Atlas Scene Cutover path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_codex_atlas_scene_cutover_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_codex_atlas_scene_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenCodexAtlasSceneCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCodexAtlasSceneCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE] and run_paths == [CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Codex Atlas Scene Cutover bench path")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_codex_navigation_runtime_cutover_component() -> void:
+	for path in [CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCRIPT, CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCENE, CODEX_NAVIGATION_RUNTIME_CONTROLLER_TEST, CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCRIPT, CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Codex Navigation Runtime Cutover" % path)
+	var controller_packed := load(CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var controller := controller_packed.instantiate() if controller_packed != null else null
+	if controller != null:
+		for method_name in ["configure", "reset_navigation", "set_catalog_mode", "set_return_target", "domain_state", "update_domain", "page_count", "page_for_index", "first_index_on_page", "navigation_snapshot", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "debug_snapshot"]:
+			_expect(controller.has_method(method_name), "CodexNavigationRuntimeController exposes %s" % method_name)
+		controller.call("configure", {})
+		var snapshot: Dictionary = controller.call("navigation_snapshot")
+		var legacy: Dictionary = controller.call("to_legacy_save_snapshot")
+		_expect(str(snapshot.get("catalog_mode", "invalid")) == "" and str(snapshot.get("return_target", "")) == "main" and legacy.size() == 12 and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "CodexNavigationRuntimeController defaults and legacy adapter are pure data")
+		controller.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("CodexNavigationRuntimeController") != null, "GameRuntimeCoordinator composes CodexNavigationRuntimeController")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_state_variable_names") and bench.has_method("retired_pagination_function_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CodexNavigationRuntimeCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_controller_assets_load", "controller_scene_contract", "default_navigation_state", "catalog_mode_validation", "return_target_validation", "monster_navigation_state", "card_navigation_state", "product_navigation_state", "region_role_navigation_state", "pagination_boundaries", "navigation_snapshot_pure_data", "legacy_save_key_parity", "legacy_save_roundtrip", "card_transient_nonpersistence_parity", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_controller_composition", "real_main_catalog_routes_delegate", "real_main_v1_save_adapter_parity", "legacy_authority_and_helpers_absent"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_variables: Array = bench.call("retired_state_variable_names")
+		var retired_functions: Array = bench.call("retired_pagination_function_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "controller_checked", "main_checked", "state_checked", "pagination_checked", "persistence_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_variables.size() == 17 and retired_functions.size() == 9
+		for variable_name_variant in retired_variables:
+			all_retired = all_retired and not main_source.contains("var %s" % str(variable_name_variant))
+		for function_name_variant in retired_functions:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(function_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_state_variable_count", 0)) == 17 and int(manifest.get("retired_pagination_function_count", 0)) == 9 and str(bench.call("output_dir")) == CODEX_NAVIGATION_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CODEX_NAVIGATION_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CodexNavigationRuntimeCutoverBench defines 20 pure-data cases, 17 retired variables, nine retired helpers, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _codex_navigation_controller_node()") and main_source.contains("codex_navigation_legacy_save_snapshot") and main_source.contains("apply_codex_navigation_legacy_save_snapshot"), "main.gd delegates Codex state and v1 persistence to the scene-owned controller")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank <= 41263 and function_count <= 2036 and variable_count <= 192 and constant_count <= 320, "main.gd passes Sprint 13 Codex navigation deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "codex_navigation_runtime_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Codex Navigation Runtime Ownership gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCENE) and registered_paths.has(CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes the Codex Navigation Controller and cutover bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var navigation_record: Dictionary = system_audit.call("record_for_id", "codex_navigation_runtime_cutover")
+		_expect(str(navigation_record.get("current_status", "")) == "sceneized" and str(navigation_record.get("mcp_notes", "")).contains("Seventeen"), "System Resourceization Audit records scene-owned Codex navigation and the deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Codex Navigation Runtime Ownership Cutover") and docs_source.contains("41,263") and docs_source.contains("20/20"), "main runtime replacement document records Sprint 13 navigation deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("CodexNavigationRuntimeCutoverBench") and ui_audit_source.to_lower().contains("seventeen"), "UI architecture audit records the Codex navigation cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCodexNavigationRuntimeControllerButton", "RunCodexNavigationRuntimeCutoverBenchButton", "OpenCodexNavigationRuntimeCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("codex_navigation_runtime_controller_scene_path") and dock.has_method("codex_navigation_runtime_cutover_bench_scene_path") and dock.has_method("codex_navigation_runtime_cutover_qa_output_dir"), "Design QA Dock exposes Codex Navigation path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_codex_navigation_runtime_controller_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_codex_navigation_runtime_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenCodexNavigationRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCodexNavigationRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCENE] and run_paths == [CODEX_NAVIGATION_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Codex Navigation controller and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_codex_public_snapshot_cutover_component() -> void:
+	for path in [CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Codex Public Snapshot Cutover" % path)
+	var service_packed := load(CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		for method_name in ["configure", "compose_role", "compose_region", "role_route_label", "debug_snapshot"]:
+			_expect(service.has_method(method_name), "CodexPublicSnapshotService exposes %s" % method_name)
+		service.call("configure", {})
+		var role_source := {"role_card": {"name": "测试角色", "species": "商人", "trait": "公开", "bonus_card_product": "环晶电池"}, "index": 0, "total": 1, "passive_text": "测试被动", "starting_cash_delta": 0, "accent": Color("#38bdf8"), "kpi_columns": 2, "route_columns": 2, "face": {}, "face_effect": "测试"}
+		var region_source := {"valid": true, "index": 0, "total": 1, "name": "测试区域", "terrain": "land", "terrain_label": "陆地", "economic_focus_label": "均衡", "destroyed": false, "selected": true, "hp_total": 10, "hp_now": 10, "panic": 0, "transport_speed": 1.0, "trade_route_load": 0, "card_count": 0, "city_present": false, "city_active": false, "supply_text": "无", "demand_text": "无", "weather_text": "暂无", "connection_summary": "暂无", "card_choice_summary": "无", "monster_entries": [], "public_clue": "暂无", "card_names": [], "products": []}
+		var role_snapshot: Dictionary = service.call("compose_role", role_source)
+		var region_snapshot: Dictionary = service.call("compose_region", region_source)
+		_expect(role_snapshot.get("board", {}) is Dictionary and region_snapshot.get("detail", {}) is Dictionary and not _variant_contains_callable(role_snapshot) and not _variant_contains_object(role_snapshot) and not _variant_contains_callable(region_snapshot) and not _variant_contains_object(region_snapshot), "CodexPublicSnapshotService returns pure Role and Region presentation snapshots")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("CodexPublicSnapshotService") != null and coordinator.has_method("compose_codex_role_snapshot") and coordinator.has_method("compose_codex_region_snapshot"), "GameRuntimeCoordinator composes and proxies CodexPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CodexPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "role_source_pure_data", "role_summary_parity", "role_board_shape", "role_economy_variants", "role_control_variants", "role_privacy_boundary", "region_source_pure_data", "region_summary_city", "region_summary_no_city", "region_detail_shape", "region_selected_chip", "region_public_clue_safe", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_role_route", "real_main_region_route", "legacy_role_region_formatters_absent", "deletion_metrics_and_privacy"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "service_checked", "main_checked", "role_checked", "region_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 23
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 23 and str(bench.call("output_dir")) == CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CodexPublicSnapshotCutoverBench defines 20 pure-data cases, 23 retired formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _role_codex_public_source_snapshot(") and main_source.contains("func _region_codex_public_source_snapshot(") and main_source.contains("compose_codex_role_snapshot") and main_source.contains("compose_codex_region_snapshot"), "main.gd delegates Role and Region public presentation through source adapters")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank <= 40986 and function_count <= 2019 and variable_count <= 192 and constant_count <= 320, "main.gd passes Sprint 14 Codex public snapshot deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "codex_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Codex Public Snapshot Ownership gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Codex Public Snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "codex_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Twenty-three"), "System Resourceization Audit records scene-owned public snapshots and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Codex Public Snapshot Ownership Cutover") and docs_source.contains("40,986") and docs_source.contains("23 Role/Region"), "main runtime replacement document records Sprint 14 public snapshot deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("CodexPublicSnapshotCutoverBench") and ui_audit_source.to_lower().contains("twenty-three"), "UI architecture audit records the Codex public snapshot cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCodexPublicSnapshotServiceButton", "RunCodexPublicSnapshotCutoverBenchButton", "OpenCodexPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("codex_public_snapshot_service_scene_path") and dock.has_method("codex_public_snapshot_cutover_bench_scene_path") and dock.has_method("codex_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Codex Public Snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_codex_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_codex_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenCodexPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCodexPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Codex Public Snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_monster_codex_public_snapshot_cutover_component() -> void:
+	for path in [MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Monster Codex Public Snapshot Cutover" % path)
+	var service_packed := load(MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "MonsterCodexPublicSnapshotService exposes required pure-data APIs")
+		service.call("configure", {})
+		var source := {"valid": true, "index": 0, "total": 1, "selected": true, "entry": {"name": "测试怪兽", "hp": 10, "armor": 1, "resource_focus": []}, "ecology": {"movement_archetype": "陆行", "role_tags": [], "bound_skill_counts": [1, 1, 1, 1], "economy_boon": {}}, "profile": {}, "accent": Color("#fb7185"), "move_text": "80m/s", "art_move_text": "80m/s", "ecology_move_text": "80m/s", "max_range_text": "0m", "encounter_range_text": "50m", "mobility_summary": "陆行", "action_summary": "暂无", "rank_iv_shift_summary": "无变化", "actions": [], "monster_card": {"valid": false}, "level_labels": ["I", "II", "III", "IV"]}
+		var snapshot: Dictionary = service.call("compose", source)
+		_expect(snapshot.get("detail", {}) is Dictionary and snapshot.get("browser_entry", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "MonsterCodexPublicSnapshotService returns pure detail and browser snapshots")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(not bool(debug.get("calculates_action_weights", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Monster formatter does not own probability calculations or runtime Nodes")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("MonsterCodexPublicSnapshotService") != null and coordinator.has_method("compose_monster_codex_snapshot"), "GameRuntimeCoordinator composes and proxies MonsterCodexPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "MonsterCodexPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "monster_source_pure_data", "monster_summary_parity", "browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract", "action_probability_board", "action_probability_tooltip", "bound_monster_card_preview", "ecology_identity_contract", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_route", "real_main_detail_route", "legacy_monster_formatters_absent", "deletion_metrics_and_privacy"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "service_checked", "main_checked", "monster_checked", "probability_checked", "card_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 14
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 14 and str(bench.call("output_dir")) == MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "MonsterCodexPublicSnapshotCutoverBench defines 20 pure-data cases, 14 retired formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _monster_codex_public_source_snapshot(") and main_source.contains("func _monster_codex_action_probability_facts(") and main_source.contains("compose_monster_codex_snapshot"), "main.gd keeps only monster public-fact and probability adapters")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line in main_source.split("\n"):
+		if line.strip_edges() != "":
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank <= 40859 and function_count <= 2010 and variable_count <= 192 and constant_count <= 320, "main.gd passes Sprint 15 Monster Codex deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "monster_codex_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Monster Codex Public Snapshot gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Monster Codex snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "monster_codex_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Fourteen"), "System Resourceization Audit records Monster snapshot ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Monster Codex Public Snapshot Ownership Cutover") and docs_source.contains("40,859") and docs_source.contains("Fourteen monster"), "main runtime replacement document records Sprint 15 monster snapshot deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("MonsterCodexPublicSnapshotCutoverBench") and ui_audit_source.to_lower().contains("fourteen"), "UI architecture audit records Monster snapshot cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenMonsterCodexPublicSnapshotServiceButton", "RunMonsterCodexPublicSnapshotCutoverBenchButton", "OpenMonsterCodexPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("monster_codex_public_snapshot_service_scene_path") and dock.has_method("monster_codex_public_snapshot_cutover_bench_scene_path") and dock.has_method("monster_codex_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Monster snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_monster_codex_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_monster_codex_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenMonsterCodexPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunMonsterCodexPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Monster snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_monster_runtime_characterization_component() -> void:
+	for path in [MONSTER_RUNTIME_CONTROLLER_SCRIPT, MONSTER_RUNTIME_CONTROLLER_SCENE, MONSTER_RUNTIME_WORLD_BRIDGE_SCRIPT, MONSTER_RUNTIME_WORLD_BRIDGE_SCENE, MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE, MONSTER_RUNTIME_OWNERSHIP_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "%s exists for Monster Runtime Hard Cutover" % path)
+		if not path.ends_with(".md"):
+			_expect(load(path) != null, "%s loads for Monster Runtime Hard Cutover" % path)
+	var controller_packed := load(MONSTER_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var controller := controller_packed.instantiate() if controller_packed != null else null
+	if controller != null:
+		_expect(controller.has_method("configure") and controller.has_method("reset_state") and controller.has_method("tick_wagers") and controller.has_method("tick_motion") and controller.has_method("tick_lifecycle") and controller.has_method("resolve_targeted_skill") and controller.has_method("roster_snapshot") and controller.has_method("to_save_data") and controller.has_method("apply_save_data") and controller.has_method("debug_snapshot"), "MonsterRuntimeController exposes roster, lifecycle, targeting, wager, and save APIs")
+		var debug: Dictionary = controller.call("debug_snapshot")
+		_expect(bool(debug.get("controller_authoritative", false)) and not bool(debug.get("parallel_legacy_owner", true)) and not _variant_contains_callable(debug) and not _variant_contains_object(debug), "MonsterRuntimeController debug snapshot is authoritative, privacy-safe pure data")
+		controller.free()
+	var bridge_packed := load(MONSTER_RUNTIME_WORLD_BRIDGE_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	if bridge != null:
+		var bridge_debug: Dictionary = bridge.call("debug_snapshot")
+		_expect(bridge.has_method("bind_world") and bridge.has_method("read_world_value") and bridge.has_method("write_world_value") and bridge.has_method("shared_rng") and not bool(bridge_debug.get("owns_monster_state", true)) and not bool(bridge_debug.get("owns_targeting", true)) and not bool(bridge_debug.get("owns_combat", true)) and not bool(bridge_debug.get("owns_wagers", true)), "MonsterRuntimeWorldBridge is a narrow, non-owning world adapter")
+		bridge.free()
+	var packed := load(MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "MonsterRuntimeCharacterizationBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "MonsterRuntimeCharacterizationBench exposes the long-lived characterization API")
+		var cases: Array = bench.call("characterization_cases")
+		var required_cases := ["first_summon_free_placement", "same_family_upgrade_restores_state", "fixed_seed_target_is_deterministic", "movement_starts_linear_not_teleport", "armor_absorbs_before_hp", "nearest_monster_encounter_opens_wager_before_damage", "wager_timeout_refunds_no_damage_and_retains_pool", "monster_save_restore_and_legacy_defaults", "public_marker_and_report_privacy_boundary", "sprint45_deletion_candidates_complete", "controller_scene_composition", "world_bridge_scene_composition", "coordinator_static_instances", "controller_api_contract", "controller_state_owner", "main_runtime_algorithms_absent", "main_legacy_state_fields_absent", "main_dynamic_compatibility_routes_to_controller", "ai_monster_route_uses_controller", "card_world_bridges_resolve_controller_state", "monster_save_owner_cutover", "debug_snapshot_privacy_and_pure_data", "no_parallel_monster_engine"]
+		var cases_ok := cases.size() == 50
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 50
+		for record_variant in records:
+			var record: Dictionary = record_variant
+			for key in ["case_id", "fixture_id", "monster_name", "start_district", "target_district", "final_district", "action_kind", "damage_delta", "route_pressure_delta", "city_gdp_delta", "lifetime_delta", "wager_count_delta", "cash_delta", "call_graph_checked", "rng_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 50 and str(bench.call("output_dir")) == MONSTER_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == MONSTER_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == MONSTER_RUNTIME_CONTROLLER_SCRIPT and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "MonsterRuntimeCharacterizationBench defines 50 pure-data behavior and hard-cutover cases with user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var controller_source := FileAccess.get_file_as_string(MONSTER_RUNTIME_CONTROLLER_SCRIPT)
+	var legacy_absent := main_source.sha256_text() != "46eb1f21e1d8182d78d16af4858eb3b90081da2c9644b50f81594469a667cc99"
+	for legacy_symbol in ["var auto_monsters := []", "var active_monster_wagers := []", "func _summon_monster_from_card(", "func _weighted_auto_monster_target(", "func _auto_monster_movement_tick(", "func _auto_monster_take_damage(", "func _open_monster_wager_for_pair("]:
+		legacy_absent = legacy_absent and not main_source.contains(str(legacy_symbol))
+	var controller_complete := true
+	for controller_symbol in ["var auto_monsters: Array = []", "func _summon_monster_from_card(", "func _weighted_auto_monster_target(", "func _auto_monster_movement_tick(", "func _auto_monster_take_damage(", "func _open_monster_wager_for_pair("]:
+		controller_complete = controller_complete and controller_source.contains(str(controller_symbol))
+	_expect(legacy_absent and controller_complete, "Sprint 45 removes legacy monster state and algorithms from main.gd and keeps them in the single scene controller")
+	var bench_scene_source := FileAccess.get_file_as_string(MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE)
+	_expect(bench_scene_source.contains("Monster Runtime Hard Cutover - Sprint 45") and bench_scene_source.contains("Hard cutover complete.") and not bench_scene_source.contains("Sprint 44 does not migrate algorithms."), "Monster Runtime QA surface presents the completed Sprint 45 ownership state")
+	var contract_source := FileAccess.get_file_as_string(MONSTER_RUNTIME_OWNERSHIP_CONTRACT)
+	_expect(contract_source.contains("Sprint 44 scope") and contract_source.contains("Observed lifecycle ordering") and contract_source.contains("Sprint 45 hard-cutover result") and contract_source.contains("scene-owned single owner") and contract_source.contains("50/50") and contract_source.contains("shared RNG"), "Monster Runtime contract records behavior, privacy, RNG, save, and completed Sprint 45 ownership")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_paths: Array = registry.call("scene_paths")
+		_expect(registry_paths.has(MONSTER_RUNTIME_CONTROLLER_SCENE) and registry_paths.has(MONSTER_RUNTIME_WORLD_BRIDGE_SCENE) and registry_paths.has(MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE), "MCP registry includes Monster Controller, WorldBridge, and hard-cutover Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var gate: Dictionary = scene_audit.call("record_for_id", "monster_runtime_characterization_gate")
+		_expect(str(gate.get("current_scene_path", "")) == MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE and str(gate.get("source_script_path", "")) == MONSTER_RUNTIME_CONTROLLER_SCRIPT and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit marks Monster Runtime hard cutover complete")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "monster_runtime_characterization_gate")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("current_path", "")) == MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE and (record.get("related_paths", []) as Array).has(MONSTER_RUNTIME_CONTROLLER_SCENE), "System Resourceization Audit records scene-owned Monster Runtime cutover")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "monster_runtime_lifecycle")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("MonsterRuntimeController") and not str(rule.get("current_owner", "")).contains("main.gd"), "Ruleset registry records completed Monster Runtime ownership cutover")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Sprint 44: Monster Runtime Characterization") and docs_source.contains("Sprint 45: Monster Runtime Hard Cutover") and docs_source.contains("50/50"), "main runtime replacement document records the Sprint 44 baseline and completed Sprint 45 cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenMonsterRuntimeControllerButton", "OpenMonsterRuntimeWorldBridgeButton", "OpenMonsterRuntimeCharacterizationBenchButton", "RunMonsterRuntimeCharacterizationBenchButton", "OpenMonsterRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("monster_runtime_controller_scene_path") and dock.has_method("monster_runtime_world_bridge_scene_path") and dock.has_method("monster_runtime_characterization_bench_scene_path") and dock.has_method("monster_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Monster Runtime controller, bridge, bench, and output paths")
+		var controller_paths: Array[String] = []
+		var bridge_paths: Array[String] = []
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_monster_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
+		dock.connect("open_monster_runtime_world_bridge_requested", func(scene_path: String) -> void: bridge_paths.append(scene_path))
+		dock.connect("open_monster_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_monster_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenMonsterRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenMonsterRuntimeWorldBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenMonsterRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunMonsterRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(controller_paths == [MONSTER_RUNTIME_CONTROLLER_SCENE] and bridge_paths == [MONSTER_RUNTIME_WORLD_BRIDGE_SCENE] and open_paths == [MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [MONSTER_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit Monster Runtime controller, bridge, and hard-cutover bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_military_runtime_characterization_component() -> void:
+	for path in [MILITARY_RUNTIME_CONTROLLER_SCRIPT, MILITARY_RUNTIME_CONTROLLER_SCENE, MILITARY_RUNTIME_WORLD_BRIDGE_SCRIPT, MILITARY_RUNTIME_WORLD_BRIDGE_SCENE, MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE, MILITARY_RUNTIME_OWNERSHIP_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "%s exists for Military Runtime Characterization" % path)
+		if not path.ends_with(".md"):
+			_expect(load(path) != null, "%s loads for Military Runtime Characterization" % path)
+	var packed := load(MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "MilitaryRuntimeCharacterizationBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "MilitaryRuntimeCharacterizationBench exposes the long-lived characterization API")
+		var cases: Array = bench.call("characterization_cases")
+		var required_cases := ["seven_real_military_families_exist", "rank_i_to_iv_progression", "unit_creation_shape_and_uid", "control_limit_rejects_atomically", "movement_starts_linear_not_teleport", "movement_arrival_commits_position", "bound_commands_granted", "move_command_causes_no_implicit_damage", "gdp_pressure_applies_once", "strike_district_is_explicit", "strike_route_is_explicit", "attack_monster_routes_to_monster_controller", "monster_damage_applies_exactly_once", "card_inventory_remains_command_slot_owner", "current_save_shape", "legacy_save_defaults", "private_owner_and_ai_plan_not_exposed", "sprint47_deletion_candidates_complete", "controller_scene_composition", "controller_api_contract", "coordinator_static_composition", "roster_owner_cutover", "lifecycle_owner_cutover", "movement_owner_cutover", "command_owner_cutover", "inventory_invalidation_routes_once", "monster_damage_routes_once", "save_owner_cutover", "ai_controller_binding", "pure_debug_snapshot", "main_legacy_military_absent"]
+		var cases_ok := cases.size() == 50
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 50
+		for record_variant in records:
+			var record: Dictionary = record_variant
+			for key in ["case_id", "card_id", "unit_uid", "command", "start_district", "target_district", "unit_count_delta", "duration_delta", "cooldown_delta", "gdp_pressure_delta", "district_damage_delta", "route_damage_delta", "monster_damage_delta", "inventory_checked", "monster_controller_checked", "ai_route_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 50 and str(bench.call("output_dir")) == MILITARY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == MILITARY_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == MILITARY_RUNTIME_CONTROLLER_SCRIPT and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "MilitaryRuntimeCharacterizationBench defines 50 pure-data behavior and hard-cutover checks with user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var military_source := FileAccess.get_file_as_string(MILITARY_RUNTIME_CONTROLLER_SCRIPT)
+	_expect(main_source.sha256_text() != "22b6579f07eea66a8905ad2ec075b68de1c6d4ad2150a933d44c059164db7c25" and not main_source.contains("var military_units := []") and not main_source.contains("func _trigger_military_command(") and military_source.contains("var military_units: Array = []") and military_source.contains("func trigger_command("), "Sprint 47 makes MilitaryRuntimeController authoritative and removes the legacy main military engine")
+	var contract_source := FileAccess.get_file_as_string(MILITARY_RUNTIME_OWNERSHIP_CONTRACT)
+	_expect(contract_source.contains("Sprint 47") and contract_source.contains("Seven runtime families") and contract_source.contains("lifecycle") and contract_source.contains("CardInventoryRuntimeService") and contract_source.contains("MonsterRuntimeController") and contract_source.contains("MilitaryRuntimeController"), "Military ownership contract records the completed lifecycle cutover and cross-service boundaries")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_paths: Array = registry.call("scene_paths")
+		_expect(registry_paths.has(MILITARY_RUNTIME_CONTROLLER_SCENE) and registry_paths.has(MILITARY_RUNTIME_WORLD_BRIDGE_SCENE) and registry_paths.has(MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE), "MCP registry includes Military Controller, WorldBridge, and hard-cutover Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var gate: Dictionary = scene_audit.call("record_for_id", "military_runtime_characterization_gate")
+		_expect(str(gate.get("current_scene_path", "")) == MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE and str(gate.get("source_script_path", "")) == MILITARY_RUNTIME_CONTROLLER_SCRIPT and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit marks Military Runtime hard cutover complete")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "military_runtime_characterization_gate")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("current_path", "")) == MILITARY_RUNTIME_CONTROLLER_SCENE, "System Resourceization Audit records MilitaryRuntimeController as the runtime owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "military_runtime_lifecycle")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("MilitaryRuntimeController") and (rule.get("deletion_candidates", []) as Array).is_empty(), "Ruleset registry records the completed Military Runtime cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenMilitaryRuntimeControllerButton", "OpenMilitaryRuntimeWorldBridgeButton", "OpenMilitaryRuntimeCharacterizationBenchButton", "RunMilitaryRuntimeCharacterizationBenchButton", "OpenMilitaryRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("military_runtime_controller_scene_path") and dock.has_method("military_runtime_world_bridge_scene_path") and dock.has_method("military_runtime_characterization_bench_scene_path") and dock.has_method("military_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Military Runtime scenes, bench, and output paths")
+		var controller_paths: Array[String] = []
+		var bridge_paths: Array[String] = []
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_military_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
+		dock.connect("open_military_runtime_world_bridge_requested", func(scene_path: String) -> void: bridge_paths.append(scene_path))
+		dock.connect("open_military_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_military_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenMilitaryRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenMilitaryRuntimeWorldBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenMilitaryRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunMilitaryRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(controller_paths == [MILITARY_RUNTIME_CONTROLLER_SCENE] and bridge_paths == [MILITARY_RUNTIME_WORLD_BRIDGE_SCENE] and open_paths == [MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit Military Controller, Bridge, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_weather_runtime_characterization_component() -> void:
+	for path in [WEATHER_RUNTIME_CONTROLLER_SCRIPT, WEATHER_RUNTIME_CONTROLLER_SCENE, WEATHER_RUNTIME_WORLD_BRIDGE_SCRIPT, WEATHER_RUNTIME_WORLD_BRIDGE_SCENE, WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE, WEATHER_RUNTIME_OWNERSHIP_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "%s exists for Weather Runtime Characterization" % path)
+		if path.ends_with(".gd") or path.ends_with(".tscn"):
+			_expect(load(path) != null, "%s loads for Weather Runtime Characterization" % path)
+	var packed := load(WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "WeatherRuntimeCharacterizationBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "WeatherRuntimeCharacterizationBench exposes the long-lived characterization API")
+		var cases: Array = bench.call("characterization_cases")
+		var required_cases := ["weather_call_graph_complete", "four_runtime_weather_types_exist", "real_weather_cards_exist", "runtime_state_shape", "initial_forecast_created", "forecast_lead_clamped_60_to_180", "natural_duration_range_preserved", "zone_count_one_to_five", "destroyed_districts_excluded", "neighbor_first_zone_selection", "seeded_fallback_selection", "shared_rng_consumption_order", "forced_card_rewrites_forecast", "forced_forecast_keeps_public_warning", "invalid_anchor_rejects_atomically", "unknown_type_falls_back_safely", "sequence_increments_once", "activation_occurs_at_starts_at", "activation_sets_started_and_ends_at", "activation_clears_forecast", "activation_schedules_next_forecast", "overlapping_active_zones_supported", "expiration_removes_only_expired", "expiration_refreshes_world_once", "production_multiplier_applies", "transport_multiplier_applies", "consumption_multiplier_applies", "ocean_transport_override", "overlapping_multipliers_compose", "city_network_refresh_routes_once", "product_market_refresh_routes_once", "normal_realtime_tick_continues", "monster_wager_freezes_weather", "readonly_pause_freezes_weather", "ai_weather_intent_uses_same_route", "card_resolution_weather_dispatch", "current_save_shape", "legacy_save_defaults", "public_forecast_privacy", "sprint49_deletion_candidates_complete", "controller_scene_composition", "controller_api_contract", "coordinator_static_composition", "state_owner_cutover", "shared_rng_owner_cutover", "lifecycle_owner_cutover", "multiplier_owner_cutover", "card_rewrite_owner_cutover", "save_owner_cutover", "ai_controller_binding", "pure_debug_snapshot", "main_legacy_weather_absent", "no_parallel_weather_owner"]
+		var cases_ok := cases.size() == 53
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 53
+		for record_variant in records:
+			var record: Dictionary = record_variant
+			for key in ["case_id", "weather_type", "forecast_present", "active_zone_count", "district_count", "sequence_delta", "rng_checked", "timing_checked", "multiplier_checked", "world_refresh_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 53 and str(bench.call("output_dir")) == WEATHER_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == WEATHER_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == WEATHER_RUNTIME_CONTROLLER_SCRIPT and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "WeatherRuntimeCharacterizationBench defines 53 pure-data behavior and hard-cutover checks with user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var weather_source := FileAccess.get_file_as_string(WEATHER_RUNTIME_CONTROLLER_SCRIPT)
+	_expect(main_source.sha256_text() != "f75b217e85da2e4f5300b900290457d41e4c031ec3c6b7cefe996e6a354a103a" and not main_source.contains("var weather_forecast :=") and not main_source.contains("func _update_weather_system(") and weather_source.contains("var weather_forecast: Dictionary") and weather_source.contains("func apply_weather_control("), "Sprint 49 makes WeatherRuntimeController authoritative and removes the legacy main weather engine")
+	var contract_source := FileAccess.get_file_as_string(WEATHER_RUNTIME_OWNERSHIP_CONTRACT)
+	_expect(contract_source.contains("Sprint 49 status") and contract_source.contains("Scheduling and RNG order") and contract_source.contains("Activation and expiration order") and contract_source.contains("EnvironmentBalanceModel") and contract_source.contains("Deleted legacy owner"), "Weather ownership contract records the completed cutover, timing, RNG, external boundaries, and deletion result")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_paths: Array = registry.call("scene_paths")
+		_expect(registry_paths.has(WEATHER_RUNTIME_CONTROLLER_SCENE) and registry_paths.has(WEATHER_RUNTIME_WORLD_BRIDGE_SCENE) and registry_paths.has(WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE), "MCP registry includes Weather Controller, WorldBridge, and hard-cutover Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var gate: Dictionary = scene_audit.call("record_for_id", "weather_runtime_characterization_gate")
+		_expect(str(gate.get("current_scene_path", "")) == WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE and str(gate.get("source_script_path", "")) == WEATHER_RUNTIME_CONTROLLER_SCRIPT and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit marks Weather Runtime hard cutover complete")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "weather_runtime_characterization_gate")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("current_path", "")) == WEATHER_RUNTIME_CONTROLLER_SCENE, "System Resourceization Audit records WeatherRuntimeController as the runtime owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "weather_runtime_lifecycle")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("WeatherRuntimeController") and (rule.get("deletion_candidates", []) as Array).is_empty(), "Ruleset registry records the completed Weather Runtime cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenWeatherRuntimeControllerButton", "OpenWeatherRuntimeWorldBridgeButton", "OpenWeatherRuntimeCharacterizationBenchButton", "RunWeatherRuntimeCharacterizationBenchButton", "OpenWeatherRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("weather_runtime_controller_scene_path") and dock.has_method("weather_runtime_world_bridge_scene_path") and dock.has_method("weather_runtime_characterization_bench_scene_path") and dock.has_method("weather_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Weather Runtime Controller, Bridge, Bench, and output paths")
+		var controller_paths: Array[String] = []
+		var bridge_paths: Array[String] = []
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_weather_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
+		dock.connect("open_weather_runtime_world_bridge_requested", func(scene_path: String) -> void: bridge_paths.append(scene_path))
+		dock.connect("open_weather_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_weather_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenWeatherRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenWeatherRuntimeWorldBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenWeatherRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunWeatherRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(controller_paths == [WEATHER_RUNTIME_CONTROLLER_SCENE] and bridge_paths == [WEATHER_RUNTIME_WORLD_BRIDGE_SCENE] and open_paths == [WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit Weather Controller, Bridge, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_contract_runtime_characterization_component() -> void:
+	for path in [CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE, CONTRACT_RUNTIME_CONTROLLER_SCENE, CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE, CONTRACT_RUNTIME_OWNERSHIP_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "%s exists for Contract Runtime Characterization" % path)
+		if path.ends_with(".gd") or path.ends_with(".tscn"):
+			_expect(load(path) != null, "%s loads for Contract Runtime Characterization" % path)
+	var packed := load(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "ContractRuntimeCharacterizationBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "ContractRuntimeCharacterizationBench exposes the long-lived characterization API")
+		var cases: Array = bench.call("characterization_cases")
+		var required_cases := ["contract_call_graph_complete", "five_real_contract_families_exist", "contract_rank_i_to_iv_assets", "pending_offer_runtime_shape", "contract_ruleset_window_is_five_seconds", "valid_source_district", "valid_target_district", "same_source_target_rejected", "destroyed_or_invalid_district_rejected_atomically", "selected_product_contract", "automatic_product_matching", "fixed_product_contract", "multi_product_contract", "punitive_decline_terms_preserved", "card_resolution_creates_pending_offer", "response_context_copied_to_offer", "active_resolution_released_after_offer_creation", "later_cards_continue_while_contract_pending", "duplicate_offer_id_rejected", "offer_creation_has_no_partial_world_mutation", "human_accept_routes_once", "human_decline_routes_once", "timeout_routes_once", "duplicate_response_rejected", "response_after_expiry_rejected", "forced_decision_priority_preserved", "monster_wager_or_counter_preempts_contract", "overlay_action_id_compatibility", "ai_accept_uses_same_runtime_response_route", "ai_decline_uses_same_runtime_response_route", "ai_remains_decision_owner_only", "player_and_ai_results_have_same_mutation_contract", "accept_cash_and_region_effects_exact_once", "decline_penalty_caps_and_route_damage_exact_once", "timeout_effect_matches_observed_runtime_semantics", "formula_service_remains_pure_formula_owner", "city_market_and_route_refresh_count_observed", "multiple_pending_offers_resolve_independently", "current_save_shape", "legacy_save_defaults", "pending_timer_save_load_parity", "public_contract_result_clue", "intel_trace_uses_sanitized_result", "hidden_owner_not_exposed", "private_target_and_private_discard_not_exposed", "pure_data_snapshots", "sprint51_deletion_candidates_complete", "controller_scene_composition", "controller_api_contract", "coordinator_static_composition", "state_owner_cutover", "endpoint_product_owner_cutover", "project_controller_authority", "explicit_self_sign_gate", "preempted_timer_suspends", "nonblocking_card_resolution", "exact_once_transaction", "world_bridge_non_owning", "player_ai_shared_route", "save_owner_cutover", "pure_public_private_snapshots", "main_legacy_contract_absent"]
+		var cases_ok := cases.size() == 62
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 62
+		for record_variant in records:
+			var record: Dictionary = record_variant
+			for key in ["case_id", "card_id", "contract_offer_id", "response_kind", "source_district", "target_district", "product_count", "timer_before", "timer_after", "cash_delta", "production_delta", "demand_delta", "transport_delta", "route_flow_delta", "route_damage_delta", "public_event_delta", "private_event_delta", "execution_boundary_checked", "formula_service_checked", "ai_route_checked", "forced_decision_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var baseline_metrics: Dictionary = manifest.get("baseline_main_metrics", {}) if manifest.get("baseline_main_metrics", {}) is Dictionary else {}
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 62 and str(bench.call("output_dir")) == CONTRACT_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CONTRACT_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "res://scripts/runtime/contract_runtime_controller.gd" and str(manifest.get("baseline_main_sha256", "")) == "214aeb804860d2dffb8833eff0bc0a4098b355178c07fb8e8bd1d80e6221777f" and int(baseline_metrics.get("nonblank_lines", 0)) == 25039 and int(baseline_metrics.get("function_count", 0)) == 1415 and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ContractRuntimeCharacterizationBench defines the 47 revalidation + 15 hard-cutover pure-data gate with user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var main_nonblank := 0
+	var main_functions := 0
+	var main_variables := 0
+	var main_constants := 0
+	for line_variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty():
+			main_nonblank += 1
+		if line.begins_with("func "):
+			main_functions += 1
+		elif line.begins_with("var "):
+			main_variables += 1
+		elif line.begins_with("const "):
+			main_constants += 1
+	_expect(main_nonblank <= 24589 and main_functions <= 1385 and main_variables <= 145 and main_constants <= 228 and not main_source.contains("var pending_contract_offers") and not main_source.contains("func _enqueue_pending_area_trade_contract(") and not main_source.contains("func _respond_to_pending_contract_for_player(") and not main_source.contains("func _update_pending_contract_offers("), "Sprint 51 deletes the legacy main.gd Contract Runtime owner and meets the hard-deletion ceilings")
+	var contract_source := FileAccess.get_file_as_string(CONTRACT_RUNTIME_OWNERSHIP_CONTRACT)
+	_expect(contract_source.contains("Sprint 51 status") and contract_source.contains("62/62") and contract_source.contains("Deleted legacy owner") and contract_source.contains("Project-controller authority") and contract_source.contains("visible-time"), "Contract ownership contract records the authoritative owner, locked v0.4 decisions, privacy, and completed deletion gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_paths: Array = registry.call("scene_paths")
+		_expect(registry_paths.has(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE) and registry_paths.has(CONTRACT_RUNTIME_CONTROLLER_SCENE) and registry_paths.has(CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE), "MCP registry includes Contract Runtime Controller, World Bridge, and long-lived QA Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var gate: Dictionary = scene_audit.call("record_for_id", "contract_runtime_characterization_gate")
+		_expect(str(gate.get("current_scene_path", "")) == CONTRACT_RUNTIME_CONTROLLER_SCENE and str(gate.get("source_script_path", "")) == "res://scripts/runtime/contract_runtime_controller.gd" and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit records the Sprint 51 Contract Runtime hard cutover")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "contract_runtime_characterization_gate")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("current_path", "")) == CONTRACT_RUNTIME_CONTROLLER_SCENE and str(record.get("runtime_owner", "")).contains("contract_runtime_controller.gd"), "System Resourceization Audit records ContractRuntimeController as the runtime owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "contract_runtime_lifecycle")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("ContractRuntimeController") and str(rule.get("next_sprint", "")).contains("Monitor"), "Ruleset registry records the locked v0.4 Contract Runtime semantics and completed cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenContractRuntimeControllerButton", "OpenContractRuntimeWorldBridgeButton", "OpenContractRuntimeCharacterizationBenchButton", "RunContractRuntimeCharacterizationBenchButton", "OpenContractRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("contract_runtime_characterization_bench_scene_path") and dock.has_method("contract_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Contract Runtime Bench and output paths")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_contract_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_contract_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenContractRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunContractRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit Contract Runtime Characterization Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_product_market_runtime_characterization_component() -> void:
+	for path in [PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE, PRODUCT_MARKET_RUNTIME_OWNERSHIP_CONTRACT, PRODUCT_FUTURES_V04_TERMS_CONTRACT, PRODUCT_FUTURES_V04_DESIGN_DECISIONS, PRODUCT_FUTURES_TERMS_RESOURCE_SCRIPT, PRODUCT_FUTURES_TERMS_CATALOG_SCRIPT, PRODUCT_FUTURES_TERMS_CATALOG]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "Product Market Runtime characterization asset exists: %s" % path)
+	var script := load(PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT) as Script
+	_expect(script != null and script.can_instantiate(), "Product Market Runtime characterization script loads")
+	var packed := load(PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "ProductMarketRuntimeCharacterizationBench scene loads")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "ProductMarketRuntimeCharacterizationBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "ProductMarketRuntimeCharacterizationBench exposes the long-lived characterization API")
+		var cases: Array = bench.call("characterization_cases")
+		var required_cases := ["product_market_call_graph_complete", "seeded_market_generation_deterministic", "district_product_supply_weight", "active_city_demand_weight", "temporary_pressure_decays_per_refresh", "market_tick_refresh_order", "product_boon_applies", "futures_up_position_created", "futures_expiry_exact_once", "destroyed_warehouse_clears_positions", "current_and_legacy_save_shape", "public_private_market_snapshot_boundary", "sprint53_deletion_candidates_complete", "formula_service_remains_arithmetic_owner", "ai_reads_market_but_does_not_mutate", "weather_monster_military_contract_share_refresh_route", "pure_data_evidence_and_no_runtime_objects", "twelve_real_futures_cards_exist", "warehouse_destroy_v04_mismatch_recorded", "public_private_and_save_boundary", "terms_resource_catalog_complete", "twelve_cards_terms_complete", "queue_margin_preflight", "effect_open_locks_margin_exactly_once", "favorable_long_gain_capped", "adverse_short_loss_capped", "zero_delta_refunds_margin", "warehouse_destruction_loss_formula", "legacy_save_normalizes_once", "ai_risk_adjusted_terms", "presentation_shows_financial_terms", "no_parallel_futures_fallback"]
+		var cases_ok := cases.size() == 100
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
+		var required_fields := ["case_id", "product_id", "card_id", "rank", "runtime_kind", "underlying_kind", "direction", "purchase_cost", "action_cost", "margin_present", "margin_cash", "entry_locked", "duration_seconds", "multiplier", "stockpile_units", "max_gain_present", "maximum_gain", "max_loss_present", "maximum_loss", "warehouse_required", "warehouse_hp_checked", "current_behavior", "expected_v04_behavior", "cycle_before", "cycle_after", "market_timer_before", "market_timer_after", "price_before", "price_after", "trend", "supply", "demand", "disrupted", "temporary_demand_delta", "temporary_supply_delta", "futures_count_before", "futures_count_after", "cash_delta", "rng_checked", "timing_checked", "formula_service_checked", "world_route_checked", "ai_route_checked", "save_checked", "privacy_checked", "pure_data_checked", "historical_baseline", "live_gate", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]
+		var fields_ok := true
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in required_fields:
+				fields_ok = fields_ok and record.has(field_name)
+		var matrix: Array = manifest.get("card_terms_matrix", []) as Array
+		var decisions: Array = manifest.get("design_decisions", []) as Array
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 100 and int(manifest.get("market_case_count", 0)) == 50 and int(manifest.get("historical_case_count", 0)) == 24 and int(manifest.get("cutover_case_count", 0)) == 26 and int(manifest.get("live_case_count", 0)) == 76 and matrix.size() == 12 and decisions.is_empty() and str(bench.call("output_dir")) == PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "res://scripts/runtime/product_market_runtime_controller.gd" and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ProductMarketRuntimeCharacterizationBench preserves 24 historical records and exposes the 76-case Sprint 55 live alignment gate")
+		root.remove_child(bench)
+		bench.queue_free()
+	var contract_text := FileAccess.get_file_as_string(PRODUCT_MARKET_RUNTIME_OWNERSHIP_CONTRACT)
+	var terms_contract := FileAccess.get_file_as_string(PRODUCT_FUTURES_V04_TERMS_CONTRACT)
+	var decisions_contract := FileAccess.get_file_as_string(PRODUCT_FUTURES_V04_DESIGN_DECISIONS)
+	_expect(contract_text.contains("50/50") and contract_text.contains("100/100") and contract_text.contains("76/76") and contract_text.contains("product_market") and contract_text.contains("business_cycle_count") and contract_text.contains("market_timer") and contract_text.contains("Sprint 55") and terms_contract.contains("Authored v0.4 card matrix") and terms_contract.contains("action_fee_cash=0") and terms_contract.contains("locked_margin") and decisions_contract.contains("ADOPTED") and decisions_contract.contains("## 10. AI financial scoring"), "Product Market contracts record the Resource-backed Sprint 55 terms and adopted design decisions")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var product_market_controller_source := FileAccess.get_file_as_string("res://scripts/runtime/product_market_runtime_controller.gd")
+	_expect(ResourceLoader.exists("res://scenes/runtime/ProductMarketRuntimeController.tscn") and ResourceLoader.exists("res://scenes/runtime/ProductMarketRuntimeWorldBridge.tscn") and product_market_controller_source.contains("var product_market: Dictionary = {}") and not main_source.contains("var product_market := {}") and not main_source.contains("func _market_tick("), "Sprint 53 installs one ProductMarketRuntimeController and removes the parallel main.gd market owner")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_paths: Array = registry.call("scene_paths")
+		_expect(registry_paths.has(PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE) and registry_paths.has("res://scenes/runtime/ProductMarketRuntimeController.tscn") and registry_paths.has("res://scenes/runtime/ProductMarketRuntimeWorldBridge.tscn"), "MCP registry includes Product Market Controller, WorldBridge, and hard-cutover Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var scene_record: Dictionary = scene_audit.call("record_for_id", "product_market_runtime_characterization_gate")
+		var terms_record: Dictionary = scene_audit.call("record_for_id", "product_futures_v04_terms_gate")
+		_expect(str(scene_record.get("sceneization_status", "")) == "full" and str(scene_record.get("source_script_path", "")) == "res://scripts/runtime/product_market_runtime_controller.gd" and str(terms_record.get("sceneization_status", "")) == "full", "Sceneization Audit records both Product Market ownership and Sprint 55 terms alignment as full")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null:
+		var system_record: Dictionary = system_audit.call("record_for_id", "product_market_runtime_characterization_gate")
+		_expect(str(system_record.get("current_status", "")) == "sceneized" and str(system_record.get("runtime_owner", "")) == "res://scripts/runtime/product_market_runtime_controller.gd", "System Resourceization Audit records the Product Market Controller as runtime owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "product_market_futures_runtime_lifecycle")
+		var margin_rule: Dictionary = ruleset.call("record_for_id", "product_futures_margin_and_caps")
+		var warehouse_rule: Dictionary = ruleset.call("record_for_id", "warehouse_destruction_settlement")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(margin_rule.get("current_status", "")) == "cutover_complete" and str(warehouse_rule.get("current_status", "")) == "cutover_complete" and str(margin_rule.get("next_sprint", "")).contains("Financial Content"), "Ruleset registry records market, margin/caps, and warehouse settlement as fully cut over")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenProductMarketRuntimeCharacterizationBenchButton", "RunProductMarketRuntimeCharacterizationBenchButton", "OpenProductFuturesTermsCatalogButton", "OpenProductMarketRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("product_market_runtime_characterization_bench_scene_path") and dock.has_method("product_futures_terms_catalog_path") and dock.has_method("product_market_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Product Market Runtime Bench, terms catalog, and output paths")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		var resource_paths: Array[String] = []
+		dock.connect("open_product_market_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_product_market_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		dock.connect("open_product_futures_terms_catalog_requested", func(resource_path: String) -> void: resource_paths.append(resource_path))
+		(dock.find_child("OpenProductMarketRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunProductMarketRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenProductFuturesTermsCatalogButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and resource_paths == [PRODUCT_FUTURES_TERMS_CATALOG], "Design QA Dock fallback signals emit Product Market Bench and terms catalog paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_city_trade_network_runtime_characterization_component() -> void:
+	for path in [CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE, CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT, CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE, CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT, CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE, CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "City / Trade Network runtime asset exists: %s" % path)
+	var script := load(CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT) as Script
+	_expect(script != null and script.can_instantiate(), "City / Trade Network runtime gate script loads")
+	var controller_script := load(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT) as Script
+	var bridge_script := load(CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT) as Script
+	_expect(controller_script != null and controller_script.can_instantiate() and bridge_script != null and bridge_script.can_instantiate(), "City / Trade Network Controller and non-owning WorldBridge scripts load")
+	var controller_packed := load(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var bridge_packed := load(CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE) as PackedScene
+	_expect(controller_packed != null and bridge_packed != null, "City / Trade Network Controller and WorldBridge scenes load")
+	if controller_packed != null and bridge_packed != null:
+		var controller := controller_packed.instantiate()
+		var bridge := bridge_packed.instantiate()
+		var controller_debug: Dictionary = controller.call("debug_snapshot") if controller.has_method("debug_snapshot") else {}
+		var bridge_debug: Dictionary = bridge.call("debug_snapshot") if bridge.has_method("debug_snapshot") else {}
+		_expect(controller.has_method("refresh_networks") and controller.has_method("shortest_trade_path") and controller.has_method("settle_cashflow_seconds") and controller.has_method("to_save_data") and controller.has_method("apply_save_data"), "CityTradeNetworkRuntimeController exposes network, route, cashflow-orchestration, and save APIs")
+		_expect(not bool(bridge_debug.get("owns_runtime_state", true)) and not bool(bridge_debug.get("owns_rules", true)) and bridge.has_method("capture_world_snapshot") and bridge.has_method("apply_network_receipt"), "CityTradeNetworkWorldBridge is explicitly non-owning")
+		_expect(not _variant_contains_callable(controller_debug) and not _variant_contains_object(controller_debug) and not _variant_contains_callable(bridge_debug) and not _variant_contains_object(bridge_debug), "City / Trade Network debug snapshots are pure data")
+		controller.free()
+		bridge.free()
+	var packed := load(CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "CityTradeNetworkRuntimeCharacterizationBench scene loads")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "CityTradeNetworkRuntimeCharacterizationBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "CityTradeNetworkRuntimeCharacterizationBench exposes the long-lived characterization API")
+		var cases: Array = bench.call("characterization_cases")
+		var required_cases := ["city_trade_call_graph_complete", "first_contribution_full_share", "city_gdp_weighted_by_project_level", "competition_matches_other_owner", "production_district_source_type", "shortest_path_connected", "demand_order_damage_application", "refresh_order_competition_routes_gdp_shares_supply", "gdp_formula_controller_boundary", "cashflow_controller_cadence_boundary", "project_share_cashflow_route", "current_save_shape", "public_city_route_privacy", "sprint64_deletion_candidates_complete", "controller_scene_composition", "world_bridge_scene_composition", "project_sequence_controller_owned", "route_algorithm_controller_owned", "refresh_orchestration_controller_owned", "save_envelope_controller_owned", "main_route_algorithms_absent", "controller_debug_pure_data", "no_parallel_network_owner"]
+		var cases_ok := cases.size() == 68
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
+		var required_fields := ["case_id", "district_index", "project_id", "product_id", "direction", "route_count", "path_length", "city_gdp", "player_gdp_total", "share_total_basis_points", "refresh_order_checked", "formula_owner_checked", "cashflow_owner_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]
+		var fields_ok := true
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in required_fields:
+				fields_ok = fields_ok and record.has(field_name)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var legacy_absent := not main_source.contains("func _shortest_trade_path(") and not main_source.contains("func _trade_path_cost(") and not main_source.contains("func _refresh_city_trade_routes(") and not main_source.contains("func _route_base_flow_amount(") and not main_source.contains("var city_product_project_sequence")
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 68 and str(bench.call("output_dir")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and legacy_absent and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CityTradeNetworkRuntimeCharacterizationBench defines the 68-case pure-data hard-cutover gate with no parallel main.gd route engine")
+		root.remove_child(bench)
+		bench.queue_free()
+	var contract_text := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT)
+	_expect(contract_text.contains("Sprint 64 completed the hard cutover") and contract_text.contains("Observed refresh order") and contract_text.contains("Sprint 64 deletion gate result") and contract_text.contains("68/68 observed and 68/68 aligned") and contract_text.contains("GdpFormulaRuntimeController") and contract_text.contains("EconomyCashflowRuntimeController") and contract_text.contains("There is no parallel route engine"), "City / Trade Network ownership contract records the unique owner, non-owning bridge, preserved formula owners, and completed deletion gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var controller_registry_record: Dictionary = registry.call("record_for_path", CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE)
+		var bridge_registry_record: Dictionary = registry.call("record_for_path", CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE)
+		var registry_record: Dictionary = registry.call("record_for_path", CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE)
+		_expect(str(controller_registry_record.get("scene_path", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE and str(bridge_registry_record.get("scene_path", "")) == CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE and str(registry_record.get("scene_path", "")) == CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE and bool(registry_record.get("smoke_check_enabled", false)), "MCP registry includes the City / Trade Network Controller, WorldBridge, and long-lived gate")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var scene_record: Dictionary = scene_audit.call("record_for_id", "city_trade_network_characterization_gate")
+		_expect(str(scene_record.get("sceneization_status", "")) == "full" and str(scene_record.get("source_script_path", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT, "Sceneization Audit records the City / Trade Network hard cutover as fully sceneized")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null:
+		var system_record: Dictionary = system_audit.call("record_for_id", "city_trade_network_characterization_gate")
+		_expect(str(system_record.get("current_status", "")) == "script_module" and str(system_record.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT, "System Resourceization Audit records CityTradeNetworkRuntimeController as the runtime owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "city_trade_network_runtime_ownership")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("CityTradeNetworkRuntimeController"), "Ruleset registry records City / Trade Network runtime ownership as cutover complete")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCityTradeNetworkRuntimeControllerButton", "OpenCityTradeNetworkRuntimeWorldBridgeButton", "OpenCityTradeNetworkRuntimeCharacterizationBenchButton", "RunCityTradeNetworkRuntimeCharacterizationBenchButton", "OpenCityTradeNetworkRuntimeCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("city_trade_network_runtime_controller_scene_path") and dock.has_method("city_trade_network_runtime_world_bridge_scene_path") and dock.has_method("city_trade_network_runtime_characterization_bench_scene_path") and dock.has_method("city_trade_network_runtime_characterization_qa_output_dir"), "Design QA Dock exposes City / Trade Network owner, bridge, Bench, and output paths")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_city_trade_network_runtime_controller_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("open_city_trade_network_world_bridge_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("open_city_trade_network_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_city_trade_network_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenCityTradeNetworkRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenCityTradeNetworkRuntimeWorldBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenCityTradeNetworkRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCityTradeNetworkRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE, CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE, CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit City / Trade Network owner, bridge, and gate paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_city_development_settlement_runtime_characterization_component() -> void:
+	for path in [CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCRIPT, CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE, CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT, CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE, CITY_DEVELOPMENT_WORLD_BRIDGE_SCRIPT, CITY_DEVELOPMENT_WORLD_BRIDGE_SCENE, CITY_DEVELOPMENT_SETTLEMENT_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "City Development Settlement characterization asset exists: %s" % path)
+	var script := load(CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCRIPT) as Script
+	_expect(script != null and script.can_instantiate(), "City Development Settlement characterization script loads")
+	var packed := load(CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "CityDevelopmentSettlementRuntimeCharacterizationBench scene loads")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "CityDevelopmentSettlementRuntimeCharacterizationBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "CityDevelopmentSettlementRuntimeCharacterizationBench exposes the long-lived characterization API")
+		var cases: Array = bench.call("characterization_cases")
+		var required_cases := ["city_development_settlement_call_graph_complete", "production_project_success", "demand_project_success", "commerce_project_success", "first_contribution_full_share", "second_player_share_split", "refresh_order_network_market_gdp", "public_private_project_privacy", "downstream_refresh_atomicity_characterized", "sprint66_deletion_candidates_complete", "controller_bridge_scene_composition", "unique_settlement_owner", "plan_is_pure_and_no_mutation", "stale_fingerprint_rejected", "failed_commit_rolls_back_world", "lifecycle_events_exact_once", "public_receipt_privacy", "reflected_tests_migrated", "main_legacy_settlement_absent", "no_parallel_city_engine"]
+		var cases_ok := cases.size() == 64
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
+		var required_fields := ["case_id", "card_id", "project_id", "project_direction", "district_index", "player_index", "city_created", "project_created", "contribution_delta", "share_delta", "controller_changed", "transport_delta", "city_hp_delta", "network_refresh_checked", "market_refresh_checked", "gdp_assignment_checked", "event_checked", "save_checked", "privacy_checked", "service_owner_checked", "plan_checked", "commit_checked", "main_adapter_checked", "legacy_formula_absent", "rollback_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "passed", "notes"]
+		var fields_ok := true
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in required_fields:
+				fields_ok = fields_ok and record.has(field_name)
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 64 and str(bench.call("output_dir")) == CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("current_settlement_owner", "")) == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CityDevelopmentSettlementRuntimeCharacterizationBench defines the 64-case pure-data Sprint 66 hard-cutover gate")
+		root.remove_child(bench)
+		bench.queue_free()
+	var contract_text := FileAccess.get_file_as_string(CITY_DEVELOPMENT_SETTLEMENT_CONTRACT)
+	_expect(contract_text.contains("Sprint 66") and contract_text.contains("64/64") and contract_text.contains("CityDevelopmentWorldBridge") and contract_text.contains("rollback") and contract_text.contains("no parallel"), "City Development Settlement contract records the authoritative owner, transaction order, rollback envelope, and deletion result")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_record: Dictionary = registry.call("record_for_path", CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE)
+		_expect(str(registry_record.get("scene_path", "")) == CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE and bool(registry_record.get("smoke_check_enabled", false)), "MCP registry includes the City Development Settlement characterization gate")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var scene_record: Dictionary = scene_audit.call("record_for_id", "city_development_settlement_characterization_gate")
+		_expect(str(scene_record.get("sceneization_status", "")) == "full" and str(scene_record.get("source_script_path", "")) == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT, "Sceneization Audit records City Development Settlement as a full Controller/WorldBridge cutover")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null:
+		var system_record: Dictionary = system_audit.call("record_for_id", "city_development_settlement_characterization_gate")
+		_expect(str(system_record.get("current_status", "")) == "sceneized" and str(system_record.get("runtime_owner", "")) == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT, "System Resourceization Audit records CityDevelopmentRuntimeController as the settlement owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "city_development_product_project_settlement")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("CityDevelopmentRuntimeController"), "Ruleset registry records the City Development transaction cutover as complete")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(420, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCityDevelopmentRuntimeControllerButton", "OpenCityDevelopmentWorldBridgeButton", "OpenCityDevelopmentSettlementCharacterizationBenchButton", "RunCityDevelopmentSettlementCharacterizationBenchButton", "OpenCityDevelopmentSettlementCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("city_development_settlement_characterization_bench_scene_path") and dock.has_method("city_development_settlement_characterization_qa_output_dir"), "Design QA Dock exposes City Development Settlement Bench and output paths")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_city_development_settlement_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_city_development_settlement_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenCityDevelopmentSettlementCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCityDevelopmentSettlementCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE] and run_paths == [CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit the City Development Settlement characterization scene path")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_city_gdp_derivative_runtime_component() -> void:
+	for path in [CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCRIPT, CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE, CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER_SCENE, CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE_SCENE, CITY_GDP_DERIVATIVE_TERMS_RESOURCE_SCRIPT, CITY_GDP_DERIVATIVE_TERMS_CATALOG_SCRIPT, CITY_GDP_DERIVATIVE_TERMS_CATALOG, CITY_GDP_DERIVATIVE_TERMS_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "City GDP derivative v0.4 asset exists: %s" % path)
+	var script := load(CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCRIPT) as Script
+	_expect(script != null and script.can_instantiate(), "City GDP derivative runtime Bench script loads")
+	var packed := load(CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "CityGdpDerivativeRuntimeBench scene loads")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeHost", "SummaryLabel", "StatusLabel", "TermsText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "CityGdpDerivativeRuntimeBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("runtime_cases") and bench.has_method("build_runtime_manifest_preview") and bench.has_method("run_runtime_suite"), "CityGdpDerivativeRuntimeBench exposes its long-lived QA API")
+		var cases: Array = bench.call("runtime_cases")
+		var required_cases := ["terms_城市买涨1", "terms_城市做空4", "terms_灾害保单4", "queue_margin_preflight", "effect_open_locks_margin", "insufficient_margin_atomic_reject", "long_favorable_settlement", "short_adverse_settlement", "destroyed_city_insurance_settlement", "expiry_exact_once", "legacy_save_normalization", "public_snapshot_privacy", "main_legacy_engine_absent"]
+		var cases_ok := cases.size() == 40
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var manifest: Dictionary = bench.call("build_runtime_manifest_preview")
+		var fields_ok := true
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in ["case_id", "card_id", "terms_checked", "authorization_checked", "margin_checked", "settlement_checked", "exact_once_checked", "save_checked", "privacy_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(field_name)
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 40 and str(bench.call("output_dir")) == CITY_GDP_DERIVATIVE_RUNTIME_OUTPUT_DIR and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CityGdpDerivativeRuntimeBench exposes forty pure-data Resource/funding/settlement/save/privacy cases")
+		root.remove_child(bench)
+		bench.queue_free()
+	var controller_packed := load(CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var controller := controller_packed.instantiate() if controller_packed != null else null
+	if controller != null:
+		_expect(controller.has_method("open_position") and controller.has_method("settle_district") and controller.has_method("settle_destroyed_city") and controller.has_method("to_save_data") and controller.has_method("apply_save_data") and controller.get("terms_catalog") is Resource, "CityGdpDerivativeRuntimeController exposes the authoritative lifecycle and catalog")
+		controller.free()
+	var catalog := load(CITY_GDP_DERIVATIVE_TERMS_CATALOG)
+	var catalog_report: Dictionary = catalog.call("validation_report") if catalog != null and catalog.has_method("validation_report") else {}
+	_expect(bool(catalog_report.get("valid", false)) and int(catalog_report.get("card_count", 0)) == 12 and not _variant_contains_callable(catalog_report) and not _variant_contains_object(catalog_report), "City GDP derivative terms catalog validates twelve authored Resources as pure data")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(not main_source.contains("gdp_bet_") and not main_source.contains("func _apply_city_gdp_derivative(") and not main_source.contains("func _resolve_city_gdp_derivatives(") and main_source.contains("city_gdp_derivative_runtime") and main_source.contains("_extract_legacy_city_gdp_derivative_positions"), "main.gd has no parallel City GDP derivative engine and retains only save/world adapters")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registry_paths: Array = registry.call("scene_paths")
+		_expect(registry_paths.has(CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER_SCENE) and registry_paths.has(CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE_SCENE) and registry_paths.has(CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE), "MCP registry includes City GDP derivative Controller, WorldBridge, and QA Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var record: Dictionary = scene_audit.call("record_for_id", "city_gdp_derivative_v04_terms_gate")
+		_expect(str(record.get("sceneization_status", "")) == "full" and str(record.get("current_scene_path", "")) == CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE, "Sceneization Audit records the City GDP derivative v0.4 terms gate as full")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "city_gdp_derivative_v04_terms_gate")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("runtime_owner", "")).contains("city_gdp_derivative_runtime_controller.gd"), "System Resourceization Audit records the City GDP derivative Controller as runtime owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "city_gdp_derivative_margin_and_caps")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("CityGdpDerivativeRuntimeController"), "Ruleset registry records City GDP derivative margin/caps and exact-once cutover")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(520, 1200)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCityGdpDerivativeRuntimeControllerButton", "OpenCityGdpDerivativeRuntimeWorldBridgeButton", "OpenCityGdpDerivativeRuntimeBenchButton", "RunCityGdpDerivativeRuntimeBenchButton", "OpenCityGdpDerivativeTermsCatalogButton", "OpenCityGdpDerivativeRuntimeOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("city_gdp_derivative_runtime_bench_scene_path") and dock.has_method("city_gdp_derivative_terms_catalog_path") and dock.has_method("city_gdp_derivative_runtime_qa_output_dir"), "Design QA Dock exposes City GDP derivative Bench, catalog, and output paths")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		var resource_paths: Array[String] = []
+		dock.connect("open_city_gdp_derivative_runtime_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_city_gdp_derivative_runtime_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		dock.connect("open_city_gdp_derivative_terms_catalog_requested", func(resource_path: String) -> void: resource_paths.append(resource_path))
+		(dock.find_child("OpenCityGdpDerivativeRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCityGdpDerivativeRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenCityGdpDerivativeTermsCatalogButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE] and run_paths == [CITY_GDP_DERIVATIVE_RUNTIME_BENCH_SCENE] and resource_paths == [CITY_GDP_DERIVATIVE_TERMS_CATALOG], "Design QA Dock fallback signals emit City GDP derivative Bench and catalog paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_runtime_card_catalog_resource_component() -> void:
+	var resource_scripts := [
+		"res://scripts/cards/card_runtime_definition_resource.gd",
+		"res://scripts/cards/card_runtime_rank_resource.gd",
+		"res://scripts/cards/card_runtime_family_resource.gd",
+		"res://scripts/cards/card_runtime_pack_resource.gd",
+		"res://scripts/cards/card_runtime_catalog_resource.gd",
+		"res://scripts/cards/card_runtime_kind_schema.gd",
+	]
+	for path in resource_scripts + [CARD_RUNTIME_CATALOG_SERVICE_SCRIPT, CARD_RUNTIME_CATALOG_SERVICE_SCENE, CARD_RUNTIME_DEFINITION_WORLD_BRIDGE_SCRIPT, CARD_RUNTIME_DEFINITION_WORLD_BRIDGE_SCENE, CARD_RUNTIME_CATALOG_RESOURCE, CARD_RUNTIME_CATALOG_INTEGRITY, RUNTIME_CARD_CATALOG_RESOURCE_BENCH_SCRIPT, RUNTIME_CARD_CATALOG_RESOURCE_BENCH_SCENE, RUNTIME_CARD_CATALOG_OWNERSHIP_CONTRACT, RUNTIME_CARD_CATALOG_RESOURCE_SCHEMA]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "Runtime Card Catalog Sprint 58 asset exists: %s" % path)
+	var catalog: Resource = load(CARD_RUNTIME_CATALOG_RESOURCE)
+	_expect(catalog != null and catalog.has_method("definition") and catalog.has_method("derived_definition") and catalog.has_method("validation_report") and catalog.has_method("debug_snapshot"), "CardRuntimeCatalogResource exposes definition, derivation, validation, and debug APIs")
+	if catalog != null:
+		var report: Dictionary = catalog.call("validation_report")
+		var debug: Dictionary = catalog.call("debug_snapshot")
+		var integrity_variant: Variant = JSON.parse_string(FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_INTEGRITY))
+		var integrity: Dictionary = integrity_variant if integrity_variant is Dictionary else {}
+		var hashes_match := str(debug.get("catalog_order_sha256", "")) == str(integrity.get("catalog_order_sha256", "")) and str(debug.get("upgradeable_order_sha256", "")) == str(integrity.get("upgradeable_order_sha256", "")) and str(debug.get("common_pool_order_sha256", "")) == str(integrity.get("common_pool_order_sha256", ""))
+		_expect(bool(report.get("valid", false)) and int(report.get("card_count", 0)) == 239 and int(report.get("authored_rank_count", 0)) == 239 and int(report.get("family_count", 0)) == 120 and int(report.get("pack_count", 0)) == 10 and int(report.get("common_pool_count", 0)) == 125 and int(report.get("upgradeable_family_count", 0)) == 76 and int(report.get("kind_count", 0)) == 49 and hashes_match and not _variant_contains_callable(report) and not _variant_contains_object(report), "Runtime catalog validates 120 families, 239 authored ranks, ten packs, 125 pool entries, 76 upgradeable families, 49 kinds, and locked order hashes")
+	var family_file_count := 0
+	for path in DirAccess.get_files_at("res://resources/cards/runtime/families"):
+		family_file_count += 1 if str(path).ends_with(".tres") else 0
+	var pack_file_count := 0
+	for path in DirAccess.get_files_at("res://resources/cards/runtime/packs"):
+		pack_file_count += 1 if str(path).ends_with(".tres") else 0
+	_expect(family_file_count == 120 and pack_file_count == 10, "Runtime card Resource graph has exactly 120 family files and ten pack files")
+	var service_packed := load(CARD_RUNTIME_CATALOG_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		service.call("configure", {})
+		var snapshot: Dictionary = service.call("debug_snapshot")
+		_expect(service.has_method("authored_definition") and service.has_method("exact_definition") and service.has_method("derived_definition") and service.has_method("public_pool") and service.has_method("upgradeable_families") and bool(snapshot.get("service_ready", false)) and bool(snapshot.get("service_authoritative", false)) and str(snapshot.get("runtime_owner", "")) == "CardRuntimeCatalogService" and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "CardRuntimeCatalogService is ready, authoritative, and exposes pure-data catalog APIs")
+		service.free()
+	var bridge_packed := load(CARD_RUNTIME_DEFINITION_WORLD_BRIDGE_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	_expect(bridge != null and bridge.has_method("resolve_definition") and bridge.has_method("debug_snapshot"), "CardRuntimeDefinitionWorldBridge exposes source-precedence composition without owning rules")
+	if bridge != null:
+		bridge.free()
+	var packed := load(RUNTIME_CARD_CATALOG_RESOURCE_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "RuntimeCardCatalogResourceBench scene loads")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "SchemaText", "CasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "RuntimeCardCatalogResourceBench statically owns %s" % node_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("historical_integrity_cases") and bench.has_method("live_cutover_cases") and bench.has_method("resource_cases") and bench.has_method("resource_schema_preview") and bench.has_method("build_resource_manifest_preview") and bench.has_method("run_resource_suite"), "RuntimeCardCatalogResourceBench exposes its long-lived 80-case QA API")
+		var historical: Array = bench.call("historical_integrity_cases")
+		var live: Array = bench.call("live_cutover_cases")
+		var manifest: Dictionary = bench.call("build_resource_manifest_preview")
+		var schema: Dictionary = bench.call("resource_schema_preview")
+		var required_historical := ["catalog_entry_count_locked", "derived_rank_fallback_order", "public_private_boundary", "sprint58_deletion_candidates_complete"]
+		var required_live := ["all_explicit_definitions_canonical_parity", "derived_growth_35_percent_parity", "coordinator_scene_composition", "main_constants_absent", "legacy_lookup_helpers_absent", "no_parallel_catalog_owner"]
+		var cases_ok := historical.size() == 40 and live.size() == 40
+		for case_id in required_historical:
+			cases_ok = cases_ok and historical.has(case_id)
+		for case_id in required_live:
+			cases_ok = cases_ok and live.has(case_id)
+		var fields_ok := (manifest.get("records", []) as Array).size() == 80
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in ["case_id", "phase", "runtime_owner", "observed", "contract_aligned", "passed", "pure_data_checked", "notes"]:
+				fields_ok = fields_ok and record.has(field_name)
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 80 and int(manifest.get("historical_case_count", 0)) == 40 and int(manifest.get("live_case_count", 0)) == 40 and bool(schema.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and int(schema.get("family_resources", 0)) == 120 and int(schema.get("embedded_rank_resources", 0)) == 239 and int(schema.get("pack_resources", 0)) == 10 and str(bench.call("output_dir")) == RUNTIME_CARD_CATALOG_RESOURCE_OUTPUT_DIR and str(bench.call("screenshot_path")) == RUNTIME_CARD_CATALOG_RESOURCE_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest) and not _variant_contains_callable(schema) and not _variant_contains_object(schema), "Runtime Card Catalog Sprint 58 exposes forty historical and forty live pure-data cases with the authoritative Resource owner")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for legacy_constant in ["SKILL_CATALOG", "UPGRADEABLE_SKILL_FAMILIES", "COMMON_CARD_POOL"]:
+		_expect(not main_source.contains("const %s" % legacy_constant), "main.gd no longer owns %s" % legacy_constant)
+	for legacy_helper in ["_skill_exists", "_skill_definition", "_derived_rank_skill_definition", "_skill_rank", "_skill_family"]:
+		_expect(not main_source.contains("func %s(" % legacy_helper), "main.gd no longer owns %s" % legacy_helper)
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("CardRuntimeCatalogService") != null and coordinator.get_node_or_null("CardRuntimeDefinitionWorldBridge") != null and coordinator.has_method("card_definition") and coordinator.has_method("card_catalog_public_pool"), "GameRuntimeCoordinator statically owns the catalog Service and Definition WorldBridge APIs")
+	if coordinator != null:
+		coordinator.free()
+	var ownership_contract := FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_OWNERSHIP_CONTRACT)
+	_expect(ownership_contract.contains("80/80") and ownership_contract.contains("main.gd` is not a catalog owner") and FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_RESOURCE_SCHEMA).contains("239 embedded `CardRuntimeRankResource`"), "Sprint 58 ownership and Resource schema contracts document one owner and the deletion gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		_expect(str((registry.call("record_for_path", CARD_RUNTIME_CATALOG_SERVICE_SCENE) as Dictionary).get("id", "")) == "card_runtime_catalog_service", "MCP registry includes CardRuntimeCatalogService")
+		_expect(str((registry.call("record_for_path", CARD_RUNTIME_DEFINITION_WORLD_BRIDGE_SCENE) as Dictionary).get("id", "")) == "card_runtime_definition_world_bridge", "MCP registry includes CardRuntimeDefinitionWorldBridge")
+		_expect(str((registry.call("record_for_path", CARD_RUNTIME_CATALOG_RESOURCE) as Dictionary).get("id", "")) == "runtime_card_catalog_resource", "MCP registry includes the v0.4 catalog Resource")
+		_expect(str((registry.call("record_for_path", RUNTIME_CARD_CATALOG_RESOURCE_BENCH_SCENE) as Dictionary).get("id", "")) == "runtime_card_catalog_resource_bench", "MCP registry includes RuntimeCardCatalogResourceBench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var record: Dictionary = scene_audit.call("record_for_id", "runtime_card_catalog_resource_gate")
+		_expect(str(record.get("sceneization_status", "")) == "full" and str(record.get("current_scene_path", "")) == CARD_RUNTIME_CATALOG_SERVICE_SCENE, "Sceneization Audit records the Resource catalog cutover as full")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "runtime_card_catalog_source_of_truth")
+		_expect(str(record.get("current_status", "")) == "resource_asset" and str(record.get("runtime_owner", "")).contains("card_runtime_catalog_service.gd"), "System Resourceization Audit records the Resource-backed runtime owner")
+	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "runtime_card_catalog_source_of_truth")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and JSON.stringify(rule.get("runtime_evidence", [])).contains("Sprint 59"), "Ruleset registry records the catalog source-of-truth cutover and completed Sprint 59 authoring workflow")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(520, 1200)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenRuntimeCardCatalogButton", "OpenRuntimeCardCatalogServiceButton", "RunRuntimeCardCatalogResourceBenchButton", "OpenRuntimeCardCatalogResourceOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("runtime_card_catalog_resource_path") and dock.has_method("runtime_card_catalog_service_scene_path") and dock.has_method("runtime_card_catalog_resource_bench_scene_path") and dock.has_method("runtime_card_catalog_resource_qa_output_dir"), "Design QA Dock exposes catalog Resource, Service, Bench, and output paths")
+		var resource_paths: Array[String] = []
+		var service_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_runtime_card_catalog_requested", func(path: String) -> void: resource_paths.append(path))
+		dock.connect("open_runtime_card_catalog_service_requested", func(path: String) -> void: service_paths.append(path))
+		dock.connect("run_runtime_card_catalog_resource_bench_requested", func(path: String) -> void: run_paths.append(path))
+		(dock.find_child("OpenRuntimeCardCatalogButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenRuntimeCardCatalogServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunRuntimeCardCatalogResourceBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(resource_paths == [CARD_RUNTIME_CATALOG_RESOURCE] and service_paths == [CARD_RUNTIME_CATALOG_SERVICE_SCENE] and run_paths == [RUNTIME_CARD_CATALOG_RESOURCE_BENCH_SCENE] and str(dock.call("runtime_card_catalog_resource_qa_output_dir")) == RUNTIME_CARD_CATALOG_RESOURCE_OUTPUT_DIR, "Design QA Dock fallback signals emit the Sprint 58 Resource, Service, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_runtime_card_authoring_workflow_component() -> void:
+	var authoring_assets := [
+		CARD_RUNTIME_AUTHORING_VALIDATOR_SCRIPT,
+		CARD_RUNTIME_CHANGE_REVIEW_SCRIPT,
+		CARD_RUNTIME_AUTHORING_SERVICE_SCRIPT,
+		RUNTIME_CARD_AUTHORING_WORKSPACE_SCRIPT,
+		RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE,
+		RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCRIPT,
+		RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCENE,
+		RUNTIME_CARD_AUTHORING_INSPECTOR_PLUGIN_SCRIPT,
+		RUNTIME_CARD_AUTHORING_INSPECTOR_PANEL_SCRIPT,
+		RUNTIME_CARD_AUTHORING_INSPECTOR_PANEL_SCENE,
+		RUNTIME_CARD_AUTHORING_SAMPLE_FAMILY,
+		RUNTIME_CARD_AUTHORING_WORKFLOW_DOC,
+	]
+	for path in authoring_assets:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "Runtime Card Authoring Sprint 59 asset exists: %s" % path)
+	var service := CardRuntimeAuthoringService.new()
+	var configured: Dictionary = service.configure()
+	var index: Dictionary = service.authoring_index()
+	var validation: Dictionary = service.validate_catalog()
+	var service_debug: Dictionary = service.debug_snapshot()
+	_expect(bool(configured.get("configured", false)) and bool(index.get("valid", false)) and int(index.get("pack_count", 0)) == 10 and int(index.get("family_count", 0)) == 120 and int(index.get("card_count", 0)) == 239 and bool(validation.get("valid", false)) and str(service_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and bool(service_debug.get("editor_only", false)) and str(service.call("output_dir")) == RUNTIME_CARD_AUTHORING_OUTPUT_DIR and not _variant_contains_callable(index) and not _variant_contains_object(index) and not _variant_contains_callable(validation) and not _variant_contains_object(validation), "Authoring Service indexes and validates the authoritative 10-pack/120-family/239-card catalog using pure data")
+	var workspace_packed := load(RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE) as PackedScene
+	_expect(workspace_packed != null, "RuntimeCardAuthoringWorkspace scene loads")
+	if workspace_packed != null:
+		var workspace := workspace_packed.instantiate() as Control
+		root.add_child(workspace)
+		await process_frame
+		for node_name in ["AuthoringPackOption", "AuthoringFamilySearch", "AuthoringFamilyList", "AuthoringCardList", "AuthoringValidationOutput", "AuthoringReviewOutput", "ValidateSelectedCardButton", "CaptureAuthoringBaselineButton", "BuildAuthoringReviewButton", "OpenSelectedCardResourceButton"]:
+			_expect(workspace.find_child(node_name, true, false) != null, "RuntimeCardAuthoringWorkspace statically owns %s" % node_name)
+		var workspace_debug: Dictionary = workspace.call("debug_snapshot")
+		_expect(workspace.has_method("refresh_index") and workspace.has_method("select_family") and workspace.has_method("select_card") and workspace.has_method("validate_selected") and workspace.has_method("validate_catalog") and workspace.has_method("capture_baseline") and workspace.has_method("build_change_review") and workspace.has_method("open_selected_resource") and int(workspace_debug.get("card_count", 0)) == 239 and str(workspace_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and not _variant_contains_callable(workspace_debug) and not _variant_contains_object(workspace_debug), "RuntimeCardAuthoringWorkspace exposes navigation, validation, baseline, review, Resource-path, and pure-data debug APIs")
+		root.remove_child(workspace)
+		workspace.queue_free()
+	var bench_packed := load(RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCENE) as PackedScene
+	_expect(bench_packed != null, "RuntimeCardAuthoringWorkflowBench scene loads")
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RuntimeCardAuthoringWorkspace", "AuthoringBenchSummaryLabel", "AuthoringBenchStatusLabel", "AuthoringBenchCasesText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "RuntimeCardAuthoringWorkflowBench statically owns %s" % node_name)
+		var cases: Array = bench.call("authoring_cases")
+		var manifest: Dictionary = bench.call("build_authoring_manifest_preview")
+		var required_cases := ["authoritative_catalog_validates", "duplicate_rank_is_blocked", "modified_card_is_detected", "working_baseline_enables_field_diff", "inspector_panel_composition", "runtime_catalog_ownership_is_unchanged"]
+		var cases_ok := cases.size() == 36
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var fields_ok := (manifest.get("records", []) as Array).size() == 36
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in ["case_id", "validator_checked", "review_checked", "inspector_checked", "pure_data_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(field_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("authoring_cases") and bench.has_method("build_authoring_manifest_preview") and bench.has_method("run_authoring_suite") and cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 36 and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and bool(manifest.get("editor_only", false)) and str(bench.call("output_dir")) == RUNTIME_CARD_AUTHORING_OUTPUT_DIR and str(bench.call("screenshot_path")) == RUNTIME_CARD_AUTHORING_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "RuntimeCardAuthoringWorkflowBench exposes its fixed 36-case pure-data QA API and user-scoped outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var panel_packed := load(RUNTIME_CARD_AUTHORING_INSPECTOR_PANEL_SCENE) as PackedScene
+	_expect(panel_packed != null and load(RUNTIME_CARD_AUTHORING_INSPECTOR_PLUGIN_SCRIPT) != null, "Runtime Card Authoring Inspector plugin and panel load")
+	if panel_packed != null:
+		var panel := panel_packed.instantiate()
+		for node_name in ["ValidateAuthoringTargetButton", "CaptureCardBaselineButton", "BuildCardChangeReviewButton", "RunCardAuthoringQaButton", "OpenCardAuthoringCatalogButton", "OpenCardAuthoringOutputButton"]:
+			_expect(panel.find_child(node_name, true, false) != null, "Runtime Card Authoring Inspector panel owns %s" % node_name)
+		panel.free()
+	var editor_plugin_source := FileAccess.get_file_as_string("res://addons/space_syndicate_design_qa/space_syndicate_design_qa_plugin.gd")
+	_expect(editor_plugin_source.contains("add_inspector_plugin") and editor_plugin_source.contains("remove_inspector_plugin") and editor_plugin_source.contains("card_runtime_authoring_inspector_plugin.gd"), "Space Syndicate Design QA plugin registers and unregisters the custom card-authoring Inspector")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		_expect(str((registry.call("record_for_path", RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE) as Dictionary).get("id", "")) == "runtime_card_authoring_workspace" and str((registry.call("record_for_path", RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCENE) as Dictionary).get("id", "")) == "runtime_card_authoring_workflow_bench", "MCP registry includes the Runtime Card Authoring Workspace and Workflow Bench")
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var record: Dictionary = scene_audit.call("record_for_id", "runtime_card_authoring_workflow_gate")
+		_expect(str(record.get("sceneization_status", "")) == "full" and str(record.get("current_scene_path", "")) == RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE, "Sceneization Audit records Runtime Card Authoring Workflow as full")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "runtime_card_catalog_source_of_truth")
+		_expect(str(record.get("editor_visibility", "")).contains("authoring_workspace") and JSON.stringify(record.get("related_paths", [])).contains("RuntimeCardAuthoringWorkflowBench"), "System Resourceization Audit exposes the authoring Workspace and QA gate without changing the runtime owner")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(520, 1200)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenRuntimeCardAuthoringWorkspaceButton", "OpenRuntimeCardAuthoringSampleFamilyButton", "RunRuntimeCardAuthoringWorkflowBenchButton", "OpenRuntimeCardAuthoringOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("runtime_card_authoring_workspace_scene_path") and dock.has_method("runtime_card_authoring_workflow_bench_scene_path") and dock.has_method("runtime_card_authoring_sample_family_path") and dock.has_method("runtime_card_authoring_qa_output_dir"), "Design QA Dock exposes Workspace, Bench, sample Family, and authoring output paths")
+		var workspace_paths: Array[String] = []
+		var family_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_runtime_card_authoring_workspace_requested", func(path: String) -> void: workspace_paths.append(path))
+		dock.connect("open_runtime_card_authoring_sample_family_requested", func(path: String) -> void: family_paths.append(path))
+		dock.connect("run_runtime_card_authoring_workflow_bench_requested", func(path: String) -> void: run_paths.append(path))
+		(dock.find_child("OpenRuntimeCardAuthoringWorkspaceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenRuntimeCardAuthoringSampleFamilyButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunRuntimeCardAuthoringWorkflowBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(workspace_paths == [RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE] and family_paths == [RUNTIME_CARD_AUTHORING_SAMPLE_FAMILY] and run_paths == [RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCENE] and str(dock.call("runtime_card_authoring_qa_output_dir")) == RUNTIME_CARD_AUTHORING_OUTPUT_DIR, "Design QA Dock fallback signals emit the Sprint 59 Workspace, sample Family, and Bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+	var workflow_doc := FileAccess.get_file_as_string(RUNTIME_CARD_AUTHORING_WORKFLOW_DOC)
+	_expect(workflow_doc.contains("36/36") and workflow_doc.contains("user://") and workflow_doc.contains("CardRuntimeCatalogService") and workflow_doc.contains("editor-only"), "Runtime Card Authoring documentation records the Inspector workflow, QA gate, user-scoped review, and unchanged runtime owner")
+
+
+func _check_product_codex_public_snapshot_cutover_component() -> void:
+	for path in [PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Product Codex Public Snapshot Cutover" % path)
+	var service_packed := load(PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "ProductCodexPublicSnapshotService exposes required pure-data APIs")
+		service.call("configure", {})
+		var source := {"valid": true, "index": 0, "total": 1, "selected": true, "name": "测试商品", "profile": {"category": "能源", "route": "商业线", "terrain": "陆地", "use": "测试", "hook": "测试", "glyph": "◇"}, "market": {"current_price": 80, "base_price": 60, "tier": "中价档", "trend_text": "+2", "price_path_text": "60→80", "supply": 1, "demand": 2, "disrupted": 0, "volatility": 1, "weather_text": "稳定"}, "strategy_rankings": [{"label": "看涨", "score": 3, "hint": "需求较高"}, {"label": "商路", "score": 2, "hint": "流通稳定"}], "futures_public_full": "匿名期货", "futures_public_compact": "匿名期货", "warehouse_public_entries": [], "monster_focus_names": [], "related_card_names": [], "supply_district_names": [], "demand_district_names": [], "public_clue_lines": [], "public_clue_labels": []}
+		var snapshot: Dictionary = service.call("compose", source)
+		_expect(snapshot.get("detail", {}) is Dictionary and snapshot.get("browser_entry", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "ProductCodexPublicSnapshotService returns pure detail and browser snapshots")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(not bool(debug.get("calculates_market_price", true)) and not bool(debug.get("calculates_strategy_scores", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Product formatter does not own market/strategy calculations or runtime Nodes")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("ProductCodexPublicSnapshotService") != null and coordinator.has_method("compose_product_codex_snapshot"), "GameRuntimeCoordinator composes and proxies ProductCodexPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "ProductCodexPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "product_source_pure_data", "product_summary_parity", "browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract", "strategy_facts_supplied_not_calculated", "futures_warehouse_public_contract", "monster_focus_public_contract", "related_content_contract", "city_clue_sanitization", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_route", "real_main_detail_route", "legacy_product_formatters_absent_and_metrics"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant: Variant in records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "product_name", "service_checked", "main_checked", "market_checked", "strategy_checked", "futures_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 20
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 20 and str(bench.call("output_dir")) == PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ProductCodexPublicSnapshotCutoverBench defines 20 pure-data cases, 20 retired formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _product_codex_public_source_snapshot(") and main_source.contains("func _product_codex_public_snapshot(") and main_source.contains("compose_product_codex_snapshot"), "main.gd keeps only Product public-fact adapters and delegates presentation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line_variant: Variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty():
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank < 40859 and function_count < 2010 and variable_count <= 192 and constant_count <= 320, "main.gd passes Sprint 16 Product Codex deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "product_codex_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Product Codex Public Snapshot gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Product Codex snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "product_codex_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Twenty"), "System Resourceization Audit records Product snapshot ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Product Codex Public Snapshot Ownership Cutover") and docs_source.contains("40,584") and docs_source.contains("20 Product"), "main runtime replacement document records Sprint 16 Product snapshot deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("ProductCodexPublicSnapshotService") and ui_audit_source.contains("viewer-safe fact adapter"), "UI architecture audit records Product snapshot ownership")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenProductCodexPublicSnapshotServiceButton", "RunProductCodexPublicSnapshotCutoverBenchButton", "OpenProductCodexPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("product_codex_public_snapshot_service_scene_path") and dock.has_method("product_codex_public_snapshot_cutover_bench_scene_path") and dock.has_method("product_codex_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Product snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_product_codex_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_product_codex_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenProductCodexPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunProductCodexPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Product snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_card_codex_public_snapshot_cutover_component() -> void:
+	for path in [CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Card Codex Public Snapshot Cutover" % path)
+	var service_packed := load(CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		_expect(service.has_method("configure") and service.has_method("compose_browser") and service.has_method("compose_detail") and service.has_method("debug_snapshot"), "CardCodexPublicSnapshotService exposes required pure-data APIs")
+		service.call("configure", {})
+		var card_source := {"valid": true, "index": 0, "total": 1, "card_name": "测试牌1", "display_name": "测试牌 I", "icon": "◆", "family": "测试牌", "kind": "city_growth", "rank": 1, "rank_label": "I", "tag_text": "城市", "accent": Color("#38bdf8"), "price": 100, "category_label": "城市牌", "icon_route_label": "城市成长", "subtype_label": "融资", "source_type_label": "普通卡", "supply_layer": "区域补给", "art_stats": "GDP+10", "use_case": "测试", "strategy_route_label": "城市成长", "strategy_summary": "测试路线", "strategy_use_text": "测试用途", "quick_effect_compact": "GDP+10", "quick_effect_full": "目标GDP+10", "full_effect_text": "目标城市GDP+10", "rules_text_compact": "选择城市", "level_gradient_text": "I:+10 / II:+20", "detail_tooltip": "公开规则", "face_route_text": "城市成长", "requires_target_monster": false, "targets_player": false, "targets_monster": false, "play_region_share_required": 0, "play_region_scope_label": "目标城市", "panic": 0, "route_damage": 0, "persistent": false, "play_requirement_text": "无额外门槛", "key_rule_facts": ["GDP+10"], "read_chips": [], "upgrades": [], "resolution_animation_text": "城市高亮"}
+		var browser_source := {"names": ["测试牌1"], "cards": [card_source], "preview_card": card_source, "filters": [{"id": "all", "label": "全部", "count": 1}], "filter_id": "all", "filter_label": "全部牌", "run_pool_count": 1, "district_supply_count": 1}
+		var browser: Dictionary = service.call("compose_browser", browser_source)
+		var detail: Dictionary = service.call("compose_detail", card_source)
+		_expect(browser.get("cards", []) is Array and detail.get("detail", {}) is Dictionary and not _variant_contains_callable(browser) and not _variant_contains_object(browser) and not _variant_contains_callable(detail) and not _variant_contains_object(detail), "CardCodexPublicSnapshotService returns pure browser and detail snapshots")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(bool(debug.get("uses_existing_browser_viewmodel", false)) and bool(debug.get("uses_existing_detail_viewmodel", false)) and not bool(debug.get("calculates_card_price", true)) and not bool(debug.get("calculates_card_effects", true)) and not bool(debug.get("calculates_play_requirements", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Card formatter reuses existing ViewModels and owns no card rules or runtime Nodes")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("CardCodexPublicSnapshotService") != null and coordinator.has_method("compose_card_codex_browser") and coordinator.has_method("compose_card_codex_detail"), "GameRuntimeCoordinator composes and proxies CardCodexPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CardCodexPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "existing_viewmodels_reused", "card_source_pure_data", "browser_summary_contract", "browser_card_contract", "browser_filter_contract", "browser_preview_contract", "detail_summary_contract", "detail_card_face_contract", "detail_tactical_contract", "detail_fact_contract", "detail_upgrade_contract", "detail_resolution_contract", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_and_detail_routes", "legacy_card_formatters_absent_and_metrics"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant: Variant in records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "card_name", "service_checked", "main_checked", "browser_checked", "detail_checked", "rule_boundary_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 19
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 19 and str(bench.call("output_dir")) == CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CardCodexPublicSnapshotCutoverBench defines 20 pure-data cases, 19 retired formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _card_codex_public_browser_source(") and main_source.contains("func _card_codex_public_browser_snapshot(") and main_source.contains("func _card_codex_public_card_facts(") and main_source.contains("func _card_codex_public_detail_snapshot(") and main_source.contains("compose_card_codex_browser") and main_source.contains("compose_card_codex_detail"), "main.gd keeps only Card public-fact adapters and delegates presentation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line_variant: Variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty():
+			nonblank += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
+	_expect(nonblank < 40584 and function_count < 1997 and variable_count <= 192 and constant_count < 320, "main.gd passes Sprint 17 Card Codex deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "card_codex_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Card Codex Public Snapshot gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Card Codex snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "card_codex_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Nineteen"), "System Resourceization Audit records Card snapshot ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Card Codex Public Snapshot Ownership Cutover") and docs_source.contains("40,366") and docs_source.contains("19 Card"), "main runtime replacement document records Sprint 17 Card snapshot deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("CardCodexPublicSnapshotService") and ui_audit_source.contains("existing browser/detail ViewModels"), "UI architecture audit records Card snapshot ownership")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenCardCodexPublicSnapshotServiceButton", "RunCardCodexPublicSnapshotCutoverBenchButton", "OpenCardCodexPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("card_codex_public_snapshot_service_scene_path") and dock.has_method("card_codex_public_snapshot_cutover_bench_scene_path") and dock.has_method("card_codex_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Card snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_card_codex_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_card_codex_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenCardCodexPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunCardCodexPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [CARD_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Card snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_economy_dashboard_public_snapshot_cutover_component() -> void:
+	for path in [ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_SCENE, ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_TEST, ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Economy Dashboard Public Snapshot Cutover" % path)
+	var service_packed := load(ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "EconomyDashboardPublicSnapshotService exposes required pure-data APIs")
+		service.call("configure", {})
+		var snapshot: Dictionary = service.call("compose", {"valid": true, "selected_name": "玩家", "selected_gdp_per_minute": 10, "business_cycle_count": 1, "monster_count": 0, "weather_text": "稳定", "clue_count": 0, "product_entries": [], "city_entries": [], "card_aftermath_entries": [], "city_clue_entries": [], "monster_clue_entries": [], "warehouse_entries": [], "player_cash_entries": [], "inference_lines": []})
+		_expect(snapshot.get("summary_text", "") is String and snapshot.get("overview_cards", []) is Array and snapshot.get("dashboard", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "EconomyDashboardPublicSnapshotService returns pure summary, overview-card, and dashboard payloads")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(not bool(debug.get("calculates_product_prices", true)) and not bool(debug.get("calculates_city_income", true)) and not bool(debug.get("calculates_cashflow", true)) and not bool(debug.get("evaluates_private_truth", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Economy Dashboard formatter owns no economy rules, private truth, or runtime Nodes")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("EconomyDashboardPublicSnapshotService") != null and coordinator.has_method("compose_economy_dashboard_snapshot"), "GameRuntimeCoordinator composes and proxies EconomyDashboardPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "EconomyDashboardPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "economy_source_pure_data", "empty_source_safe", "summary_read_order_contract", "overview_card_contract", "dashboard_chip_contract", "dashboard_kpi_contract", "decision_route_contract", "hot_product_lane_contract", "cold_opportunity_lane_contract", "city_lane_privacy_contract", "aftermath_lane_contract", "risk_lane_privacy_contract", "next_step_lane_contract", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_route_and_render", "bounded_source_and_open_performance", "legacy_economy_formatters_absent_and_metrics"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant: Variant in records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "service_checked", "main_checked", "summary_checked", "dashboard_checked", "economy_boundary_checked", "routing_checked", "performance_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 16
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 16 and str(bench.call("output_dir")) == ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "EconomyDashboardPublicSnapshotCutoverBench defines 20 pure-data cases, 16 retired formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _economy_dashboard_public_source_snapshot(") and main_source.contains("func _economy_dashboard_public_snapshot(") and main_source.contains("compose_economy_dashboard_snapshot") and not main_source.contains("func _economy_overview_text("), "main.gd keeps one Economy public-fact adapter and delegates all presentation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line_variant: Variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty(): nonblank += 1
+		if line.begins_with("func "): function_count += 1
+		elif line.begins_with("var "): variable_count += 1
+		elif line.begins_with("const "): constant_count += 1
+	_expect(nonblank < 40366 and function_count < 1984 and variable_count <= 192 and constant_count <= 318, "main.gd passes Sprint 18 Economy Dashboard deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "economy_dashboard_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Economy Dashboard Public Snapshot gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Economy Dashboard snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "economy_dashboard_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Sixteen"), "System Resourceization Audit records Economy Dashboard snapshot ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Economy Dashboard Public Snapshot Ownership Cutover") and docs_source.contains("40,063") and docs_source.contains("16 Economy"), "main runtime replacement document records Sprint 18 Economy Dashboard deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("EconomyDashboardPublicSnapshotService") and ui_audit_source.contains("bounded viewer-safe fact adapter"), "UI architecture audit records Economy Dashboard snapshot ownership")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenEconomyDashboardPublicSnapshotServiceButton", "RunEconomyDashboardPublicSnapshotCutoverBenchButton", "OpenEconomyDashboardPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("economy_dashboard_public_snapshot_service_scene_path") and dock.has_method("economy_dashboard_public_snapshot_cutover_bench_scene_path") and dock.has_method("economy_dashboard_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Economy Dashboard snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_economy_dashboard_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_economy_dashboard_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenEconomyDashboardPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunEconomyDashboardPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [ECONOMY_DASHBOARD_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Economy Dashboard snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_standings_public_snapshot_cutover_component() -> void:
+	for path in [STANDINGS_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, STANDINGS_PUBLIC_SNAPSHOT_SERVICE_SCENE, STANDINGS_PUBLIC_SNAPSHOT_SERVICE_TEST, STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Standings Public Snapshot Cutover" % path)
+	var service_packed := load(STANDINGS_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "StandingsPublicSnapshotService exposes required pure-data APIs")
+		service.call("configure", {})
+		var snapshot: Dictionary = service.call("compose", {"valid": true, "selected_available": true, "selected_score": 100, "selected_cash": 80, "selected_city_count": 1, "selected_gdp_per_minute": 10, "selected_intel_summary": "情报待结算", "cash_goal": 1200, "city_final_value": 100, "intel_correct_reward": 120, "intel_wrong_cost": 40, "countdown_text": "等待终局", "public_shift_count": 0, "seat_entries": [{"player_index": 0, "name": "玩家", "eliminated": false, "can_view_private": true, "cash": 80, "active_cities": 1, "score": 100, "score_label": "可见预估", "intel_summary": "情报待结算", "gdp_per_minute": 10}]})
+		_expect(snapshot.get("summary_text", "") is String and snapshot.get("overview_cards", []) is Array and snapshot.get("scoreboard", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "StandingsPublicSnapshotService returns pure summary, overview-card, and scoreboard payloads")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(not bool(debug.get("calculates_settlement_score", true)) and not bool(debug.get("calculates_city_income", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Standings formatter owns no score, economy, ranking, private-truth, or runtime-Node rules")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("StandingsPublicSnapshotService") != null and coordinator.has_method("compose_standings_snapshot"), "GameRuntimeCoordinator composes and proxies StandingsPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "StandingsPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "standings_source_pure_data", "empty_source_safe", "summary_read_order_contract", "overview_card_contract", "scoreboard_chip_contract", "scoreboard_kpi_contract", "selected_seat_visibility", "opponent_privacy_contract", "bankrupt_public_contract", "final_visibility_contract", "bounded_eight_seat_contract", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_route_and_render", "open_performance_contract", "legacy_formatters_absent", "main_metrics_reduced", "output_pure_data_contract"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant: Variant in records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "service_checked", "main_checked", "summary_checked", "scoreboard_checked", "domain_boundary_checked", "routing_checked", "performance_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 4
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 4 and str(bench.call("output_dir")) == STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "StandingsPublicSnapshotCutoverBench defines 20 pure-data cases, four retired formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _standings_public_source_snapshot(") and main_source.contains("func _standings_public_snapshot(") and main_source.contains("compose_standings_snapshot") and not main_source.contains("func _standings_text("), "main.gd keeps one Standings public-fact adapter and delegates all presentation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line_variant: Variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty(): nonblank += 1
+		if line.begins_with("func "): function_count += 1
+		elif line.begins_with("var "): variable_count += 1
+		elif line.begins_with("const "): constant_count += 1
+	_expect(nonblank < 40063 and function_count < 1971 and variable_count <= 192 and constant_count <= 318, "main.gd passes Sprint 19 Standings deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "standings_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Standings Public Snapshot gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(STANDINGS_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Standings snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "standings_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Four"), "System Resourceization Audit records Standings snapshot ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Standings Public Snapshot Ownership Cutover") and docs_source.contains("39,997") and docs_source.contains("four Standings"), "main runtime replacement document records Sprint 19 Standings deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("StandingsPublicSnapshotService") and ui_audit_source.contains("ordinary opponent entries"), "UI architecture audit records Standings snapshot ownership and privacy")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenStandingsPublicSnapshotServiceButton", "RunStandingsPublicSnapshotCutoverBenchButton", "OpenStandingsPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("standings_public_snapshot_service_scene_path") and dock.has_method("standings_public_snapshot_cutover_bench_scene_path") and dock.has_method("standings_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Standings snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_standings_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_standings_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenStandingsPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunStandingsPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [STANDINGS_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [STANDINGS_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Standings snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_final_settlement_public_snapshot_cutover_component() -> void:
+	for path in [FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_SCENE, FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_TEST, FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Final Settlement Public Snapshot Cutover" % path)
+	var service_packed := load(FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "FinalSettlementPublicSnapshotService exposes required pure-data APIs")
+		service.call("configure", {})
+		var snapshot: Dictionary = service.call("compose", {"valid": true, "reason": "测试终局", "winner_name": "玩家", "winner_score": 100, "cash_goal": 1200, "city_final_value": 100, "top_city_income_name": "玩家", "top_city_income_amount": 10, "top_card_income_name": "玩家", "top_card_income_amount": 5, "top_role_income_name": "玩家", "top_role_income_amount": 2, "top_card_impact": "关键卡牌", "monster_impact": "怪兽影响", "resolved_card_count": 0, "map_facts": {"active_city_count": 1, "destroyed_district_count": 0, "active_monster_count": 0, "monster_count": 0, "key_city": {"valid": false}}, "money_source_entries": [], "rank_entries": []})
+		_expect(snapshot.get("summary_text", "") is String and snapshot.get("board", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "FinalSettlementPublicSnapshotService returns pure summary and postgame-board payloads")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Final Settlement formatter owns no score, ranking, clearance, intel, private-hand, or runtime-Node rules")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("FinalSettlementPublicSnapshotService") != null and coordinator.has_method("compose_final_settlement_snapshot"), "GameRuntimeCoordinator composes and proxies FinalSettlementPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "FinalSettlementPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "final_source_pure_data", "empty_source_safe", "summary_read_order_contract", "header_chip_contract", "winner_kpi_contract", "money_leader_kpi_contract", "key_map_contract", "money_source_contract", "rank_track_contract", "public_event_contract", "after_action_contract", "bounded_eight_seat_contract", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_route_and_render", "open_performance_contract", "legacy_formatters_absent_and_metrics", "private_input_rejection"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant: Variant in records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "service_checked", "main_checked", "summary_checked", "board_checked", "domain_boundary_checked", "routing_checked", "performance_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 4
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 4 and str(bench.call("output_dir")) == FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FinalSettlementPublicSnapshotCutoverBench defines 20 pure-data cases, four retired formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _final_settlement_public_source_snapshot(") and main_source.contains("func _final_settlement_public_snapshot(") and main_source.contains("compose_final_settlement_snapshot") and not main_source.contains("func _final_settlement_board_snapshot("), "main.gd keeps one Final Settlement public-fact adapter and delegates all presentation")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line_variant: Variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty(): nonblank += 1
+		if line.begins_with("func "): function_count += 1
+		elif line.begins_with("var "): variable_count += 1
+		elif line.begins_with("const "): constant_count += 1
+	_expect(nonblank < 39997 and function_count < 1970 and variable_count <= 192 and constant_count <= 318, "main.gd passes Sprint 20 Final Settlement deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "final_settlement_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Final Settlement Public Snapshot gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Final Settlement snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "final_settlement_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Four"), "System Resourceization Audit records Final Settlement snapshot ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Final Settlement Public Snapshot Ownership Cutover") and docs_source.contains("39,882") and docs_source.contains("four Final Settlement"), "main runtime replacement document records Sprint 20 Final Settlement deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("FinalSettlementPublicSnapshotService") and ui_audit_source.contains("private hands or AI routes"), "UI architecture audit records Final Settlement snapshot ownership and privacy")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenFinalSettlementPublicSnapshotServiceButton", "RunFinalSettlementPublicSnapshotCutoverBenchButton", "OpenFinalSettlementPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("final_settlement_public_snapshot_service_scene_path") and dock.has_method("final_settlement_public_snapshot_cutover_bench_scene_path") and dock.has_method("final_settlement_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Final Settlement snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_final_settlement_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_final_settlement_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenFinalSettlementPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunFinalSettlementPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [FINAL_SETTLEMENT_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Final Settlement snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_intel_dossier_public_snapshot_cutover_component() -> void:
+	for path in [INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE, INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_TEST, INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Intel Dossier Public Snapshot Cutover" % path)
+	var service_packed := load(INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	if service != null:
+		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "IntelDossierPublicSnapshotService exposes required pure-data APIs")
+		service.call("configure", {})
+		var snapshot: Dictionary = service.call("compose", {
+			"valid": true, "viewer_index": 0, "viewer_name": "玩家", "correct_guess_cash": 120, "wrong_guess_cost": 60, "card_guess_stake": 100, "city_final_value": 200,
+			"stats": {"total_foreign": 1, "guessed": 1, "unmarked": 0, "best_cash": 120, "worst_cash": -60},
+			"player_options": [{"player_index": 1, "label": "标玩家2"}], "confidence_options": [{"value": 3, "label": "高"}], "reason_options": [{"id": "card", "label": "卡牌条件"}],
+			"city_entries": [{"district_index": 3, "name": "环城港", "guess": 1, "marked": true, "confidence": 3, "confidence_label": "高", "reason": "card", "reason_label": "卡牌条件", "priority": 88, "potential_income": 200, "warehouse_pressure": 10, "latest_clue": "公开线索"}],
+			"card_entries": [{"resolution_id": 42, "card": "轨道融资1", "card_name": "轨道融资1", "focused": true, "status": "归属待猜", "requirement": "份额10%", "target": "城市", "track_state": "已结算"}],
+			"monster_entries": [{"slot": 0, "name": "吞星兽", "catalog_index": 2, "owner_text": "归属未公开", "clue": "资金线索"}],
+			"warehouse_entries": [], "city_clue_entries": [{"district": "环城港", "clue_products": ["活体芯片"], "linked_product": "活体芯片", "clue": "需求上升"}],
+		})
+		var board := snapshot.get("board", {}) as Dictionary
+		_expect(snapshot.get("summary_text", "") is String and board.get("control_groups", []) is Array and board.get("links", []) is Array and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "IntelDossierPublicSnapshotService returns pure summary, evidence, controls, and links")
+		var action_ids := []
+		for action_variant in board.get("actions", []) as Array:
+			action_ids.append(str((action_variant as Dictionary).get("id", "")))
+		for group_variant in board.get("control_groups", []) as Array:
+			for action_variant in (group_variant as Dictionary).get("actions", []) as Array:
+				action_ids.append(str((action_variant as Dictionary).get("id", "")))
+		for action_variant in board.get("links", []) as Array:
+			action_ids.append(str((action_variant as Dictionary).get("id", "")))
+		_expect(action_ids.has("track_return_42") and action_ids.has("track_guess_42") and action_ids.has("intel_city_mark_3_1") and action_ids.has("intel_city_confidence_3_3") and action_ids.has("intel_city_reason_3_card") and action_ids.has("intel_open_region_3") and action_ids.has("intel_open_economy"), "Intel Dossier service preserves track ids and composes city/link action ids")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(not bool(debug.get("mutates_city_guesses", true)) and not bool(debug.get("settles_intel_cash", true)) and not bool(debug.get("reveals_city_owner_truth", true)) and not bool(debug.get("reveals_card_owner_truth", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("navigates_runtime_nodes", true)) and bool(debug.get("action_id_controls", false)), "Intel Dossier formatter owns no mutation, settlement, hidden-truth, private-hand, or navigation rules")
+		service.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.get_node_or_null("IntelDossierPublicSnapshotService") != null and coordinator.has_method("compose_intel_dossier_snapshot"), "GameRuntimeCoordinator composes and proxies IntelDossierPublicSnapshotService")
+	if coordinator != null:
+		coordinator.free()
+	var bench_packed := load(INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "IntelDossierPublicSnapshotCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "intel_source_pure_data", "empty_source_safe", "summary_privacy_contract", "header_chip_contract", "kpi_contract", "focused_evidence_contract", "track_action_compatibility", "city_mark_action_ids", "confidence_action_ids", "reason_action_ids", "public_link_action_ids", "board_signal_forwarding", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_route_and_render", "open_performance_contract", "legacy_builders_absent_and_metrics", "private_input_rejection"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_formatters: Array = bench.call("retired_formatter_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "service_checked", "main_checked", "summary_checked", "board_checked", "domain_boundary_checked", "action_id_checked", "routing_checked", "performance_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_formatters.size() == 22
+		for formatter_name_variant in retired_formatters:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 22 and str(bench.call("output_dir")) == INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "IntelDossierPublicSnapshotCutoverBench defines 20 pure-data cases, 22 retired builders/formatters, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("func _intel_dossier_public_source_snapshot(") and main_source.contains("func _intel_dossier_public_snapshot(") and main_source.contains("compose_intel_dossier_snapshot") and not main_source.contains("func _add_intel_city_guess_buttons(") and not main_source.contains("func _add_intel_dossier_link_button("), "main.gd keeps one Intel viewer-fact adapter and routes scene-owned action ids without dynamic controls")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line_variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty(): nonblank += 1
+		if line.begins_with("func "): function_count += 1
+		elif line.begins_with("var "): variable_count += 1
+		elif line.begins_with("const "): constant_count += 1
+	_expect(nonblank < 39882 and function_count < 1969 and variable_count <= 192 and constant_count <= 318, "main.gd passes Sprint 21 Intel Dossier deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "intel_dossier_public_snapshot_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the Intel Dossier Public Snapshot gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Intel Dossier snapshot service and bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var snapshot_record: Dictionary = system_audit.call("record_for_id", "intel_dossier_public_snapshot_cutover")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Twenty-two"), "System Resourceization Audit records Intel Dossier ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("Intel Dossier Public Snapshot and Action-ID Controls Cutover") and docs_source.contains("22 Intel") and docs_source.contains("intel_city_*"), "main runtime replacement document records Sprint 21 Intel Dossier deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("IntelDossierPublicSnapshotService") and ui_audit_source.contains("hidden truth"), "UI architecture audit records Intel Dossier snapshot ownership and privacy")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenIntelDossierPublicSnapshotServiceButton", "RunIntelDossierPublicSnapshotCutoverBenchButton", "OpenIntelDossierPublicSnapshotCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("intel_dossier_public_snapshot_service_scene_path") and dock.has_method("intel_dossier_public_snapshot_cutover_bench_scene_path") and dock.has_method("intel_dossier_public_snapshot_cutover_qa_output_dir"), "Design QA Dock exposes Intel Dossier snapshot path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_intel_dossier_public_snapshot_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_intel_dossier_public_snapshot_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenIntelDossierPublicSnapshotServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunIntelDossierPublicSnapshotCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE] and run_paths == [INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Intel Dossier snapshot service and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_new_game_setup_page_cutover_component() -> void:
+	for path in [NEW_GAME_SETUP_PAGE_SCRIPT, NEW_GAME_SETUP_PAGE_SCENE, NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCRIPT, NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for New Game Setup Page Cutover" % path)
+	var page_packed := load(NEW_GAME_SETUP_PAGE_SCENE) as PackedScene
+	var page := page_packed.instantiate() as Control if page_packed != null else null
+	if page != null:
+		root.add_child(page)
+		await process_frame
+		_expect(page.has_method("set_page") and page.has_signal("action_requested"), "NewGameSetupPage exposes one pure snapshot input and one action-id output")
+		for node_name in ["NewGameSetupSummaryChipRail", "NewGameSetupLobbyPanel", "NewGameSetupOptionBoard", "NewGameSetupSeatScroll", "NewGameSetupSeatGrid", "FirstRunRecommendedSetupButton", "NewGameSetupStartButton", "NewGameSetupBackButton", "NewGameSetupReturnTableButton"]:
+			_expect(page.find_child(node_name, true, false) != null, "NewGameSetupPage owns %s" % node_name)
+		var lobby := page.find_child("NewGameSetupLobbyPanel", true, false) as Control
+		var options := page.find_child("NewGameSetupOptionBoard", true, false) as Control
+		_expect(lobby != null and lobby.scene_file_path == "res://scenes/ui/NewGameSetupLobby.tscn" and options != null and options.scene_file_path == "res://scenes/ui/NewGameSetupOptionBoard.tscn", "NewGameSetupPage composes real lobby and option-board scenes")
+		var emitted_actions: Array[String] = []
+		page.connect("action_requested", func(action_id: String) -> void: emitted_actions.append(action_id))
+		(page.find_child("NewGameSetupStartButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(emitted_actions == ["setup_start"], "NewGameSetupPage forwards static setup commands as action ids")
+		root.remove_child(page)
+		page.queue_free()
+	var bench_packed := load(NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_builder_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "NewGameSetupPageCutoverBench exposes required QA APIs")
+		var expected_cases := ["required_assets_load", "page_scene_contract", "summary_chip_contract", "lobby_composition", "option_board_composition", "seat_scroll_contract", "seat_card_count", "two_column_layout", "player_count_action_id", "ai_count_action_id", "challenge_depth_action_id", "role_step_action_id", "role_random_action_id", "monster_step_action_id", "primary_action_ids", "real_main_route_and_render", "real_main_action_routing", "open_performance_contract", "legacy_builders_absent_and_metrics", "pure_data_and_privacy"]
+		var cases: Array = bench.call("cutover_cases")
+		var retired_builders: Array = bench.call("retired_builder_names")
+		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var fields_ok := records.size() == 20
+		for record_variant in records:
+			var record := record_variant as Dictionary
+			for key in ["case_id", "page_checked", "snapshot_checked", "lobby_checked", "options_checked", "seats_checked", "action_id_checked", "main_checked", "routing_checked", "performance_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(key)
+		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+		var all_retired := retired_builders.size() == 7
+		for builder_name_variant in retired_builders:
+			all_retired = all_retired and not main_source.contains("func %s(" % str(builder_name_variant))
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_builder_count", 0)) == 7 and str(bench.call("output_dir")) == NEW_GAME_SETUP_PAGE_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == NEW_GAME_SETUP_PAGE_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "NewGameSetupPageCutoverBench defines 20 pure-data cases, seven retired builders/wrappers, and user:// outputs")
+		root.remove_child(bench)
+		bench.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("NewGameSetupPageScene.instantiate()") and main_source.contains("func _new_game_setup_page_snapshot(") and main_source.contains("func _on_new_game_setup_action_requested(") and not main_source.contains("func _add_new_game_setup_seat_card(") and not main_source.contains("NewGameSetupSeatCardScene"), "main.gd keeps one setup snapshot/action router and no generated page builder or child-scene preload")
+	var nonblank := 0
+	var function_count := 0
+	var variable_count := 0
+	var constant_count := 0
+	for line_variant in main_source.split("\n"):
+		var line := str(line_variant)
+		if not line.strip_edges().is_empty(): nonblank += 1
+		if line.begins_with("func "): function_count += 1
+		elif line.begins_with("var "): variable_count += 1
+		elif line.begins_with("const "): constant_count += 1
+	_expect(nonblank < 39527 and function_count < 1951 and variable_count <= 192 and constant_count <= 318, "main.gd passes Sprint 22 New Game Setup Page deletion metrics")
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null:
+		var gate: Dictionary = audit.call("record_for_id", "new_game_setup_page_ownership_gate")
+		_expect(str(gate.get("current_scene_path", "")) == NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit includes the New Game Setup Page ownership gate")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		var registered_paths: Array = registry.call("scene_paths")
+		_expect(registered_paths.has(NEW_GAME_SETUP_PAGE_SCENE) and registered_paths.has(NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE), "MCP registry includes the New Game Setup Page and cutover bench")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var page_record: Dictionary = system_audit.call("record_for_id", "new_game_setup_page_cutover")
+		_expect(str(page_record.get("current_status", "")) == "sceneized" and str(page_record.get("mcp_notes", "")).contains("Seven"), "System Resourceization Audit records setup-page ownership and deletion gate")
+	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
+	_expect(docs_source.contains("New Game Setup Page Scene Cutover") and docs_source.contains("39,482") and docs_source.contains("setup_*"), "main runtime replacement document records Sprint 22 setup-page deletion")
+	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")
+	_expect(ui_audit_source.contains("complete new-game setup page") and ui_audit_source.contains("no longer generates the page controls"), "UI architecture audit records complete setup-page ownership")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(380, 760)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenNewGameSetupPageButton", "RunNewGameSetupPageCutoverBenchButton", "OpenNewGameSetupPageCutoverOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("new_game_setup_page_scene_path") and dock.has_method("new_game_setup_page_cutover_bench_scene_path") and dock.has_method("new_game_setup_page_cutover_qa_output_dir"), "Design QA Dock exposes New Game Setup Page path helpers")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_new_game_setup_page_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_new_game_setup_page_cutover_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenNewGameSetupPageButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunNewGameSetupPageCutoverBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [NEW_GAME_SETUP_PAGE_SCENE] and run_paths == [NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit setup page and bench paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_ai_policy_resourceization_component() -> void:
+	for script_path in [
+		AI_PERSONALITY_POLICY_RESOURCE_SCRIPT,
+		AI_POLICY_PROFILE_RESOURCE_SCRIPT,
+		AI_POLICY_RESOURCE_REGISTRY_SCRIPT,
+		AI_POLICY_RESOURCE_PREVIEW_SCRIPT,
+		AI_POLICY_RESOURCE_BENCH_SCRIPT,
+		AI_RUNTIME_CONTROLLER_SCRIPT,
+		AI_RUNTIME_WORLD_BRIDGE_SCRIPT,
+	]:
+		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads for AI Policy Resourceization" % script_path)
+	_expect(ResourceLoader.exists(AI_POLICY_PROFILE_RESOURCE), "AI Policy profile Resource exists")
+	_expect(load(AI_RUNTIME_CONTROLLER_SCENE) is PackedScene and load(AI_RUNTIME_WORLD_BRIDGE_SCENE) is PackedScene, "AI runtime Controller and WorldBridge scenes load")
+	var profile := load(AI_POLICY_PROFILE_RESOURCE) as Resource
+	_expect(profile != null and profile.has_method("parameter_groups") and profile.has_method("to_policy_dictionary") and profile.has_method("to_main_source_dictionary") and profile.has_method("validate_profile") and profile.has_method("resource_summary"), "AI Policy profile exposes Inspector payload and validation methods")
+	if profile != null:
+		var summary_variant: Variant = profile.call("resource_summary")
+		var summary: Dictionary = summary_variant if summary_variant is Dictionary else {}
+		var policy_variant: Variant = profile.call("to_policy_dictionary")
+		var policy_payload: Dictionary = policy_variant if policy_variant is Dictionary else {}
+		var main_variant: Variant = profile.call("to_main_source_dictionary")
+		var main_payload: Dictionary = main_variant if main_variant is Dictionary else {}
+		_expect(int(summary.get("tunable_count", 0)) == 32 and int(summary.get("personality_count", 0)) == 6 and int(summary.get("group_count", 0)) == 6, "AI Policy profile exposes 32 tunables, six personalities, and six parameter groups")
+		_expect(str(summary.get("runtime_owner_script", "")) == AI_RUNTIME_CONTROLLER_SCRIPT and bool(summary.get("runtime_cutover_enabled", false)), "AI Policy profile names AiRuntimeController as its enabled runtime owner")
+		_expect(not _variant_contains_callable(policy_payload) and not _variant_contains_object(policy_payload) and not _variant_contains_callable(main_payload) and not _variant_contains_object(main_payload), "AI Policy Resource adapters emit pure data")
+	var registry_script := load(AI_POLICY_RESOURCE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	_expect(registry != null and registry.has_method("resource_cases") and registry.has_method("validation_records") and registry.has_method("build_manifest_preview") and registry.has_method("policy_resource_payload") and registry.has_method("main_source_payload"), "AiPolicyResourceRegistry exposes cases, validation, manifest, Resource payload, and main-source payload")
+	if registry != null:
+		var resource_paths: Array = registry.call("resource_paths")
+		var cases: Array = registry.call("resource_cases")
+		var records: Array = registry.call("validation_records")
+		var manifest: Dictionary = registry.call("build_manifest_preview")
+		var all_passed := records.size() >= 40
+		var required_case_ids := [
+			"profile_loads",
+			"timing_matches_main",
+			"selection_thresholds_match_main",
+			"counter_thresholds_match_main",
+			"strategy_route_policy_matches_main",
+			"phase_posture_matches_main",
+			"learning_controls_match_main",
+			"personalities_match_main_catalog",
+			"runtime_owner_stays_main_gd",
+			"payloads_stay_pure_data",
+		]
+		var case_ids: Array[String] = []
+		for case_variant in cases:
+			var resource_case: Dictionary = case_variant if case_variant is Dictionary else {}
+			case_ids.append(str(resource_case.get("case_id", "")))
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			all_passed = all_passed and bool(record.get("passed", false))
+		for case_id in required_case_ids:
+			all_passed = all_passed and case_ids.has(case_id)
+		_expect(resource_paths.size() == 7, "AiPolicyResourceRegistry registers one profile and six personality Resources")
+		_expect(all_passed, "AiPolicyResourceRegistry passes the retained Resource gates and expanded runtime hard-cutover gate")
+		_expect(int(manifest.get("record_count", 0)) >= 40 and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == AI_RUNTIME_CONTROLLER_SCRIPT and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "AiPolicyResourceRegistry manifest preview stays pure data and records enabled Controller ownership")
+	for scene_path in [AI_POLICY_RESOURCE_PREVIEW_SCENE, AI_POLICY_RESOURCE_BENCH_SCENE]:
+		_expect(ResourceLoader.exists(scene_path), "%s exists for AI Policy Resourceization" % scene_path)
+		_expect(load(scene_path) is PackedScene, "%s loads as a PackedScene" % scene_path)
+	var preview_packed := load(AI_POLICY_RESOURCE_PREVIEW_SCENE) as PackedScene
+	if preview_packed != null:
+		var preview := preview_packed.instantiate() as Control
+		root.add_child(preview)
+		await process_frame
+		for node_name in ["AiPolicyResourceCategoryList", "AiPolicyResourceRecordList", "AiPolicyResourceDetailTitle", "AiPolicyResourceDetailBody", "AiPolicyResourceStatusLabel", "AiPolicyResourceSummaryLabel", "AiPolicyRuntimeOwnerLabel", "AiPolicyOpenResourceButton", "AiPolicyPrintPayloadButton", "AiPolicyRunBenchButton"]:
+			_expect(preview.find_child(node_name, true, false) != null, "AiPolicyResourceMcpPreview contains %s" % node_name)
+		_expect(preview.has_method("resource_records") and preview.has_method("resource_summary") and preview.has_method("select_category") and preview.has_method("select_record") and preview.has_method("selected_record"), "AiPolicyResourceMcpPreview exposes testable Resource methods")
+		var selected_category := bool(preview.call("select_category", "Personalities")) if preview.has_method("select_category") else false
+		var selected_record := bool(preview.call("select_record", "personalities_match_main_catalog")) if preview.has_method("select_record") else false
+		await process_frame
+		var preview_text := _node_tree_text(preview)
+		_expect(selected_category and selected_record and preview_text.contains("personalities_match_main_catalog") and preview_text.contains("Resource cutover: ENABLED"), "AiPolicyResourceMcpPreview shows personality parity and enabled runtime cutover")
+		root.remove_child(preview)
+		preview.queue_free()
+	var bench_packed := load(AI_POLICY_RESOURCE_BENCH_SCENE) as PackedScene
+	if bench_packed != null:
+		var bench := bench_packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		_expect(bench.has_method("output_dir") and bench.has_method("resource_cases") and bench.has_method("build_resource_manifest_preview") and bench.has_method("run_resource_suite"), "AiPolicyResourceBench exposes output_dir, cases, manifest preview, and run suite")
+		var output_dir := str(bench.call("output_dir"))
+		var manifest: Dictionary = bench.call("build_resource_manifest_preview")
+		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+		var manifest_fields_ok := records.size() >= 40
+		for record_variant in records:
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for key in ["case_id", "category", "resource_path", "source_path", "inspector_visible", "main_parity_checked", "personality_checked", "runtime_owner_checked", "pure_data_checked", "passed", "notes"]:
+				manifest_fields_ok = manifest_fields_ok and record.has(key)
+		_expect(output_dir == AI_POLICY_RESOURCE_OUTPUT_DIR and output_dir.begins_with("user://") and not output_dir.contains("res://reports"), "AiPolicyResourceBench writes QA output under user://")
+		_expect(str(manifest.get("screenshot_path", "")) == AI_POLICY_RESOURCE_SCREENSHOT_PATH and manifest_fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "AiPolicyResourceBench manifest preview contains required pure-data records")
+		root.remove_child(bench)
+		bench.queue_free()
+	var scene_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var scene_registry: RefCounted = scene_registry_script.new() if scene_registry_script != null else null
+	if scene_registry != null and scene_registry.has_method("records"):
+		var scene_records: Array = scene_registry.call("records")
+		for required_path in [AI_RUNTIME_CONTROLLER_SCENE, AI_RUNTIME_WORLD_BRIDGE_SCENE, AI_POLICY_RESOURCE_PREVIEW_SCENE, AI_POLICY_RESOURCE_BENCH_SCENE]:
+			var found := false
+			for record_variant in scene_records:
+				var record: Dictionary = record_variant if record_variant is Dictionary else {}
+				if str(record.get("scene_path", "")) == required_path:
+					found = true
+					break
+			_expect(found, "MCP scene registry includes %s" % required_path)
+	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var audit: RefCounted = audit_script.new() if audit_script != null else null
+	if audit != null and audit.has_method("record_for_id"):
+		var audit_record: Dictionary = audit.call("record_for_id", "ai_policy_resourceization_gate")
+		_expect(not audit_record.is_empty() and str(audit_record.get("current_scene_path", "")) == AI_POLICY_RESOURCE_BENCH_SCENE, "Sceneization Audit includes AI Policy Resourceization gate")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	if system_audit != null and system_audit.has_method("record_for_id"):
+		var system_record: Dictionary = system_audit.call("record_for_id", "ai_policy_resource_profile")
+		_expect(not system_record.is_empty() and str(system_record.get("current_path", "")) == AI_POLICY_PROFILE_RESOURCE, "System Resourceization Audit includes AI Policy Resource profile")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		_expect(dock.find_child("OpenAiPolicyResourcePreviewButton", true, false) != null and dock.find_child("RunAiPolicyResourceBenchButton", true, false) != null and dock.find_child("OpenAiPolicyResourceOutputFolderButton", true, false) != null, "SpaceSyndicateDesignQADock contains AI Policy Resource controls")
+		_expect(dock.find_child("OpenAiRuntimeControllerButton", true, false) != null and dock.find_child("OpenAiRuntimeWorldBridgeButton", true, false) != null, "SpaceSyndicateDesignQADock contains AI Runtime Controller and WorldBridge controls")
+		_expect(dock.has_method("ai_policy_resource_preview_scene_path") and dock.has_method("ai_policy_resource_bench_scene_path") and dock.has_method("ai_policy_resource_qa_output_dir"), "SpaceSyndicateDesignQADock exposes AI Policy Resource path helpers")
+		_expect(dock.has_method("ai_runtime_controller_scene_path") and dock.has_method("ai_runtime_world_bridge_scene_path") and str(dock.call("ai_runtime_controller_scene_path")) == AI_RUNTIME_CONTROLLER_SCENE and str(dock.call("ai_runtime_world_bridge_scene_path")) == AI_RUNTIME_WORLD_BRIDGE_SCENE, "SpaceSyndicateDesignQADock exposes AI runtime scene path helpers")
+		_expect(str(dock.call("ai_policy_resource_preview_scene_path")) == AI_POLICY_RESOURCE_PREVIEW_SCENE and str(dock.call("ai_policy_resource_bench_scene_path")) == AI_POLICY_RESOURCE_BENCH_SCENE and str(dock.call("ai_policy_resource_qa_output_dir")) == AI_POLICY_RESOURCE_OUTPUT_DIR, "SpaceSyndicateDesignQADock targets AI Policy preview, bench, and user output")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		if dock.has_signal("open_ai_policy_resource_preview_requested"):
+			dock.connect("open_ai_policy_resource_preview_requested", func(scene_path: String) -> void:
+				open_paths.append(scene_path)
+			)
+		if dock.has_signal("run_ai_policy_resource_bench_requested"):
+			dock.connect("run_ai_policy_resource_bench_requested", func(scene_path: String) -> void:
+				run_paths.append(scene_path)
+			)
+		var open_button := dock.find_child("OpenAiPolicyResourcePreviewButton", true, false) as Button
+		var run_button := dock.find_child("RunAiPolicyResourceBenchButton", true, false) as Button
+		if open_button != null:
+			open_button.emit_signal("pressed")
+			await process_frame
+		if run_button != null:
+			run_button.emit_signal("pressed")
+			await process_frame
+		_expect(open_paths.size() == 1 and open_paths[0] == AI_POLICY_RESOURCE_PREVIEW_SCENE, "Design QA Dock AI Policy open button requests preview without EditorPlugin")
+		_expect(run_paths.size() == 1 and run_paths[0] == AI_POLICY_RESOURCE_BENCH_SCENE, "Design QA Dock AI Policy run button requests bench without EditorPlugin")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _node_text_from_variant(value: Variant) -> String:
+	if value is Dictionary or value is Array:
+		return JSON.stringify(value)
+	return str(value)
+
+
 func _check_economy_dashboard_component() -> void:
 	var packed := load("res://scenes/ui/EconomyDashboard.tscn") as PackedScene
 	_expect(packed != null, "EconomyDashboard scene loads for economy-dashboard checks")
@@ -3537,7 +12725,14 @@ func _check_economy_dashboard_component() -> void:
 		"title": "经济仪表板",
 		"title_tooltip": "先看现金流、商品、城市、线索四块；细节用悬停查看。",
 		"kpi_columns": 4,
+		"overview_columns": 4,
 		"lane_columns": 3,
+		"overview_cards": [
+			{"title": "经济速览", "body": "GDP/min按秒进钱。", "accent": Color("#4ade80"), "tooltip": "现金流"},
+			{"title": "商品热榜", "body": "供需决定价格。", "accent": Color("#facc15"), "tooltip": "商品"},
+			{"title": "公开异动", "body": "只显示场面结果。", "accent": Color("#f472b6"), "tooltip": "异动"},
+			{"title": "匿名线索", "body": "不揭示隐藏真相。", "accent": Color("#c084fc"), "tooltip": "线索"},
+		],
 		"chips": [
 			{"text": "刷新7", "accent": Color("#86efac"), "tooltip": "市场刷新"},
 			{"text": "怪兽2", "accent": Color("#fb7185"), "tooltip": "怪兽风险"},
@@ -3568,6 +12763,7 @@ func _check_economy_dashboard_component() -> void:
 	_expect(String(dashboard.name) == "EconomyDashboardPanel", "EconomyDashboard keeps the dashboard panel root")
 	_expect(dashboard.find_child("EconomyDashboardHeader", true, false) != null and dashboard.find_child("EconomyDashboardChip", true, false) != null, "EconomyDashboard renders header chips")
 	_expect(dashboard.find_child("EconomyDashboardKpiGrid", true, false) != null and dashboard.find_child("EconomyDashboardKpiCard", true, false) != null and dashboard.find_child("EconomyDashboardKpiValue", true, false) != null, "EconomyDashboard renders KPI cards")
+	_expect(dashboard.find_child("EconomyDashboardOverviewGrid", true, false) != null and dashboard.find_child("EconomyDashboardOverviewCard", true, false) != null and dashboard.find_child("EconomyDashboardOverviewBody", true, false) != null, "EconomyDashboard renders the scene-owned overview card grid")
 	_expect(dashboard.find_child("EconomyDashboardDecisionRail", true, false) != null and dashboard.find_child("EconomyDashboardDecisionCard", true, false) != null and dashboard.find_child("EconomyDashboardDecisionKeyword", true, false) != null, "EconomyDashboard renders a three-route next decision strip")
 	_expect(dashboard.find_child("EconomyDashboardLaneGrid", true, false) != null and dashboard.find_child("EconomyDashboardListCard", true, false) != null and dashboard.find_child("EconomyDashboardListLine", true, false) != null, "EconomyDashboard renders economy lane list cards")
 	root.remove_child(dashboard)
@@ -3619,6 +12815,19 @@ func _check_intel_dossier_board_component() -> void:
 			{"title": "城市公开线索", "lines": ["雾港出现合约收入跳变"], "accent": Color("#4ade80"), "tooltip": "公开线索"},
 			{"title": "下一步查证", "lines": ["先标高价值城市。"], "accent": Color("#a78bfa"), "tooltip": "下一步"},
 		],
+		"control_groups": [{
+			"id": "city_3", "title": "标注城市：雾港", "meta": "优先88｜标P2/高｜仓储线索", "accent": Color("#c084fc"),
+			"actions": [
+				{"id": "intel_city_mark_3_1", "label": "标玩家2", "accent": Color("#38bdf8")},
+				{"id": "intel_city_confidence_3_3", "label": "置信:高", "accent": Color("#7dd3fc")},
+				{"id": "intel_city_reason_3_card", "label": "卡牌条件", "accent": Color("#4ade80")},
+				{"id": "intel_city_clear_3", "label": "清除", "accent": Color("#94a3b8")},
+			],
+		}],
+		"links": [
+			{"id": "intel_open_region_3", "label": "查看区域线索：雾港", "accent": Color("#38bdf8")},
+			{"id": "intel_open_economy", "label": "打开经济总览", "accent": Color("#facc15")},
+		],
 		"accent": Color("#c084fc"),
 	})
 	await process_frame
@@ -3627,14 +12836,21 @@ func _check_intel_dossier_board_component() -> void:
 	_expect(board.find_child("IntelDossierKpiGrid", true, false) != null and board.find_child("IntelDossierKpiCard", true, false) != null and board.find_child("IntelDossierKpiValue", true, false) != null, "IntelDossierBoard renders KPI cards")
 	_expect(board.find_child("IntelDossierActionRow", true, false) != null, "IntelDossierBoard owns a focused anonymous-card action row")
 	_expect(board.find_child("IntelDossierClueGrid", true, false) != null and board.find_child("IntelDossierClueCard", true, false) != null and board.find_child("IntelDossierClueLine", true, false) != null, "IntelDossierBoard renders clue cards")
+	_expect(board.find_child("IntelDossierControlGrid", true, false) != null and board.find_child("IntelDossierControlGroup", true, false) != null and board.find_child("IntelDossierControlActionButton", true, false) != null, "IntelDossierBoard owns sceneized city inference control groups")
+	_expect(board.find_child("IntelDossierLinkGrid", true, false) != null and board.find_child("IntelDossierLinkActionButton", true, false) != null, "IntelDossierBoard owns sceneized public evidence links")
 	var board_text := _node_tree_text(board)
 	_expect(board_text.contains("已选牌轨证据链") and board_text.contains("出价记录") and board_text.contains("余波线索") and board_text.contains("私人推理") and board_text.contains("回到牌轨") and board_text.contains("竞猜") and board_text.contains("卡牌详情"), "IntelDossierBoard can render a selected public-track evidence chain with bid, aftermath, private-note lines, and track/guess/detail paths")
 	for label_text in ["回到牌轨", "竞猜", "卡牌详情"]:
 		var action_button := _find_visible_button_containing(board, label_text)
 		if action_button != null:
 			action_button.emit_signal("pressed")
+	for label_text in ["标玩家2", "置信:高", "卡牌条件", "清除", "查看区域线索", "打开经济总览"]:
+		var action_button := _find_visible_button_containing(board, label_text)
+		if action_button != null:
+			action_button.emit_signal("pressed")
 	await process_frame
 	_expect(emitted_dossier_actions.has("track_return_42") and emitted_dossier_actions.has("track_guess_42") and emitted_dossier_actions.has("track_open_orbital_finance_i"), "IntelDossierBoard action buttons emit data-only public-track action ids")
+	_expect(emitted_dossier_actions.has("intel_city_mark_3_1") and emitted_dossier_actions.has("intel_city_confidence_3_3") and emitted_dossier_actions.has("intel_city_reason_3_card") and emitted_dossier_actions.has("intel_city_clear_3") and emitted_dossier_actions.has("intel_open_region_3") and emitted_dossier_actions.has("intel_open_economy"), "IntelDossierBoard control/link buttons emit data-only action ids")
 	root.remove_child(board)
 	board.queue_free()
 
@@ -3651,8 +12867,14 @@ func _check_standings_scoreboard_component() -> void:
 	board.call("set_scoreboard", {
 		"title": "局势记分板",
 		"title_tooltip": "进行中只显示当前玩家可见资金；对手现金、手牌和真实资产仍靠推理。",
+		"overview_columns": 3,
 		"kpi_columns": 4,
 		"seat_columns": 3,
+		"overview_cards": [
+			{"title": "局势速览", "body": "看目标、倒计时和公开异动。", "accent": Color("#facc15"), "tooltip": "局势"},
+			{"title": "终局条件", "body": "达到目标后开沙漏。", "accent": Color("#fb923c"), "tooltip": "终局"},
+			{"title": "我的可见资金", "body": "预估与现金保持可见。", "accent": Color("#38bdf8"), "tooltip": "资金"},
+		],
 		"chips": [
 			{"text": "目标¥2200", "accent": Color("#fef3c7"), "tooltip": "终局目标"},
 			{"text": "倒计时空闲", "accent": Color("#fb923c"), "tooltip": "终局沙漏"},
@@ -3712,6 +12934,7 @@ func _check_standings_scoreboard_component() -> void:
 	await process_frame
 	_expect(String(board.name) == "StandingsScoreboardPanel", "StandingsScoreboard keeps the scoreboard panel root")
 	_expect(board.find_child("StandingsScoreboardHeader", true, false) != null and board.find_child("StandingsScoreboardChip", true, false) != null, "StandingsScoreboard renders header chips")
+	_expect(board.find_child("StandingsOverviewGrid", true, false) != null and board.find_child("StandingsOverviewCard", true, false) != null and board.find_child("StandingsOverviewBody", true, false) != null, "StandingsScoreboard renders editable overview cards")
 	_expect(board.find_child("StandingsRaceKpiGrid", true, false) != null and board.find_child("StandingsRaceKpiCard", true, false) != null and board.find_child("StandingsRaceKpiValue", true, false) != null, "StandingsScoreboard renders race KPI cards")
 	_expect(board.find_child("StandingsPlayerScoreGrid", true, false) != null and board.find_child("StandingsPlayerScoreCard", true, false) != null and board.find_child("StandingsBankruptBadge", true, false) != null, "StandingsScoreboard renders player score cards and bankruptcy badges")
 	root.remove_child(board)
@@ -4036,12 +13259,10 @@ func _check_main_player_panel_refresh_contract() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var player_board_source := FileAccess.get_file_as_string("res://scripts/ui/player_board.gd")
 	var hand_rack_source := FileAccess.get_file_as_string("res://scripts/ui/hand_rack.gd")
-	_expect(main_source.contains("var player_panel_signature"), "main UI tracks a player panel structure signature")
-	_expect(main_source.contains("func _uses_split_runtime_table") and main_source.contains("func _refresh_split_compatibility_player_panel") and main_source.contains("if _uses_split_runtime_table():") and main_source.contains("_refresh_split_compatibility_player_panel()") and main_source.contains("_refresh_player_panel(false)"), "default split runtime uses a narrow decision compatibility host while legacy fallback can still refresh the full PlayerBoard")
-	_expect(main_source.contains("func _player_panel_structure_signature"), "main UI can decide when PlayerBoard structure changed")
-	_expect(main_source.contains("func _refresh_player_panel_live_values"), "main UI updates live resource values without destroy/recreate")
-	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("\"build\", \"rack\", \"buy\", \"play\"") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)"), "main runtime routes split ActionDock quick actions back into the existing controller")
-	_expect(main_source.contains("_build_city_in_selected_district()") and main_source.contains("_open_district_supply_from_map(selected_district)") and main_source.contains("_first_actionable_hand_slot(player_index)") and main_source.contains("_use_skill(slot_index)"), "main runtime quick actions drive build, rack/buy, and play through existing gameplay entry points")
+	_expect(not main_source.contains("var player_panel_signature") and not main_source.contains("func _uses_split_runtime_table") and not main_source.contains("func _refresh_split_compatibility_player_panel") and not main_source.contains("func _player_panel_structure_signature") and not main_source.contains("func _refresh_player_panel_live_values"), "main.gd no longer owns the generated or compatibility PlayerBoard renderer")
+	_expect(main_source.contains("func _sync_runtime_game_screen") and main_source.contains("runtime_game_screen.call(\"apply_state\""), "main.gd updates the scene-owned GameScreen through the snapshot bridge")
+	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_reject_legacy_direct_city_build(action_id)") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)"), "main runtime keeps old build action ids rejection-only while routing legal quick actions")
+	_expect(main_source.contains("func _runtime_player_board_quick_actions") and main_source.contains("\"发展牌架\"") and main_source.contains("_open_district_supply_from_map(selected_district)") and main_source.contains("_first_actionable_hand_slot(player_index)") and main_source.contains("_use_skill(slot_index)"), "main runtime quick actions expose rack/buy/play and route city development through real cards")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
 	_expect(game_screen_source.contains("func _unhandled_key_input") and game_screen_source.contains("_quick_action_index_for_key") and game_screen_source.contains("_quick_action_id_at") and game_screen_source.contains("_should_ignore_quick_action_hotkey"), "split GameScreen maps 1-4 keyboard shortcuts onto the current data-backed quick actions without reading gameplay rules")
 	_expect(main_source.contains("_on_runtime_game_screen_card_drop_requested") and main_source.contains("_runtime_drop_position_targets_map(screen_position)") and main_source.contains("get_district_at_control_position"), "main runtime maps split hand-card drops onto MapView districts before using existing play-card controller flow")

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DevelopmentRouteProfileResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/balance/development_route_profile_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+route_id = "tactical_support"
+display_name = "即时战术"
+goal = "补足短线现金、目标、位移或其它临场节奏。"
+play_pattern = "用短线效果修补当前局势，不强行形成长期路线。"
+counterplay = "观察结算余波和资源门槛，判断它服务哪条赚钱路线。"
+ai_plan_hint = "只作为补位加权，不能压过明确的经济/破坏计划。"
+strategy_labels = Array[String](["即时战术"])
+required_for_ai_baseline = false
+sort_order = 6

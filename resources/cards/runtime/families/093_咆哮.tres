@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://b6bavyha6wrod"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_h8s7i"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_cnpit"]
+
+[sub_resource type="Resource" id="Resource_08qeu"]
+script = ExtResource("1_h8s7i")
+card_id = "咆哮1"
+family_id = "咆哮"
+kind = &"roar"
+purchase_cost = 3
+rules_text = "450米AOE内硬直其他怪兽，延后下一次其他怪兽概率行动。"
+tags = PackedStringArray()
+range = 450.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "delay", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 1.5
+}
+
+[sub_resource type="Resource" id="Resource_w2lm8"]
+script = ExtResource("1_h8s7i")
+card_id = "咆哮2"
+family_id = "咆哮"
+rank = 2
+kind = &"roar"
+purchase_cost = 6
+rules_text = "520米AOE内强力硬直其他怪兽，大幅延后下一次其他怪兽概率行动。"
+tags = PackedStringArray()
+range = 520.0
+authored_keys = PackedStringArray("cost", "kind", "damage", "move", "range", "delay", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"delay": 3.0
+}
+
+[resource]
+script = ExtResource("2_cnpit")
+family_id = "咆哮"
+pack_id = &"monster_actions"
+authored_ranks = Array[Resource]([SubResource("Resource_08qeu"), SubResource("Resource_w2lm8")])
+upgradeable_family = true

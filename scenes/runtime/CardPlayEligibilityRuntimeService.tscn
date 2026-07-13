@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_play_eligibility_runtime_service.gd" id="1_service"]
+
+[node name="CardPlayEligibilityRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Authoritative pure-data card play eligibility, GDP requirement, target-trait, and stable rejection-reason service. It does not own queue, execution, effects, presentation, or world mutation."

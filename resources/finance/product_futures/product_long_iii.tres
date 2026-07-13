@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ProductFuturesTermsResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/finance/product_futures_terms_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_id = "商品看涨3"
+rank = 3
+direction = "up"
+duration_seconds = 95.0
+multiplier = 2.05
+units = 1
+margin_cash = 260
+maximum_gain = 650
+maximum_loss = 260

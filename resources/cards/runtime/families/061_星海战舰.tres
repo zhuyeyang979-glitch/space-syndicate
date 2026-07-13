@@ -1,0 +1,147 @@
+[gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bnjg1yeuky1b4"]
+
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_0kht8"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_604ev"]
+
+[sub_resource type="Resource" id="Resource_bwijk"]
+script = ExtResource("1_0kht8")
+card_id = "星海战舰1"
+family_id = "星海战舰"
+kind = &"military_force"
+purchase_cost = 6
+rules_text = "在海洋部署星海战舰：海上生命高、保卫海路强，能护航也能炮击岸线；登陆能力极差。"
+tags = PackedStringArray("军队", "海军", "战舰")
+range = 420.0
+play_product = "海底黑油"
+play_flow_required = 1
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 2,
+"military_damage": 2,
+"military_domain": "sea",
+"military_duration_seconds": 40.0,
+"military_gdp_penalty": 10,
+"military_gdp_pressure_seconds": 20.0,
+"military_hp": 14,
+"military_move": 260.0,
+"military_range": 420.0,
+"military_strike_route_damage": 1,
+"military_type": "warship",
+"movement_traits": ["sea", "fleet"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.2
+}
+}
+
+[sub_resource type="Resource" id="Resource_ffqu1"]
+script = ExtResource("1_0kht8")
+card_id = "星海战舰2"
+family_id = "星海战舰"
+rank = 2
+kind = &"military_force"
+purchase_cost = 8
+rules_text = "升级战舰：更强海路控制和炮击半径，适合保住自己的海运GDP或打断对手港口。"
+tags = PackedStringArray("军队", "海军", "升级")
+range = 520.0
+play_product = "海底黑油"
+play_flow_required = 2
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 3,
+"military_damage": 3,
+"military_domain": "sea",
+"military_duration_seconds": 48.0,
+"military_gdp_penalty": 14,
+"military_gdp_pressure_seconds": 24.0,
+"military_hp": 18,
+"military_move": 320.0,
+"military_range": 520.0,
+"military_strike_route_damage": 1,
+"military_type": "warship",
+"movement_traits": ["sea", "fleet"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.24
+}
+}
+
+[sub_resource type="Resource" id="Resource_m1yoh"]
+script = ExtResource("1_0kht8")
+card_id = "星海战舰3"
+family_id = "星海战舰"
+rank = 3
+kind = &"military_force"
+purchase_cost = 10
+rules_text = "核心战舰：完整军令解锁，海域护航、岸线压制和反海兽都能兼顾，是海洋经济路线的主力资产。"
+tags = PackedStringArray("军队", "海军", "核心")
+range = 640.0
+play_product = "海底黑油"
+play_flow_required = 3
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 4,
+"military_domain": "sea",
+"military_duration_seconds": 58.0,
+"military_gdp_penalty": 20,
+"military_gdp_pressure_seconds": 28.0,
+"military_hp": 24,
+"military_move": 380.0,
+"military_range": 640.0,
+"military_strike_route_damage": 2,
+"military_type": "warship",
+"movement_traits": ["sea", "fleet"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.28
+}
+}
+
+[sub_resource type="Resource" id="Resource_4g4ge"]
+script = ExtResource("1_0kht8")
+card_id = "星海战舰4"
+family_id = "星海战舰"
+rank = 4
+kind = &"military_force"
+purchase_cost = 12
+rules_text = "终端战舰IV：海洋控制终端牌，耐久、射程、护航都强；昂贵且离开海域后价值急剧下降。"
+tags = PackedStringArray("军队", "海军", "IV")
+range = 780.0
+play_product = "海底黑油"
+play_flow_required = 4
+military_deploy_terrain = &"ocean"
+authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "military_type", "military_domain", "military_deploy_terrain", "movement_traits", "terrain_move_multiplier", "military_hp", "military_damage", "military_move", "military_range", "military_duration_seconds", "military_gdp_penalty", "military_gdp_pressure_seconds", "military_strike_route_damage", "fixed_skill_count", "damage", "move", "range", "tags", "text")
+integer_core_fields = PackedStringArray()
+effect_parameters = {
+"fixed_skill_count": 4,
+"military_damage": 5,
+"military_domain": "sea",
+"military_duration_seconds": 70.0,
+"military_gdp_penalty": 28,
+"military_gdp_pressure_seconds": 32.0,
+"military_hp": 32,
+"military_move": 450.0,
+"military_range": 780.0,
+"military_strike_route_damage": 2,
+"military_type": "warship",
+"movement_traits": ["sea", "fleet"],
+"terrain_move_multiplier": {
+"land": 0.05,
+"ocean": 1.34
+}
+}
+
+[resource]
+script = ExtResource("2_604ev")
+family_id = "星海战舰"
+pack_id = &"military"
+authored_ranks = Array[Resource]([SubResource("Resource_bwijk"), SubResource("Resource_ffqu1"), SubResource("Resource_m1yoh"), SubResource("Resource_4g4ge")])
+public_pool_eligible = true
+upgradeable_family = true

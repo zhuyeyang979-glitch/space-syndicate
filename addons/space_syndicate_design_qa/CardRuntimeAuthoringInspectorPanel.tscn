@@ -1,0 +1,109 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://addons/space_syndicate_design_qa/card_runtime_authoring_inspector_panel.gd" id="1_panel"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
+bg_color = Color(0.055, 0.071, 0.102, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.235, 0.306, 0.4, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_action"]
+bg_color = Color(0.075, 0.125, 0.17, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.55, 0.61, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="CardRuntimeAuthoringInspectorPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 188)
+theme_override_styles/panel = SubResource("StyleBox_panel")
+script = ExtResource("1_panel")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 9
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Header" type="Label" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.89, 0.88, 1)
+theme_override_font_sizes/font_size = 14
+text = "Runtime Card Authoring"
+
+[node name="AuthoringTargetLabel" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resource | unselected"
+text_overrun_behavior = 3
+
+[node name="PrimaryActions" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="ValidateAuthoringTargetButton" type="Button" parent="Margin/Rows/PrimaryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBox_action")
+text = "Validate"
+tooltip_text = "Validate this catalog, pack, family, or rank Resource"
+
+[node name="CaptureCardBaselineButton" type="Button" parent="Margin/Rows/PrimaryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Baseline"
+tooltip_text = "Capture an untracked working baseline under user:// before editing"
+
+[node name="BuildCardChangeReviewButton" type="Button" parent="Margin/Rows/PrimaryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Review"
+tooltip_text = "Build JSON and Markdown change-review material under user://"
+
+[node name="SecondaryActions" type="HBoxContainer" parent="Margin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="RunCardAuthoringQaButton" type="Button" parent="Margin/Rows/SecondaryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Run QA"
+
+[node name="OpenCardAuthoringCatalogButton" type="Button" parent="Margin/Rows/SecondaryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Catalog"
+
+[node name="OpenCardAuthoringOutputButton" type="Button" parent="Margin/Rows/SecondaryActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Output"
+
+[node name="AuthoringStatusLabel" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Ready for Inspector validation and change review."
+autowrap_mode = 2
