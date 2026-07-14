@@ -54,8 +54,10 @@ func run_bench() -> Dictionary:
 	_check(production_registry != null, "production_registry_scene_wired")
 	var production_snapshot: Dictionary = production_registry.registry_snapshot() if production_registry != null else {}
 	_check(bool(production_snapshot.get("valid", false)), "production_registry_matches_handshake_manifest")
-	_check(int(production_snapshot.get("required_section_count", 0)) == 17 and int(production_snapshot.get("binding_count", 0)) == 17, "production_registry_has_all_17_unique_sections")
-	_check(int(production_snapshot.get("transactional_section_count", 0)) == 5 and int(production_snapshot.get("unsupported_section_count", 0)) == 12 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_only_five_auditable_transactional_owners")
+	_check(int(production_snapshot.get("required_section_count", 0)) == 18 and int(production_snapshot.get("binding_count", 0)) == 18, "production_registry_has_all_18_unique_sections")
+	_check(int(production_snapshot.get("transactional_section_count", 0)) == 5 and int(production_snapshot.get("unsupported_section_count", 0)) == 13 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_only_five_auditable_transactional_owners")
+	_check(_bankruptcy_binding_is_explicitly_unsupported(production_registry), "bankruptcy_section_has_no_save_owner_api_or_transactional_claim")
+	_check(not bool(production_snapshot.get("captures_business_state", true)) and not bool(production_snapshot.get("stores_parallel_owner_state", true)), "registry_bindings_copy_no_bankruptcy_or_participant_journal_state")
 	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-reject", "write_id": "production-reject"}) if production_registry != null else {}
 	_check(not bool(production_capture.get("ok", true)) and str(production_capture.get("reason_code", "")) == "restore_capability_incomplete" and not production_capture.has("envelope"), "production_capture_fails_closed_without_complete_owner_capability")
 	var production_public: Dictionary = production_registry.public_operation_receipt(production_capture) if production_registry != null else {}
@@ -69,8 +71,8 @@ func run_bench() -> Dictionary:
 		return _finish(production_snapshot, {})
 	var fixed_order: Array[String] = registry.fixed_section_order()
 	var fake_snapshot: Dictionary = registry.registry_snapshot()
-	_check(bool(fake_snapshot.get("valid", false)) and bool(fake_snapshot.get("resume_ready", false)) and int(fake_snapshot.get("transactional_section_count", 0)) == 17, "complete_transactional_registry_is_resume_ready")
-	_check(fixed_order.size() == 17 and fixed_order[-1] == "session", "fixed_apply_order_is_complete_and_session_last")
+	_check(bool(fake_snapshot.get("valid", false)) and bool(fake_snapshot.get("resume_ready", false)) and int(fake_snapshot.get("transactional_section_count", 0)) == 18, "complete_transactional_registry_is_resume_ready")
+	_check(fixed_order.size() == 18 and fixed_order[-1] == "session", "fixed_apply_order_is_complete_and_session_last")
 
 	var original_bindings: Array[BindingScript] = registry.bindings.duplicate()
 	var duplicate_bindings: Array[BindingScript] = original_bindings.duplicate()
@@ -82,7 +84,7 @@ func run_bench() -> Dictionary:
 	var capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-1", "write_id": "registry-bench-write-1"})
 	var envelope: Dictionary = capture.get("envelope", {}) if capture.get("envelope", {}) is Dictionary else {}
 	var validation: Dictionary = handshake.call("validate_envelope", envelope) if not envelope.is_empty() else {}
-	_check(bool(capture.get("ok", false)) and bool(validation.get("valid", false)) and (envelope.get("sections", {}) as Dictionary).size() == 17, "capture_composes_one_valid_full_manifest_envelope")
+	_check(bool(capture.get("ok", false)) and bool(validation.get("valid", false)) and (envelope.get("sections", {}) as Dictionary).size() == 18, "capture_composes_one_valid_full_manifest_envelope")
 	_check(JSON.stringify(envelope).contains("Vector2") and JSON.stringify(envelope).contains("Color"), "capture_uses_handshake_explicit_variant_codec")
 	_check(_public_receipt_safe(registry.public_operation_receipt(capture)), "capture_public_receipt_omits_envelope_and_private_owner_state")
 	var forged_public: Dictionary = registry.public_operation_receipt({
@@ -96,9 +98,9 @@ func run_bench() -> Dictionary:
 
 	var success_envelope := _envelope_with_values(handshake, envelope, fixed_order, 100)
 	var preflight: Dictionary = registry.preflight_envelope(success_envelope)
-	_check(bool(preflight.get("ok", false)) and bool(preflight.get("envelope_valid", false)) and bool(preflight.get("preflight_complete", false)) and int(preflight.get("preflight_count", 0)) == 17, "all_owner_preflights_complete_before_apply")
+	_check(bool(preflight.get("ok", false)) and bool(preflight.get("envelope_valid", false)) and bool(preflight.get("preflight_complete", false)) and int(preflight.get("preflight_count", 0)) == 18, "all_owner_preflights_complete_before_apply")
 	var success: Dictionary = registry.apply_envelope(success_envelope)
-	_check(bool(success.get("ok", false)) and success.get("applied_section_ids", []) == fixed_order and int(success.get("apply_count", 0)) == 17, "owners_apply_once_in_fixed_order")
+	_check(bool(success.get("ok", false)) and success.get("applied_section_ids", []) == fixed_order and int(success.get("apply_count", 0)) == 18, "owners_apply_once_in_fixed_order")
 	_check(_owner_values_match(harness, fixed_order, 100), "successful_apply_commits_all_normalized_owner_states")
 	_check(_public_receipt_safe(registry.public_operation_receipt(success)), "success_public_receipt_omits_sections_balances_hands_owner_truth_and_ai_plan")
 
@@ -142,6 +144,9 @@ func run_bench() -> Dictionary:
 		"production_transactional_sections": int(production_snapshot.get("transactional_section_count", 0)),
 		"production_unsupported_sections": int(production_snapshot.get("unsupported_section_count", 0)),
 		"production_resume_ready": bool(production_snapshot.get("resume_ready", true)),
+		"bankruptcy_section_registered": _bankruptcy_binding_is_explicitly_unsupported(production_registry),
+		"bankruptcy_section_transactional": _binding_is_transactional(production_registry, "bankruptcy_neutral_estate"),
+		"bankruptcy_unsupported_reason": _binding_unsupported_reason(production_registry, "bankruptcy_neutral_estate"),
 		"transactional_harness_sections": fixed_order.size(),
 		"fixed_apply_order_count": fixed_order.size(),
 		"global_preflight": bool(preflight.get("preflight_complete", false)),
@@ -190,6 +195,41 @@ func _build_transactional_harness() -> Node:
 	registry.bindings = configured_bindings
 	harness.add_child(registry)
 	return harness
+
+
+func _bankruptcy_binding_is_explicitly_unsupported(registry: Node) -> bool:
+	if registry == null:
+		return false
+	for binding in registry.bindings:
+		if binding == null or binding.section_id != "bankruptcy_neutral_estate":
+			continue
+		return binding.owner_id == "bankruptcy_neutral_estate" \
+			and binding.state_version == 1 \
+			and binding.restore_mode == BindingScript.RESTORE_UNSUPPORTED \
+			and binding.unsupported_reason == "save_capture_apply_checkpoint_api_missing" \
+			and binding.owner_path.is_empty() \
+			and binding.capture_method.is_empty() \
+			and binding.apply_method.is_empty() \
+			and binding.rollback_method.is_empty()
+	return false
+
+
+func _binding_unsupported_reason(registry: Node, section_id: String) -> String:
+	if registry == null:
+		return ""
+	for binding in registry.bindings:
+		if binding != null and binding.section_id == section_id:
+			return str(binding.unsupported_reason)
+	return ""
+
+
+func _binding_is_transactional(registry: Node, section_id: String) -> bool:
+	if registry == null:
+		return false
+	for binding in registry.bindings:
+		if binding != null and binding.section_id == section_id:
+			return binding.is_transactional()
+	return false
 
 
 func _envelope_with_values(handshake: Node, source: Dictionary, order: Array[String], base_value: int) -> Dictionary:

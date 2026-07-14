@@ -88,7 +88,12 @@ script = ExtResource("2_entry")
 controller_id = "player_organization"
 save_section = "player_organization"
 
+[sub_resource type="Resource" id="Controller_18"]
+script = ExtResource("2_entry")
+controller_id = "bankruptcy_neutral_estate"
+save_section = "bankruptcy_neutral_estate"
+
 [resource]
 script = ExtResource("1_registry")
 ruleset_id = "v0.6"
-entries = Array[ExtResource("2_entry")]([SubResource("Controller_01"), SubResource("Controller_02"), SubResource("Controller_03"), SubResource("Controller_04"), SubResource("Controller_05"), SubResource("Controller_06"), SubResource("Controller_07"), SubResource("Controller_08"), SubResource("Controller_09"), SubResource("Controller_10"), SubResource("Controller_11"), SubResource("Controller_12"), SubResource("Controller_13"), SubResource("Controller_14"), SubResource("Controller_15"), SubResource("Controller_16"), SubResource("Controller_17")])
+entries = Array[ExtResource("2_entry")]([SubResource("Controller_01"), SubResource("Controller_02"), SubResource("Controller_03"), SubResource("Controller_04"), SubResource("Controller_05"), SubResource("Controller_06"), SubResource("Controller_07"), SubResource("Controller_08"), SubResource("Controller_09"), SubResource("Controller_10"), SubResource("Controller_11"), SubResource("Controller_12"), SubResource("Controller_13"), SubResource("Controller_14"), SubResource("Controller_15"), SubResource("Controller_16"), SubResource("Controller_17"), SubResource("Controller_18")])

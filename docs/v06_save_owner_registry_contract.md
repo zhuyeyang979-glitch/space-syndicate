@@ -14,7 +14,7 @@ apply operate on pure-data snapshots owned by the bound production nodes.
 
 ## Current capability boundary
 
-The registry has exactly the 17 sections declared by
+The registry has exactly the 18 sections declared by
 `RulesetSaveHandshakeService.required_section_manifest()`. The first audited
 transactional bindings are:
 
@@ -24,10 +24,17 @@ transactional bindings are:
 - `victory_control`
 - `player_organization`
 
-The remaining 12 sections are explicitly `unsupported` with a non-empty
+The remaining 13 sections are explicitly `unsupported` with a non-empty
 capability reason. Production capture, preflight, and apply therefore reject
 with `restore_capability_incomplete`. This phase does not claim that a whole
 run can be restored.
+
+`bankruptcy_neutral_estate` is its own required section. Its runtime controller
+owns a transaction lifecycle journal, but currently exposes no save capture,
+apply, preflight, or exact checkpoint API. The registry therefore binds this
+section as `unsupported` with
+`save_capture_apply_checkpoint_api_missing`, without an owner path or methods.
+It does not copy that journal or any of its five participant-owner journals.
 
 The unsupported set remains fail-closed until the existing business owner for
 each section provides validation-before-commit and exact rollback capability.
@@ -45,7 +52,7 @@ order and wraps its pure state as:
 - `owner_state`
 
 `owner_state` is encoded only through the existing explicit tagged v3 codec.
-The real handshake composes and validates the full 17-section envelope. Any
+The real handshake composes and validates the full 18-section envelope. Any
 missing owner, method, version, section, codec value, or manifest mismatch
 rejects capture before an envelope is returned.
 
@@ -53,7 +60,7 @@ rejects capture before an envelope is returned.
 
 Apply uses this fixed sequence:
 
-1. Validate the registry against the authoritative 17-section manifest.
+1. Validate the registry against the authoritative 18-section manifest.
 2. Validate the complete envelope through `RulesetSaveHandshakeService`.
 3. Decode exact wrappers and run every owner apply on a detached probe.
 4. Capture every live owner's rollback checkpoint.
@@ -84,8 +91,9 @@ normalized to fail-closed public values.
 - MCP Bench: `res://scenes/tools/V06SaveOwnerRegistryBench.tscn`
 - Headless test: `res://tests/v06_save_owner_registry_test.gd`
 
-The gate covers exact manifest mapping, the production 5/12 capability
+The gate covers exact manifest mapping, the production 5/13 capability
 boundary, full fake-owner capture through the real handshake, late preflight
 rejection with zero live mutation, fixed-order apply, reverse-order rollback
 including a partially mutated failing owner, exact checkpoint restoration, and
-adversarial public-receipt privacy.
+adversarial public-receipt privacy. It also proves the independent bankruptcy
+section has no owner path or save methods and remains explicitly unsupported.

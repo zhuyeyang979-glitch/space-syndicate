@@ -38,6 +38,7 @@ const FIXED_SECTION_ORDER := [
 	"card_resolution_queue",
 	"card_resolution_execution",
 	"ai",
+	"bankruptcy_neutral_estate",
 	"victory_control",
 	"session",
 ]
