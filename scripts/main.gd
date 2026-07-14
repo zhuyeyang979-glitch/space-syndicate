@@ -3244,21 +3244,6 @@ func _refresh_menu_layout() -> void:
 		menu_overlay.call("refresh_current_layout", _menu_viewport_size())
 
 
-func _style_menu_button(button: Button, accent: Color = Color("#38bdf8"), primary: bool = false) -> void:
-	button.custom_minimum_size = Vector2(124 if not primary else 142, 34)
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.add_theme_stylebox_override("normal", _menu_card_style(accent, Color("#0b1220").lerp(accent, 0.18 if primary else 0.09), 1, 16))
-	button.add_theme_stylebox_override("hover", _menu_card_style(accent.lightened(0.18), Color("#0f172a").lerp(accent, 0.24 if primary else 0.16), 2, 16))
-	button.add_theme_stylebox_override("pressed", _menu_card_style(accent.lightened(0.28), Color("#020617").lerp(accent, 0.32 if primary else 0.22), 2, 16))
-	button.add_theme_stylebox_override("focus", _menu_card_style(Color("#fef3c7"), Color("#0b1220").lerp(accent, 0.18), 2, 16))
-	button.add_theme_stylebox_override("disabled", _menu_card_style(Color("#334155"), Color("#020617"), 1, 16))
-	button.add_theme_color_override("font_color", Color("#f8fafc"))
-	button.add_theme_color_override("font_hover_color", Color("#ffffff"))
-	button.add_theme_color_override("font_pressed_color", Color("#ffffff"))
-	button.add_theme_color_override("font_disabled_color", Color("#64748b"))
-	button.add_theme_font_size_override("font_size", 15)
-
-
 func _menu_quick_nav_entries() -> Array:
 	return [
 		{"id": "setup", "label": "开局", "tooltip": "进入开局配置：设置席位、电脑对手、角色和起始怪兽。", "accent": "#38bdf8"},
@@ -6101,10 +6086,6 @@ func _active_player_indices() -> Array:
 	return result
 
 
-func _active_player_count() -> int:
-	return _active_player_indices().size()
-
-
 func _runtime_session_finished() -> bool:
 	var coordinator := _game_runtime_coordinator_node()
 	return bool(coordinator.call("session_is_finished")) if coordinator != null and coordinator.has_method("session_is_finished") else false
@@ -8510,21 +8491,6 @@ func _new_game_setup_starter_card_face_snapshot(starter_card: Dictionary, starte
 		"card_kind": "monster_card",
 		"card_stats": "不限区｜自愿召唤｜%s" % _short_card_text(_monster_card_region_text(starter_card, true), 16),
 		"accent": _card_presentation_color(starter_card),
-		"minimum_width": 142.0,
-		"minimum_height": 140.0,
-	}
-
-
-func _new_game_setup_hidden_starter_card_face_snapshot() -> Dictionary:
-	return {
-		"name": "匿名起始怪兽",
-		"cost": "◆",
-		"effect": "具体怪兽档案与能力将在其自愿召唤后公开。",
-		"type": "怪兽",
-		"rank": "I",
-		"card_kind": "monster_card_hidden",
-		"card_stats": "召唤前隐藏｜AI私有选择",
-		"accent": Color("#64748b"),
 		"minimum_width": 142.0,
 		"minimum_height": 140.0,
 	}
@@ -15121,10 +15087,6 @@ func _human_player_count() -> int:
 	return max(0, players.size() - _ai_runtime_call("_ai_player_count"))
 
 
-func _sort_candidate_score_desc(a: Dictionary, b: Dictionary) -> bool:
-	return int(a.get("score", 0)) > int(b.get("score", 0))
-
-
 func _player_facing_text_snapshot() -> Array:
 	var result := []
 	_collect_player_facing_text(self, result)
@@ -19475,14 +19437,6 @@ func _auto_monster_markers() -> Array:
 			"down": false,
 		})
 	return result
-
-
-func _distance(a: int, b: int) -> float:
-	if a < 0 or a >= districts.size() or b < 0 or b >= districts.size():
-		return INF
-	if a == b:
-		return 0.0
-	return _wrapped_distance(_district_center(a), _district_center(b))
 
 
 func _district_center(index: int) -> Vector2:
