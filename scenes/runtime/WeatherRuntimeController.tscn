@@ -1,7 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/weather_runtime_controller.gd" id="1_controller"]
+[ext_resource type="Resource" path="res://resources/weather/weather_definition_catalog_v1.tres" id="2_catalog"]
 
 [node name="WeatherRuntimeController" type="Node"]
 script = ExtResource("1_controller")
-editor_description = "Authoritative v0.4 weather runtime owner: forecast, active zones, shared-RNG selection, lifecycle, multipliers, card rewrites and save data."
+definition_catalog = ExtResource("2_catalog")
+editor_description = "Authoritative v1 weather runtime owner: data-driven definitions, world_effective lifecycle, public snapshots, resolver effects and save data."

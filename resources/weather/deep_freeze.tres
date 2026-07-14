@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeatherDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/weather_definition.gd" id="1_definition"]
+
+[resource]
+script = ExtResource("1_definition")
+id = "deep_freeze"
+display_name = "深寒"
+public_summary = "深寒稳定冷链商品价格，但显著压低路线、军队和怪兽速度。"
+icon_key = "freeze"
+accent_color = Color(0.56, 0.78, 1, 1)
+affected_region_count = 1
+economy_multiplier = 1.10
+route_multiplier = 0.40
+monster_speed_multiplier = 0.80
+military_multiplier = 0.70
+intel_multiplier = 0.85
+orbital_effect_multiplier = 0.90
+city_maintenance_multiplier = 1.18
+context_tags = PackedStringArray("cold", "logistics")
+explanation_codes = PackedStringArray("cold_chain", "route_freeze", "slow_response")

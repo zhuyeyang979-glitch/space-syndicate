@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeatherDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/weather_definition.gd" id="1_definition"]
+
+[resource]
+script = ExtResource("1_definition")
+id = "ion_storm"
+display_name = "离子风暴"
+public_summary = "离子乱流提升能源相关产出，同时压低航路、军队与情报效率。"
+icon_key = "ion"
+accent_color = Color(0.54, 0.42, 1, 1)
+affected_region_count = 1
+economy_multiplier = 1.12
+route_multiplier = 0.72
+monster_speed_multiplier = 0.95
+military_multiplier = 0.78
+intel_multiplier = 0.70
+orbital_effect_multiplier = 0.82
+city_maintenance_multiplier = 1.08
+context_tags = PackedStringArray("energy", "signal_noise")
+explanation_codes = PackedStringArray("energy_surge", "signal_noise", "route_interference")

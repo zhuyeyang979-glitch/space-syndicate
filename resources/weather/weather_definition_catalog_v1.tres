@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeatherDefinitionCatalog" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/weather_definition_catalog.gd" id="1_catalog"]
+[ext_resource type="Resource" path="res://resources/weather/ion_storm.tres" id="2_ion"]
+[ext_resource type="Resource" path="res://resources/weather/gravity_tide.tres" id="3_gravity"]
+[ext_resource type="Resource" path="res://resources/weather/spore_season.tres" id="4_spore"]
+[ext_resource type="Resource" path="res://resources/weather/crystal_dust_storm.tres" id="5_crystal"]
+[ext_resource type="Resource" path="res://resources/weather/deep_freeze.tres" id="6_freeze"]
+[ext_resource type="Resource" path="res://resources/weather/solar_flare.tres" id="7_flare"]
+
+[resource]
+script = ExtResource("1_catalog")
+definitions = Array[Resource]([ExtResource("2_ion"), ExtResource("3_gravity"), ExtResource("4_spore"), ExtResource("5_crystal"), ExtResource("6_freeze"), ExtResource("7_flare")])

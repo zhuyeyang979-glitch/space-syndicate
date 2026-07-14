@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeatherDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/weather_definition.gd" id="1_definition"]
+
+[resource]
+script = ExtResource("1_definition")
+id = "spore_season"
+display_name = "孢子季"
+public_summary = "孢子潮刺激生物商品和城市短期需求，但让巡逻与观察变得迟钝。"
+icon_key = "spore"
+accent_color = Color(0.45, 0.82, 0.32, 1)
+affected_region_count = 1
+economy_multiplier = 1.24
+route_multiplier = 0.88
+monster_speed_multiplier = 1.20
+military_multiplier = 0.84
+intel_multiplier = 0.86
+orbital_effect_multiplier = 1.00
+city_maintenance_multiplier = 1.12
+context_tags = PackedStringArray("bio", "demand")
+explanation_codes = PackedStringArray("bio_bloom", "demand_spike", "visibility_loss")

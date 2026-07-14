@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeatherDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/weather_definition.gd" id="1_definition"]
+
+[resource]
+script = ExtResource("1_definition")
+id = "crystal_dust_storm"
+display_name = "晶尘风暴"
+public_summary = "晶尘提高稀有矿物收益，同时造成轻微、非致命且封顶的区域磨损。"
+icon_key = "crystal_dust"
+accent_color = Color(0.72, 0.92, 1, 1)
+affected_region_count = 1
+economy_multiplier = 1.10
+route_multiplier = 0.65
+monster_speed_multiplier = 1.00
+military_multiplier = 0.76
+intel_multiplier = 0.74
+orbital_effect_multiplier = 0.95
+city_maintenance_multiplier = 1.15
+damage_per_second = 0.02
+damage_nonlethal = true
+damage_capped = true
+context_tags = PackedStringArray("mineral", "abrasion")
+explanation_codes = PackedStringArray("mineral_glint", "abrasive_weather", "nonlethal_cap")
