@@ -11703,6 +11703,12 @@ func _set_map_view_data(target_view: Control) -> void:
 		selected_trade_product,
 		selected_map_layer_focus
 	)
+	var coordinator := _game_runtime_coordinator_node()
+	if coordinator != null and target_view.has_method("set_solar_presentation_snapshot"):
+		target_view.call("set_solar_presentation_snapshot", coordinator.solar_public_presentation_snapshot())
+	if target_view.has_method("set_solar_camera_motion_mode"):
+		var solar_motion_mode := "reduced" if campaign_animation_intensity == "简化" else ("off" if campaign_animation_intensity == "关闭" else "full")
+		target_view.call("set_solar_camera_motion_mode", solar_motion_mode)
 
 
 func _focus_runtime_map_on_district(district_index: int) -> void:
