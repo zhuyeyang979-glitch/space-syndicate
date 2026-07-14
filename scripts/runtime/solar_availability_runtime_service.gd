@@ -5,6 +5,7 @@ class_name SolarAvailabilityRuntimeService
 const WORLD_ROTATION_PERIOD_US := 120_000_000
 const INITIAL_SUBSOLAR_TURN := 0.0
 const ZERO_DOT_EPSILON := 0.000000001
+const PUBLIC_PRESENTATION_KEYS := ["world_effective_us", "rotation_period_us", "sun_turn_ppm"]
 
 var _configured := false
 var _evaluation_count := 0
@@ -43,6 +44,16 @@ func sun_turn_at(world_effective_us: int) -> float:
 	return fposmod(INITIAL_SUBSOLAR_TURN + float(world_effective_us % WORLD_ROTATION_PERIOD_US) / float(WORLD_ROTATION_PERIOD_US), 1.0)
 
 
+func public_presentation_snapshot(world_effective_us: int) -> Dictionary:
+	if not _configured or world_effective_us < 0:
+		return {}
+	return {
+		"world_effective_us": world_effective_us,
+		"rotation_period_us": WORLD_ROTATION_PERIOD_US,
+		"sun_turn_ppm": int(round(sun_turn_at(world_effective_us) * 1_000_000.0)) % 1_000_000,
+	}
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"service_ready": _configured,
@@ -51,6 +62,7 @@ func debug_snapshot() -> Dictionary:
 		"fixed_initial_turn_ppm": int(round(INITIAL_SUBSOLAR_TURN * 1_000_000.0)),
 		"evaluation_count": _evaluation_count,
 		"owns_solar_phase": false,
+		"public_presentation_keys": PUBLIC_PRESENTATION_KEYS.duplicate(),
 	}
 
 

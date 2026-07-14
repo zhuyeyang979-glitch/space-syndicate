@@ -2,6 +2,7 @@ extends Control
 
 signal district_selected(index: int)
 signal district_double_clicked(index: int)
+signal camera_presentation_interacted(kind: String)
 
 const GLOBE_MODE_ZOOM_THRESHOLD := 0.58
 const PLANET_PROJECTION_BLEND_NAME := "PlanetProjectionBlend"
@@ -104,6 +105,8 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_ALL
 	set_meta("runtime_focus_kind", "planet_map")
 	custom_minimum_size = Vector2(720, 720)
+	if not focus_entered.is_connected(_on_camera_focus_entered):
+		focus_entered.connect(_on_camera_focus_entered)
 	_load_monster_marker_textures()
 	reset_to_planet_overview()
 	set_process(true)
@@ -405,18 +408,22 @@ func _layer_focus_allows(layer_id: String) -> bool:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
+		_notify_camera_presentation_interaction("key")
 	if _handle_keyboard_region_navigation(event):
 		accept_event()
 		return
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_event.pressed:
+			_notify_camera_presentation_interaction("wheel")
 			_target_view_zoom = clamp(_target_view_zoom * ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
 			queue_redraw()
 			accept_event()
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_event.pressed:
+			_notify_camera_presentation_interaction("wheel")
 			_target_view_zoom = clamp(_target_view_zoom / ZOOM_WHEEL_STEP, MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
 			_mark_interaction_detail_dirty()
 			queue_redraw()
@@ -424,6 +431,7 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT:
 			if mouse_event.pressed:
+				_notify_camera_presentation_interaction("click")
 				_dragging = true
 				_drag_moved = false
 				_drag_start = mouse_event.position
@@ -450,6 +458,7 @@ func _gui_input(event: InputEvent) -> void:
 				accept_event()
 	if event is InputEventMouseMotion and _dragging:
 		var motion_event := event as InputEventMouseMotion
+		_notify_camera_presentation_interaction("drag")
 		var delta := motion_event.position - _last_mouse_position
 		if motion_event.position.distance_to(_drag_start) > DRAG_THRESHOLD_PIXELS:
 			_drag_moved = true
@@ -2309,6 +2318,7 @@ func reset_to_planet_overview() -> void:
 func focus_district(index: int, keep_zoom: bool = true) -> void:
 	if index < 0 or index >= districts.size():
 		return
+	_notify_camera_presentation_interaction("focus_district")
 	var center_variant: Variant = districts[index].get("center", _view_center_m)
 	var center := _view_center_m
 	if center_variant is Vector2:
@@ -2337,6 +2347,36 @@ func zoom_to_local_projection() -> void:
 	_target_view_zoom = PLANET_PROJECTION_LOCAL_ZOOM
 	_mark_interaction_detail_dirty()
 	queue_redraw()
+
+
+func apply_solar_presentation_camera_turn(sun_turn_ppm: int, preserve_zoom := true, preserve_latitude := true) -> void:
+	var normalized_turn := posmod(sun_turn_ppm, 1_000_000)
+	var target_y := _view_center_m.y if preserve_latitude else map_height_m * 0.5
+	_view_center_m = _wrap_world_position(Vector2(float(normalized_turn) / 1_000_000.0 * map_width_m, target_y))
+	if not preserve_zoom:
+		_view_zoom = PLANET_PROJECTION_GLOBE_ZOOM
+		_target_view_zoom = PLANET_PROJECTION_GLOBE_ZOOM
+	_cancel_focus_rotation()
+	_mark_interaction_detail_dirty()
+	queue_redraw()
+
+
+func solar_presentation_camera_snapshot() -> Dictionary:
+	return {
+		"center_turn_ppm": int(round(fposmod(_view_center_m.x / maxf(1.0, map_width_m), 1.0) * 1_000_000.0)) % 1_000_000,
+		"center_latitude_ppm": int(round((_view_center_m.y / maxf(1.0, map_height_m) - 0.5) * 1_000_000.0)),
+		"view_zoom": _view_zoom,
+		"target_view_zoom": _target_view_zoom,
+		"selected_district": selected_district,
+	}
+
+
+func _on_camera_focus_entered() -> void:
+	_notify_camera_presentation_interaction("focus_entered")
+
+
+func _notify_camera_presentation_interaction(kind: String) -> void:
+	camera_presentation_interacted.emit(kind)
 
 
 func get_projection_debug_snapshot() -> Dictionary:

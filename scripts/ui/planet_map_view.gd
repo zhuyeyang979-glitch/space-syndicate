@@ -26,6 +26,7 @@ const PlanetMapRenderModelScript := preload("res://scripts/ui/map/planet_map_ren
 @onready var orbit_guide: Control = get_node_or_null("OrbitLayer/PlanetOrbitGuide") as Control
 @onready var focus_range_overlay: Control = get_node_or_null("SelectionLayer/PlanetFocusRangeOverlay") as Control
 @onready var scale_hint: Control = get_node_or_null("DebugOverlayLayer/PlanetMapScaleHint") as Control
+@onready var solar_camera_controller: Control = get_node_or_null("PlanetSolarCameraController") as Control
 
 const EDITABLE_LAYER_NAMES := [
 	"BackdropLayer",
@@ -62,6 +63,8 @@ var _render_model: RefCounted = PlanetMapRenderModelScript.new()
 func _ready() -> void:
 	super._ready()
 	_configure_editable_layers()
+	if solar_camera_controller != null and solar_camera_controller.has_method("bind_map_view"):
+		solar_camera_controller.call("bind_map_view", self)
 	set_meta("mcp_sceneized_component", "PlanetMapView")
 	_queue_sceneized_sync()
 
@@ -156,6 +159,29 @@ func zoom_to_local_projection() -> void:
 	_queue_sceneized_sync()
 
 
+func set_solar_presentation_snapshot(snapshot: Dictionary) -> bool:
+	if solar_camera_controller == null or not solar_camera_controller.has_method("apply_public_solar_snapshot"):
+		return false
+	return bool(solar_camera_controller.call("apply_public_solar_snapshot", snapshot))
+
+
+func set_solar_camera_motion_mode(mode: String) -> void:
+	if solar_camera_controller != null and solar_camera_controller.has_method("set_motion_mode"):
+		solar_camera_controller.call("set_motion_mode", mode)
+
+
+func request_solar_camera_return() -> void:
+	if solar_camera_controller != null and solar_camera_controller.has_method("request_return_to_sun"):
+		solar_camera_controller.call("request_return_to_sun")
+
+
+func solar_camera_debug_snapshot() -> Dictionary:
+	if solar_camera_controller == null or not solar_camera_controller.has_method("debug_snapshot"):
+		return {}
+	var snapshot_variant: Variant = solar_camera_controller.call("debug_snapshot")
+	return (snapshot_variant as Dictionary).duplicate(true) if snapshot_variant is Dictionary else {}
+
+
 func get_sceneization_debug_snapshot() -> Dictionary:
 	var present_layers: Array[String] = []
 	for layer_name in EDITABLE_LAYER_NAMES:
@@ -171,6 +197,7 @@ func get_sceneization_debug_snapshot() -> Dictionary:
 		"preview_note": preview_note,
 		"runtime_focus_kind": str(get_meta("runtime_focus_kind", "")),
 	}
+	snapshot["solar_camera"] = solar_camera_debug_snapshot()
 	snapshot.merge(get_sceneized_child_snapshot(), true)
 	return snapshot
 
