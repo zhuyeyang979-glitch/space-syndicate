@@ -1,9 +1,11 @@
 extends SceneTree
 
-const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const QA_OUTPUT_DIR := "user://space_syndicate_design_qa/game_session_save_ownership/fixtures/"
-const QA_FIXTURE_PATH := QA_OUTPUT_DIR + "pre_cutover_current_run_v1.save"
+const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+const V06_ENVELOPE_GATE_PATH := "res://tests/v06_save_envelope_runtime_test.gd"
+const EXPECTED_SECTION_COUNT := 18
+const FORBIDDEN_SOLAR_SECTION_TOKENS := ["solar", "sunlight", "planet_rotation", "phase"]
 
+var _checks := 0
 var _failures: Array[String] = []
 
 
@@ -12,54 +14,85 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var packed := load(MAIN_SCENE_PATH) as PackedScene
-	_expect(packed != null, "main scene loads")
+	_expect(ResourceLoader.exists(V06_ENVELOPE_GATE_PATH), "the dedicated v3 envelope transport gate exists")
+	var packed := load(COORDINATOR_SCENE_PATH) as PackedScene
+	_expect(packed != null, "GameRuntimeCoordinator production scene loads")
 	if packed == null:
 		_finish()
 		return
-	var main := packed.instantiate() as Control
-	_expect(main != null, "main scene instantiates")
-	if main == null:
+	var coordinator := packed.instantiate()
+	root.add_child(coordinator)
+	var session := coordinator.get_node_or_null("GameSessionRuntimeController")
+	_expect(session != null, "GameRuntimeCoordinator composes one GameSession")
+	if session == null:
+		root.remove_child(coordinator)
+		coordinator.queue_free()
 		_finish()
 		return
-	main.call("_bind_ruleset_runtime_bridge")
-	main.call("_bind_game_runtime_coordinator")
-	main.call("_bind_city_development_runtime_controller")
-	main.call("_bind_card_resolution_runtime_controller")
-	var state: Dictionary = main.call("_capture_run_state")
-	_expect(int(state.get("version", 0)) == 1, "current run save version is 1")
-	_expect(state.get("players", null) is Array, "current run payload keeps players array")
-	_expect(state.get("districts", null) is Array, "current run payload keeps districts array")
-	_expect(state.has("card_resolution_queue") and state.has("active_monster_wagers"), "current run payload keeps card and forced-decision state")
-	var make_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(QA_OUTPUT_DIR))
-	_expect(make_error == OK, "QA fixture directory can be created")
-	var save_error := int(main.call("_save_run", QA_FIXTURE_PATH))
-	_expect(save_error == OK, "current main writes a QA-only characterization save")
-	var file := FileAccess.open(QA_FIXTURE_PATH, FileAccess.READ)
-	_expect(file != null, "characterization save reopens")
-	var loaded: Variant = file.get_var(false) if file != null else null
-	if file != null:
-		file.close()
-	_expect(loaded is Dictionary, "characterization save uses Variant Dictionary format")
-	if loaded is Dictionary:
-		_expect((loaded as Dictionary) == state, "binary Variant roundtrip preserves the current payload")
-		print("GAME SESSION SAVE CHARACTERIZATION keys=%s" % ",".join((loaded as Dictionary).keys()))
-	main.free()
-	packed = null
+	session.call("configure", {"ruleset_id": "v0.6"})
+	var save := session.get_node_or_null("GameSaveRuntimeCoordinator")
+	var handshake := save.get_node_or_null("RulesetSaveHandshakeService") if save != null else null
+	var registry := session.get_node_or_null("V06SaveOwnerRegistry")
+	_expect(save != null and handshake != null and registry != null, "one GameSession composes Save, Handshake, and owner registry")
+	if save != null and handshake != null and registry != null:
+		_test_v3_transport_identity(save)
+		_test_exact_owner_manifest(handshake, registry)
+		_test_resume_fails_closed(registry)
+	root.remove_child(coordinator)
+	coordinator.queue_free()
 	_finish()
 
 
-func _expect(condition: bool, message: String) -> void:
-	if condition:
-		return
-	_failures.append(message)
-	push_error("GAME SESSION SAVE CHARACTERIZATION: %s" % message)
+func _test_v3_transport_identity(save: Node) -> void:
+	var operation: Dictionary = save.call("operation_snapshot")
+	_expect(int(operation.get("save_version", 0)) == 3, "GameSave transport identity is v3")
+	_expect(str(operation.get("ruleset_id", "")) == "v0.6" and int(operation.get("currency_scale", 0)) == 100, "GameSave transport identity is v0.6 with integer cents")
+	_expect(str(operation.get("default_save_path", "not-empty")).is_empty() and bool(operation.get("explicit_path_required", false)), "production transport has no implicit player save path")
+	_expect(str(operation.get("qa_save_root", "")) == "user://test_runs/", "QA writes are isolated under the authoritative test root")
+	_expect(not bool(operation.get("captures_business_state", true)), "GameSave remains transport-only and does not capture business owners")
+
+
+func _test_exact_owner_manifest(handshake: Node, registry: Node) -> void:
+	var manifest: Dictionary = handshake.call("required_section_manifest")
+	var order: Array = registry.call("fixed_section_order")
+	var owner_ids: Dictionary = {}
+	var forbidden_section := false
+	for section_variant in manifest.keys():
+		var section_id := str(section_variant)
+		var contract: Dictionary = manifest.get(section_id, {}) if manifest.get(section_id, {}) is Dictionary else {}
+		owner_ids[str(contract.get("owner_id", ""))] = true
+		var lowered := section_id.to_lower()
+		for token in FORBIDDEN_SOLAR_SECTION_TOKENS:
+			forbidden_section = forbidden_section or lowered.contains(token)
+	_expect(manifest.size() == EXPECTED_SECTION_COUNT and order.size() == EXPECTED_SECTION_COUNT, "v0.6 manifest and apply order contain exactly eighteen sections")
+	_expect(owner_ids.size() == EXPECTED_SECTION_COUNT, "all eighteen sections have unique owners")
+	_expect(manifest.has("session") and manifest.has("bankruptcy_neutral_estate"), "session and bankruptcy neutral estate remain explicit owners")
+	_expect(not forbidden_section, "derived solar state is not serialized as a nineteenth section")
+
+
+func _test_resume_fails_closed(registry: Node) -> void:
+	var snapshot: Dictionary = registry.call("registry_snapshot")
+	_expect(bool(snapshot.get("valid", false)), "owner registry is structurally valid")
+	_expect(not bool(snapshot.get("resume_ready", true)) and int(snapshot.get("unsupported_section_count", 0)) > 0, "incomplete owner capabilities remain explicitly non-resumable")
+	_expect(not bool(snapshot.get("captures_business_state", true)) and not bool(snapshot.get("stores_parallel_owner_state", true)), "registry owns orchestration without parallel gameplay state")
+	var capture: Dictionary = registry.call("capture_resume_envelope", {"envelope_id": "characterization", "write_id": "characterization"})
+	_expect(not bool(capture.get("ok", true)) and str(capture.get("reason_code", "")) == "restore_capability_incomplete", "resume capture fails closed until every owner is transactional")
+	var public_receipt: Dictionary = registry.call("public_operation_receipt", capture)
+	_expect(not public_receipt.has("sections") and not public_receipt.has("envelope") and not public_receipt.has("unsupported_section_ids"), "public failure receipt omits envelope sections and internal owner detail")
+
+
+func _expect(condition: bool, label: String) -> void:
+	_checks += 1
+	if not condition:
+		_failures.append(label)
 
 
 func _finish() -> void:
 	if _failures.is_empty():
-		print("GAME SESSION SAVE CHARACTERIZATION PASS fixture=%s" % QA_FIXTURE_PATH)
+		print("GAME_SESSION_SAVE_CHARACTERIZATION|status=PASS|checks=%d|failures=0|owner_sections=%d|resume_ready=false" % [_checks, EXPECTED_SECTION_COUNT])
 		quit(0)
 		return
-	print("GAME SESSION SAVE CHARACTERIZATION FAIL: %d" % _failures.size())
+	for failure in _failures:
+		push_error("GAME_SESSION_SAVE_CHARACTERIZATION: %s" % failure)
+	print("GAME_SESSION_SAVE_CHARACTERIZATION|status=FAIL|checks=%d|failures=%d" % [_checks, _failures.size()])
 	quit(1)

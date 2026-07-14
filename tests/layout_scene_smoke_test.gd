@@ -1,5 +1,7 @@
 extends SceneTree
 
+const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
+
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
 
 const SCENE_PATHS := [
@@ -436,8 +438,6 @@ const GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCRIPT := "res://scripts/tools/game_sess
 const GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE := "res://scenes/tools/GameSessionSaveOwnershipBench.tscn"
 const GAME_SESSION_SAVE_OWNERSHIP_OUTPUT_DIR := "user://space_syndicate_design_qa/game_session_save_ownership/"
 const GAME_SESSION_SAVE_OWNERSHIP_SCREENSHOT_PATH := "user://space_syndicate_design_qa/game_session_save_ownership_sprint_2.png"
-const DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/district_purchase_runtime_controller.gd"
-const DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/DistrictPurchaseRuntimeController.tscn"
 const DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/district_purchase_settlement_runtime_service.gd"
 const DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn"
 const DISTRICT_PURCHASE_WINDOW_STATUS_SCRIPT := "res://scripts/ui/district_purchase_window_status.gd"
@@ -450,10 +450,6 @@ const DISTRICT_SUPPLY_MARKET_CARD_SCENE := "res://scenes/ui/DistrictSupplyMarket
 const DISTRICT_SUPPLY_PREVIEW_CARD_SCENE := "res://scenes/ui/DistrictSupplyPreviewCard.tscn"
 const DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/district_supply_snapshot_service.gd"
 const DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/DistrictSupplySnapshotService.tscn"
-const DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/district_purchase_runtime_cutover_bench.gd"
-const DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/DistrictPurchaseRuntimeCutoverBench.tscn"
-const DISTRICT_PURCHASE_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/district_purchase_runtime_cutover/"
-const DISTRICT_PURCHASE_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/district_purchase_settlement_runtime_cutover_sprint_29.png"
 const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/card_inventory_runtime_characterization_bench.gd"
 const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CardInventoryRuntimeCharacterizationBench.tscn"
 const CARD_INVENTORY_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_inventory_runtime_service.gd"
@@ -756,7 +752,6 @@ const NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE := "res://scenes/tools/NewGameSetu
 const NEW_GAME_SETUP_PAGE_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/new_game_setup_page_cutover/"
 const NEW_GAME_SETUP_PAGE_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/new_game_setup_page_cutover_sprint_22.png"
 const MAIN_RUNTIME_REPLACEMENT_DOC := "res://docs/main_runtime_replacement.md"
-const DISTRICT_PURCHASE_SETTLEMENT_CONTRACT_DOC := "res://docs/district_purchase_settlement_contract.md"
 const RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT := "res://scripts/tools/ruleset_v04_conformance_registry.gd"
 const RULESET_V04_CONFORMANCE_BENCH_SCRIPT := "res://scripts/tools/ruleset_v04_conformance_bench.gd"
 const RULESET_V04_CONFORMANCE_BENCH_SCENE := "res://scenes/tools/RulesetV04ConformanceBench.tscn"
@@ -865,7 +860,7 @@ func _run() -> void:
 	await _check_player_text_v05_foundation_component()
 	await _check_main_runtime_replacement_foundation_component()
 	await _check_game_session_save_ownership_component()
-	await _check_district_purchase_runtime_cutover_component()
+	await _check_district_purchase_settlement_and_presentation_preparation()
 	await _check_card_inventory_runtime_characterization_component()
 	await _check_player_hand_interaction_runtime_characterization_component()
 	await _check_card_resolution_queue_runtime_characterization_component()
@@ -1147,7 +1142,7 @@ func _check_split_game_screen_data_binding() -> void:
 	await process_frame
 	_expect(screen.has_method("apply_state"), "split GameScreen exposes apply_state")
 	screen.call("apply_state", {
-		"top_bar": {"table_state": "竞价中", "tempo": "00:42", "identity": "赤港财团", "cash_text": "¥ 1300", "gdp_text": "+22/s", "goal_text": "5000", "selected_district": "雾港区", "primary_action": "首召"},
+		"top_bar": {"table_state": "竞价中", "tempo": "00:42", "identity": "赤港财团", "cash_text": "¥ 1300", "gdp_text": "+22/s", "goal_text": "5000", "selected_district": "雾港区", "primary_action": "牌架"},
 		"card_track": [
 			{
 				"id": "track_42",
@@ -1194,7 +1189,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"title": "试玩 罗盘",
 				"steps": [
 					{"label": "点区", "done": true, "accent": Color("#38bdf8")},
-					{"label": "首召", "current": true, "accent": Color("#fb7185")},
+					{"label": "牌架", "current": true, "accent": Color("#c084fc")},
 					{"label": "建城", "done": false, "accent": Color("#4ade80")},
 					{"label": "买牌", "done": false, "accent": Color("#facc15")},
 					{"label": "出牌", "done": false, "accent": Color("#c084fc")},
@@ -1202,20 +1197,20 @@ func _check_split_game_screen_data_binding() -> void:
 					{"label": "经济", "done": false, "accent": Color("#38bdf8")},
 					{"label": "路线", "done": false, "accent": Color("#22c55e")},
 				],
-				"next_text": "下一步：在选区首召",
+				"next_text": "下一步：查看日照牌架",
 			},
 		},
 		"district": {"title": "雾港区", "detail": "生产海雾果，需求轨迹墨水。", "chips": [{"text": "可看牌架"}]},
 		"actions": [{"id": "build", "label": "建城"}, {"id": "market", "label": "牌架"}],
 		"right_inspector": {
 			"title": "当前说明",
-			"why": "最近怪兽在本区，买牌可用。",
+			"why": "挂牌来源区域中心受光，当前可买。",
 			"district": {
 				"title": "雾港区",
 				"summary": "海雾线升温｜牌架可看",
 				"detail": "海雾线升温｜牌架可看",
 				"full_detail": "海雾商品线正在升温。完整区域详情应进入抽屉，而不是常驻右侧主桌。这里还有供需、怪兽、牌架与历史线索。",
-				"chips": [{"text": "怪兽邻近"}],
+				"chips": [{"text": "日照开放"}],
 			},
 			"requirements": [{"text": "怪兽半径 OK"}, {"text": "现金足够"}],
 			"actions": [{"id": "buy", "label": "买牌"}],
@@ -1267,8 +1262,8 @@ func _check_split_game_screen_data_binding() -> void:
 				],
 			},
 			"selected_district_summary": "雾港区",
-			"primary_action": "首召",
-			"actions": [{"id": "summon", "label": "首召"}, {"id": "market", "label": "牌架"}],
+			"primary_action": "牌架",
+			"actions": [{"id": "market", "label": "牌架"}, {"id": "summon", "label": "召唤"}],
 			"hand_cards": [
 				{"id": "test_hand_0", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "现金流上升。"},
 				{"id": "test_hand_1", "name": "相位否决", "cost": "1", "type": "互动", "rank": "I", "effect": "反制直接互动牌。"},
@@ -1286,7 +1281,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"has_seen_public_track": false,
 				"has_seen_clues": false,
 			},
-			"primary_action": {"id": "coach_first_summon", "label": "在选区首召", "tooltip": "首召后开启附近牌架。"},
+			"primary_action": {"id": "coach_open_rack", "label": "查看日照牌架", "tooltip": "召唤自愿；未召唤不阻断购牌。"},
 		},
 	"logs": ["有人打出公开牌", "怪兽靠近雾港"],
 	})
@@ -1393,7 +1388,7 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(player_readiness_chip_row != null and player_readiness_chip_row.get_child_count() == 1, "split PlayerBoard binds action-readiness chips from snapshot data")
 	_expect(player_action_row != null and player_action_row.get_child_count() == 2, "split PlayerBoard binds compact primary action buttons inside the single main action dock")
 	_expect(public_track != null and public_track.custom_minimum_size.y <= 48.0, "split PublicTrack remains a thin public offer rail")
-	_expect(first_run_coach != null and first_run_coach_button != null and first_run_coach_button.text.contains("首召"), "split GameScreen binds FirstRunCoach below the public track with a single next-step CTA")
+	_expect(first_run_coach != null and first_run_coach_button != null and first_run_coach_button.text.contains("牌架"), "split GameScreen binds a non-blocking market CTA below the public track")
 	_expect(public_track_slot != null and public_track_slot.custom_minimum_size.y <= 36.0, "split PublicTrack renders compact public slots instead of full cards")
 	_expect(public_track_pip != null, "split PublicTrack renders a compact state color pip")
 	_expect(public_track_label != null and public_track_label.text.contains("公开牌"), "split PublicTrack binds the public card short label")
@@ -1418,7 +1413,7 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(_node_tree_text(left_rail_entries[0]).contains("星区") and _node_tree_text(left_rail_entries[0]).contains("8区"), "split PlanetBoard left rail shows scan-first district count")
 	_expect(_node_tree_text(right_rail_entries[0]).contains("怪兽") and _node_tree_text(right_rail_entries[2]).contains("牌轨"), "split PlanetBoard right rail shows scan-first outer pressure and public track state")
 	_expect(flow_compass != null and flow_compass.visible and flow_compass_step_rail != null and flow_compass_step_rail.get_child_count() == 8, "split PlanetBoard renders the full first-run flow compass through route choice beside the planet")
-	_expect(_node_tree_text(flow_compass).contains("✓点区") and _node_tree_text(flow_compass).contains("▶首召") and _node_tree_text(flow_compass).contains("牌轨") and _node_tree_text(flow_compass).contains("经济") and _node_tree_text(flow_compass).contains("路线") and flow_compass_next_label != null and flow_compass_next_label.text.contains("下一步"), "split PlanetBoard flow compass separates done/current/next-step text and includes track/economy/route stages")
+	_expect(_node_tree_text(flow_compass).contains("✓点区") and _node_tree_text(flow_compass).contains("▶牌架") and _node_tree_text(flow_compass).contains("牌轨") and _node_tree_text(flow_compass).contains("经济") and _node_tree_text(flow_compass).contains("路线") and flow_compass_next_label != null and flow_compass_next_label.text.contains("下一步"), "split PlanetBoard flow compass keeps market and economy available without mandatory summon")
 	_expect(hand_rack != null and hand_rack.get_child_count() == 2, "split HandRack receives card data")
 	if hand_rack != null and hand_rack.get_child_count() > 0:
 		var first_hand_card := hand_rack.get_child(0)
@@ -1566,7 +1561,7 @@ func _check_split_game_screen_data_binding() -> void:
 	if public_track_slot != null:
 		first_public_track_slot_id = public_track_slot.get_instance_id()
 	screen.call("apply_state", {
-		"top_bar": {"identity": "赤港财团", "cash_text": "¥ 1400", "gdp_text": "+24/s", "goal_text": "5000", "selected_district": "雾港区", "primary_action": "首召"},
+		"top_bar": {"identity": "赤港财团", "cash_text": "¥ 1400", "gdp_text": "+24/s", "goal_text": "5000", "selected_district": "雾港区", "primary_action": "牌架"},
 		"card_track": [
 			{
 				"id": "track_42",
@@ -1593,13 +1588,13 @@ func _check_split_game_screen_data_binding() -> void:
 		"planet": {"title": "星球赌桌", "hint": "中央地图保留最大视觉中心"},
 		"right_inspector": {
 			"title": "当前说明",
-			"why": "最近怪兽在本区，买牌可用。",
+			"why": "挂牌来源区域中心受光，当前可买。",
 			"district": {
 				"title": "雾港区",
 				"summary": "海雾线升温｜牌架可看",
 				"detail": "海雾线升温｜牌架可看",
 				"full_detail": "海雾商品线正在升温。完整区域详情应进入抽屉，而不是常驻右侧主桌。这里还有供需、怪兽、牌架与历史线索。",
-				"chips": [{"text": "怪兽邻近"}],
+				"chips": [{"text": "日照开放"}],
 			},
 			"requirements": [{"text": "怪兽半径 OK"}, {"text": "现金足够"}],
 			"actions": [{"id": "buy", "label": "买牌"}],
@@ -1627,8 +1622,8 @@ func _check_split_game_screen_data_binding() -> void:
 				{"text": "手牌 2/5", "active": false, "accent": Color("#c084fc")},
 			],
 			"selected_district_summary": "雾港区",
-			"primary_action": "首召",
-			"actions": [{"id": "summon", "label": "首召"}, {"id": "market", "label": "牌架"}],
+			"primary_action": "牌架",
+			"actions": [{"id": "market", "label": "牌架"}, {"id": "summon", "label": "召唤"}],
 			"hand_cards": [
 				{"id": "test_hand_0", "name": "轨道融资", "cost": "2", "type": "经济", "rank": "I", "effect": "现金流上升；实时说明已更新。"},
 				{"id": "test_hand_1", "name": "相位否决", "cost": "1", "type": "互动", "rank": "I", "effect": "反制直接互动牌。"},
@@ -5025,41 +5020,6 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 		await process_frame
 		_expect(_runtime_card_resolution_entry_count(main) > queue_before, "clicking the live Play quick button commits an anonymous card to the public resolution track")
 		await _resolve_runtime_card_resolution_until_idle(main)
-		_expect(_runtime_owned_monster_count(main, 0) > 0, "clicking the live Play quick button can complete the first summon through the public resolution track")
-
-	var buy_offer := _first_runtime_direct_buy_offer(main)
-	_expect(not buy_offer.is_empty(), "runtime quick-action click flow finds a directly purchasable district supply card after first summon")
-	if not buy_offer.is_empty():
-		var buy_district := int(buy_offer.get("district", -1))
-		var buy_card := String(buy_offer.get("card", ""))
-		main.set("selected_district", buy_district)
-		main.set("selected_market_skill", buy_card)
-		main.set("previewed_district_card", buy_card)
-		_force_runtime_screen_sync(main)
-		await process_frame
-		dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
-		var buy_quick_button := _find_enabled_visible_button_containing(dock, "买牌")
-		_expect(buy_quick_button != null and not buy_quick_button.disabled, "runtime PlayerMainActionDock renders an enabled Buy quick button for a monster-accessible supply")
-		if buy_quick_button != null and not buy_quick_button.disabled:
-			var hand_before := _runtime_player_counted_hand_size(main, 0)
-			var cash_before := _runtime_player_cash(main, 0)
-			var had_family_before := _runtime_player_has_card_family(main, 0, buy_card)
-			buy_quick_button.emit_signal("pressed")
-			await process_frame
-			await process_frame
-			var buy_overlay := main.get("district_supply_overlay") as Control
-			_expect(buy_overlay != null and buy_overlay.visible and int(main.get("district_supply_open_district")) == buy_district, "clicking the live Buy quick button opens the district supply drawer for the purchasable district")
-			var preview_buy_button := buy_overlay.find_child("DistrictSupplyPreviewBuyButton", true, false) as Button if buy_overlay != null else null
-			_expect(preview_buy_button != null and not preview_buy_button.disabled, "district supply drawer exposes an enabled preview Buy button for the selected card")
-			if preview_buy_button != null and not preview_buy_button.disabled:
-				preview_buy_button.emit_signal("pressed")
-				await process_frame
-				await process_frame
-				var hand_after := _runtime_player_counted_hand_size(main, 0)
-				var cash_after := _runtime_player_cash(main, 0)
-				var has_family_after := _runtime_player_has_card_family(main, 0, buy_card)
-				_expect(cash_after < cash_before, "clicking the drawer Buy button spends player cash through the gameplay controller")
-				_expect((hand_after > hand_before) or (not had_family_before and has_family_after), "clicking the drawer Buy button adds the selected card family to the player's private hand")
 
 
 func _check_runtime_hand_card_double_click_play(main: Node, runtime_screen: Control) -> void:
@@ -6220,7 +6180,7 @@ func _check_viewmodel_contracts() -> void:
 		return
 	var action_dock: Variant = action_dock_script.new().apply_dictionary({
 		"quick_actions": [{"id": "build", "label": "建城", "state": "ready", "active": true}],
-		"actions": [{"id": "summon", "label": "首召", "state": "ready"}],
+		"actions": [{"id": "market", "label": "牌架", "state": "ready"}],
 	})
 	var bid_board: Variant = bid_board_script.new().apply_dictionary({
 		"title": "牌桌竞价",
@@ -6243,20 +6203,20 @@ func _check_viewmodel_contracts() -> void:
 		"quick_actions": [{"id": "build", "label": "建城", "state": "ready", "active": true}],
 		"table_state_lamps": [{"text": "桌态", "state": "竞价", "active": true}],
 		"readiness_chips": [{"text": "选区就绪", "active": true}],
-		"progress_path": [{"text": "首召", "state": "已召", "active": true}, {"text": "建城", "state": "待建", "active": false}],
+		"progress_path": [{"text": "点区", "state": "已选", "active": true}, {"text": "牌架", "state": "待看", "active": false}],
 		"bid_board": bid_board.to_ui_dictionary(),
 		"selected_district_summary": "雾港区",
-		"actions": [{"id": "summon", "label": "首召"}],
+		"actions": [{"id": "market", "label": "牌架"}],
 		"hand_cards": [card.to_ui_dictionary()],
 	})
 	var top_bar: Variant = top_bar_script.new().apply_dictionary(player.to_ui_dictionary())
 	var inspector: Variant = inspector_script.new().apply_dictionary({
 		"title": "当前说明",
-		"why": "因为怪兽在邻区，所以牌架可用。",
+		"why": "因为来源区域中心受光，所以挂牌可买。",
 		"district": {
 			"title": "雾港区",
 			"detail": "海陆商路交界。这里是完整区域说明，会进入详情抽屉而不是常驻主桌。它还包含供需、怪兽路径、历史事件、牌架购买条件、经济线索、城市业主推理、怪兽下注、商路风险和下一步行动原因。",
-			"chips": [{"text": "怪兽邻近"}],
+			"chips": [{"text": "日照开放"}],
 		},
 		"requirements": ["怪兽邻近", "现金足够"],
 		"actions": [{"id": "market", "label": "牌架"}],
@@ -6368,7 +6328,7 @@ func _check_viewmodel_contracts() -> void:
 		"flow_compass": {
 			"steps": [
 				{"label": "点区", "done": true},
-				{"label": "首召", "current": true},
+				{"label": "牌架", "current": true},
 				{"label": "建城"},
 				{"label": "买牌"},
 				{"label": "出牌"},
@@ -6376,7 +6336,7 @@ func _check_viewmodel_contracts() -> void:
 				{"label": "经济"},
 				{"label": "路线"},
 			],
-			"next_text": "下一步：首召",
+			"next_text": "下一步：查看日照牌架",
 		},
 	})
 	var action_dock_ui: Dictionary = action_dock.to_ui_dictionary()
@@ -6409,10 +6369,10 @@ func _check_viewmodel_contracts() -> void:
 	_expect(player_first_hand_card.get("presentation") == "mini_hand" and player_first_hand_card.get("detail_policy") == "right_inspector", "PlayerBoardSnapshot normalizes bottom hand cards as MiniCards and routes full detail out of the rack")
 	_expect(player.to_ui_dictionary().get("quick_actions", []).size() == 1 and player.to_ui_dictionary().get("quick_actions", [])[0].get("state") == "就绪", "PlayerBoardSnapshot routes quick action scan chips through ActionDockSnapshot")
 	_expect(player.to_ui_dictionary().get("table_state_lamps", []).size() == 1 and player.to_ui_dictionary().get("readiness_chips", []).size() == 1, "PlayerBoardSnapshot keeps table-state and readiness chips")
-	_expect(player.to_ui_dictionary().get("progress_path", []).size() == 2 and player.to_ui_dictionary().get("progress_path", [])[0].get("text") == "首召", "PlayerBoardSnapshot keeps runtime path chips for the split PlayerBoard")
+	_expect(player.to_ui_dictionary().get("progress_path", []).size() == 2 and player.to_ui_dictionary().get("progress_path", [])[0].get("text") == "点区", "PlayerBoardSnapshot keeps non-blocking runtime path chips for the split PlayerBoard")
 	_expect(player.to_ui_dictionary().get("bid_board", {}).get("actions", []).size() == 1 and player.to_ui_dictionary().get("bid_board", {}).get("chips", []).size() == 1 and player.to_ui_dictionary().get("bid_board", {}).get("track_links", []).size() == 1, "PlayerBoardSnapshot routes public bid-board state and track links through BidBoardSnapshot")
 	_expect(player.to_ui_dictionary().get("identity") == "赤港财团" and player.to_ui_dictionary().get("selected_district_summary") == "雾港区", "PlayerBoardSnapshot keeps first-glance identity and selected district")
-	_expect(player.to_ui_dictionary().get("primary_action") == "首召" and player.to_ui_dictionary().get("goal_ratio") > 0.2, "PlayerBoardSnapshot keeps primary action and goal progress")
+	_expect(player.to_ui_dictionary().get("primary_action") == "牌架" and player.to_ui_dictionary().get("goal_ratio") > 0.2, "PlayerBoardSnapshot keeps market as the primary economic action")
 	_expect(top_bar.to_ui_dictionary().get("identity") == "赤港财团" and top_bar.to_ui_dictionary().get("selected_district") == "雾港区", "TopBarSnapshot derives first-glance fields from player state")
 	_expect(inspector.to_ui_dictionary().get("why").contains("怪兽") and inspector.to_ui_dictionary().get("requirements", []).size() == 2, "RightInspectorSnapshot keeps why text and requirement chips")
 	_expect(inspector.to_ui_dictionary().get("actions", []).size() == 1 and inspector.to_ui_dictionary().get("actions", [])[0].get("label") == "牌架", "RightInspectorSnapshot routes inspector actions through ActionDockSnapshot")
@@ -6439,7 +6399,7 @@ func _check_viewmodel_contracts() -> void:
 	var planet_flow_steps: Array = planet_flow.get("steps", []) if planet_flow.get("steps", []) is Array else []
 	_expect(planet_left.get("title") == "地表情报" and planet_left_entries.size() == 1 and planet_left_entries[0].get("label") == "星区", "PlanetBoardSnapshot normalizes public surface rail entries")
 	_expect(planet_right.get("title") == "外围压力" and planet_right_entries.size() == 1 and planet_right_entries[0].get("label") == "怪兽", "PlanetBoardSnapshot normalizes outer-pressure rail entries")
-	_expect(planet_flow_steps.size() == 8 and bool(planet_flow_steps[0].get("done", false)) and bool(planet_flow_steps[1].get("current", false)) and str(planet_flow.get("next_text", "")).contains("首召") and str(planet_flow_steps[5].get("label", "")).contains("牌轨") and str(planet_flow_steps[6].get("label", "")).contains("经济") and str(planet_flow_steps[7].get("label", "")).contains("路线"), "PlanetBoardSnapshot keeps the full first-run flow compass through route choice")
+	_expect(planet_flow_steps.size() == 8 and bool(planet_flow_steps[0].get("done", false)) and bool(planet_flow_steps[1].get("current", false)) and str(planet_flow.get("next_text", "")).contains("日照牌架") and str(planet_flow_steps[5].get("label", "")).contains("牌轨") and str(planet_flow_steps[6].get("label", "")).contains("经济") and str(planet_flow_steps[7].get("label", "")).contains("路线"), "PlanetBoardSnapshot keeps market and economy ahead of optional summon")
 	_expect(table.to_ui_dictionary().has("right_inspector"), "TableSnapshot creates right-inspector UI context")
 	_expect(table.to_ui_dictionary().get("card_track", []).size() == 1 and table.to_ui_dictionary().get("card_track", [])[0].get("state") == "当前", "TableSnapshot routes public track entries through PublicTrackSnapshot")
 	var table_resolution_track: Dictionary = table.to_ui_dictionary().get("card_resolution_track", {}) if table.to_ui_dictionary().get("card_resolution_track", {}) is Dictionary else {}
@@ -6635,9 +6595,9 @@ func _check_tutorial_quick_start_board_component() -> void:
 			{"text": "细则进规则", "accent": Color("#c4b5fd"), "tooltip": "完整解释在规则页。"},
 		],
 		"steps": [
-			{"title": "1｜首召怪兽", "body": "选一个区域，打出起始I级怪兽。", "meta": "怪兽落地后，附近区域才是购牌锚点。", "accent": Color("#fb7185")},
-			{"title": "2｜建第一城", "body": "找陆地，花钱城市化。", "meta": "城市会产生GDP/min。", "accent": Color("#4ade80")},
-			{"title": "3｜看区域牌架", "body": "双击区域看卡牌。", "meta": "可看不等于可买。", "accent": Color("#38bdf8")},
+			{"title": "1｜点区看牌", "body": "所有普通牌全局可看。", "meta": "来源区域中心受光时才可买。", "accent": Color("#38bdf8")},
+			{"title": "2｜建第一设施", "body": "未召唤也能发展经济。", "meta": "设施和收入不以怪兽为前置。", "accent": Color("#4ade80")},
+			{"title": "3｜自愿召唤", "body": "起始怪兽牌已在手。", "meta": "现在或稍后召唤都合法。", "accent": Color("#fb7185")},
 			{"title": "4｜买第一张牌", "body": "买牌花钱；重复牌自动升级。", "meta": "满手会私下弃旧。", "accent": Color("#facc15")},
 			{"title": "5｜打匿名牌", "body": "看手牌状态筹码。", "meta": "出牌者匿名。", "accent": Color("#c084fc")},
 			{"title": "6｜读公共牌轨", "body": "顶部牌槽记录历史。", "meta": "可押钱猜牌主。", "accent": Color("#f472b6")},
@@ -6645,7 +6605,7 @@ func _check_tutorial_quick_start_board_component() -> void:
 			{"title": "8｜终局冲刺", "body": "有人达标后倒计时。", "meta": "结束按钱排名。", "accent": Color("#fb923c")},
 		],
 		"traps": [
-			{"title": "买不了牌", "body": "先确认场上有怪兽和牌架位置。", "accent": Color("#fb7185")},
+			{"title": "买不了牌", "body": "确认挂牌来源区域中心当前受光。", "accent": Color("#fb7185")},
 			{"title": "牌打不出", "body": "看GDP份额、目标、选区、现金和队列。", "accent": Color("#facc15")},
 			{"title": "看不懂谁领先", "body": "打开局势记分板。", "accent": Color("#38bdf8")},
 			{"title": "不知道查哪里", "body": "打开情报侦探板。", "accent": Color("#c084fc")},
@@ -6672,44 +6632,7 @@ func _check_rules_quick_reference_board_component() -> void:
 	root.add_child(board)
 	await process_frame
 	_expect(board.has_method("set_board"), "RulesQuickReferenceBoard owns rules snapshot rendering")
-	board.call("set_board", {
-		"title": "规则速查板",
-		"kpi_columns": 4,
-		"module_columns": 4,
-		"chips": [
-			{"text": "目标钱最多", "accent": Color("#fef3c7"), "tooltip": "胜利目标"},
-			{"text": "主桌不背规则", "accent": Color("#93c5fd"), "tooltip": "长规则不常驻主桌"},
-			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "隐藏对手私密信息"},
-		],
-		"kpis": [
-			{"title": "胜利目标", "body": "最后钱最多。", "meta": "清算都会变成钱。", "accent": Color("#fef3c7")},
-			{"title": "第一轮顺序", "body": "首召 → 建城 → 买牌 → 出牌。", "meta": "先跑起来。", "accent": Color("#38bdf8")},
-			{"title": "信息边界", "body": "出牌公开，牌主匿名。", "meta": "靠公开线索推理。", "accent": Color("#c084fc")},
-			{"title": "结算节奏", "body": "达标后终局沙漏。", "meta": "领先护城，落后压制。", "accent": Color("#fb923c")},
-		],
-		"keyword_title": "卡面符号｜看手牌先认这些",
-		"keyword_legend": [
-			{"symbol": "¥", "label": "价格/资金", "body": "买牌、报价或现金效果。", "accent": Color("#facc15")},
-			{"symbol": "GDP%", "label": "地区GDP份额", "body": "高阶牌的资格门槛；不会被消耗。", "accent": Color("#38bdf8")},
-			{"symbol": "◆", "label": "怪兽", "body": "召唤、诱导或指定怪兽。", "accent": Color("#fb7185")},
-			{"symbol": "◎", "label": "玩家/目标", "body": "需要指定玩家或对象。", "accent": Color("#c084fc")},
-			{"symbol": "⇄", "label": "合约/商路", "body": "连接供给、需求和运输。", "accent": Color("#2dd4bf")},
-			{"symbol": "一次", "label": "一次性牌", "body": "进入牌轨后结算离手。", "accent": Color("#94a3b8")},
-			{"symbol": "固定", "label": "固定技能", "body": "可重复用，有冷却。", "accent": Color("#fde68a")},
-		],
-		"modules": [
-			{"title": "◆ 首召怪兽", "body": "先打一张I级怪兽牌。", "meta": "附近打开购牌来源。", "accent": Color("#fb7185")},
-			{"title": "▣ 建城赚钱", "body": "陆地城市化。", "meta": "GDP/min按秒进账。", "accent": Color("#4ade80")},
-			{"title": "＋ 区域牌架", "body": "双击区域看牌。", "meta": "开架时锁定资格。", "accent": Color("#38bdf8")},
-			{"title": "◎ 匿名出牌", "body": "卡牌公开，牌主匿名。", "meta": "高阶牌检查地区GDP份额。", "accent": Color("#c084fc")},
-			{"title": "¥ 竞价/猜牌主", "body": "多人出牌先报价。", "meta": "公共牌轨可猜牌主。", "accent": Color("#facc15")},
-			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇冻结时间。", "meta": "全员公开下注。", "accent": Color("#fb923c")},
-			{"title": "⇄ 合约", "body": "先点供给区和需求区。", "meta": "目标业主签或拒。", "accent": Color("#2dd4bf")},
-			{"title": "☄ 天气/现金流", "body": "天气影响生产交通消费。", "meta": "改变GDP/min。", "accent": Color("#93c5fd")},
-		],
-		"footer": "完整细则在本页正文；主桌只保留当前能做什么和为什么不能做。",
-		"accent": Color("#93c5fd"),
-	})
+	board.call("set_board", V06_RULES_SNAPSHOT.compose(1120.0))
 	await process_frame
 	_expect(String(board.name) == "RulesQuickReferencePanel", "RulesQuickReferenceBoard keeps the rules panel root")
 	_expect(board.find_child("RulesQuickReferenceHeader", true, false) != null and board.find_child("RulesQuickReferenceChip", true, false) != null, "RulesQuickReferenceBoard renders header chips")
@@ -8137,7 +8060,7 @@ func _check_ruleset_v04_source_of_truth_component() -> void:
 		var capabilities: Dictionary = profile_snapshot.get("capabilities", {}) if profile_snapshot.get("capabilities", {}) is Dictionary else {}
 		_expect(str(profile_snapshot.get("ruleset_id", "")) == "v0.4" and bool((profile_snapshot.get("validation", {}) as Dictionary).get("valid", false)), "Ruleset profile identifies and validates v0.4")
 		_expect(is_equal_approx(float(timing.get("shared_window_seconds", 0.0)), 30.0) and is_equal_approx(float(timing.get("organize_seconds", 0.0)), 25.0) and is_equal_approx(float(timing.get("lock_seconds", 0.0)), 5.0), "Ruleset profile owns shared 30/25/5 timing")
-		_expect(is_equal_approx(float(timing.get("purchase_window_seconds", 0.0)), 12.0) and is_equal_approx(float(timing.get("counter_window_seconds", 0.0)), 5.0) and is_equal_approx(float(timing.get("contract_window_seconds", 0.0)), 5.0), "Ruleset profile records purchase, counter, and contract windows")
+		_expect(is_equal_approx(float(timing.get("counter_window_seconds", 0.0)), 5.0) and is_equal_approx(float(timing.get("contract_window_seconds", 0.0)), 5.0), "historical profile records counter and contract windows without owning the retired purchase duration")
 		_expect(is_equal_approx(float(timing.get("monster_wager_default_seconds", 0.0)), 20.0) and is_equal_approx(float(timing.get("monster_wager_max_seconds", 0.0)), 30.0) and is_equal_approx(float(timing.get("final_countdown_seconds", 0.0)), 75.0), "Ruleset profile owns monster wager and final countdown timing")
 		_expect(int(card_group.get("default_group_card_limit", 0)) == 3 and int(card_group.get("maximum_group_card_limit", 0)) == 4, "Ruleset profile owns default and maximum card-group limits")
 		_expect(bool(capabilities.get("realtime_income_enabled", false)) and not bool(capabilities.get("direct_city_build_allowed", true)) and bool(capabilities.get("city_development_requires_product_project", false)) and bool(capabilities.get("private_plan_enabled", false)), "Ruleset profile records v0.4 capabilities")
@@ -8185,7 +8108,7 @@ func _check_ruleset_v04_source_of_truth_component() -> void:
 	_expect(registry != null and registry.has_method("records") and registry.has_method("record_for_id") and registry.has_method("summary"), "RulesetV04ConformanceRegistry exposes audit APIs")
 	if registry != null:
 		var registry_records: Array = registry.call("records")
-		var required_ids := ["shared_card_window", "card_group_limit", "realtime_cashflow", "card_play_requirements", "active_card_execution", "contract_runtime_lifecycle", "economy_product_route_card_effect_dispatch", "economy_product_route_formula_ownership", "city_development_product_binding", "direct_city_build_legacy", "district_purchase_12_second_window", "forced_decision_scheduler", "ai_policy_runtime_ownership", "private_plan_slot", "monster_runtime_lifecycle", "military_runtime_lifecycle", "weather_runtime_lifecycle", "monster_wager_timing", "final_countdown_timing", "end_turn_legacy_surface", "product_market_futures_runtime_lifecycle", "product_futures_margin_and_caps", "city_gdp_derivative_margin_and_caps", "warehouse_destruction_settlement", "runtime_card_catalog_source_of_truth", "gameplay_balance_diagnostics_ownership"]
+		var required_ids := ["shared_card_window", "card_group_limit", "realtime_cashflow", "card_play_requirements", "active_card_execution", "contract_runtime_lifecycle", "economy_product_route_card_effect_dispatch", "economy_product_route_formula_ownership", "city_development_product_binding", "direct_city_build_legacy", "forced_decision_scheduler", "ai_policy_runtime_ownership", "private_plan_slot", "monster_runtime_lifecycle", "military_runtime_lifecycle", "weather_runtime_lifecycle", "monster_wager_timing", "final_countdown_timing", "end_turn_legacy_surface", "product_market_futures_runtime_lifecycle", "product_futures_margin_and_caps", "city_gdp_derivative_margin_and_caps", "warehouse_destruction_settlement", "runtime_card_catalog_source_of_truth", "gameplay_balance_diagnostics_ownership"]
 		var ids: Array[String] = []
 		var fields_ok := registry_records.size() >= required_ids.size()
 		for record_variant in registry_records:
@@ -8786,32 +8709,20 @@ func _check_game_session_save_ownership_component() -> void:
 		viewport.queue_free()
 
 
-func _check_district_purchase_runtime_cutover_component() -> void:
+func _check_district_purchase_settlement_and_presentation_preparation() -> void:
 	for path in [
-		DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCRIPT,
-		DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE,
 		DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT,
 		DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE,
-		DISTRICT_PURCHASE_WINDOW_STATUS_SCRIPT,
-		DISTRICT_PURCHASE_WINDOW_STATUS_SCENE,
-		DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCRIPT,
-		DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE,
 	]:
-		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for District Purchase Runtime Cutover" % path)
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for district purchase settlement ownership" % path)
 	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
 	if coordinator != null and bridge != null:
 		coordinator.call("configure", bridge.call("debug_snapshot"))
-		var purchase := coordinator.get_node_or_null("DistrictPurchaseRuntimeController")
 		var inventory_service := coordinator.get_node_or_null("CardInventoryRuntimeService")
 		var settlement_service := coordinator.get_node_or_null("DistrictPurchaseSettlementRuntimeService")
-		var required_methods := ["configure", "open_window", "close_window", "invalidate_window", "tick_window", "active_window", "is_window_active", "remaining_seconds", "locked_access_kind", "locked_price_context", "authorize_purchase", "mark_supply_revision", "reserve_pending_discard", "resolve_pending_discard", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "private_ui_snapshot", "debug_snapshot"]
-		var methods_ok := purchase != null and purchase.scene_file_path == DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE
-		for method_name in required_methods:
-			methods_ok = methods_ok and purchase != null and purchase.has_method(method_name)
-		_expect(methods_ok, "DistrictPurchaseRuntimeController is an editable scene owner with the required timing, lock, authorization, save, and snapshot APIs")
 		var settlement_methods_ok := settlement_service != null and settlement_service.scene_file_path == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE
 		for method_name in ["configure", "set_inventory_service", "plan_purchase", "commit_purchase", "validate_discard", "debug_snapshot"]:
 			settlement_methods_ok = settlement_methods_ok and settlement_service != null and settlement_service.has_method(method_name)
@@ -8819,27 +8730,14 @@ func _check_district_purchase_runtime_cutover_component() -> void:
 		var inventory_debug: Dictionary = inventory_service.call("debug_snapshot") if inventory_service != null else {}
 		_expect(inventory_service != null and inventory_service.scene_file_path == CARD_INVENTORY_RUNTIME_SERVICE_SCENE and bool(inventory_debug.get("service_ready", false)) and int(inventory_debug.get("ordinary_hand_limit", 0)) == 5 and int(inventory_debug.get("maximum_card_rank", 0)) == 4, "GameRuntimeCoordinator configures the scene-owned CardInventoryRuntimeService dependency")
 		_expect(settlement_methods_ok and bool(settlement_debug.get("service_ready", false)) and bool(settlement_debug.get("service_authoritative", false)) and bool(settlement_debug.get("inventory_delegate_ready", false)) and not bool(settlement_debug.get("window_authority", true)) and not bool(settlement_debug.get("presentation_authority", true)), "DistrictPurchaseSettlementRuntimeService owns atomic settlement and delegates inventory without taking window or presentation authority")
-		var timing: Dictionary = bridge.call("timing_rules")
-		var controller_debug: Dictionary = purchase.call("debug_snapshot") if purchase != null else {}
-		_expect(is_equal_approx(float(timing.get("purchase_window_seconds", 0.0)), 12.0) and is_equal_approx(float(controller_debug.get("purchase_window_seconds", 0.0)), 12.0), "RulesetRuntimeBridge is the single runtime source for the 12-second purchase window")
-		if purchase != null:
-			var qualification: Dictionary = purchase.call("build_qualification_snapshot", {"district_index": 0, "player_index": 0, "districts": [{"neighbors": [1], "destroyed": false}, {"neighbors": [0], "destroyed": false}], "monsters": [{"district_index": 0, "down": false, "owner": 0}], "access_effect": {}, "opened_at": 4.0, "supply_revision": "smoke-a"})
-			var window: Dictionary = purchase.call("open_window", 0, 0, qualification)
-			var private_snapshot: Dictionary = purchase.call("private_ui_snapshot", 0)
-			var encoded := JSON.stringify(private_snapshot)
-			_expect(str(window.get("state", "")) == "active" and is_equal_approx(float(window.get("locked_price_multiplier", 0.0)), 0.64) and not encoded.contains("owner") and not _variant_contains_callable(private_snapshot) and not _variant_contains_object(private_snapshot), "locked private channel pricing is pure data and does not expose monster owner identity")
-			purchase.call("tick_window", 12.0, {})
-			_expect(str((purchase.call("active_window", 0) as Dictionary).get("state", "")) == "expired" and not bool(purchase.call("is_window_active", 0, 0)), "Controller expires an eligible window at exactly twelve seconds")
 		coordinator.free()
 		bridge.free()
 	var main_packed := load("res://scenes/main.tscn") as PackedScene
 	if main_packed != null:
 		var main := main_packed.instantiate() as Control
-		var main_purchase := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseRuntimeController") if main != null else null
 		var main_inventory := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardInventoryRuntimeService") if main != null else null
 		var main_purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService") if main != null else null
 		var main_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService") if main != null else null
-		_expect(main_purchase != null and main_purchase.scene_file_path == DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE, "main.tscn composes DistrictPurchaseRuntimeController under GameRuntimeCoordinator")
 		_expect(main_inventory != null and main_inventory.scene_file_path == CARD_INVENTORY_RUNTIME_SERVICE_SCENE, "main.tscn composes CardInventoryRuntimeService under GameRuntimeCoordinator")
 		_expect(main_purchase_settlement != null and main_purchase_settlement.scene_file_path == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE, "main.tscn composes DistrictPurchaseSettlementRuntimeService under GameRuntimeCoordinator")
 		_expect(main_supply_snapshot != null and main_supply_snapshot.scene_file_path == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE, "main.tscn composes DistrictSupplySnapshotService under GameRuntimeCoordinator")
@@ -8850,14 +8748,7 @@ func _check_district_purchase_runtime_cutover_component() -> void:
 	var supply_service_packed := load(DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE) as PackedScene
 	if supply_service_packed != null:
 		var supply_service := supply_service_packed.instantiate()
-		supply_service.call("configure", {})
-		var service_source := {"district_index": 0, "district_name": "测试区", "player_index": 0, "selected_card_name": "", "access_kind": "none", "access_text": "仅浏览", "can_buy": false, "player_cash": 500, "counted_hand_size": 0, "hand_limit": 10, "local_product_names": [], "purchase_window": {}, "cards": []}
-		var validation: Dictionary = supply_service.call("validate_source", service_source)
-		var service_output: Dictionary = supply_service.call("compose", service_source)
-		var service_debug: Dictionary = supply_service.call("debug_snapshot")
-		_expect(supply_service.has_method("compose") and supply_service.has_method("validate_source") and supply_service.has_method("debug_snapshot"), "DistrictSupplySnapshotService exposes compose, validation, and debug APIs")
-		_expect(bool(validation.get("valid", false)) and not _variant_contains_callable(service_output) and not _variant_contains_object(service_output), "DistrictSupplySnapshotService accepts a pure source and emits a pure Drawer snapshot")
-		_expect(bool(service_debug.get("service_ready", false)) and bool(service_debug.get("service_authoritative", false)) and not bool(service_debug.get("calculates_purchase_eligibility", true)) and not bool(service_debug.get("calculates_card_price", true)) and not bool(service_debug.get("mutates_inventory", true)), "DistrictSupplySnapshotService declares presentation ownership without purchase-rule authority")
+		_expect(supply_service.has_method("compose") and supply_service.has_method("validate_source") and supply_service.has_method("debug_snapshot"), "DistrictSupplySnapshotService remains a presentation-only integration seam for the forthcoming v0.6 market owner")
 		supply_service.free()
 	var drawer_packed := load(DISTRICT_SUPPLY_DRAWER_SCENE) as PackedScene
 	if drawer_packed != null:
@@ -8871,7 +8762,7 @@ func _check_district_purchase_runtime_cutover_component() -> void:
 			"title": "区域牌架 · 布局门",
 			"rule_strip": "单击预览｜双击购买",
 			"privacy_hint": "只显示当前玩家可见状态。",
-			"purchase_window": {"state": "active", "remaining_seconds": 8.0, "duration_seconds": 12.0},
+			"purchase_window": {},
 			"header_chips": [{"text": "2 张", "accent": "#38bdf8ff"}],
 			"market_status": [{"text": "可买 1", "accent": "#34d399ff"}],
 			"cards": [{"card_name": "布局测试牌", "title": "布局测试牌", "rank": "I", "route": "生产", "facts": "测试", "state_text": "可购买", "accent": "#34d399ff", "theme_color": "#38bdf8ff", "actionable": true}],
@@ -8890,10 +8781,8 @@ func _check_district_purchase_runtime_cutover_component() -> void:
 			root.remove_child(drawer)
 			drawer.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var controller_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCRIPT)
 	var settlement_service_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT)
-	var status_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_WINDOW_STATUS_SCRIPT)
-	_expect(not main_source.contains("var district_card_purchase_snapshot") and not main_source.contains("district_card_purchase_snapshot =") and main_source.contains("authorize_district_purchase") and main_source.contains("_district_purchase_qualification_compatibility_adapter"), "main.gd delegates district purchase authority while retaining only a pure-data qualification compatibility adapter")
+	_expect(not main_source.contains("var district_card_purchase_snapshot") and not main_source.contains("district_card_purchase_snapshot ="), "main.gd does not regain a parallel district-purchase state owner while the v0.6 owner cutover is pending")
 	var retired_drawer_tokens := ["DistrictSupplyMarketCardScene", "DistrictSupplyPreviewCardScene", "var district_supply_title_label", "var district_supply_access_label", "var district_supply_chip_row", "var district_supply_state_rail", "var district_supply_list_box", "var district_supply_preview_box", "func _add_district_supply_header_chips", "func _add_district_supply_summary_chip", "func _add_district_supply_market_status_rail", "func _sync_district_supply_market_focus_links", "func _add_district_supply_card_button", "func _add_district_supply_preview", "func _on_district_card_gui_input"]
 	var drawer_legacy_absent := main_source.contains("func _district_supply_snapshot_source") and main_source.contains("func _on_district_supply_action_requested") and main_source.contains("compose_district_supply_snapshot")
 	for retired_token in retired_drawer_tokens:
@@ -8903,56 +8792,27 @@ func _check_district_purchase_runtime_cutover_component() -> void:
 	var snapshot_formatters_absent := true
 	for formatter_name in retired_snapshot_formatters:
 		snapshot_formatters_absent = snapshot_formatters_absent and not main_source.contains("func %s(" % str(formatter_name))
-	_expect(snapshot_formatters_absent and main_source.contains("func _district_supply_purchase_state"), "main.gd retires nineteen Drawer formatters while preserving purchase-state rule ownership")
-	_expect(not controller_source.contains("12.0") and not status_source.contains("12.0"), "Controller and status UI do not duplicate the Ruleset purchase duration")
+	_expect(snapshot_formatters_absent, "main.gd keeps nineteen retired Drawer formatters absent")
 	var buy_start := main_source.find("func _buy_card_for_player_from_district(")
 	var buy_end := main_source.find("\nfunc ", buy_start + 5)
 	var buy_source := main_source.substr(buy_start, buy_end - buy_start) if buy_start >= 0 and buy_end > buy_start else ""
 	var settlement_adapters_present := buy_source.contains("plan_district_purchase_settlement") and buy_source.contains("commit_district_purchase_settlement") and main_source.contains("func _district_purchase_settlement_request(")
 	var legacy_settlement_absent := not buy_source.contains("player[\"cash\"] =") and not buy_source.contains("_record_player_card_spend(") and not buy_source.contains("card_purchase_count\"] =") and not main_source.contains("func _record_player_card_purchase(") and not main_source.contains("func _discard_card_from_player(") and not main_source.contains("func _find_previous_rank_card_slot(") and not main_source.contains("func _find_owned_card_slot(")
 	_expect(settlement_adapters_present and legacy_settlement_absent and settlement_service_source.contains("after_player[\"cash\"] =") and settlement_service_source.contains("after_player[\"card_purchase_count\"] ="), "Sprint 29 moves purchase cash/card/counter/ledger mutation to the settlement service and leaves one thin main adapter")
-	var bench_packed := load(DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
-	if bench_packed != null:
-		var bench := bench_packed.instantiate() as Control
-		bench.set("auto_run", false)
-		root.add_child(bench)
-		await process_frame
-		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "DistrictPurchaseRuntimeCutoverBench exposes required QA APIs")
-		var expected_cases := ["controller_scene_composition", "purchase_window_uses_ruleset_12_seconds", "view_only_district_has_no_timer", "eligible_window_opens", "countdown_and_exact_expiry", "close_and_switch_invalidate", "one_window_per_player", "monster_move_does_not_change_locked_access", "monster_binding_change_does_not_change_locked_discount", "landed_and_adjacent_price_context", "bound_monster_064_and_080_context", "discounts_do_not_stack", "final_price_floor", "supply_change_keeps_window_and_requires_reselection", "pending_discard_preserves_context", "expired_window_rejects_purchase", "real_main_player_purchase_delegates", "real_main_ai_purchase_delegates", "legacy_save_snapshot_restores", "privacy_and_pure_data", "main_legacy_window_authority_inactive", "drawer_scene_composition", "pure_drawer_snapshot", "market_cards_render_from_snapshot", "selected_preview_rendering", "hover_and_click_preview_routes", "purchase_activation_routes", "disabled_preview_buy_guard", "purchase_window_status_passthrough", "empty_supply_safe_state", "keyboard_focus_chain", "real_main_drawer_route", "legacy_drawer_builders_and_node_refs_absent", "snapshot_service_scene_composition", "pure_snapshot_source_contract", "source_rejects_runtime_objects", "header_chip_format_parity", "market_summary_format_parity", "market_card_format_parity", "selected_preview_format_parity", "purchase_window_service_passthrough", "viewer_private_boundary", "real_main_snapshot_service_route", "snapshot_service_has_no_rule_authority", "legacy_snapshot_formatter_closure_absent"]
-		expected_cases.append_array(["settlement_new_card_commit", "settlement_same_family_upgrade_commit", "settlement_max_rank_rejected_without_mutation", "settlement_exact_cash_debit_and_ledger", "settlement_insufficient_cash_without_mutation", "settlement_supply_remains_after_purchase", "settlement_hand_limit_opens_pending_discard_without_charge", "settlement_hand_limit_exempt_card_bypasses_discard", "settlement_discard_cancel_restores_window", "settlement_discard_confirm_commits_once", "settlement_invalid_discard_slot_without_mutation", "settlement_locked_or_queued_card_not_discardable", "settlement_pending_discard_state_drift_audit", "settlement_ai_uses_same_authorized_path", "settlement_public_private_event_boundary", "settlement_post_commit_hooks_exactly_once", "legacy_upgrade_replace_routes_classified"])
-		expected_cases.append_array(["settlement_service_scene_composition", "coordinator_composes_settlement_service", "pure_settlement_request_contract", "service_new_card_plan_and_commit", "service_duplicate_upgrade_plan_and_commit", "service_rank_iv_rejection", "service_hand_limit_requires_discard_without_commit", "service_discard_confirm_atomic_commit", "service_discard_cancel_no_commit", "service_cash_drift_rejected_without_mutation", "service_invalid_discard_rejected_without_mutation", "service_exact_once_counter_ledger_and_event_intents", "real_main_player_route_delegates_to_service", "real_main_ai_route_delegates_to_service", "real_main_resumed_discard_route_delegates_to_service", "window_and_legacy_save_ownership_unchanged", "legacy_main_settlement_mutations_absent", "service_debug_snapshot_privacy_and_pure_data"])
-		var cases: Array = bench.call("cutover_cases")
-		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
-		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 80 and int(manifest.get("ownership_case_count", 0)) == 45 and int(manifest.get("characterization_case_count", 0)) == 17 and int(manifest.get("settlement_cutover_case_count", 0)) == 18
-		for record_variant in records:
-			var record: Dictionary = record_variant if record_variant is Dictionary else {}
-			for key in ["case_id", "window_state", "remaining_seconds", "access_kind", "locked_multiplier", "timing_checked", "expiry_checked", "lock_checked", "price_checked", "supply_checked", "discard_checked", "main_delegation_checked", "save_compatibility_checked", "privacy_checked", "pure_data_checked", "controller_ready", "drawer_checked", "action_route_checked", "disabled_checked", "focus_checked", "snapshot_checked", "legacy_deletion_checked", "snapshot_service_checked", "source_contract_checked", "format_parity_checked", "authority_boundary_checked", "service_owner_checked", "plan_checked", "commit_checked", "main_adapter_checked", "legacy_formula_absent", "window_owner_unchanged", "event_intents_checked", "observed", "contract_aligned", "mutation_expected", "cash_delta", "hand_count_delta", "slot_change_kind", "purchase_count_delta", "ledger_delta", "window_state_before", "window_state_after", "upgrade_checked", "legacy_route_status", "risk", "passed", "notes"]:
-				fields_ok = fields_ok and record.has(key)
-		_expect(cases == expected_cases and str(bench.call("output_dir")) == DISTRICT_PURCHASE_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == DISTRICT_PURCHASE_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "DistrictPurchaseRuntimeCutoverBench defines 45 ownership, 17 characterization, and 18 service-cutover cases with pure user:// outputs")
-		root.remove_child(bench)
-		bench.queue_free()
 	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
 	var audit: RefCounted = audit_script.new() if audit_script != null else null
 	if audit != null:
-		var record: Dictionary = audit.call("record_for_id", "district_purchase_runtime_ownership_gate")
-		_expect(str(record.get("current_scene_path", "")) == DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks district purchase runtime ownership complete")
 		var drawer_record: Dictionary = audit.call("record_for_id", "district_supply_drawer_scene")
 		_expect(str(drawer_record.get("current_scene_path", "")) == DISTRICT_SUPPLY_DRAWER_SCENE and str(drawer_record.get("source_script_path", "")) == DISTRICT_SUPPLY_DRAWER_SCRIPT and str(drawer_record.get("sceneization_status", "")) == "full", "Sceneization Audit marks DistrictSupplyDrawer presentation ownership complete")
 		var snapshot_service_record: Dictionary = audit.call("record_for_id", "district_supply_snapshot_service_gate")
 		_expect(str(snapshot_service_record.get("current_scene_path", "")) == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE and str(snapshot_service_record.get("source_script_path", "")) == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT and str(snapshot_service_record.get("sceneization_status", "")) == "full", "Sceneization Audit marks DistrictSupplySnapshotService formatting ownership complete")
 		var settlement_gate: Dictionary = audit.call("record_for_id", "district_purchase_settlement_characterization_gate")
 		_expect(str(settlement_gate.get("current_scene_path", "")) == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE and str(settlement_gate.get("source_script_path", "")) == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT and str(settlement_gate.get("sceneization_status", "")) == "full", "Sceneization Audit records scene-owned district purchase settlement runtime ownership")
-	var conformance_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
-	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
-	if conformance != null:
-		var rule: Dictionary = conformance.call("record_for_id", "district_purchase_12_second_window")
-		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("DistrictPurchaseRuntimeController") and str(rule.get("current_owner", "")).contains("DistrictPurchaseSettlementRuntimeService"), "Ruleset Conformance records both district purchase window and settlement owners")
 	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
 	if mcp_registry != null:
 		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
-		_expect(scene_paths.has(DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE) and scene_paths.has(DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE) and scene_paths.has(DISTRICT_SUPPLY_DRAWER_SCENE) and scene_paths.has(DISTRICT_SUPPLY_MARKET_CARD_SCENE) and scene_paths.has(DISTRICT_SUPPLY_PREVIEW_CARD_SCENE) and scene_paths.has(DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes District Purchase Controller, Settlement Service, Snapshot Service, Drawer components, and Cutover Bench")
+		_expect(scene_paths.has(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE) and scene_paths.has(DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE) and scene_paths.has(DISTRICT_SUPPLY_DRAWER_SCENE) and scene_paths.has(DISTRICT_SUPPLY_MARKET_CARD_SCENE) and scene_paths.has(DISTRICT_SUPPLY_PREVIEW_CARD_SCENE), "MCP registry keeps settlement and presentation components available without asserting the retired purchase-rule owner")
 	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
 	var system_audit: RefCounted = system_script.new() if system_script != null else null
 	if system_audit != null:
@@ -8962,10 +8822,7 @@ func _check_district_purchase_runtime_cutover_component() -> void:
 		_expect(str(snapshot_system_record.get("current_status", "")) == "sceneized" and str(snapshot_system_record.get("current_path", "")) == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE, "System Resourceization Audit records that District Supply snapshot formatting has left main.gd")
 		var settlement_system_record: Dictionary = system_audit.call("record_for_id", "district_purchase_settlement_characterized")
 		_expect(str(settlement_system_record.get("current_status", "")) == "sceneized" and str(settlement_system_record.get("current_path", "")) == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE, "System Resourceization Audit records settlement as scene-owned")
-	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
-	var settlement_contract_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_SETTLEMENT_CONTRACT_DOC)
-	_expect(FileAccess.file_exists(DISTRICT_PURCHASE_SETTLEMENT_CONTRACT_DOC) and settlement_contract_source.contains("Observed Transaction Order") and settlement_contract_source.contains("Sprint 29 Cutover Result") and settlement_contract_source.contains("80/80 total") and doc_source.contains("District Purchase Settlement Runtime Service Cutover") and doc_source.contains("18/18 service cutover"), "Sprint 29 documents the atomic service owner, preserved characterization, privacy boundary, and 80-case cutover gate")
-	_expect(not main_source.contains("func _upgrade_skill_slot(") and not main_source.contains("func _replace_skill_slot(") and not main_source.contains("func _can_upgrade_skill_slot(") and not main_source.contains("func _can_replace_skill_slot(") and main_source.contains("func _buy_card_for_player_from_district("), "main.gd removes zero-caller direct upgrade/replace routes while retaining one unified settlement path")
+	_expect(not main_source.contains("func _upgrade_skill_slot(") and not main_source.contains("func _replace_skill_slot(") and not main_source.contains("func _can_upgrade_skill_slot(") and not main_source.contains("func _can_replace_skill_slot("), "main.gd keeps retired direct inventory mutation helpers absent")
 	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
 	if dock_packed != null:
 		var viewport := SubViewport.new()
@@ -8974,25 +8831,19 @@ func _check_district_purchase_runtime_cutover_component() -> void:
 		var dock := dock_packed.instantiate() as Control
 		viewport.add_child(dock)
 		await process_frame
-		for button_name in ["OpenDistrictPurchaseRuntimeControllerButton", "OpenDistrictPurchaseSettlementRuntimeServiceButton", "OpenDistrictSupplyDrawerButton", "OpenDistrictSupplySnapshotServiceButton", "RunDistrictPurchaseRuntimeCutoverBenchButton", "OpenDistrictPurchaseRuntimeCutoverOutputFolderButton"]:
+		for button_name in ["OpenDistrictPurchaseSettlementRuntimeServiceButton", "OpenDistrictSupplyDrawerButton", "OpenDistrictSupplySnapshotServiceButton"]:
 			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
-		var controller_paths: Array[String] = []
 		var settlement_service_paths: Array[String] = []
 		var drawer_paths: Array[String] = []
 		var snapshot_service_paths: Array[String] = []
-		var bench_paths: Array[String] = []
-		dock.connect("open_district_purchase_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
 		dock.connect("open_district_purchase_settlement_runtime_service_requested", func(scene_path: String) -> void: settlement_service_paths.append(scene_path))
 		dock.connect("open_district_supply_drawer_requested", func(scene_path: String) -> void: drawer_paths.append(scene_path))
 		dock.connect("open_district_supply_snapshot_service_requested", func(scene_path: String) -> void: snapshot_service_paths.append(scene_path))
-		dock.connect("run_district_purchase_runtime_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
-		(dock.find_child("OpenDistrictPurchaseRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
 		(dock.find_child("OpenDistrictPurchaseSettlementRuntimeServiceButton", true, false) as Button).emit_signal("pressed")
 		(dock.find_child("OpenDistrictSupplyDrawerButton", true, false) as Button).emit_signal("pressed")
 		(dock.find_child("OpenDistrictSupplySnapshotServiceButton", true, false) as Button).emit_signal("pressed")
-		(dock.find_child("RunDistrictPurchaseRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
 		await process_frame
-		_expect(controller_paths == [DISTRICT_PURCHASE_RUNTIME_CONTROLLER_SCENE] and settlement_service_paths == [DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE] and drawer_paths == [DISTRICT_SUPPLY_DRAWER_SCENE] and snapshot_service_paths == [DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE] and bench_paths == [DISTRICT_PURCHASE_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit District Purchase Controller, Settlement Service, Snapshot Service, Drawer, and Bench paths")
+		_expect(settlement_service_paths == [DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE] and drawer_paths == [DISTRICT_SUPPLY_DRAWER_SCENE] and snapshot_service_paths == [DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE], "Design QA Dock fallback signals emit settlement and presentation paths without invoking the retired purchase cutover bench")
 		viewport.remove_child(dock)
 		dock.queue_free()
 		root.remove_child(viewport)
@@ -10091,7 +9942,7 @@ func _check_scenario_runtime_glue_cutover_component() -> void:
 		var after: Dictionary = coordinator.call("runtime_scenario_progress", 13.0)
 		var before_phase: Dictionary = before.get("current_phase", {}) if before.get("current_phase", {}) is Dictionary else {}
 		var after_phase: Dictionary = after.get("current_phase", {}) if after.get("current_phase", {}) is Dictionary else {}
-		_expect(str(before_phase.get("id", "")) == "select_district" and not bool(rejected.get("accepted", true)) and bool(accepted.get("accepted", false)) and str(after_phase.get("id", "")) == "first_summon" and bool(duplicate.get("duplicate", false)), "scenario authority rejects out-of-order and duplicate signals while advancing the expected signal once")
+		_expect(str(before_phase.get("id", "")) == "select_district" and not bool(rejected.get("accepted", true)) and bool(accepted.get("accepted", false)) and str(after_phase.get("id", "")) != "select_district" and bool(duplicate.get("duplicate", false)), "scenario authority rejects out-of-order and duplicate signals while advancing district selection exactly once")
 		coordinator.call("record_runtime_scenario_action", {"time": "00:13", "phase_id": "privacy", "public_text": "public", "private_text": "owner-only", "developer_text": "true_owner=player3", "viewer_index": 0, "snapshot_key": "after_select", "focus_target": "scenario_coach"})
 		var owner_log: Array = coordinator.call("runtime_scenario_viewer_action_log", 0, false)
 		var rival_log: Array = coordinator.call("runtime_scenario_viewer_action_log", 2, false)

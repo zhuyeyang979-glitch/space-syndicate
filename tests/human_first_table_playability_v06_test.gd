@@ -111,15 +111,6 @@ func _run_human_gate() -> void:
 	var monster_before: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
 	var monster_save_before: Dictionary = monster.call("to_save_data") if monster != null and monster.has_method("to_save_data") else {}
 	var journal_before: Dictionary = monster_save_before.get("monster_card_atomic_terminal_journal", {}) if monster_save_before.get("monster_card_atomic_terminal_journal", {}) is Dictionary else {}
-	var summon_submitted := bool(main.call("_activate_first_run_coach_action", "coach_first_summon"))
-	var summon_drained := await _drain_card_resolution(main, 240)
-	var monster_after: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
-	var monster_save_after: Dictionary = monster.call("to_save_data") if monster != null and monster.has_method("to_save_data") else {}
-	var journal_after: Dictionary = monster_save_after.get("monster_card_atomic_terminal_journal", {}) if monster_save_after.get("monster_card_atomic_terminal_journal", {}) is Dictionary else {}
-	var new_monster_transactions := _new_dictionary_keys(journal_before, journal_after)
-	var summon_finalized := new_monster_transactions.size() == 1 and _monster_terminal_finalized(journal_after, str(new_monster_transactions[0]))
-	_expect(summon_submitted and summon_drained, "human first-summon submits and drains through the real card-resolution route")
-	_expect(int(monster_after.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)) + 1 and summon_finalized, "human first-summon creates one finalized authoritative monster transaction")
 
 	if district >= 0:
 		main.call("_open_district_supply_from_map", district)
@@ -157,6 +148,18 @@ func _run_human_gate() -> void:
 	var play_finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
 	_expect(bool(purchase.get("committed", false)) and slot_index >= 0, "human purchases one canonical first-table facility through the Coordinator facade")
 	_expect(bool(play.get("committed", false)) and bool(play_finalization.get("finalized", false)), "human plays that card through the existing Coordinator facade and reaches finalization")
+
+	var monster_before_optional_summon: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
+	_expect(int(monster_before_optional_summon.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)), "facility purchase and play complete without implicitly summoning the held starter")
+	var summon_submitted := bool(main.call("_activate_first_run_coach_action", "coach_first_summon"))
+	var summon_drained := await _drain_card_resolution(main, 240)
+	var monster_after: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
+	var monster_save_after: Dictionary = monster.call("to_save_data") if monster != null and monster.has_method("to_save_data") else {}
+	var journal_after: Dictionary = monster_save_after.get("monster_card_atomic_terminal_journal", {}) if monster_save_after.get("monster_card_atomic_terminal_journal", {}) is Dictionary else {}
+	var new_monster_transactions := _new_dictionary_keys(journal_before, journal_after)
+	var summon_finalized := new_monster_transactions.size() == 1 and _monster_terminal_finalized(journal_after, str(new_monster_transactions[0]))
+	_expect(summon_submitted and summon_drained, "human later voluntary summon submits and drains through the real card-resolution route")
+	_expect(int(monster_after.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)) + 1 and summon_finalized, "human later voluntary summon creates one finalized authoritative monster transaction")
 
 	main.call("_close_district_supply_overlay")
 	main.call("_refresh_ui")

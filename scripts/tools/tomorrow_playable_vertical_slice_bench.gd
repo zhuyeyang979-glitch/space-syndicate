@@ -10,9 +10,9 @@ const FIXED_SEED := 60610
 const EXPECTED_RECORD_IDS := [
 	"main_menu_new_run_setup",
 	"new_match_one_human_two_ai",
-	"human_authoritative_first_summon",
 	"public_facility_core_dispatch_exact_once",
 	"commodity_flow_realtime_income",
+	"human_optional_summon_after_economy",
 	"ai_progress_without_deadlock",
 	"victory_qualification_audit_outcome",
 	"settlement_recap_visible",
@@ -108,9 +108,9 @@ func run_acceptance() -> Dictionary:
 
 	await _stage_main_menu_and_setup()
 	await _stage_start_three_seat_match()
-	await _stage_human_first_summon()
 	await _stage_public_facility_dispatch()
 	await _stage_realtime_income()
+	await _stage_human_optional_summon_after_economy()
 	await _stage_ai_progress()
 	await _stage_victory_countdown()
 	await _stage_settlement_recap()
@@ -233,7 +233,7 @@ func _stage_start_three_seat_match() -> void:
 	)
 
 
-func _stage_human_first_summon() -> void:
+func _stage_human_optional_summon_after_economy() -> void:
 	var monster := _monster_owner()
 	var before_snapshot: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
 	var before_count := int(before_snapshot.get("monster_count", -1))
@@ -275,11 +275,11 @@ func _stage_human_first_summon() -> void:
 		"inflight_count": int(after_snapshot.get("inflight_count", -1)),
 		"checkpoint_open": bool(after_snapshot.get("checkpoint_open", false)),
 	}
-	var passed := _stage3_evidence_passes(evidence)
+	var passed := _optional_summon_evidence_passes(evidence)
 	_record(
-		"human_authoritative_first_summon",
+		"human_optional_summon_after_economy",
 		passed,
-		"human starter must resolve through the authoritative monster prepare/commit/finalize journal exactly once",
+		"after facility and income progress, the held human starter remains voluntarily summonable through one authoritative prepare/commit/finalize transaction",
 		{
 			"submitted": bool(evidence.get("submitted", false)),
 			"queue_drained": bool(evidence.get("queue_drained", false)),
@@ -493,25 +493,13 @@ func _stage_realtime_income() -> void:
 
 func _stage_ai_progress() -> void:
 	var ai := _coordinator.get_node_or_null("AiRuntimeController") if _coordinator != null else null
-	var monster := _monster_owner()
 	var players: Array = _array_property(_main, "players")
-	var summon_results: Array[String] = []
 	for player_index in [1, 2]:
 		var player: Dictionary = players[player_index] if player_index < players.size() else {}
 		player["action_cooldown"] = 0.0
 		if player_index < players.size():
 			players[player_index] = player
 	_main.set("players", players)
-	for player_index in [1, 2]:
-		var result := str(ai.call("_ai_execute_card_turn", player_index, true)) if ai != null and ai.has_method("_ai_execute_card_turn") else "missing"
-		summon_results.append(result)
-	var first_drain := await _drain_card_resolution(360)
-	var owned_after_summon := 0
-	for player_index in [1, 2]:
-		var private_snapshot: Dictionary = monster.call("monster_private_snapshot_v06", _actor_id(players, player_index)) if monster != null and monster.has_method("monster_private_snapshot_v06") else {}
-		var owned: Array = private_snapshot.get("owned_units", []) if private_snapshot.get("owned_units", []) is Array else []
-		if not owned.is_empty():
-			owned_after_summon += 1
 	var infrastructure := _infrastructure_owner()
 	var flow := _commodity_flow_owner()
 	var before_facilities: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null and infrastructure.has_method("facilities_snapshot") else []
@@ -566,9 +554,7 @@ func _stage_ai_progress() -> void:
 	var ai_flow_debug: Dictionary = flow.call("debug_snapshot") if flow != null and flow.has_method("debug_snapshot") else {}
 	var ai_flow_metrics: Dictionary = ai_flow_debug.get("last_flow_metrics", {}) if ai_flow_debug.get("last_flow_metrics", {}) is Dictionary else {}
 	var queue_idle := _card_queue_idle()
-	var passed := first_drain \
-		and owned_after_summon == 2 \
-		and built > 0 \
+	var passed := built > 0 \
 		and ai_income_source_count > 0 \
 		and ai_receipt_delta > 0 \
 		and after_ai_cash > before_ai_cash \
@@ -576,10 +562,8 @@ func _stage_ai_progress() -> void:
 	_record(
 		"ai_progress_without_deadlock",
 		passed,
-		"both AI seats must first-summon; at least one must buy and finalize a real v0.6 facility, then earn authoritative CommodityFlow income without leaving the queue locked",
+		"without requiring a first card play, AI seats must build and finalize a real v0.6 facility, then earn authoritative CommodityFlow income without leaving the queue locked",
 		{
-			"summon_results": summon_results,
-			"owned_ai_monster_seats": owned_after_summon,
 			"built": built,
 			"ai_income_source_count": ai_income_source_count,
 			"ai_sale_receipt_delta": ai_receipt_delta,
@@ -815,7 +799,7 @@ func _save_public_receipt_is_safe(receipt: Dictionary) -> bool:
 	return not JSON.stringify(receipt).contains("tomorrow_v06_isolation")
 
 
-func stage3_oracle_self_check() -> Dictionary:
+func optional_summon_oracle_self_check() -> Dictionary:
 	var valid := {
 		"submitted": true,
 		"queue_drained": true,
@@ -838,16 +822,16 @@ func stage3_oracle_self_check() -> Dictionary:
 		{"field": "inflight_count", "value": 1},
 		{"field": "checkpoint_open", "value": false},
 	]
-	var scenario_signal_false_passed := _stage3_evidence_passes(valid)
+	var scenario_signal_false_passed := _optional_summon_evidence_passes(valid)
 	var scenario_signal_true := valid.duplicate(true)
 	scenario_signal_true["campaign_monster_summoned_signal_observed"] = true
-	var scenario_signal_true_passed := _stage3_evidence_passes(scenario_signal_true)
+	var scenario_signal_true_passed := _optional_summon_evidence_passes(scenario_signal_true)
 	var rejected_mutations := 0
 	for mutation_variant in mutations:
 		var mutation: Dictionary = mutation_variant
 		var candidate := valid.duplicate(true)
 		candidate[str(mutation.get("field", ""))] = mutation.get("value")
-		if not _stage3_evidence_passes(candidate):
+		if not _optional_summon_evidence_passes(candidate):
 			rejected_mutations += 1
 	return {
 		"passed": scenario_signal_false_passed and scenario_signal_true_passed and rejected_mutations == mutations.size(),
@@ -857,7 +841,7 @@ func stage3_oracle_self_check() -> Dictionary:
 	}
 
 
-func _stage3_evidence_passes(evidence: Dictionary) -> bool:
+func _optional_summon_evidence_passes(evidence: Dictionary) -> bool:
 	var terminals: Array = evidence.get("terminal_evidence", []) if evidence.get("terminal_evidence", []) is Array else []
 	if terminals.size() != 1 or not (terminals[0] is Dictionary):
 		return false
