@@ -1,0 +1,106 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/skin_lab/commodity_belt.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/skin_lab/CommodityBeltSlot.tscn" id="2_visible"]
+[ext_resource type="PackedScene" path="res://scenes/ui/skin_lab/ObscuredCommodityBeltSlot.tscn" id="3_hidden"]
+[ext_resource type="Theme" path="res://themes/CardUISkinLabTheme.tres" id="4_theme"]
+
+[node name="CommodityBelt" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 78)
+theme = ExtResource("4_theme")
+theme_type_variation = &"SkinLabRail"
+script = ExtResource("1_script")
+
+[node name="BeltMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="BeltRows" type="HBoxContainer" parent="BeltMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BeltIdentity" type="VBoxContainer" parent="BeltMargin/BeltRows"]
+custom_minimum_size = Vector2(146, 0)
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="BeltTitle" type="Label" parent="BeltMargin/BeltRows/BeltIdentity"]
+layout_mode = 2
+text = "商品履带"
+theme_override_colors/font_color = Color(0.72, 0.92, 0.98, 1)
+theme_override_font_sizes/font_size = 18
+
+[node name="BeltSubtitle" type="Label" parent="BeltMargin/BeltRows/BeltIdentity"]
+layout_mode = 2
+text = "向消失端线性移动  →"
+theme_override_colors/font_color = Color(0.39, 0.62, 0.72, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="ClipHost" type="Control" parent="BeltMargin/BeltRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+clip_contents = true
+
+[node name="SlotFlow" type="HBoxContainer" parent="BeltMargin/BeltRows/ClipHost"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 952.0
+offset_bottom = 56.0
+theme_override_constants/separation = 8
+
+[node name="ObscuredSlot1" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("3_hidden")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ObscuredSlot2" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("3_hidden")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ObscuredSlot3" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("3_hidden")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ObscuredSlot4" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("3_hidden")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ObscuredSlot5" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("3_hidden")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="VisibleSlot1" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("2_visible")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="VisibleSlot2" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("2_visible")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="VisibleSlot3" parent="BeltMargin/BeltRows/ClipHost/SlotFlow" instance=ExtResource("2_visible")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="VisibilityStatus" type="VBoxContainer" parent="BeltMargin/BeltRows"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="VisibilityLabel" type="Label" parent="BeltMargin/BeltRows/VisibilityStatus"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "清晰区 3 / 8"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.99, 0.82, 0.42, 1)
+theme_override_font_sizes/font_size = 13
+
+[node name="RankHintLabel" type="Label" parent="BeltMargin/BeltRows/VisibilityStatus"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "领先档 · 反应窗口较短"
+horizontal_alignment = 2
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.55, 0.66, 0.74, 1)
+theme_override_font_sizes/font_size = 9

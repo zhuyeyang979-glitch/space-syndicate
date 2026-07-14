@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/player_organization_runtime_controller.gd" id="1_controller"]
+
+[node name="PlayerOrganizationRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Authoritative v0.6 owner of each player's three organization slots, next-window activation, private modifier capabilities, transaction lifecycle, and save state."

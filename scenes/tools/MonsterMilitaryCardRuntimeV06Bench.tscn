@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/monster_military_card_runtime_v06_bench.gd" id="1_bench"]
+
+[node name="MonsterMilitaryCardRuntimeV06Bench" type="Node"]
+editor_description = "Independent v0.6 monster/military card runtime contract Bench. Uses reference owners for success and production owners for capability fail-closed evidence."
+script = ExtResource("1_bench")

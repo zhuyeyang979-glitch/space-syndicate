@@ -18,11 +18,11 @@ func configure(data: Dictionary) -> void:
 	position = _as_vector2(data.get("screen_position", Vector2.ZERO)) - custom_minimum_size * 0.5
 	name = "PlanetMonsterToken_%s" % str(data.get("label", "token"))
 	if glyph_label != null:
-		glyph_label.text = str(data.get("glyph", "M"))
+		glyph_label.text = str(data.get("glyph", "兽"))
 	if name_label != null:
-		name_label.text = str(data.get("name", "Monster"))
+		name_label.text = str(data.get("name", "未知怪兽"))
 	if motif_label != null:
-		motif_label.text = str(data.get("motif", "threat"))
+		motif_label.text = str(data.get("motif", "威胁单位"))
 	_refresh_style(Color(str(data.get("accent", "#ef4444"))), Color(str(data.get("secondary", "#fde68a"))))
 
 

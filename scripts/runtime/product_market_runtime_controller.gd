@@ -94,6 +94,7 @@ var _configured := false
 var _ruleset_id := ""
 var _world_bridge: ProductMarketRuntimeWorldBridge
 var _formula_service: CardEconomyProductRouteFormulaRuntimeService
+var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _futures_open_count := 0
 var _futures_settlement_count := 0
 var _legacy_positions_normalized := 0
@@ -111,6 +112,10 @@ func configure(ruleset_snapshot: Dictionary, formula_service: Node = null) -> vo
 
 func set_world_bridge(bridge: ProductMarketRuntimeWorldBridge) -> void:
 	_world_bridge = bridge
+
+
+func set_route_network_runtime_controller(controller: RouteNetworkRuntimeController) -> void:
+	_route_network_runtime_controller = controller
 
 
 func reset_state() -> Dictionary:
@@ -360,7 +365,8 @@ func age_economic_boons(delta_seconds: float) -> void:
 		product_market[product_name] = entry
 	if _world_bridge != null:
 		var world_changed := bool(_world_bridge.call_world("_age_product_market_world_boons", [safe_delta]))
-		if changed and not world_changed: _world_bridge.call_world("_refresh_city_networks")
+		if changed and not world_changed and _route_network_runtime_controller != null:
+			_route_network_runtime_controller.refresh_routes()
 
 
 func apply_speculation(player_index: int, skill: Dictionary) -> bool:
@@ -614,9 +620,10 @@ func tick_market_cycle(delta: float) -> Dictionary:
 
 func market_tick() -> void:
 	business_cycle_count += 1
-	_world_bridge.call_world("_refresh_city_networks")
+	if _route_network_runtime_controller != null:
+		_route_network_runtime_controller.refresh_routes()
 	refresh_prices()
-	_world_bridge.call_world("_apply_product_market_cycle_world_step", [business_cycle_count])
+	_world_bridge.call_world("_on_product_market_cycle_completed", [business_cycle_count])
 
 
 func to_save_data() -> Dictionary:

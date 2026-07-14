@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/route_network_world_bridge.gd" id="1_bridge"]
+
+[node name="RouteNetworkWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Non-owning bridge that exposes pure RegionInfrastructure topology and facility facts to RouteNetworkRuntimeController."

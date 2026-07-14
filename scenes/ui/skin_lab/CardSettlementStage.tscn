@@ -1,0 +1,67 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/skin_lab/card_settlement_stage.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardFace.tscn" id="2_card"]
+[ext_resource type="Theme" path="res://themes/CardUISkinLabTheme.tres" id="3_theme"]
+
+[node name="CardSettlementStage" type="PanelContainer"]
+custom_minimum_size = Vector2(286, 142)
+theme = ExtResource("3_theme")
+theme_type_variation = &"SkinLabGlass"
+script = ExtResource("1_script")
+
+[node name="StageMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 9
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="StageRows" type="HBoxContainer" parent="StageMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SettlementCardFace" parent="StageMargin/StageRows" instance=ExtResource("2_card")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(82, 116)
+layout_mode = 2
+
+[node name="SettlementCopy" type="VBoxContainer" parent="StageMargin/StageRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="SettlementEyebrow" type="Label" parent="StageMargin/StageRows/SettlementCopy"]
+layout_mode = 2
+text = "公共结算区"
+theme_override_colors/font_color = Color(0.45, 0.80, 0.92, 1)
+theme_override_font_sizes/font_size = 10
+
+[node name="SettlementTitle" type="Label" parent="StageMargin/StageRows/SettlementCopy"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "相位否决"
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.92, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 17
+
+[node name="SettlementStatus" type="Label" parent="StageMargin/StageRows/SettlementCopy"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "公开结算 · 已锁定目标"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.67, 0.76, 0.82, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="SettlementProgress" type="ProgressBar" parent="StageMargin/StageRows/SettlementCopy"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+show_percentage = false
+
+[node name="ResolutionHint" type="Label" parent="StageMargin/StageRows/SettlementCopy"]
+layout_mode = 2
+text = "牌面与结果公开；秘密内容继续隐藏"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.55, 0.66, 0.74, 1)
+theme_override_font_sizes/font_size = 9

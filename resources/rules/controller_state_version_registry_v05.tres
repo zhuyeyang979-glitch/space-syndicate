@@ -1,142 +1,103 @@
-[gd_resource type="Resource" script_class="ControllerStateVersionRegistryResource" load_steps=22 format=3]
+[gd_resource type="Resource" script_class="ControllerStateVersionRegistryResource" format=3 uid="uid://cx3qfmfo7sgpu"]
 
-[ext_resource type="Script" path="res://scripts/rules/controller_state_version_registry_resource.gd" id="1_registry"]
-[ext_resource type="Script" path="res://scripts/rules/controller_state_version_entry_resource.gd" id="2_entry"]
+[ext_resource type="Script" uid="uid://d1bhrwk52fsxg" path="res://scripts/rules/controller_state_version_registry_resource.gd" id="1_registry"]
+[ext_resource type="Script" uid="uid://ve6sdrut70u6" path="res://scripts/rules/controller_state_version_entry_resource.gd" id="2_entry"]
 
 [sub_resource type="Resource" id="Controller_01"]
 script = ExtResource("2_entry")
 controller_id = "ruleset_runtime"
 save_section = "ruleset"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_02"]
 script = ExtResource("2_entry")
 controller_id = "game_session"
 save_section = "session"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_03"]
 script = ExtResource("2_entry")
 controller_id = "forced_decision_scheduler"
 save_section = "forced_decisions"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_04"]
 script = ExtResource("2_entry")
 controller_id = "district_purchase"
 save_section = "district_purchase"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_05"]
 script = ExtResource("2_entry")
 controller_id = "card_inventory"
 save_section = "card_inventory"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_06"]
 script = ExtResource("2_entry")
 controller_id = "card_resolution_queue"
 save_section = "card_resolution_queue"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_07"]
 script = ExtResource("2_entry")
 controller_id = "card_resolution_execution"
 save_section = "card_resolution_execution"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_08"]
 script = ExtResource("2_entry")
 controller_id = "economy_cashflow"
 save_section = "economy_cashflow"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_09"]
 script = ExtResource("2_entry")
 controller_id = "gdp_formula"
 save_section = "gdp_formula"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_10"]
 script = ExtResource("2_entry")
 controller_id = "scenario_runtime"
 save_section = "scenario"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_11"]
 script = ExtResource("2_entry")
 controller_id = "product_market"
 save_section = "product_market"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_12"]
 script = ExtResource("2_entry")
 controller_id = "city_gdp_derivative"
 save_section = "city_gdp_derivatives"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_13"]
 script = ExtResource("2_entry")
 controller_id = "city_trade_network"
 save_section = "city_trade_network"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_14"]
 script = ExtResource("2_entry")
 controller_id = "city_development"
 save_section = "city_development"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_15"]
 script = ExtResource("2_entry")
 controller_id = "ai_runtime"
 save_section = "ai"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_16"]
 script = ExtResource("2_entry")
 controller_id = "monster_runtime"
 save_section = "monsters"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_17"]
 script = ExtResource("2_entry")
 controller_id = "military_runtime"
 save_section = "military"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_18"]
 script = ExtResource("2_entry")
 controller_id = "weather_runtime"
 save_section = "weather"
-state_version = 1
-required = true
 
 [sub_resource type="Resource" id="Controller_19"]
 script = ExtResource("2_entry")
 controller_id = "contract_runtime"
 save_section = "contracts"
-state_version = 1
-required = true
 
 [resource]
 script = ExtResource("1_registry")
-ruleset_id = "v0.5"
-entries = Array[Resource]([SubResource("Controller_01"), SubResource("Controller_02"), SubResource("Controller_03"), SubResource("Controller_04"), SubResource("Controller_05"), SubResource("Controller_06"), SubResource("Controller_07"), SubResource("Controller_08"), SubResource("Controller_09"), SubResource("Controller_10"), SubResource("Controller_11"), SubResource("Controller_12"), SubResource("Controller_13"), SubResource("Controller_14"), SubResource("Controller_15"), SubResource("Controller_16"), SubResource("Controller_17"), SubResource("Controller_18"), SubResource("Controller_19")])
+entries = Array[ExtResource("2_entry")]([SubResource("Controller_01"), SubResource("Controller_02"), SubResource("Controller_03"), SubResource("Controller_04"), SubResource("Controller_05"), SubResource("Controller_06"), SubResource("Controller_07"), SubResource("Controller_08"), SubResource("Controller_09"), SubResource("Controller_10"), SubResource("Controller_11"), SubResource("Controller_12"), SubResource("Controller_13"), SubResource("Controller_14"), SubResource("Controller_15"), SubResource("Controller_16"), SubResource("Controller_17"), SubResource("Controller_18"), SubResource("Controller_19")])

@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/route_network_runtime_controller.gd" id="1_controller"]
+
+[node name="RouteNetworkRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Unique v0.6 owner for direct delivery, multimodal route legality, stable route identity, facility bottlenecks, arrival ordering, distance evidence, and topology-revision rebuilds. It never owns goods or cash."

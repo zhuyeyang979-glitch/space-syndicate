@@ -6,8 +6,6 @@ const CONTROLLER_SCENE_PATH := "res://scenes/runtime/CardResolutionRuntimeContro
 const CONTROLLER_NODE_PATH := "RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController"
 const RULESET_BRIDGE_SCENE_PATH := "res://scenes/runtime/RulesetRuntimeBridge.tscn"
 const RULESET_BRIDGE_NODE_PATH := "RuntimeServices/RulesetRuntimeBridge"
-const CITY_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
-const CITY_CONTROLLER_NODE_PATH := "RuntimeServices/RuntimeControllerHost/CityDevelopmentRuntimeController"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
 
@@ -16,9 +14,8 @@ func create_main() -> Control:
 	var main_script := load(MAIN_SCRIPT_PATH) as Script
 	var controller_scene := load(CONTROLLER_SCENE_PATH) as PackedScene
 	var ruleset_bridge_scene := load(RULESET_BRIDGE_SCENE_PATH) as PackedScene
-	var city_controller_scene := load(CITY_CONTROLLER_SCENE_PATH) as PackedScene
 	var coordinator_scene := load(COORDINATOR_SCENE_PATH) as PackedScene
-	if main_script == null or controller_scene == null or ruleset_bridge_scene == null or city_controller_scene == null or coordinator_scene == null:
+	if main_script == null or controller_scene == null or ruleset_bridge_scene == null or coordinator_scene == null:
 		return null
 	var main := main_script.new() as Control
 	if main == null:
@@ -42,12 +39,6 @@ func create_main() -> Control:
 		return null
 	controller.name = "CardResolutionRuntimeController"
 	controller_host.add_child(controller)
-	var city_controller := city_controller_scene.instantiate() as Node
-	if city_controller == null:
-		main.free()
-		return null
-	city_controller.name = "CityDevelopmentRuntimeController"
-	controller_host.add_child(city_controller)
 	var coordinator := coordinator_scene.instantiate() as Node
 	if coordinator == null:
 		main.free()
@@ -56,7 +47,6 @@ func create_main() -> Control:
 	controller_host.add_child(coordinator)
 	main.call("_bind_ruleset_runtime_bridge")
 	main.call("_bind_game_runtime_coordinator")
-	main.call("_bind_city_development_runtime_controller")
 	main.call("_bind_card_resolution_runtime_controller")
 	return main
 
@@ -67,10 +57,6 @@ func controller_for(main: Node) -> Node:
 
 func ruleset_bridge_for(main: Node) -> Node:
 	return main.get_node_or_null(RULESET_BRIDGE_NODE_PATH) if main != null else null
-
-
-func city_controller_for(main: Node) -> Node:
-	return main.get_node_or_null(CITY_CONTROLLER_NODE_PATH) if main != null else null
 
 
 func coordinator_for(main: Node) -> Node:

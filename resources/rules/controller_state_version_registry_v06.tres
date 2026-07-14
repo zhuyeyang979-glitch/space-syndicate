@@ -1,0 +1,94 @@
+[gd_resource type="Resource" script_class="ControllerStateVersionRegistryResource" format=3 uid="uid://ks35kbhop071"]
+
+[ext_resource type="Script" uid="uid://d1bhrwk52fsxg" path="res://scripts/rules/controller_state_version_registry_resource.gd" id="1_registry"]
+[ext_resource type="Script" uid="uid://ve6sdrut70u6" path="res://scripts/rules/controller_state_version_entry_resource.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="Controller_01"]
+script = ExtResource("2_entry")
+controller_id = "ruleset_runtime"
+save_section = "ruleset"
+
+[sub_resource type="Resource" id="Controller_02"]
+script = ExtResource("2_entry")
+controller_id = "game_session"
+save_section = "session"
+
+[sub_resource type="Resource" id="Controller_03"]
+script = ExtResource("2_entry")
+controller_id = "public_facility_region"
+save_section = "region_infrastructure"
+
+[sub_resource type="Resource" id="Controller_04"]
+script = ExtResource("2_entry")
+controller_id = "installed_commodity"
+save_section = "installed_commodities"
+
+[sub_resource type="Resource" id="Controller_05"]
+script = ExtResource("2_entry")
+controller_id = "route_network"
+save_section = "routes"
+
+[sub_resource type="Resource" id="Controller_06"]
+script = ExtResource("2_entry")
+controller_id = "commodity_sale_receipt"
+save_section = "sale_receipts"
+
+[sub_resource type="Resource" id="Controller_07"]
+script = ExtResource("2_entry")
+controller_id = "player_mana"
+save_section = "player_mana"
+
+[sub_resource type="Resource" id="Controller_08"]
+script = ExtResource("2_entry")
+controller_id = "commodity_belt_visibility"
+save_section = "commodity_belt_visibility"
+
+[sub_resource type="Resource" id="Controller_09"]
+script = ExtResource("2_entry")
+controller_id = "card_inventory"
+save_section = "card_inventory"
+
+[sub_resource type="Resource" id="Controller_10"]
+script = ExtResource("2_entry")
+controller_id = "card_resolution_queue"
+save_section = "card_resolution_queue"
+
+[sub_resource type="Resource" id="Controller_11"]
+script = ExtResource("2_entry")
+controller_id = "card_resolution_execution"
+save_section = "card_resolution_execution"
+
+[sub_resource type="Resource" id="Controller_12"]
+script = ExtResource("2_entry")
+controller_id = "monster_runtime"
+save_section = "monsters"
+
+[sub_resource type="Resource" id="Controller_13"]
+script = ExtResource("2_entry")
+controller_id = "military_runtime"
+save_section = "military"
+
+[sub_resource type="Resource" id="Controller_14"]
+script = ExtResource("2_entry")
+controller_id = "weather_runtime"
+save_section = "weather"
+
+[sub_resource type="Resource" id="Controller_15"]
+script = ExtResource("2_entry")
+controller_id = "ai_runtime"
+save_section = "ai"
+
+[sub_resource type="Resource" id="Controller_16"]
+script = ExtResource("2_entry")
+controller_id = "victory_control"
+save_section = "victory_control"
+
+[sub_resource type="Resource" id="Controller_17"]
+script = ExtResource("2_entry")
+controller_id = "player_organization"
+save_section = "player_organization"
+
+[resource]
+script = ExtResource("1_registry")
+ruleset_id = "v0.6"
+entries = Array[ExtResource("2_entry")]([SubResource("Controller_01"), SubResource("Controller_02"), SubResource("Controller_03"), SubResource("Controller_04"), SubResource("Controller_05"), SubResource("Controller_06"), SubResource("Controller_07"), SubResource("Controller_08"), SubResource("Controller_09"), SubResource("Controller_10"), SubResource("Controller_11"), SubResource("Controller_12"), SubResource("Controller_13"), SubResource("Controller_14"), SubResource("Controller_15"), SubResource("Controller_16"), SubResource("Controller_17")])

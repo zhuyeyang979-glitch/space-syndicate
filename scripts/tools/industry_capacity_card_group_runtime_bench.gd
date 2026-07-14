@@ -322,7 +322,8 @@ func _evaluate_checks() -> Dictionary:
 	window.call("set_player_ready", 0, true, [0, 1])
 	var partial_commands: Array = window.call("tick", 0.0, {"queue_empty": false, "active_present": false, "active_player_indices": [0, 1], "lock_duration": 2.0})
 	checks["partial_ready_does_not_lock"] = not _has_transition(partial_commands, "all_ready_lock") and not bool(window.get("batch_locked"))
-	checks["priority_bid_options_are_fixed"] = SharedCardGroupWindow.PRIORITY_BID_OPTIONS_CENTS == [0, 5000, 10000]
+	# Historical v0.5 evidence remains readable, but v0.6 intentionally has no priority-bid API.
+	checks["priority_bid_options_are_fixed"] = false
 	var invalid_bid := _submit(_fresh_queue(), 0, 0, 2500, _capacity_reservation(life_two, {}), life_two, 2)
 	checks["invalid_priority_bid_rejected"] = str((invalid_bid.get("plan", {}) as Dictionary).get("reason", "")) == "invalid_priority_bid"
 	var tie_queue := _fresh_queue()

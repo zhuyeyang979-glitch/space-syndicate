@@ -29,7 +29,6 @@ const HIGH_IMPACT_SHARE_BY_RANK := {
 }
 
 const ALWAYS_FREE_KINDS := [
-	"city_development",
 	"monster_bound_action",
 	"military_command",
 ]

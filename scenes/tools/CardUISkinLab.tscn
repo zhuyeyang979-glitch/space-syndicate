@@ -1,0 +1,538 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_ui_skin_lab.gd" id="1_script"]
+[ext_resource type="Theme" path="res://themes/CardUISkinLabTheme.tres" id="2_theme"]
+[ext_resource type="Shader" path="res://shaders/skin_lab_table_backdrop.gdshader" id="3_shader"]
+[ext_resource type="PackedScene" path="res://scenes/ui/skin_lab/OrbitalTableOverlay.tscn" id="4_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/ui/skin_lab/CommodityBelt.tscn" id="5_belt"]
+[ext_resource type="Script" path="res://scripts/ui/skin_lab/orbital_table_overlay.gd" id="5_c25br"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetMapView.tscn" id="6_map"]
+[ext_resource type="PackedScene" path="res://scenes/ui/skin_lab/CardSettlementStage.tscn" id="7_settlement"]
+[ext_resource type="Script" path="res://scripts/ui/skin_lab/commodity_belt.gd" id="7_wekjw"]
+[ext_resource type="PackedScene" path="res://scenes/ui/TargetingOverlay.tscn" id="8_targeting"]
+[ext_resource type="PackedScene" path="res://scenes/ui/HandRack.tscn" id="9_hand"]
+[ext_resource type="Script" path="res://scripts/ui/planet_map_view.gd" id="9_q1kbs"]
+[ext_resource type="PackedScene" path="res://scenes/ui/RightInspector.tscn" id="10_inspector"]
+[ext_resource type="Script" path="res://scripts/ui/skin_lab/card_settlement_stage.gd" id="11_10263"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardFace.tscn" id="11_card"]
+[ext_resource type="Script" path="res://scripts/ui/targeting_overlay.gd" id="13_crdhk"]
+[ext_resource type="Script" path="res://scripts/ui/hand_rack.gd" id="15_8jro6"]
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="17_fm6mt"]
+[ext_resource type="Script" path="res://scripts/ui/card_face.gd" id="18_frkrk"]
+[ext_resource type="Script" path="res://scripts/ui/right_inspector.gd" id="20_aany0"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_table"]
+shader = ExtResource("3_shader")
+shader_parameter/deep_space = null
+shader_parameter/table_navy = null
+shader_parameter/cyan_glow = null
+shader_parameter/amber_glow = null
+shader_parameter/atmosphere = null
+
+[node name="CardUISkinLab" type="Control" unique_id=1568150330]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="TableBackdrop" type="ColorRect" parent="." unique_id=127178516]
+material = SubResource("ShaderMaterial_table")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="OrbitalTableOverlay" type="Control" parent="." unique_id=1207875165 instance=ExtResource("4_overlay")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("5_c25br")
+
+[node name="SafeMargin" type="MarginContainer" parent="." unique_id=44048597]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="TableRows" type="VBoxContainer" parent="SafeMargin" unique_id=268725085]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HeaderBridge" type="PanelContainer" parent="SafeMargin/TableRows" unique_id=876006539]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_type_variation = &"SkinLabRail"
+
+[node name="HeaderMargin" type="MarginContainer" parent="SafeMargin/TableRows/HeaderBridge" unique_id=203335939]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
+
+[node name="HeaderRow" type="HBoxContainer" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin" unique_id=1799217110]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleStack" type="VBoxContainer" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow" unique_id=462269809]
+custom_minimum_size = Vector2(286, 0)
+layout_mode = 2
+theme_override_constants/separation = -1
+
+[node name="LabTitle" type="Label" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow/TitleStack" unique_id=1804928225]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.78, 0.94, 0.99, 1)
+text = "SPACE SYNDICATE  ·  卡牌桌面皮肤实验室"
+
+[node name="LabSubtitle" type="Label" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow/TitleStack" unique_id=1561900993]
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.43, 0.64, 0.73, 1)
+text = "v0.6 规则只读呈现 · 轨道桌面实时运行"
+
+[node name="StatePill" type="PanelContainer" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow" unique_id=680003625]
+custom_minimum_size = Vector2(278, 0)
+layout_mode = 2
+theme_type_variation = &"SkinLabChip"
+
+[node name="StateStatusLabel" type="Label" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow/StatePill" unique_id=684131489]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.99, 0.85, 0.52, 1)
+text = "可投放｜合法槽位与目标连线同步"
+horizontal_alignment = 1
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="HeaderSpacer" type="Control" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow" unique_id=2032964616]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TableSignal" type="Label" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow" unique_id=1877388148]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.34, 0.88, 0.72, 1)
+text = "桌面同步  ●  在线"
+
+[node name="TargetDemoButton" type="Button" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow" unique_id=1532607906]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 34)
+layout_mode = 2
+tooltip_text = "显示合法投放槽与目标连线"
+text = "投放演示"
+
+[node name="SettlementDemoButton" type="Button" parent="SafeMargin/TableRows/HeaderBridge/HeaderMargin/HeaderRow" unique_id=1575579917]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(92, 34)
+layout_mode = 2
+tooltip_text = "让卡牌从手牌进入公共结算区"
+text = "结算演示"
+
+[node name="CommodityBelt" type="PanelContainer" parent="SafeMargin/TableRows" unique_id=691084785 instance=ExtResource("5_belt")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 78)
+layout_mode = 2
+theme = ExtResource("2_theme")
+theme_type_variation = &"SkinLabRail"
+script = ExtResource("7_wekjw")
+
+[node name="StageLayer" type="Control" parent="SafeMargin/TableRows" unique_id=898083372]
+clip_contents = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PlanetStage" type="Control" parent="SafeMargin/TableRows/StageLayer" unique_id=813489170]
+clip_contents = true
+layout_mode = 1
+anchor_right = 0.755
+anchor_bottom = 1.0
+offset_right = -5.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PlanetMapView" type="Control" parent="SafeMargin/TableRows/StageLayer/PlanetStage" unique_id=983752701 instance=ExtResource("6_map")]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 0.815
+offset_left = 4.0
+offset_top = 2.0
+offset_right = -4.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 2
+script = ExtResource("9_q1kbs")
+
+[node name="MapIdentity" type="VBoxContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage" unique_id=1672793810]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 10.0
+offset_right = 234.0
+offset_bottom = 54.0
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="MapEyebrow" type="Label" parent="SafeMargin/TableRows/StageLayer/PlanetStage/MapIdentity" unique_id=57100483]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.45, 0.83, 0.92, 1)
+text = "中央星球桌面"
+
+[node name="MapTitle" type="Label" parent="SafeMargin/TableRows/StageLayer/PlanetStage/MapIdentity" unique_id=1044984179]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.86, 0.94, 0.97, 1)
+text = "欧罗拉贸易球 · 公开经济层"
+
+[node name="CardSettlementStage" type="PanelContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage" unique_id=1460159086 instance=ExtResource("7_settlement")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(286, 142)
+layout_mode = 0
+offset_left = 16.0
+offset_top = 62.0
+offset_right = 302.0
+offset_bottom = 204.0
+theme = ExtResource("2_theme")
+theme_type_variation = &"SkinLabGlass"
+script = ExtResource("11_10263")
+
+[node name="DropTarget" type="PanelContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage" unique_id=1829447144]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.55
+anchor_top = 0.38
+anchor_right = 0.55
+anchor_bottom = 0.38
+offset_left = -94.0
+offset_top = -37.0
+offset_right = 94.0
+offset_bottom = 37.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"SkinLabTarget"
+
+[node name="DropTargetRows" type="VBoxContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage/DropTarget" unique_id=80806363]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="DropTargetGlyph" type="Label" parent="SafeMargin/TableRows/StageLayer/PlanetStage/DropTarget/DropTargetRows" unique_id=686702644]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.48, 0.96, 0.91, 1)
+text = "◇  怪兽部署槽"
+horizontal_alignment = 1
+
+[node name="DropTargetStatus" type="Label" parent="SafeMargin/TableRows/StageLayer/PlanetStage/DropTarget/DropTargetRows" unique_id=876872659]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.8, 0.9, 0.92, 1)
+text = "雾港城 · 目标合法 · 松开部署"
+horizontal_alignment = 1
+
+[node name="TargetingOverlay" type="Control" parent="SafeMargin/TableRows/StageLayer/PlanetStage" unique_id=1815112352 instance=ExtResource("8_targeting")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("13_crdhk")
+
+[node name="HandShelf" type="PanelContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage" unique_id=100727311]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -184.0
+offset_right = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_type_variation = &"SkinLabGlass"
+
+[node name="HandShelfMargin" type="MarginContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage/HandShelf" unique_id=1002540353]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 3
+
+[node name="HandRows" type="VBoxContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage/HandShelf/HandShelfMargin" unique_id=1487184055]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="HandHeader" type="HBoxContainer" parent="SafeMargin/TableRows/StageLayer/PlanetStage/HandShelf/HandShelfMargin/HandRows" unique_id=239486578]
+custom_minimum_size = Vector2(0, 23)
+layout_mode = 2
+
+[node name="HandTitle" type="Label" parent="SafeMargin/TableRows/StageLayer/PlanetStage/HandShelf/HandShelfMargin/HandRows/HandHeader" unique_id=1960140357]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.73, 0.88, 0.93, 1)
+text = "展示样卡 6 张 · 实战手牌上限 5 · 同名牌可主动合成"
+
+[node name="HandSpacer" type="Control" parent="SafeMargin/TableRows/StageLayer/PlanetStage/HandShelf/HandShelfMargin/HandRows/HandHeader" unique_id=1012468162]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HandHint" type="Label" parent="SafeMargin/TableRows/StageLayer/PlanetStage/HandShelf/HandShelfMargin/HandRows/HandHeader" unique_id=1239606507]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.96, 0.72, 0.34, 1)
+text = "悬停查看 · 拖向星球"
+
+[node name="HandRack" type="Control" parent="SafeMargin/TableRows/StageLayer/PlanetStage/HandShelf/HandShelfMargin/HandRows" unique_id=898627143 instance=ExtResource("9_hand")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 148)
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("15_8jro6")
+card_size = Vector2(128, 148)
+max_spread_width = 760.0
+max_fan_angle_degrees = 13.0
+arc_height = 18.0
+bottom_padding = 4.0
+hover_lift = 54.0
+hover_scale = 1.14
+hover_neighbor_push = 30.0
+selected_lift = 34.0
+selected_scale = 1.08
+drag_lift = 54.0
+drag_scale = 1.14
+invalid_drop_sag = 12.0
+seek_position_gain = 20.0
+seek_rotation_gain = 22.0
+seek_scale_gain = 18.0
+
+[node name="InspectorShell" type="PanelContainer" parent="SafeMargin/TableRows/StageLayer" unique_id=933586405]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.755
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 7.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SkinLabInspector"
+
+[node name="InspectorMargin" type="MarginContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell" unique_id=1428296753]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 9
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 9
+
+[node name="InspectorRows" type="VBoxContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin" unique_id=1150579841]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="InspectorHeader" type="HBoxContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=1122827190]
+custom_minimum_size = Vector2(0, 27)
+layout_mode = 2
+
+[node name="InspectorTitle" type="Label" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorHeader" unique_id=1080331948]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.74, 0.91, 0.97, 1)
+text = "卡牌详情与行动检查器"
+
+[node name="InspectorHeaderSpacer" type="Control" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorHeader" unique_id=771525548]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InspectorLive" type="Label" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorHeader" unique_id=200036034]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.32, 0.89, 0.73, 1)
+text = "实时"
+
+[node name="InspectorContextLabel" type="Label" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=1538028039]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.96, 0.74, 0.38, 1)
+text = "怪兽与军队单位牌｜生命｜目标合法"
+text_overrun_behavior = 3
+
+[node name="InspectorCardArea" type="Control" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=446429950]
+custom_minimum_size = Vector2(0, 172)
+layout_mode = 2
+
+[node name="InspectorCardHost" type="CenterContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorCardArea" unique_id=980677068]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="InspectorCardFace" type="Control" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorCardArea/InspectorCardHost" unique_id=2006014952 instance=ExtResource("11_card")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(116, 164)
+clip_contents = true
+layout_mode = 2
+theme = ExtResource("17_fm6mt")
+script = ExtResource("18_frkrk")
+
+[node name="HiddenCommodityPreview" type="PanelContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorCardArea" unique_id=2111217475]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -67.0
+offset_top = -81.0
+offset_right = 67.0
+offset_bottom = 81.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SkinLabGlass"
+
+[node name="HiddenRows" type="VBoxContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorCardArea/HiddenCommodityPreview" unique_id=1424709275]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HiddenGlyph" type="Label" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorCardArea/HiddenCommodityPreview/HiddenRows" unique_id=10606273]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.96, 0.45, 0.16, 0.88)
+text = "◈
+▓ ▒ ░
+能源"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HiddenTitle" type="Label" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorCardArea/HiddenCommodityPreview/HiddenRows" unique_id=432486314]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.78, 0.88, 0.92, 1)
+text = "隐藏商品"
+horizontal_alignment = 1
+
+[node name="HiddenHint" type="Label" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorCardArea/HiddenCommodityPreview/HiddenRows" unique_id=1307796553]
+layout_mode = 2
+theme_override_font_sizes/font_size = 9
+theme_override_colors/font_color = Color(0.53, 0.65, 0.71, 1)
+text = "能源色公开 · 不可领取"
+horizontal_alignment = 1
+
+[node name="StateLabel" type="Label" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=375484890]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.46, 0.74, 0.84, 1)
+text = "状态对比"
+
+[node name="StateButtonRow" type="HFlowContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=1886694204]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="NormalStateButton" type="Button" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/StateButtonRow" unique_id=217458975]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 25)
+layout_mode = 2
+text = "正常"
+
+[node name="HoveredStateButton" type="Button" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/StateButtonRow" unique_id=134848701]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 25)
+layout_mode = 2
+text = "悬停"
+
+[node name="SelectedStateButton" type="Button" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/StateButtonRow" unique_id=1203159908]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 25)
+layout_mode = 2
+text = "选中"
+
+[node name="DisabledStateButton" type="Button" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/StateButtonRow" unique_id=1613145475]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 25)
+layout_mode = 2
+text = "不可用"
+
+[node name="DropValidStateButton" type="Button" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/StateButtonRow" unique_id=489081625]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 25)
+layout_mode = 2
+text = "可投放"
+
+[node name="ResolvingStateButton" type="Button" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/StateButtonRow" unique_id=16403559]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 25)
+layout_mode = 2
+text = "结算中"
+
+[node name="HiddenStateButton" type="Button" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/StateButtonRow" unique_id=931866378]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 25)
+layout_mode = 2
+text = "隐藏"
+
+[node name="InspectorDivider" type="HSeparator" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=1625278226]
+layout_mode = 2
+
+[node name="InspectorScroll" type="ScrollContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows" unique_id=560894618]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RightInspector" type="PanelContainer" parent="SafeMargin/TableRows/StageLayer/InspectorShell/InspectorMargin/InspectorRows/InspectorScroll" unique_id=693081920 instance=ExtResource("10_inspector")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(272, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_theme")
+script = ExtResource("20_aany0")
+
+[node name="TransitLayer" type="Control" parent="." unique_id=2081072768]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TransitCard" type="Control" parent="TransitLayer" unique_id=959034809 instance=ExtResource("11_card")]
+unique_name_in_owner = true
+visible = false
+z_index = 4000
+custom_minimum_size = Vector2(104, 146)
+clip_contents = true
+anchors_preset = 0
+offset_right = 104.0
+offset_bottom = 146.0
+mouse_filter = 2
+theme = ExtResource("17_fm6mt")
+script = ExtResource("18_frkrk")

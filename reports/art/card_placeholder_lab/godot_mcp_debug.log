@@ -1,0 +1,52 @@
+2026-07-14 CARD PLACEHOLDER LAB GODOT MCP RECORD
+
+PROJECT=C:\Users\Administrator\Documents\New project\space-syndicate-sync
+SCENE=res://scenes/tools/CardIllustrationPlaceholderLabCapture.tscn
+GODOT_VERSION=4.7.stable.official.5b4e0cb0f
+IMAGE_GENERATION_CALLS=0
+
+MCP_CALL|get_godot_version|OK|version=4.7.stable.official.5b4e0cb0f
+MCP_CALL|list_projects|OK|project=space-syndicate-sync
+MCP_CALL|get_project_info|OK|scenes=251|scripts=492|assets=199|other=1061
+MCP_CALL|launch_editor|OK
+MCP_CALL|get_uid|OK|files=5
+MCP_CALL|save_scene|OK|scene=scenes/tools/CardIllustrationPlaceholderLabCapture.tscn
+MCP_CALL|run_project|OK|scene=scenes/tools/CardIllustrationPlaceholderLabCapture.tscn
+MCP_CALL|get_debug_output|OK|errors=0
+SECURITY_GATE|illustration_path_traversal|OK|reason=path_not_allowed
+TEXT_GATE|forbidden_token_cc_by_hyphen|OK
+
+CARD_PLACEHOLDER_LAB_CAPTURE|event=suite_start|code=OK|image_generation_calls=0
+CARD_PLACEHOLDER_LAB_CAPTURE|event=manifest_load|code=OK|entries=6
+CARD_PLACEHOLDER_LAB_CAPTURE|event=hand_source_audit|code=OK|authored=1|cards=6|external=6|open_source=5|unique_sources=6
+CARD_PLACEHOLDER_LAB_CAPTURE|event=settlement_source|code=OK|card=interaction.phase_veto.rank_1|visual_source=game_icons_cancel_sbed
+CARD_PLACEHOLDER_LAB_CAPTURE|event=fallback_probe|code=OK|case=path_not_allowed|procedural_visible=true|reason=path_not_allowed
+CARD_PLACEHOLDER_LAB_CAPTURE|event=fallback_probe|code=OK|case=missing_texture|procedural_visible=true|reason=missing_texture
+CARD_PLACEHOLDER_LAB_CAPTURE|event=capture_saved|code=OK|case=resolution_1280x720|image=1280x720
+CARD_PLACEHOLDER_LAB_CAPTURE|event=capture_saved|code=OK|case=resolution_1600x960|image=1600x960
+CARD_PLACEHOLDER_LAB_CAPTURE|event=capture_saved|code=OK|case=resolution_1920x1080|image=1920x1080
+CARD_PLACEHOLDER_LAB_CAPTURE|event=inspector_source|code=OK|state=normal|card=commodity.ring_crystal_battery.rank_1|visual_source=space_syndicate_authored_imagegen_v01
+CARD_PLACEHOLDER_LAB_CAPTURE|event=inspector_source|code=OK|state=hovered|card=supply_demand.remote_sea_order.rank_1|visual_source=game_icons_contract_delapouite
+CARD_PLACEHOLDER_LAB_CAPTURE|event=inspector_source|code=OK|state=selected|card=facility.orbital_warehouse.rank_1|visual_source=game_icons_warehouse_delapouite
+CARD_PLACEHOLDER_LAB_CAPTURE|event=inspector_source|code=OK|state=disabled|card=supply_demand.near_land_supply.rank_1|visual_source=game_icons_profit_lorc
+CARD_PLACEHOLDER_LAB_CAPTURE|event=inspector_source|code=OK|state=drop_valid|card=unit.monster.spore_tide_emperor.rank_1|visual_source=superpowers_cc0_dragon_family
+CARD_PLACEHOLDER_LAB_CAPTURE|event=inspector_source|code=OK|state=resolving|card=interaction.phase_veto.rank_1|visual_source=game_icons_cancel_sbed
+CARD_PLACEHOLDER_LAB_CAPTURE|event=player_text_scan|code=OK|clean=true|leaks=0
+CARD_PLACEHOLDER_LAB_CAPTURE|event=suite_complete|code=OK|captures=9|failures=0|image_generation_calls=0
+
+MCP_CALL|stop_project|OK|finalErrors=0
+PROJECT_STOPPED=true
+
+FINAL_ACCEPTED_DEBUG_OUTPUT_NONEMPTY_LINES
+Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
+Vulkan 1.4.329 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce RTX 4080 SUPER
+SKIN_LAB|event=ready|cards=6|sceneized=true|rules_unchanged=true
+CARD_PLACEHOLDER_LAB_CAPTURE|event=hand_card_source|code=OK|active=true|card=commodity.ring_crystal_battery.rank_1|source_type=authored|visual_source=space_syndicate_authored_imagegen_v01
+CARD_PLACEHOLDER_LAB_CAPTURE|event=hand_card_source|code=OK|active=true|card=facility.orbital_warehouse.rank_1|source_type=open_source_placeholder|visual_source=game_icons_warehouse_delapouite
+CARD_PLACEHOLDER_LAB_CAPTURE|event=hand_card_source|code=OK|active=true|card=supply_demand.remote_sea_order.rank_1|source_type=open_source_placeholder|visual_source=game_icons_contract_delapouite
+CARD_PLACEHOLDER_LAB_CAPTURE|event=hand_card_source|code=OK|active=true|card=supply_demand.near_land_supply.rank_1|source_type=open_source_placeholder|visual_source=game_icons_profit_lorc
+CARD_PLACEHOLDER_LAB_CAPTURE|event=hand_card_source|code=OK|active=true|card=unit.monster.spore_tide_emperor.rank_1|source_type=open_source_placeholder|visual_source=superpowers_cc0_dragon_family
+CARD_PLACEHOLDER_LAB_CAPTURE|event=hand_card_source|code=OK|active=true|card=interaction.phase_veto.rank_1|source_type=open_source_placeholder|visual_source=game_icons_cancel_sbed
+CARD_PLACEHOLDER_LAB_CAPTURE|event=awaiting_mcp_stop|code=OK|detail=验证完成，等待 Godot MCP 停止项目。
+get_debug_output.errors=[]
+stop_project.finalErrors=[]

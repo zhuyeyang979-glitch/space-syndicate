@@ -94,7 +94,7 @@ func _scale_hint_detail(cutover_enabled: bool, legacy_fallback_used: bool) -> St
 	if legacy_fallback_used:
 		return "legacy fallback active"
 	if cutover_enabled:
-		return "sceneized render primary"
+		return "场景化星球渲染已启用"
 	return "legacy fallback available"
 
 

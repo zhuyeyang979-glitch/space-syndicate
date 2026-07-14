@@ -2,6 +2,9 @@
 extends Node
 class_name ContractRuntimeController
 
+const INTERACTION_SCHEMA := preload("res://scripts/cards/v06/interaction/anonymous_interaction_runtime_schema_v06.gd")
+const RECEIPT_SANITIZER := preload("res://scripts/cards/v06/interaction/anonymous_interaction_receipt_sanitizer_v06.gd")
+
 signal contract_offer_opened(offer: Dictionary)
 signal contract_offer_resolved(receipt: Dictionary)
 
@@ -11,6 +14,13 @@ const RESPONSE_REJECTED := "rejected"
 const RESPONSE_TIMEOUT := "timeout"
 const CONTRACT_KIND := "area_trade_contract"
 const DEFAULT_DECISION_SECONDS := 5.0
+const SAVE_SCHEMA_V06 := 2
+const EFFECT_OFFER_V06 := "contract_offer_v06"
+const EFFECT_RESPONSE_V06 := "contract_response_v06"
+const ACTION_OPEN_OFFER := "open_offer"
+const ACTION_RESPOND := "respond"
+const ACTION_TIMEOUT := "timeout"
+const HISTORY_LIMIT_V06 := 64
 
 var _world_bridge: ContractRuntimeWorldBridge
 var _ruleset_snapshot: Dictionary = {}
@@ -18,6 +28,11 @@ var _configured := false
 var _decision_seconds := DEFAULT_DECISION_SECONDS
 var _state_revision := 0
 var _committed_transaction_ids: Array[String] = []
+var _action_associations: Dictionary = {}
+var _action_journal: Dictionary = {}
+var _response_id_journal: Dictionary = {}
+var _contract_history_v06: Array = []
+var _private_parties_by_offer: Dictionary = {}
 
 var selected_source_district := -1
 var selected_target_district := -1
@@ -32,7 +47,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_snapshot = ruleset_snapshot.duplicate(true)
 	var timing: Dictionary = _ruleset_snapshot.get("timing", {}) as Dictionary if _ruleset_snapshot.get("timing", {}) is Dictionary else {}
 	_decision_seconds = maxf(0.1, float(timing.get("contract_window_seconds", _ruleset_snapshot.get("contract_window_seconds", DEFAULT_DECISION_SECONDS))))
-	_configured = str(_ruleset_snapshot.get("ruleset_id", "")) == "v0.4" and _world_bridge != null and _world_bridge.has_world()
+	_configured = ["v0.4", "v0.6"].has(str(_ruleset_snapshot.get("ruleset_id", ""))) and _world_bridge != null and _world_bridge.has_world()
 
 
 func reset_state() -> void:
@@ -40,7 +55,154 @@ func reset_state() -> void:
 	selected_target_district = -1
 	pending_offers.clear()
 	_committed_transaction_ids.clear()
+	_action_associations.clear()
+	_action_journal.clear()
+	_response_id_journal.clear()
+	_contract_history_v06.clear()
+	_private_parties_by_offer.clear()
 	_state_revision = 0
+
+
+func anonymous_interaction_runtime_capabilities_v06(domain: String) -> Dictionary:
+	var contract_domain := domain == "contract"
+	return {
+		"schema_version": "0.6",
+		"domain": domain,
+		"snapshot": contract_domain,
+		"prepare": contract_domain,
+		"commit": contract_domain,
+		"rollback": contract_domain,
+		"finalize": contract_domain,
+		"checkpoint": contract_domain,
+		"revision": contract_domain,
+		"exact_once": contract_domain,
+		"save_load": contract_domain,
+		"privacy_safe_snapshot": contract_domain,
+		"atomic_mutation_ready": false,
+		"supported_effect_kinds": [],
+		"catalog_contract_entries_available": false,
+		"effect_specific_atomic_gate": true,
+		"lifecycle_wip_fail_closed": true,
+	}
+
+
+func anonymous_interaction_snapshot_v06(domain: String) -> Dictionary:
+	if domain != "contract":
+		return {"available": false, "reason_code": "contract_domain_invalid"}
+	var snapshot := public_snapshot()
+	snapshot["available"] = true
+	snapshot["schema_version"] = "0.6"
+	snapshot["revision"] = _state_revision
+	return RECEIPT_SANITIZER.sanitize_public(snapshot)
+
+
+func anonymous_interaction_checkpoint_status_v06(domain: String) -> Dictionary:
+	if domain != "contract":
+		return {"can_checkpoint": false, "reason_code": "contract_domain_invalid", "domain": domain}
+	return checkpoint_status_v06()
+
+
+func prepare_anonymous_interaction_v06(intent: Dictionary) -> Dictionary:
+	var validation := INTERACTION_SCHEMA.validate_intent(intent)
+	if not bool(validation.get("valid", false)) or str(validation.get("route_domain", "")) != "contract":
+		return _interaction_failure(intent, str(validation.get("reason_code", "contract_intent_invalid")), "合约请求无效。", "重新选择合约与目标。")
+	if not _configured or _world_bridge == null:
+		return _interaction_failure(intent, "contract_owner_not_ready", "合约系统尚未就绪。", "稍后重试。")
+	var transaction_gate := _action_transaction_gate(intent)
+	if bool(transaction_gate.get("handled", false)):
+		return transaction_gate.get("result", {}) as Dictionary
+	var action_kind := _action_kind_from_intent(intent)
+	if action_kind == ACTION_OPEN_OFFER:
+		return _prepare_offer_action_v06(intent)
+	if action_kind in [ACTION_RESPOND, ACTION_TIMEOUT]:
+		return _prepare_response_action_v06(intent, action_kind == ACTION_TIMEOUT)
+	return _interaction_failure(intent, "contract_action_kind_invalid", "合约动作无效。", "重新选择合约动作。")
+
+
+func commit_anonymous_interaction_v06(prepared: Dictionary) -> Dictionary:
+	return _commit_action_v06(prepared)
+
+
+func rollback_anonymous_interaction_v06(receipt: Dictionary) -> Dictionary:
+	return _rollback_action_v06(receipt)
+
+
+func finalize_anonymous_interaction_v06(receipt: Dictionary) -> Dictionary:
+	return _finalize_action_v06(receipt)
+
+
+func prepare_contract_offer_v06(intent: Dictionary) -> Dictionary:
+	if _action_kind_from_intent(intent) != ACTION_OPEN_OFFER:
+		return _interaction_failure(intent, "contract_offer_action_invalid", "这不是开出合约请求。", "重新提交合约。")
+	return prepare_anonymous_interaction_v06(intent)
+
+
+func commit_contract_offer_v06(prepared: Dictionary) -> Dictionary:
+	return _commit_action_v06(prepared, ACTION_OPEN_OFFER)
+
+
+func rollback_contract_offer_v06(receipt: Dictionary) -> Dictionary:
+	return _rollback_action_v06(receipt, ACTION_OPEN_OFFER)
+
+
+func finalize_contract_offer_v06(receipt: Dictionary) -> Dictionary:
+	return _finalize_action_v06(receipt, ACTION_OPEN_OFFER)
+
+
+func prepare_contract_response_v06(intent: Dictionary) -> Dictionary:
+	var action_kind := _action_kind_from_intent(intent)
+	if not [ACTION_RESPOND, ACTION_TIMEOUT].has(action_kind):
+		return _interaction_failure(intent, "contract_response_action_invalid", "这不是合约回应请求。", "重新提交回应。")
+	return prepare_anonymous_interaction_v06(intent)
+
+
+func commit_contract_response_v06(prepared: Dictionary) -> Dictionary:
+	return _commit_action_v06(prepared, ACTION_RESPOND, true)
+
+
+func rollback_contract_response_v06(receipt: Dictionary) -> Dictionary:
+	return _rollback_action_v06(receipt, ACTION_RESPOND, true)
+
+
+func finalize_contract_response_v06(receipt: Dictionary) -> Dictionary:
+	return _finalize_action_v06(receipt, ACTION_RESPOND, true)
+
+
+func contract_state_revision_v06() -> int:
+	return _state_revision
+
+
+func checkpoint_status_v06() -> Dictionary:
+	var inflight: Array[String] = []
+	for transaction_variant in _action_associations.keys():
+		var transaction_id := str(transaction_variant)
+		var association: Dictionary = _action_associations.get(transaction_id, {})
+		if not ["rolled_back", "finalized"].has(str(association.get("stage", ""))):
+			inflight.append(transaction_id)
+	inflight.sort()
+	var effect_checkpoint := _world_bridge.contract_effect_checkpoint_status_v06() if _world_bridge != null else {"can_checkpoint": false, "reason_code": "contract_world_bridge_missing"}
+	return {
+		"can_checkpoint": inflight.is_empty() and bool(effect_checkpoint.get("can_checkpoint", false)),
+		"reason_code": "contract_checkpoint_ready" if inflight.is_empty() and bool(effect_checkpoint.get("can_checkpoint", false)) else "contract_inflight_actions",
+		"inflight_transaction_ids": inflight,
+		"effect_checkpoint": effect_checkpoint,
+		"revision": _state_revision,
+	}
+
+
+func contract_history_snapshot_v06(scope: String = "public", viewer_index: int = -1) -> Array:
+	var result: Array = []
+	for entry_variant in _contract_history_v06:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		if scope == "developer":
+			result.append(RECEIPT_SANITIZER.sanitize_developer(entry))
+		elif scope == "private":
+			result.append(RECEIPT_SANITIZER.sanitize_private(_private_history_view(entry, viewer_index), str(viewer_index)))
+		else:
+			result.append(RECEIPT_SANITIZER.sanitize_public(_public_history_entry(entry)))
+	return result
 
 
 func set_selection_state(source_index: int, target_index: int) -> Dictionary:
@@ -171,6 +333,7 @@ func plan_offer(request: Dictionary, facts: Dictionary) -> Dictionary:
 	offer["contract_source_district"] = source_index
 	offer["contract_target_district"] = target_index
 	offer["contract_target_owner"] = target_controller
+	offer["contract_source_owner"] = proposer
 	offer["contract_target_project_ids"] = (authority.get("project_ids", []) as Array).duplicate(true)
 	offer["contract_products"] = products.duplicate(true)
 	offer["contract_response"] = RESPONSE_PENDING
@@ -179,6 +342,10 @@ func plan_offer(request: Dictionary, facts: Dictionary) -> Dictionary:
 	offer["contract_response_player"] = -1
 	offer["contract_response_time"] = -1.0
 	offer["offer_revision"] = _state_revision + 1
+	offer["offer_open_transaction_id"] = str(request.get("transaction_id", "legacy-contract-offer:%d" % contract_id))
+	offer["offer_open_stage"] = "prepared"
+	offer["offer_rollback_open"] = false
+	offer["rule_snapshot"] = (request.get("rule_snapshot", _contract_rule_snapshot()) as Dictionary).duplicate(true) if request.get("rule_snapshot", _contract_rule_snapshot()) is Dictionary else _contract_rule_snapshot()
 	offer["skill"] = skill.duplicate(true)
 	return {
 		"planned": true,
@@ -190,6 +357,8 @@ func plan_offer(request: Dictionary, facts: Dictionary) -> Dictionary:
 		"contract_target_owner": target_controller,
 		"contract_target_project_ids": (authority.get("project_ids", []) as Array).duplicate(true),
 		"contract_products": products.duplicate(true),
+		"transaction_id": str(request.get("transaction_id", "legacy-contract-offer:%d" % contract_id)),
+		"rule_snapshot": offer.get("rule_snapshot", {}) as Dictionary,
 		"offer": offer,
 	}
 
@@ -199,19 +368,21 @@ func commit_offer(plan: Dictionary) -> Dictionary:
 		return {"committed": false, "reason": "controller_not_ready"}
 	if not bool(plan.get("planned", false)):
 		return {"committed": false, "reason": str(plan.get("reason", "offer_not_planned"))}
-	if int(plan.get("context_revision", -1)) != _state_revision:
-		return {"committed": false, "reason": "context_revision_drift"}
-	var offer: Dictionary = (plan.get("offer", {}) as Dictionary).duplicate(true) if plan.get("offer", {}) is Dictionary else {}
-	var contract_id := int(offer.get("contract_offer_id", -1))
-	if contract_id < 0:
-		return {"committed": false, "reason": "contract_offer_id_invalid"}
-	var existing := _offer_index(contract_id)
-	if existing >= 0:
-		return {"committed": true, "reason": "already_committed", "idempotent": true, "offer": (pending_offers[existing] as Dictionary).duplicate(true)}
-	pending_offers.append(offer)
-	_state_revision += 1
-	contract_offer_opened.emit(_public_offer_snapshot(offer))
-	return {"committed": true, "reason": "committed", "idempotent": false, "offer": offer.duplicate(true)}
+	var intent := _legacy_offer_intent(plan)
+	var prepared := prepare_contract_offer_v06(intent)
+	if not bool(prepared.get("prepared", false)):
+		if bool(prepared.get("finalized", false)) or bool(prepared.get("committed", false)):
+			var replay_offer := offer_by_id(int((plan.get("offer", {}) as Dictionary).get("contract_offer_id", -1)))
+			return {"committed": not replay_offer.is_empty(), "reason": "already_committed", "idempotent": true, "offer": replay_offer}
+		return {"committed": false, "reason": str(prepared.get("reason_code", "offer_prepare_failed")), "receipt": prepared}
+	var committed := commit_contract_offer_v06(prepared)
+	if not bool(committed.get("committed", false)):
+		return {"committed": false, "reason": str(committed.get("reason_code", "offer_commit_failed")), "receipt": committed}
+	var finalized := finalize_contract_offer_v06(committed)
+	if not bool(finalized.get("finalized", false)):
+		return {"committed": false, "reason": str(finalized.get("reason_code", "offer_finalize_failed")), "receipt": committed, "finalization": finalized}
+	var contract_id := int(finalized.get("contract_offer_id", -1))
+	return {"committed": true, "reason": "committed", "idempotent": bool(committed.get("idempotent_replay", false)), "offer": offer_by_id(contract_id), "receipt": committed, "finalization": finalized}
 
 
 func open_offer(skill: Dictionary, entry: Dictionary) -> Dictionary:
@@ -252,6 +423,9 @@ func plan_response(request: Dictionary, facts: Dictionary) -> Dictionary:
 	if str(offer.get("contract_response", RESPONSE_PENDING)) != RESPONSE_PENDING:
 		return {"planned": false, "reason": "offer_already_resolved"}
 	var timeout := bool(request.get("timeout", false))
+	var expected_offer_revision := int(request.get("expected_offer_revision", offer.get("offer_revision", -1)))
+	if expected_offer_revision != int(offer.get("offer_revision", -1)):
+		return {"planned": false, "reason": "offer_revision_drift"}
 	if not timeout and float(offer.get("contract_decision_timer", 0.0)) <= 0.0:
 		return {"planned": false, "reason": "response_expired"}
 	var responder := int(request.get("player_index", -1))
@@ -265,18 +439,22 @@ func plan_response(request: Dictionary, facts: Dictionary) -> Dictionary:
 	if int(authority.get("controller_player_index", -1)) != expected_responder:
 		return {"planned": false, "reason": "target_project_controller_drift"}
 	var response := RESPONSE_TIMEOUT if timeout else (RESPONSE_ACCEPTED if bool(request.get("accept", false)) else RESPONSE_REJECTED)
-	var transaction_id := "contract:%d:%s" % [contract_id, response]
+	var transaction_id := str(request.get("transaction_id", "legacy-contract-response:%d:%s" % [contract_id, response]))
+	var response_id := str(request.get("response_id", transaction_id))
+	if transaction_id == str(offer.get("offer_open_transaction_id", "")):
+		return {"planned": false, "reason": "offer_response_transaction_reused"}
 	if _committed_transaction_ids.has(transaction_id):
 		return {"planned": false, "reason": "transaction_already_committed", "transaction_id": transaction_id}
 	var transaction := offer.duplicate(true)
 	transaction["transaction_id"] = transaction_id
+	transaction["response_id"] = response_id
 	transaction["contract_response"] = response
 	transaction["contract_response_player"] = -1 if timeout else responder
 	transaction["contract_response_time"] = float(facts.get("game_time", 0.0))
 	transaction["contract_target_project_ids"] = (authority.get("project_ids", []) as Array).duplicate(true)
 	transaction["contract_accept_summary"] = accept_effect_summary(transaction.get("skill", {}) as Dictionary)
 	transaction["contract_decline_summary"] = decline_effect_summary(transaction.get("skill", {}) as Dictionary)
-	return {"planned": true, "reason": "ready", "offer_index": index, "offer_revision": int(offer.get("offer_revision", 0)), "transaction_id": transaction_id, "transaction": transaction}
+	return {"planned": true, "reason": "ready", "offer_index": index, "offer_revision": int(offer.get("offer_revision", 0)), "transaction_id": transaction_id, "response_id": response_id, "transaction": transaction}
 
 
 func commit_response(plan: Dictionary) -> Dictionary:
@@ -284,39 +462,24 @@ func commit_response(plan: Dictionary) -> Dictionary:
 		return {"committed": false, "reason": "controller_not_ready"}
 	if not bool(plan.get("planned", false)):
 		return {"committed": false, "reason": str(plan.get("reason", "response_not_planned"))}
-	var transaction: Dictionary = (plan.get("transaction", {}) as Dictionary).duplicate(true) if plan.get("transaction", {}) is Dictionary else {}
-	var contract_id := int(transaction.get("contract_offer_id", -1))
-	var index := _offer_index(contract_id)
-	if index < 0:
-		return {"committed": false, "reason": "offer_not_found"}
-	var live_offer := pending_offers[index] as Dictionary
-	if int(live_offer.get("offer_revision", 0)) != int(plan.get("offer_revision", -1)):
-		return {"committed": false, "reason": "offer_revision_drift"}
-	var transaction_id := str(plan.get("transaction_id", transaction.get("transaction_id", "")))
-	if transaction_id == "" or _committed_transaction_ids.has(transaction_id):
-		return {"committed": false, "reason": "transaction_already_committed"}
-	var receipt := _world_bridge.apply_response_transaction(transaction)
-	if not bool(receipt.get("applied", false)):
-		return {"committed": false, "reason": str(receipt.get("reason", "world_commit_failed")), "receipt": receipt}
-	pending_offers.remove_at(index)
-	_committed_transaction_ids.append(transaction_id)
-	while _committed_transaction_ids.size() > 64:
-		_committed_transaction_ids.pop_front()
-	transaction["contract_result_clue"] = response_result_clue(transaction)
-	transaction["aftermath_clue"] = str(transaction.get("contract_result_clue", ""))
-	transaction["aftermath_style"] = "generic"
-	transaction["resolved_time"] = _world_bridge.game_time()
-	_world_bridge.store_contract_result(transaction)
-	_state_revision += 1
-	var result := {
+	var intent := _legacy_response_intent(plan)
+	var prepared := prepare_contract_response_v06(intent)
+	if not bool(prepared.get("prepared", false)):
+		return {"committed": false, "reason": str(prepared.get("reason_code", "response_prepare_failed")), "receipt": prepared}
+	var committed := commit_contract_response_v06(prepared)
+	if not bool(committed.get("committed", false)):
+		return {"committed": false, "reason": str(committed.get("reason_code", "response_commit_failed")), "receipt": committed}
+	var finalized := finalize_contract_response_v06(committed)
+	if not bool(finalized.get("finalized", false)):
+		return {"committed": false, "reason": str(finalized.get("reason_code", "response_finalize_failed")), "receipt": committed, "finalization": finalized}
+	return {
 		"committed": true,
-		"reason": str(transaction.get("contract_response", "")),
-		"contract_offer_id": contract_id,
-		"response": str(transaction.get("contract_response", "")),
-		"receipt": receipt.duplicate(true),
+		"reason": str(committed.get("contract_response", "")),
+		"contract_offer_id": int(committed.get("contract_offer_id", -1)),
+		"response": str(committed.get("contract_response", "")),
+		"receipt": committed,
+		"finalization": finalized,
 	}
-	contract_offer_resolved.emit(result.duplicate(true))
-	return result
 
 
 func respond_to_offer(player_index: int, contract_id: int, accept: bool, announce: bool = true, timeout: bool = false) -> Dictionary:
@@ -627,7 +790,73 @@ func debug_snapshot(viewer_index: int = -1) -> Dictionary:
 		"visible_timer_only": true,
 		"blocks_card_resolution": false,
 		"private_owner_exposed": false,
+		"v06_lifecycle_wip_fail_closed": true,
 	}
+
+
+func _interaction_failure(intent: Dictionary, reason_code: String, reason: String, next_step: String) -> Dictionary:
+	return INTERACTION_SCHEMA.failure_receipt(intent, reason_code, reason, next_step, {"contract_lifecycle_wip": true})
+
+
+func _action_transaction_gate(_intent: Dictionary) -> Dictionary:
+	return {"handled": false}
+
+
+func _action_kind_from_intent(intent: Dictionary) -> String:
+	var payload: Dictionary = intent.get("effect_payload", {}) if intent.get("effect_payload", {}) is Dictionary else {}
+	return str(payload.get("action_kind", ""))
+
+
+func _prepare_offer_action_v06(intent: Dictionary) -> Dictionary:
+	return _interaction_failure(intent, "contract_lifecycle_wip_fail_closed", "合约生命周期尚未完成安全接线。", "请选择当前可用的非合约行动。")
+
+
+func _prepare_response_action_v06(intent: Dictionary, _timeout: bool) -> Dictionary:
+	return _interaction_failure(intent, "contract_lifecycle_wip_fail_closed", "合约回应尚未完成原子接线。", "等待安全接线后再回应。")
+
+
+func _commit_action_v06(source: Dictionary, _expected_action: String = "", _response_family: bool = false) -> Dictionary:
+	return _interaction_failure(source, "contract_lifecycle_wip_fail_closed", "合约动作未提交，且没有修改任何状态。", "请选择当前可用的非合约行动。")
+
+
+func _rollback_action_v06(source: Dictionary, _expected_action: String = "", _response_family: bool = false) -> Dictionary:
+	return _interaction_failure(source, "contract_lifecycle_wip_fail_closed", "没有可回滚的合约动作。", "刷新当前局面。")
+
+
+func _finalize_action_v06(source: Dictionary, _expected_action: String = "", _response_family: bool = false) -> Dictionary:
+	return _interaction_failure(source, "contract_lifecycle_wip_fail_closed", "没有可完成的合约动作。", "请选择当前可用的非合约行动。")
+
+
+func _private_history_view(entry: Dictionary, _viewer_index: int) -> Dictionary:
+	return _public_history_entry(entry)
+
+
+func _public_history_entry(entry: Dictionary) -> Dictionary:
+	return {
+		"contract_offer_id": int(entry.get("contract_offer_id", -1)),
+		"contract_response": str(entry.get("contract_response", "")),
+		"contract_source_district": int(entry.get("contract_source_district", -1)),
+		"contract_target_district": int(entry.get("contract_target_district", -1)),
+		"contract_products": (entry.get("contract_products", []) as Array).duplicate(true) if entry.get("contract_products", []) is Array else [],
+		"owner_hidden": true,
+	}
+
+
+func _contract_rule_snapshot() -> Dictionary:
+	return {
+		"ruleset_id": str(_ruleset_snapshot.get("ruleset_id", "")),
+		"contract_window_seconds": _decision_seconds,
+		"catalog_contract_entries_available": false,
+		"lifecycle_wip_fail_closed": true,
+	}
+
+
+func _legacy_offer_intent(_plan: Dictionary) -> Dictionary:
+	return {}
+
+
+func _legacy_response_intent(_plan: Dictionary) -> Dictionary:
+	return {}
 
 
 func _facts(source_index: int, target_index: int, selected_product: String) -> Dictionary:

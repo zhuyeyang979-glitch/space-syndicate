@@ -558,6 +558,41 @@ layout_mode = 2
 text = "Open v0.5 Foundation Output"
 tooltip_text = "Open user://space_syndicate_design_qa/ruleset_v05_foundation/"
 
+[node name="RulesetV06FoundationSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Ruleset v0.6 Region Foundation"
+text_overrun_behavior = 3
+
+[node name="RulesetV06FoundationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenRulesetV06FoundationButton" type="Button" parent="DockMargin/DockRows/RulesetV06FoundationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open v0.6 Profile"
+tooltip_text = "Open res://resources/rules/space_syndicate_ruleset_v06.tres"
+
+[node name="OpenRegionInfrastructureCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/RulesetV06FoundationActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Open Region Gate"
+tooltip_text = "Open res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn"
+
+[node name="RunRegionInfrastructureCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Run Region Infrastructure QA"
+tooltip_text = "Run the 68-case SS06-00 characterization and heat-retirement gate"
+
+[node name="OpenRegionInfrastructureCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open Region Infrastructure Output"
+tooltip_text = "Open user://space_syndicate_design_qa/region_infrastructure_characterization/"
+
 [node name="PlayerTextV05FoundationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
 layout_mode = 2
 theme_override_constants/separation = 6

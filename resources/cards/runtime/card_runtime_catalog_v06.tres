@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CardRuntimeCatalogV06Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/cards/card_runtime_catalog_v06_resource.gd" id="1_catalog"]
+
+[resource]
+script = ExtResource("1_catalog")
+schema_version = "v0.6"
+source_path = "res://data/cards/card_runtime_catalog_v06.json"
+expected_card_count = 348
+expected_family_count = 87

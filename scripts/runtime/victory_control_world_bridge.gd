@@ -2,11 +2,12 @@
 extends Node
 class_name VictoryControlWorldBridge
 
-const BRIDGE_ID := "victory_control_world_bridge_v05"
+const BRIDGE_ID := "victory_control_world_bridge_v06"
 const CURRENCY_SCALE := 100
 
 var _world: Node
-var _city_trade_network_controller: Node
+var _region_infrastructure_controller: Node
+var _commodity_flow_controller: Node
 var _contract_controller: Node
 var _product_market_controller: Node
 var _city_gdp_derivative_controller: Node
@@ -20,8 +21,9 @@ func bind_world(world: Node) -> void:
 	_world = world
 
 
-func set_runtime_dependencies(city_trade_network_controller: Node, contract_controller: Node, product_market_controller: Node, city_gdp_derivative_controller: Node, military_controller: Node) -> void:
-	_city_trade_network_controller = city_trade_network_controller
+func set_runtime_dependencies(region_infrastructure_controller: Node, commodity_flow_controller: Node, contract_controller: Node, product_market_controller: Node, city_gdp_derivative_controller: Node, military_controller: Node) -> void:
+	_region_infrastructure_controller = region_infrastructure_controller
+	_commodity_flow_controller = commodity_flow_controller
 	_contract_controller = contract_controller
 	_product_market_controller = product_market_controller
 	_city_gdp_derivative_controller = city_gdp_derivative_controller
@@ -38,51 +40,40 @@ func reset_state() -> void:
 	_applied_outcome_ids = {}
 
 
-func capture_world_snapshot(clock_pause: Dictionary = {}) -> Dictionary:
-	if not has_world() or _city_trade_network_controller == null:
+func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint := "read_only") -> Dictionary:
+	if not has_world() or _region_infrastructure_controller == null or _commodity_flow_controller == null:
 		return {}
 	_capture_count += 1
 	var players_variant: Variant = _world.get("players")
-	var districts_variant: Variant = _world.get("districts")
 	var players: Array = players_variant if players_variant is Array else []
-	var districts: Array = districts_variant if districts_variant is Array else []
 	var region_rows: Array = []
-	var project_positions_by_player := {}
-	for player_index in range(players.size()):
-		project_positions_by_player[str(player_index)] = []
-	for district_index in range(districts.size()):
-		var district: Dictionary = districts[district_index] if districts[district_index] is Dictionary else {}
-		var public_gdp_variant: Variant = _city_trade_network_controller.call("public_region_gdp_snapshot", district_index) if _city_trade_network_controller.has_method("public_region_gdp_snapshot") else {}
+	var runtime_regions_variant: Variant = _region_infrastructure_controller.call("regions_snapshot") if _region_infrastructure_controller.has_method("regions_snapshot") else []
+	var runtime_regions: Array = runtime_regions_variant if runtime_regions_variant is Array else []
+	for region_variant in runtime_regions:
+		if not (region_variant is Dictionary):
+			continue
+		var region: Dictionary = region_variant
+		var region_id := str(region.get("region_id", ""))
+		if region_id.is_empty():
+			continue
+		var public_gdp_variant: Variant = _commodity_flow_controller.call("region_gdp_snapshot", region_id) if _commodity_flow_controller.has_method("region_gdp_snapshot") else {}
 		var public_gdp: Dictionary = public_gdp_variant if public_gdp_variant is Dictionary else {}
-		var player_gdp_by_index := {}
-		for player_index in range(players.size()):
-			var private_gdp_variant: Variant = _city_trade_network_controller.call("private_region_gdp_snapshot", district_index, player_index) if _city_trade_network_controller.has_method("private_region_gdp_snapshot") else {}
-			var private_gdp: Dictionary = private_gdp_variant if private_gdp_variant is Dictionary else {}
-			player_gdp_by_index[str(player_index)] = maxi(0, int(private_gdp.get("own_gdp_per_minute", 0)))
-			for attribution_variant in private_gdp.get("own_attribution_rows", []):
-				if not (attribution_variant is Dictionary):
-					continue
-				var attribution: Dictionary = attribution_variant
-				(project_positions_by_player[str(player_index)] as Array).append({
-					"region_id": str(public_gdp.get("region_id", "")),
-					"district_index": district_index,
-					"project_id": str(attribution.get("project_id", "")),
-					"project_generation": int(attribution.get("project_generation", 0)),
-					"share_basis_points": int(attribution.get("share_basis_points", 0)),
-					"attributable_gdp_per_minute": int(attribution.get("attributable_gdp_per_minute", 0)),
-				})
-		var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+		var player_gdp_by_index: Dictionary = public_gdp.get("player_gdp_per_minute_cents_by_index", {}) if public_gdp.get("player_gdp_per_minute_cents_by_index", {}) is Dictionary else {}
 		region_rows.append({
-			"region_id": str(public_gdp.get("region_id", city.get("region_id", "region_%d" % district_index))),
-			"district_index": district_index,
-			"destroyed": bool(district.get("destroyed", false)),
+			"region_id": region_id,
+			"district_index": int(region.get("legacy_index", -1)),
+			"lifecycle_state": str(region.get("lifecycle_state", "undeveloped")),
+			"destroyed": str(region.get("lifecycle_state", "undeveloped")) == "ruined",
+			"region_generation": int(region.get("generation", 1)),
+			"region_revision": int(region.get("revision", 0)),
+			"region_gdp_per_minute_cents": int(public_gdp.get("region_gdp_per_minute_cents", 0)),
 			"region_gdp_per_minute": int(public_gdp.get("region_gdp_per_minute", 0)),
 			"player_gdp_by_index": player_gdp_by_index,
 		})
 	var player_rows: Array = []
 	for player_index in range(players.size()):
 		var player: Dictionary = players[player_index] if players[player_index] is Dictionary else {}
-		var available_cents := int(player.get("cash", 0)) * CURRENCY_SCALE
+		var available_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * CURRENCY_SCALE))
 		var escrow_cents := _player_escrow_cents(player_index)
 		player_rows.append({
 			"player_index": player_index,
@@ -94,23 +85,23 @@ func capture_world_snapshot(clock_pause: Dictionary = {}) -> Dictionary:
 				"available_cents": available_cents,
 				"escrow_cents": escrow_cents,
 				"cash_ledger_cents": available_cents + escrow_cents,
-				"project_positions": (project_positions_by_player.get(str(player_index), []) as Array).duplicate(true),
+				"ordinary_hand": _ordinary_hand_snapshot(player),
+				"facilities": _facility_assets(player_index),
+				"installations": _installation_assets(player_index),
+				"commodity_inventory": _commodity_inventory_assets(player_index),
+				"color_gdp": _color_gdp_snapshot(player_index),
+				"units": _unit_assets(player_index),
 				"contracts": _contract_assets(player_index),
-				"warehouses": _warehouse_assets(player_index),
 				"financial_positions": _financial_assets(player_index),
-				"hand_count": _ordinary_hand_count(player),
-				"unit_count": _military_unit_count(player_index),
 			},
 		})
-	var depth_tier := int(_world.get("configured_roguelike_depth"))
-	if depth_tier <= 0:
-		depth_tier = 3
 	return {
-		"schema_version": "v0.5.victory-world.1",
-		"depth_tier": depth_tier,
+		"schema_version": "v0.6.victory-world.2",
 		"players": player_rows,
 		"regions": region_rows,
 		"clock_pause": clock_pause.duplicate(true) if _is_data_only(clock_pause) else {},
+		"settlement_checkpoint": settlement_checkpoint,
+		"ordering_receipt": _ordering_receipt(settlement_checkpoint),
 		"visibility_scope": "controller_private",
 	}
 
@@ -133,11 +124,13 @@ func apply_outcome_receipt(receipt: Dictionary) -> Dictionary:
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_id": BRIDGE_ID,
-		"bridge_ready": has_world() and _city_trade_network_controller != null,
+		"bridge_ready": has_world() and _region_infrastructure_controller != null and _commodity_flow_controller != null,
 		"capture_count": _capture_count,
 		"apply_count": _apply_count,
 		"applied_outcome_count": _applied_outcome_ids.size(),
 		"owns_gdp_formula": false,
+		"region_lifecycle_source": "RegionInfrastructureRuntimeController",
+		"gdp_source": "CommodityFlowRuntimeController.sale_receipts",
 		"owns_project_attribution": false,
 		"owns_victory_state": false,
 		"owns_session_state": false,
@@ -155,18 +148,128 @@ func _player_escrow_cents(player_index: int) -> int:
 	return 0
 
 
-func _ordinary_hand_count(player: Dictionary) -> int:
-	var count := 0
+func _ordinary_hand_snapshot(player: Dictionary) -> Array:
+	var result: Array = []
 	for skill_variant in player.get("skills", []):
 		if skill_variant is Dictionary and not bool((skill_variant as Dictionary).get("fixed", false)):
-			count += 1
-	return count
+			var skill: Dictionary = skill_variant
+			result.append({
+				"card_id": str(skill.get("card_id", skill.get("id", skill.get("name", "")))),
+				"family_id": str(skill.get("family_id", skill.get("family", ""))),
+				"rank": int(skill.get("rank", 1)),
+				"kind": str(skill.get("kind", "")),
+				"queued": bool(skill.get("queued", false)),
+				"locked": bool(skill.get("locked", false)),
+			})
+	return result
 
 
-func _military_unit_count(player_index: int) -> int:
-	if _military_controller != null and _military_controller.has_method("visible_unit_count"):
-		return maxi(0, int(_military_controller.call("visible_unit_count", player_index, player_index)))
-	return 0
+func _facility_assets(player_index: int) -> Array:
+	var result: Array = []
+	if _region_infrastructure_controller == null or not _region_infrastructure_controller.has_method("facilities_snapshot"):
+		return result
+	var facilities_variant: Variant = _region_infrastructure_controller.call("facilities_snapshot", false)
+	if not (facilities_variant is Array):
+		return result
+	for facility_variant in facilities_variant:
+		if not (facility_variant is Dictionary):
+			continue
+		var facility: Dictionary = facility_variant
+		if str(facility.get("owner_kind", "")) != "player" or int(facility.get("owner_player_index", -1)) != player_index:
+			continue
+		result.append({
+			"facility_id": str(facility.get("facility_id", "")),
+			"region_id": str(facility.get("region_id", "")),
+			"facility_type": str(facility.get("facility_type", "")),
+			"industry_id": str(facility.get("industry_id", "")),
+			"rank": int(facility.get("rank", 1)),
+			"generation": int(facility.get("generation", 1)),
+			"active": bool(facility.get("active", false)),
+		})
+	return result
+
+
+func _installation_assets(player_index: int) -> Array:
+	var result: Array = []
+	if _commodity_flow_controller == null or not _commodity_flow_controller.has_method("installations_snapshot"):
+		return result
+	var installations_variant: Variant = _commodity_flow_controller.call("installations_snapshot", false)
+	if not (installations_variant is Array):
+		return result
+	for installation_variant in installations_variant:
+		if not (installation_variant is Dictionary):
+			continue
+		var installation: Dictionary = installation_variant
+		if int(installation.get("installer_player_index", -1)) != player_index:
+			continue
+		result.append({
+			"installation_id": str(installation.get("installation_id", "")),
+			"commodity_id": str(installation.get("commodity_id", "")),
+			"color": str(installation.get("color", "")),
+			"direction": str(installation.get("direction", "")),
+			"base_units_per_minute": int(installation.get("base_units_per_minute", 0)),
+			"source_card_rank": int(installation.get("source_card_rank", 1)),
+			"facility_id": str(installation.get("facility_id", "")),
+			"region_id": str(installation.get("region_id", "")),
+			"active": bool(installation.get("active", false)),
+		})
+	return result
+
+
+func _commodity_inventory_assets(player_index: int) -> Array:
+	var result: Array = []
+	if _commodity_flow_controller == null or not _commodity_flow_controller.has_method("warehouse_inventory_snapshot"):
+		return result
+	var inventory_variant: Variant = _commodity_flow_controller.call("warehouse_inventory_snapshot", player_index)
+	if not (inventory_variant is Array):
+		return result
+	for row_variant in inventory_variant:
+		if not (row_variant is Dictionary):
+			continue
+		var row: Dictionary = row_variant
+		if int(row.get("owner_player_index", -1)) != player_index:
+			continue
+		result.append({
+			"warehouse_id": str(row.get("warehouse_id", "")),
+			"commodity_id": str(row.get("commodity_id", "")),
+			"color": str(row.get("color", "")),
+			"stored_milliunits": int(row.get("stored_milliunits", 0)),
+			"source_region_id": str(row.get("source_region_id", "")),
+		})
+	return result
+
+
+func _color_gdp_snapshot(player_index: int) -> Dictionary:
+	if _commodity_flow_controller == null or not _commodity_flow_controller.has_method("player_color_flow_snapshot"):
+		return {}
+	var snapshot_variant: Variant = _commodity_flow_controller.call("player_color_flow_snapshot", player_index)
+	if not (snapshot_variant is Dictionary):
+		return {}
+	var snapshot: Dictionary = snapshot_variant
+	return (snapshot.get("colors", {}) as Dictionary).duplicate(true) if snapshot.get("colors", {}) is Dictionary else {}
+
+
+func _unit_assets(player_index: int) -> Array:
+	var result: Array = []
+	if _military_controller == null or not _military_controller.has_method("roster_snapshot"):
+		return result
+	var roster_variant: Variant = _military_controller.call("roster_snapshot", true)
+	if not (roster_variant is Array):
+		return result
+	for unit_variant in roster_variant:
+		if not (unit_variant is Dictionary):
+			continue
+		var unit: Dictionary = unit_variant
+		if int(unit.get("owner", -1)) != player_index:
+			continue
+		result.append({
+			"unit_uid": int(unit.get("uid", unit.get("unit_uid", -1))),
+			"military_type": str(unit.get("military_type", "")),
+			"rank": int(unit.get("rank", 1)),
+			"district_index": int(unit.get("district_index", unit.get("current_district", -1))),
+			"duration_remaining": float(unit.get("duration_remaining", 0.0)),
+		})
+	return result
 
 
 func _contract_assets(player_index: int) -> Array:
@@ -189,19 +292,6 @@ func _contract_assets(player_index: int) -> Array:
 			"target_district": int(offer.get("contract_target_district", -1)),
 			"products": (offer.get("contract_products", []) as Array).duplicate() if offer.get("contract_products", []) is Array else [],
 		})
-	return result
-
-
-func _warehouse_assets(player_index: int) -> Array:
-	var result: Array = []
-	for position_variant in _product_financial_positions(player_index):
-		if position_variant is Dictionary and int((position_variant as Dictionary).get("warehouse_district", -1)) >= 0:
-			result.append({
-				"position_id": int((position_variant as Dictionary).get("position_id", -1)),
-				"product_id": str((position_variant as Dictionary).get("product", (position_variant as Dictionary).get("product_id", ""))),
-				"warehouse_district": int((position_variant as Dictionary).get("warehouse_district", -1)),
-				"units": int((position_variant as Dictionary).get("units", 0)),
-			})
 	return result
 
 
@@ -248,6 +338,20 @@ func _sanitize_financial_position(position: Dictionary, position_kind: String) -
 		"locked_margin_cents": int(position.get("locked_margin", 0)) * CURRENCY_SCALE,
 		"maximum_gain_cents": int(position.get("maximum_gain", 0)) * CURRENCY_SCALE,
 		"maximum_loss_cents": int(position.get("maximum_loss", 0)) * CURRENCY_SCALE,
+	}
+
+
+func _ordering_receipt(settlement_checkpoint: String) -> Dictionary:
+	var region_debug_variant: Variant = _region_infrastructure_controller.call("debug_snapshot") if _region_infrastructure_controller != null and _region_infrastructure_controller.has_method("debug_snapshot") else {}
+	var flow_debug_variant: Variant = _commodity_flow_controller.call("debug_snapshot") if _commodity_flow_controller != null and _commodity_flow_controller.has_method("debug_snapshot") else {}
+	var region_debug: Dictionary = region_debug_variant if region_debug_variant is Dictionary else {}
+	var flow_debug: Dictionary = flow_debug_variant if flow_debug_variant is Dictionary else {}
+	return {
+		"checkpoint": settlement_checkpoint,
+		"region_revision": int(region_debug.get("revision", 0)),
+		"flow_revision": int(flow_debug.get("flow_revision", 0)),
+		"captured_at_game_time": float(_world.get("game_time")) if has_world() else 0.0,
+		"victory_reads_after": ["locked_intents", "construction_repair", "unit_attacks", "region_lifecycle", "route_rebuild", "commodity_flow", "sale_receipts", "bankruptcy"],
 	}
 
 

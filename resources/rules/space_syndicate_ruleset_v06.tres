@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SpaceSyndicateRulesetProfileV06" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/rules/space_syndicate_ruleset_profile_v06.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+card_group_seconds = 30
+planning_seconds = 20
+public_bid_seconds = 5
+lock_seconds = 5
+opening_extended_windows = 3
+opening_group_seconds = 45
+opening_planning_seconds = 35
+ordinary_card_limit = 1
+maximum_with_explicit_capability = 3

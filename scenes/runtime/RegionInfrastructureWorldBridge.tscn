@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/region_infrastructure_world_bridge.gd" id="1_bridge"]
+
+[node name="RegionInfrastructureWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Non-owning adapter for v0.6 infrastructure intents and receipts. It contains no facility, HP, heat, targeting, economy, or presentation rules."

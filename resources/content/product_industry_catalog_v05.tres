@@ -1,8 +1,8 @@
-[gd_resource type="Resource" script_class="ProductIndustryCatalogResource" load_steps=56 format=3]
+[gd_resource type="Resource" script_class="ProductIndustryCatalogResource" format=3 uid="uid://dxv8l0p0pj4lp"]
 
-[ext_resource type="Script" path="res://scripts/content/product_industry_catalog_resource.gd" id="1_catalog"]
-[ext_resource type="Script" path="res://scripts/content/product_industry_definition_resource.gd" id="2_industry"]
-[ext_resource type="Script" path="res://scripts/content/product_industry_entry_resource.gd" id="3_product"]
+[ext_resource type="Script" uid="uid://blf50u4nhm3qm" path="res://scripts/content/product_industry_catalog_resource.gd" id="1_catalog"]
+[ext_resource type="Script" uid="uid://c37spi84vmnir" path="res://scripts/content/product_industry_definition_resource.gd" id="2_industry"]
+[ext_resource type="Script" uid="uid://cnko53wlro4vv" path="res://scripts/content/product_industry_entry_resource.gd" id="3_product"]
 
 [sub_resource type="Resource" id="Industry_life"]
 script = ExtResource("2_industry")
@@ -11,7 +11,6 @@ display_name = "生命"
 icon_key = "industry.life"
 color_key = "industry_life_green"
 gameplay_summary = "生长、治疗、复兴与稳定收入。"
-capacity_thresholds = Array[int]([15, 40, 80, 140])
 
 [sub_resource type="Resource" id="Industry_energy"]
 script = ExtResource("2_industry")
@@ -20,7 +19,6 @@ display_name = "能源"
 icon_key = "industry.energy"
 color_key = "industry_energy_orange"
 gameplay_summary = "爆发 GDP、天气、怪兽强化与攻击。"
-capacity_thresholds = Array[int]([15, 40, 80, 140])
 
 [sub_resource type="Resource" id="Industry_industry"]
 script = ExtResource("2_industry")
@@ -29,7 +27,6 @@ display_name = "工业"
 icon_key = "industry.industry"
 color_key = "industry_industry_gray"
 gameplay_summary = "建筑、军队、护甲与项目升级。"
-capacity_thresholds = Array[int]([15, 40, 80, 140])
 
 [sub_resource type="Resource" id="Industry_technology"]
 script = ExtResource("2_industry")
@@ -38,7 +35,6 @@ display_name = "科技"
 icon_key = "industry.technology"
 color_key = "industry_technology_blue"
 gameplay_summary = "情报、反制、顺序与目标控制。"
-capacity_thresholds = Array[int]([15, 40, 80, 140])
 
 [sub_resource type="Resource" id="Industry_commerce"]
 script = ExtResource("2_industry")
@@ -47,7 +43,6 @@ display_name = "商贸"
 icon_key = "industry.commerce"
 color_key = "industry_commerce_purple"
 gameplay_summary = "需求、合约、拍卖与金融。"
-capacity_thresholds = Array[int]([15, 40, 80, 140])
 
 [sub_resource type="Resource" id="Industry_shipping"]
 script = ExtResource("2_industry")
@@ -56,7 +51,6 @@ display_name = "航运"
 icon_key = "industry.shipping"
 color_key = "industry_shipping_cyan"
 gameplay_summary = "通商、路线、远程购买与转换。"
-capacity_thresholds = Array[int]([15, 40, 80, 140])
 
 [sub_resource type="Resource" id="Product_001"]
 script = ExtResource("3_product")
@@ -428,6 +422,5 @@ optional_tags = Array[String](["runtime_product", "industry_shipping"])
 
 [resource]
 script = ExtResource("1_catalog")
-schema_version = "v0.5"
-industries = Array[Resource]([SubResource("Industry_life"), SubResource("Industry_energy"), SubResource("Industry_industry"), SubResource("Industry_technology"), SubResource("Industry_commerce"), SubResource("Industry_shipping")])
-products = Array[Resource]([SubResource("Product_001"), SubResource("Product_002"), SubResource("Product_003"), SubResource("Product_004"), SubResource("Product_005"), SubResource("Product_006"), SubResource("Product_007"), SubResource("Product_008"), SubResource("Product_009"), SubResource("Product_010"), SubResource("Product_011"), SubResource("Product_012"), SubResource("Product_013"), SubResource("Product_014"), SubResource("Product_015"), SubResource("Product_016"), SubResource("Product_017"), SubResource("Product_018"), SubResource("Product_019"), SubResource("Product_020"), SubResource("Product_021"), SubResource("Product_022"), SubResource("Product_023"), SubResource("Product_024"), SubResource("Product_025"), SubResource("Product_026"), SubResource("Product_027"), SubResource("Product_028"), SubResource("Product_029"), SubResource("Product_030"), SubResource("Product_031"), SubResource("Product_032"), SubResource("Product_033"), SubResource("Product_034"), SubResource("Product_035"), SubResource("Product_036"), SubResource("Product_037"), SubResource("Product_038"), SubResource("Product_039"), SubResource("Product_040"), SubResource("Product_041"), SubResource("Product_042"), SubResource("Product_043"), SubResource("Product_044"), SubResource("Product_045"), SubResource("Product_046")])
+industries = Array[ExtResource("2_industry")]([SubResource("Industry_life"), SubResource("Industry_energy"), SubResource("Industry_industry"), SubResource("Industry_technology"), SubResource("Industry_commerce"), SubResource("Industry_shipping")])
+products = Array[ExtResource("3_product")]([SubResource("Product_001"), SubResource("Product_002"), SubResource("Product_003"), SubResource("Product_004"), SubResource("Product_005"), SubResource("Product_006"), SubResource("Product_007"), SubResource("Product_008"), SubResource("Product_009"), SubResource("Product_010"), SubResource("Product_011"), SubResource("Product_012"), SubResource("Product_013"), SubResource("Product_014"), SubResource("Product_015"), SubResource("Product_016"), SubResource("Product_017"), SubResource("Product_018"), SubResource("Product_019"), SubResource("Product_020"), SubResource("Product_021"), SubResource("Product_022"), SubResource("Product_023"), SubResource("Product_024"), SubResource("Product_025"), SubResource("Product_026"), SubResource("Product_027"), SubResource("Product_028"), SubResource("Product_029"), SubResource("Product_030"), SubResource("Product_031"), SubResource("Product_032"), SubResource("Product_033"), SubResource("Product_034"), SubResource("Product_035"), SubResource("Product_036"), SubResource("Product_037"), SubResource("Product_038"), SubResource("Product_039"), SubResource("Product_040"), SubResource("Product_041"), SubResource("Product_042"), SubResource("Product_043"), SubResource("Product_044"), SubResource("Product_045"), SubResource("Product_046")])

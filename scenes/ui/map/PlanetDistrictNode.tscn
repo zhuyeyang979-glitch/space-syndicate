@@ -22,7 +22,7 @@ text_overrun_behavior = 3
 [node name="DistrictMetaLabel" type="Label" parent="DistrictNodeRows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "surface | HP 0"
+text = "地表区｜共享生命 0｜警戒 0%"
 text_overrun_behavior = 3
 
 [node name="DistrictProductLabel" type="Label" parent="DistrictNodeRows"]
@@ -34,5 +34,5 @@ text_overrun_behavior = 3
 [node name="DistrictStateLabel" type="Label" parent="DistrictNodeRows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "map node"
+text = "区域节点"
 text_overrun_behavior = 3

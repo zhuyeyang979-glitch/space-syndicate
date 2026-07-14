@@ -38,7 +38,7 @@ Preserve this loop unless the user explicitly changes it:
 8. Cities produce realtime GDP from production, demand, transport, routes, damage, contracts, and market pressure.
 9. Monsters and military units create visible map pressure and economic consequences.
 10. Players infer hidden owners and anonymous card sources.
-11. When a cash goal is reached, a final countdown starts; final ranking is by money.
+11. A player who controls the dynamic Top-K share of surviving regions and reaches the required Top-K commodity GDP for 10 seconds enters a 120-second final audit. At audit end, qualifying players compare Top-K commodity GDP, then controlled-region count, then exact cash.
 
 Important rules:
 
@@ -47,7 +47,7 @@ Important rules:
 - Monster cards can summon/upgrade/refresh monsters and grant reusable bound skills.
 - Military units are weaker controlled forces that use reusable command cards.
 - Card play is anonymous unless later inference reveals ownership.
-- Player cash, hand size, discard choices, AI pressure buckets, and AI route plans are private.
+- Player cash, hand size, discard choices, AI pressure buckets, and AI route plans are private during ordinary play. A player who enters the authoritative final-audit roster explicitly reveals the economic facts required by the current audit rule; seats outside that roster remain private. UI must consume the owner's visibility-tagged public projection and may never infer visibility from `game_over`, winner status, or the mere presence of a cash field.
 - Public UI may show clues, aftermath, costs, bids, revealed owners, city damage, GDP trends, and product pressure.
 - The economy is realtime/seconds-based; do not reintroduce turn-cycle language for GDP or temporary financial windows.
 
@@ -191,7 +191,7 @@ Key files and folders:
 
 - `project.godot` — Godot project.
 - `scenes/main.tscn` — main scene.
-- `scripts/main.gd` — current large prototype script containing most game/UI logic.
+- `scripts/main.gd` — transitional legacy facade scheduled for complete deletion. Do not add new ownership, formulas, UI construction, compatibility fallbacks, or durable feature logic here.
 - `tests/smoke_test.gd` — full behavioral smoke test.
 - `tests/ui_text_smoke_test.gd` — source-level UI text/contract guard.
 - `tests/visual_snapshot.gd` — source-level visual/layout contract guard.
@@ -201,7 +201,23 @@ Key files and folders:
 - `docs/reference_ui_notes.md` — deeper reference notes.
 - `REFERENCE_LINKS.md` — root list of reference URLs.
 
-The codebase is still prototype-heavy. Prefer improving stability and readability over large rewrites unless a rewrite directly reduces future risk.
+The codebase is still prototype-heavy. The active architecture program is to migrate every remaining `main.gd` responsibility into an editable Godot scene plus a narrow Controller/WorldBridge or presentation service, prove the production cutover, remove conflicting legacy behavior, and finally delete `scripts/main.gd`. Do not move the monolith into another giant script.
+
+## Mandatory Godot MCP Workflow
+
+Every production change must use the local Godot MCP server. Editing `.gd` files and running console tests alone is not acceptance evidence.
+
+For each task:
+
+1. Inspect the real project and the relevant `.tscn` through Godot MCP.
+2. Implement the behavior in an editable Godot scene and its scoped script/resource modules. A script-only subsystem without a production or Bench scene is incomplete.
+3. Run the real scene or a production-wiring Bench with Godot MCP.
+4. Read MCP debug output, resolve reported errors, and stop the running project.
+5. Record the scene path, MCP runtime result, debug error count, and stop result in the handoff.
+
+Headless focused tests remain required, but supplement rather than replace MCP scene/runtime evidence. Coordinate a single MCP runtime lease in the shared worktree so parallel agents do not fight over the editor/import lock.
+
+When current player rules contradict legacy code in `main.gd`, delete the legacy path after the replacement scene is connected and tested. Do not retain a fallback to obsolete rules merely for old tests; migrate or retire the stale oracle instead.
 
 ## Godot Commands
 
@@ -299,12 +315,13 @@ Guidelines:
 Before editing:
 
 1. Check `git status --short`.
-2. Inspect the relevant current code and screenshots.
+2. Inspect the relevant current code, scene tree, and screenshots; use Godot MCP for engine-aware scene context.
 3. Preserve unrelated user changes.
 
 While editing:
 
 - Prefer small, testable changes.
+- Every new runtime or presentation responsibility must have an editable `.tscn` production/Bench surface; do not deliver a pure-script-only feature.
 - Use existing UI helpers/styles before creating new visual systems.
 - Add or update tests when changing behavior or UI contracts.
 - Keep docs in sync when rules, workflows, or major UI patterns change.
@@ -312,10 +329,10 @@ While editing:
 After editing:
 
 1. Run relevant tests.
-2. Capture headed UI screenshots for visual changes.
-3. Update `docs/development_log.md`.
-4. Commit with a clear message.
-5. Push when the user has asked for GitHub sync or the thread is already operating in sync mode.
+2. Run the corresponding real scene or production Bench with Godot MCP, inspect debug output, and stop it.
+3. Capture headed UI screenshots for visual changes.
+4. Update `docs/development_log.md`.
+5. Commit or push only when explicitly assigned and the shared-worktree coordinator confirms ownership.
 
 ## Definition of Done
 
@@ -325,9 +342,10 @@ A change is done when:
 2. Player-facing UI remains concise and readable.
 3. Hidden information stays hidden.
 4. Relevant automated tests pass.
-5. Visual changes have been inspected in headed screenshots when practical.
-6. Development log or docs are updated for meaningful gameplay/UI/rule changes.
-7. The worktree is clean after commit/push when a commit is expected.
+5. The real Godot scene or production Bench has passed through MCP with inspected debug output and a clean stop.
+6. Visual changes have been inspected in headed screenshots when practical.
+7. Development log or docs are updated for meaningful gameplay/UI/rule changes.
+8. The worktree is clean after commit/push when a commit is expected.
 
 ## When Unsure
 

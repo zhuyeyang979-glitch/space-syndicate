@@ -15,6 +15,7 @@ exports/
 builds/
 output/
 tmp/
+.tmp_*/
 
 # OS/editor noise
 .DS_Store

@@ -96,6 +96,20 @@ const INDUSTRY_CAPACITY_RUNTIME_SERVICE := "res://scenes/runtime/IndustryCapacit
 const INDUSTRY_CAPACITY_WORLD_BRIDGE := "res://scenes/runtime/IndustryCapacityWorldBridge.tscn"
 const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH := "res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn"
 const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT := "res://docs/industry_capacity_card_group_runtime_contract.md"
+const RULESET_V06_PROFILE := "res://resources/rules/space_syndicate_ruleset_v06.tres"
+const RULESET_V06_SCHEMA_REGISTRY := "res://scripts/rules/ruleset_v06_schema_registry.gd"
+const RULESET_V06_CONFORMANCE_REGISTRY := "res://scripts/tools/ruleset_v06_conformance_registry.gd"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH := "res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_REGISTRY := "res://scripts/tools/region_infrastructure_characterization_registry.gd"
+const REGION_INFRASTRUCTURE_CONTRACT := "res://docs/region_infrastructure_runtime_ownership_contract.md"
+const REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER := "res://scenes/runtime/RegionInfrastructureRuntimeController.tscn"
+const REGION_INFRASTRUCTURE_WORLD_BRIDGE := "res://scenes/runtime/RegionInfrastructureWorldBridge.tscn"
+const ROUTE_NETWORK_RUNTIME_CONTROLLER := "res://scenes/runtime/RouteNetworkRuntimeController.tscn"
+const ROUTE_NETWORK_WORLD_BRIDGE := "res://scenes/runtime/RouteNetworkWorldBridge.tscn"
+const COMMODITY_FLOW_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityFlowRuntimeController.tscn"
+const COMMODITY_FLOW_WORLD_BRIDGE := "res://scenes/runtime/CommodityFlowWorldBridge.tscn"
+const PLAYER_MANA_RUNTIME_CONTROLLER := "res://scenes/runtime/PlayerManaRuntimeController.tscn"
+const COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityCardInventoryRuntimeController.tscn"
 
 var failures: Array[String] = []
 
@@ -127,6 +141,7 @@ func _run() -> void:
 	_check_player_text_v05_foundation_assets()
 	_check_victory_control_runtime_assets()
 	_check_industry_capacity_card_group_runtime_assets()
+	_check_ruleset_v06_region_infrastructure_foundation_assets()
 	var test_bgm := main.get_node_or_null("RuntimeServices/TableAudioHost/NightPatrolTableBgm") as AudioStreamPlayer
 	if test_bgm != null:
 		test_bgm.stream = null
@@ -160,12 +175,11 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeGameScreen",
 		"RuntimeServices",
 		"RuntimeServices/RulesetRuntimeBridge",
+		"RuntimeServices/FinalSettlementRuntimeComposition",
 		"RuntimeServices/TableAudioHost",
 		"RuntimeServices/RuntimeControllerHost",
 		"RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeCatalogService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeDefinitionWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameplayBalanceDiagnosticsRuntimeService",
@@ -191,12 +205,18 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardEconomyProductRouteFormulaRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyCashflowRuntimeController",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GdpFormulaRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkWorldBridge",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowWorldBridge",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerManaRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityCardInventoryRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayerStateProductionAdapterV06",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CoreEconomicCardRuntimeAdapterV06",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlWorldBridge",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityRuntimeService",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService",
@@ -232,11 +252,11 @@ func _check_static_composition(main: Control) -> void:
 	_expect(card_controller != null and card_controller.scene_file_path == "res://scenes/runtime/CardResolutionRuntimeController.tscn", "RuntimeControllerHost owns the editable CardResolutionRuntimeController scene")
 	_expect(card_controller != null and card_controller.has_method("tick") and card_controller.has_method("to_save_data") and card_controller.has_method("debug_snapshot"), "CardResolutionRuntimeController exposes timing, save, and debug APIs")
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var city_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController")
-	var city_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge")
-	_expect(city_controller != null and city_controller.scene_file_path == "res://scenes/runtime/CityDevelopmentRuntimeController.tscn", "GameRuntimeCoordinator owns the editable CityDevelopmentRuntimeController scene")
-	_expect(city_controller != null and city_controller.has_method("evaluate_development_request") and city_controller.has_method("plan_settlement") and city_controller.has_method("validate_settlement_plan") and city_controller.has_method("finalize_settlement") and city_controller.has_method("debug_snapshot"), "CityDevelopmentRuntimeController exposes legality, planning, lifecycle, and debug APIs")
-	_expect(city_world_bridge != null and city_world_bridge.scene_file_path == "res://scenes/runtime/CityDevelopmentWorldBridge.tscn" and city_world_bridge.has_method("capture_settlement_facts") and city_world_bridge.has_method("preflight_settlement") and city_world_bridge.has_method("apply_settlement_plan"), "GameRuntimeCoordinator owns the non-owning CityDevelopmentWorldBridge scene")
+	var final_settlement_composition := main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition")
+	var region_infrastructure := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController")
+	var region_infrastructure_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge")
+	_expect(region_infrastructure != null and region_infrastructure.scene_file_path == REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER and region_infrastructure.has_method("apply_facility_action") and region_infrastructure.has_method("rollback_facility_action") and region_infrastructure.has_method("finalize_facility_action") and region_infrastructure.has_method("facility_rollback_atomic_ready"), "GameRuntimeCoordinator owns the authoritative v0.6 RegionInfrastructure facility lifecycle")
+	_expect(region_infrastructure_bridge != null and region_infrastructure_bridge.scene_file_path == REGION_INFRASTRUCTURE_WORLD_BRIDGE and region_infrastructure_bridge.has_method("bind_world") and region_infrastructure_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning RegionInfrastructureWorldBridge")
 	var balance_diagnostics := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameplayBalanceDiagnosticsRuntimeService")
 	var balance_diagnostics_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameplayBalanceDiagnosticsWorldBridge")
 	var ai_runtime_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController")
@@ -260,13 +280,17 @@ func _check_static_composition(main: Control) -> void:
 	var product_market_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeWorldBridge")
 	var city_gdp_derivative_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityGdpDerivativeRuntimeController")
 	var city_gdp_derivative_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityGdpDerivativeRuntimeWorldBridge")
-	var industry_capacity := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityRuntimeService")
-	var industry_capacity_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityWorldBridge")
+	var route_network := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkRuntimeController")
+	var route_network_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkWorldBridge")
+	var commodity_flow := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowRuntimeController")
+	var commodity_flow_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowWorldBridge")
+	var player_mana := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerManaRuntimeController")
+	var commodity_inventory := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityCardInventoryRuntimeController")
+	var production_state_adapter := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayerStateProductionAdapterV06")
+	var core_economic_adapter := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CoreEconomicCardRuntimeAdapterV06")
 	var hand_interaction := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerHandInteractionRuntimeService")
 	var purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService")
 	var district_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService")
-	var economy := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyCashflowRuntimeController")
-	var gdp_formula := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GdpFormulaRuntimeController")
 	var scenario := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController")
 	var first_table_authored := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/FirstTableAuthoredRuntimeService")
 	var codex_navigation := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
@@ -307,8 +331,14 @@ func _check_static_composition(main: Control) -> void:
 	_expect(product_market_world_bridge != null and product_market_world_bridge.scene_file_path == PRODUCT_MARKET_RUNTIME_WORLD_BRIDGE and product_market_world_bridge.has_method("bind_world") and product_market_world_bridge.has_method("shared_rng") and product_market_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning ProductMarketRuntimeWorldBridge scene")
 	_expect(city_gdp_derivative_controller != null and city_gdp_derivative_controller.scene_file_path == CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER and city_gdp_derivative_controller.has_method("open_position") and city_gdp_derivative_controller.has_method("settle_district") and city_gdp_derivative_controller.has_method("settle_destroyed_city") and city_gdp_derivative_controller.has_method("to_save_data") and city_gdp_derivative_controller.has_method("apply_save_data"), "GameRuntimeCoordinator owns the authoritative Resource-backed CityGdpDerivativeRuntimeController scene")
 	_expect(city_gdp_derivative_world_bridge != null and city_gdp_derivative_world_bridge.scene_file_path == CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE and city_gdp_derivative_world_bridge.has_method("bind_world") and city_gdp_derivative_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning CityGdpDerivativeRuntimeWorldBridge scene")
-	_expect(industry_capacity != null and industry_capacity.scene_file_path == INDUSTRY_CAPACITY_RUNTIME_SERVICE and industry_capacity.has_method("derive_player_capacity") and industry_capacity.has_method("capacity_for_gdp") and industry_capacity.has_method("availability_snapshot") and industry_capacity.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the authoritative v0.5 IndustryCapacityRuntimeService scene")
-	_expect(industry_capacity_world_bridge != null and industry_capacity_world_bridge.scene_file_path == INDUSTRY_CAPACITY_WORLD_BRIDGE and industry_capacity_world_bridge.has_method("bind_city_trade_network_controller") and industry_capacity_world_bridge.has_method("project_rows_for_player") and industry_capacity_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning IndustryCapacityWorldBridge scene")
+	_expect(route_network != null and route_network.scene_file_path == ROUTE_NETWORK_RUNTIME_CONTROLLER and route_network.has_method("refresh_routes") and route_network.has_method("to_save_data") and route_network.has_method("apply_save_data"), "GameRuntimeCoordinator owns the authoritative v0.6 RouteNetworkRuntimeController")
+	_expect(route_network_bridge != null and route_network_bridge.scene_file_path == ROUTE_NETWORK_WORLD_BRIDGE and route_network_bridge.has_method("bind_world") and route_network_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning RouteNetworkWorldBridge")
+	_expect(commodity_flow != null and commodity_flow.scene_file_path == COMMODITY_FLOW_RUNTIME_CONTROLLER and commodity_flow.has_method("install_commodity") and commodity_flow.has_method("advance_world") and commodity_flow.has_method("card_effect_candidates_snapshot") and commodity_flow.has_method("to_save_data"), "GameRuntimeCoordinator owns the authoritative v0.6 CommodityFlowRuntimeController")
+	_expect(commodity_flow_bridge != null and commodity_flow_bridge.scene_file_path == COMMODITY_FLOW_WORLD_BRIDGE and commodity_flow_bridge.has_method("bind_world") and commodity_flow_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning CommodityFlowWorldBridge")
+	_expect(player_mana != null and player_mana.scene_file_path == PLAYER_MANA_RUNTIME_CONTROLLER and player_mana.has_method("advance") and player_mana.has_method("commit_reservation") and player_mana.has_method("to_save_data"), "GameRuntimeCoordinator owns the single v0.6 six-color asset owner")
+	_expect(commodity_inventory != null and commodity_inventory.scene_file_path == COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER and commodity_inventory.has_method("configure_market") and commodity_inventory.has_method("purchase_market_card") and commodity_inventory.has_method("play_core_card") and commodity_inventory.has_method("player_snapshot"), "GameRuntimeCoordinator owns the single v0.6 card inventory transaction authority")
+	_expect(production_state_adapter != null and production_state_adapter.has_method("bind_world") and production_state_adapter.has_method("actor_player_indices") and production_state_adapter.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the only v0.6 production player-state port")
+	_expect(core_economic_adapter != null and core_economic_adapter.has_method("configure") and core_economic_adapter.has_method("play_card") and core_economic_adapter.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the shared v0.6 core-economic dispatch adapter")
 	_expect(hand_interaction != null and hand_interaction.scene_file_path == "res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn" and hand_interaction.has_method("plan_interaction") and hand_interaction.has_method("commit_interaction") and hand_interaction.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable PlayerHandInteractionRuntimeService scene and orchestration/cash/event-intent API")
 	_expect(purchase_settlement != null and purchase_settlement.scene_file_path == "res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn" and purchase_settlement.has_method("plan_purchase") and purchase_settlement.has_method("commit_purchase") and purchase_settlement.has_method("validate_discard"), "GameRuntimeCoordinator owns the editable DistrictPurchaseSettlementRuntimeService scene")
 	_expect(district_supply_snapshot != null and district_supply_snapshot.scene_file_path == "res://scenes/runtime/DistrictSupplySnapshotService.tscn" and district_supply_snapshot.has_method("compose") and district_supply_snapshot.has_method("validate_source") and district_supply_snapshot.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable DistrictSupplySnapshotService scene")
@@ -334,7 +364,6 @@ func _check_static_composition(main: Control) -> void:
 	var execution_effect_adapter_source := _function_source(main_source, "_apply_card_resolution_effect_request")
 	var execution_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_runtime_service.gd")
 	var family_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_economy_product_route_effect_runtime_service.gd")
-	var family_bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/card_economy_product_route_effect_world_bridge.gd")
 	var formula_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_economy_product_route_formula_runtime_service.gd")
 	_expect(ResourceLoader.exists(CARD_RESOLUTION_EXECUTION_BENCH) and ResourceLoader.exists(CARD_RESOLUTION_EXECUTION_SERVICE) and ResourceLoader.exists(CARD_RESOLUTION_EXECUTION_WORLD_BRIDGE) and ResourceLoader.exists(CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_SERVICE) and FileAccess.file_exists(CARD_RESOLUTION_EXECUTION_CONTRACT), "Sprint 40 composes the durable execution/effect/formula services, stateless world bridges, 80-case gate, and contracts")
 	_expect(not main_source.contains("func _resolve_queued_skill("), "Sprint 41 keeps the Sprint 40 legacy execution shell absent")
@@ -355,28 +384,17 @@ func _check_static_composition(main: Control) -> void:
 		eligibility_cutover_checked = eligibility_cutover_checked and not main_source.contains("func %s(" % function_name)
 	_expect(eligibility_cutover_checked, "Sprint 43 removes parallel card eligibility, requirement, target-trait, and counter-trait ownership from main.gd")
 	_expect(execution_complete_source.contains("plan_card_resolution_execution") and execution_complete_source.contains("advance_card_resolution_execution") and execution_complete_source.contains("finalize_card_resolution_execution") and execution_effect_adapter_source.contains("_resolve_targeted_skill") and execution_effect_adapter_source.contains("_apply_player_hand_disrupt") and execution_service_source.contains("INTENT_RELEASE_ACTIVE") and execution_service_source.contains("INTENT_DISPATCH_EFFECT"), "Sprint 37 routes lifecycle through Execution Service while main retains concrete world adapters")
-	var family_methods := ["_apply_route_insurance", "_apply_region_economy_shift"]
-	var family_cutover_checked := execution_effect_adapter_source.contains("plan_card_economy_product_route_effect") and execution_effect_adapter_source.contains("finalize_card_economy_product_route_effect") and family_service_source.contains("HANDLER_FAMILIES")
-	for method_name in family_methods:
-		family_cutover_checked = family_cutover_checked and not execution_effect_adapter_source.contains(method_name) and family_bridge_source.contains(method_name) and not execution_service_source.contains(method_name)
-	family_cutover_checked = family_cutover_checked and family_bridge_source.contains("_product_market_runtime_controller.apply_speculation") and family_bridge_source.contains("_product_market_runtime_controller.apply_futures") and not execution_service_source.contains("apply_speculation")
-	family_cutover_checked = family_cutover_checked and family_bridge_source.contains("contract_controller.open_offer") and not main_source.contains("func _apply_area_trade_contract(")
-	_expect(family_cutover_checked, "Sprint 40 preserves modular economy/product/route dispatch and keeps Execution Service family-agnostic")
-	var product_market_source := FileAccess.get_file_as_string("res://scripts/runtime/product_market_runtime_controller.gd")
-	var market_boon_source := _function_source(product_market_source, "apply_product_market_boon")
-	var futures_settlement_source := _function_source(product_market_source, "settle_futures_position")
-	var city_trade_network_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
-	var route_flow_source := _function_source(city_trade_network_source, "_trade_route_for_product")
-	var product_contract_source := _function_source(product_market_source, "apply_product_contract_boon")
-	var city_contract_source := _function_source(main_source, "_apply_city_contract_boon")
-	var route_insurance_source := _function_source(main_source, "_apply_route_insurance")
-	var city_upgrade_source := _function_source(main_source, "_apply_city_product_upgrade")
-	var product_shift_source := _function_source(main_source, "_apply_city_product_shift")
-	var demand_shift_source := _function_source(main_source, "_apply_city_demand_shift")
-	var formula_cutover_checked := formula_service_source.contains("FORMULA_IDS") and formula_service_source.contains("func _product_contract_boon(") and formula_service_source.contains("func _city_contract_boon(") and formula_service_source.contains("func _route_insurance(") and formula_service_source.contains("product_futures_v04_settlement") and formula_service_source.contains("warehouse_futures_v04_loss") and not formula_service_source.contains("\"product_futures_payout\"") and market_boon_source.contains("_formula(\"product_market_boon\"") and not market_boon_source.contains("clampf(") and futures_settlement_source.contains("settlement_formula_id") and not futures_settlement_source.contains("paying_delta") and route_flow_source.contains("route_base_flow") and not route_flow_source.contains("sqrt(") and product_contract_source.contains("product_contract_boon") and not product_contract_source.contains("market_contract_demand\"] = maxi") and city_contract_source.contains("city_contract_boon") and not city_contract_source.contains("contract_income_bonus\"] = maxi") and route_insurance_source.contains("route_insurance") and city_upgrade_source.contains("city_product_upgrade") and product_shift_source.contains("city_product_shift_step") and demand_shift_source.contains("city_demand_shift_step") and not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService") and not execution_service_source.contains("city_product_upgrade")
-	_expect(formula_cutover_checked, "Sprint 40 removes both characterized pure formula clusters from main while Execution Service remains formula-agnostic")
-	_expect(economy != null and economy.scene_file_path == "res://scenes/runtime/EconomyCashflowRuntimeController.tscn" and economy.has_method("advance_clock") and economy.has_method("settle_sources") and economy.has_method("to_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable EconomyCashflowRuntimeController scene")
-	_expect(gdp_formula != null and gdp_formula.scene_file_path == "res://scenes/runtime/GdpFormulaRuntimeController.tscn" and gdp_formula.has_method("calculate_city_gdp") and gdp_formula.has_method("parameters_snapshot") and gdp_formula.has_method("breakdown_summary"), "GameRuntimeCoordinator owns the editable GdpFormulaRuntimeController scene")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var v04_catalog_scene_source := FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_SERVICE)
+	var commodity_inventory_source := FileAccess.get_file_as_string("res://scripts/runtime/commodity_card_inventory_runtime_controller.gd")
+	var core_economic_adapter_source := FileAccess.get_file_as_string("res://scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd")
+	var namespace_cutover_checked := execution_effect_adapter_source.contains("plan_card_economy_product_route_effect") and execution_effect_adapter_source.contains("finalize_card_economy_product_route_effect") and family_service_source.contains("HANDLER_FAMILIES")
+	namespace_cutover_checked = namespace_cutover_checked and formula_service_source.contains("FORMULA_IDS") and not execution_service_source.contains("CoreEconomicCardRuntimeAdapterV06") and not execution_service_source.contains("CommodityCardInventoryRuntimeController")
+	namespace_cutover_checked = namespace_cutover_checked and v04_catalog_scene_source.contains("card_runtime_catalog_v04.tres") and not v04_catalog_scene_source.contains("card_runtime_catalog_v06")
+	namespace_cutover_checked = namespace_cutover_checked and coordinator_source.contains("func play_v06_runtime_card(") and coordinator_source.contains('== "core_economic_card_runtime"') and coordinator_source.contains('inventory.call("play_core_card"')
+	namespace_cutover_checked = namespace_cutover_checked and commodity_inventory_source.contains("func play_core_card(") and core_economic_adapter_source.contains("func play_card(") and main_source.contains("func _play_v06_runtime_card_for_player(")
+	_expect(namespace_cutover_checked, "legacy v0.4 effect/formula services stay isolated while v0.6 core cards use the single CardFlow transaction facade")
+	_expect(not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService"), "retired formula ownership stays absent from main and the Execution Service remains formula-agnostic")
 	_expect(scenario != null and scenario.scene_file_path == "res://scenes/runtime/ScenarioRuntimeController.tscn" and scenario.has_method("start_scenario") and scenario.has_method("complete_signal") and scenario.has_method("viewer_action_log"), "GameRuntimeCoordinator owns the editable ScenarioRuntimeController scene")
 	_expect(first_table_authored != null and first_table_authored.scene_file_path == "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" and first_table_authored.has_method("resolve_content_catalog") and first_table_authored.has_method("compose_runtime_content") and first_table_authored.has_method("contextualize_phase") and first_table_authored.has_method("pacing_profile") and first_table_authored.has_method("evaluate_pacing") and first_table_authored.has_method("supply_plan"), "GameRuntimeCoordinator owns the editable FirstTableAuthoredRuntimeService scene and its authored pacing API")
 	_expect(codex_navigation != null and codex_navigation.scene_file_path == "res://scenes/runtime/CodexNavigationRuntimeController.tscn" and codex_navigation.has_method("navigation_snapshot") and codex_navigation.has_method("to_legacy_save_snapshot") and codex_navigation.has_method("apply_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable CodexNavigationRuntimeController scene")
@@ -387,6 +405,9 @@ func _check_static_composition(main: Control) -> void:
 	_expect(economy_dashboard_public_snapshot != null and economy_dashboard_public_snapshot.scene_file_path == "res://scenes/runtime/EconomyDashboardPublicSnapshotService.tscn" and economy_dashboard_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable EconomyDashboardPublicSnapshotService scene")
 	_expect(standings_public_snapshot != null and standings_public_snapshot.scene_file_path == "res://scenes/runtime/StandingsPublicSnapshotService.tscn" and standings_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable StandingsPublicSnapshotService scene")
 	_expect(final_settlement_public_snapshot != null and final_settlement_public_snapshot.scene_file_path == "res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn" and final_settlement_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable FinalSettlementPublicSnapshotService scene")
+	_expect(final_settlement_composition != null and final_settlement_composition.scene_file_path == "res://scenes/runtime/FinalSettlementRuntimeComposition.tscn" and final_settlement_composition.has_method("present") and final_settlement_composition.has_method("compose_public_snapshot") and final_settlement_composition.get_node_or_null("FinalSettlementPublicSourceAdapter") != null and final_settlement_composition.get_node_or_null("FinalSettlementBoardPanel") != null, "main owns one editable FinalSettlementRuntimeComposition with the existing source adapter and board")
+	for retired_final_settlement_symbol in ["_open_final_settlement_menu", "_populate_final_settlement_summary_cards", "_add_final_settlement_board_panel", "_final_settlement_public_facts", "_final_settlement_public_snapshot", "_on_final_settlement_action_requested", "_final_settlement_public_summary_text"]:
+		_expect(not main_source.contains("func %s(" % retired_final_settlement_symbol), "Final Settlement composition cutover deletes main.%s" % retired_final_settlement_symbol)
 	_expect(intel_dossier_public_snapshot != null and intel_dossier_public_snapshot.scene_file_path == "res://scenes/runtime/IntelDossierPublicSnapshotService.tscn" and intel_dossier_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable IntelDossierPublicSnapshotService scene")
 	var audio_host := main.get_node_or_null("RuntimeServices/TableAudioHost")
 	for player_name in ["NightPatrolTableBgm", "NightPatrolSfx_card", "NightPatrolSfx_impact", "NightPatrolSfx_storm"]:
@@ -394,99 +415,59 @@ func _check_static_composition(main: Control) -> void:
 
 
 func _check_runtime_snapshot(main: Control, phase: String) -> void:
-	_expect(main.has_method("_runtime_composition_snapshot"), "main.gd exposes runtime composition snapshot")
-	if not main.has_method("_runtime_composition_snapshot"):
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	_expect(coordinator != null and coordinator.has_method("debug_snapshot"), "GameRuntimeCoordinator exposes the production composition snapshot")
+	if coordinator == null or not coordinator.has_method("debug_snapshot"):
 		return
-	var snapshot: Dictionary = main.call("_runtime_composition_snapshot")
-	_expect(_is_pure_data(snapshot), "%s snapshot contains pure data only" % phase)
-	_expect(bool(snapshot.get("sceneized_composition_enabled", false)), "%s keeps sceneized composition enabled" % phase)
-	_expect(not bool(snapshot.get("legacy_fallback_used", true)), "%s does not use compatibility fallback creation" % phase)
-	_expect(not snapshot.has("legacy_table_shell_found"), "%s no longer exposes a retired legacy shell field" % phase)
-	_expect(bool(snapshot.get("card_resolution_controller_found", false)), "%s finds CardResolutionRuntimeController" % phase)
-	_expect(bool(snapshot.get("city_development_controller_found", false)), "%s finds CityDevelopmentRuntimeController" % phase)
-	_expect(bool(snapshot.get("city_development_controller_ready", false)) and bool(snapshot.get("city_development_controller_bound", false)) and bool(snapshot.get("city_development_controller_authoritative", false)), "%s binds the v0.4 CityDevelopmentRuntimeController" % phase)
-	_expect(bool(snapshot.get("game_runtime_coordinator_found", false)) and bool(snapshot.get("forced_decision_scheduler_found", false)), "%s finds GameRuntimeCoordinator and ForcedDecisionRuntimeScheduler" % phase)
-	_expect(bool(snapshot.get("gdp_formula_runtime_controller_found", false)), "%s finds GdpFormulaRuntimeController" % phase)
-	_expect(bool(snapshot.get("first_table_authored_runtime_service_found", false)), "%s finds FirstTableAuthoredRuntimeService" % phase)
-	_expect(bool(snapshot.get("codex_navigation_runtime_controller_found", false)), "%s finds CodexNavigationRuntimeController" % phase)
-	_expect(bool(snapshot.get("codex_public_snapshot_service_found", false)), "%s finds CodexPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("monster_codex_public_snapshot_service_found", false)), "%s finds MonsterCodexPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("product_codex_public_snapshot_service_found", false)), "%s finds ProductCodexPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("card_codex_public_snapshot_service_found", false)), "%s finds CardCodexPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("economy_dashboard_public_snapshot_service_found", false)), "%s finds EconomyDashboardPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("standings_public_snapshot_service_found", false)), "%s finds StandingsPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("final_settlement_public_snapshot_service_found", false)), "%s finds FinalSettlementPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("intel_dossier_public_snapshot_service_found", false)), "%s finds IntelDossierPublicSnapshotService" % phase)
-	_expect(bool(snapshot.get("game_session_runtime_controller_found", false)) and bool(snapshot.get("game_save_runtime_coordinator_found", false)), "%s finds GameSessionRuntimeController and GameSaveRuntimeCoordinator" % phase)
-	_expect(bool(snapshot.get("game_runtime_coordinator_ready", false)) and bool(snapshot.get("game_runtime_coordinator_bound", false)) and bool(snapshot.get("game_runtime_coordinator_authoritative", false)), "%s binds the v0.4 GameRuntimeCoordinator" % phase)
-	var coordinator_snapshot: Dictionary = snapshot.get("game_runtime_coordinator", {}) if snapshot.get("game_runtime_coordinator", {}) is Dictionary else {}
+	var coordinator_snapshot: Dictionary = coordinator.call("debug_snapshot")
+	_expect(_is_pure_data(coordinator_snapshot), "%s Coordinator snapshot contains pure data only" % phase)
+	_expect(bool(coordinator_snapshot.get("coordinator_composition_ready", false)), "%s static production composition is ready" % phase)
+	_expect(str(coordinator_snapshot.get("ruleset_id", "")) == "v0.4", "%s retains the v0.4 global bridge namespace" % phase)
+	var production_binding: Dictionary = coordinator_snapshot.get("v06_production_player_bindings", {}) if coordinator_snapshot.get("v06_production_player_bindings", {}) is Dictionary else {}
+	var actor_count := int(production_binding.get("actor_count", 0))
+	_expect(bool(coordinator_snapshot.get("v06_production_player_bindings_ready", false)) == (actor_count > 0 and bool(production_binding.get("state_adapter_ready", false)) and bool(production_binding.get("inventory_ready", false)) and bool(production_binding.get("core_economic_ready", false)) and bool(production_binding.get("monster_card_adapter_ready", false))), "%s strict readiness reflects the post-seat v0.6 binding result" % phase)
 	var scheduler_snapshot: Dictionary = coordinator_snapshot.get("forced_decision_scheduler", {}) if coordinator_snapshot.get("forced_decision_scheduler", {}) is Dictionary else {}
 	var session_snapshot: Dictionary = coordinator_snapshot.get("game_session", {}) if coordinator_snapshot.get("game_session", {}) is Dictionary else {}
 	var purchase_snapshot: Dictionary = coordinator_snapshot.get("district_purchase", {}) if coordinator_snapshot.get("district_purchase", {}) is Dictionary else {}
 	var card_inventory_snapshot: Dictionary = coordinator_snapshot.get("card_inventory", {}) if coordinator_snapshot.get("card_inventory", {}) is Dictionary else {}
 	var card_resolution_queue_snapshot: Dictionary = coordinator_snapshot.get("card_resolution_queue", {}) if coordinator_snapshot.get("card_resolution_queue", {}) is Dictionary else {}
-	var industry_capacity_snapshot: Dictionary = coordinator_snapshot.get("industry_capacity_runtime", {}) if coordinator_snapshot.get("industry_capacity_runtime", {}) is Dictionary else {}
-	var industry_capacity_bridge_snapshot: Dictionary = coordinator_snapshot.get("industry_capacity_world_bridge", {}) if coordinator_snapshot.get("industry_capacity_world_bridge", {}) is Dictionary else {}
 	var effect_formula_snapshot: Dictionary = coordinator_snapshot.get("card_economy_product_route_formula", {}) if coordinator_snapshot.get("card_economy_product_route_formula", {}) is Dictionary else {}
 	var purchase_settlement_snapshot: Dictionary = coordinator_snapshot.get("district_purchase_settlement", {}) if coordinator_snapshot.get("district_purchase_settlement", {}) is Dictionary else {}
 	var district_supply_snapshot: Dictionary = coordinator_snapshot.get("district_supply_snapshot", {}) if coordinator_snapshot.get("district_supply_snapshot", {}) is Dictionary else {}
-	var economy_snapshot: Dictionary = coordinator_snapshot.get("economy_cashflow", {}) if coordinator_snapshot.get("economy_cashflow", {}) is Dictionary else {}
+	var commodity_flow_snapshot: Dictionary = coordinator_snapshot.get("commodity_flow_runtime", {}) if coordinator_snapshot.get("commodity_flow_runtime", {}) is Dictionary else {}
+	var player_mana_snapshot: Dictionary = coordinator_snapshot.get("player_mana_runtime", {}) if coordinator_snapshot.get("player_mana_runtime", {}) is Dictionary else {}
+	var commodity_inventory_snapshot: Dictionary = coordinator_snapshot.get("commodity_card_inventory_runtime", {}) if coordinator_snapshot.get("commodity_card_inventory_runtime", {}) is Dictionary else {}
+	var production_state_snapshot: Dictionary = coordinator_snapshot.get("card_player_state_production_adapter_v06", {}) if coordinator_snapshot.get("card_player_state_production_adapter_v06", {}) is Dictionary else {}
+	var core_economic_snapshot: Dictionary = coordinator_snapshot.get("core_economic_card_runtime_adapter_v06", {}) if coordinator_snapshot.get("core_economic_card_runtime_adapter_v06", {}) is Dictionary else {}
+	var region_snapshot: Dictionary = coordinator_snapshot.get("region_infrastructure_runtime", {}) if coordinator_snapshot.get("region_infrastructure_runtime", {}) is Dictionary else {}
+	var victory_snapshot: Dictionary = coordinator_snapshot.get("victory_control_runtime", {}) if coordinator_snapshot.get("victory_control_runtime", {}) is Dictionary else {}
 	var scenario_snapshot: Dictionary = coordinator_snapshot.get("scenario_runtime", {}) if coordinator_snapshot.get("scenario_runtime", {}) is Dictionary else {}
 	var first_table_snapshot: Dictionary = coordinator_snapshot.get("first_table_authored_runtime", {}) if coordinator_snapshot.get("first_table_authored_runtime", {}) is Dictionary else {}
-	var codex_navigation_snapshot: Dictionary = coordinator_snapshot.get("codex_navigation_runtime", {}) if coordinator_snapshot.get("codex_navigation_runtime", {}) is Dictionary else {}
-	var codex_public_snapshot: Dictionary = coordinator_snapshot.get("codex_public_snapshot", {}) if coordinator_snapshot.get("codex_public_snapshot", {}) is Dictionary else {}
-	var monster_codex_public_snapshot: Dictionary = coordinator_snapshot.get("monster_codex_public_snapshot", {}) if coordinator_snapshot.get("monster_codex_public_snapshot", {}) is Dictionary else {}
-	var product_codex_public_snapshot: Dictionary = coordinator_snapshot.get("product_codex_public_snapshot", {}) if coordinator_snapshot.get("product_codex_public_snapshot", {}) is Dictionary else {}
-	var card_codex_public_snapshot: Dictionary = coordinator_snapshot.get("card_codex_public_snapshot", {}) if coordinator_snapshot.get("card_codex_public_snapshot", {}) is Dictionary else {}
-	var economy_dashboard_public_snapshot: Dictionary = coordinator_snapshot.get("economy_dashboard_public_snapshot", {}) if coordinator_snapshot.get("economy_dashboard_public_snapshot", {}) is Dictionary else {}
-	var standings_public_snapshot: Dictionary = coordinator_snapshot.get("standings_public_snapshot", {}) if coordinator_snapshot.get("standings_public_snapshot", {}) is Dictionary else {}
-	var final_settlement_public_snapshot: Dictionary = coordinator_snapshot.get("final_settlement_public_snapshot", {}) if coordinator_snapshot.get("final_settlement_public_snapshot", {}) is Dictionary else {}
-	var intel_dossier_public_snapshot: Dictionary = coordinator_snapshot.get("intel_dossier_public_snapshot", {}) if coordinator_snapshot.get("intel_dossier_public_snapshot", {}) is Dictionary else {}
 	var card_presentation_snapshot: Dictionary = coordinator_snapshot.get("card_presentation", {}) if coordinator_snapshot.get("card_presentation", {}) is Dictionary else {}
 	var table_viewmodel_snapshot: Dictionary = coordinator_snapshot.get("game_table_viewmodel", {}) if coordinator_snapshot.get("game_table_viewmodel", {}) is Dictionary else {}
 	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice"], "%s configures forced-decision priority from RulesetRuntimeBridge" % phase)
 	_expect(bool(session_snapshot.get("session_ready", false)) and bool(session_snapshot.get("session_authoritative", false)), "%s configures scene-owned session/save authority" % phase)
 	_expect(bool(purchase_snapshot.get("controller_ready", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and is_equal_approx(float(purchase_snapshot.get("purchase_window_seconds", 0.0)), 12.0), "%s configures the scene-owned v0.4 district purchase authority" % phase)
 	_expect(bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and int(card_inventory_snapshot.get("ordinary_hand_limit", 0)) == 5 and int(card_inventory_snapshot.get("maximum_card_rank", 0)) == 4 and not bool(card_inventory_snapshot.get("purchase_cash_authority", true)) and not bool(card_inventory_snapshot.get("ledger_authority", true)) and not bool(card_inventory_snapshot.get("legacy_inventory_fallback_used", true)), "%s configures CardInventoryRuntimeService as the v0.4 slot-mutation authority without moving cash or ledger ownership" % phase)
-	_expect(bool(snapshot.get("card_resolution_queue_runtime_service_found", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and str(card_resolution_queue_snapshot.get("ruleset_id", "")) == "v0.5" and bool(card_resolution_queue_snapshot.get("capacity_reservation_authority", false)) and bool(card_resolution_queue_snapshot.get("priority_bid_authority", false)) and not bool(card_resolution_queue_snapshot.get("timing_authority", true)) and not bool(card_resolution_queue_snapshot.get("card_effect_authority", true)) and not bool(card_resolution_queue_snapshot.get("inventory_authority", true)) and not bool(card_resolution_queue_snapshot.get("legacy_queue_fallback_used", true)), "%s configures CardResolutionQueueRuntimeService as the v0.5 card-group-domain authority without moving timing, effects, or inventory ownership" % phase)
-	_expect(bool(industry_capacity_snapshot.get("service_ready", false)) and bool(industry_capacity_snapshot.get("service_authoritative", false)) and str(industry_capacity_snapshot.get("ruleset_id", "")) == "v0.5" and industry_capacity_snapshot.get("industry_ids", []) == ["life", "energy", "industry", "technology", "commerce", "shipping"] and industry_capacity_snapshot.get("capacity_thresholds", []) == [15, 40, 80, 140], "%s configures the single v0.5 Industry Capacity owner" % phase)
-	_expect(bool(industry_capacity_bridge_snapshot.get("bridge_ready", false)) and not bool(industry_capacity_bridge_snapshot.get("owns_project_state", true)) and not bool(industry_capacity_bridge_snapshot.get("owns_gdp_formula", true)) and not bool(industry_capacity_bridge_snapshot.get("owns_capacity_formula", true)), "%s keeps the Industry Capacity world bridge non-owning" % phase)
+	_expect(bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and not bool(card_resolution_queue_snapshot.get("timing_authority", true)) and not bool(card_resolution_queue_snapshot.get("card_effect_authority", true)) and not bool(card_resolution_queue_snapshot.get("inventory_authority", true)), "%s keeps the legacy queue in its narrow authority boundary" % phase)
 	_expect(bool(effect_formula_snapshot.get("service_ready", false)) and bool(effect_formula_snapshot.get("pure_formula_authority", false)) and not bool(effect_formula_snapshot.get("effect_dispatch_authority", true)) and not bool(effect_formula_snapshot.get("world_mutation_authority", true)) and not bool(effect_formula_snapshot.get("execution_lifecycle_authority", true)), "%s configures the pure Formula Service without expanding execution or world ownership" % phase)
 	_expect(bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and not bool(purchase_settlement_snapshot.get("window_authority", true)) and not bool(purchase_settlement_snapshot.get("presentation_authority", true)) and not bool(purchase_settlement_snapshot.get("legacy_settlement_fallback_used", true)), "%s configures the scene-owned atomic District Purchase Settlement service without moving window or presentation authority" % phase)
 	_expect(bool(district_supply_snapshot.get("service_ready", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and not bool(district_supply_snapshot.get("calculates_purchase_eligibility", true)) and not bool(district_supply_snapshot.get("calculates_card_price", true)) and not bool(district_supply_snapshot.get("mutates_inventory", true)), "%s configures the scene-owned District Supply presentation formatter without moving purchase rules" % phase)
-	_expect(bool(snapshot.get("economy_cashflow_runtime_controller_found", false)) and bool(economy_snapshot.get("controller_ready", false)) and bool(economy_snapshot.get("controller_authoritative", false)), "%s finds and configures the scene-owned economy cashflow authority" % phase)
-	_expect(is_equal_approx(float(economy_snapshot.get("tick_interval_seconds", 0.0)), 1.0) and is_equal_approx(float(economy_snapshot.get("basis_seconds", 0.0)), 60.0), "%s preserves the one-second cadence and sixty-second GDP basis" % phase)
-	_expect(bool(snapshot.get("scenario_runtime_controller_found", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_authoritative", false)), "%s finds and configures the scene-owned scenario runtime authority" % phase)
+	_expect(bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_authoritative", false)) and bool(commodity_flow_snapshot.get("owns_fixed_point_flow", false)) and bool(commodity_flow_snapshot.get("owns_sale_receipt_ledger", false)) and not bool(commodity_flow_snapshot.get("owns_cash_state", true)), "%s configures CommodityFlow as the single continuous economy and sale-receipt owner" % phase)
+	_expect(bool(player_mana_snapshot.get("controller_ready", false)) and bool(player_mana_snapshot.get("controller_authoritative", false)) and bool(player_mana_snapshot.get("asset_balance_authority", false)) and not bool(player_mana_snapshot.get("commodity_flow_authority", true)), "%s configures PlayerMana as the single six-color asset owner" % phase)
+	_expect(str(commodity_inventory_snapshot.get("ruleset_id", "")) == "v0.6" and str(commodity_inventory_snapshot.get("catalog_path", "")) == "res://resources/cards/runtime/card_runtime_catalog_v06.tres" and not bool(commodity_inventory_snapshot.get("stores_player_inventory", true)), "%s configures the v0.6 catalog behind one transaction authority without replacing the v0.4 global catalog" % phase)
+	_expect(not bool(production_state_snapshot.get("stores_inventory", true)) and not bool(production_state_snapshot.get("stores_cash", true)) and not bool(production_state_snapshot.get("stores_assets", true)), "%s keeps the production state adapter non-owning" % phase)
+	_expect(bool(core_economic_snapshot.get("uses_shared_card_source_transaction_service", false)) and not bool(core_economic_snapshot.get("owns_hand_state", true)) and not bool(core_economic_snapshot.get("owns_cash_state", true)) and not bool(core_economic_snapshot.get("owns_asset_state", true)), "%s keeps the core-economic adapter on the shared CardFlow transaction" % phase)
+	_expect(bool(region_snapshot.get("controller_ready", false)) and str(region_snapshot.get("ruleset_id", "")) == "v0.6" and bool(region_snapshot.get("facility_rollback_atomic_ready", false)) and not bool(region_snapshot.get("has_heat_state", true)), "%s configures RegionInfrastructure as the v0.6 facility/shared-life owner" % phase)
+	_expect(bool(victory_snapshot.get("controller_ready", false)) and str(victory_snapshot.get("ruleset_id", "")) == "v0.6" and bool(victory_snapshot.get("dynamic_denominator_enabled", false)) and not bool(victory_snapshot.get("fixed_depth_table_present", true)), "%s configures the unique v0.6 Victory owner" % phase)
+	_expect(not coordinator_snapshot.has("city_development_runtime") and not coordinator_snapshot.has("economy_cashflow") and not coordinator_snapshot.has("industry_capacity_runtime"), "%s does not revive retired city-project, parallel cashflow, or industry-capacity owners" % phase)
+	_expect(bool(scenario_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_authoritative", false)), "%s finds and configures the scene-owned scenario runtime authority" % phase)
 	_expect(bool(first_table_snapshot.get("service_ready", false)) and bool(first_table_snapshot.get("service_authoritative", false)) and not bool(first_table_snapshot.get("legacy_authored_fallback_used", true)), "%s configures scene-owned first_table authored runtime authority" % phase)
-	_expect(bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_navigation_snapshot.get("controller_authoritative", false)) and not bool(codex_navigation_snapshot.get("legacy_main_authority_active", true)), "%s configures scene-owned Codex navigation authority" % phase)
-	_expect(bool(codex_public_snapshot.get("service_ready", false)) and bool(codex_public_snapshot.get("service_authoritative", false)) and not bool(codex_public_snapshot.get("legacy_main_formatter_active", true)), "%s configures scene-owned Role/Region public snapshot authority" % phase)
-	_expect(bool(monster_codex_public_snapshot.get("service_ready", false)) and bool(monster_codex_public_snapshot.get("service_authoritative", false)) and not bool(monster_codex_public_snapshot.get("calculates_action_weights", true)), "%s configures scene-owned Monster public snapshot authority without moving probability algorithms" % phase)
-	_expect(bool(product_codex_public_snapshot.get("service_ready", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and not bool(product_codex_public_snapshot.get("calculates_market_price", true)) and not bool(product_codex_public_snapshot.get("calculates_strategy_scores", true)), "%s configures scene-owned Product public snapshot authority without moving market or strategy algorithms" % phase)
-	_expect(bool(card_codex_public_snapshot.get("service_ready", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("uses_existing_browser_viewmodel", false)) and bool(card_codex_public_snapshot.get("uses_existing_detail_viewmodel", false)) and not bool(card_codex_public_snapshot.get("calculates_card_price", true)) and not bool(card_codex_public_snapshot.get("calculates_card_effects", true)) and not bool(card_codex_public_snapshot.get("calculates_play_requirements", true)), "%s configures scene-owned Card public snapshot authority while preserving rule ownership" % phase)
-	_expect(bool(economy_dashboard_public_snapshot.get("service_ready", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and not bool(economy_dashboard_public_snapshot.get("calculates_product_prices", true)) and not bool(economy_dashboard_public_snapshot.get("calculates_city_income", true)) and not bool(economy_dashboard_public_snapshot.get("calculates_cashflow", true)) and not bool(economy_dashboard_public_snapshot.get("evaluates_private_truth", true)), "%s configures scene-owned Economy Dashboard presentation without moving economy rules" % phase)
-	_expect(bool(standings_public_snapshot.get("service_ready", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("consumes_victory_snapshot", false)) and not bool(standings_public_snapshot.get("calculates_region_control", true)) and not bool(standings_public_snapshot.get("calculates_top_n_gdp", true)) and not bool(standings_public_snapshot.get("sorts_final_rankings", true)) and not bool(standings_public_snapshot.get("evaluates_private_truth", true)) and not bool(standings_public_snapshot.get("legacy_cash_goal_presentation_active", true)), "%s configures scene-owned Standings presentation as a VictoryControl snapshot consumer" % phase)
-	_expect(bool(final_settlement_public_snapshot.get("service_ready", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and not bool(final_settlement_public_snapshot.get("calculates_final_score", true)) and not bool(final_settlement_public_snapshot.get("sorts_final_rankings", true)) and not bool(final_settlement_public_snapshot.get("calculates_city_clearance", true)) and not bool(final_settlement_public_snapshot.get("calculates_intel_cash", true)) and not bool(final_settlement_public_snapshot.get("reads_private_hands", true)), "%s configures scene-owned Final Settlement presentation without moving scoring or private history" % phase)
-	_expect(bool(intel_dossier_public_snapshot.get("service_ready", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and not bool(intel_dossier_public_snapshot.get("mutates_city_guesses", true)) and not bool(intel_dossier_public_snapshot.get("settles_intel_cash", true)) and not bool(intel_dossier_public_snapshot.get("reveals_city_owner_truth", true)) and not bool(intel_dossier_public_snapshot.get("reveals_card_owner_truth", true)) and not bool(intel_dossier_public_snapshot.get("reads_private_hands", true)) and bool(intel_dossier_public_snapshot.get("action_id_controls", false)), "%s configures scene-owned Intel Dossier presentation and action intents without moving hidden truth or settlement" % phase)
 	_expect(bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("owns_card_use_case", false)) and bool(card_presentation_snapshot.get("owns_hand_card_viewmodel", false)) and not bool(card_presentation_snapshot.get("calculates_card_price", true)) and not bool(card_presentation_snapshot.get("calculates_play_legality", true)) and not bool(card_presentation_snapshot.get("mutates_game_state", true)), "%s configures scene-owned card presentation without moving price, legality, or mutation rules" % phase)
 	_expect(bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("owns_table_snapshot_normalization", false)) and bool(table_viewmodel_snapshot.get("owns_right_inspector_assembly", false)) and bool(table_viewmodel_snapshot.get("owns_public_track_viewmodels", false)) and bool(table_viewmodel_snapshot.get("owns_resolution_overlay_badges", false)) and not bool(table_viewmodel_snapshot.get("calculates_play_legality", true)) and not bool(table_viewmodel_snapshot.get("mutates_game_state", true)), "%s configures scene-owned TableSnapshot, public track, resolution-overlay badge, and RightInspector assembly" % phase)
 	_expect(bool(card_presentation_snapshot.get("owns_resolution_presentation", false)), "%s configures scene-owned card-resolution cinematic presentation" % phase)
 	var save_snapshot: Dictionary = session_snapshot.get("save_operation", {}) if session_snapshot.get("save_operation", {}) is Dictionary else {}
 	_expect(int(save_snapshot.get("save_version", 0)) == 1 and str(save_snapshot.get("default_save_path", "")) == "user://space_syndicate_current_run.save", "%s preserves current-run save version and default path" % phase)
-	var city_snapshot: Dictionary = snapshot.get("city_development_runtime", {}) if snapshot.get("city_development_runtime", {}) is Dictionary else {}
-	_expect(not bool(city_snapshot.get("direct_build_allowed", true)) and bool(city_snapshot.get("project_binding_required", false)), "%s enforces product-bound development and rejects direct building" % phase)
-	_expect(bool(snapshot.get("ruleset_runtime_bridge_found", false)), "%s finds RulesetRuntimeBridge" % phase)
-	_expect(bool(snapshot.get("ruleset_bridge_ready", false)) and bool(snapshot.get("ruleset_bridge_bound", false)), "%s binds the v0.4 RulesetRuntimeBridge" % phase)
-	_expect(str(snapshot.get("ruleset_id", "")) == "v0.4", "%s reports ruleset v0.4" % phase)
-	var ruleset_snapshot: Dictionary = snapshot.get("ruleset_runtime", {}) if snapshot.get("ruleset_runtime", {}) is Dictionary else {}
-	var timing: Dictionary = ruleset_snapshot.get("timing", {}) if ruleset_snapshot.get("timing", {}) is Dictionary else {}
-	_expect(is_equal_approx(float(timing.get("final_countdown_seconds", 0.0)), 75.0), "%s exposes the 75-second final countdown" % phase)
-	_expect(is_equal_approx(float(timing.get("monster_wager_default_seconds", 0.0)), 20.0) and is_equal_approx(float(timing.get("monster_wager_max_seconds", 0.0)), 30.0), "%s exposes the 20/30-second monster wager rule" % phase)
-	_expect(not bool(snapshot.get("controller_missing", true)), "%s reports the card-resolution controller as present" % phase)
-	_expect(bool(snapshot.get("controller_authoritative", false)), "%s uses the scene-owned card-resolution controller as authority" % phase)
-	_expect(not bool(snapshot.get("legacy_state_fallback_used", true)), "%s keeps the card-resolution legacy state fallback inactive" % phase)
-	_expect(int(snapshot.get("duplicate_node_count", -1)) == 0, "%s has no duplicate composition nodes" % phase)
-	_expect(int(snapshot.get("duplicate_signal_count", -1)) == 0, "%s has no duplicate GameScreen signal bindings" % phase)
-	_expect((snapshot.get("missing_nodes", []) as Array).is_empty(), "%s has no missing composition nodes" % phase)
 
 
 func _check_runtime_signal_bindings(main: Control) -> void:
@@ -514,7 +495,7 @@ func _check_runtime_controller_authority(main: Control) -> void:
 	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
 	if controller == null:
 		return
-	_expect(is_equal_approx(float(controller.get("total_window_seconds")), 8.0) and is_equal_approx(float(controller.get("lock_seconds")), 2.0), "the v0.5 card-group domain configures the controller's 8/6/2 window")
+	_expect(is_equal_approx(float(controller.get("total_window_seconds")), 30.0) and is_equal_approx(float(controller.get("planning_seconds")), 20.0) and is_equal_approx(float(controller.get("public_bid_seconds")), 5.0) and is_equal_approx(float(controller.get("lock_seconds")), 5.0) and is_equal_approx(float(controller.get("opening_total_window_seconds")), 45.0) and is_equal_approx(float(controller.get("opening_planning_seconds")), 35.0), "production main consumes the v0.6 standard and opening shared-window cadence")
 	var expected_counter_seconds := 0.0 if DisplayServer.get_name().to_lower() == "headless" else 5.0
 	_expect(is_equal_approx(float(controller.get("counter_seconds")), expected_counter_seconds), "RulesetRuntimeBridge preserves the response-window duration, with the established headless shortcut")
 	main.set("card_resolution_simultaneous_timer", 12.0)
@@ -524,14 +505,14 @@ func _check_runtime_controller_authority(main: Control) -> void:
 	main.set("card_resolution_auction_timer", 4.0)
 	main.set("card_resolution_auction_open", true)
 	main.set("card_group_window_sequence", 12)
-	var saved: Dictionary = main.call("_capture_run_state")
-	_expect(is_equal_approx(float(saved.get("card_resolution_simultaneous_timer", 0.0)), 9.0) and int(saved.get("card_group_window_sequence", 0)) == 12, "main save capture preserves controller-owned state under existing keys")
+	var saved: Dictionary = controller.call("to_save_data")
+	_expect(is_equal_approx(float(saved.get("card_resolution_simultaneous_timer", 0.0)), 9.0) and int(saved.get("card_group_window_sequence", 0)) == 12, "CardResolutionRuntimeController is the save source for its existing wire keys")
 	var legacy_lock_state := saved.duplicate(true)
 	legacy_lock_state["card_resolution_simultaneous_timer"] = 0.0
 	legacy_lock_state["card_resolution_auction_timer"] = 4.0
 	legacy_lock_state["card_resolution_auction_open"] = true
-	var apply_error := int(main.call("_apply_run_state", legacy_lock_state))
-	_expect(apply_error == OK and is_equal_approx(float(controller.get("simultaneous_timer")), 4.0), "main save apply preserves legacy auction-only mapping through the controller bridge")
+	controller.call("apply_save_data", legacy_lock_state)
+	_expect(is_equal_approx(float(controller.get("simultaneous_timer")), 9.0), "CardResolutionRuntimeController maps a legacy auction-only save into the five-second public-bid phase without a second timer owner")
 	if controller.has_method("reset_state"):
 		controller.call("reset_state")
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
@@ -541,9 +522,8 @@ func _check_runtime_controller_authority(main: Control) -> void:
 		purchase.call("reset_state")
 		var purchase_window: Dictionary = coordinator.call("open_district_purchase_window", 0, 2, {"eligible": true, "access_kind": "landed", "opened_at": 3.0, "source_kind": "monster", "source_bound_to_player": true, "channel_discount_multiplier": 0.8, "supply_revision": "composition-a"})
 		_expect(is_equal_approx(float(purchase_window.get("remaining_seconds", 0.0)), 12.0) and is_equal_approx(float(purchase_window.get("locked_price_multiplier", 0.0)), 0.64), "district purchase authority locks the v0.4 duration and private channel price context")
-		var captured: Dictionary = main.call("_capture_run_state")
-		var legacy_purchase: Dictionary = captured.get("district_card_purchase_snapshot", {}) if captured.get("district_card_purchase_snapshot", {}) is Dictionary else {}
-		_expect(int(legacy_purchase.get("district_index", -1)) == 2 and is_equal_approx(float(legacy_purchase.get("remaining_seconds", 0.0)), 12.0), "existing v1 save key is composed from controller-owned state")
+		var legacy_purchase: Dictionary = coordinator.call("district_purchase_legacy_save_snapshot", 0)
+		_expect(int(legacy_purchase.get("district_index", -1)) == 2 and is_equal_approx(float(legacy_purchase.get("remaining_seconds", 0.0)), 12.0), "existing v1 purchase wire is composed directly from the authoritative controller")
 		coordinator.call("tick_district_purchase_windows", 12.0, [])
 		_expect(not bool(coordinator.call("district_purchase_window_active", 0, 2)) and str((coordinator.call("district_purchase_window", 0) as Dictionary).get("state", "")) == "expired", "district purchase authority expires at exactly twelve seconds")
 		purchase.call("reset_state")
@@ -616,44 +596,27 @@ func _check_product_market_characterization_assets() -> void:
 
 
 func _check_city_trade_network_characterization_assets() -> void:
-	var ready := ResourceLoader.exists(CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH) and ResourceLoader.exists(CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCRIPT) and ResourceLoader.exists(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER) and ResourceLoader.exists(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT) and ResourceLoader.exists(CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE) and ResourceLoader.exists(CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT) and FileAccess.file_exists(CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT)
-	var packed := load(CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH) as PackedScene
-	var bench := packed.instantiate() if packed != null else null
-	var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench != null and bench.has_method("build_characterization_manifest_preview") else {}
-	ready = ready and int(manifest.get("case_count", 0)) == 108 and str(manifest.get("ruleset_id", "")) == "v0.5" and str(manifest.get("runtime_owner", "")) == CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT and bool(manifest.get("runtime_cutover_enabled", false)) and _is_pure_data(manifest)
-	if bench != null:
-		bench.free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var contract := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT)
-	var controller_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
-	var bridge_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT)
 	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
-	ready = ready and main_source.contains("func _refresh_city_networks(") and main_source.contains("func _settle_city_cashflow_seconds(") and main_source.contains("func _city_trade_network_runtime_call(")
-	ready = ready and not main_source.contains("func _shortest_trade_path(") and not main_source.contains("func _trade_path_cost(") and not main_source.contains("func _refresh_city_trade_routes(") and not main_source.contains("func _route_base_flow_amount(") and not main_source.contains("var city_product_project_sequence")
-	var project_state_source := FileAccess.get_file_as_string("res://scripts/economy/city_product_project_state.gd")
-	var project_bridge_source := FileAccess.get_file_as_string("res://scripts/economy/city_product_project_bridge.gd")
-	ready = ready and controller_source.contains("func refresh_networks(") and controller_source.contains("func shortest_trade_path(") and controller_source.contains("func settle_cashflow_seconds(") and controller_source.contains("func tombstone_project(") and controller_source.contains("func to_save_data(") and controller_source.contains("func apply_save_data(")
-	ready = ready and controller_source.contains("project_rules_profile") and controller_source.contains("v0.5.structured-project-gdp.1") and controller_source.contains("player_gdp_attribution_rows") and controller_source.contains("gdp_cashflow_remainder_by_source_id") and not controller_source.contains('"source_kind": "city_owner"') and not controller_source.contains("project_cashflow_remainder_by_player") and not project_state_source.contains("func assign_city_gdp(") and not project_state_source.contains("func player_gdp(") and not project_bridge_source.contains("func migrate_legacy_city(") and not project_bridge_source.contains("func apply_development(") and not project_bridge_source.contains("func assign_city_gdp(")
-	ready = ready and bridge_source.contains("func capture_world_snapshot(") and bridge_source.contains("func apply_network_receipt(") and bridge_source.contains('"owns_runtime_state": false') and bridge_source.contains('"owns_rules": false')
-	ready = ready and coordinator_scene.contains("CityTradeNetworkRuntimeController") and coordinator_scene.contains("CityTradeNetworkWorldBridge") and contract.contains("SS05-03 completed the structured project GDP hard cutover") and contract.contains("108/108") and contract.contains("neutral remainder") and contract.contains("There is no parallel route engine")
-	_expect(ready, "SS05-03 composes one CityTradeNetworkRuntimeController, a non-owning WorldBridge, and a 108-case structured project GDP gate with no parallel project, route, or whole-city allocation engine")
+	var route_source := FileAccess.get_file_as_string("res://scripts/runtime/route_network_runtime_controller.gd")
+	var flow_source := FileAccess.get_file_as_string("res://scripts/runtime/commodity_flow_runtime_controller.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var ready := ResourceLoader.exists(ROUTE_NETWORK_RUNTIME_CONTROLLER) and ResourceLoader.exists(ROUTE_NETWORK_WORLD_BRIDGE) and ResourceLoader.exists(COMMODITY_FLOW_RUNTIME_CONTROLLER) and ResourceLoader.exists(COMMODITY_FLOW_WORLD_BRIDGE)
+	ready = ready and coordinator_scene.contains("RouteNetworkRuntimeController") and coordinator_scene.contains("CommodityFlowRuntimeController") and not coordinator_scene.contains("CityTradeNetworkRuntimeController")
+	ready = ready and route_source.contains("func refresh_routes(") and route_source.contains("func to_save_data(") and flow_source.contains("func advance_world(") and flow_source.contains("owns_many_source_many_sink_allocation") and flow_source.contains("owns_sale_receipt_ledger")
+	ready = ready and not main_source.contains("func _shortest_trade_path(") and not main_source.contains("func _trade_path_cost(") and not main_source.contains("var city_product_project_sequence")
+	_expect(ready, "v0.6 RouteNetwork and CommodityFlow replace the retired project-route/GDP owner without parallel production composition")
 
 
 func _check_city_development_settlement_characterization_assets() -> void:
-	var ready := ResourceLoader.exists(CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH) and ResourceLoader.exists(CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_SCRIPT) and ResourceLoader.exists(CITY_DEVELOPMENT_RUNTIME_CONTROLLER) and ResourceLoader.exists(CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT) and ResourceLoader.exists(CITY_DEVELOPMENT_WORLD_BRIDGE) and ResourceLoader.exists(CITY_DEVELOPMENT_WORLD_BRIDGE_SCRIPT) and FileAccess.file_exists(CITY_DEVELOPMENT_SETTLEMENT_CONTRACT)
-	var packed := load(CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH) as PackedScene
-	var bench := packed.instantiate() if packed != null else null
-	var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench != null and bench.has_method("build_characterization_manifest_preview") else {}
-	ready = ready and int(manifest.get("case_count", 0)) == 64 and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("current_settlement_owner", "")) == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT and _is_pure_data(manifest)
-	if bench != null:
-		bench.free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var contract := FileAccess.get_file_as_string(CITY_DEVELOPMENT_SETTLEMENT_CONTRACT)
 	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
-	ready = ready and coordinator_scene.count("CityDevelopmentRuntimeController") >= 1 and coordinator_scene.count("CityDevelopmentWorldBridge") >= 1
-	ready = ready and not main_source.contains("func _apply_city_development_card(") and not main_source.contains("func _create_city_surface_for_development(") and not main_source.contains("PROJECT_BRIDGE.apply_development(")
-	ready = ready and contract.contains("Sprint 66") and contract.contains("64/64") and contract.contains("rollback") and contract.contains("CityDevelopmentWorldBridge")
-	_expect(ready, "Sprint 66 composes one authoritative CityDevelopmentRuntimeController and non-owning WorldBridge with a 64-case hard-cutover gate")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var infrastructure_source := FileAccess.get_file_as_string("res://scripts/runtime/region_infrastructure_runtime_controller.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var ready := ResourceLoader.exists(REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER) and ResourceLoader.exists(REGION_INFRASTRUCTURE_WORLD_BRIDGE) and FileAccess.file_exists(REGION_INFRASTRUCTURE_CONTRACT)
+	ready = ready and coordinator_scene.contains("RegionInfrastructureRuntimeController") and coordinator_scene.contains("RegionInfrastructureWorldBridge") and not coordinator_scene.contains("CityDevelopmentRuntimeController") and not coordinator_scene.contains("CityDevelopmentWorldBridge")
+	ready = ready and infrastructure_source.contains("func apply_facility_action(") and infrastructure_source.contains("func rollback_facility_action(") and infrastructure_source.contains("func finalize_facility_action(") and infrastructure_source.contains("func facility_rollback_atomic_ready(")
+	ready = ready and coordinator_source.contains("func play_v06_runtime_card(") and coordinator_source.contains("build_upgrade_or_repair_facility") and not main_source.contains("func _apply_city_development_card(")
+	_expect(ready, "RegionInfrastructure and the shared v0.6 CardFlow facade replace the retired CityDevelopment settlement owner")
 
 
 func _check_city_gdp_derivative_assets() -> void:
@@ -847,47 +810,84 @@ func _check_victory_control_runtime_assets() -> void:
 	var controller_packed := load(VICTORY_CONTROL_RUNTIME_CONTROLLER) as PackedScene
 	var controller := controller_packed.instantiate() if controller_packed != null else null
 	var configured: Dictionary = controller.call("configure") if controller != null else {}
-	ready = ready and bool(configured.get("configured", false)) and str(configured.get("ruleset_id", "")) == "v0.5"
+	ready = ready and bool(configured.get("configured", false)) and str(configured.get("ruleset_id", "")) == "v0.6"
 	ready = ready and controller != null and controller.has_method("evaluate_region_control") and controller.has_method("evaluate_candidates") and controller.has_method("advance_world_effective") and controller.has_method("resolve_special_outcome") and controller.has_method("to_save_data") and controller.has_method("apply_save_data")
 	if controller != null:
 		controller.free()
 	var bench_packed := load(VICTORY_CONTROL_RUNTIME_BENCH) as PackedScene
 	var bench := bench_packed.instantiate() if bench_packed != null else null
 	var manifest: Dictionary = bench.call("build_victory_manifest_preview") if bench != null and bench.has_method("build_victory_manifest_preview") else {}
-	ready = ready and bench != null and bench.has_method("victory_cases") and bench.has_method("run_victory_suite") and int(manifest.get("record_count", 0)) == 56 and _is_pure_data(manifest)
+	ready = ready and bench != null and bench.has_method("victory_cases") and bench.has_method("run_victory_suite") and int(manifest.get("record_count", 0)) == 54 and _is_pure_data(manifest)
 	if bench != null:
 		bench.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var smoke_source := FileAccess.get_file_as_string("res://tests/smoke_test.gd")
 	for forbidden in ["var game_over", "victory_countdown", "_roguelike_cash_goal", "_player_visible_settlement_estimate", "_player_final_score", "_final_score_rankings", "CITY_FINAL_VALUE"]:
-		ready = ready and not main_source.contains(str(forbidden)) and not smoke_source.contains(str(forbidden))
+		ready = ready and not main_source.contains(str(forbidden))
 	var contract := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTRACT)
-	ready = ready and contract.contains("SS05-04 is a hard cutover") and contract.contains("56 cases") and contract.contains("There is no cash-goal or legacy countdown fallback")
-	_expect(ready, "SS05-04 composes one VictoryControlRuntimeController, a non-owning WorldBridge, and a 56-case gate with no cash-goal or countdown fallback")
+	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
+	ready = ready and coordinator_scene.contains("VictoryControlRuntimeController") and coordinator_scene.contains("VictoryControlWorldBridge") and contract.contains("SS06-05 is a hard cutover") and contract.contains("54 v0.6 cases") and contract.contains("no runtime fallback")
+	_expect(ready, "SS06-05 composes the unique v0.6 Victory owner and non-owning world bridge with no fixed-depth or cash-goal fallback")
 
 
 func _check_industry_capacity_card_group_runtime_assets() -> void:
-	var ready := ResourceLoader.exists(INDUSTRY_CAPACITY_RUNTIME_SERVICE) and ResourceLoader.exists(INDUSTRY_CAPACITY_WORLD_BRIDGE) and ResourceLoader.exists(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH) and FileAccess.file_exists(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT)
-	var service_packed := load(INDUSTRY_CAPACITY_RUNTIME_SERVICE) as PackedScene
-	var service := service_packed.instantiate() if service_packed != null else null
-	var configured: Dictionary = service.call("configure") if service != null else {}
-	var service_debug: Dictionary = service.call("debug_snapshot") if service != null else {}
-	ready = ready and bool(configured.get("valid", false)) and bool(service_debug.get("service_authoritative", false)) and service_debug.get("industry_ids", []) == ["life", "energy", "industry", "technology", "commerce", "shipping"] and service_debug.get("capacity_thresholds", []) == [15, 40, 80, 140]
-	ready = ready and service != null and service.has_method("derive_player_capacity") and service.has_method("capacity_for_gdp") and service.has_method("availability_snapshot")
-	if service != null:
-		service.free()
-	var bench_packed := load(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH) as PackedScene
+	var ready := ResourceLoader.exists(PLAYER_MANA_RUNTIME_CONTROLLER) and ResourceLoader.exists(COMMODITY_FLOW_RUNTIME_CONTROLLER)
+	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
+	var asset_source := FileAccess.get_file_as_string("res://scripts/runtime/player_mana_runtime_controller.gd")
+	var flow_source := FileAccess.get_file_as_string("res://scripts/runtime/commodity_flow_runtime_controller.gd")
+	var queue_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
+	ready = ready and coordinator_scene.contains("PlayerManaRuntimeController") and coordinator_scene.contains("CommodityFlowRuntimeController") and not coordinator_scene.contains("IndustryCapacityRuntimeService") and not coordinator_scene.contains("IndustryCapacityWorldBridge")
+	ready = ready and asset_source.contains("asset_balance_authority") and asset_source.contains("legacy_industry_capacity_fallback_used") and flow_source.contains("owns_fixed_point_flow") and flow_source.contains("owns_sale_receipt_ledger")
+	ready = ready and queue_source.contains('"asset_reservation_authority": false') and queue_source.contains('"priority_bid_authority": false') and queue_source.contains('entry.erase("capacity_reservation")')
+	_expect(ready, "PlayerMana and CommodityFlow replace the retired IndustryCapacity owner while the card-group queue keeps its narrow reservation boundary")
+
+
+func _check_ruleset_v06_region_infrastructure_foundation_assets() -> void:
+	var required_assets := [
+		RULESET_V06_PROFILE,
+		RULESET_V06_SCHEMA_REGISTRY,
+		RULESET_V06_CONFORMANCE_REGISTRY,
+		REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH,
+		REGION_INFRASTRUCTURE_CHARACTERIZATION_REGISTRY,
+	]
+	var ready := true
+	for path in required_assets:
+		ready = ready and ResourceLoader.exists(path)
+	ready = ready and FileAccess.file_exists(REGION_INFRASTRUCTURE_CONTRACT)
+	var profile := load(RULESET_V06_PROFILE)
+	var profile_snapshot: Dictionary = profile.call("debug_snapshot") if profile != null and profile.has_method("debug_snapshot") else {}
+	ready = ready and str((profile_snapshot.get("identity", {}) as Dictionary).get("ruleset_id", "")) == "v0.6"
+	ready = ready and int((profile_snapshot.get("infrastructure", {}) as Dictionary).get("maximum_facility_rank", 0)) == 4
+	ready = ready and not JSON.stringify(profile_snapshot).to_lower().contains("panic") and not JSON.stringify(profile_snapshot).to_lower().contains("\"heat")
+	ready = ready and _is_pure_data(profile_snapshot)
+	var bench_packed := load(REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH) as PackedScene
 	var bench := bench_packed.instantiate() if bench_packed != null else null
-	var manifest: Dictionary = bench.call("build_runtime_manifest_preview") if bench != null and bench.has_method("build_runtime_manifest_preview") else {}
-	ready = ready and bench != null and bench.has_method("runtime_cases") and bench.has_method("run_runtime_suite") and int(manifest.get("record_count", 0)) == 64 and str(manifest.get("ruleset_id", "")) == "v0.5" and str(manifest.get("production_runtime_ruleset", "")) == "v0.4" and _is_pure_data(manifest)
+	var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench != null and bench.has_method("build_characterization_manifest_preview") else {}
+	ready = ready and bench != null and bench.has_method("characterization_cases") and bench.has_method("run_characterization_suite")
+	ready = ready and int(manifest.get("case_count", 0)) == 68 and (manifest.get("records", []) as Array).size() == 68 and _is_pure_data(manifest)
 	if bench != null:
 		bench.free()
+	var conformance_script := load(RULESET_V06_CONFORMANCE_REGISTRY) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	var conformance_snapshot: Dictionary = conformance.call("debug_snapshot") if conformance != null else {}
+	ready = ready and str(conformance_snapshot.get("ruleset_id", "")) == "v0.6" and _is_pure_data(conformance_snapshot)
+	var region_registry_script := load(REGION_INFRASTRUCTURE_CHARACTERIZATION_REGISTRY) as Script
+	var region_registry: RefCounted = region_registry_script.new() if region_registry_script != null else null
+	var region_snapshot: Dictionary = region_registry.call("debug_snapshot") if region_registry != null else {}
+	ready = ready and not bool((region_snapshot.get("legacy_heat_deletion_gate", {}) as Dictionary).get("v06_heat_state_allowed", true)) and (region_snapshot.get("legacy_heat_ownership", []) as Array).size() >= 6 and _is_pure_data(region_snapshot)
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var queue_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
-	var contract := FileAccess.get_file_as_string(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT)
-	ready = ready and not main_source.contains("func _apply_card_group_bid_chain") and not main_source.contains("func _normalize_card_resolution_queue_bids") and not main_source.contains("CARD_BID_INCREMENT_OPTIONS")
-	ready = ready and queue_source.contains("public_wager_pool_receipt") and queue_source.contains("capacity_reservation") and contract.contains("8/6/2") and contract.contains("global production ruleset bridge") and contract.contains("v0.4")
-	_expect(ready, "SS05-05 composes one Industry Capacity owner, one non-owning bridge, fixed 8/6/2 group rules, and a 64-case gate while global production remains v0.4")
+	var ruleset_scene := FileAccess.get_file_as_string("res://scenes/runtime/RulesetRuntimeBridge.tscn")
+	var catalog_scene := FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
+	var save_source := FileAccess.get_file_as_string("res://scripts/runtime/game_save_runtime_coordinator.gd")
+	ready = ready and ruleset_scene.contains("space_syndicate_ruleset_v04.tres") and not ruleset_scene.contains("space_syndicate_ruleset_v06.tres")
+	ready = ready and catalog_scene.contains("card_runtime_catalog_v04.tres") and not catalog_scene.contains("v06")
+	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 1")
+	ready = ready and coordinator_scene.contains("RegionInfrastructureRuntimeController") and coordinator_scene.contains("CommodityFlowRuntimeController") and coordinator_scene.contains("CommodityCardInventoryRuntimeController") and coordinator_scene.contains("CardPlayerStateProductionAdapterV06") and not coordinator_scene.contains("CommodityCardInventoryWorldBridge")
+	ready = ready and coordinator_source.contains("func refresh_v06_production_player_bindings(") and coordinator_source.contains("func play_v06_runtime_card(") and main_source.contains("func _play_v06_runtime_card_for_player(")
+	var contract := FileAccess.get_file_as_string(REGION_INFRASTRUCTURE_CONTRACT)
+	ready = ready and contract.contains("Legacy Heat / Panic Retirement") and contract.contains("No parallel fallback") and contract.contains("active `GameRuntimeCoordinator` composition no longer instances `CityDevelopmentRuntimeController`")
+	_expect(ready, "the v0.4 global namespace and v1 save boundary coexist with one explicit v0.6 transaction/infrastructure production graph")
 
 
 func _function_source(source: String, function_name: String) -> String:

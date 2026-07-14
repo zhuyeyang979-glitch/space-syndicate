@@ -11,6 +11,8 @@ const HISTORY_LIMIT := 24
 
 var _world: Node
 var _product_market_runtime_controller: ProductMarketRuntimeController
+var _route_network_runtime_controller: RouteNetworkRuntimeController
+var _contract_atomic_effect_owner_v06: Object
 var _world_call_count := 0
 var _failed_world_call_count := 0
 
@@ -21,6 +23,14 @@ func bind_world(world: Node) -> void:
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
 	_product_market_runtime_controller = controller
+
+
+func set_route_network_runtime_controller(controller: RouteNetworkRuntimeController) -> void:
+	_route_network_runtime_controller = controller
+
+
+func set_contract_atomic_effect_owner_v06(owner: Object) -> void:
+	_contract_atomic_effect_owner_v06 = owner
 
 
 func has_world() -> bool:
@@ -115,46 +125,117 @@ func remember_contract_parties(viewer_index: int, entry: Dictionary, source: Str
 
 
 func apply_response_transaction(transaction: Dictionary) -> Dictionary:
-	if not has_world():
-		return {"applied": false, "reason": "world_missing"}
-	if not _is_pure_data(transaction):
-		return {"applied": false, "reason": "transaction_not_pure_data"}
-	for method_name_variant in [
-		"_remove_district_products", "_remove_city_products_from_city", "_remove_district_demands",
-		"_remove_city_demands_from_city", "_add_district_products", "_add_city_products_to_city",
-		"_add_district_demands", "_add_city_demands_to_city", "_append_city_public_clue",
-		"_transport_score_from_level", "_district_economy_focus_label", "_refresh_city_networks",
-		"_record_player_card_income", "_record_player_card_spend",
-		"_pulse_district", "_add_action_callout", "_district_center", "_limited_name_list",
-	]:
-		if not _world.has_method(StringName(str(method_name_variant))):
-			return {"applied": false, "reason": "world_contract_missing", "method": str(method_name_variant)}
-	var source_index := int(transaction.get("contract_source_district", -1))
-	var target_index := int(transaction.get("contract_target_district", -1))
-	var target_controller := int(transaction.get("contract_target_owner", -1))
+	var prepared := prepare_contract_effect_v06(transaction)
+	if not bool(prepared.get("prepared_effect", false)):
+		return {"applied": false, "reason": str(prepared.get("reason_code", "contract_effect_atomicity_unavailable")), "receipt": prepared}
+	var committed := commit_contract_effect_v06(prepared)
+	if not bool(committed.get("committed_effect", false)):
+		return {"applied": false, "reason": str(committed.get("reason_code", "contract_effect_commit_failed")), "receipt": committed}
+	var finalized := finalize_contract_effect_v06(committed)
+	if not bool(finalized.get("finalized_effect", false)):
+		return {"applied": false, "reason": str(finalized.get("reason_code", "contract_effect_finalize_failed")), "receipt": finalized}
+	return {"applied": true, "reason": str(transaction.get("contract_response", "")), "receipt": committed, "finalization": finalized}
+
+
+func contract_effect_capability_matrix_v06(transaction: Dictionary = {}) -> Dictionary:
+	var effect_required := response_requires_external_effect_v06(transaction)
+	if not effect_required:
+		return {
+			"effect_required": false,
+			"prepare": true,
+			"commit": true,
+			"rollback": true,
+			"finalize": true,
+			"revision": true,
+			"exact_once": true,
+			"save_load": true,
+			"checkpoint": true,
+			"atomic_ready": true,
+			"reason_code": "contract_effect_not_required",
+		}
+	var declared: Dictionary = {}
+	if _contract_atomic_effect_owner_v06 != null and _contract_atomic_effect_owner_v06.has_method("contract_effect_runtime_capabilities_v06"):
+		var value_variant: Variant = _contract_atomic_effect_owner_v06.call("contract_effect_runtime_capabilities_v06")
+		if value_variant is Dictionary:
+			declared = (value_variant as Dictionary).duplicate(true)
+	var methods := {
+		"prepare": "prepare_contract_effect_v06",
+		"commit": "commit_contract_effect_v06",
+		"rollback": "rollback_contract_effect_v06",
+		"finalize": "finalize_contract_effect_v06",
+		"checkpoint": "contract_effect_checkpoint_status_v06",
+	}
+	var result := {"effect_required": true}
+	for key_variant in methods.keys():
+		var key := str(key_variant)
+		result[key] = bool(declared.get(key, false)) and _contract_atomic_effect_owner_v06 != null and _contract_atomic_effect_owner_v06.has_method(str(methods[key]))
+	for key in ["revision", "exact_once", "save_load", "atomic_ready"]:
+		result[key] = bool(declared.get(key, false))
+	result["atomic_ready"] = bool(result.get("atomic_ready", false)) \
+		and bool(result.get("prepare", false)) \
+		and bool(result.get("commit", false)) \
+		and bool(result.get("rollback", false)) \
+		and bool(result.get("finalize", false)) \
+		and bool(result.get("checkpoint", false)) \
+		and bool(result.get("revision", false)) \
+		and bool(result.get("exact_once", false)) \
+		and bool(result.get("save_load", false))
+	result["reason_code"] = "contract_effect_atomic_ready" if bool(result["atomic_ready"]) else "contract_effect_atomicity_unavailable"
+	return result
+
+
+func response_requires_external_effect_v06(transaction: Dictionary) -> bool:
+	var skill: Dictionary = transaction.get("skill", {}) if transaction.get("skill", {}) is Dictionary else {}
 	var response := str(transaction.get("contract_response", ""))
-	var products: Array = (transaction.get("contract_products", []) as Array).duplicate(true) if transaction.get("contract_products", []) is Array else []
-	if not _valid_source(source_index):
-		return {"applied": false, "reason": "source_district_invalid"}
-	if not _valid_target(target_index):
-		return {"applied": false, "reason": "target_district_invalid"}
-	if target_controller < 0 or target_controller >= player_count():
-		return {"applied": false, "reason": "target_controller_invalid"}
-	if products.is_empty():
-		return {"applied": false, "reason": "contract_products_missing"}
-	var skill: Dictionary = (transaction.get("skill", {}) as Dictionary).duplicate(true) if transaction.get("skill", {}) is Dictionary else {}
-	if skill.is_empty():
-		return {"applied": false, "reason": "contract_skill_missing"}
-	var receipt := _apply_accept(transaction, skill, products) if response == ContractRuntimeController.RESPONSE_ACCEPTED else _apply_decline(transaction, skill, products)
-	if bool(receipt.get("applied", false)):
-		forward_runtime_event({
-			"kind": "contract_response_resolved",
-			"public": true,
-			"contract_offer_id": int(transaction.get("contract_offer_id", -1)),
-			"response": response,
-			"summary": str(receipt.get("public_summary", "")),
-		})
-	return receipt
+	if response == ContractRuntimeController.RESPONSE_ACCEPTED:
+		for key in ["contract_add_products", "contract_add_demands", "contract_remove_products", "contract_remove_demands", "accept_cash", "accept_production_delta", "accept_transport_delta", "accept_consumption_delta"]:
+			if int(skill.get(key, 0)) != 0:
+				return true
+		return float(skill.get("accept_route_flow_multiplier", 1.0)) > 1.001
+	if response in [ContractRuntimeController.RESPONSE_REJECTED, ContractRuntimeController.RESPONSE_TIMEOUT]:
+		for key in ["decline_cash_penalty", "decline_production_delta", "decline_transport_delta", "decline_consumption_delta", "decline_route_damage"]:
+			if int(skill.get(key, 0)) != 0:
+				return true
+	return false
+
+
+func prepare_contract_effect_v06(transaction: Dictionary) -> Dictionary:
+	if not _is_pure_data(transaction):
+		return _effect_receipt(transaction, "prepared_effect", false, "contract_effect_transaction_invalid")
+	var matrix := contract_effect_capability_matrix_v06(transaction)
+	if not bool(matrix.get("atomic_ready", false)):
+		return _effect_receipt(transaction, "prepared_effect", false, str(matrix.get("reason_code", "contract_effect_atomicity_unavailable")), {"capability_matrix": matrix})
+	if not bool(matrix.get("effect_required", true)):
+		return _effect_receipt(transaction, "prepared_effect", true, "contract_effect_not_required", {"effect_required": false})
+	return _forward_effect_stage("prepare_contract_effect_v06", transaction, "prepared_effect")
+
+
+func commit_contract_effect_v06(prepared: Dictionary) -> Dictionary:
+	if not response_requires_external_effect_v06(prepared):
+		return _effect_receipt(prepared, "committed_effect", true, "contract_effect_not_required", {"effect_required": false})
+	return _forward_effect_stage("commit_contract_effect_v06", prepared, "committed_effect")
+
+
+func rollback_contract_effect_v06(receipt: Dictionary) -> Dictionary:
+	if not response_requires_external_effect_v06(receipt):
+		return _effect_receipt(receipt, "rolled_back_effect", true, "contract_effect_not_required", {"effect_required": false})
+	return _forward_effect_stage("rollback_contract_effect_v06", receipt, "rolled_back_effect")
+
+
+func finalize_contract_effect_v06(receipt: Dictionary) -> Dictionary:
+	if not response_requires_external_effect_v06(receipt):
+		return _effect_receipt(receipt, "finalized_effect", true, "contract_effect_not_required", {"effect_required": false})
+	return _forward_effect_stage("finalize_contract_effect_v06", receipt, "finalized_effect")
+
+
+func contract_effect_checkpoint_status_v06() -> Dictionary:
+	if _contract_atomic_effect_owner_v06 == null:
+		return {"can_checkpoint": true, "reason_code": "contract_effect_owner_unused"}
+	var matrix := contract_effect_capability_matrix_v06({"contract_response": ContractRuntimeController.RESPONSE_ACCEPTED, "skill": {"accept_cash": 1}})
+	if not bool(matrix.get("atomic_ready", false)):
+		return {"can_checkpoint": false, "reason_code": "contract_effect_atomicity_unavailable"}
+	var value_variant: Variant = _contract_atomic_effect_owner_v06.call("contract_effect_checkpoint_status_v06")
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {"can_checkpoint": false, "reason_code": "contract_effect_checkpoint_invalid"}
 
 
 func store_contract_result(entry: Dictionary) -> bool:
@@ -218,7 +299,49 @@ func debug_snapshot() -> Dictionary:
 		"owns_contract_rules": false,
 		"owns_contract_timer": false,
 		"owns_ai_decisions": false,
+		"legacy_direct_response_mutation_exposed": false,
+		"atomic_effect_owner_configured": _contract_atomic_effect_owner_v06 != null,
 	}
+
+
+func _forward_effect_stage(method_name: String, source: Dictionary, success_key: String) -> Dictionary:
+	if _contract_atomic_effect_owner_v06 == null or not _contract_atomic_effect_owner_v06.has_method(method_name):
+		return _effect_receipt(source, success_key, false, "contract_effect_atomicity_unavailable")
+	var value_variant: Variant = _contract_atomic_effect_owner_v06.call(method_name, source.duplicate(true))
+	if not (value_variant is Dictionary):
+		return _effect_receipt(source, success_key, false, "contract_effect_receipt_invalid")
+	var result: Dictionary = (value_variant as Dictionary).duplicate(true)
+	if not _effect_binding_matches(source, result):
+		return _effect_receipt(source, success_key, false, "contract_effect_binding_mismatch", {"owner_receipt": result})
+	if not result.has(success_key) or not (result.get(success_key) is bool):
+		return _effect_receipt(source, success_key, false, "contract_effect_receipt_invalid", {"owner_receipt": result})
+	return result
+
+
+func _effect_receipt(source: Dictionary, success_key: String, success: bool, reason_code: String, extra: Dictionary = {}) -> Dictionary:
+	var result := {
+		"transaction_id": str(source.get("transaction_id", "")),
+		"contract_offer_id": int(source.get("contract_offer_id", -1)),
+		"contract_response": str(source.get("contract_response", "")),
+		"offer_revision": int(source.get("offer_revision", -1)),
+		"skill": (source.get("skill", {}) as Dictionary).duplicate(true) if source.get("skill", {}) is Dictionary else {},
+		"reason_code": reason_code,
+		"prepared_effect": false,
+		"committed_effect": false,
+		"rolled_back_effect": false,
+		"finalized_effect": false,
+	}
+	result[success_key] = success
+	for key_variant in extra.keys():
+		result[key_variant] = extra.get(key_variant)
+	return result
+
+
+func _effect_binding_matches(expected: Dictionary, actual: Dictionary) -> bool:
+	for key in ["transaction_id", "contract_offer_id", "contract_response", "offer_revision"]:
+		if str(expected.get(key, "")) != str(actual.get(key, "")):
+			return false
+	return true
 
 
 func _apply_accept(transaction: Dictionary, skill: Dictionary, products: Array) -> Dictionary:
@@ -250,7 +373,8 @@ func _apply_accept(transaction: Dictionary, skill: Dictionary, products: Array) 
 	var target_delta := _apply_region_delta(target_index, 0, int(skill.get("accept_transport_delta", 0)), int(skill.get("accept_consumption_delta", 0)), source_label)
 	var route_flow_changed := _apply_route_flow(target_index, skill, source_label)
 	var cash_gain := _grant_cash(target_controller, maxi(0, int(skill.get("accept_cash", 0))), "匿名签约奖励", "%s｜%s→%s" % [source_label, _district_name(source_index), _district_name(target_index)])
-	_call_world(&"_refresh_city_networks")
+	if _route_network_runtime_controller != null:
+		_route_network_runtime_controller.refresh_routes()
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 	if not products.is_empty():
@@ -288,7 +412,8 @@ func _apply_decline(transaction: Dictionary, skill: Dictionary, products: Array)
 			city["trade_route_damage"] = int(city.get("trade_route_damage", 0)) + route_damage
 		city = _append_city_clue(city, "%s被%s：拒签惩罚%s，商品线索%s。" % [source_label, "超时拒签" if response == ContractRuntimeController.RESPONSE_TIMEOUT else "拒签", str(transaction.get("contract_decline_summary", "无额外惩罚")), _limited_names(products, 4)])
 		_set_city(target_index, city)
-	_call_world(&"_refresh_city_networks")
+	if _route_network_runtime_controller != null:
+		_route_network_runtime_controller.refresh_routes()
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 	_call_world(&"_pulse_district", [target_index, Color("#fb7185")])

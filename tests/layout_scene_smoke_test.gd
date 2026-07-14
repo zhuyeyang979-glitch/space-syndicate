@@ -390,6 +390,16 @@ const RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT := "res://scripts/tools/ruleset_v0
 const RULESET_V05_FOUNDATION_BENCH_SCRIPT := "res://scripts/tools/ruleset_v05_foundation_bench.gd"
 const RULESET_V05_FOUNDATION_BENCH_SCENE := "res://scenes/tools/RulesetV05FoundationBench.tscn"
 const RULESET_V05_FOUNDATION_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v05_foundation/"
+const RULESET_V06_PROFILE_SCRIPT := "res://scripts/rules/space_syndicate_ruleset_profile_v06.gd"
+const RULESET_V06_VALIDATOR_SCRIPT := "res://scripts/rules/ruleset_v06_validator.gd"
+const RULESET_V06_PROFILE := "res://resources/rules/space_syndicate_ruleset_v06.tres"
+const RULESET_V06_SCHEMA_REGISTRY := "res://scripts/rules/ruleset_v06_schema_registry.gd"
+const RULESET_V06_CONFORMANCE_REGISTRY := "res://scripts/tools/ruleset_v06_conformance_registry.gd"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_REGISTRY := "res://scripts/tools/region_infrastructure_characterization_registry.gd"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/region_infrastructure_runtime_characterization_bench.gd"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_CONTRACT := "res://docs/region_infrastructure_runtime_ownership_contract.md"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/region_infrastructure_characterization/"
 const PLAYER_TEXT_SPEC_V05_SCRIPT := "res://scripts/presentation/player_text_spec_v05.gd"
 const PLAYER_TEXT_VISIBILITY_V05_SCRIPT := "res://scripts/presentation/player_text_visibility_contract_v05.gd"
 const PLAYER_TEXT_RESOLVER_V05_SCRIPT := "res://scripts/presentation/player_text_locale_resolver_v05.gd"
@@ -846,6 +856,7 @@ func _run() -> void:
 	await _check_balance_runtime_bridge_component()
 	await _check_ruleset_v04_source_of_truth_component()
 	await _check_ruleset_v05_foundation_component()
+	await _check_ruleset_v06_region_infrastructure_foundation_component()
 	await _check_player_text_v05_foundation_component()
 	await _check_main_runtime_replacement_foundation_component()
 	await _check_game_session_save_ownership_component()
@@ -8347,6 +8358,98 @@ func _check_ruleset_v05_foundation_component() -> void:
 	_expect(not main_source.contains("space_syndicate_ruleset_v05") and not main_source.contains("RulesetSaveHandshakeService"), "main.gd has no v0.5 selector, fallback, or handshake owner")
 
 
+func _check_ruleset_v06_region_infrastructure_foundation_component() -> void:
+	for path in [
+		RULESET_V06_PROFILE_SCRIPT,
+		RULESET_V06_VALIDATOR_SCRIPT,
+		RULESET_V06_PROFILE,
+		RULESET_V06_SCHEMA_REGISTRY,
+		RULESET_V06_CONFORMANCE_REGISTRY,
+		REGION_INFRASTRUCTURE_CHARACTERIZATION_REGISTRY,
+		REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCRIPT,
+		REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE,
+	]:
+		_expect(ResourceLoader.exists(path), "SS06-00 asset loads: %s" % path)
+	_expect(FileAccess.file_exists(REGION_INFRASTRUCTURE_CHARACTERIZATION_CONTRACT), "SS06-00 ownership contract exists")
+	var profile := load(RULESET_V06_PROFILE)
+	var profile_snapshot: Dictionary = profile.call("debug_snapshot") if profile != null and profile.has_method("debug_snapshot") else {}
+	var serialized_profile := JSON.stringify(profile_snapshot).to_lower()
+	_expect(
+		str((profile_snapshot.get("identity", {}) as Dictionary).get("ruleset_id", "")) == "v0.6"
+		and int((profile_snapshot.get("identity", {}) as Dictionary).get("currency_scale", 0)) == 100
+		and (profile_snapshot.get("infrastructure", {}) as Dictionary).get("facility_hp_contribution_by_rank", {}) == {"I": 100, "II": 200, "III": 300, "IV": 400}
+		and not serialized_profile.contains("panic") and not serialized_profile.contains("\"heat"),
+		"v0.6 Profile exposes shared-infrastructure defaults without a heat/panic state",
+	)
+	_expect(not _variant_contains_callable(profile_snapshot) and not _variant_contains_object(profile_snapshot), "v0.6 Profile snapshot stays pure data")
+	var bench_packed := load(REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	var bench := bench_packed.instantiate() as Control if bench_packed != null else null
+	var manifest: Dictionary = bench.call("build_characterization_manifest_preview") if bench != null and bench.has_method("build_characterization_manifest_preview") else {}
+	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
+	var fields_ok := records.size() == 68
+	for record_variant in records:
+		var record: Dictionary = record_variant if record_variant is Dictionary else {}
+		for key in ["case_id", "scope", "observed", "contract_aligned", "pure_data_checked", "passed", "risk", "notes"]:
+			fields_ok = fields_ok and record.has(key)
+	_expect(bench != null and bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("run_characterization_suite"), "Region Infrastructure bench exposes its long-term QA API")
+	_expect(int(manifest.get("case_count", 0)) == 68 and fields_ok and str(manifest.get("production_ruleset_id", "")) == "v0.4" and not bool(manifest.get("runtime_cutover_enabled", true)), "Region Infrastructure preview freezes 68 cases without enabling a parallel v0.6 runtime")
+	_expect(str(bench.call("output_dir")) == REGION_INFRASTRUCTURE_CHARACTERIZATION_OUTPUT_DIR and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Region Infrastructure manifest is pure data and writes only to user://")
+	if bench != null:
+		bench.free()
+	var conformance_script := load(RULESET_V06_CONFORMANCE_REGISTRY) as Script
+	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
+	var conformance_snapshot: Dictionary = conformance.call("debug_snapshot") if conformance != null else {}
+	_expect(str(conformance_snapshot.get("ruleset_id", "")) == "v0.6" and not bool(conformance_snapshot.get("production_runtime_active", true)) and (conformance_snapshot.get("records", []) as Array).size() == 4 and not _variant_contains_callable(conformance_snapshot) and not _variant_contains_object(conformance_snapshot), "v0.6 conformance registry records foundation, characterization, and heat retirement while runtime remains inactive")
+	var region_registry_script := load(REGION_INFRASTRUCTURE_CHARACTERIZATION_REGISTRY) as Script
+	var region_registry: RefCounted = region_registry_script.new() if region_registry_script != null else null
+	var region_snapshot: Dictionary = region_registry.call("debug_snapshot") if region_registry != null else {}
+	var heat_gate: Dictionary = region_snapshot.get("legacy_heat_deletion_gate", {}) if region_snapshot.get("legacy_heat_deletion_gate", {}) is Dictionary else {}
+	_expect(not bool(heat_gate.get("v06_heat_state_allowed", true)) and not bool(heat_gate.get("monster_heat_scoring_allowed", true)) and bool(heat_gate.get("delete_with_region_cutover", false)) and (region_snapshot.get("legacy_heat_ownership", []) as Array).size() >= 6, "SS06-01 heat retirement gate covers state, scoring, damage, text, cards, and fixtures")
+	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
+	_expect(mcp_registry != null and str((mcp_registry.call("record_for_path", REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE) as Dictionary).get("id", "")) == "region_infrastructure_runtime_characterization_bench", "MCP Editability Hub registers the Region Infrastructure characterization gate")
+	var sceneization_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var sceneization: RefCounted = sceneization_script.new() if sceneization_script != null else null
+	var sceneization_record: Dictionary = sceneization.call("record_for_id", "region_infrastructure_v06_characterization_gate") if sceneization != null else {}
+	_expect(str(sceneization_record.get("sceneization_status", "")) == "partial" and str(sceneization_record.get("current_scene_path", "")) == REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE, "Sceneization Audit marks Region Infrastructure characterized and not yet cut over")
+	var system_audit_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_audit_script.new() if system_audit_script != null else null
+	var system_record: Dictionary = system_audit.call("record_for_id", "ruleset_v06_region_infrastructure_foundation") if system_audit != null else {}
+	_expect(str(system_record.get("current_status", "")) == "resource_asset" and str(system_record.get("runtime_owner", "")).contains("inactive"), "System Resourceization Audit records v0.6 Profile as runtime inactive")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(360, 720)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenRulesetV06FoundationButton", "OpenRegionInfrastructureCharacterizationBenchButton", "RunRegionInfrastructureCharacterizationBenchButton", "OpenRegionInfrastructureCharacterizationOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock owns %s" % button_name)
+		_expect(dock.has_method("region_infrastructure_characterization_bench_scene_path") and dock.has_method("region_infrastructure_characterization_qa_output_dir"), "Design QA Dock exposes Region Infrastructure path helpers")
+		var profile_paths: Array[String] = []
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_ruleset_v06_foundation_requested", func(path: String) -> void: profile_paths.append(path))
+		dock.connect("open_region_infrastructure_characterization_bench_requested", func(path: String) -> void: open_paths.append(path))
+		dock.connect("run_region_infrastructure_characterization_bench_requested", func(path: String) -> void: run_paths.append(path))
+		(dock.find_child("OpenRulesetV06FoundationButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenRegionInfrastructureCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunRegionInfrastructureCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(profile_paths == [RULESET_V06_PROFILE] and open_paths == [REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE] and run_paths == [REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit the v0.6 profile and Region gate paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var active_ruleset_scene := FileAccess.get_file_as_string(RULESET_RUNTIME_BRIDGE_SCENE)
+	var active_catalog_scene := FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
+	var save_source := FileAccess.get_file_as_string(GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT)
+	_expect(main_source.sha256_text().to_upper() == "7F4AF6CA535051FB5189BDCD4273B990CE996464BFBCBE756A43BA7381673A62", "SS06-00 keeps production main.gd byte-for-byte unchanged")
+	_expect(active_ruleset_scene.contains("space_syndicate_ruleset_v04.tres") and not active_ruleset_scene.contains("space_syndicate_ruleset_v06.tres") and active_catalog_scene.contains("card_runtime_catalog_v04.tres") and save_source.contains("const CURRENT_SAVE_VERSION := 1"), "SS06-00 leaves production Ruleset, Card Catalog, and save owner on v0.4/v1")
+
+
 func _check_player_text_v05_foundation_component() -> void:
 	for path in [
 		PLAYER_TEXT_SPEC_V05_SCRIPT,
@@ -12759,7 +12862,8 @@ func _check_final_settlement_public_snapshot_cutover_component() -> void:
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _final_settlement_public_source_snapshot(") and main_source.contains("func _final_settlement_public_snapshot(") and main_source.contains("compose_final_settlement_snapshot") and not main_source.contains("func _final_settlement_board_snapshot("), "main.gd keeps one Final Settlement public-fact adapter and delegates all presentation")
+	var main_scene_source := FileAccess.get_file_as_string("res://scenes/main.tscn")
+	_expect(not main_source.contains("func _final_settlement_public_source_snapshot(") and not main_source.contains("func _final_run_summary_text(") and not main_source.contains("func _final_settlement_public_source_adapter_node(") and main_scene_source.contains("FinalSettlementRuntimeComposition.tscn") and not main_source.contains("func _final_settlement_board_snapshot("), "main.tscn owns the Final Settlement runtime composition and main retains no parallel source adapter or summary formatter")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0

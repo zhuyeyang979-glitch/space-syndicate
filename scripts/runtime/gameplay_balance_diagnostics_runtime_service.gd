@@ -658,29 +658,18 @@ func district_reserved_supply_audit(world_snapshot: Dictionary = {}) -> Dictiona
 	var snapshot := _snapshot_or(world_snapshot, false)
 	var issues: Array = []
 	var monster_occurrences := {}
-	var development_slots := 0
-	var land_development_slots := 0
 	var districts := _array(snapshot.get("districts", []))
 	for district_variant in districts:
 		var district: Dictionary = district_variant if district_variant is Dictionary else {}
-		var city_cards: Array = _array(district.get("city_development_cards", []))
 		var monster_cards: Array = _array(district.get("monster_cards", []))
-		var guaranteed_city_card := str(district.get("city_development_guarantee_card", ""))
 		var guaranteed_monster_card := str(district.get("monster_guarantee_card", ""))
 		for card_variant in _array(district.get("card_choices", [])):
 			var card_name := str(card_variant)
-			if city_cards.has(card_name) or monster_cards.has(card_name):
+			if monster_cards.has(card_name):
 				continue
 			var skill := _dictionary(_card_fact(card_name, snapshot).get("skill", {}))
-			if card_name == guaranteed_city_card or str(skill.get("kind", "")) == "city_development":
-				city_cards.append(card_name)
-			elif card_name == guaranteed_monster_card or str(skill.get("kind", "")) == "monster_card":
+			if card_name == guaranteed_monster_card or str(skill.get("kind", "")) == "monster_card":
 				monster_cards.append(card_name)
-		development_slots += city_cards.size()
-		if str(district.get("terrain", "land")) == "land":
-			land_development_slots += city_cards.size()
-		if city_cards.size() != 1:
-			issues.append("%s城市发展固定槽=%d" % [str(district.get("name", "区域")), city_cards.size()])
 		if monster_cards.size() != 1:
 			issues.append("%s固定怪兽槽=%d" % [str(district.get("name", "区域")), monster_cards.size()])
 		elif not monster_cards.is_empty():
@@ -693,7 +682,7 @@ func district_reserved_supply_audit(world_snapshot: Dictionary = {}) -> Dictiona
 		if int(monster_occurrences[card_variant]) > 1:
 			duplicate_monsters.append(str(card_variant))
 	var capacity_shortfall := maxi(0, districts.size() - _array(snapshot.get("allowed_monster_cards", [])).size())
-	return {"ok": issues.is_empty() and (capacity_shortfall > 0 or duplicate_monsters.is_empty()), "issues": issues, "district_count": districts.size(), "development_slot_count": development_slots, "land_development_slot_count": land_development_slots, "monster_slot_count": _sum_dictionary_values(monster_occurrences), "unique_monster_card_count": monster_occurrences.size(), "duplicate_monster_cards": duplicate_monsters, "monster_unique_capacity_shortfall": capacity_shortfall, "monster_uniqueness_capacity_limited": capacity_shortfall > 0}
+	return {"ok": issues.is_empty() and (capacity_shortfall > 0 or duplicate_monsters.is_empty()), "issues": issues, "district_count": districts.size(), "monster_slot_count": _sum_dictionary_values(monster_occurrences), "unique_monster_card_count": monster_occurrences.size(), "duplicate_monster_cards": duplicate_monsters, "monster_unique_capacity_shortfall": capacity_shortfall, "monster_uniqueness_capacity_limited": capacity_shortfall > 0}
 
 
 func card_one_glance_audit_report(world_snapshot: Dictionary = {}) -> Dictionary:
@@ -920,7 +909,7 @@ func _family_complete(family: String, ids: Dictionary) -> bool:
 
 func _fallback_route_id(skill: Dictionary) -> String:
 	var kind := str(skill.get("kind", ""))
-	if kind in ["city_development", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance"]: return "city_growth"
+	if kind in ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance"]: return "city_growth"
 	if kind in ["area_trade_contract", "product_contract_boon", "city_contract_boon"]: return "contract_route"
 	if kind in ["product_speculation", "product_futures", "city_gdp_derivative", "market_stabilize", "product_growth_boon"]: return "finance_speculation"
 	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover", "route_sabotage", "weather_control", "news_event", "military_force", "military_command"]: return "monster_pressure"

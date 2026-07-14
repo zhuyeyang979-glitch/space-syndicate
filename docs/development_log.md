@@ -3,6 +3,53 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-14。
 
+## 2026-07-14｜SS06-05 动态胜利与审计结算顺序
+
+- `VictoryControlRuntimeController` 已从 v0.5 固定深度表切换到 v0.6 动态分母：存续区域数为 `A`，要求区域数为 `K=ceil(A*40%)`，普通胜利 GDP 门槛为 `K*36 GDP/min`；`A=0` 时暂停普通 GDP 胜利。
+- 区域控制只消费 `RegionInfrastructureRuntimeController` 生命周期和 `CommodityFlowRuntimeController` 最近 30 秒成交 GDP：玩家自有商品 GDP 占比至少 3000bp 且唯一最高才控制，精确并列无人控制。
+- 每名合格玩家独立累计 10 秒资格；120 秒审计名单粘性公开，后加入者也必须独立完成 10 秒。审计终点重新读取当前 `A/K`、控制和 GDP，无合格决赛者直接回 idle，v0.5 的 30 秒失败冷却已删除。
+- 同帧顺序固定为攻击/生命周期、连续流量与 Sale Receipt、破产，再胜利；Controller 只接受 `post_world_settlement` 检查点完成终点结算。比较顺序为精确 top-K 商品 GDP cents、控制区域数、精确现金，完全相同则共同胜利。
+- 普通区域毁灭不再触发现金胜利；只有 scenario 同时显式声明不可逆星球毁灭和现金 fallback 时才允许。审计公开普通手牌、设施/安装、商品库存、六色 GDP、区域份额、单位和金融持仓，同时继续过滤私密调查、秘密目标、AI 计划、私密目标与弃牌。
+- 长期 `VictoryControlRuntimeBench` 已升级为 v0.6 动态门，54/54 通过；合同见 `docs/victory_control_runtime_contract.md`。下一步为 SS06-06 商品库存、履带领取和永久安装，且必须先消费另一位 agent 的最新 Card Flow API，避免重复所有权。
+
+## 2026-07-14｜SS06-04 六色资产与 8/6/2 卡窗
+
+- `PlayerManaRuntimeController` 成为六色资产池唯一 owner；只消费玩家自己的商品 Sale Receipt，以对应色 GDP/min 除以 100 恢复每秒资产，六池各自封顶 100，不衰减。
+- 非商品牌通过 exact-once reserve/consume/release 授权支付；商品牌仍不支付资产。Queue 不拥有支付算法，也不再拥有 v0.5 Industry Capacity reservation、优先报价或产业项目要求。
+- 卡牌组窗口为总计 8 秒、组织 6 秒、锁牌 2 秒，标准每人最多提交 3 张。`PlayerManaCardWindowRuntimeBench` 32/32，共享窗口和 Card Resolution Controller 聚焦测试通过。
+
+## 2026-07-14｜玩家资源术语统一为“资产”
+
+- 玩家规则、卡牌、按钮、状态提示和检查器不再使用“法力”；六种由玩家自有商品 GDP 恢复的资源统一称为“六色资产”。
+- “通用资产”只是费用类型，由六色资产任意组合支付，不建立第七个资产池。
+- v0.6 卡牌目录与新卡牌流程机器字段使用 `asset_cost`、`assets` 和 `asset_debit`；玩家文本泄漏校验禁止旧术语。
+- 尚在生产运行时和存档契约中使用的旧 `mana` 键只能作为迁移兼容面保留，待对应运行时所有者以版本化读取兼容方式迁移；不得再暴露给玩家。
+- 已生成 82 个已有正式名称的卡牌家族、328 张 I–IV 级定义；目录连续两次真实 Godot 构建哈希一致。六色商品等量目标仍需新增 20 个商品家族，完成后为 408 张。
+- 新增独立 v0.6 卡牌事务语义服务：履带单一领取者、市场购买与立即刷新原子提交、transaction journal 幂等、玩家 revision、卡牌实例绑定、六色支付通用资产和效果 prepare/commit 失败回滚均通过 Godot 测试。当前内存玩家状态仅供 Bench 使用；生产接线必须先通过单一状态端口连接现有手牌、现金与资产 owner，禁止形成双库存或双资产。
+- 新增商品与公共设施两阶段效果 adapters，并以真实 `CommodityFlowRuntimeController`、`RegionInfrastructureRuntimeController` 完成独立集成测试；设施槽、产权、废墟重建、仓库产业选择、商品方向/同色和过期 revision 均在扣牌前校验。主场景接线仍等待单一玩家状态端口。
+- 新增 `CardPlayerStatePortV06` reference port，支持 1–N 玩家 revision/CAS 预留、全局卡牌实例唯一、六色资产严格余额、原子提交/中止和 transaction+intent 重放；65 项 Godot 测试覆盖双玩家偷牌与竞争锁。reference memory port 不得作为生产第二份状态。
+- `CardFlowTransactionServiceV06` 已移除私有 `_players/_player_reservations`，所有玩家读写改经可注入状态端口；56 项回归覆盖单一 revision、跨玩家锁阻断、端口 CAS 失败时效果补偿和原有领取/购买/合成/打出流程。
+- 两种供需牌已建立确定性权益 planner 与原子 batch sink 合同：按商品 owner + 具体商品的 30 秒 GDP 分配，使用整数最大余数、容量迭代再分配、共享运输资源、最短合法距离与多式标签。122 项测试和 10 项 MCP Bench 通过；现有 CommodityFlow 尚无订单/供货统一 batch + rollback API，因此生产 sink 保持 `BLOCKED`，缺失时退牌退资产。
+
+## 2026-07-14｜SS06-00 可恢复基线、v0.6 Foundation 与区域基础设施刻画
+
+- 建立不可变 `pre-v0.6-runtime-baseline`，指向 `c9c1b33841df3f96efe6a5b2a2132ed19e0effce`；独立 clean clone 已完成 Godot import、composition 和完整 layout smoke。开发转入 `rules/v06-runtime-integration`，不建立 v0.4/v0.6 运行时 selector。
+- 新增 Inspector 可编辑的 `space_syndicate_ruleset_v06.tres`、validator 和七个纯数据 schema，收录共享生命、设施容量/吞吐/速度、动态胜利、商品履带、六色法力、8/6/2 卡窗、怪兽战斗/赌局及 3-8 人/2-7 AI 门。生产 Ruleset bridge 和 Card Catalog 仍为 v0.4。
+- 被动 `RulesetSaveHandshakeService` 可识别 save v3 / ruleset v0.6，但 v1/v2 只能备份和新开局，不能推断设施状态或续打；生产 `GameSaveRuntimeCoordinator` 仍唯一写 v1。
+- 新增真实 `main.tscn` 的 Region Infrastructure Characterization。68/68 记录旧区域 HP/damage/destroyed、项目份额、路线损伤、仓库结算、Monster/Military damage requester、存档键和 SS06-01 删除候选；39/68 已符合 v0.6，其余故意保留为迁移差异。
+- 明确 v0.6 不含区域“热度/panic”。Profile 和 wire schema 禁止该字段；旧 `main.gd` 状态、怪兽评分、卡牌 Resource、Codex/Presentation 和 fixture 只作为待删除证据登记。SS06-01 必须同时删除状态、评分、伤害、玩家文字并 reauthor-or-block 受影响卡牌，不能只隐藏 UI。
+- SS06-01 硬门：建立唯一 Region Infrastructure owner，同时从 `main.gd` 至少净删 700 个非空行和 24 个函数，Region adapter 不超过 180 行，不留 parallel fallback 或 wrapper farm。
+
+## 2026-07-14｜v0.6 规则书 PDF 与实现歧义收口
+
+- 生成 `output/pdf/space_syndicate_rulebook_v0.6.pdf`，作为当前 v0.6 玩家规则与开发指导的可阅读版本；正文增加经济回路、共享生命、动态胜利、GDP 排位商品履带、多式联运和怪兽赌局时间线图，并附默认数字与术语速查。
+- 胜利总量统一定义为玩家 GDP 最高的前 K 个已控制存续区域中的自有商品 GDP/min 之和；控制占比、排序与门槛统一读取最近 30 秒成交观察窗。终局审计中的领先玩家普通手牌也公开。
+- 同区/相邻免交通只适用于生产工厂与最终消费市场本身同区或相邻，禁止逐段套用绕过道路；海运腿两端必须有可用码头，空运腿两端必须有可用空港，并允许持续流按预计净现金顺序拆分到多条多式路线。
+- 商品安装率与设施处理能力统一使用单位/分钟；玩家可以无需许可把商品安装到他人的可用同色设施，生产权益按“安装玩家 + 具体商品”记录并同比限流。法力恢复明确为对应色商品 GDP/min 除以 100 后得到法力/秒。
+- 补回非商品普通牌动态市场：买走立即刷新、允许连续购买、每次刷新重新检查位置/价格/合法性。同窗唯一槽位冲突采用轮换席位优先权；失效提交退牌和法力，不退购买现金。
+- 订单/供货补齐候选节点、真实路线、一次性等级数量和未兑现余量重分配；距离溢价、租金压缩、交通速度、仓库容量与赌局固定底注率也获得首测默认值。上述数字仍是可调参数，规则关系与资源归属已经固定。
+- 本轮只更新规则源、PDF 生成脚本与文档，没有修改 Godot 运行时、场景、卡牌 Resource 或存档。
+
 ## 2026-07-14｜v0.6 商品网络与区域共享生命定性规则基线
 
 - 新增 `docs/tabletop_rulebook_v06.md`，作为后续 v0.6 新开发的玩家行为语义基线；新增 `docs/rules_v06_runtime_directive.md`，固定删除、替换、数据所有权、原子时序、迁移工单与 conformance gate。
@@ -1394,6 +1441,19 @@
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/ui_snapshot_capture.gd` 二号屏有头通过；人工查看 `main_menu_1280x720.png` 与 `play_table_hand_hover_1600x960.png`，确认主菜单中文赌桌大厅和手牌类型符号锚点已显示。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-14｜高端场景化 Card UI Skin Lab（Godot MCP 实跑）
+
+- 新增真实 Godot 场景 `scenes/tools/CardUISkinLab.tscn`，复用 `CardFace / HandRack / PlanetMapView / RightInspector / TargetingOverlay`，没有从纯脚本重建整张 UI。
+- 新增顶部商品履带、独立隐藏商品卡背、公共结算区、轨道桌面氛围层和 7 状态切换；底部手牌继续使用真实扇形布局、悬停抬升与邻牌让位。
+- 以六张 v0.6 代表牌验证商品、设施、订单、供货、怪兽和反制；fixture 只承载呈现，不改规则和经济数值。
+- 玩家文本与 `card_id / action_id / reason_code / resource path / raw error` 分离；缺失本地化 label 时不再把内部 ID 作为 fallback。
+- 右侧详情顺序固定为“使用时机 → 目标 → 完整效果 → 持续/终止 → 公开范围 → 关键词解释”，不可用牌额外显示原因和下一步。
+- 星球桌面使用场景化区域、多色产业面、航班式弧线商路、合法投放槽和曲线目标连线；结算牌真实离开手牌，剩余手牌收拢后进入公共结算区。
+- 通过 Godot add-on MCP 识别版本、打开/保存场景、运行、读取 debug output 和停止项目。1280×720、1600×960、1920×1080 以及 7 个状态共输出 10 张截图。
+- 最终结果：`captures=10`、`failures=0`、`player_text_scan leaks=0`、`errors=[]`、`stop_project finalErrors=[]`。
+- 验收报告与问题清单见 `reports/ui/skin_lab/card_ui_skin_lab_validation.md`。
+- 协作边界：本轮未修改规则、经济、runtime ownership 或另一开发任务的文件；保留工作树中其他 agent 的既有改动。
 
 ## 2026-07-03｜剧本教练工具入口移入标题栏
 

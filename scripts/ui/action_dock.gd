@@ -61,9 +61,10 @@ func set_quick_actions(actions: Array) -> void:
 	for action_variant in actions:
 		var action: Dictionary = action_variant if action_variant is Dictionary else {}
 		var active := bool(action.get("active", not bool(action.get("disabled", false))))
+		var action_id := str(action.get("id", action.get("label", "action")))
 		_add_quick_action_button(
-			str(action.get("id", action.get("label", "action"))),
-			str(action.get("label", action.get("id", "行动"))),
+			action_id,
+			_player_action_label(action, "快捷操作", "quick action"),
 			str(action.get("state", "ready" if active else "waiting")),
 			active,
 			str(action.get("tooltip", "")),
@@ -82,12 +83,22 @@ func set_actions(actions: Array) -> void:
 		return
 	for action_variant in actions:
 		var action: Dictionary = action_variant if action_variant is Dictionary else {}
+		var action_id := str(action.get("id", action.get("label", "")))
 		_add_action_button(
-			str(action.get("id", action.get("label", ""))),
-			str(action.get("label", "行动")),
+			action_id,
+			_player_action_label(action, "执行操作", "action"),
 			bool(action.get("disabled", false)),
 			str(action.get("tooltip", ""))
 		)
+
+
+func _player_action_label(action: Dictionary, safe_fallback: String, context: String) -> String:
+	var player_label := str(action.get("label", "")).strip_edges()
+	if player_label != "":
+		return player_label
+	var action_id := str(action.get("id", "")).strip_edges()
+	push_warning("ActionDock %s '%s' is missing a localized player label; using '%s'." % [context, action_id if action_id != "" else "<missing-id>", safe_fallback])
+	return safe_fallback
 
 
 func _clear_row(row: Container) -> void:

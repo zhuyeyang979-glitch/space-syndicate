@@ -29,14 +29,14 @@ func _run() -> void:
 		_finish()
 		return
 
-	var initial_snapshot: Dictionary = main.call("_card_resolution_runtime_debug_snapshot")
+	var initial_snapshot: Dictionary = controller.call("debug_snapshot")
 	_expect(bool(initial_snapshot.get("controller_authoritative", false)) and not bool(initial_snapshot.get("legacy_state_fallback_used", true)) and not bool(initial_snapshot.get("controller_missing", true)), "script-level main reports one authoritative controller and no timing fallback")
 
 	var property_cases := [
 		{"main": "card_resolution_timer", "controller": "active_display_timer", "value": 3.5},
 		{"main": "card_resolution_counter_window_active", "controller": "counter_window_active", "value": true},
 		{"main": "card_resolution_counter_timer", "controller": "counter_timer", "value": 2.5},
-		{"main": "card_resolution_simultaneous_timer", "controller": "simultaneous_timer", "value": 8.0},
+		{"main": "card_resolution_simultaneous_timer", "controller": "simultaneous_timer", "value": 24.0},
 		{"main": "card_resolution_auction_timer", "controller": "auction_timer", "value": 4.0},
 		{"main": "card_resolution_auction_open", "controller": "auction_open", "value": true},
 		{"main": "card_resolution_batch_locked", "controller": "batch_locked", "value": false},
@@ -53,14 +53,14 @@ func _run() -> void:
 	controller.set("simultaneous_timer", 6.0)
 	_expect(is_equal_approx(float(main.get("card_resolution_simultaneous_timer")), 6.0), "controller-side changes are immediately visible through the main compatibility proxy")
 
-	var saved: Dictionary = main.call("_capture_run_state")
-	_expect(saved.has("card_resolution_timer") and saved.has("card_resolution_simultaneous_timer") and saved.has("card_group_window_sequence") and int(saved.get("card_group_window_sequence", 0)) == 12, "main save capture preserves existing card-resolution keys through Controller.to_save_data")
+	var saved: Dictionary = controller.call("to_save_data")
+	_expect(saved.has("card_resolution_timer") and saved.has("card_resolution_simultaneous_timer") and saved.has("card_group_window_sequence") and int(saved.get("card_group_window_sequence", 0)) == 12, "Controller save boundary preserves existing card-resolution keys")
 	var legacy_auction_state := saved.duplicate(true)
 	legacy_auction_state["card_resolution_simultaneous_timer"] = 0.0
 	legacy_auction_state["card_resolution_auction_timer"] = 4.0
 	legacy_auction_state["card_resolution_auction_open"] = true
 	controller.call("apply_save_data", legacy_auction_state)
-	_expect(is_equal_approx(float(controller.get("simultaneous_timer")), 4.0), "Controller.apply_save_data preserves the legacy auction-only mapping")
+	_expect(is_equal_approx(float(controller.get("simultaneous_timer")), 9.0), "Controller.apply_save_data migrates auction-only state into public bid")
 
 	controller.call("reset_state")
 	controller.call("begin_group_window", 30.0, 1, 9)
@@ -77,8 +77,8 @@ func _run() -> void:
 
 	var bare_main_script := load(MAIN_SCRIPT_PATH) as Script
 	var bare_main := bare_main_script.new() as Control if bare_main_script != null else null
-	var missing_snapshot: Dictionary = bare_main.call("_card_resolution_runtime_debug_snapshot") if bare_main != null else {}
-	_expect(bool(missing_snapshot.get("controller_missing", false)) and not bool(missing_snapshot.get("controller_authoritative", true)) and not bool(missing_snapshot.get("legacy_state_fallback_used", true)), "missing controller is explicit and never activates a second timing state machine")
+	var missing_controller := bare_main == null or bare_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController") == null
+	_expect(missing_controller and not main_source.contains("legacy_state_fallback_used"), "a bare main has no hidden fallback timing state machine")
 	if bare_main != null:
 		bare_main.free()
 	main.free()

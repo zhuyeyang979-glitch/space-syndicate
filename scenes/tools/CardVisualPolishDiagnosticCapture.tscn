@@ -1,0 +1,26 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/CardUISkinLab.tscn" id="1_lab"]
+[ext_resource type="Script" path="res://scripts/tools/card_visual_polish_diagnostic_capture.gd" id="2_capture"]
+[ext_resource type="Theme" path="res://themes/CardUISkinLabTheme.tres" id="3_theme"]
+[ext_resource type="Script" path="res://scripts/tools/card_ui_skin_lab.gd" id="4_lab_script"]
+
+[node name="CardVisualPolishDiagnosticCapture" type="Control" unique_id=647146893]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_capture")
+
+[node name="CardUISkinLab" type="Control" parent="." unique_id=2132488790 instance=ExtResource("1_lab")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+script = ExtResource("4_lab_script")

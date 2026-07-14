@@ -3,6 +3,7 @@ class_name SpaceSyndicateDistrictInfoPanel
 
 @onready var title_label: Label = %DistrictTitle
 @onready var detail_label: Label = %DistrictDetail
+@onready var full_detail_label: Label = %DistrictFullDetail
 @onready var chip_row: HFlowContainer = %DistrictChipRow
 
 var chips_signature: String = ""
@@ -14,6 +15,9 @@ func set_info(title_text: String, detail_text: String, chips: Array = [], full_d
 	title_label.tooltip_text = full_detail
 	detail_label.text = _short_detail(detail_text, 72)
 	detail_label.tooltip_text = full_detail
+	if full_detail_label != null:
+		full_detail_label.text = full_detail
+		full_detail_label.tooltip_text = full_detail
 	var next_signature := var_to_str(chips)
 	if next_signature == chips_signature:
 		return

@@ -1,0 +1,56 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/skin_lab/obscured_commodity_belt_slot.gd" id="1_script"]
+
+[node name="ObscuredCommodityBeltSlot" type="PanelContainer"]
+custom_minimum_size = Vector2(112, 56)
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="SlotMargin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 5
+
+[node name="SlotRows" type="HBoxContainer" parent="SlotMargin"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="AccentBar" type="ColorRect" parent="SlotMargin/SlotRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.39, 0.45, 0.55, 1)
+
+[node name="GlyphLabel" type="Label" parent="SlotMargin/SlotRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+text = "◆"
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="CopyRows" type="VBoxContainer" parent="SlotMargin/SlotRows"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="CategoryLabel" type="Label" parent="SlotMargin/SlotRows/CopyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "能源类"
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.67, 0.76, 0.82, 1)
+theme_override_font_sizes/font_size = 11
+
+[node name="StateLabel" type="Label" parent="SlotMargin/SlotRows/CopyRows"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "身份未公开 · 不可领取"
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.40, 0.49, 0.57, 1)
+theme_override_font_sizes/font_size = 8

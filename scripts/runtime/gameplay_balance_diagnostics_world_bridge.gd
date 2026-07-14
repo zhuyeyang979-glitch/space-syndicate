@@ -58,12 +58,6 @@ func debug_snapshot() -> Dictionary:
 
 func _card_facts(coordinator: Node, selected_player: int, sample_only: bool) -> Array:
 	var card_ids: Array = coordinator.call("card_catalog_ordered_ids")
-	var city_cards_variant: Variant = _world.get("city_development_runtime_cards")
-	if city_cards_variant is Dictionary:
-		for city_card_variant in (city_cards_variant as Dictionary).keys():
-			var city_card_id := str(city_card_variant)
-			if city_card_id != "" and not card_ids.has(city_card_id):
-				card_ids.append(city_card_id)
 	for monster_card_variant in _world_array_call(&"_monster_card_names", [1]):
 		var monster_card_id := str(monster_card_variant)
 		if monster_card_id != "" and not card_ids.has(monster_card_id):
@@ -188,15 +182,12 @@ func _district_facts(selected_player: int) -> Array:
 	for district_index in range(source.size()):
 		var district: Dictionary = source[district_index] if source[district_index] is Dictionary else {}
 		var city := _world_dictionary_call(&"_district_city", [district_index])
-		var city_development_cards: Array = []
 		var monster_cards: Array = []
 		for card_variant in _array(district.get("card_choices", [])):
 			var card_name := _world_string_call(&"_canonical_card_supply_name", [str(card_variant)])
 			if card_name == "":
 				card_name = str(card_variant)
-			if _world.has_method("_is_city_development_card_name") and bool(_world.call("_is_city_development_card_name", card_name)):
-				city_development_cards.append(card_name)
-			elif _world.has_method("_is_monster_card_name") and bool(_world.call("_is_monster_card_name", card_name)):
+			if _world.has_method("_is_monster_card_name") and bool(_world.call("_is_monster_card_name", card_name)):
 				monster_cards.append(card_name)
 		result.append({
 			"index": district_index,
@@ -206,10 +197,8 @@ func _district_facts(selected_player: int) -> Array:
 			"products": _array(district.get("products", [])),
 			"demands": _array(district.get("demands", [])),
 			"card_choices": _canonical_card_choices(district.get("card_choices", [])),
-			"city_development_cards": city_development_cards,
 			"monster_cards": monster_cards,
 			"card_sources": _dictionary(district.get("card_sources", {})),
-			"city_development_guarantee_card": _canonical_card_id(str(district.get("city_development_guarantee_card", ""))),
 			"monster_guarantee_card": _canonical_card_id(str(district.get("monster_guarantee_card", ""))),
 			"access_kind": _world_string_call(&"_district_card_access_kind", [district_index, selected_player]),
 			"city_active": bool(_world.call("_city_is_active", city)) if _world.has_method("_city_is_active") else not city.is_empty(),

@@ -140,7 +140,7 @@ func commit_purchase(player_state: Dictionary, current_facts: Dictionary, plan: 
 		"ledger_intents": private_intents.duplicate(true),
 		"public_event_intents": [{"event": "anonymous_purchase_committed", "district_index": int(current_facts.get("district_index", -1))}],
 		"private_event_intents": private_intents.duplicate(true),
-		"post_commit_hooks": ["scenario", "city_development_supply", "role_bonus", "bankruptcy"],
+		"post_commit_hooks": ["scenario", "role_bonus", "bankruptcy"],
 		"mutation_count": 5 + (1 if operation == "replace" else 0),
 	}
 

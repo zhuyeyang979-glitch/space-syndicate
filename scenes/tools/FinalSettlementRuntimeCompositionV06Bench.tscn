@@ -1,0 +1,28 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/final_settlement_runtime_composition_v06_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MenuOverlay.tscn" id="2_menu"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn" id="3_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/FinalSettlementRuntimeComposition.tscn" id="4_composition"]
+
+[node name="FinalSettlementRuntimeCompositionV06Bench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="MenuModalOverlay" parent="." instance=ExtResource("2_menu")]
+visible = true
+
+[node name="FinalSettlementPublicSnapshotService" parent="." instance=ExtResource("3_snapshot")]
+
+[node name="FinalSettlementRuntimeComposition" parent="." instance=ExtResource("4_composition")]
+menu_overlay_path = NodePath("../MenuModalOverlay")
+snapshot_service_path = NodePath("../FinalSettlementPublicSnapshotService")
+
+[connection signal="menu_open_requested" from="FinalSettlementRuntimeComposition" to="." method="_on_menu_open_requested"]
+[connection signal="public_log_entry_requested" from="FinalSettlementRuntimeComposition" to="." method="_on_public_log_entry_requested"]
+[connection signal="action_requested" from="FinalSettlementRuntimeComposition" to="." method="_on_action_requested"]

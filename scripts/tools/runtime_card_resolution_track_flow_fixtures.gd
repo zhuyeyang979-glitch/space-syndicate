@@ -56,9 +56,9 @@ func case_data(case_id: String) -> Dictionary:
 		"runtime_privacy_boundary":
 			return _case("runtime_privacy_boundary", "runtime_privacy", "select_slot", "runtime_track_1050", "runtime_track_select_1050", "隐私边界", _runtime_privacy_track_state())
 		"runtime_group_organize_window":
-			return _case("runtime_group_organize_window", "group_organize", "load_track", "", "", "6秒组织", _runtime_group_organize_track_state())
+			return _case("runtime_group_organize_window", "group_organize", "load_track", "", "", "规划阶段", _runtime_group_organize_track_state())
 		"runtime_group_lock_window":
-			return _case("runtime_group_lock_window", "group_lock", "disabled_response_action", "", "runtime_group_bid_locked", "最后2秒锁牌", _runtime_group_lock_track_state())
+			return _case("runtime_group_lock_window", "group_lock", "disabled_response_action", "", "runtime_group_bid_locked", "5秒锁牌", _runtime_group_lock_track_state())
 		"runtime_group_contiguous_order":
 			return _case("runtime_group_contiguous_order", "group_order", "select_slot", "runtime_track_1061", "runtime_track_select_1061", "同源组 2/2", _runtime_group_order_track_state())
 		"runtime_group_wager_pool_privacy":
@@ -150,11 +150,13 @@ func _runtime_active_track_state() -> Dictionary:
 
 
 func _runtime_auction_track_state() -> Dictionary:
-	var state := _track_state("竞价", "公开报价沙漏开启；最高报价领跑。", [
+	var state := _track_state("公开竞价", "5秒公开竞价阶段开启；最高报价领跑。", [
 		_entry(1020, "+1", "拍卖一号", "竞拍1", "待猜", "¥110", "#fb7185", ["领跑"], "runtime_track_select_1020", "runtime_track_open_auction_one"),
 		_entry(1021, "+2", "拍卖二号", "竞拍2", "待猜", "¥90", "#f97316", ["加价"], "runtime_track_select_1021", "runtime_track_open_auction_two"),
 	])
 	state["auction_open"] = true
+	state["window_phase"] = "public_bid"
+	state["window_remaining"] = 5.0
 	state["auction_response"] = {
 		"active": true,
 		"summary": "公开报价沙漏开启；响应按钮必须通过 GameScreen action_requested。",
@@ -225,28 +227,26 @@ func _runtime_privacy_track_state() -> Dictionary:
 
 func _runtime_group_organize_track_state() -> Dictionary:
 	var entries := [
-		_group_entry(1060, "组织组1·1/2", "轨道融资 I", "window_12_group_0", 1, 2, 100),
-		_group_entry(1061, "组织组1·2/2", "城市融资 I", "window_12_group_0", 2, 2, 100),
-		_group_entry(1063, "组织组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 50),
+		_group_entry(1060, "规划组1·1/1", "轨道融资 I", "window_12_group_0", 1, 1, 100),
+		_group_entry(1063, "规划组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 50),
 	]
-	var state := _track_state("组织", "前6秒组织：标准局每人0-2张形成一个匿名组，并从¥0、¥50、¥100选择固定优先报价。", entries)
-	state["window_phase"] = "organize"
-	state["window_remaining"] = 5.0
+	var state := _track_state("规划", "20秒规划阶段：每人通常提交1张普通牌，显式能力可提高上限。", entries)
+	state["window_phase"] = "planning"
+	state["window_remaining"] = 20.0
 	return state
 
 
 func _runtime_group_lock_track_state() -> Dictionary:
-	var state := _track_state("锁牌", "最后2秒锁牌：不能加入新卡或更改固定优先报价。", [
-		_group_entry(1065, "锁定组1·1/2", "轨道融资 I", "window_12_group_0", 1, 2, 100),
-		_group_entry(1066, "锁定组1·2/2", "城市融资 I", "window_12_group_0", 2, 2, 100),
+	var state := _track_state("锁牌", "5秒锁牌阶段：不能加入新卡或更改固定优先报价。", [
+		_group_entry(1065, "锁定组1·1/1", "轨道融资 I", "window_12_group_0", 1, 1, 100),
 		_group_entry(1067, "锁定组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 50),
 	])
-	state["auction_open"] = true
+	state["auction_open"] = false
 	state["window_phase"] = "lock"
-	state["window_remaining"] = 1.0
+	state["window_remaining"] = 5.0
 	state["auction_response"] = {
 		"active": true,
-		"summary": "最后2秒锁牌；组顺序和优先报价都已冻结。",
+		"summary": "5秒锁牌阶段；组顺序和优先报价都已冻结。",
 		"actions": [
 			{"id": "runtime_group_bid_locked", "label": "优先报价已锁定", "disabled": true, "reason": "锁牌阶段不能更改优先报价。", "tooltip": "等待公共奖池 receipt。"},
 			{"id": "runtime_group_add_card", "label": "加入卡牌", "disabled": true, "reason": "锁牌阶段不能加入新卡。", "tooltip": "卡牌保留在手牌等待下一窗口。"},

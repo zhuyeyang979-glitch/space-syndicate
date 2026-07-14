@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_core_effect_adapters_v06_bench.gd" id="1_bench"]
+
+[node name="CardCoreEffectAdaptersV06Bench" type="Node" unique_id=1979794356]
+editor_description = "Godot MCP integration bench for v0.6 facility and commodity card effect adapters."
+script = ExtResource("1_bench")

@@ -26,16 +26,16 @@ func configure(data: Dictionary) -> void:
 	position = _as_vector2(data.get("screen_position", Vector2.ZERO)) - custom_minimum_size * 0.5
 	name = "PlanetDistrictNode_%02d" % max(0, _region_index)
 	if name_label != null:
-		name_label.text = str(data.get("name", "Unknown"))
+		name_label.text = str(data.get("name", "未命名区域"))
 	if meta_label != null:
-		var terrain := str(data.get("terrain", "surface"))
+		var terrain := str(data.get("terrain", "地表区"))
 		var hp := int(data.get("hp", 0))
 		var panic := int(data.get("panic", 0))
-		meta_label.text = "%s | HP %d | panic %d" % [terrain, hp, panic]
+		meta_label.text = "%s｜共享生命 %d｜警戒 %d%%" % [terrain, hp, panic]
 	if product_label != null:
 		product_label.text = _joined_strings(data.get("products", []))
 	if state_label != null:
-		state_label.text = "selected" if is_selected else "map node"
+		state_label.text = "当前选区" if is_selected else "区域节点"
 	_refresh_style(Color(str(data.get("accent", "#38bdf8"))), is_selected)
 
 

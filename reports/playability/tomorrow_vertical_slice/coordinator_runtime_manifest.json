@@ -1,0 +1,205 @@
+{
+  "checks": 10,
+  "default_player_save_path": "user://space_syndicate_current_run.save",
+  "failure_count": 3,
+  "failures": [
+    "commodity_flow_realtime_income: the played facility/project must feed CommodityFlow so real seconds create Sale Receipts, GDP, and cash ledger income",
+    "ai_progress_without_deadlock: both AI seats must first-summon; at least one must gain a city/income source and buy or play without leaving the queue locked",
+    "settlement_recap_visible: the authoritative outcome must finish the session and open one visible settlement/recap; replay must not duplicate it"
+  ],
+  "passed": false,
+  "privacy_leak_count": 0,
+  "qa_save_path": "user://space_syndicate_design_qa/test_runs/tomorrow_vertical_slice.save",
+  "records": [
+    {
+      "detail": "root lobby must expose new_run, open the real NewGameSetupPage, and refuse an idle close into an empty table",
+      "evidence": {
+        "idle_close_safe": true,
+        "root_new_run_action": true,
+        "setup_visible": true
+      },
+      "passed": true,
+      "step_id": "main_menu_new_run_setup"
+    },
+    {
+      "detail": "real setup_start must create one human plus two AI and refresh the v0.6 production player bindings",
+      "evidence": {
+        "actor_map": {
+          "player.0": 0,
+          "player.1": 1,
+          "player.2": 2
+        },
+        "core_configured": true,
+        "core_reason": "configured",
+        "player_count": 3,
+        "session_state": "running"
+      },
+      "passed": true,
+      "step_id": "new_match_one_human_two_ai"
+    },
+    {
+      "detail": "human starter must resolve through the authoritative monster prepare/commit/finalize journal exactly once",
+      "evidence": {
+        "after_count": 1,
+        "before_count": 0,
+        "campaign_monster_summoned_signal_observed": false,
+        "campaign_objective_scope": "not asserted by ordinary setup_start",
+        "checkpoint_open": true,
+        "checkpoint_semantics": "open means the authoritative monster reservation set is empty after finalize",
+        "finalized_count": 1,
+        "inflight_count": 0,
+        "new_terminal_count": 1,
+        "queue_drained": true,
+        "scenario_signal_gated": false,
+        "submitted": true,
+        "terminal_evidence": [
+          {
+            "receipt_finalized": true,
+            "stage": "finalized",
+            "transaction_id": "v06-play:player.0:world:0:0:4145542426"
+          }
+        ]
+      },
+      "passed": true,
+      "step_id": "human_authoritative_first_summon"
+    },
+    {
+      "detail": "the canonical rank-I v0.6 facility must be bought and played once through the frozen Coordinator facade with exact revisions and idempotent CardFlow replay",
+      "evidence": {
+        "canonical_card_id": "facility.factory.energy.rank_1",
+        "card_name": "能源工厂",
+        "evidence": {
+          "assets_unchanged": true,
+          "canonical_asset_total": 0,
+          "canonical_card_id": "facility.factory.energy.rank_1",
+          "canonical_facility": true,
+          "canonical_purchase_cash": 4,
+          "card_consumed": true,
+          "cash_debit": 4,
+          "cash_stable_after_purchase": true,
+          "core_configured": true,
+          "facility_delta": 1,
+          "finalized_play_transaction_count": 1,
+          "listing_matches_canonical": true,
+          "market_ready": true,
+          "market_revision_after_play": 1,
+          "market_revision_after_purchase": 1,
+          "market_revision_after_replay": 1,
+          "market_revision_before": 0,
+          "new_transaction_count": 2,
+          "play_committed": true,
+          "play_finalized": true,
+          "play_handled": true,
+          "play_route_id": "core_economic_card_runtime",
+          "play_transaction_present": true,
+          "player_revision_after_play": 3,
+          "player_revision_after_purchase": 2,
+          "player_revision_after_replay": 3,
+          "player_revision_before": 1,
+          "purchase_card_matches": true,
+          "purchase_committed": true,
+          "purchase_did_not_build": true,
+          "purchase_journal_committed": true,
+          "purchase_price": 4,
+          "region_id": "region.002",
+          "replay_committed": true,
+          "replay_idempotent": true,
+          "replay_state_unchanged": true,
+          "slot_index": 0
+        },
+        "new_transactions": [
+          "vs06-c:facility-play:player.0:facility.factory.energy.rank_1",
+          "vs06-c:facility-purchase:player.0"
+        ],
+        "play_reason": "committed",
+        "play_transaction_id": "vs06-c:facility-play:player.0:facility.factory.energy.rank_1",
+        "purchase_reason": "committed",
+        "purchase_transaction_id": "vs06-c:facility-purchase:player.0",
+        "replay_reason": "committed",
+        "source_item_id": "vs06:first-table-facility:0"
+      },
+      "passed": true,
+      "step_id": "public_facility_core_dispatch_exact_once"
+    },
+    {
+      "detail": "the played facility/project must feed CommodityFlow so real seconds create Sale Receipts, GDP, and cash ledger income",
+      "evidence": {
+        "cash_cents_delta": 518400,
+        "commodity_sale_rows": 20,
+        "receipt_delta": 5,
+        "region_gdp_per_minute_cents": 0
+      },
+      "passed": false,
+      "step_id": "commodity_flow_realtime_income"
+    },
+    {
+      "detail": "both AI seats must first-summon; at least one must gain a city/income source and buy or play without leaving the queue locked",
+      "evidence": {
+        "ai_city_count": 0,
+        "ai_income_source_count": 0,
+        "built": 0,
+        "business_actions": 0,
+        "followup_actions": 2,
+        "owned_ai_monster_seats": 2,
+        "queue_idle": true,
+        "summon_results": [
+          "play",
+          "play"
+        ]
+      },
+      "passed": false,
+      "step_id": "ai_progress_without_deadlock"
+    },
+    {
+      "detail": "the production VictoryControl owner must traverse qualification and the configured audit countdown before emitting its versioned outcome receipt",
+      "evidence": {
+        "audit_seconds": 120.0,
+        "audit_state": "audit",
+        "outcome_id": "victory.v06.1",
+        "qualification_seconds": 10.0,
+        "qualification_state": "qualification",
+        "resolved_state": "resolved"
+      },
+      "passed": true,
+      "step_id": "victory_qualification_audit_outcome"
+    },
+    {
+      "detail": "the authoritative outcome must finish the session and open one visible settlement/recap; replay must not duplicate it",
+      "evidence": {
+        "board_present": true,
+        "first_visible_board_count": 0,
+        "menu_title": "终局结算",
+        "replay_visible_board_count": 0,
+        "session_finished": true
+      },
+      "passed": false,
+      "step_id": "settlement_recap_visible"
+    },
+    {
+      "detail": "independent recursive snapshot and rendered-control scans must expose zero rival cash/hand/starter, hidden owner truth, or AI-private plan values",
+      "evidence": {
+        "ai_supply_snapshot_present": true,
+        "privacy_leak_count": 0,
+        "privacy_leaks": []
+      },
+      "passed": true,
+      "step_id": "player_facing_privacy"
+    },
+    {
+      "detail": "the real match may write/read only the QA test_runs path and must leave the default player save fingerprint unchanged",
+      "evidence": {
+        "default_after": "missing",
+        "default_before": "missing",
+        "default_save_path": "user://space_syndicate_design_qa/test_runs/tomorrow_vertical_slice.save",
+        "last_path": "user://space_syndicate_design_qa/test_runs/tomorrow_vertical_slice.save",
+        "qa_override_active": true,
+        "read_ok": true,
+        "write_ok": true
+      },
+      "passed": true,
+      "step_id": "qa_save_isolation"
+    }
+  ],
+  "seed": 60610,
+  "suite": "tomorrow-playable-vertical-slice-vs06-c"
+}

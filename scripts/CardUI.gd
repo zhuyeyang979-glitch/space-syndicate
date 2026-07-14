@@ -15,15 +15,26 @@ signal card_clicked(card_data: Dictionary)
 const PRESENTATION_MINI_HAND := "mini_hand"
 const PRESENTATION_INSPECTOR_FULL := "inspector_full"
 const PRESENTATION_CODEX_FULL := "codex_full"
-const CARD_FEEL_V3_STATE_KEYS := ["hovered", "selected", "dragging", "drop_valid", "drop_invalid"]
+const CARD_FEEL_V3_STATE_KEYS := ["hovered", "selected", "dragging", "pressed", "returning", "disabled", "drop_valid", "drop_invalid", "resolving"]
+const DEFAULT_CARD_THEME: Theme = preload("res://themes/GameTheme.tres")
+const PREMIUM_CARD_THEME: Theme = preload("res://themes/CardUISkinLabTheme.tres")
+const ALLOWED_ILLUSTRATION_PREFIXES := [
+	"res://assets/art/cards/",
+	"res://assets/third_party/game_icons_ccby/",
+	"res://assets/third_party/superpowers_cc0/",
+]
 
 var _card_data: Dictionary = {}
 var _interaction_state: Dictionary = {
 	"hovered": false,
 	"selected": false,
 	"dragging": false,
+	"pressed": false,
+	"returning": false,
+	"disabled": false,
 	"drop_valid": true,
 	"drop_invalid": false,
+	"resolving": false,
 }
 
 @onready var cost_label: Label = %CostLabel
@@ -32,6 +43,7 @@ var _interaction_state: Dictionary = {
 @onready var route_glyph_label: Label = get_node_or_null("%RouteGlyphLabel") as Label
 @onready var art_panel: PanelContainer = %ArtPanel
 @onready var art_view: Control = get_node_or_null("%ArtView") as Control
+@onready var illustration_layer: Control = get_node_or_null("%IllustrationLayer") as Control
 @onready var art_label: Label = %ArtLabel
 @onready var keyword_chip_rail: HFlowContainer = %KeywordChipRail
 @onready var effect_label: Label = %EffectLabel
@@ -88,8 +100,12 @@ func set_interaction_state(state: Dictionary) -> void:
 		"hovered": bool(state.get("hovered", false)),
 		"selected": bool(state.get("selected", false)),
 		"dragging": bool(state.get("dragging", false)),
+		"pressed": bool(state.get("pressed", false)),
+		"returning": bool(state.get("returning", false)),
+		"disabled": bool(state.get("disabled", false)),
 		"drop_valid": bool(state.get("drop_valid", true)),
 		"drop_invalid": bool(state.get("drop_invalid", false)),
+		"resolving": bool(state.get("resolving", false)),
 		"tokens": state.get("tokens", []),
 	}
 	set_meta("card_interaction_state", _interaction_state.duplicate(true))
@@ -111,6 +127,7 @@ func _gui_input(event: InputEvent) -> void:
 func _apply_data() -> void:
 	if not is_node_ready():
 		return
+	theme = PREMIUM_CARD_THEME if _is_premium_skin() else DEFAULT_CARD_THEME
 	var display_type := _player_facing_type_label(card_type)
 	var hand_mini := _is_mini_hand_card()
 	var inspector_full := _is_inspector_full_card()
@@ -147,10 +164,15 @@ func _apply_frame_style() -> void:
 	var frame := get_node_or_null("CardFrame") as PanelContainer
 	if frame != null:
 		var frame_style := StyleBoxFlat.new()
-		frame_style.bg_color = Color("#020617").lerp(state_accent, _interaction_fill_weight())
+		var base_fill := Color("#030914") if _is_premium_skin() else Color("#020617")
+		frame_style.bg_color = base_fill.lerp(state_accent, _interaction_fill_weight())
 		frame_style.border_color = Color("#334155").lerp(state_accent, _interaction_border_weight())
 		frame_style.set_border_width_all(state_border_width)
-		frame_style.set_corner_radius_all(7 if _is_mini_hand_card() else 8)
+		frame_style.set_corner_radius_all(9 if _is_premium_skin() else (7 if _is_mini_hand_card() else 8))
+		if _is_premium_skin():
+			frame_style.shadow_color = Color(0.0, 0.02, 0.06, 0.82)
+			frame_style.shadow_size = 12 if _is_mini_hand_card() else 18
+			frame_style.shadow_offset = Vector2(0, 8)
 		frame.add_theme_stylebox_override("panel", frame_style)
 	var art_style := StyleBoxFlat.new()
 	art_style.bg_color = Color(state_accent.r, state_accent.g, state_accent.b, 0.42 if _is_mini_hand_card() else 0.28)
@@ -179,6 +201,7 @@ func _apply_frame_style() -> void:
 		glyph_style.set_border_width_all(1)
 		glyph_style.set_corner_radius_all(6)
 		route_glyph_badge.add_theme_stylebox_override("panel", glyph_style)
+	modulate = Color(0.58, 0.64, 0.72, 0.82) if bool(_interaction_state.get("disabled", false)) else Color.WHITE
 
 
 func _apply_density_for_size() -> void:
@@ -218,8 +241,8 @@ func _apply_density_for_size() -> void:
 	effect_label.max_lines_visible = 3 if hand_mini else (5 if codex_full else (7 if inspector_full else (3 if is_mini_card else (3 if compact else 4))))
 	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	effect_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	stat_label.custom_minimum_size = Vector2(22, 0) if mini else (Vector2(26, 0) if compact else Vector2(36, 0))
-	var font_size := 10 if hand_mini else (12 if spacious_full else (10 if mini else (11 if compact else 15)))
+	stat_label.custom_minimum_size = Vector2(22, 0) if is_mini_card else (Vector2(26, 0) if compact else Vector2(36, 0))
+	var font_size := 10 if hand_mini else (12 if spacious_full else (10 if is_mini_card else (11 if compact else 15)))
 	cost_label.add_theme_font_size_override("font_size", font_size)
 	if route_glyph_label != null:
 		route_glyph_label.add_theme_font_size_override("font_size", font_size)
@@ -235,6 +258,7 @@ func _art_hint_for_type(value: String) -> String:
 
 
 func _apply_card_art(display_type: String, hand_mini: bool) -> void:
+	_apply_external_illustration()
 	if art_view == null or not art_view.has_method("set_card"):
 		return
 	var kind := str(_card_data.get("kind", _card_data.get("card_kind", card_type))).strip_edges()
@@ -243,6 +267,78 @@ func _apply_card_art(display_type: String, hand_mini: bool) -> void:
 	var route := str(_card_data.get("route", _card_data.get("family", display_type))).strip_edges()
 	art_view.call("set_card", card_name, kind, route, accent_color, _rank_number(), hand_mini, _art_stats_text(display_type))
 	art_view.set_meta("card_face_visual_anchor", true)
+
+
+func _apply_external_illustration() -> void:
+	if illustration_layer == null:
+		return
+	set_meta("external_illustration_active", false)
+	set_meta("authored_illustration_active", false)
+	set_meta("illustration_fallback_reason", "no_external_asset")
+	set_meta("illustration_visual_source_id", "")
+	set_meta("illustration_source_type", "")
+	if illustration_layer.has_method("clear_illustration"):
+		illustration_layer.call("clear_illustration")
+	else:
+		illustration_layer.visible = false
+	if art_view != null:
+		art_view.visible = true
+	var illustration_path := str(_card_data.get("illustration_path", "")).strip_edges()
+	if illustration_path == "":
+		return
+	var profile_variant: Variant = _card_data.get("illustration_profile", {})
+	var profile: Dictionary = profile_variant if profile_variant is Dictionary else {}
+	if not _is_allowed_illustration_path(illustration_path, profile):
+		set_meta("illustration_fallback_reason", "path_not_allowed")
+		_warn_illustration_fallback("CardUI rejected an illustration outside the approved card-art sources.")
+		return
+	if not ResourceLoader.exists(illustration_path, "Texture2D"):
+		set_meta("illustration_fallback_reason", "missing_texture")
+		_warn_illustration_fallback("CardUI could not load an approved card illustration; procedural art remains active.")
+		return
+	var texture_resource := load(illustration_path) as Texture2D
+	if texture_resource == null:
+		set_meta("illustration_fallback_reason", "invalid_texture")
+		_warn_illustration_fallback("CardUI received an invalid approved card illustration; procedural art remains active.")
+		return
+	if not illustration_layer.has_method("set_illustration"):
+		set_meta("illustration_fallback_reason", "layer_api_missing")
+		_warn_illustration_fallback("CardUI illustration layer is unavailable; procedural art remains active.")
+		return
+	illustration_layer.call("set_illustration", texture_resource, accent_color, profile)
+	illustration_layer.visible = true
+	if art_view != null:
+		art_view.visible = false
+	set_meta("external_illustration_active", true)
+	set_meta("authored_illustration_active", true)
+	set_meta("illustration_fallback_reason", "")
+	set_meta("illustration_visual_source_id", str(profile.get("visual_source_id", "")))
+	set_meta("illustration_source_type", str(profile.get("source_type", "")))
+
+
+func _is_allowed_illustration_path(path: String, profile: Dictionary) -> bool:
+	if not path.begins_with("res://") or path.contains("\\"):
+		return false
+	for segment_variant in path.trim_prefix("res://").split("/"):
+		var segment := str(segment_variant)
+		if segment == "." or segment == "..":
+			return false
+	var prefix_allowed := false
+	for prefix_variant in ALLOWED_ILLUSTRATION_PREFIXES:
+		if path.begins_with(str(prefix_variant)):
+			prefix_allowed = true
+			break
+	if not prefix_allowed:
+		return false
+	if path.begins_with("res://assets/third_party/"):
+		return str(profile.get("source_type", "")) == "open_source_placeholder" and str(profile.get("visual_source_id", "")).strip_edges() != ""
+	return true
+
+
+func _warn_illustration_fallback(message: String) -> void:
+	if bool(_card_data.get("illustration_silent_fallback", false)):
+		return
+	push_warning(message)
 
 
 func _rank_number() -> int:
@@ -278,8 +374,20 @@ func _player_facing_type_label(value: String) -> String:
 	if trimmed.is_empty():
 		return "行动"
 	match trimmed:
-		"怪兽":
+		"怪兽", "怪兽牌", "怪兽与军队单位牌":
 			return "怪兽"
+		"设施", "公共设施", "设施牌", "公共设施牌":
+			return "公共设施"
+		"订单", "订单牌":
+			return "订单"
+		"供货", "供货牌":
+			return "供货"
+		"反制", "反制牌", "玩家互动与反制牌":
+			return "反制"
+		"商品牌":
+			return "商品"
+		"条件式供需牌":
+			return "供需"
 		"金融":
 			return "金融"
 		"经济":
@@ -304,6 +412,14 @@ func _player_facing_type_label(value: String) -> String:
 	match normalized:
 		"monster", "monster_bound_action":
 			return "怪兽"
+		"facility", "public_facility", "infrastructure":
+			return "公共设施"
+		"order", "demand_order":
+			return "订单"
+		"supply", "global_supply":
+			return "供货"
+		"counter", "counterplay", "reaction":
+			return "反制"
 		"finance", "financial", "futures":
 			return "金融"
 		"economy", "economic":
@@ -333,6 +449,16 @@ func _card_type_glyph(display_type: String) -> String:
 	match display_type:
 		"怪兽":
 			return "兽"
+		"公共设施":
+			return "站"
+		"订单":
+			return "需"
+		"供货":
+			return "供"
+		"反制":
+			return "反"
+		"供需":
+			return "流"
 		"金融":
 			return "¥"
 		"经济":
@@ -412,6 +538,18 @@ func _render_keyword_chips(hand_mini: bool, inspector_full: bool) -> void:
 
 func _card_keyword_entries() -> Array:
 	var entries: Array = []
+	var provided: Variant = _card_data.get("keywords", _card_data.get("keyword_chips", _card_data.get("chips", [])))
+	if bool(_card_data.get("keywords_authoritative", false)):
+		var explanations: Dictionary = _card_data.get("keyword_explanations", {}) if _card_data.get("keyword_explanations", {}) is Dictionary else {}
+		if provided is Array:
+			for entry_variant in provided:
+				var entry := _normalize_keyword_entry(entry_variant)
+				var keyword_text := str(entry.get("text", "")).strip_edges()
+				if keyword_text != "" and str(entry.get("tooltip", "")).strip_edges() == "":
+					entry["tooltip"] = str(explanations.get(keyword_text, ""))
+				if not entry.is_empty():
+					_append_keyword_entry_if_new(entries, entry)
+		return entries
 	var use_case := _card_use_case_text()
 	if use_case != "":
 		_append_keyword_entry_if_new(entries, {"text": "◎%s" % _short_card_text(use_case, 4), "tooltip": "用途：%s" % use_case, "accent": Color("#fde68a")})
@@ -429,7 +567,6 @@ func _card_keyword_entries() -> Array:
 		_append_keyword_entry_if_new(entries, {"text": "%ds" % duration, "tooltip": "按秒生效或观察，不按回合结算。", "accent": Color("#fde68a")})
 	var persistent := bool(_card_data.get("persistent", _card_data.get("reusable", false)))
 	_append_keyword_entry_if_new(entries, {"text": "固定" if persistent else "一次", "tooltip": "固定技能可重复使用；一次性牌结算后离手。", "accent": Color("#fef3c7") if persistent else Color("#94a3b8")})
-	var provided: Variant = _card_data.get("keywords", _card_data.get("keyword_chips", _card_data.get("chips", [])))
 	if provided is Array:
 		for entry_variant in provided:
 			var entry := _normalize_keyword_entry(entry_variant)
@@ -637,17 +774,28 @@ func _primary_action_label() -> String:
 		var action: Dictionary = action_variant
 		if bool(action.get("disabled", false)):
 			continue
-		var label := str(action.get("label", action.get("id", ""))).strip_edges()
+		var label := str(action.get("label", "")).strip_edges()
 		if label != "":
 			return label
+		push_warning("CardUI action is missing a localized label; the internal action id was not shown.")
 	return ""
 
 
 func _card_visual_state_label() -> String:
+	if bool(_interaction_state.get("resolving", false)):
+		return "resolving"
+	if bool(_interaction_state.get("disabled", false)):
+		return "disabled"
 	if bool(_interaction_state.get("drop_invalid", false)):
 		return "invalid_drop"
+	if bool(_interaction_state.get("dragging", false)) and bool(_interaction_state.get("drop_valid", false)):
+		return "valid_drop"
 	if bool(_interaction_state.get("dragging", false)):
 		return "dragging"
+	if bool(_interaction_state.get("pressed", false)):
+		return "pressed"
+	if bool(_interaction_state.get("returning", false)):
+		return "returning"
 	if bool(_interaction_state.get("hovered", false)):
 		return "hovered"
 	if bool(_interaction_state.get("selected", false)):
@@ -656,8 +804,14 @@ func _card_visual_state_label() -> String:
 
 
 func _interaction_accent() -> Color:
+	if bool(_interaction_state.get("resolving", false)):
+		return Color("#fbbf24")
+	if bool(_interaction_state.get("disabled", false)):
+		return Color("#64748b")
 	if bool(_interaction_state.get("drop_invalid", false)):
 		return Color("#fb7185")
+	if bool(_interaction_state.get("dragging", false)) and bool(_interaction_state.get("drop_valid", false)):
+		return Color("#2dd4bf")
 	if bool(_interaction_state.get("dragging", false)):
 		return Color("#38bdf8")
 	if bool(_interaction_state.get("selected", false)):
@@ -668,6 +822,8 @@ func _interaction_accent() -> Color:
 
 
 func _interaction_border_width() -> int:
+	if bool(_interaction_state.get("resolving", false)):
+		return 3
 	if bool(_interaction_state.get("drop_invalid", false)) or bool(_interaction_state.get("dragging", false)):
 		return 3
 	if bool(_interaction_state.get("selected", false)) or bool(_interaction_state.get("hovered", false)):
@@ -676,6 +832,10 @@ func _interaction_border_width() -> int:
 
 
 func _interaction_fill_weight() -> float:
+	if bool(_interaction_state.get("resolving", false)):
+		return 0.24
+	if bool(_interaction_state.get("disabled", false)):
+		return 0.05
 	if bool(_interaction_state.get("drop_invalid", false)):
 		return 0.20
 	if bool(_interaction_state.get("dragging", false)):
@@ -688,6 +848,10 @@ func _interaction_fill_weight() -> float:
 
 
 func _interaction_border_weight() -> float:
+	if bool(_interaction_state.get("resolving", false)):
+		return 0.98
+	if bool(_interaction_state.get("disabled", false)):
+		return 0.34
 	if bool(_interaction_state.get("drop_invalid", false)) or bool(_interaction_state.get("dragging", false)):
 		return 0.92
 	if bool(_interaction_state.get("selected", false)) or bool(_interaction_state.get("hovered", false)):
@@ -706,6 +870,16 @@ func _accent_for_type(value: String) -> Color:
 	match _player_facing_type_label(value):
 		"怪兽":
 			return Color("#fb7185")
+		"公共设施":
+			return Color("#22d3ee")
+		"订单":
+			return Color("#f59e0b")
+		"供货":
+			return Color("#34d399")
+		"反制":
+			return Color("#a78bfa")
+		"供需":
+			return Color("#34d399")
 		"金融":
 			return Color("#facc15")
 		"经济":
@@ -725,3 +899,7 @@ func _accent_for_type(value: String) -> Color:
 		"互动":
 			return Color("#818cf8")
 	return accent_color
+
+
+func _is_premium_skin() -> bool:
+	return str(_card_data.get("skin_variant", "")).strip_edges().to_lower() == "orbital_table_premium"

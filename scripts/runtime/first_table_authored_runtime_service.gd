@@ -172,9 +172,8 @@ func supply_plan(resolved_catalog: Dictionary) -> Dictionary:
 		"scenario_id": scenario_id,
 		"ready": followup_card_id != "",
 		"followup_card_id": followup_card_id,
-		"inject_after_signal": "city_development_resolved",
+		"inject_after_signal": "public_facility_committed",
 		"supply_source_id": "first_table_pacing_guarantee",
-		"preserve_city_development_guarantee": true,
 		"preserve_monster_guarantee": true,
 	}
 
@@ -187,18 +186,18 @@ func resolve_content_catalog(catalog_snapshot: Dictionary) -> Dictionary:
 	var available_monsters := _string_set(catalog_snapshot.get("monster_ids", []))
 	var available_products := _string_set(catalog_snapshot.get("product_ids", []))
 	var preferred_products := _filtered_fixture_ids("preferred_product_ids", available_products)
-	var city_development_ids: Array = []
+	var public_facility_ids: Array = []
 	var runtime_card_ids: Array = []
-	var city_cards_variant: Variant = catalog_snapshot.get("city_development_cards", [])
-	var city_cards: Array = city_cards_variant if city_cards_variant is Array else []
-	for card_variant in city_cards:
+	var facility_cards_variant: Variant = catalog_snapshot.get("public_facility_cards", [])
+	var facility_cards: Array = facility_cards_variant if facility_cards_variant is Array else []
+	for card_variant in facility_cards:
 		if not (card_variant is Dictionary):
 			continue
 		var card: Dictionary = card_variant
 		var card_id := str(card.get("card_id", card.get("id", ""))).strip_edges()
 		if card_id == "" or int(card.get("rank", 1)) != 1 or not bool(available_cards.get(card_id, false)):
 			continue
-		_append_unique_string(city_development_ids, card_id)
+		_append_unique_string(public_facility_ids, card_id)
 		_append_unique_string(runtime_card_ids, card_id)
 	var followup_ids := _filtered_fixture_ids("followup_card_ids", available_cards)
 	for card_id_variant in followup_ids:
@@ -208,9 +207,9 @@ func resolve_content_catalog(catalog_snapshot: Dictionary) -> Dictionary:
 	var followup_card_id := str(followup_ids[0]) if not followup_ids.is_empty() else ""
 	return {
 		"scenario_id": scenario_id,
-		"teaching_card_kind": str(_fixture.get("teaching_card_kind", "city_development")),
+		"teaching_card_kind": "public_facility",
 		"runtime_card_ids": runtime_card_ids,
-		"city_development_card_ids": city_development_ids,
+		"public_facility_card_ids": public_facility_ids,
 		"followup_card_ids": followup_ids,
 		"followup_card_id": followup_card_id,
 		"featured_card_ids": featured_ids,
@@ -250,25 +249,22 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 	if teaching_card_id == "":
 		teaching_card_id = str(world_snapshot.get("fallback_teaching_card_id", "")).strip_edges()
 	if teaching_card_id == "":
-		var development_ids := _string_array(resolved_catalog.get("city_development_card_ids", []))
-		teaching_card_id = str(development_ids[0]) if not development_ids.is_empty() else ""
+		var facility_ids := _string_array(resolved_catalog.get("public_facility_card_ids", []))
+		teaching_card_id = str(facility_ids[0]) if not facility_ids.is_empty() else ""
 	if teaching_card_id != "":
 		_append_unique_string(teaching_card_ids, teaching_card_id)
-	var own_projects := _data_array(world_snapshot.get("own_project_shares", []))
-	var city_present := bool(world_snapshot.get("city_present", false)) or _has_owned_share(own_projects)
-	var share_text := "尚未建立城市化份额"
+	var owned_facilities := _data_array(world_snapshot.get("owned_facilities", []))
+	var city_present := bool(world_snapshot.get("city_present", false)) or not owned_facilities.is_empty()
+	var share_text := "尚未建立公共设施"
 	if city_present:
-		var share_labels: Array = []
-		for project_variant in own_projects:
-			if not (project_variant is Dictionary):
+		var facility_labels: Array = []
+		for facility_variant in owned_facilities:
+			if not (facility_variant is Dictionary):
 				continue
-			var project: Dictionary = project_variant
-			var share := float(project.get("own_share_percent", 0.0))
-			if share <= 0.0:
-				continue
-			share_labels.append("%s%s %.2f%%" % [str(project.get("product_id", "商品")), str(project.get("direction_label", "项目")), share])
-		if not share_labels.is_empty():
-			share_text = "、".join(share_labels)
+			var facility: Dictionary = facility_variant
+			facility_labels.append("%s%s %d级" % [str(facility.get("industry_id", "通用")), str(facility.get("facility_type", "设施")), int(facility.get("rank", 1))])
+		if not facility_labels.is_empty():
+			share_text = "、".join(facility_labels)
 	var gdp_per_minute := maxi(0, int(world_snapshot.get("gdp_per_minute", 0))) if city_present else 0
 	var cashflow_paid_total := maxi(0, int(world_snapshot.get("cashflow_paid_total", 0))) if city_present else 0
 	var starter_monster_id := str(world_snapshot.get("starter_monster_id", "")).strip_edges()
@@ -287,7 +283,7 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 		"teaching_product_id": str(world_snapshot.get("teaching_product_id", "")),
 		"teaching_card_id": teaching_card_id,
 		"teaching_card_ids": teaching_card_ids,
-		"teaching_card_kind": str(resolved_catalog.get("teaching_card_kind", "city_development")),
+		"teaching_card_kind": str(resolved_catalog.get("teaching_card_kind", "public_facility")),
 		"followup_card_id": str(resolved_catalog.get("followup_card_id", "")),
 		"featured_card_ids": _string_array(resolved_catalog.get("featured_card_ids", [])),
 		"starter_monster_id": starter_monster_id,
@@ -297,7 +293,7 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 		"city_product_ids": _string_array(world_snapshot.get("city_product_ids", [])) if city_present else [],
 		"city_demand_ids": _string_array(world_snapshot.get("city_demand_ids", [])) if city_present else [],
 		"public_projects": _sanitize_public_array(world_snapshot.get("public_projects", [])),
-		"own_project_shares": own_projects,
+		"owned_facilities": owned_facilities,
 		"urbanization_share_text": share_text,
 		"gdp_per_minute": gdp_per_minute,
 		"cashflow_paid_total": cashflow_paid_total,
@@ -401,7 +397,7 @@ func debug_snapshot() -> Dictionary:
 
 
 func _empty_catalog() -> Dictionary:
-	return {"scenario_id": scenario_id, "teaching_card_kind": "city_development", "runtime_card_ids": [], "city_development_card_ids": [], "followup_card_ids": [], "followup_card_id": "", "featured_card_ids": [], "starter_monster_ids": [], "preferred_product_ids": []}
+	return {"scenario_id": scenario_id, "teaching_card_kind": "public_facility", "runtime_card_ids": [], "public_facility_card_ids": [], "followup_card_ids": [], "followup_card_id": "", "featured_card_ids": [], "starter_monster_ids": [], "preferred_product_ids": []}
 
 
 func _filtered_fixture_ids(key: String, available: Dictionary) -> Array:
@@ -437,13 +433,6 @@ func _append_unique_string(values: Array, value: String) -> void:
 	var clean := value.strip_edges()
 	if clean != "" and not values.has(clean):
 		values.append(clean)
-
-
-func _has_owned_share(projects: Array) -> bool:
-	for project_variant in projects:
-		if project_variant is Dictionary and float((project_variant as Dictionary).get("own_share_percent", 0.0)) > 0.0:
-			return true
-	return false
 
 
 func _sanitize_public_array(value: Variant) -> Array:

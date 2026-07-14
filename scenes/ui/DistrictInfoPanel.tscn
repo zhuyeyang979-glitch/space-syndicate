@@ -32,3 +32,13 @@ text = "选择地图区域后显示短详情。"
 autowrap_mode = 3
 clip_text = true
 max_lines_visible = 1
+
+[node name="DistrictFullDetail" type="Label" parent="DistrictRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 144)
+layout_mode = 2
+text = "使用时机｜选择后查看\n目标｜当前区域\n完整效果｜这里显示完整玩家规则。\n持续/终止｜按牌面说明\n公开范围｜公开\n关键词解释｜悬停关键词查看"
+autowrap_mode = 3
+vertical_alignment = 0
+theme_override_colors/font_color = Color(0.69, 0.79, 0.85, 1)
+theme_override_font_sizes/font_size = 11

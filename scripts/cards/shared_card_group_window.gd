@@ -1,41 +1,60 @@
 extends RefCounted
 class_name SharedCardGroupWindow
 
-const TOTAL_SECONDS := 8.0
-const ORGANIZE_SECONDS := 6.0
-const LOCK_SECONDS := 2.0
+const TOTAL_SECONDS := 30.0
+const PLANNING_SECONDS := 20.0
+const PUBLIC_BID_SECONDS := 5.0
+const LOCK_SECONDS := 5.0
+const OPENING_EXTENDED_WINDOWS := 3
+const OPENING_TOTAL_SECONDS := 45.0
+const OPENING_PLANNING_SECONDS := 35.0
+const ORGANIZE_SECONDS := PLANNING_SECONDS
 const TUTORIAL_MAX_CARDS := 1
-const STANDARD_MAX_CARDS := 2
-const PRIORITY_BID_OPTIONS_CENTS := [0, 5000, 10000]
+const ORDINARY_MAX_CARDS := 1
+const STANDARD_MAX_CARDS := ORDINARY_MAX_CARDS
+const MAXIMUM_WITH_EXPLICIT_CAPABILITY := 3
 
 
-static func phase_for_remaining(remaining_seconds: float, lock_seconds: float = LOCK_SECONDS) -> String:
+static func cadence_for_sequence(window_sequence: int) -> Dictionary:
+	var extended := window_sequence >= 0 and window_sequence < OPENING_EXTENDED_WINDOWS
+	return {
+		"window_sequence": window_sequence,
+		"extended": extended,
+		"total_seconds": OPENING_TOTAL_SECONDS if extended else TOTAL_SECONDS,
+		"planning_seconds": OPENING_PLANNING_SECONDS if extended else PLANNING_SECONDS,
+		"public_bid_seconds": PUBLIC_BID_SECONDS,
+		"lock_seconds": LOCK_SECONDS,
+	}
+
+
+static func phase_for_remaining(remaining_seconds: float, lock_seconds: float = LOCK_SECONDS, public_bid_seconds: float = PUBLIC_BID_SECONDS) -> String:
 	var remaining := maxf(0.0, remaining_seconds)
 	if remaining <= 0.0:
 		return "closed"
 	if lock_seconds > 0.0 and remaining <= lock_seconds:
 		return "lock"
-	return "organize"
+	if public_bid_seconds > 0.0 and remaining <= lock_seconds + public_bid_seconds:
+		return "public_bid"
+	return "planning"
 
 
-static func submissions_open(remaining_seconds: float, lock_seconds: float = LOCK_SECONDS) -> bool:
-	return phase_for_remaining(remaining_seconds, lock_seconds) == "organize"
+static func submissions_open(remaining_seconds: float, lock_seconds: float = LOCK_SECONDS, public_bid_seconds: float = PUBLIC_BID_SECONDS) -> bool:
+	return phase_for_remaining(remaining_seconds, lock_seconds, public_bid_seconds) == "planning"
 
 
-static func bidding_open(remaining_seconds: float, lock_seconds: float = LOCK_SECONDS) -> bool:
-	return submissions_open(remaining_seconds, lock_seconds)
+static func bidding_open(remaining_seconds: float, lock_seconds: float = LOCK_SECONDS, public_bid_seconds: float = PUBLIC_BID_SECONDS) -> bool:
+	return phase_for_remaining(remaining_seconds, lock_seconds, public_bid_seconds) == "public_bid"
 
 
 static func group_id(window_sequence: int, player_index: int) -> String:
 	return "window_%d_group_%d" % [maxi(0, window_sequence), player_index]
 
 
-static func card_limit(value: int = STANDARD_MAX_CARDS) -> int:
-	return clampi(value, TUTORIAL_MAX_CARDS, STANDARD_MAX_CARDS)
-
-
-static func valid_priority_bid_cents(amount_cents: int) -> bool:
-	return amount_cents in PRIORITY_BID_OPTIONS_CENTS
+static func card_limit(requested_max_cards: int = ORDINARY_MAX_CARDS, extra_submission_capability: Dictionary = {}) -> int:
+	if not _extra_submission_capability_valid(extra_submission_capability):
+		return ORDINARY_MAX_CARDS
+	var capability_max := clampi(int(extra_submission_capability.get("max_cards", ORDINARY_MAX_CARDS)), ORDINARY_MAX_CARDS, MAXIMUM_WITH_EXPLICIT_CAPABILITY)
+	return clampi(mini(requested_max_cards, capability_max), ORDINARY_MAX_CARDS, MAXIMUM_WITH_EXPLICIT_CAPABILITY)
 
 
 static func group_card_count(entries: Array, player_index: int) -> int:
@@ -46,13 +65,14 @@ static func group_card_count(entries: Array, player_index: int) -> int:
 	return count
 
 
-static func can_submit(entries: Array, player_index: int, remaining_seconds: float, max_cards: int = STANDARD_MAX_CARDS, lock_seconds: float = LOCK_SECONDS) -> Dictionary:
+static func can_submit(entries: Array, player_index: int, remaining_seconds: float, max_cards: int = ORDINARY_MAX_CARDS, lock_seconds: float = LOCK_SECONDS, public_bid_seconds: float = PUBLIC_BID_SECONDS, extra_submission_capability: Dictionary = {}) -> Dictionary:
 	var count := group_card_count(entries, player_index)
-	var limit := card_limit(max_cards)
-	if not submissions_open(remaining_seconds, lock_seconds):
+	var limit := card_limit(max_cards, extra_submission_capability)
+	if not submissions_open(remaining_seconds, lock_seconds, public_bid_seconds):
+		var phase := phase_for_remaining(remaining_seconds, lock_seconds, public_bid_seconds)
 		return {
 			"allowed": false,
-			"reason": "lock_phase" if phase_for_remaining(remaining_seconds, lock_seconds) == "lock" else "window_closed",
+			"reason": "public_bid_phase" if phase == "public_bid" else ("lock_phase" if phase == "lock" else "window_closed"),
 			"card_count": count,
 			"card_limit": limit,
 		}
@@ -71,18 +91,9 @@ static func can_submit(entries: Array, player_index: int, remaining_seconds: flo
 	}
 
 
-static func with_priority_bid_cents(entries: Array, player_index: int, amount_cents: int) -> Array:
-	var result := entries.duplicate(true)
-	var bid_cents := amount_cents if valid_priority_bid_cents(amount_cents) else 0
-	for index in range(result.size()):
-		if not (result[index] is Dictionary):
-			continue
-		var entry := result[index] as Dictionary
-		if int(entry.get("player_index", -1)) != player_index:
-			continue
-		entry["priority_bid_cents"] = bid_cents
-		result[index] = entry
-	return result
+static func _extra_submission_capability_valid(capability: Dictionary) -> bool:
+	var capability_id := str(capability.get("extra_submission_capability", capability.get("capability_id", ""))).strip_edges()
+	return not capability_id.is_empty() and int(capability.get("max_cards", ORDINARY_MAX_CARDS)) > ORDINARY_MAX_CARDS
 
 
 static func groups_from_entries(entries: Array, reference_player: int, player_count: int) -> Array:
@@ -99,12 +110,10 @@ static func groups_from_entries(entries: Array, reference_player: int, player_co
 			by_player[key] = {
 				"group_id": str(entry.get("group_id", group_id(int(entry.get("window_sequence", 0)), player_index))),
 				"player_index": player_index,
-				"priority_bid_cents": _entry_priority_bid_cents(entry),
 				"cards": [],
 				"first_queued_order": int(entry.get("queued_order", 0)),
 			}
 		var group: Dictionary = by_player[key]
-		group["priority_bid_cents"] = maxi(int(group.get("priority_bid_cents", 0)), _entry_priority_bid_cents(entry))
 		group["first_queued_order"] = mini(int(group.get("first_queued_order", 0)), int(entry.get("queued_order", 0)))
 		(group["cards"] as Array).append(entry)
 		by_player[key] = group
@@ -140,37 +149,11 @@ static func flatten_groups(groups: Array) -> Array:
 				continue
 			var entry := (cards[card_index] as Dictionary).duplicate(true)
 			entry["group_id"] = str(group.get("group_id", ""))
-			entry["priority_bid_cents"] = maxi(0, int(group.get("priority_bid_cents", 0)))
 			entry["group_position"] = group_index + 1
 			entry["group_order"] = card_index + 1
 			entry["group_size"] = cards.size()
 			result.append(entry)
 	return result
-
-
-static func public_wager_pool_receipt(groups: Array, window_sequence: int) -> Dictionary:
-	var records: Array = []
-	var total_cents := 0
-	for group_variant in groups:
-		if not (group_variant is Dictionary):
-			continue
-		var group := group_variant as Dictionary
-		var amount_cents := maxi(0, int(group.get("priority_bid_cents", 0)))
-		total_cents += amount_cents
-		records.append({
-			"transaction_id": "card_group_bid.%d.%s" % [maxi(0, window_sequence), str(group.get("group_id", ""))],
-			"group_id": str(group.get("group_id", "")),
-			"payer_player_index": int(group.get("player_index", -1)),
-			"amount_cents": amount_cents,
-		})
-	return {
-		"receipt_id": "public_wager_pool.card_window.%d" % maxi(0, window_sequence),
-		"window_sequence": maxi(0, window_sequence),
-		"currency_scale": 100,
-		"records": records,
-		"total_cents": total_cents,
-		"recipient_kind": "public_monster_wager_pool",
-	}
 
 
 static func public_group_snapshot(groups: Array) -> Array:
@@ -183,20 +166,11 @@ static func public_group_snapshot(groups: Array) -> Array:
 			"group_id": str(group.get("group_id", "")),
 			"group_position": index + 1,
 			"card_count": int(group.get("card_count", (group.get("cards", []) as Array).size())),
-			"priority_bid_cents": maxi(0, int(group.get("priority_bid_cents", 0))),
 		})
 	return result
 
 
-static func _entry_priority_bid_cents(entry: Dictionary) -> int:
-	return maxi(0, int(entry.get("priority_bid_cents", 0)))
-
-
 static func _group_precedes(a: Dictionary, b: Dictionary, reference_player: int, player_count: int) -> bool:
-	var bid_a := maxi(0, int(a.get("priority_bid_cents", 0)))
-	var bid_b := maxi(0, int(b.get("priority_bid_cents", 0)))
-	if bid_a != bid_b:
-		return bid_a > bid_b
 	var distance_a := _clockwise_distance(int(a.get("player_index", -1)), reference_player, player_count)
 	var distance_b := _clockwise_distance(int(b.get("player_index", -1)), reference_player, player_count)
 	if distance_a != distance_b:

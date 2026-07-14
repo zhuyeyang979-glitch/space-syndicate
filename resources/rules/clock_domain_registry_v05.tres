@@ -1,48 +1,30 @@
-[gd_resource type="Resource" script_class="ClockDomainRegistryResource" load_steps=17 format=3]
+[gd_resource type="Resource" script_class="ClockDomainRegistryResource" format=3 uid="uid://dsicxch6haxcp"]
 
-[ext_resource type="Script" path="res://scripts/rules/clock_domain_registry_resource.gd" id="1_registry"]
-[ext_resource type="Script" path="res://scripts/rules/clock_domain_entry_resource.gd" id="2_entry"]
+[ext_resource type="Script" uid="uid://ksty1573kccg" path="res://scripts/rules/clock_domain_registry_resource.gd" id="1_registry"]
+[ext_resource type="Script" uid="uid://bnhrjecweyf1r" path="res://scripts/rules/clock_domain_entry_resource.gd" id="2_entry"]
 
 [sub_resource type="Resource" id="Timer_01"]
 script = ExtResource("2_entry")
 timer_id = "victory_qualification"
 duration_seconds = 10
-clock_domain = "world_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
-monster_wager_freeze_behavior = "pause"
 save_restore_behavior = "remaining_and_candidate_set"
 
 [sub_resource type="Resource" id="Timer_02"]
 script = ExtResource("2_entry")
 timer_id = "public_audit"
 duration_seconds = 120
-clock_domain = "world_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
-monster_wager_freeze_behavior = "pause"
 save_restore_behavior = "remaining_and_fixed_entrants"
 
 [sub_resource type="Resource" id="Timer_03"]
 script = ExtResource("2_entry")
 timer_id = "audit_failure_cooldown"
 duration_seconds = 30
-clock_domain = "world_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
-monster_wager_freeze_behavior = "pause"
-save_restore_behavior = "remaining"
 
 [sub_resource type="Resource" id="Timer_04"]
 script = ExtResource("2_entry")
 timer_id = "card_group"
 duration_seconds = 8
 clock_domain = "interaction_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
 forced_decision_behavior = "pause_resume"
 monster_wager_freeze_behavior = "pause_resume"
 save_restore_behavior = "phase_and_remaining"
@@ -52,8 +34,6 @@ script = ExtResource("2_entry")
 timer_id = "card_organize"
 duration_seconds = 6
 clock_domain = "interaction_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
 forced_decision_behavior = "pause_resume"
 monster_wager_freeze_behavior = "pause_resume"
 save_restore_behavior = "remaining_and_submissions"
@@ -63,8 +43,6 @@ script = ExtResource("2_entry")
 timer_id = "card_lock"
 duration_seconds = 2
 clock_domain = "interaction_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
 forced_decision_behavior = "pause_resume"
 monster_wager_freeze_behavior = "pause_resume"
 save_restore_behavior = "remaining_and_locked_order"
@@ -74,8 +52,6 @@ script = ExtResource("2_entry")
 timer_id = "district_purchase"
 duration_seconds = 12
 clock_domain = "interaction_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
 forced_decision_behavior = "pause_resume"
 monster_wager_freeze_behavior = "pause_resume"
 save_restore_behavior = "remaining_and_locked_price_context"
@@ -85,8 +61,6 @@ script = ExtResource("2_entry")
 timer_id = "contract_response"
 duration_seconds = 8
 clock_domain = "interaction_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
 forced_decision_behavior = "scheduler_priority"
 monster_wager_freeze_behavior = "pause_resume"
 save_restore_behavior = "remaining_and_responder"
@@ -96,8 +70,6 @@ script = ExtResource("2_entry")
 timer_id = "monster_wager"
 duration_seconds = 8
 clock_domain = "forced_ui_realtime"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
 forced_decision_behavior = "highest_forced_owner"
 monster_wager_freeze_behavior = "advances"
 save_restore_behavior = "remaining_and_escrow_receipts"
@@ -107,9 +79,6 @@ script = ExtResource("2_entry")
 timer_id = "standard_monster_battle"
 duration_seconds = 45
 clock_domain = "battle_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
 monster_wager_freeze_behavior = "betting_prelude_excluded"
 save_restore_behavior = "remaining_and_damage_totals"
 
@@ -117,47 +86,26 @@ save_restore_behavior = "remaining_and_damage_totals"
 script = ExtResource("2_entry")
 timer_id = "weather_forecast"
 duration_seconds = 90
-clock_domain = "world_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
-monster_wager_freeze_behavior = "pause"
 save_restore_behavior = "remaining_and_sequence"
 
 [sub_resource type="Resource" id="Timer_12"]
 script = ExtResource("2_entry")
 timer_id = "weather_duration"
 duration_seconds = 90
-clock_domain = "world_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
-monster_wager_freeze_behavior = "pause"
 save_restore_behavior = "remaining_and_active_zones"
 
 [sub_resource type="Resource" id="Timer_13"]
 script = ExtResource("2_entry")
 timer_id = "financial_distress"
 duration_seconds = 20
-clock_domain = "world_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
-monster_wager_freeze_behavior = "pause"
 save_restore_behavior = "remaining_and_sell_entitlement"
 
 [sub_resource type="Resource" id="Timer_14"]
 script = ExtResource("2_entry")
 timer_id = "intel_live_shares"
 duration_seconds = 60
-clock_domain = "world_effective"
-menu_pause_behavior = "pause"
-readonly_pause_behavior = "pause"
-forced_decision_behavior = "pause"
-monster_wager_freeze_behavior = "pause"
 save_restore_behavior = "remaining_and_last_known_snapshot"
 
 [resource]
 script = ExtResource("1_registry")
-ruleset_id = "v0.5"
-entries = Array[Resource]([SubResource("Timer_01"), SubResource("Timer_02"), SubResource("Timer_03"), SubResource("Timer_04"), SubResource("Timer_05"), SubResource("Timer_06"), SubResource("Timer_07"), SubResource("Timer_08"), SubResource("Timer_09"), SubResource("Timer_10"), SubResource("Timer_11"), SubResource("Timer_12"), SubResource("Timer_13"), SubResource("Timer_14")])
+entries = Array[ExtResource("2_entry")]([SubResource("Timer_01"), SubResource("Timer_02"), SubResource("Timer_03"), SubResource("Timer_04"), SubResource("Timer_05"), SubResource("Timer_06"), SubResource("Timer_07"), SubResource("Timer_08"), SubResource("Timer_09"), SubResource("Timer_10"), SubResource("Timer_11"), SubResource("Timer_12"), SubResource("Timer_13"), SubResource("Timer_14")])

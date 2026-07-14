@@ -6,3 +6,10 @@
 unique_name_in_owner = true
 editor_description = "Scene-owned timing and phase controller for the shared card-resolution window. Settlement and card effects remain in main.gd."
 script = ExtResource("1_controller")
+total_window_seconds = 30.0
+planning_seconds = 20.0
+public_bid_seconds = 5.0
+lock_seconds = 5.0
+opening_extended_windows = 3
+opening_total_window_seconds = 45.0
+opening_planning_seconds = 35.0

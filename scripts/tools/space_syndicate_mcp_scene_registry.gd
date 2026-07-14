@@ -2207,6 +2207,17 @@ const RECORDS := [
 		"smoke_check_enabled": true,
 		"previewable": true,
 	},
+	{
+		"id": "region_infrastructure_runtime_characterization_bench",
+		"display_name": "Region Infrastructure v0.6 Characterization",
+		"scene_path": "res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn",
+		"category": CATEGORY_QA_BENCHES,
+		"expected_root_type": "Control",
+		"purpose": "68-case SS06-00 baseline for shared regional HP, legacy city/project/route ownership, v0.6 schemas, save handshake, and heat/panic retirement.",
+		"mcp_notes": "Run before SS06-01. Production remains v0.4; the gate freezes main.gd and requires the next sprint to hard-cut over and delete the legacy region and heat engines without fallback.",
+		"smoke_check_enabled": true,
+		"previewable": true,
+	},
 ]
 
 
@@ -2339,6 +2350,7 @@ func required_scene_paths() -> Array[String]:
 		"res://scenes/runtime/IndustryCapacityRuntimeService.tscn",
 		"res://scenes/runtime/IndustryCapacityWorldBridge.tscn",
 		"res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn",
+		"res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn",
 	]
 
 

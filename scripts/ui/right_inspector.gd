@@ -105,25 +105,70 @@ func show_card(card_data: Dictionary) -> void:
 
 func _card_inspector_full_detail(card_data: Dictionary) -> String:
 	var lines: Array[String] = []
-	var use_case := _card_use_case_text(card_data)
+	var timing := _card_inspector_timing(card_data)
 	var target := str(card_data.get("target", card_data.get("target_type", ""))).strip_edges()
-	var requirement := str(card_data.get("requirement", card_data.get("play_requirement", card_data.get("condition", "")))).strip_edges()
-	var effect := str(card_data.get("effect", card_data.get("description", "选择卡牌查看效果。"))).strip_edges()
+	var effect := str(card_data.get("full_effect", card_data.get("effect", card_data.get("description", "选择卡牌查看完整效果。")))).strip_edges()
+	var duration := str(card_data.get("duration", card_data.get("termination", card_data.get("end_condition", "")))).strip_edges()
+	var visibility := str(card_data.get("visibility", card_data.get("public_scope", card_data.get("visibility_text", "")))).strip_edges()
+	var keyword_explanations := _card_keyword_explanations(card_data)
 	var disabled_reason := str(card_data.get("disabled_reason", card_data.get("block_reason", ""))).strip_edges()
-	var primary_action := _first_enabled_action_label(card_data)
-	if use_case != "":
-		lines.append("用途｜%s" % use_case)
+	var next_step := str(card_data.get("next_step", "")).strip_edges()
+	if timing != "":
+		lines.append("使用时机｜%s" % timing)
 	if target != "":
 		lines.append("目标｜%s" % target)
-	if requirement != "":
-		lines.append("条件｜%s" % requirement)
 	if effect != "":
-		lines.append("效果｜%s" % effect)
-	if primary_action != "":
-		lines.append("主动作｜%s" % primary_action)
+		lines.append("完整效果｜%s" % effect)
+	if duration != "":
+		lines.append("持续/终止｜%s" % duration)
+	if visibility != "":
+		lines.append("公开范围｜%s" % visibility)
+	if keyword_explanations != "":
+		lines.append("关键词解释｜%s" % keyword_explanations)
 	if disabled_reason != "":
-		lines.append("暂不可用｜%s" % disabled_reason)
-	return "\n".join(lines) if not lines.is_empty() else "选择卡牌查看效果。"
+		lines.append("不可用原因｜%s" % disabled_reason)
+	if next_step != "":
+		lines.append("下一步｜%s" % next_step)
+	return "\n".join(lines) if not lines.is_empty() else "选择卡牌查看完整效果。"
+
+
+func _card_inspector_timing(card_data: Dictionary) -> String:
+	for key in ["timing", "use_timing", "when_to_use", "use_case"]:
+		var value := str(card_data.get(key, "")).strip_edges()
+		if value != "":
+			return value
+	return ""
+
+
+func _card_keyword_explanations(card_data: Dictionary) -> String:
+	var explicit: Variant = card_data.get("keyword_explanations", card_data.get("keyword_help", ""))
+	if explicit is String:
+		return str(explicit).strip_edges()
+	if explicit is Array:
+		var explicit_lines: Array[String] = []
+		for entry_variant in explicit:
+			var line := _keyword_explanation_line(entry_variant)
+			if line != "":
+				explicit_lines.append(line)
+		return "\n".join(explicit_lines)
+	var keywords: Array = card_data.get("keywords", []) if card_data.get("keywords", []) is Array else []
+	var keyword_lines: Array[String] = []
+	for keyword_variant in keywords:
+		var line := _keyword_explanation_line(keyword_variant)
+		if line != "":
+			keyword_lines.append(line)
+	return "\n".join(keyword_lines)
+
+
+func _keyword_explanation_line(entry_variant: Variant) -> String:
+	if entry_variant is Dictionary:
+		var entry := entry_variant as Dictionary
+		var keyword := str(entry.get("text", entry.get("name", entry.get("label", "")))).strip_edges()
+		var explanation := str(entry.get("explanation", entry.get("tooltip", entry.get("description", "")))).strip_edges()
+		if keyword != "" and explanation != "":
+			return "%s：%s" % [keyword, explanation]
+		return keyword if keyword != "" else explanation
+	return str(entry_variant).strip_edges()
 
 
 func _card_use_case_text(card_data: Dictionary) -> String:
@@ -156,7 +201,7 @@ func _card_inspector_chip_entries(card_data: Dictionary, use_case: String) -> Ar
 	var chips: Array = []
 	if use_case != "":
 		chips.append({"text": "用途 %s" % use_case, "tooltip": "先看这张牌拿来做什么。"})
-	for key in ["cost", "target", "play_state", "rank", "type"]:
+	for key in ["cost", "target", "play_state", "rank", "type", "industry"]:
 		if card_data.has(key) and str(card_data[key]).strip_edges() != "":
 			chips.append({"text": "%s %s" % [_card_chip_label(key), str(card_data[key])], "tooltip": _card_chip_tooltip(key)})
 	return chips
@@ -217,9 +262,12 @@ func _first_enabled_action_label(card_data: Dictionary) -> String:
 		var action: Dictionary = action_variant
 		if bool(action.get("disabled", false)):
 			continue
-		var label := str(action.get("label", action.get("id", ""))).strip_edges()
+		var label := str(action.get("label", "")).strip_edges()
 		if label != "":
 			return label
+		var action_id := str(action.get("id", "")).strip_edges()
+		push_warning("RightInspector action '%s' is missing a localized player label; using safe copy." % (action_id if action_id != "" else "<missing-id>"))
+		return "执行操作"
 	return ""
 
 
@@ -254,14 +302,23 @@ func _set_deep_links(links_variant: Variant) -> void:
 	for child in deep_link_row.get_children():
 		deep_link_row.remove_child(child)
 		child.queue_free()
-	for link_variant in links:
-		var link: Dictionary = link_variant if link_variant is Dictionary else {"id": str(link_variant), "label": str(link_variant)}
+	for link_index in links.size():
+		var link_variant: Variant = links[link_index]
+		var link: Dictionary = link_variant if link_variant is Dictionary else {"id": str(link_variant)}
 		var button := Button.new()
-		button.text = _short_table_text(str(link.get("label", "详情")), 8)
+		var player_label := str(link.get("label", "")).strip_edges()
+		if player_label == "":
+			var missing_label_id := str(link.get("id", "")).strip_edges()
+			push_warning("RightInspector deep link '%s' is missing a localized player label; using safe copy." % (missing_label_id if missing_label_id != "" else "<missing-id>"))
+			player_label = "查看详情"
+		button.text = _short_table_text(player_label, 8)
 		button.tooltip_text = str(link.get("tooltip", ""))
 		button.custom_minimum_size = Vector2(0, 28)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var action_id := str(link.get("id", button.text))
+		var action_id := str(link.get("id", "")).strip_edges()
+		if action_id == "":
+			action_id = "detail_link_%d" % link_index
+			push_warning("RightInspector deep link is missing an internal id; generated '%s'." % action_id)
 		button.pressed.connect(func() -> void:
 			action_requested.emit(action_id)
 		)
@@ -317,6 +374,8 @@ func _card_chip_label(key: String) -> String:
 			return "等级"
 		"type":
 			return "类型"
+		"industry":
+			return "产业"
 		"cost":
 			return "费用"
 		"target":
@@ -338,6 +397,8 @@ func _card_chip_tooltip(key: String) -> String:
 			return "卡牌等级；重复获得同系列会升级。"
 		"type":
 			return "策略路线或卡牌类别。"
+		"industry":
+			return "商品颜色、设施归属或资产门槛对应的产业。"
 	return ""
 
 

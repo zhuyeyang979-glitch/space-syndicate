@@ -18,11 +18,11 @@ func configure(data: Dictionary) -> void:
 	position = _as_vector2(data.get("screen_position", Vector2.ZERO)) - custom_minimum_size * 0.5
 	name = "PlanetRouteMarker_%s" % str(data.get("product", "route"))
 	if product_label != null:
-		product_label.text = str(data.get("product", "route"))
+		product_label.text = str(data.get("product", "通用商品"))
 	if status_label != null:
-		status_label.text = "disrupted" if bool(data.get("disrupted", false)) else "open route"
+		status_label.text = "运输受阻" if bool(data.get("disrupted", false)) else "商路畅通"
 	if length_label != null:
-		length_label.text = "%d pts" % int(data.get("point_count", 0))
+		length_label.text = "路径节点 %d" % int(data.get("point_count", 0))
 	_refresh_style(Color(str(data.get("accent", "#38bdf8"))), bool(data.get("disrupted", false)))
 
 

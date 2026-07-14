@@ -21,13 +21,14 @@ func _run() -> void:
 	service.call("configure", {})
 	var source := _source()
 	var snapshot: Dictionary = service.call("compose", source)
-	_expect(str(snapshot.get("summary_text", "")).contains("游戏结束") and str(snapshot.get("summary_text", "")).contains("胜者：测试玩家") and str(snapshot.get("summary_text", "")).contains("Top-N个人归属GDP"), "summary preserves the v0.5 outcome-receipt read order")
+	_expect(str(snapshot.get("summary_text", "")).contains("游戏结束") and str(snapshot.get("summary_text", "")).contains("胜者：测试玩家") and str(snapshot.get("summary_text", "")).contains("Top-K个人归属GDP"), "summary preserves the outcome-receipt read order")
 	var board := snapshot.get("board", {}) as Dictionary
 	_expect((board.get("chips", []) as Array).size() == 3 and (board.get("kpis", []) as Array).size() == 4 and (board.get("money_sources", []) as Array).size() == 2 and (board.get("ranks", []) as Array).size() == 2 and (board.get("actions", []) as Array).size() == 3, "postgame board contract is complete")
-	_expect(JSON.stringify(board).contains("Top-N归属GDP 145/min") and JSON.stringify(board).contains("现金总账¥610.00"), "supplied VictoryControl comparisons are rendered without recalculation")
+	var board_text := JSON.stringify(board)
+	_expect(board_text.contains("Top-K归属GDP 145/min") and board_text.contains("现金为最终并列判定项，数值保密") and not board_text.contains("610.00") and not board_text.contains("730.00"), "VictoryControl order and public comparisons render without exposing exact cash")
 	_expect(JSON.stringify(board).contains("存活城市3座") and JSON.stringify(board).contains("已结算3张匿名牌"), "map and public track events remain visible")
 	var debug: Dictionary = service.call("debug_snapshot")
-	_expect(bool(debug.get("consumes_outcome_receipt", false)) and not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and not bool(debug.get("reads_private_hands", true)), "service consumes a receipt and owns no settlement rules")
+	_expect(bool(debug.get("consumes_outcome_receipt", false)) and not bool(debug.get("calculates_final_score", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("calculates_city_clearance", true)) and not bool(debug.get("calculates_intel_cash", true)) and bool(debug.get("protects_private_cash", false)) and bool(debug.get("recursively_sanitizes_public_output", false)) and str(debug.get("cash_visibility_policy", "")) == "authoritative_public_audit_allowlist" and bool(debug.get("cash_disclosure_fail_closed", false)) and not bool(debug.get("reads_private_hands", true)), "service consumes a receipt, owns no settlement rules, and enforces the state-aware cash boundary")
 	_expect(_is_pure_data(snapshot) and not _contains_private_key(snapshot), "snapshot is public pure data")
 	var injected := source.duplicate(true)
 	injected["private_hand"] = ["secret-card"]
@@ -80,7 +81,7 @@ func _is_pure_data(value: Variant) -> bool:
 func _contains_private_key(value: Variant) -> bool:
 	if value is Dictionary:
 		for key_variant: Variant in value:
-			if str(key_variant).to_lower() in ["owner", "owner_index", "hidden_owner", "private_target", "private_plan", "ai_private_plan", "hand", "private_hand", "private_discard"]:
+			if str(key_variant).to_lower() in ["owner", "owner_index", "hidden_owner", "private_target", "private_plan", "ai_private_plan", "hand", "private_hand", "private_discard", "cash", "cash_cents", "cash_ledger_cents", "available", "available_cents", "escrow", "escrow_cents"]:
 				return true
 			if _contains_private_key(value[key_variant]):
 				return true

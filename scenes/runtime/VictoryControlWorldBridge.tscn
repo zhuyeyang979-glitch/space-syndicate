@@ -4,4 +4,4 @@
 
 [node name="VictoryControlWorldBridge" type="Node"]
 script = ExtResource("1_bridge")
-editor_description = "Non-owning v0.5 fact bridge. It collects structured private GDP attribution, ledger, and audit assets, then forwards an exact-once outcome receipt without scoring or mutating rules."
+editor_description = "Non-owning v0.6 fact bridge. It collects RegionInfrastructure lifecycle, CommodityFlow sale GDP, ledger, and audit disclosure facts, then forwards an exact-once outcome receipt without scoring or mutating rules."

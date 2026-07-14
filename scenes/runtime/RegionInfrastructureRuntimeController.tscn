@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/region_infrastructure_runtime_controller.gd" id="1_controller"]
+
+[node name="RegionInfrastructureRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Authoritative v0.6 public-facility roster, derived regional shared HP, and lifecycle-v2 atomic apply/rollback/finalize/save-load receipts. Heat and panic are intentionally absent."

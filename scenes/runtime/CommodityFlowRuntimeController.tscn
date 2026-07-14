@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/commodity_flow_runtime_controller.gd" id="1_controller"]
+
+[node name="CommodityFlowRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+local_production_absorption_units_per_minute = 1
+local_market_turnover_units_per_minute = 1
+local_production_absorption_rate_cap_basis_points = 1000
+local_production_baseline_value_basis_points = 1000
+local_market_baseline_value_basis_points = 500
+editor_description = "Unique v0.6 owner for remote-first commodity flow, capped local production/market baselines, backpressure, and exact-once Sale Receipts."

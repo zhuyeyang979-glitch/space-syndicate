@@ -1,0 +1,45 @@
+Godot MCP verification — Ring-Crystal Battery style key v01
+Date: 2026-07-14
+Project: C:\Users\Administrator\Documents\New project\space-syndicate-sync
+Godot: 4.7.stable.official.5b4e0cb0f
+Renderer: Vulkan 1.4.329 / Forward+ / NVIDIA GeForce RTX 4080 SUPER
+
+MCP call record
+1. mcp__godot__get_godot_version
+2. mcp__godot__get_project_info(projectPath)
+3. mcp__godot__list_projects(New project, recursive=false)
+4. mcp__godot__launch_editor(projectPath)
+5. mcp__godot__get_uid(authored PNG, capture scene, shared CardUI scene)
+6. mcp__godot__save_scene(CardArtStyleKeyCapture.tscn)
+7. mcp__godot__run_project(CardArtStyleKeyCapture.tscn)
+8. mcp__godot__get_debug_output
+9. mcp__godot__stop_project
+
+Runtime output
+SKIN_LAB|event=ready|cards=6|sceneized=true|rules_unchanged=true
+CARD_ART_STYLE_KEY_CAPTURE|event=suite_start|code=OK|card=commodity.ring_crystal_battery.rank_1|output_dir=res://reports/art/card_style_keys|scene=res://scenes/tools/CardArtStyleKeyCapture.tscn
+CARD_ART_STYLE_KEY_CAPTURE|event=output_dir_ready|code=OK|path=res://reports/art/card_style_keys
+CARD_ART_STYLE_KEY_CAPTURE|event=context_prepare|code=OK|contexts=hand/settlement/inspector
+CARD_ART_STYLE_KEY_CAPTURE|event=context_art|code=OK|active=true|context=hand|size=123x142
+CARD_ART_STYLE_KEY_CAPTURE|event=context_art|code=OK|active=true|context=settlement|size=82x116
+CARD_ART_STYLE_KEY_CAPTURE|event=context_art|code=OK|active=true|context=inspector|size=116x164
+CARD_ART_STYLE_KEY_CAPTURE|event=window_ready|code=OK|requested=1280x720|viewport=1706x960|window=1280x720
+CARD_ART_STYLE_KEY_CAPTURE|event=capture_saved|code=OK|case=style_key_1280x720|file=res://reports/art/card_style_keys/ring_crystal_battery_style_key_1280x720.png|image=1280x720
+CARD_ART_STYLE_KEY_CAPTURE|event=window_ready|code=OK|requested=1600x960|viewport=1600x960|window=1600x960
+CARD_ART_STYLE_KEY_CAPTURE|event=capture_saved|code=OK|case=style_key_1600x960|file=res://reports/art/card_style_keys/ring_crystal_battery_style_key_1600x960.png|image=1600x960
+CARD_ART_STYLE_KEY_CAPTURE|event=window_ready|code=OK|requested=1920x1080|viewport=1706x960|window=1920x1080
+CARD_ART_STYLE_KEY_CAPTURE|event=capture_saved|code=OK|case=style_key_1920x1080|file=res://reports/art/card_style_keys/ring_crystal_battery_style_key_1920x1080.png|image=1920x1080
+CARD_ART_STYLE_KEY_CAPTURE|event=player_text_scan|code=OK|clean=true|leaks=0
+CARD_ART_STYLE_KEY_CAPTURE|event=suite_complete|code=OK|captures=3|failures=0
+CARD_ART_STYLE_KEY_CAPTURE|event=awaiting_mcp_stop|code=OK|detail=风格钥匙截图已完成，等待 Godot MCP 停止项目。
+
+MCP debug errors: []
+MCP stop finalErrors: []
+
+Import evidence
+- Godot generated `ring_crystal_battery_v01.png.import`.
+- Imported resource UID: uid://cv6ifkvnplkuu
+- Imported texture: res://.godot/imported/ring_crystal_battery_v01.png-de54b935ad9440680bf3c80d16dfb9d8.ctex
+
+Utility note
+- The isolated MCP save-scene helper reported dummy-renderer RID allocations at its own process exit. The actual headed Forward+ capture run reported no errors, and `stop_project.finalErrors` was empty.

@@ -32,7 +32,7 @@ func _draw() -> void:
 	var selected_position := _as_vector2(_payload.get("selected_position", Vector2(-1.0, -1.0)))
 	var selected_index := int(_payload.get("selected_district", -1))
 	if selected_visible and selected_index >= 0:
-		_draw_range_ring(selected_position, 42.0, Color("#facc15", 0.34), "selected")
+		_draw_range_ring(selected_position, 42.0, Color("#facc15", 0.34), "当前选区")
 	var focus_active := bool(_payload.get("focus_beacon_active", false))
 	var focus_alpha := clampf(float(_payload.get("focus_beacon_alpha", 0.0)), 0.0, 1.0)
 	if focus_active and selected_position.x >= 0.0 and selected_position.y >= 0.0:

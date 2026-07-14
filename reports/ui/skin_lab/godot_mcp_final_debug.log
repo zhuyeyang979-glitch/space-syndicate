@@ -1,0 +1,31 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f
+Vulkan 1.4.329 - Forward+ - NVIDIA GeForce RTX 4080 SUPER
+SKIN_LAB|event=ready|cards=6|sceneized=true|rules_unchanged=true
+SKIN_LAB_CAPTURE|event=suite_start|code=OK|output_dir=res://reports/ui/skin_lab|scene=res://scenes/tools/CardUISkinLab.tscn
+SKIN_LAB_CAPTURE|event=output_dir_ready|code=OK|path=res://reports/ui/skin_lab
+SKIN_LAB_CAPTURE|event=window_ready|code=OK|requested=1280x720|window=1280x720
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=resolution_1280x720|file=res://reports/ui/skin_lab/card_ui_skin_lab_1280x720.png|image=1280x720
+SKIN_LAB_CAPTURE|event=window_ready|code=OK|requested=1600x960|window=1600x960
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=resolution_1600x960|file=res://reports/ui/skin_lab/card_ui_skin_lab_1600x960.png|image=1600x960
+SKIN_LAB_CAPTURE|event=window_ready|code=OK|requested=1920x1080|window=1920x1080
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=resolution_1920x1080|file=res://reports/ui/skin_lab/card_ui_skin_lab_1920x1080.png|image=1920x1080
+SKIN_LAB_CAPTURE|event=state_applied|code=OK|state=normal
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=state_normal|image=1600x960
+SKIN_LAB_CAPTURE|event=state_applied|code=OK|state=hovered
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=state_hovered|image=1600x960
+SKIN_LAB_CAPTURE|event=state_applied|code=OK|state=selected
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=state_selected|image=1600x960
+SKIN_LAB_CAPTURE|event=state_applied|code=OK|state=disabled
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=state_disabled|image=1600x960
+SKIN_LAB_CAPTURE|event=state_applied|code=OK|state=drop_valid
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=state_drop_valid|image=1600x960
+SKIN_LAB_CAPTURE|event=state_applied|code=OK|state=resolving
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=state_resolving|image=1600x960
+SKIN_LAB_CAPTURE|event=state_applied|code=OK|state=hidden
+SKIN_LAB_CAPTURE|event=capture_saved|code=OK|case=state_hidden|image=1600x960
+SKIN_LAB_CAPTURE|event=player_text_scan|code=OK|clean=true|leaks=0
+SKIN_LAB_CAPTURE|event=runtime_snapshot|code=OK|cards=6|sceneized=true|state=hidden
+SKIN_LAB_CAPTURE|event=suite_complete|code=OK|captures=10|failures=0
+SKIN_LAB_CAPTURE|event=awaiting_mcp_stop|code=OK
+get_debug_output.errors=[]
+stop_project.finalErrors=[]

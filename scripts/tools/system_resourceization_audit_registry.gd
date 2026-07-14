@@ -968,6 +968,21 @@ const RECORDS := [
 		"recommended_next_step": "Use the same authored six-industry IDs and Queue receipt identity in later v0.5 card-content and monster-wager cutovers.",
 		"mcp_notes": "SS05-05 is cutover complete for this domain. The service derives capacity without owning projects or GDP; Queue owns reservations and the exact-once wager receipt; CardResolutionRuntimeController owns 8/6/2 time and readiness.",
 	},
+	{
+		"id": "ruleset_v06_region_infrastructure_foundation",
+		"display_name": "Ruleset v0.6 Region Infrastructure Foundation",
+		"category": CATEGORY_RUNTIME_FALLBACKS,
+		"current_status": STATUS_RESOURCE_ASSET,
+		"current_path": "res://resources/rules/space_syndicate_ruleset_v06.tres",
+		"runtime_owner": "inactive_until_ss06_01_hard_cutover",
+		"related_paths": ["res://scripts/rules/space_syndicate_ruleset_profile_v06.gd", "res://scripts/rules/ruleset_v06_schema_registry.gd", "res://scenes/runtime/RulesetSaveHandshakeService.tscn", "res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn", "res://docs/region_infrastructure_runtime_ownership_contract.md"],
+		"function_count": 0,
+		"key_functions": ["infrastructure_rules", "victory_rules", "commodity_rules", "validate_payload", "compose_v06_envelope"],
+		"editor_visibility": "inspector_profile_passive_save_handshake_and_68_case_real_main_gate",
+		"risk_level": "high",
+		"recommended_next_step": "Hard-cut over Region Infrastructure in SS06-01, delete the old main.gd owner, and retire every heat/panic state, score, player label, and legacy card path without fallback.",
+		"mcp_notes": "Foundation ready, runtime inactive. Production RulesetRuntimeBridge and CardRuntimeCatalogService remain v0.4; no parallel v0.6 region engine exists.",
+	},
 ]
 
 

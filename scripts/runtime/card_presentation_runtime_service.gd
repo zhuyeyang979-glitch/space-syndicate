@@ -144,9 +144,12 @@ func compose_play_eligibility(eligibility: Dictionary, card_source: Dictionary =
 		"contract_invalid":
 			_set_play_state(state, "需合约", _short_text(str(args.get("error", "合约端点无效")), 58), false, Color("#facc15"))
 			state["log_message"] = str(args.get("error", "合约端点无效"))
-		"city_development_invalid":
-			_set_play_state(state, "发展限制", str(args.get("error", "城市发展目标无效")), false, Color("#facc15"))
-			state["log_message"] = "城市发展牌无法打出：%s。" % str(args.get("error", "目标无效"))
+		"public_facility_target_unavailable":
+			_set_play_state(state, "设施目标不可用", "先选择未毁灭的目标区域。", false, Color("#facc15"))
+			state["log_message"] = "公共设施牌没有可用目标区域。"
+		"legacy_card_kind_retired":
+			_set_play_state(state, "旧卡已退役", "这张旧城市发展牌尚未迁移为 v0.6 公共设施牌。", false, Color("#fb7185"))
+			state["log_message"] = "旧城市发展牌已从 v0.6 运行时退役。"
 		"military_unit_missing":
 			_set_play_state(state, "无军队", "绑定军队不在场。", false, Color("#94a3b8"))
 			state["log_message"] = "%s绑定的军队不在场。" % card_label

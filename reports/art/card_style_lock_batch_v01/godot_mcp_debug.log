@@ -1,0 +1,52 @@
+GODOT_MCP_CALL|get_godot_version|result=4.7.stable.official.5b4e0cb0f
+GODOT_MCP_CALL|list_projects|result=space-syndicate-sync found at C:\Users\Administrator\Documents\New project\space-syndicate-sync
+GODOT_MCP_CALL|get_project_info|name=space-syndicate-sync|godotVersion=4.7.stable.official.5b4e0cb0f
+GODOT_MCP_CALL|launch_editor|result=success
+GODOT_MCP_CALL|get_uid|file=assets/art/cards/v06/style_lock/monster/spore_tide_emperor_v01.png|physical_file=true|sidecar_uid=false
+GODOT_MCP_CALL|get_uid|file=assets/art/cards/v06/style_lock/supply_demand/remote_sea_order_v01.png|physical_file=true|sidecar_uid=false
+GODOT_MCP_CALL|get_uid|file=assets/art/cards/v06/style_lock/supply_demand/near_land_supply_v01.png|physical_file=true|sidecar_uid=false
+GODOT_MCP_CALL|get_uid|file=scripts/tools/card_style_lock_batch_capture.gd|uid=uid://c1ex6dv5sske6
+GODOT_MCP_CALL|get_uid|file=scenes/tools/CardStyleLockBatchCapture.tscn|physical_file=true|sidecar_uid=false
+GODOT_MCP_CALL|save_scene|scene=scenes/tools/CardStyleLockBatchCapture.tscn|pack=OK|save=OK
+GODOT_MCP_HELPER_WARNING|save_scene dummy-renderer helper exit|4 DummyMaterial RIDs, 2 DummyShader RIDs, 34 shaped-text RIDs and 1 font RID reported as leaked at helper-process exit
+GODOT_MCP_CALL|run_project|scene=scenes/tools/CardStyleLockBatchCapture.tscn|result=debug_started
+
+Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
+Vulkan 1.4.329 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce RTX 4080 SUPER
+SKIN_LAB|event=ready|cards=6|sceneized=true|rules_unchanged=true
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=suite_start|code=OK|output_dir=res://reports/art/card_style_lock_batch_v01|scene=res://scenes/tools/CardStyleLockBatchCapture.tscn|successful_generated_assets=3
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=output_dir|code=OK|path=res://reports/art/card_style_lock_batch_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=manifest_load|code=OK|entries=6
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=window_ready|code=OK|requested=1600x960|viewport=1600x960|window=1600x960
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=target_manifest|code=OK|card=supply_demand.remote_sea_order.rank_1|source_type=authored|status=style_lock_candidate_v01|visual_source=space_syndicate_authored_remote_sea_order_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=target_manifest|code=OK|card=supply_demand.near_land_supply.rank_1|source_type=authored|status=style_lock_candidate_v01|visual_source=space_syndicate_authored_near_land_supply_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=target_manifest|code=OK|card=unit.monster.spore_tide_emperor.rank_1|source_type=authored|status=style_lock_candidate_v01|visual_source=space_syndicate_authored_spore_tide_emperor_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=hand_card_source|code=OK|active=true|card=commodity.ring_crystal_battery.rank_1|source_type=authored|visual_source=space_syndicate_authored_imagegen_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=hand_card_source|code=OK|active=true|card=facility.orbital_warehouse.rank_1|source_type=open_source_placeholder|visual_source=game_icons_warehouse_delapouite
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=hand_card_source|code=OK|active=true|card=supply_demand.remote_sea_order.rank_1|source_type=authored|visual_source=space_syndicate_authored_remote_sea_order_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=hand_card_source|code=OK|active=true|card=supply_demand.near_land_supply.rank_1|source_type=authored|visual_source=space_syndicate_authored_near_land_supply_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=hand_card_source|code=OK|active=true|card=unit.monster.spore_tide_emperor.rank_1|source_type=authored|visual_source=space_syndicate_authored_spore_tide_emperor_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=hand_card_source|code=OK|active=true|card=interaction.phase_veto.rank_1|source_type=open_source_placeholder|visual_source=game_icons_cancel_sbed
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=hand_source_audit|code=OK|authored=4|cards=6|external=6|open_source=2|unique_sources=6
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=settlement_source|code=OK|card=interaction.phase_veto.rank_1|visual_source=game_icons_cancel_sbed
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=fallback_probe|code=OK|case=path_not_allowed|procedural_visible=true|reason=path_not_allowed
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=fallback_probe|code=OK|case=missing_texture|procedural_visible=true|reason=missing_texture
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=window_ready|code=OK|requested=1280x720|viewport=1706x960|window=1280x720
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=capture_saved|code=OK|case=resolution_1280x720|file=res://reports/art/card_style_lock_batch_v01/card_style_lock_batch_1280x720.png|image=1280x720
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=window_ready|code=OK|requested=1600x960|viewport=1600x960|window=1600x960
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=capture_saved|code=OK|case=resolution_1600x960|file=res://reports/art/card_style_lock_batch_v01/card_style_lock_batch_1600x960.png|image=1600x960
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=window_ready|code=OK|requested=1920x1080|viewport=1706x960|window=1920x1080
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=capture_saved|code=OK|case=resolution_1920x1080|file=res://reports/art/card_style_lock_batch_v01/card_style_lock_batch_1920x1080.png|image=1920x1080
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=window_ready|code=OK|requested=1600x960|viewport=1600x960|window=1600x960
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=inspector_source|code=OK|card=supply_demand.remote_sea_order.rank_1|fit_mode=cover|source_type=authored|state=hovered|tint_mode=preserve|visual_source=space_syndicate_authored_remote_sea_order_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=capture_saved|code=OK|case=state_hovered|file=res://reports/art/card_style_lock_batch_v01/card_style_lock_hovered_1600x960.png|image=1600x960
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=inspector_source|code=OK|card=supply_demand.near_land_supply.rank_1|fit_mode=cover|source_type=authored|state=disabled|tint_mode=preserve|visual_source=space_syndicate_authored_near_land_supply_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=capture_saved|code=OK|case=state_disabled|file=res://reports/art/card_style_lock_batch_v01/card_style_lock_disabled_1600x960.png|image=1600x960
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=inspector_source|code=OK|card=unit.monster.spore_tide_emperor.rank_1|fit_mode=cover|source_type=authored|state=drop_valid|tint_mode=preserve|visual_source=space_syndicate_authored_spore_tide_emperor_v01
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=capture_saved|code=OK|case=state_drop_valid|file=res://reports/art/card_style_lock_batch_v01/card_style_lock_drop_valid_1600x960.png|image=1600x960
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=player_text_scan|code=OK|clean=true|leaks=0
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=suite_complete|code=OK|captures=6|failures=0|successful_generated_assets=3
+CARD_STYLE_LOCK_BATCH_CAPTURE|event=awaiting_mcp_stop|code=OK|detail=验证完成，等待 Godot MCP 停止项目。
+
+GODOT_MCP_CALL|get_debug_output|errors=[]
+GODOT_MCP_CALL|stop_project|message=Godot project stopped|finalErrors=[]

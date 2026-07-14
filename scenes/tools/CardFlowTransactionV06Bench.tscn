@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_flow_transaction_v06_bench.gd" id="1_bench"]
+
+[node name="CardFlowTransactionV06Bench" type="Node" unique_id=335316430]
+script = ExtResource("1_bench")

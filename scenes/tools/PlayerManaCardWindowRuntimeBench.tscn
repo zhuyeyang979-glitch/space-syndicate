@@ -1,0 +1,105 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/player_mana_card_window_runtime_bench.gd" id="1_bench"]
+
+[node name="PlayerManaCardWindowRuntimeBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.027, 0.043, 0.059, 1)
+
+[node name="Content" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 48.0
+offset_top = 36.0
+offset_right = -48.0
+offset_bottom = -36.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Stack" type="VBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Content/Stack"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.87, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 28
+text = "SS06-04  六色资产与卡牌承诺"
+
+[node name="Subtitle" type="Label" parent="Content/Stack"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 16
+text = "Commodity GDP/min -> private assets -> 30/20/5/5 card window -> exact-once settlement"
+
+[node name="Separator" type="HSeparator" parent="Content/Stack"]
+layout_mode = 2
+
+[node name="AssetGrid" type="GridContainer" parent="Content/Stack"]
+layout_mode = 2
+columns = 6
+
+[node name="Life" type="Label" parent="Content/Stack/AssetGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.9, 0.62, 1)
+text = "生命 LIFE"
+
+[node name="Energy" type="Label" parent="Content/Stack/AssetGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.78, 0.3, 1)
+text = "能源 ENERGY"
+
+[node name="Industry" type="Label" parent="Content/Stack/AssetGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.49, 0.42, 1)
+text = "工业 INDUSTRY"
+
+[node name="Technology" type="Label" parent="Content/Stack/AssetGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.42, 0.76, 0.98, 1)
+text = "科技 TECHNOLOGY"
+
+[node name="Commerce" type="Label" parent="Content/Stack/AssetGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.58, 0.95, 1)
+text = "商业 COMMERCE"
+
+[node name="Shipping" type="Label" parent="Content/Stack/AssetGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.86, 0.88, 1)
+text = "运输 SHIPPING"
+
+[node name="Status" type="Label" parent="Content/Stack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.7, 0.3, 1)
+theme_override_font_sizes/font_size = 20
+text = "Running focused runtime gate..."
+
+[node name="Summary" type="RichTextLabel" parent="Content/Stack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.7, 0.8, 0.86, 1)
+theme_override_font_sizes/normal_font_size = 16
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+text = "[color=#8ea8b8]Awaiting runtime checks.[/color]"

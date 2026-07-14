@@ -1,0 +1,27 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/core_economy_production_wiring_v06_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerManaRuntimeController.tscn" id="2_assets"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RegionInfrastructureRuntimeController.tscn" id="3_infrastructure"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityFlowRuntimeController.tscn" id="4_flow"]
+[ext_resource type="Script" path="res://scripts/cards/v06/production/card_player_state_production_adapter_v06.gd" id="5_state_port"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityCardInventoryRuntimeController.tscn" id="6_card_source"]
+[ext_resource type="Script" path="res://scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd" id="7_core_runtime"]
+
+[node name="CoreEconomyProductionWiringV06Bench" type="Node"]
+editor_description = "Focused real-scene Godot MCP bench for the v0.6 production core-economic card wiring. It uses no user save path."
+script = ExtResource("1_bench")
+
+[node name="PlayerAssets" parent="." instance=ExtResource("2_assets")]
+
+[node name="Infrastructure" parent="." instance=ExtResource("3_infrastructure")]
+
+[node name="CommodityFlow" parent="." instance=ExtResource("4_flow")]
+
+[node name="ProductionPlayerStatePort" type="Node" parent="."]
+script = ExtResource("5_state_port")
+
+[node name="CardSource" parent="." instance=ExtResource("6_card_source")]
+
+[node name="CoreEconomicRuntime" type="Node" parent="."]
+script = ExtResource("7_core_runtime")

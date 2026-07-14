@@ -4,23 +4,13 @@ class_name CardEconomyProductRouteEffectRuntimeService
 
 const SERVICE_ID := "card_economy_product_route_effect_runtime_v1"
 const HANDLER_FAMILIES := {
-	"cash_gain": "economy",
-	"city_revenue_boost": "economy",
 	"city_gdp_derivative": "economy",
 	"market_stabilize": "product",
 	"product_speculation": "product",
 	"product_futures": "product",
 	"product_contract_boon": "product",
 	"product_growth_boon": "product",
-	"city_product_upgrade": "product",
-	"city_product_shift": "product",
-	"city_demand_shift": "product",
 	"area_trade_contract": "route",
-	"route_insurance": "route",
-	"route_flow_boon": "route",
-	"route_sabotage": "route",
-	"region_economy_shift": "route",
-	"city_contract_boon": "route",
 }
 
 var _configured := false

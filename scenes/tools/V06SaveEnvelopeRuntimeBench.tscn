@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/v06_save_envelope_runtime_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameSessionRuntimeController.tscn" id="2_session"]
+
+[node name="V06SaveEnvelopeRuntimeBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="GameSessionRuntimeController" parent="." instance=ExtResource("2_session")]

@@ -20,6 +20,9 @@ var _setup_summary: Dictionary = {}
 var _save_state := "clean"
 var _dirty_reason := ""
 var _outcome_receipt: Dictionary = {}
+var _operation_sequence := 0
+var _active_operation: Dictionary = {}
+var _last_operation: Dictionary = {}
 
 
 func configure(ruleset_snapshot: Dictionary, save_config: Dictionary = {}) -> void:
@@ -33,7 +36,9 @@ func configure(ruleset_snapshot: Dictionary, save_config: Dictionary = {}) -> vo
 			var current_path := str(save_node.call("default_save_path")) if save_node.has_method("default_save_path") else ""
 			save_node.call("configure", int(save_config.get("save_version", current_version)), str(save_config.get("default_save_path", current_path)))
 	var save_snapshot := _save_operation_snapshot()
-	_configured = _ruleset_id == "v0.4" and bool(save_snapshot.get("configured", false))
+	# Session lifecycle remains available to the transitional v0.4 composition,
+	# but every save operation below is strict v3/v0.6 and cannot resume v1/v2.
+	_configured = _ruleset_id in ["v0.4", "v0.6"] and bool(save_snapshot.get("configured", false))
 
 
 func begin_session(setup_snapshot: Dictionary) -> Dictionary:
@@ -138,24 +143,33 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	return {"applied": true, "legacy_default": false, "session_state": _session_state}
 
 
-func request_save(path: String, domain_sections: Dictionary) -> Dictionary:
+func request_save(path: String, envelope: Dictionary, authorization: Dictionary = {}) -> Dictionary:
 	var save_node := _save_coordinator_node()
 	if not _configured or save_node == null:
 		_save_state = "failed"
-		return _error_result(ERR_UNCONFIGURED, path)
+		return _error_result(ERR_UNCONFIGURED, path, "save_coordinator_unavailable")
+	_begin_operation("write", str(envelope.get("write_id", "")), path)
 	_save_state = "saving"
-	var payload_variant: Variant = save_node.call("compose_save_payload", session_summary(), domain_sections)
-	var payload: Dictionary = payload_variant if payload_variant is Dictionary else {}
-	if payload.is_empty():
+	var validation_variant: Variant = save_node.call("validate_envelope", envelope) if save_node.has_method("validate_envelope") else {}
+	var validation: Dictionary = validation_variant if validation_variant is Dictionary else {}
+	if not bool(validation.get("valid", false)):
 		_save_state = "failed"
-		return _error_result(ERR_INVALID_DATA, path)
-	var result_variant: Variant = save_node.call("write_save", path, payload)
-	var result: Dictionary = result_variant if result_variant is Dictionary else _error_result(ERR_CANT_CREATE, path)
+		var invalid := _error_result(ERR_INVALID_DATA, path, str(validation.get("reason_code", "v3_envelope_required")))
+		_finish_operation(invalid)
+		return invalid
+	if authorization.is_empty() or not save_node.has_method("write_validated_envelope"):
+		_save_state = "failed"
+		var unauthorized := _error_result(ERR_UNAUTHORIZED, path, "write_authorization_required")
+		_finish_operation(unauthorized)
+		return unauthorized
+	var result_variant: Variant = save_node.call("write_validated_envelope", path, envelope, authorization)
+	var result: Dictionary = result_variant if result_variant is Dictionary else _error_result(ERR_CANT_CREATE, path, "save_write_invalid")
 	if bool(result.get("ok", false)):
 		_save_state = "clean"
 		_dirty_reason = ""
 	else:
 		_save_state = "failed"
+	_finish_operation(result)
 	return result.duplicate(true)
 
 
@@ -164,14 +178,16 @@ func request_load(path: String = "") -> Dictionary:
 	if not _configured or save_node == null:
 		_session_state = STATE_ERROR
 		_save_state = "failed"
-		return _error_result(ERR_UNCONFIGURED, path)
+		return _error_result(ERR_UNCONFIGURED, path, "save_coordinator_unavailable")
+	_begin_operation("read", "", path)
 	_session_state = STATE_LOADING
 	_save_state = "loading"
-	var result_variant: Variant = save_node.call("read_save", path)
-	var result: Dictionary = result_variant if result_variant is Dictionary else _error_result(ERR_INVALID_DATA, path)
+	var result_variant: Variant = save_node.call("read_and_validate", path) if save_node.has_method("read_and_validate") else {}
+	var result: Dictionary = result_variant if result_variant is Dictionary else _error_result(ERR_INVALID_DATA, path, "save_read_invalid")
 	if not bool(result.get("ok", false)):
 		_session_state = STATE_ERROR
 		_save_state = "failed"
+	_finish_operation(result)
 	return result.duplicate(true)
 
 
@@ -188,10 +204,10 @@ func complete_load(error_code: int) -> void:
 
 func read_save(path: String = "") -> Dictionary:
 	var save_node := _save_coordinator_node()
-	if save_node == null or not save_node.has_method("read_save"):
-		return _error_result(ERR_UNCONFIGURED, path)
-	var result_variant: Variant = save_node.call("read_save", path)
-	return (result_variant as Dictionary).duplicate(true) if result_variant is Dictionary else _error_result(ERR_INVALID_DATA, path)
+	if save_node == null or not save_node.has_method("read_and_validate"):
+		return _error_result(ERR_UNCONFIGURED, path, "save_coordinator_unavailable")
+	var result_variant: Variant = save_node.call("read_and_validate", path)
+	return (result_variant as Dictionary).duplicate(true) if result_variant is Dictionary else _error_result(ERR_INVALID_DATA, path, "save_read_invalid")
 
 
 func has_valid_save(path: String = "") -> bool:
@@ -202,7 +218,7 @@ func compose_run_save_payload(domain_sections: Dictionary) -> Dictionary:
 	var save_node := _save_coordinator_node()
 	if save_node == null or not save_node.has_method("compose_save_payload"):
 		return {}
-	var payload_variant: Variant = save_node.call("compose_save_payload", session_summary(), domain_sections)
+	var payload_variant: Variant = save_node.call("compose_save_payload", {}, domain_sections)
 	return (payload_variant as Dictionary).duplicate(true) if payload_variant is Dictionary else {}
 
 
@@ -247,6 +263,8 @@ func reset_state() -> void:
 	_outcome_receipt = {}
 	_save_state = "clean"
 	_dirty_reason = ""
+	_active_operation = {}
+	_last_operation = {}
 
 
 func debug_snapshot() -> Dictionary:
@@ -255,7 +273,17 @@ func debug_snapshot() -> Dictionary:
 		"session_authoritative": _configured,
 		"session": session_summary(),
 		"save_operation": _save_operation_snapshot(),
+		"operation_lifecycle": operation_lifecycle_snapshot(),
 		"dirty_reason": _dirty_reason,
+	}
+
+
+func operation_lifecycle_snapshot() -> Dictionary:
+	return {
+		"operation_sequence": _operation_sequence,
+		"active": _active_operation.duplicate(true),
+		"last": _last_operation.duplicate(true),
+		"captures_business_state": false,
 	}
 
 
@@ -281,14 +309,31 @@ func _safe_setup_summary(setup_snapshot: Dictionary) -> Dictionary:
 	}
 
 
-func _error_result(error_code: int, path: String) -> Dictionary:
+func _error_result(error_code: int, path: String, reason_code: String = "session_operation_failed") -> Dictionary:
 	return {
 		"ok": false,
 		"error_code": error_code,
+		"reason_code": reason_code,
 		"path": path,
-		"exists": false,
-		"payload": {},
 	}
+
+
+func _begin_operation(kind: String, operation_id: String, path: String) -> void:
+	_operation_sequence += 1
+	_active_operation = {
+		"sequence": _operation_sequence,
+		"kind": kind,
+		"operation_id": operation_id,
+		"path": path,
+		"state": "inflight",
+	}
+
+
+func _finish_operation(result: Dictionary) -> void:
+	_last_operation = _active_operation.duplicate(true)
+	_last_operation["state"] = "complete" if bool(result.get("ok", false)) else "failed"
+	_last_operation["reason_code"] = str(result.get("reason_code", "operation_complete"))
+	_active_operation = {}
 
 
 func _is_data_only(value: Variant) -> bool:

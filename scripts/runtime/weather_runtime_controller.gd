@@ -45,6 +45,7 @@ const WEATHER_TYPES := {
 
 var _world_bridge: WeatherRuntimeWorldBridge
 var _product_market_runtime_controller: ProductMarketRuntimeController
+var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
 
@@ -59,6 +60,10 @@ func set_world_bridge(bridge: WeatherRuntimeWorldBridge) -> void:
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
 	_product_market_runtime_controller = controller
+
+
+func set_route_network_runtime_controller(controller: RouteNetworkRuntimeController) -> void:
+	_route_network_runtime_controller = controller
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -537,7 +542,8 @@ func _district_center(index: int) -> Vector2:
 
 
 func _refresh_weather_dependents() -> void:
-	_world_call(&"_refresh_city_networks")
+	if _route_network_runtime_controller != null:
+		_route_network_runtime_controller.refresh_routes()
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 

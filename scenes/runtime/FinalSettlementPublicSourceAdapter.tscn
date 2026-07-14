@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/final_settlement_public_source_adapter.gd" id="1_adapter"]
+
+[node name="FinalSettlementPublicSourceAdapter" type="Node"]
+script = ExtResource("1_adapter")
+editor_description = "Pure-data allowlist adapter for victory public logs, settlement source facts, and recap summaries. It owns no victory, ranking, or cash rules."

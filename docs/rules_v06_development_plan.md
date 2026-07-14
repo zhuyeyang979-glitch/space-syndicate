@@ -1,6 +1,6 @@
 # 《太空辛迪加》v0.6 运行时开发计划
 
-> 状态：执行计划，2026-07-14。
+> 状态：SS06-05 已完成六色资产、8/6/2 卡窗与动态胜利切换，下一步 SS06-06，2026-07-14。
 > 玩家行为语义：`docs/tabletop_rulebook_v06.md`。
 > 运行时边界：`docs/rules_v06_runtime_directive.md`。
 > v0.5 证据：`docs/rules_v05_development_plan.md`，只读历史基线。
@@ -90,4 +90,6 @@ SS05-05 的 64/64、Queue 56/56、Runtime Track 14/14 和 FirstMission 37/37 保
 
 ## 7. 下一步
 
-进入 **SS06-00 Recoverable Pre-v0.6 Baseline & Region Infrastructure Characterization**。不要进入 SS05-06，也不要先写共享生命 Controller。先冻结当前可恢复状态、建立 v0.6 Profile 和 schema，再用真实 main 行为刻画旧设施/区域生命调用图，形成 SS06-01 的删除清单。
+SS06-00 至 SS06-05 已完成：v0.6 Profile/save-v3 握手、公共设施与共享生命、固定点连续商品流、唯一 Sale Receipt、多式路线、六色仓库、背压、六色资产支付、8/6/2 卡窗和动态胜利均已有单一运行时 owner。`PlayerManaRuntimeController` 以成交回执恢复六色资产并提供 exact-once reserve/consume/release；Queue 只消费支付授权。`VictoryControlRuntimeController` 以当前存续区域数动态计算 `K=ceil(A*40%)` 与 `K*36 GDP/min`，并在攻击、流量、破产结算后的同帧检查点完成审计。SS06-04 聚焦门为 32/32，SS06-05 Victory 门为 54/54，Godot 场景可加载且无新增 parse/runtime error。
+
+下一步进入 **SS06-06 Commodity Inventory And Persistent Installation**。继续保留 `CardInventoryRuntimeService` 的普通手牌/合成 ownership，并把商品履带免费领取、满手同名商品自动合成一次、商品永久安装、设施摧毁时安装量移除和 exact-once 安装 receipt 接到现有 `CommodityFlowRuntimeController` / Region Infrastructure 边界。不得复制另一位 agent 正在开发的 v0.6 Card Flow 或 CardUI；开始前先审计其最新提交和公开 API，再只迁移仍由旧 runtime 持有的商品库存与安装 ownership。

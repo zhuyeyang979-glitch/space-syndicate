@@ -60,9 +60,6 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		pending_target_choice = bool(_world.call("_has_pending_target_choice"))
 	if _world.has_method("_has_pending_player_target_choice"):
 		pending_target_choice = pending_target_choice or bool(_world.call("_has_pending_player_target_choice"))
-	var city_development_error := ""
-	if str(skill.get("kind", "")) == "city_development" and _world.has_method("_city_development_target_error"):
-		city_development_error = str(_world.call("_city_development_target_error", player_index, skill, int(skill.get("development_target_district", selected_district))))
 	var military_deployment_valid := true
 	var military_terrain_label := "有效地形"
 	if str(skill.get("kind", "")) == "military_force":
@@ -96,7 +93,6 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"active_skill_counterable": _counterable(active_skill),
 		"contract_error": str(contract_context.get("error", "")),
 		"contract_context": contract_context,
-		"city_development_error": city_development_error,
 		"military_unit_present": not unit.is_empty(),
 		"military_unit_cooldown": float(unit.get("cooldown_left", 0.0)),
 		"military_deployment_valid": military_deployment_valid,

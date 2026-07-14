@@ -10,6 +10,8 @@ const UNIT_HISTORY_LIMIT := 16
 const UNIT_COMMAND_COOLDOWN_SECONDS := 5.0
 
 var _world_bridge: MilitaryRuntimeWorldBridge
+var _region_infrastructure_world_bridge: Node
+var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _monster_runtime_controller: MonsterRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _inventory_service: CardInventoryRuntimeService
@@ -23,6 +25,14 @@ var next_military_unit_uid := 1
 
 func set_world_bridge(bridge: MilitaryRuntimeWorldBridge) -> void:
 	_world_bridge = bridge
+
+
+func set_region_infrastructure_world_bridge(bridge: Node) -> void:
+	_region_infrastructure_world_bridge = bridge
+
+
+func set_route_network_runtime_controller(controller: RouteNetworkRuntimeController) -> void:
+	_route_network_runtime_controller = controller
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -287,8 +297,8 @@ func make_command_skill(command: String, rank: int, unit_uid: int, source_card: 
 	var safe_rank := clampi(rank, 1, 4)
 	var descriptions := {
 		"move": "命令绑定军队向当前选区前进；公开显示为匿名军队行动，不显示下令者。",
-		"guard": "命令绑定军队保卫当前选区：修复少量区域/商路压力并降低热度；不公开下令者。",
-		"strike_district": "命令绑定军队轰击当前选区，对区域和城市造成伤害，并可能形成短时GDP压力；不公开下令者。",
+		"guard": "命令绑定军队保卫当前选区：修复区域共享生命；不公开下令者。",
+		"strike_district": "命令绑定军队轰击当前选区，对区域共享生命造成伤害；不公开下令者。",
 		"attack_monster": "指定目标怪兽，命令绑定军队开火；军队操控者不因受伤承担怪兽式资金损失。",
 	}
 	return {
@@ -476,16 +486,10 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 			if _entity_distance_to_district(unit, selected_district) > command_range:
 				_log("%s目标距离%s，超过军队支援半径%s。" % [str(skill.get("name", "军令")), _entity_distance_to_district_label(unit, selected_district), _meters_text(command_range)])
 				return false
-			var repaired := int(_world_call(&"_repair_district", [selected_district, maxi(1, int(skill.get("rank", 1))), source]))
-			var city := _district_city(selected_district)
-			var route_repaired := 0
-			if _city_is_active(city) and int(city.get("trade_route_damage", 0)) > 0:
-				route_repaired = mini(int(city.get("trade_route_damage", 0)), maxi(1, int(skill.get("repair_routes", 1))))
-				city["trade_route_damage"] = int(city.get("trade_route_damage", 0)) - route_repaired
-				(districts[selected_district] as Dictionary)["city"] = city
-			(districts[selected_district] as Dictionary)["panic"] = max(0, int((districts[selected_district] as Dictionary).get("panic", 0)) - 6 * maxi(1, int(skill.get("rank", 1))))
-			_write_world_value(&"districts", districts)
-			_world_call(&"_add_action_callout", ["匿名%s" % label, "保卫区域", "%s获得%s支援：区域修复%d，商路修复%d。" % [str((districts[selected_district] as Dictionary).get("name", "区域")), label, repaired, route_repaired], unit_color(unit), _district_center(selected_district)])
+			var repair_variant: Variant = _region_infrastructure_world_bridge.call("submit_legacy_index_repair", selected_district, maxi(1, int(skill.get("rank", 1))), "military", source, float(_world_value(&"game_time", 0.0))) if _region_infrastructure_world_bridge != null and _region_infrastructure_world_bridge.has_method("submit_legacy_index_repair") else {"committed": false, "reason": "region_infrastructure_bridge_missing"}
+			var repair_receipt: Dictionary = repair_variant if repair_variant is Dictionary else {"committed": false, "reason": "region_infrastructure_receipt_invalid"}
+			var repaired := int(repair_receipt.get("applied_repair", 0))
+			_world_call(&"_add_action_callout", ["匿名%s" % label, "保卫区域", "%s获得%s支援：共享生命修复%d。" % [str((districts[selected_district] as Dictionary).get("name", "区域")), label, repaired], unit_color(unit), _district_center(selected_district)])
 		"strike_district":
 			if not _valid_target_district(selected_district, districts):
 				_log("%s需要选中一个未毁区域作为摧毁目标。" % str(skill.get("name", "军令")))
@@ -494,18 +498,10 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 				_log("%s目标距离%s，超过军队火力半径%s。" % [str(skill.get("name", "军令")), _entity_distance_to_district_label(unit, selected_district), _meters_text(command_range)])
 				return false
 			_world_call(&"_add_monster_attack_effect", [_entity_world_position(unit), _district_center(selected_district), source, command_range, unit_color(unit), true])
-			_world_call(&"_damage_district", [selected_district, damage, source])
-			districts = _districts()
-			var city := _district_city(selected_district)
-			var route_damage := 0
-			if _city_is_active(city):
-				route_damage = maxi(0, int(unit.get("military_strike_route_damage", 0)))
-				if route_damage > 0:
-					city["trade_route_damage"] = int(city.get("trade_route_damage", 0)) + route_damage
-					(districts[selected_district] as Dictionary)["city"] = city
-					_write_world_value(&"districts", districts)
-			var pressure := apply_gdp_pressure(unit, selected_district, command, source)
-			_world_call(&"_add_action_callout", ["匿名%s" % label, "摧毁区域", "%s轰击%s，造成%d点破坏%s%s。" % [label, str((districts[selected_district] as Dictionary).get("name", "区域")), damage, ("，商路压力+%d" % route_damage) if route_damage > 0 else "", ("，GDP-%d" % pressure) if pressure > 0 else ""], unit_color(unit), _district_center(selected_district)])
+			var damage_variant: Variant = _region_infrastructure_world_bridge.call("submit_legacy_index_unit_damage", selected_district, damage, "military", source, float(_world_value(&"game_time", 0.0))) if _region_infrastructure_world_bridge != null and _region_infrastructure_world_bridge.has_method("submit_legacy_index_unit_damage") else {"committed": false, "reason": "region_infrastructure_bridge_missing"}
+			var damage_receipt: Dictionary = damage_variant if damage_variant is Dictionary else {"committed": false, "reason": "region_infrastructure_receipt_invalid"}
+			var applied_damage := int(damage_receipt.get("applied_damage", 0))
+			_world_call(&"_add_action_callout", ["匿名%s" % label, "摧毁区域", "%s轰击%s，共享生命-%d。" % [label, str((districts[selected_district] as Dictionary).get("name", "区域")), applied_damage], unit_color(unit), _district_center(selected_district)])
 		"attack_monster":
 			var monsters := _monster_runtime_controller.roster_snapshot(true)
 			if target_slot < 0 or target_slot >= monsters.size() or bool((monsters[target_slot] as Dictionary).get("down", false)):
@@ -525,7 +521,8 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 	unit["cooldown_left"] = maxf(float(unit.get("cooldown_left", 0.0)), maxf(1.0, float(skill.get("cooldown", UNIT_COMMAND_COOLDOWN_SECONDS))))
 	military_units[unit_index] = unit
 	_log("匿名%s执行%s；下令者不公开，军队不会自主行动。" % [label, _skill_family(str(skill.get("name", "军令")))])
-	_world_call(&"_refresh_city_networks")
+	if _route_network_runtime_controller != null:
+		_route_network_runtime_controller.refresh_routes()
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 	_world_call(&"_refresh_ui")
@@ -701,9 +698,7 @@ func _update_units(delta: float) -> void:
 				if district_index < 0 or district_index >= districts.size():
 					district_index = int(unit.get("position", _world_call(&"_nearest_district_to", [_entity_world_position(unit)])))
 				var label := unit_type_label(unit)
-				var source := str(info.get("source", "匿名军令"))
-				var pressure := apply_gdp_pressure(unit, district_index, "move", source)
-				_world_call(&"_add_action_callout", ["匿名%s" % label, "抵达", "%s抵达%s%s。" % [label, str((districts[district_index] as Dictionary).get("name", "区域")), ("，军事管制GDP-%d" % pressure) if pressure > 0 else ""], unit_color(unit), _entity_world_position(unit)])
+				_world_call(&"_add_action_callout", ["匿名%s" % label, "抵达", "%s抵达%s。" % [label, str((districts[district_index] as Dictionary).get("name", "区域"))], unit_color(unit), _entity_world_position(unit)])
 				_world_call(&"_clear_entity_linear_motion", [unit])
 		unit["remaining_time"] = maxf(0.0, float(unit.get("remaining_time", 0.0)) - delta)
 		unit["cooldown_left"] = maxf(0.0, float(unit.get("cooldown_left", 0.0)) - delta)
@@ -711,26 +706,6 @@ func _update_units(delta: float) -> void:
 			remove_unit(index, "在场时间结束或战力耗尽。")
 			continue
 		military_units[index] = unit
-
-
-func apply_gdp_pressure(unit: Dictionary, district_index: int, command: String, source: String) -> int:
-	var districts := _districts()
-	if district_index < 0 or district_index >= districts.size():
-		return 0
-	var city := _district_city(district_index)
-	if not _city_is_active(city):
-		return 0
-	var pressure := unit_gdp_pressure(unit, command)
-	var seconds := unit_gdp_pressure_seconds(unit)
-	if pressure <= 0 or seconds <= 0.0:
-		return 0
-	city["military_gdp_penalty"] = maxi(int(city.get("military_gdp_penalty", 0)), pressure)
-	city["military_pressure_until"] = maxf(float(city.get("military_pressure_until", 0.0)), float(_world_value(&"game_time", 0.0)) + seconds)
-	city["military_pressure_source"] = source
-	(districts[district_index] as Dictionary)["city"] = city
-	_write_world_value(&"districts", districts)
-	_world_call(&"_set_city_public_clue", [district_index, "%s造成军事管制：GDP/min短时-%d，持续%s。" % [source, pressure, _duration_short_text(seconds)]])
-	return pressure
 
 
 func _invalidate_bound_commands(unit_uid: int, reason: String = "绑定军队已离场，此军令失效。") -> void:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -8,6 +8,7 @@
 [ext_resource type="AudioStream" path="res://assets/third_party/night_patrol/audio/sfx/lightning-hit.mp3" id="6_storm_sfx"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionRuntimeController.tscn" id="7_card_resolution_controller"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RulesetRuntimeBridge.tscn" id="8_ruleset_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/FinalSettlementRuntimeComposition.tscn" id="9_final_settlement_runtime_composition"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="10_game_runtime_coordinator"]
 
 [node name="Main" type="Control"]
@@ -28,6 +29,11 @@ editor_description = "Non-visual runtime services owned by the main table scene.
 
 [node name="RulesetRuntimeBridge" parent="RuntimeServices" instance=ExtResource("8_ruleset_bridge")]
 unique_name_in_owner = true
+
+[node name="FinalSettlementRuntimeComposition" parent="RuntimeServices" instance=ExtResource("9_final_settlement_runtime_composition")]
+unique_name_in_owner = true
+menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
+snapshot_service_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/FinalSettlementPublicSnapshotService")
 
 [node name="TableAudioHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true
@@ -60,3 +66,7 @@ editor_description = "Scene-owned runtime controllers and bridges."
 [node name="RuntimeFallbackHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true
 editor_description = "Explicit host for compatibility fallbacks created only when scene-owned composition is unavailable."
+
+[connection signal="action_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="." method="_on_menu_quick_nav_action_requested"]
+[connection signal="menu_open_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="." method="_show_menu"]
+[connection signal="public_log_entry_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="." method="_log"]

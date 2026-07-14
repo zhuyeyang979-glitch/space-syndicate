@@ -1190,6 +1190,18 @@ const RECORDS := [
 		"risk_notes": "High; six-industry aggregation, cumulative group reservations, 8/6/2 timing, fixed bid escrow, exact-once release, and wager-pool receipts share one live transaction boundary.",
 		"mcp_notes": "SS05-05 is sceneized under GameRuntimeCoordinator. Industry Capacity owns derived facts, Queue owns reservations and receipts, RuntimeController owns the clock, and the global production Ruleset remains v0.4.",
 	},
+	{
+		"id": "region_infrastructure_v06_characterization_gate",
+		"display_name": "Region Infrastructure v0.6 Characterization",
+		"category": "Systems",
+		"current_scene_path": "res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn",
+		"source_script_path": "res://scripts/tools/region_infrastructure_runtime_characterization_bench.gd",
+		"sceneization_status": STATUS_PARTIAL,
+		"priority": 1,
+		"next_step": "SS06-01 must create one RegionInfrastructureRuntimeController and delete legacy hp/damage/destroyed/panic, project, route-damage, and refresh ownership from main.gd in the same cutover.",
+		"risk_notes": "High; shared HP, destruction receipts, cross-domain damage writers, save compatibility, and removal of the obsolete heat mechanic must change ownership atomically.",
+		"mcp_notes": "SS06-00 is a 68-case characterization gate. The v0.6 profile is Inspector-editable but runtime inactive; production remains v0.4 until hard cutover.",
+	},
 ]
 
 

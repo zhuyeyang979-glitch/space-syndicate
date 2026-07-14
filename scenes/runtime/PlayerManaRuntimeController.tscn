@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/player_mana_runtime_controller.gd" id="1_player_mana"]
+
+[node name="PlayerManaRuntimeController" type="Node"]
+script = ExtResource("1_player_mana")
+editor_description = "Unique v0.6 owner of six private asset pools, continuous recovery, card reservations, exact-once consume/refund, and save data. Player-facing copy calls these resources six-color assets."

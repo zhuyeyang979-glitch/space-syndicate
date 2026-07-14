@@ -52,13 +52,13 @@ theme_override_constants/separation = 12
 [node name="Title" type="Label" parent="Margin/Rows"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Victory Control v0.5 Runtime Gate"
+text = "Victory Control v0.6 Dynamic Runtime Gate"
 
 [node name="SummaryLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
-text = "Preparing 56 victory-control cases..."
+text = "Preparing v0.6 victory-control cases..."
 
 [node name="StatusLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true
@@ -86,7 +86,7 @@ unique_name_in_owner = true
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true
-text = "Preparing v0.5 victory contract..."
+text = "Preparing v0.6 dynamic victory contract..."
 
 [node name="ResultsPanel" type="PanelContainer" parent="Margin/Rows/Body"]
 layout_mode = 2

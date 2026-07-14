@@ -1,11 +1,11 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/victory_control_runtime_controller.gd" id="1_controller"]
-[ext_resource type="Resource" path="res://resources/rules/space_syndicate_ruleset_v05.tres" id="2_profile"]
-[ext_resource type="Resource" path="res://resources/rules/clock_domain_registry_v05.tres" id="3_clocks"]
+[ext_resource type="Resource" path="res://resources/rules/space_syndicate_ruleset_v06.tres" id="2_profile"]
+[ext_resource type="Resource" path="res://resources/rules/clock_domain_registry_v06.tres" id="3_clocks"]
 
 [node name="VictoryControlRuntimeController" type="Node"]
 script = ExtResource("1_controller")
 ruleset_profile = ExtResource("2_profile")
 clock_domain_registry = ExtResource("3_clocks")
-editor_description = "Single v0.5 owner for region control, Top-N qualification, the 10/120/30-second audit lifecycle, audit roster privacy, terminal ordering, and versioned outcome receipts."
+editor_description = "Single v0.6 owner for dynamic victory thresholds, qualification, the sticky public-audit roster, explicit exact-cash disclosure authorization, endpoint ordering, privacy, save state, and exact-once outcome receipts."

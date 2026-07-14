@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/final_settlement_runtime_composition.gd" id="1_composition"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/FinalSettlementPublicSourceAdapter.tscn" id="2_adapter"]
+[ext_resource type="PackedScene" path="res://scenes/ui/FinalSettlementBoard.tscn" id="3_board"]
+
+[node name="FinalSettlementRuntimeComposition" type="Node"]
+script = ExtResource("1_composition")
+editor_description = "Scene-owned final settlement presentation composition. It consumes only public Victory facts, routes them through the existing source adapter and snapshot service, and owns one editable board instance."
+
+[node name="FinalSettlementPublicSourceAdapter" parent="." instance=ExtResource("2_adapter")]
+
+[node name="FinalSettlementBoardPanel" parent="." instance=ExtResource("3_board")]
+visible = false
+
+[connection signal="action_requested" from="FinalSettlementBoardPanel" to="." method="_on_board_action_requested"]

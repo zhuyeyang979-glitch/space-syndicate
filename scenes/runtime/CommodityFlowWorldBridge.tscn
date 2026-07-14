@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/commodity_flow_world_bridge.gd" id="1_bridge"]
+
+[node name="CommodityFlowWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Non-owning bridge that collects region/price/route facts and atomically applies CommodityFlow Sale Receipt cash deltas."

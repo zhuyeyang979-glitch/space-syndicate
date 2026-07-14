@@ -4,4 +4,4 @@
 
 [node name="CityTradeNetworkWorldBridge" type="Node"]
 script = ExtResource("1_script")
-editor_description = "Non-owning adapter for city/trade world facts and atomic receipt application. It does not score routes, calculate GDP, or own runtime state."
+editor_description = "Retired SS06-03 compatibility shell. Production topology facts belong to RouteNetworkWorldBridge."

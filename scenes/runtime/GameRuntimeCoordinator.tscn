@@ -1,12 +1,10 @@
-[gd_scene load_steps=58 format=3]
+[gd_scene load_steps=59 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameSessionRuntimeController.tscn" id="3_session"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/DistrictPurchaseRuntimeController.tscn" id="4_purchase"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/EconomyCashflowRuntimeController.tscn" id="5_economy"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ScenarioRuntimeController.tscn" id="6_scenario"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/GdpFormulaRuntimeController.tscn" id="7_gdp_formula"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" id="8_first_table_authored"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CodexNavigationRuntimeController.tscn" id="9_codex_navigation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CodexPublicSnapshotService.tscn" id="10_codex_public_snapshot"]
@@ -49,14 +47,19 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardRuntimeDefinitionWorldBridge.tscn" id="47_card_definition_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameplayBalanceDiagnosticsRuntimeService.tscn" id="48_balance_diagnostics"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameplayBalanceDiagnosticsWorldBridge.tscn" id="49_balance_diagnostics_bridge"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/CityTradeNetworkRuntimeController.tscn" id="50_city_trade_network"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/CityTradeNetworkWorldBridge.tscn" id="51_city_trade_network_bridge"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentRuntimeController.tscn" id="52_city_development"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentWorldBridge.tscn" id="53_city_development_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RouteNetworkRuntimeController.tscn" id="50_route_network"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RouteNetworkWorldBridge.tscn" id="51_route_network_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/VictoryControlRuntimeController.tscn" id="54_victory_control"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/VictoryControlWorldBridge.tscn" id="55_victory_control_bridge"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/IndustryCapacityRuntimeService.tscn" id="56_industry_capacity"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/IndustryCapacityWorldBridge.tscn" id="57_industry_capacity_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RegionInfrastructureRuntimeController.tscn" id="58_region_infrastructure"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RegionInfrastructureWorldBridge.tscn" id="59_region_infrastructure_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityFlowRuntimeController.tscn" id="60_commodity_flow"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityFlowWorldBridge.tscn" id="61_commodity_flow_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerManaRuntimeController.tscn" id="62_player_mana"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityCardInventoryRuntimeController.tscn" id="63_commodity_card_inventory"]
+[ext_resource type="Script" path="res://scripts/cards/v06/production/card_player_state_production_adapter_v06.gd" id="64_card_player_state_adapter"]
+[ext_resource type="Script" path="res://scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd" id="65_core_economic_runtime_adapter"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerOrganizationRuntimeController.tscn" id="66_player_organization"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -86,22 +89,39 @@ unique_name_in_owner = true
 [node name="CityGdpDerivativeRuntimeWorldBridge" parent="." instance=ExtResource("45_city_gdp_derivative_world_bridge")]
 unique_name_in_owner = true
 
-[node name="CityTradeNetworkRuntimeController" parent="." instance=ExtResource("50_city_trade_network")]
+[node name="RouteNetworkRuntimeController" parent="." instance=ExtResource("50_route_network")]
 unique_name_in_owner = true
 
-[node name="CityTradeNetworkWorldBridge" parent="." instance=ExtResource("51_city_trade_network_bridge")]
+[node name="RouteNetworkWorldBridge" parent="." instance=ExtResource("51_route_network_bridge")]
 unique_name_in_owner = true
 
-[node name="IndustryCapacityRuntimeService" parent="." instance=ExtResource("56_industry_capacity")]
+[node name="CommodityFlowRuntimeController" parent="." instance=ExtResource("60_commodity_flow")]
 unique_name_in_owner = true
 
-[node name="IndustryCapacityWorldBridge" parent="." instance=ExtResource("57_industry_capacity_bridge")]
+[node name="CommodityFlowWorldBridge" parent="." instance=ExtResource("61_commodity_flow_bridge")]
 unique_name_in_owner = true
 
-[node name="CityDevelopmentRuntimeController" parent="." instance=ExtResource("52_city_development")]
+[node name="PlayerManaRuntimeController" parent="." instance=ExtResource("62_player_mana")]
 unique_name_in_owner = true
 
-[node name="CityDevelopmentWorldBridge" parent="." instance=ExtResource("53_city_development_bridge")]
+[node name="CommodityCardInventoryRuntimeController" parent="." instance=ExtResource("63_commodity_card_inventory")]
+unique_name_in_owner = true
+
+[node name="CardPlayerStateProductionAdapterV06" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("64_card_player_state_adapter")
+
+[node name="CoreEconomicCardRuntimeAdapterV06" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("65_core_economic_runtime_adapter")
+
+[node name="PlayerOrganizationRuntimeController" parent="." instance=ExtResource("66_player_organization")]
+unique_name_in_owner = true
+
+[node name="RegionInfrastructureRuntimeController" parent="." instance=ExtResource("58_region_infrastructure")]
+unique_name_in_owner = true
+
+[node name="RegionInfrastructureWorldBridge" parent="." instance=ExtResource("59_region_infrastructure_bridge")]
 unique_name_in_owner = true
 
 [node name="VictoryControlRuntimeController" parent="." instance=ExtResource("54_victory_control")]
@@ -186,12 +206,6 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="DistrictPurchaseSettlementRuntimeService" parent="." instance=ExtResource("19_purchase_settlement")]
-unique_name_in_owner = true
-
-[node name="EconomyCashflowRuntimeController" parent="." instance=ExtResource("5_economy")]
-unique_name_in_owner = true
-
-[node name="GdpFormulaRuntimeController" parent="." instance=ExtResource("7_gdp_formula")]
 unique_name_in_owner = true
 
 [node name="ScenarioRuntimeController" parent="." instance=ExtResource("6_scenario")]

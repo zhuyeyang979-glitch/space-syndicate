@@ -76,6 +76,9 @@ signal open_ruleset_runtime_bridge_requested(scene_path: String)
 signal run_ruleset_v04_conformance_bench_requested(scene_path: String)
 signal open_ruleset_v05_foundation_requested(resource_path: String)
 signal run_ruleset_v05_foundation_bench_requested(scene_path: String)
+signal open_ruleset_v06_foundation_requested(resource_path: String)
+signal open_region_infrastructure_characterization_bench_requested(scene_path: String)
+signal run_region_infrastructure_characterization_bench_requested(scene_path: String)
 signal open_player_text_v05_foundation_requested(resource_path: String)
 signal run_player_text_v05_foundation_bench_requested(scene_path: String)
 signal open_city_development_runtime_controller_requested(scene_path: String)
@@ -251,6 +254,8 @@ const RULESET_RUNTIME_BRIDGE_SCENE_PATH := "res://scenes/runtime/RulesetRuntimeB
 const RULESET_V04_CONFORMANCE_BENCH_SCENE_PATH := "res://scenes/tools/RulesetV04ConformanceBench.tscn"
 const RULESET_V05_PROFILE_RESOURCE_PATH := "res://resources/rules/space_syndicate_ruleset_v05.tres"
 const RULESET_V05_FOUNDATION_BENCH_SCENE_PATH := "res://scenes/tools/RulesetV05FoundationBench.tscn"
+const RULESET_V06_PROFILE_RESOURCE_PATH := "res://resources/rules/space_syndicate_ruleset_v06.tres"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn"
 const PLAYER_TEXT_V05_SCHEMA_RESOURCE_PATH := "res://resources/localization/player_text_schema_v05.tres"
 const PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE_PATH := "res://scenes/tools/PlayerTextV05FoundationBench.tscn"
 const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
@@ -374,6 +379,7 @@ const BALANCE_MODEL_RESOURCE_SANDBOX_QA_OUTPUT_DIR := "user://space_syndicate_de
 const BALANCE_RUNTIME_BRIDGE_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/gameplay_balance_diagnostics/"
 const RULESET_V04_CONFORMANCE_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v04_conformance/"
 const RULESET_V05_FOUNDATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/ruleset_v05_foundation/"
+const REGION_INFRASTRUCTURE_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/region_infrastructure_characterization/"
 const PLAYER_TEXT_V05_FOUNDATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/player_text_v05_foundation/"
 const FORCED_DECISION_RUNTIME_SCHEDULER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/forced_decision_scheduler/"
 const GAME_SESSION_SAVE_OWNERSHIP_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/game_session_save_ownership/"
@@ -520,6 +526,10 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_ruleset_v05_foundation_button: Button = %OpenRulesetV05FoundationButton
 @onready var run_ruleset_v05_foundation_bench_button: Button = %RunRulesetV05FoundationBenchButton
 @onready var open_ruleset_v05_foundation_output_folder_button: Button = %OpenRulesetV05FoundationOutputFolderButton
+@onready var open_ruleset_v06_foundation_button: Button = %OpenRulesetV06FoundationButton
+@onready var open_region_infrastructure_characterization_bench_button: Button = %OpenRegionInfrastructureCharacterizationBenchButton
+@onready var run_region_infrastructure_characterization_bench_button: Button = %RunRegionInfrastructureCharacterizationBenchButton
+@onready var open_region_infrastructure_characterization_output_folder_button: Button = %OpenRegionInfrastructureCharacterizationOutputFolderButton
 @onready var open_player_text_v05_foundation_button: Button = %OpenPlayerTextV05FoundationButton
 @onready var run_player_text_v05_foundation_bench_button: Button = %RunPlayerTextV05FoundationBenchButton
 @onready var open_player_text_v05_foundation_output_folder_button: Button = %OpenPlayerTextV05FoundationOutputFolderButton
@@ -911,6 +921,10 @@ func ruleset_v04_conformance_bench_scene_path() -> String:
 
 func ruleset_v05_foundation_bench_scene_path() -> String:
 	return RULESET_V05_FOUNDATION_BENCH_SCENE_PATH
+
+
+func region_infrastructure_characterization_bench_scene_path() -> String:
+	return REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH
 
 
 func player_text_v05_foundation_bench_scene_path() -> String:
@@ -1391,6 +1405,10 @@ func ruleset_v04_conformance_qa_output_dir() -> String:
 
 func ruleset_v05_foundation_qa_output_dir() -> String:
 	return RULESET_V05_FOUNDATION_QA_OUTPUT_DIR
+
+
+func region_infrastructure_characterization_qa_output_dir() -> String:
+	return REGION_INFRASTRUCTURE_CHARACTERIZATION_QA_OUTPUT_DIR
 
 
 func player_text_v05_foundation_qa_output_dir() -> String:
@@ -2193,6 +2211,30 @@ func run_ruleset_v05_foundation_bench_scene() -> void:
 	else:
 		run_ruleset_v05_foundation_bench_requested.emit(RULESET_V05_FOUNDATION_BENCH_SCENE_PATH)
 	_set_status("Run Ruleset v0.5 Foundation bench: %s" % RULESET_V05_FOUNDATION_BENCH_SCENE_PATH)
+
+
+func open_ruleset_v06_foundation() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_resource"):
+		_editor_plugin.call("open_resource", RULESET_V06_PROFILE_RESOURCE_PATH)
+	else:
+		open_ruleset_v06_foundation_requested.emit(RULESET_V06_PROFILE_RESOURCE_PATH)
+	_set_status("Open Ruleset v0.6 Foundation profile: %s" % RULESET_V06_PROFILE_RESOURCE_PATH)
+
+
+func open_region_infrastructure_characterization_bench_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
+		_editor_plugin.call("open_scene", REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH)
+	else:
+		open_region_infrastructure_characterization_bench_requested.emit(REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH)
+	_set_status("Open Region Infrastructure characterization bench: %s" % REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH)
+
+
+func run_region_infrastructure_characterization_bench_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
+		_editor_plugin.call("run_scene", REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH)
+	else:
+		run_region_infrastructure_characterization_bench_requested.emit(REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH)
+	_set_status("Run Region Infrastructure characterization bench: %s" % REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE_PATH)
 
 
 func open_player_text_v05_foundation() -> void:
@@ -3343,6 +3385,15 @@ func open_ruleset_v05_foundation_qa_output_folder() -> void:
 		_set_status("Ruleset v0.5 Foundation output folder: %s" % RULESET_V05_FOUNDATION_QA_OUTPUT_DIR)
 
 
+func open_region_infrastructure_characterization_qa_output_folder() -> void:
+	var absolute_path := ProjectSettings.globalize_path(REGION_INFRASTRUCTURE_CHARACTERIZATION_QA_OUTPUT_DIR)
+	var error := OS.shell_open(absolute_path)
+	if error == OK:
+		_set_status("Open Region Infrastructure output folder: %s" % REGION_INFRASTRUCTURE_CHARACTERIZATION_QA_OUTPUT_DIR)
+	else:
+		_set_status("Region Infrastructure output folder: %s" % REGION_INFRASTRUCTURE_CHARACTERIZATION_QA_OUTPUT_DIR)
+
+
 func open_player_text_v05_foundation_qa_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(PLAYER_TEXT_V05_FOUNDATION_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3819,6 +3870,10 @@ func _connect_buttons() -> void:
 	_connect_button(open_ruleset_v05_foundation_button, "open_ruleset_v05_foundation")
 	_connect_button(run_ruleset_v05_foundation_bench_button, "run_ruleset_v05_foundation_bench_scene")
 	_connect_button(open_ruleset_v05_foundation_output_folder_button, "open_ruleset_v05_foundation_qa_output_folder")
+	_connect_button(open_ruleset_v06_foundation_button, "open_ruleset_v06_foundation")
+	_connect_button(open_region_infrastructure_characterization_bench_button, "open_region_infrastructure_characterization_bench_scene")
+	_connect_button(run_region_infrastructure_characterization_bench_button, "run_region_infrastructure_characterization_bench_scene")
+	_connect_button(open_region_infrastructure_characterization_output_folder_button, "open_region_infrastructure_characterization_qa_output_folder")
 	_connect_button(open_player_text_v05_foundation_button, "open_player_text_v05_foundation")
 	_connect_button(run_player_text_v05_foundation_bench_button, "run_player_text_v05_foundation_bench_scene")
 	_connect_button(open_player_text_v05_foundation_output_folder_button, "open_player_text_v05_foundation_qa_output_folder")

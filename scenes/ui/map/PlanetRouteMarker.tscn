@@ -28,5 +28,5 @@ text_overrun_behavior = 3
 [node name="RouteMarkerLengthLabel" type="Label" parent="RouteMarkerRows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "0 pts"
+text = "路径节点 0"
 text_overrun_behavior = 3

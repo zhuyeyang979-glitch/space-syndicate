@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/monster_organization_binding_v06_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterRuntimeController.tscn" id="2_monster_owner"]
+
+[node name="MonsterOrganizationBindingV06Bench" type="Node"]
+script = ExtResource("1_bench")
+editor_description = "MCP runtime proof that the production MonsterRuntimeController scene consumes a narrow organization binding-cap provider without exposing cap bindings publicly."
+
+[node name="MonsterRuntimeController" parent="." instance=ExtResource("2_monster_owner")]

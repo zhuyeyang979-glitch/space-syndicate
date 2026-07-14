@@ -117,7 +117,9 @@ func _prepare_runtime() -> void:
 		if coordinator != null and coordinator.has_method("resolve_victory_outcome"):
 			coordinator.call("resolve_victory_outcome", "planet_destroyed", {})
 		var rankings := _main.call("_victory_control_rankings") as Array
-		_real_source = _main.call("_final_settlement_public_source_snapshot", "QA终局", rankings) as Dictionary
+		var source_adapter := _main.get_node_or_null("RuntimeServices/FinalSettlementPublicSourceAdapter")
+		var public_facts := _main.call("_final_settlement_public_facts", "QA终局") as Dictionary
+		_real_source = source_adapter.call("compose_public_source", public_facts) as Dictionary if source_adapter != null and source_adapter.has_method("compose_public_source") else {}
 		_real_snapshot = _main.call("_final_settlement_public_snapshot", "QA终局", rankings) as Dictionary
 		var started := Time.get_ticks_msec()
 		_main.call("_open_final_settlement_menu", "QA终局", rankings)

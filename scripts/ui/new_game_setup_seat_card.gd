@@ -52,9 +52,12 @@ func set_seat(data: Dictionary) -> void:
 	role_name_label.text = "当前：%s" % str(data.get("role_label", "外星辛迪加"))
 	random_role_button.visible = bool(data.get("show_random_role", false))
 	random_role_button.button_pressed = bool(data.get("role_random", false))
-	monster_name_label.text = "起始怪兽：%s" % str(data.get("monster_label", "怪兽"))
-	starter_note_label.text = str(data.get("starter_note", ""))
+	var is_ai_seat := str(data.get("seat_type", "human")) == "ai"
+	monster_name_label.text = "起始怪兽：随机分配/开局后未知" if is_ai_seat else "起始怪兽：%s" % str(data.get("monster_label", "待选择"))
+	starter_note_label.text = "AI首召将在合法公开动作后揭示；准备页不显示具体怪兽。" if is_ai_seat else str(data.get("starter_note", ""))
 	starter_note_label.tooltip_text = starter_note_label.text
+	previous_monster_button.visible = not is_ai_seat
+	next_monster_button.visible = not is_ai_seat
 	_render_card_faces(data.get("card_faces", []))
 
 

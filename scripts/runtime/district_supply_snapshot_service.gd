@@ -6,17 +6,43 @@ const REQUIRED_SOURCE_FIELDS := [
 	"district_index",
 	"district_name",
 	"player_index",
+	"subject_player_index",
+	"viewer_player_index",
+	"visibility_scope",
+	"viewer_authorized",
 	"selected_card_name",
 	"access_kind",
 	"access_text",
-	"can_buy",
+	"local_product_names",
+	"cards",
+]
+
+const VIEWER_PRIVATE_REQUIRED_FIELDS := [
 	"player_cash",
 	"counted_hand_size",
 	"hand_limit",
-	"local_product_names",
+	"can_buy",
 	"purchase_window",
-	"cards",
 ]
+
+const VIEWER_PRIVATE_SOURCE_KEYS := [
+	"player_cash",
+	"counted_hand_size",
+	"hand_limit",
+	"can_buy",
+	"purchase_window",
+]
+
+const PUBLIC_PURCHASE_STATE_FIELDS := [
+	"label",
+	"detail",
+	"actionable",
+	"requires_discard",
+	"price",
+	"accent",
+]
+
+const VALID_VISIBILITY_SCOPES := ["public", "viewer_private"]
 
 const FORBIDDEN_SOURCE_KEYS := [
 	"hidden_owner",
@@ -36,6 +62,9 @@ const FORBIDDEN_SOURCE_KEYS := [
 	"channel_source",
 	"private_channel_source",
 	"ai_plan",
+	"ai_score",
+	"utility_scores",
+	"decision_samples",
 ]
 
 var _configured := false
@@ -78,6 +107,8 @@ func compose(source: Dictionary) -> Dictionary:
 		selected_name = str(selected_source.get("card_name", ""))
 
 	var summary := _market_summary(source_cards)
+	var visibility_scope := str(source.get("visibility_scope", "public"))
+	var viewer_private := visibility_scope == "viewer_private"
 	var output := {
 		"title": "区域牌架｜%s" % str(source.get("district_name", "区域")),
 		"rule_strip": "市场牌架｜悬停看｜双击买",
@@ -86,19 +117,21 @@ func compose(source: Dictionary) -> Dictionary:
 			"可购买" if bool(source.get("can_buy", false)) else "仅浏览",
 			str(source.get("access_text", "")),
 		],
-		"purchase_window": (source.get("purchase_window", {}) as Dictionary).duplicate(true),
 		"header_chips": _header_chips(source),
 		"market_status": _market_status_entries(summary),
 		"cards": cards,
 		"selected_card_name": selected_name,
 		"preview": _preview_snapshot(selected_source, source) if not selected_source.is_empty() else {},
+		"visibility_scope": visibility_scope,
 		"empty_state": {
 			"market_text": "当前区域暂无卡牌。",
 			"preview_text": "选择一张区域供牌查看详情。",
 		},
-		"privacy_hint": "购买状态只对当前玩家显示；不会公开手牌数量、私密弃牌或渠道来源。",
-		"privacy_tooltip": "公开牌架只显示卡牌和公开价格。私密弃牌与购买渠道来源不会写入公共轨道。",
+		"privacy_hint": "当前仅显示本地玩家自己的购买状态。" if viewer_private else "公共牌架只显示卡牌与公开价格；购买状态保持私密。",
+		"privacy_tooltip": "精确现金、手牌数量与购买资格仅对本地玩家本人显示。" if viewer_private else "公共视图不含任何玩家的精确现金、手牌、弃牌或购买资格。",
 	}
+	if viewer_private:
+		output["purchase_window"] = (source.get("purchase_window", {}) as Dictionary).duplicate(true)
 	_last_output_card_count = cards.size()
 	_last_pure_data_checked = _is_data_only(output)
 	return output if _last_pure_data_checked else _safe_snapshot()
@@ -112,12 +145,39 @@ func validate_source(source: Dictionary) -> Dictionary:
 			missing_fields.append(field)
 	var forbidden_paths: Array = []
 	_collect_forbidden_paths(source, "source", forbidden_paths)
+	var visibility_scope := str(source.get("visibility_scope", ""))
+	var scope_valid := VALID_VISIBILITY_SCOPES.has(visibility_scope)
+	var viewer_private := visibility_scope == "viewer_private"
+	var private_paths: Array = []
+	_collect_viewer_private_paths(source, "source", private_paths)
+	var public_purchase_state_violations: Array = []
+	if visibility_scope == "public":
+		_collect_public_purchase_state_violations(source, public_purchase_state_violations)
+	var viewer_relation_valid := false
+	if viewer_private:
+		for field_variant in VIEWER_PRIVATE_REQUIRED_FIELDS:
+			var field := str(field_variant)
+			if not source.has(field):
+				missing_fields.append(field)
+		viewer_relation_valid = bool(source.get("viewer_authorized", false)) \
+			and int(source.get("viewer_player_index", -1)) >= 0 \
+			and int(source.get("viewer_player_index", -1)) == int(source.get("subject_player_index", -2)) \
+			and int(source.get("player_index", -3)) == int(source.get("subject_player_index", -2))
+	else:
+		viewer_relation_valid = not bool(source.get("viewer_authorized", true)) \
+			and private_paths.is_empty() \
+			and public_purchase_state_violations.is_empty()
 	var pure_data := _is_data_only(source)
 	return {
-		"valid": pure_data and missing_fields.is_empty() and forbidden_paths.is_empty(),
+		"valid": pure_data and scope_valid and viewer_relation_valid and missing_fields.is_empty() and forbidden_paths.is_empty(),
 		"pure_data": pure_data,
+		"visibility_scope": visibility_scope,
+		"scope_valid": scope_valid,
+		"viewer_relation_valid": viewer_relation_valid,
 		"missing_fields": missing_fields,
 		"forbidden_paths": forbidden_paths,
+		"private_paths": private_paths,
+		"public_purchase_state_violations": public_purchase_state_violations,
 		"card_count": (source.get("cards", []) as Array).size() if source.get("cards", []) is Array else 0,
 	}
 
@@ -138,6 +198,8 @@ func debug_snapshot() -> Dictionary:
 		"mutates_inventory": false,
 		"reads_private_hand_cards": false,
 		"reads_runtime_nodes": false,
+		"supports_public_private_schema": true,
+		"requires_explicit_viewer_subject": true,
 		"legacy_main_formatter_active": false,
 	}
 
@@ -147,12 +209,12 @@ func _safe_snapshot() -> Dictionary:
 		"title": "区域牌架",
 		"rule_strip": "牌架数据暂不可用",
 		"rule_tooltip": "区域牌架只接受经过验证的纯数据快照。",
-		"purchase_window": {},
 		"header_chips": [],
 		"market_status": [],
 		"cards": [],
 		"selected_card_name": "",
 		"preview": {},
+		"visibility_scope": "public",
 		"empty_state": {"market_text": "当前区域暂无卡牌。", "preview_text": "选择一张区域供牌查看详情。"},
 		"privacy_hint": "只显示当前玩家可见的购买状态。",
 		"privacy_tooltip": "不会公开手牌、弃牌、隐藏牌主或渠道来源。",
@@ -163,18 +225,20 @@ func _header_chips(source: Dictionary) -> Array:
 	var access_kind := str(source.get("access_kind", "none"))
 	var can_buy := bool(source.get("can_buy", false))
 	var access_accent := _access_color(access_kind)
+	var viewer_private := str(source.get("visibility_scope", "public")) == "viewer_private"
 	var hand_size := int(source.get("counted_hand_size", 0))
 	var hand_limit := maxi(0, int(source.get("hand_limit", 0)))
 	var entries: Array = [
 		{"text": "牌架 %d" % int((source.get("cards", []) as Array).size()), "accent": "#bfdbfeff", "fg": "#bfdbfeff", "bg": "#0f172aff", "tooltip": "当前区域的公开供牌数量。"},
 		{"text": "可购买" if can_buy else "仅浏览", "accent": "#bbf7d0ff" if can_buy else "#cbd5e1ff", "fg": "#bbf7d0ff" if can_buy else "#cbd5e1ff", "bg": "#064e3bff" if can_buy else "#334155ff", "tooltip": str(source.get("access_text", ""))},
 		{"text": _access_short_label(access_kind), "accent": access_accent, "bg": _mix("#020617ff", access_accent, 0.25), "tooltip": str(source.get("access_text", ""))},
-		{"text": "¥%d" % int(source.get("player_cash", 0)), "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "当前玩家可见现金。"},
-		{"text": "手牌 %d/%d" % [hand_size, hand_limit], "accent": "#d8b4feff", "fg": "#d8b4feff", "bg": "#2e1065ff", "tooltip": "普通手牌上限；固定技能牌不占格。"},
-		{"text": "价格已锁", "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "价格和购买资格在打开牌架时锁定。"},
-		{"text": "单窗口", "accent": "#c4b5fdff", "fg": "#c4b5fdff", "bg": "#312e81ff", "tooltip": "每名玩家同时只保留一个区域购买窗口。"},
 	]
-	if hand_limit > 0 and hand_size >= hand_limit:
+	if viewer_private:
+		entries.append({"text": "¥%d" % int(source.get("player_cash", 0)), "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "当前玩家可见现金。"})
+		entries.append({"text": "手牌 %d/%d" % [hand_size, hand_limit], "accent": "#d8b4feff", "fg": "#d8b4feff", "bg": "#2e1065ff", "tooltip": "普通手牌上限；固定技能牌不占格。"})
+	entries.append({"text": "价格已锁", "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "价格和购买资格在打开牌架时锁定。" if viewer_private else "公开价格可查看；购买资格保持私密。"})
+	entries.append({"text": "单窗口", "accent": "#c4b5fdff", "fg": "#c4b5fdff", "bg": "#312e81ff", "tooltip": "每名玩家同时只保留一个区域购买窗口。"})
+	if viewer_private and hand_limit > 0 and hand_size >= hand_limit:
 		entries.append({"text": "弃牌私密", "accent": "#facc15ff", "fg": "#facc15ff", "bg": "#713f12ff", "tooltip": "换购所弃卡牌不会向其他玩家公开。"})
 	var products: Array = source.get("local_product_names", []) if source.get("local_product_names", []) is Array else []
 	if not products.is_empty():
@@ -191,7 +255,7 @@ func _market_summary(cards: Array) -> Dictionary:
 		if not (card_variant is Dictionary):
 			continue
 		var card := card_variant as Dictionary
-		var state: Dictionary = card.get("purchase_state", {}) if card.get("purchase_state", {}) is Dictionary else {}
+		var state := _purchase_state(card)
 		summary["total"] = int(summary.get("total", 0)) + 1
 		if bool(card.get("is_upgrade", false)):
 			summary["upgrade"] = int(summary.get("upgrade", 0)) + 1
@@ -355,19 +419,28 @@ func _decision_chips(card: Dictionary) -> Array:
 func _purchase_verdicts(card: Dictionary, source: Dictionary) -> Array:
 	var state := _purchase_state(card)
 	var accent := _hex(state.get("accent", "#94a3b8ff"), "#94a3b8ff")
+	var viewer_private := str(source.get("visibility_scope", "public")) == "viewer_private"
 	var hand_size := int(source.get("counted_hand_size", 0))
 	var hand_limit := maxi(0, int(source.get("hand_limit", 0)))
 	var hand_full := hand_limit > 0 and hand_size >= hand_limit
 	var entries: Array = [
 		{"text": str(state.get("label", "仅浏览")), "accent": accent, "active": bool(state.get("actionable", false)), "tip": str(state.get("detail", ""))},
 		{"text": "价¥%d" % int(card.get("price", state.get("price", 0))), "accent": "#fde68aff", "active": true, "tip": "购买价格；本区域牌架打开时已锁定。"},
-		{"text": "手牌%d/%d" % [hand_size, hand_limit], "accent": "#facc15ff" if hand_full else "#d8b4feff", "active": hand_full, "tip": "普通手牌上限；固定技能牌不占格。"},
 	]
-	if bool(state.get("requires_discard", false)):
+	if viewer_private:
+		entries.append({"text": "手牌%d/%d" % [hand_size, hand_limit], "accent": "#facc15ff" if hand_full else "#d8b4feff", "active": hand_full, "tip": "普通手牌上限；固定技能牌不占格。"})
+	else:
+		entries.append({"text": "公开预览", "accent": "#93c5fdff", "active": true, "tip": "公共视图不显示任何玩家的手牌数量或购买资格。"})
+	if viewer_private and bool(state.get("requires_discard", false)):
 		entries.append({"text": "私密弃牌", "accent": "#facc15ff", "active": true, "tip": "购买后进入私密弃牌确认；其他玩家不知道手牌数量和弃牌内容。"})
 	var access_kind := str(source.get("access_kind", "none"))
 	entries.append({"text": _access_short_label(access_kind), "accent": _access_color(access_kind), "active": access_kind != "none", "tip": str(source.get("access_text", ""))})
-	entries.append({"text": "资格锁定", "accent": "#93c5fdff", "active": true, "tip": "打开窗口的一刻已锁定购买资格；怪兽之后离开不影响本次窗口。"})
+	entries.append({
+		"text": "资格锁定" if viewer_private else "公开价格",
+		"accent": "#93c5fdff",
+		"active": true,
+		"tip": "打开窗口的一刻已锁定购买资格；怪兽之后离开不影响本次窗口。" if viewer_private else "公共牌架只公开卡面与价格；购买资格保持私密。",
+	})
 	return entries
 
 
@@ -404,7 +477,15 @@ func _preview_card_face(card: Dictionary) -> Dictionary:
 
 
 func _purchase_state(card: Dictionary) -> Dictionary:
-	return card.get("purchase_state", {}) as Dictionary if card.get("purchase_state", {}) is Dictionary else {}
+	if card.get("purchase_state", {}) is Dictionary and not (card.get("purchase_state", {}) as Dictionary).is_empty():
+		return card.get("purchase_state", {}) as Dictionary
+	return {
+		"label": "仅浏览",
+		"detail": "公共牌架预览；购买资格保持私密。",
+		"actionable": false,
+		"requires_discard": false,
+		"accent": "#94a3b8ff",
+	}
 
 
 func _buy_scan_text(state: Dictionary, price: int) -> String:
@@ -451,6 +532,7 @@ func _access_short_label(access_kind: String) -> String:
 		"adjacent": return "相邻 原价"
 		"extended": return "远程补给"
 		"global": return "全局采购"
+		"public": return "公共浏览"
 	return "无怪兽范围"
 
 
@@ -460,6 +542,7 @@ func _access_color(access_kind: String) -> String:
 		"adjacent": return "#38bdf8ff"
 		"extended": return "#facc15ff"
 		"global": return "#c084fcff"
+		"public": return "#93c5fdff"
 	return "#94a3b8ff"
 
 
@@ -506,6 +589,44 @@ func _collect_forbidden_paths(value: Variant, path: String, result: Array) -> vo
 	elif value is Array:
 		for index in range((value as Array).size()):
 			_collect_forbidden_paths((value as Array)[index], "%s[%d]" % [path, index], result)
+
+
+func _collect_viewer_private_paths(value: Variant, path: String, result: Array) -> void:
+	if value is Dictionary:
+		for key_variant: Variant in (value as Dictionary).keys():
+			var key := str(key_variant)
+			var child_path := "%s.%s" % [path, key]
+			if VIEWER_PRIVATE_SOURCE_KEYS.has(key):
+				result.append(child_path)
+			_collect_viewer_private_paths((value as Dictionary).get(key_variant), child_path, result)
+	elif value is Array:
+		for index in range((value as Array).size()):
+			_collect_viewer_private_paths((value as Array)[index], "%s[%d]" % [path, index], result)
+
+
+func _collect_public_purchase_state_violations(source: Dictionary, result: Array) -> void:
+	var cards: Array = source.get("cards", []) if source.get("cards", []) is Array else []
+	for card_index in range(cards.size()):
+		if not (cards[card_index] is Dictionary):
+			result.append("source.cards[%d]:not_dictionary" % card_index)
+			continue
+		var card := cards[card_index] as Dictionary
+		if not (card.get("purchase_state", null) is Dictionary):
+			result.append("source.cards[%d].purchase_state:missing" % card_index)
+			continue
+		var state := card.get("purchase_state", {}) as Dictionary
+		for key_variant: Variant in state.keys():
+			var key := str(key_variant)
+			if not PUBLIC_PURCHASE_STATE_FIELDS.has(key):
+				result.append("source.cards[%d].purchase_state.%s:not_public" % [card_index, key])
+		if str(state.get("label", "")) != "仅浏览":
+			result.append("source.cards[%d].purchase_state.label:not_browse" % card_index)
+		if bool(state.get("actionable", true)):
+			result.append("source.cards[%d].purchase_state.actionable:true" % card_index)
+		if bool(state.get("requires_discard", true)):
+			result.append("source.cards[%d].purchase_state.requires_discard:true" % card_index)
+		if int(state.get("price", -1)) != int(card.get("price", -2)):
+			result.append("source.cards[%d].purchase_state.price:mismatch" % card_index)
 
 
 func _is_data_only(value: Variant) -> bool:

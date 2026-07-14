@@ -199,8 +199,8 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	if cost_text != "": requirements.append({"text":"报价%s" % cost_text, "tooltip":"公开报价/成交小费，是来源推理线索。"})
 	if requirement_text != "": requirements.append({"text":_short_text(requirement_text.replace("打出条件：", "").replace("条件：", ""), 18), "tooltip":requirement_text})
 	if target_text != "": requirements.append({"text":"目标:%s" % _short_text(target_text, 12), "tooltip":target_text})
-	if str(_dictionary(card_source.get("skill", {})).get("kind", "")) == "city_development":
-		requirements.append({"text":str(source.get("project_label", "商品项目")), "tooltip":"公开牌轨显示商品、发展方向与目标区域，但不显示出牌者或项目份额。"})
+	if str(_dictionary(card_source.get("skill", {})).get("kind", "")) == "public_facility":
+		requirements.append({"text":str(source.get("facility_label", "公共设施")), "tooltip":"公开牌轨显示设施类型、产业与目标区域。"})
 	var actions := []
 	var deep_links := []
 	if resolution_id >= 0:
@@ -317,8 +317,10 @@ func _compose_event(entry: Dictionary, index: int) -> Dictionary:
 
 func _track_phase(source: Dictionary) -> String:
 	if bool(source.get("counter_window_active", false)): return "响应"
-	if bool(source.get("auction_open", false)): return "锁牌"
-	if str(source.get("group_phase", "")) == "organize": return "组织"
+	match _normalized_group_phase(source):
+		"planning": return "规划"
+		"public_bid": return "公开竞价"
+		"lock": return "锁牌"
 	if not _dictionary(source.get("active", {})).is_empty(): return "展示中"
 	if bool(source.get("batch_locked", false)): return "锁定"
 	if not _array(source.get("queue", [])).is_empty(): return "候补"
@@ -328,9 +330,12 @@ func _track_phase(source: Dictionary) -> String:
 
 
 func _track_summary(source: Dictionary, entries: Array) -> String:
-	if bool(source.get("auction_open", false)): return "最后2秒锁牌：%d个匿名组已锁定卡牌、目标、容量和优先报价。" % maxi(1, int(source.get("group_count", 1)))
-	if str(source.get("group_phase", "")) == "organize": return "前6秒组织：每人按场景上限形成一个匿名组，可调组内顺序、选择固定报价并准备。"
 	if bool(source.get("counter_window_active", false)): return "相位响应窗口开启；等待可用响应或倒计时结束。"
+	var phase := _normalized_group_phase(source)
+	var remaining := maxi(0, int(ceil(float(source.get("group_phase_remaining_seconds", 0.0)))))
+	if phase == "planning": return "规划阶段（剩余%d秒）：每人按当前上限形成一个匿名组，可调整组内顺序并准备。" % remaining
+	if phase == "public_bid": return "公开竞价阶段（剩余%d秒）：%d个匿名组可调整优先报价，不能再提交普通牌。" % [remaining, maxi(1, int(source.get("group_count", 1)))]
+	if phase == "lock": return "锁牌阶段（剩余%d秒）：卡牌、目标和优先报价已冻结。" % remaining
 	if not _dictionary(source.get("active", {})).is_empty(): return "正在展示 1 张匿名牌；效果公开，归属仍靠线索推理。"
 	var queue := _array(source.get("queue", [])); var next_queue := _array(source.get("next_queue", [])); var history := _array(source.get("history", []))
 	if not queue.is_empty() or not next_queue.is_empty(): return "候补 %d 张｜下批 %d 张｜历史 %d 条。" % [queue.size(), next_queue.size(), history.size()]
@@ -339,11 +344,22 @@ func _track_summary(source: Dictionary, entries: Array) -> String:
 
 
 func _track_response_text(source: Dictionary) -> String:
-	if bool(source.get("auction_open", false)): return "锁牌阶段只允许加价；正报价档位唯一，最高组报价进入怪兽赌局公共奖池。"
-	if str(source.get("group_phase", "")) == "organize": return "组织阶段可追加同组卡牌、调整组内顺序并提高组报价。"
+	var phase := _normalized_group_phase(source)
+	if phase == "planning": return "规划阶段可按当前上限提交普通牌并调整组内顺序；报价将在下一阶段公开。"
+	if phase == "public_bid": return "公开竞价阶段可调整既有组报价；正报价档位唯一，最高组报价进入怪兽赌局公共奖池。"
+	if phase == "lock": return "锁牌阶段不能提交普通牌或修改报价；等待本批次结算。"
 	if bool(source.get("counter_window_active", false)): return "相位响应窗口开启；可用响应牌可以介入当前展示。"
 	if bool(source.get("pending_decision", false)): return "临时决策 Overlay 正在等待选择；完成后继续结算。"
 	return ""
+
+
+func _normalized_group_phase(source: Dictionary) -> String:
+	var phase := str(source.get("group_phase", ""))
+	if phase == "organize":
+		return "planning"
+	if phase.is_empty() and bool(source.get("auction_open", false)):
+		return "public_bid"
+	return phase
 
 
 func _slot_text(state_text: String) -> String:

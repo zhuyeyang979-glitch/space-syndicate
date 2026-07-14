@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-14T22:10:00+09:00",
+  "supervision": {
+    "mode": "playable_sample_event_first_with_host_resource_guard",
+    "fallback_poll_minutes": 15,
+    "active_writer_limit": 2,
+    "host_resource_guard": {
+      "sample_minutes": 15,
+      "stagger_cpu_percent": 80,
+      "stagger_memory_percent": 80,
+      "critical_cpu_percent": 85,
+      "critical_memory_percent": 85,
+      "stagger_gpu_memory_percent": 85,
+      "critical_gpu_memory_percent": 92,
+      "soft_godot_process_limit": 5,
+      "policy": "identify owner and request graceful stop before terminating a confirmed orphan PID"
+    },
+    "validation_owner": "coordinator",
+    "agent_validation_limit": "parse plus smallest owned focused check; no full regression, no independent headed/MCP acceptance",
+    "static_protocol": "docs/agent_collaboration_memory_protocol.md",
+    "knowledge_index": "reports/coordination/agent_knowledge_index.md",
+    "forbidden_common": [
+      "scripts/main.gd except Agent A evidence-backed retirement/integration slices",
+      "git add -A",
+      "commit/push/merge",
+      "default user:// full smoke",
+      "duplicate business owner",
+      "duplicate CardFlowTransactionService",
+      "player-facing hidden information"
+    ]
+  },
+  "agents": {
+    "A": {
+      "thread_id": "019f469c-c1c0-7060-98b7-8e915698d58f",
+      "task_id": "VS06-A",
+      "title": "Minimum facility gate, production composition, and evidence-backed legacy retirement",
+      "exclusive_roots": [
+        "scripts/runtime/region_infrastructure_runtime_controller.gd",
+        "scenes/runtime/RegionInfrastructureRuntimeController.tscn",
+        "tests/region_infrastructure_atomic_lifecycle_v06_test.gd",
+        "tests/facility_card_production_unlock_v06_test.gd",
+        "reports/runtime/region_infrastructure_atomic_lifecycle_v06/"
+      ],
+      "narrow_wiring": [
+        "scripts/runtime/commodity_card_inventory_runtime_controller.gd",
+        "scripts/runtime/commodity_card_effect_runtime_bridge.gd",
+        "scripts/runtime/game_runtime_coordinator.gd",
+        "scenes/runtime/GameRuntimeCoordinator.tscn",
+        "tests/main_runtime_composition_test.gd",
+        "scripts/main.gd deletion-only after replacement gate"
+      ],
+      "handoff": "reports/coordination/agent_a_vs06_production_integration_handoff.md"
+    },
+    "B": {
+      "thread_id": "019f5c09-6563-7e90-a075-259de93d04e9",
+      "task_id": "VS06-B2-COMPLETE-WAITING",
+      "title": "Monster legacy write-path retirement audit complete; wait for an integration-specific failure",
+      "exclusive_roots": [
+        "scripts/runtime/monster_runtime_controller.gd",
+        "scripts/runtime/monster_runtime_world_bridge.gd",
+        "scenes/runtime/MonsterRuntimeController.tscn",
+        "scenes/runtime/MonsterRuntimeWorldBridge.tscn",
+        "scripts/cards/v06/units/",
+        "tests/monster_deploy_atomic_lifecycle_v06_test.gd",
+        "tests/monster_card_real_owner_integration_v06_test.gd",
+        "tests/monster_runtime_v06_privacy_test.gd",
+        "reports/runtime/monster_deploy_atomic_lifecycle_v06/"
+      ],
+      "handoff": "reports/coordination/agent_b_vs06_monster_legacy_retirement_audit.md"
+    },
+    "C": {
+      "thread_id": "019f608a-0b83-7f53-894d-75112623e262",
+      "task_id": "VS06-C2",
+      "title": "Rank-I facility bootstrap and rank II-IV price/asset gradient",
+      "exclusive_roots": [
+        "scripts/tools/card_runtime_catalog_v06_builder.gd",
+        "data/cards/card_runtime_catalog_v06.json",
+        "tests/card_runtime_catalog_v06_test.gd",
+        "docs/facility_bootstrap_and_gradient_v06.md"
+      ],
+      "handoff": "reports/coordination/agent_c_vs06_facility_bootstrap_handoff.md"
+    }
+  }
+}

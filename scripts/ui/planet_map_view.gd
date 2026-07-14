@@ -398,6 +398,8 @@ func _sync_route_markers() -> void:
 		if not (route_variant is Dictionary):
 			continue
 		var route: Dictionary = (route_variant as Dictionary).duplicate(true)
+		if not bool(route.get("show_marker", true)):
+			continue
 		var points := _route_points(route.get("points", []))
 		var node := PlanetRouteMarkerScene.instantiate() as Control
 		if node == null:
@@ -463,7 +465,7 @@ func _sync_selection_marker() -> void:
 	node.call("configure", {
 		"index": selected_district,
 		"name": str(entry.get("name", "Selected region")),
-		"detail": "focus | %s" % str(entry.get("terrain", "surface")),
+		"detail": "当前焦点｜%s" % str(entry.get("terrain", "地表区")),
 		"screen_position": get_district_control_position(selected_district),
 		"accent": "#facc15",
 	})
@@ -779,16 +781,18 @@ func _palette_hex(index: int) -> String:
 
 func _route_accent_hex(product: String) -> String:
 	match product:
-		"ore":
+		"ore", "工业商品":
 			return "#94a3b8"
-		"water":
+		"water", "航运商品":
 			return "#38bdf8"
-		"food":
+		"food", "生命商品":
 			return "#22c55e"
-		"fuel":
+		"fuel", "能源商品":
 			return "#f97316"
-		"data":
+		"data", "科技商品":
 			return "#a855f7"
+		"商贸商品":
+			return "#c084fc"
 	return "#facc15"
 
 

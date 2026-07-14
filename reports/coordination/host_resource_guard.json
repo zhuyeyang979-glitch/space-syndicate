@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "sampled_at": "2026-07-14T22:12:00+09:00",
+  "policy": {
+    "sample_minutes": 15,
+    "stagger_cpu_percent": 80,
+    "stagger_memory_percent": 80,
+    "stagger_gpu_memory_percent": 85,
+    "critical_cpu_percent": 85,
+    "critical_memory_percent": 85,
+    "critical_gpu_memory_percent": 92,
+    "soft_godot_process_limit": 5,
+    "termination_rule": "identify owner, request graceful stop, verify no write or test, then terminate only the confirmed stale PID"
+  },
+  "before_cleanup": {
+    "cpu_percent": 17.0,
+    "memory_used_gb": 19.23,
+    "memory_percent": 60.4,
+    "gpu_utilization_percent": 10,
+    "gpu_memory_used_mb": 7459,
+    "gpu_memory_total_mb": 16376,
+    "godot_process_count": 7,
+    "stale_editor_count": 4
+  },
+  "cleanup": {
+    "agent_ownership_confirmed_none": true,
+    "gracefully_closed_pids": [11664],
+    "graceful_close_failed_pids": [2340, 9912, 21432],
+    "terminated_confirmed_stale_editor_pids": [2340, 9912, 21432],
+    "terminated_confirmed_stale_console_pids": [18092, 14596, 27940]
+  },
+  "after_cleanup": {
+    "cpu_percent": 11.0,
+    "memory_used_gb": 15.79,
+    "memory_percent": 49.6,
+    "gpu_utilization_percent": 11,
+    "gpu_memory_used_mb": 1479,
+    "gpu_memory_total_mb": 16376,
+    "godot_process_count": 0
+  }
+}

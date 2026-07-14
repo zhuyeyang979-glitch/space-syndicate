@@ -1,7 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_save_runtime_coordinator.gd" id="1_save"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetSaveHandshakeService.tscn" id="2_handshake"]
 
 [node name="GameSaveRuntimeCoordinator" type="Node"]
 script = ExtResource("1_save")
+
+[node name="RulesetSaveHandshakeService" parent="." instance=ExtResource("2_handshake")]
 editor_description = "Single owner for current-run save version, default path, Variant-binary envelope validation, normalization, and file I/O."

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ClockDomainRegistryResource" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/rules/clock_domain_registry_resource.gd" id="1_registry"]
+[ext_resource type="Script" path="res://scripts/rules/clock_domain_entry_resource.gd" id="2_entry"]
+
+[sub_resource type="Resource" id="TimerQualification"]
+script = ExtResource("2_entry")
+timer_id = "victory_qualification"
+duration_seconds = 10
+clock_domain = "world_effective"
+menu_pause_behavior = "pause"
+readonly_pause_behavior = "pause"
+forced_decision_behavior = "pause"
+monster_wager_freeze_behavior = "pause"
+save_restore_behavior = "remaining"
+
+[sub_resource type="Resource" id="TimerAudit"]
+script = ExtResource("2_entry")
+timer_id = "public_audit"
+duration_seconds = 120
+clock_domain = "world_effective"
+menu_pause_behavior = "pause"
+readonly_pause_behavior = "pause"
+forced_decision_behavior = "pause"
+monster_wager_freeze_behavior = "pause"
+save_restore_behavior = "remaining"
+
+[resource]
+script = ExtResource("1_registry")
+ruleset_id = "v0.6"
+entries = Array[Resource]([SubResource("TimerQualification"), SubResource("TimerAudit")])

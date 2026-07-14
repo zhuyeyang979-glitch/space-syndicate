@@ -1,0 +1,229 @@
+{
+  "ruleset_id": "space_syndicate_v06",
+  "schema_version": 1,
+  "purpose": "Player-facing presentation fixtures for the Godot Card UI Skin Lab. These records do not own gameplay values.",
+  "cards": [
+    {
+      "machine": {
+        "card_id": "commodity.ring_crystal_battery.rank_1",
+        "effect_kind": "install_commodity_rate",
+        "visibility_scope": "viewer_private",
+        "source_rule": "tabletop_rulebook_v06.md#5.3"
+      },
+      "developer": {
+        "fixture_state": "normal",
+        "art_status": "authored_style_key_v01",
+        "note": "Validates free commodity play and permanent installation copy."
+      },
+      "player": {
+        "name": "环晶电池",
+        "rank": "I",
+        "type": "商品牌",
+        "industry": "能源",
+        "cost": "免费",
+        "use_case": "扩大发电或需求",
+        "timing": "普通出牌窗口",
+        "target": "一座同色工厂或市场",
+        "short_effect": "永久增加 10 单位/分钟的生产或需求。",
+        "effect": "将这张牌安装到一座同色工厂或市场。它为你的环晶电池永久增加 10 单位/分钟的基础生产率或需求率，直至该设施被摧毁。",
+        "duration": "永久；设施被摧毁时终止",
+        "visibility": "安装位置、数量和所有者公开",
+        "keywords": [
+          {"text": "能源", "tooltip": "这张商品牌属于能源产业。", "accent": "#f97316"},
+          {"text": "免费", "tooltip": "领取和打出均不支付现金或资产。", "accent": "#fde68a"},
+          {"text": "永久安装", "tooltip": "安装量持续存在，直至设施被摧毁。", "accent": "#67e8f9"}
+        ],
+        "keyword_explanations": "能源：只安装到能源工厂或市场。\n永久安装：设施受损时效率同比下降，但安装量不会消失。",
+        "play_state": "可以打出",
+        "disabled_reason": "",
+        "next_step": "选择同色工厂或市场",
+        "accent": "#f97316"
+      }
+    },
+    {
+      "machine": {
+        "card_id": "facility.orbital_warehouse.rank_1",
+        "effect_kind": "build_or_repair_facility",
+        "visibility_scope": "public",
+        "source_rule": "tabletop_rulebook_v06.md#2.3"
+      },
+      "developer": {
+        "fixture_state": "selected",
+        "art_status": "licensed_placeholder",
+        "note": "Validates facility capacity, repair and public ownership copy."
+      },
+      "player": {
+        "name": "轨道仓库",
+        "rank": "I",
+        "type": "公共设施牌",
+        "industry": "通用",
+        "cost": "通用资产",
+        "use_case": "储存过剩商品",
+        "timing": "普通出牌窗口",
+        "target": "一个存续区域的仓库槽位",
+        "short_effect": "建造 I 级仓库；已有同类设施时升级或修复。",
+        "effect": "在目标区域建造 I 级仓库。它提供 200 单位库存上限及 50 单位/分钟的基础入库、出库吞吐。对自己的同类设施打出时，按牌面等级升级或修复区域共享生命池。",
+        "duration": "持续至区域共享生命归零",
+        "visibility": "设施所有权、等级和能力公开",
+        "keywords": [
+          {"text": "设施", "tooltip": "每个区域最多一座仓库。", "accent": "#94a3b8"},
+          {"text": "收租", "tooltip": "按实际入库与存放时间收取保管费。", "accent": "#fde68a"},
+          {"text": "修复", "tooltip": "同级或更低等级牌改为修复共享生命池。", "accent": "#86efac"}
+        ],
+        "keyword_explanations": "收租：只有商品实际入库才收费。\n修复：修复共享生命池，也会保护区域内其他玩家的设施。",
+        "play_state": "已选择",
+        "disabled_reason": "",
+        "next_step": "选择目标区域",
+        "accent": "#94a3b8"
+      }
+    },
+    {
+      "machine": {
+        "card_id": "supply_demand.remote_sea_order.rank_1",
+        "effect_kind": "global_order_budget",
+        "visibility_scope": "public",
+        "source_rule": "tabletop_rulebook_v06.md#8"
+      },
+      "developer": {
+        "fixture_state": "hovered",
+        "art_status": "authored_style_lock_candidate_v02",
+        "note": "Validates two-condition order copy and proportional distribution."
+      },
+      "player": {
+        "name": "远洋采购令",
+        "rank": "I",
+        "type": "条件式供需牌",
+        "industry": "多色",
+        "cost": "牌面资产",
+        "use_case": "消化远程海运库存",
+        "timing": "普通出牌窗口",
+        "target": "全图符合条件的商品",
+        "short_effect": "额外消费 20 单位经海运的远程商品。",
+        "effect": "建立 20 单位的一次性额外消费预算，只匹配经海运且属于远程的商品。数量按匹配商品最近 30 秒的 GDP 份额分配，并通过真实市场、合法路线和可用容量结算。",
+        "duration": "一次性结算",
+        "visibility": "牌面条件与成交回执公开",
+        "keywords": [
+          {"text": "远程", "tooltip": "最短合法经济距离大于 2。", "accent": "#c084fc"},
+          {"text": "经海运", "tooltip": "路线任意一段使用海运即可匹配。", "accent": "#06b6d4"},
+          {"text": "全局订单", "tooltip": "收益跟随商品 GDP 份额，不奖励出牌者。", "accent": "#fde68a"}
+        ],
+        "keyword_explanations": "远程：最短合法经济距离大于 2。\n经海运：多式联运路线含任意海运段即可。",
+        "play_state": "可以打出",
+        "disabled_reason": "",
+        "next_step": "确认提交订单",
+        "accent": "#c084fc"
+      }
+    },
+    {
+      "machine": {
+        "card_id": "supply_demand.near_land_supply.rank_1",
+        "effect_kind": "global_supply_spawn",
+        "visibility_scope": "public",
+        "source_rule": "tabletop_rulebook_v06.md#8"
+      },
+      "developer": {
+        "fixture_state": "disabled",
+        "reason_code": "CARD_MATCHING_PRODUCT_GDP_REQUIRED",
+        "art_status": "authored_style_lock_candidate_v01"
+      },
+      "player": {
+        "name": "近地供货潮",
+        "rank": "I",
+        "type": "条件式供需牌",
+        "industry": "多色",
+        "cost": "牌面资产",
+        "use_case": "补充近程陆运货源",
+        "timing": "普通出牌窗口",
+        "target": "全图符合条件的工厂",
+        "short_effect": "产生 20 单位经陆运的近程商品。",
+        "effect": "在匹配商品的合法生产工厂节点生成共 20 单位一次性实体商品，只匹配经陆运且属于近程的候选路线。商品随后按正常路线、仓库和市场规则流动。",
+        "duration": "一次性生成；商品随后正常流动",
+        "visibility": "牌面条件和生成结果公开",
+        "keywords": [
+          {"text": "近程", "tooltip": "最短合法经济距离不超过 2。", "accent": "#86efac"},
+          {"text": "经陆运", "tooltip": "路线任意一段使用陆运即可匹配。", "accent": "#94a3b8"},
+          {"text": "全局供货", "tooltip": "出牌者不会取得额外商品份额。", "accent": "#fde68a"}
+        ],
+        "keyword_explanations": "近程：最短合法经济距离不超过 2。\n全局供货：按匹配商品近期 GDP 份额分配。",
+        "play_state": "暂不可用",
+        "disabled_reason": "无法打出这张牌。你目前没有符合条件的商品 GDP。先让自己的近程陆运商品完成销售。",
+        "next_step": "建立近程陆运成交",
+        "accent": "#22c55e"
+      }
+    },
+    {
+      "machine": {
+        "card_id": "unit.monster.spore_tide_emperor.rank_1",
+        "effect_kind": "deploy_or_upgrade_monster",
+        "visibility_scope": "public",
+        "source_rule": "tabletop_rulebook_v06.md#9"
+      },
+      "developer": {
+        "fixture_state": "drop_valid",
+        "art_status": "authored_style_lock_candidate_v01",
+        "note": "No unapproved combat stats are shown in the fixture."
+      },
+      "player": {
+        "name": "孢雾海皇",
+        "rank": "I",
+        "type": "怪兽与军队单位牌",
+        "industry": "生命",
+        "cost": "牌面资产",
+        "use_case": "向高价值区域施压",
+        "timing": "普通出牌窗口",
+        "target": "牌面允许的合法部署区域",
+        "short_effect": "部署 I 级怪兽；接近其他怪兽时自动开战。",
+        "effect": "在合法区域部署孢雾海皇。它按照公开行为规则自动行动，并且是能够扣除区域共享生命的单位。进入任意怪兽的战斗视野后，自动触发怪兽战斗。",
+        "duration": "持续牌面在场时间；同名升级额外增加 60 秒",
+        "visibility": "单位归属、等级、位置和公开行为规则公开",
+        "keywords": [
+          {"text": "怪兽", "tooltip": "怪兽主要按照公开行为规则自动行动。", "accent": "#fb7185"},
+          {"text": "自动开战", "tooltip": "进入战斗视野后必然触发怪兽战斗。", "accent": "#f97316"},
+          {"text": "区域伤害", "tooltip": "攻击扣除目标区域共享生命池。", "accent": "#fda4af"}
+        ],
+        "keyword_explanations": "自动开战：两只怪兽足够接近时自动建立战斗。\n区域伤害：伤害只扣除一次共享生命池。",
+        "play_state": "目标合法",
+        "disabled_reason": "",
+        "next_step": "松开部署到雾港城",
+        "accent": "#fb7185"
+      }
+    },
+    {
+      "machine": {
+        "card_id": "interaction.phase_veto.rank_1",
+        "effect_kind": "counter_player_interaction",
+        "visibility_scope": "viewer_private",
+        "source_rule": "tabletop_rulebook_v06.md#8"
+      },
+      "developer": {
+        "fixture_state": "resolving",
+        "art_status": "licensed_placeholder",
+        "note": "Presentation example for the one-layer response rule."
+      },
+      "player": {
+        "name": "相位否决",
+        "rank": "I",
+        "type": "玩家互动与反制牌",
+        "industry": "科技",
+        "cost": "牌面资产",
+        "use_case": "阻止直接玩家攻击",
+        "timing": "合法响应窗口",
+        "target": "一张直接针对你的玩家互动牌",
+        "short_effect": "反制目标玩家互动牌；本牌不能再次被反制。",
+        "effect": "反制一张直接针对你、你的手牌、现金、秘密信息或受保护资产的玩家互动牌。首版响应只有一层；这张反制牌本身不能再被另一张反制牌反制。",
+        "duration": "立即结算",
+        "visibility": "响应牌和结果公开；受保护的秘密内容仍隐藏",
+        "keywords": [
+          {"text": "响应", "tooltip": "只能在合法响应窗口提交。", "accent": "#38bdf8"},
+          {"text": "反制", "tooltip": "阻止目标玩家互动牌结算。", "accent": "#c084fc"},
+          {"text": "一层响应", "tooltip": "反制牌本身不能再次被反制。", "accent": "#fde68a"}
+        ],
+        "keyword_explanations": "响应：只在直接玩家互动开启的窗口提交。\n一层响应：反制牌不能再成为新的反制目标。",
+        "play_state": "正在结算",
+        "disabled_reason": "",
+        "next_step": "等待响应结算",
+        "accent": "#38bdf8"
+      }
+    }
+  ]
+}

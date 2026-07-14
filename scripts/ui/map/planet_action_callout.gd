@@ -24,7 +24,7 @@ func configure(data: Dictionary) -> void:
 	size = custom_minimum_size
 	position = _as_vector2(data.get("panel_position", Vector2.ZERO))
 	if title_label != null:
-		title_label.text = _short_text(str(data.get("title", "Action")), 38)
+		title_label.text = _short_text(str(data.get("title", "行动提示")), 38)
 		title_label.add_theme_color_override("font_color", _with_alpha(_accent, 0.95 * _alpha))
 	if detail_label != null:
 		detail_label.text = _short_text(str(data.get("detail", "")), 56)

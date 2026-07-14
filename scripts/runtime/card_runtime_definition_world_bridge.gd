@@ -31,9 +31,6 @@ func has_runtime_card(card_id: String) -> bool:
 func resolve_definition(card_id: String) -> Dictionary:
 	if card_id.is_empty():
 		return {}
-	var city_definition := _city_development_definition(card_id)
-	if not city_definition.is_empty():
-		return city_definition
 	if _catalog_service == null:
 		push_error("CardRuntimeDefinitionWorldBridge has no Catalog Service; no main.gd fallback is available.")
 		return {}
@@ -73,18 +70,8 @@ func debug_snapshot() -> Dictionary:
 		"catalog_service_ready": bool(_catalog_service.debug_snapshot().get("service_ready", false)) if _catalog_service != null else false,
 		"product_terms_bound": _product_market_runtime_controller != null,
 		"city_gdp_terms_bound": _city_gdp_derivative_runtime_controller != null,
-		"source_precedence": ["city_development", "catalog_exact", "financial_terms", "monster", "catalog_derived"],
+		"source_precedence": ["catalog_exact", "financial_terms", "monster", "catalog_derived"],
 	}
-
-
-func _city_development_definition(card_id: String) -> Dictionary:
-	if _world == null:
-		return {}
-	var cards_variant: Variant = _world.get("city_development_runtime_cards")
-	if cards_variant is Dictionary and cards_variant.has(card_id):
-		var definition_variant: Variant = cards_variant.get(card_id, {})
-		return (definition_variant as Dictionary).duplicate(true) if definition_variant is Dictionary else {}
-	return {}
 
 
 func _monster_definition(card_id: String) -> Dictionary:

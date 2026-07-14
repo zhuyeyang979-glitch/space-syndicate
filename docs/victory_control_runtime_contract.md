@@ -1,81 +1,108 @@
-# Victory Control Runtime Contract (Ruleset v0.5)
+# Victory Control Runtime Contract (Ruleset v0.6)
 
 ## Status
 
-SS05-04 is a hard cutover. `VictoryControlRuntimeController` is the only runtime owner of region control, Top-N qualification, the audit lifecycle, endpoint ordering, special victory comparison, save state, and the immutable outcome receipt. There is no cash-goal or legacy countdown fallback.
+SS06-05 is a hard cutover. `VictoryControlRuntimeController` is the only runtime owner of region control, dynamic victory requirements, qualification, public audit, endpoint comparison, save state, special outcomes, and the immutable outcome receipt. The v0.5 fixed-depth table and failed-audit cooldown have no runtime fallback.
 
 ## Ownership
 
 `VictoryControlRuntimeController` owns:
 
-- unique-highest region control at 3000 basis points;
-- depth I-VI requirements: 3/90, 4/130, 5/180, 6/230, 7/290, and 8/360;
-- automatic Top-N selection from controlled regions;
-- 10 world-effective seconds of qualification;
-- a sticky 120-second public audit roster;
-- a 30-second failed-audit cooldown;
-- endpoint order: Top-N attributable GDP, controlled-region count, cash ledger;
+- unique-highest commodity GDP region control at 3000 basis points;
+- the live surviving-region denominator `A`;
+- `K = ceil(A * 40%)`, clamped to at least one when `A > 0`;
+- the live GDP threshold `K * 36 GDP/min`;
+- each player's top-K controlled-region commodity GDP;
+- independent 10-second qualification progress for every eligible player;
+- the sticky 120-second public audit roster;
+- the only public exact-cash authorization derived from that roster;
+- endpoint order: exact top-K commodity GDP cents, controlled-region count, exact cash ledger cents;
 - exact ties as co-victory;
-- last-survivor and planet-destruction receipts;
+- last-survivor and explicitly authorized irreversible-planet-destruction receipts;
 - versioned save/load state and exact-once outcome identity.
 
-`VictoryControlWorldBridge` is non-owning. It only collects pure facts from the current world and forwards an outcome receipt once. It does not calculate GDP, project shares, control, eligibility, ordering, cash mutation, or session state.
+`VictoryControlWorldBridge` is non-owning. It collects pure region lifecycle facts from `RegionInfrastructureRuntimeController`, exact 30-second sale GDP facts from `CommodityFlowRuntimeController`, authorized audit disclosure facts from other domain owners, and a settlement checkpoint. It does not calculate GDP, control, eligibility, ordering, cash mutation, or session state.
 
-`CityTradeNetworkRuntimeController` and the structured GDP project bridge remain the only owners of GDP rows and player attribution. `GameSessionRuntimeController` consumes the first outcome receipt and owns the finished session state.
+`GameSessionRuntimeController` consumes the first outcome receipt and remains the only owner of the finished session state.
 
-## Region Control
+## Dynamic Region Rule
 
-For each non-destroyed region with positive GDP:
+For every surviving, non-ruined region:
 
-1. Read each player's attributable GDP from the existing private project-attribution receipt.
-2. Calculate share in basis points against total regional GDP.
+1. Read total commodity GDP and each player's exact attributable commodity GDP in cents.
+2. Calculate each player share in basis points against regional GDP.
 3. Require at least 3000bp.
 4. Require the player to be the unique highest contributor.
 
-An exact highest-share tie, destroyed region, or zero-GDP region has `controller_player_index=-1`. Neutral rounding remainder is not awarded to a player.
+An exact highest-share tie or zero-GDP region has `controller_player_index=-1`. A surviving zero-GDP region still contributes to `A`. Ruined regions do not contribute to `A`.
+
+The ordinary victory requirement is recomputed from current world facts:
+
+- `A` is the current number of surviving regions.
+- `K = ceil(A * 4000 / 10000)` and is at least one when `A > 0`.
+- required GDP is `K * 36 GDP/min`.
+- a player must control at least `K` regions and the sum of that player's highest `K` controlled-region GDP values must meet the threshold.
+- when `A == 0`, ordinary GDP victory is paused until a surviving region exists.
 
 ## Qualification And Audit
 
-An eligible leading player satisfies both the controlled-region count and Top-N attributable GDP requirement for the selected depth. The leading comparison chain is Top-N GDP, controlled-region count, then cash ledger.
+- Every eligible player accumulates qualification time independently.
+- Losing eligibility resets only that player's qualification progress.
+- At 10 world-effective seconds, the player joins the audit roster.
+- Audit lasts 120 world-effective seconds and never restarts because `A`, `K`, control, GDP, or roster membership changes.
+- A new player may join during audit only after completing their own 10-second qualification.
+- Once listed, a player remains disclosed for the lifetime of that audit.
+- At the endpoint, only roster players who still satisfy the live dynamic rule become finalists.
+- If no finalist remains, the controller returns directly to idle. v0.6 has no failed-audit cooldown.
 
-- Qualification progress resets when a player is no longer a qualifying leader.
-- At 10 effective seconds, the current tied leaders enter the audit roster.
-- Audit lasts 120 effective seconds and does not cancel when a listed player temporarily loses eligibility.
-- A new sole or tied leader joins the roster immediately and becomes public.
-- At the endpoint, same-tick leaders join before ranking.
-- Only roster players who are still eligible become finalists.
-- If no finalist remains, the controller enters a 30-second cooldown and audit-only assets become private again.
+Menu pause, readonly pause, forced-decision pre-emption, and monster-wager world freeze consume no qualification or audit time.
 
-Menu pause, readonly pause, forced-decision pre-emption, and the monster-wager world freeze consume no qualification, audit, or cooldown time.
+## Same-Tick Settlement Order
 
-## Privacy
+The audit endpoint may settle only from a world snapshot marked `post_world_settlement`. In the endpoint tick, the runtime order is:
 
-Before audit, exact economic assets are viewer-private. During audit, only roster players expose:
+1. complete locked attack, monster, military, logistics, and lifecycle mutations;
+2. settle continuous commodity flow and sale receipts;
+3. apply bankruptcy/elimination state;
+4. refresh region lifecycle and exact GDP facts;
+5. evaluate the victory endpoint.
 
-- available and escrow cash, plus their sum as `cash_ledger_cents`;
-- project positions, share basis points, and attributable GDP;
-- contracts, warehouses, financial positions, margins, hand count, and public unit count.
+A read-only or stale checkpoint returns `awaiting_post_world_settlement_checkpoint` and emits no outcome receipt.
 
-Specific hand contents, private intel, hidden monster ownership, private targets, private discards, and AI plans never enter public snapshots. A player who joined the roster remains public until audit resolution or failed-audit cooldown.
+## Audit Disclosure And Privacy
+
+Before audit, exact cash and economic assets remain viewer-private. During an active authoritative audit, and after a normal audit has finalized, the owner may disclose exact `cash_ledger_cents` only for the stable unique seats in its own sticky audit roster. It publishes the authorization at the top level as `cash_visibility="public_audit"` and `audit_revealed_player_indices=[...]`; each authorized row repeats `cash_visibility="public_audit"` and carries a canonical integer `cash_ledger_cents`. Missing, malformed, stale, or non-authoritative roster state exposes no exact cash at all.
+
+The authorization is a narrow cash-only projection. Public audit entries never contain available cash, escrow cash, ordinary hand contents, owned inventory, contracts, positions, organization ownership truth, AI plans, or an `economic_assets` envelope. A winner, high rank, `game_over`, private receipt, or caller-supplied field cannot authorize disclosure. A seat outside the owner roster stays hidden even when it wins or ranks above a roster seat.
+
+`private_snapshot(viewer_index)` may expose that viewer's exact authorized assets only under `own_economic_assets`. Its `own_candidate`, public audit entries, public rankings, and every other seat remain public projections. A viewer-private snapshot must not contain another seat's exact assets.
+
+`outcome_receipt()` and saved controller state remain authoritative internal records and retain exact cash for the final comparison. `public_snapshot().outcome_receipt` is separately constructed. It preserves rank, winner, GDP, controlled-region count, reason, and comparison order; exact cash is added only for the same owner-authorized audit seats. Special outcomes without an audit roster, including cash-tiebreak planet destruction, publish no exact cash. Projection never mutates the internal receipt.
+
+Private investigations, secret goals, AI weights or plans, private targets, private discards, and exact economic assets never enter public snapshots or reports. Filtering occurs in the Victory domain before presentation; renaming a private value is not sanitization.
 
 ## Outcome Receipt
 
-Normal audit receipts use comparison order:
+Normal audit receipts use this canonical comparison order:
 
-1. `top_n_gdp_per_minute`
+1. `top_k_gdp_per_minute_cents`
 2. `controlled_region_count`
 3. `cash_ledger_cents`
 
-Planet destruction uses cash ledger only and equal ledgers co-win. Last survivor uses the same versioned receipt envelope. `GameSessionRuntimeController`, Final Settlement, standings history, AI learning, and save summaries consume this receipt; they do not reconstruct a second score.
+An exact three-stage tie yields co-victory. Last survivor uses the same versioned receipt envelope.
+
+Ordinary ruined regions never trigger a cash-most victory. A cash-only planet-destruction result is allowed only when the scenario snapshot explicitly contains both `irreversible_planet_destruction_triggered=true` and `scenario_allows_cash_fallback=true`.
 
 ## Save Contract
 
-The victory domain saves its schema version, ruleset ID, state, per-player qualification elapsed time, sticky audit roster, remaining audit/cooldown time, outcome sequence, and outcome receipt. Invalid schema, ruleset, or state fails closed without mutating active state. Legacy absence initializes an idle controller.
+The victory domain saves schema version 2, ruleset ID `v0.6`, current state, per-player qualification progress, sticky audit roster, remaining audit time, outcome sequence, and outcome receipt. Load validates the complete envelope before one state swap. Invalid schema, ruleset, state, roster ordering/uniqueness, timer, rankings, or impure data fails closed without mutating active state. A v0.5 fixed-depth save cannot silently resume as v0.6.
+
+World-derived candidates, exact player assets, dynamic rule caches, checkpoint markers, and cash-disclosure projection caches are never restored from the victory save. Immediately after load, public cash authorization is closed. A fresh authoritative world snapshot must bind every roster seat to a current candidate before disclosure can reopen, preventing a previous game or pre-load runtime cache from leaking.
 
 ## Deletion Gate
 
-Production code must not contain a writable `game_over` variable, `victory_countdown_*`, `_roguelike_cash_goal`, `_player_visible_settlement_estimate`, `_player_final_score`, `_final_score_rankings`, or `CITY_FINAL_VALUE`. Compatibility blocker facts may still use the pure-data key `game_over` while their consumers migrate, but that key is derived only from `GameSessionRuntimeController.is_finished()`.
+Production victory code must not contain a fixed victory-depth table, depth-based requirement helpers, a failed-audit cooldown state, parallel cash-goal countdown logic, or a second region-control algorithm. Presentation may retain compatibility labels only when they read the controller's canonical result and do not recalculate eligibility.
 
 ## Evidence
 
-`VictoryControlRuntimeBench` provides 56 cases covering thresholds, all depths, qualification/audit/cooldown boundaries, clock freezes, roster stickiness, endpoint order, co-victory, save/load, public/private scope, special outcomes, exact-once session completion, consumer ownership, main composition, and legacy deletion.
+`VictoryControlRuntimeBench`, `victory_control_public_projection_privacy_v06_test.gd`, and `VictoryAuditVisibilityV06Bench` cover dynamic victory behavior plus pre-audit hiding, partial authoritative disclosure, non-roster hiding, winner non-bypass, recursive privacy, stable projections, and save/load cache invalidation.

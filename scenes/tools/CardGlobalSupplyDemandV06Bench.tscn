@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_global_supply_demand_v06_bench.gd" id="1_bench"]
+
+[node name="CardGlobalSupplyDemandV06Bench" type="Node" unique_id=2127419978]
+editor_description = "Godot MCP bench for v0.6 global order and supply rights planning through an injected atomic batch sink."
+script = ExtResource("1_bench")
