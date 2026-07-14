@@ -18,6 +18,7 @@ const FORBIDDEN_PRIVATE_KEYS := {
 	"hand": true,
 	"private_hand": true,
 	"opponent_hand": true,
+	"discard": true,
 	"private_discard": true,
 	"owner": true,
 	"owner_id": true,

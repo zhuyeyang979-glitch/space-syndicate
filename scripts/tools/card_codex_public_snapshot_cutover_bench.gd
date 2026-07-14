@@ -306,16 +306,16 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "hidden owner, private plan, and hand input never reach public output"
 		"forbidden_private_input_fail_closed":
 			var rejected_all := _coordinator != null
-			for forbidden_key in ["cash", "hand", "opponent_cash", "opponent_hand", "true_owner", "owner_truth", "city_guesses", "private_text", "developer_text", "ai_private_plan", "pressure_bucket", "learning_bonus"]:
+			for forbidden_key in ["cash", "hand", "discard", "opponent_cash", "opponent_hand", "true_owner", "hidden_owner", "owner_truth", "city_guesses", "private_text", "developer_text", "ai_private_plan", "pressure_bucket", "learning_bonus"]:
 				var request := _real_browser_request()
 				request[forbidden_key] = "secret-%s" % forbidden_key
 				var snapshot: Dictionary = _coordinator.call("card_codex_public_browser_snapshot", request) if _coordinator != null else {}
 				rejected_all = rejected_all and snapshot.is_empty()
 			var debug := _source_adapter_debug()
-			passed = rejected_all and int(debug.get("rejected_private_input_count", 0)) >= 12
+			passed = rejected_all and int(debug.get("rejected_private_input_count", 0)) >= 14
 			flags["privacy_checked"] = true
 			flags["pure_data_checked"] = true
-			notes = "canonical economy, hand, owner, developer, city guess, and AI-private keys each fail closed before the renderer"
+			notes = "canonical economy, hand/discard, hidden owner, developer, city guess, and AI-private keys each fail closed before the renderer"
 		"cross_viewer_private_state_invariance":
 			var before_browser := _coordinator_browser()
 			var before_detail := _coordinator_detail()
@@ -325,7 +325,7 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = not before_browser.is_empty() and not before_detail.is_empty() and JSON.stringify(before_browser) == JSON.stringify(after_browser) and JSON.stringify(before_detail) == JSON.stringify(after_detail)
 			flags["privacy_checked"] = true
 			flags["routing_checked"] = true
-			notes = "cash, hand, selected district, city guesses, and AI plan mutations are byte-invariant across viewers"
+			notes = "cash, hand/discard, hidden owner, selected district, city guesses, and AI plan mutations are byte-invariant across viewers"
 		"card_play_world_bridge_not_called":
 			var before_debug := _coordinator_debug()
 			var before_count := int((before_debug.get("card_play_world_bridge", {}) as Dictionary).get("build_count", -1))
@@ -516,8 +516,21 @@ func _mutate_private_viewer_state() -> void:
 		var player := players[player_index] as Dictionary
 		player["cash"] = 900000 + player_index
 		player["hand"] = ["private-card-%d" % player_index]
+		player["discard"] = ["private-discard-%d" % player_index]
+		player["hidden_owner"] = "private-owner-%d" % player_index
 		player["city_guesses"] = {"region.001": player_index}
 		player["ai_private_plan"] = "private-route-%d" % player_index
+	var districts_variant: Variant = _main.get("districts")
+	if districts_variant is Array:
+		for district_variant: Variant in (districts_variant as Array):
+			if not (district_variant is Dictionary):
+				continue
+			var city_variant: Variant = (district_variant as Dictionary).get("city", {})
+			if city_variant is Dictionary:
+				var city := city_variant as Dictionary
+				if not city.is_empty():
+					city["owner"] = 700001
+					city["hidden_owner"] = "private-city-owner"
 
 
 func _find_upgrade_family() -> String:
@@ -568,7 +581,7 @@ func _is_pure_data(value: Variant) -> bool:
 func _contains_private_key(value: Variant) -> bool:
 	if value is Dictionary:
 		for key_variant: Variant in value:
-			if str(key_variant).to_lower() in ["owner", "owner_index", "true_owner", "hidden_owner", "hidden_owner_id", "owner_truth", "private_target", "private_plan", "ai_private_plan", "ai_score", "pressure_bucket", "cash", "exact_cash", "opponent_cash", "hand", "opponent_hand", "private_discard", "private_text", "developer_text"]:
+			if str(key_variant).to_lower() in ["owner", "owner_index", "true_owner", "hidden_owner", "hidden_owner_id", "owner_truth", "private_target", "private_plan", "ai_private_plan", "ai_score", "pressure_bucket", "cash", "exact_cash", "opponent_cash", "hand", "opponent_hand", "discard", "private_discard", "private_text", "developer_text"]:
 				return true
 			if _contains_private_key(value[key_variant]):
 				return true
@@ -612,7 +625,7 @@ func _update_ui(manifest: Dictionary) -> void:
 	status_label.modulate = Color("#4ade80") if passed == total else Color("#fb7185")
 	summary_label.text = "%d/%d ownership cases passed" % [passed, total]
 	var metrics := manifest.get("main_metrics", {}) as Dictionary
-	ownership_text.text = "[b]Scene-owned Card Codex snapshots[/b]\nCardCodexPublicSnapshotService owns browser summaries, thumbnails, previews, detail cards, tactical copy, facts, upgrades, and resolution copy.\n\n[b]Existing ViewModels retained[/b]\nCardCodexBrowserSnapshot and CardCodexDetailSnapshot remain the normalized UI contracts.\n\n[b]Domain authority retained[/b]\nPrices, effects, legality, target rules, and upgrade facts are supplied by the game domain.\n\n[b]Retired from main.gd[/b]\n19 Card presentation formatters.\n\n[b]Current main metrics[/b]\n%s nonblank lines - %s functions - %s vars - %s constants" % [str(metrics.get("nonblank_lines", 0)), str(metrics.get("function_count", 0)), str(metrics.get("top_level_variable_count", 0)), str(metrics.get("constant_count", 0))]
+	ownership_text.text = "[b]Scene-owned Card Codex snapshots[/b]\nCardCodexPublicSnapshotService owns browser summaries, thumbnails, previews, detail cards, tactical copy, facts, upgrades, and resolution copy.\n\n[b]Existing ViewModels retained[/b]\nCardCodexBrowserSnapshot and CardCodexDetailSnapshot remain the normalized UI contracts.\n\n[b]Domain authority retained[/b]\nPrices, effects, legality, target rules, and upgrade facts are supplied by the game domain.\n\n[b]Retired from main.gd[/b]\n24 Card presentation and public-source formatters.\n\n[b]Current main metrics[/b]\n%s nonblank lines - %s functions - %s vars - %s constants" % [str(metrics.get("nonblank_lines", 0)), str(metrics.get("function_count", 0)), str(metrics.get("top_level_variable_count", 0)), str(metrics.get("constant_count", 0))]
 	var lines: Array[String] = []
 	for record_variant: Variant in _records:
 		var record := record_variant as Dictionary

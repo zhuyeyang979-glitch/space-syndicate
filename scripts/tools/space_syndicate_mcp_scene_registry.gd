@@ -1575,7 +1575,7 @@ const RECORDS := [
 		"scene_path": "res://scenes/tools/CardCodexPublicSnapshotCutoverBench.tscn",
 		"category": CATEGORY_QA_BENCHES,
 		"expected_root_type": "Control",
-		"purpose": "Twenty-case ownership gate for Card browser/detail formatting, existing ViewModel reuse, privacy, rule boundaries, and main.gd deletion.",
+		"purpose": "Thirty-one-case ownership gate for Card browser/detail formatting, public-source privacy, existing ViewModel reuse, rule boundaries, and main.gd deletion.",
 		"mcp_notes": "Run after changing the Card atlas, hover preview, Card Codex detail, tactical copy, fact cards, upgrade gradient, or resolution presentation.",
 		"smoke_check_enabled": true,
 		"previewable": true,

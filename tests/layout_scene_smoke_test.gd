@@ -12481,7 +12481,7 @@ func _check_card_codex_public_snapshot_cutover_component() -> void:
 	var system_audit: RefCounted = system_script.new() if system_script != null else null
 	if system_audit != null:
 		var snapshot_record: Dictionary = system_audit.call("record_for_id", "card_codex_public_snapshot_cutover")
-		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Nineteen"), "System Resourceization Audit records Card snapshot ownership and deletion gate")
+		_expect(str(snapshot_record.get("current_status", "")) == "sceneized" and str(snapshot_record.get("mcp_notes", "")).contains("Twenty-four") and str(snapshot_record.get("mcp_notes", "")).contains("31/31"), "System Resourceization Audit records Card source/snapshot ownership and deletion gate")
 	var docs_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
 	_expect(docs_source.contains("Card Codex Public Snapshot Ownership Cutover") and docs_source.contains("40,366") and docs_source.contains("19 Card"), "main runtime replacement document records Sprint 17 Card snapshot deletion")
 	var ui_audit_source := FileAccess.get_file_as_string("res://docs/ui_architecture_audit.md")

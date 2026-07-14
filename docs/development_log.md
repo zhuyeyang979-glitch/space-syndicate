@@ -9,6 +9,7 @@
 - Coordinator 只暴露最终 browser/detail 两个公共快照 API；`main.gd` 仅传递筛选、翻页和布局上下文。原先在 Main 内构造 browser source、browser snapshot、card facts、upgrade facts 和 detail snapshot 的五个函数已物理删除，可执行定义/调用归零；函数名只保留在负向退役门禁中。
 - 本切片使 `main.gd` 从 19629 行/1115 个函数降至 19522 行/1110 个函数，净删 107 行和 5 个函数；没有恢复 legacy wrapper，也没有建立第二个卡牌规则 owner。
 - Godot 4.7 聚焦证据：Card Codex public-source cutover `31/31`、Codex scene hard cutover `20/20`、Main composition PASS、smoke `--check-only` 通过、286 个 GDScript 扫描 0 错误。8775 真实 `main.tscn` 打开资料库/卡牌图鉴后 browser 正常渲染，控制台无错误；退出后 `is_playing_scene=false` 且 A 工作树无额外 headless/游戏进程。
+- C 在精确候选上独立复验 `31/31`、`20/20`、Main composition 与 smoke check-only 均绿，并确认真实 Surface detail 截图。其审计发现原矩阵未真实改变裸 `discard`/隐藏 owner；follow-up 已把 `discard` 加入 adapter fail-closed 表，并让跨 viewer 矩阵实际修改手牌、弃牌、玩家/城市隐藏 owner、城市猜测和 AI 私有计划，结果仍字节等价。MCP/资源化注册表也已同步为当前 31 cases / 24 retired formatters。
 - 完整 `layout_scene_smoke_test.gd` 仍为红灯；失败清单集中在旧 v0.4/v0.5 owner 组成、已物理删除的 Main snapshot/wrapper、历史 Economy/Military/Victory/TableSnapshot 断言。本轮 Card Codex SourceService、31 项切换合同和五个 helper 退役门均未进入失败清单，因此没有为通过旧总门恢复兼容层。
 - 下一隐私切口已只读定位到 Region Codex：无公开线索时会回退当前玩家城市猜测/隐藏 owner，怪兽吸引说明还会暴露自动单位内部权重。后续必须由 Region 公共 source adapter 与 Monster owner 的非数值公共投影解决，不能把私有 Intel helper 或怪兽权重公式复制进展示层。
 

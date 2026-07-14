@@ -213,6 +213,9 @@ const RECORDS := [
 		"related_paths": [
 			"res://scenes/runtime/CardCodexPublicSnapshotService.tscn",
 			"res://scripts/runtime/card_codex_public_snapshot_service.gd",
+			"res://scenes/runtime/CardCodexPublicSourceService.tscn",
+			"res://scripts/runtime/card_codex_public_source_service.gd",
+			"res://scripts/runtime/card_codex_public_source_adapter.gd",
 			"res://scripts/viewmodels/card_codex_browser_snapshot.gd",
 			"res://scripts/viewmodels/card_codex_detail_snapshot.gd",
 			"res://scenes/tools/CardCodexPublicSnapshotCutoverBench.tscn",
@@ -223,7 +226,7 @@ const RECORDS := [
 		"editor_visibility": "scene_tree_and_script",
 		"risk_level": "low",
 		"recommended_next_step": "Keep card-rule facts domain-owned; Economy Dashboard presentation now has a separate bounded service.",
-		"mcp_notes": "Card browser/detail presentation is service-owned through the two existing ViewModels. Nineteen main.gd formatters are retired; prices, effects, targets, upgrades, and legality remain domain-owned; gate is 20/20.",
+		"mcp_notes": "Card browser/detail presentation is service-owned through the two existing ViewModels and a fail-closed public source. Twenty-four main.gd formatters are retired; prices, effects, targets, upgrades, and legality remain domain-owned; gate is 31/31.",
 	},
 	{
 		"id": "economy_dashboard_public_snapshot_cutover",
