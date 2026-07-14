@@ -1,7 +1,7 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://space_syndicate_design_qa/test_runs/player_facing_privacy_boundary.save"
+const QA_SAVE_PATH := "user://test_runs/player_facing_privacy_boundary.save"
 
 const AI_CASH_SENTINEL := 987654321
 const HUMAN_CASH_SENTINEL := 4321

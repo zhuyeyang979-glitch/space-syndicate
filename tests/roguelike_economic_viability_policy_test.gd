@@ -2,7 +2,7 @@ extends SceneTree
 
 const Policy := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://space_syndicate_design_qa/test_runs/roguelike_remote_trade_opportunity.save"
+const QA_SAVE_PATH := "user://test_runs/roguelike_remote_trade_opportunity.save"
 
 const CATALOG := ["land.alpha", "land.beta", "land.gamma", "ocean.alpha", "ocean.beta"]
 const POOLS := {

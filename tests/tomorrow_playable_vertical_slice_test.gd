@@ -65,7 +65,7 @@ func _run() -> void:
 		_expect(bool(record.get("passed", false)), "stage %s passes from real before/after evidence" % EXPECTED_RECORD_IDS[record_index])
 	_expect(bool(manifest.get("passed", false)), "all production-facing vertical-slice gates pass")
 	_expect(int(manifest.get("privacy_leak_count", -1)) == 0, "public UI and snapshots leak zero private values")
-	_expect(str(manifest.get("qa_save_path", "")).begins_with("user://space_syndicate_design_qa/test_runs/"), "run save is isolated below the QA test root")
+	_expect(str(manifest.get("qa_save_path", "")).begins_with("user://test_runs/"), "run save is isolated below the v0.6 QA test root")
 	root.remove_child(bench)
 	bench.queue_free()
 	await process_frame

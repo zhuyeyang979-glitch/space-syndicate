@@ -1,7 +1,7 @@
 extends SceneTree
 
 const MAIN_SCENE := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://space_syndicate_design_qa/test_runs/vs06_facility_commodity_flow.save"
+const QA_SAVE_PATH := "user://test_runs/vs06_facility_commodity_flow.save"
 const PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 const CATALOG := preload("res://resources/cards/runtime/card_runtime_catalog_v06.tres")
 const INFRASTRUCTURE_SCRIPT := preload("res://scripts/runtime/region_infrastructure_runtime_controller.gd")

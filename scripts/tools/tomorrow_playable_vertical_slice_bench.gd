@@ -3,7 +3,7 @@ class_name TomorrowPlayableVerticalSliceBench
 
 const SUITE_ID := "tomorrow-playable-vertical-slice-vs06-c"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://space_syndicate_design_qa/test_runs/tomorrow_vertical_slice.save"
+const QA_SAVE_PATH := "user://test_runs/tomorrow_vertical_slice.save"
 const DEFAULT_PLAYER_SAVE_PATH := "user://space_syndicate_current_run.save"
 const REPORT_PATH := "res://reports/playability/tomorrow_vertical_slice/coordinator_runtime_manifest.json"
 const FIXED_SEED := 60610

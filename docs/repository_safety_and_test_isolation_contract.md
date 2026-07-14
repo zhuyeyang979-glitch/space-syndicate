@@ -6,18 +6,19 @@ Recorded: 2026-07-14
 ## Purpose
 
 Large runtime cutovers are not allowed to depend on an unrecorded workspace or
-to read/write the player's real current-run save from automated QA. This gate
-does not change gameplay, balance, save version, or the production save path.
+to read/write the player's legacy current-run save from automated QA. This gate
+records the active isolation boundary without changing gameplay or balance.
 
 ## Save Path Boundary
 
-- Production remains `user://space_syndicate_current_run.save` at save version 1.
-- Automated real-main QA may override the default only below
-  `user://space_syndicate_design_qa/test_runs/` and only for `.save` files.
+- The v0.6 `GameSaveRuntimeCoordinator` uses save version 3 and has no default
+  save path; a caller must supply an explicit path.
+- Automated real-main QA may select a path only below
+  `user://test_runs/` and only for `.save` files.
 - The override must be installed on `GameSaveRuntimeCoordinator` before Main
   enters the scene tree, so startup/menu save-status reads are isolated too.
-- Paths outside that QA root, including the production player path, are rejected.
-- Explicit QA files used by focused benches remain under their existing
+- Paths outside that QA root, including the legacy player path, are rejected.
+- Explicit non-save QA artifacts used by focused benches remain under their existing
   `user://space_syndicate_design_qa/` output directories.
 - Tests must clean their own QA file but must never delete, rewrite, rename, or
   migrate the player's production save.
