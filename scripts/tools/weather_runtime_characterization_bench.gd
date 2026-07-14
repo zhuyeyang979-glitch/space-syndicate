@@ -304,11 +304,24 @@ func _run_case(case_id: String) -> Dictionary:
 
 
 func _case_call_graph() -> Dictionary:
-	var process_source := _function_source(_main_source, "_process")
-	var capture_source := _function_source(_main_source, "_capture_run_domain_state_compatibility_adapter")
-	var apply_source := _function_source(_main_source, "_apply_run_domain_state_compatibility_adapter")
-	var observed := process_source.contains("tick_weather") and capture_source.contains("weather_to_save_data") and apply_source.contains("apply_weather_save_data") and _coordinator_source.contains("func weather_runtime_call(")
-	return _record("weather_call_graph_complete", observed, observed, "Main now delegates tick/save/card ownership through Coordinator to WeatherRuntimeController.")
+	var controller_api_ready := true
+	for method_variant in ["tick", "apply_weather_control", "to_save_data", "apply_save_data", "debug_snapshot"]:
+		controller_api_ready = controller_api_ready and _weather_controller.has_method(StringName(str(method_variant)))
+	var coordinator_api_ready := true
+	for method_variant in ["weather_runtime_controller", "weather_runtime_call", "weather_to_save_data", "apply_weather_save_data", "tick_weather"]:
+		coordinator_api_ready = coordinator_api_ready and _runtime_coordinator.has_method(StringName(str(method_variant)))
+	var controller_debug := _weather_controller.debug_snapshot()
+	var bridge_debug := _weather_bridge.debug_snapshot()
+	var observed: bool = controller_api_ready \
+		and coordinator_api_ready \
+		and _runtime_coordinator.call("weather_runtime_controller") == _weather_controller \
+		and bool(controller_debug.get("controller_authoritative", false)) \
+		and not bool(controller_debug.get("parallel_legacy_owner", true)) \
+		and not bool(bridge_debug.get("owns_weather_state", true)) \
+		and not bool(bridge_debug.get("owns_weather_rules", true)) \
+		and _coordinator_scene_source.count("[node name=\"WeatherRuntimeController\"") == 1 \
+		and _coordinator_scene_source.count("[node name=\"WeatherRuntimeWorldBridge\"") == 1
+	return _record("weather_call_graph_complete", observed, observed, "Coordinator exposes the narrow weather API and binds the sole authoritative WeatherRuntimeController to a non-owning WorldBridge.")
 
 
 func _case_weather_types() -> Dictionary:
@@ -553,10 +566,22 @@ func _case_multiplier_composition() -> Dictionary:
 
 
 func _case_activation_refresh(kind: String) -> Dictionary:
+	var case_id := "city_network_refresh_routes_once" if kind == "city" else "product_market_refresh_routes_once"
+	if kind == "city":
+		var route_network: Node = _runtime_coordinator.call("route_network_runtime_controller") as Node
+		if route_network == null or not route_network.has_method("debug_snapshot"):
+			return _record(case_id, false, false, "Weather activation requires the authoritative RouteNetworkRuntimeController observation surface.", {"world_refresh_checked": true})
+		var before := route_network.call("debug_snapshot") as Dictionary
+		var district_index := _first_alive_district()
+		_weather_controller.replace_runtime_state({"id": 1, "type": "solar_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.0, "duration": 90.0, "source": "test", "forced": false}, [], 1)
+		var activated := _weather_controller.activate_forecast()
+		var after := route_network.call("debug_snapshot") as Dictionary
+		var refresh_delta := int(after.get("refresh_count", 0)) - int(before.get("refresh_count", 0))
+		var observed: bool = activated and refresh_delta == 1 and _weather_controller.active_zone_count() == 1
+		return _record(case_id, observed, observed, "Weather activation invokes RouteNetworkRuntimeController.refresh_routes exactly once.", {"world_refresh_checked": true})
 	var source := _function_source(_controller_source, "activate_forecast")
 	var helper := _function_source(_controller_source, "_refresh_weather_dependents")
-	var token := "_refresh_city_networks" if kind == "city" else "_product_market_runtime_controller.refresh_prices()"
-	var case_id := "city_network_refresh_routes_once" if kind == "city" else "product_market_refresh_routes_once"
+	var token := "_product_market_runtime_controller.refresh_prices()"
 	var observed := source.count("_refresh_weather_dependents()") == 1 and helper.count(token) == 1
 	return _record(case_id, observed, observed, "Activation routes exactly one %s refresh through the WorldBridge." % kind, {"world_refresh_checked": true})
 
@@ -601,10 +626,23 @@ func _case_card_resolution_route() -> Dictionary:
 
 func _case_save_shape() -> Dictionary:
 	var district_index := _first_alive_district()
-	_weather_controller.replace_runtime_state({"id": 7, "type": "solar_storm", "districts": [district_index], "starts_at": 90.0, "duration": 90.0, "forced": false}, [_active_entry(6, "gravity_tide", [district_index], 80.0)], 7)
-	var state: Dictionary = _runtime_main.call("_capture_run_state")
-	var observed := state.has("weather_forecast") and state.has("active_weather_zones") and state.has("weather_sequence") and int(state.get("weather_sequence", 0)) == 7 and (state.get("active_weather_zones", []) as Array).size() == 1
-	return _record("current_save_shape", observed, observed, "Save version 1 keeps the same three flat weather keys while Controller owns serialization.", {"save_checked": true})
+	var forecast := {"id": 7, "type": "solar_storm", "districts": [district_index], "starts_at": 90.0, "duration": 90.0, "forced": false}
+	var active_zones := [_active_entry(6, "gravity_tide", [district_index], 80.0)]
+	var expected := {"weather_forecast": forecast, "active_weather_zones": active_zones, "weather_sequence": 7}
+	_weather_controller.replace_runtime_state(forecast, active_zones, 7)
+	var captured := _runtime_coordinator.call("weather_to_save_data") as Dictionary
+	var cleared_receipt := _runtime_coordinator.call("apply_weather_save_data", {}) as Dictionary
+	var cleared := _runtime_coordinator.call("weather_to_save_data") as Dictionary
+	var restore_receipt := _runtime_coordinator.call("apply_weather_save_data", captured) as Dictionary
+	var restored := _runtime_coordinator.call("weather_to_save_data") as Dictionary
+	var observed: bool = captured == expected \
+		and bool(cleared_receipt.get("applied", false)) \
+		and (cleared.get("weather_forecast", {}) as Dictionary).is_empty() \
+		and (cleared.get("active_weather_zones", []) as Array).is_empty() \
+		and int(cleared.get("weather_sequence", -1)) == 0 \
+		and bool(restore_receipt.get("applied", false)) \
+		and restored == expected
+	return _record("current_save_shape", observed, observed, "Coordinator captures, clears, and exactly restores the narrow Weather owner envelope without a Main-wide snapshot.", {"save_checked": true})
 
 
 func _case_legacy_save() -> Dictionary:
@@ -687,10 +725,24 @@ func _case_card_rewrite_owner() -> Dictionary:
 
 
 func _case_save_owner() -> Dictionary:
-	var capture_source := _function_source(_main_source, "_capture_run_domain_state_compatibility_adapter")
-	var apply_source := _function_source(_main_source, "_apply_run_domain_state_compatibility_adapter")
-	var observed := _controller_source.contains("func to_save_data(") and _controller_source.contains("func apply_save_data(") and capture_source.contains("weather_to_save_data") and apply_source.contains("apply_weather_save_data")
-	return _record("save_owner_cutover", observed, observed, "Controller owns weather serialization while the v1 envelope stays compatible.", {"save_checked": true})
+	var district_index := _first_alive_district()
+	var initial_forecast := {"id": 31, "type": "magnetic_fog", "districts": [district_index], "starts_at": 120.0, "duration": 75.0, "forced": true}
+	_weather_controller.replace_runtime_state(initial_forecast, [], 31)
+	var coordinator_capture := _runtime_coordinator.call("weather_to_save_data") as Dictionary
+	var controller_capture := _weather_controller.to_save_data()
+	var replacement := {"weather_forecast": {}, "active_weather_zones": [_active_entry(32, "acid_rain", [district_index], 95.0)], "weather_sequence": 32}
+	var apply_receipt := _runtime_coordinator.call("apply_weather_save_data", replacement) as Dictionary
+	var owner_debug := _weather_controller.debug_snapshot()
+	var bridge_debug := _weather_bridge.debug_snapshot()
+	var observed: bool = coordinator_capture == controller_capture \
+		and bool(apply_receipt.get("applied", false)) \
+		and _weather_controller.to_save_data() == replacement \
+		and str(owner_debug.get("runtime_owner", "")) == "WeatherRuntimeController" \
+		and bool(owner_debug.get("controller_authoritative", false)) \
+		and not bool(owner_debug.get("parallel_legacy_owner", true)) \
+		and not bool(bridge_debug.get("owns_weather_state", true)) \
+		and not bool(bridge_debug.get("owns_weather_rules", true))
+	return _record("save_owner_cutover", observed, observed, "Coordinator save/apply delegates to the same authoritative WeatherRuntimeController while the WorldBridge remains non-owning.", {"save_checked": true})
 
 
 func _case_ai_binding() -> Dictionary:
