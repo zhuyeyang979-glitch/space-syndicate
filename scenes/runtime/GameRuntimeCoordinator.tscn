@@ -1,4 +1,4 @@
-[gd_scene load_steps=65 format=3]
+[gd_scene load_steps=68 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" id="11_monster_codex_public_snapshot"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ProductCodexPublicSnapshotService.tscn" id="12_product_codex_public_snapshot"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardCodexPublicSnapshotService.tscn" id="13_card_codex_public_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCodexPublicSourceService.tscn" id="73_card_codex_public_source"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/EconomyDashboardPublicSnapshotService.tscn" id="14_economy_dashboard_public_snapshot"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/StandingsPublicSnapshotService.tscn" id="15_standings_public_snapshot"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn" id="16_final_settlement_public_snapshot"]
@@ -251,6 +252,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardCodexPublicSnapshotService" parent="." instance=ExtResource("13_card_codex_public_snapshot")]
+unique_name_in_owner = true
+
+[node name="CardCodexPublicSourceService" parent="." instance=ExtResource("73_card_codex_public_source")]
 unique_name_in_owner = true
 
 [node name="EconomyDashboardPublicSnapshotService" parent="." instance=ExtResource("14_economy_dashboard_public_snapshot")]
