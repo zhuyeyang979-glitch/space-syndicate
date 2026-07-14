@@ -35,6 +35,16 @@ const MONSTER_CARD_REQUIRED_FACT_PORTS_V06 := [
 	"monster_profile",
 	"binding_rule",
 ]
+const MONSTER_REGION_PUBLIC_ATTRACTION_CONTRACT_V06 := "monster_region_public_attraction_v06"
+const MONSTER_REGION_PUBLIC_ATTRACTION_FACTORS_V06 := [
+	{"part_key": "distance", "code": "distance", "label": "距离"},
+	{"part_key": "city", "code": "city", "label": "城市经营"},
+	{"part_key": "competition", "code": "competition", "label": "商品竞争"},
+	{"part_key": "warehouse", "code": "warehouse", "label": "匿名仓储"},
+	{"part_key": "resource", "code": "resource", "label": "资源匹配"},
+	{"part_key": "miasma", "code": "miasma", "label": "瘴气"},
+	{"part_key": "monster", "code": "other_monster", "label": "其他怪兽"},
+]
 
 const MONSTER_COMMAND_MOVE_METERS := 220.0
 const NEARBY_RADIUS_METERS := 240.0
@@ -479,6 +489,40 @@ func roster_snapshot(include_private: bool = true) -> Array:
 		if actor_variant is Dictionary:
 			public_result.append(_monster_public_actor_v06(actor_variant as Dictionary))
 	return public_result
+
+
+func region_attraction_public_snapshot_v06(region_index: int) -> Dictionary:
+	if not _configured or _world_bridge == null or not _world_bridge.has_world():
+		return _monster_region_public_attraction_snapshot_v06(false, region_index, [], "monster_region_public_attraction_unavailable")
+	var districts_variant: Variant = _world_value(&"districts", [])
+	if not (districts_variant is Array):
+		return _monster_region_public_attraction_snapshot_v06(false, region_index, [], "monster_region_public_attraction_region_invalid")
+	var world_districts := districts_variant as Array
+	if region_index < 0 or region_index >= world_districts.size() or not (world_districts[region_index] is Dictionary):
+		return _monster_region_public_attraction_snapshot_v06(false, region_index, [], "monster_region_public_attraction_region_invalid")
+	var region := world_districts[region_index] as Dictionary
+	if bool(region.get("destroyed", false)):
+		return _monster_region_public_attraction_snapshot_v06(true, region_index, [], "monster_region_public_attraction_region_destroyed")
+	var entries: Array = []
+	for slot in range(auto_monsters.size()):
+		if not (auto_monsters[slot] is Dictionary):
+			continue
+		var actor := auto_monsters[slot] as Dictionary
+		if bool(actor.get("down", false)) or not actor.has("remaining_time") or float(actor.get("remaining_time", 0.0)) <= 0.0:
+			continue
+		var factor_codes := _monster_region_public_factor_codes_v06(_auto_monster_target_weight_parts(actor, region_index))
+		entries.append({
+			"ordinal": slot + 1,
+			"name": str(actor.get("name", "怪兽")),
+			"factor_codes": factor_codes,
+			"reason": _monster_region_public_reason_v06(factor_codes),
+		})
+	return _monster_region_public_attraction_snapshot_v06(
+		true,
+		region_index,
+		entries,
+		"monster_region_public_attraction_ready" if not entries.is_empty() else "monster_region_public_attraction_no_live_monsters"
+	)
 
 
 func summon_zone_available(district_index: int, required_terrain: String = "") -> bool:
@@ -4458,6 +4502,57 @@ func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Diction
 			parts["monster"] = MONSTER_TARGET_RIVAL_BONUS
 			break
 	return parts
+
+
+func _monster_region_public_attraction_snapshot_v06(available: bool, region_index: int, entries: Array, reason_code: String) -> Dictionary:
+	return {
+		"available": available,
+		"contract_version": MONSTER_REGION_PUBLIC_ATTRACTION_CONTRACT_V06,
+		"region_index": region_index,
+		"entries": entries.duplicate(true),
+		"reason_code": reason_code,
+	}
+
+
+func _monster_region_public_factor_codes_v06(parts: Dictionary) -> Array:
+	var ranked: Array = []
+	for priority in range(MONSTER_REGION_PUBLIC_ATTRACTION_FACTORS_V06.size()):
+		var definition := MONSTER_REGION_PUBLIC_ATTRACTION_FACTORS_V06[priority] as Dictionary
+		var value := int(parts.get(str(definition.get("part_key", "")), 0))
+		if value <= 0:
+			continue
+		ranked.append({"code": str(definition.get("code", "")), "value": value, "priority": priority})
+	ranked.sort_custom(_monster_region_public_factor_before_v06)
+	var result: Array = []
+	for index in range(mini(3, ranked.size())):
+		result.append(str((ranked[index] as Dictionary).get("code", "")))
+	return result
+
+
+func _monster_region_public_factor_before_v06(left: Dictionary, right: Dictionary) -> bool:
+	var left_value := int(left.get("value", 0))
+	var right_value := int(right.get("value", 0))
+	if left_value != right_value:
+		return left_value > right_value
+	return int(left.get("priority", 0)) < int(right.get("priority", 0))
+
+
+func _monster_region_public_reason_v06(factor_codes: Array) -> String:
+	var labels := {
+		"distance": "距离",
+		"city": "城市经营",
+		"competition": "商品竞争",
+		"warehouse": "匿名仓储",
+		"resource": "资源匹配",
+		"miasma": "瘴气",
+		"other_monster": "其他怪兽",
+	}
+	var public_labels: Array[String] = []
+	for code_variant: Variant in factor_codes:
+		var code := str(code_variant)
+		if labels.has(code):
+			public_labels.append(str(labels[code]))
+	return "主要吸引：%s" % (" / ".join(public_labels) if not public_labels.is_empty() else "基础巡游")
 
 func _auto_monster_target_weight(actor: Dictionary, index: int) -> int:
 	if index < 0 or index >= districts.size():
