@@ -67,6 +67,7 @@ func _run() -> void:
 	_test_cross_viewer_private_state_invariance()
 	_test_sanitized_public_clue_delta()
 	_test_monster_reason_privacy_boundary()
+	_test_expired_monster_peer_factor_exclusion()
 	_test_future_region_attraction_owner_api()
 	_test_private_intel_callers_remain_owned()
 
@@ -134,6 +135,35 @@ func _test_monster_reason_privacy_boundary() -> void:
 	reason_text += "\n" + str(_value_at_path(snapshot, ["detail", "clues", 2, "body"]))
 	var evidence := _private_reason_evidence(reason_text)
 	_expect(evidence.is_empty(), "region_monster_reason_public_schema_safe|evidence=%s" % [evidence])
+
+
+func _test_expired_monster_peer_factor_exclusion() -> void:
+	var live_variant: Variant = _monster_owner.call("_make_auto_monster", 0, 0, _district_index, 0, 1)
+	var peer_variant: Variant = _monster_owner.call("_make_auto_monster", 1, 1, _district_index, 1, 1)
+	var live: Dictionary = live_variant if live_variant is Dictionary else {}
+	var peer: Dictionary = peer_variant if peer_variant is Dictionary else {}
+	_monster_owner.set("auto_monsters", [live, peer])
+	var live_peer_snapshot: Dictionary = _monster_owner.call("region_attraction_public_snapshot_v06", _district_index)
+	var live_peer_entries: Array = live_peer_snapshot.get("entries", []) if live_peer_snapshot.get("entries", []) is Array else []
+	var live_peer_codes: Array = []
+	if not live_peer_entries.is_empty() and live_peer_entries[0] is Dictionary:
+		live_peer_codes = (live_peer_entries[0] as Dictionary).get("factor_codes", []) as Array
+	_expect(
+		live_peer_entries.size() == 2 and live_peer_codes.has("other_monster"),
+		"live_peer_contributes_other_monster_factor|entries=%d|codes=%s" % [live_peer_entries.size(), live_peer_codes]
+	)
+
+	peer["remaining_time"] = 0.0
+	_monster_owner.set("auto_monsters", [live, peer])
+	var expired_peer_snapshot: Dictionary = _monster_owner.call("region_attraction_public_snapshot_v06", _district_index)
+	var expired_peer_entries: Array = expired_peer_snapshot.get("entries", []) if expired_peer_snapshot.get("entries", []) is Array else []
+	var surviving_codes: Array = []
+	if not expired_peer_entries.is_empty() and expired_peer_entries[0] is Dictionary:
+		surviving_codes = (expired_peer_entries[0] as Dictionary).get("factor_codes", []) as Array
+	_expect(
+		expired_peer_entries.size() == 1 and not surviving_codes.has("other_monster"),
+		"expired_peer_is_excluded_from_survivor_factor_codes|entries=%d|codes=%s" % [expired_peer_entries.size(), surviving_codes]
+	)
 
 
 func _test_future_region_attraction_owner_api() -> void:
