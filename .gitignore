@@ -6,6 +6,7 @@
 
 # Local editor/MCP capture output
 addons/godot_mcp/cache/
+/.codex-godot/
 
 # Tracked QA screenshots are evidence; generated import sidecars are not.
 reports/**/*.import

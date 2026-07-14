@@ -1,5 +1,15 @@
 # Third-party prototype assets
 
+## Funplay MCP development addon
+
+Source: <https://github.com/FunplayAI/funplay-godot-mcp>
+
+- Vendored editor addon: `addons/funplay_mcp/`
+- Version: `v0.9.6`
+- License: MIT; the upstream license and exact release checksum are preserved in `addons/funplay_mcp/LICENSE` and `addons/funplay_mcp/SOURCE.md`.
+- Scope: local Godot development and acceptance tooling. It contributes no player-facing art, audio, text, rules, or economy content.
+- Runtime bridge scope: the autoload exchanges heartbeat, input, and screenshots through worktree-local `user://` files; the authenticated HTTP endpoint exists only in the editor plugin.
+
 ## Night Patrol reference pack
 
 Source: <https://github.com/op7418/Night-Patrol>

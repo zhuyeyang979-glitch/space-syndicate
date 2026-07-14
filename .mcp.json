@@ -3,10 +3,10 @@
     "godot": {
       "command": "cmd",
       "args": [
+        "/d",
+        "/s",
         "/c",
-        "npx",
-        "-y",
-        "godot-mcp-server"
+        "tools\\funplay_mcp_stdio.cmd"
       ]
     }
   }

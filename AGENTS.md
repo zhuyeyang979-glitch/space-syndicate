@@ -215,7 +215,7 @@ For each task:
 4. Read MCP debug output, resolve reported errors, and stop the running project.
 5. Record the scene path, MCP runtime result, debug error count, and stop result in the handoff.
 
-Headless focused tests remain required, but supplement rather than replace MCP scene/runtime evidence. Coordinate a single MCP runtime lease in the shared worktree so parallel agents do not fight over the editor/import lock.
+Headless focused tests remain required, but supplement rather than replace MCP scene/runtime evidence. Every active agent works from an isolated Git worktree with its own local Godot editor, `override.cfg` user directory, Funplay MCP endpoint, and auth token. Agents may develop concurrently but must never point two roles at the same editor endpoint. The Supervisor alone owns full regression, headed acceptance, screenshots, integration verdicts, and pushes to protected integration/main branches.
 
 When current player rules contradict legacy code in `main.gd`, delete the legacy path after the replacement scene is connected and tested. Do not retain a fallback to obsolete rules merely for old tests; migrate or retire the stale oracle instead.
 
