@@ -9,7 +9,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	detail = {
 		"accent": accent,
 		"tooltip": _first_text(data, ["tooltip"], ""),
-		"face_note": _first_text(data, ["face_note"], "重复入手→升级；价格看I级。"),
+		"face_note": _first_text(data, ["face_note"], "同名同级→主动合并；价格看I级。"),
 		"face_note_tooltip": _first_text(data, ["face_note_tooltip"], "资料库只展示公开卡面和公开规则，不展示隐藏牌主。"),
 		"card_face": _normalize_card_face(data.get("card_face", {}), accent),
 		"summary": _normalize_summary(data.get("summary", {}), accent),
@@ -57,7 +57,7 @@ func _normalize_summary(summary_variant: Variant, fallback_accent: Color) -> Dic
 		"chips": _normalize_chips(summary.get("chips", []), accent),
 		"effect": _first_text(summary, ["effect"], ""),
 		"effect_tooltip": _first_text(summary, ["effect_tooltip", "tooltip_detail"], ""),
-		"read_order": _first_text(summary, ["read_order"], "读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV升级"),
+		"read_order": _first_text(summary, ["read_order"], "读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV等级"),
 		"accent": accent,
 	}
 
@@ -89,7 +89,7 @@ func _normalize_upgrades(entries_variant: Variant, fallback_accent: Color) -> Ar
 		result.append({
 			"roman": _first_text(entry, ["roman", "level"], ""),
 			"price": _first_text(entry, ["price", "cost"], ""),
-			"price_tooltip": _first_text(entry, ["price_tooltip"], "购买仍按该系列I级价格体系展示；重复获得会自动合成升级。"),
+			"price_tooltip": _first_text(entry, ["price_tooltip"], "购买仍按该系列I级价格体系展示；同名同级牌可主动合并升级。"),
 			"band": _first_text(entry, ["band", "meta"], ""),
 			"body": _first_text(entry, ["body", "effect"], ""),
 			"body_tooltip": _first_text(entry, ["body_tooltip", "tooltip"], _first_text(entry, ["body", "effect"], "")),

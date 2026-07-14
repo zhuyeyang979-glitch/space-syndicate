@@ -33,7 +33,7 @@ func set_detail(data: Dictionary) -> void:
 	var accent := _dictionary_color(data, "accent", Color("#38bdf8"))
 	tooltip_text = str(data.get("tooltip", ""))
 	add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.05), 1, 8))
-	face_note_label.text = str(data.get("face_note", "重复入手→升级；价格看I级。"))
+	face_note_label.text = str(data.get("face_note", "同名同级→主动合并；价格看I级。"))
 	face_note_label.tooltip_text = str(data.get("face_note_tooltip", ""))
 	_render_card_face(data.get("card_face", {}))
 	_render_summary(data.get("summary", {}), accent)
@@ -121,7 +121,7 @@ func _render_summary(entry_variant: Variant, fallback_accent: Color) -> void:
 	_render_chips(summary_chip_rail, entry.get("chips", []), "CardCodexTcgSummaryChip", 11)
 	summary_effect_label.text = str(entry.get("effect", ""))
 	summary_effect_label.tooltip_text = str(entry.get("effect_tooltip", ""))
-	read_order_label.text = str(entry.get("read_order", "读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV升级"))
+	read_order_label.text = str(entry.get("read_order", "读法：费用 → 门槛 → 目标 → 去向 → 效果 → I-IV等级"))
 	read_order_label.add_theme_color_override("font_color", accent.lightened(0.18))
 
 
@@ -285,7 +285,7 @@ func _add_upgrade_card(entry: Dictionary) -> void:
 	price.autowrap_mode = TextServer.AUTOWRAP_OFF
 	price.clip_text = true
 	price.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	price.tooltip_text = str(entry.get("price_tooltip", "购买仍按该系列I级价格体系展示；重复获得会自动合成升级。"))
+	price.tooltip_text = str(entry.get("price_tooltip", "购买仍按该系列I级价格体系展示；同名同级牌可主动合并升级。"))
 	header.add_child(price)
 	var band := _label(str(entry.get("band", "")), 11, accent.lightened(0.18))
 	band.name = "CardCodexUpgradeBudgetBand"

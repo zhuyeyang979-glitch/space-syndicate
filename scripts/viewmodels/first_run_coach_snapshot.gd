@@ -138,7 +138,7 @@ func _stage_definition(stage: String) -> Dictionary:
 				"phase_label": "买牌",
 				"title": "买一张能理解的牌",
 				"body": "买一张现在能用的牌。",
-				"tooltip": "重复牌会升级；满手时私密弃一张。",
+				"tooltip": "同名同级牌可主动合并升级；普通手牌上限为5张。",
 			}
 		STAGE_PLAY_CARD:
 			return {

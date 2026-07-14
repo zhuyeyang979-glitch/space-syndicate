@@ -85,7 +85,7 @@ func derived_definition(requested_rank: int) -> Dictionary:
 		return source
 	var result := source.duplicate(true)
 	var source_text := str(source.get("text", base.get("text", "")))
-	result["text"] = "%s（%s：从%s继续成长；重复获得同系列卡自动升级，购买价仍按I级。）" % [
+	result["text"] = "%s（%s：从%s继续成长；同名同级牌可主动合并升级，购买价仍按I级。）" % [
 		source_text,
 		_level_text(safe_rank),
 		_level_text(source_rank),

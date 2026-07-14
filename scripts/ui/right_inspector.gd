@@ -394,7 +394,7 @@ func _card_chip_tooltip(key: String) -> String:
 		"play_state":
 			return "当前能否打出，以及打出前要做什么。"
 		"rank":
-			return "卡牌等级；重复获得同系列会升级。"
+			return "卡牌等级；同名同级牌可主动合并升级。"
 		"type":
 			return "策略路线或卡牌类别。"
 		"industry":
