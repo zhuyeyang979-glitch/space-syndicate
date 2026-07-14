@@ -99,9 +99,12 @@ func _check_planet_skeleton() -> void:
 	var planet_board := FileAccess.get_file_as_string("res://scripts/ui/planet_board.gd")
 	var map_view := FileAccess.get_file_as_string("res://scripts/map_view.gd")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var overlay_scene := FileAccess.get_file_as_string("res://scenes/ui/OverlayLayer.tscn")
+	var fullscreen_map_scene := FileAccess.get_file_as_string("res://scenes/ui/FullscreenMapOverlay.tscn")
+	var toolbar_scene := FileAccess.get_file_as_string("res://scenes/ui/map/PlanetMapControlToolbar.tscn")
 	_expect(_contains_all(planet_board, ["PlanetStageViewport", "MapHost", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "PLANET_TABLE_SAFE_CORE_RATIO"]), "PlanetBoard owns stage, map host, side rails, and safe-core metrics")
 	_expect(_contains_all(map_view, ["PLANET_PROJECTION_DEFAULT_ZOOM", "reset_to_planet_overview", "zoom_to_local_projection", "visual_layer_focus"]), "MapView keeps globe/local projection and map layer focus skeletons")
-	_expect(_contains_all(main_source, ["MapControlBar", "MapLayerFocusRail", "_set_map_layer_focus", "FullscreenMapOverlayScene"]), "runtime map controls expose toolbar, layer focus, and fullscreen skeletons")
+	_expect(main_source.contains("_set_map_layer_focus") and toolbar_scene.contains("MapLayerFocusRail") and fullscreen_map_scene.contains("PlanetMapControlToolbar.tscn") and overlay_scene.contains("FullscreenMapOverlay"), "scene-owned map toolbar exposes layer focus while OverlayLayer statically owns the fullscreen map")
 
 
 func _check_main_menu_skeleton() -> void:

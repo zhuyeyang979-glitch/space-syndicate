@@ -1,17 +1,10 @@
 extends Control
 
-const MapViewScript := preload("res://scripts/map_view.gd")
 const MonsterArtViewScript := preload("res://scripts/monster_art_view.gd")
 const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
-const RuntimeGameScreenScene := preload("res://scenes/ui/GameScreen.tscn")
-const PlanetMapViewScene := preload("res://scenes/ui/PlanetMapView.tscn")
-const CardResolutionBannerScene := preload("res://scenes/ui/CardResolutionBanner.tscn")
-const BottomCountdownBarScene := preload("res://scenes/ui/BottomCountdownBar.tscn")
-const DistrictSupplyDrawerScene := preload("res://scenes/ui/DistrictSupplyDrawer.tscn")
-const FullscreenMapOverlayScene := preload("res://scenes/ui/FullscreenMapOverlay.tscn")
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
 const TutorialQuickStartBoardScene := preload("res://scenes/ui/TutorialQuickStartBoard.tscn")
 const RulesQuickReferenceBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
@@ -45,12 +38,7 @@ const CampaignBriefingSnapshotScript := preload("res://scripts/viewmodels/campai
 const CampaignProgressMapSnapshotScript := preload("res://scripts/viewmodels/campaign_progress_map_snapshot.gd")
 const CampaignRewardSnapshotScript := preload("res://scripts/viewmodels/campaign_reward_snapshot.gd")
 const MatchRecapSnapshotScript := preload("res://scripts/viewmodels/match_recap_snapshot.gd")
-const NIGHT_PATROL_BGM_PATH := "res://assets/third_party/night_patrol/audio/bgm/bronze-snare-crown.mp3"
-const NIGHT_PATROL_SFX_PATHS := {
-	"card": "res://assets/third_party/night_patrol/audio/sfx/fire-burst.mp3",
-	"impact": "res://assets/third_party/night_patrol/audio/sfx/impact-body.wav",
-	"storm": "res://assets/third_party/night_patrol/audio/sfx/lightning-hit.mp3",
-}
+const TABLE_SFX_KEYS := ["card", "impact", "storm"]
 const CAMPAIGN_SUCCESS_FEEDBACK_SECONDS := 1.0
 const MIN_PLAYER_COUNT := 3
 const MAX_PLAYER_COUNT := 8
@@ -769,7 +757,6 @@ var pending_player_target_slot_index := -1
 var speed_before_target_choice := 1.0
 
 var runtime_game_screen: Control
-var runtime_composition_fallbacks: Array[String] = []
 var ruleset_runtime_bridge: Node
 var ruleset_runtime_bridge_bound := false
 var ruleset_runtime_bridge_missing := false
@@ -921,54 +908,33 @@ func _build_table_audio() -> void:
 	_bind_runtime_audio_nodes()
 	table_sfx_last_time = {}
 	if table_bgm_player == null:
-		table_bgm_player = _make_table_audio_player("NightPatrolTableBgm", NIGHT_PATROL_BGM_PATH, -25.0)
-	for key_variant in NIGHT_PATROL_SFX_PATHS.keys():
+		push_error("Static TableAudioHost must provide NightPatrolTableBgm.")
+	for key_variant in TABLE_SFX_KEYS:
 		var key := String(key_variant)
-		if table_sfx_players.has(key) and is_instance_valid(table_sfx_players[key]):
-			continue
-		var player := _make_table_audio_player("NightPatrolSfx_%s" % key, String(NIGHT_PATROL_SFX_PATHS[key]), -10.0)
-		if player != null:
-			table_sfx_players[key] = player
+		if not table_sfx_players.has(key) or not is_instance_valid(table_sfx_players[key]):
+			push_error("Static TableAudioHost must provide NightPatrolSfx_%s." % key)
 
 
 func _runtime_audio_host() -> Node:
-	var host := get_node_or_null("RuntimeServices/TableAudioHost")
-	return host if host != null else self
+	return get_node_or_null("RuntimeServices/TableAudioHost")
 
 
 func _bind_runtime_audio_nodes() -> void:
 	var host := _runtime_audio_host()
+	if host == null:
+		table_bgm_player = null
+		table_sfx_players = {}
+		push_error("Static RuntimeServices/TableAudioHost is required.")
+		return
 	table_bgm_player = host.get_node_or_null("NightPatrolTableBgm") as AudioStreamPlayer
 	table_sfx_players = {}
-	for key_variant in NIGHT_PATROL_SFX_PATHS.keys():
+	for key_variant in TABLE_SFX_KEYS:
 		var key := String(key_variant)
 		var player := host.get_node_or_null("NightPatrolSfx_%s" % key) as AudioStreamPlayer
 		if player != null:
 			table_sfx_players[key] = player
 	if table_bgm_player != null and table_bgm_player.stream != null and table_bgm_player.stream.get("loop") != null:
 		table_bgm_player.stream.set("loop", true)
-
-
-func _make_table_audio_player(node_name: String, path: String, volume_db: float) -> AudioStreamPlayer:
-	var host := _runtime_audio_host()
-	var existing := host.get_node_or_null(node_name) as AudioStreamPlayer
-	if existing != null:
-		return existing
-	if path == "" or not ResourceLoader.exists(path):
-		return null
-	var stream := load(path)
-	if stream == null:
-		return null
-	var player := AudioStreamPlayer.new()
-	player.name = node_name
-	player.stream = stream
-	if node_name.contains("Bgm") and player.stream.get("loop") != null:
-		player.stream.set("loop", true)
-	player.volume_db = volume_db
-	player.bus = "Master"
-	host.add_child(player)
-	_mark_runtime_composition_fallback("audio:%s" % node_name)
-	return player
 
 
 func _start_table_bgm() -> void:
@@ -1144,19 +1110,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_runtime_game_screen() -> void:
 	if runtime_game_screen == null:
 		runtime_game_screen = get_node_or_null("RuntimeGameScreen") as Control
-	if runtime_game_screen != null:
-		_bind_runtime_game_screen(runtime_game_screen)
+	if runtime_game_screen == null:
+		push_error("Static RuntimeGameScreen scene is required.")
 		return
-	var screen := RuntimeGameScreenScene.instantiate() as Control
-	if screen == null:
-		return
-	screen.name = "RuntimeGameScreen"
-	screen.set_anchors_preset(Control.PRESET_FULL_RECT)
-	screen.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(screen)
-	_mark_runtime_composition_fallback("runtime_game_screen")
-	_bind_runtime_game_screen(screen)
+	_bind_runtime_game_screen(runtime_game_screen)
 
 
 func _bind_sceneized_runtime_composition() -> void:
@@ -2269,11 +2226,6 @@ func _runtime_composition_control(node_name: String) -> Control:
 	return find_child(node_name, true, false) as Control
 
 
-func _mark_runtime_composition_fallback(fallback_id: String) -> void:
-	if fallback_id != "" and not runtime_composition_fallbacks.has(fallback_id):
-		runtime_composition_fallbacks.append(fallback_id)
-
-
 func _developer_balance_greybox_enabled() -> bool:
 	var value := OS.get_environment("SPACE_SYNDICATE_DEV_BALANCE").strip_edges().to_lower()
 	return ["1", "true", "yes", "on", "dev"].has(value)
@@ -2556,12 +2508,12 @@ func _activate_runtime_snapshot_action(entry: Dictionary) -> bool:
 	return true
 
 
-func _build_runtime_map_view(fallback_parent: Node = null) -> void:
+func _build_runtime_map_view() -> void:
 	if map_view == null:
 		map_view = _embedded_runtime_planet_map_view()
 	if map_view == null:
-		_mark_runtime_composition_fallback("planet_map_view")
-		map_view = _instantiate_planet_map_view()
+		_report_required_ui_scene_missing("PlanetMapView", "district_selected/district_double_clicked")
+		return
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var select_callback := Callable(self, "_select_district")
@@ -2572,11 +2524,8 @@ func _build_runtime_map_view(fallback_parent: Node = null) -> void:
 		map_view.district_double_clicked.connect(double_callback)
 	if runtime_game_screen != null and runtime_game_screen.has_method("attach_runtime_map"):
 		runtime_game_screen.call("attach_runtime_map", map_view)
-	elif fallback_parent != null and map_view.get_parent() != fallback_parent:
-		var current_parent := map_view.get_parent()
-		if current_parent != null:
-			current_parent.remove_child(map_view)
-		fallback_parent.add_child(map_view)
+	else:
+		_report_required_ui_scene_missing("RuntimeGameScreen", "attach_runtime_map")
 	map_view.custom_minimum_size = Vector2(560, 430)
 
 
@@ -2590,13 +2539,6 @@ func _embedded_runtime_planet_map_view() -> Control:
 		if found != null:
 			return found
 	return null
-
-
-func _instantiate_planet_map_view() -> Control:
-	var scene_map := PlanetMapViewScene.instantiate() as Control
-	if scene_map != null:
-		return scene_map
-	return MapViewScript.new() as Control
 
 
 func _build_layout() -> void:
@@ -2960,12 +2902,8 @@ func _build_full_map_overlay() -> void:
 		return
 	var overlay := _runtime_composition_control("FullscreenMapOverlay")
 	if overlay == null:
-		overlay = FullscreenMapOverlayScene.instantiate() as Control
-		if overlay == null:
-			return
-		overlay.visible = false
-		_runtime_overlay_parent().add_child(overlay)
-		_mark_runtime_composition_fallback("fullscreen_map_overlay")
+		_report_required_ui_scene_missing("FullscreenMapOverlay", "static OverlayLayer composition")
+		return
 	full_map_overlay = overlay
 
 	var map_control_toolbar := overlay.find_child("PlanetMapControlToolbar", true, false) as Control
@@ -2989,9 +2927,8 @@ func _build_full_map_overlay() -> void:
 
 	full_map_view = overlay.find_child("FullscreenPlanetMapView", true, false) as Control
 	if full_map_view == null:
-		full_map_view = _instantiate_planet_map_view()
-		full_map_view.name = "FullscreenPlanetMapView"
-		_mark_runtime_composition_fallback("fullscreen_planet_map_view")
+		_report_required_ui_scene_missing("FullscreenPlanetMapView", "district_selected/district_double_clicked")
+		return
 	full_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	full_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var select_callback := Callable(self, "_select_district")
@@ -3000,23 +2937,13 @@ func _build_full_map_overlay() -> void:
 	var double_callback := Callable(self, "_open_district_supply_from_map")
 	if full_map_view.has_signal("district_double_clicked") and not full_map_view.is_connected("district_double_clicked", double_callback):
 		full_map_view.connect("district_double_clicked", double_callback)
-	var map_host := overlay.find_child("FullscreenMapHost", true, false) as Container
-	if full_map_view.get_parent() == null and map_host != null:
-		map_host.add_child(full_map_view)
-	elif full_map_view.get_parent() == null:
-		overlay.add_child(full_map_view)
-
 func _build_card_resolution_overlay() -> void:
 	if card_resolution_overlay != null and is_instance_valid(card_resolution_overlay):
 		return
 	var overlay := _runtime_composition_control("CardResolutionTableBannerOverlay")
 	if overlay == null:
-		overlay = CardResolutionBannerScene.instantiate() as Control
-		if overlay == null:
-			return
-		overlay.visible = false
-		_runtime_overlay_parent().add_child(overlay)
-		_mark_runtime_composition_fallback("card_resolution_banner")
+		_report_required_ui_scene_missing("CardResolutionTableBannerOverlay", "static OverlayLayer composition")
+		return
 	card_resolution_overlay = overlay
 	card_resolution_title_label = overlay.find_child("CardResolutionTitleLabel", true, false) as Label
 	card_resolution_status_label = overlay.find_child("CardResolutionStatusLabel", true, false) as Label
@@ -3030,12 +2957,8 @@ func _build_bottom_countdown_bar() -> void:
 		return
 	var overlay := _runtime_composition_control("BottomCountdownOverlay")
 	if overlay == null:
-		overlay = BottomCountdownBarScene.instantiate() as Control
-		if overlay == null:
-			return
-		overlay.visible = false
-		_runtime_overlay_parent().add_child(overlay)
-		_mark_runtime_composition_fallback("bottom_countdown")
+		_report_required_ui_scene_missing("BottomCountdownOverlay", "static OverlayLayer composition")
+		return
 	bottom_countdown_overlay = overlay
 	bottom_countdown_panel = overlay.find_child("BottomCountdownPanel", true, false) as PanelContainer
 	card_resolution_timer_label = overlay.find_child("CardResolutionRevealTimerLabel", true, false) as Label
@@ -3047,12 +2970,8 @@ func _build_district_supply_overlay() -> void:
 		return
 	var overlay := _runtime_composition_control("DistrictSupplySideDrawerOverlay")
 	if overlay == null:
-		overlay = DistrictSupplyDrawerScene.instantiate() as Control
-		if overlay == null:
-			return
-		overlay.visible = false
-		_runtime_overlay_parent().add_child(overlay)
-		_mark_runtime_composition_fallback("district_supply_drawer")
+		_report_required_ui_scene_missing("DistrictSupplySideDrawerOverlay", "static OverlayLayer composition")
+		return
 	district_supply_overlay = overlay
 	if not overlay.has_method("set_supply") or not overlay.has_method("clear_supply") or not overlay.has_method("debug_snapshot") or not overlay.has_signal("supply_action_requested"):
 		push_error("DistrictSupplyDrawer must expose its scene-owned snapshot and action API.")
