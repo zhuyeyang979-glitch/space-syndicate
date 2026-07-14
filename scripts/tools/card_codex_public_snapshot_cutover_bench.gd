@@ -25,7 +25,8 @@ const RETIRED_FORMATTERS := [
 	"_card_codex_tactical_clue_text", "_card_codex_tactical_entries", "_card_codex_detail_snapshot",
 	"_card_codex_detail_source", "_card_codex_detail_card_face_snapshot", "_card_codex_detail_summary_snapshot",
 	"_card_codex_detail_read_chips", "_card_codex_detail_fact_snapshots", "_card_codex_detail_upgrade_snapshots",
-	"_card_codex_detail_resolution_snapshot",
+	"_card_codex_detail_resolution_snapshot", "_card_codex_public_browser_source", "_card_codex_public_browser_snapshot",
+	"_card_codex_public_card_facts", "_card_codex_public_upgrade_facts", "_card_codex_public_detail_snapshot",
 ]
 
 @export var auto_run := true
@@ -396,7 +397,7 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["pure_data_checked"] = true
 			notes = "real CodexCompendiumSurface renders both Coordinator-owned browser and detail payloads"
 		"legacy_card_formatters_absent_and_metrics":
-			passed = RETIRED_FORMATTERS.size() == 19
+			passed = RETIRED_FORMATTERS.size() == 24
 			for formatter_name: String in RETIRED_FORMATTERS:
 				passed = passed and not _main_source.contains("func %s(" % formatter_name)
 			var metrics := _main_metrics()
@@ -406,7 +407,7 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = passed and not bool(debug.get("calculates_card_price", true)) and not bool(debug.get("calculates_card_effects", true)) and not bool(debug.get("calculates_play_requirements", true)) and not bool(debug.get("legacy_main_formatter_active", true))
 			flags["deletion_checked"] = true
 			flags["rule_boundary_checked"] = true
-			notes = "nineteen Card presentation formatters retired while all card-rule authority remains outside the service"
+			notes = "twenty-four Card presentation and public-source formatters retired while all card-rule authority remains outside the service"
 	return _record(case_id, passed, notes, flags)
 
 

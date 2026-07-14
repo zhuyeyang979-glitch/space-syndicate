@@ -6728,8 +6728,33 @@ func _update_card_codex_menu() -> void:
 	if _codex_navigation_controller_node().previewed_card_codex_card == "" or not names.has(_codex_navigation_controller_node().previewed_card_codex_card):
 		_codex_navigation_controller_node().previewed_card_codex_card = String(names[mini(_codex_navigation_controller_node().card_codex_index, names.size() - 1)])
 	var card_name := String(names[_codex_navigation_controller_node().card_codex_index])
-	var skill: Dictionary = _game_runtime_coordinator_node().card_definition(card_name)
-	var public_snapshot := _card_codex_public_detail_snapshot(card_name, skill, _codex_navigation_controller_node().card_codex_index, names.size()) if _codex_navigation_controller_node().card_codex_show_detail else _card_codex_public_browser_snapshot(names)
+	var coordinator := _game_runtime_coordinator_node()
+	var public_snapshot: Dictionary
+	if _codex_navigation_controller_node().card_codex_show_detail:
+		public_snapshot = coordinator.card_codex_public_detail_snapshot(card_name, _codex_navigation_controller_node().card_codex_index, names.size())
+	else:
+		var filters: Array = []
+		for option_variant in _card_codex_filter_options():
+			var option: Dictionary = option_variant
+			var filter_id := str(option.get("id", "all"))
+			var label := str(option.get("label", filter_id))
+			filters.append({"id": filter_id, "label": label, "count": _card_codex_names(filter_id).size(), "accent": _menu_action_accent_for_text(label)})
+		var layer_report := coordinator.gameplay_balance_diagnostics_service().card_supply_layer_report()
+		public_snapshot = coordinator.card_codex_public_browser_snapshot({
+			"names": names,
+			"columns": _card_codex_grid_columns(),
+			"rows": _card_codex_grid_rows(),
+			"page_index": _codex_navigation_controller_node().card_codex_grid_page,
+			"filter_id": _codex_navigation_controller_node().card_codex_filter,
+			"filter_label": _card_codex_filter_label(),
+			"selected_card": _codex_navigation_controller_node().previewed_card_codex_card,
+			"run_pool_count": int(layer_report.get("run_pool_count", 0)),
+			"district_supply_count": int(layer_report.get("district_supply_count", 0)),
+			"filters": filters,
+		})
+		_codex_navigation_controller_node().card_codex_grid_page = int(public_snapshot.get("page_index", _codex_navigation_controller_node().card_codex_grid_page))
+		_codex_navigation_controller_node().previewed_card_codex_card = str(public_snapshot.get("selected_card", _codex_navigation_controller_node().previewed_card_codex_card))
+		_codex_navigation_controller_node().card_codex_index = int(public_snapshot.get("selected_index", _codex_navigation_controller_node().card_codex_index))
 	var body_text := str(public_snapshot.get("summary_text", ""))
 	_present_codex_page("卡牌图鉴", body_text, {
 		"mode": "card",
@@ -6767,138 +6792,6 @@ func _turn_card_codex_grid_page(step: int) -> void:
 	_codex_navigation_controller_node().previewed_card_codex_card = String(names[first_index])
 	_codex_navigation_controller_node().card_codex_show_detail = false
 	_update_card_codex_menu()
-
-
-func _card_codex_public_browser_source(names: Array) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var filters: Array = []
-	for option_variant in _card_codex_filter_options():
-		var option: Dictionary = option_variant
-		var filter_id := str(option.get("id", "all"))
-		var label := str(option.get("label", filter_id))
-		var icon := str(coordinator.call("card_presentation_category_icon", filter_id)) if coordinator != null and coordinator.has_method("card_presentation_category_icon") else "□"
-		filters.append({"id": filter_id, "label": label, "short_label": _card_codex_short_filter_label(filter_id), "icon": icon, "count": _card_codex_names(filter_id).size(), "accent": _menu_action_accent_for_text(label)})
-	var cards: Array = []
-	for card_index in range(names.size()):
-		cards.append(_card_codex_public_card_facts(str(names[card_index]), card_index))
-	var preview_name := str(_codex_navigation_controller_node().previewed_card_codex_card)
-	if preview_name == "" or not names.has(preview_name):
-		preview_name = str(names[0]) if not names.is_empty() else ""
-	var layer_report := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().card_supply_layer_report()
-	return {
-		"names": names.duplicate(),
-		"columns": _card_codex_grid_columns(),
-		"rows": _card_codex_grid_rows(),
-		"page_index": _codex_navigation_controller_node().card_codex_grid_page,
-		"filter_id": _codex_navigation_controller_node().card_codex_filter,
-		"filter_label": _card_codex_filter_label(),
-		"selected_card": preview_name,
-		"icon_legend": str(coordinator.call("card_presentation_icon_legend")) if coordinator != null and coordinator.has_method("card_presentation_icon_legend") else "",
-		"run_pool_count": int(layer_report.get("run_pool_count", 0)),
-		"district_supply_count": int(layer_report.get("district_supply_count", 0)),
-		"filters": filters,
-		"cards": cards,
-		"preview_card": _card_codex_public_card_facts(preview_name, names.find(preview_name)) if preview_name != "" else {},
-	}
-
-
-func _card_codex_public_browser_snapshot(names: Array) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var source := _card_codex_public_browser_source(names)
-	var value: Variant = coordinator.call("compose_card_codex_browser", source) if coordinator != null and coordinator.has_method("compose_card_codex_browser") else {}
-	var snapshot := (value as Dictionary).duplicate(true) if value is Dictionary else {}
-	_codex_navigation_controller_node().card_codex_grid_page = int(snapshot.get("page_index", _codex_navigation_controller_node().card_codex_grid_page))
-	_codex_navigation_controller_node().previewed_card_codex_card = str(snapshot.get("selected_card", _codex_navigation_controller_node().previewed_card_codex_card))
-	_codex_navigation_controller_node().card_codex_index = int(snapshot.get("selected_index", _codex_navigation_controller_node().card_codex_index))
-	return snapshot
-
-
-func _card_codex_public_card_facts(card_name: String, card_index: int, supplied_skill: Dictionary = {}) -> Dictionary:
-	var skill := supplied_skill if not supplied_skill.is_empty() else _game_runtime_coordinator_node().card_definition(card_name)
-	if card_name == "" or skill.is_empty():
-		return {"valid": false, "card_name": card_name, "index": card_index}
-	var presentation := _card_presentation_snapshot(card_name, skill, selected_player, selected_district)
-	var accent: Color = presentation.get("accent", Color("#94a3b8")) as Color
-	var read_chips: Array = []
-	for entry_variant in presentation.get("chips", []):
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var fg := entry.get("fg", Color("#e2e8f0")) as Color
-		read_chips.append({"text": str(entry.get("text", "")), "tooltip": str(entry.get("tip", "")), "fg": fg, "bg": entry.get("bg", Color("#020617").lerp(fg, 0.16)) as Color, "accent": fg})
-	var resolution_presentation := _card_resolution_presentation_snapshot(skill)
-	var target_status := _card_play_target_snapshot(skill)
-	var requirement_status := _card_play_requirement_snapshot(selected_player, skill)
-	return {
-		"valid": true,
-		"index": card_index,
-		"card_name": card_name,
-		"display_name": str(presentation.get("display_name", _card_display_name(card_name))),
-		"icon": str(presentation.get("icon", "□")),
-		"family": _game_runtime_coordinator_node().card_family_id(card_name),
-		"kind": str(skill.get("kind", "")),
-		"rank": maxi(1, _game_runtime_coordinator_node().card_rank(card_name)),
-		"rank_label": _level_text(maxi(1, _game_runtime_coordinator_node().card_rank(card_name))),
-		"tag_text": _skill_tag_text(skill),
-		"accent": accent,
-		"price": _card_price(card_name),
-		"category_label": _card_codex_filter_label(str(presentation.get("category_id", "other"))),
-		"icon_route_label": str(presentation.get("icon_route_label", "□ 即时战术")),
-		"subtype_label": str(presentation.get("subtype_label", "即时战术")),
-		"source_type_label": _card_source_type_label(card_name, skill),
-		"supply_layer": _card_supply_layer_for_card(card_name),
-		"art_stats": str(presentation.get("art_stats", "")),
-		"use_case": str(presentation.get("use_case", "")),
-		"strategy_route_label": str(presentation.get("strategy_route_label", "即时战术")),
-		"strategy_summary": str(presentation.get("strategy_summary", "")),
-		"strategy_use_text": str(presentation.get("strategy_use_text", "")),
-		"quick_effect_compact": str(presentation.get("quick_effect_compact", "")),
-		"quick_effect_full": str(presentation.get("quick_effect_full", "")),
-		"full_effect_text": _skill_display_text(skill),
-		"rules_text_compact": str(presentation.get("rules_text_compact", "")),
-		"level_gradient_text": _card_level_gradient_text(card_name),
-		"detail_tooltip": str(presentation.get("detail_tooltip", "")),
-		"face_route_text": str(presentation.get("face_route_full", "")),
-		"type_label": str(presentation.get("icon_type_label", "□ 卡牌")),
-		"requires_target_monster": bool(target_status.get("requires_target_monster", false)),
-		"targets_player": bool(target_status.get("targets_player", false)),
-		"targets_monster": bool(target_status.get("targets_monster", false)),
-		"play_region_share_required": int(requirement_status.get("required_share_percent", 0)),
-		"play_region_scope_label": String(requirement_status.get("scope_label", "任一经营区")),
-		"route_damage": int(skill.get("route_damage", 0)),
-		"persistent": bool(skill.get("persistent", false)),
-		"play_requirement_text": String(requirement_status.get("requirement_text", "条件：无")),
-		"key_rule_facts": (presentation.get("key_rule_facts", []) as Array).duplicate(true),
-		"read_chips": read_chips,
-		"resolution_animation_text": String(resolution_presentation.get("animation_catalog_text", "")).replace("\n", " / "),
-	}
-
-
-func _card_codex_public_upgrade_facts(card_name: String) -> Array:
-	var upgrades: Array = []
-	var diagnostics := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service()
-	var family := _game_runtime_coordinator_node().card_family_id(card_name)
-	for level in range(1, 5):
-		var level_name := "%s%d" % [family, level]
-		if not _game_runtime_coordinator_node().card_exists(level_name):
-			continue
-		var level_skill := _game_runtime_coordinator_node().card_definition(level_name)
-		var presentation := _card_presentation_snapshot(level_name, level_skill, selected_player, selected_district)
-		var preview := _join_first_card_facts(presentation.get("key_rule_facts", []) as Array, 4)
-		if preview == "":
-			preview = _skill_display_text(level_skill)
-		var level_accent: Color = presentation.get("accent", Color("#94a3b8")) as Color
-		upgrades.append({"roman": _level_text(level), "price": _card_price(level_name), "strength_band": diagnostics.card_budget_band_text(diagnostics.card_budget_points_for_id(level_name)), "preview": preview, "display_name": _card_display_name(level_name), "full_effect_text": _skill_display_text(level_skill), "accent": level_accent.lerp(Color("#fef3c7"), 0.08 * float(level - 1)), "fill_weight": 0.10 + 0.03 * float(level - 1)})
-	return upgrades
-
-
-func _card_codex_public_detail_snapshot(card_name: String, skill: Dictionary, index: int, total: int) -> Dictionary:
-	var source := _card_codex_public_card_facts(card_name, index, skill)
-	source["total"] = total
-	source["upgrades"] = _card_codex_public_upgrade_facts(card_name)
-	var coordinator := _game_runtime_coordinator_node()
-	var value: Variant = coordinator.call("compose_card_codex_detail", source) if coordinator != null and coordinator.has_method("compose_card_codex_detail") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:

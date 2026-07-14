@@ -8808,10 +8808,9 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 	var business_alias_names := _as_array(main.call("_card_codex_names", "business"))
 	var economy_alias_names := _as_array(main.call("_card_codex_names", "economy"))
 	var all_names := _as_array(main.call("_card_codex_names", "all"))
-	var monster_skill := _runtime_card_definition(main, monster_card)
-	var contract_skill := _runtime_card_definition(main, "区域供需合约1")
-	var monster_text := String((main.call("_card_codex_public_detail_snapshot", monster_card, monster_skill, 0, maxi(1, monster_names.size())) as Dictionary).get("summary_text", ""))
-	var contract_text := String((main.call("_card_codex_public_detail_snapshot", "区域供需合约1", contract_skill, 0, maxi(1, contract_names.size())) as Dictionary).get("summary_text", ""))
+	var coordinator := _runtime_coordinator(main)
+	var monster_text := String((coordinator.call("card_codex_public_detail_snapshot", monster_card, 0, maxi(1, monster_names.size())) as Dictionary).get("summary_text", ""))
+	var contract_text := String((coordinator.call("card_codex_public_detail_snapshot", "区域供需合约1", 0, maxi(1, contract_names.size())) as Dictionary).get("summary_text", ""))
 	var district_supply_card := ""
 	var district_supply_index := -1
 	var districts := _as_array(main.get("districts"))

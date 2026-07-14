@@ -360,16 +360,17 @@ func _codex_snapshots() -> Array:
 		return []
 	var card_name := str(_card_names[0]) if not _card_names.is_empty() else ""
 	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var skill: Dictionary = coordinator.call("card_definition", card_name) if coordinator != null and card_name != "" else {}
 	var role_card: Dictionary = _main.call("_make_player_role_card", 0)
 	var region_snapshot := _main.call("_region_codex_public_snapshot", 0) as Dictionary
 	var role_snapshot := _main.call("_role_codex_public_snapshot", role_card, 0, 1) as Dictionary
 	var hub_script := load(COMPENDIUM_HUB_SNAPSHOT_SCRIPT_PATH) as Script
 	var hub_snapshot: Dictionary = hub_script.call("compose", 960.0) as Dictionary if hub_script != null else {}
+	var card_browser := coordinator.call("card_codex_public_browser_snapshot", {"names": _card_names, "columns": 3, "rows": 2, "page_index": 0, "filter_id": "all", "filter_label": "全部牌", "selected_card": card_name, "filters": []}) as Dictionary if coordinator != null else {}
+	var card_detail := coordinator.call("card_codex_public_detail_snapshot", card_name, 0, maxi(1, _card_names.size())) as Dictionary if coordinator != null and card_name != "" else {}
 	return [
 		hub_snapshot,
-		_main.call("_card_codex_public_browser_snapshot", _card_names),
-		(_main.call("_card_codex_public_detail_snapshot", card_name, skill, 0, maxi(1, _card_names.size())) as Dictionary).get("detail", {}),
+		card_browser,
+		card_detail.get("detail", {}),
 		(_main.call("_monster_codex_public_snapshot", 0, true) as Dictionary).get("detail", {}),
 		(_main.call("_product_codex_public_snapshot", str((_main.call("_product_catalog_names") as Array)[0]), 0, true) as Dictionary).get("detail", {}),
 		region_snapshot.get("detail", {}),

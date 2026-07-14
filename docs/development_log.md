@@ -3,6 +3,15 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜卡牌图鉴公共数据源场景化与 Main 物理减负
+
+- `GameRuntimeCoordinator.tscn` 现静态拥有唯一 `CardCodexPublicSourceService`。该服务只注入卡牌目录、纯展示、公开合法性、平衡诊断、最终快照与价格模型六项依赖；纯数据 adapter 递归拒绝玩家索引、现金、手牌、归属、AI、市场、太阳、镜头和存档字段，不读取 Main 或 WorldBridge。
+- Coordinator 只暴露最终 browser/detail 两个公共快照 API；`main.gd` 仅传递筛选、翻页和布局上下文。原先在 Main 内构造 browser source、browser snapshot、card facts、upgrade facts 和 detail snapshot 的五个函数已物理删除，可执行定义/调用归零；函数名只保留在负向退役门禁中。
+- 本切片使 `main.gd` 从 19629 行/1115 个函数降至 19522 行/1110 个函数，净删 107 行和 5 个函数；没有恢复 legacy wrapper，也没有建立第二个卡牌规则 owner。
+- Godot 4.7 聚焦证据：Card Codex public-source cutover `31/31`、Codex scene hard cutover `20/20`、Main composition PASS、smoke `--check-only` 通过、286 个 GDScript 扫描 0 错误。8775 真实 `main.tscn` 打开资料库/卡牌图鉴后 browser 正常渲染，控制台无错误；退出后 `is_playing_scene=false` 且 A 工作树无额外 headless/游戏进程。
+- 完整 `layout_scene_smoke_test.gd` 仍为红灯；失败清单集中在旧 v0.4/v0.5 owner 组成、已物理删除的 Main snapshot/wrapper、历史 Economy/Military/Victory/TableSnapshot 断言。本轮 Card Codex SourceService、31 项切换合同和五个 helper 退役门均未进入失败清单，因此没有为通过旧总门恢复兼容层。
+- 下一隐私切口已只读定位到 Region Codex：无公开线索时会回退当前玩家城市猜测/隐藏 owner，怪兽吸引说明还会暴露自动单位内部权重。后续必须由 Region 公共 source adapter 与 Monster owner 的非数值公共投影解决，不能把私有 Intel helper 或怪兽权重公式复制进展示层。
+
 ## 2026-07-15｜主桌静态组成与受光面镜头展示
 
 - `main.tscn` 现直接静态拥有 RuntimeGameScreen、PlanetMapView、FullscreenMapOverlay、卡牌结算横幅、底部倒计时、区域牌架侧栏和桌面音频节点。`main.gd` 已物理删除这些组件的动态 preload/instantiate/find-child fallback 与临时音频构造；缺少静态组成时明确失败，不再运行时重建第二套 UI。

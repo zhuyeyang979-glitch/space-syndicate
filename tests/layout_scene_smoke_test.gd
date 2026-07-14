@@ -12419,7 +12419,7 @@ func _check_card_codex_public_snapshot_cutover_component() -> void:
 		service.free()
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	_expect(coordinator != null and coordinator.get_node_or_null("CardCodexPublicSnapshotService") != null and coordinator.has_method("compose_card_codex_browser") and coordinator.has_method("compose_card_codex_detail"), "GameRuntimeCoordinator composes and proxies CardCodexPublicSnapshotService")
+	_expect(coordinator != null and coordinator.get_node_or_null("CardCodexPublicSnapshotService") != null and coordinator.get_node_or_null("CardCodexPublicSourceService") != null and coordinator.has_method("card_codex_public_browser_snapshot") and coordinator.has_method("card_codex_public_detail_snapshot"), "GameRuntimeCoordinator scene owns CardCodex public source and final snapshot services")
 	if coordinator != null:
 		coordinator.free()
 	var bench_packed := load(CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
@@ -12429,25 +12429,29 @@ func _check_card_codex_public_snapshot_cutover_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CardCodexPublicSnapshotCutoverBench exposes required QA APIs")
-		var expected_cases := ["required_service_assets_load", "service_scene_contract", "existing_viewmodels_reused", "card_source_pure_data", "browser_summary_contract", "browser_card_contract", "browser_filter_contract", "browser_preview_contract", "detail_summary_contract", "detail_card_face_contract", "detail_tactical_contract", "detail_fact_contract", "detail_upgrade_contract", "detail_resolution_contract", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_and_detail_routes", "legacy_card_formatters_absent_and_metrics"]
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "source_adapter_contract", "source_service_dependency_contract", "source_service_dependency_fail_closed", "public_field_schema", "existing_viewmodels_reused", "card_source_pure_data", "browser_summary_contract", "browser_card_contract", "browser_filter_contract", "browser_preview_contract", "detail_summary_contract", "detail_card_face_contract", "detail_tactical_contract", "detail_fact_contract", "detail_upgrade_contract", "detail_resolution_contract", "empty_source_safe", "privacy_boundary", "forbidden_private_input_fail_closed", "cross_viewer_private_state_invariance", "card_play_world_bridge_not_called", "rank_one_price_contract", "real_i_to_iv_upgrade_contract", "no_market_solar_camera_or_save_owner", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_coordinator_browser_and_detail_routes", "real_codex_surface_browser_and_detail", "legacy_card_formatters_absent_and_metrics"]
 		var cases: Array = bench.call("cutover_cases")
 		var retired_formatters: Array = bench.call("retired_formatter_names")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
 		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 20
+		var fields_ok := records.size() == 31
 		for record_variant: Variant in records:
 			var record := record_variant as Dictionary
 			for key in ["case_id", "card_name", "service_checked", "main_checked", "browser_checked", "detail_checked", "rule_boundary_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
 				fields_ok = fields_ok and record.has(key)
 		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-		var all_retired := retired_formatters.size() == 19
+		var all_retired := retired_formatters.size() == 24
 		for formatter_name_variant in retired_formatters:
 			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
-		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 19 and str(bench.call("output_dir")) == CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CardCodexPublicSnapshotCutoverBench defines 20 pure-data cases, 19 retired formatters, and user:// outputs")
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 24 and str(bench.call("output_dir")) == CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CARD_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CardCodexPublicSnapshotCutoverBench defines 31 pure-data cases, 24 retired formatters, and user:// outputs")
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _card_codex_public_browser_source(") and main_source.contains("func _card_codex_public_browser_snapshot(") and main_source.contains("func _card_codex_public_card_facts(") and main_source.contains("func _card_codex_public_detail_snapshot(") and main_source.contains("compose_card_codex_browser") and main_source.contains("compose_card_codex_detail"), "main.gd keeps only Card public-fact adapters and delegates presentation")
+	var retired_card_public_helpers := ["_card_codex_public_browser_source", "_card_codex_public_browser_snapshot", "_card_codex_public_card_facts", "_card_codex_public_upgrade_facts", "_card_codex_public_detail_snapshot"]
+	var retired_card_public_helpers_absent := true
+	for helper_name_variant: Variant in retired_card_public_helpers:
+		retired_card_public_helpers_absent = retired_card_public_helpers_absent and not main_source.contains("func %s(" % str(helper_name_variant))
+	_expect(retired_card_public_helpers_absent and main_source.contains("card_codex_public_browser_snapshot") and main_source.contains("card_codex_public_detail_snapshot"), "main.gd deletes Card Codex public source wrappers and calls the scene-owned Coordinator boundary")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0
