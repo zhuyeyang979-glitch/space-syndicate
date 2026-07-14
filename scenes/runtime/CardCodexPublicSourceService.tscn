@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_codex_public_source_service.gd" id="1_service"]
+
+[node name="CardCodexPublicSourceService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Scene-owned public Card Codex source assembler. It consumes only injected catalog, presentation, eligibility, diagnostics, snapshot, and balance services; no world bridge or private player state."
