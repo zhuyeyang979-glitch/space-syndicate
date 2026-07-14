@@ -2,6 +2,7 @@ extends Node
 
 const CATALOG_PATH := "res://resources/cards/runtime/card_runtime_catalog_v06.tres"
 const SERVICE_SCRIPT := preload("res://scripts/cards/v06/card_flow_transaction_service_v06.gd")
+const QUOTE_AUTHORITY_FIXTURE_SCRIPT := preload("res://scripts/tools/card_market_quote_authority_fixture.gd")
 
 var _failures := 0
 
@@ -39,10 +40,11 @@ func _run() -> void:
 
 
 func _run_belt_and_market(catalog: CardRuntimeCatalogV06Resource) -> void:
-	var service = SERVICE_SCRIPT.new(catalog)
+	var quote_authority = QUOTE_AUTHORITY_FIXTURE_SCRIPT.new()
+	var service = SERVICE_SCRIPT.new(catalog, null, quote_authority)
 	var ring := catalog.card_snapshot("commodity.ring_crystal_battery.rank_1")
-	service.register_player("A", _state([], 10))
-	service.register_player("B", _state([], 10))
+	service.register_player("A", _state([], 10, {}, 0))
+	service.register_player("B", _state([], 10, {}, 1))
 	var state_port: Object = service.player_state_port()
 	var port_read_variant: Variant = state_port.call("read_player", "A") if state_port != null else {}
 	var port_read: Dictionary = port_read_variant as Dictionary if port_read_variant is Dictionary else {}
@@ -55,12 +57,15 @@ func _run_belt_and_market(catalog: CardRuntimeCatalogV06Resource) -> void:
 
 	var warehouse := catalog.card_snapshot("facility.orbital_warehouse.rank_1")
 	var road := catalog.card_snapshot("facility.road.rank_1")
-	service.configure_market(20, {"item_id": "market-warehouse", "card": warehouse, "price_cash": 4})
-	var purchase := service.purchase_market_card("A", "market-warehouse", {"item_id": "market-road", "card": road, "price_cash": 3}, 1, 20, "bench-market-a")
+	var warehouse_listing := _market_listing("market-warehouse", warehouse, 4, "bench-supply-warehouse")
+	var road_listing := _market_listing("market-road", road, 3, "bench-supply-road")
+	service.configure_market(20, warehouse_listing)
+	var quote: Dictionary = quote_authority.issue_quote(0, 0, "facility.orbital_warehouse.rank_1", "bench-supply-warehouse", 4)
+	var purchase := service.purchase_market_card("A", "market-warehouse", road_listing, 1, 20, "bench-market-a", quote)
 	var market := service.market_snapshot()
 	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
 	_check("market_atomic_refresh", bool(purchase.get("committed", false)) and int(market.get("revision", -1)) == 21 and str(listing.get("item_id", "")) == "market-road", {"cash": service.player_snapshot("A").get("cash", -1), "listing": listing.get("item_id", ""), "revision": market.get("revision", -1)})
-	var replay := service.purchase_market_card("A", "market-warehouse", {"item_id": "market-road", "card": road, "price_cash": 3}, 1, 20, "bench-market-a")
+	var replay := service.purchase_market_card("A", "market-warehouse", road_listing, 1, 20, "bench-market-a", quote)
 	_check("transaction_replay", bool(replay.get("committed", false)) and bool(replay.get("idempotent_replay", false)) and int(service.market_snapshot().get("revision", -1)) == 21, {"idempotent": replay.get("idempotent_replay", false)})
 
 
@@ -85,12 +90,26 @@ func _run_effect_rollback(catalog: CardRuntimeCatalogV06Resource) -> void:
 	_check("six_color_assets", not player_assets.has("generic"), {"generic_pool": player_assets.has("generic"), "term": "资产"})
 
 
-func _state(cards: Array, cash: int, assets: Dictionary = {}) -> Dictionary:
-	return {
+func _state(cards: Array, cash: int, assets: Dictionary = {}, player_index: int = -1) -> Dictionary:
+	var state := {
 		"revision": 0,
 		"cash": cash,
 		"assets": _assets() if assets.is_empty() else assets.duplicate(true),
 		"inventory": {"hand_limit": 5, "slots": cards.duplicate(true)},
+	}
+	if player_index >= 0:
+		state["player_index"] = player_index
+	return state
+
+
+func _market_listing(item_id: String, card: Dictionary, price_cash: int, supply_revision: String) -> Dictionary:
+	return {
+		"item_id": item_id,
+		"card": card,
+		"price_cash": price_cash,
+		"source_district_index": 0,
+		"source_region_id": "region.alpha",
+		"supply_revision": supply_revision,
 	}
 
 

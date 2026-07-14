@@ -219,7 +219,7 @@ func card_balance_pillars(skill: Dictionary, card_facts: Dictionary = {}) -> Arr
 		_append_unique(pillars, "信息")
 	if tags.contains("互动") or kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"]:
 		_append_unique(pillars, "互动")
-	if int(skill.get("draw_amount", 0)) > 0 or int(skill.get("card_access_extra_hops", 0)) > 0 or bool(skill.get("card_access_global", false)) or kind in ["card_access_boon", "supply_draw"]:
+	if int(skill.get("draw_amount", 0)) > 0 or kind == "supply_draw":
 		_append_unique(pillars, "补给")
 	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover"] or tags.contains("怪兽"):
 		_append_unique(pillars, "怪兽")
@@ -365,7 +365,7 @@ func role_budget(role_card: Dictionary) -> Dictionary:
 		["intel_city_reveal_charges", "城市归属侦测", 42.0, "intel"], ["intel_card_trace_charges", "卡牌追帧", 48.0, "intel"],
 		["intel_contract_trace_charges", "合约回溯", 40.0, "intel"], ["city_guess_reward_bonus", "城市竞猜奖励", 0.25, "intel"],
 		["card_owner_guess_discount", "卡牌竞猜折扣", 0.8, "intel"], ["card_owner_guess_bonus", "卡牌竞猜奖励", 0.8, "intel"],
-		["contract_flow_discount", "合约GDP门槛折扣", 34.0, "contract"], ["card_access_extra_hops", "远程购牌", 44.0, "supply"],
+		["contract_flow_discount", "合约GDP门槛折扣", 34.0, "contract"],
 		["monster_control_limit_bonus", "怪兽归属上限", 58.0, "monster"], ["military_control_limit_bonus", "军队归属上限", 52.0, "military"],
 	]
 	for component in components:
@@ -374,8 +374,6 @@ func role_budget(role_card: Dictionary) -> Dictionary:
 			_role_budget_add(report, str(component[1]), maxi(1, int(ceil(float(raw) * float(component[2])))), str(component[3]))
 	if str(role_card.get("bonus_card_product", "")) != "":
 		_role_budget_add(report, "区域赠牌", 42, "supply")
-	if bool(role_card.get("card_access_global", false)):
-		_role_budget_add(report, "全图购牌", 90, "supply")
 	if bool(role_card.get("monster_cards_as_counter", false)):
 		_role_budget_add(report, "怪兽牌否决", 64, "counter")
 	var points := int(report.get("points", 0))
@@ -641,7 +639,7 @@ func card_supply_layer_report(world_snapshot: Dictionary = {}) -> Dictionary:
 	var source_counts := {}
 	for district_variant in _array(snapshot.get("districts", [])):
 		var district: Dictionary = district_variant if district_variant is Dictionary else {}
-		var accessible := ["landed", "adjacent", "extended", "global"].has(str(district.get("access_kind", "")))
+		var accessible := str(district.get("availability_kind", "")) == "sunlit"
 		var sources := _dictionary(district.get("card_sources", {}))
 		for card_variant in _array(district.get("card_choices", [])):
 			var card_name := str(card_variant)
@@ -913,7 +911,7 @@ func _fallback_route_id(skill: Dictionary) -> String:
 	if kind in ["area_trade_contract", "product_contract_boon", "city_contract_boon"]: return "contract_route"
 	if kind in ["product_speculation", "product_futures", "city_gdp_derivative", "market_stabilize", "product_growth_boon"]: return "finance_speculation"
 	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover", "route_sabotage", "weather_control", "news_event", "military_force", "military_command"]: return "monster_pressure"
-	if kind.begins_with("intel_") or kind in ["supply_draw", "card_access_boon"]: return "intel_supply"
+	if kind.begins_with("intel_") or kind == "supply_draw": return "intel_supply"
 	if kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"]: return "direct_interaction"
 	return "tactical_support"
 
@@ -953,8 +951,7 @@ func _pressure_card_entry(card: Dictionary) -> Dictionary:
 	disruption += int(float(maxi(0, int(skill.get("target_cash_penalty", 0)))) / 2.0) + int(round(maxf(0.0, float(skill.get("control_block_seconds", 0.0))) * maxi(0, int(skill.get("control_gdp_penalty", 0))) / 18.0))
 	disruption += maxi(0, int(skill.get("global_barrage_target_count", 0))) * (maxi(0, int(skill.get("global_barrage_damage", 0))) * 70 + maxi(0, int(skill.get("global_barrage_route_damage", 0))) * 46)
 	var protection := maxi(0, int(skill.get("repair_routes", 0))) * 62 + maxi(0, int(skill.get("armor", 0))) * 18 + maxi(0, int(skill.get("guard", 0))) * 18 + maxi(0, int(skill.get("ranged_guard", 0))) * 18 + maxi(0, int(skill.get("counter_strength", 0))) * 80 + maxi(0, int(skill.get("stabilize_amount", 0))) * 36
-	var intel_supply := maxi(0, int(skill.get("trace_card_count", 0))) * 84 + maxi(0, int(skill.get("trace_contract_count", 0))) * 88 + maxi(0, int(skill.get("reveal_city_count", 0))) * 92 + maxi(0, int(skill.get("draw_amount", 0))) * 72 + maxi(0, int(skill.get("card_access_extra_hops", 0))) * 68
-	if bool(skill.get("card_access_global", false)): intel_supply += 140
+	var intel_supply := maxi(0, int(skill.get("trace_card_count", 0))) * 84 + maxi(0, int(skill.get("trace_contract_count", 0))) * 88 + maxi(0, int(skill.get("reveal_city_count", 0))) * 92 + maxi(0, int(skill.get("draw_amount", 0))) * 72
 	var gate := maxi(0, int(skill.get("cost", 0))) * 8 + required_share * 4 + _card_budget_gate_facts(card).size() * 18
 	var clue := 0
 	if str(card.get("play_product", "")) != "": clue += 18

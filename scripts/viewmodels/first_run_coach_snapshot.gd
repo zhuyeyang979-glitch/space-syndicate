@@ -2,7 +2,6 @@ extends RefCounted
 class_name FirstRunCoachSnapshot
 
 const STAGE_SELECT_DISTRICT := "select_district"
-const STAGE_FIRST_SUMMON := "first_summon"
 const STAGE_BUILD_CITY := "build_city"
 const STAGE_OPEN_RACK := "open_rack"
 const STAGE_BUY_CARD := "buy_card"
@@ -17,7 +16,6 @@ const STAGE_DONE := "done"
 
 const STEP_ORDER := [
 	STAGE_SELECT_DISTRICT,
-	STAGE_FIRST_SUMMON,
 	STAGE_OPEN_RACK,
 	STAGE_BUY_CARD,
 	STAGE_PLAY_CARD,
@@ -80,8 +78,6 @@ func _stage_from_progress(progress: Dictionary, auto_fold_after_route_choice: bo
 		return STAGE_DONE
 	if not _bool(progress, "selected_district"):
 		return STAGE_SELECT_DISTRICT
-	if not _bool(progress, "has_monster"):
-		return STAGE_FIRST_SUMMON
 	if not _bool(progress, "has_opened_supply"):
 		return STAGE_OPEN_RACK
 	if not _bool(progress, "has_bought_card"):
@@ -111,13 +107,6 @@ func _stage_definition(stage: String) -> Dictionary:
 				"title": "先点一个区域",
 				"body": "点中央星球的一块地。",
 				"tooltip": "选区后，右侧只给下一步和关键条件。",
-			}
-		STAGE_FIRST_SUMMON:
-			return {
-				"phase_label": "首召",
-				"title": "在选区首召怪兽",
-				"body": "打一张起始怪兽牌。",
-				"tooltip": "首召后，怪兽所在区和邻区可买牌。",
 			}
 		STAGE_BUILD_CITY:
 			return {
@@ -202,8 +191,6 @@ func _default_primary_action(stage: String) -> Dictionary:
 	match stage:
 		STAGE_SELECT_DISTRICT:
 			return {"id": "coach_select_district", "label": "点选区域", "tooltip": "把焦点放到一个区域。"}
-		STAGE_FIRST_SUMMON:
-			return {"id": "coach_first_summon", "label": "在选区首召", "tooltip": "打出起始怪兽。"}
 		STAGE_BUILD_CITY:
 			return {"id": "coach_open_rack", "label": "打开发展牌架", "tooltip": "直建已停用；从真实发展牌进入城市项目。"}
 		STAGE_OPEN_RACK:
@@ -232,8 +219,6 @@ func _focus_target_for_stage(stage: String) -> String:
 	match stage:
 		STAGE_SELECT_DISTRICT:
 			return "planet"
-		STAGE_FIRST_SUMMON:
-			return "player_hand"
 		STAGE_BUILD_CITY:
 			return "action_dock"
 		STAGE_OPEN_RACK:
@@ -262,8 +247,6 @@ func _shortest_action_for_stage(stage: String) -> String:
 	match stage:
 		STAGE_SELECT_DISTRICT:
 			return "按确认选区。"
-		STAGE_FIRST_SUMMON:
-			return "看手牌，首召怪兽。"
 		STAGE_BUILD_CITY:
 			return "打开发展牌架，购买并打出项目牌。"
 		STAGE_OPEN_RACK:
@@ -340,8 +323,6 @@ func _stage_focus_chip_text(stage: String) -> String:
 	match stage:
 		STAGE_SELECT_DISTRICT:
 			return "看星球"
-		STAGE_FIRST_SUMMON:
-			return "看手牌"
 		STAGE_BUILD_CITY:
 			return "看行动"
 		STAGE_OPEN_RACK:
@@ -370,8 +351,6 @@ func _stage_result_chip_text(stage: String) -> String:
 	match stage:
 		STAGE_SELECT_DISTRICT:
 			return "选定区"
-		STAGE_FIRST_SUMMON:
-			return "怪兽落地"
 		STAGE_BUILD_CITY:
 			return "现金流"
 		STAGE_OPEN_RACK:
@@ -414,8 +393,6 @@ func _stage_done(progress: Dictionary, stage: String) -> bool:
 	match stage:
 		STAGE_SELECT_DISTRICT:
 			return _bool(progress, "selected_district")
-		STAGE_FIRST_SUMMON:
-			return _bool(progress, "has_monster")
 		STAGE_BUILD_CITY:
 			return _bool(progress, "has_city")
 		STAGE_OPEN_RACK:
@@ -468,8 +445,6 @@ func _stage_accent(stage: String) -> Color:
 	match stage:
 		STAGE_SELECT_DISTRICT:
 			return Color("#38bdf8")
-		STAGE_FIRST_SUMMON:
-			return Color("#fb7185")
 		STAGE_BUILD_CITY:
 			return Color("#4ade80")
 		STAGE_OPEN_RACK:

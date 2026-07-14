@@ -47,8 +47,6 @@ func plan_purchase(request: Dictionary) -> Dictionary:
 	var authorization: Dictionary = request.get("authorization", {}) if request.get("authorization", {}) is Dictionary else {}
 	if not bool(authorization.get("authorized", false)):
 		return _purchase_rejection(str(authorization.get("reason", "window_unauthorized")))
-	if not bool(request.get("live_access_valid", false)):
-		return _purchase_rejection("live_access_invalid")
 	if not bool(request.get("supply_contains_card", false)):
 		return _purchase_rejection("card_not_in_supply")
 	var price := maxi(0, int(request.get("price", 0)))

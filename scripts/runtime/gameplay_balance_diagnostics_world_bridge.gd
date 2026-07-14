@@ -200,7 +200,7 @@ func _district_facts(selected_player: int) -> Array:
 			"monster_cards": monster_cards,
 			"card_sources": _dictionary(district.get("card_sources", {})),
 			"monster_guarantee_card": _canonical_card_id(str(district.get("monster_guarantee_card", ""))),
-			"access_kind": _world_string_call(&"_district_card_access_kind", [district_index, selected_player]),
+			"availability_kind": _world_string_call(&"_district_market_availability_kind", [district_index]),
 			"city_active": bool(_world.call("_city_is_active", city)) if _world.has_method("_city_is_active") else not city.is_empty(),
 			"city_products": _world_array_call(&"_city_product_names", [city]),
 			"city_demands": _world_array_call(&"_city_demand_names", [city]),

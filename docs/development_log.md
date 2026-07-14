@@ -3,6 +3,17 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜v0.6 恒星日照牌市与锁价报价唯一 owner
+
+- 新增场景化 `WorldEffectiveClockRuntimeController`、纯派生 `SolarAvailabilityRuntimeService`、非所有权 `CardMarketPolicyWorldBridge` 与 `CardMarketPricingRuntimeController`，静态组成进 `GameRuntimeCoordinator`。世界时钟以整数微秒为唯一权威并集中保留帧间小数余量；真正暂停冻结，打开牌市不冻结。太阳相位只从该时钟、固定初相位与区域中心派生，120 秒一周，不保存第二份相位，MapView 镜头/缩放/焦点不进入规则计算。
+- 普通牌挂牌现在全局可浏览，只有来源区域中心受光时可买；暗面只读。显式选择才创建 5 秒半开区间报价（`now_world_us < expires_at_world_us`），hover、Codex 和刷新只读 preview，不创建或续期报价。快照绑定玩家、来源区、卡牌和供应 revision，并锁定资格、怪兽计数、`q2` 与最终价格；换牌、换供应或到期均 fail-closed，不回退 live 重算。
+- 价格唯一公式为 `q2=min(10, 2+2*同区存活怪兽数+相邻存活怪兽数)`、`final=ceil(P*q2/2)`；归属不参与，倒地或过期怪兽不参与。公共报价可公开同区/相邻怪兽计数（均为公开场面事实），但不含玩家绑定、精确现金、手牌、怪兽 owner、弃牌或 AI 计划。
+- Human 普通牌、first-table 设施与 CardFlow 市场购买统一消费同一 quote authority；缺 quote、伪造绑定、过期或 supply revision 变化均原子拒绝。内存状态端口必须显式注册非负且唯一的 `player_index`，不再按 actor 名称排序推断。真实普通牌结算验证现金、库存、购买计数与供应 revision exact-once。
+- 起始怪兽牌仍在手中，但召唤完全自愿且不阻断设施/收入。首局 fixture 固定 `map_seed=606120`、设施挂牌来源区 5；修复 JSON 整数以 float 解码后旧 `is int` 门导致地图 seed 未生效的问题，使该真实 Voronoi 来源在 `t=0` 可重复受光。focused 流程已覆盖无怪兽购买设施、生成一张 Sale Receipt/正收入、再次购牌后再自愿召唤。
+- `main.gd` 物理净删 82 行、净删 3 个函数；旧 monster-access qualification、landed/adjacent/extended/global 分档、0.8/floor、12 秒 window tick、强制首召门槛与 `game_time +=` 第二时钟均已从生产路径删除。GameSession v3 现通过已有 section 捕获/恢复 `world_effective_us`；独立 Session 未绑定 clock 时明确捕获失败，不伪造 0，Solar 不进入 save。
+- 8785 Funplay MCP 开发证据：Card-market production test 46/46、Main composition PASS、CardFlow 73/73、production adapter 44/44、Commodity inventory 46/46；CardInventory、Commodity persistent installation 与 ProductMarket headed characterization 均 `_failures=[]`，每次均 clean stop。486 文件扫描只剩本阶段未触碰的 `military_runtime_characterization_bench.gd` 既有类型推断红；目标 runtime 脚本扫描无红。最终 smoke/layout/privacy/save 验收留给 A/C。
+- 已知后续迁移：活动 v0.4 catalog 仍含 `远程补给链1`/`星门采购权1` 的 `card_access_boon` 旧数据；生产 eligibility 已 fail-closed，本阶段未擅自重写牌义，必须由独立卡牌数据阶段退役或重做。`smoke_test.gd`、`commercial_playability_gate_test.gd`、`player_facing_privacy_boundary_test.gd` 与部分 layout oracle 仍直接引用已删除 helper，由 C 在本 SHA 后原子迁移。未新增第三方代码、素材或许可证义务。
+
 ## 2026-07-15｜v0.6 破产与中立遗产唯一运行时 owner
 
 - 新增场景化 `BankruptcyNeutralEstateRuntimeController` 与无状态 WorldBridge，静态组成进 `GameRuntimeCoordinator`；CommodityFlow Sale Receipt 完成后、资产恢复和 Victory 前执行唯一破产检查点。精确现金 `<0` 才破产，`==0` 留局；`main.gd` 的 `<=0`、现金夹零、散落调用和最后幸存触发已物理删除。

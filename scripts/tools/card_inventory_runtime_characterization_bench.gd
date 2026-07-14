@@ -370,7 +370,7 @@ func _cutover_purchase_settlement_delegates() -> Dictionary:
 	var settlement_before := _settlement_debug()
 	var bought := false
 	if not fixture.is_empty():
-		bought = bool(_runtime_main.call("_buy_card_for_player_from_district", player_index, int(fixture.get("district_index", -1)), str(fixture.get("card_id", "")), true, true, -1))
+		bought = bool(_runtime_main.call("_buy_card_for_player_from_district", player_index, int(fixture.get("district_index", -1)), str(fixture.get("card_id", "")), true, true, -1, str(fixture.get("quote_id", ""))))
 	var after := _player_probe(player_index)
 	var inventory_after := _inventory_debug()
 	var settlement_after := _settlement_debug()
@@ -465,7 +465,7 @@ func _case_purchase_inventory_delegate_observed() -> Dictionary:
 	var debug_before := _settlement_debug()
 	var bought := false
 	if not fixture.is_empty():
-		bought = bool(_runtime_main.call("_buy_card_for_player_from_district", player_index, int(fixture.get("district_index", -1)), str(fixture.get("card_id", "")), true, true, -1))
+		bought = bool(_runtime_main.call("_buy_card_for_player_from_district", player_index, int(fixture.get("district_index", -1)), str(fixture.get("card_id", "")), true, true, -1, str(fixture.get("quote_id", ""))))
 	var after := _player_probe(player_index)
 	var debug_after := _settlement_debug()
 	var service_route := int(debug_after.get("committed_count", 0)) - int(debug_before.get("committed_count", 0)) == 1
@@ -1135,18 +1135,26 @@ func _interaction_skill(kind: String) -> Dictionary:
 
 func _first_supply_fixture() -> Dictionary:
 	var districts: Array = _runtime_main.get("districts") as Array
+	var coordinator := _coordinator()
 	for district_index in range(districts.size()):
 		if not (districts[district_index] is Dictionary) or bool((districts[district_index] as Dictionary).get("destroyed", false)):
+			continue
+		var availability_variant: Variant = coordinator.call("card_market_listing_availability", district_index) if coordinator != null and coordinator.has_method("card_market_listing_availability") else {}
+		var availability: Dictionary = availability_variant if availability_variant is Dictionary else {}
+		if str(availability.get("availability_kind", "")) != "sunlit" or not bool(availability.get("purchasable", false)):
 			continue
 		var choices: Array = (districts[district_index] as Dictionary).get("card_choices", []) if (districts[district_index] as Dictionary).get("card_choices", []) is Array else []
 		for choice_variant in choices:
 			var card_id := str(_runtime_main.call("_canonical_card_supply_name", str(choice_variant)))
 			if not card_id.is_empty() and _card_exists(card_id):
-				return {"district_index": district_index, "card_id": card_id}
+				return {"district_index": district_index, "card_id": card_id, "availability_kind": "sunlit", "world_effective_us": int(availability.get("world_effective_us", -1))}
 	return {}
 
 
 func _prepare_purchase_fixture(player_index: int) -> Dictionary:
+	var coordinator := _coordinator()
+	if coordinator != null and coordinator.has_method("restore_world_effective_seconds"):
+		coordinator.call("restore_world_effective_seconds", 0.0)
 	var fixture := _first_supply_fixture()
 	if fixture.is_empty():
 		return {}
@@ -1157,13 +1165,13 @@ func _prepare_purchase_fixture(player_index: int) -> Dictionary:
 	_runtime_main.set("selected_district", district_index)
 	_runtime_main.set("selected_market_skill", card_id)
 	_runtime_main.set("previewed_district_card", card_id)
-	var monsters := _monster_controller()
-	var monster_variant: Variant = monsters.call("_make_auto_monster", 0, 0, district_index, player_index, 1) if monsters != null else {}
-	var monster: Dictionary = monster_variant if monster_variant is Dictionary else {}
-	if monsters != null:
-		monsters.call("replace_runtime_state", {"auto_monsters": [monster] if not monster.is_empty() else []})
 	_runtime_main.call("_open_district_card_purchase_window", district_index, player_index)
-	return {"player_index": player_index, "district_index": district_index, "card_id": card_id}
+	_runtime_main.call("_select_district_card_for_quote", card_id, false)
+	var quote_variant: Variant = coordinator.call("card_market_active_quote", player_index, district_index) if coordinator != null and coordinator.has_method("card_market_active_quote") else {}
+	var quote: Dictionary = quote_variant if quote_variant is Dictionary else {}
+	if str(quote.get("quote_id", "")).is_empty() or not bool(quote.get("eligible", false)):
+		return {}
+	return {"player_index": player_index, "district_index": district_index, "card_id": card_id, "quote_id": str(quote.get("quote_id", "")), "availability_kind": str(fixture.get("availability_kind", "")), "world_effective_us": int(fixture.get("world_effective_us", -1))}
 
 
 func _role_bonus_fixture() -> Dictionary:

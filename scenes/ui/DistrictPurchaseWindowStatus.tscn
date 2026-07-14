@@ -28,14 +28,14 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "购买资格已锁定"
+text = "等待选择报价"
 text_overrun_behavior = 3
 
 [node name="DistrictPurchaseWindowTimerLabel" type="Label" parent="StatusMargin/StatusRows/StatusHeader"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(76, 0)
 layout_mode = 2
-text = "等待快照"
+text = "未启动"
 horizontal_alignment = 2
 
 [node name="DistrictPurchaseWindowTimerBar" type="ProgressBar" parent="StatusMargin/StatusRows"]
@@ -49,6 +49,6 @@ show_percentage = false
 [node name="DistrictPurchaseWindowDetailLabel" type="Label" parent="StatusMargin/StatusRows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "怪兽落地区｜渠道优惠｜锁定倍率 ×0.64"
+text = "先选牌生成报价；悬停和界面刷新不会启动5秒锁定。"
 autowrap_mode = 3
 text_overrun_behavior = 3

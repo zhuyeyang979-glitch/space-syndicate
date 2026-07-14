@@ -37,7 +37,7 @@ func _ready() -> void:
 func set_supply(snapshot: Dictionary) -> void:
 	_snapshot = snapshot.duplicate(true)
 	title_label.text = str(snapshot.get("title", "区域牌架"))
-	rule_strip.text = str(snapshot.get("rule_strip", "单击预览｜双击购买｜可先查看，购买资格按开窗瞬间锁定"))
+	rule_strip.text = str(snapshot.get("rule_strip", "悬停预览｜单击或键盘选择生成5秒报价｜双击按当前报价购买"))
 	rule_strip.tooltip_text = str(snapshot.get("rule_tooltip", rule_strip.text))
 	privacy_hint.text = str(snapshot.get("privacy_hint", "只显示当前玩家可见的购买状态；不会公开手牌、弃牌或渠道来源。"))
 	privacy_hint.tooltip_text = str(snapshot.get("privacy_tooltip", privacy_hint.text))
@@ -65,7 +65,7 @@ func clear_supply() -> void:
 	if title_label != null:
 		title_label.text = "区域牌架"
 	if rule_strip != null:
-		rule_strip.text = "单击预览｜双击购买｜可先查看，购买资格按开窗瞬间锁定"
+		rule_strip.text = "悬停预览｜单击或键盘选择生成5秒报价｜双击按当前报价购买"
 	if privacy_hint != null:
 		privacy_hint.text = "只显示当前玩家可见的购买状态。"
 	if purchase_status != null and purchase_status.has_method("set_snapshot"):

@@ -237,7 +237,7 @@ func _tactical_combo_text(kind: String, route_label: String) -> String:
 	if kind in ["military_force", "military_command"]: return "配合城市防守、商路压制和怪兽猎杀。"
 	if kind == "area_trade_contract": return "配合商品供需、交通区和拒签奖惩。"
 	if kind in ["city_gdp_derivative", "product_futures", "product_speculation"]: return "配合供需压力、天气窗口和怪兽破坏。"
-	if kind in ["card_access_boon", "supply_draw"]: return "配合同名同级牌，为主动合并准备素材。"
+	if kind == "supply_draw": return "配合同名同级牌，为主动合并准备素材。"
 	match route_label:
 		"城市成长": return "配合交通升级、需求扩张和商路修复。"
 		"城市压制": return "配合做空、怪兽诱导和断路效果。"

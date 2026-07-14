@@ -122,7 +122,7 @@ static func _required_share_percent(rank: int, skill: Dictionary) -> int:
 	var kind := String(skill.get("kind", ""))
 	if ALWAYS_FREE_KINDS.has(kind):
 		return 0
-	var high_impact := HIGH_IMPACT_KINDS.has(kind) or bool(skill.get("card_access_global", false))
+	var high_impact := HIGH_IMPACT_KINDS.has(kind)
 	var table := HIGH_IMPACT_SHARE_BY_RANK if high_impact else BASE_SHARE_BY_RANK
 	var result := int(table.get(clampi(rank, 1, 4), 0))
 	return clampi(result, 0, 100)

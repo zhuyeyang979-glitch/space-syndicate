@@ -27,6 +27,18 @@ var _ai_v06_economy_action_port: RefCounted
 
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
+	var world_clock := _world_effective_clock_runtime_controller_node()
+	if world_clock != null and world_clock.has_method("configure"):
+		world_clock.call("configure", {})
+	var solar_availability := _solar_availability_runtime_service_node()
+	if solar_availability != null and solar_availability.has_method("configure"):
+		solar_availability.call("configure", {})
+	var card_market_bridge := _card_market_policy_world_bridge_node()
+	var card_market_pricing := _card_market_pricing_runtime_controller_node()
+	if card_market_pricing != null and card_market_pricing.has_method("set_dependencies"):
+		card_market_pricing.call("set_dependencies", world_clock, solar_availability, card_market_bridge)
+	if card_market_pricing != null and card_market_pricing.has_method("configure"):
+		card_market_pricing.call("configure", {})
 	var region_infrastructure := _region_infrastructure_runtime_controller_node()
 	var region_infrastructure_bridge := _region_infrastructure_world_bridge_node()
 	if region_infrastructure_bridge != null and region_infrastructure_bridge.has_method("set_controller"):
@@ -51,9 +63,13 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	if scheduler != null and scheduler.has_method("configure"):
 		scheduler.call("configure", priority_order)
 	var session := _session_node()
+	if session != null and session.has_method("set_world_effective_clock"):
+		session.call("set_world_effective_clock", world_clock)
 	if session != null and session.has_method("configure"):
 		session.call("configure", ruleset_snapshot, {})
 	var purchase := _purchase_node()
+	if purchase != null and purchase.has_method("set_quote_authority"):
+		purchase.call("set_quote_authority", card_market_pricing)
 	if purchase != null and purchase.has_method("configure"):
 		var timing_variant: Variant = ruleset_snapshot.get("timing", {})
 		purchase.call("configure", timing_variant if timing_variant is Dictionary else {})
@@ -124,6 +140,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	if card_player_state_adapter != null and card_player_state_adapter.has_method("configure"):
 		var commodity_catalog: Resource = commodity_card_inventory.call("catalog") if commodity_card_inventory != null and commodity_card_inventory.has_method("catalog") else null
 		card_player_state_adapter.call("configure", commodity_catalog, player_mana)
+	if commodity_card_inventory != null and commodity_card_inventory.has_method("set_market_quote_authority"):
+		commodity_card_inventory.call("set_market_quote_authority", card_market_pricing)
 	if commodity_card_inventory != null and commodity_card_inventory.has_method("configure"):
 		commodity_card_inventory.call(
 			"configure",
@@ -333,12 +351,18 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var weather_snapshot := _weather_runtime_debug_snapshot()
 	var contract_snapshot := _contract_runtime_debug_snapshot()
 	var victory_snapshot := _victory_control_runtime_debug_snapshot()
-	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
+	var world_clock_snapshot := _node_debug_snapshot(world_clock)
+	var solar_snapshot := _node_debug_snapshot(solar_availability)
+	var card_market_snapshot := _node_debug_snapshot(card_market_pricing)
+	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
 	_refresh_coordinator_readiness()
 
 
 func bind_ai_world(world: Node) -> void:
 	_bound_world = world
+	var card_market_bridge := _card_market_policy_world_bridge_node()
+	if card_market_bridge != null and card_market_bridge.has_method("bind_world"):
+		card_market_bridge.call("bind_world", world)
 	var region_infrastructure_bridge := _region_infrastructure_world_bridge_node()
 	if region_infrastructure_bridge != null and region_infrastructure_bridge.has_method("bind_world"):
 		region_infrastructure_bridge.call("bind_world", world)
@@ -906,6 +930,59 @@ func apply_session_save_data(data: Dictionary) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func advance_world_effective_clock(delta_seconds: float) -> Dictionary:
+	var clock := _world_effective_clock_runtime_controller_node()
+	var value: Variant = clock.call("advance", delta_seconds) if clock != null and clock.has_method("advance") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func restore_world_effective_seconds(seconds: float) -> Dictionary:
+	var clock := _world_effective_clock_runtime_controller_node()
+	var value: Variant = clock.call("restore_seconds", seconds) if clock != null and clock.has_method("restore_seconds") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func world_effective_clock_snapshot() -> Dictionary:
+	var clock := _world_effective_clock_runtime_controller_node()
+	var value: Variant = clock.call("snapshot") if clock != null and clock.has_method("snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func card_market_quote(request: Dictionary) -> Dictionary:
+	var controller := _card_market_pricing_runtime_controller_node()
+	var value: Variant = controller.call("quote_listing", request) if controller != null and controller.has_method("quote_listing") else {}
+	var quote: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	if not str(quote.get("quote_id", "")).is_empty():
+		var purchase := _purchase_node()
+		if purchase != null and purchase.has_method("attach_quote"):
+			purchase.call("attach_quote", int(request.get("player_index", -1)), int(request.get("district_index", -1)), quote)
+	return quote
+
+
+func card_market_preview(request: Dictionary) -> Dictionary:
+	var controller := _card_market_pricing_runtime_controller_node()
+	var value: Variant = controller.call("preview_listing", request) if controller != null and controller.has_method("preview_listing") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func card_market_listing_availability(source_district_index: int) -> Dictionary:
+	var controller := _card_market_pricing_runtime_controller_node()
+	var value: Variant = controller.call("listing_availability", source_district_index) if controller != null and controller.has_method("listing_availability") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func authorize_card_market_purchase(request: Dictionary) -> Dictionary:
+	var controller := _card_market_pricing_runtime_controller_node()
+	var value: Variant = controller.call("authorize_purchase", request) if controller != null and controller.has_method("authorize_purchase") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {"authorized": false, "reason": "card_market_unavailable"}
+
+
+func card_market_active_quote(player_index: int, district_index: int) -> Dictionary:
+	var purchase := _purchase_node()
+	var value: Variant = purchase.call("active_quote", player_index, district_index) if purchase != null and purchase.has_method("active_quote") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
 func reset_runtime_session() -> void:
 	var session := _session_node()
 	if session != null and session.has_method("reset_state"):
@@ -1311,9 +1388,12 @@ func market_snapshot(actor_id: String) -> Dictionary:
 	var listing: Dictionary = surface.get("listing", {}) if surface.get("listing", {}) is Dictionary else {}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var quote: Dictionary = surface.get("quote", {}) if surface.get("quote", {}) is Dictionary else {}
 	var revision := maxi(0, int(market.get("revision", 0)))
 	if not bool(surface.get("ready", false)) or card.is_empty():
 		return _ai_v06_economy_failure(str(surface.get("reason_code", "ai_v06_market_snapshot_unavailable")), revision)
+	if not bool(quote.get("purchasable", false)):
+		return _ai_v06_economy_failure("ai_v06_market_source_dark", revision)
 	var legal_region_ids := _ai_v06_legal_facility_region_ids(card, normalized_actor_id)
 	if legal_region_ids.is_empty():
 		return _ai_v06_economy_failure("ai_v06_facility_authoritative_target_unavailable", revision)
@@ -1329,7 +1409,10 @@ func market_snapshot(actor_id: String) -> Dictionary:
 			"category_id": str(machine.get("category_id", "")),
 			"rank": int(machine.get("rank", 0)),
 			"effect_kind": str(machine.get("effect_kind", "")),
-			"purchase_cash": int(machine.get("purchase_cash", listing.get("price_cash", -1))),
+			"purchase_cash": int(quote.get("final_price", listing.get("price_cash", -1))),
+			"source_district_index": int(listing.get("source_district_index", -1)),
+			"source_region_id": str(listing.get("source_region_id", "")),
+			"supply_revision": str(listing.get("supply_revision", "")),
 			"target_region_id": str(legal_region_ids[0]),
 			"legal_region_ids": legal_region_ids.duplicate(),
 		},
@@ -1659,6 +1742,8 @@ func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
 	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
 	if listing.is_empty():
 		listing = _v06_first_table_facility_listing(card, revision)
+		if listing.is_empty():
+			return {"ready": false, "reason_code": "v06_market_listing_source_unavailable"}
 		var configured_variant: Variant = inventory.call("configure_market", revision, listing)
 		var configured: Dictionary = configured_variant if configured_variant is Dictionary else {}
 		if not bool(configured.get("configured", false)):
@@ -1667,13 +1752,25 @@ func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
 		listing = (market.get("listing", {}) as Dictionary).duplicate(true) if market.get("listing", {}) is Dictionary else {}
 	elif str(((listing.get("card", {}) as Dictionary).get("machine", {}) as Dictionary).get("card_id", "")) != str(machine.get("card_id", "")):
 		return {"ready": false, "reason_code": "v06_market_owned_by_other_listing"}
+	if int(listing.get("source_district_index", -1)) < 0 or str(listing.get("source_region_id", "")).is_empty() or str(listing.get("supply_revision", "")).is_empty():
+		return {"ready": false, "reason_code": "v06_market_listing_source_invalid"}
+	var player_index := _ai_v06_actor_player_index(actor_id)
+	if player_index < 0:
+		return {"ready": false, "reason_code": "v06_facility_player_binding_unavailable"}
+	var quote := card_market_preview({
+		"district_index": int(listing.get("source_district_index", -1)),
+		"card_id": str(machine.get("card_id", "")),
+		"supply_revision": str(listing.get("supply_revision", "")),
+		"base_price": int(listing.get("price_cash", price_cash)),
+	})
 	var player := v06_card_player_snapshot(actor_id)
 	return {
-		"ready": not player.is_empty() and not listing.is_empty(),
-		"reason_code": "v06_first_table_facility_market_ready" if not player.is_empty() and not listing.is_empty() else "v06_facility_player_unavailable",
+		"ready": not player.is_empty() and not listing.is_empty() and bool(quote.get("viewable", false)),
+		"reason_code": "v06_first_table_facility_market_ready" if not player.is_empty() and not listing.is_empty() and bool(quote.get("viewable", false)) else "v06_facility_player_unavailable",
 		"market": market.duplicate(true),
 		"listing": listing.duplicate(true),
 		"player": player.duplicate(true),
+		"quote": quote.duplicate(true),
 	}
 
 
@@ -1689,6 +1786,25 @@ func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: St
 		return {"committed": false, "reason_code": "market_listing_changed"}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	var next_listing := _v06_first_table_facility_listing(card, int(market.get("revision", 0)) + 1)
+	if next_listing.is_empty():
+		return {"committed": false, "reason_code": "v06_market_listing_source_unavailable"}
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var player_index := _ai_v06_actor_player_index(actor_id)
+	var quote := card_market_quote({
+		"player_index": player_index,
+		"district_index": int(listing.get("source_district_index", -1)),
+		"card_id": str(machine.get("card_id", "")),
+		"supply_revision": str(listing.get("supply_revision", "")),
+		"base_price": int(listing.get("price_cash", -1)),
+	})
+	var quote_request := {
+		"quote_id": str(quote.get("quote_id", "")),
+		"quote_fingerprint": str(quote.get("quote_fingerprint", "")),
+		"player_index": player_index,
+		"district_index": int(listing.get("source_district_index", -1)),
+		"card_id": str(machine.get("card_id", "")),
+		"supply_revision": str(listing.get("supply_revision", "")),
+	}
 	var value_variant: Variant = inventory.call(
 		"purchase_market_card",
 		actor_id.strip_edges(),
@@ -1696,11 +1812,13 @@ func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: St
 		next_listing,
 		int(player.get("revision", -1)),
 		int(market.get("revision", -1)),
-		transaction_id.strip_edges()
+		transaction_id.strip_edges(),
+		quote_request
 	)
 	var result: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
-	result["card_id"] = str(((card.get("machine", {}) as Dictionary).get("card_id", "")))
-	result["canonical_price_cash"] = int((card.get("machine", {}) as Dictionary).get("purchase_cash", -1))
+	result["card_id"] = str(machine.get("card_id", ""))
+	result["canonical_price_cash"] = int(quote.get("final_price", -1))
+	result["base_price_cash"] = int(listing.get("price_cash", -1))
 	return result
 
 
@@ -1714,12 +1832,44 @@ func _v06_runtime_card_catalog() -> Resource:
 
 func _v06_first_table_facility_listing(card: Dictionary, revision: int) -> Dictionary:
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var source := _v06_market_source_snapshot(revision)
+	if source.is_empty():
+		return {}
+	var item_id := "vs06:first-table-facility:%d" % maxi(0, revision)
 	return {
-		"item_id": "vs06:first-table-facility:%d" % maxi(0, revision),
+		"item_id": item_id,
 		"card": card.duplicate(true),
 		"price_cash": int(machine.get("purchase_cash", -1)),
 		"claimable": true,
 		"legal_actor_ids": [],
+		"source_district_index": int(source.get("district_index", -1)),
+		"source_region_id": str(source.get("region_id", "")),
+		"supply_revision": "v06-facility:%d:%s" % [maxi(0, revision), item_id],
+	}
+
+
+func _v06_market_source_snapshot(_revision: int) -> Dictionary:
+	if _bound_world == null:
+		return {}
+	var authored := _first_table_authored_node()
+	if authored == null or not authored.has_method("market_listing_plan"):
+		return {}
+	var plan_variant: Variant = authored.call("market_listing_plan")
+	var plan: Dictionary = plan_variant if plan_variant is Dictionary else {}
+	if not bool(plan.get("ready", false)):
+		return {}
+	var districts_variant: Variant = _bound_world.get("districts")
+	var districts: Array = districts_variant if districts_variant is Array else []
+	var source_index := int(plan.get("source_district_index", -1))
+	if source_index < 0 or source_index >= districts.size() or not (districts[source_index] is Dictionary):
+		return {}
+	var source: Dictionary = districts[source_index]
+	var region_id := str(source.get("region_id", "")).strip_edges()
+	if bool(source.get("destroyed", false)) or region_id.is_empty():
+		return {}
+	return {
+		"district_index": source_index,
+		"region_id": region_id,
 	}
 
 
@@ -2323,6 +2473,12 @@ func reset_state() -> void:
 		"reason_code": "production_players_not_bound",
 	}
 	sync_forced_decision_candidates([])
+	var world_clock := _world_effective_clock_runtime_controller_node()
+	if world_clock != null and world_clock.has_method("reset_state"):
+		world_clock.call("reset_state")
+	var card_market_pricing := _card_market_pricing_runtime_controller_node()
+	if card_market_pricing != null and card_market_pricing.has_method("reset_state"):
+		card_market_pricing.call("reset_state")
 	var ai_controller := _ai_runtime_controller_node()
 	if ai_controller != null and ai_controller.has_method("reset_state"):
 		ai_controller.call("reset_state")
@@ -2400,49 +2556,12 @@ func open_district_purchase_window(player_index: int, district_index: int, quali
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func build_district_purchase_qualification(world_snapshot: Dictionary) -> Dictionary:
-	var purchase := _purchase_node()
-	if purchase == null or not purchase.has_method("build_qualification_snapshot"):
-		return {}
-	var value: Variant = purchase.call("build_qualification_snapshot", world_snapshot)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func resolve_district_purchase_access_kind(player_index: int, district_index: int, live_qualification: Dictionary) -> String:
-	var purchase := _purchase_node()
-	return str(purchase.call("resolve_access_kind", player_index, district_index, live_qualification)) if purchase != null and purchase.has_method("resolve_access_kind") else "none"
-
-
-func resolve_district_purchase_price_multiplier(player_index: int, district_index: int, live_qualification: Dictionary) -> float:
-	var purchase := _purchase_node()
-	return float(purchase.call("resolve_price_multiplier", player_index, district_index, live_qualification)) if purchase != null and purchase.has_method("resolve_price_multiplier") else 1.0
-
-
-func district_purchase_access_text(access_kind: String, price_context: Dictionary = {}) -> String:
-	var purchase := _purchase_node()
-	return str(purchase.call("access_text", access_kind, price_context)) if purchase != null and purchase.has_method("access_text") else ""
-
-
 func close_district_purchase_window(player_index: int, reason: String = "closed") -> Dictionary:
 	var purchase := _purchase_node()
 	if purchase == null or not purchase.has_method("close_window"):
 		return {}
 	var value: Variant = purchase.call("close_window", player_index, reason)
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func tick_district_purchase_windows(delta: float, blocked_player_indices: Array = []) -> Array:
-	var purchase := _purchase_node()
-	if purchase == null or not purchase.has_method("tick_window"):
-		return []
-	var session := _session_node()
-	var blocking_snapshot := {
-		"global_blocked": blocks_global_time(),
-		"session_paused": session != null and session.has_method("session_state") and str(session.call("session_state")) == "paused",
-		"blocked_player_indices": blocked_player_indices.duplicate(),
-	}
-	var value: Variant = purchase.call("tick_window", delta, blocking_snapshot)
-	return (value as Array).duplicate(true) if value is Array else []
 
 
 func district_purchase_window(player_index: int) -> Dictionary:
@@ -2456,27 +2575,6 @@ func district_purchase_window(player_index: int) -> Dictionary:
 func district_purchase_window_active(player_index: int, district_index: int = -1) -> bool:
 	var purchase := _purchase_node()
 	return purchase != null and purchase.has_method("is_window_active") and bool(purchase.call("is_window_active", player_index, district_index))
-
-
-func district_purchase_access_kind(player_index: int, district_index: int) -> String:
-	var purchase := _purchase_node()
-	return str(purchase.call("locked_access_kind", player_index, district_index)) if purchase != null and purchase.has_method("locked_access_kind") else "none"
-
-
-func district_purchase_price_context(player_index: int, district_index: int) -> Dictionary:
-	var purchase := _purchase_node()
-	if purchase == null or not purchase.has_method("locked_price_context"):
-		return {}
-	var value: Variant = purchase.call("locked_price_context", player_index, district_index)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func authorize_district_purchase(request_snapshot: Dictionary) -> Dictionary:
-	var purchase := _purchase_node()
-	if purchase == null or not purchase.has_method("authorize_purchase"):
-		return {"authorized": false, "reason": "controller_missing", "price_context": {}}
-	var value: Variant = purchase.call("authorize_purchase", request_snapshot)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func plan_district_purchase_settlement(request_snapshot: Dictionary) -> Dictionary:
@@ -3531,6 +3629,10 @@ func debug_snapshot() -> Dictionary:
 			scheduler_snapshot = (snapshot_variant as Dictionary).duplicate(true)
 	var session_snapshot := _session_debug_snapshot()
 	var purchase_snapshot := _purchase_debug_snapshot()
+	var world_clock_snapshot := _node_debug_snapshot(_world_effective_clock_runtime_controller_node())
+	var solar_availability_snapshot := _node_debug_snapshot(_solar_availability_runtime_service_node())
+	var card_market_pricing_snapshot := _node_debug_snapshot(_card_market_pricing_runtime_controller_node())
+	var card_market_bridge_snapshot := _node_debug_snapshot(_card_market_policy_world_bridge_node())
 	var card_runtime_catalog_snapshot := _card_runtime_catalog_debug_snapshot()
 	var card_definition_bridge_snapshot := _card_runtime_definition_bridge_debug_snapshot()
 	var balance_diagnostics_snapshot := _gameplay_balance_diagnostics_debug_snapshot()
@@ -3586,6 +3688,10 @@ func debug_snapshot() -> Dictionary:
 		"coordinator_authoritative": _configured and bool(scheduler_snapshot.get("scheduler_authoritative", false)) and bool(card_runtime_catalog_snapshot.get("service_authoritative", false)) and bool(session_snapshot.get("session_authoritative", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and bool(card_resolution_execution_snapshot.get("service_authoritative", false)) and bool(economy_product_route_effect_snapshot.get("service_authoritative", false)) and bool(economy_product_route_formula_snapshot.get("service_authoritative", false)) and bool(product_market_runtime_snapshot.get("controller_authoritative", false)) and bool(city_gdp_derivative_runtime_snapshot.get("controller_authoritative", false)) and bool(commodity_flow_runtime_snapshot.get("controller_authoritative", false)) and bool(hand_interaction_snapshot.get("service_authoritative", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and bool(scenario_snapshot.get("controller_authoritative", false)) and bool(first_table_authored_snapshot.get("service_authoritative", false)) and bool(codex_navigation_snapshot.get("controller_authoritative", false)) and bool(codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_snapshot.get("service_authoritative", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_play_eligibility_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(monster_runtime_snapshot.get("controller_authoritative", false)) and bool(military_runtime_snapshot.get("controller_authoritative", false)) and bool(weather_runtime_snapshot.get("controller_authoritative", false)) and bool(contract_runtime_snapshot.get("controller_authoritative", false)),
 		"ruleset_id": _ruleset_id,
 		"forced_decision_scheduler": scheduler_snapshot,
+		"world_effective_clock": world_clock_snapshot,
+		"solar_availability": solar_availability_snapshot,
+		"card_market_pricing": card_market_pricing_snapshot,
+		"card_market_policy_world_bridge": card_market_bridge_snapshot,
 		"card_runtime_catalog": card_runtime_catalog_snapshot,
 		"card_runtime_definition_bridge": card_definition_bridge_snapshot,
 		"gameplay_balance_diagnostics": balance_diagnostics_snapshot,
@@ -3783,6 +3889,22 @@ func _card_play_world_bridge_node() -> Node:
 	return get_node_or_null("CardPlayEligibilityWorldBridge")
 
 
+func _world_effective_clock_runtime_controller_node() -> Node:
+	return get_node_or_null("WorldEffectiveClockRuntimeController")
+
+
+func _solar_availability_runtime_service_node() -> Node:
+	return get_node_or_null("SolarAvailabilityRuntimeService")
+
+
+func _card_market_policy_world_bridge_node() -> Node:
+	return get_node_or_null("CardMarketPolicyWorldBridge")
+
+
+func _card_market_pricing_runtime_controller_node() -> Node:
+	return get_node_or_null("CardMarketPricingRuntimeController")
+
+
 func _session_node() -> Node:
 	return get_node_or_null("GameSessionRuntimeController")
 
@@ -3946,6 +4068,14 @@ func _card_runtime_catalog_debug_snapshot() -> Dictionary:
 	var service := _card_runtime_catalog_node()
 	if service != null and service.has_method("debug_snapshot"):
 		var snapshot_variant: Variant = service.call("debug_snapshot")
+		if snapshot_variant is Dictionary:
+			return (snapshot_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _node_debug_snapshot(node: Node) -> Dictionary:
+	if node != null and node.has_method("debug_snapshot"):
+		var snapshot_variant: Variant = node.call("debug_snapshot")
 		if snapshot_variant is Dictionary:
 			return (snapshot_variant as Dictionary).duplicate(true)
 	return {}

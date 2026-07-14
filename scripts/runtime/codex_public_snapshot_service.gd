@@ -34,7 +34,7 @@ func compose_role(source: Dictionary) -> Dictionary:
 	face["rank"] = _short_text(str(role_card.get("species", "角色")), 10)
 	var chips: Array = [
 		{"text": "公开角色", "accent": Color("#fde68a"), "tooltip": "角色身份是公开信息。"},
-		{"text": "首召独立", "accent": Color("#bfdbfe"), "tooltip": "首召怪兽在开局准备独立选择，不由角色绑定。"},
+		{"text": "召唤可选", "accent": Color("#bfdbfe"), "tooltip": "每席持有起始怪兽牌；召唤完全自愿，不由角色绑定。"},
 	]
 	for tag_variant in _first_entries(tags, 4):
 		chips.append({"text": str(tag_variant), "accent": accent.lightened(0.10), "tooltip": "这个角色的主要牌路定位。"})
@@ -51,7 +51,7 @@ func compose_role(source: Dictionary) -> Dictionary:
 		"kpis": [
 			{"title": "经济", "value": _short_text(economy_line, 34), "meta": "现金/商品/购牌收益", "accent": Color("#bbf7d0")},
 			{"title": "情报", "value": _short_text(intel_line, 34), "meta": "侦测、追溯和竞猜优势", "accent": Color("#c4b5fd")},
-			{"title": "控制", "value": _short_text(control_line, 34), "meta": "购牌范围、合约、单位或反制", "accent": Color("#93c5fd")},
+			{"title": "控制", "value": _short_text(control_line, 34), "meta": "日照市场、合约、单位或反制", "accent": Color("#93c5fd")},
 			{"title": "开局", "value": _short_text(opening_hint, 34), "meta": "第一局建议动作", "accent": Color("#facc15")},
 		],
 		"routes": [
@@ -59,11 +59,11 @@ func compose_role(source: Dictionary) -> Dictionary:
 			{"title": "角色特征", "body": _short_text(str(role_card.get("trait", "暂无特征")), 92), "tooltip": str(role_card.get("trait", "暂无特征")), "accent": accent},
 			{"title": "信息边界", "body": privacy_line, "tooltip": privacy_line, "accent": Color("#f0abfc")},
 			{"title": "开局打法", "body": _short_text(opening_hint, 92), "tooltip": opening_hint, "accent": Color("#4ade80")},
-			{"title": "选择提醒", "body": "选角色不选怪兽；怪兽归属要靠场上线索推理。", "tooltip": "角色公开、首召怪兽独立、起始怪兽牌属性只看怪兽牌。", "accent": Color("#38bdf8")},
+			{"title": "选择提醒", "body": "角色与起始怪兽牌分别选择；怪兽归属要靠场上线索推理。", "tooltip": "角色公开、召唤自愿、起始怪兽牌属性只看怪兽牌。", "accent": Color("#38bdf8")},
 			{"title": "风味", "body": _short_text(str(role_card.get("flavor", "暂无设定")), 92), "tooltip": str(role_card.get("flavor", "暂无设定")), "accent": Color("#fb923c")},
 		],
 	}
-	var summary_text := "角色卡｜第%d/%d张｜%s｜%s\n特征：%s\n被动：%s\n看下方公开身份牌；角色卡公开；怪兽归属仍靠场上线索推理。\n首召怪兽独立选择；角色公开，不暴露怪兽归属。" % [
+	var summary_text := "角色卡｜第%d/%d张｜%s｜%s\n特征：%s\n被动：%s\n看下方公开身份牌；角色卡公开；怪兽归属仍靠场上线索推理。\n起始怪兽牌独立持有；召唤自愿，不暴露怪兽归属。" % [
 		index + 1,
 		total,
 		str(role_card.get("name", "外星辛迪加")),
@@ -115,7 +115,7 @@ func compose_region(source: Dictionary) -> Dictionary:
 	var connection_summary := str(source.get("connection_summary", "暂无"))
 	var clues := [
 		{"title": "商路", "body": "途经/使用 %d条｜毁坏会拖累相关城市GDP" % trade_route_load, "tooltip": connection_summary, "accent": Color("#93c5fd")},
-		{"title": "牌架", "body": _short_text(str(source.get("card_choice_summary", "无")), 76), "tooltip": "双击地图区域可打开牌架；查看不限，购买按打开瞬间资格。", "accent": Color("#a78bfa")},
+		{"title": "牌架", "body": _short_text(str(source.get("card_choice_summary", "无")), 76), "tooltip": "双击地图区域可浏览牌架；来源区域受光时可显式锁定5秒报价。", "accent": Color("#a78bfa")},
 		{"title": "怪兽吸引", "body": _short_text(monster_attraction, 76), "tooltip": "怪兽会按资源、热度、城市和仓储压力自动选择目标。", "accent": Color("#fb923c")},
 		{"title": "公开线索", "body": _short_text(str(source.get("public_clue", "暂无")), 76), "tooltip": "这是可见证据，不等于真实业主。", "accent": Color("#f0abfc")},
 		{"title": "邻接", "body": _short_text(connection_summary, 76), "tooltip": "购牌、怪兽移动和商路都依赖邻接关系。", "accent": Color("#67e8f9")},
@@ -216,7 +216,6 @@ func _role_route_tags(role_card: Dictionary, starting_cash_delta: int) -> Array:
 	if int(role_card.get("resource_cash_amount", 0)) > 0 or str(role_card.get("bonus_card_product", "")) != "": tags.append("商品经营")
 	if int(role_card.get("intel_city_reveal_charges", 0)) > 0 or int(role_card.get("intel_card_trace_charges", 0)) > 0 or int(role_card.get("intel_contract_trace_charges", 0)) > 0 or int(role_card.get("card_owner_guess_discount", 0)) > 0 or int(role_card.get("card_owner_guess_bonus", 0)) > 0 or int(role_card.get("city_guess_reward_bonus", 0)) > 0: tags.append("情报推理")
 	if int(role_card.get("contract_flow_discount", 0)) > 0: tags.append("合约商路")
-	if int(role_card.get("card_access_extra_hops", 0)) > 0 or bool(role_card.get("card_access_global", false)): tags.append("远程补给")
 	if int(role_card.get("monster_upgrade_cash", 0)) > 0 or int(role_card.get("monster_control_limit_bonus", 0)) > 0: tags.append("怪兽路线")
 	if int(role_card.get("military_control_limit_bonus", 0)) > 0: tags.append("军队路线")
 	if bool(role_card.get("monster_cards_as_counter", false)): tags.append("相位防守")
@@ -253,9 +252,6 @@ func _role_intel_line(role_card: Dictionary) -> String:
 
 func _role_control_line(role_card: Dictionary) -> String:
 	var parts := []
-	var extra_hops := int(role_card.get("card_access_extra_hops", 0))
-	if bool(role_card.get("card_access_global", false)): parts.append("全图购牌")
-	elif extra_hops > 0: parts.append("购牌+%d跳" % extra_hops)
 	if int(role_card.get("contract_flow_discount", 0)) > 0: parts.append("合约GDP-%d%%" % (int(role_card.get("contract_flow_discount", 0)) * 5))
 	if int(role_card.get("monster_control_limit_bonus", 0)) > 0: parts.append("怪兽上限%d" % (1 + int(role_card.get("monster_control_limit_bonus", 0))))
 	if int(role_card.get("military_control_limit_bonus", 0)) > 0: parts.append("军队上限%d" % (1 + int(role_card.get("military_control_limit_bonus", 0))))
@@ -268,12 +264,11 @@ func _role_opening_hint(role_card: Dictionary, tags: Array) -> String:
 		var product := str(role_card.get("resource_cash_product", role_card.get("bonus_card_product", "")))
 		return "优先找%s相关区域建城或购牌；用商品线隐藏你的真实收益点。" % product if product != "" else "优先围绕加成商品建城，并保护供需路线。"
 	if tags.has("情报推理"): return "先读匿名牌轨和城市异动，再用角色侦测降低关键猜测风险。"
-	if tags.has("远程补给"): return "首召后多看二跳区域牌架，用更大购牌范围补路线缺口。"
-	if tags.has("怪兽路线"): return "尽快首召并考虑升级怪兽；用怪兽压力制造经济线索。"
+	if tags.has("怪兽路线"): return "召唤完全自愿；活怪会抬高来源同区与邻区牌价，也会制造经济压力线索。"
 	if tags.has("军队路线"): return "用短时军队保卫核心城市或压制领先者，不要让地图失控。"
 	if tags.has("相位防守"): return "保留一张怪兽牌作为反制资源，等关键玩家互动牌翻面。"
 	if tags.has("合约商路"): return "优先观察供需互补区域，用合约把城市GDP做成稳定现金流。"
-	return "先首召怪兽、建第一城、围绕最早拿到的商品路线扩张。"
+	return "先查看受光挂牌、建立第一份收入；起始怪兽牌可在合适时机自愿召唤。"
 
 
 func _role_privacy_line(role_card: Dictionary) -> String:
@@ -281,7 +276,7 @@ func _role_privacy_line(role_card: Dictionary) -> String:
 	if int(role_card.get("intel_city_reveal_charges", 0)) > 0 or int(role_card.get("intel_card_trace_charges", 0)) > 0 or int(role_card.get("intel_contract_trace_charges", 0)) > 0: return "角色公开；侦测结果进入私人情报，不自动公开。"
 	if int(role_card.get("monster_control_limit_bonus", 0)) > 0: return "角色公开；怪兽归属仍等受伤资金线索暴露。"
 	if int(role_card.get("military_control_limit_bonus", 0)) > 0: return "角色公开；军令来源不公开，军队行动结果公开。"
-	return "角色公开；首召怪兽、手牌、现金和城市业主仍靠线索推理。"
+	return "角色公开；未召唤的起始怪兽牌、手牌、现金和城市业主仍靠线索推理。"
 
 
 func _short_text(text: String, limit: int) -> String:

@@ -981,8 +981,8 @@ func _case_history_limit() -> Dictionary:
 func _case_timer_cadence() -> Dictionary:
 	var process_source := _function_source(str(_sources.get("main", "")), "_process")
 	var controller_source := _function_source(str(_sources.get("market_controller", "")), "tick_market_cycle")
-	var observed := _tokens_in_order(process_source, ["game_time += scaled_delta", "_update_realtime_economy_cashflow(scaled_delta)", "age_economic_boons", "tick_product_market_cycle"]) and _tokens_in_order(controller_source, ["market_timer -=", "market_tick()", "next_market_interval"])
-	return _record("market_timer_realtime_cadence", observed, observed, "Scaled realtime advances futures/cashflow/boons before decrementing the market timer and rolling the next interval.", {"timing_checked": true})
+	var observed := _tokens_in_order(process_source, ["advance_world_effective_clock", "game_time = float(clock_snapshot", "age_economic_boons", "_advance_continuous_commodity_flow", "tick_product_market_cycle"]) and _tokens_in_order(controller_source, ["market_timer -=", "market_tick()", "next_market_interval"])
+	return _record("market_timer_realtime_cadence", observed, observed, "The authoritative world-effective clock advances before boons, continuous flow, and the market timer rolls its next interval.", {"timing_checked": true})
 
 
 func _case_timer_freeze() -> Dictionary:

@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/world_effective_clock_runtime_controller.gd" id="1_clock"]
+
+[node name="WorldEffectiveClockRuntimeController" type="Node"]
+script = ExtResource("1_clock")
+editor_description = "Authoritative integer-microsecond world_effective clock. It owns no solar phase or UI time."

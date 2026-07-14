@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_market_policy_world_bridge.gd" id="1_bridge"]
+
+[node name="CardMarketPolicyWorldBridge" type="Node"]
+script = ExtResource("1_bridge")
+editor_description = "Non-owning allowlisted bridge for public source-region geometry and public live-monster positions."

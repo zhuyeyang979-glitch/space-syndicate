@@ -99,6 +99,11 @@ class RuntimeWorld:
 	extends Node
 	var players: Array = []
 	var game_time := 0.0
+	var map_width_m := 1000.0
+	var districts: Array = [
+		{"name": "Alpha Source", "region_id": "region.alpha", "center": Vector2(0.0, 0.0), "neighbors": [], "destroyed": false},
+	]
+	var monster_runtime_controller: Node = null
 
 
 class FlowFactsBridge:
@@ -288,17 +293,26 @@ func _run_market_and_generic_cases() -> void:
 	_set_world_cash(0, 1000)
 	var factory_card := _card("facility.factory.life.rank_1")
 	var market_card := _card("facility.market.life.rank_1")
-	var configured := _controller.configure_market(10, _market_listing("market:factory-life", factory_card, 4))
+	var configured := _controller.configure_market(10, _market_listing("market:factory-life", factory_card, 4, "bench-supply-factory"))
 	var market_snapshot := _controller.market_snapshot()
 	_check("market_api_ready", "market", bool(configured.get("configured", false)) and int(market_snapshot.get("revision", -1)) == 10 and str((market_snapshot.get("listing", {}) as Dictionary).get("item_id", "")) == "market:factory-life", market_snapshot)
 	var before := _controller.player_snapshot("player.0")
+	var quote: Dictionary = _coordinator.card_market_quote({
+		"player_index": 0,
+		"district_index": 0,
+		"card_id": "facility.factory.life.rank_1",
+		"supply_revision": "bench-supply-factory",
+		"base_price": 4,
+	})
+	var quote_request := _quote_request(quote, 0, 0, "facility.factory.life.rank_1", "bench-supply-factory")
 	var purchase := _controller.purchase_market_card(
 		"player.0",
 		"market:factory-life",
-		_market_listing("market:market-life", market_card, 4),
+		_market_listing("market:market-life", market_card, 4, "bench-supply-market"),
 		int(before.get("revision", -1)),
 		10,
-		"bench:market:purchase"
+		"bench:market:purchase",
+		quote_request
 	)
 	_check("market_purchase_atomic_cash_inventory", "market", bool(purchase.get("committed", false)) and _world_cash(0) == 996 and _world_has_card(0, "facility.factory.life.rank_1") and int(_controller.market_snapshot().get("revision", -1)) == 11, {
 		"committed": purchase.get("committed", false),
@@ -309,10 +323,11 @@ func _run_market_and_generic_cases() -> void:
 	var replay := _controller.purchase_market_card(
 		"player.0",
 		"market:factory-life",
-		_market_listing("market:market-life", market_card, 4),
+		_market_listing("market:market-life", market_card, 4, "bench-supply-market"),
 		int(before.get("revision", -1)),
 		10,
-		"bench:market:purchase"
+		"bench:market:purchase",
+		quote_request
 	)
 	_check("market_purchase_replay_exact_once", "transaction", bool(replay.get("committed", false)) and bool(replay.get("idempotent_replay", false)) and _world_cash(0) == 996 and _world_nonempty_slot_count(0) == 1, _receipt_evidence(replay))
 
@@ -933,8 +948,28 @@ func _belt_item(item_id: String, card: Dictionary) -> Dictionary:
 	return {"item_id": item_id, "card": card.duplicate(true), "claimable": true, "visible_actor_ids": ["player.0"]}
 
 
-func _market_listing(item_id: String, card: Dictionary, price_cash: int) -> Dictionary:
-	return {"item_id": item_id, "card": card.duplicate(true), "price_cash": price_cash, "claimable": true, "legal_actor_ids": ["player.0"]}
+func _market_listing(item_id: String, card: Dictionary, price_cash: int, supply_revision: String) -> Dictionary:
+	return {
+		"item_id": item_id,
+		"card": card.duplicate(true),
+		"price_cash": price_cash,
+		"claimable": true,
+		"legal_actor_ids": ["player.0"],
+		"source_district_index": 0,
+		"source_region_id": "region.alpha",
+		"supply_revision": supply_revision,
+	}
+
+
+func _quote_request(quote: Dictionary, player_index: int, district_index: int, card_id: String, supply_revision: String) -> Dictionary:
+	return {
+		"quote_id": str(quote.get("quote_id", "")),
+		"quote_fingerprint": str(quote.get("quote_fingerprint", "")),
+		"player_index": player_index,
+		"district_index": district_index,
+		"card_id": card_id,
+		"supply_revision": supply_revision,
+	}
 
 
 func _target(facility_id: String) -> Dictionary:

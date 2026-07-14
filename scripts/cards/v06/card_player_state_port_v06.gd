@@ -12,6 +12,7 @@ const COLORED_ASSET_KEYS: Array[String] = [
 ]
 
 var _players: Dictionary = {}
+var _actor_player_indices: Dictionary = {}
 var _reservations: Dictionary = {}
 var _player_locks: Dictionary = {}
 var _inflight_transactions: Dictionary = {}
@@ -26,6 +27,10 @@ func register_player(actor_id: String, initial_state: Dictionary) -> Dictionary:
 		return _setup_reject("actor_id_invalid")
 	if _players.has(normalized_actor_id):
 		return _setup_reject("player_already_registered")
+	var has_player_index := initial_state.has("player_index")
+	var player_index := int(initial_state.get("player_index", -1))
+	if has_player_index and (player_index < 0 or _actor_player_indices.values().has(player_index)):
+		return _setup_reject("player_index_invalid")
 	var normalized := _normalize_player_state(normalized_actor_id, initial_state)
 	if not bool(normalized.get("valid", false)):
 		return _setup_reject(str(normalized.get("reason_code", "player_state_invalid")))
@@ -35,6 +40,8 @@ func register_player(actor_id: String, initial_state: Dictionary) -> Dictionary:
 	if not bool(identity_check.get("valid", false)):
 		return _setup_reject(str(identity_check.get("reason_code", "card_instance_duplicate_global")))
 	_players = candidate_players
+	if has_player_index:
+		_actor_player_indices[normalized_actor_id] = player_index
 	return {
 		"configured": true,
 		"reason_code": "player_registered",
@@ -57,6 +64,10 @@ func read_player(actor_id: String) -> Dictionary:
 		"reason_code": "player_ready",
 		"player_state": _player_snapshot(normalized_actor_id),
 	}
+
+
+func actor_player_indices() -> Dictionary:
+	return _actor_player_indices.duplicate(true)
 
 
 func reserve_transaction(

@@ -7,6 +7,11 @@ class RuntimeWorld:
 	extends Node
 	var players: Array = []
 	var game_time := 0.0
+	var map_width_m := 1000.0
+	var districts: Array = [
+		{"name": "Alpha Source", "region_id": "region.alpha", "center": Vector2(0.0, 0.0), "neighbors": [], "destroyed": false},
+	]
+	var monster_runtime_controller: Node = null
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -108,16 +113,25 @@ func _run() -> void:
 	_expect(not facility_rank_one.is_empty() and not market_rank_one.is_empty(), "real dynamic-market core cards load")
 	_set_world_cards(world, 0, [])
 	_set_world_cash(world, 0, 1000)
-	var market_configured := controller.configure_market(5, _market_listing("market:factory-life", facility_rank_one, 4))
+	var market_configured := controller.configure_market(5, _market_listing("market:factory-life", facility_rank_one, 4, "test-supply-factory"))
 	_expect(bool(market_configured.get("configured", false)) and str((controller.market_snapshot().get("listing", {}) as Dictionary).get("item_id", "")) == "market:factory-life", "market source configures through the unique Card Flow service")
 	var market_before := controller.player_snapshot("player.0")
+	var quote: Dictionary = coordinator.card_market_quote({
+		"player_index": 0,
+		"district_index": 0,
+		"card_id": "facility.factory.life.rank_1",
+		"supply_revision": "test-supply-factory",
+		"base_price": 4,
+	})
+	var quote_request := _quote_request(quote, 0, 0, "facility.factory.life.rank_1", "test-supply-factory")
 	var purchase := controller.purchase_market_card(
 		"player.0",
 		"market:factory-life",
-		_market_listing("market:market-life", market_rank_one, 4),
+		_market_listing("market:market-life", market_rank_one, 4, "test-supply-market"),
 		int(market_before.get("revision", -1)),
 		5,
-		"test:market:purchase"
+		"test:market:purchase",
+		quote_request
 	)
 	_expect(bool(purchase.get("committed", false)), "market purchase commits through the unique inventory owner")
 	_expect(_world_cash(world, 0) == 996 and _world_has_card(world, 0, "facility.factory.life.rank_1"), "market purchase atomically applies the exact cash debit and inventory delta")
@@ -125,10 +139,11 @@ func _run() -> void:
 	var purchase_replay := controller.purchase_market_card(
 		"player.0",
 		"market:factory-life",
-		_market_listing("market:market-life", market_rank_one, 4),
+		_market_listing("market:market-life", market_rank_one, 4, "test-supply-market"),
 		int(market_before.get("revision", -1)),
 		5,
-		"test:market:purchase"
+		"test:market:purchase",
+		quote_request
 	)
 	_expect(bool(purchase_replay.get("committed", false)) and bool(purchase_replay.get("idempotent_replay", false)) and _world_cash(world, 0) == 996 and _world_nonempty_slot_count(world, 0) == 1, "market purchase replay does not debit cash or add inventory twice")
 
@@ -248,8 +263,28 @@ func _belt_item(item_id: String, card: Dictionary) -> Dictionary:
 	return {"item_id": item_id, "card": card.duplicate(true), "claimable": true, "visible_actor_ids": ["player.0"]}
 
 
-func _market_listing(item_id: String, card: Dictionary, price_cash: int) -> Dictionary:
-	return {"item_id": item_id, "card": card.duplicate(true), "price_cash": price_cash, "claimable": true, "legal_actor_ids": ["player.0"]}
+func _market_listing(item_id: String, card: Dictionary, price_cash: int, supply_revision: String) -> Dictionary:
+	return {
+		"item_id": item_id,
+		"card": card.duplicate(true),
+		"price_cash": price_cash,
+		"claimable": true,
+		"legal_actor_ids": ["player.0"],
+		"source_district_index": 0,
+		"source_region_id": "region.alpha",
+		"supply_revision": supply_revision,
+	}
+
+
+func _quote_request(quote: Dictionary, player_index: int, district_index: int, card_id: String, supply_revision: String) -> Dictionary:
+	return {
+		"quote_id": str(quote.get("quote_id", "")),
+		"quote_fingerprint": str(quote.get("quote_fingerprint", "")),
+		"player_index": player_index,
+		"district_index": district_index,
+		"card_id": card_id,
+		"supply_revision": supply_revision,
+	}
 
 
 func _commodity_cards(catalog: Resource, card_ids: Array, prefix: String) -> Array:
