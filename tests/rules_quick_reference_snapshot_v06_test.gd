@@ -33,9 +33,9 @@ func _run() -> void:
 	var source := FileAccess.get_file_as_string(SNAPSHOT_SOURCE_PATH)
 	_expect(not source.contains("extends Node") and not source.contains("get_tree(") and not source.contains("WorldBridge") and not source.contains("players"), "snapshot source has no Node, tree, world bridge, or player-state dependency")
 	var text := JSON.stringify(snapshot)
-	for required in ["前 K", "至少 30%", "120 秒", "现金小于 0", "公开动态市场", "主动合并", "满 5 张", "自动合并一次", "旧项目合约", "抽象路线损伤"]:
+	for required in ["前 K", "至少 30%", "120 秒", "现金小于 0", "全局可查看", "区域中心受光", "日照区可买", "召唤时点完全自愿", "同区每只 +1", "相邻每只 +0.5", "最高 5x", "向上取整", "确认快照锁定资格和价格 5 秒", "主动合并", "满 5 张", "自动合并一次", "旧项目合约", "抽象路线损伤"]:
 		_expect(text.contains(required), "snapshot exposes v0.6 ruled term: %s" % required)
-	for retired_claim in ["重复获得会自动升级", "重复牌自动升级", "满手时私密弃一张", "现金归零会提前失败"]:
+	for retired_claim in ["重复获得会自动升级", "重复牌自动升级", "满手时私密弃一张", "现金归零会提前失败", "每名玩家必须首召", "强制首召", "全局市场始终可买", "1.00P", "1.30P", "1.75P", "己方存活怪兽"]:
 		_expect(not text.contains(retired_claim), "snapshot rejects retired claim: %s" % retired_claim)
 	_check_player_copy_contract()
 	_check_active_document_entries()
@@ -47,7 +47,7 @@ func _run() -> void:
 		board.call("set_board", snapshot)
 		await process_frame
 		var rendered := _node_text(board)
-		_expect(rendered.contains("v0.6 牌桌规则速览") and rendered.contains("主动合并") and rendered.contains("满手领取例外"), "board renders the v0.6 snapshot without runtime input")
+		_expect(rendered.contains("v0.6 牌桌规则速览") and rendered.contains("召唤自愿") and rendered.contains("全局可查看") and rendered.contains("日照区可买") and rendered.contains("主动合并") and rendered.contains("满手领取例外"), "board renders the v0.6 snapshot without runtime input")
 		var kpi_grid := board.find_child("RulesQuickReferenceKpiGrid", true, false)
 		var module_grid := board.find_child("RulesQuickReferenceModuleGrid", true, false)
 		_expect(kpi_grid != null and kpi_grid.get_child_count() == 8, "board renders all eight v0.6 rule cards")
@@ -77,10 +77,17 @@ func _check_active_document_entries() -> void:
 	var agents := FileAccess.get_file_as_string("res://AGENTS.md")
 	var readme := FileAccess.get_file_as_string("res://README.md")
 	var summary := FileAccess.get_file_as_string("res://docs/rules_summary.md")
+	var rulebook := FileAccess.get_file_as_string("res://docs/tabletop_rulebook_v06.md")
 	var legacy_rulebook := FileAccess.get_file_as_string("res://docs/tabletop_rulebook.md")
 	_expect(agents.contains("docs/tabletop_rulebook_v06.md") and agents.contains("authoritative v0.6"), "AGENTS points contributors to the v0.6 authority")
 	_expect(readme.contains("## Active v0.6 Gameplay") and readme.contains("## Historical v0.4 Prototype Migration Inventory"), "README separates active v0.6 rules from the historical prototype inventory")
+	var active_readme := readme.get_slice("## Historical v0.4 Prototype Migration Inventory", 0)
+	_expect(active_readme.contains("summoning is entirely voluntary") and active_readme.contains("120 `world_effective` seconds") and active_readme.contains("q2 = min(10") and active_readme.contains("exactly 5 `world_effective` seconds"), "README active v0.6 section exposes voluntary summon, solar rotation, additive pricing, and quote lock")
+	_expect(not active_readme.contains("first-summon prompt") and not active_readme.contains("only from a monster's current region"), "README active v0.6 section rejects historical forced-summon and regional purchase gates")
 	_expect(summary.contains("tabletop_rulebook_v06.md") and summary.contains("同名、同等级普通卡由玩家主动选择合并"), "current rules summary is a v0.6 quick reference")
+	_expect(summary.contains("召唤时点完全自愿") and summary.contains("每 120 秒权威自转一周") and summary.contains("q2 = min(10") and summary.contains("有效期为 5 秒 `world_effective` 时间"), "rules summary exposes voluntary summon, solar rotation, additive pricing, and quote lock")
+	_expect(rulebook.contains("何时召唤完全由玩家决定") and rulebook.contains("每 120 秒完成一周权威自转") and rulebook.contains("q2 = min(10") and rulebook.contains("有效 5 秒 `world_effective` 时间"), "authoritative rulebook records the settled summon, solar, and market rules")
+	_expect(not rulebook.contains("首召阶段必须") and not rulebook.contains("强制首召"), "authoritative rulebook retires mandatory first summon")
 	_expect(not summary.contains("](tabletop_rulebook.md)"), "current rules summary no longer routes to the v0.4 rulebook")
 	_expect(legacy_rulebook.contains("历史/迁移说明") and legacy_rulebook.contains("不再是现役玩家规则"), "legacy v0.4 rulebook is visibly retired")
 
