@@ -5,12 +5,19 @@ class_name RegionInfrastructureWorldBridge
 signal infrastructure_receipt_forwarded(receipt: Dictionary)
 
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
+const REGION_CODEX_PUBLIC_FACTS_CONTRACT_V06 := "region_codex_public_facts_v06"
+const REGION_CODEX_PUBLIC_CLUE_EMPTY_V06 := "暂无公开线索"
+const REGION_CODEX_PRIVATE_SENTINEL_MARKERS_V06 := [
+	"private_sentinel", "secret_sentinel", "cash_sentinel", "hand_sentinel", "discard_sentinel",
+	"owner_sentinel", "ai_plan_sentinel", "do_not_leak",
+]
 
 var _controller: Node
 var _world: Node
 var _request_sequence := 0
 var _forward_count := 0
 var _failure_count := 0
+var _region_codex_public_projection_count := 0
 
 
 func set_controller(controller: Node) -> void:
@@ -111,6 +118,78 @@ func region_snapshot_for_legacy_index(legacy_index: int) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func region_codex_public_facts(legacy_index: int) -> Dictionary:
+	_region_codex_public_projection_count += 1
+	if _world == null or not is_instance_valid(_world):
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_world_unavailable")
+	var districts_variant: Variant = _world.get("districts")
+	if not (districts_variant is Array):
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_regions_invalid")
+	var districts := districts_variant as Array
+	if legacy_index < 0 or legacy_index >= districts.size() or not (districts[legacy_index] is Dictionary):
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_region_invalid", districts.size())
+	var district := districts[legacy_index] as Dictionary
+	var products_result := _region_codex_public_string_array(district.get("products", []))
+	var demands_result := _region_codex_public_string_array(district.get("demands", []))
+	var cards_result := _region_codex_public_string_array(district.get("card_choices", []))
+	var neighbors_result := _region_codex_public_index_array(district.get("neighbors", []), districts.size())
+	for result_variant: Variant in [products_result, demands_result, cards_result, neighbors_result]:
+		var result := result_variant as Dictionary
+		if not bool(result.get("valid", false)):
+			return _region_codex_public_unavailable(legacy_index, str(result.get("reason_code", "region_codex_public_scalar_array_invalid")), districts.size())
+	var city_variant: Variant = district.get("city", {})
+	if not (city_variant is Dictionary):
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_city_invalid", districts.size())
+	var city := city_variant as Dictionary
+	var region_id_variant: Variant = district.get("region_id", "")
+	var name_variant: Variant = district.get("name", "区域")
+	var terrain_variant: Variant = district.get("terrain", "land")
+	var terrain_label_variant: Variant = district.get("terrain_label", "区域")
+	var focus_variant: Variant = district.get("economic_focus_label", "均衡")
+	if not _region_codex_public_text_scalar(region_id_variant) or not _region_codex_public_text_scalar(name_variant) or not _region_codex_public_text_scalar(terrain_variant) or not _region_codex_public_text_scalar(terrain_label_variant) or not _region_codex_public_text_scalar(focus_variant):
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_identity_invalid", districts.size())
+	if str(region_id_variant).strip_edges().is_empty() or str(name_variant).strip_edges().is_empty():
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_identity_invalid", districts.size())
+	for numeric_variant: Variant in [district.get("hp", 0), district.get("damage", 0)]:
+		if not (numeric_variant is int or numeric_variant is float):
+			return _region_codex_public_unavailable(legacy_index, "region_codex_public_hp_invalid", districts.size())
+	if not (district.get("destroyed", false) is bool):
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_lifecycle_invalid", districts.size())
+	var hp_total := maxi(0, int(district.get("hp", 0)))
+	var hp_now := maxi(0, hp_total - maxi(0, int(district.get("damage", 0))))
+	var destroyed := bool(district.get("destroyed", false))
+	var city_present := not city.is_empty()
+	if city_present and (not (city.get("active", true) is bool) or not (city.get("level", 0) is int or city.get("level", 0) is float) or not (city.get("last_income", 0) is int or city.get("last_income", 0) is float)):
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_city_invalid", districts.size())
+	var city_public := {
+		"present": city_present,
+		"active": city_present and bool(city.get("active", true)) and not destroyed,
+		"level": maxi(0, int(city.get("level", 0))) if city_present else 0,
+		"last_income": maxi(0, int(city.get("last_income", 0))) if city_present else 0,
+	}
+	return {
+		"available": true,
+		"contract_version": REGION_CODEX_PUBLIC_FACTS_CONTRACT_V06,
+		"reason_code": "region_codex_public_facts_ready",
+		"index": legacy_index,
+		"total": districts.size(),
+		"region_id": str(region_id_variant),
+		"name": str(name_variant),
+		"terrain": str(terrain_variant),
+		"terrain_label": str(terrain_label_variant),
+		"economic_focus_label": str(focus_variant),
+		"destroyed": destroyed,
+		"hp_total": hp_total,
+		"hp_now": hp_now,
+		"products": (products_result.get("values", []) as Array).duplicate(),
+		"demands": (demands_result.get("values", []) as Array).duplicate(),
+		"card_ids": (cards_result.get("values", []) as Array).duplicate(),
+		"neighbor_indices": (neighbors_result.get("values", []) as Array).duplicate(),
+		"city": city_public,
+		"public_clue": _region_codex_public_clue(city),
+	}
+
+
 func region_commodity_facts(region_id: String) -> Dictionary:
 	var normalized_id := region_id.strip_edges()
 	if normalized_id.is_empty() or _controller == null or _world == null or not is_instance_valid(_world):
@@ -196,7 +275,114 @@ func debug_snapshot() -> Dictionary:
 		"owns_facility_rules": false,
 		"owns_damage_rules": false,
 		"provides_authoritative_region_commodity_facts": has_method("region_commodity_facts"),
+		"region_codex_public_projection": true,
+		"region_codex_public_projection_count": _region_codex_public_projection_count,
+		"reads_viewer_state": false,
+		"reads_private_player_state": false,
+		"owns_rules": false,
+		"owns_save_state": false,
 	}
+
+
+func _region_codex_public_unavailable(legacy_index: int, reason_code: String, total: int = 0) -> Dictionary:
+	return {
+		"available": false,
+		"contract_version": REGION_CODEX_PUBLIC_FACTS_CONTRACT_V06,
+		"reason_code": reason_code,
+		"index": legacy_index,
+		"total": maxi(0, total),
+		"region_id": "",
+		"name": "",
+		"terrain": "",
+		"terrain_label": "",
+		"economic_focus_label": "",
+		"destroyed": false,
+		"hp_total": 0,
+		"hp_now": 0,
+		"products": [],
+		"demands": [],
+		"card_ids": [],
+		"neighbor_indices": [],
+		"city": {"present": false, "active": false, "level": 0, "last_income": 0},
+		"public_clue": REGION_CODEX_PUBLIC_CLUE_EMPTY_V06,
+	}
+
+
+func _region_codex_public_string_array(value: Variant) -> Dictionary:
+	if not (value is Array):
+		return {"valid": false, "reason_code": "region_codex_public_string_array_invalid", "values": []}
+	var values: Array = []
+	var seen: Dictionary = {}
+	for entry_variant: Variant in value as Array:
+		if not _region_codex_public_text_scalar(entry_variant):
+			return {"valid": false, "reason_code": "region_codex_public_string_array_invalid", "values": []}
+		var entry := str(entry_variant).strip_edges()
+		if entry.is_empty() or seen.has(entry):
+			continue
+		seen[entry] = true
+		values.append(entry)
+	return {"valid": true, "reason_code": "", "values": values}
+
+
+func _region_codex_public_index_array(value: Variant, region_count: int) -> Dictionary:
+	if not (value is Array):
+		return {"valid": false, "reason_code": "region_codex_public_index_array_invalid", "values": []}
+	var values: Array = []
+	for entry_variant: Variant in value as Array:
+		if not (entry_variant is int):
+			return {"valid": false, "reason_code": "region_codex_public_index_array_invalid", "values": []}
+		var entry := int(entry_variant)
+		if entry < 0 or entry >= region_count:
+			return {"valid": false, "reason_code": "region_codex_public_neighbor_invalid", "values": []}
+		if not values.has(entry):
+			values.append(entry)
+	values.sort()
+	return {"valid": true, "reason_code": "", "values": values}
+
+
+func _region_codex_public_clue(city: Dictionary) -> String:
+	var clues_variant: Variant = city.get("public_clues", [])
+	if clues_variant is Array:
+		var clues := clues_variant as Array
+		for index in range(clues.size() - 1, -1, -1):
+			var formatted := _region_codex_public_clue_entry(clues[index])
+			if not formatted.is_empty():
+				return formatted
+	var last_clue_variant: Variant = city.get("last_public_clue", "")
+	if _region_codex_public_text_scalar(last_clue_variant):
+		var last_clue := str(last_clue_variant).strip_edges()
+		if not last_clue.is_empty():
+			return last_clue
+	return REGION_CODEX_PUBLIC_CLUE_EMPTY_V06
+
+
+func _region_codex_public_clue_entry(value: Variant) -> String:
+	if not (value is Dictionary):
+		return ""
+	var entry := value as Dictionary
+	var text_variant: Variant = entry.get("text", "")
+	var kind_variant: Variant = entry.get("kind", "公开")
+	var time_variant: Variant = entry.get("time", -1.0)
+	var products_result := _region_codex_public_string_array(entry.get("products", []))
+	if not _region_codex_public_text_scalar(text_variant) or not _region_codex_public_text_scalar(kind_variant) or not (time_variant is int or time_variant is float) or not bool(products_result.get("valid", false)):
+		return ""
+	var text := str(text_variant).strip_edges()
+	if text.is_empty():
+		return ""
+	var time_value := float(time_variant)
+	var time_text := "T+%.0fs" % time_value if time_value >= 0.0 else "时间未知"
+	var products: Array = products_result.get("values", []) as Array
+	return "%s｜%s｜商品:%s｜%s" % [time_text, str(kind_variant), "、".join(products) if not products.is_empty() else "无", text]
+
+
+func _region_codex_public_text_scalar(value: Variant) -> bool:
+	if not (value is String or value is StringName):
+		return false
+	var lowered := str(value).to_lower()
+	for marker in REGION_CODEX_PRIVATE_SENTINEL_MARKERS_V06:
+		if lowered.contains(marker):
+			return false
+	return true
 
 
 func _commodity_fact_rows(source_variant: Variant) -> Dictionary:
