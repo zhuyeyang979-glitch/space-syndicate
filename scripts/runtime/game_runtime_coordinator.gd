@@ -948,6 +948,15 @@ func world_effective_clock_snapshot() -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func solar_public_presentation_snapshot() -> Dictionary:
+	var clock_snapshot := world_effective_clock_snapshot()
+	var solar := _solar_availability_runtime_service_node()
+	if solar == null or not solar.has_method("public_presentation_snapshot") or not (clock_snapshot.get("world_effective_us") is int):
+		return {}
+	var value: Variant = solar.call("public_presentation_snapshot", int(clock_snapshot.get("world_effective_us", -1)))
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
 func card_market_quote(request: Dictionary) -> Dictionary:
 	var controller := _card_market_pricing_runtime_controller_node()
 	var value: Variant = controller.call("quote_listing", request) if controller != null and controller.has_method("quote_listing") else {}

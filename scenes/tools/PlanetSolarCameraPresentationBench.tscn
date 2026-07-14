@@ -1,0 +1,44 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/tools/planet_solar_camera_presentation_bench.gd" id="2_bench"]
+[ext_resource type="PackedScene" path="res://scenes/tools/PlanetMapMcpPreview.tscn" id="3_preview"]
+
+[node name="PlanetSolarCameraPresentationBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_bench")
+
+[node name="PlanetMapMcpPreview" parent="." instance=ExtResource("3_preview")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SolarCameraBenchStatus" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 306.0
+offset_top = -42.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.992, 0.827, 0.31, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.027, 0.039, 0.94)
+theme_override_constants/outline_size = 5
+text = "☀ 日照镜头｜等待运行"
+horizontal_alignment = 2
+text_overrun_behavior = 3

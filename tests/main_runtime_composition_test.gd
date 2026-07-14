@@ -110,6 +110,8 @@ const COMMODITY_FLOW_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityFlowRu
 const COMMODITY_FLOW_WORLD_BRIDGE := "res://scenes/runtime/CommodityFlowWorldBridge.tscn"
 const PLAYER_MANA_RUNTIME_CONTROLLER := "res://scenes/runtime/PlayerManaRuntimeController.tscn"
 const COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityCardInventoryRuntimeController.tscn"
+const PLANET_MAP_VIEW_SCENE := "res://scenes/ui/PlanetMapView.tscn"
+const PLANET_SOLAR_CAMERA_CONTROLLER := "res://scenes/ui/map/PlanetSolarCameraController.tscn"
 
 var failures: Array[String] = []
 
@@ -252,6 +254,7 @@ func _check_static_composition(main: Control) -> void:
 	_expect(card_controller != null and card_controller.scene_file_path == "res://scenes/runtime/CardResolutionRuntimeController.tscn", "RuntimeControllerHost owns the editable CardResolutionRuntimeController scene")
 	_expect(card_controller != null and card_controller.has_method("tick") and card_controller.has_method("to_save_data") and card_controller.has_method("debug_snapshot"), "CardResolutionRuntimeController exposes timing, save, and debug APIs")
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var solar_availability := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/SolarAvailabilityRuntimeService")
 	var final_settlement_composition := main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition")
 	var region_infrastructure := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController")
 	var region_infrastructure_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge")
@@ -303,6 +306,10 @@ func _check_static_composition(main: Control) -> void:
 	var final_settlement_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/FinalSettlementPublicSnapshotService")
 	var intel_dossier_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IntelDossierPublicSnapshotService")
 	_expect(coordinator != null and coordinator.scene_file_path == "res://scenes/runtime/GameRuntimeCoordinator.tscn" and coordinator.has_method("active_forced_decision") and coordinator.has_method("debug_snapshot"), "RuntimeControllerHost owns the editable GameRuntimeCoordinator scene")
+	_expect(coordinator != null and coordinator.has_method("solar_public_presentation_snapshot") and solar_availability != null and solar_availability.has_method("public_presentation_snapshot") and not solar_availability.has_method("to_save_data") and not solar_availability.has_method("apply_save_data"), "Coordinator exposes the allowlisted solar presentation projection without a second save owner")
+	var embedded_map := screen.find_child("PlanetMapView", true, false) as Control if screen != null else null
+	var solar_camera := embedded_map.get_node_or_null("PlanetSolarCameraController") if embedded_map != null else null
+	_expect(embedded_map != null and embedded_map.scene_file_path == PLANET_MAP_VIEW_SCENE and solar_camera != null and solar_camera.scene_file_path == PLANET_SOLAR_CAMERA_CONTROLLER and solar_camera.has_method("apply_public_solar_snapshot") and solar_camera.has_method("request_return_to_sun") and not solar_camera.has_method("to_save_data") and not solar_camera.has_method("apply_save_data"), "PlanetMapView statically owns the non-saving solar camera presentation controller")
 	_expect(balance_diagnostics != null and balance_diagnostics.scene_file_path == GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE and balance_diagnostics.has_method("development_routes") and balance_diagnostics.has_method("card_budget_report") and balance_diagnostics.has_method("build_balance_report") and balance_diagnostics.has_method("build_developer_panel_snapshot"), "GameRuntimeCoordinator owns the read-only GameplayBalanceDiagnosticsRuntimeService scene")
 	_expect(balance_diagnostics_world_bridge != null and balance_diagnostics_world_bridge.scene_file_path == GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE and balance_diagnostics_world_bridge.has_method("bind_world") and balance_diagnostics_world_bridge.has_method("build_world_snapshot") and balance_diagnostics_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-mutating GameplayBalanceDiagnosticsWorldBridge scene")
 	var diagnostics_debug: Dictionary = balance_diagnostics.call("debug_snapshot") if balance_diagnostics != null else {}
