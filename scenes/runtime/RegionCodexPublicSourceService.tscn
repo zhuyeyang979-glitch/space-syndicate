@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/region_codex_public_source_service.gd" id="1_service"]
+
+[node name="RegionCodexPublicSourceService" type="Node" groups=["region_codex_public_source_service"]]
+script = ExtResource("1_service")
+editor_description = "Scene-owned assembly of strictly public Region Codex facts. Consumes only explicit owner public projections and delegates final formatting to CodexPublicSnapshotService."
