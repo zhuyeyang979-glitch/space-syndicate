@@ -31,9 +31,9 @@ Preserve this loop unless the user explicitly changes it:
 1. Start a 3-8 seat PVE run.
 2. Players publicly choose non-duplicate alien role cards.
 3. Starter monster choice is independent from role identity.
-4. Players first summon a monster.
-5. Players urbanize land districts into anonymous cities.
-6. Players buy cards from monster-accessible regional supply.
+4. Players select and hold a starter monster card; summoning is voluntary and may happen at any later point.
+5. Players urbanize land districts into anonymous cities without a summon prerequisite.
+6. Players browse the global ordinary-card market; a listing is purchasable only while its source region is sunlit, and live monsters in or adjacent to that source raise its price for every buyer.
 7. Cards enter an anonymous public reveal/auction/track system.
 8. Cities produce realtime GDP from production, demand, transport, routes, damage, contracts, and market pressure.
 9. Monsters and military units create visible map pressure and economic consequences.
@@ -45,6 +45,9 @@ Important rules:
 - All seats share the same base starting cash as the general rule, but public alien role cards may explicitly modify their own starting cash through visible role passives. Do not erase role identity by forcing final starting cash to be identical.
 - Monsters are not continuously player-controlled. They auto-act from probability tables.
 - Monster cards can summon/upgrade/refresh monsters and grant reusable bound skills.
+- Starter-monster possession does not force an opening summon. Delaying or skipping summon must not block facilities, economy, or card-market access.
+- Ordinary-card listings remain globally viewable. Purchase eligibility is derived from the listing's authoritative source region and the shared 120-second `world_effective` solar rotation; camera position and zoom never affect it.
+- Market quotes lock eligibility and price for exactly 5 `world_effective` seconds. Live monster ownership is irrelevant: same-region monsters add `1.0x` each, directly adjacent monsters add `0.5x` each, the total multiplier is capped at `5.0x`, and the final cash price rounds up.
 - Military units are weaker controlled forces that use reusable command cards.
 - Card play is anonymous unless later inference reveals ownership.
 - Player cash, hand size, discard choices, AI pressure buckets, and AI route plans are private during ordinary play. A player who enters the authoritative final-audit roster explicitly reveals the economic facts required by the current audit rule; seats outside that roster remain private. UI must consume the owner's visibility-tagged public projection and may never infer visibility from `game_over`, winner status, or the mere presence of a cash field.
@@ -140,8 +143,8 @@ Ranks I-IV normally keep the rank-I purchase price.
 
 AI should behave like a planned test opponent:
 
-- Open with starter monster and city building.
-- Buy cards from accessible regional supply.
+- Establish an economic route without requiring an opening summon; deploy the held starter monster later when useful.
+- Buy globally listed ordinary cards when their authoritative source region is sunlit and the locked quote is affordable.
 - Build around a product/economy route.
 - Use cards anonymously.
 - Defend owned income.
