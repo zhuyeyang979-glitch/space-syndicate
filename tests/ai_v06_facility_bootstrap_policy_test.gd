@@ -18,8 +18,8 @@ class FakeWorld:
 	extends Node
 
 	var players: Array = [
-		{"actor_id": ACTOR_ONE, "is_ai": true, "eliminated": false, "action_cooldown": 0.0},
-		{"actor_id": ACTOR_TWO, "is_ai": true, "eliminated": false, "action_cooldown": 0.0},
+		{"is_ai": true, "eliminated": false, "action_cooldown": 0.0},
+		{"is_ai": true, "eliminated": false, "action_cooldown": 0.0},
 	]
 	var districts: Array = [
 		{"region_id": "region.alpha", "destroyed": false, "lifecycle_state": "active"},
@@ -95,6 +95,16 @@ class FakeEconomyDelegate:
 				"bootstrap_finalized": false,
 				"legal_region_ids": ["region.alpha"],
 			}
+
+	func actor_id_for_player_index(player_index: int) -> Dictionary:
+		var actor_id := ACTOR_ONE if player_index == 0 else (ACTOR_TWO if player_index == 1 else "")
+		_record_call("actor_id_for_player_index", actor_id)
+		return {
+			"available": not actor_id.is_empty(),
+			"revision": 1,
+			"reason_code": "fake_actor_mapping_ready" if not actor_id.is_empty() else "fake_actor_mapping_missing",
+			"actor_id": actor_id,
+		}
 
 	func market_snapshot(actor_id: String) -> Dictionary:
 		_record_call("market_snapshot", actor_id)
@@ -279,6 +289,7 @@ func _init() -> void:
 
 func _run() -> void:
 	_test_port_contract()
+	_test_actor_identity_is_port_authoritative()
 	_test_normal_and_forced_share_owner_chain()
 	_test_fail_closed_gates()
 	_test_force_only_bypasses_cooldown()
@@ -332,10 +343,28 @@ func _test_port_contract() -> void:
 	_expect(not bool(unavailable.get("available", true)), "unbound port fails closed")
 	var delegate := FakeEconomyDelegate.new()
 	var capability: Dictionary = port.call("bind_delegate", delegate)
-	_expect(bool(capability.get("available", false)), "all five narrow capabilities make the port ready")
-	_expect(str(capability.get("contract_version", "")) == "v0.6-ai-economy-action-port-v1", "port exposes a versioned contract")
+	_expect(bool(capability.get("available", false)), "all six narrow capabilities make the port ready")
+	_expect(str(capability.get("contract_version", "")) == "v0.6-ai-economy-action-port-v2", "port exposes a versioned contract")
+	_expect(int(capability.get("revision", -1)) == 2, "port capability revision advances with the actor identity method")
+	var identity: Dictionary = port.call("actor_id_for_player_index", 0)
+	_expect(bool(identity.get("available", false)) and str(identity.get("actor_id", "")) == ACTOR_ONE, "port resolves the authoritative actor for a player index")
 	var market: Dictionary = port.call("market_snapshot", ACTOR_ONE)
 	_expect(bool(market.get("available", false)) and int(market.get("revision", -1)) >= 0 and not str(market.get("reason_code", "")).is_empty(), "port result has availability revision and reason")
+
+
+func _test_actor_identity_is_port_authoritative() -> void:
+	var fixture := _fixture()
+	var ai: Node = fixture["ai"]
+	var world := fixture["world"] as FakeWorld
+	_expect(not (world.players[0] as Dictionary).has("actor_id"), "AI production world player does not need an actor_id field")
+	var missing_field_candidate: Dictionary = ai.call("_ai_v06_facility_bootstrap_candidate", 0, true)
+	_expect(str(missing_field_candidate.get("actor_id", "")) == ACTOR_ONE, "AI resolves actor identity through the authoritative port when the world player has no actor_id")
+	var forged_player := (world.players[0] as Dictionary).duplicate(true)
+	forged_player["actor_id"] = "forged.world.actor"
+	world.players[0] = forged_player
+	var forged_field_candidate: Dictionary = ai.call("_ai_v06_facility_bootstrap_candidate", 0, true)
+	_expect(str(forged_field_candidate.get("actor_id", "")) == ACTOR_ONE, "forged world-player actor_id cannot override the authoritative port mapping")
+	_dispose(fixture)
 
 
 func _test_normal_and_forced_share_owner_chain() -> void:
@@ -355,7 +384,7 @@ func _test_normal_and_forced_share_owner_chain() -> void:
 	_expect(bool((delegate.source_states[ACTOR_ONE] as Dictionary).get("has_source", false)), "normal scheduler finalizes the first AI facility")
 	_expect(not bool((delegate.source_states[ACTOR_TWO] as Dictionary).get("has_source", false)), "one scheduler cycle bootstraps at most one seat")
 	_expect(delegate.purchase_calls == 1 and delegate.play_calls == 1, "normal scheduler uses one purchase and one play")
-	var expected_chain: Array[String] = ["economic_source_snapshot", "player_snapshot", "market_snapshot", "purchase_rank_i_facility", "player_snapshot", "play_runtime_card"]
+	var expected_chain: Array[String] = ["actor_id_for_player_index", "economic_source_snapshot", "player_snapshot", "market_snapshot", "purchase_rank_i_facility", "player_snapshot", "play_runtime_card"]
 	_expect(delegate.calls_for_actor(ACTOR_ONE) == expected_chain, "normal scheduler follows the narrow production call chain")
 	_expect(world.players == world_before["players"] and world.districts == world_before["districts"], "AI does not write legacy players or district city state")
 	_expect(delegate.mutation_origins == ["purchase_rank_i_facility", "play_runtime_card"], "only fake owner methods mutate authoritative fixture state")

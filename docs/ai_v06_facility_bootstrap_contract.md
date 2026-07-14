@@ -1,6 +1,6 @@
 # AI v0.6 Facility Bootstrap Contract
 
-Status: B5a focused consumer contract; production Coordinator wiring is deferred to B5b/A after A6 freezes its APIs.
+Status: production Coordinator wiring active; actor identity and all mutations remain owner-routed.
 
 ## Purpose and ownership
 
@@ -21,6 +21,8 @@ The port is a pure-data forwarding boundary. Holding a delegate reference is not
 ## Required port surface
 
 ```gdscript
+actor_id_for_player_index(player_index: int) -> Dictionary
+
 market_snapshot(actor_id: String) -> Dictionary
 
 purchase_rank_i_facility(
@@ -46,6 +48,8 @@ Every response must be recursively pure data and contain:
 - non-empty `reason_code: String`.
 
 The port rejects Objects, Callables, missing fields, negative revisions, empty reasons, and unavailable methods.
+
+`actor_id_for_player_index()` is the only identity source used by the AI facility policy. The Coordinator reverses the sole `CardPlayerStateProductionAdapterV06.actor_player_indices()` map and returns exactly one actor or fails closed. The AI must not read or fall back to a world-player `actor_id` field.
 
 ## Normalized snapshots
 
@@ -174,8 +178,9 @@ The adapter must revalidate expected market, player, and source revisions immedi
 
 ## B5b production wiring status
 
-The Coordinator now implements the five delegate capabilities and injects one `AiV06EconomyActionPort` into `AiRuntimeController`. The delegate owns no player, card, market, facility, flow, or bootstrap state. It derives:
+The Coordinator now implements the six delegate capabilities and injects one `AiV06EconomyActionPort` into `AiRuntimeController`. The delegate owns no player, card, market, facility, flow, or bootstrap state. It derives:
 
+- actor identity by reversing the sole production adapter actor map;
 - player/card/cash state from `CommodityCardInventoryRuntimeController` and its production player-state adapter;
 - market revisions and purchase exact-once results from the existing CardFlow journal;
 - facility ownership from `RegionInfrastructureRuntimeController`;
