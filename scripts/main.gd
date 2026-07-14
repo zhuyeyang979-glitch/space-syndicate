@@ -6074,14 +6074,6 @@ func _player_can_continue(player_index: int) -> bool:
 	return player_index >= 0 and player_index < players.size() and not _player_is_eliminated(player_index)
 
 
-func _active_player_indices() -> Array:
-	var result := []
-	for i in range(players.size()):
-		if _player_can_continue(i):
-			result.append(i)
-	return result
-
-
 func _runtime_session_finished() -> bool:
 	var coordinator := _game_runtime_coordinator_node()
 	return bool(coordinator.call("session_is_finished")) if coordinator != null and coordinator.has_method("session_is_finished") else false
