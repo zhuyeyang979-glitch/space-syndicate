@@ -752,21 +752,24 @@ func _run_global_supply_demand_outer_finalize_case(flow: CommodityFlowRuntimeCon
 	var candidates: Array = candidate_snapshot.get("candidates", []) if candidate_snapshot.get("candidates", []) is Array else []
 	var candidate_config: Dictionary = global_owner.call("replace_authoritative_candidates", int(candidate_snapshot.get("revision", -1)), candidates.duplicate(true))
 	var global_adapter: Object = GLOBAL_SUPPLY_DEMAND_ADAPTER_SCRIPT.new()
-	var adapter_config: Dictionary = global_adapter.call("configure", global_owner, {"actor.global": 0})
+	var actor_map := _state_adapter.actor_player_indices()
+	var actor_identity := _coordinator.actor_id_for_player_index(0)
+	var actor_id := str(actor_identity.get("actor_id", ""))
+	var adapter_config: Dictionary = global_adapter.call("configure", global_owner, actor_map)
 	var router: Object = CORE_EFFECT_ROUTER_SCRIPT.new()
 	var router_config: Dictionary = router.call("configure", {"global_supply_spawn": global_adapter})
 	var card := _card("supply_demand.near_land_supply.rank_1")
 	card["runtime_instance_id"] = "global-finalize:card"
 	var transaction_service: Object = CARD_FLOW_TRANSACTION_SCRIPT.new(_catalog)
-	transaction_service.call("register_player", "actor.global", {
+	transaction_service.call("register_player", actor_id, {
 		"revision": 0,
 		"cash": 20,
 		"assets": _all_assets(20),
 		"inventory": {"hand_limit": 5, "slots": [card]},
 	})
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var boundary := CommodityCardInventoryRuntimeController.EffectTransactionBoundary.new(router, flow)
-	var play_variant: Variant = transaction_service.call("play_card", "actor.global", 0, {
+	var boundary := CommodityCardInventoryRuntimeController.EffectTransactionBoundary.new(router, flow, _infrastructure)
+	var play_variant: Variant = transaction_service.call("play_card", actor_id, 0, {
 		"valid": true,
 		"target_kind": str(machine.get("target_kind", "")),
 		"candidate_snapshot_revision": int(candidate_snapshot.get("revision", -1)),
@@ -778,6 +781,7 @@ func _run_global_supply_demand_outer_finalize_case(flow: CommodityFlowRuntimeCon
 	_check("global_supply_demand_outer_finalize_closed", "transaction", bool(sink_config.get("configured", false)) \
 		and bool(owner_config.get("configured", false)) \
 		and bool(candidate_config.get("configured", false)) \
+		and bool(actor_identity.get("available", false)) \
 		and bool(adapter_config.get("configured", false)) \
 		and bool(router_config.get("configured", false)) \
 		and bool(play.get("committed", false)) \
@@ -785,6 +789,7 @@ func _run_global_supply_demand_outer_finalize_case(flow: CommodityFlowRuntimeCon
 		and not bool(closed_rollback.get("rolled_back", false)) \
 		and str(closed_rollback.get("reason_code", "")) == "batch_rollback_closed", {
 		"candidate_count": candidates.size(),
+		"actor_mapping_ready": actor_identity.get("available", false),
 		"play_committed": play.get("committed", false),
 		"finalized": finalization.get("finalized", false),
 		"finalization_reason": finalization.get("reason_code", ""),
