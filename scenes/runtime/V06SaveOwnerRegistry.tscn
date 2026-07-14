@@ -1,0 +1,143 @@
+[gd_scene load_steps=21 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/v06_save_owner_registry.gd" id="1_registry"]
+[ext_resource type="Script" path="res://scripts/runtime/v06_save_owner_binding_resource.gd" id="2_binding"]
+
+[sub_resource type="Resource" id="BindingRuleset"]
+script = ExtResource("2_binding")
+section_id = "ruleset"
+owner_id = "ruleset_runtime"
+unsupported_reason = "ruleset_apply_api_missing"
+
+[sub_resource type="Resource" id="BindingRegionInfrastructure"]
+script = ExtResource("2_binding")
+section_id = "region_infrastructure"
+owner_id = "public_facility_region"
+owner_path = NodePath("../../RegionInfrastructureRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
+
+[sub_resource type="Resource" id="BindingInstalledCommodities"]
+script = ExtResource("2_binding")
+section_id = "installed_commodities"
+owner_id = "installed_commodity"
+unsupported_reason = "commodity_flow_section_split_missing"
+
+[sub_resource type="Resource" id="BindingRoutes"]
+script = ExtResource("2_binding")
+section_id = "routes"
+owner_id = "route_network"
+unsupported_reason = "strict_preflight_and_exact_rollback_missing"
+
+[sub_resource type="Resource" id="BindingSaleReceipts"]
+script = ExtResource("2_binding")
+section_id = "sale_receipts"
+owner_id = "commodity_sale_receipt"
+unsupported_reason = "commodity_flow_section_split_missing"
+
+[sub_resource type="Resource" id="BindingPlayerMana"]
+script = ExtResource("2_binding")
+section_id = "player_mana"
+owner_id = "player_mana"
+unsupported_reason = "revision_exact_rollback_missing"
+
+[sub_resource type="Resource" id="BindingCommodityBelt"]
+script = ExtResource("2_binding")
+section_id = "commodity_belt_visibility"
+owner_id = "commodity_belt_visibility"
+unsupported_reason = "apply_api_missing"
+
+[sub_resource type="Resource" id="BindingCardInventory"]
+script = ExtResource("2_binding")
+section_id = "card_inventory"
+owner_id = "card_inventory"
+unsupported_reason = "apply_api_missing"
+
+[sub_resource type="Resource" id="BindingPlayerOrganization"]
+script = ExtResource("2_binding")
+section_id = "player_organization"
+owner_id = "player_organization"
+owner_path = NodePath("../../PlayerOrganizationRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
+
+[sub_resource type="Resource" id="BindingMonsters"]
+script = ExtResource("2_binding")
+section_id = "monsters"
+owner_id = "monster_runtime"
+owner_path = NodePath("../../MonsterRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
+
+[sub_resource type="Resource" id="BindingMilitary"]
+script = ExtResource("2_binding")
+section_id = "military"
+owner_id = "military_runtime"
+unsupported_reason = "strict_preflight_missing"
+
+[sub_resource type="Resource" id="BindingWeather"]
+script = ExtResource("2_binding")
+section_id = "weather"
+owner_id = "weather_runtime"
+unsupported_reason = "strict_preflight_missing"
+
+[sub_resource type="Resource" id="BindingCardQueue"]
+script = ExtResource("2_binding")
+section_id = "card_resolution_queue"
+owner_id = "card_resolution_queue"
+unsupported_reason = "apply_api_missing"
+
+[sub_resource type="Resource" id="BindingCardExecution"]
+script = ExtResource("2_binding")
+section_id = "card_resolution_execution"
+owner_id = "card_resolution_execution"
+unsupported_reason = "apply_api_missing"
+
+[sub_resource type="Resource" id="BindingAi"]
+script = ExtResource("2_binding")
+section_id = "ai"
+owner_id = "ai_runtime"
+unsupported_reason = "strict_preflight_missing"
+
+[sub_resource type="Resource" id="BindingBankruptcyNeutralEstate"]
+script = ExtResource("2_binding")
+section_id = "bankruptcy_neutral_estate"
+owner_id = "bankruptcy_neutral_estate"
+unsupported_reason = "save_capture_apply_checkpoint_api_missing"
+
+[sub_resource type="Resource" id="BindingVictory"]
+script = ExtResource("2_binding")
+section_id = "victory_control"
+owner_id = "victory_control"
+owner_path = NodePath("../../VictoryControlRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
+
+[sub_resource type="Resource" id="BindingSession"]
+script = ExtResource("2_binding")
+section_id = "session"
+owner_id = "game_session"
+owner_path = NodePath("..")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
+
+[node name="V06SaveOwnerRegistry" type="Node"]
+script = ExtResource("1_registry")
+handshake_path = NodePath("../GameSaveRuntimeCoordinator/RulesetSaveHandshakeService")
+bindings = Array[ExtResource("2_binding")]([SubResource("BindingRuleset"), SubResource("BindingRegionInfrastructure"), SubResource("BindingInstalledCommodities"), SubResource("BindingRoutes"), SubResource("BindingSaleReceipts"), SubResource("BindingPlayerMana"), SubResource("BindingCommodityBelt"), SubResource("BindingCardInventory"), SubResource("BindingPlayerOrganization"), SubResource("BindingMonsters"), SubResource("BindingMilitary"), SubResource("BindingWeather"), SubResource("BindingCardQueue"), SubResource("BindingCardExecution"), SubResource("BindingAi"), SubResource("BindingBankruptcyNeutralEstate"), SubResource("BindingVictory"), SubResource("BindingSession")])
+editor_description = "Unique v0.6 save-section owner registry. It captures no parallel gameplay state and rejects resume until every required owner has transactional preflight/apply/rollback capability."
