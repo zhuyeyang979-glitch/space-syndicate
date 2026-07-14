@@ -16,6 +16,7 @@ const GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE := "res://scenes/runtime/GameTableVie
 const CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE := "res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn"
 const CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE := "res://scenes/runtime/CardPlayEligibilityWorldBridge.tscn"
 const CARD_CODEX_PUBLIC_SOURCE_SERVICE := "res://scenes/runtime/CardCodexPublicSourceService.tscn"
+const REGION_CODEX_PUBLIC_SOURCE_SERVICE := "res://scenes/runtime/RegionCodexPublicSourceService.tscn"
 const MONSTER_RUNTIME_CONTROLLER := "res://scenes/runtime/MonsterRuntimeController.tscn"
 const MONSTER_RUNTIME_WORLD_BRIDGE := "res://scenes/runtime/MonsterRuntimeWorldBridge.tscn"
 const MONSTER_RUNTIME_CHARACTERIZATION_BENCH := "res://scenes/tools/MonsterRuntimeCharacterizationBench.tscn"
@@ -227,6 +228,7 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductCodexPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSourceService",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionCodexPublicSourceService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyDashboardPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/StandingsPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/FinalSettlementPublicSnapshotService",
@@ -304,6 +306,7 @@ func _check_static_composition(main: Control) -> void:
 	var product_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductCodexPublicSnapshotService")
 	var card_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSnapshotService")
 	var card_codex_public_source := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSourceService")
+	var region_codex_public_source := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionCodexPublicSourceService")
 	var economy_dashboard_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyDashboardPublicSnapshotService")
 	var standings_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/StandingsPublicSnapshotService")
 	var final_settlement_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/FinalSettlementPublicSnapshotService")
@@ -416,6 +419,8 @@ func _check_static_composition(main: Control) -> void:
 	_expect(card_codex_public_snapshot != null and card_codex_public_snapshot.scene_file_path == "res://scenes/runtime/CardCodexPublicSnapshotService.tscn" and card_codex_public_snapshot.has_method("compose_browser") and card_codex_public_snapshot.has_method("compose_detail"), "GameRuntimeCoordinator owns the editable CardCodexPublicSnapshotService scene")
 	_expect(card_codex_public_source != null and card_codex_public_source.scene_file_path == CARD_CODEX_PUBLIC_SOURCE_SERVICE and card_codex_public_source.has_method("compose_browser") and card_codex_public_source.has_method("compose_detail") and card_codex_public_source.has_method("debug_snapshot"), "GameRuntimeCoordinator uniquely owns the scene-backed public-only Card Codex source service")
 	_expect(coordinator != null and coordinator.has_method("card_codex_public_browser_snapshot") and coordinator.has_method("card_codex_public_detail_snapshot"), "GameRuntimeCoordinator exposes only the browser/detail Card Codex public snapshot boundary")
+	_expect(region_codex_public_source != null and region_codex_public_source.scene_file_path == REGION_CODEX_PUBLIC_SOURCE_SERVICE and region_codex_public_source.has_method("compose_source") and region_codex_public_source.has_method("compose_region") and region_codex_public_source.has_method("debug_snapshot"), "GameRuntimeCoordinator uniquely owns the scene-backed public-only Region Codex source service")
+	_expect(coordinator != null and coordinator.has_method("region_codex_public_snapshot") and not coordinator.has_method("compose_codex_region_snapshot"), "GameRuntimeCoordinator exposes one final Region Codex snapshot boundary without a generic source proxy")
 	_expect(economy_dashboard_public_snapshot != null and economy_dashboard_public_snapshot.scene_file_path == "res://scenes/runtime/EconomyDashboardPublicSnapshotService.tscn" and economy_dashboard_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable EconomyDashboardPublicSnapshotService scene")
 	_expect(standings_public_snapshot != null and standings_public_snapshot.scene_file_path == "res://scenes/runtime/StandingsPublicSnapshotService.tscn" and standings_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable StandingsPublicSnapshotService scene")
 	_expect(final_settlement_public_snapshot != null and final_settlement_public_snapshot.scene_file_path == "res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn" and final_settlement_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable FinalSettlementPublicSnapshotService scene")

@@ -3,6 +3,16 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜区域图鉴公共数据源场景化与隐私硬切换
+
+- `GameRuntimeCoordinator.tscn` 现静态拥有唯一 `RegionCodexPublicSourceService`。生产链为 RegionInfrastructure 的严格公开投影、Monster owner 的非数值区域吸引投影、Weather/Route 公共摘要，再经纯数据 allowlist adapter 进入既有 `CodexPublicSnapshotService`；SourceService 不读取 viewer、玩家现金/手牌/弃牌、城市猜测、真实 owner、AI 计划、镜头、市场报价或存档。
+- `main.gd` 原有区域卡池摘要、Region source 拼装和 Region snapshot wrapper 三个函数已物理删除。该旧链曾在无公开线索时回退当前玩家城市猜测/隐藏 owner，并直接调用怪兽私有权重说明；现在 Main 只调用 Coordinator 的最终 `region_codex_public_snapshot(region_index)`。Main 从 19522 行/1110 个函数降至 19425 行/1107 个函数，净删 97 行和 3 个函数；三处合法的 viewer-private `_city_intel_hint_for_player` Economy/Intel 调用保持隔离。
+- 区域图鉴不再显示 viewer-local“当前选中”或退役 panic/heat；改用“公开资料 / 公开市场”边界提示。怪兽吸引只显示固定非数值因素类别，隐藏内部权重、概率、随机签和预选目标；无公开城市线索时固定显示“暂无公开线索”，不回退私人标注。普通牌仍按 v0.6 规则全局可浏览、来源区域受光时才可锁定 5 秒报价。
+- Godot 4.7 focused 证据：Region SourceService `13/13`、独立隐私 acceptance `18/18`、Codex public cutover `20/20`、Codex hard cutover `20/20`、Main composition PASS、Codex formatter test PASS、smoke `--check-only` 通过，所有本轮变更脚本由 8775 验证为 0 diagnostics。
+- 完整 `layout_scene_smoke_test.gd` 仍以 exit 1 结束，但本轮新增的 Region SourceService 加载、Coordinator 最终 API、旧 Main helper 物理缺席三项均明确 PASS，Region cutover 不在失败清单。其余红灯仍是已知的旧 CityDevelopment/v0.4-v0.5 save/cashflow/table snapshot/Military characterization 等历史 oracle；本轮未恢复这些退役 API。
+- 8775 有头运行真实 `RegionCodexPublicSourceBench.tscn`：运行时场景树包含唯一 SourceService 与真实 `CodexCompendiumSurface/RegionCodexDetail`，状态 `PASS 13/13`，截图为 `.codex-godot/artifacts/region_codex_public_source_a_v06.png`。退出后 `is_playing_scene=false`，A 工作树仅保留专属 editor，无额外 headless/game 进程。
+- 本切片没有恢复通用 Region source proxy、Main wrapper 或第二套规则 owner。CommodityFlow/Contract 尚无安全的区域公开聚合，因此 GDP/合约精确聚合继续 fail-closed 显示“暂无”；后续若补充，必须先由对应 owner 提供不可逆、非玩家化的公开投影。
+
 ## 2026-07-15｜卡牌图鉴公共数据源场景化与 Main 物理减负
 
 - `GameRuntimeCoordinator.tscn` 现静态拥有唯一 `CardCodexPublicSourceService`。该服务只注入卡牌目录、纯展示、公开合法性、平衡诊断、最终快照与价格模型六项依赖；纯数据 adapter 递归拒绝玩家索引、现金、手牌、归属、AI、市场、太阳、镜头和存档字段，不读取 Main 或 WorldBridge。

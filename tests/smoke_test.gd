@@ -8262,8 +8262,9 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_expect(int(city.get("last_gdp_delta", 0)) < 0, "city GDP history records the damage-driven GDP drop")
 	_expect(String(main.call("_city_gdp_trend_text", city)).contains("GDP趋势"), "city GDP trend helper produces readable public trend text")
 	_expect(String((main.call("_economy_dashboard_public_snapshot") as Dictionary).get("summary_text", "")).contains("GDP趋势"), "economy overview exposes city GDP trend text")
-	var region_codex_snapshot := main.call("_region_codex_public_snapshot", district_index) as Dictionary
-	_expect(String(region_codex_snapshot.get("summary_text", "")).contains("GDP趋势"), "region codex exposes city GDP trend text")
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var region_codex_snapshot := coordinator.call("region_codex_public_snapshot", district_index) as Dictionary if coordinator != null else {}
+	_expect(String(region_codex_snapshot.get("summary_text", "")).contains("区域可提供卡牌") and not str(region_codex_snapshot).contains("REGION_PRIVATE"), "region codex exposes only scene-owned public region facts")
 	districts = _as_array(main.get("districts"))
 	(districts[district_index] as Dictionary)["damage"] = original_damage
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary

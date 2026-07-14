@@ -285,6 +285,15 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		monster_controller.call("set_card_runtime_catalog_service", card_runtime_catalog)
 	if monster_controller != null and monster_controller.has_method("configure"):
 		monster_controller.call("configure", ruleset_snapshot)
+	var region_codex_public_source := _region_codex_public_source_node()
+	if region_codex_public_source != null and region_codex_public_source.has_method("configure"):
+		region_codex_public_source.call("configure", {
+			"region_public_bridge": region_infrastructure_bridge,
+			"monster": monster_controller,
+			"weather": weather_controller,
+			"route": route_network_controller,
+			"snapshot": codex_public_snapshot,
+		})
 	if military_controller != null and military_controller.has_method("set_world_bridge"):
 		military_controller.call("set_world_bridge", military_world_bridge)
 	if military_controller != null and military_controller.has_method("set_monster_runtime_controller"):
@@ -348,6 +357,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var product_codex_public_snapshot_debug := _product_codex_public_snapshot_debug_snapshot()
 	var card_codex_public_snapshot_debug := _card_codex_public_snapshot_debug_snapshot()
 	var card_codex_public_source_debug := _card_codex_public_source_debug_snapshot()
+	var region_codex_public_source_debug := _region_codex_public_source_debug_snapshot()
 	var economy_dashboard_public_snapshot_debug := _economy_dashboard_public_snapshot_debug_snapshot()
 	var standings_public_snapshot_debug := _standings_public_snapshot_debug_snapshot()
 	var final_settlement_public_snapshot_debug := _final_settlement_public_snapshot_debug_snapshot()
@@ -366,7 +376,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var world_clock_snapshot := _node_debug_snapshot(world_clock)
 	var solar_snapshot := _node_debug_snapshot(solar_availability)
 	var card_market_snapshot := _node_debug_snapshot(card_market_pricing)
-	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
+	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
 	_refresh_coordinator_readiness()
 
 
@@ -3430,12 +3440,6 @@ func compose_codex_role_snapshot(source: Dictionary) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func compose_codex_region_snapshot(source: Dictionary) -> Dictionary:
-	var service := _codex_public_snapshot_node()
-	var value: Variant = service.call("compose_region", source) if service != null and service.has_method("compose_region") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
 func codex_role_route_label(role_card: Dictionary, starting_cash_delta: int = 0) -> String:
 	var service := _codex_public_snapshot_node()
 	return str(service.call("role_route_label", role_card, starting_cash_delta)) if service != null and service.has_method("role_route_label") else "通用经营"
@@ -3474,6 +3478,12 @@ func card_codex_public_browser_snapshot(request: Dictionary) -> Dictionary:
 func card_codex_public_detail_snapshot(card_name: String, index: int, total: int) -> Dictionary:
 	var service := _card_codex_public_source_node()
 	var value: Variant = service.call("compose_detail", card_name, index, total) if service != null and service.has_method("compose_detail") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func region_codex_public_snapshot(region_index: int) -> Dictionary:
+	var service := _region_codex_public_source_node()
+	var value: Variant = service.call("compose_region", region_index) if service != null and service.has_method("compose_region") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
@@ -3696,6 +3706,7 @@ func debug_snapshot() -> Dictionary:
 	var product_codex_public_snapshot := _product_codex_public_snapshot_debug_snapshot()
 	var card_codex_public_snapshot := _card_codex_public_snapshot_debug_snapshot()
 	var card_codex_public_source := _card_codex_public_source_debug_snapshot()
+	var region_codex_public_source := _region_codex_public_source_debug_snapshot()
 	var economy_dashboard_public_snapshot := _economy_dashboard_public_snapshot_debug_snapshot()
 	var standings_public_snapshot := _standings_public_snapshot_debug_snapshot()
 	var final_settlement_public_snapshot := _final_settlement_public_snapshot_debug_snapshot()
@@ -3759,6 +3770,7 @@ func debug_snapshot() -> Dictionary:
 		"product_codex_public_snapshot": product_codex_public_snapshot,
 		"card_codex_public_snapshot": card_codex_public_snapshot,
 		"card_codex_public_source": card_codex_public_source,
+		"region_codex_public_source": region_codex_public_source,
 		"economy_dashboard_public_snapshot": economy_dashboard_public_snapshot,
 		"standings_public_snapshot": standings_public_snapshot,
 		"final_settlement_public_snapshot": final_settlement_public_snapshot,
@@ -4010,6 +4022,10 @@ func _card_codex_public_snapshot_node() -> Node:
 
 func _card_codex_public_source_node() -> Node:
 	return get_node_or_null("CardCodexPublicSourceService")
+
+
+func _region_codex_public_source_node() -> Node:
+	return get_node_or_null("RegionCodexPublicSourceService")
 
 
 func _economy_dashboard_public_snapshot_node() -> Node:
@@ -4430,6 +4446,15 @@ func _card_codex_public_snapshot_debug_snapshot() -> Dictionary:
 
 func _card_codex_public_source_debug_snapshot() -> Dictionary:
 	var service := _card_codex_public_source_node()
+	if service != null and service.has_method("debug_snapshot"):
+		var snapshot_variant: Variant = service.call("debug_snapshot")
+		if snapshot_variant is Dictionary:
+			return (snapshot_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _region_codex_public_source_debug_snapshot() -> Dictionary:
+	var service := _region_codex_public_source_node()
 	if service != null and service.has_method("debug_snapshot"):
 		var snapshot_variant: Variant = service.call("debug_snapshot")
 		if snapshot_variant is Dictionary:

@@ -581,6 +581,7 @@ const CODEX_NAVIGATION_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicat
 const CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/codex_public_snapshot_service.gd"
 const CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/CodexPublicSnapshotService.tscn"
 const CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/codex_public_snapshot_service_test.gd"
+const REGION_CODEX_PUBLIC_SOURCE_SERVICE_SCENE := "res://scenes/runtime/RegionCodexPublicSourceService.tscn"
 const CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/codex_public_snapshot_cutover_bench.gd"
 const CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/CodexPublicSnapshotCutoverBench.tscn"
 const CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_public_snapshot_cutover/"
@@ -10927,7 +10928,7 @@ func _check_codex_navigation_runtime_cutover_component() -> void:
 
 
 func _check_codex_public_snapshot_cutover_component() -> void:
-	for path in [CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+	for path in [CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, REGION_CODEX_PUBLIC_SOURCE_SERVICE_SCENE, CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
 		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Codex Public Snapshot Cutover" % path)
 	var service_packed := load(CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
 	var service := service_packed.instantiate() if service_packed != null else null
@@ -10943,7 +10944,7 @@ func _check_codex_public_snapshot_cutover_component() -> void:
 		service.free()
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	_expect(coordinator != null and coordinator.get_node_or_null("CodexPublicSnapshotService") != null and coordinator.has_method("compose_codex_role_snapshot") and coordinator.has_method("compose_codex_region_snapshot"), "GameRuntimeCoordinator composes and proxies CodexPublicSnapshotService")
+	_expect(coordinator != null and coordinator.get_node_or_null("CodexPublicSnapshotService") != null and coordinator.get_node_or_null("RegionCodexPublicSourceService") != null and coordinator.has_method("compose_codex_role_snapshot") and coordinator.has_method("region_codex_public_snapshot") and not coordinator.has_method("compose_codex_region_snapshot"), "GameRuntimeCoordinator owns the Region public source and exposes one final snapshot API")
 	if coordinator != null:
 		coordinator.free()
 	var bench_packed := load(CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
@@ -10953,7 +10954,7 @@ func _check_codex_public_snapshot_cutover_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CodexPublicSnapshotCutoverBench exposes required QA APIs")
-		var expected_cases := ["required_service_assets_load", "service_scene_contract", "role_source_pure_data", "role_summary_parity", "role_board_shape", "role_economy_variants", "role_control_variants", "role_privacy_boundary", "region_source_pure_data", "region_summary_city", "region_summary_no_city", "region_detail_shape", "region_selected_chip", "region_public_clue_safe", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_role_route", "real_main_region_route", "legacy_role_region_formatters_absent", "deletion_metrics_and_privacy"]
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "role_source_pure_data", "role_summary_parity", "role_board_shape", "role_economy_variants", "role_control_variants", "role_privacy_boundary", "region_source_pure_data", "region_summary_city", "region_summary_no_city", "region_detail_shape", "region_public_scope_chip", "region_public_clue_safe", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_role_route", "real_main_region_route", "legacy_role_region_formatters_absent", "deletion_metrics_and_privacy"]
 		var cases: Array = bench.call("cutover_cases")
 		var retired_formatters: Array = bench.call("retired_formatter_names")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
@@ -10971,7 +10972,8 @@ func _check_codex_public_snapshot_cutover_component() -> void:
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _role_codex_public_source_snapshot(") and main_source.contains("func _region_codex_public_source_snapshot(") and main_source.contains("compose_codex_role_snapshot") and main_source.contains("compose_codex_region_snapshot"), "main.gd delegates Role and Region public presentation through source adapters")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	_expect(main_source.contains("func _role_codex_public_source_snapshot(") and main_source.contains("compose_codex_role_snapshot") and main_source.contains("region_codex_public_snapshot") and not main_source.contains("func _region_codex_public_source_snapshot(") and not main_source.contains("func _region_codex_public_snapshot(") and not main_source.contains("func _region_card_choice_summary(") and coordinator_source.contains("func region_codex_public_snapshot(") and not coordinator_source.contains("func compose_codex_region_snapshot("), "main.gd keeps Role migration while Region public assembly is physically cut over")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0

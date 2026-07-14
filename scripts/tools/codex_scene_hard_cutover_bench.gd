@@ -361,7 +361,7 @@ func _codex_snapshots() -> Array:
 	var card_name := str(_card_names[0]) if not _card_names.is_empty() else ""
 	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var role_card: Dictionary = _main.call("_make_player_role_card", 0)
-	var region_snapshot := _main.call("_region_codex_public_snapshot", 0) as Dictionary
+	var region_snapshot := coordinator.call("region_codex_public_snapshot", 0) as Dictionary if coordinator != null else {}
 	var role_snapshot := _main.call("_role_codex_public_snapshot", role_card, 0, 1) as Dictionary
 	var hub_script := load(COMPENDIUM_HUB_SNAPSHOT_SCRIPT_PATH) as Script
 	var hub_snapshot: Dictionary = hub_script.call("compose", 960.0) as Dictionary if hub_script != null else {}

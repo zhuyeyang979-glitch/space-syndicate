@@ -6,6 +6,7 @@ const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
 const SERVICE_SCENE := "res://scenes/runtime/CodexPublicSnapshotService.tscn"
 const SERVICE_SCRIPT := "res://scripts/runtime/codex_public_snapshot_service.gd"
 const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+const REGION_SOURCE_SERVICE_SCENE := "res://scenes/runtime/RegionCodexPublicSourceService.tscn"
 const OUTPUT_DIR := "user://space_syndicate_design_qa/codex_public_snapshot_cutover/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
@@ -29,6 +30,7 @@ const RETIRED_FORMATTERS := [
 @onready var results_text: RichTextLabel = %ResultsText
 
 var _service: Node
+var _region_source_service: Node
 var _main: Control
 var _main_source := ""
 var _records: Array = []
@@ -53,7 +55,7 @@ func cutover_cases() -> Array:
 		"required_service_assets_load", "service_scene_contract", "role_source_pure_data", "role_summary_parity",
 		"role_board_shape", "role_economy_variants", "role_control_variants", "role_privacy_boundary",
 		"region_source_pure_data", "region_summary_city", "region_summary_no_city", "region_detail_shape",
-		"region_selected_chip", "region_public_clue_safe", "coordinator_scene_composition", "coordinator_pure_data_proxy",
+		"region_public_scope_chip", "region_public_clue_safe", "coordinator_scene_composition", "coordinator_pure_data_proxy",
 		"real_main_role_route", "real_main_region_route", "legacy_role_region_formatters_absent", "deletion_metrics_and_privacy",
 	]
 
@@ -117,6 +119,7 @@ func _prepare_runtime() -> void:
 		_main.call("_new_game")
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_region_source_service = _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionCodexPublicSourceService") if _main != null else null
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -168,13 +171,12 @@ func _run_case(case_id: String) -> Dictionary:
 			var source := _role_source()
 			var role_card: Dictionary = source.get("role_card", {}).duplicate(true)
 			role_card["military_control_limit_bonus"] = 1
-			role_card["card_access_global"] = true
 			source["role_card"] = role_card
 			var snapshot: Dictionary = _service.call("compose_role", source) if _service != null else {}
 			var control := str(snapshot.get("control_line", ""))
-			passed = control.contains("怪兽上限2") and control.contains("军队上限2") and control.contains("全图购牌")
+			passed = control.contains("怪兽上限2") and control.contains("军队上限2") and not control.contains("全图购牌")
 			flags["role_checked"] = true
-			notes = "unit limits and global supply labels preserve existing public semantics"
+			notes = "unit limits remain public while retired global-market privilege copy stays absent"
 		"role_privacy_boundary":
 			var source := _role_source()
 			source["private_plan"] = "never-copy-this"
@@ -184,12 +186,12 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["privacy_checked"] = true
 			notes = "unknown private role input is not copied into public presentation"
 		"region_source_pure_data":
-			var source: Dictionary = _main.call("_region_codex_public_source_snapshot", 0) if _main != null else {}
+			var source: Dictionary = _region_source_service.call("compose_source", 0) if _region_source_service != null else {}
 			passed = bool(source.get("valid", false)) and _is_pure_data(source) and not _contains_private_key(source)
 			flags["region_checked"] = true
 			flags["pure_data_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "main region adapter exposes viewer-safe world facts only"
+			notes = "scene-owned Region source service exposes viewer-invariant public facts only"
 		"region_summary_city":
 			var snapshot: Dictionary = _service.call("compose_region", _region_source(true)) if _service != null else {}
 			passed = str(snapshot.get("summary_text", "")).contains("GDP趋势:+20") and str(snapshot.get("summary_text", "")).contains("商路加成 +20")
@@ -206,12 +208,12 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = str(detail.get("icon", "")) == "▣" and (detail.get("kpis", []) as Array).size() == 4 and (detail.get("clues", []) as Array).size() == 6 and (detail.get("chips", []) as Array).size() == 6
 			flags["region_checked"] = true
 			notes = "RegionCodexDetail receives stable icon, chip, KPI, and clue lanes"
-		"region_selected_chip":
+		"region_public_scope_chip":
 			var snapshot: Dictionary = _service.call("compose_region", _region_source(true)) if _service != null else {}
 			var chips: Array = (snapshot.get("detail", {}) as Dictionary).get("chips", []) as Array
-			passed = _array_has_text(chips, "当前选中")
+			passed = _array_has_text(chips, "公开资料") and _array_has_text(chips, "公开市场") and not _array_has_text(chips, "当前选中")
 			flags["region_checked"] = true
-			notes = "selected district remains visible as a public chip"
+			notes = "Region chips describe public scope without viewer-local selection state"
 		"region_public_clue_safe":
 			var source := _region_source(true)
 			source["hidden_owner"] = 2
@@ -223,15 +225,15 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "public clue output states the boundary and strips injected private keys"
 		"coordinator_scene_composition":
 			var node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService") if _main != null else null
-			passed = node != null and node.scene_file_path == SERVICE_SCENE
+			passed = node != null and node.scene_file_path == SERVICE_SCENE and _region_source_service != null and _region_source_service.scene_file_path == REGION_SOURCE_SERVICE_SCENE
 			flags["service_checked"] = true
 			flags["main_checked"] = true
 			notes = "real main composition owns one editable CodexPublicSnapshotService scene"
 		"coordinator_pure_data_proxy":
 			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
 			var role_snapshot: Variant = coordinator.call("compose_codex_role_snapshot", _role_source()) if coordinator != null else {}
-			var region_snapshot: Variant = coordinator.call("compose_codex_region_snapshot", _region_source(true)) if coordinator != null else {}
-			passed = coordinator != null and coordinator.has_method("codex_role_route_label") and _is_pure_data(role_snapshot) and _is_pure_data(region_snapshot)
+			var region_snapshot: Variant = coordinator.call("region_codex_public_snapshot", 0) if coordinator != null else {}
+			passed = coordinator != null and coordinator.has_method("codex_role_route_label") and coordinator.has_method("region_codex_public_snapshot") and _is_pure_data(role_snapshot) and _is_pure_data(region_snapshot)
 			flags["pure_data_checked"] = true
 			notes = "coordinator proxies duplicated pure-data snapshots only"
 		"real_main_role_route":
@@ -243,7 +245,8 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["routing_checked"] = true
 			notes = "real main Role route delegates source facts to the service"
 		"real_main_region_route":
-			var snapshot: Dictionary = _main.call("_region_codex_public_snapshot", 0) if _main != null else {}
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var snapshot: Dictionary = coordinator.call("region_codex_public_snapshot", 0) if coordinator != null else {}
 			passed = not snapshot.is_empty() and snapshot.get("detail", {}) is Dictionary and str(snapshot.get("summary_text", "")).contains("区域可提供卡牌")
 			flags["main_checked"] = true
 			flags["region_checked"] = true

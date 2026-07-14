@@ -7292,7 +7292,7 @@ func _update_region_codex_menu() -> void:
 		_show_catalog_empty_page("区域图鉴", "开局后会在这里列出本局随机星球的全部区域：陆地/海洋、公开供需、城市公开状态、区域卡池和邻接关系。")
 		return
 	_codex_navigation_controller_node().region_codex_index = wrapi(_codex_navigation_controller_node().region_codex_index, 0, districts.size())
-	var region_snapshot := _region_codex_public_snapshot(_codex_navigation_controller_node().region_codex_index)
+	var region_snapshot := _game_runtime_coordinator_node().region_codex_public_snapshot(_codex_navigation_controller_node().region_codex_index)
 	_present_codex_page("区域图鉴", str(region_snapshot.get("summary_text", "区域不存在。")), {
 		"mode": "region",
 		"view": "detail",
@@ -7918,103 +7918,6 @@ func _balance_region_count_range_for_depth(depth: int = -1) -> Dictionary:
 
 func _balance_planet_size_for_depth(depth: int = -1) -> Dictionary:
 	return _runtime_balance_model().call("planet_size_for_depth", configured_roguelike_depth if depth < 0 else depth) as Dictionary
-
-
-func _region_card_choice_summary(district_index: int, limit: int = 5) -> String:
-	if district_index < 0 or district_index >= districts.size():
-		return "无"
-	var choices: Array = districts[district_index].get("card_choices", [])
-	if choices.is_empty():
-		return "无"
-	var pieces := []
-	for i in range(min(limit, choices.size())):
-		var skill_name := String(choices[i])
-		pieces.append("%s ¥%d（%s）" % [
-			skill_name,
-			_card_price(skill_name, district_index),
-			_district_card_source(district_index, skill_name),
-		])
-	if choices.size() > limit:
-		pieces.append("+%d" % (choices.size() - limit))
-	return "、".join(pieces)
-
-
-func _region_codex_public_source_snapshot(index: int) -> Dictionary:
-	if index < 0 or index >= districts.size():
-		return {"valid": false, "index": index, "total": districts.size()}
-	var district: Dictionary = districts[index]
-	var city := _district_city(index)
-	var city_active := _city_is_active(city)
-	var public_clue := _city_intel_hint_for_player(index, selected_player)
-	if city_active:
-		var latest_clue := str(city.get("last_public_clue", ""))
-		if latest_clue != "":
-			public_clue = latest_clue
-		else:
-			var public_clues := city.get("public_clues", []) as Array
-			for clue_index in range(public_clues.size() - 1, -1, -1):
-				var clue_text := _city_public_clue_display_text(public_clues[clue_index])
-				if clue_text != "":
-					public_clue = clue_text
-					break
-	var monster_entries := []
-	for monster_index in range(monster_runtime_controller.auto_monsters.size()):
-		var actor: Dictionary = monster_runtime_controller.auto_monsters[monster_index]
-		if bool(actor.get("down", false)):
-			continue
-		monster_entries.append({
-			"ordinal": monster_index + 1,
-			"name": str(actor.get("name", "怪兽")),
-			"reason": monster_runtime_controller._auto_monster_target_reason(actor, index),
-		})
-		if monster_entries.size() >= 3:
-			break
-	var card_names := []
-	for card_variant in district.get("card_choices", []) as Array:
-		card_names.append(_card_display_name(str(card_variant)))
-	var income_detail_lines: Array = []
-	if city_active:
-		income_detail_lines = _city_income_detail_lines(index, int(city.get("competition_matches", _city_competition_matches(index))))
-	return {
-		"valid": true,
-		"index": index,
-		"total": districts.size(),
-		"name": str(district.get("name", "区域")),
-		"terrain": str(district.get("terrain", "land")),
-		"terrain_label": str(district.get("terrain_label", "区域")),
-		"economic_focus_label": str(district.get("economic_focus_label", _district_economy_focus_label(str(district.get("economic_focus", "balanced"))))),
-		"destroyed": bool(district.get("destroyed", false)),
-		"selected": index == selected_district,
-		"hp_total": int(district.get("hp", 0)),
-		"hp_now": maxi(0, int(district.get("hp", 0)) - int(district.get("damage", 0))),
-		"transport_speed": _district_transport_speed(index),
-		"trade_route_load": _route_network_load_for_legacy_region(index),
-		"card_count": (district.get("card_choices", []) as Array).size(),
-		"city_present": not city.is_empty(),
-		"city_active": city_active,
-		"city_level": int(city.get("level", 1)),
-		"city_last_income": int(city.get("last_income", 0)),
-		"supply_text": _city_product_market_price_summary(city) if city_active else _product_list_with_prices(district.get("products", []), 3),
-		"demand_text": _city_demand_price_summary(city) if city_active else _product_list_with_prices(district.get("demands", []), 3),
-		"weather_text": weather_runtime_controller.district_summary(index),
-		"connection_summary": _district_connection_summary(index),
-		"card_choice_summary": _region_card_choice_summary(index, 4),
-		"monster_entries": monster_entries,
-		"public_clue": public_clue,
-		"card_names": card_names,
-		"route_flow_status": _city_route_flow_status_text(city) if city_active else "暂无",
-		"contract_status": _city_contract_status_text(city) if city_active else "暂无",
-		"gdp_trend": _city_gdp_trend_text(city).replace("GDP趋势：", "") if city_active else "暂无",
-		"income_detail_lines": income_detail_lines,
-		"products": (district.get("products", []) as Array).duplicate(true),
-	}
-
-
-func _region_codex_public_snapshot(index: int) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var source := _region_codex_public_source_snapshot(index)
-	var value: Variant = coordinator.call("compose_codex_region_snapshot", source) if coordinator != null and coordinator.has_method("compose_codex_region_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _close_menu() -> void:

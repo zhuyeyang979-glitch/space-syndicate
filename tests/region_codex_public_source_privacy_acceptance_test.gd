@@ -2,6 +2,7 @@ extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
+const SOURCE_SERVICE_NAME := "RegionCodexPublicSourceService"
 const PUBLIC_CLUE := "PUBLIC_REGION_AFTERMATH_SANITIZED_V06"
 const PRIVATE_SENTINELS := [
 	"REGION_PRIVATE_HAND_A",
@@ -20,6 +21,7 @@ var _checks := 0
 var _failures: Array[String] = []
 var _main: Node
 var _coordinator: Node
+var _source_service: Node
 var _monster_owner: Node
 var _district_index := -1
 
@@ -48,14 +50,16 @@ func _run() -> void:
 	await _wait_frames(8)
 
 	_coordinator = _main.get_node_or_null(COORDINATOR_PATH)
+	_source_service = _coordinator.get_node_or_null(SOURCE_SERVICE_NAME) if _coordinator != null else null
 	_monster_owner = _main.get("monster_runtime_controller") as Node
 	var districts: Array = _main.get("districts") if _main.get("districts") is Array else []
 	var players: Array = _main.get("players") if _main.get("players") is Array else []
 	_district_index = _first_live_district(districts)
-	_expect(_coordinator != null and _coordinator.has_method("compose_codex_region_snapshot"), "production_coordinator_region_composition_reachable")
+	_expect(_coordinator != null and _coordinator.has_method("region_codex_public_snapshot"), "production_coordinator_region_composition_reachable")
+	_expect(_source_service != null and _source_service.has_method("compose_source"), "production_region_public_source_service_reachable")
 	_expect(_monster_owner != null, "production_monster_owner_reachable")
 	_expect(_district_index >= 0 and players.size() >= 3, "three_player_active_region_fixture_reachable")
-	if _coordinator == null or _monster_owner == null or _district_index < 0 or players.size() < 3:
+	if _coordinator == null or _source_service == null or _monster_owner == null or _district_index < 0 or players.size() < 3:
 		await _dispose_main()
 		_finish()
 		return
@@ -235,12 +239,12 @@ func _apply_private_mutation(mutation_id: String) -> void:
 
 
 func _region_source() -> Dictionary:
-	var value: Variant = _main.call("_region_codex_public_source_snapshot", _district_index)
+	var value: Variant = _source_service.call("compose_source", _district_index)
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func _region_snapshot(source: Dictionary) -> Dictionary:
-	var value: Variant = _coordinator.call("compose_codex_region_snapshot", source)
+func _region_snapshot(_source: Dictionary) -> Dictionary:
+	var value: Variant = _coordinator.call("region_codex_public_snapshot", _district_index)
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
