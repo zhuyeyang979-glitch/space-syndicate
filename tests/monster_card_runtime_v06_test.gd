@@ -8,11 +8,31 @@ var _checks := 0
 var _failures: Array[String] = []
 
 
+class AtomicReferenceMonsterOwner:
+	extends UnitCardReferenceOwnerV06
+
+	func unit_card_runtime_capabilities_v06(domain: String) -> Dictionary:
+		var declared: Dictionary = super.unit_card_runtime_capabilities_v06(domain)
+		if declared.is_empty():
+			return declared
+		declared["atomic_mutation_ready"] = true
+		declared["cross_owner_dependency_matrix"] = {
+			"fixture_owner": "unit_card_reference_owner_v06",
+			"participants": ["reference_monster_owner"],
+			"revisioned": true,
+			"reversible": true,
+		}
+		declared["upgrade_duration_policy_ready"] = true
+		declared["production_ready_scope"] = "test_fixture_atomic_lifecycle_only"
+		return declared
+
+
 func _init() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
+	_verify_bare_reference_owner_fails_closed()
 	_verify_summon_upgrade_and_finalize()
 	_verify_lure_is_one_shot_and_exact_once()
 	_verify_all_bound_skill_families()
@@ -20,6 +40,38 @@ func _run() -> void:
 	_verify_commit_failure_and_rollback_paths()
 	_verify_finalize_failure_can_retry()
 	_finish()
+
+
+func _verify_bare_reference_owner_fails_closed() -> void:
+	var owner = OWNER_SCRIPT.new()
+	owner.configure("monster")
+	var adapter = ADAPTER_SCRIPT.new()
+	var configured: Dictionary = adapter.configure(owner)
+	var matrix: Dictionary = configured.get("capability_matrix", {}) as Dictionary
+	_expect(bool(configured.get("configured", false)), "bare monster reference owner adapter configures")
+	_expect(
+		not bool(matrix.get("atomic_mutation_ready", true))
+		and str(matrix.get("capability_reason", "")) == "monster_cross_owner_atomicity_unavailable",
+		"bare reference owner remains fail-closed without explicit cross-owner atomic capability"
+	)
+	var intent := _intent(
+		"bare-reference-owner-rejected",
+		owner.call("revision"),
+		"deploy_or_upgrade_monster",
+		"deploy_or_upgrade_monster",
+		{"valid": true, "region_id": "region-alpha"},
+		_monster_fields(1)
+	)
+	var receipt: Dictionary = adapter.call("prepare_effect", intent)
+	_expect(
+		not bool(receipt.get("prepared", true))
+		and str(receipt.get("reason_code", "")) == "monster_cross_owner_atomicity_unavailable",
+		"bare reference owner rejects monster preparation before mutation"
+	)
+	_expect(
+		((owner.call("private_debug_snapshot") as Dictionary).get("units", {}) as Dictionary).is_empty(),
+		"bare reference owner rejection leaves owner state unchanged"
+	)
 
 
 func _verify_summon_upgrade_and_finalize() -> void:
@@ -210,12 +262,19 @@ func _verify_finalize_failure_can_retry() -> void:
 
 
 func _fixture() -> Dictionary:
-	var owner = OWNER_SCRIPT.new()
+	var owner = AtomicReferenceMonsterOwner.new()
 	owner.configure("monster")
 	var adapter = ADAPTER_SCRIPT.new()
 	var configured: Dictionary = adapter.configure(owner)
 	_expect(bool(configured.get("configured", false)), "monster reference owner adapter configures")
-	_expect(bool((configured.get("capability_matrix", {}) as Dictionary).get("atomic_mutation_ready", false)), "monster reference owner advertises the complete atomic contract")
+	var matrix: Dictionary = configured.get("capability_matrix", {}) as Dictionary
+	_expect(
+		bool(matrix.get("atomic_mutation_ready", false))
+		and not (matrix.get("cross_owner_dependency_matrix", {}) as Dictionary).is_empty()
+		and bool(matrix.get("upgrade_duration_policy_ready", false))
+		and str(matrix.get("production_ready_scope", "")) == "test_fixture_atomic_lifecycle_only",
+		"test-only monster reference owner explicitly advertises the complete atomic fixture contract"
+	)
 	return {"owner": owner, "adapter": adapter}
 
 
