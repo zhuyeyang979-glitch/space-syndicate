@@ -12,7 +12,6 @@ class RuntimeWorld:
 	var selected_district := 0
 	var players: Array = [{
 		"id": 0,
-		"actor_id": "player.focused",
 		"name": "Focused Player",
 		"cash": 20,
 		"cash_cents": 2000,
@@ -95,8 +94,10 @@ func _run() -> void:
 	_expect(bool(ai_public.get("available", false)), "AI reports the production port capability without private policy details")
 
 	var players: Array = world.players
-	var actor_id := str((players[0] as Dictionary).get("actor_id", "")) if not players.is_empty() and players[0] is Dictionary else ""
-	_expect(not actor_id.is_empty(), "production actor binding is available")
+	_expect(not players.is_empty() and players[0] is Dictionary and not (players[0] as Dictionary).has("actor_id"), "production player has no actor_id field")
+	var identity: Dictionary = coordinator.call("actor_id_for_player_index", 0)
+	var actor_id := str(identity.get("actor_id", ""))
+	_expect(bool(identity.get("available", false)) and actor_id == "player.0", "Coordinator reverses the sole production adapter actor map")
 	var source_before: Dictionary = coordinator.call("economic_source_snapshot", actor_id)
 	_expect(bool(source_before.get("available", false)) and not bool(source_before.get("has_source", true)), "source snapshot reads existing owners and starts empty")
 	var market_before: Dictionary = coordinator.call("market_snapshot", actor_id)

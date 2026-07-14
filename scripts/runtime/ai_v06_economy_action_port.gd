@@ -2,8 +2,9 @@
 extends RefCounted
 class_name AiV06EconomyActionPort
 
-const CONTRACT_VERSION := "v0.6-ai-economy-action-port-v1"
+const CONTRACT_VERSION := "v0.6-ai-economy-action-port-v2"
 const REQUIRED_METHODS: Array[StringName] = [
+	&"actor_id_for_player_index",
 	&"market_snapshot",
 	&"purchase_rank_i_facility",
 	&"player_snapshot",
@@ -30,11 +31,19 @@ func capability_snapshot() -> Dictionary:
 				missing.append(str(method_name))
 	return {
 		"available": missing.is_empty(),
-		"revision": 1,
+		"revision": 2,
 		"reason_code": "ai_v06_economy_port_ready" if missing.is_empty() else "ai_v06_economy_port_capability_missing",
 		"contract_version": CONTRACT_VERSION,
 		"missing_methods": missing,
 	}
+
+
+func actor_id_for_player_index(player_index: int) -> Dictionary:
+	return _call_delegate(
+		&"actor_id_for_player_index",
+		[player_index],
+		"ai_v06_actor_mapping_unavailable"
+	)
 
 
 func market_snapshot(actor_id: String) -> Dictionary:

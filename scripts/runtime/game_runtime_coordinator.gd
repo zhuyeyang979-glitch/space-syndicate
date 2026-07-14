@@ -1258,8 +1258,34 @@ func _refresh_ai_v06_economy_action_port() -> Dictionary:
 	}
 
 
-# AiV06EconomyActionPort production delegate. These five methods expose only
+# AiV06EconomyActionPort production delegate. These six methods expose only
 # narrow pure-data views and forward all mutations to the existing owners.
+func actor_id_for_player_index(player_index: int) -> Dictionary:
+	var adapter := _card_player_state_production_adapter_v06_node()
+	if player_index < 0 or adapter == null or not adapter.has_method("actor_player_indices"):
+		return _ai_v06_economy_failure("ai_v06_actor_mapping_unavailable")
+	var actor_map_variant: Variant = adapter.call("actor_player_indices")
+	var actor_map: Dictionary = actor_map_variant if actor_map_variant is Dictionary else {}
+	var matching_actor_ids: Array[String] = []
+	for actor_id_variant in actor_map.keys():
+		var actor_id := str(actor_id_variant).strip_edges()
+		if not actor_id.is_empty() and int(actor_map.get(actor_id_variant, -1)) == player_index:
+			matching_actor_ids.append(actor_id)
+	matching_actor_ids.sort()
+	var revision := _ai_v06_binding_revision(actor_map)
+	if matching_actor_ids.size() != 1:
+		return _ai_v06_economy_failure(
+			"ai_v06_actor_mapping_missing" if matching_actor_ids.is_empty() else "ai_v06_actor_mapping_ambiguous",
+			revision
+		)
+	return {
+		"available": true,
+		"revision": revision,
+		"reason_code": "ai_v06_actor_mapping_ready",
+		"actor_id": matching_actor_ids[0],
+	}
+
+
 func market_snapshot(actor_id: String) -> Dictionary:
 	var normalized_actor_id := actor_id.strip_edges()
 	var surface := v06_first_table_facility_market_snapshot(normalized_actor_id)

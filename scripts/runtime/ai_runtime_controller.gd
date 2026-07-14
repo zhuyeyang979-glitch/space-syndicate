@@ -7399,10 +7399,13 @@ func _ai_v06_facility_failure(reason_code: String, attempted: bool = false) -> D
 
 
 func _ai_v06_actor_id(player_index: int) -> String:
-	var world_players: Array = players
-	if player_index < 0 or player_index >= world_players.size() or not (world_players[player_index] is Dictionary):
+	if player_index < 0 or _v06_economy_action_port == null or not _v06_economy_action_port.has_method("actor_id_for_player_index"):
 		return ""
-	return str((world_players[player_index] as Dictionary).get("actor_id", "")).strip_edges()
+	var identity_variant: Variant = _v06_economy_action_port.call("actor_id_for_player_index", player_index)
+	var identity: Dictionary = identity_variant if identity_variant is Dictionary else {}
+	if not bool(identity.get("available", false)):
+		return ""
+	return str(identity.get("actor_id", "")).strip_edges()
 
 
 func _ai_v06_starter_status(actor_id: String) -> Dictionary:
