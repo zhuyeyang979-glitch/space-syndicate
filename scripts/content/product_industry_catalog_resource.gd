@@ -29,6 +29,13 @@ func industry_for_product(product_id: String) -> String:
 	return ""
 
 
+func tags_for_product(product_id: String) -> Array[String]:
+	for entry in products:
+		if entry != null and entry.product_id == product_id:
+			return entry.optional_tags.duplicate()
+	return []
+
+
 func product_snapshot(product_id: String) -> Dictionary:
 	for entry in products:
 		if entry != null and entry.product_id == product_id:
