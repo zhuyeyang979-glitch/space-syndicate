@@ -69,7 +69,7 @@ func compose_detail(source: Dictionary) -> Dictionary:
 	var detail_source := {
 		"accent": accent,
 		"tooltip": str(source.get("detail_tooltip", "")),
-		"face_note": "重复入手→升级；价格看I级。",
+		"face_note": "同名同级→主动合并；价格看I级。",
 		"face_note_tooltip": "资料库只展示公开卡面和公开规则，不展示隐藏牌主。",
 		"card_face": {
 			"name": "%s %s" % [str(source.get("icon", "◇")), display_name],
@@ -192,7 +192,7 @@ func _upgrade_cards(entries: Array) -> Array:
 		result.append({
 			"roman": str(entry.get("roman", "")),
 			"price": "¥%d" % int(entry.get("price", 0)),
-			"price_tooltip": "购买仍按该系列I级价格体系展示；重复获得会自动合成升级。",
+			"price_tooltip": "购买仍按该系列I级价格体系展示；同名同级牌可主动合并升级。",
 			"band": str(entry.get("strength_band", "")),
 			"body": _short_text(preview, 62),
 			"body_tooltip": preview,
@@ -226,7 +226,7 @@ func _tactical_timing_text(route_label: String) -> String:
 		"天气博弈": return "能提前布局运输/生产窗口时拿。"
 		"直接互动": return "要打断领先者、关键手牌或产权节奏时拿。"
 		"怪兽路线": return "想铺怪兽压力、升级己方怪兽或夺取风险时拿。"
-		"补给构筑": return "缺路线牌、满手前想提速升级时拿。"
+		"补给构筑": return "需要同名同级素材、准备主动合并时拿。"
 		"战斗破坏": return "城市GDP可被打低，或怪兽即将接触时拿。"
 		"怪兽诱导": return "想把怪兽注意力推向某个热点区时拿。"
 	return "当前局面缺现金、目标或节奏时考虑。"
@@ -237,7 +237,7 @@ func _tactical_combo_text(kind: String, route_label: String) -> String:
 	if kind in ["military_force", "military_command"]: return "配合城市防守、商路压制和怪兽猎杀。"
 	if kind == "area_trade_contract": return "配合商品供需、交通区和拒签奖惩。"
 	if kind in ["city_gdp_derivative", "product_futures", "product_speculation"]: return "配合供需压力、天气窗口和怪兽破坏。"
-	if kind in ["card_access_boon", "supply_draw"]: return "配合区域牌架和重复牌升级。"
+	if kind in ["card_access_boon", "supply_draw"]: return "配合同名同级牌，为主动合并准备素材。"
 	match route_label:
 		"城市成长": return "配合交通升级、需求扩张和商路修复。"
 		"城市压制": return "配合做空、怪兽诱导和断路效果。"

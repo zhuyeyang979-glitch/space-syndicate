@@ -196,7 +196,7 @@ Key files and folders:
 - `tests/ui_text_smoke_test.gd` — source-level UI text/contract guard.
 - `tests/visual_snapshot.gd` — source-level visual/layout contract guard.
 - `tests/ui_snapshot_capture.gd` — headed screenshot capture for visual QA.
-- `docs/rules_summary.md` — current rules summary.
+- `docs/tabletop_rulebook_v06.md` — authoritative v0.6 player rules; `docs/rules_summary.md` is its current quick-reference companion.
 - `docs/development_log.md` — running development log.
 - `docs/reference_ui_notes.md` — deeper reference notes.
 - `REFERENCE_LINKS.md` — root list of reference URLs.

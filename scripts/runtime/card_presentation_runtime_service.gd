@@ -318,8 +318,8 @@ func _playable_detail(args: Dictionary) -> String:
 
 func _face_chips(source: Dictionary, skill: Dictionary) -> Array:
 	var entries := [
-		{"text": "¥%d" % maxi(0, int(source.get("price", 0))), "fg": Color("#fef3c7"), "bg": Color("#713f12"), "tip": "购买价格；同系列升级仍按I级基准价。"},
-		{"text": _roman_rank(int(source.get("rank", skill.get("rank", 1)))), "fg": Color("#dbeafe"), "bg": Color("#1e3a8a"), "tip": "卡牌等级。重复获得同系列牌会自动升级，最高IV。"},
+		{"text": "¥%d" % maxi(0, int(source.get("price", 0))), "fg": Color("#fef3c7"), "bg": Color("#713f12"), "tip": "购买价格；主动合并后的等级不改变该系列I级购买基准价。"},
+		{"text": _roman_rank(int(source.get("rank", skill.get("rank", 1)))), "fg": Color("#dbeafe"), "bg": Color("#1e3a8a"), "tip": "卡牌等级。同名同级牌可主动合并升级，最高IV。"},
 	]
 	var required_percent := maxi(0, int(source.get("required_share_percent", 0)))
 	if required_percent > 0:
@@ -455,7 +455,7 @@ func _use_case_text(source: Dictionary, skill: Dictionary, route_label: String) 
 		return "押商品上涨" if direction == "up" else ("押商品下跌" if direction == "down" else "押商品涨跌")
 	if kind == "city_gdp_derivative": return "保护城市GDP" if bool(gdp_terms.get("insurance", false)) else ("押城市GDP涨" if direction == "up" else ("押城市GDP跌" if direction == "down" else "押城市GDP"))
 	if kind in ["attack", "charge_attack", "roll_attack", "mudslide", "miasma_shot", "corrosive_breath"]: return "造成战斗伤害"
-	var route_uses := {"城市成长":"提高长期收入", "城市压制":"压低对手GDP", "金融投机":"把波动变现金", "合约博弈":"改写供需关系", "情报推理":"获取隐藏线索", "新闻信息战":"制造公开事件", "天气博弈":"改变区域天气", "直接互动":"干扰对手", "怪兽路线":"制造怪兽压力", "补给构筑":"加速拿牌升级", "战斗破坏":"制造破坏", "怪兽诱导":"引怪到目标"}
+	var route_uses := {"城市成长":"提高长期收入", "城市压制":"压低对手GDP", "金融投机":"把波动变现金", "合约博弈":"改写供需关系", "情报推理":"获取隐藏线索", "新闻信息战":"制造公开事件", "天气博弈":"改变区域天气", "直接互动":"干扰对手", "怪兽路线":"制造怪兽压力", "补给构筑":"收集同名牌主动合并", "战斗破坏":"制造破坏", "怪兽诱导":"引怪到目标"}
 	return str(route_uses.get(route_label, "临场改局势"))
 
 
@@ -470,7 +470,7 @@ func _strategy_use_text(skill: Dictionary, route_label: String) -> String:
 		"天气博弈": return "提前改写区域生产和运输窗口。"
 		"直接互动": return "打断对手手牌、产权或行动节奏。"
 		"怪兽路线": return "召唤、升级或引导怪兽形成地图压力。"
-		"补给构筑": return "扩大牌架范围并加速同系列升级。"
+		"补给构筑": return "寻找同名同级牌，为主动合并准备升级素材。"
 		"战斗破坏": return "以伤害、军队或断路制造压力。"
 		"怪兽诱导": return "改变怪兽关注目标和到达节奏。"
 	return str(skill.get("text", "即时改变桌面局势。"))
@@ -720,7 +720,7 @@ func _resolution_animation_stages(_card_name: String, skill: Dictionary, facts: 
 		"panic_shift": return ["%s把目标区域推上星际热搜，新闻噪声覆盖地图。" % label, "区域热度上升，怪兽目标概率随之偏移；这不是被动新闻，只是卡牌制造的关注。", "如果热度过载，区域还可能因恐慌触发额外损伤。"]
 		"news_event": return ["%s以匿名新闻源身份插入全屏播报，卡轨只显示新闻类型不显示出牌者。" % label, "目标区域热度、商品供需、商路或生产/消费会按卡面数值变化。", "新闻不会被动发生；这次公开余波会留给所有玩家反推谁最受益。"]
 		"weather_control": return ["%s接入星球气象台，把下一条天气预报改写到目标区域附近。" % label, "所有玩家提前看到天气类型、预报沙漏、覆盖区域和持续时间，可以据此建城、买涨/做空或转移怪兽。", "到点后天气才生效，生产、交通和消费修正会体现在秒级GDP中。"]
-		"supply_draw": return ["%s呼叫补给无人机，镜头从当前区域的卡池向手牌区拉线。" % label, "玩家从怪兽落地区/相邻区额外获得候选卡，重复牌会按规则合成升级。", "补给来源会留在卡牌记录里，但出牌者仍保持匿名。"]
+		"supply_draw": return ["%s呼叫补给无人机，镜头从当前区域的卡池向手牌区拉线。" % label, "玩家从补给中获得候选卡；同名同级牌入手后可由玩家主动合并升级。", "补给来源会留在卡牌记录里，但出牌者仍保持匿名。"]
 		"monster_takeover": return ["%s在目标怪兽身上盖下新的匿名归属印记。" % label, "旧绑定技能被撤销，新归属者接收这只怪兽的后续资金线索和固定技能关系。", "夺取者不会公开；直到怪兽受伤造成资金损失，新的归属线索才浮出水面。"]
 		"monster_lure", "special_monster_delay", "monster_bound_action": return ["%s锁定目标怪兽，中央卡面投出一次性诱导波形。" % label, "怪兽仍不是常驻可控单位；诱导牌只会改写下一次自动移动方向或延后一次特殊行动。", "指令结束后怪兽继续按自身概率自动行动，只留下匿名出牌痕迹。"]
 		"move", "fly", "burrow": return ["%s在目标怪兽脚下画出移动轨迹，地图投影被拉成一条行动线。" % label, "怪兽沿路线移动，经过或落点区域会按移动破坏规则承受损伤。", "移动结束后区域伤害、城市受损和怪兽位置都会成为公开局势。"]

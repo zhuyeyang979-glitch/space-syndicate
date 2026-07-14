@@ -128,7 +128,7 @@ func compose(source: Dictionary) -> Dictionary:
 			"preview_text": "选择一张区域供牌查看详情。",
 		},
 		"privacy_hint": "当前仅显示本地玩家自己的购买状态。" if viewer_private else "公共牌架只显示卡牌与公开价格；购买状态保持私密。",
-		"privacy_tooltip": "精确现金、手牌数量与购买资格仅对本地玩家本人显示。" if viewer_private else "公共视图不含任何玩家的精确现金、手牌、弃牌或购买资格。",
+		"privacy_tooltip": "精确现金、手牌数量与购买资格仅对本地玩家本人显示。" if viewer_private else "公共视图不含任何玩家的精确现金、手牌或购买资格。",
 	}
 	if viewer_private:
 		output["purchase_window"] = (source.get("purchase_window", {}) as Dictionary).duplicate(true)
@@ -217,7 +217,7 @@ func _safe_snapshot() -> Dictionary:
 		"visibility_scope": "public",
 		"empty_state": {"market_text": "当前区域暂无卡牌。", "preview_text": "选择一张区域供牌查看详情。"},
 		"privacy_hint": "只显示当前玩家可见的购买状态。",
-		"privacy_tooltip": "不会公开手牌、弃牌、隐藏牌主或渠道来源。",
+		"privacy_tooltip": "不会公开手牌、隐藏牌主或渠道来源。",
 	}
 
 
@@ -239,7 +239,7 @@ func _header_chips(source: Dictionary) -> Array:
 	entries.append({"text": "价格已锁", "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "价格和购买资格在打开牌架时锁定。" if viewer_private else "公开价格可查看；购买资格保持私密。"})
 	entries.append({"text": "单窗口", "accent": "#c4b5fdff", "fg": "#c4b5fdff", "bg": "#312e81ff", "tooltip": "每名玩家同时只保留一个区域购买窗口。"})
 	if viewer_private and hand_limit > 0 and hand_size >= hand_limit:
-		entries.append({"text": "弃牌私密", "accent": "#facc15ff", "fg": "#facc15ff", "bg": "#713f12ff", "tooltip": "换购所弃卡牌不会向其他玩家公开。"})
+		entries.append({"text": "手牌已满", "accent": "#facc15ff", "fg": "#facc15ff", "bg": "#713f12ff", "tooltip": "满5张时，只有领取合法同名可升级商品牌才自动合并一次；其他牌不能直接接收。"})
 	var products: Array = source.get("local_product_names", []) if source.get("local_product_names", []) is Array else []
 	if not products.is_empty():
 		var product_labels: Array = []
@@ -272,12 +272,12 @@ func _market_summary(cards: Array) -> Dictionary:
 func _market_status_entries(summary: Dictionary) -> Array:
 	var entries: Array = [
 		_status_entry("可买", int(summary.get("buy_now", 0)), "#4ade80ff", "现在可以直接购买的牌。"),
-		_status_entry("弃牌", int(summary.get("discard", 0)), "#facc15ff", "买入前会进入私密弃牌选择。"),
+		_status_entry("手满", int(summary.get("discard", 0)), "#facc15ff", "普通手牌已满；只有领取合法同名可升级商品牌才自动合并一次。"),
 		_status_entry("仅看", int(summary.get("browse", 0)), "#93c5fdff", "可以查看，但这次窗口不能购买。"),
 		_status_entry("受阻", int(summary.get("blocked", 0)), "#fb7185ff", "资金不足、已满级或其他状态导致暂时不能接收。"),
 	]
 	if int(summary.get("upgrade", 0)) > 0:
-		entries.append(_status_entry("升级", int(summary.get("upgrade", 0)), "#c084fcff", "重复获得会升级到下一罗马等级。"))
+		entries.append(_status_entry("可合并", int(summary.get("upgrade", 0)), "#c084fcff", "同名同级牌可由玩家主动合并到下一罗马等级。"))
 	return entries
 
 
@@ -365,7 +365,7 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"facts": _short_text(facts, 42),
 		"status_text": "%s｜¥%d｜%s" % [str(state.get("label", "仅浏览")), price, _short_text(detail, 36)],
 		"status_tooltip": detail,
-		"buy_text": "%s ¥%d" % ["弃牌后购买" if bool(state.get("requires_discard", false)) else "购买", price],
+		"buy_text": "%s ¥%d" % ["手满限制" if bool(state.get("requires_discard", false)) else "购买", price],
 		"buy_enabled": bool(state.get("actionable", false)),
 		"buy_tooltip": "查看总是允许；%s" % detail,
 		"card_face": _preview_card_face(card),
@@ -432,7 +432,7 @@ func _purchase_verdicts(card: Dictionary, source: Dictionary) -> Array:
 	else:
 		entries.append({"text": "公开预览", "accent": "#93c5fdff", "active": true, "tip": "公共视图不显示任何玩家的手牌数量或购买资格。"})
 	if viewer_private and bool(state.get("requires_discard", false)):
-		entries.append({"text": "私密弃牌", "accent": "#facc15ff", "active": true, "tip": "购买后进入私密弃牌确认；其他玩家不知道手牌数量和弃牌内容。"})
+		entries.append({"text": "手满限制", "accent": "#facc15ff", "active": true, "tip": "普通牌不能直接接收；满5张领取合法同名可升级商品牌时才自动合并一次。"})
 	var access_kind := str(source.get("access_kind", "none"))
 	entries.append({"text": _access_short_label(access_kind), "accent": _access_color(access_kind), "active": access_kind != "none", "tip": str(source.get("access_text", ""))})
 	entries.append({
@@ -491,7 +491,7 @@ func _purchase_state(card: Dictionary) -> Dictionary:
 func _buy_scan_text(state: Dictionary, price: int) -> String:
 	var parts: Array = [str(state.get("label", "仅浏览")), "¥%d" % price]
 	if bool(state.get("requires_discard", false)):
-		parts.append("需弃牌")
+		parts.append("手满限制")
 	return "｜".join(parts)
 
 

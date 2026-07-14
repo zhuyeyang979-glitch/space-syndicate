@@ -2,7 +2,19 @@
 
 Godot 4 project for **太空辛迪加 / Space Syndicate**, based on the local rules draft and art requirement list.
 
-## Current Prototype Scope
+> Active rules authority: [`docs/tabletop_rulebook_v06.md`](docs/tabletop_rulebook_v06.md). The shorter [`docs/rules_summary.md`](docs/rules_summary.md) is the current v0.6 player quick reference. When code, UI text, tests, or older documents disagree, the v0.6 rulebook wins.
+>
+> Migration boundary: the long prototype inventory below records the playable v0.4 implementation that v0.6 is replacing. Its urbanization shares, district card racks, full-hand private discard, automatic reacquisition upgrade, old contracts/route damage, and cash-goal ending are historical migration evidence, not active v0.6 player rules. The legacy [`docs/tabletop_rulebook.md`](docs/tabletop_rulebook.md) is historical for the same reason.
+
+## Active v0.6 Gameplay
+
+- Players compete through owned commodity GDP and public facilities. A region is controlled when the player's commodity GDP there is positive and at least 30% of the region's commodity GDP. Dynamic `K` and the Top-K commodity-GDP threshold determine entry into a 120-second public final audit.
+- Commodity cards move through the shared top belt and can be claimed for free when visible and eligible. Non-commodity normal cards are bought from a public dynamic market with their printed cash price.
+- Two normal cards with the same name and rank can be merged manually from I through IV. Automatic merge is only the full-hand exception: while already holding five normal cards, claiming a legal matching upgradable commodity card auto-merges once; otherwise the claim fails without a sell/discard rescue window.
+- A player becomes bankrupt only when accurate cash is below zero after an atomic settlement. Cash equal to zero remains in the game but cannot pay for cash purchases.
+- Old project contracts, accept/reject/default chains, trade-route cards, abstract route life, and abstract route-damage repair are retired from v0.6 development.
+
+## Historical v0.4 Prototype Migration Inventory
 
 - 3-8 seat PVE roguelike sandbox with a lightweight main/pause menu. Each run can include 2-7 AI opponents plus at least one human/local player seat.
 - Continuous real-time clock with pause for menus/rules inspection. Card play, auction windows, monster actions, cashflow, futures, and GDP movement are tuned around live time rather than player-facing time-multiplier presets.

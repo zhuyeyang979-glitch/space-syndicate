@@ -514,7 +514,7 @@ func _expected_derived(family: CardRuntimeFamilyResource, requested_rank: int) -
 			break
 	var steps := requested_rank - source_rank
 	var result := source.duplicate(true)
-	result["text"] = "%s（%s：从%s继续成长；重复获得同系列卡自动升级，购买价仍按I级。）" % [str(source.get("text", base.get("text", ""))), _level_text(requested_rank), _level_text(source_rank)]
+	result["text"] = "%s（%s：从%s继续成长；同名同级牌可主动合并升级，购买价仍按I级。）" % [str(source.get("text", base.get("text", ""))), _level_text(requested_rank), _level_text(source_rank)]
 	result["rank"] = requested_rank
 	result["derived_from_rank"] = source_rank
 	var tags: Array = (source.get("tags", base.get("tags", [])) as Array).duplicate(true)
