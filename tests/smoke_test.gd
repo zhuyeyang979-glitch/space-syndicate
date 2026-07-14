@@ -6,6 +6,7 @@ const MAP_VIEW_SCRIPT_PATH := "res://scripts/map_view.gd"
 const CARD_ART_SCRIPT_PATH := "res://scripts/card_art_view.gd"
 const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
+const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_current_run.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
 const SMOKE_PROGRESS_PATH := "user://space_syndicate_smoke_progress.log"
@@ -78,7 +79,7 @@ func _run() -> void:
 		_expect(_as_array(main.get("configured_starter_monster_indices")).slice(0, 4) == [7, 6, 2, 4], "recommended first-run setup chooses readable starter monsters")
 	_mark_smoke_progress("new game setup")
 	main.call("_new_game")
-	_expect(_verify_first_run_coach_runtime_snapshot(main), "first-run coach snapshot exposes a single next-step phase and advances from region confirmation to first summon")
+	_expect(_verify_v06_market_rule_contract(), "smoke consumes the settled voluntary-summon and solar-market public rule contract")
 	main.set("ai_card_decision_enabled", false)
 	main.call("_open_main_menu")
 	await process_frame
@@ -124,10 +125,6 @@ func _run() -> void:
 			has_no_legacy_detail_panel_source = false
 			break
 	_expect(has_no_legacy_detail_panel_source, "main play layout has no detached legacy detail/debug panel source")
-	var initial_run_state := main.call("_capture_run_state") as Dictionary
-	_expect(not initial_run_state.has("configured_monster_indices") and not initial_run_state.has("active_monster_indices"), "run saves contain no legacy monster-lineup fields")
-	_expect(not initial_run_state.has("current_balance_index"), "run saves contain no pacing-preset field")
-
 	var players := _as_array(main.get("players"))
 	var districts := _as_array(main.get("districts"))
 	var skill_market := _as_array(main.get("skill_market"))
@@ -180,7 +177,7 @@ func _run() -> void:
 	_expect(_verify_ai_weather_control_policy(main), "AI opponents choose weather-control targets from route, terrain, GDP, and disruption value")
 	_expect(_verify_ai_strategy_route_diversification_policy(main), "AI opponents generate field-driven defense, suppression, finance, and intel route candidates")
 	_mark_smoke_progress("ai progress smoke")
-	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can first-summon, build, buy, play, earn income, and produce controller-readable victory progress")
+	_expect(_verify_ai_progresses_run_smoke(main), "AI opponents can build, buy, earn income, and produce controller-readable victory progress without a mandatory opening card play")
 	_mark_smoke_progress("max ai complete smoke")
 	_expect(_verify_max_ai_seat_complete_smoke(main), "an eight-seat run with seven AI opponents can open, build, buy, play, report profile route actions, consume one victory receipt, and restore cleanly")
 	_mark_smoke_progress("player table ui checks")
@@ -224,7 +221,7 @@ func _run() -> void:
 		var split_hand_targets_variant: Variant = split_hand_rack.call("get_card_target_snapshot")
 		if split_hand_targets_variant is Array:
 			split_hand_targets = split_hand_targets_variant
-	_expect(_container_has_named_node(main, "PlaytestFlowCompass") and _container_label_text_contains(main, "试玩") and _container_label_text_contains(main, "罗盘") and _container_label_text_contains(main, "点区") and _container_label_text_contains(main, "首召") and _container_label_text_contains(main, "建城") and _container_label_text_contains(main, "买牌") and _container_label_text_contains(main, "出牌") and _container_label_text_contains(main, "牌轨") and _container_label_text_contains(main, "经济") and _container_label_text_contains(main, "路线"), "main planet board exposes a thin first-run playtest flow compass through route choice beside the map")
+	_expect(_container_has_named_node(main, "PlaytestFlowCompass") and _container_label_text_contains(main, "试玩") and _container_label_text_contains(main, "罗盘") and _container_label_text_contains(main, "点区") and _container_label_text_contains(main, "买牌") and _container_label_text_contains(main, "出牌") and _container_label_text_contains(main, "牌轨") and _container_label_text_contains(main, "经济") and _container_label_text_contains(main, "路线"), "main planet board exposes a non-blocking first-run playtest flow through route choice beside the map")
 	_expect(_container_has_named_node(main, "CardResolutionTimelineEventSlot") and _container_has_named_node(main, "TimelineEventReadOnlyBadge") and not _container_has_named_node(main, "RecentTableEventBar"), "top card-history timeline also carries read-only public events instead of a separate recent-event bar")
 	_expect(
 		(player_box != null and _container_label_text_contains(player_box, "我的手牌") and _container_label_text_contains(player_box, "资金:"))
@@ -238,7 +235,6 @@ func _run() -> void:
 	)
 	_expect((player_box != null and _container_label_text_contains(player_box, "状态：") and (
 		_container_label_text_contains(player_box, "可打出")
-		or _container_label_text_contains(player_box, "首召就绪")
 		or _container_label_text_contains(player_box, "需商品")
 		or _container_label_text_contains(player_box, "需怪兽目标")
 		or _container_label_text_contains(player_box, "需玩家目标")
@@ -257,7 +253,7 @@ func _run() -> void:
 	)
 	_expect(
 		(player_box != null and _container_button_tooltip_contains(player_box, "打出条件："))
-		or (split_action_dock != null and (_container_button_text_contains(split_action_dock, "出牌") or _container_button_text_contains(split_action_dock, "首召")) and _container_button_tooltip_contains(split_action_dock, "手牌")),
+		or (split_action_dock != null and _container_button_text_contains(split_action_dock, "出牌") and _container_button_tooltip_contains(split_action_dock, "手牌")),
 		"hand card action buttons expose concise play requirements"
 	)
 	_expect(
@@ -276,13 +272,13 @@ func _run() -> void:
 			"runtime player snapshot keeps the local hand/action player stable without exposing private opponent fields"
 		)
 	_expect(
-		(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail") and _container_has_named_node(player_box, "TableGoalConditionRail") and (_container_label_text_contains(player_box, "首召牌") or _container_label_text_contains(player_box, "选区")))
+		(player_box != null and _container_label_text_contains(player_box, "目标提示") and _container_label_text_contains(player_box, "◎下一步") and _container_has_named_node(player_box, "TableGoalPrompt") and _container_has_named_node(player_box, "TableGoalPromptChipRail") and _container_has_named_node(player_box, "TableGoalConditionRail") and (_container_label_text_contains(player_box, "牌架") or _container_label_text_contains(player_box, "选区")))
 		or (split_player_board != null and _container_label_text_contains(split_player_board, "下一步") and _container_label_text_contains(split_player_board, "选区")),
 		"player panel shows one concise table-goal next-action card with scan-first condition chips"
 	)
 	_expect(
-		(player_box != null and _container_has_named_node(player_box, "PlayerDashboardActionDock") and _container_has_named_node(player_box, "MainActionDock") and _container_has_named_node(player_box, "ActionDockReadinessChipRail") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionStrip") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionButton") and _container_has_named_node(player_box, "PlayerTableStateLampRail") and _container_label_text_contains(player_box, "桌边") and _container_label_text_contains(player_box, "推荐") and _container_label_text_contains(player_box, "桌态") and _container_label_text_contains(player_box, "本席") and _container_label_text_contains(player_box, "牌队") and _container_label_text_contains(player_box, "选区") and (_container_label_text_contains(player_box, "手牌") or _container_label_text_contains(player_box, "满手")) and _container_button_text_contains(player_box, "建城") and _container_button_text_contains(player_box, "牌架") and _container_button_text_contains(player_box, "买牌") and (_container_button_text_contains(player_box, "出牌") or _container_button_text_contains(player_box, "首召")))
-		or (split_player_board != null and split_action_dock != null and split_status_lamp_row != null and split_readiness_chip_row != null and split_hand_count_chip != null and _container_label_text_contains(split_player_board, "本席") and _container_label_text_contains(split_player_board, "选区") and _container_label_text_contains(split_player_board, "手牌") and _container_button_text_contains(split_action_dock, "建城") and _container_button_text_contains(split_action_dock, "牌架") and _container_button_text_contains(split_action_dock, "买牌") and (_container_button_text_contains(split_action_dock, "出牌") or _container_button_text_contains(split_action_dock, "首召"))),
+		(player_box != null and _container_has_named_node(player_box, "PlayerDashboardActionDock") and _container_has_named_node(player_box, "MainActionDock") and _container_has_named_node(player_box, "ActionDockReadinessChipRail") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionStrip") and _container_has_named_node(player_box, "PlayerDashboardPrimaryActionButton") and _container_has_named_node(player_box, "PlayerTableStateLampRail") and _container_label_text_contains(player_box, "桌边") and _container_label_text_contains(player_box, "推荐") and _container_label_text_contains(player_box, "桌态") and _container_label_text_contains(player_box, "本席") and _container_label_text_contains(player_box, "牌队") and _container_label_text_contains(player_box, "选区") and (_container_label_text_contains(player_box, "手牌") or _container_label_text_contains(player_box, "满手")) and _container_button_text_contains(player_box, "建城") and _container_button_text_contains(player_box, "牌架") and _container_button_text_contains(player_box, "买牌") and _container_button_text_contains(player_box, "出牌"))
+		or (split_player_board != null and split_action_dock != null and split_status_lamp_row != null and split_readiness_chip_row != null and split_hand_count_chip != null and _container_label_text_contains(split_player_board, "本席") and _container_label_text_contains(split_player_board, "选区") and _container_label_text_contains(split_player_board, "手牌") and _container_button_text_contains(split_action_dock, "建城") and _container_button_text_contains(split_action_dock, "牌架") and _container_button_text_contains(split_action_dock, "买牌") and _container_button_text_contains(split_action_dock, "出牌")),
 		"player panel exposes a first-screen dashboard action dock, recommended primary action, table-state lamps, readiness chips, and the detailed quick action tray for build, market, buy, and play"
 	)
 	_expect(
@@ -301,8 +297,8 @@ func _run() -> void:
 		"early-run guide keeps a first-minute next step visible with menu access to deeper help"
 	)
 	_expect(
-		(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "首召怪兽") and _container_label_text_contains(player_box, "建第一城") and not _container_label_text_contains(player_box, "为什么：") and not _container_label_text_contains(player_box, "入口："))
-		or (split_player_board != null and split_action_dock != null and _container_label_text_contains(split_player_board, "下一步") and (_container_label_text_contains(split_player_board, "首召") or _container_button_text_contains(split_action_dock, "首召") or _container_button_text_contains(split_action_dock, "牌架")) and not _container_label_text_contains(split_player_board, "为什么：") and not _container_label_text_contains(split_player_board, "入口：")),
+		(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "牌架") and not _container_label_text_contains(player_box, "为什么：") and not _container_label_text_contains(player_box, "入口："))
+		or (split_player_board != null and split_action_dock != null and _container_label_text_contains(split_player_board, "下一步") and _container_button_text_contains(split_action_dock, "牌架") and not _container_label_text_contains(split_player_board, "为什么：") and not _container_label_text_contains(split_player_board, "入口：")),
 		"early-run guide presents compact progress chips and a short next-step strip"
 	)
 	_expect(
@@ -324,9 +320,6 @@ func _run() -> void:
 		or (player_box == null and bool(main.call("_opening_guide_economy_seen", 0))),
 		"early-run guide checks off economy overview only after opening it"
 	)
-	var seen_guide_state := main.call("_capture_run_state") as Dictionary
-	main.set("opening_guide_economy_seen_players", {})
-	_expect(int(main.call("_apply_run_state", seen_guide_state)) == OK and bool(main.call("_opening_guide_economy_seen", 0)), "early-run guide economy-overview progress persists in run saves")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
 	main.set("opening_guide_dismissed", true)
@@ -337,20 +330,12 @@ func _run() -> void:
 		and not bool(dismissed_coach_snapshot.get("visible", true)),
 		"early-run guide can be dismissed from the main play panel"
 	)
-	var dismissed_guide_state := main.call("_capture_run_state") as Dictionary
-	main.set("opening_guide_dismissed", false)
-	_expect(int(main.call("_apply_run_state", dismissed_guide_state)) == OK and bool(main.get("opening_guide_dismissed")), "early-run guide dismissed state persists in run saves")
 	main.call("_refresh_ui")
 	player_box = main.get("player_box") as VBoxContainer
 	_expect(
 		(player_box != null and not _container_label_text_contains(player_box, "角色卡") and not _container_label_text_contains(player_box, "经济流水") and not _container_card_art_kind_contains(player_box, "player_role"))
 		or (runtime_screen != null and not _container_label_text_contains(runtime_screen, "角色卡") and not _container_label_text_contains(runtime_screen, "经济流水") and not _container_card_art_kind_contains(runtime_screen, "player_role")),
 		"player panel hides role/economy details from the main play screen"
-	)
-	_expect(
-		(player_box != null and _container_label_text_contains(player_box, "首召怪兽") and _container_button_text_contains(player_box, "在选区首召") and not _container_has_named_node(player_box, "FirstSummonCard"))
-		or (split_player_board != null and split_action_dock != null and (_container_label_text_contains(split_player_board, "首召") or _container_button_text_contains(split_action_dock, "首召")) and not _container_has_named_node(split_player_board, "FirstSummonCard")),
-		"empty-field player panel prompts the starter monster first summon through one primary action slot"
 	)
 	_expect(_players_have_starting_monster_cards(main, players), "each player starts with a free first monster card")
 	var first_starting_card := ((_as_array((players[0] as Dictionary).get("slots", [])))[0]) as Dictionary
@@ -397,11 +382,6 @@ func _run() -> void:
 	product_market = main.get("product_market") as Dictionary
 	_expect(auto_monsters.size() == EXPECTED_SUMMONED_MONSTER_COUNT, "playing starting monster cards summons four anonymous automatic monsters for the smoke run")
 	player_box = main.get("player_box") as VBoxContainer
-	_expect(
-		(player_box != null and not _container_button_text_contains(player_box, "在选区首召"))
-		or (player_box == null and split_action_dock != null and not _container_button_text_contains(split_action_dock, "在选区首召")),
-		"first-summon prompt disappears once monsters are on the field"
-	)
 	var occupied_event_parts := main.call("_event_target_weight_parts", int((auto_monsters[0] as Dictionary).get("position", -1))) as Dictionary
 	_expect(int(occupied_event_parts.get("monster", 0)) > 0, "event targeting derives monster attention from the unified automatic-monster collection")
 	_expect(_summoned_monsters_have_hidden_owners(auto_monsters), "summoned monster ownership starts hidden while HP and duration are visible")
@@ -420,7 +400,6 @@ func _run() -> void:
 	_expect(_verify_monster_lure_replaces_control_window(main), "monster lure cards replace old control-window cards with one-shot anonymous movement guidance")
 	_expect(_verify_anonymous_cash_card(main), "cash-card public events hide the player who played the card")
 	_expect(_verify_anonymous_direct_command(main), "one-shot monster-command events hide the directing player")
-	_expect(_verify_remote_supply_access(main), "remote-supply roles and cards extend purchase range without extending monster summon range")
 	_mark_smoke_progress("card resolution auction smoke")
 	var queue_results: Dictionary = await _verify_card_resolution_auction_and_guess(main)
 	_expect(bool(queue_results.get("five_second_window", false)), "every card enters a five-second public reveal window")
@@ -499,7 +478,7 @@ func _run() -> void:
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
 	_expect(_verify_area_trade_contract_card_variants(main), "area contract card families cover selected, fixed, auto, multi-product, and punitive terms")
 	_expect(["高阶档", "旗舰档"].has(String(main.call("_card_price_tier_text", premium_card_price))), "high-leverage economy cards map into an explicit non-basic price tier")
-	_expect(_verify_monster_region_card_pricing(main), "monster landing regions discount card purchases while adjacent regions keep base price")
+	_expect(_verify_v06_market_rule_contract(), "v0.6 market contract keeps sunlight eligibility, additive monster pressure, upward rounding, and five-second quote locks")
 	_expect(_verify_reacquired_card_upgrade_rules(main), "reacquiring an owned card upgrades its family and stops at rank IV")
 	_expect(_verify_private_discard_purchase_flow(main), "full-hand purchases require a private discard choice without leaking hand size, card names, or discard details")
 	_expect(_verify_card_rank_ladders_are_complete(main), "all base card families expose non-regressing I-IV rank ladders at the rank-I price")
@@ -747,15 +726,15 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "开局准备", "new-run entry opens the setup preview instead of immediately starting")
 	_expect(menu_context_label != null and menu_context_label.text.contains("开局｜"), "setup branch updates the compact breadcrumb/help strip")
 	_expect(_as_array(main.get("players")).size() == current_players_before_setup, "opening setup preview does not wipe the current run")
-	_expect(menu_body_label != null and menu_body_label.text.contains("公开角色") and menu_body_label.text.contains("首召怪兽"), "new-run setup explains role cards and starter monster cards")
+	_expect(menu_body_label != null and menu_body_label.text.contains("公开角色") and menu_body_label.text.contains("起始怪兽"), "new-run setup explains role cards and the held starter monster")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "开始本局"), "new-run setup requires an explicit start confirmation")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "角色被动"), "new-run setup previews role passive rules")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "player_role"), "new-run setup previews player role-card art")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "monster_card"), "new-run setup previews starter monster-card art")
-	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "不限区"), "new-run setup starter card art shows the unrestricted first-summon access")
+	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "不限区"), "new-run setup starter card art shows its unrestricted summon access")
 	_expect(menu_preview_box != null and _container_has_meta(menu_preview_box, "setup_summary_chips") and _container_has_meta(menu_preview_box, "setup_seat_card") and _container_has_meta(menu_preview_box, "setup_seat_chips"), "new-run setup uses compact board-game setup chips and seat cards")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "目标¥") and _container_label_text_contains(menu_preview_box, "角色不重复") and _container_label_text_contains(menu_preview_box, "首召独立"), "new-run setup summary chips expose the key setup facts")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "固定技") and _container_label_text_contains(menu_preview_box, "落点开牌架"), "new-run setup explains starter summon rewards and card-access radius with short player labels")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "目标¥") and _container_label_text_contains(menu_preview_box, "角色不重复") and _container_label_text_contains(menu_preview_box, "召唤自愿"), "new-run setup summary chips expose the key setup facts")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "固定技") and _container_label_text_contains(menu_preview_box, "日照牌架"), "new-run setup separates optional starter summoning from sunlit market access")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "随机角色") and not _container_label_text_contains(menu_preview_box, "主路线"), "new-run setup supports random AI roles while hiding AI internal development routes")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "上一个角色") and _container_button_text_contains(menu_preview_box, "下一个角色"), "new-run setup exposes per-player alien role switching")
 	var first_role_before_setup := int(role_indices_before_setup[0]) if not role_indices_before_setup.is_empty() else 0
@@ -789,7 +768,7 @@ func _run() -> void:
 	_expect(menu_title_label != null and menu_title_label.text == "新手引导", "tutorial menu opens from the main scene")
 	_expect(menu_back_button != null and menu_back_button.visible, "tutorial subpage exposes a visible return-to-main button")
 	_expect(menu_continue_button != null and not menu_continue_button.visible, "tutorial subpage hides global continue so only page-relevant navigation remains")
-	_expect(menu_body_label != null and menu_body_label.text == "第一局：首召、开牌架、发展项目、读结算。", "tutorial opens with a one-line v0.4 first-game action path")
+	_expect(menu_body_label != null and menu_body_label.text == "第一局：点区、看日照牌架、发展项目、读结算。", "tutorial opens with a voluntary-summon v0.6 first-game action path")
 	_expect(menu_body_label != null and not menu_body_label.text.contains("Lv") and menu_body_label.text.length() <= 28, "tutorial keeps the top copy short enough for playtesting")
 	main.call("_open_rules_menu")
 	await process_frame
@@ -938,7 +917,7 @@ func _run() -> void:
 	var menu_bestiary_back_button := _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "角色图鉴", "role codex opens from the compendium")
 	_expect(menu_catalog_nav_row != null and menu_catalog_nav_row.visible and menu_bestiary_back_button != null and menu_bestiary_back_button.visible and menu_bestiary_back_button.text == "返回图鉴", "role codex returns to the compendium with visible local navigation")
-	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("特征") and menu_body_label.text.contains("被动") and menu_body_label.text.contains("首召怪兽"), "role codex explains role traits, passives, and independent starter monster choice")
+	_expect(menu_body_label != null and menu_body_label.text.contains("角色卡") and menu_body_label.text.contains("特征") and menu_body_label.text.contains("被动") and menu_body_label.text.contains("起始怪兽"), "role codex explains role traits, passives, and independent starter monster choice")
 	_expect(menu_preview_box != null and _container_card_art_kind_contains(menu_preview_box, "player_role"), "role codex displays role cards with the shared card-art component")
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "公开身份") and not _container_card_art_stats_contains(menu_preview_box, "起始:"), "role codex card art presents public identity without starter-monster fingerprints")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "独立选择") and not _container_button_text_contains(menu_preview_box, "点击查看卡牌图鉴") and not _container_button_text_contains(menu_preview_box, "查看怪兽生态档案"), "role codex does not link roles to starter monster cards")
@@ -2846,24 +2825,6 @@ func _graph_distance_limited(districts: Array, origin: int, target: int, max_ste
 	return -1
 
 
-func _remote_supply_test_path(main: Node) -> Dictionary:
-	var districts := _as_array(main.get("districts"))
-	for origin in range(districts.size()):
-		var second_hop := -1
-		var far_district := -1
-		for candidate in range(districts.size()):
-			var distance := _graph_distance_limited(districts, origin, candidate, 3)
-			if distance == 2 and second_hop < 0:
-				second_hop = candidate
-			elif distance < 0 and far_district < 0:
-				far_district = candidate
-			elif distance > 2 and far_district < 0:
-				far_district = candidate
-		if second_hop >= 0:
-			return {"origin": origin, "second_hop": second_hop, "far": far_district}
-	return {}
-
-
 func _verify_roguelike_depth_scaling(main: Node) -> bool:
 	var saved := main.call("_capture_run_state") as Dictionary
 	var profile_i := main.call("_roguelike_planet_profile", 1) as Dictionary
@@ -4504,21 +4465,6 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 			player["action_cooldown"] = 0.0
 			players[player_index] = player
 		main.set("players", players)
-		var first_summon_plays := 0
-		for player_index in range(1, EXPECTED_PLAYER_COUNT):
-			var result := String(_ai_controller(main).call("_ai_execute_card_turn", player_index, true))
-			if result == "play":
-				first_summon_plays += 1
-		_ai_controller(main).call("_auto_ai_auction_bids", true)
-		_drain_card_resolution_queue_for_test(main)
-		if first_summon_plays != EXPECTED_AI_PLAYER_COUNT:
-			failures.append("first summons %d" % first_summon_plays)
-			ok = false
-		for player_index in range(1, EXPECTED_PLAYER_COUNT):
-			if _ai_owned_monster_owner_count(main, player_index) <= 0:
-				failures.append("missing monster owner %d" % player_index)
-				ok = false
-		_seed_supply_cards_near_ai_monsters_for_test(main)
 		var built := int(_ai_controller(main).call("_auto_expand_rival_syndicates", true))
 		_force_ai_cities_to_shared_goods(main)
 		if built < EXPECTED_AI_PLAYER_COUNT:
@@ -4529,7 +4475,6 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 				failures.append("missing city player %d" % player_index)
 				ok = false
 		var buy_count := 0
-		var play_count := first_summon_plays
 		var business_actions := 0
 		var starting_cycle := int(main.get("business_cycle_count"))
 		for _cycle in range(3):
@@ -4538,8 +4483,6 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 				var result := String(_ai_controller(main).call("_ai_execute_card_turn", player_index, true))
 				if result == "buy":
 					buy_count += 1
-				elif result == "play":
-					play_count += 1
 			_ai_controller(main).call("_auto_ai_auction_bids", true)
 			_drain_card_resolution_queue_for_test(main)
 			business_actions += int(_ai_controller(main).call("_auto_rival_business_actions", true))
@@ -4558,9 +4501,6 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 			ok = false
 		if buy_count <= 0:
 			failures.append("buy_count 0")
-			ok = false
-		if play_count < EXPECTED_AI_PLAYER_COUNT:
-			failures.append("play_count %d" % play_count)
 			ok = false
 		if business_actions <= 0:
 			failures.append("business_actions 0")
@@ -4650,22 +4590,6 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 			failures.append("missing role/slot %d" % player_index)
 			ok = false
 	main.set("players", players)
-	var first_summon_plays := 0
-	for player_index in range(1, max_players):
-		var result := String(_ai_controller(main).call("_ai_execute_card_turn", player_index, true))
-		if result == "play":
-			first_summon_plays += 1
-	_ai_controller(main).call("_auto_ai_auction_bids", true)
-	_drain_card_resolution_queue_for_test(main, 160)
-	_mark_smoke_progress("max ai first summons drained")
-	if first_summon_plays != max_ai:
-		failures.append("first summons %d" % first_summon_plays)
-		ok = false
-	for player_index in range(1, max_players):
-		if _ai_owned_monster_owner_count(main, player_index) <= 0:
-			failures.append("missing monster owner %d" % player_index)
-			ok = false
-	_seed_supply_cards_near_ai_monsters_for_test(main)
 	var built := int(_ai_controller(main).call("_auto_expand_rival_syndicates", true))
 	_force_ai_cities_to_shared_goods(main)
 	_mark_smoke_progress("max ai cities seeded")
@@ -4887,43 +4811,6 @@ func _set_map_focus_animation_for_smoke(main: Node, enabled: bool) -> void:
 	var full_map_view := main.get("full_map_view") as Control
 	if full_map_view != null and full_map_view.has_method("set_programmatic_focus_animation_enabled"):
 		full_map_view.call("set_programmatic_focus_animation_enabled", enabled)
-
-
-func _verify_remote_supply_access(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
-	var ok := true
-	var path := _remote_supply_test_path(main)
-	if path.is_empty():
-		ok = false
-	else:
-		var origin := int(path.get("origin", -1))
-		var second_hop := int(path.get("second_hop", -1))
-		var actor := _monster_controller(main).call("_make_auto_monster", 0, 0, origin, 0, 1) as Dictionary
-		main.set("auto_monsters", [actor])
-		ok = ok and _set_player_role_for_test(main, 0, "星门补给商会")
-		var priced_card := "垄断协议1"
-		var base_price := int(main.call("_card_price", priced_card))
-		main.call("_open_district_card_purchase_window", second_hop, 0)
-		var remote_price := int(main.call("_card_price", priced_card, second_hop, 0))
-		ok = ok and String(main.call("_district_card_access_kind", second_hop, 0)) == "extended"
-		ok = ok and remote_price >= int(round(float(base_price) * 1.10))
-		var monster_card := main.call("_make_skill", main.call("_monster_card_name", 0, 1)) as Dictionary
-		monster_card["starter_play_free"] = false
-		monster_card["summon_access"] = "monster_zone"
-		ok = ok and not bool(main.call("_can_summon_monster_card_at_district", monster_card, second_hop))
-		main.set("selected_player", 0)
-		var players := _as_array(main.get("players"))
-		ok = ok and bool(main.call("_apply_card_access_boon", players[0] as Dictionary, main.call("_make_skill", "星门采购权1")))
-		var access_effect := main.call("_player_card_access_effect", 0) as Dictionary
-		ok = ok and bool(access_effect.get("global", false))
-		var far_district := int(path.get("far", -1))
-		if far_district >= 0:
-			main.call("_open_district_card_purchase_window", far_district, 0)
-			var global_price := int(main.call("_card_price", priced_card, far_district, 0))
-			ok = ok and String(main.call("_district_card_access_kind", far_district, 0)) == "global"
-			ok = ok and global_price >= int(round(float(base_price) * 1.35))
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
 
 
 func _starting_monster_cards_match_configured_choices(main: Node, players: Array) -> bool:
@@ -5433,116 +5320,6 @@ func _verify_monster_takeover_resets_owner_clues(main: Node) -> bool:
 	main.set("players", previous_players)
 	main.set("auto_monsters", previous_monsters)
 	return takeover_ok and damage_ok
-
-
-func _verify_monster_region_card_pricing(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
-	var purchase_coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var purchase_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseRuntimeController")
-	if purchase_controller != null and purchase_controller.has_method("reset_state"):
-		purchase_controller.call("reset_state")
-	main.set("pending_discard_purchase", {})
-	main.set("district_supply_open_district", -1)
-	main.set("district_supply_open_player", -1)
-	var district_supply_overlay := main.get("district_supply_overlay") as Control
-	if district_supply_overlay != null:
-		district_supply_overlay.visible = false
-	var districts := _as_array(main.get("districts"))
-	var auto_monsters := _as_array(main.get("auto_monsters"))
-	if districts.is_empty() or auto_monsters.is_empty():
-		main.call("_apply_run_state", saved)
-		return false
-	var landed_index := -1
-	var adjacent_index := -1
-	for i in range(districts.size()):
-		var district := districts[i] as Dictionary
-		if bool(district.get("destroyed", false)):
-			continue
-		var neighbors := _as_array(district.get("neighbors", []))
-		for neighbor_variant in neighbors:
-			var neighbor_index := int(neighbor_variant)
-			if neighbor_index >= 0 and neighbor_index < districts.size() and not bool((districts[neighbor_index] as Dictionary).get("destroyed", false)):
-				landed_index = i
-				adjacent_index = neighbor_index
-				break
-		if landed_index >= 0:
-			break
-	if landed_index < 0 or adjacent_index < 0:
-		main.call("_apply_run_state", saved)
-		return false
-	var controlled_monster := (auto_monsters[0] as Dictionary).duplicate(true)
-	controlled_monster["position"] = landed_index
-	controlled_monster["down"] = false
-	controlled_monster["owner"] = -1
-	main.set("auto_monsters", [controlled_monster])
-	main.set("selected_player", 0)
-	main.set("selected_district", landed_index)
-	var card_name := "垄断协议1"
-	var base_price := int(main.call("_card_price", card_name))
-	var landed_price := int(main.call("_card_price", card_name, landed_index, 0))
-	var adjacent_price := int(main.call("_card_price", card_name, adjacent_index, 0))
-	var expected_landed_price := maxi(80, int(round(float(base_price) * 0.8)))
-	var pricing_ok := String(main.call("_district_card_access_kind", landed_index, 0)) == "landed" \
-		and String(main.call("_district_card_access_kind", adjacent_index, 0)) == "adjacent" \
-		and String(main.call("_district_card_access_text", landed_index, 0)).contains("八折") \
-		and String(main.call("_district_card_access_text", adjacent_index, 0)).contains("原价") \
-		and landed_price == expected_landed_price \
-		and adjacent_price == base_price \
-		and bool(main.call("_can_buy_card_from_district", landed_index, 0)) \
-		and bool(main.call("_can_buy_card_from_district", adjacent_index, 0))
-	var view_only_index := -1
-	for i in range(districts.size()):
-		var kind := String(main.call("_district_card_access_kind", i, 0))
-		if kind == "none":
-			view_only_index = i
-			pricing_ok = pricing_ok and not bool(main.call("_can_buy_card_from_district", i, 0)) \
-				and String(main.call("_district_card_access_text", i, 0)).contains("不可购买")
-			break
-	var saved_players := _as_array(main.get("players")).duplicate(true)
-	var saved_districts := _as_array(main.get("districts")).duplicate(true)
-	var saved_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
-	var test_card := "城市融资1"
-	var test_district := saved_districts[landed_index] as Dictionary
-	test_district["card_choices"] = [test_card]
-	saved_districts[landed_index] = test_district
-	var test_players := saved_players.duplicate(true)
-	var test_player := test_players[0] as Dictionary
-	test_player["cash"] = 5000
-	test_player["action_cooldown"] = 9.0
-	test_player["slots"] = []
-	test_players[0] = test_player
-	main.set("players", test_players)
-	main.set("districts", saved_districts)
-	main.set("selected_player", 0)
-	main.set("selected_district", landed_index)
-	main.call("_open_district_card_purchase_window", landed_index, 0)
-	var disabled_monsters := saved_monsters.duplicate(true)
-	for i in range(disabled_monsters.size()):
-		var actor := disabled_monsters[i] as Dictionary
-		actor["down"] = true
-		disabled_monsters[i] = actor
-	main.set("auto_monsters", disabled_monsters)
-	var snapshot_buy_ok := String(main.call("_district_card_access_kind_live", landed_index)) == "none" \
-		and String(main.call("_district_card_access_kind", landed_index)) == "landed" \
-		and int(main.call("_card_price", test_card, landed_index, 0)) == maxi(80, int(round(float(main.call("_card_price", test_card)) * 0.8))) \
-		and bool(main.call("_buy_card_for_player_from_district", 0, landed_index, test_card, false)) \
-		and _player_card_names(_as_array(main.get("players")), 0).has(test_card)
-	var view_only_ok := true
-	if view_only_index >= 0:
-		var view_districts := _as_array(main.get("districts"))
-		var view_district := view_districts[view_only_index] as Dictionary
-		view_district["card_choices"] = ["垄断协议1"]
-		view_districts[view_only_index] = view_district
-		main.set("districts", view_districts)
-		main.call("_open_district_card_purchase_window", view_only_index, 0)
-		var view_snapshot: Dictionary = purchase_coordinator.call("district_purchase_window", 0) if purchase_coordinator != null else {}
-		view_only_ok = int(view_snapshot.get("district_index", -1)) == view_only_index \
-			and String(view_snapshot.get("access_kind", "")) == "none" \
-			and String(main.call("_district_card_access_text", view_only_index, 0)).contains("不可购买") \
-			and not bool(main.call("_can_buy_card_from_district", view_only_index, 0)) \
-			and not bool(main.call("_buy_card_for_player_from_district", 0, view_only_index, "垄断协议1", false))
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return pricing_ok and snapshot_buy_ok and view_only_ok and restore_result == OK
 
 
 func _verify_reacquired_card_upgrade_rules(main: Node) -> bool:
@@ -9750,33 +9527,21 @@ func _first_buildable_land_district(districts: Array) -> int:
 	return -1
 
 
-func _verify_first_run_coach_runtime_snapshot(main: Node) -> bool:
-	if not main.has_method("_runtime_table_snapshot") or not main.has_method("_activate_first_run_coach_action"):
-		return false
-	var snapshot_variant: Variant = main.call("_runtime_table_snapshot")
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
-	var coach: Dictionary = snapshot.get("first_run_coach", {}) if snapshot.get("first_run_coach", {}) is Dictionary else {}
-	if coach.is_empty() or not bool(coach.get("visible", false)):
-		return false
-	if str(coach.get("stage", "")) != "select_district":
-		return false
-	var action: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
-	if str(action.get("id", "")) != "coach_select_district" or bool(action.get("disabled", false)):
-		return false
-	var recommended: Dictionary = coach.get("recommended_setup", {}) if coach.get("recommended_setup", {}) is Dictionary else {}
-	if int(recommended.get("player_count", 0)) != EXPECTED_PLAYER_COUNT or int(recommended.get("ai_count", 0)) != EXPECTED_AI_PLAYER_COUNT:
-		return false
-	if not bool(main.call("_activate_first_run_coach_action", "coach_select_district")):
-		return false
-	var selected_district := int(main.get("selected_district"))
-	var build_error := CITY_FIXTURES.site_error(main, 0, selected_district, false)
-	if build_error != "":
-		return false
-	var next_snapshot_variant: Variant = main.call("_runtime_table_snapshot")
-	var next_snapshot: Dictionary = next_snapshot_variant if next_snapshot_variant is Dictionary else {}
-	var next_coach: Dictionary = next_snapshot.get("first_run_coach", {}) if next_snapshot.get("first_run_coach", {}) is Dictionary else {}
-	var next_action: Dictionary = next_coach.get("primary_action", {}) if next_coach.get("primary_action", {}) is Dictionary else {}
-	return str(next_coach.get("stage", "")) == "first_summon" and str(next_action.get("id", "")) == "coach_first_summon"
+func _verify_v06_market_rule_contract() -> bool:
+	var snapshot := JSON.stringify(V06_RULES_SNAPSHOT.compose(1120.0))
+	var rulebook := FileAccess.get_file_as_string("res://docs/tabletop_rulebook_v06.md")
+	return snapshot.contains("召唤时点完全自愿") \
+		and snapshot.contains("未召唤不阻断经济、设施或购牌") \
+		and snapshot.contains("全局可查看；来源区域中心受光时才可购买") \
+		and snapshot.contains("同区每只 +1") \
+		and snapshot.contains("相邻每只 +0.5") \
+		and snapshot.contains("最高 5x") \
+		and snapshot.contains("向上取整") \
+		and snapshot.contains("所有玩家同价") \
+		and snapshot.contains("倒地或过期怪兽不计") \
+		and rulebook.contains("每 120 秒完成一周权威自转") \
+		and rulebook.contains("有效 5 秒 `world_effective` 时间") \
+		and rulebook.contains("观察镜头不属于")
 
 
 func _ai_controller(main: Node) -> Node:

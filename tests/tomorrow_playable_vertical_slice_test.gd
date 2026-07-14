@@ -4,9 +4,9 @@ const BENCH_SCENE_PATH := "res://scenes/tools/TomorrowPlayableVerticalSliceBench
 const EXPECTED_RECORD_IDS := [
 	"main_menu_new_run_setup",
 	"new_match_one_human_two_ai",
-	"human_authoritative_first_summon",
 	"public_facility_core_dispatch_exact_once",
 	"commodity_flow_realtime_income",
+	"human_optional_summon_after_economy",
 	"ai_progress_without_deadlock",
 	"victory_qualification_audit_outcome",
 	"settlement_recap_visible",
@@ -40,10 +40,10 @@ func _run() -> void:
 		bench.free()
 		_finish()
 		return
-	if user_args.has("--stage3-oracle-self-check"):
-		var oracle := bench.stage3_oracle_self_check()
-		_expect(bool(oracle.get("passed", false)), "stage 3 oracle accepts authoritative finalized/no-inflight evidence, rejects weakened owner lifecycle evidence, and does not gate ordinary setup_start on campaign signals")
-		_expect(int(oracle.get("checks", 0)) == 10 and int(oracle.get("scenario_variants_accepted", 0)) == 2 and int(oracle.get("rejected_mutations", 0)) == 8, "stage 3 oracle self-check executes both scenario-independent controls and all eight lifecycle mutations")
+	if user_args.has("--optional-summon-oracle-self-check"):
+		var oracle := bench.optional_summon_oracle_self_check()
+		_expect(bool(oracle.get("passed", false)), "optional-summon oracle accepts authoritative finalized/no-inflight evidence after economy setup and rejects weakened owner lifecycle evidence")
+		_expect(int(oracle.get("checks", 0)) == 10 and int(oracle.get("scenario_variants_accepted", 0)) == 2 and int(oracle.get("rejected_mutations", 0)) == 8, "optional-summon oracle executes both scenario-independent controls and all eight lifecycle mutations")
 		bench.free()
 		_finish()
 		return

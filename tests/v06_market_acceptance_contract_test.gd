@@ -5,6 +5,53 @@ const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tsc
 const RULEBOOK_PATH := "res://docs/tabletop_rulebook_v06.md"
 const ROTATION_PERIOD_US := 120_000_000
 const QUOTE_LIFETIME_US := 5_000_000
+const RETIRED_ORACLE_PATHS := {
+	"res://tests/smoke_test.gd": [
+		"first_summon_plays",
+		"monster landing regions discount card purchases while adjacent regions keep base price",
+		"expected_landed_price := maxi(80",
+		"func _verify_monster_region_card_pricing",
+		"func _verify_first_run_coach_runtime_snapshot",
+		"func _verify_remote_supply_access",
+		"_district_card_access_kind",
+	],
+	"res://tests/layout_scene_smoke_test.gd": [
+		"build_qualification_snapshot",
+		"locked_price_multiplier",
+		"tick_window(12.0",
+		"_district_purchase_qualification_compatibility_adapter",
+		"authorize_district_purchase",
+		"expired_window_rejects_purchase",
+		"\"access_kind\"",
+		"_check_district_purchase_runtime_cutover_component",
+		"purchase_window_uses_ruleset_12_seconds",
+		"district_purchase_12_second_window",
+		"bound_monster_064_and_080_context",
+		"discounts_do_not_stack",
+		"final_price_floor",
+		"首召后开启附近牌架",
+		"怪兽落地后，附近区域才是购牌锚点",
+	],
+	"res://tests/tomorrow_playable_vertical_slice_test.gd": [
+		"human_authoritative_first_summon",
+		"stage3-oracle-self-check",
+		"stage3_oracle_self_check",
+	],
+	"res://scripts/tools/tomorrow_playable_vertical_slice_bench.gd": [
+		"human_authoritative_first_summon",
+		"_stage_human_first_summon",
+		"_stage3_evidence_passes",
+	],
+	"res://tests/human_first_table_playability_v06_test.gd": [
+		"human first-summon",
+	],
+	"res://tests/game_session_save_characterization_test.gd": [
+		"MAIN_SCENE_PATH",
+		"_capture_run_state",
+		"_apply_run_state",
+		"user://space_syndicate_design_qa/test_runs/",
+	],
+}
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -15,11 +62,23 @@ func _init() -> void:
 
 
 func _run() -> void:
+	_test_retired_oracles_are_physically_absent()
 	_test_authoritative_public_rule_copy()
 	_test_reference_market_math()
 	_test_reference_solar_clock_and_quote_boundary()
 	_test_registry_stays_eighteen_and_fail_closed()
 	_finish()
+
+
+func _test_retired_oracles_are_physically_absent() -> void:
+	for path_variant in RETIRED_ORACLE_PATHS.keys():
+		var path := str(path_variant)
+		var source := FileAccess.get_file_as_string(path)
+		_expect(not source.is_empty(), "retirement source loads: %s" % path)
+		var fragments: Array = RETIRED_ORACLE_PATHS.get(path_variant, []) if RETIRED_ORACLE_PATHS.get(path_variant, []) is Array else []
+		for fragment_variant in fragments:
+			var fragment := str(fragment_variant)
+			_expect(not source.contains(fragment), "retired oracle is physically absent from %s: %s" % [path, fragment])
 
 
 func _test_authoritative_public_rule_copy() -> void:
