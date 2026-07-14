@@ -282,6 +282,16 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		victory_controller.call("set_world_bridge", victory_world_bridge)
 	if victory_controller != null and victory_controller.has_method("configure"):
 		victory_controller.call("configure")
+	var bankruptcy_estate := _bankruptcy_neutral_estate_runtime_controller_node()
+	var bankruptcy_estate_bridge := _bankruptcy_neutral_estate_world_bridge_node()
+	if bankruptcy_estate_bridge != null and bankruptcy_estate_bridge.has_method("set_runtime_dependencies"):
+		bankruptcy_estate_bridge.call("set_runtime_dependencies", card_player_state_adapter, commodity_flow, military_controller, monster_controller, region_infrastructure, route_network_controller, self)
+	if bankruptcy_estate != null and bankruptcy_estate.has_method("set_world_bridge"):
+		bankruptcy_estate.call("set_world_bridge", bankruptcy_estate_bridge)
+	if bankruptcy_estate != null and bankruptcy_estate.has_method("configure"):
+		bankruptcy_estate.call("configure", RULESET_V06_PROFILE.debug_snapshot())
+	if commodity_flow_bridge != null and commodity_flow_bridge.has_method("set_bankruptcy_estate_controller"):
+		commodity_flow_bridge.call("set_bankruptcy_estate_controller", bankruptcy_estate)
 	_last_v06_player_binding_result = refresh_v06_production_player_bindings()
 	var session_snapshot := _session_debug_snapshot()
 	var purchase_snapshot := _purchase_debug_snapshot()
@@ -457,6 +467,14 @@ func bind_ai_world(world: Node) -> void:
 		victory_controller.call("set_world_bridge", victory_bridge)
 	if controller != null and controller.has_method("set_victory_control_runtime_controller"):
 		controller.call("set_victory_control_runtime_controller", victory_controller)
+	var bankruptcy_estate := _bankruptcy_neutral_estate_runtime_controller_node()
+	var bankruptcy_estate_bridge := _bankruptcy_neutral_estate_world_bridge_node()
+	if bankruptcy_estate_bridge != null and bankruptcy_estate_bridge.has_method("bind_world"):
+		bankruptcy_estate_bridge.call("bind_world", world)
+	if bankruptcy_estate_bridge != null and bankruptcy_estate_bridge.has_method("set_runtime_dependencies"):
+		bankruptcy_estate_bridge.call("set_runtime_dependencies", _card_player_state_production_adapter_v06_node(), commodity_flow_controller, military_controller, monster_controller, region_infrastructure, route_network_controller, self)
+	if commodity_flow_bridge != null and commodity_flow_bridge.has_method("set_bankruptcy_estate_controller"):
+		commodity_flow_bridge.call("set_bankruptcy_estate_controller", bankruptcy_estate)
 
 
 func refresh_v06_production_player_bindings(world: Node = null) -> Dictionary:
@@ -2341,6 +2359,9 @@ func reset_state() -> void:
 	var commodity_flow_bridge := _commodity_flow_world_bridge_node()
 	if commodity_flow_bridge != null and commodity_flow_bridge.has_method("reset_state"):
 		commodity_flow_bridge.call("reset_state")
+	var bankruptcy_estate := _bankruptcy_neutral_estate_runtime_controller_node()
+	if bankruptcy_estate != null and bankruptcy_estate.has_method("reset_state"):
+		bankruptcy_estate.call("reset_state")
 	var victory_controller := _victory_control_runtime_controller_node()
 	if victory_controller != null and victory_controller.has_method("reset_state"):
 		victory_controller.call("reset_state")
@@ -2923,6 +2944,18 @@ func advance_commodity_flow(delta_seconds: float, blocking_snapshot: Dictionary 
 	var flow_result: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
 	if not bool(flow_result.get("advanced", false)):
 		return flow_result
+	var bankruptcy_estate := _bankruptcy_neutral_estate_runtime_controller_node()
+	if bankruptcy_estate == null or not bankruptcy_estate.has_method("settle_checkpoint"):
+		flow_result["bankruptcy_checkpoint"] = {"finalized": false, "reason_code": "bankruptcy_checkpoint_missing"}
+		return flow_result
+	var bankruptcy_variant: Variant = bankruptcy_estate.call("settle_checkpoint", {
+		"transaction_id": "bankruptcy:%s" % str(flow_result.get("batch_id", "")),
+		"reason_code": "post_sale_receipt",
+		"occurred_at": float(merged.get("game_time", 0.0)),
+	})
+	flow_result["bankruptcy_checkpoint"] = (bankruptcy_variant as Dictionary).duplicate(true) if bankruptcy_variant is Dictionary else {}
+	if not bool((flow_result.get("bankruptcy_checkpoint", {}) as Dictionary).get("finalized", false)):
+		return flow_result
 	var player_count := maxi(0, int(merged.get("player_count", 0)))
 	var color_gdp_by_player: Dictionary = {}
 	for player_index in range(player_count):
@@ -2963,6 +2996,18 @@ func commodity_flow_recent_receipts(viewer_index := -1) -> Array:
 	var controller := _commodity_flow_runtime_controller_node()
 	var value: Variant = controller.call("recent_sale_receipts_snapshot", viewer_index) if controller != null and controller.has_method("recent_sale_receipts_snapshot") else []
 	return (value as Array).duplicate(true) if value is Array else []
+
+
+func settle_bankruptcy_checkpoint(request: Dictionary) -> Dictionary:
+	var controller := _bankruptcy_neutral_estate_runtime_controller_node()
+	var value: Variant = controller.call("settle_checkpoint", request) if controller != null and controller.has_method("settle_checkpoint") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func bankruptcy_neutral_estate_public_receipt() -> Dictionary:
+	var controller := _bankruptcy_neutral_estate_runtime_controller_node()
+	var value: Variant = controller.call("public_receipt") if controller != null and controller.has_method("public_receipt") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func commodity_flow_region_gdp_snapshot(region_id: String) -> Dictionary:
@@ -3499,6 +3544,8 @@ func debug_snapshot() -> Dictionary:
 	var route_network_runtime_snapshot := _route_network_runtime_debug_snapshot()
 	var commodity_flow_runtime_snapshot := _commodity_flow_runtime_debug_snapshot()
 	var commodity_flow_world_bridge_snapshot := _commodity_flow_world_bridge_debug_snapshot()
+	var bankruptcy_estate_snapshot := _bankruptcy_neutral_estate_runtime_debug_snapshot()
+	var bankruptcy_estate_bridge_snapshot := _bankruptcy_neutral_estate_world_bridge_debug_snapshot()
 	var player_mana_runtime_snapshot := _player_mana_runtime_debug_snapshot()
 	var commodity_card_inventory_snapshot := _commodity_card_inventory_runtime_debug_snapshot()
 	var card_player_state_adapter_snapshot := _card_player_state_production_adapter_v06_debug_snapshot()
@@ -3554,6 +3601,8 @@ func debug_snapshot() -> Dictionary:
 		"route_network_runtime": route_network_runtime_snapshot,
 		"commodity_flow_runtime": commodity_flow_runtime_snapshot,
 		"commodity_flow_world_bridge": commodity_flow_world_bridge_snapshot,
+		"bankruptcy_neutral_estate_runtime": bankruptcy_estate_snapshot,
+		"bankruptcy_neutral_estate_world_bridge": bankruptcy_estate_bridge_snapshot,
 		"player_mana_runtime": player_mana_runtime_snapshot,
 		"commodity_card_inventory_runtime": commodity_card_inventory_snapshot,
 		"card_player_state_production_adapter_v06": card_player_state_adapter_snapshot,
@@ -3668,6 +3717,14 @@ func _player_organization_runtime_controller_node() -> Node:
 
 func _commodity_flow_world_bridge_node() -> Node:
 	return get_node_or_null("CommodityFlowWorldBridge")
+
+
+func _bankruptcy_neutral_estate_runtime_controller_node() -> Node:
+	return get_node_or_null("BankruptcyNeutralEstateRuntimeController")
+
+
+func _bankruptcy_neutral_estate_world_bridge_node() -> Node:
+	return get_node_or_null("BankruptcyNeutralEstateWorldBridge")
 
 
 func _victory_control_runtime_controller_node() -> Node:
@@ -4078,6 +4135,24 @@ func _player_organization_runtime_health_snapshot() -> Dictionary:
 
 func _commodity_flow_world_bridge_debug_snapshot() -> Dictionary:
 	var bridge := _commodity_flow_world_bridge_node()
+	if bridge != null and bridge.has_method("debug_snapshot"):
+		var value: Variant = bridge.call("debug_snapshot")
+		if value is Dictionary:
+			return (value as Dictionary).duplicate(true)
+	return {}
+
+
+func _bankruptcy_neutral_estate_runtime_debug_snapshot() -> Dictionary:
+	var controller := _bankruptcy_neutral_estate_runtime_controller_node()
+	if controller != null and controller.has_method("debug_snapshot"):
+		var value: Variant = controller.call("debug_snapshot")
+		if value is Dictionary:
+			return (value as Dictionary).duplicate(true)
+	return {}
+
+
+func _bankruptcy_neutral_estate_world_bridge_debug_snapshot() -> Dictionary:
+	var bridge := _bankruptcy_neutral_estate_world_bridge_node()
 	if bridge != null and bridge.has_method("debug_snapshot"):
 		var value: Variant = bridge.call("debug_snapshot")
 		if value is Dictionary:

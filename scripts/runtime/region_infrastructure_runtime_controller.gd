@@ -29,6 +29,7 @@ var _transaction_receipts: Dictionary = {}
 var _facility_action_lifecycles: Dictionary = {}
 var _revision := 0
 var _receipt_sequence := 0
+var _bankruptcy_estate_journal: Dictionary = {}
 
 
 func configure(ruleset_snapshot: Dictionary) -> Dictionary:
@@ -67,6 +68,92 @@ func reset_state() -> void:
 	_facility_action_lifecycles.clear()
 	_revision = 0
 	_receipt_sequence = 0
+	_bankruptcy_estate_journal.clear()
+
+
+func bankruptcy_estate_stage(stage: String, request: Dictionary) -> Dictionary:
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	var player_indices: Array = request.get("player_indices", []) if request.get("player_indices", []) is Array else []
+	if transaction_id.is_empty() or player_indices.is_empty() or not (["prepare", "commit", "rollback", "finalize"].has(stage)):
+		return _bankruptcy_estate_failure(stage, "region_bankruptcy_request_invalid")
+	var record: Dictionary = _bankruptcy_estate_journal.get(transaction_id, {}) if _bankruptcy_estate_journal.get(transaction_id, {}) is Dictionary else {}
+	if not record.is_empty() and record.get("player_indices", []) != player_indices:
+		return _bankruptcy_estate_failure(stage, "region_bankruptcy_transaction_collision")
+	match stage:
+		"prepare":
+			if not record.is_empty():
+				return _bankruptcy_estate_result(stage, record, true)
+			var target_indices: Dictionary = {}
+			for value in player_indices:
+				target_indices[str(int(value))] = true
+			var postimage := _facilities.duplicate(true)
+			var neutralized := 0
+			for facility_id_variant in postimage.keys():
+				var facility: Dictionary = postimage[facility_id_variant] if postimage[facility_id_variant] is Dictionary else {}
+				if str(facility.get("owner_kind", "")) == "player" and target_indices.has(str(int(facility.get("owner_player_index", -1)))):
+					facility["owner_kind"] = "neutral"
+					facility["owner_player_index"] = -1
+					postimage[facility_id_variant] = facility
+					neutralized += 1
+			record = {
+				"state": "prepared",
+				"player_indices": player_indices.duplicate(),
+				"expected_revision": _revision,
+				"expected_hash": var_to_str(_facilities).sha256_text(),
+				"preimage": _facilities.duplicate(true),
+				"postimage": postimage,
+				"estate_counts": {"facilities_neutralized": neutralized},
+			}
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"commit":
+			if record.is_empty():
+				return _bankruptcy_estate_failure(stage, "region_bankruptcy_prepare_missing")
+			if str(record.get("state", "")) in ["committed", "finalized"]:
+				return _bankruptcy_estate_result(stage, record, true)
+			if str(record.get("state", "")) != "prepared" or _revision != int(record.get("expected_revision", -1)) or var_to_str(_facilities).sha256_text() != str(record.get("expected_hash", "")):
+				return _bankruptcy_estate_failure(stage, "region_bankruptcy_revision_changed")
+			_facilities = (record.get("postimage", {}) as Dictionary).duplicate(true)
+			_revision += 1
+			record["state"] = "committed"
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"rollback":
+			if record.is_empty():
+				return _bankruptcy_estate_failure(stage, "region_bankruptcy_prepare_missing")
+			if str(record.get("state", "")) == "rolled_back":
+				return _bankruptcy_estate_result(stage, record, true)
+			if str(record.get("state", "")) == "finalized":
+				return _bankruptcy_estate_failure(stage, "region_bankruptcy_already_finalized")
+			if str(record.get("state", "")) == "committed":
+				_facilities = (record.get("preimage", {}) as Dictionary).duplicate(true)
+				_revision = int(record.get("expected_revision", _revision))
+			record["state"] = "rolled_back"
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"finalize":
+			if record.is_empty() or not (str(record.get("state", "")) in ["committed", "finalized"]):
+				return _bankruptcy_estate_failure(stage, "region_bankruptcy_commit_missing")
+			var duplicate := str(record.get("state", "")) == "finalized"
+			record["state"] = "finalized"
+			record.erase("preimage")
+			record.erase("postimage")
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, duplicate)
+	return _bankruptcy_estate_failure(stage, "region_bankruptcy_stage_invalid")
+
+
+func _bankruptcy_estate_result(stage: String, record: Dictionary, duplicate: bool) -> Dictionary:
+	return {
+		"prepared": stage == "prepare", "committed": stage == "commit",
+		"rolled_back": stage == "rollback", "finalized": stage == "finalize",
+		"duplicate": duplicate, "reason_code": "region_bankruptcy_%s" % stage,
+		"estate_counts": (record.get("estate_counts", {}) as Dictionary).duplicate(true) if record.get("estate_counts", {}) is Dictionary else {},
+	}
+
+
+func _bankruptcy_estate_failure(stage: String, reason_code: String) -> Dictionary:
+	return {"prepared": false, "committed": false, "rolled_back": false, "finalized": false, "stage": stage, "reason_code": reason_code, "estate_counts": {}}
 
 
 func initialize_regions(region_definitions: Array) -> Dictionary:

@@ -757,7 +757,6 @@ var configured_ai_player_count := DEFAULT_AI_PLAYER_COUNT
 var configured_roguelike_depth := DEFAULT_ROGUELIKE_DEPTH
 var configured_role_indices := []
 var configured_starter_monster_indices := []
-var bankruptcy_check_in_progress := false
 var map_width_m := MAP_WIDTH_METERS
 var map_height_m := MAP_HEIGHT_METERS
 var district_lookup := {}
@@ -1020,7 +1019,6 @@ func _process(delta: float) -> void:
 			coordinator.call("tick_district_purchase_windows", delta, [selected_player] if selected_player >= 0 else [])
 		if coordinator.has_method("tick_monster_wagers"):
 			coordinator.call("tick_monster_wagers", delta)
-		_check_bankruptcy_eliminations("怪兽赌局后现金归零")
 		_update_visual_cues(delta)
 		_update_process_ui_refresh(delta)
 		return
@@ -1060,8 +1058,8 @@ func _process(delta: float) -> void:
 	_update_visual_cues(scaled_delta)
 	if coordinator != null and coordinator.has_method("tick_monster_revivals"):
 		coordinator.call("tick_monster_revivals", scaled_delta)
-	_advance_continuous_commodity_flow(scaled_delta)
-	_check_bankruptcy_eliminations("现金归零")
+	if not _advance_continuous_commodity_flow(scaled_delta):
+		return
 	if _runtime_session_finished():
 		return
 	if runtime_coordinator != null and runtime_coordinator.has_method("tick_product_market_cycle"):
@@ -6173,43 +6171,6 @@ func _active_player_count() -> int:
 	return _active_player_indices().size()
 
 
-func _check_bankruptcy_eliminations(reason: String = "现金归零") -> int:
-	if _runtime_session_finished() or players.is_empty() or bankruptcy_check_in_progress:
-		return 0
-	bankruptcy_check_in_progress = true
-	var eliminated_now := []
-	for i in range(players.size()):
-		var player: Dictionary = players[i]
-		if bool(player.get("eliminated", false)):
-			continue
-		if int(player.get("cash", 0)) <= 0:
-			player["cash"] = 0
-			player["eliminated"] = true
-			player["eliminated_at"] = game_time
-			player["elimination_reason"] = reason
-			player["queued_card_tip"] = 0
-			player["action_cooldown"] = 0.0
-			players[i] = player
-			eliminated_now.append(i)
-			_record_player_cash_snapshot(i)
-			_log("%s现金归零，破产出局；该席位提前退出，不能继续建城、购牌、出牌、下注或领取城市现金流。" % _player_name(i))
-			_add_action_callout(
-				"破产出局",
-				_player_name(i),
-				"现金归零，提前离桌。",
-				Color("#fb7185"),
-				_district_center(selected_district)
-			)
-	if not eliminated_now.is_empty() and _active_player_count() <= 1:
-		bankruptcy_check_in_progress = false
-		var coordinator := _game_runtime_coordinator_node()
-		if coordinator != null and coordinator.has_method("resolve_victory_outcome"):
-			coordinator.call("resolve_victory_outcome", "last_survivor")
-		return eliminated_now.size()
-	bankruptcy_check_in_progress = false
-	return eliminated_now.size()
-
-
 func _runtime_session_finished() -> bool:
 	var coordinator := _game_runtime_coordinator_node()
 	return bool(coordinator.call("session_is_finished")) if coordinator != null and coordinator.has_method("session_is_finished") else false
@@ -8134,7 +8095,6 @@ func _pay_skill_play_cost(player_index: int, skill: Dictionary) -> void:
 	if card_label == "":
 		card_label = "卡牌"
 	_record_player_card_spend(player_index, cash_cost, "打出%s" % card_label, String(requirement.get("requirement_text", "条件：无")))
-	_check_bankruptcy_eliminations("打出%s后现金归零" % card_label)
 
 
 func _signed_int_text(value: int) -> String:
@@ -8880,7 +8840,6 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	configured_starter_monster_indices = (saved_starter_monster_indices as Array).duplicate(true) if saved_starter_monster_indices is Array else []
 	_ensure_configured_starter_monster_indices()
 	_ai_runtime_call("_ensure_player_ai_state")
-	bankruptcy_check_in_progress = false
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_victory_control_save_data"):
 		runtime_coordinator.call("apply_victory_control_save_data", state.get("victory_control_runtime", {}) as Dictionary)
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_session_save_data"):
@@ -9839,7 +9798,6 @@ func _new_game() -> void:
 	selected_guess_player = -1
 	selected_trade_product = ""
 	selected_map_layer_focus = "all"
-	bankruptcy_check_in_progress = false
 	if coordinator != null and coordinator.has_method("reset_victory_control_runtime"):
 		coordinator.call("reset_victory_control_runtime")
 	_prime_timers_for_new_game()
@@ -17964,7 +17922,6 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if _active_runtime_scenario_id() == "first_table" and skill_name == _first_table_followup_card_name() and not anonymous and player_index == selected_player:
 		_complete_scenario_signal("followup_card_bought", "购买第二张经营牌：%s进入你的手牌。" % _card_display_name(skill_name), "after_followup_buy", "player_hand")
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
-	_check_bankruptcy_eliminations("购牌后现金归零")
 	return true
 
 
@@ -19393,18 +19350,21 @@ func _trade_route_markers_for_selected_product() -> Array:
 	return result
 
 
-func _advance_continuous_commodity_flow(delta_seconds: float) -> void:
+func _advance_continuous_commodity_flow(delta_seconds: float) -> bool:
 	if _runtime_session_finished() or delta_seconds <= 0.0:
-		return
+		return true
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if runtime_coordinator == null or not runtime_coordinator.has_method("advance_commodity_flow"):
-		return
-	runtime_coordinator.call("advance_commodity_flow", delta_seconds, {
+		return false
+	var result_variant: Variant = runtime_coordinator.call("advance_commodity_flow", delta_seconds, {
 		"game_over": _runtime_session_finished(),
 		"time_paused": time_scale <= 0.0,
 		"game_time": game_time,
 		"player_count": players.size(),
 	})
+	var result: Dictionary = result_variant if result_variant is Dictionary else {}
+	var checkpoint: Dictionary = result.get("bankruptcy_checkpoint", {}) if result.get("bankruptcy_checkpoint", {}) is Dictionary else {}
+	return bool(result.get("advanced", false)) and bool(checkpoint.get("finalized", false))
 
 
 func _on_commodity_flow_receipt_batch(batch: Dictionary) -> void:

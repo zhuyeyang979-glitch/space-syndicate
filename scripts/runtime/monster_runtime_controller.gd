@@ -65,6 +65,7 @@ var _monster_starter_state_v06: Dictionary = {}
 var _monster_card_reservations_v06: Dictionary = {}
 var _monster_card_terminal_journal_v06: Dictionary = {}
 var _monster_card_presentation_journal_v06: Dictionary = {}
+var _bankruptcy_estate_journal: Dictionary = {}
 var _monster_card_lifecycle_call_counts_v06 := {
 	"prepare": 0,
 	"commit": 0,
@@ -271,8 +272,102 @@ func reset_state() -> void:
 	_monster_card_reservations_v06.clear()
 	_monster_card_terminal_journal_v06.clear()
 	_monster_card_presentation_journal_v06.clear()
+	_bankruptcy_estate_journal.clear()
 	for key_variant in _monster_card_lifecycle_call_counts_v06.keys():
 		_monster_card_lifecycle_call_counts_v06[key_variant] = 0
+
+
+func bankruptcy_estate_stage(stage: String, request: Dictionary) -> Dictionary:
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	var player_indices: Array = request.get("player_indices", []) if request.get("player_indices", []) is Array else []
+	if transaction_id.is_empty() or player_indices.is_empty() or not (["prepare", "commit", "rollback", "finalize"].has(stage)):
+		return _bankruptcy_estate_failure(stage, "monster_bankruptcy_request_invalid")
+	var record: Dictionary = _bankruptcy_estate_journal.get(transaction_id, {}) if _bankruptcy_estate_journal.get(transaction_id, {}) is Dictionary else {}
+	if not record.is_empty() and record.get("player_indices", []) != player_indices:
+		return _bankruptcy_estate_failure(stage, "monster_bankruptcy_transaction_collision")
+	match stage:
+		"prepare":
+			if not record.is_empty():
+				return _bankruptcy_estate_result(stage, record, true)
+			if not _monster_card_reservations_v06.is_empty():
+				return _bankruptcy_estate_failure(stage, "monster_bankruptcy_transaction_inflight")
+			var targets: Dictionary = {}
+			for value in player_indices:
+				targets[str(int(value))] = true
+			var postimage := auto_monsters.duplicate(true)
+			var post_starter_state := _monster_starter_state_v06.duplicate(true)
+			var orphan_actor_ids: Dictionary = {}
+			var orphan_unit_uids: Dictionary = {}
+			var orphaned := 0
+			for index in range(postimage.size()):
+				if not (postimage[index] is Dictionary):
+					continue
+				var actor: Dictionary = (postimage[index] as Dictionary).duplicate(true)
+				if not targets.has(str(int(actor.get("owner", -1)))):
+					continue
+				var owner_actor_id := str(actor.get("owner_actor_id_v06", ""))
+				if not owner_actor_id.is_empty():
+					orphan_actor_ids[owner_actor_id] = true
+				orphan_unit_uids[str(int(actor.get("uid", 0)))] = true
+				actor["owner"] = -1
+				actor["owner_revealed"] = false
+				for private_key in ["bound_actor_id", "bound_owner_actor_id", "owner_actor_id", "owner_actor_id_v06", "private_owner_clue", "owner_clue"]:
+					actor.erase(private_key)
+				postimage[index] = actor
+				orphaned += 1
+			for actor_id_variant in post_starter_state.keys():
+				var starter: Dictionary = post_starter_state[actor_id_variant] if post_starter_state[actor_id_variant] is Dictionary else {}
+				if orphan_actor_ids.has(str(actor_id_variant)) or orphan_unit_uids.has(str(int(starter.get("unit_uid", 0)))):
+					post_starter_state.erase(actor_id_variant)
+			record = {
+				"state": "prepared", "player_indices": player_indices.duplicate(),
+				"expected_revision": _monster_card_revision_v06,
+				"expected_hash": var_to_str({"roster": auto_monsters, "starter": _monster_starter_state_v06}).sha256_text(),
+				"preimage": auto_monsters.duplicate(true), "postimage": postimage,
+				"preimage_starter_state": _monster_starter_state_v06.duplicate(true), "postimage_starter_state": post_starter_state,
+				"estate_counts": {"monsters_orphaned": orphaned},
+			}
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"commit":
+			if record.is_empty(): return _bankruptcy_estate_failure(stage, "monster_bankruptcy_prepare_missing")
+			if str(record.get("state", "")) in ["committed", "finalized"]: return _bankruptcy_estate_result(stage, record, true)
+			if str(record.get("state", "")) != "prepared" or _monster_card_revision_v06 != int(record.get("expected_revision", -1)) or var_to_str({"roster": auto_monsters, "starter": _monster_starter_state_v06}).sha256_text() != str(record.get("expected_hash", "")):
+				return _bankruptcy_estate_failure(stage, "monster_bankruptcy_revision_changed")
+			auto_monsters = (record.get("postimage", []) as Array).duplicate(true)
+			_monster_starter_state_v06 = (record.get("postimage_starter_state", {}) as Dictionary).duplicate(true)
+			_monster_card_revision_v06 += 1
+			record["state"] = "committed"
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"rollback":
+			if record.is_empty(): return _bankruptcy_estate_failure(stage, "monster_bankruptcy_prepare_missing")
+			if str(record.get("state", "")) == "rolled_back": return _bankruptcy_estate_result(stage, record, true)
+			if str(record.get("state", "")) == "finalized": return _bankruptcy_estate_failure(stage, "monster_bankruptcy_already_finalized")
+			if str(record.get("state", "")) == "committed":
+				auto_monsters = (record.get("preimage", []) as Array).duplicate(true)
+				_monster_starter_state_v06 = (record.get("preimage_starter_state", {}) as Dictionary).duplicate(true)
+				_monster_card_revision_v06 = int(record.get("expected_revision", _monster_card_revision_v06))
+			record["state"] = "rolled_back"
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"finalize":
+			if record.is_empty() or not (str(record.get("state", "")) in ["committed", "finalized"]): return _bankruptcy_estate_failure(stage, "monster_bankruptcy_commit_missing")
+			var duplicate := str(record.get("state", "")) == "finalized"
+			record["state"] = "finalized"
+			for key in ["preimage", "postimage", "preimage_starter_state", "postimage_starter_state"]:
+				record.erase(key)
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, duplicate)
+	return _bankruptcy_estate_failure(stage, "monster_bankruptcy_stage_invalid")
+
+
+func _bankruptcy_estate_result(stage: String, record: Dictionary, duplicate: bool) -> Dictionary:
+	return {"prepared": stage == "prepare", "committed": stage == "commit", "rolled_back": stage == "rollback", "finalized": stage == "finalize", "duplicate": duplicate, "reason_code": "monster_bankruptcy_%s" % stage, "estate_counts": (record.get("estate_counts", {}) as Dictionary).duplicate(true) if record.get("estate_counts", {}) is Dictionary else {}}
+
+
+func _bankruptcy_estate_failure(stage: String, reason_code: String) -> Dictionary:
+	return {"prepared": false, "committed": false, "rolled_back": false, "finalized": false, "stage": stage, "reason_code": reason_code, "estate_counts": {}}
 
 
 func tick_wagers(delta: float) -> void:

@@ -21,6 +21,7 @@ var _configured := false
 
 var military_units: Array = []
 var next_military_unit_uid := 1
+var _bankruptcy_estate_journal: Dictionary = {}
 
 
 func set_world_bridge(bridge: MilitaryRuntimeWorldBridge) -> void:
@@ -59,6 +60,73 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 func reset_state() -> void:
 	military_units.clear()
 	next_military_unit_uid = 1
+	_bankruptcy_estate_journal.clear()
+
+
+func bankruptcy_estate_stage(stage: String, request: Dictionary) -> Dictionary:
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	var player_indices: Array = request.get("player_indices", []) if request.get("player_indices", []) is Array else []
+	if transaction_id.is_empty() or player_indices.is_empty() or not (["prepare", "commit", "rollback", "finalize"].has(stage)):
+		return _bankruptcy_estate_failure(stage, "military_bankruptcy_request_invalid")
+	var record: Dictionary = _bankruptcy_estate_journal.get(transaction_id, {}) if _bankruptcy_estate_journal.get(transaction_id, {}) is Dictionary else {}
+	if not record.is_empty() and record.get("player_indices", []) != player_indices:
+		return _bankruptcy_estate_failure(stage, "military_bankruptcy_transaction_collision")
+	match stage:
+		"prepare":
+			if not record.is_empty():
+				return _bankruptcy_estate_result(stage, record, true)
+			var targets: Dictionary = {}
+			for value in player_indices:
+				targets[str(int(value))] = true
+			var postimage: Array = []
+			var removed := 0
+			for unit_variant in military_units:
+				var unit: Dictionary = unit_variant if unit_variant is Dictionary else {}
+				if targets.has(str(int(unit.get("owner", -1)))):
+					removed += 1
+				else:
+					postimage.append(unit.duplicate(true))
+			record = {
+				"state": "prepared", "player_indices": player_indices.duplicate(),
+				"expected_hash": var_to_str(military_units).sha256_text(),
+				"preimage": military_units.duplicate(true), "postimage": postimage,
+				"estate_counts": {"military_units_removed": removed},
+			}
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"commit":
+			if record.is_empty(): return _bankruptcy_estate_failure(stage, "military_bankruptcy_prepare_missing")
+			if str(record.get("state", "")) in ["committed", "finalized"]: return _bankruptcy_estate_result(stage, record, true)
+			if str(record.get("state", "")) != "prepared" or var_to_str(military_units).sha256_text() != str(record.get("expected_hash", "")):
+				return _bankruptcy_estate_failure(stage, "military_bankruptcy_revision_changed")
+			military_units = (record.get("postimage", []) as Array).duplicate(true)
+			record["state"] = "committed"
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"rollback":
+			if record.is_empty(): return _bankruptcy_estate_failure(stage, "military_bankruptcy_prepare_missing")
+			if str(record.get("state", "")) == "rolled_back": return _bankruptcy_estate_result(stage, record, true)
+			if str(record.get("state", "")) == "finalized": return _bankruptcy_estate_failure(stage, "military_bankruptcy_already_finalized")
+			if str(record.get("state", "")) == "committed": military_units = (record.get("preimage", []) as Array).duplicate(true)
+			record["state"] = "rolled_back"
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, false)
+		"finalize":
+			if record.is_empty() or not (str(record.get("state", "")) in ["committed", "finalized"]): return _bankruptcy_estate_failure(stage, "military_bankruptcy_commit_missing")
+			var duplicate := str(record.get("state", "")) == "finalized"
+			record["state"] = "finalized"
+			record.erase("preimage"); record.erase("postimage")
+			_bankruptcy_estate_journal[transaction_id] = record
+			return _bankruptcy_estate_result(stage, record, duplicate)
+	return _bankruptcy_estate_failure(stage, "military_bankruptcy_stage_invalid")
+
+
+func _bankruptcy_estate_result(stage: String, record: Dictionary, duplicate: bool) -> Dictionary:
+	return {"prepared": stage == "prepare", "committed": stage == "commit", "rolled_back": stage == "rollback", "finalized": stage == "finalize", "duplicate": duplicate, "reason_code": "military_bankruptcy_%s" % stage, "estate_counts": (record.get("estate_counts", {}) as Dictionary).duplicate(true) if record.get("estate_counts", {}) is Dictionary else {}}
+
+
+func _bankruptcy_estate_failure(stage: String, reason_code: String) -> Dictionary:
+	return {"prepared": false, "committed": false, "rolled_back": false, "finalized": false, "stage": stage, "reason_code": reason_code, "estate_counts": {}}
 
 
 func tick(delta: float) -> void:

@@ -10,6 +10,7 @@ var _controller: Node
 var _region_infrastructure_controller: Node
 var _product_market_controller: Node
 var _route_network_controller: Node
+var _bankruptcy_estate_controller: Node
 var _capture_count := 0
 var _apply_count := 0
 var _applied_batch_ids: Dictionary = {}
@@ -23,6 +24,10 @@ func set_runtime_dependencies(region_infrastructure_controller: Node, product_ma
 	_region_infrastructure_controller = region_infrastructure_controller
 	_product_market_controller = product_market_controller
 	_route_network_controller = route_network_controller
+
+
+func set_bankruptcy_estate_controller(controller: Node) -> void:
+	_bankruptcy_estate_controller = controller
 
 
 func bind_world(world: Node) -> void:
@@ -115,6 +120,13 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 	var deltas_by_player: Dictionary = {}
 	var ledger_rows_by_player: Dictionary = {}
 	var receipt_ids: Dictionary = {}
+	var authorized_negative_players: Dictionary = {}
+	var neutral_rent_rows: Array = []
+	var neutral_facilities: Dictionary = {}
+	if _region_infrastructure_controller != null and _region_infrastructure_controller.has_method("facilities_snapshot"):
+		for facility_variant in _region_infrastructure_controller.call("facilities_snapshot", false):
+			if facility_variant is Dictionary and str((facility_variant as Dictionary).get("owner_kind", "")) == "neutral":
+				neutral_facilities[str((facility_variant as Dictionary).get("facility_id", ""))] = true
 	var receipts: Array = batch.get("receipts", []) if batch.get("receipts", []) is Array else []
 	for receipt_variant in receipts:
 		if not (receipt_variant is Dictionary):
@@ -133,13 +145,25 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 			return {"applied": false, "reason": "receipt_identity_invalid"}
 		receipt_ids[receipt_id] = true
 		if not neutral_local_market:
-			_append_player_delta(deltas_by_player, ledger_rows_by_player, owner_index, int(receipt.get("owner_net_cash", 0)), receipt_id, "commodity_sale")
+			var owner_net_cash := int(receipt.get("owner_net_cash", 0))
+			var active_storage_debt := str(receipt.get("bankruptcy_causality", "")) == "active_storage_debt"
+			if owner_net_cash < 0 and not active_storage_debt:
+				return {"applied": false, "reason": "passive_cash_would_be_negative"}
+			_append_player_delta(deltas_by_player, ledger_rows_by_player, owner_index, owner_net_cash, receipt_id, "commodity_sale")
+			if active_storage_debt and owner_net_cash < 0:
+				authorized_negative_players[owner_index] = true
 		for rent_variant in receipt.get("rent_rows", []):
 			if not (rent_variant is Dictionary):
 				return {"applied": false, "reason": "rent_row_invalid"}
 			var rent: Dictionary = rent_variant
 			var recipient_index := int(rent.get("recipient_player_index", -1))
-			if recipient_index < 0 or recipient_index >= prepared_players.size():
+			if recipient_index < 0:
+				var facility_id := str(rent.get("facility_id", ""))
+				if facility_id.is_empty() or not neutral_facilities.has(facility_id):
+					return {"applied": false, "reason": "neutral_rent_facility_invalid"}
+				neutral_rent_rows.append({"receipt_id": "%s:%s" % [receipt_id, facility_id], "amount": maxi(0, int(rent.get("amount", 0)))})
+				continue
+			if recipient_index >= prepared_players.size():
 				return {"applied": false, "reason": "rent_recipient_invalid"}
 			_append_player_delta(deltas_by_player, ledger_rows_by_player, recipient_index, int(rent.get("amount", 0)), receipt_id, "facility_rent")
 	for player_key_variant in deltas_by_player.keys():
@@ -149,8 +173,8 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 		var player: Dictionary = (prepared_players[player_index] as Dictionary).duplicate(true)
 		var cash_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * CURRENCY_SCALE))
 		cash_cents += int(deltas_by_player[player_index])
-		if cash_cents < 0:
-			return {"applied": false, "reason": "cash_would_be_negative"}
+		if cash_cents < 0 and not authorized_negative_players.has(player_index):
+			return {"applied": false, "reason": "passive_cash_would_be_negative"}
 		player["cash_cents"] = cash_cents
 		player["cash"] = int(floor(float(cash_cents) / float(CURRENCY_SCALE)))
 		var ledger: Array = player.get("v06_transaction_ledger", []) if player.get("v06_transaction_ledger", []) is Array else []
@@ -158,6 +182,13 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 			ledger.append((row_variant as Dictionary).duplicate(true))
 		player["v06_transaction_ledger"] = ledger
 		prepared_players[player_index] = player
+	if not neutral_rent_rows.is_empty():
+		if _bankruptcy_estate_controller == null or not _bankruptcy_estate_controller.has_method("credit_neutral_estate_rent"):
+			return {"applied": false, "reason": "neutral_rent_sink_unavailable"}
+		var credit_variant: Variant = _bankruptcy_estate_controller.call("credit_neutral_estate_rent", batch_id, neutral_rent_rows)
+		var credit: Dictionary = (credit_variant as Dictionary).duplicate(true) if credit_variant is Dictionary else {}
+		if not bool(credit.get("credited", false)):
+			return {"applied": false, "reason": str(credit.get("reason_code", "neutral_rent_credit_failed"))}
 	_world.set("players", prepared_players)
 	_applied_batch_ids[batch_id] = receipts.size()
 	_apply_count += 1
@@ -171,7 +202,7 @@ func notify_sale_receipt_batch_committed(batch: Dictionary) -> void:
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"bridge_ready": has_world() and _controller != null and _region_infrastructure_controller != null and _product_market_controller != null and _route_network_controller != null,
+		"bridge_ready": has_world() and _controller != null and _region_infrastructure_controller != null and _product_market_controller != null and _route_network_controller != null and _bankruptcy_estate_controller != null,
 		"runtime_owner": "none",
 		"bridge_role": "commodity_flow_world_facts_and_atomic_cash_apply",
 		"capture_count": _capture_count,
@@ -182,6 +213,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_routes": false,
 		"route_runtime_dependency": "RouteNetworkRuntimeController",
 		"owns_sale_receipts": false,
+		"bankruptcy_checkpoint_sink_bound": _bankruptcy_estate_controller != null,
 		"pure_data": true,
 	}
 

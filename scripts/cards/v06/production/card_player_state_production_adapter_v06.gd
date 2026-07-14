@@ -35,6 +35,7 @@ var _player_locks: Dictionary = {}
 var _inflight_transactions: Dictionary = {}
 var _journal: Dictionary = {}
 var _reservation_results: Dictionary = {}
+var _bankruptcy_estate_journal: Dictionary = {}
 var _next_reservation_sequence := 1
 var _reserve_count := 0
 var _commit_count := 0
@@ -71,12 +72,130 @@ func reset_state() -> void:
 	_inflight_transactions.clear()
 	_journal.clear()
 	_reservation_results.clear()
+	_bankruptcy_estate_journal.clear()
 	_next_reservation_sequence = 1
 	_reserve_count = 0
 	_commit_count = 0
 	_abort_count = 0
 	_reject_count = 0
 	_last_reason_code = ""
+
+
+func bankruptcy_estate_stage(stage: String, request: Dictionary) -> Dictionary:
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	var player_indices: Array = request.get("player_indices", []) if request.get("player_indices", []) is Array else []
+	if transaction_id.is_empty() or player_indices.is_empty() or not ["prepare", "commit", "rollback", "finalize"].has(stage):
+		return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_request_invalid")
+	var existing: Dictionary = _bankruptcy_estate_journal.get(transaction_id, {}) if _bankruptcy_estate_journal.get(transaction_id, {}) is Dictionary else {}
+	if not existing.is_empty():
+		var existing_players: Array = existing.get("player_indices", []) if existing.get("player_indices", []) is Array else []
+		if existing_players != player_indices:
+			return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_transaction_collision")
+	match stage:
+		"prepare":
+			if not existing.is_empty():
+				return _bankruptcy_estate_result("prepare", existing, true)
+			var players := _world_players()
+			var preimage: Dictionary = {}
+			var postimage: Dictionary = {}
+			var removed := 0
+			for player_index_variant in player_indices:
+				var player_index := int(player_index_variant)
+				if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+					return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_player_missing")
+				var before: Dictionary = (players[player_index] as Dictionary).duplicate(true)
+				var actor_id := _actor_id(player_index, before)
+				if _player_locks.has(actor_id):
+					return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_transaction_inflight")
+				var after := before.duplicate(true)
+				var slots: Array = before.get("slots", []) if before.get("slots", []) is Array else []
+				for slot_variant in slots:
+					if slot_variant is Dictionary:
+						removed += 1
+				after["slots"] = []
+				after["eliminated"] = true
+				after["eliminated_at"] = maxf(0.0, float(request.get("occurred_at", 0.0)))
+				after["elimination_reason"] = str(request.get("reason_code", "atomic_settlement"))
+				after["queued_card_tip"] = 0
+				after["action_cooldown"] = 0.0
+				after[META_REVISION] = maxi(0, int(before.get(META_REVISION, 0))) + 1
+				after[META_FINGERPRINT] = ""
+				preimage[str(player_index)] = before
+				postimage[str(player_index)] = after
+			existing = {
+				"state": "prepared",
+				"player_indices": player_indices.duplicate(),
+				"preimage": preimage,
+				"postimage": postimage,
+				"estate_counts": {"hand_cards_removed": removed},
+			}
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, false)
+		"commit":
+			if existing.is_empty():
+				return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_prepare_missing")
+			if str(existing.get("state", "")) in ["committed", "finalized"]:
+				return _bankruptcy_estate_result(stage, existing, true)
+			if str(existing.get("state", "")) != "prepared":
+				return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_state_invalid")
+			var players := _world_players()
+			var preimage: Dictionary = existing.get("preimage", {}) if existing.get("preimage", {}) is Dictionary else {}
+			var postimage: Dictionary = existing.get("postimage", {}) if existing.get("postimage", {}) is Dictionary else {}
+			for player_index_variant in player_indices:
+				var player_index := int(player_index_variant)
+				if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+					return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_player_missing")
+				if _stable_hash(players[player_index]) != _stable_hash(preimage.get(str(player_index), {})):
+					return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_revision_changed")
+				players[player_index] = (postimage.get(str(player_index), {}) as Dictionary).duplicate(true)
+			_write_world_players(players)
+			existing["state"] = "committed"
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, false)
+		"rollback":
+			if existing.is_empty():
+				return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_prepare_missing")
+			if str(existing.get("state", "")) == "rolled_back":
+				return _bankruptcy_estate_result(stage, existing, true)
+			if str(existing.get("state", "")) == "finalized":
+				return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_already_finalized")
+			if str(existing.get("state", "")) == "committed":
+				var players := _world_players()
+				var preimage: Dictionary = existing.get("preimage", {}) if existing.get("preimage", {}) is Dictionary else {}
+				for player_index_variant in player_indices:
+					var player_index := int(player_index_variant)
+					if player_index >= 0 and player_index < players.size() and preimage.get(str(player_index), {}) is Dictionary:
+						players[player_index] = (preimage[str(player_index)] as Dictionary).duplicate(true)
+				_write_world_players(players)
+			existing["state"] = "rolled_back"
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, false)
+		"finalize":
+			if existing.is_empty() or not (str(existing.get("state", "")) in ["committed", "finalized"]):
+				return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_commit_missing")
+			var duplicate := str(existing.get("state", "")) == "finalized"
+			existing["state"] = "finalized"
+			existing.erase("preimage")
+			existing.erase("postimage")
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, duplicate)
+	return _bankruptcy_estate_failure(stage, "card_player_bankruptcy_stage_invalid")
+
+
+func _bankruptcy_estate_result(stage: String, record: Dictionary, duplicate: bool) -> Dictionary:
+	return {
+		"prepared": stage == "prepare",
+		"committed": stage == "commit",
+		"rolled_back": stage == "rollback",
+		"finalized": stage == "finalize",
+		"duplicate": duplicate,
+		"reason_code": "card_player_bankruptcy_%s" % stage,
+		"estate_counts": (record.get("estate_counts", {}) as Dictionary).duplicate(true) if record.get("estate_counts", {}) is Dictionary else {},
+	}
+
+
+func _bankruptcy_estate_failure(stage: String, reason_code: String) -> Dictionary:
+	return {"prepared": false, "committed": false, "rolled_back": false, "finalized": false, "stage": stage, "reason_code": reason_code, "estate_counts": {}}
 
 
 func actor_player_indices() -> Dictionary:
