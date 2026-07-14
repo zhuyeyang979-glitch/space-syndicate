@@ -3,6 +3,10 @@ extends SceneTree
 const RulesSnapshot := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const RULEBOOK_PATH := "res://docs/tabletop_rulebook_v06.md"
+const V06_CATALOG_PATH := "res://data/cards/card_runtime_catalog_v06.json"
+const PLAYER_MANA_BENCH_PATH := "res://scripts/tools/player_mana_card_window_runtime_bench.gd"
+const CARD_FLOW_TEST_PATH := "res://tests/card_flow_transaction_service_v06_test.gd"
+const EXECUTION_TEST_PATH := "res://tests/card_resolution_execution_runtime_service_test.gd"
 const ROTATION_PERIOD_US := 120_000_000
 const QUOTE_LIFETIME_US := 5_000_000
 const RETIRED_ORACLE_PATHS := {
@@ -64,6 +68,7 @@ func _init() -> void:
 func _run() -> void:
 	_test_retired_oracles_are_physically_absent()
 	_test_authoritative_public_rule_copy()
+	_test_card_payment_authority_cutover()
 	_test_reference_market_math()
 	_test_reference_solar_clock_and_quote_boundary()
 	_test_registry_stays_eighteen_and_fail_closed()
@@ -110,6 +115,19 @@ func _test_authoritative_public_rule_copy() -> void:
 		_expect(public_copy.contains(phrase), "public quick reference keeps settled phrase: %s" % phrase)
 	_expect(str(snapshot.get("visibility_scope", "")) == "public_static_rules", "quick reference is public static data")
 	_expect(not public_copy.contains("exact_cash") and not public_copy.contains("private_hand") and not public_copy.contains("owner_truth"), "public rule copy contains no private state keys")
+
+
+func _test_card_payment_authority_cutover() -> void:
+	var rulebook := FileAccess.get_file_as_string(RULEBOOK_PATH)
+	var catalog := FileAccess.get_file_as_string(V06_CATALOG_PATH)
+	var mana_gate := FileAccess.get_file_as_string(PLAYER_MANA_BENCH_PATH)
+	var flow_gate := FileAccess.get_file_as_string(CARD_FLOW_TEST_PATH)
+	var execution_gate := FileAccess.get_file_as_string(EXECUTION_TEST_PATH)
+	_expect(rulebook.contains("其他普通牌购买时支付现金，打出时支付牌面资产，不再次支付现金"), "ordinary-card payment authority is purchase cash plus play assets with no second cash charge")
+	_expect(not catalog.is_empty() and not catalog.contains("play_cash"), "v0.6 catalog does not restore legacy ordinary-card play_cash authority")
+	_expect(mana_gate.contains('"consume_exact_once"') and mana_gate.contains('"release_exact_once"'), "PlayerMana focused gate owns asset reservation consume/release exact-once")
+	_expect(flow_gate.contains("market cash is debited exactly once") and flow_gate.contains("successful effect transaction replays without the card still being present"), "CardFlow focused gate owns purchase cash and one-shot transaction exact-once")
+	_expect(execution_gate.contains("countered execution still completes commitment and history") and execution_gate.contains('"finish_card_commitment"'), "Execution focused gate owns countered target commitment completion")
 
 
 func _test_reference_market_math() -> void:
