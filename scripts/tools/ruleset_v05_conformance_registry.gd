@@ -80,6 +80,14 @@ const RECORDS := [
 		"next_step": "Use the same public/private victory snapshots in SS05-05 through SS05-14 without duplicating GDP, control, or endpoint comparisons.",
 	},
 	{
+		"rule_id": "industry_capacity_card_group_runtime",
+		"expected_behavior": "Six authored industries drive card requirements and cumulative per-group capacity reservations; one 8-second window has 6 seconds organize, 2 seconds lock, a tutorial 1-card limit, a standard 2-card limit, fixed 0/50/100 bids, and one public monster-wager-pool receipt.",
+		"current_owner": "IndustryCapacityRuntimeService + CardResolutionQueueRuntimeService + CardResolutionRuntimeController",
+		"current_status": STATUS_CUTOVER_COMPLETE,
+		"runtime_evidence": ["IndustryCapacityCardGroupRuntimeBench 64/64", "CardResolutionQueueRuntimeCharacterizationBench 56/56", "RuntimeCardResolutionTrackFlowBench 14/14", "Shared card group runtime test passed"],
+		"next_step": "Keep production global Ruleset v0.4 until the migration release gate, while later v0.5 card and wager domains consume these explicit contracts without fallback.",
+	},
+	{
 		"rule_id": "emergency_sale_cost_basis",
 		"expected_behavior": "Merged/upgraded card emergency-sale basis must be explicitly approved.",
 		"current_owner": "product decision",

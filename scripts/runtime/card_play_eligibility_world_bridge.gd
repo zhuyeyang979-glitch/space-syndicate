@@ -50,11 +50,11 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 	var queue_to_next_batch := bool(_world.get("card_resolution_batch_locked")) \
 		or not active_entry.is_empty() \
 		or (not current_queue.is_empty() and float(_world.get("card_resolution_simultaneous_timer")) <= 0.0)
-	var desired_bid := 0
+	var desired_bid_cash := 0
 	if queue_to_next_batch:
-		desired_bid = maxi(0, int(player.get("queued_card_tip", 0)))
-	elif player_valid and _world.has_method("_selected_card_tip_amount"):
-		desired_bid = int(_world.call("_selected_card_tip_amount", player_index))
+		desired_bid_cash = maxi(0, int(player.get("queued_card_tip", 0)))
+	elif player_valid and _world.has_method("_selected_card_priority_bid_amount"):
+		desired_bid_cash = int(_world.call("_selected_card_priority_bid_amount", player_index))
 	var pending_target_choice := false
 	if _world.has_method("_has_pending_target_choice"):
 		pending_target_choice = bool(_world.call("_has_pending_target_choice"))
@@ -75,6 +75,7 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"player_name": str(_world.call("_player_name", player_index)) if player_valid and _world.has_method("_player_name") else "玩家",
 		"player_eliminated": bool(_world.call("_player_is_eliminated", player_index)) if player_valid and _world.has_method("_player_is_eliminated") else false,
 		"player_cash": int(player.get("cash", 0)),
+		"player_cash_cents": int(player.get("cash", 0)) * 100,
 		"player_action_cooldown": float(player.get("action_cooldown", 0.0)),
 		"game_over": bool(_world.call("_runtime_session_finished")) if _world.has_method("_runtime_session_finished") else false,
 		"selected_district": selected_district,
@@ -100,7 +101,7 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"military_unit_cooldown": float(unit.get("cooldown_left", 0.0)),
 		"military_deployment_valid": military_deployment_valid,
 		"military_deploy_terrain_label": military_terrain_label,
-		"desired_bid": desired_bid,
+		"desired_bid_cents": desired_bid_cash * 100,
 		"queue_preflight": {
 			"batch_locked": bool(_world.get("card_resolution_batch_locked")),
 			"active_present": not active_entry.is_empty(),

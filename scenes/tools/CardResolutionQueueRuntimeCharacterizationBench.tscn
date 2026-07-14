@@ -84,7 +84,7 @@ theme_override_constants/margin_bottom = 12
 
 [node name="ContractText" type="Label" parent="Margin/Rows/Body/ContractPanel/ContractMargin"]
 layout_mode = 2
-text = "v0.4 queue contract\n\n30 seconds shared window\n25 seconds organize\n5 seconds lock\n0-3 cards per player group\nCommit pays once\nGroups settle continuously\nPublic clues hide source identity"
+text = "v0.5 card-group domain\n\n8 seconds shared window\n6 seconds organize\n2 seconds lock\n1 tutorial / 2 standard cards\nPriority bid: ¥0 / ¥50 / ¥100\nAll bids enter the public wager pool\nPublic clues hide source identity"
 autowrap_mode = 2
 
 [node name="OwnershipPanel" type="PanelContainer" parent="Margin/Rows/Body"]

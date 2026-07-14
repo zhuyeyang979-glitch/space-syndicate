@@ -979,3 +979,24 @@ The existing GDP gate is expanded to **40/40** and the long-lived City/Trade gat
 `VictoryControlRuntimeController.tscn` and its non-owning `VictoryControlWorldBridge.tscn` are static children of `GameRuntimeCoordinator`. The Controller is the sole owner of 3000bp unique region control, depth Top-N GDP requirements, 10-second qualification, sticky 120-second audit rosters, 30-second cooldown, endpoint ordering, special outcomes, versioned save data, and the immutable outcome receipt. The bridge consumes existing CityTrade private-attribution facts and forwards receipts; it owns no formula or mutable victory state.
 
 Standings now renders the public victory snapshot, Final Settlement requires the outcome receipt, AI consumes authorized public/private snapshots and learns from the receipt, save summaries report receipt/audit state, and GameSession accepts the first receipt exactly once. `main.gd` no longer owns `game_over`, cash goals, city clearance, legacy final scores, or the old countdown. `VictoryControlRuntimeBench` passes 56/56 and records the public/private boundary in `docs/victory_control_runtime_contract.md`.
+
+## SS05-05: Industry Capacity And 8/6/2 Card Group Runtime
+
+`IndustryCapacityRuntimeService` and its non-owning WorldBridge are static under
+`GameRuntimeCoordinator`. The service aggregates six-industry capacity from
+stable project snapshots and the authored product-industry catalog. It owns no
+project state, GDP arithmetic, queue state, card effect, or world mutation.
+
+Eligibility consumes the pure capacity snapshot for all five v0.5 requirement
+kinds. Queue owns cumulative unresolved-group reservations, exact-once group
+release, fixed priority bids, and the immutable public monster-wager-pool
+receipt. `CardResolutionRuntimeController` remains the only window clock and
+readiness owner, now configured to 8/6/2 with tutorial/standard limits 1/2.
+The global Ruleset bridge remains v0.4, so this is an explicit domain cutover,
+not a global selector.
+
+`main.gd` retains only world facts, existing cash/inventory commits, receipt
+application, and presentation/event forwarding. It no longer contains the
+arbitrary bid constant, bid normalizer, positive-tier collision rule, previous
+group payment chain, or a duplicate group-limit rule source. SS05-05 passes
+64/64; Queue remains 56/56 and Runtime Track 14/14.

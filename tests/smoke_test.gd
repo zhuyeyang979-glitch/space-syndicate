@@ -8587,7 +8587,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 	var bids := [100, 200, 200]
 	for i in range(1, 4):
 		main.set("selected_player", i)
-		main.call("_set_selected_card_tip", int(bids[i - 1]))
+		main.call("_set_selected_card_priority_bid", int(bids[i - 1]))
 		main.call("_queue_skill_resolution", i, 20 + i, -1)
 	var auction_status := String(status_label.text) if status_label != null else ""
 	result["five_second_window"] = simultaneous_window_started \
@@ -8712,7 +8712,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 
 	main.set("selected_player", 3)
 	var locked_bid_before: int = int((locked_queue[0] as Dictionary).get("tip", -1))
-	main.call("_set_selected_card_tip", 500)
+	main.call("_set_selected_card_priority_bid", 500)
 	var locked_queue_after_bid: Array = _as_array(main.get("card_resolution_queue"))
 	result["batch_order_locked"] = bool(result["batch_order_locked"]) \
 		and int((locked_queue_after_bid[0] as Dictionary).get("tip", -1)) == locked_bid_before
@@ -8752,7 +8752,7 @@ func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
 		and int(main.get("card_resolution_batch_reference_player")) == 0 \
 		and int(main.get("last_card_resolution_player_index")) == 0
 	main.set("selected_player", 1)
-	main.call("_set_selected_card_tip", 100)
+	main.call("_set_selected_card_priority_bid", 100)
 	main.call("_update_card_resolution_queue", 5.1)
 	var cross_batch_active := main.get("active_card_resolution") as Dictionary
 	var cross_batch_players := _as_array(main.get("players"))

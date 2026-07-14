@@ -127,7 +127,7 @@ Sprint 36 loads real runtime definitions rather than fabricated IDs:
 
 ### CardResolutionRuntimeController
 
-- Sole owner of shared 30-second, organize 25-second, lock 5-second, reveal, and counter timing transitions.
+- Sole owner of the active shared 8-second, organize 6-second, lock 2-second, reveal, and counter timing transitions.
 - Does not own active card payloads or effects.
 
 ### CardInventoryRuntimeService

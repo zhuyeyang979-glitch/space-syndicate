@@ -15,7 +15,7 @@ const CASE_IDS := [
 	"runtime_group_organize_window",
 	"runtime_group_lock_window",
 	"runtime_group_contiguous_order",
-	"runtime_group_bid_chain_privacy",
+	"runtime_group_wager_pool_privacy",
 ]
 
 
@@ -56,13 +56,13 @@ func case_data(case_id: String) -> Dictionary:
 		"runtime_privacy_boundary":
 			return _case("runtime_privacy_boundary", "runtime_privacy", "select_slot", "runtime_track_1050", "runtime_track_select_1050", "隐私边界", _runtime_privacy_track_state())
 		"runtime_group_organize_window":
-			return _case("runtime_group_organize_window", "group_organize", "load_track", "", "", "25秒组织", _runtime_group_organize_track_state())
+			return _case("runtime_group_organize_window", "group_organize", "load_track", "", "", "6秒组织", _runtime_group_organize_track_state())
 		"runtime_group_lock_window":
-			return _case("runtime_group_lock_window", "group_lock", "response_action", "", "runtime_group_bid_plus_10", "最后5秒锁牌", _runtime_group_lock_track_state())
+			return _case("runtime_group_lock_window", "group_lock", "disabled_response_action", "", "runtime_group_bid_locked", "最后2秒锁牌", _runtime_group_lock_track_state())
 		"runtime_group_contiguous_order":
-			return _case("runtime_group_contiguous_order", "group_order", "select_slot", "runtime_track_1061", "runtime_track_select_1061", "同源组 2/3", _runtime_group_order_track_state())
-		"runtime_group_bid_chain_privacy":
-			return _case("runtime_group_bid_chain_privacy", "group_bid_chain", "select_slot", "runtime_track_1070", "runtime_track_select_1070", "棱镜融资", _runtime_group_bid_chain_track_state())
+			return _case("runtime_group_contiguous_order", "group_order", "select_slot", "runtime_track_1061", "runtime_track_select_1061", "同源组 2/2", _runtime_group_order_track_state())
+		"runtime_group_wager_pool_privacy":
+			return _case("runtime_group_wager_pool_privacy", "group_wager_pool", "select_slot", "runtime_track_1070", "runtime_track_select_1070", "棱镜融资", _runtime_group_wager_pool_track_state())
 	return _case("runtime_public_track_loads", "runtime_queue", "load_track", "", "", "匿名融资", _runtime_queue_track_state())
 
 
@@ -225,31 +225,30 @@ func _runtime_privacy_track_state() -> Dictionary:
 
 func _runtime_group_organize_track_state() -> Dictionary:
 	var entries := [
-		_group_entry(1060, "组织组1·1/3", "轨道融资 I", "window_12_group_0", 1, 3, 120),
-		_group_entry(1061, "组织组1·2/3", "城市融资 I", "window_12_group_0", 2, 3, 120),
-		_group_entry(1062, "组织组1·3/3", "冷链航线 I", "window_12_group_0", 3, 3, 120),
-		_group_entry(1063, "组织组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 80),
+		_group_entry(1060, "组织组1·1/2", "轨道融资 I", "window_12_group_0", 1, 2, 100),
+		_group_entry(1061, "组织组1·2/2", "城市融资 I", "window_12_group_0", 2, 2, 100),
+		_group_entry(1063, "组织组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 50),
 	]
-	var state := _track_state("组织", "25秒组织：每人0-3张形成一个匿名组，可调整组内顺序并提高组报价。", entries)
+	var state := _track_state("组织", "前6秒组织：标准局每人0-2张形成一个匿名组，并从¥0、¥50、¥100选择固定优先报价。", entries)
 	state["window_phase"] = "organize"
-	state["window_remaining"] = 22.0
+	state["window_remaining"] = 5.0
 	return state
 
 
 func _runtime_group_lock_track_state() -> Dictionary:
-	var state := _track_state("锁牌", "最后5秒锁牌：不能加入新卡，组报价只能提高且正报价档位唯一。", [
-		_group_entry(1065, "竞拍组1·1/2", "轨道融资 I", "window_12_group_0", 1, 2, 120),
-		_group_entry(1066, "竞拍组1·2/2", "城市融资 I", "window_12_group_0", 2, 2, 120),
-		_group_entry(1067, "竞拍组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 80),
+	var state := _track_state("锁牌", "最后2秒锁牌：不能加入新卡或更改固定优先报价。", [
+		_group_entry(1065, "锁定组1·1/2", "轨道融资 I", "window_12_group_0", 1, 2, 100),
+		_group_entry(1066, "锁定组1·2/2", "城市融资 I", "window_12_group_0", 2, 2, 100),
+		_group_entry(1067, "锁定组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 50),
 	])
 	state["auction_open"] = true
 	state["window_phase"] = "lock"
-	state["window_remaining"] = 4.0
+	state["window_remaining"] = 1.0
 	state["auction_response"] = {
 		"active": true,
-		"summary": "最后5秒锁牌；只允许提高整个卡牌组的报价。",
+		"summary": "最后2秒锁牌；组顺序和优先报价都已冻结。",
 		"actions": [
-			{"id": "runtime_group_bid_plus_10", "label": "组报价 +10", "disabled": false, "tooltip": "提高整组报价，不能降低。"},
+			{"id": "runtime_group_bid_locked", "label": "优先报价已锁定", "disabled": true, "reason": "锁牌阶段不能更改优先报价。", "tooltip": "等待公共奖池 receipt。"},
 			{"id": "runtime_group_add_card", "label": "加入卡牌", "disabled": true, "reason": "锁牌阶段不能加入新卡。", "tooltip": "卡牌保留在手牌等待下一窗口。"},
 		],
 	}
@@ -257,33 +256,32 @@ func _runtime_group_lock_track_state() -> Dictionary:
 
 
 func _runtime_group_order_track_state() -> Dictionary:
-	return _track_state("组内连续", "同一来源的三张卡保持相邻，并按1/3、2/3、3/3连续结算。", [
-		_group_entry(1060, "锁定组1·1/3", "轨道融资 I", "window_12_group_0", 1, 3, 120),
-		_group_entry(1061, "锁定组1·2/3", "城市融资 I", "window_12_group_0", 2, 3, 120),
-		_group_entry(1062, "锁定组1·3/3", "冷链航线 I", "window_12_group_0", 3, 3, 120),
-		_group_entry(1063, "锁定组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 80),
+	return _track_state("组内连续", "同一来源的两张卡保持相邻，并按1/2、2/2连续结算。", [
+		_group_entry(1060, "锁定组1·1/2", "轨道融资 I", "window_12_group_0", 1, 2, 100),
+		_group_entry(1061, "锁定组1·2/2", "城市融资 I", "window_12_group_0", 2, 2, 100),
+		_group_entry(1063, "锁定组2·1/1", "相位新闻 I", "window_12_group_1", 1, 1, 50),
 	])
 
 
-func _runtime_group_bid_chain_track_state() -> Dictionary:
-	var first := _group_entry(1070, "已结算组1·1/2", "棱镜融资 I", "window_13_group_0", 1, 2, 300)
-	first["badges"] = ["同源组 1/2", "最高组报价", "怪兽赌局奖池 +¥300"]
-	first["detail"] = "最高组报价进入下一场有效怪兽赌局公共奖池；来源身份保持匿名。"
+func _runtime_group_wager_pool_track_state() -> Dictionary:
+	var first := _group_entry(1070, "已结算组1·1/2", "棱镜融资 I", "window_13_group_0", 1, 2, 100)
+	first["badges"] = ["同源组 1/2", "固定报价¥100", "公共怪兽奖池"]
+	first["detail"] = "本组固定优先报价进入下一场有效怪兽赌局公共奖池；来源身份保持匿名。"
 	first["full_detail"] = first["detail"]
 	first["hidden_owner"] = "Player 1 Secret"
 	first["private_target"] = "Hidden District 2"
-	var second := _group_entry(1071, "已结算组1·2/2", "轨道融资 I", "window_13_group_0", 2, 2, 300)
+	var second := _group_entry(1071, "已结算组1·2/2", "轨道融资 I", "window_13_group_0", 2, 2, 100)
 	second["badges"] = ["同源组 2/2", "连续结算"]
-	var third := _group_entry(1072, "已结算组2·1/1", "城市融资 I", "window_13_group_1", 1, 1, 200)
+	var third := _group_entry(1072, "已结算组2·1/1", "城市融资 I", "window_13_group_1", 1, 1, 50)
 	third["group_position"] = 2
-	third["badges"] = ["组2", "向前组支付 ¥200"]
-	var fourth := _group_entry(1073, "已结算组3·1/1", "冷链航线 I", "window_13_group_2", 1, 1, 80)
+	third["badges"] = ["组2", "公共怪兽奖池 +¥50"]
+	var fourth := _group_entry(1073, "已结算组3·1/1", "冷链航线 I", "window_13_group_2", 1, 1, 0)
 	fourth["group_position"] = 3
-	fourth["badges"] = ["组3", "向前组支付 ¥80"]
-	return _track_state("竞价链", "最高组报价¥300进入怪兽赌局奖池；后续组依次支付给前一组，身份不公开。", [first, second, third, fourth])
+	fourth["badges"] = ["组3", "零报价"]
+	return _track_state("公共奖池", "所有组固定报价合计¥150进入怪兽赌局公共奖池；不存在组间资金链，身份不公开。", [first, second, third, fourth])
 
 
-func _group_entry(resolution_id: int, state: String, label: String, group_id: String, group_order: int, group_size: int, group_bid: int) -> Dictionary:
+func _group_entry(resolution_id: int, state: String, label: String, group_id: String, group_order: int, group_size: int, priority_bid_cash: int) -> Dictionary:
 	var group_position := 1
 	if group_id.contains("_group_"):
 		group_position = maxi(1, int(group_id.get_slice("_group_", 1)) + 1)
@@ -293,7 +291,7 @@ func _group_entry(resolution_id: int, state: String, label: String, group_id: St
 		label,
 		state,
 		"待猜",
-		"¥%d" % group_bid,
+		"¥%d" % priority_bid_cash,
 		"#f59e0b",
 		["同源组 %d/%d" % [group_order, group_size]],
 		"runtime_track_select_%d" % resolution_id,
@@ -303,8 +301,10 @@ func _group_entry(resolution_id: int, state: String, label: String, group_id: St
 	entry["group_position"] = group_position
 	entry["group_order"] = group_order
 	entry["group_size"] = group_size
-	entry["group_bid"] = group_bid
-	entry["summary"] = "%s｜同源组 %d/%d｜组报价¥%d" % [label, group_order, group_size, group_bid]
+	entry["priority_bid"] = priority_bid_cash
+	entry["priority_bid_cents"] = priority_bid_cash * 100
+	entry["priority_bid_committed"] = true
+	entry["summary"] = "%s｜同源组 %d/%d｜固定优先报价¥%d" % [label, group_order, group_size, priority_bid_cash]
 	entry["detail"] = "%s｜同源组 %d/%d｜组内卡牌连续结算。" % [label, group_order, group_size]
 	entry["full_detail"] = entry["detail"]
 	return entry

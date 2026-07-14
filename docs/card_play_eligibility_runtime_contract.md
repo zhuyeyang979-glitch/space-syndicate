@@ -2,11 +2,11 @@
 
 ## Authority
 
-`CardPlayEligibilityRuntimeService` is the only owner of card-play legality, GDP-share requirements, cash-cost eligibility, target traits, target readiness, and stable rejection precedence. It consumes pure facts from `CardPlayEligibilityWorldBridge` and returns pure data.
+`CardPlayEligibilityRuntimeService` is the only owner of card-play legality, GDP-share requirements, v0.5 industry-requirement evaluation, cash-cost eligibility, target traits, target readiness, and stable rejection precedence. It consumes pure facts from `CardPlayEligibilityWorldBridge` and returns pure data.
 
 `CardPresentationRuntimeService` maps `reason_code` and `reason_args` to player-facing labels, details, accents, and disabled reasons. It does not decide legality.
 
-`CardResolutionQueueRuntimeService` remains the only owner of the 30/25/5 window, 0-3 group limit, bids, queue placement, and submission transaction. `CardResolutionExecutionRuntimeService` remains the lifecycle owner. Neither service duplicates eligibility rules.
+`CardResolutionRuntimeController` owns the active 8/6/2 card-window clock and ready state. `CardResolutionQueueRuntimeService` owns the current v0.5 tutorial/standard 1/2 group limits, fixed priority bids, cumulative capacity reservations, queue placement, and submission transaction. `CardResolutionExecutionRuntimeService` remains the lifecycle owner. None of these services duplicates eligibility rules.
 
 ## Result Envelope
 

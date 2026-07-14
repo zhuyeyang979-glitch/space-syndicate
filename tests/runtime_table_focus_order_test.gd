@@ -303,7 +303,7 @@ func _table_state() -> Dictionary:
 				"title": "牌桌竞价",
 				"my_bid": "¥0",
 				"highest_bid": "¥0",
-				"actions": [{"id": "bid_plus_10", "label": "+10"}],
+				"actions": [{"id": "bid_set_50", "label": "设为 ¥50"}],
 			},
 		},
 	}

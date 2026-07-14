@@ -2,6 +2,8 @@
 extends Node
 class_name GameRuntimeCoordinator
 
+const RULESET_V05_PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v05.tres")
+
 var _ruleset_id := ""
 var _configured := false
 
@@ -37,7 +39,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		card_inventory.call("configure", ruleset_snapshot)
 	var card_resolution_queue := _card_resolution_queue_node()
 	if card_resolution_queue != null and card_resolution_queue.has_method("configure"):
-		card_resolution_queue.call("configure", ruleset_snapshot)
+		card_resolution_queue.call("configure", _v05_card_group_runtime_snapshot())
 	var card_resolution_execution := _card_resolution_execution_node()
 	if card_resolution_execution != null and card_resolution_execution.has_method("configure"):
 		card_resolution_execution.call("configure", ruleset_snapshot)
@@ -91,6 +93,12 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		city_trade_network_controller.call("set_formula_service", economy_product_route_formula)
 	if city_trade_network_controller != null and city_trade_network_controller.has_method("configure"):
 		city_trade_network_controller.call("configure", ruleset_snapshot)
+	var industry_capacity := _industry_capacity_node()
+	var industry_capacity_bridge := _industry_capacity_world_bridge_node()
+	if industry_capacity_bridge != null and industry_capacity_bridge.has_method("bind_city_trade_network_controller"):
+		industry_capacity_bridge.call("bind_city_trade_network_controller", city_trade_network_controller)
+	if industry_capacity != null and industry_capacity.has_method("configure"):
+		industry_capacity.call("configure")
 	var city_development_controller := _city_development_runtime_controller_node()
 	var city_development_bridge := _city_development_world_bridge_node()
 	if city_development_bridge != null and city_development_bridge.has_method("set_runtime_dependencies"):
@@ -147,7 +155,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	if card_play_eligibility != null and card_play_eligibility.has_method("set_city_gdp_derivative_runtime_controller"):
 		card_play_eligibility.call("set_city_gdp_derivative_runtime_controller", city_gdp_derivative_controller)
 	if card_play_eligibility != null and card_play_eligibility.has_method("configure"):
-		card_play_eligibility.call("configure", ruleset_snapshot)
+		card_play_eligibility.call("configure", _v05_card_group_runtime_snapshot())
 	var table_viewmodel := _table_viewmodel_node()
 	if table_viewmodel != null and table_viewmodel.has_method("configure"):
 		table_viewmodel.call("configure", card_presentation)
@@ -245,6 +253,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var product_market_snapshot := _product_market_runtime_debug_snapshot()
 	var city_gdp_derivative_snapshot := _city_gdp_derivative_runtime_debug_snapshot()
 	var city_trade_network_snapshot := _city_trade_network_runtime_debug_snapshot()
+	var industry_capacity_debug := _industry_capacity_debug_snapshot()
+	var industry_capacity_bridge_snapshot := _industry_capacity_world_bridge_debug_snapshot()
 	var city_development_snapshot := _city_development_runtime_debug_snapshot()
 	var city_development_bridge_snapshot := _city_development_world_bridge_debug_snapshot()
 	var hand_interaction_snapshot := _player_hand_interaction_debug_snapshot()
@@ -273,7 +283,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var weather_snapshot := _weather_runtime_debug_snapshot()
 	var contract_snapshot := _contract_runtime_debug_snapshot()
 	var victory_snapshot := _victory_control_runtime_debug_snapshot()
-	_configured = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(city_trade_network_snapshot.get("controller_ready", false)) and bool(city_development_snapshot.get("controller_ready", false)) and bool(city_development_bridge_snapshot.get("bridge_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(economy_snapshot.get("controller_ready", false)) and bool(gdp_formula_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
+	_configured = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(city_trade_network_snapshot.get("controller_ready", false)) and bool(industry_capacity_debug.get("service_ready", false)) and bool(industry_capacity_bridge_snapshot.get("bridge_ready", false)) and bool(city_development_snapshot.get("controller_ready", false)) and bool(city_development_bridge_snapshot.get("bridge_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(economy_snapshot.get("controller_ready", false)) and bool(gdp_formula_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
 
 
 func bind_ai_world(world: Node) -> void:
@@ -1205,7 +1215,11 @@ func card_inventory_debug() -> Dictionary:
 
 
 func plan_card_resolution_queue_submission(request_snapshot: Dictionary, facts: Dictionary) -> Dictionary:
-	return _card_resolution_queue_dictionary_call("plan_submission", [request_snapshot, facts])
+	var queue_facts := facts.duplicate(true)
+	var player_index := int(request_snapshot.get("player_index", -1))
+	if not queue_facts.has("industry_capacity"):
+		queue_facts["industry_capacity"] = industry_capacity_snapshot(player_index)
+	return _card_resolution_queue_dictionary_call("plan_submission", [request_snapshot, queue_facts])
 
 
 func commit_card_resolution_queue_submission(plan: Dictionary, commit_receipt: Dictionary) -> Dictionary:
@@ -1859,7 +1873,37 @@ func card_play_world_facts(player_index: int, skill: Dictionary, context: Dictio
 		push_error("GameRuntimeCoordinator requires CardPlayEligibilityWorldBridge.")
 		return {"player_valid": false, "reason": "world_bridge_missing"}
 	var value: Variant = bridge.call("build_facts", player_index, skill, context)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var facts: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var capacity := industry_capacity_snapshot(player_index)
+	var reserved := _card_resolution_queue_dictionary_call("reserved_capacity_for_player", [player_index])
+	var service := _industry_capacity_node()
+	var availability_variant: Variant = service.call("availability_snapshot", capacity, reserved) if service != null and service.has_method("availability_snapshot") else {}
+	facts["industry_capacity"] = capacity
+	facts["industry_capacity_available"] = (availability_variant as Dictionary).duplicate(true) if availability_variant is Dictionary else {}
+	return facts
+
+
+func industry_capacity_snapshot(player_index: int) -> Dictionary:
+	var service := _industry_capacity_node()
+	var bridge := _industry_capacity_world_bridge_node()
+	if service == null or bridge == null or not service.has_method("derive_player_capacity") or not bridge.has_method("project_rows_for_player"):
+		return {"valid": false, "reason": "industry_capacity_runtime_missing", "player_index": player_index}
+	var rows_variant: Variant = bridge.call("project_rows_for_player", player_index)
+	var rows: Array = rows_variant if rows_variant is Array else []
+	var snapshot_variant: Variant = service.call("derive_player_capacity", player_index, rows)
+	return (snapshot_variant as Dictionary).duplicate(true) if snapshot_variant is Dictionary else {}
+
+
+func _v05_card_group_runtime_snapshot() -> Dictionary:
+	return {
+		"ruleset_id": str(RULESET_V05_PROFILE.ruleset_id),
+		"card_group": RULESET_V05_PROFILE.card_group_rules(),
+		"industry_capacity_thresholds": RULESET_V05_PROFILE.industry_capacity_thresholds.duplicate(),
+	}
+
+
+func card_group_runtime_rules() -> Dictionary:
+	return RULESET_V05_PROFILE.card_group_rules().duplicate(true)
 
 
 func evaluate_card_play(request: Dictionary, facts: Dictionary) -> Dictionary:
@@ -1969,6 +2013,8 @@ func debug_snapshot() -> Dictionary:
 	var product_market_runtime_snapshot := _product_market_runtime_debug_snapshot()
 	var city_gdp_derivative_runtime_snapshot := _city_gdp_derivative_runtime_debug_snapshot()
 	var city_trade_network_runtime_snapshot := _city_trade_network_runtime_debug_snapshot()
+	var industry_capacity_runtime_snapshot := _industry_capacity_debug_snapshot()
+	var industry_capacity_world_bridge_snapshot := _industry_capacity_world_bridge_debug_snapshot()
 	var city_development_runtime_snapshot := _city_development_runtime_debug_snapshot()
 	var city_development_world_bridge_snapshot := _city_development_world_bridge_debug_snapshot()
 	var hand_interaction_snapshot := _player_hand_interaction_debug_snapshot()
@@ -2016,6 +2062,8 @@ func debug_snapshot() -> Dictionary:
 		"product_market_runtime": product_market_runtime_snapshot,
 		"city_gdp_derivative_runtime": city_gdp_derivative_runtime_snapshot,
 		"city_trade_network_runtime": city_trade_network_runtime_snapshot,
+		"industry_capacity_runtime": industry_capacity_runtime_snapshot,
+		"industry_capacity_world_bridge": industry_capacity_world_bridge_snapshot,
 		"city_development_runtime": city_development_runtime_snapshot,
 		"city_development_world_bridge": city_development_world_bridge_snapshot,
 		"player_hand_interaction": hand_interaction_snapshot,
@@ -2090,6 +2138,14 @@ func _city_trade_network_runtime_controller_node() -> Node:
 
 func _city_trade_network_world_bridge_node() -> Node:
 	return get_node_or_null("CityTradeNetworkWorldBridge")
+
+
+func _industry_capacity_node() -> Node:
+	return get_node_or_null("IndustryCapacityRuntimeService")
+
+
+func _industry_capacity_world_bridge_node() -> Node:
+	return get_node_or_null("IndustryCapacityWorldBridge")
 
 
 func _city_development_runtime_controller_node() -> Node:
@@ -2419,6 +2475,24 @@ func _city_trade_network_runtime_debug_snapshot() -> Dictionary:
 		var snapshot_variant: Variant = controller.call("debug_snapshot", -1)
 		if snapshot_variant is Dictionary:
 			return (snapshot_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _industry_capacity_debug_snapshot() -> Dictionary:
+	var service := _industry_capacity_node()
+	if service != null and service.has_method("debug_snapshot"):
+		var value: Variant = service.call("debug_snapshot")
+		if value is Dictionary:
+			return (value as Dictionary).duplicate(true)
+	return {}
+
+
+func _industry_capacity_world_bridge_debug_snapshot() -> Dictionary:
+	var bridge := _industry_capacity_world_bridge_node()
+	if bridge != null and bridge.has_method("debug_snapshot"):
+		var value: Variant = bridge.call("debug_snapshot")
+		if value is Dictionary:
+			return (value as Dictionary).duplicate(true)
 	return {}
 
 

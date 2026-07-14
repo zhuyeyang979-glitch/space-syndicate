@@ -122,7 +122,7 @@ func _run_flow_suite_internal() -> int:
 		screenshot_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		viewport.add_child(screenshot_screen)
 		await _pump_frames(8)
-	var screenshot_case := _flow_case_by_id("runtime_group_bid_chain_privacy")
+	var screenshot_case := _flow_case_by_id("runtime_group_wager_pool_privacy")
 	if screenshot_screen != null and not screenshot_case.is_empty() and screenshot_screen.has_method("apply_state"):
 		screenshot_screen.call("apply_state", _table_state_for_case(screenshot_case))
 		await _pump_frames(24)
@@ -428,14 +428,14 @@ func _group_window_checked(flow_case: Dictionary) -> bool:
 		return false
 	match case_id:
 		"runtime_group_organize_window":
-			return str(track_state.get("window_phase", "")) == "organize" and _group_cards_are_contiguous(entries, "window_12_group_0", 3)
+			return str(track_state.get("window_phase", "")) == "organize" and _group_cards_are_contiguous(entries, "window_12_group_0", 2)
 		"runtime_group_lock_window":
 			return str(track_state.get("window_phase", "")) == "lock" and bool(track_state.get("auction_open", false))
 		"runtime_group_contiguous_order":
-			return _group_cards_are_contiguous(entries, "window_12_group_0", 3)
-		"runtime_group_bid_chain_privacy":
+			return _group_cards_are_contiguous(entries, "window_12_group_0", 2)
+		"runtime_group_wager_pool_privacy":
 			var first: Dictionary = entries[0] if entries[0] is Dictionary else {}
-			return int(first.get("group_bid", 0)) == 300 and str(track_state.get("summary", "")).contains("怪兽赌局奖池")
+			return int(first.get("priority_bid_cents", 0)) == 10000 and str(track_state.get("summary", "")).contains("怪兽赌局公共奖池") and str(track_state.get("summary", "")).contains("不存在组间资金链")
 	return false
 
 

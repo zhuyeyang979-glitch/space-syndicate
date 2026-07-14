@@ -640,6 +640,15 @@ const VICTORY_CONTROL_RUNTIME_BENCH_SCENE := "res://scenes/tools/VictoryControlR
 const VICTORY_CONTROL_RUNTIME_CONTRACT := "res://docs/victory_control_runtime_contract.md"
 const VICTORY_CONTROL_RUNTIME_OUTPUT_DIR := "user://space_syndicate_design_qa/victory_control_runtime/"
 const VICTORY_CONTROL_RUNTIME_SCREENSHOT_PATH := "user://space_syndicate_design_qa/victory_control_runtime_sprint_4.png"
+const INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/industry_capacity_runtime_service.gd"
+const INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/IndustryCapacityRuntimeService.tscn"
+const INDUSTRY_CAPACITY_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/industry_capacity_world_bridge.gd"
+const INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE := "res://scenes/runtime/IndustryCapacityWorldBridge.tscn"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCRIPT := "res://scripts/tools/industry_capacity_card_group_runtime_bench.gd"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE := "res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT := "res://docs/industry_capacity_card_group_runtime_contract.md"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_OUTPUT_DIR := "user://space_syndicate_design_qa/industry_capacity_card_group_runtime/"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_SCREENSHOT_PATH := "user://space_syndicate_design_qa/industry_capacity_card_group_runtime_sprint_5.png"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/city_development_settlement_runtime_characterization_bench.gd"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
 const CITY_DEVELOPMENT_SETTLEMENT_CONTRACT := "res://docs/city_development_settlement_runtime_contract.md"
@@ -866,6 +875,7 @@ func _run() -> void:
 	await _check_city_trade_network_runtime_characterization_component()
 	await _check_city_development_settlement_runtime_characterization_component()
 	await _check_victory_control_runtime_component()
+	await _check_industry_capacity_card_group_runtime_component()
 	await _check_city_gdp_derivative_runtime_component()
 	await _check_runtime_card_catalog_resource_component()
 	await _check_runtime_card_authoring_workflow_component()
@@ -1234,9 +1244,9 @@ func _check_split_game_screen_data_binding() -> void:
 					{"id": "track_select_9001", "label": "我的牌", "state": "竞拍2 ¥40", "active": true, "accent": Color("#fde68a")},
 				],
 				"actions": [
-					{"id": "bid_plus_10", "label": "保守+10", "active": true, "accent": Color("#fde68a")},
-					{"id": "bid_set_80", "label": "追平", "active": true, "accent": Color("#f59e0b")},
-					{"id": "bid_set_90", "label": "压过", "active": true, "accent": Color("#22c55e")},
+					{"id": "bid_set_0", "label": "¥0", "active": true, "accent": Color("#94a3b8")},
+					{"id": "bid_set_50", "label": "¥50", "active": true, "accent": Color("#fde68a")},
+					{"id": "bid_set_100", "label": "¥100", "active": true, "accent": Color("#22c55e")},
 					{"id": "bid_reset", "label": "清零", "active": true, "accent": Color("#94a3b8")},
 				],
 			},
@@ -2277,7 +2287,7 @@ func _check_sceneization_audit_and_card_track_sceneization_component() -> void:
 	var runtime_resolution_fixture_script := load(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_FIXTURES_SCRIPT) as Script
 	_expect(runtime_resolution_fixture_script != null, "RuntimeCardResolutionTrackFlow fixtures script loads")
 	var runtime_resolution_fixtures: RefCounted = runtime_resolution_fixture_script.new() if runtime_resolution_fixture_script != null else null
-	var expected_runtime_resolution_case_ids := ["runtime_public_track_loads", "select_runtime_queued_card", "open_runtime_active_card", "runtime_auction_response_action", "runtime_disabled_response_action", "runtime_counter_response_window", "runtime_resolved_history_readonly", "runtime_long_queue_layout", "runtime_empty_track_safe_state", "runtime_privacy_boundary", "runtime_group_organize_window", "runtime_group_lock_window", "runtime_group_contiguous_order", "runtime_group_bid_chain_privacy"]
+	var expected_runtime_resolution_case_ids := ["runtime_public_track_loads", "select_runtime_queued_card", "open_runtime_active_card", "runtime_auction_response_action", "runtime_disabled_response_action", "runtime_counter_response_window", "runtime_resolved_history_readonly", "runtime_long_queue_layout", "runtime_empty_track_safe_state", "runtime_privacy_boundary", "runtime_group_organize_window", "runtime_group_lock_window", "runtime_group_contiguous_order", "runtime_group_wager_pool_privacy"]
 	if runtime_resolution_fixtures != null:
 		var runtime_cases_variant: Variant = runtime_resolution_fixtures.call("cases")
 		var runtime_cases: Array = runtime_cases_variant if runtime_cases_variant is Array else []
@@ -2297,7 +2307,7 @@ func _check_sceneization_audit_and_card_track_sceneization_component() -> void:
 	_expect(shared_group_window_script != null, "SharedCardGroupWindow pure-data rule module loads")
 	if shared_group_window_script != null:
 		var shared_group_window := shared_group_window_script.new() as RefCounted
-		_expect(shared_group_window != null and str(shared_group_window.call("phase_for_remaining", 30.0)) == "organize" and str(shared_group_window.call("phase_for_remaining", 5.0)) == "lock", "SharedCardGroupWindow exposes the 25-second organize and 5-second lock phases")
+		_expect(shared_group_window != null and str(shared_group_window.call("phase_for_remaining", 8.0)) == "organize" and str(shared_group_window.call("phase_for_remaining", 2.0)) == "lock", "SharedCardGroupWindow exposes the v0.5 six-second organize and two-second lock phases")
 
 	var runtime_resolution_script := load(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCRIPT) as Script
 	_expect(runtime_resolution_script != null, "RuntimeCardResolutionTrackFlowBench script loads")
@@ -5741,10 +5751,10 @@ func _prepare_runtime_open_card_auction(main: Node) -> void:
 			"group_id": "window_90_group_0",
 			"group_order": 1,
 			"group_size": 1,
-			"group_bid": 40,
+			"priority_bid_cents": 5000,
+			"locked_priority_bid_cents": 5000,
 			"slot_index": int(first_fixture.get("slot_index", -1)),
 			"skill": first_fixture.get("skill", {}),
-			"tip": 40,
 			"play_cash_cost": 0,
 		},
 		{
@@ -5754,16 +5764,16 @@ func _prepare_runtime_open_card_auction(main: Node) -> void:
 			"group_id": "window_90_group_1",
 			"group_order": 1,
 			"group_size": 1,
-			"group_bid": 80,
+			"priority_bid_cents": 10000,
+			"locked_priority_bid_cents": 10000,
 			"slot_index": int(second_fixture.get("slot_index", -1)),
 			"skill": second_fixture.get("skill", {}),
-			"tip": 80,
 			"play_cash_cost": 0,
 		},
 	])
 	main.set("next_card_resolution_queue", [])
-	main.set("card_resolution_auction_open", true)
-	main.set("card_resolution_auction_timer", 4.0)
+	main.set("card_resolution_auction_open", false)
+	main.set("card_resolution_auction_timer", 0.0)
 	main.set("card_resolution_simultaneous_timer", 4.0)
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_batch_reference_player", 0)
@@ -6012,10 +6022,10 @@ func _check_runtime_table_snapshot_bridge() -> void:
 				leader_link = link
 			elif str(link.get("label", "")) == "我的牌":
 				player_link = link
-	_expect(str(auction_bid_board.get("phase", "")).contains("锁牌") and auction_cluster_labels.has("最高") and auction_cluster_labels.has("组报价") and auction_cluster_labels.has("我的组") and auction_cluster_labels.has("怪兽池"), "runtime player_board snapshot routes the five-second group lock state into the dedicated BidBoard")
+	_expect(str(auction_bid_board.get("phase", "")).contains("组织") and auction_cluster_labels.has("最高") and auction_cluster_labels.has("组报价") and auction_cluster_labels.has("我的组") and auction_cluster_labels.has("怪兽池"), "runtime player_board snapshot routes the six-second group organization state into the dedicated BidBoard")
 	_expect(auction_track_labels.has("领跑") and auction_track_labels.has("我的牌"), "runtime BidBoard snapshot links bid state back to the public card track leader and the current player's queued card")
-	_expect(str(leader_link.get("id", "")) == "track_select_9002" and str(leader_link.get("state", "")).contains("¥80") and str(player_link.get("id", "")) == "track_select_9001", "runtime BidBoard points the leader link at the actual highest public bid and keeps the current player's queued-card link separate")
-	_expect(_action_list_has_id(auction_bid_actions, "bid_plus_10") and _action_list_has_id(auction_bid_actions, "bid_set_80") and _action_list_has_id(auction_bid_actions, "bid_set_90") and _action_list_has_id(auction_bid_actions, "bid_reset"), "runtime BidBoard snapshot exposes conservative, match, overtake, and reset bid actions")
+	_expect(str(leader_link.get("id", "")) == "track_select_9002" and str(leader_link.get("state", "")).contains("¥100") and str(player_link.get("id", "")) == "track_select_9001", "runtime BidBoard points the leader link at the actual highest fixed public bid and keeps the current player's queued-card link separate")
+	_expect(_action_list_has_id(auction_bid_actions, "bid_set_0") and _action_list_has_id(auction_bid_actions, "bid_set_50") and _action_list_has_id(auction_bid_actions, "bid_set_100"), "runtime BidBoard snapshot exposes only the fixed 0, 50, and 100 priority bid tiers")
 	if screen != null and screen.has_method("apply_state"):
 		screen.call("apply_state", auction_snapshot)
 		await process_frame
@@ -6025,9 +6035,9 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		var auction_bid_action_row := screen.find_child("BidBoardActionRow", true, false)
 		var auction_bid_board_text := _node_tree_text(auction_bid_board_node) if auction_bid_board_node != null else ""
 		_expect(auction_bid_chip_row != null and auction_bid_chip_row.get_child_count() >= 4, "split GameScreen renders open card-auction state inside the dedicated BidBoard instead of the readiness row")
-		_expect(auction_bid_board_text.contains("锁牌") and auction_bid_board_text.contains("最高") and auction_bid_board_text.contains("我的组") and auction_bid_board_text.contains("组报价") and auction_bid_board_text.contains("领跑"), "split BidBoard keeps the group lock and public-track labels visible on the table")
+		_expect(auction_bid_board_text.contains("组织") and auction_bid_board_text.contains("最高") and auction_bid_board_text.contains("我的组") and auction_bid_board_text.contains("组报价") and auction_bid_board_text.contains("领跑"), "split BidBoard keeps the group organization and public-track labels visible on the table")
 		_expect(auction_bid_track_link_row != null and auction_bid_track_link_row.get_child_count() >= 2, "split BidBoard renders clickable public-track pointer slots instead of burying them in the status sentence")
-		_expect(auction_bid_action_row != null and auction_bid_action_row.get_child_count() >= 4, "split BidBoard renders public bid increment and reset buttons")
+		_expect(auction_bid_action_row != null and auction_bid_action_row.get_child_count() >= 3, "split BidBoard renders the three fixed public priority-bid buttons")
 		var public_track_slot_for_hover := screen.find_child("PublicTrackSlot", true, false) as Control
 		if public_track_slot_for_hover != null:
 			public_track_slot_for_hover.emit_signal("mouse_entered")
@@ -6066,14 +6076,25 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		runtime_track_focus_ribbon = runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
 		runtime_track_focus_label = runtime_screen.find_child("TrackFocusLabel", true, false) as Label
 		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("已选牌轨"), "selected public-track cards keep a persistent short focus ribbon after BidBoard pointer click")
-	var live_bid_before := int(main.call("_selected_card_tip_amount", 0)) if main.has_method("_selected_card_tip_amount") else 0
-	var runtime_bid_plus_button := _find_visible_button_containing(runtime_screen, "+10")
-	_expect(runtime_bid_plus_button != null and not runtime_bid_plus_button.disabled, "runtime BidBoard exposes an enabled +10 public-bid button for the current queued card")
-	if runtime_bid_plus_button != null and not runtime_bid_plus_button.disabled:
-		runtime_bid_plus_button.emit_signal("pressed")
+	var runtime_bid_action_row := runtime_screen.find_child("BidBoardActionRow", true, false)
+	var fixed_bid_labels: Array[String] = []
+	var fixed_bid_disabled_states: Array[bool] = []
+	var fixed_bid_100_button: Button = null
+	var ready_button: Button = null
+	if runtime_bid_action_row != null:
+		for child in runtime_bid_action_row.get_children():
+			if child is Button:
+				fixed_bid_labels.append((child as Button).text)
+				fixed_bid_disabled_states.append((child as Button).disabled)
+				if (child as Button).text == "¥100":
+					fixed_bid_100_button = child as Button
+				elif (child as Button).text == "准备锁牌":
+					ready_button = child as Button
+	_expect(fixed_bid_labels.has("¥0") and fixed_bid_labels.has("¥50") and fixed_bid_labels.has("¥100") and fixed_bid_100_button != null and not fixed_bid_100_button.disabled and ready_button != null and not ready_button.disabled, "runtime BidBoard exposes the fixed priority-bid tiers and ready action during organization (labels=%s disabled=%s)" % [fixed_bid_labels, fixed_bid_disabled_states])
+	if fixed_bid_100_button != null and not fixed_bid_100_button.disabled:
+		fixed_bid_100_button.emit_signal("pressed")
 		await process_frame
-		var live_bid_after := int(main.call("_selected_card_tip_amount", 0)) if main.has_method("_selected_card_tip_amount") else live_bid_before
-		_expect(live_bid_after == live_bid_before + 10, "runtime BidBoard +10 button routes through split action signals and raises the current public bid")
+		_expect(int(main.call("_selected_card_priority_bid_amount", 0)) == 100, "runtime BidBoard routes the fixed ¥100 action through split signals to the current group")
 	_clear_runtime_card_auction_fixture(main)
 	_force_runtime_screen_sync(main)
 	await process_frame
@@ -6191,7 +6212,7 @@ func _check_viewmodel_contracts() -> void:
 		"status": "候补牌参拍中｜当前¥40｜最高¥80",
 		"chips": [{"label": "最高", "state": "¥80", "active": true}],
 		"track_links": [{"id": "track_select_9002", "label": "领跑", "state": "竞拍1 ¥80", "active": true, "selected": true}],
-		"actions": [{"id": "bid_plus_10", "label": "保守+10", "active": true}],
+		"actions": [{"id": "bid_set_50", "label": "设为 ¥50", "active": true}],
 	})
 	var default_action_dock: Variant = action_dock_script.new().apply_dictionary({})
 	var card: Variant = card_script.new().apply_dictionary({"name": "相位否决", "rank": "I", "type": "互动", "effect": "反制一次直接互动。"})
@@ -9273,8 +9294,8 @@ func _check_card_resolution_queue_runtime_characterization_component() -> void:
 		"queue_call_graph_complete",
 		"timing_controller_boundary_unchanged",
 		"first_submit_starts_batch",
-		"same_player_group_order_one_to_three",
-		"fourth_card_rejected_without_mutation",
+		"same_player_group_order_one_to_two",
+		"third_card_rejected_without_mutation",
 		"duplicate_card_submit_rejected",
 		"organize_phase_accepts_submission",
 		"lock_phase_rejects_new_cards",
@@ -9282,12 +9303,12 @@ func _check_card_resolution_queue_runtime_characterization_component() -> void:
 		"consumable_card_leaves_slot_on_queue",
 		"play_cost_paid_exactly_once",
 		"insufficient_cost_and_bid_rejects_atomically",
-		"positive_bid_collision_falls_back_zero",
-		"bid_normalized_to_affordable_cash",
-		"group_sort_uses_bid_descending",
+		"equal_fixed_bids_are_allowed",
+		"arbitrary_priority_bid_rejected",
+		"fixed_bid_tiers_sort_descending",
 		"equal_bid_uses_clockwise_reference",
 		"player_group_remains_contiguous",
-		"lock_writes_batch_position_and_locked_bid",
+		"lock_writes_batch_position_and_priority_bid",
 		"start_next_pops_one_active_entry",
 		"invalid_entry_skips_without_stall",
 		"active_resolution_blocks_normal_submission",
@@ -9302,7 +9323,7 @@ func _check_card_resolution_queue_runtime_characterization_component() -> void:
 	var expected_cutover_cases := [
 		"service_scene_composition",
 		"coordinator_composes_service",
-		"service_configured_v04",
+		"service_configured_v05_domain",
 		"service_owns_current_queue",
 		"service_owns_active_entry",
 		"service_owns_next_queue",
@@ -9311,12 +9332,12 @@ func _check_card_resolution_queue_runtime_characterization_component() -> void:
 		"service_submission_commit",
 		"inventory_service_owns_queue_slot_mutation",
 		"submission_adapter_uses_both_services",
-		"fourth_card_atomic_via_service",
+		"third_card_atomic_via_service",
 		"duplicate_submission_atomic_via_service",
-		"positive_bid_collision_service",
+		"equal_fixed_bids_service",
 		"group_sort_service",
 		"lock_metadata_service",
-		"bid_chain_receipts_service",
+		"public_wager_pool_receipt_service",
 		"start_next_service",
 		"invalid_skip_service",
 		"counter_route_service",
@@ -11853,6 +11874,106 @@ func _check_victory_control_runtime_component() -> void:
 		(dock.find_child("RunVictoryControlRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
 		await process_frame
 		_expect(open_paths == [VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, VICTORY_CONTROL_WORLD_BRIDGE_SCENE, VICTORY_CONTROL_RUNTIME_BENCH_SCENE] and run_paths == [VICTORY_CONTROL_RUNTIME_BENCH_SCENE], "Design QA Dock fallback signals emit Victory Control owner, bridge, and gate paths")
+		viewport.remove_child(dock)
+		dock.queue_free()
+		root.remove_child(viewport)
+		viewport.queue_free()
+
+
+func _check_industry_capacity_card_group_runtime_component() -> void:
+	for path in [INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCRIPT, INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE, INDUSTRY_CAPACITY_WORLD_BRIDGE_SCRIPT, INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE, INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCRIPT, INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE, INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "SS05-05 asset exists: %s" % path)
+	var service_packed := load(INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	_expect(service != null and service.scene_file_path == INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE, "IndustryCapacityRuntimeService scene loads")
+	if service != null:
+		var configured: Dictionary = service.call("configure")
+		var debug: Dictionary = service.call("debug_snapshot")
+		_expect(bool(configured.get("valid", false)) and service.has_method("derive_player_capacity") and service.has_method("capacity_for_gdp") and service.has_method("availability_snapshot"), "IndustryCapacityRuntimeService exposes configured derivation and availability APIs")
+		_expect(int(service.call("capacity_for_gdp", 14)) == 0 and int(service.call("capacity_for_gdp", 15)) == 1 and int(service.call("capacity_for_gdp", 40)) == 2 and int(service.call("capacity_for_gdp", 80)) == 3 and int(service.call("capacity_for_gdp", 140)) == 4 and not _variant_contains_callable(debug) and not _variant_contains_object(debug), "IndustryCapacityRuntimeService preserves the 15/40/80/140 thresholds as pure data")
+		service.free()
+	var bridge_packed := load(INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE) as PackedScene
+	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
+	_expect(bridge != null and bridge.scene_file_path == INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE, "IndustryCapacityWorldBridge scene loads")
+	if bridge != null:
+		var debug: Dictionary = bridge.call("debug_snapshot")
+		_expect(bridge.has_method("bind_city_trade_network_controller") and bridge.has_method("project_rows_for_player") and not bool(debug.get("owns_project_state", true)) and not bool(debug.get("owns_gdp_formula", true)) and not bool(debug.get("owns_capacity_formula", true)), "IndustryCapacityWorldBridge remains a non-owning pure-fact adapter")
+		bridge.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	_expect(coordinator != null and coordinator.find_child("IndustryCapacityRuntimeService", true, false) != null and coordinator.find_child("IndustryCapacityWorldBridge", true, false) != null, "GameRuntimeCoordinator statically composes the SS05-05 capacity owner and world bridge")
+	if coordinator != null:
+		coordinator.free()
+	var packed := load(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE) as PackedScene
+	_expect(packed != null, "IndustryCapacityCardGroupRuntimeBench scene loads")
+	if packed != null:
+		var bench := packed.instantiate() as Control
+		bench.set("auto_run", false)
+		root.add_child(bench)
+		await process_frame
+		for node_name in ["RulesetRuntimeBridge", "GameRuntimeCoordinator", "RuntimeHost", "SummaryLabel", "StatusLabel", "RulesText", "ResultsText"]:
+			_expect(bench.find_child(node_name, true, false) != null, "IndustryCapacityCardGroupRuntimeBench statically owns %s" % node_name)
+		var cases: Array = bench.call("runtime_cases")
+		var manifest: Dictionary = bench.call("build_runtime_manifest_preview")
+		var required_cases := ["six_industries_are_exact", "capacity_15_is_one", "capacity_40_is_two", "capacity_80_is_three", "capacity_140_is_four", "dual_industry_requires_both", "either_industry_selects_first_available", "named_product_requirement_passes", "blocked_v05_card_rejected", "same_group_capacity_is_cumulative", "reservation_release_is_exact_once", "card_window_total_is_eight_seconds", "organize_phase_is_six_seconds", "lock_phase_is_two_seconds", "tutorial_group_limit_is_one", "standard_group_limit_is_two", "priority_bid_options_are_fixed", "all_group_bids_enter_public_wager_pool", "wager_pool_receipt_is_exact_once", "production_bridge_and_catalog_remain_v04", "legacy_bid_chain_and_parallel_capacity_absent"]
+		var cases_ok := cases.size() == 64
+		for case_id in required_cases:
+			cases_ok = cases_ok and cases.has(case_id)
+		var fields_ok := true
+		for record_variant in manifest.get("records", []):
+			var record: Dictionary = record_variant if record_variant is Dictionary else {}
+			for field_name in ["case_id", "industry_checked", "eligibility_checked", "reservation_checked", "window_checked", "wager_pool_checked", "save_checked", "privacy_checked", "pure_data_checked", "legacy_fallback_used", "passed", "notes"]:
+				fields_ok = fields_ok and record.has(field_name)
+		_expect(bench.has_method("output_dir") and bench.has_method("runtime_cases") and bench.has_method("build_runtime_manifest_preview") and bench.has_method("run_runtime_suite") and cases_ok and fields_ok and int(manifest.get("record_count", 0)) == 64, "IndustryCapacityCardGroupRuntimeBench defines the 64-case SS05-05 gate")
+		_expect(str(bench.call("output_dir")) == INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "SS05-05 manifest and screenshot targets are pure data under user://")
+		root.remove_child(bench)
+		bench.queue_free()
+	var contract_text := FileAccess.get_file_as_string(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT)
+	_expect(contract_text.contains("8/6/2") and contract_text.contains("15-39") and contract_text.contains("public_wager_pool_receipt") and contract_text.contains("global production ruleset bridge") and contract_text.contains("v0.4"), "SS05-05 contract freezes capacity, timing, wager receipt, and production compatibility boundaries")
+	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
+	var registry: RefCounted = registry_script.new() if registry_script != null else null
+	if registry != null:
+		for scene_path in [INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE, INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE, INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE]:
+			var record: Dictionary = registry.call("record_for_path", scene_path)
+			_expect(str(record.get("scene_path", "")) == scene_path and bool(record.get("smoke_check_enabled", false)), "MCP registry includes %s" % scene_path)
+	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
+	if scene_audit != null:
+		var record: Dictionary = scene_audit.call("record_for_id", "industry_capacity_card_group_v05_runtime_gate")
+		_expect(str(record.get("sceneization_status", "")) == "full" and str(record.get("source_script_path", "")) == INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCRIPT, "Sceneization Audit records the full SS05-05 runtime cutover")
+	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
+	var system_audit: RefCounted = system_script.new() if system_script != null else null
+	if system_audit != null:
+		var record: Dictionary = system_audit.call("record_for_id", "industry_capacity_card_group_v05_runtime_gate")
+		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("runtime_owner", "")) == INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCRIPT, "System Resourceization Audit records IndustryCapacityRuntimeService as owner")
+	var ruleset_script := load(RULESET_V05_CONFORMANCE_REGISTRY_SCRIPT) as Script
+	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
+	if ruleset != null:
+		var rule: Dictionary = ruleset.call("record_for_id", "industry_capacity_card_group_runtime")
+		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("IndustryCapacityRuntimeService"), "Ruleset v0.5 registry records SS05-05 as cutover complete")
+	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
+	if dock_packed != null:
+		var viewport := SubViewport.new()
+		viewport.size = Vector2i(440, 900)
+		root.add_child(viewport)
+		var dock := dock_packed.instantiate() as Control
+		viewport.add_child(dock)
+		await process_frame
+		for button_name in ["OpenIndustryCapacityRuntimeServiceButton", "OpenIndustryCapacityWorldBridgeButton", "OpenIndustryCapacityCardGroupRuntimeBenchButton", "RunIndustryCapacityCardGroupRuntimeBenchButton", "OpenIndustryCapacityCardGroupRuntimeOutputFolderButton"]:
+			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
+		_expect(dock.has_method("industry_capacity_runtime_service_scene_path") and dock.has_method("industry_capacity_world_bridge_scene_path") and dock.has_method("industry_capacity_card_group_runtime_bench_scene_path") and dock.has_method("industry_capacity_card_group_runtime_qa_output_dir"), "Design QA Dock exposes SS05-05 owner, bridge, gate, and output paths")
+		var open_paths: Array[String] = []
+		var run_paths: Array[String] = []
+		dock.connect("open_industry_capacity_runtime_service_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("open_industry_capacity_world_bridge_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("open_industry_capacity_card_group_runtime_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
+		dock.connect("run_industry_capacity_card_group_runtime_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
+		(dock.find_child("OpenIndustryCapacityRuntimeServiceButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenIndustryCapacityWorldBridgeButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("OpenIndustryCapacityCardGroupRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		(dock.find_child("RunIndustryCapacityCardGroupRuntimeBenchButton", true, false) as Button).emit_signal("pressed")
+		await process_frame
+		_expect(open_paths == [INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE, INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE, INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE] and run_paths == [INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE], "Design QA Dock fallback signals emit SS05-05 owner, bridge, and gate paths")
 		viewport.remove_child(dock)
 		dock.queue_free()
 		root.remove_child(viewport)

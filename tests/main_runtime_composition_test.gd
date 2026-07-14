@@ -92,6 +92,10 @@ const VICTORY_CONTROL_RUNTIME_CONTROLLER := "res://scenes/runtime/VictoryControl
 const VICTORY_CONTROL_WORLD_BRIDGE := "res://scenes/runtime/VictoryControlWorldBridge.tscn"
 const VICTORY_CONTROL_RUNTIME_BENCH := "res://scenes/tools/VictoryControlRuntimeBench.tscn"
 const VICTORY_CONTROL_RUNTIME_CONTRACT := "res://docs/victory_control_runtime_contract.md"
+const INDUSTRY_CAPACITY_RUNTIME_SERVICE := "res://scenes/runtime/IndustryCapacityRuntimeService.tscn"
+const INDUSTRY_CAPACITY_WORLD_BRIDGE := "res://scenes/runtime/IndustryCapacityWorldBridge.tscn"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH := "res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT := "res://docs/industry_capacity_card_group_runtime_contract.md"
 
 var failures: Array[String] = []
 
@@ -122,6 +126,7 @@ func _run() -> void:
 	_check_ruleset_v05_foundation_assets()
 	_check_player_text_v05_foundation_assets()
 	_check_victory_control_runtime_assets()
+	_check_industry_capacity_card_group_runtime_assets()
 	var test_bgm := main.get_node_or_null("RuntimeServices/TableAudioHost/NightPatrolTableBgm") as AudioStreamPlayer
 	if test_bgm != null:
 		test_bgm.stream = null
@@ -190,6 +195,8 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GdpFormulaRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlWorldBridge",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityRuntimeService",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService",
@@ -253,6 +260,8 @@ func _check_static_composition(main: Control) -> void:
 	var product_market_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeWorldBridge")
 	var city_gdp_derivative_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityGdpDerivativeRuntimeController")
 	var city_gdp_derivative_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityGdpDerivativeRuntimeWorldBridge")
+	var industry_capacity := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityRuntimeService")
+	var industry_capacity_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IndustryCapacityWorldBridge")
 	var hand_interaction := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerHandInteractionRuntimeService")
 	var purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService")
 	var district_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService")
@@ -298,6 +307,8 @@ func _check_static_composition(main: Control) -> void:
 	_expect(product_market_world_bridge != null and product_market_world_bridge.scene_file_path == PRODUCT_MARKET_RUNTIME_WORLD_BRIDGE and product_market_world_bridge.has_method("bind_world") and product_market_world_bridge.has_method("shared_rng") and product_market_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning ProductMarketRuntimeWorldBridge scene")
 	_expect(city_gdp_derivative_controller != null and city_gdp_derivative_controller.scene_file_path == CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER and city_gdp_derivative_controller.has_method("open_position") and city_gdp_derivative_controller.has_method("settle_district") and city_gdp_derivative_controller.has_method("settle_destroyed_city") and city_gdp_derivative_controller.has_method("to_save_data") and city_gdp_derivative_controller.has_method("apply_save_data"), "GameRuntimeCoordinator owns the authoritative Resource-backed CityGdpDerivativeRuntimeController scene")
 	_expect(city_gdp_derivative_world_bridge != null and city_gdp_derivative_world_bridge.scene_file_path == CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE and city_gdp_derivative_world_bridge.has_method("bind_world") and city_gdp_derivative_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning CityGdpDerivativeRuntimeWorldBridge scene")
+	_expect(industry_capacity != null and industry_capacity.scene_file_path == INDUSTRY_CAPACITY_RUNTIME_SERVICE and industry_capacity.has_method("derive_player_capacity") and industry_capacity.has_method("capacity_for_gdp") and industry_capacity.has_method("availability_snapshot") and industry_capacity.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the authoritative v0.5 IndustryCapacityRuntimeService scene")
+	_expect(industry_capacity_world_bridge != null and industry_capacity_world_bridge.scene_file_path == INDUSTRY_CAPACITY_WORLD_BRIDGE and industry_capacity_world_bridge.has_method("bind_city_trade_network_controller") and industry_capacity_world_bridge.has_method("project_rows_for_player") and industry_capacity_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning IndustryCapacityWorldBridge scene")
 	_expect(hand_interaction != null and hand_interaction.scene_file_path == "res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn" and hand_interaction.has_method("plan_interaction") and hand_interaction.has_method("commit_interaction") and hand_interaction.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable PlayerHandInteractionRuntimeService scene and orchestration/cash/event-intent API")
 	_expect(purchase_settlement != null and purchase_settlement.scene_file_path == "res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn" and purchase_settlement.has_method("plan_purchase") and purchase_settlement.has_method("commit_purchase") and purchase_settlement.has_method("validate_discard"), "GameRuntimeCoordinator owns the editable DistrictPurchaseSettlementRuntimeService scene")
 	_expect(district_supply_snapshot != null and district_supply_snapshot.scene_file_path == "res://scenes/runtime/DistrictSupplySnapshotService.tscn" and district_supply_snapshot.has_method("compose") and district_supply_snapshot.has_method("validate_source") and district_supply_snapshot.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable DistrictSupplySnapshotService scene")
@@ -414,6 +425,8 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	var purchase_snapshot: Dictionary = coordinator_snapshot.get("district_purchase", {}) if coordinator_snapshot.get("district_purchase", {}) is Dictionary else {}
 	var card_inventory_snapshot: Dictionary = coordinator_snapshot.get("card_inventory", {}) if coordinator_snapshot.get("card_inventory", {}) is Dictionary else {}
 	var card_resolution_queue_snapshot: Dictionary = coordinator_snapshot.get("card_resolution_queue", {}) if coordinator_snapshot.get("card_resolution_queue", {}) is Dictionary else {}
+	var industry_capacity_snapshot: Dictionary = coordinator_snapshot.get("industry_capacity_runtime", {}) if coordinator_snapshot.get("industry_capacity_runtime", {}) is Dictionary else {}
+	var industry_capacity_bridge_snapshot: Dictionary = coordinator_snapshot.get("industry_capacity_world_bridge", {}) if coordinator_snapshot.get("industry_capacity_world_bridge", {}) is Dictionary else {}
 	var effect_formula_snapshot: Dictionary = coordinator_snapshot.get("card_economy_product_route_formula", {}) if coordinator_snapshot.get("card_economy_product_route_formula", {}) is Dictionary else {}
 	var purchase_settlement_snapshot: Dictionary = coordinator_snapshot.get("district_purchase_settlement", {}) if coordinator_snapshot.get("district_purchase_settlement", {}) is Dictionary else {}
 	var district_supply_snapshot: Dictionary = coordinator_snapshot.get("district_supply_snapshot", {}) if coordinator_snapshot.get("district_supply_snapshot", {}) is Dictionary else {}
@@ -435,7 +448,9 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	_expect(bool(session_snapshot.get("session_ready", false)) and bool(session_snapshot.get("session_authoritative", false)), "%s configures scene-owned session/save authority" % phase)
 	_expect(bool(purchase_snapshot.get("controller_ready", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and is_equal_approx(float(purchase_snapshot.get("purchase_window_seconds", 0.0)), 12.0), "%s configures the scene-owned v0.4 district purchase authority" % phase)
 	_expect(bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and int(card_inventory_snapshot.get("ordinary_hand_limit", 0)) == 5 and int(card_inventory_snapshot.get("maximum_card_rank", 0)) == 4 and not bool(card_inventory_snapshot.get("purchase_cash_authority", true)) and not bool(card_inventory_snapshot.get("ledger_authority", true)) and not bool(card_inventory_snapshot.get("legacy_inventory_fallback_used", true)), "%s configures CardInventoryRuntimeService as the v0.4 slot-mutation authority without moving cash or ledger ownership" % phase)
-	_expect(bool(snapshot.get("card_resolution_queue_runtime_service_found", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and not bool(card_resolution_queue_snapshot.get("timing_authority", true)) and not bool(card_resolution_queue_snapshot.get("card_effect_authority", true)) and not bool(card_resolution_queue_snapshot.get("inventory_authority", true)) and not bool(card_resolution_queue_snapshot.get("legacy_queue_fallback_used", true)), "%s configures CardResolutionQueueRuntimeService as the v0.4 queue-lifecycle authority without moving timing, effects, or inventory ownership" % phase)
+	_expect(bool(snapshot.get("card_resolution_queue_runtime_service_found", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and str(card_resolution_queue_snapshot.get("ruleset_id", "")) == "v0.5" and bool(card_resolution_queue_snapshot.get("capacity_reservation_authority", false)) and bool(card_resolution_queue_snapshot.get("priority_bid_authority", false)) and not bool(card_resolution_queue_snapshot.get("timing_authority", true)) and not bool(card_resolution_queue_snapshot.get("card_effect_authority", true)) and not bool(card_resolution_queue_snapshot.get("inventory_authority", true)) and not bool(card_resolution_queue_snapshot.get("legacy_queue_fallback_used", true)), "%s configures CardResolutionQueueRuntimeService as the v0.5 card-group-domain authority without moving timing, effects, or inventory ownership" % phase)
+	_expect(bool(industry_capacity_snapshot.get("service_ready", false)) and bool(industry_capacity_snapshot.get("service_authoritative", false)) and str(industry_capacity_snapshot.get("ruleset_id", "")) == "v0.5" and industry_capacity_snapshot.get("industry_ids", []) == ["life", "energy", "industry", "technology", "commerce", "shipping"] and industry_capacity_snapshot.get("capacity_thresholds", []) == [15, 40, 80, 140], "%s configures the single v0.5 Industry Capacity owner" % phase)
+	_expect(bool(industry_capacity_bridge_snapshot.get("bridge_ready", false)) and not bool(industry_capacity_bridge_snapshot.get("owns_project_state", true)) and not bool(industry_capacity_bridge_snapshot.get("owns_gdp_formula", true)) and not bool(industry_capacity_bridge_snapshot.get("owns_capacity_formula", true)), "%s keeps the Industry Capacity world bridge non-owning" % phase)
 	_expect(bool(effect_formula_snapshot.get("service_ready", false)) and bool(effect_formula_snapshot.get("pure_formula_authority", false)) and not bool(effect_formula_snapshot.get("effect_dispatch_authority", true)) and not bool(effect_formula_snapshot.get("world_mutation_authority", true)) and not bool(effect_formula_snapshot.get("execution_lifecycle_authority", true)), "%s configures the pure Formula Service without expanding execution or world ownership" % phase)
 	_expect(bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and not bool(purchase_settlement_snapshot.get("window_authority", true)) and not bool(purchase_settlement_snapshot.get("presentation_authority", true)) and not bool(purchase_settlement_snapshot.get("legacy_settlement_fallback_used", true)), "%s configures the scene-owned atomic District Purchase Settlement service without moving window or presentation authority" % phase)
 	_expect(bool(district_supply_snapshot.get("service_ready", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and not bool(district_supply_snapshot.get("calculates_purchase_eligibility", true)) and not bool(district_supply_snapshot.get("calculates_card_price", true)) and not bool(district_supply_snapshot.get("mutates_inventory", true)), "%s configures the scene-owned District Supply presentation formatter without moving purchase rules" % phase)
@@ -499,8 +514,9 @@ func _check_runtime_controller_authority(main: Control) -> void:
 	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
 	if controller == null:
 		return
-	_expect(is_equal_approx(float(controller.get("total_window_seconds")), 30.0) and is_equal_approx(float(controller.get("lock_seconds")), 5.0), "RulesetRuntimeBridge configures the controller's 30/25/5 window")
-	_expect(is_equal_approx(float(controller.get("counter_seconds")), 5.0), "RulesetRuntimeBridge configures the controller response window")
+	_expect(is_equal_approx(float(controller.get("total_window_seconds")), 8.0) and is_equal_approx(float(controller.get("lock_seconds")), 2.0), "the v0.5 card-group domain configures the controller's 8/6/2 window")
+	var expected_counter_seconds := 0.0 if DisplayServer.get_name().to_lower() == "headless" else 5.0
+	_expect(is_equal_approx(float(controller.get("counter_seconds")), expected_counter_seconds), "RulesetRuntimeBridge preserves the response-window duration, with the established headless shortcut")
 	main.set("card_resolution_simultaneous_timer", 12.0)
 	_expect(is_equal_approx(float(controller.get("simultaneous_timer")), 12.0), "main compatibility property writes into the scene-owned controller")
 	controller.set("simultaneous_timer", 9.0)
@@ -848,6 +864,30 @@ func _check_victory_control_runtime_assets() -> void:
 	var contract := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTRACT)
 	ready = ready and contract.contains("SS05-04 is a hard cutover") and contract.contains("56 cases") and contract.contains("There is no cash-goal or legacy countdown fallback")
 	_expect(ready, "SS05-04 composes one VictoryControlRuntimeController, a non-owning WorldBridge, and a 56-case gate with no cash-goal or countdown fallback")
+
+
+func _check_industry_capacity_card_group_runtime_assets() -> void:
+	var ready := ResourceLoader.exists(INDUSTRY_CAPACITY_RUNTIME_SERVICE) and ResourceLoader.exists(INDUSTRY_CAPACITY_WORLD_BRIDGE) and ResourceLoader.exists(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH) and FileAccess.file_exists(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT)
+	var service_packed := load(INDUSTRY_CAPACITY_RUNTIME_SERVICE) as PackedScene
+	var service := service_packed.instantiate() if service_packed != null else null
+	var configured: Dictionary = service.call("configure") if service != null else {}
+	var service_debug: Dictionary = service.call("debug_snapshot") if service != null else {}
+	ready = ready and bool(configured.get("valid", false)) and bool(service_debug.get("service_authoritative", false)) and service_debug.get("industry_ids", []) == ["life", "energy", "industry", "technology", "commerce", "shipping"] and service_debug.get("capacity_thresholds", []) == [15, 40, 80, 140]
+	ready = ready and service != null and service.has_method("derive_player_capacity") and service.has_method("capacity_for_gdp") and service.has_method("availability_snapshot")
+	if service != null:
+		service.free()
+	var bench_packed := load(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH) as PackedScene
+	var bench := bench_packed.instantiate() if bench_packed != null else null
+	var manifest: Dictionary = bench.call("build_runtime_manifest_preview") if bench != null and bench.has_method("build_runtime_manifest_preview") else {}
+	ready = ready and bench != null and bench.has_method("runtime_cases") and bench.has_method("run_runtime_suite") and int(manifest.get("record_count", 0)) == 64 and str(manifest.get("ruleset_id", "")) == "v0.5" and str(manifest.get("production_runtime_ruleset", "")) == "v0.4" and _is_pure_data(manifest)
+	if bench != null:
+		bench.free()
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var queue_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
+	var contract := FileAccess.get_file_as_string(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_CONTRACT)
+	ready = ready and not main_source.contains("func _apply_card_group_bid_chain") and not main_source.contains("func _normalize_card_resolution_queue_bids") and not main_source.contains("CARD_BID_INCREMENT_OPTIONS")
+	ready = ready and queue_source.contains("public_wager_pool_receipt") and queue_source.contains("capacity_reservation") and contract.contains("8/6/2") and contract.contains("global production ruleset bridge") and contract.contains("v0.4")
+	_expect(ready, "SS05-05 composes one Industry Capacity owner, one non-owning bridge, fixed 8/6/2 group rules, and a 64-case gate while global production remains v0.4")
 
 
 func _function_source(source: String, function_name: String) -> String:

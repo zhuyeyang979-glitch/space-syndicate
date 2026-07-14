@@ -960,7 +960,7 @@ const RECORDS := [
 		"category": CATEGORY_INSPECTOR_TOOLS,
 		"expected_root_type": "Node",
 		"purpose": "Single runtime owner for current, active, and next card-resolution queues, sequence, group ordering, lock metadata, pop, promotion, save, and public-safe debug state.",
-		"mcp_notes": "Sprint 35 service lives under GameRuntimeCoordinator. Inspect beside CardResolutionRuntimeController: this service owns queue lifecycle, while the controller remains the sole 30/25/5 timer and main.gd keeps card effects.",
+		"mcp_notes": "The service lives under GameRuntimeCoordinator. Inspect beside CardResolutionRuntimeController: Queue owns lifecycle, the controller owns the active 8/6/2 timing domain, and card effects remain outside both.",
 		"smoke_check_enabled": true,
 		"previewable": false,
 	},
@@ -2174,6 +2174,39 @@ const RECORDS := [
 		"smoke_check_enabled": true,
 		"previewable": true,
 	},
+	{
+		"id": "industry_capacity_runtime_service",
+		"display_name": "Industry Capacity Runtime Service",
+		"scene_path": "res://scenes/runtime/IndustryCapacityRuntimeService.tscn",
+		"category": CATEGORY_MAIN,
+		"expected_root_type": "Node",
+		"purpose": "Pure v0.5 owner for six-industry capacity aggregation and card requirement capacity facts.",
+		"mcp_notes": "Consumes project facts and the authored product-industry catalog; it does not own project state, GDP formulas, queue state, or card effects.",
+		"smoke_check_enabled": true,
+		"previewable": false,
+	},
+	{
+		"id": "industry_capacity_world_bridge",
+		"display_name": "Industry Capacity World Bridge",
+		"scene_path": "res://scenes/runtime/IndustryCapacityWorldBridge.tscn",
+		"category": CATEGORY_MAIN,
+		"expected_root_type": "Node",
+		"purpose": "Non-owning adapter from CityTrade project snapshots to the Industry Capacity service.",
+		"mcp_notes": "Inspect beside IndustryCapacityRuntimeService. The bridge only gathers pure facts and never evaluates card legality or reserves capacity.",
+		"smoke_check_enabled": true,
+		"previewable": false,
+	},
+	{
+		"id": "industry_capacity_card_group_runtime_bench",
+		"display_name": "Industry Capacity & Card Group Runtime Gate",
+		"scene_path": "res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn",
+		"category": CATEGORY_QA_BENCHES,
+		"expected_root_type": "Control",
+		"purpose": "64-case SS05-05 gate for six-industry capacity, requirement kinds, reservations, 8/6/2 timing, fixed bids, wager receipt, save, and privacy.",
+		"mcp_notes": "Run after editing project capacity facts, v0.5 card requirements, Queue reservations, readiness, priority bids, or the public monster-wager pool receipt.",
+		"smoke_check_enabled": true,
+		"previewable": true,
+	},
 ]
 
 
@@ -2303,6 +2336,9 @@ func required_scene_paths() -> Array[String]:
 		"res://scenes/runtime/VictoryControlRuntimeController.tscn",
 		"res://scenes/runtime/VictoryControlWorldBridge.tscn",
 		"res://scenes/tools/VictoryControlRuntimeBench.tscn",
+		"res://scenes/runtime/IndustryCapacityRuntimeService.tscn",
+		"res://scenes/runtime/IndustryCapacityWorldBridge.tscn",
+		"res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn",
 	]
 
 

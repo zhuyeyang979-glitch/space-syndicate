@@ -1,6 +1,36 @@
 # Card Resolution Queue Ownership Boundary
 
-## Sprint 35 Result
+## SS05-05 v0.5 Card-Group Domain
+
+The live card-group domain now uses one **8-second** window: **6 seconds** to
+organize and **2 seconds** to lock. Tutorial groups allow one card and standard
+groups allow two. Priority bids are integer cents selected only from
+`[0, 5000, 10000]`; equal bids are legal and use clockwise reference-seat
+ordering. Arbitrary bid normalization and positive-tier uniqueness no longer
+exist.
+
+`IndustryCapacityRuntimeService` derives six-industry capacity from authored
+project facts and `product_industry_catalog_v05.tres`. Eligibility evaluates
+colorless, single-industry, dual-industry, either-industry, and named-product
+requirements. Queue owns cumulative capacity reservations for unresolved
+groups and releases a reservation exactly once only after the whole group has
+resolved. Neither Capacity nor Queue owns projects, GDP formulas, inventory,
+card effects, or world cash mutation.
+
+At lock, Queue emits one pure `public_wager_pool_receipt`. It aggregates every
+group's escrowed priority bid; there is no payment between groups. `main.gd`
+only applies that receipt to the existing Monster Runtime public pool and
+forwards public feedback. Save compatibility keeps the outer v1 envelope while
+persisting reservation and receipt identity. Public snapshots omit payer,
+owner, private targets, private discards, and AI plans.
+
+The live gates are **Industry Capacity & Card Group 64/64**, **Queue 56/56**,
+and **Runtime Card Resolution Track 14/14**. The global production Ruleset
+bridge remains v0.4; the Queue, Eligibility, and card-window controller consume
+an explicit v0.5 domain configuration without introducing a global selector or
+fallback.
+
+## Sprint 35 Result (Historical Cutover)
 
 `CardResolutionQueueRuntimeService.tscn` is now the single owner of the current
 queue, active entry, next queue, resolution sequence, group construction and

@@ -14,7 +14,7 @@ The service owns handler registration, family classification, pure effect plans,
 
 - `CardResolutionExecutionRuntimeService` still owns active-card lifecycle ordering and exactly-once completion. It has no card-family table or concrete effect methods.
 - `CardResolutionQueueRuntimeService` still owns current, active, and next queues.
-- `CardResolutionRuntimeController` still owns 30/25/5 timing and response windows.
+- `CardResolutionRuntimeController` still owns the active 8/6/2 timing and response windows.
 - Existing `_apply_*` functions still own concrete cash, market, futures, GDP, city, product, route, contract, logging, visual, and privacy mutations.
 - `CardEconomyProductRouteFormulaRuntimeService` owns characterized deterministic market-boon, speculation, futures, GDP-derivative, and route arithmetic. Product price and city GDP remain in their already modular owners.
 - `CardEconomyProductRouteEffectWorldBridge` is stateless. It applies a service plan to those existing functions and returns a pure receipt.

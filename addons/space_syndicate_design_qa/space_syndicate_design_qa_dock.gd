@@ -162,6 +162,10 @@ signal open_victory_control_runtime_controller_requested(scene_path: String)
 signal open_victory_control_world_bridge_requested(scene_path: String)
 signal open_victory_control_runtime_bench_requested(scene_path: String)
 signal run_victory_control_runtime_bench_requested(scene_path: String)
+signal open_industry_capacity_runtime_service_requested(scene_path: String)
+signal open_industry_capacity_world_bridge_requested(scene_path: String)
+signal open_industry_capacity_card_group_runtime_bench_requested(scene_path: String)
+signal run_industry_capacity_card_group_runtime_bench_requested(scene_path: String)
 signal open_city_development_settlement_characterization_bench_requested(scene_path: String)
 signal run_city_development_settlement_characterization_bench_requested(scene_path: String)
 signal open_city_gdp_derivative_runtime_controller_requested(scene_path: String)
@@ -317,6 +321,9 @@ const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH := "res://sce
 const VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/VictoryControlRuntimeController.tscn"
 const VICTORY_CONTROL_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/VictoryControlWorldBridge.tscn"
 const VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH := "res://scenes/tools/VictoryControlRuntimeBench.tscn"
+const INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE_PATH := "res://scenes/runtime/IndustryCapacityRuntimeService.tscn"
+const INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/IndustryCapacityWorldBridge.tscn"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH := "res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/CityDevelopmentSettlementRuntimeCharacterizationBench.tscn"
 const CITY_GDP_DERIVATIVE_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityGdpDerivativeRuntimeController.tscn"
 const CITY_GDP_DERIVATIVE_RUNTIME_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/CityGdpDerivativeRuntimeWorldBridge.tscn"
@@ -395,6 +402,7 @@ const CONTRACT_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/product_futures_v04_hard_alignment/"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
 const VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/victory_control_runtime/"
+const INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/industry_capacity_card_group_runtime/"
 const CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/city_development_settlement_characterization/"
 const CITY_GDP_DERIVATIVE_RUNTIME_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/city_gdp_derivative_v04/"
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/product_codex_public_snapshot_cutover/"
@@ -626,6 +634,11 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_victory_control_runtime_bench_button: Button = %OpenVictoryControlRuntimeBenchButton
 @onready var run_victory_control_runtime_bench_button: Button = %RunVictoryControlRuntimeBenchButton
 @onready var open_victory_control_runtime_output_folder_button: Button = %OpenVictoryControlRuntimeOutputFolderButton
+@onready var open_industry_capacity_runtime_service_button: Button = %OpenIndustryCapacityRuntimeServiceButton
+@onready var open_industry_capacity_world_bridge_button: Button = %OpenIndustryCapacityWorldBridgeButton
+@onready var open_industry_capacity_card_group_runtime_bench_button: Button = %OpenIndustryCapacityCardGroupRuntimeBenchButton
+@onready var run_industry_capacity_card_group_runtime_bench_button: Button = %RunIndustryCapacityCardGroupRuntimeBenchButton
+@onready var open_industry_capacity_card_group_runtime_output_folder_button: Button = %OpenIndustryCapacityCardGroupRuntimeOutputFolderButton
 @onready var open_city_development_settlement_characterization_bench_button: Button = %OpenCityDevelopmentSettlementCharacterizationBenchButton
 @onready var run_city_development_settlement_characterization_bench_button: Button = %RunCityDevelopmentSettlementCharacterizationBenchButton
 @onready var open_city_development_settlement_characterization_output_folder_button: Button = %OpenCityDevelopmentSettlementCharacterizationOutputFolderButton
@@ -1176,6 +1189,18 @@ func victory_control_runtime_bench_scene_path() -> String:
 	return VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH
 
 
+func industry_capacity_runtime_service_scene_path() -> String:
+	return INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE_PATH
+
+
+func industry_capacity_world_bridge_scene_path() -> String:
+	return INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE_PATH
+
+
+func industry_capacity_card_group_runtime_bench_scene_path() -> String:
+	return INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH
+
+
 func city_development_settlement_characterization_bench_scene_path() -> String:
 	return CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE_PATH
 
@@ -1478,6 +1503,10 @@ func city_trade_network_runtime_characterization_qa_output_dir() -> String:
 
 func victory_control_runtime_qa_output_dir() -> String:
 	return VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR
+
+
+func industry_capacity_card_group_runtime_qa_output_dir() -> String:
+	return INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_QA_OUTPUT_DIR
 
 
 func city_development_settlement_characterization_qa_output_dir() -> String:
@@ -2854,6 +2883,38 @@ func run_victory_control_runtime_bench_scene() -> void:
 	_set_status("Run Victory Control runtime bench: %s" % VICTORY_CONTROL_RUNTIME_BENCH_SCENE_PATH)
 
 
+func open_industry_capacity_runtime_service_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
+		_editor_plugin.call("open_scene", INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE_PATH)
+	else:
+		open_industry_capacity_runtime_service_requested.emit(INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE_PATH)
+	_set_status("Open Industry Capacity runtime service: %s" % INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE_PATH)
+
+
+func open_industry_capacity_world_bridge_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
+		_editor_plugin.call("open_scene", INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE_PATH)
+	else:
+		open_industry_capacity_world_bridge_requested.emit(INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE_PATH)
+	_set_status("Open Industry Capacity world bridge: %s" % INDUSTRY_CAPACITY_WORLD_BRIDGE_SCENE_PATH)
+
+
+func open_industry_capacity_card_group_runtime_bench_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
+		_editor_plugin.call("open_scene", INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH)
+	else:
+		open_industry_capacity_card_group_runtime_bench_requested.emit(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH)
+	_set_status("Open Industry Capacity & Card Group runtime bench: %s" % INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH)
+
+
+func run_industry_capacity_card_group_runtime_bench_scene() -> void:
+	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
+		_editor_plugin.call("run_scene", INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH)
+	else:
+		run_industry_capacity_card_group_runtime_bench_requested.emit(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH)
+	_set_status("Run Industry Capacity & Card Group runtime bench: %s" % INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_BENCH_SCENE_PATH)
+
+
 func open_city_development_settlement_characterization_bench_scene() -> void:
 	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
 		_editor_plugin.call("open_scene", CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_BENCH_SCENE_PATH)
@@ -3534,6 +3595,15 @@ func open_victory_control_runtime_output_folder() -> void:
 		_set_status("Victory Control output folder: %s" % VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR)
 
 
+func open_industry_capacity_card_group_runtime_output_folder() -> void:
+	var absolute_path := ProjectSettings.globalize_path(INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_QA_OUTPUT_DIR)
+	var error := OS.shell_open(absolute_path)
+	if error == OK:
+		_set_status("Open Industry Capacity & Card Group output folder: %s" % INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_QA_OUTPUT_DIR)
+	else:
+		_set_status("Industry Capacity & Card Group output folder: %s" % INDUSTRY_CAPACITY_CARD_GROUP_RUNTIME_QA_OUTPUT_DIR)
+
+
 func open_city_development_settlement_characterization_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(CITY_DEVELOPMENT_SETTLEMENT_CHARACTERIZATION_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3863,6 +3933,11 @@ func _connect_buttons() -> void:
 	_connect_button(open_victory_control_runtime_bench_button, "open_victory_control_runtime_bench_scene")
 	_connect_button(run_victory_control_runtime_bench_button, "run_victory_control_runtime_bench_scene")
 	_connect_button(open_victory_control_runtime_output_folder_button, "open_victory_control_runtime_output_folder")
+	_connect_button(open_industry_capacity_runtime_service_button, "open_industry_capacity_runtime_service_scene")
+	_connect_button(open_industry_capacity_world_bridge_button, "open_industry_capacity_world_bridge_scene")
+	_connect_button(open_industry_capacity_card_group_runtime_bench_button, "open_industry_capacity_card_group_runtime_bench_scene")
+	_connect_button(run_industry_capacity_card_group_runtime_bench_button, "run_industry_capacity_card_group_runtime_bench_scene")
+	_connect_button(open_industry_capacity_card_group_runtime_output_folder_button, "open_industry_capacity_card_group_runtime_output_folder")
 	_connect_button(open_city_development_settlement_characterization_bench_button, "open_city_development_settlement_characterization_bench_scene")
 	_connect_button(run_city_development_settlement_characterization_bench_button, "run_city_development_settlement_characterization_bench_scene")
 	_connect_button(open_city_development_settlement_characterization_output_folder_button, "open_city_development_settlement_characterization_output_folder")

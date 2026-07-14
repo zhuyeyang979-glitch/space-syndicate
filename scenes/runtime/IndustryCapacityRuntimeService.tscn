@@ -1,0 +1,10 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/industry_capacity_runtime_service.gd" id="1_service"]
+[ext_resource type="Resource" path="res://resources/rules/space_syndicate_ruleset_v05.tres" id="2_profile"]
+[ext_resource type="Resource" path="res://resources/content/product_industry_catalog_v05.tres" id="3_catalog"]
+
+[node name="IndustryCapacityRuntimeService" type="Node"]
+script = ExtResource("1_service")
+ruleset_profile = ExtResource("2_profile")
+product_industry_catalog = ExtResource("3_catalog")

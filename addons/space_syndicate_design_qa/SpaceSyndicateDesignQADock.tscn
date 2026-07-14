@@ -2224,6 +2224,54 @@ layout_mode = 2
 text = "Open Victory Output Folder"
 tooltip_text = "Open user://space_syndicate_design_qa/victory_control_runtime/"
 
+[node name="IndustryCapacityCardGroupRuntimeSection" type="Label" parent="DockMargin/DockRows"]
+layout_mode = 2
+text = "Industry Capacity & Card Group v0.5"
+text_overrun_behavior = 3
+
+[node name="IndustryCapacityRuntimeOwnerRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenIndustryCapacityRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/IndustryCapacityRuntimeOwnerRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Open Capacity"
+tooltip_text = "Open res://scenes/runtime/IndustryCapacityRuntimeService.tscn"
+
+[node name="OpenIndustryCapacityWorldBridgeButton" type="Button" parent="DockMargin/DockRows/IndustryCapacityRuntimeOwnerRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Open World Bridge"
+tooltip_text = "Open res://scenes/runtime/IndustryCapacityWorldBridge.tscn"
+
+[node name="IndustryCapacityCardGroupRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OpenIndustryCapacityCardGroupRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/IndustryCapacityCardGroupRuntimeActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Open SS05-05 Gate"
+tooltip_text = "Open res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn"
+
+[node name="RunIndustryCapacityCardGroupRuntimeBenchButton" type="Button" parent="DockMargin/DockRows/IndustryCapacityCardGroupRuntimeActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+text = "Run SS05-05 Gate"
+tooltip_text = "Run the 64-case industry capacity and 8/6/2 card-group gate"
+
+[node name="OpenIndustryCapacityCardGroupRuntimeOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+text = "Open SS05-05 Output Folder"
+tooltip_text = "Open user://space_syndicate_design_qa/industry_capacity_card_group_runtime/"
+
 [node name="DesignQAStatusLabel" type="Label" parent="DockMargin/DockRows"]
 unique_name_in_owner = true
 layout_mode = 2

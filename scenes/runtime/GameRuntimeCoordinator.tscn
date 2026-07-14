@@ -1,4 +1,4 @@
-[gd_scene load_steps=56 format=3]
+[gd_scene load_steps=58 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -55,6 +55,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentWorldBridge.tscn" id="53_city_development_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/VictoryControlRuntimeController.tscn" id="54_victory_control"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/VictoryControlWorldBridge.tscn" id="55_victory_control_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/IndustryCapacityRuntimeService.tscn" id="56_industry_capacity"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/IndustryCapacityWorldBridge.tscn" id="57_industry_capacity_bridge"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -88,6 +90,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CityTradeNetworkWorldBridge" parent="." instance=ExtResource("51_city_trade_network_bridge")]
+unique_name_in_owner = true
+
+[node name="IndustryCapacityRuntimeService" parent="." instance=ExtResource("56_industry_capacity")]
+unique_name_in_owner = true
+
+[node name="IndustryCapacityWorldBridge" parent="." instance=ExtResource("57_industry_capacity_bridge")]
 unique_name_in_owner = true
 
 [node name="CityDevelopmentRuntimeController" parent="." instance=ExtResource("52_city_development")]

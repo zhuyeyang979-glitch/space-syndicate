@@ -334,7 +334,7 @@ func _base_facts(skill: Dictionary) -> Dictionary:
 		"active_skill_counterable": true, "contract_error": "", "city_development_error": "",
 		"military_unit_present": true, "military_unit_cooldown": 0.0,
 		"military_deployment_valid": true, "military_deploy_terrain_label": "陆地区域",
-		"desired_bid": 0, "queue_preflight": {"batch_locked": false, "active_present": false, "current_count": 0, "next_count": 0, "routes_to_next_batch": false},
+		"desired_bid_cents": 0, "player_cash_cents": 200000, "queue_preflight": {"batch_locked": false, "active_present": false, "current_count": 0, "next_count": 0, "routes_to_next_batch": false},
 		"default_monster_play_cash_per_existing": 100,
 	})
 	return facts

@@ -1178,6 +1178,18 @@ const RECORDS := [
 		"risk_notes": "High; qualification clocks, sticky audit privacy, endpoint ordering, special outcomes, session completion, and save/load are one exact-once chain.",
 		"mcp_notes": "SS05-04 is sceneized under GameRuntimeCoordinator. VictoryControl consumes structured GDP attribution, and its WorldBridge is explicitly non-owning.",
 	},
+	{
+		"id": "industry_capacity_card_group_v05_runtime_gate",
+		"display_name": "Industry Capacity & Card Group v0.5 Runtime Cutover",
+		"category": "Systems",
+		"current_scene_path": "res://scenes/runtime/IndustryCapacityRuntimeService.tscn",
+		"source_script_path": "res://scripts/runtime/industry_capacity_runtime_service.gd",
+		"sceneization_status": STATUS_FULL,
+		"priority": 1,
+		"next_step": "Keep the 64-case gate green while authored v0.5 cards and downstream wager flow consume the same capacity and receipt contracts.",
+		"risk_notes": "High; six-industry aggregation, cumulative group reservations, 8/6/2 timing, fixed bid escrow, exact-once release, and wager-pool receipts share one live transaction boundary.",
+		"mcp_notes": "SS05-05 is sceneized under GameRuntimeCoordinator. Industry Capacity owns derived facts, Queue owns reservations and receipts, RuntimeController owns the clock, and the global production Ruleset remains v0.4.",
+	},
 ]
 
 

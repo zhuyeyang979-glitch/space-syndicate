@@ -21,6 +21,7 @@ var active_display_timer := 0.0
 var window_sequence := 0
 var batch_reference_player := -1
 var last_resolution_player_index := -1
+var ready_players: Dictionary = {}
 
 var _last_facts: Dictionary = {}
 var _last_phase := "idle"
@@ -37,6 +38,8 @@ func configure(config: Dictionary) -> void:
 	lock_seconds = maxf(0.0, float(config.get("lock_seconds", lock_seconds)))
 	display_seconds = maxf(0.0, float(config.get("display_seconds", display_seconds)))
 	counter_seconds = maxf(0.0, float(config.get("counter_seconds", counter_seconds)))
+	if int(total_window_seconds) != 8 or int(lock_seconds) != 2:
+		push_error("CardResolutionRuntimeController requires the v0.5 8/6/2 card window.")
 
 
 func reset_state() -> void:
@@ -50,6 +53,7 @@ func reset_state() -> void:
 	window_sequence = 0
 	batch_reference_player = -1
 	last_resolution_player_index = -1
+	ready_players.clear()
 	_last_facts = {}
 	_last_phase = "idle"
 	_reset_transition_latches()
@@ -67,6 +71,38 @@ func begin_group_window(duration: float = -1.0, reference_player: int = -1, sequ
 	_start_next_requested = false
 	_hide_requested = false
 	_lock_entry_announced = false
+	ready_players.clear()
+
+
+func set_player_ready(player_index: int, ready_state: bool, active_player_indices: Array) -> Dictionary:
+	if player_index < 0 or not active_player_indices.has(player_index):
+		return {"changed": false, "reason": "invalid_ready_player", "all_ready": false}
+	if ready_state:
+		ready_players[str(player_index)] = true
+	else:
+		ready_players.erase(str(player_index))
+	return {
+		"changed": true,
+		"reason": "",
+		"player_index": player_index,
+		"ready": ready_state,
+		"all_ready": all_players_ready(active_player_indices),
+		"ready_count": _ready_count(active_player_indices),
+		"active_player_count": active_player_indices.size(),
+	}
+
+
+func all_players_ready(active_player_indices: Array) -> bool:
+	if active_player_indices.is_empty():
+		return false
+	for player_index_variant in active_player_indices:
+		if not bool(ready_players.get(str(int(player_index_variant)), false)):
+			return false
+	return true
+
+
+func clear_ready_players() -> void:
+	ready_players.clear()
 
 
 func begin_active_display(duration: float = -1.0) -> void:
@@ -126,6 +162,19 @@ func tick(delta: float, facts: Dictionary) -> Array:
 		if not _hide_requested:
 			_hide_requested = true
 			commands.append(_command("hide_overlay"))
+		_publish_state(_last_facts)
+		return commands
+	var active_player_indices: Array = _last_facts.get("active_player_indices", []) if _last_facts.get("active_player_indices", []) is Array else []
+	if SharedCardGroupWindowScript.phase_for_remaining(simultaneous_timer, lock_seconds) == "organize" \
+		and all_players_ready(active_player_indices) \
+		and not _lock_batch_requested:
+		_lock_batch_requested = true
+		batch_locked = true
+		auction_open = false
+		auction_timer = 0.0
+		simultaneous_timer = 0.0
+		commands.append(_command("all_ready_lock", {"ready_count": active_player_indices.size()}))
+		commands.append(_command("lock_batch"))
 		_publish_state(_last_facts)
 		return commands
 
@@ -188,7 +237,7 @@ func bidding_open(facts: Dictionary = {}) -> bool:
 	return not batch_locked \
 		and not bool(state_facts.get("active_present", false)) \
 		and not bool(state_facts.get("queue_empty", true)) \
-		and SharedCardGroupWindowScript.bidding_open(remaining)
+		and SharedCardGroupWindowScript.bidding_open(remaining, maxf(0.0, float(state_facts.get("lock_duration", lock_seconds))))
 
 
 func to_save_data() -> Dictionary:
@@ -203,6 +252,7 @@ func to_save_data() -> Dictionary:
 		"card_resolution_batch_reference_player": batch_reference_player,
 		"card_group_window_sequence": window_sequence,
 		"last_card_resolution_player_index": last_resolution_player_index,
+		"card_group_ready_players": ready_players.duplicate(true),
 	}
 
 
@@ -219,6 +269,7 @@ func apply_save_data(data: Dictionary) -> void:
 	batch_reference_player = int(data.get("card_resolution_batch_reference_player", data.get("batch_reference_player", -1)))
 	window_sequence = int(data.get("card_group_window_sequence", data.get("window_sequence", 0)))
 	last_resolution_player_index = int(data.get("last_card_resolution_player_index", data.get("last_resolution_player_index", -1)))
+	ready_players = (data.get("card_group_ready_players", {}) as Dictionary).duplicate(true) if data.get("card_group_ready_players", {}) is Dictionary else {}
 	_last_facts = {}
 	_last_phase = "idle"
 	_reset_transition_latches()
@@ -240,6 +291,7 @@ func debug_snapshot() -> Dictionary:
 		"window_sequence": window_sequence,
 		"batch_reference_player": batch_reference_player,
 		"last_resolution_player_index": last_resolution_player_index,
+		"ready_players": ready_players.duplicate(true),
 		"config": {
 			"total_window_seconds": total_window_seconds,
 			"lock_seconds": lock_seconds,
@@ -281,7 +333,16 @@ func _sanitize_facts(facts: Dictionary) -> Dictionary:
 		"active_id": str(facts.get("active_id", "")),
 		"lock_duration": maxf(0.0, float(facts.get("lock_duration", lock_seconds))),
 		"counter_duration": maxf(0.0, float(facts.get("counter_duration", counter_seconds))),
+		"active_player_indices": (facts.get("active_player_indices", []) as Array).duplicate() if facts.get("active_player_indices", []) is Array else [],
 	}
+
+
+func _ready_count(active_player_indices: Array) -> int:
+	var count := 0
+	for player_index_variant in active_player_indices:
+		if bool(ready_players.get(str(int(player_index_variant)), false)):
+			count += 1
+	return count
 
 
 func _command(transition: String, details: Dictionary = {}) -> Dictionary:

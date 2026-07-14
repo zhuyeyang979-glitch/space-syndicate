@@ -3205,7 +3205,7 @@ func _ai_public_card_owner_signal_for_player(viewer_index: int, target_player: i
 		var card_name := String(skill.get("name", entry.get("card_name", "")))
 		var kind := String(skill.get("kind", ""))
 		score += 18 + mini(95, int(float(_card_strength_budget_points(card_name)) / 3.0))
-		score += int(float(int(entry.get("winning_bid", 0))) / 15.0)
+		score += int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 1500.0)
 		if _ai_pressure_kind(kind, skill):
 			score += 26
 		if _ai_defense_kind(kind, skill):
@@ -7337,14 +7337,11 @@ func _ai_card_bid_budget(player_index: int, utility_score: int, play_cash_cost: 
 	var affordable := maxi(0, cash - play_cash_cost - AI_CARD_BUY_MIN_CASH_RESERVE)
 	var utility_budget := int(floor(float(maxi(0, utility_score - 60)) * aggression / 3.0 / 10.0)) * 10
 	return mini(affordable, maxi(0, utility_budget))
-func _ai_next_bid_increment(highest_bid: int) -> int:
-	if highest_bid >= 500:
-		return 100
-	if highest_bid >= 200:
-		return 50
-	if highest_bid >= 50:
-		return 20
-	return 10
+func _ai_priority_bid_for_budget(budget: int, minimum_exclusive: int = -1) -> int:
+	for option in [100, 50, 0]:
+		if option <= budget and option > minimum_exclusive:
+			return option
+	return 0
 func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_budget: int) -> Dictionary:
 	var metadata := {
 		"card_name": String(candidate.get("card_name", "")),
@@ -7373,7 +7370,7 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	var desired_bid := 0
 	var budget := int(candidate.get("bid_budget", 0))
 	if not _card_resolution_current_queue().is_empty() and not card_resolution_batch_locked and _card_resolution_active_entry().is_empty():
-		desired_bid = mini(budget, _highest_card_resolution_bid() + _ai_next_bid_increment(_highest_card_resolution_bid()))
+		desired_bid = _ai_priority_bid_for_budget(budget, _highest_card_resolution_bid())
 	_set_card_bid_for_player(player_index, desired_bid, false)
 	var queued := _queue_skill_resolution(player_index, slot_index, target_slot, target_player)
 	if queued:
@@ -7500,7 +7497,7 @@ func _auto_ai_card_decisions(force: bool = false) -> int:
 			acted += 1
 	return acted
 func _auto_ai_auction_bids(force: bool = false) -> int:
-	if not ai_card_decision_enabled or not card_resolution_auction_open or _card_resolution_current_queue().size() < 2:
+	if not ai_card_decision_enabled or card_resolution_auction_open or card_resolution_batch_locked or _card_resolution_current_queue().size() < 2:
 		return 0
 	var raised := 0
 	for player_index_variant in _ai_player_indices():
@@ -7509,15 +7506,15 @@ func _auto_ai_auction_bids(force: bool = false) -> int:
 		if queue_index < 0:
 			continue
 		var entry: Dictionary = _card_resolution_current_queue()[queue_index]
-		var current_bid := int(entry.get("tip", 0))
+		var current_bid := int(float(int(entry.get("priority_bid_cents", 0))) / 100.0)
 		var highest_bid := _highest_card_resolution_bid()
 		if current_bid == highest_bid and queue_index == 0:
 			continue
 		var budget := int(entry.get("ai_bid_budget", 0))
 		var bid_learning_bonus := _ai_learning_bonus(player_index, "auction_bid", "", "", "", "匿名竞价")
 		budget = maxi(0, budget + bid_learning_bonus)
-		var target_bid := highest_bid + _ai_next_bid_increment(highest_bid)
-		if target_bid > budget:
+		var target_bid := _ai_priority_bid_for_budget(budget, maxi(current_bid, highest_bid))
+		if target_bid <= current_bid:
 			continue
 		var aggression := float(_ai_profile_for_player(player_index).get("bid_aggression", 1.0))
 		var learned_reaction := clampf(float(bid_learning_bonus) / 240.0, -0.24, 0.24)
@@ -8065,7 +8062,7 @@ func _ai_card_guess_candidate_for_owner(player_index: int, entry: Dictionary, gu
 			score += 18
 			reason_bits.append("已揭示同类牌")
 			break
-	var bid := int(entry.get("winning_bid", entry.get("tip", 0)))
+	var bid := int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 100.0)
 	if bid >= 100:
 		score += mini(28, int(float(bid) / 20.0))
 		reason_bits.append("高报价线索")

@@ -177,7 +177,7 @@ func _table_state(focus_target: String, phase_id: String = "first_summon") -> Di
 				{"id": "build_city", "label": "城市化", "active": true},
 				{"id": "open_rack", "label": "牌架", "active": true},
 			],
-			"bid_board": {"title": "牌桌竞价", "my_bid": "¥0", "highest_bid": "¥0", "actions": [{"id": "bid_plus_10", "label": "+10"}]},
+			"bid_board": {"title": "牌桌竞价", "my_bid": "¥0", "highest_bid": "¥0", "actions": [{"id": "bid_set_50", "label": "设为 ¥50"}]},
 		},
 		"scenario_coach": scenario,
 		"campaign_focus_mode": true,

@@ -53,8 +53,8 @@ func characterization_cases() -> Array:
 		"queue_call_graph_complete",
 		"timing_controller_boundary_unchanged",
 		"first_submit_starts_batch",
-		"same_player_group_order_one_to_three",
-		"fourth_card_rejected_without_mutation",
+		"same_player_group_order_one_to_two",
+		"third_card_rejected_without_mutation",
 		"duplicate_card_submit_rejected",
 		"organize_phase_accepts_submission",
 		"lock_phase_rejects_new_cards",
@@ -62,12 +62,12 @@ func characterization_cases() -> Array:
 		"consumable_card_leaves_slot_on_queue",
 		"play_cost_paid_exactly_once",
 		"insufficient_cost_and_bid_rejects_atomically",
-		"positive_bid_collision_falls_back_zero",
-		"bid_normalized_to_affordable_cash",
-		"group_sort_uses_bid_descending",
+		"equal_fixed_bids_are_allowed",
+		"arbitrary_priority_bid_rejected",
+		"fixed_bid_tiers_sort_descending",
 		"equal_bid_uses_clockwise_reference",
 		"player_group_remains_contiguous",
-		"lock_writes_batch_position_and_locked_bid",
+		"lock_writes_batch_position_and_priority_bid",
 		"start_next_pops_one_active_entry",
 		"invalid_entry_skips_without_stall",
 		"active_resolution_blocks_normal_submission",
@@ -85,7 +85,7 @@ func cutover_cases() -> Array:
 	return [
 		"service_scene_composition",
 		"coordinator_composes_service",
-		"service_configured_v04",
+		"service_configured_v05_domain",
 		"service_owns_current_queue",
 		"service_owns_active_entry",
 		"service_owns_next_queue",
@@ -94,12 +94,12 @@ func cutover_cases() -> Array:
 		"service_submission_commit",
 		"inventory_service_owns_queue_slot_mutation",
 		"submission_adapter_uses_both_services",
-		"fourth_card_atomic_via_service",
+		"third_card_atomic_via_service",
 		"duplicate_submission_atomic_via_service",
-		"positive_bid_collision_service",
+		"equal_fixed_bids_service",
 		"group_sort_service",
 		"lock_metadata_service",
-		"bid_chain_receipts_service",
+		"public_wager_pool_receipt_service",
 		"start_next_service",
 		"invalid_skip_service",
 		"counter_route_service",
@@ -129,8 +129,8 @@ func build_characterization_manifest_preview() -> Dictionary:
 			"notes": "preview",
 		}))
 	return {
-		"suite": "card-resolution-queue-runtime-cutover-v04",
-		"ruleset_id": "v0.4",
+		"suite": "card-resolution-queue-runtime-cutover-v05",
+		"ruleset_id": "v0.5",
 		"output_dir": OUTPUT_DIR,
 		"screenshot_path": SCREENSHOT_PATH,
 		"main_scene": MAIN_SCENE_PATH,
@@ -166,8 +166,8 @@ func run_characterization_suite() -> void:
 		if not bool(record.get("passed", false)):
 			_failures.append("%s: %s" % [case_id, str(record.get("notes", "observation failed"))])
 	var manifest := {
-		"suite": "card-resolution-queue-runtime-cutover-v04",
-		"ruleset_id": "v0.4",
+		"suite": "card-resolution-queue-runtime-cutover-v05",
+		"ruleset_id": "v0.5",
 		"output_dir": OUTPUT_DIR,
 		"screenshot_path": SCREENSHOT_PATH,
 		"main_scene": MAIN_SCENE_PATH,
@@ -214,10 +214,10 @@ func _run_case(case_id: String) -> Dictionary:
 			return _case_timing_controller_boundary_unchanged()
 		"first_submit_starts_batch":
 			return _case_first_submit_starts_batch()
-		"same_player_group_order_one_to_three":
-			return _case_same_player_group_order_one_to_three()
-		"fourth_card_rejected_without_mutation":
-			return _case_fourth_card_rejected_without_mutation()
+		"same_player_group_order_one_to_two":
+			return _case_same_player_group_order_one_to_two()
+		"third_card_rejected_without_mutation":
+			return _case_third_card_rejected_without_mutation()
 		"duplicate_card_submit_rejected":
 			return _case_duplicate_card_submit_rejected()
 		"organize_phase_accepts_submission":
@@ -232,18 +232,18 @@ func _run_case(case_id: String) -> Dictionary:
 			return _case_play_cost_paid_exactly_once()
 		"insufficient_cost_and_bid_rejects_atomically":
 			return _case_insufficient_cost_and_bid_rejects_atomically()
-		"positive_bid_collision_falls_back_zero":
-			return _case_positive_bid_collision_falls_back_zero()
-		"bid_normalized_to_affordable_cash":
-			return _case_bid_normalized_to_affordable_cash()
-		"group_sort_uses_bid_descending":
-			return _case_group_sort_uses_bid_descending()
+		"equal_fixed_bids_are_allowed":
+			return _case_equal_fixed_bids_are_allowed()
+		"arbitrary_priority_bid_rejected":
+			return _case_arbitrary_priority_bid_rejected()
+		"fixed_bid_tiers_sort_descending":
+			return _case_fixed_bid_tiers_sort_descending()
 		"equal_bid_uses_clockwise_reference":
 			return _case_equal_bid_uses_clockwise_reference()
 		"player_group_remains_contiguous":
 			return _case_player_group_remains_contiguous()
-		"lock_writes_batch_position_and_locked_bid":
-			return _case_lock_writes_batch_position_and_locked_bid()
+		"lock_writes_batch_position_and_priority_bid":
+			return _case_lock_writes_batch_position_and_priority_bid()
 		"start_next_pops_one_active_entry":
 			return _case_start_next_pops_one_active_entry()
 		"invalid_entry_skips_without_stall":
@@ -298,12 +298,12 @@ func _case_timing_controller_boundary_unchanged() -> Dictionary:
 	var shared_window_source := FileAccess.get_file_as_string(SHARED_WINDOW_SCRIPT_PATH)
 	var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 	var observed := controller != null and controller.has_method("tick") and controller.has_method("current_phase") and controller.has_method("to_save_data") and controller.has_method("apply_save_data")
-	var aligned := observed and controller_source.contains("total_window_seconds") and controller_source.contains("lock_seconds") and shared_window_source.contains("const TOTAL_SECONDS := 30.0") and shared_window_source.contains("const ORGANIZE_SECONDS := 25.0") and shared_window_source.contains("const LOCK_SECONDS := 5.0") and not controller_source.contains("func _apply_card_resolution_effect_request") and main_source.contains("func _apply_card_resolution_effect_request")
+	var aligned := observed and controller_source.contains("total_window_seconds") and controller_source.contains("lock_seconds") and shared_window_source.contains("const TOTAL_SECONDS := 8.0") and shared_window_source.contains("const ORGANIZE_SECONDS := 6.0") and shared_window_source.contains("const LOCK_SECONDS := 2.0") and not controller_source.contains("func _apply_card_resolution_effect_request") and main_source.contains("func _apply_card_resolution_effect_request")
 	return _record("timing_controller_boundary_unchanged", "CardResolutionRuntimeController", {}, {
 		"observed": observed,
 		"contract_aligned": aligned,
 		"timing_boundary_checked": aligned,
-		"notes": "CardResolutionRuntimeController remains the sole 30/25/5 timing owner and does not execute queue entries or card effects.",
+		"notes": "CardResolutionRuntimeController remains the sole 8/6/2 timing owner and does not execute queue entries or card effects.",
 	})
 
 
@@ -313,46 +313,45 @@ func _case_first_submit_starts_batch() -> Dictionary:
 	var queue := _queue()
 	var entry: Dictionary = queue[0] if not queue.is_empty() and queue[0] is Dictionary else {}
 	var observed := accepted and queue.size() == 1
-	var aligned := observed and int(_runtime_main.get("card_resolution_batch_reference_player")) == 0 and float(_runtime_main.get("card_resolution_simultaneous_timer")) > 25.0 and int(entry.get("group_order", 0)) == 1 and int(entry.get("window_sequence", 0)) == 1 and not str(entry.get("group_id", "")).is_empty()
+	var aligned := observed and int(_runtime_main.get("card_resolution_batch_reference_player")) == 0 and float(_runtime_main.get("card_resolution_simultaneous_timer")) > 6.0 and int(entry.get("group_order", 0)) == 1 and int(entry.get("window_sequence", 0)) == 1 and not str(entry.get("group_id", "")).is_empty()
 	return _record("first_submit_starts_batch", BASE_CARD_ID, _queue_metrics(accepted), {
 		"observed": observed,
 		"contract_aligned": aligned,
 		"ordering_checked": aligned,
-		"timing_boundary_checked": float(_runtime_main.get("card_resolution_simultaneous_timer")) > 25.0,
-		"notes": "The first committed card starts one 30-second batch, establishes the reference seat, and enters group order 1.",
+		"timing_boundary_checked": float(_runtime_main.get("card_resolution_simultaneous_timer")) > 6.0,
+		"notes": "The first committed card starts one 8-second batch, establishes the reference seat, and enters group order 1.",
 	})
 
 
-func _case_same_player_group_order_one_to_three() -> Dictionary:
-	_prepare_players([_skills(4)], [1000])
-	var accepted := _submit(0, 0) and _submit(0, 1) and _submit(0, 2)
+func _case_same_player_group_order_one_to_two() -> Dictionary:
+	_prepare_players([_skills(3)], [1000])
+	var accepted := _submit(0, 0) and _submit(0, 1)
 	var orders: Array = []
 	for entry_variant in _queue():
 		if entry_variant is Dictionary:
 			orders.append(int((entry_variant as Dictionary).get("group_order", 0)))
-	var aligned := accepted and orders == [1, 2, 3] and _group_ids().size() == 1
-	return _record("same_player_group_order_one_to_three", BASE_CARD_ID, _queue_metrics(accepted), {
-		"observed": accepted and _queue().size() == 3,
+	var aligned := accepted and orders == [1, 2] and _group_ids().size() == 1
+	return _record("same_player_group_order_one_to_two", BASE_CARD_ID, _queue_metrics(accepted), {
+		"observed": accepted and _queue().size() == 2,
 		"contract_aligned": aligned,
 		"ordering_checked": aligned,
-		"notes": "One player contributes a contiguous 1-3 ordered group in a single shared window.",
+		"notes": "One player contributes a contiguous one-to-two-card ordered group in a standard shared window.",
 	})
 
 
-func _case_fourth_card_rejected_without_mutation() -> Dictionary:
-	_prepare_players([_skills(4)], [1000])
+func _case_third_card_rejected_without_mutation() -> Dictionary:
+	_prepare_players([_skills(3)], [1000])
 	_submit(0, 0)
 	_submit(0, 1)
-	_submit(0, 2)
 	var cash_before := _player_cash(0)
 	var hand_before := _hand_count(0)
 	var queue_before := _queue().duplicate(true)
-	var accepted := _submit(0, 3)
-	var aligned := not accepted and _player_cash(0) == cash_before and _hand_count(0) == hand_before and _queue() == queue_before and _slot_is_card(0, 3)
-	return _record("fourth_card_rejected_without_mutation", BASE_CARD_ID, _queue_metrics(accepted, _player_cash(0) - cash_before, _hand_count(0) - hand_before), {
-		"observed": _queue().size() == 3,
+	var accepted := _submit(0, 2)
+	var aligned := not accepted and _player_cash(0) == cash_before and _hand_count(0) == hand_before and _queue() == queue_before and _slot_is_card(0, 2)
+	return _record("third_card_rejected_without_mutation", BASE_CARD_ID, _queue_metrics(accepted, _player_cash(0) - cash_before, _hand_count(0) - hand_before), {
+		"observed": _queue().size() == 2,
 		"contract_aligned": aligned,
-		"notes": "The default fourth card is rejected atomically and remains in the private hand.",
+		"notes": "The standard third card is rejected atomically and remains in the private hand.",
 	})
 
 
@@ -372,21 +371,21 @@ func _case_duplicate_card_submit_rejected() -> Dictionary:
 func _case_organize_phase_accepts_submission() -> Dictionary:
 	_prepare_players([[ _qa_skill() ], [ _qa_skill() ]], [1000, 1000])
 	var first := _submit(0, 0)
-	_runtime_main.set("card_resolution_simultaneous_timer", 12.0)
+	_runtime_main.set("card_resolution_simultaneous_timer", 4.0)
 	var second := _submit(1, 0)
 	var aligned := first and second and _queue().size() == 2 and str(_runtime_main.call("_card_group_window_phase")) == "organize"
 	return _record("organize_phase_accepts_submission", BASE_CARD_ID, _queue_metrics(second), {
 		"observed": first and _queue().size() >= 1,
 		"contract_aligned": aligned,
 		"timing_boundary_checked": str(_runtime_main.call("_card_group_window_phase")) == "organize",
-		"notes": "A second player can commit a card while more than five seconds remain.",
+		"notes": "A second player can commit a card during the six-second organize phase.",
 	})
 
 
 func _case_lock_phase_rejects_new_cards() -> Dictionary:
 	_prepare_players([[ _qa_skill() ], [ _qa_skill() ]], [1000, 1000])
 	_submit(0, 0)
-	_runtime_main.set("card_resolution_simultaneous_timer", 5.0)
+	_runtime_main.set("card_resolution_simultaneous_timer", 2.0)
 	var cash_before := _player_cash(1)
 	var hand_before := _hand_count(1)
 	var accepted := _submit(1, 0)
@@ -395,7 +394,7 @@ func _case_lock_phase_rejects_new_cards() -> Dictionary:
 		"observed": _queue().size() == 1,
 		"contract_aligned": aligned,
 		"timing_boundary_checked": str(_runtime_main.call("_card_group_window_phase")) == "lock",
-		"notes": "At five seconds the card stays in hand and no cash or queue state changes.",
+		"notes": "At two seconds the card stays in hand and no cash or queue state changes.",
 	})
 
 
@@ -435,7 +434,7 @@ func _case_play_cost_paid_exactly_once() -> Dictionary:
 		queued_skill["_play_cost_paid_on_queue"] = true
 	_runtime_main.call("_finish_played_skill", 0, -1, queued_skill, 0.0)
 	var after_finish := _player_cash(0)
-	var aligned := accepted and after_submit == 900 and after_finish == 900 and bool(entry.get("play_cost_paid_on_queue", false)) and int(entry.get("play_cash_cost", 0)) == 100
+	var aligned := accepted and after_submit == 900 and after_finish == 900 and bool(entry.get("play_cost_paid_on_queue", false)) and int(entry.get("play_cash_cost_cents", 0)) == 10000
 	return _record("play_cost_paid_exactly_once", BASE_CARD_ID, _queue_metrics(accepted, after_submit - 1000, _hand_count(0) - 1), {
 		"observed": accepted and after_submit < 1000,
 		"contract_aligned": aligned,
@@ -455,49 +454,49 @@ func _case_insufficient_cost_and_bid_rejects_atomically() -> Dictionary:
 	})
 
 
-func _case_positive_bid_collision_falls_back_zero() -> Dictionary:
+func _case_equal_fixed_bids_are_allowed() -> Dictionary:
 	_prepare_players([[ _qa_skill() ], [ _qa_skill() ]], [1000, 1000])
 	_set_player_field(0, "queued_card_tip", 100)
 	_set_player_field(1, "queued_card_tip", 100)
 	var first := _submit(0, 0)
 	var second := _submit(1, 0)
 	var second_entry := _queue_entry_for_player(1)
-	var aligned := first and second and int(_queue_entry_for_player(0).get("group_bid", 0)) == 100 and int(second_entry.get("group_bid", -1)) == 0
-	return _record("positive_bid_collision_falls_back_zero", BASE_CARD_ID, _queue_metrics(second), {
+	var aligned := first and second and int(_queue_entry_for_player(0).get("priority_bid_cents", 0)) == 10000 and int(second_entry.get("priority_bid_cents", -1)) == 10000
+	return _record("equal_fixed_bids_are_allowed", BASE_CARD_ID, _queue_metrics(second), {
 		"observed": first and second,
 		"contract_aligned": aligned,
 		"ordering_checked": aligned,
-		"notes": "A duplicate positive tier never auto-raises; the later group enters at zero.",
+		"notes": "Multiple groups may use the same fixed priority tier; clockwise seat order breaks the tie.",
 	})
 
 
-func _case_bid_normalized_to_affordable_cash() -> Dictionary:
-	_prepare_players([[]], [100])
-	_runtime_main.set("card_resolution_batch_reference_player", 0)
-	_runtime_main.set("card_resolution_queue", [_entry(0, 1, 300, 1)])
-	_runtime_main.call("_normalize_card_resolution_queue_bids", 0)
-	var entry := _first_queue_entry()
-	var aligned := int(entry.get("group_bid", -1)) == 100 and int(entry.get("tip", -1)) == 100
-	return _record("bid_normalized_to_affordable_cash", "synthetic-public-group", _queue_metrics(true), {
-		"observed": not entry.is_empty(),
+func _case_arbitrary_priority_bid_rejected() -> Dictionary:
+	var service := _queue_service()
+	var request := _submission_request()
+	request["priority_bid_cents"] = 7500
+	var plan_variant: Variant = service.call("plan_submission", request, _submission_facts()) if service != null else {}
+	var plan: Dictionary = plan_variant if plan_variant is Dictionary else {}
+	var aligned := not bool(plan.get("accepted", false)) and str(plan.get("reason", "")) == "invalid_priority_bid" and (plan.get("allowed_bid_options_cents", []) as Array) == [0, 5000, 10000]
+	return _record("arbitrary_priority_bid_rejected", "7500-cents", _queue_metrics(false), {
+		"observed": not plan.is_empty(),
 		"contract_aligned": aligned,
 		"ordering_checked": aligned,
-		"notes": "Final group bid is capped to live affordable cash without making cash negative.",
+		"notes": "The queue rejects arbitrary bids instead of normalizing them into a hidden tier.",
 	})
 
 
-func _case_group_sort_uses_bid_descending() -> Dictionary:
-	_prepare_players([[], [], [], []], [1000, 1000, 1000, 1000])
+func _case_fixed_bid_tiers_sort_descending() -> Dictionary:
+	_prepare_players([[], [], []], [1000, 1000, 1000])
 	_runtime_main.set("card_resolution_batch_reference_player", 3)
-	_runtime_main.set("card_resolution_queue", [_entry(2, 3, 80, 1), _entry(0, 1, 300, 1), _entry(3, 4, 0, 1), _entry(1, 2, 200, 1)])
+	_runtime_main.set("card_resolution_queue", [_entry(2, 3, 0, 1), _entry(0, 1, 10000, 1), _entry(1, 2, 5000, 1)])
 	_runtime_main.call("_sort_card_resolution_queue")
 	var players_in_order := _queue_player_order()
-	var aligned := players_in_order == [0, 1, 2, 3]
-	return _record("group_sort_uses_bid_descending", "300-200-80-0", _queue_metrics(true), {
-		"observed": players_in_order.size() == 4,
+	var aligned := players_in_order == [0, 1, 2]
+	return _record("fixed_bid_tiers_sort_descending", "10000-5000-0-cents", _queue_metrics(true), {
+		"observed": players_in_order.size() == 3,
 		"contract_aligned": aligned,
 		"ordering_checked": aligned,
-		"notes": "Distinct positive group bids sort descending, followed by the zero-bid group.",
+		"notes": "The fixed 100/50/0 cash tiers sort descending before clockwise tie-breaking.",
 	})
 
 
@@ -519,7 +518,7 @@ func _case_equal_bid_uses_clockwise_reference() -> Dictionary:
 func _case_player_group_remains_contiguous() -> Dictionary:
 	_prepare_players([[], [], []], [1000, 1000, 1000])
 	_runtime_main.set("card_resolution_batch_reference_player", 2)
-	_runtime_main.set("card_resolution_queue", [_entry(0, 1, 300, 2), _entry(1, 3, 200, 1), _entry(0, 2, 300, 1), _entry(2, 4, 0, 1)])
+	_runtime_main.set("card_resolution_queue", [_entry(0, 1, 10000, 2), _entry(1, 3, 5000, 1), _entry(0, 2, 10000, 1), _entry(2, 4, 0, 1)])
 	_runtime_main.call("_sort_card_resolution_queue")
 	var sorted := _queue()
 	var aligned := sorted.size() == 4 and int((sorted[0] as Dictionary).get("player_index", -1)) == 0 and int((sorted[1] as Dictionary).get("player_index", -1)) == 0 and int((sorted[0] as Dictionary).get("group_order", 0)) == 1 and int((sorted[1] as Dictionary).get("group_order", 0)) == 2
@@ -531,7 +530,7 @@ func _case_player_group_remains_contiguous() -> Dictionary:
 	})
 
 
-func _case_lock_writes_batch_position_and_locked_bid() -> Dictionary:
+func _case_lock_writes_batch_position_and_priority_bid() -> Dictionary:
 	_prepare_players([[], []], [1000, 1000])
 	_runtime_main.set("card_resolution_batch_reference_player", 1)
 	_runtime_main.set("card_resolution_queue", [_entry(0, 1, 0, 1), _entry(1, 2, 0, 1)])
@@ -544,14 +543,14 @@ func _case_lock_writes_batch_position_and_locked_bid() -> Dictionary:
 	var annotations_ok := entries.size() == 2
 	for index in range(entries.size()):
 		var entry: Dictionary = entries[index]
-		annotations_ok = annotations_ok and int(entry.get("batch_position", 0)) == index + 1 and entry.has("locked_bid")
+		annotations_ok = annotations_ok and int(entry.get("batch_position", 0)) == index + 1 and entry.has("locked_priority_bid_cents")
 	var aligned := bool(_runtime_main.get("card_resolution_batch_locked")) and not active.is_empty() and annotations_ok
-	return _record("lock_writes_batch_position_and_locked_bid", "two-zero-bid-groups", _queue_metrics(true), {
+	return _record("lock_writes_batch_position_and_priority_bid", "two-zero-bid-groups", _queue_metrics(true), {
 		"observed": entries.size() == 2,
 		"contract_aligned": aligned,
 		"ordering_checked": annotations_ok,
 		"timing_boundary_checked": float(_runtime_main.get("card_resolution_simultaneous_timer")) == 0.0,
-		"notes": "Closing the shared window locks bid/position metadata and immediately promotes one entry to active.",
+		"notes": "Closing the shared window locks fixed priority-bid and position metadata, then immediately promotes one entry to active.",
 	})
 
 
@@ -634,12 +633,12 @@ func _case_finish_batch_promotes_next_queue() -> Dictionary:
 	_runtime_main.set("card_resolution_batch_locked", true)
 	_runtime_main.set("next_card_resolution_queue", [_next_entry(0, 41, 1), _next_entry(1, 42, 1)])
 	_runtime_main.call("_finish_card_resolution_batch")
-	var aligned := _next_queue().is_empty() and _queue().size() == 2 and _active_entry().is_empty() and not bool(_runtime_main.get("card_resolution_batch_locked")) and float(_runtime_main.get("card_resolution_simultaneous_timer")) > 25.0
+	var aligned := _next_queue().is_empty() and _queue().size() == 2 and _active_entry().is_empty() and not bool(_runtime_main.get("card_resolution_batch_locked")) and float(_runtime_main.get("card_resolution_simultaneous_timer")) > 6.0
 	return _record("finish_batch_promotes_next_queue", "two-next-batch-cards", _queue_metrics(true), {
 		"observed": _queue().size() == 2,
 		"contract_aligned": aligned,
 		"ordering_checked": aligned,
-		"timing_boundary_checked": float(_runtime_main.get("card_resolution_simultaneous_timer")) > 25.0,
+		"timing_boundary_checked": float(_runtime_main.get("card_resolution_simultaneous_timer")) > 6.0,
 		"notes": "Finishing an empty active batch promotes all waiting response cards into a new organize window.",
 	})
 
@@ -741,8 +740,8 @@ func _run_cutover_case(case_id: String) -> Dictionary:
 			return _case_service_scene_composition()
 		"coordinator_composes_service":
 			return _case_coordinator_composes_service()
-		"service_configured_v04":
-			return _case_service_configured_v04()
+		"service_configured_v05_domain":
+			return _case_service_configured_v05_domain()
 		"service_owns_current_queue":
 			return _case_service_owns_state(case_id, "current")
 		"service_owns_active_entry":
@@ -759,18 +758,18 @@ func _run_cutover_case(case_id: String) -> Dictionary:
 			return _case_inventory_service_owns_queue_slot_mutation()
 		"submission_adapter_uses_both_services":
 			return _case_submission_adapter_uses_both_services()
-		"fourth_card_atomic_via_service":
-			return _cutover_behavior_record(case_id, "fourth_card_rejected_without_mutation")
+		"third_card_atomic_via_service":
+			return _cutover_behavior_record(case_id, "third_card_rejected_without_mutation")
 		"duplicate_submission_atomic_via_service":
 			return _cutover_behavior_record(case_id, "duplicate_card_submit_rejected")
-		"positive_bid_collision_service":
-			return _cutover_behavior_record(case_id, "positive_bid_collision_falls_back_zero")
+		"equal_fixed_bids_service":
+			return _cutover_behavior_record(case_id, "equal_fixed_bids_are_allowed")
 		"group_sort_service":
-			return _cutover_behavior_record(case_id, "group_sort_uses_bid_descending")
+			return _cutover_behavior_record(case_id, "fixed_bid_tiers_sort_descending")
 		"lock_metadata_service":
-			return _cutover_behavior_record(case_id, "lock_writes_batch_position_and_locked_bid")
-		"bid_chain_receipts_service":
-			return _case_bid_chain_receipts_service()
+			return _cutover_behavior_record(case_id, "lock_writes_batch_position_and_priority_bid")
+		"public_wager_pool_receipt_service":
+			return _case_public_wager_pool_receipt_service()
 		"start_next_service":
 			return _cutover_behavior_record(case_id, "start_next_pops_one_active_entry")
 		"invalid_skip_service":
@@ -832,14 +831,14 @@ func _case_coordinator_composes_service() -> Dictionary:
 	})
 
 
-func _case_service_configured_v04() -> Dictionary:
+func _case_service_configured_v05_domain() -> Dictionary:
 	var debug := _queue_service_debug()
-	var aligned := bool(debug.get("service_ready", false)) and bool(debug.get("service_authoritative", false)) and str(debug.get("ruleset_id", "")) == "v0.4" and not bool(debug.get("timing_authority", true)) and not bool(debug.get("card_effect_authority", true)) and not bool(debug.get("inventory_authority", true))
-	return _record("service_configured_v04", "v0.4", _queue_metrics(false), {
+	var aligned := bool(debug.get("service_ready", false)) and bool(debug.get("service_authoritative", false)) and str(debug.get("ruleset_id", "")) == "v0.5" and not bool(debug.get("timing_authority", true)) and not bool(debug.get("card_effect_authority", true)) and not bool(debug.get("inventory_authority", true))
+	return _record("service_configured_v05_domain", "v0.5", _queue_metrics(false), {
 		"observed": not debug.is_empty(),
 		"contract_aligned": aligned,
 		"service_owner_checked": aligned,
-		"notes": "The service owns queue state only; timing, card effects, inventory, and cash remain outside its boundary.",
+		"notes": "The service uses the v0.5 card-group domain while owning queue state only; timing, effects, inventory, and world cash remain outside its boundary.",
 	})
 
 
@@ -891,10 +890,10 @@ func _submission_request() -> Dictionary:
 		"slot_index": 0,
 		"already_queued": false,
 		"reactive_counter": false,
-		"group_card_limit": 3,
-		"desired_bid": 0,
-		"play_cash_cost": 0,
-		"available_cash": 1000,
+		"group_card_limit": 2,
+		"priority_bid_cents": 0,
+		"play_cash_cost_cents": 0,
+		"available_cash_cents": 100000,
 		"skill": _qa_skill(),
 		"entry_context": {"queued_time": 1.0, "selected_district": 0},
 	}
@@ -905,8 +904,8 @@ func _submission_facts() -> Dictionary:
 		"player_count": 4,
 		"counter_window_active": false,
 		"batch_locked": false,
-		"simultaneous_timer": 30.0,
-		"lock_duration": 5.0,
+		"simultaneous_timer": 8.0,
+		"lock_duration": 2.0,
 		"window_sequence": 0,
 		"reference_player": -1,
 	}
@@ -998,23 +997,25 @@ func _cutover_behavior_record(case_id: String, characterization_case_id: String)
 	})
 
 
-func _case_bid_chain_receipts_service() -> Dictionary:
+func _case_public_wager_pool_receipt_service() -> Dictionary:
 	_prepare_players([[], [], []], [1000, 1000, 1000])
 	_runtime_main.set("card_resolution_batch_reference_player", 2)
-	_runtime_main.set("card_resolution_queue", [_entry(0, 301, 300, 1), _entry(1, 302, 200, 1), _entry(2, 303, 80, 1)])
-	var chain_variant: Variant = _runtime_main.call("_apply_card_group_bid_chain")
-	var chain: Dictionary = chain_variant if chain_variant is Dictionary else {}
+	_runtime_main.set("card_resolution_queue", [_entry(0, 301, 10000, 1), _entry(1, 302, 5000, 1), _entry(2, 303, 0, 1)])
+	var service := _queue_service()
+	var lock_variant: Variant = service.call("lock_batch", {"reference_player": 2, "player_count": 3}) if service != null else {}
+	var lock_result: Dictionary = lock_variant if lock_variant is Dictionary else {}
+	var receipt: Dictionary = lock_result.get("public_wager_pool_receipt", {}) if lock_result.get("public_wager_pool_receipt", {}) is Dictionary else {}
 	var annotations_ok := _queue().size() == 3
 	for entry_variant in _queue():
 		if entry_variant is Dictionary:
-			annotations_ok = annotations_ok and (entry_variant as Dictionary).has("group_bid_paid") and (entry_variant as Dictionary).has("group_bid_recipient_kind")
-	var aligned := int(chain.get("highest_bid", 0)) == 300 and annotations_ok and int(_queue_service_debug().get("revision", 0)) > 0
-	return _record("bid_chain_receipts_service", "300-200-80", _queue_metrics(true), {
-		"observed": not chain.is_empty(),
+			annotations_ok = annotations_ok and (entry_variant as Dictionary).has("locked_priority_bid_cents") and (entry_variant as Dictionary).has("priority_bid_recipient_kind")
+	var aligned := bool(lock_result.get("locked", false)) and int(receipt.get("total_cents", 0)) == 15000 and str(receipt.get("recipient_kind", "")) == "public_monster_wager_pool" and annotations_ok
+	return _record("public_wager_pool_receipt_service", "10000-5000-0-cents", _queue_metrics(true), {
+		"observed": not receipt.is_empty(),
 		"contract_aligned": aligned,
 		"service_owner_checked": annotations_ok,
 		"commit_checked": aligned,
-		"notes": "main.gd applies existing cash/ledger effects while the service records bid-chain metadata on every queued card.",
+		"notes": "Queue lock emits one exact public receipt that aggregates every fixed group bid into the next monster-wager pool.",
 	})
 
 
@@ -1078,12 +1079,12 @@ func _case_timing_controller_still_sole_owner() -> Dictionary:
 	var service_source := FileAccess.get_file_as_string(QUEUE_SERVICE_SCRIPT_PATH)
 	var debug := _queue_service_debug()
 	var aligned := controller_source.contains("func tick(") and controller_source.contains("total_window_seconds") and controller_source.contains("lock_seconds") and not service_source.contains("func tick(") and not bool(debug.get("timing_authority", true))
-	return _record("timing_controller_still_sole_owner", "30-25-5-boundary", {}, {
+	return _record("timing_controller_still_sole_owner", "8-6-2-boundary", {}, {
 		"observed": _controller() != null,
 		"contract_aligned": aligned,
 		"timing_boundary_checked": aligned,
 		"service_owner_checked": aligned,
-		"notes": "CardResolutionRuntimeController remains the sole 30/25/5 timer after queue cutover.",
+		"notes": "CardResolutionRuntimeController remains the sole 8/6/2 timer after the v0.5 domain cutover.",
 	})
 
 
@@ -1120,12 +1121,11 @@ func _case_legacy_queue_algorithms_absent() -> Dictionary:
 	var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 	var submit := _function_source(main_source, "_queue_skill_resolution")
 	var sorter := _function_source(main_source, "_sort_card_resolution_queue")
-	var normalizer := _function_source(main_source, "_normalize_card_resolution_queue_bids")
 	var locker := _function_source(main_source, "_lock_card_resolution_batch")
 	var starter := _function_source(main_source, "_start_next_card_resolution")
 	var promoter := _function_source(main_source, "_promote_next_card_resolution_batch")
-	var absent := not submit.contains(".append(entry)") and not submit.contains("slots[slot_index] =") and not sorter.contains("flatten_groups") and not normalizer.contains("with_group_bid") and not locker.contains("waiting[\"batch_position\"]") and not starter.contains(".pop_front()") and not promoter.contains("card_resolution_queue = next_card_resolution_queue")
-	var adapters := submit.contains("commit_card_resolution_queue_submission") and sorter.contains("service.call(\"sort_current\"") and normalizer.contains("service.call(\"normalize_bids\"") and locker.contains("service.call(\"lock_batch\"") and starter.contains("service.call(\"start_next\"") and promoter.contains("service.call(\"promote_next_batch\"")
+	var absent := not submit.contains(".append(entry)") and not submit.contains("slots[slot_index] =") and not sorter.contains("flatten_groups") and not main_source.contains("func _normalize_card_resolution_queue_bids") and not main_source.contains("func _apply_card_group_bid_chain") and not locker.contains("waiting[\"batch_position\"]") and not starter.contains(".pop_front()") and not promoter.contains("card_resolution_queue = next_card_resolution_queue")
+	var adapters := submit.contains("commit_card_resolution_queue_submission") and sorter.contains("service.call(\"sort_current\"") and locker.contains("service.call(\"lock_batch\"") and starter.contains("service.call(\"start_next\"") and promoter.contains("service.call(\"promote_next_batch\"") and main_source.contains("func _apply_card_group_wager_pool_receipt")
 	return _record("legacy_queue_algorithms_absent", "source-delete-gate", {}, {
 		"observed": absent,
 		"contract_aligned": absent and adapters,
@@ -1189,7 +1189,7 @@ func _clear_queue_state() -> void:
 	_runtime_main.set("active_card_resolution", {})
 	_runtime_main.set("resolved_card_history", [])
 	_runtime_main.set("card_resolution_batch_locked", false)
-	_runtime_main.set("card_resolution_simultaneous_timer", 30.0)
+	_runtime_main.set("card_resolution_simultaneous_timer", 8.0)
 	_runtime_main.set("card_resolution_auction_timer", 0.0)
 	_runtime_main.set("card_resolution_auction_open", false)
 	_runtime_main.set("card_resolution_counter_window_active", false)
@@ -1199,8 +1199,8 @@ func _clear_queue_state() -> void:
 	_runtime_main.set("last_card_resolution_player_index", -1)
 	_runtime_main.set("card_resolution_sequence", 0)
 	_runtime_main.set("card_group_window_sequence", 0)
-	_runtime_main.set("card_resolution_force_duration", 5.0)
-	_runtime_main.set("card_resolution_force_simultaneous_window", 30.0)
+	_runtime_main.set("card_resolution_force_duration", 2.0)
+	_runtime_main.set("card_resolution_force_simultaneous_window", 8.0)
 	_runtime_main.set("public_card_bid_monster_wager_pool", 0)
 	var contract_controller := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController")
 	if contract_controller != null and contract_controller.has_method("reset_state"):
@@ -1250,8 +1250,9 @@ func _entry_with_skill(player_index: int, resolution_id: int, bid: int, group_or
 		"group_id": "window_9_group_%d" % player_index,
 		"group_order": group_order,
 		"group_size": group_order,
-		"group_bid": bid,
-		"tip": bid,
+		"priority_bid_cents": bid,
+		"priority_bid_escrowed": true,
+		"locked_priority_bid_cents": 0,
 		"play_cost_paid_on_queue": true,
 		"consumed_on_queue": true,
 		"queued_behind_resolution": false,
@@ -1423,6 +1424,7 @@ func _ensure_runtime_main() -> bool:
 		return false
 	_runtime_main.name = "Main"
 	_runtime_main.visible = false
+	_runtime_main.set_process(false)
 	runtime_main_host.add_child(_runtime_main)
 	_hide_runtime_canvas_layers()
 	await get_tree().process_frame
@@ -1433,12 +1435,12 @@ func _ensure_runtime_main() -> bool:
 func _reset_runtime_main() -> void:
 	if _runtime_main == null:
 		return
-	_runtime_main.set_process(true)
+	_runtime_main.set_process(false)
 	_runtime_main.call("_new_game")
 	_hide_runtime_canvas_layers()
-	await get_tree().process_frame
-	await get_tree().process_frame
 	_runtime_main.set_process(false)
+	await get_tree().process_frame
+	await get_tree().process_frame
 	_clear_queue_state()
 
 
@@ -1547,7 +1549,7 @@ func _update_ui(manifest: Dictionary) -> void:
 	summary_label.text = "Queue lifecycle: %d/%d passed | %d observed | %d aligned | %d decisions" % [passed, CASE_COUNT, observed, aligned, decisions]
 	status_label.text = "CUTOVER 56/56" if passed == CASE_COUNT else "INCOMPLETE"
 	status_label.add_theme_color_override("font_color", Color("#4ade80") if passed == CASE_COUNT else Color("#fb7185"))
-	ownership_text.text = "[b]Sprint 35 ownership[/b]\n\n[b]CardResolutionQueueRuntimeService[/b]\n• current, active, and next queue state\n• sequence, group order, sort, lock, pop, and promotion\n• legacy queue save adapter and public-safe debug\n\n[b]CardResolutionRuntimeController[/b]\n• sole 30/25/5 clock and phase owner\n\n[b]Adjacent owners[/b]\n• CardResolutionExecutionRuntimeService orders active execution\n• main.gd keeps concrete world-effect adapters\n• neither owner stores a second queue"
+	ownership_text.text = "[b]SS05-05 queue ownership[/b]\n\n[b]CardResolutionQueueRuntimeService[/b]\n• current, active, and next queue state\n• capacity reservations and group ordering\n• fixed priority bids and public wager-pool receipt\n\n[b]CardResolutionRuntimeController[/b]\n• sole 8/6/2 clock, readiness, and phase owner\n\n[b]Adjacent owners[/b]\n• CardResolutionExecutionRuntimeService orders active execution\n• main.gd keeps concrete world-effect adapters\n• neither owner stores a second queue"
 	var lines: Array[String] = ["[b]Characterization + cutover gates[/b]"]
 	for record_variant in manifest.get("records", []):
 		var record: Dictionary = record_variant
@@ -1559,17 +1561,17 @@ func _update_ui(manifest: Dictionary) -> void:
 
 func _markdown_report(manifest: Dictionary) -> String:
 	var lines := [
-		"# Card Resolution Queue Runtime Cutover Sprint 35",
+		"# Card Resolution Queue Runtime v0.5 Alignment SS05-05",
 		"",
-		"- Ruleset: `v0.4`",
+		"- Card-group domain: `v0.5` (production global ruleset remains `v0.4`)",
 		"- Observed: **%d/%d**" % [int(manifest.get("observed_count", 0)), CASE_COUNT],
 		"- Contract aligned: **%d/%d**" % [int(manifest.get("aligned_count", 0)), CASE_COUNT],
 		"- Passed: **%d/%d**" % [_passed_count(), CASE_COUNT],
 		"- Characterization gate: **%d/%d**" % [_passed_count_for(characterization_cases()), CHARACTERIZATION_CASE_COUNT],
 		"- Cutover gate: **%d/%d**" % [_passed_count_for(cutover_cases()), CUTOVER_CASE_COUNT],
 		"- Needs design decision: **%d**" % int(manifest.get("needs_design_decision_count", 0)),
-		"- Pre-cutover main hash: `%s`" % PRE_CUTOVER_MAIN_SHA256,
-		"- Cutover changed main: **%s**" % str(manifest.get("main_changed_by_cutover", false)),
+		"- Historical Sprint 35 main hash: `%s`" % PRE_CUTOVER_MAIN_SHA256,
+		"- Main differs from historical Sprint 35: **%s**" % str(manifest.get("main_changed_by_cutover", false)),
 		"- Output: `%s`" % OUTPUT_DIR,
 		"",
 		"Public QA records intentionally exclude acting-player identity, private targets, private discards, and AI plans.",

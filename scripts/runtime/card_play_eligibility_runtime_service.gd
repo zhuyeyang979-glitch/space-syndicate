@@ -16,14 +16,16 @@ const COUNTERABLE_PLAYER_INTERACTION_KINDS := [
 ]
 
 var _configured := false
+var _ruleset_id := ""
 var _evaluation_count := 0
 var _hand_evaluation_count := 0
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 
 
-func configure(_ruleset_snapshot: Dictionary = {}) -> void:
-	_configured = true
+func configure(ruleset_snapshot: Dictionary = {}) -> void:
+	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
+	_configured = _ruleset_id == "v0.5"
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -59,6 +61,8 @@ func evaluate_play(request: Dictionary, facts: Dictionary) -> Dictionary:
 		"financial_cash_required": cash_cost + financial_margin_cash,
 		"financial_terms_version": str(financial_terms.get("terms_version", "")),
 		"requirement_status": requirement,
+		"industry_capacity_status": _dictionary(requirement.get("industry_capacity_status", {})),
+		"capacity_reservation": _dictionary(requirement.get("capacity_reservation", {})),
 		"target_status": target,
 		"target_kind": str(target.get("target_kind", "none")),
 		"target_required": bool(target.get("target_required", false)),
@@ -93,6 +97,8 @@ func requirement_status(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var skill := _dictionary(request.get("skill", {}))
 	var profile := CARD_PLAY_REQUIREMENT_POLICY.requirement_for(str(skill.get("name", "")), skill)
 	var required_percent := clampi(int(profile.get("required_share_percent", 0)), 0, 100)
+	if str(skill.get("schema_version", "")) == "v0.5":
+		required_percent = 0
 	if str(skill.get("kind", "")) == "area_trade_contract":
 		required_percent = maxi(0, required_percent - maxi(0, int(facts.get("contract_share_discount_percent", 0))))
 	var scope := str(profile.get("scope", CARD_PLAY_REQUIREMENT_POLICY.SCOPE_OWN_BEST_REGION))
@@ -119,6 +125,10 @@ func requirement_status(request: Dictionary, facts: Dictionary) -> Dictionary:
 	profile["financial_margin_cash"] = financial_margin_cash
 	profile["requirement_text"] = _requirement_text(profile, cash_cost, financial_margin_cash)
 	profile["chip_text"] = "免门槛" if required_percent <= 0 else "GDP≥%d%%" % required_percent
+	var industry_capacity_status := _industry_requirement_status(request, facts)
+	profile["industry_capacity_status"] = industry_capacity_status
+	profile["capacity_reservation"] = _dictionary(industry_capacity_status.get("capacity_reservation", {}))
+	profile["industry_capacity_satisfied"] = bool(industry_capacity_status.get("satisfied", false))
 	return profile
 
 
@@ -219,12 +229,14 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"service_ready": _configured,
 		"service_authoritative": _configured,
+		"ruleset_id": _ruleset_id,
 		"evaluation_count": _evaluation_count,
 		"hand_evaluation_count": _hand_evaluation_count,
 		"owns_play_eligibility": true,
 		"owns_requirement_status": true,
 		"owns_target_traits": true,
 		"owns_rejection_precedence": true,
+		"owns_industry_requirement_interpretation": true,
 		"queue_authority": false,
 		"execution_authority": false,
 		"effect_authority": false,
@@ -265,6 +277,9 @@ func _evaluate_rule(request: Dictionary, facts: Dictionary, common: Dictionary, 
 			"scope_label": str(requirement.get("scope_label", "任一经营区")),
 			"required_percent": int(requirement.get("required_share_percent", 0)),
 		}, requirement, target, mode, common)
+	var industry_status := _dictionary(requirement.get("industry_capacity_status", {}))
+	if not bool(industry_status.get("satisfied", false)):
+		return _result(false, false, str(industry_status.get("reason_code", "industry_capacity_insufficient")), _dictionary(industry_status.get("reason_args", {})), requirement, target, mode, common)
 	var cash_cost := int(common.get("cash_cost", 0))
 	var cash := int(facts.get("player_cash", 0))
 	if cash_cost > 0 and cash < cash_cost:
@@ -339,15 +354,181 @@ func _evaluate_hand(request: Dictionary, facts: Dictionary, common: Dictionary) 
 			"scope_label": str(requirement.get("scope_label", "任一经营区")),
 			"required_percent": int(requirement.get("required_share_percent", 0)),
 		}, requirement, target, "hand", common)
-	var desired_bid := int(facts.get("desired_bid", 0))
-	if desired_bid > 0 and cash < cash_cost + financial_margin_cash + desired_bid:
-		return _result(false, false, "bid_reserve_insufficient", {"cash_cost": cash_cost, "margin_cash": financial_margin_cash, "bid": desired_bid, "cash": cash}, requirement, target, "hand", common)
+	var industry_status := _dictionary(requirement.get("industry_capacity_status", {}))
+	if not bool(industry_status.get("satisfied", false)):
+		return _result(false, false, str(industry_status.get("reason_code", "industry_capacity_insufficient")), _dictionary(industry_status.get("reason_args", {})), requirement, target, "hand", common)
+	var desired_bid_cents := int(facts.get("desired_bid_cents", 0))
+	var player_cash_cents := int(facts.get("player_cash_cents", cash * 100))
+	var card_commitment_cents := (cash_cost + financial_margin_cash) * 100 + desired_bid_cents
+	if desired_bid_cents > 0 and player_cash_cents < card_commitment_cents:
+		return _result(false, false, "bid_reserve_insufficient", {
+			"cash_cost_cents": cash_cost * 100,
+			"margin_cents": financial_margin_cash * 100,
+			"bid_cents": desired_bid_cents,
+			"available_cash_cents": player_cash_cents,
+		}, requirement, target, "hand", common)
 	var playable_args := _playable_args(requirement, cash_cost, financial_margin_cash)
 	if bool(target.get("requires_target_monster", false)):
 		return _result(true, true, "needs_monster_target", playable_args, requirement, target, "hand", common)
 	if bool(target.get("requires_target_player", false)):
 		return _result(true, true, "needs_player_target", playable_args, requirement, target, "hand", common)
 	return _result(true, true, "playable", playable_args, requirement, target, "hand", common)
+
+
+func _industry_requirement_status(request: Dictionary, facts: Dictionary) -> Dictionary:
+	var skill := _dictionary(request.get("skill", {}))
+	if str(skill.get("schema_version", "")) == "v0.5" and str(skill.get("migration_status", "")) == "blocked":
+		return {
+			"satisfied": false,
+			"reason_code": "v05_card_migration_blocked",
+			"reason_args": {"card_id": str(skill.get("card_id", request.get("card_id", "")))},
+			"requirements": [],
+			"capacity_reservation": {},
+		}
+	var requirements_variant: Variant = skill.get("requirements", skill.get("requirements_v05", []))
+	var requirements: Array = requirements_variant if requirements_variant is Array else []
+	var availability: Dictionary = facts.get("industry_capacity_available", {}) if facts.get("industry_capacity_available", {}) is Dictionary else {}
+	if requirements.is_empty():
+		return {
+			"satisfied": true,
+			"reason_code": "",
+			"reason_args": {},
+			"requirements": [],
+			"compatibility_mode": "v04_colorless",
+			"capacity_reservation": {
+				"capacity_revision": str(availability.get("capacity_revision", "")),
+				"industries": {},
+				"requirement_choices": [],
+			},
+		}
+	if requirements.size() > 2:
+		return {
+			"satisfied": false,
+			"reason_code": "too_many_primary_requirements",
+			"reason_args": {"count": requirements.size()},
+			"requirements": [],
+			"capacity_reservation": {},
+		}
+	if not bool(availability.get("valid", false)):
+		return {
+			"satisfied": false,
+			"reason_code": "industry_capacity_snapshot_missing",
+			"reason_args": {},
+			"requirements": [],
+			"capacity_reservation": {},
+		}
+	var industries: Dictionary = availability.get("industries", {}) if availability.get("industries", {}) is Dictionary else {}
+	var products: Dictionary = availability.get("products", {}) if availability.get("products", {}) is Dictionary else {}
+	var product_industries: Dictionary = availability.get("product_industries", {}) if availability.get("product_industries", {}) is Dictionary else {}
+	var remaining := {}
+	for industry_id_variant in IndustryCapacityRuntimeService.REQUIRED_INDUSTRY_IDS:
+		var industry_id := str(industry_id_variant)
+		var industry_row: Dictionary = industries.get(industry_id, {}) if industries.get(industry_id, {}) is Dictionary else {}
+		remaining[industry_id] = maxi(0, int(industry_row.get("available_capacity", 0)))
+	var reservation := {}
+	var normalized: Array = []
+	var choices: Array = []
+	for requirement_index in range(requirements.size()):
+		if not (requirements[requirement_index] is Dictionary):
+			return _industry_requirement_failure("invalid_industry_requirement", {"requirement_index": requirement_index}, normalized)
+		var requirement := requirements[requirement_index] as Dictionary
+		var kind := str(requirement.get("requirement_kind", ""))
+		var required_capacity := maxi(0, int(requirement.get("required_capacity", 0)))
+		var industry_ids_variant: Variant = requirement.get("industry_ids", [])
+		var industry_ids: Array = industry_ids_variant if industry_ids_variant is Array else []
+		var selected_industries: Array = []
+		match kind:
+			"colorless":
+				if required_capacity != 0 or not industry_ids.is_empty() or str(requirement.get("product_id", "")) != "":
+					return _industry_requirement_failure("invalid_colorless_requirement", {"requirement_index": requirement_index}, normalized)
+			"single_industry":
+				if industry_ids.size() != 1:
+					return _industry_requirement_failure("invalid_single_industry_requirement", {"requirement_index": requirement_index}, normalized)
+				selected_industries = [str(industry_ids[0])]
+			"dual_industry":
+				if industry_ids.size() != 2 or str(industry_ids[0]) == str(industry_ids[1]):
+					return _industry_requirement_failure("invalid_dual_industry_requirement", {"requirement_index": requirement_index}, normalized)
+				selected_industries = [str(industry_ids[0]), str(industry_ids[1])]
+			"either_industry":
+				if industry_ids.size() != 2 or str(industry_ids[0]) == str(industry_ids[1]):
+					return _industry_requirement_failure("invalid_either_industry_requirement", {"requirement_index": requirement_index}, normalized)
+				for candidate_variant in industry_ids:
+					var candidate := str(candidate_variant)
+					if int(remaining.get(candidate, -1)) >= required_capacity:
+						selected_industries = [candidate]
+						break
+				if selected_industries.is_empty():
+					return _industry_requirement_failure("industry_capacity_insufficient", {"industry_ids": industry_ids.duplicate(), "required_capacity": required_capacity}, normalized)
+			"named_product":
+				var product_id := str(requirement.get("product_id", ""))
+				var required_product_gdp := maxi(0, int(requirement.get("required_product_gdp", 0)))
+				if product_id.is_empty() or not products.has(product_id):
+					return _industry_requirement_failure("unknown_named_product", {"product_id": product_id}, normalized)
+				if int(products.get(product_id, 0)) < required_product_gdp:
+					return _industry_requirement_failure("named_product_gdp_insufficient", {"product_id": product_id, "required_product_gdp": required_product_gdp, "current_product_gdp": int(products.get(product_id, 0))}, normalized)
+				if required_capacity > 0:
+					selected_industries = [str(product_industries.get(product_id, ""))]
+			_:
+				return _industry_requirement_failure("unknown_industry_requirement_kind", {"requirement_kind": kind}, normalized)
+		for selected_variant in selected_industries:
+			var selected_industry := str(selected_variant)
+			if not remaining.has(selected_industry):
+				return _industry_requirement_failure("unknown_industry", {"industry_id": selected_industry}, normalized)
+			if int(remaining.get(selected_industry, 0)) < required_capacity:
+				return _industry_requirement_failure("industry_capacity_insufficient", {"industry_id": selected_industry, "required_capacity": required_capacity, "available_capacity": int(remaining.get(selected_industry, 0))}, normalized)
+			remaining[selected_industry] = int(remaining.get(selected_industry, 0)) - required_capacity
+			reservation[selected_industry] = int(reservation.get(selected_industry, 0)) + required_capacity
+		var influence_status := _requirement_influence_status(requirement, facts)
+		if not bool(influence_status.get("satisfied", false)):
+			return _industry_requirement_failure("influence_insufficient", influence_status, normalized)
+		normalized.append({
+			"requirement_index": requirement_index,
+			"requirement_kind": kind,
+			"required_capacity": required_capacity,
+			"selected_industries": selected_industries.duplicate(),
+			"product_id": str(requirement.get("product_id", "")),
+			"required_product_gdp": maxi(0, int(requirement.get("required_product_gdp", 0))),
+			"influence": influence_status,
+		})
+		choices.append({"requirement_index": requirement_index, "selected_industries": selected_industries.duplicate()})
+	return {
+		"satisfied": true,
+		"reason_code": "",
+		"reason_args": {},
+		"requirements": normalized,
+		"capacity_reservation": {
+			"capacity_revision": str(availability.get("capacity_revision", "")),
+			"industries": reservation,
+			"requirement_choices": choices,
+		},
+	}
+
+
+func _requirement_influence_status(requirement: Dictionary, facts: Dictionary) -> Dictionary:
+	var required_influence_bp := maxi(0, int(requirement.get("required_influence_bp", 0)))
+	var scope := str(requirement.get("region_scope", "none"))
+	var district_index := int(facts.get("selected_district", -1))
+	if scope in ["own_best_region", "best_region"]:
+		district_index = int(facts.get("best_share_district", -1))
+	var shares: Dictionary = facts.get("share_basis_points_by_district", {}) if facts.get("share_basis_points_by_district", {}) is Dictionary else {}
+	var current_influence_bp := int(shares.get(str(district_index), 0))
+	return {
+		"satisfied": required_influence_bp <= 0 or current_influence_bp >= required_influence_bp,
+		"region_scope": scope,
+		"district_index": district_index,
+		"required_influence_bp": required_influence_bp,
+		"current_influence_bp": current_influence_bp,
+	}
+
+
+func _industry_requirement_failure(reason_code: String, reason_args: Dictionary, normalized: Array) -> Dictionary:
+	return {
+		"satisfied": false,
+		"reason_code": reason_code,
+		"reason_args": reason_args.duplicate(true),
+		"requirements": normalized.duplicate(true),
+		"capacity_reservation": {},
+	}
 
 
 func _playable_args(requirement: Dictionary, cash_cost: int, financial_margin_cash: int = 0) -> Dictionary:
@@ -409,6 +590,8 @@ func _result(allowed: bool, actionable: bool, reason_code: String, reason_args: 
 		"requires_target_monster": bool(extras.get("requires_target_monster", target.get("requires_target_monster", false))),
 		"requires_target_player": bool(extras.get("requires_target_player", target.get("requires_target_player", false))),
 		"queue_preflight": _dictionary(extras.get("queue_preflight", {})),
+		"industry_capacity_status": _dictionary(extras.get("industry_capacity_status", requirement.get("industry_capacity_status", {}))),
+		"capacity_reservation": _dictionary(extras.get("capacity_reservation", requirement.get("capacity_reservation", {}))),
 	}
 	return result
 

@@ -953,6 +953,21 @@ const RECORDS := [
 		"recommended_next_step": "Treat the outcome receipt as the only terminal result source and keep legacy cash-goal symbols absent.",
 		"mcp_notes": "SS05-04 is cutover complete. Standings, Final Settlement, AI, save summary, and main consume Controller snapshots or its immutable receipt.",
 	},
+	{
+		"id": "industry_capacity_card_group_v05_runtime_gate",
+		"display_name": "Industry Capacity & Card Group v0.5 Runtime Ownership",
+		"category": CATEGORY_RUNTIME_FALLBACKS,
+		"current_status": STATUS_SCENEIZED,
+		"current_path": "res://scenes/runtime/IndustryCapacityRuntimeService.tscn",
+		"runtime_owner": "res://scripts/runtime/industry_capacity_runtime_service.gd",
+		"related_paths": ["res://scenes/runtime/IndustryCapacityWorldBridge.tscn", "res://scenes/runtime/CardResolutionQueueRuntimeService.tscn", "res://scenes/runtime/CardResolutionRuntimeController.tscn", "res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn", "res://scenes/tools/IndustryCapacityCardGroupRuntimeBench.tscn", "res://docs/industry_capacity_card_group_runtime_contract.md", "res://resources/content/product_industry_catalog_v05.tres"],
+		"function_count": 0,
+		"key_functions": ["capacity_snapshot", "requirement_capacity_status", "plan_submission", "lock_batch", "release_capacity_for_group", "set_player_ready"],
+		"editor_visibility": "service_world_bridge_64_case_v05_runtime_gate_and_contract",
+		"risk_level": "high",
+		"recommended_next_step": "Use the same authored six-industry IDs and Queue receipt identity in later v0.5 card-content and monster-wager cutovers.",
+		"mcp_notes": "SS05-05 is cutover complete for this domain. The service derives capacity without owning projects or GDP; Queue owns reservations and the exact-once wager receipt; CardResolutionRuntimeController owns 8/6/2 time and readiness.",
+	},
 ]
 
 

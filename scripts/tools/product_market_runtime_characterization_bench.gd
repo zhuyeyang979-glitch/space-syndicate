@@ -583,7 +583,7 @@ func _case_controller_catalog_composition() -> Dictionary:
 func _queue_plan(cash: int) -> Dictionary:
 	_queue_service.reset_state()
 	return _queue_service.plan_submission({
-		"player_index": 0, "slot_index": 0, "already_queued": false, "desired_bid": 40,
+		"player_index": 0, "slot_index": 0, "already_queued": false, "desired_bid_cents": 4000,
 		"play_cash_cost": 0, "available_cash": cash, "cash_revision": "cash-%d" % cash,
 		"group_card_limit": 3, "skill": _skill("商品看涨1"), "entry_context": {"card_id": "商品看涨1"},
 	}, {"player_count": 4, "batch_locked": false, "counter_window_active": false, "simultaneous_timer": 25.0, "lock_duration": 5.0, "window_sequence": 0, "reference_player": 0})
