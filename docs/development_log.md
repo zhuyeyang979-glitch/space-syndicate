@@ -3,6 +3,14 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜v0.6 破产与中立遗产唯一运行时 owner
+
+- 新增场景化 `BankruptcyNeutralEstateRuntimeController` 与无状态 WorldBridge，静态组成进 `GameRuntimeCoordinator`；CommodityFlow Sale Receipt 完成后、资产恢复和 Victory 前执行唯一破产检查点。精确现金 `<0` 才破产，`==0` 留局；`main.gd` 的 `<=0`、现金夹零、散落调用和最后幸存触发已物理删除。
+- 五个真实 owner 以窄 `prepare/commit/rollback/finalize` 端口加入同一 exact-once journal：生产手牌清空，未售/待运商品清除，军队离场，怪兽去主，设施转中立；设施等级/区域共享 HP 与怪兽等级/HP/时钟不变。跨 owner revision/fingerprint 变化整笔逆序回滚，不在 Coordinator 或 Main 复制状态。
+- CommodityFlow 标记主动持续生产形成的仓储债务，允许其结算原子越过零；一次性被动强塞仍压缩仓储租金，WorldBridge 另有 fail-closed 负现金门。中立设施租金按 Sale Receipt identity exact-once 进入下一场怪兽公共赌池。
+- 公共破产回执严格只含 `player_indices`、五类 `estate_counts` 与 `reason`，不含精确现金、手牌/商品明细、真实 owner、弃牌或 AI 计划。存档接入留给 v3 owner registry，不在本切片写第二套 save 状态。
+- 8785 Funplay MCP focused 实景 Bench 为 16/16，通过后立即停止 play mode 并确认 `is_playing_scene=false`；最终完整回归、隐私、存档与集成验收仍由 Supervisor 执行。运行时合同见 `docs/bankruptcy_neutral_estate_runtime_contract.md`。
+
 ## 2026-07-15｜v0.6 多工作树 Godot MCP 基础设施
 
 - 活动 Godot 编辑器桥从旧 `godot_mcp` 切换为仓库内锁定的 Funplay MCP `v0.9.6`；上游、MIT 许可证、发行日期和 SHA-256 已记录。旧 addon 暂只作为停用的历史工具保留，不再启用。

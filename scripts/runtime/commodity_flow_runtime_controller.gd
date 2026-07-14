@@ -58,6 +58,7 @@ var _batch_sequence := 0
 var _flow_revision := 0
 var _current_game_time := 0.0
 var _last_flow_metrics: Dictionary = {}
+var _bankruptcy_estate_journal: Dictionary = {}
 
 
 func set_world_bridge(bridge: Node) -> void:
@@ -133,6 +134,102 @@ func reset_state() -> void:
 	_flow_revision = 0
 	_current_game_time = 0.0
 	_last_flow_metrics = {}
+	_bankruptcy_estate_journal.clear()
+
+
+func bankruptcy_estate_stage(stage: String, request: Dictionary) -> Dictionary:
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	var player_indices: Array = request.get("player_indices", []) if request.get("player_indices", []) is Array else []
+	if transaction_id.is_empty() or player_indices.is_empty() or not ["prepare", "commit", "rollback", "finalize"].has(stage):
+		return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_request_invalid")
+	var existing: Dictionary = _bankruptcy_estate_journal.get(transaction_id, {}) if _bankruptcy_estate_journal.get(transaction_id, {}) is Dictionary else {}
+	if not existing.is_empty() and existing.get("player_indices", []) != player_indices:
+		return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_transaction_collision")
+	match stage:
+		"prepare":
+			if not existing.is_empty():
+				return _bankruptcy_estate_result(stage, existing, true)
+			var targets: Dictionary = {}
+			for player_index_variant in player_indices:
+				targets[str(int(player_index_variant))] = true
+			var next_inventory := _warehouse_inventory.duplicate(true)
+			var next_supplies := _pending_one_shot_supplies.duplicate(true)
+			var removed := 0
+			for bucket_id_variant in _warehouse_inventory.keys():
+				var bucket: Dictionary = _warehouse_inventory[bucket_id_variant] if _warehouse_inventory[bucket_id_variant] is Dictionary else {}
+				if targets.has(str(int(bucket.get("owner_player_index", -1)))):
+					next_inventory.erase(bucket_id_variant)
+					removed += 1
+			for supply_id_variant in _pending_one_shot_supplies.keys():
+				var supply: Dictionary = _pending_one_shot_supplies[supply_id_variant] if _pending_one_shot_supplies[supply_id_variant] is Dictionary else {}
+				if targets.has(str(int(supply.get("player_index", -1)))):
+					next_supplies.erase(supply_id_variant)
+					removed += 1
+			existing = {
+				"state": "prepared",
+				"player_indices": player_indices.duplicate(),
+				"expected_flow_revision": _flow_revision,
+				"preimage_inventory": _warehouse_inventory.duplicate(true),
+				"preimage_supplies": _pending_one_shot_supplies.duplicate(true),
+				"postimage_inventory": next_inventory,
+				"postimage_supplies": next_supplies,
+				"estate_counts": {"goods_removed": removed},
+			}
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, false)
+		"commit":
+			if existing.is_empty():
+				return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_prepare_missing")
+			if str(existing.get("state", "")) in ["committed", "finalized"]:
+				return _bankruptcy_estate_result(stage, existing, true)
+			if str(existing.get("state", "")) != "prepared" or _flow_revision != int(existing.get("expected_flow_revision", -1)):
+				return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_revision_changed")
+			_warehouse_inventory = (existing.get("postimage_inventory", {}) as Dictionary).duplicate(true)
+			_pending_one_shot_supplies = (existing.get("postimage_supplies", {}) as Dictionary).duplicate(true)
+			_flow_revision += 1
+			existing["state"] = "committed"
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, false)
+		"rollback":
+			if existing.is_empty():
+				return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_prepare_missing")
+			if str(existing.get("state", "")) == "rolled_back":
+				return _bankruptcy_estate_result(stage, existing, true)
+			if str(existing.get("state", "")) == "finalized":
+				return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_already_finalized")
+			if str(existing.get("state", "")) == "committed":
+				_warehouse_inventory = (existing.get("preimage_inventory", {}) as Dictionary).duplicate(true)
+				_pending_one_shot_supplies = (existing.get("preimage_supplies", {}) as Dictionary).duplicate(true)
+				_flow_revision = int(existing.get("expected_flow_revision", _flow_revision))
+			existing["state"] = "rolled_back"
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, false)
+		"finalize":
+			if existing.is_empty() or not (str(existing.get("state", "")) in ["committed", "finalized"]):
+				return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_commit_missing")
+			var duplicate := str(existing.get("state", "")) == "finalized"
+			existing["state"] = "finalized"
+			for key in ["preimage_inventory", "preimage_supplies", "postimage_inventory", "postimage_supplies"]:
+				existing.erase(key)
+			_bankruptcy_estate_journal[transaction_id] = existing
+			return _bankruptcy_estate_result(stage, existing, duplicate)
+	return _bankruptcy_estate_failure(stage, "commodity_flow_bankruptcy_stage_invalid")
+
+
+func _bankruptcy_estate_result(stage: String, record: Dictionary, duplicate: bool) -> Dictionary:
+	return {
+		"prepared": stage == "prepare",
+		"committed": stage == "commit",
+		"rolled_back": stage == "rollback",
+		"finalized": stage == "finalize",
+		"duplicate": duplicate,
+		"reason_code": "commodity_flow_bankruptcy_%s" % stage,
+		"estate_counts": (record.get("estate_counts", {}) as Dictionary).duplicate(true) if record.get("estate_counts", {}) is Dictionary else {},
+	}
+
+
+func _bankruptcy_estate_failure(stage: String, reason_code: String) -> Dictionary:
+	return {"prepared": false, "committed": false, "rolled_back": false, "finalized": false, "stage": stage, "reason_code": reason_code, "estate_counts": {}}
 
 
 func install_commodity(request: Dictionary) -> Dictionary:
@@ -356,6 +453,7 @@ func inject_one_shot_supply(request: Dictionary) -> Dictionary:
 		"player_index": owner_index,
 		"region_id": region_id,
 		"milliunits": milliunits,
+		"storage_liability_kind": "passive_forced",
 	}
 	_pending_one_shot_supplies[transaction_id] = supply
 	var receipt := {
@@ -1716,11 +1814,12 @@ func _sale_receipt(sequence: int, commodity_id: String, production: Dictionary, 
 			"amount_per_unit_cents": storage_rent_cents,
 			"rent_basis_points": 0,
 		})
-	var rent_result := _rent_rows(rent_inputs, gross_value)
+	var active_storage_debt := str(production.get("storage_liability_kind", "passive_forced")) == "active_production"
+	var rent_result := _rent_rows(rent_inputs, gross_value, active_storage_debt)
 	var rent_rows: Array = rent_result.get("rows", [])
 	var total_rent := int(rent_result.get("total_rent", 0))
 	var receipt_id := "commodity-sale-%010d" % sequence
-	return {
+	var result := {
 		"receipt_id": receipt_id,
 		"trade_kind": "remote_route",
 		"commodity_owner": int(production.get("player_index", -1)),
@@ -1753,6 +1852,9 @@ func _sale_receipt(sequence: int, commodity_id: String, production: Dictionary, 
 			{"observer": "mana", "receipt_id": receipt_id},
 		],
 	}
+	if active_storage_debt and gross_value - total_rent < 0:
+		result["bankruptcy_causality"] = "active_storage_debt"
+	return result
 
 
 func _local_baseline_sale_receipt(sequence: int, trade_kind: String, commodity_id: String, claim: Dictionary, facts: Dictionary) -> Dictionary:
@@ -1803,7 +1905,7 @@ func _local_baseline_sale_receipt(sequence: int, trade_kind: String, commodity_i
 	}
 
 
-func _rent_rows(rows_variant: Variant, gross_value: int) -> Dictionary:
+func _rent_rows(rows_variant: Variant, gross_value: int, allow_active_storage_debt := false) -> Dictionary:
 	var rows: Array = []
 	var non_storage_total := 0
 	var storage_total := 0
@@ -1825,8 +1927,6 @@ func _rent_rows(rows_variant: Variant, gross_value: int) -> Dictionary:
 				"amount": amount,
 				"value_unit": "currency_cents",
 			}
-			if int(row.get("recipient_player_index", -1)) < 0:
-				continue
 			if facility_type == "warehouse":
 				storage_total += amount
 			else:
@@ -1845,7 +1945,7 @@ func _rent_rows(rows_variant: Variant, gross_value: int) -> Dictionary:
 			rows[row_index] = row
 			non_storage_total += scaled_amount
 	var storage_cap := maxi(0, gross_value - non_storage_total)
-	if storage_total > storage_cap and storage_total > 0:
+	if not allow_active_storage_debt and storage_total > storage_cap and storage_total > 0:
 		var storage_scale := float(storage_cap) / float(storage_total)
 		storage_total = 0
 		for row_index in range(rows.size()):
@@ -1916,6 +2016,7 @@ func _warehouse_outflow_claims(delta_milliseconds: int, facts: Dictionary, inven
 			"warehouse_id": warehouse_id,
 			"warehouse_owner_player_index": int(bucket.get("warehouse_owner_player_index", -1)),
 			"storage_rent_debt_cents": maxi(0, int(bucket.get("storage_rent_debt_cents", 0))),
+			"storage_liability_kind": str(bucket.get("storage_liability_kind", "passive_forced")),
 			"storage_rent_per_unit_cents": storage_rent_per_unit_cents,
 			"commodity_id": commodity_id,
 			"color": str(bucket.get("color", "")),
@@ -2015,6 +2116,7 @@ func _store_unmatched_claims(commodity_id: String, production_claims: Array, use
 					"storage_rent_basis_points_per_minute": int(_warehouse_storage_rent_bp_per_minute_by_rank.get(rank, 0)),
 					"warehouse_owner_player_index": int(facility.get("owner_player_index", -1)),
 					"storage_rent_debt_cents": 0,
+					"storage_liability_kind": "passive_forced" if source_kind == "one_shot" else "active_production",
 					"storage_rent_remainder": 0,
 				}
 			bucket["milliunits"] = int(bucket.get("milliunits", 0)) + stored
