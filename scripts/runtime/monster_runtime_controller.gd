@@ -503,16 +503,18 @@ func region_attraction_public_snapshot_v06(region_index: int) -> Dictionary:
 	var region := world_districts[region_index] as Dictionary
 	if bool(region.get("destroyed", false)):
 		return _monster_region_public_attraction_snapshot_v06(true, region_index, [], "monster_region_public_attraction_region_destroyed")
+	var live_records := _monster_region_public_live_records_v06()
+	var live_roster: Array = []
+	for record_variant: Variant in live_records:
+		var record := record_variant as Dictionary
+		live_roster.append(record.get("actor", {}) as Dictionary)
 	var entries: Array = []
-	for slot in range(auto_monsters.size()):
-		if not (auto_monsters[slot] is Dictionary):
-			continue
-		var actor := auto_monsters[slot] as Dictionary
-		if bool(actor.get("down", false)) or not actor.has("remaining_time") or float(actor.get("remaining_time", 0.0)) <= 0.0:
-			continue
-		var factor_codes := _monster_region_public_factor_codes_v06(_auto_monster_target_weight_parts(actor, region_index))
+	for record_variant: Variant in live_records:
+		var record := record_variant as Dictionary
+		var actor := record.get("actor", {}) as Dictionary
+		var factor_codes := _monster_region_public_factor_codes_v06(_auto_monster_target_weight_parts(actor, region_index, live_roster))
 		entries.append({
-			"ordinal": slot + 1,
+			"ordinal": int(record.get("ordinal", 0)),
 			"name": str(actor.get("name", "怪兽")),
 			"factor_codes": factor_codes,
 			"reason": _monster_region_public_reason_v06(factor_codes),
@@ -523,6 +525,18 @@ func region_attraction_public_snapshot_v06(region_index: int) -> Dictionary:
 		entries,
 		"monster_region_public_attraction_ready" if not entries.is_empty() else "monster_region_public_attraction_no_live_monsters"
 	)
+
+
+func _monster_region_public_live_records_v06() -> Array:
+	var result: Array = []
+	for slot in range(auto_monsters.size()):
+		if not (auto_monsters[slot] is Dictionary):
+			continue
+		var actor := auto_monsters[slot] as Dictionary
+		if bool(actor.get("down", false)) or not actor.has("remaining_time") or float(actor.get("remaining_time", 0.0)) <= 0.0:
+			continue
+		result.append({"ordinal": slot + 1, "actor": actor.duplicate(true)})
+	return result
 
 
 func summon_zone_available(district_index: int, required_terrain: String = "") -> bool:
@@ -4468,7 +4482,7 @@ func _monster_tick() -> void:
 func _special_monster_tick() -> void:
 	_auto_special_monster_tick()
 
-func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Dictionary:
+func _auto_monster_target_weight_parts(actor: Dictionary, index: int, peer_roster: Variant = null) -> Dictionary:
 	var parts := {
 		"base": 0,
 		"city": 0,
@@ -4494,7 +4508,12 @@ func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Diction
 	parts["distance"] = max(0, MONSTER_TARGET_DISTANCE_BASE - _entity_distance_to_district(actor, index) * MONSTER_TARGET_DISTANCE_STEP)
 	if d["miasma"]:
 		parts["miasma"] = MONSTER_TARGET_MIASMA_BONUS
-	for other_variant in auto_monsters:
+	var peer_source: Array = auto_monsters
+	if peer_roster is Array:
+		peer_source = peer_roster as Array
+	for other_variant in peer_source:
+		if not (other_variant is Dictionary):
+			continue
 		var other: Dictionary = other_variant
 		if other == actor or bool(other.get("down", false)):
 			continue

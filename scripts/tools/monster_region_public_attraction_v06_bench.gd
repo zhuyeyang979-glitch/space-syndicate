@@ -122,6 +122,7 @@ func run_suite() -> void:
 	_check("private_fact_invariance", _private_fact_invariance(baseline))
 	_check("public_factor_projection", _public_factor_projection())
 	_check("lifecycle_exclusion", _lifecycle_exclusion())
+	_check("expired_and_down_peers_do_not_project_other_monster", _expired_and_down_peers_do_not_project_other_monster())
 	_seed_single_live_actor()
 	_check("reason_is_non_numeric", _reason_is_non_numeric(_snapshot()))
 	_check("rng_and_targeting_unchanged", _rng_and_targeting_unchanged())
@@ -332,7 +333,31 @@ func _lifecycle_exclusion() -> bool:
 	district["destroyed"] = true
 	_world.districts[0] = district
 	var destroyed := _snapshot()
-	return entries.size() == 1 and str((entries[0] as Dictionary).get("name", "")) == "存活兽" and (destroyed.get("entries", []) as Array).is_empty() and str(destroyed.get("reason_code", "")) == "monster_region_public_attraction_region_destroyed"
+	return entries.size() == 1 and str((entries[0] as Dictionary).get("name", "")) == "存活兽" and int((entries[0] as Dictionary).get("ordinal", -1)) == 3 and (destroyed.get("entries", []) as Array).is_empty() and str(destroyed.get("reason_code", "")) == "monster_region_public_attraction_region_destroyed"
+
+
+func _expired_and_down_peers_do_not_project_other_monster() -> bool:
+	_seed_single_live_actor()
+	var live := _actor("存活兽", 0, 0, Vector2.ZERO)
+	_owner.auto_monsters = [live]
+	if _first_codes(_snapshot()).has("other_monster"):
+		return false
+	live = _actor("存活兽", 0, 4, Vector2(3000.0, 0.0))
+	var expired_peer := _actor("过期同区兽", 1, 0, Vector2.ZERO)
+	expired_peer["remaining_time"] = 0.0
+	var down_peer := _actor("倒地同区兽", 2, 0, Vector2.ZERO)
+	down_peer["down"] = true
+	_owner.auto_monsters = [live, expired_peer, down_peer]
+	var without_live_peer := _snapshot()
+	var entries: Array = without_live_peer.get("entries", []) if without_live_peer.get("entries", []) is Array else []
+	if entries.size() != 1 or str((entries[0] as Dictionary).get("name", "")) != "存活兽":
+		return false
+	if _first_codes(without_live_peer).has("other_monster"):
+		return false
+	var live_peer := _actor("同区活兽", 3, 0, Vector2.ZERO)
+	_owner.auto_monsters = [live, expired_peer, down_peer, live_peer]
+	var with_live_peer := _snapshot()
+	return _first_codes(with_live_peer).has("other_monster") and _reason_is_non_numeric(with_live_peer) and _recursive_private_sentinels(with_live_peer).is_empty()
 
 
 func _reason_is_non_numeric(snapshot: Dictionary) -> bool:
