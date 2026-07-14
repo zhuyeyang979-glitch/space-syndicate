@@ -15,6 +15,7 @@ const FullscreenMapOverlayScene := preload("res://scenes/ui/FullscreenMapOverlay
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
 const TutorialQuickStartBoardScene := preload("res://scenes/ui/TutorialQuickStartBoard.tscn")
 const RulesQuickReferenceBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
+const RulesQuickReferenceSnapshotV06Script := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const CompendiumHubSnapshotScript := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
 const EconomyDashboardScene := preload("res://scenes/ui/EconomyDashboard.tscn")
 const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
@@ -4623,62 +4624,7 @@ func _add_rules_quick_reference_board(parent: Container) -> void:
 		_report_required_ui_scene_missing("RulesQuickReferenceBoard", "set_board")
 		return
 	parent.add_child(board)
-	board.call("set_board", _rules_quick_reference_snapshot())
-
-
-func _rules_quick_reference_snapshot() -> Dictionary:
-	return {
-		"title": "牌桌规则速览",
-		"title_tooltip": "游戏内规则页：按桌游读桌顺序解释本局怎么行动，不显示开发说明。",
-		"tooltip": "规则速查板：先看怎么赢、开局做什么、钱怎么来、牌怎么用和线索怎么读。",
-		"accent": Color("#93c5fd"),
-		"kpi_columns": _menu_summary_grid_columns(),
-		"module_columns": clampi(int(floor(_menu_available_content_width() / 250.0)), 1, 4),
-		"chips": [
-			{"text": "控制区与GDP", "accent": Color("#fef3c7"), "tooltip": "唯一控制当前存续区域的40%，并让前K区商品GDP达到动态门槛。"},
-			{"text": "先看钱城牌怪", "accent": Color("#93c5fd"), "tooltip": "读桌顺序：钱、城市、手牌/牌轨、怪兽/军队、公开线索。"},
-			{"text": "主桌不背规则", "accent": Color("#38bdf8"), "tooltip": "主桌只保留当下能点的短提示；细则进规则页。"},
-			{"text": "隐私靠推理", "accent": Color("#c4b5fd"), "tooltip": "对手现金、手牌、弃牌和计划不直接显示。"},
-		],
-		"kpis": [
-			{"title": "我怎么赢？", "body": "控制区域并达成GDP深度。", "meta": "资格10秒后进入120秒公开审计。", "accent": Color("#fef3c7")},
-			{"title": "开局先做？", "body": "先看受光牌架，建立第一份收入。", "meta": "怪兽召唤完全自愿。", "accent": Color("#38bdf8")},
-			{"title": "为什么建城？", "body": "城市化份额产GDP。", "meta": "GDP按秒变钱。", "accent": Color("#4ade80")},
-			{"title": "怎么买/出牌？", "body": "买牌花钱，高阶看GDP份额。", "meta": "重复牌升级。", "accent": Color("#facc15")},
-			{"title": "怪兽为何重要？", "body": "它会抬高同区与邻区牌价。", "meta": "也会破坏GDP。", "accent": Color("#fb7185")},
-			{"title": "怎么读线索？", "body": "看牌轨、竞价、损伤。", "meta": "猜城市和牌主。", "accent": Color("#c084fc")},
-			{"title": "GDP怎么变？", "body": "生产、需求、运输相乘。", "meta": "破坏会拖慢。", "accent": Color("#2dd4bf")},
-			{"title": "何时结束？", "body": "公开审计完成。", "meta": "按前K区商品GDP、控制区数和准确现金比较。", "accent": Color("#fb923c")},
-		],
-		"keyword_title": "卡面符号｜看手牌先认这些",
-		"keyword_legend": [
-			{"symbol": "¥", "label": "价格/资金", "body": "买牌、报价或现金效果。", "accent": Color("#facc15")},
-			{"symbol": "%", "label": "GDP份额", "body": "高阶牌的常见门槛。", "accent": Color("#38bdf8")},
-			{"symbol": "◆", "label": "怪兽", "body": "召唤、诱导或指定怪兽。", "accent": Color("#fb7185")},
-			{"symbol": "◎", "label": "玩家/目标", "body": "需要指定玩家或对象。", "accent": Color("#c084fc")},
-			{"symbol": "⇄", "label": "合约/商路", "body": "连接供给、需求和运输。", "accent": Color("#2dd4bf")},
-			{"symbol": "⏳", "label": "持续/沙漏", "body": "按秒生效或进入倒计时。", "accent": Color("#fb923c")},
-			{"symbol": "％", "label": "份额/下注", "body": "城市份额或按现金比例下注。", "accent": Color("#fef08a")},
-			{"symbol": "一次", "label": "一次性牌", "body": "进入牌轨后结算离手。", "accent": Color("#94a3b8")},
-			{"symbol": "固定", "label": "固定技能", "body": "可重复用，有冷却。", "accent": Color("#fde68a")},
-		],
-		"module_title": "牌桌模块｜像桌游一样按区读",
-		"modules": [
-			{"title": "◆ 怪兽", "body": "召唤完全自愿。", "meta": "活怪会抬高附近牌价。", "accent": Color("#fb7185")},
-			{"title": "▣ 城市化", "body": "打出项目牌建份额。", "meta": "按GDP分钱。", "accent": Color("#4ade80")},
-			{"title": "＋ 牌架", "body": "双击区域看牌。", "meta": "来源受光时可买。", "accent": Color("#38bdf8")},
-			{"title": "◎ 公开牌轨", "body": "亮牌，不亮玩家。", "meta": "条件会留线索。", "accent": Color("#c084fc")},
-			{"title": "¥ 报价", "body": "多人出牌先竞价。", "meta": "金额公开。", "accent": Color("#facc15")},
-			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇停表下注。", "meta": "按现金比例押。", "accent": Color("#fb923c")},
-			{"title": "⇄ 合约", "body": "连接供给和需求。", "meta": "签拒都留线索。", "accent": Color("#2dd4bf")},
-			{"title": "⚔ 军队", "body": "短期受控战力。", "meta": "能守城或压制。", "accent": Color("#a3e635")},
-			{"title": "☄ 天气", "body": "预报后影响区域。", "meta": "提前调整路线。", "accent": Color("#93c5fd")},
-			{"title": "📈 金融", "body": "买涨/做空GDP。", "meta": "看一段时间变化。", "accent": Color("#f472b6")},
-			{"title": "🕵 情报", "body": "查归属或缩嫌疑。", "meta": "错猜要付钱。", "accent": Color("#c084fc")},
-			{"title": "🌊 商品/商路", "body": "供需和运输定价。", "meta": "路线坏会减收。", "accent": Color("#2dd4bf")},
-		],
-		"footer": "这页解释怎么玩；主桌只显示当前能点什么。",
-	}
+	board.call("set_board", RulesQuickReferenceSnapshotV06Script.compose(_menu_available_content_width()))
 
 
 func _populate_standings_summary_cards(snapshot: Dictionary = {}) -> void:

@@ -1,6 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE_PATH := "res://scenes/main.tscn"
+const RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const RULES_BOARD_SCENE_PATH := "res://scenes/ui/RulesQuickReferenceBoard.tscn"
 
 var _failures: Array[String] = []
@@ -17,71 +17,61 @@ func _run() -> void:
 
 
 func _check_rules_are_game_ui_data() -> void:
-	var packed := load(MAIN_SCENE_PATH) as PackedScene
-	_expect(packed != null, "main scene loads for in-game rules coverage")
-	if packed == null:
-		return
-	var main := packed.instantiate()
-	_expect(main != null, "main scene instantiates for in-game rules coverage")
-	if main == null:
-		return
-	var snapshot: Dictionary = main.call("_rules_quick_reference_snapshot") as Dictionary
+	var snapshot: Dictionary = RULES_SNAPSHOT.compose(1120.0)
 	var snapshot_text := var_to_str(snapshot)
 	for term in [
-		"我怎么赢",
-		"开局先做",
-		"为什么建城",
-		"怎么买/出牌",
-		"怪兽为何重要",
-		"怎么读线索",
-		"GDP怎么变",
-		"何时结束",
+		"区域怎样算控制",
+		"怎样进入终局",
+		"审计怎样结算",
+		"现金为 0 会出局吗",
+		"普通牌从哪里买",
+		"怎样升级手牌",
+		"何时自动合并",
+		"哪些旧规则已退役",
 	]:
 		_expect(snapshot_text.contains(term), "game rules UI answers player question: %s" % term)
 	for module_term in [
-		"城市化",
-		"区域牌架",
-		"公开牌轨",
-		"怪兽赌局",
-		"军队",
-		"天气",
-		"金融",
-		"情报",
-		"商品/商路",
+		"动态区域胜利",
+		"商品 GDP 控制",
+		"公开审计",
+		"破产",
+		"日照动态市场",
+		"主动合并",
+		"满手领取例外",
+		"退役旧链路",
 	]:
 		_expect(snapshot_text.contains(module_term), "game rules UI exposes table module: %s" % module_term)
-	_expect(snapshot_text.contains("按现金比例押"), "monster wager rule is exposed as percentage-based betting in the game UI")
-	_expect(not snapshot_text.contains("守护者") and not snapshot_text.contains("D6") and not snapshot_text.contains("旧"), "game rules UI does not expose obsolete/development-history rules")
-	main.queue_free()
+	_expect(str(snapshot.get("visibility_scope", "")) == "public_static_rules", "rules snapshot is explicitly public static presentation data")
+	_expect(not snapshot_text.contains("player_index") and not snapshot_text.contains("cash") and not snapshot_text.contains("hand"), "rules snapshot does not expose runtime player state")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(not main_source.contains("func _rules_quick_reference_snapshot"), "Main no longer owns a duplicate rules snapshot builder")
+	_expect(main_source.contains("RulesQuickReferenceSnapshotV06Script.compose"), "Main consumes the v0.6 pure-data rules snapshot")
 
 
 func _check_rules_board_renders_player_questions() -> void:
-	var main_scene := load(MAIN_SCENE_PATH) as PackedScene
 	var board_scene := load(RULES_BOARD_SCENE_PATH) as PackedScene
-	_expect(main_scene != null and board_scene != null, "main and rules board scenes load")
-	if main_scene == null or board_scene == null:
+	_expect(board_scene != null, "rules board scene loads")
+	if board_scene == null:
 		return
-	var main := main_scene.instantiate()
 	var board := board_scene.instantiate() as Control
-	_expect(main != null and board != null and board.has_method("set_board"), "rules board instantiates and accepts game data")
-	if main == null or board == null or not board.has_method("set_board"):
+	_expect(board != null and board.has_method("set_board"), "rules board instantiates and accepts game data")
+	if board == null or not board.has_method("set_board"):
 		return
 	root.add_child(board)
 	await process_frame
-	board.call("set_board", main.call("_rules_quick_reference_snapshot"))
+	board.call("set_board", RULES_SNAPSHOT.compose(1120.0))
 	await process_frame
 	var rendered_text := _node_text(board)
-	for term in ["我怎么赢", "开局先做", "为什么建城", "怪兽为何重要", "何时结束"]:
+	for term in ["区域怎样算控制", "普通牌从哪里买", "怎样升级手牌", "现金为 0 会出局吗"]:
 		_expect(rendered_text.contains(term), "rules board renders player-facing question card: %s" % term)
 	var kpi_grid := board.find_child("RulesQuickReferenceKpiGrid", true, false)
 	var module_grid := board.find_child("RulesQuickReferenceModuleGrid", true, false)
 	var keyword_rail := board.find_child("RulesQuickReferenceKeywordRail", true, false)
 	_expect(kpi_grid != null and kpi_grid.get_child_count() >= 8, "rules board renders at least eight first-glance rule cards")
-	_expect(module_grid != null and module_grid.get_child_count() >= 10, "rules board renders table modules instead of a prose-only rulebook")
+	_expect(module_grid != null and module_grid.get_child_count() >= 8, "rules board renders v0.6 rule modules instead of a prose-only rulebook")
 	_expect(keyword_rail != null and keyword_rail.get_child_count() >= 8, "rules board renders a keyword legend for compact card text")
 	root.remove_child(board)
 	board.queue_free()
-	main.queue_free()
 	await process_frame
 
 
