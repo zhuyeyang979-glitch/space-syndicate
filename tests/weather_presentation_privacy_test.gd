@@ -40,6 +40,17 @@ static func run_checks() -> Array[String]:
 	_expect(not _contains_private_key(valid_view), "public forecast output contains a private key", failures)
 	_expect(not JSON.stringify(valid_view).contains("private_sentinel"), "public forecast output leaked a sentinel", failures)
 
+	var runtime_definitions := BENCH.runtime_definitions_fixture()
+	var runtime_extra := BENCH.runtime_snapshot_fixture("full")
+	runtime_extra["status_text"] = "legacy text must not be read"
+	_expect(forecast_vm.compose_from_runtime(runtime_extra, runtime_definitions).is_empty(), "runtime adapter accepted a legacy text key", failures)
+	var runtime_private := BENCH.runtime_snapshot_fixture("full")
+	runtime_private["events"][0]["owner"] = "private_sentinel"
+	_expect(forecast_vm.compose_from_runtime(runtime_private, runtime_definitions).is_empty(), "runtime adapter accepted a nested private key", failures)
+	var definition_private := BENCH.runtime_definitions_fixture()
+	definition_private["definitions"][0]["save"] = "private_sentinel"
+	_expect(forecast_vm.compose_from_runtime(BENCH.runtime_snapshot_fixture("full"), definition_private).is_empty(), "runtime adapter accepted a private definition key", failures)
+
 	var telemetry := TELEMETRY_BUFFER.new(3)
 	for index: int in range(4):
 		var event := _telemetry_event()

@@ -60,6 +60,24 @@ static func run_checks() -> Array[String]:
 	for source_type: String in ["natural", "monster", "card"]:
 		_expect(seen_sources.has(source_type), "source_type fixture missing: %s" % source_type, failures)
 
+	var runtime_source := BENCH.runtime_snapshot_fixture("full")
+	(runtime_source["events"][0] as Dictionary)["active_remaining_seconds"] = 185.125
+	(runtime_source["events"][0] as Dictionary)["forecast_remaining_seconds"] = 999.0
+	(runtime_source["events"][0] as Dictionary)["fade_remaining_seconds"] = 888.0
+	var runtime_view := forecast_vm.compose_from_runtime(runtime_source, BENCH.runtime_definitions_fixture())
+	_expect(not runtime_view.is_empty(), "real-shape runtime fixture was rejected: %s" % forecast_vm.get_last_error(), failures)
+	if not runtime_view.is_empty():
+		var active_event := (runtime_view["events"] as Array)[0] as Dictionary
+		_expect(runtime_view["world_effective_us"] == runtime_source["world_effective_us"], "runtime world_effective_us changed", failures)
+		_expect(runtime_view["source_revision"] == runtime_source["sequence"], "runtime sequence did not become source revision", failures)
+		_expect(active_event["remaining_us"] == 185_125_000, "active remaining seconds were not normalized to remaining_us", failures)
+		_expect((active_event["effects"] as Array).size() == 3, "runtime definition effects were not joined", failures)
+		var queued_event := (runtime_view["events"] as Array)[1] as Dictionary
+		_expect(queued_event["remaining_us"] == 420_000_000, "queued phase did not select forecast_remaining_seconds", failures)
+	var fading_view := forecast_vm.compose_from_runtime(BENCH.runtime_snapshot_fixture("off"), BENCH.runtime_definitions_fixture())
+	_expect(not fading_view.is_empty() and (fading_view["events"][0] as Dictionary)["remaining_us"] == 74_000_000, "fading phase did not select fade_remaining_seconds", failures)
+	_expect(forecast_vm.compose(runtime_source).is_empty(), "synthetic compose contract accepted runtime schema", failures)
+
 	var extra_key_source := BENCH.fixture_source("full")
 	extra_key_source["unexpected"] = true
 	_expect(forecast_vm.compose(extra_key_source).is_empty(), "source accepted an unknown top-level key", failures)

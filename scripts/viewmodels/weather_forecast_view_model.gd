@@ -4,6 +4,8 @@ class_name WeatherForecastViewModel
 const SOURCE_SCHEMA := "weather_public_snapshot.v1"
 const VIEW_SCHEMA := "weather_forecast_view_model.v1"
 const CLOCK_DOMAIN := "world_effective"
+const CONTROLLER_SCHEMA := 2
+const DEFINITIONS_SCHEMA := "weather_definitions_public.v1"
 
 const WEATHER_IDS := [
 	"ion_storm",
@@ -27,6 +29,45 @@ const SOURCE_KEYS := [
 	"source_revision",
 	"definitions",
 	"events",
+]
+const CONTROLLER_KEYS := [
+	"schema_version",
+	"world_effective_us",
+	"sequence",
+	"next_generation_world_us",
+	"new_forecasts_allowed",
+	"events",
+]
+const CONTROLLER_EVENT_KEYS := [
+	"id",
+	"definition_id",
+	"type",
+	"label",
+	"color",
+	"region_indices",
+	"districts",
+	"phase",
+	"source_type",
+	"created_world_us",
+	"boundary_world_us",
+	"forecast_remaining_seconds",
+	"active_remaining_seconds",
+	"fade_remaining_seconds",
+	"intensity",
+]
+const DEFINITIONS_SNAPSHOT_KEYS := ["schema_version", "definitions"]
+const CONTROLLER_DEFINITION_KEYS := [
+	"definition_id",
+	"type",
+	"label",
+	"description",
+	"category",
+	"icon_key",
+	"accent_hex",
+	"pattern_key",
+	"exploitation_hint",
+	"counterplay_hint",
+	"effects",
 ]
 const DEFINITION_KEYS := ["definition_id", "display_name", "icon_key", "accent_hex", "pattern_key"]
 const SOURCE_EVENT_KEYS := [
@@ -84,6 +125,18 @@ func compose(public_snapshot: Dictionary) -> Dictionary:
 	_last_error = ""
 	if not _validate_source(public_snapshot):
 		return {}
+	return _compose_validated_payload(public_snapshot)
+
+
+func compose_from_runtime(runtime_snapshot: Dictionary, definitions_snapshot: Dictionary) -> Dictionary:
+	_last_error = ""
+	var public_payload := _adapt_runtime_payload(runtime_snapshot, definitions_snapshot)
+	if public_payload.is_empty():
+		return {}
+	return compose(public_payload)
+
+
+func _compose_validated_payload(public_snapshot: Dictionary) -> Dictionary:
 
 	var definitions: Array = []
 	var definitions_by_id: Dictionary = {}
@@ -215,6 +268,16 @@ func source_field_schema() -> Dictionary:
 	}
 
 
+func runtime_adapter_field_schema() -> Dictionary:
+	return {
+		"runtime": CONTROLLER_KEYS.duplicate(),
+		"runtime_event": CONTROLLER_EVENT_KEYS.duplicate(),
+		"definitions_snapshot": DEFINITIONS_SNAPSHOT_KEYS.duplicate(),
+		"definition": CONTROLLER_DEFINITION_KEYS.duplicate(),
+		"effect": EFFECT_KEYS.duplicate(),
+	}
+
+
 func view_field_schema() -> Dictionary:
 	return {
 		"view": VIEW_KEYS.duplicate(),
@@ -224,6 +287,201 @@ func view_field_schema() -> Dictionary:
 		"effect": EFFECT_KEYS.duplicate(),
 		"summary": SUMMARY_KEYS.duplicate(),
 	}
+
+
+func _adapt_runtime_payload(runtime_snapshot: Dictionary, definitions_snapshot: Dictionary) -> Dictionary:
+	if _contains_forbidden_key(runtime_snapshot) or _contains_forbidden_key(definitions_snapshot):
+		_reject("controller_forbidden_key")
+		return {}
+	if not _has_exact_keys(runtime_snapshot, CONTROLLER_KEYS):
+		_reject("controller_keys")
+		return {}
+	if runtime_snapshot["schema_version"] != CONTROLLER_SCHEMA:
+		_reject("controller_schema")
+		return {}
+	if typeof(runtime_snapshot["world_effective_us"]) != TYPE_INT or int(runtime_snapshot["world_effective_us"]) < 0:
+		_reject("controller_clock")
+		return {}
+	if typeof(runtime_snapshot["sequence"]) != TYPE_INT or int(runtime_snapshot["sequence"]) < 0:
+		_reject("controller_sequence")
+		return {}
+	if typeof(runtime_snapshot["next_generation_world_us"]) != TYPE_INT or int(runtime_snapshot["next_generation_world_us"]) < 0:
+		_reject("controller_next_generation")
+		return {}
+	if typeof(runtime_snapshot["new_forecasts_allowed"]) != TYPE_BOOL:
+		_reject("controller_forecast_gate")
+		return {}
+	if typeof(runtime_snapshot["events"]) != TYPE_ARRAY or (runtime_snapshot["events"] as Array).size() > 16:
+		_reject("controller_events")
+		return {}
+	if not _has_exact_keys(definitions_snapshot, DEFINITIONS_SNAPSHOT_KEYS):
+		_reject("controller_definitions_keys")
+		return {}
+	if definitions_snapshot["schema_version"] != DEFINITIONS_SCHEMA or typeof(definitions_snapshot["definitions"]) != TYPE_ARRAY:
+		_reject("controller_definitions_schema")
+		return {}
+
+	var definitions_by_id: Dictionary = {}
+	var payload_definitions: Array = []
+	var definition_details: Dictionary = {}
+	var raw_definitions := definitions_snapshot["definitions"] as Array
+	if raw_definitions.size() != WEATHER_IDS.size():
+		_reject("controller_definition_count")
+		return {}
+	for raw_definition: Variant in raw_definitions:
+		if typeof(raw_definition) != TYPE_DICTIONARY:
+			_reject("controller_definition_type")
+			return {}
+		var definition := raw_definition as Dictionary
+		if not _has_exact_keys(definition, CONTROLLER_DEFINITION_KEYS):
+			_reject("controller_definition_keys")
+			return {}
+		var definition_id: Variant = definition["definition_id"]
+		if typeof(definition_id) != TYPE_STRING or not WEATHER_IDS.has(definition_id) or definitions_by_id.has(definition_id):
+			_reject("controller_definition_id")
+			return {}
+		if definition["type"] != definition_id:
+			_reject("controller_definition_type_alias")
+			return {}
+		if not _valid_public_text(definition["label"], false, 64) or not _valid_public_text(definition["description"], false, 512):
+			_reject("controller_definition_text")
+			return {}
+		if not _valid_machine_token(definition["category"], 64):
+			_reject("controller_definition_category")
+			return {}
+		if typeof(definition["icon_key"]) != TYPE_STRING or not ICON_KEYS.has(definition["icon_key"]):
+			_reject("controller_definition_icon")
+			return {}
+		if typeof(definition["pattern_key"]) != TYPE_STRING or not PATTERN_KEYS.has(definition["pattern_key"]):
+			_reject("controller_definition_pattern")
+			return {}
+		if not _valid_hex_color(definition["accent_hex"]):
+			_reject("controller_definition_color")
+			return {}
+		if not _valid_public_text(definition["exploitation_hint"], false, 256) or not _valid_public_text(definition["counterplay_hint"], false, 256):
+			_reject("controller_definition_hints")
+			return {}
+		if typeof(definition["effects"]) != TYPE_ARRAY or not _validate_effects(definition["effects"] as Array):
+			return {}
+		definitions_by_id[definition_id] = true
+		definition_details[definition_id] = definition
+		payload_definitions.append({
+			"definition_id": definition_id,
+			"display_name": definition["label"],
+			"icon_key": definition["icon_key"],
+			"accent_hex": definition["accent_hex"],
+			"pattern_key": definition["pattern_key"],
+		})
+	for expected_id: String in WEATHER_IDS:
+		if not definitions_by_id.has(expected_id):
+			_reject("controller_definition_missing")
+			return {}
+
+	var payload_events: Array = []
+	var event_ids: Dictionary = {}
+	for raw_event: Variant in runtime_snapshot["events"]:
+		if typeof(raw_event) != TYPE_DICTIONARY:
+			_reject("controller_event_type")
+			return {}
+		var event := raw_event as Dictionary
+		if not _has_exact_keys(event, CONTROLLER_EVENT_KEYS):
+			_reject("controller_event_keys")
+			return {}
+		if typeof(event["id"]) != TYPE_INT or int(event["id"]) < 1 or event_ids.has(event["id"]):
+			_reject("controller_event_id")
+			return {}
+		event_ids[event["id"]] = true
+		if typeof(event["definition_id"]) != TYPE_STRING or not definition_details.has(event["definition_id"]):
+			_reject("controller_event_definition")
+			return {}
+		if event["type"] != event["definition_id"]:
+			_reject("controller_event_type_alias")
+			return {}
+		var definition := definition_details[event["definition_id"]] as Dictionary
+		if event["label"] != definition["label"] or event["color"] != definition["accent_hex"]:
+			_reject("controller_event_style_alias")
+			return {}
+		if typeof(event["phase"]) != TYPE_STRING or not PHASES.has(event["phase"]):
+			_reject("controller_event_phase")
+			return {}
+		if typeof(event["source_type"]) != TYPE_STRING or not SOURCE_TYPES.has(event["source_type"]):
+			_reject("controller_event_source_type")
+			return {}
+		if typeof(event["created_world_us"]) != TYPE_INT or int(event["created_world_us"]) < 0:
+			_reject("controller_event_created")
+			return {}
+		if typeof(event["boundary_world_us"]) != TYPE_INT or int(event["boundary_world_us"]) < 0:
+			_reject("controller_event_boundary")
+			return {}
+		if not _valid_seconds(event["forecast_remaining_seconds"]) or not _valid_seconds(event["active_remaining_seconds"]) or not _valid_seconds(event["fade_remaining_seconds"]):
+			_reject("controller_event_remaining")
+			return {}
+		if not _valid_intensity(event["intensity"], event["phase"]):
+			_reject("controller_event_intensity")
+			return {}
+		var regions := _controller_regions(event)
+		if regions.is_empty():
+			return {}
+		payload_events.append({
+			"event_id": event["id"],
+			"definition_id": event["definition_id"],
+			"regions": regions,
+			"phase": event["phase"],
+			"remaining_us": _seconds_to_us(_phase_remaining_seconds(event)),
+			"intensity": float(event["intensity"]),
+			"source_type": event["source_type"],
+			"effects": (definition["effects"] as Array).duplicate(true),
+			"exploitation_hint": definition["exploitation_hint"],
+			"counterplay_hint": definition["counterplay_hint"],
+		})
+
+	return {
+		"schema_version": SOURCE_SCHEMA,
+		"clock_domain": CLOCK_DOMAIN,
+		"world_effective_us": runtime_snapshot["world_effective_us"],
+		"source_revision": runtime_snapshot["sequence"],
+		"definitions": payload_definitions,
+		"events": payload_events,
+	}
+
+
+func _controller_regions(event: Dictionary) -> Array:
+	if typeof(event["region_indices"]) != TYPE_ARRAY or typeof(event["districts"]) != TYPE_ARRAY:
+		_reject("controller_event_regions_type")
+		return []
+	var region_indices := event["region_indices"] as Array
+	var districts := event["districts"] as Array
+	if region_indices.is_empty() or region_indices.size() > 32 or region_indices != districts:
+		_reject("controller_event_regions_alias")
+		return []
+	var seen: Dictionary = {}
+	var regions: Array = []
+	for raw_region_index: Variant in region_indices:
+		if typeof(raw_region_index) != TYPE_INT or int(raw_region_index) < 0 or seen.has(raw_region_index):
+			_reject("controller_event_region_index")
+			return []
+		seen[raw_region_index] = true
+		regions.append({"region_index": raw_region_index, "label": "区域 %d" % int(raw_region_index)})
+	return regions
+
+
+func _phase_remaining_seconds(event: Dictionary) -> float:
+	match event["phase"]:
+		"queued", "forecast": return float(event["forecast_remaining_seconds"])
+		"active": return float(event["active_remaining_seconds"])
+		"fading": return float(event["fade_remaining_seconds"])
+	return 0.0
+
+
+func _valid_seconds(value: Variant) -> bool:
+	if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+		return false
+	var seconds := float(value)
+	return is_finite(seconds) and seconds >= 0.0 and seconds <= 31_536_000.0
+
+
+func _seconds_to_us(seconds: float) -> int:
+	return int(round(seconds * 1_000_000.0))
 
 
 func _validate_source(public_snapshot: Dictionary) -> bool:

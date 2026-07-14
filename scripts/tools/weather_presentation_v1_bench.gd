@@ -146,6 +146,71 @@ static func fixture_source(fixture_id: String) -> Dictionary:
 	}
 
 
+static func runtime_definitions_fixture() -> Dictionary:
+	var definitions: Array = []
+	for raw_definition: Variant in definitions_fixture():
+		var definition := raw_definition as Dictionary
+		var definition_id := str(definition["definition_id"])
+		definitions.append({
+			"definition_id": definition_id,
+			"type": definition_id,
+			"label": definition["display_name"],
+			"description": _description_for(definition_id),
+			"category": "regional_weather",
+			"icon_key": definition["icon_key"],
+			"accent_hex": definition["accent_hex"],
+			"pattern_key": definition["pattern_key"],
+			"exploitation_hint": _exploitation_hint(definition_id),
+			"counterplay_hint": _counterplay_hint(definition_id),
+			"effects": _effects_for(definition_id),
+		})
+	return {"schema_version": "weather_definitions_public.v1", "definitions": definitions}
+
+
+static func runtime_snapshot_fixture(fixture_id: String = "full") -> Dictionary:
+	var source := fixture_source(fixture_id)
+	var definitions_by_id: Dictionary = {}
+	for raw_definition: Variant in definitions_fixture():
+		var definition := raw_definition as Dictionary
+		definitions_by_id[definition["definition_id"]] = definition
+	var events: Array = []
+	for raw_event: Variant in source["events"]:
+		var event := raw_event as Dictionary
+		var definition := definitions_by_id[event["definition_id"]] as Dictionary
+		var indices: Array = []
+		for raw_region: Variant in event["regions"]:
+			indices.append(int((raw_region as Dictionary)["region_index"]))
+		var remaining_seconds := float(event["remaining_us"]) / 1_000_000.0
+		var forecast_remaining_seconds := remaining_seconds if event["phase"] == "queued" or event["phase"] == "forecast" else 0.0
+		var active_remaining_seconds := remaining_seconds if event["phase"] == "active" else 0.0
+		var fade_remaining_seconds := remaining_seconds if event["phase"] == "fading" else 0.0
+		events.append({
+			"id": event["event_id"],
+			"definition_id": event["definition_id"],
+			"type": event["definition_id"],
+			"label": definition["display_name"],
+			"color": definition["accent_hex"],
+			"region_indices": indices.duplicate(),
+			"districts": indices.duplicate(),
+			"phase": event["phase"],
+			"source_type": event["source_type"],
+			"created_world_us": int(source["world_effective_us"]) - 60_000_000,
+			"boundary_world_us": int(source["world_effective_us"]) + int(event["remaining_us"]),
+			"forecast_remaining_seconds": forecast_remaining_seconds,
+			"active_remaining_seconds": active_remaining_seconds,
+			"fade_remaining_seconds": fade_remaining_seconds,
+			"intensity": event["intensity"],
+		})
+	return {
+		"schema_version": 2,
+		"world_effective_us": source["world_effective_us"],
+		"sequence": 84,
+		"next_generation_world_us": int(source["world_effective_us"]) + 600_000_000,
+		"new_forecasts_allowed": true,
+		"events": events,
+	}
+
+
 static func _event_fixture(event_id: int, definition_id: String, regions: Array, phase: String, remaining_us: int, intensity: float, source_type: String) -> Dictionary:
 	return {
 		"event_id": event_id,
@@ -205,6 +270,17 @@ static func _counterplay_hint(definition_id: String) -> String:
 		"deep_freeze": return "减少地表长距离运输"
 		_:
 			return "为护盾单位预留承载余量"
+
+
+static func _description_for(definition_id: String) -> String:
+	match definition_id:
+		"ion_storm": return "离子活动改变区域能源、空中航线与飞行单位风险。"
+		"gravity_tide": return "引力波动改变轨道效果、海洋移动与重型陆地机动。"
+		"spore_season": return "孢子扩散影响生物供给、污染航线与生物吸引。"
+		"crystal_dust_storm": return "晶尘提高水晶产出并改变区域伤害与远程攻防。"
+		"deep_freeze": return "极寒提高食物能源需求并增加陆地与城市压力。"
+		_:
+			return "太阳活动只让符合日照来源资格的能源增长受益。"
 
 
 func _build_surface() -> void:
