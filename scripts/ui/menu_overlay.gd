@@ -6,6 +6,7 @@ signal main_menu_requested
 signal catalog_step_requested(delta: int)
 signal catalog_back_requested
 signal quick_nav_action_requested(action_id: String)
+signal codex_action_requested(action_id: String, payload: Dictionary)
 
 @onready var surface_panel: PanelContainer = %MenuSurfacePanel
 @onready var shell_margin: MarginContainer = %MenuShellMargin
@@ -26,6 +27,7 @@ signal quick_nav_action_requested(action_id: String)
 @onready var content_box: VBoxContainer = %MenuContentBox
 @onready var body_label: Label = %MenuBodyLabel
 @onready var preview_box: VBoxContainer = %MenuPreviewBox
+@onready var codex_surface: Control = %CodexCompendiumSurface
 @onready var run_save_label: Label = %MenuRunSaveLabel
 
 var _root_table_menu := false
@@ -76,6 +78,10 @@ func clear_preview() -> void:
 	if preview_box == null:
 		return
 	for child in preview_box.get_children():
+		if child.is_in_group("persistent_menu_surface"):
+			if child is CanvasItem:
+				(child as CanvasItem).visible = false
+			continue
 		preview_box.remove_child(child)
 		child.queue_free()
 	preview_box.visible = false
@@ -83,6 +89,22 @@ func clear_preview() -> void:
 
 func get_preview_host() -> VBoxContainer:
 	return preview_box
+
+
+func get_codex_surface() -> Control:
+	return codex_surface
+
+
+func present_codex_page(data: Dictionary) -> bool:
+	clear_preview()
+	if codex_surface == null or not codex_surface.has_method("set_page"):
+		push_error("CodexCompendiumSurface is required; generated Codex fallbacks are disabled.")
+		return false
+	preview_box.visible = true
+	codex_surface.visible = true
+	hide_global_navigation()
+	set_catalog_navigation(data.get("navigation", {}) as Dictionary if data.get("navigation", {}) is Dictionary else {})
+	return bool(codex_surface.call("set_page", data.duplicate(true)))
 
 
 func set_body_text(text: String, should_show: bool = true) -> void:
@@ -153,6 +175,7 @@ func debug_snapshot() -> Dictionary:
 		"root_table_menu": _root_table_menu,
 		"compact_page": _compact_page,
 		"quick_navigation": quick_snapshot,
+		"codex_surface": codex_surface.call("debug_snapshot") if codex_surface != null and codex_surface.has_method("debug_snapshot") else {},
 		"catalog_navigation_visible": catalog_nav_row.visible,
 		"continue_visible": continue_button.visible,
 		"back_visible": back_button.visible,
@@ -235,6 +258,10 @@ func _connect_buttons() -> void:
 		var callback := Callable(self, "_on_quick_nav_action_requested")
 		if not quick_navigation.is_connected("action_requested", callback):
 			quick_navigation.connect("action_requested", callback)
+	if codex_surface != null and codex_surface.has_signal("action_requested"):
+		var codex_callback := Callable(self, "_on_codex_action_requested")
+		if not codex_surface.is_connected("action_requested", codex_callback):
+			codex_surface.connect("action_requested", codex_callback)
 
 
 func _style_shell() -> void:
@@ -319,3 +346,7 @@ func _on_catalog_back_pressed() -> void:
 
 func _on_quick_nav_action_requested(action_id: String) -> void:
 	quick_nav_action_requested.emit(action_id)
+
+
+func _on_codex_action_requested(action_id: String, payload: Dictionary) -> void:
+	codex_action_requested.emit(action_id, payload.duplicate(true))

@@ -15,15 +15,7 @@ const FullscreenMapOverlayScene := preload("res://scenes/ui/FullscreenMapOverlay
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
 const TutorialQuickStartBoardScene := preload("res://scenes/ui/TutorialQuickStartBoard.tscn")
 const RulesQuickReferenceBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
-const RoleCodexIdentityBoardScene := preload("res://scenes/ui/RoleCodexIdentityBoard.tscn")
-const CompendiumHubBoardScene := preload("res://scenes/ui/CompendiumHubBoard.tscn")
-const CardCodexBrowserScene := preload("res://scenes/ui/CardCodexBrowser.tscn")
-const CardCodexDetailScene := preload("res://scenes/ui/CardCodexDetail.tscn")
-const RegionCodexDetailScene := preload("res://scenes/ui/RegionCodexDetail.tscn")
-const ProductCodexDetailScene := preload("res://scenes/ui/ProductCodexDetail.tscn")
-const BestiaryDetailScene := preload("res://scenes/ui/BestiaryDetail.tscn")
-const BestiaryCodexBrowserScene := preload("res://scenes/ui/BestiaryCodexBrowser.tscn")
-const ProductCodexBrowserScene := preload("res://scenes/ui/ProductCodexBrowser.tscn")
+const CompendiumHubSnapshotScript := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
 const EconomyDashboardScene := preload("res://scenes/ui/EconomyDashboard.tscn")
 const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
 const StandingsScoreboardScene := preload("res://scenes/ui/StandingsScoreboard.tscn")
@@ -3206,7 +3198,7 @@ func _bind_menu_overlay_scene() -> void:
 	if overlay == null:
 		push_error("MenuModalOverlay is required in OverlayLayer; runtime menu construction has been retired.")
 		return
-	for method_name in ["present_menu_shell", "get_preview_host", "set_catalog_navigation", "set_global_navigation", "refresh_current_layout"]:
+	for method_name in ["present_menu_shell", "present_codex_page", "clear_preview", "get_preview_host", "get_codex_surface", "set_global_navigation", "refresh_current_layout"]:
 		if not overlay.has_method(method_name):
 			push_error("MenuModalOverlay must expose %s; refusing to rebuild the menu shell in main.gd." % method_name)
 			return
@@ -3222,6 +3214,7 @@ func _bind_menu_overlay_scene() -> void:
 		"catalog_step_requested": Callable(self, "_cycle_menu_catalog"),
 		"catalog_back_requested": Callable(self, "_back_from_catalog_menu"),
 		"quick_nav_action_requested": Callable(self, "_on_menu_quick_nav_action_requested"),
+		"codex_action_requested": Callable(self, "_on_codex_surface_action_requested"),
 	}
 	for signal_name_variant: Variant in signal_routes:
 		var signal_name := str(signal_name_variant)
@@ -3339,8 +3332,8 @@ func _menu_summary_grid_columns() -> int:
 func _show_menu_summary_cards(cards: Array, heading: String = "页面速览") -> void:
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var heading_label := _plain_label(heading, 13, Color("#dbeafe"))
 	heading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	menu_preview_box.add_child(heading_label)
@@ -3419,8 +3412,8 @@ func _open_pause_menu() -> void:
 func _populate_main_menu_summary_cards() -> void:
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	_add_main_menu_planet_lobby_panel(menu_preview_box)
 	_refresh_run_save_menu_state()
 
@@ -3581,8 +3574,8 @@ func _open_campaign_menu() -> void:
 	_show_menu("新手战役", "先打一桌：点区、首召、用发展牌建立商品项目。", not _runtime_session_finished(), false, true)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	_add_campaign_menu_panel(menu_preview_box)
 
 
@@ -3623,8 +3616,8 @@ func _open_campaign_briefing_menu(chapter_id: String = "") -> void:
 	_show_menu("关卡说明", "读完目标后开始。本页只显示本关需要的信息。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var map_panel := CampaignProgressMapScene.instantiate() as Control
 	if map_panel != null:
 		if map_panel.has_signal("action_requested"):
@@ -3838,8 +3831,8 @@ func _open_campaign_reward_menu() -> void:
 	_show_menu("关卡奖励", "关卡完成。看奖励、复盘，或继续下一关。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var panel := CampaignRewardPanelScene.instantiate() as Control
 	if panel == null:
 		return
@@ -3857,8 +3850,8 @@ func _open_campaign_recap_menu() -> void:
 	_show_menu("战役复盘", "只显示公开行动、你自己的记录和下一步建议。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var panel := MatchRecapPanelScene.instantiate() as Control
 	if panel == null:
 		return
@@ -3873,8 +3866,8 @@ func _open_campaign_settings_menu() -> void:
 	_show_menu("设置", "调整教学、动画、字体和声音。设置只影响呈现，不改变牌局规则。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var panel := PresentationSettingsPanelScene.instantiate() as Control
 	if panel == null or not panel.has_method("set_settings"):
 		_report_required_ui_scene_missing("PresentationSettingsPanel", "set_settings")
@@ -3946,8 +3939,8 @@ func _open_scenario_browser_menu() -> void:
 	)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	_add_scenario_browser_panel(menu_preview_box)
 
 
@@ -4002,8 +3995,8 @@ func _open_scenario_settings_menu() -> void:
 	)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var panel := PresentationSettingsPanelScene.instantiate() as Control
 	if panel == null or not panel.has_method("set_settings"):
 		_report_required_ui_scene_missing("PresentationSettingsPanel", "set_settings")
@@ -4501,8 +4494,8 @@ func _open_scenario_action_log_menu() -> void:
 	_show_menu("剧本行动日志", "只显示公开记录和当前玩家自己的私密记录；隐藏资料不会出现在这里。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var panel := ScenarioActionLogScene.instantiate() as Control
 	menu_preview_box.add_child(panel)
 	if panel.has_method("set_log"):
@@ -4520,8 +4513,8 @@ func _open_scenario_replay_menu() -> void:
 	_show_menu("剧本复盘", "轻量复盘：点击关键节点会重新打开该剧本局面。", not _runtime_session_finished(), false)
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var scenario_state := _runtime_scenario_state()
 	var fixture: Dictionary = ScenarioFixtureFactoryScript.new().make_fixture(str(scenario_state.get("active_scenario_id", "")), str(scenario_state.get("active_snapshot_key", "start")))
 	var panel := ScenarioReplayPanelScene.instantiate() as Control
@@ -4633,8 +4626,8 @@ func _open_economy_overview_menu() -> void:
 func _populate_rules_summary_cards() -> void:
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	_add_rules_quick_reference_board(menu_preview_box)
 
 
@@ -4707,8 +4700,8 @@ func _populate_standings_summary_cards(snapshot: Dictionary = {}) -> void:
 		return
 	if snapshot.is_empty():
 		snapshot = _standings_public_snapshot()
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	_add_standings_scoreboard_panel(menu_preview_box, snapshot.get("scoreboard", {}) as Dictionary)
 
 
@@ -4789,8 +4782,8 @@ func _populate_economy_overview_summary_cards(snapshot: Dictionary = {}) -> void
 		return
 	if snapshot.is_empty():
 		snapshot = _economy_dashboard_public_snapshot()
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	_add_economy_dashboard_panel(menu_preview_box, snapshot.get("dashboard", {}) as Dictionary)
 
 
@@ -4883,8 +4876,8 @@ func _open_intel_dossier_menu() -> void:
 func _populate_intel_dossier_snapshot(snapshot: Dictionary) -> void:
 	if menu_preview_box == null:
 		return
+	menu_overlay.call("clear_preview")
 	menu_preview_box.visible = true
-	_clear_children(menu_preview_box)
 	var board_snapshot := snapshot.get("board", {}) as Dictionary if snapshot.get("board", {}) is Dictionary else {}
 	_add_intel_dossier_board_panel(menu_preview_box, board_snapshot)
 
@@ -5926,76 +5919,16 @@ func _economy_player_cash_entries() -> Array:
 
 func _open_compendium_menu() -> void:
 	_codex_navigation_controller_node().return_target = "main"
-	_show_menu(
+	_present_codex_page(
 		"图鉴",
 		"资料大厅：角色、卡牌、商品、区域与怪兽生态都在这里查看。怪兽牌属于卡牌图鉴；怪兽生态档案展示场上怪兽的行动、偏好和破坏方式。\n图鉴分支：角色图鉴｜怪兽生态档案｜卡牌图鉴｜商品图鉴｜区域图鉴。",
-		false
+		{
+			"mode": "compendium",
+			"view": "hub",
+			"hub": CompendiumHubSnapshotScript.compose(_menu_available_content_width()),
+			"navigation": _codex_navigation_data(false, false, _catalog_back_button_text()),
+		}
 	)
-	_codex_navigation_controller_node().catalog_mode = "compendium"
-	_hide_global_menu_navigation_for_catalog()
-	_set_catalog_local_navigation(false, false, _catalog_back_button_text(), true)
-	if menu_preview_box != null:
-		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
-		_add_compendium_hub_board(menu_preview_box)
-
-
-func _add_compendium_hub_board(parent: Container) -> void:
-	var board := CompendiumHubBoardScene.instantiate() as Control
-	if board == null or not board.has_method("set_hub"):
-		_report_required_ui_scene_missing("CompendiumHubBoard", "set_hub")
-		return
-	if board.has_signal("action_requested"):
-		board.connect("action_requested", Callable(self, "_on_compendium_hub_action_requested"))
-	parent.add_child(board)
-	board.call("set_hub", _compendium_hub_snapshot())
-
-
-func _compendium_hub_snapshot() -> Dictionary:
-	return {
-		"title": "资料大厅",
-		"title_tooltip": "图鉴入口页：把长资料集中在 Codex，不挤主桌。",
-		"tooltip": "资料大厅：角色、卡牌、商品、区域与怪兽生态都在这里查看。怪兽牌属于卡牌图鉴。",
-		"accent": Color("#f472b6"),
-		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 310.0)), 1, 3),
-		"action_columns": clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 3),
-		"chips": [
-			{"text": "角色/卡牌/商品", "accent": Color("#fce7f3"), "tooltip": "公开身份、卡面和商品市场都进资料库。"},
-			{"text": "区域/怪兽生态", "accent": Color("#bfdbfe"), "tooltip": "区域图鉴看地图事实；生态档案看场上怪兽行为。"},
-			{"text": "主桌不放长资料", "accent": Color("#fde68a"), "tooltip": "长说明只在 Codex，主桌只保留当前行动和短解释。"},
-		],
-		"kpis": [
-			{"title": "资料边界", "body": "怪兽牌属于卡牌图鉴；怪兽生态档案看单位行为。", "meta": "卡牌/单位分开读。", "accent": Color("#fb7185")},
-			{"title": "隐私边界", "body": "角色公开，手牌、现金和怪兽归属仍靠场上线索推理。", "meta": "不扫描对手私牌。", "accent": Color("#c084fc")},
-			{"title": "返回路径", "body": "进入子图鉴后，用本页返回按钮回资料大厅。", "meta": "Codex 内部导航不影响牌桌。", "accent": Color("#38bdf8")},
-		],
-		"action_title": "图鉴分支｜选择一个资料板",
-		"actions": [
-			{"id": "role", "title": "角色图鉴", "body": "查看外星辛迪加角色卡、公开身份和开局能力。", "accent": Color("#c084fc")},
-			{"id": "monster", "title": "怪兽生态档案", "body": "查看场上怪兽单位的属性、自动行动表、资源偏好和破坏数据。", "accent": Color("#fb7185")},
-			{"id": "card", "title": "卡牌图鉴", "body": "查看卡面、目标、费用、升级效果和预览。", "accent": Color("#f472b6")},
-			{"id": "product", "title": "商品图鉴", "body": "查看外星商品价格带、本局供需、趋势和商路断损。", "accent": Color("#facc15")},
-			{"id": "region", "title": "区域图鉴", "body": "查看本局每个区域的地形、供需、城市公开状态和可提供卡牌。", "accent": Color("#38bdf8")},
-			{"id": "main", "title": "返回主菜单", "body": "回到星球赌桌大厅。", "accent": Color("#67e8f9")},
-		],
-		"footer": "资料大厅只承载长资料；主桌继续只保留当前行动、短解释和可点击入口。",
-	}
-
-
-func _on_compendium_hub_action_requested(action_id: String) -> void:
-	match action_id:
-		"role":
-			_open_role_codex_from_compendium()
-		"monster":
-			_open_bestiary_from_compendium()
-		"card":
-			_open_card_codex_from_compendium()
-		"product":
-			_open_product_codex_from_compendium()
-		"region":
-			_open_region_codex_from_compendium()
-		"main":
-			_open_main_menu()
 
 
 func _menu_action_accent_for_text(button_text: String) -> Color:
@@ -6527,17 +6460,18 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 	call_deferred("_refresh_menu_layout")
 
 
-func _hide_global_menu_navigation_for_catalog() -> void:
-	if menu_overlay != null and menu_overlay.has_method("hide_global_navigation"):
-		menu_overlay.call("hide_global_navigation")
-	for button_variant: Variant in menu_regular_buttons:
-		var button := button_variant as CanvasItem
-		if is_instance_valid(button):
-			button.visible = false
+func _present_codex_page(title_text: String, body_text: String, page: Dictionary) -> void:
+	_show_menu(title_text, body_text, false)
+	var mode := str(page.get("mode", ""))
+	_codex_navigation_controller_node().catalog_mode = mode
+	if menu_overlay == null or not menu_overlay.has_method("present_codex_page"):
+		push_error("MenuOverlay must present the scene-owned CodexCompendiumSurface.")
+		return
+	menu_overlay.call("present_codex_page", page.duplicate(true))
 
 
-func _set_catalog_local_navigation(prev_visible: bool, next_visible: bool, back_text: String, back_visible: bool = true) -> void:
-	var nav_data := {
+func _codex_navigation_data(prev_visible: bool, next_visible: bool, back_text: String, back_visible: bool = true) -> Dictionary:
+	return {
 		"prev_text": "上一个",
 		"next_text": "下一个",
 		"back_text": back_text,
@@ -6545,8 +6479,46 @@ func _set_catalog_local_navigation(prev_visible: bool, next_visible: bool, back_
 		"next_visible": next_visible,
 		"back_visible": back_visible,
 	}
-	if menu_overlay != null and menu_overlay.has_method("set_catalog_navigation"):
-		menu_overlay.call("set_catalog_navigation", nav_data)
+
+
+func _on_codex_surface_action_requested(action_id: String, payload: Dictionary) -> void:
+	match action_id:
+		"hub_action":
+			match str(payload.get("action_id", "")):
+				"role":
+					_open_role_codex_from_compendium()
+				"monster":
+					_open_bestiary_from_compendium()
+				"card":
+					_open_card_codex_from_compendium()
+				"product":
+					_open_product_codex_from_compendium()
+				"region":
+					_open_region_codex_from_compendium()
+				"main":
+					_open_main_menu()
+		"card_filter":
+			_set_card_codex_filter(str(payload.get("filter_id", "all")))
+		"card_page_step":
+			_turn_card_codex_grid_page(int(payload.get("delta", 0)))
+		"card_preview":
+			_preview_card_codex_card(str(payload.get("card_name", "")))
+		"card_detail":
+			_open_card_codex_detail(str(payload.get("card_name", "")))
+		"card_deep_link":
+			_open_card_codex_by_name(str(payload.get("card_name", "")))
+		"monster_page_step":
+			_turn_bestiary_grid_page(int(payload.get("delta", 0)))
+		"monster_preview":
+			_preview_bestiary_entry(int(payload.get("catalog_index", -1)))
+		"monster_detail":
+			_open_bestiary_detail(int(payload.get("catalog_index", -1)))
+		"product_page_step":
+			_turn_product_codex_grid_page(int(payload.get("delta", 0)))
+		"product_preview":
+			_preview_product_codex_entry(int(payload.get("catalog_index", -1)))
+		"product_detail":
+			_open_product_codex_detail(int(payload.get("catalog_index", -1)))
 
 
 func _open_bestiary_from_compendium() -> void:
@@ -6697,14 +6669,12 @@ func _update_role_codex_menu() -> void:
 	var role_index: int = int(_codex_navigation_controller_node().role_codex_index)
 	var role_card := _make_player_role_card(role_index)
 	var public_snapshot := _role_codex_public_snapshot(role_card, role_index, PLAYER_ROLE_CATALOG.size())
-	_show_menu("角色图鉴", str(public_snapshot.get("summary_text", "")), false)
-	_codex_navigation_controller_node().catalog_mode = "role"
-	_hide_global_menu_navigation_for_catalog()
-	_set_catalog_local_navigation(true, true, _catalog_back_button_text(), true)
-	if menu_preview_box != null:
-		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
-		_add_role_codex_identity_board_panel(menu_preview_box, public_snapshot.get("board", {}) as Dictionary)
+	_present_codex_page("角色图鉴", str(public_snapshot.get("summary_text", "")), {
+		"mode": "role",
+		"view": "detail",
+		"detail": public_snapshot.get("board", {}),
+		"navigation": _codex_navigation_data(true, true, _catalog_back_button_text()),
+	})
 
 
 func _cycle_menu_catalog(step: int) -> void:
@@ -6745,18 +6715,29 @@ func _update_bestiary_menu() -> void:
 	_codex_navigation_controller_node().bestiary_grid_page = clampi(_codex_navigation_controller_node().bestiary_grid_page, 0, _codex_page_count(_catalog_size(), _bestiary_entries_per_page()) - 1)
 	var public_snapshot := _monster_codex_public_snapshot(_codex_navigation_controller_node().bestiary_index, true)
 	var body_text := str(public_snapshot.get("summary_text", "")) if _codex_navigation_controller_node().bestiary_show_detail else _bestiary_grid_text()
-	_show_menu("怪兽生态档案", body_text, false)
-	_codex_navigation_controller_node().catalog_mode = "monster"
-	_hide_global_menu_navigation_for_catalog()
-	_set_catalog_local_navigation(_codex_navigation_controller_node().bestiary_show_detail, _codex_navigation_controller_node().bestiary_show_detail, "返回缩略图" if _codex_navigation_controller_node().bestiary_show_detail else _catalog_back_button_text(), true)
-	if menu_preview_box != null:
-		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
-		if _codex_navigation_controller_node().bestiary_show_detail:
-			_add_bestiary_detail(menu_preview_box, public_snapshot.get("detail", {}) as Dictionary)
-			_add_bestiary_monster_card_link(menu_preview_box, _codex_navigation_controller_node().bestiary_index)
-		else:
-			_add_bestiary_codex_browser(menu_preview_box)
+	var page := {
+		"mode": "monster",
+		"view": "detail" if _codex_navigation_controller_node().bestiary_show_detail else "browser",
+		"navigation": _codex_navigation_data(
+			_codex_navigation_controller_node().bestiary_show_detail,
+			_codex_navigation_controller_node().bestiary_show_detail,
+			"返回缩略图" if _codex_navigation_controller_node().bestiary_show_detail else _catalog_back_button_text()
+		),
+	}
+	if _codex_navigation_controller_node().bestiary_show_detail:
+		page["detail"] = public_snapshot.get("detail", {})
+		var monster_card_name := _monster_card_name(_codex_navigation_controller_node().bestiary_index, 1)
+		var monster_card_skill := _game_runtime_coordinator_node().card_definition(monster_card_name)
+		page["monster_card_link"] = {
+			"visible": not monster_card_skill.is_empty(),
+			"card_name": monster_card_name,
+			"label": "对应怪兽牌（属于卡牌图鉴｜悬停看属性｜点击跳转）：",
+			"button_text": "%s｜¥%d" % [_card_display_name(monster_card_name), _card_price(monster_card_name)],
+			"tooltip": _card_presentation_detail_tooltip(monster_card_name),
+		}
+	else:
+		page["browser"] = _bestiary_codex_browser_snapshot()
+	_present_codex_page("怪兽生态档案", body_text, page)
 
 
 func _valid_bestiary_index(index: int) -> int:
@@ -6797,19 +6778,6 @@ func _turn_bestiary_grid_page(step: int) -> void:
 	_update_bestiary_menu()
 
 
-func _add_bestiary_codex_browser(parent: Container) -> void:
-	var browser := BestiaryCodexBrowserScene.instantiate() as Control
-	if browser == null or not browser.has_method("set_browser"):
-		_report_required_ui_scene_missing("BestiaryCodexBrowser", "set_browser")
-		return
-	browser.name = "BestiaryCodexBrowser"
-	parent.add_child(browser)
-	browser.connect("page_step_requested", Callable(self, "_turn_bestiary_grid_page"))
-	browser.connect("entry_preview_requested", Callable(self, "_preview_bestiary_entry").bind(true))
-	browser.connect("entry_detail_requested", Callable(self, "_open_bestiary_detail"))
-	browser.call("set_browser", _bestiary_codex_browser_snapshot())
-
-
 func _bestiary_codex_browser_snapshot() -> Dictionary:
 	var total_count := _catalog_size()
 	var page_count := _codex_page_count(total_count, _bestiary_entries_per_page())
@@ -6846,10 +6814,6 @@ func _bestiary_codex_browser_snapshot() -> Dictionary:
 		"entries": entries,
 		"preview": (_monster_codex_public_snapshot(_codex_navigation_controller_node().previewed_bestiary_index, true)).get("detail", {}),
 	}
-
-
-func _bestiary_codex_browser_node() -> Node:
-	return menu_preview_box.find_child("BestiaryCodexBrowser", true, false) if menu_preview_box != null else null
 
 
 func _monster_codex_public_source_snapshot(catalog_index: int, selected: bool = false) -> Dictionary:
@@ -6939,29 +6903,6 @@ func _monster_codex_public_snapshot(catalog_index: int, selected: bool = false) 
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func _add_bestiary_detail(parent: Container, detail_snapshot: Dictionary) -> void:
-	if detail_snapshot.is_empty():
-		return
-	var detail := BestiaryDetailScene.instantiate() as Control
-	if detail == null or not detail.has_method("set_monster"):
-		_report_required_ui_scene_missing("BestiaryDetail", "set_monster")
-		return
-	detail.name = "BestiaryMonsterBoardPanel"
-	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(detail)
-	detail.call("set_monster", detail_snapshot.duplicate(true))
-
-
-
-func _refresh_bestiary_hover_preview_only() -> void:
-	if menu_preview_box == null:
-		return
-	var browser := _bestiary_codex_browser_node()
-	if browser == null or not browser.has_method("set_browser"):
-		_report_required_ui_scene_missing("BestiaryCodexBrowser", "set_browser")
-		return
-	browser.call("set_browser", _bestiary_codex_browser_snapshot())
-
 func _preview_bestiary_entry(catalog_index: int, refresh: bool = true) -> void:
 	if _catalog_size() <= 0:
 		return
@@ -6969,12 +6910,8 @@ func _preview_bestiary_entry(catalog_index: int, refresh: bool = true) -> void:
 	_codex_navigation_controller_node().bestiary_index = _codex_navigation_controller_node().previewed_bestiary_index
 	if refresh:
 		var saved_scroll := int(menu_overlay.call("content_scroll_value")) if menu_overlay != null and menu_overlay.has_method("content_scroll_value") else 0
-		if not _codex_navigation_controller_node().bestiary_show_detail and _codex_navigation_controller_node().catalog_mode == "monster" and menu_preview_box != null:
-			_refresh_bestiary_hover_preview_only()
-			_queue_restore_menu_scroll(saved_scroll)
-		else:
-			_update_bestiary_menu()
-			_queue_restore_menu_scroll(saved_scroll)
+		_update_bestiary_menu()
+		_queue_restore_menu_scroll(saved_scroll)
 
 
 func _open_bestiary_detail(catalog_index: int) -> void:
@@ -7015,17 +6952,17 @@ func _update_card_codex_menu() -> void:
 	var skill: Dictionary = _game_runtime_coordinator_node().card_definition(card_name)
 	var public_snapshot := _card_codex_public_detail_snapshot(card_name, skill, _codex_navigation_controller_node().card_codex_index, names.size()) if _codex_navigation_controller_node().card_codex_show_detail else _card_codex_public_browser_snapshot(names)
 	var body_text := str(public_snapshot.get("summary_text", ""))
-	_show_menu("卡牌图鉴", body_text, false)
-	_codex_navigation_controller_node().catalog_mode = "card"
-	_hide_global_menu_navigation_for_catalog()
-	_set_catalog_local_navigation(_codex_navigation_controller_node().card_codex_show_detail, _codex_navigation_controller_node().card_codex_show_detail, "返回缩略图" if _codex_navigation_controller_node().card_codex_show_detail else _catalog_back_button_text(), true)
-	if menu_preview_box != null:
-		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
-		if _codex_navigation_controller_node().card_codex_show_detail:
-			_add_card_codex_detail(menu_preview_box, card_name, skill)
-		else:
-			_add_card_codex_browser(menu_preview_box, names)
+	_present_codex_page("卡牌图鉴", body_text, {
+		"mode": "card",
+		"view": "detail" if _codex_navigation_controller_node().card_codex_show_detail else "browser",
+		"detail": public_snapshot.get("detail", {}) if _codex_navigation_controller_node().card_codex_show_detail else {},
+		"browser": public_snapshot if not _codex_navigation_controller_node().card_codex_show_detail else {},
+		"navigation": _codex_navigation_data(
+			_codex_navigation_controller_node().card_codex_show_detail,
+			_codex_navigation_controller_node().card_codex_show_detail,
+			"返回缩略图" if _codex_navigation_controller_node().card_codex_show_detail else _catalog_back_button_text()
+		),
+	})
 
 
 func _card_codex_grid_columns() -> int:
@@ -7051,24 +6988,6 @@ func _turn_card_codex_grid_page(step: int) -> void:
 	_codex_navigation_controller_node().previewed_card_codex_card = String(names[first_index])
 	_codex_navigation_controller_node().card_codex_show_detail = false
 	_update_card_codex_menu()
-
-
-func _add_card_codex_browser(parent: Container, names: Array) -> void:
-	var browser := CardCodexBrowserScene.instantiate() as Control
-	if browser == null or not browser.has_method("set_browser"):
-		_report_required_ui_scene_missing("CardCodexBrowser", "set_browser")
-		return
-	browser.name = "CardCodexBrowserPanel"
-	parent.add_child(browser)
-	if browser.has_signal("filter_selected"):
-		browser.connect("filter_selected", Callable(self, "_set_card_codex_filter"))
-	if browser.has_signal("page_step_requested"):
-		browser.connect("page_step_requested", Callable(self, "_turn_card_codex_grid_page"))
-	if browser.has_signal("card_preview_requested"):
-		browser.connect("card_preview_requested", Callable(self, "_preview_card_codex_card").bind(true))
-	if browser.has_signal("card_detail_requested"):
-		browser.connect("card_detail_requested", Callable(self, "_open_card_codex_detail"))
-	browser.call("set_browser", _card_codex_public_browser_snapshot(names))
 
 
 func _card_codex_public_browser_source(names: Array) -> Dictionary:
@@ -7203,22 +7122,6 @@ func _card_codex_public_detail_snapshot(card_name: String, skill: Dictionary, in
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func _card_codex_browser_node() -> Node:
-	if menu_preview_box == null:
-		return null
-	return menu_preview_box.find_child("CardCodexBrowserPanel", true, false)
-
-
-func _refresh_card_codex_hover_preview_only() -> void:
-	if menu_preview_box == null:
-		return
-	var browser := _card_codex_browser_node()
-	if browser == null or not browser.has_method("set_browser"):
-		_report_required_ui_scene_missing("CardCodexBrowser", "set_browser")
-		return
-	browser.call("set_browser", _card_codex_public_browser_snapshot(_card_codex_names()))
-
-
 func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
 	var names := _card_codex_names()
 	if card_name == "" or not names.has(card_name):
@@ -7227,12 +7130,8 @@ func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
 	_codex_navigation_controller_node().card_codex_index = names.find(card_name)
 	if refresh:
 		var saved_scroll := int(menu_overlay.call("content_scroll_value")) if menu_overlay != null and menu_overlay.has_method("content_scroll_value") else 0
-		if not _codex_navigation_controller_node().card_codex_show_detail and _codex_navigation_controller_node().catalog_mode == "card" and menu_preview_box != null:
-			_refresh_card_codex_hover_preview_only()
-			_queue_restore_menu_scroll(saved_scroll)
-		else:
-			_update_card_codex_menu()
-			_queue_restore_menu_scroll(saved_scroll)
+		_update_card_codex_menu()
+		_queue_restore_menu_scroll(saved_scroll)
 
 
 func _queue_restore_menu_scroll(value: int) -> void:
@@ -7297,17 +7196,6 @@ func _role_codex_public_snapshot(role_card: Dictionary, index: int, total: int) 
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func _add_role_codex_identity_board_panel(parent: Container, board_snapshot: Dictionary) -> void:
-	if board_snapshot.is_empty():
-		return
-	var board := RoleCodexIdentityBoardScene.instantiate() as Control
-	if board == null or not board.has_method("set_role"):
-		_report_required_ui_scene_missing("RoleCodexIdentityBoard", "set_role")
-		return
-	parent.add_child(board)
-	board.call("set_role", board_snapshot.duplicate(true))
-
-
 func _open_product_codex_menu(index: int = -1) -> void:
 	if _codex_navigation_controller_node().return_target == "":
 		_codex_navigation_controller_node().return_target = "compendium"
@@ -7350,17 +7238,17 @@ func _update_product_codex_menu() -> void:
 	var product_name := String(ProductMarketRuntimeController.PRODUCT_CATALOG[_codex_navigation_controller_node().product_codex_index])
 	var product_snapshot := _product_codex_public_snapshot(product_name, _codex_navigation_controller_node().product_codex_index, true)
 	var body_text := str(product_snapshot.get("summary_text", "")) if _codex_navigation_controller_node().product_codex_show_detail else _product_codex_grid_text()
-	_show_menu("商品图鉴", body_text, false)
-	_codex_navigation_controller_node().catalog_mode = "product"
-	_hide_global_menu_navigation_for_catalog()
-	_set_catalog_local_navigation(_codex_navigation_controller_node().product_codex_show_detail, _codex_navigation_controller_node().product_codex_show_detail, "返回缩略图" if _codex_navigation_controller_node().product_codex_show_detail else _catalog_back_button_text(), true)
-	if menu_preview_box != null:
-		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
-		if _codex_navigation_controller_node().product_codex_show_detail:
-			_add_product_codex_detail_preview(menu_preview_box, product_name)
-		else:
-			_add_product_codex_browser(menu_preview_box)
+	_present_codex_page("商品图鉴", body_text, {
+		"mode": "product",
+		"view": "detail" if _codex_navigation_controller_node().product_codex_show_detail else "browser",
+		"detail": product_snapshot.get("detail", {}) if _codex_navigation_controller_node().product_codex_show_detail else {},
+		"browser": _product_codex_browser_snapshot() if not _codex_navigation_controller_node().product_codex_show_detail else {},
+		"navigation": _codex_navigation_data(
+			_codex_navigation_controller_node().product_codex_show_detail,
+			_codex_navigation_controller_node().product_codex_show_detail,
+			"返回缩略图" if _codex_navigation_controller_node().product_codex_show_detail else _catalog_back_button_text()
+		),
+	})
 
 
 func _valid_product_codex_index(index: int) -> int:
@@ -7427,19 +7315,6 @@ func _turn_product_codex_grid_page(step: int) -> void:
 	_update_product_codex_menu()
 
 
-func _add_product_codex_browser(parent: Container) -> void:
-	var browser := ProductCodexBrowserScene.instantiate() as Control
-	if browser == null or not browser.has_method("set_browser"):
-		_report_required_ui_scene_missing("ProductCodexBrowser", "set_browser")
-		return
-	browser.name = "ProductCodexBrowser"
-	parent.add_child(browser)
-	browser.connect("page_step_requested", Callable(self, "_turn_product_codex_grid_page"))
-	browser.connect("entry_preview_requested", Callable(self, "_preview_product_codex_entry").bind(true))
-	browser.connect("entry_detail_requested", Callable(self, "_open_product_codex_detail"))
-	browser.call("set_browser", _product_codex_browser_snapshot())
-
-
 func _product_codex_browser_snapshot() -> Dictionary:
 	var total_count := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
 	var page_count := _codex_page_count(total_count, _product_codex_entries_per_page())
@@ -7473,38 +7348,6 @@ func _product_codex_browser_snapshot() -> Dictionary:
 		"entries": entries,
 		"preview": (_product_codex_public_snapshot(str(ProductMarketRuntimeController.PRODUCT_CATALOG[_codex_navigation_controller_node().previewed_product_codex_index]), _codex_navigation_controller_node().previewed_product_codex_index, true)).get("detail", {}) if not ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty() else {},
 	}
-
-
-func _product_codex_browser_node() -> Node:
-	return menu_preview_box.find_child("ProductCodexBrowser", true, false) if menu_preview_box != null else null
-
-
-func _refresh_product_codex_hover_preview_only() -> void:
-	if menu_preview_box == null:
-		return
-	var browser := _product_codex_browser_node()
-	if browser == null or not browser.has_method("set_browser"):
-		_report_required_ui_scene_missing("ProductCodexBrowser", "set_browser")
-		return
-	browser.call("set_browser", _product_codex_browser_snapshot())
-
-
-func _add_product_codex_detail_preview(parent: Container, product_name: String) -> void:
-	_add_product_codex_detail(parent, product_name)
-
-
-func _add_product_codex_detail(parent: Container, product_name: String) -> void:
-	var detail := ProductCodexDetailScene.instantiate() as Control
-	if detail == null or not detail.has_method("set_product"):
-		_report_required_ui_scene_missing("ProductCodexDetail", "set_product")
-		return
-	detail.name = "ProductCodexMarketBoardPanel"
-	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(detail)
-	var catalog_index := ProductMarketRuntimeController.PRODUCT_CATALOG.find(product_name)
-	detail.call("set_product", (_product_codex_public_snapshot(product_name, catalog_index, true)).get("detail", {}))
-
-
 func _product_codex_public_source_snapshot(product_name: String, catalog_index: int = -1, selected: bool = false) -> Dictionary:
 	if product_name == "" or not ProductMarketRuntimeController.PRODUCT_CATALOG.has(product_name):
 		return {"valid": false, "name": product_name, "index": catalog_index, "total": ProductMarketRuntimeController.PRODUCT_CATALOG.size()}
@@ -7744,12 +7587,8 @@ func _preview_product_codex_entry(catalog_index: int, refresh: bool = true) -> v
 	_codex_navigation_controller_node().product_codex_index = _codex_navigation_controller_node().previewed_product_codex_index
 	if refresh:
 		var saved_scroll := int(menu_overlay.call("content_scroll_value")) if menu_overlay != null and menu_overlay.has_method("content_scroll_value") else 0
-		if not _codex_navigation_controller_node().product_codex_show_detail and _codex_navigation_controller_node().catalog_mode == "product" and menu_preview_box != null:
-			_refresh_product_codex_hover_preview_only()
-			_queue_restore_menu_scroll(saved_scroll)
-		else:
-			_update_product_codex_menu()
-			_queue_restore_menu_scroll(saved_scroll)
+		_update_product_codex_menu()
+		_queue_restore_menu_scroll(saved_scroll)
 
 
 func _open_product_codex_detail(catalog_index: int) -> void:
@@ -7782,31 +7621,31 @@ func _update_region_codex_menu() -> void:
 		return
 	_codex_navigation_controller_node().region_codex_index = wrapi(_codex_navigation_controller_node().region_codex_index, 0, districts.size())
 	var region_snapshot := _region_codex_public_snapshot(_codex_navigation_controller_node().region_codex_index)
-	_show_menu("区域图鉴", str(region_snapshot.get("summary_text", "区域不存在。")), false)
-	if menu_preview_box != null:
-		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
-		_add_region_codex_detail(menu_preview_box, region_snapshot.get("detail", {}) as Dictionary)
-	_codex_navigation_controller_node().catalog_mode = "region"
-	_hide_global_menu_navigation_for_catalog()
-	_set_catalog_local_navigation(true, true, _catalog_back_button_text(), true)
+	_present_codex_page("区域图鉴", str(region_snapshot.get("summary_text", "区域不存在。")), {
+		"mode": "region",
+		"view": "detail",
+		"detail": region_snapshot.get("detail", {}),
+		"navigation": _codex_navigation_data(true, true, _catalog_back_button_text()),
+	})
 
 
 func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
-	_show_menu(title_text, body_text, false)
+	var mode := "product"
 	match title_text:
 		"区域图鉴":
-			_codex_navigation_controller_node().catalog_mode = "region"
+			mode = "region"
 		"角色图鉴":
-			_codex_navigation_controller_node().catalog_mode = "role"
+			mode = "role"
 		"卡牌图鉴":
-			_codex_navigation_controller_node().catalog_mode = "card"
+			mode = "card"
 		"怪兽生态档案":
-			_codex_navigation_controller_node().catalog_mode = "monster"
-		_:
-			_codex_navigation_controller_node().catalog_mode = "product"
-	_hide_global_menu_navigation_for_catalog()
-	_set_catalog_local_navigation(false, false, _catalog_back_button_text(), true)
+			mode = "monster"
+	_present_codex_page(title_text, body_text, {
+		"mode": mode,
+		"view": "empty",
+		"empty": {"title": title_text, "body": body_text},
+		"navigation": _codex_navigation_data(false, false, _catalog_back_button_text()),
+	})
 
 
 func _card_codex_filter_options() -> Array:
@@ -7992,33 +7831,6 @@ func _card_codex_names(filter_id: String = "") -> Array:
 			monster_runtime_controller._append_unique_string(names, card_name)
 	names.sort()
 	return names
-
-
-func _add_card_codex_detail(parent: Container, card_name: String, skill: Dictionary) -> void:
-	var detail := CardCodexDetailScene.instantiate() as Control
-	if detail == null or not detail.has_method("set_detail"):
-		_report_required_ui_scene_missing("CardCodexDetail", "set_detail")
-		return
-	detail.name = "CardCodexDetailPanel"
-	parent.add_child(detail)
-	var names := _card_codex_names()
-	var index := names.find(card_name)
-	detail.call("set_detail", (_card_codex_public_detail_snapshot(card_name, skill, maxi(0, index), maxi(1, names.size()))).get("detail", {}))
-
-
-func _add_bestiary_monster_card_link(parent: Container, catalog_index: int) -> void:
-	var card_name := _monster_card_name(catalog_index, 1)
-	var skill := _game_runtime_coordinator_node().card_definition(card_name)
-	if skill.is_empty():
-		return
-	parent.add_child(_plain_label("对应怪兽牌（属于卡牌图鉴｜悬停看属性｜点击跳转）：", 12, Color("#fde68a")))
-	var button := Button.new()
-	button.text = "%s｜¥%d" % [_card_display_name(card_name), _card_price(card_name)]
-	button.tooltip_text = _card_presentation_detail_tooltip(card_name)
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_style_menu_button(button, Color("#f472b6"))
-	button.pressed.connect(Callable(self, "_open_card_codex_by_name").bind(card_name))
-	parent.add_child(button)
 
 
 func _card_level_gradient_text(card_name: String) -> String:
@@ -8538,18 +8350,6 @@ func _region_codex_public_snapshot(index: int) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func _add_region_codex_detail(parent: Container, detail_snapshot: Dictionary) -> void:
-	if detail_snapshot.is_empty():
-		return
-	var detail := RegionCodexDetailScene.instantiate() as Control
-	if detail == null or not detail.has_method("set_region"):
-		_report_required_ui_scene_missing("RegionCodexDetail", "set_region")
-		return
-	detail.name = "RegionCodexTileBoardPanel"
-	parent.add_child(detail)
-	detail.call("set_region", detail_snapshot.duplicate(true))
-
-
 func _close_menu() -> void:
 	if menu_overlay == null:
 		return
@@ -8560,7 +8360,6 @@ func _close_menu() -> void:
 	if menu_overlay.has_method("set_body_text"):
 		menu_overlay.call("set_body_text", "", false)
 	if menu_preview_box != null:
-		_clear_children(menu_preview_box)
 		menu_preview_box.visible = false
 	if menu_overlay.has_method("clear_preview"):
 		menu_overlay.call("clear_preview")
@@ -8584,8 +8383,8 @@ func _open_new_game_setup_menu() -> void:
 		not players.is_empty() and not _runtime_session_finished()
 	)
 	if menu_preview_box != null:
+		menu_overlay.call("clear_preview")
 		menu_preview_box.visible = true
-		_clear_children(menu_preview_box)
 		_add_new_game_setup_controls(menu_preview_box)
 
 

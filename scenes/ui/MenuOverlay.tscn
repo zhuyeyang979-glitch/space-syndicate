@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/menu_overlay.gd" id="2_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MenuQuickNavigation.tscn" id="3_quick_navigation"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CodexCompendiumSurface.tscn" id="4_codex_surface"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_surface"]
 bg_color = Color(0.0323529, 0.0552941, 0.142353, 1)
@@ -224,6 +225,10 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
+
+[node name="CodexCompendiumSurface" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox" instance=ExtResource("4_codex_surface")]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="MenuRunSaveLabel" type="Label" parent="MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox"]
 unique_name_in_owner = true

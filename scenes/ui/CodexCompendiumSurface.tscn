@@ -1,0 +1,121 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/ui/codex_compendium_surface.gd" id="2_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CompendiumHubBoard.tscn" id="3_hub"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardCodexBrowser.tscn" id="4_card_browser"]
+[ext_resource type="PackedScene" path="res://scenes/ui/CardCodexDetail.tscn" id="5_card_detail"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BestiaryCodexBrowser.tscn" id="6_bestiary_browser"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BestiaryDetail.tscn" id="7_bestiary_detail"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ProductCodexBrowser.tscn" id="8_product_browser"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ProductCodexDetail.tscn" id="9_product_detail"]
+[ext_resource type="PackedScene" path="res://scenes/ui/RoleCodexIdentityBoard.tscn" id="10_role_detail"]
+[ext_resource type="PackedScene" path="res://scenes/ui/RegionCodexDetail.tscn" id="11_region_detail"]
+
+[node name="CodexCompendiumSurface" type="VBoxContainer" groups=["persistent_menu_surface"]]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 8
+script = ExtResource("2_script")
+
+[node name="CompendiumHubBoardPanel" parent="." instance=ExtResource("3_hub")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="CardCodexBrowserPanel" parent="." instance=ExtResource("4_card_browser")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="CardCodexDetailPanel" parent="." instance=ExtResource("5_card_detail")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="BestiaryCodexBrowser" parent="." instance=ExtResource("6_bestiary_browser")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="BestiaryMonsterBoardPanel" parent="." instance=ExtResource("7_bestiary_detail")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="BestiaryMonsterCardLink" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="BestiaryMonsterCardLinkLabel" type="Label" parent="BestiaryMonsterCardLink"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "对应怪兽牌（属于卡牌图鉴）："
+theme_override_colors/font_color = Color(0.992157, 0.901961, 0.541176, 1)
+theme_override_font_sizes/font_size = 12
+
+[node name="BestiaryMonsterCardLinkButton" type="Button" parent="BestiaryMonsterCardLink"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "打开对应怪兽牌"
+alignment = 0
+theme_override_font_sizes/font_size = 14
+
+[node name="ProductCodexBrowser" parent="." instance=ExtResource("8_product_browser")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ProductCodexMarketBoardPanel" parent="." instance=ExtResource("9_product_detail")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="RoleCodexIdentityBoardPanel" parent="." instance=ExtResource("10_role_detail")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="RegionCodexTileBoardPanel" parent="." instance=ExtResource("11_region_detail")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="CodexEmptyState" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CodexEmptyMargin" type="MarginContainer" parent="CodexEmptyState"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="CodexEmptyStack" type="VBoxContainer" parent="CodexEmptyState/CodexEmptyMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CodexEmptyTitle" type="Label" parent="CodexEmptyState/CodexEmptyMargin/CodexEmptyStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "资料页暂无内容"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+
+[node name="CodexEmptyBody" type="Label" parent="CodexEmptyState/CodexEmptyMargin/CodexEmptyStack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "当前没有可展示的公开资料。"
+horizontal_alignment = 1
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 14

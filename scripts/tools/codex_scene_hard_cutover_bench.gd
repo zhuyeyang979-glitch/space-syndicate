@@ -3,19 +3,50 @@ class_name CodexSceneHardCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
+const CODEX_SURFACE_SCENE_PATH := "res://scenes/ui/CodexCompendiumSurface.tscn"
+const CODEX_SURFACE_SCRIPT_PATH := "res://scripts/ui/codex_compendium_surface.gd"
+const COMPENDIUM_HUB_SNAPSHOT_SCRIPT_PATH := "res://scripts/viewmodels/compendium_hub_snapshot.gd"
 const OUTPUT_DIR := "user://space_syndicate_design_qa/codex_scene_hard_cutover/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/codex_scene_hard_cutover_sprint_11.png"
 
 const REQUIRED_SCENES := {
+	"codex_surface": CODEX_SURFACE_SCENE_PATH,
+	"compendium_hub": "res://scenes/ui/CompendiumHubBoard.tscn",
 	"card_browser": "res://scenes/ui/CardCodexBrowser.tscn",
 	"card_detail": "res://scenes/ui/CardCodexDetail.tscn",
+	"bestiary_browser": "res://scenes/ui/BestiaryCodexBrowser.tscn",
 	"bestiary_detail": "res://scenes/ui/BestiaryDetail.tscn",
+	"product_browser": "res://scenes/ui/ProductCodexBrowser.tscn",
 	"product_detail": "res://scenes/ui/ProductCodexDetail.tscn",
 	"region_detail": "res://scenes/ui/RegionCodexDetail.tscn",
 	"role_detail": "res://scenes/ui/RoleCodexIdentityBoard.tscn",
 }
+
+const PRESENTATION_RETIRED_FUNCTIONS := [
+	"_add_compendium_hub_board",
+	"_compendium_hub_snapshot",
+	"_on_compendium_hub_action_requested",
+	"_hide_global_menu_navigation_for_catalog",
+	"_set_catalog_local_navigation",
+	"_add_bestiary_codex_browser",
+	"_bestiary_codex_browser_node",
+	"_add_bestiary_detail",
+	"_refresh_bestiary_hover_preview_only",
+	"_add_card_codex_browser",
+	"_card_codex_browser_node",
+	"_refresh_card_codex_hover_preview_only",
+	"_add_role_codex_identity_board_panel",
+	"_add_product_codex_browser",
+	"_product_codex_browser_node",
+	"_refresh_product_codex_hover_preview_only",
+	"_add_product_codex_detail_preview",
+	"_add_product_codex_detail",
+	"_add_card_codex_detail",
+	"_add_bestiary_monster_card_link",
+	"_add_region_codex_detail",
+]
 
 const RETIRED_FUNCTIONS := [
 	"_add_bestiary_monster_board_panel",
@@ -72,6 +103,10 @@ func retired_function_names() -> Array:
 	return RETIRED_FUNCTIONS.duplicate()
 
 
+func presentation_retired_function_names() -> Array:
+	return PRESENTATION_RETIRED_FUNCTIONS.duplicate()
+
+
 func cutover_cases() -> Array:
 	return [
 		"required_codex_scenes_load",
@@ -106,6 +141,7 @@ func build_cutover_manifest_preview() -> Dictionary:
 		"output_dir": OUTPUT_DIR,
 		"screenshot_path": SCREENSHOT_PATH,
 		"retired_function_count": RETIRED_FUNCTIONS.size(),
+		"presentation_retired_function_count": PRESENTATION_RETIRED_FUNCTIONS.size(),
 		"record_count": records.size(),
 		"records": records,
 	}
@@ -115,7 +151,7 @@ func run_cutover_suite() -> void:
 	_records.clear()
 	_failures.clear()
 	_prepare_output_dir()
-	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
+	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH).replace("\r\n", "\n")
 	await _ensure_main()
 	for case_id_variant: Variant in cutover_cases():
 		var case_id := str(case_id_variant)
@@ -130,6 +166,7 @@ func run_cutover_suite() -> void:
 		"record_count": _records.size(),
 		"passed_count": _passed_count(),
 		"retired_function_count": RETIRED_FUNCTIONS.size(),
+		"presentation_retired_function_count": PRESENTATION_RETIRED_FUNCTIONS.size(),
 		"main_metrics": _main_metrics(),
 		"records": _records.duplicate(true),
 	}
@@ -178,9 +215,13 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "all six Codex surfaces are editable PackedScenes"
 		"required_scene_contracts":
 			var contracts := {
+				"codex_surface": "set_page",
+				"compendium_hub": "set_hub",
 				"card_browser": "set_browser",
 				"card_detail": "set_detail",
+				"bestiary_browser": "set_browser",
 				"bestiary_detail": "set_monster",
+				"product_browser": "set_browser",
 				"product_detail": "set_product",
 				"region_detail": "set_region",
 				"role_detail": "set_role",
@@ -193,16 +234,17 @@ func _run_case(case_id: String) -> Dictionary:
 				if node != null:
 					node.free()
 			flags["scene_checked"] = true
-			notes = "each scene exposes its data-in renderer contract"
+			notes = "the static Codex host and each child scene expose data-in renderer contracts"
 		"real_main_scene_loads":
 			passed = _main != null and _main.scene_file_path == MAIN_SCENE_PATH
 			flags["main_checked"] = true
 			notes = "the gate instantiates the real main scene"
 		"single_sceneized_menu_overlay":
 			var overlays := _main.find_children("MenuModalOverlay", "Control", true, false) if _main != null else []
-			passed = _overlay != null and _overlay.scene_file_path == "res://scenes/ui/MenuOverlay.tscn" and overlays.size() == 1
+			var surface := _overlay.call("get_codex_surface") as Control if _overlay != null and _overlay.has_method("get_codex_surface") else null
+			passed = _overlay != null and _overlay.scene_file_path == "res://scenes/ui/MenuOverlay.tscn" and overlays.size() == 1 and surface != null and surface.scene_file_path == CODEX_SURFACE_SCENE_PATH
 			flags["scene_checked"] = true
-			notes = "all Codex pages render inside the one sceneized MenuOverlay"
+			notes = "one MenuOverlay owns one static CodexCompendiumSurface"
 		"card_browser_scene_required":
 			if _main != null:
 				_main.call("_open_card_codex_from_compendium")
@@ -277,16 +319,27 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["deletion_checked"] = true
 			notes = "the complete 24-function renderer closure stays absent"
 		"required_scene_error_boundary_present":
-			passed = _main_source.contains("func _report_required_ui_scene_missing")
-			for component_name in ["CardCodexBrowser", "CardCodexDetail", "BestiaryDetail", "ProductCodexDetail", "RegionCodexDetail", "RoleCodexIdentityBoard"]:
-				passed = passed and _main_source.contains("_report_required_ui_scene_missing(\"%s\"" % component_name)
+			var surface_source := FileAccess.get_file_as_string(CODEX_SURFACE_SCRIPT_PATH)
+			var overlay_source := FileAccess.get_file_as_string("res://scripts/ui/menu_overlay.gd")
+			passed = surface_source.contains("generated fallbacks are disabled") and surface_source.contains("func _contract_surfaces()") and not surface_source.contains("find_child(")
+			for component_name in ["CompendiumHubBoardPanel", "CardCodexBrowserPanel", "CardCodexDetailPanel", "BestiaryCodexBrowser", "BestiaryMonsterBoardPanel", "ProductCodexBrowser", "ProductCodexMarketBoardPanel", "RegionCodexTileBoardPanel", "RoleCodexIdentityBoardPanel"]:
+				passed = passed and surface_source.contains("\"%s\"" % component_name)
+			for scene_path_variant: Variant in REQUIRED_SCENES.values():
+				passed = passed and not _main_source.contains(str(scene_path_variant))
+			passed = passed and _functions_absent(PRESENTATION_RETIRED_FUNCTIONS)
+			passed = passed and overlay_source.contains("child.is_in_group(\"persistent_menu_surface\")")
+			passed = passed and _main_source.count("menu_overlay.call(\"clear_preview\")") >= 17
+			passed = passed and _main_source.count("menu_overlay.call(\"clear_preview\")\n\tmenu_preview_box.visible = true") >= 15
+			passed = passed and _main_source.contains("menu_overlay.call(\"clear_preview\")\n\t\tmenu_preview_box.visible = true")
+			passed = passed and not _main_source.contains("child.is_in_group(\"persistent_menu_surface\")")
 			flags["bridge_checked"] = true
-			notes = "broken scene contracts fail explicitly instead of recreating controls"
+			flags["deletion_checked"] = true
+			notes = "MenuOverlay owns static Surface cleanup while main has no Codex scene preload, UI-group policy, or legacy renderer"
 		"codex_snapshots_pure_data":
 			var snapshots := _codex_snapshots()
-			passed = snapshots.size() == 6 and _is_pure_data(snapshots)
+			passed = snapshots.size() == 7 and _is_pure_data(snapshots)
 			flags["pure_data_checked"] = true
-			notes = "all six UI boundaries receive data-only snapshots"
+			notes = "the hub and all six Codex content boundaries receive data-only snapshots"
 		"privacy_boundary_preserved":
 			var snapshots := _codex_snapshots()
 			passed = not _contains_private_key(snapshots)
@@ -311,7 +364,10 @@ func _codex_snapshots() -> Array:
 	var role_card: Dictionary = _main.call("_make_player_role_card", 0)
 	var region_snapshot := _main.call("_region_codex_public_snapshot", 0) as Dictionary
 	var role_snapshot := _main.call("_role_codex_public_snapshot", role_card, 0, 1) as Dictionary
+	var hub_script := load(COMPENDIUM_HUB_SNAPSHOT_SCRIPT_PATH) as Script
+	var hub_snapshot: Dictionary = hub_script.call("compose", 960.0) as Dictionary if hub_script != null else {}
 	return [
+		hub_snapshot,
 		_main.call("_card_codex_public_browser_snapshot", _card_names),
 		(_main.call("_card_codex_public_detail_snapshot", card_name, skill, 0, maxi(1, _card_names.size())) as Dictionary).get("detail", {}),
 		(_main.call("_monster_codex_public_snapshot", 0, true) as Dictionary).get("detail", {}),
@@ -407,7 +463,7 @@ func _update_ui(manifest: Dictionary) -> void:
 	status_label.modulate = Color("#4ade80") if passed == total else Color("#fb7185")
 	summary_label.text = "%d/%d cutover cases passed" % [passed, total]
 	var metrics := manifest.get("main_metrics", {}) as Dictionary
-	ownership_text.text = "[b]Scene-owned Codex surfaces[/b]\nCard browser plus Card, Monster, Product, Region, and Role details are required editable scenes. main.gd only builds pure source snapshots and routes existing signals.\n\n[b]Retired from main.gd[/b]\n24 generated fallback renderers, including thumbnail cards, detail panels, KPI cards, chips, tactical cards, and level-gradient controls.\n\n[b]Current main metrics[/b]\n%s nonblank lines - %s functions - %s vars - %s constants" % [str(metrics.get("nonblank_lines", 0)), str(metrics.get("function_count", 0)), str(metrics.get("top_level_variable_count", 0)), str(metrics.get("constant_count", 0))]
+	ownership_text.text = "[b]Scene-owned Codex surfaces[/b]\nCodexCompendiumSurface statically owns the hub, browser, and detail scenes. main.gd only builds pure public snapshots and routes actions.\n\n[b]Retired from main.gd[/b]\n24 earlier generated renderers plus %d presentation-construction, find-child, and local-navigation helpers.\n\n[b]Current main metrics[/b]\n%s nonblank lines - %s functions - %s vars - %s constants" % [PRESENTATION_RETIRED_FUNCTIONS.size(), str(metrics.get("nonblank_lines", 0)), str(metrics.get("function_count", 0)), str(metrics.get("top_level_variable_count", 0)), str(metrics.get("constant_count", 0))]
 	var lines: Array[String] = []
 	for record_variant: Variant in _records:
 		var record := record_variant as Dictionary
@@ -418,7 +474,7 @@ func _update_ui(manifest: Dictionary) -> void:
 
 func _markdown_report(manifest: Dictionary) -> String:
 	var metrics := manifest.get("main_metrics", {}) as Dictionary
-	var lines := ["# Codex Scene Hard Cutover", "", "- Passed: %d/%d" % [int(manifest.get("passed_count", 0)), int(manifest.get("record_count", 0))], "- Retired functions: %d" % int(manifest.get("retired_function_count", 0)), "- Main nonblank lines: %d" % int(metrics.get("nonblank_lines", 0)), "", "| Case | Result | Notes |", "| --- | --- | --- |"]
+	var lines := ["# Codex Scene Hard Cutover", "", "- Passed: %d/%d" % [int(manifest.get("passed_count", 0)), int(manifest.get("record_count", 0))], "- Earlier retired functions: %d" % int(manifest.get("retired_function_count", 0)), "- Presentation retired functions: %d" % int(manifest.get("presentation_retired_function_count", 0)), "- Main nonblank lines: %d" % int(metrics.get("nonblank_lines", 0)), "", "| Case | Result | Notes |", "| --- | --- | --- |"]
 	for record_variant: Variant in manifest.get("records", []):
 		var record := record_variant as Dictionary
 		lines.append("| %s | %s | %s |" % [str(record.get("case_id", "")), "PASS" if bool(record.get("passed", false)) else "FAIL", str(record.get("notes", "")).replace("|", "/")])

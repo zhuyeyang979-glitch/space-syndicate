@@ -63,6 +63,7 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/RulesQuickReferenceBoard.tscn",
 	"res://scenes/ui/RoleCodexIdentityBoard.tscn",
 	"res://scenes/ui/CompendiumHubBoard.tscn",
+	"res://scenes/ui/CodexCompendiumSurface.tscn",
 	"res://scenes/ui/CardCodexBrowser.tscn",
 	"res://scenes/ui/CardCodexDetail.tscn",
 	"res://scenes/ui/codex/CardCodexFilterChip.tscn",
@@ -75,7 +76,9 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/codex/BestiaryMonsterKpiCard.tscn",
 	"res://scenes/ui/codex/BestiaryMonsterActionCard.tscn",
 	"res://scenes/ui/RegionCodexDetail.tscn",
+	"res://scenes/ui/ProductCodexBrowser.tscn",
 	"res://scenes/ui/ProductCodexDetail.tscn",
+	"res://scenes/ui/BestiaryCodexBrowser.tscn",
 	"res://scenes/ui/BestiaryDetail.tscn",
 	"res://scenes/ui/EconomyDashboard.tscn",
 	"res://scenes/ui/IntelDossierBoard.tscn",
@@ -557,6 +560,8 @@ const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicat
 const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/global_ui_navigation_characterization_sprint_67.png"
 const CODEX_SCENE_HARD_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/codex_scene_hard_cutover_bench.gd"
 const CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE := "res://scenes/tools/CodexSceneHardCutoverBench.tscn"
+const CODEX_COMPENDIUM_SURFACE_SCRIPT := "res://scripts/ui/codex_compendium_surface.gd"
+const CODEX_COMPENDIUM_SURFACE_SCENE := "res://scenes/ui/CodexCompendiumSurface.tscn"
 const CODEX_SCENE_HARD_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_scene_hard_cutover/"
 const CODEX_SCENE_HARD_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/codex_scene_hard_cutover_sprint_11.png"
 const BESTIARY_CODEX_BROWSER_SCRIPT := "res://scripts/ui/bestiary_codex_browser.gd"
@@ -2225,7 +2230,7 @@ func _check_sceneization_audit_and_card_track_sceneization_component() -> void:
 		root.remove_child(public_track)
 		public_track.queue_free()
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd").replace("\r\n", "\n")
 	_expect(game_screen_source.contains("set_track_state") and game_screen_source.contains("card_resolution_track"), "GameScreen prefers sceneized CardResolutionTrack state before set_entries fallback")
 	_expect(game_screen_source.contains("track_action_requested") and game_screen_source.contains("func _on_track_action_requested") and game_screen_source.contains("func _emit_track_action_request") and game_screen_source.contains("_last_track_action_bridge_frame"), "GameScreen bridges CardResolutionTrack action requests through the existing action_requested flow with duplicate protection")
 	var table_snapshot_source := FileAccess.get_file_as_string("res://scripts/viewmodels/table_snapshot.gd")
@@ -10719,8 +10724,8 @@ func _check_menu_shell_runtime_cutover_component() -> void:
 func _check_codex_scene_hard_cutover_component() -> void:
 	for path in [CODEX_SCENE_HARD_CUTOVER_BENCH_SCRIPT, CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE]:
 		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Codex Scene Hard Cutover" % path)
-	var required_scenes := ["res://scenes/ui/CardCodexBrowser.tscn", "res://scenes/ui/CardCodexDetail.tscn", "res://scenes/ui/BestiaryDetail.tscn", "res://scenes/ui/ProductCodexDetail.tscn", "res://scenes/ui/RegionCodexDetail.tscn", "res://scenes/ui/RoleCodexIdentityBoard.tscn"]
-	var required_methods := ["set_browser", "set_detail", "set_monster", "set_product", "set_region", "set_role"]
+	var required_scenes := [CODEX_COMPENDIUM_SURFACE_SCENE, "res://scenes/ui/CompendiumHubBoard.tscn", "res://scenes/ui/CardCodexBrowser.tscn", "res://scenes/ui/CardCodexDetail.tscn", "res://scenes/ui/BestiaryCodexBrowser.tscn", "res://scenes/ui/BestiaryDetail.tscn", "res://scenes/ui/ProductCodexBrowser.tscn", "res://scenes/ui/ProductCodexDetail.tscn", "res://scenes/ui/RegionCodexDetail.tscn", "res://scenes/ui/RoleCodexIdentityBoard.tscn"]
+	var required_methods := ["set_page", "set_hub", "set_browser", "set_detail", "set_browser", "set_monster", "set_browser", "set_product", "set_region", "set_role"]
 	for i in range(required_scenes.size()):
 		var packed := load(required_scenes[i]) as PackedScene
 		var component := packed.instantiate() if packed != null else null
@@ -10733,10 +10738,11 @@ func _check_codex_scene_hard_cutover_component() -> void:
 		bench.set("auto_run", false)
 		root.add_child(bench)
 		await process_frame
-		_expect(bench.has_method("output_dir") and bench.has_method("retired_function_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CodexSceneHardCutoverBench exposes required QA APIs")
+		_expect(bench.has_method("output_dir") and bench.has_method("retired_function_names") and bench.has_method("presentation_retired_function_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "CodexSceneHardCutoverBench exposes required QA APIs")
 		var expected_cases := ["required_codex_scenes_load", "required_scene_contracts", "real_main_scene_loads", "single_sceneized_menu_overlay", "card_browser_scene_required", "card_browser_signal_routes_detail", "card_detail_scene_required", "bestiary_detail_scene_required", "product_detail_scene_required", "region_detail_scene_required", "role_detail_scene_required", "legacy_card_browser_renderer_absent", "legacy_card_detail_renderer_absent", "legacy_bestiary_detail_renderer_absent", "legacy_product_detail_renderer_absent", "legacy_region_detail_renderer_absent", "all_retired_functions_absent", "required_scene_error_boundary_present", "codex_snapshots_pure_data", "privacy_boundary_preserved"]
 		var cases: Array = bench.call("cutover_cases")
 		var retired_names: Array = bench.call("retired_function_names")
+		var presentation_retired_names: Array = bench.call("presentation_retired_function_names")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
 		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
 		var fields_ok := records.size() == 20
@@ -10748,12 +10754,21 @@ func _check_codex_scene_hard_cutover_component() -> void:
 		var all_retired := retired_names.size() == 24
 		for function_name_variant in retired_names:
 			all_retired = all_retired and not main_source.contains("func %s(" % str(function_name_variant))
-		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_function_count", 0)) == 24 and str(bench.call("output_dir")) == CODEX_SCENE_HARD_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CODEX_SCENE_HARD_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CodexSceneHardCutoverBench defines 20 pure-data cases, 24 retired functions, and user:// outputs")
+		var all_presentation_retired := presentation_retired_names.size() == 21
+		for function_name_variant in presentation_retired_names:
+			all_presentation_retired = all_presentation_retired and not main_source.contains("func %s(" % str(function_name_variant))
+		_expect(cases == expected_cases and all_retired and all_presentation_retired and int(manifest.get("retired_function_count", 0)) == 24 and int(manifest.get("presentation_retired_function_count", 0)) == 21 and str(bench.call("output_dir")) == CODEX_SCENE_HARD_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == CODEX_SCENE_HARD_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "CodexSceneHardCutoverBench defines 20 pure-data cases, 24 historical plus 21 presentation retired functions, and user:// outputs")
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	for component_name in ["CardCodexBrowser", "CardCodexDetail", "BestiaryDetail", "ProductCodexDetail", "RegionCodexDetail", "RoleCodexIdentityBoard"]:
-		_expect(main_source.contains("_report_required_ui_scene_missing(\"%s\"" % component_name), "main.gd treats %s as a required Codex scene" % component_name)
+	var codex_surface_source := FileAccess.get_file_as_string(CODEX_COMPENDIUM_SURFACE_SCRIPT)
+	var menu_overlay_source := FileAccess.get_file_as_string("res://scripts/ui/menu_overlay.gd")
+	_expect(codex_surface_source.contains("func _contract_surfaces()") and codex_surface_source.contains("generated fallbacks are disabled") and not codex_surface_source.contains("find_child("), "CodexCompendiumSurface owns explicit child contracts without name lookup")
+	for component_name in ["CompendiumHubBoardPanel", "CardCodexBrowserPanel", "CardCodexDetailPanel", "BestiaryCodexBrowser", "BestiaryMonsterBoardPanel", "ProductCodexBrowser", "ProductCodexMarketBoardPanel", "RegionCodexTileBoardPanel", "RoleCodexIdentityBoardPanel"]:
+		_expect(codex_surface_source.contains("\"%s\"" % component_name), "CodexCompendiumSurface requires %s" % component_name)
+	for codex_scene_path in required_scenes:
+		_expect(not main_source.contains(codex_scene_path), "main.gd has no direct Codex scene reference: %s" % codex_scene_path)
+	_expect(menu_overlay_source.contains("child.is_in_group(\"persistent_menu_surface\")") and main_source.count("menu_overlay.call(\"clear_preview\")") >= 17 and main_source.count("menu_overlay.call(\"clear_preview\")\n\tmenu_preview_box.visible = true") >= 15 and main_source.contains("menu_overlay.call(\"clear_preview\")\n\t\tmenu_preview_box.visible = true") and not main_source.contains("child.is_in_group(\"persistent_menu_surface\")"), "MenuOverlay exclusively owns persistent Codex surface cleanup before callers reshow the preview host")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0
@@ -10875,8 +10890,9 @@ func _check_codex_atlas_scene_cutover_component() -> void:
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var codex_surface_source := FileAccess.get_file_as_string(CODEX_COMPENDIUM_SURFACE_SCRIPT)
 	for component_name in ["BestiaryCodexBrowser", "ProductCodexBrowser"]:
-		_expect(main_source.contains("_report_required_ui_scene_missing(\"%s\"" % component_name), "main.gd treats %s as a required atlas scene" % component_name)
+		_expect(codex_surface_source.contains("\"%s\"" % component_name) and not main_source.contains("res://scenes/ui/%s.tscn" % component_name), "CodexCompendiumSurface owns required atlas scene %s without a main.gd preload" % component_name)
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0
