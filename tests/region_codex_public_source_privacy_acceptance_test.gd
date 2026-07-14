@@ -142,6 +142,10 @@ func _test_expired_monster_peer_factor_exclusion() -> void:
 	var peer_variant: Variant = _monster_owner.call("_make_auto_monster", 1, 1, _district_index, 1, 1)
 	var live: Dictionary = live_variant if live_variant is Dictionary else {}
 	var peer: Dictionary = peer_variant if peer_variant is Dictionary else {}
+	# Keep the positive control focused on peer presence so unrelated resource
+	# affinity cannot displace other_monster from the three public factor slots.
+	live["resource_focus"] = []
+	peer["resource_focus"] = []
 	_monster_owner.set("auto_monsters", [live, peer])
 	var live_peer_snapshot: Dictionary = _monster_owner.call("region_attraction_public_snapshot_v06", _district_index)
 	var live_peer_entries: Array = live_peer_snapshot.get("entries", []) if live_peer_snapshot.get("entries", []) is Array else []
