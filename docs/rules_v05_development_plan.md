@@ -1,9 +1,11 @@
 # 《太空辛迪加》v0.5 规则实现开发计划
 
-> 状态：SS05-00、SS05-01、SS05-01A、SS05-02、SS05-03 与 SS05-04 已完成；项目身份、结构化 GDP、区域控制与公开审计领域已切到 v0.5，生产全局 Ruleset bridge 仍为 v0.4；下一步为 SS05-05。
+> 状态：历史迁移计划。SS05-00 至 SS05-05 已完成并保留为可重放证据；自 2026-07-14 起，未开始的 SS05-06 及后续工单停止执行，由 `docs/rules_v06_development_plan.md` 接管。生产全局 Ruleset bridge 仍为 v0.4。
 > 编写日期：2026-07-14。
 > 玩家规则权威：`docs/tabletop_rulebook_v05.md`。
 > 运行时迁移合同：`docs/rules_v05_runtime_migration.md`。
+
+> v0.6 替代说明：`docs/tabletop_rulebook_v06.md` 已成为新玩法开发的语义权威。五项目位、项目份额、固定胜利深度、产业容量档位、旧项目合约和抽象路线损伤不得继续扩展。这里的已完成实现只作为迁移基线、行为证据和删除门，不再代表未来产品方向。
 > 迁移基础合同：`docs/rules_v05_migration_foundation_contract.md`。
 > 玩家文字合同：`docs/player_facing_text_and_rules_presentation_contract.md`。
 > 当前生产运行版：v0.4。
@@ -462,12 +464,12 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 | SS05-02 | 五项目位、稳定 slot ID、项目 IV、世代、平局无人控制（完成，88/88） | 01/01A | 替换 + 删除 D-06 部分 |
 | SS05-03 | 结构化 GDP 行、归属、守恒与零 GDP（完成，GDP 40/40、CityTrade 108/108） | 02 | 替换 + 删除 D-06 剩余 |
 | SS05-04 | VictoryControl、审计名单、终局与隐私（完成，56/56） | 03 | 替换 + 删除 D-02 |
-| SS05-05 | 六产业产能、卡牌条件和批次占用 | 03 | 推进 + 删除 D-05 |
-| SS05-06 | 项目合约与 exact product | 03 | 替换 + 删除 D-08 |
-| SS05-07 | 项目控制竞猜与私密 60 秒跟踪 | 03 | 替换 + 删除 D-07 |
-| SS05-08 | 整场怪兽赌局、托管和绝对加注；只消费 Queue 产出的 `public_wager_pool_receipt` | 01/05 | 替换 + 删除 D-04 |
-| SS05-09 | 区域生命周期、复兴和项目墓碑联动 | 03/05/06/07 | 推进 |
-| SS05-10 | 20 秒危机、实体牌成本基准、售牌和淘汰事务 | 01/03/05/08/09 | 推进 + 删除 D-03 |
+| SS05-05 | 六产业产能、卡牌条件和批次占用（完成，64/64；Queue 56/56；历史证据，计划在 SS06-04 删除容量 owner） | 03 | 历史迁移证据 |
+| SS05-06 | 项目合约与 exact product（停止） | 03 | 被 v0.6 公共设施与商品成交模型取代 |
+| SS05-07 | 项目控制竞猜与私密 60 秒跟踪（停止） | 03 | 被 v0.6 viewer-scoped 商品履带与调查规则取代 |
+| SS05-08 | 整场怪兽赌局、托管和绝对加注（停止按 v0.5 扩展） | 01/05 | 在 v0.6 怪兽/军队切换中重新对齐 |
+| SS05-09 | 区域生命周期、复兴和项目墓碑联动（停止） | 03/05/06/07 | 被 v0.6 公共设施、共享生命和废墟/复兴取代 |
+| SS05-10 | 20 秒危机、实体牌成本基准、售牌和淘汰事务（停止） | 01/03/05/08/09 | 被 v0.6 即时破产与中立遗产取代 |
 | SS05-11A | 标准市场确定性与随机噪声删除 | 03 | 替换 + 删除 D-10 |
 | SS05-11B | 天气 90/90、同区不重叠与存档 | 03 | 替换 |
 | SS05-11C | Military Guard/Strike/Intercept 参数与协议收束 | 03 | 替换 |
@@ -571,6 +573,6 @@ v0.5 是实时主循环；保留暂停、强制决定和卡牌锁定，但不保
 
 ## 14. 下一步执行建议
 
-SS05-04 已完成。`VictoryControlRuntimeController` 只消费 SS05-03 的结构化 private attribution receipt，唯一拥有 3000bp 且唯一最高的区域控制、深度 Top-N GDP、10 秒资格、120 秒粘性公开审计、30 秒冷却、终点排序、特殊结局、存档和 outcome receipt。`VictoryControlWorldBridge` 只收集世界事实并 exact-once 转发结果，不复制 GDP、项目份额或结算算法。
+SS05-05 已完成并冻结为历史行为证据。`IndustryCapacityRuntimeService`、项目归属 GDP 和标准组上限 2 不再继续扩展；v0.6 将用公共设施、持续商品成交回执和六色私人法力替代产业容量与项目经济。该 Service 只保留到 SS06-04 原子切换完成，届时与 Queue 中的容量预留一起删除。
 
-Victory Gate 为 56/56。Standings、Final Settlement、AI、save summary 和 GameSession 现在只消费 public/private snapshot 或不可变 receipt；旧现金目标、城市清算值、短倒计时和第二套终局评分已经从生产路径删除。旧 monolithic smoke 中相同的现金胜利、倒计时和 `game_over` 反射断言也已迁到 Controller/Coordinator receipt，并由 Victory、composition 与 layout 静态删除门持续检查。下一开发批次进入 SS05-05：六产业产能、卡牌条件与同组占用必须消费唯一商品产业目录和现有结构化 GDP，不得把产业要求或容量聚合写回 UI、Queue 或 main.gd。
+`CardResolutionRuntimeController` 的 8 秒总窗和最后 2 秒锁牌可以继续沿用，但 v0.6 标准上限是每人 3 张，不能把当前 1/2 上限当成新设计继续传播。下一批不进入 SS05-06，而是执行 `docs/rules_v06_development_plan.md` 的 SS06-00：冻结可恢复的 pre-v0.6 集成基线、建立 v0.6 Ruleset Profile 和 Region Infrastructure characterization；随后以公共设施与区域共享生命为第一个 Hard Cutover。
