@@ -5975,10 +5975,6 @@ func _player_intel_stats(player_index: int) -> Dictionary:
 	return stats
 
 
-func _player_intel_cash(player_index: int) -> int:
-	return int(_player_intel_stats(player_index).get("cash", 0))
-
-
 func _player_intel_summary(player_index: int) -> String:
 	var stats := _player_intel_stats(player_index)
 	return "情报现金%s = 猜对%d×¥%d - 猜错%d×¥%d｜已标%d/%d" % [
@@ -9155,10 +9151,6 @@ func _assign_district_terrain_and_goods() -> void:
 		var destination: Dictionary = districts[destination_index]
 		destination["demands"] = (demand_patches.get(destination_index, []) as Array).duplicate()
 		districts[destination_index] = destination
-
-
-func _roguelike_economic_viability_dev_snapshot() -> Dictionary:
-	return _roguelike_economic_viability_dev_audit.duplicate(true)
 
 
 func _roll_ocean_district_indices() -> Array:

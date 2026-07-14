@@ -615,13 +615,13 @@ func _run() -> void:
 			var rival_city := (districts_for_guess[rival_city_index] as Dictionary).get("city", {}) as Dictionary
 			var real_owner := int(rival_city.get("owner", -1))
 			var cash_before_guess := _player_cash(_as_array(main.get("players")), 0)
-			var intel_cash_before_guess := int(main.call("_player_intel_cash", 0))
+			var intel_cash_before_guess := _intel_cash_from_stats(main, 0)
 			main.set("selected_player", 0)
 			main.set("selected_district", rival_city_index)
 			main.set("selected_guess_player", real_owner)
 			main.call("_mark_selected_city_guess")
 			await process_frame
-			_expect(int(main.call("_player_intel_cash", 0)) == intel_cash_before_guess + 120, "correct private city-owner guess creates intelligence cash reward")
+			_expect(_intel_cash_from_stats(main, 0) == intel_cash_before_guess + 120, "correct private city-owner guess creates intelligence cash reward")
 			_expect(_player_cash(_as_array(main.get("players")), 0) == cash_before_guess, "intelligence rewards remain separate from available cash and v0.5 qualification")
 		var rival_cash_before_business := _rival_cash_total(players_after_auto_expand, 0)
 		var business_actions := int(_ai_controller(main).call("_auto_rival_business_actions", true))
@@ -645,7 +645,7 @@ func _run() -> void:
 		_verify_economy_card_effects(main, buildable_district)
 		var ledger_components_after_build := {
 			"available_cash": _player_cash(_as_array(main.get("players")), 0),
-			"intel_cash": int(main.call("_player_intel_cash", 0)),
+			"intel_cash": _intel_cash_from_stats(main, 0),
 		}
 		_expect(int(main.call("_save_run")) == OK, "current run can be saved")
 		main.call("_open_main_menu")
@@ -659,7 +659,7 @@ func _run() -> void:
 		var load_result := int(main.call("_load_run"))
 		var loaded_ledger_components := {
 			"available_cash": _player_cash(_as_array(main.get("players")), 0),
-			"intel_cash": int(main.call("_player_intel_cash", 0)),
+			"intel_cash": _intel_cash_from_stats(main, 0),
 		}
 		_expect(load_result == OK, "current run can be loaded")
 		await process_frame
@@ -6366,6 +6366,12 @@ func _player_cash(players: Array, player_index: int) -> int:
 		return 0
 	var player := players[player_index] as Dictionary
 	return int(player.get("cash", 0))
+
+
+func _intel_cash_from_stats(main: Node, player_index: int) -> int:
+	var stats_variant: Variant = main.call("_player_intel_stats", player_index)
+	var stats: Dictionary = stats_variant if stats_variant is Dictionary else {}
+	return int(stats.get("cash", 0))
 
 
 func _player_total_card_spend(players: Array, player_index: int) -> int:

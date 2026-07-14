@@ -287,7 +287,7 @@ func _check_real_depth_one_seed_60610() -> void:
 	await _wait_frames(8)
 
 	var districts: Array = main.get("districts") if main.get("districts") is Array else []
-	var dev_variant: Variant = main.call("_roguelike_economic_viability_dev_snapshot")
+	var dev_variant: Variant = main.get("_roguelike_economic_viability_dev_audit")
 	var dev: Dictionary = dev_variant if dev_variant is Dictionary else {}
 	_expect(not districts.is_empty() and bool(dev.get("ok", false)) and bool(dev.get("viable", false)), "depth-I seed 60610 has a planet-wide exact-product opportunity")
 	_expect(int(dev.get("global_remote_match_count", 0)) > 0 and int(dev.get("source_with_remote_count", 0)) > 0, "depth-I dev audit proves at least one remote source")
