@@ -3,6 +3,15 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜主桌静态组成与受光面镜头展示
+
+- `main.tscn` 现直接静态拥有 RuntimeGameScreen、PlanetMapView、FullscreenMapOverlay、卡牌结算横幅、底部倒计时、区域牌架侧栏和桌面音频节点。`main.gd` 已物理删除这些组件的动态 preload/instantiate/find-child fallback 与临时音频构造；缺少静态组成时明确失败，不再运行时重建第二套 UI。
+- `PlanetMapView.tscn` 静态拥有 `PlanetSolarCameraController`。展示链严格单向：唯一整数 world-effective clock → SolarAvailability 纯派生公开快照 → GameRuntimeCoordinator → Main 现有地图刷新点 → PlanetMapView 本地镜头。公开快照只有 `world_effective_us`、`rotation_period_us`、`sun_turn_ppm`，控制器不持有市场、世界桥、规则或存档引用。
+- 镜头停止交互 3 秒后进入受光面对准：完整动画用 0.8 秒 smoothstep，简化/关闭档在相同门槛瞬时对准；进入 FOLLOWING 后持续追随当前太阳经度。滚轮、拖拽、点击、键盘、区域聚焦和焦点进入都会退出跟随并重新计时。自动过程保留当前缩放与选区；显式太阳按钮对准当前受光面并恢复 globe zoom `0.48`。
+- 相机负向边界已锁定：镜头中心、缩放、投影、选区和程序化 focus 不改变太阳规则、市场 facts、quote id、公开 fingerprint 或授权。Solar 与镜头不新增第 19 个 save owner，也没有 `to_save_data/apply_save_data`。
+- Godot 4.7 聚焦证据：Solar camera `23/23`、Main composition PASS、跨席公开报价隐私 `5/5`、clock/save production acceptance `16/16`、globe default `2/2`、smoke `--check-only` 通过，286 个 GDScript 全扫描 0 错误。8775 真实 `main.tscn` 快速开局后，嵌入地图为可见 `560×535` 的真实 PlanetMapView，控制器收到三字段快照并进入 FOLLOWING；console error 0，退出后 `is_playing_scene=false` 且无额外 Godot 子进程。
+- 完整 layout 仍有一批锁定 v0.4/v0.5 退役 API 的历史红灯，playtest skeleton 另有卡牌缩略图与旧英文主菜单文案两项非本切片红灯。本阶段未恢复旧 API 或放宽这些门；后续按真实 owner gate 分块物理退役。
+
 ## 2026-07-15｜v0.6 恒星日照牌市与锁价报价唯一 owner
 
 - 新增场景化 `WorldEffectiveClockRuntimeController`、纯派生 `SolarAvailabilityRuntimeService`、非所有权 `CardMarketPolicyWorldBridge` 与 `CardMarketPricingRuntimeController`，静态组成进 `GameRuntimeCoordinator`。世界时钟以整数微秒为唯一权威并集中保留帧间小数余量；真正暂停冻结，打开牌市不冻结。太阳相位只从该时钟、固定初相位与区域中心派生，120 秒一周，不保存第二份相位，MapView 镜头/缩放/焦点不进入规则计算。

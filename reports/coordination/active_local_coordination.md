@@ -36,6 +36,7 @@ The authoritative player rules remain `docs/tabletop_rulebook_v06.md`; this chec
 
 ## Current local milestone
 
-- A has integrated the retired Supervisor work, the v0.6 solar market runtime, public/private quote identity separation, save/privacy gates, and successive `main.gd` deletions. Nothing in this local line has been pushed as the current milestone.
-- B is implementing the scene-owned solar-facing MapView camera presentation from A baseline `f3a280d` without touching `main.gd` or market pricing.
-- C is retiring only owner-covered `_capture_run_state` / `_apply_run_state` smoke oracles from A baseline `92c6e26`; unsupported private intel/AI/route/scenario save assertions remain until a real owner gate exists.
+- A local integration is at `2471b19`: it includes the retired Supervisor work, v0.6 solar market runtime, public/private quote identity separation, save/privacy gates, static Main composition cutover, scene-owned solar-facing MapView camera, and the narrow public snapshot injection. Nothing in this milestone has been pushed.
+- The solar camera milestone is green on its 23-check state-machine gate, Main composition, 5-check cross-seat quote privacy, 16-check clock/save production acceptance, globe default, smoke check-only, 286-script parse, and a real headed quick-start run. Play mode and child processes were cleanly stopped.
+- B is read-only auditing the remaining Codex/Compendium public-source cluster from exact A baseline `2471b19`; any implementation must stay outside `main.gd` until A approves a deletion cutover.
+- C is conservatively replacing only the Weather owner reset inside one smoke case from baseline `92c6e26`; unsupported private intel/AI/route/scenario assertions remain untouched. A will review and merge the local C commit when its focused evidence is complete.
