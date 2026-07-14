@@ -1,10 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/tools/district_purchase_runtime_cutover_bench.gd" id="2_script"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/RulesetRuntimeBridge.tscn" id="3_ruleset"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="4_coordinator"]
-[ext_resource type="PackedScene" path="res://scenes/ui/DistrictSupplyDrawer.tscn" id="5_drawer"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="3_coordinator"]
 
 [node name="DistrictPurchaseRuntimeCutoverBench" type="Control"]
 layout_mode = 3
@@ -25,10 +23,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.012, 0.02, 0.034, 1)
 
-[node name="RulesetRuntimeBridge" parent="." instance=ExtResource("3_ruleset")]
-unique_name_in_owner = true
-
-[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("4_coordinator")]
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("3_coordinator")]
 unique_name_in_owner = true
 
 [node name="Margin" type="MarginContainer" parent="."]
@@ -38,70 +33,30 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
 
 [node name="Rows" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 14
 
 [node name="Title" type="Label" parent="Margin/Rows"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "District Purchase Runtime Cutover"
-
-[node name="SummaryLabel" type="Label" parent="Margin/Rows"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.82, 0.96, 1)
-text = "Preparing 33 ownership cases..."
+theme_override_font_sizes/font_size = 26
+text = "Solar Card Market Runtime Cutover"
 
 [node name="StatusLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Running"
+theme_override_font_sizes/font_size = 20
+text = "Running focused runtime checks…"
 
-[node name="Body" type="HBoxContainer" parent="Margin/Rows"]
+[node name="DetailLabel" type="RichTextLabel" parent="Margin/Rows"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 12
-
-[node name="ContractPanel" type="PanelContainer" parent="Margin/Rows/Body"]
-custom_minimum_size = Vector2(360, 0)
-layout_mode = 2
-
-[node name="ContractMargin" type="MarginContainer" parent="Margin/Rows/Body/ContractPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 16
-
-[node name="ContractText" type="Label" parent="Margin/Rows/Body/ContractPanel/ContractMargin"]
-layout_mode = 2
-text = "Runtime contract\n\nWindow duration     12 seconds\nView-only racks     no timer\nMonster movement    locked at open\nBound channel       private 0.8\nInventory           never reserved\nSave field          v1-compatible\n\n45 ownership cases cover controller, Snapshot Service, Drawer and privacy.\n17 settlement characterizations capture payment, upgrade, five-card limit, private discard, ledger, drift and post-commit behavior."
-autowrap_mode = 2
-
-[node name="OwnershipPanel" type="PanelContainer" parent="Margin/Rows/Body"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="OwnershipMargin" type="MarginContainer" parent="Margin/Rows/Body/OwnershipPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 16
-
-[node name="OwnershipText" type="RichTextLabel" parent="Margin/Rows/Body/OwnershipPanel/OwnershipMargin"]
-unique_name_in_owner = true
-layout_mode = 2
 bbcode_enabled = true
-fit_content = true
-text = "Preparing runtime ownership summary..."
-
-[node name="DistrictSupplyDrawerPreview" parent="." instance=ExtResource("5_drawer")]
-unique_name_in_owner = true
-visible = true
+fit_content = false
+text = "World clock → solar availability → quote snapshot → common settlement"

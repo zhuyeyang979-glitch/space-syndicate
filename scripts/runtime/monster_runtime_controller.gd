@@ -481,6 +481,37 @@ func roster_snapshot(include_private: bool = true) -> Array:
 	return public_result
 
 
+func summon_zone_available(district_index: int, required_terrain: String = "") -> bool:
+	var districts_variant: Variant = _world_value(&"districts", [])
+	if not (districts_variant is Array):
+		return false
+	var districts := districts_variant as Array
+	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		return false
+	var target := districts[district_index] as Dictionary
+	if bool(target.get("destroyed", false)):
+		return false
+	var terrain := str(target.get("terrain", "land"))
+	if not required_terrain.is_empty() and terrain != required_terrain:
+		return false
+	var valid_origins: Dictionary = {}
+	for actor_variant: Variant in auto_monsters:
+		if not (actor_variant is Dictionary):
+			continue
+		var actor := actor_variant as Dictionary
+		if bool(actor.get("down", false)) or (actor.has("remaining_time") and float(actor.get("remaining_time", 0.0)) <= 0.0):
+			continue
+		var origin := int(actor.get("position", -1))
+		if origin >= 0:
+			valid_origins[origin] = true
+	if valid_origins.has(district_index):
+		return true
+	for neighbor_variant: Variant in target.get("neighbors", []):
+		if valid_origins.has(int(neighbor_variant)):
+			return true
+	return false
+
+
 func selected_actor_snapshot(include_private: bool = true) -> Dictionary:
 	var actor := _selected_auto_monster_actor().duplicate(true)
 	if actor.is_empty() or include_private:

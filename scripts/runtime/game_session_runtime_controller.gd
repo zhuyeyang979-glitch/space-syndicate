@@ -23,6 +23,11 @@ var _outcome_receipt: Dictionary = {}
 var _operation_sequence := 0
 var _active_operation: Dictionary = {}
 var _last_operation: Dictionary = {}
+var _world_effective_clock: Node
+
+
+func set_world_effective_clock(clock: Node) -> void:
+	_world_effective_clock = clock
 
 
 func configure(ruleset_snapshot: Dictionary, save_config: Dictionary = {}) -> void:
@@ -52,6 +57,8 @@ func begin_session(setup_snapshot: Dictionary) -> Dictionary:
 	_seed = int(setup_snapshot.get("seed", 0))
 	_setup_summary = _safe_setup_summary(setup_snapshot)
 	_outcome_receipt = {}
+	if _world_effective_clock != null and _world_effective_clock.has_method("reset_state"):
+		_world_effective_clock.call("reset_state")
 	_save_state = "dirty"
 	_dirty_reason = "new_session"
 	_session_state = STATE_RUNNING
@@ -109,6 +116,8 @@ func is_finished() -> bool:
 
 
 func to_save_data() -> Dictionary:
+	if _world_effective_clock == null or not _world_effective_clock.has_method("world_effective_micros"):
+		return {}
 	return {
 		"game_session_runtime": {
 			"schema_version": 1,
@@ -119,6 +128,7 @@ func to_save_data() -> Dictionary:
 			"seed": _seed,
 			"setup": _setup_summary.duplicate(true),
 			"outcome_receipt": _outcome_receipt.duplicate(true),
+			"world_effective_us": int(_world_effective_clock.call("world_effective_micros")),
 		}
 	}
 
@@ -132,12 +142,32 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	var restored_state := str(payload.get("session_state", STATE_RUNNING))
 	if restored_state not in [STATE_IDLE, STATE_STARTING, STATE_RUNNING, STATE_PAUSED, STATE_LOADING, STATE_FINISHED, STATE_ERROR]:
 		return {"applied": false, "reason": "session_state_invalid"}
+	var has_world_clock := payload.has("world_effective_us")
+	if has_world_clock and not (payload.get("world_effective_us") is int):
+		return {"applied": false, "reason": "world_effective_clock_invalid"}
+	var restored_world_us := int(payload.get("world_effective_us", -1))
+	if has_world_clock and (restored_world_us < 0 or _world_effective_clock == null or not _world_effective_clock.has_method("restore_micros")):
+		return {"applied": false, "reason": "world_effective_clock_invalid"}
+	if not (payload.get("ruleset_id", _ruleset_id) is String) \
+			or not (payload.get("session_id", _session_id) is String) \
+			or not (payload.get("scenario_id", _scenario_id) is String) \
+			or not (payload.get("seed", _seed) is int) \
+			or not (payload.get("setup", {}) is Dictionary) \
+			or not (payload.get("outcome_receipt", {}) is Dictionary):
+		return {"applied": false, "reason": "session_payload_invalid"}
+	var next_session_id := str(payload.get("session_id", _session_id))
+	var next_scenario_id := str(payload.get("scenario_id", _scenario_id))
+	var next_seed := int(payload.get("seed", _seed))
+	var next_setup := (payload.get("setup", {}) as Dictionary).duplicate(true) if payload.get("setup", {}) is Dictionary else {}
+	var next_outcome := (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true) if payload.get("outcome_receipt", {}) is Dictionary else {}
+	if payload.has("world_effective_us"):
+		_world_effective_clock.call("restore_micros", restored_world_us)
 	_session_state = restored_state
-	_session_id = str(payload.get("session_id", _session_id))
-	_scenario_id = str(payload.get("scenario_id", _scenario_id))
-	_seed = int(payload.get("seed", _seed))
-	_setup_summary = (payload.get("setup", {}) as Dictionary).duplicate(true) if payload.get("setup", {}) is Dictionary else {}
-	_outcome_receipt = (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true) if payload.get("outcome_receipt", {}) is Dictionary else {}
+	_session_id = next_session_id
+	_scenario_id = next_scenario_id
+	_seed = next_seed
+	_setup_summary = next_setup
+	_outcome_receipt = next_outcome
 	_save_state = "clean"
 	_dirty_reason = ""
 	return {"applied": true, "legacy_default": false, "session_state": _session_state}
@@ -265,6 +295,8 @@ func reset_state() -> void:
 	_dirty_reason = ""
 	_active_operation = {}
 	_last_operation = {}
+	if _world_effective_clock != null and _world_effective_clock.has_method("reset_state"):
+		_world_effective_clock.call("reset_state")
 
 
 func debug_snapshot() -> Dictionary:
@@ -275,6 +307,7 @@ func debug_snapshot() -> Dictionary:
 		"save_operation": _save_operation_snapshot(),
 		"operation_lifecycle": operation_lifecycle_snapshot(),
 		"dirty_reason": _dirty_reason,
+		"world_effective_clock_bound": _world_effective_clock != null and _world_effective_clock.has_method("world_effective_micros"),
 	}
 
 

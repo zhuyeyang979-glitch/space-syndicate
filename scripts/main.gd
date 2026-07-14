@@ -127,9 +127,6 @@ const RIVAL_BUSINESS_PRICE_DELTA_MIN := 8
 const RIVAL_BUSINESS_PRICE_DELTA_MAX := 18
 const ECONOMY_HISTORY_LIMIT := 24
 const ECONOMY_LEDGER_LIMIT := 14
-const CARD_PRICE_UNIT := 70
-const CARD_PRICE_COST_STEP := 45
-const CARD_MIN_PRICE := 80
 const PLAYER_HAND_LIMIT := 5
 const CARD_RESOLUTION_DISPLAY_SECONDS := 5.0
 const CARD_RESOLUTION_AFTERMATH_SECONDS := 8.0
@@ -289,12 +286,10 @@ const PLAYER_ROLE_CATALOG := [
 	{
 		"name": "星门补给商会",
 		"species": "折跃仓储人",
-		"trait": "把怪兽登陆点当作临时仓库坐标；能从二跳邻区远程买牌，但物流费更高。",
-		"passive": "可从怪兽所在区相邻区域的相邻区域购买卡牌；二跳购牌价格×1.10；开局资金+¥40。",
+		"trait": "把恒星晨昏线当作移动仓储时刻表；总能提前准备下一次采购。",
+		"passive": "开局资金+¥40。普通牌市场的日照资格与怪兽压力报价对所有玩家一致。",
 		"starting_cash_bonus": 40,
-		"card_access_extra_hops": 1,
-		"extended_card_price_multiplier": 1.10,
-		"flavor": "他们的仓库门永远开在怪兽脚印的下一圈。",
+		"flavor": "他们的仓库门永远开在晨昏线到来前一秒。",
 	},
 	{
 		"name": "赤环航运托拉斯",
@@ -1015,8 +1010,6 @@ func _process(delta: float) -> void:
 	_sync_forced_decision_runtime()
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator != null and coordinator.has_method("blocks_global_time") and bool(coordinator.call("blocks_global_time")):
-		if coordinator.has_method("tick_district_purchase_windows"):
-			coordinator.call("tick_district_purchase_windows", delta, [selected_player] if selected_player >= 0 else [])
 		if coordinator.has_method("tick_monster_wagers"):
 			coordinator.call("tick_monster_wagers", delta)
 		_update_visual_cues(delta)
@@ -1026,12 +1019,10 @@ func _process(delta: float) -> void:
 		return
 
 	var scaled_delta := delta * time_scale
-	if coordinator != null and coordinator.has_method("tick_district_purchase_windows"):
-		var blocked_purchase_players: Array = []
-		if selected_player >= 0 and coordinator.has_method("blocks_player_actions") and bool(coordinator.call("blocks_player_actions", selected_player)):
-			blocked_purchase_players.append(selected_player)
-		coordinator.call("tick_district_purchase_windows", scaled_delta, blocked_purchase_players)
-	game_time += scaled_delta
+	if coordinator != null and coordinator.has_method("advance_world_effective_clock"):
+		var clock_variant: Variant = coordinator.call("advance_world_effective_clock", scaled_delta)
+		var clock_snapshot: Dictionary = clock_variant if clock_variant is Dictionary else {}
+		game_time = float(clock_snapshot.get("world_effective_seconds", game_time))
 	if coordinator == null or not coordinator.has_method("allows_card_resolution_progress") or bool(coordinator.call("allows_card_resolution_progress")):
 		_update_card_resolution_queue(scaled_delta)
 	if coordinator != null and coordinator.has_method("tick_contract_runtime"):
@@ -2351,7 +2342,7 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 			handled = true
 		"card_group_ready":
 			handled = _set_selected_player_card_group_ready()
-		"coach_select_district", "coach_first_summon", "coach_open_rack", "coach_buy_card", "coach_play_card", "coach_buy_followup_card", "coach_play_followup_card", "coach_inspect_track", "coach_check_economy", "coach_observe_ai_public_action", "coach_inspect_clues", "coach_inspect_monster_pressure", "coach_choose_route_growth":
+		"coach_select_district", "coach_open_rack", "coach_buy_card", "coach_play_card", "coach_buy_followup_card", "coach_play_followup_card", "coach_inspect_track", "coach_check_economy", "coach_observe_ai_public_action", "coach_inspect_clues", "coach_inspect_monster_pressure", "coach_choose_route_growth":
 			handled = _activate_first_run_coach_action(action_id)
 		"rack", "buy", "play":
 			handled = _activate_runtime_quick_action(action_id)
@@ -2632,9 +2623,8 @@ func _playtest_flow_compass_entries(player_index: int) -> Array:
 		progress = _opening_guide_progress(player_index)
 	var steps := [
 		{"label": "点区", "done": has_selection, "accent": Color("#38bdf8"), "tip": "在中央星球点一个区域；双击可查看区域牌架。"},
-		{"label": "首召", "done": bool(progress.get("has_monster", false)), "accent": Color("#fb7185"), "tip": "打出起始怪兽，解锁怪兽落地区/邻区购牌。"},
 		{"label": "建城", "done": bool(progress.get("has_city", false)), "accent": Color("#4ade80"), "tip": "在陆地城市化，开始获得实时GDP现金流。"},
-		{"label": "买牌", "done": bool(progress.get("has_bought_card", false)), "accent": Color("#facc15"), "tip": "从怪兽所在区或相邻区买牌；重复牌自动升级。"},
+		{"label": "买牌", "done": bool(progress.get("has_bought_card", false)), "accent": Color("#facc15"), "tip": "查看全局挂牌；来源区受光时锁定5秒报价。"},
 		{"label": "出牌", "done": bool(progress.get("has_played_card", false)), "accent": Color("#c084fc"), "tip": "满足卡面GDP份额后出牌；需要目标的牌会先询问。"},
 		{"label": "牌轨", "done": bool(progress.get("has_seen_public_track", false)), "accent": Color("#f59e0b"), "tip": "看顶部公共时间线，确认已打出的牌留下什么线索。"},
 		{"label": "经济", "done": bool(progress.get("has_checked_economy", false)), "accent": Color("#38bdf8"), "tip": "打开经济总览，看GDP、商品和商路如何变成钱。"},
@@ -2663,8 +2653,6 @@ func _playtest_flow_next_text(player_index: int) -> String:
 	var progress := _first_run_coach_progress(player_index)
 	if progress.is_empty():
 		progress = _opening_guide_progress(player_index)
-	if not bool(progress.get("has_monster", false)):
-		return "下一步：首召怪兽"
 	if not bool(progress.get("has_city", false)):
 		return "下一步：城市化"
 	if not bool(progress.get("has_bought_card", false)):
@@ -3133,7 +3121,7 @@ func _map_control_toolbar_snapshot() -> Dictionary:
 			{"text": "◎ 赌桌中央", "tooltip": "星球保持主视野；信息尽量收进筹码、牌架和侧栏。"},
 			{"text": "滚轮缩放", "tooltip": "滚轮拉近看局部地表，拉远看星球。"},
 			{"text": "拖拽地图", "tooltip": "拖拽平移地表或调整星球视角。"},
-			{"text": "双击看牌", "tooltip": "双击区域打开区域牌架；查看始终允许，购买资格按打开窗口的一刻锁定。"},
+			{"text": "双击看牌", "tooltip": "双击区域打开牌架；查看始终允许，显式选择后才锁定5秒日照资格与价格。"},
 		],
 		"district_status": {"text": "⌖ %s" % _short_card_text(district_status, 18), "tooltip": district_status},
 		"layers": _map_layer_focus_entries(),
@@ -3442,7 +3430,7 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 				"id": "new_run",
 				"kicker": "01｜开桌",
 				"label": "开始新局",
-				"detail": "先设置席位、AI、角色与首召",
+				"detail": "先设置席位、AI、角色与起始怪兽牌",
 				"accent": Color("#22c55e"),
 				"featured": true,
 			},
@@ -3569,7 +3557,7 @@ func _save_campaign_progress_state() -> void:
 
 
 func _open_campaign_menu() -> void:
-	_show_menu("新手战役", "先打一桌：点区、首召、用发展牌建立商品项目。", not _runtime_session_finished(), false, true)
+	_show_menu("新手战役", "先打一桌：点区、看受光牌架、用发展牌建立商品项目；召唤怪兽可随时进行。", not _runtime_session_finished(), false, true)
 	if menu_preview_box == null:
 		return
 	menu_overlay.call("clear_preview")
@@ -4654,10 +4642,10 @@ func _rules_quick_reference_snapshot() -> Dictionary:
 		],
 		"kpis": [
 			{"title": "我怎么赢？", "body": "控制区域并达成GDP深度。", "meta": "资格10秒后进入120秒公开审计。", "accent": Color("#fef3c7")},
-			{"title": "开局先做？", "body": "首召怪兽，建第一城。", "meta": "再看区域牌架。", "accent": Color("#38bdf8")},
+			{"title": "开局先做？", "body": "先看受光牌架，建立第一份收入。", "meta": "怪兽召唤完全自愿。", "accent": Color("#38bdf8")},
 			{"title": "为什么建城？", "body": "城市化份额产GDP。", "meta": "GDP按秒变钱。", "accent": Color("#4ade80")},
 			{"title": "怎么买/出牌？", "body": "买牌花钱，高阶看GDP份额。", "meta": "重复牌升级。", "accent": Color("#facc15")},
-			{"title": "怪兽为何重要？", "body": "它决定哪里能买牌。", "meta": "也会破坏GDP。", "accent": Color("#fb7185")},
+			{"title": "怪兽为何重要？", "body": "它会抬高同区与邻区牌价。", "meta": "也会破坏GDP。", "accent": Color("#fb7185")},
 			{"title": "怎么读线索？", "body": "看牌轨、竞价、损伤。", "meta": "猜城市和牌主。", "accent": Color("#c084fc")},
 			{"title": "GDP怎么变？", "body": "生产、需求、运输相乘。", "meta": "破坏会拖慢。", "accent": Color("#2dd4bf")},
 			{"title": "何时结束？", "body": "公开审计完成。", "meta": "按前K区商品GDP、控制区数和准确现金比较。", "accent": Color("#fb923c")},
@@ -4676,9 +4664,9 @@ func _rules_quick_reference_snapshot() -> Dictionary:
 		],
 		"module_title": "牌桌模块｜像桌游一样按区读",
 		"modules": [
-			{"title": "◆ 怪兽", "body": "开局先首召。", "meta": "附近可买牌。", "accent": Color("#fb7185")},
+			{"title": "◆ 怪兽", "body": "召唤完全自愿。", "meta": "活怪会抬高附近牌价。", "accent": Color("#fb7185")},
 			{"title": "▣ 城市化", "body": "打出项目牌建份额。", "meta": "按GDP分钱。", "accent": Color("#4ade80")},
-			{"title": "＋ 牌架", "body": "双击区域看牌。", "meta": "怪兽在旁才能买。", "accent": Color("#38bdf8")},
+			{"title": "＋ 牌架", "body": "双击区域看牌。", "meta": "来源受光时可买。", "accent": Color("#38bdf8")},
 			{"title": "◎ 公开牌轨", "body": "亮牌，不亮玩家。", "meta": "条件会留线索。", "accent": Color("#c084fc")},
 			{"title": "¥ 报价", "body": "多人出牌先竞价。", "meta": "金额公开。", "accent": Color("#facc15")},
 			{"title": "♠ 怪兽赌局", "body": "怪兽遭遇停表下注。", "meta": "按现金比例押。", "accent": Color("#fb923c")},
@@ -6377,7 +6365,7 @@ func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = f
 		"局势排名":
 			return "看目标和排名。"
 		"新手引导":
-			return "首召、发展牌、商品项目、出牌。"
+			return "受光牌架、发展牌、商品项目、出牌；怪兽召唤可选。"
 	return "只显示本页操作。"
 
 
@@ -8150,21 +8138,17 @@ func _player_economic_ledger_text(player: Dictionary, limit: int = 4) -> String:
 
 
 func _card_price(skill_name: String, district_index: int = -1, player_index: int = -1) -> int:
-	if skill_name == "":
-		return CARD_MIN_PRICE
+	if skill_name.is_empty():
+		return 0
 	var price_name := "%s1" % _game_runtime_coordinator_node().card_family_id(skill_name)
 	if not _game_runtime_coordinator_node().card_exists(price_name):
 		price_name = skill_name
 	var skill: Dictionary = _game_runtime_coordinator_node().card_definition(price_name)
-	var power_cost: int = maxi(2, int(skill.get("cost", 2)))
-	var price: int = CARD_PRICE_UNIT + (power_cost - 2) * CARD_PRICE_COST_STEP + _skill_price_power_adjustment(skill)
-	if district_index >= 0:
-		price = int(round(float(price) * _district_card_price_multiplier(district_index, player_index)))
-	return int(max(CARD_MIN_PRICE, price))
-
-
-func _skill_price_power_adjustment(skill: Dictionary) -> int:
-	return int(_runtime_balance_model().call("skill_price_power_adjustment", skill))
+	var base_price := int(_runtime_balance_model().call("card_price_for_skill", skill))
+	if district_index < 0:
+		return base_price
+	var preview := _card_market_preview(skill_name, district_index)
+	return int(preview.get("final_price", base_price))
 
 
 func _runtime_balance_model() -> RefCounted:
@@ -8339,7 +8323,7 @@ func _open_new_game_setup_menu() -> void:
 	_ensure_configured_ai_player_count()
 	_show_menu(
 		"开局准备",
-		"开桌前确认席位、电脑对手、挑战层级、公开角色和独立首召怪兽。进桌后先召怪兽，再建城、买牌、下注。",
+		"开桌前确认席位、电脑对手、挑战层级、公开角色和起始怪兽牌。起始牌由各席持有，召唤完全自愿，不阻断建城、买牌或经济。",
 		not players.is_empty() and not _runtime_session_finished()
 	)
 	if menu_preview_box != null:
@@ -8376,11 +8360,11 @@ func _new_game_setup_page_snapshot() -> Dictionary:
 		"summary_chips": _new_game_setup_summary_chip_snapshots(),
 		"lobby": _new_game_setup_lobby_snapshot(),
 		"options": _new_game_setup_option_board_snapshot(),
-		"seat_title": "座位卡｜公开角色 + 独立首召怪兽",
+		"seat_title": "座位卡｜公开角色 + 起始怪兽牌",
 		"seat_columns": clampi(int(floor(_menu_available_content_width() / 520.0)), 1, 2),
 		"seat_scroll_height": 360.0,
 		"seats": seats,
-		"hint": "角色公开；首召匿名。先进桌召怪兽，再围绕怪兽附近买牌。",
+		"hint": "角色公开；起始怪兽牌由各席持有并可随时自愿召唤。普通牌按来源区日照与怪兽压力报价。",
 		"can_return_table": not players.is_empty() and not _runtime_session_finished(),
 		"start_disabled": false,
 		"start_tooltip": "按当前%d席、AI%d和%s配置开始本局。" % [configured_player_count, configured_ai_player_count, _roguelike_depth_label()],
@@ -8395,7 +8379,7 @@ func _new_game_setup_summary_chip_snapshots() -> Array:
 		{"text": _roguelike_depth_label(), "accent": Color("#fde68a"), "fill": Color("#713f12")},
 		{"text": "控%d区 / GDP%d" % [_victory_required_regions(), _victory_required_gdp()], "accent": Color("#fef3c7"), "fill": Color("#422006")},
 		{"text": "角色不重复", "accent": Color("#93c5fd"), "fill": Color("#1e3a8a")},
-		{"text": "首召独立", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
+		{"text": "召唤可选", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
 	]
 
 
@@ -8448,13 +8432,13 @@ func _new_game_setup_lobby_snapshot() -> Dictionary:
 			{"title": "1｜席位", "body": "%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count], "accent": Color("#38bdf8"), "tooltip": "用下方席位/电脑按钮调整桌面规模。"},
 			{"title": "2｜挑战", "body": "%s｜%s" % [_roguelike_depth_label(), _short_card_text(_roguelike_planet_profile_text(), 30)], "accent": Color("#facc15"), "tooltip": "挑战层级决定星球规模；胜利门槛随当前存续区域实时变化。"},
 			{"title": "3｜角色", "body": "公开身份｜同局不重复", "accent": Color("#c084fc"), "tooltip": "角色牌开局公开；AI可随机，但开局时仍保证不重复。"},
-			{"title": "4｜首召", "body": "怪兽独立｜归属匿名", "accent": Color("#fb7185"), "tooltip": "角色不绑定起始怪兽；首召怪兽进桌后由玩家打出。"},
-			{"title": "5｜开局", "body": "首召 → 发展牌 → 商品项目", "accent": Color("#22c55e"), "tooltip": "开始本局后按轻引导完成首召、购买发展牌、建立商品项目和匿名出牌。"},
+			{"title": "4｜怪兽牌", "body": "各席持有｜召唤可选", "accent": Color("#fb7185"), "tooltip": "角色不绑定起始怪兽；起始怪兽牌由玩家持有，可在合法时机自愿打出。"},
+			{"title": "5｜开局", "body": "受光牌架 → 发展牌 → 商品项目", "accent": Color("#22c55e"), "tooltip": "开始本局后可直接浏览牌架、购买发展牌、建立商品项目和匿名出牌。"},
 		],
 		"readiness": [
 			{"text": "角色不重复", "accent": Color("#93c5fd"), "fill": Color("#1e3a8a")},
-			{"text": "首召独立", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
-			{"text": "进桌先首召", "accent": Color("#bbf7d0"), "fill": Color("#14532d")},
+			{"text": "怪兽牌独立", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
+			{"text": "召唤不阻断经济", "accent": Color("#bbf7d0"), "fill": Color("#14532d")},
 			{"text": "AI可随机角色", "accent": Color("#d8b4fe"), "fill": Color("#312e81")},
 			{"text": "区域控制审计", "accent": Color("#fef3c7"), "fill": Color("#713f12")},
 		],
@@ -8530,7 +8514,7 @@ func _new_game_setup_seat_card_snapshot(player_index: int, seat_label: String, s
 		"player_index": player_index,
 		"seat_type": seat_type,
 		"accent": accent,
-		"tooltip": "座位卡：公开角色 + 匿名首召怪兽。",
+		"tooltip": "座位卡：公开角色 + 各席持有的起始怪兽牌。",
 		"chips": [
 			{"text": "P%d" % (player_index + 1), "accent": Color("#f8fafc"), "fill": Color("#0f172a").lerp(accent, 0.28)},
 			{"text": seat_label, "accent": Color("#bfdbfe"), "fill": Color("#0f172a")},
@@ -8578,7 +8562,7 @@ func _new_game_setup_starter_card_face_snapshot(starter_card: Dictionary, starte
 		"type": "怪兽",
 		"rank": _level_text(max(1, _game_runtime_coordinator_node().card_rank(starter_name))),
 		"card_kind": "monster_card",
-		"card_stats": "不限区｜首召怪兽｜%s" % _short_card_text(_monster_card_region_text(starter_card, true), 16),
+		"card_stats": "不限区｜自愿召唤｜%s" % _short_card_text(_monster_card_region_text(starter_card, true), 16),
 		"accent": _card_presentation_color(starter_card),
 		"minimum_width": 142.0,
 		"minimum_height": 140.0,
@@ -8589,11 +8573,11 @@ func _new_game_setup_hidden_starter_card_face_snapshot() -> Dictionary:
 	return {
 		"name": "匿名起始怪兽",
 		"cost": "◆",
-		"effect": "具体怪兽档案与能力将在其合法首召后公开。",
+		"effect": "具体怪兽档案与能力将在其自愿召唤后公开。",
 		"type": "怪兽",
 		"rank": "I",
 		"card_kind": "monster_card_hidden",
-		"card_stats": "首召待公开｜AI私有选择",
+		"card_stats": "召唤前隐藏｜AI私有选择",
 		"accent": Color("#64748b"),
 		"minimum_width": 142.0,
 		"minimum_height": 140.0,
@@ -8606,7 +8590,7 @@ func _new_game_setup_seat_identity_snapshot(player_index: int, seat_type: String
 	var starter_label := "匿名待公开" if seat_type == "ai" else _short_card_text(String(_catalog_entry(starter_monster_index).get("name", "怪兽")), 12)
 	var chips := [
 		{"text": "公开角色:%s" % role_label, "accent": Color("#e0f2fe"), "fill": Color("#0c4a6e")},
-		{"text": "首召:%s" % starter_label, "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
+		{"text": "起始牌:%s" % starter_label, "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
 		{"text": "怪兽归属匿名", "accent": Color("#fde68a"), "fill": Color("#713f12")},
 	]
 	if seat_type == "ai":
@@ -8618,16 +8602,16 @@ func _new_game_setup_seat_identity_snapshot(player_index: int, seat_type: String
 	if _configured_role_index(player_index) == ROLE_RANDOM_INDEX:
 		role_body = "开局随机分配，结果公开且不重复。"
 	var privacy_text := "AI路线与出牌思路隐藏；只读公开动作。" if seat_type == "ai" else "现金/手牌只自己看；对手靠线索推理。"
-	var starter_body := "首召完成后才公开具体怪兽。" if seat_type == "ai" else _short_card_text(_starter_monster_setup_summary(starter_card), 54)
+	var starter_body := "自愿召唤后才公开具体怪兽。" if seat_type == "ai" else _short_card_text(_starter_monster_setup_summary(starter_card), 54)
 	return {
 		"accent": accent,
-		"tooltip": "座位公开信息板：只显示公开角色、首召怪兽和第一步提示；AI内部路线不公开。",
+		"tooltip": "座位公开信息板：只显示公开角色、起始怪兽牌状态和第一步提示；AI内部路线不公开。",
 		"columns": 2,
 		"chips": chips,
 		"cards": [
-			{"title": "公开身份", "body": role_body, "accent": Color("#93c5fd"), "tooltip": "角色是公开信息；不会绑定首召怪兽归属。"},
-			{"title": "首召怪兽", "body": starter_body, "accent": Color("#fb7185"), "tooltip": "首召怪兽进桌后由该席位打出；召唤者仍保持匿名。"},
-			{"title": "第一步", "body": "选落点 → 在选区首召 → 附近开牌架", "accent": Color("#22c55e"), "tooltip": "进入牌桌后的第一件事是首召怪兽，随后才能围绕怪兽附近买牌。"},
+			{"title": "公开身份", "body": role_body, "accent": Color("#93c5fd"), "tooltip": "角色是公开信息；不会绑定起始怪兽归属。"},
+			{"title": "起始怪兽牌", "body": starter_body, "accent": Color("#fb7185"), "tooltip": "该席持有起始怪兽牌；召唤完全自愿，召唤者仍保持匿名。"},
+			{"title": "第一步", "body": "选区域 → 看受光牌架 → 建立收入", "accent": Color("#22c55e"), "tooltip": "召唤怪兽不是购牌或经济前置。"},
 			{"title": "信息边界", "body": privacy_text, "accent": Color("#c4b5fd"), "tooltip": privacy_text},
 		],
 	}
@@ -8662,7 +8646,7 @@ func _starter_monster_setup_summary(starter_card: Dictionary) -> String:
 	var fixed_skill_count := int(starter_card.get("fixed_skill_count", 1))
 	var duration_text := _monster_card_duration_text(starter_card, true)
 	var region_text := _monster_card_region_text(starter_card, true)
-	return "首召：%s｜%s｜免GDP｜固定技%d｜落点开牌架" % [
+	return "起始牌：%s｜%s｜召唤可选｜固定技%d" % [
 		region_text,
 		duration_text,
 		fixed_skill_count,
@@ -8781,7 +8765,16 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	action_callouts = (state.get("action_callouts", []) as Array).duplicate(true)
 	map_event_effects = (state.get("map_event_effects", []) as Array).duplicate(true)
 	rng.state = int(state.get("rng_state", rng.state))
-	game_time = float(state.get("game_time", 0.0))
+	if runtime_coordinator != null and runtime_coordinator.has_method("restore_world_effective_seconds"):
+		var migrated_clock_variant: Variant = runtime_coordinator.call("restore_world_effective_seconds", float(state.get("game_time", 0.0)))
+		var migrated_clock: Dictionary = migrated_clock_variant if migrated_clock_variant is Dictionary else {}
+		game_time = float(migrated_clock.get("world_effective_seconds", 0.0))
+	if runtime_coordinator != null and runtime_coordinator.has_method("apply_session_save_data"):
+		runtime_coordinator.call("apply_session_save_data", state.get("game_session_runtime", {}) as Dictionary)
+		if runtime_coordinator.has_method("world_effective_clock_snapshot"):
+			var restored_clock_variant: Variant = runtime_coordinator.call("world_effective_clock_snapshot")
+			var restored_clock: Dictionary = restored_clock_variant if restored_clock_variant is Dictionary else {}
+			game_time = float(restored_clock.get("world_effective_seconds", game_time))
 	var commodity_flow_state_variant: Variant = state.get("commodity_flow_runtime", {})
 	if commodity_flow_state_variant is Dictionary and not (commodity_flow_state_variant as Dictionary).is_empty() and runtime_coordinator != null and runtime_coordinator.has_method("apply_commodity_flow_save_data"):
 		runtime_coordinator.call("apply_commodity_flow_save_data", (commodity_flow_state_variant as Dictionary).duplicate(true))
@@ -8842,8 +8835,6 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	_ai_runtime_call("_ensure_player_ai_state")
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_victory_control_save_data"):
 		runtime_coordinator.call("apply_victory_control_save_data", state.get("victory_control_runtime", {}) as Dictionary)
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_session_save_data"):
-		runtime_coordinator.call("apply_session_save_data", state.get("game_session_runtime", {}) as Dictionary)
 	map_width_m = float(state.get("map_width_m", MAP_WIDTH_METERS))
 	map_height_m = float(state.get("map_height_m", MAP_HEIGHT_METERS))
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_weather_save_data"):
@@ -9787,6 +9778,8 @@ func _new_game() -> void:
 	movement_trails = []
 	action_callouts = []
 	map_event_effects = []
+	if coordinator != null and coordinator.has_method("restore_world_effective_seconds"):
+		coordinator.call("restore_world_effective_seconds", 0.0)
 	game_time = 0.0
 	time_scale = 1.0
 	selected_player = 0
@@ -9857,6 +9850,13 @@ func _new_game() -> void:
 		})
 	_ai_runtime_call("_ensure_player_ai_state")
 
+	if _active_runtime_scenario_id() == "first_table" and coordinator != null and coordinator.has_method("first_table_fixture_snapshot"):
+		var first_table_fixture_variant: Variant = coordinator.call("first_table_fixture_snapshot")
+		var first_table_fixture: Dictionary = first_table_fixture_variant if first_table_fixture_variant is Dictionary else {}
+		var authored_map_seed: Variant = first_table_fixture.get("map_seed", -1)
+		var authored_map_seed_value := int(authored_map_seed) if authored_map_seed is int or authored_map_seed is float else -1
+		if authored_map_seed_value >= 0 and is_equal_approx(float(authored_map_seed), float(authored_map_seed_value)):
+			rng.seed = authored_map_seed_value
 	_generate_roguelike_districts()
 	_initialize_region_infrastructure_runtime()
 	if coordinator == null or not coordinator.has_method("refresh_v06_production_player_bindings"):
@@ -9918,7 +9918,7 @@ func _start_card_ingress_animation() -> void:
 	_add_action_callout(
 		"区域补给网",
 		"卡池生成",
-		"%d个区域各生成%d-%d张候选卡；怪兽牌已混入区域补给，默认从怪兽落地区/相邻区购买，补给能力可扩张范围。" % [
+		"%d个区域各生成%d-%d张候选卡；每个挂牌保留来源区，来源受光时可买，活怪按同区与邻区数量抬高报价。" % [
 			districts.size(),
 			DISTRICT_CARD_CHOICE_MIN,
 			DISTRICT_CARD_CHOICE_MAX,
@@ -10136,7 +10136,7 @@ func _normalize_player_role_card(role_card: Dictionary, player_index: int) -> Di
 	if String(role.get("species", "")) == "":
 		role["species"] = String(template.get("species", "未知外星人"))
 	if String(role.get("trait", "")) == "":
-		role["trait"] = String(template.get("trait", "首召协定持有人。"))
+		role["trait"] = String(template.get("trait", "起始怪兽牌持有人。"))
 	for field_name in _role_runtime_copy_fields():
 		if not role.has(field_name) and template.has(field_name):
 			role[field_name] = template[field_name]
@@ -10206,10 +10206,6 @@ func _role_runtime_copy_fields() -> Array:
 		"card_owner_guess_discount",
 		"card_owner_guess_bonus",
 		"contract_flow_discount",
-		"card_access_extra_hops",
-		"extended_card_price_multiplier",
-		"card_access_global",
-		"global_card_price_multiplier",
 		"monster_cards_as_counter",
 		"monster_control_limit_bonus",
 		"military_control_limit_bonus",
@@ -10319,7 +10315,7 @@ func _make_starting_monster_card(player_index: int, _role_card: Dictionary = {})
 	skill["machine"] = machine
 	skill["starter_play_free"] = true
 	skill["summon_access"] = "any"
-	skill["text"] = "%s（起始怪兽牌：开局第一只可直接打出，用来打开怪兽落地/相邻区域补给。）" % [
+	skill["text"] = "%s（起始怪兽牌：每席开局持有；召唤完全自愿，不是购牌、设施或经济前置。）" % [
 		String(skill.get("text", "")),
 	]
 	return skill
@@ -10844,7 +10840,7 @@ func _runtime_player_board_quick_actions(player_index: int) -> Array:
 		var choices_variant: Variant = district.get("card_choices", [])
 		var choices: Array = choices_variant if choices_variant is Array else []
 		choices_count = choices.size()
-		can_buy = _can_buy_card_from_district(selected_district, player_index) and choices_count > 0
+		can_buy = _district_market_currently_purchasable(selected_district) and choices_count > 0
 	var rack_active := selected_ok and choices_count > 0
 	var play_slot := _first_actionable_hand_slot(player_index)
 	return [
@@ -10860,7 +10856,7 @@ func _runtime_player_board_quick_actions(player_index: int) -> Array:
 			"买牌",
 			can_buy,
 			"ready" if can_buy else ("browse" if rack_active else "locked"),
-			"你的怪兽网络可以从此牌架买牌。" if can_buy else "先移动或延伸访问范围，再从这里买牌。"
+			"来源区域受光，当前可购买。" if can_buy else "牌架可浏览；等待来源区域进入日照半球。"
 		),
 		_runtime_quick_action_snapshot(
 			"play",
@@ -10925,7 +10921,7 @@ func _runtime_player_board_readiness_chips(player_index: int) -> Array:
 		return [{"label": "本席", "state": "未开局", "active": false, "accent": Color("#94a3b8"), "tooltip": "开新一桌后才能使用牌桌行动。"}]
 	var selected_ok := selected_district >= 0 and selected_district < districts.size()
 	var hand_count := _player_counted_hand_size(players[player_index] as Dictionary)
-	var can_buy := selected_ok and _can_buy_card_from_district(selected_district, player_index)
+	var can_buy := selected_ok and _district_market_currently_purchasable(selected_district)
 	var playable_slot := _first_actionable_hand_slot(player_index)
 	var chips := [
 		{"label": "选区", "state": "就绪" if selected_ok else "未选", "active": selected_ok, "accent": Color("#38bdf8"), "tooltip": "建城、看牌架或买牌前先选区域。"},
@@ -11521,7 +11517,7 @@ func _runtime_planet_flow_compass_source() -> Dictionary:
 		steps = [
 			{"label": "开局", "done": false, "current": true, "accent": Color("#fef3c7"), "tip": "先从开局准备进入一桌测试局。"},
 			{"label": "点区", "done": false, "current": false, "accent": Color("#38bdf8"), "tip": "进局后先点中央星球区域。"},
-			{"label": "首召", "done": false, "current": false, "accent": Color("#fb7185"), "tip": "再打出起始怪兽。"},
+			{"label": "牌架", "done": false, "current": false, "accent": Color("#facc15"), "tip": "查看挂牌并选择受光来源。"},
 		]
 	return {
 		"title": "试玩 罗盘",
@@ -12454,27 +12450,6 @@ func _apply_intel_card_trace(_player: Dictionary, skill: Dictionary) -> bool:
 	return traced > 0 or revealed > 0 or contract_traced > 0
 
 
-func _apply_card_access_boon(player: Dictionary, skill: Dictionary) -> bool:
-	if selected_player < 0 or selected_player >= players.size():
-		return false
-	var seconds := maxf(5.0, float(skill.get("card_access_seconds", 30.0)))
-	var until_time := game_time + seconds
-	player["card_access_expire_time"] = maxf(float(player.get("card_access_expire_time", -1.0)), until_time)
-	player["card_access_extra_hops"] = maxi(maxi(0, int(player.get("card_access_extra_hops", 0))), maxi(0, int(skill.get("card_access_extra_hops", 0))))
-	player["extended_card_price_multiplier"] = maxf(float(player.get("extended_card_price_multiplier", 1.10)), float(skill.get("extended_card_price_multiplier", 1.10)))
-	if bool(skill.get("card_access_global", false)):
-		player["card_access_global"] = true
-		player["global_card_price_multiplier"] = maxf(float(player.get("global_card_price_multiplier", 1.35)), float(skill.get("global_card_price_multiplier", 1.35)))
-	players[selected_player] = player
-	var effect_text := "全局采购×%.2f" % float(player.get("global_card_price_multiplier", 1.35)) if bool(player.get("card_access_global", false)) else "怪兽补给半径+%d跳，远程价×%.2f" % [
-		int(player.get("card_access_extra_hops", 0)),
-		float(player.get("extended_card_price_multiplier", 1.10)),
-	]
-	_record_player_economic_event(selected_player, "补给权限", String(skill.get("name", "远程补给链")), 0, "%s，持续%.0f秒。" % [effect_text, seconds])
-	_log("匿名补给权限生效：一名未公开玩家获得%s，持续%.0f秒。" % [effect_text, seconds])
-	return true
-
-
 func _selected_city_owner_view_text() -> String:
 	var city := _district_city(selected_district)
 	if city.is_empty():
@@ -12603,13 +12578,13 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 	if starter_slot >= 0:
 		var starter_card: Dictionary = player["slots"][starter_slot]
 		var can_summon := not _runtime_session_finished() \
-			and _selected_district_can_receive_first_summon() \
+			and selected_district >= 0 and selected_district < districts.size() and not bool(districts[selected_district].get("destroyed", false)) \
 			and float(player.get("action_cooldown", 0.0)) <= 0.0 \
 			and not bool(starter_card.get("queued_for_resolution", false)) \
 			and _authorize_card_play(player_index, starter_card, false)
 		return {
-			"label": "在选区首召",
-			"detail": "打出起始怪兽牌，解锁附近购牌。",
+			"label": "可选：召唤怪兽",
+			"detail": "起始怪兽牌已在手中；可随时召唤，不影响购牌、设施或经济行动。",
 			"accent": Color("#fb7185"),
 			"disabled": not can_summon,
 			"target": Callable(self, "_use_skill").bind(starter_slot),
@@ -12625,7 +12600,7 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 	if body.contains("购牌") or body.contains("买牌") or body.contains("牌架") or _player_counted_hand_size(player) <= 0:
 		return {
 			"label": "打开牌架",
-			"detail": "查看当前区域可提供的牌；购买资格按打开瞬间锁定。",
+			"detail": "查看当前区域挂牌；显式选择或确认后锁定5秒资格与价格。",
 			"accent": Color("#f59e0b"),
 			"disabled": false,
 			"target": Callable(self, "_open_district_supply_from_map").bind(selected_district),
@@ -13108,14 +13083,13 @@ func _first_table_accessible_land_district(player_index: int) -> int:
 		return -1
 	if selected_district >= 0 and selected_district < districts.size() \
 			and String(districts[selected_district].get("terrain", "land")) == "land" \
-			and _can_buy_card_from_district(selected_district, player_index):
+			and _district_market_currently_purchasable(selected_district):
 		return selected_district
-	for access_kind in ["landed", "adjacent", "extended", "global"]:
-		for district_index in range(districts.size()):
-			if bool(districts[district_index].get("destroyed", false)) or String(districts[district_index].get("terrain", "land")) != "land":
-				continue
-			if _district_card_access_kind_live(district_index, player_index) == access_kind and _can_buy_card_from_district(district_index, player_index):
-				return district_index
+	for district_index in range(districts.size()):
+		if bool(districts[district_index].get("destroyed", false)) or String(districts[district_index].get("terrain", "land")) != "land":
+			continue
+		if _district_market_currently_purchasable(district_index):
+			return district_index
 	return -1
 
 
@@ -13166,7 +13140,7 @@ func _buy_first_table_followup_card(player_index: int) -> bool:
 	if followup_card_name == "":
 		return false
 	var district_index := _first_table_player_city_district(player_index)
-	if district_index < 0 or not _can_buy_card_from_district(district_index, player_index):
+	if district_index < 0 or not _district_market_currently_purchasable(district_index):
 		district_index = _first_table_accessible_land_district(player_index)
 	if district_index < 0 or not _inject_first_table_followup_card_supply(district_index):
 		return false
@@ -13187,11 +13161,8 @@ func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -
 	}
 	match action_id:
 		"coach_select_district":
-			copy["focus_target"] = "player_hand"
-			copy["shortest_action_text"] = "看手牌，首召怪兽。"
-		"coach_first_summon":
 			copy["focus_target"] = "planet"
-			copy["shortest_action_text"] = "看怪兽所在区或邻区，打开发展牌架。"
+			copy["shortest_action_text"] = "打开区域牌架，查看受光挂牌。"
 		"coach_open_rack":
 			copy["focus_target"] = "district_supply"
 			copy["shortest_action_text"] = "看牌架，读卡或买牌。"
@@ -13224,10 +13195,6 @@ func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -
 			copy["title"] = "看中央星球"
 			copy["body"] = "按确认选区。"
 			copy["tooltip"] = "最短操作：看中央星球，确认一个可建城区域。"
-		"first_summon":
-			copy["title"] = "看手牌"
-			copy["body"] = "首召怪兽。"
-			copy["tooltip"] = "最短操作：看底部手牌，打出起始怪兽。"
 		"build_city":
 			copy["title"] = "看星球区域"
 			copy["body"] = "打开发展牌架。"
@@ -13274,13 +13241,9 @@ func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -
 			copy["tooltip"] = "首轮路径已完成，继续做赚钱或压制决策。"
 	match action_id:
 		"coach_select_district":
-			copy["title"] = "看手牌"
-			copy["body"] = "首召怪兽。"
-			copy["tooltip"] = "最短操作：选区已确定，看底部手牌首召怪兽。"
-		"coach_first_summon":
 			copy["title"] = "看星球区域"
 			copy["body"] = "打开真实牌架。"
-			copy["tooltip"] = "最短操作：怪兽已落地，打开所在区或相邻陆地区域的发展牌架。"
+			copy["tooltip"] = "最短操作：打开区域牌架；挂牌来源受光时可确认购买。"
 		"coach_open_rack":
 			copy["title"] = "看区域牌架"
 			copy["body"] = "读卡或买牌。"
@@ -13334,20 +13297,6 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"disabled": recommended_district < 0,
 				"tooltip": "把地图焦点放到%s；右侧会显示能否建城、牌架和商品线索。" % recommended_name,
 				"accent": Color("#38bdf8"),
-			}
-		"first_summon":
-			var starter_slot := _first_starter_monster_slot(players[player_index])
-			var disabled := starter_slot < 0 or not _selected_district_can_receive_first_summon()
-			if starter_slot >= 0:
-				var slots: Array = players[player_index].get("slots", [])
-				if starter_slot < slots.size() and slots[starter_slot] is Dictionary:
-					disabled = disabled or not _authorize_card_play(player_index, slots[starter_slot] as Dictionary, false)
-			return {
-				"id": "coach_first_summon",
-				"label": "在选区首召",
-				"disabled": disabled,
-				"tooltip": "打出起始怪兽；首召后，怪兽附近区域会成为第一批买牌地点。",
-				"accent": Color("#fb7185"),
 			}
 		"build_city":
 			return {
@@ -13488,7 +13437,6 @@ func _first_run_coach_stage(progress: Dictionary) -> String:
 		var completed_signals: Dictionary = _runtime_scenario_state().get("completed_signals", {})
 		var signal_order := [
 			["district_selected", "select_district"],
-			["monster_summoned", "first_summon"],
 			["rack_opened", "open_rack"],
 			["card_bought", "buy_development"],
 			["card_played", "play_development"],
@@ -13517,8 +13465,6 @@ func _first_run_coach_stage(progress: Dictionary) -> String:
 		return "done"
 	if not bool(progress.get("selected_district", false)):
 		return "select_district"
-	if not bool(progress.get("has_monster", false)):
-		return "first_summon"
 	if not bool(progress.get("has_opened_supply", false)):
 		return "open_rack"
 	if not bool(progress.get("has_bought_card", false)):
@@ -13560,16 +13506,6 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 				_complete_scenario_signal("district_selected", "选择推荐区域：%s；商品与建城条件来自真实地图数据。" % str(districts[selected_district].get("name", "区域")), "after_select", "planet")
 			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
-		"coach_first_summon":
-			if not _ensure_first_run_coach_action_district(player_index):
-				return false
-			var starter_slot := _first_starter_monster_slot(players[player_index])
-			if starter_slot < 0:
-				return false
-			selected_player = player_index
-			_use_skill(starter_slot)
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
 		"coach_open_rack":
 			if not _ensure_first_run_coach_action_district(player_index):
 				return false
@@ -13608,7 +13544,7 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 				return true
 			var buyable_card := _first_teachable_buyable_district_card(selected_district, player_index)
 			if buyable_card == "":
-				_log("首局买牌：当前没有合法可买牌架；先保持牌架打开，查看怪兽所在区或相邻区。")
+				_log("首局买牌：当前没有受光挂牌；牌架仍可查看，等待自转或选择其他来源区。")
 				_finish_first_run_coach_action_feedback(player_index, action_id)
 				return true
 			selected_market_skill = buyable_card
@@ -13889,27 +13825,24 @@ func _ensure_first_run_teachable_hand_card(player_index: int) -> bool:
 	var previous_selected_district := selected_district
 	var previous_market_skill := selected_market_skill
 	var previous_previewed_card := previewed_district_card
-	for access_kind in ["landed", "adjacent", "extended", "global"]:
-		for district_index in range(districts.size()):
-			if bool(districts[district_index].get("destroyed", false)):
+	for district_index in range(districts.size()):
+		if bool(districts[district_index].get("destroyed", false)) or not _district_market_currently_purchasable(district_index):
+			continue
+		for card_variant in districts[district_index].get("card_choices", []):
+			var card_name := String(card_variant)
+			if not _first_run_card_is_teachable_after_purchase(player_index, card_name):
 				continue
-			if _district_card_access_kind_live(district_index, player_index) != access_kind:
+			var state := _district_supply_purchase_state(district_index, card_name, player_index)
+			if not bool(state.get("actionable", false)):
 				continue
-			for card_variant in districts[district_index].get("card_choices", []):
-				var card_name := String(card_variant)
-				if not _first_run_card_is_teachable_after_purchase(player_index, card_name):
-					continue
-				var state := _district_supply_purchase_state(district_index, card_name, player_index)
-				if not bool(state.get("actionable", false)):
-					continue
-				selected_player = player_index
-				_jump_to_district_on_table(district_index)
-				_open_first_run_coach_district_supply(district_index, player_index)
-				selected_market_skill = card_name
-				previewed_district_card = card_name
-				_claim_district_card(card_name)
-				if _first_actionable_teachable_hand_slot(player_index) >= 0:
-					return true
+			selected_player = player_index
+			_jump_to_district_on_table(district_index)
+			_open_first_run_coach_district_supply(district_index, player_index)
+			selected_market_skill = card_name
+			previewed_district_card = card_name
+			_claim_district_card(card_name)
+			if _first_actionable_teachable_hand_slot(player_index) >= 0:
+				return true
 	selected_player = previous_selected_player
 	selected_district = previous_selected_district
 	selected_market_skill = previous_market_skill
@@ -13920,18 +13853,13 @@ func _ensure_first_run_teachable_hand_card(player_index: int) -> bool:
 func _first_card_accessible_district_for_player(player_index: int) -> int:
 	if player_index < 0 or player_index >= players.size():
 		return -1
-	if selected_district >= 0 and selected_district < districts.size() and _can_buy_card_from_district(selected_district, player_index):
+	if selected_district >= 0 and selected_district < districts.size() and _district_market_currently_purchasable(selected_district):
 		return selected_district
-	if _district_supply_is_open() and _can_buy_card_from_district(district_supply_open_district, player_index):
+	if _district_supply_is_open() and _district_market_currently_purchasable(district_supply_open_district):
 		return district_supply_open_district
-	for access_kind in ["landed", "adjacent", "extended", "global"]:
-		for district_index in range(districts.size()):
-			if bool(districts[district_index].get("destroyed", false)):
-				continue
-			if _district_card_access_kind_live(district_index, player_index) != access_kind:
-				continue
-			if _can_buy_card_from_district(district_index, player_index):
-				return district_index
+	for district_index in range(districts.size()):
+		if not bool(districts[district_index].get("destroyed", false)) and _district_market_currently_purchasable(district_index):
+			return district_index
 	return -1
 
 
@@ -13942,14 +13870,9 @@ func _first_buyable_district_for_player(player_index: int) -> int:
 		return selected_district
 	if _district_supply_is_open() and _first_buyable_district_card(district_supply_open_district, player_index) != "":
 		return district_supply_open_district
-	for access_kind in ["landed", "adjacent", "extended", "global"]:
-		for district_index in range(districts.size()):
-			if bool(districts[district_index].get("destroyed", false)):
-				continue
-			if _district_card_access_kind_live(district_index, player_index) != access_kind:
-				continue
-			if _first_buyable_district_card(district_index, player_index) != "":
-				return district_index
+	for district_index in range(districts.size()):
+		if not bool(districts[district_index].get("destroyed", false)) and _first_buyable_district_card(district_index, player_index) != "":
+			return district_index
 	return -1
 
 
@@ -13960,22 +13883,18 @@ func _first_teachable_buyable_district_for_player(player_index: int) -> int:
 		return selected_district
 	if _district_supply_is_open() and _first_teachable_buyable_district_card(district_supply_open_district, player_index) != "":
 		return district_supply_open_district
-	for access_kind in ["landed", "adjacent", "extended", "global"]:
-		for district_index in range(districts.size()):
-			if bool(districts[district_index].get("destroyed", false)):
-				continue
-			if _district_card_access_kind_live(district_index, player_index) != access_kind:
-				continue
-			var card_name := _first_teachable_buyable_district_card(district_index, player_index)
-			if card_name == "":
-				continue
+	for district_index in range(districts.size()):
+		if bool(districts[district_index].get("destroyed", false)):
+			continue
+		var card_name := _first_teachable_buyable_district_card(district_index, player_index)
+		if card_name != "":
 			return district_index
 	return -1
 
 
 func _first_run_buy_card_tooltip(buyable_district: int, buyable_card: String) -> String:
 	if buyable_district < 0 or buyable_card == "":
-		return "当前没有合法可买牌；先让怪兽落地或查看怪兽所在区/相邻区。"
+		return "当前没有合法可买牌；等待一个来源区域进入日照半球。"
 	var district_name := String(districts[buyable_district].get("name", "区域")) if buyable_district >= 0 and buyable_district < districts.size() else "可买区域"
 	var card_label := _card_display_name(buyable_card)
 	if buyable_district == selected_district:
@@ -14077,8 +13996,7 @@ func _selected_district_supply_text(player_index: int) -> String:
 		return "补给：未选区"
 	var district: Dictionary = districts[selected_district]
 	var choices: Array = district.get("card_choices", [])
-	var access_text := _district_card_access_text(selected_district, player_index)
-	return "补给 %d张｜%s" % [choices.size(), access_text]
+	return "补给 %d张｜%s" % [choices.size(), _district_market_availability_text(selected_district)]
 
 
 func _selected_district_action_lamp_entries(player_index: int) -> Array:
@@ -14094,11 +14012,7 @@ func _selected_district_action_lamp_entries(player_index: int) -> Array:
 		}]
 	var district: Dictionary = districts[selected_district]
 	var choices: Array = district.get("card_choices", [])
-	var can_buy := _can_buy_card_from_district(selected_district, player_index)
-	var starter_ready := false
-	if player_index >= 0 and player_index < players.size():
-		var starter_slot := _first_starter_monster_slot(players[player_index])
-		starter_ready = starter_slot >= 0 and monster_runtime_controller.auto_monsters.is_empty() and _selected_district_can_receive_first_summon()
+	var can_buy := _district_market_currently_purchasable(selected_district)
 	var trade_product := selected_trade_product if selected_trade_product != "" else _default_trade_product_for_selected_district()
 	var city := _district_city(selected_district)
 	entries.append({
@@ -14106,14 +14020,7 @@ func _selected_district_action_lamp_entries(player_index: int) -> Array:
 		"state": "可买" if can_buy else ("可看" if not choices.is_empty() else "空"),
 		"accent": Color("#facc15") if can_buy else Color("#38bdf8"),
 		"active": not choices.is_empty(),
-		"tip": "区域牌架：查看始终允许；购买按打开窗口瞬间判定。",
-	})
-	entries.append({
-		"text": "首召",
-		"state": "可落" if starter_ready else ("已召" if not monster_runtime_controller.auto_monsters.is_empty() else "待选"),
-		"accent": Color("#fb7185") if starter_ready else Color("#64748b"),
-		"active": starter_ready,
-		"tip": "起始怪兽首召：选区有效时可直接部署。",
+		"tip": "区域牌架：查看始终允许；来源受光时可报价，显式选择后锁定5秒。",
 	})
 	entries.append({
 		"text": "商路",
@@ -14212,10 +14119,6 @@ func _first_starter_monster_slot(player: Dictionary) -> int:
 		if String(skill.get("kind", "")) == "monster_card" and bool(skill.get("starter_play_free", false)):
 			return i
 	return -1
-
-
-func _selected_district_can_receive_first_summon() -> bool:
-	return selected_district >= 0 and selected_district < districts.size() and not bool(districts[selected_district].get("destroyed", false))
 
 
 func _role_card_presentation_color(role_card: Dictionary) -> Color:
@@ -14327,11 +14230,11 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 	var terrain := String(districts[district_index].get("terrain", "land"))
 	match String(skill.get("summon_access", "any")):
 		"monster_zone":
-			return int(_district_purchase_qualification_compatibility_adapter(district_index).get("nearby_monster_distance", -1)) >= 0
+			return monster_runtime_controller.summon_zone_available(district_index)
 		"land_monster_zone":
-			return terrain == "land" and int(_district_purchase_qualification_compatibility_adapter(district_index).get("nearby_monster_distance", -1)) >= 0
+			return monster_runtime_controller.summon_zone_available(district_index, "land")
 		"ocean_monster_zone":
-			return terrain == "ocean" and int(_district_purchase_qualification_compatibility_adapter(district_index).get("nearby_monster_distance", -1)) >= 0
+			return monster_runtime_controller.summon_zone_available(district_index, "ocean")
 		"land":
 			return terrain == "land"
 		"ocean":
@@ -14460,12 +14363,25 @@ func _preview_district_card(card_name: String, refresh: bool = true) -> void:
 	var context_district := _active_district_card_context()
 	if context_district >= 0 and context_district < districts.size() and not _district_has_card(context_district, card_name):
 		return
+	previewed_district_card = card_name
+	_complete_scenario_signal("card_previewed", "查看卡牌：%s。" % _card_display_name(card_name), "rack_open", "district_supply")
+	if refresh:
+		_refresh_ui()
+
+
+func _select_district_card_for_quote(card_name: String, refresh: bool = true) -> void:
+	if card_name == "" or not _game_runtime_coordinator_node().card_exists(card_name):
+		return
+	var context_district := _active_district_card_context()
+	if context_district < 0 or context_district >= districts.size() or not _district_has_card(context_district, card_name):
+		return
 	selected_market_skill = card_name
 	previewed_district_card = card_name
 	var purchase_player := district_supply_open_player if _district_supply_is_open() else selected_player
 	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator != null and runtime_coordinator.has_method("acknowledge_district_purchase_selection") and context_district >= 0:
+	if runtime_coordinator != null and runtime_coordinator.has_method("acknowledge_district_purchase_selection"):
 		runtime_coordinator.call("acknowledge_district_purchase_selection", purchase_player, context_district, card_name, str(districts[context_district].get("card_choices", [])))
+		_request_card_market_quote(card_name, context_district, purchase_player)
 	_complete_scenario_signal("card_previewed", "查看卡牌：%s。" % _card_display_name(card_name), "rack_open", "district_supply")
 	if refresh:
 		_refresh_ui()
@@ -14586,8 +14502,8 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 		if not viewer_authorized:
 			v06_facility_source = _district_supply_public_card_source(v06_facility_source)
 		card_sources.append(v06_facility_source)
-	var access_kind := _district_card_access_kind(district_index, subject_player_index) if viewer_authorized else "public"
-	var can_buy := _can_buy_card_from_district(district_index, subject_player_index) if viewer_authorized else false
+	var availability_kind := _district_market_availability_kind(district_index)
+	var can_buy := _district_market_currently_purchasable(district_index) if viewer_authorized else false
 	var purchase_window: Dictionary = {}
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if viewer_authorized and runtime_coordinator != null and runtime_coordinator.has_method("district_purchase_private_ui_snapshot"):
@@ -14606,8 +14522,8 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 		"visibility_scope": "viewer_private" if viewer_authorized else "public",
 		"viewer_authorized": viewer_authorized,
 		"selected_card_name": preview_name,
-		"access_kind": access_kind,
-		"access_text": _district_card_access_text_for_kind(access_kind, district_index, subject_player_index) if viewer_authorized else "公共牌架预览；购买状态仅对本地真人本人显示。",
+		"availability_kind": availability_kind,
+		"availability_text": _district_market_availability_text(district_index),
 		"local_product_names": local_products,
 		"cards": card_sources,
 	}
@@ -14661,16 +14577,17 @@ func _v06_first_table_facility_supply_source(district_index: int, player_index: 
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	var player_text: Dictionary = card.get("player", {}) if card.get("player", {}) is Dictionary else {}
+	var quote: Dictionary = snapshot.get("quote", {}) if snapshot.get("quote", {}) is Dictionary else {}
 	var card_id := str(machine.get("card_id", ""))
 	if card_id.is_empty():
 		return {}
-	var price := int(machine.get("purchase_cash", -1))
-	var can_access := _can_buy_card_from_district(district_index, player_index)
+	var price := int(quote.get("final_price", machine.get("purchase_cash", -1)))
+	var can_access := bool(quote.get("purchasable", false))
 	var cash_ready := int(players[player_index].get("cash", 0)) >= price
 	var actionable := can_access and cash_ready and not _runtime_session_finished()
 	var state := {
 		"label": "可购买" if actionable else ("资金不足" if can_access and not cash_ready else "仅浏览"),
-		"detail": "购买后进入v0.6手牌，由统一卡牌事务结算。" if actionable else ("需要¥%d；当前资金不足。" % price if can_access else _district_card_access_text(district_index, player_index)),
+		"detail": "购买后进入v0.6手牌，由统一卡牌事务结算。" if actionable else ("需要¥%d；当前资金不足。" % price if can_access else "挂牌来源区域当前处于暗面；可以查看，暂不可购买。"),
 		"actionable": actionable,
 		"requires_discard": false,
 		"price": price,
@@ -14736,9 +14653,6 @@ func _purchase_v06_first_table_facility_card(card_id: String) -> void:
 	var player_index := _local_human_player_index()
 	var district_index := district_supply_open_district
 	if player_index < 0 or player_index >= players.size() or district_index < 0 or district_index >= districts.size() or not _is_v06_facility_card_id(card_id):
-		return
-	if not _can_buy_card_from_district(district_index, player_index):
-		_log("当前区域不在你的购牌范围内。")
 		return
 	var coordinator := _game_runtime_coordinator_node()
 	var actor_id := _v06_actor_id(player_index)
@@ -14835,8 +14749,10 @@ func _on_district_supply_action_requested(action_id: String, payload: Dictionary
 		"district_supply_preview_card":
 			if _is_v06_facility_card_id(card_id):
 				_preview_v06_facility_card(card_id)
-			else:
+			elif str(payload.get("source", "")) == "hover":
 				_preview_district_card(card_id, true)
+			else:
+				_select_district_card_for_quote(card_id, true)
 		"district_supply_purchase_card":
 			if _is_v06_facility_card_id(card_id):
 				_purchase_v06_first_table_facility_card(card_id)
@@ -14845,13 +14761,19 @@ func _on_district_supply_action_requested(action_id: String, payload: Dictionary
 
 
 func _district_supply_purchase_state(district_index: int, card_name: String, player_index: int) -> Dictionary:
+	var supply_revision := str(districts[district_index].get("card_choices", [])) if district_index >= 0 and district_index < districts.size() else ""
+	var quote := _active_card_market_quote(card_name, district_index, player_index, supply_revision)
+	var preview := _card_market_preview(card_name, district_index)
+	var price_source := quote if not quote.is_empty() else preview
 	var state := {
 		"label": "仅浏览",
-		"detail": "可以查看卡面；购买需要怪兽落地、相邻或补给范围能力。",
+		"detail": "可以查看卡面；来源区域受光时才可购买。",
 		"actionable": false,
 		"requires_discard": false,
-		"price": _card_price(card_name, district_index, player_index),
+		"price": int(price_source.get("final_price", _card_price(card_name))),
 		"accent": Color("#94a3b8"),
+		"quote_id": str(quote.get("quote_id", "")),
+		"quote_fingerprint": str(quote.get("quote_fingerprint", "")),
 	}
 	if _runtime_session_finished():
 		state["label"] = "已结束"
@@ -14869,10 +14791,18 @@ func _district_supply_purchase_state(district_index: int, card_name: String, pla
 		state["label"] = "未投放"
 		state["detail"] = "这张牌不在当前区域市场。"
 		return state
-	var access_text := _district_card_access_text(district_index, player_index)
-	if not _can_buy_card_from_district(district_index, player_index):
+	var availability_text := _district_market_availability_text(district_index)
+	if quote.is_empty():
+		state["label"] = "选择以报价"
+		state["detail"] = "%s 选择此牌后锁定资格与价格5个世界秒。" % availability_text
+		return state
+	if not bool(quote.get("quote_active", false)):
+		state["label"] = "报价已过期"
+		state["detail"] = "重新选择此牌以获取新报价；界面刷新不会自动续期。"
+		return state
+	if not bool(quote.get("eligible", false)):
 		state["label"] = "仅浏览"
-		state["detail"] = access_text
+		state["detail"] = availability_text
 		return state
 	var player: Dictionary = players[player_index]
 	var price := int(state.get("price", 0))
@@ -14894,20 +14824,21 @@ func _district_supply_purchase_state(district_index: int, card_name: String, pla
 		state["accent"] = Color("#facc15")
 		return state
 	state["label"] = "可购买"
-	state["detail"] = access_text
+	var pressure_text := "无怪兽影响" if int(quote.get("multiplier_q2", 2)) == 2 else "怪兽压力×%.1f" % (float(quote.get("multiplier_q2", 2)) / 2.0)
+	state["detail"] = "%s 当前价¥%d；%s。" % [availability_text, price, pressure_text]
 	state["actionable"] = true
 	state["accent"] = Color("#22c55e")
 	return state
 
 
-func _resolved_card_access_player_index(player_index: int = -1) -> int:
+func _resolved_card_market_player_index(player_index: int = -1) -> int:
 	if player_index >= 0:
 		return player_index
 	return selected_player
 
 
 func _open_district_card_purchase_window(district_index: int, player_index: int = -1, preserve_pending_discard: bool = false) -> void:
-	var resolved_player := _resolved_card_access_player_index(player_index)
+	var resolved_player := _resolved_card_market_player_index(player_index)
 	if not preserve_pending_discard and not pending_discard_purchase.is_empty():
 		var pending_player := int(pending_discard_purchase.get("player_index", -1))
 		var pending_district := int(pending_discard_purchase.get("district_index", -1))
@@ -14921,7 +14852,9 @@ func _open_district_card_purchase_window(district_index: int, player_index: int 
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if runtime_coordinator == null or not runtime_coordinator.has_method("open_district_purchase_window"):
 		return
-	runtime_coordinator.call("open_district_purchase_window", resolved_player, district_index, _district_purchase_qualification_compatibility_adapter(district_index, resolved_player))
+	runtime_coordinator.call("open_district_purchase_window", resolved_player, district_index, {
+		"supply_revision": str(districts[district_index].get("card_choices", [])),
+	})
 	if preserve_pending_discard and not pending_discard_purchase.is_empty() and runtime_coordinator.has_method("reserve_district_purchase_discard"):
 		runtime_coordinator.call("reserve_district_purchase_discard", {
 			"player_index": resolved_player,
@@ -15940,7 +15873,7 @@ func _district_card_affinity_score(district_index: int, skill_name: String) -> i
 			return -999
 		score += 90
 	var kind := String(skill.get("kind", ""))
-	if terrain == "ocean" and ["weather_control", "route_flow_boon", "route_insurance", "card_access_boon", "product_contract_boon"].has(kind):
+	if terrain == "ocean" and ["weather_control", "route_flow_boon", "route_insurance", "product_contract_boon"].has(kind):
 		score += 45
 	if terrain == "land" and ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "region_economy_shift"].has(kind):
 		score += 35
@@ -16483,8 +16416,6 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["情报", "卡牌"]
 		"intel_contract_trace":
 			return ["情报", "合约"]
-		"card_access_boon":
-			return ["补给", "范围"]
 		"weather_control":
 			return ["天气"]
 		"monster_lure":
@@ -16637,10 +16568,6 @@ func _claim_district_card(skill_name: String) -> void:
 		_log("%s已被破坏，不能从这里获取卡牌。" % districts[context_district]["name"])
 		_refresh_ui()
 		return
-	if not _can_buy_card_from_district(context_district, purchase_player):
-		_log("%s暂不能购买卡牌：需要怪兽落地区/相邻区，或补给范围扩张能力。" % districts[context_district]["name"])
-		_refresh_ui()
-		return
 	if not _district_has_card(context_district, skill_name):
 		_log("%s不是当前区域的候选卡。%s" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
 		_refresh_ui()
@@ -16700,77 +16627,72 @@ func _district_has_card(district_index: int, skill_name: String) -> bool:
 	return choices.has(skill_name)
 
 
-func _player_card_access_effect(player_index: int) -> Dictionary:
-	var effect := {
-		"extra_hops": 0,
-		"extended_multiplier": 1.10,
-		"global": false,
-		"global_multiplier": 1.35,
-	}
-	if player_index < 0 or player_index >= players.size():
-		player_index = selected_player
-	if player_index < 0 or player_index >= players.size():
-		return effect
-	var role := _player_role_card_for_index(player_index)
-	effect["extra_hops"] = maxi(int(effect["extra_hops"]), maxi(0, int(role.get("card_access_extra_hops", 0))))
-	effect["extended_multiplier"] = maxf(float(effect["extended_multiplier"]), float(role.get("extended_card_price_multiplier", effect["extended_multiplier"])))
-	if bool(role.get("card_access_global", false)):
-		effect["global"] = true
-		effect["global_multiplier"] = maxf(float(effect["global_multiplier"]), float(role.get("global_card_price_multiplier", effect["global_multiplier"])))
-	var player: Dictionary = players[player_index]
-	if float(player.get("card_access_expire_time", -1.0)) > game_time:
-		effect["extra_hops"] = maxi(int(effect["extra_hops"]), maxi(0, int(player.get("card_access_extra_hops", 0))))
-		effect["extended_multiplier"] = maxf(float(effect["extended_multiplier"]), float(player.get("extended_card_price_multiplier", effect["extended_multiplier"])))
-		if bool(player.get("card_access_global", false)):
-			effect["global"] = true
-			effect["global_multiplier"] = maxf(float(effect["global_multiplier"]), float(player.get("global_card_price_multiplier", effect["global_multiplier"])))
-	return effect
-
-
-func _district_purchase_qualification_compatibility_adapter(district_index: int, player_index: int = -1) -> Dictionary:
-	player_index = _resolved_card_access_player_index(player_index)
-	var district_facts: Array = []
-	for district_variant in districts:
-		var district: Dictionary = district_variant if district_variant is Dictionary else {}
-		district_facts.append({"neighbors": (district.get("neighbors", []) as Array).duplicate(), "destroyed": bool(district.get("destroyed", false))})
-	var monster_facts: Array = []
-	for actor_variant in monster_runtime_controller.auto_monsters:
-		var actor: Dictionary = actor_variant if actor_variant is Dictionary else {}
-		monster_facts.append({"district_index": int(actor.get("position", -1)), "down": bool(actor.get("down", false)), "owner": int(actor.get("owner", -1))})
-	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator == null or not runtime_coordinator.has_method("build_district_purchase_qualification"):
+func _card_market_preview(skill_name: String, district_index: int) -> Dictionary:
+	if district_index < 0 or district_index >= districts.size() or skill_name.is_empty():
 		return {}
-	return runtime_coordinator.call("build_district_purchase_qualification", {"district_index": district_index, "player_index": player_index, "districts": district_facts, "monsters": monster_facts, "access_effect": _player_card_access_effect(player_index), "opened_at": game_time, "supply_revision": str(districts[district_index].get("card_choices", [])) if district_index >= 0 and district_index < districts.size() else ""}) as Dictionary
-
-
-func _district_card_access_kind_live(district_index: int, player_index: int = -1) -> String:
-	return str(_district_purchase_qualification_compatibility_adapter(district_index, player_index).get("access_kind", "none"))
-
-
-func _district_card_access_kind(district_index: int, player_index: int = -1) -> String:
-	var resolved_player := _resolved_card_access_player_index(player_index)
 	var runtime_coordinator := _game_runtime_coordinator_node()
-	return str(runtime_coordinator.call("resolve_district_purchase_access_kind", resolved_player, district_index, _district_purchase_qualification_compatibility_adapter(district_index, resolved_player))) if runtime_coordinator != null and runtime_coordinator.has_method("resolve_district_purchase_access_kind") else "none"
+	if runtime_coordinator == null or not runtime_coordinator.has_method("card_market_preview"):
+		return {}
+	var value: Variant = runtime_coordinator.call("card_market_preview", {
+		"district_index": district_index,
+		"card_id": skill_name,
+		"supply_revision": str(districts[district_index].get("card_choices", [])),
+		"base_price": _card_price(skill_name),
+	})
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func _district_card_access_text_for_kind(kind: String, district_index: int, player_index: int = -1) -> String:
+func _request_card_market_quote(skill_name: String, district_index: int, player_index: int = -1) -> Dictionary:
+	var resolved_player := _resolved_card_market_player_index(player_index)
+	if resolved_player < 0 or district_index < 0 or district_index >= districts.size() or skill_name.is_empty():
+		return {}
 	var runtime_coordinator := _game_runtime_coordinator_node()
-	var price_context: Dictionary = runtime_coordinator.call("district_purchase_price_context", _resolved_card_access_player_index(player_index), district_index) if runtime_coordinator != null and runtime_coordinator.has_method("district_purchase_price_context") else {}
-	return str(runtime_coordinator.call("district_purchase_access_text", kind, price_context)) if runtime_coordinator != null and runtime_coordinator.has_method("district_purchase_access_text") else ""
+	if runtime_coordinator == null or not runtime_coordinator.has_method("card_market_quote"):
+		return {}
+	var value: Variant = runtime_coordinator.call("card_market_quote", {
+		"actor_id": _v06_actor_id(resolved_player),
+		"player_index": resolved_player,
+		"district_index": district_index,
+		"card_id": skill_name,
+		"supply_revision": str(districts[district_index].get("card_choices", [])),
+		"base_price": _card_price(skill_name),
+	})
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func _district_card_access_text(district_index: int, player_index: int = -1) -> String:
-	return _district_card_access_text_for_kind(_district_card_access_kind(district_index, player_index), district_index, player_index)
-
-
-func _district_card_price_multiplier(district_index: int, player_index: int = -1) -> float:
-	var resolved_player := _resolved_card_access_player_index(player_index)
+func _active_card_market_quote(skill_name: String, district_index: int, player_index: int, supply_revision: String) -> Dictionary:
 	var runtime_coordinator := _game_runtime_coordinator_node()
-	return float(runtime_coordinator.call("resolve_district_purchase_price_multiplier", resolved_player, district_index, _district_purchase_qualification_compatibility_adapter(district_index, resolved_player))) if runtime_coordinator != null and runtime_coordinator.has_method("resolve_district_purchase_price_multiplier") else 1.0
+	if runtime_coordinator == null or not runtime_coordinator.has_method("card_market_active_quote"):
+		return {}
+	var value: Variant = runtime_coordinator.call("card_market_active_quote", player_index, district_index)
+	var quote: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	if str(quote.get("card_id", "")) != skill_name or str(quote.get("supply_revision", "")) != supply_revision:
+		return {}
+	return quote
 
 
-func _can_buy_card_from_district(district_index: int, player_index: int = -1) -> bool:
-	return ["landed", "adjacent", "extended", "global"].has(_district_card_access_kind(district_index, player_index))
+func _district_market_availability(district_index: int) -> Dictionary:
+	var runtime_coordinator := _game_runtime_coordinator_node()
+	if runtime_coordinator == null or not runtime_coordinator.has_method("card_market_listing_availability"):
+		return {}
+	var value: Variant = runtime_coordinator.call("card_market_listing_availability", district_index)
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _district_market_currently_purchasable(district_index: int) -> bool:
+	return bool(_district_market_availability(district_index).get("purchasable", false))
+
+
+func _district_market_availability_kind(district_index: int) -> String:
+	return str(_district_market_availability(district_index).get("availability_kind", "invalid"))
+
+
+func _district_market_availability_text(district_index: int) -> String:
+	match _district_market_availability_kind(district_index):
+		"sunlit": return "来源区域处于日照半球：可购买；报价锁定5个世界秒。"
+		"dark": return "来源区域处于暗面：可以查看，当前不可购买。"
+		"destroyed": return "来源区域已摧毁：挂牌不可购买。"
+	return "市场资格暂不可用。"
 
 
 func _card_choice_location_summary(skill_name: String) -> String:
@@ -17221,28 +17143,18 @@ func _pending_discard_purchase_for_player(player_index: int) -> Dictionary:
 	return pending_discard_purchase
 
 
-func _open_discard_purchase_choice(player_index: int, district_index: int, skill_name: String, price: int, ignore_cooldown: bool = false) -> void:
+func _open_discard_purchase_choice(player_index: int, district_index: int, skill_name: String, price: int, quote_id: String, ignore_cooldown: bool = false) -> void:
 	if player_index < 0 or player_index >= players.size():
 		return
 	var runtime_coordinator := _game_runtime_coordinator_node()
-	var price_context: Dictionary = {}
-	if runtime_coordinator != null and runtime_coordinator.has_method("district_purchase_price_context"):
-		var context_variant: Variant = runtime_coordinator.call("district_purchase_price_context", player_index, district_index)
-		if context_variant is Dictionary:
-			price_context = (context_variant as Dictionary).duplicate(true)
-	var access_effect := _player_card_access_effect(player_index)
 	pending_discard_purchase = {
 		"player_index": player_index,
 		"district_index": district_index,
 		"skill_name": _canonical_card_supply_name(skill_name),
 		"price": price,
+		"quote_id": quote_id,
 		"ignore_cooldown": ignore_cooldown,
 		"opened_at": game_time,
-		"access_kind": _district_card_access_kind(district_index, player_index),
-		"extended_multiplier": float(access_effect.get("extended_multiplier", 1.10)),
-		"global_multiplier": float(access_effect.get("global_multiplier", 1.35)),
-		"locked_price_multiplier": float(price_context.get("locked_price_multiplier", _district_card_price_multiplier(district_index, player_index))),
-		"channel_discount_multiplier": float(price_context.get("channel_discount_multiplier", 1.0)),
 	}
 	if runtime_coordinator != null and runtime_coordinator.has_method("reserve_district_purchase_discard"):
 		runtime_coordinator.call("reserve_district_purchase_discard", {
@@ -17278,9 +17190,10 @@ func _confirm_discard_purchase(slot_index: int) -> void:
 	var player_index := int(pending.get("player_index", -1))
 	var district_index := int(pending.get("district_index", -1))
 	var skill_name := String(pending.get("skill_name", ""))
+	var quote_id := String(pending.get("quote_id", ""))
 	var ignore_cooldown := bool(pending.get("ignore_cooldown", false))
 	pending_discard_purchase = {}
-	var bought := _buy_card_for_player_from_district(player_index, district_index, skill_name, false, ignore_cooldown, slot_index)
+	var bought := _buy_card_for_player_from_district(player_index, district_index, skill_name, false, ignore_cooldown, slot_index, quote_id)
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if player_index >= 0 and runtime_coordinator != null and runtime_coordinator.has_method("resolve_district_purchase_discard"):
 		runtime_coordinator.call("resolve_district_purchase_discard", {"player_index": player_index, "reason": "discard_confirmed" if bought else "discard_purchase_failed"})
@@ -17338,9 +17251,9 @@ func _player_tableau_progress_entries(player_index: int) -> Array:
 	var score := _victory_player_progress_metric(player_index)
 	var goal := _victory_required_gdp()
 	return [
-		{"text": "首召", "state": "已召" if has_monster else "待首召", "accent": Color("#fb7185"), "active": has_monster, "tip": "第一步：打出一张I级起始怪兽牌，之后才能围绕怪兽区域买牌。"},
+		{"text": "怪兽牌", "state": "已召" if has_monster else "可选", "accent": Color("#fb7185"), "active": has_monster, "tip": "起始怪兽牌已持有；召唤完全自愿，不阻断经济或购牌。"},
 		{"text": "建城", "state": "城%d" % city_count if city_count > 0 else "待建", "accent": Color("#22c55e"), "active": city_count > 0, "tip": "项目归属GDP决定收入、区域控制和审计资格。"},
-		{"text": "买牌", "state": "已买" if bought_card else "看牌架", "accent": Color("#f59e0b"), "active": bought_card, "tip": "双击区域可看牌架；有怪兽落点/邻区资格时才能购买。"},
+		{"text": "买牌", "state": "已买" if bought_card else "看牌架", "accent": Color("#f59e0b"), "active": bought_card, "tip": "双击区域查看全局挂牌；来源区域受光时可锁定5秒报价。"},
 		{"text": "匿名牌", "state": "已入轨" if committed_card else "待出牌", "accent": Color("#c084fc"), "active": committed_card, "tip": "打出的牌进入公开匿名牌轨；条件和结果会给其他玩家推理线索。"},
 		{"text": "审计", "state": _victory_control_status_text(), "accent": Color("#f97316"), "active": _victory_control_is_active() or score >= goal, "tip": "控制当前存续区域的40%并达到前K区商品GDP门槛后，先保持10秒，再进入120秒公开审计。"},
 	]
@@ -17790,7 +17703,6 @@ func _district_purchase_settlement_request(player_index: int, district_index: in
 		"player_cash": int(player.get("cash", 0)),
 		"supply_revision": supply_revision,
 		"authorization": authorization.duplicate(true),
-		"live_access_valid": _can_buy_card_from_district(district_index, player_index),
 		"supply_contains_card": _district_has_card(district_index, skill_name),
 		"discard_slot": discard_slot,
 		"inventory": _district_purchase_inventory_snapshot(player, skill_name, discard_slot),
@@ -17822,7 +17734,7 @@ func _buy_selected_skill() -> void:
 	_refresh_ui()
 
 
-func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false, discard_slot: int = -1) -> bool:
+func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false, discard_slot: int = -1, locked_quote_id: String = "") -> bool:
 	if _runtime_session_finished() or player_index < 0 or player_index >= players.size():
 		return false
 	if _player_is_eliminated(player_index):
@@ -17841,7 +17753,7 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 			_log("目标区域无效或已被破坏，不能从这里获取卡牌。")
 		return false
 	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator == null or not runtime_coordinator.has_method("authorize_district_purchase") or not runtime_coordinator.has_method("plan_district_purchase_settlement") or not runtime_coordinator.has_method("commit_district_purchase_settlement"):
+	if runtime_coordinator == null or not runtime_coordinator.has_method("authorize_card_market_purchase") or not runtime_coordinator.has_method("plan_district_purchase_settlement") or not runtime_coordinator.has_method("commit_district_purchase_settlement"):
 		if not anonymous:
 			_log("购买窗口或结算服务尚未就绪。")
 		return false
@@ -17850,28 +17762,36 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	var supply_revision := str(districts[district_index].get("card_choices", []))
 	if runtime_coordinator.has_method("mark_district_supply_revision"):
 		runtime_coordinator.call("mark_district_supply_revision", player_index, district_index, supply_revision)
-	var authorization_variant: Variant = runtime_coordinator.call("authorize_district_purchase", {
+	var quote: Dictionary = {}
+	if not locked_quote_id.is_empty() and runtime_coordinator.has_method("card_market_active_quote"):
+		var active_quote_variant: Variant = runtime_coordinator.call("card_market_active_quote", player_index, district_index)
+		quote = (active_quote_variant as Dictionary).duplicate(true) if active_quote_variant is Dictionary else {}
+		if str(quote.get("quote_id", "")) != locked_quote_id:
+			quote = {}
+	else:
+		quote = _request_card_market_quote(skill_name, district_index, player_index)
+	var quote_id := str(quote.get("quote_id", ""))
+	var authorization_variant: Variant = runtime_coordinator.call("authorize_card_market_purchase", {
+		"quote_id": quote_id,
+		"quote_fingerprint": str(quote.get("quote_fingerprint", "")),
 		"player_index": player_index,
 		"district_index": district_index,
 		"card_id": skill_name,
 		"supply_revision": supply_revision,
-		"resume_pending_discard": discard_slot >= 0,
 	})
 	var authorization: Dictionary = authorization_variant if authorization_variant is Dictionary else {}
 	if not bool(authorization.get("authorized", false)):
 		if not anonymous:
-			var failure_reason := str(authorization.get("reason", "window_unavailable"))
-			_log("购买窗口未授权本次操作：%s。" % failure_reason)
-		return false
-	if not _can_buy_card_from_district(district_index, player_index):
-		if not anonymous:
-			_log("%s暂不能购买卡牌：需要怪兽落地区/相邻区，或补给范围扩张能力。" % districts[district_index]["name"])
+			var failure_reason := str(authorization.get("reason", "quote_unavailable"))
+			_log("报价未授权本次操作：%s。" % failure_reason)
 		return false
 	if not _district_has_card(district_index, skill_name):
 		if not anonymous:
 			_log("%s不在当前区域候选中；%s。" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
 		return false
-	var price := _card_price(skill_name, district_index, player_index)
+	var price := int(authorization.get("final_price", -1))
+	if price < 0:
+		return false
 	var settlement_request := _district_purchase_settlement_request(player_index, district_index, skill_name, price, supply_revision, authorization, discard_slot)
 	var plan_variant: Variant = runtime_coordinator.call("plan_district_purchase_settlement", settlement_request)
 	var settlement_plan: Dictionary = plan_variant if plan_variant is Dictionary else {}
@@ -17881,7 +17801,7 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		plan_variant = runtime_coordinator.call("plan_district_purchase_settlement", settlement_request)
 		settlement_plan = plan_variant if plan_variant is Dictionary else {}
 	if str(settlement_plan.get("status", "")) == "requires_discard" and discard_slot < 0:
-		_open_discard_purchase_choice(player_index, district_index, skill_name, price, ignore_cooldown)
+		_open_discard_purchase_choice(player_index, district_index, skill_name, price, quote_id, ignore_cooldown)
 		if not anonymous:
 			_refresh_ui()
 		return false
@@ -17897,12 +17817,13 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 				_record_player_economic_event(player_index, "卡牌购买", "购买未完成", 0, "%s暂不能接收；可能已达最高级，或没有可私密弃掉的普通手牌。" % _card_display_name(skill_name))
 				_log("一次购牌未完成：具体玩家手牌状态、牌名和弃牌情况不公开。")
 		return false
-	var current_authorization_variant: Variant = runtime_coordinator.call("authorize_district_purchase", {
+	var current_authorization_variant: Variant = runtime_coordinator.call("authorize_card_market_purchase", {
+		"quote_id": quote_id,
+		"quote_fingerprint": str(quote.get("quote_fingerprint", "")),
 		"player_index": player_index,
 		"district_index": district_index,
 		"card_id": skill_name,
 		"supply_revision": supply_revision,
-		"resume_pending_discard": discard_slot >= 0,
 	})
 	var current_authorization: Dictionary = current_authorization_variant if current_authorization_variant is Dictionary else {}
 	var current_facts := _district_purchase_settlement_request(player_index, district_index, skill_name, price, supply_revision, current_authorization, discard_slot)
@@ -17942,7 +17863,6 @@ func _non_target_skill_resolution_kinds() -> Array:
 		"intel_city_reveal",
 		"intel_card_trace",
 		"intel_contract_trace",
-		"card_access_boon",
 		"supply_draw",
 		"card_counter",
 		"military_force",
@@ -19080,8 +19000,6 @@ func _apply_card_resolution_effect_request(transaction: Dictionary) -> Dictionar
 				"intel_contract_trace":
 					var contract_controller := _contract_runtime_controller_node()
 					resolved = contract_controller.apply_intel_contract_trace(selected_player, selected_card_resolution_id, skill) if contract_controller != null else false
-				"card_access_boon":
-					resolved = _apply_card_access_boon(player, skill)
 				"supply_draw":
 					_draw_extra_district_cards(player, int(skill.get("draw_amount", 1)), skill["name"])
 				_:

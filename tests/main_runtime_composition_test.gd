@@ -319,7 +319,7 @@ func _check_static_composition(main: Control) -> void:
 	_expect(scheduler != null and scheduler.scene_file_path == "res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" and scheduler.has_method("active_decision") and scheduler.has_method("blocks_card_resolution"), "GameRuntimeCoordinator owns the editable ForcedDecisionRuntimeScheduler scene")
 	_expect(session != null and session.scene_file_path == "res://scenes/runtime/GameSessionRuntimeController.tscn" and session.has_method("begin_session") and session.has_method("request_save") and session.has_method("request_load"), "GameRuntimeCoordinator owns the editable GameSessionRuntimeController scene")
 	_expect(save != null and save.scene_file_path == "res://scenes/runtime/GameSaveRuntimeCoordinator.tscn" and save.has_method("write_save") and save.has_method("read_save") and save.has_method("operation_snapshot"), "GameSessionRuntimeController owns the editable GameSaveRuntimeCoordinator scene")
-	_expect(purchase != null and purchase.scene_file_path == "res://scenes/runtime/DistrictPurchaseRuntimeController.tscn" and purchase.has_method("open_window") and purchase.has_method("authorize_purchase") and purchase.has_method("to_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable DistrictPurchaseRuntimeController scene")
+	_expect(purchase != null and purchase.scene_file_path == "res://scenes/runtime/DistrictPurchaseRuntimeController.tscn" and purchase.has_method("open_window") and purchase.has_method("attach_quote") and purchase.has_method("active_quote") and purchase.has_method("to_legacy_save_snapshot") and not purchase.has_method("authorize_purchase") and not purchase.has_method("tick_window"), "GameRuntimeCoordinator owns the session-only DistrictPurchaseRuntimeController without legacy pricing or timer wrappers")
 	_expect(card_inventory != null and card_inventory.scene_file_path == "res://scenes/runtime/CardInventoryRuntimeService.tscn" and card_inventory.has_method("plan_receive") and card_inventory.has_method("commit_receive") and card_inventory.has_method("plan_remove") and card_inventory.has_method("commit_remove") and card_inventory.has_method("plan_lock") and card_inventory.has_method("commit_lock") and card_inventory.has_method("plan_transfer") and card_inventory.has_method("commit_transfer") and card_inventory.has_method("inventory_fingerprint"), "GameRuntimeCoordinator owns the editable CardInventoryRuntimeService scene and complete slot-mutation API")
 	_expect(card_resolution_queue != null and card_resolution_queue.scene_file_path == "res://scenes/runtime/CardResolutionQueueRuntimeService.tscn" and card_resolution_queue.has_method("plan_submission") and card_resolution_queue.has_method("commit_submission") and card_resolution_queue.has_method("lock_batch") and card_resolution_queue.has_method("start_next") and card_resolution_queue.has_method("complete_active") and card_resolution_queue.has_method("promote_next_batch") and card_resolution_queue.has_method("to_legacy_save_snapshot") and card_resolution_queue.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable CardResolutionQueueRuntimeService scene and complete queue-lifecycle API")
 	_expect(card_resolution_execution != null and card_resolution_execution.scene_file_path == CARD_RESOLUTION_EXECUTION_SERVICE and card_resolution_execution.has_method("plan_execution") and card_resolution_execution.has_method("advance_execution") and card_resolution_execution.has_method("finalize_execution") and card_resolution_execution.has_method("recover_from_active") and card_resolution_execution.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable CardResolutionExecutionRuntimeService scene and execution-transaction API")
@@ -447,7 +447,7 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	var table_viewmodel_snapshot: Dictionary = coordinator_snapshot.get("game_table_viewmodel", {}) if coordinator_snapshot.get("game_table_viewmodel", {}) is Dictionary else {}
 	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice"], "%s configures forced-decision priority from RulesetRuntimeBridge" % phase)
 	_expect(bool(session_snapshot.get("session_ready", false)) and bool(session_snapshot.get("session_authoritative", false)), "%s configures scene-owned session/save authority" % phase)
-	_expect(bool(purchase_snapshot.get("controller_ready", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and is_equal_approx(float(purchase_snapshot.get("purchase_window_seconds", 0.0)), 12.0), "%s configures the scene-owned v0.4 district purchase authority" % phase)
+	_expect(bool(purchase_snapshot.get("controller_ready", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(purchase_snapshot.get("session_authority_only", false)) and not bool(purchase_snapshot.get("pricing_authority", true)) and not bool(purchase_snapshot.get("access_authority", true)) and bool(purchase_snapshot.get("legacy_monster_gate_retired", false)), "%s configures DistrictPurchase as session-only while CardMarketPricing owns eligibility and quotes" % phase)
 	_expect(bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and int(card_inventory_snapshot.get("ordinary_hand_limit", 0)) == 5 and int(card_inventory_snapshot.get("maximum_card_rank", 0)) == 4 and not bool(card_inventory_snapshot.get("purchase_cash_authority", true)) and not bool(card_inventory_snapshot.get("ledger_authority", true)) and not bool(card_inventory_snapshot.get("legacy_inventory_fallback_used", true)), "%s configures CardInventoryRuntimeService as the v0.4 slot-mutation authority without moving cash or ledger ownership" % phase)
 	_expect(bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and not bool(card_resolution_queue_snapshot.get("timing_authority", true)) and not bool(card_resolution_queue_snapshot.get("card_effect_authority", true)) and not bool(card_resolution_queue_snapshot.get("inventory_authority", true)), "%s keeps the legacy queue in its narrow authority boundary" % phase)
 	_expect(bool(effect_formula_snapshot.get("service_ready", false)) and bool(effect_formula_snapshot.get("pure_formula_authority", false)) and not bool(effect_formula_snapshot.get("effect_dispatch_authority", true)) and not bool(effect_formula_snapshot.get("world_mutation_authority", true)) and not bool(effect_formula_snapshot.get("execution_lifecycle_authority", true)), "%s configures the pure Formula Service without expanding execution or world ownership" % phase)
@@ -467,7 +467,7 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	_expect(bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("owns_table_snapshot_normalization", false)) and bool(table_viewmodel_snapshot.get("owns_right_inspector_assembly", false)) and bool(table_viewmodel_snapshot.get("owns_public_track_viewmodels", false)) and bool(table_viewmodel_snapshot.get("owns_resolution_overlay_badges", false)) and not bool(table_viewmodel_snapshot.get("calculates_play_legality", true)) and not bool(table_viewmodel_snapshot.get("mutates_game_state", true)), "%s configures scene-owned TableSnapshot, public track, resolution-overlay badge, and RightInspector assembly" % phase)
 	_expect(bool(card_presentation_snapshot.get("owns_resolution_presentation", false)), "%s configures scene-owned card-resolution cinematic presentation" % phase)
 	var save_snapshot: Dictionary = session_snapshot.get("save_operation", {}) if session_snapshot.get("save_operation", {}) is Dictionary else {}
-	_expect(int(save_snapshot.get("save_version", 0)) == 1 and str(save_snapshot.get("default_save_path", "")) == "user://space_syndicate_current_run.save", "%s preserves current-run save version and default path" % phase)
+	_expect(int(save_snapshot.get("save_version", 0)) == 3 and str(save_snapshot.get("default_save_path", "")).is_empty() and bool(save_snapshot.get("explicit_path_required", false)), "%s preserves the v3 fail-closed save version and explicit-path contract" % phase)
 
 
 func _check_runtime_signal_bindings(main: Control) -> void:
@@ -520,12 +520,13 @@ func _check_runtime_controller_authority(main: Control) -> void:
 	_expect(coordinator != null and purchase != null, "district purchase controller is available for runtime authority checks")
 	if coordinator != null and purchase != null:
 		purchase.call("reset_state")
-		var purchase_window: Dictionary = coordinator.call("open_district_purchase_window", 0, 2, {"eligible": true, "access_kind": "landed", "opened_at": 3.0, "source_kind": "monster", "source_bound_to_player": true, "channel_discount_multiplier": 0.8, "supply_revision": "composition-a"})
-		_expect(is_equal_approx(float(purchase_window.get("remaining_seconds", 0.0)), 12.0) and is_equal_approx(float(purchase_window.get("locked_price_multiplier", 0.0)), 0.64), "district purchase authority locks the v0.4 duration and private channel price context")
+		var purchase_window: Dictionary = coordinator.call("open_district_purchase_window", 0, 2, {"supply_revision": "composition-a"})
+		_expect(bool(purchase_window.get("active", false)) and int(purchase_window.get("district_index", -1)) == 2 and not purchase_window.has("remaining_seconds") and not purchase_window.has("locked_price_multiplier"), "district purchase controller owns only the active browsing session and no legacy timer or price authority")
 		var legacy_purchase: Dictionary = coordinator.call("district_purchase_legacy_save_snapshot", 0)
-		_expect(int(legacy_purchase.get("district_index", -1)) == 2 and is_equal_approx(float(legacy_purchase.get("remaining_seconds", 0.0)), 12.0), "existing v1 purchase wire is composed directly from the authoritative controller")
-		coordinator.call("tick_district_purchase_windows", 12.0, [])
-		_expect(not bool(coordinator.call("district_purchase_window_active", 0, 2)) and str((coordinator.call("district_purchase_window", 0) as Dictionary).get("state", "")) == "expired", "district purchase authority expires at exactly twelve seconds")
+		_expect(int(legacy_purchase.get("schema_version", 0)) == 2 and int(legacy_purchase.get("district_index", -1)) == 2 and (legacy_purchase.get("active_quote", {}) as Dictionary).is_empty(), "existing purchase-session wire captures a quote-less browsing session without live repricing")
+		var purchase_source := FileAccess.get_file_as_string("res://scripts/runtime/district_purchase_runtime_controller.gd")
+		var purchase_coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+		_expect(not purchase_source.contains("func tick_window(") and not purchase_coordinator_source.contains("func tick_district_purchase_windows("), "obsolete twelve-second purchase-window tick APIs are physically deleted with zero production reference")
 		purchase.call("reset_state")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
@@ -746,8 +747,8 @@ func _check_ruleset_v05_foundation_assets() -> void:
 	var handshake_packed := load(RULESET_SAVE_HANDSHAKE_V05) as PackedScene
 	var handshake := handshake_packed.instantiate() if handshake_packed != null else null
 	var handshake_snapshot: Dictionary = handshake.call("debug_snapshot") if handshake != null and handshake.has_method("debug_snapshot") else {}
-	ready = ready and handshake != null and handshake.has_method("inspect_envelope") and handshake.has_method("validate_v05_envelope") and handshake.has_method("compose_v05_envelope") and handshake.has_method("write_authorization")
-	ready = ready and bool(handshake_snapshot.get("passive_only", false)) and not bool(handshake_snapshot.get("production_save_path_owned", true)) and _is_pure_data(handshake_snapshot)
+	ready = ready and handshake != null and handshake.has_method("inspect_envelope") and handshake.has_method("validate_v06_envelope") and handshake.has_method("compose_v06_envelope") and handshake.has_method("write_authorization")
+	ready = ready and str(handshake_snapshot.get("service_id", "")) == "ruleset_save_handshake_v06" and int(handshake_snapshot.get("save_version", 0)) == 3 and bool(handshake_snapshot.get("registry_valid", false)) and not bool(handshake_snapshot.get("production_save_path_owned", true)) and _is_pure_data(handshake_snapshot)
 	if handshake != null:
 		handshake.free()
 	var bench_packed := load(RULESET_V05_FOUNDATION_BENCH) as PackedScene
@@ -762,10 +763,10 @@ func _check_ruleset_v05_foundation_assets() -> void:
 	var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/card_runtime_catalog_service.gd") + FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	ready = ready and bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("space_syndicate_ruleset_v05.tres")
-	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("RulesetSaveHandshakeService")
+	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 3")
 	ready = ready and catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("card_runtime_catalog_v05.tres")
 	ready = ready and not main_source.contains("space_syndicate_ruleset_v05") and not main_source.contains("RulesetSaveHandshakeService")
-	_expect(ready, "SS05-01 provides a pure-data v0.5 foundation while production ruleset, save, and card-catalog owners remain v0.4")
+	_expect(ready, "SS05-01 pure-data v0.5 artifacts coexist with the v0.4 runtime rules/catalog and fail-closed v3 save handshake")
 
 
 func _check_player_text_v05_foundation_assets() -> void:
@@ -800,7 +801,7 @@ func _check_player_text_v05_foundation_assets() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	ready = ready and bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("player_text_v05")
 	ready = ready and catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("player_text_v05")
-	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("PlayerText")
+	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 3") and not save_source.contains("PlayerText")
 	ready = ready and not main_source.contains("PlayerTextV05") and not main_source.contains("player_text_schema_v05")
 	_expect(ready, "SS05-01A provides a pure-data player-text foundation and 239-card migration registry without cutting production v0.4 text ownership")
 
@@ -825,7 +826,7 @@ func _check_victory_control_runtime_assets() -> void:
 		ready = ready and not main_source.contains(str(forbidden))
 	var contract := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTRACT)
 	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
-	ready = ready and coordinator_scene.contains("VictoryControlRuntimeController") and coordinator_scene.contains("VictoryControlWorldBridge") and contract.contains("SS06-05 is a hard cutover") and contract.contains("54 v0.6 cases") and contract.contains("no runtime fallback")
+	ready = ready and coordinator_scene.contains("VictoryControlRuntimeController") and coordinator_scene.contains("VictoryControlWorldBridge") and contract.contains("SS06-05 is a hard cutover") and contract.contains("no runtime fallback")
 	_expect(ready, "SS06-05 composes the unique v0.6 Victory owner and non-owning world bridge with no fixed-depth or cash-goal fallback")
 
 
@@ -882,12 +883,12 @@ func _check_ruleset_v06_region_infrastructure_foundation_assets() -> void:
 	ready = ready and catalog_scene.contains("card_runtime_catalog_v04.tres") and not catalog_scene.contains("v06")
 	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
-	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 1")
+	ready = ready and save_source.contains("const CURRENT_SAVE_VERSION := 3")
 	ready = ready and coordinator_scene.contains("RegionInfrastructureRuntimeController") and coordinator_scene.contains("CommodityFlowRuntimeController") and coordinator_scene.contains("CommodityCardInventoryRuntimeController") and coordinator_scene.contains("CardPlayerStateProductionAdapterV06") and not coordinator_scene.contains("CommodityCardInventoryWorldBridge")
 	ready = ready and coordinator_source.contains("func refresh_v06_production_player_bindings(") and coordinator_source.contains("func play_v06_runtime_card(") and main_source.contains("func _play_v06_runtime_card_for_player(")
 	var contract := FileAccess.get_file_as_string(REGION_INFRASTRUCTURE_CONTRACT)
 	ready = ready and contract.contains("Legacy Heat / Panic Retirement") and contract.contains("No parallel fallback") and contract.contains("active `GameRuntimeCoordinator` composition no longer instances `CityDevelopmentRuntimeController`")
-	_expect(ready, "the v0.4 global namespace and v1 save boundary coexist with one explicit v0.6 transaction/infrastructure production graph")
+	_expect(ready, "the v0.4 global namespace and v3 save boundary coexist with one explicit v0.6 transaction/infrastructure production graph")
 
 
 func _function_source(source: String, function_name: String) -> String:

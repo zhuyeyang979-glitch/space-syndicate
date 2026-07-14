@@ -11,8 +11,8 @@ const REQUIRED_SOURCE_FIELDS := [
 	"visibility_scope",
 	"viewer_authorized",
 	"selected_card_name",
-	"access_kind",
-	"access_text",
+	"availability_kind",
+	"availability_text",
 	"local_product_names",
 	"cards",
 ]
@@ -112,10 +112,10 @@ func compose(source: Dictionary) -> Dictionary:
 	var output := {
 		"title": "区域牌架｜%s" % str(source.get("district_name", "区域")),
 		"rule_strip": "市场牌架｜悬停看｜双击买",
-		"rule_tooltip": "区域牌架 %d张｜%s｜%s\n打开时锁定价格和购买资格；怪兽之后离开不影响这次市场。单击地图不会关闭，双击其他区域会切换牌架。" % [
+		"rule_tooltip": "区域牌架 %d张｜%s｜%s\n公开预览不创建报价；本地玩家显式选择或确认后锁定5个世界秒。单击地图不会关闭，双击其他区域会切换牌架。" % [
 			source_cards.size(),
 			"可购买" if bool(source.get("can_buy", false)) else "仅浏览",
-			str(source.get("access_text", "")),
+			str(source.get("availability_text", "")),
 		],
 		"header_chips": _header_chips(source),
 		"market_status": _market_status_entries(summary),
@@ -222,21 +222,29 @@ func _safe_snapshot() -> Dictionary:
 
 
 func _header_chips(source: Dictionary) -> Array:
-	var access_kind := str(source.get("access_kind", "none"))
+	var availability_kind := str(source.get("availability_kind", "invalid"))
 	var can_buy := bool(source.get("can_buy", false))
-	var access_accent := _access_color(access_kind)
+	var availability_accent := _availability_color(availability_kind)
 	var viewer_private := str(source.get("visibility_scope", "public")) == "viewer_private"
 	var hand_size := int(source.get("counted_hand_size", 0))
 	var hand_limit := maxi(0, int(source.get("hand_limit", 0)))
 	var entries: Array = [
 		{"text": "牌架 %d" % int((source.get("cards", []) as Array).size()), "accent": "#bfdbfeff", "fg": "#bfdbfeff", "bg": "#0f172aff", "tooltip": "当前区域的公开供牌数量。"},
-		{"text": "可购买" if can_buy else "仅浏览", "accent": "#bbf7d0ff" if can_buy else "#cbd5e1ff", "fg": "#bbf7d0ff" if can_buy else "#cbd5e1ff", "bg": "#064e3bff" if can_buy else "#334155ff", "tooltip": str(source.get("access_text", ""))},
-		{"text": _access_short_label(access_kind), "accent": access_accent, "bg": _mix("#020617ff", access_accent, 0.25), "tooltip": str(source.get("access_text", ""))},
+		{"text": "可确认" if can_buy else "仅浏览", "accent": "#bbf7d0ff" if can_buy else "#cbd5e1ff", "fg": "#bbf7d0ff" if can_buy else "#cbd5e1ff", "bg": "#064e3bff" if can_buy else "#334155ff", "tooltip": str(source.get("availability_text", ""))},
+		{"text": _availability_short_label(availability_kind), "accent": availability_accent, "bg": _mix("#020617ff", availability_accent, 0.25), "tooltip": str(source.get("availability_text", ""))},
 	]
 	if viewer_private:
 		entries.append({"text": "¥%d" % int(source.get("player_cash", 0)), "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "当前玩家可见现金。"})
 		entries.append({"text": "手牌 %d/%d" % [hand_size, hand_limit], "accent": "#d8b4feff", "fg": "#d8b4feff", "bg": "#2e1065ff", "tooltip": "普通手牌上限；固定技能牌不占格。"})
-	entries.append({"text": "价格已锁", "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "价格和购买资格在打开牌架时锁定。" if viewer_private else "公开价格可查看；购买资格保持私密。"})
+	var purchase_window: Dictionary = source.get("purchase_window", {}) if source.get("purchase_window", {}) is Dictionary else {}
+	var quote: Dictionary = purchase_window.get("quote", {}) if purchase_window.get("quote", {}) is Dictionary else {}
+	if viewer_private and bool(quote.get("quote_active", false)):
+		var remaining_seconds := int(ceil(float(quote.get("remaining_world_us", 0)) / 1_000_000.0))
+		entries.append({"text": "报价锁定 %ds" % remaining_seconds, "accent": "#fde68aff", "fg": "#fde68aff", "bg": "#713f12ff", "tooltip": "已显式选择挂牌；日照资格与最终价格锁定至倒计时结束。"})
+	elif viewer_private and not quote.is_empty():
+		entries.append({"text": "报价已过期", "accent": "#fb7185ff", "fg": "#fecdd3ff", "bg": "#7f1d1dff", "tooltip": "重新选择挂牌以获取新报价；界面刷新不会续期。"})
+	else:
+		entries.append({"text": "未报价", "accent": "#94a3b8ff", "fg": "#cbd5e1ff", "bg": "#334155ff", "tooltip": "公开预览不会创建报价；本地玩家显式选择或确认时才启动5秒锁定。"})
 	entries.append({"text": "单窗口", "accent": "#c4b5fdff", "fg": "#c4b5fdff", "bg": "#312e81ff", "tooltip": "每名玩家同时只保留一个区域购买窗口。"})
 	if viewer_private and hand_limit > 0 and hand_size >= hand_limit:
 		entries.append({"text": "手牌已满", "accent": "#facc15ff", "fg": "#facc15ff", "bg": "#713f12ff", "tooltip": "满5张时，只有领取合法同名可升级商品牌才自动合并一次；其他牌不能直接接收。"})
@@ -425,7 +433,7 @@ func _purchase_verdicts(card: Dictionary, source: Dictionary) -> Array:
 	var hand_full := hand_limit > 0 and hand_size >= hand_limit
 	var entries: Array = [
 		{"text": str(state.get("label", "仅浏览")), "accent": accent, "active": bool(state.get("actionable", false)), "tip": str(state.get("detail", ""))},
-		{"text": "价¥%d" % int(card.get("price", state.get("price", 0))), "accent": "#fde68aff", "active": true, "tip": "购买价格；本区域牌架打开时已锁定。"},
+		{"text": "价¥%d" % int(card.get("price", state.get("price", 0))), "accent": "#fde68aff", "active": true, "tip": "当前预览价；显式选择后才锁定5个世界秒。"},
 	]
 	if viewer_private:
 		entries.append({"text": "手牌%d/%d" % [hand_size, hand_limit], "accent": "#facc15ff" if hand_full else "#d8b4feff", "active": hand_full, "tip": "普通手牌上限；固定技能牌不占格。"})
@@ -433,13 +441,13 @@ func _purchase_verdicts(card: Dictionary, source: Dictionary) -> Array:
 		entries.append({"text": "公开预览", "accent": "#93c5fdff", "active": true, "tip": "公共视图不显示任何玩家的手牌数量或购买资格。"})
 	if viewer_private and bool(state.get("requires_discard", false)):
 		entries.append({"text": "手满限制", "accent": "#facc15ff", "active": true, "tip": "普通牌不能直接接收；满5张领取合法同名可升级商品牌时才自动合并一次。"})
-	var access_kind := str(source.get("access_kind", "none"))
-	entries.append({"text": _access_short_label(access_kind), "accent": _access_color(access_kind), "active": access_kind != "none", "tip": str(source.get("access_text", ""))})
+	var availability_kind := str(source.get("availability_kind", "invalid"))
+	entries.append({"text": _availability_short_label(availability_kind), "accent": _availability_color(availability_kind), "active": availability_kind == "sunlit", "tip": str(source.get("availability_text", ""))})
 	entries.append({
-		"text": "资格锁定" if viewer_private else "公开价格",
+		"text": "显式报价" if viewer_private else "公开日照",
 		"accent": "#93c5fdff",
 		"active": true,
-		"tip": "打开窗口的一刻已锁定购买资格；怪兽之后离开不影响本次窗口。" if viewer_private else "公共牌架只公开卡面与价格；购买资格保持私密。",
+		"tip": "只有选择或确认挂牌才锁定5秒资格与价格。" if viewer_private else "日照资格与挂牌来源公开；玩家现金和手牌仍保持私密。",
 	})
 	return entries
 
@@ -481,7 +489,7 @@ func _purchase_state(card: Dictionary) -> Dictionary:
 		return card.get("purchase_state", {}) as Dictionary
 	return {
 		"label": "仅浏览",
-		"detail": "公共牌架预览；购买资格保持私密。",
+		"detail": "公共牌架预览；挂牌来源与日照资格公开，玩家现金和手牌保持私密。",
 		"actionable": false,
 		"requires_discard": false,
 		"accent": "#94a3b8ff",
@@ -526,22 +534,20 @@ func _target_scan_tooltip(card: Dictionary) -> String:
 	return "多数经济牌按当前选区或卡面说明结算。"
 
 
-func _access_short_label(access_kind: String) -> String:
-	match access_kind:
-		"landed": return "怪兽脚下 8折"
-		"adjacent": return "相邻 原价"
-		"extended": return "远程补给"
-		"global": return "全局采购"
-		"public": return "公共浏览"
-	return "无怪兽范围"
+func _availability_short_label(availability_kind: String) -> String:
+	match availability_kind:
+		"sunlit": return "日照可报价"
+		"dark": return "暗面仅浏览"
+		"destroyed": return "来源已摧毁"
+		"public": return "公开日照"
+	return "资格不可用"
 
 
-func _access_color(access_kind: String) -> String:
-	match access_kind:
-		"landed": return "#4ade80ff"
-		"adjacent": return "#38bdf8ff"
-		"extended": return "#facc15ff"
-		"global": return "#c084fcff"
+func _availability_color(availability_kind: String) -> String:
+	match availability_kind:
+		"sunlit": return "#4ade80ff"
+		"dark": return "#64748bff"
+		"destroyed": return "#fb7185ff"
 		"public": return "#93c5fdff"
 	return "#94a3b8ff"
 

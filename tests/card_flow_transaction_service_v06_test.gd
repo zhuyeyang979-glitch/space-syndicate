@@ -3,6 +3,7 @@ extends SceneTree
 const CATALOG_PATH := "res://resources/cards/runtime/card_runtime_catalog_v06.tres"
 const SERVICE_SCRIPT := preload("res://scripts/cards/v06/card_flow_transaction_service_v06.gd")
 const STATE_PORT_SCRIPT := preload("res://scripts/cards/v06/card_player_state_port_v06.gd")
+const QUOTE_AUTHORITY_FIXTURE_SCRIPT := preload("res://scripts/tools/card_market_quote_authority_fixture.gd")
 
 var _failures: Array[String] = []
 var _checks := 0
@@ -130,34 +131,55 @@ func _verify_belt_concurrency_and_full_hand_merge(catalog: CardRuntimeCatalogV06
 
 
 func _verify_market_atomic_refresh_and_journal(catalog: CardRuntimeCatalogV06Resource) -> void:
-	var service = SERVICE_SCRIPT.new(catalog)
+	var quote_authority = QUOTE_AUTHORITY_FIXTURE_SCRIPT.new()
+	var unmapped_service = SERVICE_SCRIPT.new(catalog, null, quote_authority)
+	var service = SERVICE_SCRIPT.new(catalog, null, quote_authority)
 	var warehouse := catalog.card_snapshot("facility.orbital_warehouse.rank_1")
 	var road := catalog.card_snapshot("facility.road.rank_1")
 	var seaport := catalog.card_snapshot("facility.seaport.rank_1")
-	service.register_player("A", _state([], 10))
-	service.register_player("B", _state([], 10))
-	service.configure_market(3, {"item_id": "market-warehouse-1", "card": warehouse, "price_cash": 4})
-	var next_listing := {"item_id": "market-road-1", "card": road, "price_cash": 3}
-	var stale := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 2, "tx-market-stale")
+	var warehouse_listing := _market_listing("market-warehouse-1", warehouse, 4, "supply-warehouse-1")
+	var next_listing := _market_listing("market-road-1", road, 3, "supply-road-1")
+	unmapped_service.register_player("unmapped", _state([], 10))
+	unmapped_service.configure_market(3, warehouse_listing)
+	var unmapped_quote: Dictionary = quote_authority.issue_quote(0, 0, "facility.orbital_warehouse.rank_1", "supply-warehouse-1", 4)
+	var unmapped := unmapped_service.purchase_market_card("unmapped", "market-warehouse-1", next_listing, 0, 3, "tx-market-unmapped", unmapped_quote)
+	_expect(str(unmapped.get("reason_code", "")) == "market_quote_binding_mismatch" and int(unmapped_service.player_snapshot("unmapped").get("cash", -1)) == 10, "market purchase fails closed when the actor has no explicit authoritative player index")
+	service.register_player("A", _state([], 10, {}, 0, 0))
+	service.register_player("B", _state([], 10, {}, 0, 1))
+	var next_next := _market_listing("market-seaport-2", seaport, 2, "supply-seaport-2")
+	service.configure_market(3, warehouse_listing)
+	var quote_a: Dictionary = quote_authority.issue_quote(0, 0, "facility.orbital_warehouse.rank_1", "supply-warehouse-1", 4)
+	var quote_b: Dictionary = quote_authority.issue_quote(1, 0, "facility.orbital_warehouse.rank_1", "supply-warehouse-1", 4)
+	var missing_quote := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 3, "tx-market-missing-quote", {})
+	_expect(str(missing_quote.get("reason_code", "")) == "market_quote_request_invalid" and int(service.player_snapshot("A").get("cash", -1)) == 10, "market purchase without an authority quote fails closed")
+	var forged_quote := quote_a.duplicate(true)
+	forged_quote["player_index"] = 1
+	var forged := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 3, "tx-market-forged-quote", forged_quote)
+	_expect(str(forged.get("reason_code", "")) == "market_quote_unauthorized" and int(service.player_snapshot("A").get("cash", -1)) == 10, "forged quote binding cannot debit or receive a card")
+	var stale := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 2, "tx-market-stale", quote_a)
 	_expect(not bool(stale.get("committed", true)) and str(stale.get("reason_code", "")) == "source_revision_changed", "old market revision is rejected")
 	_expect_feedback(stale, "old market revision")
-	var bought := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 3, "tx-market-buy-1")
+	var bought := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 3, "tx-market-buy-1", quote_a)
 	_expect(bool(bought.get("committed", false)) and bool(bought.get("market_refreshed", false)), "market purchase and refresh commit together")
 	var market_after := service.market_snapshot()
 	var listing_after: Dictionary = market_after.get("listing", {}) if market_after.get("listing", {}) is Dictionary else {}
 	_expect(int(market_after.get("revision", -1)) == 4 and str(listing_after.get("item_id", "")) == "market-road-1", "next listing is installed in the same transaction")
 	_expect(int(service.player_snapshot("A").get("cash", -1)) == 6, "market cash is debited exactly once")
-	var competing := service.purchase_market_card("B", "market-warehouse-1", next_listing, 0, 3, "tx-market-competing")
+	var competing := service.purchase_market_card("B", "market-warehouse-1", next_listing, 0, 3, "tx-market-competing", quote_b)
 	_expect(str(competing.get("reason_code", "")) == "source_revision_changed" and _card_count(service.player_snapshot("B")) == 0, "a second player cannot buy the replaced market listing")
-	var replay := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 3, "tx-market-buy-1")
+	var replay := service.purchase_market_card("A", "market-warehouse-1", next_listing, 0, 3, "tx-market-buy-1", quote_a)
 	_expect(bool(replay.get("committed", false)) and bool(replay.get("idempotent_replay", false)), "market transaction replay returns the journaled success")
 	_expect(int(service.market_snapshot().get("revision", -1)) == 4 and int(service.player_snapshot("A").get("cash", -1)) == 6, "market replay neither refreshes nor charges twice")
-	var changed_next := {"item_id": "market-seaport-1", "card": seaport, "price_cash": 2}
-	var collision := service.purchase_market_card("A", "market-warehouse-1", changed_next, 0, 3, "tx-market-buy-1")
+	var changed_next := _market_listing("market-seaport-1", seaport, 2, "supply-seaport-1")
+	var collision := service.purchase_market_card("A", "market-warehouse-1", changed_next, 0, 3, "tx-market-buy-1", quote_a)
 	_expect(str(collision.get("reason_code", "")) == "transaction_intent_collision", "market transaction intent collision is rejected")
-	var next_next := {"item_id": "market-seaport-2", "card": seaport, "price_cash": 2}
-	var continuous := service.purchase_market_card("A", "market-road-1", next_next, 1, 4, "tx-market-buy-2")
+	var road_quote: Dictionary = quote_authority.issue_quote(0, 0, "facility.road.rank_1", "supply-road-1", 3)
+	var continuous := service.purchase_market_card("A", "market-road-1", next_next, 1, 4, "tx-market-buy-2", road_quote)
 	_expect(bool(continuous.get("committed", false)) and int(service.market_snapshot().get("revision", -1)) == 5, "refreshed listing can be bought immediately using the new revisions")
+	var expiring_quote: Dictionary = quote_authority.issue_quote(1, 0, "facility.seaport.rank_1", "supply-seaport-2", 2, 1)
+	quote_authority.now_world_us = 1
+	var expired := service.purchase_market_card("B", "market-seaport-2", _market_listing("market-road-2", road, 3, "supply-road-2"), 0, 5, "tx-market-expired", expiring_quote)
+	_expect(str(expired.get("reason_code", "")) == "market_quote_unauthorized", "expired quote is rejected at the authority boundary")
 
 
 func _verify_authoritative_manual_merge(catalog: CardRuntimeCatalogV06Resource) -> void:
@@ -348,13 +370,27 @@ func _verify_effect_compensation_failure_is_honest(catalog: CardRuntimeCatalogV0
 		_expect(bool(replay.get("idempotent_replay", false)) and handler.commit_calls == 1 and handler.rollback_calls == 1, "%s compensation failure is journaled exact-once" % label)
 
 
-func _state(cards: Array, cash: int, assets: Dictionary = {}, revision: int = 0) -> Dictionary:
+func _state(cards: Array, cash: int, assets: Dictionary = {}, revision: int = 0, player_index: int = -1) -> Dictionary:
 	var resolved_assets := _assets() if assets.is_empty() else assets.duplicate(true)
-	return {
+	var state := {
 		"revision": revision,
 		"cash": cash,
 		"assets": resolved_assets,
 		"inventory": {"hand_limit": 5, "slots": cards.duplicate(true)},
+	}
+	if player_index >= 0:
+		state["player_index"] = player_index
+	return state
+
+
+func _market_listing(item_id: String, card: Dictionary, price_cash: int, supply_revision: String) -> Dictionary:
+	return {
+		"item_id": item_id,
+		"card": card,
+		"price_cash": price_cash,
+		"source_district_index": 0,
+		"source_region_id": "region.alpha",
+		"supply_revision": supply_revision,
 	}
 
 

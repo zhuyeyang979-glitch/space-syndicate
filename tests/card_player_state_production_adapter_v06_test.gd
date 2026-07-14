@@ -3,6 +3,7 @@ extends SceneTree
 const ADAPTER_SCRIPT := preload("res://scripts/cards/v06/production/card_player_state_production_adapter_v06.gd")
 const ASSET_CONTROLLER_SCRIPT := preload("res://scripts/runtime/player_mana_runtime_controller.gd")
 const TRANSACTION_SERVICE_SCRIPT := preload("res://scripts/cards/v06/card_flow_transaction_service_v06.gd")
+const QUOTE_AUTHORITY_FIXTURE_SCRIPT := preload("res://scripts/tools/card_market_quote_authority_fixture.gd")
 const CATALOG_PATH := "res://resources/cards/runtime/card_runtime_catalog_v06.tres"
 const PROFILE_PATH := "res://resources/rules/space_syndicate_ruleset_v06.tres"
 const ASSET_IDS: Array[String] = ["life", "energy", "industry", "technology", "commerce", "shipping"]
@@ -257,12 +258,15 @@ func _verify_transaction_service_uses_production_staging(catalog: Resource) -> v
 	var adapter = ADAPTER_SCRIPT.new()
 	adapter.configure(catalog, asset_owner)
 	adapter.bind_world(world)
-	var service = TRANSACTION_SERVICE_SCRIPT.new(catalog, adapter)
+	var quote_authority = QUOTE_AUTHORITY_FIXTURE_SCRIPT.new()
+	var service = TRANSACTION_SERVICE_SCRIPT.new(catalog, adapter, quote_authority)
 	_expect(bool(service.register_player("A", {}).get("configured", false)), "transaction service registers through the production adapter")
 	var warehouse: Dictionary = catalog.call("card_snapshot", "facility.orbital_warehouse.rank_2")
-	service.configure_market(4, {"item_id": "market-warehouse", "card": warehouse, "price_cash": 7})
-	var next_listing := {"item_id": "market-road", "card": catalog.call("card_snapshot", "facility.road.rank_1"), "price_cash": 3}
-	var bought: Dictionary = service.purchase_market_card("A", "market-warehouse", next_listing, 0, 4, "tx-production-buy")
+	var warehouse_listing := {"item_id": "market-warehouse", "card": warehouse, "price_cash": 7, "source_district_index": 0, "source_region_id": "region.alpha", "supply_revision": "production-supply-warehouse"}
+	service.configure_market(4, warehouse_listing)
+	var next_listing := {"item_id": "market-road", "card": catalog.call("card_snapshot", "facility.road.rank_1"), "price_cash": 3, "source_district_index": 0, "source_region_id": "region.alpha", "supply_revision": "production-supply-road"}
+	var quote: Dictionary = quote_authority.issue_quote(0, 0, "facility.orbital_warehouse.rank_2", "production-supply-warehouse", 7)
+	var bought: Dictionary = service.purchase_market_card("A", "market-warehouse", next_listing, 0, 4, "tx-production-buy", quote)
 	_expect(bool(bought.get("committed", false)) and int((world.players[0] as Dictionary).get("cash", -1)) == 3, "market purchase uses lazy exact-delta prepare and debits production cash once")
 	var bought_state: Dictionary = service.player_snapshot("A")
 	var target := {

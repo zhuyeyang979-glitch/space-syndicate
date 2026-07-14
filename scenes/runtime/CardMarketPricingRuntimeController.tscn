@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_market_pricing_runtime_controller.gd" id="1_market"]
+
+[node name="CardMarketPricingRuntimeController" type="Node"]
+script = ExtResource("1_market")
+editor_description = "Single ordinary-card quote authority: sun eligibility, additive monster pressure, ceil pricing, and 5 world-second snapshots."

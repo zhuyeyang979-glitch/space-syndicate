@@ -176,6 +176,7 @@ func main_source_payload() -> Dictionary:
 
 func _runtime_case_passed(case_id: String, controller: String, bridge: String, coordinator_scene: String, main_source: String) -> bool:
 	var controller_scene_ready := ResourceLoader.exists(CONTROLLER_SCENE_PATH) and ResourceLoader.exists(WORLD_BRIDGE_SCENE_PATH) and coordinator_scene.contains("AiRuntimeController") and coordinator_scene.contains("AiRuntimeWorldBridge")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	var controller_api_ready := _source_has_functions(controller, ["configure", "reset_state", "build_turn_plan", "build_response_plan", "rank_candidates", "commit_plan_receipt", "to_save_data", "apply_save_data", "policy_snapshot", "debug_snapshot"])
 	var bridge_ready := _source_has_functions(bridge, ["bind_world", "call_world", "route_intent", "debug_snapshot"])
 	var no_main_algorithms := _main_ai_algorithm_function_count(main_source) == 0
@@ -199,7 +200,7 @@ func _runtime_case_passed(case_id: String, controller: String, bridge: String, c
 		"product_strategy_parity": return controller.contains("func _ai_product_focus_score(")
 		"route_strategy_parity": return controller.contains("func _ai_route_plan_candidates(")
 		"monster_strategy_parity": return controller.contains("func _ai_monster_target_for_skill(")
-		"candidate_legality_preserved": return controller.contains("_skill_play_requirement_status") and controller.contains("_can_buy_card_from_district")
+		"candidate_legality_preserved": return controller.contains("_skill_play_requirement_status") and controller.contains("_market_listing_purchasable") and coordinator_source.contains("func card_market_listing_availability(") and coordinator_source.contains("func card_market_preview(") and coordinator_source.contains("func request_card_market_quote(") and coordinator_source.contains("func authorize_card_market_purchase(")
 		"score_order_preserved": return controller.contains("func _ai_pick_candidate(") and controller.contains("sort_custom")
 		"deterministic_tie_break": return controller.contains("func _candidate_stable_id(")
 		"shared_rng_order_preserved": return controller.contains("return _world_value(&\"rng\"") and not controller.contains("RandomNumberGenerator.new") and main_source.contains("func _ai_runtime_rng_gateway(")

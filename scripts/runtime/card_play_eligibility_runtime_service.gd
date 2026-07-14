@@ -44,6 +44,8 @@ func evaluate_play(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var skill := _dictionary(request.get("skill", {}))
 	if str(skill.get("kind", "")) == "city_development":
 		return _result(false, false, "legacy_card_kind_retired", {"replacement_kind": "public_facility"}, {}, {}, str(request.get("evaluation_mode", "rule")))
+	if str(skill.get("kind", "")) == "card_access_boon":
+		return _result(false, false, "legacy_card_kind_retired", {"replacement_kind": "pending_card_data_migration"}, {}, {}, str(request.get("evaluation_mode", "rule")))
 	if str(skill.get("kind", "")) == "product_futures" and _dictionary(skill.get("futures_terms", {})).is_empty() and _product_market_runtime_controller != null:
 		skill = _product_market_runtime_controller.skill_with_terms(str(skill.get("name", request.get("card_id", ""))), skill)
 		request = request.duplicate(true)

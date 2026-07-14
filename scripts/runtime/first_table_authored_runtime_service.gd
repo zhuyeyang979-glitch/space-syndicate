@@ -47,6 +47,17 @@ func fixture_snapshot() -> Dictionary:
 	return _fixture.duplicate(true) if _configured else {}
 
 
+func market_listing_plan() -> Dictionary:
+	if not _configured:
+		return {}
+	var source_district_index := int(_fixture.get("facility_market_source_district_index", -1))
+	return {
+		"scenario_id": scenario_id,
+		"source_district_index": source_district_index,
+		"ready": source_district_index >= 0,
+	}
+
+
 func pacing_profile() -> Dictionary:
 	if not _configured:
 		return {}
@@ -320,8 +331,6 @@ func contextualize_phase(phase_snapshot: Dictionary, content_snapshot: Dictionar
 	match str(contextual.get("id", "")):
 		"select_district":
 			contextual["detail"] = "推荐：%s｜商品链：%s。推荐只改变镜头与提示，不改变建城规则。" % [district_name, product_id]
-		"first_summon":
-			contextual["detail"] = "本席起始怪兽：%s。首召仍走真实卡牌条件与落点规则。" % str(content_snapshot.get("starter_monster_id", "起始怪兽"))
 		"buy_development", "play_development":
 			contextual["detail"] = "发展牌：%s｜商品线：%s。RightInspector 会显示方向、目标、效果与 disabled reason。" % [card_id, product_id]
 		"establish_project":

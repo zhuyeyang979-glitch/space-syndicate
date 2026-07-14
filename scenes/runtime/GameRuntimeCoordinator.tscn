@@ -1,4 +1,4 @@
-[gd_scene load_steps=61 format=3]
+[gd_scene load_steps=65 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -62,10 +62,26 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/PlayerOrganizationRuntimeController.tscn" id="66_player_organization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/BankruptcyNeutralEstateRuntimeController.tscn" id="67_bankruptcy_estate"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/BankruptcyNeutralEstateWorldBridge.tscn" id="68_bankruptcy_estate_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WorldEffectiveClockRuntimeController.tscn" id="69_world_clock"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SolarAvailabilityRuntimeService.tscn" id="70_solar_availability"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardMarketPricingRuntimeController.tscn" id="71_card_market_pricing"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardMarketPolicyWorldBridge.tscn" id="72_card_market_bridge"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
 editor_description = "Thin replacement-foundation coordinator. It composes runtime services without owning economy, card, monster, AI decision, or UI rules."
+
+[node name="WorldEffectiveClockRuntimeController" parent="." instance=ExtResource("69_world_clock")]
+unique_name_in_owner = true
+
+[node name="SolarAvailabilityRuntimeService" parent="." instance=ExtResource("70_solar_availability")]
+unique_name_in_owner = true
+
+[node name="CardMarketPolicyWorldBridge" parent="." instance=ExtResource("72_card_market_bridge")]
+unique_name_in_owner = true
+
+[node name="CardMarketPricingRuntimeController" parent="." instance=ExtResource("71_card_market_pricing")]
+unique_name_in_owner = true
 
 [node name="CardRuntimeCatalogService" parent="." instance=ExtResource("46_card_runtime_catalog")]
 unique_name_in_owner = true

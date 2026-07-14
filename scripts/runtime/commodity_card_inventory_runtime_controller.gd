@@ -12,6 +12,7 @@ const TRANSACTION_SERVICE_SCRIPT := preload("res://scripts/cards/v06/card_flow_t
 var _configured := false
 var _world: Node
 var _state_port: Node
+var _market_quote_authority: Object
 var _flow_controller: Node
 var _infrastructure_controller: Node
 var _transaction_service: Object
@@ -19,6 +20,10 @@ var _terminal_operations: Dictionary = {}
 var _restored_transaction_journal: Dictionary = {}
 var _operation_count := 0
 var _last_reason := ""
+
+
+func set_market_quote_authority(authority: Object) -> void:
+	_market_quote_authority = authority
 
 
 class EffectTransactionBoundary:
@@ -187,7 +192,7 @@ func configure(
 		and _infrastructure_controller.has_method("facilities_snapshot")
 		and _infrastructure_controller.has_method("region_snapshot")
 	)
-	_transaction_service = TRANSACTION_SERVICE_SCRIPT.new(CATALOG, _state_port) if _configured else null
+	_transaction_service = TRANSACTION_SERVICE_SCRIPT.new(CATALOG, _state_port, _market_quote_authority) if _configured else null
 	_refresh_effect_bridge()
 	return {
 		"configured": _configured,
@@ -210,7 +215,7 @@ func reset_state() -> void:
 	_last_reason = ""
 	if _state_port != null and _state_port.has_method("reset_state"):
 		_state_port.call("reset_state")
-	_transaction_service = TRANSACTION_SERVICE_SCRIPT.new(CATALOG, _state_port) if _configured else null
+	_transaction_service = TRANSACTION_SERVICE_SCRIPT.new(CATALOG, _state_port, _market_quote_authority) if _configured else null
 	_refresh_effect_bridge()
 
 
@@ -296,7 +301,8 @@ func purchase_market_card(
 	next_listing: Dictionary,
 	expected_player_revision: int,
 	expected_market_revision: int,
-	transaction_id: String
+	transaction_id: String,
+	quote_request: Dictionary
 ) -> Dictionary:
 	var intent := {
 		"operation": "market_purchase",
@@ -305,6 +311,8 @@ func purchase_market_card(
 		"next_listing": next_listing.duplicate(true),
 		"expected_player_revision": expected_player_revision,
 		"expected_market_revision": expected_market_revision,
+		"quote_id": str(quote_request.get("quote_id", "")),
+		"quote_fingerprint": str(quote_request.get("quote_fingerprint", "")),
 	}
 	return _run_terminal_operation(transaction_id, intent, func() -> Dictionary:
 		var value_variant: Variant = _transaction_service.call(
@@ -314,7 +322,8 @@ func purchase_market_card(
 			next_listing.duplicate(true),
 			expected_player_revision,
 			expected_market_revision,
-			transaction_id
+			transaction_id,
+			quote_request.duplicate(true)
 		)
 		return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else _failure("market_purchase_invalid")
 	)

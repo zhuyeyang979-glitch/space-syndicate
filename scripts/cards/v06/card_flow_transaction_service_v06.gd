@@ -9,6 +9,7 @@ const COLORED_ASSET_KEYS := ["life", "energy", "industry", "technology", "commer
 var _catalog: CardRuntimeCatalogV06Resource
 var _policy: CardFlowPolicyV06
 var _state_port: Object
+var _market_quote_authority: Object
 var _belt: Dictionary = {"revision": 0, "items": {}}
 var _market: Dictionary = {"revision": 0, "listing": {}}
 var _journal: Dictionary = {}
@@ -17,11 +18,13 @@ var _inflight_transactions: Dictionary = {}
 
 func _init(
 	catalog: CardRuntimeCatalogV06Resource = null,
-	state_port: Object = null
+	state_port: Object = null,
+	market_quote_authority: Object = null
 ) -> void:
 	_catalog = catalog
 	_policy = POLICY_SCRIPT.new() as CardFlowPolicyV06
 	_state_port = state_port if state_port != null else STATE_PORT_SCRIPT.new()
+	_market_quote_authority = market_quote_authority
 
 
 func register_player(actor_id: String, initial_state: Dictionary) -> Dictionary:
@@ -208,7 +211,8 @@ func purchase_market_card(
 	next_listing: Dictionary,
 	expected_player_revision: int,
 	expected_market_revision: int,
-	transaction_id: String
+	transaction_id: String,
+	quote_request: Dictionary
 ) -> Dictionary:
 	var next_descriptor := _listing_intent_descriptor(next_listing)
 	var intent := {
@@ -218,6 +222,8 @@ func purchase_market_card(
 		"expected_player_revision": expected_player_revision,
 		"expected_source_revision": expected_market_revision,
 		"next_listing": next_descriptor,
+		"quote_id": str(quote_request.get("quote_id", "")),
+		"quote_fingerprint": str(quote_request.get("quote_fingerprint", "")),
 	}
 	var intent_hash := _intent_hash(intent)
 	var gate := _transaction_gate(transaction_id, intent_hash)
@@ -250,7 +256,25 @@ func purchase_market_card(
 	var player := _reservation_player_snapshot(reservation, actor_id)
 	if player.is_empty():
 		return _abort_and_finish_reject(reservation, transaction_id, intent_hash, "market_purchase", actor_id, "player_missing")
-	var price_cash := int(listing.get("price_cash", -1))
+	if not _valid_market_quote_request(quote_request):
+		return _abort_and_finish_reject(reservation, transaction_id, intent_hash, "market_purchase", actor_id, "market_quote_request_invalid")
+	if _market_quote_authority == null or not _market_quote_authority.has_method("authorize_purchase"):
+		return _abort_and_finish_reject(reservation, transaction_id, intent_hash, "market_purchase", actor_id, "market_quote_authority_unavailable")
+	var authorization_variant: Variant = _market_quote_authority.call("authorize_purchase", quote_request.duplicate(true))
+	var authorization: Dictionary = authorization_variant if authorization_variant is Dictionary else {}
+	if not bool(authorization.get("authorized", false)):
+		return _abort_and_finish_reject(reservation, transaction_id, intent_hash, "market_purchase", actor_id, "market_quote_unauthorized")
+	var actor_player_index := _actor_player_index(actor_id)
+	if actor_player_index < 0 \
+			or actor_player_index != int(quote_request.get("player_index", -2)) \
+			or int(authorization.get("player_index", -1)) != actor_player_index \
+			or str(authorization.get("quote_id", "")) != str(quote_request.get("quote_id", "")) \
+			or str(authorization.get("quote_fingerprint", "")) != str(quote_request.get("quote_fingerprint", "")) \
+			or str(authorization.get("card_id", "")) != str(_machine(listing.get("card", {}) as Dictionary).get("card_id", "")) \
+			or int(authorization.get("district_index", -1)) != int(listing.get("source_district_index", -1)) \
+			or str(authorization.get("supply_revision", "")) != str(listing.get("supply_revision", "")):
+		return _abort_and_finish_reject(reservation, transaction_id, intent_hash, "market_purchase", actor_id, "market_quote_binding_mismatch")
+	var price_cash := int(authorization.get("final_price", -1))
 	if price_cash < 0:
 		return _abort_and_finish_reject(reservation, transaction_id, intent_hash, "market_purchase", actor_id, "market_listing_invalid")
 	if int(player.get("cash", 0)) < price_cash:
@@ -305,6 +329,23 @@ func purchase_market_card(
 	result["market_refreshed"] = true
 	result["state_port_receipt"] = _compact_state_port_receipt(state_commit)
 	return _finish_transaction(transaction_id, intent_hash, result)
+
+
+func _valid_market_quote_request(request: Dictionary) -> bool:
+	return not str(request.get("quote_id", "")).is_empty() \
+		and not str(request.get("quote_fingerprint", "")).is_empty() \
+		and int(request.get("player_index", -1)) >= 0 \
+		and int(request.get("district_index", -1)) >= 0 \
+		and not str(request.get("card_id", "")).is_empty() \
+		and not str(request.get("supply_revision", "")).is_empty()
+
+
+func _actor_player_index(actor_id: String) -> int:
+	if _state_port == null or not _state_port.has_method("actor_player_indices"):
+		return -1
+	var value: Variant = _state_port.call("actor_player_indices")
+	var actor_map: Dictionary = value if value is Dictionary else {}
+	return int(actor_map.get(actor_id, -1))
 
 
 func manual_merge(
@@ -616,6 +657,10 @@ func _normalize_player_state(actor_id: String, initial_state: Dictionary) -> Dic
 	var cash := int(initial_state.get("cash", 0))
 	if revision < 0 or cash < 0:
 		return {"valid": false, "reason_code": "player_state_invalid"}
+	var has_player_index := initial_state.has("player_index")
+	var player_index := int(initial_state.get("player_index", -1))
+	if has_player_index and player_index < 0:
+		return {"valid": false, "reason_code": "player_index_invalid"}
 	var input_assets: Dictionary = initial_state.get("assets", {}) if initial_state.get("assets", {}) is Dictionary else {}
 	for key_variant in input_assets.keys():
 		if not COLORED_ASSET_KEYS.has(str(key_variant)):
@@ -646,16 +691,16 @@ func _normalize_player_state(actor_id: String, initial_state: Dictionary) -> Dic
 			instance_id = "setup:%s:%d:%s" % [actor_id, slot_index, card_id]
 		canonical["runtime_instance_id"] = instance_id
 		slots.append(canonical)
-	return {
-		"valid": true,
-		"state": {
+	var normalized_state := {
 			"actor_id": actor_id,
 			"revision": revision,
 			"cash": cash,
 			"assets": assets,
 			"inventory": {"hand_limit": HAND_LIMIT, "slots": slots},
-		},
 	}
+	if has_player_index:
+		normalized_state["player_index"] = player_index
+	return {"valid": true, "state": normalized_state}
 
 
 func _normalize_source_item(entry: Dictionary, source_kind: String) -> Dictionary:
@@ -691,7 +736,10 @@ func _normalize_market_listing(listing: Dictionary) -> Dictionary:
 	if acquisition_kind != "dynamic_market_cash" and acquisition_kind != "starter_or_dynamic_market_cash":
 		return {"valid": false, "reason_code": "market_listing_invalid"}
 	var price_cash := int(listing.get("price_cash", _machine(canonical).get("purchase_cash", -1)))
-	if price_cash < 0:
+	var source_district_index := int(listing.get("source_district_index", -1))
+	var source_region_id := str(listing.get("source_region_id", "")).strip_edges()
+	var supply_revision := str(listing.get("supply_revision", ""))
+	if price_cash < 0 or source_district_index < 0 or source_region_id.is_empty() or supply_revision.is_empty():
 		return {"valid": false, "reason_code": "market_listing_invalid"}
 	var legal_actor_ids: Array = listing.get("legal_actor_ids", []) if listing.get("legal_actor_ids", []) is Array else []
 	return {
@@ -702,6 +750,9 @@ func _normalize_market_listing(listing: Dictionary) -> Dictionary:
 			"price_cash": price_cash,
 			"claimable": bool(listing.get("claimable", true)),
 			"legal_actor_ids": legal_actor_ids.duplicate(true),
+			"source_district_index": source_district_index,
+			"source_region_id": source_region_id,
+			"supply_revision": supply_revision,
 		},
 	}
 
@@ -714,6 +765,9 @@ func _listing_intent_descriptor(listing: Dictionary) -> Dictionary:
 		"price_cash": int(listing.get("price_cash", -1)),
 		"claimable": bool(listing.get("claimable", true)),
 		"legal_actor_ids": (listing.get("legal_actor_ids", []) as Array).duplicate(true) if listing.get("legal_actor_ids", []) is Array else [],
+		"source_district_index": int(listing.get("source_district_index", -1)),
+		"source_region_id": str(listing.get("source_region_id", "")),
+		"supply_revision": str(listing.get("supply_revision", "")),
 	}
 
 

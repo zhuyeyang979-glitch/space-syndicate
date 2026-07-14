@@ -1117,8 +1117,8 @@ func _monster_resource_match_score(actor: Dictionary, index: int) -> int:
 func _route_network_load_for_legacy_region(index: int) -> int:
 	return _route_network_runtime_controller.route_load_for_legacy_region(index) if _route_network_runtime_controller != null else 0
 
-func _can_buy_card_from_district(district_index: int, player_index: int = -1) -> bool:
-	return _call_world(&"_can_buy_card_from_district", [district_index, player_index])
+func _market_listing_purchasable(district_index: int) -> bool:
+	return _call_world(&"_district_market_currently_purchasable", [district_index])
 
 func _skill_rank(skill_name: String) -> int:
 	return _card_definition_bridge.rank(skill_name) if _card_definition_bridge != null else 0
@@ -2883,7 +2883,7 @@ func _empty_ai_memory() -> Dictionary:
 		"competitive_posture": "contesting",
 		"score_gap_to_leader": 0,
 		"leader_index": -1,
-		"phase_reason": "开局：优先首召、城市发展牌和基础经营牌。",
+		"phase_reason": "开局：召唤自愿，优先城市发展牌和基础经营牌。",
 		"learned_policy_values": {},
 		"learning_updates": 0,
 		"learning_last_reward": 0,
@@ -2976,7 +2976,7 @@ func _ensure_player_ai_state() -> void:
 				if not memory.has("leader_index"):
 					memory["leader_index"] = -1
 				if String(memory.get("phase_reason", "")) == "":
-					memory["phase_reason"] = "开局：优先首召、城市发展牌和基础经营牌。"
+					memory["phase_reason"] = "开局：召唤自愿，优先城市发展牌和基础经营牌。"
 				if not (memory.get("learned_policy_values", {}) is Dictionary):
 					memory["learned_policy_values"] = {}
 				if not memory.has("learning_updates"):
@@ -3058,7 +3058,7 @@ func _ai_endgame_urgency_score(player_index: int) -> int:
 func _ai_game_phase_reason(_player_index: int, phase: String, posture: String, gap: int) -> String:
 	match phase:
 		"opening":
-			return "开局：优先首召、通过发展牌建立商品项目，再买基础经营牌。"
+			return "开局：召唤自愿；通过发展牌建立商品项目，再买基础经营牌。"
 		"endgame":
 			return "后期：%s，Top-N GDP距离领先者%s；围绕区域控制和公开审计冲刺、防守或压制。" % [
 				_ai_competitive_posture_label(posture),
@@ -3389,7 +3389,7 @@ func _ai_phase_bonus_for_candidate(player_index: int, kind: String, _district_in
 				bonus += 420 if _ai_owned_active_monster_count(player_index) <= 0 else 40
 			if kind == "city_build":
 				bonus += 150 if _player_active_city_count(player_index) <= 0 else 55
-			if ["cash_gain", "supply_draw", "card_access_boon"].has(kind):
+			if ["cash_gain", "supply_draw"].has(kind):
 				bonus += 60
 			if _ai_pressure_kind(kind, skill):
 				bonus -= 35
@@ -4510,7 +4510,7 @@ func _ai_development_route_for_kind(kind: String, skill: Dictionary = {}) -> Str
 			return "finance_speculation"
 		"monster_card", "monster_bound_action", "monster_lure", "monster_takeover", "mudslide", "special_monster_delay", "news_event", "weather_control", "route_sabotage", "panic_shift":
 			return "monster_pressure"
-		"intel_city_reveal", "intel_card_trace", "intel_contract_trace", "card_access_boon", "supply_draw":
+		"intel_city_reveal", "intel_card_trace", "intel_contract_trace", "supply_draw":
 			return "intel_supply"
 		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter":
 			return "direct_interaction"
@@ -6216,9 +6216,6 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 			if harmful_target or target_owner == -999:
 				score += warehouse_pressure
 		score += _city_gdp_derivative_risk_adjusted_value(derivative_terms)
-	score += int(skill.get("card_access_extra_hops", 0)) * 42
-	if bool(skill.get("card_access_global", false)):
-		score += 105
 	if String(skill.get("kind", "")) == "weather_control":
 		var weather_plan := _ai_weather_control_plan(player_index, skill)
 		score += int(skill.get("weather_zone_count", 1)) * 42
@@ -6839,15 +6836,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = _ai_first_alive_district()
 		context["score"] = int(context["score"]) + 100 + pending_contract_offers.size() * 18
-	elif kind == "card_access_boon":
-		context["district"] = own_city if own_city >= 0 else _ai_first_alive_district()
-		context["score"] = int(context["score"]) + 90 + int(skill.get("card_access_extra_hops", 0)) * 35
-		if bool(skill.get("card_access_global", false)):
-			context["score"] = int(context["score"]) + 85
 	elif kind == "supply_draw":
 		context["district"] = -1
 		for i in range(districts.size()):
-			if _can_buy_card_from_district(i, player_index) and not (districts[i].get("card_choices", []) as Array).is_empty():
+			if _market_listing_purchasable(i) and not (districts[i].get("card_choices", []) as Array).is_empty():
 				context["district"] = i
 				break
 		if int(context["district"]) < 0:
@@ -7019,7 +7011,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var posture_label := _ai_competitive_posture_label(posture)
 	var counted_hand := _player_counted_hand_size(player)
 	for district_index in range(districts.size()):
-		if not _can_buy_card_from_district(district_index, player_index) or bool(districts[district_index].get("destroyed", false)):
+		if not _market_listing_purchasable(district_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
 		for card_variant in districts[district_index].get("card_choices", []):
 			var card_name := _canonical_card_supply_name(String(card_variant))
