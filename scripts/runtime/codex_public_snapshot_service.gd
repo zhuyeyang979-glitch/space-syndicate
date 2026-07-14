@@ -98,13 +98,12 @@ func compose_region(source: Dictionary) -> Dictionary:
 	var hp_color := Color("#fecaca") if low_hp else Color("#bbf7d0")
 	var chips: Array = [
 		{"text": "HP %d/%d" % [hp_now, hp_total], "fg": hp_color, "accent": hp_color, "bg": Color("#020617"), "tooltip": "区域耐久；破坏会影响城市、商路和部分牌效。"},
-		{"text": "热度 %d" % int(source.get("panic", 0)), "fg": Color("#fef3c7"), "accent": Color("#fef3c7"), "bg": Color("#020617"), "tooltip": "热度会影响怪兽、新闻和部分经济线索。"},
+		{"text": "公开资料", "fg": Color("#fef3c7"), "accent": Color("#fef3c7"), "bg": Color("#020617"), "tooltip": "区域图鉴只消费公开区域事实；玩家私有标注留在情报档案。"},
 		{"text": "交通×%.2f" % float(source.get("transport_speed", 1.0)), "fg": Color("#bfdbfe"), "accent": Color("#bfdbfe"), "bg": Color("#020617"), "tooltip": "交通影响流通速度和城市收入。"},
 		{"text": "商路 %d" % int(source.get("trade_route_load", 0)), "fg": Color("#c4b5fd"), "accent": Color("#c4b5fd"), "bg": Color("#020617"), "tooltip": "途经或使用该区域的商路数量。"},
-		{"text": "牌架 %d" % int(source.get("card_count", 0)), "fg": Color("#a7f3d0"), "accent": Color("#a7f3d0"), "bg": Color("#020617"), "tooltip": "区域牌架可浏览；购买按打开瞬间资格。"},
+		{"text": "牌架 %d" % int(source.get("card_count", 0)), "fg": Color("#a7f3d0"), "accent": Color("#a7f3d0"), "bg": Color("#020617"), "tooltip": "普通牌全局可浏览；来源区域受光时才能锁定报价。"},
+		{"text": "公开市场", "fg": Color("#67e8f9"), "accent": Color("#67e8f9"), "bg": Color("#020617"), "tooltip": "区域页只列公开牌源，不读取现金、手牌或玩家归属。"},
 	]
-	if bool(source.get("selected", false)):
-		chips.append({"text": "当前选中", "fg": Color("#fde68a"), "accent": Color("#fde68a"), "bg": Color("#020617"), "tooltip": "这个区域也是主桌当前选区。"})
 	var kpis := [
 		{"title": "城市", "value": city_status, "meta": income_preview, "accent": Color("#facc15")},
 		{"title": "供给", "value": _short_text(str(source.get("supply_text", "无")), 32), "meta": "生产/商品价格线索", "accent": Color("#4ade80")},
@@ -116,10 +115,10 @@ func compose_region(source: Dictionary) -> Dictionary:
 	var clues := [
 		{"title": "商路", "body": "途经/使用 %d条｜毁坏会拖累相关城市GDP" % trade_route_load, "tooltip": connection_summary, "accent": Color("#93c5fd")},
 		{"title": "牌架", "body": _short_text(str(source.get("card_choice_summary", "无")), 76), "tooltip": "双击地图区域可浏览牌架；来源区域受光时可显式锁定5秒报价。", "accent": Color("#a78bfa")},
-		{"title": "怪兽吸引", "body": _short_text(monster_attraction, 76), "tooltip": "怪兽会按资源、热度、城市和仓储压力自动选择目标。", "accent": Color("#fb923c")},
+		{"title": "怪兽吸引", "body": _short_text(monster_attraction, 76), "tooltip": "这里只显示非数值公开因素；内部权重、随机签和预选目标保持隐藏。", "accent": Color("#fb923c")},
 		{"title": "公开线索", "body": _short_text(str(source.get("public_clue", "暂无")), 76), "tooltip": "这是可见证据，不等于真实业主。", "accent": Color("#f0abfc")},
 		{"title": "邻接", "body": _short_text(connection_summary, 76), "tooltip": "购牌、怪兽移动和商路都依赖邻接关系。", "accent": Color("#67e8f9")},
-		{"title": "读法", "body": "先看城市GDP，再看供需/商路/怪兽，最后决定建城、买牌或标注。", "tooltip": "区域页只显示公开信息和当前玩家自己的标注，不提前揭示他人隐私。", "accent": Color("#fde68a")},
+		{"title": "读法", "body": "先看城市状态，再看供需/商路/怪兽，最后决定建城、买牌或标注。", "tooltip": "区域页只显示公开信息；当前玩家的私有标注只在情报档案中显示。", "accent": Color("#fde68a")},
 	]
 	var detail := {
 		"icon": icon,
@@ -133,9 +132,8 @@ func compose_region(source: Dictionary) -> Dictionary:
 		"tooltip": "区域地块板：像读桌游地图板块一样，先扫HP、城市、供需、商路、牌架和公开线索。",
 	}
 	var state_text := "已破坏" if bool(source.get("destroyed", false)) else "未破坏"
-	var selected_text := "｜当前选中" if bool(source.get("selected", false)) else ""
 	var lines := [
-		"第%d/%d区｜%s｜%s｜%s%s" % [index + 1, total, region_name, terrain_label, state_text, selected_text],
+		"第%d/%d区｜%s｜%s｜%s" % [index + 1, total, region_name, terrain_label, state_text],
 		"看下方区域地块板：城市/GDP、供给、需求、天气、商路、牌架、怪兽吸引和公开线索。",
 		"真实业主不公开；现金和手牌也不在这里直接揭示，结合牌轨、怪兽受伤、合约和商品变化推理。",
 		"区域可提供卡牌：%s。" % _limited_names(source.get("card_names", []) as Array, 5, "暂无"),
