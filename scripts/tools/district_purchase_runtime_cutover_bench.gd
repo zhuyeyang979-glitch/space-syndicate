@@ -260,6 +260,18 @@ func _test_locked_quote_expiry_and_restore() -> void:
 	var tampered := session_snapshot.duplicate(true)
 	tampered["card_id"] = "card.restore|ambiguous"
 	_expect(not bool((pricing.call("restore_quote_from_session", tampered) as Dictionary).get("restored", true)), "canonical fingerprint rejects ambiguous or tampered session fields")
+	var rebound := session_snapshot.duplicate(true)
+	rebound["player_index"] = 7
+	rebound["quote_key"] = JSON.stringify([
+		7,
+		int(rebound.get("district_index", -1)),
+		str(rebound.get("card_id", "")),
+		str(rebound.get("supply_revision", "")),
+	]).sha256_text()
+	_expect(not bool((pricing.call("restore_quote_from_session", rebound) as Dictionary).get("restored", true)), "private binding fingerprint rejects a session rebound to another player")
+	var cloned := session_snapshot.duplicate(true)
+	cloned["quote_id"] = "%s-clone" % str(cloned.get("quote_id", ""))
+	_expect(not bool((pricing.call("restore_quote_from_session", cloned) as Dictionary).get("restored", true)), "private binding fingerprint rejects cloning a session under another quote ID")
 
 
 func _test_purchase_session_binding() -> void:

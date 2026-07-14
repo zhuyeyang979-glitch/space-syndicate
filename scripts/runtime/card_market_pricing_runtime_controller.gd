@@ -79,6 +79,7 @@ func quote_listing(request: Dictionary) -> Dictionary:
 		"expires_at_world_us": now_us + QUOTE_LIFETIME_US,
 	}
 	record["quote_fingerprint"] = _quote_fingerprint(record)
+	record["quote_binding_fingerprint"] = _quote_binding_fingerprint(record)
 	_quotes_by_key[quote_key] = record.duplicate(true)
 	_quotes_by_id[quote_id] = record.duplicate(true)
 	_quote_count += 1
@@ -151,7 +152,9 @@ func quote_snapshot(quote_id: String) -> Dictionary:
 
 func export_quote_for_session(quote_id: String) -> Dictionary:
 	var record: Dictionary = (_quotes_by_id.get(quote_id, {}) as Dictionary).duplicate(true) if _quotes_by_id.get(quote_id, {}) is Dictionary else {}
-	return record if not record.is_empty() and str(record.get("quote_fingerprint", "")) == _quote_fingerprint(record) else {}
+	return record if not record.is_empty() \
+			and str(record.get("quote_fingerprint", "")) == _quote_fingerprint(record) \
+			and str(record.get("quote_binding_fingerprint", "")) == _quote_binding_fingerprint(record) else {}
 
 
 func restore_quote_from_session(snapshot: Dictionary) -> Dictionary:
@@ -164,6 +167,9 @@ func restore_quote_from_session(snapshot: Dictionary) -> Dictionary:
 	var fingerprint := str(snapshot.get("quote_fingerprint", ""))
 	if quote_id.is_empty() or quote_key.is_empty() or fingerprint.is_empty() or fingerprint != _quote_fingerprint(snapshot):
 		return {"restored": false, "reason": "quote_fingerprint_invalid"}
+	var binding_fingerprint := str(snapshot.get("quote_binding_fingerprint", ""))
+	if binding_fingerprint.is_empty() or binding_fingerprint != _quote_binding_fingerprint(snapshot):
+		return {"restored": false, "reason": "quote_binding_fingerprint_invalid"}
 	var player_index := int(snapshot.get("player_index", -1))
 	var district_index := int(snapshot.get("district_index", -1))
 	var card_id := str(snapshot.get("card_id", ""))
@@ -186,8 +192,8 @@ func restore_quote_from_session(snapshot: Dictionary) -> Dictionary:
 		return {"restored": false, "reason": "quote_price_snapshot_invalid"}
 	var existing_by_id: Dictionary = _quotes_by_id.get(quote_id, {}) if _quotes_by_id.get(quote_id, {}) is Dictionary else {}
 	var existing_by_key: Dictionary = _quotes_by_key.get(quote_key, {}) if _quotes_by_key.get(quote_key, {}) is Dictionary else {}
-	if (not existing_by_id.is_empty() and str(existing_by_id.get("quote_fingerprint", "")) != fingerprint) \
-			or (not existing_by_key.is_empty() and str(existing_by_key.get("quote_fingerprint", "")) != fingerprint):
+	if (not existing_by_id.is_empty() and str(existing_by_id.get("quote_binding_fingerprint", "")) != binding_fingerprint) \
+			or (not existing_by_key.is_empty() and str(existing_by_key.get("quote_binding_fingerprint", "")) != binding_fingerprint):
 		return {"restored": false, "reason": "quote_identity_conflict"}
 	_quotes_by_key[quote_key] = snapshot.duplicate(true)
 	_quotes_by_id[quote_id] = snapshot.duplicate(true)
@@ -348,7 +354,6 @@ func _quote_key(player_index: int, district_index: int, card_id: String, supply_
 func _quote_fingerprint(record: Dictionary) -> String:
 	var canonical_fields := [
 		int(record.get("schema_version", 0)),
-		int(record.get("player_index", -1)),
 		int(record.get("district_index", -1)),
 		str(record.get("card_id", "")),
 		str(record.get("supply_revision", "")),
@@ -364,6 +369,16 @@ func _quote_fingerprint(record: Dictionary) -> String:
 		int(record.get("expires_at_world_us", -1)),
 	]
 	return JSON.stringify(canonical_fields).sha256_text()
+
+
+func _quote_binding_fingerprint(record: Dictionary) -> String:
+	return JSON.stringify([
+		int(record.get("schema_version", 0)),
+		str(record.get("quote_id", "")),
+		int(record.get("player_index", -1)),
+		str(record.get("quote_key", "")),
+		_quote_fingerprint(record),
+	]).sha256_text()
 
 
 func _now_us() -> int:
