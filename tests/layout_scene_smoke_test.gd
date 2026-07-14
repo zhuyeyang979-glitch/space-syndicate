@@ -6508,7 +6508,24 @@ func _check_menu_overlay_shell_component() -> void:
 	_expect(overlay.visible and title_label != null and title_label.text == "Root table", "MenuOverlay presents root shell title")
 	_expect(context_label != null and not context_label.visible and hint_panel != null and not hint_panel.visible and nav_row != null and not nav_row.visible, "MenuOverlay hides breadcrumb, hint, and global nav on root table menus")
 	_expect(surface_panel != null and surface_panel.anchor_left == 0.0 and surface_panel.anchor_right == 1.0 and surface_panel.anchor_top == 0.0 and surface_panel.anchor_bottom == 1.0, "MenuOverlay presents root table menus as a full-screen lobby instead of a modal card")
-	_expect(preview_box != null and preview_box.get_child_count() == 0 and not preview_box.visible, "MenuOverlay clears stale preview content when a shell opens")
+	var codex_surface := overlay.call("get_codex_surface") as Control if overlay.has_method("get_codex_surface") else null
+	var persistent_children: Array[Node] = []
+	if preview_box != null:
+		for child in preview_box.get_children():
+			if child.is_in_group("persistent_menu_surface"):
+				persistent_children.append(child)
+	_expect(not is_instance_valid(dummy), "MenuOverlay removes dynamic stale preview content when a shell opens")
+	_expect(preview_box != null and persistent_children.size() == 1 and persistent_children[0] == codex_surface and codex_surface != null and codex_surface.get_parent() == preview_box and not codex_surface.visible and not preview_box.visible, "MenuOverlay keeps one expected persistent Codex surface mounted and hidden while the preview host is hidden")
+	var codex_surface_instance_id := codex_surface.get_instance_id() if codex_surface != null else 0
+	var codex_presented := bool(overlay.call("present_codex_page", {
+		"mode": "card",
+		"view": "empty",
+		"empty": {"title": "No cards", "body": "No public card data."},
+		"navigation": {},
+	})) if overlay.has_method("present_codex_page") else false
+	await process_frame
+	var reused_codex_surface := overlay.call("get_codex_surface") as Control if overlay.has_method("get_codex_surface") else null
+	_expect(codex_presented and reused_codex_surface != null and reused_codex_surface.get_instance_id() == codex_surface_instance_id and reused_codex_surface.get_parent() == preview_box and reused_codex_surface.visible and preview_box.visible, "MenuOverlay reuses the mounted Codex surface on the next Codex presentation")
 	overlay.call("present_menu_shell", {
 		"title": "Card codex",
 		"body": "Scan the card.",
