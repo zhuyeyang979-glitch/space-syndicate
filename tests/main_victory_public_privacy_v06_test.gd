@@ -35,9 +35,10 @@ func _run() -> void:
 	main.set_process(false)
 
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var adapter := main.get_node_or_null("RuntimeServices/FinalSettlementPublicSourceAdapter")
-	_expect(coordinator != null and adapter != null, "main statically composes Coordinator and FinalSettlementPublicSourceAdapter")
-	if coordinator == null or adapter == null:
+	var composition := main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition")
+	var adapter := composition.get_node_or_null("FinalSettlementPublicSourceAdapter") if composition != null else null
+	_expect(coordinator != null and composition != null and adapter != null, "main statically composes Coordinator and FinalSettlementRuntimeComposition with its source adapter")
+	if coordinator == null or composition == null or adapter == null:
 		main.queue_free()
 		await process_frame
 		_finish()
@@ -71,46 +72,50 @@ func _run() -> void:
 	coordinator.call("_apply_victory_outcome_receipt", receipt)
 	await _wait_frames(3)
 	var public_log: Array = main.call("_runtime_public_log_snapshot")
-	var public_facts: Dictionary = main.call("_final_settlement_public_facts", "隐私测试终局")
-	var public_source: Dictionary = adapter.call("compose_public_source", public_facts)
-	var public_snapshot: Dictionary = main.call("_final_settlement_public_snapshot", "隐私测试终局", internal_rankings)
-	var public_summary := str(main.call("_final_settlement_public_summary_text", "隐私测试终局"))
+	var participant_names := _participant_names(main, players.size())
+	var public_context := {
+		"victory_public_snapshot": coordinator.call("victory_control_public_snapshot", -1),
+		"participant_names": participant_names,
+		"reason": "隐私测试终局",
+	}
+	var public_source: Dictionary = composition.call("compose_public_source", public_context)
+	var public_snapshot: Dictionary = coordinator.call("compose_final_settlement_snapshot", public_source)
+	var public_summary := str(composition.call("latest_public_summary"))
 	var standings_source: Dictionary = main.call("_standings_public_source_snapshot")
 	var root_summary := str(standings_source.get("final_summary_text", ""))
 
 	var key_paths: Array[String] = []
 	for named_value in [
-		{"name": "facts", "value": public_facts},
+		{"name": "context", "value": public_context},
 		{"name": "source", "value": public_source},
 		{"name": "snapshot", "value": public_snapshot},
 	]:
 		_collect_forbidden_key_paths((named_value as Dictionary).get("value"), str((named_value as Dictionary).get("name", "public")), key_paths)
 	_expect(key_paths.is_empty(), "public facts/source/snapshot recursively omit exact cash and asset keys: %s" % [key_paths])
 	var value_paths: Array[String] = []
-	_collect_exact_value_paths([public_log, public_facts, public_source, public_snapshot, public_summary, root_summary], [PRIVATE_CASH_CENTS, PRIVATE_CASH_TEXT, str(PRIVATE_CASH_CENTS), "987654321"], "public", value_paths)
+	_collect_exact_value_paths([public_log, public_context, public_source, public_snapshot, public_summary, root_summary], [PRIVATE_CASH_CENTS, PRIVATE_CASH_TEXT, str(PRIVATE_CASH_CENTS), "987654321"], "public", value_paths)
 	_expect(value_paths.is_empty(), "outcome log, settlement source, board source, and root summary contain no private cash sentinel: %s" % [value_paths])
 	_expect(public_summary.contains("准确现金只对权威审计名单公开") and root_summary.contains("准确现金只对权威审计名单公开"), "public recap explains the state-authorized audit boundary")
 	_expect(_is_pure_data(public_source) and _is_pure_data(public_log), "public adapter and log outputs are pure data")
 
-	var authorized_public: Dictionary = (public_facts.get("victory_public_snapshot", {}) as Dictionary).duplicate(true)
+	var authorized_public: Dictionary = (public_context.get("victory_public_snapshot", {}) as Dictionary).duplicate(true)
 	authorized_public["cash_visibility"] = "public_audit"
 	authorized_public["audit_revealed_player_indices"] = [1]
 	authorized_public["audit_entries"] = [
 		{"player_index": 1, "cash_ledger_cents": PRIVATE_CASH_CENTS},
 		{"player_index": 0, "cash_ledger_cents": NON_AUDITED_CASH_CENTS},
 	]
-	var authorized_facts := public_facts.duplicate(true)
-	authorized_facts["victory_public_snapshot"] = authorized_public
-	var authorized_source: Dictionary = adapter.call("compose_public_source", authorized_facts)
-	var participant_names := {"0": main.call("_player_name", 0), "1": main.call("_player_name", 1)}
+	var authorized_context := public_context.duplicate(true)
+	authorized_context["victory_public_snapshot"] = authorized_public
+	var authorized_source: Dictionary = composition.call("compose_public_source", authorized_context)
 	var authorized_log: Dictionary = adapter.call("public_outcome_log_payload", authorized_public, participant_names)
 	_expect(_contains_exact_value(authorized_source, PRIVATE_CASH_CENTS) and _contains_exact_value(authorized_log, PRIVATE_CASH_TEXT), "an explicitly authorized audit seat exposes its exact cash through the public projection")
 	_expect(not _contains_exact_value(authorized_source, NON_AUDITED_CASH_CENTS) and not _contains_exact_value(authorized_log, "123456789.00"), "a non-audit opponent remains hidden even when an untrusted entry carries exact cash")
 	var forged_public := authorized_public.duplicate(true)
 	forged_public.erase("cash_visibility")
-	var forged_facts := authorized_facts.duplicate(true)
-	forged_facts["victory_public_snapshot"] = forged_public
-	var forged_source: Dictionary = adapter.call("compose_public_source", forged_facts)
+	var forged_context := authorized_context.duplicate(true)
+	forged_context["victory_public_snapshot"] = forged_public
+	var forged_source: Dictionary = composition.call("compose_public_source", forged_context)
 	var forged_log: Dictionary = adapter.call("public_outcome_log_payload", forged_public, participant_names)
 	_expect(not _contains_exact_value(forged_source, PRIVATE_CASH_CENTS) and not _contains_exact_value(forged_log, PRIVATE_CASH_TEXT), "cash injected without the authoritative visibility state fails closed")
 
@@ -128,7 +133,7 @@ func _run() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var main_scene_source := FileAccess.get_file_as_string(MAIN_SCENE_PATH)
 	_expect(not main_source.contains("func _final_settlement_public_source_snapshot(") and not main_source.contains("func _final_run_summary_text(") and not main_source.contains("func _final_player_breakdown_summary("), "legacy main settlement source and summary formatters are physically absent")
-	_expect(main_scene_source.contains("FinalSettlementPublicSourceAdapter.tscn") and main_source.contains("func _final_settlement_public_source_adapter_node("), "main scene owns the new adapter and main retains only a node lookup boundary")
+	_expect(main_scene_source.contains("FinalSettlementRuntimeComposition.tscn") and main_source.contains("func _final_settlement_runtime_composition_node("), "main scene owns the settlement composition and main retains only its node lookup boundary")
 
 	main.queue_free()
 	await process_frame
@@ -138,6 +143,13 @@ func _run() -> void:
 func _wait_frames(count: int) -> void:
 	for _index in range(count):
 		await process_frame
+
+
+func _participant_names(main: Node, player_count: int) -> Dictionary:
+	var result: Dictionary = {}
+	for player_index in range(player_count):
+		result[str(player_index)] = str(main.call("_player_name", player_index))
+	return result
 
 
 func _collect_forbidden_key_paths(value: Variant, path: String, result: Array[String]) -> void:
