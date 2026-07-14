@@ -1,7 +1,7 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://space_syndicate_design_qa/test_runs/human_first_table_playability_v06.save"
+const QA_SAVE_PATH := "user://test_runs/human_first_table_playability_v06.save"
 const FIXED_SEED := 60619
 const FORBIDDEN_PUBLIC_KEYS := [
 	"true_owner",

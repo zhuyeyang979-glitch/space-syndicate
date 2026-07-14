@@ -1,7 +1,7 @@
 extends SceneTree
 
 const MAIN_SCENE := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://space_syndicate_design_qa/test_runs/vs06_production_dispatch_replay.save"
+const QA_SAVE_PATH := "user://test_runs/vs06_production_dispatch_replay.save"
 
 var _failures: Array[String] = []
 var _checks := 0

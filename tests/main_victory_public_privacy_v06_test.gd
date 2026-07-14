@@ -1,7 +1,7 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const QA_SAVE_PATH := "user://space_syndicate_design_qa/test_runs/main_victory_public_privacy_v06.save"
+const QA_SAVE_PATH := "user://test_runs/main_victory_public_privacy_v06.save"
 const PRIVATE_CASH_CENTS := 98765432100
 const PRIVATE_CASH_TEXT := "987654321.00"
 const NON_AUDITED_CASH_CENTS := 12345678900

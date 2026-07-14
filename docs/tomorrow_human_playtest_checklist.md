@@ -4,7 +4,7 @@ Status: acceptance skeleton installed; coordinator owns final Godot 4.7 MCP and 
 
 ## Safety preflight
 
-- Use the QA run-save override under `user://space_syndicate_design_qa/test_runs/`; never select or overwrite the production save slot.
+- Use the v0.6 QA run-save override under `user://test_runs/`; never select or overwrite the production save slot.
 - Detect displays at runtime. Run headed evidence on a non-primary display only; if unavailable, report the blocker and do not occupy display 1.
 - Target 1600×960. If display 2 is smaller, use the Bench's 1600×960 SubViewport and label the evidence as scaled.
 
