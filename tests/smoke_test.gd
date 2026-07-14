@@ -4182,11 +4182,13 @@ func _all_monster_cards_have_field_attributes(main: Node) -> bool:
 
 
 func _verify_weather_forecast_system(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
 	var ok := true
+	var runtime_coordinator := _runtime_coordinator(main)
 	var weather := _weather_controller(main)
-	if weather == null:
+	if runtime_coordinator == null or weather == null:
 		return false
+	var saved_weather := runtime_coordinator.call("weather_to_save_data") as Dictionary
+	var saved_game_time := float(main.get("game_time"))
 	var forecast := weather.call("forecast_snapshot") as Dictionary
 	if forecast == null or forecast.is_empty():
 		print("Missing initial weather forecast")
@@ -4219,8 +4221,10 @@ func _verify_weather_forecast_system(main: Node) -> bool:
 			var impact_label := main.find_child("WeatherImpactLabel", true, false) as Label
 			ok = ok and active_label != null and active_label.text.contains("现在：") and active_label.text.contains(String(weather.call("label", String(active_entry.get("type", "")))))
 			ok = ok and impact_label != null and impact_label.text.contains("产×") and impact_label.text.contains("交×") and impact_label.text.contains("消×")
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
+	main.set("game_time", saved_game_time)
+	var restore_result := runtime_coordinator.call("apply_weather_save_data", saved_weather) as Dictionary
+	main.call("_refresh_ui")
+	return ok and bool(restore_result.get("applied", false))
 
 
 func _verify_news_and_weather_card_rules(main: Node) -> bool:
