@@ -187,11 +187,23 @@ func _run_human_gate() -> void:
 	_scan_public_value(ai_supply, "district_supply.public")
 	_scan_public_value(victory_public, "victory.public")
 
-	main.call("_open_final_settlement_menu", "A9终局面板能力检查", [])
+	var victory_controller: Node = coordinator.call("victory_control_runtime_controller") if coordinator.has_method("victory_control_runtime_controller") else null
+	var settlement_world: Dictionary = coordinator.call("victory_control_world_snapshot") if coordinator.has_method("victory_control_world_snapshot") else {}
+	settlement_world["irreversible_planet_destruction_triggered"] = true
+	settlement_world["scenario_allows_cash_fallback"] = true
+	var settlement_receipt: Dictionary = victory_controller.call("resolve_special_outcome", "planet_destroyed", settlement_world) if victory_controller != null else {}
+	if not settlement_receipt.is_empty() and coordinator.has_method("_apply_victory_outcome_receipt"):
+		coordinator.call("_apply_victory_outcome_receipt", settlement_receipt)
 	await _wait_frames(3)
-	var settlement_snapshot: Dictionary = main.call("_final_settlement_public_snapshot", "A9终局面板能力检查", [])
-	var settlement_board := main.find_child("FinalSettlementBoardPanel", true, false) as Control
-	_expect(settlement_board != null and settlement_board.has_method("set_board") and settlement_board.has_signal("action_requested") and _visible_nonzero(settlement_board), "the real Final Settlement board capability is visible and non-zero")
+	var settlement_diagnostic_title := "A9终局面板能力检查"
+	var settlement_composition := main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition")
+	var settlement_snapshot: Dictionary = settlement_composition.call("last_public_snapshot") if settlement_composition != null and settlement_composition.has_method("last_public_snapshot") else {}
+	var settlement_source: Dictionary = settlement_composition.call("compose_public_source", _settlement_public_context(main, coordinator)) if settlement_composition != null and settlement_composition.has_method("compose_public_source") else {}
+	var coordinator_snapshot: Dictionary = coordinator.call("compose_final_settlement_snapshot", settlement_source) if coordinator.has_method("compose_final_settlement_snapshot") else {}
+	var settlement_board: Control = null
+	if settlement_composition != null and settlement_composition.has_method("board_node"):
+		settlement_board = settlement_composition.call("board_node") as Control
+	_expect(not settlement_receipt.is_empty() and settlement_snapshot == coordinator_snapshot and settlement_board != null and settlement_board.has_method("set_board") and settlement_board.has_signal("action_requested") and _visible_nonzero(settlement_board), "%s: the real Final Settlement composition presents one visible non-zero board from the Coordinator public snapshot service" % settlement_diagnostic_title)
 	_scan_public_value(settlement_snapshot, "settlement.public")
 	_scan_visible_controls(main, "main.visible")
 	_expect(_privacy_leaks.is_empty(), "public snapshots and visible controls recursively omit opponent cash, hand, owner truth, and AI plans: %s" % [_privacy_leaks])
@@ -204,6 +216,17 @@ func _run_human_gate() -> void:
 func _seat_has_public_role(seat: Dictionary) -> bool:
 	var faces: Array = seat.get("card_faces", []) if seat.get("card_faces", []) is Array else []
 	return not str(seat.get("role_label", "")).is_empty() and not faces.is_empty() and faces[0] is Dictionary and str((faces[0] as Dictionary).get("card_kind", "")) == "player_role"
+
+
+func _settlement_public_context(main: Node, coordinator: Node) -> Dictionary:
+	var players := _array_property(main, "players")
+	var participant_names: Dictionary = {}
+	for player_index in range(players.size()):
+		participant_names[str(player_index)] = str(main.call("_player_name", player_index))
+	return {
+		"victory_public_snapshot": coordinator.call("victory_control_public_snapshot", -1),
+		"participant_names": participant_names,
+	}
 
 
 func _seat_has_human_starter(seat: Dictionary) -> bool:

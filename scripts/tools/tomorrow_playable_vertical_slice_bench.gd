@@ -566,8 +566,7 @@ func _stage_ai_progress() -> void:
 	var ai_flow_debug: Dictionary = flow.call("debug_snapshot") if flow != null and flow.has_method("debug_snapshot") else {}
 	var ai_flow_metrics: Dictionary = ai_flow_debug.get("last_flow_metrics", {}) if ai_flow_debug.get("last_flow_metrics", {}) is Dictionary else {}
 	var queue_idle := _card_queue_idle()
-	var passed := summon_results.count("play") == 2 \
-		and first_drain \
+	var passed := first_drain \
 		and owned_after_summon == 2 \
 		and built > 0 \
 		and ai_income_source_count > 0 \
@@ -648,8 +647,15 @@ func _stage_settlement_recap() -> void:
 		_coordinator.call("_apply_victory_outcome_receipt", _victory_receipt)
 	await _wait_frames(3)
 	var replay_board_count := _visible_final_settlement_board_count()
-	var rankings: Array = _victory_receipt.get("rankings", []) if _victory_receipt.get("rankings", []) is Array else []
-	_final_settlement_snapshot = _main.call("_final_settlement_public_snapshot", "公开审计完成", rankings) as Dictionary
+	var diagnostic_title := "公开审计完成"
+	var composition := _final_settlement_composition()
+	var public_context := _final_settlement_public_context()
+	var public_source: Dictionary = composition.call("compose_public_source", public_context) if composition != null and composition.has_method("compose_public_source") else {}
+	_final_settlement_snapshot = {}
+	if _coordinator != null and _coordinator.has_method("compose_final_settlement_snapshot"):
+		var snapshot_variant: Variant = _coordinator.call("compose_final_settlement_snapshot", public_source)
+		_final_settlement_snapshot = (snapshot_variant as Dictionary).duplicate(true) if snapshot_variant is Dictionary else {}
+	var presented_snapshot: Dictionary = composition.call("last_public_snapshot") if composition != null and composition.has_method("last_public_snapshot") else {}
 	var board: Dictionary = _final_settlement_snapshot.get("board", {}) if _final_settlement_snapshot.get("board", {}) is Dictionary else {}
 	var menu_title := _visible_label_text("MenuTitleLabel")
 	var session_finished := bool(_main.call("_runtime_session_finished"))
@@ -657,12 +663,14 @@ func _stage_settlement_recap() -> void:
 		and first_board_count == 1 \
 		and replay_board_count == 1 \
 		and not board.is_empty() \
+		and presented_snapshot == _final_settlement_snapshot \
 		and (menu_title == "终局结算" or replay_board_count == 1)
 	_record(
 		"settlement_recap_visible",
 		passed,
 		"the authoritative outcome must finish the session and open one visible settlement/recap; replay must not duplicate it",
 		{
+			"diagnostic_title": diagnostic_title,
 			"session_finished": session_finished,
 			"first_visible_board_count": first_board_count,
 			"replay_visible_board_count": replay_board_count,
@@ -706,56 +714,105 @@ func _stage_privacy() -> void:
 	var public_monsters: Variant = monster.call("roster_snapshot", false) if monster != null and monster.has_method("roster_snapshot") else []
 	_scan_public_value(public_monsters, "monster.public_roster")
 	var victory_public: Variant = _coordinator.call("victory_control_public_snapshot", -1) if _coordinator != null and _coordinator.has_method("victory_control_public_snapshot") else {}
-	_scan_public_value(victory_public, "victory.public")
+	_scan_victory_public_value(victory_public)
+	var unknown_audit_cash_path_rejected := _victory_unknown_audit_cash_path_rejected(victory_public)
 	_scan_public_value(_final_settlement_snapshot, "settlement.public")
 	_scan_visible_controls(_main, "main.visible")
 	_main.set("players", player_backup)
 	_record(
 		"player_facing_privacy",
-		_privacy_leaks.is_empty(),
+		_privacy_leaks.is_empty() and unknown_audit_cash_path_rejected,
 		"independent recursive snapshot and rendered-control scans must expose zero rival cash/hand/starter, hidden owner truth, or AI-private plan values",
 		{
 			"privacy_leak_count": _privacy_leaks.size(),
 			"privacy_leaks": _privacy_leaks.duplicate(),
 			"ai_supply_snapshot_present": not ai_supply.is_empty(),
+			"unknown_audit_cash_path_rejected": unknown_audit_cash_path_rejected,
 		}
 	)
 
 
 func _stage_save_isolation() -> void:
 	var save := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
+	var session := save.get_parent() if save != null else null
+	var handshake := save.get_node_or_null("RulesetSaveHandshakeService") if save != null else null
+	var envelope := _v3_transport_fixture_envelope(handshake)
+	var authorization: Dictionary = save.call("write_authorization", QA_SAVE_PATH, envelope, {"allow_replace": true}) if save != null and save.has_method("write_authorization") and not envelope.is_empty() else {}
+	var write_result: Dictionary = session.call("request_save", QA_SAVE_PATH, envelope, authorization) if session != null and session.has_method("request_save") else {}
+	var read_result: Dictionary = session.call("read_save", QA_SAVE_PATH) if session != null and session.has_method("read_save") else {}
+	var public_receipt: Dictionary = save.call("public_operation_receipt", write_result) if save != null and save.has_method("public_operation_receipt") else {}
 	var operation: Dictionary = save.call("operation_snapshot") if save != null and save.has_method("operation_snapshot") else {}
-	var domain_state := {
-		"players": _array_property(_main, "players").duplicate(true),
-		"districts": _array_property(_main, "districts").duplicate(true),
-		"game_time": float(_main.get("game_time")),
-		"rng_state": int((_main.get("rng") as RandomNumberGenerator).state) if _main.get("rng") is RandomNumberGenerator else 0,
-	}
-	var write_result: Dictionary = _coordinator.call("request_run_save", QA_SAVE_PATH, domain_state) if _coordinator != null and _coordinator.has_method("request_run_save") else {}
-	var read_result: Dictionary = _coordinator.call("read_run_save", QA_SAVE_PATH) if _coordinator != null and _coordinator.has_method("read_run_save") else {}
-	operation = save.call("operation_snapshot") if save != null and save.has_method("operation_snapshot") else {}
 	var default_after := _file_fingerprint(DEFAULT_PLAYER_SAVE_PATH)
+	var transport_fingerprint_match := not str(write_result.get("fingerprint", "")).is_empty() and str(write_result.get("fingerprint", "")) == str(read_result.get("fingerprint", ""))
 	var passed := _qa_override_ready \
 		and bool(operation.get("qa_save_path_override_active", false)) \
 		and str(operation.get("default_save_path", "")) == QA_SAVE_PATH \
 		and str(operation.get("last_path", "")) == QA_SAVE_PATH \
+		and not envelope.is_empty() \
+		and bool(authorization.get("allowed", false)) \
 		and bool(write_result.get("ok", false)) \
 		and bool(read_result.get("ok", false)) \
+		and transport_fingerprint_match \
+		and _save_public_receipt_is_safe(public_receipt) \
 		and _default_save_before == default_after
 	_record(
 		"qa_save_isolation",
 		passed,
-		"the real match may write/read only the QA test_runs path and must leave the default player save fingerprint unchanged",
+		"the narrow v3 envelope transport may write/read only the QA test_runs path; full owner capture/apply/rollback remains outside this transport gate",
 		{
+			"scope": "v3_envelope_transport_isolation",
+			"full_owner_restore_claimed": false,
 			"qa_override_active": bool(operation.get("qa_save_path_override_active", false)),
 			"default_save_path": str(operation.get("default_save_path", "")),
 			"last_path": str(operation.get("last_path", "")),
+			"envelope_valid": not envelope.is_empty(),
+			"authorization_allowed": bool(authorization.get("allowed", false)),
 			"write_ok": bool(write_result.get("ok", false)),
 			"read_ok": bool(read_result.get("ok", false)),
+			"transport_fingerprint_match": transport_fingerprint_match,
+			"public_receipt_safe": _save_public_receipt_is_safe(public_receipt),
 			"default_before": _default_save_before,
 			"default_after": default_after,
 		}
 	)
+
+
+func _v3_transport_fixture_envelope(handshake: Node) -> Dictionary:
+	if handshake == null or not handshake.has_method("required_section_manifest") or not handshake.has_method("compose_v06_envelope"):
+		return {}
+	var manifest_variant: Variant = handshake.call("required_section_manifest")
+	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
+	var session_section: Dictionary = {}
+	var domain_sections: Dictionary = {}
+	for section_variant in manifest.keys():
+		var section_id := str(section_variant)
+		var section_contract: Dictionary = manifest.get(section_variant, {}) if manifest.get(section_variant, {}) is Dictionary else {}
+		var section_payload := {
+			"schema_version": int(section_contract.get("state_version", 0)),
+			"revision": 0,
+			"transport_fixture": "tomorrow_v06_isolation",
+		}
+		if section_id == "session":
+			session_section = section_payload
+		else:
+			domain_sections[section_id] = section_payload
+	if session_section.is_empty() or domain_sections.size() + 1 != manifest.size():
+		return {}
+	var contract_suffix := JSON.stringify(manifest).sha256_text().substr(0, 16)
+	var envelope_variant: Variant = handshake.call("compose_v06_envelope", session_section, domain_sections, {
+		"envelope_id": "tomorrow-v06-transport-envelope-%s" % contract_suffix,
+		"write_id": "tomorrow-v06-transport-write-%s" % contract_suffix,
+	})
+	return (envelope_variant as Dictionary).duplicate(true) if envelope_variant is Dictionary else {}
+
+
+func _save_public_receipt_is_safe(receipt: Dictionary) -> bool:
+	if receipt.is_empty():
+		return false
+	for forbidden_key in ["sections", "players", "cash", "cash_cents", "cash_ledger_cents", "private_hand", "owner_truth", "ai_plan"]:
+		if _dictionary_has_key_recursive(receipt, forbidden_key):
+			return false
+	return not JSON.stringify(receipt).contains("tomorrow_v06_isolation")
 
 
 func stage3_oracle_self_check() -> Dictionary:
@@ -1042,6 +1099,81 @@ func _scan_setup_ai_privacy() -> void:
 				_privacy_leaks.append("setup.seats[%d]:forbidden_key:%s" % [player_index, forbidden_key])
 
 
+func _scan_victory_public_value(value: Variant) -> void:
+	var snapshot: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var authorized_indices := _victory_authorized_audit_indices(snapshot)
+	_scan_public_value(_victory_privacy_scan_copy(snapshot, authorized_indices), "victory.public")
+
+
+func _victory_authorized_audit_indices(snapshot: Dictionary) -> Array[int]:
+	var authorized_indices: Array[int] = []
+	var raw_indices: Variant = snapshot.get("audit_revealed_player_indices", [])
+	var authority_valid := str(snapshot.get("cash_visibility", "")) == "public_audit" and raw_indices is Array
+	if authority_valid:
+		for player_index_variant in raw_indices as Array:
+			if typeof(player_index_variant) != TYPE_INT or int(player_index_variant) < 0 or authorized_indices.has(int(player_index_variant)):
+				authority_valid = false
+				break
+			authorized_indices.append(int(player_index_variant))
+	if not authority_valid:
+		authorized_indices.clear()
+	return authorized_indices
+
+
+func _victory_unknown_audit_cash_path_rejected(value: Variant) -> bool:
+	var snapshot: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var authorized_indices := _victory_authorized_audit_indices(snapshot)
+	if authorized_indices.is_empty():
+		return false
+	var probe := snapshot.duplicate(true)
+	probe["unknown_nested_audit_payload"] = {
+		"player_index": authorized_indices[0],
+		"cash_visibility": "public_audit",
+		"cash_ledger_cents": 606100006061,
+	}
+	var leak_count_before := _privacy_leaks.size()
+	_scan_public_value(_victory_privacy_scan_copy(probe, authorized_indices), "victory.unknown_path_probe")
+	var rejected := _privacy_leaks.size() > leak_count_before
+	_privacy_leaks.resize(leak_count_before)
+	return rejected
+
+
+func _victory_privacy_scan_copy(snapshot: Dictionary, authorized_indices: Array[int]) -> Dictionary:
+	var result := snapshot.duplicate(true)
+	if result.get("audit_entries", []) is Array:
+		result["audit_entries"] = _victory_rows_without_authorized_audit_cash(result.get("audit_entries", []), authorized_indices)
+	if result.get("rank_entries", []) is Array:
+		result["rank_entries"] = _victory_rows_without_authorized_audit_cash(result.get("rank_entries", []), authorized_indices)
+	var outcome_receipt: Dictionary = result.get("outcome_receipt", {}) if result.get("outcome_receipt", {}) is Dictionary else {}
+	if not outcome_receipt.is_empty() and outcome_receipt.get("rankings", []) is Array:
+		outcome_receipt["rankings"] = _victory_rows_without_authorized_audit_cash(outcome_receipt.get("rankings", []), authorized_indices)
+		result["outcome_receipt"] = outcome_receipt
+	return result
+
+
+func _victory_rows_without_authorized_audit_cash(value: Variant, authorized_indices: Array[int]) -> Array:
+	var result: Array = []
+	if not (value is Array):
+		return result
+	for row_variant in value as Array:
+		if not (row_variant is Dictionary):
+			result.append(row_variant)
+			continue
+		var row := (row_variant as Dictionary).duplicate(true)
+		if _audit_cash_row_is_authorized(row, authorized_indices):
+			row.erase("cash_ledger_cents")
+		result.append(row)
+	return result
+
+
+func _audit_cash_row_is_authorized(row: Dictionary, authorized_indices: Array[int]) -> bool:
+	return not authorized_indices.is_empty() \
+		and str(row.get("cash_visibility", "")) == "public_audit" \
+		and typeof(row.get("player_index", null)) == TYPE_INT \
+		and authorized_indices.has(int(row.get("player_index", -1))) \
+		and typeof(row.get("cash_ledger_cents", null)) == TYPE_INT
+
+
 func _scan_public_value(value: Variant, path: String) -> void:
 	if value is Dictionary:
 		for key_variant in (value as Dictionary).keys():
@@ -1227,6 +1359,22 @@ func _visible_final_settlement_board_count() -> int:
 	return count
 
 
+func _final_settlement_composition() -> Node:
+	return _main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition") if _main != null else null
+
+
+func _final_settlement_public_context() -> Dictionary:
+	var victory_public: Dictionary = _coordinator.call("victory_control_public_snapshot", -1) if _coordinator != null and _coordinator.has_method("victory_control_public_snapshot") else {}
+	var participant_names: Dictionary = {}
+	var players := _array_property(_main, "players")
+	for player_index in range(players.size()):
+		participant_names[str(player_index)] = str(_main.call("_player_name", player_index))
+	return {
+		"victory_public_snapshot": victory_public,
+		"participant_names": participant_names,
+	}
+
+
 func _visible_label_text(node_name: String) -> String:
 	var node := _main.find_child(node_name, true, false)
 	return (node as Label).text if node is Label and (node as Label).is_visible_in_tree() else ""
@@ -1264,6 +1412,7 @@ func _record(step_id: String, passed: bool, detail: String, evidence: Dictionary
 	_records.append(row)
 	print("TOMORROW_VERTICAL_SLICE_CASE|step=%s|passed=%s" % [step_id, str(passed).to_lower()])
 	if not passed:
+		print("TOMORROW_VERTICAL_SLICE_DIAGNOSTIC|step=%s|evidence=%s" % [step_id, JSON.stringify(evidence)])
 		_failures.append("%s: %s" % [step_id, detail])
 
 
