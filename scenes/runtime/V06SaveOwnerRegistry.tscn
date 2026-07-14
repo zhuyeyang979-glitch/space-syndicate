@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/v06_save_owner_registry.gd" id="1_registry"]
 [ext_resource type="Script" path="res://scripts/runtime/v06_save_owner_binding_resource.gd" id="2_binding"]
@@ -108,6 +108,12 @@ section_id = "ai"
 owner_id = "ai_runtime"
 unsupported_reason = "strict_preflight_missing"
 
+[sub_resource type="Resource" id="BindingBankruptcyNeutralEstate"]
+script = ExtResource("2_binding")
+section_id = "bankruptcy_neutral_estate"
+owner_id = "bankruptcy_neutral_estate"
+unsupported_reason = "save_capture_apply_checkpoint_api_missing"
+
 [sub_resource type="Resource" id="BindingVictory"]
 script = ExtResource("2_binding")
 section_id = "victory_control"
@@ -133,5 +139,5 @@ unsupported_reason = ""
 [node name="V06SaveOwnerRegistry" type="Node"]
 script = ExtResource("1_registry")
 handshake_path = NodePath("../GameSaveRuntimeCoordinator/RulesetSaveHandshakeService")
-bindings = Array[ExtResource("2_binding")]([SubResource("BindingRuleset"), SubResource("BindingRegionInfrastructure"), SubResource("BindingInstalledCommodities"), SubResource("BindingRoutes"), SubResource("BindingSaleReceipts"), SubResource("BindingPlayerMana"), SubResource("BindingCommodityBelt"), SubResource("BindingCardInventory"), SubResource("BindingPlayerOrganization"), SubResource("BindingMonsters"), SubResource("BindingMilitary"), SubResource("BindingWeather"), SubResource("BindingCardQueue"), SubResource("BindingCardExecution"), SubResource("BindingAi"), SubResource("BindingVictory"), SubResource("BindingSession")])
+bindings = Array[ExtResource("2_binding")]([SubResource("BindingRuleset"), SubResource("BindingRegionInfrastructure"), SubResource("BindingInstalledCommodities"), SubResource("BindingRoutes"), SubResource("BindingSaleReceipts"), SubResource("BindingPlayerMana"), SubResource("BindingCommodityBelt"), SubResource("BindingCardInventory"), SubResource("BindingPlayerOrganization"), SubResource("BindingMonsters"), SubResource("BindingMilitary"), SubResource("BindingWeather"), SubResource("BindingCardQueue"), SubResource("BindingCardExecution"), SubResource("BindingAi"), SubResource("BindingBankruptcyNeutralEstate"), SubResource("BindingVictory"), SubResource("BindingSession")])
 editor_description = "Unique v0.6 save-section owner registry. It captures no parallel gameplay state and rejects resume until every required owner has transactional preflight/apply/rollback capability."

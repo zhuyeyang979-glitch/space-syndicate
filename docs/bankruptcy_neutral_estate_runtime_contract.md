@@ -22,7 +22,7 @@ estate_counts
 reason
 ```
 
-It never contains exact cash, card/product identities, owner truth, discard details, or AI plans. Private preimages remain inside owner journals and are discarded at finalize. Save registration is intentionally deferred to the v3 owner registry phase.
+It never contains exact cash, card/product identities, owner truth, discard details, or AI plans. Private preimages remain inside owner journals and are discarded at finalize. The v3 owner registry declares `bankruptcy_neutral_estate` as an independent required section, but restore remains explicitly unsupported until this controller owns versioned save capture, preflight, apply, and exact rollback APIs; the registry does not copy its transaction journal or participant journals.
 
 ## Developer evidence
 
