@@ -128,7 +128,7 @@ text = "关闭"
 [node name="DistrictSupplyRuleStrip" type="Label" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "单击预览｜双击购买｜可先查看，购买资格按开窗瞬间锁定"
+text = "悬停预览｜单击或键盘选择生成5秒报价｜双击按当前报价购买"
 autowrap_mode = 3
 
 [node name="DistrictPurchaseWindowStatus" parent="DistrictSupplySideDrawer/DistrictSupplyPanel/DistrictSupplyInnerMargin/DistrictSupplyRootStack/DistrictSupplyShelfBoard/DistrictSupplyShelfMargin/DistrictSupplyShelfStack" instance=ExtResource("2_purchase_status")]
