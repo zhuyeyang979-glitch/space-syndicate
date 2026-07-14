@@ -84,7 +84,7 @@ func run_suite() -> void:
 	_case_pause_by_clock()
 	_case_max_two_and_same_region_queue()
 	_case_settlement_stops_natural()
-	_case_resolver_limits_and_resistance()
+	_case_weather_semantic_matrix()
 	_case_save_roundtrip_and_atomic_validation()
 	_case_privacy_and_bridge_allowlist()
 	_case_card_control_paths()
@@ -163,10 +163,54 @@ func _case_definition_schema() -> void:
 	var validation := CATALOG.validate_catalog()
 	_expect(bool(validation.get("valid", false)), "catalog has exactly six valid data-driven definitions")
 	_expect(CATALOG.definition_ids() == ["ion_storm", "gravity_tide", "spore_season", "crystal_dust_storm", "deep_freeze", "solar_flare"], "definition ids preserve v1 contract order")
+	var expected_names := {
+		"ion_storm": "离子风暴",
+		"gravity_tide": "引力潮",
+		"spore_season": "孢子季",
+		"crystal_dust_storm": "晶尘暴",
+		"deep_freeze": "极寒期",
+		"solar_flare": "太阳耀斑",
+	}
+	var required_fields := [
+		"id",
+		"display_name",
+		"description",
+		"category",
+		"forecast_duration",
+		"active_duration",
+		"fade_duration",
+		"affected_region_count",
+		"product_tags",
+		"product_price_growth_multiplier",
+		"production_multiplier",
+		"demand_multiplier",
+		"route_efficiency_multiplier",
+		"land_movement_multiplier",
+		"ocean_movement_multiplier",
+		"air_movement_multiplier",
+		"ranged_effect_multiplier",
+		"knockback_multiplier",
+		"region_damage_per_second",
+		"monster_preference_tags",
+		"monster_speed_multiplier",
+		"monster_armor_multiplier",
+		"intel_effect_multiplier",
+		"counterplay_hint",
+		"exploitation_hint",
+	]
 	for id_variant in CATALOG.definition_ids():
-		var definition := CATALOG.definition(str(id_variant))
-		_expect(definition != null and definition.is_valid_definition(), "%s guardrail validation passes" % str(id_variant))
-		_expect(definition.affected_region_count == 1, "%s first version affects one region" % str(id_variant))
+		var type_id := str(id_variant)
+		var definition := CATALOG.definition(type_id)
+		_expect(definition != null and definition.is_valid_definition(), "%s guardrail validation passes" % type_id)
+		_expect(definition.affected_region_count == 1, "%s first version affects one region" % type_id)
+		_expect(definition.display_name == str(expected_names.get(type_id, "")), "%s Chinese display name matches user contract" % type_id)
+		var payload := definition.to_dictionary()
+		for field_name in required_fields:
+			_expect(payload.has(str(field_name)), "%s exposes required field %s" % [type_id, str(field_name)])
+		for tag_variant in definition.product_tags:
+			_expect(str(tag_variant).begins_with("weather_"), "%s product tag uses canonical weather_* catalog vocabulary" % type_id)
+		for tag_variant in definition.monster_preference_tags:
+			_expect(not str(tag_variant).begins_with("weather_"), "%s monster tag remains separate from product vocabulary" % type_id)
 	_case_line("definition_schema")
 
 
@@ -225,7 +269,7 @@ func _case_pause_by_clock() -> void:
 	for _i in range(4):
 		_controller.tick(10.0)
 	_expect(_controller.forecast_snapshot() == before, "weather is frozen when world_effective clock does not advance, regardless of delta/game_time")
-	_clock.restore_micros(30_000_000)
+	_clock.restore_micros(int(round(CATALOG.definition("gravity_tide").forecast_duration * 1_000_000.0)))
 	_controller.tick(0.0)
 	_expect(_controller.active_zone_count() == 1, "weather advances only when world_effective clock advances")
 	_case_line("pause_by_clock")
@@ -259,22 +303,75 @@ func _case_settlement_stops_natural() -> void:
 	_case_line("settlement_stop")
 
 
-func _case_resolver_limits_and_resistance() -> void:
+func _case_weather_semantic_matrix() -> void:
 	var resolver := WeatherEffectResolver.new()
-	var freeze := CATALOG.definition("deep_freeze")
-	var freeze_effect := resolver.resolve(freeze, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"weather_resistance": 0.5, "weather_exploitation_multiplier": 3.0})
-	_expect(float((freeze_effect.get("route", {}) as Dictionary).get("speed_multiplier", 0.0)) >= WeatherEffectResolver.ROUTE_FLOOR, "route multiplier respects 0.40 floor")
-	_expect(float((freeze_effect.get("military", {}) as Dictionary).get("effect_multiplier", 0.0)) >= WeatherEffectResolver.MILITARY_FLOOR, "military multiplier respects 0.70 floor")
-	_expect(float((freeze_effect.get("route", {}) as Dictionary).get("speed_multiplier", 0.0)) > freeze.route_multiplier, "weather resistance mitigates negative route effects")
-	var flare := CATALOG.definition("solar_flare")
-	var base := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"weather_exploitation_multiplier": 1.0})
-	var exploited := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"weather_exploitation_multiplier": 2.0})
-	_expect(float((exploited.get("economy", {}) as Dictionary).get("multiplier", 0.0)) > float((base.get("economy", {}) as Dictionary).get("multiplier", 0.0)), "weather exploitation amplifies positive economy effects")
-	_expect(float((exploited.get("intel", {}) as Dictionary).get("effect_multiplier", 0.0)) == float((base.get("intel", {}) as Dictionary).get("effect_multiplier", 0.0)), "weather exploitation does not amplify negative intel effects")
-	var crystal := resolver.resolve(CATALOG.definition("crystal_dust_storm"), WeatherRuntimeState.PHASE_ACTIVE, 1.0, {})
+	var ion_energy := _resolve(resolver, "ion_storm", {"product_tags": ["weather_energy"], "movement_domain": "air", "monster_tags": ["electromagnetic"], "unit_tags": ["flying"], "intel_domain": "range"})
+	var ion_food := _resolve(resolver, "ion_storm", {"product_tags": ["weather_food"], "movement_domain": "land", "monster_tags": ["biological"], "intel_domain": "duration"})
+	_expect(_economy(ion_energy, "price_growth_multiplier") > 1.0, "ion storm raises energy price growth")
+	_expect(_route(ion_energy, "air_multiplier") > 1.0, "ion storm improves air route context")
+	_expect(is_equal_approx(_route(ion_food, "land_multiplier"), 1.0), "ion storm does not harm non-air movement")
+	_expect(_monster(ion_energy, "speed_multiplier") > 1.0 and is_equal_approx(_monster(ion_food, "speed_multiplier"), 1.0), "ion storm speeds only electromagnetic monsters")
+	_expect(_military(ion_energy, "flying_risk_multiplier") > 1.0, "ion storm exposes flying risk as a separate military signal")
+	_expect(is_equal_approx(_intel(ion_energy, "range_multiplier"), 1.0) and is_equal_approx(_intel(ion_energy, "duration_multiplier"), 1.0), "ion storm has no unrequested intel penalty")
+
+	var gravity_ocean := _resolve(resolver, "gravity_tide", {"movement_domain": "sea"})
+	var gravity_heavy_land := _resolve(resolver, "gravity_tide", {"movement_domain": "land", "unit_tags": ["heavy"]})
+	var gravity_light_land := _resolve(resolver, "gravity_tide", {"movement_domain": "land", "unit_tags": ["light"]})
+	var gravity_force := _resolve(resolver, "gravity_tide", {"unit_tags": ["knockback", "orbital"]})
+	_expect(_route(gravity_ocean, "ocean_multiplier") < 1.0 and _route(gravity_ocean, "ocean_multiplier") >= WeatherEffectResolver.ROUTE_FLOOR, "gravity tide slows ocean efficiency within floor")
+	_expect(_route(gravity_heavy_land, "land_multiplier") < 1.0 and is_equal_approx(_route(gravity_light_land, "land_multiplier"), 1.0), "gravity tide slows only heavy land movement")
+	_expect(_military(gravity_force, "knockback_multiplier") > 1.0 and _military(gravity_force, "orbital_multiplier") > 1.0, "gravity tide boosts knockback and orbital effects")
+
+	var spore_bio := _resolve(resolver, "spore_season", {"product_tags": ["weather_biological"], "monster_tags": ["biological"], "route_mode": "land"})
+	var spore_crystal := _resolve(resolver, "spore_season", {"product_tags": ["weather_crystal"], "monster_tags": ["crystal"]})
+	_expect(_economy(spore_bio, "production_multiplier") > 1.0 and _economy(spore_bio, "demand_multiplier") > 1.0, "spore season boosts matching bio production and demand")
+	_expect(_monster(spore_bio, "preference_multiplier") > 1.0 and _monster(spore_bio, "target_score_multiplier") > 1.0, "spore season outputs structured biological monster preference")
+	_expect(_route(spore_bio, "generic_multiplier") < 1.0, "spore season applies small route drag in route context")
+	_expect(is_equal_approx(_economy(spore_crystal, "production_multiplier"), 1.0) and is_equal_approx(_monster(spore_crystal, "preference_multiplier"), 1.0), "spore season leaves non-matching crystal economy/monsters unchanged")
+
+	var crystal := _resolve(resolver, "crystal_dust_storm", {"product_tags": ["weather_crystal"], "monster_tags": ["crystal"], "unit_tags": ["ranged"]})
+	var crystal_nonmatch := _resolve(resolver, "crystal_dust_storm", {"product_tags": ["weather_food"], "monster_tags": ["cold"], "unit_tags": ["melee"]})
+	_expect(_economy(crystal, "production_multiplier") > 1.0 and is_equal_approx(_economy(crystal_nonmatch, "production_multiplier"), 1.0), "crystal dust boosts only crystal production")
+	_expect(_monster(crystal, "armor_multiplier") > 1.0 and is_equal_approx(_monster(crystal_nonmatch, "armor_multiplier"), 1.0), "crystal dust boosts only crystal monster armor")
+	_expect(_military(crystal, "ranged_multiplier") < 1.0 and _military(crystal, "ranged_multiplier") >= WeatherEffectResolver.MILITARY_FLOOR, "crystal dust weakens ranged effects within floor")
 	var damage := crystal.get("damage", {}) as Dictionary
-	_expect(bool(damage.get("nonlethal", false)) and bool(damage.get("capped", false)) and str(damage.get("policy", "")) == "nonlethal_capped", "crystal dust damage policy is explicitly nonlethal and capped")
-	_case_line("resolver_limits")
+	_expect(float(damage.get("per_second", 0.0)) > 0.0 and bool(damage.get("nonlethal", false)) and bool(damage.get("capped", false)) and str(damage.get("policy", "")) == "nonlethal_capped", "crystal dust damage is light, nonlethal and capped")
+
+	var freeze := _resolve(resolver, "deep_freeze", {"product_tags": ["weather_food"], "movement_domain": "land", "monster_tags": ["cold"], "context_tags": ["city", "maintenance"]})
+	var freeze_nonmatch := _resolve(resolver, "deep_freeze", {"product_tags": ["weather_crystal"], "movement_domain": "air", "monster_tags": ["crystal"]})
+	_expect(_economy(freeze, "demand_multiplier") > 1.0 and _economy(freeze, "maintenance_multiplier") > 1.0, "deep freeze raises food/energy demand and maintenance")
+	_expect(_route(freeze, "land_multiplier") < 1.0 and is_equal_approx(_route(freeze_nonmatch, "air_multiplier"), 1.0), "deep freeze slows land but not air movement")
+	_expect(_monster(freeze, "speed_multiplier") > 1.0 and _monster(freeze, "armor_multiplier") > 1.0 and is_equal_approx(_monster(freeze_nonmatch, "speed_multiplier"), 1.0), "deep freeze boosts only cold monsters")
+
+	var flare := CATALOG.definition("solar_flare")
+	var flare_energy := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_energy"], "monster_tags": ["electromagnetic"], "intel_domain": "duration"})
+	var flare_electronic := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_electronic"], "intel_domain": "duration"})
+	var flare_range := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"intel_domain": "range"})
+	_expect(_economy(flare_energy, "price_growth_multiplier") > 1.0, "solar flare raises energy price growth")
+	_expect(_economy(flare_electronic, "production_multiplier") < 1.0, "solar flare deterministically lowers electronic production")
+	_expect(_intel(flare_energy, "duration_multiplier") < 1.0 and is_equal_approx(_intel(flare_range, "range_multiplier"), 1.0), "solar flare uses deterministic intel duration penalty rather than random failure")
+	_expect(_monster(flare_energy, "speed_multiplier") > 1.0 and _monster(flare_energy, "preference_multiplier") > 1.0, "solar flare boosts electromagnetic/energy monster action")
+
+	var resistant_positive := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_energy"], "weather_resistance": 0.5})
+	_expect(_economy(resistant_positive, "price_growth_multiplier") > 1.0 and _economy(resistant_positive, "price_growth_multiplier") < _economy(flare_energy, "price_growth_multiplier"), "weather resistance mitigates positive deltas")
+	var resistant_negative := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_electronic"], "weather_resistance": 0.5})
+	_expect(_economy(resistant_negative, "production_multiplier") < 1.0 and _economy(resistant_negative, "production_multiplier") > _economy(flare_electronic, "production_multiplier"), "weather resistance mitigates negative deltas")
+	var crystal_resisted := resolver.resolve(CATALOG.definition("crystal_dust_storm"), WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_crystal"], "weather_resistance": 0.5})
+	_expect(float((crystal_resisted.get("damage", {}) as Dictionary).get("per_second", 0.0)) < float(damage.get("per_second", 0.0)), "weather resistance reduces damage")
+	var exploited_positive := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_energy"], "weather_exploitation_multiplier": 2.0})
+	var exploited_ion := resolver.resolve(CATALOG.definition("ion_storm"), WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_energy"], "movement_domain": "air", "unit_tags": ["flying"], "weather_exploitation_multiplier": 2.0})
+	var exploited_negative := resolver.resolve(flare, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_electronic"], "weather_exploitation_multiplier": 2.0})
+	var exploited_freeze := resolver.resolve(CATALOG.definition("deep_freeze"), WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_food"], "context_tags": ["city", "maintenance"], "weather_exploitation_multiplier": 2.0})
+	var exploited_damage := resolver.resolve(CATALOG.definition("crystal_dust_storm"), WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"product_tags": ["weather_crystal"], "weather_exploitation_multiplier": 2.0})
+	_expect(_economy(exploited_positive, "price_growth_multiplier") > _economy(flare_energy, "price_growth_multiplier"), "weather exploitation amplifies positive deltas")
+	_expect(_economy(exploited_ion, "price_growth_multiplier") > _economy(ion_energy, "price_growth_multiplier") and _route(exploited_ion, "air_multiplier") > _route(ion_energy, "air_multiplier"), "weather exploitation amplifies ion energy and air benefits")
+	_expect(is_equal_approx(_military(exploited_ion, "flying_risk_multiplier"), _military(ion_energy, "flying_risk_multiplier")), "weather exploitation does not amplify harmful flying risk")
+	_expect(is_equal_approx(_economy(exploited_freeze, "maintenance_multiplier"), _economy(freeze, "maintenance_multiplier")), "weather exploitation does not amplify harmful maintenance")
+	_expect(is_equal_approx(_economy(exploited_negative, "production_multiplier"), _economy(flare_electronic, "production_multiplier")), "weather exploitation does not amplify negative deltas")
+	_expect(is_equal_approx(float((exploited_damage.get("damage", {}) as Dictionary).get("per_second", 0.0)), float(damage.get("per_second", 0.0))), "weather exploitation does not amplify damage")
+	var no_substring := _resolve(resolver, "solar_flare", {"product_tags": ["太阳耀斑"], "monster_tags": ["太阳耀斑"], "route_mode": "", "intel_domain": "range"})
+	_expect(_effect_is_identity_except_metadata(no_substring), "resolver never applies effects from weather-name substring tags")
+	_case_line("weather_semantic_matrix")
 
 
 func _case_save_roundtrip_and_atomic_validation() -> void:
@@ -344,6 +441,7 @@ func _case_ai_weather_constant_compatibility() -> void:
 	var expected := ["crystal_dust_storm", "deep_freeze", "gravity_tide", "ion_storm", "solar_flare", "spore_season"]
 	_expect(ids == expected, "real AiRuntimeController can still read WeatherRuntimeController.WEATHER_TYPES six-id compatibility shape")
 	_expect(str((types.get("ion_storm", {}) as Dictionary).get("label", "")) == "离子风暴", "AI weather constant exposes public labels without effect-number authority")
+	_expect(str((types.get("gravity_tide", {}) as Dictionary).get("label", "")) == "引力潮" and str((types.get("crystal_dust_storm", {}) as Dictionary).get("label", "")) == "晶尘暴" and str((types.get("deep_freeze", {}) as Dictionary).get("label", "")) == "极寒期", "AI weather constant keeps exact canonical Chinese labels")
 	ai.queue_free()
 	_case_line("ai_weather_constant_compatibility")
 
@@ -358,6 +456,60 @@ func _case_single_owner_contract() -> void:
 	_expect(bool(debug.get("single_save_owner", false)) and str(debug.get("runtime_owner", "")) == "WeatherRuntimeController", "WeatherRuntimeController remains the only weather save/state owner")
 	_expect(not bool(debug.get("reads_game_time", true)) and not bool(debug.get("reads_selected_district", true)), "controller debug declares no game_time or selected_district dependency")
 	_case_line("single_owner")
+
+
+func _resolve(resolver: WeatherEffectResolver, type_id: String, context: Dictionary) -> Dictionary:
+	return resolver.resolve(CATALOG.definition(type_id), WeatherRuntimeState.PHASE_ACTIVE, 1.0, context)
+
+
+func _economy(effect: Dictionary, key: String) -> float:
+	return float((effect.get("economy", {}) as Dictionary).get(key, 1.0))
+
+
+func _route(effect: Dictionary, key: String) -> float:
+	return float((effect.get("route", {}) as Dictionary).get(key, 1.0))
+
+
+func _monster(effect: Dictionary, key: String) -> float:
+	return float((effect.get("monster", {}) as Dictionary).get(key, 1.0))
+
+
+func _military(effect: Dictionary, key: String) -> float:
+	return float((effect.get("military", {}) as Dictionary).get(key, 1.0))
+
+
+func _intel(effect: Dictionary, key: String) -> float:
+	return float((effect.get("intel", {}) as Dictionary).get(key, 1.0))
+
+
+func _effect_is_identity_except_metadata(effect: Dictionary) -> bool:
+	if not is_equal_approx(_economy(effect, "price_growth_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_economy(effect, "production_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_economy(effect, "demand_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_route(effect, "generic_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_route(effect, "land_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_route(effect, "ocean_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_route(effect, "air_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_monster(effect, "preference_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_monster(effect, "speed_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_monster(effect, "armor_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_military(effect, "ranged_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_intel(effect, "duration_multiplier"), 1.0):
+		return false
+	if not is_equal_approx(_intel(effect, "range_multiplier"), 1.0):
+		return false
+	return is_equal_approx(float((effect.get("damage", {}) as Dictionary).get("per_second", 0.0)), 0.0)
 
 
 func _source_types_are_public_safe(snapshot: Dictionary) -> bool:

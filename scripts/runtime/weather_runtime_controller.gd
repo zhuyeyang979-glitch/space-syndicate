@@ -11,10 +11,10 @@ const DURATION_MAX_SECONDS := WeatherSystem.ACTIVE_MAX_SECONDS
 const ZONE_MAX := WeatherSystem.DEFAULT_AFFECTED_REGION_COUNT
 const WEATHER_TYPES := {
 	"ion_storm": {"label": "离子风暴", "display_name": "离子风暴"},
-	"gravity_tide": {"label": "引力潮汐", "display_name": "引力潮汐"},
+	"gravity_tide": {"label": "引力潮", "display_name": "引力潮"},
 	"spore_season": {"label": "孢子季", "display_name": "孢子季"},
-	"crystal_dust_storm": {"label": "晶尘风暴", "display_name": "晶尘风暴"},
-	"deep_freeze": {"label": "深寒", "display_name": "深寒"},
+	"crystal_dust_storm": {"label": "晶尘暴", "display_name": "晶尘暴"},
+	"deep_freeze": {"label": "极寒期", "display_name": "极寒期"},
 	"solar_flare": {"label": "太阳耀斑", "display_name": "太阳耀斑"},
 }
 const SOURCE_TYPE_NATURAL := "natural"
@@ -168,15 +168,20 @@ func preview_districts(anchor_index: int, zone_count: int) -> Array:
 func schedule_forecast(type_id: String, anchor_index: int, _zone_count: int, lead_seconds: float, duration_seconds: float, _source: String, forced: bool = false) -> bool:
 	if not _configured:
 		return false
-	var regions := pick_districts(anchor_index, WeatherSystem.DEFAULT_AFFECTED_REGION_COUNT)
+	var definition := _definition(type_id)
+	if definition == null:
+		definition = _first_definition()
+	if definition == null:
+		return false
+	var regions := pick_districts(anchor_index, definition.affected_region_count)
 	if regions.is_empty():
 		return false
 	var source_type := SOURCE_TYPE_CARD if forced else SOURCE_TYPE_NATURAL
 	return _schedule_event(
-		type_id,
+		definition.id,
 		regions,
-		_seconds_to_us(clampf(lead_seconds, WeatherSystem.FORECAST_LEAD_MIN_SECONDS, WeatherSystem.FORECAST_LEAD_MAX_SECONDS)),
-		_seconds_to_us(clampf(duration_seconds, WeatherSystem.ACTIVE_MIN_SECONDS, WeatherSystem.ACTIVE_MAX_SECONDS)),
+		_definition_forecast_us(definition, lead_seconds),
+		_definition_active_us(definition, duration_seconds),
 		source_type,
 		_now_us()
 	)
@@ -221,9 +226,12 @@ func apply_weather_control_at(skill: Dictionary, target_region_index: int) -> bo
 		_increment_telemetry("rejected_invalid_target")
 		return false
 	var type_id := str(skill.get("weather_type", weather_type_ids().front() if not weather_type_ids().is_empty() else ""))
-	var lead := clampf(float(skill.get("weather_forecast_lead_seconds", WeatherSystem.FORECAST_LEAD_MIN_SECONDS)), WeatherSystem.FORECAST_LEAD_MIN_SECONDS, WeatherSystem.FORECAST_LEAD_MAX_SECONDS)
-	var duration := clampf(float(skill.get("weather_duration_seconds", WeatherSystem.ACTIVE_MIN_SECONDS)), WeatherSystem.ACTIVE_MIN_SECONDS, WeatherSystem.ACTIVE_MAX_SECONDS)
-	return _schedule_event(type_id, [target_region_index], _seconds_to_us(lead), _seconds_to_us(duration), "card", _now_us())
+	var definition := _definition(type_id)
+	if definition == null:
+		definition = _first_definition()
+	if definition == null:
+		return false
+	return _schedule_event(definition.id, [target_region_index], _definition_forecast_us(definition), _definition_active_us(definition), SOURCE_TYPE_CARD, _now_us())
 
 
 func apply_weather_control(_skill: Dictionary) -> bool:
@@ -250,20 +258,62 @@ func entries_for_district(index: int) -> Array:
 
 func district_multiplier(index: int, key: String, default_value: float = 1.0) -> float:
 	var multiplier := default_value
-	for entry_variant in _effect_entries_for_region(index, {}):
+	var context := _legacy_context_for_multiplier_key(key)
+	for entry_variant in _effect_entries_for_region(index, context):
 		var effect := entry_variant as Dictionary
 		match key:
-			"production_multiplier", "consumption_multiplier", "economy_multiplier":
+			"price_growth_multiplier":
+				multiplier *= float((effect.get("economy", {}) as Dictionary).get("price_growth_multiplier", 1.0))
+			"production_multiplier":
+				multiplier *= float((effect.get("economy", {}) as Dictionary).get("production_multiplier", 1.0))
+			"consumption_multiplier", "demand_multiplier":
+				multiplier *= float((effect.get("economy", {}) as Dictionary).get("demand_multiplier", 1.0))
+			"maintenance_multiplier", "city_maintenance_multiplier":
+				multiplier *= float((effect.get("economy", {}) as Dictionary).get("maintenance_multiplier", 1.0))
+			"economy_multiplier":
 				multiplier *= float((effect.get("economy", {}) as Dictionary).get("multiplier", 1.0))
-			"transport_multiplier", "route_multiplier", "ocean_transport_multiplier":
-				multiplier *= float((effect.get("route", {}) as Dictionary).get("speed_multiplier", 1.0))
+			"transport_multiplier", "route_multiplier":
+				multiplier *= float((effect.get("route", {}) as Dictionary).get("generic_multiplier", 1.0))
+			"land_transport_multiplier", "land_movement_multiplier":
+				multiplier *= float((effect.get("route", {}) as Dictionary).get("land_multiplier", 1.0))
+			"ocean_transport_multiplier", "ocean_movement_multiplier":
+				multiplier *= float((effect.get("route", {}) as Dictionary).get("ocean_multiplier", 1.0))
+			"air_transport_multiplier", "air_movement_multiplier":
+				multiplier *= float((effect.get("route", {}) as Dictionary).get("air_multiplier", 1.0))
 			"monster_speed_multiplier":
 				multiplier *= float((effect.get("monster", {}) as Dictionary).get("speed_multiplier", 1.0))
+			"monster_armor_multiplier":
+				multiplier *= float((effect.get("monster", {}) as Dictionary).get("armor_multiplier", 1.0))
+			"monster_preference_multiplier":
+				multiplier *= float((effect.get("monster", {}) as Dictionary).get("preference_multiplier", 1.0))
 			"military_multiplier":
 				multiplier *= float((effect.get("military", {}) as Dictionary).get("effect_multiplier", 1.0))
 			"intel_multiplier":
 				multiplier *= float((effect.get("intel", {}) as Dictionary).get("effect_multiplier", 1.0))
 	return multiplier
+
+
+func _legacy_context_for_multiplier_key(key: String) -> Dictionary:
+	match key:
+		"price_growth_multiplier":
+			return {"product_tags": ["weather_energy", "weather_food", "weather_medicine", "weather_biological", "weather_crystal", "weather_electronic"]}
+		"production_multiplier", "consumption_multiplier", "demand_multiplier", "economy_multiplier":
+			return {"product_tags": ["weather_energy", "weather_food", "weather_medicine", "weather_biological", "weather_crystal", "weather_electronic"]}
+		"maintenance_multiplier", "city_maintenance_multiplier":
+			return {"context_tags": ["city", "maintenance"]}
+		"transport_multiplier", "route_multiplier":
+			return {"route_mode": "generic"}
+		"land_transport_multiplier", "land_movement_multiplier":
+			return {"movement_domain": "land"}
+		"ocean_transport_multiplier", "ocean_movement_multiplier":
+			return {"movement_domain": "ocean"}
+		"air_transport_multiplier", "air_movement_multiplier":
+			return {"movement_domain": "air"}
+		"military_multiplier":
+			return {"unit_tags": ["ranged", "knockback", "orbital", "flying"], "movement_domain": "land"}
+		"intel_multiplier":
+			return {"context_tags": ["intel"], "intel_domain": "duration"}
+	return {}
 
 
 func region_effect_snapshot(region_index: int, context: Dictionary = {}) -> Dictionary:
@@ -323,12 +373,13 @@ func impact_ui_text() -> String:
 	var definition := _definition(str(entry.get("definition_id", entry.get("type", ""))))
 	if definition == null:
 		return "影响：经济/路线/怪兽/军情"
-	return "影响：经×%.2f 路×%.2f 怪×%.2f 军×%.2f 情×%.2f" % [
-		definition.economy_multiplier,
-		definition.route_multiplier,
+	return "影响：价×%.2f 产×%.2f 需×%.2f 路×%.2f 怪×%.2f 情×%.2f" % [
+		definition.product_price_growth_multiplier,
+		definition.production_multiplier,
+		definition.demand_multiplier,
+		definition.route_efficiency_multiplier,
 		definition.monster_speed_multiplier,
-		definition.military_multiplier,
-		definition.intel_multiplier,
+		definition.intel_effect_multiplier,
 	]
 
 
@@ -499,8 +550,13 @@ func _schedule_natural_forecast(now_us: int) -> bool:
 		_next_generation_world_us = _system.next_generation_us(now_us, rng)
 		_increment_telemetry("natural_no_region")
 		return false
-	var lead_us := _system.random_duration_us(rng, WeatherSystem.FORECAST_LEAD_MIN_US, WeatherSystem.FORECAST_LEAD_MAX_US)
-	var active_us := _system.random_duration_us(rng, WeatherSystem.ACTIVE_MIN_US, WeatherSystem.ACTIVE_MAX_US)
+	var definition := _definition(type_id)
+	if definition == null:
+		_next_generation_world_us = _system.next_generation_us(now_us, rng)
+		_increment_telemetry("natural_missing_definition")
+		return false
+	var lead_us := _definition_forecast_us(definition)
+	var active_us := _definition_active_us(definition)
 	var scheduled := _schedule_event(type_id, [region], lead_us, active_us, "natural", now_us)
 	_next_generation_world_us = _system.next_generation_us(now_us, rng)
 	if scheduled:
@@ -514,7 +570,10 @@ func _schedule_event(type_id: String, regions: Array, forecast_duration_us: int,
 		definition = _first_definition()
 	if definition == null:
 		return false
-	var clean_regions := _clean_region_indices(regions)
+	var forecast_us := _definition_forecast_us(definition, float(forecast_duration_us) / 1_000_000.0)
+	var active_us := _definition_active_us(definition, float(active_duration_us) / 1_000_000.0)
+	var fade_us := _definition_fade_us(definition)
+	var clean_regions := _clean_region_indices(regions, definition.affected_region_count)
 	if clean_regions.is_empty():
 		return false
 	if _unended_event_count() >= WeatherSystem.MAX_UNENDED_EVENTS:
@@ -535,12 +594,12 @@ func _schedule_event(type_id: String, regions: Array, forecast_duration_us: int,
 		"source_type": _normalize_source_type(source_type),
 		"created_at_world_us": now_us,
 		"forecast_starts_at_world_us": start_us,
-		"active_starts_at_world_us": start_us + forecast_duration_us if not conflict else 0,
-		"active_ends_at_world_us": start_us + forecast_duration_us + active_duration_us if not conflict else 0,
-		"fade_ends_at_world_us": start_us + forecast_duration_us + active_duration_us + WeatherSystem.FADE_US if not conflict else 0,
-		"forecast_duration_world_us": clampi(forecast_duration_us, WeatherSystem.FORECAST_LEAD_MIN_US, WeatherSystem.FORECAST_LEAD_MAX_US),
-		"active_duration_world_us": clampi(active_duration_us, WeatherSystem.ACTIVE_MIN_US, WeatherSystem.ACTIVE_MAX_US),
-		"fade_duration_world_us": WeatherSystem.FADE_US,
+		"active_starts_at_world_us": start_us + forecast_us if not conflict else 0,
+		"active_ends_at_world_us": start_us + forecast_us + active_us if not conflict else 0,
+		"fade_ends_at_world_us": start_us + forecast_us + active_us + fade_us if not conflict else 0,
+		"forecast_duration_world_us": forecast_us,
+		"active_duration_world_us": active_us,
+		"fade_duration_world_us": fade_us,
 	}
 	_events.append(event)
 	if conflict:
@@ -664,6 +723,7 @@ func _event_from_legacy(entry: Dictionary, default_phase: String) -> Dictionary:
 	var phase := str(entry.get("phase", default_phase))
 	var active_start := start_us if phase == WeatherRuntimeState.PHASE_ACTIVE else _seconds_to_us(float(entry.get("starts_at", float(now_us) / 1_000_000.0)))
 	var active_end := _seconds_to_us(float(entry.get("ends_at", 0.0))) if entry.has("ends_at") else active_start + duration_us
+	var fade_us := _definition_fade_us(definition)
 	return {
 		"event_schema_version": WeatherRuntimeState.EVENT_SCHEMA_VERSION,
 		"id": id,
@@ -677,10 +737,10 @@ func _event_from_legacy(entry: Dictionary, default_phase: String) -> Dictionary:
 		"forecast_starts_at_world_us": _seconds_to_us(float(entry.get("starts_at", 0.0))),
 		"active_starts_at_world_us": active_start,
 		"active_ends_at_world_us": active_end,
-		"fade_ends_at_world_us": active_end + WeatherSystem.FADE_US,
+		"fade_ends_at_world_us": active_end + fade_us,
 		"forecast_duration_world_us": clampi(active_start - _seconds_to_us(float(entry.get("created_at", 0.0))), WeatherSystem.FORECAST_LEAD_MIN_US, WeatherSystem.FORECAST_LEAD_MAX_US),
 		"active_duration_world_us": clampi(active_end - active_start, WeatherSystem.ACTIVE_MIN_US, WeatherSystem.ACTIVE_MAX_US),
-		"fade_duration_world_us": WeatherSystem.FADE_US,
+		"fade_duration_world_us": fade_us,
 	}
 
 
@@ -799,14 +859,15 @@ func _live_queue_ids() -> Array:
 	return result
 
 
-func _clean_region_indices(regions: Array) -> Array:
+func _clean_region_indices(regions: Array, max_count: int = WeatherSystem.DEFAULT_AFFECTED_REGION_COUNT) -> Array:
 	var alive := _alive_district_indices()
 	var result: Array = []
+	var limit := maxi(1, max_count)
 	for region_variant in regions:
 		var region := int(region_variant)
 		if alive.has(region) and not result.has(region):
 			result.append(region)
-		if result.size() >= WeatherSystem.DEFAULT_AFFECTED_REGION_COUNT:
+		if result.size() >= limit:
 			break
 	return result
 
@@ -846,6 +907,24 @@ func _add_action_callout(source: String, title: String, detail: String, accent: 
 
 func _seconds_to_us(seconds: float) -> int:
 	return maxi(0, int(round(seconds * 1_000_000.0)))
+
+
+func _definition_forecast_us(definition: WeatherDefinition, _fallback_seconds: float = -1.0) -> int:
+	if definition == null:
+		return WeatherSystem.FORECAST_LEAD_MIN_US
+	return _seconds_to_us(clampf(definition.forecast_duration, WeatherSystem.FORECAST_LEAD_MIN_SECONDS, WeatherSystem.FORECAST_LEAD_MAX_SECONDS))
+
+
+func _definition_active_us(definition: WeatherDefinition, _fallback_seconds: float = -1.0) -> int:
+	if definition == null:
+		return WeatherSystem.ACTIVE_MIN_US
+	return _seconds_to_us(clampf(definition.active_duration, WeatherSystem.ACTIVE_MIN_SECONDS, WeatherSystem.ACTIVE_MAX_SECONDS))
+
+
+func _definition_fade_us(definition: WeatherDefinition) -> int:
+	if definition == null:
+		return WeatherSystem.FADE_US
+	return _seconds_to_us(maxf(0.0, definition.fade_duration))
 
 
 func _increment_telemetry(key: String) -> void:

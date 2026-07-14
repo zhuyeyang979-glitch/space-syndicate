@@ -6,16 +6,28 @@
 script = ExtResource("1_definition")
 id = "solar_flare"
 display_name = "太阳耀斑"
-public_summary = "耀斑强推能源与避险经济，但让情报链路和远距通信严重失真。"
+description = "太阳耀斑推高能源价格增长，压低电子生产，缩短情报持续时间，并增强电磁/能源怪兽行动。"
+public_summary = "能源价格升温，电子生产和情报持续时间受耀斑压制。"
+category = "solar"
 icon_key = "solar_flare"
 accent_color = Color(1, 0.66, 0.18, 1)
+forecast_duration = 30.0
+active_duration = 45.0
+fade_duration = 10.0
 affected_region_count = 1
-economy_multiplier = 1.30
-route_multiplier = 0.80
-monster_speed_multiplier = 1.05
-military_multiplier = 0.88
-intel_multiplier = 0.70
-orbital_effect_multiplier = 1.18
-city_maintenance_multiplier = 1.10
-context_tags = PackedStringArray("solar", "energy", "intel_noise")
-explanation_codes = PackedStringArray("energy_spike", "communications_noise")
+product_tags = PackedStringArray("weather_energy")
+product_price_growth_multiplier = 1.25
+monster_preference_tags = PackedStringArray("electromagnetic", "energy")
+monster_preference_multiplier = 1.10
+monster_speed_multiplier = 1.25
+intel_effect_multiplier = 0.70
+intel_effect_domain = "duration"
+counterplay_hint = "电子生产与长持续情报受压制，改用短窗口侦察。"
+exploitation_hint = "能源价格和电磁/能源怪兽行动会被天气利用放大。"
+product_effects = {
+"weather_electronic": {
+"production_multiplier": 0.80
+}
+}
+context_tags = PackedStringArray("solar", "energy", "electronic", "electromagnetic")
+explanation_codes = PackedStringArray("energy_price_growth", "electronic_production_penalty", "intel_duration_penalty", "electromagnetic_monsters")
