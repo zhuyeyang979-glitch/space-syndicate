@@ -9872,20 +9872,42 @@ func _check_scenario_runtime_glue_cutover_component() -> void:
 		_expect(methods_ok, "ScenarioRuntimeController is an editable scene owner with catalog, progress, coach, log, and snapshot APIs")
 		var catalog: Array = coordinator.call("scenario_catalog")
 		var definition: Dictionary = coordinator.call("scenario_definition", "first_table")
-		_expect(catalog.size() == 8 and (definition.get("phases", []) as Array).size() == 14, "ScenarioRuntimeController reuses the real eight-scenario catalog and fourteen-phase first_table")
+		var phases: Array = definition.get("phases", []) if definition.get("phases", []) is Array else []
+		var phase_ids: Array[String] = []
+		var success_signals: Array[String] = []
+		for phase_variant in phases:
+			var phase: Dictionary = phase_variant if phase_variant is Dictionary else {}
+			phase_ids.append(str(phase.get("id", "")))
+			success_signals.append(str(phase.get("success_signal", "")))
+		var expected_phase_ids: Array[String] = ["select_district", "open_rack", "buy_development", "play_development", "establish_project", "check_economy", "buy_followup", "play_followup", "select_track_card", "observe_ai_public_action", "inspect_clues", "inspect_monster_pressure", "choose_route"]
+		var expected_success_signals: Array[String] = ["district_selected", "rack_opened", "card_bought", "card_played", "city_development_resolved", "economy_checked", "followup_card_bought", "followup_card_played", "track_selected", "ai_public_action_observed", "public_clue_read", "monster_pressure_observed", "route_chosen"]
+		_expect(catalog.size() == 8 and phase_ids == expected_phase_ids and success_signals == expected_success_signals, "ScenarioRuntimeController reuses the real eight-scenario catalog and stable thirteen-phase first_table")
+		_expect(not phase_ids.has("first_summon") and not success_signals.has("monster_summoned") and phase_ids.find("open_rack") == 1 and phase_ids.find("buy_development") == 2 and phase_ids.find("establish_project") == 4 and phase_ids.find("check_economy") == 5, "voluntary monster summon stays outside the rack, buy, facility, and economy progression")
 		coordinator.call("start_runtime_scenario", "first_table", 10.0)
 		var before: Dictionary = coordinator.call("runtime_scenario_progress", 10.0)
 		var rejected: Dictionary = coordinator.call("complete_runtime_scenario_signal", "monster_summoned", {"time": "00:11", "public_text": "out of order", "viewer_index": 0, "snapshot_key": "after_summon"}, 11.0)
 		var accepted: Dictionary = coordinator.call("complete_runtime_scenario_signal", "district_selected", {"time": "00:12", "public_text": "selected", "viewer_index": 0, "snapshot_key": "after_select"}, 12.0)
 		var duplicate: Dictionary = coordinator.call("complete_runtime_scenario_signal", "district_selected", {"time": "00:13", "public_text": "duplicate", "viewer_index": 0, "snapshot_key": "after_select"}, 13.0)
-		var after: Dictionary = coordinator.call("runtime_scenario_progress", 13.0)
+		var optional_summon: Dictionary = coordinator.call("complete_runtime_scenario_signal", "monster_summoned", {"time": "00:14", "public_text": "optional summon", "viewer_index": 0, "snapshot_key": "after_select"}, 14.0)
+		var after: Dictionary = coordinator.call("runtime_scenario_progress", 14.0)
 		var before_phase: Dictionary = before.get("current_phase", {}) if before.get("current_phase", {}) is Dictionary else {}
 		var after_phase: Dictionary = after.get("current_phase", {}) if after.get("current_phase", {}) is Dictionary else {}
-		_expect(str(before_phase.get("id", "")) == "select_district" and not bool(rejected.get("accepted", true)) and bool(accepted.get("accepted", false)) and str(after_phase.get("id", "")) != "select_district" and bool(duplicate.get("duplicate", false)), "scenario authority rejects out-of-order and duplicate signals while advancing district selection exactly once")
-		coordinator.call("record_runtime_scenario_action", {"time": "00:13", "phase_id": "privacy", "public_text": "public", "private_text": "owner-only", "developer_text": "true_owner=player3", "viewer_index": 0, "snapshot_key": "after_select", "focus_target": "scenario_coach"})
+		_expect(str(before_phase.get("id", "")) == "select_district" and not bool(rejected.get("accepted", true)) and bool(accepted.get("accepted", false)) and str(after_phase.get("id", "")) == "open_rack" and bool(duplicate.get("duplicate", false)), "scenario authority rejects out-of-order and duplicate signals while advancing district selection exactly once")
+		_expect(not bool(optional_summon.get("accepted", true)) and str(optional_summon.get("reason", "")) == "out_of_order_signal" and str(optional_summon.get("current_phase_id", "")) == "open_rack", "monster_summoned is voluntary and never blocks first_table progression")
+		var full_progression_accepted := true
+		var completion_result: Dictionary = {}
+		for signal_index in range(1, expected_success_signals.size()):
+			var signal_id := expected_success_signals[signal_index]
+			completion_result = coordinator.call("complete_runtime_scenario_signal", signal_id, {"time": "00:%02d" % (14 + signal_index), "public_text": signal_id, "viewer_index": 0, "snapshot_key": "phase_%d" % signal_index}, float(14 + signal_index))
+			full_progression_accepted = full_progression_accepted and bool(completion_result.get("accepted", false))
+		var completed_progress: Dictionary = coordinator.call("runtime_scenario_progress", 30.0)
+		var completed_state: Dictionary = coordinator.call("runtime_scenario_state", 30.0)
+		var completed_signals: Dictionary = completed_state.get("completed_signals", {}) if completed_state.get("completed_signals", {}) is Dictionary else {}
+		_expect(full_progression_accepted and bool(completed_progress.get("completed", false)) and bool(completion_result.get("completion_first_report", false)) and completed_signals.size() == 13 and not completed_signals.has("monster_summoned"), "thirteen owner signals advance first_table from opening through completion exactly once")
+		coordinator.call("record_runtime_scenario_action", {"time": "00:30", "phase_id": "privacy", "public_text": "public", "private_text": "owner-only", "developer_text": "true_owner=player3", "viewer_index": 0, "snapshot_key": "complete", "focus_target": "scenario_coach"})
 		var owner_log: Array = coordinator.call("runtime_scenario_viewer_action_log", 0, false)
 		var rival_log: Array = coordinator.call("runtime_scenario_viewer_action_log", 2, false)
-		var state: Dictionary = coordinator.call("runtime_scenario_state", 13.0)
+		var state: Dictionary = coordinator.call("runtime_scenario_state", 30.0)
 		var visual_request: Dictionary = coordinator.call("build_runtime_scenario_visual_event_request", "first_table", "after_select", "district_selected")
 		_expect(JSON.stringify(owner_log).contains("owner-only") and not JSON.stringify(rival_log).contains("owner-only") and not JSON.stringify(owner_log).contains("true_owner"), "scenario action-log API enforces viewer and developer privacy")
 		_expect(not _variant_contains_callable(state) and not _variant_contains_object(state) and not _variant_contains_callable(visual_request) and not _variant_contains_object(visual_request), "scenario state and visual-event request remain pure data")
