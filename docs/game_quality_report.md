@@ -50,7 +50,8 @@ migrations do not count as Main reduction.
   `--check-only` also exit 0.
 - The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
   starting a match it cannot restore. Run
-  `20260715-081416-530-full_run_quality_driver-624fc6ca` reported `7/18`
+  `20260715-083927-711-full_run_quality_driver-231ccc6f` completed in 7.464 seconds and
+  reported `7/18`
   transactional sections, `11` unsupported sections, incomplete RNG/player
   continuation, `failure_code=restore_capability_incomplete`, no timeout, and zero
   remaining project processes.
