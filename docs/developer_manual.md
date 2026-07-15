@@ -242,17 +242,27 @@ AI 和 balance 统计应优先读字段，不靠卡名写特殊逻辑。
 
 ## 11. 推荐测试命令
 
-PowerShell：
+PowerShell 下默认使用阻塞式 runner。它直接启动
+`Godot_v4.7-stable_win64.exe`，不使用可能提前返回的 `_console.exe` wrapper；
+每次调用只运行一个测试，因此每项都有独立 timeout、真实 Godot ExitCode、
+stdout/stderr/Godot 日志和进程树清理。默认日志写到仓库外的
+`%LOCALAPPDATA%\SpaceSyndicate\godot_test_runs`。
 
 ```powershell
-godot --version
-godot --headless --path . --script res://tests/runtime_balance_report_test.gd
-godot --headless --path . --script res://tests/ui_text_smoke_test.gd
-godot --headless --path . --script res://tests/visual_snapshot.gd
-godot --headless --path . --script res://tests/layout_scene_smoke_test.gd
-godot --headless --path . --script res://tests/smoke_test.gd --check-only
-godot --headless --path . --script res://tests/smoke_test.gd
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/runtime_balance_report_test.gd -TimeoutSeconds 120
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/ui_text_smoke_test.gd -TimeoutSeconds 60
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/visual_snapshot.gd -TimeoutSeconds 120
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/layout_scene_smoke_test.gd -TimeoutSeconds 300
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/smoke_test.gd -TestArgument --check-only -TimeoutSeconds 180
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/smoke_test.gd -TimeoutSeconds 600
 ```
+
+正常完成时 runner 原样返回 Godot ExitCode。runner 自身保留 `124` 表示 timeout，
+`125` 表示测试进程结束后检测到本项目的遗留 headless/game 进程（即使自动清理成功）；
+这两种情况都不能标记为测试通过。`result.json` 同时记录命令参数、进程 PID、耗时、
+清理 PID 与剩余 PID。
+runner 只清理同一 Godot 可执行文件和同一绝对 project path 下的运行进程，不关闭
+Godot 编辑器。
 
 有 UI/布局相关改动时，还应跑截图测试，并尽量在二号屏做有头测试，避免占用主屏。
 
