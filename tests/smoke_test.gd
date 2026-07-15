@@ -8704,7 +8704,7 @@ func _verify_special_monster_passives(main: Node) -> void:
 		var blue_lancer := _monster_controller(main).call("_make_auto_monster", 0, blue_lancer_index, start_district) as Dictionary
 		blue_lancer["hp"] = 20
 		main.set("auto_monsters", [blue_lancer])
-		main.call("_maybe_announce_auto_blue_lancer_reactive_armor", 0)
+		_monster_controller(main).call("_maybe_announce_auto_blue_lancer_reactive_armor", 0)
 		var blue_lancer_active := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
 		_expect(bool(blue_lancer_active.get("blue_lancer_reactive_armor_active", false)), "蓝锋反应甲 activates at 20 HP")
 		_expect(int(_monster_controller(main).call("_auto_monster_damage_bonus_from_passives", 0)) == 1, "蓝锋反应甲 grants +1 outgoing damage")
