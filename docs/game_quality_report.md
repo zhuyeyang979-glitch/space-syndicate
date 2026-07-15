@@ -95,11 +95,22 @@ does not substitute for a complete run.
 
 ### Action feedback
 
-The first ActionResult slice is in development. Audit found that the old clickable
-fixed priority-bid path calls an API the current Queue owner deliberately removed.
-That dead UI is being retired rather than wrapped as a false success. The first real
-consumer will be the existing card-group ready action. Buy, play, target, wager,
-military, route, contract, and weather actions remain outside this first slice.
+ActionResult v1 is now integrated for the existing card-group ready action. Its strict
+public result carries success, failure code, title, explanation, consequence,
+suggested action, focus target, cost, requirement, and affected public entity IDs
+through a scene-owned presentation service. The old clickable fixed priority-bid path
+had no current Queue authority, so its executable UI, Main dispatch, synthetic bid
+state, and twelve Main helpers were physically retired instead of wrapped as a false
+success. Buy, play, target, wager, military, route, contract, and weather actions remain
+outside this first slice.
+
+On integrated commit `20328b8`, `action_result_v1_test.gd`
+(`20260715-082427-665-action_result_v1_test-7d73062b`),
+`main_runtime_composition_test.gd`
+(`20260715-082446-508-main_runtime_composition_test-d549930b`), UI text
+(`20260715-082501-006-ui_text_smoke_test-bae3831f`), and smoke `--check-only`
+(`20260715-082509-582-smoke_test-7b9be643`) all returned ExitCode 0 with no timeout or
+remaining project runtime process.
 
 ### 1280x720
 
@@ -171,7 +182,7 @@ gate.
 | Are all major failures specific and actionable? | Not yet; ActionResult coverage is only beginning. |
 | Are AI personalities publicly readable without cheating? | Not yet. |
 | Can settlement explain the match from authoritative receipts? | Not yet. |
-| Has Main continued to shrink? | Yes, by 143 physical lines and 10 functions from baseline. |
+| Has Main continued to shrink? | Yes, from 18,972 lines / 1,097 functions to 18,631 / 1,075: net -341 lines / -22 functions. |
 
 ## Next highest priorities
 
@@ -181,7 +192,8 @@ gate.
    transactional owner by owner.
 3. Exercise the complete first-run, economy, decision-window, countdown, and settlement
    interaction path at 1280; fix only defects demonstrated by those real runs.
-4. Land ActionResult for a real action and remove the dead priority-bid controls.
+4. Expand ActionResult from card-group ready to the remaining major player actions,
+   one authoritative owner at a time.
 5. Introduce sanitized public receipts before claiming observable AI strategy or an
    explanatory settlement.
 
