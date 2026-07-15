@@ -8,6 +8,7 @@ class_name SpaceSyndicatePlanetActionCallout
 var _accent := Color("#facc15")
 var _alpha := 1.0
 var _callout_index := -1
+var _compact_mode := false
 
 
 func _ready() -> void:
@@ -19,16 +20,19 @@ func configure(data: Dictionary) -> void:
 	_accent = Color(str(data.get("accent", "#facc15")))
 	_alpha = clampf(float(data.get("alpha", 1.0)), 0.0, 1.0)
 	_callout_index = int(data.get("callout_index", -1))
+	_compact_mode = bool(data.get("compact", false))
 	name = "PlanetActionCallout_%02d" % max(0, _callout_index)
 	custom_minimum_size = _as_vector2(data.get("panel_size", Vector2(320.0, 52.0)))
 	size = custom_minimum_size
 	position = _as_vector2(data.get("panel_position", Vector2.ZERO))
 	if title_label != null:
-		title_label.text = _short_text(str(data.get("title", "行动提示")), 38)
+		title_label.text = _short_text(str(data.get("title", "行动提示")), 22 if _compact_mode else 38)
 		title_label.add_theme_color_override("font_color", _with_alpha(_accent, 0.95 * _alpha))
 	if detail_label != null:
 		detail_label.text = _short_text(str(data.get("detail", "")), 56)
+		detail_label.visible = not _compact_mode
 		detail_label.add_theme_color_override("font_color", Color("#e2e8f0", 0.88 * _alpha))
+	tooltip_text = "%s｜%s" % [str(data.get("title", "行动提示")), str(data.get("detail", ""))]
 	_refresh_style()
 
 
@@ -37,6 +41,7 @@ func debug_snapshot() -> Dictionary:
 		"kind": "action_callout",
 		"title": title_label.text if title_label != null else "",
 		"callout_index": _callout_index,
+		"compact": _compact_mode,
 	}
 
 
@@ -50,10 +55,10 @@ func _refresh_style() -> void:
 	style.corner_radius_top_right = 6
 	style.corner_radius_bottom_left = 6
 	style.corner_radius_bottom_right = 6
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 6
-	style.content_margin_bottom = 6
+	style.content_margin_left = 8 if _compact_mode else 10
+	style.content_margin_right = 8 if _compact_mode else 10
+	style.content_margin_top = 4 if _compact_mode else 6
+	style.content_margin_bottom = 4 if _compact_mode else 6
 	add_theme_stylebox_override("panel", style)
 
 

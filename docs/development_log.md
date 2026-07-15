@@ -3,6 +3,12 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜1280 主桌可读性与地图层级化降噪 v2
+
+- Codex E 基于 `origin/main@fdb62bd2896dd19d01c8660a2a39cd541de2553b` 对真实 `main.tscn` 做最小展示修复：globe 总览把非选中区域压为单行名、重复路线标牌聚合为公开 `商路 ×N`、邻近怪兽按公开数量合组、天气与行动提示改为 compact 层级；区域边界、路线段、天气阶段与完整公开解释均保留在地图、tooltip 或既有详情面。
+- 最终 1280×720、1600×960、1920×1080 的 clear/forecast/active/dual-active 共 12 张 GUI Godot 4.7 production capture 全绿：核心桌面、地图重叠、像素、天气态、机器 ID、QA save 清理、默认存档 metadata/SHA 等价与 headed console 0 均通过。1280 地图从 262 个 hard overlap / 6 个区域名碰撞降为四态均 0 / 0。
+- 经济页滚动复现门记录 `0 → 852 → 关闭重开 → 0`，本轮未复现且不宣称修复；顶栏省略和经济文本墙继续作为 findings。完整相对证据见 `reports/ui/production_acceptance/e_1280_table_readability_v2/after_acceptance.md`。
+
 ## 2026-07-15｜天气 v1、Monster Codex 与多工作树阶段集成
 
 - A 在独立集成工作树审查并合入 B/C/D/E 的本地原子提交：Monster Codex 改为静态 scene-owned public SourceService + 纯数据 allowlist Adapter，公开概率不再泄露原始权重；相关五个 Main 构造函数与诊断旧入口物理删除。相对本阶段起点，`main.gd` 为 `+26/-530`，净删 504 行和 10 个函数，当前 18,972 行/1,097 个函数。

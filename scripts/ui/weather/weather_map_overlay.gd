@@ -8,6 +8,7 @@ var _view_model: Dictionary = {}
 var _region_layout: Dictionary = {}
 var _motion_mode := "off"
 var _animation_elapsed := 0.0
+var _compact_mode := false
 
 
 func _ready() -> void:
@@ -24,8 +25,14 @@ func set_overlay_view_model(view_model: Dictionary) -> bool:
 		return false
 	_view_model = view_model.duplicate(true)
 	visible = true
+	tooltip_text = _public_weather_tooltip()
 	queue_redraw()
 	return true
+
+
+func set_compact_mode(compact: bool) -> void:
+	_compact_mode = compact
+	queue_redraw()
 
 
 func set_region_layout(normalized_positions: Dictionary) -> bool:
@@ -77,6 +84,7 @@ func debug_snapshot() -> Dictionary:
 		"animated": is_processing(),
 		"region_indices": region_indices,
 		"layout_count": _region_layout.size(),
+		"compact_mode": _compact_mode,
 	}
 
 
@@ -102,7 +110,7 @@ func _draw_region_weather(region: Dictionary, center: Vector2) -> void:
 	var pulse := 0.0
 	if _motion_mode == "full":
 		pulse = sin(_animation_elapsed * 2.2 + float(region["region_index"])) * 2.5
-	var radius := 29.0 + intensity * 8.0 + pulse
+	var radius := (22.0 + intensity * 5.0 if _compact_mode else 29.0 + intensity * 8.0) + pulse
 	var fill_alpha := 0.12 + intensity * 0.18
 	if region["phase"] == "queued" or region["phase"] == "forecast":
 		fill_alpha = 0.08
@@ -114,10 +122,27 @@ func _draw_region_weather(region: Dictionary, center: Vector2) -> void:
 	var icon_text := _icon_text(region["icon_key"])
 	var icon_size := 12
 	draw_string(font, center + Vector2(-radius, -4.0), icon_text, HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, icon_size, Color(accent, 1.0))
+	if _compact_mode:
+		draw_string(font, center + Vector2(-38.0, radius + 13.0), _phase_label(region["phase"]), HORIZONTAL_ALIGNMENT_CENTER, 76.0, 10, Color("E7EEF2"))
+		return
 	var label := "%s · %s" % [region["display_name"], _phase_label(region["phase"])]
 	draw_string(font, center + Vector2(-72.0, radius + 17.0), label, HORIZONTAL_ALIGNMENT_CENTER, 144.0, 12, Color("E7EEF2"))
 	var remaining := _duration_label(region["remaining_us"])
 	draw_string(font, center + Vector2(-54.0, radius + 31.0), remaining, HORIZONTAL_ALIGNMENT_CENTER, 108.0, 11, Color("A9BBC4"))
+
+
+func _public_weather_tooltip() -> String:
+	var lines := PackedStringArray()
+	for region_variant in _view_model.get("regions", []):
+		if not (region_variant is Dictionary):
+			continue
+		var region := region_variant as Dictionary
+		lines.append("%s｜%s｜剩余 %s" % [
+			str(region.get("display_name", "天气事件")),
+			_phase_label(str(region.get("phase", ""))),
+			_duration_label(int(region.get("remaining_us", 0))),
+		])
+	return "；".join(lines)
 
 
 func _draw_pattern(pattern_key: String, center: Vector2, radius: float, color: Color) -> void:
@@ -156,7 +181,14 @@ func _draw_pattern(pattern_key: String, center: Vector2, radius: float, color: C
 func _position_for(region_index: int, item_index: int, item_count: int) -> Vector2:
 	if _region_layout.has(region_index):
 		var normalized := _region_layout[region_index] as Vector2
-		return Vector2(normalized.x * size.x, normalized.y * size.y)
+		var center := Vector2(normalized.x * size.x, normalized.y * size.y)
+		var horizontal_margin := 42.0 if _compact_mode else 76.0
+		var top_margin := 34.0 if _compact_mode else 42.0
+		var bottom_margin := 48.0 if _compact_mode else 70.0
+		return Vector2(
+			clampf(center.x, horizontal_margin, maxf(horizontal_margin, size.x - horizontal_margin)),
+			clampf(center.y, top_margin, maxf(top_margin, size.y - bottom_margin))
+		)
 	var columns := maxi(1, mini(4, item_count))
 	var rows := maxi(1, int(ceil(float(item_count) / float(columns))))
 	var column := item_index % columns

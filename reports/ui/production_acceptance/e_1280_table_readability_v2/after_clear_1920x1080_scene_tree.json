@@ -1,0 +1,667 @@
+{
+  "acceptance_passed": true,
+  "capture": {
+    "pixel_metrics": {
+      "bottom": {
+        "bright_coverage": 0.230365296803653,
+        "effective_coverage": 0.606506849315068,
+        "mean_luminance": 0.113660622408194,
+        "non_black_coverage": 1.0,
+        "sample_count": 35040,
+        "sampled_rect": {
+          "height": 292,
+          "width": 1920,
+          "x": 0,
+          "y": 788
+        }
+      },
+      "canvas_to_pixel_scale": {
+        "x": 1.12543964385986,
+        "y": 1.125
+      },
+      "logical_canvas_size": {
+        "x": 1706.0,
+        "y": 960.0
+      },
+      "node_regions": {
+        "HandRack": {
+          "bright_coverage": 0.0538097287989669,
+          "effective_coverage": 0.921079064428182,
+          "mean_luminance": 0.081844168823819,
+          "non_black_coverage": 1.0,
+          "sample_count": 13938,
+          "sampled_rect": {
+            "height": 183,
+            "width": 1212,
+            "x": 326,
+            "y": 874
+          }
+        },
+        "MainActionDock": {
+          "bright_coverage": 0.730485232067511,
+          "effective_coverage": 0.771097046413502,
+          "mean_luminance": 0.22825019129495,
+          "non_black_coverage": 1.0,
+          "sample_count": 1896,
+          "sampled_rect": {
+            "height": 96,
+            "width": 316,
+            "x": 1564,
+            "y": 961
+          }
+        },
+        "PlayerBoard": {
+          "bright_coverage": 0.226628313129238,
+          "effective_coverage": 0.678035750975961,
+          "mean_luminance": 0.118790408633241,
+          "non_black_coverage": 1.0,
+          "sample_count": 29202,
+          "sampled_rect": {
+            "height": 247,
+            "width": 1884,
+            "x": 18,
+            "y": 828
+          }
+        },
+        "TopBar": {
+          "bright_coverage": 0.0761972163246049,
+          "effective_coverage": 0.0669969332389715,
+          "mean_luminance": 0.110574615689301,
+          "non_black_coverage": 1.0,
+          "sample_count": 8478,
+          "sampled_rect": {
+            "height": 71,
+            "width": 1884,
+            "x": 18,
+            "y": 5
+          }
+        }
+      },
+      "sample_stride_pixels": 4,
+      "top": {
+        "bright_coverage": 0.0943655303030303,
+        "effective_coverage": 0.089157196969697,
+        "mean_luminance": 0.0993900600247371,
+        "non_black_coverage": 1.0,
+        "sample_count": 21120,
+        "sampled_rect": {
+          "height": 173,
+          "width": 1920,
+          "x": 0,
+          "y": 0
+        }
+      },
+      "whole": {
+        "bright_coverage": 0.274135802469136,
+        "effective_coverage": 0.389799382716049,
+        "mean_luminance": 0.126237556434896,
+        "non_black_coverage": 1.0,
+        "sample_count": 129600,
+        "sampled_rect": {
+          "height": 1080,
+          "width": 1920,
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    "resource_path": "res://reports/ui/production_acceptance/e_1280_table_readability_v2/after_clear_table_1920x1080.png",
+    "saved": true,
+    "sha256": "1847890e7cc6853024b4fd311e14f0ca453a136ba2654a8ba58488922b07f2fc"
+  },
+  "economy_scroll_reproduction_gate": {},
+  "evidence_phase": "after",
+  "expectation_met": true,
+  "expected_status": "GREEN",
+  "infrastructure_failures": [],
+  "layout_passed": true,
+  "logical_canvas_size": {
+    "x": 1706.0,
+    "y": 960.0
+  },
+  "machine_id_candidates": [],
+  "machine_id_gate_passed": true,
+  "pixel_gate": {
+    "failure_reasons": [],
+    "passed": true
+  },
+  "resolution": {
+    "x": 1920,
+    "y": 1080
+  },
+  "save_isolation": {
+    "player_default_after": {
+      "exists": false,
+      "modified_unix": 0,
+      "sha256": "",
+      "size_bytes": 0
+    },
+    "player_default_before": {
+      "exists": false,
+      "modified_unix": 0,
+      "sha256": "",
+      "size_bytes": 0
+    },
+    "player_default_save_path": "user://space_syndicate_current_run.save",
+    "player_default_unchanged": true,
+    "qa_artifacts_after_cleanup": [],
+    "qa_save_path": "user://test_runs/e_1280_table_readability_v2.save"
+  },
+  "save_operation_before_tree": {
+    "captures_business_state": false,
+    "configured": false,
+    "currency_scale": 100,
+    "default_save_path": "user://test_runs/e_1280_table_readability_v2.save",
+    "explicit_path_required": false,
+    "format": "space_syndicate_json",
+    "last_error_code": 0,
+    "last_operation": "idle",
+    "last_path": "",
+    "last_reason_code": "idle",
+    "operation_sequence": 0,
+    "operation_state": "clean",
+    "qa_save_path_override_active": true,
+    "qa_save_root": "user://test_runs/",
+    "ruleset_id": "v0.6",
+    "save_version": 3
+  },
+  "scene": "res://scenes/main.tscn",
+  "scene_gate": {
+    "all_overlap_pair_count": 0,
+    "core_table_failures": [],
+    "core_table_passed": true,
+    "district_overlap_pair_count": 0,
+    "hard_overlap_pair_count": 0,
+    "logical_canvas_rect": {
+      "height": 960.0,
+      "width": 1706.0,
+      "x": 0.0,
+      "y": 0.0
+    },
+    "map_components": [
+      {
+        "component": "PlanetDistrictNode",
+        "debug": {
+          "compact": false,
+          "index": 0,
+          "kind": "district",
+          "name": "东京湾"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetDistrictNode_00",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/DistrictLayer/PlanetDistrictNode_00",
+        "rect": {
+          "height": 101.0,
+          "width": 128.0,
+          "x": 433.58,
+          "y": 410.41
+        }
+      },
+      {
+        "component": "PlanetDistrictNode",
+        "debug": {
+          "compact": true,
+          "index": 1,
+          "kind": "district",
+          "name": "珊瑚环礁"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetDistrictNode_01",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/DistrictLayer/PlanetDistrictNode_01",
+        "rect": {
+          "height": 28.0,
+          "width": 92.0,
+          "x": 748.92,
+          "y": 323.64
+        }
+      },
+      {
+        "component": "PlanetDistrictNode",
+        "debug": {
+          "compact": true,
+          "index": 2,
+          "kind": "district",
+          "name": "旧城区"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetDistrictNode_02",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/DistrictLayer/PlanetDistrictNode_02",
+        "rect": {
+          "height": 28.0,
+          "width": 92.0,
+          "x": 803.54,
+          "y": 444.8
+        }
+      },
+      {
+        "component": "PlanetDistrictNode",
+        "debug": {
+          "compact": true,
+          "index": 3,
+          "kind": "district",
+          "name": "港口"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetDistrictNode_03",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/DistrictLayer/PlanetDistrictNode_03",
+        "rect": {
+          "height": 28.0,
+          "width": 92.0,
+          "x": 670.23,
+          "y": 658.53
+        }
+      },
+      {
+        "component": "PlanetDistrictNode",
+        "debug": {
+          "compact": true,
+          "index": 4,
+          "kind": "district",
+          "name": "远洋航门"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetDistrictNode_04",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/DistrictLayer/PlanetDistrictNode_04",
+        "rect": {
+          "height": 28.0,
+          "width": 92.0,
+          "x": 675.25,
+          "y": 697.0
+        }
+      },
+      {
+        "component": "PlanetDistrictNode",
+        "debug": {
+          "compact": true,
+          "index": 5,
+          "kind": "district",
+          "name": "商业区"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetDistrictNode_05",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/DistrictLayer/PlanetDistrictNode_05",
+        "rect": {
+          "height": 28.0,
+          "width": 92.0,
+          "x": 840.39,
+          "y": 488.18
+        }
+      },
+      {
+        "component": "PlanetRouteMarker",
+        "debug": {
+          "compact": true,
+          "kind": "route",
+          "product": "商路 ×32"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetRouteMarker_商路",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/RouteLayer/PlanetRouteMarker_商路",
+        "rect": {
+          "height": 26.0,
+          "width": 88.0,
+          "x": 602.25,
+          "y": 375.53
+        }
+      },
+      {
+        "component": "PlanetMonsterToken",
+        "debug": {
+          "compact": true,
+          "count": 2,
+          "detail_label": "场上单位",
+          "kind": "monster",
+          "name": "砂铠陆行兽"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetMonsterToken_1",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/MonsterLayer/PlanetMonsterToken_1",
+        "rect": {
+          "height": 38.0,
+          "width": 38.0,
+          "x": 781.2,
+          "y": 279.19
+        }
+      },
+      {
+        "component": "PlanetMonsterToken",
+        "debug": {
+          "compact": true,
+          "count": 1,
+          "detail_label": "场上单位",
+          "kind": "monster",
+          "name": "流星哨兵"
+        },
+        "inside_logical_canvas": true,
+        "name": "PlanetMonsterToken_2",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/MonsterLayer/PlanetMonsterToken_2",
+        "rect": {
+          "height": 38.0,
+          "width": 38.0,
+          "x": 884.4,
+          "y": 374.17
+        }
+      }
+    ],
+    "map_readability_failures": [],
+    "map_readability_passed": true,
+    "overlap_pairs": [],
+    "projection": {
+      "complex_polygon_fill_in_globe": false,
+      "default_zoom": 0.48,
+      "district_count": 6,
+      "flat_projection_mask": "FlatProjectionSpaceMask",
+      "focus_beacon_active": false,
+      "focus_beacon_alpha": 0.0,
+      "focus_rotation_active": false,
+      "focus_rotation_progress": 1.0,
+      "focus_start_center_m": "(581.0, 394.25)",
+      "focus_target_center_m": "(581.0, 394.25)",
+      "focus_target_district": -1,
+      "globe_blend": 1.0,
+      "globe_mode": true,
+      "globe_region_fill_policy": "fast_markers_to_avoid_edge_color_blocks",
+      "globe_region_outline_policy": "always_lightweight_during_interaction",
+      "globe_zoom": 0.48,
+      "local_zoom": 0.98,
+      "map_size_m": "(1162.0, 788.5)",
+      "mode": "globe",
+      "programmatic_focus_animation_enabled": true,
+      "target_view_zoom": 0.48,
+      "view_center_m": "(581.0, 394.25)",
+      "view_zoom": 0.48
+    },
+    "required_node_rects": {
+      "HandRack": {
+        "height": 162.0,
+        "width": 1076.0,
+        "x": 290.0,
+        "y": 777.0
+      },
+      "MainActionDock": {
+        "height": 84.0,
+        "width": 280.0,
+        "x": 1390.0,
+        "y": 855.0
+      },
+      "PlayerBoard": {
+        "height": 219.0,
+        "width": 1674.0,
+        "x": 16.0,
+        "y": 736.0
+      },
+      "TopBar": {
+        "height": 62.0,
+        "width": 1674.0,
+        "x": 16.0,
+        "y": 5.0
+      }
+    },
+    "required_nodes": {
+      "HandRack": {
+        "clip_contents": false,
+        "found": true,
+        "name": "HandRack",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard/PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/HandRackColumn/HandRack",
+        "rect": {
+          "height": 162.0,
+          "width": 1076.0,
+          "x": 290.0,
+          "y": 777.0
+        },
+        "type": "Control",
+        "visible": true,
+        "visible_in_tree": true
+      },
+      "MainActionDock": {
+        "clip_contents": false,
+        "found": true,
+        "name": "PlayerMainActionDock",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard/PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows/PlayerMainActionDock",
+        "rect": {
+          "height": 84.0,
+          "width": 280.0,
+          "x": 1390.0,
+          "y": 855.0
+        },
+        "type": "PanelContainer",
+        "visible": true,
+        "visible_in_tree": true
+      },
+      "PlayerBoard": {
+        "clip_contents": false,
+        "found": true,
+        "name": "PlayerBoard",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard",
+        "rect": {
+          "height": 219.0,
+          "width": 1674.0,
+          "x": 16.0,
+          "y": 736.0
+        },
+        "type": "PanelContainer",
+        "visible": true,
+        "visible_in_tree": true
+      },
+      "TopBar": {
+        "clip_contents": false,
+        "found": true,
+        "name": "TopBar",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar",
+        "rect": {
+          "height": 62.0,
+          "width": 1674.0,
+          "x": 16.0,
+          "y": 5.0
+        },
+        "type": "PanelContainer",
+        "visible": true,
+        "visible_in_tree": true
+      }
+    },
+    "sceneization": {
+      "action_callout_count": 2,
+      "city_marker_count": 0,
+      "component": "PlanetMapView",
+      "district_count": 6,
+      "district_node_count": 6,
+      "district_polygon_count": 5,
+      "draw_backed_surfaces": [],
+      "editable_layers": [
+        "BackdropLayer",
+        "OrbitLayer",
+        "DistrictLayer",
+        "WeatherLayer",
+        "RouteLayer",
+        "MonsterLayer",
+        "SelectionLayer",
+        "EffectLayer",
+        "CalloutLayer",
+        "DebugOverlayLayer"
+      ],
+      "extends_runtime_map_view": true,
+      "focus_range_overlay_sceneized": true,
+      "globe_backdrop_sceneized": true,
+      "has_map_data": true,
+      "legacy_draw_fallback_enabled": false,
+      "legacy_draw_fallback_used": false,
+      "map_event_effect_count": 0,
+      "monster_token_count": 2,
+      "movement_trail_count": 2,
+      "orbit_guide_sceneized": true,
+      "preview_note": "Waiting for map data",
+      "remaining_draw_backed_surfaces": [
+        "legacy_region_fill_fallback",
+        "legacy_region_label_fallback"
+      ],
+      "route_marker_count": 1,
+      "route_segment_count": 20,
+      "runtime_focus_kind": "table_focus_ring",
+      "scale_hint_sceneized": true,
+      "sceneized_layers": {
+        "action_callouts": "PlanetActionCallout",
+        "cities": "PlanetCityMarker",
+        "district_polygons": "PlanetDistrictPolygon",
+        "districts": "PlanetDistrictNode",
+        "event_effects": "PlanetMapEventEffect",
+        "focus_range_overlay": "PlanetFocusRangeOverlay",
+        "globe_backdrop": "PlanetGlobeBackdrop",
+        "monsters": "PlanetMonsterToken",
+        "movement_trails": "PlanetMovementTrail",
+        "orbit_guide": "PlanetOrbitGuide",
+        "route_segments": "PlanetRouteSegment",
+        "routes": "PlanetRouteMarker",
+        "scale_hint": "PlanetMapScaleHint",
+        "selection": "PlanetSelectionRing"
+      },
+      "sceneized_visual_cutover_enabled": true,
+      "selected_district": 0,
+      "selected_marker_visible": true,
+      "selection_marker_count": 1,
+      "solar_camera": {
+        "alignment_elapsed": 0.0,
+        "alignment_seconds": 0.8,
+        "component": "PlanetSolarCameraController",
+        "consumes_public_snapshot_only": true,
+        "holds_market_authority": false,
+        "holds_runtime_coordinator": false,
+        "holds_world_bridge": false,
+        "idle_elapsed": 1.66647,
+        "idle_seconds": 3.0,
+        "last_interaction_kind": "focus_district",
+        "map_bound": true,
+        "motion_mode": "full",
+        "owns_save_state": false,
+        "snapshot_available": true,
+        "state": "IDLE_WAIT",
+        "sun_turn_ppm": 10971
+      },
+      "weather_overlay": {
+        "animated": true,
+        "compact_mode": true,
+        "layout_count": 6,
+        "motion_mode": "full",
+        "region_indices": [],
+        "source_revision": 0,
+        "state": "clear",
+        "visible": true
+      }
+    }
+  },
+  "stable_frame": {
+    "passed": true,
+    "snapshot": {
+      "HandRack": {
+        "clip_contents": false,
+        "found": true,
+        "name": "HandRack",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard/PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/HandRackColumn/HandRack",
+        "rect": {
+          "height": 162.0,
+          "width": 1076.0,
+          "x": 290.0,
+          "y": 777.0
+        },
+        "type": "Control",
+        "visible": true,
+        "visible_in_tree": true
+      },
+      "PlayerBoard": {
+        "clip_contents": false,
+        "found": true,
+        "name": "PlayerBoard",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard",
+        "rect": {
+          "height": 219.0,
+          "width": 1674.0,
+          "x": 16.0,
+          "y": 736.0
+        },
+        "type": "PanelContainer",
+        "visible": true,
+        "visible_in_tree": true
+      },
+      "PlayerMainActionDock": {
+        "clip_contents": false,
+        "found": true,
+        "name": "PlayerMainActionDock",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard/PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows/PlayerMainActionDock",
+        "rect": {
+          "height": 84.0,
+          "width": 280.0,
+          "x": 1390.0,
+          "y": 855.0
+        },
+        "type": "PanelContainer",
+        "visible": true,
+        "visible_in_tree": true
+      },
+      "RightInspector": {
+        "clip_contents": false,
+        "found": true,
+        "name": "RightInspector",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/RightInspector",
+        "rect": {
+          "height": 613.0,
+          "width": 304.0,
+          "x": 1386.0,
+          "y": 119.0
+        },
+        "type": "PanelContainer",
+        "visible": true,
+        "visible_in_tree": true
+      },
+      "TopBar": {
+        "clip_contents": false,
+        "found": true,
+        "name": "TopBar",
+        "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar",
+        "rect": {
+          "height": 62.0,
+          "width": 1674.0,
+          "x": 16.0,
+          "y": 5.0
+        },
+        "type": "PanelContainer",
+        "visible": true,
+        "visible_in_tree": true
+      }
+    },
+    "stable_frame_count": 11
+  },
+  "state": "clear",
+  "weather_gate": {
+    "expected_event_count": 0,
+    "expected_primary_phase": "",
+    "forecast_event_count": 0,
+    "forecast_strip": {
+      "animated": true,
+      "compact_mode": true,
+      "displayed_detail": "当前没有区域天气事件",
+      "effect_count": 3,
+      "event_count": 0,
+      "motion_mode": "full",
+      "other_event_count": 0,
+      "region_indices": [],
+      "source_revision": 0,
+      "state": "clear",
+      "visible": true
+    },
+    "overlay_region_count": 0,
+    "passed": true,
+    "primary_detail": {
+      "accessible_text": "当前区域天气平稳。",
+      "counterplay_hint": "无需额外部署",
+      "definition_id": "",
+      "display_name": "天气平稳",
+      "effects": [],
+      "event_id": 0,
+      "exploitation_hint": "维持当前计划",
+      "intensity": 0.0,
+      "phase": "clear",
+      "region_index": 0,
+      "remaining_us": 0,
+      "schema_version": "weather_region_detail.v1"
+    }
+  }
+}

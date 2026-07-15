@@ -341,6 +341,8 @@ func _sync_district_nodes() -> void:
 	_sceneized_district_nodes.clear()
 	if district_layer == null:
 		return
+	var overview_compact := _sceneized_overview_compact()
+	var label_positions := _overview_district_label_positions() if overview_compact else {}
 	for index in range(districts.size()):
 		var entry: Dictionary = districts[index]
 		var node := PlanetDistrictNodeScene.instantiate() as Control
@@ -356,13 +358,69 @@ func _sync_district_nodes() -> void:
 			"hp": int(entry.get("hp", 0)),
 			"panic": int(entry.get("panic", 0)),
 			"products": entry.get("products", []),
-			"screen_position": get_district_control_position(index),
+			"screen_position": label_positions.get(index, get_district_control_position(index)),
 			"selected": index == selected_district,
+			"compact": overview_compact and index != selected_district,
 			"accent": _palette_hex(index),
 		})
 		if node.has_signal("district_pressed"):
 			node.connect("district_pressed", Callable(self, "_on_sceneized_district_pressed"))
 		_sceneized_district_nodes.append(node)
+
+
+func _overview_district_label_positions() -> Dictionary:
+	var result := {}
+	var occupied: Array[Rect2] = []
+	var ordered_indices: Array[int] = []
+	if selected_district >= 0 and selected_district < districts.size():
+		ordered_indices.append(selected_district)
+	for index in range(districts.size()):
+		if index != selected_district:
+			ordered_indices.append(index)
+	var globe_center := size * 0.5
+	if has_method("_globe_center"):
+		globe_center = call("_globe_center") as Vector2
+	for index in ordered_indices:
+		var base := get_district_control_position(index)
+		var selected := index == selected_district
+		var label_size := Vector2(128, 106) if selected else Vector2(92, 28)
+		var radial := (base - globe_center).normalized()
+		if radial.length_squared() < 0.01:
+			radial = Vector2.UP
+		var tangent := Vector2(-radial.y, radial.x)
+		var offsets: Array[Vector2] = [Vector2.ZERO]
+		if not selected:
+			offsets.append_array([
+				radial * 28.0,
+				tangent * 50.0,
+				-tangent * 50.0,
+				radial * 34.0 + tangent * 48.0,
+				radial * 34.0 - tangent * 48.0,
+				radial * 58.0,
+			])
+		var chosen := _clamp_overview_label_center(base, label_size)
+		for offset in offsets:
+			var candidate := _clamp_overview_label_center(base + offset, label_size)
+			var candidate_rect := Rect2(candidate - label_size * 0.5, label_size).grow(4.0)
+			var overlaps_existing := false
+			for occupied_rect in occupied:
+				if candidate_rect.intersects(occupied_rect):
+					overlaps_existing = true
+					break
+			if not overlaps_existing:
+				chosen = candidate
+				break
+		result[index] = chosen
+		occupied.append(Rect2(chosen - label_size * 0.5, label_size).grow(4.0))
+	return result
+
+
+func _clamp_overview_label_center(value: Vector2, label_size: Vector2) -> Vector2:
+	var half := label_size * 0.5
+	return Vector2(
+		clampf(value.x, half.x + 6.0, maxf(half.x + 6.0, size.x - half.x - 6.0)),
+		clampf(value.y, half.y + 6.0, maxf(half.y + 6.0, size.y - half.y - 6.0))
+	)
 
 
 func _sync_city_markers() -> void:
@@ -394,10 +452,11 @@ func _sync_monster_tokens() -> void:
 	_sceneized_monster_token_nodes.clear()
 	if monster_layer == null:
 		return
-	for marker_variant in auto_monster_markers:
-		if not (marker_variant is Dictionary):
-			continue
-		var marker: Dictionary = (marker_variant as Dictionary).duplicate(true)
+	var overview_compact := _sceneized_overview_compact()
+	for entry_variant in _monster_presentation_entries(overview_compact):
+		var entry := entry_variant as Dictionary
+		var marker := entry.get("marker", {}) as Dictionary
+		var marker_position := entry.get("screen_position", Vector2.ZERO) as Vector2
 		var node := PlanetMonsterTokenScene.instantiate() as Control
 		if node == null:
 			continue
@@ -405,15 +464,53 @@ func _sync_monster_tokens() -> void:
 		node.set_meta("sceneized_planet_map_kind", "monster")
 		monster_layer.add_child(node)
 		node.call("configure", {
-			"screen_position": _sceneized_world_to_control(marker.get("position", Vector2.ZERO)),
+			"screen_position": marker_position,
 			"name": str(marker.get("name", "Monster")),
 			"label": str(marker.get("label", "")),
 			"glyph": str(marker.get("glyph", "M")),
 			"detail_label": str(marker.get("display_subtitle", "场上单位")),
 			"accent": _color_to_hex(marker.get("color", Color("#ef4444"))),
 			"secondary": _color_to_hex(marker.get("secondary", Color("#fde68a"))),
+			"compact": overview_compact,
+			"count": int(entry.get("count", 1)),
+			"names": entry.get("names", []),
 		})
 		_sceneized_monster_token_nodes.append(node)
+
+
+func _monster_presentation_entries(overview_compact: bool) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	for marker_variant in auto_monster_markers:
+		if not (marker_variant is Dictionary):
+			continue
+		var marker := (marker_variant as Dictionary).duplicate(true)
+		var screen_position := _sceneized_world_to_control(marker.get("position", Vector2.ZERO))
+		var display_name := str(marker.get("name", "未知怪兽"))
+		if not overview_compact:
+			entries.append({"marker": marker, "screen_position": screen_position, "count": 1, "names": [display_name]})
+			continue
+		var grouped_index := -1
+		for entry_index in range(entries.size()):
+			var existing := entries[entry_index]
+			if (existing.get("screen_position", Vector2.ZERO) as Vector2).distance_to(screen_position) <= 72.0:
+				grouped_index = entry_index
+				break
+		if grouped_index < 0:
+			entries.append({"marker": marker, "screen_position": screen_position, "count": 1, "names": [display_name]})
+			continue
+		var grouped := entries[grouped_index]
+		var previous_count := int(grouped.get("count", 1))
+		grouped["screen_position"] = ((grouped.get("screen_position", Vector2.ZERO) as Vector2) * float(previous_count) + screen_position) / float(previous_count + 1)
+		grouped["count"] = previous_count + 1
+		var names := grouped.get("names", []) as Array
+		names.append(display_name)
+		grouped["names"] = names
+		entries[grouped_index] = grouped
+	for entry_index in range(entries.size()):
+		var entry := entries[entry_index]
+		entry["screen_position"] = _compact_monster_token_position(entry.get("screen_position", Vector2.ZERO) as Vector2, entry_index)
+		entries[entry_index] = entry
+	return entries
 
 
 func _sync_route_segments() -> void:
@@ -454,12 +551,28 @@ func _sync_route_markers() -> void:
 	_sceneized_route_marker_nodes.clear()
 	if route_layer == null:
 		return
+	var overview_compact := _sceneized_overview_compact()
+	var overview_group_counts := {}
+	if overview_compact:
+		for route_variant in trade_route_markers:
+			if not (route_variant is Dictionary):
+				continue
+			var route := route_variant as Dictionary
+			if not bool(route.get("show_marker", true)):
+				continue
+			var group_key := _overview_route_group_key(route)
+			overview_group_counts[group_key] = int(overview_group_counts.get(group_key, 0)) + 1
+	var emitted_overview_groups := {}
 	for route_variant in trade_route_markers:
 		if not (route_variant is Dictionary):
 			continue
 		var route: Dictionary = (route_variant as Dictionary).duplicate(true)
 		if not bool(route.get("show_marker", true)):
 			continue
+		var overview_group_key := _overview_route_group_key(route)
+		if overview_compact and emitted_overview_groups.has(overview_group_key):
+			continue
+		emitted_overview_groups[overview_group_key] = true
 		var points := _route_points(route.get("points", []))
 		var node := PlanetRouteMarkerScene.instantiate() as Control
 		if node == null:
@@ -469,10 +582,12 @@ func _sync_route_markers() -> void:
 		route_layer.add_child(node)
 		node.call("configure", {
 			"screen_position": _sceneized_route_midpoint(points),
-			"product": str(route.get("product", trade_product)),
+			"product": _route_product_display(route),
 			"disrupted": bool(route.get("disrupted", false)),
 			"point_count": points.size(),
-			"accent": _route_accent_hex(str(route.get("product", trade_product))),
+			"accent": _route_accent_hex(_route_product_display(route)),
+			"compact": overview_compact,
+			"route_count": int(overview_group_counts.get(overview_group_key, 1)),
 		})
 		_sceneized_route_marker_nodes.append(node)
 
@@ -571,10 +686,12 @@ func _sync_action_callouts() -> void:
 		return
 	if action_callouts.is_empty():
 		return
-	var panel_width: float = minf(390.0, size.x * 0.52)
-	var row_height := 52.0
+	var overview_compact := _sceneized_overview_compact()
+	var panel_width: float = minf(196.0, size.x * 0.34) if overview_compact else minf(390.0, size.x * 0.52)
+	var row_height := 32.0 if overview_compact else 52.0
 	var panel_x: float = maxf(12.0, size.x - panel_width - 14.0)
-	var first_index: int = max(0, action_callouts.size() - 4)
+	var visible_callout_count := 2 if overview_compact else 4
+	var first_index: int = max(0, action_callouts.size() - visible_callout_count)
 	var row := 0
 	for i in range(action_callouts.size() - 1, first_index - 1, -1):
 		var callout_variant: Variant = action_callouts[i]
@@ -597,6 +714,7 @@ func _sync_action_callouts() -> void:
 			"panel_position": Vector2(panel_x, 38.0 + float(row) * (row_height + 6.0)),
 			"panel_size": Vector2(panel_width, row_height),
 			"callout_index": i,
+			"compact": overview_compact,
 		})
 		_sceneized_action_callout_nodes.append(node)
 		row += 1
@@ -649,14 +767,59 @@ func _configure_editable_layers() -> void:
 func _sync_weather_overlay_layout() -> void:
 	if weather_layer == null or not weather_layer.has_method("set_region_layout") or size.x <= 1.0 or size.y <= 1.0:
 		return
+	var overview_compact := _sceneized_overview_compact()
+	if weather_layer.has_method("set_compact_mode"):
+		weather_layer.call("set_compact_mode", overview_compact)
+	var overview_positions := _overview_weather_marker_positions() if overview_compact else {}
 	var normalized_positions: Dictionary = {}
 	for index in range(districts.size()):
-		var position := get_district_control_position(index)
+		var position: Vector2 = overview_positions.get(index, get_district_control_position(index))
 		normalized_positions[index] = Vector2(
 			clampf(position.x / size.x, 0.0, 1.0),
 			clampf(position.y / size.y, 0.0, 1.0)
 		)
 	weather_layer.call("set_region_layout", normalized_positions)
+
+
+func _overview_weather_marker_positions() -> Dictionary:
+	var label_positions := _overview_district_label_positions()
+	var occupied: Array[Rect2] = []
+	for index in range(districts.size()):
+		var selected := index == selected_district
+		var label_size := Vector2(128, 106) if selected else Vector2(92, 28)
+		var label_center: Vector2 = label_positions.get(index, get_district_control_position(index))
+		occupied.append(Rect2(label_center - label_size * 0.5, label_size).grow(5.0))
+	var result := {}
+	for index in range(districts.size()):
+		var selected := index == selected_district
+		var label_center: Vector2 = label_positions.get(index, get_district_control_position(index))
+		var offsets: Array = [
+			Vector2(88.0, 0.0), Vector2(-88.0, 0.0), Vector2(0.0, -76.0), Vector2(0.0, 76.0),
+		] if selected else [
+			Vector2(0.0, 52.0), Vector2(0.0, -52.0), Vector2(76.0, 0.0), Vector2(-76.0, 0.0),
+		]
+		var chosen := _clamp_weather_marker_center(label_center + offsets[0])
+		for offset in offsets:
+			var candidate := _clamp_weather_marker_center(label_center + offset)
+			var candidate_rect := Rect2(candidate - Vector2(34, 34), Vector2(68, 68))
+			var overlaps_existing := false
+			for occupied_rect in occupied:
+				if candidate_rect.intersects(occupied_rect):
+					overlaps_existing = true
+					break
+			if not overlaps_existing:
+				chosen = candidate
+				break
+		result[index] = chosen
+		occupied.append(Rect2(chosen - Vector2(34, 34), Vector2(68, 68)))
+	return result
+
+
+func _clamp_weather_marker_center(value: Vector2) -> Vector2:
+	return Vector2(
+		clampf(value.x, 42.0, maxf(42.0, size.x - 42.0)),
+		clampf(value.y, 34.0, maxf(34.0, size.y - 48.0))
+	)
 
 
 func _sync_underlay_components() -> void:
@@ -722,6 +885,18 @@ func _sceneized_route_midpoint(points: Array[Vector2]) -> Vector2:
 	for point in points:
 		total += _sceneized_world_to_control(point)
 	return total / float(points.size())
+
+
+func _compact_monster_token_position(base_position: Vector2, token_index: int) -> Vector2:
+	var center := size * 0.5
+	if has_method("_globe_center"):
+		center = call("_globe_center") as Vector2
+	var radial := (base_position - center).normalized()
+	if radial.length_squared() < 0.01:
+		radial = Vector2.UP
+	var tangent := Vector2(-radial.y, radial.x)
+	var lane := float((token_index % 3) - 1)
+	return base_position + radial * 34.0 + tangent * lane * 20.0
 
 
 func _sceneized_route_segment(from_world: Vector2, to_world: Vector2) -> Dictionary:
@@ -815,6 +990,23 @@ func _current_sceneized_projection_signature() -> String:
 		str(sceneized_visual_cutover_enabled),
 		str(legacy_draw_fallback_enabled),
 	])
+
+
+func _sceneized_overview_compact() -> bool:
+	var snapshot := get_projection_debug_snapshot() if has_method("get_projection_debug_snapshot") else {}
+	return str(snapshot.get("mode", "globe")) == "globe" or float(snapshot.get("globe_blend", 1.0)) > 0.62
+
+
+func _overview_route_group_key(route: Dictionary) -> String:
+	return "%s|%s" % [
+		_route_product_display(route),
+		"blocked" if bool(route.get("disrupted", false)) else "open",
+	]
+
+
+func _route_product_display(route: Dictionary) -> String:
+	var product := str(route.get("product", trade_product)).strip_edges()
+	return product if product != "" else "商路"
 
 
 func _rounded_float(value: float, scale_value: float) -> float:

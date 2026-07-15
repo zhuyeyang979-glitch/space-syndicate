@@ -1,0 +1,36 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f
+scene=res://scenes/main.tscn
+capture_script=res://tests/e_1280_table_readability_capture.gd
+mode=GUI blocking headed production capture
+matrix=3 resolutions x 4 states
+states=clear,forecast,active,dual_active
+resolutions=1280x720,1600x960,1920x1080
+matrix_process_exit_code=0 (12/12)
+matrix_timed_out=false (12/12)
+matrix_remaining_project_runtime_process_count=0
+matrix_ERROR=0
+matrix_SCRIPT_ERROR=0
+matrix_WARNING=0
+core_table_gate=PASS (12/12)
+map_readability_gate=PASS (12/12)
+pixel_integrity_gate=PASS (12/12)
+weather_expectation_gate=PASS (12/12)
+machine_identifier_count=0 (12/12; visible text and Control tooltip_text)
+qa_save_artifacts_after_cleanup=0 (12/12)
+player_default_save_metadata_sha256_unchanged=true (12/12)
+economy_scroll_sequence=0 -> 852 -> close/reopen -> 0
+economy_scroll_finding_reproduced=false
+economy_scroll_no_fix_claimed=true
+dual_active_1280_sha256=1af09b87629cb9fe4e156a870bcd0142c8645a7607f7f6b407bc6b3746cd5d02
+dual_active_1280_independent_original_detail_review=complete (Codex A)
+MCP_scene=res://scenes/ui/PlanetMapView.tscn
+MCP_scripts_ui_checked=117
+MCP_script_errors=0
+MCP_runtime_error_lines=0
+MCP_play_stop=is_playing_scene:false
+MCP_editor_stop=clean; port_open:false; process_alive:false
+ui_text_smoke_test=PASS; run_id=20260715-075728-744-ui_text_smoke_test-dda6e767
+visual_snapshot=PASS; run_id=20260715-075731-774-visual_snapshot-ba1310eb
+smoke_check_only=PASS; run_id=20260715-075902-297-smoke_test-28639d2b
+layout_scene_smoke_test=KNOWN_BASELINE_RED; run_id=20260715-075756-856-layout_scene_smoke_test-146847ed
+layout_red_scope=stale owner/Main/MCP assertions plus unrelated military bench parse error; no compatibility restoration in this UI block

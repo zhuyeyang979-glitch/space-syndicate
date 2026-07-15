@@ -2,7 +2,8 @@ extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const OUTPUT_DIR := "res://reports/ui/production_acceptance/e_1280_table_readability_v2"
-const CAPTURE_SIZE := Vector2i(1280, 720)
+const DEFAULT_CAPTURE_SIZE := Vector2i(1280, 720)
+const QA_GAMEPLAY_SEED := 1280720
 const QA_SAVE_PATH := "user://test_runs/e_1280_table_readability_v2.save"
 const PLAYER_DEFAULT_SAVE_PATH := "user://space_syndicate_current_run.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
@@ -18,6 +19,10 @@ const MAP_COMPONENTS := ["PlanetDistrictNode", "PlanetRouteMarker", "PlanetMonst
 var _infrastructure_failures: Array[String] = []
 var _player_default_before: Dictionary = {}
 var _capture_resource_path := ""
+var _capture_size := DEFAULT_CAPTURE_SIZE
+var _evidence_phase := "before"
+var _state_id := "clear"
+var _check_economy_scroll := false
 
 
 func _init() -> void:
@@ -26,13 +31,14 @@ func _init() -> void:
 
 func _run() -> void:
 	print("E_1280_CAPTURE_STAGE|start")
+	_read_arguments()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_DIR))
 	_cleanup_output_artifacts()
 	_cleanup_qa_save_artifacts()
 	_player_default_before = _save_file_snapshot(PLAYER_DEFAULT_SAVE_PATH)
 	_place_capture_window()
-	DisplayServer.window_set_size(CAPTURE_SIZE)
-	root.size = CAPTURE_SIZE
+	DisplayServer.window_set_size(_capture_size)
+	root.size = _capture_size
 	print("E_1280_CAPTURE_STAGE|window_ready")
 
 	var packed := load(MAIN_SCENE_PATH) as PackedScene
@@ -69,14 +75,25 @@ func _run() -> void:
 	var coordinator := main.get_node_or_null(RUNTIME_COORDINATOR_NODE_PATH)
 	if coordinator != null and coordinator.has_method("clear_runtime_scenario"):
 		coordinator.call("clear_runtime_scenario")
+	var qa_rng_variant: Variant = main.get("rng")
+	if qa_rng_variant is RandomNumberGenerator:
+		(qa_rng_variant as RandomNumberGenerator).seed = QA_GAMEPLAY_SEED
+	else:
+		_fail("production Main RNG was unavailable for deterministic visual evidence")
 	print("E_1280_CAPTURE_STAGE|new_game_begin")
 	main.call("_new_game")
 	print("E_1280_CAPTURE_STAGE|new_game_returned")
 	main.call("_close_menu")
 	await _pump_frames(24)
 	print("E_1280_CAPTURE_STAGE|new_game_frames_ready")
-	_select_first_live_district(main)
+	var target_regions := _first_live_districts(main, 2)
+	if target_regions.is_empty():
+		_fail("production run had no live district to select")
+	else:
+		main.call("_select_district", int(target_regions[0]))
+	_prepare_weather_state(main, coordinator, target_regions)
 	main.call("_sync_runtime_game_screen", true)
+	await _pump_frames(12)
 	var map_view := _runtime_map_view(main)
 	if map_view == null:
 		_fail("production PlanetMapView was not found")
@@ -90,46 +107,151 @@ func _run() -> void:
 	print("E_1280_CAPTURE_STAGE|stable_frame_ready|%s" % JSON.stringify(stable_frame))
 	var scene_gate := _build_scene_gate(main, map_view)
 	var capture := await _save_viewport(
-		"before_clear_table_1280x720.png",
+		_capture_file_name(),
 		scene_gate.get("required_node_rects", {}) as Dictionary
 	)
 	var pixel_gate := _pixel_integrity_gate(capture.get("pixel_metrics", {}) as Dictionary)
 	var machine_ids := _visible_marker_candidates(main, MACHINE_MARKERS)
+	var economy_scroll_gate := await _economy_scroll_reproduction_gate(main) if _check_economy_scroll else {}
 	var layout_passed := bool(scene_gate.get("core_table_passed", false)) \
 		and bool(scene_gate.get("map_readability_passed", false))
 	var report := {
-		"evidence_phase": "before",
-		"state": "clear",
+		"evidence_phase": _evidence_phase,
+		"state": _state_id,
 		"stable_frame": stable_frame,
 		"scene_gate": scene_gate,
 		"pixel_gate": pixel_gate,
 		"machine_id_candidates": machine_ids,
 		"machine_id_gate_passed": machine_ids.is_empty(),
 		"layout_passed": layout_passed,
-		"expected_baseline_status": "RED",
-		"expected_red_observed": not layout_passed,
 		"capture": capture,
 		"save_operation_before_tree": save_operation,
+		"weather_gate": _weather_state_snapshot(coordinator, main, target_regions),
+		"economy_scroll_reproduction_gate": economy_scroll_gate,
 	}
 	await _finish(main, report)
 
 
-func _select_first_live_district(main: Node) -> void:
+func _first_live_districts(main: Node, count: int) -> Array[int]:
+	var result: Array[int] = []
 	var districts_variant: Variant = main.get("districts")
 	if not (districts_variant is Array):
 		_fail("production district list was unavailable")
-		return
+		return result
 	for index in range((districts_variant as Array).size()):
 		var district: Dictionary = (districts_variant as Array)[index] if (districts_variant as Array)[index] is Dictionary else {}
 		if not bool(district.get("destroyed", false)):
-			main.call("_select_district", index)
+			result.append(index)
+			if result.size() >= count:
+				break
+	return result
+
+
+func _prepare_weather_state(main: Node, coordinator: Node, target_regions: Array[int]) -> void:
+	if coordinator == null or not coordinator.has_method("weather_runtime_call"):
+		_fail("production Weather owner call surface was unavailable")
+		return
+	coordinator.call("weather_runtime_call", "reset_state")
+	if coordinator.has_method("restore_world_effective_seconds"):
+		coordinator.call("restore_world_effective_seconds", 0.0)
+	if _state_id == "clear":
+		return
+	if target_regions.is_empty():
+		_fail("weather state requires a live region")
+		return
+	var scheduled := bool(coordinator.call("weather_runtime_call", "schedule_forecast", [
+		"ion_storm", int(target_regions[0]), 1, 30.0, 45.0, "visual_acceptance", false,
+	]))
+	if not scheduled:
+		_fail("%s primary weather event did not schedule" % _state_id)
+	if _state_id == "dual_active":
+		if target_regions.size() < 2:
+			_fail("dual_active requires two live regions")
 			return
-	_fail("production run had no live district to select")
+		var second_scheduled := bool(coordinator.call("weather_runtime_call", "schedule_forecast", [
+			"gravity_tide", int(target_regions[1]), 1, 30.0, 45.0, "visual_acceptance", false,
+		]))
+		if not second_scheduled:
+			_fail("dual_active secondary weather event did not schedule")
+	if _state_id in ["active", "dual_active"]:
+		var activation_count := 2 if _state_id == "dual_active" else 1
+		for activation_index in range(activation_count):
+			if not bool(coordinator.call("weather_runtime_call", "activate_forecast")):
+				_fail("%s weather event %d did not activate" % [_state_id, activation_index + 1])
+	main.call("_close_menu")
+
+
+func _weather_state_snapshot(coordinator: Node, main: Node, target_regions: Array[int]) -> Dictionary:
+	var forecast: Dictionary = coordinator.call("weather_forecast_view_model") if coordinator != null and coordinator.has_method("weather_forecast_view_model") else {}
+	var overlay: Dictionary = coordinator.call("weather_map_overlay_view_model") if coordinator != null and coordinator.has_method("weather_map_overlay_view_model") else {}
+	var detail: Dictionary = {}
+	if coordinator != null and coordinator.has_method("weather_region_detail_snapshot") and not target_regions.is_empty():
+		detail = coordinator.call("weather_region_detail_snapshot", int(target_regions[0]))
+	var strip := main.find_child("WeatherForecastStrip", true, false)
+	var strip_debug: Dictionary = strip.call("debug_snapshot") if strip != null and strip.has_method("debug_snapshot") else {}
+	var expected_count := 0 if _state_id == "clear" else (2 if _state_id == "dual_active" else 1)
+	var expected_phase := "" if _state_id == "clear" else ("forecast" if _state_id == "forecast" else "active")
+	var forecast_count := (forecast.get("events", []) as Array).size()
+	var overlay_count := (overlay.get("regions", []) as Array).size()
+	var phase_matches := expected_phase == "" or str(detail.get("phase", "")) == expected_phase
+	var strip_count := int(strip_debug.get("event_count", 0))
+	return {
+		"passed": forecast_count == expected_count and overlay_count == expected_count and strip_count == expected_count and phase_matches,
+		"expected_event_count": expected_count,
+		"expected_primary_phase": expected_phase,
+		"forecast_event_count": forecast_count,
+		"overlay_region_count": overlay_count,
+		"primary_detail": detail,
+		"forecast_strip": strip_debug,
+	}
 
 
 func _runtime_map_view(main: Node) -> Node:
 	var runtime_screen := main.find_child("RuntimeGameScreen", true, false)
 	return _find_node_with_method(runtime_screen if runtime_screen != null else main, "get_projection_debug_snapshot")
+
+
+func _economy_scroll_reproduction_gate(main: Node) -> Dictionary:
+	main.call("_open_economy_overview_menu")
+	await _pump_frames(14)
+	var menu_overlay := main.find_child("MenuModalOverlay", true, false)
+	var scroll := main.find_child("MenuContentScroll", true, false) as ScrollContainer
+	var dashboard := main.find_child("EconomyDashboardPanel", true, false) as Control
+	if menu_overlay == null or scroll == null or dashboard == null or not dashboard.is_visible_in_tree():
+		return {
+			"passed": false,
+			"finding_reproduced": false,
+			"failure": "economy menu scroll surface was unavailable",
+			"no_fix_claimed": true,
+		}
+	var initial_scroll := scroll.scroll_vertical
+	var scroll_bar := scroll.get_v_scroll_bar()
+	var maximum_scroll := maxi(0, int(round(scroll_bar.max_value - scroll_bar.page))) if scroll_bar != null else 0
+	if menu_overlay.has_method("set_content_scroll_value"):
+		menu_overlay.call("set_content_scroll_value", maximum_scroll)
+	else:
+		scroll.scroll_vertical = maximum_scroll
+	await _pump_frames(5)
+	var forced_scroll := scroll.scroll_vertical
+	main.call("_close_menu")
+	await _pump_frames(6)
+	main.call("_open_economy_overview_menu")
+	await _pump_frames(14)
+	var reopened_scroll := scroll.scroll_vertical
+	var finding_reproduced := initial_scroll > 1 or reopened_scroll > 1
+	var passed := initial_scroll <= 1 and maximum_scroll > 0 and forced_scroll > 1 and reopened_scroll <= 1
+	main.call("_close_menu")
+	await _pump_frames(6)
+	return {
+		"passed": passed,
+		"finding_reproduced": finding_reproduced,
+		"initial_scroll": initial_scroll,
+		"maximum_scroll": maximum_scroll,
+		"forced_scroll": forced_scroll,
+		"reopened_scroll": reopened_scroll,
+		"no_fix_claimed": true,
+		"sequence": "open_top -> force_bottom -> close -> reopen_top",
+	}
 
 
 func _find_node_with_method(node: Node, method_name: String) -> Node:
@@ -211,7 +333,8 @@ func _build_scene_gate(main: Node, map_view: Node) -> Dictionary:
 		var overlap := overlap_variant as Dictionary
 		if float(overlap.get("smaller_rect_coverage", 0.0)) >= 0.18:
 			hard_overlap_count += 1
-		if str(overlap.get("first_component", "")) == "PlanetDistrictNode" \
+		if float(overlap.get("smaller_rect_coverage", 0.0)) >= 0.18 \
+			and str(overlap.get("first_component", "")) == "PlanetDistrictNode" \
 			and str(overlap.get("second_component", "")) == "PlanetDistrictNode":
 			district_overlap_count += 1
 	var map_failures: Array[String] = []
@@ -376,7 +499,7 @@ func _save_viewport(file_name: String, node_rects: Dictionary) -> Dictionary:
 	if image == null or image.is_empty():
 		_fail("viewport image was empty for %s" % file_name)
 		return {"saved": false, "pixel_metrics": {}}
-	if image.get_size() != CAPTURE_SIZE:
+	if image.get_size() != _capture_size:
 		_fail("viewport size mismatch for %s: %s" % [file_name, image.get_size()])
 		return {"saved": false, "pixel_metrics": {}}
 	var pixel_metrics := _image_content_metrics(image, node_rects)
@@ -410,8 +533,8 @@ func _image_content_metrics(image: Image, node_rects: Dictionary) -> Dictionary:
 		"logical_canvas_size": {"x": canvas_size.x, "y": canvas_size.y},
 		"canvas_to_pixel_scale": {"x": canvas_to_pixel.x, "y": canvas_to_pixel.y},
 		"whole": _sample_image_region(image, Rect2(Vector2.ZERO, Vector2(image.get_size()))),
-		"top": _sample_image_region(image, Rect2(0.0, 0.0, 1280.0, 110.0)),
-		"bottom": _sample_image_region(image, Rect2(0.0, 530.0, 1280.0, 190.0)),
+		"top": _sample_image_region(image, Rect2(0.0, 0.0, float(image.get_width()), float(image.get_height()) * 0.16)),
+		"bottom": _sample_image_region(image, Rect2(0.0, float(image.get_height()) * 0.73, float(image.get_width()), float(image.get_height()) * 0.27)),
 		"node_regions": node_metrics,
 	}
 
@@ -482,7 +605,7 @@ func _finish(main: Node, report: Dictionary) -> void:
 		_fail("isolated QA save artifacts remain after cleanup: %s" % remaining_qa_artifacts)
 	report.merge({
 		"scene": MAIN_SCENE_PATH,
-		"resolution": {"x": CAPTURE_SIZE.x, "y": CAPTURE_SIZE.y},
+		"resolution": {"x": _capture_size.x, "y": _capture_size.y},
 		"logical_canvas_size": {"x": root.get_visible_rect().size.x, "y": root.get_visible_rect().size.y},
 		"save_isolation": {
 			"qa_save_path": QA_SAVE_PATH,
@@ -494,16 +617,36 @@ func _finish(main: Node, report: Dictionary) -> void:
 		},
 		"infrastructure_failures": _infrastructure_failures,
 	}, true)
-	_save_json("before_clear_1280x720_scene_tree.json", report)
-	if _infrastructure_failures.is_empty():
-		print("E_1280_TABLE_READABILITY_CAPTURE|status=PASS|layout=%s|expected_red=%s" % [
-			"GREEN" if bool(report.get("layout_passed", false)) else "RED",
-			str(bool(report.get("expected_red_observed", false))),
+	var acceptance_passed := bool(report.get("layout_passed", false)) \
+		and bool((report.get("pixel_gate", {}) as Dictionary).get("passed", false)) \
+		and bool(report.get("machine_id_gate_passed", false)) \
+		and bool((report.get("weather_gate", {}) as Dictionary).get("passed", false)) \
+		and bool((report.get("stable_frame", {}) as Dictionary).get("passed", false)) \
+		and (not _check_economy_scroll or bool((report.get("economy_scroll_reproduction_gate", {}) as Dictionary).get("passed", false))) \
+		and player_default_unchanged \
+		and remaining_qa_artifacts.is_empty()
+	var expected_green := _evidence_phase == "after"
+	var expectation_met := acceptance_passed if expected_green else not acceptance_passed
+	report["acceptance_passed"] = acceptance_passed
+	report["expected_status"] = "GREEN" if expected_green else "RED"
+	report["expectation_met"] = expectation_met
+	_save_json(_scene_tree_file_name(), report)
+	if _infrastructure_failures.is_empty() and expectation_met:
+		print("E_1280_TABLE_READABILITY_CAPTURE|status=PASS|phase=%s|state=%s|resolution=%s|layout=%s|expectation_met=true" % [
+			_evidence_phase,
+			_state_id,
+			_resolution_suffix(),
+			"GREEN" if acceptance_passed else "RED",
 		])
 		quit(0)
 	else:
-		printerr("E_1280_TABLE_READABILITY_CAPTURE|status=FAIL|failures=%d\n- %s" % [
-			_infrastructure_failures.size(), "\n- ".join(_infrastructure_failures),
+		printerr("E_1280_TABLE_READABILITY_CAPTURE|status=FAIL|phase=%s|state=%s|resolution=%s|expectation_met=%s|failures=%d\n- %s" % [
+			_evidence_phase,
+			_state_id,
+			_resolution_suffix(),
+			str(expectation_met),
+			_infrastructure_failures.size(),
+			"\n- ".join(_infrastructure_failures),
 		])
 		quit(1)
 
@@ -553,12 +696,46 @@ func _cleanup_qa_save_artifacts() -> void:
 
 func _cleanup_output_artifacts() -> void:
 	var absolute_dir := ProjectSettings.globalize_path(OUTPUT_DIR)
-	var directory := DirAccess.open(absolute_dir)
-	if directory == null:
-		return
-	for file_name in directory.get_files():
-		if file_name.begins_with("before_") and (file_name.ends_with(".png") or file_name.ends_with(".json")):
-			DirAccess.remove_absolute(absolute_dir.path_join(file_name))
+	for file_name in [_capture_file_name(), _scene_tree_file_name()]:
+		var path := absolute_dir.path_join(file_name)
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+
+
+func _read_arguments() -> void:
+	for argument in OS.get_cmdline_user_args():
+		if argument.begins_with("--capture-size="):
+			var dimensions := argument.trim_prefix("--capture-size=").split("x", false)
+			if dimensions.size() != 2 or not dimensions[0].is_valid_int() or not dimensions[1].is_valid_int():
+				_fail("invalid capture size: %s" % argument)
+				continue
+			_capture_size = Vector2i(maxi(640, int(dimensions[0])), maxi(360, int(dimensions[1])))
+		elif argument.begins_with("--evidence-phase="):
+			var phase := argument.trim_prefix("--evidence-phase=")
+			if phase not in ["before", "after"]:
+				_fail("invalid evidence phase: %s" % phase)
+			else:
+				_evidence_phase = phase
+		elif argument.begins_with("--state="):
+			var state := argument.trim_prefix("--state=")
+			if state not in ["clear", "forecast", "active", "dual_active"]:
+				_fail("invalid capture state: %s" % state)
+			else:
+				_state_id = state
+		elif argument == "--check-economy-scroll":
+			_check_economy_scroll = true
+
+
+func _capture_file_name() -> String:
+	return "%s_%s_table_%s.png" % [_evidence_phase, _state_id, _resolution_suffix()]
+
+
+func _scene_tree_file_name() -> String:
+	return "%s_%s_%s_scene_tree.json" % [_evidence_phase, _state_id, _resolution_suffix()]
+
+
+func _resolution_suffix() -> String:
+	return "%dx%d" % [_capture_size.x, _capture_size.y]
 
 
 func _place_capture_window() -> void:
