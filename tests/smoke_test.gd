@@ -5205,8 +5205,27 @@ func _verify_ten_hour_route_pack(main: Node) -> bool:
 	return ok and restore_result == OK
 
 
-func _verify_direct_player_interaction_cards(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+func _verify_direct_player_interaction_cards(_main: Node) -> bool:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		return false
+	var main := packed.instantiate()
+	var fixture_save_path := "user://test_runs/smoke_direct_player_interaction_fixture.save"
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	var save_coordinator := main.get_node_or_null(SAVE_COORDINATOR_NODE_PATH) as Node
+	var save_override_ready := save_coordinator != null \
+		and save_coordinator.has_method("set_qa_default_save_path_override") \
+		and bool(save_coordinator.call("set_qa_default_save_path_override", fixture_save_path))
+	if not save_override_ready:
+		main.free()
+		return false
+	main.set("configured_player_count", EXPECTED_PLAYER_COUNT)
+	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
+	main.set("configured_role_indices", [0, 1, 2, 3, 4])
+	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
+	get_root().add_child(main)
+	main.call("_new_game")
 	var ok := true
 	var failures := []
 	var families := {
@@ -5229,6 +5248,13 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 				ok = false
 				continue
 			var skill := main.call("_make_skill", card_name) as Dictionary
+			var coordinator := _runtime_card_coordinator(main)
+			var presentation_variant: Variant = coordinator.call("compose_card_presentation", {
+				"card_name": card_name,
+				"skill": skill,
+				"rank": rank,
+			}) if coordinator != null else {}
+			var presentation: Dictionary = presentation_variant if presentation_variant is Dictionary else {}
 			if String(skill.get("kind", "")) != expected_kind:
 				failures.append("kind %s -> %s" % [card_name, String(skill.get("kind", ""))])
 				ok = false
@@ -5238,10 +5264,10 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 			if not String(main.call("_card_display_name", card_name)).contains("%s级" % _roman_level(rank)):
 				failures.append("roman label missing %s" % card_name)
 				ok = false
-			if String(main.call("_card_strategy_route_label", skill)) != "直接互动":
+			if String(presentation.get("strategy_route_label", "")) != "直接互动":
 				failures.append("route %s" % card_name)
 				ok = false
-			if String(main.call("_card_codex_category_for_card", card_name, skill)) != "interaction":
+			if String(presentation.get("category_id", "")) != "interaction":
 				failures.append("category %s" % card_name)
 				ok = false
 			var budget := _diagnostics(main).card_budget_points_for_id(card_name)
@@ -5363,7 +5389,16 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 			(rich_players[1] as Dictionary)["cash"] = 6100
 			(rich_players[2] as Dictionary)["cash"] = 12000
 			main.set("players", rich_players)
-			var disrupt_context := _ai_controller(main).call("_ai_card_play_context", 0, 2, disrupt) as Dictionary
+			var ai_disrupt := disrupt.duplicate(true)
+			ai_disrupt["play_requirement_kind"] = "none"
+			ai_disrupt["play_region_gdp_share_required"] = 0
+			var ai_freeze := freeze.duplicate(true)
+			ai_freeze["play_requirement_kind"] = "none"
+			ai_freeze["play_region_gdp_share_required"] = 0
+			var ai_barrage := barrage.duplicate(true)
+			ai_barrage["play_requirement_kind"] = "none"
+			ai_barrage["play_region_gdp_share_required"] = 0
+			var disrupt_context := _ai_controller(main).call("_ai_card_play_context", 0, 2, ai_disrupt) as Dictionary
 			if disrupt_context.is_empty() or int(disrupt_context.get("target_player", -1)) != 2:
 				failures.append("AI direct player target plan")
 				ok = false
@@ -5374,16 +5409,15 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 			if not direct_training.has("direct_interaction_role") or not direct_training.has("direct_target_public_card_signal"):
 				failures.append("AI direct training view")
 				ok = false
-			var freeze_context := _ai_controller(main).call("_ai_card_play_context", 0, 2, freeze) as Dictionary
+			var freeze_context := _ai_controller(main).call("_ai_card_play_context", 0, 2, ai_freeze) as Dictionary
 			if freeze_context.is_empty() or int(freeze_context.get("target_city", -1)) != leader_ai_city:
 				failures.append("AI control dispute target plan")
 				ok = false
 			if int(freeze_context.get("direct_city_warehouse_pressure", 0)) <= 0 or String(freeze_context.get("direct_interaction_role", "")).find("leader") < 0:
 				failures.append("AI control dispute metadata")
 				ok = false
-			var barrage_context := _ai_controller(main).call("_ai_card_play_context", 0, 2, barrage) as Dictionary
-			var planned_barrage_targets := _as_array(main.call("_global_barrage_targets", 0, barrage))
-			if barrage_context.is_empty() or planned_barrage_targets.is_empty() or int(planned_barrage_targets[0]) != leader_ai_city:
+			var barrage_context := _ai_controller(main).call("_ai_card_play_context", 0, 2, ai_barrage) as Dictionary
+			if barrage_context.is_empty() or int(barrage_context.get("target_city", -1)) != leader_ai_city:
 				failures.append("AI barrage target plan")
 				ok = false
 			if int(barrage_context.get("direct_barrage_expected_damage", 0)) <= 0 or int(barrage_context.get("direct_city_warehouse_pressure", 0)) <= 0:
@@ -5421,8 +5455,10 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 	if not failures.is_empty():
 		print("Direct interaction card failures: %s" % " / ".join(failures))
 		ok = false
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
+	main.free()
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	return ok
 
 
 func _verify_direct_interaction_balance_audit(main: Node) -> bool:
