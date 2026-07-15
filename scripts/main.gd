@@ -6891,16 +6891,6 @@ func _card_codex_filter_matches(filter_id: String, category_id: String) -> bool:
 	return _card_codex_filter_category_ids(filter_id).has(category_id)
 
 
-func _card_source_type_label(card_name: String, skill: Dictionary) -> String:
-	if _is_monster_card_name(card_name) or String(skill.get("kind", "")) == "monster_card":
-		return "怪兽牌"
-	if _is_monster_technique_card_name(card_name) or String(skill.get("kind", "")) == "monster_bound_action":
-		return "怪兽固定技能"
-	if bool(skill.get("persistent", false)):
-		return "固定技能"
-	return "公共卡牌"
-
-
 func _card_is_in_district_supply(card_name: String) -> bool:
 	var canonical_name := _canonical_card_supply_name(card_name)
 	if canonical_name == "":
@@ -6926,43 +6916,6 @@ func _card_supply_layer_for_card(card_name: String) -> String:
 	return "全部卡牌"
 
 
-func _card_codex_short_filter_label(filter_id: String) -> String:
-	match filter_id:
-		"all":
-			return "全部"
-		"monster":
-			return "怪兽"
-		"monster_skill":
-			return "兽技"
-		"military":
-			return "军队"
-		"interaction":
-			return "互动"
-		"city":
-			return "城市"
-		"commodity":
-			return "商品"
-		"futures":
-			return "期货"
-		"finance":
-			return "金融"
-		"contract":
-			return "合约"
-		"intel":
-			return "情报"
-		"supply":
-			return "补给"
-		"tactic":
-			return "诱导"
-		"news":
-			return "新闻"
-		"weather":
-			return "天气"
-		"other":
-			return "其他"
-	return _card_codex_filter_label(filter_id)
-
-
 func _card_codex_names(filter_id: String = "") -> Array:
 	if filter_id == "":
 		filter_id = _codex_navigation_controller_node().card_codex_filter
@@ -6985,28 +6938,6 @@ func _card_codex_names(filter_id: String = "") -> Array:
 			monster_runtime_controller._append_unique_string(names, card_name)
 	names.sort()
 	return names
-
-
-func _card_level_gradient_text(card_name: String) -> String:
-	var family := _game_runtime_coordinator_node().card_family_id(card_name)
-	var diagnostics := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service()
-	var lines := []
-	for level in range(1, 5):
-		var level_name := "%s%d" % [family, level]
-		if not _game_runtime_coordinator_node().card_exists(level_name):
-			continue
-		var level_skill := _game_runtime_coordinator_node().card_definition(level_name)
-		var numeric_facts := _card_presentation_array(level_skill, "key_rule_facts")
-		var preview := _join_first_card_facts(numeric_facts, 4)
-		if preview == "":
-			preview = _short_card_text(_skill_display_text(level_skill), 36)
-		lines.append("%s  ¥%d  %s｜%s" % [
-			_level_text(level),
-			_card_price(level_name),
-			diagnostics.card_budget_band_text(diagnostics.card_budget_points_for_id(level_name)),
-			preview,
-		])
-	return "\n".join(lines) if not lines.is_empty() else "该卡暂无I→IV强化。"
 
 
 func _product_trend_text(product_name: String) -> String:
