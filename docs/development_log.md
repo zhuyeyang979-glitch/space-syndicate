@@ -3,6 +3,14 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜天气 v1、Monster Codex 与多工作树阶段集成
+
+- A 在独立集成工作树审查并合入 B/C/D/E 的本地原子提交：Monster Codex 改为静态 scene-owned public SourceService + 纯数据 allowlist Adapter，公开概率不再泄露原始权重；相关五个 Main 构造函数与诊断旧入口物理删除。相对本阶段起点，`main.gd` 为 `+26/-530`，净删 504 行和 10 个函数，当前 18,972 行/1,097 个函数。
+- C 将 smoke 中的怪兽原始权重 oracle 迁为 Monster owner 的公开 I/IV 概率合同；D 的 Godot 4.7 阻塞 runner 新增显式 `-RefreshImport`，覆盖冷缓存、暖缓存、陈旧缓存、损坏缓存和 import 失败短路。新硬件/新 worktree 的初始 tree 失败根因是缺失或陈旧 `.godot/global_script_class_cache.cfg`，不是生产代码丢失。
+- E 完成三分辨率真实主桌机器标识清理与天气四态 capture，并在首版双事件坏帧后增加 scene-tree + PNG 像素完整性门。修正后的 dual-active 完整帧通过；城市 marker 实像素证据仍因测试驱动 API 缺失保持红灯，地图标签/路线节点/天气卡/怪兽 token 拥挤也未隐藏。
+- Focused Weather、Monster Codex、公开隐私、Main composition、UI 文本、visual snapshot 与 smoke `--check-only` 通过。完整 layout 仍有 52 条红灯，含 Military bench 解析/API 漂移与真实 1280 越界；完整 smoke 在 240 秒后回收，首个业务失败为角色图鉴，首个脚本错误为退役 `_capture_run_state`。两次 runner 均确认残留本工作树运行进程为 0。
+- 下一阶段分工已写入 `docs/next_stage_regression_prompts.md`：B 负责 Product Codex public source，C 负责 smoke 角色图鉴/存档 wrapper 原子迁移，D 负责 Military layout 解析与分类，E 负责真实 1280 主桌密度和地图可读性。成员继续本地提交，由 A 阶段性统一同步。
+
 ## 2026-07-15｜天气双事件截图完整帧 follow-up（test/report-only）
 
 - A 复核首版 dual-active 证据时发现一次大面积黑屏/主桌缺失；E 撤回该张视觉结论并在原 capture 增加 post-draw 稳定等待、真实 PNG 像素覆盖与 scene-tree 当帧完整性门，没有修改 production/Main/UI。
@@ -14,7 +22,7 @@
 - Codex E 用 GUI Godot 4.7 前台阻塞运行真实 `main.tscn`，在 1600×960 捕获 forecast、active、fading、同屏双区域 active 的主桌与经济总览共 8 张截图；每态保存公开 Weather ViewModel、区域详情、地图层级和可见文本扫描 JSON。
 - 四态的阶段、剩余时间、前三效果、利用/反制、经济天气原因、双事件计数、机器标识/QA 残留均通过；headed console 的 `ERROR / SCRIPT ERROR / WARNING` 命中为 0。Main 入树前安装专用 QA save override，运行后清理，玩家默认存档 metadata/SHA-256 前后等价。
 - 总体仍标红：现有 Coordinator 没有 test helper 所需的 `execute_city_development`，真实新局无法生成城市 marker，故只有 `WeatherLayer < DistrictLayer < RouteLayer < MonsterLayer` 层级证据，不能把“天气不遮挡实际城市”标绿。未修改 production/Main/UI，也没有手工伪造城市。
-- 地图拥挤、经济文本墙继续存在；经济页再次打开还会保留较深滚动位置。完整相对路径证据与绿/红矩阵见 `reports/ui/production_acceptance/e_weather_lifecycle/e_weather_lifecycle_acceptance.md`。
+- 地图拥挤、经济文本墙继续存在；首轮 active/dual 经济页再次打开曾保留较深滚动位置，完整重跑未复现且没有生产修复，因此继续记录为间歇 finding。完整相对路径证据与绿/红矩阵见 `reports/ui/production_acceptance/e_weather_lifecycle/e_weather_lifecycle_acceptance.md`。
 
 ## 2026-07-15｜真实主桌最小生产视觉回归与机器 ID 清理
 
@@ -33,7 +41,7 @@
 - UI 使用同一公开事件链：地图 WeatherMapOverlay 位于区域/城市之下且不遮挡路线、怪兽和选区；WeatherForecastStrip 非阻塞提示并可聚焦区域；区域详情显示阶段、剩余时间、三项主效果、利用与反制；经济和路线解释保留同一 event id、天气名称和贡献行。1280×720、1600×960、1920×1080 以及真实 PlanetBoard 1600×960 截图均已生成并人工检查。
 - 本地 `WeatherTelemetryRuntimeService` 记录事件数量、命中区域、价格增长/路线效率贡献、匿名行为类别、怪兽评分影响、实际区域伤害和由已提交公开成交 receipt 得出的保守经济估值。它没有网络、存档 API、玩家身份、现金、手牌、私密目标/权重或 AI 计划；确定性平衡报告明确把实现金额标为 `N/A`，不伪造真人收益。
 - Focused 验收全部通过：core `278/278`、商品标签 `292/292`、经济 `107/107`、路线 `45/45`、怪兽 `86/86`、军事/情报 `37/37`、区域伤害 `77/77`、遥测 `90/90 + 13/13`、存档/隐私 `50/50`、展示 `10/10 + 14/14`、卡牌/AI `49/49`、真实 Main Weather Characterization `53/53`，另有卡牌资源 `80/80`、authoring `36/36`、v0.6 catalog `2894/2894`。
-- 全局门禁中，Godot 引擎级 smoke `--check-only`、UI 文本、visual snapshot 与 Main composition 通过。完整 layout 仍有 59 条旧 v0.4/v0.5 断言，但天气失败为 0；完整 smoke 在 `tests/smoke_test.gd:132` 对迁移后的 `product_market` 执行陈旧 `Dictionary` 强转并触发 `Invalid cast`，随后由超时门回收，因此未标为通过，也没有恢复 Main wrapper。完整证据、平衡表、截图路径和未关闭风险见 `docs/weather_v1_test_report.md` 与 `docs/weather_v1_balance_report.md`。
+- 全局门禁中，Godot 引擎级 smoke `--check-only`、UI 文本、visual snapshot 与 Main composition 通过。后续多工作树集成已把完整 layout 从当时的 59 条降到 52 条，并退役 Monster Codex 陈旧项；完整 smoke 当前在通过公开 Monster I/IV 概率门后于 240 秒回收，首个业务失败为角色图鉴、首个脚本错误为已删除 `_capture_run_state`。完整证据、平衡表、截图路径和未关闭风险见 `docs/weather_v1_test_report.md` 与 `docs/weather_v1_balance_report.md`。
 
 ## 2026-07-15｜区域图鉴公共数据源场景化与隐私硬切换
 

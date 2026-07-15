@@ -2,14 +2,15 @@
 
 > 日期：2026-07-15
 > 分支：`codex/a-v06-local-integration`
-> 实现基线：`4987f8f`（本报告提交前）
-> 引擎：Godot 4.7 stable，`C:\Users\zhuye\AppData\Local\Programs\Godot\4.7\Godot_v4.7-stable_win64_console.exe`
+> 阶段候选：`codex/a-v06-local-integration`（最终发布 SHA 见本阶段 `main` 提交）
+> 引擎：Godot 4.7 stable，`C:\Users\zhuye\AppData\Local\Programs\Godot\4.7\Godot_v4.7-stable_win64.exe`
+> Runner：`tools/invoke_godot_test.ps1`，阻塞等待真实 ExitCode，并隔离日志与进程清理
 
 ## 结论
 
 区域天气 v1 已形成可运行的最小闭环：六种天气全部由资源定义，使用唯一 `world_effective_us` 时钟完成预报、生效、线性消退和结束；经济、路线、怪兽、军事/情报、区域伤害与三处公共 UI 消费同一结构化效果和解释。存档继续使用现有 18-owner envelope 中的 `weather` section，没有增加第二时钟或第 19 个存档 owner。
 
-Focused 天气门禁全部通过。完整 `layout_scene_smoke_test.gd` 仍有 59 条与天气无关的 v0.4/v0.5 历史断言；天气相关失败为 0。完整 `smoke_test.gd` 运行到 `tests/smoke_test.gd:132` 时把已经迁移的 `product_market` 强转为 `Dictionary`，触发 `Invalid cast` 后没有自行退出；测试在超时门槛回收，不能报告为通过。Godot 引擎级 `--check-only` 使用正确参数顺序独立通过。
+Focused 天气门禁全部通过。完整 `layout_scene_smoke_test.gd` 当前为 52 条红灯；Monster Codex 三条陈旧 oracle 已退出失败列表，最早脚本问题是 `military_runtime_characterization_bench.gd` 的类型推断失败，随后还有已退役 Coordinator API 与真实 1280x720 越界问题。完整 `smoke_test.gd` 在 240 秒门槛超时回收；它已通过 Monster Codex 公开 I/IV 概率门，随后首个业务失败是角色图鉴，首个脚本错误是调用已删除的 Main `_capture_run_state`。两次 runner 均确认本工作树残留运行进程为 0，因此二者都不能报告为通过。Godot 引擎级 `--check-only` 独立通过。
 
 ## 实现边界
 
@@ -91,19 +92,18 @@ Focused 天气门禁全部通过。完整 `layout_scene_smoke_test.gd` 仍有 59
 | `ui_text_smoke_test.gd` | PASS |
 | `visual_snapshot.gd` | PASS |
 | `main_runtime_composition_test.gd` | PASS |
-| 完整 `layout_scene_smoke_test.gd` | FAIL，59 条历史断言；天气失败 0 |
-| 完整 `smoke_test.gd` | FAIL/超时回收；`tests/smoke_test.gd:132` 对迁移后的 `product_market` 执行陈旧 `Dictionary` 强转 |
+| 完整 `layout_scene_smoke_test.gd` | FAIL，52 条；Monster Codex 陈旧项已清零，仍含 Military bench 解析、旧 API 与真实 1280 越界 |
+| 完整 `smoke_test.gd` | TIMEOUT `240s`；公开 Monster I/IV 概率门已过，首个业务失败为角色图鉴，首个脚本错误为退役 `_capture_run_state` |
 
 ## 视觉证据
 
-由 `tests/weather_ui_capture.gd` 生成：
+仓库内可移植证据：
 
-- `.codex-godot/appdata-roaming/Godot/app_userdata/太空辛迪加/weather_presentation_v1/weather_presentation_v1_1280x720.png`
-- `.codex-godot/appdata-roaming/Godot/app_userdata/太空辛迪加/weather_presentation_v1/weather_presentation_v1_1600x960.png`
-- `.codex-godot/appdata-roaming/Godot/app_userdata/太空辛迪加/weather_presentation_v1/weather_presentation_v1_1920x1080.png`
-- `.codex-godot/appdata-roaming/Godot/app_userdata/太空辛迪加/weather_presentation_v1/weather_planet_board_v1_1600x960.png`
+- [三分辨率真实主桌最小生产验收](../reports/ui/production_acceptance/e_minimal_production_acceptance.md)
+- [forecast / active / fading / 双区域 active 生命周期验收](../reports/ui/production_acceptance/e_weather_lifecycle/e_weather_lifecycle_acceptance.md)
+- [修正后的双区域 active 主桌](../reports/ui/production_acceptance/e_weather_lifecycle/e_weather_dual_active_table_1600x960.png)
 
-人工检查确认三种分辨率无天气文本溢出；真实 PlanetBoard 截图同时包含天气覆盖、区域、路线、城市和怪兽。自动门禁确认渲染层级为 `Weather < District < Route < Monster`。
+三种分辨率的机器标识、QA 存档残留和 console error 门均通过。生命周期 capture 进一步要求完整主桌连续稳定 8 个 post-draw 帧并再等待 3 帧，随后检查 TopBar、左右栏、PlayerBoard、HandRack、BidBoard 的 scene-tree 矩形和真实 PNG 像素覆盖；修正后的双天气截图相对 forecast/active 的最低覆盖比约为 `0.98`，高于 `0.85` 门槛。城市 marker 因现有测试驱动 API 已退役而仍为精确红灯，不能把静态层级证据冒充实际城市像素证据。人工检查同时确认地图标签、路线节点、天气卡和怪兽 token 仍明显拥挤。
 
 ## 最终产品问题
 
@@ -115,6 +115,7 @@ Focused 天气门禁全部通过。完整 `layout_scene_smoke_test.gd` 仍有 59
 
 ## 未关闭风险
 
-1. 完整布局套件仍含 59 条已知的 v0.4/v0.5 历史 oracle，需按各自现役 owner 分块退役，不能恢复旧 Main wrapper。
-2. 完整 monolithic smoke 仍在 `tests/smoke_test.gd:132` 使用退役的 Main `product_market` 形状并触发 `Invalid cast`；应由现役 ProductMarket owner fixture 原子接管该段，而不是恢复 Main 字典 wrapper。修复后仍需保留可定位的单项超时，避免脚本错误后无限等待。
-3. 当前平衡报告是确定性 resolver 样本，不是长期真人试玩统计。真实平均收益、路线收入和行为反应必须由后续本地 playtest telemetry 累积后再调参。
+1. 完整布局套件仍有 52 条红灯。Military characterization 的解析/API 漂移与历史 v0.4/v0.5 oracle 应按 owner 分块处理；TopBar、PlayerBoard、HandRack 和 MainActionDock 的 1280x720 越界是可见产品问题，不能通过删除断言处理。
+2. 完整 monolithic smoke 在 240 秒后回收。角色图鉴是当前首个业务失败，多个区块仍调用退役 `_capture_run_state` 等 Main wrapper；应迁移到现役 owner fixture，不得恢复兼容农场。
+3. 真实主桌仍有地图标签、路线节点、天气卡和怪兽 token 重叠，1280 密度与经济文本墙尤其明显；经济页重复打开还存在间歇滚动位置复用。
+4. 当前平衡报告是确定性 resolver 样本，不是长期真人试玩统计。真实平均收益、路线收入和行为反应必须由后续本地 playtest telemetry 累积后再调参。
