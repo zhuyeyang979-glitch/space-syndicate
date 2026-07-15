@@ -1099,6 +1099,11 @@ func _weather_label(type_id: String) -> String:
 func _weather_zone_count_for_planet() -> int:
 	return _weather_runtime_controller.zone_count_for_planet() if _weather_runtime_controller != null else 1
 
+
+func _weather_type_ids() -> Array:
+	return _weather_runtime_controller.weather_type_ids() if _weather_runtime_controller != null else []
+
+
 func _weather_preview_districts(anchor_index: int, zone_count: int) -> Array:
 	return _weather_runtime_controller.preview_districts(anchor_index, zone_count) if _weather_runtime_controller != null else []
 
@@ -3352,7 +3357,7 @@ func _ai_pressure_kind(kind: String, skill: Dictionary = {}) -> bool:
 	if ["route_sabotage", "panic_shift", "news_event", "monster_lure", "mudslide", "area_damage", "special_monster_delay", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"].has(kind):
 		return true
 	if kind == "weather_control":
-		return String(skill.get("weather_type", "")) in ["solar_storm", "acid_rain", "magnetic_fog"]
+		return _ai_weather_definition_has_risk(String(skill.get("weather_type", "")))
 	if kind == "city_gdp_derivative":
 		var terms := _city_gdp_derivative_terms(skill)
 		return String(terms.get("direction", "up")) == "down" and not bool(terms.get("insurance", false))
@@ -3363,13 +3368,47 @@ func _ai_defense_kind(kind: String, skill: Dictionary = {}) -> bool:
 	if ["route_insurance", "route_flow_boon", "city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_demand_shift", "market_stabilize"].has(kind):
 		return true
 	if kind == "weather_control":
-		return String(skill.get("weather_type", "")) == "gravity_tide"
+		return _ai_weather_definition_has_opportunity(String(skill.get("weather_type", "")))
 	if kind == "city_gdp_derivative":
 		var terms := _city_gdp_derivative_terms(skill)
 		return String(terms.get("direction", "up")) == "up" or bool(terms.get("insurance", false))
 	if kind == "region_economy_shift":
 		return int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0)) > 0
 	return false
+
+
+func _ai_weather_definition_has_risk(type_id: String) -> bool:
+	var definition := _weather_template(type_id)
+	if definition.is_empty():
+		return false
+	for key in ["route_efficiency_multiplier", "land_movement_multiplier", "ocean_movement_multiplier", "air_movement_multiplier", "ranged_effect_multiplier", "intel_effect_multiplier"]:
+		if float(definition.get(key, 1.0)) < 0.999:
+			return true
+	if float(definition.get("region_damage_per_second", 0.0)) > 0.0 or float(definition.get("flying_risk_multiplier", 1.0)) > 1.001 or float(definition.get("city_maintenance_multiplier", 1.0)) > 1.001:
+		return true
+	for effect_variant in (definition.get("product_effects", {}) as Dictionary).values():
+		if effect_variant is Dictionary:
+			var effect := effect_variant as Dictionary
+			if float(effect.get("production_multiplier", 1.0)) < 0.999 or float(effect.get("demand_multiplier", 1.0)) < 0.999 or float(effect.get("price_growth_multiplier", 1.0)) < 0.999:
+				return true
+	return false
+
+
+func _ai_weather_definition_has_opportunity(type_id: String) -> bool:
+	var definition := _weather_template(type_id)
+	if definition.is_empty():
+		return false
+	for key in ["product_price_growth_multiplier", "production_multiplier", "demand_multiplier", "route_efficiency_multiplier", "land_movement_multiplier", "ocean_movement_multiplier", "air_movement_multiplier", "ranged_effect_multiplier", "knockback_multiplier", "orbital_effect_multiplier", "monster_preference_multiplier", "monster_speed_multiplier", "monster_armor_multiplier"]:
+		if float(definition.get(key, 1.0)) > 1.001:
+			return true
+	for effect_variant in (definition.get("product_effects", {}) as Dictionary).values():
+		if effect_variant is Dictionary:
+			var effect := effect_variant as Dictionary
+			if float(effect.get("production_multiplier", 1.0)) > 1.001 or float(effect.get("demand_multiplier", 1.0)) > 1.001 or float(effect.get("price_growth_multiplier", 1.0)) > 1.001:
+				return true
+	return false
+
+
 func _ai_phase_bonus_for_candidate(player_index: int, kind: String, _district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> int:
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))
@@ -5717,10 +5756,10 @@ func _ai_weather_city_effect(player_index: int, district_index: int, type_id: St
 		return {"score": 0, "owner": -1, "positive": 0, "negative": 0, "value": 0}
 	var template := _weather_template(type_id)
 	var production_multiplier := float(template.get("production_multiplier", 1.0))
-	var transport_multiplier := float(template.get("transport_multiplier", 1.0))
+	var transport_multiplier := float(template.get("route_efficiency_multiplier", template.get("transport_multiplier", 1.0)))
 	if String(districts[district_index].get("terrain", "land")) == "ocean":
-		transport_multiplier = float(template.get("ocean_transport_multiplier", transport_multiplier))
-	var consumption_multiplier := float(template.get("consumption_multiplier", 1.0))
+		transport_multiplier *= float(template.get("ocean_movement_multiplier", 1.0))
+	var consumption_multiplier := float(template.get("demand_multiplier", 1.0))
 	var route_load := _route_network_load_for_legacy_region(district_index)
 	var product_weight := 110 + _city_product_names(city).size() * 34 + int(float(int(city.get("last_income", 0))) / 10.0)
 	var transport_weight := 120 + route_load * 48 + (_route_network_routes_for_legacy_region(district_index) as Array).size() * 36 + int(round(float(districts[district_index].get("transport_score", 1.0)) * 28.0))
@@ -5755,9 +5794,9 @@ func _ai_weather_empty_district_effect(player_index: int, district_index: int, t
 		return 0
 	var template := _weather_template(type_id)
 	var terrain := String(districts[district_index].get("terrain", "land"))
-	var transport_multiplier := float(template.get("transport_multiplier", 1.0))
+	var transport_multiplier := float(template.get("route_efficiency_multiplier", template.get("transport_multiplier", 1.0)))
 	if terrain == "ocean":
-		transport_multiplier = float(template.get("ocean_transport_multiplier", transport_multiplier))
+		transport_multiplier *= float(template.get("ocean_movement_multiplier", 1.0))
 	var route_load := _route_network_load_for_legacy_region(district_index)
 	var score := 0
 	if terrain == "ocean" and transport_multiplier > 1.001:
@@ -5778,9 +5817,12 @@ func _ai_weather_empty_district_effect(player_index: int, district_index: int, t
 func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionary:
 	if String(skill.get("kind", "")) != "weather_control":
 		return {}
-	var type_id := String(skill.get("weather_type", "solar_storm"))
-	if not WEATHER_TYPES.has(type_id):
-		type_id = "solar_storm"
+	var weather_type_ids := _weather_type_ids()
+	if weather_type_ids.is_empty():
+		return {}
+	var type_id := String(skill.get("weather_type", ""))
+	if not weather_type_ids.has(type_id):
+		type_id = str(weather_type_ids[0])
 	var zone_count := clampi(int(skill.get("weather_zone_count", _weather_zone_count_for_planet())), 1, WEATHER_ZONE_MAX)
 	var best := {}
 	var best_score := -999999
@@ -5808,7 +5850,7 @@ func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionar
 			route_load += _route_network_load_for_legacy_region(district_index)
 			if String(districts[district_index].get("terrain", "land")) == "ocean":
 				var weather_template := _weather_template(type_id)
-				var ocean_transport := float(weather_template.get("ocean_transport_multiplier", weather_template.get("transport_multiplier", 1.0)))
+				var ocean_transport := float(weather_template.get("route_efficiency_multiplier", weather_template.get("transport_multiplier", 1.0))) * float(weather_template.get("ocean_movement_multiplier", 1.0))
 				if ocean_transport > 1.001:
 					terrain_bonus += 58 + int(round((ocean_transport - 1.0) * 180.0))
 				elif ocean_transport < 0.999:
@@ -5840,9 +5882,9 @@ func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionar
 					if demand_name != "" and (demand_name == route_product or demand_name == focus_product):
 						product_bonus += 32
 		var template := _weather_template(type_id)
-		var transport_multiplier := float(template.get("transport_multiplier", 1.0))
+		var transport_multiplier := float(template.get("route_efficiency_multiplier", template.get("transport_multiplier", 1.0)))
 		var production_multiplier := float(template.get("production_multiplier", 1.0))
-		var consumption_multiplier := float(template.get("consumption_multiplier", 1.0))
+		var consumption_multiplier := float(template.get("demand_multiplier", 1.0))
 		var role := "weather_pressure"
 		var score := 80 + zone_count * 20 + route_load * 12 + product_bonus
 		var helpful_bias := maxi(0, own_value) + maxi(0, int(float(neutral_value) / 2.0))

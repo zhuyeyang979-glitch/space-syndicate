@@ -9,17 +9,17 @@ card_id = "电磁雾干涉1"
 family_id = "电磁雾干涉"
 kind = &"weather_control"
 purchase_cost = 5
-rules_text = "主动布置电磁雾预报：约70秒后覆盖选中区域附近，拖慢交通/消费并制造更多匿名推理噪声。"
+rules_text = "主动发布离子风暴预报：30秒后影响选中区域，持续45秒并用10秒消退；能源与空运受益，飞行部署风险提高。"
 tags = PackedStringArray("天气", "情报")
 play_product = "轨迹墨水"
 play_flow_required = 1
 authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"weather_duration_seconds": 100.0,
-"weather_forecast_lead_seconds": 70.0,
-"weather_type": "magnetic_fog",
-"weather_zone_count": 2
+"weather_duration_seconds": 45.0,
+"weather_forecast_lead_seconds": 30.0,
+"weather_type": "ion_storm",
+"weather_zone_count": 1
 }
 
 [resource]

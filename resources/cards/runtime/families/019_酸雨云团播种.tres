@@ -9,17 +9,17 @@ card_id = "酸雨云团播种1"
 family_id = "酸雨云团播种"
 kind = &"weather_control"
 purchase_cost = 4
-rules_text = "主动制造酸雨云团预报：约75秒后覆盖选中区域附近，压低生产与交通，适合配合城市做空。"
+rules_text = "主动发布孢子季预报：40秒后影响选中区域，持续70秒并用10秒消退；可利用生物生产与需求，但污染会拖慢路线。"
 tags = PackedStringArray("天气", "压制")
 play_product = "离岸水晶"
 play_flow_required = 1
 authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"weather_duration_seconds": 95.0,
-"weather_forecast_lead_seconds": 75.0,
-"weather_type": "acid_rain",
-"weather_zone_count": 2
+"weather_duration_seconds": 70.0,
+"weather_forecast_lead_seconds": 40.0,
+"weather_type": "spore_season",
+"weather_zone_count": 1
 }
 
 [resource]

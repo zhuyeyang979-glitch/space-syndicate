@@ -9,17 +9,17 @@ card_id = "航线预报1"
 family_id = "航线预报"
 kind = &"weather_control"
 purchase_cost = 4
-rules_text = "主动发布引力航线预报：约90秒后影响选中区域附近2区，提高交通/商路窗口，适合买涨或保护己方运输。"
+rules_text = "主动发布引力潮预报：45秒后影响选中区域，持续75秒；海运受阻，但击退和轨道效果增强，所有玩家都可提前调整路线。"
 tags = PackedStringArray("天气", "航线", "商路")
 play_product = "离岸水晶"
 play_flow_required = 1
 authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"weather_duration_seconds": 90.0,
-"weather_forecast_lead_seconds": 90.0,
+"weather_duration_seconds": 75.0,
+"weather_forecast_lead_seconds": 45.0,
 "weather_type": "gravity_tide",
-"weather_zone_count": 2
+"weather_zone_count": 1
 }
 
 [sub_resource type="Resource" id="Resource_7ggtu"]
@@ -29,17 +29,17 @@ family_id = "航线预报"
 rank = 2
 kind = &"weather_control"
 purchase_cost = 6
-rules_text = "升级航线预报：约85秒后覆盖3区，持续105秒，为商路型城市制造更稳定的运输窗口。"
+rules_text = "升级航线预报：发布同一套公开引力潮事件；牌阶用于合并与出牌成本，不改变第一版天气定义。"
 tags = PackedStringArray("天气", "航线", "升级")
 play_product = "离岸水晶"
 play_flow_required = 2
 authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"weather_duration_seconds": 105.0,
-"weather_forecast_lead_seconds": 85.0,
+"weather_duration_seconds": 75.0,
+"weather_forecast_lead_seconds": 45.0,
 "weather_type": "gravity_tide",
-"weather_zone_count": 3
+"weather_zone_count": 1
 }
 
 [sub_resource type="Resource" id="Resource_3qlcx"]
@@ -49,17 +49,17 @@ family_id = "航线预报"
 rank = 3
 kind = &"weather_control"
 purchase_cost = 8
-rules_text = "核心航线预报：约75秒后覆盖4区，持续120秒；适合围绕海洋/交通区域提前布局GDP买涨。"
+rules_text = "核心航线预报：发布同一套公开引力潮事件；利用轨道和击退收益，或在海运下降前调整路线。"
 tags = PackedStringArray("天气", "航线", "核心")
 play_product = "离岸水晶"
 play_flow_required = 3
 authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"weather_duration_seconds": 120.0,
-"weather_forecast_lead_seconds": 75.0,
+"weather_duration_seconds": 75.0,
+"weather_forecast_lead_seconds": 45.0,
 "weather_type": "gravity_tide",
-"weather_zone_count": 4
+"weather_zone_count": 1
 }
 
 [sub_resource type="Resource" id="Resource_1yk6p"]
@@ -69,17 +69,17 @@ family_id = "航线预报"
 rank = 4
 kind = &"weather_control"
 purchase_cost = 10
-rules_text = "终端航线预报IV：约65秒后覆盖最多5区并持续150秒；能放大整条运输线，但公开预报给所有玩家反制时间。"
+rules_text = "终端航线预报IV：发布同一套公开引力潮事件；牌阶不突破第一版单区域、固定时长和平衡上限。"
 tags = PackedStringArray("天气", "航线", "IV")
 play_product = "离岸水晶"
 play_flow_required = 4
 authored_keys = PackedStringArray("cost", "kind", "weather_type", "weather_zone_count", "weather_forecast_lead_seconds", "weather_duration_seconds", "play_product", "play_flow_required", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"weather_duration_seconds": 150.0,
-"weather_forecast_lead_seconds": 65.0,
+"weather_duration_seconds": 75.0,
+"weather_forecast_lead_seconds": 45.0,
 "weather_type": "gravity_tide",
-"weather_zone_count": 5
+"weather_zone_count": 1
 }
 
 [resource]
