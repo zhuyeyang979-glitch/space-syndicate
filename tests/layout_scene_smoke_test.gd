@@ -5943,13 +5943,25 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_expect(split_packed != null, "split GameScreen loads for table snapshot bridge")
 	if main_packed == null or split_packed == null:
 		return
-	var viewport := SubViewport.new()
-	viewport.size = Vector2i(1280, 720)
-	root.add_child(viewport)
+	var physical_viewport_size := Vector2i(1280, 720)
+	var production_content_scale_size := Vector2i(
+		int(ProjectSettings.get_setting("display/window/size/viewport_width", 1600)),
+		int(ProjectSettings.get_setting("display/window/size/viewport_height", 960)),
+	)
+	var original_window_size := root.size
+	var original_content_scale_size := root.content_scale_size
+	var original_content_scale_mode := root.content_scale_mode
+	var original_content_scale_aspect := root.content_scale_aspect
+	root.content_scale_size = production_content_scale_size
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	root.size = physical_viewport_size
+	for _frame in range(4):
+		await process_frame
 	var main := main_packed.instantiate()
-	viewport.add_child(main)
-	await process_frame
-	await process_frame
+	root.add_child(main)
+	for _frame in range(6):
+		await process_frame
 	var runtime_screen := main.find_child("RuntimeGameScreen", true, false) as Control
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var table_viewmodel := coordinator.get_node_or_null("GameTableViewModelRuntimeService") if coordinator != null else null
@@ -6191,17 +6203,42 @@ func _check_runtime_table_snapshot_bridge() -> void:
 			_expect(card_side_drawer != null and card_side_drawer.visible, "split selected hand-card detail link opens OverlayLayer side drawer")
 			_expect(card_action_ids.has("detail_cards") or card_action_ids.has("detail_card"), "split selected hand-card detail link emits detail action before Codex")
 			_expect(not card_action_ids.has("codex_cards") and not card_action_ids.has("codex_card"), "split selected hand-card detail link does not jump straight to Card Codex")
-	_check_named_controls_do_not_overlap(runtime_screen, ["TopBar", "PublicTrack", "TableArea", "PlayerBoard"], "runtime main split GameScreen", Vector2(viewport.size))
-	_check_named_controls_do_not_overlap(runtime_screen, ["PlanetBoard", "RightInspector"], "runtime main split GameScreen", Vector2(viewport.size))
-	_check_named_controls_inside_viewport(runtime_screen, ["TopBar", "PublicTrack", "TableArea", "PlayerBoard", "HandRack", "PlayerBidBoard", "PlayerMainActionDock", "PlayerStatusLampRow", "PlayerReadinessChipRow"], "runtime main split GameScreen", Vector2(viewport.size))
-	_check_visible_buttons_inside_viewport(runtime_screen, "runtime main split GameScreen", Vector2(viewport.size))
-	_check_planet_is_largest_runtime_surface(runtime_screen, "runtime main split GameScreen")
+	for _frame in range(4):
+		await process_frame
+	var production_viewport_size := Vector2(production_content_scale_size)
+	var production_scale := minf(
+		float(physical_viewport_size.x) / production_viewport_size.x,
+		float(physical_viewport_size.y) / production_viewport_size.y,
+	)
+	var theoretical_logical_canvas_size := Vector2(physical_viewport_size) / production_scale
+	var logical_canvas_size := root.get_visible_rect().size
+	var runtime_canvas_rect := runtime_screen.get_global_rect()
+	_expect(
+		root.size == physical_viewport_size
+		and root.content_scale_size == production_content_scale_size
+		and root.content_scale_mode == Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		and root.content_scale_aspect == Window.CONTENT_SCALE_ASPECT_EXPAND
+		and absf(logical_canvas_size.x - theoretical_logical_canvas_size.x) <= 2.0
+		and absf(logical_canvas_size.y - theoretical_logical_canvas_size.y) <= 2.0,
+		"runtime main physical 1280x720 harness uses production canvas_items+expand transform: physical 1280x720 -> logical %.0fx%.0f (theoretical %.2fx%.2f)" % [logical_canvas_size.x, logical_canvas_size.y, theoretical_logical_canvas_size.x, theoretical_logical_canvas_size.y],
+	)
+	_expect(
+		runtime_canvas_rect.position.is_equal_approx(Vector2.ZERO)
+		and runtime_canvas_rect.size.is_equal_approx(logical_canvas_size),
+		"runtime main split GameScreen fills the transformed logical canvas",
+	)
+	var physical_1280_path := "runtime main split GameScreen at physical 1280x720"
+	_check_named_controls_do_not_overlap(runtime_screen, ["TopBar", "PublicTrack", "TableArea", "PlayerBoard"], physical_1280_path, logical_canvas_size)
+	_check_named_controls_do_not_overlap(runtime_screen, ["PlanetBoard", "RightInspector"], physical_1280_path, logical_canvas_size)
+	_check_named_controls_inside_viewport(runtime_screen, ["TopBar", "PublicTrack", "TableArea", "PlayerBoard", "HandRack", "PlayerBidBoard", "PlayerMainActionDock", "PlayerStatusLampRow", "PlayerReadinessChipRow"], physical_1280_path, logical_canvas_size)
+	_check_visible_buttons_inside_viewport(runtime_screen, physical_1280_path, logical_canvas_size)
+	_check_planet_is_largest_runtime_surface(runtime_screen, physical_1280_path)
 	_check_planet_board_square_stage_priority(runtime_screen)
-	_check_public_track_thin(runtime_screen, "runtime main split GameScreen")
+	_check_public_track_thin(runtime_screen, physical_1280_path)
 	_check_player_board_first_glance_actions(runtime_screen)
 	_check_player_board_hand_rack_priority(runtime_screen)
-	_check_right_inspector_collapses_empty_panels(runtime_screen, "runtime main split GameScreen")
-	_check_main_table_text_is_scan_first(runtime_screen, "runtime main split GameScreen")
+	_check_right_inspector_collapses_empty_panels(runtime_screen, physical_1280_path)
+	_check_main_table_text_is_scan_first(runtime_screen, physical_1280_path)
 	var runtime_map_rect := Rect2()
 	if map_host != null:
 		runtime_map_rect = map_host.get_global_rect()
@@ -6215,10 +6252,14 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	await _check_runtime_full_hand_private_discard_purchase(main, runtime_screen)
 	root.remove_child(screen)
 	screen.queue_free()
-	viewport.remove_child(main)
+	root.remove_child(main)
 	main.queue_free()
-	root.remove_child(viewport)
-	viewport.queue_free()
+	root.content_scale_size = original_content_scale_size
+	root.content_scale_mode = original_content_scale_mode
+	root.content_scale_aspect = original_content_scale_aspect
+	root.size = original_window_size
+	for _frame in range(2):
+		await process_frame
 
 
 func _check_viewmodel_contracts() -> void:
