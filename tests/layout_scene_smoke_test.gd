@@ -8724,7 +8724,7 @@ func _check_game_session_save_ownership_component() -> void:
 		var envelope_validation: Dictionary = save.call("validate_envelope", envelope) if save != null else {}
 		var registry_snapshot: Dictionary = owner_registry.call("registry_snapshot") if owner_registry != null else {}
 		_expect(bool(envelope_validation.get("valid", false)) and int(envelope.get("save_version", 0)) == 3 and str(envelope.get("ruleset_id", "")) == "v0.6" and (envelope.get("sections", {}) as Dictionary).size() == 18, "Save Coordinator validates one strict v3/v0.6 18-section envelope")
-		_expect(bool(registry_snapshot.get("valid", false)) and int(registry_snapshot.get("required_section_count", 0)) == 18 and int(registry_snapshot.get("transactional_section_count", 0)) == 5 and int(registry_snapshot.get("unsupported_section_count", 0)) == 13 and not bool(registry_snapshot.get("resume_ready", true)), "production owner registry exposes the audited 5/13 boundary and keeps resume fail-closed")
+		_expect(bool(registry_snapshot.get("valid", false)) and int(registry_snapshot.get("required_section_count", 0)) == 18 and int(registry_snapshot.get("transactional_section_count", 0)) == 6 and int(registry_snapshot.get("unsupported_section_count", 0)) == 12 and not bool(registry_snapshot.get("resume_ready", true)), "production owner registry exposes the audited 6/12 boundary and keeps resume fail-closed")
 		coordinator.free()
 		bridge.free()
 	var main_packed := load("res://scenes/main.tscn") as PackedScene
