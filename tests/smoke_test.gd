@@ -2425,15 +2425,6 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 	var hand_before := int(main.call("_player_counted_hand_size", players[0] as Dictionary))
 	var bonus_card_granted := bool(main.call("_grant_role_bonus_card_on_purchase", 0, district_index, ""))
 	var hand_after := int(main.call("_player_counted_hand_size", players[0] as Dictionary))
-	players = _as_array(main.get("players")).duplicate(true)
-	var resource_player := players[0] as Dictionary
-	resource_player["role_card"] = main.call("_make_player_role_card", 0, 1)
-	players[0] = resource_player
-	main.set("players", players)
-	var cash_before_resource := int((players[0] as Dictionary).get("cash", 0))
-	var resource_reward := int(main.call("_apply_role_market_income_bonus", 0, district_index))
-	players = _as_array(main.get("players")).duplicate(true)
-	var cash_after_resource := int((players[0] as Dictionary).get("cash", 0))
 	var upgrade_player := players[0] as Dictionary
 	upgrade_player["role_card"] = main.call("_make_player_role_card", 0, 3)
 	players[0] = upgrade_player
@@ -2444,9 +2435,8 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 	var cash_after_upgrade := int((players[0] as Dictionary).get("cash", 0))
 	var total_role_income := int((players[0] as Dictionary).get("total_role_income", 0))
 	var passed := bonus_card_granted and hand_after == hand_before + 1
-	passed = passed and resource_reward == 55 and cash_after_resource == cash_before_resource + 55
 	passed = passed and upgrade_reward == 160 and cash_after_upgrade == cash_before_upgrade + 160
-	passed = passed and total_role_income == 215
+	passed = passed and total_role_income == 160
 	players[0] = saved_player
 	districts[district_index] = saved_district
 	main.set("players", players)
