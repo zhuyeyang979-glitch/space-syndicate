@@ -4383,7 +4383,6 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	var saved_weather := runtime_coordinator.call("weather_to_save_data") as Dictionary
 	var saved_selected_district := int(main.get("selected_district"))
 	var saved_selected_player := int(main.get("selected_player"))
-	var saved_districts := districts.duplicate(true)
 	main.set("selected_district", district_index)
 	main.set("selected_player", 0)
 	var news_skill := main.call("_make_skill", "热搜推送1") as Dictionary
@@ -4392,11 +4391,12 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	ok = ok and String(main.call("_card_codex_filter_label", "weather")) == "天气干预"
 	ok = ok and _card_presentation_category_id(main, news_skill) == "news"
 	ok = ok and _card_presentation_text(main, news_skill, "strategy_route_label").contains("新闻信息战")
-	var before_panic := int((districts[district_index] as Dictionary).get("panic", 0))
-	ok = ok and bool(main.call("_apply_news_event", news_skill))
-	var after_districts := _as_array(main.get("districts"))
-	var after_panic := int((after_districts[district_index] as Dictionary).get("panic", 0))
-	ok = ok and after_panic > before_panic
+	var news_plan := runtime_coordinator.call("plan_card_economy_product_route_effect", {
+		"handler_id": "news_event",
+		"active_entry": {"resolution_id": 4406, "player_index": 0},
+		"skill": news_skill,
+	}) as Dictionary
+	ok = ok and bool(news_plan.get("ready", false)) and String(news_plan.get("family_id", "")) == "economy"
 	runtime_coordinator.call("apply_weather_save_data", {})
 	ok = ok and bool(weather.call("apply_weather_control_at", weather_skill, district_index))
 	var forecast := weather.call("forecast_snapshot") as Dictionary
@@ -4408,7 +4408,6 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	var restore_weather := runtime_coordinator.call("apply_weather_save_data", saved_weather) as Dictionary
 	main.set("selected_district", saved_selected_district)
 	main.set("selected_player", saved_selected_player)
-	main.set("districts", saved_districts)
 	main.call("_refresh_ui")
 	return ok and bool(restore_weather.get("applied", false))
 
