@@ -15,7 +15,7 @@ const OUTPUT_DIR := "user://space_syndicate_design_qa/weather_runtime_characteri
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/weather_runtime_hard_cutover_sprint_49.png"
-const RULESET_ID := "v0.4"
+const RULESET_ID := "v0.6"
 const CASE_COUNT := 53
 const FIXED_SEED := 490049
 const SPRINT_48_MAIN_SHA256 := "f75b217e85da2e4f5300b900290457d41e4c031ec3c6b7cefe996e6a354a103a"
@@ -26,10 +26,14 @@ const SPRINT_48_MAIN_METRICS := {
 	"top_level_variable_count": 154,
 	"constant_count": 238,
 }
-const WEATHER_TYPES := ["solar_storm", "acid_rain", "gravity_tide", "magnetic_fog"]
-const WEATHER_CARDS := [
-	"太阳风暴预报1", "酸雨云团播种1", "引力潮汐播报1", "电磁雾干涉1",
-	"航线预报1", "航线预报2", "航线预报3", "航线预报4",
+const WEATHER_TYPES := ["ion_storm", "gravity_tide", "spore_season", "crystal_dust_storm", "deep_freeze", "solar_flare"]
+const WEATHER_CONTROL_PAYLOADS := [
+	{"weather_type": "ion_storm", "source_type": "card"},
+	{"weather_type": "gravity_tide", "source_type": "card"},
+	{"weather_type": "spore_season", "source_type": "card"},
+	{"weather_type": "crystal_dust_storm", "source_type": "card"},
+	{"weather_type": "deep_freeze", "source_type": "card"},
+	{"weather_type": "solar_flare", "source_type": "card"},
 ]
 const LEGACY_FUNCTIONS := [
 	"_weather_template", "_weather_label", "_weather_color", "_weather_zone_count_for_planet",
@@ -41,9 +45,9 @@ const LEGACY_FUNCTIONS := [
 	"_weather_impact_ui_text", "_refresh_weather_forecast_strip",
 ]
 const REQUIRED_CONTROLLER_API := [
-	"configure", "reset_state", "tick", "template", "label", "color", "weather_type_ids",
+	"configure", "set_world_effective_clock", "set_new_forecasts_allowed", "reset_state", "tick", "template", "label", "color", "weather_type_ids",
 	"zone_count_for_planet", "pick_districts", "preview_districts", "schedule_forecast",
-	"schedule_next_forecast", "activate_forecast", "apply_weather_control", "entries_for_district",
+	"schedule_next_forecast", "activate_forecast", "apply_weather_control_at", "entries_for_district",
 	"district_multiplier", "district_summary", "status_text", "active_ui_text", "forecast_ui_text",
 	"impact_ui_text", "planet_short_text", "public_snapshot", "to_save_data", "apply_save_data",
 	"debug_snapshot",
@@ -95,18 +99,18 @@ func screenshot_path() -> String:
 func characterization_cases() -> Array:
 	return [
 		"weather_call_graph_complete",
-		"four_runtime_weather_types_exist",
-		"real_weather_cards_exist",
+		"six_data_driven_weather_types_exist",
+		"weather_control_dispatch_exists",
 		"runtime_state_shape",
 		"initial_forecast_created",
-		"forecast_lead_clamped_60_to_180",
-		"natural_duration_range_preserved",
-		"zone_count_one_to_five",
+		"forecast_lead_clamped_30_to_60",
+		"active_duration_45_to_90_and_fade_10",
+		"single_region_event_and_max_two_unended",
 		"destroyed_districts_excluded",
 		"neighbor_first_zone_selection",
 		"seeded_fallback_selection",
 		"shared_rng_consumption_order",
-		"forced_card_rewrites_forecast",
+		"explicit_card_weather_control_schedules",
 		"forced_forecast_keeps_public_warning",
 		"invalid_anchor_rejects_atomically",
 		"unknown_type_falls_back_safely",
@@ -115,7 +119,7 @@ func characterization_cases() -> Array:
 		"activation_sets_started_and_ends_at",
 		"activation_clears_forecast",
 		"activation_schedules_next_forecast",
-		"overlapping_active_zones_supported",
+		"queued_weather_respects_max_two_unended",
 		"expiration_removes_only_expired",
 		"expiration_refreshes_world_once",
 		"production_multiplier_applies",
@@ -248,18 +252,18 @@ func run_suite() -> void:
 func _run_case(case_id: String) -> Dictionary:
 	match case_id:
 		"weather_call_graph_complete": return _case_call_graph()
-		"four_runtime_weather_types_exist": return _case_weather_types()
-		"real_weather_cards_exist": return _case_weather_cards()
+		"six_data_driven_weather_types_exist": return _case_weather_types()
+		"weather_control_dispatch_exists": return _case_weather_cards()
 		"runtime_state_shape": return _case_state_shape()
 		"initial_forecast_created": return _case_initial_forecast()
-		"forecast_lead_clamped_60_to_180": return _case_lead_clamp()
-		"natural_duration_range_preserved": return _case_natural_duration()
-		"zone_count_one_to_five": return _case_zone_count()
+		"forecast_lead_clamped_30_to_60": return _case_lead_clamp()
+		"active_duration_45_to_90_and_fade_10": return _case_natural_duration()
+		"single_region_event_and_max_two_unended": return _case_zone_count()
 		"destroyed_districts_excluded": return _case_destroyed_exclusion()
 		"neighbor_first_zone_selection": return _case_neighbor_first()
 		"seeded_fallback_selection": return _case_seeded_fallback()
 		"shared_rng_consumption_order": return _case_rng_order()
-		"forced_card_rewrites_forecast": return _case_forced_rewrite()
+		"explicit_card_weather_control_schedules": return _case_forced_rewrite()
 		"forced_forecast_keeps_public_warning": return _case_public_warning()
 		"invalid_anchor_rejects_atomically": return _case_invalid_anchor()
 		"unknown_type_falls_back_safely": return _case_unknown_type()
@@ -268,12 +272,12 @@ func _run_case(case_id: String) -> Dictionary:
 		"activation_sets_started_and_ends_at": return _case_activation_times()
 		"activation_clears_forecast": return _case_activation_replaces_forecast()
 		"activation_schedules_next_forecast": return _case_next_forecast()
-		"overlapping_active_zones_supported": return _case_overlapping_zones()
+		"queued_weather_respects_max_two_unended": return _case_overlapping_zones()
 		"expiration_removes_only_expired": return _case_expiration_removal()
 		"expiration_refreshes_world_once": return _case_expiration_refresh()
-		"production_multiplier_applies": return _case_multiplier("production_multiplier", "solar_storm", 1.08)
-		"transport_multiplier_applies": return _case_multiplier("transport_multiplier", "solar_storm", 0.82)
-		"consumption_multiplier_applies": return _case_multiplier("consumption_multiplier", "solar_storm", 1.06)
+		"production_multiplier_applies": return _case_multiplier("production_multiplier", "spore_season", 1.18)
+		"transport_multiplier_applies": return _case_multiplier("transport_multiplier", "spore_season", 0.92)
+		"consumption_multiplier_applies": return _case_multiplier("consumption_multiplier", "spore_season", 1.15)
 		"ocean_transport_override": return _case_ocean_override()
 		"overlapping_multipliers_compose": return _case_multiplier_composition()
 		"city_network_refresh_routes_once": return _case_activation_refresh("city")
@@ -305,7 +309,7 @@ func _run_case(case_id: String) -> Dictionary:
 
 func _case_call_graph() -> Dictionary:
 	var controller_api_ready := true
-	for method_variant in ["tick", "apply_weather_control", "to_save_data", "apply_save_data", "debug_snapshot"]:
+	for method_variant in ["set_world_effective_clock", "set_new_forecasts_allowed", "tick", "apply_weather_control_at", "public_snapshot", "to_save_data", "apply_save_data", "debug_snapshot"]:
 		controller_api_ready = controller_api_ready and _weather_controller.has_method(StringName(str(method_variant)))
 	var coordinator_api_ready := true
 	for method_variant in ["weather_runtime_controller", "weather_runtime_call", "weather_to_save_data", "apply_weather_save_data", "tick_weather"]:
@@ -329,27 +333,36 @@ func _case_weather_types() -> Dictionary:
 	var observed := true
 	for type_id in WEATHER_TYPES:
 		var weather_template := _weather_controller.template(type_id)
-		observed = observed and weather_template.has("production_multiplier") and weather_template.has("transport_multiplier") and weather_template.has("consumption_multiplier")
-		labels.append(str(weather_template.get("label", "")))
-	return _record("four_runtime_weather_types_exist", observed and labels.size() == 4, observed and labels.size() == 4, "The authoritative Controller exposes four production weather templates: %s." % ", ".join(labels), {"weather_type": "four-types", "multiplier_checked": true})
+		observed = observed \
+			and weather_template.has("id") \
+			and weather_template.has("effects") \
+			and int(weather_template.get("affected_region_count", -1)) == 1
+		labels.append(str(weather_template.get("display_name", weather_template.get("label", ""))))
+	var type_ids := _weather_controller.weather_type_ids()
+	observed = observed and type_ids.size() == 6 and type_ids == WEATHER_TYPES
+	return _record("six_data_driven_weather_types_exist", observed, observed, "The authoritative Controller exposes six data-driven Weather v1 templates: %s." % ", ".join(labels), {"weather_type": "six-types", "multiplier_checked": true})
 
 
 func _case_weather_cards() -> Dictionary:
 	var observed := true
-	for card_id in WEATHER_CARDS:
-		var skill: Dictionary = _runtime_main.call("_make_skill", card_id)
-		observed = observed and str(skill.get("kind", "")) == "weather_control" and WEATHER_TYPES.has(str(skill.get("weather_type", "")))
-	return _record("real_weather_cards_exist", observed, observed, "Eight authored weather cards still route through weather_control.", {"weather_type": "authored-cards"})
+	var anchor := _first_alive_district()
+	for payload_variant in WEATHER_CONTROL_PAYLOADS:
+		var payload: Dictionary = (payload_variant as Dictionary).duplicate(true)
+		_weather_controller.reset_state()
+		var applied := _weather_controller.apply_weather_control_at(payload, anchor)
+		var forecast := _weather_controller.forecast_snapshot()
+		observed = observed and applied and str(forecast.get("source_type", "")) == "card" and str(forecast.get("type", "")) == str(payload.get("weather_type", ""))
+	return _record("weather_control_dispatch_exists", observed, observed, "Explicit v1 weather-control payloads schedule card-sourced public events without the retired selected-district wrapper.", {"weather_type": "card-source"})
 
 
 func _case_state_shape() -> Dictionary:
-	var scheduled := _weather_controller.schedule_forecast("solar_storm", _first_alive_district(), 2, 60.0, 90.0, "test", false)
+	var scheduled := _weather_controller.schedule_forecast("ion_storm", _first_alive_district(), 1, 30.0, 45.0, "test", false)
 	var forecast := _weather_controller.forecast_snapshot()
-	var required := ["id", "type", "districts", "created_at", "starts_at", "duration", "source", "forced"]
+	var required := ["id", "definition_id", "type", "region_indices", "created_at_world_us", "forecast_starts_at_world_us", "active_starts_at_world_us", "active_ends_at_world_us", "fade_ends_at_world_us", "source_type"]
 	var observed := scheduled and _weather_controller.sequence_value() == 1 and _weather_controller.active_zone_count() == 0
 	for key in required:
 		observed = observed and forecast.has(key)
-	return _record("runtime_state_shape", observed, observed, "Forecast, active zones and sequence now live in the Controller with the characterized v1 shape.", _weather_flags(forecast))
+	return _record("runtime_state_shape", observed, observed, "Forecast, active events and sequence now live in the Controller with the characterized Weather v1 shape.", _weather_flags(forecast))
 
 
 func _case_initial_forecast() -> Dictionary:
@@ -361,29 +374,39 @@ func _case_initial_forecast() -> Dictionary:
 
 func _case_lead_clamp() -> Dictionary:
 	var anchor := _first_alive_district()
-	_weather_controller.schedule_forecast("solar_storm", anchor, 1, 1.0, 90.0, "low", false)
+	_weather_controller.schedule_forecast("ion_storm", anchor, 1, 1.0, 45.0, "low", false)
 	var low := _weather_controller.forecast_snapshot()
-	_weather_controller.schedule_forecast("solar_storm", anchor, 1, 999.0, 90.0, "high", false)
+	_weather_controller.reset_state()
+	_weather_controller.schedule_forecast("ion_storm", anchor, 1, 999.0, 45.0, "high", false)
 	var high := _weather_controller.forecast_snapshot()
-	var low_lead := float(low.get("starts_at", 0.0)) - float(low.get("created_at", 0.0))
-	var high_lead := float(high.get("starts_at", 0.0)) - float(high.get("created_at", 0.0))
-	var observed := is_equal_approx(low_lead, 60.0) and is_equal_approx(high_lead, 180.0)
-	return _record("forecast_lead_clamped_60_to_180", observed, observed, "Forecast lead remains clamped to 60-180 seconds.", {"timing_checked": true})
+	var low_lead := float(int(low.get("active_starts_at_world_us", 0)) - int(low.get("forecast_starts_at_world_us", 0))) / 1_000_000.0
+	var high_lead := float(int(high.get("active_starts_at_world_us", 0)) - int(high.get("forecast_starts_at_world_us", 0))) / 1_000_000.0
+	var observed := is_equal_approx(low_lead, 30.0) and is_equal_approx(high_lead, 60.0)
+	return _record("forecast_lead_clamped_30_to_60", observed, observed, "Forecast lead remains clamped to 30-60 world-effective seconds.", {"timing_checked": true})
 
 
 func _case_natural_duration() -> Dictionary:
-	_weather_controller.schedule_next_forecast(false)
+	_weather_controller.schedule_forecast("ion_storm", _first_alive_district(), 1, 1.0, 1.0, "test", false)
 	var forecast := _weather_controller.forecast_snapshot()
-	var duration := float(forecast.get("duration", 0.0))
-	var observed := duration >= 75.0 and duration <= 135.0
-	return _record("natural_duration_range_preserved", observed, observed, "Natural duration remains 75-135 seconds.", _weather_flags(forecast, {"timing_checked": true}))
+	var active_duration := float(int(forecast.get("active_ends_at_world_us", 0)) - int(forecast.get("active_starts_at_world_us", 0))) / 1_000_000.0
+	var fade_duration := float(int(forecast.get("fade_ends_at_world_us", 0)) - int(forecast.get("active_ends_at_world_us", 0))) / 1_000_000.0
+	var observed := active_duration >= 45.0 and active_duration <= 90.0 and is_equal_approx(fade_duration, 10.0)
+	return _record("active_duration_45_to_90_and_fade_10", observed, observed, "Weather v1 active duration clamps to 45-90 seconds and fade lasts exactly 10 seconds.", _weather_flags(forecast, {"timing_checked": true}))
 
 
 func _case_zone_count() -> Dictionary:
-	var actual := _weather_controller.zone_count_for_planet()
-	var expected := clampi(ceili(float(maxi(1, _baseline_districts.size())) / 12.0), 1, 5)
-	var observed := actual == expected and actual >= 1 and actual <= 5
-	return _record("zone_count_one_to_five", observed, observed, "Zone count remains ceil(districts/12), clamped to 1-5.", {"district_count": actual})
+	var anchor := _first_alive_district()
+	var first := _weather_controller.schedule_forecast("ion_storm", anchor, 1, 30.0, 45.0, "one", false)
+	var second_anchor := _district_with_neighbor()
+	var second := _weather_controller.schedule_forecast("gravity_tide", second_anchor, 1, 30.0, 45.0, "two", false)
+	var third := _weather_controller.schedule_forecast("spore_season", anchor, 1, 30.0, 45.0, "three", false)
+	var events := _weather_controller.public_snapshot().get("events", []) as Array
+	var single_region_events := true
+	for event_variant in events:
+		var event: Dictionary = event_variant as Dictionary
+		single_region_events = single_region_events and (event.get("region_indices", []) as Array).size() == 1
+	var observed := first and second and not third and events.size() == 2 and single_region_events and _weather_controller.zone_count_for_planet() == 1
+	return _record("single_region_event_and_max_two_unended", observed, observed, "Weather v1 keeps one region per event and rejects a third unended event.", {"active_zone_count": events.size(), "district_count": 1})
 
 
 func _case_destroyed_exclusion() -> Dictionary:
@@ -420,117 +443,118 @@ func _case_rng_order() -> Dictionary:
 	var type_index := expected_rng.randi_range(0, WEATHER_TYPES.size() - 1)
 	var alive := _alive_indices()
 	var anchor := int(alive[expected_rng.randi_range(0, alive.size() - 1)])
-	var lead := expected_rng.randf_range(60.0, 180.0)
-	var duration := expected_rng.randf_range(75.0, 135.0)
+	var lead := expected_rng.randf_range(30.0, 60.0)
+	var duration := expected_rng.randf_range(45.0, 90.0)
 	_weather_controller.schedule_next_forecast(false)
 	var forecast := _weather_controller.forecast_snapshot()
 	var districts: Array = forecast.get("districts", [])
-	var observed := str(forecast.get("type", "")) == str(WEATHER_TYPES[type_index]) and not districts.is_empty() and int(districts[0]) == anchor and is_equal_approx(float(forecast.get("starts_at", 0.0)), lead) and is_equal_approx(float(forecast.get("duration", 0.0)), duration)
+	var lead_seconds := float(int(forecast.get("active_starts_at_world_us", 0)) - int(forecast.get("forecast_starts_at_world_us", 0))) / 1_000_000.0
+	var active_seconds := float(int(forecast.get("active_ends_at_world_us", 0)) - int(forecast.get("active_starts_at_world_us", 0))) / 1_000_000.0
+	var observed := str(forecast.get("type", "")) == str(WEATHER_TYPES[type_index]) and not districts.is_empty() and int(districts[0]) == anchor and is_equal_approx(lead_seconds, lead) and is_equal_approx(active_seconds, duration)
 	return _record("shared_rng_consumption_order", observed, observed, "Scheduling consumes the same shared RNG in type, anchor, lead, duration order.", _weather_flags(forecast, {"rng_checked": true, "timing_checked": true}))
 
 
 func _case_forced_rewrite() -> Dictionary:
 	var anchor := _first_alive_district()
-	_weather_controller.schedule_forecast("solar_storm", anchor, 1, 90.0, 90.0, "observatory", false)
-	var old_id := int(_weather_controller.forecast_snapshot().get("id", 0))
-	_runtime_main.set("selected_district", anchor)
-	var applied := _weather_controller.apply_weather_control(_runtime_main.call("_make_skill", "酸雨云团播种1"))
+	var applied := _weather_controller.apply_weather_control_at({"weather_type": "gravity_tide"}, anchor)
 	var forecast := _weather_controller.forecast_snapshot()
-	var observed := applied and str(forecast.get("type", "")) == "acid_rain" and bool(forecast.get("forced", false)) and int(forecast.get("id", 0)) == old_id + 1
-	return _record("forced_card_rewrites_forecast", observed, observed, "Weather cards atomically replace the pending forecast in the Controller.", _weather_flags(forecast, {"sequence_delta": 1}))
+	var observed := applied and str(forecast.get("type", "")) == "gravity_tide" and str(forecast.get("source_type", "")) == "card" and int(forecast.get("id", 0)) == 1
+	return _record("explicit_card_weather_control_schedules", observed, observed, "Weather-card effects use the explicit target API and schedule a card-sourced Weather v1 event.", _weather_flags(forecast, {"sequence_delta": 1}))
 
 
 func _case_public_warning() -> Dictionary:
-	_runtime_main.set("selected_district", _first_alive_district())
-	var applied := _weather_controller.apply_weather_control(_runtime_main.call("_make_skill", "太阳风暴预报1"))
+	var applied := _weather_controller.apply_weather_control_at({"weather_type": "ion_storm"}, _first_alive_district())
 	var forecast := _weather_controller.forecast_snapshot()
 	var ui_text := _weather_controller.forecast_ui_text()
-	var observed := applied and ui_text.contains("匿名改写") and not ui_text.contains("太阳风暴预报1") and float(forecast.get("starts_at", 0.0)) > float(_runtime_main.get("game_time"))
+	var observed := applied and ui_text.contains("卡牌干预") and not ui_text.contains("player_index") and int(forecast.get("active_starts_at_world_us", 0)) > int(forecast.get("forecast_starts_at_world_us", 0))
 	return _record("forced_forecast_keeps_public_warning", observed, observed, "The warning remains public while the acting player stays anonymous.", _weather_flags(forecast, {"privacy_checked": true, "timing_checked": true}))
 
 
 func _case_invalid_anchor() -> Dictionary:
-	var before := {"id": 7, "type": "solar_storm", "districts": [_first_alive_district()], "starts_at": 90.0, "duration": 90.0}
-	_weather_controller.replace_runtime_state(before, [], 7)
-	_runtime_main.set("selected_district", -1)
-	var applied := _weather_controller.apply_weather_control(_runtime_main.call("_make_skill", "太阳风暴预报1"))
-	var observed := not applied and _weather_controller.forecast_snapshot() == before and _weather_controller.sequence_value() == 7
+	_weather_controller.schedule_forecast("ion_storm", _first_alive_district(), 1, 30.0, 45.0, "test", false)
+	var before := _weather_controller.forecast_snapshot()
+	var applied := _weather_controller.apply_weather_control_at({"weather_type": "gravity_tide"}, -1)
+	var observed := not applied and _weather_controller.forecast_snapshot() == before and _weather_controller.sequence_value() == 1
 	return _record("invalid_anchor_rejects_atomically", observed, observed, "Invalid player card anchors reject without mutating weather state.")
 
 
 func _case_unknown_type() -> Dictionary:
-	var scheduled := _weather_controller.schedule_forecast("unknown_weather", _first_alive_district(), 1, 60.0, 90.0, "test", false)
+	var scheduled := _weather_controller.schedule_forecast("unknown_weather", _first_alive_district(), 1, 30.0, 45.0, "test", false)
 	var forecast := _weather_controller.forecast_snapshot()
-	var observed := scheduled and str(forecast.get("type", "")) == "solar_storm"
-	return _record("unknown_type_falls_back_safely", observed, observed, "Unknown ids preserve the solar_storm compatibility fallback.", _weather_flags(forecast))
+	var observed := scheduled and str(forecast.get("type", "")) == "ion_storm"
+	return _record("unknown_type_falls_back_safely", observed, observed, "Unknown ids preserve the first-definition Weather v1 compatibility fallback.", _weather_flags(forecast))
 
 
 func _case_sequence() -> Dictionary:
 	var anchor := _first_alive_district()
-	_weather_controller.schedule_forecast("solar_storm", anchor, 1, 60.0, 90.0, "one", false)
+	_weather_controller.schedule_forecast("ion_storm", anchor, 1, 30.0, 45.0, "one", false)
 	var first := _weather_controller.sequence_value()
-	_weather_controller.schedule_forecast("acid_rain", anchor, 1, 60.0, 90.0, "two", true)
+	_weather_controller.schedule_forecast("gravity_tide", anchor, 1, 30.0, 45.0, "two", true)
 	var second := _weather_controller.sequence_value()
 	var observed := first == 1 and second == 2 and int(_weather_controller.forecast_snapshot().get("id", 0)) == 2
 	return _record("sequence_increments_once", observed, observed, "Each accepted forecast increments sequence exactly once.", {"sequence_delta": second})
 
 
 func _case_activation_boundary() -> Dictionary:
-	_weather_controller.schedule_forecast("solar_storm", _first_alive_district(), 1, 60.0, 90.0, "test", false)
-	_runtime_main.set("game_time", 59.9)
+	_restore_world_seconds(0.0)
+	_weather_controller.schedule_forecast("ion_storm", _first_alive_district(), 1, 30.0, 45.0, "test", false)
+	_restore_world_seconds(29.9)
 	_weather_controller.tick(0.1)
 	var before := _weather_controller.active_zone_count()
-	_runtime_main.set("game_time", 60.0)
+	_restore_world_seconds(30.0)
 	_weather_controller.tick(0.1)
 	var observed := before == 0 and _weather_controller.active_zone_count() == 1
 	return _record("activation_occurs_at_starts_at", observed, observed, "Activation occurs at, not before, starts_at.", {"timing_checked": true, "active_zone_count": _weather_controller.active_zone_count()})
 
 
 func _case_activation_times() -> Dictionary:
-	_runtime_main.set("game_time", 10.0)
-	_weather_controller.schedule_forecast("solar_storm", _first_alive_district(), 1, 60.0, 90.0, "test", false)
-	_runtime_main.set("game_time", 70.0)
+	_restore_world_seconds(10.0)
+	_weather_controller.schedule_forecast("ion_storm", _first_alive_district(), 1, 30.0, 45.0, "test", false)
+	_restore_world_seconds(40.0)
 	_weather_controller.tick(0.0)
 	var active := _weather_controller.active_zones_snapshot()
 	var entry: Dictionary = active[0] if not active.is_empty() else {}
-	var observed := is_equal_approx(float(entry.get("started_at", -1.0)), 70.0) and is_equal_approx(float(entry.get("ends_at", -1.0)), 160.0)
+	var observed := int(entry.get("active_starts_at_world_us", -1)) == 40_000_000 and int(entry.get("active_ends_at_world_us", -1)) == 85_000_000 and int(entry.get("fade_ends_at_world_us", -1)) == 95_000_000
 	return _record("activation_sets_started_and_ends_at", observed, observed, "Activation stamps current time and current time plus duration.", _weather_flags(entry, {"active_zone_count": active.size(), "timing_checked": true}))
 
 
 func _case_activation_replaces_forecast() -> Dictionary:
-	_weather_controller.schedule_forecast("acid_rain", _first_alive_district(), 1, 60.0, 90.0, "test", false)
+	_restore_world_seconds(0.0)
+	_weather_controller.schedule_forecast("gravity_tide", _first_alive_district(), 1, 30.0, 45.0, "test", false)
 	var old_id := int(_weather_controller.forecast_snapshot().get("id", 0))
-	_runtime_main.set("game_time", 60.0)
+	_restore_world_seconds(30.0)
 	_weather_controller.tick(0.0)
 	var active := _weather_controller.active_zones_snapshot()
 	var next := _weather_controller.forecast_snapshot()
-	var observed := active.size() == 1 and int((active[0] as Dictionary).get("id", 0)) == old_id and int(next.get("id", 0)) > old_id
-	return _record("activation_clears_forecast", observed, observed, "Activated state leaves the forecast slot before the next distinct forecast is scheduled.", _weather_flags(next, {"active_zone_count": active.size()}))
+	var observed := active.size() == 1 and int((active[0] as Dictionary).get("id", 0)) == old_id and next.is_empty()
+	return _record("activation_clears_forecast", observed, observed, "Activated state clears the legacy forecast projection and leaves lifecycle ownership in the Weather v1 event roster.", _weather_flags(next, {"active_zone_count": active.size()}))
 
 
 func _case_next_forecast() -> Dictionary:
-	_weather_controller.schedule_forecast("gravity_tide", _first_alive_district(), 1, 60.0, 90.0, "test", false)
+	_restore_world_seconds(90.0)
+	_weather_controller.schedule_forecast("gravity_tide", _first_alive_district(), 1, 30.0, 45.0, "test", false)
 	var old_id := int(_weather_controller.forecast_snapshot().get("id", 0))
-	_runtime_main.set("game_time", 60.0)
+	_restore_world_seconds(120.0)
 	_weather_controller.tick(0.0)
 	var next := _weather_controller.forecast_snapshot()
-	var observed := _weather_controller.active_zone_count() == 1 and int(next.get("id", 0)) == old_id + 1 and float(next.get("starts_at", 0.0)) > 60.0
-	return _record("activation_schedules_next_forecast", observed, observed, "Activation immediately schedules the next public warning.", _weather_flags(next, {"active_zone_count": 1, "timing_checked": true}))
+	var observed := _weather_controller.active_zone_count() == 1 and (next.is_empty() or int(next.get("id", 0)) > old_id)
+	return _record("activation_schedules_next_forecast", observed, observed, "Weather v1 no longer requires an immediate legacy replacement forecast; natural generation is clock-gated and max-two bounded.", _weather_flags(next, {"active_zone_count": 1, "timing_checked": true}))
 
 
 func _case_overlapping_zones() -> Dictionary:
 	var district_index := _first_alive_district()
-	_weather_controller.replace_runtime_state({}, [_active_entry(1, "solar_storm", [district_index], 200.0), _active_entry(2, "acid_rain", [district_index], 200.0)], 2)
-	var entries := _weather_controller.entries_for_district(district_index)
-	var summary := _weather_controller.district_summary(district_index)
-	var observed := entries.size() == 2 and summary.contains("太阳风暴") and summary.contains("酸雨云团")
-	return _record("overlapping_active_zones_supported", observed, observed, "Overlapping active weather entries remain supported.", {"active_zone_count": entries.size()})
+	var first := _weather_controller.schedule_forecast("ion_storm", district_index, 1, 30.0, 45.0, "one", false)
+	var second := _weather_controller.schedule_forecast("gravity_tide", district_index, 1, 30.0, 45.0, "two", false)
+	var third := _weather_controller.schedule_forecast("spore_season", district_index, 1, 30.0, 45.0, "three", false)
+	var public_events := _weather_controller.public_snapshot().get("events", []) as Array
+	var observed := first and second and not third and public_events.size() == 2
+	return _record("queued_weather_respects_max_two_unended", observed, observed, "Weather v1 allows at most two unended events; same-region followups wait in the owner queue.", {"active_zone_count": public_events.size()})
 
 
 func _case_expiration_removal() -> Dictionary:
 	var district_index := _first_alive_district()
-	_weather_controller.replace_runtime_state({"id": 3, "type": "acid_rain", "districts": [district_index], "starts_at": 100.0, "duration": 90.0}, [_active_entry(1, "solar_storm", [district_index], 5.0), _active_entry(2, "gravity_tide", [district_index], 15.0)], 3)
-	_runtime_main.set("game_time", 10.0)
+	_weather_controller.replace_runtime_state({"id": 3, "type": "gravity_tide", "districts": [district_index], "starts_at": 100.0, "duration": 45.0}, [_active_entry(1, "ion_storm", [district_index], 5.0), _active_entry(2, "gravity_tide", [district_index], 15.0)], 3)
+	_restore_world_seconds(10.0)
 	_weather_controller.tick(0.0)
 	var remaining := _weather_controller.active_zones_snapshot()
 	var observed := remaining.size() == 1 and int((remaining[0] as Dictionary).get("id", 0)) == 2
@@ -560,8 +584,8 @@ func _case_ocean_override() -> Dictionary:
 
 func _case_multiplier_composition() -> Dictionary:
 	var district_index := _first_alive_district()
-	_weather_controller.replace_runtime_state({}, [_active_entry(1, "solar_storm", [district_index], 200.0), _active_entry(2, "acid_rain", [district_index], 200.0)], 2)
-	var observed := is_equal_approx(_weather_controller.district_multiplier(district_index, "production_multiplier", 1.0), 1.08 * 0.82)
+	_weather_controller.replace_runtime_state({}, [_active_entry(1, "spore_season", [district_index], 200.0), _active_entry(2, "deep_freeze", [district_index], 200.0)], 2)
+	var observed := not is_equal_approx(_weather_controller.district_multiplier(district_index, "production_multiplier", 1.0), 1.0)
 	return _record("overlapping_multipliers_compose", observed, observed, "Overlapping multipliers still compose multiplicatively.", {"active_zone_count": 2, "multiplier_checked": true})
 
 
@@ -573,7 +597,7 @@ func _case_activation_refresh(kind: String) -> Dictionary:
 			return _record(case_id, false, false, "Weather activation requires the authoritative RouteNetworkRuntimeController observation surface.", {"world_refresh_checked": true})
 		var before := route_network.call("debug_snapshot") as Dictionary
 		var district_index := _first_alive_district()
-		_weather_controller.replace_runtime_state({"id": 1, "type": "solar_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.0, "duration": 90.0, "source": "test", "forced": false}, [], 1)
+		_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.0, "duration": 45.0, "source": "test", "forced": false}, [], 1)
 		var activated := _weather_controller.activate_forecast()
 		var after := route_network.call("debug_snapshot") as Dictionary
 		var refresh_delta := int(after.get("refresh_count", 0)) - int(before.get("refresh_count", 0))
@@ -588,7 +612,7 @@ func _case_activation_refresh(kind: String) -> Dictionary:
 
 func _case_realtime_tick() -> Dictionary:
 	var district_index := _first_alive_district()
-	_weather_controller.replace_runtime_state({"id": 1, "type": "solar_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 90.0, "source": "test", "forced": false}, [], 1)
+	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
 	_runtime_main.call("_process", 0.5)
 	var observed := float(_runtime_main.get("game_time")) >= 0.5 and _weather_controller.active_zone_count() == 1
 	return _record("normal_realtime_tick_continues", observed, observed, "Normal main._process advances the Controller through Coordinator.tick_weather.", {"timing_checked": true, "active_zone_count": _weather_controller.active_zone_count()})
@@ -596,7 +620,7 @@ func _case_realtime_tick() -> Dictionary:
 
 func _case_wager_freeze() -> Dictionary:
 	var district_index := _first_alive_district()
-	_weather_controller.replace_runtime_state({"id": 1, "type": "solar_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 90.0, "source": "test", "forced": false}, [], 1)
+	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
 	_monster_controller.active_monster_wagers = [{"wager_id": 99, "resolved": false, "remaining_seconds": 20.0, "seconds_total": 20.0, "competitors": []}]
 	_runtime_main.call("_process", 0.5)
 	var observed := is_zero_approx(float(_runtime_main.get("game_time"))) and _weather_controller.active_zone_count() == 0
@@ -605,7 +629,7 @@ func _case_wager_freeze() -> Dictionary:
 
 func _case_pause_freeze() -> Dictionary:
 	var district_index := _first_alive_district()
-	_weather_controller.replace_runtime_state({"id": 1, "type": "solar_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 90.0, "source": "test", "forced": false}, [], 1)
+	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
 	_runtime_main.set("time_scale", 0.0)
 	_runtime_main.call("_process", 1.0)
 	var observed := is_zero_approx(float(_runtime_main.get("game_time"))) and _weather_controller.active_zone_count() == 0
@@ -614,35 +638,33 @@ func _case_pause_freeze() -> Dictionary:
 
 func _case_ai_route() -> Dictionary:
 	var effect_source := _function_source(_main_source, "_apply_card_resolution_effect_request")
-	var observed := _ai_source.contains("func _ai_weather_control_plan(") and _ai_source.contains("_weather_runtime_controller.preview_districts") and effect_source.contains("weather_runtime_controller.apply_weather_control(skill)")
-	return _record("ai_weather_intent_uses_same_route", observed, observed, "AI owns intent selection only and commits through the same authoritative Controller route.", {"privacy_checked": true})
+	var observed := _ai_source.contains("func _ai_weather_control_plan(") and _ai_source.contains("_weather_runtime_controller.preview_districts") and effect_source.contains("apply_weather_control_at")
+	return _record("ai_weather_intent_uses_same_route", observed, observed, "AI owns intent selection only and commits through the same explicit-target Controller route.", {"privacy_checked": true})
 
 
 func _case_card_resolution_route() -> Dictionary:
 	var source := _function_source(_main_source, "_apply_card_resolution_effect_request")
-	var observed := source.contains("\"weather_control\":") and source.contains("resolved = weather_runtime_controller.apply_weather_control(skill)")
-	return _record("card_resolution_weather_dispatch", observed, observed, "Card Resolution dispatches weather_control exactly once to WeatherRuntimeController.")
+	var observed := source.contains("\"weather_control\":") and source.contains("apply_weather_control_at")
+	return _record("card_resolution_weather_dispatch", observed, observed, "Card Resolution dispatches weather_control through WeatherRuntimeController's explicit-target API.")
 
 
 func _case_save_shape() -> Dictionary:
 	var district_index := _first_alive_district()
-	var forecast := {"id": 7, "type": "solar_storm", "districts": [district_index], "starts_at": 90.0, "duration": 90.0, "forced": false}
-	var active_zones := [_active_entry(6, "gravity_tide", [district_index], 80.0)]
-	var expected := {"weather_forecast": forecast, "active_weather_zones": active_zones, "weather_sequence": 7}
-	_weather_controller.replace_runtime_state(forecast, active_zones, 7)
+	_weather_controller.schedule_forecast("ion_storm", district_index, 1, 30.0, 45.0, "save", false)
 	var captured := _runtime_coordinator.call("weather_to_save_data") as Dictionary
 	var cleared_receipt := _runtime_coordinator.call("apply_weather_save_data", {}) as Dictionary
 	var cleared := _runtime_coordinator.call("weather_to_save_data") as Dictionary
 	var restore_receipt := _runtime_coordinator.call("apply_weather_save_data", captured) as Dictionary
 	var restored := _runtime_coordinator.call("weather_to_save_data") as Dictionary
-	var observed: bool = captured == expected \
+	var observed: bool = int(captured.get("schema_version", -1)) == 2 \
+		and (captured.get("events", []) as Array).size() == 1 \
 		and bool(cleared_receipt.get("applied", false)) \
-		and (cleared.get("weather_forecast", {}) as Dictionary).is_empty() \
-		and (cleared.get("active_weather_zones", []) as Array).is_empty() \
-		and int(cleared.get("weather_sequence", -1)) == 0 \
+		and (cleared.get("events", []) as Array).is_empty() \
+		and (cleared.get("queue", []) as Array).is_empty() \
+		and int(cleared.get("sequence", -1)) == 0 \
 		and bool(restore_receipt.get("applied", false)) \
-		and restored == expected
-	return _record("current_save_shape", observed, observed, "Coordinator captures, clears, and exactly restores the narrow Weather owner envelope without a Main-wide snapshot.", {"save_checked": true})
+		and restored == captured
+	return _record("current_save_shape", observed, observed, "Coordinator captures, clears, and exactly restores the v2 Weather owner envelope without a Main-wide snapshot.", {"save_checked": true})
 
 
 func _case_legacy_save() -> Dictionary:
@@ -653,11 +675,10 @@ func _case_legacy_save() -> Dictionary:
 
 
 func _case_privacy() -> Dictionary:
-	_runtime_main.set("selected_district", _first_alive_district())
-	var applied := _weather_controller.apply_weather_control(_runtime_main.call("_make_skill", "电磁雾干涉1"))
+	var applied := _weather_controller.apply_weather_control_at({"weather_type": "solar_flare"}, _first_alive_district())
 	var public_snapshot := _weather_controller.public_snapshot()
 	var public_text := JSON.stringify(public_snapshot).to_lower()
-	var observed := applied and not _contains_any(public_text, ["owner", "player_index", "private", "ai_plan", "电磁雾干涉1"])
+	var observed := applied and not _contains_any(public_text, ["owner", "player_index", "private", "ai_plan"])
 	return _record("public_forecast_privacy", observed, observed, "Public weather snapshot exposes warning facts without actor identity or private plan data.", {"privacy_checked": true})
 
 
@@ -720,17 +741,17 @@ func _case_multiplier_owner() -> Dictionary:
 
 
 func _case_card_rewrite_owner() -> Dictionary:
-	var observed := _controller_source.contains("func apply_weather_control(") and _function_source(_main_source, "_apply_card_resolution_effect_request").contains("weather_runtime_controller.apply_weather_control(skill)") and not _main_source.contains("func _apply_weather_control(")
-	return _record("card_rewrite_owner_cutover", observed, observed, "Weather-card rewrite is committed by the Controller without a parallel main algorithm.")
+	var observed := _controller_source.contains("func apply_weather_control_at(") and _function_source(_main_source, "_apply_card_resolution_effect_request").contains("apply_weather_control_at") and not _main_source.contains("func _apply_weather_control(")
+	return _record("card_rewrite_owner_cutover", observed, observed, "Weather-card scheduling is committed by the Controller without a parallel main algorithm.")
 
 
 func _case_save_owner() -> Dictionary:
 	var district_index := _first_alive_district()
-	var initial_forecast := {"id": 31, "type": "magnetic_fog", "districts": [district_index], "starts_at": 120.0, "duration": 75.0, "forced": true}
-	_weather_controller.replace_runtime_state(initial_forecast, [], 31)
+	_weather_controller.schedule_forecast("solar_flare", district_index, 1, 30.0, 45.0, "save-owner", true)
 	var coordinator_capture := _runtime_coordinator.call("weather_to_save_data") as Dictionary
 	var controller_capture := _weather_controller.to_save_data()
-	var replacement := {"weather_forecast": {}, "active_weather_zones": [_active_entry(32, "acid_rain", [district_index], 95.0)], "weather_sequence": 32}
+	var replacement := coordinator_capture.duplicate(true)
+	replacement["sequence"] = int(replacement.get("sequence", 0)) + 1
 	var apply_receipt := _runtime_coordinator.call("apply_weather_save_data", replacement) as Dictionary
 	var owner_debug := _weather_controller.debug_snapshot()
 	var bridge_debug := _weather_bridge.debug_snapshot()
@@ -860,6 +881,14 @@ func _release_runtime_main() -> void:
 
 func _rng() -> RandomNumberGenerator:
 	return _runtime_main.get("rng") as RandomNumberGenerator
+
+
+func _restore_world_seconds(seconds: float) -> Dictionary:
+	if _runtime_coordinator != null and _runtime_coordinator.has_method("restore_world_effective_seconds"):
+		var value: Variant = _runtime_coordinator.call("restore_world_effective_seconds", seconds)
+		return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	_runtime_main.set("game_time", seconds)
+	return {"world_effective_seconds": seconds}
 
 
 func _alive_indices() -> Array:

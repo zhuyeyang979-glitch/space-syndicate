@@ -351,20 +351,19 @@ func _run() -> void:
 	_expect(product_market != null and not product_market.is_empty() and _product_market_has_prices(product_market), "new game creates priced product market data")
 	var status_label := main.get("status_label") as Label
 	_expect(status_label != null and status_label.text.contains("天气:") and status_label.text.contains("预报:"), "top status bar exposes active weather and the next public forecast")
-	var weather_active_label := main.find_child("WeatherActiveLabel", true, false) as Label
-	var weather_forecast_label := main.find_child("WeatherForecastLabel", true, false) as Label
-	var weather_impact_label := main.find_child("WeatherImpactLabel", true, false) as Label
+	var weather_forecast_strip := main.find_child("WeatherForecastStrip", true, false) as Control
+	var weather_layer := main.find_child("WeatherLayer", true, false) as Control
+	if weather_layer == null:
+		weather_layer = main.find_child("WeatherMapOverlay", true, false) as Control
 	_expect(
-		weather_active_label != null
-		and weather_forecast_label != null
-		and weather_impact_label != null
-		and weather_active_label.text.contains("现在：")
-		and weather_forecast_label.text.contains("预报：")
-		and weather_impact_label.text.contains("影响："),
-		"main map panel exposes a compact weather forecast strip with current, forecast, and impact text"
+		weather_forecast_strip != null
+		and weather_forecast_strip.has_method("set_view_model")
+		and weather_layer != null
+		and weather_layer.has_method("set_overlay_view_model"),
+		"main map panel exposes WeatherForecastStrip plus a weather layer instead of legacy label-only forecast UI"
 	)
-	_expect(_verify_weather_forecast_system(main), "planet weather forecasts one to five affected regions 60-180 seconds ahead and then affects GDP modifiers")
-	_expect(_verify_news_and_weather_card_rules(main), "news cards are player-made effects while weather-control cards rewrite public forecasts")
+	_expect(_verify_weather_forecast_system(main), "planet weather forecasts use v1 timings: one region per event, 30-60s forecast, 45-90s active, 10s fade, max two unended events")
+	_expect(_verify_news_and_weather_card_rules(main), "news cards are player-made effects while weather-control cards schedule explicit v1 public weather events")
 	_summon_starting_monsters_for_smoke(main, EXPECTED_SUMMONED_MONSTER_COUNT)
 	await process_frame
 	_mark_smoke_progress("field monster checks")
@@ -3334,39 +3333,39 @@ func _verify_ai_weather_control_policy(main: Node) -> bool:
 				memory["route_plan_stage"] = "defend_route"
 				memory["route_plan_score"] = 880
 				player["ai_memory"] = memory
-				player["slots"] = [main.call("_make_skill", "引力潮汐播报1"), main.call("_make_skill", "酸雨云团播种1")]
+				player["slots"] = [{"kind": "weather_control", "weather_type": "gravity_tide"}, {"kind": "weather_control", "weather_type": "spore_season"}]
 			players[player_index] = player
 		main.set("players", players)
-		var tide_skill := main.call("_make_skill", "引力潮汐播报1") as Dictionary
-		var acid_skill := main.call("_make_skill", "酸雨云团播种1") as Dictionary
+		var tide_skill := {"kind": "weather_control", "weather_type": "gravity_tide"}
+		var rival_weather_skill := {"kind": "weather_control", "weather_type": "spore_season"}
 		var tide_plan := _ai_controller(main).call("_ai_weather_control_plan", 1, tide_skill) as Dictionary
-		var acid_plan := _ai_controller(main).call("_ai_weather_control_plan", 1, acid_skill) as Dictionary
+		var rival_weather_plan := _ai_controller(main).call("_ai_weather_control_plan", 1, rival_weather_skill) as Dictionary
 		var tide_context := _ai_controller(main).call("_ai_card_play_context", 1, 0, tide_skill) as Dictionary
-		var acid_context := _ai_controller(main).call("_ai_card_play_context", 1, 1, acid_skill) as Dictionary
+		var rival_weather_context := _ai_controller(main).call("_ai_card_play_context", 1, 1, rival_weather_skill) as Dictionary
 		var tide_ok := not tide_plan.is_empty() \
 			and String(tide_plan.get("weather_type", "")) == "gravity_tide" \
 			and String(tide_plan.get("weather_plan_role", "")) == "boost_own_route" \
 			and int(tide_plan.get("target_owner", -1)) == 1 \
 			and int(tide_plan.get("weather_own_value", 0)) > 0 \
 			and int(tide_context.get("weather_plan_score", 0)) > 0
-		var acid_ok := not acid_plan.is_empty() \
-			and String(acid_plan.get("weather_type", "")) == "acid_rain" \
-			and String(acid_plan.get("weather_plan_role", "")) == "suppress_rival_city" \
-			and int(acid_plan.get("target_owner", -1)) == 2 \
-			and int(acid_plan.get("weather_rival_value", 0)) > 0 \
-			and int(acid_context.get("weather_plan_score", 0)) > 0
-		var queued := bool(_ai_controller(main).call("_ai_queue_play_candidate", 1, tide_context, [tide_context, acid_context])) if tide_ok else false
+		var rival_weather_ok := not rival_weather_plan.is_empty() \
+			and String(rival_weather_plan.get("weather_type", "")) == "spore_season" \
+			and String(rival_weather_plan.get("weather_plan_role", "")) == "suppress_rival_city" \
+			and int(rival_weather_plan.get("target_owner", -1)) == 2 \
+			and int(rival_weather_plan.get("weather_rival_value", 0)) > 0 \
+			and int(rival_weather_context.get("weather_plan_score", 0)) > 0
+		var queued := bool(_ai_controller(main).call("_ai_queue_play_candidate", 1, tide_context, [tide_context, rival_weather_context])) if tide_ok else false
 		var players_after := _as_array(main.get("players"))
 		var memory_ok := queued \
 			and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "policy_kind", "weather_control_gravity_tide") \
 			and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "weather_plan_role", "boost_own_route")
 		if not tide_ok:
 			failures.append("tide plan=%s context=%s" % [str(tide_plan), str(tide_context)])
-		if not acid_ok:
-			failures.append("acid plan=%s context=%s" % [str(acid_plan), str(acid_context)])
+		if not rival_weather_ok:
+			failures.append("rival weather plan=%s context=%s" % [str(rival_weather_plan), str(rival_weather_context)])
 		if not memory_ok:
 			failures.append("weather memory queued=%s" % str(queued))
-		ok = ok and tide_ok and acid_ok and memory_ok
+		ok = ok and tide_ok and rival_weather_ok and memory_ok
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	if not failures.is_empty():
@@ -4188,47 +4187,65 @@ func _verify_weather_forecast_system(main: Node) -> bool:
 	if runtime_coordinator == null or weather == null:
 		return false
 	var saved_weather := runtime_coordinator.call("weather_to_save_data") as Dictionary
-	var saved_game_time := float(main.get("game_time"))
-	var forecast := weather.call("forecast_snapshot") as Dictionary
-	if forecast == null or forecast.is_empty():
-		print("Missing initial weather forecast")
-		ok = false
-	else:
-		var now := float(main.get("game_time"))
-		var lead := float(forecast.get("starts_at", now)) - now
-		var affected := _as_array(forecast.get("districts", []))
-		ok = ok and lead >= 59.9 and lead <= 180.1
-		ok = ok and affected.size() >= 1 and affected.size() <= 5
-		ok = ok and String(weather.call("status_text")).contains("预报")
-		main.set("game_time", float(forecast.get("starts_at", now)) + 0.2)
-		weather.call("tick", 0.2)
-		main.call("_refresh_ui")
+	var saved_clock := {}
+	if runtime_coordinator.has_method("world_effective_clock_snapshot"):
+		saved_clock = runtime_coordinator.call("world_effective_clock_snapshot") as Dictionary
+	var district_index := _first_alive_district_index_for_test(_as_array(main.get("districts")))
+	if district_index < 0:
+		return false
+	runtime_coordinator.call("apply_weather_save_data", {})
+	if runtime_coordinator.has_method("restore_world_effective_seconds"):
+		runtime_coordinator.call("restore_world_effective_seconds", 0.0)
+	var scheduled := weather.call("schedule_forecast", "ion_storm", district_index, 1, 30.0, 45.0, "smoke", false)
+	var public_snapshot := weather.call("public_snapshot") as Dictionary
+	var events := _as_array(public_snapshot.get("events", []))
+	ok = ok and bool(scheduled) and events.size() == 1
+	ok = ok and int((public_snapshot.get("timing", {}) as Dictionary).get("forecast_min_seconds", -1)) == 30
+	ok = ok and int((public_snapshot.get("timing", {}) as Dictionary).get("forecast_max_seconds", -1)) == 60
+	ok = ok and int((public_snapshot.get("timing", {}) as Dictionary).get("active_min_seconds", -1)) == 45
+	ok = ok and int((public_snapshot.get("timing", {}) as Dictionary).get("active_max_seconds", -1)) == 90
+	ok = ok and int((public_snapshot.get("timing", {}) as Dictionary).get("fade_seconds", -1)) == 10
+	ok = ok and int((public_snapshot.get("timing", {}) as Dictionary).get("max_unended_events", -1)) == 2
+	if not events.is_empty():
+		var event := events[0] as Dictionary
+		var affected := _as_array(event.get("region_indices", event.get("districts", [])))
+		var forecast_us := int(event.get("forecast_starts_at_world_us", -1))
+		var active_us := int(event.get("active_starts_at_world_us", -1))
+		var active_end_us := int(event.get("active_ends_at_world_us", -1))
+		var fade_end_us := int(event.get("fade_ends_at_world_us", -1))
+		ok = ok and String(event.get("type", "")) == "ion_storm"
+		ok = ok and affected == [district_index]
+		ok = ok and active_us - forecast_us >= 30_000_000 and active_us - forecast_us <= 60_000_000
+		ok = ok and active_end_us - active_us >= 45_000_000 and active_end_us - active_us <= 90_000_000
+		ok = ok and fade_end_us - active_end_us == 10_000_000
+		if runtime_coordinator.has_method("restore_world_effective_seconds"):
+			runtime_coordinator.call("restore_world_effective_seconds", float(active_us) / 1_000_000.0)
+		weather.call("tick", 0.0)
 		var active := _as_array(weather.call("active_zones_snapshot"))
-		ok = ok and not active.is_empty()
-		if not active.is_empty():
-			var active_entry := active[0] as Dictionary
-			var active_districts := _as_array(active_entry.get("districts", []))
-			ok = ok and active_districts.size() >= 1 and active_districts.size() <= 5
-			var district_index := int(active_districts[0]) if not active_districts.is_empty() else -1
-			if district_index >= 0:
-				var production_multiplier := float(weather.call("district_multiplier", district_index, "production_multiplier", 1.0))
-				var transport_multiplier := float(weather.call("district_multiplier", district_index, "transport_multiplier", 1.0))
-				var consumption_multiplier := float(weather.call("district_multiplier", district_index, "consumption_multiplier", 1.0))
-				ok = ok and (absf(production_multiplier - 1.0) > 0.001 or absf(transport_multiplier - 1.0) > 0.001 or absf(consumption_multiplier - 1.0) > 0.001)
-				ok = ok and String(weather.call("district_summary", district_index)).contains(String(weather.call("label", String(active_entry.get("type", "")))))
-			ok = ok and String(weather.call("status_text")).contains("影响")
-			var active_label := main.find_child("WeatherActiveLabel", true, false) as Label
-			var impact_label := main.find_child("WeatherImpactLabel", true, false) as Label
-			ok = ok and active_label != null and active_label.text.contains("现在：") and active_label.text.contains(String(weather.call("label", String(active_entry.get("type", "")))))
-			ok = ok and impact_label != null and impact_label.text.contains("产×") and impact_label.text.contains("交×") and impact_label.text.contains("消×")
-	main.set("game_time", saved_game_time)
+		ok = ok and active.size() == 1
+		var region_effect := weather.call("region_effect_snapshot", district_index) as Dictionary
+		ok = ok and not _as_array(region_effect.get("effects", [])).is_empty()
+		main.call("_refresh_ui")
+		var weather_forecast_strip := main.find_child("WeatherForecastStrip", true, false) as Control
+		var weather_layer := main.find_child("WeatherLayer", true, false) as Control
+		if weather_layer == null:
+			weather_layer = main.find_child("WeatherMapOverlay", true, false) as Control
+		ok = ok and weather_forecast_strip != null and weather_layer != null
+		if runtime_coordinator.has_method("restore_world_effective_seconds"):
+			runtime_coordinator.call("restore_world_effective_seconds", float(fade_end_us) / 1_000_000.0)
+		weather.call("tick", 0.0)
+		var post_fade_events := _as_array((weather.call("public_snapshot") as Dictionary).get("events", []))
+		ok = ok and post_fade_events.is_empty()
+	var restore_clock_ok := true
+	if not saved_clock.is_empty() and runtime_coordinator.has_method("restore_world_effective_seconds"):
+		var clock_restore := runtime_coordinator.call("restore_world_effective_seconds", float(saved_clock.get("world_effective_seconds", 0.0))) as Dictionary
+		restore_clock_ok = not clock_restore.is_empty()
 	var restore_result := runtime_coordinator.call("apply_weather_save_data", saved_weather) as Dictionary
 	main.call("_refresh_ui")
-	return ok and bool(restore_result.get("applied", false))
+	return ok and restore_clock_ok and bool(restore_result.get("applied", false))
 
 
 func _verify_news_and_weather_card_rules(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
 	var ok := true
 	var districts := _as_array(main.get("districts"))
 	var district_index := -1
@@ -4239,32 +4256,41 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 			break
 	if district_index < 0:
 		return false
+	var runtime_coordinator := _runtime_coordinator(main)
+	var weather := _weather_controller(main)
+	if runtime_coordinator == null or weather == null:
+		return false
+	var saved_weather := runtime_coordinator.call("weather_to_save_data") as Dictionary
+	var saved_selected_district := int(main.get("selected_district"))
+	var saved_selected_player := int(main.get("selected_player"))
+	var saved_districts := districts.duplicate(true)
 	main.set("selected_district", district_index)
 	main.set("selected_player", 0)
 	var news_skill := main.call("_make_skill", "热搜推送1") as Dictionary
-	var weather_skill := main.call("_make_skill", "太阳风暴预报1") as Dictionary
+	var weather_skill := {"weather_type": "ion_storm", "source_type": "card", "effect": "weather_control"}
 	ok = ok and String(main.call("_card_codex_filter_label", "news")) == "新闻事件"
 	ok = ok and String(main.call("_card_codex_filter_label", "weather")) == "天气干预"
 	ok = ok and String(main.call("_card_codex_category_for_card", "热搜推送1", news_skill)) == "news"
-	ok = ok and String(main.call("_card_codex_category_for_card", "太阳风暴预报1", weather_skill)) == "weather"
 	ok = ok and String(main.call("_card_strategy_summary", news_skill)).contains("新闻信息战")
-	ok = ok and String(main.call("_card_strategy_summary", weather_skill)).contains("天气博弈")
-	ok = ok and String(main.call("_card_art_stats", weather_skill)).contains("太阳风暴")
 	var before_panic := int((districts[district_index] as Dictionary).get("panic", 0))
 	ok = ok and bool(main.call("_apply_news_event", news_skill))
 	var after_districts := _as_array(main.get("districts"))
 	var after_panic := int((after_districts[district_index] as Dictionary).get("panic", 0))
 	ok = ok and after_panic > before_panic
-	var weather := _weather_controller(main)
-	ok = ok and weather != null and bool(weather.call("apply_weather_control", weather_skill))
-	var forecast := weather.call("forecast_snapshot") as Dictionary if weather != null else {}
+	runtime_coordinator.call("apply_weather_save_data", {})
+	ok = ok and bool(weather.call("apply_weather_control_at", weather_skill, district_index))
+	var forecast := weather.call("forecast_snapshot") as Dictionary
 	ok = ok and forecast != null and not forecast.is_empty()
-	ok = ok and bool(forecast.get("forced", false))
-	ok = ok and String(forecast.get("type", "")) == "solar_storm"
-	ok = ok and _as_array(forecast.get("districts", [])).size() >= 1 and _as_array(forecast.get("districts", [])).size() <= 5
-	ok = ok and float(forecast.get("starts_at", 0.0)) - float(main.get("game_time")) >= 59.9
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
+	ok = ok and String(forecast.get("source_type", "")) == "card"
+	ok = ok and String(forecast.get("type", "")) == "ion_storm"
+	ok = ok and _as_array(forecast.get("region_indices", forecast.get("districts", []))) == [district_index]
+	ok = ok and int(forecast.get("active_starts_at_world_us", 0)) - int(forecast.get("forecast_starts_at_world_us", 0)) >= 30_000_000
+	var restore_weather := runtime_coordinator.call("apply_weather_save_data", saved_weather) as Dictionary
+	main.set("selected_district", saved_selected_district)
+	main.set("selected_player", saved_selected_player)
+	main.set("districts", saved_districts)
+	main.call("_refresh_ui")
+	return ok and bool(restore_weather.get("applied", false))
 
 
 func _verify_monster_card_terrain_restriction(main: Node, players: Array, districts: Array) -> bool:
