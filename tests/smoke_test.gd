@@ -1833,8 +1833,8 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 		"active_card_resolution": (main.get("active_card_resolution") as Dictionary).duplicate(true),
 		"card_resolution_queue": _as_array(main.get("card_resolution_queue")).duplicate(true),
 		"next_card_resolution_queue": _as_array(main.get("next_card_resolution_queue")).duplicate(true),
-		"card_resolution_batch_locked": bool(main.get("card_resolution_batch_locked")),
-		"card_resolution_auction_open": bool(main.get("card_resolution_auction_open")),
+		"card_resolution_batch_locked": main.get("card_resolution_batch_locked") == true,
+		"card_resolution_auction_open": main.get("card_resolution_auction_open") == true,
 	}
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
 	var ok := true
