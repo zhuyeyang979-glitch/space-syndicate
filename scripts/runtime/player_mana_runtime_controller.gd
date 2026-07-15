@@ -304,6 +304,9 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 		return {"applied": false, "reason": "invalid_asset_save_payload"}
 	if int(data.get("state_version", -1)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
 		return {"applied": false, "reason": "asset_save_header_invalid"}
+	var saved_revision := int(data.get("revision", -1))
+	if saved_revision < 0:
+		return {"applied": false, "reason": "asset_save_revision_invalid"}
 	var prepared_pools := _normalize_player_rows(data.get("pools_by_player", {}), true)
 	var prepared_remainders := _normalize_player_rows(data.get("recovery_remainders_by_player", {}), false)
 	if not bool(prepared_pools.get("valid", false)) or not bool(prepared_remainders.get("valid", false)):
@@ -318,7 +321,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_reservations = reservations
 	_terminal_receipts = terminal_receipts
 	_current_game_time = maxf(0.0, float(data.get("current_game_time", 0.0)))
-	_revision = maxi(_revision + 1, int(data.get("revision", 0)))
+	_revision = saved_revision
 	_last_reason = ""
 	return {"applied": true, "reason": "", "player_count": _pools_by_player.size(), "reservation_count": _reservations.size(), "revision": _revision}
 

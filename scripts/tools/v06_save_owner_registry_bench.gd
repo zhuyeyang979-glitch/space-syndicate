@@ -55,7 +55,7 @@ func run_bench() -> Dictionary:
 	var production_snapshot: Dictionary = production_registry.registry_snapshot() if production_registry != null else {}
 	_check(bool(production_snapshot.get("valid", false)), "production_registry_matches_handshake_manifest")
 	_check(int(production_snapshot.get("required_section_count", 0)) == 18 and int(production_snapshot.get("binding_count", 0)) == 18, "production_registry_has_all_18_unique_sections")
-	_check(int(production_snapshot.get("transactional_section_count", 0)) == 5 and int(production_snapshot.get("unsupported_section_count", 0)) == 13 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_only_five_auditable_transactional_owners")
+	_check(int(production_snapshot.get("transactional_section_count", 0)) == 6 and int(production_snapshot.get("unsupported_section_count", 0)) == 12 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_six_auditable_transactional_owners")
 	_check(_bankruptcy_binding_is_explicitly_unsupported(production_registry), "bankruptcy_section_has_no_save_owner_api_or_transactional_claim")
 	_check(not bool(production_snapshot.get("captures_business_state", true)) and not bool(production_snapshot.get("stores_parallel_owner_state", true)), "registry_bindings_copy_no_bankruptcy_or_participant_journal_state")
 	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-reject", "write_id": "production-reject"}) if production_registry != null else {}

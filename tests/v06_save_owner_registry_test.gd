@@ -28,7 +28,7 @@ func _run() -> void:
 	_expect(bool(result.get("passed", false)), "save owner registry transaction and privacy checks pass: %s" % JSON.stringify(result.get("failures", [])))
 	_expect(int(result.get("checks", 0)) >= 20, "save owner registry Bench executes the complete contract matrix")
 	var evidence: Dictionary = result.get("evidence", {}) if result.get("evidence", {}) is Dictionary else {}
-	_expect(int(evidence.get("production_required_sections", 0)) == 18 and int(evidence.get("production_transactional_sections", 0)) == 5 and int(evidence.get("production_unsupported_sections", 0)) == 13, "production registry exposes the audited 5/13 capability boundary")
+	_expect(int(evidence.get("production_required_sections", 0)) == 18 and int(evidence.get("production_transactional_sections", 0)) == 6 and int(evidence.get("production_unsupported_sections", 0)) == 12, "production registry exposes the audited 6/12 capability boundary")
 	_expect(bool(evidence.get("bankruptcy_section_registered", false)) and not bool(evidence.get("bankruptcy_section_transactional", true)) and str(evidence.get("bankruptcy_unsupported_reason", "")) == "save_capture_apply_checkpoint_api_missing", "bankruptcy neutral estate is an independent explicit-unsupported section")
 	_expect(not bool(evidence.get("production_resume_ready", true)) and not bool(evidence.get("full_production_restore_claimed", true)), "production resume stays fail-closed and makes no full-restore claim")
 	_expect(bool(evidence.get("global_preflight", false)) and bool(evidence.get("rollback_complete", false)) and bool(evidence.get("public_receipt_private", false)), "global preflight, rollback, and public receipt privacy are proven")

@@ -42,7 +42,12 @@ unsupported_reason = "commodity_flow_section_split_missing"
 script = ExtResource("2_binding")
 section_id = "player_mana"
 owner_id = "player_mana"
-unsupported_reason = "revision_exact_rollback_missing"
+owner_path = NodePath("../../PlayerManaRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
 
 [sub_resource type="Resource" id="BindingCommodityBelt"]
 script = ExtResource("2_binding")
