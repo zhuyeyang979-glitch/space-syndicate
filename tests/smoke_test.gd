@@ -1377,7 +1377,7 @@ func _verify_military_unit_variant_cards(main: Node) -> bool:
 			for fact_variant in facts:
 				facts_text += "%s\n" % String(fact_variant)
 			var art_stats := _card_presentation_text(main, skill, "art_stats")
-			if not facts_text.contains("军队生命") or not facts_text.contains("军队机动") or not facts_text.contains("军队在场") or not art_stats.contains("HP"):
+			if not facts_text.contains("军队生命") or not facts_text.contains("军队火力") or not facts_text.contains("军队在场") or not art_stats.contains("HP") or not art_stats.contains("伤"):
 				return false
 	var fighter := main.call("_make_skill", "制空战斗机1") as Dictionary
 	var tank := main.call("_make_skill", "重装坦克1") as Dictionary
@@ -1443,11 +1443,12 @@ func _verify_military_balance_identity(main: Node) -> bool:
 
 func _verify_ai_military_command_policy(main: Node) -> bool:
 	var military := _military_controller(main)
-	var saved := main.call("_capture_run_state") as Dictionary
-	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
-	var ok := true
+	var ai := _ai_controller(main)
+	var saved_ai_enabled := bool(ai.get("ai_card_decision_enabled")) if ai != null else false
+	var ok := military != null and ai != null
 	var failures := []
-	main.set("ai_card_decision_enabled", true)
+	if ai != null:
+		ai.set("ai_card_decision_enabled", true)
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
@@ -1458,8 +1459,7 @@ func _verify_ai_military_command_policy(main: Node) -> bool:
 	var own_index := _first_empty_land_district_for_contract(main)
 	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
 	if own_index < 0 or rival_index < 0:
-		main.call("_apply_run_state", saved)
-		main.set("ai_card_decision_enabled", saved_ai_enabled)
+		_restore_ai_military_command_fixture_for_smoke(main, saved_ai_enabled)
 		return false
 	var players := _as_array(main.get("players")).duplicate(true)
 	for player_index in range(players.size()):
@@ -1468,31 +1468,44 @@ func _verify_ai_military_command_policy(main: Node) -> bool:
 		player["action_cooldown"] = 0.0
 		players[player_index] = player
 	main.set("players", players)
-	ok = ok and CITY_FIXTURES.create_city_bool(main, 1, own_index, "AI军令防守城")
-	ok = ok and CITY_FIXTURES.create_city_bool(main, 2, rival_index, "AI军令竞品城")
-	ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
-	ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "星尘香料")
 	var districts := _as_array(main.get("districts")).duplicate(true)
 	var own_district := districts[own_index] as Dictionary
 	var own_city := (own_district.get("city", {}) as Dictionary).duplicate(true)
+	own_city["active"] = true
+	own_city["owner"] = 1
+	own_city["name"] = "AI军令防守城"
+	own_city["products"] = [{"name": "环晶电池"}]
+	own_city["demands"] = ["轨迹墨水"]
 	own_city["last_income"] = 720
 	own_city["trade_route_damage"] = 2
 	own_city["trade_disrupted_routes"] = 2
 	own_district["damage"] = 3
 	own_district["panic"] = 20
+	own_district["products"] = ["环晶电池"]
+	own_district["demands"] = ["轨迹墨水"]
 	own_district["city"] = own_city
 	districts[own_index] = own_district
 	var rival_district := districts[rival_index] as Dictionary
 	var rival_city := (rival_district.get("city", {}) as Dictionary).duplicate(true)
+	rival_city["active"] = true
+	rival_city["owner"] = 2
+	rival_city["name"] = "AI军令竞品城"
+	rival_city["products"] = [{"name": "环晶电池"}]
+	rival_city["demands"] = ["星尘香料"]
 	rival_city["last_income"] = 920
 	rival_city["trade_route_damage"] = 1
 	rival_city["trade_disrupted_routes"] = 1
 	rival_district["damage"] = 1
 	rival_district["panic"] = 18
+	rival_district["products"] = ["环晶电池"]
+	rival_district["demands"] = ["星尘香料"]
 	rival_district["city"] = rival_city
 	districts[rival_index] = rival_district
 	main.set("districts", districts)
-	main.call("_refresh_city_networks")
+	var coordinator := _runtime_card_coordinator(main)
+	ok = ok and _mark_ai_fixture_regions_active_for_route_owner(coordinator, [own_index, rival_index])
+	var route_refresh: Dictionary = coordinator.call("refresh_route_network", true) if coordinator != null else {}
+	ok = ok and bool(route_refresh.get("refreshed", false))
 	var uid := 77001
 	var bomber := main.call("_make_skill", "轨道轰炸机3") as Dictionary
 	var unit := {
@@ -1509,7 +1522,7 @@ func _verify_ai_military_command_policy(main: Node) -> bool:
 	military.call("replace_runtime_state", [unit], uid + 1)
 	var actor := _monster_controller(main).call("_make_auto_monster", 0, 0, own_index, 2, 1) as Dictionary
 	actor["resource_focus"] = ["环晶电池"]
-	main.set("auto_monsters", [actor])
+	_monster_controller(main).set("auto_monsters", [actor])
 	var guard_command := military.call("make_command_skill", "guard", 3, uid, "轨道轰炸机3") as Dictionary
 	var strike_command := military.call("make_command_skill", "strike_district", 3, uid, "轨道轰炸机3") as Dictionary
 	var attack_command := military.call("make_command_skill", "attack_monster", 3, uid, "轨道轰炸机3") as Dictionary
@@ -1518,26 +1531,31 @@ func _verify_ai_military_command_policy(main: Node) -> bool:
 	ai_player["slots"] = [guard_command, strike_command, attack_command]
 	players[1] = ai_player
 	main.set("players", players)
-	var guard_context := _ai_controller(main).call("_ai_card_play_context", 1, 0, guard_command) as Dictionary
-	var strike_context := _ai_controller(main).call("_ai_card_play_context", 1, 1, strike_command) as Dictionary
-	var attack_context := _ai_controller(main).call("_ai_card_play_context", 1, 2, attack_command) as Dictionary
+	var production_candidates := ai.call("_ai_card_play_candidates", 1) as Array
+	var guard_context := _ai_candidate_for_slot(production_candidates, 0)
+	var strike_context := _ai_candidate_for_slot(production_candidates, 1)
+	var attack_context := _ai_candidate_for_slot(production_candidates, 2)
+	var maximum_bid_budget := 6800 - int(ai.get("AI_CARD_BUY_MIN_CASH_RESERVE"))
 	var guard_ok := not guard_context.is_empty() \
 		and String(guard_context.get("policy_kind", "")) == "military_command_guard" \
 		and String(guard_context.get("military_command_role", "")) == "guard_city" \
 		and int(guard_context.get("target_city", -1)) == own_index \
 		and int(guard_context.get("target_owner", -1)) == 1 \
-		and int(guard_context.get("military_unit_uid", -1)) == uid
+		and int(guard_context.get("military_unit_uid", -1)) == uid \
+		and _ai_candidate_score_and_budget_valid(guard_context, maximum_bid_budget)
 	var strike_ok := not strike_context.is_empty() \
 		and String(strike_context.get("policy_kind", "")) == "military_command_strike_district" \
 		and String(strike_context.get("military_command_role", "")) == "strike_rival_city" \
 		and int(strike_context.get("target_city", -1)) == rival_index \
 		and int(strike_context.get("target_owner", -1)) == 2 \
-		and int(strike_context.get("military_command_score", 0)) > 0
+		and int(strike_context.get("military_command_score", 0)) > 0 \
+		and _ai_candidate_score_and_budget_valid(strike_context, maximum_bid_budget)
 	var attack_ok := not attack_context.is_empty() \
 		and String(attack_context.get("policy_kind", "")) == "military_command_attack_monster" \
 		and String(attack_context.get("military_command_role", "")) == "attack_threat_monster" \
 		and int(attack_context.get("target_slot", -1)) == 0 \
-		and int(attack_context.get("resource_match", 0)) > 0
+		and int(attack_context.get("resource_match", 0)) > 0 \
+		and _ai_candidate_score_and_budget_valid(attack_context, maximum_bid_budget)
 	if not guard_ok:
 		failures.append("guard context=%s role=%s city=%d owner=%d uid=%d" % [
 			str(not guard_context.is_empty()),
@@ -1561,19 +1579,115 @@ func _verify_ai_military_command_policy(main: Node) -> bool:
 			int(attack_context.get("target_slot", -1)),
 			int(attack_context.get("resource_match", 0)),
 		])
-	var queued := bool(_ai_controller(main).call("_ai_queue_play_candidate", 1, strike_context, [guard_context, strike_context, attack_context])) if strike_ok else false
+	var queued := bool(ai.call("_ai_queue_play_candidate", 1, strike_context, production_candidates)) if strike_ok else false
 	var players_after := _as_array(main.get("players"))
+	var decision_sample := _ai_memory_sample_for_kind(players_after, 1, "匿名出牌")
+	var private_decision_metadata_ok := queued \
+		and int(decision_sample.get("score", -1)) == int(strike_context.get("score", -2)) \
+		and int(decision_sample.get("bid_budget", -1)) == int(strike_context.get("bid_budget", -2))
+	var unit_after_first := _military_unit_by_uid(military.call("roster_snapshot", true) as Array, uid)
+	var cooldown_after_first := float(unit_after_first.get("cooldown_left", 0.0))
+	var candidates_after_queue := ai.call("_ai_card_play_candidates", 1) as Array
+	var second_queued := bool(ai.call("_ai_queue_play_candidate", 1, strike_context, production_candidates))
+	var unit_after_duplicate := _military_unit_by_uid(military.call("roster_snapshot", true) as Array, uid)
+	var duplicate_rejected := candidates_after_queue.is_empty() \
+		and not second_queued \
+		and cooldown_after_first > 0.0 \
+		and is_equal_approx(float(unit_after_duplicate.get("cooldown_left", -1.0)), cooldown_after_first)
 	var memory_ok := queued \
 		and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "policy_kind", "military_command_strike_district") \
 		and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "military_command_role", "strike_rival_city") \
 		and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "military_unit_uid", uid)
+	var public_roster_text := str(military.call("roster_snapshot", false))
+	var private_metadata_stays_private := not public_roster_text.contains("ai_utility_score") \
+		and not public_roster_text.contains("ai_bid_budget") \
+		and not public_roster_text.contains("military_command_strike_district") \
+		and not public_roster_text.contains("strike_rival_city")
 	if not memory_ok:
 		failures.append("memory queued=%s" % str(queued))
-	var restore_result := int(main.call("_apply_run_state", saved))
-	main.set("ai_card_decision_enabled", saved_ai_enabled)
+	if not private_decision_metadata_ok:
+		failures.append("private decision metadata score=%d/%d budget=%d/%d" % [int(decision_sample.get("score", -1)), int(strike_context.get("score", -2)), int(decision_sample.get("bid_budget", -1)), int(strike_context.get("bid_budget", -2))])
+	if not duplicate_rejected:
+		failures.append("duplicate candidate remained or command cooldown changed twice")
+	if not private_metadata_stays_private:
+		failures.append("private AI command metadata entered the public military roster")
+	var restored := _restore_ai_military_command_fixture_for_smoke(main, saved_ai_enabled)
 	if not failures.is_empty():
 		print("AI military command policy failures: %s" % " / ".join(failures))
-	return ok and guard_ok and strike_ok and attack_ok and memory_ok and restore_result == OK
+	return ok and guard_ok and strike_ok and attack_ok and private_decision_metadata_ok and duplicate_rejected and memory_ok and private_metadata_stays_private and restored
+
+
+func _ai_candidate_for_slot(candidates: Array, slot_index: int) -> Dictionary:
+	for candidate_variant in candidates:
+		if candidate_variant is Dictionary and int((candidate_variant as Dictionary).get("slot_index", -1)) == slot_index:
+			return (candidate_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _ai_candidate_score_and_budget_valid(candidate: Dictionary, maximum_bid_budget: int) -> bool:
+	var bid_budget := int(candidate.get("bid_budget", -1))
+	return int(candidate.get("score", 0)) > 0 and bid_budget >= 0 and bid_budget <= maximum_bid_budget
+
+
+func _ai_memory_sample_for_kind(players: Array, player_index: int, kind: String) -> Dictionary:
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return {}
+	var memory: Dictionary = (players[player_index] as Dictionary).get("ai_memory", {})
+	for sample_variant in _as_array(memory.get("decision_samples", [])):
+		if sample_variant is Dictionary and String((sample_variant as Dictionary).get("kind", "")) == kind:
+			return (sample_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _military_unit_by_uid(roster: Array, uid: int) -> Dictionary:
+	for unit_variant in roster:
+		if unit_variant is Dictionary and int((unit_variant as Dictionary).get("uid", 0)) == uid:
+			return (unit_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _mark_ai_fixture_regions_active_for_route_owner(coordinator: Node, legacy_indices: Array) -> bool:
+	if coordinator == null or not coordinator.has_method("region_infrastructure_runtime_controller"):
+		return false
+	var region_owner := coordinator.call("region_infrastructure_runtime_controller") as Node
+	if region_owner == null or not region_owner.has_method("to_save_data") or not region_owner.has_method("apply_save_data"):
+		return false
+	var owner_state := region_owner.call("to_save_data") as Dictionary
+	var regions := _as_array(owner_state.get("regions", [])).duplicate(true)
+	var matched := 0
+	for region_index in range(regions.size()):
+		if not (regions[region_index] is Dictionary):
+			continue
+		var region := (regions[region_index] as Dictionary).duplicate(true)
+		if not legacy_indices.has(int(region.get("legacy_index", -1))):
+			continue
+		region["legacy_city_active"] = true
+		regions[region_index] = region
+		matched += 1
+	owner_state["regions"] = regions
+	var applied := region_owner.call("apply_save_data", owner_state) as Dictionary
+	return matched == legacy_indices.size() and bool(applied.get("applied", false))
+
+
+func _restore_ai_military_command_fixture_for_smoke(main: Node, ai_enabled: bool) -> bool:
+	main.call("_new_game")
+	var ai := _ai_controller(main)
+	if ai != null:
+		ai.set("ai_card_decision_enabled", ai_enabled)
+	var military := _military_controller(main)
+	var roster: Array = military.call("roster_snapshot", true) if military != null and military.has_method("roster_snapshot") else []
+	var players := _as_array(main.get("players"))
+	var ai_memory: Dictionary = (players[1] as Dictionary).get("ai_memory", {}) if players.size() > 1 and players[1] is Dictionary else {}
+	var decision_samples := _as_array(ai_memory.get("decision_samples", []))
+	return military != null \
+		and ai != null \
+		and bool(ai.get("ai_card_decision_enabled")) == ai_enabled \
+		and roster.is_empty() \
+		and players.size() == int(main.get("configured_player_count")) \
+		and decision_samples.is_empty() \
+		and _as_array(main.get("card_resolution_queue")).is_empty() \
+		and _as_array(main.get("next_card_resolution_queue")).is_empty() \
+		and (main.get("active_card_resolution") as Dictionary).is_empty()
 
 
 func _verify_ai_military_force_deploy_policy(main: Node) -> bool:
