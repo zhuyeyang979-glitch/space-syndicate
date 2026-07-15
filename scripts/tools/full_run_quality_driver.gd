@@ -192,6 +192,7 @@ func _run() -> void:
 	var last_heartbeat_msec := observation_started_msec
 	var no_action_since_msec := observation_started_msec
 	var pending_action: Dictionary = {}
+	var exhausted_navigation_actions: Dictionary = {}
 	var final_status := "incomplete"
 	var failure_code := "observation_window_elapsed_before_settlement"
 	var final_telemetry := _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
@@ -199,7 +200,7 @@ func _run() -> void:
 	while true:
 		await process_frame
 		var now_msec := Time.get_ticks_msec()
-		var ui_action := _scripted_ui_action(runtime_screen)
+		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions)
 		final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
 		if int((final_telemetry.get("nonfinite", {}) as Dictionary).get("count", 0)) > 0:
 			final_status = "failed"
@@ -222,6 +223,15 @@ func _run() -> void:
 				pending_action = {}
 				no_action_since_msec = now_msec
 			elif now_msec - int(pending_action.get("requested_msec", now_msec)) >= int(ACTION_PROGRESS_TIMEOUT_SECONDS * 1000.0):
+				if str(pending_action.get("origin", "")) == "board_primary":
+					var navigation_signature := str(pending_action.get("signature", ""))
+					if not navigation_signature.is_empty():
+						exhausted_navigation_actions[navigation_signature] = true
+					_record_reason("navigation_no_state_change")
+					_last_event = "navigation_exhausted:%s" % pending_id
+					pending_action = {}
+					no_action_since_msec = now_msec
+					continue
 				_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
 				failure_code = "scripted_ui_action_no_progress:%s" % pending_id
 				_record_reason("scripted_ui_action_no_progress")
@@ -232,12 +242,14 @@ func _run() -> void:
 		if pending_action.is_empty():
 			var action_id := str(ui_action.get("id", ""))
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
-				runtime_screen.emit_signal("action_requested", action_id)
+				_submit_scripted_ui_action(runtime_screen, ui_action)
 				_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
 				_last_event = "action_requested:%s" % action_id
 				pending_action = {
 					"id": action_id,
 					"phase": str(ui_action.get("phase", "play")),
+					"origin": str(ui_action.get("origin", "")),
+					"signature": str(ui_action.get("signature", "")),
 					"requested_msec": now_msec,
 				}
 				no_action_since_msec = now_msec
@@ -435,7 +447,7 @@ func _settlement_snapshot(victory: Dictionary, settlement_composition: Node, ses
 	}
 
 
-func _scripted_ui_action(runtime_screen: Node) -> Dictionary:
+func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dictionary = {}) -> Dictionary:
 	if runtime_screen == null:
 		return {"id": "", "phase": "play", "disabled": true}
 	var ui_variant: Variant = runtime_screen.get("current_ui_data")
@@ -472,14 +484,88 @@ func _scripted_ui_action(runtime_screen: Node) -> Dictionary:
 				"phase": "play.hand.%s.%s" % [str(card.get("id", "card")), str(card.get("action_state", card.get("play_state", "ready")))],
 				"disabled": false,
 			}
+	var supply_action := _district_supply_ui_action(runtime_screen)
+	if not supply_action.is_empty():
+		return supply_action
 	var board_action := _first_enabled_action(player_board.get("actions", []))
+	var board_signature := ""
+	if not board_action.is_empty():
+		board_signature = _board_action_signature(board_action, player_board)
+		if bool(exhausted_navigation_actions.get(board_signature, false)):
+			board_action = _first_enabled_board_action(player_board, exhausted_navigation_actions)
+			board_signature = _board_action_signature(board_action, player_board)
 	if not board_action.is_empty():
 		return {
 			"id": str(board_action.get("id", "")),
 			"phase": "play.board.%s.%s" % [str(board_action.get("label", "action")), str(board_action.get("state", "ready"))],
 			"disabled": false,
+			"origin": "board_primary" if str(board_action.get("id", "")) == "primary" else "board_action",
+			"signature": board_signature,
 		}
 	return {"id": "", "phase": "play", "disabled": true}
+
+
+func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
+	var drawer := runtime_screen.get_node_or_null("OverlayLayer/RuntimeSurfaceLayer/DistrictSupplySideDrawerOverlay")
+	if drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot") or not drawer.has_signal("supply_action_requested"):
+		return {}
+	var snapshot_variant: Variant = drawer.call("debug_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
+	var preview_card_name := str(preview.get("card_name", ""))
+	if not preview_card_name.is_empty() and bool(preview.get("buy_enabled", false)):
+		return {
+			"id": "district_supply_purchase_card",
+			"phase": "play.supply.purchase.%s" % preview_card_name,
+			"disabled": false,
+			"origin": "district_supply",
+			"payload": {"card_name": preview_card_name, "source": "full_run_visible_preview"},
+		}
+	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card: Dictionary = card_variant
+		var card_name := str(card.get("card_name", ""))
+		if card_name.is_empty() or not bool(card.get("actionable", true)):
+			continue
+		return {
+			"id": "district_supply_preview_card",
+			"phase": "play.supply.preview.%s" % card_name,
+			"disabled": false,
+			"origin": "district_supply",
+			"payload": {"card_name": card_name, "source": "full_run_visible_card"},
+		}
+	return {}
+
+
+func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> void:
+	if str(action.get("origin", "")) == "district_supply":
+		var drawer := runtime_screen.get_node_or_null("OverlayLayer/RuntimeSurfaceLayer/DistrictSupplySideDrawerOverlay")
+		if drawer != null and drawer.has_signal("supply_action_requested"):
+			drawer.emit_signal("supply_action_requested", str(action.get("id", "")), (action.get("payload", {}) as Dictionary).duplicate(true))
+		return
+	runtime_screen.emit_signal("action_requested", str(action.get("id", "")))
+
+
+func _first_enabled_board_action(player_board: Dictionary, exhausted_navigation_actions: Dictionary) -> Dictionary:
+	var actions: Array = player_board.get("actions", []) if player_board.get("actions", []) is Array else []
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action: Dictionary = action_variant
+		if str(action.get("id", "")).is_empty() or bool(action.get("disabled", false)):
+			continue
+		if not bool(exhausted_navigation_actions.get(_board_action_signature(action, player_board), false)):
+			return action.duplicate(true)
+	return {}
+
+
+func _board_action_signature(action: Dictionary, player_board: Dictionary) -> String:
+	if action.is_empty():
+		return ""
+	var actions: Array = player_board.get("actions", []) if player_board.get("actions", []) is Array else []
+	return "%s:%s" % [str(action.get("id", "")), str(hash(var_to_str(actions)))]
 
 
 func _first_enabled_action(value: Variant) -> Dictionary:
