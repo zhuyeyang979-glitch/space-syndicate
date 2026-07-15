@@ -338,7 +338,8 @@ func _run() -> void:
 	var fourth_starter := ((_as_array((players[3] as Dictionary).get("slots", [])))[0]) as Dictionary
 	_expect(int(fourth_starter.get("fixed_skill_count", 0)) == int((main.call("_make_skill", String(fourth_starter.get("name", ""))) as Dictionary).get("fixed_skill_count", 0)), "role passives do not increase starter monster bound-skill count")
 	_expect(String(regular_monster_card.get("summon_access", "")).ends_with("monster_zone"), "post-start monster cards carry a landed-or-adjacent monster-zone summon restriction")
-	_expect(String(main.call("_card_art_stats", regular_monster_card)).contains("HP") and String(main.call("_card_art_stats", regular_monster_card)).contains("怪区"), "monster-card artwork prints HP, duration, movement, and region access")
+	var regular_monster_art_stats := _card_presentation_text(main, regular_monster_card, "art_stats")
+	_expect(regular_monster_art_stats.contains("HP") and regular_monster_art_stats.contains("怪区"), "monster-card artwork prints HP, duration, movement, and region access")
 	_expect(_all_monster_cards_have_field_attributes(main), "every monster card rank defines HP, movement, duration, and summon-region attributes")
 	_expect(bool(main.call("_assert_ranked_action_weights_escalate", 0)), "rank-IV monster cards tilt auto-action weights toward later dangerous skills")
 	_expect(_verify_monster_ecology_balance_audit(main), "monster ecology balance audit preserves movement, resources, actions, bound skills, and art identities")
@@ -444,10 +445,10 @@ func _run() -> void:
 	_expect(int(main.call("_card_price", "价格套利2")) == int(main.call("_card_price", "价格套利1")), "higher-rank economy cards keep the same rank-I base price")
 	_expect(int(main.call("_card_price", "短期订单2")) == int(main.call("_card_price", "短期订单1")), "temporary contract upgrades keep the same rank-I base price")
 	_expect(int(main.call("_card_price", "远期采购2")) == int(main.call("_card_price", "远期采购1")), "product contract upgrades keep the same rank-I base price")
-	var growth_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", "城市融资1")))
-	var speculation_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", "城市做空1")))
-	var intel_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", "业主透镜1")))
-	var monster_strategy_text := String(main.call("_card_strategy_summary", main.call("_make_skill", first_monster_card)))
+	var growth_strategy_text := _card_presentation_text(main, main.call("_make_skill", "城市融资1") as Dictionary, "strategy_route_label")
+	var speculation_strategy_text := _card_presentation_text(main, main.call("_make_skill", "城市做空1") as Dictionary, "strategy_route_label")
+	var intel_strategy_text := _card_presentation_text(main, main.call("_make_skill", "业主透镜1") as Dictionary, "strategy_route_label")
+	var monster_strategy_text := _card_presentation_text(main, main.call("_make_skill", first_monster_card) as Dictionary, "strategy_route_label")
 	var growth_budget_text := _diagnostics(main).card_budget_text("城市融资1", main.call("_make_skill", "城市融资1"))
 	var monster_budget_text := _diagnostics(main).card_budget_text(first_monster_card, main.call("_make_skill", first_monster_card))
 	_expect(growth_strategy_text.contains("城市成长") and speculation_strategy_text.contains("金融投机") and intel_strategy_text.contains("情报推理") and monster_strategy_text.contains("怪兽路线"), "card strategy summaries are derived for economy, speculation, intel, and monster routes")
@@ -459,7 +460,7 @@ func _run() -> void:
 	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, contract, monster target, player target, and monster wager modules")
 	_expect(_verify_ai_monster_wager_policy(main), "AI monster-wager bets use strength, ownership, city-risk, public stake, and hidden scoring metadata")
 	_expect(_verify_ten_hour_route_pack(main), "ten-hour route pack adds complete repair, lockdown, intel-bounty, and route-weather ladders with AI-readable fields")
-	_expect(String(main.call("_card_art_stats", main.call("_make_skill", "城市融资1"))).contains("城市成长"), "card face stats show the strategy route for non-monster cards")
+	_expect(_card_presentation_text(main, main.call("_make_skill", "城市融资1") as Dictionary, "art_stats").contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
 	_expect(["高阶档", "旗舰档"].has(String(main.call("_card_price_tier_text", premium_card_price))), "high-leverage economy cards map into an explicit non-basic price tier")
@@ -1376,11 +1377,11 @@ func _verify_military_unit_variant_cards(main: Node) -> bool:
 			if String(family.get("type", "")) != "defense":
 				if _as_array(skill.get("movement_traits", [])).is_empty() or (skill.get("terrain_move_multiplier", {}) as Dictionary).is_empty():
 					return false
-			var facts := _as_array(main.call("_card_rule_facts", skill))
+			var facts := _card_presentation_array(main, skill, "rule_facts")
 			var facts_text := ""
 			for fact_variant in facts:
 				facts_text += "%s\n" % String(fact_variant)
-			var art_stats := String(main.call("_card_art_stats", skill))
+			var art_stats := _card_presentation_text(main, skill, "art_stats")
 			if not facts_text.contains("军队生命") or not facts_text.contains("军队机动") or not facts_text.contains("军队在场") or not art_stats.contains("HP"):
 				return false
 	var fighter := main.call("_make_skill", "制空战斗机1") as Dictionary
@@ -4239,7 +4240,7 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	ok = ok and String(main.call("_card_codex_filter_label", "news")) == "新闻事件"
 	ok = ok and String(main.call("_card_codex_filter_label", "weather")) == "天气干预"
 	ok = ok and String(main.call("_card_codex_category_for_card", "热搜推送1", news_skill)) == "news"
-	ok = ok and String(main.call("_card_strategy_summary", news_skill)).contains("新闻信息战")
+	ok = ok and _card_presentation_text(main, news_skill, "strategy_route_label").contains("新闻信息战")
 	var before_panic := int((districts[district_index] as Dictionary).get("panic", 0))
 	ok = ok and bool(main.call("_apply_news_event", news_skill))
 	var after_districts := _as_array(main.get("districts"))
@@ -4272,7 +4273,7 @@ func _verify_monster_card_terrain_restriction(main: Node, players: Array, distri
 		return false
 	if not String(main.call("_monster_card_region_text", land_card)).contains("陆地"):
 		return false
-	if not String(main.call("_card_art_stats", land_card)).contains("陆地怪区"):
+	if not _card_presentation_text(main, land_card, "art_stats").contains("陆地怪区"):
 		return false
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var previous_players := _as_array(main.get("players")).duplicate(true)
@@ -5067,10 +5068,10 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 	ok = ok and bool((main.call("_card_play_target_snapshot", steal) as Dictionary).get("requires_target_player", false))
 	ok = ok and not bool((main.call("_card_play_target_snapshot", freeze) as Dictionary).get("requires_target_player", false))
 	ok = ok and not bool((main.call("_card_play_target_snapshot", barrage) as Dictionary).get("requires_target_player", false))
-	ok = ok and str(main.call("_card_rule_facts", disrupt)).contains("指定玩家")
-	ok = ok and str(main.call("_card_rule_facts", steal)).contains("牵牌")
-	ok = ok and str(main.call("_card_rule_facts", freeze)).contains("产权冻结")
-	ok = ok and str(main.call("_card_rule_facts", barrage)).contains("齐射")
+	ok = ok and str(_card_presentation_array(main, disrupt, "rule_facts")).contains("指定玩家")
+	ok = ok and str(_card_presentation_array(main, steal, "rule_facts")).contains("牵牌")
+	ok = ok and str(_card_presentation_array(main, freeze, "rule_facts")).contains("产权冻结")
+	ok = ok and str(_card_presentation_array(main, barrage, "rule_facts")).contains("齐射")
 	if _as_array(main.get("players")).size() >= 2:
 		main.set("selected_player", 0)
 		main.set("selected_district", maxi(0, int(main.get("selected_district"))))
@@ -5895,7 +5896,7 @@ func _verify_monster_lure_replaces_control_window(main: Node) -> bool:
 	if String(skill.get("text", "")).contains("持续控制"):
 		failures.append("skill text still mentions persistent control")
 		ok = false
-	var facts := main.call("_card_rule_facts", skill) as Array
+	var facts := _card_presentation_array(main, skill, "rule_facts")
 	var facts_text := "｜".join(facts)
 	if not facts_text.contains("诱导提前"):
 		failures.append("card facts do not include lure speedup")
@@ -7300,6 +7301,31 @@ func _runtime_card_definition(main: Node, card_id: String) -> Dictionary:
 	var coordinator := _runtime_card_coordinator(main)
 	var value: Variant = coordinator.call("card_definition", card_id) if coordinator != null else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _card_presentation_snapshot(main: Node, skill: Dictionary, card_name: String = "") -> Dictionary:
+	var source_service := _card_codex_public_source_service(main)
+	if source_service == null or not source_service.has_method("compose_card_facts"):
+		return {}
+	var resolved_name := card_name if card_name != "" else str(skill.get("name", ""))
+	if resolved_name == "":
+		return {}
+	var value: Variant = source_service.call("compose_card_facts", resolved_name, -1)
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _card_presentation_text(main: Node, skill: Dictionary, field: String, card_name: String = "") -> String:
+	return str(_card_presentation_snapshot(main, skill, card_name).get(field, ""))
+
+
+func _card_presentation_array(main: Node, skill: Dictionary, field: String, card_name: String = "") -> Array:
+	var value: Variant = _card_presentation_snapshot(main, skill, card_name).get(field, [])
+	return (value as Array).duplicate(true) if value is Array else []
+
+
+func _card_codex_public_source_service(main: Node) -> Node:
+	var coordinator := _runtime_card_coordinator(main)
+	return coordinator.get_node_or_null("CardCodexPublicSourceService") if coordinator != null else null
 
 
 func _clear_player_cooldown(main: Node, player_index: int) -> void:
