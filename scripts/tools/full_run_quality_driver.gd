@@ -109,7 +109,7 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var options := _parse_options(OS.get_cmdline_user_args())
+	var options := _parse_options(_driver_arguments(OS.get_cmdline_args()))
 	if not bool(options.get("valid", false)):
 		var invalid_telemetry := _empty_telemetry(int(options.get("seed_index", 0)), "blocked", "invalid_arguments")
 		_emit_summary(_summary(options, invalid_telemetry, "invalid_arguments", "invalid_arguments", {}, {}))
@@ -453,10 +453,31 @@ func _scripted_ui_action(runtime_screen: Node) -> Dictionary:
 	if not coach.is_empty():
 		var primary: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
 		var stage := str(coach.get("stage", "play"))
+		if not str(primary.get("id", "")).is_empty():
+			return {
+				"id": str(primary.get("id", "")),
+				"phase": "first_run.%s" % stage,
+				"disabled": bool(primary.get("disabled", false)),
+			}
+	var player_board: Dictionary = ui.get("player_board", {}) if ui.get("player_board", {}) is Dictionary else {}
+	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
+	for card_variant in hand_cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card: Dictionary = card_variant
+		var card_action := _first_enabled_action(card.get("actions", []))
+		if not card_action.is_empty():
+			return {
+				"id": str(card_action.get("id", "")),
+				"phase": "play.hand.%s.%s" % [str(card.get("id", "card")), str(card.get("action_state", card.get("play_state", "ready")))],
+				"disabled": false,
+			}
+	var board_action := _first_enabled_action(player_board.get("actions", []))
+	if not board_action.is_empty():
 		return {
-			"id": str(primary.get("id", "")),
-			"phase": "first_run.%s" % stage,
-			"disabled": bool(primary.get("disabled", false)),
+			"id": str(board_action.get("id", "")),
+			"phase": "play.board.%s.%s" % [str(board_action.get("label", "action")), str(board_action.get("state", "ready"))],
+			"disabled": false,
 		}
 	return {"id": "", "phase": "play", "disabled": true}
 
@@ -604,6 +625,22 @@ func _parse_options(arguments: PackedStringArray) -> Dictionary:
 		index += 1
 	if int(result.get("observation_seconds", 1)) >= int(result.get("max_wall_seconds", 1)):
 		result["valid"] = false
+	return result
+
+
+func _driver_arguments(arguments: PackedStringArray) -> PackedStringArray:
+	var result := PackedStringArray()
+	var index := 0
+	while index < arguments.size():
+		var argument := str(arguments[index])
+		if argument == "--preflight-only" or argument.begins_with("--seed-index=") or argument.begins_with("--observation-seconds=") or argument.begins_with("--max-wall-seconds="):
+			result.append(argument)
+		elif argument in ["--seed-index", "--observation-seconds", "--max-wall-seconds"]:
+			result.append(argument)
+			if index + 1 < arguments.size():
+				index += 1
+				result.append(str(arguments[index]))
+		index += 1
 	return result
 
 
