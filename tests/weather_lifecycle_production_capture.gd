@@ -26,6 +26,7 @@ const QA_MARKERS := ["test_runs", "qa_save", "fixture_source", "e_weather_lifecy
 var _failures: Array[String] = []
 var _checks := 0
 var _capture_paths: Array[String] = []
+var _table_pixel_metrics_by_case: Dictionary = {}
 var _state_reports: Array[Dictionary] = []
 var _player_default_before: Dictionary = {}
 
@@ -163,7 +164,8 @@ func _capture_case(main: Node, coordinator: Node, map_view: Node, case_data: Dic
 	main.call("_sync_runtime_game_screen", true)
 	if map_view.has_method("reset_to_planet_overview"):
 		map_view.call("reset_to_planet_overview")
-	await _pump_frames(18)
+	var table_scene_gate := await _wait_for_complete_table_frame(main, case_id)
+	_expect(bool(table_scene_gate.get("passed", false)), "%s table reaches a stable complete production frame" % case_id)
 
 	var forecast: Dictionary = coordinator.call("weather_forecast_view_model")
 	var overlay: Dictionary = coordinator.call("weather_map_overlay_view_model")
@@ -197,7 +199,11 @@ func _capture_case(main: Node, coordinator: Node, map_view: Node, case_data: Dic
 	_expect(table_machine_ids.is_empty(), "%s production table exposes no machine identifiers" % case_id)
 	_expect(table_qa_residue.is_empty(), "%s production table exposes no QA residue" % case_id)
 	var table_file := "e_weather_%s_table_1600x960.png" % case_id
-	await _save_viewport(table_file)
+	var table_capture := await _save_viewport(table_file, table_scene_gate.get("node_rects", {}) as Dictionary)
+	var table_pixel_metrics := table_capture.get("pixel_metrics", {}) as Dictionary
+	_table_pixel_metrics_by_case[case_id] = table_pixel_metrics.duplicate(true)
+	var table_pixel_gate := _table_pixel_integrity_gate(case_id, table_pixel_metrics)
+	_expect(bool(table_pixel_gate.get("passed", false)), "%s screenshot contains a complete non-black production table frame" % case_id)
 
 	var economy_snapshot: Dictionary = main.call("_economy_dashboard_public_snapshot")
 	var economy_summary := str(economy_snapshot.get("summary_text", ""))
@@ -214,7 +220,7 @@ func _capture_case(main: Node, coordinator: Node, map_view: Node, case_data: Dic
 	_expect(economy_machine_ids.is_empty(), "%s economy overview exposes no machine identifiers" % case_id)
 	_expect(economy_qa_residue.is_empty(), "%s economy overview exposes no QA residue" % case_id)
 	var economy_file := "e_weather_%s_economy_1600x960.png" % case_id
-	await _save_viewport(economy_file)
+	var economy_capture := await _save_viewport(economy_file)
 
 	var strip := main.find_child("WeatherForecastStrip", true, false)
 	var state_report := {
@@ -224,6 +230,10 @@ func _capture_case(main: Node, coordinator: Node, map_view: Node, case_data: Dic
 		"renderer": DisplayServer.get_name(),
 		"table_screenshot": table_file,
 		"economy_screenshot": economy_file,
+		"table_scene_integrity_gate": table_scene_gate,
+		"table_pixel_integrity_gate": table_pixel_gate,
+		"table_pixel_metrics": table_pixel_metrics,
+		"economy_pixel_metrics": economy_capture.get("pixel_metrics", {}),
 		"forecast": forecast,
 		"overlay": overlay,
 		"region_detail": detail,
@@ -235,12 +245,181 @@ func _capture_case(main: Node, coordinator: Node, map_view: Node, case_data: Dic
 		"economy_visible_text": economy_visible_text,
 		"visible_machine_id_candidates": {"table": table_machine_ids, "economy": economy_machine_ids},
 		"visible_qa_residue_candidates": {"table": table_qa_residue, "economy": economy_qa_residue},
-		"required_nodes": _required_node_snapshots(main),
+		"required_nodes_at_table_capture": table_scene_gate.get("required_nodes", {}),
+		"economy_nodes_at_economy_capture": _economy_node_snapshots(main),
 	}
 	_state_reports.append(state_report)
 	_save_json("e_weather_%s_1600x960_scene_tree.json" % case_id, state_report)
 	main.call("_close_menu")
 	await _pump_frames(6)
+
+
+func _wait_for_complete_table_frame(main: Node, case_id: String) -> Dictionary:
+	var stable_frames := 0
+	var last_signature := ""
+	var latest_gate: Dictionary = {}
+	for _frame_index in range(120):
+		await process_frame
+		await RenderingServer.frame_post_draw
+		latest_gate = _table_scene_integrity(main)
+		var signature := var_to_str(latest_gate.get("required_nodes", {}))
+		if bool(latest_gate.get("passed", false)) and signature == last_signature:
+			stable_frames += 1
+		elif bool(latest_gate.get("passed", false)):
+			stable_frames = 1
+		else:
+			stable_frames = 0
+		last_signature = signature
+		if stable_frames >= 8:
+			for _settle_index in range(3):
+				await process_frame
+				await RenderingServer.frame_post_draw
+			latest_gate = _table_scene_integrity(main)
+			latest_gate["stable_frame_count"] = stable_frames + 3
+			latest_gate["case_id"] = case_id
+			return latest_gate
+	latest_gate["passed"] = false
+	latest_gate["stable_frame_count"] = stable_frames
+	latest_gate["case_id"] = case_id
+	var reasons := latest_gate.get("failure_reasons", []) as Array
+	reasons.append("complete table frame did not remain stable for 8 post-draw frames")
+	latest_gate["failure_reasons"] = reasons
+	return latest_gate
+
+
+func _table_scene_integrity(main: Node) -> Dictionary:
+	var required_specs := [
+		{"key": "TopBar", "node_name": "TopBar", "min_size": Vector2(1500.0, 48.0)},
+		{"key": "LeftCardShelf", "node_name": "PlanetLeftSpaceRail", "min_size": Vector2(200.0, 220.0)},
+		{"key": "RightInspector", "node_name": "RightInspector", "min_size": Vector2(280.0, 580.0)},
+		{"key": "PlayerBoard", "node_name": "PlayerBoard", "min_size": Vector2(1500.0, 185.0)},
+		{"key": "HandRack", "node_name": "HandRack", "min_size": Vector2(900.0, 120.0)},
+		{"key": "BidBoard", "node_name": "PlayerBidBoard", "min_size": Vector2(250.0, 44.0)},
+	]
+	var required_nodes := {}
+	var node_rects := {}
+	var failure_reasons: Array[String] = []
+	for spec_variant in required_specs:
+		var spec := spec_variant as Dictionary
+		var key := str(spec.get("key", "required"))
+		var node := main.find_child(str(spec.get("node_name", "")), true, false)
+		var snapshot := _control_snapshot(node)
+		required_nodes[key] = snapshot
+		if node == null or not (node is Control):
+			failure_reasons.append("%s missing" % key)
+			continue
+		var control := node as Control
+		var rect := control.get_global_rect()
+		var min_size := spec.get("min_size", Vector2.ZERO) as Vector2
+		node_rects[key] = {
+			"x": rect.position.x,
+			"y": rect.position.y,
+			"width": rect.size.x,
+			"height": rect.size.y,
+		}
+		if not control.is_visible_in_tree():
+			failure_reasons.append("%s not visible in tree" % key)
+		if rect.size.x < min_size.x or rect.size.y < min_size.y:
+			failure_reasons.append("%s incomplete rect %s" % [key, rect])
+		if not _rect_inside_capture(rect):
+			failure_reasons.append("%s leaves the 1600x960 viewport: %s" % [key, rect])
+	var menu_overlay := main.find_child("MenuModalOverlay", true, false) as Control
+	var menu_hidden := menu_overlay == null or not menu_overlay.is_visible_in_tree()
+	if not menu_hidden:
+		failure_reasons.append("MenuModalOverlay is still covering the production table")
+	return {
+		"passed": failure_reasons.is_empty(),
+		"failure_reasons": failure_reasons,
+		"menu_overlay_hidden": menu_hidden,
+		"required_nodes": required_nodes,
+		"node_rects": node_rects,
+	}
+
+
+func _rect_inside_capture(rect: Rect2) -> bool:
+	return rect.position.x >= -1.0 and rect.position.y >= -1.0 \
+		and rect.end.x <= float(CAPTURE_SIZE.x) + 1.0 \
+		and rect.end.y <= float(CAPTURE_SIZE.y) + 1.0
+
+
+func _table_pixel_integrity_gate(case_id: String, metrics: Dictionary) -> Dictionary:
+	var failure_reasons: Array[String] = []
+	var whole := metrics.get("whole", {}) as Dictionary
+	if float(whole.get("non_black_coverage", 0.0)) < 0.80:
+		failure_reasons.append("whole-frame non-black coverage below 80%")
+	if float(whole.get("bright_coverage", 0.0)) < 0.12:
+		failure_reasons.append("whole-frame bright coverage below 12%")
+	if float(whole.get("effective_coverage", 0.0)) < 0.18:
+		failure_reasons.append("whole-frame effective content below 18%")
+	var node_regions := metrics.get("node_regions", {}) as Dictionary
+	for node_key in ["TopBar", "LeftCardShelf", "RightInspector", "PlayerBoard", "HandRack", "BidBoard"]:
+		var node_metrics := node_regions.get(node_key, {}) as Dictionary
+		if int(node_metrics.get("sample_count", 0)) <= 0:
+			failure_reasons.append("%s has no sampled screenshot pixels" % node_key)
+		elif float(node_metrics.get("non_black_coverage", 0.0)) < 0.65 or float(node_metrics.get("effective_coverage", 0.0)) < 0.02:
+			failure_reasons.append("%s screenshot pixels are blank or materially incomplete" % node_key)
+	var comparisons := {}
+	if case_id == "dual_active":
+		for reference_case in ["forecast", "active"]:
+			if not _table_pixel_metrics_by_case.has(reference_case):
+				failure_reasons.append("missing %s pixel baseline" % reference_case)
+		var reference_metrics := _stronger_reference_metrics("forecast", "active")
+		if not reference_metrics.is_empty():
+			comparisons = _compare_pixel_metrics(metrics, reference_metrics, 0.85)
+			for comparison_key in comparisons:
+				if not bool((comparisons[comparison_key] as Dictionary).get("passed", false)):
+					failure_reasons.append("dual_active %s coverage is below 85%% of forecast/active" % comparison_key)
+	return {
+		"passed": failure_reasons.is_empty(),
+		"failure_reasons": failure_reasons,
+		"baseline_ratio_floor": 0.85,
+		"comparisons_to_stronger_forecast_or_active": comparisons,
+	}
+
+
+func _stronger_reference_metrics(first_case: String, second_case: String) -> Dictionary:
+	if not _table_pixel_metrics_by_case.has(first_case) or not _table_pixel_metrics_by_case.has(second_case):
+		return {}
+	var first := _table_pixel_metrics_by_case[first_case] as Dictionary
+	var second := _table_pixel_metrics_by_case[second_case] as Dictionary
+	var result := {"whole": {}, "screen_regions": {}}
+	for metric_key in ["non_black_coverage", "bright_coverage", "effective_coverage", "mean_luminance"]:
+		(result["whole"] as Dictionary)[metric_key] = maxf(
+			float((first.get("whole", {}) as Dictionary).get(metric_key, 0.0)),
+			float((second.get("whole", {}) as Dictionary).get(metric_key, 0.0))
+		)
+	for region_key in ["top", "left", "right", "bottom"]:
+		var region_reference := {}
+		for metric_key in ["non_black_coverage", "bright_coverage", "effective_coverage", "mean_luminance"]:
+			region_reference[metric_key] = maxf(
+				float((((first.get("screen_regions", {}) as Dictionary).get(region_key, {}) as Dictionary).get(metric_key, 0.0))),
+				float((((second.get("screen_regions", {}) as Dictionary).get(region_key, {}) as Dictionary).get(metric_key, 0.0)))
+			)
+		(result["screen_regions"] as Dictionary)[region_key] = region_reference
+	return result
+
+
+func _compare_pixel_metrics(candidate: Dictionary, reference: Dictionary, ratio_floor: float) -> Dictionary:
+	var comparisons := {}
+	for metric_key in ["non_black_coverage", "bright_coverage", "effective_coverage", "mean_luminance"]:
+		comparisons["whole_%s" % metric_key] = _coverage_comparison(
+			float((candidate.get("whole", {}) as Dictionary).get(metric_key, 0.0)),
+			float((reference.get("whole", {}) as Dictionary).get(metric_key, 0.0)),
+			ratio_floor
+		)
+	for region_key in ["top", "left", "right", "bottom"]:
+		for metric_key in ["bright_coverage", "effective_coverage", "mean_luminance"]:
+			comparisons["%s_%s" % [region_key, metric_key]] = _coverage_comparison(
+				float((((candidate.get("screen_regions", {}) as Dictionary).get(region_key, {}) as Dictionary).get(metric_key, 0.0))),
+				float((((reference.get("screen_regions", {}) as Dictionary).get(region_key, {}) as Dictionary).get(metric_key, 0.0))),
+				ratio_floor
+			)
+	return comparisons
+
+
+func _coverage_comparison(candidate: float, reference: float, ratio_floor: float) -> Dictionary:
+	var ratio := candidate / reference if reference > 0.000001 else 1.0
+	return {"candidate": candidate, "reference": reference, "ratio": ratio, "passed": ratio >= ratio_floor}
 
 
 func _layer_gate(map_view: Node, sceneization: Dictionary) -> Dictionary:
@@ -297,9 +476,9 @@ func _find_node_with_method(node: Node, method_name: String) -> Node:
 	return null
 
 
-func _required_node_snapshots(main: Node) -> Dictionary:
+func _economy_node_snapshots(main: Node) -> Dictionary:
 	var result := {}
-	for node_name in ["RuntimeGameScreen", "PlanetBoard", "PlanetMapView", "WeatherForecastStrip", "WeatherLayer", "RightInspector", "DistrictInfoPanel", "HandRack", "MenuModalOverlay", "EconomyDashboardPanel"]:
+	for node_name in ["RuntimeGameScreen", "MenuModalOverlay", "EconomyDashboardPanel", "MenuBackButton"]:
 		result[node_name] = _control_snapshot(main.find_child(node_name, true, false))
 	return result
 
@@ -354,20 +533,96 @@ func _visible_marker_candidates(node: Node, markers: Array) -> Array[String]:
 	return candidates
 
 
-func _save_viewport(file_name: String) -> void:
+func _save_viewport(file_name: String, node_rects: Dictionary = {}) -> Dictionary:
 	await process_frame
+	await RenderingServer.frame_post_draw
 	var image := root.get_texture().get_image()
 	if image == null or image.is_empty():
 		_fail("viewport image was empty for %s" % file_name)
-		return
+		return {"saved": false, "pixel_metrics": {}}
 	_expect(image.get_size() == CAPTURE_SIZE, "%s is exactly 1600x960" % file_name)
+	var pixel_metrics := _image_content_metrics(image, node_rects)
 	var resource_path := "%s/%s" % [OUTPUT_DIR, file_name]
 	var error := image.save_png(resource_path)
 	if error != OK:
 		_fail("failed to save %s: %s" % [resource_path, error_string(error)])
-		return
-	_capture_paths.append(ProjectSettings.globalize_path(resource_path))
-	print("CAPTURE: %s" % ProjectSettings.globalize_path(resource_path))
+		return {"saved": false, "pixel_metrics": pixel_metrics}
+	var absolute_path := ProjectSettings.globalize_path(resource_path)
+	_capture_paths.append(absolute_path)
+	print("CAPTURE: %s" % absolute_path)
+	return {
+		"saved": true,
+		"resource_path": resource_path,
+		"absolute_path": absolute_path,
+		"sha256": FileAccess.get_sha256(resource_path),
+		"pixel_metrics": pixel_metrics,
+	}
+
+
+func _image_content_metrics(image: Image, node_rects: Dictionary) -> Dictionary:
+	var screen_regions := {
+		"top": Rect2(0.0, 0.0, 1600.0, 120.0),
+		"left": Rect2(0.0, 120.0, 360.0, 612.0),
+		"right": Rect2(1280.0, 120.0, 320.0, 612.0),
+		"bottom": Rect2(0.0, 736.0, 1600.0, 224.0),
+	}
+	var screen_metrics := {}
+	for region_key in screen_regions:
+		screen_metrics[region_key] = _sample_image_region(image, screen_regions[region_key] as Rect2)
+	var node_metrics := {}
+	for node_key in node_rects:
+		var rect_data := node_rects[node_key] as Dictionary
+		var rect := Rect2(
+			float(rect_data.get("x", 0.0)),
+			float(rect_data.get("y", 0.0)),
+			float(rect_data.get("width", 0.0)),
+			float(rect_data.get("height", 0.0))
+		)
+		node_metrics[node_key] = _sample_image_region(image, rect)
+	return {
+		"sample_stride_pixels": 4,
+		"non_black_peak_floor": 0.035,
+		"bright_peak_floor": 0.19,
+		"effective_chroma_floor": 0.098,
+		"effective_peak_floor": 0.314,
+		"whole": _sample_image_region(image, Rect2(Vector2.ZERO, Vector2(image.get_size()))),
+		"screen_regions": screen_metrics,
+		"node_regions": node_metrics,
+	}
+
+
+func _sample_image_region(image: Image, requested_rect: Rect2) -> Dictionary:
+	var start_x := clampi(int(floor(requested_rect.position.x)), 0, maxi(0, image.get_width() - 1))
+	var start_y := clampi(int(floor(requested_rect.position.y)), 0, maxi(0, image.get_height() - 1))
+	var end_x := clampi(int(ceil(requested_rect.end.x)), start_x + 1, image.get_width())
+	var end_y := clampi(int(ceil(requested_rect.end.y)), start_y + 1, image.get_height())
+	var sample_count := 0
+	var non_black_count := 0
+	var bright_count := 0
+	var effective_count := 0
+	var luminance_sum := 0.0
+	for y in range(start_y, end_y, 4):
+		for x in range(start_x, end_x, 4):
+			var color := image.get_pixel(x, y)
+			var peak := maxf(color.r, maxf(color.g, color.b))
+			var valley := minf(color.r, minf(color.g, color.b))
+			var luminance := color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722
+			sample_count += 1
+			luminance_sum += luminance
+			if peak > 0.035:
+				non_black_count += 1
+			if peak > 0.19:
+				bright_count += 1
+			if peak - valley > 0.098 or peak > 0.314:
+				effective_count += 1
+	return {
+		"sample_count": sample_count,
+		"non_black_coverage": float(non_black_count) / float(sample_count) if sample_count > 0 else 0.0,
+		"bright_coverage": float(bright_count) / float(sample_count) if sample_count > 0 else 0.0,
+		"effective_coverage": float(effective_count) / float(sample_count) if sample_count > 0 else 0.0,
+		"mean_luminance": luminance_sum / float(sample_count) if sample_count > 0 else 0.0,
+		"sampled_rect": {"x": start_x, "y": start_y, "width": end_x - start_x, "height": end_y - start_y},
+	}
 
 
 func _save_json(file_name: String, value: Dictionary) -> void:
@@ -455,7 +710,7 @@ func _cleanup_output_artifacts() -> void:
 	if directory == null:
 		return
 	for file_name in directory.get_files():
-		if file_name.begins_with("e_weather_"):
+		if file_name.begins_with("e_weather_") and (file_name.ends_with(".png") or file_name.ends_with(".json")):
 			DirAccess.remove_absolute(absolute_dir.path_join(file_name))
 
 

@@ -3,6 +3,12 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜天气双事件截图完整帧 follow-up（test/report-only）
+
+- A 复核首版 dual-active 证据时发现一次大面积黑屏/主桌缺失；E 撤回该张视觉结论并在原 capture 增加 post-draw 稳定等待、真实 PNG 像素覆盖与 scene-tree 当帧完整性门，没有修改 production/Main/UI。
+- 四态现均先确认 TopBar、左侧牌架、完整 RightInspector、PlayerBoard、HandRack、BidBoard 可见且在 1600×960 viewport 内，连续稳定 8 帧后再等 3 帧抓图；PNG 还逐节点、逐屏区抽样非黑/亮像素/有效内容。dual-active 相对 forecast/active 较强基线的最低覆盖比约 0.98，高于 0.85 门槛。
+- 同一 GUI Godot 4.7 blocking 脚本已重跑全部 8 张最终 PNG 与 JSON。双事件主桌完整帧现在标绿；真实城市 marker 缺失仍保持红灯。此前 active/dual 经济页间歇继承较深滚动位置的 finding 没有被当作已修复，完整证据仍见 `reports/ui/production_acceptance/e_weather_lifecycle/e_weather_lifecycle_acceptance.md`。
+
 ## 2026-07-15｜真实主桌天气生命周期视觉验收（test/report-only）
 
 - Codex E 用 GUI Godot 4.7 前台阻塞运行真实 `main.tscn`，在 1600×960 捕获 forecast、active、fading、同屏双区域 active 的主桌与经济总览共 8 张截图；每态保存公开 Weather ViewModel、区域详情、地图层级和可见文本扫描 JSON。

@@ -6,13 +6,15 @@
 
 分辨率：1600×960
 
-结论：**部分红灯。** forecast、active、fading、同屏双区域 active 的天气状态、公开详情、经济原因、机器标识/QA 残留、存档隔离与 console 均通过；但当前生产 Coordinator 不再提供测试 helper 所需的 `execute_city_development`，本次真实新局无法生成实际城市 marker，因此“天气不遮挡城市”只有静态层级证据，没有真实城市像素证据，不能标绿。
+结论：**部分红灯。** forecast、active、fading、同屏双区域 active 的天气状态、完整主桌帧、公开详情、经济原因、机器标识/QA 残留、存档隔离与 console 均通过；但当前生产 Coordinator 不再提供测试 helper 所需的 `execute_city_development`，本次真实新局无法生成实际城市 marker，因此“天气不遮挡城市”只有静态层级证据，没有真实城市像素证据，不能标绿。
+
+> 2026-07-15 follow-up：A 复核首版 `dual_active` PNG 时看到大面积黑屏/主桌缺失，因此首版双事件视觉结论作废。本目录现有 8 张 PNG 与 JSON 已由同一 capture 脚本完整重跑替换；新脚本必须先取得 8 个连续 post-draw 稳定帧并再等待 3 帧，随后同时通过 scene-tree 完整性和真实 PNG 像素覆盖门，才允许保存为有效主桌证据。
 
 ## Findings first
 
 1. **P0 / RED｜真实城市遮挡验收缺证据。** `tests/helpers/city_world_fixture_factory.gd` 通过 Coordinator 查询正式城市发展结算入口，但本基线返回 `coordinator_unavailable`，四态 scene tree 的 `city_marker_count=0`。WeatherLayer 确实位于 DistrictLayer（区域与城市）、RouteLayer、MonsterLayer 之下，但没有实际城市 marker，不能从层级推断替代真实像素验收。本块按边界不改 production，也不手工伪造城市数据。
 2. **P1｜地图拥挤仍然明显。** 四张主桌均能看到区域边界、28 条路线、39 个路线节点和 3 个怪兽 token 在天气圈上方，但区域牌、路线牌、怪兽 token、太阳/天气色块互相重叠；双事件状态最拥挤。本块只记录，不改 UI。
-3. **P2｜经济总览再次打开会保留较深滚动位置。** forecast / fading 首屏从标题开始；active / dual_active 的真实第二次、第四次打开直接落在正文中部，虽然天气原因仍可见，但首屏缺少标题与导航语境。本块禁止修改 UI，因此保留原始截图。
+3. **P2｜经济总览再次打开会间歇保留较深滚动位置。** 首轮 active / dual_active 的真实第二次、第四次打开直接落在正文中部，虽然天气原因仍可见，但首屏缺少标题与导航语境。follow-up 完整重跑没有再次复现，现有最终 PNG 从标题开始；由于本块没有修改 production/UI，这项只能记为间歇 finding，不能宣称已修复。
 4. **P2｜经济信息仍是文本墙。** 四态都能说明“经济天气”及具体天气名称，但商品、商路与隐私说明连续铺开，天气原因不易扫读。
 
 ## 截图矩阵
@@ -25,6 +27,21 @@
 | dual active | [table](e_weather_dual_active_table_1600x960.png) | [economy](e_weather_dual_active_economy_1600x960.png) | [JSON](e_weather_dual_active_1600x960_scene_tree.json) | GREEN：2 events，active + active，2 overlay regions | RED：0 city marker |
 
 八张 PNG 均逐文件读取为 1600×960。它们由 GUI Godot 4.7 前台阻塞运行真实生产场景直接保存，不是组件 bench 或合成图。
+
+## 完整帧与像素覆盖 follow-up 门
+
+四态每次主桌截图前都确认以下真实生产控件 `visible_in_tree=true`、矩形完整位于 1600×960 viewport 内，并在相同矩形内抽样实际 PNG 像素，防止“节点存在但帧未绘制”的假绿：
+
+- `TopBar`：1568×62。
+- 左侧牌架 `PlanetLeftSpaceRail`：216×240。
+- `RightInspector`：304×613。
+- `PlayerBoard`：1568×219。
+- `HandRack`：970×162。
+- `PlayerBidBoard`：280×99。
+
+四态均为 `stable_frame_count=11`、`table_scene_integrity_gate.passed=true`、`table_pixel_integrity_gate.passed=true`。整图抽样结果均约为：非黑覆盖 100%、亮像素覆盖 28%、有效内容覆盖 39%、平均亮度 0.14。
+
+双事件截图还与 forecast / active 中逐项较强的基线比较整图及 top / left / right / bottom 四区的亮像素、有效内容和平均亮度；最低比值约 0.98，高于 0.85 门槛。最终 [dual active 主桌](e_weather_dual_active_table_1600x960.png) 已目视确认顶栏、左右主面板、底栏、手牌和竞价板完整，不再使用首版坏帧。
 
 ## 公开展示门禁
 

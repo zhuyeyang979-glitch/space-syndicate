@@ -20,7 +20,7 @@ CAPTURE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e
 CAPTURE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_weather_lifecycle/e_weather_dual_active_economy_1600x960.png
 SCENE_TREE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_weather_lifecycle/e_weather_dual_active_1600x960_scene_tree.json
 SCENE_TREE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_weather_lifecycle/e_weather_lifecycle_1600x960_gate.json
-WEATHER_LIFECYCLE_PRODUCTION_CAPTURE|status=FAIL|checks=105|failures=6
+WEATHER_LIFECYCLE_PRODUCTION_CAPTURE|status=FAIL|checks=113|failures=6
 - Coordinator city-development settlement creates a real city marker for occlusion review
 - city fixture receipt: {"city":{},"created":false,"reason":"coordinator_unavailable","receipt":{}}
 - forecast weather overlay stays below boundaries/cities/routes/monsters with real visible objects
