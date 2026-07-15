@@ -14,12 +14,16 @@ signal action_requested(action_id: String)
 @onready var link_title: Label = %IntelDossierLinkTitle
 @onready var link_grid: GridContainer = %IntelDossierLinkGrid
 
+var _focused_resolution_id := -1
+
 
 func _ready() -> void:
 	_style_shell()
 
 
 func set_dossier(data: Dictionary) -> void:
+	_focused_resolution_id = _dossier_focused_resolution_id(data)
+	set_meta("focused_resolution_id", _focused_resolution_id)
 	var accent := _dictionary_color(data, "accent", Color("#c084fc"))
 	tooltip_text = str(data.get("tooltip", "情报侦探板：整理城市嫌疑、匿名牌、怪兽资金和公开城市线索，不扫描对手现金、手牌或真实资产。"))
 	add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.07), 1, 8))
@@ -37,6 +41,10 @@ func set_dossier(data: Dictionary) -> void:
 	_render_clues(data.get("clues", []))
 	_render_control_groups(data.get("control_groups", []))
 	_render_links(data.get("links", []))
+
+
+func focused_resolution_id() -> int:
+	return _focused_resolution_id
 
 
 func _style_shell() -> void:
@@ -180,12 +188,15 @@ func _add_kpi(entry: Dictionary) -> void:
 
 func _add_clue_card(entry: Dictionary) -> void:
 	var accent := _dictionary_color(entry, "accent", Color("#a78bfa"))
+	var focused := _clue_matches_focused_resolution(entry)
 	var card := PanelContainer.new()
-	card.name = "IntelDossierClueCard"
+	card.name = "IntelDossierFocusedClueCard" if focused else "IntelDossierClueCard"
 	card.custom_minimum_size = Vector2(0, 146)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.tooltip_text = str(entry.get("tooltip", ""))
-	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.08), 1, 8))
+	card.set_meta("resolution_id", _focused_resolution_id if focused else int(entry.get("resolution_id", -1)))
+	card.set_meta("focused", focused)
+	card.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.14 if focused else 0.08), 2 if focused else 1, 8))
 	clue_grid.add_child(card)
 	var margin := _margin(10, 8, 10, 8)
 	card.add_child(margin)
@@ -221,6 +232,7 @@ func _add_action_button(entry: Dictionary) -> void:
 	var accent := _dictionary_color(entry, "accent", Color("#c4b5fd"))
 	var button := Button.new()
 	button.name = "IntelDossierActionButton"
+	button.set_meta("resolution_id", _resolution_id_from_action(action_id))
 	button.text = _short_text(label_text, 10)
 	button.disabled = disabled
 	button.custom_minimum_size = Vector2(92, 28)
@@ -235,6 +247,43 @@ func _add_action_button(entry: Dictionary) -> void:
 		action_requested.emit(action_id)
 	)
 	action_row.add_child(button)
+
+
+func _dossier_focused_resolution_id(data: Dictionary) -> int:
+	for key in ["focused_resolution_id", "selected_resolution_id", "resolution_id"]:
+		var explicit_id := int(data.get(key, -1))
+		if explicit_id >= 0:
+			return explicit_id
+	var actions: Array = data.get("actions", []) if data.get("actions", []) is Array else []
+	for action_variant in actions:
+		var action: Dictionary = action_variant if action_variant is Dictionary else {}
+		var action_id := str(action.get("id", action.get("action_id", ""))).strip_edges()
+		var resolution_id := _resolution_id_from_action(action_id)
+		if resolution_id >= 0:
+			return resolution_id
+	var clues: Array = data.get("clues", []) if data.get("clues", []) is Array else []
+	for clue_variant in clues:
+		var clue: Dictionary = clue_variant if clue_variant is Dictionary else {}
+		if bool(clue.get("focused", false)) and int(clue.get("resolution_id", -1)) >= 0:
+			return int(clue.get("resolution_id", -1))
+	return -1
+
+
+func _resolution_id_from_action(action_id: String) -> int:
+	for prefix in ["track_return_", "track_guess_", "track_select_", "track_intel_"]:
+		if action_id.begins_with(prefix):
+			var suffix := action_id.substr(prefix.length()).strip_edges()
+			return int(suffix) if suffix.is_valid_int() else -1
+	return -1
+
+
+func _clue_matches_focused_resolution(entry: Dictionary) -> bool:
+	if _focused_resolution_id < 0:
+		return false
+	var resolution_id := int(entry.get("resolution_id", -1))
+	if resolution_id >= 0:
+		return resolution_id == _focused_resolution_id and bool(entry.get("focused", true))
+	return bool(entry.get("focused", false)) or str(entry.get("title", "")).strip_edges() == "已选牌轨证据链"
 
 
 func _add_control_group(entry: Dictionary) -> void:

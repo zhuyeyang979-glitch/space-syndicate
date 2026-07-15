@@ -17,6 +17,30 @@ const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
 const HAND_HOVER_PREVIEW_BOTTOM := 0.880
 const HAND_HOVER_PREVIEW_CARD_MIN_SIZE := Vector2(216, 292)
+const PRIVATE_TRACK_ENTRY_KEYS := [
+	"hidden_owner",
+	"hidden_owner_id",
+	"private_owner",
+	"private_target",
+	"owner_secret",
+	"secret_owner",
+	"private_discard",
+	"private_hand",
+	"opponent_hand",
+	"opponent_cash",
+	"true_owner",
+	"owner",
+	"owner_id",
+	"owner_index",
+	"player_index",
+	"viewer_index",
+	"cash",
+	"cash_cents",
+	"exact_cash",
+	"hand",
+	"hand_size",
+]
+const PRIVATE_TRACK_TEXT_TOKENS := ["hidden_", "private_", "owner_secret", "secret_owner", "opponent_cash", "opponent_hand", "true_owner"]
 
 signal end_turn_requested
 signal action_requested(action_id: String)
@@ -457,29 +481,33 @@ func _on_card_unhovered() -> void:
 		right_inspector.call("show_card", _selected_hand_card_data)
 	else:
 		_restore_right_inspector_context()
+		_sync_selected_track_focus_from_state()
 	card_unhovered.emit()
 
 
 func _on_card_unselected(card_data: Dictionary) -> void:
 	_selected_hand_card_data = {}
 	_restore_right_inspector_context()
+	_sync_selected_track_focus_from_state()
 	card_unselected.emit(card_data)
 
 
 func _on_track_entry_selected(entry: Dictionary) -> void:
+	_clear_hand_detail_focus_for_track()
 	if right_inspector.has_method("set_context"):
 		right_inspector.call("set_context", _track_entry_inspector_context(entry))
 	_show_track_focus_for_entry(entry, "已选牌轨", false)
-	var action_id := str(entry.get("select_action", "")).strip_edges()
+	var action_id := _track_select_action(entry)
 	if action_id != "":
 		_emit_track_action_request(action_id, "已选择公共轨道线索。")
 
 
 func _on_track_entry_opened(entry: Dictionary) -> void:
+	_clear_hand_detail_focus_for_track()
 	if right_inspector.has_method("set_context"):
 		right_inspector.call("set_context", _track_entry_inspector_context(entry))
 	_show_track_focus_for_entry(entry, "打开牌轨", false)
-	var action_id := str(entry.get("open_action", "")).strip_edges()
+	var action_id := _track_open_action(entry)
 	if action_id != "":
 		_emit_track_action_request(action_id, "已打开公共轨道线索。")
 
@@ -555,19 +583,30 @@ func _restore_right_inspector_context() -> void:
 	right_inspector.call("set_context", inspector)
 
 
+func _clear_hand_detail_focus_for_track() -> void:
+	_selected_hand_card_data = {}
+	_hide_hand_hover_preview()
+
+
 func _track_entry_inspector_context(entry: Dictionary) -> Dictionary:
-	var requirements: Array = entry.get("requirements", []) if entry.get("requirements", []) is Array else []
-	var actions: Array = entry.get("actions", []) if entry.get("actions", []) is Array else []
-	var deep_links: Array = entry.get("deep_links", []) if entry.get("deep_links", []) is Array else []
-	var badges: Array = entry.get("badges", []) if entry.get("badges", []) is Array else []
+	var public_entry := _safe_public_track_entry(entry)
+	var requirements: Array = (public_entry.get("requirements", []) as Array).duplicate(true) if public_entry.get("requirements", []) is Array else []
+	var actions: Array = (public_entry.get("actions", []) as Array).duplicate(true) if public_entry.get("actions", []) is Array else []
+	var deep_links: Array = (public_entry.get("deep_links", []) as Array).duplicate(true) if public_entry.get("deep_links", []) is Array else []
+	_append_track_action_if_missing(actions, _track_select_action(public_entry), "选中竞猜", "把这张公开牌设为当前归属竞猜对象。")
+	_append_track_action_if_missing(actions, _track_intel_action(public_entry), "线索档案", "打开情报档案并置顶这张公开牌。")
+	_append_track_action_if_missing(deep_links, _track_intel_action(public_entry), "线索档案", "打开情报档案并置顶这张公开牌。")
+	_append_track_action_if_missing(actions, _track_open_action(public_entry), "卡牌详情", "打开这张公开牌的图鉴详情。")
+	_append_track_action_if_missing(deep_links, _track_open_action(public_entry), "卡牌详情", "打开这张公开牌的图鉴详情。")
+	var badges: Array = public_entry.get("badges", []) if public_entry.get("badges", []) is Array else []
 	var chips: Array = [
-		{"text": "槽 %s" % str(entry.get("slot", "--"))},
-		{"text": str(entry.get("state", "等待"))},
+		{"text": "槽 %s" % str(public_entry.get("slot", "--"))},
+		{"text": str(public_entry.get("state", "等待"))},
 	]
-	var owner_hint := _track_owner_hint_text(entry)
+	var owner_hint := _track_owner_hint_text(public_entry)
 	if owner_hint != "":
 		chips.append({"text": "来源%s" % owner_hint})
-	var cost_text := str(entry.get("cost", "")).strip_edges()
+	var cost_text := str(public_entry.get("cost", "")).strip_edges()
 	if cost_text != "":
 		chips.append({"text": "报价%s" % cost_text})
 	for badge_variant in badges:
@@ -578,17 +617,20 @@ func _track_entry_inspector_context(entry: Dictionary) -> Dictionary:
 			break
 	var logs: Array = []
 	var current_logs: Variant = current_ui_data.get("logs", [])
-	if current_logs is Array:
-		logs = current_logs
+	var safe_logs: Variant = _sanitize_public_track_value(current_logs)
+	if safe_logs is Array:
+		logs = safe_logs
 	return {
-		"title": str(entry.get("title", "牌轨详情")),
-		"why": str(entry.get("why", entry.get("tooltip", "看状态、报价、归属和余波线索来推理来源。"))),
+		"context_kind": "public_track",
+		"resolution_id": int(public_entry.get("resolution_id", -1)),
+		"title": str(public_entry.get("title", "牌轨详情")),
+		"why": str(public_entry.get("why", public_entry.get("tooltip", "看状态、报价、归属和余波线索来推理来源。"))),
 		"district": {
-			"id": str(entry.get("id", "")),
-			"title": str(entry.get("label", "公共牌槽")),
-			"summary": str(entry.get("summary", entry.get("tooltip", ""))),
-			"detail": str(entry.get("detail", entry.get("tooltip", ""))),
-			"full_detail": str(entry.get("full_detail", entry.get("tooltip", ""))),
+			"id": str(public_entry.get("id", "")),
+			"title": str(public_entry.get("label", "公共牌槽")),
+			"summary": str(public_entry.get("summary", public_entry.get("tooltip", ""))),
+			"detail": str(public_entry.get("detail", public_entry.get("tooltip", ""))),
+			"full_detail": str(public_entry.get("full_detail", public_entry.get("tooltip", ""))),
 			"chips": chips,
 		},
 		"requirements": requirements,
@@ -599,11 +641,78 @@ func _track_entry_inspector_context(entry: Dictionary) -> Dictionary:
 
 
 func _track_hover_action(entry: Dictionary) -> String:
+	return _track_select_action(entry)
+
+
+func _track_select_action(entry: Dictionary) -> String:
 	var action_id := str(entry.get("select_action", "")).strip_edges()
 	if action_id != "":
 		return action_id
+	if bool(entry.get("disabled", false)) or str(entry.get("kind", "")).strip_edges().to_lower() == "event":
+		return ""
 	var resolution_id := int(entry.get("resolution_id", -1))
 	return "track_select_%d" % resolution_id if resolution_id >= 0 else ""
+
+
+func _track_intel_action(entry: Dictionary) -> String:
+	if str(entry.get("kind", "")).strip_edges().to_lower() == "event":
+		return ""
+	var resolution_id := int(entry.get("resolution_id", -1))
+	return "track_intel_%d" % resolution_id if resolution_id >= 0 else ""
+
+
+func _track_open_action(entry: Dictionary) -> String:
+	var action_id := str(entry.get("open_action", "")).strip_edges()
+	if action_id != "":
+		return action_id
+	var card_name := str(entry.get("card_name", "")).strip_edges()
+	return "track_open_%s" % card_name if card_name != "" else ""
+
+
+func _append_track_action_if_missing(target: Array, action_id: String, label: String, tooltip: String) -> void:
+	if action_id == "":
+		return
+	for action_variant in target:
+		var action: Dictionary = action_variant if action_variant is Dictionary else {}
+		if str(action.get("id", action.get("action_id", ""))).strip_edges() == action_id:
+			return
+	target.append({"id": action_id, "label": label, "tooltip": tooltip})
+
+
+func _safe_public_track_entry(entry: Dictionary) -> Dictionary:
+	var safe_variant: Variant = _sanitize_public_track_value(entry)
+	return safe_variant if safe_variant is Dictionary else {}
+
+
+func _sanitize_public_track_value(value: Variant) -> Variant:
+	if value is Dictionary:
+		var dictionary_result: Dictionary = {}
+		for key_variant in value:
+			var key := str(key_variant).to_lower()
+			if _is_private_track_key(key):
+				continue
+			dictionary_result[key_variant] = _sanitize_public_track_value((value as Dictionary)[key_variant])
+		return dictionary_result
+	if value is Array:
+		var array_result: Array = []
+		for entry_variant in value:
+			array_result.append(_sanitize_public_track_value(entry_variant))
+		return array_result
+	if value is String:
+		return _safe_public_track_text(value)
+	return value
+
+
+func _is_private_track_key(key: String) -> bool:
+	return PRIVATE_TRACK_ENTRY_KEYS.has(key) or key.begins_with("private_") or key.begins_with("hidden_")
+
+
+func _safe_public_track_text(value: String) -> String:
+	var lower := value.to_lower()
+	for token in PRIVATE_TRACK_TEXT_TOKENS:
+		if lower.contains(token):
+			return "匿名线索"
+	return value
 
 
 func _configure_track_focus_ribbon() -> void:
@@ -872,6 +981,15 @@ func _sync_selected_track_focus_from_state() -> void:
 		_clear_track_focus_ribbon()
 		return
 	_show_track_focus_for_entry(selected_entry, "已选牌轨", false)
+	if not _selected_hand_card_data.is_empty() or _right_inspector_state_is_hand_card():
+		return
+	if right_inspector != null and right_inspector.has_method("set_context"):
+		right_inspector.call("set_context", _track_entry_inspector_context(selected_entry))
+
+
+func _right_inspector_state_is_hand_card() -> bool:
+	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}
+	return str(inspector.get("context_kind", "")).strip_edges() == "hand_card" or str(inspector.get("title", "")).strip_edges() == "卡牌详情"
 
 
 func _selected_track_entry() -> Dictionary:
@@ -896,10 +1014,7 @@ func _track_entry_for_action(action_id: String) -> Dictionary:
 
 
 func _track_entry_matches_action(entry: Dictionary, action_id: String) -> bool:
-	for key in ["select_action", "open_action"]:
-		if str(entry.get(key, "")).strip_edges() == action_id:
-			return true
-	if _track_hover_action(entry) == action_id:
+	if action_id in [_track_select_action(entry), _track_intel_action(entry), _track_open_action(entry)]:
 		return true
 	var actions: Array = entry.get("actions", []) if entry.get("actions", []) is Array else []
 	for action_variant in actions:
@@ -912,9 +1027,10 @@ func _track_entry_matches_action(entry: Dictionary, action_id: String) -> bool:
 func _show_track_focus_for_entry(entry: Dictionary, prefix: String, temporary: bool) -> void:
 	if track_focus_ribbon == null or track_focus_label == null:
 		return
+	var public_entry := _safe_public_track_entry(entry)
 	_temporary_track_focus_active = temporary
-	track_focus_label.text = _track_focus_text(entry, prefix)
-	track_focus_label.tooltip_text = str(entry.get("tooltip", entry.get("detail", "")))
+	track_focus_label.text = _track_focus_text(public_entry, prefix)
+	track_focus_label.tooltip_text = str(public_entry.get("tooltip", public_entry.get("detail", "")))
 	track_focus_ribbon.visible = true
 
 

@@ -18,6 +18,7 @@ signal action_requested(action_id: String)
 
 var requirements_signature: String = ""
 var deep_links_signature: String = ""
+var _focused_track_resolution_id := -1
 
 
 func _ready() -> void:
@@ -28,6 +29,9 @@ func _ready() -> void:
 
 
 func set_context(data: Dictionary) -> void:
+	var context_kind := str(data.get("context_kind", "")).strip_edges()
+	_focused_track_resolution_id = int(data.get("resolution_id", -1)) if context_kind == "public_track" else -1
+	set_meta("focused_track_resolution_id", _focused_track_resolution_id)
 	title_label.text = str(data.get("title", "右侧详情"))
 	var reason_text := str(data.get("why", data.get("explanation", ""))).strip_edges()
 	var requirement_chips: Variant = data.get("requirements", data.get("requirement_chips", []))
@@ -55,6 +59,10 @@ func set_context(data: Dictionary) -> void:
 		current_action_panel.call("set_actions", actions if actions is Array else [])
 	_set_event_log(data.get("logs", []))
 	_set_deep_links(data.get("deep_links", data.get("details", [])))
+
+
+func focused_track_resolution_id() -> int:
+	return _focused_track_resolution_id
 
 
 func _has_meaningful_requirement_chips(chips_variant: Variant) -> bool:

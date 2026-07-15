@@ -13,6 +13,29 @@ const SLOT_HEIGHT := 34.0
 const SLOT_MIN_WIDTH := 146.0
 const SLOT_MAX_WIDTH := 216.0
 const PRIVATE_TOKENS := ["hidden_owner", "private_owner", "private_target", "owner_secret", "secret_owner", "private_discard"]
+const PRIVATE_ENTRY_KEYS := [
+	"hidden_owner",
+	"hidden_owner_id",
+	"private_owner",
+	"private_target",
+	"owner_secret",
+	"secret_owner",
+	"private_discard",
+	"private_hand",
+	"opponent_hand",
+	"opponent_cash",
+	"true_owner",
+	"owner",
+	"owner_id",
+	"owner_index",
+	"player_index",
+	"viewer_index",
+	"cash",
+	"cash_cents",
+	"exact_cash",
+	"hand",
+	"hand_size",
+]
 
 @export var compact_public_track := false
 
@@ -44,6 +67,7 @@ var _track_state: Dictionary = {}
 var _entries_signature := ""
 var _hovered_track_action := ""
 var _selected_entry_id := ""
+var _selected_resolution_id := -1
 
 
 func _ready() -> void:
@@ -68,6 +92,7 @@ func set_track_state(data: Dictionary) -> void:
 		return
 	_entries_signature = next_signature
 	_track_state = state
+	_sync_selected_identity_from_state()
 	_sync_header()
 	_sync_layers()
 	_sync_rails()
@@ -97,6 +122,7 @@ func get_debug_snapshot() -> Dictionary:
 		"has_private_text": _contains_private_text(self),
 		"exposes_sceneized_resolution_track": true,
 		"selected_entry_id": _selected_entry_id,
+		"selected_resolution_id": _selected_resolution_id,
 		"selected_slot_ids": _selected_slot_ids(),
 		"response_action_count": auction_response_action_row.get_child_count() if auction_response_action_row != null else 0,
 		"disabled_reason_visible": auction_response_disabled_reason_label != null and auction_response_disabled_reason_label.visible,
@@ -192,7 +218,7 @@ func _add_slot(parent: Container, entry: Dictionary, index: int, lane: String) -
 		slot_entry["slot"] = _slot_label(lane, index)
 	if not slot_entry.has("active"):
 		slot_entry["active"] = lane == "active" or (lane == "queue" and index == 0)
-	if str(slot_entry.get("id", slot_entry.get("resolution_id", ""))) == _selected_entry_id:
+	if _entry_matches_selected_identity(slot_entry):
 		slot_entry["selected"] = true
 	var options := {
 		"hovered_action": _hovered_track_action,
@@ -202,6 +228,7 @@ func _add_slot(parent: Container, entry: Dictionary, index: int, lane: String) -
 	}
 	if slot.has_method("configure"):
 		slot.call("configure", slot_entry, index, options)
+	_configure_slot_pointer_input(slot)
 	if _is_compact_public_track() and index == 0:
 		slot.name = "PublicTrackSlot"
 	else:
@@ -235,18 +262,19 @@ func _connect_slot(slot: Node) -> void:
 
 
 func _on_slot_selected(entry: Dictionary) -> void:
-	_selected_entry_id = str(entry.get("id", entry.get("resolution_id", "")))
+	_selected_entry_id = _entry_public_id(entry)
+	_selected_resolution_id = _entry_resolution_id(entry)
 	_sync_selected_slot_visuals()
 	card_slot_selected.emit(_selected_entry_id)
 	track_entry_selected.emit(entry.duplicate(true))
-	var action_id := str(entry.get("select_action", "")).strip_edges()
+	var action_id := _track_select_action(entry)
 	if action_id != "":
 		track_action_requested.emit(action_id)
 
 
 func _on_slot_opened(entry: Dictionary) -> void:
 	track_entry_opened.emit(entry.duplicate(true))
-	var action_id := str(entry.get("open_action", "")).strip_edges()
+	var action_id := _track_open_action(entry)
 	if action_id != "":
 		track_action_requested.emit(action_id)
 
@@ -325,9 +353,8 @@ func _sync_selected_slot_visuals() -> void:
 			continue
 		for child in rail.get_children():
 			var child_entry: Dictionary = child.call("track_entry") if child.has_method("track_entry") else {}
-			var child_id := str(child_entry.get("id", child_entry.get("resolution_id", "")))
 			if child.has_method("set_selected_visual"):
-				child.call("set_selected_visual", child_id != "" and child_id == _selected_entry_id)
+				child.call("set_selected_visual", _entry_matches_selected_identity(child_entry))
 
 
 func _selected_slot_ids() -> Array[String]:
@@ -383,9 +410,8 @@ func _sanitize_state(data: Dictionary) -> Dictionary:
 
 
 func _safe_entry(entry: Dictionary) -> Dictionary:
-	var result := entry.duplicate(true)
-	for key in ["hidden_owner", "private_owner", "private_target", "owner_secret", "secret_owner", "private_discard"]:
-		result.erase(key)
+	var safe_variant: Variant = _sanitize_public_value(entry)
+	var result: Dictionary = safe_variant if safe_variant is Dictionary else {}
 	for key in ["label", "title", "summary", "detail", "full_detail", "tooltip", "owner_hint", "state"]:
 		if result.has(key):
 			result[key] = _safe_text(str(result.get(key, "")))
@@ -395,15 +421,74 @@ func _safe_entry(entry: Dictionary) -> Dictionary:
 	return result
 
 
+func _sync_selected_identity_from_state() -> void:
+	for entry_variant in _all_entries():
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("selected", entry.get("focused", false))):
+			continue
+		_selected_entry_id = _entry_public_id(entry)
+		_selected_resolution_id = _entry_resolution_id(entry)
+		return
+	_selected_entry_id = ""
+	_selected_resolution_id = -1
+
+
+func _entry_matches_selected_identity(entry: Dictionary) -> bool:
+	var resolution_id := _entry_resolution_id(entry)
+	if _selected_resolution_id >= 0 and resolution_id >= 0:
+		return resolution_id == _selected_resolution_id
+	var entry_id := _entry_public_id(entry)
+	return _selected_entry_id != "" and entry_id == _selected_entry_id
+
+
+func _entry_public_id(entry: Dictionary) -> String:
+	return str(entry.get("id", entry.get("resolution_id", ""))).strip_edges()
+
+
+func _entry_resolution_id(entry: Dictionary) -> int:
+	return int(entry.get("resolution_id", -1))
+
+
+func _track_select_action(entry: Dictionary) -> String:
+	var action_id := str(entry.get("select_action", "")).strip_edges()
+	if action_id != "":
+		return action_id
+	if bool(entry.get("disabled", false)) or _entry_lane(entry) == "history" and str(entry.get("kind", "")).to_lower() == "event":
+		return ""
+	var resolution_id := _entry_resolution_id(entry)
+	return "track_select_%d" % resolution_id if resolution_id >= 0 else ""
+
+
+func _track_open_action(entry: Dictionary) -> String:
+	var action_id := str(entry.get("open_action", "")).strip_edges()
+	if action_id != "":
+		return action_id
+	var card_name := str(entry.get("card_name", "")).strip_edges()
+	return "track_open_%s" % card_name if card_name != "" else ""
+
+
+func _configure_slot_pointer_input(slot: Control) -> void:
+	slot.mouse_filter = Control.MOUSE_FILTER_STOP
+	for child in slot.get_children():
+		_set_pointer_passthrough_recursive(child)
+
+
+func _set_pointer_passthrough_recursive(node: Node) -> void:
+	if node is Control:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_set_pointer_passthrough_recursive(child)
+
+
 func _safe_text(text: String) -> String:
-	var result := text
-	for token in PRIVATE_TOKENS:
-		result = result.replace(token, "匿名线索")
-	return result
+	return "匿名线索" if _has_private_token(text) else text
 
 
 func _safe_response_payload(payload: Dictionary) -> Dictionary:
-	var result := payload.duplicate(true)
+	var safe_variant: Variant = _sanitize_public_value(payload)
+	var result: Dictionary = safe_variant if safe_variant is Dictionary else {}
 	if result.has("summary"):
 		result["summary"] = _safe_text(str(result.get("summary", "")))
 	var actions: Array = result.get("actions", []) if result.get("actions", []) is Array else []
@@ -418,6 +503,29 @@ func _safe_response_payload(payload: Dictionary) -> Dictionary:
 		safe_actions.append(action)
 	result["actions"] = safe_actions
 	return result
+
+
+func _sanitize_public_value(value: Variant) -> Variant:
+	if value is Dictionary:
+		var dictionary_result: Dictionary = {}
+		for key_variant in value:
+			var key := str(key_variant).to_lower()
+			if _is_private_entry_key(key):
+				continue
+			dictionary_result[key_variant] = _sanitize_public_value((value as Dictionary)[key_variant])
+		return dictionary_result
+	if value is Array:
+		var array_result: Array = []
+		for entry_variant in value:
+			array_result.append(_sanitize_public_value(entry_variant))
+		return array_result
+	if value is String:
+		return _safe_text(value)
+	return value
+
+
+func _is_private_entry_key(key: String) -> bool:
+	return PRIVATE_ENTRY_KEYS.has(key) or key.begins_with("private_") or key.begins_with("hidden_")
 
 
 func _entry_lane(entry: Dictionary) -> String:
