@@ -6,6 +6,7 @@ const ACTIVE_HANDLERS := [
 	"area_trade_contract",
 	"city_gdp_derivative",
 	"market_stabilize",
+	"news_event",
 	"product_contract_boon",
 	"product_futures",
 	"product_growth_boon",
@@ -31,6 +32,7 @@ class FakeWorld:
 	extends Node
 	var players := [{"cash": 100}]
 	var selected_district := 0
+	var districts := [{"name": "fixture", "destroyed": false, "terrain": "land", "panic": 0, "production_level": 2, "transport_level": 2, "consumption_level": 2, "city": {"active": true, "trade_route_damage": 0}}]
 	var calls: Array = []
 
 
@@ -51,6 +53,10 @@ class FakeProductMarketController:
 	func apply_futures(_player_index: int, _skill: Dictionary) -> bool: return _record("product_futures")
 	func apply_product_contract_boon(_player_index: int, _skill: Dictionary) -> bool: return _record("product_contract_boon")
 	func apply_market_stabilize(_skill: Dictionary) -> bool: return _record("market_stabilize")
+	func apply_news_market_pressure(_skill: Dictionary) -> Dictionary:
+		_record("news_event")
+		return {"changed": true, "product_id": "星露莓", "demand_delta": 1, "supply_delta": 0, "volatility_delta": 0}
+	func refresh_after_news_event() -> void: pass
 	func apply_product_growth_boon(_skill: Dictionary) -> bool: return _record("product_growth_boon")
 
 	func _record(handler_id: String) -> bool:
@@ -77,7 +83,7 @@ func _initialize() -> void:
 		return
 	root.add_child(service)
 	service.call("configure", {"ruleset_id": "v0.4"})
-	_expect(service.call("supported_handlers") == ACTIVE_HANDLERS, "service owns the exact seven active economy, product, and route handlers")
+	_expect(service.call("supported_handlers") == ACTIVE_HANDLERS, "service owns the exact eight active economy, product, and route handlers")
 	_expect(str(service.call("family_for_handler", "city_gdp_derivative")) == "economy", "GDP derivative is classified as economy")
 	_expect(str(service.call("family_for_handler", "product_futures")) == "product", "futures are classified as product")
 	_expect(str(service.call("family_for_handler", "area_trade_contract")) == "route", "area trade contract is classified as route")
@@ -117,6 +123,10 @@ func _initialize() -> void:
 		fake_derivative.calls = fake_world.calls
 		root.add_child(fake_derivative)
 		bridge.call("set_city_gdp_derivative_runtime_controller", fake_derivative)
+		var formula := CardEconomyProductRouteFormulaRuntimeService.new()
+		formula.configure({"ruleset_id": "v0.4"})
+		root.add_child(formula)
+		bridge.call("set_formula_runtime_service", formula)
 		var runtime_services := Node.new()
 		runtime_services.name = "RuntimeServices"
 		fake_world.add_child(runtime_services)
@@ -145,10 +155,11 @@ func _initialize() -> void:
 			var handler_receipt := bridge.call("apply_effect", fake_world, handler_plan) as Dictionary
 			var handler_result := service.call("finalize_effect", handler_plan, handler_receipt) as Dictionary
 			all_handlers_routed = all_handlers_routed and bool(handler_result.get("resolved", false))
-		_expect(all_handlers_routed and fake_world.calls == ACTIVE_HANDLERS, "world bridge routes all seven active owned handlers exactly once")
+		_expect(all_handlers_routed and fake_world.calls == ACTIVE_HANDLERS, "world bridge routes all eight active owned handlers exactly once")
 		fake_world.queue_free()
 		fake_market.queue_free()
 		fake_derivative.queue_free()
+		formula.queue_free()
 		bridge.queue_free()
 	var debug := service.call("debug_snapshot") as Dictionary
 	_expect(_is_data_only(debug), "service debug snapshot contains pure data only")

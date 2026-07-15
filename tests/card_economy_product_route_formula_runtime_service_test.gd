@@ -19,7 +19,7 @@ func _initialize() -> void:
 		"city_contract_boon", "city_demand_shift_step", "city_product_shift_step",
 		"city_product_upgrade", "city_revenue_route_adjustment", "city_route_flow_boon",
 		"city_gdp_derivative_v04_destruction", "city_gdp_derivative_v04_projected_settlement", "city_gdp_derivative_v04_settlement",
-		"merge_boon_source", "product_contract_boon", "product_futures_duration", "product_futures_v04_settlement",
+		"merge_boon_source", "news_event_region_effect", "product_contract_boon", "product_futures_duration", "product_futures_v04_settlement",
 		"product_futures_v04_projected_settlement", "warehouse_futures_v04_loss", "product_market_boon", "product_speculation_pressure",
 		"route_base_flow", "route_flow_multiplier", "route_insurance",
 	]

@@ -673,6 +673,31 @@ func apply_external_pressure(product_name: String, demand_delta: int, supply_del
 	return {"changed": true, "product_name": product_name, "price": product_price(product_name)}
 
 
+func apply_news_market_pressure(effect: Dictionary) -> Dictionary:
+	var product_name := _default_product()
+	if product_name.is_empty():
+		return {"changed": false, "reason_code": "news_product_unavailable", "product_id": ""}
+	var demand_delta := maxi(0, int(effect.get("market_demand_pressure", 0)))
+	var supply_delta := maxi(0, int(effect.get("market_supply_pressure", 0)))
+	var volatility_delta := int(effect.get("volatility_delta", 0))
+	if demand_delta <= 0 and supply_delta <= 0 and volatility_delta == 0:
+		return {"changed": false, "reason_code": "news_market_effect_empty", "product_id": product_name}
+	var result := apply_external_pressure(product_name, demand_delta, supply_delta, volatility_delta, false)
+	result["reason_code"] = "news_market_pressure_applied" if bool(result.get("changed", false)) else str(result.get("reason", "news_market_pressure_rejected"))
+	result["product_id"] = product_name
+	result["demand_delta"] = demand_delta
+	result["supply_delta"] = supply_delta
+	result["volatility_delta"] = volatility_delta
+	_set_selected_product(product_name)
+	return result
+
+
+func refresh_after_news_event() -> void:
+	if _route_network_runtime_controller != null:
+		_route_network_runtime_controller.refresh_routes()
+	refresh_prices()
+
+
 func tick_market_cycle(delta: float) -> Dictionary:
 	market_timer -= maxf(0.0, delta)
 	if market_timer > 0.0: return {"ticked": false, "seconds_left": market_timer}

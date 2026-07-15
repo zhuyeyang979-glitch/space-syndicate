@@ -10,6 +10,10 @@ const PRODUCT_VOLATILITY_MIN := 1
 const PRODUCT_VOLATILITY_MAX := 30
 const ROUTE_FLOW_MULTIPLIER_MAX := 2.8
 const CITY_PRODUCT_LEVEL_MAX := 5
+const REGION_ECONOMY_LEVEL_MIN := 1
+const REGION_ECONOMY_LEVEL_MAX := 5
+const REGION_TRANSPORT_SCORE_MIN := 0.6
+const REGION_TRANSPORT_SCORE_MAX := 2.4
 
 const FORMULA_IDS := [
 	"city_contract_boon",
@@ -22,6 +26,7 @@ const FORMULA_IDS := [
 	"city_gdp_derivative_v04_projected_settlement",
 	"city_gdp_derivative_v04_settlement",
 	"merge_boon_source",
+	"news_event_region_effect",
 	"product_contract_boon",
 	"product_futures_duration",
 	"product_futures_v04_settlement",
@@ -103,6 +108,8 @@ func calculate(formula_id: String, input_snapshot: Dictionary) -> Dictionary:
 			return _route_flow_multiplier(input_snapshot)
 		"merge_boon_source":
 			return _merge_boon_source_result(input_snapshot)
+		"news_event_region_effect":
+			return _news_event_region_effect(input_snapshot)
 		"route_insurance":
 			return _route_insurance(input_snapshot)
 	return _failure(formula_id, "formula_not_implemented")
@@ -167,6 +174,64 @@ func _product_contract_boon(input_snapshot: Dictionary) -> Dictionary:
 		"after_seconds": after_seconds,
 		"before_volatility": before_volatility,
 		"after_volatility": after_volatility,
+	})
+
+
+func _news_event_region_effect(input_snapshot: Dictionary) -> Dictionary:
+	var district := _dictionary(input_snapshot.get("district", {}))
+	var effect := _dictionary(input_snapshot.get("effect", {}))
+	if district.is_empty():
+		return _failure("news_event_region_effect", "district_missing")
+	if bool(district.get("destroyed", false)):
+		return _failure("news_event_region_effect", "district_destroyed")
+	var before_panic := clampi(int(district.get("panic", 0)), 0, 100)
+	var before_production := clampi(int(district.get("production_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var before_transport := clampi(int(district.get("transport_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var before_consumption := clampi(int(district.get("consumption_level", 2)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var panic_gain := maxi(0, int(effect.get("panic", 0)))
+	var after_panic := clampi(before_panic + panic_gain, 0, 100)
+	var after_production := clampi(before_production + int(effect.get("production_delta", 0)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var after_transport := clampi(before_transport + int(effect.get("transport_delta", 0)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	var after_consumption := clampi(before_consumption + int(effect.get("consumption_delta", 0)), REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX)
+	district["panic"] = after_panic
+	district["production_level"] = after_production
+	district["transport_level"] = after_transport
+	district["consumption_level"] = after_consumption
+	var transport_base := 1.25 if str(district.get("terrain", "land")) == "ocean" else 1.0
+	district["transport_score"] = clampf(
+		transport_base + float(after_transport - REGION_ECONOMY_LEVEL_MIN) * 0.18,
+		REGION_TRANSPORT_SCORE_MIN,
+		REGION_TRANSPORT_SCORE_MAX
+	)
+	var route_damage := maxi(0, int(effect.get("route_damage", 0)))
+	var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+	var city_active := not city.is_empty() and bool(city.get("active", true))
+	var before_route_damage := int(city.get("trade_route_damage", 0)) if city_active else 0
+	if city_active and route_damage > 0:
+		city["trade_route_damage"] = before_route_damage + route_damage
+		district["city"] = city
+	var after_route_damage := int(city.get("trade_route_damage", 0)) if city_active else 0
+	return _success("news_event_region_effect", {
+		"district": district,
+		"changed": (
+			after_panic != before_panic
+			or after_production != before_production
+			or after_transport != before_transport
+			or after_consumption != before_consumption
+			or after_route_damage != before_route_damage
+		),
+		"before_panic": before_panic,
+		"after_panic": after_panic,
+		"panic_delta": after_panic - before_panic,
+		"before_production": before_production,
+		"after_production": after_production,
+		"before_transport": before_transport,
+		"after_transport": after_transport,
+		"before_consumption": before_consumption,
+		"after_consumption": after_consumption,
+		"before_route_damage": before_route_damage,
+		"after_route_damage": after_route_damage,
+		"route_damage_delta": after_route_damage - before_route_damage,
 	})
 
 

@@ -553,6 +553,8 @@ func bind_ai_world(world: Node) -> void:
 		effect_bridge.call("set_product_market_runtime_controller", product_market_controller)
 	if effect_bridge != null and effect_bridge.has_method("set_city_gdp_derivative_runtime_controller"):
 		effect_bridge.call("set_city_gdp_derivative_runtime_controller", city_gdp_derivative_controller)
+	if effect_bridge != null and effect_bridge.has_method("set_formula_runtime_service"):
+		effect_bridge.call("set_formula_runtime_service", _card_economy_product_route_formula_node())
 	var victory_bridge := _victory_control_world_bridge_node()
 	if victory_bridge != null and victory_bridge.has_method("bind_world"):
 		victory_bridge.call("bind_world", world)

@@ -6,6 +6,7 @@ const SERVICE_ID := "card_economy_product_route_effect_runtime_v1"
 const HANDLER_FAMILIES := {
 	"city_gdp_derivative": "economy",
 	"market_stabilize": "product",
+	"news_event": "economy",
 	"product_speculation": "product",
 	"product_futures": "product",
 	"product_contract_boon": "product",
@@ -98,7 +99,7 @@ func finalize_effect(plan: Dictionary, receipt: Dictionary) -> Dictionary:
 		return _finalize_rejection(str(receipt.get("reason", "effect_not_dispatched")), handler_id)
 	var resolved := bool(receipt.get("resolved", false))
 	_finalized_count += 1
-	return {
+	var result := {
 		"intent_type": "dispatch_effect",
 		"dispatched": true,
 		"resolved": resolved,
@@ -107,6 +108,9 @@ func finalize_effect(plan: Dictionary, receipt: Dictionary) -> Dictionary:
 		"family_id": str(plan.get("family_id", family_for_handler(handler_id))),
 		"continuation_kind": str(plan.get("continuation_kind", "normal")),
 	}
+	if receipt.get("public_receipt", {}) is Dictionary and not (receipt.get("public_receipt", {}) as Dictionary).is_empty():
+		result["public_receipt"] = (receipt.get("public_receipt", {}) as Dictionary).duplicate(true)
+	return result
 
 
 func debug_snapshot() -> Dictionary:

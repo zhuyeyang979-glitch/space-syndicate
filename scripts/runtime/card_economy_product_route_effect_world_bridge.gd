@@ -4,6 +4,7 @@ class_name CardEconomyProductRouteEffectWorldBridge
 
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
+var _formula_runtime_service: CardEconomyProductRouteFormulaRuntimeService
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -12,6 +13,10 @@ func set_product_market_runtime_controller(controller: ProductMarketRuntimeContr
 
 func set_city_gdp_derivative_runtime_controller(controller: CityGdpDerivativeRuntimeController) -> void:
 	_city_gdp_derivative_runtime_controller = controller
+
+
+func set_formula_runtime_service(service: CardEconomyProductRouteFormulaRuntimeService) -> void:
+	_formula_runtime_service = service
 
 
 func apply_effect(world: Node, plan: Dictionary) -> Dictionary:
@@ -46,6 +51,8 @@ func apply_effect(world: Node, plan: Dictionary) -> Dictionary:
 			resolved = bool(contract_result.get("opened", false))
 		"market_stabilize":
 			resolved = _product_market_runtime_controller.apply_market_stabilize(skill) if _product_market_runtime_controller != null else false
+		"news_event":
+			return _apply_news_event(world, handler_id, skill)
 		"product_growth_boon":
 			resolved = _product_market_runtime_controller.apply_product_growth_boon(skill) if _product_market_runtime_controller != null else false
 		_:
@@ -63,7 +70,92 @@ func debug_snapshot() -> Dictionary:
 		"owns_queue": false,
 		"product_market_controller_bound": _product_market_runtime_controller != null,
 		"city_gdp_derivative_controller_bound": _city_gdp_derivative_runtime_controller != null,
+		"formula_runtime_service_bound": _formula_runtime_service != null,
 	}
+
+
+func _apply_news_event(world: Node, handler_id: String, skill: Dictionary) -> Dictionary:
+	if _formula_runtime_service == null or _product_market_runtime_controller == null:
+		return _receipt(handler_id, false, "news_event_owner_unavailable")
+	var districts_variant: Variant = world.get("districts")
+	var selected_variant: Variant = world.get("selected_district")
+	if not (districts_variant is Array) or selected_variant == null:
+		return _receipt(handler_id, false, "news_event_world_facts_unavailable")
+	var districts := (districts_variant as Array).duplicate(true)
+	var district_index := int(selected_variant)
+	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		return _receipt(handler_id, false, "news_event_target_invalid")
+	var effect := _news_effect_allowlist(skill)
+	var region_result := _formula_runtime_service.calculate("news_event_region_effect", {
+		"district": (districts[district_index] as Dictionary).duplicate(true),
+		"effect": effect,
+	})
+	if not bool(region_result.get("ok", false)):
+		return _receipt(handler_id, false, str(region_result.get("reason", "news_event_region_rejected")))
+	var market_result := _product_market_runtime_controller.apply_news_market_pressure(effect)
+	var region_changed := bool(region_result.get("changed", false))
+	var market_changed := bool(market_result.get("changed", false))
+	if not region_changed and not market_changed:
+		return _receipt(handler_id, false, "news_event_no_effect")
+	var district: Dictionary = (region_result.get("district", {}) as Dictionary).duplicate(true)
+	var public_receipt := _news_public_receipt(district_index, district, effect, region_result, market_result)
+	_append_news_public_clue(district, public_receipt)
+	districts[district_index] = district
+	world.set("districts", districts)
+	_product_market_runtime_controller.refresh_after_news_event()
+	var result := _receipt(handler_id, true, "news_event_committed", true)
+	result["public_receipt"] = public_receipt
+	return result
+
+
+func _news_effect_allowlist(skill: Dictionary) -> Dictionary:
+	var result := {}
+	for key in ["name", "news_category", "panic", "production_delta", "transport_delta", "consumption_delta", "route_damage", "market_demand_pressure", "market_supply_pressure", "volatility_delta"]:
+		if skill.has(key):
+			result[key] = skill[key]
+	return result
+
+
+func _news_public_receipt(district_index: int, district: Dictionary, effect: Dictionary, region: Dictionary, market: Dictionary) -> Dictionary:
+	return {
+		"schema_version": "v0.6.news-event-public-receipt.1",
+		"event_kind": "news_event",
+		"card_name": str(effect.get("name", "匿名新闻")),
+		"news_category": str(effect.get("news_category", "public")),
+		"district_index": district_index,
+		"district_name": str(district.get("name", "区域%d" % (district_index + 1))),
+		"panic_delta": int(region.get("panic_delta", 0)),
+		"production_delta": int(region.get("after_production", 0)) - int(region.get("before_production", 0)),
+		"transport_delta": int(region.get("after_transport", 0)) - int(region.get("before_transport", 0)),
+		"consumption_delta": int(region.get("after_consumption", 0)) - int(region.get("before_consumption", 0)),
+		"route_damage_delta": int(region.get("route_damage_delta", 0)),
+		"product_id": str(market.get("product_id", "")),
+		"market_demand_delta": int(market.get("demand_delta", 0)) if bool(market.get("changed", false)) else 0,
+		"market_supply_delta": int(market.get("supply_delta", 0)) if bool(market.get("changed", false)) else 0,
+		"volatility_delta": int(market.get("volatility_delta", 0)) if bool(market.get("changed", false)) else 0,
+		"anonymous_source": true,
+	}
+
+
+func _append_news_public_clue(district: Dictionary, receipt: Dictionary) -> void:
+	var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+	if city.is_empty() or not bool(city.get("active", true)):
+		return
+	var clue := "%s新闻：热度%+d，生产%+d、交通%+d、消费%+d、断路%+d；出牌者匿名。" % [
+		str(receipt.get("news_category", "public")),
+		int(receipt.get("panic_delta", 0)),
+		int(receipt.get("production_delta", 0)),
+		int(receipt.get("transport_delta", 0)),
+		int(receipt.get("consumption_delta", 0)),
+		int(receipt.get("route_damage_delta", 0)),
+	]
+	city["last_public_clue"] = clue
+	var clues: Array = (city.get("public_clues", []) as Array).duplicate(true) if city.get("public_clues", []) is Array else []
+	clues.append({"kind": "新闻", "text": clue})
+	while clues.size() > 12:
+		clues.pop_front()
+	city["public_clues"] = clues
+	district["city"] = city
 
 
 func _contract_runtime_controller(world: Node) -> ContractRuntimeController:
