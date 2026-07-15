@@ -11365,7 +11365,7 @@ func _check_weather_runtime_characterization_component() -> void:
 	var weather_source := FileAccess.get_file_as_string(WEATHER_RUNTIME_CONTROLLER_SCRIPT)
 	_expect(main_source.sha256_text() != "f75b217e85da2e4f5300b900290457d41e4c031ec3c6b7cefe996e6a354a103a" and not main_source.contains("var weather_forecast :=") and not main_source.contains("func _update_weather_system(") and weather_source.contains("var weather_forecast: Dictionary") and weather_source.contains("func apply_weather_control_at("), "Sprint 49 makes WeatherRuntimeController authoritative and removes the legacy main weather engine")
 	var contract_source := FileAccess.get_file_as_string(WEATHER_RUNTIME_OWNERSHIP_CONTRACT)
-	_expect(contract_source.contains("Sprint 49 status") and contract_source.contains("Scheduling and RNG order") and contract_source.contains("Activation and expiration order") and contract_source.contains("EnvironmentBalanceModel") and contract_source.contains("Deleted legacy owner"), "Weather ownership contract records the completed cutover, timing, RNG, external boundaries, and deletion result")
+	_expect(contract_source.contains("Current v0.6 status") and contract_source.contains("Lifecycle and selection") and contract_source.contains("Effect boundaries") and contract_source.contains("Save and privacy") and contract_source.contains("Main boundary"), "Weather ownership contract records the v0.6 owner, lifecycle, effects, privacy, and main boundary")
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:
