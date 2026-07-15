@@ -765,12 +765,11 @@ func _run() -> void:
 		_expect(menu_body_label != null and menu_body_label.text.contains("理由:卡牌条件") and menu_body_label.text.contains("理由分布"), "intel dossier displays city-owner mark reason")
 		var intel_city_entries := _as_array(main.call("_intel_city_guess_entries", 0, 6))
 		_expect(not intel_city_entries.is_empty() and int((intel_city_entries[0] as Dictionary).get("priority", -1)) >= 0, "intel dossier computes non-negative city investigation priority")
-		var intel_save_state := main.call("_capture_run_state") as Dictionary
-		var intel_save_players := _as_array(intel_save_state.get("players", []))
-		var saved_confidence := (intel_save_players[0] as Dictionary).get("city_guess_confidence", {}) as Dictionary
-		var saved_reasons := (intel_save_players[0] as Dictionary).get("city_guess_reasons", {}) as Dictionary
-		_expect(int(saved_confidence.get(dossier_rival_city_index, 0)) == 3, "run-state capture preserves city-owner mark confidence")
-		_expect(String(saved_reasons.get(dossier_rival_city_index, "")) == "card", "run-state capture preserves city-owner mark reason")
+		var intel_player_snapshot := (_as_array(main.get("players"))[0] as Dictionary)
+		var saved_confidence := intel_player_snapshot.get("city_guess_confidence", {}) as Dictionary
+		var saved_reasons := intel_player_snapshot.get("city_guess_reasons", {}) as Dictionary
+		_expect(int(saved_confidence.get(dossier_rival_city_index, 0)) == 3, "private city-owner mark confidence remains on the active player state")
+		_expect(String(saved_reasons.get(dossier_rival_city_index, "")) == "card", "private city-owner mark reason remains on the active player state")
 	main.call("_open_intel_region_codex_link", buildable_district)
 	await process_frame
 	var intel_back_button := _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
