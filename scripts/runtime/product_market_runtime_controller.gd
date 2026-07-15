@@ -443,8 +443,6 @@ func apply_speculation(player_index: int, skill: Dictionary) -> bool:
 	_set_selected_product(product_name)
 	var cash_gain := int(skill.get("cash", 0))
 	if cash_gain > 0: _world_bridge.commit_player_cash_delta(player_index, cash_gain, source, product_name, "card_income", cash_gain)
-	var selected_district := int(_world_snapshot().get("selected_district", -1))
-	if int(skill.get("panic", 0)) > 0 and selected_district >= 0: _world_bridge.call_world("_add_panic", [selected_district, int(skill.get("panic", 0)), source])
 	refresh_prices()
 	_log("匿名卡牌围绕%s完成%s：制造%d点%s压力，市场按供需重算¥%d→¥%d；收益归属不公开（¥%d）。" % [product_name, "拉升" if price_delta >= 0 else "做空", pressure, "需求" if price_delta >= 0 else "供给", before_price, product_price(product_name), cash_gain])
 	return true
