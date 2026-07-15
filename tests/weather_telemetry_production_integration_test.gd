@@ -68,9 +68,9 @@ func _run() -> void:
 	clock.call("advance", 30.0)
 	weather.call("tick", 30.0)
 	_expect(_event_types(telemetry) == ["forecast", "activation"], "world-effective boundary activates telemetry lifecycle")
-	_expect(bool(telemetry.call("observe_public_metric", 1, "product_price_delta_percent", 25.0)) \
-		and bool(telemetry.call("observe_public_metric", 1, "route_revenue_delta_percent", 20.0)) \
-		and bool(telemetry.call("mark_monster_target_changed", 1)), "public owner observations join the active weather session")
+	_expect(bool(telemetry.call("observe_public_metric", 1, "product_price_growth_delta_percent", 25.0)) \
+		and bool(telemetry.call("observe_public_metric", 1, "route_efficiency_delta_percent", 20.0)) \
+		and bool(telemetry.call("mark_monster_target_weather_influenced", 1)), "public owner observations join the active weather session with honest metric semantics")
 
 	clock.call("advance", 55.0)
 	weather.call("tick", 55.0)
@@ -78,9 +78,9 @@ func _run() -> void:
 	var aggregate := telemetry.call("aggregate_snapshot") as Dictionary
 	var ion := (aggregate.get("definitions", []) as Array)[0] as Dictionary
 	_expect(int(ion.get("event_count", 0)) == 1 \
-		and is_equal_approx(float(ion.get("average_product_price_delta_percent", 0.0)), 25.0) \
-		and is_equal_approx(float(ion.get("average_route_revenue_delta_percent", 0.0)), 20.0) \
-		and int(ion.get("monster_target_changed_count", 0)) == 1 \
+		and is_equal_approx(float(ion.get("average_product_price_growth_delta_percent", 0.0)), 25.0) \
+		and is_equal_approx(float(ion.get("average_route_efficiency_delta_percent", 0.0)), 20.0) \
+		and int(ion.get("monster_target_weather_influenced_count", 0)) == 1 \
 		and int((ion.get("player_response_counts", {}) as Dictionary).get("buy_after_forecast", 0)) == 1, "completed telemetry preserves only aggregate weather outcomes")
 	var encoded := JSON.stringify(telemetry.call("recent_events_snapshot"))
 	_expect(not encoded.contains("player_index") and not encoded.contains("cash") and not encoded.contains("hand") and not encoded.contains("owner") and not encoded.contains("target_weights"), "production telemetry log contains no private state")
@@ -109,9 +109,9 @@ func _event_types(telemetry: Node) -> Array:
 
 func _production_observer_tokens_present() -> bool:
 	var sources := {
-		"res://scripts/runtime/product_market_runtime_controller.gd": ["set_weather_telemetry_runtime_service", "product_price_delta_percent"],
-		"res://scripts/runtime/route_network_runtime_controller.gd": ["set_weather_telemetry_runtime_service", "route_revenue_delta_percent"],
-		"res://scripts/runtime/monster_runtime_controller.gd": ["set_weather_telemetry_runtime_service", "mark_monster_target_changed"],
+		"res://scripts/runtime/product_market_runtime_controller.gd": ["set_weather_telemetry_runtime_service", "product_price_growth_delta_percent"],
+		"res://scripts/runtime/route_network_runtime_controller.gd": ["set_weather_telemetry_runtime_service", "route_efficiency_delta_percent"],
+		"res://scripts/runtime/monster_runtime_controller.gd": ["set_weather_telemetry_runtime_service", "mark_monster_target_weather_influenced"],
 		"res://scripts/runtime/game_runtime_coordinator.gd": ["record_weather_public_response", "WeatherTelemetryRuntimeService"],
 	}
 	for path in sources:

@@ -41,8 +41,8 @@ const RESPONSE_CATEGORIES := [
 ]
 const NOT_APPLICABLE_RESPONSE := "not_applicable"
 const OBSERVABLE_METRICS := [
-	"product_price_delta_percent",
-	"route_revenue_delta_percent",
+	"product_price_growth_delta_percent",
+	"route_efficiency_delta_percent",
 	"region_damage",
 	"estimated_economic_delta",
 ]
@@ -54,10 +54,10 @@ const EVENT_KEYS := [
 	"forecast_duration_seconds",
 	"active_duration_seconds",
 	"fade_duration_seconds",
-	"product_price_delta_percent",
-	"route_revenue_delta_percent",
+	"product_price_growth_delta_percent",
+	"route_efficiency_delta_percent",
 	"player_response_category",
-	"monster_target_changed",
+	"monster_target_weather_influenced",
 	"region_damage",
 	"estimated_economic_delta",
 ]
@@ -178,7 +178,7 @@ func begin_weather_session(
 		"fade_duration_seconds": fade_duration_seconds,
 		"activated": false,
 		"response_category": NOT_APPLICABLE_RESPONSE,
-		"monster_target_changed": false,
+		"monster_target_weather_influenced": false,
 		"metric_totals": {},
 		"metric_samples": {},
 	}
@@ -253,12 +253,12 @@ func record_public_response(region_index: int, category: String) -> int:
 	return matched
 
 
-func mark_monster_target_changed(event_id: int) -> bool:
+func mark_monster_target_weather_influenced(event_id: int) -> bool:
 	var key := str(event_id)
 	if not _sessions.has(key):
 		return false
 	var session := _sessions[key] as Dictionary
-	session["monster_target_changed"] = true
+	session["monster_target_weather_influenced"] = true
 	_sessions[key] = session
 	return true
 
@@ -279,14 +279,14 @@ func finish_weather_session(event_id: int) -> bool:
 			float(session.get("active_duration_seconds", 0.0)),
 			float(session.get("fade_duration_seconds", 0.0))
 		)
-		event["product_price_delta_percent"] = _sample_average(totals, samples, "product_price_delta_percent")
-		event["route_revenue_delta_percent"] = _sample_average(totals, samples, "route_revenue_delta_percent")
+		event["product_price_growth_delta_percent"] = _sample_average(totals, samples, "product_price_growth_delta_percent")
+		event["route_efficiency_delta_percent"] = _sample_average(totals, samples, "route_efficiency_delta_percent")
 		event["region_damage"] = float(totals.get("region_damage", 0.0))
 		event["estimated_economic_delta"] = float(totals.get("estimated_economic_delta", 0.0))
 		event["player_response_category"] = str(session.get("response_category", NOT_APPLICABLE_RESPONSE))
 		if event["player_response_category"] == NOT_APPLICABLE_RESPONSE:
 			event["player_response_category"] = "no_response_after_forecast"
-		event["monster_target_changed"] = bool(session.get("monster_target_changed", false))
+		event["monster_target_weather_influenced"] = bool(session.get("monster_target_weather_influenced", false))
 		if not record_event(event):
 			return false
 	_sessions.erase(key)
@@ -393,8 +393,8 @@ func _validate_event(event: Dictionary) -> bool:
 		"forecast_duration_seconds",
 		"active_duration_seconds",
 		"fade_duration_seconds",
-		"product_price_delta_percent",
-		"route_revenue_delta_percent",
+		"product_price_growth_delta_percent",
+		"route_efficiency_delta_percent",
 		"region_damage",
 		"estimated_economic_delta",
 	]:
@@ -402,8 +402,8 @@ func _validate_event(event: Dictionary) -> bool:
 			return _reject("%s_type" % str(key))
 	if typeof(event["player_response_category"]) != TYPE_STRING:
 		return _reject("player_response_category_type")
-	if typeof(event["monster_target_changed"]) != TYPE_BOOL:
-		return _reject("monster_target_changed_type")
+	if typeof(event["monster_target_weather_influenced"]) != TYPE_BOOL:
+		return _reject("monster_target_weather_influenced_type")
 	if not _validate_ranges(event):
 		return false
 	return _validate_lifecycle_shape(event)
@@ -414,7 +414,7 @@ func _validate_ranges(event: Dictionary) -> bool:
 		var duration := float(event[duration_key])
 		if duration < 0.0 or duration > MAX_DURATION_SECONDS:
 			return _reject("%s_range" % str(duration_key))
-	for percent_key in ["product_price_delta_percent", "route_revenue_delta_percent"]:
+	for percent_key in ["product_price_growth_delta_percent", "route_efficiency_delta_percent"]:
 		var percent_delta := float(event[percent_key])
 		if percent_delta < -100.0 or percent_delta > MAX_PERCENT_DELTA:
 			return _reject("%s_range" % str(percent_key))
@@ -455,14 +455,14 @@ func _non_terminal_metrics_are_empty(event: Dictionary, duration_key: String) ->
 		if str(key) != duration_key and not is_zero_approx(float(event[key])):
 			return false
 	for key in [
-		"product_price_delta_percent",
-		"route_revenue_delta_percent",
+		"product_price_growth_delta_percent",
+		"route_efficiency_delta_percent",
 		"region_damage",
 		"estimated_economic_delta",
 	]:
 		if not is_zero_approx(float(event[key])):
 			return false
-	return not bool(event["monster_target_changed"])
+	return not bool(event["monster_target_weather_influenced"])
 
 
 func _normalized_event(event: Dictionary) -> Dictionary:
@@ -474,10 +474,10 @@ func _normalized_event(event: Dictionary) -> Dictionary:
 		"forecast_duration_seconds": float(event["forecast_duration_seconds"]),
 		"active_duration_seconds": float(event["active_duration_seconds"]),
 		"fade_duration_seconds": float(event["fade_duration_seconds"]),
-		"product_price_delta_percent": float(event["product_price_delta_percent"]),
-		"route_revenue_delta_percent": float(event["route_revenue_delta_percent"]),
+		"product_price_growth_delta_percent": float(event["product_price_growth_delta_percent"]),
+		"route_efficiency_delta_percent": float(event["route_efficiency_delta_percent"]),
 		"player_response_category": str(event["player_response_category"]),
-		"monster_target_changed": bool(event["monster_target_changed"]),
+		"monster_target_weather_influenced": bool(event["monster_target_weather_influenced"]),
 		"region_damage": float(event["region_damage"]),
 		"estimated_economic_delta": float(event["estimated_economic_delta"]),
 	}
@@ -492,10 +492,10 @@ func _lifecycle_event(event_type: String, definition_id: String, region_index: i
 		"forecast_duration_seconds": forecast_duration,
 		"active_duration_seconds": active_duration,
 		"fade_duration_seconds": fade_duration,
-		"product_price_delta_percent": 0.0,
-		"route_revenue_delta_percent": 0.0,
+		"product_price_growth_delta_percent": 0.0,
+		"route_efficiency_delta_percent": 0.0,
 		"player_response_category": NOT_APPLICABLE_RESPONSE,
-		"monster_target_changed": false,
+		"monster_target_weather_influenced": false,
 		"region_damage": 0.0,
 		"estimated_economic_delta": 0.0,
 	}
@@ -542,13 +542,13 @@ func _accumulate_stats(stats: Dictionary, event: Dictionary) -> void:
 	stats["forecast_duration_total"] = float(stats["forecast_duration_total"]) + float(event["forecast_duration_seconds"])
 	stats["active_duration_total"] = float(stats["active_duration_total"]) + float(event["active_duration_seconds"])
 	stats["fade_duration_total"] = float(stats["fade_duration_total"]) + float(event["fade_duration_seconds"])
-	stats["product_price_delta_total"] = float(stats["product_price_delta_total"]) + float(event["product_price_delta_percent"])
-	stats["route_revenue_delta_total"] = float(stats["route_revenue_delta_total"]) + float(event["route_revenue_delta_percent"])
+	stats["product_price_growth_delta_total"] = float(stats["product_price_growth_delta_total"]) + float(event["product_price_growth_delta_percent"])
+	stats["route_efficiency_delta_total"] = float(stats["route_efficiency_delta_total"]) + float(event["route_efficiency_delta_percent"])
 	var responses: Dictionary = stats["response_counts"]
 	var response := str(event["player_response_category"])
 	responses[response] = int(responses[response]) + 1
-	if bool(event["monster_target_changed"]):
-		stats["monster_target_changed_count"] = int(stats["monster_target_changed_count"]) + 1
+	if bool(event["monster_target_weather_influenced"]):
+		stats["monster_target_weather_influenced_count"] = int(stats["monster_target_weather_influenced_count"]) + 1
 	stats["region_damage_total"] = float(stats["region_damage_total"]) + float(event["region_damage"])
 	stats["estimated_economic_delta_total"] = float(stats["estimated_economic_delta_total"]) + float(event["estimated_economic_delta"])
 
@@ -562,11 +562,11 @@ func _stats_row(definition_id: String, stats: Dictionary) -> Dictionary:
 		"average_forecast_duration_seconds": _average(float(stats["forecast_duration_total"]), count),
 		"average_active_duration_seconds": _average(float(stats["active_duration_total"]), count),
 		"average_fade_duration_seconds": _average(float(stats["fade_duration_total"]), count),
-		"average_product_price_delta_percent": _average(float(stats["product_price_delta_total"]), count),
-		"average_route_revenue_delta_percent": _average(float(stats["route_revenue_delta_total"]), count),
+		"average_product_price_growth_delta_percent": _average(float(stats["product_price_growth_delta_total"]), count),
+		"average_route_efficiency_delta_percent": _average(float(stats["route_efficiency_delta_total"]), count),
 		"player_response_counts": (stats["response_counts"] as Dictionary).duplicate(),
-		"monster_target_changed_count": int(stats["monster_target_changed_count"]),
-		"monster_target_changed_rate": _average(float(stats["monster_target_changed_count"]), count),
+		"monster_target_weather_influenced_count": int(stats["monster_target_weather_influenced_count"]),
+		"monster_target_weather_influenced_rate": _average(float(stats["monster_target_weather_influenced_count"]), count),
 		"region_damage_total": float(stats["region_damage_total"]),
 		"estimated_economic_delta_total": float(stats["estimated_economic_delta_total"]),
 		"average_estimated_economic_delta": _average(float(stats["estimated_economic_delta_total"]), count),
@@ -601,10 +601,10 @@ func _empty_stats() -> Dictionary:
 		"forecast_duration_total": 0.0,
 		"active_duration_total": 0.0,
 		"fade_duration_total": 0.0,
-		"product_price_delta_total": 0.0,
-		"route_revenue_delta_total": 0.0,
+		"product_price_growth_delta_total": 0.0,
+		"route_efficiency_delta_total": 0.0,
 		"response_counts": responses,
-		"monster_target_changed_count": 0,
+		"monster_target_weather_influenced_count": 0,
 		"region_damage_total": 0.0,
 		"estimated_economic_delta_total": 0.0,
 	}

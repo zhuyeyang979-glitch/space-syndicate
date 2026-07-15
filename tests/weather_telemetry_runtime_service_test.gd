@@ -59,7 +59,7 @@ func _case_schema_and_privacy_rejection() -> void:
 	var out_of_bounds_region := _forecast_event("ion_storm", 64, 30.0)
 	_expect(not _service.record_event(out_of_bounds_region) and _service.get_last_error() == "region_index_range", "region domain is bounded")
 	var scoped_forecast := _forecast_event("ion_storm", 2, 30.0)
-	scoped_forecast["route_revenue_delta_percent"] = 1.0
+	scoped_forecast["route_efficiency_delta_percent"] = 1.0
 	_expect(not _service.record_event(scoped_forecast) and _service.get_last_error() == "forecast_payload_scope", "forecast record cannot smuggle end metrics")
 	var serialized_log := JSON.stringify(_service.recent_events_snapshot())
 	_expect(not serialized_log.contains("PRIVATE_SENTINEL") and not serialized_log.contains("player_7"), "rejected private data never enters local log")
@@ -79,9 +79,9 @@ func _case_aggregation_math() -> void:
 	var responses: Dictionary = ion.get("player_response_counts", {}) as Dictionary
 	_expect(int(ion.get("event_count", 0)) == 2, "completed event count aggregates by definition")
 	_expect(_near(float(ion.get("average_forecast_duration_seconds", 0.0)), 40.0) and _near(float(ion.get("average_active_duration_seconds", 0.0)), 70.0) and _near(float(ion.get("average_fade_duration_seconds", 0.0)), 10.0), "duration averages are correct")
-	_expect(_near(float(ion.get("average_product_price_delta_percent", 0.0)), 15.0) and _near(float(ion.get("average_route_revenue_delta_percent", 0.0)), -15.0), "price and route-revenue averages are correct")
+	_expect(_near(float(ion.get("average_product_price_growth_delta_percent", 0.0)), 15.0) and _near(float(ion.get("average_route_efficiency_delta_percent", 0.0)), -15.0), "price-growth and route-efficiency averages are correct")
 	_expect(int(responses.get("route_after_forecast", 0)) == 1 and int(responses.get("buy_after_forecast", 0)) == 1 and int(responses.get("build_after_forecast", 0)) == 0 and int(responses.get("play_after_forecast", 0)) == 0, "response categories aggregate without identity")
-	_expect(int(ion.get("monster_target_changed_count", 0)) == 1 and _near(float(ion.get("monster_target_changed_rate", 0.0)), 0.5), "monster decision influence stores only count and rate")
+	_expect(int(ion.get("monster_target_weather_influenced_count", 0)) == 1 and _near(float(ion.get("monster_target_weather_influenced_rate", 0.0)), 0.5), "monster decision influence stores only count and rate")
 	_expect(_near(float(ion.get("region_damage_total", 0.0)), 3.0), "region damage sums correctly")
 	_expect(_near(float(ion.get("estimated_economic_delta_total", 0.0)), -100.0) and _near(float(ion.get("average_estimated_economic_delta", 0.0)), -50.0), "estimated aggregate economic delta math is correct")
 	var regions: Array = ion.get("regions", []) as Array
@@ -94,12 +94,12 @@ func _case_live_session_aggregation() -> void:
 	_expect(_service.begin_weather_session(17, "crystal_dust_storm", [3], 35.0, 55.0, 10.0), "live session accepts public lifecycle identity")
 	_expect(_service.begin_weather_session(17, "crystal_dust_storm", [3], 35.0, 55.0, 10.0), "same live session begin is idempotent")
 	_expect(_service.activate_weather_session(17), "live session activation is recorded")
-	_expect(_service.observe_public_metric(17, "product_price_delta_percent", 20.0) \
-		and _service.observe_public_metric(17, "product_price_delta_percent", 10.0) \
-		and _service.observe_public_metric(17, "route_revenue_delta_percent", -12.0) \
+	_expect(_service.observe_public_metric(17, "product_price_growth_delta_percent", 20.0) \
+		and _service.observe_public_metric(17, "product_price_growth_delta_percent", 10.0) \
+		and _service.observe_public_metric(17, "route_efficiency_delta_percent", -12.0) \
 		and _service.observe_public_metric(17, "region_damage", 0.75) \
 		and _service.observe_public_metric(17, "estimated_economic_delta", -40.0), "live session accepts only bounded public metrics")
-	_expect(_service.record_public_response(3, "route_after_forecast") == 1 and _service.mark_monster_target_changed(17), "live session records anonymous response and monster-decision change")
+	_expect(_service.record_public_response(3, "route_after_forecast") == 1 and _service.mark_monster_target_weather_influenced(17), "live session records an anonymous response and weather-influenced monster scoring")
 	_expect(_service.finish_weather_session(17), "live session emits a completed end record")
 	var log := _service.recent_events_snapshot()
 	var encoded := JSON.stringify(log)
@@ -111,11 +111,11 @@ func _case_live_session_aggregation() -> void:
 	var rows: Array = (_service.aggregate_snapshot().get("definitions", []) as Array)
 	var crystal := rows[3] as Dictionary
 	_expect(int(crystal.get("event_count", 0)) == 1 \
-		and _near(float(crystal.get("average_product_price_delta_percent", 0.0)), 15.0) \
-		and _near(float(crystal.get("average_route_revenue_delta_percent", 0.0)), -12.0) \
+		and _near(float(crystal.get("average_product_price_growth_delta_percent", 0.0)), 15.0) \
+		and _near(float(crystal.get("average_route_efficiency_delta_percent", 0.0)), -12.0) \
 		and _near(float(crystal.get("region_damage_total", 0.0)), 0.75) \
 		and _near(float(crystal.get("estimated_economic_delta_total", 0.0)), -40.0) \
-		and int(crystal.get("monster_target_changed_count", 0)) == 1, "live session aggregates sampled percentages and additive outcomes correctly")
+		and int(crystal.get("monster_target_weather_influenced_count", 0)) == 1, "live session aggregates sampled percentages and additive outcomes correctly")
 
 
 func _case_capacity_and_ordering() -> void:
@@ -160,9 +160,8 @@ func _case_report_generation() -> void:
 	var rows: Array = aggregates.get("definitions", []) as Array
 	var expected_forecast := [30.0, 45.0, 40.0, 35.0, 60.0, 30.0]
 	var expected_active := [45.0, 75.0, 70.0, 55.0, 90.0, 45.0]
-	var expected_economic := [480.0, -660.0, 270.0, -210.0, -780.0, -330.0]
-	var expected_monster_changes := [2, 1, 2, 1, 2, 3]
-	_expect(str(first_result.get("status", "")) == "PASS" and int(first_result.get("accepted_lifecycle_events", 0)) == 54 and int(first_result.get("completed_samples", 0)) == 18, "bench simulates all lifecycle stages for 18 completed samples")
+	var expected_monster_influence := [0, 0, 3, 0, 0, 3]
+	_expect(str(first_result.get("status", "")) == "PASS" and int(first_result.get("accepted_lifecycle_events", 0)) == 54 and int(first_result.get("completed_samples", 0)) == 18, "bench exercises all lifecycle stages for 18 resolver-backed samples")
 	_expect(rows.size() == 6, "generated report source contains exactly six definition rows")
 	for index in range(WeatherTelemetryRuntimeService.DEFINITION_IDS.size()):
 		var row := rows[index] as Dictionary
@@ -171,11 +170,11 @@ func _case_report_generation() -> void:
 			and _near(float(row.get("average_forecast_duration_seconds", 0.0)), float(expected_forecast[index])) \
 			and _near(float(row.get("average_active_duration_seconds", 0.0)), float(expected_active[index])) \
 			and _near(float(row.get("average_fade_duration_seconds", 0.0)), 10.0) \
-			and _near(float(row.get("estimated_economic_delta_total", 0.0)), float(expected_economic[index])) \
-			and int(row.get("monster_target_changed_count", -1)) == int(expected_monster_changes[index]), "report row %d contains expected sample count, durations, loss/delta, and monster influence" % index)
+			and _near(float(row.get("estimated_economic_delta_total", 0.0)), 0.0) \
+			and int(row.get("monster_target_weather_influenced_count", -1)) == int(expected_monster_influence[index]), "report row %d contains authored durations, honest N/A currency data, and tag-matched monster influence" % index)
 	_expect(first_report == second_report, "report Markdown is deterministic across runs")
-	_expect(first_report.contains("deterministic sample/simulation evidence") and first_report.contains("not live production telemetry"), "report labels evidence as simulation rather than production telemetry")
-	_expect(first_report.contains("Simulated loss") and first_report.contains("Hit regions") and first_report.contains("Monster target changed"), "report includes losses, hit regions, and monster-decision influence")
+	_expect(first_report.contains("deterministic, resolver-backed acceptance samples") and first_report.contains("not a live-player telemetry export"), "report labels its evidence class without claiming live production outcomes")
+	_expect(first_report.contains("Realized currency delta") and first_report.contains("N/A") and first_report.contains("Hit regions") and first_report.contains("Monster target scoring influenced"), "report includes hit regions and monster influence while refusing invented currency outcomes")
 	_expect(FileAccess.file_exists(REPORT_PATH) and FileAccess.get_file_as_string(REPORT_PATH) == first_report, "bench writes the actual deterministic Markdown artifact")
 	_expect(not first_report.contains("PRIVATE_SENTINEL") and not first_report.contains("player_7"), "generated report contains no rejected private values")
 	bench.queue_free()
@@ -199,10 +198,10 @@ func _base_event(event_type: String, definition_id: String, region_index: int, f
 		"forecast_duration_seconds": forecast_duration,
 		"active_duration_seconds": active_duration,
 		"fade_duration_seconds": fade_duration,
-		"product_price_delta_percent": 0.0,
-		"route_revenue_delta_percent": 0.0,
+		"product_price_growth_delta_percent": 0.0,
+		"route_efficiency_delta_percent": 0.0,
 		"player_response_category": WeatherTelemetryRuntimeService.NOT_APPLICABLE_RESPONSE,
-		"monster_target_changed": false,
+		"monster_target_weather_influenced": false,
 		"region_damage": 0.0,
 		"estimated_economic_delta": 0.0,
 	}
@@ -229,10 +228,10 @@ func _end_event(
 		"forecast_duration_seconds": forecast_duration,
 		"active_duration_seconds": active_duration,
 		"fade_duration_seconds": fade_duration,
-		"product_price_delta_percent": price_delta,
-		"route_revenue_delta_percent": route_delta,
+		"product_price_growth_delta_percent": price_delta,
+		"route_efficiency_delta_percent": route_delta,
 		"player_response_category": response,
-		"monster_target_changed": monster_changed,
+		"monster_target_weather_influenced": monster_changed,
 		"region_damage": region_damage,
 		"estimated_economic_delta": economic_delta,
 	}

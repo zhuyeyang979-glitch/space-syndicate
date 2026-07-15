@@ -993,7 +993,7 @@ func _record_weather_price_telemetry(rows: Array) -> void:
 		var total := 0.0
 		for sample in samples:
 			total += float(sample)
-		_weather_telemetry_runtime_service.call("observe_public_metric", int(event_id_variant), "product_price_delta_percent", total / float(samples.size()))
+		_weather_telemetry_runtime_service.call("observe_public_metric", int(event_id_variant), "product_price_growth_delta_percent", total / float(samples.size()))
 
 
 func _sanitize_weather_contributions(value: Variant) -> Array:

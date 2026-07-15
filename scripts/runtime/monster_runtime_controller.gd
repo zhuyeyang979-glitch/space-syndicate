@@ -4697,21 +4697,24 @@ func _auto_monster_target_candidates(actor: Dictionary) -> Array:
 func _weighted_auto_monster_target(actor: Dictionary) -> int:
 	var weights := []
 	var candidates := _auto_monster_target_candidates(actor)
-	var weather_event_ids: Array = []
+	var weather_event_ids_by_candidate: Array = []
 	for entry in candidates:
 		weights.append(int(entry["weight"]))
+		var candidate_event_ids: Array = []
 		var weather_effect := _monster_weather_effect(actor, int(entry.get("index", -1)))
 		if float(weather_effect.get("preference_multiplier", 1.0)) > 1.0:
 			for event_id_variant in weather_effect.get("event_ids", []):
 				var event_id := int(event_id_variant)
-				if event_id > 0 and not weather_event_ids.has(event_id):
-					weather_event_ids.append(event_id)
+				if event_id > 0 and not candidate_event_ids.has(event_id):
+					candidate_event_ids.append(event_id)
+		weather_event_ids_by_candidate.append(candidate_event_ids)
 	var picked := _weighted_pick_index(weights)
 	if picked < 0:
 		return -1
-	if _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("mark_monster_target_changed"):
-		for event_id in weather_event_ids:
-			_weather_telemetry_runtime_service.call("mark_monster_target_changed", int(event_id))
+	if _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("mark_monster_target_weather_influenced"):
+		var picked_weather_event_ids: Array = weather_event_ids_by_candidate[picked] if picked < weather_event_ids_by_candidate.size() else []
+		for event_id in picked_weather_event_ids:
+			_weather_telemetry_runtime_service.call("mark_monster_target_weather_influenced", int(event_id))
 	return int(candidates[picked]["index"])
 
 func _auto_monster_target_probability_text(actor: Dictionary, index: int) -> String:

@@ -332,7 +332,7 @@ func _weather_projection_for_candidate(candidate: Dictionary) -> Dictionary:
 		multiplier *= event_multiplier
 		var event_id := int(projection.get("event_id", 0))
 		if event_id > 0 and _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("observe_public_metric"):
-			_weather_telemetry_runtime_service.call("observe_public_metric", event_id, "route_revenue_delta_percent", (event_multiplier - 1.0) * 100.0)
+			_weather_telemetry_runtime_service.call("observe_public_metric", event_id, "route_efficiency_delta_percent", (event_multiplier - 1.0) * 100.0)
 		explanation_parts.append(_weather_efficiency_explanation(
 			str(projection.get("definition_id", "weather")),
 			str(projection.get("mode", "generic")),
