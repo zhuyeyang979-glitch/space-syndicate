@@ -65,7 +65,7 @@ func _verify_exact_delta_preserves_live_income_and_recovery(catalog: Resource) -
 	var asset_owner := _asset_owner({0: _assets(3)})
 	var card := _card(catalog, "facility.road.rank_1", "card:a:road:1")
 	var world := TestWorld.new()
-	world.players = [{"actor_id": "A", "cash": 10, "cash_cents": 1055, "slots": [card]}]
+	world.players = [{"actor_id": "A", "cash": 10, "cash_cents": 1055, "card_purchase_count": 2, "total_card_spend": 10, "slots": [card]}]
 	var adapter = ADAPTER_SCRIPT.new()
 	_expect(bool(adapter.configure(catalog, asset_owner).get("configured", false)), "production adapter configures against real asset owner API")
 	_expect(bool(adapter.bind_world(world).get("bound", false)), "production adapter binds the existing world owner")
@@ -83,6 +83,8 @@ func _verify_exact_delta_preserves_live_income_and_recovery(catalog: Resource) -
 	var before: Dictionary = (reserved.get("before_snapshots", {}) as Dictionary).get("A", {}) as Dictionary
 	var next := before.duplicate(true)
 	next["cash"] = int(before.get("cash", 0)) - 4
+	next["card_purchase_count"] = int(before.get("card_purchase_count", 0)) + 1
+	next["total_card_spend"] = int(before.get("total_card_spend", 0)) + 4
 	var next_assets: Dictionary = (before.get("assets", {}) as Dictionary).duplicate(true)
 	next_assets["shipping"] = int(next_assets.get("shipping", 0)) - 1
 	next["assets"] = next_assets
@@ -96,6 +98,8 @@ func _verify_exact_delta_preserves_live_income_and_recovery(catalog: Resource) -
 	var live_players := world.players.duplicate(true)
 	(live_players[0] as Dictionary)["cash"] = 15
 	(live_players[0] as Dictionary)["cash_cents"] = 1555
+	(live_players[0] as Dictionary)["card_purchase_count"] = 5
+	(live_players[0] as Dictionary)["total_card_spend"] = 30
 	world.players = live_players
 	var shipping_gdp := _zero_gdp()
 	(shipping_gdp.get("shipping", {}) as Dictionary)["gdp_per_minute"] = 100
@@ -112,6 +116,7 @@ func _verify_exact_delta_preserves_live_income_and_recovery(catalog: Resource) -
 	_expect(int((after.get("assets", {}) as Dictionary).get("shipping", -1)) == 3, "exact asset debit preserves recovery received during reservation")
 	_expect(_card_count(after) == 0, "only the exact played card leaves the production hand")
 	_expect(int((world.players[0] as Dictionary).get("cash_cents", -1)) == 1155, "whole-unit card debit preserves the authoritative fractional-cent remainder")
+	_expect(int(after.get("card_purchase_count", -1)) == 6 and int(after.get("total_card_spend", -1)) == 34, "purchase ledger deltas preserve concurrent authoritative count and spend")
 	var debug: Dictionary = adapter.debug_snapshot()
 	_expect(not bool(debug.get("stores_inventory", true)) and not bool(debug.get("stores_cash", true)) and not bool(debug.get("stores_assets", true)), "adapter keeps no second resource truth")
 	adapter.free()
@@ -254,7 +259,7 @@ func _verify_missing_credit_api_fails_closed(catalog: Resource) -> void:
 func _verify_transaction_service_uses_production_staging(catalog: Resource) -> void:
 	var asset_owner := _asset_owner({0: _assets(2)})
 	var world := TestWorld.new()
-	world.players = [{"actor_id": "A", "cash": 10, "cash_cents": 1000, "slots": []}]
+	world.players = [{"actor_id": "A", "cash": 10, "cash_cents": 1000, "card_purchase_count": 4, "total_card_spend": 19, "slots": []}]
 	var adapter = ADAPTER_SCRIPT.new()
 	adapter.configure(catalog, asset_owner)
 	adapter.bind_world(world)
@@ -268,6 +273,9 @@ func _verify_transaction_service_uses_production_staging(catalog: Resource) -> v
 	var quote: Dictionary = quote_authority.issue_quote(0, 0, "facility.orbital_warehouse.rank_2", "production-supply-warehouse", 7)
 	var bought: Dictionary = service.purchase_market_card("A", "market-warehouse", next_listing, 0, 4, "tx-production-buy", quote)
 	_expect(bool(bought.get("committed", false)) and int((world.players[0] as Dictionary).get("cash", -1)) == 3, "market purchase uses lazy exact-delta prepare and debits production cash once")
+	_expect(int((world.players[0] as Dictionary).get("card_purchase_count", -1)) == 5 and int((world.players[0] as Dictionary).get("total_card_spend", -1)) == 26, "production market purchase advances count and spend by the locked price")
+	var purchase_replay: Dictionary = service.purchase_market_card("A", "market-warehouse", next_listing, 0, 4, "tx-production-buy", quote)
+	_expect(bool(purchase_replay.get("idempotent_replay", false)) and int((world.players[0] as Dictionary).get("card_purchase_count", -1)) == 5 and int((world.players[0] as Dictionary).get("total_card_spend", -1)) == 26, "production purchase replay does not duplicate count or spend")
 	var bought_state: Dictionary = service.player_snapshot("A")
 	var target := {
 		"valid": true,

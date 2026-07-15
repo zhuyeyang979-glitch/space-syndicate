@@ -13722,38 +13722,6 @@ func _preview_v06_facility_card(card_id: String) -> void:
 	_refresh_ui()
 
 
-func _purchase_v06_first_table_facility_card(card_id: String) -> void:
-	var player_index := _local_human_player_index()
-	var district_index := district_supply_open_district
-	if player_index < 0 or player_index >= players.size() or district_index < 0 or district_index >= districts.size() or not _is_v06_facility_card_id(card_id):
-		return
-	var coordinator := _game_runtime_coordinator_node()
-	var actor_id := _v06_actor_id(player_index)
-	var market_variant: Variant = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	var market_snapshot: Dictionary = market_variant if market_variant is Dictionary else {}
-	var listing: Dictionary = market_snapshot.get("listing", {}) if market_snapshot.get("listing", {}) is Dictionary else {}
-	var listed_card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var listed_machine: Dictionary = listed_card.get("machine", {}) if listed_card.get("machine", {}) is Dictionary else {}
-	if not bool(market_snapshot.get("ready", false)) or str(listed_machine.get("card_id", "")) != card_id:
-		_log("城市设施牌市场已经刷新，请重新选择。")
-		return
-	var source_item_id := str(listing.get("item_id", ""))
-	var market: Dictionary = market_snapshot.get("market", {}) if market_snapshot.get("market", {}) is Dictionary else {}
-	var transaction_id := "vs06-facility-purchase:%s:%s:%d" % [actor_id, source_item_id, int(market.get("revision", 0))]
-	var result_variant: Variant = coordinator.call("purchase_v06_first_table_facility_card", actor_id, source_item_id, transaction_id)
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	if bool(result.get("committed", false)):
-		var price := int(result.get("canonical_price_cash", 0))
-		players[player_index]["card_purchase_count"] = int(players[player_index].get("card_purchase_count", 0)) + 1
-		players[player_index]["total_card_spend"] = int(players[player_index].get("total_card_spend", 0)) + price
-		_log("已购买一张I级城市设施牌；现金¥-%d。" % price)
-		_complete_scenario_signal("card_bought", "购买城市设施牌。", "after_buy", "district_supply")
-	else:
-		var feedback: Dictionary = result.get("feedback", {}) if result.get("feedback", {}) is Dictionary else {}
-		_log("城市设施牌未购买：%s %s" % [str(feedback.get("reason", "操作没有完成。")), str(feedback.get("next_step", "请刷新后重试。"))])
-	_refresh_ui()
-
-
 func _district_supply_card_source(district_index: int, card_name: String, player_index: int, selected: bool) -> Dictionary:
 	var skill := _game_runtime_coordinator_node().card_definition(card_name)
 	if skill.is_empty():
@@ -13828,7 +13796,17 @@ func _on_district_supply_action_requested(action_id: String, payload: Dictionary
 				_select_district_card_for_quote(card_id, true)
 		"district_supply_purchase_card":
 			if _is_v06_facility_card_id(card_id):
-				_purchase_v06_first_table_facility_card(card_id)
+				var coordinator := _game_runtime_coordinator_node()
+				var result_variant: Variant = coordinator.call("execute_v06_facility_purchase_action", _v06_actor_id(_local_human_player_index()), card_id) if coordinator != null and coordinator.has_method("execute_v06_facility_purchase_action") else {}
+				var action_result: Dictionary = result_variant if result_variant is Dictionary else {}
+				if not action_result.is_empty():
+					var detail := "%s %s %s" % [str(action_result.get("explanation", "")), str(action_result.get("consequence", "")), str(action_result.get("suggested_action", ""))]
+					if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
+						runtime_game_screen.call("_show_player_action_feedback", "district_card_purchase", "resolved" if bool(action_result.get("success", false)) else "blocked", detail.strip_edges())
+					_log("%s｜%s" % [str(action_result.get("title", "区域购牌状态")), str(action_result.get("explanation", ""))])
+					if bool(action_result.get("success", false)):
+						_complete_scenario_signal("card_bought", "购买城市设施牌。", "after_buy", "district_supply")
+				_refresh_ui()
 			else:
 				_claim_district_card(card_id)
 

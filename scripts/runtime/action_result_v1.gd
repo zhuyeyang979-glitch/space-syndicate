@@ -26,6 +26,8 @@ const REQUEST_FIELDS := [
 	"action_family",
 	"outcome_code",
 	"resolution_id",
+	"public_receipt",
+	"failure_code",
 ]
 const CARD_GROUP_READY_OUTCOMES := [
 	"player_unavailable",
@@ -35,12 +37,29 @@ const CARD_GROUP_READY_OUTCOMES := [
 	"ready_rejected",
 	"group_ready_committed",
 ]
+const DISTRICT_CARD_PURCHASE_OUTCOMES := [
+	"purchase_market_unavailable",
+	"purchase_listing_changed",
+	"purchase_source_unavailable",
+	"purchase_terms_unavailable",
+	"purchase_funds_unavailable",
+	"purchase_inventory_unavailable",
+	"purchase_conflict",
+	"purchase_committed",
+]
 const PUBLIC_FAILURE_CODES := [
 	"player_unavailable",
 	"queued_entry_missing",
 	"group_window_closed",
 	"already_ready",
 	"ready_rejected",
+	"purchase_market_unavailable",
+	"purchase_listing_changed",
+	"purchase_source_unavailable",
+	"purchase_terms_unavailable",
+	"purchase_funds_unavailable",
+	"purchase_inventory_unavailable",
+	"purchase_conflict",
 	"unsafe_source",
 ]
 const FORBIDDEN_KEY_TOKENS := [
@@ -53,7 +72,11 @@ const FORBIDDEN_KEY_TOKENS := [
 	"owner",
 	"ai_plan",
 	"ai_score",
+	"ai_weight",
 	"authorization",
+	"quote_id",
+	"quote_fingerprint",
+	"private_quote",
 	"private_receipt",
 	"private_message",
 	"developer_message",
@@ -74,17 +97,29 @@ const PRIVATE_VALUE_SENTINELS := [
 static func sanitize_request(source: Dictionary) -> Dictionary:
 	if source.is_empty() or not _is_public_value(source):
 		return {}
-	for required_field in ["schema_version", "action_id", "action_family", "outcome_code"]:
+	for required_field in ["schema_version", "action_id", "action_family"]:
 		if not source.has(required_field):
-			return {}
-	for key_variant in source.keys():
-		if not REQUEST_FIELDS.has(str(key_variant)):
 			return {}
 	if not (source.get("schema_version") is int) or int(source.get("schema_version")) != SCHEMA_VERSION:
 		return {}
-	if not (source.get("action_id") is String or source.get("action_id") is StringName) or str(source.get("action_id")) != "card_group_ready":
+	if not (source.get("action_id") is String or source.get("action_id") is StringName):
 		return {}
-	if not (source.get("action_family") is String or source.get("action_family") is StringName) or str(source.get("action_family")) != "card_resolution":
+	if not (source.get("action_family") is String or source.get("action_family") is StringName):
+		return {}
+	var action_id := str(source.get("action_id"))
+	var action_family := str(source.get("action_family"))
+	if action_id == "card_group_ready" and action_family == "card_resolution":
+		return _sanitize_card_group_ready_request(source)
+	if action_id == "district_card_purchase" and action_family == "card_market":
+		return _sanitize_district_card_purchase_request(source)
+	return {}
+
+
+static func _sanitize_card_group_ready_request(source: Dictionary) -> Dictionary:
+	for key_variant in source.keys():
+		if not ["schema_version", "action_id", "action_family", "outcome_code", "resolution_id"].has(str(key_variant)):
+			return {}
+	if not source.has("outcome_code"):
 		return {}
 	if not (source.get("outcome_code") is String or source.get("outcome_code") is StringName):
 		return {}
@@ -105,6 +140,48 @@ static func sanitize_request(source: Dictionary) -> Dictionary:
 	}
 
 
+static func _sanitize_district_card_purchase_request(source: Dictionary) -> Dictionary:
+	for key_variant in source.keys():
+		if not ["schema_version", "action_id", "action_family", "public_receipt", "failure_code"].has(str(key_variant)):
+			return {}
+	var has_receipt := source.has("public_receipt")
+	var has_failure := source.has("failure_code")
+	if has_receipt == has_failure:
+		return {}
+	if has_receipt:
+		if not (source.get("public_receipt") is Dictionary):
+			return {}
+		var receipt: Dictionary = source.get("public_receipt", {})
+		if receipt.size() != 3 or not receipt.has("event_code") or not receipt.has("district_index") or not receipt.has("price_cash"):
+			return {}
+		if not (receipt.get("event_code") is String or receipt.get("event_code") is StringName) or str(receipt.get("event_code")) != "anonymous_purchase_committed":
+			return {}
+		if not (receipt.get("district_index") is int) or int(receipt.get("district_index")) < 0:
+			return {}
+		if not (receipt.get("price_cash") is int) or int(receipt.get("price_cash")) < 0:
+			return {}
+		return {
+			"schema_version": SCHEMA_VERSION,
+			"action_id": "district_card_purchase",
+			"action_family": "card_market",
+			"outcome_code": "purchase_committed",
+			"district_index": int(receipt.get("district_index")),
+			"price_cash": int(receipt.get("price_cash")),
+		}
+	if not (source.get("failure_code") is String or source.get("failure_code") is StringName):
+		return {}
+	var owner_failure_code := str(source.get("failure_code", "")).strip_edges()
+	if owner_failure_code.is_empty():
+		return {}
+	return {
+		"schema_version": SCHEMA_VERSION,
+		"action_id": "district_card_purchase",
+		"action_family": "card_market",
+		"outcome_code": _district_purchase_public_failure_code(owner_failure_code),
+		"district_index": -1,
+	}
+
+
 static func sanitize_public_result(source: Dictionary) -> Dictionary:
 	if source.is_empty() or not _is_public_value(source):
 		return {}
@@ -120,9 +197,13 @@ static func sanitize_public_result(source: Dictionary) -> Dictionary:
 			return {}
 	if not (source.get("schema_version") is int) or int(source.get("schema_version")) != SCHEMA_VERSION:
 		return {}
-	if not (source.get("action_id") is String or source.get("action_id") is StringName) or str(source.get("action_id")) != "card_group_ready":
+	if not (source.get("action_id") is String or source.get("action_id") is StringName):
 		return {}
-	if not (source.get("action_family") is String or source.get("action_family") is StringName) or str(source.get("action_family")) != "card_resolution":
+	if not (source.get("action_family") is String or source.get("action_family") is StringName):
+		return {}
+	var action_id := str(source.get("action_id"))
+	var action_family := str(source.get("action_family"))
+	if not ((action_id == "card_group_ready" and action_family == "card_resolution") or (action_id == "district_card_purchase" and action_family == "card_market")):
 		return {}
 	if not (source.get("success") is bool):
 		return {}
@@ -152,8 +233,9 @@ static func sanitize_public_result(source: Dictionary) -> Dictionary:
 		if not (entity_variant is String or entity_variant is StringName):
 			return {}
 		var entity_id := str(entity_variant)
-		var suffix := entity_id.trim_prefix("resolution:")
-		if not entity_id.begins_with("resolution:") or not suffix.is_valid_int() or int(suffix) < 0:
+		var expected_prefix := "resolution:" if action_id == "card_group_ready" else "district:"
+		var suffix := entity_id.trim_prefix(expected_prefix)
+		if not entity_id.begins_with(expected_prefix) or not suffix.is_valid_int() or int(suffix) < 0:
 			return {}
 		affected.append(entity_id)
 	var result := {}
@@ -169,6 +251,23 @@ static func public_field_schema() -> Array:
 	return (OPTIONAL_PUBLIC_FIELDS + REQUIRED_PUBLIC_FIELDS).duplicate()
 
 
+static func _district_purchase_public_failure_code(owner_failure_code: String) -> String:
+	var normalized := owner_failure_code.strip_edges().to_lower()
+	if normalized.contains("cash") or normalized.contains("fund"):
+		return "purchase_funds_unavailable"
+	if normalized.contains("quote") or normalized.contains("price") or normalized.contains("authorization"):
+		return "purchase_terms_unavailable"
+	if normalized.contains("inventory") or normalized.contains("hand_limit") or normalized.contains("incoming_card") or normalized.contains("merge"):
+		return "purchase_inventory_unavailable"
+	if normalized.contains("listing_changed") or normalized.contains("revision_changed") or normalized.contains("owned_by_other_listing"):
+		return "purchase_listing_changed"
+	if normalized.contains("source_item") or normalized.contains("listing_source"):
+		return "purchase_source_unavailable"
+	if normalized.contains("runtime_not_ready") or normalized.contains("catalog_unavailable") or normalized.contains("player_unavailable") or normalized.contains("player_binding_unavailable") or normalized.contains("controller_not_ready"):
+		return "purchase_market_unavailable"
+	return "purchase_conflict"
+
+
 static func _is_public_value(value: Variant) -> bool:
 	if value == null or value is bool or value is int or value is float:
 		return true
@@ -182,7 +281,7 @@ static func _is_public_value(value: Variant) -> bool:
 		for key_variant in value.keys():
 			var key := str(key_variant).to_lower()
 			for token_variant in FORBIDDEN_KEY_TOKENS:
-				if key.contains(str(token_variant)):
+				if key.contains(str(token_variant)) and key != "price_cash":
 					return false
 			if not _is_public_value(key_variant) or not _is_public_value(value[key_variant]):
 				return false

@@ -290,6 +290,8 @@ func purchase_market_card(
 	next_player["inventory"] = (receive_result.get("inventory", {}) as Dictionary).duplicate(true)
 	_assign_result_instance(next_player["inventory"] as Dictionary, receive_result, transaction_id)
 	next_player["cash"] = int(player.get("cash", 0)) - price_cash
+	next_player["card_purchase_count"] = int(player.get("card_purchase_count", 0)) + 1
+	next_player["total_card_spend"] = int(player.get("total_card_spend", 0)) + price_cash
 	var next_market := {
 		"revision": expected_market_revision + 1,
 		"listing": next_market_listing.duplicate(true),
@@ -655,7 +657,9 @@ func _catalog_ready() -> bool:
 func _normalize_player_state(actor_id: String, initial_state: Dictionary) -> Dictionary:
 	var revision := int(initial_state.get("revision", 0))
 	var cash := int(initial_state.get("cash", 0))
-	if revision < 0 or cash < 0:
+	var card_purchase_count := int(initial_state.get("card_purchase_count", 0))
+	var total_card_spend := int(initial_state.get("total_card_spend", 0))
+	if revision < 0 or cash < 0 or card_purchase_count < 0 or total_card_spend < 0:
 		return {"valid": false, "reason_code": "player_state_invalid"}
 	var has_player_index := initial_state.has("player_index")
 	var player_index := int(initial_state.get("player_index", -1))
@@ -695,6 +699,8 @@ func _normalize_player_state(actor_id: String, initial_state: Dictionary) -> Dic
 			"actor_id": actor_id,
 			"revision": revision,
 			"cash": cash,
+			"card_purchase_count": card_purchase_count,
+			"total_card_spend": total_card_spend,
 			"assets": assets,
 			"inventory": {"hand_limit": HAND_LIMIT, "slots": slots},
 	}

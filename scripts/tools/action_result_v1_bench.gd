@@ -9,6 +9,15 @@ const OUTCOMES := [
 	"ready_rejected",
 	"group_ready_committed",
 ]
+const PURCHASE_FAILURES := [
+	["v06_card_runtime_not_ready", "purchase_market_unavailable"],
+	["market_listing_changed", "purchase_listing_changed"],
+	["source_item_unavailable", "purchase_source_unavailable"],
+	["market_quote_binding_mismatch", "purchase_terms_unavailable"],
+	["cash_insufficient", "purchase_funds_unavailable"],
+	["inventory_commit_failed", "purchase_inventory_unavailable"],
+	["state_drift", "purchase_conflict"],
+]
 
 @export var auto_run := true
 @export var exit_on_complete := true
@@ -44,6 +53,33 @@ func _run() -> void:
 			and result.get("affected_entity_ids", []) == ["resolution:101"]
 		records.append({"outcome": outcome, "passed": record_passed})
 		if record_passed:
+			passed += 1
+	var purchase_success: Dictionary = service.call("compose", {
+		"schema_version": 1,
+		"action_id": "district_card_purchase",
+		"action_family": "card_market",
+		"public_receipt": {"event_code": "anonymous_purchase_committed", "district_index": 4, "price_cash": 202},
+	})
+	var purchase_success_passed: bool = bool(purchase_success.get("success", false)) \
+		and str(purchase_success.get("failure_code", "")) == "" \
+		and purchase_success.get("affected_entity_ids", []) == ["district:4"] \
+		and str(purchase_success.get("relevant_cost", "")) == "¥202"
+	records.append({"outcome": "purchase_committed", "passed": purchase_success_passed})
+	if purchase_success_passed:
+		passed += 1
+	for failure_variant in PURCHASE_FAILURES:
+		var failure: Array = failure_variant as Array
+		var purchase_result: Dictionary = service.call("compose", {
+			"schema_version": 1,
+			"action_id": "district_card_purchase",
+			"action_family": "card_market",
+			"failure_code": str(failure[0]),
+		})
+		var purchase_failure_passed: bool = not bool(purchase_result.get("success", true)) \
+			and str(purchase_result.get("failure_code", "")) == str(failure[1]) \
+			and purchase_result.get("affected_entity_ids", []) == []
+		records.append({"outcome": str(failure[1]), "passed": purchase_failure_passed})
+		if purchase_failure_passed:
 			passed += 1
 	var debug: Dictionary = service.call("debug_snapshot")
 	var boundary_passed := bool(debug.get("service_ready", false)) \

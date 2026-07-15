@@ -1900,7 +1900,48 @@ func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: St
 	result["card_id"] = str(machine.get("card_id", ""))
 	result["canonical_price_cash"] = int(quote.get("final_price", -1))
 	result["base_price_cash"] = int(listing.get("price_cash", -1))
+	if bool(result.get("committed", false)):
+		result["public_receipt"] = {
+			"event_code": "anonymous_purchase_committed",
+			"district_index": int(listing.get("source_district_index", -1)),
+			"price_cash": int(result.get("canonical_price_cash", -1)),
+		}
 	return result
+
+
+func execute_v06_facility_purchase_action(actor_id: String, expected_card_id: String) -> Dictionary:
+	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
+	if not bool(snapshot.get("ready", false)):
+		return compose_action_result_v1({
+			"schema_version": 1,
+			"action_id": "district_card_purchase",
+			"action_family": "card_market",
+			"failure_code": str(snapshot.get("reason_code", "v06_facility_market_unavailable")),
+		})
+	var market: Dictionary = snapshot.get("market", {}) if snapshot.get("market", {}) is Dictionary else {}
+	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
+	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	if expected_card_id.strip_edges().is_empty() or str(machine.get("card_id", "")) != expected_card_id.strip_edges():
+		return compose_action_result_v1({
+			"schema_version": 1,
+			"action_id": "district_card_purchase",
+			"action_family": "card_market",
+			"failure_code": "market_listing_changed",
+		})
+	var source_item_id := str(listing.get("item_id", ""))
+	var transaction_id := "vs06-facility-purchase:%s:%s:%d" % [actor_id.strip_edges(), source_item_id, int(market.get("revision", 0))]
+	var owner_result := purchase_v06_first_table_facility_card(actor_id, source_item_id, transaction_id)
+	var action_source := {
+		"schema_version": 1,
+		"action_id": "district_card_purchase",
+		"action_family": "card_market",
+	}
+	if bool(owner_result.get("committed", false)):
+		action_source["public_receipt"] = (owner_result.get("public_receipt", {}) as Dictionary).duplicate(true) if owner_result.get("public_receipt", {}) is Dictionary else {}
+	else:
+		action_source["failure_code"] = str(owner_result.get("reason_code", "purchase_conflict"))
+	return compose_action_result_v1(action_source)
 
 
 func _v06_runtime_card_catalog() -> Resource:

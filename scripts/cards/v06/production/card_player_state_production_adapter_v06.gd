@@ -4,10 +4,11 @@ class_name CardPlayerStateProductionAdapterV06
 
 ## Production CardPlayerStatePortV06 adapter.
 ##
-## The world player's `slots` and `cash` fields and PlayerManaRuntimeController's
-## six coloured pools remain authoritative.  This adapter stores only locks,
-## idempotency receipts and per-player CAS metadata.  A commit is expressed as
-## an exact delta from the reserved snapshot, so cash income and asset recovery
+## The world player's `slots`, `cash`, `card_purchase_count`, and
+## `total_card_spend` fields and PlayerManaRuntimeController's six coloured pools
+## remain authoritative.  This adapter stores only locks, idempotency receipts
+## and per-player CAS metadata.  A commit is expressed as an exact delta from the
+## reserved snapshot, so cash income, other public spending, and asset recovery
 ## that happen while a transaction is reserved are never overwritten.
 
 const RULESET_ID := "v0.6"
@@ -378,6 +379,10 @@ func prepare_reserved_mutations(reservation_id: String, next_states: Dictionary)
 		var cash_delta := int(proposed.get("cash", 0)) - int(before.get("cash", 0))
 		if _cash_units(current_player) + cash_delta < 0:
 			return _commit_reject(reservation, "cash_insufficient", {"actor_id": actor_id})
+		var purchase_count_delta := int(proposed.get("card_purchase_count", 0)) - int(before.get("card_purchase_count", 0))
+		var spend_delta := int(proposed.get("total_card_spend", 0)) - int(before.get("total_card_spend", 0))
+		if purchase_count_delta < 0 or spend_delta < 0:
+			return _commit_reject(reservation, "purchase_ledger_delta_invalid", {"actor_id": actor_id})
 		var asset_delta := _asset_delta(before.get("assets", {}) as Dictionary, proposed.get("assets", {}) as Dictionary)
 		if not bool(asset_delta.get("valid", false)):
 			return _commit_reject(reservation, str(asset_delta.get("reason_code", "assets_invalid")), {"actor_id": actor_id})
@@ -401,10 +406,14 @@ func prepare_reserved_mutations(reservation_id: String, next_states: Dictionary)
 		var candidate := current_player.duplicate(true)
 		candidate["cash"] = _cash_units(current_player) + cash_delta
 		candidate["slots"] = _world_slots_from_inventory(proposed_inventory, global_cards)
+		candidate["card_purchase_count"] = int(current_player.get("card_purchase_count", 0)) + purchase_count_delta
+		candidate["total_card_spend"] = int(current_player.get("total_card_spend", 0)) + spend_delta
 		candidate_players[player_index] = candidate
 		rows[actor_id] = {
 			"player_index": player_index,
 			"cash_delta": cash_delta,
+			"purchase_count_delta": purchase_count_delta,
+			"spend_delta": spend_delta,
 			"asset_debit": debit.duplicate(true),
 			"asset_credit": credit.duplicate(true),
 			"asset_transaction_id": asset_transaction_id,
@@ -499,6 +508,10 @@ func commit_reserved(reservation_id: String, next_states: Dictionary, effect_rec
 		var cash_delta := int(row.get("cash_delta", 0))
 		if _cash_units(current_player) + cash_delta < 0:
 			return _commit_reject(reservation, "cash_insufficient", {"actor_id": actor_id})
+		var purchase_count_delta := int(row.get("purchase_count_delta", 0))
+		var spend_delta := int(row.get("spend_delta", 0))
+		if purchase_count_delta < 0 or spend_delta < 0:
+			return _commit_reject(reservation, "purchase_ledger_delta_invalid", {"actor_id": actor_id})
 		var observed_fingerprint := _resource_fingerprint(current_player, current_inventory, visible_assets)
 		var current_revision := maxi(0, int(current_player.get(META_REVISION, 0)))
 		if str(current_player.get(META_FINGERPRINT, "")) != observed_fingerprint:
@@ -510,6 +523,8 @@ func commit_reserved(reservation_id: String, next_states: Dictionary, effect_rec
 		current_player["cash_cents"] = next_cash_cents
 		current_player["cash"] = floori(float(next_cash_cents) / 100.0)
 		current_player["slots"] = _world_slots_from_inventory(row.get("proposed_inventory", {}) as Dictionary, global_cards)
+		current_player["card_purchase_count"] = int(current_player.get("card_purchase_count", 0)) + purchase_count_delta
+		current_player["total_card_spend"] = int(current_player.get("total_card_spend", 0)) + spend_delta
 		current_player[META_REVISION] = maxi(current_revision, int(expected_revisions.get(actor_id, 0))) + 1
 		candidate_players[player_index] = current_player
 
@@ -549,6 +564,8 @@ func commit_reserved(reservation_id: String, next_states: Dictionary, effect_rec
 		revision_vector[actor_id] = final_revision
 		mutations[actor_id] = {
 			"cash_delta": int(row.get("cash_delta", 0)),
+			"purchase_count_delta": int(row.get("purchase_count_delta", 0)),
+			"spend_delta": int(row.get("spend_delta", 0)),
 			"asset_debit": (row.get("asset_debit", {}) as Dictionary).duplicate(true),
 			"asset_credit": (row.get("asset_credit", {}) as Dictionary).duplicate(true),
 		}
@@ -764,6 +781,10 @@ func _normalize_next_state(actor_id: String, input: Dictionary) -> Dictionary:
 	var cash_variant: Variant = input.get("cash", -1)
 	if not (cash_variant is int) or int(cash_variant) < 0:
 		return {"valid": false, "reason_code": "cash_invalid"}
+	var purchase_count_variant: Variant = input.get("card_purchase_count", 0)
+	var total_spend_variant: Variant = input.get("total_card_spend", 0)
+	if not (purchase_count_variant is int) or int(purchase_count_variant) < 0 or not (total_spend_variant is int) or int(total_spend_variant) < 0:
+		return {"valid": false, "reason_code": "purchase_ledger_invalid"}
 	var assets_variant: Variant = input.get("assets", {})
 	if not (assets_variant is Dictionary):
 		return {"valid": false, "reason_code": "assets_invalid"}
@@ -787,6 +808,8 @@ func _normalize_next_state(actor_id: String, input: Dictionary) -> Dictionary:
 			"actor_id": actor_id,
 			"revision": maxi(0, int(input.get("revision", 0))),
 			"cash": int(cash_variant),
+			"card_purchase_count": int(purchase_count_variant),
+			"total_card_spend": int(total_spend_variant),
 			"assets": assets,
 			"inventory": (inventory_check.get("inventory", {}) as Dictionary).duplicate(true),
 		},
@@ -848,6 +871,8 @@ func _state_snapshot(actor_id: String, player: Dictionary, inventory: Dictionary
 		"actor_id": actor_id,
 		"revision": revision,
 		"cash": _cash_units(player),
+		"card_purchase_count": maxi(0, int(player.get("card_purchase_count", 0))),
+		"total_card_spend": maxi(0, int(player.get("total_card_spend", 0))),
 		"assets": assets.duplicate(true),
 		"inventory": inventory.duplicate(true),
 	}
@@ -990,6 +1015,8 @@ func _resource_fingerprint(player: Dictionary, inventory: Dictionary, assets: Di
 	# with no balance change therefore cannot invalidate a player's CAS revision.
 	return _stable_hash({
 		"cash_cents": _cash_cents(player),
+		"card_purchase_count": maxi(0, int(player.get("card_purchase_count", 0))),
+		"total_card_spend": maxi(0, int(player.get("total_card_spend", 0))),
 		"assets": assets,
 		"inventory": inventory,
 	})

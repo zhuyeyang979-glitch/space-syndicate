@@ -454,10 +454,14 @@ func _normalize_player_state(actor_id: String, input_state: Dictionary) -> Dicti
 		return {"valid": false, "reason_code": "player_state_invalid"}
 	var revision_variant: Variant = input_state.get("revision", 0)
 	var cash_variant: Variant = input_state.get("cash", 0)
+	var purchase_count_variant: Variant = input_state.get("card_purchase_count", 0)
+	var total_spend_variant: Variant = input_state.get("total_card_spend", 0)
 	if not (revision_variant is int) or int(revision_variant) < 0:
 		return {"valid": false, "reason_code": "player_state_invalid"}
 	if not (cash_variant is int) or int(cash_variant) < 0:
 		return {"valid": false, "reason_code": "cash_invalid"}
+	if not (purchase_count_variant is int) or int(purchase_count_variant) < 0 or not (total_spend_variant is int) or int(total_spend_variant) < 0:
+		return {"valid": false, "reason_code": "purchase_ledger_invalid"}
 
 	var assets_variant: Variant = input_state.get("assets", {})
 	if not (assets_variant is Dictionary):
@@ -512,6 +516,8 @@ func _normalize_player_state(actor_id: String, input_state: Dictionary) -> Dicti
 			"actor_id": actor_id,
 			"revision": int(revision_variant),
 			"cash": int(cash_variant),
+			"card_purchase_count": int(purchase_count_variant),
+			"total_card_spend": int(total_spend_variant),
 			"assets": assets,
 			"inventory": inventory,
 		},
