@@ -343,7 +343,9 @@ func _check_pause_settlement_and_market_open() -> void:
 	for _i in range(3):
 		_weather.call("tick", 20.0)
 	_expect(_same_data(before, _weather.call("public_snapshot")), "true_pause_freezes_weather_when_world_effective_clock_does_not_advance")
-	_clock.call("advance", 30.0)
+	var market_events := _event_entries(before)
+	var active_boundary_us := int((market_events[0] as Dictionary).get("active_starts_at_world_us", WEATHER_FORECAST_LEAD_MIN_US)) if not market_events.is_empty() else WEATHER_FORECAST_LEAD_MIN_US
+	_clock.call("advance", float(active_boundary_us) / 1_000_000.0)
 	_weather.call("tick", 0.0)
 	_expect((_weather.call("active_zones_snapshot") as Array).size() == 1, "market_open_does_not_freeze_weather_when_world_effective_clock_advances")
 
@@ -469,7 +471,13 @@ func _event_payload(id: int, type_id: String, region_index: int, source_type: St
 
 func _event_entries(snapshot: Dictionary) -> Array:
 	var result: Array = []
-	for key in ["events", "forecast", "active_zones"]:
+	var canonical_events: Variant = snapshot.get("events")
+	if canonical_events is Array and not (canonical_events as Array).is_empty():
+		for item in canonical_events:
+			if item is Dictionary:
+				result.append(item)
+		return result
+	for key in ["forecast", "active_zones"]:
 		var value: Variant = snapshot.get(key)
 		if value is Dictionary and not (value as Dictionary).is_empty():
 			result.append(value)
