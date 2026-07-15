@@ -1,0 +1,481 @@
+{
+  "case_id": "active",
+  "district_detail_visible_text": "旧城区｜陆地｜可城市化 补给 5张｜来源区域处于暗面：可以查看，当前不可购买。 共享生命：97/100｜运作中公共设施：生命市场｜I级｜业主席位0 天气：孢子季｜生效中｜剩余1分10秒 天气影响：生物/医药/食品生产 +18% 天气影响：相关商品需求 +15% 天气影响：污染路线效率 -8% 利用：围绕生物、医药、食物供需做短期放大。 应对：路线效率略降，非生物经济不会获得收益。",
+  "economy_screenshot": "e_weather_active_economy_1600x960.png",
+  "economy_summary_text": "经济总览\n看三件事：钱从哪座城来，哪个商品在变贵，哪些公开动作留下线索。\n城市现金按秒进账；商品供需、天气和商路会改变GDP/min；对手现金、手牌和私密推理保持隐藏。\n情报现金只在终局兑现；当前页只整理公开证据和当前玩家自己的经济流水，不验证隐藏真相。\n经济天气:天气:孢子季影响旧城区｜预报:暂无预报｜卡牌余波:0条｜城市线索商品:深海菌毯、星鲸罐头、彗尾柑｜怪兽资金线索:0条。\n商品热榜｜星尘面包 ¥210（战略稀缺｜偏离+14｜趋势+14｜供0/需0/断0｜波16｜天气无｜公开状态高波动16｜路径196→205→193→210）；虹膜矿粉 ¥90（成长商品｜偏离+10｜趋势+10｜供0/需1/断0｜波7｜天气无｜公开状态无｜路径80→90→85→90）；静电蜂蜜 ¥267（战略稀缺｜偏离+13｜趋势+13｜供0/需0/断0｜波16｜天气无｜公开状态高波动16｜路径254→250→255→267）\n低价/供给压制｜火山番茄 ¥48（基础消费｜偏离-7｜趋势-7｜供2/需0/断0｜波4｜天气无｜公开状态无｜路径55→48）；引力棉 ¥58（成长商品｜偏离-8｜趋势-8｜供1/需0/断0｜波7｜天气无｜公开状态无｜路径66→63→67→58）\n商路收入前景｜玩家经济隐私：对手现金、手牌和私密流水不公开｜暂无城市；先城市化陆地。\n公开异动：场上怪兽3只；天气:天气:孢子季影响旧城区｜预报:暂无预报。页面只汇总场面结果；对手现金、手牌和私密推理保持隐藏。\n最近卡牌余波｜暂无匿名卡余波；看顶部牌轨等待公开结果。\n最近城市公开线索｜类型:暂无｜线索商品:暂无｜等待城市公开线索。\n最近怪兽资金线索｜最大生命比例决定归属方掉钱幅度｜暂无伤害资金线索。\n仓储靶标｜匿名仓储会把期货收益绑定到可被攻击的城市｜暂无匿名仓储靶标。\n当前玩家推理板\n城市私标｜暂无标注｜未标注陌生城市0｜己方城市0｜只显示我的私人标注，不验证正误\n公开卡牌归属｜暂无被竞猜揭晓的卡牌\n卡牌条件反推｜暂无公开匿名牌条件\n公开怪兽归属｜暂无因受伤资金线索而公开的怪兽\n交叉提示｜把城市私标、公开卡牌归属、怪兽资金线索、商品/商路变化一起比对；没有一项单独等于真相。\n玩家经济流水｜玩家1｜前K区商品GDP/min0｜现金2080｜城市0｜情报待结算：已标0/0｜全对0 / 全错0｜终局揭晓｜实时现金流0｜角色累计+0｜潜在GDP/min 0｜最近0｜窗口0｜轨迹2080｜流水暂无；玩家2｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。；玩家3｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。；玩家4｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。\n下方仪表板只显示可扫读信息；悬停每一行可看完整证据。\n刷新0｜当前玩家：玩家1｜怪兽3只｜天气:孢子季影响旧城区｜预报:暂无预报",
+  "economy_visible_text": "经济仪表板：看三件事：钱从哪座城来、哪种商品变热、公开线索指向哪里。\n经济仪表板\n先看现金流、商品、城市、线索四块；细节用悬停查看。\n公开供需、天气和市场类信息按全局刷新节奏更新。\n刷新0\n公开供需、天气和市场类信息按全局刷新节奏更新。\n怪兽落点会影响购牌来源、破坏、赌局和资源吸引。\n怪兽3\n怪兽落点会影响购牌来源、破坏、赌局和资源吸引。\n天气会影响受波及区域的生产、交通和消费。\n天气:孢子季影响旧城区｜预…\n天气会影响受波及区域的生产、交通和消费。\n当前玩家可见城市现金流，按秒进入现金。\nGDP/min\n0\n0\n玩家1\n当前玩家可见城市现金流，按秒进入现金。\n供给压价；需求、合约和天气可能抬价。\n商品热度\n星尘面包 ¥210\n星尘面包 ¥210\n价格/供需/趋势\n供给压价；需求、合约和天气可能抬价。\n城市GDP受生产、需求、交通、损伤、竞争和商路影响。\n城市前景\n—\n—\n收入/断路/业主视角\n城市GDP受生产、需求、交通、损伤、竞争和商路影响。\n只汇总公开证据，不揭示隐藏现金、手牌或真实业主。\n公开线索\n0\n0\n卡牌/城市/怪兽\n只汇总公开证据，不揭示隐藏现金、手牌或真实业主。\n先看现金流。\n经济速览\nGDP/min按秒进钱；城市受商品、商路、天气、合约和破坏影响。\nGDP/min按秒进钱；城市受商品、商路、天气、合约和破坏影响。\n供需决定价格。\n商品热榜\n高价商品适合扩需求或做多；低价/供给压制适合买低、转产或做空。\n高价商品适合扩需求或做多；低价/供给压制适合买低、转产或做空。\n只显示场面结果。\n公开异动\n公开异动：场上怪兽3只；天气:天气:孢子季影响旧城区｜预报:暂无预报。页面只汇总场面结果；对手现金、手牌和私密推理…\n公开异动：场上怪兽3只；天气:天气:孢子季影响旧城区｜预报:暂无预报。页面只汇总场面结果；对手现金、手牌和私密推理保持隐藏。\n不揭示隐藏真相。\n匿名线索\n牌轨条件、怪兽受伤、城市GDP跳变、合约签拒和仓储暴露都可反推身份。\n牌轨条件、怪兽受伤、城市GDP跳变、合约签拒和仓储暴露都可反推身份。\n赚钱路线：让一个商品从生产、需求、交通三端流起来，GDP才会按秒变成钱。\n扩GDP\n赚钱路线：让一个商品从生产、需求、交通三端流起来，GDP才会按秒变成钱。\n围绕星尘面包补生产/需求/交通。\n围绕星尘面包补生产/需求/交通。\n建城｜产业｜合约\n建城｜产业｜合约\n防守路线：高收入城市和运输节点被破坏后，GDP会下滑；先保住现金流。\n护商路\n防守路线：高收入城市和运输节点被破坏后，GDP会下滑；先保住现金流。\n保护高GDP城，修断路或买保险。\n保护高GDP城，修断路或买保险。\n修复｜保险｜防卫\n修复｜保险｜防卫\n进攻路线：只根据公开牌轨、城市变化、怪兽落点和商品条件反推，不显示隐藏业主。\n压竞争\n进攻路线：只根据公开牌轨、城市变化、怪兽落点和商品条件反推，不显示隐藏业主。\n用牌轨/地图找目标，做空或引怪。\n用牌轨/地图找目标，做空或引怪。\n情报｜做空｜怪兽\n情报｜做空｜怪兽\n哪些商品正在变贵、变热或被需求拉动。\n商品热榜\n哪些商品正在变贵、变热或被需求拉动。\n• 星尘面包 ¥210｜供0/需0｜趋势+14｜天气无\n星尘面包 ¥210｜供0/需0｜趋势+14｜天气无\n• 虹膜矿粉 ¥90｜供0/需1｜趋势+10｜天气无\n虹膜矿粉 ¥90｜供0/需1｜趋势+10｜天气无\n• 静电蜂蜜 ¥267｜供0/需0｜趋势+13｜天气无\n静电蜂蜜 ¥267｜供0/需0｜趋势+13｜天气无\n• 赤道香草 ¥176｜供0/需0｜趋势+10｜天气无\n赤道香草 ¥176｜供0/需0｜趋势+10｜天气无\n供给过剩或价格受压的商品，适合买低、改需求或布局期货。\n低价机会\n供给过剩或价格受压的商品，适合买低、改需求或布局期货。\n• 火山番茄 ¥48｜供2/需0｜受压-7｜天气无\n火山番茄 ¥48｜供2/需0｜受压-7｜天气无\n• 引力棉 ¥58｜供1/需0｜受压-8｜天气无\n引力棉 ¥58｜供1/需0｜受压-8｜天气无\n• 卫星坚果 ¥213｜供0/需0｜受压-9｜天气无\n卫星坚果 ¥213｜供0/需0｜受压-9｜天气无\n• 活体芯片 ¥71｜供0/需0｜受压-6｜天气无\n活体芯片 ¥71｜供0/需0｜受压-6｜天气无\n可见城市收入前景；真实业主仍按情报规则隐藏。\n城市现金流\n可见城市收入前景；真实业主仍按情报规则隐藏。\n• 暂无城市；先城市化陆地。\n暂无城市；先城市化陆地。\n匿名出牌后的公开结果，是猜牌主和经济反推的素材。\n匿名余波\n匿名出牌后的公开结果，是猜牌主和经济反推的素材。\n• 暂无可读项\n暂无可读项\n怪兽资金损失、仓储靶标和可被做空的经济点。\n怪兽/仓储风险\n怪兽资金损失、仓储靶标和可被做空的经济点。\n• 暂无高风险仓储或怪兽资金线索。\n暂无高风险仓储或怪兽资金线索。\n先看热商品，再看高GDP城市，最后用牌轨和地图结果找匿名线索。\n下一步读法\n先看热商品，再看高GDP城市，最后用牌轨和地图结果找匿名线索。\n• 热商品：扩需求、保运输、买涨。\n热商品：扩需求、保运输、买涨。\n• 高GDP城：保护、保险、修商路。\n高GDP城：保护、保险、修商路。\n• 可疑异动：对照牌轨、天气、怪兽落点。\n可疑异动：对照牌轨、天气、怪兽落点。\n• 落后时：做空、断路、引怪兽压领先城。\n落后时：做空、断路、引怪兽压领先城。",
+  "forecast": {
+    "clock_domain": "world_effective",
+    "definitions": [
+      {
+        "accent_hex": "#8A6BFF",
+        "definition_id": "ion_storm",
+        "display_name": "离子风暴",
+        "icon_key": "ion_bolt",
+        "pattern_key": "diagonal"
+      },
+      {
+        "accent_hex": "#38BDF2",
+        "definition_id": "gravity_tide",
+        "display_name": "引力潮",
+        "icon_key": "gravity_wave",
+        "pattern_key": "concentric"
+      },
+      {
+        "accent_hex": "#73D152",
+        "definition_id": "spore_season",
+        "display_name": "孢子季",
+        "icon_key": "spore",
+        "pattern_key": "dots"
+      },
+      {
+        "accent_hex": "#B8EBFF",
+        "definition_id": "crystal_dust_storm",
+        "display_name": "晶尘暴",
+        "icon_key": "crystal",
+        "pattern_key": "facets"
+      },
+      {
+        "accent_hex": "#8FC7FF",
+        "definition_id": "deep_freeze",
+        "display_name": "极寒期",
+        "icon_key": "snowflake",
+        "pattern_key": "crosshatch"
+      },
+      {
+        "accent_hex": "#FFA82E",
+        "definition_id": "solar_flare",
+        "display_name": "太阳耀斑",
+        "icon_key": "solar",
+        "pattern_key": "rays"
+      }
+    ],
+    "events": [
+      {
+        "accent_hex": "#73D152",
+        "accessible_text": "孢子季，生效中，区域 区域 2，剩余 1分10秒。影响：生物/医药/食品生产 +18%；相关商品需求 +15%；污染路线效率 -8%。利用：围绕生物、医药、食物供需做短期放大。。应对：路线效率略降，非生物经济不会获得收益。。",
+        "counterplay_hint": "路线效率略降，非生物经济不会获得收益。",
+        "definition_id": "spore_season",
+        "display_name": "孢子季",
+        "effects": [
+          {
+            "classification_tags": [
+              "product.weather_biological",
+              "product.weather_medicine",
+              "product.weather_food"
+            ],
+            "effect_id": "bio_production",
+            "label": "生物/医药/食品生产",
+            "polarity": "opportunity",
+            "scope": "economy",
+            "value_text": "+18%"
+          },
+          {
+            "classification_tags": [
+              "demand.biological"
+            ],
+            "effect_id": "bio_demand",
+            "label": "相关商品需求",
+            "polarity": "opportunity",
+            "scope": "economy",
+            "value_text": "+15%"
+          },
+          {
+            "classification_tags": [
+              "route.polluted"
+            ],
+            "effect_id": "route_drag",
+            "label": "污染路线效率",
+            "polarity": "risk",
+            "scope": "route",
+            "value_text": "-8%"
+          }
+        ],
+        "event_id": 1,
+        "exploitation_hint": "围绕生物、医药、食物供需做短期放大。",
+        "icon_key": "spore",
+        "intensity": 1.0,
+        "pattern_key": "dots",
+        "phase": "active",
+        "regions": [
+          {
+            "label": "区域 2",
+            "region_index": 2
+          }
+        ],
+        "remaining_us": 70000000,
+        "source_type": "natural"
+      }
+    ],
+    "schema_version": "weather_forecast_view_model.v1",
+    "source_revision": 1,
+    "state": "active",
+    "summary": {
+      "accessible_text": "孢子季 · 生效中。区域 2；剩余 1分10秒。",
+      "detail": "区域 2；剩余 1分10秒",
+      "headline": "孢子季 · 生效中"
+    },
+    "world_effective_us": 0
+  },
+  "forecast_strip_debug": {
+    "animated": true,
+    "compact_mode": true,
+    "displayed_detail": "自然天气 · 1:10 · 强度 100%",
+    "effect_count": 3,
+    "event_count": 1,
+    "motion_mode": "full",
+    "other_event_count": 0,
+    "region_indices": [
+      2
+    ],
+    "source_revision": 1,
+    "state": "active",
+    "visible": true
+  },
+  "layer_gate": {
+    "counts": {
+      "city_marker_count": 0,
+      "district_polygon_count": 6,
+      "monster_token_count": 3,
+      "route_marker_count": 39,
+      "route_segment_count": 28
+    },
+    "layer_indices": {
+      "district_and_city": 3,
+      "monster": 5,
+      "route": 4,
+      "weather": 2
+    },
+    "objects_present": false,
+    "passed": false,
+    "weather_mouse_filter_ignore": true,
+    "weather_overlay_debug": {
+      "animated": true,
+      "layout_count": 7,
+      "motion_mode": "full",
+      "region_indices": [
+        2
+      ],
+      "source_revision": 1,
+      "state": "active",
+      "visible": true
+    }
+  },
+  "map_sceneization": {
+    "action_callout_count": 4,
+    "city_marker_count": 0,
+    "component": "PlanetMapView",
+    "district_count": 7,
+    "district_node_count": 7,
+    "district_polygon_count": 6,
+    "draw_backed_surfaces": [],
+    "editable_layers": [
+      "BackdropLayer",
+      "OrbitLayer",
+      "DistrictLayer",
+      "WeatherLayer",
+      "RouteLayer",
+      "MonsterLayer",
+      "SelectionLayer",
+      "EffectLayer",
+      "CalloutLayer",
+      "DebugOverlayLayer"
+    ],
+    "extends_runtime_map_view": true,
+    "focus_range_overlay_sceneized": true,
+    "globe_backdrop_sceneized": true,
+    "has_map_data": true,
+    "legacy_draw_fallback_enabled": false,
+    "legacy_draw_fallback_used": false,
+    "map_event_effect_count": 2,
+    "monster_token_count": 3,
+    "movement_trail_count": 2,
+    "orbit_guide_sceneized": true,
+    "preview_note": "Waiting for map data",
+    "remaining_draw_backed_surfaces": [
+      "legacy_region_fill_fallback",
+      "legacy_region_label_fallback"
+    ],
+    "route_marker_count": 39,
+    "route_segment_count": 28,
+    "runtime_focus_kind": "table_focus_ring",
+    "scale_hint_sceneized": true,
+    "sceneized_layers": {
+      "action_callouts": "PlanetActionCallout",
+      "cities": "PlanetCityMarker",
+      "district_polygons": "PlanetDistrictPolygon",
+      "districts": "PlanetDistrictNode",
+      "event_effects": "PlanetMapEventEffect",
+      "focus_range_overlay": "PlanetFocusRangeOverlay",
+      "globe_backdrop": "PlanetGlobeBackdrop",
+      "monsters": "PlanetMonsterToken",
+      "movement_trails": "PlanetMovementTrail",
+      "orbit_guide": "PlanetOrbitGuide",
+      "route_segments": "PlanetRouteSegment",
+      "routes": "PlanetRouteMarker",
+      "scale_hint": "PlanetMapScaleHint",
+      "selection": "PlanetSelectionRing"
+    },
+    "sceneized_visual_cutover_enabled": true,
+    "selected_district": 2,
+    "selected_marker_visible": true,
+    "selection_marker_count": 1,
+    "solar_camera": {
+      "alignment_elapsed": 0.0,
+      "alignment_seconds": 0.8,
+      "component": "PlanetSolarCameraController",
+      "consumes_public_snapshot_only": true,
+      "holds_market_authority": false,
+      "holds_runtime_coordinator": false,
+      "holds_world_bridge": false,
+      "idle_elapsed": 2.39570233333333,
+      "idle_seconds": 3.0,
+      "last_interaction_kind": "focus_district",
+      "map_bound": true,
+      "motion_mode": "full",
+      "owns_save_state": false,
+      "snapshot_available": true,
+      "state": "IDLE_WAIT",
+      "sun_turn_ppm": 0
+    },
+    "weather_overlay": {
+      "animated": true,
+      "layout_count": 7,
+      "motion_mode": "full",
+      "region_indices": [
+        2
+      ],
+      "source_revision": 1,
+      "state": "active",
+      "visible": true
+    }
+  },
+  "overlay": {
+    "clock_domain": "world_effective",
+    "regions": [
+      {
+        "accent_hex": "#73D152",
+        "accessible_label": "区域 2，孢子季，生效中，剩余 1分10秒",
+        "definition_id": "spore_season",
+        "display_name": "孢子季",
+        "event_id": 1,
+        "icon_key": "spore",
+        "intensity": 1.0,
+        "pattern_key": "dots",
+        "phase": "active",
+        "region_index": 2,
+        "remaining_us": 70000000,
+        "source_type": "natural",
+        "stack_index": 0
+      }
+    ],
+    "schema_version": "weather_map_overlay_view_model.v1",
+    "source_revision": 1,
+    "state": "active",
+    "world_effective_us": 0
+  },
+  "region_detail": {
+    "accessible_text": "孢子季，生效中，区域 区域 2，剩余 1分10秒。影响：生物/医药/食品生产 +18%；相关商品需求 +15%；污染路线效率 -8%。利用：围绕生物、医药、食物供需做短期放大。。应对：路线效率略降，非生物经济不会获得收益。。",
+    "counterplay_hint": "路线效率略降，非生物经济不会获得收益。",
+    "definition_id": "spore_season",
+    "display_name": "孢子季",
+    "effects": [
+      {
+        "classification_tags": [
+          "product.weather_biological",
+          "product.weather_medicine",
+          "product.weather_food"
+        ],
+        "effect_id": "bio_production",
+        "label": "生物/医药/食品生产",
+        "polarity": "opportunity",
+        "scope": "economy",
+        "value_text": "+18%"
+      },
+      {
+        "classification_tags": [
+          "demand.biological"
+        ],
+        "effect_id": "bio_demand",
+        "label": "相关商品需求",
+        "polarity": "opportunity",
+        "scope": "economy",
+        "value_text": "+15%"
+      },
+      {
+        "classification_tags": [
+          "route.polluted"
+        ],
+        "effect_id": "route_drag",
+        "label": "污染路线效率",
+        "polarity": "risk",
+        "scope": "route",
+        "value_text": "-8%"
+      }
+    ],
+    "event_id": 1,
+    "exploitation_hint": "围绕生物、医药、食物供需做短期放大。",
+    "intensity": 1.0,
+    "phase": "active",
+    "region_index": 2,
+    "remaining_us": 70000000,
+    "schema_version": "weather_region_detail.v1"
+  },
+  "renderer": "Windows",
+  "required_nodes": {
+    "DistrictInfoPanel": {
+      "found": true,
+      "name": "DistrictInfoPanel",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/RightInspector/InspectorRows/DistrictInfoPanel",
+      "rect": {
+        "height": 240.0,
+        "width": 280.0,
+        "x": 1292.0,
+        "y": 234.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "EconomyDashboardPanel": {
+      "found": true,
+      "name": "EconomyDashboardPanel",
+      "path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel",
+      "rect": {
+        "height": 628.0,
+        "width": 1202.0,
+        "x": 192.0,
+        "y": 1089.40002441406
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "HandRack": {
+      "found": true,
+      "name": "HandRack",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard/PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/HandRackColumn/HandRack",
+      "rect": {
+        "height": 162.0,
+        "width": 970.0,
+        "x": 290.0,
+        "y": 777.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "MenuModalOverlay": {
+      "found": true,
+      "name": "MenuModalOverlay",
+      "path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay",
+      "rect": {
+        "height": 960.0,
+        "width": 1600.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "type": "ColorRect",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "PlanetBoard": {
+      "found": true,
+      "name": "PlanetBoard",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard",
+      "rect": {
+        "height": 613.0,
+        "width": 1256.0,
+        "x": 16.0,
+        "y": 119.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "PlanetMapView": {
+      "found": true,
+      "name": "PlanetMapView",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView",
+      "rect": {
+        "height": 471.0,
+        "width": 560.0,
+        "x": 363.5,
+        "y": 260.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "RightInspector": {
+      "found": true,
+      "name": "RightInspector",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/RightInspector",
+      "rect": {
+        "height": 613.0,
+        "width": 304.0,
+        "x": 1280.0,
+        "y": 119.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "RuntimeGameScreen": {
+      "found": true,
+      "name": "RuntimeGameScreen",
+      "path": "/root/Main/RuntimeGameScreen",
+      "rect": {
+        "height": 960.0,
+        "width": 1600.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "WeatherForecastStrip": {
+      "found": true,
+      "name": "WeatherForecastStrip",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/WeatherForecastStrip",
+      "rect": {
+        "height": 110.0,
+        "width": 1254.0,
+        "x": 17.0,
+        "y": 144.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "WeatherLayer": {
+      "found": true,
+      "name": "WeatherLayer",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/WeatherLayer",
+      "rect": {
+        "height": 471.0,
+        "width": 560.0,
+        "x": 363.5,
+        "y": 260.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    }
+  },
+  "resolution": {
+    "x": 1600,
+    "y": 960
+  },
+  "scene": "res://scenes/main.tscn",
+  "table_screenshot": "e_weather_active_table_1600x960.png",
+  "visible_machine_id_candidates": {
+    "economy": [],
+    "table": []
+  },
+  "visible_qa_residue_candidates": {
+    "economy": [],
+    "table": []
+  }
+}

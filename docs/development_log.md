@@ -3,6 +3,13 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜真实主桌天气生命周期视觉验收（test/report-only）
+
+- Codex E 用 GUI Godot 4.7 前台阻塞运行真实 `main.tscn`，在 1600×960 捕获 forecast、active、fading、同屏双区域 active 的主桌与经济总览共 8 张截图；每态保存公开 Weather ViewModel、区域详情、地图层级和可见文本扫描 JSON。
+- 四态的阶段、剩余时间、前三效果、利用/反制、经济天气原因、双事件计数、机器标识/QA 残留均通过；headed console 的 `ERROR / SCRIPT ERROR / WARNING` 命中为 0。Main 入树前安装专用 QA save override，运行后清理，玩家默认存档 metadata/SHA-256 前后等价。
+- 总体仍标红：现有 Coordinator 没有 test helper 所需的 `execute_city_development`，真实新局无法生成城市 marker，故只有 `WeatherLayer < DistrictLayer < RouteLayer < MonsterLayer` 层级证据，不能把“天气不遮挡实际城市”标绿。未修改 production/Main/UI，也没有手工伪造城市。
+- 地图拥挤、经济文本墙继续存在；经济页再次打开还会保留较深滚动位置。完整相对路径证据与绿/红矩阵见 `reports/ui/production_acceptance/e_weather_lifecycle/e_weather_lifecycle_acceptance.md`。
+
 ## 2026-07-15｜真实主桌最小生产视觉回归与机器 ID 清理
 
 - Codex E 使用真实 `main.tscn` 在 1280×720、1600×960、1920×1080 生成 globe、local projection 与经济总览共 9 张 headed 截图；每档同时保存 scene tree JSON 与 console log，不以组件 bench 代替生产场景。
