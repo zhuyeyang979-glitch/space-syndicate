@@ -1,21 +1,33 @@
 extends SceneTree
 
-const DRIVER_SCHEMA := 1
-const DRIVER_ID := "full_run_quality_driver_v1"
+const FullRunQualitySnapshotScript := preload("res://scripts/viewmodels/full_run_quality_snapshot.gd")
+
+const DRIVER_SCHEMA := 2
+const DRIVER_ID := "full_run_quality_driver_v2"
 const SEED_ALGORITHM := "space-syndicate-full-run-quality-v1:sha256-positive31"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
 const SESSION_PATH := "GameSessionRuntimeController"
 const REGISTRY_PATH := "V06SaveOwnerRegistry"
 const SAVE_COORDINATOR_PATH := "GameSaveRuntimeCoordinator"
+const SETTLEMENT_PATH := "RuntimeServices/FinalSettlementRuntimeComposition"
+const RUNTIME_SCREEN_PATH := "RuntimeGameScreen"
 const QA_SAVE_ROOT := "user://test_runs/full_run_quality/"
 const REQUIRED_SECTION_COUNT := 18
-const HEARTBEAT_INTERVAL_SECONDS := 5
-const DEFAULT_MAX_WALL_SECONDS := 120
+const SCRIPTED_PLAYER_INDEX := 0
+const RECOMMENDED_PLAYER_COUNT := 4
+const RECOMMENDED_AI_COUNT := 3
+const HEARTBEAT_INTERVAL_SECONDS := 2.0
+const ACTION_PROGRESS_TIMEOUT_SECONDS := 3.0
+const NO_ACTION_TIMEOUT_SECONDS := 1.5
+const DEFAULT_OBSERVATION_SECONDS := 12
+const DEFAULT_MAX_WALL_SECONDS := 30
+const SIMULATION_TIME_SCALE := 4.0
 const EXIT_INVALID_ARGUMENTS := 2
 const EXIT_CAPABILITY_INCOMPLETE := 3
-const EXIT_EXECUTION_NOT_IMPLEMENTED := 4
+const EXIT_OBSERVATION_INCOMPLETE := 4
 const EXIT_RUNTIME_COMPOSITION_UNAVAILABLE := 5
+const EXIT_NONFINITE := 6
 
 const FIXED_SEEDS: Array[int] = [
 	900626424,
@@ -40,31 +52,13 @@ const FIXED_SEEDS: Array[int] = [
 	1515999483,
 ]
 
-const HEARTBEAT_PUBLIC_KEYS := [
-	"type",
-	"schema",
-	"driver",
-	"run_id",
-	"seed_index",
-	"seed",
-	"seq",
-	"driver_s",
-	"world_s",
-	"phase",
-	"status",
-	"session_state",
-	"victory_state",
-	"decision",
-	"queue",
-	"counts",
-	"last_turning_point",
-]
 const SUMMARY_PUBLIC_KEYS := [
 	"type",
 	"schema",
 	"driver",
 	"algorithm",
 	"run_id",
+	"run_count",
 	"seed_index",
 	"seed",
 	"completed",
@@ -72,39 +66,41 @@ const SUMMARY_PUBLIC_KEYS := [
 	"failure_code",
 	"qa_save_scope",
 	"capability",
-	"stages",
 	"save",
-	"pacing",
 	"actions",
-	"softlocks",
-	"turning_points",
-	"timeouts",
+	"phase",
+	"elapsed",
+	"decision_window",
+	"settlement",
+	"invalid_actions",
+	"nonfinite",
+	"last_event",
 	"wall_ms",
 ]
 const CAPABILITY_PUBLIC_KEYS := [
+	"fresh_run_ready",
+	"scripted_ui_port_ready",
+	"clock_ready",
+	"victory_ready",
+	"session_ready",
+	"settlement_ready",
 	"registry_valid",
 	"required_sections",
 	"transactional_sections",
 	"unsupported_sections",
 	"resume_ready",
-	"rng_continuation_ready",
-	"player_continuation_ready",
-	"exact_resume_ready",
-	"capture_probe_ok",
 	"capture_fail_closed",
-]
-const STAGE_ORDER := [
-	"capability_preflight",
-	"setup",
-	"tick",
-	"save_checkpoint",
-	"restore",
-	"terminal",
-	"settlement",
 ]
 
 var _started_msec := 0
 var _heartbeat_sequence := 0
+var _last_event := "driver_started"
+var _action_stats := {
+	"attempted": 0,
+	"progressed": 0,
+	"rejected_invalid": 0,
+	"reason_codes": {},
+}
 
 
 func _init() -> void:
@@ -115,35 +111,29 @@ func _init() -> void:
 func _run() -> void:
 	var options := _parse_options(OS.get_cmdline_user_args())
 	if not bool(options.get("valid", false)):
-		_emit_summary(_base_summary(options, "invalid_arguments", "invalid_arguments", {}))
+		var invalid_telemetry := _empty_telemetry(int(options.get("seed_index", 0)), "blocked", "invalid_arguments")
+		_emit_summary(_summary(options, invalid_telemetry, "invalid_arguments", "invalid_arguments", {}, {}))
 		quit(EXIT_INVALID_ARGUMENTS)
 		return
 
 	var seed_index := int(options.get("seed_index", 0))
-	var seed := FIXED_SEEDS[seed_index]
-	var head := _head_token()
-	var qa_scope := qa_save_directory(head, seed)
-	_emit_heartbeat(seed_index, seed, "capability_preflight", "running")
-
+	var run_seed := FIXED_SEEDS[seed_index]
+	var qa_scope := qa_save_directory(_head_token(), run_seed)
 	var packed := load(MAIN_SCENE_PATH) as PackedScene
 	if packed == null:
-		var missing_scene := _base_summary(options, "blocked_by_capability", "runtime_composition_unavailable", {})
-		missing_scene["qa_save_scope"] = qa_scope
-		_emit_summary(missing_scene)
+		var missing_scene := _empty_telemetry(seed_index, "blocked", "main_scene_unavailable")
+		_emit_summary(_summary(options, missing_scene, "blocked_by_capability", "runtime_composition_unavailable", {}, {}))
 		quit(EXIT_RUNTIME_COMPOSITION_UNAVAILABLE)
 		return
-
 	var main_instance := packed.instantiate()
 	if main_instance == null:
-		var missing_instance := _base_summary(options, "blocked_by_capability", "runtime_composition_unavailable", {})
-		missing_instance["qa_save_scope"] = qa_scope
-		_emit_summary(missing_instance)
+		var missing_instance := _empty_telemetry(seed_index, "blocked", "main_instance_unavailable")
+		_emit_summary(_summary(options, missing_instance, "blocked_by_capability", "runtime_composition_unavailable", {}, {}))
 		quit(EXIT_RUNTIME_COMPOSITION_UNAVAILABLE)
 		return
-
-	main_instance.process_mode = Node.PROCESS_MODE_DISABLED
 	if main_instance is CanvasItem:
 		(main_instance as CanvasItem).visible = false
+
 	var coordinator := main_instance.get_node_or_null(COORDINATOR_PATH)
 	var session := coordinator.get_node_or_null(SESSION_PATH) if coordinator != null else null
 	var save_coordinator := session.get_node_or_null(SAVE_COORDINATOR_PATH) if session != null else null
@@ -152,54 +142,182 @@ func _run() -> void:
 		and save_coordinator.has_method("set_qa_default_save_path_override") \
 		and bool(save_coordinator.call("set_qa_default_save_path_override", qa_save_file))
 	root.add_child(main_instance)
-	await process_frame
+	await _wait_frames(6)
 
-	if _wall_timed_out(int(options.get("max_wall_seconds", DEFAULT_MAX_WALL_SECONDS))):
-		_cleanup_main(main_instance)
-		var timed_out := _base_summary(options, "blocked_by_capability", "preflight_timeout", {})
-		timed_out["qa_save_scope"] = qa_scope
-		timed_out["timeouts"] = [{"phase": "capability_preflight", "limit_s": int(options.get("max_wall_seconds", DEFAULT_MAX_WALL_SECONDS))}]
-		_emit_summary(timed_out)
-		quit(EXIT_CAPABILITY_INCOMPLETE)
-		return
-
+	coordinator = main_instance.get_node_or_null(COORDINATOR_PATH)
+	session = coordinator.get_node_or_null(SESSION_PATH) if coordinator != null else null
 	var registry := session.get_node_or_null(REGISTRY_PATH) if session != null else null
-	var capability := _capability_preflight(coordinator, registry, qa_path_ready)
-	var capability_ready := bool(capability.get("ready", false))
+	var runtime_screen := main_instance.get_node_or_null(RUNTIME_SCREEN_PATH)
+	var settlement_composition := main_instance.get_node_or_null(SETTLEMENT_PATH)
+	var capability := _capability_preflight(main_instance, coordinator, session, registry, runtime_screen, settlement_composition, qa_path_ready)
 	var public_capability: Dictionary = capability.get("public", {}) if capability.get("public", {}) is Dictionary else {}
-	_emit_heartbeat(seed_index, seed, "capability_preflight", "ready" if capability_ready else "blocked_by_capability")
-	_cleanup_main(main_instance)
+	var preflight_telemetry := _collect_telemetry(
+		run_seed,
+		coordinator,
+		session,
+		settlement_composition,
+		runtime_screen,
+		_started_msec,
+		"capability_preflight"
+	)
+	_emit_heartbeat(seed_index, preflight_telemetry, "ready" if bool(capability.get("fresh_run_ready", false)) else "blocked_by_capability")
 
-	if not capability_ready:
-		var blocked := _base_summary(options, "blocked_by_capability", "restore_capability_incomplete", public_capability)
-		blocked["qa_save_scope"] = qa_scope
-		blocked["stages"] = _stage_statuses("failed", "blocked_by_capability")
-		_emit_summary(blocked)
+	if not bool(capability.get("fresh_run_ready", false)):
+		_cleanup_main(main_instance, save_coordinator)
+		_emit_summary(_summary(options, preflight_telemetry, "blocked_by_capability", "fresh_run_capability_incomplete", public_capability, _save_status(public_capability)))
 		quit(EXIT_CAPABILITY_INCOMPLETE)
 		return
-
 	if bool(options.get("preflight_only", false)):
-		var ready := _base_summary(options, "preflight_ready", "", public_capability)
-		ready["qa_save_scope"] = qa_scope
-		ready["stages"] = _stage_statuses("passed", "not_requested")
-		_emit_summary(ready)
+		_cleanup_main(main_instance, save_coordinator)
+		_emit_summary(_summary(options, preflight_telemetry, "fresh_run_preflight_ready", "", public_capability, _save_status(public_capability)))
 		quit(0)
 		return
 
-	var execution_blocked := _base_summary(options, "blocked_by_driver_implementation", "full_run_execution_not_implemented", public_capability)
-	execution_blocked["qa_save_scope"] = qa_scope
-	execution_blocked["stages"] = _stage_statuses("passed", "blocked_by_driver_implementation")
-	_emit_summary(execution_blocked)
-	quit(EXIT_EXECUTION_NOT_IMPLEMENTED)
+	var start_result := await _start_fixed_seed_run(main_instance, session, run_seed)
+	if not bool(start_result.get("started", false)):
+		_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
+		_record_reason(str(start_result.get("reason_code", "session_start_failed")))
+		_last_event = "blocked:%s" % str(start_result.get("reason_code", "session_start_failed"))
+		var start_failed := _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, _started_msec, _last_event)
+		_cleanup_main(main_instance, save_coordinator)
+		_emit_summary(_summary(options, start_failed, "blocked_by_capability", str(start_result.get("reason_code", "session_start_failed")), public_capability, _save_status(public_capability)))
+		quit(EXIT_CAPABILITY_INCOMPLETE)
+		return
+
+	_last_event = "session_started"
+	main_instance.set("time_scale", SIMULATION_TIME_SCALE)
+	var observation_started_msec := Time.get_ticks_msec()
+	var observation_limit_msec := int(options.get("observation_seconds", DEFAULT_OBSERVATION_SECONDS)) * 1000
+	var max_wall_msec := int(options.get("max_wall_seconds", DEFAULT_MAX_WALL_SECONDS)) * 1000
+	var last_heartbeat_msec := observation_started_msec
+	var no_action_since_msec := observation_started_msec
+	var pending_action: Dictionary = {}
+	var final_status := "incomplete"
+	var failure_code := "observation_window_elapsed_before_settlement"
+	var final_telemetry := _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
+
+	while true:
+		await process_frame
+		var now_msec := Time.get_ticks_msec()
+		var ui_action := _scripted_ui_action(runtime_screen)
+		final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
+		if int((final_telemetry.get("nonfinite", {}) as Dictionary).get("count", 0)) > 0:
+			final_status = "failed"
+			failure_code = "nonfinite_public_runtime_fact"
+			_last_event = "blocked:nonfinite_public_runtime_fact"
+			break
+		if bool((final_telemetry.get("settlement", {}) as Dictionary).get("completed", false)):
+			final_status = "settled"
+			failure_code = ""
+			_last_event = "settlement_completed"
+			break
+
+		if not pending_action.is_empty():
+			var pending_id := str(pending_action.get("id", ""))
+			var pending_phase := str(pending_action.get("phase", ""))
+			var action_progressed := str(ui_action.get("id", "")) != pending_id or str(ui_action.get("phase", "")) != pending_phase
+			if action_progressed:
+				_action_stats["progressed"] = int(_action_stats.get("progressed", 0)) + 1
+				_last_event = "action_progressed:%s" % pending_id
+				pending_action = {}
+				no_action_since_msec = now_msec
+			elif now_msec - int(pending_action.get("requested_msec", now_msec)) >= int(ACTION_PROGRESS_TIMEOUT_SECONDS * 1000.0):
+				_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
+				failure_code = "scripted_ui_action_no_progress:%s" % pending_id
+				_record_reason("scripted_ui_action_no_progress")
+				_last_event = "blocked:%s" % failure_code
+				final_status = "blocked"
+				break
+
+		if pending_action.is_empty():
+			var action_id := str(ui_action.get("id", ""))
+			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
+				runtime_screen.emit_signal("action_requested", action_id)
+				_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
+				_last_event = "action_requested:%s" % action_id
+				pending_action = {
+					"id": action_id,
+					"phase": str(ui_action.get("phase", "play")),
+					"requested_msec": now_msec,
+				}
+				no_action_since_msec = now_msec
+			elif now_msec - no_action_since_msec >= int(NO_ACTION_TIMEOUT_SECONDS * 1000.0):
+				var exact_phase := str(final_telemetry.get("phase", "play"))
+				var decision: Dictionary = final_telemetry.get("decision_window", {}) if final_telemetry.get("decision_window", {}) is Dictionary else {}
+				if not action_id.is_empty() and bool(ui_action.get("disabled", false)):
+					failure_code = "scripted_ui_action_disabled:%s" % action_id
+					_record_reason("scripted_ui_action_disabled")
+				elif bool(decision.get("active", false)) and bool(decision.get("blocks_global_time", false)):
+					failure_code = "forced_decision_has_no_visible_action"
+				elif exact_phase == "play" or exact_phase == "finished" or exact_phase.begins_with("first_run.done"):
+					failure_code = "scripted_guidance_exhausted_before_settlement"
+				else:
+					failure_code = "scripted_ui_action_unavailable:%s" % exact_phase
+				_last_event = "blocked:%s" % failure_code
+				final_status = "blocked"
+				break
+
+		if now_msec - last_heartbeat_msec >= int(HEARTBEAT_INTERVAL_SECONDS * 1000.0):
+			_emit_heartbeat(seed_index, final_telemetry, "running")
+			last_heartbeat_msec = now_msec
+		if now_msec - observation_started_msec >= observation_limit_msec:
+			failure_code = "observation_window_elapsed_during_action" if not pending_action.is_empty() else "observation_window_elapsed_before_settlement"
+			_last_event = "blocked:%s" % failure_code
+			break
+		if now_msec - _started_msec >= max_wall_msec:
+			failure_code = "driver_wall_timeout"
+			_last_event = "blocked:driver_wall_timeout"
+			break
+
+	final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
+	_emit_heartbeat(seed_index, final_telemetry, final_status)
+	_cleanup_main(main_instance, save_coordinator)
+	_emit_summary(_summary(options, final_telemetry, final_status, failure_code, public_capability, _save_status(public_capability)))
+	if final_status == "settled":
+		quit(0)
+	elif failure_code == "nonfinite_public_runtime_fact":
+		quit(EXIT_NONFINITE)
+	else:
+		quit(EXIT_OBSERVATION_INCOMPLETE)
 
 
-func _capability_preflight(coordinator: Node, registry: Node, qa_path_ready: bool) -> Dictionary:
-	var snapshot: Dictionary = {}
+func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) -> Dictionary:
+	if not main_instance.has_method("_first_run_recommended_setup") or not main_instance.has_method("_confirm_start_new_run_from_setup"):
+		return {"started": false, "reason_code": "main_setup_api_unavailable"}
+	var setup_variant: Variant = main_instance.call("_first_run_recommended_setup")
+	var setup: Dictionary = setup_variant if setup_variant is Dictionary else {}
+	if int(setup.get("player_count", 0)) != RECOMMENDED_PLAYER_COUNT or int(setup.get("ai_count", 0)) != RECOMMENDED_AI_COUNT:
+		return {"started": false, "reason_code": "recommended_setup_invalid"}
+	main_instance.set("configured_player_count", RECOMMENDED_PLAYER_COUNT)
+	main_instance.set("configured_ai_player_count", RECOMMENDED_AI_COUNT)
+	main_instance.set("configured_role_indices", (setup.get("role_indices", []) as Array).duplicate(true))
+	main_instance.set("configured_starter_monster_indices", (setup.get("starter_monster_indices", []) as Array).duplicate(true))
+	var rng_variant: Variant = main_instance.get("rng")
+	if not (rng_variant is RandomNumberGenerator):
+		return {"started": false, "reason_code": "main_rng_unavailable"}
+	(rng_variant as RandomNumberGenerator).seed = run_seed
+	main_instance.call("_confirm_start_new_run_from_setup")
+	await _wait_frames(10)
+	var players_variant: Variant = main_instance.get("players")
+	var players: Array = players_variant if players_variant is Array else []
+	var ai_count := 0
+	for player_variant in players:
+		if player_variant is Dictionary and bool((player_variant as Dictionary).get("is_ai", false)):
+			ai_count += 1
+	var session_state := _session_state(session)
+	return {
+		"started": players.size() == RECOMMENDED_PLAYER_COUNT and ai_count == RECOMMENDED_AI_COUNT and session_state == "running",
+		"reason_code": "" if players.size() == RECOMMENDED_PLAYER_COUNT and ai_count == RECOMMENDED_AI_COUNT and session_state == "running" else "recommended_session_not_running",
+	}
+
+
+func _capability_preflight(main_instance: Node, coordinator: Node, session: Node, registry: Node, runtime_screen: Node, settlement_composition: Node, qa_path_ready: bool) -> Dictionary:
+	var registry_snapshot: Dictionary = {}
 	var capture_probe: Dictionary = {}
 	if registry != null and registry.has_method("registry_snapshot"):
-		var snapshot_variant: Variant = registry.call("registry_snapshot")
-		if snapshot_variant is Dictionary:
-			snapshot = (snapshot_variant as Dictionary).duplicate(true)
+		var registry_variant: Variant = registry.call("registry_snapshot")
+		if registry_variant is Dictionary:
+			registry_snapshot = (registry_variant as Dictionary).duplicate(true)
 	if registry != null and registry.has_method("capture_resume_envelope"):
 		var capture_variant: Variant = registry.call("capture_resume_envelope", {
 			"envelope_id": "full-run-capability-probe",
@@ -207,64 +325,250 @@ func _capability_preflight(coordinator: Node, registry: Node, qa_path_ready: boo
 		})
 		if capture_variant is Dictionary:
 			capture_probe = capture_variant as Dictionary
-
-	var continuation := _continuation_capability_snapshot(coordinator)
-	var registry_valid := bool(snapshot.get("valid", false)) and qa_path_ready
-	var required_sections := int(snapshot.get("required_section_count", 0))
-	var transactional_sections := int(snapshot.get("transactional_section_count", 0))
-	var unsupported_sections := int(snapshot.get("unsupported_section_count", REQUIRED_SECTION_COUNT))
-	var resume_ready := bool(snapshot.get("resume_ready", false))
-	var rng_ready := bool(continuation.get("rng_state_transactional", false)) \
-		and bool(continuation.get("rng_authority_unique", false))
-	var player_ready := bool(continuation.get("complete_player_state_transactional", false)) \
-		and bool(continuation.get("player_state_authority_unique", false))
-	var exact_resume_ready := bool(continuation.get("exact_resume_transactional", false))
-	var capture_probe_ok := bool(capture_probe.get("ok", false)) \
-		and str(capture_probe.get("reason_code", "")) == "resume_envelope_captured"
+	var clock_ready := coordinator != null and coordinator.has_method("world_effective_clock_snapshot")
+	var victory_ready := coordinator != null and coordinator.has_method("victory_control_public_snapshot")
+	var session_ready := session != null and session.has_method("session_summary")
+	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
+	var scripted_ui_port_ready := runtime_screen != null and runtime_screen.has_signal("action_requested")
+	var setup_ready := main_instance.has_method("_first_run_recommended_setup") and main_instance.has_method("_confirm_start_new_run_from_setup")
+	var registry_valid := bool(registry_snapshot.get("valid", false)) and qa_path_ready
+	var required_sections := int(registry_snapshot.get("required_section_count", 0))
+	var transactional_sections := int(registry_snapshot.get("transactional_section_count", 0))
+	var unsupported_sections := int(registry_snapshot.get("unsupported_section_count", REQUIRED_SECTION_COUNT))
+	var resume_ready := bool(registry_snapshot.get("resume_ready", false))
 	var capture_fail_closed := not bool(capture_probe.get("ok", true)) \
 		and str(capture_probe.get("reason_code", "")) == "restore_capability_incomplete" \
 		and not capture_probe.has("envelope")
-	var ready := registry_valid \
+	var fresh_run_ready := registry_valid \
 		and required_sections == REQUIRED_SECTION_COUNT \
-		and transactional_sections == REQUIRED_SECTION_COUNT \
-		and unsupported_sections == 0 \
-		and resume_ready \
-		and rng_ready \
-		and player_ready \
-		and exact_resume_ready \
-		and capture_probe_ok
+		and clock_ready \
+		and victory_ready \
+		and session_ready \
+		and settlement_ready \
+		and scripted_ui_port_ready \
+		and setup_ready
 	return {
-		"ready": ready,
+		"fresh_run_ready": fresh_run_ready,
 		"public": {
+			"fresh_run_ready": fresh_run_ready,
+			"scripted_ui_port_ready": scripted_ui_port_ready,
+			"clock_ready": clock_ready,
+			"victory_ready": victory_ready,
+			"session_ready": session_ready,
+			"settlement_ready": settlement_ready,
 			"registry_valid": registry_valid,
 			"required_sections": maxi(0, required_sections),
 			"transactional_sections": maxi(0, transactional_sections),
 			"unsupported_sections": maxi(0, unsupported_sections),
 			"resume_ready": resume_ready,
-			"rng_continuation_ready": rng_ready,
-			"player_continuation_ready": player_ready,
-			"exact_resume_ready": exact_resume_ready,
-			"capture_probe_ok": capture_probe_ok,
 			"capture_fail_closed": capture_fail_closed,
 		},
 	}
 
 
-func _continuation_capability_snapshot(coordinator: Node) -> Dictionary:
-	if coordinator == null:
+func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlement_composition: Node, runtime_screen: Node, run_started_msec: int, last_event: String) -> Dictionary:
+	var clock: Dictionary = {}
+	var victory: Dictionary = {}
+	var decision: Dictionary = {}
+	if coordinator != null and coordinator.has_method("world_effective_clock_snapshot"):
+		var clock_variant: Variant = coordinator.call("world_effective_clock_snapshot")
+		clock = (clock_variant as Dictionary).duplicate(true) if clock_variant is Dictionary else {}
+	if coordinator != null and coordinator.has_method("victory_control_public_snapshot"):
+		var victory_variant: Variant = coordinator.call("victory_control_public_snapshot", -1)
+		victory = (victory_variant as Dictionary).duplicate(true) if victory_variant is Dictionary else {}
+	if coordinator != null and coordinator.has_method("active_forced_decision"):
+		var decision_variant: Variant = coordinator.call("active_forced_decision", SCRIPTED_PLAYER_INDEX)
+		decision = (decision_variant as Dictionary).duplicate(true) if decision_variant is Dictionary else {}
+	var ui_action := _scripted_ui_action(runtime_screen)
+	var session_state := _session_state(session)
+	var settlement := _settlement_snapshot(victory, settlement_composition, session_state)
+	var phase := _phase_for(session_state, victory, decision, ui_action, settlement)
+	var world_seconds := maxf(0.0, float(clock.get("world_effective_seconds", 0.0)))
+	return FullRunQualitySnapshotScript.compose({
+		"seed": run_seed,
+		"phase": phase,
+		"elapsed": {
+			"wall_seconds": maxf(0.0, float(Time.get_ticks_msec() - run_started_msec) / 1000.0),
+			"world_seconds": world_seconds,
+		},
+		"decision_window": {
+			"active": not decision.is_empty(),
+			"kind": str(decision.get("kind", "none")),
+			"priority_group": str(decision.get("priority_group", "")),
+			"blocks_global_time": bool(decision.get("blocks_global_time", false)),
+			"blocks_player_actions": bool(decision.get("blocks_player_actions", false)),
+			"visible_to_scripted_player": bool(decision.get("visible_to_viewer", true)),
+		},
+		"settlement": settlement,
+		"invalid_actions": {
+			"count": int(_action_stats.get("rejected_invalid", 0)),
+			"last_reason_code": _last_reason_code(),
+		},
+		"nonfinite": {},
+		"last_event": last_event,
+		"observed_public_facts": {
+			"clock": {"world_effective_seconds": world_seconds},
+			"victory": {
+				"qualification_remaining_seconds": float(victory.get("qualification_remaining_seconds", 0.0)),
+				"audit_remaining_seconds": float(victory.get("audit_remaining_seconds", 0.0)),
+			},
+			"decision": {"opened_sequence": float(decision.get("opened_sequence", 0.0))},
+		},
+	})
+
+
+func _settlement_snapshot(victory: Dictionary, settlement_composition: Node, session_state: String) -> Dictionary:
+	var outcome: Dictionary = victory.get("outcome_receipt", {}) if victory.get("outcome_receipt", {}) is Dictionary else {}
+	var debug: Dictionary = {}
+	if settlement_composition != null and settlement_composition.has_method("debug_snapshot"):
+		var debug_variant: Variant = settlement_composition.call("debug_snapshot")
+		debug = (debug_variant as Dictionary).duplicate(true) if debug_variant is Dictionary else {}
+	var outcome_id := str(outcome.get("outcome_id", ""))
+	var presentation_ready := not outcome_id.is_empty() and int(debug.get("present_count", 0)) > 0
+	return {
+		"state": str(victory.get("state", "idle")),
+		"completed": str(victory.get("state", "")) == "resolved" and not outcome_id.is_empty() and session_state == "finished" and presentation_ready,
+		"outcome_id": outcome_id,
+		"reason_code": str(outcome.get("reason_code", "")),
+		"winner_count": (outcome.get("winner_player_indices", []) as Array).size() if outcome.get("winner_player_indices", []) is Array else 0,
+		"presentation_ready": presentation_ready,
+	}
+
+
+func _scripted_ui_action(runtime_screen: Node) -> Dictionary:
+	if runtime_screen == null:
+		return {"id": "", "phase": "play", "disabled": true}
+	var ui_variant: Variant = runtime_screen.get("current_ui_data")
+	var ui: Dictionary = ui_variant if ui_variant is Dictionary else {}
+	var temporary: Dictionary = ui.get("temporary_decision", {}) if ui.get("temporary_decision", {}) is Dictionary else {}
+	if bool(temporary.get("visible", false)) or bool(temporary.get("active", false)):
+		var temporary_action := _first_enabled_action(temporary.get("actions", []))
+		if not temporary_action.is_empty():
+			return {
+				"id": str(temporary_action.get("id", "")),
+				"phase": "decision_window.%s" % str(temporary.get("kind", "choice")),
+				"disabled": bool(temporary_action.get("disabled", false)),
+			}
+	var coach: Dictionary = ui.get("first_run_coach", {}) if ui.get("first_run_coach", {}) is Dictionary else {}
+	if not coach.is_empty():
+		var primary: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
+		var stage := str(coach.get("stage", "play"))
+		return {
+			"id": str(primary.get("id", "")),
+			"phase": "first_run.%s" % stage,
+			"disabled": bool(primary.get("disabled", false)),
+		}
+	return {"id": "", "phase": "play", "disabled": true}
+
+
+func _first_enabled_action(value: Variant) -> Dictionary:
+	if not (value is Array):
 		return {}
-	if coordinator.has_method("full_run_restore_capabilities"):
-		var direct_variant: Variant = coordinator.call("full_run_restore_capabilities")
-		if direct_variant is Dictionary:
-			return (direct_variant as Dictionary).duplicate(true)
-	if coordinator.has_method("debug_snapshot"):
-		var debug_variant: Variant = coordinator.call("debug_snapshot")
-		if debug_variant is Dictionary:
-			var debug := debug_variant as Dictionary
-			var capability_variant: Variant = debug.get("full_run_restore_capabilities")
-			if capability_variant is Dictionary:
-				return (capability_variant as Dictionary).duplicate(true)
+	for action_variant in value as Array:
+		if action_variant is Dictionary:
+			var action: Dictionary = action_variant
+			if not str(action.get("id", "")).is_empty() and not bool(action.get("disabled", false)):
+				return action.duplicate(true)
 	return {}
+
+
+func _phase_for(session_state: String, victory: Dictionary, decision: Dictionary, ui_action: Dictionary, settlement: Dictionary) -> String:
+	if bool(settlement.get("completed", false)) or str(victory.get("state", "")) == "resolved":
+		return "settlement"
+	var victory_state := str(victory.get("state", "idle"))
+	if victory_state == "audit":
+		return "audit"
+	if victory_state == "qualification":
+		return "qualification"
+	if not decision.is_empty():
+		return "decision_window.%s" % str(decision.get("kind", "choice"))
+	var ui_phase := str(ui_action.get("phase", ""))
+	if not ui_phase.is_empty():
+		return ui_phase
+	if session_state == "finished":
+		return "finished"
+	if session_state == "running":
+		return "play"
+	return "setup"
+
+
+func _session_state(session: Node) -> String:
+	if session == null or not session.has_method("session_summary"):
+		return "unavailable"
+	var summary_variant: Variant = session.call("session_summary")
+	var summary: Dictionary = summary_variant if summary_variant is Dictionary else {}
+	return str(summary.get("session_state", "unavailable"))
+
+
+func _empty_telemetry(seed_index: int, phase: String, event: String) -> Dictionary:
+	var safe_index := clampi(seed_index, 0, FIXED_SEEDS.size() - 1)
+	return FullRunQualitySnapshotScript.compose({
+		"seed": FIXED_SEEDS[safe_index],
+		"phase": phase,
+		"elapsed": {"wall_seconds": _elapsed_seconds(), "world_seconds": 0.0},
+		"decision_window": {},
+		"settlement": {},
+		"invalid_actions": {"count": 0, "last_reason_code": event},
+		"last_event": event,
+		"observed_public_facts": {},
+	})
+
+
+func _summary(options: Dictionary, telemetry: Dictionary, status: String, failure_code: String, capability: Dictionary, save_status: Dictionary) -> Dictionary:
+	var seed_index := clampi(int(options.get("seed_index", 0)), 0, FIXED_SEEDS.size() - 1)
+	var result := {
+		"type": "summary",
+		"schema": DRIVER_SCHEMA,
+		"driver": DRIVER_ID,
+		"algorithm": SEED_ALGORITHM,
+		"run_id": "seed-%02d" % seed_index,
+		"run_count": 1,
+		"seed_index": seed_index,
+		"seed": FIXED_SEEDS[seed_index],
+		"completed": bool((telemetry.get("settlement", {}) as Dictionary).get("completed", false)),
+		"status": status,
+		"failure_code": failure_code,
+		"qa_save_scope": qa_save_directory(_head_token(), FIXED_SEEDS[seed_index]),
+		"capability": capability.duplicate(true),
+		"save": save_status.duplicate(true),
+		"actions": _action_stats.duplicate(true),
+		"wall_ms": maxi(0, Time.get_ticks_msec() - _started_msec),
+	}
+	for key_variant in FullRunQualitySnapshotScript.PUBLIC_KEYS:
+		var key := str(key_variant)
+		if key in ["schema", "seed"]:
+			continue
+		result[key] = telemetry.get(key)
+	return result
+
+
+func _save_status(capability: Dictionary) -> Dictionary:
+	var ready := bool(capability.get("resume_ready", false))
+	return {
+		"supported": ready,
+		"attempted": false,
+		"reason_code": "not_requested" if ready else "restore_capability_incomplete",
+	}
+
+
+func _emit_heartbeat(seed_index: int, telemetry: Dictionary, status: String) -> void:
+	_heartbeat_sequence += 1
+	var payload := telemetry.duplicate(true)
+	payload["type"] = "heartbeat"
+	payload["driver"] = DRIVER_ID
+	payload["run_id"] = "seed-%02d" % seed_index
+	payload["seed_index"] = seed_index
+	payload["seq"] = _heartbeat_sequence
+	payload["status"] = status
+	_emit_ndjson(payload)
+
+
+func _emit_summary(summary: Dictionary) -> void:
+	_emit_ndjson(summary)
+
+
+func _emit_ndjson(payload: Dictionary) -> void:
+	print(JSON.stringify(payload))
 
 
 func _parse_options(arguments: PackedStringArray) -> Dictionary:
@@ -272,6 +576,7 @@ func _parse_options(arguments: PackedStringArray) -> Dictionary:
 		"valid": true,
 		"preflight_only": false,
 		"seed_index": 0,
+		"observation_seconds": DEFAULT_OBSERVATION_SECONDS,
 		"max_wall_seconds": DEFAULT_MAX_WALL_SECONDS,
 	}
 	var index := 0
@@ -280,22 +585,25 @@ func _parse_options(arguments: PackedStringArray) -> Dictionary:
 		if argument == "--preflight-only":
 			result["preflight_only"] = true
 		elif argument.begins_with("--seed-index="):
-			if not _assign_integer_option(result, "seed_index", argument.trim_prefix("--seed-index="), 0, FIXED_SEEDS.size() - 1):
-				result["valid"] = false
+			result["valid"] = _assign_integer_option(result, "seed_index", argument.trim_prefix("--seed-index="), 0, FIXED_SEEDS.size() - 1) and bool(result.get("valid", true))
 		elif argument == "--seed-index":
 			index += 1
-			if index >= arguments.size() or not _assign_integer_option(result, "seed_index", str(arguments[index]), 0, FIXED_SEEDS.size() - 1):
-				result["valid"] = false
+			result["valid"] = index < arguments.size() and _assign_integer_option(result, "seed_index", str(arguments[index]), 0, FIXED_SEEDS.size() - 1) and bool(result.get("valid", true))
+		elif argument.begins_with("--observation-seconds="):
+			result["valid"] = _assign_integer_option(result, "observation_seconds", argument.trim_prefix("--observation-seconds="), 1, 3600) and bool(result.get("valid", true))
+		elif argument == "--observation-seconds":
+			index += 1
+			result["valid"] = index < arguments.size() and _assign_integer_option(result, "observation_seconds", str(arguments[index]), 1, 3600) and bool(result.get("valid", true))
 		elif argument.begins_with("--max-wall-seconds="):
-			if not _assign_integer_option(result, "max_wall_seconds", argument.trim_prefix("--max-wall-seconds="), 1, 86400):
-				result["valid"] = false
+			result["valid"] = _assign_integer_option(result, "max_wall_seconds", argument.trim_prefix("--max-wall-seconds="), 1, 86400) and bool(result.get("valid", true))
 		elif argument == "--max-wall-seconds":
 			index += 1
-			if index >= arguments.size() or not _assign_integer_option(result, "max_wall_seconds", str(arguments[index]), 1, 86400):
-				result["valid"] = false
+			result["valid"] = index < arguments.size() and _assign_integer_option(result, "max_wall_seconds", str(arguments[index]), 1, 86400) and bool(result.get("valid", true))
 		else:
 			result["valid"] = false
 		index += 1
+	if int(result.get("observation_seconds", 1)) >= int(result.get("max_wall_seconds", 1)):
+		result["valid"] = false
 	return result
 
 
@@ -309,91 +617,24 @@ func _assign_integer_option(target: Dictionary, key: String, text: String, minim
 	return true
 
 
-func _emit_heartbeat(seed_index: int, seed: int, phase: String, status: String) -> void:
-	_heartbeat_sequence += 1
-	_emit_ndjson({
-		"type": "heartbeat",
-		"schema": DRIVER_SCHEMA,
-		"driver": DRIVER_ID,
-		"run_id": "seed-%02d" % seed_index,
-		"seed_index": seed_index,
-		"seed": seed,
-		"seq": _heartbeat_sequence,
-		"driver_s": _elapsed_seconds(),
-		"world_s": 0.0,
-		"phase": phase,
-		"status": status,
-		"session_state": "not_started",
-		"victory_state": "not_started",
-		"decision": {"kind": "none", "epoch": 0, "blocking": false},
-		"queue": {"state": "not_started", "pending_count": 0},
-		"counts": {"actions": 0, "invalid": 0, "softlocks": 0},
-		"last_turning_point": "",
-	})
+func _record_reason(reason_code: String) -> void:
+	var reasons: Dictionary = _action_stats.get("reason_codes", {}) if _action_stats.get("reason_codes", {}) is Dictionary else {}
+	reasons[reason_code] = int(reasons.get(reason_code, 0)) + 1
+	_action_stats["reason_codes"] = reasons
 
 
-func _base_summary(options: Dictionary, status: String, failure_code: String, capability: Dictionary) -> Dictionary:
-	var seed_index := clampi(int(options.get("seed_index", 0)), 0, FIXED_SEEDS.size() - 1)
-	return {
-		"type": "summary",
-		"schema": DRIVER_SCHEMA,
-		"driver": DRIVER_ID,
-		"algorithm": SEED_ALGORITHM,
-		"run_id": "seed-%02d" % seed_index,
-		"seed_index": seed_index,
-		"seed": FIXED_SEEDS[seed_index],
-		"completed": false,
-		"status": status,
-		"failure_code": failure_code,
-		"qa_save_scope": qa_save_directory(_head_token(), FIXED_SEEDS[seed_index]),
-		"capability": capability.duplicate(true),
-		"stages": _stage_statuses("not_run", "not_run"),
-		"save": {
-			"attempted": false,
-			"write_ok": false,
-			"read_ok": false,
-			"preflight_ok": false,
-			"apply_ok": false,
-			"sections_equal": false,
-		},
-		"pacing": {
-			"human_source_s": 0.0,
-			"first_sale_s": 0.0,
-			"first_ai_public_action_s": 0.0,
-			"qualification_s": 0.0,
-			"audit_s": 0.0,
-			"settlement_s": 0.0,
-		},
-		"actions": {
-			"attempted": 0,
-			"committed": 0,
-			"rejected_retryable": 0,
-			"rejected_invalid": 0,
-			"reason_codes": {},
-		},
-		"softlocks": {"suspected": 0, "recovered": 0, "terminal": 0, "max_s": 0.0},
-		"turning_points": [],
-		"timeouts": [],
-		"wall_ms": maxi(0, Time.get_ticks_msec() - _started_msec),
-	}
+func _last_reason_code() -> String:
+	var reasons: Dictionary = _action_stats.get("reason_codes", {}) if _action_stats.get("reason_codes", {}) is Dictionary else {}
+	if reasons.is_empty():
+		return ""
+	var keys := reasons.keys()
+	keys.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+	return str(keys[-1])
 
 
-func _stage_statuses(preflight_status: String, downstream_status: String) -> Dictionary:
-	var statuses := {}
-	for stage in STAGE_ORDER:
-		statuses[stage] = preflight_status if stage == "capability_preflight" else downstream_status
-	return statuses
-
-
-func _emit_summary(summary: Dictionary) -> void:
-	_emit_ndjson(summary)
-
-
-func _emit_ndjson(payload: Dictionary) -> void:
-	print(JSON.stringify(payload))
-
-
-func _cleanup_main(main_instance: Node) -> void:
+func _cleanup_main(main_instance: Node, save_coordinator: Node) -> void:
+	if save_coordinator != null and save_coordinator.has_method("clear_qa_default_save_path_override"):
+		save_coordinator.call("clear_qa_default_save_path_override")
 	if main_instance == null:
 		return
 	if main_instance.get_parent() != null:
@@ -401,12 +642,13 @@ func _cleanup_main(main_instance: Node) -> void:
 	main_instance.free()
 
 
+func _wait_frames(count: int) -> void:
+	for _index in range(maxi(0, count)):
+		await process_frame
+
+
 func _elapsed_seconds() -> float:
 	return maxf(0.0, float(Time.get_ticks_msec() - _started_msec) / 1000.0)
-
-
-func _wall_timed_out(max_wall_seconds: int) -> bool:
-	return Time.get_ticks_msec() - _started_msec >= max_wall_seconds * 1000
 
 
 func _head_token() -> String:
@@ -414,17 +656,17 @@ func _head_token() -> String:
 	return _safe_path_segment(configured if not configured.is_empty() else "local")
 
 
-static func qa_save_directory(head: String, seed: int) -> String:
-	return "%s%s/%d/" % [QA_SAVE_ROOT, _safe_path_segment(head), seed]
+static func qa_save_directory(head: String, run_seed: int) -> String:
+	return "%s%s/%d/" % [QA_SAVE_ROOT, _safe_path_segment(head), run_seed]
 
 
 static func public_output_contract() -> Dictionary:
 	return {
-		"heartbeat_keys": HEARTBEAT_PUBLIC_KEYS.duplicate(),
 		"summary_keys": SUMMARY_PUBLIC_KEYS.duplicate(),
 		"capability_keys": CAPABILITY_PUBLIC_KEYS.duplicate(),
-		"stage_order": STAGE_ORDER.duplicate(),
+		"telemetry": FullRunQualitySnapshotScript.public_contract(),
 		"heartbeat_interval_seconds": HEARTBEAT_INTERVAL_SECONDS,
+		"single_run_only": true,
 	}
 
 
