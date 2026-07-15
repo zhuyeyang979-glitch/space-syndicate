@@ -6962,16 +6962,6 @@ func _card_codex_names(filter_id: String = "") -> Array:
 	return names
 
 
-func _product_trend_text(product_name: String) -> String:
-	var entry := _product_market_entry_snapshot(product_name)
-	var trend := int(entry.get("trend", 0))
-	if trend > 0:
-		return "+%d" % trend
-	if trend < 0:
-		return "%d" % trend
-	return "持平"
-
-
 func _product_market_price_path_text(entry: Dictionary, limit: int = 7) -> String:
 	var history: Array = entry.get("price_history", [])
 	if history.is_empty():
@@ -8373,17 +8363,6 @@ func _product_market_price_label(product_name: String) -> String:
 	elif trend < 0:
 		trend_text = "%d" % trend
 	return "%s ¥%d｜%s｜%s" % [product_name, _product_market_price(product_name), _product_market_tier(product_name), trend_text]
-
-
-func _product_list_with_prices(names: Array, limit: int = 5) -> String:
-	if names.is_empty():
-		return "无"
-	var pieces := []
-	for i in range(min(limit, names.size())):
-		pieces.append(_product_market_price_label(String(names[i])))
-	if names.size() > limit:
-		pieces.append("+%d" % (names.size() - limit))
-	return "、".join(pieces)
 
 
 func _voronoi_polygon_for_site(site_index: int, sites: Array) -> Array:
@@ -11048,16 +11027,6 @@ func _city_demand_names(city: Dictionary) -> Array:
 	return result
 
 
-func _district_transport_speed(index: int) -> float:
-	if index < 0 or index >= districts.size():
-		return 1.0
-	var district: Dictionary = districts[index]
-	var level := int(district.get("transport_level", 2 if String(district.get("terrain", "land")) == "land" else 4))
-	var base_score := _transport_score_from_level(level, String(district.get("terrain", "land")) == "ocean")
-	var weather_multiplier := weather_runtime_controller.district_multiplier(index, "transport_multiplier", 1.0)
-	return clampf(float(district.get("transport_score", base_score)) * weather_multiplier, REGION_TRANSPORT_SCORE_MIN, REGION_TRANSPORT_SCORE_MAX)
-
-
 func _pay_rival_business_cost(player_index: int) -> void:
 	if player_index < 0 or player_index >= players.size():
 		return
@@ -12821,32 +12790,6 @@ func _first_run_teaching_card_name() -> String:
 	return ""
 
 
-func _first_run_teaching_supply_gate(player_index: int, district_index: int, card_name: String) -> Dictionary:
-	var state := {
-		"ok": false,
-		"card_name": card_name,
-		"district_index": district_index,
-		"purchasable": false,
-		"direct_teachable": false,
-		"non_starter": false,
-		"no_target_prompt": false,
-	}
-	if player_index < 0 or player_index >= players.size() or district_index < 0 or district_index >= districts.size() or card_name == "" or not _game_runtime_coordinator_node().card_exists(card_name):
-		return state
-	var purchase_state := _district_supply_purchase_state(district_index, card_name, player_index)
-	var skill := _make_skill(card_name)
-	state["purchasable"] = bool(purchase_state.get("actionable", false))
-	state["non_starter"] = not bool(skill.get("starter_play_free", false))
-	var target := _card_play_target_snapshot(skill)
-	state["no_target_prompt"] = not bool(target.get("requires_target_monster", false)) and not bool(target.get("requires_target_player", false))
-	state["direct_teachable"] = _first_run_card_is_teachable_after_purchase(player_index, card_name)
-	state["ok"] = bool(state.get("purchasable", false)) \
-		and bool(state.get("direct_teachable", false)) \
-		and bool(state.get("non_starter", false)) \
-		and bool(state.get("no_target_prompt", false))
-	return state
-
-
 func _first_run_non_teachable_supply_choice_index(choices: Array, player_index: int) -> int:
 	for offset in range(choices.size()):
 		var index := choices.size() - 1 - offset
@@ -13475,13 +13418,6 @@ func _card_resolution_effect_position(skill: Dictionary, entry: Dictionary = {})
 	if not monster_runtime_controller.auto_monsters.is_empty():
 		return _entity_world_position(monster_runtime_controller.auto_monsters[0] as Dictionary)
 	return Vector2(map_width_m * 0.5, map_height_m * 0.5)
-
-
-func _join_first_card_facts(facts: Array, max_count: int) -> String:
-	var pieces := []
-	for i in range(min(max_count, facts.size())):
-		pieces.append(String(facts[i]))
-	return "｜".join(pieces)
 
 
 func _short_card_text(text: String, max_len: int) -> String:
@@ -18607,20 +18543,6 @@ func _districts_in_radius(center: Vector2, radius_m: float, include_destroyed :=
 
 func _sort_distance_entry(a: Dictionary, b: Dictionary) -> bool:
 	return float(a["distance"]) < float(b["distance"])
-
-
-func _district_connection_summary(index: int) -> String:
-	var nearby := _districts_in_radius(_district_center(index), NEARBY_RADIUS_METERS, false)
-	var names := []
-	for neighbor in nearby:
-		if neighbor == index:
-			continue
-		names.append(districts[neighbor]["name"])
-		if names.size() >= 4:
-			break
-	if names.is_empty():
-		return "%s内暂无" % _meters_text(NEARBY_RADIUS_METERS)
-	return " / ".join(names)
 
 
 func _entity_distance_to_district_label(entity: Dictionary, district_index: int) -> String:
