@@ -117,7 +117,12 @@ unsupported_reason = "strict_preflight_missing"
 script = ExtResource("2_binding")
 section_id = "bankruptcy_neutral_estate"
 owner_id = "bankruptcy_neutral_estate"
-unsupported_reason = "save_capture_apply_checkpoint_api_missing"
+owner_path = NodePath("../../BankruptcyNeutralEstateRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
 
 [sub_resource type="Resource" id="BindingVictory"]
 script = ExtResource("2_binding")

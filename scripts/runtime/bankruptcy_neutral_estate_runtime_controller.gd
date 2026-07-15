@@ -4,6 +4,7 @@ class_name BankruptcyNeutralEstateRuntimeController
 
 const RULESET_ID := "v0.6"
 const LIFECYCLE_VERSION := 1
+const SAVE_STATE_VERSION := 1
 const ESTATE_COUNT_KEYS := [
 	"hand_cards_removed",
 	"goods_removed",
@@ -11,6 +12,10 @@ const ESTATE_COUNT_KEYS := [
 	"monsters_orphaned",
 	"facilities_neutralized",
 ]
+const SAVE_KEYS := ["state_version", "ruleset_id", "journal", "neutral_rent_journal", "last_public_receipt", "last_survivor_transaction_id"]
+const JOURNAL_RECORD_KEYS := ["state", "reason_code", "player_indices", "estate_counts", "lifecycle_token", "occurred_at", "public_receipt"]
+const JOURNAL_STATES := ["prepared", "committed", "finalized", "rolled_back"]
+const PUBLIC_RECEIPT_KEYS := ["player_indices", "estate_counts", "reason"]
 
 var _configured := false
 var _world_bridge: Node
@@ -42,6 +47,34 @@ func reset_state() -> void:
 	_neutral_rent_journal.clear()
 	_last_public_receipt.clear()
 	_last_survivor_transaction_id = ""
+
+
+func to_save_data() -> Dictionary:
+	return {
+		"state_version": SAVE_STATE_VERSION,
+		"ruleset_id": RULESET_ID,
+		"journal": _journal.duplicate(true),
+		"neutral_rent_journal": _neutral_rent_journal.duplicate(true),
+		"last_public_receipt": _last_public_receipt.duplicate(true),
+		"last_survivor_transaction_id": _last_survivor_transaction_id,
+	}
+
+
+func apply_save_data(data: Dictionary) -> Dictionary:
+	var prepared := _prepare_save_data(data)
+	if not bool(prepared.get("valid", false)):
+		return {"applied": false, "reason": str(prepared.get("reason", "bankruptcy_save_invalid"))}
+	_journal = (prepared.get("journal", {}) as Dictionary).duplicate(true)
+	_neutral_rent_journal = (prepared.get("neutral_rent_journal", {}) as Dictionary).duplicate(true)
+	_last_public_receipt = (prepared.get("last_public_receipt", {}) as Dictionary).duplicate(true)
+	_last_survivor_transaction_id = str(prepared.get("last_survivor_transaction_id", ""))
+	return {
+		"applied": true,
+		"reason": "",
+		"state_version": SAVE_STATE_VERSION,
+		"transaction_count": _journal.size(),
+		"neutral_rent_receipt_count": _neutral_rent_journal.size(),
+	}
 
 
 func settle_checkpoint(request: Dictionary) -> Dictionary:
@@ -357,6 +390,130 @@ func _failure(reason_code: String) -> Dictionary:
 		"duplicate": false,
 		"reason_code": reason_code,
 	}
+
+
+func _prepare_save_data(data: Dictionary) -> Dictionary:
+	if not _is_pure_data(data) or not _keys_allowed(data, SAVE_KEYS):
+		return {"valid": false, "reason": "bankruptcy_save_not_allowlisted"}
+	if int(data.get("state_version", -1)) != SAVE_STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
+		return {"valid": false, "reason": "bankruptcy_save_header_invalid"}
+	if not (data.get("journal", {}) is Dictionary) or not (data.get("neutral_rent_journal", {}) is Dictionary) or not (data.get("last_public_receipt", {}) is Dictionary):
+		return {"valid": false, "reason": "bankruptcy_save_shape_invalid"}
+	var normalized_journal := _normalized_journal(data.get("journal", {}) as Dictionary)
+	if not bool(normalized_journal.get("valid", false)):
+		return normalized_journal
+	var normalized_rent := _normalized_rent_journal(data.get("neutral_rent_journal", {}) as Dictionary)
+	if not bool(normalized_rent.get("valid", false)):
+		return normalized_rent
+	var normalized_public := _normalized_public_receipt(data.get("last_public_receipt", {}) as Dictionary, true)
+	if not bool(normalized_public.get("valid", false)):
+		return normalized_public
+	var journal: Dictionary = normalized_journal.get("value", {})
+	var last_survivor_id := str(data.get("last_survivor_transaction_id", "")).strip_edges()
+	if not last_survivor_id.is_empty():
+		var survivor_record: Dictionary = journal.get(last_survivor_id, {}) if journal.get(last_survivor_id, {}) is Dictionary else {}
+		if survivor_record.is_empty() or str(survivor_record.get("state", "")) != "finalized":
+			return {"valid": false, "reason": "bankruptcy_last_survivor_reference_invalid"}
+	return {
+		"valid": true,
+		"journal": journal,
+		"neutral_rent_journal": normalized_rent.get("value", {}),
+		"last_public_receipt": normalized_public.get("value", {}),
+		"last_survivor_transaction_id": last_survivor_id,
+	}
+
+
+func _normalized_journal(source: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	var transaction_ids: Array = source.keys()
+	transaction_ids.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+	for transaction_id_variant in transaction_ids:
+		if not (transaction_id_variant is String or transaction_id_variant is StringName):
+			return {"valid": false, "reason": "bankruptcy_transaction_id_invalid"}
+		var transaction_id := str(transaction_id_variant).strip_edges()
+		var record_variant: Variant = source.get(transaction_id_variant)
+		if transaction_id.is_empty() or not (record_variant is Dictionary):
+			return {"valid": false, "reason": "bankruptcy_journal_record_invalid"}
+		var record := record_variant as Dictionary
+		if not _keys_allowed(record, JOURNAL_RECORD_KEYS):
+			return {"valid": false, "reason": "bankruptcy_journal_record_not_allowlisted"}
+		var state := str(record.get("state", ""))
+		var reason_code := str(record.get("reason_code", "")).strip_edges()
+		var player_indices := _normalized_player_indices(record.get("player_indices", []))
+		if not JOURNAL_STATES.has(state) or reason_code.is_empty() or not bool(player_indices.get("valid", false)):
+			return {"valid": false, "reason": "bankruptcy_journal_record_fields_invalid"}
+		var lifecycle_token := str(record.get("lifecycle_token", ""))
+		if state in ["prepared", "committed"] and lifecycle_token.is_empty():
+			return {"valid": false, "reason": "bankruptcy_lifecycle_token_missing"}
+		var public_receipt := _normalized_public_receipt(record.get("public_receipt", {}) as Dictionary if record.get("public_receipt", {}) is Dictionary else {}, true)
+		if not bool(public_receipt.get("valid", false)):
+			return public_receipt
+		var normalized_record := {
+			"state": state,
+			"reason_code": reason_code,
+			"player_indices": player_indices.get("value", []),
+			"estate_counts": _estate_counts(record.get("estate_counts", {})),
+			"lifecycle_token": lifecycle_token,
+			"occurred_at": maxf(0.0, float(record.get("occurred_at", 0.0))),
+		}
+		var public_value: Dictionary = public_receipt.get("value", {})
+		if not public_value.is_empty():
+			normalized_record["public_receipt"] = public_value
+		result[transaction_id] = normalized_record
+	return {"valid": true, "value": result}
+
+
+func _normalized_rent_journal(source: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	var receipt_ids: Array = source.keys()
+	receipt_ids.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+	for receipt_id_variant in receipt_ids:
+		if not (receipt_id_variant is String or receipt_id_variant is StringName):
+			return {"valid": false, "reason": "bankruptcy_rent_receipt_id_invalid"}
+		var receipt_id := str(receipt_id_variant).strip_edges()
+		var batch_id := str(source.get(receipt_id_variant, "")).strip_edges()
+		if receipt_id.is_empty() or batch_id.is_empty():
+			return {"valid": false, "reason": "bankruptcy_rent_journal_invalid"}
+		result[receipt_id] = batch_id
+	return {"valid": true, "value": result}
+
+
+func _normalized_public_receipt(source: Dictionary, allow_empty: bool) -> Dictionary:
+	if source.is_empty() and allow_empty:
+		return {"valid": true, "value": {}}
+	if not _keys_allowed(source, PUBLIC_RECEIPT_KEYS):
+		return {"valid": false, "reason": "bankruptcy_public_receipt_not_allowlisted"}
+	var player_indices := _normalized_player_indices(source.get("player_indices", []))
+	var reason := str(source.get("reason", "")).strip_edges()
+	if not bool(player_indices.get("valid", false)) or reason.is_empty():
+		return {"valid": false, "reason": "bankruptcy_public_receipt_invalid"}
+	return {
+		"valid": true,
+		"value": {
+			"player_indices": player_indices.get("value", []),
+			"estate_counts": _estate_counts(source.get("estate_counts", {})),
+			"reason": reason,
+		},
+	}
+
+
+func _normalized_player_indices(value: Variant) -> Dictionary:
+	if not (value is Array):
+		return {"valid": false}
+	var result: Array[int] = []
+	for index_variant in value as Array:
+		if not (index_variant is int) or int(index_variant) < 0 or result.has(int(index_variant)):
+			return {"valid": false}
+		result.append(int(index_variant))
+	result.sort()
+	return {"valid": true, "value": result}
+
+
+func _keys_allowed(source: Dictionary, allowed: Array) -> bool:
+	for key_variant in source.keys():
+		if not (key_variant is String or key_variant is StringName) or not allowed.has(str(key_variant)):
+			return false
+	return true
 
 
 func _is_pure_data(value: Variant) -> bool:

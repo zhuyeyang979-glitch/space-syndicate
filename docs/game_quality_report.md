@@ -47,21 +47,24 @@ Test-only migrations do not count as Main reduction.
   `--check-only` also exit 0.
 - The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
   starting a match it cannot restore. Run
-  `20260715-080855-341-full_run_quality_driver-2b5172c0` reported `6/18`
-  transactional sections, `12` unsupported sections, incomplete RNG/player
+  `20260715-081416-530-full_run_quality_driver-624fc6ca` reported `7/18`
+  transactional sections, `11` unsupported sections, incomplete RNG/player
   continuation, `failure_code=restore_capability_incomplete`, no timeout, and zero
   remaining project processes.
 - `PlayerManaRuntimeController` is now the sixth transactional save owner. Its focused
   gate restores private asset pools, active reservations, terminal receipts, game
   time, and revision exactly; detached registry preflight normalizes the same payload,
   while invalid revisions fail without mutating live state.
+- `BankruptcyNeutralEstateRuntimeController` is the seventh transactional owner. Its
+  lifecycle and neutral-rent journals restore exactly, while strict input allowlists
+  reject private participant fields and invalid last-survivor references atomically.
 
 ## Open production risks
 
 ### Full match and save-resume
 
 A trustworthy `FullRunQualityDriver` is not yet allowed to claim success. The v0.6
-save registry currently has only 6 of 18 required transactional sections. The shared
+save registry currently has only 7 of 18 required transactional sections. The shared
 RNG and complete authoritative player cash/card continuation are also not covered.
 The driver must therefore fail capability preflight instead of reviving
 `_capture_run_state`, simulating reload, forcing planet destruction, or directly

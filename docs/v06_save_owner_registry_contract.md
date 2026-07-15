@@ -23,18 +23,26 @@ transactional bindings are:
 - `monsters`
 - `victory_control`
 - `player_organization`
+- `player_mana`
+- `bankruptcy_neutral_estate`
 
-The remaining 13 sections are explicitly `unsupported` with a non-empty
+The remaining 11 sections are explicitly `unsupported` with a non-empty
 capability reason. Production capture, preflight, and apply therefore reject
 with `restore_capability_incomplete`. This phase does not claim that a whole
 run can be restored.
 
 `bankruptcy_neutral_estate` is its own required section. Its runtime controller
-owns a transaction lifecycle journal, but currently exposes no save capture,
-apply, preflight, or exact checkpoint API. The registry therefore binds this
-section as `unsupported` with
-`save_capture_apply_checkpoint_api_missing`, without an owner path or methods.
-It does not copy that journal or any of its five participant-owner journals.
+owns the transaction lifecycle journal, neutral-rent exact-once journal,
+sanitized public receipt, and last-survivor trigger marker. The registry binds
+that same owner transactionally; strict save allowlists reject participant
+cash, hands, AI plans, and unknown fields. It does not copy any of the five
+participant-owner journals.
+
+`player_mana` also binds directly to its sole production owner. Save apply and
+rollback restore the saved revision exactly, including private asset pools,
+remainders, reservations, and terminal receipts. A detached registry probe can
+normalize the payload without enabling business actions on an unconfigured
+owner.
 
 The unsupported set remains fail-closed until the existing business owner for
 each section provides validation-before-commit and exact rollback capability.
@@ -90,10 +98,13 @@ normalized to fail-closed public values.
 - Production composition: `res://scenes/runtime/GameSessionRuntimeController.tscn`
 - MCP Bench: `res://scenes/tools/V06SaveOwnerRegistryBench.tscn`
 - Headless test: `res://tests/v06_save_owner_registry_test.gd`
+- PlayerMana transaction: `res://tests/player_mana_save_owner_transaction_test.gd`
+- Bankruptcy transaction: `res://tests/bankruptcy_neutral_estate_save_owner_transaction_test.gd`
 
-The gate covers exact manifest mapping, the production 5/13 capability
+The gate covers exact manifest mapping, the production 7/11 capability
 boundary, full fake-owner capture through the real handshake, late preflight
 rejection with zero live mutation, fixed-order apply, reverse-order rollback
 including a partially mutated failing owner, exact checkpoint restoration, and
-adversarial public-receipt privacy. It also proves the independent bankruptcy
-section has no owner path or save methods and remains explicitly unsupported.
+adversarial public-receipt privacy. The owner-focused tests additionally prove
+detached preflight, repeated exact rollback, and private-field rejection for the
+newly transactional PlayerMana and Bankruptcy sections.

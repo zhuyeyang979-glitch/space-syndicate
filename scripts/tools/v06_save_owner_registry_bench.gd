@@ -55,8 +55,8 @@ func run_bench() -> Dictionary:
 	var production_snapshot: Dictionary = production_registry.registry_snapshot() if production_registry != null else {}
 	_check(bool(production_snapshot.get("valid", false)), "production_registry_matches_handshake_manifest")
 	_check(int(production_snapshot.get("required_section_count", 0)) == 18 and int(production_snapshot.get("binding_count", 0)) == 18, "production_registry_has_all_18_unique_sections")
-	_check(int(production_snapshot.get("transactional_section_count", 0)) == 6 and int(production_snapshot.get("unsupported_section_count", 0)) == 12 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_six_auditable_transactional_owners")
-	_check(_bankruptcy_binding_is_explicitly_unsupported(production_registry), "bankruptcy_section_has_no_save_owner_api_or_transactional_claim")
+	_check(int(production_snapshot.get("transactional_section_count", 0)) == 7 and int(production_snapshot.get("unsupported_section_count", 0)) == 11 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_seven_auditable_transactional_owners")
+	_check(_bankruptcy_binding_is_transactional(production_registry), "bankruptcy_section_uses_the_unique_transactional_estate_owner")
 	_check(not bool(production_snapshot.get("captures_business_state", true)) and not bool(production_snapshot.get("stores_parallel_owner_state", true)), "registry_bindings_copy_no_bankruptcy_or_participant_journal_state")
 	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-reject", "write_id": "production-reject"}) if production_registry != null else {}
 	_check(not bool(production_capture.get("ok", true)) and str(production_capture.get("reason_code", "")) == "restore_capability_incomplete" and not production_capture.has("envelope"), "production_capture_fails_closed_without_complete_owner_capability")
@@ -144,7 +144,7 @@ func run_bench() -> Dictionary:
 		"production_transactional_sections": int(production_snapshot.get("transactional_section_count", 0)),
 		"production_unsupported_sections": int(production_snapshot.get("unsupported_section_count", 0)),
 		"production_resume_ready": bool(production_snapshot.get("resume_ready", true)),
-		"bankruptcy_section_registered": _bankruptcy_binding_is_explicitly_unsupported(production_registry),
+		"bankruptcy_section_registered": _bankruptcy_binding_is_transactional(production_registry),
 		"bankruptcy_section_transactional": _binding_is_transactional(production_registry, "bankruptcy_neutral_estate"),
 		"bankruptcy_unsupported_reason": _binding_unsupported_reason(production_registry, "bankruptcy_neutral_estate"),
 		"transactional_harness_sections": fixed_order.size(),
@@ -197,7 +197,7 @@ func _build_transactional_harness() -> Node:
 	return harness
 
 
-func _bankruptcy_binding_is_explicitly_unsupported(registry: Node) -> bool:
+func _bankruptcy_binding_is_transactional(registry: Node) -> bool:
 	if registry == null:
 		return false
 	for binding in registry.bindings:
@@ -205,12 +205,12 @@ func _bankruptcy_binding_is_explicitly_unsupported(registry: Node) -> bool:
 			continue
 		return binding.owner_id == "bankruptcy_neutral_estate" \
 			and binding.state_version == 1 \
-			and binding.restore_mode == BindingScript.RESTORE_UNSUPPORTED \
-			and binding.unsupported_reason == "save_capture_apply_checkpoint_api_missing" \
-			and binding.owner_path.is_empty() \
-			and binding.capture_method.is_empty() \
-			and binding.apply_method.is_empty() \
-			and binding.rollback_method.is_empty()
+			and binding.restore_mode == BindingScript.RESTORE_TRANSACTIONAL \
+			and binding.unsupported_reason.is_empty() \
+			and str(binding.owner_path) == "../../BankruptcyNeutralEstateRuntimeController" \
+			and binding.capture_method == "to_save_data" \
+			and binding.apply_method == "apply_save_data" \
+			and binding.rollback_method == "apply_save_data"
 	return false
 
 
