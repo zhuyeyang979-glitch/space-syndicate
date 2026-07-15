@@ -300,7 +300,9 @@ func to_save_data() -> Dictionary:
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	if not _configured or not _is_pure_data(data):
+	# Registry preflight applies to a detached duplicate. Business actions still require
+	# configure(), while a complete v0.6 payload can be normalized without world state.
+	if not _is_pure_data(data):
 		return {"applied": false, "reason": "invalid_asset_save_payload"}
 	if int(data.get("state_version", -1)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
 		return {"applied": false, "reason": "asset_save_header_invalid"}

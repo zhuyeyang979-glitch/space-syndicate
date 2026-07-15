@@ -47,13 +47,14 @@ Test-only migrations do not count as Main reduction.
   `--check-only` also exit 0.
 - The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
   starting a match it cannot restore. Run
-  `20260715-080633-081-full_run_quality_driver-5318899f` reported `6/18`
+  `20260715-080855-341-full_run_quality_driver-2b5172c0` reported `6/18`
   transactional sections, `12` unsupported sections, incomplete RNG/player
   continuation, `failure_code=restore_capability_incomplete`, no timeout, and zero
   remaining project processes.
 - `PlayerManaRuntimeController` is now the sixth transactional save owner. Its focused
   gate restores private asset pools, active reservations, terminal receipts, game
-  time, and revision exactly; invalid revisions fail without mutating live state.
+  time, and revision exactly; detached registry preflight normalizes the same payload,
+  while invalid revisions fail without mutating live state.
 
 ## Open production risks
 

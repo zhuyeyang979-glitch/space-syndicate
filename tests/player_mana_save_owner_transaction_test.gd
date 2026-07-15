@@ -55,6 +55,10 @@ func _run() -> void:
 	var restored: Dictionary = mana.apply_save_data(checkpoint)
 	_expect(bool(restored.get("applied", false)) and _same_data(checkpoint, mana.to_save_data()), "player mana restore is byte-equivalent including revision reservations and receipts")
 	_expect(int(mana.to_save_data().get("revision", -1)) == checkpoint_revision, "player mana restore does not synthesize a new revision")
+	var detached_probe := mana.duplicate() as PlayerManaRuntimeController
+	var detached_receipt: Dictionary = detached_probe.apply_save_data(checkpoint) if detached_probe != null else {}
+	_expect(bool(detached_receipt.get("applied", false)) and _same_data(checkpoint, detached_probe.to_save_data()), "detached registry preflight probe normalizes player mana without mutating the live owner")
+	detached_probe.free()
 
 	var before_invalid := mana.to_save_data()
 	var invalid := before_invalid.duplicate(true)
