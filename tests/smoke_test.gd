@@ -4401,7 +4401,7 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	var weather_skill := {"weather_type": "ion_storm", "source_type": "card", "effect": "weather_control"}
 	ok = ok and String(main.call("_card_codex_filter_label", "news")) == "新闻事件"
 	ok = ok and String(main.call("_card_codex_filter_label", "weather")) == "天气干预"
-	ok = ok and String(main.call("_card_codex_category_for_card", "热搜推送1", news_skill)) == "news"
+	ok = ok and _card_presentation_category_id(main, news_skill) == "news"
 	ok = ok and _card_presentation_text(main, news_skill, "strategy_route_label").contains("新闻信息战")
 	var before_panic := int((districts[district_index] as Dictionary).get("panic", 0))
 	ok = ok and bool(main.call("_apply_news_event", news_skill))
@@ -7728,6 +7728,15 @@ func _runtime_card_coordinator(main: Node) -> Node:
 	return main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
 
 
+func _card_presentation_category_id(main: Node, skill: Dictionary) -> String:
+	var coordinator := _runtime_card_coordinator(main)
+	if coordinator == null or not coordinator.has_method("compose_card_presentation"):
+		return ""
+	var source := {"card_name": str(skill.get("name", "")), "skill": skill}
+	var presentation := coordinator.call("compose_card_presentation", source) as Dictionary
+	return str(presentation.get("category_id", ""))
+
+
 func _execute_ai_v06_facility_bootstrap_smoke(main: Node) -> Dictionary:
 	var result := {
 		"acted": 0,
@@ -9069,11 +9078,11 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 		var district_card_visible_name := String(district_card_facts.get("display_name", ""))
 		if district_card_visible_name == "" or not String(district_card_facts.get("detail_tooltip", "")).contains(district_card_visible_name):
 			failures.append("district_tooltip_preview")
-	if String(main.call("_card_codex_category_for_card", "相位否决1", _runtime_card_definition(main, "相位否决1"))) != "interaction":
+	if _card_presentation_category_id(main, _runtime_card_definition(main, "相位否决1")) != "interaction":
 		failures.append("phase_cancel_interaction_category")
-	if String(main.call("_card_codex_category_for_card", "商品看涨1", _runtime_card_definition(main, "商品看涨1"))) != "futures":
+	if _card_presentation_category_id(main, _runtime_card_definition(main, "商品看涨1")) != "futures":
 		failures.append("futures_category")
-	if String(main.call("_card_codex_category_for_card", "城市买涨1", _runtime_card_definition(main, "城市买涨1"))) != "finance":
+	if _card_presentation_category_id(main, _runtime_card_definition(main, "城市买涨1")) != "finance":
 		failures.append("finance_category")
 	ok = failures.is_empty()
 	if not failures.is_empty():
