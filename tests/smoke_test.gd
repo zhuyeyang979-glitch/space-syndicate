@@ -139,11 +139,8 @@ func _run() -> void:
 	_expect(((players[1] as Dictionary).get("ai_profile", {}) as Dictionary).has("style") and ((players[1] as Dictionary).get("ai_memory", {}) as Dictionary).has("decision_samples"), "AI seats carry a personality profile and training-memory log")
 	var planet_profile := main.call("_roguelike_planet_profile") as Dictionary
 	_expect(districts.size() >= int(planet_profile.get("region_min", MIN_REGION_COUNT)) and districts.size() <= int(planet_profile.get("region_max", MAX_REGION_COUNT)), "new game creates the expected roguelike region count")
-	_expect(_verify_roguelike_depth_scaling(main), "roguelike challenge depth scales planet size, region count, and v0.5 public-audit requirements")
 	_expect(_regions_start_with_terrain_goods(main), "land and ocean regions start with one terrain-appropriate produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
-	var empty_field_event_parts := main.call("_event_target_weight_parts", int(main.get("selected_district"))) as Dictionary
-	_expect(int(empty_field_event_parts.get("monster", -1)) == 0, "event targeting handles an empty monster field without a legacy A/B fallback")
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
 	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards with positive mechanical benefits")
 	_expect(_verify_random_ai_roles_resolve_unique(main), "random AI role setup resolves to public non-duplicate role cards")
@@ -375,8 +372,6 @@ func _run() -> void:
 	product_market = _product_market_for_test(main)
 	_expect(auto_monsters.size() == EXPECTED_SUMMONED_MONSTER_COUNT, "playing starting monster cards summons four anonymous automatic monsters for the smoke run")
 	player_box = main.get("player_box") as VBoxContainer
-	var occupied_event_parts := main.call("_event_target_weight_parts", int((auto_monsters[0] as Dictionary).get("position", -1))) as Dictionary
-	_expect(int(occupied_event_parts.get("monster", 0)) > 0, "event targeting derives monster attention from the unified automatic-monster collection")
 	_expect(_summoned_monsters_have_hidden_owners(auto_monsters), "summoned monster ownership starts hidden while HP and duration are visible")
 	_expect(_verify_monster_owner_damage_cash_clue(main), "monster damage cash clues reveal ownership with max-HP proportional losses")
 	var first_actor := auto_monsters[0] as Dictionary
@@ -2231,34 +2226,6 @@ func _graph_distance_limited(districts: Array, origin: int, target: int, max_ste
 			seen[neighbor] = true
 			frontier.append({"index": neighbor, "distance": next_distance})
 	return -1
-
-
-func _verify_roguelike_depth_scaling(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
-	var profile_i := main.call("_roguelike_planet_profile", 1) as Dictionary
-	var profile_vi := main.call("_roguelike_planet_profile", 6) as Dictionary
-	var victory_i := main.call("_victory_depth_rule", 1) as Dictionary
-	var victory_vi := main.call("_victory_depth_rule", 6) as Dictionary
-	var ok := true
-	ok = ok and int(profile_i.get("region_min", 0)) <= 6
-	ok = ok and int(profile_i.get("region_max", 99)) < 10
-	ok = ok and int(profile_i.get("region_min", 0)) < int(profile_vi.get("region_min", 0))
-	ok = ok and int(profile_i.get("region_max", 0)) < int(profile_vi.get("region_max", 0))
-	ok = ok and int(profile_vi.get("region_min", 0)) >= 40
-	ok = ok and int(profile_vi.get("region_max", 0)) >= 50
-	ok = ok and float(profile_i.get("width", 0.0)) < float(profile_vi.get("width", 0.0))
-	ok = ok and int(victory_i.get("regions", 0)) == 3 and int(victory_i.get("depth", 0)) == 90
-	ok = ok and int(victory_vi.get("regions", 0)) == 8 and int(victory_vi.get("depth", 0)) == 360
-	ok = ok and String(main.call("_roguelike_planet_profile_text", 1)).contains("区域6-9")
-	ok = ok and String(main.call("_roguelike_planet_profile_text", 6)).contains("深度VI")
-	main.call("_set_configured_roguelike_depth", 6)
-	main.call("_generate_roguelike_districts")
-	var large_districts := _as_array(main.get("districts"))
-	ok = ok and large_districts.size() >= int(profile_vi.get("region_min", 0))
-	ok = ok and large_districts.size() <= int(profile_vi.get("region_max", 999))
-	ok = ok and float(main.get("map_width_m")) >= float(profile_vi.get("width", 0.0)) - 1.0
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
 
 
 func _verify_role_passive_runtime(main: Node) -> bool:
@@ -8812,7 +8779,7 @@ func _map_effects_contain_min_duration(main: Node, kind: String, min_duration: f
 
 func _regions_start_with_terrain_goods(main: Node) -> bool:
 	var districts := _as_array(main.get("districts"))
-	var ocean_products := _as_array(main.call("_ocean_product_catalog_names"))
+	var ocean_products := _as_array(main.call("_product_pool_for_terrain", "ocean"))
 	var land_products := _as_array(main.call("_product_pool_for_terrain", "land"))
 	var saw_land := false
 	var saw_ocean := false

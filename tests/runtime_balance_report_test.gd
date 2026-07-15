@@ -192,7 +192,7 @@ func _verify_balance_statistics_hub() -> void:
 func _verify_main_bridge_is_thin() -> void:
 	var main_text := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(main_text.contains("const RuntimeBalanceModelScript") and main_text.contains("func _runtime_balance_model()"), "main.gd bridges to the independent runtime balance model")
-	_expect(main_text.contains("return int(_runtime_balance_model().call(\"skill_price_power_adjustment\", skill))"), "main.gd card pricing uses the balance model wrapper")
+	_expect(main_text.contains("var base_price := int(_runtime_balance_model().call(\"card_price_for_skill\", skill))") and not main_text.contains("func _card_price_power_adjustment("), "main.gd reads card prices from the balance model without reviving a duplicate pricing wrapper")
 	var military_text := FileAccess.get_file_as_string("res://scripts/runtime/military_runtime_controller.gd")
 	var monster_runtime_text := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")
 	_expect(main_text.contains("_auto_monster_movement_speed_mps") and military_text.contains("func unit_movement_speed_mps(") and military_text.contains("military_movement_speed_model") and main_text.contains("_monster_knockback_model"), "monster/main and MilitaryRuntimeController use the shared balance movement models")
