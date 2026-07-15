@@ -1134,9 +1134,6 @@ func _queued_card_entry_index_for_player(player_index: int) -> int:
 func _next_batch_card_entry_index_for_player(player_index: int) -> int:
 	return _call_world(&"_next_batch_card_entry_index_for_player", [player_index])
 
-func _set_card_bid_for_player(player_index: int, amount: int, announce: bool = true) -> bool:
-	return _call_world(&"_set_card_bid_for_player", [player_index, amount, announce])
-
 func _find_highest_family_card_slot(player: Dictionary, skill_name: String) -> int:
 	return _call_world(&"_find_highest_family_card_slot", [player, skill_name])
 
@@ -1196,9 +1193,6 @@ func _playable_card_resolution_coverage_report() -> Dictionary:
 
 func _card_can_open_counter_window(entry: Dictionary) -> bool:
 	return _call_world(&"_card_can_open_counter_window", [entry])
-
-func _highest_card_resolution_bid() -> int:
-	return _call_world(&"_highest_card_resolution_bid")
 
 func _card_resolution_entry_card_label(entry: Dictionary) -> String:
 	return _call_world(&"_card_resolution_entry_card_label", [entry])
@@ -3175,7 +3169,6 @@ func _ai_public_card_owner_signal_for_player(viewer_index: int, target_player: i
 		var card_name := String(skill.get("name", entry.get("card_name", "")))
 		var kind := String(skill.get("kind", ""))
 		score += 18 + mini(95, int(float(_card_strength_budget_points(card_name)) / 3.0))
-		score += int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 1500.0)
 		if _ai_pressure_kind(kind, skill):
 			score += 26
 		if _ai_defense_kind(kind, skill):
@@ -3599,7 +3592,7 @@ func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
 			result[field_name] = candidate[field_name]
 	return result
 func _ai_training_metadata_field_names() -> Array:
-	return ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "bid_budget", "reason", "guessed_player", "resolution_id", "stake", "stake_percent", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_margin_cash", "futures_maximum_gain", "futures_maximum_loss", "futures_risk_adjusted_ev", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "ai_wager_score", "ai_wager_confidence", "ai_wager_reason_key", "ai_wager_owner_bias", "ai_wager_city_bias", "ai_wager_expected_damage", "ai_wager_stake_percent", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "victory_race_bonus", "victory_race_role", "victory_race_reason", "generic_effect_bonus", "profile_signature_bonus", "profile_signature_family", "profile_signature_route", "profile_signature_reason", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand", "play_requirement_kind", "play_requirement_scope", "required_share_percent", "current_share_percent", "qualifying_district", "requirement_satisfied"]
+	return ["action", "card_name", "kind", "policy_kind", "score", "district", "target_slot", "target_player", "target_city", "target_owner", "product", "price", "reason", "guessed_player", "resolution_id", "stake", "stake_percent", "confidence", "reason_key", "attack_value", "resource_match", "product_overlap", "distance_m", "strategic_role", "focus_product", "focus_score", "focus_bonus", "strategy_intent", "strategy_score", "strategy_bonus", "route_plan_product", "route_plan_stage", "route_plan_score", "route_plan_bonus", "route_gap_bonus", "route_gap_penalty", "route_gap_reason", "route_gap_field_match", "development_route", "development_route_label", "development_route_bias", "development_route_bonus", "route_inventory_bonus", "route_inventory_penalty", "route_hand_total", "route_hand_playable", "route_hand_blocked", "futures_direction", "futures_signal", "futures_market_score", "futures_stockpile_score", "futures_stockpile_units", "futures_duration_seconds", "futures_multiplier_x100", "futures_margin_cash", "futures_maximum_gain", "futures_maximum_loss", "futures_risk_adjusted_ev", "futures_warehouse_city", "futures_warehouse_required", "futures_product_flow", "futures_play_district", "futures_reason", "military_command", "military_command_role", "military_command_score", "military_command_distance_m", "military_unit_uid", "military_unit_type", "military_deploy_role", "military_deploy_score", "military_deploy_terrain", "military_deploy_route_load", "military_deploy_monster_risk", "military_deploy_district", "counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "weather_type", "weather_plan_role", "weather_plan_score", "weather_zone_count", "weather_target_terrain", "weather_covered_cities", "weather_route_load", "weather_own_value", "weather_rival_value", "weather_neutral_value", "weather_product_bonus", "weather_terrain_bonus", "direct_interaction_role", "direct_interaction_score", "direct_target_settlement", "direct_target_gap", "direct_target_city_pressure", "direct_target_monster_pressure", "direct_target_public_card_signal", "direct_effect_pressure", "direct_city_pressure", "direct_city_gdp", "direct_city_warehouse_pressure", "direct_city_route_damage", "direct_city_damage", "direct_barrage_target_count", "direct_barrage_expected_damage", "ai_wager_score", "ai_wager_confidence", "ai_wager_reason_key", "ai_wager_owner_bias", "ai_wager_city_bias", "ai_wager_expected_damage", "ai_wager_stake_percent", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "phase_bonus", "victory_race_bonus", "victory_race_role", "victory_race_reason", "generic_effect_bonus", "profile_signature_bonus", "profile_signature_family", "profile_signature_route", "profile_signature_reason", "learning_bonus", "playability_bonus", "hand_pressure_penalty", "requires_discard", "discard_keep_value", "counted_hand", "play_requirement_kind", "play_requirement_scope", "required_share_percent", "current_share_percent", "qualifying_district", "requirement_satisfied"]
 func _ai_candidate_training_views(candidates: Array) -> Array:
 	var ordered := candidates.duplicate(true)
 	ordered.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
@@ -3652,7 +3645,7 @@ func _ai_candidate_empty_field_notes(group_name: String, candidate_index: int, c
 	return result
 func _ai_candidate_negative_anomaly_notes(group_name: String, candidate_index: int, candidate: Dictionary) -> Array:
 	var result := []
-	for field_variant in ["score", "price", "bid_budget", "stake", "stake_percent", "confidence"]:
+	for field_variant in ["score", "price", "stake", "stake_percent", "confidence"]:
 		var field_name := String(field_variant)
 		if candidate.has(field_name) and int(candidate.get(field_name, 0)) < 0:
 			result.append("%s[%d].%s=%d" % [group_name, candidate_index, field_name, int(candidate.get(field_name, 0))])
@@ -3706,34 +3699,6 @@ func _ai_policy_candidate_group_audit(group_name: String, candidates: Array) -> 
 		"negative_anomalies": negative_anomalies,
 		"samples": samples,
 	}
-func _ai_auction_policy_candidates_for_audit(player_index: int) -> Array:
-	var result := []
-	if not _player_is_ai(player_index):
-		return result
-	var current_card_score := 120
-	var card_label := ""
-	if not _card_resolution_active_entry().is_empty():
-		current_card_score = maxi(current_card_score, int(_card_resolution_active_entry().get("ai_utility_score", 0)))
-		card_label = _card_resolution_entry_card_label(_card_resolution_active_entry())
-	elif not _card_resolution_current_queue().is_empty():
-		var leading: Dictionary = _card_resolution_current_queue()[0]
-		current_card_score = maxi(current_card_score, int(leading.get("ai_utility_score", 0)))
-		card_label = _card_resolution_entry_card_label(leading)
-	else:
-		return result
-	var budget := _ai_card_bid_budget(player_index, current_card_score, 0)
-	if budget <= 0:
-		return result
-	result.append({
-		"action": "auction_bid",
-		"policy_kind": "auction_bid",
-		"score": current_card_score,
-		"bid_budget": budget,
-		"card_name": card_label,
-		"learning_bonus": _ai_learning_bonus(player_index, "auction_bid", "", "", "", "匿名竞价"),
-		"reason": "test-only audit candidate for anonymous bid policy",
-	})
-	return result
 func _ai_contract_policy_candidates_for_audit(player_index: int) -> Array:
 	var result := []
 	if not _player_is_ai(player_index):
@@ -3784,7 +3749,6 @@ func _ai_policy_candidate_audit(player_index: int) -> Dictionary:
 	var groups := {
 		"card_play": _ai_policy_candidate_group_audit("card_play", play_candidates),
 		"card_buy": _ai_policy_candidate_group_audit("card_buy", buy_candidates),
-		"auction": _ai_policy_candidate_group_audit("auction", _ai_auction_policy_candidates_for_audit(player_index)),
 		"counter": _ai_policy_candidate_group_audit("counter", _ai_counter_response_candidates(player_index)),
 		"contract": _ai_policy_candidate_group_audit("contract", _ai_contract_policy_candidates_for_audit(player_index)),
 		"intel": _ai_policy_candidate_group_audit("intel", _ai_intel_policy_candidates_for_audit(player_index)),
@@ -7013,7 +6977,6 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["learning_bonus"] = learning_bonus
 		context["score"] = int(context["score"]) + learning_bonus
 	context["score"] = maxi(1, int(round(float(context["score"]) * _ai_card_kind_bias(player_index, kind))))
-	context["bid_budget"] = _ai_card_bid_budget(player_index, int(context["score"]), cash_cost)
 	return context
 func _ai_card_play_candidates(player_index: int) -> Array:
 	var result := []
@@ -7303,26 +7266,11 @@ func _ai_pick_candidate(player_index: int, candidates: Array, force: bool = fals
 		weights.append(maxi(1, int((ordered[i] as Dictionary).get("score", 1))))
 	var picked := _weighted_pick_index(weights)
 	return ordered[picked] as Dictionary if picked >= 0 else ordered[0] as Dictionary
-func _ai_card_bid_budget(player_index: int, utility_score: int, play_cash_cost: int = 0) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return 0
-	var profile := _ai_profile_for_player(player_index)
-	var aggression := float(profile.get("bid_aggression", 1.0))
-	var cash := int((players[player_index] as Dictionary).get("cash", 0))
-	var affordable := maxi(0, cash - play_cash_cost - AI_CARD_BUY_MIN_CASH_RESERVE)
-	var utility_budget := int(floor(float(maxi(0, utility_score - 60)) * aggression / 3.0 / 10.0)) * 10
-	return mini(affordable, maxi(0, utility_budget))
-func _ai_priority_bid_for_budget(budget: int, minimum_exclusive: int = -1) -> int:
-	for option in [100, 50, 0]:
-		if option <= budget and option > minimum_exclusive:
-			return option
-	return 0
-func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int, bid_budget: int) -> Dictionary:
+func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int) -> Dictionary:
 	var metadata := {
 		"card_name": String(candidate.get("card_name", "")),
 		"target_slot": target_slot,
 		"target_player": int(candidate.get("target_player", -1)),
-		"bid_budget": bid_budget,
 	}
 	for field_name in _ai_training_metadata_field_names():
 		if candidate.has(field_name):
@@ -7342,11 +7290,6 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	selected_trade_product = String(candidate.get("product", ""))
 	selected_contract_source_district = int(candidate.get("contract_source", -1))
 	selected_contract_target_district = int(candidate.get("contract_target", -1))
-	var desired_bid := 0
-	var budget := int(candidate.get("bid_budget", 0))
-	if not _card_resolution_current_queue().is_empty() and not card_resolution_batch_locked and _card_resolution_active_entry().is_empty():
-		desired_bid = _ai_priority_bid_for_budget(budget, _highest_card_resolution_bid())
-	_set_card_bid_for_player(player_index, desired_bid, false)
 	var queued := _queue_skill_resolution(player_index, slot_index, target_slot, target_player)
 	if queued:
 		var queue_index := _queued_card_entry_index_for_player(player_index)
@@ -7357,10 +7300,9 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 		if queue_index >= 0:
 			var entry: Dictionary = (_card_resolution_next_queue()[queue_index] if in_next_batch else _card_resolution_current_queue()[queue_index]) as Dictionary
 			entry["ai_utility_score"] = int(candidate.get("score", 0))
-			entry["ai_bid_budget"] = budget
 			entry["ai_reason"] = String(candidate.get("reason", ""))
 			_store_card_resolution_entry(entry)
-		var decision_metadata := _ai_card_decision_metadata(candidate, target_slot, budget)
+		var decision_metadata := _ai_card_decision_metadata(candidate, target_slot)
 		if String(decision_metadata.get("focus_product", "")) == "":
 			decision_metadata["focus_product"] = _ai_focus_product(player_index)
 			decision_metadata["focus_score"] = _ai_focus_score(player_index)
@@ -7376,10 +7318,9 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			"匿名出牌",
 			int(candidate.get("district", -1)),
 			int(candidate.get("score", 0)),
-			"%s｜目标%s｜报价预算¥%d｜%s" % [
+			"%s｜目标%s｜%s" % [
 				String(candidate.get("card_name", "卡牌")),
 				("玩家%d" % (target_player + 1)) if target_player >= 0 else ("怪兽%d" % (target_slot + 1) if target_slot >= 0 else "当前区域/商品"),
-				budget,
 				String(candidate.get("reason", "按卡牌策略评分")),
 			],
 			all_candidates,
@@ -7806,42 +7747,6 @@ func _auto_ai_card_decisions(force: bool = false) -> int:
 		if result != "wait":
 			acted += 1
 	return acted
-func _auto_ai_auction_bids(force: bool = false) -> int:
-	if not ai_card_decision_enabled or card_resolution_auction_open or card_resolution_batch_locked or _card_resolution_current_queue().size() < 2:
-		return 0
-	var raised := 0
-	for player_index_variant in _ai_player_indices():
-		var player_index := int(player_index_variant)
-		var queue_index := _queued_card_entry_index_for_player(player_index)
-		if queue_index < 0:
-			continue
-		var entry: Dictionary = _card_resolution_current_queue()[queue_index]
-		var current_bid := int(float(int(entry.get("priority_bid_cents", 0))) / 100.0)
-		var highest_bid := _highest_card_resolution_bid()
-		if current_bid == highest_bid and queue_index == 0:
-			continue
-		var budget := int(entry.get("ai_bid_budget", 0))
-		var bid_learning_bonus := _ai_learning_bonus(player_index, "auction_bid", "", "", "", "匿名竞价")
-		budget = maxi(0, budget + bid_learning_bonus)
-		var target_bid := _ai_priority_bid_for_budget(budget, maxi(current_bid, highest_bid))
-		if target_bid <= current_bid:
-			continue
-		var aggression := float(_ai_profile_for_player(player_index).get("bid_aggression", 1.0))
-		var learned_reaction := clampf(float(bid_learning_bonus) / 240.0, -0.24, 0.24)
-		if not force and rng.randf() > clampf(0.42 + aggression * 0.28 + learned_reaction, 0.0, 0.96):
-			continue
-		if _set_card_bid_for_player(player_index, target_bid, true):
-			_record_ai_decision(
-				player_index,
-				"匿名竞价",
-				int(entry.get("resolution_id", -1)),
-				int(entry.get("ai_utility_score", 0)),
-				"公开最高¥%d→报价¥%d｜预算¥%d" % [highest_bid, target_bid, budget],
-				[],
-				{"policy_kind": "auction_bid", "card_name": _card_resolution_entry_card_label(entry), "bid": target_bid, "bid_budget": budget, "learning_bonus": bid_learning_bonus}
-			)
-			raised += 1
-	return raised
 func _ai_counter_response_candidates(player_index: int) -> Array:
 	var result := []
 	if not _player_is_ai(player_index) or not card_resolution_counter_window_active or _card_resolution_active_entry().is_empty():
@@ -7875,7 +7780,6 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 	selected_player = player_index
 	selected_district = int(candidate.get("district", int(_card_resolution_active_entry().get("selected_district", _ai_first_alive_district()))))
 	selected_trade_product = String(candidate.get("product", _skill_play_product(source_skill, player_index)))
-	_set_card_bid_for_player(player_index, 0, false)
 	var queued := false
 	if bool(candidate.get("counter_converted_monster", false)):
 		queued = _queue_monster_card_as_counter(player_index, slot_index, source_skill)
@@ -7890,7 +7794,6 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 		if queue_index >= 0:
 			var entry: Dictionary = (_card_resolution_next_queue()[queue_index] if in_next_batch else _card_resolution_current_queue()[queue_index]) as Dictionary
 			entry["ai_utility_score"] = int(candidate.get("score", 0))
-			entry["ai_bid_budget"] = 0
 			entry["ai_reason"] = String(candidate.get("reason", "相位反制"))
 			entry["ai_counter_response"] = true
 			for field_name in ["counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "target_city", "target_owner", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "learning_bonus"]:
@@ -8372,10 +8275,6 @@ func _ai_card_guess_candidate_for_owner(player_index: int, entry: Dictionary, gu
 			score += 18
 			reason_bits.append("已揭示同类牌")
 			break
-	var bid := int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 100.0)
-	if bid >= 100:
-		score += mini(28, int(float(bid) / 20.0))
-		reason_bits.append("高报价线索")
 	if reason_bits.is_empty():
 		score += ((resolution_id + guessed_player * 5 + business_cycle_count) % 13)
 		reason_bits.append("弱线索试探")
@@ -8467,7 +8366,6 @@ func _update_ai_decisions(delta: float) -> void:
 	ai_auction_reaction_timer -= delta
 	if ai_auction_reaction_timer <= 0.0:
 		_auto_ai_counter_responses(false)
-		_auto_ai_auction_bids(false)
 		_update_ai_contract_responses(false)
 		_auto_ai_monster_wagers()
 		ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS

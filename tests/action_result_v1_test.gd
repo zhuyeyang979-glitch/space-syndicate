@@ -292,6 +292,8 @@ func _contains_private_token(value: Variant) -> bool:
 func _test_dead_priority_bid_ui_entrypoints_retired() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var ai_registry_source := FileAccess.get_file_as_string("res://scripts/ai/ai_policy_resource_registry.gd")
 	for retired_symbol in [
 		"bid_set_",
 		"func _set_selected_card_priority_bid(",
@@ -304,6 +306,20 @@ func _test_dead_priority_bid_ui_entrypoints_retired() -> void:
 		"highest_priority_bid_cents",
 	]:
 		_expect(not main_source.contains(retired_symbol) and not coordinator_source.contains(retired_symbol), "Main and Coordinator retire executable priority-bid entry %s" % retired_symbol)
+	for retired_ai_symbol in [
+		"func _auto_ai_auction_bids(",
+		"func _ai_auction_policy_candidates_for_audit(",
+		"func _ai_card_bid_budget(",
+		"func _ai_priority_bid_for_budget(",
+		"_set_card_bid_for_player",
+		"_highest_card_resolution_bid",
+		"winning_priority_bid_cents",
+		"priority_bid_cents",
+		"ai_bid_budget",
+		"bid_budget",
+	]:
+		_expect(not ai_source.contains(retired_ai_symbol), "AI retires fixed-priority bid behavior and metadata %s" % retired_ai_symbol)
+	_expect(not ai_registry_source.contains("auction_candidate_parity"), "AI policy registry no longer treats retired priority bidding as a runtime capability")
 	_expect(main_source.contains('"card_group_ready"') and main_source.contains("compose_action_result_v1"), "Main adopts ActionResult v1 for the real ready action")
 
 

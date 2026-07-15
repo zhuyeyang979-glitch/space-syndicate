@@ -42,7 +42,6 @@ const RUNTIME_CASES := [
 	["ai_state_save_load", "Runtime State"],
 	["card_play_candidate_parity", "Runtime Parity"],
 	["card_buy_candidate_parity", "Runtime Parity"],
-	["auction_candidate_parity", "Runtime Parity"],
 	["counter_response_parity", "Runtime Parity"],
 	["contract_response_parity", "Runtime Parity"],
 	["intel_plan_parity", "Runtime Parity"],
@@ -189,7 +188,6 @@ func _runtime_case_passed(case_id: String, controller: String, bridge: String, c
 		"ai_state_save_load": return controller.contains("func to_save_data(") and controller.contains("func apply_save_data(") and main_source.contains("ai_runtime_state")
 		"card_play_candidate_parity": return controller.contains("func _ai_card_play_candidates(") and controller.contains("func _ai_card_play_context(")
 		"card_buy_candidate_parity": return controller.contains("func _ai_card_buy_candidates(")
-		"auction_candidate_parity": return controller.contains("func _auto_ai_auction_bids(")
 		"counter_response_parity": return controller.contains("func _ai_counter_response_candidates(")
 		"contract_response_parity": return controller.contains("func _ai_contract_response_candidates(")
 		"intel_plan_parity": return controller.contains("func _auto_ai_intel_decisions(")
