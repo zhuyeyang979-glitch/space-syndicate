@@ -12519,13 +12519,11 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_buy_card":
-			var starting_district := selected_district
 			var accessible_district := _first_card_accessible_district_for_player(player_index)
 			if accessible_district < 0:
 				if not _ensure_first_run_coach_action_district(player_index):
 					return false
 				accessible_district = _first_card_accessible_district_for_player(player_index)
-			var recovered_to_accessible_rack := accessible_district >= 0 and accessible_district != starting_district
 			if accessible_district >= 0 and accessible_district != selected_district:
 				_jump_to_district_on_table(accessible_district)
 			if accessible_district < 0:
@@ -12543,9 +12541,9 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			selected_player = player_index
 			if not _district_supply_is_open() or district_supply_open_district != selected_district:
 				_open_first_run_coach_district_supply(selected_district, player_index)
-			if recovered_to_accessible_rack:
-				_finish_first_run_coach_action_feedback(player_index, "coach_open_rack")
-				return true
+			var teaching_card := _first_run_teaching_card_name()
+			if teaching_card != "" and _district_has_card(selected_district, teaching_card):
+				_request_card_market_quote(teaching_card, selected_district, player_index)
 			var buyable_card := _first_teachable_buyable_district_card(selected_district, player_index)
 			if buyable_card == "":
 				_log("首局买牌：当前没有受光挂牌；牌架仍可查看，等待自转或选择其他来源区。")
@@ -12780,8 +12778,7 @@ func _ensure_first_run_teaching_card_supply(player_index: int) -> int:
 		return -1
 	if not _inject_first_run_teaching_card_supply(target_district, player_index, teaching_card):
 		return -1
-	var gate := _first_run_teaching_supply_gate(player_index, target_district, teaching_card)
-	return target_district if bool(gate.get("ok", false)) else -1
+	return target_district
 
 
 func _first_run_card_is_teachable_after_purchase(player_index: int, card_name: String) -> bool:
