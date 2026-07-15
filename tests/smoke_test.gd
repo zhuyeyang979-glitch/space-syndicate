@@ -6699,15 +6699,21 @@ func _card_callouts_hide_player(main: Node, card_name: String, player_name: Stri
 
 func _economy_ledgers_respect_active_view(main: Node) -> bool:
 	var selected_player := int(main.get("selected_player"))
+	var dashboard_snapshot := main.call("_economy_dashboard_public_snapshot") as Dictionary
+	var summary_text := str(dashboard_snapshot.get("summary_text", ""))
+	if summary_text == "":
+		return false
 	for entry_variant in _as_array(main.call("_economy_player_cash_entries")):
 		var entry := entry_variant as Dictionary
 		var ledger := String(entry.get("ledger", ""))
-		var line := String(main.call("_economy_player_cash_line", entry))
+		var player_name := str(entry.get("name", "玩家"))
 		if int(entry.get("player_index", -1)) == selected_player:
-			if ledger == "私人账本（不公开）" or bool(entry.get("private", true)):
+			if ledger == "私人账本（不公开）" or bool(entry.get("private", true)) or not summary_text.contains(player_name):
 				return false
 		else:
-			if ledger != "私人账本（不公开）" or not bool(entry.get("private", false)) or not line.contains("均为私人信息"):
+			if ledger != "私人账本（不公开）" or not bool(entry.get("private", false)):
+				return false
+			if not summary_text.contains("%s｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息" % player_name):
 				return false
 	return true
 
