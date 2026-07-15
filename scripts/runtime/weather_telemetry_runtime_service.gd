@@ -37,8 +37,15 @@ const RESPONSE_CATEGORIES := [
 	"buy_after_forecast",
 	"build_after_forecast",
 	"play_after_forecast",
+	"no_response_after_forecast",
 ]
 const NOT_APPLICABLE_RESPONSE := "not_applicable"
+const OBSERVABLE_METRICS := [
+	"product_price_delta_percent",
+	"route_revenue_delta_percent",
+	"region_damage",
+	"estimated_economic_delta",
+]
 const EVENT_KEYS := [
 	"schema_version",
 	"event_type",
@@ -104,6 +111,7 @@ var _event_capacity := DEFAULT_EVENT_CAPACITY
 		return _event_capacity
 
 var _events: Array[Dictionary] = []
+var _sessions: Dictionary = {}
 var _definition_stats := {}
 var _region_stats := {}
 var _next_sequence := 1
@@ -138,6 +146,150 @@ func record_event(event: Dictionary) -> bool:
 	_events.append(stored)
 	if str(stored["event_type"]) == "end":
 		_accumulate_end_event(stored)
+	return true
+
+
+func begin_weather_session(
+	event_id: int,
+	definition_id: String,
+	region_indices: Array,
+	forecast_duration_seconds: float,
+	active_duration_seconds: float,
+	fade_duration_seconds: float
+) -> bool:
+	if event_id <= 0 or not DEFINITION_IDS.has(definition_id):
+		return _reject("session_identity")
+	var regions := _normalized_regions(region_indices)
+	if regions.is_empty():
+		return _reject("session_regions")
+	if not _valid_duration(forecast_duration_seconds) or forecast_duration_seconds <= 0.0 \
+		or not _valid_duration(active_duration_seconds) or active_duration_seconds <= 0.0 \
+		or not _valid_duration(fade_duration_seconds) or fade_duration_seconds <= 0.0:
+		return _reject("session_durations")
+	var key := str(event_id)
+	if _sessions.has(key):
+		return _session_identity_matches(_sessions[key] as Dictionary, definition_id, regions)
+	var session := {
+		"event_id": event_id,
+		"definition_id": definition_id,
+		"region_indices": regions,
+		"forecast_duration_seconds": forecast_duration_seconds,
+		"active_duration_seconds": active_duration_seconds,
+		"fade_duration_seconds": fade_duration_seconds,
+		"activated": false,
+		"response_category": NOT_APPLICABLE_RESPONSE,
+		"monster_target_changed": false,
+		"metric_totals": {},
+		"metric_samples": {},
+	}
+	for metric in OBSERVABLE_METRICS:
+		(session["metric_totals"] as Dictionary)[metric] = 0.0
+		(session["metric_samples"] as Dictionary)[metric] = 0
+	for region_index in regions:
+		if not record_event(_lifecycle_event("forecast", definition_id, int(region_index), forecast_duration_seconds, 0.0, 0.0)):
+			return false
+	_sessions[key] = session
+	return true
+
+
+func activate_weather_session(event_id: int) -> bool:
+	var key := str(event_id)
+	if not _sessions.has(key):
+		return _reject("session_missing")
+	var session := _sessions[key] as Dictionary
+	if bool(session.get("activated", false)):
+		return true
+	for region_index in session.get("region_indices", []):
+		if not record_event(_lifecycle_event(
+			"activation",
+			str(session.get("definition_id", "")),
+			int(region_index),
+			0.0,
+			float(session.get("active_duration_seconds", 0.0)),
+			0.0
+		)):
+			return false
+	session["activated"] = true
+	_sessions[key] = session
+	return true
+
+
+func observe_public_metric(event_id: int, metric: String, value: float) -> bool:
+	if not OBSERVABLE_METRICS.has(metric) or not is_finite(value):
+		return _reject("metric_invalid")
+	var key := str(event_id)
+	if not _sessions.has(key):
+		return _reject("session_missing")
+	var session := _sessions[key] as Dictionary
+	var totals := session.get("metric_totals", {}) as Dictionary
+	var samples := session.get("metric_samples", {}) as Dictionary
+	if metric == "region_damage":
+		value = clampf(value, 0.0, MAX_REGION_DAMAGE)
+	elif metric == "estimated_economic_delta":
+		value = clampf(value, -MAX_ECONOMIC_DELTA, MAX_ECONOMIC_DELTA)
+	else:
+		value = clampf(value, -100.0, MAX_PERCENT_DELTA)
+	totals[metric] = float(totals.get(metric, 0.0)) + value
+	samples[metric] = int(samples.get(metric, 0)) + 1
+	session["metric_totals"] = totals
+	session["metric_samples"] = samples
+	_sessions[key] = session
+	return true
+
+
+func record_public_response(region_index: int, category: String) -> int:
+	if region_index < MIN_REGION_INDEX or region_index > MAX_REGION_INDEX or not RESPONSE_CATEGORIES.has(category):
+		return 0
+	var matched := 0
+	for key_variant in _sessions.keys():
+		var key := str(key_variant)
+		var session := _sessions[key] as Dictionary
+		if not (session.get("region_indices", []) as Array).has(region_index):
+			continue
+		if str(session.get("response_category", NOT_APPLICABLE_RESPONSE)) == NOT_APPLICABLE_RESPONSE:
+			session["response_category"] = category
+			_sessions[key] = session
+		matched += 1
+	return matched
+
+
+func mark_monster_target_changed(event_id: int) -> bool:
+	var key := str(event_id)
+	if not _sessions.has(key):
+		return false
+	var session := _sessions[key] as Dictionary
+	session["monster_target_changed"] = true
+	_sessions[key] = session
+	return true
+
+
+func finish_weather_session(event_id: int) -> bool:
+	var key := str(event_id)
+	if not _sessions.has(key):
+		return _reject("session_missing")
+	var session := _sessions[key] as Dictionary
+	var totals := session.get("metric_totals", {}) as Dictionary
+	var samples := session.get("metric_samples", {}) as Dictionary
+	for region_index in session.get("region_indices", []):
+		var event := _lifecycle_event(
+			"end",
+			str(session.get("definition_id", "")),
+			int(region_index),
+			float(session.get("forecast_duration_seconds", 0.0)),
+			float(session.get("active_duration_seconds", 0.0)),
+			float(session.get("fade_duration_seconds", 0.0))
+		)
+		event["product_price_delta_percent"] = _sample_average(totals, samples, "product_price_delta_percent")
+		event["route_revenue_delta_percent"] = _sample_average(totals, samples, "route_revenue_delta_percent")
+		event["region_damage"] = float(totals.get("region_damage", 0.0))
+		event["estimated_economic_delta"] = float(totals.get("estimated_economic_delta", 0.0))
+		event["player_response_category"] = str(session.get("response_category", NOT_APPLICABLE_RESPONSE))
+		if event["player_response_category"] == NOT_APPLICABLE_RESPONSE:
+			event["player_response_category"] = "no_response_after_forecast"
+		event["monster_target_changed"] = bool(session.get("monster_target_changed", false))
+		if not record_event(event):
+			return false
+	_sessions.erase(key)
 	return true
 
 
@@ -190,6 +342,7 @@ func aggregate_snapshot() -> Dictionary:
 
 func clear() -> void:
 	_events.clear()
+	_sessions.clear()
 	_next_sequence = 1
 	_dropped_count = 0
 	_rejected_count = 0
@@ -210,6 +363,7 @@ func debug_snapshot() -> Dictionary:
 		"save_owner": false,
 		"event_capacity": event_capacity,
 		"event_count": _events.size(),
+		"active_session_count": _sessions.size(),
 		"definition_capacity": DEFINITION_IDS.size(),
 		"region_domain_size": MAX_REGION_INDEX - MIN_REGION_INDEX + 1,
 		"rejected_count": _rejected_count,
@@ -327,6 +481,50 @@ func _normalized_event(event: Dictionary) -> Dictionary:
 		"region_damage": float(event["region_damage"]),
 		"estimated_economic_delta": float(event["estimated_economic_delta"]),
 	}
+
+
+func _lifecycle_event(event_type: String, definition_id: String, region_index: int, forecast_duration: float, active_duration: float, fade_duration: float) -> Dictionary:
+	return {
+		"schema_version": EVENT_SCHEMA,
+		"event_type": event_type,
+		"definition_id": definition_id,
+		"region_index": region_index,
+		"forecast_duration_seconds": forecast_duration,
+		"active_duration_seconds": active_duration,
+		"fade_duration_seconds": fade_duration,
+		"product_price_delta_percent": 0.0,
+		"route_revenue_delta_percent": 0.0,
+		"player_response_category": NOT_APPLICABLE_RESPONSE,
+		"monster_target_changed": false,
+		"region_damage": 0.0,
+		"estimated_economic_delta": 0.0,
+	}
+
+
+func _normalized_regions(region_indices: Array) -> Array:
+	var result: Array = []
+	for value in region_indices:
+		if typeof(value) != TYPE_INT:
+			continue
+		var region_index := int(value)
+		if region_index < MIN_REGION_INDEX or region_index > MAX_REGION_INDEX or result.has(region_index):
+			continue
+		result.append(region_index)
+	result.sort()
+	return result
+
+
+func _valid_duration(value: float) -> bool:
+	return is_finite(value) and value >= 0.0 and value <= MAX_DURATION_SECONDS
+
+
+func _session_identity_matches(session: Dictionary, definition_id: String, regions: Array) -> bool:
+	return str(session.get("definition_id", "")) == definition_id and session.get("region_indices", []) == regions
+
+
+func _sample_average(totals: Dictionary, samples: Dictionary, metric: String) -> float:
+	var count := int(samples.get(metric, 0))
+	return float(totals.get(metric, 0.0)) / float(count) if count > 0 else 0.0
 
 
 func _accumulate_end_event(event: Dictionary) -> void:

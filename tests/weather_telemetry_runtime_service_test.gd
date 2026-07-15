@@ -20,6 +20,7 @@ func _run() -> void:
 	await process_frame
 	_case_schema_and_privacy_rejection()
 	_case_aggregation_math()
+	_case_live_session_aggregation()
 	_case_capacity_and_ordering()
 	_case_local_only_boundaries()
 	await _case_report_generation()
@@ -38,7 +39,7 @@ func _case_schema_and_privacy_rejection() -> void:
 	var schema := _service.event_field_schema()
 	_expect((schema.get("exact_keys", []) as Array).size() == 13, "event schema has one exact 13-field allowlist")
 	_expect(schema.get("event_types", []) == ["forecast", "activation", "end"], "event types cover forecast, activation, and end")
-	_expect(schema.get("response_categories", []) == ["route_after_forecast", "buy_after_forecast", "build_after_forecast", "play_after_forecast"], "response categories are aggregate actions after forecast")
+	_expect(schema.get("response_categories", []) == ["route_after_forecast", "buy_after_forecast", "build_after_forecast", "play_after_forecast", "no_response_after_forecast"], "response categories distinguish aggregate actions from no response")
 	_expect(_service.record_event(_forecast_event("ion_storm", 2, 30.0)), "valid forecast event is accepted")
 	_expect(_service.record_event(_activation_event("ion_storm", 2, 45.0)), "valid activation event is accepted")
 	_expect(_service.record_event(_end_event("ion_storm", 2, 30.0, 45.0, 10.0, 12.0, -4.0, "route_after_forecast", true, 0.0, 80.0)), "valid completed observation is accepted")
@@ -86,6 +87,35 @@ func _case_aggregation_math() -> void:
 	var regions: Array = ion.get("regions", []) as Array
 	_expect(regions.size() == 1 and int((regions[0] as Dictionary).get("region_index", -1)) == 4 and int((regions[0] as Dictionary).get("event_count", 0)) == 2, "same metrics aggregate per public region")
 	_expect(int((rows[1] as Dictionary).get("event_count", -1)) == 0 and (rows[1] as Dictionary).get("regions", []) == [], "definitions without samples retain deterministic zero rows")
+
+
+func _case_live_session_aggregation() -> void:
+	_service.clear()
+	_expect(_service.begin_weather_session(17, "crystal_dust_storm", [3], 35.0, 55.0, 10.0), "live session accepts public lifecycle identity")
+	_expect(_service.begin_weather_session(17, "crystal_dust_storm", [3], 35.0, 55.0, 10.0), "same live session begin is idempotent")
+	_expect(_service.activate_weather_session(17), "live session activation is recorded")
+	_expect(_service.observe_public_metric(17, "product_price_delta_percent", 20.0) \
+		and _service.observe_public_metric(17, "product_price_delta_percent", 10.0) \
+		and _service.observe_public_metric(17, "route_revenue_delta_percent", -12.0) \
+		and _service.observe_public_metric(17, "region_damage", 0.75) \
+		and _service.observe_public_metric(17, "estimated_economic_delta", -40.0), "live session accepts only bounded public metrics")
+	_expect(_service.record_public_response(3, "route_after_forecast") == 1 and _service.mark_monster_target_changed(17), "live session records anonymous response and monster-decision change")
+	_expect(_service.finish_weather_session(17), "live session emits a completed end record")
+	var log := _service.recent_events_snapshot()
+	var encoded := JSON.stringify(log)
+	_expect(int(log.get("count", 0)) == 3 \
+		and not encoded.contains("event_id") \
+		and not encoded.contains("player_index") \
+		and not encoded.contains("player_id") \
+		and not encoded.contains("owner"), "live lifecycle log remains public and identity-free")
+	var rows: Array = (_service.aggregate_snapshot().get("definitions", []) as Array)
+	var crystal := rows[3] as Dictionary
+	_expect(int(crystal.get("event_count", 0)) == 1 \
+		and _near(float(crystal.get("average_product_price_delta_percent", 0.0)), 15.0) \
+		and _near(float(crystal.get("average_route_revenue_delta_percent", 0.0)), -12.0) \
+		and _near(float(crystal.get("region_damage_total", 0.0)), 0.75) \
+		and _near(float(crystal.get("estimated_economic_delta_total", 0.0)), -40.0) \
+		and int(crystal.get("monster_target_changed_count", 0)) == 1, "live session aggregates sampled percentages and additive outcomes correctly")
 
 
 func _case_capacity_and_ordering() -> void:
