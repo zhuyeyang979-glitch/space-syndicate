@@ -43,6 +43,7 @@ const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
 var _configured := false
 var _world_bridge: Node
 var _weather_runtime_controller: WeatherRuntimeController
+var _weather_telemetry_runtime_service: Node
 var _currency_scale := 100
 var _observation_window_seconds := 30.0
 var _commodity_rates_by_rank: Dictionary = {}
@@ -86,6 +87,10 @@ func set_world_bridge(bridge: Node) -> void:
 
 func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
 	_weather_runtime_controller = controller
+
+
+func set_weather_telemetry_runtime_service(service: Node) -> void:
+	_weather_telemetry_runtime_service = service
 
 
 func configure(profile_snapshot: Dictionary) -> Dictionary:
@@ -807,6 +812,7 @@ func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictio
 			"receipt_count": 0,
 		}
 	_commit_flow_plan(plan)
+	_record_weather_economic_telemetry(plan.get("receipts", []) as Array)
 	if _world_bridge.has_method("notify_sale_receipt_batch_committed"):
 		_world_bridge.call("notify_sale_receipt_batch_committed", batch)
 	var committed := {
@@ -826,6 +832,33 @@ func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictio
 	}
 	sale_receipt_batch_committed.emit(committed.duplicate(true))
 	return committed
+
+
+func _record_weather_economic_telemetry(receipts: Array) -> void:
+	if _weather_telemetry_runtime_service == null or not is_instance_valid(_weather_telemetry_runtime_service) \
+		or not _weather_telemetry_runtime_service.has_method("observe_public_metric"):
+		return
+	for receipt_variant in receipts:
+		if not (receipt_variant is Dictionary):
+			continue
+		var receipt := receipt_variant as Dictionary
+		var gdp_value := maxf(0.0, float(receipt.get("gdp_value", 0.0)))
+		if gdp_value <= 0.0:
+			continue
+		var multiplier_by_event: Dictionary = {}
+		for row_variant in _sanitize_weather_contributions(receipt.get("weather_contributions", [])):
+			var row := row_variant as Dictionary
+			var event_id := int(row.get("event_id", 0))
+			if event_id <= 0:
+				continue
+			var multiplier := clampf(float(row.get("multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+			multiplier_by_event[event_id] = float(multiplier_by_event.get(event_id, 1.0)) * multiplier
+		for event_id_variant in multiplier_by_event.keys():
+			var event_id := int(event_id_variant)
+			var composite_multiplier := maxf(0.01, float(multiplier_by_event[event_id_variant]))
+			var estimated_delta := gdp_value * (1.0 - 1.0 / composite_multiplier)
+			if not is_zero_approx(estimated_delta):
+				_weather_telemetry_runtime_service.call("observe_public_metric", event_id, "estimated_economic_delta", estimated_delta)
 
 
 func installation_snapshot(installation_id: String) -> Dictionary:

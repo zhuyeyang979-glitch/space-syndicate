@@ -6,6 +6,7 @@ const WEATHER_BRIDGE_SCENE := preload("res://scenes/runtime/WeatherRuntimeWorldB
 const MARKET_CONTROLLER_SCENE := preload("res://scenes/runtime/ProductMarketRuntimeController.tscn")
 const MARKET_BRIDGE_SCENE := preload("res://scenes/runtime/ProductMarketRuntimeWorldBridge.tscn")
 const FLOW_CONTROLLER_SCENE := preload("res://scenes/runtime/CommodityFlowRuntimeController.tscn")
+const TELEMETRY_SCENE := preload("res://scenes/runtime/WeatherTelemetryRuntimeService.tscn")
 const PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 const PRODUCT_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
 const WEATHER_CATALOG := preload("res://resources/weather/weather_definition_catalog_v1.tres")
@@ -22,6 +23,7 @@ var _weather_bridge: WeatherRuntimeWorldBridge
 var _weather: WeatherRuntimeController
 var _market_bridge: ProductMarketRuntimeWorldBridge
 var _market: ProductMarketRuntimeController
+var _telemetry: WeatherTelemetryRuntimeService
 var _checks := 0
 var _failures: Array[String] = []
 var _case_lines: Array[String] = []
@@ -134,17 +136,20 @@ func _setup() -> void:
 	_world.districts = _weather_districts()
 	_weather_bridge = WEATHER_BRIDGE_SCENE.instantiate() as WeatherRuntimeWorldBridge
 	_weather = WEATHER_CONTROLLER_SCENE.instantiate() as WeatherRuntimeController
+	_telemetry = TELEMETRY_SCENE.instantiate() as WeatherTelemetryRuntimeService
 	_market_bridge = MARKET_BRIDGE_SCENE.instantiate() as ProductMarketRuntimeWorldBridge
 	_market = MARKET_CONTROLLER_SCENE.instantiate() as ProductMarketRuntimeController
 	add_child(_clock)
 	add_child(_world)
 	add_child(_weather_bridge)
 	add_child(_weather)
+	add_child(_telemetry)
 	add_child(_market_bridge)
 	add_child(_market)
 	_weather_bridge.bind_world(_world)
 	_weather.set_world_bridge(_weather_bridge)
 	_weather.set_world_effective_clock(_clock)
+	_weather.set_weather_telemetry_runtime_service(_telemetry)
 	_weather.configure({"ruleset_id": "v0.6"})
 	_market_bridge.bind_world(_world)
 	_market.set_world_bridge(_market_bridge)
@@ -267,6 +272,10 @@ func _case_income_and_public_explanations() -> void:
 	_expect(str((public_rows[0] as Dictionary).get("weather_label", "")) == "孢子季" and int((public_rows[0] as Dictionary).get("event_id", 0)) > 0, "flow contribution keeps the same player-facing weather label and public event id")
 	_expect(not receipts.is_empty() and not ((receipts.back() as Dictionary).get("weather_contributions", []) as Array).is_empty(), "sale receipt history explains the weather contribution")
 	_expect(not _contains_forbidden_key(public_weather) and not _contains_forbidden_key(receipt_weather_rows), "public weather explanations contain no cash, hand, owner, AI, or private fields")
+	_expect(_telemetry.finish_weather_session(1), "completed weather session accepts the committed public-flow estimate")
+	var telemetry_rows := _telemetry.aggregate_snapshot().get("definitions", []) as Array
+	var spore_row := telemetry_rows[2] as Dictionary
+	_expect(float(spore_row.get("estimated_economic_delta_total", 0.0)) > 0.0, "committed sale receipts contribute an anonymous positive weather economic estimate")
 	_free_flow_fixture(weather_fixture)
 
 	var energy_product := _product_with_tags(["weather_energy"], [])
@@ -335,6 +344,7 @@ func _flow_fixture(product_id: String, region_overrides: Dictionary = {}, delta_
 	add_child(flow)
 	flow.set_world_bridge(bridge)
 	flow.set_weather_runtime_controller(_weather)
+	flow.set_weather_telemetry_runtime_service(_telemetry)
 	flow.configure(PROFILE.debug_snapshot())
 	var industry_id := str(PRODUCT_CATALOG.industry_for_product(product_id))
 	var region := {

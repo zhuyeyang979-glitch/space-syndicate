@@ -336,6 +336,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		product_market_controller.call("set_weather_runtime_controller", weather_controller)
 	if commodity_flow != null and commodity_flow.has_method("set_weather_runtime_controller"):
 		commodity_flow.call("set_weather_runtime_controller", weather_controller)
+	if commodity_flow != null and commodity_flow.has_method("set_weather_telemetry_runtime_service"):
+		commodity_flow.call("set_weather_telemetry_runtime_service", weather_telemetry)
 	if route_network_controller != null and route_network_controller.has_method("set_weather_runtime_controller"):
 		route_network_controller.call("set_weather_runtime_controller", weather_controller)
 	if product_market_controller != null and product_market_controller.has_method("set_route_network_runtime_controller"):
