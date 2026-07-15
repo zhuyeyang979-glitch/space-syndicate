@@ -2,6 +2,8 @@
 extends Node
 class_name GameplayBalanceDiagnosticsWorldBridge
 
+const MonsterCatalogV06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
+
 var _world: Node
 var _build_count := 0
 
@@ -171,7 +173,7 @@ func _monster_facts(coordinator: Node) -> Array:
 			"missing_special_cards": missing_special_cards,
 			"bound_skill_counts": bound_skill_counts,
 			"bound_skill_missing": bound_skill_missing,
-			"has_art_profile": not _world_dictionary_call(&"_monster_art_profile", [monster_name]).is_empty(),
+			"has_art_profile": not MonsterCatalogV06.art_profile(monster_name).is_empty(),
 		})
 	return result
 

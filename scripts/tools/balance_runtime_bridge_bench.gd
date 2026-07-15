@@ -6,6 +6,7 @@ const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/gameplay_balance_diagnostics_sprint_62.png"
 const BridgeScript := preload("res://scripts/balance/balance_runtime_parameter_bridge.gd")
+const MonsterCatalogV06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
 const PREVIEW_SCENE := preload("res://scenes/tools/BalanceRuntimeBridgeMcpPreview.tscn")
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
@@ -36,6 +37,7 @@ const DIAGNOSTICS_CASES := [
 	{"case_id": "coordinator_static_diagnostics_composition", "source_mode": "diagnostics", "notes": "Coordinator statically owns Service and WorldBridge."},
 	{"case_id": "diagnostics_service_api_contract", "source_mode": "diagnostics", "notes": "Service exposes the stable read-only diagnostics API."},
 	{"case_id": "diagnostics_world_bridge_readonly_boundary", "source_mode": "diagnostics", "notes": "WorldBridge collects facts without scoring or mutation authority."},
+	{"case_id": "diagnostics_monster_art_profiles_catalog_source", "source_mode": "diagnostics", "notes": "Monster diagnostics art facts come from MonsterCatalogV06, not a Main helper."},
 	{"case_id": "development_route_catalog_loads", "source_mode": "diagnostics", "notes": "Inspector route catalog loads and validates."},
 	{"case_id": "development_route_resources_inspector_editable", "source_mode": "diagnostics", "notes": "All seven routes are independent editable Resource assets."},
 	{"case_id": "development_route_count_seven", "source_mode": "diagnostics", "notes": "Exactly seven authored development routes are available."},
@@ -320,6 +322,11 @@ func _run_diagnostics_case(flow_case: Dictionary) -> Dictionary:
 			flags["mutation_checked"] = true
 			var debug := _diagnostics_world_bridge.debug_snapshot() if _diagnostics_world_bridge != null else {}
 			passed = bool(debug.get("fact_collection_authority", false)) and not bool(debug.get("diagnostic_authority", true)) and not bool(debug.get("formula_authority", true)) and not bool(debug.get("world_mutation_authority", true))
+		"diagnostics_monster_art_profiles_catalog_source":
+			flags["world_bridge_checked"] = true
+			flags["report_checked"] = true
+			flags["main_absence_checked"] = true
+			passed = _diagnostics_monster_art_profiles_are_catalog_backed() and _production_symbol_absent("_monster_art_profile")
 		"development_route_catalog_loads":
 			flags["route_resource_checked"] = true
 			var catalog := load(ROUTE_CATALOG_PATH)
@@ -602,6 +609,50 @@ func _diagnostics_has_no_legacy_fallback() -> bool:
 		if service_source.contains("call(\"%s\"" % symbol) or service_source.contains("call(&\"%s\"" % symbol):
 			return false
 	return true
+
+
+func _diagnostics_monster_art_profiles_are_catalog_backed() -> bool:
+	var monsters: Array = _diagnostics_world_snapshot.get("monsters", []) if _diagnostics_world_snapshot.get("monsters", []) is Array else []
+	if monsters.size() != MonsterCatalogV06.catalog_size():
+		return false
+	for monster_variant in monsters:
+		if not (monster_variant is Dictionary):
+			return false
+		if not bool((monster_variant as Dictionary).get("has_art_profile", false)):
+			return false
+	return true
+
+
+func _production_symbol_absent(symbol: String) -> bool:
+	for path_variant in _production_script_files("res://scripts"):
+		var path := str(path_variant)
+		var source := FileAccess.get_file_as_string(path)
+		if source.contains(symbol):
+			return false
+	return true
+
+
+func _production_script_files(root_path: String) -> Array:
+	var result: Array = []
+	var dir := DirAccess.open(root_path)
+	if dir == null:
+		return result
+	dir.list_dir_begin()
+	while true:
+		var item := dir.get_next()
+		if item == "":
+			break
+		if item.begins_with("."):
+			continue
+		var path := "%s/%s" % [root_path, item]
+		if dir.current_is_dir():
+			if path == "res://scripts/tools":
+				continue
+			result.append_array(_production_script_files(path))
+		elif path.ends_with(".gd"):
+			result.append(path)
+	dir.list_dir_end()
+	return result
 
 
 func _contains_private_diagnostics_key(value: Variant) -> bool:
