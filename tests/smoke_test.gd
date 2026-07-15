@@ -341,7 +341,7 @@ func _run() -> void:
 	var regular_monster_art_stats := _card_presentation_text(main, regular_monster_card, "art_stats")
 	_expect(regular_monster_art_stats.contains("HP") and regular_monster_art_stats.contains("怪区"), "monster-card artwork prints HP, duration, movement, and region access")
 	_expect(_all_monster_cards_have_field_attributes(main), "every monster card rank defines HP, movement, duration, and summon-region attributes")
-	_expect(bool(main.call("_assert_ranked_action_weights_escalate", 0)), "rank-IV monster cards tilt auto-action weights toward later dangerous skills")
+	_expect(_verify_monster_catalog_public_probability_contract(main, 0), "rank-IV monster catalog exposes public I/IV action probability progression without raw weights")
 	_expect(_verify_monster_ecology_balance_audit(main), "monster ecology balance audit preserves movement, resources, actions, bound skills, and art identities")
 	var regular_summon_rejected := not bool(_monster_controller(main).call("_summon_monster_from_card", players[0] as Dictionary, regular_monster_card))
 	_expect(regular_summon_rejected and _as_array(main.get("auto_monsters")).is_empty(), "post-start monster cards cannot summon outside a landed or adjacent monster region")
@@ -382,7 +382,7 @@ func _run() -> void:
 	_expect(_verify_single_owned_monster_limit_and_rank_iv_refresh(main), "one-player monster cap blocks new monsters but allows same-name rank-IV refresh")
 	_expect(_verify_monster_duration_expiry(main), "a monster automatically leaves when its card field duration expires")
 	_expect(_verify_monster_card_play_cash_cost(main), "monster-card play cash cost scales with field monster count and records card spend")
-	_expect(_verify_ranked_monster_action_weights(main, first_actor), "summoned higher-rank monsters use rank-tilted auto-action probability weights")
+	_expect(_verify_ranked_monster_public_action_probabilities(main, first_actor), "summoned higher-rank monsters use public rank-tilted auto-action probabilities")
 	_expect(_player_has_bound_monster_skill(players, 0), "summoning a monster grants its owner a persistent bound skill card")
 	_expect(_player_bound_monster_skill_count(players, 3) >= 1, "summoning grants printed bound monster skills without role-based starter boosts")
 	_expect(_verify_bound_monster_skill_persistence(main), "bound monster skills stay in hand and enter cooldown after use")
@@ -5741,27 +5741,72 @@ func _verify_monster_card_play_cash_cost(main: Node) -> bool:
 	return result
 
 
-func _late_weight_total(weights: Array) -> int:
-	var total := 0
-	for i in range(weights.size()):
-		if i >= 3:
-			total += int(weights[i])
-	return total
-
-
-func _verify_ranked_monster_action_weights(main: Node, actor: Dictionary) -> bool:
+func _verify_ranked_monster_public_action_probabilities(main: Node, actor: Dictionary) -> bool:
 	var catalog_index := int(actor.get("catalog_index", 0))
-	var position := int(actor.get("position", 0))
-	var owner := int(actor.get("owner", -1))
-	var rank_iv_actor := _monster_controller(main).call("_make_auto_monster", 999, catalog_index, position, owner, 4) as Dictionary
-	if int(rank_iv_actor.get("rank", 0)) != 4:
+	return _verify_monster_catalog_public_probability_contract(main, catalog_index)
+
+
+func _verify_monster_catalog_public_probability_contract(main: Node, catalog_index: int) -> bool:
+	var monster := _monster_controller(main)
+	if monster == null or not monster.has_method("monster_codex_public_catalog_source_v06"):
 		return false
-	if not bool(main.call("_assert_auto_monster_rank_weights", rank_iv_actor)):
+	var value: Variant = monster.call("monster_codex_public_catalog_source_v06", catalog_index)
+	var source := (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	return _monster_public_probability_source_ok(source)
+
+
+func _monster_public_probability_source_ok(source: Dictionary) -> bool:
+	if not bool(source.get("valid", false)):
 		return false
-	var rank_i_weights := main.call("_catalog_ranked_action_weights_for_index", catalog_index, false, 1) as Array
-	var rank_iv_weights := main.call("_catalog_ranked_action_weights_for_index", catalog_index, false, 4) as Array
-	return rank_i_weights.size() == rank_iv_weights.size() \
-		and _late_weight_total(rank_iv_weights) > _late_weight_total(rank_i_weights)
+	if _monster_probability_text_has_raw_weight(str(source.get("rank_iv_probability_summary", ""))):
+		return false
+	var ecology := source.get("ecology", {}) as Dictionary
+	if _monster_probability_text_has_raw_weight(str(ecology.get("rank_iv_probability_shift", ""))):
+		return false
+	var actions := _as_array(source.get("actions", []))
+	if actions.is_empty():
+		return false
+	var has_probability_row := false
+	var has_i_to_iv_progression := false
+	var has_destroyed_progression := false
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action := action_variant as Dictionary
+		var i_open := _monster_public_probability_percent_value(action.get("i_open", ""))
+		var i_destroyed := _monster_public_probability_percent_value(action.get("i_destroyed", ""))
+		var iv_open := _monster_public_probability_percent_value(action.get("iv_open", ""))
+		var iv_destroyed := _monster_public_probability_percent_value(action.get("iv_destroyed", ""))
+		if i_open < 0 or i_destroyed < 0 or iv_open < 0 or iv_destroyed < 0:
+			return false
+		var tooltip := str(action.get("probability_tooltip", ""))
+		if not (tooltip.contains("I开局") and tooltip.contains("I破坏后") and tooltip.contains("IV开局") and tooltip.contains("IV破坏后")):
+			return false
+		if _monster_probability_text_has_raw_weight(tooltip):
+			return false
+		has_probability_row = true
+		has_i_to_iv_progression = has_i_to_iv_progression or iv_open != i_open
+		has_destroyed_progression = has_destroyed_progression or i_destroyed != i_open or iv_destroyed != iv_open
+	return has_probability_row and has_i_to_iv_progression and has_destroyed_progression
+
+
+func _monster_public_probability_percent_value(value: Variant) -> int:
+	var text := str(value).strip_edges()
+	if not text.ends_with("%"):
+		return -1
+	text = text.trim_suffix("%").strip_edges()
+	if not text.is_valid_int():
+		return -1
+	var percent := int(text)
+	return percent if percent >= 0 and percent <= 100 else -1
+
+
+func _monster_probability_text_has_raw_weight(text: String) -> bool:
+	var lower := text.to_lower()
+	for token in ["weight", "raw_weight", "weight_delta", "numerator", "denominator", "total_weight", "rng", "actual_target", "committed_target"]:
+		if lower.contains(token):
+			return true
+	return text.contains("权重") or text.contains("分子") or text.contains("分母") or text.contains("随机票")
 
 
 func _verify_monster_ecology_balance_audit(main: Node) -> bool:
