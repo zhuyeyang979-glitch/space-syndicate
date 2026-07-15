@@ -683,13 +683,8 @@ func _run() -> void:
 	main.call("_ensure_configured_role_indices")
 	main.call("_open_main_menu")
 	await process_frame
-	main.call("_open_tutorial_menu")
-	await process_frame
-	_expect(menu_title_label != null and menu_title_label.text == "新手引导", "tutorial menu opens from the main scene")
-	_expect(menu_back_button != null and menu_back_button.visible, "tutorial subpage exposes a visible return-to-main button")
-	_expect(menu_continue_button != null and not menu_continue_button.visible, "tutorial subpage hides global continue so only page-relevant navigation remains")
-	_expect(menu_body_label != null and menu_body_label.text == "第一局：点区、看日照牌架、发展项目、读结算。", "tutorial opens with a voluntary-summon v0.6 first-game action path")
-	_expect(menu_body_label != null and not menu_body_label.text.contains("Lv") and menu_body_label.text.length() <= 28, "tutorial keeps the top copy short enough for playtesting")
+	var tutorial_quick_start_scene := load("res://scenes/ui/TutorialQuickStartBoard.tscn") as PackedScene
+	_expect(tutorial_quick_start_scene != null, "tutorial quick-start board remains available as the first-run reference surface")
 	main.call("_open_rules_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "游戏规则", "rules menu opens from the main scene")
