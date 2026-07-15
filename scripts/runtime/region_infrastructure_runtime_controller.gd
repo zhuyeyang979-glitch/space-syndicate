@@ -699,6 +699,83 @@ func apply_unit_damage(request: Dictionary) -> Dictionary:
 	return _commit_receipt(transaction_id, receipt, ruined)
 
 
+func apply_weather_damage(request: Dictionary) -> Dictionary:
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	var replay := _replay_receipt(transaction_id)
+	if not replay.is_empty():
+		return replay
+	var common_error := _request_error(transaction_id, request)
+	if not common_error.is_empty():
+		return _remember_receipt(transaction_id, _failure_receipt("weather_damage", transaction_id, common_error))
+	var source_event_id := int(request.get("source_event_id", 0))
+	if source_event_id <= 0:
+		return _remember_receipt(transaction_id, _failure_receipt("weather_damage", transaction_id, "weather_event_id_missing"))
+	var region_id := str(request.get("region_id", ""))
+	if not _regions.has(region_id):
+		return _remember_receipt(transaction_id, _failure_receipt("weather_damage", transaction_id, "region_not_found"))
+	var amount := int(request.get("amount", 0))
+	if amount <= 0:
+		return _remember_receipt(transaction_id, _failure_receipt("weather_damage", transaction_id, "damage_amount_invalid"))
+	var before := _derived_region_snapshot(region_id)
+	var current_hp := int(before.get("derived_current_hp", 0))
+	if current_hp <= 0:
+		return _commit_receipt(transaction_id, {
+			"receipt_kind": "weather_damage",
+			"transaction_id": transaction_id,
+			"committed": true,
+			"reason": "no_damageable_infrastructure",
+			"reason_code": "weather_damage_no_infrastructure",
+			"source_kind": "weather",
+			"source_event_id": source_event_id,
+			"region_id": region_id,
+			"requested_damage": amount,
+			"applied_damage": 0,
+			"accounted_total": maxi(0, int(request.get("accounted_total", 0))),
+			"max_hp_before": int(before.get("derived_max_hp", 0)),
+			"current_hp_before": 0,
+			"current_hp_after": 0,
+			"damage_taken_after": int(before.get("damage_taken", 0)),
+			"region_ruined": str(before.get("lifecycle_state", "")) == "ruined",
+			"destroyed_facility_ids": [],
+			"lifecycle_changed": false,
+			"lifecycle_state": str(before.get("lifecycle_state", "")),
+			"revision": _revision,
+			"post_commit_intents": [],
+		}, false)
+	var applied := mini(amount, maxi(0, current_hp - 1))
+	if applied > 0:
+		var region: Dictionary = (_regions[region_id] as Dictionary).duplicate(true)
+		region["damage_taken"] = int(region.get("damage_taken", 0)) + applied
+		region["revision"] = int(region.get("revision", 0)) + 1
+		_regions[region_id] = region
+		_revision += 1
+	var after := _derived_region_snapshot(region_id)
+	var receipt := {
+		"receipt_kind": "weather_damage",
+		"transaction_id": transaction_id,
+		"committed": true,
+		"reason": "committed" if applied > 0 else "nonlethal_floor_preserved",
+		"reason_code": "weather_damage_committed" if applied > 0 else "weather_damage_nonlethal_floor",
+		"source_kind": "weather",
+		"source_event_id": source_event_id,
+		"region_id": region_id,
+		"requested_damage": amount,
+		"applied_damage": applied,
+		"accounted_total": maxi(0, int(request.get("accounted_total", 0))),
+		"max_hp_before": int(before.get("derived_max_hp", 0)),
+		"current_hp_before": current_hp,
+		"current_hp_after": int(after.get("derived_current_hp", 0)),
+		"damage_taken_after": int(after.get("damage_taken", 0)),
+		"region_ruined": false,
+		"destroyed_facility_ids": [],
+		"lifecycle_changed": false,
+		"lifecycle_state": str(after.get("lifecycle_state", "")),
+		"revision": _revision,
+		"post_commit_intents": _post_commit_intents(region_id, false) if applied > 0 else [],
+	}
+	return _commit_receipt(transaction_id, receipt, false)
+
+
 func apply_repair(request: Dictionary) -> Dictionary:
 	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
 	var replay := _replay_receipt(transaction_id)

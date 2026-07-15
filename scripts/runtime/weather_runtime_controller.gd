@@ -27,6 +27,7 @@ const SOURCE_TYPES := [SOURCE_TYPE_NATURAL, SOURCE_TYPE_CARD, SOURCE_TYPE_MONSTE
 var _world_bridge: WeatherRuntimeWorldBridge
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
+var _region_infrastructure_world_bridge: RegionInfrastructureWorldBridge
 var _world_effective_clock: Node
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
@@ -72,6 +73,10 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 	_route_network_runtime_controller = controller
 
 
+func set_region_infrastructure_world_bridge(bridge: RegionInfrastructureWorldBridge) -> void:
+	_region_infrastructure_world_bridge = bridge
+
+
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_snapshot = ruleset_snapshot.duplicate(true)
 	_bind_clock_from_scene()
@@ -94,7 +99,8 @@ func tick(_delta_seconds: float) -> void:
 	if not _configured:
 		return
 	var now_us := _now_us()
-	var changed := _advance_lifecycle(now_us)
+	var changed := _apply_region_weather_damage(now_us)
+	changed = _advance_lifecycle(now_us) or changed
 	changed = _release_waiting_queue(now_us) or changed
 	if _system.can_generate_natural(now_us, _next_generation_world_us, _new_forecasts_allowed, _unended_event_count()):
 		_schedule_natural_forecast(now_us)
@@ -630,9 +636,12 @@ func _advance_lifecycle(now_us: int) -> bool:
 			if new_phase == WeatherRuntimeState.PHASE_ACTIVE:
 				_add_action_callout("星球天气", label(str(event.get("definition_id", ""))), "%s开始影响%s。" % [label(str(event.get("definition_id", ""))), district_names(event, 5)], color(str(event.get("definition_id", ""))), _district_center(int(WeatherRuntimeState.event_region_indices(event).front())), 8.0)
 		if new_phase == WeatherRuntimeState.PHASE_ENDED:
-			_history.append(_history_entry(event, now_us))
-			_increment_telemetry("ended")
-			continue
+			if not bool(event.get("lifecycle_end_recorded", false)):
+				_history.append(_history_entry(event, now_us))
+				_increment_telemetry("ended")
+				event["lifecycle_end_recorded"] = true
+			if not _event_has_pending_region_damage(event, now_us):
+				continue
 		remaining.append(event)
 	_events = remaining
 	_queue = _live_queue_ids()
@@ -678,6 +687,101 @@ func _effect_entries_for_region(region_index: int, context: Dictionary) -> Array
 		effect["region_index"] = region_index
 		result.append(effect)
 	return result
+
+
+func _apply_region_weather_damage(now_us: int) -> bool:
+	if _region_infrastructure_world_bridge == null or not is_instance_valid(_region_infrastructure_world_bridge):
+		return false
+	if not _region_infrastructure_world_bridge.has_method("submit_weather_damage_by_legacy_index"):
+		return false
+	var changed := false
+	for event_variant in _events:
+		if not (event_variant is Dictionary):
+			continue
+		var event := event_variant as Dictionary
+		var definition := _definition(str(event.get("definition_id", event.get("type", ""))))
+		if definition == null or definition.region_damage_per_second <= 0.0 or not definition.damage_nonlethal or not definition.damage_capped:
+			continue
+		var accounted: Dictionary = (event.get("weather_damage_accounted_units_by_region", {}) as Dictionary).duplicate(true) if event.get("weather_damage_accounted_units_by_region", {}) is Dictionary else {}
+		var applied_totals: Dictionary = (event.get("weather_damage_applied_units_by_region", {}) as Dictionary).duplicate(true) if event.get("weather_damage_applied_units_by_region", {}) is Dictionary else {}
+		for region_variant in WeatherRuntimeState.event_region_indices(event):
+			var region_index := int(region_variant)
+			var region_key := str(region_index)
+			var expected_total := _expected_region_damage_units(event, definition, region_index, now_us)
+			var accounted_total := maxi(0, int(accounted.get(region_key, 0)))
+			if expected_total <= accounted_total:
+				continue
+			var amount := expected_total - accounted_total
+			var receipt_variant: Variant = _region_infrastructure_world_bridge.call(
+				"submit_weather_damage_by_legacy_index",
+				region_index,
+				int(event.get("id", 0)),
+				amount,
+				expected_total,
+				now_us
+			)
+			if not (receipt_variant is Dictionary):
+				continue
+			var receipt := receipt_variant as Dictionary
+			if not bool(receipt.get("committed", false)):
+				continue
+			accounted[region_key] = expected_total
+			applied_totals[region_key] = maxi(0, int(applied_totals.get(region_key, 0))) + maxi(0, int(receipt.get("applied_damage", 0)))
+			event["weather_damage_last_accounted_world_us"] = now_us
+			_increment_telemetry("region_damage_accounted")
+			if int(receipt.get("applied_damage", 0)) > 0:
+				_increment_telemetry("region_damage_applied")
+			changed = true
+		event["weather_damage_accounted_units_by_region"] = accounted
+		event["weather_damage_applied_units_by_region"] = applied_totals
+	return changed
+
+
+func _event_has_pending_region_damage(event: Dictionary, now_us: int) -> bool:
+	var definition := _definition(str(event.get("definition_id", event.get("type", ""))))
+	if definition == null or definition.region_damage_per_second <= 0.0 or not definition.damage_nonlethal or not definition.damage_capped:
+		return false
+	var accounted: Dictionary = event.get("weather_damage_accounted_units_by_region", {}) if event.get("weather_damage_accounted_units_by_region", {}) is Dictionary else {}
+	for region_variant in WeatherRuntimeState.event_region_indices(event):
+		var region_index := int(region_variant)
+		if _expected_region_damage_units(event, definition, region_index, now_us) > maxi(0, int(accounted.get(str(region_index), 0))):
+			return true
+	return false
+
+
+func _expected_region_damage_units(event: Dictionary, definition: WeatherDefinition, region_index: int, now_us: int) -> int:
+	var resistance := _region_weather_resistance(region_index)
+	var resolved := _resolver.resolve(definition, WeatherRuntimeState.PHASE_ACTIVE, 1.0, {"weather_resistance": resistance})
+	var damage: Dictionary = resolved.get("damage", {}) if resolved.get("damage", {}) is Dictionary else {}
+	var rate_per_second := maxf(0.0, float(damage.get("per_second", 0.0)))
+	var integrated_intensity_seconds := _integrated_damage_intensity_seconds(event, now_us)
+	return maxi(0, int(floor(rate_per_second * integrated_intensity_seconds + 0.000001)))
+
+
+func _integrated_damage_intensity_seconds(event: Dictionary, now_us: int) -> float:
+	var active_start := int(event.get("active_starts_at_world_us", 0))
+	var active_end := maxi(active_start, int(event.get("active_ends_at_world_us", active_start)))
+	var fade_end := maxi(active_end, int(event.get("fade_ends_at_world_us", active_end)))
+	if now_us <= active_start:
+		return 0.0
+	var active_elapsed_us := clampi(now_us - active_start, 0, active_end - active_start)
+	var integrated_us := float(active_elapsed_us)
+	var fade_duration_us := fade_end - active_end
+	if now_us > active_end and fade_duration_us > 0:
+		var fade_elapsed_us := clampi(now_us - active_end, 0, fade_duration_us)
+		integrated_us += float(fade_elapsed_us) - (float(fade_elapsed_us) * float(fade_elapsed_us) / (2.0 * float(fade_duration_us)))
+	return integrated_us / 1_000_000.0
+
+
+func _region_weather_resistance(region_index: int) -> float:
+	if _region_infrastructure_world_bridge == null or not is_instance_valid(_region_infrastructure_world_bridge):
+		return 0.0
+	if not _region_infrastructure_world_bridge.has_method("weather_intervention_snapshot_for_legacy_index"):
+		return 0.0
+	var value: Variant = _region_infrastructure_world_bridge.call("weather_intervention_snapshot_for_legacy_index", region_index)
+	if not (value is Dictionary):
+		return 0.0
+	return clampf(float((value as Dictionary).get("weather_resistance", 0.0)), 0.0, 1.0)
 
 
 func _public_events(now_us: int) -> Array:

@@ -65,6 +65,45 @@ func submit_unit_damage(request: Dictionary) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {"committed": false, "reason": "controller_result_invalid"}
 
 
+func submit_weather_damage_by_legacy_index(legacy_index: int, event_id: int, amount: int, accounted_total: int, occurred_at_world_us: int) -> Dictionary:
+	if _controller == null or not _controller.has_method("region_id_for_legacy_index") or not _controller.has_method("apply_weather_damage"):
+		return {"committed": false, "reason": "controller_missing"}
+	var region_id := str(_controller.call("region_id_for_legacy_index", legacy_index))
+	if region_id.is_empty():
+		return {"committed": false, "reason": "legacy_region_not_mapped", "legacy_index": legacy_index}
+	var normalized_total := maxi(0, accounted_total)
+	var transaction_id := "weather:%d:region:%s:through:%d" % [event_id, region_id, normalized_total]
+	var value: Variant = _controller.call("apply_weather_damage", {
+		"transaction_id": transaction_id,
+		"source_event_id": event_id,
+		"region_id": region_id,
+		"amount": amount,
+		"accounted_total": normalized_total,
+		"occurred_at_world_us": occurred_at_world_us,
+	})
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {"committed": false, "reason": "controller_result_invalid"}
+
+
+func weather_intervention_snapshot_for_legacy_index(legacy_index: int) -> Dictionary:
+	if _world == null or not is_instance_valid(_world):
+		return {"available": false, "weather_resistance": 0.0, "reason": "world_missing"}
+	var districts_variant: Variant = _world.get("districts")
+	if not (districts_variant is Array) or legacy_index < 0 or legacy_index >= (districts_variant as Array).size():
+		return {"available": false, "weather_resistance": 0.0, "reason": "region_missing"}
+	var district_variant: Variant = (districts_variant as Array)[legacy_index]
+	if not (district_variant is Dictionary):
+		return {"available": false, "weather_resistance": 0.0, "reason": "region_invalid"}
+	var district := district_variant as Dictionary
+	var resistance := clampf(float(district.get("weather_resistance", 0.0)), 0.0, 1.0)
+	var city_variant: Variant = district.get("city", {})
+	if city_variant is Dictionary:
+		resistance = maxf(resistance, clampf(float((city_variant as Dictionary).get("weather_resistance", 0.0)), 0.0, 1.0))
+	return {
+		"available": true,
+		"weather_resistance": resistance,
+	}
+
+
 func submit_repair(request: Dictionary) -> Dictionary:
 	if _controller == null or not _controller.has_method("apply_repair"):
 		return {"committed": false, "reason": "controller_missing"}
