@@ -159,7 +159,7 @@ func build_characterization_manifest_preview() -> Dictionary:
 	for case_id_variant in characterization_cases():
 		records.append(_record(str(case_id_variant), false, false, "preview"))
 	return {
-		"suite": "weather-runtime-hard-cutover-v04",
+		"suite": "weather-runtime-characterization-v06",
 		"ruleset_id": RULESET_ID,
 		"runtime_owner": CONTROLLER_SCRIPT_PATH,
 		"runtime_cutover_enabled": true,
@@ -199,7 +199,7 @@ func run_characterization_suite() -> void:
 			_failures.append("%s: %s" % [case_id, str(record.get("notes", "gate failed"))])
 	var metrics := _main_metrics()
 	var manifest := {
-		"suite": "weather-runtime-hard-cutover-v04",
+		"suite": "weather-runtime-characterization-v06",
 		"ruleset_id": RULESET_ID,
 		"runtime_owner": CONTROLLER_SCRIPT_PATH,
 		"runtime_cutover_enabled": true,

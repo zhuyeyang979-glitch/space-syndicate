@@ -8,11 +8,11 @@
 - Every sample uses the production `WeatherEffectResolver`, authored durations, one deterministic region, and one of three public intervention profiles: baseline, 25% resistance, or 1.25x exploitation.
 - `Price growth` is the scoped weather contribution before the existing market cap; it is not final product price. `Route efficiency` is effective capacity, not route revenue.
 - `Monster target scoring influenced` means the selected region can receive a tag-matched weather preference bonus. It does not expose or claim a counterfactual target identity.
-- Realized per-player currency gain/loss remains `N/A`: no authoritative public receipt exists, so the report does not invent one. No player identity/index, owner, exact cash, hand/discard, hidden target/weights, AI plan, save state, or camera state is collected.
+- Realized currency remains `N/A` in this deterministic acceptance sample because it does not fabricate commodity sales. Production telemetry can derive an anonymous conservative estimate from committed public commodity-flow receipts, but never stores player identity/index, owner, exact cash, hand/discard, hidden target/weights, AI plan, save state, or camera state.
 
 ## Definition results
 
-| Definition | Samples | Hit regions | Avg forecast / active / fade (s) | Avg price-growth contribution | Avg route-efficiency contribution | Responses (route / buy / build / play) | Monster target scoring influenced | Applied region damage units | Realized currency delta |
+| Definition | Samples | Hit regions | Avg forecast / active / fade (s) | Avg price-growth contribution | Avg route-efficiency contribution | Responses (route / buy / build / play) | Monster target scoring influenced | Total applied region damage units | Realized currency delta |
 |---|---:|---|---:|---:|---:|---:|---:|---:|---:|
 | 离子风暴 (`ion_storm`) | 3 | R00, R01, R02 | 30.00 / 45.00 / 10.00 | +20.00% | +18.00% | 0 / 0 / 0 / 0 | 0/3 (0.00%) | 0.00 | N/A |
 | 引力潮 (`gravity_tide`) | 3 | R01, R02, R03 | 45.00 / 75.00 / 10.00 | +0.00% | -22.92% | 0 / 0 / 0 / 0 | 0/3 (0.00%) | 0.00 | N/A |
@@ -23,7 +23,7 @@
 
 ## Per-region evidence
 
-| Definition | Region | Samples | Avg forecast / active / fade (s) | Avg price-growth contribution | Avg route-efficiency contribution | Monster target scoring influenced | Applied region damage units | Realized currency delta |
+| Definition | Region | Samples | Avg forecast / active / fade (s) | Avg price-growth contribution | Avg route-efficiency contribution | Monster target scoring influenced | Total applied region damage units | Realized currency delta |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `ion_storm` | R00 | 1 | 30.00 / 45.00 / 10.00 | +20.00% | +18.00% | 0/1 (0.00%) | 0.00 | N/A |
 | `ion_storm` | R01 | 1 | 30.00 / 45.00 / 10.00 | +15.00% | +13.50% | 0/1 (0.00%) | 0.00 | N/A |
@@ -46,4 +46,4 @@
 
 ## Reading the sample
 
-Positive and negative percentages are scoped resolver contributions, not realized currency. Crystal-dust damage is the nonlethal integer amount expected from the production active-plus-linear-fade integral. The report is deterministic, so changes between runs represent authored definitions or resolver behavior rather than random sampling noise.
+Positive and negative percentages are scoped resolver contributions, not realized currency. Crystal-dust damage is the total nonlethal integer amount expected from the production active-plus-linear-fade integral. Anonymous realized-flow estimates are covered by the production telemetry integration gate rather than invented in this fixture. The report is deterministic, so changes between runs represent authored definitions or resolver behavior rather than random sampling noise.

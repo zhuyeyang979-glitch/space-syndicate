@@ -52,7 +52,7 @@ theme_override_constants/separation = 12
 [node name="Title" type="Label" parent="Margin/Rows"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Weather Runtime Hard Cutover - Sprint 49"
+text = "Weather Runtime Characterization - v0.6"
 
 [node name="SummaryLabel" type="Label" parent="Margin/Rows"]
 unique_name_in_owner = true
@@ -83,7 +83,7 @@ theme_override_constants/margin_bottom = 16
 
 [node name="ContractText" type="Label" parent="Margin/Rows/Body/ContractPanel/ContractMargin"]
 layout_mode = 2
-text = "v0.4 Weather Runtime Boundary\n\nAuthoritative Controller\n- four production weather types\n- public 60-180 second forecast\n- one to five affected districts\n- shared RNG and neighbor-first zones\n- activation, overlap and expiration\n- production / transport / consumption\n- weather-card rewrite and v1 save data\n\nmain.gd legacy engine deleted; no parallel owner."
+text = "v0.6 Regional Weather Boundary\n\nAuthoritative Controller\n- six data-driven weather definitions\n- public 30-60 second forecast lead\n- one region per event, at most two events\n- 45-90 second active phase plus 10 second fade\n- economy / route / monster / military / intel effects\n- card-authored events and v2 save data\n\nmain.gd legacy engine remains deleted; no parallel owner."
 autowrap_mode = 2
 
 [node name="OwnershipPanel" type="PanelContainer" parent="Margin/Rows/Body"]

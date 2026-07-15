@@ -683,7 +683,7 @@ retained.
 
 ## Sprint 48: Weather Runtime Characterization
 
-`WeatherRuntimeCharacterizationBench.tscn` now instantiates the real `main.tscn` and locks forty observations over the four production weather types, eight authored weather cards, public 60-180 second forecast, 75-135 second natural duration, one-to-five neighbor-first zones, destroyed-district exclusion, shared RNG order, card-authored forecast replacement, activation, overlapping multipliers, expiration, world refresh order, realtime/pause/wager timing, AI/Card Resolution routing, v1 save compatibility, privacy, and Sprint 49 deletion candidates.
+`WeatherRuntimeCharacterizationBench.tscn` still preserves the Sprint 49 hard-cutover ownership evidence, but its active v0.6 contract now covers six data-driven weather definitions, authored 30-60 second forecast lead, 45-90 second active duration, a 10-second fade, one region per event, at most two concurrent events, destroyed-region exclusion, deterministic shared-RNG selection without call-order coupling, card-authored events, lifecycle/refresh order, realtime and pause behavior, AI/Card Resolution routing, v2 save compatibility, privacy, and the physical absence of the legacy `main.gd` weather owner.
 
 Sprint 48 creates no `WeatherRuntimeController` and changes no production weather algorithm. `EnvironmentBalanceModel.weather_state_effect_model()` remains an Inspector/QA sampler rather than a runtime source. The rulebook's optional monster-movement and financial-risk weather effects are recorded as absent from the four current templates; no new behavior is invented.
 
