@@ -86,6 +86,24 @@ func quote_listing(request: Dictionary) -> Dictionary:
 	return _public_quote(record, now_us)
 
 
+func refresh_quote_listing(request: Dictionary) -> Dictionary:
+	if not _configured or not _is_data_only(request):
+		return _rejected_quote("market_quote_unavailable")
+	var player_index := int(request.get("player_index", -1))
+	var district_index := int(request.get("district_index", -1))
+	var card_id := str(request.get("card_id", "")).strip_edges()
+	var supply_revision := str(request.get("supply_revision", ""))
+	if player_index < 0 or district_index < 0 or card_id.is_empty() or supply_revision.is_empty():
+		return _rejected_quote("invalid_listing_request")
+	var quote_key := _quote_key(player_index, district_index, card_id, supply_revision)
+	var existing: Dictionary = _quotes_by_key.get(quote_key, {}) if _quotes_by_key.get(quote_key, {}) is Dictionary else {}
+	var existing_quote_id := str(existing.get("quote_id", ""))
+	_quotes_by_key.erase(quote_key)
+	if not existing_quote_id.is_empty():
+		_quotes_by_id.erase(existing_quote_id)
+	return quote_listing(request)
+
+
 func preview_listing(request: Dictionary) -> Dictionary:
 	if not _configured or not _is_data_only(request):
 		return _rejected_preview("market_preview_unavailable")

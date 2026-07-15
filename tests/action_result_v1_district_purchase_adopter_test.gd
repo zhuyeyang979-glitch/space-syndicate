@@ -123,6 +123,33 @@ func _test_real_production_adopter() -> void:
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	var card_id := str(machine.get("card_id", ""))
 	_expect(bool(market.get("ready", false)) and not card_id.is_empty(), "production owner exposes one ready regional rank-I facility listing")
+	var source_district_index := int(listing.get("source_district_index", -1))
+	var availability_kinds: Array[String] = []
+	for world_second in [0, 15, 30, 45, 60, 75, 90, 105]:
+		coordinator.call("restore_world_effective_seconds", float(world_second))
+		var availability: Dictionary = coordinator.call("card_market_listing_availability", source_district_index)
+		availability_kinds.append(str(availability.get("availability_kind", "invalid")))
+	_expect(availability_kinds.has("sunlit") and availability_kinds.has("dark"), "real facility source alternates between a purchasable day side and a browse-only night side within one authoritative rotation")
+	coordinator.call("restore_world_effective_seconds", 0.0)
+	coordinator.call("refresh_v06_first_table_facility_quote", actor_id, card_id)
+	market = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var public_state: Dictionary = coordinator.call("v06_facility_purchase_public_state", actor_id, card_id)
+	_expect(bool(public_state.get("available", false)) and bool(public_state.get("actionable", false)) and int(public_state.get("price_cash", -1)) >= 0, "facility shelf consumes one confirmable owner-backed public purchase state")
+	_expect(public_state.keys().size() == 7 and not _contains_private_value(public_state) and not public_state.has("quote_id") and not public_state.has("quote_fingerprint"), "facility purchase state exposes only the strict public allowlist")
+	main.call("_activate_runtime_player_board_action", "strategy_build_gdp_source")
+	await _wait_frames(3)
+	var focused_market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var initial_quote: Dictionary = market.get("quote", {}) if market.get("quote", {}) is Dictionary else {}
+	var focused_quote: Dictionary = focused_market.get("quote", {}) if focused_market.get("quote", {}) is Dictionary else {}
+	_expect(not str(focused_quote.get("quote_id", "")).is_empty() and str(focused_quote.get("quote_id", "")) != str(initial_quote.get("quote_id", "")), "opening the focused facility rack explicitly replaces the earlier presentation quote")
+	var drawer: Node = screen.call("get_district_supply_drawer")
+	if drawer != null:
+		drawer.emit_signal("supply_action_requested", "district_supply_preview_card", {"card_name": card_id, "source": "focused_test"})
+	await _wait_frames(3)
+	var drawer_snapshot: Dictionary = drawer.call("debug_snapshot") if drawer != null and drawer.has_method("debug_snapshot") else {}
+	var drawer_preview: Dictionary = drawer_snapshot.get("preview", {}) if drawer_snapshot.get("preview", {}) is Dictionary else {}
+	_expect(drawer != null and drawer.visible and str(drawer_preview.get("card_name", "")) == card_id and bool(drawer_preview.get("buy_enabled", false)) and str(drawer_preview.get("action_reason_code", "")) == "facility_purchase_ready", "real DistrictSupplyDrawer renders the owner-backed facility listing with one safe actionable reason")
+	_expect(not str(drawer_preview).contains("quote_id") and not str(drawer_preview).contains("quote_fingerprint") and not _contains_private_value(drawer_preview), "facility preview reason remains qualitative and omits private quote, cash, hand, owner and AI facts")
 
 	var owner_before: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
 	var quote: Dictionary = market.get("quote", {}) if market.get("quote", {}) is Dictionary else {}

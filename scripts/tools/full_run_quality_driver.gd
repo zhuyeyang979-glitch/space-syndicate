@@ -24,6 +24,9 @@ const DEFAULT_OBSERVATION_SECONDS := 12
 const DEFAULT_MAX_WALL_SECONDS := 30
 const SIMULATION_TIME_SCALE := 16.0
 const WAIT_SIMULATION_TIME_SCALE := 128.0
+const SUPPLY_WAIT_ENGINE_TIME_SCALE := 4.0
+const GDP_WAIT_ENGINE_TIME_SCALE := 8.0
+const SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC := 1000
 const EXIT_INVALID_ARGUMENTS := 2
 const EXIT_CAPABILITY_INCOMPLETE := 3
 const EXIT_OBSERVATION_INCOMPLETE := 4
@@ -102,6 +105,7 @@ var _action_stats := {
 	"attempted": 0,
 	"progressed": 0,
 	"rejected_invalid": 0,
+	"supply_quote_refreshes": 0,
 	"reason_codes": {},
 }
 
@@ -196,6 +200,7 @@ func _run() -> void:
 	var no_action_since_msec := observation_started_msec
 	var pending_action: Dictionary = {}
 	var exhausted_navigation_actions: Dictionary = {}
+	var last_supply_quote_refresh_msec := 0
 	var final_status := "incomplete"
 	var failure_code := "observation_window_elapsed_before_settlement"
 	var final_telemetry := _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
@@ -206,8 +211,10 @@ func _run() -> void:
 		var public_progress: Dictionary = final_telemetry.get("progress", {}) if final_telemetry.get("progress", {}) is Dictionary else {}
 		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress)
 		if _session_state(session) == "running":
-			var waiting_for_world := str(ui_action.get("id", "")) in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false))
+			var waiting_action_id := str(ui_action.get("id", "")) if bool(ui_action.get("disabled", false)) else ""
+			var waiting_for_world := waiting_action_id in ["district_supply_wait", "gdp_accumulation_wait"]
 			main_instance.set("time_scale", WAIT_SIMULATION_TIME_SCALE if waiting_for_world else SIMULATION_TIME_SCALE)
+			Engine.time_scale = GDP_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "gdp_accumulation_wait" else (SUPPLY_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "district_supply_wait" else 1.0)
 		final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
 		if int((final_telemetry.get("nonfinite", {}) as Dictionary).get("count", 0)) > 0:
 			final_status = "failed"
@@ -267,6 +274,10 @@ func _run() -> void:
 				}
 				no_action_since_msec = now_msec
 			elif action_id in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false)):
+				if action_id == "district_supply_wait" and now_msec - last_supply_quote_refresh_msec >= SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC:
+					if _refresh_visible_supply_quote(runtime_screen):
+						_action_stats["supply_quote_refreshes"] = int(_action_stats.get("supply_quote_refreshes", 0)) + 1
+					last_supply_quote_refresh_msec = now_msec
 				_last_event = "waiting:district_supply_quote_availability" if action_id == "district_supply_wait" else "waiting:gdp_accumulation_and_victory_qualification"
 				no_action_since_msec = now_msec
 			elif now_msec - no_action_since_msec >= int(NO_ACTION_TIMEOUT_SECONDS * 1000.0):
@@ -318,6 +329,7 @@ func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) ->
 		return {"started": false, "reason_code": "recommended_setup_invalid"}
 	main_instance.set("configured_player_count", RECOMMENDED_PLAYER_COUNT)
 	main_instance.set("configured_ai_player_count", RECOMMENDED_AI_COUNT)
+	main_instance.set("configured_roguelike_depth", 1)
 	main_instance.set("configured_role_indices", (setup.get("role_indices", []) as Array).duplicate(true))
 	main_instance.set("configured_starter_monster_indices", (setup.get("starter_monster_indices", []) as Array).duplicate(true))
 	var rng_variant: Variant = main_instance.get("rng")
@@ -399,6 +411,7 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 	var victory: Dictionary = {}
 	var decision: Dictionary = {}
 	var own_candidate: Dictionary = {}
+	var victory_rule: Dictionary = {}
 	var economic_source: Dictionary = {}
 	if coordinator != null and coordinator.has_method("world_effective_clock_snapshot"):
 		var clock_variant: Variant = coordinator.call("world_effective_clock_snapshot")
@@ -413,6 +426,9 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 		var private_victory_variant: Variant = coordinator.call("victory_control_private_snapshot", SCRIPTED_PLAYER_INDEX)
 		var private_victory: Dictionary = private_victory_variant if private_victory_variant is Dictionary else {}
 		own_candidate = (private_victory.get("own_candidate", {}) as Dictionary).duplicate(true) if private_victory.get("own_candidate", {}) is Dictionary else {}
+		victory_rule = (private_victory.get("victory_rule", {}) as Dictionary).duplicate(true) if private_victory.get("victory_rule", {}) is Dictionary else {}
+	if victory_rule.is_empty() and victory.get("victory_rule", {}) is Dictionary:
+		victory_rule = (victory.get("victory_rule", {}) as Dictionary).duplicate(true)
 	if coordinator != null and coordinator.has_method("actor_id_for_player_index") and coordinator.has_method("economic_source_snapshot"):
 		var actor_binding_variant: Variant = coordinator.call("actor_id_for_player_index", SCRIPTED_PLAYER_INDEX)
 		var actor_binding: Dictionary = actor_binding_variant if actor_binding_variant is Dictionary else {}
@@ -421,9 +437,9 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 			economic_source = source_variant if source_variant is Dictionary else {}
 	var public_progress := {
 		"controlled_region_count": int(own_candidate.get("controlled_region_count", 0)),
-		"required_region_count": int(own_candidate.get("required_region_count", 0)),
+		"required_region_count": int(victory_rule.get("required_region_count", 0)),
 		"top_k_gdp_per_minute": int(own_candidate.get("top_k_gdp_per_minute", 0)),
-		"required_top_k_gdp_per_minute": int(own_candidate.get("required_top_k_gdp_per_minute", 0)),
+		"required_top_k_gdp_per_minute": int(victory_rule.get("required_top_k_gdp_per_minute", 0)),
 		"owned_facility_count": int(economic_source.get("owned_facility_count", 0)),
 		"eligible": bool(own_candidate.get("eligible", false)),
 	}
@@ -525,7 +541,10 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 			continue
 		source_established = true
 		strategy_actions.append(strategy_action)
-	if source_established and int(public_progress.get("top_k_gdp_per_minute", 0)) <= 0:
+	# Four canonical Rank-I listings complete the first factory/market pair. Let
+	# CommodityFlow emit a real Sale Receipt before opening another purchase.
+	if int(public_progress.get("owned_facility_count", 0)) >= 4 \
+			and int(public_progress.get("top_k_gdp_per_minute", 0)) <= 0:
 		return {
 			"id": "gdp_accumulation_wait",
 			"phase": "play.gdp_first_receipt",
@@ -545,7 +564,7 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 	if source_established:
 		return {
 			"id": "gdp_accumulation_wait",
-			"phase": "play.gdp_accumulation",
+			"phase": "play.gdp_accumulation" if int(public_progress.get("top_k_gdp_per_minute", 0)) > 0 else "play.gdp_first_receipt",
 			"disabled": true,
 			"origin": "economic_wait",
 		}
@@ -625,17 +644,37 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 		}
 	return {
 		"id": "district_supply_wait",
-		"phase": "play.supply.wait.cards_%d.preview_%s" % [cards.size(), "yes" if not preview_card_name.is_empty() else "no"],
+		"phase": "play.supply.wait.cards_%d.preview_%s.reason_%s" % [cards.size(), preview_card_name if not preview_card_name.is_empty() else "none", str(preview.get("action_reason_code", "purchase_unavailable"))],
 		"disabled": true,
 		"origin": "district_supply",
 	} if drawer.visible else {}
 
 
+func _refresh_visible_supply_quote(runtime_screen: Node) -> bool:
+	var drawer := _district_supply_drawer(runtime_screen)
+	if drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot") or not drawer.has_signal("supply_action_requested"):
+		return false
+	var snapshot_variant: Variant = drawer.call("debug_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
+	var card_name := str(preview.get("card_name", "")).strip_edges()
+	if card_name.is_empty() or bool(preview.get("buy_enabled", false)):
+		return false
+	drawer.emit_signal("supply_action_requested", "district_supply_preview_card", {"card_name": card_name, "source": "full_run_quote_refresh"})
+	return true
+
+
 func _first_supply_card_of_kind(cards: Array, kind: String) -> Dictionary:
+	var visible_fallback: Dictionary = {}
 	for card_variant in cards:
-		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
-			return (card_variant as Dictionary).duplicate(true)
-	return {}
+		if not (card_variant is Dictionary) or str((card_variant as Dictionary).get("kind", "")) != kind:
+			continue
+		var card: Dictionary = card_variant
+		if bool(card.get("actionable", false)):
+			return card.duplicate(true)
+		if visible_fallback.is_empty():
+			visible_fallback = card.duplicate(true)
+	return visible_fallback
 
 
 func _first_enabled_action_by_kind(value: Variant, kind: String) -> Dictionary:
@@ -968,6 +1007,7 @@ func _last_reason_code() -> String:
 
 
 func _cleanup_main(main_instance: Node, save_coordinator: Node) -> void:
+	Engine.time_scale = 1.0
 	if save_coordinator != null and save_coordinator.has_method("clear_qa_default_save_path_override"):
 		save_coordinator.call("clear_qa_default_save_path_override")
 	if main_instance == null:

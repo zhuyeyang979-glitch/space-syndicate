@@ -13595,8 +13595,7 @@ func _open_district_supply_from_map(district_index: int, focus_v06_facility: boo
 		var facility_source := _v06_first_table_facility_supply_source(district_index, district_supply_open_player, true)
 		var facility_card_id := str(facility_source.get("card_name", ""))
 		if not facility_card_id.is_empty():
-			previewed_district_card = facility_card_id
-			selected_market_skill = facility_card_id
+			_preview_v06_facility_card(facility_card_id)
 	if district_supply_overlay != null:
 		district_supply_overlay.visible = true
 	_complete_scenario_signal("rack_opened", "打开区域牌架：%s。" % String(districts[district_index].get("name", "区域")), "after_rack", "district_supply")
@@ -13730,32 +13729,31 @@ func _v06_first_table_facility_supply_source(district_index: int, player_index: 
 	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size() or _player_is_ai(player_index):
 		return {}
 	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("v06_first_table_facility_market_snapshot"):
+	if coordinator == null or not coordinator.has_method("v06_facility_purchase_public_state"):
 		return {}
 	var actor_id := _v06_actor_id(player_index)
-	var snapshot_variant: Variant = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
-	if not bool(snapshot.get("ready", false)):
+	var state_variant: Variant = coordinator.call("v06_facility_purchase_public_state", actor_id, "")
+	var public_state: Dictionary = state_variant if state_variant is Dictionary else {}
+	if not bool(public_state.get("available", false)):
 		return {}
-	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
-	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
+	var card_id := str(public_state.get("card_id", ""))
+	var card_variant: Variant = coordinator.call("v06_card_definition", card_id) if coordinator.has_method("v06_card_definition") else {}
+	var card: Dictionary = card_variant if card_variant is Dictionary else {}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	var player_text: Dictionary = card.get("player", {}) if card.get("player", {}) is Dictionary else {}
-	var quote: Dictionary = snapshot.get("quote", {}) if snapshot.get("quote", {}) is Dictionary else {}
-	var card_id := str(machine.get("card_id", ""))
 	if card_id.is_empty():
 		return {}
-	var price := int(quote.get("final_price", machine.get("purchase_cash", -1)))
-	var can_access := bool(quote.get("confirmable", quote.get("eligible", false)))
-	var cash_ready := int(players[player_index].get("cash", 0)) >= price
-	var actionable := can_access and cash_ready and not _runtime_session_finished()
+	var price := int(public_state.get("price_cash", machine.get("purchase_cash", -1)))
+	var actionable := bool(public_state.get("actionable", false)) and not _runtime_session_finished()
+	var reason_code := str(public_state.get("reason_code", "facility_purchase_unavailable"))
 	var state := {
-		"label": "可购买" if actionable else ("资金不足" if can_access and not cash_ready else "仅浏览"),
-		"detail": "购买后进入v0.6手牌，由统一卡牌事务结算。" if actionable else ("需要¥%d；当前资金不足。" % price if can_access else "挂牌来源区域当前处于暗面；可以查看，暂不可购买。"),
+		"label": "可购买" if actionable else ("资金不足" if reason_code == "cash_insufficient" else "仅浏览"),
+		"detail": "购买后进入v0.6手牌，由统一卡牌事务结算。" if actionable else ("需要¥%d；当前资金不足。" % price if reason_code == "cash_insufficient" else "挂牌来源区域当前处于暗面；可以查看，暂不可购买。"),
+		"reason_code": reason_code,
 		"actionable": actionable,
 		"requires_discard": false,
 		"price": price,
-		"accent": "#22c55e" if actionable else ("#fb7185" if can_access else "#94a3b8"),
+		"accent": "#22c55e" if actionable else ("#fb7185" if reason_code == "cash_insufficient" else "#94a3b8"),
 	}
 	var key_rule_facts: Array = []
 	for key in ["timing", "target", "duration"]:
@@ -13808,7 +13806,11 @@ func _is_v06_facility_card_id(card_id: String) -> bool:
 func _preview_v06_facility_card(card_id: String) -> void:
 	if not _is_v06_facility_card_id(card_id):
 		return
+	var coordinator := _game_runtime_coordinator_node()
+	if coordinator != null and coordinator.has_method("refresh_v06_first_table_facility_quote"):
+		coordinator.call("refresh_v06_first_table_facility_quote", _v06_actor_id(_local_human_player_index()), card_id)
 	previewed_district_card = card_id
+	selected_market_skill = card_id
 	_complete_scenario_signal("card_previewed", "查看城市设施牌。", "rack_open", "district_supply")
 	_refresh_ui()
 

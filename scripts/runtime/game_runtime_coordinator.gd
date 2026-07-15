@@ -1858,6 +1858,33 @@ func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
 	}
 
 
+func refresh_v06_first_table_facility_quote(actor_id: String, expected_card_id: String) -> Dictionary:
+	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
+	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
+	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var listed_card_id := str(machine.get("card_id", "")).strip_edges()
+	if not bool(snapshot.get("ready", false)) or listed_card_id.is_empty() or listed_card_id != expected_card_id.strip_edges():
+		return {"confirmable": false, "reason_code": "market_listing_changed"}
+	var player_index := _ai_v06_actor_player_index(actor_id)
+	var controller := _card_market_pricing_runtime_controller_node()
+	if player_index < 0 or controller == null or not controller.has_method("refresh_quote_listing"):
+		return {"confirmable": false, "reason_code": "market_quote_unavailable"}
+	var value_variant: Variant = controller.call("refresh_quote_listing", {
+		"player_index": player_index,
+		"district_index": int(listing.get("source_district_index", -1)),
+		"card_id": listed_card_id,
+		"supply_revision": str(listing.get("supply_revision", "")),
+		"base_price": int(listing.get("price_cash", -1)),
+	})
+	var quote: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
+	if not str(quote.get("quote_id", "")).is_empty():
+		var purchase := _purchase_node()
+		if purchase != null and purchase.has_method("attach_quote"):
+			purchase.call("attach_quote", player_index, int(listing.get("source_district_index", -1)), quote)
+	return quote
+
+
 func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: String, transaction_id: String) -> Dictionary:
 	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
 	if not bool(snapshot.get("ready", false)):
@@ -1948,6 +1975,48 @@ func execute_v06_facility_purchase_action(actor_id: String, expected_card_id: St
 	return compose_action_result_v1(action_source)
 
 
+func v06_facility_purchase_public_state(actor_id: String, expected_card_id: String) -> Dictionary:
+	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
+	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
+	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var quote: Dictionary = snapshot.get("quote", {}) if snapshot.get("quote", {}) is Dictionary else {}
+	var player: Dictionary = snapshot.get("player", {}) if snapshot.get("player", {}) is Dictionary else {}
+	var normalized_card_id := expected_card_id.strip_edges()
+	var listed_card_id := str(machine.get("card_id", ""))
+	var reason_code := str(snapshot.get("reason_code", "v06_facility_market_unavailable"))
+	var listing_matches := not listed_card_id.is_empty() and (normalized_card_id.is_empty() or listed_card_id == normalized_card_id)
+	var price_cash := maxi(0, int(quote.get("final_price", listing.get("price_cash", 0))))
+	var quote_confirmable := bool(quote.get("confirmable", false))
+	var cash_ready := int(player.get("cash", 0)) >= price_cash
+	var confirmable := bool(snapshot.get("ready", false)) and listing_matches and quote_confirmable and cash_ready
+	if not listing_matches:
+		reason_code = "market_listing_changed"
+	elif not quote_confirmable:
+		var availability_kind := str(quote.get("availability_kind", "invalid"))
+		if not bool(quote.get("quote_active", false)):
+			reason_code = "quote_expired"
+		elif availability_kind == "dark":
+			reason_code = "source_region_dark"
+		elif availability_kind == "destroyed":
+			reason_code = "source_region_destroyed"
+		else:
+			reason_code = str(quote.get("reason_code", "market_quote_unavailable"))
+	elif not cash_ready:
+		reason_code = "cash_insufficient"
+	else:
+		reason_code = "facility_purchase_ready"
+	return {
+		"schema_version": 1,
+		"available": bool(snapshot.get("ready", false)) and listing_matches,
+		"actionable": confirmable,
+		"card_id": listed_card_id if listing_matches else "",
+		"price_cash": price_cash,
+		"availability_kind": str(quote.get("availability_kind", "invalid")),
+		"reason_code": reason_code,
+	}
+
+
 func execute_v06_facility_play_action(actor_id: String, card_id: String, region_id: String) -> Dictionary:
 	var action_source := {
 		"schema_version": 1,
@@ -1978,13 +2047,22 @@ func execute_v06_facility_play_action(actor_id: String, card_id: String, region_
 		action_source["failure_code"] = "ai_v06_facility_card_binding_changed"
 		return compose_action_result_v1(action_source)
 	var source := economic_source_snapshot(normalized_actor_id)
+	var resolved_region_id := normalized_region_id
+	var legal_region_ids: Array = source.get("legal_region_ids", []) if source.get("legal_region_ids", []) is Array else []
+	if not legal_region_ids.has(resolved_region_id):
+		var infrastructure := _region_infrastructure_runtime_controller_node()
+		var requested_region_variant: Variant = infrastructure.call("region_snapshot", resolved_region_id) if infrastructure != null and infrastructure.has_method("region_snapshot") else {}
+		var requested_region: Dictionary = requested_region_variant if requested_region_variant is Dictionary else {}
+		var recommended_region_id := str(source.get("target_region_id", "")).strip_edges()
+		if not requested_region.is_empty() and legal_region_ids.has(recommended_region_id):
+			resolved_region_id = recommended_region_id
 	var clock := world_effective_clock_snapshot()
 	var owner_request := {
 		"actor_id": normalized_actor_id,
 		"slot_index": slot_index,
 		"runtime_instance_id": runtime_instance_id,
-		"transaction_id": "facility-play:%s:%s:%s" % [normalized_actor_id, runtime_instance_id, normalized_region_id],
-		"region_id": normalized_region_id,
+		"transaction_id": "facility-play:%s:%s:%s" % [normalized_actor_id, runtime_instance_id, resolved_region_id],
+		"region_id": resolved_region_id,
 		"expected_player_revision": int(player.get("revision", -1)),
 		"expected_source_revision": int(source.get("revision", -1)),
 		"game_time": float(clock.get("world_effective_seconds", 0.0)),
@@ -2002,7 +2080,7 @@ func execute_v06_facility_play_action(actor_id: String, card_id: String, region_
 		return compose_action_result_v1(action_source)
 	action_source["public_receipt"] = {
 		"event_code": "facility_play_committed",
-		"region_id": normalized_region_id,
+		"region_id": resolved_region_id,
 		"owned_facility_count": int(source_after.get("owned_facility_count", 0)),
 		"production_installation_count": int(source_after.get("production_installation_count", 0)),
 		"idempotent_replay": bool(owner_result.get("idempotent_replay", false)),

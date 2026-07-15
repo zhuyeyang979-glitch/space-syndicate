@@ -44,6 +44,19 @@ const PUBLIC_PURCHASE_STATE_FIELDS := [
 
 const VALID_VISIBILITY_SCOPES := ["public", "viewer_private"]
 
+const SAFE_ACTION_REASON_CODES := [
+	"facility_purchase_ready",
+	"cash_insufficient",
+	"source_region_dark",
+	"source_region_destroyed",
+	"market_listing_changed",
+	"market_quote_unavailable",
+	"quote_expired",
+	"market_unavailable",
+	"market_facts_unavailable",
+	"purchase_unavailable",
+]
+
 const FORBIDDEN_SOURCE_KEYS := [
 	"hidden_owner",
 	"hidden_owner_id",
@@ -373,6 +386,7 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"facts": _short_text(facts, 42),
 		"status_text": "%s｜¥%d｜%s" % [str(state.get("label", "仅浏览")), price, _short_text(detail, 36)],
 		"status_tooltip": detail,
+		"action_reason_code": _safe_action_reason_code(state),
 		"buy_text": "%s ¥%d" % ["手满限制" if bool(state.get("requires_discard", false)) else "购买", price],
 		"buy_enabled": bool(state.get("actionable", false)),
 		"buy_tooltip": "查看总是允许；%s" % detail,
@@ -494,6 +508,11 @@ func _purchase_state(card: Dictionary) -> Dictionary:
 		"requires_discard": false,
 		"accent": "#94a3b8ff",
 	}
+
+
+func _safe_action_reason_code(state: Dictionary) -> String:
+	var reason_code := str(state.get("reason_code", "purchase_unavailable")).strip_edges()
+	return reason_code if SAFE_ACTION_REASON_CODES.has(reason_code) else "purchase_unavailable"
 
 
 func _buy_scan_text(state: Dictionary, price: int) -> String:
