@@ -407,6 +407,8 @@ const REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tool
 const REGION_INFRASTRUCTURE_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/RegionInfrastructureRuntimeCharacterizationBench.tscn"
 const REGION_INFRASTRUCTURE_CHARACTERIZATION_CONTRACT := "res://docs/region_infrastructure_runtime_ownership_contract.md"
 const REGION_INFRASTRUCTURE_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/region_infrastructure_characterization/"
+const REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/RegionInfrastructureRuntimeController.tscn"
+const REGION_INFRASTRUCTURE_WORLD_BRIDGE_SCENE := "res://scenes/runtime/RegionInfrastructureWorldBridge.tscn"
 const PLAYER_TEXT_SPEC_V05_SCRIPT := "res://scripts/presentation/player_text_spec_v05.gd"
 const PLAYER_TEXT_VISIBILITY_V05_SCRIPT := "res://scripts/presentation/player_text_visibility_contract_v05.gd"
 const PLAYER_TEXT_RESOLVER_V05_SCRIPT := "res://scripts/presentation/player_text_locale_resolver_v05.gd"
@@ -1861,7 +1863,7 @@ func _check_main_runtime_composition_scene() -> void:
 	_expect(main != null, "main.tscn instantiates for runtime composition sceneization")
 	if main == null:
 		return
-	for node_path in ["RuntimeGameScreen", "RuntimeServices", "RuntimeServices/TableAudioHost", "RuntimeServices/RuntimeControllerHost", "RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ForcedDecisionRuntimeScheduler", "RuntimeServices/RuntimeFallbackHost"]:
+	for node_path in ["RuntimeGameScreen", "RuntimeServices", "RuntimeServices/TableAudioHost", "RuntimeServices/RuntimeControllerHost", "RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge", "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ForcedDecisionRuntimeScheduler", "RuntimeServices/RuntimeFallbackHost"]:
 		_expect(main.get_node_or_null(node_path) != null, "main.tscn owns %s before runtime" % node_path)
 	var runtime_screen := main.get_node_or_null("RuntimeGameScreen") as Control
 	for node_name in ["TopBar", "PublicTrack", "PlanetBoard", "PlanetMapView", "RightInspector", "PlayerBoard", "OverlayLayer", "RuntimeSurfaceLayer", "FullscreenMapOverlay", "FullscreenPlanetMapView", "CardResolutionTableBannerOverlay", "BottomCountdownOverlay", "DistrictSupplySideDrawerOverlay", "MenuModalOverlay"]:
@@ -1870,18 +1872,11 @@ func _check_main_runtime_composition_scene() -> void:
 	var audio_host := main.get_node_or_null("RuntimeServices/TableAudioHost")
 	for player_name in ["NightPatrolTableBgm", "NightPatrolSfx_card", "NightPatrolSfx_impact", "NightPatrolSfx_storm"]:
 		_expect(audio_host != null and audio_host.get_node_or_null(player_name) is AudioStreamPlayer, "sceneized TableAudioHost contains %s" % player_name)
-	_expect(main.has_method("_runtime_composition_snapshot"), "main.gd exposes a runtime composition QA snapshot")
-	if main.has_method("_runtime_composition_snapshot"):
-		main.call("_bind_ruleset_runtime_bridge")
-		main.call("_bind_city_development_runtime_controller")
-		var snapshot: Dictionary = main.call("_runtime_composition_snapshot")
-		_expect(bool(snapshot.get("sceneized_composition_enabled", false)) and not bool(snapshot.get("legacy_fallback_used", true)), "main runtime composition snapshot reports scene ownership with fallback inactive")
-		_expect(not bool(snapshot.get("controller_missing", true)) and bool(snapshot.get("controller_authoritative", false)) and not bool(snapshot.get("legacy_state_fallback_used", true)), "main runtime composition snapshot reports one present scene-owned card-resolution authority with state fallback inactive")
-		_expect(bool(snapshot.get("city_development_controller_found", false)) and bool(snapshot.get("city_development_controller_ready", false)) and bool(snapshot.get("city_development_controller_bound", false)) and bool(snapshot.get("city_development_controller_authoritative", false)), "main runtime composition snapshot reports a bound scene-owned city-development legality authority")
-		var city_runtime: Dictionary = snapshot.get("city_development_runtime", {}) if snapshot.get("city_development_runtime", {}) is Dictionary else {}
-		_expect(not bool(city_runtime.get("direct_build_allowed", true)) and bool(city_runtime.get("project_binding_required", false)), "main runtime composition enforces the v0.4 product-project city-development boundary")
-		_expect(int(snapshot.get("duplicate_node_count", -1)) == 0 and int(snapshot.get("duplicate_signal_count", -1)) == 0, "main runtime composition snapshot reports no duplicate nodes or signals")
-		_expect(not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "main runtime composition snapshot remains pure data")
+	var infrastructure := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController")
+	var infrastructure_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge")
+	_expect(infrastructure != null and infrastructure.scene_file_path == REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER_SCENE and infrastructure.has_method("apply_facility_action") and infrastructure.has_method("rollback_facility_action") and infrastructure.has_method("finalize_facility_action") and infrastructure.has_method("facility_rollback_atomic_ready"), "main composition uses the authoritative v0.6 RegionInfrastructure facility lifecycle")
+	_expect(infrastructure_bridge != null and infrastructure_bridge.scene_file_path == REGION_INFRASTRUCTURE_WORLD_BRIDGE_SCENE and infrastructure_bridge.has_method("bind_world") and infrastructure_bridge.has_method("debug_snapshot"), "main composition uses the non-owning RegionInfrastructure WorldBridge")
+	_expect(main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController") == null and main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge") == null, "main composition does not revive retired CityDevelopment owners")
 	main.free()
 
 
@@ -3801,21 +3796,14 @@ func _check_first_mission_runtime_main_bench_component() -> void:
 	_expect(ResourceLoader.exists("res://scripts/economy/city_product_project_state.gd") and ResourceLoader.exists("res://scripts/economy/city_product_project_bridge.gd") and ResourceLoader.exists("res://scripts/economy/city_development_card_template_resource.gd") and ResourceLoader.exists("res://scripts/economy/city_development_card_template_pack_resource.gd"), "city development project runtime scripts load")
 	_expect(ResourceLoader.exists("res://resources/economy/core_city_development_pack.tres") and load("res://resources/economy/core_city_development_pack.tres") != null, "city development Inspector template pack loads")
 	var development_coordinator := main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main_instance != null else null
-	_expect(main_instance != null and main_instance.has_method("_ensure_city_development_card_supply") and development_coordinator != null and development_coordinator.has_method("execute_city_development") and main_instance.has_method("_city_public_project_snapshots") and main_instance.has_method("_city_private_project_snapshots"), "main keeps supply/privacy adapters while Coordinator exposes the single city-development settlement entry")
-	if main_instance != null and main_instance.has_method("_first_table_resolved_content_catalog"):
-		var authored_catalog: Dictionary = main_instance.call("_first_table_resolved_content_catalog") as Dictionary
-		var authored_cards: Array = authored_catalog.get("runtime_card_ids", []) if authored_catalog.get("runtime_card_ids", []) is Array else []
-		var featured_cards: Array = authored_catalog.get("featured_card_ids", []) if authored_catalog.get("featured_card_ids", []) is Array else []
-		var authored_monsters: Array = authored_catalog.get("starter_monster_ids", []) if authored_catalog.get("starter_monster_ids", []) is Array else []
-		var authored_products: Array = authored_catalog.get("preferred_product_ids", []) if authored_catalog.get("preferred_product_ids", []) is Array else []
-		var has_development_card := false
-		var card_catalog_coordinator := main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-		for card_variant in authored_cards:
-			var definition: Dictionary = card_catalog_coordinator.call("card_definition", str(card_variant)) as Dictionary if card_catalog_coordinator != null else {}
-			if str(definition.get("kind", "")) == "city_development":
-				has_development_card = true
-				break
-		_expect(has_development_card and authored_cards.has("城市融资1") and featured_cards.size() == 20 and featured_cards.has("城市融资1") and featured_cards.has("商品换线1") and featured_cards.has("诱导电波1") and featured_cards.has("业主透镜1") and featured_cards.has("相位否决1") and featured_cards.has("供应链保险1") and authored_monsters.has("镜像猎兵") and authored_monsters.has("蓝锋骑士") and authored_monsters.has("流星哨兵") and authored_monsters.has("绿洲修复体") and authored_products.has("活体芯片") and authored_products.has("轨迹墨水") and authored_products.has("等离子米"), "first_table authored fixture references the real core card set, city-development guarantee, monsters, and products")
+	var infrastructure := development_coordinator.get_node_or_null("RegionInfrastructureRuntimeController") if development_coordinator != null else null
+	var first_table_service := development_coordinator.get_node_or_null("FirstTableAuthoredRuntimeService") if development_coordinator != null else null
+	_expect(development_coordinator != null and development_coordinator.has_method("v06_first_table_facility_market_snapshot") and development_coordinator.has_method("purchase_v06_first_table_facility_card") and development_coordinator.has_method("play_v06_runtime_card") and infrastructure != null and infrastructure.has_method("apply_facility_action") and first_table_service != null and first_table_service.has_method("resolve_content_catalog"), "Coordinator owns first_table facility supply and CardFlow settlement through RegionInfrastructure")
+	if development_coordinator != null:
+		var rank_i_facility_cards: Array = development_coordinator.call("v06_rank_i_facility_cards") if development_coordinator.has_method("v06_rank_i_facility_cards") else []
+		var canonical_card: Dictionary = development_coordinator.call("v06_card_definition", "facility.factory.life.rank_1") if development_coordinator.has_method("v06_card_definition") else {}
+		var canonical_machine: Dictionary = canonical_card.get("machine", {}) if canonical_card.get("machine", {}) is Dictionary else {}
+		_expect(not rank_i_facility_cards.is_empty() and str(canonical_machine.get("category_id", "")) == "facility" and int(canonical_machine.get("rank", 0)) == 1 and str(canonical_machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility", "first_table facility guarantee uses a canonical Rank I v0.6 card and the shared CardFlow route")
 	if main_instance != null:
 		viewport.remove_child(main_instance)
 		main_instance.queue_free()
@@ -8097,19 +8085,21 @@ func _check_ruleset_v04_source_of_truth_component() -> void:
 	if main_packed != null:
 		var main := main_packed.instantiate() as Control
 		var main_bridge := main.get_node_or_null("RuntimeServices/RulesetRuntimeBridge") if main != null else null
-		var main_city_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController") if main != null else null
-		var main_city_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge") if main != null else null
+		var main_infrastructure := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController") if main != null else null
+		var main_infrastructure_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge") if main != null else null
 		_expect(main_bridge != null and main_bridge.scene_file_path == RULESET_RUNTIME_BRIDGE_SCENE, "main.tscn owns RulesetRuntimeBridge under RuntimeServices")
-		_expect(main_city_controller != null and main_city_controller.scene_file_path == CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE and main_city_bridge != null and main_city_bridge.scene_file_path == CITY_DEVELOPMENT_WORLD_BRIDGE_SCENE, "GameRuntimeCoordinator owns the CityDevelopment Controller and non-owning WorldBridge")
+		_expect(main_infrastructure != null and main_infrastructure.scene_file_path == REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER_SCENE and main_infrastructure_bridge != null and main_infrastructure_bridge.scene_file_path == REGION_INFRASTRUCTURE_WORLD_BRIDGE_SCENE and main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentRuntimeController") == null and main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityDevelopmentWorldBridge") == null, "GameRuntimeCoordinator owns RegionInfrastructure and does not compose retired CityDevelopment owners")
 		if main != null:
 			main.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var coordinator_source := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCRIPT)
+	var infrastructure_source := FileAccess.get_file_as_string("res://scripts/runtime/region_infrastructure_runtime_controller.gd")
 	var victory_source := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT)
 	_expect(not main_source.contains("_ruleset_timing_seconds(&\"final_countdown_seconds\")") and main_source.contains("_ruleset_timing_seconds(&\"monster_wager_default_seconds\")") and victory_source.contains("victory_qualification") and victory_source.contains("public_audit") and victory_source.contains("audit_failure_cooldown"), "main.gd keeps the v0.4 monster-wager bridge while v0.5 VictoryControl owns qualification, audit, and cooldown timing")
 	_expect(not main_source.contains("const VICTORY_COUNTDOWN_SECONDS") and not main_source.contains("const MONSTER_WAGER_SECONDS") and not main_source.contains("const CARD_GROUP_WINDOW_SECONDS") and not main_source.contains("const CARD_GROUP_LOCK_SECONDS"), "main.gd no longer keeps duplicate cutover timing constants")
-	_expect(main_source.contains("func _bind_city_development_runtime_controller") and main_source.contains("func _evaluate_city_development_request") and main_source.contains("func _reject_legacy_direct_city_build"), "main.gd routes city-entry legality through the scene-owned controller")
+	_expect(coordinator_source.contains("func play_v06_runtime_card(") and coordinator_source.contains("build_upgrade_or_repair_facility") and infrastructure_source.contains("func apply_facility_action(") and infrastructure_source.contains("func rollback_facility_action(") and infrastructure_source.contains("func finalize_facility_action(") and not main_source.contains("func _bind_city_development_runtime_controller") and not main_source.contains("func _evaluate_city_development_request") and not main_source.contains("func _reject_legacy_direct_city_build"), "Coordinator and RegionInfrastructure own v0.6 facility legality without retired Main city wrappers")
 	var ai_controller_source := FileAccess.get_file_as_string(AI_RUNTIME_CONTROLLER_SCRIPT)
-	_expect(not main_source.contains("func _build_city_in_selected_district(") and main_source.contains("_reject_legacy_direct_city_build(\"keyboard_b\")") and main_source.contains("_reject_legacy_direct_city_build(action_id)") and ai_controller_source.contains("func _auto_expand_rival_syndicates(") and not main_source.contains("func _auto_expand_rival_syndicates("), "legacy player direct-build is rejection-only and AI city intent selection belongs to AiRuntimeController")
+	_expect(not main_source.contains("func _build_city_in_selected_district(") and not main_source.contains("_reject_legacy_direct_city_build") and ai_controller_source.contains("purchase_rank_i_facility") and ai_controller_source.contains("play_runtime_card"), "AI facility intent uses the v0.6 production port while retired direct-build APIs stay absent")
 	var registry_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	_expect(registry != null and registry.has_method("records") and registry.has_method("record_for_id") and registry.has_method("summary"), "RulesetV04ConformanceRegistry exposes audit APIs")
@@ -13741,11 +13731,12 @@ func _check_empty_player_board_affordance() -> void:
 
 func _check_main_player_panel_refresh_contract() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var coordinator_source := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCRIPT)
 	var player_board_source := FileAccess.get_file_as_string("res://scripts/ui/player_board.gd")
 	var hand_rack_source := FileAccess.get_file_as_string("res://scripts/ui/hand_rack.gd")
 	_expect(not main_source.contains("var player_panel_signature") and not main_source.contains("func _uses_split_runtime_table") and not main_source.contains("func _refresh_split_compatibility_player_panel") and not main_source.contains("func _player_panel_structure_signature") and not main_source.contains("func _refresh_player_panel_live_values"), "main.gd no longer owns the generated or compatibility PlayerBoard renderer")
 	_expect(main_source.contains("func _sync_runtime_game_screen") and main_source.contains("runtime_game_screen.call(\"apply_state\""), "main.gd updates the scene-owned GameScreen through the snapshot bridge")
-	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_reject_legacy_direct_city_build(action_id)") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)"), "main runtime keeps old build action ids rejection-only while routing legal quick actions")
+	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)") and not main_source.contains("_reject_legacy_direct_city_build") and coordinator_source.contains("func v06_first_table_facility_market_snapshot(") and coordinator_source.contains("func play_v06_runtime_card("), "main quick actions stay data-backed while first_table facility play uses the Coordinator CardFlow facade")
 	_expect(main_source.contains("func _runtime_player_board_quick_actions") and main_source.contains("\"发展牌架\"") and main_source.contains("_open_district_supply_from_map(selected_district)") and main_source.contains("_first_actionable_hand_slot(player_index)") and main_source.contains("_use_skill(slot_index)"), "main runtime quick actions expose rack/buy/play and route city development through real cards")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
 	_expect(game_screen_source.contains("func _unhandled_key_input") and game_screen_source.contains("_quick_action_index_for_key") and game_screen_source.contains("_quick_action_id_at") and game_screen_source.contains("_should_ignore_quick_action_hotkey"), "split GameScreen maps 1-4 keyboard shortcuts onto the current data-backed quick actions without reading gameplay rules")
