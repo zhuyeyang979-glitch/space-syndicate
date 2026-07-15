@@ -17,13 +17,14 @@ the production settlement exactly once.
 
 | Metric | Frozen baseline | Current local integration | Delta |
 |---|---:|---:|---:|
-| `scripts/main.gd` physical lines | 18,972 | 18,829 | -143 |
-| `scripts/main.gd` `func` declarations | 1,097 | 1,087 | -10 |
-| Full layout failure labels | 52 | 42 | -10 |
-| Full smoke retired Main calls | 71 (`31` capture, `40` apply) | 67 (`29` capture, `38` apply) | -4 |
+| `scripts/main.gd` physical lines | 18,972 | 18,631 | -341 |
+| `scripts/main.gd` `func` declarations | 1,097 | 1,075 | -22 |
+| Full layout failure labels | 52 | 40 | -12 |
+| Full smoke retired Main references | 71 (`31` capture, `40` apply) | 64 (`28` capture, `36` apply) | -7 |
 
-The current Main reduction comes from the Product Codex public-source sceneization.
-Test-only migrations do not count as Main reduction.
+The current Main reduction comes from the Product Codex public-source sceneization and
+the physical retirement of the non-authoritative priority-bid UI path. Test-only
+migrations do not count as Main reduction.
 
 ## Verified progress
 
@@ -40,9 +41,11 @@ Test-only migrations do not count as Main reduction.
 - Layout ownership checks now use the current Military, CommodityFlow,
   RegionInfrastructure, RouteNetwork, and non-owning bridge boundaries. The full
   layout run has no parser or invalid-method failure.
-- The latest integrated full layout run completed in 100.284 seconds with ExitCode 1,
-  42 remaining assertion labels, no timeout, and zero remaining project processes.
-  Evidence run: `20260715-074535-593-layout_scene_smoke_test-f8c1a82b`.
+- The latest integrated full layout run completed in 56.131 seconds with ExitCode 1,
+  40 remaining assertion labels, no parser/API error, no timeout, and zero remaining
+  project processes. Four of those labels are newly exposed stale fixed-bid assertions
+  after the intentional removal of the dead priority-bid path, not new production
+  crashes. Evidence run: `20260715-082955-031-layout_scene_smoke_test-228238ca`.
 - The current Main composition gate passes. The latest role-focused gate and smoke
   `--check-only` also exit 0.
 - The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
@@ -87,11 +90,12 @@ result.
 
 ### Full smoke
 
-The complete smoke test still times out. The most recent diagnostic run passed Role
-Codex, random-role, and role-budget blocks before reaching a Military variant-facts
-assertion and an AI military-command block that still called a retired Main snapshot
-wrapper. Migration is proceeding one ownership block at a time. The check-only result
-does not substitute for a complete run.
+The complete smoke test still times out. The AI military-command block now uses current
+Region, Route, AI, and Military owner facts; its focused Military gate passes `49/49`.
+The latest 300.322-second complete run passed that target block and moved the first
+retired Main snapshot error forward to `_verify_ai_military_force_deploy_policy`.
+Migration is proceeding one ownership block at a time. The check-only result does not
+substitute for a complete run.
 
 ### Action feedback
 
@@ -153,7 +157,7 @@ that evidence is unavailable rather than invent a turning point or expose AI wei
 
 ## Remaining layout groups
 
-The 42 current labels include:
+The 40 current labels include:
 
 - RightInspector why/availability restoration;
 - current card-group/BidBoard contract drift;
