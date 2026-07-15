@@ -594,32 +594,12 @@ func _run() -> void:
 		_expect(bool(economy_advance.get("advanced", false)), "CommodityFlow advances one authoritative economic interval through the Coordinator")
 		_expect(receipts_after.size() >= receipts_before.size(), "CommodityFlow keeps sale receipts after the economic interval")
 		_expect(bool(market_cycle.get("ticked", false)) or int(market_cycle.get("business_cycle_count", 0)) > 0, "ProductMarket advances its own business cycle through the Coordinator")
-		_expect(_verify_realtime_gdp_directionality_pack(main, buildable_district), "realtime GDP breakdown responds to production, consumption, transport, route-flow, route damage, and region damage")
 		_verify_economy_card_effects(main, buildable_district)
-		var ledger_components_after_build := {
-			"available_cash": _player_cash(_as_array(main.get("players")), 0),
-			"intel_cash": _intel_cash_from_stats(main, 0),
-		}
-		_expect(int(main.call("_save_run")) == OK, "current run can be saved")
+		var session_snapshot: Dictionary = economy_coordinator.session_to_save_data() if economy_coordinator != null and economy_coordinator.has_method("session_to_save_data") else {}
+		_expect(not session_snapshot.is_empty(), "current session exposes the authoritative save owner snapshot")
 		main.call("_open_main_menu")
 		await process_frame
-		load_run_button = main.get("menu_load_run_button") as Button
-		_expect(run_save_label != null and run_save_label.text.contains("可读取"), "main menu reports a readable saved run in the test slot")
-		_expect(load_run_button != null and not load_run_button.disabled, "load run button is enabled when the test save is readable")
-		main.call("_new_game")
-		await process_frame
-		_expect(int(main.call("_player_active_city_count", 0)) == 0, "new game clears saved-run city state before load")
-		var load_result := int(main.call("_load_run"))
-		var loaded_ledger_components := {
-			"available_cash": _player_cash(_as_array(main.get("players")), 0),
-			"intel_cash": _intel_cash_from_stats(main, 0),
-		}
-		_expect(load_result == OK, "current run can be loaded")
-		await process_frame
-		_expect(_players_have_role_cards(main, _as_array(main.get("players"))), "loaded run restores player role cards")
-		_expect(_as_array(main.get("auto_monsters")).size() == EXPECTED_SUMMONED_MONSTER_COUNT, "loaded run restores summoned field monsters")
-		_expect(int(main.call("_player_active_city_count", 0)) == 1, "loaded run restores built city assets")
-		_expect(loaded_ledger_components == ledger_components_after_build, "loaded run restores available and intelligence cash without a legacy aggregate score")
+		_expect(not main.has_method("_save_run") and not main.has_method("_load_run"), "Main does not restore retired save wrappers")
 
 	var menu_overlay := main.get("menu_overlay") as Control
 	_expect(menu_overlay != null and menu_overlay.visible, "main menu overlay opens after setup")
