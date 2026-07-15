@@ -441,7 +441,7 @@ func _scripted_ui_action(runtime_screen: Node) -> Dictionary:
 	var ui_variant: Variant = runtime_screen.get("current_ui_data")
 	var ui: Dictionary = ui_variant if ui_variant is Dictionary else {}
 	var temporary: Dictionary = ui.get("temporary_decision", {}) if ui.get("temporary_decision", {}) is Dictionary else {}
-	if bool(temporary.get("visible", false)) or bool(temporary.get("active", false)):
+	if not temporary.is_empty():
 		var temporary_action := _first_enabled_action(temporary.get("actions", []))
 		if not temporary_action.is_empty():
 			return {
