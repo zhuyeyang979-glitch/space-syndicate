@@ -9,14 +9,19 @@ const DIRECT_CAPACITY_UNITS_PER_MINUTE := 1000000
 const MAX_ROUTES_PER_PAIR := 12
 const MAX_PATH_REGION_COUNT := 9
 const TRANSPORT_MODES := ["land", "sea", "air"]
+const WEATHER_ROUTE_FLOOR := 0.40
 
 var _configured := false
 var _world_bridge: Node
+var _weather_runtime_controller: Node
 var _transport_throughput_by_rank: Dictionary = {}
 var _transport_speed_by_rank: Dictionary = {}
 var _cached_topology_revision := ""
 var _cached_candidates_by_pair: Dictionary = {}
 var _cached_all_candidates: Array = []
+var _cached_legacy_index_by_region_id: Dictionary = {}
+var _cached_region_weather_context_by_id: Dictionary = {}
+var _cached_facility_weather_context_by_id: Dictionary = {}
 var _refresh_count := 0
 var _rebuild_count := 0
 var _query_count := 0
@@ -24,6 +29,10 @@ var _query_count := 0
 
 func set_world_bridge(bridge: Node) -> void:
 	_world_bridge = bridge
+
+
+func set_weather_runtime_controller(controller: Node) -> void:
+	_weather_runtime_controller = controller
 
 
 func configure(profile_snapshot: Dictionary) -> Dictionary:
@@ -51,6 +60,9 @@ func reset_state() -> void:
 	_cached_topology_revision = ""
 	_cached_candidates_by_pair.clear()
 	_cached_all_candidates.clear()
+	_cached_legacy_index_by_region_id.clear()
+	_cached_region_weather_context_by_id.clear()
+	_cached_facility_weather_context_by_id.clear()
 	_refresh_count = 0
 	_rebuild_count = 0
 	_query_count = 0
@@ -85,7 +97,7 @@ func route_candidates_for_regions(commodity_id: String, source_region_id: String
 	for candidate_variant in _cached_candidates_by_pair.get(_pair_key(source_region_id, market_region_id), []):
 		var candidate: Dictionary = (candidate_variant as Dictionary).duplicate(true)
 		candidate["commodity_id"] = commodity_id
-		result.append(candidate)
+		result.append(_project_weather_candidate(candidate))
 	return result
 
 
@@ -96,7 +108,7 @@ func all_route_candidates(commodity_id := "*") -> Array:
 	for candidate_variant in _cached_all_candidates:
 		var candidate: Dictionary = (candidate_variant as Dictionary).duplicate(true)
 		candidate["commodity_id"] = commodity_id
-		result.append(candidate)
+		result.append(_project_weather_candidate(candidate))
 	return result
 
 
@@ -158,6 +170,9 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_cached_topology_revision = ""
 	_cached_candidates_by_pair.clear()
 	_cached_all_candidates.clear()
+	_cached_legacy_index_by_region_id.clear()
+	_cached_region_weather_context_by_id.clear()
+	_cached_facility_weather_context_by_id.clear()
 	var refresh := refresh_routes(true)
 	return {
 		"applied": bool(refresh.get("refreshed", false)),
@@ -185,6 +200,9 @@ func debug_snapshot(_viewer_index := -1) -> Dictionary:
 		"owns_multimodal_pathing": true,
 		"owns_route_capacity_derivation": true,
 		"owns_route_rent_preview": true,
+		"weather_projection_query_time_only": true,
+		"weather_projection_floor": WEATHER_ROUTE_FLOOR,
+		"weather_provider_ready": _weather_runtime_controller != null and is_instance_valid(_weather_runtime_controller),
 		"owns_goods_or_cash": false,
 		"rent_rate_pending": _any_rent_rate_pending(),
 		"legacy_city_trade_owner_active": false,
@@ -204,6 +222,7 @@ func _ensure_cache() -> void:
 func _rebuild_routes(topology: Dictionary) -> void:
 	_cached_candidates_by_pair.clear()
 	_cached_all_candidates.clear()
+	_cache_weather_projection_facts(topology)
 	var regions := _active_regions(topology)
 	var graph := _mode_graph(topology, regions)
 	var region_ids: Array = regions.keys()
@@ -224,6 +243,189 @@ func _rebuild_routes(topology: Dictionary) -> void:
 	)
 	_cached_topology_revision = str(topology.get("topology_revision", ""))
 	_rebuild_count += 1
+
+
+func _project_weather_candidate(candidate: Dictionary) -> Dictionary:
+	var projected := candidate.duplicate(true)
+	var base_bottleneck := maxi(0, int(candidate.get("bottleneck_units_per_minute", 0)))
+	var weather_projection := _weather_projection_for_candidate(candidate)
+	var planned_multiplier := maxf(WEATHER_ROUTE_FLOOR, float(weather_projection.get("multiplier", 1.0)))
+	var projected_resources: Array = []
+	var effective_bottleneck := 2147483647
+	for resource_variant in candidate.get("capacity_resources", []):
+		if not (resource_variant is Dictionary):
+			continue
+		var resource := (resource_variant as Dictionary).duplicate(true)
+		var base_capacity := maxi(0, int(resource.get("capacity_units_per_minute", 0)))
+		var effective_capacity := maxi(0, int(floor(float(base_capacity) * planned_multiplier + 0.000001)))
+		resource["base_capacity_units_per_minute"] = base_capacity
+		resource["capacity_units_per_minute"] = effective_capacity
+		projected_resources.append(resource)
+		effective_bottleneck = mini(effective_bottleneck, effective_capacity)
+	if projected_resources.is_empty():
+		effective_bottleneck = maxi(0, int(floor(float(base_bottleneck) * planned_multiplier + 0.000001)))
+	projected["capacity_resources"] = projected_resources
+	projected["base_bottleneck_units_per_minute"] = base_bottleneck
+	projected["bottleneck_units_per_minute"] = effective_bottleneck if effective_bottleneck < 2147483647 else 0
+	projected["route_efficiency_multiplier"] = float(projected["bottleneck_units_per_minute"]) / float(base_bottleneck) if base_bottleneck > 0 else 1.0
+	projected["route_efficiency_explanation"] = str(weather_projection.get("explanation", "weather:none"))
+	return projected
+
+
+func _weather_projection_for_candidate(candidate: Dictionary) -> Dictionary:
+	if _weather_runtime_controller == null or not is_instance_valid(_weather_runtime_controller) or not _weather_runtime_controller.has_method("region_effect_snapshot"):
+		return {"multiplier": 1.0, "explanation": "weather:none"}
+	var event_projection_by_key: Dictionary = {}
+	for context_variant in _weather_route_contexts(candidate):
+		var route_context := context_variant as Dictionary
+		var region_id := str(route_context.get("region_id", ""))
+		var legacy_index := int(_cached_legacy_index_by_region_id.get(region_id, -1))
+		if legacy_index < 0:
+			continue
+		var mode := _weather_route_mode(str(route_context.get("route_mode", "")))
+		var intervention := _weather_intervention_context(candidate, region_id)
+		var effect_context := {
+			"route_mode": mode,
+			"movement_domain": mode,
+			"weather_resistance": float(intervention.get("weather_resistance", 0.0)),
+			"weather_exploitation_multiplier": float(intervention.get("weather_exploitation_multiplier", 1.0)),
+		}
+		var snapshot_variant: Variant = _weather_runtime_controller.call("region_effect_snapshot", legacy_index, effect_context)
+		if not (snapshot_variant is Dictionary):
+			continue
+		var snapshot := snapshot_variant as Dictionary
+		if not bool(snapshot.get("available", false)):
+			continue
+		for effect_variant in snapshot.get("effects", []):
+			if not (effect_variant is Dictionary):
+				continue
+			var effect := effect_variant as Dictionary
+			var route_effect: Dictionary = effect.get("route", {}) if effect.get("route", {}) is Dictionary else {}
+			var generic_multiplier := float(route_effect.get("generic_multiplier", 1.0))
+			var domain_multiplier := float(route_effect.get("%s_multiplier" % mode, 1.0)) if ["land", "ocean", "air"].has(mode) else 1.0
+			var multiplier := maxf(0.0, generic_multiplier * domain_multiplier)
+			var event_id := int(effect.get("event_id", 0))
+			var definition_id := str(effect.get("definition_id", "weather"))
+			var event_key := "event:%d" % event_id if event_id > 0 else "definition:%s" % definition_id
+			var current: Dictionary = event_projection_by_key.get(event_key, {}) if event_projection_by_key.get(event_key, {}) is Dictionary else {}
+			if current.is_empty() or _weather_multiplier_is_stronger(multiplier, float(current.get("multiplier", 1.0))):
+				event_projection_by_key[event_key] = {
+					"definition_id": definition_id,
+					"mode": mode,
+					"multiplier": multiplier,
+				}
+	var multiplier := 1.0
+	var explanation_parts: Array[String] = []
+	var event_keys: Array = event_projection_by_key.keys()
+	event_keys.sort()
+	for event_key_variant in event_keys:
+		var projection := event_projection_by_key[event_key_variant] as Dictionary
+		var event_multiplier := float(projection.get("multiplier", 1.0))
+		if is_equal_approx(event_multiplier, 1.0):
+			continue
+		multiplier *= event_multiplier
+		explanation_parts.append(_weather_efficiency_explanation(
+			str(projection.get("definition_id", "weather")),
+			str(projection.get("mode", "generic")),
+			event_multiplier
+		))
+	multiplier = maxf(WEATHER_ROUTE_FLOOR, multiplier)
+	return {
+		"multiplier": multiplier,
+		"explanation": " / ".join(explanation_parts) if not explanation_parts.is_empty() else "weather:none",
+	}
+
+
+func _weather_route_contexts(candidate: Dictionary) -> Array:
+	var result: Array = []
+	var seen: Dictionary = {}
+	for leg_variant in candidate.get("ordered_legs", []):
+		if not (leg_variant is Dictionary):
+			continue
+		var leg := leg_variant as Dictionary
+		var mode := _weather_route_mode(str(leg.get("mode", "")))
+		for region_key in ["from_region_id", "to_region_id"]:
+			var region_id := str(leg.get(region_key, ""))
+			var key := "%s|%s" % [region_id, mode]
+			if region_id.is_empty() or seen.has(key):
+				continue
+			seen[key] = true
+			result.append({"region_id": region_id, "route_mode": mode})
+	if result.is_empty():
+		var fallback_mode := "generic"
+		for mode_variant in candidate.get("mode_tags", []):
+			var normalized := _weather_route_mode(str(mode_variant))
+			if ["land", "ocean", "air"].has(normalized):
+				fallback_mode = normalized
+				break
+		for region_variant in candidate.get("ordered_region_ids", []):
+			var region_id := str(region_variant)
+			if not region_id.is_empty():
+				result.append({"region_id": region_id, "route_mode": fallback_mode})
+	return result
+
+
+func _weather_intervention_context(candidate: Dictionary, region_id: String) -> Dictionary:
+	var region_context: Dictionary = _cached_region_weather_context_by_id.get(region_id, {}) if _cached_region_weather_context_by_id.get(region_id, {}) is Dictionary else {}
+	var resistance := clampf(float(region_context.get("weather_resistance", 0.0)), 0.0, 1.0)
+	var exploitation := maxf(1.0, float(region_context.get("weather_exploitation_multiplier", 1.0)))
+	for facility_id_variant in candidate.get("facility_ids", []):
+		var facility_context: Dictionary = _cached_facility_weather_context_by_id.get(str(facility_id_variant), {}) if _cached_facility_weather_context_by_id.get(str(facility_id_variant), {}) is Dictionary else {}
+		if str(facility_context.get("region_id", "")) != region_id:
+			continue
+		resistance = maxf(resistance, clampf(float(facility_context.get("weather_resistance", 0.0)), 0.0, 1.0))
+		exploitation = maxf(exploitation, maxf(1.0, float(facility_context.get("weather_exploitation_multiplier", 1.0))))
+	return {
+		"weather_resistance": resistance,
+		"weather_exploitation_multiplier": exploitation,
+	}
+
+
+func _cache_weather_projection_facts(topology: Dictionary) -> void:
+	_cached_legacy_index_by_region_id.clear()
+	_cached_region_weather_context_by_id.clear()
+	_cached_facility_weather_context_by_id.clear()
+	for region_variant in topology.get("regions", []):
+		if not (region_variant is Dictionary):
+			continue
+		var region := region_variant as Dictionary
+		var region_id := str(region.get("region_id", ""))
+		if region_id.is_empty():
+			continue
+		_cached_legacy_index_by_region_id[region_id] = int(region.get("legacy_index", -1))
+		_cached_region_weather_context_by_id[region_id] = {
+			"weather_resistance": clampf(float(region.get("weather_resistance", 0.0)), 0.0, 1.0),
+			"weather_exploitation_multiplier": maxf(1.0, float(region.get("weather_exploitation_multiplier", 1.0))),
+		}
+	for facility_variant in topology.get("facilities", []):
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		var facility_id := str(facility.get("facility_id", ""))
+		if facility_id.is_empty():
+			continue
+		_cached_facility_weather_context_by_id[facility_id] = {
+			"region_id": str(facility.get("region_id", "")),
+			"weather_resistance": clampf(float(facility.get("weather_resistance", 0.0)), 0.0, 1.0),
+			"weather_exploitation_multiplier": maxf(1.0, float(facility.get("weather_exploitation_multiplier", 1.0))),
+		}
+
+
+func _weather_multiplier_is_stronger(candidate: float, current: float) -> bool:
+	if candidate < 1.0 or current < 1.0:
+		return candidate < current
+	return candidate > current
+
+
+func _weather_efficiency_explanation(definition_id: String, mode: String, multiplier: float) -> String:
+	var percent := int(round(absf(multiplier - 1.0) * 100.0))
+	var direction := "+" if multiplier > 1.0 else "-"
+	return "weather:%s:%s:%s%d%%" % [definition_id, mode, direction, percent]
+
+
+func _weather_route_mode(mode: String) -> String:
+	var normalized := mode.strip_edges().to_lower()
+	return "ocean" if normalized == "sea" else normalized
 
 
 func _candidates_for_pair(source_region_id: String, market_region_id: String, topology: Dictionary, regions: Dictionary, graph: Dictionary) -> Array:
