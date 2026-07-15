@@ -2214,7 +2214,7 @@ func _activate_runtime_player_board_action(action_id: String) -> bool:
 		if selected_district < 0 or selected_district >= districts.size() or _runtime_session_finished() \
 				or not bool(source.get("available", false)) or bool(source.get("has_source", false)):
 			return false
-		_open_district_supply_from_map(selected_district)
+		_open_district_supply_from_map(selected_district, true)
 		return true
 	var primary := _runtime_primary_action_entry(player_index)
 	if str(primary.get("id", "")) == action_id:
@@ -2227,7 +2227,7 @@ func _activate_runtime_player_board_action(action_id: String) -> bool:
 			if not bool(source.get("expansion_available", false)) or target_district < 0:
 				return false
 			_jump_to_district_on_table(target_district)
-			_open_district_supply_from_map(target_district)
+			_open_district_supply_from_map(target_district, true)
 			return true
 		"strategy_protect_routes":
 			_toggle_selected_trade_route()
@@ -11723,7 +11723,7 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 			"relevant_requirement": "选择一个未摧毁区域",
 			"accent": Color("#22c55e"),
 			"disabled": _runtime_session_finished(),
-			"target": Callable(self, "_open_district_supply_from_map").bind(selected_district),
+			"target": Callable(self, "_open_district_supply_from_map").bind(selected_district, true),
 		}
 	var starter_slot := _first_starter_monster_slot(player)
 	if starter_slot >= 0:
@@ -13587,7 +13587,7 @@ func _active_district_card_context() -> int:
 	return selected_district
 
 
-func _open_district_supply_from_map(district_index: int) -> void:
+func _open_district_supply_from_map(district_index: int, focus_v06_facility: bool = false) -> void:
 	if district_index < 0 or district_index >= districts.size() or selected_player < 0 or selected_player >= players.size():
 		return
 	_jump_to_district_on_table(district_index)
@@ -13597,12 +13597,16 @@ func _open_district_supply_from_map(district_index: int) -> void:
 	_open_district_card_purchase_window(district_index, district_supply_open_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
+	if focus_v06_facility:
+		var facility_source := _v06_first_table_facility_supply_source(district_index, district_supply_open_player, true)
+		var facility_card_id := str(facility_source.get("card_name", ""))
+		if not facility_card_id.is_empty():
+			previewed_district_card = facility_card_id
+			selected_market_skill = facility_card_id
 	if district_supply_overlay != null:
 		district_supply_overlay.visible = true
 	_complete_scenario_signal("rack_opened", "打开区域牌架：%s。" % String(districts[district_index].get("name", "区域")), "after_rack", "district_supply")
 	_refresh_ui()
-
-
 func _refresh_district_supply_overlay() -> void:
 	if district_supply_overlay == null or not district_supply_overlay.visible:
 		return
@@ -13654,6 +13658,11 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 		previewed_district_card = preview_name
 		selected_market_skill = preview_name
 	var card_sources: Array = []
+	if not v06_facility_source.is_empty() and v06_facility_card_id == preview_name:
+		v06_facility_source["selected"] = true
+		if not viewer_authorized:
+			v06_facility_source = _district_supply_public_card_source(v06_facility_source)
+		card_sources.append(v06_facility_source)
 	for card_name_variant: Variant in choices:
 		var card_name := str(card_name_variant)
 		if not _game_runtime_coordinator_node().card_exists(card_name):
@@ -13663,7 +13672,7 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 			if not viewer_authorized:
 				card_source = _district_supply_public_card_source(card_source)
 			card_sources.append(card_source)
-	if not v06_facility_source.is_empty():
+	if not v06_facility_source.is_empty() and v06_facility_card_id != preview_name:
 		v06_facility_source["selected"] = v06_facility_card_id == preview_name
 		if not viewer_authorized:
 			v06_facility_source = _district_supply_public_card_source(v06_facility_source)

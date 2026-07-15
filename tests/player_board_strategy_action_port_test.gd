@@ -93,9 +93,14 @@ func _test_real_player_board_route() -> void:
 	var overlay: Control = main.get("district_supply_overlay") as Control
 	_expect(overlay != null and overlay.visible, "stable PlayerBoard build action opens the real DistrictSupplyDrawer")
 	var drawer_snapshot: Dictionary = overlay.call("debug_snapshot") if overlay != null and overlay.has_method("debug_snapshot") else {}
+	var drawer_cards: Array = drawer_snapshot.get("cards", []) if drawer_snapshot.get("cards", []) is Array else []
+	var first_drawer_card: Dictionary = drawer_cards[0] if not drawer_cards.is_empty() and drawer_cards[0] is Dictionary else {}
+	var drawer_preview: Dictionary = drawer_snapshot.get("preview", {}) if drawer_snapshot.get("preview", {}) is Dictionary else {}
+	_expect(str(first_drawer_card.get("kind", "")) == "facility_v06", "GDP action places the real facility card first instead of hiding it below the generic rack")
+	_expect(str(drawer_preview.get("card_name", "")) == str(first_drawer_card.get("card_name", "")) and not str(drawer_preview.get("status_text", "")).is_empty() and not str(drawer_preview.get("buy_text", "")).is_empty(), "GDP action opens directly on the facility preview with an owner-backed purchase state")
 	var facility_found := false
 	var facility_purchase_state: Dictionary = {}
-	for card_variant in drawer_snapshot.get("cards", []):
+	for card_variant in drawer_cards:
 		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == "facility_v06":
 			facility_found = true
 			facility_purchase_state = ((card_variant as Dictionary).get("purchase_state", {}) as Dictionary).duplicate(true)
