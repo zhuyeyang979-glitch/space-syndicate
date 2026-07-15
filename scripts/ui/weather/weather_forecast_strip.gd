@@ -146,6 +146,8 @@ func debug_snapshot() -> Dictionary:
 		"animated": is_processing(),
 		"region_indices": region_indices,
 		"effect_count": _effect_labels.size() if not _view_model.is_empty() else 0,
+		"event_count": (_view_model.get("events", []) as Array).size() if _view_model.get("events", []) is Array else 0,
+		"other_event_count": maxi(0, (_view_model.get("events", []) as Array).size() - 1) if _view_model.get("events", []) is Array else 0,
 		"displayed_detail": _weather_detail.text,
 	}
 
@@ -184,10 +186,13 @@ func _render_event(event: Dictionary) -> void:
 	_weather_icon.text = _icon_text(event["icon_key"])
 	_weather_icon.modulate = accent
 	_weather_title.text = event["display_name"]
-	_weather_detail.text = "%s · %s · 强度 %d%%" % [
+	var other_count := maxi(0, (_view_model.get("events", []) as Array).size() - 1)
+	var event_suffix := " · 另有%d个天气" % other_count if other_count > 0 else ""
+	_weather_detail.text = "%s · %s · 强度 %d%%%s" % [
 		_source_label(event["source_type"]),
 		_duration_label(event["remaining_us"]),
 		int(round(float(event["intensity"]) * 100.0)),
+		event_suffix,
 	]
 	_phase_badge.text = _phase_label(event["phase"])
 	_phase_badge.modulate = accent
@@ -253,7 +258,7 @@ func _phase_label(phase: String) -> String:
 func _source_label(source_type: String) -> String:
 	match source_type:
 		"natural": return "自然天气"
-		"monster": return "怪物诱发"
+		"monster": return "怪兽诱发"
 		"card": return "卡牌诱发"
 	return "未知来源"
 

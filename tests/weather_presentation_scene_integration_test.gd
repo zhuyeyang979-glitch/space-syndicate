@@ -27,6 +27,7 @@ func _run() -> void:
 	var weather_layer := board.find_child("WeatherLayer", true, false) as Control
 	_expect(map_view != null and forecast_strip != null and weather_layer != null, "PlanetBoard statically owns forecast strip, map, and weather layer")
 	_expect(weather_layer != null and weather_layer.get_parent() == map_view, "weather overlay is scene-owned by PlanetMapView")
+	_expect(weather_layer != null and map_view.get_children().find(weather_layer) < map_view.get_children().find(map_view.find_child("DistrictLayer", false, false)), "district boundaries and cities render above the lightweight weather overlay")
 	_expect(forecast_strip != null and forecast_strip.has_method("set_view_model") and forecast_strip.has_signal("region_jump_requested"), "forecast strip exposes pure view-model and jump contract")
 	_expect(map_view != null and map_view.has_method("set_weather_overlay_view_model") and map_view.has_method("weather_overlay_debug_snapshot"), "PlanetMapView exposes weather presentation-only API")
 
@@ -45,6 +46,7 @@ func _run() -> void:
 	var strip_debug: Dictionary = forecast_strip.call("debug_snapshot") as Dictionary if forecast_strip != null else {}
 	var overlay_debug: Dictionary = map_view.call("weather_overlay_debug_snapshot") as Dictionary if map_view != null else {}
 	_expect(bool(strip_debug.get("visible", false)) and bool(strip_debug.get("compact_mode", false)), "embedded forecast strip remains visible in compact table mode")
+	_expect(int(strip_debug.get("event_count", 0)) == 2 and int(strip_debug.get("other_event_count", 0)) == 1 and str(strip_debug.get("displayed_detail", "")).contains("另有1个天气"), "compact strip acknowledges the second concurrent weather event")
 	_expect(str(strip_debug.get("motion_mode", "")) == "reduced" and not bool(strip_debug.get("animated", true)), "reduced motion keeps the strip readable without continuous animation")
 	_expect(bool(overlay_debug.get("visible", false)) and int(overlay_debug.get("layout_count", 0)) == 4, "weather overlay receives all region geometry from the map")
 	_expect(str(overlay_debug.get("motion_mode", "")) == "reduced", "map overlay follows the same motion policy")

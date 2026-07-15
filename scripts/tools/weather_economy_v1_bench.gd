@@ -164,6 +164,8 @@ func _case_price_model_weather_contribution() -> void:
 	var snapshot := _market.product_weather_contribution_snapshot(energy_product)
 	var weather_modifier := int(snapshot.get("weather_modifier", 0))
 	_expect(float(snapshot.get("price_growth_multiplier", 1.0)) > 1.0 and weather_modifier > 0, "ion storm creates a positive tagged energy price contribution")
+	var price_rows := snapshot.get("contributions", []) as Array
+	_expect(not price_rows.is_empty() and str((price_rows[0] as Dictionary).get("weather_label", "")) == "离子风暴" and int((price_rows[0] as Dictionary).get("event_id", 0)) > 0, "market contribution keeps the player-facing weather label and public event id")
 	_expect(_world.weather_modifier_calls.has(weather_modifier), "weather contribution enters RuntimeBalanceModel weather_modifier before its cap")
 	var public_entry: Dictionary = (_market.public_market_snapshot().get("product_market", {}) as Dictionary).get(energy_product, {})
 	_expect(int(public_entry.get("price_step_cap", 0)) > 0 and int(public_entry.get("raw_trend", 0)) >= int(public_entry.get("trend", 0)), "existing price step cap still governs the weather-influenced price")
@@ -261,6 +263,8 @@ func _case_income_and_public_explanations() -> void:
 			for row_variant in (receipt_variant as Dictionary).get("weather_contributions", []):
 				receipt_weather_rows.append(row_variant)
 	_expect(not (public_weather.get("contributions", []) as Array).is_empty(), "public income diagnostics expose structured weather contributions")
+	var public_rows := public_weather.get("contributions", []) as Array
+	_expect(str((public_rows[0] as Dictionary).get("weather_label", "")) == "孢子季" and int((public_rows[0] as Dictionary).get("event_id", 0)) > 0, "flow contribution keeps the same player-facing weather label and public event id")
 	_expect(not receipts.is_empty() and not ((receipts.back() as Dictionary).get("weather_contributions", []) as Array).is_empty(), "sale receipt history explains the weather contribution")
 	_expect(not _contains_forbidden_key(public_weather) and not _contains_forbidden_key(receipt_weather_rows), "public weather explanations contain no cash, hand, owner, AI, or private fields")
 	_free_flow_fixture(weather_fixture)

@@ -29,7 +29,7 @@ func _run() -> void:
 	_expect(str(((dashboard.get("decisions", []) as Array)[0] as Dictionary).get("body", "")).contains("环晶电池"), "top product drives the supplied decision hint")
 	_expect(str(((dashboard.get("lanes", []) as Array)[1] as Dictionary).get("lines", [""])[0]).contains("低温藻"), "cold lane is sorted from supplied cold scores")
 	_expect(str(((dashboard.get("lanes", []) as Array)[0] as Dictionary).get("lines", [""])[0]).contains("天气价格增速+18%"), "product lane explains the public weather price-growth contribution")
-	_expect(str(((dashboard.get("lanes", []) as Array)[2] as Dictionary).get("lines", [""])[0]).contains("ion_storm生产+20%"), "city lane explains the public weather income contribution")
+	_expect(str(((dashboard.get("lanes", []) as Array)[2] as Dictionary).get("lines", [""])[0]).contains("离子风暴生产+20%"), "city lane explains the public weather income contribution with its player-facing label")
 	var debug: Dictionary = service.call("debug_snapshot")
 	_expect(not bool(debug.get("calculates_product_prices", true)) and not bool(debug.get("calculates_city_income", true)) and not bool(debug.get("calculates_cashflow", true)) and not bool(debug.get("evaluates_private_truth", true)), "service owns no economy rules")
 	_expect(_is_pure_data(snapshot) and not _contains_private_key(snapshot), "snapshot is viewer-safe pure data")
@@ -53,7 +53,7 @@ func _source() -> Dictionary:
 			{"name": "环晶电池", "price": 92, "base_price": 70, "gap": 22, "trend": 8, "tier": "高价档", "supply": 2, "demand": 5, "disrupted": 1, "volatility": 4, "weather": "天气价格增速+18%（1区）", "status_tags": ["热门"], "path": "70→92", "heat_score": 100, "cold_score": -20},
 			{"name": "低温藻", "price": 28, "base_price": 50, "gap": -22, "trend": -3, "tier": "低价档", "supply": 7, "demand": 1, "disrupted": 0, "volatility": 2, "weather": "无", "status_tags": ["供给压制"], "path": "50→28", "heat_score": -10, "cold_score": 120},
 		],
-		"city_entries": [{"name": "临港城", "owner_view": "己方", "intel_hint": "情报：已知", "income": 36, "last_income": 30, "gdp_trend": "GDP趋势：+6", "breakdown": "生产12+需求12+交通12", "weather_contributions": [{"weather_id": "ion_storm", "direction": "production", "multiplier": 1.20}], "status_tags": ["畅通"], "contract": "有效", "supplied": 1, "demand_count": 1, "disrupted": 0, "competition": 0, "flow": "畅通", "products": ["环晶电池"], "demands": ["低温藻"]}],
+		"city_entries": [{"name": "临港城", "owner_view": "己方", "intel_hint": "情报：已知", "income": 36, "last_income": 30, "gdp_trend": "GDP趋势：+6", "breakdown": "生产12+需求12+交通12", "weather_contributions": [{"weather_id": "ion_storm", "weather_label": "离子风暴", "event_id": 7, "direction": "production", "multiplier": 1.20}], "status_tags": ["畅通"], "contract": "有效", "supplied": 1, "demand_count": 1, "disrupted": 0, "competition": 0, "flow": "畅通", "products": ["环晶电池"], "demands": ["低温藻"]}],
 		"card_aftermath_entries": [{"resolved_time": 12.0, "style": "金融", "card": "轨道融资 I", "target": "临港城", "owner_known": false, "clue": "GDP上升", "tip_clue": "报价20"}],
 		"city_clue_entries": [{"time": 14.0, "district": "临港区", "owner_visible": false, "kind": "市场", "clue_products": ["环晶电池"], "income": 36, "products": ["环晶电池"], "demands": ["低温藻"], "clue": "需求上升"}],
 		"monster_clue_entries": [{"slot": 0, "name": "岩甲兽", "rank": 1, "owner_text": "归属未公开", "recent_loss": 5, "recent_damage": 10, "recent_source": "城市炮火", "recent_time": 18.0, "total_lost": 5, "cash_pool": 45, "cash_total": 50, "down": false, "clue": "受伤资金变化"}],

@@ -102,6 +102,7 @@ func region_detail_snapshot(region_index: int) -> Dictionary:
 			if int((region_variant as Dictionary).get("region_index", -1)) == region_index:
 				return {
 					"schema_version": "weather_region_detail.v1",
+					"event_id": int(event.get("event_id", 0)),
 					"region_index": region_index,
 					"definition_id": str(event.get("definition_id", "")),
 					"display_name": str(event.get("display_name", "")),
@@ -115,6 +116,7 @@ func region_detail_snapshot(region_index: int) -> Dictionary:
 				}
 	return {
 		"schema_version": "weather_region_detail.v1",
+		"event_id": 0,
 		"region_index": region_index,
 		"definition_id": "",
 		"display_name": "天气平稳",

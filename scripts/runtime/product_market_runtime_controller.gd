@@ -20,6 +20,7 @@ const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_indus
 const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
 	"kind",
 	"weather_id",
+	"weather_label",
 	"event_id",
 	"region_index",
 	"phase",
@@ -945,6 +946,7 @@ func _append_product_weather_contributions(aggregate: Dictionary, region_index: 
 		rows.append({
 			"kind": "weather_economy",
 			"weather_id": str(effect.get("definition_id", "")),
+			"weather_label": _weather_runtime_controller.label(str(effect.get("definition_id", ""))),
 			"event_id": int(effect.get("event_id", 0)),
 			"region_index": region_index,
 			"phase": str(effect.get("phase", "")),

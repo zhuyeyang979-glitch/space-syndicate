@@ -230,7 +230,7 @@ func _weather_income_contribution_text(value: Variant) -> String:
 		var row := row_variant as Dictionary
 		var direction := "生产" if str(row.get("direction", "")) == "production" else "需求"
 		var multiplier := float(row.get("multiplier", 1.0))
-		parts.append("%s%s%+d%%" % [str(row.get("weather_id", "天气")), direction, int(round((multiplier - 1.0) * 100.0))])
+		parts.append("%s%s%+d%%" % [str(row.get("weather_label", row.get("weather_id", "天气"))), direction, int(round((multiplier - 1.0) * 100.0))])
 		if parts.size() >= 3:
 			break
 	return "、".join(parts) if not parts.is_empty() else "无"
