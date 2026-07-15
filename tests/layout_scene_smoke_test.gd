@@ -1256,25 +1256,20 @@ func _check_split_game_screen_data_binding() -> void:
 				{"text": "手牌 2/5", "active": false, "accent": Color("#c084fc")},
 			],
 			"bid_board": {
-				"title": "牌桌竞价",
-				"phase": "竞价 4s",
-				"status": "候补牌参拍中｜当前¥40｜最高¥80",
+				"title": "卡牌组确认",
+				"phase": "规划 4s",
+				"status": "规划阶段｜本组1/5张｜待确认",
 				"active": true,
 				"chips": [
-					{"label": "我的", "state": "¥40", "active": true, "accent": Color("#fde68a")},
-					{"label": "最高", "state": "¥80", "active": true, "accent": Color("#f59e0b")},
-					{"label": "本批", "state": "2张", "active": true, "accent": Color("#c084fc")},
-					{"label": "下批", "state": "0张", "active": false, "accent": Color("#38bdf8")},
+					{"label": "我的组", "state": "1/5", "active": true, "accent": Color("#c084fc")},
+					{"label": "本阶段", "state": "待确认", "active": false, "accent": Color("#fde68a")},
 				],
 				"track_links": [
-					{"id": "track_select_9002", "label": "领跑", "state": "竞拍1 ¥80", "active": true, "selected": true, "accent": Color("#f59e0b")},
-					{"id": "track_select_9001", "label": "我的牌", "state": "竞拍2 ¥40", "active": true, "accent": Color("#fde68a")},
+					{"id": "track_select_9001", "label": "本批1", "state": "待定1 轨道融资", "active": true, "selected": true, "accent": Color("#fde68a")},
+					{"id": "track_select_9002", "label": "本批2", "state": "待定2 相位否决", "active": false, "accent": Color("#f59e0b")},
 				],
 				"actions": [
-					{"id": "bid_set_0", "label": "¥0", "active": true, "accent": Color("#94a3b8")},
-					{"id": "bid_set_50", "label": "¥50", "active": true, "accent": Color("#fde68a")},
-					{"id": "bid_set_100", "label": "¥100", "active": true, "accent": Color("#22c55e")},
-					{"id": "bid_reset", "label": "清零", "active": true, "accent": Color("#94a3b8")},
+					{"id": "card_group_ready", "label": "完成规划", "active": true, "accent": Color("#38bdf8")},
 				],
 			},
 			"selected_district_summary": "雾港区",
@@ -1395,9 +1390,9 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(player_goal_bar != null and player_goal_bar.value > 25.0, "split PlayerBoard binds goal progress")
 	_expect(player_hand_count_chip != null and player_hand_count_chip.text.contains("手牌") and player_hand_count_chip.text.contains("2/5"), "split PlayerBoard exposes current hand count in the 3-second layer")
 	_expect(player_bid_board != null, "split PlayerBoard exposes a separate BidBoard above the main action dock")
-	_expect(bid_board_chip_row != null and bid_board_chip_row.get_child_count() >= 4, "split BidBoard binds bid/highest/current-batch/next-batch chips")
-	_expect(bid_board_action_row != null and bid_board_action_row.get_child_count() >= 3, "split BidBoard binds chip-like bid action buttons")
-	_expect(player_bid_board != null and _node_tree_text(player_bid_board).contains("领跑") and _node_tree_text(player_bid_board).contains("我的牌"), "split BidBoard shows compact public-track pointers beside bid controls")
+	_expect(bid_board_chip_row != null and bid_board_chip_row.get_child_count() == 2, "split BidBoard binds only the current group and planning-confirmation chips")
+	_expect(bid_board_action_row != null and bid_board_action_row.get_child_count() == 1, "split BidBoard binds one planning confirmation action without retired fixed-bid controls")
+	_expect(player_bid_board != null and _node_tree_text(player_bid_board).contains("本批1") and _node_tree_text(player_bid_board).contains("本批2"), "split BidBoard shows compact public-track pointers beside the planning confirmation")
 	_expect(player_main_action_dock != null, "split PlayerBoard exposes one main action dock")
 	_expect(player_quick_action_row != null and player_quick_action_row.get_child_count() == 4, "split PlayerBoard binds Build/Rack/Buy/Play scan buttons inside the single main action dock")
 	_expect(player_status_lamp_row != null and player_status_lamp_row.get_child_count() == 1, "split PlayerBoard binds table-state lamps from snapshot data")
@@ -5791,8 +5786,6 @@ func _prepare_runtime_open_card_auction(main: Node) -> void:
 			"group_id": "window_90_group_0",
 			"group_order": 1,
 			"group_size": 1,
-			"priority_bid_cents": 5000,
-			"locked_priority_bid_cents": 5000,
 			"slot_index": int(first_fixture.get("slot_index", -1)),
 			"skill": first_fixture.get("skill", {}),
 			"play_cash_cost": 0,
@@ -5804,8 +5797,6 @@ func _prepare_runtime_open_card_auction(main: Node) -> void:
 			"group_id": "window_90_group_1",
 			"group_order": 1,
 			"group_size": 1,
-			"priority_bid_cents": 10000,
-			"locked_priority_bid_cents": 10000,
 			"slot_index": int(second_fixture.get("slot_index", -1)),
 			"skill": second_fixture.get("skill", {}),
 			"play_cash_cost": 0,
@@ -6056,20 +6047,24 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		var chip: Dictionary = chip_variant
 		auction_cluster_labels.append(str(chip.get("label", "")))
 	var auction_track_labels: Array[String] = []
-	var leader_link: Dictionary = {}
-	var player_link: Dictionary = {}
+	var first_batch_link: Dictionary = {}
+	var second_batch_link: Dictionary = {}
 	for link_variant in auction_track_links:
 		if link_variant is Dictionary:
 			var link: Dictionary = link_variant
 			auction_track_labels.append(str(link.get("label", "")))
-			if str(link.get("label", "")) == "领跑":
-				leader_link = link
-			elif str(link.get("label", "")) == "我的牌":
-				player_link = link
-	_expect(str(auction_bid_board.get("phase", "")).contains("组织") and auction_cluster_labels.has("最高") and auction_cluster_labels.has("组报价") and auction_cluster_labels.has("我的组") and auction_cluster_labels.has("怪兽池"), "runtime player_board snapshot routes the six-second group organization state into the dedicated BidBoard")
-	_expect(auction_track_labels.has("领跑") and auction_track_labels.has("我的牌"), "runtime BidBoard snapshot links bid state back to the public card track leader and the current player's queued card")
-	_expect(str(leader_link.get("id", "")) == "track_select_9002" and str(leader_link.get("state", "")).contains("¥100") and str(player_link.get("id", "")) == "track_select_9001", "runtime BidBoard points the leader link at the actual highest fixed public bid and keeps the current player's queued-card link separate")
-	_expect(_action_list_has_id(auction_bid_actions, "bid_set_0") and _action_list_has_id(auction_bid_actions, "bid_set_50") and _action_list_has_id(auction_bid_actions, "bid_set_100"), "runtime BidBoard snapshot exposes only the fixed 0, 50, and 100 priority bid tiers")
+			if str(link.get("label", "")) == "本批1":
+				first_batch_link = link
+			elif str(link.get("label", "")) == "本批2":
+				second_batch_link = link
+	var retired_fixed_bid_action_found := false
+	for action_variant in auction_bid_actions:
+		if action_variant is Dictionary and str((action_variant as Dictionary).get("id", "")).begins_with("bid_set_"):
+			retired_fixed_bid_action_found = true
+	_expect(str(auction_bid_board.get("phase", "")).contains("规划") and auction_cluster_labels == ["我的组", "本阶段"], "runtime player_board snapshot routes the planning confirmation state into the dedicated BidBoard")
+	_expect(auction_track_labels.has("本批1") and auction_track_labels.has("本批2"), "runtime BidBoard snapshot links both planning entries back to their public-track cards")
+	_expect(str(first_batch_link.get("id", "")) == "track_select_9001" and str(second_batch_link.get("id", "")) == "track_select_9002" and not str(first_batch_link.get("state", "")).contains("¥") and not str(second_batch_link.get("state", "")).contains("¥"), "runtime BidBoard public-track pointers expose batch order without retired fixed-bid amounts")
+	_expect(auction_bid_actions.size() == 1 and _action_list_has_id(auction_bid_actions, "card_group_ready") and not retired_fixed_bid_action_found, "runtime BidBoard exposes one planning-confirmation action and no retired fixed-bid authority")
 	if screen != null and screen.has_method("apply_state"):
 		screen.call("apply_state", auction_snapshot)
 		await process_frame
@@ -6078,10 +6073,10 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		var auction_bid_track_link_row := screen.find_child("BidBoardTrackLinkRow", true, false)
 		var auction_bid_action_row := screen.find_child("BidBoardActionRow", true, false)
 		var auction_bid_board_text := _node_tree_text(auction_bid_board_node) if auction_bid_board_node != null else ""
-		_expect(auction_bid_chip_row != null and auction_bid_chip_row.get_child_count() >= 4, "split GameScreen renders open card-auction state inside the dedicated BidBoard instead of the readiness row")
-		_expect(auction_bid_board_text.contains("组织") and auction_bid_board_text.contains("最高") and auction_bid_board_text.contains("我的组") and auction_bid_board_text.contains("组报价") and auction_bid_board_text.contains("领跑"), "split BidBoard keeps the group organization and public-track labels visible on the table")
+		_expect(auction_bid_chip_row != null and auction_bid_chip_row.get_child_count() == 2, "split GameScreen renders the planning group and confirmation state inside the dedicated BidBoard")
+		_expect(auction_bid_board_text.contains("规划") and auction_bid_board_text.contains("我的组") and auction_bid_board_text.contains("本阶段") and auction_bid_board_text.contains("本批1") and not auction_bid_board_text.contains("最高") and not auction_bid_board_text.contains("组报价") and not auction_bid_board_text.contains("¥"), "split BidBoard keeps planning and public-track labels visible without retired fixed-bid copy")
 		_expect(auction_bid_track_link_row != null and auction_bid_track_link_row.get_child_count() >= 2, "split BidBoard renders clickable public-track pointer slots instead of burying them in the status sentence")
-		_expect(auction_bid_action_row != null and auction_bid_action_row.get_child_count() >= 3, "split BidBoard renders the three fixed public priority-bid buttons")
+		_expect(auction_bid_action_row != null and auction_bid_action_row.get_child_count() == 1, "split BidBoard renders one planning confirmation button without fixed priority-bid buttons")
 		var public_track_slot_for_hover := screen.find_child("PublicTrackSlot", true, false) as Control
 		if public_track_slot_for_hover != null:
 			public_track_slot_for_hover.emit_signal("mouse_entered")
@@ -6092,53 +6087,46 @@ func _check_runtime_table_snapshot_bridge() -> void:
 			await process_frame
 			hovered_bid_link_marker = screen.find_child("BidBoardTrackLinkHover", true, false)
 			_expect(hovered_bid_link_marker == null, "leaving a public-track slot clears the temporary BidBoard pointer highlight")
-	var runtime_leader_link_button := _find_visible_button_containing(runtime_screen, "领跑")
-	_expect(runtime_leader_link_button != null and not runtime_leader_link_button.disabled, "runtime BidBoard leader pointer is a clickable public-track selection control")
-	if runtime_leader_link_button != null and not runtime_leader_link_button.disabled:
-		runtime_leader_link_button.emit_signal("mouse_entered")
+	var runtime_first_batch_link_button := _find_visible_button_containing(runtime_screen, "本批1")
+	_expect(runtime_first_batch_link_button != null and not runtime_first_batch_link_button.disabled, "runtime BidBoard first-batch pointer is a clickable public-track selection control")
+	if runtime_first_batch_link_button != null and not runtime_first_batch_link_button.disabled:
+		runtime_first_batch_link_button.emit_signal("mouse_entered")
 		await process_frame
 		var hovered_track_marker := runtime_screen.find_child("PublicTrackSlotHover", true, false)
 		var runtime_track_focus_ribbon := runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
 		var runtime_track_focus_label := runtime_screen.find_child("TrackFocusLabel", true, false) as Label
 		var runtime_hover_inspector_text := _node_tree_text(runtime_screen.find_child("RightInspector", true, false))
-		_expect(hovered_track_marker != null, "hovering the BidBoard leader pointer temporarily highlights the matching public-track slot")
-		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("竞价对照"), "hovering the BidBoard leader pointer opens the table-focus ribbon for the matching public-track card")
-		_expect(runtime_hover_inspector_text.contains("牌轨详情") and runtime_hover_inspector_text.contains("线索档案"), "hovering the BidBoard leader pointer previews the matching public-track card in RightInspector")
-		runtime_leader_link_button.emit_signal("mouse_exited")
+		_expect(hovered_track_marker != null, "hovering the BidBoard first-batch pointer temporarily highlights the matching public-track slot")
+		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("竞价对照"), "hovering the BidBoard first-batch pointer opens the table-focus ribbon for the matching public-track card")
+		_expect(runtime_hover_inspector_text.contains("牌轨详情") and runtime_hover_inspector_text.contains("线索档案"), "hovering the BidBoard first-batch pointer previews the matching public-track card in RightInspector")
+		runtime_first_batch_link_button.emit_signal("mouse_exited")
 		await process_frame
 		hovered_track_marker = runtime_screen.find_child("PublicTrackSlotHover", true, false)
-		_expect(hovered_track_marker == null, "leaving the BidBoard leader pointer clears the temporary public-track hover highlight")
+		_expect(hovered_track_marker == null, "leaving the BidBoard first-batch pointer clears the temporary public-track hover highlight")
 		runtime_track_focus_ribbon = runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
-		_expect(runtime_track_focus_ribbon != null and not runtime_track_focus_ribbon.visible, "leaving the BidBoard leader pointer clears the temporary table-focus ribbon before a card is selected")
-		runtime_leader_link_button.emit_signal("pressed")
+		_expect(runtime_track_focus_ribbon != null and not runtime_track_focus_ribbon.visible, "leaving the BidBoard first-batch pointer clears the temporary table-focus ribbon before a card is selected")
+		runtime_first_batch_link_button.emit_signal("pressed")
 		await process_frame
-		_expect(int(main.get("selected_card_resolution_id")) == 9002, "clicking the BidBoard leader pointer selects the matching public-track card")
+		_expect(int(main.get("selected_card_resolution_id")) == 9001, "clicking the BidBoard first-batch pointer selects the matching public-track card")
 		_force_runtime_screen_sync(main)
 		await process_frame
 		var selected_track_marker := runtime_screen.find_child("PublicTrackSlotSelected", true, false)
 		_expect(selected_track_marker != null, "public card track highlights the selected card after a BidBoard pointer click")
 		runtime_track_focus_ribbon = runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
 		runtime_track_focus_label = runtime_screen.find_child("TrackFocusLabel", true, false) as Label
-		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("已选牌轨"), "selected public-track cards keep a persistent short focus ribbon after BidBoard pointer click")
+		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("已选牌轨"), "selected public-track cards keep a persistent short focus ribbon after a BidBoard pointer click")
 	var runtime_bid_action_row := runtime_screen.find_child("BidBoardActionRow", true, false)
-	var fixed_bid_labels: Array[String] = []
-	var fixed_bid_disabled_states: Array[bool] = []
-	var fixed_bid_100_button: Button = null
+	var planning_action_labels: Array[String] = []
+	var planning_action_disabled_states: Array[bool] = []
 	var ready_button: Button = null
 	if runtime_bid_action_row != null:
 		for child in runtime_bid_action_row.get_children():
 			if child is Button:
-				fixed_bid_labels.append((child as Button).text)
-				fixed_bid_disabled_states.append((child as Button).disabled)
-				if (child as Button).text == "¥100":
-					fixed_bid_100_button = child as Button
-				elif (child as Button).text == "准备锁牌":
+				planning_action_labels.append((child as Button).text)
+				planning_action_disabled_states.append((child as Button).disabled)
+				if (child as Button).text == "完成规划":
 					ready_button = child as Button
-	_expect(fixed_bid_labels.has("¥0") and fixed_bid_labels.has("¥50") and fixed_bid_labels.has("¥100") and fixed_bid_100_button != null and not fixed_bid_100_button.disabled and ready_button != null and not ready_button.disabled, "runtime BidBoard exposes the fixed priority-bid tiers and ready action during organization (labels=%s disabled=%s)" % [fixed_bid_labels, fixed_bid_disabled_states])
-	if fixed_bid_100_button != null and not fixed_bid_100_button.disabled:
-		fixed_bid_100_button.emit_signal("pressed")
-		await process_frame
-		_expect(int(main.call("_selected_card_priority_bid_amount", 0)) == 100, "runtime BidBoard routes the fixed ¥100 action through split signals to the current group")
+	_expect(planning_action_labels == ["完成规划"] and ready_button != null and not ready_button.disabled, "runtime BidBoard exposes only the enabled planning confirmation action (labels=%s disabled=%s)" % [planning_action_labels, planning_action_disabled_states])
 	_clear_runtime_card_auction_fixture(main)
 	_force_runtime_screen_sync(main)
 	await process_frame
@@ -6250,12 +6238,12 @@ func _check_viewmodel_contracts() -> void:
 		"actions": [{"id": "market", "label": "牌架", "state": "ready"}],
 	})
 	var bid_board: Variant = bid_board_script.new().apply_dictionary({
-		"title": "牌桌竞价",
-		"phase": "竞价 4s",
-		"status": "候补牌参拍中｜当前¥40｜最高¥80",
-		"chips": [{"label": "最高", "state": "¥80", "active": true}],
-		"track_links": [{"id": "track_select_9002", "label": "领跑", "state": "竞拍1 ¥80", "active": true, "selected": true}],
-		"actions": [{"id": "bid_set_50", "label": "设为 ¥50", "active": true}],
+		"title": "卡牌组确认",
+		"phase": "规划 4s",
+		"status": "规划阶段｜本组1/5张｜待确认",
+		"chips": [{"label": "我的组", "state": "1/5", "active": true}],
+		"track_links": [{"id": "track_select_9001", "label": "本批1", "state": "待定1 轨道融资", "active": true, "selected": true}],
+		"actions": [{"id": "card_group_ready", "label": "完成规划", "active": true}],
 	})
 	var default_action_dock: Variant = action_dock_script.new().apply_dictionary({})
 	var card: Variant = card_script.new().apply_dictionary({"name": "相位否决", "rank": "I", "type": "互动", "effect": "反制一次直接互动。"})
@@ -6427,7 +6415,7 @@ func _check_viewmodel_contracts() -> void:
 	_expect(action_quick.size() == 1 and action_quick[0].get("state") == "就绪" and action_primary.size() == 1 and action_primary[0].get("disabled") == false, "ActionDockSnapshot normalizes quick and primary action states for UI rendering")
 	_expect(action_quick.size() == 1 and action_quick[0].get("shortcut") == "1", "ActionDockSnapshot assigns numeric shortcuts to supplied quick actions")
 	_expect(default_quick.size() == 3 and default_quick[0].get("label") == "牌架" and default_quick[0].get("shortcut") == "1" and default_quick[2].get("label") == "出牌" and default_quick[2].get("shortcut") == "3", "ActionDockSnapshot supplies only the three legal v0.4 quick actions and numeric shortcuts when source data is absent")
-	_expect(bid_board_ui.get("chips", []).size() == 1 and bid_track_links.size() == 1 and str((bid_track_links[0] as Dictionary).get("id", "")) == "track_select_9002" and bool((bid_track_links[0] as Dictionary).get("selected", false)) and bid_board_ui.get("actions", []).size() == 1 and bid_board_ui.get("phase") == "竞价 4s", "BidBoardSnapshot normalizes public bid chips, clickable track links, selected state, and bid actions before PlayerBoard renders them")
+	_expect(bid_board_ui.get("chips", []).size() == 1 and bid_track_links.size() == 1 and str((bid_track_links[0] as Dictionary).get("id", "")) == "track_select_9001" and bool((bid_track_links[0] as Dictionary).get("selected", false)) and bid_board_ui.get("actions", []).size() == 1 and bid_board_ui.get("phase") == "规划 4s", "BidBoardSnapshot normalizes planning chips, clickable track links, selected state, and the confirmation action before PlayerBoard renders them")
 	_expect(card.to_ui_dictionary().get("name") == "相位否决", "CardViewSnapshot emits card UI dictionaries")
 	_expect(district.to_ui_dictionary().get("title") == "雾港区", "DistrictViewSnapshot emits district UI dictionaries")
 	var player_hand_cards: Array = player.to_ui_dictionary().get("hand_cards", []) if player.to_ui_dictionary().get("hand_cards", []) is Array else []
