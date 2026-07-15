@@ -1,38 +1,10 @@
 extends SceneTree
 
-const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
-const PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v04.tres")
+const MAIN_SCENE := preload("res://scenes/main.tscn")
+const QA_SAVE_PATH := "user://test_runs/ai_v06_facility_production_port.save"
 
 var _checks := 0
 var _failures: Array[String] = []
-
-
-class RuntimeWorld:
-	extends Node
-	var selected_district := 0
-	var players: Array = [{
-		"id": 0,
-		"name": "Focused Player",
-		"cash": 20,
-		"cash_cents": 2000,
-		"slots": [],
-	}]
-	var districts: Array = [
-		{
-			"id": 0,
-			"region_id": "region.demand",
-			"terrain": "land",
-			"products": ["星露莓"],
-			"demands": ["星露莓"],
-		},
-		{
-			"id": 1,
-			"region_id": "region.no-demand",
-			"terrain": "land",
-			"products": ["星露莓"],
-			"demands": [],
-		},
-	]
 
 
 func _init() -> void:
@@ -40,36 +12,28 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var packed := load(COORDINATOR_SCENE) as PackedScene
-	_expect(packed != null, "production Coordinator scene loads")
-	if packed == null:
+	_remove_qa_save()
+	var main := MAIN_SCENE.instantiate()
+	main.process_mode = Node.PROCESS_MODE_DISABLED
+	var save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
+	_expect(save != null and bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "production fixture isolates its save path")
+	root.add_child(main)
+	await _wait_frames(3)
+	main.call("_start_scenario_from_menu", "first_table")
+	await _wait_frames(4)
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	_expect(coordinator != null, "real first-table scene composes the production Coordinator")
+	if coordinator == null:
+		main.queue_free()
+		await process_frame
+		_remove_qa_save()
 		_finish()
 		return
-	var coordinator := packed.instantiate()
-	root.add_child(coordinator)
-	coordinator.call("configure", PROFILE.debug_snapshot())
-	var world := RuntimeWorld.new()
-	root.add_child(world)
 	var infrastructure: Object = coordinator.call("region_infrastructure_runtime_controller")
-	var initialization: Dictionary = infrastructure.call("initialize_regions", [
-		{
-			"region_id": "region.demand",
-			"terrain_id": "land",
-			"neighbor_region_ids": ["region.no-demand"],
-			"legacy_index": 0,
-		},
-		{
-			"region_id": "region.no-demand",
-			"terrain_id": "land",
-			"neighbor_region_ids": ["region.demand"],
-			"legacy_index": 1,
-		},
-	])
-	_expect(bool(initialization.get("initialized", false)), "focused world initializes the real RegionInfrastructure owner")
+	_expect(infrastructure != null and not (infrastructure.call("regions_snapshot") as Array).is_empty(), "first-table fixture uses the initialized RegionInfrastructure owner")
 	var region_bridge := coordinator.get_node_or_null("RegionInfrastructureWorldBridge")
 	_expect(region_bridge != null, "authoritative region commodity facts bridge is composed")
-	region_bridge.call("bind_world", world)
-	var binding: Dictionary = coordinator.call("refresh_v06_production_player_bindings", world)
+	var binding: Dictionary = coordinator.call("refresh_v06_production_player_bindings", main)
 	print("AI_V06_PORT_STAGE|stage=bind|port=%s|state=%s|inventory=%s|core=%s|demand=%s|monster=%s" % [
 		bool(binding.get("ai_v06_economy_port_ready", false)),
 		bool(binding.get("state_adapter_ready", false)),
@@ -79,21 +43,18 @@ func _run() -> void:
 		bool(binding.get("monster_card_adapter_ready", false)),
 	])
 	_expect(bool(binding.get("ai_v06_economy_port_ready", false)), "Coordinator injects the narrow production port into AI")
-	var facility_chain_ready := bool(binding.get("state_adapter_ready", false)) \
+	var facility_chain_ready := bool(binding.get("ready", false)) \
+		and bool(binding.get("state_adapter_ready", false)) \
 		and bool(binding.get("inventory_ready", false)) \
 		and bool(binding.get("core_economic_ready", false)) \
-		and bool(binding.get("public_demand_ready", false))
+		and bool(binding.get("public_demand_ready", false)) \
+		and bool(binding.get("monster_card_adapter_ready", false))
 	_expect(facility_chain_ready, "focused fixture composes every production owner used by the facility chain")
-	# The global Coordinator readiness gate also requires the Monster card adapter,
-	# whose world contract is intentionally outside this focused fixture. The test
-	# opens only that aggregate gate after proving all facility-chain owners ready.
-	if facility_chain_ready:
-		coordinator.set("_configured", true)
 	var ai := coordinator.get_node_or_null("AiRuntimeController")
 	var ai_public: Dictionary = ai.call("ai_v06_facility_bootstrap_public_snapshot") if ai != null else {}
 	_expect(bool(ai_public.get("available", false)), "AI reports the production port capability without private policy details")
 
-	var players: Array = world.players
+	var players: Array = main.get("players") if main.get("players") is Array else []
 	_expect(not players.is_empty() and players[0] is Dictionary and not (players[0] as Dictionary).has("actor_id"), "production player has no actor_id field")
 	var identity: Dictionary = coordinator.call("actor_id_for_player_index", 0)
 	var actor_id := str(identity.get("actor_id", ""))
@@ -146,13 +107,14 @@ func _run() -> void:
 	_expect(int(source_after_purchase.get("revision", -1)) == int(source_before.get("revision", -2)) and not bool(source_after_purchase.get("has_source", true)), "buying a card does not fabricate a facility source revision")
 	var card_binding: Dictionary = cards_after_purchase[0] if not cards_after_purchase.is_empty() and cards_after_purchase[0] is Dictionary else {}
 	var play_transaction_id := "vs06-b5b:production-play:%s" % actor_id
-	_expect(legal_regions.has("region.no-demand"), "a production region without an explicit demand endpoint remains a legal factory target")
+	var target_region_id := str(listing.get("target_region_id", ""))
+	_expect(not target_region_id.is_empty() and legal_regions.has(target_region_id), "facility play consumes the authoritative listing target")
 	var play_request := {
 		"actor_id": actor_id,
 		"slot_index": int(card_binding.get("slot_index", -1)),
 		"runtime_instance_id": str(card_binding.get("runtime_instance_id", "")),
 		"transaction_id": play_transaction_id,
-		"region_id": "region.no-demand",
+		"region_id": target_region_id,
 		"expected_player_revision": int(player_after_purchase.get("revision", -1)),
 		"expected_source_revision": int(source_after_purchase.get("revision", -1)),
 	}
@@ -169,10 +131,21 @@ func _run() -> void:
 	var journal_after: Dictionary = inventory.call("transaction_journal_snapshot")
 	_expect(journal_after.size() == journal_before.size() + 2 and journal_after.has(purchase_transaction_id) and journal_after.has(play_transaction_id), "purchase and play persist only in the existing Inventory/CardFlow journal")
 
-	coordinator.queue_free()
-	world.queue_free()
+	main.queue_free()
 	await process_frame
+	_remove_qa_save()
 	_finish()
+
+
+func _wait_frames(count: int) -> void:
+	for _frame in range(count):
+		await process_frame
+
+
+func _remove_qa_save() -> void:
+	var absolute := ProjectSettings.globalize_path(QA_SAVE_PATH)
+	if FileAccess.file_exists(absolute):
+		DirAccess.remove_absolute(absolute)
 
 
 func _expect(condition: bool, message: String) -> void:
