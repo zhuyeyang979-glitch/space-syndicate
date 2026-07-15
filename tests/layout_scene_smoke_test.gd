@@ -9704,31 +9704,81 @@ func _check_card_resolution_execution_runtime_characterization_component() -> vo
 	var replacement_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
 	_expect(not main_source.contains("func _resolve_queued_skill("), "Sprint 41 preserves the Sprint 40 execution and formula cutover while main.gd ownership continues shrinking")
 	_expect(main_source.contains("func _complete_active_card_resolution()") and main_source.contains("plan_card_resolution_execution") and main_source.contains("advance_card_resolution_execution") and main_source.contains("finalize_card_resolution_execution") and main_source.contains("func _apply_card_resolution_effect_request(") and not main_source.contains("func _resolve_queued_skill("), "Sprint 37 routes execution through the service and removes the legacy dispatch shell")
-	var effect_adapter_source := _function_source(main_source, "_apply_card_resolution_effect_request")
-	var family_service_source := FileAccess.get_file_as_string(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCRIPT)
-	var family_bridge_source := FileAccess.get_file_as_string(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE_SCRIPT)
-	var formula_service_source := FileAccess.get_file_as_string(CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCRIPT)
-	var execution_service_source := FileAccess.get_file_as_string(CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCRIPT)
-	var family_cutover_checked := effect_adapter_source.contains("plan_card_economy_product_route_effect") and effect_adapter_source.contains("finalize_card_economy_product_route_effect") and family_service_source.contains("HANDLER_FAMILIES")
-	for method_name in ["_apply_route_insurance", "_apply_region_economy_shift"]:
-		family_cutover_checked = family_cutover_checked and not effect_adapter_source.contains(method_name) and family_bridge_source.contains(method_name) and not execution_service_source.contains(method_name)
-	family_cutover_checked = family_cutover_checked and family_bridge_source.contains("_product_market_runtime_controller.apply_speculation") and family_bridge_source.contains("_product_market_runtime_controller.apply_futures") and not execution_service_source.contains("apply_speculation")
-	var contract_controller_source := FileAccess.get_file_as_string("res://scripts/runtime/contract_runtime_controller.gd")
-	family_cutover_checked = family_cutover_checked and family_bridge_source.contains("contract_controller.open_offer") and contract_controller_source.contains("func open_offer(") and not main_source.contains("func _apply_area_trade_contract(") and not execution_service_source.contains("_apply_area_trade_contract")
-	_expect(family_cutover_checked, "Sprint 40 keeps economy/product/route family dispatch modular while Execution Service remains family-agnostic")
-	var product_market_source := FileAccess.get_file_as_string("res://scripts/runtime/product_market_runtime_controller.gd")
-	var market_boon_source := _function_source(product_market_source, "apply_product_market_boon")
-	var futures_settlement_source := _function_source(product_market_source, "settle_futures_position")
-	var city_trade_network_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
-	var route_flow_source := _function_source(city_trade_network_source, "_trade_route_for_product")
-	var product_contract_source := _function_source(product_market_source, "apply_product_contract_boon")
-	var city_contract_source := _function_source(main_source, "_apply_city_contract_boon")
-	var route_insurance_source := _function_source(main_source, "_apply_route_insurance")
-	var city_upgrade_source := _function_source(main_source, "_apply_city_product_upgrade")
-	var product_shift_source := _function_source(main_source, "_apply_city_product_shift")
-	var demand_shift_source := _function_source(main_source, "_apply_city_demand_shift")
-	var formula_cutover_checked := formula_service_source.contains("FORMULA_IDS") and formula_service_source.contains("func _product_contract_boon(") and formula_service_source.contains("func _city_contract_boon(") and formula_service_source.contains("func _route_insurance(") and formula_service_source.contains("product_futures_v04_settlement") and formula_service_source.contains("warehouse_futures_v04_loss") and not formula_service_source.contains("\"product_futures_payout\"") and market_boon_source.contains("_formula(\"product_market_boon\"") and not market_boon_source.contains("clampf(") and futures_settlement_source.contains("settlement_formula_id") and not futures_settlement_source.contains("paying_delta") and route_flow_source.contains("route_base_flow") and not route_flow_source.contains("sqrt(") and product_contract_source.contains("product_contract_boon") and not product_contract_source.contains("market_contract_demand\"] = maxi") and city_contract_source.contains("city_contract_boon") and not city_contract_source.contains("contract_income_bonus\"] = maxi") and route_insurance_source.contains("route_insurance") and city_upgrade_source.contains("city_product_upgrade") and product_shift_source.contains("city_product_shift_step") and demand_shift_source.contains("city_demand_shift_step") and not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService") and not execution_service_source.contains("city_product_upgrade")
-	_expect(formula_cutover_checked, "Sprint 40 moves both characterized formula clusters out of main while Execution Service remains formula-agnostic")
+	var family_packed := load(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_SCENE) as PackedScene
+	var family_bridge_packed := load(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE_SCENE) as PackedScene
+	var execution_packed := load(CARD_RESOLUTION_EXECUTION_RUNTIME_SERVICE_SCENE) as PackedScene
+	var family_owner := family_packed.instantiate() if family_packed != null else null
+	var family_bridge := family_bridge_packed.instantiate() if family_bridge_packed != null else null
+	var execution_owner := execution_packed.instantiate() if execution_packed != null else null
+	var active_family_handlers := [
+		"area_trade_contract", "city_gdp_derivative", "market_stabilize", "product_contract_boon",
+		"product_futures", "product_growth_boon", "product_speculation",
+	]
+	var retired_family_handlers := [
+		"cash_gain", "city_contract_boon", "city_demand_shift", "city_product_shift", "city_product_upgrade",
+		"city_revenue_boost", "region_economy_shift", "route_flow_boon", "route_insurance", "route_sabotage",
+	]
+	var family_owner_fixture_checked := family_owner != null and family_bridge != null and execution_owner != null and load(CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_RUNTIME_SERVICE_TEST) is Script
+	if family_owner_fixture_checked:
+		family_owner.call("configure", {"ruleset_id": "v0.4"})
+		execution_owner.call("configure")
+		var family_debug: Dictionary = family_owner.call("debug_snapshot")
+		var family_bridge_debug: Dictionary = family_bridge.call("debug_snapshot")
+		var execution_debug: Dictionary = execution_owner.call("debug_snapshot")
+		family_owner_fixture_checked = family_owner.call("supported_handlers") == active_family_handlers
+		family_owner_fixture_checked = family_owner_fixture_checked and str(family_owner.call("family_for_handler", "city_gdp_derivative")) == "economy" and str(family_owner.call("family_for_handler", "product_futures")) == "product" and str(family_owner.call("family_for_handler", "area_trade_contract")) == "route"
+		for handler_variant in active_family_handlers:
+			var handler_id := str(handler_variant)
+			var plan: Dictionary = family_owner.call("plan_effect", {"handler_id": handler_id, "active_entry": {"resolution_id": 4000, "player_index": 0, "slot_index": 0}, "skill": {"name": "layout-owner-fixture", "kind": handler_id}})
+			var result: Dictionary = family_owner.call("finalize_effect", plan, {"handler_id": handler_id, "dispatched": true, "resolved": true, "reason": "fixture"})
+			family_owner_fixture_checked = family_owner_fixture_checked and bool(plan.get("ready", false)) and bool(plan.get("supported", false)) and bool(result.get("dispatched", false)) and bool(result.get("resolved", false))
+		for handler_variant in retired_family_handlers:
+			var handler_id := str(handler_variant)
+			var retired_plan: Dictionary = family_owner.call("plan_effect", {"handler_id": handler_id, "active_entry": {"resolution_id": 4001, "player_index": 0}, "skill": {"name": "retired-layout-fixture", "kind": handler_id}})
+			family_owner_fixture_checked = family_owner_fixture_checked and str(retired_plan.get("reason", "")) == "handler_not_owned" and not bool(family_owner.call("supports_handler", handler_id))
+		family_owner_fixture_checked = family_owner_fixture_checked and bool(family_debug.get("effect_family_dispatch_authority", false)) and not bool(family_debug.get("concrete_world_mutation_authority", true)) and not bool(family_debug.get("execution_lifecycle_authority", true)) and not bool(family_debug.get("queue_authority", true))
+		family_owner_fixture_checked = family_owner_fixture_checked and not bool(family_bridge_debug.get("owns_rules", true)) and not bool(family_bridge_debug.get("owns_execution_lifecycle", true)) and not bool(family_bridge_debug.get("owns_queue", true))
+		family_owner_fixture_checked = family_owner_fixture_checked and bool(execution_debug.get("execution_orchestration_authority", false)) and not bool(execution_debug.get("concrete_effect_authority", true)) and not execution_owner.has_method("supports_handler") and not execution_owner.has_method("family_for_handler")
+		family_owner_fixture_checked = family_owner_fixture_checked and not _variant_contains_callable(family_debug) and not _variant_contains_object(family_debug) and not _variant_contains_callable(family_bridge_debug) and not _variant_contains_object(family_bridge_debug)
+	_expect(family_owner_fixture_checked, "CardEconomyProductRouteEffectRuntimeService and its focused owner fixture own the active seven-handler dispatch boundary")
+	if family_owner != null:
+		family_owner.free()
+	if family_bridge != null:
+		family_bridge.free()
+	var formula_packed := load(CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_SCENE) as PackedScene
+	var formula_owner := formula_packed.instantiate() if formula_packed != null else null
+	var expected_formula_ids := [
+		"city_contract_boon", "city_demand_shift_step", "city_product_shift_step", "city_product_upgrade",
+		"city_revenue_route_adjustment", "city_route_flow_boon", "city_gdp_derivative_v04_destruction",
+		"city_gdp_derivative_v04_projected_settlement", "city_gdp_derivative_v04_settlement", "merge_boon_source",
+		"product_contract_boon", "product_futures_duration", "product_futures_v04_settlement",
+		"product_futures_v04_projected_settlement", "warehouse_futures_v04_loss", "product_market_boon",
+		"product_speculation_pressure", "route_base_flow", "route_flow_multiplier", "route_insurance",
+	]
+	var formula_owner_fixture_checked := formula_owner != null and execution_owner != null and load(CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_TEST) is Script
+	if formula_owner_fixture_checked:
+		formula_owner.call("configure", {"ruleset_id": "v0.4"})
+		var formula_debug: Dictionary = formula_owner.call("debug_snapshot")
+		var formula_ownership: Dictionary = formula_owner.call("formula_ownership_snapshot")
+		var delegated_formulas: Dictionary = formula_ownership.get("delegated_formulas", {})
+		var futures_fixture: Dictionary = formula_owner.call("calculate", "product_futures_v04_settlement", {"current_price": 130, "position": {"baseline_price": 100, "direction": "up", "units": 1, "multiplier": 1.0, "locked_margin": 100, "maximum_gain": 500, "maximum_loss": 100}})
+		var contract_fixture: Dictionary = formula_owner.call("calculate", "product_contract_boon", {"entry": {"market_contract_demand": 1, "volatility": 4}, "demand_pressure": 3, "contract_seconds": 60.0, "source": "layout-owner-fixture"})
+		var upgraded_fixture: Dictionary = formula_owner.call("calculate", "city_product_upgrade", {"city": {"products": [{"name": "A", "level": 3}, {"name": "B", "level": 1}], "revenue_bonus": 2}, "level_gain": 2, "revenue_amount": 5})
+		var route_fixture: Dictionary = formula_owner.call("calculate", "route_base_flow", {"source_factor": 1.44, "destination_factor": 1.0, "relation": 0.5})
+		var contract_entry: Dictionary = contract_fixture.get("entry", {})
+		var upgraded_city: Dictionary = upgraded_fixture.get("city", {})
+		var upgraded_products: Array = upgraded_city.get("products", [])
+		formula_owner_fixture_checked = formula_owner.call("supported_formulas") == expected_formula_ids and formula_ownership.get("owned_formulas", []) == expected_formula_ids
+		formula_owner_fixture_checked = formula_owner_fixture_checked and int(futures_fixture.get("gain", -1)) == 300 and int(futures_fixture.get("cash_return", -1)) == 400 and int(contract_entry.get("market_contract_demand", -1)) == 3 and is_equal_approx(float(contract_entry.get("market_contract_seconds", 0.0)), 60.0)
+		formula_owner_fixture_checked = formula_owner_fixture_checked and bool(upgraded_fixture.get("changed", false)) and int(upgraded_fixture.get("product_index", -1)) == 1 and upgraded_products.size() == 2 and int((upgraded_products[1] as Dictionary).get("level", 0)) == 3 and int(upgraded_city.get("revenue_bonus", 0)) == 7 and is_equal_approx(float(route_fixture.get("value", 0.0)), 1.26)
+		formula_owner_fixture_checked = formula_owner_fixture_checked and str(delegated_formulas.get("product_price", "")) == "RuntimeBalanceModel" and str(delegated_formulas.get("city_gdp", "")) == "GdpFormulaRuntimeController"
+		formula_owner_fixture_checked = formula_owner_fixture_checked and bool(formula_debug.get("pure_formula_authority", false)) and not bool(formula_debug.get("effect_dispatch_authority", true)) and not bool(formula_debug.get("world_mutation_authority", true)) and not bool(formula_debug.get("execution_lifecycle_authority", true)) and not execution_owner.has_method("calculate") and not execution_owner.has_method("supports_formula")
+		formula_owner_fixture_checked = formula_owner_fixture_checked and not _variant_contains_callable(formula_debug) and not _variant_contains_object(formula_debug) and not _variant_contains_callable(formula_ownership) and not _variant_contains_object(formula_ownership)
+	_expect(formula_owner_fixture_checked, "CardEconomyProductRouteFormulaRuntimeService and its focused owner fixture cover both active formula clusters")
+	if formula_owner != null:
+		formula_owner.free()
+	if execution_owner != null:
+		execution_owner.free()
 	_expect(bench_source.contains("MAIN_SCENE_PATH") and bench_source.contains("packed.instantiate() as Control") and bench_source.contains("CUTOVER_CASE_COUNT := 52") and contract_source.contains("Observed lifecycle") and contract_source.contains("Sprint 37 cutover result") and replacement_source.contains("Sprint 40"), "Sprint 40 uses real main.tscn and documents the 80-case execution/effect/formula gate")
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
