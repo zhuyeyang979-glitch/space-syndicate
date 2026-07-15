@@ -7,6 +7,7 @@ const CARD_ART_SCRIPT_PATH := "res://scripts/card_art_view.gd"
 const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
 const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
+const CARD_RESOLUTION_QUEUE_SCRIPT := preload("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
 const TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_current_run.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
 const PRODUCT_MARKET_CONTROLLER_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController"
@@ -389,49 +390,14 @@ func _run() -> void:
 	_expect(_verify_monster_lure_replaces_control_window(main), "monster lure cards replace old control-window cards with one-shot anonymous movement guidance")
 	_expect(_verify_anonymous_cash_card(main), "cash-card public events hide the player who played the card")
 	_expect(_verify_anonymous_direct_command(main), "one-shot monster-command events hide the directing player")
-	_mark_smoke_progress("card resolution auction smoke")
-	var queue_results: Dictionary = await _verify_card_resolution_auction_and_guess(main)
-	_expect(bool(queue_results.get("five_second_window", false)), "every card enters a five-second public reveal window")
-	_expect(bool(queue_results.get("simultaneous_overlay_status", false)), "simultaneous-play overlay explains stage, join window, and bid context")
-	_expect(bool(queue_results.get("simultaneous_requirement_visible", false)), "simultaneous-play lobby shows the queued card's public play-requirement snapshot")
-	_expect(bool(queue_results.get("bid_status_waiting_visible", false)), "hand bid controls explain the waiting simultaneous-play state")
-	_expect(bool(queue_results.get("highest_bid_wins", false)), "highest anonymous bid selects the next resolving card")
-	_expect(bool(queue_results.get("auction_overlay_status", false)), "auction overlay explains stage, highest public bid, and bid availability")
-	_expect(bool(queue_results.get("bid_status_auction_visible", false)), "hand bid controls explain when a queued card can still raise its public bid")
-	_expect(bool(queue_results.get("track_badges_auction_visible", false)), "card track marks the current player's queued card and highest public bids during auction")
-	_expect(bool(queue_results.get("track_compact_hover_detail", false)), "card track stays compact while preserving hover detail and double-click card access")
-	_expect(bool(queue_results.get("clockwise_tie", false)), "equal bids fall back to the clockwise-nearest queued player")
-	_expect(bool(queue_results.get("batch_order_locked", false)), "one auction locks the whole batch order without reopening between queued cards")
-	_expect(bool(queue_results.get("active_overlay_status", false)), "public reveal overlay explains that new cards enter the next-batch waiting area")
-	_expect(bool(queue_results.get("active_overlay_badges_visible", false)), "public reveal overlay shows unknown owner, locked tip, and locked queued count")
-	_expect(bool(queue_results.get("active_overlay_requirement_snapshot_visible", false)), "public reveal overlay shows the resolving card's play-requirement snapshot")
-	_expect(bool(queue_results.get("active_overlay_my_badge_visible", false)), "public reveal overlay marks the current player's own displayed anonymous card only in that player's view")
-	_expect(bool(queue_results.get("active_overlay_animation_visible", false)), "public reveal overlay shows the card's current resolution animation script")
-	_expect(bool(queue_results.get("active_overlay_compact_hover_detail", false)), "public reveal overlay uses a compact board-game toast and moves long detail into hover text")
-	_expect(bool(queue_results.get("active_overlay_stage_map_effects", false)), "public reveal overlay drives staged card map effects")
-	_expect(bool(queue_results.get("card_stage_effect_styles_visible", false)), "card map effects use different visual styles for city, product, and monster cards")
-	_expect(bool(queue_results.get("bid_status_locked_visible", false)), "hand bid controls explain when a queued card bid is locked")
-	_expect(bool(queue_results.get("track_badges_locked_visible", false)), "card track marks the active reveal and next locked card")
-	_expect(bool(queue_results.get("track_requirement_badges_visible", false)), "card track keeps public play-requirement badges on anonymous cards")
-	_expect(bool(queue_results.get("track_visual_cues_visible", false)), "card track preserves animation style and map-cue labels for inference")
-	_expect(bool(queue_results.get("card_aftermath_clues_visible", false)), "resolved cards leave aftermath clues on map, callout, and history track")
-	_expect(bool(queue_results.get("economy_overview_card_aftermath_visible", false)), "economy overview summarizes recent anonymous card aftermath clues")
-	_expect(bool(queue_results.get("tip_payment_clues_visible", false)), "card track and economy overview expose anonymous tip-payment clues without revealing owners")
-	_expect(bool(queue_results.get("locked_bids_pay_in_sequence", false)), "each queued card pays its locked bid to the previous card owner when its turn begins")
-	_expect(bool(queue_results.get("one_shot_leaves_hand_on_queue", false)), "one-shot cards leave the hand as soon as they enter the anonymous card track")
-	_expect(bool(queue_results.get("accepts_mid_batch_cards", false)), "a locked resolution batch accepts new cards into a separate next-batch waiting area")
-	_expect(bool(queue_results.get("next_batch_track_visible", false)), "the top track shows cards waiting behind the locked batch")
-	_expect(bool(queue_results.get("next_batch_single_auction", false)), "all cards submitted during a locked batch enter one auction after that batch clears")
-	_expect(bool(queue_results.get("cross_batch_tip_payment", false)), "the first tipped card in a promoted batch pays the previous resolved card owner")
-	_expect(bool(queue_results.get("track_records_history", false)), "top card track preserves anonymous resolved-card history")
-	_expect(bool(queue_results.get("track_supports_horizontal_drag_scroll", false)), "top card track supports horizontal drag/wheel scrolling")
-	_expect(bool(queue_results.get("correct_guess", false)), "correct card-owner guess transfers money and adds a public owner tag")
-	_expect(bool(queue_results.get("correct_guess_badge_visible", false)), "correct card-owner guess shows a public owner badge on the card track")
-	_expect(bool(queue_results.get("inference_board_public_card_owner_visible", false)), "economy overview inference board summarizes publicly revealed card owners")
-	_expect(bool(queue_results.get("inference_board_card_requirement_visible", false)), "economy overview inference board summarizes anonymous card play requirements without scanning rival economies")
-	_expect(bool(queue_results.get("wrong_guess", false)), "wrong card-owner guess pays the real owner without revealing them")
-	_expect(bool(queue_results.get("wrong_guess_status_visible", false)), "wrong card-owner guess leaves a private guessed status without revealing the owner")
-	_expect(bool(queue_results.get("public_logs_anonymous", false)), "auction public logs show bids without naming bidders or recipients")
+	_mark_smoke_progress("v0.6 card resolution owner smoke")
+	var queue_results := _verify_card_resolution_v06_owner_contracts(main)
+	_expect(bool(queue_results.get("cadence", false)), "card windows use the v0.6 opening and standard planning/public/lock cadence")
+	_expect(bool(queue_results.get("submission_limits", false)), "ordinary card groups allow one submission and reject new cards after planning")
+	_expect(bool(queue_results.get("rotating_order", false)), "locked card groups resolve by rotating seat priority rather than retired cash bids")
+	_expect(bool(queue_results.get("public_snapshot_safe", false)), "public card queue snapshots stay anonymous and contain no private bid metadata")
+	_expect(bool(queue_results.get("lifecycle", false)), "the queue locks, starts, and completes one unique resolution without mutating Main state")
+	_expect(bool(queue_results.get("owner_boundary", false)), "the queue owns no cash, inventory, or priority-bid authority")
 	_expect(_verify_monster_takeover_resets_owner_clues(main), "monster takeover revokes old bound skills and resets cash clues to the new owner")
 	_expect(_economy_ledgers_respect_active_view(main), "economy overview keeps other players' detailed ledgers private")
 	players = _as_array(main.get("players"))
@@ -7646,462 +7612,105 @@ func _clear_player_cooldown(main: Node, player_index: int) -> void:
 	main.set("players", players)
 
 
-func _verify_card_resolution_auction_and_guess(main: Node) -> Dictionary:
+func _verify_card_resolution_v06_owner_contracts(main: Node) -> Dictionary:
 	var result := {
-		"five_second_window": false,
-		"simultaneous_overlay_status": false,
-		"simultaneous_requirement_visible": false,
-		"bid_status_waiting_visible": false,
-		"highest_bid_wins": false,
-		"auction_overlay_status": false,
-		"bid_status_auction_visible": false,
-		"track_badges_auction_visible": false,
-		"track_compact_hover_detail": false,
-		"clockwise_tie": false,
-		"batch_order_locked": false,
-		"active_overlay_status": false,
-		"active_overlay_badges_visible": false,
-		"active_overlay_requirement_snapshot_visible": false,
-		"active_overlay_my_badge_visible": false,
-		"active_overlay_animation_visible": false,
-		"active_overlay_compact_hover_detail": false,
-		"active_overlay_stage_map_effects": false,
-		"card_stage_effect_styles_visible": false,
-		"bid_status_locked_visible": false,
-		"track_badges_locked_visible": false,
-		"track_requirement_badges_visible": false,
-		"track_visual_cues_visible": false,
-		"card_aftermath_clues_visible": false,
-		"economy_overview_card_aftermath_visible": false,
-		"tip_payment_clues_visible": false,
-		"locked_bids_pay_in_sequence": false,
-		"one_shot_leaves_hand_on_queue": false,
-		"accepts_mid_batch_cards": false,
-		"next_batch_track_visible": false,
-		"next_batch_single_auction": false,
-		"cross_batch_tip_payment": false,
-		"track_records_history": false,
-		"track_supports_horizontal_drag_scroll": false,
-		"correct_guess": false,
-		"correct_guess_badge_visible": false,
-		"inference_board_public_card_owner_visible": false,
-		"inference_board_card_requirement_visible": false,
-		"wrong_guess": false,
-		"wrong_guess_status_visible": false,
-		"public_logs_anonymous": false,
+		"cadence": false,
+		"submission_limits": false,
+		"rotating_order": false,
+		"public_snapshot_safe": false,
+		"lifecycle": false,
+		"owner_boundary": false,
 	}
-	var saved_players: Array = _as_array(main.get("players")).duplicate(true)
-	var saved_districts: Array = _as_array(main.get("districts")).duplicate(true)
-	var saved_movement_trails: Array = _as_array(main.get("movement_trails")).duplicate(true)
-	var saved_action_callouts: Array = _as_array(main.get("action_callouts")).duplicate(true)
-	var saved_map_effects: Array = _as_array(main.get("map_event_effects")).duplicate(true)
-	var saved_queue: Array = _as_array(main.get("card_resolution_queue")).duplicate(true)
-	var saved_next_queue: Array = _as_array(main.get("next_card_resolution_queue")).duplicate(true)
-	var saved_active: Dictionary = (main.get("active_card_resolution") as Dictionary).duplicate(true)
-	var saved_history: Array = _as_array(main.get("resolved_card_history")).duplicate(true)
-	var saved_logs: Array = _as_array(main.get("log_lines")).duplicate(true)
-	var saved_timer: float = float(main.get("card_resolution_timer"))
-	var saved_simultaneous_timer: float = float(main.get("card_resolution_simultaneous_timer"))
-	var saved_auction_timer: float = float(main.get("card_resolution_auction_timer"))
-	var saved_force_duration: float = float(main.get("card_resolution_force_duration"))
-	var saved_force_simultaneous: float = float(main.get("card_resolution_force_simultaneous_window"))
-	var saved_auction_open: bool = bool(main.get("card_resolution_auction_open"))
-	var saved_batch_locked: bool = bool(main.get("card_resolution_batch_locked"))
-	var saved_batch_reference: int = int(main.get("card_resolution_batch_reference_player"))
-	var saved_sequence: int = int(main.get("card_resolution_sequence"))
-	var saved_last_player: int = int(main.get("last_card_resolution_player_index"))
-	var saved_visual_id: int = int(main.get("card_resolution_visual_id"))
-	var saved_visual_stage: int = int(main.get("card_resolution_visual_stage"))
-	var saved_selected_player: int = int(main.get("selected_player"))
-	var saved_selected_district: int = int(main.get("selected_district"))
-	var saved_track_id: int = int(main.get("selected_card_resolution_id"))
-
-	var test_players: Array = saved_players.duplicate(true)
-	if test_players.size() < 4:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	if coordinator == null or not coordinator.has_method("card_group_runtime_rules"):
 		return result
-	for i in range(4):
-		var player: Dictionary = test_players[i]
-		player["cash"] = 5000
-		player["action_cooldown"] = 0.0
-		player["queued_card_tip"] = 0
-		test_players[i] = player
-	main.set("players", test_players)
-	main.set("movement_trails", [])
-	main.set("action_callouts", [])
-	main.set("map_event_effects", [])
-	main.set("card_resolution_queue", [])
-	main.set("next_card_resolution_queue", [])
-	main.set("active_card_resolution", {})
-	main.set("resolved_card_history", [])
-	main.set("card_resolution_timer", 0.0)
-	main.set("card_resolution_simultaneous_timer", 0.0)
-	main.set("card_resolution_auction_timer", 0.0)
-	main.set("card_resolution_force_duration", 5.0)
-	main.set("card_resolution_force_simultaneous_window", 0.5)
-	main.set("card_resolution_auction_open", false)
-	main.set("card_resolution_batch_locked", false)
-	main.set("card_resolution_batch_reference_player", -1)
-	main.set("card_resolution_sequence", 0)
-	main.set("last_card_resolution_player_index", -1)
-	main.set("card_resolution_visual_id", -1)
-	main.set("card_resolution_visual_stage", -1)
-	for i in range(4):
-		_set_player_skill(main, i, 20 + i, "舆论操控1")
-
-	main.set("selected_player", 0)
-	var first_queued: bool = bool(main.call("_queue_skill_resolution", 0, 20, -1))
-	var players_after_first_queue: Array = _as_array(main.get("players"))
-	var first_queue_slots: Array = _as_array((players_after_first_queue[0] as Dictionary).get("slots", []))
-	result["one_shot_leaves_hand_on_queue"] = first_queue_slots.size() > 20 and first_queue_slots[20] == null
-	var first_active: Dictionary = main.get("active_card_resolution") as Dictionary
-	var simultaneous_window_started: bool = first_queued \
-		and first_active.is_empty() \
-		and is_equal_approx(float(main.get("card_resolution_simultaneous_timer")), 0.5) \
-		and not bool(main.get("card_resolution_auction_open"))
-	var status_label := main.get("card_resolution_status_label") as Label
-	var simultaneous_status := String(status_label.text) if status_label != null else ""
-	result["simultaneous_overlay_status"] = simultaneous_window_started \
-		and simultaneous_status.contains("阶段：同时判定") \
-		and simultaneous_status.contains("新牌：短窗内可加入") \
-		and simultaneous_status.contains("可加价：预设")
-	var overlay_body_label := main.get("card_resolution_body_label") as Label
-	var simultaneous_body := String(overlay_body_label.text) if overlay_body_label != null else ""
-	result["simultaneous_requirement_visible"] = simultaneous_window_started \
-		and simultaneous_body.contains("条件：无")
-	main.call("_refresh_ui")
-	var player_box := main.get("player_box") as VBoxContainer
-	result["bid_status_waiting_visible"] = simultaneous_window_started \
-		and (
-			(player_box != null \
-				and _container_label_text_contains(player_box, "报价状态：候补牌待竞价") \
-				and _container_label_text_contains(player_box, "等待同时判定短窗")) \
-			or (_runtime_split_table_text_or_tooltip_contains(main, "报价状态：候补牌待竞价") \
-				and _runtime_split_table_text_or_tooltip_contains(main, "等待同时判定短窗"))
-		)
-	var auction_log_start: int = _as_array(main.get("log_lines")).size()
-	var bids := [100, 200, 200]
-	for i in range(1, 4):
-		main.set("selected_player", i)
-		main.call("_set_selected_card_priority_bid", int(bids[i - 1]))
-		main.call("_queue_skill_resolution", i, 20 + i, -1)
-	var auction_status := String(status_label.text) if status_label != null else ""
-	result["five_second_window"] = simultaneous_window_started \
-		and (main.get("active_card_resolution") as Dictionary).is_empty() \
-		and bool(main.get("card_resolution_auction_open")) \
-		and is_equal_approx(float(main.get("card_resolution_auction_timer")), 5.0)
-	result["auction_overlay_status"] = bool(result["five_second_window"]) \
-		and auction_status.contains("阶段：竞价") \
-		and auction_status.contains("最高¥200") \
-		and auction_status.contains("可加价")
-	main.call("_refresh_ui")
-	player_box = main.get("player_box") as VBoxContainer
-	result["bid_status_auction_visible"] = bool(result["five_second_window"]) \
-		and (
-			(player_box != null \
-				and _container_label_text_contains(player_box, "报价状态：候补牌参拍中") \
-				and _container_label_text_contains(player_box, "可继续加价")) \
-			or (_runtime_split_table_text_or_tooltip_contains(main, "报价状态：候补牌参拍中") \
-				and _runtime_split_table_text_or_tooltip_contains(main, "可继续加价"))
-		)
-	var auction_track := _public_track_row(main)
-	var auction_track_scroll := _public_track_scroll(main)
-	result["track_badges_auction_visible"] = bool(result["five_second_window"]) \
-		and auction_track != null \
-		and _public_track_text_contains(main, "竞拍1") \
-		and _public_track_text_contains(main, "¥200") \
-		and _public_track_tooltip_contains(main, "舆论操控") \
-		and not _public_track_text_contains(main, "公开归属标签｜玩家")
-	result["track_compact_hover_detail"] = bool(result["five_second_window"]) \
-		and auction_track_scroll != null \
-		and auction_track_scroll.custom_minimum_size.y <= 64.0 \
-		and _public_track_tooltip_contains(main, "单击竞猜归属") \
-		and _public_track_tooltip_contains(main, "双击打开卡牌图鉴")
-
-	main.call("_update_card_resolution_queue", 5.1)
-	var active_after_auction: Dictionary = main.get("active_card_resolution") as Dictionary
-	var locked_queue: Array = _as_array(main.get("card_resolution_queue"))
-	var active_status := String(status_label.text) if status_label != null else ""
-	result["highest_bid_wins"] = int(active_after_auction.get("player_index", -1)) == 2
-	result["active_overlay_status"] = not active_after_auction.is_empty() \
-		and active_status.contains("阶段：公开展示") \
-		and active_status.contains("锁定候补") \
-		and active_status.contains("可加价：否") \
-		and active_status.contains("新牌：进入下一批等待")
-	var overlay := main.get("card_resolution_overlay") as Control
-	result["active_overlay_badges_visible"] = not active_after_auction.is_empty() \
-		and overlay != null \
-		and _container_label_text_contains(overlay, "归属待猜") \
-		and _container_label_text_contains(overlay, "小费") \
-		and not _container_label_text_contains(overlay, "公开归属标签｜玩家")
-	result["active_overlay_requirement_snapshot_visible"] = not active_after_auction.is_empty() \
-		and overlay != null \
-		and (_container_label_text_contains(overlay, "出牌条件｜") or _container_label_text_contains(overlay, "条件：无"))
-	result["active_overlay_animation_visible"] = not active_after_auction.is_empty() \
-		and overlay != null \
-		and _container_label_text_contains(overlay, "效果：")
-	var active_overlay_art := main.get("card_resolution_art") as Control
-	var active_overlay_body_label := main.get("card_resolution_body_label") as Label
-	var active_overlay_body_text := String(active_overlay_body_label.text) if active_overlay_body_label != null else ""
-	result["active_overlay_compact_hover_detail"] = not active_after_auction.is_empty() \
-		and active_overlay_art != null \
-		and active_overlay_art.custom_minimum_size.y <= 52.0 \
-		and active_overlay_body_text.split("\n").size() <= 2 \
-		and active_overlay_body_label != null \
-		and String(active_overlay_body_label.tooltip_text).contains("更完整的卡面")
-	if not active_after_auction.is_empty():
-		main.call("_show_card_resolution_overlay", active_after_auction, 2.4)
-		main.call("_show_card_resolution_overlay", active_after_auction, 0.4)
-	result["active_overlay_stage_map_effects"] = not active_after_auction.is_empty() \
-		and _map_effects_contain(main, "card_open") \
-		and _map_effects_contain(main, "card_resolve") \
-		and _map_effects_contain(main, "card_afterglow") \
-		and _as_array(main.get("movement_trails")).size() >= 1
-	main.set("map_event_effects", [])
-	var style_entry := {"selected_district": int(main.get("selected_district")), "target_slot": -1}
-	var city_style_skill := main.call("_make_skill", "城市融资1") as Dictionary
-	var product_style_skill := main.call("_make_skill", "价格套利1") as Dictionary
-	var monster_style_name := String(main.call("_monster_card_name", 0, 1))
-	var monster_style_skill := main.call("_make_skill", monster_style_name) as Dictionary
-	main.call("_emit_card_resolution_stage_visual", style_entry, city_style_skill, 1)
-	main.call("_emit_card_resolution_stage_visual", style_entry, product_style_skill, 1)
-	main.call("_emit_card_resolution_stage_visual", style_entry, monster_style_skill, 0)
-	result["card_stage_effect_styles_visible"] = _map_effects_contain_style(main, "card_resolve", "city") \
-		and _map_effects_contain_style(main, "card_resolve", "product") \
-		and _map_effects_contain_style(main, "card_open", "summon")
-	var owner_for_overlay := int(active_after_auction.get("player_index", -1))
-	if owner_for_overlay >= 0:
-		main.set("selected_player", owner_for_overlay)
-		main.call("_show_card_resolution_overlay", active_after_auction, float(main.get("card_resolution_timer")))
-		result["active_overlay_my_badge_visible"] = overlay != null \
-			and _container_label_text_contains(overlay, "我的展示牌")
-	main.set("selected_player", 3)
-	main.call("_show_card_resolution_overlay", active_after_auction, float(main.get("card_resolution_timer")))
-	main.call("_refresh_ui")
-	player_box = main.get("player_box") as VBoxContainer
-	result["bid_status_locked_visible"] = not active_after_auction.is_empty() \
-		and (
-			(player_box != null \
-				and _container_label_text_contains(player_box, "报价状态：候补牌已锁定") \
-				and _container_label_text_contains(player_box, "不能加价：批次已封盘/展示中")) \
-			or (_runtime_split_table_text_or_tooltip_contains(main, "报价状态：候补牌已锁定") \
-				and _runtime_split_table_text_or_tooltip_contains(main, "不能加价：批次已封盘/展示中"))
-		)
-	var locked_track := _public_track_row(main)
-	result["track_badges_locked_visible"] = not active_after_auction.is_empty() \
-		and locked_track != null \
-		and _public_track_text_contains(main, "当前展示") \
-		and _public_track_text_contains(main, "锁定1")
-	result["track_requirement_badges_visible"] = not active_after_auction.is_empty() \
-		and locked_track != null \
-		and _public_track_tooltip_contains(main, "条件：无")
-	result["track_visual_cues_visible"] = not active_after_auction.is_empty() \
-		and locked_track != null \
-		and _public_track_tooltip_contains(main, "舆论操控")
-	result["clockwise_tie"] = locked_queue.size() >= 1 and int((locked_queue[0] as Dictionary).get("player_index", -1)) == 3
-	result["batch_order_locked"] = bool(main.get("card_resolution_batch_locked")) \
-		and not bool(main.get("card_resolution_auction_open")) \
-		and locked_queue.size() == 3 \
-		and int((locked_queue[0] as Dictionary).get("tip", -1)) == 200 \
-		and int((locked_queue[1] as Dictionary).get("tip", -1)) == 100 \
-		and int((locked_queue[2] as Dictionary).get("tip", -1)) == 0
-
-	main.set("selected_player", 3)
-	var locked_bid_before: int = int((locked_queue[0] as Dictionary).get("tip", -1))
-	main.call("_set_selected_card_priority_bid", 500)
-	var locked_queue_after_bid: Array = _as_array(main.get("card_resolution_queue"))
-	result["batch_order_locked"] = bool(result["batch_order_locked"]) \
-		and int((locked_queue_after_bid[0] as Dictionary).get("tip", -1)) == locked_bid_before
-	_set_player_skill(main, 0, 30, "舆论操控1")
-	_set_player_skill(main, 1, 30, "舆论操控1")
-	var first_accepted_during_batch: bool = bool(main.call("_queue_skill_resolution", 0, 30, -1))
-	var second_accepted_during_batch: bool = bool(main.call("_queue_skill_resolution", 1, 30, -1))
-	var waiting_next_batch: Array = _as_array(main.get("next_card_resolution_queue"))
-	result["accepts_mid_batch_cards"] = first_accepted_during_batch \
-		and second_accepted_during_batch \
-		and _as_array(main.get("card_resolution_queue")).size() == 3 \
-		and waiting_next_batch.size() == 2 \
-		and not bool(main.get("card_resolution_auction_open"))
-	main.call("_refresh_ui")
-	var waiting_track := _public_track_row(main)
-	result["next_batch_track_visible"] = waiting_track != null \
-		and _public_track_text_contains(main, "下批等待1")
-
-	main.call("_update_card_resolution_queue", 5.1)
-	main.call("_update_card_resolution_queue", 5.1)
-	main.call("_update_card_resolution_queue", 5.1)
-	main.call("_update_card_resolution_queue", 5.1)
-	var cash_after_batch: Array = _as_array(main.get("players"))
-	result["locked_bids_pay_in_sequence"] = int((cash_after_batch[0] as Dictionary).get("cash", 0)) == 5000 \
-		and int((cash_after_batch[1] as Dictionary).get("cash", 0)) == 4900 \
-		and int((cash_after_batch[2] as Dictionary).get("cash", 0)) == 5200 \
-		and int((cash_after_batch[3] as Dictionary).get("cash", 0)) == 4900
-	var promoted_queue: Array = _as_array(main.get("card_resolution_queue"))
-	result["next_batch_single_auction"] = (main.get("active_card_resolution") as Dictionary).is_empty() \
-		and waiting_next_batch.size() == 2 \
-		and _as_array(main.get("next_card_resolution_queue")).is_empty() \
-		and promoted_queue.size() == 2 \
-		and bool(main.get("card_resolution_auction_open")) \
-		and is_equal_approx(float(main.get("card_resolution_auction_timer")), 5.0) \
-		and int(main.get("card_resolution_batch_reference_player")) == 0 \
-		and int(main.get("last_card_resolution_player_index")) == 0
-	main.set("selected_player", 1)
-	main.call("_set_selected_card_priority_bid", 100)
-	main.call("_update_card_resolution_queue", 5.1)
-	var cross_batch_active := main.get("active_card_resolution") as Dictionary
-	var cross_batch_players := _as_array(main.get("players"))
-	result["cross_batch_tip_payment"] = int(cross_batch_active.get("player_index", -1)) == 1 \
-		and bool(cross_batch_active.get("tip_paid", false)) \
-		and int(cross_batch_active.get("tip_paid_amount", 0)) == 100 \
-		and int((cross_batch_players[0] as Dictionary).get("cash", 0)) == 5100 \
-		and int((cross_batch_players[1] as Dictionary).get("cash", 0)) == 4800
-
-	var history: Array = _as_array(main.get("resolved_card_history"))
-	main.call("_refresh_ui")
-	var track := _public_track_row(main)
-	result["track_records_history"] = history.size() == 4 and track != null and _public_track_child_count(main) >= 5
-	result["card_aftermath_clues_visible"] = history.size() >= 1 \
-		and String((history[0] as Dictionary).get("aftermath_clue", "")) != "" \
-		and track != null \
-		and _callouts_contain(_as_array(main.get("action_callouts")), "卡牌余波") \
-		and _map_effects_contain_min_duration(main, "card_afterglow", 7.5)
-	var economy_aftermath_text := String((main.call("_economy_dashboard_public_snapshot") as Dictionary).get("summary_text", ""))
-	var first_aftermath_clue := String((history[0] as Dictionary).get("aftermath_clue", "")) if history.size() >= 1 else ""
-	result["economy_overview_card_aftermath_visible"] = bool(result["card_aftermath_clues_visible"]) \
-		and economy_aftermath_text.contains("最近卡牌余波") \
-		and economy_aftermath_text.contains("线索:") \
-		and economy_aftermath_text.contains(first_aftermath_clue) \
-		and economy_aftermath_text.contains("归属待猜")
-	var second_tip_clue := String(main.call("_card_resolution_tip_clue_text", history[1] as Dictionary)) if history.size() >= 2 else ""
-	result["tip_payment_clues_visible"] = history.size() >= 2 \
-		and second_tip_clue.contains("已私密支付") \
-		and second_tip_clue.contains("轨道#") \
-		and second_tip_clue.contains("身份待猜") \
-		and track != null \
-		and economy_aftermath_text.contains("竞价:") \
-		and economy_aftermath_text.contains("已私密支付") \
-		and economy_aftermath_text.contains("身份待猜")
-	var track_scroll := _public_track_scroll(main)
-	if not history.is_empty():
-		var overflow_history := history.duplicate(true)
-		for i in range(10):
-			var overflow_entry: Dictionary = (history[i % history.size()] as Dictionary).duplicate(true)
-			overflow_entry["resolution_id"] = 900000 + i
-			overflow_entry["queued_order"] = 900000 + i
-			overflow_history.append(overflow_entry)
-		main.set("resolved_card_history", overflow_history)
-		main.call("_refresh_ui")
-		await process_frame
-		track_scroll = _public_track_scroll(main)
-	_set_public_track_scroll(main, 0)
-	var max_track_scroll: int = _public_track_max_scroll(main)
-	var scrolled_track_position: int = _scroll_public_track_by(main, 160)
-	result["track_supports_horizontal_drag_scroll"] = bool(result["track_records_history"]) \
-		and track_scroll != null \
-		and max_track_scroll > 0 \
-		and scrolled_track_position > 0 \
-		and int(track_scroll.scroll_horizontal) == scrolled_track_position
-	main.set("resolved_card_history", history)
-	main.call("_refresh_ui")
-	if history.size() >= 2:
-		var first_history: Dictionary = history[0]
-		var second_history: Dictionary = history[1]
-		var first_id: int = int(first_history.get("resolution_id", -1))
-		var second_id: int = int(second_history.get("resolution_id", -1))
-		main.set("selected_player", 1)
-		var owner_cash_before: int = int((_as_array(main.get("players"))[2] as Dictionary).get("cash", 0))
-		var guesser_cash_before: int = int((_as_array(main.get("players"))[1] as Dictionary).get("cash", 0))
-		main.call("_guess_card_resolution_owner", first_id, 2)
-		var after_correct_players: Array = _as_array(main.get("players"))
-		var revealed_first: Dictionary = main.call("_card_resolution_entry_by_id", first_id) as Dictionary
-		result["correct_guess"] = bool(revealed_first.get("public_owner_revealed", false)) \
-			and String(revealed_first.get("public_owner_label", "")).contains("玩家3") \
-			and int((after_correct_players[2] as Dictionary).get("cash", 0)) == owner_cash_before - 100 \
-			and int((after_correct_players[1] as Dictionary).get("cash", 0)) == guesser_cash_before + 100
-		main.set("selected_card_resolution_id", first_id)
-		main.call("_refresh_ui")
-		track = _public_track_row(main)
-		result["correct_guess_badge_visible"] = track != null \
-			and _public_track_text_contains(main, "玩家3")
-		var inference_after_correct := String((main.call("_economy_dashboard_public_snapshot") as Dictionary).get("summary_text", ""))
-		result["inference_board_public_card_owner_visible"] = bool(result["correct_guess"]) \
-			and inference_after_correct.contains("当前玩家推理板") \
-			and inference_after_correct.contains("公开卡牌归属｜玩家3×1") \
-			and inference_after_correct.contains("只统计已经贴公开归属标签")
-		var requirement_history := _as_array(main.get("resolved_card_history")).duplicate(true)
-		var requirement_entry: Dictionary = first_history.duplicate(true)
-		var requirement_skill := main.call("_make_skill", "夺取怪兽1") as Dictionary
-		requirement_entry["skill"] = requirement_skill
-		requirement_entry["public_owner_revealed"] = false
-		requirement_entry["play_requirement_scope"] = "own_best_region"
-		requirement_entry["play_requirement_gdp_share_percent"] = 10
-		requirement_entry["play_cash_cost"] = 0
-		requirement_history.append(requirement_entry)
-		main.set("resolved_card_history", requirement_history)
-		var inference_with_requirement := String((main.call("_economy_dashboard_public_snapshot") as Dictionary).get("summary_text", ""))
-		result["inference_board_card_requirement_visible"] = inference_with_requirement.contains("卡牌条件反推") \
-			and inference_with_requirement.contains("任一经营区GDP≥10%") \
-			and (inference_with_requirement.contains("我方可满足") or inference_with_requirement.contains("我方不足")) \
-			and inference_with_requirement.contains("归属待猜") \
-			and inference_with_requirement.contains("只对照我方")
-		main.set("resolved_card_history", history)
-		var wrong_guesser_before: int = int((after_correct_players[1] as Dictionary).get("cash", 0))
-		var wrong_owner_before: int = int((after_correct_players[3] as Dictionary).get("cash", 0))
-		main.call("_guess_card_resolution_owner", second_id, 0)
-		var after_wrong_players: Array = _as_array(main.get("players"))
-		var unrevealed_second: Dictionary = main.call("_card_resolution_entry_by_id", second_id) as Dictionary
-		result["wrong_guess"] = not bool(unrevealed_second.get("public_owner_revealed", false)) \
-			and (_as_array(unrevealed_second.get("guessers", []))).has(1) \
-			and int((after_wrong_players[1] as Dictionary).get("cash", 0)) == wrong_guesser_before - 100 \
-			and int((after_wrong_players[3] as Dictionary).get("cash", 0)) == wrong_owner_before + 100
-		main.set("selected_card_resolution_id", second_id)
-		main.call("_refresh_ui")
-		track = _public_track_row(main)
-		player_box = main.get("player_box") as VBoxContainer
-		result["wrong_guess_status_visible"] = (player_box != null \
-			and _container_label_text_contains(player_box, "已竞猜") \
-			or _public_track_text_contains(main, "已竞猜") \
-			or _public_track_tooltip_contains(main, "已竞猜")) \
-			and not _public_track_text_contains(main, "公开归属标签｜玩家4")
-
-	var public_lines: Array = _as_array(main.get("log_lines"))
-	var public_text := ""
-	for i in range(auction_log_start, public_lines.size()):
-		public_text += String(public_lines[i]) + "\n"
-	result["public_logs_anonymous"] = public_text.contains("公开报价") \
-		and not public_text.contains("玩家2将") \
-		and not public_text.contains("玩家3将") \
-		and not public_text.contains("玩家4将")
-
-	main.set("players", saved_players)
-	main.set("districts", saved_districts)
-	main.set("movement_trails", saved_movement_trails)
-	main.set("action_callouts", saved_action_callouts)
-	main.set("map_event_effects", saved_map_effects)
-	main.set("card_resolution_queue", saved_queue)
-	main.set("next_card_resolution_queue", saved_next_queue)
-	main.set("active_card_resolution", saved_active)
-	main.set("resolved_card_history", saved_history)
-	main.set("log_lines", saved_logs)
-	main.set("card_resolution_timer", saved_timer)
-	main.set("card_resolution_simultaneous_timer", saved_simultaneous_timer)
-	main.set("card_resolution_auction_timer", saved_auction_timer)
-	main.set("card_resolution_force_duration", saved_force_duration)
-	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
-	main.set("card_resolution_auction_open", saved_auction_open)
-	main.set("card_resolution_batch_locked", saved_batch_locked)
-	main.set("card_resolution_batch_reference_player", saved_batch_reference)
-	main.set("card_resolution_sequence", saved_sequence)
-	main.set("last_card_resolution_player_index", saved_last_player)
-	main.set("card_resolution_visual_id", saved_visual_id)
-	main.set("card_resolution_visual_stage", saved_visual_stage)
-	main.set("selected_player", saved_selected_player)
-	main.set("selected_district", saved_selected_district)
-	main.set("selected_card_resolution_id", saved_track_id)
-	if saved_active.is_empty():
-		main.call("_hide_card_resolution_overlay")
-	else:
-		main.call("_show_card_resolution_overlay", saved_active, saved_timer)
-	main.call("_refresh_ui")
+	var rules: Dictionary = coordinator.call("card_group_runtime_rules")
+	result["cadence"] = int(rules.get("group_seconds", 0)) == 30 \
+		and int(rules.get("planning_seconds", 0)) == 20 \
+		and int(rules.get("public_bid_seconds", 0)) == 5 \
+		and int(rules.get("lock_seconds", 0)) == 5 \
+		and int(rules.get("opening_extended_windows", 0)) == 3 \
+		and int(rules.get("opening_group_seconds", 0)) == 45 \
+		and int(rules.get("opening_planning_seconds", 0)) == 35
+	var queue := CARD_RESOLUTION_QUEUE_SCRIPT.new()
+	root.add_child(queue)
+	queue.configure({"ruleset_id": "v0.6", "card_group": rules})
+	var planning_facts := {
+		"player_count": EXPECTED_PLAYER_COUNT,
+		"batch_locked": false,
+		"counter_window_active": false,
+		"simultaneous_timer": 45.0,
+		"lock_duration": 5.0,
+		"public_bid_duration": 5.0,
+		"window_sequence": 0,
+		"reference_player": 0,
+	}
+	var committed_all := true
+	for player_index in range(3):
+		var request := {
+			"player_index": player_index,
+			"slot_index": player_index,
+			"already_queued": false,
+			"play_cash_cost_cents": 0,
+			"financial_margin_cents": 0,
+			"available_cash_cents": 100000,
+			"skill": {"name": "smoke.card.%d" % player_index, "kind": "qa", "persistent": true},
+		}
+		var plan: Dictionary = queue.plan_submission(request, planning_facts)
+		var committed: Dictionary = queue.commit_submission(plan, {
+			"authorized": true,
+			"inventory_committed": true,
+			"play_cost_authorized": true,
+			"financial_margin_authorized": true,
+			"asset_authorized": true,
+		}) if bool(plan.get("accepted", false)) else {}
+		committed_all = committed_all and bool(committed.get("committed", false))
+	var duplicate_request := {
+		"player_index": 0,
+		"slot_index": 99,
+		"already_queued": false,
+		"play_cash_cost_cents": 0,
+		"financial_margin_cents": 0,
+		"available_cash_cents": 100000,
+		"skill": {"name": "smoke.duplicate", "kind": "qa", "persistent": true},
+	}
+	var duplicate_plan: Dictionary = queue.plan_submission(duplicate_request, planning_facts)
+	var public_phase_facts := planning_facts.duplicate(true)
+	public_phase_facts["simultaneous_timer"] = 10.0
+	var public_phase_request := duplicate_request.duplicate(true)
+	public_phase_request["player_index"] = 3
+	var public_phase_plan: Dictionary = queue.plan_submission(public_phase_request, public_phase_facts)
+	result["submission_limits"] = committed_all \
+		and str(duplicate_plan.get("reason", "")) == "group_full" \
+		and str(public_phase_plan.get("reason", "")) == "public_bid_phase"
+	var current: Array = queue.current_queue()
+	var player_order: Array = []
+	for entry_variant in current:
+		if entry_variant is Dictionary:
+			player_order.append(int((entry_variant as Dictionary).get("player_index", -1)))
+	result["rotating_order"] = player_order == [1, 2, 0]
+	var public_snapshot: Dictionary = queue.public_snapshot()
+	var public_text := JSON.stringify(public_snapshot)
+	result["public_snapshot_safe"] = int(public_snapshot.get("current_count", 0)) == 3 \
+		and not public_text.contains("player_index") \
+		and not public_text.contains("priority_bid") \
+		and not public_text.contains("bid_budget") \
+		and not public_text.contains("cash")
+	var locked: Dictionary = queue.lock_batch({"reference_player": 0, "player_count": EXPECTED_PLAYER_COUNT})
+	var started: Dictionary = queue.start_next({"game_time": 0.0})
+	var active: Dictionary = started.get("active_entry", {}) if started.get("active_entry", {}) is Dictionary else {}
+	var active_id := int(active.get("resolution_id", -1))
+	var completed: Dictionary = queue.complete_active(active_id, {})
+	result["lifecycle"] = bool(locked.get("locked", false)) \
+		and bool(started.get("started", false)) \
+		and active_id > 0 \
+		and bool(completed.get("completed", false)) \
+		and queue.active_entry().is_empty()
+	var debug: Dictionary = queue.debug_snapshot()
+	result["owner_boundary"] = not bool(debug.get("priority_bid_authority", true)) \
+		and not bool(debug.get("cash_authority", true)) \
+		and not bool(debug.get("inventory_authority", true))
+	queue.free()
 	return result
 
 
