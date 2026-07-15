@@ -15,6 +15,23 @@ const REMOTE_ROUTE_VALUE_BASIS_POINTS := BASIS_POINTS
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
 const CARD_EFFECT_SUPPORT := preload("res://scripts/cards/v06/effects/card_effect_adapter_support_v06.gd")
 const VALID_DIRECTIONS := ["production", "demand"]
+const WEATHER_ECONOMY_MULTIPLIER_MIN := 0.70
+const WEATHER_ECONOMY_MULTIPLIER_MAX := 1.30
+const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
+	"kind",
+	"weather_id",
+	"event_id",
+	"region_index",
+	"phase",
+	"intensity",
+	"product_id",
+	"direction",
+	"multiplier",
+	"price_growth_multiplier",
+	"production_multiplier",
+	"demand_multiplier",
+	"reason_codes",
+]
 
 @export_range(1, 100, 1) var local_production_absorption_units_per_minute := 1
 @export_range(1, 100, 1) var local_market_turnover_units_per_minute := 1
@@ -24,6 +41,7 @@ const VALID_DIRECTIONS := ["production", "demand"]
 
 var _configured := false
 var _world_bridge: Node
+var _weather_runtime_controller: WeatherRuntimeController
 var _currency_scale := 100
 var _observation_window_seconds := 30.0
 var _commodity_rates_by_rank: Dictionary = {}
@@ -63,6 +81,10 @@ var _bankruptcy_estate_journal: Dictionary = {}
 
 func set_world_bridge(bridge: Node) -> void:
 	_world_bridge = bridge
+
+
+func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
+	_weather_runtime_controller = controller
 
 
 func configure(profile_snapshot: Dictionary) -> Dictionary:
@@ -848,6 +870,7 @@ func recent_sale_receipts_snapshot(viewer_index := -1) -> Array:
 		var receipt: Dictionary = (receipt_variant as Dictionary).duplicate(true)
 		receipt.erase("supply_batch_transaction_id")
 		receipt.erase("demand_batch_transaction_id")
+		receipt["weather_contributions"] = _sanitize_weather_contributions(receipt.get("weather_contributions", []))
 		if viewer_index < 0:
 			receipt.erase("commodity_owner")
 			receipt.erase("source_installation_id")
@@ -866,6 +889,16 @@ func recent_sale_receipts_snapshot(viewer_index := -1) -> Array:
 			receipt.erase("observer_intents")
 		result.append(receipt)
 	return result
+
+
+func public_weather_contribution_snapshot() -> Dictionary:
+	var rows: Array = _last_flow_metrics.get("weather_contributions", []) if _last_flow_metrics.get("weather_contributions", []) is Array else []
+	return {
+		"available": _configured and _weather_runtime_controller != null,
+		"flow_revision": _flow_revision,
+		"contributions": _sanitize_weather_contributions(rows),
+		"owns_weather_state": false,
+	}
 
 
 func region_gdp_snapshot(region_id: String) -> Dictionary:
@@ -1180,6 +1213,8 @@ func debug_snapshot() -> Dictionary:
 		"current_game_time": _current_game_time,
 		"distance_price_model": "base_x_1_plus_12pct_per_distance_after_adjacent_capped",
 		"last_flow_metrics": _last_flow_metrics.duplicate(true),
+		"weather_runtime_ready": _weather_runtime_controller != null,
+		"owns_weather_state": false,
 		"owns_installed_commodity_roster": true,
 		"owns_fixed_point_flow": true,
 		"owns_capacity_allocation": true,
@@ -1197,6 +1232,127 @@ func debug_snapshot() -> Dictionary:
 		"ss06_03_route_transition_pending": false,
 		"pure_data": _is_pure_data(to_save_data()),
 	}
+
+
+func _installation_weather_effect(installation: Dictionary, facility: Dictionary, region: Dictionary, direction: String) -> Dictionary:
+	var region_index := _weather_region_index(region)
+	var identity := {
+		"region_index": region_index,
+		"multiplier": 1.0,
+		"contributions": [],
+	}
+	if _weather_runtime_controller == null or region_index < 0 or PRODUCT_INDUSTRY_CATALOG == null:
+		return identity
+	var product_id := str(installation.get("commodity_id", ""))
+	var product_tags: Array = PRODUCT_INDUSTRY_CATALOG.tags_for_product(product_id)
+	if product_tags.is_empty():
+		return identity
+	var resistance := clampf(maxf(
+		float(region.get("weather_resistance", 0.0)),
+		maxf(float(facility.get("weather_resistance", 0.0)), float(installation.get("weather_resistance", 0.0)))
+	), 0.0, 1.0)
+	var exploitation := maxf(1.0, maxf(
+		float(region.get("weather_exploitation_multiplier", 1.0)),
+		maxf(float(facility.get("weather_exploitation_multiplier", 1.0)), float(installation.get("weather_exploitation_multiplier", 1.0)))
+	))
+	var snapshot := _weather_runtime_controller.region_effect_snapshot(region_index, {
+		"product_tags": product_tags,
+		"weather_resistance": resistance,
+		"weather_exploitation_multiplier": exploitation,
+	})
+	var multiplier := 1.0
+	var rows: Array = []
+	for effect_variant in snapshot.get("effects", []):
+		if not (effect_variant is Dictionary):
+			continue
+		var effect: Dictionary = effect_variant
+		var economy: Dictionary = effect.get("economy", {}) as Dictionary
+		var production_multiplier := clampf(float(economy.get("production_multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+		var demand_multiplier := clampf(float(economy.get("demand_multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+		var direction_multiplier := production_multiplier if direction == "production" else demand_multiplier
+		if is_equal_approx(direction_multiplier, 1.0):
+			continue
+		multiplier *= direction_multiplier
+		rows.append({
+			"kind": "weather_economy",
+			"weather_id": str(effect.get("definition_id", "")),
+			"event_id": int(effect.get("event_id", 0)),
+			"region_index": region_index,
+			"phase": str(effect.get("phase", "")),
+			"intensity": clampf(float(effect.get("intensity", 0.0)), 0.0, 1.0),
+			"product_id": product_id,
+			"direction": direction,
+			"multiplier": direction_multiplier,
+			"price_growth_multiplier": clampf(float(economy.get("price_growth_multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX),
+			"production_multiplier": production_multiplier,
+			"demand_multiplier": demand_multiplier,
+			"reason_codes": _string_array(effect.get("explanations", [])),
+		})
+	identity["multiplier"] = clampf(multiplier, WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+	identity["contributions"] = _sanitize_weather_contributions(rows)
+	return identity
+
+
+func _weather_region_index(region: Dictionary) -> int:
+	for key in ["legacy_index", "district_index", "region_index", "index"]:
+		if region.has(key):
+			return int(region.get(key, -1))
+	return -1
+
+
+func _weather_contributions_from_rate_rows(rate_rows: Array) -> Array:
+	var groups: Array = []
+	for rate_variant in rate_rows:
+		if rate_variant is Dictionary:
+			groups.append((rate_variant as Dictionary).get("weather_contributions", []))
+	return _merge_weather_contributions(groups)
+
+
+func _merge_weather_contributions(groups: Array) -> Array:
+	var rows: Array = []
+	var seen: Dictionary = {}
+	for group_variant in groups:
+		for row_variant in _sanitize_weather_contributions(group_variant):
+			var row: Dictionary = row_variant
+			var key := "%s|%d|%d|%s|%s" % [
+				str(row.get("weather_id", "")),
+				int(row.get("event_id", 0)),
+				int(row.get("region_index", -1)),
+				str(row.get("product_id", "")),
+				str(row.get("direction", "")),
+			]
+			if seen.has(key):
+				continue
+			seen[key] = true
+			rows.append(row)
+	return rows
+
+
+func _sanitize_weather_contributions(value: Variant) -> Array:
+	var result: Array = []
+	if not (value is Array):
+		return result
+	for row_variant in value:
+		if not (row_variant is Dictionary):
+			continue
+		var row: Dictionary = row_variant
+		var clean: Dictionary = {}
+		for key_variant in WEATHER_PUBLIC_CONTRIBUTION_KEYS:
+			var key := str(key_variant)
+			if row.has(key):
+				clean[key] = row[key] if key != "reason_codes" else _string_array(row[key])
+		result.append(clean)
+	return result
+
+
+func _string_array(value: Variant) -> Array:
+	var result: Array = []
+	if value is Array or value is PackedStringArray:
+		for item_variant in value:
+			var item := str(item_variant).strip_edges()
+			if not item.is_empty() and not result.has(item):
+				result.append(item)
+	return result
 
 
 func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
@@ -1250,11 +1406,15 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		var capacity_bp := mini(BASIS_POINTS, int(floor(float(facility_capacity) * float(BASIS_POINTS) / float(facility_total_base))))
 		var integrity_bp := clampi(int(region.get("integrity_basis_points", 0)), 0, BASIS_POINTS)
 		var base_rate := maxi(0, int(installation.get("base_units_per_minute", 0)))
-		var effective_rate_milli_per_minute := int(floor(float(base_rate * FIXED_POINT_SCALE) * float(capacity_bp) / float(BASIS_POINTS) * float(integrity_bp) / float(BASIS_POINTS)))
+		var baseline_rate_milli_per_minute := int(floor(float(base_rate * FIXED_POINT_SCALE) * float(capacity_bp) / float(BASIS_POINTS) * float(integrity_bp) / float(BASIS_POINTS)))
+		var direction := str(installation.get("direction", ""))
+		var weather_effect := _installation_weather_effect(installation, facility, region, direction)
+		var weather_multiplier := clampf(float(weather_effect.get("multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+		var weather_multiplier_bp := clampi(int(round(weather_multiplier * float(BASIS_POINTS))), int(WEATHER_ECONOMY_MULTIPLIER_MIN * BASIS_POINTS), int(WEATHER_ECONOMY_MULTIPLIER_MAX * BASIS_POINTS))
+		var effective_rate_milli_per_minute := int(floor(float(baseline_rate_milli_per_minute) * float(weather_multiplier_bp) / float(BASIS_POINTS)))
 		var numerator := int(next_rate_remainders.get(installation_id, 0)) + effective_rate_milli_per_minute * delta_milliseconds
 		var emitted_milliunits := int(floor(float(numerator) / float(MILLISECONDS_PER_MINUTE)))
 		next_rate_remainders[installation_id] = numerator % MILLISECONDS_PER_MINUTE
-		var direction := str(installation.get("direction", ""))
 		var local_baseline_budget_milliunits := _local_baseline_budget_milliunits(
 			installation_id,
 			direction,
@@ -1274,6 +1434,8 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 			"region_id": region_id,
 			"milliunits": emitted_milliunits,
 			"local_baseline_budget_milliunits": local_baseline_budget_milliunits,
+			"weather_multiplier": weather_multiplier,
+			"weather_contributions": _sanitize_weather_contributions(weather_effect.get("contributions", [])),
 		}
 		var target := production_claims_by_commodity if direction == "production" else demand_claims_by_commodity
 		var commodity_id := str(installation.get("commodity_id", ""))
@@ -1282,9 +1444,15 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		(target[commodity_id] as Array).append(claim)
 		effective_rate_rows.append({
 			"installation_id": installation_id,
+			"region_index": int(weather_effect.get("region_index", -1)),
+			"commodity_id": commodity_id,
+			"direction": direction,
 			"base_units_per_minute": base_rate,
 			"capacity_basis_points": capacity_bp,
 			"integrity_basis_points": integrity_bp,
+			"baseline_milliunits_per_minute": baseline_rate_milli_per_minute,
+			"weather_multiplier": weather_multiplier,
+			"weather_contributions": _sanitize_weather_contributions(weather_effect.get("contributions", [])),
 			"effective_milliunits_per_minute": effective_rate_milli_per_minute,
 		})
 	var warehouse_outflow := _warehouse_outflow_claims(delta_milliseconds, facts, next_warehouse_inventory)
@@ -1440,6 +1608,7 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		"metrics": {
 			"delta_milliseconds": delta_milliseconds,
 			"effective_rate_rows": effective_rate_rows,
+			"weather_contributions": _weather_contributions_from_rate_rows(effective_rate_rows),
 			"commodity_rows": commodity_metrics,
 			"sale_receipt_count": receipts.size(),
 			"backpressured_milliunits": total_backpressure,
@@ -1819,6 +1988,10 @@ func _sale_receipt(sequence: int, commodity_id: String, production: Dictionary, 
 	var rent_rows: Array = rent_result.get("rows", [])
 	var total_rent := int(rent_result.get("total_rent", 0))
 	var receipt_id := "commodity-sale-%010d" % sequence
+	var weather_contributions := _merge_weather_contributions([
+		production.get("weather_contributions", []),
+		demand.get("weather_contributions", []),
+	])
 	var result := {
 		"receipt_id": receipt_id,
 		"trade_kind": "remote_route",
@@ -1839,6 +2012,7 @@ func _sale_receipt(sequence: int, commodity_id: String, production: Dictionary, 
 		"gdp_value": gross_value,
 		"settled_at": float(facts.get("game_time", 0.0)),
 		"value_unit": "currency_cents",
+		"weather_contributions": weather_contributions,
 		"source_installation_id": str(production.get("installation_id", "")),
 		"demand_installation_id": str(demand.get("installation_id", "")),
 		"source_factory_id": str(production.get("source_factory_id", production.get("facility_id", ""))),
@@ -1891,6 +2065,7 @@ func _local_baseline_sale_receipt(sequence: int, trade_kind: String, commodity_i
 		"gdp_value": gross_value,
 		"settled_at": float(facts.get("game_time", 0.0)),
 		"value_unit": "currency_cents",
+		"weather_contributions": _sanitize_weather_contributions(claim.get("weather_contributions", [])),
 		"source_installation_id": str(claim.get("installation_id", "")) if is_production else "",
 		"demand_installation_id": "" if is_production else str(claim.get("installation_id", "")),
 		"source_factory_id": str(claim.get("source_factory_id", claim.get("facility_id", ""))) if is_production else "",

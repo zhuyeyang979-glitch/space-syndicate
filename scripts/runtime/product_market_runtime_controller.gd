@@ -14,6 +14,25 @@ const PRODUCT_VOLATILITY_MAX := 30
 const PRODUCT_HISTORY_LIMIT := 12
 const PRODUCT_GROWTH_MULTIPLIER_MAX := 3.0
 const ROUTE_FLOW_MULTIPLIER_MAX := 2.8
+const WEATHER_ECONOMY_MULTIPLIER_MIN := 0.70
+const WEATHER_ECONOMY_MULTIPLIER_MAX := 1.30
+const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
+const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
+	"kind",
+	"weather_id",
+	"event_id",
+	"region_index",
+	"phase",
+	"intensity",
+	"product_id",
+	"direction",
+	"multiplier",
+	"price_growth_multiplier",
+	"production_multiplier",
+	"demand_multiplier",
+	"exposure_weight",
+	"reason_codes",
+]
 
 @export var terms_catalog: ProductFuturesTermsCatalogResource
 
@@ -95,6 +114,7 @@ var _ruleset_id := ""
 var _world_bridge: ProductMarketRuntimeWorldBridge
 var _formula_service: CardEconomyProductRouteFormulaRuntimeService
 var _route_network_runtime_controller: RouteNetworkRuntimeController
+var _weather_runtime_controller: WeatherRuntimeController
 var _futures_open_count := 0
 var _futures_settlement_count := 0
 var _legacy_positions_normalized := 0
@@ -116,6 +136,10 @@ func set_world_bridge(bridge: ProductMarketRuntimeWorldBridge) -> void:
 
 func set_route_network_runtime_controller(controller: RouteNetworkRuntimeController) -> void:
 	_route_network_runtime_controller = controller
+
+
+func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
+	_weather_runtime_controller = controller
 
 
 func reset_state() -> Dictionary:
@@ -210,12 +234,19 @@ func refresh_prices() -> Dictionary:
 	var supply := {}
 	var demand := {}
 	var disrupted := {}
+	var weather_market_context := {}
 	for product_variant in PRODUCT_CATALOG:
 		var product_name := str(product_variant)
 		supply[product_name] = 0
 		demand[product_name] = 0
 		disrupted[product_name] = 0
-	for district_variant in districts:
+		weather_market_context[product_name] = {
+			"total_exposure_weight": 0,
+			"weighted_price_delta": 0.0,
+			"contributions": [],
+		}
+	for district_index in range(districts.size()):
+		var district_variant: Variant = districts[district_index]
 		if not (district_variant is Dictionary):
 			continue
 		var district: Dictionary = district_variant
@@ -241,6 +272,16 @@ func refresh_prices() -> Dictionary:
 				if route_variant is Dictionary and bool((route_variant as Dictionary).get("disrupted", false)):
 					var disrupted_product := str((route_variant as Dictionary).get("product", ""))
 					disrupted[disrupted_product] = int(disrupted.get(disrupted_product, 0)) + 1
+		var district_exposure := _district_product_exposure(district)
+		for exposed_product_variant in district_exposure.keys():
+			var exposed_product := str(exposed_product_variant)
+			if not weather_market_context.has(exposed_product):
+				continue
+			var exposure_weight := maxi(0, int(district_exposure.get(exposed_product_variant, 0)))
+			var aggregate: Dictionary = weather_market_context[exposed_product]
+			aggregate["total_exposure_weight"] = int(aggregate.get("total_exposure_weight", 0)) + exposure_weight
+			_append_product_weather_contributions(aggregate, district_index, exposed_product, exposure_weight, district)
+			weather_market_context[exposed_product] = aggregate
 	var shared_rng := _shared_rng()
 	for product_variant in PRODUCT_CATALOG:
 		var product_name := str(product_variant)
@@ -255,8 +296,19 @@ func refresh_prices() -> Dictionary:
 		var supply_score := int(supply.get(product_name, 0)) + temporary_supply + (int(entry.get("market_contract_supply", 0)) if contract_seconds > 0.0 else 0)
 		var disrupted_score := int(disrupted.get(product_name, 0))
 		var growth_multiplier := clampf(float(entry.get("growth_multiplier", 1.0)), 1.0, PRODUCT_GROWTH_MULTIPLIER_MAX)
+		var weather_context: Dictionary = weather_market_context.get(product_name, {})
+		var total_exposure_weight := maxi(0, int(weather_context.get("total_exposure_weight", 0)))
+		var weighted_price_delta := float(weather_context.get("weighted_price_delta", 0.0))
+		var weather_price_growth_multiplier := 1.0
+		if total_exposure_weight > 0:
+			weather_price_growth_multiplier = clampf(
+				1.0 + weighted_price_delta / float(total_exposure_weight),
+				WEATHER_ECONOMY_MULTIPLIER_MIN,
+				WEATHER_ECONOMY_MULTIPLIER_MAX
+			)
+		var weather_modifier := int(round(float(base_price) * (weather_price_growth_multiplier - 1.0)))
 		var noise := shared_rng.randf_range(-float(volatility), float(volatility)) if shared_rng != null else 0.0
-		var price_model := _world_bridge.price_model(base_price, supply_score, demand_score, disrupted_score, volatility, noise, growth_multiplier) if _world_bridge != null else {}
+		var price_model := _world_bridge.price_model(base_price, supply_score, demand_score, disrupted_score, volatility, noise, growth_multiplier, weather_modifier) if _world_bridge != null else {}
 		var trend := int(price_model.get("delta", 0))
 		var price := int(price_model.get("price", clampi(base_price + trend, PRODUCT_PRICE_MIN, PRODUCT_PRICE_MAX)))
 		entry["price"] = price
@@ -267,6 +319,10 @@ func refresh_prices() -> Dictionary:
 		entry["supply"] = supply_score
 		entry["demand"] = demand_score
 		entry["disrupted"] = disrupted_score
+		entry["weather_price_growth_multiplier"] = weather_price_growth_multiplier
+		entry["weather_modifier"] = weather_modifier
+		entry["weather_contributions"] = _sanitize_weather_contributions(weather_context.get("contributions", []))
+		entry["weather_driver_summary"] = _weather_driver_summary(entry["weather_contributions"] as Array, weather_modifier)
 		if temporary_demand > 0: entry["temporary_demand_pressure"] = maxi(0, temporary_demand - 1)
 		if temporary_supply > 0: entry["temporary_supply_pressure"] = maxi(0, temporary_supply - 1)
 		_append_price_history(entry, price)
@@ -627,11 +683,12 @@ func market_tick() -> void:
 
 
 func to_save_data() -> Dictionary:
-	return {"product_market": product_market.duplicate(true), "business_cycle_count": business_cycle_count, "market_timer": market_timer, "futures_position_sequence": futures_position_sequence}
+	return {"product_market": _product_market_save_snapshot(), "business_cycle_count": business_cycle_count, "market_timer": market_timer, "futures_position_sequence": futures_position_sequence}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
 	product_market = (data.get("product_market", {}) as Dictionary).duplicate(true) if data.get("product_market", {}) is Dictionary else {}
+	_clear_weather_projection(product_market)
 	business_cycle_count = int(data.get("business_cycle_count", 0))
 	market_timer = float(data.get("market_timer", 8.0))
 	futures_position_sequence = maxi(0, int(data.get("futures_position_sequence", 0)))
@@ -650,10 +707,22 @@ func public_market_snapshot() -> Dictionary:
 	return {"product_market": public_market, "business_cycle_count": business_cycle_count, "market_timer": market_timer}
 
 
+func product_weather_contribution_snapshot(product_name: String) -> Dictionary:
+	var entry := market_entry(product_name, false)
+	return {
+		"available": not entry.is_empty(),
+		"product_id": product_name,
+		"price_growth_multiplier": clampf(float(entry.get("weather_price_growth_multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX),
+		"weather_modifier": int(entry.get("weather_modifier", 0)),
+		"driver_summary": str(entry.get("weather_driver_summary", "无天气因素")),
+		"contributions": _sanitize_weather_contributions(entry.get("weather_contributions", [])),
+	}
+
+
 func debug_snapshot(_viewer_index := -1) -> Dictionary:
 	var last_receipt := _last_futures_receipt.duplicate(true)
 	last_receipt.erase("player_index")
-	return {"controller_id": CONTROLLER_ID, "ruleset_id": _ruleset_id, "controller_ready": _configured, "controller_authoritative": _configured, "product_count": product_market.size(), "business_cycle_count": business_cycle_count, "market_timer": market_timer, "futures_position_sequence": futures_position_sequence, "futures_open_count": _futures_open_count, "futures_settlement_count": _futures_settlement_count, "legacy_positions_normalized": _legacy_positions_normalized, "last_futures_receipt": last_receipt, "terms_catalog": terms_catalog.validation_report() if terms_catalog != null else {"valid": false}, "owns_product_market_state": true, "owns_product_market_rules": true, "owns_futures_cash_terms": true, "owns_shared_rng": false, "formula_owner": "CardEconomyProductRouteFormulaRuntimeService", "world_bridge_ready": _world_bridge != null and _world_bridge.has_world()}
+	return {"controller_id": CONTROLLER_ID, "ruleset_id": _ruleset_id, "controller_ready": _configured, "controller_authoritative": _configured, "product_count": product_market.size(), "business_cycle_count": business_cycle_count, "market_timer": market_timer, "futures_position_sequence": futures_position_sequence, "futures_open_count": _futures_open_count, "futures_settlement_count": _futures_settlement_count, "legacy_positions_normalized": _legacy_positions_normalized, "last_futures_receipt": last_receipt, "terms_catalog": terms_catalog.validation_report() if terms_catalog != null else {"valid": false}, "owns_product_market_state": true, "owns_product_market_rules": true, "owns_futures_cash_terms": true, "owns_weather_state": false, "weather_runtime_ready": _weather_runtime_controller != null, "owns_shared_rng": false, "formula_owner": "CardEconomyProductRouteFormulaRuntimeService", "world_bridge_ready": _world_bridge != null and _world_bridge.has_world()}
 
 
 func _normalize_loaded_futures_positions() -> void:
@@ -714,6 +783,29 @@ func _normalize_boon_fields(entry: Dictionary) -> void:
 	else: _set_seconds(entry, "market_contract_seconds", "market_contract_turns", float(entry.get("market_contract_seconds", 0.0)))
 	if not entry.has("market_contract_source"): entry["market_contract_source"] = ""
 	if not entry.has("futures_positions"): entry["futures_positions"] = []
+	if not entry.has("weather_price_growth_multiplier"): entry["weather_price_growth_multiplier"] = 1.0
+	if not entry.has("weather_modifier"): entry["weather_modifier"] = 0
+	if not entry.has("weather_contributions"): entry["weather_contributions"] = []
+	if not entry.has("weather_driver_summary"): entry["weather_driver_summary"] = "无天气因素"
+
+
+func _product_market_save_snapshot() -> Dictionary:
+	var snapshot := product_market.duplicate(true)
+	_clear_weather_projection(snapshot)
+	return snapshot
+
+
+func _clear_weather_projection(market: Dictionary) -> void:
+	for product_variant in market.keys():
+		var entry_variant: Variant = market.get(product_variant, {})
+		if not (entry_variant is Dictionary):
+			continue
+		var entry: Dictionary = entry_variant
+		entry.erase("weather_price_growth_multiplier")
+		entry.erase("weather_modifier")
+		entry.erase("weather_contributions")
+		entry.erase("weather_driver_summary")
+		market[product_variant] = entry
 
 
 func _append_price_history(entry: Dictionary, price: int) -> void:
@@ -796,6 +888,110 @@ func _duration_short_text(seconds: float) -> String:
 	return "%d分钟" % minutes if rest == 0 else "%d分%d秒" % [minutes, rest]
 
 
+func _district_product_exposure(district: Dictionary) -> Dictionary:
+	var exposure: Dictionary = {}
+	for product_variant in district.get("products", []):
+		_add_weather_exposure(exposure, str(product_variant), 1)
+	for demand_variant in district.get("demands", []):
+		_add_weather_exposure(exposure, str(demand_variant), 1)
+	var city: Dictionary = district.get("city", {}) as Dictionary
+	if _city_is_active(city):
+		for city_product_variant in city.get("products", []):
+			if city_product_variant is Dictionary:
+				_add_weather_exposure(exposure, str((city_product_variant as Dictionary).get("name", "")), 2)
+		for city_demand_variant in city.get("demands", []):
+			_add_weather_exposure(exposure, str(city_demand_variant), 3)
+	return exposure
+
+
+func _add_weather_exposure(exposure: Dictionary, product_id: String, weight: int) -> void:
+	if product_id.is_empty() or weight <= 0:
+		return
+	exposure[product_id] = int(exposure.get(product_id, 0)) + weight
+
+
+func _append_product_weather_contributions(aggregate: Dictionary, region_index: int, product_id: String, exposure_weight: int, district: Dictionary) -> void:
+	if _weather_runtime_controller == null or exposure_weight <= 0 or PRODUCT_INDUSTRY_CATALOG == null:
+		return
+	var product_tags: Array = PRODUCT_INDUSTRY_CATALOG.tags_for_product(product_id)
+	if product_tags.is_empty():
+		return
+	var city: Dictionary = district.get("city", {}) as Dictionary
+	var resistance := clampf(maxf(float(district.get("weather_resistance", 0.0)), float(city.get("weather_resistance", 0.0))), 0.0, 1.0)
+	var exploitation := maxf(1.0, maxf(float(district.get("weather_exploitation_multiplier", 1.0)), float(city.get("weather_exploitation_multiplier", 1.0))))
+	var snapshot := _weather_runtime_controller.region_effect_snapshot(region_index, {
+		"product_tags": product_tags,
+		"weather_resistance": resistance,
+		"weather_exploitation_multiplier": exploitation,
+	})
+	for effect_variant in snapshot.get("effects", []):
+		if not (effect_variant is Dictionary):
+			continue
+		var effect: Dictionary = effect_variant
+		var economy: Dictionary = effect.get("economy", {}) as Dictionary
+		var price_multiplier := clampf(float(economy.get("price_growth_multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+		var production_multiplier := clampf(float(economy.get("production_multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+		var demand_multiplier := clampf(float(economy.get("demand_multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
+		if is_equal_approx(price_multiplier, 1.0):
+			continue
+		aggregate["weighted_price_delta"] = float(aggregate.get("weighted_price_delta", 0.0)) + (price_multiplier - 1.0) * float(exposure_weight)
+		var rows: Array = aggregate.get("contributions", []) as Array
+		rows.append({
+			"kind": "weather_economy",
+			"weather_id": str(effect.get("definition_id", "")),
+			"event_id": int(effect.get("event_id", 0)),
+			"region_index": region_index,
+			"phase": str(effect.get("phase", "")),
+			"intensity": clampf(float(effect.get("intensity", 0.0)), 0.0, 1.0),
+			"product_id": product_id,
+			"direction": "price",
+			"multiplier": price_multiplier,
+			"price_growth_multiplier": price_multiplier,
+			"production_multiplier": production_multiplier,
+			"demand_multiplier": demand_multiplier,
+			"exposure_weight": exposure_weight,
+			"reason_codes": _string_array(effect.get("explanations", [])),
+		})
+		aggregate["contributions"] = rows
+
+
+func _weather_driver_summary(rows: Array, weather_modifier: int) -> String:
+	if rows.is_empty() or weather_modifier == 0:
+		return "无天气因素"
+	var region_ids: Dictionary = {}
+	for row_variant in rows:
+		if row_variant is Dictionary:
+			region_ids[int((row_variant as Dictionary).get("region_index", -1))] = true
+	return "天气%+d（%d区）" % [weather_modifier, region_ids.size()]
+
+
+func _sanitize_weather_contributions(value: Variant) -> Array:
+	var result: Array = []
+	if not (value is Array):
+		return result
+	for row_variant in value:
+		if not (row_variant is Dictionary):
+			continue
+		var row: Dictionary = row_variant
+		var clean: Dictionary = {}
+		for key_variant in WEATHER_PUBLIC_CONTRIBUTION_KEYS:
+			var key := str(key_variant)
+			if row.has(key):
+				clean[key] = row[key] if key != "reason_codes" else _string_array(row[key])
+		result.append(clean)
+	return result
+
+
+func _string_array(value: Variant) -> Array:
+	var result: Array = []
+	if value is Array or value is PackedStringArray:
+		for item_variant in value:
+			var item := str(item_variant).strip_edges()
+			if not item.is_empty() and not result.has(item):
+				result.append(item)
+	return result
+
+
 func _sanitize_entry(entry: Dictionary) -> Dictionary:
 	var sanitized := entry.duplicate(true)
 	var public_futures := []
@@ -808,4 +1004,5 @@ func _sanitize_entry(entry: Dictionary) -> Dictionary:
 		position.erase("action_fee_cash")
 		public_futures.append(position)
 	sanitized["futures_positions"] = public_futures
+	sanitized["weather_contributions"] = _sanitize_weather_contributions(sanitized.get("weather_contributions", []))
 	return sanitized

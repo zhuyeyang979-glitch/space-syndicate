@@ -79,8 +79,8 @@ func call_world(method_name: StringName, arguments: Array = []) -> Variant:
 	return _world.callv(method_name, arguments)
 
 
-func price_model(base_price: int, supply: int, demand: int, disrupted: int, volatility: int, noise: float, growth_multiplier: float) -> Dictionary:
-	var value: Variant = call_world("_balance_product_price_model", [base_price, supply, demand, disrupted, 0, 0, volatility, noise, growth_multiplier])
+func price_model(base_price: int, supply: int, demand: int, disrupted: int, volatility: int, noise: float, growth_multiplier: float, weather_modifier := 0) -> Dictionary:
+	var value: Variant = call_world("_balance_product_price_model", [base_price, supply, demand, disrupted, 0, weather_modifier, volatility, noise, growth_multiplier])
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
