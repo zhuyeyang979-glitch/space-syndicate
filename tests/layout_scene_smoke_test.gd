@@ -13208,33 +13208,24 @@ func _check_ai_policy_resourceization_component() -> void:
 	_expect(registry != null and registry.has_method("resource_cases") and registry.has_method("validation_records") and registry.has_method("build_manifest_preview") and registry.has_method("policy_resource_payload") and registry.has_method("main_source_payload"), "AiPolicyResourceRegistry exposes cases, validation, manifest, Resource payload, and main-source payload")
 	if registry != null:
 		var resource_paths: Array = registry.call("resource_paths")
-		var cases: Array = registry.call("resource_cases")
-		var records: Array = registry.call("validation_records")
 		var manifest: Dictionary = registry.call("build_manifest_preview")
-		var all_passed := records.size() >= 40
-		var required_case_ids := [
-			"profile_loads",
-			"timing_matches_main",
-			"selection_thresholds_match_main",
-			"counter_thresholds_match_main",
-			"strategy_route_policy_matches_main",
-			"phase_posture_matches_main",
-			"learning_controls_match_main",
-			"personalities_match_main_catalog",
-			"runtime_owner_stays_main_gd",
-			"payloads_stay_pure_data",
-		]
-		var case_ids: Array[String] = []
-		for case_variant in cases:
-			var resource_case: Dictionary = case_variant if case_variant is Dictionary else {}
-			case_ids.append(str(resource_case.get("case_id", "")))
-		for record_variant in records:
-			var record: Dictionary = record_variant if record_variant is Dictionary else {}
-			all_passed = all_passed and bool(record.get("passed", false))
-		for case_id in required_case_ids:
-			all_passed = all_passed and case_ids.has(case_id)
 		_expect(resource_paths.size() == 7, "AiPolicyResourceRegistry registers one profile and six personality Resources")
-		_expect(all_passed, "AiPolicyResourceRegistry passes the retained Resource gates and expanded runtime hard-cutover gate")
+		var runtime_controller_packed := load(AI_RUNTIME_CONTROLLER_SCENE) as PackedScene
+		var runtime_controller := runtime_controller_packed.instantiate() if runtime_controller_packed != null else null
+		var controller_policy_snapshot: Dictionary = runtime_controller.call("policy_snapshot") if runtime_controller != null and runtime_controller.has_method("policy_snapshot") else {}
+		var controller_personalities: Array = controller_policy_snapshot.get("personalities", []) if controller_policy_snapshot.get("personalities", []) is Array else []
+		_expect(
+			runtime_controller != null
+			and str(controller_policy_snapshot.get("runtime_owner_script", "")) == AI_RUNTIME_CONTROLLER_SCRIPT
+			and bool(controller_policy_snapshot.get("runtime_cutover_enabled", false))
+			and str(controller_policy_snapshot.get("profile_id", "")) == "ai_policy_v1"
+			and controller_personalities.size() == 6
+			and not _variant_contains_callable(controller_policy_snapshot)
+			and not _variant_contains_object(controller_policy_snapshot),
+			"AiRuntimeController scene owns the enabled AI policy through its public pure-data snapshot"
+		)
+		if runtime_controller != null:
+			runtime_controller.free()
 		_expect(int(manifest.get("record_count", 0)) >= 40 and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == AI_RUNTIME_CONTROLLER_SCRIPT and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "AiPolicyResourceRegistry manifest preview stays pure data and records enabled Controller ownership")
 	for scene_path in [AI_POLICY_RESOURCE_PREVIEW_SCENE, AI_POLICY_RESOURCE_BENCH_SCENE]:
 		_expect(ResourceLoader.exists(scene_path), "%s exists for AI Policy Resourceization" % scene_path)
