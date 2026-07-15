@@ -4383,6 +4383,8 @@ func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "æ
 		return -1
 	if _first_run_should_defer_monster_wager():
 		return -1
+	if _monster_wager_reopen_cooldown_active():
+		return -1
 	var existing_index := _active_monster_wager_index_for_pair(slot_a, slot_b)
 	if existing_index >= 0:
 		var existing: Dictionary = active_monster_wagers[existing_index]
@@ -4447,6 +4449,23 @@ func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "æ
 	_try_finish_monster_wager_if_ready(monster_wager_sequence)
 	_refresh_ui()
 	return monster_wager_sequence
+
+
+func _monster_wager_reopen_cooldown_active() -> bool:
+	var cooldown_seconds := _ruleset_timing_seconds(&"monster_wager_reopen_cooldown_seconds")
+	if cooldown_seconds <= 0.0:
+		return false
+	var latest_resolved_at := -1.0
+	for entry_variant in resolved_monster_wager_history:
+		if not (entry_variant is Dictionary):
+			continue
+		var resolved_at_variant: Variant = (entry_variant as Dictionary).get("resolved_at")
+		if not (resolved_at_variant is float or resolved_at_variant is int):
+			continue
+		var resolved_at := float(resolved_at_variant)
+		if is_finite(resolved_at):
+			latest_resolved_at = maxf(latest_resolved_at, resolved_at)
+	return latest_resolved_at >= 0.0 and game_time < latest_resolved_at + cooldown_seconds
 
 func _record_monster_wager_damage(attacker_slot: int, target_slot: int, damage: int) -> void:
 	if damage <= 0:

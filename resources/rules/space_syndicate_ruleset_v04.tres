@@ -14,6 +14,7 @@ counter_window_seconds = 5.0
 contract_window_seconds = 5.0
 monster_wager_default_seconds = 20.0
 monster_wager_max_seconds = 30.0
+monster_wager_reopen_cooldown_seconds = 20.0
 final_countdown_seconds = 75.0
 default_group_card_limit = 3
 maximum_group_card_limit = 4
