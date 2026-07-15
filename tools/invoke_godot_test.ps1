@@ -8,9 +8,10 @@ writes stdout/stderr/Godot logs to an isolated directory outside the repository,
 and removes only scoped headless/game processes for this absolute project path.
 
 Runner exit codes are the Godot exit code for a completed test, 124 for timeout,
-and 125 when a completed test leaves a scoped runtime process (even if cleanup
-succeeds). The console wrapper is deliberately rejected because it can return
-before the real process.
+125 when a completed process leaves a scoped runtime process (even if cleanup
+succeeds), and 126 when an import bootstrap fails without a more specific exit
+code. The console wrapper is deliberately rejected because it can return before
+the real process.
 
 .EXAMPLE
 pwsh -File tools/invoke_godot_test.ps1 `
@@ -22,6 +23,13 @@ pwsh -File tools/invoke_godot_test.ps1 `
 pwsh -File tools/invoke_godot_test.ps1 `
     -Scene res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn `
     -TimeoutSeconds 300
+
+.EXAMPLE
+pwsh -File tools/invoke_godot_test.ps1 `
+    -TestScript res://tests/main_runtime_composition_test.gd `
+    -EnsureImported `
+    -ImportTimeoutSeconds 300 `
+    -TimeoutSeconds 180
 #>
 [CmdletBinding(DefaultParameterSetName = "Script")]
 param(
@@ -39,6 +47,11 @@ param(
 
     [ValidateRange(1, 86400)]
     [int]$TimeoutSeconds = 180,
+
+    [switch]$EnsureImported,
+
+    [ValidateRange(1, 86400)]
+    [int]$ImportTimeoutSeconds = 300,
 
     [string[]]$TestArgument = @(),
 
@@ -154,6 +167,117 @@ function New-GodotProcessStartInfo {
     return $startInfo
 }
 
+function Invoke-GodotBlockingProcess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedProjectPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedGodotPath,
+        [Parameter(Mandatory = $true)]
+        [string[]]$ArgumentList,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 86400)]
+        [int]$ProcessTimeoutSeconds,
+        [Parameter(Mandatory = $true)]
+        [string]$StdoutPath,
+        [Parameter(Mandatory = $true)]
+        [string]$StderrPath,
+        [Parameter(Mandatory = $true)]
+        [string]$GodotLogPath
+    )
+
+    $startedAt = [DateTime]::UtcNow
+    $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = New-GodotProcessStartInfo -ExecutablePath $ResolvedGodotPath -WorkingDirectory $ResolvedProjectPath -ArgumentList $ArgumentList
+    $timedOut = $false
+    $processId = $null
+    $processExitCode = $null
+    $cleanupProcessIds = @()
+
+    try {
+        if (-not $process.Start()) {
+            throw "Godot process did not start."
+        }
+        $processId = $process.Id
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+
+        if (-not $process.WaitForExit($ProcessTimeoutSeconds * 1000)) {
+            $timedOut = $true
+            Stop-ScopedProcessTree -ProcessId $processId
+        }
+
+        try {
+            $process.WaitForExit()
+            $process.Refresh()
+            $processExitCode = $process.ExitCode
+        } catch {
+            $processExitCode = $null
+        }
+
+        $postExitRuntime = @(
+            Get-ProjectRuntimeProcess -ResolvedProjectPath $ResolvedProjectPath -ResolvedGodotPath $ResolvedGodotPath |
+                Where-Object { $_.ProcessId -ne $processId }
+        )
+        foreach ($leftover in $postExitRuntime) {
+            $cleanupProcessIds += [int]$leftover.ProcessId
+            Stop-ScopedProcessTree -ProcessId $leftover.ProcessId
+        }
+
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        Set-Content -LiteralPath $StdoutPath -Value $stdout -Encoding utf8 -NoNewline
+        Set-Content -LiteralPath $StderrPath -Value $stderr -Encoding utf8 -NoNewline
+    } finally {
+        $stopwatch.Stop()
+        $process.Dispose()
+    }
+
+    if (-not (Test-Path -LiteralPath $GodotLogPath -PathType Leaf)) {
+        New-Item -ItemType File -Path $GodotLogPath | Out-Null
+    }
+
+    $remainingRuntime = @(Get-ProjectRuntimeProcess -ResolvedProjectPath $ResolvedProjectPath -ResolvedGodotPath $ResolvedGodotPath)
+    $runnerExitCode = if ($timedOut) {
+        124
+    } elseif ($cleanupProcessIds.Count -gt 0 -or $remainingRuntime.Count -gt 0) {
+        125
+    } elseif ($null -eq $processExitCode) {
+        126
+    } else {
+        [int]$processExitCode
+    }
+    $status = if ($timedOut) {
+        "timed_out"
+    } elseif ($remainingRuntime.Count -gt 0) {
+        "orphaned"
+    } elseif ($cleanupProcessIds.Count -gt 0) {
+        "orphan_cleaned"
+    } elseif ($processExitCode -eq 0) {
+        "passed"
+    } else {
+        "failed"
+    }
+
+    return [pscustomobject][ordered]@{
+        status = $status
+        process_id = $processId
+        timeout_seconds = $ProcessTimeoutSeconds
+        timed_out = $timedOut
+        process_exit_code = $processExitCode
+        runner_exit_code = $runnerExitCode
+        started_at_utc = $startedAt.ToString("o")
+        duration_seconds = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 3)
+        command_arguments = @($ArgumentList)
+        stdout_log = $StdoutPath
+        stderr_log = $StderrPath
+        godot_log = $GodotLogPath
+        cleanup_process_ids = @($cleanupProcessIds)
+        remaining_project_runtime_process_ids = @($remainingRuntime | ForEach-Object { [int]$_.ProcessId })
+    }
+}
+
 $ProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path.TrimEnd('\', '/')
 $GodotPath = (Resolve-Path -LiteralPath $GodotPath).Path
 $LogRoot = [IO.Path]::GetFullPath($LogRoot)
@@ -197,6 +321,9 @@ New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
 $stdoutPath = Join-Path $runDirectory "stdout.log"
 $stderrPath = Join-Path $runDirectory "stderr.log"
 $godotLogPath = Join-Path $runDirectory "godot.log"
+$importStdoutPath = Join-Path $runDirectory "import.stdout.log"
+$importStderrPath = Join-Path $runDirectory "import.stderr.log"
+$importGodotLogPath = Join-Path $runDirectory "import.godot.log"
 $resultPath = Join-Path $runDirectory "result.json"
 $arguments = @(
     "--headless",
@@ -210,76 +337,110 @@ if ($targetType -eq "scene") {
 }
 $arguments += @($TestArgument)
 
-$startedAt = [DateTime]::UtcNow
-$stopwatch = [Diagnostics.Stopwatch]::StartNew()
-$process = [Diagnostics.Process]::new()
-$process.StartInfo = New-GodotProcessStartInfo -ExecutablePath $GodotPath -WorkingDirectory $ProjectPath -ArgumentList $arguments
-$timedOut = $false
-$processExitCode = $null
-$cleanupProcessIds = @()
+$classCachePath = Join-Path $ProjectPath ".godot\global_script_class_cache.cfg"
+$cacheFileBefore = Get-Item -LiteralPath $classCachePath -ErrorAction SilentlyContinue
+$cacheSizeBefore = if ($null -ne $cacheFileBefore) { [int64]$cacheFileBefore.Length } else { [int64]0 }
+$cachePresentBefore = $cacheSizeBefore -gt 0
+$importRecord = [ordered]@{
+    requested = [bool]$EnsureImported
+    cache_path = $classCachePath
+    cache_present_before = $cachePresentBefore
+    cache_size_before = $cacheSizeBefore
+    attempted = $false
+    status = if ($EnsureImported) { "pending" } else { "not_requested" }
+    succeeded = $null
+    process_id = $null
+    timeout_seconds = $ImportTimeoutSeconds
+    timed_out = $false
+    process_exit_code = $null
+    runner_exit_code = $null
+    started_at_utc = $null
+    duration_seconds = 0.0
+    command_arguments = @()
+    stdout_log = $null
+    stderr_log = $null
+    godot_log = $null
+    cleanup_process_ids = @()
+    remaining_project_runtime_process_ids = @()
+    cache_present_after = $cachePresentBefore
+    cache_size_after = $cacheSizeBefore
+}
 
-try {
-    if (-not $process.Start()) {
-        throw "Godot process did not start."
-    }
-    $processId = $process.Id
-    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-    $stderrTask = $process.StandardError.ReadToEndAsync()
-
-    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-        $timedOut = $true
-        Stop-ScopedProcessTree -ProcessId $processId
-    }
-
-    try {
-        $process.WaitForExit()
-        $process.Refresh()
-        $processExitCode = $process.ExitCode
-    } catch {
-        $processExitCode = $null
-    }
-
-    $postExitRuntime = @(
-        Get-ProjectRuntimeProcess -ResolvedProjectPath $ProjectPath -ResolvedGodotPath $GodotPath |
-            Where-Object { $_.ProcessId -ne $processId }
+$importReady = $true
+$importFailureStatus = $null
+$importFailureExitCode = $null
+if ($EnsureImported -and $cachePresentBefore) {
+    $importRecord.status = "cache_present"
+    $importRecord.succeeded = $true
+} elseif ($EnsureImported) {
+    $importArguments = @(
+        "--headless",
+        "--path", $ProjectPath,
+        "--log-file", $importGodotLogPath,
+        "--import"
     )
-    foreach ($leftover in $postExitRuntime) {
-        $cleanupProcessIds += [int]$leftover.ProcessId
-        Stop-ScopedProcessTree -ProcessId $leftover.ProcessId
+    $importRecord.attempted = $true
+    $importProcess = Invoke-GodotBlockingProcess `
+        -ResolvedProjectPath $ProjectPath `
+        -ResolvedGodotPath $GodotPath `
+        -ArgumentList $importArguments `
+        -ProcessTimeoutSeconds $ImportTimeoutSeconds `
+        -StdoutPath $importStdoutPath `
+        -StderrPath $importStderrPath `
+        -GodotLogPath $importGodotLogPath
+    foreach ($property in $importProcess.PSObject.Properties) {
+        $importRecord[$property.Name] = $property.Value
     }
-
-    $stdout = $stdoutTask.GetAwaiter().GetResult()
-    $stderr = $stderrTask.GetAwaiter().GetResult()
-    Set-Content -LiteralPath $stdoutPath -Value $stdout -Encoding utf8 -NoNewline
-    Set-Content -LiteralPath $stderrPath -Value $stderr -Encoding utf8 -NoNewline
-} finally {
-    $stopwatch.Stop()
-    $process.Dispose()
+    $cacheFileAfter = Get-Item -LiteralPath $classCachePath -ErrorAction SilentlyContinue
+    $importRecord.cache_size_after = if ($null -ne $cacheFileAfter) { [int64]$cacheFileAfter.Length } else { [int64]0 }
+    $importRecord.cache_present_after = [int64]$importRecord.cache_size_after -gt 0
+    $importReady = $importProcess.status -eq "passed" -and [bool]$importRecord.cache_present_after
+    $importRecord.succeeded = $importReady
+    if (-not $importReady) {
+        if ($importProcess.status -eq "passed") {
+            $importRecord.status = "cache_missing_after_import"
+            $importFailureStatus = "import_cache_missing"
+            $importFailureExitCode = 126
+        } else {
+            $importFailureStatus = "import_$($importProcess.status)"
+            $importFailureExitCode = [int]$importProcess.runner_exit_code
+            if ($importFailureExitCode -eq 0) {
+                $importFailureExitCode = 126
+            }
+        }
+    }
 }
 
-if (-not (Test-Path -LiteralPath $godotLogPath -PathType Leaf)) {
-    New-Item -ItemType File -Path $godotLogPath | Out-Null
+$testStarted = $false
+$testProcess = $null
+if ($importReady) {
+    $testStarted = $true
+    $testProcess = Invoke-GodotBlockingProcess `
+        -ResolvedProjectPath $ProjectPath `
+        -ResolvedGodotPath $GodotPath `
+        -ArgumentList $arguments `
+        -ProcessTimeoutSeconds $TimeoutSeconds `
+        -StdoutPath $stdoutPath `
+        -StderrPath $stderrPath `
+        -GodotLogPath $godotLogPath
 }
 
+$status = if ($testStarted) { $testProcess.status } else { $importFailureStatus }
+$runnerExitCode = if ($testStarted) { [int]$testProcess.runner_exit_code } else { [int]$importFailureExitCode }
 $remainingRuntime = @(Get-ProjectRuntimeProcess -ResolvedProjectPath $ProjectPath -ResolvedGodotPath $GodotPath)
-
-$runnerExitCode = if ($timedOut) {
-    124
-} elseif ($cleanupProcessIds.Count -gt 0 -or $remainingRuntime.Count -gt 0) {
-    125
+$reportedCommandArguments = [Collections.Generic.List[string]]::new()
+$reportedCleanupProcessIds = [Collections.Generic.List[int]]::new()
+if ($testStarted) {
+    foreach ($argument in $arguments) {
+        $reportedCommandArguments.Add([string]$argument)
+    }
+    foreach ($cleanupProcessId in @($testProcess.cleanup_process_ids)) {
+        $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+    }
 } else {
-    [int]$processExitCode
-}
-$status = if ($timedOut) {
-    "timed_out"
-} elseif ($remainingRuntime.Count -gt 0) {
-    "orphaned"
-} elseif ($cleanupProcessIds.Count -gt 0) {
-    "orphan_cleaned"
-} elseif ($processExitCode -eq 0) {
-    "passed"
-} else {
-    "failed"
+    foreach ($cleanupProcessId in @($importRecord.cleanup_process_ids)) {
+        $reportedCleanupProcessIds.Add([int]$cleanupProcessId)
+    }
 }
 
 $result = [ordered]@{
@@ -293,18 +454,22 @@ $result = [ordered]@{
     project_path = $ProjectPath
     godot_path = $GodotPath
     godot_product_version = $godotVersion
-    process_id = $processId
+    ensure_imported = [bool]$EnsureImported
+    import_status = $importRecord.status
+    import = $importRecord
+    test_started = $testStarted
+    process_id = if ($testStarted) { $testProcess.process_id } else { $null }
     timeout_seconds = $TimeoutSeconds
-    timed_out = $timedOut
-    process_exit_code = $processExitCode
+    timed_out = if ($testStarted) { $testProcess.timed_out } else { $importRecord.timed_out }
+    process_exit_code = if ($testStarted) { $testProcess.process_exit_code } else { $null }
     runner_exit_code = $runnerExitCode
-    started_at_utc = $startedAt.ToString("o")
-    duration_seconds = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 3)
-    command_arguments = $arguments
-    stdout_log = $stdoutPath
-    stderr_log = $stderrPath
-    godot_log = $godotLogPath
-    cleanup_process_ids = @($cleanupProcessIds)
+    started_at_utc = if ($testStarted) { $testProcess.started_at_utc } else { $importRecord.started_at_utc }
+    duration_seconds = if ($testStarted) { $testProcess.duration_seconds } else { $importRecord.duration_seconds }
+    command_arguments = $reportedCommandArguments
+    stdout_log = if ($testStarted) { $stdoutPath } else { $null }
+    stderr_log = if ($testStarted) { $stderrPath } else { $null }
+    godot_log = if ($testStarted) { $godotLogPath } else { $null }
+    cleanup_process_ids = $reportedCleanupProcessIds
     remaining_project_runtime_process_ids = @($remainingRuntime | ForEach-Object { [int]$_.ProcessId })
 }
 $result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $resultPath -Encoding utf8
