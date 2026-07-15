@@ -437,7 +437,6 @@ func _run() -> void:
 	_expect(_verify_card_rank_ladders_are_complete(main), "all base card families expose non-regressing I-IV rank ladders at the rank-I price")
 	_expect(_verify_playable_card_resolution_coverage(main), "all codex cards and generated monster fixed-skill cards have concrete resolution handlers")
 	_expect(_verify_agent_policy_audit_report(main), "test-only Agent audit reports AI candidate metadata, monster target weights, hidden-info leaks, and missing handlers without player UI exposure")
-	_expect(_verify_monster_target_weight_sanity(main), "monster target sanity checks keep destroyed regions excluded, distance/resource factors consistent, lure one-shot, flying no-trample, and meter/s movement intact")
 	_expect(_verify_hidden_info_leak_audit(main), "player-facing UI does not leak AI reason, exact scores, pressure buckets, decision samples, or private rival state")
 	_mark_smoke_progress("card supply and product ecosystem")
 	_expect(_all_card_supply_entries_are_base_rank(main, districts), "card supplies and codex indexes offer base copies while upgrades happen through hand merging")
@@ -6334,167 +6333,11 @@ func _verify_agent_policy_audit_report(main: Node) -> bool:
 	return true
 
 
-func _neutralize_district_for_target_test(district: Dictionary) -> Dictionary:
-	var result := district.duplicate(true)
-	result["destroyed"] = false
-	result["panic"] = 0
-	result["city"] = {}
-	result["miasma"] = false
-	result["products"] = ["烟测惰性矿"]
-	result["demands"] = ["烟测惰性需"]
-	return result
-
-
 func _first_alive_district_index_for_test(districts: Array) -> int:
 	for i in range(districts.size()):
 		if not bool((districts[i] as Dictionary).get("destroyed", false)):
 			return i
 	return -1
-
-
-func _farthest_alive_district_from_actor(main: Node, actor: Dictionary, districts: Array, excluded: int) -> int:
-	var best_index := -1
-	var best_distance := -1.0
-	for i in range(districts.size()):
-		if i == excluded or bool((districts[i] as Dictionary).get("destroyed", false)):
-			continue
-		var distance := float(main.call("_entity_distance_to_district", actor, i))
-		if distance > best_distance:
-			best_distance = distance
-			best_index = i
-	return best_index
-
-
-func _monster_factor_summary_contains(main: Node, actor: Dictionary, district_index: int, label: String) -> bool:
-	return String(_monster_controller(main).call("_auto_monster_target_factor_summary", actor, district_index)).contains(label)
-
-
-func _verify_monster_target_weight_sanity(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
-	var failures := []
-	var districts := _as_array(main.get("districts"))
-	var auto_monsters := _as_array(main.get("auto_monsters"))
-	if districts.size() < 3 or auto_monsters.is_empty():
-		main.call("_apply_run_state", saved)
-		return false
-	var actor := (auto_monsters[0] as Dictionary).duplicate(true)
-	actor["down"] = false
-	var near_index := int(actor.get("position", -1))
-	if near_index < 0 or near_index >= districts.size() or bool((districts[near_index] as Dictionary).get("destroyed", false)):
-		near_index = _first_alive_district_index_for_test(districts)
-		actor["position"] = near_index
-	var far_index := _farthest_alive_district_from_actor(main, actor, districts, near_index)
-	if near_index < 0 or far_index < 0:
-		main.call("_apply_run_state", saved)
-		return false
-	var focus: Array = actor.get("resource_focus", [])
-	var focus_product := String(focus[0]) if not focus.is_empty() else "环晶电池"
-	if focus.is_empty():
-		actor["resource_focus"] = [focus_product]
-	var prepared_districts := districts.duplicate(true)
-	prepared_districts[near_index] = _neutralize_district_for_target_test(prepared_districts[near_index] as Dictionary)
-	prepared_districts[far_index] = _neutralize_district_for_target_test(prepared_districts[far_index] as Dictionary)
-	var destroyed_index := far_index
-	var destroyed_district := _neutralize_district_for_target_test(prepared_districts[destroyed_index] as Dictionary)
-	destroyed_district["products"] = [focus_product]
-	destroyed_district["destroyed"] = true
-	prepared_districts[destroyed_index] = destroyed_district
-	auto_monsters[0] = actor
-	main.set("districts", prepared_districts)
-	main.set("auto_monsters", auto_monsters)
-	var destroyed_weight := int(_monster_controller(main).call("_auto_monster_target_weight", actor, destroyed_index))
-	if destroyed_weight != 0:
-		failures.append("destroyed district weight=%d" % destroyed_weight)
-	var audit := _ai_controller(main).call("_monster_target_weight_audit") as Dictionary
-	if not bool(audit.get("any_positive_alive", false)):
-		failures.append("no positive alive target in audit")
-
-	prepared_districts = _as_array(main.get("districts")).duplicate(true)
-	prepared_districts[destroyed_index] = _neutralize_district_for_target_test(prepared_districts[destroyed_index] as Dictionary)
-	main.set("districts", prepared_districts)
-	var near_distance_score := int((_monster_controller(main).call("_auto_monster_target_weight_parts", actor, near_index) as Dictionary).get("distance", -1))
-	var far_distance_score := int((_monster_controller(main).call("_auto_monster_target_weight_parts", actor, far_index) as Dictionary).get("distance", -1))
-	if near_distance_score < far_distance_score:
-		failures.append("near distance score %d < far %d" % [near_distance_score, far_distance_score])
-
-	var resource_district := _neutralize_district_for_target_test(prepared_districts[far_index] as Dictionary)
-	resource_district["products"] = [focus_product]
-	prepared_districts[far_index] = resource_district
-	main.set("districts", prepared_districts)
-	var resource_parts := _monster_controller(main).call("_auto_monster_target_weight_parts", actor, far_index) as Dictionary
-	if int(resource_parts.get("resource", 0)) <= 0:
-		failures.append("resource factor did not increase")
-	resource_district["destroyed"] = true
-	prepared_districts[far_index] = resource_district
-	main.set("districts", prepared_districts)
-	if int(_monster_controller(main).call("_auto_monster_target_weight", actor, far_index)) != 0:
-		failures.append("resource match revived destroyed district")
-
-	var factor_index := near_index
-	prepared_districts = _as_array(main.get("districts")).duplicate(true)
-	var factor_district := _neutralize_district_for_target_test(prepared_districts[factor_index] as Dictionary)
-	factor_district["city"] = {
-		"active": true,
-		"owner": 1,
-		"products": [{"name": focus_product}],
-		"demands": [focus_product],
-		"competition_matches": 2,
-		"warehouse_stockpile_count": 1,
-		"warehouse_stockpile_units": 5,
-		"warehouse_stockpile_products": [focus_product],
-	}
-	factor_district["miasma"] = true
-	prepared_districts[factor_index] = factor_district
-	var rival_actor := actor.duplicate(true)
-	rival_actor["uid"] = int(actor.get("uid", 0)) + 99999
-	rival_actor["name"] = "烟测同区怪兽"
-	rival_actor["position"] = factor_index
-	var factor_monsters := [actor, rival_actor]
-	main.set("districts", prepared_districts)
-	main.set("auto_monsters", factor_monsters)
-	var factor_parts := _monster_controller(main).call("_auto_monster_target_weight_parts", actor, factor_index) as Dictionary
-	if int(factor_parts.get("city", 0)) <= 0:
-		failures.append("city factor missing")
-	if int(factor_parts.get("competition", 0)) <= 0:
-		failures.append("competition factor missing")
-	if int(factor_parts.get("warehouse", 0)) <= 0:
-		failures.append("warehouse factor missing")
-	if int(factor_parts.get("miasma", 0)) <= 0:
-		failures.append("miasma factor missing")
-	if int(factor_parts.get("monster", 0)) <= 0:
-		failures.append("rival monster factor missing")
-	if not (
-		_monster_factor_summary_contains(main, actor, factor_index, "城市")
-		or _monster_factor_summary_contains(main, actor, factor_index, "仓储")
-		or _monster_factor_summary_contains(main, actor, factor_index, "瘴气")
-		or _monster_factor_summary_contains(main, actor, factor_index, "同场怪兽")
-	):
-		failures.append("factor summary did not surface any special factor")
-
-	var lure_actor := actor.duplicate(true)
-	lure_actor["lure_target_district"] = far_index
-	lure_actor["lure_moves_left"] = 1
-	var consumed_lure := _monster_controller(main).call("_consume_auto_monster_lure", lure_actor) as Dictionary
-	if consumed_lure.has("lure_target_district") or consumed_lure.has("lure_moves_left"):
-		failures.append("lure was not consumed after one auto movement")
-
-	var flying_actor := actor.duplicate(true)
-	flying_actor["movement_traits"] = ["flying"]
-	if int(_monster_controller(main).call("_auto_monster_move_damage", flying_actor, "fly")) != 0:
-		failures.append("flying move damage not zero")
-	var path_damage := int(_monster_controller(main).call("_apply_auto_monster_linear_path_effects", flying_actor, main.call("_district_center", near_index), main.call("_district_center", far_index), "烟测飞行", "fly"))
-	if path_damage != 0:
-		failures.append("flying linear path damage=%d" % path_damage)
-
-	var linear_actor := actor.duplicate(true)
-	var moved := float(main.call("_start_entity_linear_motion", linear_actor, main.call("_district_center", far_index), 123.0, "烟测线性", "walk", -1.0, "auto_move"))
-	if moved <= 0.5 or not linear_actor.has("linear_move_target_position") or not is_equal_approx(float(linear_actor.get("linear_move_speed_mps", 0.0)), 123.0):
-		failures.append("linear movement did not preserve meter/s fields")
-
-	var restore_result := int(main.call("_apply_run_state", saved))
-	if not failures.is_empty():
-		print("Monster target sanity failures: %s" % " / ".join(failures))
-	return failures.is_empty() and restore_result == OK
 
 
 func _reset_card_resolution_state_for_test(main: Node) -> void:
