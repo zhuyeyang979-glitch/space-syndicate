@@ -274,3 +274,19 @@ without weakening exact-once protection or restoring Main wrappers. A milestone 
 complete-run quality until deterministic matches finish, save/resume reaches settlement,
 1280 interaction is demonstrated, and the final report includes AI, pacing, feedback,
 privacy, and turning-point evidence.
+
+## Recheck after local owner migrations
+
+On `codex/a-v06-local-integration@15b2148`, Main measures 18,540 lines / 1,071
+functions. `smoke_test.gd --check-only` returned ExitCode 0. Focused gates returned
+ExitCode 0 for AI facility production, AI facility bootstrap policy, ActionResult v1,
+PublicTrack interaction, and FullRunQualityDriver contract. The full smoke runner
+returned timeout 124 at 90 seconds; its first new retired production call was
+`_refresh_city_networks`. The real quality driver returned ExitCode 4 with the bounded
+first-run buy-card action disabled and did not invent a settlement.
+
+These observations supersede the earlier statement that the immediate full-smoke
+blocker was the removed `_auto_expand_rival_syndicates`; that call has now been
+migrated to the current AI facility owner contract. The remaining red smoke assertions
+are still classified individually in the report and are not treated as harmless stale
+tests without an owner-equivalent gate.

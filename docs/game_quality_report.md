@@ -216,3 +216,34 @@ gate.
 
 No stage has been pushed to GitHub from this report. Local integration remains the
 review and regression boundary until the evidence is coherent.
+
+## Local integration update 2026-07-15
+
+The local branch `codex/a-v06-local-integration` is now at `15b2148`. Main is
+18,540 lines and 1,071 functions. The following owner-boundary slices are green:
+
+- facility smoke uses a fresh real `main.tscn` fixture and the v0.6 Coordinator ->
+  market -> authoritative hand -> facility/CommodityFlow finalization chain;
+- AI facility bootstrap focused production-port tests pass;
+- ProductMarket and CommodityFlow smoke time advancement use Coordinator APIs;
+- ActionResult v1 contract: 167/167 focused checks;
+- PublicTrack/RightInspector/IntelDossier focus chain: 24/24 focused checks;
+- FullRunQualityDriver contract checks pass and reject private telemetry fields;
+- real 1280x720 production capture, weather states, pixel gates, and save-isolation
+  evidence are recorded under `reports/ui/production_acceptance/`.
+
+The full smoke probe now passes the facility and ProductMarket owner assertions, but
+still does not complete. The latest run
+`20260715-130532-382-smoke_test-3c50a73f` timed out at 90 seconds after the next
+retired `_refresh_city_networks` call. Earlier runs also exposed retired
+`_public_status_tag_text` and `_save_run` calls. No process remained after the runner
+cleanup. A real one-seed quality probe
+`20260715-130746-861-full_run_quality_driver-8c31f95e` exited 4 honestly at
+`first_run.buy_card`: `scripted_ui_action_disabled:coach_buy_card`; it did not claim
+settlement. Its save capability reported `8/18` transactional sections and
+`resume_ready=false`.
+
+This remains a quality baseline, not a pass. The next atomic slice is the
+Coordinator/RouteNetwork migration for `_refresh_city_networks`, followed by the
+remaining save and public presentation oracles. Full-run completion, 20-seed success,
+save-to-settlement continuation, and complete first-run 1280 interaction remain open.
