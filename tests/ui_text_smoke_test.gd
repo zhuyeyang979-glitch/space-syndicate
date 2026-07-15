@@ -59,7 +59,7 @@ func _run() -> void:
 	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerBidBoard", "PlayerMainActionDock"]), "PlayerBoard owns resources, hand, bids, and actions")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
 	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]), "OverlayLayer owns all temporary decision panels")
-	_expect(_has_nodes(planet_board, ["WeatherForecastBar", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")
+	_expect(_has_nodes(planet_board, ["WeatherForecastStrip", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")
 	_expect(_has_nodes(district_supply, ["DistrictSupplyMarketGrid", "DistrictSupplyPreviewPanel"]), "DistrictSupplyDrawer owns its market and preview surfaces")
 
 	var main_source := _source("res://scripts/main.gd")

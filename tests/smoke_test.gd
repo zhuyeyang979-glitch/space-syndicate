@@ -4196,7 +4196,7 @@ func _verify_weather_forecast_system(main: Node) -> bool:
 	runtime_coordinator.call("apply_weather_save_data", {})
 	if runtime_coordinator.has_method("restore_world_effective_seconds"):
 		runtime_coordinator.call("restore_world_effective_seconds", 0.0)
-	var scheduled := weather.call("schedule_forecast", "ion_storm", district_index, 1, 30.0, 45.0, "smoke", false)
+	var scheduled: bool = bool(weather.call("schedule_forecast", "ion_storm", district_index, 1, 30.0, 45.0, "smoke", false))
 	var public_snapshot := weather.call("public_snapshot") as Dictionary
 	var events := _as_array(public_snapshot.get("events", []))
 	ok = ok and bool(scheduled) and events.size() == 1

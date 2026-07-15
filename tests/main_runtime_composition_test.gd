@@ -584,7 +584,7 @@ func _check_runtime_controller_authority(main: Control) -> void:
 		weather_characterization_ready = weather_characterization_ready and not main_source.contains(str(weather_symbol))
 	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
 	weather_characterization_ready = weather_characterization_ready and coordinator_scene.count("[node name=\"WeatherRuntimeController\"") == 1 and coordinator_scene.count("[node name=\"WeatherRuntimeWorldBridge\"") == 1 and main_source.sha256_text() != "f75b217e85da2e4f5300b900290457d41e4c031ec3c6b7cefe996e6a354a103a"
-	_expect(weather_characterization_ready and weather_contract.contains("Sprint 49 status") and weather_contract.contains("Deleted legacy owner"), "Sprint 49 composes one authoritative WeatherRuntimeController and non-owning bridge while deleting the legacy main.gd weather engine")
+	_expect(weather_characterization_ready and weather_contract.contains("Current v0.6 status") and weather_contract.contains("Main boundary"), "v0.6 composes one authoritative WeatherRuntimeController and non-owning bridge while keeping the legacy main.gd weather engine deleted")
 	var contract_contract := FileAccess.get_file_as_string(CONTRACT_RUNTIME_OWNERSHIP_CONTRACT)
 	var contract_characterization_ready := ResourceLoader.exists(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH) and ResourceLoader.exists(CONTRACT_RUNTIME_CHARACTERIZATION_SCRIPT) and ResourceLoader.exists(CONTRACT_RUNTIME_CONTROLLER) and ResourceLoader.exists(CONTRACT_RUNTIME_WORLD_BRIDGE) and not contract_contract.is_empty()
 	var contract_packed := load(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH) as PackedScene
