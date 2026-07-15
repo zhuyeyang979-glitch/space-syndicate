@@ -3,6 +3,17 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜区域天气系统 v1 完整闭环
+
+- 六种区域天气现由 `resources/weather/*.tres` 与 `WeatherDefinition` 完整数据驱动：离子风暴、引力潮、孢子季、晶尘暴、极寒期、太阳耀斑。商品、怪兽和单位使用最小显式标签，不按中文名称猜测规则；天气定义、倍率和生命周期没有进入 `main.gd`。
+- `WeatherRuntimeController` 保持唯一生产状态 owner，并以既有整数 `world_effective_us` 推进 90 秒开局保护、90 至 150 秒自然预报间隔、30 至 60 秒预报、45 至 90 秒生效和 10 秒线性消退。最多两个事件并存，同区域冲突排队，结算倒计时只阻止新预报；真暂停冻结，非模态市场不冻结。
+- `WeatherEffectResolver` 将天气接入现有生产、需求、价格增长、收入明细、路线有效效率、怪兽标签/AI 评分、军事移动/远程/轨道/击退和情报持续时间/范围。`weather_resistance` 只缩小天气 delta，`weather_exploitation_multiplier` 只放大正收益；路线、速度、军事/情报和经济贡献均有硬上限，结束后回到 identity。
+- 晶尘暴的轻微区域磨损不直接写 HP，而是经权威区域伤害 owner 提交环境请求，按强度积分、单事件累计封顶且至少保留 1 点生命。天气本身不能摧毁健康区域，也不会永久损坏路线或留下怪兽状态。
+- UI 使用同一公开事件链：地图 WeatherMapOverlay 位于区域/城市之下且不遮挡路线、怪兽和选区；WeatherForecastStrip 非阻塞提示并可聚焦区域；区域详情显示阶段、剩余时间、三项主效果、利用与反制；经济和路线解释保留同一 event id、天气名称和贡献行。1280×720、1600×960、1920×1080 以及真实 PlanetBoard 1600×960 截图均已生成并人工检查。
+- 本地 `WeatherTelemetryRuntimeService` 记录事件数量、命中区域、价格增长/路线效率贡献、匿名行为类别、怪兽评分影响、实际区域伤害和由已提交公开成交 receipt 得出的保守经济估值。它没有网络、存档 API、玩家身份、现金、手牌、私密目标/权重或 AI 计划；确定性平衡报告明确把实现金额标为 `N/A`，不伪造真人收益。
+- Focused 验收全部通过：core `278/278`、商品标签 `292/292`、经济 `107/107`、路线 `45/45`、怪兽 `86/86`、军事/情报 `37/37`、区域伤害 `77/77`、遥测 `90/90 + 13/13`、存档/隐私 `50/50`、展示 `10/10 + 14/14`、卡牌/AI `49/49`、真实 Main Weather Characterization `53/53`，另有卡牌资源 `80/80`、authoring `36/36`、v0.6 catalog `2894/2894`。
+- 全局门禁中，Godot 引擎级 smoke `--check-only`、UI 文本、visual snapshot 与 Main composition 通过。完整 layout 仍有 59 条旧 v0.4/v0.5 断言，但天气失败为 0；完整 smoke 在 `tests/smoke_test.gd:132` 对迁移后的 `product_market` 执行陈旧 `Dictionary` 强转并触发 `Invalid cast`，随后由超时门回收，因此未标为通过，也没有恢复 Main wrapper。完整证据、平衡表、截图路径和未关闭风险见 `docs/weather_v1_test_report.md` 与 `docs/weather_v1_balance_report.md`。
+
 ## 2026-07-15｜区域图鉴公共数据源场景化与隐私硬切换
 
 - `GameRuntimeCoordinator.tscn` 现静态拥有唯一 `RegionCodexPublicSourceService`。生产链为 RegionInfrastructure 的严格公开投影、Monster owner 的非数值区域吸引投影、Weather/Route 公共摘要，再经纯数据 allowlist adapter 进入既有 `CodexPublicSnapshotService`；SourceService 不读取 viewer、玩家现金/手牌/弃牌、城市猜测、真实 owner、AI 计划、镜头、市场报价或存档。

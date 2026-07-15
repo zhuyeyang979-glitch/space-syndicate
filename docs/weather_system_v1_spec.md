@@ -1,6 +1,6 @@
 # Regional Weather System v1
 
-Status: integrated release candidate. Focused runtime, economy, route, monster, military/intel, presentation, telemetry, save/privacy, and damage gates are active; full-project regression and headed screenshot acceptance remain release gates.
+Status: integrated release candidate. Focused runtime, economy, route, monster, military/intel, presentation, telemetry, save/privacy, damage, and headed screenshot gates are accepted; full-project regression remains a release gate.
 
 ## Product Intent
 
