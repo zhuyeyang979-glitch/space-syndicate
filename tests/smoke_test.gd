@@ -7685,7 +7685,7 @@ func _container_has_named_node(container: Node, node_name: String) -> bool:
 
 func _container_card_art_kind_contains(container: Node, kind: String) -> bool:
 	for child in container.get_children():
-		if child.has_method("set_card") and String(child.get("card_kind")) == kind:
+		if child.has_method("set_card") and str(child.get("card_kind")) == kind:
 			return true
 		if child is Node and _container_card_art_kind_contains(child, kind):
 			return true
@@ -7694,7 +7694,7 @@ func _container_card_art_kind_contains(container: Node, kind: String) -> bool:
 
 func _container_card_art_stats_contains(container: Node, needle: String) -> bool:
 	for child in container.get_children():
-		if child.has_method("set_card") and String(child.get("card_stats")).contains(needle):
+		if child.has_method("set_card") and str(child.get("card_stats")).contains(needle):
 			return true
 		if child is Node and _container_card_art_stats_contains(child, needle):
 			return true
